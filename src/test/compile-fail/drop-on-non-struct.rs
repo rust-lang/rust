@@ -19,5 +19,3 @@ impl Drop for Foo {   //~ ERROR the Drop trait may only be implemented
 
 fn main() {
 }
-
-

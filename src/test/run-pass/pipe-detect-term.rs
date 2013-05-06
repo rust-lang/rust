@@ -29,7 +29,7 @@ proto! oneshot (
 
 pub fn main() {
     let iotask = &uv::global_loop::get();
-    
+
     let (chan, port) = oneshot::init();
     let port = Cell(port);
     do spawn {
@@ -48,7 +48,7 @@ pub fn main() {
 fn failtest() {
     let (c, p) = oneshot::init();
 
-    do task::spawn_with(c) |_c| { 
+    do task::spawn_with(c) |_c| {
         fail!();
     }
 

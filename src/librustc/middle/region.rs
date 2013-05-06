@@ -320,7 +320,7 @@ pub impl RegionMaps {
 pub fn parent_id(cx: ctxt, span: span) -> ast::node_id {
     match cx.parent {
       None => {
-        cx.sess.span_bug(span, ~"crate should not be parent here");
+        cx.sess.span_bug(span, "crate should not be parent here");
       }
       Some(parent_id) => {
         parent_id
@@ -438,8 +438,7 @@ pub fn resolve_fn(fk: &visit::fn_kind,
                   cx: ctxt,
                   visitor: visit::vt<ctxt>) {
     let fn_cx = match *fk {
-        visit::fk_item_fn(*) | visit::fk_method(*) |
-        visit::fk_dtor(*) => {
+        visit::fk_item_fn(*) | visit::fk_method(*) => {
             // Top-level functions are a root scope.
             ctxt {parent: Some(id),.. cx}
         }
@@ -969,4 +968,3 @@ pub fn determine_rp_in_crate(sess: Session,
     // return final set
     return cx.region_paramd_items;
 }
-

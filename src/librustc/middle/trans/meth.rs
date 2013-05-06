@@ -637,14 +637,15 @@ pub fn trans_trait_callee_from_llval(bcx: block,
            val_str(bcx.ccx().tn, llpair));
     let llvtable = Load(bcx,
                       PointerCast(bcx,
-                                  GEPi(bcx, llpair, [0u, 0u]),
+                                  GEPi(bcx, llpair,
+                                       [0u, abi::trt_field_vtable]),
                                   T_ptr(T_ptr(T_vtable()))));
 
     // Load the box from the @Trait pair and GEP over the box header if
     // necessary:
     let mut llself;
     debug!("(translating trait callee) loading second index from pair");
-    let llbox = Load(bcx, GEPi(bcx, llpair, [0u, 1u]));
+    let llbox = Load(bcx, GEPi(bcx, llpair, [0u, abi::trt_field_box]));
 
     // Munge `llself` appropriately for the type of `self` in the method.
     let self_mode;
@@ -845,27 +846,30 @@ pub fn trans_trait_cast(bcx: block,
 
     match store {
         ty::RegionTraitStore(_) | ty::BoxTraitStore => {
-            let mut llboxdest = GEPi(bcx, lldest, [0u, 1u]);
-            // Just store the pointer into the pair.
+            let mut llboxdest = GEPi(bcx, lldest, [0u, abi::trt_field_box]);
+            // Just store the pointer into the pair. (Region/borrowed
+            // and boxed trait objects are represented as pairs, and
+            // have no type descriptor field.)
             llboxdest = PointerCast(bcx,
                                     llboxdest,
                                     T_ptr(type_of(bcx.ccx(), v_ty)));
             bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
         }
         ty::UniqTraitStore => {
-            // Translate the uniquely-owned value into the second element of
-            // the triple. (The first element is the vtable.)
-            let mut llvaldest = GEPi(bcx, lldest, [0, 1]);
+            // Translate the uniquely-owned value in the
+            // triple. (Unique trait objects are represented as
+            // triples.)
+            let mut llvaldest = GEPi(bcx, lldest, [0, abi::trt_field_box]);
             llvaldest = PointerCast(bcx,
                                     llvaldest,
                                     T_ptr(type_of(bcx.ccx(), v_ty)));
             bcx = expr::trans_into(bcx, val, SaveIn(llvaldest));
 
-            // Get the type descriptor of the wrapped value and store it into
-            // the third element of the triple as well.
+            // Get the type descriptor of the wrapped value and store
+            // it in the triple as well.
             let tydesc = get_tydesc(bcx.ccx(), v_ty);
             glue::lazily_emit_all_tydesc_glue(bcx.ccx(), tydesc);
-            let lltydescdest = GEPi(bcx, lldest, [0, 2]);
+            let lltydescdest = GEPi(bcx, lldest, [0, abi::trt_field_tydesc]);
             Store(bcx, tydesc.tydesc, lltydescdest);
         }
     }
@@ -875,7 +879,7 @@ pub fn trans_trait_cast(bcx: block,
     let orig = resolve_vtable_in_fn_ctxt(bcx.fcx, orig);
     let vtable = get_vtable(bcx.ccx(), orig);
     Store(bcx, vtable, PointerCast(bcx,
-                                   GEPi(bcx, lldest, [0u, 0u]),
+                                   GEPi(bcx, lldest, [0u, abi::trt_field_vtable]),
                                    T_ptr(val_ty(vtable))));
 
     bcx

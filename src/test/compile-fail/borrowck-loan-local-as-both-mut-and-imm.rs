@@ -30,6 +30,6 @@ use core::either::{Either, Left, Right};
         let y: &Either<int, float> = &x;
         let z: &mut Either<int, float> = &mut x; //~ ERROR conflicts with prior loan
         *z = *y;
-    } 
+    }
 
     fn main() {}

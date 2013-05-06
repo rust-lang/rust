@@ -153,4 +153,3 @@ pub fn static_size_of_enum(cx: @CrateContext, t: ty::t) -> uint {
         _ => cx.sess.bug(~"static_size_of_enum called on non-enum")
     }
 }
-

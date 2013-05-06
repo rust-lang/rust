@@ -97,7 +97,7 @@
 #endif
 .globl MORESTACK
 
-// FIXME: What about _WIN32?	
+// FIXME: What about _WIN32?
 #if defined(__linux__) || defined(__FreeBSD__)
 	.hidden MORESTACK
 #else
@@ -253,4 +253,3 @@ L_upcall_del_stack$stub:
 
 	.subsections_via_symbols
 #endif
-

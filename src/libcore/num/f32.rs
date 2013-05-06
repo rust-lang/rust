@@ -10,7 +10,6 @@
 
 //! Operations and constants for `f32`
 
-use from_str;
 use num::{Zero, One, strconv};
 use prelude::*;
 
@@ -123,7 +122,7 @@ pub fn sub(x: f32, y: f32) -> f32 { return x - y; }
 pub fn mul(x: f32, y: f32) -> f32 { return x * y; }
 
 #[inline(always)]
-pub fn quot(x: f32, y: f32) -> f32 { return x / y; }
+pub fn div(x: f32, y: f32) -> f32 { return x / y; }
 
 #[inline(always)]
 pub fn rem(x: f32, y: f32) -> f32 { return x % y; }
@@ -279,23 +278,13 @@ impl Mul<f32,f32> for f32 {
     fn mul(&self, other: &f32) -> f32 { *self * *other }
 }
 
-#[cfg(stage0,notest)]
+#[cfg(notest)]
 impl Div<f32,f32> for f32 {
     #[inline(always)]
     fn div(&self, other: &f32) -> f32 { *self / *other }
 }
-#[cfg(not(stage0),notest)]
-impl Quot<f32,f32> for f32 {
-    #[inline(always)]
-    fn quot(&self, other: &f32) -> f32 { *self / *other }
-}
 
-#[cfg(stage0,notest)]
-impl Modulo<f32,f32> for f32 {
-    #[inline(always)]
-    fn modulo(&self, other: &f32) -> f32 { *self % *other }
-}
-#[cfg(not(stage0),notest)]
+#[cfg(notest)]
 impl Rem<f32,f32> for f32 {
     #[inline(always)]
     fn rem(&self, other: &f32) -> f32 { *self % *other }
@@ -803,7 +792,7 @@ pub fn from_str_radix(num: &str, rdx: uint) -> Option<f32> {
                              strconv::ExpNone, false, false)
 }
 
-impl from_str::FromStr for f32 {
+impl FromStr for f32 {
     #[inline(always)]
     fn from_str(val: &str) -> Option<f32> { from_str(val) }
 }
@@ -991,13 +980,3 @@ mod tests {
         assert_eq!(Primitive::bytes::<f32>(), sys::size_of::<f32>());
     }
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

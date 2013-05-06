@@ -38,7 +38,7 @@ rust_sched_loop::rust_sched_loop(rust_scheduler *sched, int id, bool killed) :
     sched(sched),
     log_lvl(log_debug),
     min_stack_size(kernel->env->min_stack_size),
-    local_region(kernel->env, false),
+    local_region(false, kernel->env->detailed_leaks, kernel->env->poison_on_free),
     // FIXME #2891: calculate a per-scheduler name.
     name("main")
 {

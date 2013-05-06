@@ -179,9 +179,9 @@ tidy:
 		$(Q)find $(S)src/etc -name '*.py' \
 		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 		$(Q)echo $(ALL_CS) \
-	  	| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
+		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 		$(Q)echo $(ALL_HS) \
-	  	| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
+		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 
 endif
 
@@ -709,4 +709,3 @@ endef
 
 $(foreach host,$(CFG_HOST_TRIPLES),			\
  $(eval $(call DEF_CHECK_FAST_FOR_H,$(host))))
-

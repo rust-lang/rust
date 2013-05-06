@@ -21,9 +21,9 @@ fn loopy(n: int) {
     loop { }
 }
 
-pub fn main() { 
+pub fn main() {
     // Commenting this out, as this will hang forever otherwise.
     // Even after seeing the comment above, I'm not sure what the
     // intention of this test is.
-    // do spawn { loopy(5) }; 
+    // do spawn { loopy(5) };
 }

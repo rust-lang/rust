@@ -100,4 +100,3 @@ fn test_task_pool() {
         pool.execute(|i| io::println(fmt!("Hello from thread %u!", *i)));
     }
 }
-

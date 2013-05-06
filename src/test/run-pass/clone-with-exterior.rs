@@ -18,7 +18,7 @@ struct Pair {
 
 pub fn main() {
     let z = ~Pair { a : 10, b : 12};
-    
+
     let f: ~fn() = || {
         assert!((z.a == 10));
         assert!((z.b == 12));

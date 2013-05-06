@@ -20,12 +20,11 @@
 
 // PORT this must match in width according to architecture
 
-use from_str;
 use libc::c_int;
 use num::{Zero, One, strconv};
 use prelude::*;
 
-pub use f64::{add, sub, mul, quot, rem, lt, le, eq, ne, ge, gt};
+pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
 pub use f64::logarithm;
 pub use f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
 pub use f64::{erf, erfc, exp, expm1, exp2, abs_sub};
@@ -289,7 +288,7 @@ pub fn from_str_radix(num: &str, radix: uint) -> Option<float> {
                              strconv::ExpNone, false, false)
 }
 
-impl from_str::FromStr for float {
+impl FromStr for float {
     #[inline(always)]
     fn from_str(val: &str) -> Option<float> { from_str(val) }
 }
@@ -692,22 +691,13 @@ impl Mul<float,float> for float {
     fn mul(&self, other: &float) -> float { *self * *other }
 }
 
-#[cfg(stage0,notest)]
+#[cfg(notest)]
 impl Div<float,float> for float {
     #[inline(always)]
     fn div(&self, other: &float) -> float { *self / *other }
 }
-#[cfg(not(stage0),notest)]
-impl Quot<float,float> for float {
-    #[inline(always)]
-    fn quot(&self, other: &float) -> float { *self / *other }
-}
-#[cfg(stage0,notest)]
-impl Modulo<float,float> for float {
-    #[inline(always)]
-    fn modulo(&self, other: &float) -> float { *self % *other }
-}
-#[cfg(not(stage0),notest)]
+
+#[cfg(notest)]
 impl Rem<float,float> for float {
     #[inline(always)]
     fn rem(&self, other: &float) -> float { *self % *other }
@@ -1143,13 +1133,3 @@ mod tests {
         assert_eq!(to_str_digits(-infinity, 10u), ~"-inf");
     }
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

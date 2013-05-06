@@ -342,7 +342,7 @@ pub fn expr_to_str(cx: @ext_ctxt, expr: @ast::expr, err_msg: ~str) -> ~str {
 
 pub fn expr_to_ident(cx: @ext_ctxt,
                      expr: @ast::expr,
-                     err_msg: ~str) -> ast::ident {
+                     err_msg: &str) -> ast::ident {
     match expr.node {
       ast::expr_path(p) => {
         if vec::len(p.types) > 0u || vec::len(p.idents) != 1u {
@@ -451,17 +451,6 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
 
     // ugh: can't get this to compile with mut because of the
     // lack of flow sensitivity.
-    #[cfg(stage0)]
-    fn get_map(&self) -> &'self HashMap<K,@V> {
-        match *self {
-            BaseMapChain (~ref map) => map,
-            ConsMapChain (~ref map,_) => map
-        }
-    }
-
-    // ugh: can't get this to compile with mut because of the
-    // lack of flow sensitivity.
-    #[cfg(not(stage0))]
     fn get_map<'a>(&'a self) -> &'a HashMap<K,@V> {
         match *self {
             BaseMapChain (~ref map) => map,
@@ -543,13 +532,3 @@ mod test {
         assert_eq!(*(m.find(&@~"def").get()),16);
     }
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

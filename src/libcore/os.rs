@@ -38,6 +38,7 @@ use ptr;
 use str;
 use task;
 use uint;
+use unstable::finally::Finally;
 use vec;
 
 pub use libc::fclose;
@@ -372,7 +373,7 @@ pub fn pipe() -> Pipe {
         // inheritance has to be handled in a different way that I do not
         // fully understand. Here we explicitly make the pipe non-inheritable,
         // which means to pass it to a subprocess they need to be duplicated
-        // first, as in rust_run_program.
+        // first, as in core::run.
         let mut fds = Pipe {in: 0 as c_int,
                     out: 0 as c_int };
         let res = libc::pipe(&mut fds.in, 1024 as ::libc::c_uint,
@@ -771,6 +772,28 @@ pub fn list_dir_path(p: &Path) -> ~[~Path] {
     list_dir(p).map(|f| ~p.push(*f))
 }
 
+/// Removes a directory at the specified path, after removing
+/// all its contents. Use carefully!
+pub fn remove_dir_recursive(p: &Path) -> bool {
+    let mut error_happened = false;
+    for walk_dir(p) |inner| {
+        if !error_happened {
+            if path_is_dir(inner) {
+                if !remove_dir_recursive(inner) {
+                    error_happened = true;
+                }
+            }
+            else {
+                if !remove_file(inner) {
+                    error_happened = true;
+                }
+            }
+        }
+    };
+    // Directory should now be empty
+    !error_happened && remove_dir(p)
+}
+
 /// Removes a directory at the specified path
 pub fn remove_dir(p: &Path) -> bool {
    return rmdir(p);
@@ -818,6 +841,36 @@ pub fn change_dir(p: &Path) -> bool {
     }
 }
 
+/// Changes the current working directory to the specified
+/// path while acquiring a global lock, then calls `action`.
+/// If the change is successful, releases the lock and restores the
+/// CWD to what it was before, returning true.
+/// Returns false if the directory doesn't exist or if the directory change
+/// is otherwise unsuccessful.
+pub fn change_dir_locked(p: &Path, action: &fn()) -> bool {
+    use unstable::global::global_data_clone_create;
+    use unstable::{Exclusive, exclusive};
+
+    fn key(_: Exclusive<()>) { }
+
+    let result = unsafe {
+        global_data_clone_create(key, || {
+            ~exclusive(())
+        })
+    };
+
+    do result.with_imm() |_| {
+        let old_dir = os::getcwd();
+        if change_dir(p) {
+            action();
+            change_dir(&old_dir)
+        }
+        else {
+            false
+        }
+    }
+}
+
 /// Copies a file from one location to another
 pub fn copy_file(from: &Path, to: &Path) -> bool {
     return do_copy_file(from, to);
@@ -846,6 +899,10 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
             if istream as uint == 0u {
                 return false;
             }
+            // Preserve permissions
+            let from_mode = from.get_mode().expect("copy_file: couldn't get permissions \
+                                                    for source file");
+
             let ostream = do as_c_charp(to.to_str()) |top| {
                 do as_c_charp("w+b") |modebuf| {
                     libc::fopen(top, modebuf)
@@ -877,6 +934,15 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
             }
             fclose(istream);
             fclose(ostream);
+
+            // Give the new file the old file's permissions
+            unsafe {
+                if do str::as_c_str(to.to_str()) |to_buf| {
+                    libc::chmod(to_buf, from_mode as mode_t)
+                } != 0 {
+                    return false; // should be a condition...
+                }
+            }
             return ok;
         }
     }
@@ -1151,6 +1217,88 @@ pub fn set_args(new_args: ~[~str]) {
         let overridden_args = @OverriddenArgs { val: copy new_args };
         task::local_data::local_data_set(overridden_arg_key, overridden_args);
     }
+}
+
+// FIXME #6100 we should really use an internal implementation of this - using
+// the POSIX glob functions isn't portable to windows, probably has slight
+// inconsistencies even where it is implemented, and makes extending
+// functionality a lot more difficult
+// FIXME #6101 also provide a non-allocating version - each_glob or so?
+/// Returns a vector of Path objects that match the given glob pattern
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "android")]
+#[cfg(target_os = "freebsd")]
+#[cfg(target_os = "macos")]
+pub fn glob(pattern: &str) -> ~[Path] {
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "android")]
+    fn default_glob_t () -> libc::glob_t {
+        libc::glob_t {
+            gl_pathc: 0,
+            gl_pathv: ptr::null(),
+            gl_offs: 0,
+            __unused1: ptr::null(),
+            __unused2: ptr::null(),
+            __unused3: ptr::null(),
+            __unused4: ptr::null(),
+            __unused5: ptr::null(),
+        }
+    }
+
+    #[cfg(target_os = "freebsd")]
+    fn default_glob_t () -> libc::glob_t {
+        libc::glob_t {
+            gl_pathc: 0,
+            __unused1: 0,
+            gl_offs: 0,
+            __unused2: 0,
+            gl_pathv: ptr::null(),
+            __unused3: ptr::null(),
+            __unused4: ptr::null(),
+            __unused5: ptr::null(),
+            __unused6: ptr::null(),
+            __unused7: ptr::null(),
+            __unused8: ptr::null(),
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    fn default_glob_t () -> libc::glob_t {
+        libc::glob_t {
+            gl_pathc: 0,
+            __unused1: 0,
+            gl_offs: 0,
+            __unused2: 0,
+            gl_pathv: ptr::null(),
+            __unused3: ptr::null(),
+            __unused4: ptr::null(),
+            __unused5: ptr::null(),
+            __unused6: ptr::null(),
+            __unused7: ptr::null(),
+            __unused8: ptr::null(),
+        }
+    }
+
+    let mut g = default_glob_t();
+    do str::as_c_str(pattern) |c_pattern| {
+        unsafe { libc::glob(c_pattern, 0, ptr::null(), &mut g) }
+    };
+    do(|| {
+        let paths = unsafe {
+            vec::raw::from_buf_raw(g.gl_pathv, g.gl_pathc as uint)
+        };
+        do paths.map |&c_str| {
+            Path(unsafe { str::raw::from_c_str(c_str) })
+        }
+    }).finally {
+        unsafe { libc::globfree(&mut g) };
+    }
+}
+
+/// Returns a vector of Path objects that match the given glob pattern
+#[cfg(target_os = "win32")]
+pub fn glob(pattern: &str) -> ~[Path] {
+    fail!(~"glob() is unimplemented on Windows")
 }
 
 #[cfg(target_os = "macos")]
@@ -1481,6 +1629,7 @@ mod tests {
                       == buf.len() as size_t))
           }
           assert!((libc::fclose(ostream) == (0u as c_int)));
+          let in_mode = in.get_mode();
           let rs = os::copy_file(&in, &out);
           if (!os::path_exists(&in)) {
             fail!(fmt!("%s doesn't exist", in.to_str()));
@@ -1488,6 +1637,7 @@ mod tests {
           assert!((rs));
           let rslt = run::run_program(~"diff", ~[in.to_str(), out.to_str()]);
           assert!((rslt == 0));
+          assert!(out.get_mode() == in_mode);
           assert!((remove_file(&in)));
           assert!((remove_file(&out)));
         }

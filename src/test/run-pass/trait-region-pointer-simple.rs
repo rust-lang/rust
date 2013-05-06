@@ -28,4 +28,3 @@ pub fn main() {
     let b = (&a) as &Foo;
     assert!(b.f() == 3);
 }
-

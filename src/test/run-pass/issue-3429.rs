@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[link(name = "issue2196b", vers = "0.1")];
-#[crate_type = "lib"];
-
-use a(name = "issue2196a");
-
-type d = str;
-impl d for d { }
-
+pub fn main() {
+  let x = 1;
+  let y: @fn() -> int = || x;
+  let z = y();
+}

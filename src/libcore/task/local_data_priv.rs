@@ -18,6 +18,30 @@ use task::rt;
 use task::local_data::LocalDataKey;
 
 use super::rt::rust_task;
+use rt::local_services::LocalStorage;
+
+pub enum Handle {
+    OldHandle(*rust_task),
+    NewHandle(*mut LocalStorage)
+}
+
+impl Handle {
+    pub fn new() -> Handle {
+        use rt::{context, OldTaskContext};
+        use rt::local_services::unsafe_borrow_local_services;
+        unsafe {
+            match context() {
+                OldTaskContext => {
+                    OldHandle(rt::rust_get_task())
+                }
+                _ => {
+                    let local_services = unsafe_borrow_local_services();
+                    NewHandle(&mut local_services.storage)
+                }
+            }
+        }
+    }
+}
 
 pub trait LocalData { }
 impl<T:Durable> LocalData for @T { }
@@ -25,8 +49,8 @@ impl<T:Durable> LocalData for @T { }
 impl Eq for @LocalData {
     fn eq(&self, other: &@LocalData) -> bool {
         unsafe {
-            let ptr_a: (uint, uint) = cast::transmute(*self);
-            let ptr_b: (uint, uint) = cast::transmute(*other);
+            let ptr_a: &(uint, uint) = cast::transmute(self);
+            let ptr_b: &(uint, uint) = cast::transmute(other);
             return ptr_a == ptr_b;
         }
     }
@@ -39,7 +63,7 @@ type TaskLocalElement = (*libc::c_void, *libc::c_void, @LocalData);
 // Has to be a pointer at outermost layer; the foreign call returns void *.
 type TaskLocalMap = @mut ~[Option<TaskLocalElement>];
 
-extern fn cleanup_task_local_map(map_ptr: *libc::c_void) {
+fn cleanup_task_local_map(map_ptr: *libc::c_void) {
     unsafe {
         assert!(!map_ptr.is_null());
         // Get and keep the single reference that was created at the
@@ -50,7 +74,18 @@ extern fn cleanup_task_local_map(map_ptr: *libc::c_void) {
 }
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
+unsafe fn get_local_map(handle: Handle) -> TaskLocalMap {
+    match handle {
+        OldHandle(task) => get_task_local_map(task),
+        NewHandle(local_storage) => get_newsched_local_map(local_storage)
+    }
+}
+
 unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
+
+    extern fn cleanup_task_local_map_extern_cb(map_ptr: *libc::c_void) {
+        cleanup_task_local_map(map_ptr);
+    }
 
     // Relies on the runtime initialising the pointer to null.
     // Note: The map's box lives in TLS invisibly referenced once. Each time
@@ -60,7 +95,7 @@ unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
     if map_ptr.is_null() {
         let map: TaskLocalMap = @mut ~[];
         rt::rust_set_task_local_data(task, cast::transmute(map));
-        rt::rust_task_local_data_atexit(task, cleanup_task_local_map);
+        rt::rust_task_local_data_atexit(task, cleanup_task_local_map_extern_cb);
         // Also need to reference it an extra time to keep it for now.
         let nonmut = cast::transmute::<TaskLocalMap,
                                        @~[Option<TaskLocalElement>]>(map);
@@ -72,6 +107,27 @@ unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
                                        @~[Option<TaskLocalElement>]>(map);
         cast::bump_box_refcount(nonmut);
         map
+    }
+}
+
+unsafe fn get_newsched_local_map(local: *mut LocalStorage) -> TaskLocalMap {
+    match &mut *local {
+        &LocalStorage(map_ptr, Some(_)) => {
+            assert!(map_ptr.is_not_null());
+            let map = cast::transmute(map_ptr);
+            let nonmut = cast::transmute::<TaskLocalMap,
+            @~[Option<TaskLocalElement>]>(map);
+            cast::bump_box_refcount(nonmut);
+            return map;
+        }
+        &LocalStorage(ref mut map_ptr, ref mut at_exit) => {
+            assert!((*map_ptr).is_null());
+            let map: TaskLocalMap = @mut ~[];
+            *map_ptr = cast::transmute(map);
+            let at_exit_fn: ~fn(*libc::c_void) = |p|cleanup_task_local_map(p);
+            *at_exit = Some(at_exit_fn);
+            return map;
+        }
     }
 }
 
@@ -102,10 +158,10 @@ unsafe fn local_data_lookup<T:Durable>(
 }
 
 unsafe fn local_get_helper<T:Durable>(
-    task: *rust_task, key: LocalDataKey<T>,
+    handle: Handle, key: LocalDataKey<T>,
     do_pop: bool) -> Option<@T> {
 
-    let map = get_task_local_map(task);
+    let map = get_local_map(handle);
     // Interpreturn our findings from the map
     do local_data_lookup(map, key).map |result| {
         // A reference count magically appears on 'data' out of thin air. It
@@ -124,23 +180,23 @@ unsafe fn local_get_helper<T:Durable>(
 
 
 pub unsafe fn local_pop<T:Durable>(
-    task: *rust_task,
+    handle: Handle,
     key: LocalDataKey<T>) -> Option<@T> {
 
-    local_get_helper(task, key, true)
+    local_get_helper(handle, key, true)
 }
 
 pub unsafe fn local_get<T:Durable>(
-    task: *rust_task,
+    handle: Handle,
     key: LocalDataKey<T>) -> Option<@T> {
 
-    local_get_helper(task, key, false)
+    local_get_helper(handle, key, false)
 }
 
 pub unsafe fn local_set<T:Durable>(
-    task: *rust_task, key: LocalDataKey<T>, data: @T) {
+    handle: Handle, key: LocalDataKey<T>, data: @T) {
 
-    let map = get_task_local_map(task);
+    let map = get_local_map(handle);
     // Store key+data as *voids. Data is invisibly referenced once; key isn't.
     let keyval = key_to_key_value(key);
     // We keep the data in two forms: one as an unsafe pointer, so we can get
@@ -148,7 +204,7 @@ pub unsafe fn local_set<T:Durable>(
     // own on it can be dropped when the box is destroyed. The unsafe pointer
     // does not have a reference associated with it, so it may become invalid
     // when the box is destroyed.
-    let data_ptr = cast::transmute(data);
+    let data_ptr = *cast::transmute::<&@T, &*libc::c_void>(&data);
     let data_box = @data as @LocalData;
     // Construct new entry to store in the map.
     let new_entry = Some((keyval, data_ptr, data_box));
@@ -170,12 +226,12 @@ pub unsafe fn local_set<T:Durable>(
 }
 
 pub unsafe fn local_modify<T:Durable>(
-    task: *rust_task, key: LocalDataKey<T>,
+    handle: Handle, key: LocalDataKey<T>,
     modify_fn: &fn(Option<@T>) -> Option<@T>) {
 
     // Could be more efficient by doing the lookup work, but this is easy.
-    let newdata = modify_fn(local_pop(task, key));
+    let newdata = modify_fn(local_pop(handle, key));
     if newdata.is_some() {
-        local_set(task, key, newdata.unwrap());
+        local_set(handle, key, newdata.unwrap());
     }
 }

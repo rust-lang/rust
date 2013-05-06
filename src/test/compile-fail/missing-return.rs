@@ -13,4 +13,3 @@
 fn f() -> int { }
 
 fn main() { f(); }
-

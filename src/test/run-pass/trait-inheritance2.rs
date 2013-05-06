@@ -31,4 +31,3 @@ pub fn main() {
     let a = &A { x: 3 };
     f(a);
 }
-

@@ -10,7 +10,7 @@
 
 extern mod std;
 use core::io::WriterUtil;
-    
+
 enum Token {
         Text(@~str),
         ETag(@~[~str], @~str),
@@ -19,7 +19,7 @@ enum Token {
         IncompleteSection(@~[~str], bool, @~str, bool),
         Partial(@~str, @~str, @~str),
 }
-    
+
 fn check_strs(actual: &str, expected: &str) -> bool
 {
         if actual != expected
@@ -29,12 +29,12 @@ fn check_strs(actual: &str, expected: &str) -> bool
         }
         return true;
 }
-    
+
 pub fn main()
 {
  //       assert!(check_strs(fmt!("%?", Text(@~"foo")), "Text(@~\"foo\")"));
  //       assert!(check_strs(fmt!("%?", ETag(@~[~"foo"], @~"bar")), "ETag(@~[ ~\"foo\" ], @~\"bar\")"));
-    
+
         let t = Text(@~"foo");
         let u = Section(@~[~"alpha"], true, @~[t], @~"foo", @~"foo", @~"foo", @~"foo", @~"foo");
         let v = fmt!("%?", u);    // this is the line that causes the seg fault

@@ -60,4 +60,3 @@ fn main() {
 fn check_pp<T>(expr: T, f: &fn(pprust::ps, T), expect: str) {
     fail!();
 }
-

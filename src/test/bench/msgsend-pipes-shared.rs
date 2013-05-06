@@ -104,7 +104,7 @@ fn main() {
         ~[~"", ~"10000", ~"4"]
     } else {
         copy args
-    };        
+    };
 
     debug!("%?", args);
     run(args);

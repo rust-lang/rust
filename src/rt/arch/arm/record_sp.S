@@ -28,4 +28,3 @@ get_sp_limit:
 get_sp:
 	mov r0, sp
 	mov pc, lr
-

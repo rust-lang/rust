@@ -19,6 +19,6 @@ pub impl Foo {
 pub fn main() {
     let mut x = @mut Foo { x: 3 };
     // Neither of the next two lines should cause an error
-    let _ = x.stuff(); 
+    let _ = x.stuff();
     x.stuff();
 }

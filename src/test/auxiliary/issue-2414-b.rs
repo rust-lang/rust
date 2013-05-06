@@ -14,4 +14,3 @@
 #[crate_type = "lib"];
 
 extern mod a;
-

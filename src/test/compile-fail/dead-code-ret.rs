@@ -15,4 +15,3 @@
 fn f(caller: str) { debug!(caller); }
 
 fn main() { return f("main"); debug!("Paul is dead"); }
-

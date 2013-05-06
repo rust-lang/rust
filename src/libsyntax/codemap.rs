@@ -127,11 +127,13 @@ impl cmp::Eq for span {
 
 impl<S:Encoder> Encodable<S> for span {
     /* Note #1972 -- spans are encoded but not decoded */
-    fn encode(&self, _s: &S) { _s.emit_nil() }
+    fn encode(&self, s: &mut S) {
+        s.emit_nil()
+    }
 }
 
 impl<D:Decoder> Decodable<D> for span {
-    fn decode(_d: &D) -> span {
+    fn decode(_d: &mut D) -> span {
         dummy_sp()
     }
 }
@@ -522,15 +524,3 @@ mod test {
         fm.next_line(BytePos(2));
     }
 }
-
-
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

@@ -56,5 +56,3 @@ pub mod kitty {
         }
     }
 }
-
-

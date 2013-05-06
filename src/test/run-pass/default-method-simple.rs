@@ -32,4 +32,3 @@ pub fn main() {
     let a = A { x: 1 };
     a.f();
 }
-

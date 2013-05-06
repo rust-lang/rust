@@ -404,4 +404,3 @@ pub fn ast_purity_constant(purity: ast::purity) -> uint {
         ast::extern_fn => 3u
     }
 }
-

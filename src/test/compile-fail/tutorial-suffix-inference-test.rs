@@ -22,11 +22,11 @@ fn main() {
     //~^ ERROR mismatched types: expected `u16` but found `i32`
 
     let a = 3i;
-    
+
     fn identity_i(n: int) -> int { n }
 
     identity_i(a); // ok
-    identity_u16(a); 
+    identity_u16(a);
     //~^ ERROR mismatched types: expected `u16` but found `int`
 
 }

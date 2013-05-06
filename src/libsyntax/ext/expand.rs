@@ -485,9 +485,24 @@ pub fn core_macros() -> ~str {
 
     macro_rules! condition (
 
+        { pub $c:ident: $in:ty -> $out:ty; } => {
+
+            pub mod $c {
+                fn key(_x: @::core::condition::Handler<$in,$out>) { }
+
+                pub static cond :
+                    ::core::condition::Condition<'static,$in,$out> =
+                    ::core::condition::Condition {
+                        name: stringify!($c),
+                        key: key
+                    };
+            }
+        };
+
         { $c:ident: $in:ty -> $out:ty; } => {
 
-            mod $c {
+            // FIXME (#6009): remove mod's `pub` below once variant above lands.
+            pub mod $c {
                 fn key(_x: @::core::condition::Handler<$in,$out>) { }
 
                 pub static cond :
@@ -721,11 +736,3 @@ mod test {
     }
 
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

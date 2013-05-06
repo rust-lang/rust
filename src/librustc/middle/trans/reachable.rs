@@ -124,17 +124,9 @@ fn traverse_public_item(cx: &ctx, item: @item) {
             }
         }
       }
-      item_struct(ref struct_def, ref generics) => {
+      item_struct(ref struct_def, _) => {
         for struct_def.ctor_id.each |&ctor_id| {
             cx.rmap.insert(ctor_id);
-        }
-        for struct_def.dtor.each |dtor| {
-            cx.rmap.insert(dtor.node.id);
-            if generics.ty_params.len() > 0u ||
-                attr::find_inline_attr(dtor.node.attrs) != attr::ia_none
-            {
-                traverse_inline_body(cx, &dtor.node.body);
-            }
         }
       }
       item_ty(t, _) => {
@@ -178,11 +170,13 @@ fn traverse_inline_body(cx: &ctx, body: &blk) {
           expr_path(_) => {
             match cx.tcx.def_map.find(&e.id) {
                 Some(&d) => {
-                  traverse_def_id(cx, def_id_of_def(d));
+                    traverse_def_id(cx, def_id_of_def(d));
                 }
-                None      => cx.tcx.sess.span_bug(e.span, fmt!("Unbound node \
-                  id %? while traversing %s", e.id,
-                  expr_to_str(e, cx.tcx.sess.intr())))
+                None => cx.tcx.sess.span_bug(
+                    e.span,
+                    fmt!("Unbound node id %? while traversing %s",
+                         e.id,
+                         expr_to_str(e, cx.tcx.sess.intr())))
             }
           }
           expr_field(_, _, _) => {
@@ -239,9 +233,6 @@ fn traverse_all_resources_and_impls(cx: &ctx, crate_mod: &_mod) {
             visit_item: |i, cx, v| {
                 visit::visit_item(i, cx, v);
                 match i.node {
-                    item_struct(sdef, _) if sdef.dtor.is_some() => {
-                        traverse_public_item(cx, i);
-                    }
                     item_impl(*) => {
                         traverse_public_item(cx, i);
                     }
@@ -251,4 +242,3 @@ fn traverse_all_resources_and_impls(cx: &ctx, crate_mod: &_mod) {
             ..*visit::default_visitor()
         }));
 }
-

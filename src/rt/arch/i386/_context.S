@@ -63,5 +63,3 @@ SWAP_REGISTERS:
 
     // Return!
     jmp *48(%eax)
-
-
