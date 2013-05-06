@@ -1950,7 +1950,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
         let _i = indenter();
 
-        let mut result = match get(ty).sty {
+        let result = match get(ty).sty {
             // Scalar and unique types are sendable, constant, and owned
             ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
             ty_bare_fn(_) | ty_ptr(_) => {

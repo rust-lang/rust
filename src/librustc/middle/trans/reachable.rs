@@ -42,7 +42,7 @@ pub fn find_reachable(crate_mod: &_mod, exp_map2: resolve::ExportMap2,
                       tcx: ty::ctxt, method_map: typeck::method_map) -> map {
     let mut rmap = HashSet::new();
     {
-        let mut cx = @mut ctx {
+        let cx = @mut ctx {
             exp_map2: exp_map2,
             tcx: tcx,
             method_map: method_map,
