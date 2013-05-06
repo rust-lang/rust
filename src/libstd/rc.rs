@@ -17,6 +17,7 @@ destruction. They are restricted to containing `Owned` types in order to prevent
 
 use core::libc::{c_void, size_t, malloc, free};
 use core::unstable::intrinsics;
+use core::util;
 
 struct RcBox<T> {
     value: T,
@@ -52,8 +53,7 @@ impl<T: Owned> Drop for Rc<T> {
         unsafe {
             (*self.ptr).count -= 1;
             if (*self.ptr).count == 0 {
-                let mut x = intrinsics::uninit();
-                x <-> *self.ptr;
+                util::replace_ptr(self.ptr, intrinsics::uninit());
                 free(self.ptr as *c_void)
             }
         }
@@ -67,8 +67,7 @@ impl<T: Owned> Drop for Rc<T> {
         unsafe {
             (*self.ptr).count -= 1;
             if (*self.ptr).count == 0 {
-                let mut x = intrinsics::init();
-                x <-> *self.ptr;
+                util::replace_ptr(self.ptr, intrinsics::init());
                 free(self.ptr as *c_void)
             }
         }
@@ -109,13 +108,6 @@ mod test_rc {
         let x = Rc::new(~5);
         assert_eq!(**x.borrow(), 5);
     }
-}
-
-#[abi = "rust-intrinsic"]
-extern "rust-intrinsic" mod rusti {
-    fn init<T>() -> T;
-    #[cfg(not(stage0))]
-    fn uninit<T>() -> T;
 }
 
 #[deriving(Eq)]
@@ -179,8 +171,7 @@ impl<T: Owned> Drop for RcMut<T> {
         unsafe {
             (*self.ptr).count -= 1;
             if (*self.ptr).count == 0 {
-                let mut x = rusti::uninit();
-                x <-> *self.ptr;
+                util::replace_ptr(self.ptr, intrinsics::uninit());
                 free(self.ptr as *c_void)
             }
         }
@@ -194,8 +185,7 @@ impl<T: Owned> Drop for RcMut<T> {
         unsafe {
             (*self.ptr).count -= 1;
             if (*self.ptr).count == 0 {
-                let mut x = rusti::init();
-                x <-> *self.ptr;
+                util::replace_ptr(self.ptr, intrinsics::init());
                 free(self.ptr as *c_void)
             }
         }

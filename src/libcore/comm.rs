@@ -21,6 +21,7 @@ use uint;
 use unstable;
 use vec;
 use unstable::Exclusive;
+use util::replace;
 
 use pipes::{recv, try_recv, wait_many, peek, PacketHeader};
 
@@ -149,9 +150,8 @@ impl<T: Owned> GenericChan<T> for Chan<T> {
     #[inline(always)]
     fn send(&self, x: T) {
         unsafe {
-            let mut endp = None;
             let mut self_endp = transmute_mut(&self.endp);
-            endp <-> *self_endp;
+            let endp = replace(self_endp, None);
             *self_endp = Some(streamp::client::data(endp.unwrap(), x))
         }
     }
@@ -161,9 +161,8 @@ impl<T: Owned> GenericSmartChan<T> for Chan<T> {
     #[inline(always)]
     fn try_send(&self, x: T) -> bool {
         unsafe {
-            let mut endp = None;
             let mut self_endp = transmute_mut(&self.endp);
-            endp <-> *self_endp;
+            let endp = replace(self_endp, None);
             match streamp::client::try_data(endp.unwrap(), x) {
                 Some(next) => {
                     *self_endp = Some(next);
@@ -179,9 +178,8 @@ impl<T: Owned> GenericPort<T> for Port<T> {
     #[inline(always)]
     fn recv(&self) -> T {
         unsafe {
-            let mut endp = None;
             let mut self_endp = transmute_mut(&self.endp);
-            endp <-> *self_endp;
+            let endp = replace(self_endp, None);
             let streamp::data(x, endp) = recv(endp.unwrap());
             *self_endp = Some(endp);
             x
@@ -191,9 +189,8 @@ impl<T: Owned> GenericPort<T> for Port<T> {
     #[inline(always)]
     fn try_recv(&self) -> Option<T> {
         unsafe {
-            let mut endp = None;
             let mut self_endp = transmute_mut(&self.endp);
-            endp <-> *self_endp;
+            let endp = replace(self_endp, None);
             match try_recv(endp.unwrap()) {
                 Some(streamp::data(x, endp)) => {
                     *self_endp = Some(endp);
@@ -209,14 +206,13 @@ impl<T: Owned> Peekable<T> for Port<T> {
     #[inline(always)]
     fn peek(&self) -> bool {
         unsafe {
-            let mut endp = None;
             let mut self_endp = transmute_mut(&self.endp);
-            endp <-> *self_endp;
+            let mut endp = replace(self_endp, None);
             let peek = match endp {
                 Some(ref mut endp) => peek(endp),
                 None => fail!(~"peeking empty stream")
             };
-            *self_endp <-> endp;
+            *self_endp = endp;
             peek
         }
     }
@@ -267,8 +263,7 @@ impl<T:Owned> GenericPort<T> for PortSet<T> {
             let mut result = None;
             // we have to swap the ports array so we aren't borrowing
             // aliasable mutable memory.
-            let mut ports = ~[];
-            ports <-> *self_ports;
+            let mut ports = replace(self_ports, ~[]);
             while result.is_none() && ports.len() > 0 {
                 let i = wait_many(ports);
                 match ports[i].try_recv() {
@@ -281,7 +276,7 @@ impl<T:Owned> GenericPort<T> for PortSet<T> {
                     }
                 }
             }
-            ports <-> *self_ports;
+            *self_ports = ports;
             result
         }
     }
@@ -320,8 +315,7 @@ impl<T: Owned> GenericChan<T> for SharedChan<T> {
     fn send(&self, x: T) {
         let mut xx = Some(x);
         do self.ch.with_imm |chan| {
-            let mut x = None;
-            x <-> xx;
+            let x = replace(&mut xx, None);
             chan.send(x.unwrap())
         }
     }
@@ -331,8 +325,7 @@ impl<T: Owned> GenericSmartChan<T> for SharedChan<T> {
     fn try_send(&self, x: T) -> bool {
         let mut xx = Some(x);
         do self.ch.with_imm |chan| {
-            let mut x = None;
-            x <-> xx;
+            let x = replace(&mut xx, None);
             chan.try_send(x.unwrap())
         }
     }

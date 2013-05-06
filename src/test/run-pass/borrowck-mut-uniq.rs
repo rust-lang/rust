@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::util;
+
 struct Ints {sum: ~int, values: ~[int]}
 
 fn add_int(x: &mut Ints, v: int) {
     *x.sum += v;
     let mut values = ~[];
-    x.values <-> values;
+    util::swap(&mut values, &mut x.values);
     values.push(v);
-    x.values <-> values;
+    util::swap(&mut values, &mut x.values);
 }
 
 fn iter_ints(x: &Ints, f: &fn(x: &int) -> bool) -> bool {

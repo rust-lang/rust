@@ -14,6 +14,7 @@ extern mod std;
 
 use std::time::precise_time_s;
 use core::rand::RngUtil;
+use core::util;
 
 macro_rules! bench (
     ($id:ident) => (maybe_run_test(argv, stringify!($id).to_owned(), $id))
@@ -115,7 +116,7 @@ fn vec_push_all() {
             v.push_all(rv);
         }
         else {
-            v <-> rv;
+            util::swap(&mut v, &mut rv);
             v.push_all(rv);
         }
     }

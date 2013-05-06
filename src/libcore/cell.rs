@@ -12,6 +12,7 @@
 
 use cast::transmute_mut;
 use prelude::*;
+use util::replace;
 
 /*
 A dynamic, mutable location.
@@ -48,9 +49,7 @@ pub impl<T> Cell<T> {
             fail!(~"attempt to take an empty cell");
         }
 
-        let mut value = None;
-        value <-> self.value;
-        value.unwrap()
+        replace(&mut self.value, None).unwrap()
     }
 
     /// Returns the value, failing if the cell is full.

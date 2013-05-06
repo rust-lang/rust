@@ -13,7 +13,7 @@
 //! `TotalOrd`.
 
 use core::iterator::*;
-use core::util::replace;
+use core::util::{swap, replace};
 
 // This is implemented as an AA tree, which is a simplified variation of
 // a red-black tree where where red (horizontal) nodes can only be added
@@ -756,8 +756,8 @@ fn mutate_values<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
 fn skew<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
     if node.left.map_default(false, |x| x.level == node.level) {
         let mut save = node.left.swap_unwrap();
-        node.left <-> save.right; // save.right now None
-        *node <-> save;
+        swap(&mut node.left, &mut save.right); // save.right now None
+        swap(node, &mut save);
         node.right = Some(save);
     }
 }
@@ -768,9 +768,9 @@ fn split<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
     if node.right.map_default(false,
       |x| x.right.map_default(false, |y| y.level == node.level)) {
         let mut save = node.right.swap_unwrap();
-        node.right <-> save.left; // save.left now None
+        swap(&mut node.right, &mut save.left); // save.left now None
         save.level += 1;
-        *node <-> save;
+        swap(node, &mut save);
         node.left = Some(save);
     }
 }
@@ -823,14 +823,14 @@ fn insert<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
 fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
                           key: &K) -> Option<V> {
     fn heir_swap<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>,
-                            child: &mut Option<~TreeNode<K, V>>) {
+                                 child: &mut Option<~TreeNode<K, V>>) {
         // *could* be done without recursion, but it won't borrow check
         for child.each_mut |x| {
             if x.right.is_some() {
                 heir_swap(node, &mut x.right);
             } else {
-                node.key <-> x.key;
-                node.value <-> x.value;
+                swap(&mut node.key, &mut x.key);
+                swap(&mut node.value, &mut x.value);
             }
         }
     }
@@ -850,8 +850,8 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
                     if left.right.is_some() {
                         heir_swap(save, &mut left.right);
                     } else {
-                        save.key <-> left.key;
-                        save.value <-> left.value;
+                        swap(&mut save.key, &mut left.key);
+                        swap(&mut save.value, &mut left.value);
                     }
                     save.left = Some(left);
                     (remove(&mut save.left, key), true)

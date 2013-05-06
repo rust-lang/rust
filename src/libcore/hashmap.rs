@@ -176,16 +176,13 @@ priv impl<K:Hash + Eq,V> HashMap<K, V> {
     /// Expands the capacity of the array and re-insert each of the
     /// existing buckets.
     fn resize(&mut self, new_capacity: uint) {
-        let old_capacity = self.buckets.len();
         self.resize_at = resize_at(new_capacity);
 
-        let mut old_buckets = vec::from_fn(new_capacity, |_| None);
-        self.buckets <-> old_buckets;
+        let old_buckets = replace(&mut self.buckets,
+                                  vec::from_fn(new_capacity, |_| None));
 
         self.size = 0;
-        for uint::range(0, old_capacity) |i| {
-            let mut bucket = None;
-            bucket <-> old_buckets[i];
+        do vec::consume(old_buckets) |_, bucket| {
             self.insert_opt_bucket(bucket);
         }
     }
@@ -265,13 +262,11 @@ priv impl<K:Hash + Eq,V> HashMap<K, V> {
         };
 
         let len_buckets = self.buckets.len();
-        let mut bucket = None;
-        self.buckets[idx] <-> bucket;
+        let bucket = replace(&mut self.buckets[idx], None);
 
         let value = match bucket {
             None => None,
-            Some(bucket) => {
-                let Bucket{value: value, _} = bucket;
+            Some(Bucket{value, _}) => {
                 Some(value)
             },
         };
@@ -281,8 +276,7 @@ priv impl<K:Hash + Eq,V> HashMap<K, V> {
         let size = self.size - 1;
         idx = self.next_bucket(idx, len_buckets);
         while self.buckets[idx].is_some() {
-            let mut bucket = None;
-            bucket <-> self.buckets[idx];
+            let bucket = replace(&mut self.buckets[idx], None);
             self.insert_opt_bucket(bucket);
             idx = self.next_bucket(idx, len_buckets);
         }
@@ -613,15 +607,13 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
     }
 
     fn consume(&mut self, f: &fn(K, V)) {
-        let mut buckets = ~[];
-        self.buckets <-> buckets;
+        let buckets = replace(&mut self.buckets, ~[]);
         self.size = 0;
 
         do vec::consume(buckets) |_, bucket| {
             match bucket {
                 None => {},
-                Some(bucket) => {
-                    let Bucket{key: key, value: value, _} = bucket;
+                Some(Bucket{key, value, _}) => {
                     f(key, value)
                 }
             }

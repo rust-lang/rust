@@ -10,6 +10,8 @@
 
 //! A double-ended queue implemented as a circular buffer
 
+use core::util::replace;
+
 static initial_capacity: uint = 32u; // 2^5
 
 pub struct Deque<T> {
@@ -142,9 +144,7 @@ fn grow<T>(nelts: uint, lo: uint, elts: &mut [Option<T>]) -> ~[Option<T>] {
     let mut rv = ~[];
 
     do rv.grow_fn(nelts + 1) |i| {
-        let mut element = None;
-        element <-> elts[(lo + i) % nelts];
-        element
+        replace(&mut elts[(lo + i) % nelts], None)
     }
 
     rv
