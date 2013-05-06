@@ -207,9 +207,11 @@ pub impl PurityState {
 }
 
 pub struct FnCtxt {
-    // var_bindings, locals and next_var_id are shared
-    // with any nested functions that capture the environment
-    // (and with any functions whose environment is being captured).
+    // Number of errors that had been reported when we started
+    // checking this function. On exit, if we find that *more* errors
+    // have been reported, we will skip regionck and other work that
+    // expects the types within the function to be consistent.
+    err_count_on_creation: uint,
 
     ret_ty: ty::t,
     // Used by loop bodies that return from the outer function
@@ -263,6 +265,7 @@ pub fn blank_fn_ctxt(ccx: @mut CrateCtxt,
 // It's kind of a kludge to manufacture a fake function context
 // and statement context, but we might as well do write the code only once
     @mut FnCtxt {
+        err_count_on_creation: ccx.tcx.sess.err_count(),
         ret_ty: rty,
         indirect_ret_ty: None,
         ps: PurityState::function(ast::pure_fn, 0),
@@ -328,6 +331,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
      */
 
     let tcx = ccx.tcx;
+    let err_count_on_creation = tcx.sess.err_count();
 
     // ______________________________________________________________________
     // First, we have to replace any bound regions in the fn and self
@@ -368,6 +372,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         };
 
         @mut FnCtxt {
+            err_count_on_creation: err_count_on_creation,
             ret_ty: ret_ty,
             indirect_ret_ty: indirect_ret_ty,
             ps: PurityState::function(purity, id),
@@ -642,7 +647,12 @@ impl AstConv for FnCtxt {
 }
 
 pub impl FnCtxt {
-    fn infcx(&self) -> @mut infer::InferCtxt { self.inh.infcx }
+    fn infcx(&self) -> @mut infer::InferCtxt {
+        self.inh.infcx
+    }
+    fn err_count_since_creation(&self) -> uint {
+        self.ccx.tcx.sess.err_count() - self.err_count_on_creation
+    }
     fn search_in_scope_regions(
         &self,
         span: span,

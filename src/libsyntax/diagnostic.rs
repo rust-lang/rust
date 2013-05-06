@@ -24,6 +24,7 @@ pub trait handler {
     fn fatal(@mut self, msg: &str) -> !;
     fn err(@mut self, msg: &str);
     fn bump_err_count(@mut self);
+    fn err_count(@mut self) -> uint;
     fn has_errors(@mut self) -> bool;
     fn abort_if_errors(@mut self);
     fn warn(@mut self, msg: &str);
@@ -98,7 +99,12 @@ impl handler for HandlerT {
     fn bump_err_count(@mut self) {
         self.err_count += 1u;
     }
-    fn has_errors(@mut self) -> bool { self.err_count > 0u }
+    fn err_count(@mut self) -> uint {
+        self.err_count
+    }
+    fn has_errors(@mut self) -> bool {
+        self.err_count > 0u
+    }
     fn abort_if_errors(@mut self) {
         let s;
         match self.err_count {

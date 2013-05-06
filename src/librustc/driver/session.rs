@@ -188,6 +188,9 @@ pub impl Session_ {
     fn err(@self, msg: &str) {
         self.span_diagnostic.handler().err(msg)
     }
+    fn err_count(@self) -> uint {
+        self.span_diagnostic.handler().err_count()
+    }
     fn has_errors(@self) -> bool {
         self.span_diagnostic.handler().has_errors()
     }
