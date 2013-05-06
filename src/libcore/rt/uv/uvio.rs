@@ -21,6 +21,7 @@ use rt::uv::idle::IdleWatcher;
 use rt::rtio::*;
 use rt::sched::{Scheduler, local_sched};
 use rt::io::{standard_error, OtherIoError};
+use rt::tube::Tube;
 
 #[cfg(test)] use uint;
 #[cfg(test)] use unstable::run_in_bare_thread;
@@ -149,7 +150,7 @@ impl IoFactory for UvIoFactory {
     fn tcp_bind(&mut self, addr: IpAddr) -> Result<~RtioTcpListenerObject, IoError> {
         let mut watcher = TcpWatcher::new(self.uv_loop());
         match watcher.bind(addr) {
-            Ok(_) => Ok(~UvTcpListener { watcher: watcher }),
+            Ok(_) => Ok(~UvTcpListener::new(watcher)),
             Err(uverr) => {
                 // XXX: Should we wait until close completes?
                 watcher.as_stream().close(||());
@@ -161,10 +162,20 @@ impl IoFactory for UvIoFactory {
 
 // FIXME #6090: Prefer newtype structs but Drop doesn't work
 pub struct UvTcpListener {
-    watcher: TcpWatcher
+    watcher: TcpWatcher,
+    listening: bool,
+    incoming_streams: Tube<Result<~RtioTcpStreamObject, IoError>>
 }
 
 impl UvTcpListener {
+    fn new(watcher: TcpWatcher) -> UvTcpListener {
+        UvTcpListener {
+            watcher: watcher,
+            listening: false,
+            incoming_streams: Tube::new()
+        }
+    }
+
     fn watcher(&self) -> TcpWatcher { self.watcher }
 }
 
@@ -179,41 +190,37 @@ impl RtioTcpListener for UvTcpListener {
 
     fn accept(&mut self) -> Result<~RtioTcpStreamObject, IoError> {
         rtdebug!("entering listen");
-        let result_cell = empty_cell();
-        let result_cell_ptr: *Cell<Result<~RtioTcpStreamObject, IoError>> = &result_cell;
 
-        let server_tcp_watcher = self.watcher();
-
-        let scheduler = local_sched::take();
-        assert!(scheduler.in_task_context());
-
-        do scheduler.deschedule_running_task_and_then |task| {
-            let task_cell = Cell(task);
-            let mut server_tcp_watcher = server_tcp_watcher;
-            do server_tcp_watcher.listen |server_stream_watcher, status| {
-                let maybe_stream = if status.is_none() {
-                    let mut server_stream_watcher = server_stream_watcher;
-                    let mut loop_ = server_stream_watcher.event_loop();
-                    let mut client_tcp_watcher = TcpWatcher::new(&mut loop_);
-                    let client_tcp_watcher = client_tcp_watcher.as_stream();
-                    // XXX: Need's to be surfaced in interface
-                    server_stream_watcher.accept(client_tcp_watcher);
-                    Ok(~UvTcpStream { watcher: client_tcp_watcher })
-                } else {
-                    Err(standard_error(OtherIoError))
-                };
-
-                unsafe { (*result_cell_ptr).put_back(maybe_stream); }
-
-                rtdebug!("resuming task from listen");
-                // Context switch
-                let scheduler = local_sched::take();
-                scheduler.resume_task_immediately(task_cell.take());
-            }
+        if self.listening {
+            return self.incoming_streams.recv();
         }
 
-        assert!(!result_cell.is_empty());
-        return result_cell.take();
+        self.listening = true;
+
+        let server_tcp_watcher = self.watcher();
+        let incoming_streams_cell = Cell(self.incoming_streams.clone());
+
+        let incoming_streams_cell = Cell(incoming_streams_cell.take());
+        let mut server_tcp_watcher = server_tcp_watcher;
+        do server_tcp_watcher.listen |server_stream_watcher, status| {
+            let maybe_stream = if status.is_none() {
+                let mut server_stream_watcher = server_stream_watcher;
+                let mut loop_ = server_stream_watcher.event_loop();
+                let mut client_tcp_watcher = TcpWatcher::new(&mut loop_);
+                let client_tcp_watcher = client_tcp_watcher.as_stream();
+                // XXX: Need's to be surfaced in interface
+                server_stream_watcher.accept(client_tcp_watcher);
+                Ok(~UvTcpStream { watcher: client_tcp_watcher })
+            } else {
+                Err(standard_error(OtherIoError))
+            };
+
+            let mut incoming_streams = incoming_streams_cell.take();
+            incoming_streams.send(maybe_stream);
+            incoming_streams_cell.put_back(incoming_streams);
+        }
+
+        return self.incoming_streams.recv();
     }
 }
 
