@@ -389,7 +389,7 @@ pub impl GatherLoanCtxt {
         self.all_loans.push(loan);
 
         // if loan_gen_scope != borrow_id {
-            // NOTE handle case where gen_scope is not borrow_id
+            // FIXME(#6268) Nested method calls
             //
             // Typically, the scope of the loan includes the point at
             // which the loan is originated. This

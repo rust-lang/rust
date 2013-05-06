@@ -250,7 +250,8 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
 
         let tcx = bcx.tcx();
         let unit_ty = ty::sequence_element_type(tcx, datum.ty);
-        // NOTE prob need to distinguish "auto-slice" from explicit index?
+
+        // FIXME(#6272) need to distinguish "auto-slice" from explicit index?
         let (bcx, base, len) =
             datum.get_vec_base_and_len(bcx, expr.span, expr.id);
 

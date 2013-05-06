@@ -75,11 +75,11 @@ fn traverse_def_id(cx: @mut ctx, did: def_id) {
         Some(&ast_map::node_item(item, _)) => traverse_public_item(cx, item),
         Some(&ast_map::node_method(_, impl_id, _)) => traverse_def_id(cx, impl_id),
         Some(&ast_map::node_foreign_item(item, _, _, _)) => {
-            let cx = &mut *cx; // NOTE reborrow @mut
+            let cx = &mut *cx; // FIXME(#6269) reborrow @mut to &mut
             cx.rmap.insert(item.id);
         }
         Some(&ast_map::node_variant(ref v, _, _)) => {
-            let cx = &mut *cx; // NOTE reborrow @mut
+            let cx = &mut *cx; // FIXME(#6269) reborrow @mut to &mut
             cx.rmap.insert(v.node.id);
         }
         _ => ()
@@ -109,7 +109,7 @@ fn traverse_public_item(cx: @mut ctx, item: @item) {
       item_foreign_mod(ref nm) => {
           if !traverse_exports(cx, item.id) {
               for nm.items.each |item| {
-                  let cx = &mut *cx; // NOTE reborrow @mut
+                  let cx = &mut *cx; // FIXME(#6269) reborrow @mut to &mut
                   cx.rmap.insert(item.id);
               }
           }
@@ -127,7 +127,7 @@ fn traverse_public_item(cx: @mut ctx, item: @item) {
                 attr::find_inline_attr(m.attrs) != attr::ia_none
             {
                 {
-                    let cx = &mut *cx; // NOTE reborrow @mut
+                    let cx = &mut *cx; // FIXME(#6269) reborrow @mut to &mut
                     cx.rmap.insert(m.id);
                 }
                 traverse_inline_body(cx, &m.body);
@@ -136,7 +136,7 @@ fn traverse_public_item(cx: @mut ctx, item: @item) {
       }
       item_struct(ref struct_def, _) => {
         for struct_def.ctor_id.each |&ctor_id| {
-            let cx = &mut *cx; // NOTE reborrow @mut
+            let cx = &mut *cx; // FIXME(#6269) reborrow @mut to &mut
             cx.rmap.insert(ctor_id);
         }
       }
@@ -153,7 +153,7 @@ fn traverse_public_item(cx: @mut ctx, item: @item) {
 
 fn traverse_ty<'a>(ty: @Ty, cx: @mut ctx<'a>, v: visit::vt<@mut ctx<'a>>) {
     {
-        let cx = &mut *cx; // NOTE reborrow @mut
+        let cx = &mut *cx; // FIXME(#6269) reborrow @mut to &mut
         if cx.rmap.contains(&ty.id) { return; }
         cx.rmap.insert(ty.id);
     }

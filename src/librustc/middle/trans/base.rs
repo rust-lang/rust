@@ -998,7 +998,7 @@ pub fn find_bcx_for_scope(bcx: block, scope_id: ast::node_id) -> block {
                 return bcx_sid
               }
 
-                // NOTE This is messier than it ought to be and not really right
+                // FIXME(#6268, #6248) hacky cleanup for nested method calls
                 Some(NodeInfo { callee_id: Some(id), _ }) if id == scope_id => {
                     return bcx_sid
                 }
