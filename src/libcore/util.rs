@@ -35,12 +35,12 @@ pub fn ignore<T>(_x: T) { }
 #[inline(always)]
 pub fn with<T,R>(
     ptr: @mut T,
-    mut value: T,
+    value: T,
     op: &fn() -> R) -> R
 {
-    value <-> *ptr;
+    let prev = replace(ptr, value);
     let result = op();
-    *ptr = value;
+    *ptr = prev;
     return result;
 }
 

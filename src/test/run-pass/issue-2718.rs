@@ -10,8 +10,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::util;
+
 // tjc: I don't know why
 pub mod pipes {
+    use core::util;
     use core::cast::{forget, transmute};
 
     pub struct Stuff<T> {
@@ -104,8 +107,7 @@ pub mod pipes {
             match old_state {
               empty | blocked => { task::yield(); }
               full => {
-                let mut payload = None;
-                payload <-> (*p).payload;
+                let payload = util::replace(&mut p.payload, None);
                 return Some(payload.unwrap())
               }
               terminated => {
@@ -159,10 +161,9 @@ pub mod pipes {
         fn finalize(&self) {
             unsafe {
                 if self.p != None {
-                    let mut p = None;
                     let self_p: &mut Option<*packet<T>> =
                         cast::transmute(&self.p);
-                    p <-> *self_p;
+                    let p = util::replace(self_p, None);
                     sender_terminate(p.unwrap())
                 }
             }
@@ -171,9 +172,7 @@ pub mod pipes {
 
     pub impl<T:Owned> send_packet<T> {
         fn unwrap(&mut self) -> *packet<T> {
-            let mut p = None;
-            p <-> self.p;
-            p.unwrap()
+            util::replace(&mut self.p, None).unwrap()
         }
     }
 
@@ -192,10 +191,9 @@ pub mod pipes {
         fn finalize(&self) {
             unsafe {
                 if self.p != None {
-                    let mut p = None;
                     let self_p: &mut Option<*packet<T>> =
                         cast::transmute(&self.p);
-                    p <-> *self_p;
+                    let p = util::replace(self_p, None);
                     receiver_terminate(p.unwrap())
                 }
             }
@@ -204,9 +202,7 @@ pub mod pipes {
 
     pub impl<T:Owned> recv_packet<T> {
         fn unwrap(&mut self) -> *packet<T> {
-            let mut p = None;
-            p <-> self.p;
-            p.unwrap()
+            util::replace(&mut self.p, None).unwrap()
         }
     }
 
@@ -225,6 +221,7 @@ pub mod pipes {
 pub mod pingpong {
     use core::cast;
     use core::ptr;
+    use core::util;
 
     pub struct ping(::pipes::send_packet<pong>);
     pub struct pong(::pipes::send_packet<ping>);

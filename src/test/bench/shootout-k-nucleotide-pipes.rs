@@ -17,6 +17,7 @@ use core::hashmap::HashMap;
 use core::io::ReaderUtil;
 use core::comm::{stream, Port, Chan};
 use core::cmp::Ord;
+use core::util;
 
 // given a map, print a sorted version of it
 fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
@@ -159,8 +160,7 @@ fn main() {
     let mut from_child = ~[];
     let to_child   = vec::mapi(sizes, |ii, sz| {
         let sz = *sz;
-        let mut stream = None;
-        stream <-> streams[ii];
+        let stream = util::replace(&mut streams[ii], None);
         let (from_child_, to_parent_) = stream.unwrap();
 
         from_child.push(from_child_);
