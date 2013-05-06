@@ -372,6 +372,22 @@ impl Eq for float {
 }
 
 #[cfg(notest)]
+impl ApproxEq<float> for float {
+    #[inline(always)]
+    fn approx_epsilon() -> float { 1.0e-6 }
+
+    #[inline(always)]
+    fn approx_eq(&self, other: &float) -> bool {
+        self.approx_eq_eps(other, &ApproxEq::approx_epsilon::<float, float>())
+    }
+
+    #[inline(always)]
+    fn approx_eq_eps(&self, other: &float, approx_epsilon: &float) -> bool {
+        (*self - *other).abs() < *approx_epsilon
+    }
+}
+
+#[cfg(notest)]
 impl Ord for float {
     #[inline(always)]
     fn lt(&self, other: &float) -> bool { (*self) < (*other) }
@@ -983,6 +999,15 @@ mod tests {
         assert!(neg_infinity.is_negative());
         assert!((1f/neg_infinity).is_negative());
         assert!(!NaN.is_negative());
+    }
+
+    #[test]
+    fn test_approx_eq() {
+        assert!(1.0f.approx_eq(&1f));
+        assert!(0.9999999f.approx_eq(&1f));
+        assert!(1.000001f.approx_eq_eps(&1f, &1.0e-5));
+        assert!(1.0000001f.approx_eq_eps(&1f, &1.0e-6));
+        assert!(!1.0000001f.approx_eq_eps(&1f, &1.0e-7));
     }
 
     #[test]
