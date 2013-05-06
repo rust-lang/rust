@@ -528,33 +528,6 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
             return src_datum.store_to_datum(
                 bcx, src.id, DROP_EXISTING, dst_datum);
         }
-        ast::expr_swap(dst, src) => {
-            let dst_datum = unpack_datum!(bcx, trans_lvalue(bcx, dst));
-            let src_datum = unpack_datum!(bcx, trans_lvalue(bcx, src));
-
-            // If the source and destination are the same, then don't swap.
-            // Avoids performing an overlapping memcpy
-            let dst_datum_ref = dst_datum.to_ref_llval(bcx);
-            let src_datum_ref = src_datum.to_ref_llval(bcx);
-            let cmp = ICmp(bcx, lib::llvm::IntEQ,
-                           src_datum_ref,
-                           dst_datum_ref);
-
-            let swap_cx = base::sub_block(bcx, "swap");
-            let next_cx = base::sub_block(bcx, "next");
-
-            CondBr(bcx, cmp, next_cx.llbb, swap_cx.llbb);
-
-            let scratch = scratch_datum(swap_cx, dst_datum.ty, false);
-
-            let swap_cx = dst_datum.move_to_datum(swap_cx, INIT, scratch);
-            let swap_cx = src_datum.move_to_datum(swap_cx, INIT, dst_datum);
-            let swap_cx = scratch.move_to_datum(swap_cx, INIT, src_datum);
-
-            Br(swap_cx, next_cx.llbb);
-
-            return next_cx;
-        }
         ast::expr_assign_op(op, dst, src) => {
             return trans_assign_op(bcx, expr, op, dst, src);
         }

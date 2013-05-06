@@ -569,7 +569,6 @@ pub enum expr_ {
 
     expr_copy(@expr),
     expr_assign(@expr, @expr),
-    expr_swap(@expr, @expr),
     expr_assign_op(binop, @expr, @expr),
     expr_field(@expr, ident, ~[@Ty]),
     expr_index(@expr, @expr),
