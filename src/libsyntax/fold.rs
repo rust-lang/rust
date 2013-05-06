@@ -511,9 +511,6 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
         expr_assign(el, er) => {
             expr_assign(fld.fold_expr(el), fld.fold_expr(er))
         }
-        expr_swap(el, er) => {
-            expr_swap(fld.fold_expr(el), fld.fold_expr(er))
-        }
         expr_assign_op(op, el, er) => {
             expr_assign_op(op, fld.fold_expr(el), fld.fold_expr(er))
         }

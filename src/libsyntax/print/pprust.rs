@@ -1328,12 +1328,6 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
         word_space(s, ~"=");
         print_expr(s, rhs);
       }
-      ast::expr_swap(lhs, rhs) => {
-        print_expr(s, lhs);
-        space(s.s);
-        word_space(s, ~"<->");
-        print_expr(s, rhs);
-      }
       ast::expr_assign_op(op, lhs, rhs) => {
         print_expr(s, lhs);
         space(s.s);
