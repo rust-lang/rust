@@ -25,7 +25,6 @@ use num::{Zero, One, strconv};
 use prelude::*;
 
 pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
-pub use f64::logarithm;
 pub use f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
 pub use f64::{erf, erfc, exp, expm1, exp2, abs_sub};
 pub use f64::{mul_add, fmax, fmin, next_after, frexp, hypot, ldexp};
@@ -548,16 +547,25 @@ impl Exponential for float {
         (*self as f64).expm1() as float
     }
 
+    /// Returns the natural logarithm of the number
     #[inline(always)]
-    fn log(&self) -> float {
-        (*self as f64).log() as float
+    fn ln(&self) -> float {
+        (*self as f64).ln() as float
     }
 
+    /// Returns the logarithm of the number with respect to an arbitrary base
+    #[inline(always)]
+    fn log(&self, base: float) -> float {
+        (*self as f64).log(base as f64) as float
+    }
+
+    /// Returns the base 2 logarithm of the number
     #[inline(always)]
     fn log2(&self) -> float {
         (*self as f64).log2() as float
     }
 
+    /// Returns the base 10 logarithm of the number
     #[inline(always)]
     fn log10(&self) -> float {
         (*self as f64).log10() as float
@@ -642,13 +650,13 @@ impl Real for float {
     #[inline(always)]
     fn log10_e() -> float { 0.434294481903251827651128918916605082 }
 
-    /// log(2.0)
+    /// ln(2.0)
     #[inline(always)]
-    fn log_2() -> float { 0.693147180559945309417232121458176568 }
+    fn ln_2() -> float { 0.693147180559945309417232121458176568 }
 
-    /// log(10.0)
+    /// ln(10.0)
     #[inline(always)]
-    fn log_10() -> float { 2.30258509299404568401799145468436421 }
+    fn ln_10() -> float { 2.30258509299404568401799145468436421 }
 
     /// Converts to degrees, assuming the number is in radians
     #[inline(always)]
@@ -949,8 +957,8 @@ mod tests {
         assert_approx_eq!(Real::frac_1_sqrt2::<float>(), 1f / 2f.sqrt());
         assert_approx_eq!(Real::log2_e::<float>(), Real::e::<float>().log2());
         assert_approx_eq!(Real::log10_e::<float>(), Real::e::<float>().log10());
-        assert_approx_eq!(Real::log_2::<float>(), 2f.log());
-        assert_approx_eq!(Real::log_10::<float>(), 10f.log());
+        assert_approx_eq!(Real::ln_2::<float>(), 2f.ln());
+        assert_approx_eq!(Real::ln_10::<float>(), 10f.ln());
     }
 
     #[test]

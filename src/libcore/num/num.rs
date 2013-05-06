@@ -122,7 +122,8 @@ pub trait Exponential {
     fn exp(&self) -> Self;
     fn exp2(&self) -> Self;
     fn expm1(&self) -> Self;
-    fn log(&self) -> Self;
+    fn ln(&self) -> Self;
+    fn log(&self, base: Self) -> Self;
     fn log2(&self) -> Self;
     fn log10(&self) -> Self;
 }
@@ -158,8 +159,8 @@ pub trait Real: Signed
     fn e() -> Self;
     fn log2_e() -> Self;
     fn log10_e() -> Self;
-    fn log_2() -> Self;
-    fn log_10() -> Self;
+    fn ln_2() -> Self;
+    fn ln_10() -> Self;
 
     // Angular conversions
     fn to_degrees(&self) -> Self;
