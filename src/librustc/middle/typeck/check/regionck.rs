@@ -138,7 +138,8 @@ pub impl Rcx {
 
 pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::expr) {
     let rcx = @mut Rcx { fcx: fcx, errors_reported: 0 };
-    if !fcx.tcx().sess.has_errors() { // regionck assumes typeck succeeded
+    if fcx.err_count_since_creation() == 0 {
+        // regionck assumes typeck succeeded
         let v = regionck_visitor();
         (v.visit_expr)(e, rcx, v);
     }
@@ -147,7 +148,8 @@ pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::expr) {
 
 pub fn regionck_fn(fcx: @mut FnCtxt, blk: &ast::blk) {
     let rcx = @mut Rcx { fcx: fcx, errors_reported: 0 };
-    if !fcx.tcx().sess.has_errors() { // regionck assumes typeck succeeded
+    if fcx.err_count_since_creation() == 0 {
+        // regionck assumes typeck succeeded
         let v = regionck_visitor();
         (v.visit_block)(blk, rcx, v);
     }
@@ -409,10 +411,6 @@ fn constrain_callee(rcx: @mut Rcx,
     let call_region = ty::re_scope(call_expr.id);
 
     let callee_ty = rcx.resolve_node_type(call_expr.callee_id);
-    if ty::type_is_error(callee_ty) {
-        return;
-    }
-
     match ty::get(callee_ty).sty {
         ty::ty_bare_fn(*) => { }
         ty::ty_closure(ref closure_ty) => {
@@ -432,9 +430,12 @@ fn constrain_callee(rcx: @mut Rcx,
             }
         }
         _ => {
-            tcx.sess.span_bug(
-                callee_expr.span,
-                fmt!("Calling non-function: %s", callee_ty.repr(tcx)));
+            // this should not happen, but it does if the program is
+            // erroneous
+            //
+            // tcx.sess.span_bug(
+            //     callee_expr.span,
+            //     fmt!("Calling non-function: %s", callee_ty.repr(tcx)));
         }
     }
 }
@@ -456,9 +457,6 @@ fn constrain_call(rcx: @mut Rcx,
     debug!("constrain_call(call_expr=%s, implicitly_ref_args=%?)",
            call_expr.repr(tcx), implicitly_ref_args);
     let callee_ty = rcx.resolve_node_type(call_expr.callee_id);
-    if ty::type_is_error(callee_ty) {
-        return;
-    }
     let fn_sig = ty::ty_fn_sig(callee_ty);
 
     // `callee_region` is the scope representing the time in which the
@@ -919,7 +917,7 @@ pub mod guarantor {
         // expressions, both of which always yield a region variable, so
         // mk_subr should never fail.
         let rptr_ty = rcx.resolve_node_type(id);
-        if !ty::type_is_error(rptr_ty) && !ty::type_is_bot(rptr_ty) {
+        if !ty::type_is_bot(rptr_ty) {
             let tcx = rcx.fcx.ccx.tcx;
             debug!("rptr_ty=%s", ty_to_str(tcx, rptr_ty));
             let r = ty::ty_region(tcx, span, rptr_ty);
@@ -1216,29 +1214,25 @@ pub mod guarantor {
             }
             ast::pat_region(p) => {
                 let rptr_ty = rcx.resolve_node_type(pat.id);
-                if !ty::type_is_error(rptr_ty) {
-                    let r = ty::ty_region(rcx.fcx.tcx(), pat.span, rptr_ty);
-                    link_ref_bindings_in_pat(rcx, p, Some(r));
-                }
+                let r = ty::ty_region(rcx.fcx.tcx(), pat.span, rptr_ty);
+                link_ref_bindings_in_pat(rcx, p, Some(r));
             }
             ast::pat_lit(*) => {}
             ast::pat_range(*) => {}
             ast::pat_vec(ref before, ref slice, ref after) => {
                 let vec_ty = rcx.resolve_node_type(pat.id);
-                if !ty::type_is_error(vec_ty) {
-                    let vstore = ty::ty_vstore(vec_ty);
-                    let guarantor1 = match vstore {
-                        ty::vstore_fixed(_) | ty::vstore_uniq => guarantor,
-                        ty::vstore_slice(r) => Some(r),
-                        ty::vstore_box => None
-                    };
+                let vstore = ty::ty_vstore(vec_ty);
+                let guarantor1 = match vstore {
+                    ty::vstore_fixed(_) | ty::vstore_uniq => guarantor,
+                    ty::vstore_slice(r) => Some(r),
+                    ty::vstore_box => None
+                };
 
-                    link_ref_bindings_in_pats(rcx, before, guarantor1);
-                    for slice.each |&p| {
-                        link_ref_bindings_in_pat(rcx, p, guarantor);
-                    }
-                    link_ref_bindings_in_pats(rcx, after, guarantor1);
+                link_ref_bindings_in_pats(rcx, before, guarantor1);
+                for slice.each |&p| {
+                    link_ref_bindings_in_pat(rcx, p, guarantor);
                 }
+                link_ref_bindings_in_pats(rcx, after, guarantor1);
             }
         }
     }
