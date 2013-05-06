@@ -337,7 +337,8 @@ pub enum IoErrorKind {
 // XXX: Can't put doc comments on macros
 // Raised by `I/O` operations on error.
 condition! {
-    io_error: super::IoError -> ();
+    // FIXME (#6009): uncomment `pub` after expansion support lands.
+    /*pub*/ io_error: super::IoError -> ();
 }
 
 pub trait Reader {
