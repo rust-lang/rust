@@ -156,7 +156,7 @@ impl parser_attr for Parser {
                 @spanned(lo, hi, ast::meta_list(name, inner_items))
             }
             _ => {
-                let hi = self.span.hi;
+                let hi = self.last_span.hi;
                 @spanned(lo, hi, ast::meta_word(name))
             }
         }
