@@ -4825,10 +4825,12 @@ pub impl Resolver {
 
             expr_loop(_, Some(label)) => {
                 do self.with_label_rib {
-                    let this = &mut *self;
-                    let def_like = dl_def(def_label(expr.id));
-                    let rib = this.label_ribs[this.label_ribs.len() - 1];
-                    rib.bindings.insert(label, def_like);
+                    {
+                        let this = &mut *self;
+                        let def_like = dl_def(def_label(expr.id));
+                        let rib = this.label_ribs[this.label_ribs.len() - 1];
+                        rib.bindings.insert(label, def_like);
+                    }
 
                     visit_expr(expr, (), visitor);
                 }
