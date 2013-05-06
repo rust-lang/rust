@@ -1,4 +1,4 @@
-if exists('g:no_rust_conceal') || !has('conceal') || &enc != 'utf-8'
+if !exists('g:rust_conceal') || !has('conceal') || &enc != 'utf-8'
 	finish
 endif
 
