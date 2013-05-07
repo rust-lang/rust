@@ -3304,7 +3304,7 @@ mod tests {
     }
 
     #[test]
-    fn test_iter_nonempty() {
+    fn test_each_nonempty() {
         let mut i = 0;
         for each(~[1, 2, 3]) |v| {
             i += *v;
@@ -3313,7 +3313,7 @@ mod tests {
     }
 
     #[test]
-    fn test_iteri() {
+    fn test_eachi() {
         let mut i = 0;
         for eachi(~[1, 2, 3]) |j, v| {
             if i == 0 { assert!(*v == 1); }
