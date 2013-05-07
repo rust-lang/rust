@@ -41,8 +41,9 @@ use middle::typeck::infer;
 use middle::typeck::rscope::*;
 use middle::typeck::rscope;
 use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
-use util::common::{indenter, pluralize};
+use util::common::pluralize;
 use util::ppaux;
+use util::ppaux::UserString;
 
 use syntax::abi::AbiSet;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
@@ -341,10 +342,13 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 
         // add in the "self" type parameter
         let self_trait_def = get_trait_def(ccx, local_def(trait_id));
-        let self_trait_ref = @self_trait_def.trait_ref.subst(tcx, &substs);
+        let self_trait_ref = self_trait_def.trait_ref.subst(tcx, &substs);
         new_type_param_defs.push(ty::TypeParameterDef {
             def_id: dummy_defid,
-            bounds: @~[ty::bound_trait(self_trait_ref)]
+            bounds: @ty::ParamBounds {
+                builtin_bounds: ty::EmptyBuiltinBounds(),
+                trait_bounds: ~[self_trait_ref]
+            }
         });
 
         // add in the type parameters from the method
@@ -444,7 +448,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
                            trait_substs: &ty::substs,
                            self_ty: ty::t) {
     debug!("compare_impl_method()");
-    let _indenter = indenter();
+    let infcx = infer::new_infer_ctxt(tcx);
 
     let impl_m = &cm.mty;
 
@@ -507,27 +511,49 @@ pub fn compare_impl_method(tcx: ty::ctxt,
         return;
     }
 
-    // FIXME(#2687)---we should be checking that the bounds of the
-    // trait imply the bounds of the subtype, but it appears
-    // we are...not checking this.
     for trait_m.generics.type_param_defs.eachi |i, trait_param_def| {
         // For each of the corresponding impl ty param's bounds...
         let impl_param_def = &impl_m.generics.type_param_defs[i];
-        // Make sure the bounds lists have the same length
-        // Would be nice to use the ty param names in the error message,
-        // but we don't have easy access to them here
-        if impl_param_def.bounds.len() != trait_param_def.bounds.len() {
+
+        // Check that the impl does not require any builtin-bounds
+        // that the trait does not guarantee:
+        let extra_bounds =
+            impl_param_def.bounds.builtin_bounds -
+            trait_param_def.bounds.builtin_bounds;
+        if !extra_bounds.is_empty() {
            tcx.sess.span_err(
                cm.span,
                fmt!("in method `%s`, \
-                     type parameter %u has %u %s, but the same type \
-                     parameter in its trait declaration has %u %s",
+                     type parameter %u requires `%s`, \
+                     which is not required by \
+                     the corresponding type parameter \
+                     in the trait declaration",
                     *tcx.sess.str_of(trait_m.ident),
-                    i, impl_param_def.bounds.len(),
-                    pluralize(impl_param_def.bounds.len(), ~"bound"),
-                    trait_param_def.bounds.len(),
-                    pluralize(trait_param_def.bounds.len(), ~"bound")));
+                    i,
+                    extra_bounds.user_string(tcx)));
            return;
+        }
+
+        // FIXME(#2687)---we should be checking that the bounds of the
+        // trait imply the bounds of the subtype, but it appears we
+        // are...not checking this.
+        if impl_param_def.bounds.trait_bounds.len() !=
+            trait_param_def.bounds.trait_bounds.len()
+        {
+            tcx.sess.span_err(
+                cm.span,
+                fmt!("in method `%s`, \
+                      type parameter %u has %u trait %s, but the \
+                      corresponding type parameter in \
+                      the trait declaration has %u trait %s",
+                     *tcx.sess.str_of(trait_m.ident),
+                     i, impl_param_def.bounds.trait_bounds.len(),
+                     pluralize(impl_param_def.bounds.trait_bounds.len(),
+                               ~"bound"),
+                     trait_param_def.bounds.trait_bounds.len(),
+                     pluralize(trait_param_def.bounds.trait_bounds.len(),
+                               ~"bound")));
+            return;
         }
     }
 
@@ -619,7 +645,6 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     };
     debug!("trait_fty (post-subst): %s", trait_fty.repr(tcx));
 
-    let infcx = infer::new_infer_ctxt(tcx);
     match infer::mk_subty(infcx, false, cm.span, impl_fty, trait_fty) {
         result::Ok(()) => {}
         result::Err(ref terr) => {
@@ -1152,8 +1177,8 @@ pub fn ty_generics(ccx: &CrateCtxt,
                 None => {
                     let param_ty = ty::param_ty {idx: base_index + offset,
                                                  def_id: local_def(param.id)};
-                    let bounds = compute_bounds(ccx, rp, generics,
-                                                param_ty, param.bounds);
+                    let bounds = @compute_bounds(ccx, rp, generics,
+                                                 param_ty, param.bounds);
                     let def = ty::TypeParameterDef {
                         def_id: local_def(param.id),
                         bounds: bounds
@@ -1171,7 +1196,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
         rp: Option<ty::region_variance>,
         generics: &ast::Generics,
         param_ty: ty::param_ty,
-        ast_bounds: @OptVec<ast::TyParamBound>) -> ty::param_bounds
+        ast_bounds: @OptVec<ast::TyParamBound>) -> ty::ParamBounds
     {
         /*!
          *
@@ -1182,29 +1207,35 @@ pub fn ty_generics(ccx: &CrateCtxt,
          * as kinds): Const, Copy, and Send.
          */
 
-        @ast_bounds.flat_map_to_vec(|b| {
+        let mut param_bounds = ty::ParamBounds {
+            builtin_bounds: ty::EmptyBuiltinBounds(),
+            trait_bounds: ~[]
+        };
+        for ast_bounds.each |b| {
             match b {
                 &TraitTyParamBound(b) => {
                     let li = &ccx.tcx.lang_items;
                     let ty = ty::mk_param(ccx.tcx, param_ty.idx, param_ty.def_id);
                     let trait_ref = instantiate_trait_ref(ccx, b, rp, generics, ty);
                     if trait_ref.def_id == li.owned_trait() {
-                        ~[ty::bound_owned]
+                        param_bounds.builtin_bounds.add(ty::BoundOwned);
                     } else if trait_ref.def_id == li.copy_trait() {
-                        ~[ty::bound_copy]
+                        param_bounds.builtin_bounds.add(ty::BoundCopy);
                     } else if trait_ref.def_id == li.const_trait() {
-                        ~[ty::bound_const]
+                        param_bounds.builtin_bounds.add(ty::BoundConst);
                     } else {
                         // Must be a user-defined trait
-                        ~[ty::bound_trait(trait_ref)]
+                        param_bounds.trait_bounds.push(trait_ref);
                     }
                 }
 
                 &RegionTyParamBound => {
-                    ~[ty::bound_durable]
+                    param_bounds.builtin_bounds.add(ty::BoundStatic);
                 }
             }
-        })
+        }
+
+        param_bounds
     }
 }
 

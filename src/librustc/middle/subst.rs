@@ -78,9 +78,11 @@ impl<T:Subst> Subst for ~[T] {
     }
 }
 
-impl<T:Subst> Subst for @~[T] {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> @~[T] {
-        @(**self).subst(tcx, substs)
+impl<T:Subst> Subst for @T {
+    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> @T {
+        match self {
+            &@ref t => @t.subst(tcx, substs)
+        }
     }
 }
 
@@ -115,19 +117,11 @@ impl Subst for ty::BareFnTy {
     }
 }
 
-impl Subst for ty::param_bound {
-    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::param_bound {
-        match self {
-            &ty::bound_copy |
-            &ty::bound_durable |
-            &ty::bound_owned |
-            &ty::bound_const => {
-                *self
-            }
-
-            &ty::bound_trait(tref) => {
-                ty::bound_trait(@tref.subst(tcx, substs))
-            }
+impl Subst for ty::ParamBounds {
+    fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> ty::ParamBounds {
+        ty::ParamBounds {
+            builtin_bounds: self.builtin_bounds,
+            trait_bounds: self.trait_bounds.subst(tcx, substs)
         }
     }
 }

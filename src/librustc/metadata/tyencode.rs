@@ -396,19 +396,21 @@ fn enc_fn_sig(w: @io::Writer, cx: @ctxt, fsig: &ty::FnSig) {
     enc_ty(w, cx, fsig.output);
 }
 
-fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {
-    for (*bs).each |bound| {
-        match *bound {
-          ty::bound_owned => w.write_char('S'),
-          ty::bound_copy => w.write_char('C'),
-          ty::bound_const => w.write_char('K'),
-          ty::bound_durable => w.write_char('O'),
-          ty::bound_trait(tp) => {
-              w.write_char('I');
-              enc_trait_ref(w, cx, tp);
-          }
+fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: @ty::ParamBounds) {
+    for bs.builtin_bounds.each |bound| {
+        match bound {
+            ty::BoundOwned => w.write_char('S'),
+            ty::BoundCopy => w.write_char('C'),
+            ty::BoundConst => w.write_char('K'),
+            ty::BoundStatic => w.write_char('O'),
         }
     }
+
+    for bs.trait_bounds.each |&tp| {
+        w.write_char('I');
+        enc_trait_ref(w, cx, tp);
+    }
+
     w.write_char('.');
 }
 
