@@ -368,8 +368,20 @@ pub struct id_range {
     max: node_id,
 }
 
-pub fn empty(range: id_range) -> bool {
-    range.min >= range.max
+pub impl id_range {
+    fn max() -> id_range {
+        id_range {min: int::max_value,
+                  max: int::min_value}
+    }
+
+    fn empty(&self) -> bool {
+        self.min >= self.max
+    }
+
+    fn add(&mut self, id: node_id) {
+        self.min = int::min(self.min, id);
+        self.max = int::max(self.max, id + 1);
+    }
 }
 
 pub fn id_visitor(vfn: @fn(node_id)) -> visit::vt<()> {
@@ -467,13 +479,11 @@ pub fn visit_ids_for_inlined_item(item: &inlined_item, vfn: @fn(node_id)) {
 }
 
 pub fn compute_id_range(visit_ids_fn: &fn(@fn(node_id))) -> id_range {
-    let min = @mut int::max_value;
-    let max = @mut int::min_value;
+    let result = @mut id_range::max();
     do visit_ids_fn |id| {
-        *min = int::min(*min, id);
-        *max = int::max(*max, id + 1);
+        result.add(id);
     }
-    id_range { min: *min, max: *max }
+    *result
 }
 
 pub fn compute_id_range_for_inlined_item(item: &inlined_item) -> id_range {

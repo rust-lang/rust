@@ -863,7 +863,7 @@ pub fn create_local_var(bcx: block, local: @ast::local)
         bcx.tcx().sess.span_bug(local.span, "local is bound to something weird");
       }
       option::None => {
-        match *bcx.fcx.lllocals.get(&local.node.pat.id) {
+        match bcx.fcx.lllocals.get_copy(&local.node.pat.id) {
           local_imm(v) => v,
           _ => bcx.tcx().sess.span_bug(local.span, "local is bound to something weird")
         }
@@ -915,7 +915,7 @@ pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
             };
             update_cache(cache, tg, argument_metadata(mdval));
 
-            let llptr = match *fcx.llargs.get(&arg.id) {
+            let llptr = match fcx.llargs.get_copy(&arg.id) {
               local_mem(v) | local_imm(v) => v,
             };
             let declargs = ~[llmdnode(~[llptr]), mdnode];
@@ -958,7 +958,7 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
     let sp = fcx.span.get();
     debug!("%s", cx.sess.codemap.span_to_str(sp));
 
-    let (ident, ret_ty, id) = match *cx.tcx.items.get(&fcx.id) {
+    let (ident, ret_ty, id) = match cx.tcx.items.get_copy(&fcx.id) {
       ast_map::node_item(item, _) => {
         match item.node {
           ast::item_fn(ref decl, _, _, _, _) => {

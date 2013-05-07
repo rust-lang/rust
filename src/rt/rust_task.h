@@ -245,6 +245,11 @@ rust_task : public kernel_owned<rust_task>
     void *task_local_data;
     void (*task_local_data_cleanup)(void *data);
 
+    // Contains a ~[BorrowRecord] pointer, or NULL.
+    //
+    // Used by borrow management code in libcore/unstable/lang.rs.
+    void *borrow_list;
+
 private:
 
     // Protects state, cond, cond_name

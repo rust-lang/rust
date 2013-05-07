@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:assigning to captured outer variable in a heap closure
 // Make sure we can't write to upvars from @fns
 fn main() {
     let i = 0;
     let ctr: @fn() -> int = || { i = i + 1; i };
+    //~^ ERROR cannot assign
     error!(ctr());
     error!(ctr());
     error!(ctr());

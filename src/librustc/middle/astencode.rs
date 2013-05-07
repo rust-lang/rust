@@ -44,9 +44,7 @@ use writer = std::ebml::writer;
 
 // Auxiliary maps of things to be encoded
 pub struct Maps {
-    mutbl_map: middle::borrowck::mutbl_map,
     root_map: middle::borrowck::root_map,
-    last_use_map: middle::liveness::last_use_map,
     method_map: middle::typeck::method_map,
     vtable_map: middle::typeck::vtable_map,
     write_guard_map: middle::borrowck::write_guard_map,
@@ -152,7 +150,7 @@ pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
 fn reserve_id_range(sess: Session,
                     from_id_range: ast_util::id_range) -> ast_util::id_range {
     // Handle the case of an empty range:
-    if ast_util::empty(from_id_range) { return from_id_range; }
+    if from_id_range.empty() { return from_id_range; }
     let cnt = from_id_range.max - from_id_range.min;
     let to_id_min = sess.parse_sess.next_id;
     let to_id_max = sess.parse_sess.next_id + cnt;
@@ -163,7 +161,6 @@ fn reserve_id_range(sess: Session,
 pub impl ExtendedDecodeContext {
     fn tr_id(&self, id: ast::node_id) -> ast::node_id {
         /*!
-         *
          * Translates an internal id, meaning a node id that is known
          * to refer to some part of the item currently being inlined,
          * such as a local variable or argument.  All naked node-ids
@@ -174,12 +171,11 @@ pub impl ExtendedDecodeContext {
          */
 
         // from_id_range should be non-empty
-        assert!(!ast_util::empty(self.from_id_range));
+        assert!(!self.from_id_range.empty());
         (id - self.from_id_range.min + self.to_id_range.min)
     }
     fn tr_def_id(&self, did: ast::def_id) -> ast::def_id {
         /*!
-         *
          * Translates an EXTERNAL def-id, converting the crate number
          * from the one used in the encoded data to the current crate
          * numbers..  By external, I mean that it be translated to a
@@ -204,7 +200,6 @@ pub impl ExtendedDecodeContext {
     }
     fn tr_intern_def_id(&self, did: ast::def_id) -> ast::def_id {
         /*!
-         *
          * Translates an INTERNAL def-id, meaning a def-id that is
          * known to refer to some part of the item currently being
          * inlined.  In that case, we want to convert the def-id to
@@ -435,11 +430,7 @@ impl tr for ty::AutoAdjustment {
 
 impl tr for ty::AutoRef {
     fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::AutoRef {
-        ty::AutoRef {
-            kind: self.kind,
-            region: self.region.tr(xcx),
-            mutbl: self.mutbl,
-        }
+        self.map_region(|r| r.tr(xcx))
     }
 }
 
@@ -448,7 +439,7 @@ impl tr for ty::Region {
         match *self {
             ty::re_bound(br) => ty::re_bound(br.tr(xcx)),
             ty::re_scope(id) => ty::re_scope(xcx.tr_id(id)),
-            ty::re_static | ty::re_infer(*) => *self,
+            ty::re_empty | ty::re_static | ty::re_infer(*) => *self,
             ty::re_free(ref fr) => {
                 ty::re_free(ty::FreeRegion {scope_id: xcx.tr_id(fr.scope_id),
                                             bound_region: fr.bound_region.tr(xcx)})
@@ -724,7 +715,7 @@ trait ebml_writer_helpers {
     fn emit_arg(&mut self, ecx: @e::EncodeContext, arg: ty::arg);
     fn emit_ty(&mut self, ecx: @e::EncodeContext, ty: ty::t);
     fn emit_vstore(&mut self, ecx: @e::EncodeContext, vstore: ty::vstore);
-    fn emit_tys(&mut self, ecx: @e::EncodeContext, tys: ~[ty::t]);
+    fn emit_tys(&mut self, ecx: @e::EncodeContext, tys: &[ty::t]);
     fn emit_type_param_def(&mut self,
                            ecx: @e::EncodeContext,
                            type_param_def: &ty::TypeParameterDef);
@@ -752,7 +743,7 @@ impl ebml_writer_helpers for writer::Encoder {
         }
     }
 
-    fn emit_tys(&mut self, ecx: @e::EncodeContext, tys: ~[ty::t]) {
+    fn emit_tys(&mut self, ecx: @e::EncodeContext, tys: &[ty::t]) {
         do self.emit_from_vec(tys) |this, ty| {
             this.emit_ty(ecx, *ty)
         }
@@ -859,9 +850,7 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         do ebml_w.tag(c::tag_table_node_type_subst) |ebml_w| {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) |ebml_w| {
-                // FIXME(#5562): removing this copy causes a segfault
-                //               before stage2
-                ebml_w.emit_tys(ecx, /*bad*/copy **tys)
+                ebml_w.emit_tys(ecx, **tys)
             }
         }
     }
@@ -892,23 +881,6 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) |ebml_w| {
                 ebml_w.emit_type_param_def(ecx, type_param_def)
-            }
-        }
-    }
-
-    if maps.mutbl_map.contains(&id) {
-        do ebml_w.tag(c::tag_table_mutbl) |ebml_w| {
-            ebml_w.id(id);
-        }
-    }
-
-    for maps.last_use_map.find(&id).each |&m| {
-        do ebml_w.tag(c::tag_table_last_use) |ebml_w| {
-            ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) |ebml_w| {
-                do ebml_w.emit_from_vec(/*bad*/ copy **m) |ebml_w, id| {
-                    id.encode(ebml_w);
-                }
             }
         }
     }
@@ -1113,9 +1085,7 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                 found for id %d (orig %d)",
                tag, id, id0);
 
-        if tag == (c::tag_table_mutbl as uint) {
-            dcx.maps.mutbl_map.insert(id);
-        } else if tag == (c::tag_table_moves_map as uint) {
+        if tag == (c::tag_table_moves_map as uint) {
             dcx.maps.moves_map.insert(id);
         } else {
             let val_doc = entry_doc.get(c::tag_table_val as uint);
@@ -1144,11 +1114,6 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
             } else if tag == (c::tag_table_param_defs as uint) {
                 let bounds = val_dsr.read_type_param_def(xcx);
                 dcx.tcx.ty_param_defs.insert(id, bounds);
-            } else if tag == (c::tag_table_last_use as uint) {
-                let ids = val_dsr.read_to_vec(|val_dsr| {
-                    xcx.tr_id(val_dsr.read_int())
-                });
-                dcx.maps.last_use_map.insert(id, @mut ids);
             } else if tag == (c::tag_table_method_map as uint) {
                 dcx.maps.method_map.insert(
                     id,

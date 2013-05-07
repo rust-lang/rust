@@ -339,7 +339,7 @@ pub fn fixup_err_to_str(f: fixup_err) -> ~str {
 
 fn new_ValsAndBindings<V:Copy,T:Copy>() -> ValsAndBindings<V, T> {
     ValsAndBindings {
-        vals: @mut SmallIntMap::new(),
+        vals: SmallIntMap::new(),
         bindings: ~[]
     }
 }
@@ -469,28 +469,6 @@ pub fn resolve_region(cx: @mut InferCtxt, r: ty::Region, modes: uint)
     resolver.resolve_region_chk(r)
 }
 
-/*
-fn resolve_borrowings(cx: @mut InferCtxt) {
-    for cx.borrowings.each |item| {
-        match resolve_region(cx, item.scope, resolve_all|force_all) {
-          Ok(region) => {
-            debug!("borrowing for expr %d resolved to region %?, mutbl %?",
-                   item.expr_id, region, item.mutbl);
-            cx.tcx.borrowings.insert(
-                item.expr_id, {region: region, mutbl: item.mutbl});
-          }
-
-          Err(e) => {
-            let str = fixup_err_to_str(e);
-            cx.tcx.sess.span_err(
-                item.span,
-                fmt!("could not resolve lifetime for borrow: %s", str));
-          }
-        }
-    }
-}
-*/
-
 trait then {
     fn then<T:Copy>(&self, f: &fn() -> Result<T,ty::type_err>)
         -> Result<T,ty::type_err>;
@@ -554,7 +532,8 @@ struct Snapshot {
 }
 
 pub impl InferCtxt {
-    fn combine_fields(@mut self, a_is_expected: bool,
+    fn combine_fields(@mut self,
+                      a_is_expected: bool,
                       span: span) -> CombineFields {
         CombineFields {infcx: self,
                        a_is_expected: a_is_expected,
@@ -565,25 +544,24 @@ pub impl InferCtxt {
         Sub(self.combine_fields(a_is_expected, span))
     }
 
-    fn in_snapshot(@mut self) -> bool {
+    fn in_snapshot(&self) -> bool {
         self.region_vars.in_snapshot()
     }
 
-    fn start_snapshot(@mut self) -> Snapshot {
-        let this = &mut *self;
+    fn start_snapshot(&mut self) -> Snapshot {
         Snapshot {
             ty_var_bindings_len:
-                this.ty_var_bindings.bindings.len(),
+                self.ty_var_bindings.bindings.len(),
             int_var_bindings_len:
-                this.int_var_bindings.bindings.len(),
+                self.int_var_bindings.bindings.len(),
             float_var_bindings_len:
-                this.float_var_bindings.bindings.len(),
+                self.float_var_bindings.bindings.len(),
             region_vars_snapshot:
-                this.region_vars.start_snapshot(),
+                self.region_vars.start_snapshot(),
         }
     }
 
-    fn rollback_to(@mut self, snapshot: &Snapshot) {
+    fn rollback_to(&mut self, snapshot: &Snapshot) {
         debug!("rollback!");
         rollback_to(&mut self.ty_var_bindings, snapshot.ty_var_bindings_len);
 
@@ -647,45 +625,47 @@ fn next_simple_var<V:Copy,T:Copy>(
 }
 
 pub impl InferCtxt {
-    fn next_ty_var_id(@mut self) -> TyVid {
+    fn next_ty_var_id(&mut self) -> TyVid {
         let id = self.ty_var_counter;
         self.ty_var_counter += 1;
-        let vals = self.ty_var_bindings.vals;
-        vals.insert(id, Root(Bounds { lb: None, ub: None }, 0u));
+        {
+            let vals = &mut self.ty_var_bindings.vals;
+            vals.insert(id, Root(Bounds { lb: None, ub: None }, 0u));
+        }
         return TyVid(id);
     }
 
-    fn next_ty_var(@mut self) -> ty::t {
+    fn next_ty_var(&mut self) -> ty::t {
         ty::mk_var(self.tcx, self.next_ty_var_id())
     }
 
-    fn next_ty_vars(@mut self, n: uint) -> ~[ty::t] {
+    fn next_ty_vars(&mut self, n: uint) -> ~[ty::t] {
         vec::from_fn(n, |_i| self.next_ty_var())
     }
 
-    fn next_int_var_id(@mut self) -> IntVid {
+    fn next_int_var_id(&mut self) -> IntVid {
         IntVid(next_simple_var(&mut self.int_var_counter,
                                &mut self.int_var_bindings))
     }
 
-    fn next_int_var(@mut self) -> ty::t {
+    fn next_int_var(&mut self) -> ty::t {
         ty::mk_int_var(self.tcx, self.next_int_var_id())
     }
 
-    fn next_float_var_id(@mut self) -> FloatVid {
+    fn next_float_var_id(&mut self) -> FloatVid {
         FloatVid(next_simple_var(&mut self.float_var_counter,
                                  &mut self.float_var_bindings))
     }
 
-    fn next_float_var(@mut self) -> ty::t {
+    fn next_float_var(&mut self) -> ty::t {
         ty::mk_float_var(self.tcx, self.next_float_var_id())
     }
 
-    fn next_region_var_nb(@mut self, span: span) -> ty::Region {
+    fn next_region_var_nb(&mut self, span: span) -> ty::Region {
         ty::re_infer(ty::ReVar(self.region_vars.new_region_var(span)))
     }
 
-    fn next_region_var_with_lb(@mut self, span: span,
+    fn next_region_var_with_lb(&mut self, span: span,
                                lb_region: ty::Region) -> ty::Region {
         let region_var = self.next_region_var_nb(span);
 
@@ -697,12 +677,12 @@ pub impl InferCtxt {
         return region_var;
     }
 
-    fn next_region_var(@mut self, span: span, scope_id: ast::node_id)
+    fn next_region_var(&mut self, span: span, scope_id: ast::node_id)
                       -> ty::Region {
         self.next_region_var_with_lb(span, ty::re_scope(scope_id))
     }
 
-    fn resolve_regions(@mut self) {
+    fn resolve_regions(&mut self) {
         self.region_vars.resolve_regions();
     }
 
@@ -722,7 +702,6 @@ pub impl InferCtxt {
           result::Err(_) => typ
         }
     }
-
     fn resolve_type_vars_in_trait_ref_if_possible(@mut self,
                                                   trait_ref: &ty::TraitRef)
         -> ty::TraitRef
@@ -793,7 +772,7 @@ pub impl InferCtxt {
         self.type_error_message(sp, mk_msg, a, Some(err));
     }
 
-    fn replace_bound_regions_with_fresh_regions(@mut self,
+    fn replace_bound_regions_with_fresh_regions(&mut self,
             span: span,
             fsig: &ty::FnSig)
          -> (ty::FnSig, isr_alist) {
@@ -811,15 +790,14 @@ pub impl InferCtxt {
             });
         (fn_sig, isr)
     }
+}
 
-    fn fold_regions_in_sig(
-        @mut self,
-        fn_sig: &ty::FnSig,
-        fldr: &fn(r: ty::Region, in_fn: bool) -> ty::Region) -> ty::FnSig
-    {
-        do ty::fold_sig(fn_sig) |t| {
-            ty::fold_regions(self.tcx, t, fldr)
-        }
+pub fn fold_regions_in_sig(
+    tcx: ty::ctxt,
+    fn_sig: &ty::FnSig,
+    fldr: &fn(r: ty::Region, in_fn: bool) -> ty::Region) -> ty::FnSig
+{
+    do ty::fold_sig(fn_sig) |t| {
+        ty::fold_regions(tcx, t, fldr)
     }
-
 }

@@ -183,26 +183,21 @@ pub struct AutoDerefRef {
 
 #[auto_encode]
 #[auto_decode]
-pub struct AutoRef {
-    kind: AutoRefKind,
-    region: Region,
-    mutbl: ast::mutability
-}
-
-#[auto_encode]
-#[auto_decode]
-pub enum AutoRefKind {
+pub enum AutoRef {
     /// Convert from T to &T
-    AutoPtr,
+    AutoPtr(Region, ast::mutability),
 
     /// Convert from @[]/~[]/&[] to &[] (or str)
-    AutoBorrowVec,
+    AutoBorrowVec(Region, ast::mutability),
 
     /// Convert from @[]/~[]/&[] to &&[] (or str)
-    AutoBorrowVecRef,
+    AutoBorrowVecRef(Region, ast::mutability),
 
     /// Convert from @fn()/~fn()/&fn() to &fn()
-    AutoBorrowFn
+    AutoBorrowFn(Region),
+
+    /// Convert from T to *T
+    AutoUnsafe(ast::mutability)
 }
 
 // Stores information about provided methods (a.k.a. default methods) in
@@ -432,11 +427,20 @@ pub enum Region {
     /// A concrete region naming some expression within the current function.
     re_scope(node_id),
 
-    /// Static data that has an "infinite" lifetime.
+    /// Static data that has an "infinite" lifetime. Top in the region lattice.
     re_static,
 
     /// A region variable.  Should not exist after typeck.
-    re_infer(InferRegion)
+    re_infer(InferRegion),
+
+    /// Empty lifetime is for data that is never accessed.
+    /// Bottom in the region lattice. We treat re_empty somewhat
+    /// specially; at least right now, we do not generate instances of
+    /// it during the GLB computations, but rather
+    /// generate an error instead. This is to improve error messages.
+    /// The only way to get an instance of re_empty is to have a region
+    /// variable with no constraints.
+    re_empty,
 }
 
 pub impl Region {
@@ -1539,6 +1543,13 @@ pub fn type_is_ty_var(ty: t) -> bool {
 
 pub fn type_is_bool(ty: t) -> bool { get(ty).sty == ty_bool }
 
+pub fn type_is_self(ty: t) -> bool {
+    match get(ty).sty {
+        ty_self(*) => true,
+        _ => false
+    }
+}
+
 pub fn type_is_structural(ty: t) -> bool {
     match get(ty).sty {
       ty_struct(*) | ty_tup(_) | ty_enum(*) | ty_closure(_) | ty_trait(*) |
@@ -1939,7 +1950,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
         let _i = indenter();
 
-        let mut result = match get(ty).sty {
+        let result = match get(ty).sty {
             // Scalar and unique types are sendable, constant, and owned
             ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
             ty_bare_fn(_) | ty_ptr(_) => {
@@ -2789,6 +2800,17 @@ pub fn ty_region(tcx: ctxt,
     }
 }
 
+pub fn replace_fn_sig(cx: ctxt, fsty: &sty, new_sig: FnSig) -> t {
+    match *fsty {
+        ty_bare_fn(ref f) => mk_bare_fn(cx, BareFnTy {sig: new_sig, ..*f}),
+        ty_closure(ref f) => mk_closure(cx, ClosureTy {sig: new_sig, ..*f}),
+        ref s => {
+            cx.sess.bug(
+                fmt!("ty_fn_sig() called on non-fn type: %?", s));
+        }
+    }
+}
+
 pub fn replace_closure_return_type(tcx: ctxt, fn_type: t, ret_type: t) -> t {
     /*!
      *
@@ -2908,26 +2930,26 @@ pub fn adjust_ty(cx: ctxt,
             match adj.autoref {
                 None => adjusted_ty,
                 Some(ref autoref) => {
-                    match autoref.kind {
-                        AutoPtr => {
-                            mk_rptr(cx, autoref.region,
-                                    mt {ty: adjusted_ty,
-                                        mutbl: autoref.mutbl})
+                    match *autoref {
+                        AutoPtr(r, m) => {
+                            mk_rptr(cx, r, mt {ty: adjusted_ty, mutbl: m})
                         }
 
-                        AutoBorrowVec => {
-                            borrow_vec(cx, span, autoref, adjusted_ty)
+                        AutoBorrowVec(r, m) => {
+                            borrow_vec(cx, span, r, m, adjusted_ty)
                         }
 
-                        AutoBorrowVecRef => {
-                            adjusted_ty = borrow_vec(cx, span, autoref,
-                                                     adjusted_ty);
-                            mk_rptr(cx, autoref.region,
-                                    mt {ty: adjusted_ty, mutbl: ast::m_imm})
+                        AutoBorrowVecRef(r, m) => {
+                            adjusted_ty = borrow_vec(cx, span, r, m, adjusted_ty);
+                            mk_rptr(cx, r, mt {ty: adjusted_ty, mutbl: ast::m_imm})
                         }
 
-                        AutoBorrowFn => {
-                            borrow_fn(cx, span, autoref, adjusted_ty)
+                        AutoBorrowFn(r) => {
+                            borrow_fn(cx, span, r, adjusted_ty)
+                        }
+
+                        AutoUnsafe(m) => {
+                            mk_ptr(cx, mt {ty: adjusted_ty, mutbl: m})
                         }
                     }
                 }
@@ -2936,15 +2958,15 @@ pub fn adjust_ty(cx: ctxt,
     };
 
     fn borrow_vec(cx: ctxt, span: span,
-                  autoref: &AutoRef, ty: ty::t) -> ty::t {
+                  r: Region, m: ast::mutability,
+                  ty: ty::t) -> ty::t {
         match get(ty).sty {
             ty_evec(mt, _) => {
-                ty::mk_evec(cx, mt {ty: mt.ty, mutbl: autoref.mutbl},
-                            vstore_slice(autoref.region))
+                ty::mk_evec(cx, mt {ty: mt.ty, mutbl: m}, vstore_slice(r))
             }
 
             ty_estr(_) => {
-                ty::mk_estr(cx, vstore_slice(autoref.region))
+                ty::mk_estr(cx, vstore_slice(r))
             }
 
             ref s => {
@@ -2956,13 +2978,12 @@ pub fn adjust_ty(cx: ctxt,
         }
     }
 
-    fn borrow_fn(cx: ctxt, span: span,
-                 autoref: &AutoRef, ty: ty::t) -> ty::t {
+    fn borrow_fn(cx: ctxt, span: span, r: Region, ty: ty::t) -> ty::t {
         match get(ty).sty {
             ty_closure(ref fty) => {
                 ty::mk_closure(cx, ClosureTy {
                     sigil: BorrowedSigil,
-                    region: autoref.region,
+                    region: r,
                     ..copy *fty
                 })
             }
@@ -2973,6 +2994,18 @@ pub fn adjust_ty(cx: ctxt,
                     fmt!("borrow-fn associated with bad sty: %?",
                          s));
             }
+        }
+    }
+}
+
+pub impl AutoRef {
+    fn map_region(&self, f: &fn(Region) -> Region) -> AutoRef {
+        match *self {
+            ty::AutoPtr(r, m) => ty::AutoPtr(f(r), m),
+            ty::AutoBorrowVec(r, m) => ty::AutoBorrowVec(f(r), m),
+            ty::AutoBorrowVecRef(r, m) => ty::AutoBorrowVecRef(f(r), m),
+            ty::AutoBorrowFn(r) => ty::AutoBorrowFn(f(r)),
+            ty::AutoUnsafe(m) => ty::AutoUnsafe(m),
         }
     }
 }
@@ -3749,7 +3782,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
           call eval_const_expr, it should never get called twice for the same
           expr, since check_enum_variants also updates the enum_var_cache
          */
-        match *cx.items.get(&id.node) {
+        match cx.items.get_copy(&id.node) {
           ast_map::node_item(@ast::item {
                     node: ast::item_enum(ref enum_definition, _),
                     _
@@ -3875,7 +3908,7 @@ pub fn lookup_field_type(tcx: ctxt,
     }
     else {
         match tcx.tcache.find(&id) {
-           Some(tpt) => tpt.ty,
+           Some(&ty_param_bounds_and_ty {ty, _}) => ty,
            None => {
                let tpt = csearch::get_field_type(tcx, struct_id, id);
                tcx.tcache.insert(id, tpt);
@@ -4280,7 +4313,7 @@ pub fn get_impl_id(tcx: ctxt, trait_id: def_id, self_ty: t) -> def_id {
 pub fn visitor_object_ty(tcx: ctxt) -> (@TraitRef, t) {
     let ty_visitor_name = special_idents::ty_visitor;
     assert!(tcx.intrinsic_traits.contains_key(&ty_visitor_name));
-    let trait_ref = *tcx.intrinsic_traits.get(&ty_visitor_name);
+    let trait_ref = tcx.intrinsic_traits.get_copy(&ty_visitor_name);
     (trait_ref,
      mk_trait(tcx, trait_ref.def_id, copy trait_ref.substs, BoxTraitStore, ast::m_imm))
 }

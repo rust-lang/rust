@@ -9,11 +9,11 @@
 // except according to those terms.
 
 fn f(y: ~int) {
-    *y = 5; //~ ERROR assigning to dereference of immutable ~ pointer
+    *y = 5; //~ ERROR cannot assign
 }
 
 fn g() {
-    let _frob: &fn(~int) = |q| { *q = 2; }; //~ ERROR assigning to dereference of immutable ~ pointer
+    let _frob: &fn(~int) = |q| { *q = 2; }; //~ ERROR cannot assign
 
 }
 

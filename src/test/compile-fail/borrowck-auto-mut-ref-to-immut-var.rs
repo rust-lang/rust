@@ -8,7 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main () {
-    let mut _p: & int = & 4;
-    _p = &*~3; //~ ERROR illegal borrow
+// Tests that auto-ref can't create mutable aliases to immutable memory.
+
+struct Foo {
+    x: int
+}
+
+pub impl Foo {
+    fn printme(&mut self) {
+        io::println(fmt!("%d", self.x));
+    }
+}
+
+fn main() {
+    let x = Foo { x: 3 };
+    x.printme();    //~ ERROR cannot borrow
 }

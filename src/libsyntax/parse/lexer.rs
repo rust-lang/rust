@@ -163,7 +163,7 @@ fn string_advance_token(r: @mut StringReader) {
     }
 }
 
-fn byte_offset(rdr: @mut StringReader) -> BytePos {
+fn byte_offset(rdr: &StringReader) -> BytePos {
     (rdr.pos - rdr.filemap.start_pos)
 }
 
@@ -176,7 +176,7 @@ pub fn get_str_from(rdr: @mut StringReader, start: BytePos) -> ~str {
 
 // EFFECT: advance the StringReader by one character. If a newline is
 // discovered, add it to the FileMap's list of line start offsets.
-pub fn bump(rdr: @mut StringReader) {
+pub fn bump(rdr: &mut StringReader) {
     rdr.last_pos = rdr.pos;
     let current_byte_offset = byte_offset(rdr).to_uint();;
     if current_byte_offset < (*rdr.src).len() {
