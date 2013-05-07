@@ -130,8 +130,10 @@ $$(HLIB$(2)_H_$(4))/$(CFG_RUSTLLVM_$(4)): \
 $$(HBIN$(2)_H_$(4))/:
 	mkdir -p $$@
 
+ifneq ($(CFG_LIBDIR),bin)
 $$(HLIB$(2)_H_$(4))/:
 	mkdir -p $$@
+endif
 
 endef
 
