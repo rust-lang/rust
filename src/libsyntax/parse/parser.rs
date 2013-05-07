@@ -2383,7 +2383,13 @@ pub impl Parser {
                         can_be_enum_or_struct = false
                 }
 
-                if is_plain_ident(&*self.token) && !can_be_enum_or_struct {
+                if self.look_ahead(1) == token::DOTDOT {
+                    let start = self.parse_expr_res(RESTRICT_NO_BAR_OP);
+                    self.eat(&token::DOTDOT);
+                    let end = self.parse_expr_res(RESTRICT_NO_BAR_OP);
+                    pat = pat_range(start, end);
+                }
+                else if is_plain_ident(&*self.token) && !can_be_enum_or_struct {
                     let name = self.parse_path_without_tps();
                     let sub;
                     if self.eat(&token::AT) {
@@ -2392,7 +2398,7 @@ pub impl Parser {
                     } else {
                         // or just foo
                         sub = None;
-                    };
+                    }
                     pat = pat_ident(binding_mode, name, sub);
                 } else {
                     // parse an enum pat
