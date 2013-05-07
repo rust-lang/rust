@@ -26,8 +26,6 @@ pub mod global;
 pub mod finally;
 #[path = "unstable/weak_task.rs"]
 pub mod weak_task;
-#[path = "unstable/exchange_alloc.rs"]
-pub mod exchange_alloc;
 #[path = "unstable/intrinsics.rs"]
 pub mod intrinsics;
 #[path = "unstable/simd.rs"]
