@@ -15,9 +15,9 @@ fn foo(cond: &fn() -> bool, box: &fn() -> @int) {
     loop {
         let x = box();
 
-        // Here we complain because the resulting region
-        // of this borrow is the fn body as a whole.
-        y = borrow(x); //~ ERROR illegal borrow: cannot root managed value long enough
+	    // Here we complain because the resulting region
+	    // of this borrow is the fn body as a whole.
+        y = borrow(x); //~ ERROR cannot root
 
         assert!(*x == *y);
         if cond() { break; }

@@ -45,7 +45,7 @@ pub static time_passes: uint = 1 << 1;
 pub static count_llvm_insns: uint = 1 << 2;
 pub static time_llvm_passes: uint = 1 << 3;
 pub static trans_stats: uint = 1 << 4;
-pub static no_asm_comments: uint = 1 << 5;
+pub static asm_comments: uint = 1 << 5;
 pub static no_verify: uint = 1 << 6;
 pub static trace: uint = 1 << 7;
 pub static coherence: uint = 1 << 8;
@@ -73,7 +73,7 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
      (~"time-llvm-passes", ~"measure time of each LLVM pass",
       time_llvm_passes),
      (~"trans-stats", ~"gather trans statistics", trans_stats),
-     (~"no-asm-comments", ~"omit comments when using -S", no_asm_comments),
+     (~"asm-comments", ~"generate comments into the assembly (may change behavior)", asm_comments),
      (~"no-verify", ~"skip LLVM verification", no_verify),
      (~"trace", ~"emit trace logs", trace),
      (~"coherence", ~"perform coherence checking", coherence),
@@ -188,6 +188,9 @@ pub impl Session_ {
     fn err(@self, msg: &str) {
         self.span_diagnostic.handler().err(msg)
     }
+    fn err_count(@self) -> uint {
+        self.span_diagnostic.handler().err_count()
+    }
     fn has_errors(@self) -> bool {
         self.span_diagnostic.handler().has_errors()
     }
@@ -263,7 +266,7 @@ pub impl Session_ {
     }
     fn trans_stats(@self) -> bool { self.debugging_opt(trans_stats) }
     fn meta_stats(@self) -> bool { self.debugging_opt(meta_stats) }
-    fn no_asm_comments(@self) -> bool { self.debugging_opt(no_asm_comments) }
+    fn asm_comments(@self) -> bool { self.debugging_opt(asm_comments) }
     fn no_verify(@self) -> bool { self.debugging_opt(no_verify) }
     fn trace(@self) -> bool { self.debugging_opt(trace) }
     fn coherence(@self) -> bool { self.debugging_opt(coherence) }

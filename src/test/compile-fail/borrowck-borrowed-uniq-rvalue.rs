@@ -15,7 +15,7 @@ use core::hashmap::HashMap;
 fn main() {
     let mut buggy_map :HashMap<uint, &uint> =
       HashMap::new::<uint, &uint>();
-    buggy_map.insert(42, &*~1); //~ ERROR illegal borrow
+    buggy_map.insert(42, &*~1); //~ ERROR borrowed value does not live long enough
 
     // but it is ok if we use a temporary
     let tmp = ~2;

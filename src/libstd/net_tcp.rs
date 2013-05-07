@@ -883,8 +883,8 @@ impl io::Reader for TcpSocketBuf {
                     let ncopy = uint::min(nbuffered, needed);
                     let dst = ptr::mut_offset(
                         vec::raw::to_mut_ptr(buf), count);
-                    let src = ptr::const_offset(
-                        vec::raw::to_const_ptr(self.data.buf),
+                    let src = ptr::offset(
+                        vec::raw::to_ptr(self.data.buf),
                         self.data.buf_off);
                     ptr::copy_memory(dst, src, ncopy);
                     self.data.buf_off += ncopy;
@@ -967,7 +967,7 @@ impl io::Reader for TcpSocketBuf {
 
 /// Implementation of `io::Reader` trait for a buffered `net::tcp::TcpSocket`
 impl io::Writer for TcpSocketBuf {
-    pub fn write(&self, data: &const [u8]) {
+    pub fn write(&self, data: &[u8]) {
         unsafe {
             let socket_data_ptr: *TcpSocketData =
                 &(*((*(self.data)).sock).socket_data);

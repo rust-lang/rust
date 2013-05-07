@@ -280,7 +280,7 @@ pub fn trans_opt(bcx: block, o: &Opt) -> opt_result {
 pub fn variant_opt(bcx: block, pat_id: ast::node_id)
     -> Opt {
     let ccx = bcx.ccx();
-    match *ccx.tcx.def_map.get(&pat_id) {
+    match ccx.tcx.def_map.get_copy(&pat_id) {
         ast::def_variant(enum_id, var_id) => {
             let variants = ty::enum_variants(ccx.tcx, enum_id);
             for vec::each(*variants) |v| {
@@ -516,7 +516,7 @@ pub fn enter_opt<'r>(bcx: block,
         match p.node {
             ast::pat_enum(*) |
             ast::pat_ident(_, _, None) if pat_is_const(tcx.def_map, p) => {
-                let const_def = *tcx.def_map.get(&p.id);
+                let const_def = tcx.def_map.get_copy(&p.id);
                 let const_def_id = ast_util::def_id_of_def(const_def);
                 if opt_eq(tcx, &lit(ConstLit(const_def_id)), opt) {
                     Some(~[])
@@ -552,7 +552,7 @@ pub fn enter_opt<'r>(bcx: block,
                 if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
                     // Look up the struct variant ID.
                     let struct_id;
-                    match *tcx.def_map.get(&p.id) {
+                    match tcx.def_map.get_copy(&p.id) {
                         ast::def_variant(_, found_struct_id) => {
                             struct_id = found_struct_id;
                         }
@@ -865,7 +865,18 @@ pub fn extract_variant_args(bcx: block,
     ExtractedBlock { vals: args, bcx: bcx }
 }
 
+fn match_datum(bcx: block, val: ValueRef, pat_id: ast::node_id) -> Datum {
+    //! Helper for converting from the ValueRef that we pass around in
+    //! the match code, which is always by ref, into a Datum. Eventually
+    //! we should just pass around a Datum and be done with it.
+
+    let ty = node_id_type(bcx, pat_id);
+    Datum {val: val, ty: ty, mode: datum::ByRef, source: RevokeClean}
+}
+
+
 pub fn extract_vec_elems(bcx: block,
+                         pat_span: span,
                          pat_id: ast::node_id,
                          elem_count: uint,
                          slice: Option<uint>,
@@ -873,9 +884,9 @@ pub fn extract_vec_elems(bcx: block,
                          count: ValueRef)
                       -> ExtractedBlock {
     let _icx = bcx.insn_ctxt("match::extract_vec_elems");
+    let vec_datum = match_datum(bcx, val, pat_id);
+    let (bcx, base, len) = vec_datum.get_vec_base_and_len(bcx, pat_span, pat_id);
     let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
-    let unboxed = load_if_immediate(bcx, val, vt.vec_ty);
-    let (base, len) = tvec::get_base_and_len(bcx, unboxed, vt.vec_ty);
 
     let mut elems = do vec::from_fn(elem_count) |i| {
         match slice {
@@ -946,30 +957,28 @@ pub fn collect_record_or_struct_fields(bcx: block,
     }
 }
 
-pub fn root_pats_as_necessary(bcx: block,
+pub fn pats_require_rooting(bcx: block,
+                            m: &[@Match],
+                            col: uint)
+                         -> bool {
+    vec::any(m, |br| {
+        let pat_id = br.pats[col].id;
+        let key = root_map_key {id: pat_id, derefs: 0u };
+        bcx.ccx().maps.root_map.contains_key(&key)
+    })
+}
+
+pub fn root_pats_as_necessary(mut bcx: block,
                               m: &[@Match],
                               col: uint,
                               val: ValueRef)
                            -> block {
-    let mut bcx = bcx;
     for vec::each(m) |br| {
         let pat_id = br.pats[col].id;
-
-        let key = root_map_key {id: pat_id, derefs: 0u };
-        match bcx.ccx().maps.root_map.find(&key) {
-            None => (),
-            Some(&root_info) => {
-                // Note: the scope_id will always be the id of the match.  See
-                // the extended comment in rustc::middle::borrowck::preserve()
-                // for details (look for the case covering cat_discr).
-
-                let datum = Datum {val: val, ty: node_id_type(bcx, pat_id),
-                                   mode: ByRef, source: ZeroMem};
-                bcx = datum.root(bcx, root_info);
-                // If we kept going, we'd only re-root the same value, so
-                // return now.
-                return bcx;
-            }
+        if pat_id != 0 {
+            let datum = Datum {val: val, ty: node_id_type(bcx, pat_id),
+                               mode: ByRef, source: ZeroMem};
+            bcx = datum.root_and_write_guard(bcx, br.pats[col].span, pat_id, 0);
         }
     }
     return bcx;
@@ -1113,7 +1122,8 @@ pub fn compare_values(cx: block,
 pub fn store_non_ref_bindings(bcx: block,
                               data: &ArmData,
                               opt_temp_cleanups: Option<&mut ~[ValueRef]>)
-                           -> block {
+    -> block
+{
     /*!
      *
      * For each copy/move binding, copy the value from the value
@@ -1124,6 +1134,7 @@ pub fn store_non_ref_bindings(bcx: block,
      */
 
     let mut bcx = bcx;
+    let mut opt_temp_cleanups = opt_temp_cleanups;
     for data.bindings_map.each_value |&binding_info| {
         match binding_info.trmode {
             TrByValue(is_move, lldest) => {
@@ -1138,9 +1149,10 @@ pub fn store_non_ref_bindings(bcx: block,
                     }
                 };
 
-                for opt_temp_cleanups.each |temp_cleanups| {
+                do opt_temp_cleanups.mutate |temp_cleanups| {
                     add_clean_temp_mem(bcx, lldest, binding_info.ty);
                     temp_cleanups.push(lldest);
+                    temp_cleanups
                 }
             }
             TrByRef | TrByImplicitRef => {}
@@ -1293,13 +1305,20 @@ pub fn compile_submatch(bcx: block,
                                 vec::slice(vals, col + 1u, vals.len()));
     let ccx = *bcx.fcx.ccx;
     let mut pat_id = 0;
+    let mut pat_span = dummy_sp();
     for vec::each(m) |br| {
         // Find a real id (we're adding placeholder wildcard patterns, but
         // each column is guaranteed to have at least one real pattern)
-        if pat_id == 0 { pat_id = br.pats[col].id; }
+        if pat_id == 0 {
+            pat_id = br.pats[col].id;
+            pat_span = br.pats[col].span;
+        }
     }
 
-    bcx = root_pats_as_necessary(bcx, m, col, val);
+    // If we are not matching against an `@T`, we should not be
+    // required to root any values.
+    assert!(any_box_pat(m, col) || !pats_require_rooting(bcx, m, col));
+
     let rec_fields = collect_record_or_struct_fields(bcx, m, col);
     if rec_fields.len() > 0 {
         let pat_ty = node_id_type(bcx, pat_id);
@@ -1360,6 +1379,7 @@ pub fn compile_submatch(bcx: block,
 
     // Unbox in case of a box field
     if any_box_pat(m, col) {
+        bcx = root_pats_as_necessary(bcx, m, col, val);
         let llbox = Load(bcx, val);
         let box_no_addrspace = non_gc_box_cast(bcx, llbox);
         let unboxed =
@@ -1560,8 +1580,8 @@ pub fn compile_submatch(bcx: block,
                     vec_len_ge(_, i) => Some(i),
                     _ => None
                 };
-                let args = extract_vec_elems(opt_cx, pat_id, n, slice,
-                    val, test_val);
+                let args = extract_vec_elems(opt_cx, pat_span, pat_id, n, slice,
+                                             val, test_val);
                 size = args.vals.len();
                 unpacked = /*bad*/copy args.vals;
                 opt_cx = args.bcx;

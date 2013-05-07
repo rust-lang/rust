@@ -419,26 +419,26 @@ pub struct RWReadMode<'self, T> {
 
 pub impl<'self, T:Const + Owned> RWWriteMode<'self, T> {
     /// Access the pre-downgrade RWARC in write mode.
-    fn write<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
+    fn write<U>(&mut self, blk: &fn(x: &mut T) -> U) -> U {
         match *self {
             RWWriteMode {
-                data: ref data,
+                data: &ref mut data,
                 token: ref token,
                 poison: _
             } => {
                 do token.write {
-                    blk(&mut **data)
+                    blk(data)
                 }
             }
         }
     }
     /// Access the pre-downgrade RWARC in write mode with a condvar.
-    fn write_cond<'x, 'c, U>(&self,
+    fn write_cond<'x, 'c, U>(&mut self,
                              blk: &fn(x: &'x mut T, c: &'c Condvar) -> U)
                           -> U {
         match *self {
             RWWriteMode {
-                data: ref data,
+                data: &ref mut data,
                 token: ref token,
                 poison: ref poison
             } => {
@@ -449,7 +449,7 @@ pub impl<'self, T:Const + Owned> RWWriteMode<'self, T> {
                             failed: &mut *poison.failed,
                             cond: cond
                         };
-                        blk(&mut **data, &cvar)
+                        blk(data, &cvar)
                     }
                 }
             }
@@ -598,8 +598,8 @@ mod tests {
         let arc = ~RWARC(1);
         let arc2 = (*arc).clone();
         do task::try || {
-            do arc2.write_downgrade |write_mode| {
-                do (&write_mode).write |one| {
+            do arc2.write_downgrade |mut write_mode| {
+                do write_mode.write |one| {
                     assert!(*one == 2);
                 }
             }
@@ -733,8 +733,8 @@ mod tests {
         }
 
         // Downgrader (us)
-        do arc.write_downgrade |write_mode| {
-            do (&write_mode).write_cond |state, cond| {
+        do arc.write_downgrade |mut write_mode| {
+            do write_mode.write_cond |state, cond| {
                 wc1.send(()); // send to another writer who will wake us up
                 while *state == 0 {
                     cond.wait();

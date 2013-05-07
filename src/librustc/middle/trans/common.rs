@@ -27,18 +27,18 @@ use middle::resolve;
 use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::build;
-use middle::trans::callee;
 use middle::trans::datum;
 use middle::trans::debuginfo;
-use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::reachable;
 use middle::trans::shape;
 use middle::trans::type_of;
 use middle::trans::type_use;
+use middle::trans::write_guard;
 use middle::ty::substs;
 use middle::ty;
 use middle::typeck;
+use middle::borrowck::root_map_key;
 use util::ppaux::{Repr};
 
 use core::cast::transmute;
@@ -467,28 +467,35 @@ pub fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
         scope_clean_changed(scope_info);
     }
 }
-pub fn add_clean_frozen_root(bcx: block, val: ValueRef, t: ty::t) {
-    debug!("add_clean_frozen_root(%s, %s, %s)",
-           bcx.to_str(), val_str(bcx.ccx().tn, val),
-           t.repr(bcx.tcx()));
-    let (root, rooted) = root_for_cleanup(bcx, val, t);
-    let cleanup_type = cleanup_type(bcx.tcx(), t);
+pub fn add_clean_return_to_mut(bcx: block,
+                               root_key: root_map_key,
+                               frozen_val_ref: ValueRef,
+                               bits_val_ref: ValueRef,
+                               filename_val: ValueRef,
+                               line_val: ValueRef) {
+    //! When an `@mut` has been frozen, we have to
+    //! call the lang-item `return_to_mut` when the
+    //! freeze goes out of scope. We need to pass
+    //! in both the value which was frozen (`frozen_val`) and
+    //! the value (`bits_val_ref`) which was returned when the
+    //! box was frozen initially. Here, both `frozen_val_ref` and
+    //! `bits_val_ref` are in fact pointers to stack slots.
+
+    debug!("add_clean_return_to_mut(%s, %s, %s)",
+           bcx.to_str(),
+           val_str(bcx.ccx().tn, frozen_val_ref),
+           val_str(bcx.ccx().tn, bits_val_ref));
     do in_scope_cx(bcx) |scope_info| {
         scope_info.cleanups.push(
-            clean_temp(val, |bcx| {
-                let bcx = callee::trans_lang_call(
-                    bcx,
-                    bcx.tcx().lang_items.return_to_mut_fn(),
-                    ~[
-                        build::Load(bcx,
-                                    build::PointerCast(bcx,
-                                                       root,
-                                                       T_ptr(T_ptr(T_i8()))))
-                    ],
-                    expr::Ignore
-                );
-                glue::drop_ty_root(bcx, root, rooted, t)
-            }, cleanup_type));
+            clean_temp(
+                frozen_val_ref,
+                |bcx| write_guard::return_to_mut(bcx,
+                                                 root_key,
+                                                 frozen_val_ref,
+                                                 bits_val_ref,
+                                                 filename_val,
+                                                 line_val),
+                normal_exit_only));
         scope_clean_changed(scope_info);
     }
 }
@@ -516,6 +523,7 @@ pub fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
 // drop glue checks whether it is zero.
 pub fn revoke_clean(cx: block, val: ValueRef) {
     do in_scope_cx(cx) |scope_info| {
+        let scope_info = &mut *scope_info; // FIXME(#5074) workaround borrowck
         let cleanup_pos = vec::position(
             scope_info.cleanups,
             |cu| match *cu {
@@ -534,9 +542,9 @@ pub fn revoke_clean(cx: block, val: ValueRef) {
 }
 
 pub fn block_cleanups(bcx: block) -> ~[cleanup] {
-    match *bcx.kind {
+    match bcx.kind {
        block_non_scope  => ~[],
-       block_scope(ref mut inf) => /*bad*/copy inf.cleanups
+       block_scope(inf) => /*bad*/copy inf.cleanups
     }
 }
 
@@ -545,7 +553,7 @@ pub enum block_kind {
     // cleaned up. May correspond to an actual block in the language, but also
     // to an implicit scope, for example, calls introduce an implicit scope in
     // which the arguments are evaluated and cleaned up.
-    block_scope(scope_info),
+    block_scope(@mut scope_info),
 
     // A non-scope block is a basic block created as a translation artifact
     // from translating code that expresses conditional logic rather than by
@@ -568,19 +576,29 @@ pub struct scope_info {
     landing_pad: Option<BasicBlockRef>,
 }
 
+pub impl scope_info {
+    fn empty_cleanups(&mut self) -> bool {
+        self.cleanups.is_empty()
+    }
+}
+
 pub trait get_node_info {
     fn info(&self) -> Option<NodeInfo>;
 }
 
 impl get_node_info for @ast::expr {
     fn info(&self) -> Option<NodeInfo> {
-        Some(NodeInfo { id: self.id, span: self.span })
+        Some(NodeInfo {id: self.id,
+                       callee_id: Some(self.callee_id),
+                       span: self.span})
     }
 }
 
 impl get_node_info for ast::blk {
     fn info(&self) -> Option<NodeInfo> {
-        Some(NodeInfo { id: self.node.id, span: self.span })
+        Some(NodeInfo {id: self.node.id,
+                       callee_id: None,
+                       span: self.span})
     }
 }
 
@@ -592,6 +610,7 @@ impl get_node_info for Option<@ast::expr> {
 
 pub struct NodeInfo {
     id: ast::node_id,
+    callee_id: Option<ast::node_id>,
     span: span
 }
 
@@ -611,7 +630,7 @@ pub struct block_ {
     unreachable: bool,
     parent: Option<block>,
     // The 'kind' of basic block this is.
-    kind: @mut block_kind,
+    kind: block_kind,
     // Is this block part of a landing pad?
     is_lpad: bool,
     // info about the AST node this block originated from, if any
@@ -630,7 +649,7 @@ pub fn block_(llbb: BasicBlockRef, parent: Option<block>, kind: block_kind,
         terminated: false,
         unreachable: false,
         parent: parent,
-        kind: @mut kind,
+        kind: kind,
         is_lpad: is_lpad,
         node_info: node_info,
         fcx: fcx
@@ -678,21 +697,17 @@ pub fn val_str(tn: @TypeNames, v: ValueRef) -> @str {
     return ty_str(tn, val_ty(v));
 }
 
-pub fn in_scope_cx(cx: block, f: &fn(si: &mut scope_info)) {
+pub fn in_scope_cx(cx: block, f: &fn(si: @mut scope_info)) {
     let mut cur = cx;
     loop {
-        {
-            // XXX: Borrow check bug workaround.
-            let kind: &mut block_kind = &mut *cur.kind;
-            match *kind {
-              block_scope(ref mut inf) => {
-                  debug!("in_scope_cx: selected cur=%s (cx=%s)",
-                         cur.to_str(), cx.to_str());
-                  f(inf);
-                  return;
-              }
-              _ => ()
+        match cur.kind {
+            block_scope(inf) => {
+                debug!("in_scope_cx: selected cur=%s (cx=%s)",
+                       cur.to_str(), cx.to_str());
+                f(inf);
+                return;
             }
+            _ => ()
         }
         cur = block_parent(cur);
     }
@@ -1515,6 +1530,15 @@ pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
         self_ty: None,
         tps: tps
     }
+}
+
+pub fn filename_and_line_num_from_span(bcx: block,
+                                       span: span) -> (ValueRef, ValueRef) {
+    let loc = bcx.sess().parse_sess.cm.lookup_char_pos(span.lo);
+    let filename_cstr = C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name);
+    let filename = build::PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
+    let line = C_int(bcx.ccx(), loc.line as int);
+    (filename, line)
 }
 
 // Casts a Rust bool value to an i1.

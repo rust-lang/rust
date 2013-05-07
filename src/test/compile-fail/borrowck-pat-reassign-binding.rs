@@ -12,11 +12,14 @@
 
 fn main() {
     let mut x: Option<int> = None;
-    match x { //~ NOTE loan of mutable local variable granted here
-      None => {}
+    match x {
+      None => {
+          // Note: on this branch, no borrow has occurred.
+          x = Some(0);
+      }
       Some(ref i) => {
-        // Not ok: i is an outstanding ptr into x.
-        x = Some(*i+1); //~ ERROR assigning to mutable local variable prohibited due to outstanding loan
+          // But on this branch, `i` is an outstanding borrow
+          x = Some(*i+1); //~ ERROR cannot assign to `x`
       }
     }
     copy x; // just to prevent liveness warnings
