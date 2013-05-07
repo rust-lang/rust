@@ -390,8 +390,8 @@ pub impl Parser {
     // parse a ty_closure type
     fn parse_ty_closure(&self,
                         sigil: ast::Sigil,
-                        region: Option<@ast::Lifetime>) -> ty_
-    {
+                        region: Option<@ast::Lifetime>)
+                        -> ty_ {
         /*
 
         (&|~|@) ['r] [pure|unsafe] [once] fn <'lt> (S) -> T
@@ -773,20 +773,17 @@ pub impl Parser {
         return ty_rptr(opt_lifetime, mt);
     }
 
-    // parse an optional mode.
-    // XXX: Remove after snapshot.
+    // parse an optional, obsolete argument mode.
     fn parse_arg_mode(&self) {
         if self.eat(&token::BINOP(token::MINUS)) {
             self.obsolete(*self.span, ObsoleteMode);
         } else if self.eat(&token::ANDAND) {
-            // Ignore.
+            self.obsolete(*self.span, ObsoleteMode);
         } else if self.eat(&token::BINOP(token::PLUS)) {
             if self.eat(&token::BINOP(token::PLUS)) {
-                // ++ mode is obsolete, but we need a snapshot
-                // to stop parsing it.
-                // Ignore.
+                self.obsolete(*self.span, ObsoleteMode);
             } else {
-                // Ignore.
+                self.obsolete(*self.span, ObsoleteMode);
             }
         } else {
             // Ignore.

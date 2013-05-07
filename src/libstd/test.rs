@@ -559,7 +559,7 @@ pub fn run_test(force_ignore: bool,
 
             let mut task = task::task();
             task.unlinked();
-            task.future_result(|+r| { result_future = Some(r) });
+            task.future_result(|r| { result_future = Some(r) });
             task.spawn(testfn_cell.take());
 
             let task_result = result_future.unwrap().recv();

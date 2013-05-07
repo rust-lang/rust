@@ -22,7 +22,7 @@ use syntax;
  * there. */
 macro_rules! interner_key (
     () => (cast::transmute::<(uint, uint),
-           &fn(+v: @@syntax::parse::token::ident_interner)>((-3 as uint, 0u)))
+           &fn(v: @@syntax::parse::token::ident_interner)>((-3 as uint, 0u)))
 )
 
 // Hack; rather than thread an interner through everywhere, rely on

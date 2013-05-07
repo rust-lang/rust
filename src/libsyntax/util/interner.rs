@@ -84,7 +84,7 @@ pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
 * for another case of this. */
 macro_rules! interner_key (
     () => (cast::transmute::<(uint, uint),
-           &fn(+v: @@::parse::token::ident_interner)>(
+           &fn(v: @@::parse::token::ident_interner)>(
         (-3 as uint, 0u)))
 )
 

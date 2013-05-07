@@ -673,8 +673,7 @@ mod tests {
         let mut children = ~[];
         for 5.times {
             let arc3 = (*arc).clone();
-            do task::task().future_result(|+r| children.push(r)).spawn
-                || {
+            do task::task().future_result(|r| children.push(r)).spawn {
                 do arc3.read |num| {
                     assert!(*num >= 0);
                 }

@@ -14,7 +14,7 @@ use core::old_iter::BaseIter;
 
 #[abi = "rust-intrinsic"]
 extern "rust-intrinsic" mod rusti {
-    fn move_val_init<T>(dst: &mut T, +src: T);
+    fn move_val_init<T>(dst: &mut T, src: T);
     fn init<T>() -> T;
 }
 
