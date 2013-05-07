@@ -93,7 +93,7 @@ impl IntegerExt for i64 {}
 impl IntegerExt for int {}
 
 
-pub trait FloatExt: NumExt + ApproxEq<Self> {}
+pub trait FloatExt: NumExt + ApproxEq<Self> + RelativeEq<Self> {}
 
 impl FloatExt for f32 {}
 impl FloatExt for f64 {}

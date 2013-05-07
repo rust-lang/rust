@@ -17,7 +17,7 @@ use core::num::NumCast::from;
 
 pub trait NumExt: Num + NumCast + Eq + Ord {}
 
-pub trait FloatExt: NumExt + ApproxEq<Self> {}
+pub trait FloatExt: NumExt + ApproxEq<Self> + RelativeEq<Self> {}
 
 fn greater_than_one<T:NumExt>(n: &T) -> bool { *n > from(1) }
 fn greater_than_one_float<T:FloatExt>(n: &T) -> bool { *n > from(1) }
