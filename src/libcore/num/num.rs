@@ -238,6 +238,23 @@ pub trait Int: Integer
              + BitCount {}
 
 ///
+/// Used for representing the classification of floating point numbers
+///
+#[deriving(Eq)]
+pub enum FPCategory {
+    /// "Not a Number", often obtained by dividing by zero
+    FPNaN,
+    /// Positive or negative infinity
+    FPInfinite ,
+    /// Positive or negative zero
+    FPZero,
+    /// De-normalized floating point representation (less precise than `FPNormal`)
+    FPSubnormal,
+    /// A regular floating point number
+    FPNormal,
+}
+
+///
 /// Primitive floating point numbers
 ///
 pub trait Float: Real
@@ -253,6 +270,8 @@ pub trait Float: Real
     fn is_NaN(&self) -> bool;
     fn is_infinite(&self) -> bool;
     fn is_finite(&self) -> bool;
+    fn is_normal(&self) -> bool;
+    fn classify(&self) -> FPCategory;
 
     fn mantissa_digits() -> uint;
     fn digits() -> uint;
