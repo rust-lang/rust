@@ -991,7 +991,7 @@ pub fn connect<T:Copy>(v: &[~[T]], sep: &T) -> ~[T] {
  * ~~~
  *
  */
-pub fn foldl<T, U>(z: T, v: &[U], p: &fn(t: T, u: &U) -> T) -> T {
+pub fn foldl<'a, T, U>(z: T, v: &'a [U], p: &fn(t: T, u: &'a U) -> T) -> T {
     let mut accum = z;
     let mut i = 0;
     let l = v.len();
@@ -1023,12 +1023,13 @@ pub fn foldl<T, U>(z: T, v: &[U], p: &fn(t: T, u: &U) -> T) -> T {
  * ~~~
  *
  */
-pub fn foldr<T, U: Copy>(v: &[T], z: U, p: &fn(t: &T, u: U) -> U) -> U {
-    let mut accum = z;
-    for v.each_reverse |elt| {
-        accum = p(elt, accum);
+pub fn foldr<'a, T, U>(v: &'a [T], mut z: U, p: &fn(t: &'a T, u: U) -> U) -> U {
+    let mut i = v.len();
+    while i > 0 {
+        i -= 1;
+        z = p(&v[i], z);
     }
-    accum
+    return z;
 }
 
 /**
@@ -1848,7 +1849,7 @@ pub trait ImmutableVector<'self, T> {
     fn last_opt(&self) -> Option<&'self T>;
     fn each_reverse(&self, blk: &fn(&T) -> bool);
     fn eachi_reverse(&self, blk: &fn(uint, &T) -> bool);
-    fn foldr<U: Copy>(&self, z: U, p: &fn(t: &T, u: U) -> U) -> U;
+    fn foldr<'a, U>(&'a self, z: U, p: &fn(t: &'a T, u: U) -> U) -> U;
     fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U];
     fn mapi<U>(&self, f: &fn(uint, t: &T) -> U) -> ~[U];
     fn map_r<U>(&self, f: &fn(x: &T) -> U) -> ~[U];
@@ -1921,7 +1922,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
 
     /// Reduce a vector from right to left
     #[inline]
-    fn foldr<U:Copy>(&self, z: U, p: &fn(t: &T, u: U) -> U) -> U {
+    fn foldr<'a, U>(&'a self, z: U, p: &fn(t: &'a T, u: U) -> U) -> U {
         foldr(*self, z, p)
     }
 
