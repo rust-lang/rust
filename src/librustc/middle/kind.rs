@@ -10,7 +10,6 @@
 
 use middle::freevars::freevar_entry;
 use middle::freevars;
-use middle::liveness;
 use middle::pat_util;
 use middle::ty;
 use middle::typeck;
@@ -56,19 +55,16 @@ pub static try_adding: &'static str = "Try adding a move";
 pub struct Context {
     tcx: ty::ctxt,
     method_map: typeck::method_map,
-    last_use_map: liveness::last_use_map,
-    current_item: node_id,
+    current_item: node_id
 }
 
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
-                   last_use_map: liveness::last_use_map,
                    crate: @crate) {
     let ctx = Context {
         tcx: tcx,
         method_map: method_map,
-        last_use_map: last_use_map,
-        current_item: -1,
+        current_item: -1
     };
     let visit = visit::mk_vt(@visit::Visitor {
         visit_arm: check_arm,
@@ -132,7 +128,7 @@ fn check_item(item: @item, cx: Context, visitor: visit::vt<Context>) {
                             // Yes, it's a destructor.
                             match self_type.node {
                                 ty_path(_, path_node_id) => {
-                                    let struct_def = *cx.tcx.def_map.get(
+                                    let struct_def = cx.tcx.def_map.get_copy(
                                         &path_node_id);
                                     let struct_did =
                                         ast_util::def_id_of_def(struct_def);
@@ -261,11 +257,9 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
         _ => e.id
     };
     for cx.tcx.node_type_substs.find(&type_parameter_id).each |ts| {
-        // FIXME(#5562): removing this copy causes a segfault before stage2
-        let ts = /*bad*/ copy **ts;
         let type_param_defs = match e.node {
           expr_path(_) => {
-            let did = ast_util::def_id_of_def(*cx.tcx.def_map.get(&e.id));
+            let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&e.id));
             ty::lookup_item_type(cx.tcx, did).generics.type_param_defs
           }
           _ => {
@@ -286,7 +280,7 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
                        ts.repr(cx.tcx),
                        type_param_defs.repr(cx.tcx)));
         }
-        for vec::each2(ts, *type_param_defs) |&ty, type_param_def| {
+        for vec::each2(**ts, *type_param_defs) |&ty, type_param_def| {
             check_bounds(cx, type_parameter_id, e.span, ty, type_param_def)
         }
     }
@@ -324,12 +318,10 @@ fn check_ty(aty: @Ty, cx: Context, v: visit::vt<Context>) {
     match aty.node {
       ty_path(_, id) => {
         for cx.tcx.node_type_substs.find(&id).each |ts| {
-            // FIXME(#5562): removing this copy causes a segfault before stage2
-            let ts = /*bad*/ copy **ts;
-            let did = ast_util::def_id_of_def(*cx.tcx.def_map.get(&id));
+            let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&id));
             let type_param_defs =
                 ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
-            for vec::each2(ts, *type_param_defs) |&ty, type_param_def| {
+            for vec::each2(**ts, *type_param_defs) |&ty, type_param_def| {
                 check_bounds(cx, aty.id, aty.span, ty, type_param_def)
             }
         }
@@ -392,7 +384,7 @@ pub fn check_bounds(cx: Context,
 fn is_nullary_variant(cx: Context, ex: @expr) -> bool {
     match ex.node {
       expr_path(_) => {
-        match *cx.tcx.def_map.get(&ex.id) {
+        match cx.tcx.def_map.get_copy(&ex.id) {
           def_variant(edid, vdid) => {
             vec::len(ty::enum_variant_with_id(cx.tcx, edid, vdid).args) == 0u
           }

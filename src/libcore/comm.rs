@@ -205,8 +205,8 @@ impl<T: Owned> Selectable for Port<T> {
     fn header(&self) -> *PacketHeader {
         unsafe {
             match self.endp {
-              Some(ref endp) => endp.header(),
-              None => fail!(~"peeking empty stream")
+                Some(ref endp) => endp.header(),
+                None => fail!(~"peeking empty stream")
             }
         }
     }

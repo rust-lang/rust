@@ -207,9 +207,11 @@ pub impl PurityState {
 }
 
 pub struct FnCtxt {
-    // var_bindings, locals and next_var_id are shared
-    // with any nested functions that capture the environment
-    // (and with any functions whose environment is being captured).
+    // Number of errors that had been reported when we started
+    // checking this function. On exit, if we find that *more* errors
+    // have been reported, we will skip regionck and other work that
+    // expects the types within the function to be consistent.
+    err_count_on_creation: uint,
 
     ret_ty: ty::t,
     // Used by loop bodies that return from the outer function
@@ -263,6 +265,7 @@ pub fn blank_fn_ctxt(ccx: @mut CrateCtxt,
 // It's kind of a kludge to manufacture a fake function context
 // and statement context, but we might as well do write the code only once
     @mut FnCtxt {
+        err_count_on_creation: ccx.tcx.sess.err_count(),
         ret_ty: rty,
         indirect_ret_ty: None,
         ps: PurityState::function(ast::pure_fn, 0),
@@ -328,6 +331,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
      */
 
     let tcx = ccx.tcx;
+    let err_count_on_creation = tcx.sess.err_count();
 
     // ______________________________________________________________________
     // First, we have to replace any bound regions in the fn and self
@@ -368,6 +372,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         };
 
         @mut FnCtxt {
+            err_count_on_creation: err_count_on_creation,
             ret_ty: ret_ty,
             indirect_ret_ty: indirect_ret_ty,
             ps: PurityState::function(purity, id),
@@ -433,7 +438,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             assign(self_info.self_id, Some(self_info.self_ty));
             debug!("self is assigned to %s",
                    fcx.infcx().ty_to_str(
-                       *fcx.inh.locals.get(&self_info.self_id)));
+                       fcx.inh.locals.get_copy(&self_info.self_id)));
         }
 
         // Add formal parameters.
@@ -466,7 +471,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             debug!("Local variable %s is assigned type %s",
                    fcx.pat_to_str(local.node.pat),
                    fcx.infcx().ty_to_str(
-                       *fcx.inh.locals.get(&local.node.id)));
+                       fcx.inh.locals.get_copy(&local.node.id)));
             visit::visit_local(local, e, v);
         };
 
@@ -479,7 +484,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                 debug!("Pattern binding %s is assigned to %s",
                        *tcx.sess.str_of(path.idents[0]),
                        fcx.infcx().ty_to_str(
-                           *fcx.inh.locals.get(&p.id)));
+                           fcx.inh.locals.get_copy(&p.id)));
               }
               _ => {}
             }
@@ -642,7 +647,12 @@ impl AstConv for FnCtxt {
 }
 
 pub impl FnCtxt {
-    fn infcx(&self) -> @mut infer::InferCtxt { self.inh.infcx }
+    fn infcx(&self) -> @mut infer::InferCtxt {
+        self.inh.infcx
+    }
+    fn err_count_since_creation(&self) -> uint {
+        self.ccx.tcx.sess.err_count() - self.err_count_on_creation
+    }
     fn search_in_scope_regions(
         &self,
         span: span,
@@ -898,11 +908,9 @@ pub impl FnCtxt {
 
     fn region_var_if_parameterized(&self,
                                    rp: Option<ty::region_variance>,
-                                   span: span,
-                                   lower_bound: ty::Region)
+                                   span: span)
                                 -> Option<ty::Region> {
-        rp.map(
-            |_rp| self.infcx().next_region_var_with_lb(span, lower_bound))
+        rp.map(|_rp| self.infcx().next_region_var_nb(span))
     }
 
     fn type_error_message(&self,
@@ -1083,8 +1091,7 @@ pub fn impl_self_ty(vcx: &VtableContext,
     };
 
     let self_r = if region_param.is_some() {
-        Some(vcx.infcx.next_region_var(location_info.span,
-                                         location_info.id))
+        Some(vcx.infcx.next_region_var_nb(location_info.span))
     } else {
         None
     };
@@ -1291,9 +1298,17 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // that they appear in call position.
         check_expr(fcx, f);
 
+        // Store the type of `f` as the type of the callee
+        let fn_ty = fcx.expr_ty(f);
+
+        // FIXME(#6273) should write callee type AFTER regions have
+        // been subst'd.  However, it is awkward to deal with this
+        // now. Best thing would I think be to just have a separate
+        // "callee table" that contains the FnSig and not a general
+        // purpose ty::t
+        fcx.write_ty(call_expr.callee_id, fn_ty);
 
         // Extract the function signature from `in_fty`.
-        let fn_ty = fcx.expr_ty(f);
         let fn_sty = structure_of(fcx, f.span, fn_ty);
 
         // FIXME(#3678) For now, do not permit calls to C abi functions.
@@ -1330,7 +1345,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let (_, _, fn_sig) =
             replace_bound_regions_in_fn_sig(
                 fcx.tcx(), @Nil, None, &fn_sig,
-                |_br| fcx.infcx().next_region_var(call_expr.span, call_expr.id));
+                |_br| fcx.infcx().next_region_var_nb(call_expr.span));
 
         // Call the generic checker.
         check_argument_types(fcx, call_expr.span, fn_sig.inputs, f,
@@ -1651,7 +1666,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         };
 
         // construct the function type
-        let mut fn_ty = astconv::ty_of_closure(fcx,
+        let fn_ty = astconv::ty_of_closure(fcx,
                                                fcx,
                                                sigil,
                                                purity,
@@ -1662,7 +1677,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                                &opt_vec::Empty,
                                                expr.span);
 
-        let mut fty_sig;
+        let fty_sig;
         let fty = if error_happened {
             fty_sig = FnSig {
                 bound_lifetime_names: opt_vec::Empty,
@@ -1909,9 +1924,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         // Generate the struct type.
         let self_region =
-            fcx.region_var_if_parameterized(region_parameterized,
-                                            span,
-                                            ty::re_scope(id));
+            fcx.region_var_if_parameterized(region_parameterized, span);
         let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
         let substitutions = substs {
             self_r: self_region,
@@ -1997,9 +2010,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         // Generate the enum type.
         let self_region =
-            fcx.region_var_if_parameterized(region_parameterized,
-                                            span,
-                                            ty::re_scope(id));
+            fcx.region_var_if_parameterized(region_parameterized, span);
         let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
         let substitutions = substs {
             self_r: self_region,
@@ -2336,13 +2347,12 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // (and how long it is valid), which we don't know yet until type
         // inference is complete.
         //
-        // Therefore, here we simply generate a region variable with
-        // the current expression as a lower bound.  The region
-        // inferencer will then select the ultimate value.  Finally,
-        // borrowck is charged with guaranteeing that the value whose
-        // address was taken can actually be made to live as long as
-        // it needs to live.
-        let region = fcx.infcx().next_region_var(expr.span, expr.id);
+        // Therefore, here we simply generate a region variable.  The
+        // region inferencer will then select the ultimate value.
+        // Finally, borrowck is charged with guaranteeing that the
+        // value whose address was taken can actually be made to live
+        // as long as it needs to live.
+        let region = fcx.infcx().next_region_var_nb(expr.span);
 
         let tm = ty::mt { ty: fcx.expr_ty(oprnd), mutbl: mutbl };
         let oprnd_t = if ty::type_is_error(tm.ty) {
@@ -2359,8 +2369,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let defn = lookup_def(fcx, pth.span, id);
 
         let tpt = ty_param_bounds_and_ty_for_def(fcx, expr.span, defn);
-        let region_lb = ty::re_scope(expr.id);
-        instantiate_path(fcx, pth, tpt, expr.span, expr.id, region_lb);
+        instantiate_path(fcx, pth, tpt, expr.span, expr.id);
       }
       ast::expr_inline_asm(ref ia) => {
           fcx.require_unsafe(expr.span, ~"use of inline assembly");
@@ -2936,7 +2945,8 @@ pub fn check_block(fcx0: @mut FnCtxt, blk: &ast::blk)  {
 pub fn check_block_with_expected(fcx: @mut FnCtxt,
                                  blk: &ast::blk,
                                  expected: Option<ty::t>) {
-    let prev = replace(&mut fcx.ps, fcx.ps.recurse(blk));
+    let purity_state = fcx.ps.recurse(blk);
+    let prev = replace(&mut fcx.ps, purity_state);
 
     do fcx.with_region_lb(blk.node.id) {
         let mut warned = false;
@@ -3227,8 +3237,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
                         pth: @ast::Path,
                         tpt: ty_param_bounds_and_ty,
                         span: span,
-                        node_id: ast::node_id,
-                        region_lb: ty::Region) {
+                        node_id: ast::node_id) {
     debug!(">>> instantiate_path");
 
     let ty_param_count = tpt.generics.type_param_defs.len();
@@ -3254,8 +3263,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
         }
       }
       None => { // no lifetime parameter supplied, insert default
-        fcx.region_var_if_parameterized(
-            tpt.generics.region_param, span, region_lb)
+        fcx.region_var_if_parameterized(tpt.generics.region_param, span)
       }
     };
 
@@ -3339,7 +3347,7 @@ pub fn ast_expr_vstore_to_vstore(fcx: @mut FnCtxt,
         ast::expr_vstore_uniq => ty::vstore_uniq,
         ast::expr_vstore_box | ast::expr_vstore_mut_box => ty::vstore_box,
         ast::expr_vstore_slice | ast::expr_vstore_mut_slice => {
-            let r = fcx.infcx().next_region_var(e.span, e.id);
+            let r = fcx.infcx().next_region_var_nb(e.span);
             ty::vstore_slice(r)
         }
     }
@@ -3462,7 +3470,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
       ~"visit_tydesc" => {
         let tydesc_name = special_idents::tydesc;
         assert!(tcx.intrinsic_defs.contains_key(&tydesc_name));
-        let (_, tydesc_ty) = *tcx.intrinsic_defs.get(&tydesc_name);
+        let (_, tydesc_ty) = tcx.intrinsic_defs.get_copy(&tydesc_name);
         let (_, visitor_object_ty) = ty::visitor_object_ty(tcx);
         let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
             ty: tydesc_ty,

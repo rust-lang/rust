@@ -238,8 +238,8 @@ pub impl CoherenceChecker {
 
     fn check_implementation(&self,
                             item: @item, associated_traits: ~[@trait_ref]) {
-        let self_type = self.crate_context.tcx.tcache.get(
-            &local_def(item.id));
+        let tcx = self.crate_context.tcx;
+        let self_type = ty::lookup_item_type(tcx, local_def(item.id));
 
         // If there are no traits, then this implementation must have a
         // base type.
@@ -390,7 +390,7 @@ pub impl CoherenceChecker {
 
             let pmm = self.crate_context.tcx.provided_methods;
             match pmm.find(&local_def(impl_id)) {
-                Some(mis) => {
+                Some(&mis) => {
                     // If the trait already has an entry in the
                     // provided_methods_map, we just need to add this
                     // method to that entry.
@@ -423,8 +423,8 @@ pub impl CoherenceChecker {
                 self.crate_context.coherence_info.inherent_methods
                     .insert(base_def_id, implementation_list);
             }
-            Some(existing_implementation_list) => {
-                implementation_list = *existing_implementation_list;
+            Some(&existing_implementation_list) => {
+                implementation_list = existing_implementation_list;
             }
         }
 
@@ -440,8 +440,8 @@ pub impl CoherenceChecker {
                 self.crate_context.coherence_info.extension_methods
                     .insert(trait_id, implementation_list);
             }
-            Some(existing_implementation_list) => {
-                implementation_list = *existing_implementation_list;
+            Some(&existing_implementation_list) => {
+                implementation_list = existing_implementation_list;
             }
         }
 
@@ -449,10 +449,8 @@ pub impl CoherenceChecker {
     }
 
     fn check_implementation_coherence(&self) {
-        let coherence_info = &mut self.crate_context.coherence_info;
-        let extension_methods = &coherence_info.extension_methods;
-
-        for extension_methods.each_key |&trait_id| {
+        let coherence_info = self.crate_context.coherence_info;
+        for coherence_info.extension_methods.each_key |&trait_id| {
             self.check_implementation_coherence_of(trait_id);
         }
     }
@@ -502,20 +500,23 @@ pub impl CoherenceChecker {
                 m.insert(self_t, the_impl);
                 self.crate_context.tcx.trait_impls.insert(trait_t, m);
             }
-            Some(m) => {
+            Some(&m) => {
                 m.insert(self_t, the_impl);
             }
         }
     }
 
     fn iter_impls_of_trait(&self, trait_def_id: def_id, f: &fn(@Impl)) {
-        let coherence_info = &mut self.crate_context.coherence_info;
-        let extension_methods = &coherence_info.extension_methods;
+        let coherence_info = self.crate_context.coherence_info;
+        let extension_methods = &*coherence_info.extension_methods;
 
         match extension_methods.find(&trait_def_id) {
             Some(impls) => {
-                let impls: &mut ~[@Impl] = *impls;
-                for uint::range(0, impls.len()) |i| {
+                let len = { // FIXME(#5074) stage0 requires this
+                    let impls: &mut ~[@Impl] = *impls;
+                    impls.len()
+                };
+                for uint::range(0, len) |i| {
                     f(impls[i]);
                 }
             }
@@ -645,7 +646,7 @@ pub impl CoherenceChecker {
 
     fn get_self_type_for_implementation(&self, implementation: @Impl)
                                      -> ty_param_bounds_and_ty {
-        return *self.crate_context.tcx.tcache.get(&implementation.did);
+        return self.crate_context.tcx.tcache.get_copy(&implementation.did);
     }
 
     // Privileged scope checking
@@ -701,7 +702,7 @@ pub impl CoherenceChecker {
 
     fn trait_ref_to_trait_def_id(&self, trait_ref: @trait_ref) -> def_id {
         let def_map = self.crate_context.tcx.def_map;
-        let trait_def = *def_map.get(&trait_ref.ref_id);
+        let trait_def = def_map.get_copy(&trait_ref.ref_id);
         let trait_id = def_id_of_def(trait_def);
         return trait_id;
     }
@@ -741,7 +742,7 @@ pub impl CoherenceChecker {
                                               -> bool {
         match original_type.node {
             ty_path(_, path_id) => {
-                match *self.crate_context.tcx.def_map.get(&path_id) {
+                match self.crate_context.tcx.def_map.get_copy(&path_id) {
                     def_ty(def_id) | def_struct(def_id) => {
                         if def_id.crate != local_crate {
                             return false;
@@ -1003,7 +1004,7 @@ pub impl CoherenceChecker {
     //
 
     fn populate_destructor_table(&self) {
-        let coherence_info = &mut self.crate_context.coherence_info;
+        let coherence_info = self.crate_context.coherence_info;
         let tcx = self.crate_context.tcx;
         let drop_trait = tcx.lang_items.drop_trait();
         let impls_opt = coherence_info.extension_methods.find(&drop_trait);

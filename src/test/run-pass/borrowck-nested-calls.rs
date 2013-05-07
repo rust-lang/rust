@@ -8,23 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that auto-ref can't create mutable aliases to immutable memory.
+// xfail-test #5074 nested method calls
 
-struct Foo {
-    x: int
-}
+// Test that (safe) nested calls with `&mut` receivers are permitted.
 
-trait Stuff {
-    fn printme(self);
-}
+struct Foo {a: uint, b: uint}
 
-impl<'self> Stuff for &'self mut Foo {
-    fn printme(self) {
-        io::println(fmt!("%d", self.x));
+pub impl Foo {
+    fn inc_a(&mut self, v: uint) { self.a += v; }
+
+    fn next_b(&mut self) -> uint {
+        let b = self.b;
+        self.b += 1;
+        b
     }
 }
 
 fn main() {
-    let x = Foo { x: 3 };
-    x.printme();    //~ ERROR illegal borrow
+    let mut f = Foo {a: 22, b: 23};
+    f.inc_a(f.next_b());
+    assert_eq!(f.a, 22+23);
+    assert_eq!(f.b, 24);
 }

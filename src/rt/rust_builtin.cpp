@@ -683,6 +683,20 @@ rust_task_local_data_atexit(rust_task *task, void (*cleanup_fn)(void *data)) {
     task->task_local_data_cleanup = cleanup_fn;
 }
 
+// set/get/atexit task_borrow_list can run on the rust stack for speed.
+extern "C" void *
+rust_take_task_borrow_list(rust_task *task) {
+    void *r = task->borrow_list;
+    task->borrow_list = NULL;
+    return r;
+}
+extern "C" void
+rust_set_task_borrow_list(rust_task *task, void *data) {
+    assert(task->borrow_list == NULL);
+    assert(data != NULL);
+    task->borrow_list = data;
+}
+
 extern "C" void
 task_clear_event_reject(rust_task *task) {
     task->clear_event_reject();

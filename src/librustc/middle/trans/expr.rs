@@ -123,7 +123,6 @@ use back::abi;
 use lib;
 use lib::llvm::{ValueRef, TypeRef, llvm};
 use metadata::csearch;
-use middle::borrowck::root_map_key;
 use middle::trans::_match;
 use middle::trans::adt;
 use middle::trans::asm;
@@ -146,9 +145,9 @@ use middle::trans::type_of;
 use middle::ty;
 use middle::ty::struct_mutable_fields;
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn,
-                 AutoDerefRef, AutoAddEnv};
+                 AutoDerefRef, AutoAddEnv, AutoUnsafe};
 use util::common::indenter;
-use util::ppaux::ty_to_str;
+use util::ppaux::Repr;
 
 use core::cast::transmute;
 use core::hashmap::HashMap;
@@ -201,33 +200,34 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
                 trans_to_datum_unadjusted(bcx, expr)
             });
 
+            debug!("unadjusted datum: %s", datum.to_str(bcx.ccx()));
+
             if adj.autoderefs > 0 {
                 let DatumBlock { bcx: new_bcx, datum: new_datum } =
-                    datum.autoderef(bcx, expr.id, adj.autoderefs);
+                    datum.autoderef(bcx, expr.span, expr.id, adj.autoderefs);
                 datum = new_datum;
                 bcx = new_bcx;
             }
 
             datum = match adj.autoref {
-                None => datum,
-                Some(ref autoref) => {
-                    match autoref.kind {
-                        AutoPtr => {
-                            unpack_datum!(bcx, auto_ref(bcx, datum))
-                        }
-                        AutoBorrowVec => {
-                            unpack_datum!(bcx, auto_slice(bcx, datum))
-                        }
-                        AutoBorrowVecRef => {
-                            unpack_datum!(bcx, auto_slice_and_ref(bcx, datum))
-                        }
-                        AutoBorrowFn => {
-                            // currently, all closure types are
-                            // represented precisely the same, so no
-                            // runtime adjustment is required:
-                            datum
-                        }
-                    }
+                None => {
+                    datum
+                }
+                Some(AutoUnsafe(*)) | // region + unsafe ptrs have same repr
+                Some(AutoPtr(*)) => {
+                    unpack_datum!(bcx, auto_ref(bcx, datum))
+                }
+                Some(AutoBorrowVec(*)) => {
+                    unpack_datum!(bcx, auto_slice(bcx, expr, datum))
+                }
+                Some(AutoBorrowVecRef(*)) => {
+                    unpack_datum!(bcx, auto_slice_and_ref(bcx, expr, datum))
+                }
+                Some(AutoBorrowFn(*)) => {
+                    // currently, all closure types are
+                    // represented precisely the same, so no
+                    // runtime adjustment is required:
+                    datum
                 }
             };
 
@@ -241,7 +241,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         DatumBlock {bcx: bcx, datum: datum.to_rptr(bcx)}
     }
 
-    fn auto_slice(bcx: block, datum: Datum) -> DatumBlock {
+    fn auto_slice(bcx: block, expr: @ast::expr, datum: Datum) -> DatumBlock {
         // This is not the most efficient thing possible; since slices
         // are two words it'd be better if this were compiled in
         // 'dest' mode, but I can't find a nice way to structure the
@@ -250,7 +250,10 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
 
         let tcx = bcx.tcx();
         let unit_ty = ty::sequence_element_type(tcx, datum.ty);
-        let (base, len) = datum.get_base_and_len(bcx);
+
+        // FIXME(#6272) need to distinguish "auto-slice" from explicit index?
+        let (bcx, base, len) =
+            datum.get_vec_base_and_len(bcx, expr.span, expr.id);
 
         // this type may have a different region/mutability than the
         // real one, but it will have the same runtime representation
@@ -273,7 +276,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
 
         let tcx = bcx.tcx();
         let closure_ty = expr_ty_adjusted(bcx, expr);
-        debug!("add_env(closure_ty=%s)", ty_to_str(tcx, closure_ty));
+        debug!("add_env(closure_ty=%s)", closure_ty.repr(tcx));
         let scratch = scratch_datum(bcx, closure_ty, false);
         let llfn = GEPi(bcx, scratch.val, [0u, abi::fn_field_code]);
         assert!(datum.appropriate_mode() == ByValue);
@@ -283,8 +286,10 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         DatumBlock {bcx: bcx, datum: scratch}
     }
 
-    fn auto_slice_and_ref(bcx: block, datum: Datum) -> DatumBlock {
-        let DatumBlock { bcx, datum } = auto_slice(bcx, datum);
+    fn auto_slice_and_ref(bcx: block,
+                          expr: @ast::expr,
+                          datum: Datum) -> DatumBlock {
+        let DatumBlock { bcx, datum } = auto_slice(bcx, expr, datum);
         auto_ref(bcx, datum)
     }
 }
@@ -562,7 +567,6 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
 
 fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
                                dest: Dest) -> block {
-    let mut bcx = bcx;
     let _icx = bcx.insn_ctxt("trans_rvalue_dps_unadjusted");
     let tcx = bcx.tcx();
 
@@ -612,7 +616,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             let sigil = ty::ty_closure_sigil(expr_ty);
             debug!("translating fn_block %s with type %s",
                    expr_to_str(expr, tcx.sess.intr()),
-                   ty_to_str(tcx, expr_ty));
+                   expr_ty.repr(tcx));
             return closure::trans_expr_fn(bcx, sigil, decl, body,
                                           expr.id, expr.id,
                                           None, dest);
@@ -820,67 +824,35 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
 
     trace_span!(bcx, expr.span, @shorten(bcx.expr_to_str(expr)));
 
-    let unrooted_datum = unpack_datum!(bcx, unrooted(bcx, expr));
-
-    // If the lvalue must remain rooted, create a scratch datum, copy
-    // the lvalue in there, and then arrange for it to be cleaned up
-    // at the end of the scope with id `scope_id`:
-    let root_key = root_map_key { id: expr.id, derefs: 0u };
-    for bcx.ccx().maps.root_map.find(&root_key).each |&root_info| {
-        bcx = unrooted_datum.root(bcx, *root_info);
-    }
-
-    return DatumBlock {bcx: bcx, datum: unrooted_datum};
-
-    fn unrooted(bcx: block, expr: @ast::expr) -> DatumBlock {
-        /*!
-         *
-         * Translates `expr`.  Note that this version generally
-         * yields an unrooted, unmoved version.  Rooting and possible
-         * moves are dealt with above in trans_lvalue_unadjusted().
-         *
-         * One exception is if `expr` refers to a local variable,
-         * in which case the source may already be FromMovedLvalue
-         * if appropriate.
-         */
-
-        let mut bcx = bcx;
-
-        match expr.node {
-            ast::expr_paren(e) => {
-                return unrooted(bcx, e);
-            }
-            ast::expr_path(_) => {
-                return trans_def_lvalue(bcx, expr, bcx.def(expr.id));
-            }
-            ast::expr_field(base, ident, _) => {
-                return trans_rec_field(bcx, base, ident);
-            }
-            ast::expr_index(base, idx) => {
-                return trans_index(bcx, expr, base, idx);
-            }
-            ast::expr_unary(ast::deref, base) => {
-                let basedatum = unpack_datum!(bcx, trans_to_datum(bcx, base));
-                return basedatum.deref(bcx, base, 0);
-            }
-            _ => {
-                bcx.tcx().sess.span_bug(
-                    expr.span,
-                    fmt!("trans_lvalue reached fall-through case: %?",
-                         expr.node));
-            }
+    return match expr.node {
+        ast::expr_paren(e) => {
+            trans_lvalue_unadjusted(bcx, e)
         }
-    }
+        ast::expr_path(_) => {
+            trans_def_lvalue(bcx, expr, bcx.def(expr.id))
+        }
+        ast::expr_field(base, ident, _) => {
+            trans_rec_field(bcx, base, ident)
+        }
+        ast::expr_index(base, idx) => {
+            trans_index(bcx, expr, base, idx)
+        }
+        ast::expr_unary(ast::deref, base) => {
+            let basedatum = unpack_datum!(bcx, trans_to_datum(bcx, base));
+            basedatum.deref(bcx, expr, 0)
+        }
+        _ => {
+            bcx.tcx().sess.span_bug(
+                expr.span,
+                fmt!("trans_lvalue reached fall-through case: %?",
+                     expr.node));
+        }
+    };
 
     fn trans_rec_field(bcx: block,
                        base: @ast::expr,
                        field: ast::ident) -> DatumBlock {
-        /*!
-         *
-         * Translates `base.field`.  Note that this version always
-         * yields an unrooted, unmoved version.  Rooting and possible
-         * moves are dealt with above in trans_lvalue_unadjusted().
-         */
+        //! Translates `base.field`.
 
         let mut bcx = bcx;
         let _icx = bcx.insn_ctxt("trans_rec_field");
@@ -904,12 +876,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                    index_expr: @ast::expr,
                    base: @ast::expr,
                    idx: @ast::expr) -> DatumBlock {
-        /*!
-         *
-         * Translates `base[idx]`.  Note that this version always
-         * yields an unrooted, unmoved version.  Rooting and possible
-         * moves are dealt with above in trans_lvalue_unadjusted().
-         */
+        //! Translates `base[idx]`.
 
         let _icx = bcx.insn_ctxt("trans_index");
         let ccx = bcx.ccx();
@@ -940,7 +907,8 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         let scaled_ix = Mul(bcx, ix_val, vt.llunit_size);
         base::maybe_name_value(bcx.ccx(), scaled_ix, ~"scaled_ix");
 
-        let mut (base, len) = base_datum.get_base_and_len(bcx);
+        let mut (bcx, base, len) =
+            base_datum.get_vec_base_and_len(bcx, index_expr.span, index_expr.id);
 
         if ty::type_is_str(base_ty) {
             // acccount for null terminator in the case of string
@@ -972,14 +940,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                         def: ast::def)
         -> DatumBlock
     {
-        /*!
-         *
-         * Translates a reference to a path.  Note that this version
-         * generally yields an unrooted, unmoved version.  Rooting and
-         * possible moves are dealt with above in
-         * trans_lvalue_unadjusted(), with the caveat that local variables
-         * may already be in move mode.
-         */
+        //! Translates a reference to a path.
 
         let _icx = bcx.insn_ctxt("trans_def_lvalue");
         let ccx = bcx.ccx();
@@ -1087,6 +1048,9 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
                 }
             };
 
+            debug!("def_self() reference, self_info.t=%s",
+                   self_info.t.repr(bcx.tcx()));
+
             // This cast should not be necessary. We should cast self *once*,
             // but right now this conflicts with default methods.
             let real_self_ty = monomorphize_type(bcx, self_info.t);
@@ -1150,10 +1114,10 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
                     tcx.sess.bug(fmt!(
                         "cannot get field types from the enum type %s \
                          without a node ID",
-                        ty_to_str(tcx, ty)));
+                        ty.repr(tcx)));
                 }
                 Some(node_id) => {
-                    match *tcx.def_map.get(&node_id) {
+                    match tcx.def_map.get_copy(&node_id) {
                         ast::def_variant(enum_id, variant_id) => {
                             let variant_info = ty::enum_variant_with_id(
                                 tcx, enum_id, variant_id);
@@ -1172,7 +1136,7 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
         _ => {
             tcx.sess.bug(fmt!(
                 "cannot get field types from the type %s",
-                ty_to_str(tcx, ty)));
+                ty.repr(tcx)));
         }
     }
 }
@@ -1403,7 +1367,6 @@ fn trans_eager_binop(bcx: block,
                      lhs_datum: &Datum,
                      rhs_datum: &Datum)
                   -> DatumBlock {
-    let mut bcx = bcx;
     let _icx = bcx.insn_ctxt("trans_eager_binop");
 
     let lhs = lhs_datum.to_appropriate_llval(bcx);
@@ -1573,7 +1536,7 @@ fn trans_overloaded_op(bcx: block,
                        ret_ty: ty::t,
                        dest: Dest)
                        -> block {
-    let origin = *bcx.ccx().maps.method_map.get(&expr.id);
+    let origin = bcx.ccx().maps.method_map.get_copy(&expr.id);
     let fty = node_id_type(bcx, expr.callee_id);
     callee::trans_call_inner(bcx,
                              expr.info(),

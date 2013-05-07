@@ -236,18 +236,11 @@ pub fn node_type_needs(cx: Context, use_: uint, id: node_id) {
 }
 
 pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
+    let mut opt_static_did = None;
     for cx.ccx.maps.method_map.find(&e_id).each |mth| {
         match mth.origin {
           typeck::method_static(did) => {
-            for cx.ccx.tcx.node_type_substs.find(&callee_id).each |ts| {
-                // FIXME(#5562): removing this copy causes a segfault
-                //               before stage2
-                let ts = /*bad*/ copy **ts;
-                let type_uses = type_uses_for(cx.ccx, did, ts.len());
-                for vec::each2(*type_uses, ts) |uses, subst| {
-                    type_needs(cx, *uses, *subst)
-                }
-            }
+              opt_static_did = Some(did);
           }
           typeck::method_param(typeck::method_param {
               param_num: param,
@@ -257,6 +250,19 @@ pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
           }
           typeck::method_trait(*) | typeck::method_self(*)
               | typeck::method_super(*) => (),
+        }
+    }
+
+    // Note: we do not execute this code from within the each() call
+    // above because the recursive call to `type_needs` can trigger
+    // inlining and hence can cause `method_map` and
+    // `node_type_substs` to be modified.
+    for opt_static_did.each |&did| {
+        for cx.ccx.tcx.node_type_substs.find_copy(&callee_id).each |ts| {
+            let type_uses = type_uses_for(cx.ccx, did, ts.len());
+            for vec::each2(*type_uses, *ts) |uses, subst| {
+                type_needs(cx, *uses, *subst)
+            }
         }
     }
 }
@@ -288,12 +294,11 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
         }
       }
       expr_path(_) => {
-        for cx.ccx.tcx.node_type_substs.find(&e.id).each |ts| {
-            // FIXME(#5562): removing this copy causes a segfault before stage2
-            let ts = copy **ts;
-            let id = ast_util::def_id_of_def(*cx.ccx.tcx.def_map.get(&e.id));
+        let opt_ts = cx.ccx.tcx.node_type_substs.find_copy(&e.id);
+        for opt_ts.each |ts| {
+            let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get_copy(&e.id));
             let uses_for_ts = type_uses_for(cx.ccx, id, ts.len());
-            for vec::each2(*uses_for_ts, ts) |uses, subst| {
+            for vec::each2(*uses_for_ts, *ts) |uses, subst| {
                 type_needs(cx, *uses, *subst)
             }
         }

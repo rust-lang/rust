@@ -237,7 +237,7 @@ pub fn check_item_recursion(sess: Session,
             match env.def_map.find(&e.id) {
               Some(&def_const(def_id)) => {
                 if ast_util::is_local(def_id) {
-                  match *env.ast_map.get(&def_id.node) {
+                  match env.ast_map.get_copy(&def_id.node) {
                     ast_map::node_item(it, _) => {
                       (v.visit_item)(it, env, v);
                     }

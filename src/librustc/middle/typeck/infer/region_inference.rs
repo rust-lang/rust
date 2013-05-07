@@ -24,7 +24,7 @@ it's worth spending more time on a more involved analysis.  Moreover,
 regions are a simpler case than types: they don't have aggregate
 structure, for example.
 
-Unlike normal type inference, which is similar in spirit H-M and thus
+Unlike normal type inference, which is similar in spirit to H-M and thus
 works progressively, the region type inference works by accumulating
 constraints over the course of a function.  Finally, at the end of
 processing a function, we process and solve the constraints all at
@@ -130,7 +130,7 @@ of these variables can effectively be unified into a single variable.
 Once SCCs are removed, we are left with a DAG.  At this point, we can
 walk the DAG in toplogical order once to compute the expanding nodes,
 and again in reverse topological order to compute the contracting
-nodes.The main reason I did not write it this way is that I did not
+nodes. The main reason I did not write it this way is that I did not
 feel like implementing the SCC and toplogical sort algorithms at the
 moment.
 
@@ -538,7 +538,7 @@ more convincing in the future.
 
 use middle::ty;
 use middle::ty::{FreeRegion, Region, RegionVid};
-use middle::ty::{re_static, re_infer, re_free, re_bound};
+use middle::ty::{re_empty, re_static, re_infer, re_free, re_bound};
 use middle::ty::{re_scope, ReVar, ReSkolemized, br_fresh};
 use middle::typeck::infer::cres;
 use util::common::indenter;
@@ -547,6 +547,9 @@ use util::ppaux::note_and_explain_region;
 use core::cell::{Cell, empty_cell};
 use core::hashmap::{HashMap, HashSet};
 use core::to_bytes;
+use core::uint;
+use core::vec;
+use core;
 use syntax::codemap::span;
 use syntax::ast;
 
@@ -572,16 +575,10 @@ impl to_bytes::IterBytes for Constraint {
     }
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 struct TwoRegions {
     a: Region,
     b: Region,
-}
-
-impl to_bytes::IterBytes for TwoRegions {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_2(&self.a, &self.b, lsb0, f)
-    }
 }
 
 enum UndoLogEntry {
@@ -637,7 +634,7 @@ pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
 }
 
 pub impl RegionVarBindings {
-    fn in_snapshot(&mut self) -> bool {
+    fn in_snapshot(&self) -> bool {
         self.undo_log.len() > 0
     }
 
@@ -832,7 +829,6 @@ pub impl RegionVarBindings {
     }
 
     fn resolve_var(&mut self, rid: RegionVid) -> ty::Region {
-        debug!("RegionVarBindings: resolve_var(%?=%u)", rid, rid.to_uint());
         if self.values.is_empty() {
             self.tcx.sess.span_bug(
                 self.var_spans[rid.to_uint()],
@@ -841,29 +837,14 @@ pub impl RegionVarBindings {
         }
 
         let v = self.values.with_ref(|values| values[rid.to_uint()]);
+        debug!("RegionVarBindings: resolve_var(%?=%u)=%?",
+               rid, rid.to_uint(), v);
         match v {
             Value(r) => r,
 
             NoValue => {
-                // No constraints, report an error.  It is plausible
-                // that we could select an arbitrary region here
-                // instead.  At the moment I am not doing this because
-                // this generally masks bugs in the inference
-                // algorithm, and given our syntax one cannot create
-                // generally create a lifetime variable that isn't
-                // used in some type, and hence all lifetime variables
-                // should ultimately have some bounds.
-
-                self.tcx.sess.span_err(
-                    self.var_spans[rid.to_uint()],
-                    fmt!("Unconstrained region variable #%u", rid.to_uint()));
-
-                // Touch of a hack: to suppress duplicate messages,
-                // replace the NoValue entry with ErrorValue.
-                let mut values = self.values.take();
-                values[rid.to_uint()] = ErrorValue;
-                self.values.put_back(values);
-                re_static
+                // No constraints, return ty::re_empty
+                re_empty
             }
 
             ErrorValue => {
@@ -1031,6 +1012,10 @@ priv impl RegionVarBindings {
             re_static // nothing lives longer than static
           }
 
+          (re_empty, r) | (r, re_empty) => {
+            r // everything lives longer than empty
+          }
+
           (re_infer(ReVar(v_id)), _) | (_, re_infer(ReVar(v_id))) => {
             self.tcx.sess.span_bug(
                 self.var_spans[v_id.to_uint()],
@@ -1125,6 +1110,11 @@ priv impl RegionVarBindings {
             (re_static, r) | (r, re_static) => {
                 // static lives longer than everything else
                 Ok(r)
+            }
+
+            (re_empty, _) | (_, re_empty) => {
+                // nothing lives shorter than everything else
+                Ok(re_empty)
             }
 
             (re_infer(ReVar(v_id)), _) |
@@ -1266,8 +1256,6 @@ struct SpannedRegion {
     span: span,
 }
 
-type TwoRegionsMap = HashSet<TwoRegions>;
-
 pub impl RegionVarBindings {
     fn infer_variable_values(&mut self) -> ~[GraphNodeValue] {
         let mut graph = self.construct_graph();
@@ -1329,11 +1317,15 @@ pub impl RegionVarBindings {
                        node_id: RegionVid,
                        edge_dir: Direction,
                        edge_idx: uint) {
+            //! Insert edge `edge_idx` on the link list of edges in direction
+            //! `edge_dir` for the node `node_id`
             let edge_dir = edge_dir as uint;
-            graph.edges[edge_idx].next_edge[edge_dir] =
-                graph.nodes[node_id.to_uint()].head_edge[edge_dir];
-            graph.nodes[node_id.to_uint()].head_edge[edge_dir] =
-                edge_idx;
+            assert_eq!(graph.edges[edge_idx].next_edge[edge_dir],
+                       uint::max_value);
+            let n = node_id.to_uint();
+            let prev_head = graph.nodes[n].head_edge[edge_dir];
+            graph.edges[edge_idx].next_edge[edge_dir] = prev_head;
+            graph.nodes[n].head_edge[edge_dir] = edge_idx;
         }
     }
 
@@ -1484,6 +1476,8 @@ pub impl RegionVarBindings {
                     }
                 }
                 Err(_) => {
+                    debug!("Setting %? to ErrorValue: no glb of %?, %?",
+                           a_vid, a_region, b_region);
                     a_node.value = ErrorValue;
                     false
                 }
@@ -1495,7 +1489,21 @@ pub impl RegionVarBindings {
         &mut self,
         graph: &Graph) -> ~[GraphNodeValue]
     {
-        let mut dup_map = HashSet::new();
+        debug!("extract_values_and_report_conflicts()");
+
+        // This is the best way that I have found to suppress
+        // duplicate and related errors. Basically we keep a set of
+        // flags for every node. Whenever an error occurs, we will
+        // walk some portion of the graph looking to find pairs of
+        // conflicting regions to report to the user. As we walk, we
+        // trip the flags from false to true, and if we find that
+        // we've already reported an error involving any particular
+        // node we just stop and don't report the current error.  The
+        // idea is to report errors that derive from independent
+        // regions of the graph, but not those that derive from
+        // overlapping locations.
+        let mut dup_vec = graph.nodes.map(|_| uint::max_value);
+
         graph.nodes.mapi(|idx, node| {
             match node.value {
                 Value(_) => {
@@ -1530,15 +1538,16 @@ pub impl RegionVarBindings {
                        that is not used is not a problem, so if this rule
                        starts to create problems we'll have to revisit
                        this portion of the code and think hard about it. =) */
+
                     let node_vid = RegionVid { id: idx };
                     match node.classification {
                         Expanding => {
                             self.report_error_for_expanding_node(
-                                graph, &mut dup_map, node_vid);
+                                graph, dup_vec, node_vid);
                         }
                         Contracting => {
                             self.report_error_for_contracting_node(
-                                graph, &mut dup_map, node_vid);
+                                graph, dup_vec, node_vid);
                         }
                     }
                 }
@@ -1548,37 +1557,25 @@ pub impl RegionVarBindings {
         })
     }
 
-    // Used to suppress reporting the same basic error over and over
-    fn is_reported(&mut self,
-                   dup_map: &mut TwoRegionsMap,
-                   r_a: Region,
-                   r_b: Region)
-                -> bool {
-        let key = TwoRegions { a: r_a, b: r_b };
-        !dup_map.insert(key)
-    }
-
     fn report_error_for_expanding_node(&mut self,
                                        graph: &Graph,
-                                       dup_map: &mut TwoRegionsMap,
+                                       dup_vec: &mut [uint],
                                        node_idx: RegionVid) {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
-        let lower_bounds =
-            self.collect_concrete_regions(graph, node_idx, Incoming);
-        let upper_bounds =
-            self.collect_concrete_regions(graph, node_idx, Outgoing);
+        let (lower_bounds, lower_dup) =
+            self.collect_concrete_regions(graph, node_idx, Incoming, dup_vec);
+        let (upper_bounds, upper_dup) =
+            self.collect_concrete_regions(graph, node_idx, Outgoing, dup_vec);
+
+        if lower_dup || upper_dup {
+            return;
+        }
 
         for vec::each(lower_bounds) |lower_bound| {
             for vec::each(upper_bounds) |upper_bound| {
                 if !self.is_subregion_of(lower_bound.region,
                                          upper_bound.region) {
-
-                    if self.is_reported(dup_map,
-                                        lower_bound.region,
-                                        upper_bound.region) {
-                        return;
-                    }
 
                     self.tcx.sess.span_err(
                         self.var_spans[node_idx.to_uint()],
@@ -1609,16 +1606,28 @@ pub impl RegionVarBindings {
                 }
             }
         }
+
+        self.tcx.sess.span_bug(
+            self.var_spans[node_idx.to_uint()],
+            fmt!("report_error_for_expanding_node() could not find error \
+                  for var %?, lower_bounds=%s, upper_bounds=%s",
+                 node_idx,
+                 lower_bounds.map(|x| x.region).repr(self.tcx),
+                 upper_bounds.map(|x| x.region).repr(self.tcx)));
     }
 
     fn report_error_for_contracting_node(&mut self,
                                          graph: &Graph,
-                                         dup_map: &mut TwoRegionsMap,
+                                         dup_vec: &mut [uint],
                                          node_idx: RegionVid) {
         // Errors in contracting nodes result from two upper-bounds
         // that have no intersection.
-        let upper_bounds = self.collect_concrete_regions(graph, node_idx,
-                                                         Outgoing);
+        let (upper_bounds, dup_found) =
+            self.collect_concrete_regions(graph, node_idx, Outgoing, dup_vec);
+
+        if dup_found {
+            return;
+        }
 
         for vec::each(upper_bounds) |upper_bound_1| {
             for vec::each(upper_bounds) |upper_bound_2| {
@@ -1626,12 +1635,6 @@ pub impl RegionVarBindings {
                                                 upper_bound_2.region) {
                   Ok(_) => {}
                   Err(_) => {
-
-                    if self.is_reported(dup_map,
-                                        upper_bound_1.region,
-                                        upper_bound_2.region) {
-                        return;
-                    }
 
                     self.tcx.sess.span_err(
                         self.var_spans[node_idx.to_uint()],
@@ -1663,50 +1666,94 @@ pub impl RegionVarBindings {
                 }
             }
         }
+
+        self.tcx.sess.span_bug(
+            self.var_spans[node_idx.to_uint()],
+            fmt!("report_error_for_contracting_node() could not find error \
+                  for var %?, upper_bounds=%s",
+                 node_idx,
+                 upper_bounds.map(|x| x.region).repr(self.tcx)));
     }
 
     fn collect_concrete_regions(&mut self,
                                 graph: &Graph,
                                 orig_node_idx: RegionVid,
-                                dir: Direction)
-                             -> ~[SpannedRegion] {
-        let mut set = HashSet::new();
-        let mut stack = ~[orig_node_idx];
-        set.insert(orig_node_idx.to_uint());
-        let mut result = ~[];
-        while !vec::is_empty(stack) {
-            let node_idx = stack.pop();
-            for self.each_edge(graph, node_idx, dir) |edge| {
+                                dir: Direction,
+                                dup_vec: &mut [uint])
+                             -> (~[SpannedRegion], bool) {
+        struct WalkState {
+            set: HashSet<RegionVid>,
+            stack: ~[RegionVid],
+            result: ~[SpannedRegion],
+            dup_found: bool
+        }
+        let mut state = WalkState {
+            set: HashSet::new(),
+            stack: ~[orig_node_idx],
+            result: ~[],
+            dup_found: false
+        };
+        state.set.insert(orig_node_idx);
+
+        // to start off the process, walk the source node in the
+        // direction specified
+        process_edges(self, &mut state, graph, orig_node_idx, dir);
+
+        while !state.stack.is_empty() {
+            let node_idx = state.stack.pop();
+            let classification = graph.nodes[node_idx.to_uint()].classification;
+
+            // check whether we've visited this node on some previous walk
+            if dup_vec[node_idx.to_uint()] == uint::max_value {
+                dup_vec[node_idx.to_uint()] = orig_node_idx.to_uint();
+            } else if dup_vec[node_idx.to_uint()] != orig_node_idx.to_uint() {
+                state.dup_found = true;
+            }
+
+            debug!("collect_concrete_regions(orig_node_idx=%?, node_idx=%?, \
+                    classification=%?)",
+                   orig_node_idx, node_idx, classification);
+
+            // figure out the direction from which this node takes its
+            // values, and search for concrete regions etc in that direction
+            let dir = match classification {
+                Expanding => Incoming,
+                Contracting => Outgoing
+            };
+
+            process_edges(self, &mut state, graph, node_idx, dir);
+        }
+
+        let WalkState {result, dup_found, _} = state;
+        return (result, dup_found);
+
+        fn process_edges(self: &mut RegionVarBindings,
+                         state: &mut WalkState,
+                         graph: &Graph,
+                         source_vid: RegionVid,
+                         dir: Direction) {
+            debug!("process_edges(source_vid=%?, dir=%?)", source_vid, dir);
+
+            for self.each_edge(graph, source_vid, dir) |edge| {
                 match edge.constraint {
-                  ConstrainVarSubVar(from_vid, to_vid) => {
-                    let vid = match dir {
-                      Incoming => from_vid,
-                      Outgoing => to_vid
-                    };
-                    if set.insert(vid.to_uint()) {
-                        stack.push(vid);
+                    ConstrainVarSubVar(from_vid, to_vid) => {
+                        let opp_vid =
+                            if from_vid == source_vid {to_vid} else {from_vid};
+                        if state.set.insert(opp_vid) {
+                            state.stack.push(opp_vid);
+                        }
                     }
-                  }
 
-                  ConstrainRegSubVar(region, _) => {
-                    assert!(dir == Incoming);
-                    result.push(SpannedRegion {
-                        region: region,
-                        span: edge.span
-                    });
-                  }
-
-                  ConstrainVarSubReg(_, region) => {
-                    assert!(dir == Outgoing);
-                    result.push(SpannedRegion {
-                        region: region,
-                        span: edge.span
-                    });
-                  }
+                    ConstrainRegSubVar(region, _) |
+                    ConstrainVarSubReg(_, region) => {
+                        state.result.push(SpannedRegion {
+                            region: region,
+                            span: edge.span
+                        });
+                    }
                 }
             }
         }
-        return result;
     }
 
     fn each_edge(&mut self,

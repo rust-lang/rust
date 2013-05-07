@@ -13,7 +13,7 @@ fn ignore(_f: &fn<'z>(&'z int) -> &'z int) {}
 fn nested() {
     let y = 3;
     ignore(|z| {
-        if false { &y } else { z } //~ ERROR illegal borrow
+        if false { &y } else { z } //~ ERROR borrowed value does not live long enough
     });
 }
 

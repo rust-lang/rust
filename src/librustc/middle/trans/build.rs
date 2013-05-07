@@ -846,7 +846,7 @@ pub fn _UndefReturn(cx: block, Fn: ValueRef) -> ValueRef {
 
 pub fn add_span_comment(bcx: block, sp: span, text: &str) {
     let ccx = bcx.ccx();
-    if !ccx.sess.no_asm_comments() {
+    if ccx.sess.asm_comments() {
         let s = fmt!("%s (%s)", text, ccx.sess.codemap.span_to_str(sp));
         debug!("%s", copy s);
         add_comment(bcx, s);
@@ -856,7 +856,7 @@ pub fn add_span_comment(bcx: block, sp: span, text: &str) {
 pub fn add_comment(bcx: block, text: &str) {
     unsafe {
         let ccx = bcx.ccx();
-        if !ccx.sess.no_asm_comments() {
+        if ccx.sess.asm_comments() {
             let sanitized = str::replace(text, ~"$", ~"");
             let comment_text = ~"# " +
                 str::replace(sanitized, ~"\n", ~"\n\t# ");

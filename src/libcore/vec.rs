@@ -1821,17 +1821,14 @@ pub trait CopyableVector<T> {
 }
 
 /// Extension methods for vectors
-impl<'self,T:Copy> CopyableVector<T> for &'self const [T] {
+impl<'self,T:Copy> CopyableVector<T> for &'self [T] {
     /// Returns a copy of `v`.
     #[inline]
     fn to_owned(&self) -> ~[T] {
         let mut result = ~[];
-        // FIXME: #4568
-        unsafe {
-            reserve(&mut result, self.len());
-            for self.each |e| {
-                result.push(copy *e);
-            }
+        reserve(&mut result, self.len());
+        for self.each |e| {
+            result.push(copy *e);
         }
         result
 

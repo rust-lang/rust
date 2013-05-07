@@ -46,6 +46,7 @@ pub mod middle {
         pub mod controlflow;
         pub mod glue;
         pub mod datum;
+        pub mod write_guard;
         pub mod callee;
         pub mod expr;
         pub mod common;
@@ -75,6 +76,9 @@ pub mod middle {
     }
     pub mod ty;
     pub mod subst;
+    #[cfg(stage0)] #[path = "resolve_stage0.rs"]
+    pub mod resolve;
+    #[cfg(not(stage0))]
     pub mod resolve;
     #[path = "typeck/mod.rs"]
     pub mod typeck;
@@ -84,6 +88,7 @@ pub mod middle {
     pub mod lint;
     #[path = "borrowck/mod.rs"]
     pub mod borrowck;
+    pub mod dataflow;
     pub mod mem_categorization;
     pub mod liveness;
     pub mod kind;
