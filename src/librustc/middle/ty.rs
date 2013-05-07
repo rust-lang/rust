@@ -3921,7 +3921,7 @@ pub fn lookup_packed(tcx: ctxt, did: def_id) -> bool {
     has_attr(tcx, did, "packed")
 }
 
-/// Determine whether an item is annotated with `#[simd]` 
+/// Determine whether an item is annotated with `#[simd]`
 pub fn lookup_simd(tcx: ctxt, did: def_id) -> bool {
     has_attr(tcx, did, "simd")
 }
