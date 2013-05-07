@@ -42,6 +42,12 @@ macro_rules! abort(
     ($( $msg:expr),+) => ( {
         rtdebug!($($msg),+);
 
-        unsafe { ::libc::abort(); }
+        do_abort();
+
+        // NB: This is in a fn to avoid putting the `unsafe` block in a macro,
+        // which causes spurious 'unnecessary unsafe block' warnings.
+        fn do_abort() -> ! {
+            unsafe { ::libc::abort(); }
+        }
     } )
 )

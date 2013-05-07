@@ -13,16 +13,10 @@ use libc::{size_t, ssize_t, c_int, c_void};
 use rt::uv::uvll;
 use rt::uv::uvll::*;
 use rt::uv::{AllocCallback, ConnectionCallback, ReadCallback};
-use super::{Loop, Watcher, Request, UvError, Buf, NativeHandle, NullCallback,
-            status_to_maybe_uv_error, vec_to_uv_buf, vec_from_uv_buf, slice_to_uv_buf};
-use super::super::io::net::ip::{IpAddr, Ipv4, Ipv6};
+use rt::uv::{Loop, Watcher, Request, UvError, Buf, NativeHandle, NullCallback,
+             status_to_maybe_uv_error};
+use rt::io::net::ip::{IpAddr, Ipv4, Ipv6};
 use rt::uv::last_uv_error;
-
-#[cfg(test)] use util::ignore;
-#[cfg(test)] use cell::Cell;
-#[cfg(test)] use unstable::run_in_bare_thread;
-#[cfg(test)] use super::super::thread::Thread;
-#[cfg(test)] use super::super::test::*;
 
 fn ip4_as_uv_ip4<T>(addr: IpAddr, f: &fn(*sockaddr_in) -> T) -> T {
     match addr {
@@ -334,96 +328,109 @@ impl NativeHandle<*uvll::uv_write_t> for WriteRequest {
 }
 
 
-#[test]
-fn connect_close() {
-    do run_in_bare_thread() {
-        let mut loop_ = Loop::new();
-        let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
-        // Connect to a port where nobody is listening
-        let addr = next_test_ip4();
-        do tcp_watcher.connect(addr) |stream_watcher, status| {
-            rtdebug!("tcp_watcher.connect!");
-            assert!(status.is_some());
-            assert!(status.get().name() == ~"ECONNREFUSED");
-            stream_watcher.close(||());
-        }
-        loop_.run();
-        loop_.close();
-    }
-}
+#[cfg(test)]
+mod test {
+    use super::*;
+    use util::ignore;
+    use cell::Cell;
+    use vec;
+    use unstable::run_in_bare_thread;
+    use rt::thread::Thread;
+    use rt::test::*;
+    use rt::uv::{Loop, AllocCallback};
+    use rt::uv::{vec_from_uv_buf, vec_to_uv_buf, slice_to_uv_buf};
 
-#[test]
-fn listen() {
-    do run_in_bare_thread() {
-        static MAX: int = 10;
-        let mut loop_ = Loop::new();
-        let mut server_tcp_watcher = { TcpWatcher::new(&mut loop_) };
-        let addr = next_test_ip4();
-        server_tcp_watcher.bind(addr);
-        let loop_ = loop_;
-        rtdebug!("listening");
-        do server_tcp_watcher.listen |server_stream_watcher, status| {
-            rtdebug!("listened!");
-            assert!(status.is_none());
-            let mut server_stream_watcher = server_stream_watcher;
-            let mut loop_ = loop_;
-            let mut client_tcp_watcher = TcpWatcher::new(&mut loop_);
-            let mut client_tcp_watcher = client_tcp_watcher.as_stream();
-            server_stream_watcher.accept(client_tcp_watcher);
-            let count_cell = Cell(0);
-            let server_stream_watcher = server_stream_watcher;
-            rtdebug!("starting read");
-            let alloc: AllocCallback = |size| {
-                vec_to_uv_buf(vec::from_elem(size, 0))
-            };
-            do client_tcp_watcher.read_start(alloc)
-                |stream_watcher, nread, buf, status| {
-
-                rtdebug!("i'm reading!");
-                let buf = vec_from_uv_buf(buf);
-                let mut count = count_cell.take();
-                if status.is_none() {
-                    rtdebug!("got %d bytes", nread);
-                    let buf = buf.unwrap();
-                    for buf.slice(0, nread as uint).each |byte| {
-                        assert!(*byte == count as u8);
-                        rtdebug!("%u", *byte as uint);
-                        count += 1;
-                    }
-                } else {
-                    assert!(count == MAX);
-                    do stream_watcher.close {
-                        server_stream_watcher.close(||());
-                    }
-                }
-                count_cell.put_back(count);
-            }
-        }
-
-        let _client_thread = do Thread::start {
-            rtdebug!("starting client thread");
+    #[test]
+    fn connect_close() {
+        do run_in_bare_thread() {
             let mut loop_ = Loop::new();
             let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
+            // Connect to a port where nobody is listening
+            let addr = next_test_ip4();
             do tcp_watcher.connect(addr) |stream_watcher, status| {
-                rtdebug!("connecting");
-                assert!(status.is_none());
-                let mut stream_watcher = stream_watcher;
-                let msg = ~[0, 1, 2, 3, 4, 5, 6 ,7 ,8, 9];
-                let buf = slice_to_uv_buf(msg);
-                let msg_cell = Cell(msg);
-                do stream_watcher.write(buf) |stream_watcher, status| {
-                    rtdebug!("writing");
-                    assert!(status.is_none());
-                    let msg_cell = Cell(msg_cell.take());
-                    stream_watcher.close(||ignore(msg_cell.take()));
-                }
+                rtdebug!("tcp_watcher.connect!");
+                assert!(status.is_some());
+                assert!(status.get().name() == ~"ECONNREFUSED");
+                stream_watcher.close(||());
             }
             loop_.run();
             loop_.close();
-        };
+        }
+    }
 
-        let mut loop_ = loop_;
-        loop_.run();
-        loop_.close();
+    #[test]
+    fn listen() {
+        do run_in_bare_thread() {
+            static MAX: int = 10;
+            let mut loop_ = Loop::new();
+            let mut server_tcp_watcher = { TcpWatcher::new(&mut loop_) };
+            let addr = next_test_ip4();
+            server_tcp_watcher.bind(addr);
+            let loop_ = loop_;
+            rtdebug!("listening");
+            do server_tcp_watcher.listen |server_stream_watcher, status| {
+                rtdebug!("listened!");
+                assert!(status.is_none());
+                let mut server_stream_watcher = server_stream_watcher;
+                let mut loop_ = loop_;
+                let mut client_tcp_watcher = TcpWatcher::new(&mut loop_);
+                let mut client_tcp_watcher = client_tcp_watcher.as_stream();
+                server_stream_watcher.accept(client_tcp_watcher);
+                let count_cell = Cell(0);
+                let server_stream_watcher = server_stream_watcher;
+                rtdebug!("starting read");
+                let alloc: AllocCallback = |size| {
+                    vec_to_uv_buf(vec::from_elem(size, 0))
+                };
+                do client_tcp_watcher.read_start(alloc)
+                    |stream_watcher, nread, buf, status| {
+
+                    rtdebug!("i'm reading!");
+                    let buf = vec_from_uv_buf(buf);
+                    let mut count = count_cell.take();
+                    if status.is_none() {
+                        rtdebug!("got %d bytes", nread);
+                        let buf = buf.unwrap();
+                        for buf.slice(0, nread as uint).each |byte| {
+                            assert!(*byte == count as u8);
+                            rtdebug!("%u", *byte as uint);
+                            count += 1;
+                        }
+                    } else {
+                        assert!(count == MAX);
+                        do stream_watcher.close {
+                            server_stream_watcher.close(||());
+                        }
+                    }
+                    count_cell.put_back(count);
+                }
+            }
+
+            let _client_thread = do Thread::start {
+                rtdebug!("starting client thread");
+                let mut loop_ = Loop::new();
+                let mut tcp_watcher = { TcpWatcher::new(&mut loop_) };
+                do tcp_watcher.connect(addr) |stream_watcher, status| {
+                    rtdebug!("connecting");
+                    assert!(status.is_none());
+                    let mut stream_watcher = stream_watcher;
+                    let msg = ~[0, 1, 2, 3, 4, 5, 6 ,7 ,8, 9];
+                    let buf = slice_to_uv_buf(msg);
+                    let msg_cell = Cell(msg);
+                    do stream_watcher.write(buf) |stream_watcher, status| {
+                        rtdebug!("writing");
+                        assert!(status.is_none());
+                        let msg_cell = Cell(msg_cell.take());
+                        stream_watcher.close(||ignore(msg_cell.take()));
+                    }
+                }
+                loop_.run();
+                loop_.close();
+            };
+
+            let mut loop_ = loop_;
+            loop_.run();
+            loop_.close();
+        }
     }
 }

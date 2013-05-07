@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use libc::c_int;
-use option::{Some, None};
+use option::Some;
 use rt::uv::uvll;
 use rt::uv::{Watcher, Loop, NativeHandle, IdleCallback};
 use rt::uv::status_to_maybe_uv_error;

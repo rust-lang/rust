@@ -91,11 +91,9 @@ pub unsafe fn unsafe_borrow() -> *mut Scheduler {
 }
 
 pub unsafe fn unsafe_borrow_io() -> *mut IoFactoryObject {
-    unsafe {
-        let sched = unsafe_borrow();
-        let io: *mut IoFactoryObject = (*sched).event_loop.io().unwrap();
-        return io;
-    }
+    let sched = unsafe_borrow();
+    let io: *mut IoFactoryObject = (*sched).event_loop.io().unwrap();
+    return io;
 }
 
 fn tls_key() -> tls::Key {
