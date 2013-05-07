@@ -119,7 +119,7 @@ fn maybe_tls_key() -> Option<tls::Key> {
         // another thread. I think this is fine since the only action
         // they could take if it was initialized would be to check the
         // thread-local value and see that it's not set.
-        if key != 0 {
+        if key != -1 {
             return Some(key);
         } else {
             return None;
