@@ -215,3 +215,12 @@ fn test_tls_cleanup_on_failure() {
         fail!();
     }
 }
+
+#[test]
+fn test_static_pointer() {
+    unsafe {
+        fn key(_x: @&'static int) { }
+        static VALUE: int = 0;
+        local_data_set(key, @&VALUE);
+    }
+}
