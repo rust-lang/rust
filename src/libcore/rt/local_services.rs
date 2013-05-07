@@ -23,7 +23,7 @@ use libc::{c_void, uintptr_t};
 use cast::transmute;
 use super::sched::local_sched;
 use super::local_heap::LocalHeap;
-use rt::logging::{Logger, StdErrLogger};
+use rt::logging::StdErrLogger;
 
 pub struct LocalServices {
     heap: LocalHeap,
@@ -170,16 +170,14 @@ pub fn borrow_local_services(f: &fn(&mut LocalServices)) {
 }
 
 pub unsafe fn unsafe_borrow_local_services() -> *mut LocalServices {
-    unsafe {
-        match (*local_sched::unsafe_borrow()).current_task {
-            Some(~ref mut task) => {
-                let s: *mut LocalServices = &mut task.local_services;
-                return s;
-            }
-            None => {
-                // Don't fail. Infinite recursion
-                abort!("no local services for schedulers yet")
-            }
+    match (*local_sched::unsafe_borrow()).current_task {
+        Some(~ref mut task) => {
+            let s: *mut LocalServices = &mut task.local_services;
+            return s;
+        }
+        None => {
+            // Don't fail. Infinite recursion
+            abort!("no local services for schedulers yet")
         }
     }
 }

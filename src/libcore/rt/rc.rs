@@ -21,7 +21,6 @@
 use ops::Drop;
 use clone::Clone;
 use libc::c_void;
-use sys;
 use cast;
 
 pub struct RC<T> {
