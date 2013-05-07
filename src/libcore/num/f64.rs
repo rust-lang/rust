@@ -250,6 +250,22 @@ impl ApproxEq<f64> for f64 {
 }
 
 #[cfg(notest)]
+impl RelativeEq<f64> for f64 {
+    #[inline(always)]
+    fn relative_epsilon() -> f64 { 1.0e-6 }
+
+    #[inline(always)]
+    fn relative_eq(&self, other: &f64) -> bool {
+        self.relative_eq_eps(other, &RelativeEq::relative_epsilon::<f64, f64>())
+    }
+
+    #[inline(always)]
+    fn relative_eq_eps(&self, other: &f64, relative_epsilon: &f64) -> bool {
+        (*self - *other).abs() < fmax(self.abs(), other.abs()) * (*relative_epsilon)
+    }
+}
+
+#[cfg(notest)]
 impl Ord for f64 {
     #[inline(always)]
     fn lt(&self, other: &f64) -> bool { (*self) < (*other) }
@@ -1035,6 +1051,15 @@ mod tests {
         assert!(1.000001f64.approx_eq_eps(&1f64, &1.0e-5));
         assert!(1.0000001f64.approx_eq_eps(&1f64, &1.0e-6));
         assert!(!1.0000001f64.approx_eq_eps(&1f64, &1.0e-7));
+    }
+
+    #[test]
+    fn test_relative_eq() {
+        assert!(1.0e8f64.relative_eq(&1.0e8f64));
+        assert!(0.9999999e8f64.relative_eq(&1.0e8f64));
+        assert!(1.00001e8f64.relative_eq_eps(&1.0e8f64, &1.0e-5));
+        assert!(1.000001e8f64.relative_eq_eps(&1.0e8f64, &1.0e-6));
+        assert!(!1.000001e8f64.relative_eq_eps(&1.0e8f64, &1.0e-7));
     }
 
     #[test]
