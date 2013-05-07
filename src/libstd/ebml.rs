@@ -157,6 +157,7 @@ pub mod reader {
     }
 
     #[cfg(target_arch = "arm")]
+    #[cfg(target_arch = "mips")]
     pub fn vuint_at(data: &[u8], start: uint) -> Res {
         vuint_at_slow(data, start)
     }

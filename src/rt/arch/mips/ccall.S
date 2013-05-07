@@ -8,7 +8,6 @@
 .align 2
 .globl __morestack
 .hidden __morestack
-.cfi_sections .eh_frame_entry
 .cfi_startproc
 .set nomips16
 .ent __morestack
