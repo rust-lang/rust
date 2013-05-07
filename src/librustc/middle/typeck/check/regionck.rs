@@ -157,7 +157,7 @@ pub fn regionck_fn(fcx: @mut FnCtxt, blk: &ast::blk) {
 }
 
 fn regionck_visitor() -> rvt {
-    // FIXME(#3238) should use visit_pat, not visit_arm/visit_local,
+    // (*) FIXME(#3238) should use visit_pat, not visit_arm/visit_local,
     // However, right now we run into an issue whereby some free
     // regions are not properly related if they appear within the
     // types of arguments that must be inferred. This could be
@@ -167,7 +167,7 @@ fn regionck_visitor() -> rvt {
     visit::mk_vt(@visit::Visitor {visit_item: visit_item,
                                   visit_expr: visit_expr,
 
-                                  //visit_pat: visit_pat, // (*) see FIXME above
+                                  //visit_pat: visit_pat, // (*) see above
                                   visit_arm: visit_arm,
                                   visit_local: visit_local,
 
