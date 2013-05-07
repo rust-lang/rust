@@ -28,6 +28,13 @@ use core::pipes::recv;
 use core::task;
 
 #[doc = "The future type"]
+#[cfg(stage0)]
+pub struct Future<A> {
+    priv mut state: FutureState<A>,
+}
+
+#[doc = "The future type"]
+#[cfg(not(stage0))]
 pub struct Future<A> {
     priv state: FutureState<A>,
 }

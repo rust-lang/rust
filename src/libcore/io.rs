@@ -1528,14 +1528,17 @@ pub struct BytesWriter {
 impl Writer for BytesWriter {
     fn write(&self, v: &[u8]) {
         let v_len = v.len();
-        let bytes_len = vec::uniq_len(&const *self.bytes);
 
-        let count = uint::max(bytes_len, *self.pos + v_len);
-        vec::reserve(&mut *self.bytes, count);
+        let bytes = &mut *self.bytes;
+        let count = uint::max(bytes.len(), *self.pos + v_len);
+        vec::reserve(bytes, count);
 
         unsafe {
-            vec::raw::set_len(&mut *self.bytes, count);
-            let view = vec::mut_slice(*self.bytes, *self.pos, count);
+            // Silly stage0 borrow check workaround...
+            let casted: &mut ~[u8] = cast::transmute_copy(&bytes);
+            vec::raw::set_len(casted, count);
+
+            let view = vec::mut_slice(*bytes, *self.pos, count);
             vec::bytes::copy_memory(view, v, v_len);
         }
 

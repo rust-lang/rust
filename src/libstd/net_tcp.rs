@@ -902,8 +902,10 @@ impl io::Reader for TcpSocketBuf {
           // need to read in data from the socket. Note that the internal
           // buffer is of no use anymore as we read all bytes from it,
           // so we can throw it away.
-          let data = &*self.data;
-          let read_result = read(&data.sock, 0u);
+          let read_result = {
+            let data = &*self.data;
+            read(&data.sock, 0)
+          };
           if read_result.is_err() {
               let err_data = read_result.get_err();
 
@@ -918,8 +920,7 @@ impl io::Reader for TcpSocketBuf {
                   // should show up in a later call to read().
                   break;
               }
-          }
-          else {
+          } else {
               self.data.buf = result::unwrap(read_result);
               self.data.buf_off = 0;
           }
@@ -935,8 +936,10 @@ impl io::Reader for TcpSocketBuf {
             return c as int
           }
 
-          let data = &*self.data;
-          let read_result = read(&data.sock, 0u);
+          let read_result = {
+            let data = &*self.data;
+            read(&data.sock, 0)
+          };
           if read_result.is_err() {
               let err_data = read_result.get_err();
 
@@ -948,8 +951,7 @@ impl io::Reader for TcpSocketBuf {
                          err_data.err_name, err_data.err_msg);
                   fail!()
               }
-          }
-          else {
+          } else {
               self.data.buf = result::unwrap(read_result);
               self.data.buf_off = 0;
           }

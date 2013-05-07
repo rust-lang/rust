@@ -457,7 +457,7 @@ impl TyVisitor for ReprVisitor {
         let disr = unsafe {
             get_disr(transmute(*self.ptr))
         };
-        self.var_stk.push(SearchingFor(disr));
+        var_stk.push(SearchingFor(disr));
         true
     }
 
@@ -494,7 +494,7 @@ impl TyVisitor for ReprVisitor {
                                 _offset: uint,
                                 inner: *TyDesc)
                                 -> bool {
-        match self.var_stk[vec::uniq_len(&const self.var_stk) - 1] {
+        match self.var_stk[vec::uniq_len(&const *self.var_stk) - 1] {
             Matched => {
                 if i != 0 {
                     self.writer.write_str(", ");
@@ -530,7 +530,7 @@ impl TyVisitor for ReprVisitor {
                         _align: uint)
                         -> bool {
         let var_stk: &mut ~[VariantState] = self.var_stk;
-        match self.var_stk.pop() {
+        match var_stk.pop() {
             SearchingFor(*) => fail!(~"enum value matched no variant"),
             _ => true
         }
