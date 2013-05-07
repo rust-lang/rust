@@ -551,8 +551,21 @@ impl Float for f32 {
     #[inline(always)]
     fn neg_zero() -> f32 { -0.0 }
 
+    /// Returns `true` if the number is NaN
     #[inline(always)]
     fn is_NaN(&self) -> bool { *self != *self }
+
+    /// Returns `true` if the number is infinite
+    #[inline(always)]
+    fn is_infinite(&self) -> bool {
+        *self == Float::infinity() || *self == Float::neg_infinity()
+    }
+
+    /// Returns `true` if the number is not infinite or NaN
+    #[inline(always)]
+    fn is_finite(&self) -> bool {
+        !(self.is_NaN() || self.is_infinite())
+    }
 
     #[inline(always)]
     fn mantissa_digits() -> uint { 24 }
@@ -574,18 +587,6 @@ impl Float for f32 {
 
     #[inline(always)]
     fn max_10_exp() -> int { 38 }
-
-    /// Returns `true` if the number is infinite
-    #[inline(always)]
-    fn is_infinite(&self) -> bool {
-        *self == Float::infinity() || *self == Float::neg_infinity()
-    }
-
-    /// Returns `true` if the number is finite
-    #[inline(always)]
-    fn is_finite(&self) -> bool {
-        !(self.is_NaN() || self.is_infinite())
-    }
 
     ///
     /// Returns the exponential of the number, minus `1`, in a way that is accurate
