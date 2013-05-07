@@ -832,6 +832,11 @@ impl Signed for BigInt {
     }
 
     #[inline(always)]
+    fn abs_sub(&self, other: &BigInt) -> BigInt {
+        if *self <= *other { Zero::zero() } else { *self - *other }
+    }
+
+    #[inline(always)]
     fn signum(&self) -> BigInt {
         match self.sign {
             Plus  => BigInt::from_biguint(Plus, One::one()),
@@ -1918,6 +1923,15 @@ mod bigint_tests {
         check(-1, -1, 1);
         check(8, 9, 72);
         check(11, 5, 55);
+    }
+
+    #[test]
+    fn test_abs_sub() {
+        assert_eq!((-One::one::<BigInt>()).abs_sub(&One::one()), Zero::zero());
+        assert_eq!(One::one::<BigInt>().abs_sub(&One::one()), Zero::zero());
+        assert_eq!(One::one::<BigInt>().abs_sub(&Zero::zero()), One::one());
+        assert_eq!(One::one::<BigInt>().abs_sub(&-One::one::<BigInt>()),
+                   IntConvertible::from_int(2));
     }
 
     #[test]

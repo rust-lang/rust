@@ -33,7 +33,8 @@ pub mod c_double_utils {
         unsafe fn erf(n: c_double) -> c_double;
         unsafe fn erfc(n: c_double) -> c_double;
         unsafe fn exp(n: c_double) -> c_double;
-        unsafe fn expm1(n: c_double) -> c_double;
+        // rename: for consistency with underscore usage elsewhere
+        #[link_name="expm1"] unsafe fn exp_m1(n: c_double) -> c_double;
         unsafe fn exp2(n: c_double) -> c_double;
         #[link_name="fabs"] unsafe fn abs(n: c_double) -> c_double;
         // rename: for clarity and consistency with add/sub/mul/div
@@ -63,7 +64,7 @@ pub mod c_double_utils {
         // renamed: "logb" /often/ is confused for log2 by beginners
         #[link_name="logb"] unsafe fn log_radix(n: c_double) -> c_double;
         // renamed: to be consitent with log as ln
-        #[link_name="log1p"] unsafe fn ln1p(n: c_double) -> c_double;
+        #[link_name="log1p"] unsafe fn ln_1p(n: c_double) -> c_double;
         unsafe fn log10(n: c_double) -> c_double;
         unsafe fn log2(n: c_double) -> c_double;
         #[link_name="ilogb"] unsafe fn ilog_radix(n: c_double) -> c_int;
@@ -117,7 +118,7 @@ pub mod c_float_utils {
         #[link_name="erff"] unsafe fn erf(n: c_float) -> c_float;
         #[link_name="erfcf"] unsafe fn erfc(n: c_float) -> c_float;
         #[link_name="expf"] unsafe fn exp(n: c_float) -> c_float;
-        #[link_name="expm1f"]unsafe fn expm1(n: c_float) -> c_float;
+        #[link_name="expm1f"]unsafe fn exp_m1(n: c_float) -> c_float;
         #[link_name="exp2f"] unsafe fn exp2(n: c_float) -> c_float;
         #[link_name="fabsf"] unsafe fn abs(n: c_float) -> c_float;
         #[link_name="fdimf"]
@@ -148,7 +149,7 @@ pub mod c_float_utils {
 
         #[link_name="logf"] unsafe fn ln(n: c_float) -> c_float;
         #[link_name="logbf"] unsafe fn log_radix(n: c_float) -> c_float;
-        #[link_name="log1pf"] unsafe fn ln1p(n: c_float) -> c_float;
+        #[link_name="log1pf"] unsafe fn ln_1p(n: c_float) -> c_float;
         #[link_name="log2f"] unsafe fn log2(n: c_float) -> c_float;
         #[link_name="log10f"] unsafe fn log10(n: c_float) -> c_float;
         #[link_name="ilogbf"] unsafe fn ilog_radix(n: c_float) -> c_int;
