@@ -8,7 +8,57 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Rust runtime services, including the task scheduler and I/O interface
+/*! The Rust Runtime, including the task scheduler and I/O
+
+The `rt` module provides the private runtime infrastructure necessary
+to support core language features like the exchange and local heap,
+the garbage collector, logging, local data and unwinding. It also
+implements the default task scheduler and task model. Initialization
+routines are provided for setting up runtime resources in common
+configurations, including that used by `rustc` when generating
+executables.
+
+It is intended that the features provided by `rt` can be factored in a
+way such that the core library can be built with different 'profiles'
+for different use cases, e.g. excluding the task scheduler. A number
+of runtime features though are critical to the functioning of the
+language and an implementation must be provided regardless of the
+execution environment.
+
+Of foremost importance is the global exchange heap, in the module
+`global_heap`. Very little practical Rust code can be written without
+access to the global heap. Unlike most of `rt` the global heap is
+truly a global resource and generally operates independently of the
+rest of the runtime.
+
+All other runtime features are 'local', either thread-local or
+task-local.  Those critical to the functioning of the language are
+defined in the module `local_services`. Local services are those which
+are expected to be available to Rust code generally but rely on
+thread- or task-local state. These currently include the local heap,
+the garbage collector, local storage, logging and the stack unwinder.
+Local services are primarily implemented for tasks, but may also
+be implemented for use outside of tasks.
+
+The relationship between `rt` and the rest of the core library is
+not entirely clear yet and some modules will be moving into or
+out of `rt` as development proceeds.
+
+Several modules in `core` are clients of `rt`:
+
+* `core::task` - The user-facing interface to the Rust task model.
+* `core::task::local_data` - The interface to local data.
+* `core::gc` - The garbage collector.
+* `core::unstable::lang` - Miscellaneous lang items, some of which rely on `core::rt`.
+* `core::condition` - Uses local data.
+* `core::cleanup` - Local heap destruction.
+* `core::io` - In the future `core::io` will use an `rt` implementation.
+* `core::logging`
+* `core::pipes`
+* `core::comm`
+* `core::stackwalk`
+
+*/
 
 #[doc(hidden)];
 
@@ -20,39 +70,37 @@ pub mod global_heap;
 /// The Scheduler and Task types.
 mod sched;
 
-/// Thread-local access to the current Scheduler
+/// Thread-local access to the current Scheduler.
 pub mod local_sched;
 
-/// Synchronous I/O
+/// Synchronous I/O.
 #[path = "io/mod.rs"]
 pub mod io;
 
-/// Thread-local implementations of language-critical runtime features like @
+/// Thread-local implementations of language-critical runtime features like @.
 pub mod local_services;
 
-/// The EventLoop and internal synchronous I/O interface, dynamically
-/// overridable so that it's primary implementation on libuv can
-/// live outside of core.
+/// The EventLoop and internal synchronous I/O interface.
 mod rtio;
 
-/// libuv
+/// libuv and default rtio implementation.
 #[path = "uv/mod.rs"]
 pub mod uv;
 
 // FIXME #5248: The import in `sched` doesn't resolve unless this is pub!
-/// Bindings to pthread/windows thread-local storage
+/// Bindings to pthread/windows thread-local storage.
 pub mod thread_local_storage;
 
-/// A parallel work-stealing queue
+/// A parallel work-stealing dequeue.
 mod work_queue;
 
-/// Stack segments and their cacheing
+/// Stack segments and caching.
 mod stack;
 
-/// CPU context swapping
+/// CPU context swapping.
 mod context;
 
-/// Bindings to system threading libraries
+/// Bindings to system threading libraries.
 mod thread;
 
 /// The runtime configuration, read from environment variables
