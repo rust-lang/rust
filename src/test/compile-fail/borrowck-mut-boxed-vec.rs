@@ -10,7 +10,7 @@
 
 fn main() {
     let v = @mut [ 1, 2, 3 ];
-    for v.each |_x| {   //~ ERROR illegal borrow
-        v[1] = 4;
+    for v.each |_x| {
+        v[1] = 4; //~ ERROR cannot assign
     }
 }

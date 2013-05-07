@@ -17,10 +17,10 @@ pub impl X {
 }
 fn main() {
     let mut x = X(Right(main));
-    do (&mut x).with |opt| {  //~ ERROR illegal borrow
+    do (&mut x).with |opt| {
         match opt {
             &Right(ref f) => {
-                x = X(Left((0,0))); //~ ERROR assigning to captured outer mutable variable
+                x = X(Left((0,0))); //~ ERROR cannot assign to `x`
                 (*f)()
             },
             _ => fail!()

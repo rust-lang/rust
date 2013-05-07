@@ -44,6 +44,11 @@ pub fn trans_impl(ccx: @CrateContext, path: path, name: ast::ident,
                   methods: &[@ast::method], generics: &ast::Generics,
                   self_ty: Option<ty::t>, id: ast::node_id) {
     let _icx = ccx.insn_ctxt("impl::trans_impl");
+    let tcx = ccx.tcx;
+
+    debug!("trans_impl(path=%s, name=%s, self_ty=%s, id=%?)",
+           path.repr(tcx), name.repr(tcx), self_ty.repr(tcx), id);
+
     if !generics.ty_params.is_empty() { return; }
     let sub_path = vec::append_one(path, path_name(name));
     for vec::each(methods) |method| {
@@ -307,7 +312,7 @@ pub fn trans_static_method_callee(bcx: block,
     };
 
     let mname = if method_id.crate == ast::local_crate {
-        match *bcx.tcx().items.get(&method_id.node) {
+        match bcx.tcx().items.get_copy(&method_id.node) {
             ast_map::node_trait_method(trait_method, _, _) => {
                 ast_util::trait_method_to_ty_method(trait_method).ident
             }
@@ -324,7 +329,7 @@ pub fn trans_static_method_callee(bcx: block,
             name=%s", method_id, callee_id, *ccx.sess.str_of(mname));
 
     let vtbls = resolve_vtables_in_fn_ctxt(
-        bcx.fcx, *ccx.maps.vtable_map.get(&callee_id));
+        bcx.fcx, ccx.maps.vtable_map.get_copy(&callee_id));
 
     match vtbls[bound_index] {
         typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
@@ -362,7 +367,7 @@ pub fn method_from_methods(ms: &[@ast::method], name: ast::ident)
 pub fn method_with_name(ccx: @CrateContext, impl_id: ast::def_id,
                         name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
-        match *ccx.tcx.items.get(&impl_id.node) {
+        match ccx.tcx.items.get_copy(&impl_id.node) {
           ast_map::node_item(@ast::item {
                 node: ast::item_impl(_, _, _, ref ms),
                 _
@@ -380,7 +385,7 @@ pub fn method_with_name_or_default(ccx: @CrateContext,
                                    impl_id: ast::def_id,
                                    name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
-        match *ccx.tcx.items.get(&impl_id.node) {
+        match ccx.tcx.items.get_copy(&impl_id.node) {
           ast_map::node_item(@ast::item {
                 node: ast::item_impl(_, _, _, ref ms), _
           }, _) => {

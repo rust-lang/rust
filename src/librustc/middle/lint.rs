@@ -667,7 +667,7 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
         for vec::each(vec::append_one(tys, decl.output)) |ty| {
             match ty.node {
               ast::ty_path(_, id) => {
-                match *cx.def_map.get(&id) {
+                match cx.def_map.get_copy(&id) {
                   ast::def_prim_ty(ast::ty_int(ast::ty_i)) => {
                     cx.sess.span_lint(
                         ctypes, id, fn_id,

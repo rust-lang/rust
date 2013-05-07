@@ -100,12 +100,14 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
     let llitem_ty = tpt.ty;
 
-    let map_node = session::expect(ccx.sess, ccx.tcx.items.find(&fn_id.node),
-     || fmt!("While monomorphizing %?, couldn't find it in the item map \
-        (may have attempted to monomorphize an item defined in a different \
-        crate?)", fn_id));
+    let map_node = session::expect(
+        ccx.sess,
+        ccx.tcx.items.find_copy(&fn_id.node),
+        || fmt!("While monomorphizing %?, couldn't find it in the item map \
+                 (may have attempted to monomorphize an item \
+                 defined in a different crate?)", fn_id));
     // Get the path so that we can create a symbol
-    let (pt, name, span) = match *map_node {
+    let (pt, name, span) = match map_node {
       ast_map::node_item(i, pt) => (pt, i.ident, i.span),
       ast_map::node_variant(ref v, enm, pt) => (pt, (*v).node.name, enm.span),
       ast_map::node_method(m, _, pt) => (pt, m.ident, m.span),
@@ -133,6 +135,9 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       }
       ast_map::node_local(*) => {
           ccx.tcx.sess.bug(~"Can't monomorphize a local")
+      }
+      ast_map::node_callee_scope(*) => {
+          ccx.tcx.sess.bug(~"Can't monomorphize a callee-scope")
       }
       ast_map::node_struct_ctor(_, i, pt) => (pt, i.ident, i.span)
     };
@@ -182,7 +187,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         self_ty: impl_ty_opt
     });
 
-    let lldecl = match *map_node {
+    let lldecl = match map_node {
       ast_map::node_item(i@@ast::item {
                 node: ast::item_fn(ref decl, _, _, _, ref body),
                 _
@@ -266,6 +271,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       ast_map::node_trait_method(*) |
       ast_map::node_arg(*) |
       ast_map::node_block(*) |
+      ast_map::node_callee_scope(*) |
       ast_map::node_local(*) => {
         ccx.tcx.sess.bug(fmt!("Can't monomorphize a %?", map_node))
       }

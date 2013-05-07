@@ -12,12 +12,13 @@ struct point { x: int, y: int }
 
 fn a() {
     let mut p = point {x: 3, y: 4};
-    let _q = &p; //~ NOTE loan of mutable local variable granted here
+    let q = &p;
 
     // This assignment is illegal because the field x is not
     // inherently mutable; since `p` was made immutable, `p.x` is now
     // immutable.  Otherwise the type of &_q.x (&int) would be wrong.
-    p.x = 5; //~ ERROR assigning to mutable field prohibited due to outstanding loan
+    p.x = 5; //~ ERROR cannot assign to `p.x`
+    q.x;
 }
 
 fn c() {
@@ -25,9 +26,10 @@ fn c() {
     // and then try to overwrite `p` as a whole.
 
     let mut p = point {x: 3, y: 4};
-    let _q = &p.y; //~ NOTE loan of mutable local variable granted here
-    p = point {x: 5, y: 7};//~ ERROR assigning to mutable local variable prohibited due to outstanding loan
-    copy p;
+    let q = &p.y;
+    p = point {x: 5, y: 7};//~ ERROR cannot assign to `p`
+    p.x; // silence warning
+    *q; // stretch loan
 }
 
 fn d() {
@@ -35,9 +37,9 @@ fn d() {
     // address of a subcomponent and then modify that subcomponent:
 
     let mut p = point {x: 3, y: 4};
-    let _q = &p.y; //~ NOTE loan of mutable field granted here
-    p.y = 5; //~ ERROR assigning to mutable field prohibited due to outstanding loan
-    copy p;
+    let q = &p.y;
+    p.y = 5; //~ ERROR cannot assign to `p.y`
+    *q;
 }
 
 fn main() {

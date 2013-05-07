@@ -315,9 +315,6 @@ fn test_arena_destructors_fail() {
     }
     // Now, fail while allocating
     do arena.alloc::<@int> {
-        // First, recursively allocate something else; that needs to
-        // get freed too.
-        do arena.alloc { @20 };
         // Now fail.
         fail!();
     };

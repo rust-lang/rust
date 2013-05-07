@@ -185,9 +185,7 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
         }
     } else {
         let maps = astencode::Maps {
-            mutbl_map: @mut HashSet::new(),
             root_map: @mut HashMap::new(),
-            last_use_map: @mut HashMap::new(),
             method_map: @mut HashMap::new(),
             vtable_map: @mut HashMap::new(),
             write_guard_map: @mut HashSet::new(),

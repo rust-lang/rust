@@ -788,7 +788,7 @@ pub fn link_binary(sess: Session,
     };
 
     debug!("output: %s", output.to_str());
-    let mut cc_args = link_args(sess, obj_filename, out_filename, lm);
+    let cc_args = link_args(sess, obj_filename, out_filename, lm);
     debug!("%s link args: %s", cc_prog, str::connect(cc_args, ~" "));
     // We run 'cc' here
     let prog = run::program_output(cc_prog, cc_args);

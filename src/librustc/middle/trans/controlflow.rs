@@ -193,7 +193,7 @@ pub fn trans_log(log_ex: @ast::expr,
     };
 
     let global = if ccx.module_data.contains_key(&modname) {
-        *ccx.module_data.get(&modname)
+        ccx.module_data.get_copy(&modname)
     } else {
         let s = link::mangle_internal_name_by_path_and_seq(
             ccx, modpath, ~"loglevel");
@@ -243,8 +243,8 @@ pub fn trans_break_cont(bcx: block,
     let mut unwind = bcx;
     let mut target;
     loop {
-        match *unwind.kind {
-          block_scope(scope_info {
+        match unwind.kind {
+          block_scope(@scope_info {
             loop_break: Some(brk),
             loop_label: l,
             _
@@ -333,7 +333,7 @@ pub fn trans_fail_expr(bcx: block,
                 bcx, expr::trans_to_datum(bcx, arg_expr));
 
             if ty::type_is_str(arg_datum.ty) {
-                let (lldata, _lllen) = arg_datum.get_base_and_len(bcx);
+                let (lldata, _) = arg_datum.get_vec_base_and_len_no_root(bcx);
                 return trans_fail_value(bcx, sp_opt, lldata);
             } else if bcx.unreachable || ty::type_is_bot(arg_datum.ty) {
                 return bcx;
@@ -385,13 +385,7 @@ fn trans_fail_value(bcx: block,
 pub fn trans_fail_bounds_check(bcx: block, sp: span,
                                index: ValueRef, len: ValueRef) -> block {
     let _icx = bcx.insn_ctxt("trans_fail_bounds_check");
-    let ccx = bcx.ccx();
-
-    let loc = bcx.sess().parse_sess.cm.lookup_char_pos(sp.lo);
-    let line = C_int(ccx, loc.line as int);
-    let filename_cstr = C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name);
-    let filename = PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
-
+    let (filename, line) = filename_and_line_num_from_span(bcx, sp);
     let args = ~[filename, line, index, len];
     let bcx = callee::trans_lang_call(
         bcx, bcx.tcx().lang_items.fail_bounds_check_fn(), args, expr::Ignore);

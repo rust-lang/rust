@@ -39,7 +39,6 @@ use middle::trans::monomorphize;
 use middle::trans::type_of;
 use middle::ty;
 use middle::typeck;
-use util::common::indenter;
 use util::ppaux::Repr;
 
 use syntax::ast;
@@ -340,15 +339,11 @@ pub fn trans_method_call(in_cx: block,
         node_id_type(in_cx, call_ex.callee_id),
         expr_ty(in_cx, call_ex),
         |cx| {
-            match cx.ccx().maps.method_map.find(&call_ex.id) {
+            match cx.ccx().maps.method_map.find_copy(&call_ex.id) {
                 Some(origin) => {
                     debug!("origin for %s: %s",
                            call_ex.repr(in_cx.tcx()),
                            origin.repr(in_cx.tcx()));
-
-                    // FIXME(#5562): removing this copy causes a segfault
-                    //               before stage2
-                    let origin = /*bad*/ copy *origin;
 
                     meth::trans_method_callee(cx,
                                               call_ex.callee_id,
@@ -687,7 +682,6 @@ pub fn trans_arg_expr(bcx: block,
            self_mode,
            arg_expr.repr(bcx.tcx()),
            ret_flag.map(|v| bcx.val_str(*v)));
-    let _indenter = indenter();
 
     // translate the arg expr to a datum
     let arg_datumblock = match ret_flag {
@@ -722,7 +716,7 @@ pub fn trans_arg_expr(bcx: block,
             }
         }
     };
-    let mut arg_datum = arg_datumblock.datum;
+    let arg_datum = arg_datumblock.datum;
     let bcx = arg_datumblock.bcx;
 
     debug!("   arg datum: %s", arg_datum.to_str(bcx.ccx()));

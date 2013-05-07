@@ -29,4 +29,7 @@ fn main() {
     };
     assert!(3 == *(y.get())); //~ ERROR dereference of reference outside its lifetime
     //~^ ERROR reference is not valid outside of its lifetime
+    //~^^ ERROR reference is not valid outside of its lifetime
+    //~^^^ ERROR reference is not valid outside of its lifetime
+    //~^^^^ ERROR cannot infer an appropriate lifetime
 }

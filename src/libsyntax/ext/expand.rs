@@ -27,6 +27,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                    fld: @ast_fold,
                    orig: @fn(&expr_, span, @ast_fold) -> (expr_, span))
                 -> (expr_, span) {
+    let mut cx = cx;
     match *e {
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
@@ -112,6 +113,8 @@ pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
                         fld: @ast_fold,
                         orig: @fn(&ast::_mod, @ast_fold) -> ast::_mod)
                      -> ast::_mod {
+    let mut cx = cx;
+
     // Fold the contents first:
     let module_ = orig(module_, fld);
 

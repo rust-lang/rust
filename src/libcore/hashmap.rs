@@ -25,6 +25,7 @@ use rand;
 use uint;
 use vec;
 use util::unreachable;
+use kinds::Copy;
 
 static INITIAL_CAPACITY: uint = 32u; // 2^5
 
@@ -526,6 +527,18 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
             FoundEntry(idx) => Some(self.value_for_bucket(idx)),
             TableFull | FoundHole(_) => None,
         }
+    }
+}
+
+pub impl<K: Hash + Eq, V: Copy> HashMap<K, V> {
+    /// Like `find`, but returns a copy of the value.
+    fn find_copy(&self, k: &K) -> Option<V> {
+        self.find(k).map_consume(|v| copy *v)
+    }
+
+    /// Like `get`, but returns a copy of the value.
+    fn get_copy(&self, k: &K) -> V {
+        copy *self.get(k)
     }
 }
 

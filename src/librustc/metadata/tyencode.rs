@@ -71,30 +71,29 @@ pub fn enc_ty(w: @io::Writer, cx: @ctxt, t: ty::t) {
         w.write_str(result_str);
       }
       ac_use_abbrevs(abbrevs) => {
-        match abbrevs.find(&t) {
-          Some(a) => { w.write_str(*a.s); return; }
-          None => {
-            let pos = w.tell();
-            enc_sty(w, cx, /*bad*/copy ty::get(t).sty);
-            let end = w.tell();
-            let len = end - pos;
-            fn estimate_sz(u: uint) -> uint {
-                let mut n = u;
-                let mut len = 0u;
-                while n != 0u { len += 1u; n = n >> 4u; }
-                return len;
-            }
-            let abbrev_len = 3u + estimate_sz(pos) + estimate_sz(len);
-            if abbrev_len < len {
-                // I.e. it's actually an abbreviation.
-                let s = ~"#" + uint::to_str_radix(pos, 16u) + ~":" +
-                    uint::to_str_radix(len, 16u) + ~"#";
-                let a = ty_abbrev { pos: pos, len: len, s: @s };
-                abbrevs.insert(t, a);
-            }
-            return;
+          match abbrevs.find(&t) {
+              Some(a) => { w.write_str(*a.s); return; }
+              None => {}
           }
-        }
+          let pos = w.tell();
+          enc_sty(w, cx, /*bad*/copy ty::get(t).sty);
+          let end = w.tell();
+          let len = end - pos;
+          fn estimate_sz(u: uint) -> uint {
+              let mut n = u;
+              let mut len = 0u;
+              while n != 0u { len += 1u; n = n >> 4u; }
+              return len;
+          }
+          let abbrev_len = 3u + estimate_sz(pos) + estimate_sz(len);
+          if abbrev_len < len {
+              // I.e. it's actually an abbreviation.
+              let s = ~"#" + uint::to_str_radix(pos, 16u) + ~":" +
+                  uint::to_str_radix(len, 16u) + ~"#";
+              let a = ty_abbrev { pos: pos, len: len, s: @s };
+              abbrevs.insert(t, a);
+          }
+          return;
       }
     }
 }
@@ -151,6 +150,9 @@ fn enc_region(w: @io::Writer, cx: @ctxt, r: ty::Region) {
       }
       ty::re_static => {
         w.write_char('t');
+      }
+      ty::re_empty => {
+        w.write_char('e');
       }
       ty::re_infer(_) => {
         // these should not crop up after typeck

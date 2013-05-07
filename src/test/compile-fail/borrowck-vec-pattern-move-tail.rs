@@ -1,8 +1,9 @@
 fn main() {
     let mut a = [1, 2, 3, 4];
-    let _ = match a {
+    let t = match a {
         [1, 2, ..tail] => tail,
         _ => core::util::unreachable()
     };
-    a[0] = 0; //~ ERROR: assigning to mutable vec content prohibited due to outstanding loan
+    a[0] = 0; //~ ERROR cannot assign to `a[]` because it is borrowed
+    t[0];
 }
