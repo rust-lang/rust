@@ -23,11 +23,10 @@ struct rust_rng {
 };
 
 size_t rng_seed_size();
-void rng_gen_seed(rust_kernel* kernel,
-                  uint8_t* dest, size_t size);
-void rng_init(rust_kernel *kernel, rust_rng *rng,
+void rng_gen_seed(uint8_t* dest, size_t size);
+void rng_init(rust_rng *rng, char *env_seed,
               uint8_t *user_seed, size_t seed_len);
-uint32_t rng_gen_u32(rust_kernel *kernel, rust_rng *rng);
+uint32_t rng_gen_u32(rust_rng *rng);
 
 //
 // Local Variables:
