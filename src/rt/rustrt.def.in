@@ -233,3 +233,5 @@ rust_boxed_region_malloc
 rust_boxed_region_free
 rust_try
 rust_begin_unwind
+rust_take_task_borrow_list
+rust_set_task_borrow_list
