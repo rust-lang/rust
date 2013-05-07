@@ -14,7 +14,10 @@
 
 use libc::c_char;
 
-/// The Scheduler and Task types
+/// The global (exchange) heap.
+pub mod global_heap;
+
+/// The Scheduler and Task types.
 mod sched;
 
 /// Thread-local access to the current Scheduler
