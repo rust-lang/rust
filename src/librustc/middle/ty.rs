@@ -1567,6 +1567,13 @@ pub fn type_is_sequence(ty: t) -> bool {
     }
 }
 
+pub fn type_is_simd(cx: ctxt, ty: t) -> bool {
+    match get(ty).sty {
+        ty_struct(did, _) => lookup_simd(cx, did),
+        _ => false
+    }
+}
+
 pub fn type_is_str(ty: t) -> bool {
     match get(ty).sty {
       ty_estr(_) => true,
@@ -1580,6 +1587,26 @@ pub fn sequence_element_type(cx: ctxt, ty: t) -> t {
       ty_evec(mt, _) | ty_unboxed_vec(mt) => return mt.ty,
       _ => cx.sess.bug(
           ~"sequence_element_type called on non-sequence value"),
+    }
+}
+
+pub fn simd_type(cx: ctxt, ty: t) -> t {
+    match get(ty).sty {
+        ty_struct(did, ref substs) => {
+            let fields = lookup_struct_fields(cx, did);
+            lookup_field_type(cx, did, fields[0].id, substs)
+        }
+        _ => fail!(~"simd_type called on invalid type")
+    }
+}
+
+pub fn simd_size(cx: ctxt, ty: t) -> uint {
+    match get(ty).sty {
+        ty_struct(did, _) => {
+            let fields = lookup_struct_fields(cx, did);
+            fields.len()
+        }
+        _ => fail!(~"simd_size called on invalid type")
     }
 }
 

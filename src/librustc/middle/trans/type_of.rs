@@ -155,9 +155,15 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
         }
 
         ty::ty_struct(did, _) => {
-            let repr = adt::represent_type(cx, t);
-            let packed = ty::lookup_packed(cx.tcx, did);
-            T_struct(adt::sizing_fields_of(cx, repr), packed)
+            if ty::type_is_simd(cx.tcx, t) {
+                let et = ty::simd_type(cx.tcx, t);
+                let n = ty::simd_size(cx.tcx, t);
+                T_vector(type_of(cx, et), n)
+            } else {
+                let repr = adt::represent_type(cx, t);
+                let packed = ty::lookup_packed(cx.tcx, did);
+                T_struct(adt::sizing_fields_of(cx, repr), packed)
+            }
         }
 
         ty::ty_self(_) | ty::ty_infer(*) | ty::ty_param(*) | ty::ty_err(*) => {
@@ -263,14 +269,19 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
       }
       ty::ty_opaque_closure_ptr(_) => T_opaque_box_ptr(cx),
       ty::ty_struct(did, ref substs) => {
-        // Only create the named struct, but don't fill it in. We fill it
-        // in *after* placing it into the type cache. This prevents
-        // infinite recursion with recursive struct types.
-
-        common::T_named_struct(llvm_type_name(cx,
-                                              a_struct,
-                                              did,
-                                              /*bad*/ copy substs.tps))
+        if ty::type_is_simd(cx.tcx, t) {
+          let et = ty::simd_type(cx.tcx, t);
+          let n = ty::simd_size(cx.tcx, t);
+          T_vector(type_of(cx, et), n)
+        } else {
+          // Only create the named struct, but don't fill it in. We fill it
+          // in *after* placing it into the type cache. This prevents
+          // infinite recursion with recursive struct types.
+          T_named_struct(llvm_type_name(cx,
+                                        a_struct,
+                                        did,
+                                        /*bad*/ copy substs.tps))
+        }
       }
       ty::ty_self(*) => cx.tcx.sess.unimpl(~"type_of: ty_self"),
       ty::ty_infer(*) => cx.tcx.sess.bug(~"type_of with ty_infer"),
@@ -289,10 +300,12 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
       }
 
       ty::ty_struct(did, _) => {
-        let repr = adt::represent_type(cx, t);
-        let packed = ty::lookup_packed(cx.tcx, did);
-        common::set_struct_body(llty, adt::fields_of(cx, repr),
-                                packed);
+        if !ty::type_is_simd(cx.tcx, t) {
+          let repr = adt::represent_type(cx, t);
+          let packed = ty::lookup_packed(cx.tcx, did);
+          common::set_struct_body(llty, adt::fields_of(cx, repr),
+                                  packed);
+        }
       }
       _ => ()
     }
