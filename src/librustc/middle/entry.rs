@@ -42,8 +42,8 @@ type EntryVisitor = vt<@mut EntryContext>;
 pub fn find_entry_point(session: Session, crate: @crate, ast_map: ast_map::map) {
 
     // FIXME #4404 android JNI hacks
-    if *session.building_library ||
-        session.targ_cfg.os == session::os_android {
+    if *session.building_library &&
+        session.targ_cfg.os != session::os_android {
         // No need to find a main function
         return;
     }
@@ -127,18 +127,24 @@ fn configure_main(ctxt: @mut EntryContext) {
         *this.session.entry_fn = this.main_fn;
         *this.session.entry_type = Some(session::EntryMain);
     } else {
-        // No main function
-        this.session.err(~"main function not found");
-        if !this.non_main_fns.is_empty() {
-            // There were some functions named 'main' though. Try to give the user a hint.
-            this.session.note(~"the main function must be defined at the crate level \
-                                 but you have one or more functions named 'main' that are not \
-                                 defined at the crate level. Either move the definition or attach \
-                                 the `#[main]` attribute to override this behavior.");
-            for this.non_main_fns.each |&(_, span)| {
-                this.session.span_note(span, ~"here is a function named 'main'");
+        if !*this.session.building_library {
+            // No main function
+            this.session.err(~"main function not found");
+            if !this.non_main_fns.is_empty() {
+                // There were some functions named 'main' though. Try to give the user a hint.
+                this.session.note(~"the main function must be defined at the crate level \
+                                    but you have one or more functions named 'main' that are not \
+                                    defined at the crate level. Either move the definition or \
+                                    attach the `#[main]` attribute to override this behavior.");
+                for this.non_main_fns.each |&(_, span)| {
+                    this.session.span_note(span, ~"here is a function named 'main'");
+                }
             }
+            this.session.abort_if_errors();
+        } else {
+            // If we *are* building a library, then we're on android where we still might
+            // optionally want to translate main $4404
+            assert!(this.session.targ_cfg.os == session::os_android);
         }
-        this.session.abort_if_errors();
     }
 }
