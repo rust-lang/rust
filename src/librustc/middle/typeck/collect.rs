@@ -116,7 +116,7 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
 }
 
 impl CrateCtxt {
-    fn to_ty<RS:region_scope + Copy + Durable>(
+    fn to_ty<RS:region_scope + Copy + 'static>(
         &self, rs: &RS, ast_ty: @ast::Ty) -> ty::t
     {
         ast_ty_to_ty(self, rs, ast_ty)
@@ -1163,7 +1163,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
          * enum consisting of a newtyped Ty or a region) to ty's
          * notion of ty param bounds, which can either be user-defined
          * traits, or one of the four built-in traits (formerly known
-         * as kinds): Const, Copy, Durable, and Send.
+         * as kinds): Const, Copy, and Send.
          */
 
         @ast_bounds.flat_map_to_vec(|b| {
