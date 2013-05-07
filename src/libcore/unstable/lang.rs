@@ -153,31 +153,12 @@ unsafe fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
 #[lang="exchange_malloc"]
 #[inline(always)]
 pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    let result = transmute(exchange_alloc::malloc(transmute(td), transmute(size)));
-    debug_mem("exchange_malloc: ", result);
-    return result;
+    transmute(exchange_alloc::malloc(transmute(td), transmute(size)))
 }
 
 /// Because this code is so perf. sensitive, use a static constant so that
 /// debug printouts are compiled out most of the time.
 static ENABLE_DEBUG: bool = false;
-
-#[inline]
-pub fn debug_mem<T>(tag: &'static str, p: *const T) {
-    //! A useful debugging function that prints a pointer + tag + newline
-    //! without allocating memory.
-
-    if ENABLE_DEBUG && ::rt::env::get().debug_mem {
-        debug_mem_slow(tag, p);
-    }
-
-    fn debug_mem_slow<T>(tag: &'static str, p: *const T) {
-        let dbg = STDERR_FILENO as io::fd_t;
-        dbg.write_str(tag);
-        dbg.write_hex(p as uint);
-        dbg.write_str("\n");
-    }
-}
 
 #[inline]
 unsafe fn debug_borrow<T>(tag: &'static str,
@@ -252,7 +233,6 @@ impl DebugPrints for io::fd_t {
 #[lang="exchange_free"]
 #[inline(always)]
 pub unsafe fn exchange_free(ptr: *c_char) {
-    debug_mem("exchange_free: ", ptr);
     exchange_alloc::free(transmute(ptr))
 }
 
