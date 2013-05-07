@@ -22,13 +22,13 @@ use core::either::{Either, Left, Right};
 
     fn g() {
         let mut x: Either<int,float> = Left(3);
-        io::println(f(&mut x, &x).to_str()); //~ ERROR conflicts with prior loan
+        io::println(f(&mut x, &x).to_str()); //~ ERROR cannot borrow
     }
 
     fn h() {
         let mut x: Either<int,float> = Left(3);
         let y: &Either<int, float> = &x;
-        let z: &mut Either<int, float> = &mut x; //~ ERROR conflicts with prior loan
+        let z: &mut Either<int, float> = &mut x; //~ ERROR cannot borrow
         *z = *y;
     }
 

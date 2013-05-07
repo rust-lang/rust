@@ -16,6 +16,7 @@ use middle::typeck::infer::lattice::*;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::{cres, InferCtxt};
+use middle::typeck::infer::fold_regions_in_sig;
 use middle::typeck::isr_alist;
 use util::common::indent;
 use util::ppaux::mt_to_str;
@@ -141,7 +142,8 @@ impl Combine for Lub {
         let new_vars =
             self.infcx.region_vars.vars_created_since_snapshot(snapshot);
         let sig1 =
-            self.infcx.fold_regions_in_sig(
+            fold_regions_in_sig(
+                self.infcx.tcx,
                 &sig0,
                 |r, _in_fn| generalize_region(self, snapshot, new_vars,
                                               a_isr, r));

@@ -110,6 +110,9 @@ endif
 ifdef SAVE_TEMPS
   CFG_RUSTC_FLAGS += --save-temps
 endif
+ifdef ASM_COMMENTS
+  CFG_RUSTC_FLAGS += -z asm-comments
+endif
 ifdef TIME_PASSES
   CFG_RUSTC_FLAGS += -Z time-passes
 endif

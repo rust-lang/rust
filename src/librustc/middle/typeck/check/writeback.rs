@@ -134,23 +134,22 @@ fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::node_id)
         }
 
         Some(&@ty::AutoDerefRef(adj)) => {
-            let resolved_autoref = match adj.autoref {
-                Some(ref autoref) => {
-                    match resolve_region(fcx.infcx(), autoref.region,
-                                         resolve_all | force_all) {
-                        Err(e) => {
-                            // This should not, I think, happen.
-                            fcx.ccx.tcx.sess.span_err(
-                                sp, fmt!("cannot resolve scope of borrow: %s",
-                                         infer::fixup_err_to_str(e)));
-                            Some(*autoref)
-                        }
-                        Ok(r) => {
-                            Some(ty::AutoRef {region: r, ..*autoref})
-                        }
+            let fixup_region = |r| {
+                match resolve_region(fcx.infcx(), r, resolve_all | force_all) {
+                    Ok(r1) => r1,
+                    Err(e) => {
+                        // This should not, I think, happen.
+                        fcx.ccx.tcx.sess.span_err(
+                            sp, fmt!("cannot resolve scope of borrow: %s",
+                                     infer::fixup_err_to_str(e)));
+                        r
                     }
                 }
-                None => None
+            };
+
+            let resolved_autoref = match adj.autoref {
+                None => None,
+                Some(ref r) => Some(r.map_region(fixup_region))
             };
 
             let resolved_adj = @ty::AutoDerefRef(ty::AutoDerefRef {

@@ -8,18 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test #3387
-
 struct foo(~uint);
 
 impl Add<foo, foo> for foo {
-    fn add(f: &foo) -> foo {
-        foo(~(**self + **(*f)))
+    fn add(&self, f: &foo) -> foo {
+        foo(~(***self + **(*f)))
     }
 }
 
 fn main() {
     let x = foo(~3);
-    let _y = x + x;
-    //~^ ERROR moving out of immutable local variable prohibited due to outstanding loan
+    let _y = x + {x}; // the `{x}` forces a move to occur
+    //~^ ERROR cannot move out of `x`
 }

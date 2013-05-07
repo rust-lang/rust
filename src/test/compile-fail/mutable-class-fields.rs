@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:assigning to immutable field
 struct cat {
   priv mut meows : uint,
-
   how_hungry : int,
-
 }
 
 fn cat(in_x : uint, in_y : int) -> cat {
@@ -25,5 +22,5 @@ fn cat(in_x : uint, in_y : int) -> cat {
 
 fn main() {
   let nyan : cat = cat(52u, 99);
-  nyan.how_hungry = 0;
+  nyan.how_hungry = 0; //~ ERROR cannot assign
 }

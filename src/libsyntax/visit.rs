@@ -21,6 +21,12 @@ use opt_vec::OptVec;
 // children (potentially passing in different contexts to each), call
 // visit::visit_* to apply the default traversal algorithm (again, it can
 // override the context), or prevent deeper traversal by doing nothing.
+//
+// Note: it is an important invariant that the default visitor walks the body
+// of a function in "execution order" (more concretely, reverse post-order
+// with respect to the CFG implied by the AST), meaning that if AST node A may
+// execute before AST node B, then A is visited first.  The borrow checker in
+// particular relies on this property.
 
 // Our typesystem doesn't do circular types, so the visitor record can not
 // hold functions that take visitors. A vt enum is used to break the cycle.

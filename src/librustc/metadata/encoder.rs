@@ -198,7 +198,7 @@ fn encode_type_param_bounds(ebml_w: &mut writer::Encoder,
                             ecx: @EncodeContext,
                             params: &OptVec<TyParam>) {
     let ty_param_defs =
-        @params.map_to_vec(|param| *ecx.tcx.ty_param_defs.get(&param.id));
+        @params.map_to_vec(|param| ecx.tcx.ty_param_defs.get_copy(&param.id));
     encode_ty_type_param_defs(ebml_w, ecx, ty_param_defs,
                               tag_items_data_item_ty_param_bounds);
 }
@@ -288,7 +288,7 @@ fn encode_discriminant(ecx: @EncodeContext,
                        ebml_w: &mut writer::Encoder,
                        id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
-    ebml_w.writer.write(str::to_bytes(**ecx.discrim_symbols.get(&id)));
+    ebml_w.writer.write(str::to_bytes(*ecx.discrim_symbols.get_copy(&id)));
     ebml_w.end_tag();
 }
 
@@ -1036,7 +1036,7 @@ fn encode_info_for_items(ecx: @EncodeContext,
             let ebml_w = copy *ebml_w;
             |i, cx, v| {
                 visit::visit_item(i, cx, v);
-                match *ecx.tcx.items.get(&i.id) {
+                match ecx.tcx.items.get_copy(&i.id) {
                     ast_map::node_item(_, pt) => {
                         let mut ebml_w = copy ebml_w;
                         encode_info_for_item(ecx, &mut ebml_w, i, index, *pt);
@@ -1049,7 +1049,7 @@ fn encode_info_for_items(ecx: @EncodeContext,
             let ebml_w = copy *ebml_w;
             |ni, cx, v| {
                 visit::visit_foreign_item(ni, cx, v);
-                match *ecx.tcx.items.get(&ni.id) {
+                match ecx.tcx.items.get_copy(&ni.id) {
                     ast_map::node_foreign_item(_, abi, _, pt) => {
                         let mut ebml_w = copy ebml_w;
                         encode_info_for_foreign_item(ecx,

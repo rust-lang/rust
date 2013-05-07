@@ -119,7 +119,8 @@ pub fn lookup(
         // In a call `a.b::<X, Y, ...>(...)`:
         expr: @ast::expr,                   // The expression `a.b(...)`.
         self_expr: @ast::expr,              // The expression `a`.
-        callee_id: node_id,                 // Where to store `a.b`'s type
+        callee_id: node_id,                 /* Where to store `a.b`'s type,
+                                             * also the scope of the call */
         m_name: ast::ident,                 // The ident `b`.
         self_ty: ty::t,                     // The type of `a`.
         supplied_tps: &[ty::t],             // The list of types X, Y, ... .
@@ -127,7 +128,7 @@ pub fn lookup(
         check_traits: CheckTraitsFlag,      // Whether we check traits only.
         autoderef_receiver: AutoderefReceiverFlag)
      -> Option<method_map_entry> {
-    let mut impl_dups = HashSet::new();
+    let impl_dups = @mut HashSet::new();
     let lcx = LookupContext {
         fcx: fcx,
         expr: expr,
@@ -135,7 +136,7 @@ pub fn lookup(
         callee_id: callee_id,
         m_name: m_name,
         supplied_tps: supplied_tps,
-        impl_dups: &mut impl_dups,
+        impl_dups: impl_dups,
         inherent_candidates: @mut ~[],
         extension_candidates: @mut ~[],
         deref_args: deref_args,
@@ -154,7 +155,7 @@ pub struct LookupContext<'self> {
     callee_id: node_id,
     m_name: ast::ident,
     supplied_tps: &'self [ty::t],
-    impl_dups: &'self mut HashSet<def_id>,
+    impl_dups: @mut HashSet<def_id>,
     inherent_candidates: @mut ~[Candidate],
     extension_candidates: @mut ~[Candidate],
     deref_args: check::DerefArgs,
@@ -640,7 +641,7 @@ pub impl<'self> LookupContext<'self> {
         /*!
          *
          * In the event that we are invoking a method with a receiver
-         * of a linear borrowed type like `&mut T` or `&mut [T]`,
+         * of a borrowed type like `&T`, `&mut T`, or `&mut [T]`,
          * we will "reborrow" the receiver implicitly.  For example, if
          * you have a call `r.inc()` and where `r` has type `&mut T`,
          * then we treat that like `(&mut *r).inc()`.  This avoids
@@ -657,26 +658,25 @@ pub impl<'self> LookupContext<'self> {
 
         let tcx = self.tcx();
         return match ty::get(self_ty).sty {
-            ty::ty_rptr(_, self_mt) if self_mt.mutbl == m_mutbl => {
-                let region = self.infcx().next_region_var(self.expr.span,
-                                                          self.expr.id);
+            ty::ty_rptr(_, self_mt) if default_method_hack(self_mt) => {
+                (self_ty,
+                 ty::AutoDerefRef(ty::AutoDerefRef {
+                     autoderefs: autoderefs,
+                     autoref: None}))
+            }
+            ty::ty_rptr(_, self_mt) => {
+                let region = self.infcx().next_region_var_nb(self.expr.span);
                 (ty::mk_rptr(tcx, region, self_mt),
                  ty::AutoDerefRef(ty::AutoDerefRef {
                      autoderefs: autoderefs+1,
-                     autoref: Some(ty::AutoRef {kind: AutoPtr,
-                                                region: region,
-                                                mutbl: self_mt.mutbl})}))
+                     autoref: Some(ty::AutoPtr(region, self_mt.mutbl))}))
             }
-            ty::ty_evec(self_mt, vstore_slice(_))
-            if self_mt.mutbl == m_mutbl => {
-                let region = self.infcx().next_region_var(self.expr.span,
-                                                          self.expr.id);
+            ty::ty_evec(self_mt, vstore_slice(_)) => {
+                let region = self.infcx().next_region_var_nb(self.expr.span);
                 (ty::mk_evec(tcx, self_mt, vstore_slice(region)),
                  ty::AutoDerefRef(ty::AutoDerefRef {
-                    autoderefs: autoderefs,
-                    autoref: Some(ty::AutoRef {kind: AutoBorrowVec,
-                                               region: region,
-                                               mutbl: self_mt.mutbl})}))
+                     autoderefs: autoderefs,
+                     autoref: Some(ty::AutoBorrowVec(region, self_mt.mutbl))}))
             }
             _ => {
                 (self_ty,
@@ -685,6 +685,16 @@ pub impl<'self> LookupContext<'self> {
                      autoref: None}))
             }
         };
+
+        fn default_method_hack(self_mt: ty::mt) -> bool {
+            // FIXME(#6129). Default methods can't deal with autoref.
+            //
+            // I am a horrible monster and I pray for death. Currently
+            // the default method code fails when you try to reborrow
+            // because it is not handling types correctly. In lieu of
+            // fixing that, I am introducing this horrible hack. - ndm
+            self_mt.mutbl == m_imm && ty::type_is_self(self_mt.ty)
+        }
     }
 
     fn search_for_autosliced_method(
@@ -793,7 +803,7 @@ pub impl<'self> LookupContext<'self> {
 
     fn search_for_some_kind_of_autorefd_method(
         &self,
-        kind: AutoRefKind,
+        kind: &fn(Region, ast::mutability) -> ty::AutoRef,
         autoderefs: uint,
         mutbls: &[ast::mutability],
         mk_autoref_ty: &fn(ast::mutability, ty::Region) -> ty::t)
@@ -801,8 +811,7 @@ pub impl<'self> LookupContext<'self> {
     {
         // This is hokey. We should have mutability inference as a
         // variable.  But for now, try &const, then &, then &mut:
-        let region = self.infcx().next_region_var(self.expr.span,
-                                                  self.expr.id);
+        let region = self.infcx().next_region_var_nb(self.expr.span);
         for mutbls.each |mutbl| {
             let autoref_ty = mk_autoref_ty(*mutbl, region);
             match self.search_for_method(autoref_ty) {
@@ -812,12 +821,7 @@ pub impl<'self> LookupContext<'self> {
                         self.self_expr.id,
                         @ty::AutoDerefRef(ty::AutoDerefRef {
                             autoderefs: autoderefs,
-                            autoref: Some(ty::AutoRef {
-                                kind: kind,
-                                region: region,
-                                mutbl: *mutbl,
-                            }),
-                        }));
+                            autoref: Some(kind(region, *mutbl))}));
                     return Some(mme);
                 }
             }
@@ -1024,8 +1028,7 @@ pub impl<'self> LookupContext<'self> {
         let (_, opt_transformed_self_ty, fn_sig) =
             replace_bound_regions_in_fn_sig(
                 tcx, @Nil, Some(transformed_self_ty), &bare_fn_ty.sig,
-                |_br| self.fcx.infcx().next_region_var(
-                    self.expr.span, self.expr.id));
+                |_br| self.fcx.infcx().next_region_var_nb(self.expr.span));
         let transformed_self_ty = opt_transformed_self_ty.get();
         let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {sig: fn_sig, ..bare_fn_ty});
         debug!("after replacing bound regions, fty=%s", self.ty_to_str(fty));
