@@ -448,10 +448,15 @@ impl TyVisitor for ReprVisitor {
         true
     }
 
-    fn visit_enter_enum(&self, _n_variants: uint,
+    fn visit_enter_enum(&self,
+                        _n_variants: uint,
                         get_disr: extern unsafe fn(ptr: *Opaque) -> int,
-                        _sz: uint, _align: uint) -> bool {
-        let disr = unsafe { get_disr(transmute(self.ptr)) };
+                        _sz: uint,
+                        _align: uint) -> bool {
+        let var_stk: &mut ~[VariantState] = self.var_stk;
+        let disr = unsafe {
+            get_disr(transmute(*self.ptr))
+        };
         self.var_stk.push(SearchingFor(disr));
         true
     }
@@ -484,31 +489,12 @@ impl TyVisitor for ReprVisitor {
         true
     }
 
-<<<<<<< HEAD
-    fn visit_enum_variant_field(&self, i: uint, _offset: uint, inner: *TyDesc) -> bool {
-        match self.var_stk[vec::uniq_len(&const self.var_stk) - 1] {
-=======
-    #[cfg(stage0)]
-    fn visit_enum_variant_field(&self, i: uint, inner: *TyDesc) -> bool {
-        match self.var_stk[vec::uniq_len(&const *self.var_stk) - 1] {
-            Degenerate | TagMatch => {
-                if i != 0 {
-                    self.writer.write_str(", ");
-                }
-                if ! self.visit_inner(inner) {
-                    return false;
-                }
-            }
-            TagMismatch => ()
-        }
-        true
-    }
-
-    #[cfg(not(stage0))]
-    fn visit_enum_variant_field(&self, i: uint, _: uint, inner: *TyDesc)
+    fn visit_enum_variant_field(&self,
+                                i: uint,
+                                _offset: uint,
+                                inner: *TyDesc)
                                 -> bool {
-        match self.var_stk[vec::uniq_len(&const *self.var_stk) - 1] {
->>>>>>> libcore: Remove mutable fields from repr
+        match self.var_stk[vec::uniq_len(&const self.var_stk) - 1] {
             Matched => {
                 if i != 0 {
                     self.writer.write_str(", ");
@@ -522,26 +508,6 @@ impl TyVisitor for ReprVisitor {
         true
     }
 
-<<<<<<< HEAD
-=======
-    #[cfg(stage0)]
-    fn visit_leave_enum_variant(&self, _variant: uint,
-                                _disr_val: int,
-                                n_fields: uint,
-                                _name: &str) -> bool {
-        match self.var_stk[vec::uniq_len(&const *self.var_stk) - 1] {
-            Degenerate | TagMatch => {
-                if n_fields > 0 {
-                    self.writer.write_char(')');
-                }
-            }
-            TagMismatch => ()
-        }
-        true
-    }
-
-    #[cfg(not(stage0))]
->>>>>>> libcore: Remove mutable fields from repr
     fn visit_leave_enum_variant(&self, _variant: uint,
                                 _disr_val: int,
                                 n_fields: uint,
@@ -557,9 +523,13 @@ impl TyVisitor for ReprVisitor {
         true
     }
 
-    fn visit_leave_enum(&self, _n_variants: uint,
+    fn visit_leave_enum(&self,
+                        _n_variants: uint,
                         _get_disr: extern unsafe fn(ptr: *Opaque) -> int,
-                        _sz: uint, _align: uint) -> bool {
+                        _sz: uint,
+                        _align: uint)
+                        -> bool {
+        let var_stk: &mut ~[VariantState] = self.var_stk;
         match self.var_stk.pop() {
             SearchingFor(*) => fail!(~"enum value matched no variant"),
             _ => true

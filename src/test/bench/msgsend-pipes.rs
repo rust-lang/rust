@@ -62,9 +62,9 @@ fn run(args: &[~str]) {
     for uint::range(0, workers) |_i| {
         let (from_parent_, to_child) = stream();
         from_parent.add(from_parent_);
-        do task::task().future_result(|+r| {
-            worker_results.push(r);
-        }).spawn || {
+        let mut builder = task::task();
+        builder.future_result(|r| worker_results.push(r));
+        do builder.spawn {
             for uint::range(0, size / workers) |_i| {
                 //error!("worker %?: sending %? bytes", i, num_bytes);
                 to_child.send(bytes(num_bytes));
