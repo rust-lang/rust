@@ -289,15 +289,24 @@ fn chunk(n: uint, idx: uint) -> uint {
     (n >> sh) & MASK
 }
 
-fn find_mut<'r, T>(child: &'r mut Child<T>, key: uint, idx: uint)
-                -> Option<&'r mut T> {
-    unsafe { // FIXME(#4903)---requires flow-sensitive borrow checker
+#[cfg(stage0)]
+fn find_mut<'r, T>(child: &'r mut Child<T>, key: uint, idx: uint) -> Option<&'r mut T> {
+    unsafe {
         (match *child {
             External(_, ref value) => Some(cast::transmute_mut(value)),
             Internal(ref x) => find_mut(cast::transmute_mut(&x.children[chunk(key, idx)]),
                                         key, idx + 1),
             Nothing => None
         }).map_consume(|x| cast::transmute_mut_region(x))
+    }
+}
+
+#[cfg(not(stage0))]
+fn find_mut<'r, T>(child: &'r mut Child<T>, key: uint, idx: uint) -> Option<&'r mut T> {
+    match *child {
+        External(_, ref mut value) => Some(value),
+        Internal(ref mut x) => find_mut(&mut x.children[chunk(key, idx)], key, idx + 1),
+        Nothing => None
     }
 }
 
