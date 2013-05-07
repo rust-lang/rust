@@ -1795,7 +1795,7 @@ pub impl TypeContents {
     }
 
     fn nonowned(_cx: ctxt) -> TypeContents {
-        TC_MANAGED + TC_BORROWED_POINTER
+        TC_MANAGED + TC_BORROWED_POINTER + TC_NON_OWNED
     }
 
     fn contains_managed(&self) -> bool {
@@ -1849,40 +1849,43 @@ impl ToStr for TypeContents {
 }
 
 /// Constant for a type containing nothing of interest.
-static TC_NONE: TypeContents =             TypeContents{bits:0b0000_00000000};
+static TC_NONE: TypeContents =             TypeContents{bits: 0b0000_0000_0000};
 
 /// Contains a borrowed value with a lifetime other than static
-static TC_BORROWED_POINTER: TypeContents = TypeContents{bits:0b0000_00000001};
+static TC_BORROWED_POINTER: TypeContents = TypeContents{bits: 0b0000_0000_0001};
 
 /// Contains an owned pointer (~T) but not slice of some kind
-static TC_OWNED_POINTER: TypeContents =    TypeContents{bits:0b000000000010};
+static TC_OWNED_POINTER: TypeContents =    TypeContents{bits: 0b0000_0000_0010};
 
 /// Contains an owned vector ~[] or owned string ~str
-static TC_OWNED_VEC: TypeContents =        TypeContents{bits:0b000000000100};
+static TC_OWNED_VEC: TypeContents =        TypeContents{bits: 0b0000_0000_0100};
 
 /// Contains a ~fn() or a ~Trait, which is non-copyable.
-static TC_OWNED_CLOSURE: TypeContents =    TypeContents{bits:0b000000001000};
+static TC_OWNED_CLOSURE: TypeContents =    TypeContents{bits: 0b0000_0000_1000};
 
 /// Type with a destructor
-static TC_DTOR: TypeContents =             TypeContents{bits:0b000000010000};
+static TC_DTOR: TypeContents =             TypeContents{bits: 0b0000_0001_0000};
 
 /// Contains a managed value
-static TC_MANAGED: TypeContents =          TypeContents{bits:0b000000100000};
+static TC_MANAGED: TypeContents =          TypeContents{bits: 0b0000_0010_0000};
 
 /// &mut with any region
-static TC_BORROWED_MUT: TypeContents =     TypeContents{bits:0b000001000000};
+static TC_BORROWED_MUT: TypeContents =     TypeContents{bits: 0b0000_0100_0000};
 
 /// Mutable content, whether owned or by ref
-static TC_MUTABLE: TypeContents =          TypeContents{bits:0b000010000000};
+static TC_MUTABLE: TypeContents =          TypeContents{bits: 0b0000_1000_0000};
 
-/// Mutable content, whether owned or by ref
-static TC_ONCE_CLOSURE: TypeContents =     TypeContents{bits:0b000100000000};
+/// One-shot closure
+static TC_ONCE_CLOSURE: TypeContents =     TypeContents{bits: 0b0001_0000_0000};
 
 /// An enum with no variants.
-static TC_EMPTY_ENUM: TypeContents =       TypeContents{bits:0b010000000000};
+static TC_EMPTY_ENUM: TypeContents =       TypeContents{bits: 0b0010_0000_0000};
+
+/// Contains a type marked with `#[non_owned]`
+static TC_NON_OWNED: TypeContents =        TypeContents{bits: 0b0100_0000_0000};
 
 /// All possible contents.
-static TC_ALL: TypeContents =              TypeContents{bits:0b011111111111};
+static TC_ALL: TypeContents =              TypeContents{bits: 0b0111_1111_1111};
 
 pub fn type_is_copyable(cx: ctxt, t: ty::t) -> bool {
     type_contents(cx, t).is_copy(cx)
@@ -2024,14 +2027,13 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
             ty_struct(did, ref substs) => {
                 let flds = struct_fields(cx, did, substs);
-                let flds_tc = flds.foldl(
+                let mut res = flds.foldl(
                     TC_NONE,
                     |tc, f| tc + tc_mt(cx, f.mt, cache));
                 if ty::has_dtor(cx, did) {
-                    flds_tc + TC_DTOR
-                } else {
-                    flds_tc
+                    res += TC_DTOR;
                 }
+                apply_tc_attr(cx, did, res)
             }
 
             ty_tup(ref tys) => {
@@ -2040,7 +2042,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
             ty_enum(did, ref substs) => {
                 let variants = substd_enum_variants(cx, did, substs);
-                if variants.is_empty() {
+                let res = if variants.is_empty() {
                     // we somewhat arbitrary declare that empty enums
                     // are non-copyable
                     TC_EMPTY_ENUM
@@ -2050,7 +2052,8 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                             *tc,
                             |tc, arg_ty| *tc + tc_ty(cx, *arg_ty, cache))
                     })
-                }
+                };
+                apply_tc_attr(cx, did, res)
             }
 
             ty_param(p) => {
@@ -2108,6 +2111,16 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
     {
         let mc = if mt.mutbl == m_mutbl {TC_MUTABLE} else {TC_NONE};
         mc + tc_ty(cx, mt.ty, cache)
+    }
+
+    fn apply_tc_attr(cx: ctxt, did: def_id, mut tc: TypeContents) -> TypeContents {
+        if has_attr(cx, did, "mutable") {
+            tc += TC_MUTABLE;
+        }
+        if has_attr(cx, did, "non_owned") {
+            tc += TC_NON_OWNED;
+        }
+        tc
     }
 
     fn borrowed_contents(region: ty::Region,
@@ -3874,26 +3887,30 @@ pub fn lookup_trait_def(cx: ctxt, did: ast::def_id) -> @ty::TraitDef {
     }
 }
 
-// Determine whether an item is annotated with #[packed] or not
-pub fn lookup_packed(tcx: ctxt,
-                  did: def_id) -> bool {
+/// Determine whether an item is annotated with an attribute
+pub fn has_attr(tcx: ctxt, did: def_id, attr: &str) -> bool {
     if is_local(did) {
         match tcx.items.find(&did.node) {
             Some(
                 &ast_map::node_item(@ast::item {
                     attrs: ref attrs,
                     _
-                }, _)) => attr::attrs_contains_name(*attrs, "packed"),
+                }, _)) => attr::attrs_contains_name(*attrs, attr),
             _ => tcx.sess.bug(fmt!("lookup_packed: %? is not an item",
                                    did))
         }
     } else {
         let mut ret = false;
         do csearch::get_item_attrs(tcx.cstore, did) |meta_items| {
-            ret = attr::contains_name(meta_items, "packed");
+            ret = attr::contains_name(meta_items, attr);
         }
         ret
     }
+}
+
+/// Determine whether an item is annotated with `#[packed]` or not
+pub fn lookup_packed(tcx: ctxt, did: def_id) -> bool {
+    has_attr(tcx, did, "packed")
 }
 
 // Look up a field ID, whether or not it's local
