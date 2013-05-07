@@ -148,7 +148,7 @@ fn get<'r, T>(elts: &'r [Option<T>], i: uint) -> &'r T {
 mod tests {
     use super::*;
     use core::cmp::Eq;
-    use core::kinds::{Durable, Copy};
+    use core::kinds::Copy;
 
     #[test]
     fn test_simple() {
@@ -232,7 +232,7 @@ mod tests {
     }
 
     #[cfg(test)]
-    fn test_parameterized<T:Copy + Eq + Durable>(a: T, b: T, c: T, d: T) {
+    fn test_parameterized<T:Copy + Eq>(a: T, b: T, c: T, d: T) {
         let mut deq = Deque::new();
         assert!(deq.len() == 0);
         deq.add_front(a);
