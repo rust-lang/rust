@@ -24,9 +24,9 @@ struct RcBox<T> {
 }
 
 /// Immutable reference counted pointer type
+#[non_owned]
 pub struct Rc<T> {
     priv ptr: *mut RcBox<T>,
-    priv non_owned: Option<@()> // FIXME: #5601: replace with `#[non_owned]`
 }
 
 pub impl<'self, T: Owned> Rc<T> {
@@ -35,7 +35,7 @@ pub impl<'self, T: Owned> Rc<T> {
             let ptr = malloc(sys::size_of::<RcBox<T>>() as size_t) as *mut RcBox<T>;
             assert!(!ptr::is_null(ptr));
             intrinsics::move_val_init(&mut *ptr, RcBox{value: value, count: 1});
-            Rc{ptr: ptr, non_owned: None}
+            Rc{ptr: ptr}
         }
     }
 
@@ -64,7 +64,7 @@ impl<T: Owned> Clone for Rc<T> {
     fn clone(&self) -> Rc<T> {
         unsafe {
             (*self.ptr).count += 1;
-            Rc{ptr: self.ptr, non_owned: None}
+            Rc{ptr: self.ptr}
         }
     }
 }
@@ -113,9 +113,10 @@ struct RcMutBox<T> {
 }
 
 /// Mutable reference counted pointer type
+#[non_owned]
+#[mutable]
 pub struct RcMut<T> {
     priv ptr: *mut RcMutBox<T>,
-    priv non_owned: Option<@mut ()> // FIXME: #5601: replace with `#[non_owned]` and `#[non_const]`
 }
 
 pub impl<'self, T: Owned> RcMut<T> {
@@ -124,7 +125,7 @@ pub impl<'self, T: Owned> RcMut<T> {
             let ptr = malloc(sys::size_of::<RcMutBox<T>>() as size_t) as *mut RcMutBox<T>;
             assert!(!ptr::is_null(ptr));
             intrinsics::move_val_init(&mut *ptr, RcMutBox{value: value, count: 1, borrow: Nothing});
-            RcMut{ptr: ptr, non_owned: None}
+            RcMut{ptr: ptr}
         }
     }
 
@@ -171,7 +172,7 @@ impl<T: Owned> Clone for RcMut<T> {
     fn clone(&self) -> RcMut<T> {
         unsafe {
             (*self.ptr).count += 1;
-            RcMut{ptr: self.ptr, non_owned: None}
+            RcMut{ptr: self.ptr}
         }
     }
 }
