@@ -55,7 +55,9 @@ pub trait One {
 pub trait Signed: Num
                 + Neg<Self> {
     fn abs(&self) -> Self;
+    fn abs_sub(&self, other: &Self) -> Self;
     fn signum(&self) -> Self;
+
     fn is_positive(&self) -> bool;
     fn is_negative(&self) -> bool;
 }

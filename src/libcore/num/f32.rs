@@ -313,6 +313,13 @@ impl Signed for f32 {
     fn abs(&self) -> f32 { abs(*self) }
 
     ///
+    /// The positive difference of two numbers. Returns `0.0` if the number is less than or
+    /// equal to `other`, otherwise the difference between`self` and `other` is returned.
+    ///
+    #[inline(always)]
+    fn abs_sub(&self, other: &f32) -> f32 { abs_sub(*self, *other) }
+
+    ///
     /// # Returns
     ///
     /// - `1.0` if the number is positive, `+0.0` or `infinity`
@@ -959,7 +966,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_signed() {
+    pub fn test_abs() {
         assert_eq!(infinity.abs(), infinity);
         assert_eq!(1f32.abs(), 1f32);
         assert_eq!(0f32.abs(), 0f32);
@@ -968,7 +975,24 @@ mod tests {
         assert_eq!(neg_infinity.abs(), infinity);
         assert_eq!((1f32/neg_infinity).abs(), 0f32);
         assert!(NaN.abs().is_NaN());
+    }
 
+    #[test]
+    fn test_abs_sub() {
+        assert_eq!((-1f32).abs_sub(&1f32), 0f32);
+        assert_eq!(1f32.abs_sub(&1f32), 0f32);
+        assert_eq!(1f32.abs_sub(&0f32), 1f32);
+        assert_eq!(1f32.abs_sub(&-1f32), 2f32);
+        assert_eq!(neg_infinity.abs_sub(&0f32), 0f32);
+        assert_eq!(infinity.abs_sub(&1f32), infinity);
+        assert_eq!(0f32.abs_sub(&neg_infinity), infinity);
+        assert_eq!(0f32.abs_sub(&infinity), 0f32);
+        assert!(NaN.abs_sub(&-1f32).is_NaN());
+        assert!(1f32.abs_sub(&NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_signum() {
         assert_eq!(infinity.signum(), 1f32);
         assert_eq!(1f32.signum(), 1f32);
         assert_eq!(0f32.signum(), 1f32);
@@ -977,7 +1001,10 @@ mod tests {
         assert_eq!(neg_infinity.signum(), -1f32);
         assert_eq!((1f32/neg_infinity).signum(), -1f32);
         assert!(NaN.signum().is_NaN());
+    }
 
+    #[test]
+    fn test_is_positive() {
         assert!(infinity.is_positive());
         assert!(1f32.is_positive());
         assert!(0f32.is_positive());
@@ -986,7 +1013,10 @@ mod tests {
         assert!(!neg_infinity.is_positive());
         assert!(!(1f32/neg_infinity).is_positive());
         assert!(!NaN.is_positive());
+    }
 
+    #[test]
+    fn test_is_negative() {
         assert!(!infinity.is_negative());
         assert!(!1f32.is_negative());
         assert!(!0f32.is_negative());

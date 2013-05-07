@@ -265,6 +265,15 @@ impl Signed for T {
     }
 
     ///
+    /// The positive difference of two numbers. Returns `0` if the number is less than or
+    /// equal to `other`, otherwise the difference between`self` and `other` is returned.
+    ///
+    #[inline(always)]
+    fn abs_sub(&self, other: &T) -> T {
+        if *self <= *other { 0 } else { *self - *other }
+    }
+
+    ///
     /// # Returns
     ///
     /// - `0` if the number is zero
@@ -554,21 +563,38 @@ mod tests {
     }
 
     #[test]
-    pub fn test_signed() {
+    pub fn test_abs() {
         assert_eq!((1 as T).abs(), 1 as T);
         assert_eq!((0 as T).abs(), 0 as T);
         assert_eq!((-1 as T).abs(), 1 as T);
+    }
 
+    #[test]
+    fn test_abs_sub() {
+        assert_eq!((-1 as T).abs_sub(&(1 as T)), 0 as T);
+        assert_eq!((1 as T).abs_sub(&(1 as T)), 0 as T);
+        assert_eq!((1 as T).abs_sub(&(0 as T)), 1 as T);
+        assert_eq!((1 as T).abs_sub(&(-1 as T)), 2 as T);
+    }
+
+    #[test]
+    fn test_signum() {
         assert_eq!((1 as T).signum(), 1 as T);
         assert_eq!((0 as T).signum(), 0 as T);
         assert_eq!((-0 as T).signum(), 0 as T);
         assert_eq!((-1 as T).signum(), -1 as T);
+    }
 
+    #[test]
+    fn test_is_positive() {
         assert!((1 as T).is_positive());
         assert!(!(0 as T).is_positive());
         assert!(!(-0 as T).is_positive());
         assert!(!(-1 as T).is_positive());
+    }
 
+    #[test]
+    fn test_is_negative() {
         assert!(!(1 as T).is_negative());
         assert!(!(0 as T).is_negative());
         assert!(!(-0 as T).is_negative());

@@ -326,6 +326,13 @@ impl Signed for f64 {
     fn abs(&self) -> f64 { abs(*self) }
 
     ///
+    /// The positive difference of two numbers. Returns `0.0` if the number is less than or
+    /// equal to `other`, otherwise the difference between`self` and `other` is returned.
+    ///
+    #[inline(always)]
+    fn abs_sub(&self, other: &f64) -> f64 { abs_sub(*self, *other) }
+
+    ///
     /// # Returns
     ///
     /// - `1.0` if the number is positive, `+0.0` or `infinity`
@@ -594,6 +601,7 @@ impl Float for f64 {
     #[inline(always)]
     fn neg_zero() -> f64 { -0.0 }
 
+    /// Returns `true` if the number is NaN
     #[inline(always)]
     fn is_NaN(&self) -> bool { *self != *self }
 
@@ -603,7 +611,7 @@ impl Float for f64 {
         *self == Float::infinity() || *self == Float::neg_infinity()
     }
 
-    /// Returns `true` if the number is finite
+    /// Returns `true` if the number is not infinite or NaN
     #[inline(always)]
     fn is_finite(&self) -> bool {
         !(self.is_NaN() || self.is_infinite())
@@ -1005,7 +1013,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_signed() {
+    pub fn test_abs() {
         assert_eq!(infinity.abs(), infinity);
         assert_eq!(1f64.abs(), 1f64);
         assert_eq!(0f64.abs(), 0f64);
@@ -1014,7 +1022,24 @@ mod tests {
         assert_eq!(neg_infinity.abs(), infinity);
         assert_eq!((1f64/neg_infinity).abs(), 0f64);
         assert!(NaN.abs().is_NaN());
+    }
 
+    #[test]
+    fn test_abs_sub() {
+        assert_eq!((-1f64).abs_sub(&1f64), 0f64);
+        assert_eq!(1f64.abs_sub(&1f64), 0f64);
+        assert_eq!(1f64.abs_sub(&0f64), 1f64);
+        assert_eq!(1f64.abs_sub(&-1f64), 2f64);
+        assert_eq!(neg_infinity.abs_sub(&0f64), 0f64);
+        assert_eq!(infinity.abs_sub(&1f64), infinity);
+        assert_eq!(0f64.abs_sub(&neg_infinity), infinity);
+        assert_eq!(0f64.abs_sub(&infinity), 0f64);
+        assert!(NaN.abs_sub(&-1f64).is_NaN());
+        assert!(1f64.abs_sub(&NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_signum() {
         assert_eq!(infinity.signum(), 1f64);
         assert_eq!(1f64.signum(), 1f64);
         assert_eq!(0f64.signum(), 1f64);
@@ -1023,7 +1048,10 @@ mod tests {
         assert_eq!(neg_infinity.signum(), -1f64);
         assert_eq!((1f64/neg_infinity).signum(), -1f64);
         assert!(NaN.signum().is_NaN());
+    }
 
+    #[test]
+    fn test_is_positive() {
         assert!(infinity.is_positive());
         assert!(1f64.is_positive());
         assert!(0f64.is_positive());
@@ -1032,7 +1060,10 @@ mod tests {
         assert!(!neg_infinity.is_positive());
         assert!(!(1f64/neg_infinity).is_positive());
         assert!(!NaN.is_positive());
+    }
 
+    #[test]
+    fn test_is_negative() {
         assert!(!infinity.is_negative());
         assert!(!1f64.is_negative());
         assert!(!0f64.is_negative());
