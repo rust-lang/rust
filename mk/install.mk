@@ -192,9 +192,9 @@ ifeq ($(CFG_ADB_DEVICE_STATUS),true)
 ifdef VERBOSE
  ADB = adb $(1)
  ADB_PUSH = adb push $(1) $(2)
- ADB_SHELL = adb shell $(1) $(2) 
+ ADB_SHELL = adb shell $(1) $(2)
 else
- ADB = $(Q)$(call E, adb $(1)) && adb $(1) 1>/dev/null 
+ ADB = $(Q)$(call E, adb $(1)) && adb $(1) 1>/dev/null
  ADB_PUSH = $(Q)$(call E, adb push $(1)) && adb push $(1) $(2) 1>/dev/null
  ADB_SHELL = $(Q)$(call E, adb shell $(1) $(2)) && adb shell $(1) $(2) 1>/dev/null
 endif
@@ -222,8 +222,8 @@ install-runtime-target: \
 	install-runtime-target-arm-linux-androideabi-cleanup \
 	install-runtime-target-arm-linux-androideabi-host-$(CFG_BUILD_TRIPLE)
 else
-install-runtime-target: 
+install-runtime-target:
 	@echo "No device to install runtime library"
-	@echo 
+	@echo
 endif
 endif
