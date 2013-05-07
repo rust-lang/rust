@@ -16,5 +16,5 @@ fn test(cond: bool) {
 }
 
 pub fn main() {
-	// note: don't call test()... :)
+    // note: don't call test()... :)
 }

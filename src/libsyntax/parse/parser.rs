@@ -19,7 +19,7 @@ use ast::{_mod, add, arg, arm, attribute, bind_by_ref, bind_infer};
 use ast::{bind_by_copy, bitand, bitor, bitxor, blk};
 use ast::{blk_check_mode, box};
 use ast::{crate, crate_cfg, decl, decl_item};
-use ast::{decl_local, default_blk, deref, quot, enum_def};
+use ast::{decl_local, default_blk, deref, div, enum_def};
 use ast::{expr, expr_, expr_addr_of, expr_match, expr_again};
 use ast::{expr_assign, expr_assign_op, expr_binary, expr_block};
 use ast::{expr_break, expr_call, expr_cast, expr_copy, expr_do_body};
@@ -101,11 +101,6 @@ enum restriction {
     RESTRICT_NO_BAR_OP,
     RESTRICT_NO_BAR_OR_DOUBLEBAR_OP,
 }
-
-//  So that we can distinguish a class dtor from other class members
-
-enum class_contents { dtor_decl(blk, ~[attribute], codemap::span),
-                      members(~[@struct_field]) }
 
 type arg_or_capture_item = Either<arg, ()>;
 type item_info = (ident, item_, Option<~[attribute]>);
@@ -313,22 +308,22 @@ pub impl Parser {
         }
         return copy self.buffer[(*self.buffer_start + dist - 1) & 3].tok;
     }
-    fn fatal(&self, m: ~str) -> ! {
+    fn fatal(&self, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(*copy self.span, m)
     }
-    fn span_fatal(&self, sp: span, m: ~str) -> ! {
+    fn span_fatal(&self, sp: span, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(sp, m)
     }
-    fn span_note(&self, sp: span, m: ~str) {
+    fn span_note(&self, sp: span, m: &str) {
         self.sess.span_diagnostic.span_note(sp, m)
     }
-    fn bug(&self, m: ~str) -> ! {
+    fn bug(&self, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(*copy self.span, m)
     }
-    fn warn(&self, m: ~str) {
+    fn warn(&self, m: &str) {
         self.sess.span_diagnostic.span_warn(*copy self.span, m)
     }
-    fn span_err(&self, sp: span, m: ~str) {
+    fn span_err(&self, sp: span, m: &str) {
         self.sess.span_diagnostic.span_err(sp, m)
     }
     fn abort_if_errors(&self) {
@@ -937,8 +932,8 @@ pub impl Parser {
         loop {
             match *self.token {
                 token::MOD_SEP => {
-                    match self.look_ahead(1u) {
-                        token::IDENT(id,_) => {
+                    match self.look_ahead(1) {
+                        token::IDENT(*) => {
                             self.bump();
                             ids.push(self.parse_ident());
                         }
@@ -1607,9 +1602,9 @@ pub impl Parser {
             token::LBRACE | token::LPAREN | token::LBRACKET => {
                 self.parse_matcher_subseq(
                     name_idx,
-                    &*self.token,
+                    *self.token,
                     // tjc: not sure why we need a copy
-                    &token::flip_delimiter(&*self.token)
+                    token::flip_delimiter(&*self.token)
                 )
             }
             _ => self.fatal(~"expected open delimiter")
@@ -1623,15 +1618,15 @@ pub impl Parser {
     fn parse_matcher_subseq(
         &self,
         name_idx: @mut uint,
-        bra: &token::Token,
-        ket: &token::Token
+        bra: token::Token,
+        ket: token::Token
     ) -> ~[matcher] {
         let mut ret_val = ~[];
         let mut lparens = 0u;
 
-        self.expect(bra);
+        self.expect(&bra);
 
-        while *self.token != *ket || lparens > 0u {
+        while *self.token != ket || lparens > 0u {
             if *self.token == token::LPAREN { lparens += 1u; }
             if *self.token == token::RPAREN { lparens -= 1u; }
             ret_val.push(self.parse_matcher(name_idx));
@@ -1651,8 +1646,8 @@ pub impl Parser {
                 let name_idx_lo = *name_idx;
                 let ms = self.parse_matcher_subseq(
                     name_idx,
-                    &token::LPAREN,
-                    &token::RPAREN
+                    token::LPAREN,
+                    token::RPAREN
                 );
                 if ms.len() == 0u {
                     self.fatal(~"repetition body must be nonempty");
@@ -1836,7 +1831,7 @@ pub impl Parser {
                   token::PLUS => aop = add,
                   token::MINUS => aop = subtract,
                   token::STAR => aop = mul,
-                  token::SLASH => aop = quot,
+                  token::SLASH => aop = div,
                   token::PERCENT => aop = rem,
                   token::CARET => aop = bitxor,
                   token::AND => aop = bitand,
@@ -2034,8 +2029,7 @@ pub impl Parser {
             // This is a 'continue' expression
             if opt_ident.is_some() {
                 self.span_err(*self.last_span,
-                              ~"a label may not be used with a `loop` \
-                                expression");
+                              "a label may not be used with a `loop` expression");
             }
 
             let lo = self.span.lo;
@@ -2172,7 +2166,7 @@ pub impl Parser {
                     @ast::pat { node: pat_wild, _ } => (),
                     @ast::pat { node: pat_ident(_, _, _), _ } => (),
                     @ast::pat { span, _ } => self.span_fatal(
-                        span, ~"expected an identifier or `_`"
+                        span, "expected an identifier or `_`"
                     )
                 }
                 slice = Some(subpat);
@@ -2450,7 +2444,7 @@ pub impl Parser {
                     }
                 }
             }
-            hi = self.span.hi;
+            hi = self.last_span.hi;
           }
         }
         @ast::pat { id: self.get_id(), node: pat, span: mk_sp(lo, hi) }
@@ -2464,7 +2458,7 @@ pub impl Parser {
                        -> ast::pat_ {
         if !is_plain_ident(&*self.token) {
             self.span_fatal(*self.last_span,
-                            ~"expected identifier, found path");
+                            "expected identifier, found path");
         }
         // why a path here, and not just an identifier?
         let name = self.parse_path_without_tps();
@@ -2483,7 +2477,7 @@ pub impl Parser {
         if *self.token == token::LPAREN {
             self.span_fatal(
                 *self.last_span,
-                ~"expected identifier, found enum pattern");
+                "expected identifier, found enum pattern");
         }
 
         pat_ident(binding_mode, name, sub)
@@ -2525,7 +2519,9 @@ pub impl Parser {
     }
 
     // parse a structure field
-    fn parse_name_and_ty(&self, pr: visibility) -> @struct_field {
+    fn parse_name_and_ty(&self,
+                         pr: visibility,
+                         attrs: ~[attribute]) -> @struct_field {
         let mut is_mutbl = struct_immutable;
         let lo = self.span.lo;
         if self.eat_keyword(&~"mut") {
@@ -2540,7 +2536,8 @@ pub impl Parser {
         @spanned(lo, self.last_span.hi, ast::struct_field_ {
             kind: named_field(name, is_mutbl, pr),
             id: self.get_id(),
-            ty: ty
+            ty: ty,
+            attrs: attrs,
         })
     }
 
@@ -2611,19 +2608,19 @@ pub impl Parser {
 
             match self.parse_item_or_view_item(/*bad*/ copy item_attrs,
                                                            false) {
-              iovi_item(i) => {
-                let hi = i.span.hi;
-                let decl = @spanned(lo, hi, decl_item(i));
-                return @spanned(lo, hi, stmt_decl(decl, self.get_id()));
-              }
-              iovi_view_item(vi) => {
-                self.span_fatal(vi.span, ~"view items must be declared at \
-                                           the top of the block");
-              }
-              iovi_foreign_item(_) => {
-                  self.fatal(~"foreign items are not allowed here");
-              }
-              iovi_none() => { /* fallthrough */ }
+                iovi_item(i) => {
+                    let hi = i.span.hi;
+                    let decl = @spanned(lo, hi, decl_item(i));
+                    return @spanned(lo, hi, stmt_decl(decl, self.get_id()));
+                }
+                iovi_view_item(vi) => {
+                    self.span_fatal(vi.span,
+                                    "view items must be declared at the top of the block");
+                }
+                iovi_foreign_item(_) => {
+                    self.fatal(~"foreign items are not allowed here");
+                }
+                iovi_none() => { /* fallthrough */ }
             }
 
             check_expected_item(self, item_attrs);
@@ -2824,8 +2821,7 @@ pub impl Parser {
                         result.push(RegionTyParamBound);
                     } else {
                         self.span_err(*self.span,
-                                      ~"`'static` is the only permissible \
-                                        region bound here");
+                                      "`'static` is the only permissible region bound here");
                     }
                     self.bump();
                 }
@@ -3240,7 +3236,7 @@ pub impl Parser {
                     })
                 }
                 _ => {
-                    self.span_err(*self.span, ~"not a trait");
+                    self.span_err(*self.span, "not a trait");
                     None
                 }
             };
@@ -3299,7 +3295,6 @@ pub impl Parser {
         }
 
         let mut fields: ~[@struct_field];
-        let mut the_dtor: Option<(blk, ~[attribute], codemap::span)> = None;
         let is_tuple_like;
 
         if self.eat(&token::LBRACE) {
@@ -3307,26 +3302,8 @@ pub impl Parser {
             is_tuple_like = false;
             fields = ~[];
             while *self.token != token::RBRACE {
-                match self.parse_struct_decl_field() {
-                  dtor_decl(ref blk, ref attrs, s) => {
-                      match the_dtor {
-                        Some((_, _, s_first)) => {
-                          self.span_note(s, fmt!("Duplicate destructor \
-                                     declaration for class %s",
-                                     *self.interner.get(class_name)));
-                          self.span_fatal(copy s_first, ~"First destructor \
-                                                          declared here");
-                        }
-                        None => {
-                          the_dtor = Some((copy *blk, copy *attrs, s));
-                        }
-                      }
-                  }
-                  members(mms) => {
-                    for mms.each |struct_field| {
-                        fields.push(*struct_field)
-                    }
-                  }
+                for self.parse_struct_decl_field().each |struct_field| {
+                    fields.push(*struct_field)
                 }
             }
             if fields.len() == 0 {
@@ -3342,11 +3319,13 @@ pub impl Parser {
                 &token::RPAREN,
                 seq_sep_trailing_allowed(token::COMMA)
             ) |p| {
+                let attrs = self.parse_outer_attributes();
                 let lo = p.span.lo;
                 let struct_field_ = ast::struct_field_ {
                     kind: unnamed_field,
                     id: self.get_id(),
-                    ty: p.parse_ty(false)
+                    ty: p.parse_ty(false),
+                    attrs: attrs,
                 };
                 @spanned(lo, p.span.hi, struct_field_)
             };
@@ -3365,19 +3344,11 @@ pub impl Parser {
             );
         }
 
-        let actual_dtor = do the_dtor.map |dtor| {
-            let (d_body, d_attrs, d_s) = copy *dtor;
-            codemap::spanned { node: ast::struct_dtor_ { id: self.get_id(),
-                                                     attrs: d_attrs,
-                                                     self_id: self.get_id(),
-                                                     body: d_body},
-                       span: d_s}};
         let _ = self.get_id();  // XXX: Workaround for crazy bug.
         let new_id = self.get_id();
         (class_name,
          item_struct(@ast::struct_def {
              fields: fields,
-             dtor: actual_dtor,
              ctor_id: if is_tuple_like { Some(new_id) } else { None }
          }, generics),
          None)
@@ -3391,12 +3362,14 @@ pub impl Parser {
     }
 
     // parse a structure field declaration
-    fn parse_single_struct_field(&self, vis: visibility) -> @struct_field {
+    fn parse_single_struct_field(&self,
+                                 vis: visibility,
+                                 attrs: ~[attribute]) -> @struct_field {
         if self.eat_obsolete_ident("let") {
             self.obsolete(*self.last_span, ObsoleteLet);
         }
 
-        let a_var = self.parse_name_and_ty(vis);
+        let a_var = self.parse_name_and_ty(vis, attrs);
         match *self.token {
             token::SEMI => {
                 self.obsolete(copy *self.span, ObsoleteFieldTerminator);
@@ -3420,34 +3393,27 @@ pub impl Parser {
     }
 
     // parse an element of a struct definition
-    fn parse_struct_decl_field(&self) -> class_contents {
-
-        if self.try_parse_obsolete_priv_section() {
-            return members(~[]);
-        }
+    fn parse_struct_decl_field(&self) -> ~[@struct_field] {
 
         let attrs = self.parse_outer_attributes();
 
+        if self.try_parse_obsolete_priv_section(attrs) {
+            return ~[];
+        }
+
         if self.eat_keyword(&~"priv") {
-            return members(~[self.parse_single_struct_field(private)])
+            return ~[self.parse_single_struct_field(private, attrs)]
         }
 
         if self.eat_keyword(&~"pub") {
-           return members(~[self.parse_single_struct_field(public)]);
+           return ~[self.parse_single_struct_field(public, attrs)];
         }
 
         if self.try_parse_obsolete_struct_ctor() {
-            return members(~[]);
+            return ~[];
         }
 
-        if self.eat_keyword(&~"drop") {
-            let lo = self.last_span.lo;
-            let body = self.parse_block();
-            return dtor_decl(body, attrs, mk_sp(lo, self.last_span.hi))
-        }
-        else {
-           return members(~[self.parse_single_struct_field(inherited)]);
-        }
+        return ~[self.parse_single_struct_field(inherited, attrs)];
     }
 
     // parse visiility: PUB, PRIV, or nothing
@@ -3499,9 +3465,8 @@ pub impl Parser {
             ) {
               iovi_item(item) => items.push(item),
               iovi_view_item(view_item) => {
-                self.span_fatal(view_item.span, ~"view items must be \
-                                                  declared at the top of the \
-                                                  module");
+                self.span_fatal(view_item.span, "view items must be  declared at the top of the \
+                                                 module");
               }
               _ => {
                 self.fatal(
@@ -3723,12 +3688,11 @@ pub impl Parser {
                                first_item_attrs: ~[attribute])
                             -> foreign_mod {
         let ParsedItemsAndViewItems {
-            attrs_remaining: attrs_remaining,
+            attrs_remaining: _,
             view_items: view_items,
             items: _,
             foreign_items: foreign_items
         } = self.parse_foreign_items(first_item_attrs, true);
-        let mut initial_attrs = attrs_remaining;
         assert!(*self.token == token::RBRACE);
         ast::foreign_mod {
             sort: sort,
@@ -3794,7 +3758,7 @@ pub impl Parser {
         }
 
         if opt_abis.is_some() {
-            self.span_err(*self.span, ~"an ABI may not be specified here");
+            self.span_err(*self.span, "an ABI may not be specified here");
         }
 
         // extern mod foo;
@@ -3830,44 +3794,16 @@ pub impl Parser {
     // parse a structure-like enum variant definition
     // this should probably be renamed or refactored...
     fn parse_struct_def(&self) -> @struct_def {
-        let mut the_dtor: Option<(blk, ~[attribute], codemap::span)> = None;
         let mut fields: ~[@struct_field] = ~[];
         while *self.token != token::RBRACE {
-            match self.parse_struct_decl_field() {
-                dtor_decl(ref blk, ref attrs, s) => {
-                    match the_dtor {
-                        Some((_, _, s_first)) => {
-                            self.span_note(s, ~"duplicate destructor \
-                                                declaration");
-                            self.span_fatal(copy s_first,
-                                            ~"first destructor \
-                                              declared here");
-                        }
-                        None => {
-                            the_dtor = Some((copy *blk, copy *attrs, s));
-                        }
-                    }
-                }
-                members(mms) => {
-                    for mms.each |struct_field| {
-                        fields.push(*struct_field);
-                    }
-                }
+            for self.parse_struct_decl_field().each |struct_field| {
+                fields.push(*struct_field);
             }
         }
         self.bump();
-        let actual_dtor = do the_dtor.map |dtor| {
-            let (d_body, d_attrs, d_s) = copy *dtor;
-            codemap::spanned { node: ast::struct_dtor_ { id: self.get_id(),
-                                                     attrs: d_attrs,
-                                                     self_id: self.get_id(),
-                                                     body: d_body },
-                      span: d_s }
-        };
 
         return @ast::struct_def {
             fields: fields,
-            dtor: actual_dtor,
             ctor_id: None
         };
     }
@@ -4371,7 +4307,7 @@ pub impl Parser {
                                 rp: None,
                                 types: ~[] };
         return @spanned(lo,
-                        self.span.hi,
+                        self.last_span.hi,
                         view_path_simple(last, path, self.get_id()));
     }
 
@@ -4457,9 +4393,7 @@ pub impl Parser {
                         view_item_extern_mod(*)
                         if !extern_mod_allowed => {
                             self.span_err(view_item.span,
-                                          ~"\"extern mod\" \
-                                            declarations are not \
-                                            allowed here");
+                                          "\"extern mod\" declarations are not allowed here");
                         }
                         view_item_extern_mod(*) => {}
                     }
@@ -4485,8 +4419,7 @@ pub impl Parser {
                     iovi_none => break,
                     iovi_view_item(view_item) => {
                         self.span_err(view_item.span,
-                                      ~"`use` and `extern mod` declarations \
-                                        must precede items");
+                                      "`use` and `extern mod` declarations must precede items");
                     }
                     iovi_item(item) => {
                         items.push(item)
@@ -4521,8 +4454,7 @@ pub impl Parser {
                 iovi_view_item(view_item) => {
                     // I think this can't occur:
                     self.span_err(view_item.span,
-                                  ~"`use` and `extern mod` declarations \
-                                    must precede items");
+                                  "`use` and `extern mod` declarations must precede items");
                 }
                 iovi_item(_) => {
                     // FIXME #5668: this will occur for a macro invocation:
@@ -4569,14 +4501,3 @@ pub impl Parser {
         }
     }
 }
-
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

@@ -394,10 +394,15 @@ pub fn call_tydesc_glue(cx: block, v: ValueRef, t: ty::t, field: uint)
 
 pub fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_visit_glue");
-    let mut bcx = bcx;
-    let (visitor_trait, object_ty) = ty::visitor_object_ty(bcx.tcx());
-    let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), object_ty)));
-    bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, visitor_trait.def_id);
+    let bcx = do with_scope(bcx, None, ~"visitor cleanup") |bcx| {
+        let mut bcx = bcx;
+        let (visitor_trait, object_ty) = ty::visitor_object_ty(bcx.tcx());
+        let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), object_ty)));
+        bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, visitor_trait.def_id);
+        // The visitor is a boxed object and needs to be dropped
+        add_clean(bcx, v, object_ty);
+        bcx
+    };
     build_return(bcx);
 }
 
@@ -443,11 +448,8 @@ pub fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
         // Call the dtor if there is one
         match ty::ty_dtor(bcx.tcx(), did) {
             ty::NoDtor => bcx,
-            ty::LegacyDtor(ref dt_id) => {
-                trans_struct_drop(bcx, t, v, *dt_id, did, substs, false)
-            }
             ty::TraitDtor(ref dt_id) => {
-                trans_struct_drop(bcx, t, v, *dt_id, did, substs, true)
+                trans_struct_drop(bcx, t, v, *dt_id, did, substs)
             }
         }
       }
@@ -461,8 +463,7 @@ pub fn trans_struct_drop(bcx: block,
                          v0: ValueRef,
                          dtor_did: ast::def_id,
                          class_did: ast::def_id,
-                         substs: &ty::substs,
-                         take_ref: bool)
+                         substs: &ty::substs)
                       -> block {
     let repr = adt::represent_type(bcx.ccx(), t);
     let drop_flag = adt::trans_drop_flag_ptr(bcx, repr, v0);
@@ -484,15 +485,10 @@ pub fn trans_struct_drop(bcx: block,
         // (self)
         assert!((params.len() == 2));
 
-        // If we need to take a reference to the class (because it's using
-        // the Drop trait), do so now.
-        let llval;
-        if take_ref {
-            llval = alloca(bcx, val_ty(v0));
-            Store(bcx, v0, llval);
-        } else {
-            llval = v0;
-        }
+        // Take a reference to the class (because it's using the Drop trait),
+        // do so now.
+        let llval = alloca(bcx, val_ty(v0));
+        Store(bcx, v0, llval);
 
         let self_arg = PointerCast(bcx, llval, params[1]);
         let args = ~[C_null(T_ptr(T_i8())), self_arg];
@@ -534,10 +530,7 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
         let tcx = bcx.tcx();
         match ty::ty_dtor(tcx, did) {
           ty::TraitDtor(dtor) => {
-            trans_struct_drop(bcx, t, v0, dtor, did, substs, true)
-          }
-          ty::LegacyDtor(dtor) => {
-            trans_struct_drop(bcx, t, v0, dtor, did, substs, false)
+            trans_struct_drop(bcx, t, v0, dtor, did, substs)
           }
           ty::NoDtor => {
             // No dtor? Just the default case
@@ -549,12 +542,12 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
         closure::make_closure_glue(bcx, v0, t, drop_ty)
       }
       ty::ty_trait(_, _, ty::BoxTraitStore, _) => {
-        let llbox = Load(bcx, GEPi(bcx, v0, [0u, 1u]));
+        let llbox = Load(bcx, GEPi(bcx, v0, [0u, abi::trt_field_box]));
         decr_refcnt_maybe_free(bcx, llbox, ty::mk_opaque_box(ccx.tcx))
       }
       ty::ty_trait(_, _, ty::UniqTraitStore, _) => {
-        let lluniquevalue = GEPi(bcx, v0, [0, 1]);
-        let lltydesc = Load(bcx, GEPi(bcx, v0, [0, 2]));
+        let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
+        let lltydesc = Load(bcx, GEPi(bcx, v0, [0, abi::trt_field_tydesc]));
         call_tydesc_glue_full(bcx, lluniquevalue, lltydesc,
                               abi::tydesc_field_free_glue, None);
         bcx
@@ -613,13 +606,13 @@ pub fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
         closure::make_closure_glue(bcx, v, t, take_ty)
       }
       ty::ty_trait(_, _, ty::BoxTraitStore, _) => {
-        let llbox = Load(bcx, GEPi(bcx, v, [0u, 1u]));
+        let llbox = Load(bcx, GEPi(bcx, v, [0u, abi::trt_field_box]));
         incr_refcnt_of_boxed(bcx, llbox);
         bcx
       }
       ty::ty_trait(_, _, ty::UniqTraitStore, _) => {
-        let llval = GEPi(bcx, v, [0, 1]);
-        let lltydesc = Load(bcx, GEPi(bcx, v, [0, 2]));
+        let llval = GEPi(bcx, v, [0, abi::trt_field_box]);
+        let lltydesc = Load(bcx, GEPi(bcx, v, [0, abi::trt_field_tydesc]));
         call_tydesc_glue_full(bcx, llval, lltydesc,
                               abi::tydesc_field_take_glue, None);
         bcx

@@ -48,5 +48,3 @@ swap_registers:
 	msr cpsr_cxsf, r2
 
 	mov pc, lr
-
-

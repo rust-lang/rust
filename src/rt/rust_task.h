@@ -175,6 +175,10 @@
 #define RED_ZONE_SIZE RZ_MAC_32
 #endif
 
+#ifndef RED_ZONE_SIZE
+# error "Red zone not defined for this platform"
+#endif
+
 struct frame_glue_fns {
     uintptr_t mark_glue_off;
     uintptr_t drop_glue_off;
@@ -240,6 +244,11 @@ rust_task : public kernel_owned<rust_task>
     // Used by rust task management routines in libcore/task.rs.
     void *task_local_data;
     void (*task_local_data_cleanup)(void *data);
+
+    // Contains a ~[BorrowRecord] pointer, or NULL.
+    //
+    // Used by borrow management code in libcore/unstable/lang.rs.
+    void *borrow_list;
 
 private:
 

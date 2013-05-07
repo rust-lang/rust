@@ -108,8 +108,6 @@ mod tests {
 
     #[test]
     fn test_bool_from_str() {
-        use from_str::FromStr;
-
         do all_values |v| {
             assert!(Some(v) == FromStr::from_str(to_str(v)))
         }

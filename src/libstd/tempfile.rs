@@ -27,6 +27,7 @@ pub fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
 mod tests {
     use tempfile::mkdtemp;
     use tempfile;
+    use core::os;
 
     #[test]
     fn test_mkdtemp() {
@@ -42,13 +43,18 @@ mod tests {
         use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
         use core::os;
 
-        let root = mkdtemp(&os::tmpdir(), "temp").expect("recursive_mkdir_rel");
-        os::change_dir(&root);
-        let path = Path("frob");
-        assert!(os::mkdir_recursive(&path,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
-        assert!(os::path_is_dir(&path));
-        assert!(os::mkdir_recursive(&path,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
-        assert!(os::path_is_dir(&path));
+        let root = mkdtemp(&os::tmpdir(), "recursive_mkdir_rel").
+            expect("recursive_mkdir_rel");
+        assert!(do os::change_dir_locked(&root) {
+            let path = Path("frob");
+            debug!("recursive_mkdir_rel: Making: %s in cwd %s [%?]", path.to_str(),
+                   os::getcwd().to_str(),
+                   os::path_exists(&path));
+            assert!(os::mkdir_recursive(&path,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+            assert!(os::path_is_dir(&path));
+            assert!(os::mkdir_recursive(&path,  (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+            assert!(os::path_is_dir(&path));
+        });
     }
 
     #[test]
@@ -67,18 +73,44 @@ mod tests {
         use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
         use core::os;
 
-        let root = mkdtemp(&os::tmpdir(), "temp").expect("recursive_mkdir_rel_2");
-        os::change_dir(&root);
-        let path = Path("./frob/baz");
-        debug!("...Making: %s in cwd %s", path.to_str(), os::getcwd().to_str());
-        assert!(os::mkdir_recursive(&path, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
-        assert!(os::path_is_dir(&path));
-        assert!(os::path_is_dir(&path.pop()));
-        let path2 = Path("quux/blat");
-        debug!("Making: %s in cwd %s", path2.to_str(), os::getcwd().to_str());
-        assert!(os::mkdir_recursive(&path2, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
-        assert!(os::path_is_dir(&path2));
-        assert!(os::path_is_dir(&path2.pop()));
+        let root = mkdtemp(&os::tmpdir(), "recursive_mkdir_rel_2").
+            expect("recursive_mkdir_rel_2");
+        assert!(do os::change_dir_locked(&root) {
+            let path = Path("./frob/baz");
+            debug!("recursive_mkdir_rel_2: Making: %s in cwd %s [%?]", path.to_str(),
+                   os::getcwd().to_str(), os::path_exists(&path));
+            assert!(os::mkdir_recursive(&path, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+                assert!(os::path_is_dir(&path));
+            assert!(os::path_is_dir(&path.pop()));
+            let path2 = Path("quux/blat");
+            debug!("recursive_mkdir_rel_2: Making: %s in cwd %s", path2.to_str(),
+                   os::getcwd().to_str());
+            assert!(os::mkdir_recursive(&path2, (S_IRUSR | S_IWUSR | S_IXUSR) as i32));
+                assert!(os::path_is_dir(&path2));
+            assert!(os::path_is_dir(&path2.pop()));
+        });
     }
 
+    // Ideally this would be in core, but needs mkdtemp
+    #[test]
+    pub fn test_rmdir_recursive_ok() {
+        use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
+        use core::os;
+
+        let rwx = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;
+
+        let tmpdir = mkdtemp(&os::tmpdir(), "test").expect("test_rmdir_recursive_ok: \
+                                            couldn't create temp dir");
+        let root = tmpdir.push("foo");
+
+        debug!("making %s", root.to_str());
+        assert!(os::make_dir(&root, rwx));
+        assert!(os::make_dir(&root.push("foo"), rwx));
+        assert!(os::make_dir(&root.push("foo").push("bar"), rwx));
+        assert!(os::make_dir(&root.push("foo").push("bar").push("blat"), rwx));
+        assert!(os::remove_dir_recursive(&root));
+        assert!(!os::path_exists(&root));
+        assert!(!os::path_exists(&root.push("bar")));
+        assert!(!os::path_exists(&root.push("bar").push("blat")));
+    }
 }

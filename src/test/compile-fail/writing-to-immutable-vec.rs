@@ -8,5 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:assigning to immutable vec content
-fn main() { let v: ~[int] = ~[1, 2, 3]; v[1] = 4; }
+fn main() {
+    let v: ~[int] = ~[1, 2, 3];
+    v[1] = 4; //~ ERROR cannot assign
+}

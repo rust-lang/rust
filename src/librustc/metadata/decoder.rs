@@ -244,8 +244,8 @@ fn doc_transformed_self_ty(doc: ebml::Doc,
     }
 }
 
-pub fn item_type(_: ast::def_id, item: ebml::Doc, tcx: ty::ctxt, cdata: cmd)
-                 -> ty::t {
+pub fn item_type(_item_id: ast::def_id, item: ebml::Doc,
+                 tcx: ty::ctxt, cdata: cmd) -> ty::t {
     doc_type(item, tcx, cdata)
 }
 
@@ -274,7 +274,8 @@ fn item_ty_param_defs(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd,
 
 fn item_ty_region_param(item: ebml::Doc) -> Option<ty::region_variance> {
     reader::maybe_get_doc(item, tag_region_param).map(|doc| {
-        Decodable::decode(&reader::Decoder(*doc))
+        let mut decoder = reader::Decoder(*doc);
+        Decodable::decode(&mut decoder)
     })
 }
 
@@ -443,22 +444,6 @@ pub fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
             }
         }
     found.get()
-}
-
-pub fn struct_dtor(cdata: cmd, id: ast::node_id) -> Option<ast::def_id> {
-    let items = reader::get_doc(reader::Doc(cdata.data), tag_items);
-    let mut found = None;
-    let cls_items = match maybe_find_item(id, items) {
-            Some(it) => it,
-            None     => fail!(fmt!("struct_dtor: class id not found \
-              when looking up dtor for %d", id))
-    };
-    for reader::tagged_docs(cls_items, tag_item_dtor) |doc| {
-         let doc1 = reader::get_doc(doc, tag_def_id);
-         let did = reader::with_doc_data(doc1, |d| parse_def_id(d));
-         found = Some(translate_def_id(cdata, did));
-    };
-    found
 }
 
 pub fn get_symbol(data: @~[u8], id: ast::node_id) -> ~str {
@@ -1192,11 +1177,3 @@ pub fn get_link_args_for_crate(cdata: cmd) -> ~[~str] {
     }
     result
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

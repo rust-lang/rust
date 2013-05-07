@@ -19,7 +19,3 @@ impl Mumbo for uint {
 }
 
 fn main() {}
-
-
-
-

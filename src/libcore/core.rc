@@ -63,7 +63,6 @@ they contained the following prologue:
 #[warn(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 #[allow(deprecated_mutable_fields)];
-#[allow(deprecated_drop)];
 
 // Make core testable by not duplicating lang items. See #2912
 #[cfg(test)] extern mod realcore(name = "core", vers = "0.7-pre");
@@ -75,10 +74,7 @@ they contained the following prologue:
 
 pub use kinds::{Const, Copy, Owned, Durable};
 pub use ops::{Drop};
-#[cfg(stage0)]
-pub use ops::{Add, Sub, Mul, Div, Modulo, Neg, Not};
-#[cfg(not(stage0))]
-pub use ops::{Add, Sub, Mul, Quot, Rem, Neg, Not};
+pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};
 pub use ops::{Shl, Shr, Index};
 
@@ -112,6 +108,7 @@ pub use num::{Bitwise, BitCount, Bounded};
 pub use num::{Primitive, Int, Float};
 
 pub use ptr::Ptr;
+pub use from_str::FromStr;
 pub use to_str::ToStr;
 pub use clone::Clone;
 
@@ -124,6 +121,9 @@ pub mod linkhack {
     extern {
     }
 }
+
+// Internal macros
+mod macros;
 
 /* The Prelude. */
 
@@ -244,12 +244,12 @@ pub mod unstable;
 
 /* For internal use, not exported */
 
-pub mod unicode;
+mod unicode;
 #[path = "num/cmath.rs"]
-pub mod cmath;
-pub mod stackwalk;
+mod cmath;
+mod stackwalk;
 #[path = "rt/mod.rs"]
-pub mod rt;
+mod rt;
 
 // A curious inner-module that's not exported that contains the binding
 // 'core' so that macro-expanded references to core::error and such
@@ -264,12 +264,3 @@ mod core {
     pub use sys;
     pub use pipes;
 }
-
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

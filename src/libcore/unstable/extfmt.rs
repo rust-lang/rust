@@ -501,7 +501,7 @@ pub mod rt {
     pub fn conv_int(cv: Conv, i: int, buf: &mut ~str) {
         let radix = 10;
         let prec = get_int_precision(cv);
-        let mut s : ~str = uint_to_str_prec(int::abs(i) as uint, radix, prec);
+        let s : ~str = uint_to_str_prec(int::abs(i) as uint, radix, prec);
 
         let head = if i >= 0 {
             if have_flag(cv.flags, flag_sign_always) {
@@ -516,7 +516,7 @@ pub mod rt {
     }
     pub fn conv_uint(cv: Conv, u: uint, buf: &mut ~str) {
         let prec = get_int_precision(cv);
-        let mut rs =
+        let rs =
             match cv.ty {
               TyDefault => uint_to_str_prec(u, 10, prec),
               TyHexLower => uint_to_str_prec(u, 16, prec),
@@ -559,7 +559,7 @@ pub mod rt {
               CountIs(c) => (float::to_str_exact, c as uint),
               CountImplied => (float::to_str_digits, 6u)
         };
-        let mut s = to_str(f, digits);
+        let s = to_str(f, digits);
         let head = if 0.0 <= f {
             if have_flag(cv.flags, flag_sign_always) {
                 Some('+')
@@ -688,11 +688,3 @@ mod test {
         let _s = fmt!("%s", s);
     }
 }
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

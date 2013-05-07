@@ -44,7 +44,7 @@ use libc::{size_t, uintptr_t};
 use option::{None, Option, Some};
 use ptr;
 use hashmap::HashSet;
-use stackwalk;
+use stackwalk::walk_stack;
 use sys;
 
 pub use stackwalk::Word;
@@ -230,7 +230,7 @@ unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
     // frame is marked by a sentinel, which is a box pointer stored on
     // the stack.
     let mut reached_sentinel = ptr::is_null(sentinel);
-    for stackwalk::walk_stack |frame| {
+    for walk_stack |frame| {
         let pc = last_ret;
         let Segment {segment: next_segment, boundary: boundary} =
             find_segment_for_frame(frame.fp, segment);

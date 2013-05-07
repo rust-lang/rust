@@ -8,22 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-//
-// See issue #1535
-
-tag a_tag {
-    a_tag(u64);
+enum a_tag {
+    a_tag(u64)
 }
 
-type t_rec = {
+struct t_rec {
     c8: u8,
     t: a_tag
-};
+}
 
 pub fn main() {
-    let x = {c8: 22u8, t: a_tag(44u64)};
+    let x = t_rec {c8: 22u8, t: a_tag(44u64)};
     let y = fmt!("%?", x);
     debug!("y = %s", y);
-    assert!(y == "(22, a_tag(44))");
+    assert_eq!(y, ~"{c8: 22, t: a_tag(44)}");
 }

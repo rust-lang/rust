@@ -10,7 +10,6 @@
 
 //! Operations and constants for `f32`
 
-use from_str;
 use num::{Zero, One, strconv};
 use prelude::*;
 
@@ -123,7 +122,7 @@ pub fn sub(x: f32, y: f32) -> f32 { return x - y; }
 pub fn mul(x: f32, y: f32) -> f32 { return x * y; }
 
 #[inline(always)]
-pub fn quot(x: f32, y: f32) -> f32 { return x / y; }
+pub fn div(x: f32, y: f32) -> f32 { return x / y; }
 
 #[inline(always)]
 pub fn rem(x: f32, y: f32) -> f32 { return x % y; }
@@ -212,6 +211,22 @@ impl Eq for f32 {
 }
 
 #[cfg(notest)]
+impl ApproxEq<f32> for f32 {
+    #[inline(always)]
+    fn approx_epsilon() -> f32 { 1.0e-6 }
+
+    #[inline(always)]
+    fn approx_eq(&self, other: &f32) -> bool {
+        self.approx_eq_eps(other, &ApproxEq::approx_epsilon::<f32, f32>())
+    }
+
+    #[inline(always)]
+    fn approx_eq_eps(&self, other: &f32, approx_epsilon: &f32) -> bool {
+        (*self - *other).abs() < *approx_epsilon
+    }
+}
+
+#[cfg(notest)]
 impl Ord for f32 {
     #[inline(always)]
     fn lt(&self, other: &f32) -> bool { (*self) < (*other) }
@@ -279,23 +294,13 @@ impl Mul<f32,f32> for f32 {
     fn mul(&self, other: &f32) -> f32 { *self * *other }
 }
 
-#[cfg(stage0,notest)]
+#[cfg(notest)]
 impl Div<f32,f32> for f32 {
     #[inline(always)]
     fn div(&self, other: &f32) -> f32 { *self / *other }
 }
-#[cfg(not(stage0),notest)]
-impl Quot<f32,f32> for f32 {
-    #[inline(always)]
-    fn quot(&self, other: &f32) -> f32 { *self / *other }
-}
 
-#[cfg(stage0,notest)]
-impl Modulo<f32,f32> for f32 {
-    #[inline(always)]
-    fn modulo(&self, other: &f32) -> f32 { *self % *other }
-}
-#[cfg(not(stage0),notest)]
+#[cfg(notest)]
 impl Rem<f32,f32> for f32 {
     #[inline(always)]
     fn rem(&self, other: &f32) -> f32 { *self % *other }
@@ -803,7 +808,7 @@ pub fn from_str_radix(num: &str, rdx: uint) -> Option<f32> {
                              strconv::ExpNone, false, false)
 }
 
-impl from_str::FromStr for f32 {
+impl FromStr for f32 {
     #[inline(always)]
     fn from_str(val: &str) -> Option<f32> { from_str(val) }
 }
@@ -820,15 +825,6 @@ mod tests {
     use f32::*;
     use super::*;
     use prelude::*;
-
-    macro_rules! assert_fuzzy_eq(
-        ($a:expr, $b:expr) => ({
-            let a = $a, b = $b;
-            if !((a - b).abs() < 1.0e-6) {
-                fail!(fmt!("The values were not approximately equal. Found: %? and %?", a, b));
-            }
-        })
-    )
 
     #[test]
     fn test_num() {
@@ -859,91 +855,91 @@ mod tests {
 
     #[test]
     fn test_floor() {
-        assert_fuzzy_eq!(1.0f32.floor(), 1.0f32);
-        assert_fuzzy_eq!(1.3f32.floor(), 1.0f32);
-        assert_fuzzy_eq!(1.5f32.floor(), 1.0f32);
-        assert_fuzzy_eq!(1.7f32.floor(), 1.0f32);
-        assert_fuzzy_eq!(0.0f32.floor(), 0.0f32);
-        assert_fuzzy_eq!((-0.0f32).floor(), -0.0f32);
-        assert_fuzzy_eq!((-1.0f32).floor(), -1.0f32);
-        assert_fuzzy_eq!((-1.3f32).floor(), -2.0f32);
-        assert_fuzzy_eq!((-1.5f32).floor(), -2.0f32);
-        assert_fuzzy_eq!((-1.7f32).floor(), -2.0f32);
+        assert_approx_eq!(1.0f32.floor(), 1.0f32);
+        assert_approx_eq!(1.3f32.floor(), 1.0f32);
+        assert_approx_eq!(1.5f32.floor(), 1.0f32);
+        assert_approx_eq!(1.7f32.floor(), 1.0f32);
+        assert_approx_eq!(0.0f32.floor(), 0.0f32);
+        assert_approx_eq!((-0.0f32).floor(), -0.0f32);
+        assert_approx_eq!((-1.0f32).floor(), -1.0f32);
+        assert_approx_eq!((-1.3f32).floor(), -2.0f32);
+        assert_approx_eq!((-1.5f32).floor(), -2.0f32);
+        assert_approx_eq!((-1.7f32).floor(), -2.0f32);
     }
 
     #[test]
     fn test_ceil() {
-        assert_fuzzy_eq!(1.0f32.ceil(), 1.0f32);
-        assert_fuzzy_eq!(1.3f32.ceil(), 2.0f32);
-        assert_fuzzy_eq!(1.5f32.ceil(), 2.0f32);
-        assert_fuzzy_eq!(1.7f32.ceil(), 2.0f32);
-        assert_fuzzy_eq!(0.0f32.ceil(), 0.0f32);
-        assert_fuzzy_eq!((-0.0f32).ceil(), -0.0f32);
-        assert_fuzzy_eq!((-1.0f32).ceil(), -1.0f32);
-        assert_fuzzy_eq!((-1.3f32).ceil(), -1.0f32);
-        assert_fuzzy_eq!((-1.5f32).ceil(), -1.0f32);
-        assert_fuzzy_eq!((-1.7f32).ceil(), -1.0f32);
+        assert_approx_eq!(1.0f32.ceil(), 1.0f32);
+        assert_approx_eq!(1.3f32.ceil(), 2.0f32);
+        assert_approx_eq!(1.5f32.ceil(), 2.0f32);
+        assert_approx_eq!(1.7f32.ceil(), 2.0f32);
+        assert_approx_eq!(0.0f32.ceil(), 0.0f32);
+        assert_approx_eq!((-0.0f32).ceil(), -0.0f32);
+        assert_approx_eq!((-1.0f32).ceil(), -1.0f32);
+        assert_approx_eq!((-1.3f32).ceil(), -1.0f32);
+        assert_approx_eq!((-1.5f32).ceil(), -1.0f32);
+        assert_approx_eq!((-1.7f32).ceil(), -1.0f32);
     }
 
     #[test]
     fn test_round() {
-        assert_fuzzy_eq!(1.0f32.round(), 1.0f32);
-        assert_fuzzy_eq!(1.3f32.round(), 1.0f32);
-        assert_fuzzy_eq!(1.5f32.round(), 2.0f32);
-        assert_fuzzy_eq!(1.7f32.round(), 2.0f32);
-        assert_fuzzy_eq!(0.0f32.round(), 0.0f32);
-        assert_fuzzy_eq!((-0.0f32).round(), -0.0f32);
-        assert_fuzzy_eq!((-1.0f32).round(), -1.0f32);
-        assert_fuzzy_eq!((-1.3f32).round(), -1.0f32);
-        assert_fuzzy_eq!((-1.5f32).round(), -2.0f32);
-        assert_fuzzy_eq!((-1.7f32).round(), -2.0f32);
+        assert_approx_eq!(1.0f32.round(), 1.0f32);
+        assert_approx_eq!(1.3f32.round(), 1.0f32);
+        assert_approx_eq!(1.5f32.round(), 2.0f32);
+        assert_approx_eq!(1.7f32.round(), 2.0f32);
+        assert_approx_eq!(0.0f32.round(), 0.0f32);
+        assert_approx_eq!((-0.0f32).round(), -0.0f32);
+        assert_approx_eq!((-1.0f32).round(), -1.0f32);
+        assert_approx_eq!((-1.3f32).round(), -1.0f32);
+        assert_approx_eq!((-1.5f32).round(), -2.0f32);
+        assert_approx_eq!((-1.7f32).round(), -2.0f32);
     }
 
     #[test]
     fn test_trunc() {
-        assert_fuzzy_eq!(1.0f32.trunc(), 1.0f32);
-        assert_fuzzy_eq!(1.3f32.trunc(), 1.0f32);
-        assert_fuzzy_eq!(1.5f32.trunc(), 1.0f32);
-        assert_fuzzy_eq!(1.7f32.trunc(), 1.0f32);
-        assert_fuzzy_eq!(0.0f32.trunc(), 0.0f32);
-        assert_fuzzy_eq!((-0.0f32).trunc(), -0.0f32);
-        assert_fuzzy_eq!((-1.0f32).trunc(), -1.0f32);
-        assert_fuzzy_eq!((-1.3f32).trunc(), -1.0f32);
-        assert_fuzzy_eq!((-1.5f32).trunc(), -1.0f32);
-        assert_fuzzy_eq!((-1.7f32).trunc(), -1.0f32);
+        assert_approx_eq!(1.0f32.trunc(), 1.0f32);
+        assert_approx_eq!(1.3f32.trunc(), 1.0f32);
+        assert_approx_eq!(1.5f32.trunc(), 1.0f32);
+        assert_approx_eq!(1.7f32.trunc(), 1.0f32);
+        assert_approx_eq!(0.0f32.trunc(), 0.0f32);
+        assert_approx_eq!((-0.0f32).trunc(), -0.0f32);
+        assert_approx_eq!((-1.0f32).trunc(), -1.0f32);
+        assert_approx_eq!((-1.3f32).trunc(), -1.0f32);
+        assert_approx_eq!((-1.5f32).trunc(), -1.0f32);
+        assert_approx_eq!((-1.7f32).trunc(), -1.0f32);
     }
 
     #[test]
     fn test_fract() {
-        assert_fuzzy_eq!(1.0f32.fract(), 0.0f32);
-        assert_fuzzy_eq!(1.3f32.fract(), 0.3f32);
-        assert_fuzzy_eq!(1.5f32.fract(), 0.5f32);
-        assert_fuzzy_eq!(1.7f32.fract(), 0.7f32);
-        assert_fuzzy_eq!(0.0f32.fract(), 0.0f32);
-        assert_fuzzy_eq!((-0.0f32).fract(), -0.0f32);
-        assert_fuzzy_eq!((-1.0f32).fract(), -0.0f32);
-        assert_fuzzy_eq!((-1.3f32).fract(), -0.3f32);
-        assert_fuzzy_eq!((-1.5f32).fract(), -0.5f32);
-        assert_fuzzy_eq!((-1.7f32).fract(), -0.7f32);
+        assert_approx_eq!(1.0f32.fract(), 0.0f32);
+        assert_approx_eq!(1.3f32.fract(), 0.3f32);
+        assert_approx_eq!(1.5f32.fract(), 0.5f32);
+        assert_approx_eq!(1.7f32.fract(), 0.7f32);
+        assert_approx_eq!(0.0f32.fract(), 0.0f32);
+        assert_approx_eq!((-0.0f32).fract(), -0.0f32);
+        assert_approx_eq!((-1.0f32).fract(), -0.0f32);
+        assert_approx_eq!((-1.3f32).fract(), -0.3f32);
+        assert_approx_eq!((-1.5f32).fract(), -0.5f32);
+        assert_approx_eq!((-1.7f32).fract(), -0.7f32);
     }
 
     #[test]
     fn test_real_consts() {
-        assert_fuzzy_eq!(Real::two_pi::<f32>(), 2f32 * Real::pi::<f32>());
-        assert_fuzzy_eq!(Real::frac_pi_2::<f32>(), Real::pi::<f32>() / 2f32);
-        assert_fuzzy_eq!(Real::frac_pi_3::<f32>(), Real::pi::<f32>() / 3f32);
-        assert_fuzzy_eq!(Real::frac_pi_4::<f32>(), Real::pi::<f32>() / 4f32);
-        assert_fuzzy_eq!(Real::frac_pi_6::<f32>(), Real::pi::<f32>() / 6f32);
-        assert_fuzzy_eq!(Real::frac_pi_8::<f32>(), Real::pi::<f32>() / 8f32);
-        assert_fuzzy_eq!(Real::frac_1_pi::<f32>(), 1f32 / Real::pi::<f32>());
-        assert_fuzzy_eq!(Real::frac_2_pi::<f32>(), 2f32 / Real::pi::<f32>());
-        assert_fuzzy_eq!(Real::frac_2_sqrtpi::<f32>(), 2f32 / Real::pi::<f32>().sqrt());
-        assert_fuzzy_eq!(Real::sqrt2::<f32>(), 2f32.sqrt());
-        assert_fuzzy_eq!(Real::frac_1_sqrt2::<f32>(), 1f32 / 2f32.sqrt());
-        assert_fuzzy_eq!(Real::log2_e::<f32>(), Real::e::<f32>().log2());
-        assert_fuzzy_eq!(Real::log10_e::<f32>(), Real::e::<f32>().log10());
-        assert_fuzzy_eq!(Real::log_2::<f32>(), 2f32.log());
-        assert_fuzzy_eq!(Real::log_10::<f32>(), 10f32.log());
+        assert_approx_eq!(Real::two_pi::<f32>(), 2f32 * Real::pi::<f32>());
+        assert_approx_eq!(Real::frac_pi_2::<f32>(), Real::pi::<f32>() / 2f32);
+        assert_approx_eq!(Real::frac_pi_3::<f32>(), Real::pi::<f32>() / 3f32);
+        assert_approx_eq!(Real::frac_pi_4::<f32>(), Real::pi::<f32>() / 4f32);
+        assert_approx_eq!(Real::frac_pi_6::<f32>(), Real::pi::<f32>() / 6f32);
+        assert_approx_eq!(Real::frac_pi_8::<f32>(), Real::pi::<f32>() / 8f32);
+        assert_approx_eq!(Real::frac_1_pi::<f32>(), 1f32 / Real::pi::<f32>());
+        assert_approx_eq!(Real::frac_2_pi::<f32>(), 2f32 / Real::pi::<f32>());
+        assert_approx_eq!(Real::frac_2_sqrtpi::<f32>(), 2f32 / Real::pi::<f32>().sqrt());
+        assert_approx_eq!(Real::sqrt2::<f32>(), 2f32.sqrt());
+        assert_approx_eq!(Real::frac_1_sqrt2::<f32>(), 1f32 / 2f32.sqrt());
+        assert_approx_eq!(Real::log2_e::<f32>(), Real::e::<f32>().log2());
+        assert_approx_eq!(Real::log10_e::<f32>(), Real::e::<f32>().log10());
+        assert_approx_eq!(Real::log_2::<f32>(), 2f32.log());
+        assert_approx_eq!(Real::log_10::<f32>(), 10f32.log());
     }
 
     #[test]
@@ -986,18 +982,17 @@ mod tests {
     }
 
     #[test]
+    fn test_approx_eq() {
+        assert!(1.0f32.approx_eq(&1f32));
+        assert!(0.9999999f32.approx_eq(&1f32));
+        assert!(1.000001f32.approx_eq_eps(&1f32, &1.0e-5));
+        assert!(1.0000001f32.approx_eq_eps(&1f32, &1.0e-6));
+        assert!(!1.0000001f32.approx_eq_eps(&1f32, &1.0e-7));
+    }
+
+    #[test]
     fn test_primitive() {
         assert_eq!(Primitive::bits::<f32>(), sys::size_of::<f32>() * 8);
         assert_eq!(Primitive::bytes::<f32>(), sys::size_of::<f32>());
     }
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

@@ -14,5 +14,3 @@ pub fn main() {
     *y = 5;
     debug!(*y);
 }
-
-

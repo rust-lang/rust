@@ -12,4 +12,3 @@ fn main() {
     let x = a::Foo;
     x.f();  //~ ERROR method `f` is private
 }
-

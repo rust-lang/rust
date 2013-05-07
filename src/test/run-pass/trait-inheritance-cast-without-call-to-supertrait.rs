@@ -38,4 +38,3 @@ pub fn main() {
     assert!(afoo.f() == 10);
     assert!(abar.g() == 20);
 }
-

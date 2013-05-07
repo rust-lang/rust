@@ -4,4 +4,3 @@ pub fn main() {
         io::println(x);
     }
 }
-

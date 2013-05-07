@@ -16,6 +16,9 @@ and so can be used to generate any type that implements `Rand`. Type inference
 means that often a simple call to `rand::random()` or `rng.gen()` will
 suffice, but sometimes an annotation is required, e.g. `rand::random::<float>()`.
 
+See the `distributions` submodule for sampling random numbers from
+distributions like normal and exponential.
+
 # Examples
 ~~~
 use core::rand::RngUtil;
@@ -46,6 +49,9 @@ use uint;
 use util;
 use vec;
 use libc::size_t;
+
+#[path="rand/distributions.rs"]
+pub mod distributions;
 
 /// A type that can be randomly generated using an Rng
 pub trait Rand {
@@ -1067,12 +1073,3 @@ mod tests {
         }
     }
 }
-
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

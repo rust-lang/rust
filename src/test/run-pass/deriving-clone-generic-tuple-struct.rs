@@ -2,4 +2,3 @@
 struct S<T>(T, ());
 
 fn main() {}
-

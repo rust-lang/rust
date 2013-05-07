@@ -21,4 +21,3 @@ pub mod float {
         fn from_int2(n: int) -> float { return n as float;  }
     }
 }
-

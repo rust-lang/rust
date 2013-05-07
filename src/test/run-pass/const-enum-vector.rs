@@ -16,7 +16,7 @@ pub fn main() {
         V1(n) => assert!(n == 0xDEADBEE),
         _ => fail!()
     }
-    match C[2] { 
+    match C[2] {
         V0 => (),
         _ => fail!()
     }

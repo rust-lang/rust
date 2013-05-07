@@ -7,4 +7,3 @@ pub fn main() {
     let fish = impl_privacy_xc_1::Fish { x: 1 };
     fish.swim();
 }
-

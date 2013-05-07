@@ -27,4 +27,3 @@ fn syntax_extension(ext_cx: @ext_ctxt) {
 
 fn main() {
 }
-

@@ -23,10 +23,8 @@ fn a_fn3<'a,'b>(e: a_class<'a>) -> a_class<'b> {
     return e; //~ ERROR mismatched types: expected `a_class/&'b ` but found `a_class/&'a `
 }
 
-fn a_fn4<'a,'b>(e: int<'a>) -> int<'b> {
-    //~^ ERROR region parameters are not allowed on this type
-    //~^^ ERROR region parameters are not allowed on this type
-    return e;
+fn a_fn4<'a,'b>() {
+    let _: int<'a> = 1; //~ ERROR region parameters are not allowed on this type
 }
 
 fn main() { }

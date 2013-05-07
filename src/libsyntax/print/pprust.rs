@@ -72,6 +72,12 @@ pub fn end(s: @ps) {
 }
 
 pub fn rust_printer(writer: @io::Writer, intr: @ident_interner) -> @ps {
+    return rust_printer_annotated(writer, intr, no_ann());
+}
+
+pub fn rust_printer_annotated(writer: @io::Writer,
+                              intr: @ident_interner,
+                              ann: pp_ann) -> @ps {
     return @ps {
         s: pp::mk_printer(writer, default_columns),
         cm: None::<@CodeMap>,
@@ -83,7 +89,7 @@ pub fn rust_printer(writer: @io::Writer, intr: @ident_interner) -> @ps {
             cur_lit: 0
         },
         boxes: @mut ~[],
-        ann: no_ann()
+        ann: ann
     };
 }
 
@@ -693,13 +699,6 @@ pub fn print_struct(s: @ps,
         nbsp(s);
         bopen(s);
         hardbreak_if_not_bol(s);
-        for struct_def.dtor.each |dtor| {
-          hardbreak_if_not_bol(s);
-          maybe_print_comment(s, dtor.span.lo);
-          print_outer_attributes(s, dtor.node.attrs);
-          head(s, ~"drop");
-          print_block(s, &dtor.node.body);
-        }
 
         for struct_def.fields.each |field| {
             match field.node.kind {
@@ -707,6 +706,7 @@ pub fn print_struct(s: @ps,
                 ast::named_field(ident, mutability, visibility) => {
                     hardbreak_if_not_bol(s);
                     maybe_print_comment(s, field.span.lo);
+                    print_outer_attributes(s, field.node.attrs);
                     print_visibility(s, visibility);
                     if mutability == ast::struct_mutable {
                         word_nbsp(s, ~"mut");
@@ -2286,13 +2286,3 @@ mod test {
         assert_eq!(&varstr,&~"pub principal_skinner");
     }
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

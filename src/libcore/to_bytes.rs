@@ -19,7 +19,7 @@ use io::Writer;
 use option::{None, Option, Some};
 use str;
 
-pub type Cb<'self> = &'self fn(buf: &const [u8]) -> bool;
+pub type Cb<'self> = &'self fn(buf: &[u8]) -> bool;
 
 /**
  * A trait to implement in order to make a type hashable;
@@ -419,8 +419,7 @@ impl<A> IterBytes for *const A {
     }
 }
 
-
-trait ToBytes {
+pub trait ToBytes {
     fn to_bytes(&self, lsb0: bool) -> ~[u8];
 }
 

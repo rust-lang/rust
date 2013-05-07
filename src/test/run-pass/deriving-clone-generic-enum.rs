@@ -6,4 +6,3 @@ enum E<T,U> {
 }
 
 fn main() {}
-

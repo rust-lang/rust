@@ -15,4 +15,3 @@ The test runner should check that, after `rustpkg install deeply/nested/path/foo
 */
 
 fn main() {}
-

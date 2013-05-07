@@ -16,4 +16,3 @@ pub fn main() {
     let x = S { x: ~"Hello!" };
     x.foo();
 }
-

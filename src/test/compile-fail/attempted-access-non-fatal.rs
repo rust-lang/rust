@@ -11,6 +11,6 @@
 // Check that bogus field access is non-fatal
 fn main() {
     let x = 0;
-    debug!(x.foo); //~ ERROR attempted access of field
-    debug!(x.bar); //~ ERROR attempted access of field
+    let _ = x.foo; //~ ERROR attempted access of field
+    let _ = x.bar; //~ ERROR attempted access of field
 }

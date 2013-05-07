@@ -274,4 +274,3 @@ fn main() {
     sudoku.solve();
     sudoku.write(io::stdout());
 }
-

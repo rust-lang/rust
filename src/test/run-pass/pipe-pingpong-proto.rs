@@ -37,7 +37,7 @@ mod test {
         let pong(_chan) = recv(chan);
         error!(~"Received pong");
     }
-    
+
     pub fn server(+chan: ::pingpong::server::ping) {
         use pingpong::server;
 

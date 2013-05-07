@@ -122,7 +122,7 @@ pub impl Parser {
     fn parse_path_list_ident(&self) -> ast::path_list_ident {
         let lo = self.span.lo;
         let ident = self.parse_ident();
-        let hi = self.span.hi;
+        let hi = self.last_span.hi;
         spanned(lo, hi, ast::path_list_ident_ { name: ident,
                                                 id: self.get_id() })
     }
