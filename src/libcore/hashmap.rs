@@ -24,8 +24,8 @@ use rand::RngUtil;
 use rand;
 use uint;
 use vec;
-use util::unreachable;
 use kinds::Copy;
+use util::{replace, unreachable};
 
 static INITIAL_CAPACITY: uint = 32u; // 2^5
 
@@ -204,7 +204,7 @@ priv impl<K:Hash + Eq,V> HashMap<K, V> {
     /// Inserts the key value pair into the buckets.
     /// Assumes that there will be a bucket.
     /// True if there was no previous entry with that key
-    fn insert_internal(&mut self, hash: uint, k: K, v: V) -> bool {
+    fn insert_internal(&mut self, hash: uint, k: K, v: V) -> Option<V> {
         match self.bucket_for_key_with_hash(hash, &k) {
             TableFull => { fail!(~"Internal logic error"); }
             FoundHole(idx) => {
@@ -213,14 +213,19 @@ priv impl<K:Hash + Eq,V> HashMap<K, V> {
                 self.buckets[idx] = Some(Bucket{hash: hash, key: k,
                                                 value: v});
                 self.size += 1;
-                true
+                None
             }
             FoundEntry(idx) => {
                 debug!("insert overwrite (%?->%?) at idx %?, hash %?",
                        k, v, idx, hash);
-                self.buckets[idx] = Some(Bucket{hash: hash, key: k,
-                                                value: v});
-                false
+                match self.buckets[idx] {
+                    None => { fail!(~"insert_internal: Internal logic error") }
+                    Some(ref mut b) => {
+                        b.hash = hash;
+                        b.key = k;
+                        Some(replace(&mut b.value, v))
+                    }
+                }
             }
         }
     }
@@ -361,6 +366,20 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     /// key is replaced by the new value. Return true if the key did
     /// not already exist in the map.
     fn insert(&mut self, k: K, v: V) -> bool {
+        self.swap(k, v).is_none()
+    }
+
+    /// Remove a key-value pair from the map. Return true if the key
+    /// was present in the map, otherwise false.
+    fn remove(&mut self, k: &K) -> bool {
+        self.pop(k).is_some()
+    }
+
+    /// Insert a key-value pair from the map. If the key already had a value
+    /// present in the map, that value is returned. Otherwise None is returned.
+    fn swap(&mut self, k: K, v: V) -> Option<V> {
+        // this could be faster.
+
         if self.size >= self.resize_at {
             // n.b.: We could also do this after searching, so
             // that we do not resize if this call to insert is
@@ -375,10 +394,11 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
         self.insert_internal(hash, k, v)
     }
 
-    /// Remove a key-value pair from the map. Return true if the key
-    /// was present in the map, otherwise false.
-    fn remove(&mut self, k: &K) -> bool {
-        self.pop(k).is_some()
+    /// Removes a key from the map, returning the value at the key if the key
+    /// was previously in the map.
+    fn pop(&mut self, k: &K) -> Option<V> {
+        let hash = k.hash_keyed(self.k0, self.k1) as uint;
+        self.pop_internal(hash, k)
     }
 }
 
@@ -400,31 +420,6 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
             let buckets = n * 4 / 3 + 1;
             self.resize(uint::next_power_of_two(buckets));
         }
-    }
-
-    fn pop(&mut self, k: &K) -> Option<V> {
-        let hash = k.hash_keyed(self.k0, self.k1) as uint;
-        self.pop_internal(hash, k)
-    }
-
-    fn swap(&mut self, k: K, v: V) -> Option<V> {
-        // this could be faster.
-        let hash = k.hash_keyed(self.k0, self.k1) as uint;
-        let old_value = self.pop_internal(hash, &k);
-
-        if self.size >= self.resize_at {
-            // n.b.: We could also do this after searching, so
-            // that we do not resize if this call to insert is
-            // simply going to update a key in place.  My sense
-            // though is that it's worse to have to search through
-            // buckets to find the right spot twice than to just
-            // resize in this corner case.
-            self.expand();
-        }
-
-        self.insert_internal(hash, k, v);
-
-        old_value
     }
 
     /// Return the value corresponding to the key in the map, or insert
