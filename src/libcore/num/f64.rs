@@ -12,6 +12,7 @@
 
 use libc::c_int;
 use num::{Zero, One, strconv};
+use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
 use prelude::*;
 
 pub use cmath::c_double_targ_consts::*;
@@ -84,7 +85,7 @@ delegate!(
     fn cosh(n: c_double) -> c_double = c_double_utils::cosh,
     fn erf(n: c_double) -> c_double = c_double_utils::erf,
     fn erfc(n: c_double) -> c_double = c_double_utils::erfc,
-    fn expm1(n: c_double) -> c_double = c_double_utils::expm1,
+    fn exp_m1(n: c_double) -> c_double = c_double_utils::exp_m1,
     fn abs_sub(a: c_double, b: c_double) -> c_double = c_double_utils::abs_sub,
     fn fmax(a: c_double, b: c_double) -> c_double = c_double_utils::fmax,
     fn fmin(a: c_double, b: c_double) -> c_double = c_double_utils::fmin,
@@ -94,7 +95,7 @@ delegate!(
     fn ldexp(x: c_double, n: c_int) -> c_double = c_double_utils::ldexp,
     fn lgamma(n: c_double, sign: &mut c_int) -> c_double = c_double_utils::lgamma,
     fn log_radix(n: c_double) -> c_double = c_double_utils::log_radix,
-    fn ln1p(n: c_double) -> c_double = c_double_utils::ln1p,
+    fn ln_1p(n: c_double) -> c_double = c_double_utils::ln_1p,
     fn ilog_radix(n: c_double) -> c_int = c_double_utils::ilog_radix,
     fn modf(n: c_double, iptr: &mut c_double) -> c_double = c_double_utils::modf,
     fn round(n: c_double) -> c_double = c_double_utils::round,
@@ -218,11 +219,6 @@ pub mod consts {
     pub static ln_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
-#[inline(always)]
-pub fn logarithm(n: f64, b: f64) -> f64 {
-    return log2(n) / log2(b);
-}
-
 impl Num for f64 {}
 
 #[cfg(notest)]
@@ -331,6 +327,13 @@ impl Signed for f64 {
     fn abs(&self) -> f64 { abs(*self) }
 
     ///
+    /// The positive difference of two numbers. Returns `0.0` if the number is less than or
+    /// equal to `other`, otherwise the difference between`self` and `other` is returned.
+    ///
+    #[inline(always)]
+    fn abs_sub(&self, other: &f64) -> f64 { abs_sub(*self, *other) }
+
+    ///
     /// # Returns
     ///
     /// - `1.0` if the number is positive, `+0.0` or `infinity`
@@ -426,21 +429,27 @@ impl Trigonometric for f64 {
 }
 
 impl Exponential for f64 {
+    /// Returns the exponential of the number
     #[inline(always)]
     fn exp(&self) -> f64 { exp(*self) }
 
+    /// Returns 2 raised to the power of the number
     #[inline(always)]
     fn exp2(&self) -> f64 { exp2(*self) }
 
+    /// Returns the natural logarithm of the number
     #[inline(always)]
-    fn expm1(&self) -> f64 { expm1(*self) }
+    fn ln(&self) -> f64 { ln(*self) }
 
+    /// Returns the logarithm of the number with respect to an arbitrary base
     #[inline(always)]
-    fn log(&self) -> f64 { ln(*self) }
+    fn log(&self, base: f64) -> f64 { self.ln() / base.ln() }
 
+    /// Returns the base 2 logarithm of the number
     #[inline(always)]
     fn log2(&self) -> f64 { log2(*self) }
 
+    /// Returns the base 10 logarithm of the number
     #[inline(always)]
     fn log10(&self) -> f64 { log10(*self) }
 }
@@ -517,13 +526,13 @@ impl Real for f64 {
     #[inline(always)]
     fn log10_e() -> f64 { 0.434294481903251827651128918916605082 }
 
-    /// log(2.0)
+    /// ln(2.0)
     #[inline(always)]
-    fn log_2() -> f64 { 0.693147180559945309417232121458176568 }
+    fn ln_2() -> f64 { 0.693147180559945309417232121458176568 }
 
-    /// log(10.0)
+    /// ln(10.0)
     #[inline(always)]
-    fn log_10() -> f64 { 2.30258509299404568401799145468436421 }
+    fn ln_10() -> f64 { 2.30258509299404568401799145468436421 }
 
     /// Converts to degrees, assuming the number is in radians
     #[inline(always)]
@@ -593,6 +602,7 @@ impl Float for f64 {
     #[inline(always)]
     fn neg_zero() -> f64 { -0.0 }
 
+    /// Returns `true` if the number is NaN
     #[inline(always)]
     fn is_NaN(&self) -> bool { *self != *self }
 
@@ -602,10 +612,37 @@ impl Float for f64 {
         *self == Float::infinity() || *self == Float::neg_infinity()
     }
 
-    /// Returns `true` if the number is finite
+    /// Returns `true` if the number is neither infinite or NaN
     #[inline(always)]
     fn is_finite(&self) -> bool {
         !(self.is_NaN() || self.is_infinite())
+    }
+
+    /// Returns `true` if the number is neither zero, infinite, subnormal or NaN
+    #[inline(always)]
+    fn is_normal(&self) -> bool {
+        match self.classify() {
+            FPNormal => true,
+            _ => false,
+        }
+    }
+
+    /// Returns the floating point category of the number. If only one property is going to
+    /// be tested, it is generally faster to use the specific predicate instead.
+    fn classify(&self) -> FPCategory {
+        static EXP_MASK: u64 = 0x7ff0000000000000;
+        static MAN_MASK: u64 = 0x000fffffffffffff;
+
+        match (
+            unsafe { ::cast::transmute::<f64,u64>(*self) } & EXP_MASK,
+            unsafe { ::cast::transmute::<f64,u64>(*self) } & MAN_MASK
+        ) {
+            (EXP_MASK, 0)        => FPInfinite,
+            (EXP_MASK, _)        => FPNaN,
+            (exp, _) if exp != 0 => FPNormal,
+            _ if self.is_zero()  => FPZero,
+            _                    => FPSubnormal,
+        }
     }
 
     #[inline(always)]
@@ -628,6 +665,20 @@ impl Float for f64 {
 
     #[inline(always)]
     fn max_10_exp() -> int { 308 }
+
+    ///
+    /// Returns the exponential of the number, minus `1`, in a way that is accurate
+    /// even if the number is close to zero
+    ///
+    #[inline(always)]
+    fn exp_m1(&self) -> f64 { exp_m1(*self) }
+
+    ///
+    /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more accurately
+    /// than if the operations were performed separately
+    ///
+    #[inline(always)]
+    fn ln_1p(&self) -> f64 { ln_1p(*self) }
 
     ///
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
@@ -866,6 +917,7 @@ impl num::FromStrRadix for f64 {
 #[cfg(test)]
 mod tests {
     use f64::*;
+    use num::*;
     use super::*;
     use prelude::*;
 
@@ -985,12 +1037,12 @@ mod tests {
         assert_approx_eq!(Real::frac_1_sqrt2::<f64>(), 1f64 / 2f64.sqrt());
         assert_approx_eq!(Real::log2_e::<f64>(), Real::e::<f64>().log2());
         assert_approx_eq!(Real::log10_e::<f64>(), Real::e::<f64>().log10());
-        assert_approx_eq!(Real::log_2::<f64>(), 2f64.log());
-        assert_approx_eq!(Real::log_10::<f64>(), 10f64.log());
+        assert_approx_eq!(Real::ln_2::<f64>(), 2f64.ln());
+        assert_approx_eq!(Real::ln_10::<f64>(), 10f64.ln());
     }
 
     #[test]
-    pub fn test_signed() {
+    pub fn test_abs() {
         assert_eq!(infinity.abs(), infinity);
         assert_eq!(1f64.abs(), 1f64);
         assert_eq!(0f64.abs(), 0f64);
@@ -999,7 +1051,24 @@ mod tests {
         assert_eq!(neg_infinity.abs(), infinity);
         assert_eq!((1f64/neg_infinity).abs(), 0f64);
         assert!(NaN.abs().is_NaN());
+    }
 
+    #[test]
+    fn test_abs_sub() {
+        assert_eq!((-1f64).abs_sub(&1f64), 0f64);
+        assert_eq!(1f64.abs_sub(&1f64), 0f64);
+        assert_eq!(1f64.abs_sub(&0f64), 1f64);
+        assert_eq!(1f64.abs_sub(&-1f64), 2f64);
+        assert_eq!(neg_infinity.abs_sub(&0f64), 0f64);
+        assert_eq!(infinity.abs_sub(&1f64), infinity);
+        assert_eq!(0f64.abs_sub(&neg_infinity), infinity);
+        assert_eq!(0f64.abs_sub(&infinity), 0f64);
+        assert!(NaN.abs_sub(&-1f64).is_NaN());
+        assert!(1f64.abs_sub(&NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_signum() {
         assert_eq!(infinity.signum(), 1f64);
         assert_eq!(1f64.signum(), 1f64);
         assert_eq!(0f64.signum(), 1f64);
@@ -1008,7 +1077,10 @@ mod tests {
         assert_eq!(neg_infinity.signum(), -1f64);
         assert_eq!((1f64/neg_infinity).signum(), -1f64);
         assert!(NaN.signum().is_NaN());
+    }
 
+    #[test]
+    fn test_is_positive() {
         assert!(infinity.is_positive());
         assert!(1f64.is_positive());
         assert!(0f64.is_positive());
@@ -1017,7 +1089,10 @@ mod tests {
         assert!(!neg_infinity.is_positive());
         assert!(!(1f64/neg_infinity).is_positive());
         assert!(!NaN.is_positive());
+    }
 
+    #[test]
+    fn test_is_negative() {
         assert!(!infinity.is_negative());
         assert!(!1f64.is_negative());
         assert!(!0f64.is_negative());
@@ -1041,5 +1116,28 @@ mod tests {
     fn test_primitive() {
         assert_eq!(Primitive::bits::<f64>(), sys::size_of::<f64>() * 8);
         assert_eq!(Primitive::bytes::<f64>(), sys::size_of::<f64>());
+    }
+
+    #[test]
+    fn test_is_normal() {
+        assert!(!Float::NaN::<f64>().is_normal());
+        assert!(!Float::infinity::<f64>().is_normal());
+        assert!(!Float::neg_infinity::<f64>().is_normal());
+        assert!(!Zero::zero::<f64>().is_normal());
+        assert!(!Float::neg_zero::<f64>().is_normal());
+        assert!(1f64.is_normal());
+        assert!(1e-307f64.is_normal());
+        assert!(!1e-308f64.is_normal());
+    }
+
+    #[test]
+    fn test_classify() {
+        assert_eq!(Float::NaN::<f64>().classify(), FPNaN);
+        assert_eq!(Float::infinity::<f64>().classify(), FPInfinite);
+        assert_eq!(Float::neg_infinity::<f64>().classify(), FPInfinite);
+        assert_eq!(Zero::zero::<f64>().classify(), FPZero);
+        assert_eq!(Float::neg_zero::<f64>().classify(), FPZero);
+        assert_eq!(1e-307f64.classify(), FPNormal);
+        assert_eq!(1e-308f64.classify(), FPSubnormal);
     }
 }
