@@ -64,7 +64,7 @@ fn test_simple_deep() {
         if i == 0 { return }
 
         for walk_stack |_frame| {
-            breakpoint();
+            // Would be nice to test something here...
         }
         run(i - 1);
     }
@@ -72,21 +72,9 @@ fn test_simple_deep() {
     run(10);
 }
 
-fn breakpoint() {
-    unsafe {
-        rustrt::rust_dbg_breakpoint()
-    }
-}
-
 fn frame_address(f: &fn(x: *u8)) {
     unsafe {
         rusti::frame_address(f)
-    }
-}
-
-pub mod rustrt {
-    pub extern {
-        pub unsafe fn rust_dbg_breakpoint();
     }
 }
 
