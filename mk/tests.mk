@@ -92,6 +92,43 @@ endef
 $(foreach target,$(CFG_TARGET_TRIPLES), \
   $(eval $(call DEF_TARGET_COMMANDS,$(target))))
 
+# Target platform specific variables 
+# for arm-linux-androidabi
+define DEF_ADB_DEVICE_STATUS
+CFG_ADB_DEVICE_STATUS=$(1)
+endef
+
+$(foreach target,$(CFG_TARGET_TRIPLES), \
+  $(if $(findstring $(target),"arm-linux-androideabi"), \
+    $(if $(findstring adb,$(CFG_ADB)), \
+      $(if $(findstring device,$(shell adb devices 2>/dev/null | grep -E '^[_A-Za-z0-9-]+[[:blank:]]+device')), \
+        $(info check: $(target) test enabled \
+          $(info check: android device attached) \
+          $(eval $(call DEF_ADB_DEVICE_STATUS, true))), \
+        $(info check: $(target) test disabled \
+          $(info check: android device not attached) \
+          $(eval $(call DEF_ADB_DEVICE_STATUS, false))) \
+      ), \
+      $(info check: $(target) test disabled \
+        $(info check: adb not found) \
+        $(eval $(call DEF_ADB_DEVICE_STATUS, false))) \
+    ), \
+  ) \
+)
+
+ifeq ($(CFG_ADB_DEVICE_STATUS),true)
+CFG_ADB_TEST_DIR=/data/tmp
+
+$(info check: android device test dir $(CFG_ADB_TEST_DIR) ready \
+ $(shell adb remount 1>/dev/null) \
+ $(shell adb shell mkdir $(CFG_ADB_TEST_DIR) 1>/dev/null) \
+ $(shell adb push $(CFG_ANDROID_CROSS_PATH)/arm-linux-androideabi/lib/armv7-a/libgnustl_shared.so \
+                  $(CFG_ADB_TEST_DIR) 1>/dev/null) \
+ )
+else
+CFG_ADB_TEST_DIR=
+endif
+
 
 ######################################################################
 # Main test targets
@@ -319,11 +356,53 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 	&& touch $$@
 endef
 
+define DEF_TEST_CRATE_RULES_arm-linux-androideabi
+check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
+
+$$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
+		$(3)/test/$(4)test.stage$(1)-$(2)$$(X_$(2))
+	@$$(call E, run: $$< via adb)
+	@$(CFG_ADB) push $$< $(CFG_ADB_TEST_DIR)
+	@$(CFG_ADB) shell LD_LIBRARY_PATH=$(CFG_ADB_TEST_DIR) \
+        $(CFG_ADB_TEST_DIR)/`echo $$< | sed 's/.*\///'` \
+		--logfile $(CFG_ADB_TEST_DIR)/check-stage$(1)-T-$(2)-H-$(3)-$(4).log > \
+		tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).tmp
+	@cat tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).tmp
+	@touch tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
+	@$(CFG_ADB) pull $(CFG_ADB_TEST_DIR)/check-stage$(1)-T-$(2)-H-$(3)-$(4).log tmp/
+	@$(CFG_ADB) shell rm $(CFG_ADB_TEST_DIR)/check-stage$(1)-T-$(2)-H-$(3)-$(4).log
+	@if grep -q "result: ok" tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).tmp; \
+	then \
+		rm tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).tmp; \
+		touch $$@; \
+	else \
+		rm tmp/check-stage$(1)-T-$(2)-H-$(3)-$(4).tmp; \
+		exit 101; \
+	fi
+endef
+
+define DEF_TEST_CRATE_RULES_null
+check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
+
+$$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
+		$(3)/test/$(4)test.stage$(1)-$(2)$$(X_$(2))
+	@$$(call E, run: skipped $$< )
+	@touch $$@
+endef
+
 $(foreach host,$(CFG_HOST_TRIPLES), \
  $(foreach target,$(CFG_TARGET_TRIPLES), \
   $(foreach stage,$(STAGES), \
    $(foreach crate, $(TEST_CRATES), \
-    $(eval $(call DEF_TEST_CRATE_RULES,$(stage),$(target),$(host),$(crate)))))))
+    $(if $(findstring $(target),$(CFG_BUILD_TRIPLE)), \
+     $(eval $(call DEF_TEST_CRATE_RULES,$(stage),$(target),$(host),$(crate))), \
+     $(if $(findstring $(target),"arm-linux-androideabi"), \
+      $(if $(findstring $(CFG_ADB_DEVICE_STATUS),"true"), \
+       $(eval $(call DEF_TEST_CRATE_RULES_arm-linux-androideabi,$(stage),$(target),$(host),$(crate))), \
+       $(eval $(call DEF_TEST_CRATE_RULES_null,$(stage),$(target),$(host),$(crate))) \
+      ), \
+      $(eval $(call DEF_TEST_CRATE_RULES,$(stage),$(target),$(host),$(crate))) \
+     )))))) 
 
 
 ######################################################################
@@ -420,6 +499,9 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
         --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))			\
         --aux-base $$(S)src/test/auxiliary/                 \
         --stage-id stage$(1)-$(2)							\
+        --target $(2)                                       \
+        --adb-path=$(CFG_ADB)                          \
+        --adb-test-dir=$(CFG_ADB_TEST_DIR)                  \
         --rustcflags "$(RUSTC_FLAGS_$(2)) $$(CFG_RUSTC_FLAGS) --target=$(2)" \
         $$(CTEST_TESTARGS)
 
@@ -454,7 +536,7 @@ ifeq ($$(CTEST_DISABLE_$(4)),)
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
                 $$(CTEST_DEPS_$(4)_$(1)-T-$(2)-H-$(3))
-	@$$(call E, run $(4): $$<)
+	@$$(call E, run $(4) [$(2)]: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST_$(2),$(1),$$<,$(3)) \
 		$$(CTEST_ARGS$(1)-T-$(2)-H-$(3)-$(4)) \
 		--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
@@ -465,7 +547,7 @@ else
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
                 $$(CTEST_DEPS_$(4)_$(1)-T-$(2)-H-$(3))
-	@$$(call E, run $(4): $$<)
+	@$$(call E, run $(4) [$(2)]: $$<)
 	@$$(call E, warning: tests disabled: $$(CTEST_DISABLE_$(4)))
 	touch $$@
 
@@ -506,7 +588,7 @@ check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
 	        $$(PRETTY_DEPS_$(4))
-	@$$(call E, run pretty-rpass: $$<)
+	@$$(call E, run pretty-rpass [$(2)]: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST_$(2),$(1),$$<,$(3)) \
 		$$(PRETTY_ARGS$(1)-T-$(2)-H-$(3)-$(4)) \
 		--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
@@ -533,7 +615,7 @@ check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3)
 $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)): \
 	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
                 doc-$(4)-extract$(3)
-	@$$(call E, run doc-$(4): $$<)
+	@$$(call E, run doc-$(4) [$(2)]: $$<)
 	$$(Q)$$(call CFG_RUN_CTEST_$(2),$(1),$$<,$(3)) \
                 $$(DOC_TEST_ARGS$(1)-T-$(2)-H-$(3)-doc-$(4)) \
 		--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),doc-$(4)) \
