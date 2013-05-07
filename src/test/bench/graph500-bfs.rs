@@ -32,19 +32,20 @@ type graph = ~[~[node_id]];
 type bfs_result = ~[node_id];
 
 fn make_edges(scale: uint, edgefactor: uint) -> ~[(node_id, node_id)] {
-    let r = rand::XorShiftRng::new();
+    let mut r = rand::XorShiftRng::new();
 
-    fn choose_edge<R: rand::Rng>(i: node_id, j: node_id, scale: uint, r: &R)
-        -> (node_id, node_id) {
-
+    fn choose_edge<R: rand::Rng>(i: node_id,
+                                 j: node_id,
+                                 scale: uint,
+                                 r: &mut R)
+                                 -> (node_id, node_id) {
         let A = 0.57;
         let B = 0.19;
         let C = 0.19;
 
         if scale == 0u {
             (i, j)
-        }
-        else {
+        } else {
             let i = i * 2i64;
             let j = j * 2i64;
             let scale = scale - 1u;
@@ -73,7 +74,7 @@ fn make_edges(scale: uint, edgefactor: uint) -> ~[(node_id, node_id)] {
     }
 
     do vec::from_fn((1u << scale) * edgefactor) |_i| {
-        choose_edge(0i64, 0i64, scale, &r)
+        choose_edge(0i64, 0i64, scale, &mut r)
     }
 }
 
@@ -103,7 +104,7 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
 
 fn gen_search_keys(graph: &[~[node_id]], n: uint) -> ~[node_id] {
     let mut keys = HashSet::new();
-    let r = rand::rng();
+    let mut r = rand::rng();
 
     while keys.len() < n {
         let k = r.gen_uint_range(0u, graph.len());

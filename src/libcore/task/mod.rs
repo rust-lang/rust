@@ -230,12 +230,14 @@ pub impl TaskBuilder {
     /// the child.
     fn supervised(&mut self) {
         self.opts.supervised = true;
+        self.opts.linked = false;
     }
 
     /// Link the child task's and parent task's failures. If either fails, the
     /// other will be killed.
     fn linked(&mut self) {
         self.opts.linked = true;
+        self.opts.supervised = false;
     }
 
     /**

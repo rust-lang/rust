@@ -26,7 +26,6 @@ use core::int::range;
 use core::comm::*;
 use core::io::WriterUtil;
 
-use core::result;
 use core::result::{Ok, Err};
 
 fn fib(n: int) -> int {
@@ -80,13 +79,15 @@ fn stress_task(&&id: int) {
 fn stress(num_tasks: int) {
     let mut results = ~[];
     for range(0, num_tasks) |i| {
-        do task::task().future_result(|+r| {
-            results.push(r);
-        }).spawn {
+        let mut builder = task::task();
+        builder.future_result(|r| results.push(r));
+        do builder.spawn {
             stress_task(i);
         }
     }
-    for results.each |r| { r.recv(); }
+    for results.each |r| {
+        r.recv();
+    }
 }
 
 fn main() {

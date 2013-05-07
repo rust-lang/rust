@@ -26,7 +26,8 @@ pub fn main() {
         c2.send(());
         error!("child blocks");
         let (p, c) = comm::stream();
-        (p, p3).select();
+        let mut tuple = (p, p3);
+        tuple.select();
         c.send(());
     };
     error!("parent tries");

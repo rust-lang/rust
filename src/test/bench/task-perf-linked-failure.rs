@@ -48,7 +48,10 @@ fn grandchild_group(num_tasks: uint) {
 
 fn spawn_supervised_blocking(myname: &str, +f: ~fn()) {
     let mut res = None;
-    task::task().future_result(|+r| res = Some(r)).supervised().spawn(f);
+    let mut builder = task::task();
+    builder.future_result(|r| res = Some(r));
+    builder.supervised();
+    builder.spawn(f);
     error!("%s group waiting", myname);
     let x = res.unwrap().recv();
     assert!(x == task::Success);
