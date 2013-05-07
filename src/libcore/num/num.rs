@@ -55,7 +55,9 @@ pub trait One {
 pub trait Signed: Num
                 + Neg<Self> {
     fn abs(&self) -> Self;
+    fn abs_sub(&self, other: &Self) -> Self;
     fn signum(&self) -> Self;
+
     fn is_positive(&self) -> bool;
     fn is_negative(&self) -> bool;
 }
@@ -121,8 +123,8 @@ pub trait Trigonometric {
 pub trait Exponential {
     fn exp(&self) -> Self;
     fn exp2(&self) -> Self;
-    fn expm1(&self) -> Self;
-    fn log(&self) -> Self;
+    fn ln(&self) -> Self;
+    fn log(&self, base: Self) -> Self;
     fn log2(&self) -> Self;
     fn log10(&self) -> Self;
 }
@@ -158,8 +160,8 @@ pub trait Real: Signed
     fn e() -> Self;
     fn log2_e() -> Self;
     fn log10_e() -> Self;
-    fn log_2() -> Self;
-    fn log_10() -> Self;
+    fn ln_2() -> Self;
+    fn ln_10() -> Self;
 
     // Angular conversions
     fn to_degrees(&self) -> Self;
@@ -236,6 +238,23 @@ pub trait Int: Integer
              + BitCount {}
 
 ///
+/// Used for representing the classification of floating point numbers
+///
+#[deriving(Eq)]
+pub enum FPCategory {
+    /// "Not a Number", often obtained by dividing by zero
+    FPNaN,
+    /// Positive or negative infinity
+    FPInfinite ,
+    /// Positive or negative zero
+    FPZero,
+    /// De-normalized floating point representation (less precise than `FPNormal`)
+    FPSubnormal,
+    /// A regular floating point number
+    FPNormal,
+}
+
+///
 /// Primitive floating point numbers
 ///
 pub trait Float: Real
@@ -251,6 +270,8 @@ pub trait Float: Real
     fn is_NaN(&self) -> bool;
     fn is_infinite(&self) -> bool;
     fn is_finite(&self) -> bool;
+    fn is_normal(&self) -> bool;
+    fn classify(&self) -> FPCategory;
 
     fn mantissa_digits() -> uint;
     fn digits() -> uint;
@@ -260,6 +281,8 @@ pub trait Float: Real
     fn min_10_exp() -> int;
     fn max_10_exp() -> int;
 
+    fn exp_m1(&self) -> Self;
+    fn ln_1p(&self) -> Self;
     fn mul_add(&self, a: Self, b: Self) -> Self;
     fn next_after(&self, other: Self) -> Self;
 }

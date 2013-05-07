@@ -11,6 +11,7 @@
 //! Operations and constants for `f32`
 
 use num::{Zero, One, strconv};
+use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
 use prelude::*;
 
 pub use cmath::c_float_targ_consts::*;
@@ -82,7 +83,7 @@ delegate!(
     fn cosh(n: c_float) -> c_float = c_float_utils::cosh,
     fn erf(n: c_float) -> c_float = c_float_utils::erf,
     fn erfc(n: c_float) -> c_float = c_float_utils::erfc,
-    fn expm1(n: c_float) -> c_float = c_float_utils::expm1,
+    fn exp_m1(n: c_float) -> c_float = c_float_utils::exp_m1,
     fn abs_sub(a: c_float, b: c_float) -> c_float = c_float_utils::abs_sub,
     fn fmax(a: c_float, b: c_float) -> c_float = c_float_utils::fmax,
     fn fmin(a: c_float, b: c_float) -> c_float = c_float_utils::fmin,
@@ -92,7 +93,7 @@ delegate!(
     fn ldexp(x: c_float, n: c_int) -> c_float = c_float_utils::ldexp,
     fn lgamma(n: c_float, sign: &mut c_int) -> c_float = c_float_utils::lgamma,
     fn log_radix(n: c_float) -> c_float = c_float_utils::log_radix,
-    fn ln1p(n: c_float) -> c_float = c_float_utils::ln1p,
+    fn ln_1p(n: c_float) -> c_float = c_float_utils::ln_1p,
     fn ilog_radix(n: c_float) -> c_int = c_float_utils::ilog_radix,
     fn modf(n: c_float, iptr: &mut c_float) -> c_float = c_float_utils::modf,
     fn round(n: c_float) -> c_float = c_float_utils::round,
@@ -193,11 +194,6 @@ pub mod consts {
 
     /// ln(10.0)
     pub static ln_10: f32 = 2.30258509299404568401799145468436421_f32;
-}
-
-#[inline(always)]
-pub fn logarithm(n: f32, b: f32) -> f32 {
-    return log2(n) / log2(b);
 }
 
 impl Num for f32 {}
@@ -318,6 +314,13 @@ impl Signed for f32 {
     fn abs(&self) -> f32 { abs(*self) }
 
     ///
+    /// The positive difference of two numbers. Returns `0.0` if the number is less than or
+    /// equal to `other`, otherwise the difference between`self` and `other` is returned.
+    ///
+    #[inline(always)]
+    fn abs_sub(&self, other: &f32) -> f32 { abs_sub(*self, *other) }
+
+    ///
     /// # Returns
     ///
     /// - `1.0` if the number is positive, `+0.0` or `infinity`
@@ -413,21 +416,27 @@ impl Trigonometric for f32 {
 }
 
 impl Exponential for f32 {
+    /// Returns the exponential of the number
     #[inline(always)]
     fn exp(&self) -> f32 { exp(*self) }
 
+    /// Returns 2 raised to the power of the number
     #[inline(always)]
     fn exp2(&self) -> f32 { exp2(*self) }
 
+    /// Returns the natural logarithm of the number
     #[inline(always)]
-    fn expm1(&self) -> f32 { expm1(*self) }
+    fn ln(&self) -> f32 { ln(*self) }
 
+    /// Returns the logarithm of the number with respect to an arbitrary base
     #[inline(always)]
-    fn log(&self) -> f32 { ln(*self) }
+    fn log(&self, base: f32) -> f32 { self.ln() / base.ln() }
 
+    /// Returns the base 2 logarithm of the number
     #[inline(always)]
     fn log2(&self) -> f32 { log2(*self) }
 
+    /// Returns the base 10 logarithm of the number
     #[inline(always)]
     fn log10(&self) -> f32 { log10(*self) }
 }
@@ -504,13 +513,13 @@ impl Real for f32 {
     #[inline(always)]
     fn log10_e() -> f32 { 0.434294481903251827651128918916605082 }
 
-    /// log(2.0)
+    /// ln(2.0)
     #[inline(always)]
-    fn log_2() -> f32 { 0.693147180559945309417232121458176568 }
+    fn ln_2() -> f32 { 0.693147180559945309417232121458176568 }
 
-    /// log(10.0)
+    /// ln(10.0)
     #[inline(always)]
-    fn log_10() -> f32 { 2.30258509299404568401799145468436421 }
+    fn ln_10() -> f32 { 2.30258509299404568401799145468436421 }
 
     /// Converts to degrees, assuming the number is in radians
     #[inline(always)]
@@ -550,8 +559,48 @@ impl Float for f32 {
     #[inline(always)]
     fn neg_zero() -> f32 { -0.0 }
 
+    /// Returns `true` if the number is NaN
     #[inline(always)]
     fn is_NaN(&self) -> bool { *self != *self }
+
+    /// Returns `true` if the number is infinite
+    #[inline(always)]
+    fn is_infinite(&self) -> bool {
+        *self == Float::infinity() || *self == Float::neg_infinity()
+    }
+
+    /// Returns `true` if the number is neither infinite or NaN
+    #[inline(always)]
+    fn is_finite(&self) -> bool {
+        !(self.is_NaN() || self.is_infinite())
+    }
+
+    /// Returns `true` if the number is neither zero, infinite, subnormal or NaN
+    #[inline(always)]
+    fn is_normal(&self) -> bool {
+        match self.classify() {
+            FPNormal => true,
+            _ => false,
+        }
+    }
+
+    /// Returns the floating point category of the number. If only one property is going to
+    /// be tested, it is generally faster to use the specific predicate instead.
+    fn classify(&self) -> FPCategory {
+        static EXP_MASK: u32 = 0x7f800000;
+        static MAN_MASK: u32 = 0x007fffff;
+
+        match (
+            unsafe { ::cast::transmute::<f32,u32>(*self) } & EXP_MASK,
+            unsafe { ::cast::transmute::<f32,u32>(*self) } & MAN_MASK
+        ) {
+            (EXP_MASK, 0)        => FPInfinite,
+            (EXP_MASK, _)        => FPNaN,
+            (exp, _) if exp != 0 => FPNormal,
+            _ if self.is_zero()  => FPZero,
+            _                    => FPSubnormal,
+        }
+    }
 
     #[inline(always)]
     fn mantissa_digits() -> uint { 24 }
@@ -574,17 +623,19 @@ impl Float for f32 {
     #[inline(always)]
     fn max_10_exp() -> int { 38 }
 
-    /// Returns `true` if the number is infinite
+    ///
+    /// Returns the exponential of the number, minus `1`, in a way that is accurate
+    /// even if the number is close to zero
+    ///
     #[inline(always)]
-    fn is_infinite(&self) -> bool {
-        *self == Float::infinity() || *self == Float::neg_infinity()
-    }
+    fn exp_m1(&self) -> f32 { exp_m1(*self) }
 
-    /// Returns `true` if the number is finite
+    ///
+    /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more accurately
+    /// than if the operations were performed separately
+    ///
     #[inline(always)]
-    fn is_finite(&self) -> bool {
-        !(self.is_NaN() || self.is_infinite())
-    }
+    fn ln_1p(&self) -> f32 { ln_1p(*self) }
 
     ///
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
@@ -823,6 +874,7 @@ impl num::FromStrRadix for f32 {
 #[cfg(test)]
 mod tests {
     use f32::*;
+    use num::*;
     use super::*;
     use prelude::*;
 
@@ -938,12 +990,12 @@ mod tests {
         assert_approx_eq!(Real::frac_1_sqrt2::<f32>(), 1f32 / 2f32.sqrt());
         assert_approx_eq!(Real::log2_e::<f32>(), Real::e::<f32>().log2());
         assert_approx_eq!(Real::log10_e::<f32>(), Real::e::<f32>().log10());
-        assert_approx_eq!(Real::log_2::<f32>(), 2f32.log());
-        assert_approx_eq!(Real::log_10::<f32>(), 10f32.log());
+        assert_approx_eq!(Real::ln_2::<f32>(), 2f32.ln());
+        assert_approx_eq!(Real::ln_10::<f32>(), 10f32.ln());
     }
 
     #[test]
-    pub fn test_signed() {
+    pub fn test_abs() {
         assert_eq!(infinity.abs(), infinity);
         assert_eq!(1f32.abs(), 1f32);
         assert_eq!(0f32.abs(), 0f32);
@@ -952,7 +1004,24 @@ mod tests {
         assert_eq!(neg_infinity.abs(), infinity);
         assert_eq!((1f32/neg_infinity).abs(), 0f32);
         assert!(NaN.abs().is_NaN());
+    }
 
+    #[test]
+    fn test_abs_sub() {
+        assert_eq!((-1f32).abs_sub(&1f32), 0f32);
+        assert_eq!(1f32.abs_sub(&1f32), 0f32);
+        assert_eq!(1f32.abs_sub(&0f32), 1f32);
+        assert_eq!(1f32.abs_sub(&-1f32), 2f32);
+        assert_eq!(neg_infinity.abs_sub(&0f32), 0f32);
+        assert_eq!(infinity.abs_sub(&1f32), infinity);
+        assert_eq!(0f32.abs_sub(&neg_infinity), infinity);
+        assert_eq!(0f32.abs_sub(&infinity), 0f32);
+        assert!(NaN.abs_sub(&-1f32).is_NaN());
+        assert!(1f32.abs_sub(&NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_signum() {
         assert_eq!(infinity.signum(), 1f32);
         assert_eq!(1f32.signum(), 1f32);
         assert_eq!(0f32.signum(), 1f32);
@@ -961,7 +1030,10 @@ mod tests {
         assert_eq!(neg_infinity.signum(), -1f32);
         assert_eq!((1f32/neg_infinity).signum(), -1f32);
         assert!(NaN.signum().is_NaN());
+    }
 
+    #[test]
+    fn test_is_positive() {
         assert!(infinity.is_positive());
         assert!(1f32.is_positive());
         assert!(0f32.is_positive());
@@ -970,7 +1042,10 @@ mod tests {
         assert!(!neg_infinity.is_positive());
         assert!(!(1f32/neg_infinity).is_positive());
         assert!(!NaN.is_positive());
+    }
 
+    #[test]
+    fn test_is_negative() {
         assert!(!infinity.is_negative());
         assert!(!1f32.is_negative());
         assert!(!0f32.is_negative());
@@ -994,5 +1069,29 @@ mod tests {
     fn test_primitive() {
         assert_eq!(Primitive::bits::<f32>(), sys::size_of::<f32>() * 8);
         assert_eq!(Primitive::bytes::<f32>(), sys::size_of::<f32>());
+    }
+
+    #[test]
+    fn test_is_normal() {
+        assert!(!Float::NaN::<f32>().is_normal());
+        assert!(!Float::infinity::<f32>().is_normal());
+        assert!(!Float::neg_infinity::<f32>().is_normal());
+        assert!(!Zero::zero::<f32>().is_normal());
+        assert!(!Float::neg_zero::<f32>().is_normal());
+        assert!(1f32.is_normal());
+        assert!(1e-37f32.is_normal());
+        assert!(!1e-38f32.is_normal());
+    }
+
+    #[test]
+    fn test_classify() {
+        assert_eq!(Float::NaN::<f32>().classify(), FPNaN);
+        assert_eq!(Float::infinity::<f32>().classify(), FPInfinite);
+        assert_eq!(Float::neg_infinity::<f32>().classify(), FPInfinite);
+        assert_eq!(Zero::zero::<f32>().classify(), FPZero);
+        assert_eq!(Float::neg_zero::<f32>().classify(), FPZero);
+        assert_eq!(1f32.classify(), FPNormal);
+        assert_eq!(1e-37f32.classify(), FPNormal);
+        assert_eq!(1e-38f32.classify(), FPSubnormal);
     }
 }
