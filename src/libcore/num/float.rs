@@ -735,6 +735,15 @@ impl Signed for float {
     fn abs(&self) -> float { abs(*self) }
 
     ///
+    /// The positive difference of two numbers. Returns `0.0` if the number is less than or
+    /// equal to `other`, otherwise the difference between`self` and `other` is returned.
+    ///
+    #[inline(always)]
+    fn abs_sub(&self, other: &float) -> float {
+        (*self as f64).abs_sub(&(*other as f64)) as float
+    }
+
+    ///
     /// # Returns
     ///
     /// - `1.0` if the number is positive, `+0.0` or `infinity`
@@ -978,7 +987,7 @@ mod tests {
     }
 
     #[test]
-    fn test_signed() {
+    fn test_abs() {
         assert_eq!(infinity.abs(), infinity);
         assert_eq!(1f.abs(), 1f);
         assert_eq!(0f.abs(), 0f);
@@ -987,7 +996,24 @@ mod tests {
         assert_eq!(neg_infinity.abs(), infinity);
         assert_eq!((1f/neg_infinity).abs(), 0f);
         assert!(NaN.abs().is_NaN());
+    }
 
+    #[test]
+    fn test_abs_sub() {
+        assert_eq!((-1f).abs_sub(&1f), 0f);
+        assert_eq!(1f.abs_sub(&1f), 0f);
+        assert_eq!(1f.abs_sub(&0f), 1f);
+        assert_eq!(1f.abs_sub(&-1f), 2f);
+        assert_eq!(neg_infinity.abs_sub(&0f), 0f);
+        assert_eq!(infinity.abs_sub(&1f), infinity);
+        assert_eq!(0f.abs_sub(&neg_infinity), infinity);
+        assert_eq!(0f.abs_sub(&infinity), 0f);
+        assert!(NaN.abs_sub(&-1f).is_NaN());
+        assert!(1f.abs_sub(&NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_signum() {
         assert_eq!(infinity.signum(), 1f);
         assert_eq!(1f.signum(), 1f);
         assert_eq!(0f.signum(), 1f);
@@ -996,7 +1022,10 @@ mod tests {
         assert_eq!(neg_infinity.signum(), -1f);
         assert_eq!((1f/neg_infinity).signum(), -1f);
         assert!(NaN.signum().is_NaN());
+    }
 
+    #[test]
+    fn test_is_positive() {
         assert!(infinity.is_positive());
         assert!(1f.is_positive());
         assert!(0f.is_positive());
@@ -1005,7 +1034,10 @@ mod tests {
         assert!(!neg_infinity.is_positive());
         assert!(!(1f/neg_infinity).is_positive());
         assert!(!NaN.is_positive());
+    }
 
+    #[test]
+    fn test_is_negative() {
         assert!(!infinity.is_negative());
         assert!(!1f.is_negative());
         assert!(!0f.is_negative());
