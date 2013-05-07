@@ -163,8 +163,6 @@ endif
 ifdef CFG_WINDOWSY_$(1)
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
-		CFLAGS="$$(CFG_GCCISH_CFLAGS)" \
-		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS)" \
 		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
 		OS=mingw \
 		V=$$(VERBOSE)
