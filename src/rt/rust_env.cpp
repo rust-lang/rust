@@ -24,6 +24,7 @@
 #define RUST_SEED "RUST_SEED"
 #define RUST_POISON_ON_FREE "RUST_POISON_ON_FREE"
 #define RUST_DEBUG_MEM "RUST_DEBUG_MEM"
+#define RUST_DEBUG_BORROW "RUST_DEBUG_BORROW"
 
 #if defined(__WIN32__)
 static int
@@ -130,6 +131,7 @@ load_env(int argc, char **argv) {
     env->argc = argc;
     env->argv = argv;
     env->debug_mem = getenv(RUST_DEBUG_MEM) != NULL;
+    env->debug_borrow = getenv(RUST_DEBUG_BORROW) != NULL;
     return env;
 }
 

@@ -208,7 +208,6 @@ pub fn store_environment(bcx: block,
 
     // allocate closure in the heap
     let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, sigil, cdata_ty);
-    let mut temp_cleanups = ~[];
 
     // cbox_ty has the form of a tuple: (a, b, c) we want a ptr to a
     // tuple.  This could be a ptr in uniq or a box or on stack,
@@ -224,7 +223,7 @@ pub fn store_environment(bcx: block,
     for vec::eachi(bound_values) |i, bv| {
         debug!("Copy %s into closure", bv.to_str(ccx));
 
-        if !ccx.sess.no_asm_comments() {
+        if ccx.sess.asm_comments() {
             add_comment(bcx, fmt!("Copy %s into closure",
                                   bv.to_str(ccx)));
         }
@@ -243,9 +242,6 @@ pub fn store_environment(bcx: block,
             }
         }
 
-    }
-    for vec::each(temp_cleanups) |cleanup| {
-        revoke_clean(bcx, *cleanup);
     }
 
     ClosureResult { llbox: llbox, cdata_ty: cdata_ty, bcx: bcx }
@@ -424,7 +420,7 @@ pub fn trans_expr_fn(bcx: block,
 
     let Result {bcx: bcx, val: closure} = match sigil {
         ast::BorrowedSigil | ast::ManagedSigil | ast::OwnedSigil => {
-            let cap_vars = *ccx.maps.capture_map.get(&user_id);
+            let cap_vars = ccx.maps.capture_map.get_copy(&user_id);
             let ret_handle = match is_loop_body {Some(x) => x,
                                                  None => None};
             let ClosureResult {llbox, cdata_ty, bcx}

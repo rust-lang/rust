@@ -481,7 +481,7 @@ pub fn check_crate(tcx: ty::ctxt,
                     }
                 }
                 expr_path(path) => {
-                    check_path(expr.span, *tcx.def_map.get(&expr.id), path);
+                    check_path(expr.span, tcx.def_map.get_copy(&expr.id), path);
                 }
                 expr_struct(_, ref fields, _) => {
                     match ty::get(ty::expr_ty(tcx, expr)).sty {
@@ -499,7 +499,7 @@ pub fn check_crate(tcx: ty::ctxt,
                         ty_enum(id, _) => {
                             if id.crate != local_crate ||
                                     !privileged_items.contains(&(id.node)) {
-                                match *tcx.def_map.get(&expr.id) {
+                                match tcx.def_map.get_copy(&expr.id) {
                                     def_variant(_, variant_id) => {
                                         for (*fields).each |field| {
                                                 debug!("(privacy checking) \

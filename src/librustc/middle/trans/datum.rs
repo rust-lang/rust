@@ -87,17 +87,16 @@
 
 use lib;
 use lib::llvm::ValueRef;
-use middle::borrowck::{RootInfo, root_map_key};
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::build::*;
-use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::common;
 use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::tvec;
 use middle::trans::type_of;
+use middle::trans::write_guard;
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
@@ -105,6 +104,7 @@ use util::ppaux::ty_to_str;
 use core::container::Set; // XXX: this should not be necessary
 use core::to_bytes;
 use syntax::ast;
+use syntax::codemap::span;
 use syntax::parse::token::special_idents;
 
 #[deriving(Eq)]
@@ -516,59 +516,6 @@ pub impl Datum {
         }
     }
 
-    fn root(&self, bcx: block, root_info: RootInfo) -> block {
-        /*!
-         *
-         * In some cases, borrowck will decide that an @T/@[]/@str
-         * value must be rooted for the program to be safe.  In that
-         * case, we will call this function, which will stash a copy
-         * away until we exit the scope `scope_id`. */
-
-        debug!("root(scope_id=%?, freezes=%?, self=%?)",
-               root_info.scope, root_info.freezes, self.to_str(bcx.ccx()));
-
-        if bcx.sess().trace() {
-            trans_trace(
-                bcx, None,
-                @fmt!("preserving until end of scope %d",
-                     root_info.scope));
-        }
-
-        let scratch = scratch_datum(bcx, self.ty, true);
-        self.copy_to_datum(bcx, INIT, scratch);
-        add_root_cleanup(bcx, root_info, scratch.val, scratch.ty);
-
-        // If we need to freeze the box, do that now.
-        if root_info.freezes {
-            callee::trans_lang_call(
-                bcx,
-                bcx.tcx().lang_items.borrow_as_imm_fn(),
-                ~[
-                    Load(bcx,
-                         PointerCast(bcx,
-                                     scratch.val,
-                                     T_ptr(T_ptr(T_i8()))))
-                ],
-                expr::Ignore)
-        } else {
-            bcx
-        }
-    }
-
-    fn perform_write_guard(&self, bcx: block) -> block {
-        // Create scratch space, but do not root it.
-        let llval = match self.mode {
-            ByValue => self.val,
-            ByRef => Load(bcx, self.val),
-        };
-
-        callee::trans_lang_call(
-            bcx,
-            bcx.tcx().lang_items.check_not_borrowed_fn(),
-            ~[ PointerCast(bcx, llval, T_ptr(T_i8())) ],
-            expr::Ignore)
-    }
-
     fn drop_val(&self, bcx: block) -> block {
         if !ty::type_needs_drop(bcx.tcx(), self.ty) {
             return bcx;
@@ -620,32 +567,20 @@ pub impl Datum {
 
     fn try_deref(&self,
         bcx: block,            // block wherein to generate insn's
-        expr_id: ast::node_id, // id of expr being deref'd
+        span: span,            // location where deref occurs
+        expr_id: ast::node_id, // id of deref expr
         derefs: uint,          // number of times deref'd already
         is_auto: bool)         // if true, only deref if auto-derefable
         -> (Option<Datum>, block)
     {
         let ccx = bcx.ccx();
 
-        debug!("try_deref(expr_id=%d, derefs=%?, is_auto=%b, self=%?)",
+        debug!("try_deref(expr_id=%?, derefs=%?, is_auto=%b, self=%?)",
                expr_id, derefs, is_auto, self.to_str(bcx.ccx()));
-        let _indenter = indenter();
 
-        // root the autoderef'd value, if necessary:
-        //
-        // (Note: root'd values are always boxes)
-        let key = root_map_key { id: expr_id, derefs: derefs };
-        let bcx = match ccx.maps.root_map.find(&key) {
-            None => bcx,
-            Some(&root_info) => self.root(bcx, root_info)
-        };
-
-        // Perform the write guard, if necessary.
-        //
-        // (Note: write-guarded values are always boxes)
-        let bcx = if ccx.maps.write_guard_map.contains(&key) {
-            self.perform_write_guard(bcx)
-        } else { bcx };
+        let bcx =
+            write_guard::root_and_write_guard(
+                self, bcx, span, expr_id, derefs);
 
         match ty::get(self.ty).sty {
             ty::ty_box(_) | ty::ty_uniq(_) => {
@@ -755,10 +690,10 @@ pub impl Datum {
     }
 
     fn deref(&self, bcx: block,
-             expr: @ast::expr,  // the expression whose value is being deref'd
+             expr: @ast::expr,  // the deref expression
              derefs: uint)
           -> DatumBlock {
-        match self.try_deref(bcx, expr.id, derefs, false) {
+        match self.try_deref(bcx, expr.span, expr.id, derefs, false) {
             (Some(lvres), bcx) => DatumBlock { bcx: bcx, datum: lvres },
             (None, _) => {
                 bcx.ccx().sess.span_bug(expr.span,
@@ -768,6 +703,7 @@ pub impl Datum {
     }
 
     fn autoderef(&self, bcx: block,
+                 span: span,
                  expr_id: ast::node_id,
                  max: uint)
               -> DatumBlock {
@@ -782,7 +718,7 @@ pub impl Datum {
         let mut bcx = bcx;
         while derefs < max {
             derefs += 1u;
-            match datum.try_deref(bcx, expr_id, derefs, true) {
+            match datum.try_deref(bcx, span, expr_id, derefs, true) {
                 (None, new_bcx) => { bcx = new_bcx; break }
                 (Some(datum_deref), new_bcx) => {
                     datum = datum_deref;
@@ -798,8 +734,34 @@ pub impl Datum {
         DatumBlock { bcx: bcx, datum: datum }
     }
 
-    fn get_base_and_len(&self, bcx: block) -> (ValueRef, ValueRef) {
-        tvec::get_base_and_len(bcx, self.to_appropriate_llval(bcx), self.ty)
+    fn get_vec_base_and_len(&self,
+                            mut bcx: block,
+                            span: span,
+                            expr_id: ast::node_id)
+                            -> (block, ValueRef, ValueRef) {
+        //! Converts a vector into the slice pair. Performs rooting
+        //! and write guards checks.
+
+        // only imp't for @[] and @str, but harmless
+        bcx = write_guard::root_and_write_guard(self, bcx, span, expr_id, 0);
+        let (base, len) = self.get_vec_base_and_len_no_root(bcx);
+        (bcx, base, len)
+    }
+
+    fn get_vec_base_and_len_no_root(&self, bcx: block) -> (ValueRef, ValueRef) {
+        //! Converts a vector into the slice pair. Des not root
+        //! nor perform write guard checks.
+
+        let llval = self.to_appropriate_llval(bcx);
+        tvec::get_base_and_len(bcx, llval, self.ty)
+    }
+
+    fn root_and_write_guard(&self,
+                            bcx: block,
+                            span: span,
+                            expr_id: ast::node_id,
+                            derefs: uint) -> block {
+        write_guard::root_and_write_guard(self, bcx, span, expr_id, derefs)
     }
 
     fn to_result(&self, bcx: block) -> common::Result {

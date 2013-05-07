@@ -69,7 +69,8 @@ fn generate_test_harness(sess: session::Session,
         testfns: ~[]
     };
 
-    cx.ext_cx.bt_push(ExpandedFrom(CallInfo {
+    let ext_cx = cx.ext_cx;
+    ext_cx.bt_push(ExpandedFrom(CallInfo {
         call_site: dummy_sp(),
         callee: NameAndSpan {
             name: ~"test",
@@ -84,7 +85,7 @@ fn generate_test_harness(sess: session::Session,
 
     let fold = fold::make_fold(precursor);
     let res = @fold.fold_crate(&*crate);
-    cx.ext_cx.bt_pop();
+    ext_cx.bt_pop();
     return res;
 }
 

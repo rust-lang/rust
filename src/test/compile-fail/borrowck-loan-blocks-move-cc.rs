@@ -14,17 +14,17 @@ fn borrow(v: &int, f: &fn(x: &int)) {
 
 fn box_imm() {
     let v = ~3;
-    let _w = &v; //~ NOTE loan of immutable local variable granted here
+    let _w = &v;
     do task::spawn {
         debug!("v=%d", *v);
-        //~^ ERROR by-move capture of immutable local variable prohibited due to outstanding loan
+        //~^ ERROR cannot move `v` into closure
     }
 
     let v = ~3;
-    let _w = &v; //~ NOTE loan of immutable local variable granted here
+    let _w = &v;
     task::spawn(|| {
         debug!("v=%d", *v);
-        //~^ ERROR by-move capture of immutable local variable prohibited due to outstanding loan
+        //~^ ERROR cannot move
     });
 }
 

@@ -15,6 +15,7 @@ use ptr::mut_null;
 use repr::BoxRepr;
 use sys::TypeDesc;
 use cast::transmute;
+#[cfg(notest)] use unstable::lang::clear_task_borrow_list;
 
 #[cfg(notest)] use ptr::to_unsafe_ptr;
 
@@ -178,6 +179,10 @@ pub unsafe fn annihilate() {
         n_unique_boxes: 0,
         n_bytes_freed: 0
     };
+
+    // Quick hack: we need to free this list upon task exit, and this
+    // is a convenient place to do it.
+    clear_task_borrow_list();
 
     // Pass 1: Make all boxes immortal.
     //

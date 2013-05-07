@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn foo(a: int) {
-    let _p: &'static int = &a; //~ ERROR illegal borrow
+    let _p: &'static int = &a; //~ ERROR borrowed value does not live long enough
 }
 
 fn bar(a: int) {

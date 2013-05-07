@@ -10,8 +10,12 @@
 // except according to those terms.
 
 
-// error-pattern: dead
+fn f(caller: &str) {
+    debug!(caller);
+    let x: uint = 0u32; // induce type error //~ ERROR mismatched types
+}
 
-fn f(caller: str) { debug!(caller); }
-
-fn main() { return f("main"); debug!("Paul is dead"); }
+fn main() {
+    return f("main");
+    debug!("Paul is dead"); //~ WARNING unreachable
+}

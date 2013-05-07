@@ -491,9 +491,9 @@ pub impl Printer {
           }
           END => {
             debug!("print END -> pop END");
-            let print_stack = &*self.print_stack;
+            let print_stack = &mut *self.print_stack;
             assert!((print_stack.len() != 0u));
-            self.print_stack.pop();
+            print_stack.pop();
           }
           BREAK(b) => {
             let top = self.get_top();

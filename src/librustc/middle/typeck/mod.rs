@@ -414,7 +414,11 @@ pub fn check_crate(tcx: ty::ctxt,
     time(time_passes, ~"type collecting", ||
         collect::collect_item_types(ccx, crate));
 
-    time(time_passes, ~"method resolution", ||
+    // this ensures that later parts of type checking can assume that items
+    // have valid types and not error
+    tcx.sess.abort_if_errors();
+
+    time(time_passes, ~"coherence checking", ||
         coherence::check_coherence(ccx, crate));
 
     time(time_passes, ~"type checking", ||

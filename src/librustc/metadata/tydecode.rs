@@ -245,6 +245,9 @@ fn parse_region(st: @mut PState) -> ty::Region {
       't' => {
         ty::re_static
       }
+      'e' => {
+        ty::re_static
+      }
       _ => fail!(~"parse_region: bad input")
     }
 }

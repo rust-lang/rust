@@ -11,7 +11,6 @@
 fn main() {
     let needlesArr: ~[char] = ~['a', 'f'];
     do vec::foldr(needlesArr) |x, y| {
-        //~^ ERROR Unconstrained region variable #2
     }
     //~^ ERROR 2 parameters were supplied (including the closure passed by the `do` keyword)
     //

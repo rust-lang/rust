@@ -1256,22 +1256,24 @@ mod tests {
         match (r) {
           node::Empty => return ~"",
           node::Content(x) => {
-            let str = @mut ~"";
-            fn aux(str: @mut ~str, node: @node::Node) {
+            let mut str = ~"";
+            fn aux(str: &mut ~str, node: @node::Node) {
                 match (*node) {
-                  node::Leaf(x) => {
-                    *str += str::slice(
-                        *x.content, x.byte_offset,
-                        x.byte_offset + x.byte_len).to_owned();
-                  }
-                  node::Concat(ref x) => {
-                    aux(str, x.left);
-                    aux(str, x.right);
-                  }
+                    node::Leaf(x) => {
+                        str::push_str(
+                            str,
+                            str::slice(
+                                *x.content, x.byte_offset,
+                                x.byte_offset + x.byte_len));
+                    }
+                    node::Concat(ref x) => {
+                        aux(str, x.left);
+                        aux(str, x.right);
+                    }
                 }
             }
-            aux(str, x);
-            return *str
+            aux(&mut str, x);
+            return str
           }
         }
     }
