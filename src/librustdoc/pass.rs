@@ -17,7 +17,7 @@ use time;
 /// A single operation on the document model
 pub struct Pass {
     name: ~str,
-    f: @fn(srv: astsrv::Srv, +doc: doc::Doc) -> doc::Doc
+    f: @fn(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc
 }
 
 pub fn run_passes(

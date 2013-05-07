@@ -928,7 +928,7 @@ mod test {
             test_try_recv_none3(pipe_port_loader);
         }
 
-        fn test_try_recv_none4<P:BytePort>(+loader: PortLoader<P>) {
+        fn test_try_recv_none4<P:BytePort>(loader: PortLoader<P>) {
             assert!(do task::try || {
                 static CONTINUE: [u8, ..4] = [0xAA, 0xBB, 0xCC, 0xDD];
                 // The control word is followed by a valid length,

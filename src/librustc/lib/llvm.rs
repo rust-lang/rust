@@ -1561,12 +1561,18 @@ pub mod llvm {
                                        Name: *c_char) -> ValueRef;
 
         /* Atomic Operations */
-        pub unsafe fn LLVMBuildAtomicCmpXchg(B: BuilderRef, LHS: ValueRef,
-                                  CMP: ValueRef, RHS: ValueRef,
-                                  ++Order: AtomicOrdering) -> ValueRef;
-        pub unsafe fn LLVMBuildAtomicRMW(B: BuilderRef, ++Op: AtomicBinOp,
-                              LHS: ValueRef, RHS: ValueRef,
-                              ++Order: AtomicOrdering) -> ValueRef;
+        pub unsafe fn LLVMBuildAtomicCmpXchg(B: BuilderRef,
+                                             LHS: ValueRef,
+                                             CMP: ValueRef,
+                                             RHS: ValueRef,
+                                             Order: AtomicOrdering)
+                                             -> ValueRef;
+        pub unsafe fn LLVMBuildAtomicRMW(B: BuilderRef,
+                                         Op: AtomicBinOp,
+                                         LHS: ValueRef,
+                                         RHS: ValueRef,
+                                         Order: AtomicOrdering)
+                                         -> ValueRef;
 
         /* Selected entries from the downcasts. */
         #[fast_ffi]

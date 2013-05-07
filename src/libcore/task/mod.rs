@@ -371,7 +371,7 @@ pub impl TaskBuilder {
         let (po, ch) = stream::<T>();
         let mut result = None;
 
-        self.future_result(|+r| { result = Some(r); });
+        self.future_result(|r| { result = Some(r); });
 
         do self.spawn {
             ch.send(f());
@@ -791,11 +791,11 @@ fn test_add_wrapper() {
 #[ignore(cfg(windows))]
 fn test_future_result() {
     let mut result = None;
-    do task().future_result(|+r| { result = Some(r); }).spawn { }
+    do task().future_result(|r| { result = Some(r); }).spawn { }
     assert!(result.unwrap().recv() == Success);
 
     result = None;
-    do task().future_result(|+r|
+    do task().future_result(|r|
         { result = Some(r); }).unlinked().spawn {
         fail!();
     }

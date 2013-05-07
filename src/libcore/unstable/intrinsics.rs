@@ -34,8 +34,8 @@ pub extern "rust-intrinsic" {
 
     pub fn size_of<T>() -> uint;
 
-    pub fn move_val<T>(dst: &mut T, +src: T);
-    pub fn move_val_init<T>(dst: &mut T, +src: T);
+    pub fn move_val<T>(dst: &mut T, src: T);
+    pub fn move_val_init<T>(dst: &mut T, src: T);
 
     pub fn min_align_of<T>() -> uint;
     pub fn pref_align_of<T>() -> uint;

@@ -26,8 +26,8 @@ pub type Writer = ~fn(v: WriteInstr);
 pub type WriterFactory = ~fn(page: doc::Page) -> Writer;
 
 pub trait WriterUtils {
-    fn put_str(&self, +str: ~str);
-    fn put_line(&self, +str: ~str);
+    fn put_str(&self, str: ~str);
+    fn put_line(&self, str: ~str);
     fn put_done(&self);
 }
 
