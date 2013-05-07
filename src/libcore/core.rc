@@ -244,12 +244,12 @@ pub mod unstable;
 
 /* For internal use, not exported */
 
-pub mod unicode;
+mod unicode;
 #[path = "num/cmath.rs"]
-pub mod cmath;
-pub mod stackwalk;
+mod cmath;
+mod stackwalk;
 #[path = "rt/mod.rs"]
-pub mod rt;
+mod rt;
 
 // A curious inner-module that's not exported that contains the binding
 // 'core' so that macro-expanded references to core::error and such
