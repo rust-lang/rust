@@ -88,8 +88,7 @@ rand_seed_size() {
 
 extern "C" CDECL void
 rand_gen_seed(uint8_t* dest, size_t size) {
-    rust_task *task = rust_get_current_task();
-    rng_gen_seed(task->kernel, dest, size);
+    rng_gen_seed(dest, size);
 }
 
 extern "C" CDECL void *
@@ -101,14 +100,14 @@ rand_new_seeded(uint8_t* seed, size_t seed_size) {
         task->fail();
         return NULL;
     }
-    rng_init(task->kernel, rng, seed, seed_size);
+    char *env_seed = task->kernel->env->rust_seed;
+    rng_init(rng, env_seed, seed, seed_size);
     return rng;
 }
 
 extern "C" CDECL uint32_t
 rand_next(rust_rng *rng) {
-    rust_task *task = rust_get_current_task();
-    return rng_gen_u32(task->kernel, rng);
+    return rng_gen_u32(rng);
 }
 
 extern "C" CDECL void
