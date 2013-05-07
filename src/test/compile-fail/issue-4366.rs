@@ -37,4 +37,3 @@ mod m1 {
 fn main() {
     foo(); //~ ERROR: unresolved name: `foo`
 }
-

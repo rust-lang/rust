@@ -96,7 +96,7 @@ fn create_decode_method(
         cx,
         span,
         build::mk_simple_ty_path(cx, span, cx.ident_of(~"__D")),
-        ast::m_imm
+        ast::m_mutbl
     );
     let d_ident = cx.ident_of(~"__d");
     let d_arg = build::mk_arg(cx, span, d_ident, d_arg_type);
@@ -219,6 +219,11 @@ fn create_read_struct_field(
     // Call the substructure method.
     let decode_expr = call_substructure_decode_method(cx, span);
 
+    let d_arg = build::mk_arg(cx,
+                              span,
+                              cx.ident_of(~"__d"),
+                              build::mk_ty_infer(cx, span));
+
     let call_expr = build::mk_method_call(
         cx,
         span,
@@ -227,7 +232,11 @@ fn create_read_struct_field(
         ~[
             build::mk_base_str(cx, span, cx.str_of(ident)),
             build::mk_uint(cx, span, idx),
-            build::mk_lambda_no_args(cx, span, decode_expr),
+            build::mk_lambda(cx,
+                             span,
+                             build::mk_fn_decl(~[d_arg],
+                                               build::mk_ty_infer(cx, span)),
+                             decode_expr),
         ]
     );
 
@@ -282,6 +291,11 @@ fn expand_deriving_decodable_struct_method(
         i += 1;
     }
 
+    let d_arg = build::mk_arg(cx,
+                              span,
+                              cx.ident_of(~"__d"),
+                              build::mk_ty_infer(cx, span));
+
     let read_struct_expr = build::mk_method_call(
         cx,
         span,
@@ -294,9 +308,10 @@ fn expand_deriving_decodable_struct_method(
         ~[
             build::mk_base_str(cx, span, cx.str_of(type_ident)),
             build::mk_uint(cx, span, fields.len()),
-            build::mk_lambda_no_args(
+            build::mk_lambda(
                 cx,
                 span,
+                build::mk_fn_decl(~[d_arg], build::mk_ty_infer(cx, span)),
                 build::mk_struct_e(
                     cx,
                     span,
@@ -334,6 +349,12 @@ fn create_read_variant_arg(
             // Call the substructure method.
             let expr = call_substructure_decode_method(cx, span);
 
+            let d_arg = build::mk_arg(cx,
+                                      span,
+                                      cx.ident_of(~"__d"),
+                                      build::mk_ty_infer(cx, span));
+            let t_infer = build::mk_ty_infer(cx, span);
+
             let call_expr = build::mk_method_call(
                 cx,
                 span,
@@ -341,7 +362,10 @@ fn create_read_variant_arg(
                 cx.ident_of(~"read_enum_variant_arg"),
                 ~[
                     build::mk_uint(cx, span, j),
-                    build::mk_lambda_no_args(cx, span, expr),
+                    build::mk_lambda(cx,
+                                     span,
+                                     build::mk_fn_decl(~[d_arg], t_infer),
+                                     expr),
                 ]
             );
 
@@ -402,6 +426,12 @@ fn create_read_enum_variant(
                         build::mk_arg(
                             cx,
                             span,
+                            cx.ident_of(~"__d"),
+                            build::mk_ty_infer(cx, span)
+                        ),
+                        build::mk_arg(
+                            cx,
+                            span,
                             cx.ident_of(~"__i"),
                             build::mk_ty_infer(cx, span)
                         )
@@ -434,6 +464,11 @@ fn expand_deriving_decodable_enum_method(
         enum_definition
     );
 
+    let d_arg = build::mk_arg(cx,
+                              span,
+                              cx.ident_of(~"__d"),
+                              build::mk_ty_infer(cx, span));
+
     // Create the read_enum expression
     let read_enum_expr = build::mk_method_call(
         cx,
@@ -442,7 +477,11 @@ fn expand_deriving_decodable_enum_method(
         cx.ident_of(~"read_enum"),
         ~[
             build::mk_base_str(cx, span, cx.str_of(type_ident)),
-            build::mk_lambda_no_args(cx, span, read_enum_variant_expr),
+            build::mk_lambda(cx,
+                             span,
+                             build::mk_fn_decl(~[d_arg],
+                                               build::mk_ty_infer(cx, span)),
+                             read_enum_variant_expr),
         ]
     );
 

@@ -244,11 +244,14 @@ fn lookup_vtable(vcx: &VtableContext,
                     // Nothing found. Continue.
                 }
                 Some(implementations) => {
-                    let implementations: &mut ~[@Impl] = *implementations;
+                    let len = { // FIXME(#5074): stage0 requires it
+                        let implementations: &mut ~[@Impl] = *implementations;
+                        implementations.len()
+                    };
 
                     // implementations is the list of all impls in scope for
                     // trait_ref. (Usually, there's just one.)
-                    for uint::range(0, implementations.len()) |i| {
+                    for uint::range(0, len) |i| {
                         let im = implementations[i];
 
                         // im is one specific impl of trait_ref.
@@ -414,7 +417,7 @@ fn lookup_vtable(vcx: &VtableContext,
                     if !is_early {
                         vcx.tcx().sess.span_err(
                             location_info.span,
-                            ~"multiple applicable methods in scope");
+                            "multiple applicable methods in scope");
                     }
                     return Some(/*bad*/copy found[0]);
                 }
@@ -487,7 +490,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
         for fcx.opt_node_ty_substs(ex.id) |substs| {
             debug!("vtable resolution on parameter bounds for expr %s",
                    ex.repr(fcx.tcx()));
-            let def = *cx.tcx.def_map.get(&ex.id);
+            let def = cx.tcx.def_map.get_copy(&ex.id);
             let did = ast_util::def_id_of_def(def);
             let item_ty = ty::lookup_item_type(cx.tcx, did);
             debug!("early resolve expr: def %? %?, %?, %s", ex.id, did, def,
@@ -666,5 +669,3 @@ pub fn resolve_in_block(fcx: @mut FnCtxt, bl: &ast::blk) {
         .. *visit::default_visitor()
     }));
 }
-
-

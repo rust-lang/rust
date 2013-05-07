@@ -14,7 +14,7 @@ static C0: E = C[0];
 static C1: E = C[1];
 
 pub fn main() {
-    match C0 { 
+    match C0 {
         V0 => (),
         _ => fail!()
     }

@@ -19,4 +19,3 @@ fn main() {
     let x = S { x: 1 };
     io::println(x.foo().to_str());
 }
-

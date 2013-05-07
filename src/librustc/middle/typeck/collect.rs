@@ -49,7 +49,6 @@ use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, split_trait_methods};
-use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::codemap;
 use syntax::print::pprust::{path_to_str, self_ty_to_str};
@@ -152,7 +151,7 @@ impl AstConv for CrateCtxt {
 
     fn ty_infer(&self, span: span) -> ty::t {
         self.tcx.sess.span_bug(span,
-                               ~"found `ty_infer` in unexpected place");
+                               "found `ty_infer` in unexpected place");
     }
 }
 
@@ -220,7 +219,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 {
     let tcx = ccx.tcx;
     let region_paramd = tcx.region_paramd_items.find(&trait_id).map(|&x| *x);
-    match *tcx.items.get(&trait_id) {
+    match tcx.items.get_copy(&trait_id) {
         ast_map::node_item(@ast::item {
             node: ast::item_trait(ref generics, _, ref ms),
             _
@@ -417,8 +416,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
         if ty_trait_refs.any(|other_trait| other_trait.def_id == trait_ref.def_id) {
             // This means a trait inherited from the same supertrait more
             // than once.
-            tcx.sess.span_err(sp, ~"Duplicate supertrait in trait \
-                                     declaration");
+            tcx.sess.span_err(sp, "Duplicate supertrait in trait declaration");
             break;
         } else {
             ty_trait_refs.push(trait_ref);
@@ -896,30 +894,6 @@ pub fn convert_struct(ccx: &CrateCtxt,
                       tpt: ty::ty_param_bounds_and_ty,
                       id: ast::node_id) {
     let tcx = ccx.tcx;
-
-    for struct_def.dtor.each |dtor| {
-        let region_parameterization =
-            RegionParameterization::from_variance_and_generics(rp, generics);
-
-        // Write the dtor type
-        let t_dtor = ty::mk_bare_fn(
-            tcx,
-            astconv::ty_of_bare_fn(
-                ccx,
-                &type_rscope(region_parameterization),
-                ast::impure_fn,
-                AbiSet::Rust(),
-                &opt_vec::Empty,
-                &ast_util::dtor_dec()));
-        write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
-        tcx.tcache.insert(local_def(dtor.node.id),
-                          ty_param_bounds_and_ty {
-                              generics: ty::Generics {
-                                  type_param_defs: tpt.generics.type_param_defs,
-                                  region_param: rp
-                              },
-                              ty: t_dtor});
-    };
 
     // Write the type of each of the members
     for struct_def.fields.each |f| {

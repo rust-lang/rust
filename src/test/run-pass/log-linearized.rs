@@ -32,4 +32,3 @@ fn f<T,U>() {
 pub fn main() {
     f::<int,int>();
 }
-

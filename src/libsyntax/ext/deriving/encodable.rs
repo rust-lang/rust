@@ -94,10 +94,9 @@ fn create_encode_method(
         cx,
         span,
         build::mk_simple_ty_path(cx, span, cx.ident_of(~"__E")),
-        ast::m_imm
+        ast::m_mutbl
     );
-    let e_ident = cx.ident_of(~"__e");
-    let e_arg = build::mk_arg(cx, span, e_ident, e_arg_type);
+    let e_arg = build::mk_arg(cx, span, cx.ident_of(~"__e"), e_arg_type);
 
     // Create the type of the return value.
     let output_type = @ast::Ty { id: cx.next_id(), node: ty_nil, span: span };
@@ -226,10 +225,16 @@ fn expand_deriving_encodable_struct_method(
                     self_field
                 );
 
+                let e_ident = cx.ident_of(~"__e");
+                let e_arg = build::mk_arg(cx,
+                                          span,
+                                          e_ident,
+                                          build::mk_ty_infer(cx, span));
+
                 let blk_expr = build::mk_lambda(
                     cx,
                     span,
-                    build::mk_fn_decl(~[], build::mk_ty_infer(cx, span)),
+                    build::mk_fn_decl(~[e_arg], build::mk_ty_infer(cx, span)),
                     encode_expr
                 );
 
@@ -257,6 +262,11 @@ fn expand_deriving_encodable_struct_method(
         idx += 1;
     }
 
+    let e_arg = build::mk_arg(cx,
+                              span,
+                              cx.ident_of(~"__e"),
+                              build::mk_ty_infer(cx, span));
+
     let emit_struct_stmt = build::mk_method_call(
         cx,
         span,
@@ -272,7 +282,7 @@ fn expand_deriving_encodable_struct_method(
             build::mk_lambda_stmts(
                 cx,
                 span,
-                build::mk_fn_decl(~[], build::mk_ty_infer(cx, span)),
+                build::mk_fn_decl(~[e_arg], build::mk_ty_infer(cx, span)),
                 statements
             ),
         ]
@@ -309,10 +319,16 @@ fn expand_deriving_encodable_enum_method(
             // Call the substructure method.
             let expr = call_substructure_encode_method(cx, span, field);
 
+            let e_ident = cx.ident_of(~"__e");
+            let e_arg = build::mk_arg(cx,
+                                      span,
+                                      e_ident,
+                                      build::mk_ty_infer(cx, span));
+
             let blk_expr = build::mk_lambda(
                 cx,
                 span,
-                build::mk_fn_decl(~[], build::mk_ty_infer(cx, span)),
+                build::mk_fn_decl(~[e_arg], build::mk_ty_infer(cx, span)),
                 expr
             );
 
@@ -331,6 +347,10 @@ fn expand_deriving_encodable_enum_method(
         }
 
         // Create the pattern body.
+        let e_arg = build::mk_arg(cx,
+                                  span,
+                                  cx.ident_of(~"__e"),
+                                  build::mk_ty_infer(cx, span));
         let call_expr = build::mk_method_call(
             cx,
             span,
@@ -343,7 +363,7 @@ fn expand_deriving_encodable_enum_method(
                 build::mk_lambda_stmts(
                     cx,
                     span,
-                    build::mk_fn_decl(~[], build::mk_ty_infer(cx, span)),
+                    build::mk_fn_decl(~[e_arg], build::mk_ty_infer(cx, span)),
                     stmts
                 )
             ]
@@ -359,11 +379,17 @@ fn expand_deriving_encodable_enum_method(
         }
     };
 
+    let e_ident = cx.ident_of(~"__e");
+    let e_arg = build::mk_arg(cx,
+                              span,
+                              e_ident,
+                              build::mk_ty_infer(cx, span));
+
     // Create the method body.
     let lambda_expr = build::mk_lambda(
         cx,
         span,
-        build::mk_fn_decl(~[], build::mk_ty_infer(cx, span)),
+        build::mk_fn_decl(~[e_arg], build::mk_ty_infer(cx, span)),
         expand_enum_or_struct_match(cx, span, arms)
     );
 

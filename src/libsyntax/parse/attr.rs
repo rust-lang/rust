@@ -156,7 +156,7 @@ impl parser_attr for Parser {
                 @spanned(lo, hi, ast::meta_list(name, inner_items))
             }
             _ => {
-                let hi = self.span.hi;
+                let hi = self.last_span.hi;
                 @spanned(lo, hi, ast::meta_word(name))
             }
         }
@@ -179,13 +179,3 @@ impl parser_attr for Parser {
         }
     }
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

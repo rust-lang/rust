@@ -17,6 +17,7 @@ fn main() {
     do x.write_downgrade |write_mode| {
         y = Some(write_mode);
     }
+    y.get();
     // Adding this line causes a method unification failure instead
     // do (&option::unwrap(y)).write |state| { assert!(*state == 1); }
 }

@@ -15,4 +15,3 @@ mod a {
 fn main() {
     a::f(); //~ ERROR unresolved name
 }
-

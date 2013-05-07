@@ -110,8 +110,7 @@ pub fn type_of_non_gc_box(cx: @CrateContext, t: ty::t) -> TypeRef {
 
 pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
     match cx.llsizingtypes.find(&t) {
-        // FIXME(#5562): removing this copy causes a segfault in stage1 core
-        Some(t) => return /*bad*/ copy *t,
+        Some(t) => return *t,
         None => ()
     }
 
@@ -178,8 +177,7 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
     // Check the cache.
     match cx.lltypes.find(&t) {
-        // FIXME(#5562): removing this copy causes a segfault in stage1 core
-        Some(t) => return /*bad*/ copy *t,
+        Some(&t) => return t,
         None => ()
     }
 

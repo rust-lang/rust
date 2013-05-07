@@ -20,4 +20,3 @@ void rust_gpr::load() {
     LOAD(eax); LOAD(ebx); LOAD(ecx); LOAD(edx);
     LOAD(esi); LOAD(edi); LOAD(ebp); LOAD(esi);
 }
-

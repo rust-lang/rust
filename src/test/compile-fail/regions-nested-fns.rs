@@ -16,7 +16,7 @@ fn nested<'x>(x: &'x int) {
 
     ignore::<&fn<'z>(&'z int)>(|z| {
         ay = x;
-        ay = &y;  //~ ERROR cannot infer an appropriate lifetime
+        ay = &y;
         ay = z;
     });
 

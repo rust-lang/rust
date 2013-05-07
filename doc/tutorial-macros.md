@@ -402,4 +402,3 @@ tricky. Invoking the `log_syntax!` macro can help elucidate intermediate
 states, invoking `trace_macros!(true)` will automatically print those
 intermediate states out, and passing the flag `--pretty expanded` as a
 command-line argument to the compiler will show the result of expansion.
-

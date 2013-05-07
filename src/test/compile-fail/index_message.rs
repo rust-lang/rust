@@ -10,5 +10,5 @@
 
 fn main() {
     let z = ();
-    debug!(z[0]); //~ ERROR cannot index a value of type `()`
+    let _ = z[0]; //~ ERROR cannot index a value of type `()`
 }

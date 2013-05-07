@@ -278,4 +278,3 @@ pub impl ResolveState {
         }
     }
 }
-

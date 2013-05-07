@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:attempted quotient with a divisor of zero
+// error-pattern:attempted to divide by zero
 fn main() {
     let y = 0;
     let z = 1 / y;

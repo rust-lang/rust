@@ -1006,9 +1006,9 @@ let mut d = @mut 5; // mutable variable, mutable box
 d = @mut 15;
 ~~~~
 
-A mutable variable and an immutable variable can refer to the same box, given 
-that their types are compatible. Mutability of a box is a property of its type, 
-however, so for example a mutable handle to an immutable box cannot be 
+A mutable variable and an immutable variable can refer to the same box, given
+that their types are compatible. Mutability of a box is a property of its type,
+however, so for example a mutable handle to an immutable box cannot be
 assigned a reference to a mutable box.
 
 ~~~~
@@ -1041,7 +1041,7 @@ let y = x.clone(); // y is a newly allocated box
 let z = x; // no new memory allocated, x can no longer be used
 ~~~~
 
-Since in owned boxes mutability is a property of the owner, not the 
+Since in owned boxes mutability is a property of the owner, not the
 box, mutable boxes may become immutable when they are moved, and vice-versa.
 
 ~~~~

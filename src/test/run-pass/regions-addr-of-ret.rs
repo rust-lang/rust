@@ -16,4 +16,3 @@ pub fn main() {
     let three = &3;
     error!(fmt!("%d", *f(three)));
 }
-

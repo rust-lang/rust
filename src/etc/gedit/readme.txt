@@ -8,4 +8,3 @@ Instructions for Ubuntu Linux 12.04+
 2) Copy the included "share" folder into "~/.local/"
 
 3) Open a shell in "~/.local/share/" and run "update-mime-database mime"
-

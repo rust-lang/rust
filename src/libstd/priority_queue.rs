@@ -45,25 +45,9 @@ impl<T:Ord> Mutable for PriorityQueue<T> {
 
 pub impl <T:Ord> PriorityQueue<T> {
     /// Returns the greatest item in the queue - fails if empty
-    #[cfg(stage0)]
-    fn top(&self) -> &'self T { &self.data[0] }
-
-    /// Returns the greatest item in the queue - fails if empty
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn top<'a>(&'a self) -> &'a T { &self.data[0] }
 
     /// Returns the greatest item in the queue - None if empty
-    #[cfg(stage0)]
-    fn maybe_top(&self) -> Option<&'self T> {
-        if self.is_empty() { None } else { Some(self.top()) }
-    }
-
-    /// Returns the greatest item in the queue - None if empty
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn maybe_top<'a>(&'a self) -> Option<&'a T> {
         if self.is_empty() { None } else { Some(self.top()) }
     }

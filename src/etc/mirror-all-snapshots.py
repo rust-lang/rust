@@ -33,6 +33,3 @@ for line in f.readlines():
             print("got download with ok hash")
         else:
             raise Exception("bad hash on download")
-
-
-

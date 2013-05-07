@@ -14,7 +14,8 @@ extern mod std;
 use std::arena;
 
 pub fn main() {
-    let p = &arena::Arena();
+    let mut arena = arena::Arena();
+    let p = &mut arena;
     let x = p.alloc(|| 4u);
     io::print(fmt!("%u", *x));
     assert!(*x == 4u);

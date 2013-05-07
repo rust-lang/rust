@@ -760,4 +760,3 @@ fn expand_parse_call(cx: @ext_ctxt,
                           id_ext(cx, parse_method),
                           arg_exprs)
 }
-

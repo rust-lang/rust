@@ -26,7 +26,8 @@ fn match_ref_unused(&&v: Option<int>) {
 
 fn match_const_reg(v: &const Option<int>) -> int {
     match *v {
-      Some(ref i) => {*i} // OK because this is pure
+      Some(ref i) => {*i} //~ ERROR cannot borrow
+        //~^ ERROR unsafe borrow
       None => {0}
     }
 }
@@ -43,8 +44,8 @@ fn match_const_reg_unused(v: &const Option<int>) {
 
 fn match_const_reg_impure(v: &const Option<int>) {
     match *v {
-      Some(ref i) => {impure(*i)} //~ ERROR illegal borrow unless pure
-      //~^ NOTE impure due to access to impure function
+      Some(ref i) => {impure(*i)} //~ ERROR cannot borrow
+        //~^ ERROR unsafe borrow
       None => {}
     }
 }
@@ -52,6 +53,13 @@ fn match_const_reg_impure(v: &const Option<int>) {
 fn match_imm_reg(v: &Option<int>) {
     match *v {
       Some(ref i) => {impure(*i)} // OK because immutable
+      None => {}
+    }
+}
+
+fn match_mut_reg(v: &mut Option<int>) {
+    match *v {
+      Some(ref i) => {impure(*i)} // OK, frozen
       None => {}
     }
 }

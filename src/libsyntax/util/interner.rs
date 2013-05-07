@@ -44,10 +44,10 @@ pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
             None => (),
         }
 
-        let vect = &*self.vect;
+        let vect = &mut *self.vect;
         let new_idx = vect.len();
         self.map.insert(val, new_idx);
-        self.vect.push(val);
+        vect.push(val);
         new_idx
     }
 

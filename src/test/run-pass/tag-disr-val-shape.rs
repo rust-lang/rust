@@ -23,4 +23,3 @@ pub fn main() {
     assert!(~"green" == fmt!("%?", green));
     assert!(~"white" == fmt!("%?", white));
 }
-

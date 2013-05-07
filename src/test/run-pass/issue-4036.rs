@@ -17,5 +17,6 @@ use self::std::serialize;
 
 pub fn main() {
     let json = json::from_str("[1]").unwrap();
-    let _x: ~[int] = serialize::Decodable::decode(&json::Decoder(json));
+    let mut decoder = json::Decoder(json);
+    let _x: ~[int] = serialize::Decodable::decode(&mut decoder);
 }

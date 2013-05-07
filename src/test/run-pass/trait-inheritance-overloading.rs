@@ -46,4 +46,3 @@ pub fn main() {
     assert!(b == mi(-2));
     assert!(c == mi(15));
 }
-

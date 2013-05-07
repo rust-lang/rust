@@ -33,4 +33,3 @@ pub fn main() {
     assert!(w_paren2(~[0, 1, 2, 3]) == -4);
     assert!(w_ret(~[0, 1, 2, 3]) == -4);
 }
-

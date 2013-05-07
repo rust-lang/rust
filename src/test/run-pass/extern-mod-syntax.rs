@@ -16,4 +16,3 @@ use std::json::Object;
 pub fn main() {
     io::println("Hello world!");
 }
-

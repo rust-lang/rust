@@ -20,4 +20,3 @@ trait foo {
 impl foo for ~str {
     fn foo(&self) {}
 }
-

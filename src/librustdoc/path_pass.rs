@@ -112,4 +112,3 @@ fn should_record_fn_paths() {
         assert!(doc.cratemod().mods()[0].fns()[0].path() == ~[~"a"]);
     }
 }
-

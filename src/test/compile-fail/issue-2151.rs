@@ -10,7 +10,6 @@
 
 fn main() {
     for vec::each(fail!()) |i| {
-        debug!(i * 2);
-        //~^ ERROR the type of this value must be known
+        let _ = i * 2; //~ ERROR the type of this value must be known
    };
 }

@@ -19,4 +19,3 @@ pub fn iter(v: ~[uint], f: &fn(uint)) {
         i += 1u;
     }
 }
-

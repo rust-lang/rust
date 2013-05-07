@@ -25,4 +25,3 @@ fn main() {
         Foo { x: _ } => {}  //~ ERROR field `x` is private
     }
 }
-

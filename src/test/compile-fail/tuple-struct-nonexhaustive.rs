@@ -17,5 +17,3 @@ fn main() {
         Foo(2, b) => io::println(fmt!("%d", b))
     }
 }
-
-

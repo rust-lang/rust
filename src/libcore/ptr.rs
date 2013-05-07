@@ -296,34 +296,34 @@ impl<T> Ord for *const T {
 
 // Equality for region pointers
 #[cfg(notest)]
-impl<'self,T:Eq> Eq for &'self const T {
+impl<'self,T:Eq> Eq for &'self T {
     #[inline(always)]
-    fn eq(&self, other: & &'self const T) -> bool {
+    fn eq(&self, other: & &'self T) -> bool {
         return *(*self) == *(*other);
     }
     #[inline(always)]
-    fn ne(&self, other: & &'self const T) -> bool {
+    fn ne(&self, other: & &'self T) -> bool {
         return *(*self) != *(*other);
     }
 }
 
 // Comparison for region pointers
 #[cfg(notest)]
-impl<'self,T:Ord> Ord for &'self const T {
+impl<'self,T:Ord> Ord for &'self T {
     #[inline(always)]
-    fn lt(&self, other: & &'self const T) -> bool {
+    fn lt(&self, other: & &'self T) -> bool {
         *(*self) < *(*other)
     }
     #[inline(always)]
-    fn le(&self, other: & &'self const T) -> bool {
+    fn le(&self, other: & &'self T) -> bool {
         *(*self) <= *(*other)
     }
     #[inline(always)]
-    fn ge(&self, other: & &'self const T) -> bool {
+    fn ge(&self, other: & &'self T) -> bool {
         *(*self) >= *(*other)
     }
     #[inline(always)]
-    fn gt(&self, other: & &'self const T) -> bool {
+    fn gt(&self, other: & &'self T) -> bool {
         *(*self) > *(*other)
     }
 }

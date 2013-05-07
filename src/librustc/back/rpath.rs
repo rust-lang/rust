@@ -40,7 +40,7 @@ pub fn get_rpath_flags(sess: session::Session, out_filename: &Path)
     // where rustrt is and we know every rust program needs it
     let libs = vec::append_one(libs, get_sysroot_absolute_rt_lib(sess));
 
-    let rpaths = get_rpaths(os, &sysroot, output, libs,
+    let rpaths = get_rpaths(os, sysroot, output, libs,
                             sess.opts.target_triple);
     rpaths_to_flags(rpaths)
 }

@@ -1,5 +1,8 @@
 // error-pattern:borrowed
 
+// Test that write guards trigger when there is a write to a field
+// of a frozen structure.
+
 struct S {
     x: int
 }
@@ -7,5 +10,6 @@ struct S {
 fn main() {
     let x = @mut S { x: 3 };
     let y: &S = x;
-    x.x = 5;
+    let z = x;
+    z.x = 5;
 }
