@@ -92,7 +92,7 @@ endef
 $(foreach target,$(CFG_TARGET_TRIPLES), \
   $(eval $(call DEF_TARGET_COMMANDS,$(target))))
 
-# Target platform specific variables 
+# Target platform specific variables
 # for arm-linux-androidabi
 define DEF_ADB_DEVICE_STATUS
 CFG_ADB_DEVICE_STATUS=$(1)
@@ -402,7 +402,7 @@ $(foreach host,$(CFG_HOST_TRIPLES), \
        $(eval $(call DEF_TEST_CRATE_RULES_null,$(stage),$(target),$(host),$(crate))) \
       ), \
       $(eval $(call DEF_TEST_CRATE_RULES,$(stage),$(target),$(host),$(crate))) \
-     )))))) 
+     ))))))
 
 
 ######################################################################
