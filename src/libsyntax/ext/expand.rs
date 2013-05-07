@@ -806,7 +806,7 @@ mod test {
         };
         let table = @mut new_sctable();
         let a_name = 100; // enforced by testing_interner
-        let a2_name = sess.interner.gensym(@~"a2").repr;
+        let a2_name = sess.interner.gensym("a2").repr;
         let renamer = new_ident_renamer(ast::ident{repr:a_name,ctxt:empty_ctxt},
                                         a2_name,table);
         let renamed_ast = fun_to_ident_folder(renamer).fold_item(item_ast).get();

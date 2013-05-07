@@ -13,9 +13,10 @@
 use codemap::{span, spanned};
 use abi::AbiSet;
 use opt_vec::OptVec;
+use parse::token::get_ident_interner;
 
 use core::cast;
-use core::option::{None, Option, Some};
+use core::option::{Option};
 use core::to_bytes;
 use core::to_bytes::IterBytes;
 use core::to_str::ToStr;
@@ -67,7 +68,7 @@ pub enum SyntaxContext_ {
     // in the "from" slot. In essence, they're all
     // pointers to a single "rename" event node.
     Rename (ident,Name,SyntaxContext),
-    IllegalCtxt()    
+    IllegalCtxt()
 }
 
 // a name represents an identifier
@@ -78,27 +79,14 @@ pub type Mrk = uint;
 
 impl<S:Encoder> Encodable<S> for ident {
     fn encode(&self, s: &mut S) {
-        unsafe {
-            let intr =
-                match local_data::local_data_get(interner_key!()) {
-                    None => fail!("encode: TLS interner not set up"),
-                    Some(intr) => intr
-                };
-
-            s.emit_str(*(*intr).get(*self));
-        }
+        let intr = get_ident_interner();
+        s.emit_str(*(*intr).get(*self));
     }
 }
 
 impl<D:Decoder> Decodable<D> for ident {
     fn decode(d: &mut D) -> ident {
-        let intr = match unsafe {
-            local_data::local_data_get(interner_key!())
-        } {
-            None => fail!("decode: TLS interner not set up"),
-            Some(intr) => intr
-        };
-
+        let intr = get_ident_interner();
         (*intr).intern(d.read_str())
     }
 }
