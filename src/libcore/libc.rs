@@ -268,7 +268,7 @@ pub mod types {
                 pub type ssize_t = i32;
             }
             pub mod posix01 {
-                use libc::types::os::arch::c95::{c_short, c_long, time_t};
+                use libc::types::os::arch::c95::{c_short, c_long, c_ulong, time_t};
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use libc::types::os::arch::posix88::{mode_t, off_t};
                 use libc::types::os::arch::posix88::{uid_t};
@@ -276,6 +276,9 @@ pub mod types {
                 pub type nlink_t = u32;
                 pub type blksize_t = i32;
                 pub type blkcnt_t = i32;
+
+                #[cfg(target_arch = "x86")]
+                #[cfg(target_arch = "arm")]
                 pub struct stat {
                     st_dev: dev_t,
                     __pad1: c_short,
@@ -297,6 +300,30 @@ pub mod types {
                     st_ctime_nsec: c_long,
                     __unused4: c_long,
                     __unused5: c_long,
+                }
+
+                #[cfg(target_arch = "mips")]
+                pub struct stat {
+                    st_dev: c_ulong,
+                    st_pad1: [c_long, ..3],
+                    st_ino: ino_t,
+                    st_mode: mode_t,
+                    st_nlink: nlink_t,
+                    st_uid: uid_t,
+                    st_gid: gid_t,
+                    st_rdev: c_ulong,
+                    st_pad2: [c_long, ..2],
+                    st_size: off_t,
+                    st_pad3: c_long,
+                    st_atime: time_t,
+                    st_atime_nsec: c_long,
+                    st_mtime: time_t,
+                    st_mtime_nsec: c_long,
+                    st_ctime: time_t,
+                    st_ctime_nsec: c_long,
+                    st_blksize: blksize_t,
+                    st_blocks: blkcnt_t,
+                    st_pad5: [c_long, ..14],
                 }
             }
             pub mod posix08 {}
@@ -963,6 +990,9 @@ pub mod consts {
         }
         pub mod c99 {
         }
+        #[cfg(target_arch = "x86")]
+        #[cfg(target_arch = "x86_64")]
+        #[cfg(target_arch = "arm")]
         pub mod posix88 {
             pub static O_RDONLY : int = 0;
             pub static O_WRONLY : int = 1;
@@ -970,6 +1000,51 @@ pub mod consts {
             pub static O_APPEND : int = 1024;
             pub static O_CREAT : int = 64;
             pub static O_EXCL : int = 128;
+            pub static O_TRUNC : int = 512;
+            pub static S_IFIFO : int = 4096;
+            pub static S_IFCHR : int = 8192;
+            pub static S_IFBLK : int = 24576;
+            pub static S_IFDIR : int = 16384;
+            pub static S_IFREG : int = 32768;
+            pub static S_IFMT : int = 61440;
+            pub static S_IEXEC : int = 64;
+            pub static S_IWRITE : int = 128;
+            pub static S_IREAD : int = 256;
+            pub static S_IRWXU : int = 448;
+            pub static S_IXUSR : int = 64;
+            pub static S_IWUSR : int = 128;
+            pub static S_IRUSR : int = 256;
+            pub static F_OK : int = 0;
+            pub static R_OK : int = 4;
+            pub static W_OK : int = 2;
+            pub static X_OK : int = 1;
+            pub static STDIN_FILENO : int = 0;
+            pub static STDOUT_FILENO : int = 1;
+            pub static STDERR_FILENO : int = 2;
+            pub static F_LOCK : int = 1;
+            pub static F_TEST : int = 3;
+            pub static F_TLOCK : int = 2;
+            pub static F_ULOCK : int = 0;
+            pub static SIGHUP : int = 1;
+            pub static SIGINT : int = 2;
+            pub static SIGQUIT : int = 3;
+            pub static SIGILL : int = 4;
+            pub static SIGABRT : int = 6;
+            pub static SIGFPE : int = 8;
+            pub static SIGKILL : int = 9;
+            pub static SIGSEGV : int = 11;
+            pub static SIGPIPE : int = 13;
+            pub static SIGALRM : int = 14;
+            pub static SIGTERM : int = 15;
+        }
+        #[cfg(target_arch = "mips")]
+        pub mod posix88 {
+            pub static O_RDONLY : int = 0;
+            pub static O_WRONLY : int = 1;
+            pub static O_RDWR : int = 2;
+            pub static O_APPEND : int = 8;
+            pub static O_CREAT : int = 256;
+            pub static O_EXCL : int = 1024;
             pub static O_TRUNC : int = 512;
             pub static S_IFIFO : int = 4096;
             pub static S_IFCHR : int = 8192;
@@ -1026,10 +1101,19 @@ pub mod consts {
         }
         pub mod bsd44 {
         }
+        #[cfg(target_arch = "x86")]
+        #[cfg(target_arch = "x86_64")]
+        #[cfg(target_arch = "arm")]
         pub mod extra {
             pub static O_RSYNC : int = 1052672;
             pub static O_DSYNC : int = 4096;
             pub static O_SYNC : int = 1052672;
+        }
+        #[cfg(target_arch = "mips")]
+        pub mod extra {
+            pub static O_RSYNC : int = 16400;
+            pub static O_DSYNC : int = 16;
+            pub static O_SYNC : int = 16400;
         }
     }
 
