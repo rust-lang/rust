@@ -352,14 +352,25 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 
     /// Return a mutable reference to the value corresponding to the key
+    #[cfg(stage0)]
     fn find_mut<'a>(&'a mut self, k: &K) -> Option<&'a mut V> {
         let idx = match self.bucket_for_key(k) {
             FoundEntry(idx) => idx,
             TableFull | FoundHole(_) => return None
         };
-        unsafe {  // FIXME(#4903)---requires flow-sensitive borrow checker
+        unsafe {
             Some(::cast::transmute_mut_region(self.mut_value_for_bucket(idx)))
         }
+    }
+
+    /// Return a mutable reference to the value corresponding to the key
+    #[cfg(not(stage0))]
+    fn find_mut<'a>(&'a mut self, k: &K) -> Option<&'a mut V> {
+        let idx = match self.bucket_for_key(k) {
+            FoundEntry(idx) => idx,
+            TableFull | FoundHole(_) => return None
+        };
+        Some(self.mut_value_for_bucket(idx))
     }
 
     /// Insert a key-value pair into the map. An existing value for a
@@ -424,6 +435,7 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return the value corresponding to the key in the map, or insert
     /// and return the value if it doesn't exist.
+    #[cfg(stage0)]
     fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> &'a V {
         if self.size >= self.resize_at {
             // n.b.: We could also do this after searching, so
@@ -447,13 +459,43 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
             },
         };
 
-        unsafe { // FIXME(#4903)---requires flow-sensitive borrow checker
+        unsafe {
             ::cast::transmute_region(self.value_for_bucket(idx))
         }
     }
 
+    /// Return the value corresponding to the key in the map, or insert
+    /// and return the value if it doesn't exist.
+    #[cfg(not(stage0))]
+    fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> &'a V {
+        if self.size >= self.resize_at {
+            // n.b.: We could also do this after searching, so
+            // that we do not resize if this call to insert is
+            // simply going to update a key in place.  My sense
+            // though is that it's worse to have to search through
+            // buckets to find the right spot twice than to just
+            // resize in this corner case.
+            self.expand();
+        }
+
+        let hash = k.hash_keyed(self.k0, self.k1) as uint;
+        let idx = match self.bucket_for_key_with_hash(hash, &k) {
+            TableFull => fail!(~"Internal logic error"),
+            FoundEntry(idx) => idx,
+            FoundHole(idx) => {
+                self.buckets[idx] = Some(Bucket{hash: hash, key: k,
+                                     value: v});
+                self.size += 1;
+                idx
+            },
+        };
+
+        self.value_for_bucket(idx)
+    }
+
     /// Return the value corresponding to the key in the map, or create,
     /// insert, and return a new value if it doesn't exist.
+    #[cfg(stage0)]
     fn find_or_insert_with<'a>(&'a mut self, k: K, f: &fn(&K) -> V) -> &'a V {
         if self.size >= self.resize_at {
             // n.b.: We could also do this after searching, so
@@ -478,9 +520,39 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
             },
         };
 
-        unsafe { // FIXME(#4903)---requires flow-sensitive borrow checker
+        unsafe {
             ::cast::transmute_region(self.value_for_bucket(idx))
         }
+    }
+
+    /// Return the value corresponding to the key in the map, or create,
+    /// insert, and return a new value if it doesn't exist.
+    #[cfg(not(stage0))]
+    fn find_or_insert_with<'a>(&'a mut self, k: K, f: &fn(&K) -> V) -> &'a V {
+        if self.size >= self.resize_at {
+            // n.b.: We could also do this after searching, so
+            // that we do not resize if this call to insert is
+            // simply going to update a key in place.  My sense
+            // though is that it's worse to have to search through
+            // buckets to find the right spot twice than to just
+            // resize in this corner case.
+            self.expand();
+        }
+
+        let hash = k.hash_keyed(self.k0, self.k1) as uint;
+        let idx = match self.bucket_for_key_with_hash(hash, &k) {
+            TableFull => fail!(~"Internal logic error"),
+            FoundEntry(idx) => idx,
+            FoundHole(idx) => {
+                let v = f(&k);
+                self.buckets[idx] = Some(Bucket{hash: hash, key: k,
+                                     value: v});
+                self.size += 1;
+                idx
+            },
+        };
+
+        self.value_for_bucket(idx)
     }
 
     fn consume(&mut self, f: &fn(K, V)) {
