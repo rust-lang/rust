@@ -13,6 +13,7 @@
 //! `TotalOrd`.
 
 use core::iterator::*;
+use core::util::replace;
 
 // This is implemented as an AA tree, which is a simplified variation of
 // a red-black tree where where red (horizontal) nodes can only be added
@@ -150,16 +151,28 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
     /// key is replaced by the new value. Return true if the key did
     /// not already exist in the map.
     fn insert(&mut self, key: K, value: V) -> bool {
-        let ret = insert(&mut self.root, key, value);
-        if ret { self.length += 1 }
-        ret
+        self.swap(key, value).is_none()
     }
 
     /// Remove a key-value pair from the map. Return true if the key
     /// was present in the map, otherwise false.
     fn remove(&mut self, key: &K) -> bool {
+        self.pop(key).is_some()
+    }
+
+    /// Insert a key-value pair from the map. If the key already had a value
+    /// present in the map, that value is returned. Otherwise None is returned.
+    fn swap(&mut self, key: K, value: V) -> Option<V> {
+        let ret = insert(&mut self.root, key, value);
+        if ret.is_none() { self.length += 1 }
+        ret
+    }
+
+    /// Removes a key from the map, returning the value at the key if the key
+    /// was previously in the map.
+    fn pop(&mut self, key: &K) -> Option<V> {
         let ret = remove(&mut self.root, key);
-        if ret { self.length -= 1 }
+        if ret.is_some() { self.length -= 1 }
         ret
     }
 }
@@ -581,7 +594,8 @@ fn find_mut<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
     }
 }
 
-fn insert<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>, key: K, value: V) -> bool {
+fn insert<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
+                          key: K, value: V) -> Option<V> {
     match *node {
       Some(ref mut save) => {
         match key.cmp(&save.key) {
@@ -599,20 +613,19 @@ fn insert<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>, key: K, value: V) 
           }
           Equal => {
             save.key = key;
-            save.value = value;
-            false
+            Some(replace(&mut save.value, value))
           }
         }
       }
       None => {
        *node = Some(~TreeNode::new(key, value));
-        true
+        None
       }
     }
 }
 
 fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
-                          key: &K) -> bool {
+                          key: &K) -> Option<V> {
     fn heir_swap<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>,
                             child: &mut Option<~TreeNode<K, V>>) {
         // *could* be done without recursion, but it won't borrow check
@@ -628,12 +641,12 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
 
     match *node {
       None => {
-        return false // bottom of tree
+        return None; // bottom of tree
       }
       Some(ref mut save) => {
-        let (removed, this) = match key.cmp(&save.key) {
-          Less => (remove(&mut save.left, key), false),
-          Greater => (remove(&mut save.right, key), false),
+        let (ret, rebalance) = match key.cmp(&save.key) {
+          Less => (remove(&mut save.left, key), true),
+          Greater => (remove(&mut save.right, key), true),
           Equal => {
             if save.left.is_some() {
                 if save.right.is_some() {
@@ -645,21 +658,24 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
                         save.value <-> left.value;
                     }
                     save.left = Some(left);
-                    remove(&mut save.left, key);
+                    (remove(&mut save.left, key), true)
                 } else {
+                    let new = save.left.swap_unwrap();
+                    let ~TreeNode{value, _} = replace(save, new);
                     *save = save.left.swap_unwrap();
+                    (Some(value), true)
                 }
-                (true, false)
             } else if save.right.is_some() {
-                *save = save.right.swap_unwrap();
-                (true, false)
+                let new = save.right.swap_unwrap();
+                let ~TreeNode{value, _} = replace(save, new);
+                (Some(value), true)
             } else {
-                (true, true)
+                (None, false)
             }
           }
         };
 
-        if !this {
+        if rebalance {
             let left_level = save.left.map_default(0, |x| x.level);
             let right_level = save.right.map_default(0, |x| x.level);
 
@@ -682,13 +698,13 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
                 for save.right.each_mut |x| { split(x) }
             }
 
-            return removed;
+            return ret;
         }
       }
     }
-
-    *node = None;
-    true
+    return match replace(node, None) {
+        Some(~TreeNode{value, _}) => Some(value), None => fail!()
+    };
 }
 
 #[cfg(test)]
@@ -1216,5 +1232,21 @@ mod test_set {
 
         let result: Option<(&uint, & &'static str)> = z.next();
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_swap() {
+        let mut m = TreeMap::new();
+        assert!(m.swap(1, 2) == None);
+        assert!(m.swap(1, 3) == Some(2));
+        assert!(m.swap(1, 4) == Some(3));
+    }
+
+    #[test]
+    fn test_pop() {
+        let mut m = TreeMap::new();
+        m.insert(1, 2);
+        assert!(m.pop(&1) == Some(2));
+        assert!(m.pop(&1) == None);
     }
 }
