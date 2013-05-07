@@ -12,6 +12,7 @@
 
 use libc::c_int;
 use num::{Zero, One, strconv};
+use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
 use prelude::*;
 
 pub use cmath::c_double_targ_consts::*;
@@ -611,10 +612,37 @@ impl Float for f64 {
         *self == Float::infinity() || *self == Float::neg_infinity()
     }
 
-    /// Returns `true` if the number is not infinite or NaN
+    /// Returns `true` if the number is neither infinite or NaN
     #[inline(always)]
     fn is_finite(&self) -> bool {
         !(self.is_NaN() || self.is_infinite())
+    }
+
+    /// Returns `true` if the number is neither zero, infinite, subnormal or NaN
+    #[inline(always)]
+    fn is_normal(&self) -> bool {
+        match self.classify() {
+            FPNormal => true,
+            _ => false,
+        }
+    }
+
+    /// Returns the floating point category of the number. If only one property is going to
+    /// be tested, it is generally faster to use the specific predicate instead.
+    fn classify(&self) -> FPCategory {
+        static EXP_MASK: u64 = 0x7ff0000000000000;
+        static MAN_MASK: u64 = 0x000fffffffffffff;
+
+        match (
+            unsafe { ::cast::transmute::<f64,u64>(*self) } & EXP_MASK,
+            unsafe { ::cast::transmute::<f64,u64>(*self) } & MAN_MASK
+        ) {
+            (EXP_MASK, 0)        => FPInfinite,
+            (EXP_MASK, _)        => FPNaN,
+            (exp, _) if exp != 0 => FPNormal,
+            _ if self.is_zero()  => FPZero,
+            _                    => FPSubnormal,
+        }
     }
 
     #[inline(always)]
@@ -889,6 +917,7 @@ impl num::FromStrRadix for f64 {
 #[cfg(test)]
 mod tests {
     use f64::*;
+    use num::*;
     use super::*;
     use prelude::*;
 
@@ -1087,5 +1116,28 @@ mod tests {
     fn test_primitive() {
         assert_eq!(Primitive::bits::<f64>(), sys::size_of::<f64>() * 8);
         assert_eq!(Primitive::bytes::<f64>(), sys::size_of::<f64>());
+    }
+
+    #[test]
+    fn test_is_normal() {
+        assert!(!Float::NaN::<f64>().is_normal());
+        assert!(!Float::infinity::<f64>().is_normal());
+        assert!(!Float::neg_infinity::<f64>().is_normal());
+        assert!(!Zero::zero::<f64>().is_normal());
+        assert!(!Float::neg_zero::<f64>().is_normal());
+        assert!(1f64.is_normal());
+        assert!(1e-307f64.is_normal());
+        assert!(!1e-308f64.is_normal());
+    }
+
+    #[test]
+    fn test_classify() {
+        assert_eq!(Float::NaN::<f64>().classify(), FPNaN);
+        assert_eq!(Float::infinity::<f64>().classify(), FPInfinite);
+        assert_eq!(Float::neg_infinity::<f64>().classify(), FPInfinite);
+        assert_eq!(Zero::zero::<f64>().classify(), FPZero);
+        assert_eq!(Float::neg_zero::<f64>().classify(), FPZero);
+        assert_eq!(1e-307f64.classify(), FPNormal);
+        assert_eq!(1e-308f64.classify(), FPSubnormal);
     }
 }

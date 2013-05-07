@@ -22,6 +22,7 @@
 
 use libc::c_int;
 use num::{Zero, One, strconv};
+use num::FPCategory;
 use prelude::*;
 
 pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
@@ -782,32 +783,37 @@ impl Primitive for float {
 
 impl Float for float {
     #[inline(always)]
-    fn NaN() -> float { 0.0 / 0.0 }
+    fn NaN() -> float { Float::NaN::<f64>() as float }
 
     #[inline(always)]
-    fn infinity() -> float { 1.0 / 0.0 }
+    fn infinity() -> float { Float::infinity::<f64>() as float }
 
     #[inline(always)]
-    fn neg_infinity() -> float { -1.0 / 0.0 }
+    fn neg_infinity() -> float { Float::neg_infinity::<f64>() as float }
 
     #[inline(always)]
-    fn neg_zero() -> float { -0.0 }
+    fn neg_zero() -> float { Float::neg_zero::<f64>() as float }
 
     /// Returns `true` if the number is NaN
     #[inline(always)]
-    fn is_NaN(&self) -> bool { *self != *self }
+    fn is_NaN(&self) -> bool { (*self as f64).is_NaN() }
 
     /// Returns `true` if the number is infinite
     #[inline(always)]
-    fn is_infinite(&self) -> bool {
-        *self == Float::infinity() || *self == Float::neg_infinity()
-    }
+    fn is_infinite(&self) -> bool { (*self as f64).is_infinite() }
 
-    /// Returns `true` if the number is not infinite or NaN
+    /// Returns `true` if the number is neither infinite or NaN
     #[inline(always)]
-    fn is_finite(&self) -> bool {
-        !(self.is_NaN() || self.is_infinite())
-    }
+    fn is_finite(&self) -> bool { (*self as f64).is_finite() }
+
+    /// Returns `true` if the number is neither zero, infinite, subnormal or NaN
+    #[inline(always)]
+    fn is_normal(&self) -> bool { (*self as f64).is_normal() }
+
+    /// Returns the floating point category of the number. If only one property is going to
+    /// be tested, it is generally faster to use the specific predicate instead.
+    #[inline(always)]
+    fn classify(&self) -> FPCategory { (*self as f64).classify() }
 
     #[inline(always)]
     fn mantissa_digits() -> uint { Float::mantissa_digits::<f64>() }
@@ -844,9 +850,7 @@ impl Float for float {
     /// than if the operations were performed separately
     ///
     #[inline(always)]
-    fn ln_1p(&self) -> float {
-        (*self as f64).ln_1p() as float
-    }
+    fn ln_1p(&self) -> float { (*self as f64).ln_1p() as float }
 
     ///
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
@@ -867,6 +871,7 @@ impl Float for float {
 
 #[cfg(test)]
 mod tests {
+    use num::*;
     use super::*;
     use prelude::*;
 
@@ -1061,6 +1066,30 @@ mod tests {
     fn test_primitive() {
         assert_eq!(Primitive::bits::<float>(), sys::size_of::<float>() * 8);
         assert_eq!(Primitive::bytes::<float>(), sys::size_of::<float>());
+    }
+
+    #[test]
+    fn test_is_normal() {
+        assert!(!Float::NaN::<float>().is_normal());
+        assert!(!Float::infinity::<float>().is_normal());
+        assert!(!Float::neg_infinity::<float>().is_normal());
+        assert!(!Zero::zero::<float>().is_normal());
+        assert!(!Float::neg_zero::<float>().is_normal());
+        assert!(1f.is_normal());
+        assert!(1e-307f.is_normal());
+        assert!(!1e-308f.is_normal());
+    }
+
+    #[test]
+    fn test_classify() {
+        assert_eq!(Float::NaN::<float>().classify(), FPNaN);
+        assert_eq!(Float::infinity::<float>().classify(), FPInfinite);
+        assert_eq!(Float::neg_infinity::<float>().classify(), FPInfinite);
+        assert_eq!(Zero::zero::<float>().classify(), FPZero);
+        assert_eq!(Float::neg_zero::<float>().classify(), FPZero);
+        assert_eq!(1f.classify(), FPNormal);
+        assert_eq!(1e-307f.classify(), FPNormal);
+        assert_eq!(1e-308f.classify(), FPSubnormal);
     }
 
     #[test]
