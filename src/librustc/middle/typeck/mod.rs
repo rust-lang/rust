@@ -393,7 +393,7 @@ fn check_for_entry_fn(ccx: @mut CrateCtxt) {
               Some(session::EntryStart) => check_start_fn_ty(ccx, id, sp),
               None => tcx.sess.bug(~"entry function without a type")
           },
-          None => tcx.sess.err(~"entry function not found")
+          None => tcx.sess.bug(~"type checking without entry function")
         }
     }
 }

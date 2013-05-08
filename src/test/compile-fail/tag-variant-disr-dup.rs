@@ -19,3 +19,5 @@ enum color {
     black = 0x000000,
     white = 0x000000,
 }
+
+fn main() { }
