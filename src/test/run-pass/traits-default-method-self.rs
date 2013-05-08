@@ -10,16 +10,16 @@
 
 //xfail-test
 
-// Currently failing with an ICE in trans.  (FIXME: #2794)
+// Currently failing with an ICE in trans.  (FIXME: #4350)
 
 trait Cat {
-    fn meow() -> bool;
-    fn scratch() -> bool { self.purr() }
-    fn purr() -> bool { true }
+    fn meow(&self) -> bool;
+    fn scratch(&self) -> bool { self.purr() }
+    fn purr(&self) -> bool { true }
 }
 
 impl Cat for int {
-    fn meow() -> bool {
+    fn meow(&self) -> bool {
         self.scratch()
     }
 }
