@@ -236,3 +236,6 @@ rust_take_task_borrow_list
 rust_set_task_borrow_list
 rust_valgrind_stack_register
 rust_valgrind_stack_deregister
+rust_take_env_lock
+rust_drop_env_lock
+
