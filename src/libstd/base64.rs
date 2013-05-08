@@ -156,31 +156,27 @@ impl FromBase64 for ~[u8] {
                 let ch = self[i] as char;
                 n <<= 6u;
 
-                if ch >= 'A' && ch <= 'Z' {
-                    n |= (ch as uint) - 0x41u;
-                } else if ch >= 'a' && ch <= 'z' {
-                    n |= (ch as uint) - 0x47u;
-                } else if ch >= '0' && ch <= '9' {
-                    n |= (ch as uint) + 0x04u;
-                } else if ch == '+' {
-                    n |= 0x3Eu;
-                } else if ch == '/' {
-                    n |= 0x3Fu;
-                } else if ch == '=' {
-                    match len - i {
-                      1u => {
-                        r.push(((n >> 16u) & 0xFFu) as u8);
-                        r.push(((n >> 8u ) & 0xFFu) as u8);
-                        return copy r;
-                      }
-                      2u => {
-                        r.push(((n >> 10u) & 0xFFu) as u8);
-                        return copy r;
-                      }
-                      _ => fail!(~"invalid base64 padding")
+                match ch {
+                    'A'..'Z' => n |= (ch as uint) - 0x41,
+                    'a'..'z' => n |= (ch as uint) - 0x47,
+                    '0'..'9' => n |= (ch as uint) + 0x04,
+                    '+'      => n |= 0x3E,
+                    '/'      => n |= 0x3F,
+                    '='      => {
+                        match len - i {
+                            1u => {
+                                r.push(((n >> 16u) & 0xFFu) as u8);
+                                r.push(((n >> 8u ) & 0xFFu) as u8);
+                                return copy r;
+                            }
+                            2u => {
+                                r.push(((n >> 10u) & 0xFFu) as u8);
+                                return copy r;
+                            }
+                            _ => fail!(~"invalid base64 padding")
+                        }
                     }
-                } else {
-                    fail!(~"invalid base64 character");
+                    _ => fail!(~"invalid base64 character")
                 }
 
                 i += 1u;
