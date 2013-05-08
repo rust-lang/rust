@@ -13,7 +13,6 @@ use codemap::span;
 use ext::base::ext_ctxt;
 use ext::build;
 use ext::deriving::generic::*;
-use core::option::{None,Some};
 
 
 pub fn expand_deriving_clone(cx: @ext_ctxt,
@@ -22,13 +21,16 @@ pub fn expand_deriving_clone(cx: @ext_ctxt,
                              in_items: ~[@item])
                           -> ~[@item] {
     let trait_def = TraitDef {
-        path: ~[~"core", ~"clone", ~"Clone"],
+        path: Path::new(~[~"core", ~"clone", ~"Clone"]),
         additional_bounds: ~[],
+        generics: LifetimeBounds::empty(),
         methods: ~[
             MethodDef {
                 name: ~"clone",
-                nargs: 0,
-                output_type: None, // return Self
+                generics: LifetimeBounds::empty(),
+                self_ty: borrowed_explicit_self(),
+                args: ~[],
+                ret_ty: Self,
                 const_nonmatching: false,
                 combine_substructure: cs_clone
             }
@@ -66,7 +68,8 @@ fn cs_clone(cx: @ext_ctxt, span: span,
             ctor_ident = ~[ variant.node.name ];
             all_fields = af;
         },
-        EnumNonMatching(*) => cx.bug("Non-matching enum variants in `deriving(Clone)`")
+        EnumNonMatching(*) => cx.span_bug(span, "Non-matching enum variants in `deriving(Clone)`"),
+        StaticEnum(*) | StaticStruct(*) => cx.span_bug(span, "Static method in `deriving(Clone)`")
     }
 
     match all_fields {
