@@ -32,7 +32,7 @@ pub mod rustrt {
 }
 
 // The name of a test. By convention this follows the rules for rust
-// paths; i.e. it should be a series of identifiers seperated by double
+// paths; i.e. it should be a series of identifiers separated by double
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
 

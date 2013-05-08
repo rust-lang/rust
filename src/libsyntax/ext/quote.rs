@@ -697,7 +697,7 @@ fn expand_tts(cx: @ext_ctxt,
     // compiler (which we don't really want to do) and, in any case, only
     // pushed the problem a very small step further back: an error
     // resulting from a parse of the resulting quote is still attributed to
-    // the site the string literal occured, which was in a source file
+    // the site the string literal occurred, which was in a source file
     // _other_ than the one the user has control over. For example, an
     // error in a quote from the protocol compiler, invoked in user code
     // using proto! for example, will be attributed to the pipec.rs file in

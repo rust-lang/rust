@@ -20,7 +20,7 @@
 // calling the destructors on them.
 // One subtle point that needs to be addressed is how to handle
 // failures while running the user provided initializer function. It
-// is important to not run the destructor on uninitalized objects, but
+// is important to not run the destructor on uninitialized objects, but
 // how to detect them is somewhat subtle. Since alloc() can be invoked
 // recursively, it is not sufficient to simply exclude the most recent
 // object. To solve this without requiring extra space, we use the low

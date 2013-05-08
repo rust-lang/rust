@@ -87,7 +87,7 @@ pub fn nonzero_llsize_of(cx: @CrateContext, t: TypeRef) -> ValueRef {
 }
 
 // Returns the preferred alignment of the given type for the current target.
-// The preffered alignment may be larger than the alignment used when
+// The preferred alignment may be larger than the alignment used when
 // packing the type into structs. This will be used for things like
 // allocations inside a stack frame, which LLVM has a free hand in.
 pub fn llalign_of_pref(cx: @CrateContext, t: TypeRef) -> uint {
@@ -96,7 +96,7 @@ pub fn llalign_of_pref(cx: @CrateContext, t: TypeRef) -> uint {
     }
 }
 
-// Returns the minimum alignment of a type required by the plattform.
+// Returns the minimum alignment of a type required by the platform.
 // This is the alignment that will be used for struct fields, arrays,
 // and similar ABI-mandated things.
 pub fn llalign_of_min(cx: @CrateContext, t: TypeRef) -> uint {
