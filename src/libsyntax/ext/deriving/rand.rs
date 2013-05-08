@@ -35,7 +35,7 @@ pub fn expand_deriving_rand(cx: @ext_ctxt,
                 self_ty: None,
                 args: ~[
                     Ptr(~Literal(Path::new_local(~"R")),
-                        Borrowed(None, ast::m_imm))
+                        Borrowed(None, ast::m_mutbl))
                 ],
                 ret_ty: Self,
                 const_nonmatching: false,
@@ -59,8 +59,10 @@ fn rand_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> @expr 
         cx.ident_of(~"rand")
     ];
     let rand_call = || {
-        build::mk_call_global(cx, span,
-                              copy rand_ident, copy rng)
+        build::mk_call_global(cx,
+                              span,
+                              copy rand_ident,
+                              ~[ build::duplicate_expr(cx, rng[0]) ])
     };
 
     return match *substr.fields {
@@ -80,7 +82,10 @@ fn rand_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> @expr 
             let rand_name = build::mk_raw_path_(span, copy rand_ident, None, ~[ u32_ty, r_ty ]);
             let rand_name = build::mk_path_raw(cx, span, rand_name);
 
-            let rv_call = build::mk_call_(cx, span, rand_name, copy rng);
+            let rv_call = build::mk_call_(cx,
+                                          span,
+                                          rand_name,
+                                          ~[ build::duplicate_expr(cx, rng[0]) ]);
 
             // rand() % variants.len()
             let rand_variant = build::mk_binary(cx, span, ast::rem,
