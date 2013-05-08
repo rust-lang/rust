@@ -12,7 +12,7 @@
 // other tycons.
 
 fn coerce(b: &fn()) -> extern fn() {
-    fn lol(f: extern fn(+v: &fn()) -> extern fn(),
+    fn lol(f: extern fn(v: &fn()) -> extern fn(),
            g: &fn()) -> extern fn() { return f(g); }
     fn fn_id(f: extern fn()) -> extern fn() { return f }
     return lol(fn_id, b);
