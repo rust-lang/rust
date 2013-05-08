@@ -829,13 +829,6 @@ rust_get_rt_env() {
     return task->kernel->env;
 }
 
-typedef void *(*nullary_fn)();
-
-extern "C" CDECL void
-rust_call_nullary_fn(nullary_fn f) {
-    f();
-}
-
 #ifndef _WIN32
 pthread_key_t sched_key;
 #else

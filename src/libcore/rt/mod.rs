@@ -38,22 +38,35 @@ mod local_heap;
 pub mod test;
 
 pub fn start(main: *u8, _argc: int, _argv: **c_char, _crate_map: *u8) -> int {
+
     use self::sched::{Scheduler, Task};
     use self::uvio::UvEventLoop;
+    use sys::Closure;
+    use ptr;
+    use cast;
 
     let loop_ = ~UvEventLoop::new();
     let mut sched = ~Scheduler::new(loop_);
+
     let main_task = ~do Task::new(&mut sched.stack_pool) {
-        // XXX: Can't call a C function pointer from Rust yet
-        unsafe { rust_call_nullary_fn(main) };
+
+        unsafe {
+            // `main` is an `fn() -> ()` that doesn't take an environment
+            // XXX: Could also call this as an `extern "Rust" fn` once they work
+            let main = Closure {
+                code: main as *(),
+                env: ptr::null(),
+            };
+            let mainfn: &fn() = cast::transmute(main);
+
+            mainfn();
+        }
     };
+
     sched.task_queue.push_back(main_task);
     sched.run();
-    return 0;
 
-    extern {
-        fn rust_call_nullary_fn(f: *u8);
-    }
+    return 0;
 }
 
 /// Possible contexts in which Rust code may be executing.
