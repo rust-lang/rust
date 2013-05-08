@@ -24,7 +24,6 @@ use cast;
 use rt::io::Writer;
 use to_bytes::IterBytes;
 use uint;
-use vec;
 
 // Alias `SipState` to `State`.
 pub use State = hash::SipState;

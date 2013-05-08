@@ -368,7 +368,7 @@ pub fn opt_count(mm: &Matches, nm: &str) -> uint {
 
 /// Returns true if any of several options were matched
 pub fn opts_present(mm: &Matches, names: &[~str]) -> bool {
-    for vec::each(names) |nm| {
+    for names.each |nm| {
         match find_opt(mm.opts, mkname(*nm)) {
             Some(id) if !mm.vals[id].is_empty() => return true,
             _ => (),
@@ -395,7 +395,7 @@ pub fn opt_str(mm: &Matches, nm: &str) -> ~str {
  * option took an argument
  */
 pub fn opts_str(mm: &Matches, names: &[~str]) -> ~str {
-    for vec::each(names) |nm| {
+    for names.each |nm| {
         match opt_val(mm, *nm) {
           Val(copy s) => return s,
           _ => ()
