@@ -84,6 +84,7 @@ pub impl Context {
 }
 
 extern {
+    #[rust_stack]
     fn swap_registers(out_regs: *mut Registers, in_regs: *Registers);
 }
 

@@ -15,14 +15,15 @@
 #include <string.h>
 #include <stdio.h>
 
-uintptr_t exchange_count = 0;
+extern uintptr_t rust_exchange_count;
+uintptr_t rust_exchange_count = 0;
 
 void *
 rust_exchange_alloc::malloc(size_t size) {
   void *value = ::malloc(size);
   assert(value);
 
-  sync::increment(exchange_count);
+  sync::increment(rust_exchange_count);
 
   return value;
 }
@@ -36,20 +37,15 @@ rust_exchange_alloc::realloc(void *ptr, size_t size) {
 
 void
 rust_exchange_alloc::free(void *ptr) {
-  sync::decrement(exchange_count);
+  sync::decrement(rust_exchange_count);
   ::free(ptr);
-}
-
-extern "C" uintptr_t *
-rust_get_exchange_count_ptr() {
-  return &exchange_count;
 }
 
 void
 rust_check_exchange_count_on_exit() {
-  if (exchange_count != 0) {
+  if (rust_exchange_count != 0) {
     printf("exchange heap not empty on exit\n");
-    printf("%d dangling allocations\n", (int)exchange_count);
+    printf("%d dangling allocations\n", (int)rust_exchange_count);
     abort();
   }
 }
