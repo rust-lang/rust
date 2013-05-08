@@ -62,7 +62,6 @@ Several modules in `core` are clients of `rt`:
 
 #[doc(hidden)];
 
-use libc::c_char;
 use ptr::Ptr;
 
 /// The global (exchange) heap.
@@ -138,10 +137,12 @@ pub mod tube;
 /// # Return value
 ///
 /// The return value is used as the process return code. 0 on success, 101 on error.
-pub fn start(_argc: int, _argv: **c_char, _crate_map: *u8, main: ~fn()) -> int {
+pub fn start(_argc: int, _argv: **u8, crate_map: *u8, main: ~fn()) -> int {
 
     use self::sched::{Scheduler, Task};
     use self::uv::uvio::UvEventLoop;
+
+    init(crate_map);
 
     let loop_ = ~UvEventLoop::new();
     let mut sched = ~Scheduler::new(loop_);
@@ -151,6 +152,12 @@ pub fn start(_argc: int, _argv: **c_char, _crate_map: *u8, main: ~fn()) -> int {
     sched.run();
 
     return 0;
+}
+
+/// One-time runtime initialization. Currently all this does is set up logging
+/// based on the RUST_LOG environment variable.
+pub fn init(crate_map: *u8) {
+    logging::init(crate_map);
 }
 
 /// Possible contexts in which Rust code may be executing.

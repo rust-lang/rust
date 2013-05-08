@@ -36,3 +36,33 @@ impl Logger for StdErrLogger {
         dbg.flush();
     }
 }
+
+/// Configure logging by traversing the crate map and setting the
+/// per-module global logging flags based on the logging spec
+pub fn init(crate_map: *u8) {
+    use os;
+    use str;
+    use ptr;
+    use option::{Some, None};
+    use libc::c_char;
+
+    let log_spec = os::getenv("RUST_LOG");
+    match log_spec {
+        Some(spec) => {
+            do str::as_c_str(spec) |s| {
+                unsafe {
+                    rust_update_log_settings(crate_map, s);
+                }
+            }
+        }
+        None => {
+            unsafe {
+                rust_update_log_settings(crate_map, ptr::null());
+            }
+        }
+    }
+
+    extern {
+        fn rust_update_log_settings(crate_map: *u8, settings: *c_char);
+    }
+}
