@@ -228,7 +228,7 @@ fn visit_expr(e: @ast::expr, wbcx: @mut WbCtxt, v: wb_vt) {
 
     match e.node {
         ast::expr_fn_block(ref decl, _) => {
-            for vec::each(decl.inputs) |input| {
+            for decl.inputs.each |input| {
                 let _ = resolve_type_vars_for_node(wbcx, e.span, input.id);
             }
         }

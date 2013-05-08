@@ -28,7 +28,6 @@ use util::common::indenter;
 use util::ppaux::ty_to_str;
 
 use core::option::None;
-use core::vec;
 use syntax::ast;
 use syntax::codemap;
 
@@ -395,7 +394,7 @@ pub fn write_content(bcx: block,
                         add_clean_temp_mem(bcx, lleltptr, vt.unit_ty);
                         temp_cleanups.push(lleltptr);
                     }
-                    for vec::each(temp_cleanups) |cleanup| {
+                    for temp_cleanups.each |cleanup| {
                         revoke_clean(bcx, *cleanup);
                     }
                 }

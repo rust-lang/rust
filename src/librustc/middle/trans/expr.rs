@@ -1264,7 +1264,7 @@ fn trans_adt(bcx: block, repr: &adt::Repr, discr: int,
         }
     }
 
-    for vec::each(temp_cleanups) |cleanup| {
+    for temp_cleanups.each |cleanup| {
         revoke_clean(bcx, *cleanup);
     }
     return bcx;
