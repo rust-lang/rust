@@ -239,7 +239,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
  */
 pub fn get_lint_dict() -> LintDict {
     let mut map = HashMap::new();
-    for lint_table.each() |&(k, v)| {
+    for lint_table.each|&(k, v)| {
         map.insert(k.to_str(), v);
     }
     return @map;
