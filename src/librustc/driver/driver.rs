@@ -119,9 +119,8 @@ pub fn build_configuration(sess: Session, argv0: @~str, input: &input) ->
     let default_cfg = default_configuration(sess, argv0, input);
     let user_cfg = /*bad*/copy sess.opts.cfg;
     // If the user wants a test runner, then add the test cfg
-    let user_cfg = append_configuration(
-        user_cfg,
-        if sess.opts.test { ~"test" } else { ~"notest" });
+    let user_cfg = if sess.opts.test { append_configuration(user_cfg, ~"test") }
+                   else { user_cfg };
     // If the user requested GC, then add the GC cfg
     let user_cfg = append_configuration(
         user_cfg,

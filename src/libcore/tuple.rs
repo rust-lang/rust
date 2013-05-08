@@ -14,7 +14,7 @@ use clone::Clone;
 use kinds::Copy;
 use vec;
 
-#[cfg(notest)] use cmp::{Eq, Ord};
+#[cfg(not(test))] use cmp::{Eq, Ord};
 
 pub trait CopyableTuple<T, U> {
     fn first(&self) -> T;
@@ -122,7 +122,7 @@ impl<A:Copy,B:Copy> ExtendedTupleOps<A,B> for (~[A], ~[B]) {
     }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<A:Eq> Eq for (A,) {
     #[inline(always)]
     fn eq(&self, other: &(A,)) -> bool {
@@ -138,7 +138,7 @@ impl<A:Eq> Eq for (A,) {
     fn ne(&self, other: &(A,)) -> bool { !(*self).eq(other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<A:Ord> Ord for (A,) {
     #[inline(always)]
     fn lt(&self, other: &(A,)) -> bool {
@@ -161,7 +161,7 @@ impl<A:Ord> Ord for (A,) {
     fn gt(&self, other: &(A,)) -> bool { other.lt(&(*self))  }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<A:Eq,B:Eq> Eq for (A, B) {
     #[inline(always)]
     fn eq(&self, other: &(A, B)) -> bool {
@@ -177,7 +177,7 @@ impl<A:Eq,B:Eq> Eq for (A, B) {
     fn ne(&self, other: &(A, B)) -> bool { !(*self).eq(other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<A:Ord,B:Ord> Ord for (A, B) {
     #[inline(always)]
     fn lt(&self, other: &(A, B)) -> bool {
@@ -202,7 +202,7 @@ impl<A:Ord,B:Ord> Ord for (A, B) {
     fn gt(&self, other: &(A, B)) -> bool { (*other).lt(&(*self))  }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<A:Eq,B:Eq,C:Eq> Eq for (A, B, C) {
     #[inline(always)]
     fn eq(&self, other: &(A, B, C)) -> bool {
@@ -219,7 +219,7 @@ impl<A:Eq,B:Eq,C:Eq> Eq for (A, B, C) {
     fn ne(&self, other: &(A, B, C)) -> bool { !(*self).eq(other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<A:Ord,B:Ord,C:Ord> Ord for (A, B, C) {
     #[inline(always)]
     fn lt(&self, other: &(A, B, C)) -> bool {

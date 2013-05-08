@@ -15,7 +15,7 @@ use libc;
 use libc::{c_void, size_t};
 use sys;
 
-#[cfg(notest)] use cmp::{Eq, Ord};
+#[cfg(not(test))] use cmp::{Eq, Ord};
 use uint;
 
 pub mod libc_ {
@@ -243,7 +243,7 @@ impl<T> Ptr<T> for *mut T {
 }
 
 // Equality for pointers
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<T> Eq for *const T {
     #[inline(always)]
     fn eq(&self, other: &*const T) -> bool {
@@ -258,7 +258,7 @@ impl<T> Eq for *const T {
 }
 
 // Comparison for pointers
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<T> Ord for *const T {
     #[inline(always)]
     fn lt(&self, other: &*const T) -> bool {
@@ -295,7 +295,7 @@ impl<T> Ord for *const T {
 }
 
 // Equality for region pointers
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self,T:Eq> Eq for &'self T {
     #[inline(always)]
     fn eq(&self, other: & &'self T) -> bool {
@@ -308,7 +308,7 @@ impl<'self,T:Eq> Eq for &'self T {
 }
 
 // Comparison for region pointers
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self,T:Ord> Ord for &'self T {
     #[inline(always)]
     fn lt(&self, other: & &'self T) -> bool {
