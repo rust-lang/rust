@@ -14,7 +14,7 @@ use astsrv;
 use doc::ItemUtils;
 use doc;
 
-use core::task::local_data::local_data_get;
+use core::local_data::local_data_get;
 use syntax::ast;
 use syntax;
 
