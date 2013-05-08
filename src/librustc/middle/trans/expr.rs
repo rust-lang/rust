@@ -183,30 +183,25 @@ fn drop_and_cancel_clean(bcx: block, dat: Datum) -> block {
 
 pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
     debug!("trans_to_datum(expr=%s)", bcx.expr_to_str(expr));
-    return match bcx.tcx().adjustments.find(&expr.id) {
-        None => {
-            trans_to_datum_unadjusted(bcx, expr)
-        }
-        Some(&@AutoAddEnv(*)) => {
-            let mut bcx = bcx;
-            let datum = unpack_datum!(bcx, {
-                trans_to_datum_unadjusted(bcx, expr)
-            });
-            add_env(bcx, expr, datum)
-        }
-        Some(&@AutoDerefRef(ref adj)) => {
-            let mut bcx = bcx;
-            let mut datum = unpack_datum!(bcx, {
-                trans_to_datum_unadjusted(bcx, expr)
-            });
 
-            debug!("unadjusted datum: %s", datum.to_str(bcx.ccx()));
-
+    let mut bcx = bcx;
+    let mut datum = unpack_datum!(bcx, trans_to_datum_unadjusted(bcx, expr));
+    let adjustment = match bcx.tcx().adjustments.find_copy(&expr.id) {
+        None => { return DatumBlock {bcx: bcx, datum: datum}; }
+        Some(adj) => { adj }
+    };
+    debug!("unadjusted datum: %s", datum.to_str(bcx.ccx()));
+    match *adjustment {
+        AutoAddEnv(*) => {
+            datum = unpack_datum!(bcx, add_env(bcx, expr, datum));
+        }
+        AutoDerefRef(ref adj) => {
             if adj.autoderefs > 0 {
-                let DatumBlock { bcx: new_bcx, datum: new_datum } =
-                    datum.autoderef(bcx, expr.span, expr.id, adj.autoderefs);
-                datum = new_datum;
-                bcx = new_bcx;
+                datum =
+                    unpack_datum!(
+                        bcx,
+                        datum.autoderef(bcx, expr.span,
+                                        expr.id, adj.autoderefs));
             }
 
             datum = match adj.autoref {
@@ -224,21 +219,29 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
                     unpack_datum!(bcx, auto_slice_and_ref(bcx, expr, datum))
                 }
                 Some(AutoBorrowFn(*)) => {
-                    // currently, all closure types are
-                    // represented precisely the same, so no
-                    // runtime adjustment is required:
-                    datum
+                    let adjusted_ty = ty::adjust_ty(bcx.tcx(), expr.span,
+                                                    datum.ty, Some(adjustment));
+                    unpack_datum!(bcx, auto_borrow_fn(bcx, adjusted_ty, datum))
                 }
             };
-
-            debug!("after adjustments, datum=%s", datum.to_str(bcx.ccx()));
-
-            return DatumBlock {bcx: bcx, datum: datum};
         }
-    };
+    }
+    debug!("after adjustments, datum=%s", datum.to_str(bcx.ccx()));
+    return DatumBlock {bcx: bcx, datum: datum};
 
     fn auto_ref(bcx: block, datum: Datum) -> DatumBlock {
         DatumBlock {bcx: bcx, datum: datum.to_rptr(bcx)}
+    }
+
+    fn auto_borrow_fn(bcx: block,
+                      adjusted_ty: ty::t,
+                      datum: Datum) -> DatumBlock {
+        // Currently, all closure types are represented precisely the
+        // same, so no runtime adjustment is required, but we still
+        // must patchup the type.
+        DatumBlock {bcx: bcx,
+                    datum: Datum {val: datum.val, ty: adjusted_ty,
+                                  mode: datum.mode, source: datum.source}}
     }
 
     fn auto_slice(bcx: block, expr: @ast::expr, datum: Datum) -> DatumBlock {
