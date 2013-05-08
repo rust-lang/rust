@@ -836,13 +836,13 @@ fn tls_rng_state(_v: @@mut IsaacRng) {}
 pub fn task_rng() -> @@mut IsaacRng {
     let r : Option<@@mut IsaacRng>;
     unsafe {
-        r = task::local_data::local_data_get(tls_rng_state);
+        r = local_data::local_data_get(tls_rng_state);
     }
     match r {
         None => {
             unsafe {
                 let rng = @@mut IsaacRng::new_seeded(seed());
-                task::local_data::local_data_set(tls_rng_state, rng);
+                local_data::local_data_set(tls_rng_state, rng);
                 rng
             }
         }

@@ -74,7 +74,7 @@ impl<S:Encoder> Encodable<S> for ident {
     fn encode(&self, s: &mut S) {
         unsafe {
             let intr =
-                match task::local_data::local_data_get(interner_key!()) {
+                match local_data::local_data_get(interner_key!()) {
                     None => fail!(~"encode: TLS interner not set up"),
                     Some(intr) => intr
                 };
@@ -87,7 +87,7 @@ impl<S:Encoder> Encodable<S> for ident {
 impl<D:Decoder> Decodable<D> for ident {
     fn decode(d: &mut D) -> ident {
         let intr = match unsafe {
-            task::local_data::local_data_get(interner_key!())
+            local_data::local_data_get(interner_key!())
         } {
             None => fail!(~"decode: TLS interner not set up"),
             Some(intr) => intr

@@ -198,7 +198,7 @@ mod test {
 
     #[test]
     fn tls() {
-        use task::local_data::*;
+        use local_data::*;
         do run_in_newsched_task() {
             unsafe {
                 fn key(_x: @~str) { }
