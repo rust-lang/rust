@@ -1435,7 +1435,7 @@ mod tests {
     }
 
     fn make_rand_name() -> ~str {
-        let rng = rand::rng();
+        let mut rng = rand::rng();
         let n = ~"TEST" + rng.gen_str(10u);
         assert!(getenv(n).is_none());
         n
