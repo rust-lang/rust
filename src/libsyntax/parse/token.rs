@@ -394,6 +394,8 @@ pub struct ident_interner {
 }
 
 impl ident_interner {
+    // I'm torn as to whether these should produce idents or
+    // just uints.
     pub fn intern(&self, val: &str) -> ast::ident {
         ast::ident { repr: self.interner.intern(val), ctxt: 0 }
     }
@@ -530,9 +532,9 @@ pub fn mk_fake_ident_interner() -> @ident_interner {
 }
 
 // maps a string to its interned representation
-pub fn intern(str : &str) -> ast::ident {
+pub fn intern(str : &str) -> uint {
     let interner = get_ident_interner();
-    interner.intern(str)
+    interner.intern(str).repr
 }
 
 /**

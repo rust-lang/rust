@@ -2628,6 +2628,13 @@ impl Parser {
             // to the macro clause of parse_item_or_view_item. This
             // could use some cleanup, it appears to me.
 
+            // whoops! I now have a guess: I'm guessing the "parens-only"
+            // rule here is deliberate, to allow macro users to use parens
+            // for things that should be parsed as stmt_mac, and braces
+            // for things that should expand into items. Tricky, and
+            // somewhat awkward... and probably undocumented. Of course,
+            // I could just be wrong.
+
             check_expected_item(self, item_attrs);
 
             // Potential trouble: if we allow macros with paths instead of
