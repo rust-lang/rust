@@ -561,8 +561,14 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
 }
 
 pub fn check_struct(ccx: @mut CrateCtxt, id: ast::node_id, span: span) {
+    let tcx = ccx.tcx;
+
     // Check that the class is instantiable
-    check_instantiable(ccx.tcx, span, id);
+    check_instantiable(tcx, span, id);
+
+    if ty::lookup_simd(tcx, local_def(id)) {
+        check_simd(tcx, span, id);
+    }
 }
 
 pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
@@ -3031,6 +3037,35 @@ pub fn check_instantiable(tcx: ty::ctxt,
                   without an instance of itself; \
                   consider using `Option<%s>`",
                                    ppaux::ty_to_str(tcx, item_ty)));
+    }
+}
+
+pub fn check_simd(tcx: ty::ctxt, sp: span, id: ast::node_id) {
+    let t = ty::node_id_to_type(tcx, id);
+    if ty::type_needs_subst(t) {
+        tcx.sess.span_err(sp, "SIMD vector cannot be generic");
+        return;
+    }
+    match ty::get(t).sty {
+        ty::ty_struct(did, ref substs) => {
+            let fields = ty::lookup_struct_fields(tcx, did);
+            if fields.is_empty() {
+                tcx.sess.span_err(sp, "SIMD vector cannot be empty");
+                return;
+            }
+            let e = ty::lookup_field_type(tcx, did, fields[0].id, substs);
+            if !vec::all(fields,
+                         |f| ty::lookup_field_type(tcx, did, f.id, substs) == e) {
+                tcx.sess.span_err(sp, "SIMD vector should be homogeneous");
+                return;
+            }
+            if !ty::type_is_machine(e) {
+                tcx.sess.span_err(sp, "SIMD vector element type should be \
+                                       machine type");
+                return;
+            }
+        }
+        _ => ()
     }
 }
 
