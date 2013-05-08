@@ -292,6 +292,9 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, st: ty::sty) {
         w.write_char('v');
         enc_vstore(w, cx, v);
       }
+      ty::ty_multi(*) => {
+        fail!();
+      }
       ty::ty_unboxed_vec(mt) => { w.write_char('U'); enc_mt(w, cx, mt); }
       ty::ty_closure(ref f) => {
         w.write_char('f');

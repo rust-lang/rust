@@ -146,6 +146,9 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
         ty::ty_evec(mt, ty::vstore_fixed(size)) => {
             T_array(sizing_type_of(cx, mt.ty), size)
         }
+        ty::ty_multi(t, n) => {
+            T_vector(sizing_type_of(cx, t), n)
+        }
 
         ty::ty_unboxed_vec(mt) => T_vec(cx, sizing_type_of(cx, mt.ty)),
 
@@ -251,6 +254,10 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
       ty::ty_evec(ref mt, ty::vstore_fixed(n)) => {
         T_array(type_of(cx, mt.ty), n)
+      }
+
+      ty::ty_multi(t, n) => {
+        T_vector(type_of(cx, t), n)
       }
 
       ty::ty_bare_fn(_) => T_ptr(type_of_fn_from_ty(cx, t)),

@@ -255,6 +255,7 @@ pub fn visit_ty<E: Copy>(t: @Ty, e: E, v: vt<E>) {
             (v.visit_ty)(mt.ty, e, v);
             (v.visit_expr)(ex, e, v);
         },
+        ty_multi(t, _) => (v.visit_ty)(t, e, v),
         ty_nil | ty_bot | ty_mac(_) | ty_infer => ()
     }
 }

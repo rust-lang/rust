@@ -2623,6 +2623,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     if type_is_c_like_enum(fcx,expr.span,t_e)
                         && t_1_is_scalar {
                         /* this case is allowed */
+                    } else if ty::type_is_multi(t_1) {
+                        demand::suptype(fcx, e.span,
+                                        ty::multi_type(t_1), t_e);
                     } else if type_is_region_ptr(fcx, expr.span, t_e) &&
                         type_is_unsafe_ptr(fcx, expr.span, t_1) {
 

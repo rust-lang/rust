@@ -861,6 +861,7 @@ pub enum ty_ {
     ty_uniq(mt),
     ty_vec(mt),
     ty_fixed_length_vec(mt, @expr),
+    ty_multi(@Ty, uint),
     ty_ptr(mt),
     ty_rptr(Option<@Lifetime>, mt),
     ty_closure(@TyClosure),

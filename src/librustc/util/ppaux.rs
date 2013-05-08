@@ -15,7 +15,7 @@ use middle::ty::{br_fresh, ctxt, field, method};
 use middle::ty::{mt, t, param_bound, param_ty};
 use middle::ty::{re_bound, re_free, re_scope, re_infer, re_static, Region,
                  re_empty};
-use middle::ty::{ty_bool, ty_bot, ty_box, ty_struct, ty_enum};
+use middle::ty::{ty_bool, ty_bot, ty_box, ty_struct, ty_enum, ty_multi};
 use middle::ty::{ty_err, ty_estr, ty_evec, ty_float, ty_bare_fn, ty_closure};
 use middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
 use middle::ty::{ty_ptr, ty_rptr, ty_self, ty_tup, ty_type, ty_uniq};
@@ -457,6 +457,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         vstore_ty_to_str(cx, mt, vs)
       }
       ty_estr(vs) => fmt!("%s%s", vstore_to_str(cx, vs), ~"str"),
+      ty_multi(t, n) => fmt!("%s^%u", ty_to_str(cx, t), n),
       ty_opaque_box => ~"@?",
       ty_opaque_closure_ptr(ast::BorrowedSigil) => ~"closure&",
       ty_opaque_closure_ptr(ast::ManagedSigil) => ~"closure@",

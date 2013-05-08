@@ -122,7 +122,7 @@ pub fn range_rev(hi: T, lo: T, it: &fn(T) -> bool) {
 /// Computes the bitwise complement
 #[inline(always)]
 pub fn compl(i: T) -> T {
-    -1 as T ^ i
+    i ^ (-1 as T)
 }
 
 /// Computes the absolute value

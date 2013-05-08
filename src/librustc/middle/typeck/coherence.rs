@@ -27,7 +27,7 @@ use middle::ty::{lookup_item_type, subst};
 use middle::ty::{substs, t, ty_bool, ty_bot, ty_box, ty_enum, ty_err};
 use middle::ty::{ty_estr, ty_evec, ty_float, ty_infer, ty_int, ty_nil};
 use middle::ty::{ty_opaque_box, ty_param, ty_param_bounds_and_ty, ty_ptr};
-use middle::ty::{ty_rptr, ty_self, ty_struct, ty_trait, ty_tup};
+use middle::ty::{ty_rptr, ty_self, ty_struct, ty_trait, ty_tup, ty_multi};
 use middle::ty::{ty_type, ty_uint, ty_uniq, ty_bare_fn, ty_closure};
 use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec};
 use middle::ty::{type_is_ty_var};
@@ -90,8 +90,8 @@ pub fn get_base_type(inference_context: @mut InferCtxt,
         ty_nil | ty_bot | ty_bool | ty_int(*) | ty_uint(*) | ty_float(*) |
         ty_estr(*) | ty_evec(*) | ty_bare_fn(*) | ty_closure(*) | ty_tup(*) |
         ty_infer(*) | ty_param(*) | ty_self(*) | ty_type | ty_opaque_box |
-        ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) | ty_err | ty_box(_) |
-        ty_uniq(_) | ty_ptr(_) | ty_rptr(_, _) => {
+        ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) | ty_multi(*) | ty_err |
+        ty_box(*) | ty_uniq(*) | ty_ptr(*) | ty_rptr(*) => {
             debug!("(getting base type) no base type; found %?",
                    get(original_type).sty);
             None

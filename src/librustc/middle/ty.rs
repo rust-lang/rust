@@ -576,6 +576,7 @@ pub enum sty {
     ty_box(mt),
     ty_uniq(mt),
     ty_evec(mt, vstore),
+    ty_multi(t, uint),
     ty_ptr(mt),
     ty_rptr(Region, mt),
     ty_bare_fn(BareFnTy),
@@ -1009,6 +1010,9 @@ fn mk_t(cx: ctxt, st: sty) -> t {
       &ty_ptr(ref m) | &ty_unboxed_vec(ref m) => {
         flags |= get(m.ty).flags;
       }
+      &ty_multi(t, _) => {
+        flags |= get(t).flags;
+      }
       &ty_rptr(r, ref m) => {
         flags |= rflags(r);
         flags |= get(m.ty).flags;
@@ -1188,6 +1192,10 @@ pub fn mk_evec(cx: ctxt, tm: mt, t: vstore) -> t {
     mk_t(cx, ty_evec(tm, t))
 }
 
+pub fn mk_multi(cx: ctxt, ty: t, n: uint) -> t {
+    mk_t(cx, ty_multi(ty, n))
+}
+
 pub fn mk_unboxed_vec(cx: ctxt, tm: mt) -> t {
     mk_t(cx, ty_unboxed_vec(tm))
 }
@@ -1274,6 +1282,9 @@ pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
       ty_ptr(ref tm) | ty_rptr(_, ref tm) | ty_uniq(ref tm) => {
         maybe_walk_ty(tm.ty, f);
       }
+      ty_multi(t, _) => {
+        maybe_walk_ty(t, f);
+      }
       ty_enum(_, ref substs) | ty_struct(_, ref substs) |
       ty_trait(_, ref substs, _, _) => {
         for (*substs).tps.each |subty| { maybe_walk_ty(*subty, f); }
@@ -1336,6 +1347,9 @@ fn fold_sty(sty: &sty, fldop: &fn(t) -> t) -> sty {
         }
         ty_evec(ref tm, vst) => {
             ty_evec(mt {ty: fldop(tm.ty), mutbl: tm.mutbl}, vst)
+        }
+        ty_multi(t, n) => {
+            ty_multi(fldop(t), n)
         }
         ty_enum(tid, ref substs) => {
             ty_enum(tid, fold_substs(substs, fldop))
@@ -1567,6 +1581,13 @@ pub fn type_is_sequence(ty: t) -> bool {
     }
 }
 
+pub fn type_is_multi(ty: t) -> bool {
+    match get(ty).sty {
+        ty_multi(*) => true,
+        _ => false
+    }
+}
+
 pub fn type_is_str(ty: t) -> bool {
     match get(ty).sty {
       ty_estr(_) => true,
@@ -1580,6 +1601,20 @@ pub fn sequence_element_type(cx: ctxt, ty: t) -> t {
       ty_evec(mt, _) | ty_unboxed_vec(mt) => return mt.ty,
       _ => cx.sess.bug(
           ~"sequence_element_type called on non-sequence value"),
+    }
+}
+
+pub fn multi_type(ty: t) -> t {
+    match get(ty).sty {
+        ty_multi(t, _) => t,
+        _ => fail!(~"multi_type called on invalid type")
+    }
+}
+
+pub fn multi_size(ty: t) -> uint {
+    match get(ty).sty {
+        ty_multi(_, n) => n,
+        _ => fail!(~"multi_size called on invalid type")
     }
 }
 
@@ -1666,8 +1701,8 @@ pub fn type_is_scalar(ty: t) -> bool {
 }
 
 pub fn type_is_immediate(ty: t) -> bool {
-    return type_is_scalar(ty) || type_is_boxed(ty) ||
-        type_is_unique(ty) || type_is_region_ptr(ty);
+    return type_is_scalar(ty) || type_is_multi(ty) ||
+        type_is_boxed(ty) || type_is_unique(ty) || type_is_region_ptr(ty);
 }
 
 pub fn type_needs_drop(cx: ctxt, ty: t) -> bool {
@@ -2025,6 +2060,10 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 TC_NONE
             }
 
+            ty_multi(t, _) => {
+                tc_ty(cx, t, cache)
+            }
+
             ty_struct(did, ref substs) => {
                 let flds = struct_fields(cx, did, substs);
                 let mut res = flds.foldl(
@@ -2236,6 +2275,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           ty_opaque_box |
           ty_opaque_closure_ptr(_) |
           ty_evec(_, _) |
+          ty_multi(_, _) |
           ty_unboxed_vec(_) => {
             false
           }
@@ -2370,6 +2410,14 @@ pub fn type_is_fp(ty: t) -> bool {
     }
 }
 
+pub fn type_uses_fp(ty: t) -> bool {
+    match get(ty).sty {
+        ty_infer(FloatVar(_)) | ty_float(_) => true,
+        ty_multi(t, _) => type_uses_fp(t),
+        _ => false
+    }
+}
+
 pub fn type_is_numeric(ty: t) -> bool {
     return type_is_integral(ty) || type_is_fp(ty);
 }
@@ -2411,6 +2459,9 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_estr(vstore_fixed(_)) => result = true,
       ty_evec(ref mt, vstore_fixed(_)) | ty_unboxed_vec(ref mt) => {
         result = type_is_pod(cx, mt.ty);
+      }
+      ty_multi(t, _) => {
+        result = type_is_pod(cx, t);
       }
       ty_param(_) => result = false,
       ty_opaque_closure_ptr(_) => result = true,
@@ -2656,6 +2707,9 @@ impl to_bytes::IterBytes for sty {
 
           ty_tup(ref ts) =>
           to_bytes::iter_bytes_2(&10u8, ts, lsb0, f),
+
+          ty_multi(ref t, ref n) =>
+          to_bytes::iter_bytes_3(&11u8, t, n, lsb0, f),
 
           ty_bare_fn(ref ft) =>
           to_bytes::iter_bytes_2(&12u8, ft, lsb0, f),
@@ -3315,6 +3369,7 @@ pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_box(_) => ~"@-ptr",
       ty_uniq(_) => ~"~-ptr",
       ty_evec(_, _) => ~"vector",
+      ty_multi(_, _) => ~"SIMD vector",
       ty_unboxed_vec(_) => ~"unboxed vector",
       ty_ptr(_) => ~"*-ptr",
       ty_rptr(_, _) => ~"&-ptr",
@@ -4096,6 +4151,7 @@ pub fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
           ty_bool => tycat_bool,
           ty_int(_) | ty_uint(_) | ty_infer(IntVar(_)) => tycat_int,
           ty_float(_) | ty_infer(FloatVar(_)) => tycat_float,
+          ty_multi(ty, _) => tycat(ty),
           ty_tup(_) | ty_enum(_, _) => tycat_struct,
           ty_bot => tycat_bot,
           _ => tycat_other
