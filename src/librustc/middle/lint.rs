@@ -90,156 +90,157 @@ struct LintSpec {
 
 pub type LintDict = @HashMap<~str, LintSpec>;
 
+static lint_table: &'static [(&'static str, LintSpec)] = &[
+    ("ctypes",
+     LintSpec {
+        lint: ctypes,
+        desc: "proper use of core::libc types in foreign modules",
+        default: warn
+     }),
+
+    ("unused_imports",
+     LintSpec {
+        lint: unused_imports,
+        desc: "imports that are never used",
+        default: warn
+     }),
+
+    ("while_true",
+     LintSpec {
+        lint: while_true,
+        desc: "suggest using loop { } instead of while(true) { }",
+        default: warn
+     }),
+
+    ("path_statement",
+     LintSpec {
+        lint: path_statement,
+        desc: "path statements with no effect",
+        default: warn
+     }),
+
+    ("unrecognized_lint",
+     LintSpec {
+        lint: unrecognized_lint,
+        desc: "unrecognized lint attribute",
+        default: warn
+     }),
+
+    ("non_implicitly_copyable_typarams",
+     LintSpec {
+        lint: non_implicitly_copyable_typarams,
+        desc: "passing non implicitly copyable types as copy type params",
+        default: warn
+     }),
+
+    ("vecs_implicitly_copyable",
+     LintSpec {
+        lint: vecs_implicitly_copyable,
+        desc: "make vecs and strs not implicitly copyable \
+              (only checked at top level)",
+        default: warn
+     }),
+
+    ("implicit_copies",
+     LintSpec {
+        lint: implicit_copies,
+        desc: "implicit copies of non implicitly copyable data",
+        default: warn
+     }),
+
+    ("deprecated_pattern",
+     LintSpec {
+        lint: deprecated_pattern,
+        desc: "warn about deprecated uses of pattern bindings",
+        default: allow
+     }),
+
+    ("non_camel_case_types",
+     LintSpec {
+        lint: non_camel_case_types,
+        desc: "types, variants and traits should have camel case names",
+        default: allow
+     }),
+
+    ("managed_heap_memory",
+     LintSpec {
+        lint: managed_heap_memory,
+        desc: "use of managed (@ type) heap memory",
+        default: allow
+     }),
+
+    ("owned_heap_memory",
+     LintSpec {
+        lint: owned_heap_memory,
+        desc: "use of owned (~ type) heap memory",
+        default: allow
+     }),
+
+    ("heap_memory",
+     LintSpec {
+        lint: heap_memory,
+        desc: "use of any (~ type or @ type) heap memory",
+        default: allow
+     }),
+
+    ("type_limits",
+     LintSpec {
+        lint: type_limits,
+        desc: "comparisons made useless by limits of the types involved",
+        default: warn
+     }),
+
+    ("default_methods",
+     LintSpec {
+        lint: default_methods,
+        desc: "allow default methods",
+        default: deny
+     }),
+
+    ("deprecated_mutable_fields",
+     LintSpec {
+        lint: deprecated_mutable_fields,
+        desc: "deprecated mutable fields in structures",
+        default: deny
+    }),
+
+    ("unused_unsafe",
+     LintSpec {
+        lint: unused_unsafe,
+        desc: "unnecessary use of an `unsafe` block",
+        default: warn
+    }),
+
+    ("unused_variable",
+     LintSpec {
+        lint: unused_variable,
+        desc: "detect variables which are not used in any way",
+        default: warn
+    }),
+
+    ("dead_assignment",
+     LintSpec {
+        lint: dead_assignment,
+        desc: "detect assignments that will never be read",
+        default: warn
+    }),
+
+    ("unused_mut",
+     LintSpec {
+        lint: unused_mut,
+        desc: "detect mut variables which don't need to be mutable",
+        default: warn
+    }),
+];
+
 /*
   Pass names should not contain a '-', as the compiler normalizes
   '-' to '_' in command-line flags
  */
 pub fn get_lint_dict() -> LintDict {
-    let v = ~[
-        (~"ctypes",
-         LintSpec {
-            lint: ctypes,
-            desc: "proper use of core::libc types in foreign modules",
-            default: warn
-         }),
-
-        (~"unused_imports",
-         LintSpec {
-            lint: unused_imports,
-            desc: "imports that are never used",
-            default: warn
-         }),
-
-        (~"while_true",
-         LintSpec {
-            lint: while_true,
-            desc: "suggest using loop { } instead of while(true) { }",
-            default: warn
-         }),
-
-        (~"path_statement",
-         LintSpec {
-            lint: path_statement,
-            desc: "path statements with no effect",
-            default: warn
-         }),
-
-        (~"unrecognized_lint",
-         LintSpec {
-            lint: unrecognized_lint,
-            desc: "unrecognized lint attribute",
-            default: warn
-         }),
-
-        (~"non_implicitly_copyable_typarams",
-         LintSpec {
-            lint: non_implicitly_copyable_typarams,
-            desc: "passing non implicitly copyable types as copy type params",
-            default: warn
-         }),
-
-        (~"vecs_implicitly_copyable",
-         LintSpec {
-            lint: vecs_implicitly_copyable,
-            desc: "make vecs and strs not implicitly copyable \
-                  (only checked at top level)",
-            default: warn
-         }),
-
-        (~"implicit_copies",
-         LintSpec {
-            lint: implicit_copies,
-            desc: "implicit copies of non implicitly copyable data",
-            default: warn
-         }),
-
-        (~"deprecated_pattern",
-         LintSpec {
-            lint: deprecated_pattern,
-            desc: "warn about deprecated uses of pattern bindings",
-            default: allow
-         }),
-
-        (~"non_camel_case_types",
-         LintSpec {
-            lint: non_camel_case_types,
-            desc: "types, variants and traits should have camel case names",
-            default: allow
-         }),
-
-        (~"managed_heap_memory",
-         LintSpec {
-            lint: managed_heap_memory,
-            desc: "use of managed (@ type) heap memory",
-            default: allow
-         }),
-
-        (~"owned_heap_memory",
-         LintSpec {
-            lint: owned_heap_memory,
-            desc: "use of owned (~ type) heap memory",
-            default: allow
-         }),
-
-        (~"heap_memory",
-         LintSpec {
-            lint: heap_memory,
-            desc: "use of any (~ type or @ type) heap memory",
-            default: allow
-         }),
-
-        (~"type_limits",
-         LintSpec {
-            lint: type_limits,
-            desc: "comparisons made useless by limits of the types involved",
-            default: warn
-         }),
-
-        (~"default_methods",
-         LintSpec {
-            lint: default_methods,
-            desc: "allow default methods",
-            default: deny
-         }),
-
-        (~"deprecated_mutable_fields",
-         LintSpec {
-            lint: deprecated_mutable_fields,
-            desc: "deprecated mutable fields in structures",
-            default: deny
-        }),
-
-        (~"unused_unsafe",
-         LintSpec {
-            lint: unused_unsafe,
-            desc: "unnecessary use of an `unsafe` block",
-            default: warn
-        }),
-
-        (~"unused_variable",
-         LintSpec {
-            lint: unused_variable,
-            desc: "detect variables which are not used in any way",
-            default: warn
-        }),
-
-        (~"dead_assignment",
-         LintSpec {
-            lint: dead_assignment,
-            desc: "detect assignments that will never be read",
-            default: warn
-        }),
-
-        (~"unused_mut",
-         LintSpec {
-            lint: unused_mut,
-            desc: "detect mut variables which don't need to be mutable",
-            default: warn
-        }),
-    ];
     let mut map = HashMap::new();
-    do vec::consume(v) |_, (k, v)| {
-        map.insert(k, v);
+    for lint_table.each|&(k, v)| {
+        map.insert(k.to_str(), v);
     }
     return @map;
 }
