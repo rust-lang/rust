@@ -14,10 +14,10 @@ Functions for the unit type.
 
 */
 
-#[cfg(notest)]
+#[cfg(not(test))]
 use prelude::*;
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Eq for () {
     #[inline(always)]
     fn eq(&self, _other: &()) -> bool { true }
@@ -25,7 +25,7 @@ impl Eq for () {
     fn ne(&self, _other: &()) -> bool { false }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Ord for () {
     #[inline(always)]
     fn lt(&self, _other: &()) -> bool { false }
@@ -37,13 +37,13 @@ impl Ord for () {
     fn gt(&self, _other: &()) -> bool { false }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl TotalOrd for () {
     #[inline(always)]
     fn cmp(&self, _other: &()) -> Ordering { Equal }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl TotalEq for () {
     #[inline(always)]
     fn equals(&self, _other: &()) -> bool { true }

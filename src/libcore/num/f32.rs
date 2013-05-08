@@ -198,7 +198,7 @@ pub mod consts {
 
 impl Num for f32 {}
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Eq for f32 {
     #[inline(always)]
     fn eq(&self, other: &f32) -> bool { (*self) == (*other) }
@@ -206,7 +206,7 @@ impl Eq for f32 {
     fn ne(&self, other: &f32) -> bool { (*self) != (*other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl ApproxEq<f32> for f32 {
     #[inline(always)]
     fn approx_epsilon() -> f32 { 1.0e-6 }
@@ -222,7 +222,7 @@ impl ApproxEq<f32> for f32 {
     }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Ord for f32 {
     #[inline(always)]
     fn lt(&self, other: &f32) -> bool { (*self) < (*other) }
@@ -272,37 +272,37 @@ impl One for f32 {
     fn one() -> f32 { 1.0 }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Add<f32,f32> for f32 {
     #[inline(always)]
     fn add(&self, other: &f32) -> f32 { *self + *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Sub<f32,f32> for f32 {
     #[inline(always)]
     fn sub(&self, other: &f32) -> f32 { *self - *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Mul<f32,f32> for f32 {
     #[inline(always)]
     fn mul(&self, other: &f32) -> f32 { *self * *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Div<f32,f32> for f32 {
     #[inline(always)]
     fn div(&self, other: &f32) -> f32 { *self / *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Rem<f32,f32> for f32 {
     #[inline(always)]
     fn rem(&self, other: &f32) -> f32 { *self % *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Neg<f32> for f32 {
     #[inline(always)]
     fn neg(&self) -> f32 { -*self }

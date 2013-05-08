@@ -179,9 +179,9 @@ pub mod managed;
 
 /* Core language traits */
 
-#[cfg(notest)] pub mod kinds;
-#[cfg(notest)] pub mod ops;
-#[cfg(notest)] pub mod cmp;
+#[cfg(not(test))] pub mod kinds;
+#[cfg(not(test))] pub mod ops;
+#[cfg(not(test))] pub mod cmp;
 
 
 /* Common traits */
