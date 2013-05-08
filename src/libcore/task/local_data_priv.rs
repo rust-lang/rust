@@ -44,7 +44,7 @@ impl Handle {
 }
 
 pub trait LocalData { }
-impl<T:Durable> LocalData for @T { }
+impl<T: 'static> LocalData for @T { }
 
 impl Eq for @LocalData {
     fn eq(&self, other: &@LocalData) -> bool {
@@ -131,7 +131,7 @@ unsafe fn get_newsched_local_map(local: *mut LocalStorage) -> TaskLocalMap {
     }
 }
 
-unsafe fn key_to_key_value<T:Durable>(key: LocalDataKey<T>) -> *libc::c_void {
+unsafe fn key_to_key_value<T: 'static>(key: LocalDataKey<T>) -> *libc::c_void {
     // Keys are closures, which are (fnptr,envptr) pairs. Use fnptr.
     // Use reintepret_cast -- transmute would leak (forget) the closure.
     let pair: (*libc::c_void, *libc::c_void) = cast::transmute_copy(&key);
@@ -139,7 +139,7 @@ unsafe fn key_to_key_value<T:Durable>(key: LocalDataKey<T>) -> *libc::c_void {
 }
 
 // If returning Some(..), returns with @T with the map's reference. Careful!
-unsafe fn local_data_lookup<T:Durable>(
+unsafe fn local_data_lookup<T: 'static>(
     map: TaskLocalMap, key: LocalDataKey<T>)
     -> Option<(uint, *libc::c_void)> {
 
@@ -157,7 +157,7 @@ unsafe fn local_data_lookup<T:Durable>(
     }
 }
 
-unsafe fn local_get_helper<T:Durable>(
+unsafe fn local_get_helper<T: 'static>(
     handle: Handle, key: LocalDataKey<T>,
     do_pop: bool) -> Option<@T> {
 
@@ -179,21 +179,21 @@ unsafe fn local_get_helper<T:Durable>(
 }
 
 
-pub unsafe fn local_pop<T:Durable>(
+pub unsafe fn local_pop<T: 'static>(
     handle: Handle,
     key: LocalDataKey<T>) -> Option<@T> {
 
     local_get_helper(handle, key, true)
 }
 
-pub unsafe fn local_get<T:Durable>(
+pub unsafe fn local_get<T: 'static>(
     handle: Handle,
     key: LocalDataKey<T>) -> Option<@T> {
 
     local_get_helper(handle, key, false)
 }
 
-pub unsafe fn local_set<T:Durable>(
+pub unsafe fn local_set<T: 'static>(
     handle: Handle, key: LocalDataKey<T>, data: @T) {
 
     let map = get_local_map(handle);
@@ -225,7 +225,7 @@ pub unsafe fn local_set<T:Durable>(
     }
 }
 
-pub unsafe fn local_modify<T:Durable>(
+pub unsafe fn local_modify<T: 'static>(
     handle: Handle, key: LocalDataKey<T>,
     modify_fn: &fn(Option<@T>) -> Option<@T>) {
 
