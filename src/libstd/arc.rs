@@ -252,6 +252,7 @@ struct RWARCInner<T> { lock: RWlock, failed: bool, data: T }
  *
  * Unlike mutex_arcs, rw_arcs are safe, because they cannot be nested.
  */
+#[mutable]
 struct RWARC<T> {
     x: SharedMutableState<RWARCInner<T>>,
     cant_nest: ()
