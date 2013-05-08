@@ -72,7 +72,7 @@ they contained the following prologue:
 
 /* Reexported core operators */
 
-pub use kinds::{Const, Copy, Owned, Durable};
+pub use kinds::{Const, Copy, Owned};
 pub use ops::{Drop};
 pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};

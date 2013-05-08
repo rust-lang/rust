@@ -8,7 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn to_closure<A:'static + Copy>(x: A) -> @fn() -> A {
-    let result: @fn() -> A = || copy x;
-    result
+// Testing that we can't store a borrowed pointer it task-local storage
+
+use core::task::local_data::*;
+
+fn key(_x: @&int) { }
+
+fn main() {
+    unsafe {
+        local_data_set(key, @&0); //~ ERROR does not fulfill `'static`
+    }
 }

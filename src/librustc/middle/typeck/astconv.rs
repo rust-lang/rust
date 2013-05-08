@@ -101,7 +101,7 @@ pub fn get_region_reporting_err(
     }
 }
 
-pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Copy + Durable>(
+pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Copy + 'static>(
     self: &AC,
     rscope: &RS,
     default_span: span,
@@ -126,7 +126,7 @@ pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Copy + Durable>(
     get_region_reporting_err(self.tcx(), span, opt_lifetime, res)
 }
 
-fn ast_path_substs<AC:AstConv,RS:region_scope + Copy + Durable>(
+fn ast_path_substs<AC:AstConv,RS:region_scope + Copy + 'static>(
     self: &AC,
     rscope: &RS,
     def_id: ast::def_id,
@@ -180,7 +180,7 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Copy + Durable>(
     substs {self_r:self_r, self_ty:self_ty, tps:tps}
 }
 
-pub fn ast_path_to_substs_and_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
+pub fn ast_path_to_substs_and_ty<AC:AstConv,RS:region_scope + Copy + 'static>(
     self: &AC,
     rscope: &RS,
     did: ast::def_id,
@@ -197,7 +197,7 @@ pub fn ast_path_to_substs_and_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
     ty_param_substs_and_ty { substs: substs, ty: ty }
 }
 
-pub fn ast_path_to_trait_ref<AC:AstConv,RS:region_scope + Copy + Durable>(
+pub fn ast_path_to_trait_ref<AC:AstConv,RS:region_scope + Copy + 'static>(
     self: &AC,
     rscope: &RS,
     trait_def_id: ast::def_id,
@@ -221,7 +221,7 @@ pub fn ast_path_to_trait_ref<AC:AstConv,RS:region_scope + Copy + Durable>(
 }
 
 
-pub fn ast_path_to_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
+pub fn ast_path_to_ty<AC:AstConv,RS:region_scope + Copy + 'static>(
         self: &AC,
         rscope: &RS,
         did: ast::def_id,
@@ -243,10 +243,10 @@ pub static NO_TPS: uint = 2;
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
-pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
+pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
     self: &AC, rscope: &RS, ast_ty: @ast::Ty) -> ty::t {
 
-    fn ast_mt_to_mt<AC:AstConv, RS:region_scope + Copy + Durable>(
+    fn ast_mt_to_mt<AC:AstConv, RS:region_scope + Copy + 'static>(
         self: &AC, rscope: &RS, mt: &ast::mt) -> ty::mt {
 
         ty::mt {ty: ast_ty_to_ty(self, rscope, mt.ty), mutbl: mt.mutbl}
@@ -255,7 +255,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
     // Handle @, ~, and & being able to mean estrs and evecs.
     // If a_seq_ty is a str or a vec, make it an estr/evec.
     // Also handle first-class trait types.
-    fn mk_pointer<AC:AstConv,RS:region_scope + Copy + Durable>(
+    fn mk_pointer<AC:AstConv,RS:region_scope + Copy + 'static>(
         self: &AC,
         rscope: &RS,
         a_seq_ty: &ast::mt,
@@ -497,7 +497,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + Durable>(
 }
 
 pub fn ty_of_arg<AC:AstConv,
-                 RS:region_scope + Copy + Durable>(
+                 RS:region_scope + Copy + 'static>(
                  self: &AC,
                  rscope: &RS,
                  a: ast::arg,
@@ -549,7 +549,7 @@ struct SelfInfo {
     self_transform: ast::self_ty
 }
 
-pub fn ty_of_method<AC:AstConv,RS:region_scope + Copy + Durable>(
+pub fn ty_of_method<AC:AstConv,RS:region_scope + Copy + 'static>(
     self: &AC,
     rscope: &RS,
     purity: ast::purity,
@@ -567,7 +567,7 @@ pub fn ty_of_method<AC:AstConv,RS:region_scope + Copy + Durable>(
     (a.get(), b)
 }
 
-pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
+pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
     self: &AC,
     rscope: &RS,
     purity: ast::purity,
@@ -580,7 +580,7 @@ pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
     b
 }
 
-fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
+fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
     self: &AC,
     rscope: &RS,
     purity: ast::purity,
@@ -616,7 +616,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
                                 output: output_ty}
             });
 
-    fn transform_self_ty<AC:AstConv,RS:region_scope + Copy + Durable>(
+    fn transform_self_ty<AC:AstConv,RS:region_scope + Copy + 'static>(
         self: &AC,
         rscope: &RS,
         self_info: &SelfInfo) -> Option<ty::t>
@@ -649,7 +649,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + Durable>(
     }
 }
 
-pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + Durable>(
+pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
         self: &AC,
         rscope: &RS,
         sigil: ast::Sigil,

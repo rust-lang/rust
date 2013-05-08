@@ -49,7 +49,7 @@ pub type LocalDataKey<'self,T> = &'self fn(v: @T);
  * Remove a task-local data value from the table, returning the
  * reference that was originally created to insert it.
  */
-pub unsafe fn local_data_pop<T:Durable>(
+pub unsafe fn local_data_pop<T: 'static>(
     key: LocalDataKey<T>) -> Option<@T> {
 
     local_pop(Handle::new(), key)
@@ -58,7 +58,7 @@ pub unsafe fn local_data_pop<T:Durable>(
  * Retrieve a task-local data value. It will also be kept alive in the
  * table until explicitly removed.
  */
-pub unsafe fn local_data_get<T:Durable>(
+pub unsafe fn local_data_get<T: 'static>(
     key: LocalDataKey<T>) -> Option<@T> {
 
     local_get(Handle::new(), key)
@@ -67,7 +67,7 @@ pub unsafe fn local_data_get<T:Durable>(
  * Store a value in task-local data. If this key already has a value,
  * that value is overwritten (and its destructor is run).
  */
-pub unsafe fn local_data_set<T:Durable>(
+pub unsafe fn local_data_set<T: 'static>(
     key: LocalDataKey<T>, data: @T) {
 
     local_set(Handle::new(), key, data)
@@ -76,7 +76,7 @@ pub unsafe fn local_data_set<T:Durable>(
  * Modify a task-local data value. If the function returns 'None', the
  * data is removed (and its reference dropped).
  */
-pub unsafe fn local_data_modify<T:Durable>(
+pub unsafe fn local_data_modify<T: 'static>(
     key: LocalDataKey<T>,
     modify_fn: &fn(Option<@T>) -> Option<@T>) {
 
@@ -213,5 +213,14 @@ fn test_tls_cleanup_on_failure() {
         // Not quite nondeterministic.
         local_data_set(int_key, @31337);
         fail!();
+    }
+}
+
+#[test]
+fn test_static_pointer() {
+    unsafe {
+        fn key(_x: @&'static int) { }
+        static VALUE: int = 0;
+        local_data_set(key, @&VALUE);
     }
 }
