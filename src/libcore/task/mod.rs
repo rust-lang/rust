@@ -597,12 +597,13 @@ pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_cant_dup_task_builder() {
-    let b = task().unlinked();
-    do b.spawn { }
+    let mut builder = task();
+    builder.unlinked();
+    do builder.spawn {}
     // FIXME(#3724): For now, this is a -runtime- failure, because we haven't
     // got move mode on self. When 3724 is fixed, this test should fail to
     // compile instead, and should go in tests/compile-fail.
-    do b.spawn { } // b should have been consumed by the previous call
+    do builder.spawn {} // b should have been consumed by the previous call
 }
 
 // The following 8 tests test the following 2^3 combinations:
@@ -645,43 +646,31 @@ fn test_spawn_unlinked_sup_fail_down() {
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
     let (po, _ch) = stream::<()>();
+
     // Unidirectional "parenting" shouldn't override bidirectional linked.
     // We have to cheat with opts - the interface doesn't support them because
     // they don't make sense (redundant with task().supervised()).
-    let opts = {
-        let mut opts = default_task_opts();
-        opts.linked = true;
-        opts.supervised = true;
-        opts
-    };
+    let mut b0 = task();
+    b0.opts.linked = true;
+    b0.opts.supervised = true;
 
-    let b0 = task();
-    let b1 = TaskBuilder {
-        opts: opts,
-        can_not_copy: None,
-        .. b0
-    };
-    do b1.spawn { fail!(); }
+    do b0.spawn {
+        fail!();
+    }
     po.recv(); // We should get punted awake
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
     // We have to cheat with opts - the interface doesn't support them because
     // they don't make sense (redundant with task().supervised()).
-    let opts = {
-        let mut opts = default_task_opts();
-        opts.linked = true;
-        opts.supervised = true;
-        opts
-    };
-
-    let b0 = task();
-    let b1 = TaskBuilder {
-        opts: opts,
-        can_not_copy: None,
-        .. b0
-    };
-    do b1.spawn { loop { task::yield(); } }
+    let mut b0 = task();
+    b0.opts.linked = true;
+    b0.opts.supervised = true;
+    do b0.spawn {
+        loop {
+            task::yield();
+        }
+    }
     fail!(); // *both* mechanisms would be wrong if this didn't kill the child
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -700,7 +689,13 @@ fn test_spawn_linked_unsup_fail_down() { // parent fails; child fails
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_linked_unsup_default_opts() { // parent fails; child fails
     // Make sure the above test is the same as this one.
-    do task().linked().spawn { loop { task::yield(); } }
+    let mut builder = task();
+    builder.linked();
+    do builder.spawn {
+        loop {
+            task::yield();
+        }
+    }
     fail!();
 }
 
@@ -758,7 +753,8 @@ fn test_spawn_linked_sup_propagate_sibling() {
 #[test]
 fn test_run_basic() {
     let (po, ch) = stream::<()>();
-    do task().spawn {
+    let mut builder = task();
+    do builder.spawn {
         ch.send(());
     }
     po.recv();
@@ -772,18 +768,18 @@ struct Wrapper {
 #[test]
 fn test_add_wrapper() {
     let (po, ch) = stream::<()>();
-    let b0 = task();
-    let ch = Wrapper { f: Some(ch) };
-    let b1 = do b0.add_wrapper |body| {
-        let ch = Wrapper { f: Some(ch.f.swap_unwrap()) };
+    let mut b0 = task();
+    let ch = Cell(ch);
+    do b0.add_wrapper |body| {
+        let ch = Cell(ch.take());
         let result: ~fn() = || {
-            let ch = ch.f.swap_unwrap();
+            let mut ch = ch.take();
             body();
             ch.send(());
         };
         result
     };
-    do b1.spawn { }
+    do b0.spawn { }
     po.recv();
 }
 
@@ -791,12 +787,16 @@ fn test_add_wrapper() {
 #[ignore(cfg(windows))]
 fn test_future_result() {
     let mut result = None;
-    do task().future_result(|r| { result = Some(r); }).spawn { }
+    let mut builder = task();
+    builder.future_result(|r| result = Some(r));
+    do builder.spawn {}
     assert!(result.unwrap().recv() == Success);
 
     result = None;
-    do task().future_result(|r|
-        { result = Some(r); }).unlinked().spawn {
+    let mut builder = task();
+    builder.future_result(|r| result = Some(r));
+    builder.unlinked();
+    do builder.spawn {
         fail!();
     }
     assert!(result.unwrap().recv() == Failure);
@@ -804,7 +804,9 @@ fn test_future_result() {
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_back_to_the_future_result() {
-    let _ = task().future_result(util::ignore).future_result(util::ignore);
+    let mut builder = task();
+    builder.future_result(util::ignore);
+    builder.future_result(util::ignore);
 }
 
 #[test]
@@ -866,12 +868,12 @@ fn test_spawn_sched_childs_on_default_sched() {
     // Assuming tests run on the default scheduler
     let default_id = unsafe { rt::rust_get_sched_id() };
 
-    let ch = Wrapper { f: Some(ch) };
+    let ch = Cell(ch);
     do spawn_sched(SingleThreaded) {
         let parent_sched_id = unsafe { rt::rust_get_sched_id() };
-        let ch = Wrapper { f: Some(ch.f.swap_unwrap()) };
+        let ch = Cell(ch.take());
         do spawn {
-            let ch = ch.f.swap_unwrap();
+            let ch = ch.take();
             let child_sched_id = unsafe { rt::rust_get_sched_id() };
             assert!(parent_sched_id != child_sched_id);
             assert!(child_sched_id == default_id);
@@ -979,7 +981,8 @@ fn test_avoid_copying_the_body_spawn() {
 #[test]
 fn test_avoid_copying_the_body_task_spawn() {
     do avoid_copying_the_body |f| {
-        do task().spawn || {
+        let mut builder = task();
+        do builder.spawn || {
             f();
         }
     }
@@ -1006,7 +1009,9 @@ fn test_avoid_copying_the_body_unlinked() {
 #[test]
 fn test_platform_thread() {
     let (po, ch) = stream();
-    do task().sched_mode(PlatformThread).spawn {
+    let mut builder = task();
+    builder.sched_mode(PlatformThread);
+    do builder.spawn {
         ch.send(());
     }
     po.recv();

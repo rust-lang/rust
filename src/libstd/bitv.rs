@@ -1426,7 +1426,7 @@ mod tests {
 
     #[bench]
     fn bench_uint_small(b: &mut BenchHarness) {
-        let r = rng();
+        let mut r = rng();
         let mut bitv = 0 as uint;
         do b.iter {
             bitv |= (1 << ((r.next() as uint) % uint::bits));
@@ -1435,7 +1435,7 @@ mod tests {
 
     #[bench]
     fn bench_small_bitv_small(b: &mut BenchHarness) {
-        let r = rng();
+        let mut r = rng();
         let mut bitv = SmallBitv::new(uint::bits);
         do b.iter {
             bitv.set((r.next() as uint) % uint::bits, true);
@@ -1444,7 +1444,7 @@ mod tests {
 
     #[bench]
     fn bench_big_bitv_small(b: &mut BenchHarness) {
-        let r = rng();
+        let mut r = rng();
         let mut bitv = BigBitv::new(~[0]);
         do b.iter {
             bitv.set((r.next() as uint) % uint::bits, true);
@@ -1453,7 +1453,7 @@ mod tests {
 
     #[bench]
     fn bench_big_bitv_big(b: &mut BenchHarness) {
-        let r = rng();
+        let mut r = rng();
         let mut storage = ~[];
         storage.grow(bench_bits / uint::bits, &0);
         let mut bitv = BigBitv::new(storage);
@@ -1464,7 +1464,7 @@ mod tests {
 
     #[bench]
     fn bench_bitv_big(b: &mut BenchHarness) {
-        let r = rng();
+        let mut r = rng();
         let mut bitv = Bitv::new(bench_bits, false);
         do b.iter {
             bitv.set((r.next() as uint) % bench_bits, true);
@@ -1473,7 +1473,7 @@ mod tests {
 
     #[bench]
     fn bench_bitv_small(b: &mut BenchHarness) {
-        let r = rng();
+        let mut r = rng();
         let mut bitv = Bitv::new(uint::bits, false);
         do b.iter {
             bitv.set((r.next() as uint) % uint::bits, true);
@@ -1482,7 +1482,7 @@ mod tests {
 
     #[bench]
     fn bench_bitv_set_small(b: &mut BenchHarness) {
-        let r = rng();
+        let mut r = rng();
         let mut bitv = BitvSet::new();
         do b.iter {
             bitv.insert((r.next() as uint) % uint::bits);
@@ -1491,7 +1491,7 @@ mod tests {
 
     #[bench]
     fn bench_bitv_set_big(b: &mut BenchHarness) {
-        let r = rng();
+        let mut r = rng();
         let mut bitv = BitvSet::new();
         do b.iter {
             bitv.insert((r.next() as uint) % bench_bits);

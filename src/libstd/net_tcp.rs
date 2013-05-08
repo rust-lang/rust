@@ -1963,7 +1963,7 @@ mod test {
     }
 
     fn tcp_write_single(sock: &TcpSocket, val: ~[u8]) {
-        let write_result_future = sock.write_future(val);
+        let mut write_result_future = sock.write_future(val);
         let write_result = write_result_future.get();
         if result::is_err(&write_result) {
             debug!("tcp_write_single: write failed!");

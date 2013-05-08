@@ -879,8 +879,8 @@ mod tests {
     #[test]
     fn test_rng_seeded() {
         let seed = seed();
-        let ra = IsaacRng::new_seeded(seed);
-        let rb = IsaacRng::new_seeded(seed);
+        let mut ra = IsaacRng::new_seeded(seed);
+        let mut rb = IsaacRng::new_seeded(seed);
         assert!(ra.gen_str(100u) == rb.gen_str(100u));
     }
 
@@ -888,15 +888,15 @@ mod tests {
     fn test_rng_seeded_custom_seed() {
         // much shorter than generated seeds which are 1024 bytes
         let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
-        let ra = IsaacRng::new_seeded(seed);
-        let rb = IsaacRng::new_seeded(seed);
+        let mut ra = IsaacRng::new_seeded(seed);
+        let mut rb = IsaacRng::new_seeded(seed);
         assert!(ra.gen_str(100u) == rb.gen_str(100u));
     }
 
     #[test]
     fn test_rng_seeded_custom_seed2() {
         let seed = [2u8, 32u8, 4u8, 32u8, 51u8];
-        let ra = IsaacRng::new_seeded(seed);
+        let mut ra = IsaacRng::new_seeded(seed);
         // Regression test that isaac is actually using the above vector
         let r = ra.next();
         error!("%?", r);
@@ -906,7 +906,7 @@ mod tests {
 
     #[test]
     fn test_gen_int_range() {
-        let r = rng();
+        let mut r = rng();
         let a = r.gen_int_range(-3, 42);
         assert!(a >= -3 && a < 42);
         assert!(r.gen_int_range(0, 1) == 0);
@@ -917,12 +917,13 @@ mod tests {
     #[should_fail]
     #[ignore(cfg(windows))]
     fn test_gen_int_from_fail() {
-        rng().gen_int_range(5, -2);
+        let mut r = rng();
+        r.gen_int_range(5, -2);
     }
 
     #[test]
     fn test_gen_uint_range() {
-        let r = rng();
+        let mut r = rng();
         let a = r.gen_uint_range(3u, 42u);
         assert!(a >= 3u && a < 42u);
         assert!(r.gen_uint_range(0u, 1u) == 0u);
@@ -933,12 +934,13 @@ mod tests {
     #[should_fail]
     #[ignore(cfg(windows))]
     fn test_gen_uint_range_fail() {
-        rng().gen_uint_range(5u, 2u);
+        let mut r = rng();
+        r.gen_uint_range(5u, 2u);
     }
 
     #[test]
     fn test_gen_float() {
-        let r = rng();
+        let mut r = rng();
         let a = r.gen::<float>();
         let b = r.gen::<float>();
         debug!((a, b));
@@ -946,14 +948,14 @@ mod tests {
 
     #[test]
     fn test_gen_weighted_bool() {
-        let r = rng();
+        let mut r = rng();
         assert!(r.gen_weighted_bool(0u) == true);
         assert!(r.gen_weighted_bool(1u) == true);
     }
 
     #[test]
     fn test_gen_str() {
-        let r = rng();
+        let mut r = rng();
         debug!(r.gen_str(10u));
         debug!(r.gen_str(10u));
         debug!(r.gen_str(10u));
@@ -964,7 +966,7 @@ mod tests {
 
     #[test]
     fn test_gen_bytes() {
-        let r = rng();
+        let mut r = rng();
         assert!(r.gen_bytes(0u).len() == 0u);
         assert!(r.gen_bytes(10u).len() == 10u);
         assert!(r.gen_bytes(16u).len() == 16u);
@@ -972,13 +974,13 @@ mod tests {
 
     #[test]
     fn test_choose() {
-        let r = rng();
+        let mut r = rng();
         assert!(r.choose([1, 1, 1]) == 1);
     }
 
     #[test]
     fn test_choose_option() {
-        let r = rng();
+        let mut r = rng();
         let x: Option<int> = r.choose_option([]);
         assert!(x.is_none());
         assert!(r.choose_option([1, 1, 1]) == Some(1));
@@ -986,7 +988,7 @@ mod tests {
 
     #[test]
     fn test_choose_weighted() {
-        let r = rng();
+        let mut r = rng();
         assert!(r.choose_weighted(~[
             Weighted { weight: 1u, item: 42 },
         ]) == 42);
@@ -998,7 +1000,7 @@ mod tests {
 
     #[test]
     fn test_choose_weighted_option() {
-        let r = rng();
+        let mut r = rng();
         assert!(r.choose_weighted_option(~[
             Weighted { weight: 1u, item: 42 },
         ]) == Some(42));
@@ -1012,7 +1014,7 @@ mod tests {
 
     #[test]
     fn test_weighted_vec() {
-        let r = rng();
+        let mut r = rng();
         let empty: ~[int] = ~[];
         assert!(r.weighted_vec(~[]) == empty);
         assert!(r.weighted_vec(~[
@@ -1024,7 +1026,7 @@ mod tests {
 
     #[test]
     fn test_shuffle() {
-        let r = rng();
+        let mut r = rng();
         let empty: ~[int] = ~[];
         assert!(r.shuffle(~[]) == empty);
         assert!(r.shuffle(~[1, 1, 1]) == ~[1, 1, 1]);
@@ -1032,7 +1034,7 @@ mod tests {
 
     #[test]
     fn test_task_rng() {
-        let r = task_rng();
+        let mut r = task_rng();
         r.gen::<int>();
         assert!(r.shuffle(~[1, 1, 1]) == ~[1, 1, 1]);
         assert!(r.gen_uint_range(0u, 1u) == 0u);
@@ -1079,7 +1081,7 @@ mod tests {
                 let rt_rng = do vec::as_imm_buf(seed) |p, sz| {
                     rustrt::rand_new_seeded(p, sz as size_t)
                 };
-                let rng = IsaacRng::new_seeded(seed);
+                let mut rng = IsaacRng::new_seeded(seed);
 
                 for 10000.times {
                     assert_eq!(rng.next(), rustrt::rand_next(rt_rng));

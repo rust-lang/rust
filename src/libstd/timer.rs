@@ -219,7 +219,7 @@ mod test {
                 let hl_loop_clone = hl_loop.clone();
                 do task::spawn {
                     use core::rand::*;
-                    let rng = rng();
+                    let mut rng = rng();
                     for old_iter::repeat(times) {
                         sleep(&hl_loop_clone, rng.next() as uint % maxms);
                     }
@@ -276,7 +276,8 @@ mod test {
         let hl_loop = uv::global_loop::get();
 
         for old_iter::repeat(times as uint) {
-            let expected = rand::rng().gen_str(16u);
+            let mut rng = rand::rng();
+            let expected = rng.gen_str(16u);
             let (test_po, test_ch) = stream::<~str>();
             let hl_loop_clone = hl_loop.clone();
             do task::spawn() {

@@ -645,7 +645,7 @@ mod test {
 
         chan.send(10);
 
-        let bytes = copy chan.byte_chan.writer.bytes;
+        let bytes = copy *chan.byte_chan.writer.bytes;
 
         let reader = BufReader::new(bytes);
         let port = serial::reader_port(reader);
@@ -692,7 +692,7 @@ mod test {
 
         chan.send(10);
 
-        let bytes = copy chan.byte_chan.writer.bytes;
+        let bytes = copy *chan.byte_chan.writer.bytes;
 
         let reader = BufReader::new(bytes);
         let port = pod::reader_port(reader);

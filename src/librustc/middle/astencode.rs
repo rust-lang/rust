@@ -1237,7 +1237,7 @@ fn test_simplification() {
     let ext_cx = mk_ctxt();
     let item_in = ast::ii_item(quote_item!(
         fn new_int_alist<B:Copy>() -> alist<int, B> {
-            fn eq_int(&&a: int, &&b: int) -> bool { a == b }
+            fn eq_int(a: int, b: int) -> bool { a == b }
             return alist {eq_fn: eq_int, data: ~[]};
         }
     ).get());

@@ -473,10 +473,10 @@ mod tests {
         let k1 = 0x_0f_0e_0d_0c_0b_0a_09_08_u64;
         let mut buf : ~[u8] = ~[];
         let mut t = 0;
-        let stream_inc = &State(k0,k1);
-        let stream_full = &State(k0,k1);
+        let mut stream_inc = SipState::new(k0, k1);
+        let mut stream_full = SipState::new(k0, k1);
 
-        fn to_hex_str(r:  &[u8, ..8]) -> ~str {
+        fn to_hex_str(r: &[u8, ..8]) -> ~str {
             let mut s = ~"";
             for vec::each(*r) |b| {
                 s += uint::to_str_radix(*b as uint, 16u);

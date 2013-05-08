@@ -184,9 +184,9 @@ pub fn spawn<A:Owned>(blk: ~fn() -> A) -> Future<A> {
 #[allow(non_implicitly_copyable_typarams)]
 #[cfg(test)]
 mod test {
-
     use future::*;
 
+    use core::cell::Cell;
     use core::comm::{oneshot, send_one};
     use core::task;
 
@@ -239,8 +239,9 @@ mod test {
     #[test]
     fn test_sendable_future() {
         let expected = ~"schlorf";
-        let mut f = do spawn { copy expected };
-        do task::spawn || {
+        let f = Cell(do spawn { copy expected });
+        do task::spawn {
+            let mut f = f.take();
             let actual = f.get();
             assert!(actual == expected);
         }

@@ -596,9 +596,10 @@ mod test {
 
         c1.send(~"abc");
 
-        match (p1, p2).select() {
-          Right(_) => fail!(),
-          _ => ()
+        let mut tuple = (p1, p2);
+        match tuple.select() {
+            Right(_) => fail!(),
+            _ => (),
         }
 
         c2.send(123);
