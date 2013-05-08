@@ -424,7 +424,10 @@ pub unsafe fn strdup_uniq(ptr: *c_uchar, len: uint) -> ~str {
 pub fn start(main: *u8, argc: int, argv: **c_char,
              crate_map: *u8) -> int {
     use libc::getenv;
-    use rt::start;
+    use rt;
+    use sys::Closure;
+    use ptr;
+    use cast;
 
     unsafe {
         let use_old_rt = do str::as_c_str("RUST_NEWRT") |s| {
@@ -434,7 +437,19 @@ pub fn start(main: *u8, argc: int, argv: **c_char,
             return rust_start(main as *c_void, argc as c_int, argv,
                               crate_map as *c_void) as int;
         } else {
-            return start(main, argc, argv, crate_map);
+            return do rt::start(argc, argv, crate_map) {
+                unsafe {
+                    // `main` is an `fn() -> ()` that doesn't take an environment
+                    // XXX: Could also call this as an `extern "Rust" fn` once they work
+                    let main = Closure {
+                        code: main as *(),
+                        env: ptr::null(),
+                    };
+                    let mainfn: &fn() = cast::transmute(main);
+
+                    mainfn();
+                }
+            };
         }
     }
 
