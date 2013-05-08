@@ -868,9 +868,19 @@ impl Reader for *libc::FILE {
                 assert!(buf_len >= len);
 
                 let count = libc::fread(buf_p as *mut c_void, 1u as size_t,
-                                        len as size_t, *self);
+                                        len as size_t, *self) as uint;
+                if count < len {
+                  match libc::ferror(*self) {
+                    0 => (),
+                    _ => {
+                      error!("error reading buffer");
+                      error!("%s", os::last_os_error());
+                      fail!();
+                    }
+                  }
+                }
 
-                count as uint
+                count
             }
         }
     }
