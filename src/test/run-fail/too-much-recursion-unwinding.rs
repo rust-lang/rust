@@ -11,7 +11,7 @@
 // xfail-test leaks
 // error-pattern:ran out of stack
 
-// Test that the task fails after hiting the recursion limit
+// Test that the task fails after hitting the recursion limit
 // during unwinding
 
 fn recurse() {

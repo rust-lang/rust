@@ -31,7 +31,7 @@ use syntax::print::pprust::expr_to_str;
 use syntax::visit;
 
 // vtable resolution looks for places where trait bounds are
-// subsituted in and figures out which vtable is used. There is some
+// substituted in and figures out which vtable is used. There is some
 // extra complication thrown in to support early "opportunistic"
 // vtable resolution. This is a hacky mechanism that is invoked while
 // typechecking function calls (after typechecking non-closure
