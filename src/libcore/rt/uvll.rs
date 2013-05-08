@@ -98,7 +98,7 @@ pub enum uv_req_type {
 
 pub unsafe fn malloc_handle(handle: uv_handle_type) -> *c_void {
     assert!(handle != UV_UNKNOWN_HANDLE && handle != UV_HANDLE_TYPE_MAX);
-    let size = rust_uv_handle_size(handle as uint);
+    let size = uv_handle_size(handle as uint);
     let p = malloc(size);
     assert!(p.is_not_null());
     return p;
@@ -110,7 +110,7 @@ pub unsafe fn free_handle(v: *c_void) {
 
 pub unsafe fn malloc_req(req: uv_req_type) -> *c_void {
     assert!(req != UV_UNKNOWN_REQ && req != UV_REQ_TYPE_MAX);
-    let size = rust_uv_req_size(req as uint);
+    let size = uv_req_size(req as uint);
     let p = malloc(size);
     assert!(p.is_not_null());
     return p;
@@ -135,7 +135,7 @@ fn request_sanity_check() {
 }
 
 pub unsafe fn loop_new() -> *c_void {
-    return rust_uv_loop_new();
+    return uv_loop_new();
 }
 
 pub unsafe fn loop_delete(loop_handle: *c_void) {
@@ -147,11 +147,11 @@ pub unsafe fn run(loop_handle: *c_void) {
 }
 
 pub unsafe fn close<T>(handle: *T, cb: *u8) {
-    rust_uv_close(handle as *c_void, cb);
+    uv_close(handle as *c_void, cb);
 }
 
 pub unsafe fn walk(loop_handle: *c_void, cb: *u8, arg: *c_void) {
-    rust_uv_walk(loop_handle, cb, arg);
+    uv_walk(loop_handle, cb, arg);
 }
 
 pub unsafe fn idle_new() -> *uv_idle_t {
@@ -163,19 +163,19 @@ pub unsafe fn idle_delete(handle: *uv_idle_t) {
 }
 
 pub unsafe fn idle_init(loop_handle: *uv_loop_t, handle: *uv_idle_t) -> c_int {
-    rust_uv_idle_init(loop_handle, handle)
+    uv_idle_init(loop_handle, handle)
 }
 
 pub unsafe fn idle_start(handle: *uv_idle_t, cb: uv_idle_cb) -> c_int {
-    rust_uv_idle_start(handle, cb)
+    uv_idle_start(handle, cb)
 }
 
 pub unsafe fn idle_stop(handle: *uv_idle_t) -> c_int {
-    rust_uv_idle_stop(handle)
+    uv_idle_stop(handle)
 }
 
 pub unsafe fn tcp_init(loop_handle: *c_void, handle: *uv_tcp_t) -> c_int {
-    return rust_uv_tcp_init(loop_handle, handle);
+    return uv_tcp_init(loop_handle, handle);
 }
 
 // FIXME ref #2064
@@ -212,24 +212,24 @@ pub unsafe fn tcp_getpeername6(tcp_handle_ptr: *uv_tcp_t, name: *sockaddr_in6) -
 }
 
 pub unsafe fn listen<T>(stream: *T, backlog: c_int, cb: *u8) -> c_int {
-    return rust_uv_listen(stream as *c_void, backlog, cb);
+    return uv_listen(stream as *c_void, backlog, cb);
 }
 
 pub unsafe fn accept(server: *c_void, client: *c_void) -> c_int {
-    return rust_uv_accept(server as *c_void, client as *c_void);
+    return uv_accept(server as *c_void, client as *c_void);
 }
 
 pub unsafe fn write<T>(req: *uv_write_t, stream: *T, buf_in: &[uv_buf_t], cb: *u8) -> c_int {
     let buf_ptr = vec::raw::to_ptr(buf_in);
     let buf_cnt = vec::len(buf_in) as i32;
-    return rust_uv_write(req as *c_void, stream as *c_void, buf_ptr, buf_cnt, cb);
+    return uv_write(req as *c_void, stream as *c_void, buf_ptr, buf_cnt, cb);
 }
 pub unsafe fn read_start(stream: *uv_stream_t, on_alloc: *u8, on_read: *u8) -> c_int {
-    return rust_uv_read_start(stream as *c_void, on_alloc, on_read);
+    return uv_read_start(stream as *c_void, on_alloc, on_read);
 }
 
 pub unsafe fn read_stop(stream: *uv_stream_t) -> c_int {
-    return rust_uv_read_stop(stream as *c_void);
+    return uv_read_stop(stream as *c_void);
 }
 
 pub unsafe fn last_error(loop_handle: *c_void) -> uv_err_t {
@@ -244,11 +244,11 @@ pub unsafe fn err_name(err: *uv_err_t) -> *c_char {
 }
 
 pub unsafe fn async_init(loop_handle: *c_void, async_handle: *uv_async_t, cb: *u8) -> c_int {
-    return rust_uv_async_init(loop_handle, async_handle, cb);
+    return uv_async_init(loop_handle, async_handle, cb);
 }
 
 pub unsafe fn async_send(async_handle: *uv_async_t) {
-    return rust_uv_async_send(async_handle);
+    return uv_async_send(async_handle);
 }
 pub unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
     let out_buf = uv_buf_t { base: ptr::null(), len: 0 as size_t };
@@ -258,14 +258,14 @@ pub unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
 }
 
 pub unsafe fn timer_init(loop_ptr: *c_void, timer_ptr: *uv_timer_t) -> c_int {
-    return rust_uv_timer_init(loop_ptr, timer_ptr);
+    return uv_timer_init(loop_ptr, timer_ptr);
 }
 pub unsafe fn timer_start(timer_ptr: *uv_timer_t, cb: *u8, timeout: uint,
                           repeat: uint) -> c_int {
-    return rust_uv_timer_start(timer_ptr, cb, timeout as c_uint, repeat as c_uint);
+    return uv_timer_start(timer_ptr, cb, timeout as c_uint, repeat as c_uint);
 }
 pub unsafe fn timer_stop(timer_ptr: *uv_timer_t) -> c_int {
-    return rust_uv_timer_stop(timer_ptr);
+    return uv_timer_stop(timer_ptr);
 }
 
 pub unsafe fn malloc_ip4_addr(ip: &str, port: int) -> *sockaddr_in {
@@ -352,29 +352,29 @@ pub struct uv_err_data {
 
 extern {
 
-    fn rust_uv_handle_size(type_: uintptr_t) -> size_t;
-    fn rust_uv_req_size(type_: uintptr_t) -> size_t;
+    fn uv_handle_size(type_: uintptr_t) -> size_t;
+    fn uv_req_size(type_: uintptr_t) -> size_t;
     fn rust_uv_handle_type_max() -> uintptr_t;
     fn rust_uv_req_type_max() -> uintptr_t;
 
     // libuv public API
-    fn rust_uv_loop_new() -> *c_void;
+    fn uv_loop_new() -> *c_void;
     fn rust_uv_loop_delete(lp: *c_void);
     fn rust_uv_run(loop_handle: *c_void);
-    fn rust_uv_close(handle: *c_void, cb: *u8);
-    fn rust_uv_walk(loop_handle: *c_void, cb: *u8, arg: *c_void);
+    fn uv_close(handle: *c_void, cb: *u8);
+    fn uv_walk(loop_handle: *c_void, cb: *u8, arg: *c_void);
 
     fn rust_uv_idle_new() -> *uv_idle_t;
     fn rust_uv_idle_delete(handle: *uv_idle_t);
-    fn rust_uv_idle_init(loop_handle: *uv_loop_t, handle: *uv_idle_t) -> c_int;
-    fn rust_uv_idle_start(handle: *uv_idle_t, cb: uv_idle_cb) -> c_int;
-    fn rust_uv_idle_stop(handle: *uv_idle_t) -> c_int;
+    fn uv_idle_init(loop_handle: *uv_loop_t, handle: *uv_idle_t) -> c_int;
+    fn uv_idle_start(handle: *uv_idle_t, cb: uv_idle_cb) -> c_int;
+    fn uv_idle_stop(handle: *uv_idle_t) -> c_int;
 
-    fn rust_uv_async_send(handle: *uv_async_t);
-    fn rust_uv_async_init(loop_handle: *c_void,
+    fn uv_async_send(handle: *uv_async_t);
+    fn uv_async_init(loop_handle: *c_void,
                           async_handle: *uv_async_t,
                           cb: *u8) -> c_int;
-    fn rust_uv_tcp_init(loop_handle: *c_void, handle_ptr: *uv_tcp_t) -> c_int;
+    fn uv_tcp_init(loop_handle: *c_void, handle_ptr: *uv_tcp_t) -> c_int;
     // FIXME ref #2604 .. ?
     fn rust_uv_buf_init(out_buf: *uv_buf_t, base: *u8, len: size_t);
     fn rust_uv_last_error(loop_handle: *c_void) -> uv_err_t;
@@ -386,8 +386,6 @@ extern {
     fn rust_uv_ip6_addrp(ip: *u8, port: c_int) -> *sockaddr_in6;
     fn rust_uv_free_ip4_addr(addr: *sockaddr_in);
     fn rust_uv_free_ip6_addr(addr: *sockaddr_in6);
-    fn rust_uv_ip4_name(src: *sockaddr_in, dst: *u8, size: size_t) -> c_int;
-    fn rust_uv_ip6_name(src: *sockaddr_in6, dst: *u8, size: size_t) -> c_int;
     fn rust_uv_ip4_port(src: *sockaddr_in) -> c_uint;
     fn rust_uv_ip6_port(src: *sockaddr_in6) -> c_uint;
     // FIXME ref #2064
@@ -406,24 +404,24 @@ extern {
     fn rust_uv_tcp_bind6(tcp_server: *uv_tcp_t, ++addr: *sockaddr_in6) -> c_int;
     fn rust_uv_tcp_getpeername(tcp_handle_ptr: *uv_tcp_t, ++name: *sockaddr_in) -> c_int;
     fn rust_uv_tcp_getpeername6(tcp_handle_ptr: *uv_tcp_t, ++name: *sockaddr_in6) ->c_int;
-    fn rust_uv_listen(stream: *c_void, backlog: c_int, cb: *u8) -> c_int;
-    fn rust_uv_accept(server: *c_void, client: *c_void) -> c_int;
-    fn rust_uv_write(req: *c_void,
+    fn uv_listen(stream: *c_void, backlog: c_int, cb: *u8) -> c_int;
+    fn uv_accept(server: *c_void, client: *c_void) -> c_int;
+    fn uv_write(req: *c_void,
                      stream: *c_void,
                      ++buf_in: *uv_buf_t,
                      buf_cnt: c_int,
                      cb: *u8) -> c_int;
-    fn rust_uv_read_start(stream: *c_void,
+    fn uv_read_start(stream: *c_void,
                           on_alloc: *u8,
                           on_read: *u8) -> c_int;
-    fn rust_uv_read_stop(stream: *c_void) -> c_int;
-    fn rust_uv_timer_init(loop_handle: *c_void,
+    fn uv_read_stop(stream: *c_void) -> c_int;
+    fn uv_timer_init(loop_handle: *c_void,
                           timer_handle: *uv_timer_t) -> c_int;
-    fn rust_uv_timer_start(timer_handle: *uv_timer_t,
+    fn uv_timer_start(timer_handle: *uv_timer_t,
                            cb: *u8,
                            timeout: c_uint,
                            repeat: c_uint) -> c_int;
-    fn rust_uv_timer_stop(handle: *uv_timer_t) -> c_int;
+    fn uv_timer_stop(handle: *uv_timer_t) -> c_int;
 
     fn rust_uv_malloc_buf_base_of(sug_size: size_t) -> *u8;
     fn rust_uv_free_base_of_buf(++buf: uv_buf_t);
