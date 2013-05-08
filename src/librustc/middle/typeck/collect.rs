@@ -1178,8 +1178,6 @@ pub fn ty_generics(ccx: &CrateCtxt,
                         ~[ty::bound_copy]
                     } else if trait_ref.def_id == li.const_trait() {
                         ~[ty::bound_const]
-                    } else if trait_ref.def_id == li.durable_trait() {
-                        ~[ty::bound_durable]
                     } else {
                         // Must be a user-defined trait
                         ~[ty::bound_trait(trait_ref)]
