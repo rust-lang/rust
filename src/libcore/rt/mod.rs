@@ -131,9 +131,6 @@ pub mod tube;
 ///
 /// # Arguments
 ///
-/// * `main` - A C-abi function that takes no arguments and returns `c_void`.
-///   It is a wrapper around the user-defined `main` function, and will be run
-///   in a task.
 /// * `argc` & `argv` - The argument vector. On Unix this information is used
 ///   by os::args.
 /// * `crate_map` - Runtime information about the executing crate, mostly for logging
@@ -141,31 +138,14 @@ pub mod tube;
 /// # Return value
 ///
 /// The return value is used as the process return code. 0 on success, 101 on error.
-pub fn start(main: *u8, _argc: int, _argv: **c_char, _crate_map: *u8) -> int {
+pub fn start(_argc: int, _argv: **c_char, _crate_map: *u8, main: ~fn()) -> int {
 
     use self::sched::{Scheduler, Task};
     use self::uv::uvio::UvEventLoop;
-    use sys::Closure;
-    use ptr;
-    use cast;
 
     let loop_ = ~UvEventLoop::new();
     let mut sched = ~Scheduler::new(loop_);
-
-    let main_task = ~do Task::new(&mut sched.stack_pool) {
-
-        unsafe {
-            // `main` is an `fn() -> ()` that doesn't take an environment
-            // XXX: Could also call this as an `extern "Rust" fn` once they work
-            let main = Closure {
-                code: main as *(),
-                env: ptr::null(),
-            };
-            let mainfn: &fn() = cast::transmute(main);
-
-            mainfn();
-        }
-    };
+    let main_task = ~Task::new(&mut sched.stack_pool, main);
 
     sched.task_queue.push_back(main_task);
     sched.run();
