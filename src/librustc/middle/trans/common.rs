@@ -984,6 +984,12 @@ pub fn T_array(t: TypeRef, n: uint) -> TypeRef {
     }
 }
 
+pub fn T_vector(t: TypeRef, n: uint) -> TypeRef {
+    unsafe {
+        return llvm::LLVMVectorType(t, n as c_uint);
+    }
+}
+
 // Interior vector.
 pub fn T_vec2(targ_cfg: @session::config, t: TypeRef) -> TypeRef {
     return T_struct(~[T_int(targ_cfg), // fill
