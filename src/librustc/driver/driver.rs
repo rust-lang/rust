@@ -225,6 +225,9 @@ pub fn compile_rest(sess: Session,
         time(time_passes, ~"resolution", ||
              middle::resolve::resolve_crate(sess, lang_items, crate));
 
+    time(time_passes, ~"looking for entry point",
+         || middle::entry::find_entry_point(sess, crate, ast_map));
+
     let freevars = time(time_passes, ~"freevar finding", ||
         freevars::annotate_freevars(def_map, crate));
 

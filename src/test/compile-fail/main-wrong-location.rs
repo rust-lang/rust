@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-}
-
-mod foo {
-    fn main() { //~ ERROR multiple 'main' functions
-    }
+mod m {
+    // An inferred main entry point (that doesn't use #[main])
+    // must appear at the top of the crate
+    fn main() { } //~ NOTE here is a function named 'main'
 }
