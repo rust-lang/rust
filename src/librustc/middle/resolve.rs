@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use driver::session;
 use driver::session::Session;
 use metadata::csearch::{each_path, get_trait_method_def_ids};
 use metadata::csearch::get_method_name_and_self_ty;
@@ -794,11 +793,6 @@ pub fn Resolver(session: Session,
 
         namespaces: ~[ TypeNS, ValueNS ],
 
-        attr_main_fn: None,
-        main_fns: ~[],
-
-        start_fn: None,
-
         def_map: @mut HashMap::new(),
         export_map2: @mut HashMap::new(),
         trait_map: HashMap::new(),
@@ -856,15 +850,6 @@ pub struct Resolver {
     // The four namespaces.
     namespaces: ~[Namespace],
 
-    // The function that has attribute named 'main'
-    attr_main_fn: Option<(node_id, span)>,
-
-    // The functions that could be main functions
-    main_fns: ~[Option<(node_id, span)>],
-
-    // The function that has the attribute 'start' on it
-    start_fn: Option<(node_id, span)>,
-
     def_map: DefMap,
     export_map2: ExportMap2,
     trait_map: TraitMap,
@@ -885,7 +870,6 @@ pub impl Resolver {
         self.resolve_crate();
         self.session.abort_if_errors();
 
-        self.check_duplicate_main();
         self.check_for_unused_imports_if_necessary();
     }
 
@@ -3544,40 +3528,6 @@ pub impl Resolver {
             }
 
             item_fn(ref fn_decl, _, _, ref generics, ref block) => {
-                // If this is the main function, we must record it in the
-                // session.
-
-                // FIXME #4404 android JNI hacks
-                if !*self.session.building_library ||
-                    self.session.targ_cfg.os == session::os_android {
-
-                    if self.attr_main_fn.is_none() &&
-                           item.ident == special_idents::main {
-
-                        self.main_fns.push(Some((item.id, item.span)));
-                    }
-
-                    if attrs_contains_name(item.attrs, ~"main") {
-                        if self.attr_main_fn.is_none() {
-                            self.attr_main_fn = Some((item.id, item.span));
-                        } else {
-                            self.session.span_err(
-                                    item.span,
-                                    ~"multiple 'main' functions");
-                        }
-                    }
-
-                    if attrs_contains_name(item.attrs, ~"start") {
-                        if self.start_fn.is_none() {
-                            self.start_fn = Some((item.id, item.span));
-                        } else {
-                            self.session.span_err(
-                                    item.span,
-                                    ~"multiple 'start' functions");
-                        }
-                    }
-                }
-
                 self.resolve_function(OpaqueFunctionRibKind,
                                       Some(fn_decl),
                                       HasTypeParameters
@@ -5086,35 +5036,6 @@ pub impl Resolver {
                     fmt!("cannot use `ref` binding mode with %s",
                          descr));
             }
-        }
-    }
-
-    //
-    // main function checking
-    //
-    // be sure that there is only one main function
-    //
-    fn check_duplicate_main(@mut self) {
-        let this = &mut *self;
-        if this.attr_main_fn.is_none() && this.start_fn.is_none() {
-            if this.main_fns.len() >= 1u {
-                let mut i = 1u;
-                while i < this.main_fns.len() {
-                    let (_, dup_main_span) = this.main_fns[i].unwrap();
-                    this.session.span_err(
-                        dup_main_span,
-                        ~"multiple 'main' functions");
-                    i += 1;
-                }
-                *this.session.entry_fn = this.main_fns[0];
-                *this.session.entry_type = Some(session::EntryMain);
-            }
-        } else if !this.start_fn.is_none() {
-            *this.session.entry_fn = this.start_fn;
-            *this.session.entry_type = Some(session::EntryStart);
-        } else {
-            *this.session.entry_fn = this.attr_main_fn;
-            *this.session.entry_type = Some(session::EntryMain);
         }
     }
 
