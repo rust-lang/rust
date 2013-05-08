@@ -1740,7 +1740,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
             true
           }
           ty_enum(did, ref substs) => {
-            for vec::each(*enum_variants(cx, did)) |v| {
+            for (*enum_variants(cx, did)).each |v| {
                 for v.args.each |aty| {
                     let t = subst(cx, substs, *aty);
                     needs_unwind_cleanup |=
@@ -2335,7 +2335,7 @@ pub fn type_structurally_contains(cx: ctxt,
     if test(sty) { return true; }
     match *sty {
       ty_enum(did, ref substs) => {
-        for vec::each(*enum_variants(cx, did)) |variant| {
+        for (*enum_variants(cx, did)).each |variant| {
             for variant.args.each |aty| {
                 let sty = subst(cx, substs, *aty);
                 if type_structurally_contains(cx, sty, test) { return true; }
@@ -2431,7 +2431,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       // Structural types
       ty_enum(did, ref substs) => {
         let variants = enum_variants(cx, did);
-        for vec::each(*variants) |variant| {
+        for (*variants).each |variant| {
             let tup_ty = mk_tup(cx, /*bad*/copy variant.args);
 
             // Perform any type parameter substitutions.
