@@ -548,11 +548,9 @@ pub impl Datum {
     }
 
     fn to_rptr(&self, bcx: block) -> Datum {
-        //!
-        //
-        // Returns a new datum of region-pointer type containing the
-        // the same ptr as this datum (after converting to by-ref
-        // using `to_ref_llval()`).
+        //! Returns a new datum of region-pointer type containing the
+        //! the same ptr as this datum (after converting to by-ref
+        //! using `to_ref_llval()`).
 
         // Convert to ref, yielding lltype *T.  Then create a Rust
         // type &'static T (which translates to *T).  Construct new
