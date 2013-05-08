@@ -15,26 +15,27 @@ use ext::base::ext_ctxt;
 use ext::build;
 use ext::deriving::generic::*;
 
-use core::option::Some;
-
 pub fn expand_deriving_totaleq(cx: @ext_ctxt,
                           span: span,
                           mitem: @meta_item,
                           in_items: ~[@item]) -> ~[@item] {
 
     fn cs_equals(cx: @ext_ctxt, span: span, substr: &Substructure) -> @expr {
-        cs_and(|cx, span, _| build::mk_bool(cx, span, false),
+        cs_and(|cx, span, _, _| build::mk_bool(cx, span, false),
                cx, span, substr)
     }
 
     let trait_def = TraitDef {
-        path: ~[~"core", ~"cmp", ~"TotalEq"],
+        path: Path::new(~[~"core", ~"cmp", ~"TotalEq"]),
         additional_bounds: ~[],
+        generics: LifetimeBounds::empty(),
         methods: ~[
             MethodDef {
                 name: ~"equals",
-                output_type: Some(~[~"bool"]),
-                nargs: 1,
+                generics: LifetimeBounds::empty(),
+                self_ty: borrowed_explicit_self(),
+                args: ~[borrowed_self()],
+                ret_ty: Literal(Path::new(~[~"bool"])),
                 const_nonmatching: true,
                 combine_substructure: cs_equals
             }

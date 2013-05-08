@@ -54,43 +54,52 @@ pub fn mk_binary(cx: @ext_ctxt, sp: span, op: ast::binop,
     cx.next_id(); // see ast_util::op_expr_callee_id
     mk_expr(cx, sp, ast::expr_binary(op, lhs, rhs))
 }
+
+pub fn mk_deref(cx: @ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
+    mk_unary(cx, sp, ast::deref, e)
+}
 pub fn mk_unary(cx: @ext_ctxt, sp: span, op: ast::unop, e: @ast::expr)
              -> @ast::expr {
     cx.next_id(); // see ast_util::op_expr_callee_id
     mk_expr(cx, sp, ast::expr_unary(op, e))
 }
 pub fn mk_raw_path(sp: span, idents: ~[ast::ident]) -> @ast::Path {
-    mk_raw_path_(sp, idents, ~[])
+    mk_raw_path_(sp, idents, None, ~[])
 }
 pub fn mk_raw_path_(sp: span,
                     idents: ~[ast::ident],
+                    rp: Option<@ast::Lifetime>,
                     types: ~[@ast::Ty])
                  -> @ast::Path {
     @ast::Path { span: sp,
                  global: false,
                  idents: idents,
-                 rp: None,
+                 rp: rp,
                  types: types }
 }
 pub fn mk_raw_path_global(sp: span, idents: ~[ast::ident]) -> @ast::Path {
-    mk_raw_path_global_(sp, idents, ~[])
+    mk_raw_path_global_(sp, idents, None, ~[])
 }
 pub fn mk_raw_path_global_(sp: span,
                            idents: ~[ast::ident],
+                           rp: Option<@ast::Lifetime>,
                            types: ~[@ast::Ty]) -> @ast::Path {
     @ast::Path { span: sp,
                  global: true,
                  idents: idents,
-                 rp: None,
+                 rp: rp,
                  types: types }
+}
+pub fn mk_path_raw(cx: @ext_ctxt, sp: span, path: @ast::Path)-> @ast::expr {
+    mk_expr(cx, sp, ast::expr_path(path))
 }
 pub fn mk_path(cx: @ext_ctxt, sp: span, idents: ~[ast::ident])
             -> @ast::expr {
-    mk_expr(cx, sp, ast::expr_path(mk_raw_path(sp, idents)))
+    mk_path_raw(cx, sp, mk_raw_path(sp, idents))
 }
 pub fn mk_path_global(cx: @ext_ctxt, sp: span, idents: ~[ast::ident])
                    -> @ast::expr {
-    mk_expr(cx, sp, ast::expr_path(mk_raw_path_global(sp, idents)))
+    mk_path_raw(cx, sp, mk_raw_path_global(sp, idents))
 }
 pub fn mk_access_(cx: @ext_ctxt, sp: span, p: @ast::expr, m: ast::ident)
                -> @ast::expr {
@@ -354,44 +363,69 @@ pub fn mk_stmt(cx: @ext_ctxt, span: span, expr: @ast::expr) -> @ast::stmt {
     let stmt_ = ast::stmt_semi(expr, cx.next_id());
     @codemap::spanned { node: stmt_, span: span }
 }
+
+pub fn mk_ty_mt(ty: @ast::Ty, mutbl: ast::mutability) -> ast::mt {
+    ast::mt {
+        ty: ty,
+        mutbl: mutbl
+    }
+}
+
+pub fn mk_ty(cx: @ext_ctxt,
+             span: span,
+             ty: ast::ty_) -> @ast::Ty {
+    @ast::Ty {
+        id: cx.next_id(),
+        span: span,
+        node: ty
+    }
+}
+
 pub fn mk_ty_path(cx: @ext_ctxt,
                   span: span,
                   idents: ~[ ast::ident ])
                -> @ast::Ty {
     let ty = build::mk_raw_path(span, idents);
-    let ty = ast::ty_path(ty, cx.next_id());
-    let ty = @ast::Ty { id: cx.next_id(), node: ty, span: span };
-    ty
+    mk_ty_path_path(cx, span, ty)
 }
+
 pub fn mk_ty_path_global(cx: @ext_ctxt,
                          span: span,
                          idents: ~[ ast::ident ])
                       -> @ast::Ty {
     let ty = build::mk_raw_path_global(span, idents);
-    let ty = ast::ty_path(ty, cx.next_id());
-    let ty = @ast::Ty { id: cx.next_id(), node: ty, span: span };
-    ty
+    mk_ty_path_path(cx, span, ty)
 }
+
+pub fn mk_ty_path_path(cx: @ext_ctxt,
+                       span: span,
+                       path: @ast::Path)
+                      -> @ast::Ty {
+    let ty = ast::ty_path(path, cx.next_id());
+    mk_ty(cx, span, ty)
+}
+
 pub fn mk_ty_rptr(cx: @ext_ctxt,
                   span: span,
                   ty: @ast::Ty,
+                  lifetime: Option<@ast::Lifetime>,
                   mutbl: ast::mutability)
                -> @ast::Ty {
-    @ast::Ty {
-        id: cx.next_id(),
-        span: span,
-        node: ast::ty_rptr(
-            None,
-            ast::mt { ty: ty, mutbl: mutbl }
-        ),
-    }
+    mk_ty(cx, span,
+          ast::ty_rptr(lifetime, mk_ty_mt(ty, mutbl)))
 }
+pub fn mk_ty_uniq(cx: @ext_ctxt, span: span, ty: @ast::Ty) -> @ast::Ty {
+    mk_ty(cx, span, ast::ty_uniq(mk_ty_mt(ty, ast::m_imm)))
+}
+pub fn mk_ty_box(cx: @ext_ctxt, span: span,
+                 ty: @ast::Ty, mutbl: ast::mutability) -> @ast::Ty {
+    mk_ty(cx, span, ast::ty_box(mk_ty_mt(ty, mutbl)))
+}
+
+
+
 pub fn mk_ty_infer(cx: @ext_ctxt, span: span) -> @ast::Ty {
-    @ast::Ty {
-        id: cx.next_id(),
-        node: ast::ty_infer,
-        span: span,
-    }
+    mk_ty(cx, span, ast::ty_infer)
 }
 pub fn mk_trait_ref_global(cx: @ext_ctxt,
                            span: span,
