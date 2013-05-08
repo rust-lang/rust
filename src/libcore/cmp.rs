@@ -73,6 +73,13 @@ pub trait ApproxEq<Eps> {
     fn approx_eq_eps(&self, other: &Self, approx_epsilon: &Eps) -> bool;
 }
 
+/// Trait for testing relatively equality
+pub trait RelativeEq<Eps> {
+    fn relative_epsilon() -> Eps;
+    fn relative_eq(&self, other: &Self) -> bool;
+    fn relative_eq_eps(&self, other: &Self, relative_epsilon: &Eps) -> bool;
+}
+
 #[deriving(Clone, Eq)]
 pub enum Ordering { Less = -1, Equal = 0, Greater = 1 }
 

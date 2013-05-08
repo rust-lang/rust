@@ -28,7 +28,8 @@ pub use io::{print, println};
 /* Reexported types and traits */
 
 pub use clone::Clone;
-pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
+pub use cmp::{Eq, ApproxEq, RelativeEq, Ord, TotalEq, TotalOrd, Ordering};
+pub use cmp::{Less, Equal, Greater, Equiv};
 pub use container::{Container, Mutable, Map, Set};
 pub use hash::Hash;
 pub use old_iter::{BaseIter, ReverseIter, MutableIter, ExtendedIter, EqIter};
