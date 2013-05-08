@@ -34,56 +34,55 @@ pub enum LangItem {
     ConstTraitLangItem,         // 0
     CopyTraitLangItem,          // 1
     OwnedTraitLangItem,         // 2
-    DurableTraitLangItem,       // 3
 
-    DropTraitLangItem,          // 4
+    DropTraitLangItem,          // 3
 
-    AddTraitLangItem,           // 5
-    SubTraitLangItem,           // 6
-    MulTraitLangItem,           // 7
-    DivTraitLangItem,           // 8
-    RemTraitLangItem,           // 9
-    NegTraitLangItem,           // 10
-    NotTraitLangItem,           // 11
-    BitXorTraitLangItem,        // 12
-    BitAndTraitLangItem,        // 13
-    BitOrTraitLangItem,         // 14
-    ShlTraitLangItem,           // 15
-    ShrTraitLangItem,           // 16
-    IndexTraitLangItem,         // 17
+    AddTraitLangItem,           // 4
+    SubTraitLangItem,           // 5
+    MulTraitLangItem,           // 6
+    DivTraitLangItem,           // 7
+    RemTraitLangItem,           // 8
+    NegTraitLangItem,           // 9
+    NotTraitLangItem,           // 10
+    BitXorTraitLangItem,        // 11
+    BitAndTraitLangItem,        // 12
+    BitOrTraitLangItem,         // 13
+    ShlTraitLangItem,           // 14
+    ShrTraitLangItem,           // 15
+    IndexTraitLangItem,         // 16
 
-    EqTraitLangItem,            // 18
-    OrdTraitLangItem,           // 19
+    EqTraitLangItem,            // 17
+    OrdTraitLangItem,           // 18
 
-    StrEqFnLangItem,            // 20
-    UniqStrEqFnLangItem,        // 21
-    AnnihilateFnLangItem,       // 22
-    LogTypeFnLangItem,          // 23
-    FailFnLangItem,             // 24
-    FailBoundsCheckFnLangItem,  // 25
-    ExchangeMallocFnLangItem,   // 26
-    ExchangeFreeFnLangItem,     // 27
-    MallocFnLangItem,           // 28
-    FreeFnLangItem,             // 29
-    BorrowAsImmFnLangItem,      // 30
-    BorrowAsMutFnLangItem,      // 31
-    ReturnToMutFnLangItem,      // 32
-    CheckNotBorrowedFnLangItem, // 33
-    StrDupUniqFnLangItem,       // 34
-    RecordBorrowFnLangItem,     // 35
-    UnrecordBorrowFnLangItem,   // 36
+    StrEqFnLangItem,            // 19
+    UniqStrEqFnLangItem,        // 20
+    AnnihilateFnLangItem,       // 21
+    LogTypeFnLangItem,          // 22
+    FailFnLangItem,             // 23
+    FailBoundsCheckFnLangItem,  // 24
+    ExchangeMallocFnLangItem,   // 25
+    ExchangeFreeFnLangItem,     // 26
+    MallocFnLangItem,           // 27
+    FreeFnLangItem,             // 28
+    BorrowAsImmFnLangItem,      // 29
+    BorrowAsMutFnLangItem,      // 30
+    ReturnToMutFnLangItem,      // 31
+    CheckNotBorrowedFnLangItem, // 32
+    StrDupUniqFnLangItem,       // 33
+    RecordBorrowFnLangItem,     // 34
+    UnrecordBorrowFnLangItem,   // 35
 
-    StartFnLangItem,            // 37
+    StartFnLangItem,            // 36
 }
 
 pub struct LanguageItems {
-    items: [Option<def_id>, ..38]
+    items: [Option<def_id>, ..37]
 }
 
 pub impl LanguageItems {
     pub fn new() -> LanguageItems {
         LanguageItems {
-            items: [ None, ..38 ]
+            items: [ None, ..37 ]
         }
     }
 
@@ -100,45 +99,44 @@ pub impl LanguageItems {
             0  => "const",
             1  => "copy",
             2  => "owned",
-            3  => "durable",
 
-            4  => "drop",
+            3  => "drop",
 
-            5  => "add",
-            6  => "sub",
-            7  => "mul",
-            8  => "div",
-            9  => "rem",
-            10 => "neg",
-            11 => "not",
-            12 => "bitxor",
-            13 => "bitand",
-            14 => "bitor",
-            15 => "shl",
-            16 => "shr",
-            17 => "index",
-            18 => "eq",
-            19 => "ord",
+            4  => "add",
+            5  => "sub",
+            6  => "mul",
+            7  => "div",
+            8  => "rem",
+            9 => "neg",
+            10 => "not",
+            11 => "bitxor",
+            12 => "bitand",
+            13 => "bitor",
+            14 => "shl",
+            15 => "shr",
+            16 => "index",
+            17 => "eq",
+            18 => "ord",
 
-            20 => "str_eq",
-            21 => "uniq_str_eq",
-            22 => "annihilate",
-            23 => "log_type",
-            24 => "fail_",
-            25 => "fail_bounds_check",
-            26 => "exchange_malloc",
-            27 => "exchange_free",
-            28 => "malloc",
-            29 => "free",
-            30 => "borrow_as_imm",
-            31 => "borrow_as_mut",
-            32 => "return_to_mut",
-            33 => "check_not_borrowed",
-            34 => "strdup_uniq",
-            35 => "record_borrow",
-            36 => "unrecord_borrow",
+            19 => "str_eq",
+            20 => "uniq_str_eq",
+            21 => "annihilate",
+            22 => "log_type",
+            23 => "fail_",
+            24 => "fail_bounds_check",
+            25 => "exchange_malloc",
+            26 => "exchange_free",
+            27 => "malloc",
+            28 => "free",
+            29 => "borrow_as_imm",
+            30 => "borrow_as_mut",
+            31 => "return_to_mut",
+            32 => "check_not_borrowed",
+            33 => "strdup_uniq",
+            34 => "record_borrow",
+            35 => "unrecord_borrow",
 
-            37 => "start",
+            36 => "start",
 
             _ => "???"
         }
@@ -154,9 +152,6 @@ pub impl LanguageItems {
     }
     pub fn owned_trait(&const self) -> def_id {
         self.items[OwnedTraitLangItem as uint].get()
-    }
-    pub fn durable_trait(&const self) -> def_id {
-        self.items[DurableTraitLangItem as uint].get()
     }
 
     pub fn drop_trait(&const self) -> def_id {
@@ -274,7 +269,6 @@ fn LanguageItemCollector(crate: @crate,
     item_refs.insert(@~"const", ConstTraitLangItem as uint);
     item_refs.insert(@~"copy", CopyTraitLangItem as uint);
     item_refs.insert(@~"owned", OwnedTraitLangItem as uint);
-    item_refs.insert(@~"durable", DurableTraitLangItem as uint);
 
     item_refs.insert(@~"drop", DropTraitLangItem as uint);
 
