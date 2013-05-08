@@ -257,25 +257,6 @@ rust_kernel::generate_task_id() {
     return id;
 }
 
-#ifdef __WIN32__
-void
-rust_kernel::win32_require(LPCTSTR fn, BOOL ok) {
-    if (!ok) {
-        LPTSTR buf;
-        DWORD err = GetLastError();
-        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
-                      FORMAT_MESSAGE_FROM_SYSTEM |
-                      FORMAT_MESSAGE_IGNORE_INSERTS,
-                      NULL, err,
-                      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                      (LPTSTR) &buf, 0, NULL );
-        KLOG_ERR_(dom, "%s failed with error %ld: %s", fn, err, buf);
-        LocalFree((HLOCAL)buf);
-        assert(ok);
-    }
-}
-#endif
-
 void
 rust_kernel::set_exit_status(int code) {
     scoped_lock with(rval_lock);
