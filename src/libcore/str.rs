@@ -189,7 +189,7 @@ pub fn from_char(ch: char) -> ~str {
 pub fn from_chars(chs: &[char]) -> ~str {
     let mut buf = ~"";
     reserve(&mut buf, chs.len());
-    for vec::each(chs) |ch| {
+    for chs.each |ch| {
         push_char(&mut buf, *ch);
     }
     buf
@@ -326,7 +326,7 @@ pub fn connect_slices(v: &[&str], sep: &str) -> ~str {
             do as_buf(sep) |sepbuf, seplen| {
                 let seplen = seplen - 1;
                 let mut buf = ::cast::transmute_mut_unsafe(buf);
-                for vec::each(v) |ss| {
+                for v.each |ss| {
                     do as_buf(*ss) |ssbuf, sslen| {
                         let sslen = sslen - 1;
                         if first {
@@ -2407,7 +2407,7 @@ pub mod raw {
     unsafe fn push_bytes(s: &mut ~str, bytes: &[u8]) {
         let new_len = s.len() + bytes.len();
         reserve_at_least(&mut *s, new_len);
-        for vec::each(bytes) |byte| { push_byte(&mut *s, *byte); }
+        for bytes.each |byte| { push_byte(&mut *s, *byte); }
     }
 
     /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
@@ -3782,7 +3782,7 @@ mod tests {
                0xd801_u16, 0xdc95_u16, 0xd801_u16, 0xdc86_u16,
                0x000a_u16 ]) ];
 
-        for vec::each(pairs) |p| {
+        for pairs.each |p| {
             let (s, u) = copy *p;
             assert!(to_utf16(s) == u);
             assert!(from_utf16(u) == s);

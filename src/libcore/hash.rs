@@ -378,7 +378,7 @@ impl Streaming for SipState {
     fn result_str(&mut self) -> ~str {
         let r = self.result_bytes();
         let mut s = ~"";
-        for vec::each(r) |b| {
+        for r.each |b| {
             s += uint::to_str_radix(*b as uint, 16u);
         }
         s
@@ -478,7 +478,7 @@ mod tests {
 
         fn to_hex_str(r: &[u8, ..8]) -> ~str {
             let mut s = ~"";
-            for vec::each(*r) |b| {
+            for (*r).each |b| {
                 s += uint::to_str_radix(*b as uint, 16u);
             }
             s
