@@ -351,6 +351,7 @@ mod test {
     use codemap::{span, BytePos, spanned};
     use opt_vec;
     use ast;
+    use ast_util::new_ident;
     use abi;
     use parse::parser::Parser;
     use parse::token::intern;
@@ -377,9 +378,14 @@ mod test {
         span{lo:BytePos(a),hi:BytePos(b),expn_info:None}
     }
 
+    // compose new_ident and intern:
+    fn intern_ident(str : &str) -> ast::ident {
+        new_ident(intern(str))
+    }
+
     // convert a vector of uints to a vector of ast::idents
     fn ints_to_idents(ids: ~[~str]) -> ~[ast::ident] {
-        ids.map(|u| intern(*u))
+        ids.map(|u| intern_ident(*u))
     }
 
     #[test] fn path_exprs_1 () {
@@ -387,7 +393,7 @@ mod test {
                    @ast::expr{id:1,
                               node:ast::expr_path(@ast::Path {span:sp(0,1),
                                                               global:false,
-                                                              idents:~[intern("a")],
+                                                              idents:~[intern_ident("a")],
                                                               rp:None,
                                                               types:~[]}),
                               span:sp(0,1)})
@@ -449,7 +455,7 @@ mod test {
                                                   node:ast::expr_path(
                                                       @ast::Path{span:sp(7,8),
                                                                  global:false,
-                                                                 idents:~[intern("d")],
+                                                                 idents:~[intern_ident("d")],
                                                                  rp:None,
                                                                  types:~[]
                                                                 }),
@@ -466,7 +472,7 @@ mod test {
                                @ast::Path{
                                    span:sp(0,1),
                                    global:false,
-                                   idents:~[intern("b")],
+                                   idents:~[intern_ident("b")],
                                    rp:None,
                                    types: ~[]}),
                            span: sp(0,1)},
@@ -487,7 +493,7 @@ mod test {
                                                   @ast::Path{
                                                       span:sp(0,1),
                                                       global:false,
-                                                      idents:~[intern("b")],
+                                                      idents:~[intern_ident("b")],
                                                       rp: None,
                                                       types: ~[]},
                                                   None // no idea
@@ -506,7 +512,7 @@ mod test {
                                         span:sp(4,4), // this is bizarre...
                                         // check this in the original parser?
                                         global:false,
-                                        idents:~[intern("int")],
+                                        idents:~[intern_ident("int")],
                                         rp: None,
                                         types: ~[]},
                                                        2),
@@ -516,7 +522,7 @@ mod test {
                                                            @ast::Path{
                                                                span:sp(0,1),
                                                                global:false,
-                                                               idents:~[intern("b")],
+                                                               idents:~[intern_ident("b")],
                                                                rp: None,
                                                                types: ~[]},
                                                            None // no idea
@@ -532,7 +538,7 @@ mod test {
         // assignment order of the node_ids.
         assert_eq!(string_to_item(@~"fn a (b : int) { b; }"),
                   Some(
-                      @ast::item{ident:intern("a"),
+                      @ast::item{ident:intern_ident("a"),
                             attrs:~[],
                             id: 9, // fixme
                             node: ast::item_fn(ast::fn_decl{
@@ -542,7 +548,7 @@ mod test {
                                                 node: ast::ty_path(@ast::Path{
                                         span:sp(10,13),
                                         global:false,
-                                        idents:~[intern("int")],
+                                        idents:~[intern_ident("int")],
                                         rp: None,
                                         types: ~[]},
                                                        2),
@@ -553,7 +559,7 @@ mod test {
                                                        @ast::Path{
                                                            span:sp(6,7),
                                                            global:false,
-                                                           idents:~[intern("b")],
+                                                           idents:~[intern_ident("b")],
                                                            rp: None,
                                                            types: ~[]},
                                                        None // no idea
@@ -583,7 +589,7 @@ mod test {
                                                         @ast::Path{
                                                             span:sp(17,18),
                                                             global:false,
-                                                            idents:~[intern("b")],
+                                                            idents:~[intern_ident("b")],
                                                             rp:None,
                                                             types: ~[]}),
                                                     span: sp(17,18)},
