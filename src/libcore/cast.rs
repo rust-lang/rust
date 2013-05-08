@@ -110,6 +110,12 @@ pub unsafe fn copy_lifetime<'a,S,T>(_ptr: &'a S, ptr: &T) -> &'a T {
 
 /// Transforms lifetime of the second pointer to match the first.
 #[inline(always)]
+pub unsafe fn copy_mut_lifetime<'a,S,T>(_ptr: &'a mut S, ptr: &mut T) -> &'a mut T {
+    transmute_mut_region(ptr)
+}
+
+/// Transforms lifetime of the second pointer to match the first.
+#[inline(always)]
 pub unsafe fn copy_lifetime_vec<'a,S,T>(_ptr: &'a [S], ptr: &T) -> &'a T {
     transmute_region(ptr)
 }

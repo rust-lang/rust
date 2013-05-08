@@ -157,7 +157,7 @@ pub struct Unique<T> {
     priv ptr: *mut T
 }
 
-pub impl<'self, T: Owned> Unique<T> {
+pub impl<T: Owned> Unique<T> {
     fn new(value: T) -> Unique<T> {
         unsafe {
             let ptr = malloc(core::sys::size_of::<T>() as size_t) as *mut T;
@@ -168,14 +168,14 @@ pub impl<'self, T: Owned> Unique<T> {
         }
     }
 
-    // the 'self lifetime results in the same semantics as `&*x` with ~T
-    fn borrow(&self) -> &'self T {
-        unsafe { cast::transmute(self.ptr) }
+    // the 'r lifetime results in the same semantics as `&*x` with ~T
+    fn borrow<'r>(&'r self) -> &'r T {
+        unsafe { cast::copy_lifetime(self, &*self.ptr) }
     }
 
-    // the 'self lifetime results in the same semantics as `&mut *x` with ~T
-    fn borrow_mut(&mut self) -> &'self mut T {
-        unsafe { cast::transmute(self.ptr) }
+    // the 'r lifetime results in the same semantics as `&mut *x` with ~T
+    fn borrow_mut<'r>(&'r mut self) -> &'r mut T {
+        unsafe { cast::copy_mut_lifetime(self, &mut *self.ptr) }
     }
 }
 

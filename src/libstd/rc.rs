@@ -29,7 +29,7 @@ pub struct Rc<T> {
     priv ptr: *mut RcBox<T>,
 }
 
-pub impl<'self, T: Owned> Rc<T> {
+pub impl<T: Owned> Rc<T> {
     fn new(value: T) -> Rc<T> {
         unsafe {
             let ptr = malloc(sys::size_of::<RcBox<T>>() as size_t) as *mut RcBox<T>;
@@ -40,8 +40,8 @@ pub impl<'self, T: Owned> Rc<T> {
     }
 
     #[inline(always)]
-    fn borrow(&self) -> &'self T {
-        unsafe { cast::transmute_region(&(*self.ptr).value) }
+    fn borrow<'r>(&'r self) -> &'r T {
+        unsafe { cast::copy_lifetime(self, &(*self.ptr).value) }
     }
 }
 
@@ -119,7 +119,7 @@ pub struct RcMut<T> {
     priv ptr: *mut RcMutBox<T>,
 }
 
-pub impl<'self, T: Owned> RcMut<T> {
+pub impl<T: Owned> RcMut<T> {
     fn new(value: T) -> RcMut<T> {
         unsafe {
             let ptr = malloc(sys::size_of::<RcMutBox<T>>() as size_t) as *mut RcMutBox<T>;
@@ -136,7 +136,7 @@ pub impl<'self, T: Owned> RcMut<T> {
             assert!((*self.ptr).borrow != Mutable);
             let previous = (*self.ptr).borrow;
             (*self.ptr).borrow = Immutable;
-            f(cast::transmute_region(&(*self.ptr).value));
+            f(&(*self.ptr).value);
             (*self.ptr).borrow = previous;
         }
     }
@@ -147,7 +147,7 @@ pub impl<'self, T: Owned> RcMut<T> {
         unsafe {
             assert!((*self.ptr).borrow == Nothing);
             (*self.ptr).borrow = Mutable;
-            f(cast::transmute_mut_region(&mut (*self.ptr).value));
+            f(&mut (*self.ptr).value);
             (*self.ptr).borrow = Nothing;
         }
     }
