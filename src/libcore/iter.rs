@@ -17,8 +17,7 @@ breaking out of iteration. The adaptors in the module work with any such iterato
 tied to specific traits. For example:
 
 ~~~~
-use core::iter::iter_to_vec;
-println(iter_to_vec(|f| uint::range(0, 20, f)).to_str());
+println(iter::to_vec(|f| uint::range(0, 20, f)).to_str());
 ~~~~
 
 An external iterator object implementing the interface in the `iterator` module can be used as an
@@ -55,12 +54,12 @@ pub trait Times {
  *
  * ~~~
  * let xs = ~[1, 2, 3];
- * let ys = do iter_to_vec |f| { xs.each(|x| f(*x)) };
+ * let ys = do iter::to_vec |f| { xs.each(|x| f(*x)) };
  * assert_eq!(xs, ys);
  * ~~~
  */
 #[inline(always)]
-pub fn iter_to_vec<T>(iter: &fn(f: &fn(T) -> bool)) -> ~[T] {
+pub fn to_vec<T>(iter: &fn(f: &fn(T) -> bool)) -> ~[T] {
     let mut v = ~[];
     for iter |x| { v.push(x) }
     v
@@ -185,9 +184,9 @@ mod tests {
     use prelude::*;
 
     #[test]
-    fn test_iter_to_vec() {
+    fn test_to_vec() {
         let xs = ~[1, 2, 3];
-        let ys = do iter_to_vec |f| { xs.each(|x| f(*x)) };
+        let ys = do to_vec |f| { xs.each(|x| f(*x)) };
         assert_eq!(xs, ys);
     }
 
