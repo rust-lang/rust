@@ -66,6 +66,7 @@ fn create_derived_encodable_impl(
             cx.ident_of(~"serialize"),
             cx.ident_of(~"Encodable")
         ],
+        None,
         ~[
             build::mk_simple_ty_path(cx, span, cx.ident_of(~"__E"))
         ]
@@ -77,7 +78,7 @@ fn create_derived_encodable_impl(
         generics,
         methods,
         trait_path,
-        generic_ty_params,
+        Generics { ty_params: generic_ty_params, lifetimes: opt_vec::Empty },
         opt_vec::Empty
     )
 }
@@ -94,6 +95,7 @@ fn create_encode_method(
         cx,
         span,
         build::mk_simple_ty_path(cx, span, cx.ident_of(~"__E")),
+        None,
         ast::m_mutbl
     );
     let e_arg = build::mk_arg(cx, span, cx.ident_of(~"__e"), e_arg_type);
@@ -303,7 +305,7 @@ fn expand_deriving_encodable_enum_method(
     // Create the arms of the match in the method body.
     let arms = do enum_definition.variants.mapi |i, variant| {
         // Create the matching pattern.
-        let pat = create_enum_variant_pattern(cx, span, variant, ~"__self");
+        let (pat, fields) = create_enum_variant_pattern(cx, span, variant, ~"__self", ast::m_imm);
 
         // Feed the discriminant to the encode function.
         let mut stmts = ~[];
@@ -311,11 +313,7 @@ fn expand_deriving_encodable_enum_method(
         // Feed each argument in this variant to the encode function
         // as well.
         let variant_arg_len = variant_arg_count(cx, span, variant);
-        for uint::range(0, variant_arg_len) |j| {
-            // Create the expression for this field.
-            let field_ident = cx.ident_of(~"__self_" + j.to_str());
-            let field = build::mk_path(cx, span, ~[ field_ident ]);
-
+        for fields.eachi |j, &(_, field)| {
             // Call the substructure method.
             let expr = call_substructure_encode_method(cx, span, field);
 
