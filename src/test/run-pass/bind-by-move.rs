@@ -11,7 +11,7 @@
 // xfail-fast
 extern mod std;
 use std::arc;
-fn dispose(+_x: arc::ARC<bool>) { unsafe { } }
+fn dispose(_x: arc::ARC<bool>) { unsafe { } }
 
 pub fn main() {
     let p = arc::ARC(true);

@@ -633,7 +633,7 @@ impl TyVisitor for my_visitor {
     fn visit_closure_ptr(&self, _ck: uint) -> bool { true }
 }
 
-fn get_tydesc_for<T>(&&_t: T) -> *TyDesc {
+fn get_tydesc_for<T>(_t: T) -> *TyDesc {
     get_tydesc::<T>()
 }
 

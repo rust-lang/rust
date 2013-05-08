@@ -12,7 +12,7 @@
 pub fn main() {
     let mut result = None;
     let mut builder = task::task();
-    builder.future_result(|+r| { result = Some(r); });
+    builder.future_result(|r| { result = Some(r); });
     builder.spawn(child);
     error!("1");
     task::yield();

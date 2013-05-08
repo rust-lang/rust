@@ -25,7 +25,7 @@ impl frob for foo {
 }
 
 // Override default mode so that we are passing by value
-fn really_impure(++bar: baz) {
+fn really_impure(bar: baz) {
     bar.baz = 3;
 }
 
