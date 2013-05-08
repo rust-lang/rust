@@ -2893,20 +2893,20 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: @ast::expr) -> t {
      */
 
     let unadjusted_ty = expr_ty(cx, expr);
-    adjust_ty(cx, expr.span, unadjusted_ty, cx.adjustments.find(&expr.id))
+    adjust_ty(cx, expr.span, unadjusted_ty, cx.adjustments.find_copy(&expr.id))
 }
 
 pub fn adjust_ty(cx: ctxt,
                  span: span,
                  unadjusted_ty: ty::t,
-                 adjustment: Option<&@AutoAdjustment>) -> ty::t
+                 adjustment: Option<@AutoAdjustment>) -> ty::t
 {
     /*! See `expr_ty_adjusted` */
 
     return match adjustment {
         None => unadjusted_ty,
 
-        Some(&@AutoAddEnv(r, s)) => {
+        Some(@AutoAddEnv(r, s)) => {
             match ty::get(unadjusted_ty).sty {
                 ty::ty_bare_fn(ref b) => {
                     ty::mk_closure(
@@ -2924,7 +2924,7 @@ pub fn adjust_ty(cx: ctxt,
             }
         }
 
-        Some(&@AutoDerefRef(ref adj)) => {
+        Some(@AutoDerefRef(ref adj)) => {
             let mut adjusted_ty = unadjusted_ty;
 
             for uint::range(0, adj.autoderefs) |i| {

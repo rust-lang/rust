@@ -76,15 +76,8 @@ rust_task::delete_this()
     assert(ref_count == 0); // ||
     //   (ref_count == 1 && this == sched->root_task));
 
-    if (borrow_list) {
-        // NOTE should free borrow_list from within rust code!
-        // If there is a pointer in there, it is a ~[BorrowRecord] pointer,
-        // which are currently allocated with LIBC malloc/free. But this is
-        // not really the right way to do this, we should be freeing this
-        // pointer from Rust code.
-        free(borrow_list);
-        borrow_list = NULL;
-    }
+    // The borrow list should be freed in the task annihilator
+    assert(!borrow_list);
 
     sched_loop->release_task(this);
 }

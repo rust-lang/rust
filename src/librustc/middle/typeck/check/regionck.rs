@@ -118,6 +118,7 @@ pub impl Rcx {
     }
 
     /// Try to resolve the type for the given node.
+    #[config(stage0)]
     fn resolve_expr_type_adjusted(@mut self, expr: @ast::expr) -> ty::t {
         let ty_unadjusted = self.resolve_node_type(expr.id);
         if ty::type_is_error(ty_unadjusted) || ty::type_is_bot(ty_unadjusted) {
@@ -125,13 +126,27 @@ pub impl Rcx {
         } else {
             let tcx = self.fcx.tcx();
             let adjustments = self.fcx.inh.adjustments;
-            match adjustments.find(&expr.id) {
+            match adjustments.find_copy(&expr.id) {
                 None => ty_unadjusted,
-                Some(&adjustment) => {
-                    // FIXME(#3850) --- avoid region scoping errors
-                    ty::adjust_ty(tcx, expr.span, ty_unadjusted, Some(&adjustment))
+                Some(adjustment) => {
+                    ty::adjust_ty(tcx, expr.span, ty_unadjusted,
+                                  Some(adjustment))
                 }
             }
+        }
+    }
+
+    /// Try to resolve the type for the given node.
+    #[config(not(stage0))]
+    fn resolve_expr_type_adjusted(@mut self, expr: @ast::expr) -> ty::t {
+        let ty_unadjusted = self.resolve_node_type(expr.id);
+        if ty::type_is_error(ty_unadjusted) || ty::type_is_bot(ty_unadjusted) {
+            ty_unadjusted
+        } else {
+            let tcx = self.fcx.tcx();
+            let adjustments = self.fcx.inh.adjustments;
+            ty::adjust_ty(tcx, expr.span, ty_unadjusted,
+                          adjustments.find_copy(&expr.id))
         }
     }
 }
@@ -650,7 +665,7 @@ fn constrain_regions_in_type_of_node(
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
     let ty0 = rcx.resolve_node_type(id);
-    let adjustment = rcx.fcx.inh.adjustments.find(&id);
+    let adjustment = rcx.fcx.inh.adjustments.find_copy(&id);
     let ty = ty::adjust_ty(tcx, span, ty0, adjustment);
     debug!("constrain_regions_in_type_of_node(\
             ty=%s, ty0=%s, id=%d, minimum_lifetime=%?, adjustment=%?)",
