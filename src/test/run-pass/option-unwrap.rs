@@ -23,7 +23,7 @@ impl Drop for dtor {
     }
 }
 
-fn unwrap<T>(+o: Option<T>) -> T {
+fn unwrap<T>(o: Option<T>) -> T {
     match o {
       Some(v) => v,
       None => fail!()

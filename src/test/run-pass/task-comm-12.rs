@@ -12,7 +12,7 @@ extern mod std;
 
 pub fn main() { test00(); }
 
-fn start(&&task_number: int) { debug!("Started / Finished task."); }
+fn start(task_number: int) { debug!("Started / Finished task."); }
 
 fn test00() {
     let i: int = 0;

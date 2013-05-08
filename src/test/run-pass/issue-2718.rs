@@ -53,23 +53,23 @@ pub mod pipes {
 
     // We should consider moving this to ::core::unsafe, although I
     // suspect graydon would want us to use void pointers instead.
-    pub unsafe fn uniquify<T>(+x: *T) -> ~T {
+    pub unsafe fn uniquify<T>(x: *T) -> ~T {
         unsafe { cast::transmute(x) }
     }
 
-    pub fn swap_state_acq(+dst: &mut state, src: state) -> state {
+    pub fn swap_state_acq(dst: &mut state, src: state) -> state {
         unsafe {
             transmute(rusti::atomic_xchg_acq(transmute(dst), src as int))
         }
     }
 
-    pub fn swap_state_rel(+dst: &mut state, src: state) -> state {
+    pub fn swap_state_rel(dst: &mut state, src: state) -> state {
         unsafe {
             transmute(rusti::atomic_xchg_rel(transmute(dst), src as int))
         }
     }
 
-    pub fn send<T:Owned>(mut p: send_packet<T>, +payload: T) {
+    pub fn send<T:Owned>(mut p: send_packet<T>, payload: T) {
         let mut p = p.unwrap();
         let mut p = unsafe { uniquify(p) };
         assert!((*p).payload.is_none());
@@ -229,7 +229,7 @@ pub mod pingpong {
     pub struct ping(::pipes::send_packet<pong>);
     pub struct pong(::pipes::send_packet<ping>);
 
-    pub fn liberate_ping(+p: ping) -> ::pipes::send_packet<pong> {
+    pub fn liberate_ping(p: ping) -> ::pipes::send_packet<pong> {
         unsafe {
             let addr : *::pipes::send_packet<pong> = match &p {
               &ping(ref x) => { cast::transmute(x) }
@@ -240,7 +240,7 @@ pub mod pingpong {
         }
     }
 
-    pub fn liberate_pong(+p: pong) -> ::pipes::send_packet<ping> {
+    pub fn liberate_pong(p: pong) -> ::pipes::send_packet<ping> {
         unsafe {
             let addr : *::pipes::send_packet<ping> = match &p {
               &pong(ref x) => { cast::transmute(x) }
@@ -262,14 +262,14 @@ pub mod pingpong {
         pub type ping = ::pipes::send_packet<pingpong::ping>;
         pub type pong = ::pipes::recv_packet<pingpong::pong>;
 
-        pub fn do_ping(+c: ping) -> pong {
+        pub fn do_ping(c: ping) -> pong {
             let (sp, rp) = ::pipes::entangle();
 
             ::pipes::send(c, pingpong::ping(sp));
             rp
         }
 
-        pub fn do_pong(+c: pong) -> (ping, ()) {
+        pub fn do_pong(c: pong) -> (ping, ()) {
             let packet = ::pipes::recv(c);
             if packet.is_none() {
                 fail!(~"sender closed the connection")
@@ -284,7 +284,7 @@ pub mod pingpong {
         pub type ping = ::pipes::recv_packet<pingpong::ping>;
         pub type pong = ::pipes::send_packet<pingpong::pong>;
 
-        pub fn do_ping(+c: ping) -> (pong, ()) {
+        pub fn do_ping(c: ping) -> (pong, ()) {
             let packet = ::pipes::recv(c);
             if packet.is_none() {
                 fail!(~"sender closed the connection")
@@ -292,7 +292,7 @@ pub mod pingpong {
             (pingpong::liberate_ping(packet.unwrap()), ())
         }
 
-        pub fn do_pong(+c: pong) -> ping {
+        pub fn do_pong(c: pong) -> ping {
             let (sp, rp) = ::pipes::entangle();
             ::pipes::send(c, pingpong::pong(sp));
             rp
@@ -300,14 +300,14 @@ pub mod pingpong {
     }
 }
 
-fn client(+chan: pingpong::client::ping) {
+fn client(chan: pingpong::client::ping) {
     let chan = pingpong::client::do_ping(chan);
     error!(~"Sent ping");
     let (_chan, _data) = pingpong::client::do_pong(chan);
     error!(~"Received pong");
 }
 
-fn server(+chan: pingpong::server::ping) {
+fn server(chan: pingpong::server::ping) {
     let (chan, _data) = pingpong::server::do_ping(chan);
     error!(~"Received ping");
     let _chan = pingpong::server::do_pong(chan);
