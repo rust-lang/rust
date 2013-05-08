@@ -196,13 +196,6 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         default: deny
      }),
 
-    ("deprecated_mutable_fields",
-     LintSpec {
-        lint: deprecated_mutable_fields,
-        desc: "deprecated mutable fields in structures",
-        default: deny
-    }),
-
     ("unused_unsafe",
      LintSpec {
         lint: unused_unsafe,

@@ -818,12 +818,8 @@ fn summarise_struct(cx: @ext_ctxt, span: span,
     let mut unnamed_count = 0;
     for struct_def.fields.each |field| {
         match field.node.kind {
-            ast::named_field(ident, _, _) => {
-                named_idents.push(ident)
-            }
-            ast::unnamed_field => {
-                unnamed_count += 1;
-            }
+            ast::named_field(ident, _) => named_idents.push(ident),
+            ast::unnamed_field => unnamed_count += 1,
         }
     }
 
