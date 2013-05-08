@@ -435,7 +435,7 @@ pub fn start(main: *u8, argc: int, argv: **c_char,
             return rust_start(main as *c_void, argc as c_int, argv,
                               crate_map as *c_void) as int;
         } else {
-            return do rt::start(argc, argv, crate_map) {
+            return do rt::start(argc, argv as **u8, crate_map) {
                 unsafe {
                     // `main` is an `fn() -> ()` that doesn't take an environment
                     // XXX: Could also call this as an `extern "Rust" fn` once they work
