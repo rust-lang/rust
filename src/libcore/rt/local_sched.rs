@@ -126,6 +126,7 @@ fn maybe_tls_key() -> Option<tls::Key> {
 }
 
 extern {
+    #[fast_ffi]
     fn rust_get_sched_tls_key() -> *mut c_void;
 }
 
