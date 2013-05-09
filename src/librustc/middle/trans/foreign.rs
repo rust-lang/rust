@@ -715,6 +715,9 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                 Store(bcx, C_null(lltp_ty), fcx.llretptr.get());
             }
         }
+        ~"uninit" => {
+            // Do nothing, this is effectively a no-op
+        }
         ~"forget" => {}
         ~"transmute" => {
             let (in_type, out_type) = (substs.tys[0], substs.tys[1]);
