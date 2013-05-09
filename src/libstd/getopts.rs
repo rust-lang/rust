@@ -623,7 +623,7 @@ pub mod groups {
                 desc_sep
             };
 
-            // Normalize desc to contain words seperated by one space character
+            // Normalize desc to contain words separated by one space character
             let mut desc_normalized_whitespace = ~"";
             for str::each_word(desc) |word| {
                 desc_normalized_whitespace.push_str(word);

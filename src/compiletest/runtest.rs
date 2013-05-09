@@ -764,7 +764,7 @@ fn _arm_exec_compiled_test(config: config, props: TestProps,
     logv(config, fmt!("executing (%s) %s", config.target, cmdline));
 
     // adb shell dose not forward stdout and stderr of internal result
-    // to stdout and stderr seperately but to stdout only
+    // to stdout and stderr separately but to stdout only
     let mut newargs_out = ~[];
     let mut newargs_err = ~[];
     let subargs = args.args;

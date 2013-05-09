@@ -11,7 +11,7 @@
 //! Utility mixins that apply to all Readers and Writers
 
 // XXX: Not sure how this should be structured
-// XXX: Iteration should probably be considered seperately
+// XXX: Iteration should probably be considered separately
 
 pub trait ReaderUtil {
 

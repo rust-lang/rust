@@ -21,7 +21,7 @@ impl methods for () {
 }
 
 // the position of this function is significant! - if it comes before methods
-// then it works, if it comes after it then it doesnt!
+// then it works, if it comes after it then it doesn't!
 fn to_bools(bitv: Storage) -> ~[bool] {
     vec::from_fn(8, |i| {
         let w = i / 64;
