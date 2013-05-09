@@ -237,6 +237,14 @@ pub fn get_lint_dict() -> LintDict {
     return @map;
 }
 
+pub fn get_lint_name(lint_mode: lint) -> ~str {
+    for lint_table.each |&(name, spec)| {
+        if spec.lint == lint_mode {
+            return name.to_str();
+        }
+    }
+    fail!();
+}
 // This is a highly not-optimal set of data structure decisions.
 type LintModes = @mut SmallIntMap<level>;
 type LintModeMap = @mut HashMap<ast::node_id, LintModes>;
