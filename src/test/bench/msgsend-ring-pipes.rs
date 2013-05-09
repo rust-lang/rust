@@ -35,8 +35,8 @@ macro_rules! move_out (
 
 fn thread_ring(i: uint,
                count: uint,
-               +num_chan: ring::client::num,
-               +num_port: ring::server::num) {
+               num_chan: ring::client::num,
+               num_port: ring::server::num) {
     let mut num_chan = Some(num_chan);
     let mut num_port = Some(num_port);
     // Send/Receive lots of messages.

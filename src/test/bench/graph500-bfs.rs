@@ -273,7 +273,7 @@ fn pbfs(graph: &arc::ARC<graph>, key: node_id) -> bfs_result {
         colors = do par::mapi(*color_vec) {
             let colors = arc::clone(&color);
             let graph = arc::clone(graph);
-            let result: ~fn(+x: uint, +y: &color) -> color = |i, c| {
+            let result: ~fn(x: uint, y: &color) -> color = |i, c| {
                 let colors = arc::get(&colors);
                 let graph = arc::get(&graph);
                 match *c {
@@ -395,7 +395,7 @@ fn validate(edges: ~[(node_id, node_id)],
 
     let status = do par::alli(tree) {
         let edges = copy edges;
-        let result: ~fn(+x: uint, v: &i64) -> bool = |u, v| {
+        let result: ~fn(x: uint, v: &i64) -> bool = |u, v| {
             let u = u as node_id;
             if *v == -1i64 || u == root {
                 true

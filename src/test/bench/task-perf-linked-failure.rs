@@ -46,7 +46,7 @@ fn grandchild_group(num_tasks: uint) {
     // Master grandchild task exits early.
 }
 
-fn spawn_supervised_blocking(myname: &str, +f: ~fn()) {
+fn spawn_supervised_blocking(myname: &str, f: ~fn()) {
     let mut res = None;
     let mut builder = task::task();
     builder.future_result(|r| res = Some(r));
