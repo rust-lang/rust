@@ -117,8 +117,9 @@ pub fn spawn_service_recv<T:Owned,Tb:Owned>(
     client
 }
 
-fn switch<T:Owned,Tb:Owned,U>(+endp: core::pipes::RecvPacketBuffered<T, Tb>,
-                      f: &fn(+v: Option<T>) -> U) -> U {
+fn switch<T:Owned,Tb:Owned,U>(endp: core::pipes::RecvPacketBuffered<T, Tb>,
+                              f: &fn(v: Option<T>) -> U)
+                              -> U {
     f(core::pipes::try_recv(endp))
 }
 

@@ -42,13 +42,13 @@ pub mod rustrt {
         // These names are terrible. reserve_shared applies
         // to ~[] and reserve_shared_actual applies to @[].
         #[fast_ffi]
-        unsafe fn vec_reserve_shared(++t: *sys::TypeDesc,
-                                     ++v: **raw::VecRepr,
-                                     ++n: libc::size_t);
+        unsafe fn vec_reserve_shared(t: *sys::TypeDesc,
+                                     v: **raw::VecRepr,
+                                     n: libc::size_t);
         #[fast_ffi]
-        unsafe fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
-                                            ++v: **raw::VecRepr,
-                                            ++n: libc::size_t);
+        unsafe fn vec_reserve_shared_actual(t: *sys::TypeDesc,
+                                            v: **raw::VecRepr,
+                                            n: libc::size_t);
     }
 }
 

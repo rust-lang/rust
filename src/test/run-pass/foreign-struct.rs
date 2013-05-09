@@ -18,7 +18,7 @@ mod bindgen {
 
     #[nolink]
     pub extern {
-        pub fn printf(++v: void);
+        pub fn printf(v: void);
     }
 }
 

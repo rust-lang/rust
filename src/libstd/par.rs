@@ -73,10 +73,10 @@ fn map_slices<A:Copy + Owned,B:Copy + Owned>(
         info!("num_tasks: %?", (num_tasks, futures.len()));
         assert!((num_tasks == futures.len()));
 
-        let r = do futures.map() |ys| {
+        let r = do vec::map_consume(futures) |ys| {
+            let mut ys = ys;
             ys.get()
         };
-        assert!((r.len() == futures.len()));
         r
     }
 }

@@ -14,7 +14,7 @@ fn want_slice(v: &[int]) -> int {
     return sum;
 }
 
-fn has_mut_vec(+v: ~[int]) -> int {
+fn has_mut_vec(v: ~[int]) -> int {
     want_slice(v)
 }
 

@@ -56,7 +56,6 @@ pub enum lint {
     non_camel_case_types,
     type_limits,
     default_methods,
-    deprecated_mutable_fields,
     unused_unsafe,
 
     managed_heap_memory,
@@ -196,13 +195,6 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         desc: "allow default methods",
         default: deny
      }),
-
-    ("deprecated_mutable_fields",
-     LintSpec {
-        lint: deprecated_mutable_fields,
-        desc: "deprecated mutable fields in structures",
-        default: deny
-    }),
 
     ("unused_unsafe",
      LintSpec {
@@ -455,7 +447,6 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_heap(cx, i);
     check_item_type_limits(cx, i);
     check_item_default_methods(cx, i);
-    check_item_deprecated_mutable_fields(cx, i);
     check_item_unused_unsafe(cx, i);
     check_item_unused_mut(cx, i);
 }
@@ -640,28 +631,7 @@ fn check_item_default_methods(cx: ty::ctxt, item: @ast::item) {
     }
 }
 
-fn check_item_deprecated_mutable_fields(cx: ty::ctxt, item: @ast::item) {
-    match item.node {
-        ast::item_struct(struct_def, _) => {
-            for struct_def.fields.each |field| {
-                match field.node.kind {
-                    ast::named_field(_, ast::struct_mutable, _) => {
-                        cx.sess.span_lint(deprecated_mutable_fields,
-                                          item.id,
-                                          item.id,
-                                          field.span,
-                                          "mutable fields are deprecated");
-                    }
-                    ast::named_field(*) | ast::unnamed_field => {}
-                }
-            }
-        }
-        _ => {}
-    }
-}
-
 fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
-
     fn check_foreign_fn(cx: ty::ctxt, fn_id: ast::node_id,
                         decl: &ast::fn_decl) {
         let tys = vec::map(decl.inputs, |a| a.ty );

@@ -352,7 +352,10 @@ pub fn fsync_fd(fd: c_int, _l: io::fsync::Level) -> c_int {
     }
 }
 
-pub struct Pipe { in: c_int, out: c_int }
+pub struct Pipe {
+    in: c_int,
+    out: c_int
+}
 
 #[cfg(unix)]
 pub fn pipe() -> Pipe {
@@ -1432,7 +1435,7 @@ mod tests {
     }
 
     fn make_rand_name() -> ~str {
-        let rng = rand::rng();
+        let mut rng = rand::rng();
         let n = ~"TEST" + rng.gen_str(10u);
         assert!(getenv(n).is_none());
         n

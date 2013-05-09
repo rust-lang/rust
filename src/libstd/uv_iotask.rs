@@ -36,11 +36,11 @@ impl Clone for IoTask {
     }
 }
 
-pub fn spawn_iotask(task: task::TaskBuilder) -> IoTask {
-
+pub fn spawn_iotask(mut task: task::TaskBuilder) -> IoTask {
     let (iotask_port, iotask_chan) = stream();
 
-    do task.sched_mode(task::SingleThreaded).spawn {
+    task.sched_mode(task::SingleThreaded);
+    do task.spawn {
         debug!("entering libuv task");
         run_loop(&iotask_chan);
         debug!("libuv task exiting");

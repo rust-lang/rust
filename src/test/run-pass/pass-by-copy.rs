@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn magic(+x: A) { debug!(x); }
-fn magic2(+x: @int) { debug!(x); }
+fn magic(x: A) { debug!(x); }
+fn magic2(x: @int) { debug!(x); }
 
 struct A { a: @int }
 

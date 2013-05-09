@@ -946,8 +946,10 @@ mod test_tim_sort {
 
     impl Ord for CVal {
         fn lt(&self, other: &CVal) -> bool {
-            let rng = rand::rng();
-            if rng.gen::<float>() > 0.995 { fail!(~"It's happening!!!"); }
+            let mut rng = rand::rng();
+            if rng.gen::<float>() > 0.995 {
+                fail!(~"It's happening!!!");
+            }
             (*self).val < other.val
         }
         fn le(&self, other: &CVal) -> bool { (*self).val <= other.val }
@@ -995,7 +997,7 @@ mod test_tim_sort {
     #[should_fail]
     #[cfg(unix)]
     fn crash_test() {
-        let rng = rand::rng();
+        let mut rng = rand::rng();
         let mut arr = do vec::from_fn(1000) |_i| {
             CVal { val: rng.gen() }
         };
@@ -1015,7 +1017,7 @@ mod test_tim_sort {
 
     #[test]
     fn test_bad_Ord_impl() {
-        let rng = rand::rng();
+        let mut rng = rand::rng();
         let mut arr = do vec::from_fn(500) |_i| {
             DVal { val: rng.gen() }
         };
@@ -1067,7 +1069,7 @@ mod big_tests {
             }
         }
 
-        let rng = rand::rng();
+        let mut rng = rand::rng();
 
         for uint::range(lo, hi) |i| {
             let n = 1 << i;
@@ -1138,7 +1140,7 @@ mod big_tests {
             }
         }
 
-        let rng = rand::rng();
+        let mut rng = rand::rng();
 
         for uint::range(lo, hi) |i| {
             let n = 1 << i;

@@ -28,8 +28,15 @@ use core::pipes::recv;
 use core::task;
 
 #[doc = "The future type"]
+#[cfg(stage0)]
 pub struct Future<A> {
     priv mut state: FutureState<A>,
+}
+
+#[doc = "The future type"]
+#[cfg(not(stage0))]
+pub struct Future<A> {
+    priv state: FutureState<A>,
 }
 
 // FIXME(#2829) -- futures should not be copyable, because they close
@@ -47,13 +54,14 @@ priv enum FutureState<A> {
 
 /// Methods on the `future` type
 pub impl<A:Copy> Future<A> {
-    fn get(&self) -> A {
+    fn get(&mut self) -> A {
         //! Get the value of the future
         *(self.get_ref())
     }
 }
 
 pub impl<A> Future<A> {
+    #[cfg(stage0)]
     fn get_ref<'a>(&'a self) -> &'a A {
         /*!
         * Executes the future's closure and then returns a borrowed
@@ -61,19 +69,53 @@ pub impl<A> Future<A> {
         * the future.
         */
         unsafe {
-            match self.state {
-                Forced(ref mut v) => { return cast::transmute(v); }
-                Evaluating => fail!(~"Recursive forcing of future!"),
-                Pending(_) => {}
+            {
+                match self.state {
+                    Forced(ref mut v) => { return cast::transmute(v); }
+                    Evaluating => fail!(~"Recursive forcing of future!"),
+                    Pending(_) => {}
+                }
             }
+            {
+                let mut state = Evaluating;
+                self.state <-> state;
+                match state {
+                    Forced(_) | Evaluating => fail!(~"Logic error."),
+                    Pending(f) => {
+                        self.state = Forced(f());
+                        cast::transmute(self.get_ref())
+                    }
+                }
+            }
+        }
+    }
 
-            let mut state = Evaluating;
-            self.state <-> state;
-            match state {
-                Forced(_) | Evaluating => fail!(~"Logic error."),
-                Pending(f) => {
-                    self.state = Forced(f());
-                    self.get_ref()
+    #[cfg(stage1)]
+    #[cfg(stage2)]
+    #[cfg(stage3)]
+    fn get_ref<'a>(&'a mut self) -> &'a A {
+        /*!
+        * Executes the future's closure and then returns a borrowed
+        * pointer to the result.  The borrowed pointer lasts as long as
+        * the future.
+        */
+        unsafe {
+            {
+                match self.state {
+                    Forced(ref mut v) => { return cast::transmute(v); }
+                    Evaluating => fail!(~"Recursive forcing of future!"),
+                    Pending(_) => {}
+                }
+            }
+            {
+                let mut state = Evaluating;
+                self.state <-> state;
+                match state {
+                    Forced(_) | Evaluating => fail!(~"Logic error."),
+                    Pending(f) => {
+                        self.state = Forced(f());
+                        cast::transmute(self.get_ref())
+                    }
                 }
             }
         }
@@ -142,15 +184,15 @@ pub fn spawn<A:Owned>(blk: ~fn() -> A) -> Future<A> {
 #[allow(non_implicitly_copyable_typarams)]
 #[cfg(test)]
 mod test {
-
     use future::*;
 
+    use core::cell::Cell;
     use core::comm::{oneshot, send_one};
     use core::task;
 
     #[test]
     fn test_from_value() {
-        let f = from_value(~"snail");
+        let mut f = from_value(~"snail");
         assert!(f.get() == ~"snail");
     }
 
@@ -158,31 +200,31 @@ mod test {
     fn test_from_port() {
         let (po, ch) = oneshot();
         send_one(ch, ~"whale");
-        let f = from_port(po);
+        let mut f = from_port(po);
         assert!(f.get() == ~"whale");
     }
 
     #[test]
     fn test_from_fn() {
-        let f = from_fn(|| ~"brail");
+        let mut f = from_fn(|| ~"brail");
         assert!(f.get() == ~"brail");
     }
 
     #[test]
     fn test_interface_get() {
-        let f = from_value(~"fail");
+        let mut f = from_value(~"fail");
         assert!(f.get() == ~"fail");
     }
 
     #[test]
     fn test_get_ref_method() {
-        let f = from_value(22);
+        let mut f = from_value(22);
         assert!(*f.get_ref() == 22);
     }
 
     #[test]
     fn test_spawn() {
-        let f = spawn(|| ~"bale");
+        let mut f = spawn(|| ~"bale");
         assert!(f.get() == ~"bale");
     }
 
@@ -190,15 +232,16 @@ mod test {
     #[should_fail]
     #[ignore(cfg(target_os = "win32"))]
     fn test_futurefail() {
-        let f = spawn(|| fail!());
+        let mut f = spawn(|| fail!());
         let _x: ~str = f.get();
     }
 
     #[test]
     fn test_sendable_future() {
         let expected = ~"schlorf";
-        let f = do spawn { copy expected };
-        do task::spawn || {
+        let f = Cell(do spawn { copy expected });
+        do task::spawn {
+            let mut f = f.take();
             let actual = f.get();
             assert!(actual == expected);
         }

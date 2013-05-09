@@ -1,4 +1,8 @@
 // xfail-fast
+// xfail-test
+
+// XFAIL'd because this is going to be revamped, and it's not compatible as
+// written with the new mutability rules.
 
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at

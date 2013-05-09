@@ -72,6 +72,7 @@
 
 #[doc(hidden)]; // FIXME #3538
 
+use cast::transmute;
 use cast;
 use cell::Cell;
 use container::Map;
@@ -117,10 +118,10 @@ pub fn taskset_each(tasks: &TaskSet, blk: &fn(v: *rust_task) -> bool) {
 struct TaskGroupData {
     // All tasks which might kill this group. When this is empty, the group
     // can be "GC"ed (i.e., its link in the ancestor list can be removed).
-    mut members:     TaskSet,
+    members:     TaskSet,
     // All tasks unidirectionally supervised by (directly or transitively)
     // tasks in this group.
-    mut descendants: TaskSet,
+    descendants: TaskSet,
 }
 type TaskGroupArc = unstable::Exclusive<Option<TaskGroupData>>;
 
@@ -145,11 +146,11 @@ struct AncestorNode {
     // Hence we assert that this counter monotonically decreases as we
     // approach the tail of the list.
     // FIXME(#3068): Make the generation counter togglable with #[cfg(debug)].
-    generation:       uint,
-    // Should really be an immutable non-option. This way appeases borrowck.
-    mut parent_group: Option<TaskGroupArc>,
+    generation:     uint,
+    // Should really be a non-option. This way appeases borrowck.
+    parent_group:   Option<TaskGroupArc>,
     // Recursive rest of the list.
-    mut ancestors:    AncestorList,
+    ancestors:      AncestorList,
 }
 
 struct AncestorList(Option<unstable::Exclusive<AncestorNode>>);
@@ -301,22 +302,26 @@ fn each_ancestor(list:        &mut AncestorList,
 
 // One of these per task.
 struct TCB {
-    me:            *rust_task,
+    me:         *rust_task,
     // List of tasks with whose fates this one's is intertwined.
-    tasks:         TaskGroupArc, // 'none' means the group has failed.
+    tasks:      TaskGroupArc, // 'none' means the group has failed.
     // Lists of tasks who will kill us if they fail, but whom we won't kill.
-    mut ancestors: AncestorList,
-    is_main:       bool,
-    notifier:      Option<AutoNotify>,
+    ancestors:  AncestorList,
+    is_main:    bool,
+    notifier:   Option<AutoNotify>,
 }
 
 impl Drop for TCB {
     // Runs on task exit.
     fn finalize(&self) {
         unsafe {
+            let this: &mut TCB = transmute(self);
+
             // If we are failing, the whole taskgroup needs to die.
             if rt::rust_task_is_unwinding(self.me) {
-                for self.notifier.each |x| { x.failed = true; }
+                for this.notifier.each_mut |x| {
+                    x.failed = true;
+                }
                 // Take everybody down with us.
                 do access_group(&self.tasks) |tg| {
                     kill_taskgroup(tg, self.me, self.is_main);
@@ -331,16 +336,21 @@ impl Drop for TCB {
             // with our own taskgroup, so long as both happen before we die.
             // We remove ourself from every ancestor we can, so no cleanup; no
             // break.
-            for each_ancestor(&mut self.ancestors, None) |ancestor_group| {
+            for each_ancestor(&mut this.ancestors, None) |ancestor_group| {
                 leave_taskgroup(ancestor_group, self.me, false);
             };
         }
     }
 }
 
-fn TCB(me: *rust_task, tasks: TaskGroupArc, ancestors: AncestorList,
-       is_main: bool, notifier: Option<AutoNotify>) -> TCB {
-    for notifier.each |x| { x.failed = false; }
+fn TCB(me: *rust_task,
+       tasks: TaskGroupArc,
+       ancestors: AncestorList,
+       is_main: bool,
+       mut notifier: Option<AutoNotify>) -> TCB {
+    for notifier.each_mut |x| {
+        x.failed = false;
+    }
 
     TCB {
         me: me,
@@ -353,7 +363,7 @@ fn TCB(me: *rust_task, tasks: TaskGroupArc, ancestors: AncestorList,
 
 struct AutoNotify {
     notify_chan: Chan<TaskResult>,
-    mut failed:  bool,
+    failed: bool,
 }
 
 impl Drop for AutoNotify {
@@ -375,9 +385,12 @@ fn enlist_in_taskgroup(state: TaskGroupInner, me: *rust_task,
     let newstate = util::replace(&mut *state, None);
     // If 'None', the group was failing. Can't enlist.
     if newstate.is_some() {
-        let group = newstate.unwrap();
-        taskset_insert(if is_member { &mut group.members }
-                       else         { &mut group.descendants }, me);
+        let mut group = newstate.unwrap();
+        taskset_insert(if is_member {
+            &mut group.members
+        } else {
+            &mut group.descendants
+        }, me);
         *state = Some(group);
         true
     } else {
@@ -391,9 +404,12 @@ fn leave_taskgroup(state: TaskGroupInner, me: *rust_task,
     let newstate = util::replace(&mut *state, None);
     // If 'None', already failing and we've already gotten a kill signal.
     if newstate.is_some() {
-        let group = newstate.unwrap();
-        taskset_remove(if is_member { &mut group.members }
-                       else         { &mut group.descendants }, me);
+        let mut group = newstate.unwrap();
+        taskset_remove(if is_member {
+            &mut group.members
+        } else {
+            &mut group.descendants
+        }, me);
         *state = Some(group);
     }
 }
@@ -451,23 +467,30 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
         /*##################################################################*
          * Step 1. Get spawner's taskgroup info.
          *##################################################################*/
-        let spawner_group = match local_get(OldHandle(spawner), taskgroup_key!()) {
-            None => {
-                // Main task, doing first spawn ever. Lazily initialise here.
-                let mut members = new_taskset();
-                taskset_insert(&mut members, spawner);
-                let tasks = unstable::exclusive(Some(TaskGroupData {
-                    members: members,
-                    descendants: new_taskset(),
-                }));
-                // Main task/group has no ancestors, no notifier, etc.
-                let group =
-                    @TCB(spawner, tasks, AncestorList(None), true, None);
-                local_set(OldHandle(spawner), taskgroup_key!(), group);
-                group
-            }
-            Some(group) => group
-        };
+        let mut spawner_group: @@mut TCB =
+            match local_get(OldHandle(spawner), taskgroup_key!()) {
+                None => {
+                    // Main task, doing first spawn ever. Lazily initialise
+                    // here.
+                    let mut members = new_taskset();
+                    taskset_insert(&mut members, spawner);
+                    let tasks = unstable::exclusive(Some(TaskGroupData {
+                        members: members,
+                        descendants: new_taskset(),
+                    }));
+                    // Main task/group has no ancestors, no notifier, etc.
+                    let group = @@mut TCB(spawner,
+                                          tasks,
+                                          AncestorList(None),
+                                          true,
+                                          None);
+                    local_set(OldHandle(spawner), taskgroup_key!(), group);
+                    group
+                }
+                Some(group) => group
+            };
+        let spawner_group: &mut TCB = *spawner_group;
+
         /*##################################################################*
          * Step 2. Process spawn options for child.
          *##################################################################*/
@@ -557,7 +580,7 @@ fn spawn_raw_newsched(_opts: TaskOpts, f: ~fn()) {
     sched.schedule_new_task(task);
 }
 
-fn spawn_raw_oldsched(opts: TaskOpts, f: ~fn()) {
+fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
 
     let (child_tg, ancestors, is_main) =
         gen_child_taskgroup(opts.linked, opts.supervised);
@@ -624,8 +647,11 @@ fn spawn_raw_oldsched(opts: TaskOpts, f: ~fn()) {
             };
 
             if enlist_many(child, &child_arc, &mut ancestors) {
-                let group = @TCB(child, child_arc, ancestors,
-                                 is_main, notifier);
+                let group = @@mut TCB(child,
+                                      child_arc,
+                                      ancestors,
+                                      is_main,
+                                      notifier);
                 unsafe {
                     local_set(OldHandle(child), taskgroup_key!(), group);
                 }

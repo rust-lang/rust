@@ -983,36 +983,50 @@ pub fn file_reader(path: &Path) -> Result<@Reader, ~str> {
 // Byte readers
 pub struct BytesReader<'self> {
     bytes: &'self [u8],
-    mut pos: uint
+    pos: @mut uint
 }
 
 impl<'self> Reader for BytesReader<'self> {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
-        let count = uint::min(len, self.bytes.len() - self.pos);
+        let count = uint::min(len, self.bytes.len() - *self.pos);
 
-        let view = vec::slice(self.bytes, self.pos, self.bytes.len());
+        let view = vec::slice(self.bytes, *self.pos, self.bytes.len());
         vec::bytes::copy_memory(bytes, view, count);
 
-        self.pos += count;
+        *self.pos += count;
 
         count
     }
+
     fn read_byte(&self) -> int {
-        if self.pos == self.bytes.len() { return -1; }
-        let b = self.bytes[self.pos];
-        self.pos += 1u;
-        return b as int;
+        if *self.pos == self.bytes.len() {
+            return -1;
+        }
+
+        let b = self.bytes[*self.pos];
+        *self.pos += 1u;
+        b as int
     }
-    fn eof(&self) -> bool { self.pos == self.bytes.len() }
+
+    fn eof(&self) -> bool {
+        *self.pos == self.bytes.len()
+    }
+
     fn seek(&self, offset: int, whence: SeekStyle) {
-        let pos = self.pos;
-        self.pos = seek_in_buf(offset, pos, self.bytes.len(), whence);
+        let pos = *self.pos;
+        *self.pos = seek_in_buf(offset, pos, self.bytes.len(), whence);
     }
-    fn tell(&self) -> uint { self.pos }
+
+    fn tell(&self) -> uint {
+        *self.pos
+    }
 }
 
-pub fn with_bytes_reader<t>(bytes: &[u8], f: &fn(@Reader) -> t) -> t {
-    f(@BytesReader { bytes: bytes, pos: 0u } as @Reader)
+pub fn with_bytes_reader<T>(bytes: &[u8], f: &fn(@Reader) -> T) -> T {
+    f(@BytesReader {
+        bytes: bytes,
+        pos: @mut 0
+    } as @Reader)
 }
 
 pub fn with_str_reader<T>(s: &str, f: &fn(@Reader) -> T) -> T {
@@ -1498,49 +1512,70 @@ pub fn buffered_file_writer(path: &Path) -> Result<@Writer, ~str> {
 pub fn stdout() -> @Writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
 pub fn stderr() -> @Writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 
-pub fn print(s: &str) { stdout().write_str(s); }
-pub fn println(s: &str) { stdout().write_line(s); }
+pub fn print(s: &str) {
+    stdout().write_str(s);
+}
+
+pub fn println(s: &str) {
+    stdout().write_line(s);
+}
 
 pub struct BytesWriter {
-    mut bytes: ~[u8],
-    mut pos: uint,
+    bytes: @mut ~[u8],
+    pos: @mut uint,
 }
 
 impl Writer for BytesWriter {
     fn write(&self, v: &[u8]) {
         let v_len = v.len();
-        let bytes_len = vec::uniq_len(&const self.bytes);
 
-        let count = uint::max(bytes_len, self.pos + v_len);
-        vec::reserve(&mut self.bytes, count);
+        let bytes = &mut *self.bytes;
+        let count = uint::max(bytes.len(), *self.pos + v_len);
+        vec::reserve(bytes, count);
 
         unsafe {
-            vec::raw::set_len(&mut self.bytes, count);
-            let view = vec::mut_slice(self.bytes, self.pos, count);
+            // Silly stage0 borrow check workaround...
+            let casted: &mut ~[u8] = cast::transmute_copy(&bytes);
+            vec::raw::set_len(casted, count);
+
+            let view = vec::mut_slice(*bytes, *self.pos, count);
             vec::bytes::copy_memory(view, v, v_len);
         }
 
-        self.pos += v_len;
+        *self.pos += v_len;
     }
+
     fn seek(&self, offset: int, whence: SeekStyle) {
-        let pos = self.pos;
-        let len = vec::uniq_len(&const self.bytes);
-        self.pos = seek_in_buf(offset, pos, len, whence);
+        let pos = *self.pos;
+        let len = vec::uniq_len(&const *self.bytes);
+        *self.pos = seek_in_buf(offset, pos, len, whence);
     }
-    fn tell(&self) -> uint { self.pos }
-    fn flush(&self) -> int { 0 }
-    fn get_type(&self) -> WriterType { File }
+
+    fn tell(&self) -> uint {
+        *self.pos
+    }
+
+    fn flush(&self) -> int {
+        0
+    }
+
+    fn get_type(&self) -> WriterType {
+        File
+    }
 }
 
 pub fn BytesWriter() -> BytesWriter {
-    BytesWriter { bytes: ~[], mut pos: 0u }
+    BytesWriter {
+        bytes: @mut ~[],
+        pos: @mut 0
+    }
 }
 
 pub fn with_bytes_writer(f: &fn(@Writer)) -> ~[u8] {
     let wr = @BytesWriter();
     f(wr as @Writer);
-    let @BytesWriter{bytes, _} = wr;
-    return bytes;
+    let @BytesWriter { bytes, _ } = wr;
+    copy *bytes
 }
 
 pub fn with_str_writer(f: &fn(@Writer)) -> ~str {
@@ -1550,7 +1585,9 @@ pub fn with_str_writer(f: &fn(@Writer)) -> ~str {
     v.push(0);
     assert!(str::is_utf8(v));
 
-    unsafe { ::cast::transmute(v) }
+    unsafe {
+        ::cast::transmute(v)
+    }
 }
 
 // Utility functions
@@ -1849,15 +1886,15 @@ mod tests {
     fn bytes_buffer_overwrite() {
         let wr = BytesWriter();
         wr.write(~[0u8, 1u8, 2u8, 3u8]);
-        assert!(wr.bytes == ~[0u8, 1u8, 2u8, 3u8]);
+        assert!(*wr.bytes == ~[0u8, 1u8, 2u8, 3u8]);
         wr.seek(-2, SeekCur);
         wr.write(~[4u8, 5u8, 6u8, 7u8]);
-        assert!(wr.bytes == ~[0u8, 1u8, 4u8, 5u8, 6u8, 7u8]);
+        assert!(*wr.bytes == ~[0u8, 1u8, 4u8, 5u8, 6u8, 7u8]);
         wr.seek(-2, SeekEnd);
         wr.write(~[8u8]);
         wr.seek(1, SeekSet);
         wr.write(~[9u8]);
-        assert!(wr.bytes == ~[0u8, 9u8, 4u8, 5u8, 8u8, 7u8]);
+        assert!(*wr.bytes == ~[0u8, 9u8, 4u8, 5u8, 8u8, 7u8]);
     }
 
     #[test]

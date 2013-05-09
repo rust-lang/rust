@@ -780,23 +780,24 @@ extern mod rustrt {
     // FIXME ref #2064
     unsafe fn rust_uv_tcp_connect(connect_ptr: *uv_connect_t,
                                   tcp_handle_ptr: *uv_tcp_t,
-                                  ++after_cb: *u8,
-                                  ++addr: *sockaddr_in) -> libc::c_int;
+                                  after_cb: *u8,
+                                  addr: *sockaddr_in)
+                                  -> libc::c_int;
     // FIXME ref #2064
     unsafe fn rust_uv_tcp_bind(tcp_server: *uv_tcp_t,
-                               ++addr: *sockaddr_in) -> libc::c_int;
+                               addr: *sockaddr_in) -> libc::c_int;
     // FIXME ref #2064
     unsafe fn rust_uv_tcp_connect6(connect_ptr: *uv_connect_t,
                                    tcp_handle_ptr: *uv_tcp_t,
-                                   ++after_cb: *u8,
-                                   ++addr: *sockaddr_in6) -> libc::c_int;
+                                   after_cb: *u8,
+                                   addr: *sockaddr_in6) -> libc::c_int;
     // FIXME ref #2064
     unsafe fn rust_uv_tcp_bind6(tcp_server: *uv_tcp_t,
-                                ++addr: *sockaddr_in6) -> libc::c_int;
+                                addr: *sockaddr_in6) -> libc::c_int;
     unsafe fn rust_uv_tcp_getpeername(tcp_handle_ptr: *uv_tcp_t,
-                                      ++name: *sockaddr_in) -> libc::c_int;
+                                      name: *sockaddr_in) -> libc::c_int;
     unsafe fn rust_uv_tcp_getpeername6(tcp_handle_ptr: *uv_tcp_t,
-                                       ++name: *sockaddr_in6) ->libc::c_int;
+                                       name: *sockaddr_in6) ->libc::c_int;
     unsafe fn rust_uv_listen(stream: *libc::c_void,
                              backlog: libc::c_int,
                              cb: *u8) -> libc::c_int;
@@ -804,7 +805,7 @@ extern mod rustrt {
                           -> libc::c_int;
     unsafe fn rust_uv_write(req: *libc::c_void,
                             stream: *libc::c_void,
-                            ++buf_in: *uv_buf_t,
+                            buf_in: *uv_buf_t,
                             buf_cnt: libc::c_int,
                             cb: *u8)
         -> libc::c_int;
@@ -843,7 +844,7 @@ extern mod rustrt {
     unsafe fn rust_uv_addrinfo_as_sockaddr_in6(input: *addrinfo)
         -> *sockaddr_in6;
     unsafe fn rust_uv_malloc_buf_base_of(sug_size: libc::size_t) -> *u8;
-    unsafe fn rust_uv_free_base_of_buf(++buf: uv_buf_t);
+    unsafe fn rust_uv_free_base_of_buf(buf: uv_buf_t);
     unsafe fn rust_uv_get_stream_handle_from_connect_req(
         connect_req: *uv_connect_t)
         -> *uv_stream_t;
@@ -864,8 +865,8 @@ extern mod rustrt {
         -> *libc::c_void;
     unsafe fn rust_uv_set_data_for_req(req: *libc::c_void,
                                        data: *libc::c_void);
-    unsafe fn rust_uv_get_base_from_buf(++buf: uv_buf_t) -> *u8;
-    unsafe fn rust_uv_get_len_from_buf(++buf: uv_buf_t) -> libc::size_t;
+    unsafe fn rust_uv_get_base_from_buf(buf: uv_buf_t) -> *u8;
+    unsafe fn rust_uv_get_len_from_buf(buf: uv_buf_t) -> libc::size_t;
 
     // sizeof testing helpers
     unsafe fn rust_uv_helper_uv_tcp_t_size() -> libc::c_uint;
@@ -1258,7 +1259,7 @@ mod test {
 
     extern fn on_read_cb(stream: *uv_stream_t,
                         nread: libc::ssize_t,
-                        ++buf: uv_buf_t) {
+                        buf: uv_buf_t) {
         unsafe {
             let nread = nread as int;
             debug!("CLIENT entering on_read_cb nred: %d",
@@ -1444,7 +1445,7 @@ mod test {
 
     extern fn on_server_read_cb(client_stream_ptr: *uv_stream_t,
                                nread: libc::ssize_t,
-                               ++buf: uv_buf_t) {
+                               buf: uv_buf_t) {
         unsafe {
             let nread = nread as int;
             if (nread > 0) {

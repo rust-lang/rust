@@ -72,7 +72,9 @@ fn create_global_service() -> ~WeakTaskService {
     let chan = SharedChan::new(chan);
     let chan_clone = chan.clone();
 
-    do task().unlinked().spawn {
+    let mut task = task();
+    task.unlinked();
+    do task.spawn {
         debug!("running global weak task service");
         let port = Cell(port.take());
         do (|| {
@@ -189,12 +191,14 @@ fn test_select_stream_and_oneshot() {
     use comm::select2i;
     use either::{Left, Right};
 
-    let (port, chan) = stream();
+    let mut (port, chan) = stream();
+    let port = Cell(port);
     let (waitport, waitchan) = stream();
     do spawn {
         unsafe {
-            do weaken_task |signal| {
-                match select2i(&port, &signal) {
+            do weaken_task |mut signal| {
+                let mut port = port.take();
+                match select2i(&mut port, &mut signal) {
                     Left(*) => (),
                     Right(*) => fail!()
                 }

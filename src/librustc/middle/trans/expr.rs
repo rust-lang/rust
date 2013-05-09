@@ -120,14 +120,14 @@ lvalues are *never* stored by value.
 */
 
 use back::abi;
-use lib;
 use lib::llvm::{ValueRef, TypeRef, llvm};
+use lib;
 use metadata::csearch;
 use middle::trans::_match;
 use middle::trans::adt;
 use middle::trans::asm;
-use middle::trans::base;
 use middle::trans::base::*;
+use middle::trans::base;
 use middle::trans::build::*;
 use middle::trans::callee::DoAutorefArg;
 use middle::trans::callee;
@@ -142,8 +142,10 @@ use middle::trans::machine;
 use middle::trans::meth;
 use middle::trans::tvec;
 use middle::trans::type_of;
+use middle::ty::struct_fields;
+use middle::ty::{AutoDerefRef, AutoAddEnv};
+use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
 use middle::ty;
-use middle::ty::struct_mutable_fields;
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn,
                  AutoDerefRef, AutoAddEnv, AutoUnsafe};
 use util::common::indenter;
@@ -1107,7 +1109,7 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
                          op: &fn(int, (&[ty::field])) -> R) -> R {
     match ty::get(ty).sty {
         ty::ty_struct(did, ref substs) => {
-            op(0, struct_mutable_fields(tcx, did, substs))
+            op(0, struct_fields(tcx, did, substs))
         }
 
         ty::ty_enum(_, ref substs) => {
@@ -1124,8 +1126,8 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
                         ast::def_variant(enum_id, variant_id) => {
                             let variant_info = ty::enum_variant_with_id(
                                 tcx, enum_id, variant_id);
-                            op(variant_info.disr_val, struct_mutable_fields(
-                                tcx, variant_id, substs))
+                            op(variant_info.disr_val,
+                               struct_fields(tcx, variant_id, substs))
                         }
                         _ => {
                             tcx.sess.bug(~"resolve didn't map this expr to a \

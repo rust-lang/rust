@@ -19,11 +19,15 @@
  * CPRNG like rand::rng.
  */
 
-use io;
-use io::Writer;
+#[cfg(stage0)]
+use cast;
+use rt::io::Writer;
 use to_bytes::IterBytes;
 use uint;
 use vec;
+
+// Alias `SipState` to `State`.
+pub use State = hash::SipState;
 
 /**
  * Types that can meaningfully be hashed should implement this.
@@ -65,20 +69,32 @@ impl<A:Hash> HashUtil for A {
 
 /// Streaming hash-functions should implement this.
 pub trait Streaming {
-    fn input(&self, (&const [u8]));
+    fn input(&mut self, &[u8]);
     // These can be refactored some when we have default methods.
-    fn result_bytes(&self) -> ~[u8];
-    fn result_str(&self) -> ~str;
-    fn result_u64(&self) -> u64;
-    fn reset(&self);
+    fn result_bytes(&mut self) -> ~[u8];
+    fn result_str(&mut self) -> ~str;
+    fn result_u64(&mut self) -> u64;
+    fn reset(&mut self);
+}
+
+// XXX: Ugly workaround for bootstrapping.
+#[cfg(stage0)]
+fn transmute_for_stage0<'a>(bytes: &'a [const u8]) -> &'a [u8] {
+    unsafe {
+        cast::transmute(bytes)
+    }
+}
+#[cfg(not(stage0))]
+fn transmute_for_stage0<'a>(bytes: &'a [u8]) -> &'a [u8] {
+    bytes
 }
 
 impl<A:IterBytes> Hash for A {
     #[inline(always)]
     fn hash_keyed(&self, k0: u64, k1: u64) -> u64 {
-        let s = &State(k0, k1);
+        let mut s = State::new(k0, k1);
         for self.iter_bytes(true) |bytes| {
-            s.input(bytes);
+            s.input(transmute_for_stage0(bytes));
         }
         s.result_u64()
     }
@@ -86,32 +102,56 @@ impl<A:IterBytes> Hash for A {
 
 fn hash_keyed_2<A: IterBytes,
                 B: IterBytes>(a: &A, b: &B, k0: u64, k1: u64) -> u64 {
-    let s = &State(k0, k1);
-    for a.iter_bytes(true) |bytes| { s.input(bytes); }
-    for b.iter_bytes(true) |bytes| { s.input(bytes); }
+    let mut s = State::new(k0, k1);
+    for a.iter_bytes(true) |bytes| {
+        s.input(transmute_for_stage0(bytes));
+    }
+    for b.iter_bytes(true) |bytes| {
+        s.input(transmute_for_stage0(bytes));
+    }
     s.result_u64()
 }
 
 fn hash_keyed_3<A: IterBytes,
                 B: IterBytes,
                 C: IterBytes>(a: &A, b: &B, c: &C, k0: u64, k1: u64) -> u64 {
-    let s = &State(k0, k1);
-    for a.iter_bytes(true) |bytes| { s.input(bytes); }
-    for b.iter_bytes(true) |bytes| { s.input(bytes); }
-    for c.iter_bytes(true) |bytes| { s.input(bytes); }
+    let mut s = State::new(k0, k1);
+    for a.iter_bytes(true) |bytes| {
+        s.input(transmute_for_stage0(bytes));
+    }
+    for b.iter_bytes(true) |bytes| {
+        s.input(transmute_for_stage0(bytes));
+    }
+    for c.iter_bytes(true) |bytes| {
+        s.input(transmute_for_stage0(bytes));
+    }
     s.result_u64()
 }
 
 fn hash_keyed_4<A: IterBytes,
                 B: IterBytes,
                 C: IterBytes,
-                D: IterBytes>(a: &A, b: &B, c: &C, d: &D, k0: u64, k1: u64)
-                           -> u64 {
-    let s = &State(k0, k1);
-    for a.iter_bytes(true) |bytes| { s.input(bytes); }
-    for b.iter_bytes(true) |bytes| { s.input(bytes); }
-    for c.iter_bytes(true) |bytes| { s.input(bytes); }
-    for d.iter_bytes(true) |bytes| { s.input(bytes); }
+                D: IterBytes>(
+                a: &A,
+                b: &B,
+                c: &C,
+                d: &D,
+                k0: u64,
+                k1: u64)
+                -> u64 {
+    let mut s = State::new(k0, k1);
+    for a.iter_bytes(true) |bytes| {
+        s.input(transmute_for_stage0(bytes));
+    }
+    for b.iter_bytes(true) |bytes| {
+        s.input(transmute_for_stage0(bytes));
+    }
+    for c.iter_bytes(true) |bytes| {
+        s.input(transmute_for_stage0(bytes));
+    }
+    for d.iter_bytes(true) |bytes| {
+        s.input(transmute_for_stage0(bytes));
+    }
     s.result_u64()
 }
 
@@ -119,58 +159,68 @@ fn hash_keyed_5<A: IterBytes,
                 B: IterBytes,
                 C: IterBytes,
                 D: IterBytes,
-                E: IterBytes>(a: &A, b: &B, c: &C, d: &D, e: &E,
-                              k0: u64, k1: u64) -> u64 {
-    let s = &State(k0, k1);
-    for a.iter_bytes(true) |bytes| { s.input(bytes); }
-    for b.iter_bytes(true) |bytes| { s.input(bytes); }
-    for c.iter_bytes(true) |bytes| { s.input(bytes); }
-    for d.iter_bytes(true) |bytes| { s.input(bytes); }
-    for e.iter_bytes(true) |bytes| { s.input(bytes); }
+                E: IterBytes>(
+                a: &A,
+                b: &B,
+                c: &C,
+                d: &D,
+                e: &E,
+                k0: u64,
+                k1: u64)
+                -> u64 {
+    let mut s = State::new(k0, k1);
+    for a.iter_bytes(true) |bytes| {
+        s.input(transmute_for_stage0(bytes));
+    }
+    for b.iter_bytes(true) |bytes| {
+        s.input(transmute_for_stage0(bytes));
+    }
+    for c.iter_bytes(true) |bytes| {
+        s.input(transmute_for_stage0(bytes));
+    }
+    for d.iter_bytes(true) |bytes| {
+        s.input(transmute_for_stage0(bytes));
+    }
+    for e.iter_bytes(true) |bytes| {
+        s.input(transmute_for_stage0(bytes));
+    }
     s.result_u64()
-}
-
-// Implement State as SipState
-
-pub type State = SipState;
-
-#[inline(always)]
-pub fn State(k0: u64, k1: u64) -> State {
-    SipState(k0, k1)
 }
 
 #[inline(always)]
 pub fn default_state() -> State {
-    State(0,0)
+    State::new(0, 0)
 }
 
 struct SipState {
     k0: u64,
     k1: u64,
-    mut length: uint, // how many bytes we've processed
-    mut v0: u64,      // hash state
-    mut v1: u64,
-    mut v2: u64,
-    mut v3: u64,
-    mut tail: [u8, ..8], // unprocessed bytes
-    mut ntail: uint,  // how many bytes in tail are valid
+    length: uint, // how many bytes we've processed
+    v0: u64,      // hash state
+    v1: u64,
+    v2: u64,
+    v3: u64,
+    tail: [u8, ..8], // unprocessed bytes
+    ntail: uint,  // how many bytes in tail are valid
 }
 
-#[inline(always)]
-fn SipState(key0: u64, key1: u64) -> SipState {
-    let state = SipState {
-        k0 : key0,
-        k1 : key1,
-        mut length : 0u,
-        mut v0 : 0u64,
-        mut v1 : 0u64,
-        mut v2 : 0u64,
-        mut v3 : 0u64,
-        mut tail : [0u8,0,0,0,0,0,0,0],
-        mut ntail : 0u,
-    };
-    (&state).reset();
-    state
+impl SipState {
+    #[inline(always)]
+    fn new(key0: u64, key1: u64) -> SipState {
+        let mut state = SipState {
+            k0: key0,
+            k1: key1,
+            length: 0,
+            v0: 0,
+            v1: 0,
+            v2: 0,
+            v3: 0,
+            tail: [ 0, 0, 0, 0, 0, 0, 0, 0 ],
+            ntail: 0,
+        };
+        state.reset();
+        state
+    }
 }
 
 // sadly, these macro definitions can't appear later,
@@ -207,12 +257,10 @@ macro_rules! compress (
 )
 
 
-impl io::Writer for SipState {
-
+impl Writer for SipState {
     // Methods for io::writer
     #[inline(always)]
-    fn write(&self, msg: &const [u8]) {
-
+    fn write(&mut self, msg: &[u8]) {
         let length = msg.len();
         self.length += length;
 
@@ -272,29 +320,19 @@ impl io::Writer for SipState {
         self.ntail = left;
     }
 
-    fn seek(&self, _x: int, _s: io::SeekStyle) {
-        fail!();
-    }
-    fn tell(&self) -> uint {
-        self.length
-    }
-    fn flush(&self) -> int {
-        0
-    }
-    fn get_type(&self) -> io::WriterType {
-        io::File
+    fn flush(&mut self) {
+        // No-op
     }
 }
 
 impl Streaming for SipState {
-
     #[inline(always)]
-    fn input(&self, buf: &const [u8]) {
+    fn input(&mut self, buf: &[u8]) {
         self.write(buf);
     }
 
     #[inline(always)]
-    fn result_u64(&self) -> u64 {
+    fn result_u64(&mut self) -> u64 {
         let mut v0 = self.v0;
         let mut v1 = self.v1;
         let mut v2 = self.v2;
@@ -324,7 +362,7 @@ impl Streaming for SipState {
         return (v0 ^ v1 ^ v2 ^ v3);
     }
 
-    fn result_bytes(&self) -> ~[u8] {
+    fn result_bytes(&mut self) -> ~[u8] {
         let h = self.result_u64();
         ~[(h >> 0) as u8,
           (h >> 8) as u8,
@@ -337,7 +375,7 @@ impl Streaming for SipState {
         ]
     }
 
-    fn result_str(&self) -> ~str {
+    fn result_str(&mut self) -> ~str {
         let r = self.result_bytes();
         let mut s = ~"";
         for vec::each(r) |b| {
@@ -347,7 +385,7 @@ impl Streaming for SipState {
     }
 
     #[inline(always)]
-    fn reset(&self) {
+    fn reset(&mut self) {
         self.length = 0;
         self.v0 = self.k0 ^ 0x736f6d6570736575;
         self.v1 = self.k1 ^ 0x646f72616e646f6d;
@@ -435,10 +473,10 @@ mod tests {
         let k1 = 0x_0f_0e_0d_0c_0b_0a_09_08_u64;
         let mut buf : ~[u8] = ~[];
         let mut t = 0;
-        let stream_inc = &State(k0,k1);
-        let stream_full = &State(k0,k1);
+        let mut stream_inc = SipState::new(k0, k1);
+        let mut stream_full = SipState::new(k0, k1);
 
-        fn to_hex_str(r:  &[u8, ..8]) -> ~str {
+        fn to_hex_str(r: &[u8, ..8]) -> ~str {
             let mut s = ~"";
             for vec::each(*r) |b| {
                 s += uint::to_str_radix(*b as uint, 16u);

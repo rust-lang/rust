@@ -21,7 +21,7 @@ impl Drop for r {
     }
 }
 
-fn f<T>(+_i: ~[T], +_j: ~[T]) {
+fn f<T>(_i: ~[T], _j: ~[T]) {
 }
 
 fn main() {

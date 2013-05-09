@@ -11,7 +11,7 @@
 
 pub fn main() { task::spawn(|| child((10, 20, 30, 40, 50, 60, 70, 80, 90)) ); }
 
-fn child(&&args: (int, int, int, int, int, int, int, int, int)) {
+fn child(args: (int, int, int, int, int, int, int, int, int)) {
     let (i1, i2, i3, i4, i5, i6, i7, i8, i9) = args;
     error!(i1);
     error!(i2);

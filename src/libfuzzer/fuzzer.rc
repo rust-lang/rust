@@ -263,7 +263,7 @@ pub fn under(n: uint, it: &fn(uint)) {
     while i < n { it(i); i += 1u; }
 }
 
-pub fn as_str(f: @fn(+x: @io::Writer)) -> ~str {
+pub fn as_str(f: @fn(x: @io::Writer)) -> ~str {
     io::with_str_writer(f)
 }
 

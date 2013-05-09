@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn test(+foo: int) { assert!((foo == 10)); }
+fn test(foo: int) { assert!((foo == 10)); }
 
 pub fn main() { let x = 10; test(x); }
