@@ -17,7 +17,6 @@ use core::hashmap::HashMap;
 use core::io::WriterUtil;
 use core::io;
 use core::uint;
-use core::vec;
 use syntax::abi::AbiSet;
 use syntax::ast;
 use syntax::ast::*;
@@ -398,7 +397,7 @@ fn enc_fn_sig(w: @io::Writer, cx: @ctxt, fsig: &ty::FnSig) {
 }
 
 fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {
-    for vec::each(*bs) |bound| {
+    for (*bs).each |bound| {
         match *bound {
           ty::bound_owned => w.write_char('S'),
           ty::bound_copy => w.write_char('C'),

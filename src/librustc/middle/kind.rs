@@ -235,7 +235,7 @@ fn check_fn(
 }
 
 fn check_arm(a: &arm, cx: Context, v: visit::vt<Context>) {
-    for vec::each(a.pats) |p| {
+    for a.pats.each |p| {
         do pat_util::pat_bindings(cx.tcx.def_map, *p) |mode, id, span, _pth| {
             if mode == bind_by_copy {
                 let t = ty::node_id_to_type(cx.tcx, id);

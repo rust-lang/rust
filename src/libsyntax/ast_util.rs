@@ -461,7 +461,7 @@ pub fn id_visitor(vfn: @fn(node_id)) -> visit::vt<()> {
                 }
             }
 
-            for vec::each(d.inputs) |arg| {
+            for d.inputs.each |arg| {
                 vfn(arg.id)
             }
         },

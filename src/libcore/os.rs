@@ -1491,7 +1491,7 @@ mod tests {
     fn test_env_getenv() {
         let e = env();
         assert!(vec::len(e) > 0u);
-        for vec::each(e) |p| {
+        for e.each |p| {
             let (n, v) = copy *p;
             debug!(copy n);
             let v2 = getenv(n);
@@ -1583,7 +1583,7 @@ mod tests {
         // Just assuming that we've got some contents in the current directory
         assert!((vec::len(dirs) > 0u));
 
-        for vec::each(dirs) |dir| {
+        for dirs.each |dir| {
             debug!(copy *dir);
         }
     }

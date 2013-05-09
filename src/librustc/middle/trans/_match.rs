@@ -283,7 +283,7 @@ pub fn variant_opt(bcx: block, pat_id: ast::node_id)
     match ccx.tcx.def_map.get_copy(&pat_id) {
         ast::def_variant(enum_id, var_id) => {
             let variants = ty::enum_variants(ccx.tcx, enum_id);
-            for vec::each(*variants) |v| {
+            for (*variants).each |v| {
                 if var_id == v.id {
                     return var(v.disr_val,
                                adt::represent_node(bcx, pat_id))
@@ -349,7 +349,7 @@ pub fn matches_to_str(bcx: block, m: &[@Match]) -> ~str {
 }
 
 pub fn has_nested_bindings(m: &[@Match], col: uint) -> bool {
-    for vec::each(m) |br| {
+    for m.each |br| {
         match br.pats[col].node {
           ast::pat_ident(_, _, Some(_)) => return true,
           _ => ()
@@ -418,7 +418,7 @@ pub fn enter_match<'r>(bcx: block,
     let _indenter = indenter();
 
     let mut result = ~[];
-    for vec::each(m) |br| {
+    for m.each |br| {
         match e(br.pats[col]) {
             Some(sub) => {
                 let pats =
@@ -934,7 +934,7 @@ pub fn collect_record_or_struct_fields(bcx: block,
                                        col: uint)
                                     -> ~[ast::ident] {
     let mut fields: ~[ast::ident] = ~[];
-    for vec::each(m) |br| {
+    for m.each |br| {
         match br.pats[col].node {
           ast::pat_struct(_, ref fs, _) => {
             match ty::get(node_id_type(bcx, br.pats[col].id)).sty {
@@ -973,7 +973,7 @@ pub fn root_pats_as_necessary(mut bcx: block,
                               col: uint,
                               val: ValueRef)
                            -> block {
-    for vec::each(m) |br| {
+    for m.each |br| {
         let pat_id = br.pats[col].id;
         if pat_id != 0 {
             let datum = Datum {val: val, ty: node_id_type(bcx, pat_id),
@@ -1042,14 +1042,14 @@ pub fn pick_col(m: &[@Match]) -> uint {
         }
     }
     let mut scores = vec::from_elem(m[0].pats.len(), 0u);
-    for vec::each(m) |br| {
+    for m.each |br| {
         let mut i = 0u;
-        for vec::each(br.pats) |p| { scores[i] += score(*p); i += 1u; }
+        for br.pats.each |p| { scores[i] += score(*p); i += 1u; }
     }
     let mut max_score = 0u;
     let mut best_col = 0u;
     let mut i = 0u;
-    for vec::each(scores) |score| {
+    for scores.each |score| {
         let score = *score;
 
         // Irrefutable columns always go first, they'd only be duplicated in
@@ -1306,7 +1306,7 @@ pub fn compile_submatch(bcx: block,
     let ccx = *bcx.fcx.ccx;
     let mut pat_id = 0;
     let mut pat_span = dummy_sp();
-    for vec::each(m) |br| {
+    for m.each |br| {
         // Find a real id (we're adding placeholder wildcard patterns, but
         // each column is guaranteed to have at least one real pattern)
         if pat_id == 0 {
@@ -1438,7 +1438,7 @@ pub fn compile_submatch(bcx: block,
             }
         }
     }
-    for vec::each(opts) |o| {
+    for opts.each |o| {
         match *o {
             range(_, _) => { kind = compare; break }
             _ => ()
@@ -1460,7 +1460,7 @@ pub fn compile_submatch(bcx: block,
     let mut i = 0u;
 
     // Compile subtrees for each option
-    for vec::each(opts) |opt| {
+    for opts.each |opt| {
         i += 1u;
         let mut opt_cx = else_cx;
         if !exhaustive || i < len {
@@ -1631,7 +1631,7 @@ pub fn trans_match_inner(scope_cx: block,
     }
 
     let mut arm_datas = ~[], matches = ~[];
-    for vec::each(arms) |arm| {
+    for arms.each |arm| {
         let body = scope_block(bcx, arm.body.info(), ~"case_body");
 
         // Create the bindings map, which is a mapping from each binding name
@@ -1670,7 +1670,7 @@ pub fn trans_match_inner(scope_cx: block,
                                  arm: arm,
                                  bindings_map: bindings_map};
         arm_datas.push(arm_data);
-        for vec::each(arm.pats) |p| {
+        for arm.pats.each |p| {
             matches.push(@Match {pats: ~[*p], data: arm_data});
         }
     }
@@ -1793,7 +1793,7 @@ pub fn bind_irrefutable_pat(bcx: block,
                                                     vinfo.disr_val,
                                                     val);
                     for sub_pats.each |sub_pat| {
-                        for vec::eachi(args.vals) |i, argval| {
+                        for args.vals.eachi |i, argval| {
                             bcx = bind_irrefutable_pat(bcx,
                                                        sub_pat[i],
                                                        *argval,

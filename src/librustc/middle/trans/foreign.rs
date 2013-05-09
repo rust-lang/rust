@@ -294,7 +294,7 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
         Some(abi) => abi,
     };
 
-    for vec::each(foreign_mod.items) |&foreign_item| {
+    for foreign_mod.items.each |&foreign_item| {
         match foreign_item.node {
             ast::foreign_item_fn(*) => {
                 let id = foreign_item.id;
