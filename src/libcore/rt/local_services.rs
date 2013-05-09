@@ -225,7 +225,7 @@ mod test {
     fn rng() {
         do run_in_newsched_task() {
             use rand::{rng, Rng};
-            let r = rng();
+            let mut r = rng();
             let _ = r.next();
         }
     }

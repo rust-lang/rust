@@ -336,7 +336,10 @@ pub mod ptr_tests {
     #[test]
     fn test() {
         unsafe {
-            struct Pair {mut fst: int, mut snd: int};
+            struct Pair {
+                fst: int,
+                snd: int
+            };
             let mut p = Pair {fst: 10, snd: 20};
             let pptr: *mut Pair = &mut p;
             let iptr: *mut int = cast::transmute(pptr);

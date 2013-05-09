@@ -12,7 +12,7 @@ struct closure_box<'self> {
     cl: &'self fn(),
 }
 
-fn box_it<'r>(+x: &'r fn()) -> closure_box<'r> {
+fn box_it<'r>(x: &'r fn()) -> closure_box<'r> {
     closure_box {cl: x}
 }
 

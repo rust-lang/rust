@@ -581,17 +581,7 @@ pub impl mem_categorization_ctxt {
                              f_name: ast::ident,
                              f_ty: ty::t,
                              field_id: ast::node_id) -> cmt {
-        let f_mutbl = match field_mutbl(self.tcx, base_cmt.ty,
-                                        f_name, field_id) {
-            Some(f_mutbl) => f_mutbl,
-            None => {
-                self.tcx.sess.span_bug(
-                    node.span(),
-                    fmt!("Cannot find field `%s` in type `%s`",
-                         *self.tcx.sess.str_of(f_name),
-                         ty_to_str(self.tcx, base_cmt.ty)));
-            }
-        };
+        let f_mutbl = m_imm;
         let m = self.inherited_mutability(base_cmt.mutbl, f_mutbl);
         let f_interior = interior_field(f_name, f_mutbl);
         @cmt_ {
@@ -968,11 +958,7 @@ pub fn field_mutbl(tcx: ty::ctxt,
       ty::ty_struct(did, _) => {
         for ty::lookup_struct_fields(tcx, did).each |fld| {
             if fld.ident == f_name {
-                let m = match fld.mutability {
-                  ast::struct_mutable => ast::m_mutbl,
-                  ast::struct_immutable => ast::m_imm
-                };
-                return Some(m);
+                return Some(ast::m_imm);
             }
         }
       }
@@ -981,11 +967,7 @@ pub fn field_mutbl(tcx: ty::ctxt,
           ast::def_variant(_, variant_id) => {
             for ty::lookup_struct_fields(tcx, variant_id).each |fld| {
                 if fld.ident == f_name {
-                    let m = match fld.mutability {
-                      ast::struct_mutable => ast::m_mutbl,
-                      ast::struct_immutable => ast::m_imm
-                    };
-                    return Some(m);
+                    return Some(ast::m_imm);
                 }
             }
           }

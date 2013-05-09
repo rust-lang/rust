@@ -914,19 +914,15 @@ struct field {
 
 fn mk_struct_fields(fields: &[@ast::struct_field]) -> ~[field] {
     do fields.map |field| {
-        let (ident, mutbl) = match field.node.kind {
-            ast::named_field(ident, mutbl, _) => (ident, mutbl),
-            _ => fail!(~"[auto_encode] does not support \
-                        unnamed fields")
+        let ident = match field.node.kind {
+            ast::named_field(ident, _) => ident,
+            _ => fail!(~"[auto_encode] does not support unnamed fields")
         };
 
         field {
             span: field.span,
             ident: ident,
-            mutbl: match mutbl {
-                ast::struct_mutable => ast::m_mutbl,
-                ast::struct_immutable => ast::m_imm,
-            },
+            mutbl: ast::m_imm,
         }
     }
 }

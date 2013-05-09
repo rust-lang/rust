@@ -894,17 +894,7 @@ pub fn determine_rp_in_struct_field(
         cm: @ast::struct_field,
         cx: @mut DetermineRpCtxt,
         visitor: visit::vt<@mut DetermineRpCtxt>) {
-    match cm.node.kind {
-      ast::named_field(_, ast::struct_mutable, _) => {
-        do cx.with_ambient_variance(rv_invariant) {
-            visit::visit_struct_field(cm, cx, visitor);
-        }
-      }
-      ast::named_field(_, ast::struct_immutable, _) |
-      ast::unnamed_field => {
-        visit::visit_struct_field(cm, cx, visitor);
-      }
-    }
+    visit::visit_struct_field(cm, cx, visitor);
 }
 
 pub fn determine_rp_in_crate(sess: Session,

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn is_even(&&x: uint) -> bool { (x % 2u) == 0u }
+fn is_even(x: uint) -> bool { (x % 2u) == 0u }
 
 pub fn main() {
     assert!([1u, 3u].min() == 1u);

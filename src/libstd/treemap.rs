@@ -848,7 +848,7 @@ mod test_treemap {
         check_equal(ctrl, &map);
         assert!(map.find(&5).is_none());
 
-        let rng = rand::IsaacRng::new_seeded(&[42]);
+        let mut rng = rand::IsaacRng::new_seeded(&[42]);
 
         for 3.times {
             for 90.times {

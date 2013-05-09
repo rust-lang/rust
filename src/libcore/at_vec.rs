@@ -29,9 +29,9 @@ pub mod rustrt {
     #[abi = "cdecl"]
     #[link_name = "rustrt"]
     pub extern {
-        pub unsafe fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
-                                                ++v: **vec::raw::VecRepr,
-                                                ++n: libc::size_t);
+        pub unsafe fn vec_reserve_shared_actual(t: *sys::TypeDesc,
+                                                v: **vec::raw::VecRepr,
+                                                n: libc::size_t);
     }
 }
 
@@ -60,7 +60,7 @@ pub fn capacity<T>(v: @[T]) -> uint {
 pub fn build_sized<A>(size: uint, builder: &fn(push: &fn(v: A))) -> @[A] {
     let mut vec: @[A] = @[];
     unsafe { raw::reserve(&mut vec, size); }
-    builder(|+x| unsafe { raw::push(&mut vec, x) });
+    builder(|x| unsafe { raw::push(&mut vec, x) });
     return unsafe { transmute(vec) };
 }
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn match_ref(&&v: Option<int>) -> int {
+fn match_ref(v: Option<int>) -> int {
     match v {
       Some(ref i) => {
         *i
@@ -17,7 +17,7 @@ fn match_ref(&&v: Option<int>) -> int {
     }
 }
 
-fn match_ref_unused(&&v: Option<int>) {
+fn match_ref_unused(v: Option<int>) {
     match v {
       Some(_) => {}
       None => {}

@@ -71,14 +71,14 @@ pub fn TcpSocket(socket_data: @TcpSocketData) -> TcpSocket {
  * satisfy both the `io::Reader` and `io::Writer` traits.
  */
 pub struct TcpSocketBuf {
-    data: @TcpBufferedSocketData,
-    mut end_of_stream: bool
+    data: @mut TcpBufferedSocketData,
+    end_of_stream: @mut bool
 }
 
-pub fn TcpSocketBuf(data: @TcpBufferedSocketData) -> TcpSocketBuf {
+pub fn TcpSocketBuf(data: @mut TcpBufferedSocketData) -> TcpSocketBuf {
     TcpSocketBuf {
         data: data,
-        end_of_stream: false
+        end_of_stream: @mut false
     }
 }
 
@@ -670,7 +670,7 @@ fn listen_common(host_ip: ip::IpAddr,
             &ip::Ipv4(_) => { false }
             &ip::Ipv6(_) => { true }
         },
-        mut active: true
+        active: @mut true
     };
     let server_data_ptr: *TcpListenFcData = &server_data;
 
@@ -751,7 +751,7 @@ fn listen_common(host_ip: ip::IpAddr,
                     debug!(
                         "tcp::listen post-kill recv hl interact %?",
                              loop_ptr);
-                    (*server_data_ptr).active = false;
+                    *(*server_data_ptr).active = false;
                     uv::ll::close(server_stream_ptr, tcp_lfc_close_cb);
                 }
             };
@@ -782,7 +782,7 @@ fn listen_common(host_ip: ip::IpAddr,
                     debug!(
                         "tcp::listen post-kill recv hl interact %?",
                              loop_ptr);
-                    (*server_data_ptr).active = false;
+                    *(*server_data_ptr).active = false;
                     uv::ll::close(server_stream_ptr, tcp_lfc_close_cb);
                 }
             };
@@ -816,8 +816,8 @@ fn listen_common(host_ip: ip::IpAddr,
  * A buffered wrapper that you can cast as an `io::Reader` or `io::Writer`
  */
 pub fn socket_buf(sock: TcpSocket) -> TcpSocketBuf {
-    TcpSocketBuf(@TcpBufferedSocketData {
-        sock: sock, mut buf: ~[], buf_off: 0
+    TcpSocketBuf(@mut TcpBufferedSocketData {
+        sock: sock, buf: ~[], buf_off: 0
     })
 }
 
@@ -902,12 +902,15 @@ impl io::Reader for TcpSocketBuf {
           // need to read in data from the socket. Note that the internal
           // buffer is of no use anymore as we read all bytes from it,
           // so we can throw it away.
-          let read_result = read(&self.data.sock, 0u);
+          let read_result = {
+            let data = &*self.data;
+            read(&data.sock, 0)
+          };
           if read_result.is_err() {
               let err_data = read_result.get_err();
 
               if err_data.err_name == ~"EOF" {
-                  self.end_of_stream = true;
+                  *self.end_of_stream = true;
                   break;
               } else {
                   debug!("ERROR sock_buf as io::reader.read err %? %?",
@@ -917,8 +920,7 @@ impl io::Reader for TcpSocketBuf {
                   // should show up in a later call to read().
                   break;
               }
-          }
-          else {
+          } else {
               self.data.buf = result::unwrap(read_result);
               self.data.buf_off = 0;
           }
@@ -934,27 +936,29 @@ impl io::Reader for TcpSocketBuf {
             return c as int
           }
 
-          let read_result = read(&self.data.sock, 0u);
+          let read_result = {
+            let data = &*self.data;
+            read(&data.sock, 0)
+          };
           if read_result.is_err() {
               let err_data = read_result.get_err();
 
               if err_data.err_name == ~"EOF" {
-                  self.end_of_stream = true;
+                  *self.end_of_stream = true;
                   return -1
               } else {
                   debug!("ERROR sock_buf as io::reader.read err %? %?",
                          err_data.err_name, err_data.err_msg);
                   fail!()
               }
-          }
-          else {
+          } else {
               self.data.buf = result::unwrap(read_result);
               self.data.buf_off = 0;
           }
         }
     }
     fn eof(&self) -> bool {
-        self.end_of_stream
+        *self.end_of_stream
     }
     fn seek(&self, dist: int, seek: io::SeekStyle) {
         debug!("tcp_socket_buf seek stub %? %?", dist, seek);
@@ -1204,7 +1208,7 @@ struct TcpListenFcData {
     on_connect_cb: ~fn(*uv::ll::uv_tcp_t),
     iotask: IoTask,
     ipv6: bool,
-    mut active: bool,
+    active: @mut bool,
 }
 
 extern fn tcp_lfc_close_cb(handle: *uv::ll::uv_tcp_t) {
@@ -1222,7 +1226,7 @@ extern fn tcp_lfc_on_connection_cb(handle: *uv::ll::uv_tcp_t,
         let server_data_ptr = uv::ll::get_data_for_uv_handle(handle)
             as *TcpListenFcData;
         let kill_ch = (*server_data_ptr).kill_ch.clone();
-        if (*server_data_ptr).active {
+        if *(*server_data_ptr).active {
             match status {
               0i32 => ((*server_data_ptr).on_connect_cb)(handle),
               _ => {
@@ -1230,7 +1234,7 @@ extern fn tcp_lfc_on_connection_cb(handle: *uv::ll::uv_tcp_t,
                 kill_ch.send(
                            Some(uv::ll::get_last_err_data(loop_ptr)
                                 .to_tcp_err()));
-                (*server_data_ptr).active = false;
+                *(*server_data_ptr).active = false;
               }
             }
         }
@@ -1430,8 +1434,8 @@ struct TcpSocketData {
 
 struct TcpBufferedSocketData {
     sock: TcpSocket,
-    mut buf: ~[u8],
-    mut buf_off: uint
+    buf: ~[u8],
+    buf_off: uint
 }
 
 #[cfg(test)]
@@ -1959,7 +1963,7 @@ mod test {
     }
 
     fn tcp_write_single(sock: &TcpSocket, val: ~[u8]) {
-        let write_result_future = sock.write_future(val);
+        let mut write_result_future = sock.write_future(val);
         let write_result = write_result_future.get();
         if result::is_err(&write_result) {
             debug!("tcp_write_single: write failed!");

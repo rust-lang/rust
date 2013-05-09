@@ -35,8 +35,8 @@ macro_rules! move_out (
 
 fn thread_ring(i: uint,
                count: uint,
-               +num_chan: ring::client::num,
-               +num_port: ring::server::num) {
+               num_chan: ring::client::num,
+               num_port: ring::server::num) {
     let mut num_chan = Some(num_chan);
     let mut num_port = Some(num_port);
     // Send/Receive lots of messages.
@@ -96,7 +96,9 @@ fn main() {
     thread_ring(0, msg_per_task, num_chan.take(), num_port);
 
     // synchronize
-    for futures.each |f| { f.get() };
+    for futures.each_mut |f| {
+        let _ = f.get();
+    }
 
     let stop = time::precise_time_s();
 

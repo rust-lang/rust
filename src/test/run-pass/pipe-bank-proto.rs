@@ -48,12 +48,12 @@ macro_rules! move_it (
     { $x:expr } => { unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } }
 )
 
-fn switch<T:Owned,U>(+endp: pipes::RecvPacket<T>,
-                      f: &fn(+v: Option<T>) -> U) -> U {
+fn switch<T:Owned,U>(endp: pipes::RecvPacket<T>,
+                     f: &fn(v: Option<T>) -> U) -> U {
     f(pipes::try_recv(endp))
 }
 
-fn move_it<T>(+x: T) -> T { x }
+fn move_it<T>(x: T) -> T { x }
 
 macro_rules! follow (
     {
@@ -68,7 +68,7 @@ macro_rules! follow (
     );
 )
 
-fn client_follow(+bank: bank::client::login) {
+fn client_follow(bank: bank::client::login) {
     use bank::*;
 
     let bank = client::login(bank, ~"theincredibleholk", ~"1234");
@@ -89,7 +89,7 @@ fn client_follow(+bank: bank::client::login) {
     ));
 }
 
-fn bank_client(+bank: bank::client::login) {
+fn bank_client(bank: bank::client::login) {
     use bank::*;
 
     let bank = client::login(bank, ~"theincredibleholk", ~"1234");

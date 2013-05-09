@@ -26,7 +26,7 @@
 
 use core::comm::*;
 
-fn foo(&&x: ()) -> Port<()> {
+fn foo(x: ()) -> Port<()> {
     let (p, c) = stream::<()>();
     do task::spawn() {
         c.send(x);

@@ -673,8 +673,9 @@ mod tests {
         let mut children = ~[];
         for 5.times {
             let arc3 = (*arc).clone();
-            do task::task().future_result(|+r| children.push(r)).spawn
-                || {
+            let mut builder = task::task();
+            builder.future_result(|r| children.push(r));
+            do builder.spawn {
                 do arc3.read |num| {
                     assert!(*num >= 0);
                 }
@@ -682,11 +683,15 @@ mod tests {
         }
 
         // Wait for children to pass their asserts
-        for vec::each(children) |r| { r.recv(); }
+        for vec::each(children) |r| {
+            r.recv();
+        }
 
         // Wait for writer to finish
         p.recv();
-        do arc.read |num| { assert!(*num == 10); }
+        do arc.read |num| {
+            assert!(*num == 10);
+        }
     }
     #[test]
     fn test_rw_downgrade() {

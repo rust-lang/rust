@@ -22,7 +22,7 @@ pub impl<U> cat<U> {
     fn meow_count(&mut self) -> uint { self.meows }
 }
 
-fn cat<U>(in_x : uint, in_y : int, +in_info: ~[U]) -> cat<U> {
+fn cat<U>(in_x : uint, in_y : int, in_info: ~[U]) -> cat<U> {
     cat {
         meows: in_x,
         how_hungry: in_y,
