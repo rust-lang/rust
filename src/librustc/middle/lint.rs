@@ -32,20 +32,29 @@ use syntax::{ast, visit, ast_util};
  * added via the `add_lint` method on the Session structure. This requires a
  * span and an id of the node that the lint is being added to. The lint isn't
  * actually emitted at that time because it is unknown what the actual lint
- * level for the particular attribute is.
+ * level at that location is.
  *
- * To actually emit lint warnings/errors, a context keeps track of the current
- * state of all lint levels. Upon entering a node of the ast which can modify
- * the lint settings, the previous lint state is pushed onto a stack and the ast
- * is then recursed upon. Once the lint state has been altered, all of the known
- * lint passes are run on the node of the ast.
+ * To actually emit lint warnings/errors, a separate pass is used just before
+ * translation. A context keeps track of the current state of all lint levels.
+ * Upon entering a node of the ast which can modify the lint settings, the
+ * previous lint state is pushed onto a stack and the ast is then recursed upon.
+ * As the ast is traversed, this keeps track of the current lint level for all
+ * lint attributes.
  *
- * Each lint pass is a visit::vt<()> structure. These visitors are constructed
- * via the lint_*() functions below. There are also some lint checks which
- * operate directly on ast nodes (such as @ast::item), and those are organized
- * as check_item_*(). Each visitor added to the lint context is modified to stop
- * once it reaches a node which could alter the lint levels. This means that
- * everything is looked at once and only once by every lint pass.
+ * At each node of the ast which can modify lint attributes, all known lint
+ * passes are also applied.  Each lint pass is a visit::vt<()> structure. These
+ * visitors are constructed via the lint_*() functions below. There are also
+ * some lint checks which operate directly on ast nodes (such as @ast::item),
+ * and those are organized as check_item_*(). Each visitor added to the lint
+ * context is modified to stop once it reaches a node which could alter the lint
+ * levels. This means that everything is looked at once and only once by every
+ * lint pass.
+ *
+ * With this all in place, to add a new lint warning, all you need to do is to
+ * either invoke `add_lint` on the session at the appropriate time, or write a
+ * lint pass in this module which is just an ast visitor. The context used when
+ * traversing the ast has a `span_lint` method which only needs the span of the
+ * item that's being warned about.
  */
 
 #[deriving(Eq)]
@@ -98,6 +107,13 @@ enum AttributedNode<'self> {
     Item(@ast::item),
     Method(&'self ast::method),
     Crate(@ast::crate),
+}
+
+#[deriving(Eq)]
+enum LintSource {
+    Node(span),
+    Default,
+    CommandLine
 }
 
 static lint_table: &'static [(&'static str, LintSpec)] = &[
@@ -240,29 +256,17 @@ pub fn get_lint_dict() -> LintDict {
     return map;
 }
 
-pub fn get_lint_name(lint_mode: lint) -> ~str {
-    for lint_table.each |&(name, spec)| {
-        if spec.lint == lint_mode {
-            return name.to_str();
-        }
-    }
-    fail!();
-}
-// This is a highly not-optimal set of data structure decisions.
-type LintModes = SmallIntMap<level>;
-type LintModeMap = HashMap<ast::node_id, LintModes>;
-
 struct Context {
     // All known lint modes (string versions)
     dict: @LintDict,
     // Current levels of each lint warning
-    curr: LintModes,
+    curr: SmallIntMap<(level, LintSource)>,
     // context we're checking in (used to access fields like sess)
     tcx: ty::ctxt,
     // When recursing into an attributed node of the ast which modifies lint
     // levels, this stack keeps track of the previous lint levels of whatever
     // was modified.
-    lint_stack: ~[(lint, level)],
+    lint_stack: ~[(lint, level, LintSource)],
     // Each of these visitors represents a lint pass. A number of the lint
     // attributes are registered by adding a visitor to iterate over the ast.
     // Others operate directly on @ast::item structures (or similar). Finally,
@@ -274,21 +278,65 @@ struct Context {
 impl Context {
     fn get_level(&self, lint: lint) -> level {
         match self.curr.find(&(lint as uint)) {
-          Some(&c) => c,
+          Some(&(lvl, _)) => lvl,
           None => allow
         }
     }
 
-    fn set_level(&mut self, lint: lint, level: level) {
-        if level == allow {
-            self.curr.remove(&(lint as uint));
-        } else {
-            self.curr.insert(lint as uint, level);
+    fn get_source(&self, lint: lint) -> LintSource {
+        match self.curr.find(&(lint as uint)) {
+          Some(&(_, src)) => src,
+          None => Default
         }
     }
 
+    fn set_level(&mut self, lint: lint, level: level, src: LintSource) {
+        if level == allow {
+            self.curr.remove(&(lint as uint));
+        } else {
+            self.curr.insert(lint as uint, (level, src));
+        }
+    }
+
+    fn lint_to_str(&self, lint: lint) -> ~str {
+        for self.dict.each |k, v| {
+            if v.lint == lint {
+                return copy *k;
+            }
+        }
+        fail!("unregistered lint %?", lint);
+    }
+
     fn span_lint(&self, lint: lint, span: span, msg: &str) {
-        self.tcx.sess.span_lint_level(self.get_level(lint), span, msg);
+        let (level, src) = match self.curr.find(&(lint as uint)) {
+            Some(&pair) => pair,
+            None => { return; }
+        };
+        if level == allow { return; }
+
+        let mut note = None;
+        let msg = match src {
+            Default | CommandLine => {
+                fmt!("%s [-%c %s%s]", msg, match level {
+                        warn => 'W', deny => 'D', forbid => 'F',
+                        allow => fail!()
+                    }, str::replace(self.lint_to_str(lint), "_", "-"),
+                    if src == Default { " (default)" } else { "" })
+            },
+            Node(src) => {
+                note = Some(src);
+                msg.to_str()
+            }
+        };
+        match level {
+            warn =>          { self.tcx.sess.span_warn(span, msg); }
+            deny | forbid => { self.tcx.sess.span_err(span, msg);  }
+            allow => fail!(),
+        }
+
+        for note.each |&span| {
+            self.tcx.sess.span_note(span, "lint level defined here");
+        }
     }
 
     /**
@@ -325,9 +373,10 @@ impl Context {
             }
 
             if now != level {
-                self.lint_stack.push((lint, now));
+                let src = self.get_source(lint);
+                self.lint_stack.push((lint, now, src));
                 pushed += 1;
-                self.set_level(lint, level);
+                self.set_level(lint, level, Node(meta.span));
             }
         }
 
@@ -335,8 +384,8 @@ impl Context {
 
         // rollback
         for pushed.times {
-            let (lint, level) = self.lint_stack.pop();
-            self.set_level(lint, level);
+            let (lint, lvl, src) = self.lint_stack.pop();
+            self.set_level(lint, lvl, src);
         }
     }
 
@@ -874,12 +923,12 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
 
     // Install defaults.
     for cx.dict.each_value |spec| {
-        cx.set_level(spec.lint, spec.default);
+        cx.set_level(spec.lint, spec.default, Default);
     }
 
     // Install command-line options, overriding defaults.
     for tcx.sess.opts.lint_opts.each |&(lint, level)| {
-        cx.set_level(lint, level);
+        cx.set_level(lint, level, CommandLine);
     }
 
     // Register each of the lint passes with the context

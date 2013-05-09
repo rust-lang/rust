@@ -223,15 +223,6 @@ pub impl Session_ {
     fn unimpl(@self, msg: &str) -> ! {
         self.span_diagnostic.handler().unimpl(msg)
     }
-    fn span_lint_level(@self, level: lint::level, sp: span, msg: &str) {
-        match level {
-          lint::allow => { },
-          lint::warn => self.span_warn(sp, msg),
-          lint::deny | lint::forbid => {
-            self.span_err(sp, msg);
-          }
-        }
-    }
     fn add_lint(@self, lint: lint::lint, id: ast::node_id, sp: span, msg: ~str) {
         match self.lints.find_mut(&id) {
             Some(arr) => { arr.push((lint, sp, msg)); return; }
