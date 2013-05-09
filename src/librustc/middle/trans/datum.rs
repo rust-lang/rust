@@ -735,13 +735,14 @@ pub impl Datum {
     fn get_vec_base_and_len(&self,
                             mut bcx: block,
                             span: span,
-                            expr_id: ast::node_id)
+                            expr_id: ast::node_id,
+                            derefs: uint)
                             -> (block, ValueRef, ValueRef) {
         //! Converts a vector into the slice pair. Performs rooting
         //! and write guards checks.
 
         // only imp't for @[] and @str, but harmless
-        bcx = write_guard::root_and_write_guard(self, bcx, span, expr_id, 0);
+        bcx = write_guard::root_and_write_guard(self, bcx, span, expr_id, derefs);
         let (base, len) = self.get_vec_base_and_len_no_root(bcx);
         (bcx, base, len)
     }

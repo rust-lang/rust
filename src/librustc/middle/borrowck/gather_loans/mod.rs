@@ -260,7 +260,7 @@ pub impl GatherLoanCtxt {
                                              r)
                     }
                     ty::AutoBorrowVec(r, m) | ty::AutoBorrowVecRef(r, m) => {
-                        let cmt_index = mcx.cat_index(expr, cmt);
+                        let cmt_index = mcx.cat_index(expr, cmt, autoderefs+1);
                         self.guarantee_valid(expr.id,
                                              expr.span,
                                              cmt_index,
@@ -574,7 +574,7 @@ pub impl GatherLoanCtxt {
                   let (slice_mutbl, slice_r) =
                       self.vec_slice_info(slice_pat, slice_ty);
                   let mcx = self.bccx.mc_ctxt();
-                  let cmt_index = mcx.cat_index(slice_pat, cmt);
+                  let cmt_index = mcx.cat_index(slice_pat, cmt, 0);
                   self.guarantee_valid(pat.id, pat.span,
                                        cmt_index, slice_mutbl, slice_r);
               }
