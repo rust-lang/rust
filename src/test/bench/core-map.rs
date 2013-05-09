@@ -13,6 +13,7 @@ extern mod std;
 use core::io;
 use std::time;
 use std::treemap::TreeMap;
+use std::splay::SplayMap;
 use core::hashmap::{HashMap, HashSet};
 use core::trie::TrieMap;
 use core::rand::Rng;
@@ -166,6 +167,24 @@ fn main() {
     {
         io::println(" Random integers:");
         let mut map = TrieMap::new::<uint>();
+        vector(&mut map, n_keys, rand);
+    }
+
+    io::println("\nSplayMap:");
+
+    {
+        let mut map = SplayMap::new::<uint, uint>();
+        ascending(&mut map, n_keys);
+    }
+
+    {
+        let mut map = SplayMap::new::<uint, uint>();
+        descending(&mut map, n_keys);
+    }
+
+    {
+        io::println(" Random integers:");
+        let mut map = SplayMap::new::<uint, uint>();
         vector(&mut map, n_keys, rand);
     }
 }
