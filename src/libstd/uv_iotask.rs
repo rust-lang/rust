@@ -243,7 +243,7 @@ fn impl_uv_iotask_async(iotask: &IoTask) {
     exit_po.recv();
 }
 
-// this fn documents the bear minimum neccesary to roll your own
+// this fn documents the bear minimum necessary to roll your own
 // high_level_loop
 #[cfg(test)]
 fn spawn_test_loop(exit_ch: ~Chan<()>) -> IoTask {

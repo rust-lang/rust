@@ -420,7 +420,7 @@ mod test {
         if result::is_err(&ga_result) {
             fail!(~"got err result from net::ip::get_addr();")
         }
-        // note really sure how to realiably test/assert
+        // note really sure how to reliably test/assert
         // this.. mostly just wanting to see it work, atm.
         let results = result::unwrap(ga_result);
         debug!("test_get_addr: Number of results for %s: %?",
