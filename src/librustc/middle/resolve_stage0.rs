@@ -5229,12 +5229,7 @@ pub impl Resolver {
                     !import_resolution.state.warned &&
                     import_resolution.span != dummy_sp() &&
                     import_resolution.privacy != Public {
-                import_resolution.state.warned = true;
-                let span = import_resolution.span;
-                self.session.span_lint_level(
-                    self.unused_import_lint_level(module_),
-                    span,
-                    ~"unused import");
+                // I swear I work in not(stage0)!
             }
         }
     }
