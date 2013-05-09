@@ -114,6 +114,7 @@ pub extern "rust-intrinsic" {
     /// `forget` is unsafe because the caller is responsible for
     /// ensuring the argument is deallocated already.
     pub unsafe fn forget<T>(_: T) -> ();
+    pub fn transmute<T,U>(e: T) -> U;
 
     /// Returns `true` if a type requires drop glue.
     pub fn needs_drop<T>() -> bool;
@@ -121,8 +122,8 @@ pub extern "rust-intrinsic" {
     // XXX: intrinsic uses legacy modes and has reference to TyDesc
     // and TyVisitor which are in librustc
     //fn visit_tydesc(++td: *TyDesc, &&tv: TyVisitor) -> ();
-    // XXX: intrinsic uses legacy modes
-    //fn frame_address(f: &once fn(*u8));
+
+    pub fn frame_address(f: &once fn(*u8));
 
     /// Get the address of the `__morestack` stack growth function.
     pub fn morestack_addr() -> *();
