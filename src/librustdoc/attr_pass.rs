@@ -140,9 +140,8 @@ fn fold_enum(
                                 copy ast_variant.node.attrs)
                         }
                         _ => {
-                            fail!("Enum variant %s has id that's \
-                                        not bound to an enum item",
-                                       variant.name)
+                            fail!("Enum variant %s has id that's not bound to an enum item",
+                                  variant.name)
                         }
                     }
                 }

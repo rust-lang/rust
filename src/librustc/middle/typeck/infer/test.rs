@@ -154,16 +154,16 @@ pub impl Env {
     fn assert_subtype(&self, a: ty::t, b: ty::t) {
         if !self.is_subtype(a, b) {
             fail!("%s is not a subtype of %s, but it should be",
-                      self.ty_to_str(a),
-                      self.ty_to_str(b));
+                  self.ty_to_str(a),
+                  self.ty_to_str(b));
         }
     }
 
     fn assert_not_subtype(&self, a: ty::t, b: ty::t) {
         if self.is_subtype(a, b) {
             fail!("%s is a subtype of %s, but it shouldn't be",
-                      self.ty_to_str(a),
-                      self.ty_to_str(b));
+                  self.ty_to_str(a),
+                  self.ty_to_str(b));
         }
     }
 

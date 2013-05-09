@@ -1052,7 +1052,7 @@ pub fn _each_split_within<'a>(ss: &'a str,
             (B, Cr, UnderLim) => { B }
             (B, Cr, OverLim)  if (i - last_start + 1) > lim
                               => fail!("word starting with %? longer than limit!",
-                                            self::slice(ss, last_start, i + 1)),
+                                       self::slice(ss, last_start, i + 1)),
             (B, Cr, OverLim)  => { slice(); slice_start = last_start; B }
             (B, Ws, UnderLim) => { last_end = i; C }
             (B, Ws, OverLim)  => { last_end = i; slice(); A }

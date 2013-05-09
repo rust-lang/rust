@@ -468,7 +468,7 @@ pub fn core_macros() -> ~str {
                 let expected_val = $expected;
                 // check both directions of equality....
                 if !((given_val == expected_val) && (expected_val == given_val)) {
-                    fail!(\"left: %? != right: %?\", given_val, expected_val);
+                    fail!(\"left: %? does not equal right: %?\", given_val, expected_val);
                 }
             }
         )

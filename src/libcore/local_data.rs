@@ -133,13 +133,13 @@ fn test_tls_modify() {
         local_data_modify(my_key, |data| {
             match data {
                 Some(@ref val) => fail!("unwelcome value: %s", *val),
-                None       => Some(@~"first data")
+                None           => Some(@~"first data")
             }
         });
         local_data_modify(my_key, |data| {
             match data {
                 Some(@~"first data") => Some(@~"next data"),
-                Some(@ref val)           => fail!("wrong value: %s", *val),
+                Some(@ref val)       => fail!("wrong value: %s", *val),
                 None                 => fail!("missing value")
             }
         });

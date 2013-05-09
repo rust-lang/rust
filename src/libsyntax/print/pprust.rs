@@ -2237,7 +2237,7 @@ mod test {
 
     fn string_check<T:Eq> (given : &T, expected: &T) {
         if !(given == expected) {
-            fail!("given %?, expected %?",given,expected);
+            fail!("given %?, expected %?", given, expected);
         }
     }
 

@@ -58,7 +58,7 @@ macro_rules! check_fancy {
         match t_.get_ref() {
             (23, $v) => { $chk }
             _ => fail!("Thing::<%s>(23, %s).get_ref() != (23, _)",
-                            stringify!($T), stringify!($e))
+                       stringify!($T), stringify!($e))
         }
     }}
 }

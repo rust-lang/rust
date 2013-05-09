@@ -531,13 +531,13 @@ pub fn parse_def_id(buf: &[u8]) -> ast::def_id {
 
     let crate_num = match uint::parse_bytes(crate_part, 10u) {
        Some(cn) => cn as int,
-       None => fail!("internal error: parse_def_id: crate number \
-                               expected, but found %?", crate_part)
+       None => fail!("internal error: parse_def_id: crate number expected, but found %?",
+                     crate_part)
     };
     let def_num = match uint::parse_bytes(def_part, 10u) {
        Some(dn) => dn as int,
-       None => fail!("internal error: parse_def_id: id expected, but \
-                               found %?", def_part)
+       None => fail!("internal error: parse_def_id: id expected, but found %?",
+                     def_part)
     };
     ast::def_id { crate: crate_num, node: def_num }
 }

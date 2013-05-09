@@ -917,8 +917,7 @@ mod test {
         let matches =
             &match getopts(~[~"--test"], optgroups()) {
               Ok(copy m) => m,
-              Err(copy f) => fail!("test_switch_implies_cfg_test: %s",
-                             getopts::fail_str(f))
+              Err(copy f) => fail!("test_switch_implies_cfg_test: %s", getopts::fail_str(f))
             };
         let sessopts = build_session_options(
             @~"rustc", matches, diagnostic::emit);
@@ -935,8 +934,7 @@ mod test {
             &match getopts(~[~"--test", ~"--cfg=test"], optgroups()) {
               Ok(copy m) => m,
               Err(copy f) => {
-                fail!("test_switch_implies_cfg_test_unless_cfg_test: %s",
-                    getopts::fail_str(f));
+                fail!("test_switch_implies_cfg_test_unless_cfg_test: %s", getopts::fail_str(f));
               }
             };
         let sessopts = build_session_options(

@@ -329,11 +329,9 @@ fn check_cvar_bounds<U>(out_of_bounds: Option<uint>, id: uint, act: &str,
                         blk: &fn() -> U) -> U {
     match out_of_bounds {
         Some(0) =>
-            fail!("%s with illegal ID %u - this lock has no condvars!",
-                      act, id),
+            fail!("%s with illegal ID %u - this lock has no condvars!", act, id),
         Some(length) =>
-            fail!("%s with illegal ID %u - ID must be less than %u",
-                      act, id, length),
+            fail!("%s with illegal ID %u - ID must be less than %u", act, id, length),
         None => blk()
     }
 }
