@@ -166,7 +166,7 @@ pub fn from_slice<T:Copy>(v: &[T]) -> @[T] {
     from_fn(v.len(), |i| v[i])
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 pub mod traits {
     use at_vec::append;
     use kinds::Copy;

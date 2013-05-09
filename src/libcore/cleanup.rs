@@ -15,9 +15,9 @@ use ptr::mut_null;
 use repr::BoxRepr;
 use sys::TypeDesc;
 use cast::transmute;
-#[cfg(notest)] use unstable::lang::clear_task_borrow_list;
+#[cfg(not(test))] use unstable::lang::clear_task_borrow_list;
 
-#[cfg(notest)] use ptr::to_unsafe_ptr;
+#[cfg(not(test))] use ptr::to_unsafe_ptr;
 
 /**
  * Runtime structures
@@ -164,7 +164,7 @@ fn debug_mem() -> bool {
 }
 
 /// Destroys all managed memory (i.e. @ boxes) held by the current task.
-#[cfg(notest)]
+#[cfg(not(test))]
 #[lang="annihilate"]
 pub unsafe fn annihilate() {
     use unstable::lang::local_free;
