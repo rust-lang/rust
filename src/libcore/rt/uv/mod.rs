@@ -210,6 +210,10 @@ pub impl UvError {
             from_c_str(desc_str)
         }
     }
+
+    fn is_eof(&self) -> bool {
+        self.code == uvll::EOF
+    }
 }
 
 impl ToStr for UvError {
@@ -262,6 +266,7 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
             EOF => EndOfFile,
             EACCES => PermissionDenied,
             ECONNREFUSED => ConnectionRefused,
+            ECONNRESET => ConnectionReset,
             e => {
                 abort!("unknown uv error code: %u", e as uint);
             }

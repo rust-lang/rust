@@ -338,6 +338,7 @@ pub enum IoErrorKind {
     ConnectionFailed,
     Closed,
     ConnectionRefused,
+    ConnectionReset
 }
 
 // XXX: Can't put doc comments on macros
