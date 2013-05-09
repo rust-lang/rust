@@ -498,7 +498,7 @@ mod tests {
 
             let arc_v = p.recv();
 
-            let v = *arc::get::<~[int]>(&arc_v);
+            let v = copy *arc::get::<~[int]>(&arc_v);
             assert!(v[3] == 4);
         };
 

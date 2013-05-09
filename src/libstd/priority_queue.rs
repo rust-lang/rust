@@ -270,8 +270,8 @@ mod tests {
     }
 
     fn check_to_vec(data: ~[int]) {
-        let heap = from_vec(data);
-        assert!(merge_sort(heap.to_vec(), le) == merge_sort(data, le));
+        let heap = from_vec(copy data);
+        assert!(merge_sort((copy heap).to_vec(), le) == merge_sort(data, le));
         assert!(heap.to_sorted_vec() == merge_sort(data, le));
     }
 
