@@ -25,7 +25,7 @@ pub mod rusti {
 
 /// Casts the value at `src` to U. The two types must have the same length.
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
-    let mut dest: U = unstable::intrinsics::init();
+    let mut dest: U = unstable::intrinsics::uninit();
     {
         let dest_ptr: *mut u8 = rusti::transmute(&mut dest);
         let src_ptr: *u8 = rusti::transmute(src);

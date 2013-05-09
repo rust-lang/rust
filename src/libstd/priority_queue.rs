@@ -139,7 +139,7 @@ pub impl <T:Ord> PriorityQueue<T> {
             while pos > start {
                 let parent = (pos - 1) >> 1;
                 if new > self.data[parent] {
-                    let mut x = rusti::init();
+                    let mut x = rusti::uninit();
                     x <-> self.data[parent];
                     rusti::move_val_init(&mut self.data[pos], x);
                     pos = parent;
@@ -162,7 +162,7 @@ pub impl <T:Ord> PriorityQueue<T> {
                 if right < end && !(self.data[child] > self.data[right]) {
                     child = right;
                 }
-                let mut x = rusti::init();
+                let mut x = rusti::uninit();
                 x <-> self.data[child];
                 rusti::move_val_init(&mut self.data[pos], x);
                 pos = child;

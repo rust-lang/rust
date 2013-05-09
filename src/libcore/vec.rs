@@ -591,8 +591,7 @@ pub fn pop<T>(v: &mut ~[T]) -> T {
     }
     let valptr = ptr::to_mut_unsafe_ptr(&mut v[ln - 1u]);
     unsafe {
-        // FIXME #4204: Should be uninit() - we don't need this zeroed
-        let mut val = intrinsics::init();
+        let mut val = intrinsics::uninit();
         val <-> *valptr;
         raw::set_len(v, ln - 1u);
         val
@@ -666,8 +665,7 @@ pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
     unsafe {
         do as_mut_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
-                // FIXME #4204 Should be uninit() - don't need to zero
-                let mut x = intrinsics::init();
+                let mut x = intrinsics::uninit();
                 x <-> *ptr::mut_offset(p, i);
                 push(&mut *v, x);
             }
@@ -683,8 +681,7 @@ pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
         unsafe {
             // This loop is optimized out for non-drop types.
             for uint::range(newlen, oldlen) |i| {
-                // FIXME #4204 Should be uninit() - don't need to zero
-                let mut dropped = intrinsics::init();
+                let mut dropped = intrinsics::uninit();
                 dropped <-> *ptr::mut_offset(p, i);
             }
         }
@@ -709,9 +706,7 @@ pub fn dedup<T:Eq>(v: &mut ~[T]) {
                 // last_written < next_to_read < ln
                 if *ptr::mut_offset(p, next_to_read) ==
                     *ptr::mut_offset(p, last_written) {
-                    // FIXME #4204 Should be uninit() - don't need to
-                    // zero
-                    let mut dropped = intrinsics::init();
+                    let mut dropped = intrinsics::uninit();
                     dropped <-> *ptr::mut_offset(p, next_to_read);
                 } else {
                     last_written += 1;
