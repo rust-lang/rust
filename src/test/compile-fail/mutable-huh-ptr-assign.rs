@@ -11,7 +11,7 @@
 extern mod std;
 
 fn main() {
-    unsafe fn f(&&v: *const int) {
+    unsafe fn f(v: *const int) {
         *v = 1 //~ ERROR cannot assign
     }
 

@@ -64,6 +64,7 @@ impl gen_send for message {
 
             let mut body = ~"{\n";
             body += fmt!("use super::%s;\n", name);
+            body += ~"let mut pipe = pipe;\n";
 
             if this.proto.is_bounded() {
                 let (sp, rp) = match (this.dir, next.dir) {
@@ -73,12 +74,12 @@ impl gen_send for message {
                   (recv, recv) => (~"c", ~"s")
                 };
 
-                body += ~"let b = pipe.reuse_buffer();\n";
+                body += ~"let mut b = pipe.reuse_buffer();\n";
                 body += fmt!("let %s = ::core::pipes::SendPacketBuffered(\
-                              &(b.buffer.data.%s));\n",
+                              &mut (b.buffer.data.%s));\n",
                              sp, next.name);
                 body += fmt!("let %s = ::core::pipes::RecvPacketBuffered(\
-                              &(b.buffer.data.%s));\n",
+                              &mut (b.buffer.data.%s));\n",
                              rp, next.name);
             }
             else {
@@ -366,7 +367,7 @@ impl gen_init for protocol {
                         fmt!("data.%s.set_buffer(buffer)",
                              s.name))),
                 ext_cx.parse_expr(fmt!(
-                    "::core::ptr::to_unsafe_ptr(&(data.%s))",
+                    "::core::ptr::to_mut_unsafe_ptr(&mut (data.%s))",
                     self.states[0].name))));
 
         quote_expr!({
@@ -410,10 +411,8 @@ impl gen_init for protocol {
 
             @spanned {
                 node: ast::struct_field_ {
-                    kind: ast::named_field(
-                            cx.ident_of(s.name),
-                            ast::struct_immutable,
-                            ast::inherited),
+                    kind: ast::named_field(cx.ident_of(s.name),
+                                           ast::inherited),
                     id: cx.next_id(),
                     ty: fty,
                     attrs: ~[],

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn take(+x: int) -> int {x}
+fn take(x: int) -> int {x}
 
 fn the_loop() {
     let mut list = ~[];

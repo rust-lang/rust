@@ -235,17 +235,30 @@ pub impl LittleLock {
     }
 }
 
-struct ExData<T> { lock: LittleLock, failed: bool, data: T, }
+struct ExData<T> {
+    lock: LittleLock,
+    failed: bool,
+    data: T,
+}
+
 /**
  * An arc over mutable data that is protected by a lock. For library use only.
  */
-pub struct Exclusive<T> { x: SharedMutableState<ExData<T>> }
+pub struct Exclusive<T> {
+    x: SharedMutableState<ExData<T>>
+}
 
 pub fn exclusive<T:Owned>(user_data: T) -> Exclusive<T> {
     let data = ExData {
-        lock: LittleLock(), failed: false, data: user_data
+        lock: LittleLock(),
+        failed: false,
+        data: user_data
     };
-    Exclusive { x: unsafe { shared_mutable_state(data) } }
+    Exclusive {
+        x: unsafe {
+            shared_mutable_state(data)
+        }
+    }
 }
 
 impl<T:Owned> Clone for Exclusive<T> {

@@ -18,7 +18,7 @@ impl Drop for X {
     }
 }
 
-fn unwrap(+x: X) -> ~str {
+fn unwrap(x: X) -> ~str {
     let X { x: y } = x; //~ ERROR deconstructing struct not allowed in pattern
     y
 }

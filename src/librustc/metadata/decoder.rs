@@ -204,18 +204,6 @@ fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) {
     }
 }
 
-fn field_mutability(d: ebml::Doc) -> ast::struct_mutability {
-    // Use maybe_get_doc in case it's a method
-    reader::maybe_get_doc(d, tag_struct_mut).map_default(
-        ast::struct_immutable,
-        |d| {
-            match reader::doc_as_u8(*d) as char {
-              'm' => ast::struct_mutable,
-              _   => ast::struct_immutable
-            }
-        })
-}
-
 fn variant_disr_val(d: ebml::Doc) -> Option<int> {
     do reader::maybe_get_doc(d, tag_disr_val).chain |val_doc| {
         int::parse_bytes(reader::doc_data(val_doc), 10u)
@@ -923,12 +911,10 @@ pub fn get_struct_fields(intr: @ident_interner, cdata: cmd, id: ast::node_id)
         if f == PublicField || f == PrivateField || f == InheritedField {
             let name = item_name(intr, an_item);
             let did = item_def_id(an_item, cdata);
-            let mt = field_mutability(an_item);
             result.push(ty::field_ty {
                 ident: name,
                 id: did, vis:
                 struct_field_family_to_visibility(f),
-                mutability: mt,
             });
         }
     }
@@ -938,7 +924,6 @@ pub fn get_struct_fields(intr: @ident_interner, cdata: cmd, id: ast::node_id)
             ident: special_idents::unnamed_field,
             id: did,
             vis: ast::inherited,
-            mutability: ast::struct_immutable,
         });
     }
     result

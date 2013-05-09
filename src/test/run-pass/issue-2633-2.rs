@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn a_val(&&x: ~int, +y: ~int) -> int {
+fn a_val(x: ~int, y: ~int) -> int {
     *x + *y
 }
 

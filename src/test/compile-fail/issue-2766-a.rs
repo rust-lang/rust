@@ -15,10 +15,10 @@ pub mod stream {
         use core::pipes;
 
         pub impl<T:Owned> Stream<T> {
-            pub fn recv() -> extern fn(+v: Stream<T>) -> ::stream::Stream<T> {
+            pub fn recv() -> extern fn(v: Stream<T>) -> ::stream::Stream<T> {
               // resolve really should report just one error here.
               // Change the test case when it changes.
-              pub fn recv(+pipe: Stream<T>) -> ::stream::Stream<T> { //~ ERROR attempt to use a type argument out of scope
+              pub fn recv(pipe: Stream<T>) -> ::stream::Stream<T> { //~ ERROR attempt to use a type argument out of scope
                 //~^ ERROR use of undeclared type name
                 //~^^ ERROR attempt to use a type argument out of scope
                 //~^^^ ERROR use of undeclared type name

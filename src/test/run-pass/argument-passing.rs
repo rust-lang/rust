@@ -10,9 +10,11 @@
 
 // xfail-fast
 
-struct X { x: int }
+struct X {
+    x: int
+}
 
-fn f1(a: &mut X, b: &mut int, +c: int) -> int {
+fn f1(a: &mut X, b: &mut int, c: int) -> int {
     let r = a.x + *b + c;
     a.x = 0;
     *b = 10;

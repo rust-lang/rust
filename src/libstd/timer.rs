@@ -14,10 +14,11 @@ use uv;
 use uv::iotask;
 use uv::iotask::IoTask;
 
-use core::libc;
-use core::libc::c_void;
 use core::cast::transmute;
+use core::cast;
 use core::comm::{stream, Chan, SharedChan, Port, select2i};
+use core::libc::c_void;
+use core::libc;
 
 /**
  * Wait for timeout period then send provided value over a channel
@@ -120,22 +121,28 @@ pub fn sleep(iotask: &IoTask, msecs: uint) {
 pub fn recv_timeout<T:Copy + Owned>(iotask: &IoTask,
                                    msecs: uint,
                                    wait_po: &Port<T>)
-                                -> Option<T> {
-    let (timeout_po, timeout_ch) = stream::<()>();
+                                   -> Option<T> {
+    let mut (timeout_po, timeout_ch) = stream::<()>();
     delayed_send(iotask, msecs, &timeout_ch, ());
-    // FIXME: This could be written clearer (#2618)
-    either::either(
-        |_| {
-            None
-        }, |_| {
-            Some(wait_po.recv())
-        }, &select2i(&timeout_po, wait_po)
-    )
+
+    // XXX: Workaround due to ports and channels not being &mut. They should
+    // be.
+    unsafe {
+        let wait_po = cast::transmute_mut(wait_po);
+
+        // FIXME: This could be written clearer (#2618)
+        either::either(
+            |_| {
+                None
+            }, |_| {
+                Some(wait_po.recv())
+            }, &select2i(&mut timeout_po, wait_po)
+        )
+    }
 }
 
 // INTERNAL API
-extern fn delayed_send_cb(handle: *uv::ll::uv_timer_t,
-                                status: libc::c_int) {
+extern fn delayed_send_cb(handle: *uv::ll::uv_timer_t, status: libc::c_int) {
     unsafe {
         debug!(
             "delayed_send_cb handle %? status %?", handle, status);
@@ -212,7 +219,7 @@ mod test {
                 let hl_loop_clone = hl_loop.clone();
                 do task::spawn {
                     use core::rand::*;
-                    let rng = rng();
+                    let mut rng = rng();
                     for old_iter::repeat(times) {
                         sleep(&hl_loop_clone, rng.next() as uint % maxms);
                     }
@@ -269,7 +276,8 @@ mod test {
         let hl_loop = uv::global_loop::get();
 
         for old_iter::repeat(times as uint) {
-            let expected = rand::rng().gen_str(16u);
+            let mut rng = rand::rng();
+            let expected = rng.gen_str(16u);
             let (test_po, test_ch) = stream::<~str>();
             let hl_loop_clone = hl_loop.clone();
             do task::spawn() {

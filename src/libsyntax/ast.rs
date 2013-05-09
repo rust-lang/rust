@@ -1168,7 +1168,7 @@ pub type struct_field = spanned<struct_field_>;
 #[auto_decode]
 #[deriving(Eq)]
 pub enum struct_field_kind {
-    named_field(ident, struct_mutability, visibility),
+    named_field(ident, visibility),
     unnamed_field   // element of a tuple-like struct
 }
 
@@ -1221,17 +1221,6 @@ pub enum item_ {
 #[auto_encode]
 #[auto_decode]
 #[deriving(Eq)]
-pub enum struct_mutability { struct_mutable, struct_immutable }
-
-impl to_bytes::IterBytes for struct_mutability {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        (*self as u8).iter_bytes(lsb0, f)
-    }
-}
-
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
 pub struct foreign_item {
     ident: ident,
     attrs: ~[attribute],
@@ -1276,6 +1265,21 @@ mod test {
         xorPush(&mut s,14);
         assert_eq!(s,~[14]);
         xorPush(&mut s,14);
+        assert_eq!(s,~[]);
+        xorPush(&mut s,14);
+        assert_eq!(s,~[14]);
+        xorPush(&mut s,15);
+        assert_eq!(s,~[14,15]);
+        xorPush (&mut s,16);
+        assert_eq! (s,~[14,15,16]);
+        xorPush (&mut s,16);
+        assert_eq! (s,~[14,15]);
+        xorPush (&mut s,15);
+        assert_eq! (s,~[14]);
+    }
+
+    #[test] fn test_marksof () {
+        let stopname = uints_to_name(&~[12,14,78]);
         assert_eq!(s,~[]);
         xorPush(&mut s,14);
         assert_eq!(s,~[14]);
@@ -1347,3 +1351,12 @@ mod test {
 }
 
 */
+//
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// End:
+//

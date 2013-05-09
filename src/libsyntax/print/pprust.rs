@@ -703,14 +703,11 @@ pub fn print_struct(s: @ps,
         for struct_def.fields.each |field| {
             match field.node.kind {
                 ast::unnamed_field => fail!(~"unexpected unnamed field"),
-                ast::named_field(ident, mutability, visibility) => {
+                ast::named_field(ident, visibility) => {
                     hardbreak_if_not_bol(s);
                     maybe_print_comment(s, field.span.lo);
                     print_outer_attributes(s, field.node.attrs);
                     print_visibility(s, visibility);
-                    if mutability == ast::struct_mutable {
-                        word_nbsp(s, ~"mut");
-                    }
                     print_ident(s, ident);
                     word_nbsp(s, ~":");
                     print_type(s, field.node.ty);

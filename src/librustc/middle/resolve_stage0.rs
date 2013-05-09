@@ -4718,7 +4718,7 @@ pub impl Resolver {
                       for vec::each(class_def.fields) |field| {
                         match field.node.kind {
                           unnamed_field => {},
-                          named_field(ident, _, _) => {
+                          named_field(ident, _) => {
                               if str::eq_slice(*this.session.str_of(ident),
                                                name) {
                                 return true

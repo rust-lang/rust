@@ -16,7 +16,7 @@ struct TwoU64s {
 }
 
 pub extern {
-    pub fn rust_dbg_extern_identity_TwoU64s(&&u: TwoU64s) -> TwoU64s;
+    pub fn rust_dbg_extern_identity_TwoU64s(u: TwoU64s) -> TwoU64s;
 }
 
 pub fn main() {

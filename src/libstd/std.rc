@@ -28,7 +28,9 @@ not required in or otherwise suitable for the core library.
 
 #[allow(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
-#[allow(deprecated_mutable_fields)];
+
+// Allow mutable fields only in stage0.
+#[warn(deprecated_mutable_fields)];
 
 pub mod uv_ll;
 

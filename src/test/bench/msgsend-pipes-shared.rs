@@ -65,15 +65,15 @@ fn run(args: &[~str]) {
     let mut worker_results = ~[];
     for uint::range(0, workers) |_i| {
         let to_child = to_child.clone();
-        do task::task().future_result(|+r| {
-            worker_results.push(r);
-        }).spawn || {
+        let mut builder = task::task();
+        builder.future_result(|r| worker_results.push(r));
+        do builder.spawn {
             for uint::range(0, size / workers) |_i| {
                 //error!("worker %?: sending %? bytes", i, num_bytes);
                 to_child.send(bytes(num_bytes));
             }
             //error!("worker %? exiting", i);
-        };
+        }
     }
     do task::spawn || {
         server(&from_parent, &to_parent);

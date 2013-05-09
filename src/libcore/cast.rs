@@ -17,7 +17,7 @@ pub mod rusti {
     #[abi = "rust-intrinsic"]
     #[link_name = "rusti"]
     pub extern "rust-intrinsic" {
-        fn forget<T>(+x: T);
+        fn forget<T>(x: T);
 
         fn transmute<T,U>(e: T) -> U;
     }

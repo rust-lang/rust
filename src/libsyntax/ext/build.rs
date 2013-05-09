@@ -11,6 +11,7 @@
 use ast;
 use codemap;
 use codemap::span;
+use fold;
 use ext::base::ext_ctxt;
 use ext::build;
 
@@ -516,3 +517,20 @@ pub fn mk_unreachable(cx: @ext_ctxt, span: span) -> @ast::expr {
 pub fn mk_unreachable_arm(cx: @ext_ctxt, span: span) -> ast::arm {
     mk_arm(cx, span, ~[mk_pat_wild(cx, span)], mk_unreachable(cx, span))
 }
+
+//
+// Duplication functions
+//
+// These functions just duplicate AST nodes.
+//
+
+pub fn duplicate_expr(cx: @ext_ctxt, expr: @ast::expr) -> @ast::expr {
+    let folder = fold::default_ast_fold();
+    let folder = @fold::AstFoldFns {
+        new_id: |_| cx.next_id(),
+        ..*folder
+    };
+    let folder = fold::make_fold(folder);
+    folder.fold_expr(expr)
+}
+

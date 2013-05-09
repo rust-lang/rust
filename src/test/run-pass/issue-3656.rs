@@ -24,7 +24,7 @@ struct KEYGEN {
 
 extern {
     // Bogus signature, just need to test if it compiles.
-    pub fn malloc(++data: KEYGEN);
+    pub fn malloc(data: KEYGEN);
 }
 
 pub fn main() {

@@ -14,7 +14,7 @@ fn spawn<T:Owned>(val: T, f: extern fn(T)) {
     f(val);
 }
 
-fn f(+i: int) {
+fn f(i: int) {
     assert!(i == 100);
 }
 

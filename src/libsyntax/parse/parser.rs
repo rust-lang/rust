@@ -45,7 +45,7 @@ use ast::{pat_tup, pat_uniq, pat_wild, private};
 use ast::{rem, required};
 use ast::{ret_style, return_val, self_ty, shl, shr, stmt, stmt_decl};
 use ast::{stmt_expr, stmt_semi, stmt_mac, struct_def, struct_field};
-use ast::{struct_immutable, struct_mutable, struct_variant_kind, subtract};
+use ast::{struct_variant_kind, subtract};
 use ast::{sty_box, sty_region, sty_static, sty_uniq, sty_value};
 use ast::{token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok};
 use ast::{tt_nonterminal, tuple_variant_kind, Ty, ty_, ty_bot, ty_box};
@@ -390,8 +390,8 @@ pub impl Parser {
     // parse a ty_closure type
     fn parse_ty_closure(&self,
                         sigil: ast::Sigil,
-                        region: Option<@ast::Lifetime>) -> ty_
-    {
+                        region: Option<@ast::Lifetime>)
+                        -> ty_ {
         /*
 
         (&|~|@) ['r] [pure|unsafe] [once] fn <'lt> (S) -> T
@@ -773,20 +773,17 @@ pub impl Parser {
         return ty_rptr(opt_lifetime, mt);
     }
 
-    // parse an optional mode.
-    // XXX: Remove after snapshot.
+    // parse an optional, obsolete argument mode.
     fn parse_arg_mode(&self) {
         if self.eat(&token::BINOP(token::MINUS)) {
             self.obsolete(*self.span, ObsoleteMode);
         } else if self.eat(&token::ANDAND) {
-            // Ignore.
+            self.obsolete(*self.span, ObsoleteMode);
         } else if self.eat(&token::BINOP(token::PLUS)) {
             if self.eat(&token::BINOP(token::PLUS)) {
-                // ++ mode is obsolete, but we need a snapshot
-                // to stop parsing it.
-                // Ignore.
+                self.obsolete(*self.span, ObsoleteMode);
             } else {
-                // Ignore.
+                self.obsolete(*self.span, ObsoleteMode);
             }
         } else {
             // Ignore.
@@ -2528,10 +2525,10 @@ pub impl Parser {
     fn parse_name_and_ty(&self,
                          pr: visibility,
                          attrs: ~[attribute]) -> @struct_field {
-        let mut is_mutbl = struct_immutable;
         let lo = self.span.lo;
         if self.eat_keyword(&~"mut") {
-            is_mutbl = struct_mutable;
+            // Do nothing, for backwards compatibility.
+            // XXX: Remove after snapshot.
         }
         if !is_plain_ident(&*self.token) {
             self.fatal(~"expected ident");
@@ -2540,7 +2537,7 @@ pub impl Parser {
         self.expect(&token::COLON);
         let ty = self.parse_ty(false);
         @spanned(lo, self.last_span.hi, ast::struct_field_ {
-            kind: named_field(name, is_mutbl, pr),
+            kind: named_field(name, pr),
             id: self.get_id(),
             ty: ty,
             attrs: attrs,

@@ -207,7 +207,7 @@ pub struct CrateContext {
      adt_reprs: @mut HashMap<ty::t, @adt::Repr>,
      names: namegen,
      next_addrspace: addrspace_gen,
-     symbol_hasher: @hash::State,
+     symbol_hasher: @mut hash::State,
      type_hashcodes: @mut HashMap<ty::t, @str>,
      type_short_names: @mut HashMap<ty::t, ~str>,
      all_llvm_symbols: @mut HashSet<@~str>,

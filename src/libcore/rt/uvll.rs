@@ -393,24 +393,26 @@ extern {
     // FIXME ref #2064
     fn rust_uv_tcp_connect(connect_ptr: *uv_connect_t,
                            tcp_handle_ptr: *uv_tcp_t,
-                           ++after_cb: *u8,
-                           ++addr: *sockaddr_in) -> c_int;
+                           after_cb: *u8,
+                           addr: *sockaddr_in) -> c_int;
     // FIXME ref #2064
-    fn rust_uv_tcp_bind(tcp_server: *uv_tcp_t, ++addr: *sockaddr_in) -> c_int;
+    fn rust_uv_tcp_bind(tcp_server: *uv_tcp_t, addr: *sockaddr_in) -> c_int;
     // FIXME ref #2064
     fn rust_uv_tcp_connect6(connect_ptr: *uv_connect_t,
                             tcp_handle_ptr: *uv_tcp_t,
-                            ++after_cb: *u8,
-                            ++addr: *sockaddr_in6) -> c_int;
+                            after_cb: *u8,
+                            addr: *sockaddr_in6) -> c_int;
     // FIXME ref #2064
-    fn rust_uv_tcp_bind6(tcp_server: *uv_tcp_t, ++addr: *sockaddr_in6) -> c_int;
-    fn rust_uv_tcp_getpeername(tcp_handle_ptr: *uv_tcp_t, ++name: *sockaddr_in) -> c_int;
-    fn rust_uv_tcp_getpeername6(tcp_handle_ptr: *uv_tcp_t, ++name: *sockaddr_in6) ->c_int;
+    fn rust_uv_tcp_bind6(tcp_server: *uv_tcp_t, addr: *sockaddr_in6) -> c_int;
+    fn rust_uv_tcp_getpeername(tcp_handle_ptr: *uv_tcp_t,
+                               name: *sockaddr_in) -> c_int;
+    fn rust_uv_tcp_getpeername6(tcp_handle_ptr: *uv_tcp_t,
+                                name: *sockaddr_in6) ->c_int;
     fn rust_uv_listen(stream: *c_void, backlog: c_int, cb: *u8) -> c_int;
     fn rust_uv_accept(server: *c_void, client: *c_void) -> c_int;
     fn rust_uv_write(req: *c_void,
                      stream: *c_void,
-                     ++buf_in: *uv_buf_t,
+                     buf_in: *uv_buf_t,
                      buf_cnt: c_int,
                      cb: *u8) -> c_int;
     fn rust_uv_read_start(stream: *c_void,
@@ -426,7 +428,7 @@ extern {
     fn rust_uv_timer_stop(handle: *uv_timer_t) -> c_int;
 
     fn rust_uv_malloc_buf_base_of(sug_size: size_t) -> *u8;
-    fn rust_uv_free_base_of_buf(++buf: uv_buf_t);
+    fn rust_uv_free_base_of_buf(buf: uv_buf_t);
     fn rust_uv_get_stream_handle_from_connect_req(connect_req: *uv_connect_t) -> *uv_stream_t;
     fn rust_uv_get_stream_handle_from_write_req(write_req: *uv_write_t) -> *uv_stream_t;
     fn rust_uv_get_loop_for_uv_handle(handle: *c_void) -> *c_void;
@@ -436,6 +438,6 @@ extern {
     fn rust_uv_set_data_for_uv_handle(handle: *c_void, data: *c_void);
     fn rust_uv_get_data_for_req(req: *c_void) -> *c_void;
     fn rust_uv_set_data_for_req(req: *c_void, data: *c_void);
-    fn rust_uv_get_base_from_buf(++buf: uv_buf_t) -> *u8;
-    fn rust_uv_get_len_from_buf(++buf: uv_buf_t) -> size_t;
+    fn rust_uv_get_base_from_buf(buf: uv_buf_t) -> *u8;
+    fn rust_uv_get_len_from_buf(buf: uv_buf_t) -> size_t;
 }

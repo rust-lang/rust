@@ -23,7 +23,7 @@ pub mod kitties {
         fn meow_count(&mut self) -> uint { self.meows }
     }
 
-    pub fn cat<U>(in_x : uint, in_y : int, +in_info: ~[U]) -> cat<U> {
+    pub fn cat<U>(in_x : uint, in_y : int, in_info: ~[U]) -> cat<U> {
         cat {
             meows: in_x,
             how_hungry: in_y,

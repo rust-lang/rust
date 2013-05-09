@@ -281,8 +281,8 @@ pub fn create_struct_pattern(cx: @ext_ctxt,
 
     for struct_def.fields.eachi |i, struct_field| {
         let opt_id = match struct_field.node.kind {
-            ast::named_field(ident, _, _) if (struct_type == Unknown ||
-                                              struct_type == Record) => {
+            ast::named_field(ident, _) if (struct_type == Unknown ||
+                                           struct_type == Record) => {
                 struct_type = Record;
                 Some(ident)
             }

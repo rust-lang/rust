@@ -40,7 +40,7 @@ mod pingpong {
         do pipes::entangle_buffer(buffer) |buffer, data| {
             data.ping.set_buffer(buffer);
             data.pong.set_buffer(buffer);
-            ptr::to_unsafe_ptr(&(data.ping))
+            ptr::to_mut_unsafe_ptr(&mut (data.ping))
         }
     }
     pub struct ping(server::pong);
@@ -50,11 +50,11 @@ mod pingpong {
         use core::pipes::*;
         use core::ptr;
 
-        pub fn ping(+pipe: ping) -> pong {
+        pub fn ping(mut pipe: ping) -> pong {
             {
-                let b = pipe.reuse_buffer();
-                let s = SendPacketBuffered(&b.buffer.data.pong);
-                let c = RecvPacketBuffered(&b.buffer.data.pong);
+                let mut b = pipe.reuse_buffer();
+                let s = SendPacketBuffered(&mut b.buffer.data.pong);
+                let c = RecvPacketBuffered(&mut b.buffer.data.pong);
                 let message = ::pingpong::ping(s);
                 send(pipe, message);
                 c
@@ -72,11 +72,11 @@ mod pingpong {
 
         pub type ping = pipes::RecvPacketBuffered<::pingpong::ping,
         ::pingpong::Packets>;
-        pub fn pong(+pipe: pong) -> ping {
+        pub fn pong(mut pipe: pong) -> ping {
             {
-                let b = pipe.reuse_buffer();
-                let s = SendPacketBuffered(&b.buffer.data.ping);
-                let c = RecvPacketBuffered(&b.buffer.data.ping);
+                let mut b = pipe.reuse_buffer();
+                let s = SendPacketBuffered(&mut b.buffer.data.ping);
+                let c = RecvPacketBuffered(&mut b.buffer.data.ping);
                 let message = ::pingpong::pong(s);
                 send(pipe, message);
                 c
@@ -91,7 +91,7 @@ mod test {
     use core::pipes::recv;
     use pingpong::{ping, pong};
 
-    pub fn client(+chan: ::pingpong::client::ping) {
+    pub fn client(chan: ::pingpong::client::ping) {
         use pingpong::client;
 
         let chan = client::ping(chan); return;
@@ -100,7 +100,7 @@ mod test {
         error!("Received pong");
     }
 
-    pub fn server(+chan: ::pingpong::server::ping) {
+    pub fn server(chan: ::pingpong::server::ping) {
         use pingpong::server;
 
         let ping(chan) = recv(chan); return;

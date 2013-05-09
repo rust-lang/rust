@@ -2987,9 +2987,8 @@ pub fn trans_crate(sess: session::Session,
                    emap2: resolve::ExportMap2,
                    maps: astencode::Maps) -> (ModuleRef, LinkMeta) {
 
-    let symbol_hasher = @hash::default_state();
-    let link_meta =
-        link::build_link_meta(sess, crate, output, symbol_hasher);
+    let symbol_hasher = @mut hash::default_state();
+    let link_meta = link::build_link_meta(sess, crate, output, symbol_hasher);
     let reachable = reachable::find_reachable(
         &crate.node.module,
         emap2,
