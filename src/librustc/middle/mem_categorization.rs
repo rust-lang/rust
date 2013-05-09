@@ -66,7 +66,7 @@ pub enum categorization {
     cat_local(ast::node_id),           // local variable
     cat_arg(ast::node_id),             // formal argument
     cat_deref(cmt, uint, ptr_kind),    // deref of a ptr
-    cat_interior(cmt, interior_kind),          // something interior
+    cat_interior(cmt, interior_kind),  // something interior
     cat_discr(cmt, ast::node_id),      // match discriminant (see preserve())
     cat_self(ast::node_id),            // explicit `self`
 }
@@ -94,8 +94,7 @@ pub enum interior_kind {
     interior_anon_field,             // anonymous field (in e.g.
                                      // struct Foo(int, int);
     interior_variant(ast::def_id),   // internals to a variant of given enum
-    interior_field(ast::ident,       // name of field
-                   ast::mutability), // declared mutability of field
+    interior_field(ast::ident),      // name of field
     interior_index(ty::t,            // type of vec/str/etc being deref'd
                    ast::mutability)  // mutability of vec content
 }
@@ -395,8 +394,7 @@ pub impl mem_categorization_ctxt {
             assert!(!self.method_map.contains_key(&expr.id));
 
             let base_cmt = self.cat_expr(base);
-            self.cat_field(expr, base_cmt, f_name,
-                           self.expr_ty(expr), expr.id)
+            self.cat_field(expr, base_cmt, f_name, self.expr_ty(expr))
           }
 
           ast::expr_index(base, _) => {
@@ -579,16 +577,12 @@ pub impl mem_categorization_ctxt {
                              node: N,
                              base_cmt: cmt,
                              f_name: ast::ident,
-                             f_ty: ty::t,
-                             field_id: ast::node_id) -> cmt {
-        let f_mutbl = m_imm;
-        let m = self.inherited_mutability(base_cmt.mutbl, f_mutbl);
-        let f_interior = interior_field(f_name, f_mutbl);
+                             f_ty: ty::t) -> cmt {
         @cmt_ {
             id: node.id(),
             span: node.span(),
-            cat: cat_interior(base_cmt, f_interior),
-            mutbl: m,
+            cat: cat_interior(base_cmt, interior_field(f_name)),
+            mutbl: base_cmt.mutbl.inherit(),
             ty: f_ty
         }
     }
@@ -886,8 +880,7 @@ pub impl mem_categorization_ctxt {
             // {f1: p1, ..., fN: pN}
             for field_pats.each |fp| {
                 let field_ty = self.pat_ty(fp.pat); // see (*)
-                let cmt_field = self.cat_field(pat, cmt, fp.ident,
-                                               field_ty, pat.id);
+                let cmt_field = self.cat_field(pat, cmt, fp.ident, field_ty);
                 self.cat_pattern(cmt_field, fp.pat, op);
             }
           }
@@ -1141,7 +1134,7 @@ pub fn ptr_sigil(ptr: ptr_kind) -> ~str {
 impl Repr for interior_kind {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         match *self {
-            interior_field(fld, _) => copy *tcx.sess.str_of(fld),
+            interior_field(fld) => copy *tcx.sess.str_of(fld),
             interior_index(*) => ~"[]",
             interior_tuple => ~"()",
             interior_anon_field => ~"<anonymous field>",
