@@ -378,7 +378,7 @@ mod tests {
     #[test]
     fn test_counter_to_vec() {
         let mut it = Counter::new(0, 5).take(10);
-        let xs = iter::iter_to_vec(|f| it.advance(f));
+        let xs = iter::to_vec(|f| it.advance(f));
         assert_eq!(xs, ~[0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
     }
 
