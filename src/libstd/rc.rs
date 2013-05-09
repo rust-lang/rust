@@ -114,6 +114,8 @@ mod test_rc {
 #[abi = "rust-intrinsic"]
 extern "rust-intrinsic" mod rusti {
     fn init<T>() -> T;
+    #[cfg(not(stage0))]
+    fn uninit<T>() -> T;
 }
 
 #[deriving(Eq)]
