@@ -238,8 +238,8 @@ mod test {
 
     #[test]
     fn test_sendable_future() {
-        let expected = ~"schlorf";
-        let f = Cell(do spawn { copy expected });
+        let expected = "schlorf";
+        let f = Cell(do spawn { expected });
         do task::spawn {
             let mut f = f.take();
             let actual = f.get();
