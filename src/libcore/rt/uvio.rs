@@ -46,8 +46,7 @@ impl Drop for UvEventLoop {
         let self = unsafe {
             transmute::<&UvEventLoop, &mut UvEventLoop>(self)
         };
-        let mut uv_loop = self.uvio.uv_loop();
-        uv_loop.close();
+        self.uvio.uv_loop().close();
     }
 }
 
@@ -189,9 +188,8 @@ impl TcpListener for UvTcpListener {
                 let maybe_stream = if status.is_none() {
                     let mut server_stream_watcher = server_stream_watcher;
                     let mut loop_ = loop_from_watcher(&server_stream_watcher);
-                    let mut client_tcp_watcher = TcpWatcher::new(&mut loop_);
-                    let client_tcp_watcher = client_tcp_watcher.as_stream();
-                    // XXX: Need's to be surfaced in interface
+                    let client_tcp_watcher = TcpWatcher::new(&mut loop_).as_stream();
+                    // XXX: Needs to be surfaced in interface
                     server_stream_watcher.accept(client_tcp_watcher);
                     Some(~UvStream::new(client_tcp_watcher))
                 } else {

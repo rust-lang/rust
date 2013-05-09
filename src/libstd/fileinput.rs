@@ -94,8 +94,6 @@ total line count).
     }
 */
 
-#[allow(deprecated_mutable_fields)];
-
 use core::io::ReaderUtil;
 
 /**
@@ -212,8 +210,8 @@ impl FileInput {
     pub fn next_file(&self) -> bool {
         // No more files
 
-        // Compiler whines about "illegal borrow unless pure" for
-        // files.is_empty()
+        // unsafe block can be removed after the next snapshot
+        // (next one after 2013-05-03)
         if unsafe { self.fi.files.is_empty() } {
             self.fi.current_reader = None;
             return false;
@@ -326,7 +324,8 @@ impl io::Reader for FileInput {
     fn eof(&self) -> bool {
         // we've run out of files, and current_reader is either None or eof.
 
-        // compiler whines about illegal borrows for files.is_empty()
+        // unsafe block can be removed after the next snapshot
+        // (next one after 2013-05-03)
         (unsafe { self.fi.files.is_empty() }) &&
             match self.fi.current_reader { None => true, Some(r) => r.eof() }
 
@@ -368,8 +367,7 @@ reading from `stdin`).
 Fails when attempting to read from a file that can't be opened.
 */
 pub fn input(f: &fn(&str) -> bool) {
-    let mut i = FileInput::from_args();
-    i.each_line(f);
+    FileInput::from_args().each_line(f);
 }
 
 /**
@@ -380,8 +378,7 @@ provided at each call.
 Fails when attempting to read from a file that can't be opened.
 */
 pub fn input_state(f: &fn(&str, FileInputState) -> bool) {
-    let mut i = FileInput::from_args();
-    i.each_line_state(f);
+    FileInput::from_args().each_line_state(f);
 }
 
 /**
@@ -390,8 +387,7 @@ Iterate over a vector of files (an empty vector implies just `stdin`).
 Fails when attempting to read from a file that can't be opened.
 */
 pub fn input_vec(files: ~[Option<Path>], f: &fn(&str) -> bool) {
-    let mut i = FileInput::from_vec(files);
-    i.each_line(f);
+    FileInput::from_vec(files).each_line(f);
 }
 
 /**
@@ -402,8 +398,7 @@ Fails when attempting to read from a file that can't be opened.
 */
 pub fn input_vec_state(files: ~[Option<Path>],
                        f: &fn(&str, FileInputState) -> bool) {
-    let mut i = FileInput::from_vec(files);
-    i.each_line_state(f);
+    FileInput::from_vec(files).each_line_state(f);
 }
 
 #[cfg(test)]
