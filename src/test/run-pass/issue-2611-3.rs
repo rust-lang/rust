@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests that impl methods are matched to traits exactly:
-// we might be tempted to think matching is contravariant, but if
-// we let an impl method can have more permissive bounds than the trait
-// method it's implementing, the return type might be less specific than
-// needed. Just punt and make it invariant.
+// Tests that impls are allowed to have looser, more permissive bounds
+// than the traits require.
 
 trait A {
   fn b<C:Copy + Const,D>(x: C) -> C;

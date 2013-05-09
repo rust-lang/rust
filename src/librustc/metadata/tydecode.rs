@@ -555,18 +555,34 @@ fn parse_type_param_def(st: @mut PState, conv: conv_did) -> ty::TypeParameterDef
                           bounds: parse_bounds(st, conv)}
 }
 
-fn parse_bounds(st: @mut PState, conv: conv_did) -> @~[ty::param_bound] {
-    let mut bounds = ~[];
+fn parse_bounds(st: @mut PState, conv: conv_did) -> @ty::ParamBounds {
+    let mut param_bounds = ty::ParamBounds {
+        builtin_bounds: ty::EmptyBuiltinBounds(),
+        trait_bounds: ~[]
+    };
     loop {
-        bounds.push(match next(st) {
-          'S' => ty::bound_owned,
-          'C' => ty::bound_copy,
-          'K' => ty::bound_const,
-          'O' => ty::bound_durable,
-          'I' => ty::bound_trait(@parse_trait_ref(st, conv)),
-          '.' => break,
-          _ => fail!(~"parse_bounds: bad bounds")
-        });
+        match next(st) {
+            'S' => {
+                param_bounds.builtin_bounds.add(ty::BoundOwned);
+            }
+            'C' => {
+                param_bounds.builtin_bounds.add(ty::BoundCopy);
+            }
+            'K' => {
+                param_bounds.builtin_bounds.add(ty::BoundConst);
+            }
+            'O' => {
+                param_bounds.builtin_bounds.add(ty::BoundStatic);
+            }
+            'I' => {
+                param_bounds.trait_bounds.push(@parse_trait_ref(st, conv));
+            }
+            '.' => {
+                return @param_bounds;
+            }
+            _ => {
+                fail!(~"parse_bounds: bad bounds")
+            }
+        }
     }
-    @bounds
 }

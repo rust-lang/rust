@@ -67,8 +67,7 @@ pub impl VtableContext {
 
 fn has_trait_bounds(type_param_defs: &[ty::TypeParameterDef]) -> bool {
     type_param_defs.any(
-        |type_param_def| type_param_def.bounds.any(
-            |bound| match bound { &ty::bound_trait(*) => true, _ => false }))
+        |type_param_def| !type_param_def.bounds.trait_bounds.is_empty())
 }
 
 fn lookup_vtables(vcx: &VtableContext,
@@ -99,7 +98,7 @@ fn lookup_vtables(vcx: &VtableContext,
 
             // Substitute the values of the type parameters that may
             // appear in the bound.
-            let trait_ref = trait_ref.subst(tcx, substs);
+            let trait_ref = (*trait_ref).subst(tcx, substs);
 
             debug!("after subst: %s", trait_ref.repr(tcx));
 
@@ -339,7 +338,8 @@ fn lookup_vtable(vcx: &VtableContext,
                                    vcx.infcx.trait_ref_to_str(trait_ref),
                                    vcx.infcx.trait_ref_to_str(of_trait_ref));
 
-                            let of_trait_ref = of_trait_ref.subst(tcx, &substs);
+                            let of_trait_ref =
+                                (*of_trait_ref).subst(tcx, &substs);
                             relate_trait_refs(
                                 vcx, location_info,
                                 &of_trait_ref, trait_ref);
@@ -458,7 +458,7 @@ fn connect_trait_tps(vcx: &VtableContext,
 
     // XXX: This should work for multiple traits.
     let impl_trait_ref = ty::impl_trait_refs(tcx, impl_did)[0];
-    let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
+    let impl_trait_ref = (*impl_trait_ref).subst(tcx, impl_substs);
     relate_trait_refs(vcx, location_info, &impl_trait_ref, trait_ref);
 }
 
