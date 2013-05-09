@@ -615,7 +615,7 @@ pub impl BorrowckCtxt {
                 }
             }
 
-            LpExtend(lp_base, _, LpInterior(mc::interior_field(fld, _))) => {
+            LpExtend(lp_base, _, LpInterior(mc::interior_field(fld))) => {
                 self.append_loan_path_to_str_from_interior(lp_base, out);
                 str::push_char(out, '.');
                 str::push_str(out, *self.tcx.sess.intr().get(fld));
