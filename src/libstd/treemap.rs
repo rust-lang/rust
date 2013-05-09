@@ -198,44 +198,11 @@ pub impl<K: TotalOrd, V> TreeMap<K, V> {
 
     /// Get a lazy iterator over the key-value pairs in the map.
     /// Requires that it be frozen (immutable).
-    fn iter<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
-        TreeMapIterator{stack: ~[], node: &self.root}
-    }
-}
-
-/// Lazy forward iterator over a map
-pub struct TreeMapIterator<'self, K, V> {
-    priv stack: ~[&'self ~TreeNode<K, V>],
-    priv node: &'self Option<~TreeNode<K, V>>
-}
-
-impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapIterator<'self, K, V> {
-    /// Advance the iterator to the next node (in order) and return a
-    /// tuple with a reference to the key and value. If there are no
-    /// more nodes, return `None`.
-    fn next(&mut self) -> Option<(&'self K, &'self V)> {
-        while !self.stack.is_empty() || self.node.is_some() {
-            match *self.node {
-              Some(ref x) => {
-                self.stack.push(x);
-                self.node = &x.left;
-              }
-              None => {
-                let res = self.stack.pop();
-                self.node = &res.right;
-                return Some((&res.key, &res.value));
-              }
-            }
-        }
-        None
-    }
-}
-
-impl<'self, T> Iterator<&'self T> for TreeSetIterator<'self, T> {
-    /// Advance the iterator to the next node (in order). If there are no more nodes, return `None`.
-    #[inline(always)]
-    fn next(&mut self) -> Option<&'self T> {
-        do self.iter.next().map |&(value, _)| { value }
+    fn iter<'a>(&'a self) -> BSTIterator<'a, TreeNode<K, V>, (&'a K, &'a V)> {
+        BSTIterator::new(&self.root,
+                         |n| (&n.key, &n.value),
+                         |n| &n.left,
+                         |n| &n.right)
     }
 }
 
@@ -313,180 +280,54 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
     /// Return true if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     fn is_disjoint(&self, other: &TreeSet<T>) -> bool {
-        let mut x = self.iter();
-        let mut y = other.iter();
-        let mut a = x.next();
-        let mut b = y.next();
-        while a.is_some() && b.is_some() {
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
-            match a1.cmp(b1) {
-              Less => a = x.next(),
-              Greater => b = y.next(),
-              Equal => return false
-            }
+        for self.intersection(other) |_| {
+            return false;
         }
-        true
+        return true;
     }
 
     /// Return true if the set is a subset of another
-    #[inline(always)]
     fn is_subset(&self, other: &TreeSet<T>) -> bool {
-        other.is_superset(self)
+        let mut amt = 0;
+        for self.intersection(other) |_| {
+            amt += 1;
+        }
+        return amt == self.len();
     }
 
     /// Return true if the set is a superset of another
+    #[inline(always)]
     fn is_superset(&self, other: &TreeSet<T>) -> bool {
-        let mut x = self.iter();
-        let mut y = other.iter();
-        let mut a = x.next();
-        let mut b = y.next();
-        while b.is_some() {
-            if a.is_none() {
-                return false
-            }
-
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
-
-            match a1.cmp(b1) {
-              Less => (),
-              Greater => return false,
-              Equal => b = y.next(),
-            }
-
-            a = x.next();
-        }
-        true
+        other.is_subset(self)
     }
 
     /// Visit the values (in-order) representing the difference
     fn difference(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) {
-        let mut x = self.iter();
-        let mut y = other.iter();
-
-        let mut a = x.next();
-        let mut b = y.next();
-
-        while a.is_some() {
-            if b.is_none() {
-                return do a.while_some() |a1| {
-                    if f(a1) { x.next() } else { None }
-                }
-            }
-
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
-
-            let cmp = a1.cmp(b1);
-
-            if cmp == Less {
-                if !f(a1) { return }
-                a = x.next();
-            } else {
-                if cmp == Equal { a = x.next() }
-                b = y.next();
-            }
-        }
+        let mut me = self.iter();
+        let mut i = me.differencei(other.iter());
+        i.advance(f)
     }
 
     /// Visit the values (in-order) representing the symmetric difference
     fn symmetric_difference(&self, other: &TreeSet<T>,
-                                 f: &fn(&T) -> bool) {
-        let mut x = self.iter();
-        let mut y = other.iter();
-
-        let mut a = x.next();
-        let mut b = y.next();
-
-        while a.is_some() {
-            if b.is_none() {
-                return do a.while_some() |a1| {
-                    if f(a1) { x.next() } else { None }
-                }
-            }
-
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
-
-            let cmp = a1.cmp(b1);
-
-            if cmp == Less {
-                if !f(a1) { return }
-                a = x.next();
-            } else {
-                if cmp == Greater {
-                    if !f(b1) { return }
-                } else {
-                    a = x.next();
-                }
-                b = y.next();
-            }
-        }
-        do b.while_some |b1| {
-            if f(b1) { y.next() } else { None }
-        }
+                            f: &fn(&T) -> bool) {
+        let mut me = self.iter();
+        let mut i = me.xori(other.iter());
+        i.advance(f)
     }
 
     /// Visit the values (in-order) representing the intersection
     fn intersection(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) {
-        let mut x = self.iter();
-        let mut y = other.iter();
-
-        let mut a = x.next();
-        let mut b = y.next();
-
-        while a.is_some() && b.is_some() {
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
-
-            let cmp = a1.cmp(b1);
-
-            if cmp == Less {
-                a = x.next();
-            } else {
-                if cmp == Equal {
-                    if !f(a1) { return }
-                }
-                b = y.next();
-            }
-        }
+        let mut me = self.iter();
+        let mut i = me.intersecti(other.iter());
+        i.advance(f)
     }
 
     /// Visit the values (in-order) representing the union
     fn union(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) {
-        let mut x = self.iter();
-        let mut y = other.iter();
-
-        let mut a = x.next();
-        let mut b = y.next();
-
-        while a.is_some() {
-            if b.is_none() {
-                return do a.while_some() |a1| {
-                    if f(a1) { x.next() } else { None }
-                }
-            }
-
-            let a1 = a.unwrap();
-            let b1 = b.unwrap();
-
-            let cmp = a1.cmp(b1);
-
-            if cmp == Greater {
-                if !f(b1) { return }
-                b = y.next();
-            } else {
-                if !f(a1) { return }
-                if cmp == Equal {
-                    b = y.next();
-                }
-                a = x.next();
-            }
-        }
-        do b.while_some |b1| {
-            if f(b1) { y.next() } else { None }
-        }
+        let mut me = self.iter();
+        let mut i = me.unioni(other.iter());
+        i.advance(f)
     }
 }
 
@@ -498,14 +339,12 @@ pub impl <T: TotalOrd> TreeSet<T> {
     /// Get a lazy iterator over the values in the set.
     /// Requires that it be frozen (immutable).
     #[inline(always)]
-    fn iter<'a>(&'a self) -> TreeSetIterator<'a, T> {
-        TreeSetIterator{iter: self.map.iter()}
+    fn iter<'a>(&'a self) ->
+        MapIterator<(&'a T, &'a ()), &'a T,
+                    BSTIterator<'a, TreeNode<T, ()>, (&'a T, &'a ())>> // ouch
+    {
+        self.map.iter().transform(|(a, _)| a)
     }
-}
-
-/// Lazy forward iterator over a set
-pub struct TreeSetIterator<'self, T> {
-    priv iter: TreeMapIterator<'self, T, ()>
 }
 
 // Nodes keep track of their level in the tree, starting at 1 in the

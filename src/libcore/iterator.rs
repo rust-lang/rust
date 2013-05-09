@@ -18,6 +18,7 @@ implementing the `Iterator` trait.
 */
 
 use prelude::*;
+use util;
 
 pub trait Iterator<A> {
     /// Advance the iterator and return the next value. Return `None` when the end is reached.
@@ -39,9 +40,17 @@ pub trait IteratorUtil<A> {
     fn take_while<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhileIterator<'r, A, Self>;
     fn skip(self, n: uint) -> SkipIterator<Self>;
     fn take(self, n: uint) -> TakeIterator<Self>;
+
     fn scan<'r, St, B>(self, initial_state: St, f: &'r fn(&mut St, A) -> Option<B>)
         -> ScanIterator<'r, A, B, Self, St>;
     fn advance(&mut self, f: &fn(A) -> bool);
+
+    // Ordered iterators
+    // FIXME: #5898: shouldn't have the 'i' suffix
+    fn intersecti<U: Iterator<A>>(self, other: U) -> Intersect<A, Self, U>;
+    fn unioni<U: Iterator<A>>(self, other: U) -> Union<A, Self, U>;
+    fn xori<U: Iterator<A>>(self, other: U) -> Xor<A, Self, U>;
+    fn differencei<U: Iterator<A>>(self, other: U) -> Difference<A, Self, U>;
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -112,6 +121,52 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
                 None => return
             }
         }
+    }
+
+    /// Returns an interator which will iterate over the intersection of `self`
+    /// and `other`. This requires that the two iterators iterate over their
+    /// values in ascending order.
+    #[inline(always)]
+    fn intersecti<U: Iterator<A>>(self, mut other: U) -> Intersect<A, T, U> {
+        let mut self = self;
+        let a = self.next();
+        let b = other.next();
+        Intersect{ a: a, b: b, i1: self, i2: other }
+    }
+
+    /// Returns an interator which will iterate over the union of `self` and
+    /// `other`. This requires that the two iterators iterate over their values
+    /// in ascending order.
+    #[inline(always)]
+    fn unioni<U: Iterator<A>>(self, mut other: U) -> Union<A, T, U> {
+        let mut self = self;
+        let a = self.next();
+        let b = other.next();
+        Union{ a: a, b: b, i1: self, i2: other }
+    }
+
+    /// Returns an interator which will iterate over the symmetric difference of
+    /// `self` and `other`, or all values which are present in one, but not both
+    /// iterators. This requires that the two iterators iterate over their
+    /// values in ascending order.
+    #[inline(always)]
+    fn xori<U: Iterator<A>>(self, mut other: U) -> Xor<A, T, U> {
+        let mut self = self;
+        let a = self.next();
+        let b = other.next();
+        Xor{ a: a, b: b, i1: self, i2: other }
+    }
+
+    /// Returns an interator which will iterate over the difference of `self`
+    /// and `other`, or all values which are present in `self`, but not in
+    /// `other` iterators. This requires that the two iterators iterate over
+    /// their value in ascending order.
+    #[inline(always)]
+    fn differencei<U: Iterator<A>>(self, mut other: U) -> Difference<A, T, U> {
+        let mut self = self;
+        let a = self.next();
+        let b = other.next();
+        Difference{ a: a, b: b, i1: self, i2: other }
     }
 }
 
@@ -348,6 +403,137 @@ impl<'self, A, St> Iterator<A> for UnfoldrIterator<'self, A, St> {
     }
 }
 
+pub struct Intersect<A, T, U> {
+    priv i1: T,
+    priv i2: U,
+    priv a: Option<A>,
+    priv b: Option<A>,
+}
+
+impl<A: TotalOrd, T: Iterator<A>, U: Iterator<A>> Iterator<A> for
+    Intersect<A, T, U>
+{
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        loop {
+            let cmp = match (&self.a, &self.b) {
+                (&Some(ref a), &Some(ref b)) => a.cmp(b),
+                _ => return None
+            };
+
+            match cmp {
+                Less =>    { util::replace(&mut self.a, self.i1.next()); }
+                Greater => { util::replace(&mut self.b, self.i2.next()); }
+                Equal => {
+                    util::replace(&mut self.a, self.i1.next());
+                    return util::replace(&mut self.b, self.i2.next());
+                }
+            }
+        }
+    }
+}
+
+pub struct Union<A, T, U> {
+    priv i1: T,
+    priv i2: U,
+    priv a: Option<A>,
+    priv b: Option<A>,
+}
+
+impl<A: TotalOrd, T: Iterator<A>, U: Iterator<A>> Iterator<A> for Union<A, T, U>
+{
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        if self.a.is_none() && self.b.is_none() {
+            return None;
+        } else if self.a.is_none() {
+            return util::replace(&mut self.b, self.i2.next());
+        } else if self.b.is_none() {
+            return util::replace(&mut self.a, self.i1.next());
+        }
+        let cmp = match (&self.a, &self.b) {
+            (&Some(ref a), &Some(ref b)) => a.cmp(b),
+            _ => fail!()
+        };
+        match cmp {
+            Less =>    { return util::replace(&mut self.a, self.i1.next()); }
+            Greater => { return util::replace(&mut self.b, self.i2.next()); }
+            Equal => {
+                util::replace(&mut self.b, self.i2.next());
+                return util::replace(&mut self.a, self.i1.next());
+            }
+        }
+    }
+}
+
+pub struct Xor<A, T, U> {
+    priv i1: T,
+    priv i2: U,
+    priv a: Option<A>,
+    priv b: Option<A>,
+}
+
+impl<A: TotalOrd, T: Iterator<A>, U: Iterator<A>> Iterator<A> for Xor<A, T, U> {
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        loop {
+            if self.a.is_none() && self.b.is_none() {
+                return None;
+            } else if self.a.is_none() {
+                return util::replace(&mut self.b, self.i2.next());
+            } else if self.b.is_none() {
+                return util::replace(&mut self.a, self.i1.next());
+            }
+            let cmp = match (&self.a, &self.b) {
+                (&Some(ref a), &Some(ref b)) => a.cmp(b),
+                _ => fail!()
+            };
+            match cmp {
+                Less =>    { return util::replace(&mut self.a, self.i1.next()); }
+                Greater => { return util::replace(&mut self.b, self.i2.next()); }
+                Equal => {
+                    util::replace(&mut self.a, self.i1.next());
+                    util::replace(&mut self.b, self.i2.next());
+                }
+            }
+        }
+    }
+}
+
+pub struct Difference<A, T, U> {
+    priv i1: T,
+    priv i2: U,
+    priv a: Option<A>,
+    priv b: Option<A>,
+}
+
+impl<A: TotalOrd, T: Iterator<A>, U: Iterator<A>> Iterator<A> for
+    Difference<A, T, U>
+{
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        loop {
+            if self.a.is_none() {
+                return None;
+            } else if self.b.is_none() {
+                return util::replace(&mut self.a, self.i1.next());
+            }
+            let cmp = match (&self.a, &self.b) {
+                (&Some(ref a), &Some(ref b)) => a.cmp(b),
+                _ => fail!()
+            };
+            match cmp {
+                Less =>    { return util::replace(&mut self.a, self.i1.next()); }
+                Greater => { util::replace(&mut self.b, self.i2.next()); }
+                Equal => {
+                    util::replace(&mut self.b, self.i2.next());
+                    util::replace(&mut self.a, self.i1.next());
+                }
+            }
+        }
+    }
+}
+
 /// An infinite iterator starting at `start` and advancing by `step` with each iteration
 pub struct Counter<A> {
     state: A,
@@ -367,6 +553,54 @@ impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
         let result = self.state.clone();
         self.state = self.state.add(&self.step); // FIXME: #6050
         Some(result)
+    }
+}
+
+/// An interator which will iterate over a binary search tree. This is
+/// parameterized over functions which take a node and return the left and right
+/// children. It is required that the nodes form a tree which is a binary search
+/// tree
+pub struct BSTIterator<'self, N, T> {
+    priv f:     &'self fn(&'self N) -> T,
+    priv left:  &'self fn(&'self N) -> &'self Option<~N>,
+    priv right: &'self fn(&'self N) -> &'self Option<~N>,
+    priv stack: ~[&'self ~N],
+    priv node:  &'self Option<~N>,
+}
+
+pub impl<'self, N, T> BSTIterator<'self, N, T> {
+    /// Creates a new iterator given the root node of a tree. The provided
+    /// functions are used for yielding iterator values and acquiring the left
+    /// and right children.
+    #[inline(always)]
+    fn new<'a>(root: &'a Option<~N>,
+               f: &'a fn(&'a N) -> T,
+               left: &'a fn(&'a N) -> &'a Option<~N>,
+               right: &'a fn(&'a N) -> &'a Option<~N>) -> BSTIterator<'a, N, T>
+    {
+        BSTIterator{ f: f, stack: ~[], node: root, left: left, right: right }
+    }
+}
+
+impl<'self, N, T> Iterator<T> for BSTIterator<'self, N, T> {
+    /// Advance the iterator to the next node (in order) and return a
+    /// tuple with a reference to the key and value. If there are no
+    /// more nodes, return `None`.
+    fn next(&mut self) -> Option<T> {
+        while !self.stack.is_empty() || self.node.is_some() {
+            match *self.node {
+              Some(ref x) => {
+                self.stack.push(x);
+                self.node = (self.left)(*x);
+              }
+              None => {
+                let res = self.stack.pop();
+                self.node = (self.right)(*res);
+                return Some((self.f)(*res));
+              }
+            }
+        }
+        None
     }
 }
 
