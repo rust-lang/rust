@@ -51,7 +51,7 @@ impl<T: Owned> Drop for Rc<T> {
         unsafe {
             (*self.ptr).count -= 1;
             if (*self.ptr).count == 0 {
-                let mut x = intrinsics::init();
+                let mut x = intrinsics::uninit();
                 x <-> *self.ptr;
                 free(self.ptr as *c_void)
             }
@@ -159,7 +159,7 @@ impl<T: Owned> Drop for RcMut<T> {
         unsafe {
             (*self.ptr).count -= 1;
             if (*self.ptr).count == 0 {
-                let mut x = rusti::init();
+                let mut x = rusti::uninit();
                 x <-> *self.ptr;
                 free(self.ptr as *c_void)
             }
