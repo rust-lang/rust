@@ -11,6 +11,7 @@
 #[doc(hidden)]; // FIXME #3538
 
 use cast::transmute;
+use unstable::intrinsics;
 
 pub type Word = uint;
 
@@ -75,13 +76,6 @@ fn test_simple_deep() {
 
 fn frame_address(f: &fn(x: *u8)) {
     unsafe {
-        rusti::frame_address(f)
-    }
-}
-
-pub mod rusti {
-    #[abi = "rust-intrinsic"]
-    pub extern "rust-intrinsic" {
-        pub fn frame_address(f: &once fn(x: *u8));
+        intrinsics::frame_address(f)
     }
 }
