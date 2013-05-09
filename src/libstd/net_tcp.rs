@@ -1687,7 +1687,7 @@ mod test {
             assert!(true);
           }
           _ => {
-            fail!("expected address_in_use listen error,\
+            fail!("expected address_in_use listen error, \
                    but got a different error varient. check logs.");
           }
         }
@@ -1706,7 +1706,7 @@ mod test {
             assert!(true);
           }
           _ => {
-            fail!("expected address_in_use listen error,\
+            fail!("expected address_in_use listen error, \
                    but got a different error varient. check logs.");
           }
         }

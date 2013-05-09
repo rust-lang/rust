@@ -146,8 +146,7 @@ impl PkgScript {
                 }
             }
             Err(e) => {
-                fail!("Running package script, couldn't find rustpkg sysroot (%s)",
-                           e)
+                fail!("Running package script, couldn't find rustpkg sysroot (%s)", e)
             }
         }
     }
