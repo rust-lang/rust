@@ -16,6 +16,8 @@ use core::old_iter::BaseIter;
 extern "rust-intrinsic" mod rusti {
     fn move_val_init<T>(dst: &mut T, src: T);
     fn init<T>() -> T;
+    #[cfg(not(stage0))]
+    fn uninit<T>() -> T;
 }
 
 pub struct PriorityQueue<T> {
