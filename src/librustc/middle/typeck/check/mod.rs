@@ -3447,6 +3447,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
       ~"size_of" |
       ~"pref_align_of" | ~"min_align_of" => (1u, ~[], ty::mk_uint()),
       ~"init" => (1u, ~[], param(ccx, 0u)),
+      ~"uninit" => (1u, ~[], param(ccx, 0u)),
       ~"forget" => (1u, ~[arg(param(ccx, 0u))], ty::mk_nil()),
       ~"transmute" => (2, ~[ arg(param(ccx, 0)) ], param(ccx, 1)),
       ~"move_val" | ~"move_val_init" => {

@@ -44,6 +44,9 @@ pub extern "rust-intrinsic" {
 
     pub fn init<T>() -> T;
 
+    #[cfg(not(stage0))]
+    pub unsafe fn uninit<T>() -> T;
+
     pub fn forget<T>(_: T) -> ();
 
     pub fn needs_drop<T>() -> bool;

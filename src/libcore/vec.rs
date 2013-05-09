@@ -584,6 +584,7 @@ pub fn consume_reverse<T>(mut v: ~[T], f: &fn(uint, v: T)) {
 }
 
 /// Remove the last element from a vector and return it
+#[cfg(not(stage0))]
 pub fn pop<T>(v: &mut ~[T]) -> T {
     let ln = v.len();
     if ln == 0 {
@@ -591,7 +592,21 @@ pub fn pop<T>(v: &mut ~[T]) -> T {
     }
     let valptr = ptr::to_mut_unsafe_ptr(&mut v[ln - 1u]);
     unsafe {
-        // FIXME #4204: Should be uninit() - we don't need this zeroed
+        let mut val = intrinsics::uninit();
+        val <-> *valptr;
+        raw::set_len(v, ln - 1u);
+        val
+    }
+}
+
+#[cfg(stage0)]
+pub fn pop<T>(v: &mut ~[T]) -> T {
+    let ln = v.len();
+    if ln == 0 {
+        fail!(~"sorry, cannot vec::pop an empty vector")
+    }
+    let valptr = ptr::to_mut_unsafe_ptr(&mut v[ln - 1u]);
+    unsafe {
         let mut val = intrinsics::init();
         val <-> *valptr;
         raw::set_len(v, ln - 1u);
@@ -660,13 +675,30 @@ pub fn push_all<T:Copy>(v: &mut ~[T], rhs: &const [T]) {
 }
 
 #[inline(always)]
+#[cfg(not(stage0))]
 pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
     let new_len = v.len() + rhs.len();
     reserve(&mut *v, new_len);
     unsafe {
         do as_mut_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
-                // FIXME #4204 Should be uninit() - don't need to zero
+                let mut x = intrinsics::uninit();
+                x <-> *ptr::mut_offset(p, i);
+                push(&mut *v, x);
+            }
+        }
+        raw::set_len(&mut rhs, 0);
+    }
+}
+
+#[inline(always)]
+#[cfg(stage0)]
+pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
+    let new_len = v.len() + rhs.len();
+    reserve(&mut *v, new_len);
+    unsafe {
+        do as_mut_buf(rhs) |p, len| {
+            for uint::range(0, len) |i| {
                 let mut x = intrinsics::init();
                 x <-> *ptr::mut_offset(p, i);
                 push(&mut *v, x);
@@ -677,13 +709,29 @@ pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
 }
 
 /// Shorten a vector, dropping excess elements.
+#[cfg(not(stage0))]
 pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
     do as_mut_buf(*v) |p, oldlen| {
         assert!(newlen <= oldlen);
         unsafe {
             // This loop is optimized out for non-drop types.
             for uint::range(newlen, oldlen) |i| {
-                // FIXME #4204 Should be uninit() - don't need to zero
+                let mut dropped = intrinsics::uninit();
+                dropped <-> *ptr::mut_offset(p, i);
+            }
+        }
+    }
+    unsafe { raw::set_len(&mut *v, newlen); }
+}
+
+/// Shorten a vector, dropping excess elements.
+#[cfg(stage0)]
+pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
+    do as_mut_buf(*v) |p, oldlen| {
+        assert!(newlen <= oldlen);
+        unsafe {
+            // This loop is optimized out for non-drop types.
+            for uint::range(newlen, oldlen) |i| {
                 let mut dropped = intrinsics::init();
                 dropped <-> *ptr::mut_offset(p, i);
             }
@@ -696,6 +744,7 @@ pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
  * Remove consecutive repeated elements from a vector; if the vector is
  * sorted, this removes all duplicates.
  */
+#[cfg(not(stage0))]
 pub fn dedup<T:Eq>(v: &mut ~[T]) {
     unsafe {
         if v.len() < 1 { return; }
@@ -709,8 +758,44 @@ pub fn dedup<T:Eq>(v: &mut ~[T]) {
                 // last_written < next_to_read < ln
                 if *ptr::mut_offset(p, next_to_read) ==
                     *ptr::mut_offset(p, last_written) {
-                    // FIXME #4204 Should be uninit() - don't need to
-                    // zero
+                    let mut dropped = intrinsics::uninit();
+                    dropped <-> *ptr::mut_offset(p, next_to_read);
+                } else {
+                    last_written += 1;
+                    // last_written <= next_to_read < ln
+                    if next_to_read != last_written {
+                        *ptr::mut_offset(p, last_written) <->
+                            *ptr::mut_offset(p, next_to_read);
+                    }
+                }
+                // last_written <= next_to_read < ln
+                next_to_read += 1;
+                // last_written < next_to_read <= ln
+            }
+        }
+        // last_written < next_to_read == ln
+        raw::set_len(v, last_written + 1);
+    }
+}
+
+/**
+ * Remove consecutive repeated elements from a vector; if the vector is
+ * sorted, this removes all duplicates.
+ */
+#[cfg(stage0)]
+pub fn dedup<T:Eq>(v: &mut ~[T]) {
+    unsafe {
+        if v.len() < 1 { return; }
+        let mut last_written = 0, next_to_read = 1;
+        do as_const_buf(*v) |p, ln| {
+            // We have a mutable reference to v, so we can make arbitrary
+            // changes. (cf. push and pop)
+            let p = p as *mut T;
+            // last_written < next_to_read <= ln
+            while next_to_read < ln {
+                // last_written < next_to_read < ln
+                if *ptr::mut_offset(p, next_to_read) ==
+                    *ptr::mut_offset(p, last_written) {
                     let mut dropped = intrinsics::init();
                     dropped <-> *ptr::mut_offset(p, next_to_read);
                 } else {
