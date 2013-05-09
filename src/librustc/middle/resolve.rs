@@ -2487,8 +2487,8 @@ pub impl Resolver {
                     if module_name == ~"???" {
                         self.session.span_err(span {lo: span.lo, hi: span.lo +
                                               BytePos(str::len(*segment_name)), expn_info:
-                                              span.expn_info}, fmt!("unresolved import.  perhaps \
-                                                                    you forgot an 'extern mod %s'?",
+                                              span.expn_info}, fmt!("unresolved import.  maybe \
+                                                                    a missing 'extern mod %s'?",
                                                                     *segment_name));
                         return Failed;
                     }
