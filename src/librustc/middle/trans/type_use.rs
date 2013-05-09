@@ -118,7 +118,7 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
         if abi.is_intrinsic() {
             let flags = match *cx.ccx.sess.str_of(i.ident) {
                 ~"size_of"  | ~"pref_align_of" | ~"min_align_of" |
-                ~"init"     | ~"transmute"     | ~"move_val"     |
+                ~"uninit"   | ~"init" | ~"transmute" | ~"move_val" |
                 ~"move_val_init" => use_repr,
 
                 ~"get_tydesc" | ~"needs_drop" => use_tydesc,
