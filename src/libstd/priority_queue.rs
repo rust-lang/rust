@@ -16,6 +16,8 @@ use core::old_iter::BaseIter;
 extern "rust-intrinsic" mod rusti {
     fn move_val_init<T>(dst: &mut T, src: T);
     fn init<T>() -> T;
+    #[cfg(not(stage0))]
+    fn uninit<T>() -> T;
 }
 
 pub struct PriorityQueue<T> {
@@ -132,6 +134,27 @@ pub impl <T:Ord> PriorityQueue<T> {
     // vector over the junk element.  This reduces the constant factor
     // compared to using swaps, which involves twice as many moves.
 
+    #[cfg(not(stage0))]
+    priv fn siftup(&mut self, start: uint, mut pos: uint) {
+        unsafe {
+            let new = *ptr::to_unsafe_ptr(&self.data[pos]);
+
+            while pos > start {
+                let parent = (pos - 1) >> 1;
+                if new > self.data[parent] {
+                    let mut x = rusti::uninit();
+                    x <-> self.data[parent];
+                    rusti::move_val_init(&mut self.data[pos], x);
+                    pos = parent;
+                    loop
+                }
+                break
+            }
+            rusti::move_val_init(&mut self.data[pos], new);
+        }
+    }
+
+    #[cfg(stage0)]
     priv fn siftup(&mut self, start: uint, mut pos: uint) {
         unsafe {
             let new = *ptr::to_unsafe_ptr(&self.data[pos]);
@@ -151,6 +174,32 @@ pub impl <T:Ord> PriorityQueue<T> {
         }
     }
 
+
+    #[cfg(not(stage0))]
+    priv fn siftdown_range(&mut self, mut pos: uint, end: uint) {
+        unsafe {
+            let start = pos;
+            let new = *ptr::to_unsafe_ptr(&self.data[pos]);
+
+            let mut child = 2 * pos + 1;
+            while child < end {
+                let right = child + 1;
+                if right < end && !(self.data[child] > self.data[right]) {
+                    child = right;
+                }
+                let mut x = rusti::uninit();
+                x <-> self.data[child];
+                rusti::move_val_init(&mut self.data[pos], x);
+                pos = child;
+                child = 2 * pos + 1;
+            }
+
+            rusti::move_val_init(&mut self.data[pos], new);
+            self.siftup(start, pos);
+        }
+    }
+
+    #[cfg(stage0)]
     priv fn siftdown_range(&mut self, mut pos: uint, end: uint) {
         unsafe {
             let start = pos;
