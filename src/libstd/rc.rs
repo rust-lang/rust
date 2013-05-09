@@ -46,6 +46,7 @@ pub impl<T: Owned> Rc<T> {
 }
 
 #[unsafe_destructor]
+#[cfg(not(stage0))]
 impl<T: Owned> Drop for Rc<T> {
     fn finalize(&self) {
         unsafe {
@@ -58,6 +59,22 @@ impl<T: Owned> Drop for Rc<T> {
         }
     }
 }
+
+#[unsafe_destructor]
+#[cfg(stage0)]
+impl<T: Owned> Drop for Rc<T> {
+    fn finalize(&self) {
+        unsafe {
+            (*self.ptr).count -= 1;
+            if (*self.ptr).count == 0 {
+                let mut x = intrinsics::init();
+                x <-> *self.ptr;
+                free(self.ptr as *c_void)
+            }
+        }
+    }
+}
+
 
 impl<T: Owned> Clone for Rc<T> {
     #[inline]
@@ -154,12 +171,28 @@ pub impl<T: Owned> RcMut<T> {
 }
 
 #[unsafe_destructor]
+#[cfg(not(stage0))]
 impl<T: Owned> Drop for RcMut<T> {
     fn finalize(&self) {
         unsafe {
             (*self.ptr).count -= 1;
             if (*self.ptr).count == 0 {
                 let mut x = rusti::uninit();
+                x <-> *self.ptr;
+                free(self.ptr as *c_void)
+            }
+        }
+    }
+}
+
+#[unsafe_destructor]
+#[cfg(stage0)]
+impl<T: Owned> Drop for RcMut<T> {
+    fn finalize(&self) {
+        unsafe {
+            (*self.ptr).count -= 1;
+            if (*self.ptr).count == 0 {
+                let mut x = rusti::init();
                 x <-> *self.ptr;
                 free(self.ptr as *c_void)
             }
