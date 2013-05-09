@@ -66,7 +66,7 @@ fn parse_opts(argv: ~[~str]) -> Config {
     }
 }
 
-fn stress_task(&&id: int) {
+fn stress_task(id: int) {
     let mut i = 0;
     loop {
         let n = 15;
