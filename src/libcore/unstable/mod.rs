@@ -18,23 +18,14 @@ use task;
 use task::atomically;
 use self::finally::Finally;
 
-#[path = "unstable/at_exit.rs"]
 pub mod at_exit;
-#[path = "unstable/global.rs"]
 pub mod global;
-#[path = "unstable/finally.rs"]
 pub mod finally;
-#[path = "unstable/weak_task.rs"]
 pub mod weak_task;
-#[path = "unstable/exchange_alloc.rs"]
 pub mod exchange_alloc;
-#[path = "unstable/intrinsics.rs"]
 pub mod intrinsics;
-#[path = "unstable/simd.rs"]
 pub mod simd;
-#[path = "unstable/extfmt.rs"]
 pub mod extfmt;
-#[path = "unstable/lang.rs"]
 #[cfg(not(test))]
 pub mod lang;
 
