@@ -175,7 +175,7 @@ pub mod v4 {
     pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
           result::Ok(addr) => addr,
-          result::Err(ref err_data) => fail!(err_data.err_msg)
+          result::Err(ref err_data) => fail!(copy err_data.err_msg)
         }
     }
     // the simple, old style numberic representation of
@@ -272,7 +272,7 @@ pub mod v6 {
     pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
           result::Ok(addr) => addr,
-          result::Err(copy err_data) => fail!(err_data.err_msg)
+          result::Err(copy err_data) => fail!(copy err_data.err_msg)
         }
     }
     pub fn try_parse_addr(ip: &str) -> result::Result<IpAddr,ParseAddrErr> {

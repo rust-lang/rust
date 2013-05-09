@@ -26,7 +26,6 @@ not required in or otherwise suitable for the core library.
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[allow(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 
 // Allow mutable fields only in stage0.

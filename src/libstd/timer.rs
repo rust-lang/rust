@@ -175,9 +175,9 @@ extern fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) {
 
 #[cfg(test)]
 mod test {
-
     use timer::*;
     use uv;
+    use core::cell::Cell;
     use core::rand::RngUtil;
     use core::pipes::{stream, SharedChan};
 
@@ -277,11 +277,11 @@ mod test {
 
         for old_iter::repeat(times as uint) {
             let mut rng = rand::rng();
-            let expected = rng.gen_str(16u);
+            let expected = Cell(rng.gen_str(16u));
             let (test_po, test_ch) = stream::<~str>();
             let hl_loop_clone = hl_loop.clone();
             do task::spawn() {
-                delayed_send(&hl_loop_clone, 50u, &test_ch, expected);
+                delayed_send(&hl_loop_clone, 50u, &test_ch, expected.take());
             };
 
             match recv_timeout(&hl_loop, 1u, &test_po) {
