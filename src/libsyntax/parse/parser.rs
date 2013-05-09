@@ -3310,7 +3310,7 @@ pub impl Parser {
                 }
             }
             if fields.len() == 0 {
-                self.fatal(fmt!("Unit-like struct should be written as: struct %s;",
+                self.fatal(fmt!("Unit-like struct should be written as `struct %s;`",
                                 *self.interner.get(class_name)));
             }
             self.bump();
