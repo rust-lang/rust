@@ -405,7 +405,7 @@ pub impl mem_categorization_ctxt {
             }
 
             let base_cmt = self.cat_expr(base);
-            self.cat_index(expr, base_cmt)
+            self.cat_index(expr, base_cmt, 0)
           }
 
           ast::expr_path(_) => {
@@ -670,7 +670,39 @@ pub impl mem_categorization_ctxt {
 
     fn cat_index<N:ast_node>(&self,
                              elt: N,
-                             base_cmt: cmt) -> cmt {
+                             base_cmt: cmt,
+                             derefs: uint) -> cmt {
+        //! Creates a cmt for an indexing operation (`[]`); this
+        //! indexing operation may occurs as part of an
+        //! AutoBorrowVec, which when converting a `~[]` to an `&[]`
+        //! effectively takes the address of the 0th element.
+        //!
+        //! One subtle aspect of indexing that may not be
+        //! immediately obvious: for anything other than a fixed-length
+        //! vector, an operation like `x[y]` actually consists of two
+        //! disjoint (from the point of view of borrowck) operations.
+        //! The first is a deref of `x` to create a pointer `p` that points
+        //! at the first element in the array. The second operation is
+        //! an index which adds `y*sizeof(T)` to `p` to obtain the
+        //! pointer to `x[y]`. `cat_index` will produce a resulting
+        //! cmt containing both this deref and the indexing,
+        //! presuming that `base_cmt` is not of fixed-length type.
+        //!
+        //! In the event that a deref is needed, the "deref count"
+        //! is taken from the parameter `derefs`. See the comment
+        //! on the def'n of `root_map_key` in borrowck/mod.rs
+        //! for more details about deref counts; the summary is
+        //! that `derefs` should be 0 for an explicit indexing
+        //! operation and N+1 for an indexing that is part of
+        //! an auto-adjustment, where N is the number of autoderefs
+        //! in that adjustment.
+        //!
+        //! # Parameters
+        //! - `elt`: the AST node being indexed
+        //! - `base_cmt`: the cmt of `elt`
+        //! - `derefs`: the deref number to be used for
+        //!   the implicit index deref, if any (see above)
+
         let mt = match ty::index(base_cmt.ty) {
           Some(mt) => mt,
           None => {
@@ -698,7 +730,7 @@ pub impl mem_categorization_ctxt {
             let deref_cmt = @cmt_ {
                 id:elt.id(),
                 span:elt.span(),
-                cat:cat_deref(base_cmt, 0u, ptr),
+                cat:cat_deref(base_cmt, derefs, ptr),
                 mutbl:m,
                 ty:mt.ty
             };
@@ -878,8 +910,8 @@ pub impl mem_categorization_ctxt {
           }
 
           ast::pat_vec(ref before, slice, ref after) => {
+              let elt_cmt = self.cat_index(pat, cmt, 0);
               for before.each |&before_pat| {
-                  let elt_cmt = self.cat_index(pat, cmt);
                   self.cat_pattern(elt_cmt, before_pat, op);
               }
               for slice.each |&slice_pat| {
@@ -888,7 +920,6 @@ pub impl mem_categorization_ctxt {
                   self.cat_pattern(slice_cmt, slice_pat, op);
               }
               for after.each |&after_pat| {
-                  let elt_cmt = self.cat_index(pat, cmt);
                   self.cat_pattern(elt_cmt, after_pat, op);
               }
           }

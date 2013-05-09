@@ -885,7 +885,8 @@ pub fn extract_vec_elems(bcx: block,
                       -> ExtractedBlock {
     let _icx = bcx.insn_ctxt("match::extract_vec_elems");
     let vec_datum = match_datum(bcx, val, pat_id);
-    let (bcx, base, len) = vec_datum.get_vec_base_and_len(bcx, pat_span, pat_id);
+    let (bcx, base, len) = vec_datum.get_vec_base_and_len(bcx, pat_span,
+                                                          pat_id, 0);
     let vt = tvec::vec_types(bcx, node_id_type(bcx, pat_id));
 
     let mut elems = do vec::from_fn(elem_count) |i| {

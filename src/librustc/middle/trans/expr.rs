@@ -144,10 +144,9 @@ use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::ty::struct_fields;
 use middle::ty::{AutoDerefRef, AutoAddEnv};
-use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
-use middle::ty;
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn,
                  AutoDerefRef, AutoAddEnv, AutoUnsafe};
+use middle::ty;
 use util::common::indenter;
 use util::ppaux::Repr;
 
@@ -215,10 +214,12 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
                     unpack_datum!(bcx, auto_ref(bcx, datum))
                 }
                 Some(AutoBorrowVec(*)) => {
-                    unpack_datum!(bcx, auto_slice(bcx, expr, datum))
+                    unpack_datum!(bcx, auto_slice(bcx, adj.autoderefs,
+                                                  expr, datum))
                 }
                 Some(AutoBorrowVecRef(*)) => {
-                    unpack_datum!(bcx, auto_slice_and_ref(bcx, expr, datum))
+                    unpack_datum!(bcx, auto_slice_and_ref(bcx, adj.autoderefs,
+                                                          expr, datum))
                 }
                 Some(AutoBorrowFn(*)) => {
                     let adjusted_ty = ty::adjust_ty(bcx.tcx(), expr.span,
@@ -246,7 +247,10 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
                                   mode: datum.mode, source: datum.source}}
     }
 
-    fn auto_slice(bcx: block, expr: @ast::expr, datum: Datum) -> DatumBlock {
+    fn auto_slice(bcx: block,
+                  autoderefs: uint,
+                  expr: @ast::expr,
+                  datum: Datum) -> DatumBlock {
         // This is not the most efficient thing possible; since slices
         // are two words it'd be better if this were compiled in
         // 'dest' mode, but I can't find a nice way to structure the
@@ -256,9 +260,8 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         let tcx = bcx.tcx();
         let unit_ty = ty::sequence_element_type(tcx, datum.ty);
 
-        // FIXME(#6272) need to distinguish "auto-slice" from explicit index?
         let (bcx, base, len) =
-            datum.get_vec_base_and_len(bcx, expr.span, expr.id);
+            datum.get_vec_base_and_len(bcx, expr.span, expr.id, autoderefs+1);
 
         // this type may have a different region/mutability than the
         // real one, but it will have the same runtime representation
@@ -292,9 +295,10 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
     }
 
     fn auto_slice_and_ref(bcx: block,
+                          autoderefs: uint,
                           expr: @ast::expr,
                           datum: Datum) -> DatumBlock {
-        let DatumBlock { bcx, datum } = auto_slice(bcx, expr, datum);
+        let DatumBlock { bcx, datum } = auto_slice(bcx, autoderefs, expr, datum);
         auto_ref(bcx, datum)
     }
 }
@@ -913,7 +917,8 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         base::maybe_name_value(bcx.ccx(), scaled_ix, ~"scaled_ix");
 
         let mut (bcx, base, len) =
-            base_datum.get_vec_base_and_len(bcx, index_expr.span, index_expr.id);
+            base_datum.get_vec_base_and_len(bcx, index_expr.span,
+                                            index_expr.id, 0);
 
         if ty::type_is_str(base_ty) {
             // acccount for null terminator in the case of string
