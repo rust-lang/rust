@@ -634,13 +634,6 @@ pub mod writer {
     use core::vec;
 
     // ebml writing
-    #[cfg(stage0)]
-    pub struct Encoder {
-        writer: @io::Writer,
-        priv mut size_positions: ~[uint],
-    }
-
-    #[cfg(not(stage0))]
     pub struct Encoder {
         writer: @io::Writer,
         priv size_positions: ~[uint],

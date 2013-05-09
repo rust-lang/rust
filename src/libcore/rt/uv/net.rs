@@ -152,8 +152,7 @@ pub impl StreamWatcher {
         extern fn close_cb(handle: *uvll::uv_stream_t) {
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
             {
-                let mut data = get_watcher_data(&mut stream_watcher);
-                data.close_cb.swap_unwrap()();
+                get_watcher_data(&mut stream_watcher).close_cb.swap_unwrap()();
             }
             drop_watcher_data(&mut stream_watcher);
             unsafe { free_handle(handle as *c_void) }
@@ -214,8 +213,7 @@ pub impl TcpWatcher {
             assert!(get_watcher_data(self).connect_cb.is_none());
             get_watcher_data(self).connect_cb = Some(cb);
 
-            let mut connect_watcher = ConnectRequest::new();
-            let connect_handle = connect_watcher.native_handle();
+            let connect_handle = ConnectRequest::new().native_handle();
             match address {
                 Ipv4(*) => {
                     do ip4_as_uv_ip4(address) |addr| {

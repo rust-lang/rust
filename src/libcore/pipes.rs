@@ -348,7 +348,7 @@ pub fn send<T,Tbuffer>(mut p: SendPacketBuffered<T,Tbuffer>,
                        payload: T)
                        -> bool {
     let header = p.header();
-    let mut p_ = p.unwrap();
+    let p_ = p.unwrap();
     let p = unsafe { &mut *p_ };
     assert!(ptr::to_unsafe_ptr(&(p.header)) == header);
     assert!(p.payload.is_none());
@@ -405,10 +405,8 @@ a message, or `Some(T)` if a message was received.
 */
 pub fn try_recv<T:Owned,Tbuffer:Owned>(mut p: RecvPacketBuffered<T, Tbuffer>)
                                        -> Option<T> {
-    let mut p_ = p.unwrap();
-    let mut p = unsafe {
-        &mut *p_
-    };
+    let p_ = p.unwrap();
+    let p = unsafe { &mut *p_ };
 
     do (|| {
         try_recv_(p)

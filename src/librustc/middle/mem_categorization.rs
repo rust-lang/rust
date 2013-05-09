@@ -571,8 +571,6 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    /// The `field_id` parameter is the ID of the enclosing expression or
-    /// pattern. It is used to determine which variant of an enum is in use.
     fn cat_field<N:ast_node>(&self,
                              node: N,
                              base_cmt: cmt,
