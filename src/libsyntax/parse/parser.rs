@@ -82,6 +82,7 @@ use parse::obsolete::ObsoleteMode;
 use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
 use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
 use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
+use parse::obsolete::{ObsoleteNamedExternModule};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents, token_to_binop};
 use parse::token;
@@ -415,8 +416,7 @@ pub impl Parser {
         self.expect_keyword(&~"fn");
 
         if self.parse_fn_ty_sigil().is_some() {
-            self.obsolete(*self.span,
-                          ObsoletePostFnTySigil);
+            self.obsolete(*self.span, ObsoletePostFnTySigil);
         }
 
         let (decl, lifetimes) = self.parse_ty_fn_decl();
@@ -3686,10 +3686,11 @@ pub impl Parser {
 
     // at this point, this is essentially a wrapper for
     // parse_foreign_items.
-    fn parse_foreign_mod_items(&self, sort: ast::foreign_mod_sort,
+    fn parse_foreign_mod_items(&self,
+                               sort: ast::foreign_mod_sort,
                                abis: AbiSet,
                                first_item_attrs: ~[attribute])
-                            -> foreign_mod {
+                               -> foreign_mod {
         let ParsedItemsAndViewItems {
             attrs_remaining: _,
             view_items: view_items,
@@ -3712,8 +3713,7 @@ pub impl Parser {
                               visibility: visibility,
                               attrs: ~[attribute],
                               items_allowed: bool)
-                           -> item_or_view_item
-    {
+                              -> item_or_view_item {
         let mut must_be_named_mod = false;
         if self.is_keyword(&~"mod") {
             must_be_named_mod = true;
@@ -3748,6 +3748,11 @@ pub impl Parser {
 
         // extern mod foo { ... } or extern { ... }
         if items_allowed && self.eat(&token::LBRACE) {
+            // `extern mod foo { ... }` is obsolete.
+            if sort == ast::named {
+                self.obsolete(*self.last_span, ObsoleteNamedExternModule);
+            }
+
             let abis = opt_abis.get_or_default(AbiSet::C());
 
             let (inner, next) = self.parse_inner_attrs_and_next();

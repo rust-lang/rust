@@ -95,7 +95,7 @@ mod test_rc {
 }
 
 #[abi = "rust-intrinsic"]
-extern "rust-intrinsic" mod rusti {
+extern "rust-intrinsic" {
     fn init<T>() -> T;
 }
 
@@ -159,7 +159,7 @@ impl<T: Owned> Drop for RcMut<T> {
         unsafe {
             (*self.ptr).count -= 1;
             if (*self.ptr).count == 0 {
-                let mut x = rusti::init();
+                let mut x = init();
                 x <-> *self.ptr;
                 free(self.ptr as *c_void)
             }
