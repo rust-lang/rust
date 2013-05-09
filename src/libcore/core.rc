@@ -60,7 +60,6 @@ they contained the following prologue:
 // Don't link to core. We are core.
 #[no_core];
 
-#[warn(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 #[allow(deprecated_mutable_fields)];
 
