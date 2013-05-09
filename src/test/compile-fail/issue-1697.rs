@@ -10,7 +10,7 @@
 
 // Testing that we don't fail abnormally after hitting the errors
 
-use unresolved::*; //~ ERROR unresolved name
+use unresolved::*; //~ ERROR unresolved import. maybe a missing
 //~^ ERROR failed to resolve import
 
 fn main() {
