@@ -24,7 +24,7 @@
  */
 static lock_and_signal _log_lock;
 /**
- * Indicates whether we are outputing to the console.
+ * Indicates whether we are outputting to the console.
  * Protected by _log_lock;
  */
 static bool _log_to_console = true;

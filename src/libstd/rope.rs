@@ -565,7 +565,7 @@ pub mod node {
      *
      * # Fields
      *
-     * * byte_offset = The number of bytes skippen in `content`
+     * * byte_offset = The number of bytes skipped in `content`
      * * byte_len - The number of bytes of `content` to use
      * * char_len - The number of chars in the leaf.
      * * content - Contents of the leaf.

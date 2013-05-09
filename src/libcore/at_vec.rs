@@ -52,7 +52,7 @@ pub fn capacity<T>(v: @[T]) -> uint {
  * # Arguments
  *
  * * size - An initial size of the vector to reserve
- * * builder - A function that will construct the vector. It recieves
+ * * builder - A function that will construct the vector. It receives
  *             as an argument a function that will push an element
  *             onto the vector being constructed.
  */
@@ -70,7 +70,7 @@ pub fn build_sized<A>(size: uint, builder: &fn(push: &fn(v: A))) -> @[A] {
  *
  * # Arguments
  *
- * * builder - A function that will construct the vector. It recieves
+ * * builder - A function that will construct the vector. It receives
  *             as an argument a function that will push an element
  *             onto the vector being constructed.
  */
@@ -87,7 +87,7 @@ pub fn build<A>(builder: &fn(push: &fn(v: A))) -> @[A] {
  * # Arguments
  *
  * * size - An option, maybe containing initial size of the vector to reserve
- * * builder - A function that will construct the vector. It recieves
+ * * builder - A function that will construct the vector. It receives
  *             as an argument a function that will push an element
  *             onto the vector being constructed.
  */

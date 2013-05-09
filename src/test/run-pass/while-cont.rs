@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Issue #825: Should recheck the loop contition after continuing
+// Issue #825: Should recheck the loop condition after continuing
 pub fn main() {
     let mut i = 1;
     while i > 0 {

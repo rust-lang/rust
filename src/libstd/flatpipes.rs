@@ -15,7 +15,7 @@ or transformed to and from, byte vectors.
 
 The `FlatPort` and `FlatChan` types implement the generic channel and
 port interface for arbitrary types and transport strategies. It can
-particularly be used to send and recieve serializable types over I/O
+particularly be used to send and receive serializable types over I/O
 streams.
 
 `FlatPort` and `FlatChan` implement the same comm traits as pipe-based
@@ -55,7 +55,7 @@ use core::sys::size_of;
 use core::vec;
 
 /**
-A FlatPort, consisting of a `BytePort` that recieves byte vectors,
+A FlatPort, consisting of a `BytePort` that receives byte vectors,
 and an `Unflattener` that converts the bytes to a value.
 
 Create using the constructors in the `serial` and `pod` modules.
@@ -821,7 +821,7 @@ mod test {
             }
         }
 
-        // Reciever task
+        // Receiver task
         do task::spawn || {
             // Wait for a connection
             let (conn, res_chan) = accept_port.recv();
@@ -840,7 +840,7 @@ mod test {
 
             for int::range(0, 10) |i| {
                 let j = port.recv();
-                debug!("receieved %?", j);
+                debug!("received %?", j);
                 assert!(i == j);
             }
 

@@ -227,6 +227,6 @@ mod test {
             exit_po.recv();
         };
         debug!(~"test_stress_gl_uv_global_loop_high_level_global_timer"+
-            ~" exiting sucessfully!");
+            ~" exiting successfully!");
     }
 }

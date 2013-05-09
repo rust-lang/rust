@@ -269,7 +269,7 @@ pub struct sockaddr_in {
 }
 
 // unix size: 28 .. FIXME #1645
-// stuck with 32 becuse of rust padding structs?
+// stuck with 32 because of rust padding structs?
 #[cfg(target_arch="x86_64")]
 pub struct sockaddr_in6 {
     a0: *u8, a1: *u8,
@@ -286,7 +286,7 @@ pub struct sockaddr_in6 {
 }
 
 // unix size: 28 .. FIXME #1645
-// stuck with 32 becuse of rust padding structs?
+// stuck with 32 because of rust padding structs?
 pub type addr_in = addr_in_impl::addr_in;
 #[cfg(unix)]
 pub mod addr_in_impl {
@@ -1377,7 +1377,7 @@ mod test {
             let tcp_init_result = tcp_init(test_loop as *libc::c_void,
                                            tcp_handle_ptr);
             if (tcp_init_result == 0) {
-                debug!(~"sucessful tcp_init_result");
+                debug!(~"successful tcp_init_result");
 
                 debug!(~"building addr...");
                 let addr = ip4_addr(ip, port);

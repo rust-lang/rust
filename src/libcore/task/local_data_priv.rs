@@ -133,7 +133,7 @@ unsafe fn get_newsched_local_map(local: *mut LocalStorage) -> TaskLocalMap {
 
 unsafe fn key_to_key_value<T: 'static>(key: LocalDataKey<T>) -> *libc::c_void {
     // Keys are closures, which are (fnptr,envptr) pairs. Use fnptr.
-    // Use reintepret_cast -- transmute would leak (forget) the closure.
+    // Use reinterpret_cast -- transmute would leak (forget) the closure.
     let pair: (*libc::c_void, *libc::c_void) = cast::transmute_copy(&key);
     pair.first()
 }
