@@ -355,7 +355,7 @@ fn print_failures(st: &ConsoleTestState) {
         failures.push(name.to_str());
     }
     sort::tim_sort(failures);
-    for vec::each(failures) |name| {
+    for failures.each |name| {
         st.out.write_line(fmt!("    %s", name.to_str()));
     }
 }
@@ -928,7 +928,7 @@ mod tests {
         {
             fn testfn() { }
             let mut tests = ~[];
-            for vec::each(names) |name| {
+            for names.each |name| {
                 let test = TestDescAndFn {
                     desc: TestDesc {
                         name: DynTestName(*name),
@@ -954,7 +954,7 @@ mod tests {
 
         let pairs = vec::zip(expected, filtered);
 
-        for vec::each(pairs) |p| {
+        for pairs.each |p| {
             match *p {
                 (ref a, ref b) => {
                     assert!((*a == b.desc.name.to_str()));

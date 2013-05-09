@@ -366,7 +366,7 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
         }
         let variants = ty::enum_variants(cx.tcx, eid);
         if found.len() != (*variants).len() {
-            for vec::each(*variants) |v| {
+            for (*variants).each |v| {
                 if !found.contains(&(variant(v.id))) {
                     return Some(variant(v.id));
                 }

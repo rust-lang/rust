@@ -51,7 +51,7 @@ pub fn trans_impl(ccx: @CrateContext, path: path, name: ast::ident,
 
     if !generics.ty_params.is_empty() { return; }
     let sub_path = vec::append_one(path, path_name(name));
-    for vec::each(methods) |method| {
+    for methods.each |method| {
         if method.generics.ty_params.len() == 0u {
             let llfn = get_item_val(ccx, method.id);
             let path = vec::append_one(/*bad*/copy sub_path,

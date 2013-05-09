@@ -44,7 +44,7 @@ pub fn lefts<T:Copy,U>(eithers: &[Either<T, U>]) -> ~[T] {
     //! Extracts from a vector of either all the left values
 
     do vec::build_sized(eithers.len()) |push| {
-        for vec::each(eithers) |elt| {
+        for eithers.each |elt| {
             match *elt {
                 Left(ref l) => { push(*l); }
                 _ => { /* fallthrough */ }
@@ -57,7 +57,7 @@ pub fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
     //! Extracts from a vector of either all the right values
 
     do vec::build_sized(eithers.len()) |push| {
-        for vec::each(eithers) |elt| {
+        for eithers.each |elt| {
             match *elt {
                 Right(ref r) => { push(*r); }
                 _ => { /* fallthrough */ }
