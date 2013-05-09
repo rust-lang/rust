@@ -339,7 +339,7 @@ impl TPrep for Prep {
                               &self.declared_inputs) &&
             self.all_fresh("discovered input", disc_in) &&
             self.all_fresh("discovered output", disc_out) => {
-                Work::new(@mut *self, Left(json_decode(*res)))
+                Work::new(@mut copy *self, Left(json_decode(*res)))
             }
 
             _ => {
@@ -358,7 +358,7 @@ impl TPrep for Prep {
                     let v = blk(&exe);
                     send_one(chan, (exe, v));
                 }
-                Work::new(@mut *self, Right(port))
+                Work::new(@mut copy *self, Right(port))
             }
         }
     }

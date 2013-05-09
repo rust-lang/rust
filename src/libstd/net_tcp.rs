@@ -277,8 +277,8 @@ pub fn connect(input_ip: ip::IpAddr, port: uint,
                                                     as *libc::c_void);
                 let tcp_conn_err = match err_data.err_name {
                     ~"ECONNREFUSED" => ConnectionRefused,
-                    _ => GenericConnectErr(err_data.err_name,
-                                           err_data.err_msg)
+                    _ => GenericConnectErr(copy err_data.err_name,
+                                           copy err_data.err_msg)
                 };
                 result::Err(tcp_conn_err)
             }
@@ -769,8 +769,8 @@ fn listen_common(host_ip: ip::IpAddr,
                     debug!("Got '%s' '%s' libuv error",
                                     err_data.err_name, err_data.err_msg);
                     result::Err(
-                        GenericListenErr(err_data.err_name,
-                                         err_data.err_msg))
+                        GenericListenErr(copy err_data.err_name,
+                                         copy err_data.err_msg))
                 }
             }
         }
@@ -790,8 +790,8 @@ fn listen_common(host_ip: ip::IpAddr,
             match kill_result {
                 // some failure post bind/listen
                 Some(ref err_data) => result::Err(GenericListenErr(
-                    err_data.err_name,
-                    err_data.err_msg)),
+                    copy err_data.err_name,
+                    copy err_data.err_msg)),
                 // clean exit
                 None => result::Ok(())
             }
@@ -1275,7 +1275,7 @@ trait ToTcpErr {
 
 impl ToTcpErr for uv::ll::uv_err_data {
     fn to_tcp_err(&self) -> TcpErrData {
-        TcpErrData { err_name: self.err_name, err_msg: self.err_msg }
+        TcpErrData { err_name: copy self.err_name, err_msg: copy self.err_msg }
     }
 }
 
@@ -1447,12 +1447,8 @@ mod test {
     use uv::iotask::IoTask;
     use uv;
 
-    use core::io;
+    use core::cell::Cell;
     use core::comm::{stream, SharedChan};
-    use core::result;
-    use core::str;
-    use core::task;
-    use core::vec;
 
     // FIXME don't run on fbsd or linux 32 bit (#2064)
     #[cfg(target_os="win32")]
@@ -1467,7 +1463,6 @@ mod test {
             #[test]
             fn test_gl_tcp_server_and_client_ipv4() {
                 unsafe {
-                    use net::tcp::test::tcp_ipv4_server_and_client_test::*;
                     impl_gl_tcp_ipv4_server_and_client();
                 }
             }
@@ -1558,10 +1553,10 @@ mod test {
     }
     pub fn impl_gl_tcp_ipv4_server_and_client() {
         let hl_loop = &uv::global_loop::get();
-        let server_ip = ~"127.0.0.1";
+        let server_ip = "127.0.0.1";
         let server_port = 8888u;
         let expected_req = ~"ping";
-        let expected_resp = ~"pong";
+        let expected_resp = "pong";
 
         let (server_result_po, server_result_ch) = stream::<~str>();
 
@@ -1574,7 +1569,7 @@ mod test {
             let actual_req = run_tcp_test_server(
                 server_ip,
                 server_port,
-                expected_resp,
+                expected_resp.to_str(),
                 cont_ch.clone(),
                 &hl_loop_clone);
             server_result_ch.send(actual_req);
@@ -1599,9 +1594,9 @@ mod test {
     }
     pub fn impl_gl_tcp_ipv4_get_peer_addr() {
         let hl_loop = &uv::global_loop::get();
-        let server_ip = ~"127.0.0.1";
+        let server_ip = "127.0.0.1";
         let server_port = 8887u;
-        let expected_resp = ~"pong";
+        let expected_resp = "pong";
 
         let (cont_po, cont_ch) = stream::<()>();
         let cont_ch = SharedChan::new(cont_ch);
@@ -1612,7 +1607,7 @@ mod test {
             run_tcp_test_server(
                 server_ip,
                 server_port,
-                expected_resp,
+                expected_resp.to_str(),
                 cont_ch.clone(),
                 &hl_loop_clone);
         };
@@ -1641,7 +1636,7 @@ mod test {
     }
     pub fn impl_gl_tcp_ipv4_client_error_connection_refused() {
         let hl_loop = &uv::global_loop::get();
-        let server_ip = ~"127.0.0.1";
+        let server_ip = "127.0.0.1";
         let server_port = 8889u;
         let expected_req = ~"ping";
         // client
@@ -1658,10 +1653,10 @@ mod test {
     }
     pub fn impl_gl_tcp_ipv4_server_address_in_use() {
         let hl_loop = &uv::global_loop::get();
-        let server_ip = ~"127.0.0.1";
+        let server_ip = "127.0.0.1";
         let server_port = 8890u;
         let expected_req = ~"ping";
-        let expected_resp = ~"pong";
+        let expected_resp = "pong";
 
         let (cont_po, cont_ch) = stream::<()>();
         let cont_ch = SharedChan::new(cont_ch);
@@ -1672,7 +1667,7 @@ mod test {
             run_tcp_test_server(
                 server_ip,
                 server_port,
-                expected_resp,
+                expected_resp.to_str(),
                 cont_ch.clone(),
                 &hl_loop_clone);
         }
@@ -1701,7 +1696,7 @@ mod test {
     }
     pub fn impl_gl_tcp_ipv4_server_access_denied() {
         let hl_loop = &uv::global_loop::get();
-        let server_ip = ~"127.0.0.1";
+        let server_ip = "127.0.0.1";
         let server_port = 80u;
         // this one should fail..
         let listen_err = run_tcp_test_server_fail(
@@ -1721,10 +1716,10 @@ mod test {
     pub fn impl_gl_tcp_ipv4_server_client_reader_writer() {
 
         let iotask = &uv::global_loop::get();
-        let server_ip = ~"127.0.0.1";
+        let server_ip = "127.0.0.1";
         let server_port = 8891u;
         let expected_req = ~"ping";
-        let expected_resp = ~"pong";
+        let expected_resp = "pong";
 
         let (server_result_po, server_result_ch) = stream::<~str>();
 
@@ -1737,7 +1732,7 @@ mod test {
             let actual_req = run_tcp_test_server(
                 server_ip,
                 server_port,
-                expected_resp,
+                expected_resp.to_str(),
                 cont_ch.clone(),
                 &iotask_clone);
             server_result_ch.send(actual_req);
@@ -1753,7 +1748,7 @@ mod test {
         buf_write(sock_buf, expected_req);
 
         // so contrived!
-        let actual_resp = do str::as_bytes(&expected_resp) |resp_buf| {
+        let actual_resp = do str::as_bytes(&expected_resp.to_str()) |resp_buf| {
             buf_read(sock_buf, resp_buf.len())
         };
 
@@ -1770,10 +1765,10 @@ mod test {
         use core::io::{Reader,ReaderUtil};
 
         let hl_loop = &uv::global_loop::get();
-        let server_ip = ~"127.0.0.1";
+        let server_ip = "127.0.0.1";
         let server_port = 10041u;
         let expected_req = ~"GET /";
-        let expected_resp = ~"A string\nwith multiple lines\n";
+        let expected_resp = "A string\nwith multiple lines\n";
 
         let (cont_po, cont_ch) = stream::<()>();
         let cont_ch = SharedChan::new(cont_ch);
@@ -1784,7 +1779,7 @@ mod test {
             run_tcp_test_server(
                 server_ip,
                 server_port,
-                expected_resp,
+                expected_resp.to_str(),
                 cont_ch.clone(),
                 &hl_loop_clone);
         };
@@ -1827,6 +1822,7 @@ mod test {
         let (server_po, server_ch) = stream::<~str>();
         let server_ch = SharedChan::new(server_ch);
         let server_ip_addr = ip::v4::parse_addr(server_ip);
+        let resp_cell = Cell(resp);
         let listen_result = listen(server_ip_addr, server_port, 128,
                                    iotask,
             // on_establish_cb -- called when listener is set up
@@ -1838,6 +1834,7 @@ mod test {
             // risky to run this on the loop, but some users
             // will want the POWER
             |new_conn, kill_ch| {
+                let resp_cell2 = Cell(resp_cell.take());
                 debug!("SERVER: new connection!");
                 let (cont_po, cont_ch) = stream();
                 let server_ch = server_ch.clone();
@@ -1872,7 +1869,7 @@ mod test {
                             server_ch.send(
                                 str::from_bytes(data));
                             debug!("SERVER: before write");
-                            tcp_write_single(&sock, str::to_bytes(resp));
+                            tcp_write_single(&sock, str::to_bytes(resp_cell2.take()));
                             debug!("SERVER: after write.. die");
                             kill_ch.send(None);
                           }

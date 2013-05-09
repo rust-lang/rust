@@ -16,7 +16,6 @@ A BigUint is represented as an array of BigDigits.
 A BigInt is a combination of BigUint and Sign.
 */
 
-#[deny(vecs_implicitly_copyable)];
 #[deny(deprecated_mutable_fields)];
 
 use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};

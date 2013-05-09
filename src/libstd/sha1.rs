@@ -177,7 +177,7 @@ pub fn sha1() -> @Sha1 {
             let b = (hpart >> 16u32 & 0xFFu32) as u8;
             let c = (hpart >> 8u32 & 0xFFu32) as u8;
             let d = (hpart & 0xFFu32) as u8;
-            rs = vec::append(rs, ~[a, b, c, d]);
+            rs = vec::append(copy rs, ~[a, b, c, d]);
         }
         return rs;
     }
@@ -381,7 +381,7 @@ mod tests {
         for tests.each |t| {
             sh.input_str(t.input);
             let out = sh.result();
-            check_vec_eq(t.output, out);
+            check_vec_eq(copy t.output, out);
 
             let out_str = sh.result_str();
             assert!((out_str.len() == 40));
@@ -402,7 +402,7 @@ mod tests {
                 left = left - take;
             }
             let out = sh.result();
-            check_vec_eq(t.output, out);
+            check_vec_eq(copy t.output, out);
 
             let out_str = sh.result_str();
             assert!((out_str.len() == 40));
