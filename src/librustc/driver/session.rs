@@ -237,6 +237,7 @@ pub impl Session_ {
                  msg: &str) {
         let level = lint::get_lint_settings_level(
             self.lint_settings, lint_mode, expr_id, item_id);
+        let msg = fmt!("%s [-W %s]", msg, lint::get_lint_name(lint_mode));
         self.span_lint_level(level, span, msg);
     }
     fn next_node_id(@self) -> ast::node_id {
