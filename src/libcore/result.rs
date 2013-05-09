@@ -300,7 +300,7 @@ pub fn map_vec<T,U:Copy,V:Copy>(
     ts: &[T], op: &fn(&T) -> Result<V,U>) -> Result<~[V],U> {
 
     let mut vs: ~[V] = vec::with_capacity(vec::len(ts));
-    for vec::each(ts) |t| {
+    for ts.each |t| {
         match op(t) {
           Ok(copy v) => vs.push(v),
           Err(copy u) => return Err(u)

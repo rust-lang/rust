@@ -425,7 +425,7 @@ mod test {
         let results = result::unwrap(ga_result);
         debug!("test_get_addr: Number of results for %s: %?",
                         localhost_name, vec::len(results));
-        for vec::each(results) |r| {
+        for results.each |r| {
             let ipv_prefix = match *r {
               Ipv4(_) => ~"IPv4",
               Ipv6(_) => ~"IPv6"

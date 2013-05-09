@@ -861,7 +861,6 @@ mod tests {
     use core::result;
     use core::result::{Err, Ok};
     use core::str;
-    use core::vec;
 
     fn test_get_time() {
         static some_recent_date: i64 = 1325376000i64; // 2012-01-01T00:00:00Z
@@ -1028,7 +1027,7 @@ mod tests {
             }
         }
 
-        for vec::each([
+        for [
             ~"Sunday",
             ~"Monday",
             ~"Tuesday",
@@ -1036,11 +1035,11 @@ mod tests {
             ~"Thursday",
             ~"Friday",
             ~"Saturday"
-        ]) |day| {
+        ].each |day| {
             assert!(test(*day, ~"%A"));
         }
 
-        for vec::each([
+        for [
             ~"Sun",
             ~"Mon",
             ~"Tue",
@@ -1048,11 +1047,11 @@ mod tests {
             ~"Thu",
             ~"Fri",
             ~"Sat"
-        ]) |day| {
+        ].each |day| {
             assert!(test(*day, ~"%a"));
         }
 
-        for vec::each([
+        for [
             ~"January",
             ~"February",
             ~"March",
@@ -1065,11 +1064,11 @@ mod tests {
             ~"October",
             ~"November",
             ~"December"
-        ]) |day| {
+        ].each |day| {
             assert!(test(*day, ~"%B"));
         }
 
-        for vec::each([
+        for [
             ~"Jan",
             ~"Feb",
             ~"Mar",
@@ -1082,7 +1081,7 @@ mod tests {
             ~"Oct",
             ~"Nov",
             ~"Dec"
-        ]) |day| {
+        ].each |day| {
             assert!(test(*day, ~"%b"));
         }
 

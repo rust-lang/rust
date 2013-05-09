@@ -1084,7 +1084,7 @@ fn encode_index<T>(ebml_w: &mut writer::Encoder,
     for buckets.each |bucket| {
         bucket_locs.push(ebml_w.writer.tell());
         ebml_w.start_tag(tag_index_buckets_bucket);
-        for vec::each(**bucket) |elt| {
+        for (**bucket).each |elt| {
             ebml_w.start_tag(tag_index_buckets_bucket_elt);
             assert!(elt.pos < 0xffff_ffff);
             writer.write_be_u32(elt.pos as u32);

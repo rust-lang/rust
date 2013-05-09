@@ -13,7 +13,6 @@
 use core::io;
 use core::option;
 use core::os;
-use core::vec;
 
 // FIXME (#2807): Windows support.
 
@@ -50,7 +49,7 @@ pub fn color_supported() -> bool {
                            ~"screen-bce", ~"xterm-256color"];
     return match os::getenv(~"TERM") {
           option::Some(ref env) => {
-            for vec::each(supported_terms) |term| {
+            for supported_terms.each |term| {
                 if *term == *env { return true; }
             }
             false

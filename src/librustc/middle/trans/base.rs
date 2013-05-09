@@ -668,7 +668,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
       ty::ty_struct(*) => {
           let repr = adt::represent_type(cx.ccx(), t);
           do expr::with_field_tys(cx.tcx(), t, None) |discr, field_tys| {
-              for vec::eachi(field_tys) |i, field_ty| {
+              for field_tys.eachi |i, field_ty| {
                   let llfld_a = adt::trans_field_ptr(cx, repr, av, discr, i);
                   cx = f(cx, llfld_a, field_ty.mt.ty);
               }
@@ -709,7 +709,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
                                         n_variants);
                   let next_cx = sub_block(cx, ~"enum-iter-next");
 
-                  for vec::each(*variants) |variant| {
+                  for (*variants).each |variant| {
                       let variant_cx =
                           sub_block(cx, ~"enum-iter-variant-" +
                                     int::to_str(variant.disr_val));
@@ -888,7 +888,7 @@ pub fn need_invoke(bcx: block) -> bool {
         match cur.kind {
             block_scope(inf) => {
                 let inf = &mut *inf; // FIXME(#5074) workaround old borrowck
-                for vec::each(inf.cleanups) |cleanup| {
+                for inf.cleanups.each |cleanup| {
                     match *cleanup {
                         clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) => {
                             if cleanup_type == normal_exit_and_unwind {
@@ -1391,7 +1391,7 @@ pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<NodeInfo>,
 }
 
 pub fn block_locals(b: &ast::blk, it: &fn(@ast::local)) {
-    for vec::each(b.node.stmts) |s| {
+    for b.node.stmts.each |s| {
         match s.node {
           ast::stmt_decl(d, _) => {
             match d.node {
@@ -1973,7 +1973,7 @@ pub fn trans_enum_variant(ccx: @CrateContext,
            repr, ty_to_str(ccx.tcx, enum_ty));
 
     adt::trans_start_init(bcx, repr, fcx.llretptr.get(), disr);
-    for vec::eachi(args) |i, va| {
+    for args.eachi |i, va| {
         let lldestptr = adt::trans_field_ptr(bcx,
                                              repr,
                                              fcx.llretptr.get(),
@@ -2072,7 +2072,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
 pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
                       id: ast::node_id, vi: @~[ty::VariantInfo],
                       i: &mut uint) {
-    for vec::each(enum_definition.variants) |variant| {
+    for enum_definition.variants.each |variant| {
         let disr_val = vi[*i].disr_val;
         *i += 1;
 
@@ -2559,7 +2559,7 @@ pub fn trans_constant(ccx: @CrateContext, it: @ast::item) {
                                                  node: it.id });
         let mut i = 0;
         let path = item_path(ccx, it);
-        for vec::each((*enum_definition).variants) |variant| {
+        for (*enum_definition).variants.each |variant| {
             let p = vec::append(/*bad*/copy path, ~[
                 path_name(variant.node.name),
                 path_name(special_idents::descrim)

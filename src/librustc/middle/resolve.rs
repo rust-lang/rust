@@ -4630,7 +4630,7 @@ pub impl Resolver {
         }
 
         let mut smallest = 0;
-        for vec::eachi(maybes) |i, &other| {
+        for maybes.eachi |i, &other| {
 
             values[i] = str::levdistance(name, other);
 
@@ -4664,7 +4664,7 @@ pub impl Resolver {
                 if item.id == node_id {
                   match item.node {
                     item_struct(class_def, _) => {
-                      for vec::each(class_def.fields) |field| {
+                      for class_def.fields.each |field| {
                         match field.node.kind {
                           unnamed_field => {},
                           named_field(ident, _) => {

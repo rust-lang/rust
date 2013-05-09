@@ -631,7 +631,7 @@ pub fn trans_args(cx: block,
     match args {
       ArgExprs(arg_exprs) => {
         let last = arg_exprs.len() - 1u;
-        for vec::eachi(arg_exprs) |i, arg_expr| {
+        for arg_exprs.eachi |i, arg_expr| {
             let arg_val = unpack_result!(bcx, {
                 trans_arg_expr(bcx,
                                arg_tys[i],
