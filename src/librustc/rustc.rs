@@ -74,6 +74,7 @@ pub mod middle {
     pub mod entry;
     pub mod effect;
     pub mod reachable;
+    pub mod graph;
 }
 
 pub mod front {
