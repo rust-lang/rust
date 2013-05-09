@@ -32,7 +32,7 @@ use uint;
 use vec;
 use to_str::ToStr;
 
-#[cfg(notest)] use cmp::{Eq, Ord, Equiv, TotalEq};
+#[cfg(not(test))] use cmp::{Eq, Ord, Equiv, TotalEq};
 
 /*
 Section: Creating a string
@@ -913,7 +913,7 @@ Section: Comparing strings
 */
 
 /// Bytewise slice equality
-#[cfg(notest)]
+#[cfg(not(test))]
 #[lang="str_eq"]
 #[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
@@ -949,7 +949,7 @@ pub fn eq_slice(a: &str, b: &str) -> bool {
 }
 
 /// Bytewise string equality
-#[cfg(notest)]
+#[cfg(not(test))]
 #[lang="uniq_str_eq"]
 #[inline]
 pub fn eq(a: &~str, b: &~str) -> bool {
@@ -977,19 +977,19 @@ fn cmp(a: &str, b: &str) -> Ordering {
     a.len().cmp(&b.len())
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self> TotalOrd for &'self str {
     #[inline]
     fn cmp(&self, other: & &'self str) -> Ordering { cmp(*self, *other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl TotalOrd for ~str {
     #[inline]
     fn cmp(&self, other: &~str) -> Ordering { cmp(*self, *other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl TotalOrd for @str {
     #[inline]
     fn cmp(&self, other: &@str) -> Ordering { cmp(*self, *other) }
@@ -1030,7 +1030,7 @@ fn gt(a: &str, b: &str) -> bool {
     !le(a, b)
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self> Eq for &'self str {
     #[inline(always)]
     fn eq(&self, other: & &'self str) -> bool {
@@ -1040,7 +1040,7 @@ impl<'self> Eq for &'self str {
     fn ne(&self, other: & &'self str) -> bool { !(*self).eq(other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Eq for ~str {
     #[inline(always)]
     fn eq(&self, other: &~str) -> bool {
@@ -1050,7 +1050,7 @@ impl Eq for ~str {
     fn ne(&self, other: &~str) -> bool { !(*self).eq(other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Eq for @str {
     #[inline(always)]
     fn eq(&self, other: &@str) -> bool {
@@ -1060,7 +1060,7 @@ impl Eq for @str {
     fn ne(&self, other: &@str) -> bool { !(*self).eq(other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self> TotalEq for &'self str {
     #[inline(always)]
     fn equals(&self, other: & &'self str) -> bool {
@@ -1068,7 +1068,7 @@ impl<'self> TotalEq for &'self str {
     }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl TotalEq for ~str {
     #[inline(always)]
     fn equals(&self, other: &~str) -> bool {
@@ -1076,7 +1076,7 @@ impl TotalEq for ~str {
     }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl TotalEq for @str {
     #[inline(always)]
     fn equals(&self, other: &@str) -> bool {
@@ -1084,7 +1084,7 @@ impl TotalEq for @str {
     }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Ord for ~str {
     #[inline(always)]
     fn lt(&self, other: &~str) -> bool { lt((*self), (*other)) }
@@ -1096,7 +1096,7 @@ impl Ord for ~str {
     fn gt(&self, other: &~str) -> bool { gt((*self), (*other)) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self> Ord for &'self str {
     #[inline(always)]
     fn lt(&self, other: & &'self str) -> bool { lt((*self), (*other)) }
@@ -1108,7 +1108,7 @@ impl<'self> Ord for &'self str {
     fn gt(&self, other: & &'self str) -> bool { gt((*self), (*other)) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Ord for @str {
     #[inline(always)]
     fn lt(&self, other: &@str) -> bool { lt((*self), (*other)) }
@@ -1120,7 +1120,7 @@ impl Ord for @str {
     fn gt(&self, other: &@str) -> bool { gt((*self), (*other)) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self> Equiv<~str> for &'self str {
     #[inline(always)]
     fn equiv(&self, other: &~str) -> bool { eq_slice(*self, *other) }
@@ -2451,7 +2451,7 @@ pub mod raw {
 
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 pub mod traits {
     use ops::Add;
     use str::append;

@@ -363,7 +363,7 @@ pub fn tan(x: float) -> float {
 
 impl Num for float {}
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Eq for float {
     #[inline(always)]
     fn eq(&self, other: &float) -> bool { (*self) == (*other) }
@@ -371,7 +371,7 @@ impl Eq for float {
     fn ne(&self, other: &float) -> bool { (*self) != (*other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl ApproxEq<float> for float {
     #[inline(always)]
     fn approx_epsilon() -> float { 1.0e-6 }
@@ -387,7 +387,7 @@ impl ApproxEq<float> for float {
     }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Ord for float {
     #[inline(always)]
     fn lt(&self, other: &float) -> bool { (*self) < (*other) }
@@ -695,36 +695,36 @@ impl RealExt for float {
     fn yn(&self, n: int) -> float { yn(n as c_int, *self as f64) as float }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Add<float,float> for float {
     #[inline(always)]
     fn add(&self, other: &float) -> float { *self + *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Sub<float,float> for float {
     #[inline(always)]
     fn sub(&self, other: &float) -> float { *self - *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Mul<float,float> for float {
     #[inline(always)]
     fn mul(&self, other: &float) -> float { *self * *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Div<float,float> for float {
     #[inline(always)]
     fn div(&self, other: &float) -> float { *self / *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Rem<float,float> for float {
     #[inline(always)]
     fn rem(&self, other: &float) -> float { *self % *other }
 }
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Neg<float> for float {
     #[inline(always)]
     fn neg(&self) -> float { -*self }

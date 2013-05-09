@@ -131,7 +131,7 @@ pub fn abs(i: T) -> T { i.abs() }
 
 impl Num for T {}
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Ord for T {
     #[inline(always)]
     fn lt(&self, other: &T) -> bool { return (*self) < (*other); }
@@ -143,7 +143,7 @@ impl Ord for T {
     fn gt(&self, other: &T) -> bool { return (*self) > (*other); }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Eq for T {
     #[inline(always)]
     fn eq(&self, other: &T) -> bool { return (*self) == (*other); }
@@ -182,25 +182,25 @@ impl One for T {
     fn one() -> T { 1 }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Add<T,T> for T {
     #[inline(always)]
     fn add(&self, other: &T) -> T { *self + *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Sub<T,T> for T {
     #[inline(always)]
     fn sub(&self, other: &T) -> T { *self - *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Mul<T,T> for T {
     #[inline(always)]
     fn mul(&self, other: &T) -> T { *self * *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Div<T,T> for T {
     ///
     /// Integer division, truncated towards 0. As this behaviour reflects the underlying
@@ -224,7 +224,7 @@ impl Div<T,T> for T {
     fn div(&self, other: &T) -> T { *self / *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Rem<T,T> for T {
     ///
     /// Returns the integer remainder after division, satisfying:
@@ -251,7 +251,7 @@ impl Rem<T,T> for T {
     fn rem(&self, other: &T) -> T { *self % *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Neg<T> for T {
     #[inline(always)]
     fn neg(&self) -> T { -*self }
@@ -417,37 +417,37 @@ impl Integer for T {
 
 impl Bitwise for T {}
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl BitOr<T,T> for T {
     #[inline(always)]
     fn bitor(&self, other: &T) -> T { *self | *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl BitAnd<T,T> for T {
     #[inline(always)]
     fn bitand(&self, other: &T) -> T { *self & *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl BitXor<T,T> for T {
     #[inline(always)]
     fn bitxor(&self, other: &T) -> T { *self ^ *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Shl<T,T> for T {
     #[inline(always)]
     fn shl(&self, other: &T) -> T { *self << *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Shr<T,T> for T {
     #[inline(always)]
     fn shr(&self, other: &T) -> T { *self >> *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Not<T> for T {
     #[inline(always)]
     fn not(&self) -> T { !*self }
