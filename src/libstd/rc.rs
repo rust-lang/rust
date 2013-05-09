@@ -110,6 +110,13 @@ mod test_rc {
     }
 }
 
+#[abi = "rust-intrinsic"]
+extern "rust-intrinsic" {
+    fn init<T>() -> T;
+    #[cfg(not(stage0))]
+    fn uninit<T>() -> T;
+}
+
 #[deriving(Eq)]
 enum Borrow {
     Mutable,
@@ -171,7 +178,7 @@ impl<T: Owned> Drop for RcMut<T> {
         unsafe {
             (*self.ptr).count -= 1;
             if (*self.ptr).count == 0 {
-                util::replace_ptr(self.ptr, intrinsics::uninit());
+                util::replace_ptr(self.ptr, uninit());
                 free(self.ptr as *c_void)
             }
         }
@@ -185,7 +192,7 @@ impl<T: Owned> Drop for RcMut<T> {
         unsafe {
             (*self.ptr).count -= 1;
             if (*self.ptr).count == 0 {
-                util::replace_ptr(self.ptr, intrinsics::init());
+                util::replace_ptr(self.ptr, init());
                 free(self.ptr as *c_void)
             }
         }

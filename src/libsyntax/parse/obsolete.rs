@@ -61,6 +61,7 @@ pub enum ObsoleteSyntax {
     ObsoleteStaticMethod,
     ObsoleteConstItem,
     ObsoleteFixedLengthVectorType,
+    ObsoleteNamedExternModule,
 }
 
 #[cfg(stage0)]
@@ -224,6 +225,11 @@ pub impl Parser {
             ObsoleteFixedLengthVectorType => (
                 "fixed-length vector notation",
                 "instead of `[T * N]`, write `[T, ..N]`"
+            ),
+            ObsoleteNamedExternModule => (
+                "named external module",
+                "instead of `extern mod foo { ... }`, write `mod foo { \
+                 extern { ... } }`"
             ),
         };
 

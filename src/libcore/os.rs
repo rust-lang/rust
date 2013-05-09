@@ -196,10 +196,10 @@ pub fn env() -> ~[(~str,~str)] {
         }
         #[cfg(unix)]
         unsafe fn get_env_pairs() -> ~[~str] {
-            extern mod rustrt {
+            extern {
                 unsafe fn rust_env_pairs() -> **libc::c_char;
             }
-            let environ = rustrt::rust_env_pairs();
+            let environ = rust_env_pairs();
             if (environ as uint == 0) {
                 fail!(fmt!("os::env() failure getting env string from OS: %s",
                            os::last_os_error()));
@@ -685,9 +685,8 @@ pub fn list_dir(p: &Path) -> ~[~str] {
         unsafe fn get_list(p: &Path) -> ~[~str] {
             use libc::{dirent_t};
             use libc::{opendir, readdir, closedir};
-            extern mod rustrt {
-                unsafe fn rust_list_dir_val(ptr: *dirent_t)
-                    -> *libc::c_char;
+            extern {
+                unsafe fn rust_list_dir_val(ptr: *dirent_t) -> *libc::c_char;
             }
             let input = p.to_str();
             let mut strings = ~[];
@@ -698,10 +697,8 @@ pub fn list_dir(p: &Path) -> ~[~str] {
         debug!("os::list_dir -- opendir() SUCCESS");
                 let mut entry_ptr = readdir(dir_ptr);
                 while (entry_ptr as uint != 0) {
-                    strings.push(
-                        str::raw::from_c_str(
-                            rustrt::rust_list_dir_val(
-                                entry_ptr)));
+                    strings.push(str::raw::from_c_str(rust_list_dir_val(
+                        entry_ptr)));
                     entry_ptr = readdir(dir_ptr);
                 }
                 closedir(dir_ptr);
@@ -729,7 +726,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
             };
             use unstable::exchange_alloc::{malloc_raw, free_raw};
             #[nolink]
-            extern mod rustrt {
+            extern {
                 unsafe fn rust_list_dir_wfd_size() -> libc::size_t;
                 unsafe fn rust_list_dir_wfd_fp_buf(wfd: *libc::c_void)
                     -> *u16;
@@ -737,8 +734,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
             fn star(p: &Path) -> Path { p.push("*") }
             do as_utf16_p(star(p).to_str()) |path_ptr| {
                 let mut strings = ~[];
-                let wfd_ptr = malloc_raw(
-                    rustrt::rust_list_dir_wfd_size() as uint);
+                let wfd_ptr = malloc_raw(rust_list_dir_wfd_size() as uint);
                 let find_handle =
                     FindFirstFileW(
                         path_ptr,
@@ -746,8 +742,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                 if find_handle as int != INVALID_HANDLE_VALUE {
                     let mut more_files = 1 as libc::c_int;
                     while more_files != 0 {
-                        let fp_buf = rustrt::rust_list_dir_wfd_fp_buf(
-                            wfd_ptr);
+                        let fp_buf = rust_list_dir_wfd_fp_buf(wfd_ptr);
                         if fp_buf as uint == 0 {
                             fail!(~"os::list_dir() failure:"+
                                   ~" got null ptr from wfd");
