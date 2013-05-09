@@ -267,8 +267,9 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
             EACCES => PermissionDenied,
             ECONNREFUSED => ConnectionRefused,
             ECONNRESET => ConnectionReset,
-            e => {
-                abort!("unknown uv error code: %u", e as uint);
+            _ => {
+                // XXX: Need to map remaining uv error types
+                OtherIoError
             }
         };
 
