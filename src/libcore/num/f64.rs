@@ -221,7 +221,7 @@ pub mod consts {
 
 impl Num for f64 {}
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Eq for f64 {
     #[inline(always)]
     fn eq(&self, other: &f64) -> bool { (*self) == (*other) }
@@ -229,7 +229,7 @@ impl Eq for f64 {
     fn ne(&self, other: &f64) -> bool { (*self) != (*other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl ApproxEq<f64> for f64 {
     #[inline(always)]
     fn approx_epsilon() -> f64 { 1.0e-6 }
@@ -245,7 +245,7 @@ impl ApproxEq<f64> for f64 {
     }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Ord for f64 {
     #[inline(always)]
     fn lt(&self, other: &f64) -> bool { (*self) < (*other) }
@@ -295,28 +295,28 @@ impl One for f64 {
     fn one() -> f64 { 1.0 }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Add<f64,f64> for f64 {
     fn add(&self, other: &f64) -> f64 { *self + *other }
 }
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Sub<f64,f64> for f64 {
     fn sub(&self, other: &f64) -> f64 { *self - *other }
 }
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Mul<f64,f64> for f64 {
     fn mul(&self, other: &f64) -> f64 { *self * *other }
 }
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Div<f64,f64> for f64 {
     fn div(&self, other: &f64) -> f64 { *self / *other }
 }
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Rem<f64,f64> for f64 {
     #[inline(always)]
     fn rem(&self, other: &f64) -> f64 { *self % *other }
 }
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Neg<f64> for f64 {
     fn neg(&self) -> f64 { -*self }
 }

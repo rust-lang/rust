@@ -10,7 +10,7 @@
 
 //! Utilities for manipulating the char type
 
-#[cfg(notest)]
+#[cfg(not(test))]
 use cmp::Ord;
 use option::{None, Option, Some};
 use str;
@@ -18,7 +18,7 @@ use u32;
 use uint;
 use unicode::{derived_property, general_category};
 
-#[cfg(notest)] use cmp::Eq;
+#[cfg(not(test))] use cmp::Eq;
 
 /*
     Lu  Uppercase_Letter    an uppercase letter
@@ -244,7 +244,7 @@ pub fn len_utf8_bytes(c: char) -> uint {
     else { fail!(~"invalid character!") }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Eq for char {
     #[inline(always)]
     fn eq(&self, other: &char) -> bool { (*self) == (*other) }
@@ -252,7 +252,7 @@ impl Eq for char {
     fn ne(&self, other: &char) -> bool { (*self) != (*other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Ord for char {
     #[inline(always)]
     fn lt(&self, other: &char) -> bool { *self < *other }

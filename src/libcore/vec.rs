@@ -30,7 +30,7 @@ use uint;
 use unstable::intrinsics;
 use vec;
 
-#[cfg(notest)] use cmp::Equiv;
+#[cfg(not(test))] use cmp::Equiv;
 
 pub mod rustrt {
     use libc;
@@ -1656,7 +1656,7 @@ fn equals<T: TotalEq>(a: &[T], b: &[T]) -> bool {
     true
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self,T:Eq> Eq for &'self [T] {
     #[inline(always)]
     fn eq(&self, other: & &'self [T]) -> bool { eq(*self, *other) }
@@ -1664,7 +1664,7 @@ impl<'self,T:Eq> Eq for &'self [T] {
     fn ne(&self, other: & &'self [T]) -> bool { !self.eq(other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<T:Eq> Eq for ~[T] {
     #[inline(always)]
     fn eq(&self, other: &~[T]) -> bool { eq(*self, *other) }
@@ -1672,7 +1672,7 @@ impl<T:Eq> Eq for ~[T] {
     fn ne(&self, other: &~[T]) -> bool { !self.eq(other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<T:Eq> Eq for @[T] {
     #[inline(always)]
     fn eq(&self, other: &@[T]) -> bool { eq(*self, *other) }
@@ -1680,25 +1680,25 @@ impl<T:Eq> Eq for @[T] {
     fn ne(&self, other: &@[T]) -> bool { !self.eq(other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self,T:TotalEq> TotalEq for &'self [T] {
     #[inline(always)]
     fn equals(&self, other: & &'self [T]) -> bool { equals(*self, *other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<T:TotalEq> TotalEq for ~[T] {
     #[inline(always)]
     fn equals(&self, other: &~[T]) -> bool { equals(*self, *other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<T:TotalEq> TotalEq for @[T] {
     #[inline(always)]
     fn equals(&self, other: &@[T]) -> bool { equals(*self, *other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self,T:Eq> Equiv<~[T]> for &'self [T] {
     #[inline(always)]
     fn equiv(&self, other: &~[T]) -> bool { eq(*self, *other) }
@@ -1720,19 +1720,19 @@ fn cmp<T: TotalOrd>(a: &[T], b: &[T]) -> Ordering {
     a.len().cmp(&b.len())
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self,T:TotalOrd> TotalOrd for &'self [T] {
     #[inline(always)]
     fn cmp(&self, other: & &'self [T]) -> Ordering { cmp(*self, *other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<T: TotalOrd> TotalOrd for ~[T] {
     #[inline(always)]
     fn cmp(&self, other: &~[T]) -> Ordering { cmp(*self, *other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<T: TotalOrd> TotalOrd for @[T] {
     #[inline(always)]
     fn cmp(&self, other: &@[T]) -> Ordering { cmp(*self, *other) }
@@ -1757,7 +1757,7 @@ fn le<T:Ord>(a: &[T], b: &[T]) -> bool { !lt(b, a) }
 fn ge<T:Ord>(a: &[T], b: &[T]) -> bool { !lt(a, b) }
 fn gt<T:Ord>(a: &[T], b: &[T]) -> bool { lt(b, a)  }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self,T:Ord> Ord for &'self [T] {
     #[inline(always)]
     fn lt(&self, other: & &'self [T]) -> bool { lt((*self), (*other)) }
@@ -1769,7 +1769,7 @@ impl<'self,T:Ord> Ord for &'self [T] {
     fn gt(&self, other: & &'self [T]) -> bool { gt((*self), (*other)) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<T:Ord> Ord for ~[T] {
     #[inline(always)]
     fn lt(&self, other: &~[T]) -> bool { lt((*self), (*other)) }
@@ -1781,7 +1781,7 @@ impl<T:Ord> Ord for ~[T] {
     fn gt(&self, other: &~[T]) -> bool { gt((*self), (*other)) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<T:Ord> Ord for @[T] {
     #[inline(always)]
     fn lt(&self, other: &@[T]) -> bool { lt((*self), (*other)) }
@@ -1793,7 +1793,7 @@ impl<T:Ord> Ord for @[T] {
     fn gt(&self, other: &@[T]) -> bool { gt((*self), (*other)) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 pub mod traits {
     use kinds::Copy;
     use ops::Add;

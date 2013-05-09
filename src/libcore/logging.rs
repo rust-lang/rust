@@ -42,7 +42,7 @@ pub fn console_off() {
     }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 #[lang="log_type"]
 pub fn log_type<T>(level: u32, object: &T) {
     use cast::transmute;

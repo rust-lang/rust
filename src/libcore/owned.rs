@@ -10,9 +10,9 @@
 
 //! Operations on unique pointer types
 
-#[cfg(notest)] use cmp::{Eq, Ord};
+#[cfg(not(test))] use cmp::{Eq, Ord};
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<T:Eq> Eq for ~T {
     #[inline(always)]
     fn eq(&self, other: &~T) -> bool { *(*self) == *(*other) }
@@ -20,7 +20,7 @@ impl<T:Eq> Eq for ~T {
     fn ne(&self, other: &~T) -> bool { *(*self) != *(*other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<T:Ord> Ord for ~T {
     #[inline(always)]
     fn lt(&self, other: &~T) -> bool { *(*self) < *(*other) }
