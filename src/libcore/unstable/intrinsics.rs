@@ -50,7 +50,9 @@ pub extern "rust-intrinsic" {
     #[cfg(not(stage0))]
     pub unsafe fn uninit<T>() -> T;
 
-    pub fn forget<T>(_: T) -> ();
+    /// forget is unsafe because the caller is responsible for
+    /// ensuring the argument is deallocated already
+    pub unsafe fn forget<T>(_: T) -> ();
 
     pub fn needs_drop<T>() -> bool;
 
