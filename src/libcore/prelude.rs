@@ -81,6 +81,7 @@ pub use io;
 pub use iter;
 pub use old_iter;
 pub use libc;
+pub use local_data;
 pub use num;
 pub use ops;
 pub use option;

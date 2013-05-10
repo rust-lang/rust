@@ -215,6 +215,7 @@ pub mod trie;
 pub mod task;
 pub mod comm;
 pub mod pipes;
+pub mod local_data;
 
 
 /* Runtime and platform support */
