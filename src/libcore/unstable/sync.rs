@@ -19,28 +19,91 @@ use ops::Drop;
 use clone::Clone;
 use kinds::Owned;
 
-/****************************************************************************
- * Shared state & exclusive ARC
- ****************************************************************************/
-
-struct ArcData<T> {
-    count:     libc::intptr_t,
-    // FIXME(#3224) should be able to make this non-option to save memory
-    data:      Option<T>,
+/// An atomically reference counted pointer.
+///
+/// Enforces no shared-memory safety.
+pub struct UnsafeAtomicRcBox<T> {
+    data: *mut libc::c_void,
 }
 
-struct ArcDestruct<T> {
-    data: *libc::c_void,
+struct AtomicRcBoxData<T> {
+    count: int,
+    data: Option<T>,
+}
+
+impl<T: Owned> UnsafeAtomicRcBox<T> {
+    pub fn new(data: T) -> UnsafeAtomicRcBox<T> {
+        unsafe {
+            let data = ~AtomicRcBoxData { count: 1, data: Some(data) };
+            let ptr = cast::transmute(data);
+            return UnsafeAtomicRcBox { data: ptr };
+        }
+    }
+
+    #[inline(always)]
+    #[cfg(stage0)]
+    pub unsafe fn get(&self) -> *mut T
+    {
+        let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
+        assert!(data.count > 0);
+        let r: *mut T = cast::transmute(data.data.get_mut_ref());
+        cast::forget(data);
+        return r;
+    }
+
+    #[inline(always)]
+    #[cfg(not(stage0))]
+    pub unsafe fn get(&self) -> *mut T
+    {
+        let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
+        assert!(data.count > 0);
+        let r: *mut T = data.data.get_mut_ref();
+        cast::forget(data);
+        return r;
+    }
+
+    #[inline(always)]
+    #[cfg(stage0)]
+    pub unsafe fn get_immut(&self) -> *T
+    {
+        let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
+        assert!(data.count > 0);
+        let r: *T = cast::transmute(data.data.get_mut_ref());
+        cast::forget(data);
+        return r;
+    }
+
+    #[inline(always)]
+    #[cfg(not(stage0))]
+    pub unsafe fn get_immut(&self) -> *T
+    {
+        let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
+        assert!(data.count > 0);
+        let r: *T = cast::transmute_immut(data.data.get_mut_ref());
+        cast::forget(data);
+        return r;
+    }
+}
+
+impl<T: Owned> Clone for UnsafeAtomicRcBox<T> {
+    fn clone(&self) -> UnsafeAtomicRcBox<T> {
+        unsafe {
+            let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
+            let new_count = intrinsics::atomic_xadd(&mut data.count, 1) + 1;
+            assert!(new_count >= 2);
+            cast::forget(data);
+            return UnsafeAtomicRcBox { data: self.data };
+        }
+    }
 }
 
 #[unsafe_destructor]
-impl<T> Drop for ArcDestruct<T>{
+impl<T> Drop for UnsafeAtomicRcBox<T>{
     fn finalize(&self) {
         unsafe {
             do task::unkillable {
-                let mut data: ~ArcData<T> = cast::transmute(self.data);
-                let new_count =
-                    intrinsics::atomic_xsub(&mut data.count, 1) - 1;
+                let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
+                let new_count = intrinsics::atomic_xsub(&mut data.count, 1) - 1;
                 assert!(new_count >= 0);
                 if new_count == 0 {
                     // drop glue takes over.
@@ -52,64 +115,6 @@ impl<T> Drop for ArcDestruct<T>{
     }
 }
 
-fn ArcDestruct<T>(data: *libc::c_void) -> ArcDestruct<T> {
-    ArcDestruct {
-        data: data
-    }
-}
-
-/**
- * COMPLETELY UNSAFE. Used as a primitive for the safe versions in std::arc.
- *
- * Data races between tasks can result in crashes and, with sufficient
- * cleverness, arbitrary type coercion.
- */
-pub type SharedMutableState<T> = ArcDestruct<T>;
-
-pub unsafe fn shared_mutable_state<T:Owned>(data: T) ->
-        SharedMutableState<T> {
-    let data = ~ArcData { count: 1, data: Some(data) };
-    let ptr = cast::transmute(data);
-    ArcDestruct(ptr)
-}
-
-#[inline(always)]
-pub unsafe fn get_shared_mutable_state<T:Owned>(
-    rc: *SharedMutableState<T>) -> *mut T
-{
-    let ptr: ~ArcData<T> = cast::transmute((*rc).data);
-    assert!(ptr.count > 0);
-    let r = cast::transmute(ptr.data.get_ref());
-    cast::forget(ptr);
-    return r;
-}
-#[inline(always)]
-pub unsafe fn get_shared_immutable_state<'a,T:Owned>(
-        rc: &'a SharedMutableState<T>) -> &'a T {
-    let ptr: ~ArcData<T> = cast::transmute((*rc).data);
-    assert!(ptr.count > 0);
-    // Cast us back into the correct region
-    let r = cast::transmute_region(ptr.data.get_ref());
-    cast::forget(ptr);
-    return r;
-}
-
-pub unsafe fn clone_shared_mutable_state<T:Owned>(rc: &SharedMutableState<T>)
-        -> SharedMutableState<T> {
-    let mut ptr: ~ArcData<T> = cast::transmute((*rc).data);
-    let new_count = intrinsics::atomic_xadd(&mut ptr.count, 1) + 1;
-    assert!(new_count >= 2);
-    cast::forget(ptr);
-    ArcDestruct((*rc).data)
-}
-
-impl<T:Owned> Clone for SharedMutableState<T> {
-    fn clone(&self) -> SharedMutableState<T> {
-        unsafe {
-            clone_shared_mutable_state(self)
-        }
-    }
-}
 
 /****************************************************************************/
 
@@ -160,7 +165,7 @@ struct ExData<T> {
  * An arc over mutable data that is protected by a lock. For library use only.
  */
 pub struct Exclusive<T> {
-    x: SharedMutableState<ExData<T>>
+    x: UnsafeAtomicRcBox<ExData<T>>
 }
 
 pub fn exclusive<T:Owned>(user_data: T) -> Exclusive<T> {
@@ -170,16 +175,14 @@ pub fn exclusive<T:Owned>(user_data: T) -> Exclusive<T> {
         data: user_data
     };
     Exclusive {
-        x: unsafe {
-            shared_mutable_state(data)
-        }
+        x: UnsafeAtomicRcBox::new(data)
     }
 }
 
 impl<T:Owned> Clone for Exclusive<T> {
     // Duplicate an exclusive ARC, as std::arc::clone.
     fn clone(&self) -> Exclusive<T> {
-        Exclusive { x: unsafe { clone_shared_mutable_state(&self.x) } }
+        Exclusive { x: self.x.clone() }
     }
 }
 
@@ -192,7 +195,7 @@ pub impl<T:Owned> Exclusive<T> {
     // the exclusive. Supporting that is a work in progress.
     #[inline(always)]
     unsafe fn with<U>(&self, f: &fn(x: &mut T) -> U) -> U {
-        let rec = get_shared_mutable_state(&self.x);
+        let rec = self.x.get();
         do (*rec).lock.lock {
             if (*rec).failed {
                 fail!(
