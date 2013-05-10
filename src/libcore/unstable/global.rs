@@ -31,14 +31,14 @@ use kinds::Owned;
 use libc::{c_void};
 use option::{Option, Some, None};
 use ops::Drop;
-use unstable::{Exclusive, exclusive};
+use unstable::sync::{Exclusive, exclusive};
 use unstable::at_exit::at_exit;
 use unstable::intrinsics::atomic_cxchg;
 use hashmap::HashMap;
 use sys::Closure;
 
-#[cfg(test)] use unstable::{SharedMutableState, shared_mutable_state};
-#[cfg(test)] use unstable::get_shared_immutable_state;
+#[cfg(test)] use unstable::sync::{SharedMutableState, shared_mutable_state};
+#[cfg(test)] use unstable::sync::get_shared_immutable_state;
 #[cfg(test)] use task::spawn;
 #[cfg(test)] use uint;
 

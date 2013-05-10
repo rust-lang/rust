@@ -19,8 +19,8 @@ use option::{Option, Some, None};
 use uint;
 use unstable;
 use vec;
-use unstable::Exclusive;
 use util::replace;
+use unstable::sync::{Exclusive, exclusive};
 
 use pipes::{recv, try_recv, wait_many, peek, PacketHeader};
 
@@ -304,7 +304,7 @@ pub struct SharedChan<T> {
 impl<T: Owned> SharedChan<T> {
     /// Converts a `chan` into a `shared_chan`.
     pub fn new(c: Chan<T>) -> SharedChan<T> {
-        SharedChan { ch: unstable::exclusive(c) }
+        SharedChan { ch: exclusive(c) }
     }
 }
 

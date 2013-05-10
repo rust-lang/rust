@@ -17,9 +17,9 @@ use sync;
 use sync::{Mutex, mutex_with_condvars, RWlock, rwlock_with_condvars};
 
 use core::cast;
-use core::unstable::{SharedMutableState, shared_mutable_state};
-use core::unstable::{clone_shared_mutable_state};
-use core::unstable::{get_shared_mutable_state, get_shared_immutable_state};
+use core::unstable::sync::{SharedMutableState, shared_mutable_state};
+use core::unstable::sync::{clone_shared_mutable_state};
+use core::unstable::sync::{get_shared_mutable_state, get_shared_immutable_state};
 use core::ptr;
 use core::task;
 

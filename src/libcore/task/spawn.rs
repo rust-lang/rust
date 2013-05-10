@@ -90,6 +90,7 @@ use task::{ExistingScheduler, SchedulerHandle};
 use task::unkillable;
 use uint;
 use util;
+use unstable::sync::{Exclusive, exclusive};
 
 #[cfg(test)] use task::default_task_opts;
 
@@ -128,7 +129,7 @@ struct TaskGroupData {
     // tasks in this group.
     descendants: TaskSet,
 }
-type TaskGroupArc = unstable::Exclusive<Option<TaskGroupData>>;
+type TaskGroupArc = Exclusive<Option<TaskGroupData>>;
 
 type TaskGroupInner<'self> = &'self mut Option<TaskGroupData>;
 
@@ -158,7 +159,7 @@ struct AncestorNode {
     ancestors:      AncestorList,
 }
 
-struct AncestorList(Option<unstable::Exclusive<AncestorNode>>);
+struct AncestorList(Option<Exclusive<AncestorNode>>);
 
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
 #[inline(always)]
@@ -167,7 +168,7 @@ fn access_group<U>(x: &TaskGroupArc, blk: &fn(TaskGroupInner) -> U) -> U {
 }
 
 #[inline(always)]
-fn access_ancestors<U>(x: &unstable::Exclusive<AncestorNode>,
+fn access_ancestors<U>(x: &Exclusive<AncestorNode>,
                        blk: &fn(x: &mut AncestorNode) -> U) -> U {
     x.with(blk)
 }
@@ -479,7 +480,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                     // here.
                     let mut members = new_taskset();
                     taskset_insert(&mut members, spawner);
-                    let tasks = unstable::exclusive(Some(TaskGroupData {
+                    let tasks = exclusive(Some(TaskGroupData {
                         members: members,
                         descendants: new_taskset(),
                     }));
@@ -508,7 +509,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             (g, a, spawner_group.is_main)
         } else {
             // Child is in a separate group from spawner.
-            let g = unstable::exclusive(Some(TaskGroupData {
+            let g = exclusive(Some(TaskGroupData {
                 members:     new_taskset(),
                 descendants: new_taskset(),
             }));
@@ -528,7 +529,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                     };
                 assert!(new_generation < uint::max_value);
                 // Build a new node in the ancestor list.
-                AncestorList(Some(unstable::exclusive(AncestorNode {
+                AncestorList(Some(exclusive(AncestorNode {
                     generation: new_generation,
                     parent_group: Some(spawner_group.tasks.clone()),
                     ancestors: old_ancestors,
