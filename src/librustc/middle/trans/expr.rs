@@ -968,7 +968,10 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                 }
 
                 fn get_val(bcx: block, did: ast::def_id, const_ty: ty::t)
-                    -> ValueRef {
+                           -> ValueRef {
+                    // For external constants, we don't inline.
+                    let extern_const_values =
+                        &mut *bcx.ccx().extern_const_values;
                     if did.crate == ast::local_crate {
                         // The LLVM global has the type of its initializer,
                         // which may not be equal to the enum's type for
@@ -977,25 +980,24 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                                     base::get_item_val(bcx.ccx(), did.node),
                                     T_ptr(type_of(bcx.ccx(), const_ty)))
                     } else {
-                        // For external constants, we don't inline.
-                        match bcx.ccx().extern_const_values.find(&did) {
-                            None => {
-                                unsafe {
-                                    let llty = type_of(bcx.ccx(), const_ty);
-                                    let symbol = csearch::get_symbol(
-                                        bcx.ccx().sess.cstore,
-                                        did);
-                                    let llval = llvm::LLVMAddGlobal(
-                                        bcx.ccx().llmod,
-                                        llty,
-                                        transmute::<&u8,*i8>(&symbol[0]));
-                                    bcx.ccx().extern_const_values.insert(
-                                        did,
-                                        llval);
-                                    llval
-                                }
+                        match extern_const_values.find(&did) {
+                            None => {}  // Continue.
+                            Some(llval) => {
+                                return *llval;
                             }
-                            Some(llval) => *llval
+                        }
+
+                        unsafe {
+                            let llty = type_of(bcx.ccx(), const_ty);
+                            let symbol = csearch::get_symbol(
+                                bcx.ccx().sess.cstore,
+                                did);
+                            let llval = llvm::LLVMAddGlobal(
+                                bcx.ccx().llmod,
+                                llty,
+                                transmute::<&u8,*i8>(&symbol[0]));
+                            extern_const_values.insert(did, llval);
+                            llval
                         }
                     }
                 }
