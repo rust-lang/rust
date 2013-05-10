@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{meta_item, item, expr};
+use ast::{meta_item, item, expr, and};
 use codemap::span;
 use ext::base::ext_ctxt;
 use ext::build;
@@ -31,7 +31,7 @@ pub fn expand_deriving_iter_bytes(cx: @ext_ctxt,
                     Literal(Path::new(~[~"bool"])),
                     Literal(Path::new(~[~"core", ~"to_bytes", ~"Cb"]))
                 ],
-                ret_ty: nil_ty(),
+                ret_ty: Literal(Path::new(~[~"bool"])),
                 const_nonmatching: false,
                 combine_substructure: iter_bytes_substructure
             }
@@ -58,13 +58,11 @@ fn iter_bytes_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> 
     };
     let iter_bytes_ident = substr.method_ident;
     let call_iterbytes = |thing_expr| {
-        build::mk_stmt(
-            cx, span,
-            build::mk_method_call(cx, span,
-                                  thing_expr, iter_bytes_ident,
-                                  copy lsb0_f))
+        build::mk_method_call(cx, span,
+                              thing_expr, iter_bytes_ident,
+                              copy lsb0_f)
     };
-    let mut stmts = ~[];
+    let mut exprs = ~[];
     let fields;
     match *substr.fields {
         Struct(ref fs) => {
@@ -78,7 +76,7 @@ fn iter_bytes_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> 
                 None => build::mk_uint(cx, span, index)
             };
 
-            stmts.push(call_iterbytes(discriminant));
+            exprs.push(call_iterbytes(discriminant));
 
             fields = fs;
         }
@@ -86,8 +84,14 @@ fn iter_bytes_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> 
     }
 
     for fields.each |&(_, field, _)| {
-        stmts.push(call_iterbytes(field));
+        exprs.push(call_iterbytes(field));
     }
 
-    build::mk_block(cx, span, ~[], stmts, None)
+    if exprs.len() == 0 {
+        cx.span_bug(span, "#[deriving(IterBytes)] needs at least one field");
+    }
+
+    do vec::foldl(exprs[0], exprs.slice(1, exprs.len())) |prev, me| {
+        build::mk_binary(cx, span, and, prev, *me)
+    }
 }

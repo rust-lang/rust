@@ -828,11 +828,20 @@ pub impl FnCtxt {
         }
     }
 
+    #[cfg(stage0)]
     fn opt_node_ty_substs(&self, id: ast::node_id,
                           f: &fn(&ty::substs) -> bool) {
         match self.inh.node_type_substs.find(&id) {
             Some(s) => { f(s); }
             None => ()
+        }
+    }
+    #[cfg(not(stage0))]
+    fn opt_node_ty_substs(&self, id: ast::node_id,
+                          f: &fn(&ty::substs) -> bool) -> bool {
+        match self.inh.node_type_substs.find(&id) {
+            Some(s) => f(s),
+            None => true
         }
     }
 
@@ -1294,6 +1303,26 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // The callee checks for bot / err, we don't need to
     }
 
+    fn write_call(fcx: @mut FnCtxt,
+                  call_expr: @ast::expr,
+                  output: ty::t,
+                  sugar: ast::CallSugar) {
+        let ret_ty = match sugar {
+            ast::ForSugar => {
+                match ty::get(output).sty {
+                    ty::ty_bool => {}
+                    _ => fcx.type_error_message(call_expr.span, |actual| {
+                            fmt!("expected `for` closure to return `bool`, \
+                                  but found `%s`", actual) },
+                            output, None)
+                }
+                ty::mk_nil()
+            }
+            _ => output
+        };
+        fcx.write_ty(call_expr.id, ret_ty);
+    }
+
     // A generic function for doing all of the checking for call expressions
     fn check_call(fcx: @mut FnCtxt,
                   call_expr: @ast::expr,
@@ -1344,8 +1373,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         check_argument_types(fcx, call_expr.span, fn_sig.inputs, f,
                              args, sugar, DontDerefArgs);
 
-        // Pull the return type out of the type of the function.
-        fcx.write_ty(call_expr.id, fn_sig.output);
+        write_call(fcx, call_expr, fn_sig.output, sugar);
     }
 
     // Checks a method call.
@@ -1401,8 +1429,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                                  fn_ty, expr, args, sugar,
                                                  DontDerefArgs);
 
-        // Pull the return type out of the type of the function.
-        fcx.write_ty(expr.id, ret_ty);
+        write_call(fcx, expr, ret_ty, sugar);
     }
 
     // A generic function for checking the then and else in an if

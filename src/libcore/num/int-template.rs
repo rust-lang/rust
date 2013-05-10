@@ -86,37 +86,62 @@ pub fn gt(x: T, y: T) -> bool { x > y }
 ///
 #[inline(always)]
 /// Iterate over the range [`start`,`start`+`step`..`stop`)
-pub fn range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) {
+pub fn _range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) -> bool {
     let mut i = start;
     if step == 0 {
         fail!(~"range_step called with step == 0");
     } else if step > 0 { // ascending
         while i < stop {
-            if !it(i) { break }
+            if !it(i) { return false; }
             // avoiding overflow. break if i + step > max_value
-            if i > max_value - step { break; }
+            if i > max_value - step { return true; }
             i += step;
         }
     } else { // descending
         while i > stop {
-            if !it(i) { break }
+            if !it(i) { return false; }
             // avoiding underflow. break if i + step < min_value
-            if i < min_value - step { break; }
+            if i < min_value - step { return true; }
             i += step;
         }
     }
+    return true;
+}
+
+#[cfg(stage0)]
+pub fn range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) {
+    _range_step(start, stop, step, it);
+}
+#[cfg(not(stage0))]
+pub fn range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) -> bool {
+    _range_step(start, stop, step, it)
 }
 
 #[inline(always)]
+#[cfg(stage0)]
 /// Iterate over the range [`lo`..`hi`)
 pub fn range(lo: T, hi: T, it: &fn(T) -> bool) {
     range_step(lo, hi, 1 as T, it);
 }
 
 #[inline(always)]
+#[cfg(not(stage0))]
+/// Iterate over the range [`lo`..`hi`)
+pub fn range(lo: T, hi: T, it: &fn(T) -> bool) -> bool {
+    range_step(lo, hi, 1 as T, it)
+}
+
+#[inline(always)]
+#[cfg(stage0)]
 /// Iterate over the range [`hi`..`lo`)
 pub fn range_rev(hi: T, lo: T, it: &fn(T) -> bool) {
     range_step(hi, lo, -1 as T, it);
+}
+#[inline(always)]
+#[cfg(not(stage0))]
+/// Iterate over the range [`hi`..`lo`)
+pub fn range_rev(hi: T, lo: T, it: &fn(T) -> bool) -> bool {
+    range_step(hi, lo, -1 as T, it)
 }
 
 /// Computes the bitwise complement

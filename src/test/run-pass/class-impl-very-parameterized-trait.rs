@@ -59,25 +59,26 @@ impl<T> Mutable for cat<T> {
 }
 
 impl<T> Map<int, T> for cat<T> {
-    fn each<'a>(&'a self, f: &fn(&int, &'a T) -> bool) {
+    fn each<'a>(&'a self, f: &fn(&int, &'a T) -> bool) -> bool {
         let mut n = int::abs(self.meows);
         while n > 0 {
-            if !f(&n, &self.name) { break; }
+            if !f(&n, &self.name) { return false; }
             n -= 1;
         }
+        return true;
     }
 
     fn contains_key(&self, k: &int) -> bool { *k <= self.meows }
 
-    fn each_key(&self, f: &fn(v: &int) -> bool) {
-        for self.each |k, _| { if !f(k) { break; } loop;};
+    fn each_key(&self, f: &fn(v: &int) -> bool) -> bool {
+        self.each(|k, _| f(k))
     }
 
-    fn each_value<'a>(&'a self, f: &fn(v: &'a T) -> bool) {
-        for self.each |_, v| { if !f(v) { break; } loop;};
+    fn each_value<'a>(&'a self, f: &fn(v: &'a T) -> bool) -> bool {
+        self.each(|_, v| f(v))
     }
 
-    fn mutate_values(&mut self, _f: &fn(&int, &mut T) -> bool) {
+    fn mutate_values(&mut self, _f: &fn(&int, &mut T) -> bool) -> bool {
         fail!(~"nope")
     }
 

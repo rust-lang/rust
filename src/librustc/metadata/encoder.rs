@@ -1391,11 +1391,10 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
     ecx.stats.total_bytes = *wr.pos;
 
     if (tcx.sess.meta_stats()) {
-        do wr.bytes.each |e| {
+        for wr.bytes.each |e| {
             if *e == 0 {
                 ecx.stats.zero_bytes += 1;
             }
-            true
         }
 
         io::println("metadata stats:");

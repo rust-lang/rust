@@ -41,7 +41,10 @@ pub trait IteratorUtil<A> {
     fn take(self, n: uint) -> TakeIterator<Self>;
     fn scan<'r, St, B>(self, initial_state: St, f: &'r fn(&mut St, A) -> Option<B>)
         -> ScanIterator<'r, A, B, Self, St>;
+    #[cfg(stage0)]
     fn advance(&mut self, f: &fn(A) -> bool);
+    #[cfg(not(stage0))]
+    fn advance(&mut self, f: &fn(A) -> bool) -> bool;
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -103,13 +106,28 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
 
     /// A shim implementing the `for` loop iteration protocol for iterator objects
     #[inline]
+    #[cfg(stage0)]
     fn advance(&mut self, f: &fn(A) -> bool) {
         loop {
             match self.next() {
                 Some(x) => {
-                    if !f(x) { return }
+                    if !f(x) { return; }
                 }
-                None => return
+                None => { return; }
+            }
+        }
+    }
+
+    /// A shim implementing the `for` loop iteration protocol for iterator objects
+    #[inline]
+    #[cfg(not(stage0))]
+    fn advance(&mut self, f: &fn(A) -> bool) -> bool {
+        loop {
+            match self.next() {
+                Some(x) => {
+                    if !f(x) { return false; }
+                }
+                None => { return true; }
             }
         }
     }
