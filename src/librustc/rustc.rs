@@ -75,6 +75,8 @@ pub mod middle {
     pub mod effect;
     pub mod reachable;
     pub mod graph;
+    #[path = "cfg/mod.rs"]
+    pub mod cfg;
 }
 
 pub mod front {
