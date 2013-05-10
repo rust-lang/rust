@@ -113,7 +113,6 @@ mod local_heap;
 pub mod logging;
 
 /// Tools for testing the runtime
-#[cfg(test)]
 pub mod test;
 
 /// Reference counting
