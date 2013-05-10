@@ -144,7 +144,7 @@
 #define RED_ZONE_SIZE RZ_LINUX_64
 #endif
 #ifdef __mips__
-#define RED_ZONE_SIZE RZ_LINUX_32
+#define RED_ZONE_SIZE RZ_MAC_32
 #endif
 #endif
 #ifdef __APPLE__

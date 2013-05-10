@@ -247,12 +247,12 @@ AR_mips-unknown-linux-gnu=mips-linux-gnu-ar
 CFG_LIB_NAME_mips-unknown-linux-gnu=lib$(1).so
 CFG_LIB_GLOB_mips-unknown-linux-gnu=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_mips-unknown-linux-gnu=lib$(1)-*.dylib.dSYM
-CFG_GCCISH_CFLAGS_mips-unknown-linux-gnu := -Wall -g -fPIC -mips32r2 -msoft-float -mabi=32
+CFG_GCCISH_CFLAGS_mips-unknown-linux-gnu := -Wall -g -fPIC -mips32r2 -msoft-float -mabi=32 -mno-compact-eh
 CFG_GCCISH_CXXFLAGS_mips-unknown-linux-gnu := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_mips-unknown-linux-gnu := -shared -fPIC -g -mips32r2 -msoft-float -mabi=32
 CFG_GCCISH_DEF_FLAG_mips-unknown-linux-gnu := -Wl,--export-dynamic,--dynamic-list=
 CFG_GCCISH_PRE_LIB_FLAGS_mips-unknown-linux-gnu := -Wl,-whole-archive
-CFG_GCCISH_POST_LIB_FLAGS_mips-unknown-linux-gnu := -Wl,-no-whole-archive -Wl,-znoexecstack
+CFG_GCCISH_POST_LIB_FLAGS_mips-unknown-linux-gnu := -Wl,-no-whole-archive
 CFG_DEF_SUFFIX_mips-unknown-linux-gnu := .linux.def
 CFG_INSTALL_NAME_mips-unknown-linux-gnu =
 CFG_LIBUV_LINK_FLAGS_mips-unknown-linux-gnu =
