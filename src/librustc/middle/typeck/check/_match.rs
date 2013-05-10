@@ -340,12 +340,6 @@ pub fn check_struct_pat(pcx: &pat_ctxt, pat_id: ast::node_id, span: span,
         }
     }
 
-    // Forbid pattern-matching structs with destructors.
-    if ty::has_dtor(tcx, class_id) {
-        tcx.sess.span_err(span, "deconstructing struct not allowed in pattern \
-                                 (it has a destructor)");
-    }
-
     check_struct_pat_fields(pcx, span, path, fields, class_fields, class_id,
                             substitutions, etc);
 }
