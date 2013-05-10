@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::ty::{BuiltinBounds};
 use middle::ty::RegionVid;
 use middle::ty;
 use middle::typeck::infer::combine::*;
@@ -98,6 +99,12 @@ impl Combine for Lub {
             (Once, _) | (_, Once) => Ok(Once),
             (Many, Many) => Ok(Many)
         }
+    }
+
+    fn bounds(&self, a: BuiltinBounds, b: BuiltinBounds) -> cres<BuiltinBounds> {
+        // More bounds is a subtype of fewer bounds, so
+        // the LUB (mutual supertype) is the intersection.
+        Ok(a.intersection(b))
     }
 
     fn contraregions(&self, a: ty::Region, b: ty::Region)

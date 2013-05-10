@@ -59,6 +59,7 @@ use middle::ty;
 use middle::typeck::rscope::in_binding_rscope;
 use middle::typeck::rscope::{region_scope, RegionError};
 use middle::typeck::rscope::RegionParamNames;
+use middle::typeck::lookup_def_tcx;
 
 use syntax::abi::AbiSet;
 use syntax::{ast, ast_util};
@@ -220,7 +221,6 @@ pub fn ast_path_to_trait_ref<AC:AstConv,RS:region_scope + Copy + 'static>(
     return trait_ref;
 }
 
-
 pub fn ast_path_to_ty<AC:AstConv,RS:region_scope + Copy + 'static>(
         this: &AC,
         rscope: &RS,
@@ -377,11 +377,13 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                                             bf.abis, &bf.lifetimes, &bf.decl))
       }
       ast::ty_closure(ref f) => {
+          let bounds = conv_builtin_bounds(this.tcx(), &f.bounds);
           let fn_decl = ty_of_closure(this,
                                       rscope,
                                       f.sigil,
                                       f.purity,
                                       f.onceness,
+                                      bounds,
                                       f.region,
                                       &f.decl,
                                       None,
@@ -646,17 +648,18 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
 }
 
 pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
-        this: &AC,
-        rscope: &RS,
-        sigil: ast::Sigil,
-        purity: ast::purity,
-        onceness: ast::Onceness,
-        opt_lifetime: Option<@ast::Lifetime>,
-        decl: &ast::fn_decl,
-        expected_sig: Option<ty::FnSig>,
-        lifetimes: &OptVec<ast::Lifetime>,
-        span: span)
-     -> ty::ClosureTy
+    this: &AC,
+    rscope: &RS,
+    sigil: ast::Sigil,
+    purity: ast::purity,
+    onceness: ast::Onceness,
+    bounds: ty::BuiltinBounds,
+    opt_lifetime: Option<@ast::Lifetime>,
+    decl: &ast::fn_decl,
+    expected_sig: Option<ty::FnSig>,
+    lifetimes: &OptVec<ast::Lifetime>,
+    span: span)
+    -> ty::ClosureTy
 {
     // The caller should not both provide explicit bound lifetime
     // names and expected types.  Either we infer the bound lifetime
@@ -713,8 +716,69 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
         sigil: sigil,
         onceness: onceness,
         region: bound_region,
+        bounds: bounds,
         sig: ty::FnSig {bound_lifetime_names: bound_lifetime_names,
                         inputs: input_tys,
                         output: output_ty}
+    }
+}
+
+fn conv_builtin_bounds(tcx: ty::ctxt,
+                       ast_bounds: &OptVec<ast::TyParamBound>)
+                       -> ty::BuiltinBounds {
+    //! Converts a list of bounds from the AST into a `BuiltinBounds`
+    //! struct. Reports an error if any of the bounds that appear
+    //! in the AST refer to general traits and not the built-in traits
+    //! like `Copy` or `Owned`. Used to translate the bounds that
+    //! appear in closure and trait types, where only builtin bounds are
+    //! legal.
+
+    let mut builtin_bounds = ty::EmptyBuiltinBounds();
+    for ast_bounds.each |ast_bound| {
+        match *ast_bound {
+            ast::TraitTyParamBound(b) => {
+                match lookup_def_tcx(tcx, b.path.span, b.ref_id) {
+                    ast::def_trait(trait_did) => {
+                        if try_add_builtin_trait(tcx,
+                                                 trait_did,
+                                                 &mut builtin_bounds) {
+                            loop; // success
+                        }
+                    }
+                    _ => { }
+                }
+                tcx.sess.span_fatal(
+                    b.path.span,
+                    fmt!("only the builtin traits can be used \
+                          as closure or object bounds"));
+            }
+            ast::RegionTyParamBound => {
+                builtin_bounds.add(ty::BoundStatic);
+            }
+        }
+    }
+    builtin_bounds
+}
+
+pub fn try_add_builtin_trait(tcx: ty::ctxt,
+                             trait_def_id: ast::def_id,
+                             builtin_bounds: &mut ty::BuiltinBounds) -> bool {
+    //! Checks whether `trait_ref` refers to one of the builtin
+    //! traits, like `Copy` or `Owned`, and adds the corresponding
+    //! bound to the set `builtin_bounds` if so. Returns true if `trait_ref`
+    //! is a builtin trait.
+
+    let li = &tcx.lang_items;
+    if trait_def_id == li.owned_trait() {
+        builtin_bounds.add(ty::BoundOwned);
+        true
+    } else if trait_def_id == li.copy_trait() {
+        builtin_bounds.add(ty::BoundCopy);
+        true
+    } else if trait_def_id == li.const_trait() {
+        builtin_bounds.add(ty::BoundConst);
+        true
+    } else {
+        false
     }
 }
