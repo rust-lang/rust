@@ -993,7 +993,7 @@ pub mod guarantor {
                 guarantor(rcx, e)
             }
 
-            ast::expr_path(*) => {
+            ast::expr_path(*) | ast::expr_self => {
                 // Either a variable or constant and hence resides
                 // in constant memory or on the stack frame.  Either way,
                 // not guaranteed by a region pointer.

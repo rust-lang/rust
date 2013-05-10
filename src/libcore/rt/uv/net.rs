@@ -141,8 +141,8 @@ pub impl StreamWatcher {
 
     fn close(self, cb: NullCallback) {
         {
-            let mut self = self;
-            let data = get_watcher_data(&mut self);
+            let mut this = self;
+            let data = get_watcher_data(&mut this);
             assert!(data.close_cb.is_none());
             data.close_cb = Some(cb);
         }

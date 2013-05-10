@@ -118,15 +118,15 @@ pub impl Scheduler {
     fn resume_task_from_queue(~self) -> bool {
         assert!(!self.in_task_context());
 
-        let mut self = self;
-        match self.task_queue.pop_front() {
+        let mut this = self;
+        match this.task_queue.pop_front() {
             Some(task) => {
-                self.resume_task_immediately(task);
+                this.resume_task_immediately(task);
                 return true;
             }
             None => {
                 rtdebug!("no tasks in queue");
-                local_sched::put(self);
+                local_sched::put(this);
                 return false;
             }
         }
@@ -165,16 +165,16 @@ pub impl Scheduler {
     // Core scheduling ops
 
     fn resume_task_immediately(~self, task: ~Task) {
-        let mut self = self;
-        assert!(!self.in_task_context());
+        let mut this = self;
+        assert!(!this.in_task_context());
 
         rtdebug!("scheduling a task");
 
         // Store the task in the scheduler so it can be grabbed later
-        self.current_task = Some(task);
-        self.enqueue_cleanup_job(DoNothing);
+        this.current_task = Some(task);
+        this.enqueue_cleanup_job(DoNothing);
 
-        local_sched::put(self);
+        local_sched::put(this);
 
         // Take pointers to both the task and scheduler's saved registers.
         unsafe {
@@ -203,17 +203,17 @@ pub impl Scheduler {
     /// running task.  It gets transmuted to the scheduler's lifetime
     /// and called while the task is blocked.
     fn deschedule_running_task_and_then(~self, f: &fn(~Task)) {
-        let mut self = self;
-        assert!(self.in_task_context());
+        let mut this = self;
+        assert!(this.in_task_context());
 
         rtdebug!("blocking task");
 
-        let blocked_task = self.current_task.swap_unwrap();
+        let blocked_task = this.current_task.swap_unwrap();
         let f_fake_region = unsafe { transmute::<&fn(~Task), &fn(~Task)>(f) };
         let f_opaque = ClosureConverter::from_fn(f_fake_region);
-        self.enqueue_cleanup_job(GiveTask(blocked_task, f_opaque));
+        this.enqueue_cleanup_job(GiveTask(blocked_task, f_opaque));
 
-        local_sched::put(self);
+        local_sched::put(this);
 
         let sched = unsafe { local_sched::unsafe_borrow() };
         let (sched_context, last_task_context, _) = sched.get_contexts();
@@ -229,18 +229,18 @@ pub impl Scheduler {
     /// You would want to think hard about doing this, e.g. if there are
     /// pending I/O events it would be a bad idea.
     fn switch_running_tasks_and_then(~self, next_task: ~Task, f: &fn(~Task)) {
-        let mut self = self;
-        assert!(self.in_task_context());
+        let mut this = self;
+        assert!(this.in_task_context());
 
         rtdebug!("switching tasks");
 
-        let old_running_task = self.current_task.swap_unwrap();
+        let old_running_task = this.current_task.swap_unwrap();
         let f_fake_region = unsafe { transmute::<&fn(~Task), &fn(~Task)>(f) };
         let f_opaque = ClosureConverter::from_fn(f_fake_region);
-        self.enqueue_cleanup_job(GiveTask(old_running_task, f_opaque));
-        self.current_task = Some(next_task);
+        this.enqueue_cleanup_job(GiveTask(old_running_task, f_opaque));
+        this.current_task = Some(next_task);
 
-        local_sched::put(self);
+        local_sched::put(this);
 
         unsafe {
             let sched = local_sched::unsafe_borrow();

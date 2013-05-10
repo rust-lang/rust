@@ -43,10 +43,10 @@ pub impl UvEventLoop {
 impl Drop for UvEventLoop {
     fn finalize(&self) {
         // XXX: Need mutable finalizer
-        let self = unsafe {
+        let this = unsafe {
             transmute::<&UvEventLoop, &mut UvEventLoop>(self)
         };
-        let mut uv_loop = self.uvio.uv_loop();
+        let mut uv_loop = this.uvio.uv_loop();
         uv_loop.close();
     }
 }

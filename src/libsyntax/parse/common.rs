@@ -222,7 +222,8 @@ pub impl Parser {
     // signal an error if the given string is a strict keyword
     fn check_strict_keywords_(&self, w: &~str) {
         if self.is_strict_keyword(w) {
-            self.fatal(fmt!("found `%s` in ident position", *w));
+            self.span_err(*self.last_span,
+                          fmt!("found `%s` in ident position", *w));
         }
     }
 
