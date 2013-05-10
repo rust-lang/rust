@@ -91,7 +91,7 @@ pub fn is_test_ignored(config: config, testfile: &Path) -> bool {
     return false;
 
     fn xfail_target() -> ~str {
-        ~"xfail-" + str::from_slice(os::SYSNAME)
+        ~"xfail-" + str::to_owned(os::SYSNAME)
     }
 }
 
