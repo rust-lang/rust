@@ -41,15 +41,15 @@ fn create_derived_decodable_impl(
 ) -> @item {
     let decoder_ty_param = build::mk_ty_param(
         cx,
-        cx.ident_of(~"__D"),
+        cx.ident_of("__D"),
         @opt_vec::with(
             build::mk_trait_ty_param_bound_global(
                 cx,
                 span,
                 ~[
-                    cx.ident_of(~"std"),
-                    cx.ident_of(~"serialize"),
-                    cx.ident_of(~"Decoder"),
+                    cx.ident_of("std"),
+                    cx.ident_of("serialize"),
+                    cx.ident_of("Decoder"),
                 ]
             )
         )
@@ -62,13 +62,13 @@ fn create_derived_decodable_impl(
     let trait_path = build::mk_raw_path_global_(
         span,
         ~[
-            cx.ident_of(~"std"),
-            cx.ident_of(~"serialize"),
-            cx.ident_of(~"Decodable")
+            cx.ident_of("std"),
+            cx.ident_of("serialize"),
+            cx.ident_of("Decodable")
         ],
         None,
         ~[
-            build::mk_simple_ty_path(cx, span, cx.ident_of(~"__D"))
+            build::mk_simple_ty_path(cx, span, cx.ident_of("__D"))
         ]
     );
     create_derived_impl(
@@ -96,11 +96,11 @@ fn create_decode_method(
     let d_arg_type = build::mk_ty_rptr(
         cx,
         span,
-        build::mk_simple_ty_path(cx, span, cx.ident_of(~"__D")),
+        build::mk_simple_ty_path(cx, span, cx.ident_of("__D")),
         None,
         ast::m_mutbl
     );
-    let d_ident = cx.ident_of(~"__d");
+    let d_ident = cx.ident_of("__d");
     let d_arg = build::mk_arg(cx, span, d_ident, d_arg_type);
 
     // Create the type of the return value.
@@ -120,7 +120,7 @@ fn create_decode_method(
 
     // Create the method.
     let self_ty = spanned { node: sty_static, span: span };
-    let method_ident = cx.ident_of(~"decode");
+    let method_ident = cx.ident_of("decode");
     @ast::method {
         ident: method_ident,
         attrs: ~[],
@@ -148,14 +148,14 @@ fn call_substructure_decode_method(
             cx,
             span,
             ~[
-                cx.ident_of(~"std"),
-                cx.ident_of(~"serialize"),
-                cx.ident_of(~"Decodable"),
-                cx.ident_of(~"decode"),
+                cx.ident_of("std"),
+                cx.ident_of("serialize"),
+                cx.ident_of("Decodable"),
+                cx.ident_of("decode"),
             ]
         ),
         ~[
-            build::mk_path(cx, span, ~[cx.ident_of(~"__d")])
+            build::mk_path(cx, span, ~[cx.ident_of("__d")])
         ]
     )
 }
@@ -223,14 +223,14 @@ fn create_read_struct_field(
 
     let d_arg = build::mk_arg(cx,
                               span,
-                              cx.ident_of(~"__d"),
+                              cx.ident_of("__d"),
                               build::mk_ty_infer(cx, span));
 
     let call_expr = build::mk_method_call(
         cx,
         span,
-        build::mk_path(cx, span, ~[cx.ident_of(~"__d")]),
-        cx.ident_of(~"read_struct_field"),
+        build::mk_path(cx, span, ~[cx.ident_of("__d")]),
+        cx.ident_of("read_struct_field"),
         ~[
             build::mk_base_str(cx, span, cx.str_of(ident)),
             build::mk_uint(cx, span, idx),
@@ -257,8 +257,8 @@ fn create_read_struct_arg(
     let call_expr = build::mk_method_call(
         cx,
         span,
-        build::mk_path(cx, span, ~[cx.ident_of(~"__d")]),
-        cx.ident_of(~"read_struct_arg"),
+        build::mk_path(cx, span, ~[cx.ident_of("__d")]),
+        cx.ident_of("read_struct_arg"),
         ~[
             build::mk_uint(cx, span, idx),
             build::mk_lambda_no_args(cx, span, decode_expr),
@@ -295,7 +295,7 @@ fn expand_deriving_decodable_struct_method(
 
     let d_arg = build::mk_arg(cx,
                               span,
-                              cx.ident_of(~"__d"),
+                              cx.ident_of("__d"),
                               build::mk_ty_infer(cx, span));
 
     let read_struct_expr = build::mk_method_call(
@@ -304,9 +304,9 @@ fn expand_deriving_decodable_struct_method(
         build::mk_path(
             cx,
             span,
-            ~[cx.ident_of(~"__d")]
+            ~[cx.ident_of("__d")]
         ),
-        cx.ident_of(~"read_struct"),
+        cx.ident_of("read_struct"),
         ~[
             build::mk_base_str(cx, span, cx.str_of(type_ident)),
             build::mk_uint(cx, span, fields.len()),
@@ -353,15 +353,15 @@ fn create_read_variant_arg(
 
             let d_arg = build::mk_arg(cx,
                                       span,
-                                      cx.ident_of(~"__d"),
+                                      cx.ident_of("__d"),
                                       build::mk_ty_infer(cx, span));
             let t_infer = build::mk_ty_infer(cx, span);
 
             let call_expr = build::mk_method_call(
                 cx,
                 span,
-                build::mk_path(cx, span, ~[cx.ident_of(~"__d")]),
-                cx.ident_of(~"read_enum_variant_arg"),
+                build::mk_path(cx, span, ~[cx.ident_of("__d")]),
+                cx.ident_of("read_enum_variant_arg"),
                 ~[
                     build::mk_uint(cx, span, j),
                     build::mk_lambda(cx,
@@ -416,8 +416,8 @@ fn create_read_enum_variant(
     build::mk_method_call(
         cx,
         span,
-        build::mk_path(cx, span, ~[cx.ident_of(~"__d")]),
-        cx.ident_of(~"read_enum_variant"),
+        build::mk_path(cx, span, ~[cx.ident_of("__d")]),
+        cx.ident_of("read_enum_variant"),
         ~[
             expr_arm_names,
             build::mk_lambda(
@@ -428,13 +428,13 @@ fn create_read_enum_variant(
                         build::mk_arg(
                             cx,
                             span,
-                            cx.ident_of(~"__d"),
+                            cx.ident_of("__d"),
                             build::mk_ty_infer(cx, span)
                         ),
                         build::mk_arg(
                             cx,
                             span,
-                            cx.ident_of(~"__i"),
+                            cx.ident_of("__i"),
                             build::mk_ty_infer(cx, span)
                         )
                     ],
@@ -444,7 +444,7 @@ fn create_read_enum_variant(
                     cx,
                     span,
                     ast::expr_match(
-                        build::mk_path(cx, span, ~[cx.ident_of(~"__i")]),
+                        build::mk_path(cx, span, ~[cx.ident_of("__i")]),
                         arms
                     )
                 )
@@ -468,15 +468,15 @@ fn expand_deriving_decodable_enum_method(
 
     let d_arg = build::mk_arg(cx,
                               span,
-                              cx.ident_of(~"__d"),
+                              cx.ident_of("__d"),
                               build::mk_ty_infer(cx, span));
 
     // Create the read_enum expression
     let read_enum_expr = build::mk_method_call(
         cx,
         span,
-        build::mk_path(cx, span, ~[cx.ident_of(~"__d")]),
-        cx.ident_of(~"read_enum"),
+        build::mk_path(cx, span, ~[cx.ident_of("__d")]),
+        cx.ident_of("read_enum"),
         ~[
             build::mk_base_str(cx, span, cx.str_of(type_ident)),
             build::mk_lambda(cx,

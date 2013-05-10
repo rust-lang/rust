@@ -93,7 +93,7 @@ impl<D:Decoder> Decodable<D> for ident {
             Some(intr) => intr
         };
 
-        (*intr).intern(@d.read_str())
+        (*intr).intern(d.read_str())
     }
 }
 

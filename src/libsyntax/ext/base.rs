@@ -232,7 +232,7 @@ pub trait ext_ctxt {
     fn set_trace_macros(&self, x: bool);
     /* for unhygienic identifier transformation */
     fn str_of(&self, id: ast::ident) -> ~str;
-    fn ident_of(&self, st: ~str) -> ast::ident;
+    fn ident_of(&self, st: &str) -> ast::ident;
 }
 
 pub fn mk_ctxt(parse_sess: @mut parse::ParseSess, cfg: ast::crate_cfg)
@@ -322,8 +322,8 @@ pub fn mk_ctxt(parse_sess: @mut parse::ParseSess, cfg: ast::crate_cfg)
         fn str_of(&self, id: ast::ident) -> ~str {
             copy *self.parse_sess.interner.get(id)
         }
-        fn ident_of(&self, st: ~str) -> ast::ident {
-            self.parse_sess.interner.intern(@/*bad*/ copy st)
+        fn ident_of(&self, st: &str) -> ast::ident {
+            self.parse_sess.interner.intern(st)
         }
     }
     let imp: @CtxtRepr = @CtxtRepr {

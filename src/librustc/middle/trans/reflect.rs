@@ -114,7 +114,7 @@ pub impl Reflector {
             ArgVals(args), SaveIn(scratch.val), DontAutorefArg);
         let result = scratch.to_value_llval(bcx);
         let result = bool_to_i1(bcx, result);
-        let next_bcx = sub_block(bcx, ~"next");
+        let next_bcx = sub_block(bcx, "next");
         CondBr(bcx, result, next_bcx.llbb, self.final_bcx.llbb);
         self.bcx = next_bcx
     }
@@ -275,7 +275,7 @@ pub impl Reflector {
             let variants = ty::substd_enum_variants(ccx.tcx, did, substs);
             let llptrty = T_ptr(type_of(ccx, t));
             let (_, opaquety) =
-                ccx.tcx.intrinsic_defs.find_copy(&ccx.sess.ident_of(~"Opaque"))
+                ccx.tcx.intrinsic_defs.find_copy(&ccx.sess.ident_of("Opaque"))
                 .expect("Failed to resolve intrinsic::Opaque");
             let opaqueptrty = ty::mk_ptr(ccx.tcx, ty::mt { ty: opaquety, mutbl: ast::m_imm });
 
@@ -283,7 +283,7 @@ pub impl Reflector {
                 let sub_path = bcx.fcx.path + ~[path_name(special_idents::anon)];
                 let sym = mangle_internal_name_by_path_and_seq(ccx,
                                                                sub_path,
-                                                               ~"get_disr");
+                                                               "get_disr");
                 let args = [
                     ty::arg {
                         ty: opaqueptrty
@@ -373,7 +373,7 @@ pub fn emit_calls_to_trait_visit_ty(bcx: block,
                                     visitor_trait_id: def_id)
                                  -> block {
     use syntax::parse::token::special_idents::tydesc;
-    let final = sub_block(bcx, ~"final");
+    let final = sub_block(bcx, "final");
     assert!(bcx.ccx().tcx.intrinsic_defs.contains_key(&tydesc));
     let (_, tydesc_ty) = bcx.ccx().tcx.intrinsic_defs.get_copy(&tydesc);
     let tydesc_ty = type_of(bcx.ccx(), tydesc_ty);

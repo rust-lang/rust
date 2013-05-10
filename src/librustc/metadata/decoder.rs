@@ -294,10 +294,10 @@ fn item_path(intr: @ident_interner, item_doc: ebml::Doc) -> ast_map::path {
     for reader::docs(path_doc) |tag, elt_doc| {
         if tag == tag_path_elt_mod {
             let str = reader::doc_as_str(elt_doc);
-            result.push(ast_map::path_mod(intr.intern(@str)));
+            result.push(ast_map::path_mod(intr.intern(str)));
         } else if tag == tag_path_elt_name {
             let str = reader::doc_as_str(elt_doc);
-            result.push(ast_map::path_name(intr.intern(@str)));
+            result.push(ast_map::path_name(intr.intern(str)));
         } else {
             // ignore tag_path_len element
         }
@@ -311,7 +311,7 @@ fn item_name(intr: @ident_interner, item: ebml::Doc) -> ast::ident {
     do reader::with_doc_data(name) |data| {
         let string = str::from_bytes_slice(data);
         match intr.find_equiv(&StringRef(string)) {
-            None => intr.intern(@(string.to_owned())),
+            None => intr.intern(string),
             Some(val) => val,
         }
     }
@@ -828,7 +828,7 @@ pub fn get_type_name_if_impl(intr: @ident_interner,
     }
 
     for reader::tagged_docs(item, tag_item_impl_type_basename) |doc| {
-        return Some(intr.intern(@str::from_bytes(reader::doc_data(doc))));
+        return Some(intr.intern(str::from_bytes(reader::doc_data(doc))));
     }
 
     return None;
@@ -1080,7 +1080,7 @@ pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
     }
     for reader::tagged_docs(depsdoc, tag_crate_dep) |depdoc| {
         deps.push(crate_dep {cnum: crate_num,
-                  name: intr.intern(@docstr(depdoc, tag_crate_dep_name)),
+                  name: intr.intern(docstr(depdoc, tag_crate_dep_name)),
                   vers: @docstr(depdoc, tag_crate_dep_vers),
                   hash: @docstr(depdoc, tag_crate_dep_hash)});
         crate_num += 1;

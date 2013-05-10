@@ -58,9 +58,9 @@ fn cs_ord(less: bool, equal: bool,
           cx: @ext_ctxt, span: span,
           substr: &Substructure) -> @expr {
     let binop = if less {
-        cx.ident_of(~"lt")
+        cx.ident_of("lt")
     } else {
-        cx.ident_of(~"gt")
+        cx.ident_of("gt")
     };
     let false_blk_expr = build::mk_block(cx, span,
                                          ~[], ~[],
@@ -101,7 +101,7 @@ fn cs_ord(less: bool, equal: bool,
             }
 
             let cmp = build::mk_method_call(cx, span,
-                                            self_f, cx.ident_of(~"eq"), other_fs.to_owned());
+                                            self_f, cx.ident_of("eq"), other_fs.to_owned());
             let subexpr = build::mk_simple_block(cx, span, subexpr);
             let elseif = expr_if(cmp, subexpr, Some(false_blk_expr));
             let elseif = build::mk_expr(cx, span, elseif);

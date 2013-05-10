@@ -244,7 +244,7 @@ trait ExtCtxtMethods {
     fn expr_blk(&self, expr: @ast::expr) -> ast::blk;
     fn expr_path(&self, span: span, strs: ~[ast::ident]) -> @ast::expr;
     fn expr_path_global(&self, span: span, strs: ~[ast::ident]) -> @ast::expr;
-    fn expr_var(&self, span: span, var: ~str) -> @ast::expr;
+    fn expr_var(&self, span: span, var: &str) -> @ast::expr;
     fn expr_field(&self, span: span, expr: @ast::expr, ident: ast::ident)
                   -> @ast::expr;
     fn expr_call(&self, span: span, expr: @ast::expr, args: ~[@ast::expr])
@@ -446,7 +446,7 @@ impl ExtCtxtMethods for @ext_ctxt {
         self.expr(span, ast::expr_path(self.path_global(span, strs)))
     }
 
-    fn expr_var(&self, span: span, var: ~str) -> @ast::expr {
+    fn expr_var(&self, span: span, var: &str) -> @ast::expr {
         self.expr_path(span, ~[self.ident_of(var)])
     }
 
@@ -583,13 +583,13 @@ fn mk_ser_impl(
     // Make a path to the std::serialize::Encodable typaram.
     let ty_param = cx.bind_path(
         span,
-        cx.ident_of(~"__S"),
+        cx.ident_of("__S"),
         cx.path_global(
             span,
             ~[
-                cx.ident_of(~"std"),
-                cx.ident_of(~"serialize"),
-                cx.ident_of(~"Encoder"),
+                cx.ident_of("std"),
+                cx.ident_of("serialize"),
+                cx.ident_of("Encoder"),
             ]
         ),
         @opt_vec::Empty
@@ -599,11 +599,11 @@ fn mk_ser_impl(
     let path = cx.path_tps_global(
         span,
         ~[
-            cx.ident_of(~"std"),
-            cx.ident_of(~"serialize"),
-            cx.ident_of(~"Encodable"),
+            cx.ident_of("std"),
+            cx.ident_of("serialize"),
+            cx.ident_of("Encodable"),
         ],
-        ~[cx.ty_path(span, ~[cx.ident_of(~"__S")], ~[])]
+        ~[cx.ty_path(span, ~[cx.ident_of("__S")], ~[])]
     );
 
     mk_impl(
@@ -627,13 +627,13 @@ fn mk_deser_impl(
     // Make a path to the std::serialize::Decodable typaram.
     let ty_param = cx.bind_path(
         span,
-        cx.ident_of(~"__D"),
+        cx.ident_of("__D"),
         cx.path_global(
             span,
             ~[
-                cx.ident_of(~"std"),
-                cx.ident_of(~"serialize"),
-                cx.ident_of(~"Decoder"),
+                cx.ident_of("std"),
+                cx.ident_of("serialize"),
+                cx.ident_of("Decoder"),
             ]
         ),
         @opt_vec::Empty
@@ -643,11 +643,11 @@ fn mk_deser_impl(
     let path = cx.path_tps_global(
         span,
         ~[
-            cx.ident_of(~"std"),
-            cx.ident_of(~"serialize"),
-            cx.ident_of(~"Decodable"),
+            cx.ident_of("std"),
+            cx.ident_of("serialize"),
+            cx.ident_of("Decodable"),
         ],
-        ~[cx.ty_path(span, ~[cx.ident_of(~"__D")], ~[])]
+        ~[cx.ty_path(span, ~[cx.ident_of("__D")], ~[])]
     );
 
     mk_impl(
@@ -671,7 +671,7 @@ fn mk_ser_method(
         node: ast::ty_rptr(
             None,
             ast::mt {
-                ty: cx.ty_path(span, ~[cx.ident_of(~"__S")], ~[]),
+                ty: cx.ty_path(span, ~[cx.ident_of("__S")], ~[]),
                 mutbl: ast::m_mutbl
             }
         ),
@@ -685,7 +685,7 @@ fn mk_ser_method(
             id: cx.next_id(),
             node: ast::pat_ident(
                 ast::bind_by_copy,
-                ast_util::ident_to_path(span, cx.ident_of(~"__s")),
+                ast_util::ident_to_path(span, cx.ident_of("__s")),
                 None),
             span: span,
         },
@@ -705,7 +705,7 @@ fn mk_ser_method(
     };
 
     @ast::method {
-        ident: cx.ident_of(~"encode"),
+        ident: cx.ident_of("encode"),
         attrs: ~[],
         generics: ast_util::empty_generics(),
         self_ty: codemap::spanned {
@@ -733,7 +733,7 @@ fn mk_deser_method(
         node: ast::ty_rptr(
             None,
             ast::mt {
-                ty: cx.ty_path(span, ~[cx.ident_of(~"__D")], ~[]),
+                ty: cx.ty_path(span, ~[cx.ident_of("__D")], ~[]),
                 mutbl: ast::m_mutbl
             }
         ),
@@ -749,7 +749,7 @@ fn mk_deser_method(
                 node: ast::pat_ident(ast::bind_by_copy,
                                      ast_util::ident_to_path(span,
                                                              cx.ident_of(
-                                                                ~"__d")),
+                                                                "__d")),
                                      None),
                 span: span,
             },
@@ -764,7 +764,7 @@ fn mk_deser_method(
     };
 
     @ast::method {
-        ident: cx.ident_of(~"decode"),
+        ident: cx.ident_of("decode"),
         attrs: ~[],
         generics: ast_util::empty_generics(),
         self_ty: codemap::spanned { node: ast::sty_static, span: span },
@@ -792,21 +792,21 @@ fn mk_struct_ser_impl(
                 span,
                 cx.expr_field(
                     span,
-                    cx.expr_var(span, ~"self"),
+                    cx.expr_var(span, "self"),
                     field.ident
                 ),
-                cx.ident_of(~"encode"),
-                ~[cx.expr_var(span, ~"__s")]
+                cx.ident_of("encode"),
+                ~[cx.expr_var(span, "__s")]
             ),
-            cx.ident_of(~"__s")
+            cx.ident_of("__s")
         );
 
         // ast for `__s.emit_struct_field($(name), $(idx), $(expr_lambda))`
         cx.stmt(
             cx.expr_method_call(
                 span,
-                cx.expr_var(span, ~"__s"),
-                cx.ident_of(~"emit_struct_field"),
+                cx.expr_var(span, "__s"),
+                cx.ident_of("emit_struct_field"),
                 ~[
                     cx.lit_str(span, @cx.str_of(field.ident)),
                     cx.lit_uint(span, idx),
@@ -819,12 +819,12 @@ fn mk_struct_ser_impl(
     // ast for `__s.emit_struct($(name), |__s| $(fields))`
     let ser_body = cx.expr_method_call(
         span,
-        cx.expr_var(span, ~"__s"),
-        cx.ident_of(~"emit_struct"),
+        cx.expr_var(span, "__s"),
+        cx.ident_of("emit_struct"),
         ~[
             cx.lit_str(span, @cx.str_of(ident)),
             cx.lit_uint(span, vec::len(fields)),
-            cx.lambda_stmts_1(span, fields, cx.ident_of(~"__s")),
+            cx.lambda_stmts_1(span, fields, cx.ident_of("__s")),
         ]
     );
 
@@ -845,22 +845,22 @@ fn mk_struct_deser_impl(
                 cx.expr_call(
                     span,
                     cx.expr_path_global(span, ~[
-                        cx.ident_of(~"std"),
-                        cx.ident_of(~"serialize"),
-                        cx.ident_of(~"Decodable"),
-                        cx.ident_of(~"decode"),
+                        cx.ident_of("std"),
+                        cx.ident_of("serialize"),
+                        cx.ident_of("Decodable"),
+                        cx.ident_of("decode"),
                     ]),
-                    ~[cx.expr_var(span, ~"__d")]
+                    ~[cx.expr_var(span, "__d")]
                 )
             ),
-            cx.ident_of(~"__d")
+            cx.ident_of("__d")
         );
 
         // ast for `__d.read_struct_field($(name), $(idx), $(expr_lambda))`
         let expr: @ast::expr = cx.expr_method_call(
             span,
-            cx.expr_var(span, ~"__d"),
-            cx.ident_of(~"read_struct_field"),
+            cx.expr_var(span, "__d"),
+            cx.ident_of("read_struct_field"),
             ~[
                 cx.lit_str(span, @cx.str_of(field.ident)),
                 cx.lit_uint(span, idx),
@@ -881,8 +881,8 @@ fn mk_struct_deser_impl(
     // ast for `read_struct($(name), |__d| $(fields))`
     let body = cx.expr_method_call(
         span,
-        cx.expr_var(span, ~"__d"),
-        cx.ident_of(~"read_struct"),
+        cx.expr_var(span, "__d"),
+        cx.ident_of("read_struct"),
         ~[
             cx.lit_str(span, @cx.str_of(ident)),
             cx.lit_uint(span, vec::len(fields)),
@@ -895,7 +895,7 @@ fn mk_struct_deser_impl(
                         None
                     )
                 ),
-                cx.ident_of(~"__d")
+                cx.ident_of("__d")
             ),
         ]
     );
@@ -997,8 +997,8 @@ fn ser_variant(
         // ast for `__s.emit_enum_variant_arg`
         let expr_emit = cx.expr_field(
             span,
-            cx.expr_var(span, ~"__s"),
-            cx.ident_of(~"emit_enum_variant_arg")
+            cx.expr_var(span, "__s"),
+            cx.ident_of("emit_enum_variant_arg")
         );
 
         // ast for `|__s| $(v).encode(__s)`
@@ -1006,10 +1006,10 @@ fn ser_variant(
             cx.expr_method_call(
                 span,
                  cx.expr_path(span, ~[names[a_idx]]),
-                 cx.ident_of(~"encode"),
-                ~[cx.expr_var(span, ~"__s")]
+                 cx.ident_of("encode"),
+                ~[cx.expr_var(span, "__s")]
             ),
-            cx.ident_of(~"__s")
+            cx.ident_of("__s")
         );
 
         // ast for `$(expr_emit)($(a_idx), $(expr_encode))`
@@ -1025,13 +1025,13 @@ fn ser_variant(
     // ast for `__s.emit_enum_variant($(name), $(idx), $(sz), $(lambda))`
     let body = cx.expr_method_call(
         span,
-        cx.expr_var(span, ~"__s"),
-        cx.ident_of(~"emit_enum_variant"),
+        cx.expr_var(span, "__s"),
+        cx.ident_of("emit_enum_variant"),
         ~[
             cx.lit_str(span, @cx.str_of(v_name)),
             cx.lit_uint(span, v_idx),
             cx.lit_uint(span, stmts.len()),
-            cx.lambda_stmts_1(span, stmts, cx.ident_of(~"__s")),
+            cx.lambda_stmts_1(span, stmts, cx.ident_of("__s")),
         ]
     );
 
@@ -1065,7 +1065,7 @@ fn mk_enum_ser_body(
         ast::expr_match(
             cx.expr(
                 span,
-                ast::expr_unary(ast::deref, cx.expr_var(span, ~"self"))
+                ast::expr_unary(ast::deref, cx.expr_var(span, "self"))
             ),
             arms
         )
@@ -1074,11 +1074,11 @@ fn mk_enum_ser_body(
     // ast for `__s.emit_enum($(name), || $(match_expr))`
     cx.expr_method_call(
         span,
-        cx.expr_var(span, ~"__s"),
-        cx.ident_of(~"emit_enum"),
+        cx.expr_var(span, "__s"),
+        cx.ident_of("emit_enum"),
         ~[
             cx.lit_str(span, @cx.str_of(name)),
-            cx.lambda_expr_1(match_expr, cx.ident_of(~"__s")),
+            cx.lambda_expr_1(match_expr, cx.ident_of("__s")),
         ]
     )
 }
@@ -1095,21 +1095,21 @@ fn mk_enum_deser_variant_nary(
             cx.expr_call(
                 span,
                 cx.expr_path_global(span, ~[
-                    cx.ident_of(~"std"),
-                    cx.ident_of(~"serialize"),
-                    cx.ident_of(~"Decodable"),
-                    cx.ident_of(~"decode"),
+                    cx.ident_of("std"),
+                    cx.ident_of("serialize"),
+                    cx.ident_of("Decodable"),
+                    cx.ident_of("decode"),
                 ]),
-                ~[cx.expr_var(span, ~"__d")]
+                ~[cx.expr_var(span, "__d")]
             ),
-            cx.ident_of(~"__d")
+            cx.ident_of("__d")
         );
 
         // ast for `__d.read_enum_variant_arg($(a_idx), $(expr_lambda))`
         cx.expr_method_call(
             span,
-            cx.expr_var(span, ~"__d"),
-            cx.ident_of(~"read_enum_variant_arg"),
+            cx.expr_var(span, "__d"),
+            cx.ident_of("read_enum_variant_arg"),
             ~[cx.lit_uint(span, idx), expr_lambda]
         )
     };
@@ -1205,7 +1205,7 @@ fn mk_enum_deser_body(
                             node: ast::pat_ident(
                                 ast::bind_by_copy,
                                 ast_util::ident_to_path(span,
-                                    ext_cx.ident_of(~"__d")),
+                                    ext_cx.ident_of("__d")),
                                 None),
                             span: span,
                         },
@@ -1223,7 +1223,7 @@ fn mk_enum_deser_body(
                             node: ast::pat_ident(
                                 ast::bind_by_copy,
                                 ast_util::ident_to_path(span,
-                                    ext_cx.ident_of(~"i")),
+                                    ext_cx.ident_of("i")),
                                 None),
                             span: span,
                         },
@@ -1240,7 +1240,7 @@ fn mk_enum_deser_body(
             ext_cx.expr_blk(
                 ext_cx.expr(
                     span,
-                    ast::expr_match(ext_cx.expr_var(span, ~"i"), arms)
+                    ast::expr_match(ext_cx.expr_var(span, "i"), arms)
                 )
             )
         )
@@ -1250,18 +1250,18 @@ fn mk_enum_deser_body(
     let expr_lambda = ext_cx.lambda_expr_1(
         ext_cx.expr_method_call(
             span,
-            ext_cx.expr_var(span, ~"__d"),
-            ext_cx.ident_of(~"read_enum_variant"),
+            ext_cx.expr_var(span, "__d"),
+            ext_cx.ident_of("read_enum_variant"),
             ~[expr_arm_names, expr_lambda]
         ),
-        ext_cx.ident_of(~"__d")
+        ext_cx.ident_of("__d")
     );
 
     // ast for `__d.read_enum($(e_name), $(expr_lambda))`
     ext_cx.expr_method_call(
         span,
-        ext_cx.expr_var(span, ~"__d"),
-        ext_cx.ident_of(~"read_enum"),
+        ext_cx.expr_var(span, "__d"),
+        ext_cx.ident_of("read_enum"),
         ~[
             ext_cx.lit_str(span, @ext_cx.str_of(name)),
             expr_lambda

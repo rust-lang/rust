@@ -703,11 +703,11 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
               }
               (_match::switch, Some(lldiscrim_a)) => {
                   cx = f(cx, lldiscrim_a, ty::mk_int());
-                  let unr_cx = sub_block(cx, ~"enum-iter-unr");
+                  let unr_cx = sub_block(cx, "enum-iter-unr");
                   Unreachable(unr_cx);
                   let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb,
                                         n_variants);
-                  let next_cx = sub_block(cx, ~"enum-iter-next");
+                  let next_cx = sub_block(cx, "enum-iter-next");
 
                   for (*variants).each |variant| {
                       let variant_cx =
@@ -847,7 +847,7 @@ pub fn invoke(bcx: block, llfn: ValueRef, llargs: ~[ValueRef])
                 debug!("arg: %x", ::core::cast::transmute(llarg));
             }
         }
-        let normal_bcx = sub_block(bcx, ~"normal return");
+        let normal_bcx = sub_block(bcx, "normal return");
         let llresult = Invoke(bcx,
                               llfn,
                               llargs,
@@ -949,7 +949,7 @@ pub fn get_landing_pad(bcx: block) -> BasicBlockRef {
         match inf.landing_pad {
           Some(target) => cached = Some(target),
           None => {
-            pad_bcx = lpad_block(bcx, ~"unwind");
+            pad_bcx = lpad_block(bcx, "unwind");
             inf.landing_pad = Some(pad_bcx.llbb);
           }
         }
@@ -1168,7 +1168,7 @@ pub fn trans_stmt(cx: block, s: &ast::stmt) -> block {
 // You probably don't want to use this one. See the
 // next three functions instead.
 pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
-                 is_lpad: bool, name: ~str, opt_node_info: Option<NodeInfo>)
+                 is_lpad: bool, name: &str, opt_node_info: Option<NodeInfo>)
     -> block {
 
     let s = if cx.ccx.sess.opts.save_temps || cx.ccx.sess.opts.debuginfo {
@@ -1207,12 +1207,12 @@ pub fn simple_block_scope() -> block_kind {
 pub fn top_scope_block(fcx: fn_ctxt, opt_node_info: Option<NodeInfo>)
                     -> block {
     return new_block(fcx, None, simple_block_scope(), false,
-                  ~"function top level", opt_node_info);
+                  "function top level", opt_node_info);
 }
 
 pub fn scope_block(bcx: block,
                    opt_node_info: Option<NodeInfo>,
-                   n: ~str) -> block {
+                   n: &str) -> block {
     return new_block(bcx.fcx, Some(bcx), simple_block_scope(), bcx.is_lpad,
                   n, opt_node_info);
 }
@@ -1220,7 +1220,7 @@ pub fn scope_block(bcx: block,
 pub fn loop_scope_block(bcx: block,
                         loop_break: block,
                         loop_label: Option<ident>,
-                        n: ~str,
+                        n: &str,
                         opt_node_info: Option<NodeInfo>) -> block {
     return new_block(bcx.fcx, Some(bcx), block_scope(@mut scope_info {
         loop_break: Some(loop_break),
@@ -1232,12 +1232,12 @@ pub fn loop_scope_block(bcx: block,
 }
 
 // Use this when creating a block for the inside of a landing pad.
-pub fn lpad_block(bcx: block, n: ~str) -> block {
+pub fn lpad_block(bcx: block, n: &str) -> block {
     new_block(bcx.fcx, Some(bcx), block_non_scope, true, n, None)
 }
 
 // Use this when you're making a general CFG BB within a scope.
-pub fn sub_block(bcx: block, n: ~str) -> block {
+pub fn sub_block(bcx: block, n: &str) -> block {
     new_block(bcx.fcx, Some(bcx), block_non_scope, bcx.is_lpad, n, None)
 }
 
@@ -1309,7 +1309,7 @@ pub fn cleanup_and_leave(bcx: block,
                         Br(bcx, cp.dest);
                         return;
                     }
-                    let sub_cx = sub_block(bcx, ~"cleanup");
+                    let sub_cx = sub_block(bcx, "cleanup");
                     Br(bcx, sub_cx.llbb);
                     inf.cleanup_paths.push(cleanup_path {
                         target: leave,
@@ -1346,7 +1346,7 @@ pub fn cleanup_and_Br(bcx: block, upto: block, target: BasicBlockRef) {
 
 pub fn leave_block(bcx: block, out_of: block) -> block {
     let _icx = bcx.insn_ctxt("leave_block");
-    let next_cx = sub_block(block_parent(out_of), ~"next");
+    let next_cx = sub_block(block_parent(out_of), "next");
     if bcx.unreachable { Unreachable(next_cx); }
     cleanup_and_Br(bcx, out_of, next_cx.llbb);
     next_cx
@@ -1354,7 +1354,7 @@ pub fn leave_block(bcx: block, out_of: block) -> block {
 
 pub fn with_scope(bcx: block,
                   opt_node_info: Option<NodeInfo>,
-                  name: ~str,
+                  name: &str,
                   f: &fn(block) -> block) -> block {
     let _icx = bcx.insn_ctxt("with_scope");
 
@@ -1369,7 +1369,7 @@ pub fn with_scope(bcx: block,
 
 pub fn with_scope_result(bcx: block,
                          opt_node_info: Option<NodeInfo>,
-                         name: ~str,
+                         name: &str,
                          f: &fn(block) -> Result) -> Result {
     let _icx = bcx.insn_ctxt("with_scope_result");
     let scope_cx = scope_block(bcx, opt_node_info, name);
@@ -1379,7 +1379,7 @@ pub fn with_scope_result(bcx: block,
 }
 
 pub fn with_scope_datumblock(bcx: block, opt_node_info: Option<NodeInfo>,
-                             name: ~str, f: &fn(block) -> datum::DatumBlock)
+                             name: &str, f: &fn(block) -> datum::DatumBlock)
                           -> datum::DatumBlock {
     use middle::trans::datum::DatumBlock;
 
@@ -1432,8 +1432,8 @@ pub fn alloc_local(cx: block, local: @ast::local) -> block {
 
 pub fn with_cond(bcx: block, val: ValueRef, f: &fn(block) -> block) -> block {
     let _icx = bcx.insn_ctxt("with_cond");
-    let next_cx = base::sub_block(bcx, ~"next");
-    let cond_cx = base::sub_block(bcx, ~"cond");
+    let next_cx = base::sub_block(bcx, "next");
+    let cond_cx = base::sub_block(bcx, "cond");
     CondBr(bcx, val, cond_cx.llbb, next_cx.llbb);
     let after_cx = f(cond_cx);
     if !after_cx.terminated { Br(after_cx, next_cx.llbb); }
@@ -2542,7 +2542,7 @@ pub fn register_method(ccx: @CrateContext,
                        pth: @ast_map::path,
                        m: @ast::method) -> ValueRef {
     let mty = ty::node_id_to_type(ccx.tcx, id);
-    let pth = vec::append(/*bad*/copy *pth, ~[path_name((ccx.names)(~"meth")),
+    let pth = vec::append(/*bad*/copy *pth, ~[path_name((ccx.names)("meth")),
                                   path_name(m.ident)]);
     let llfn = register_fn_full(ccx, m.span, pth, id, m.attrs, mty);
     set_inline_hint_if_appr(m.attrs, llfn);

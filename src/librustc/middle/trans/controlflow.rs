@@ -65,8 +65,8 @@ pub fn trans_if(bcx: block,
     let Result {bcx, val: cond_val} =
         expr::trans_to_datum(bcx, cond).to_result();
 
-    let then_bcx_in = scope_block(bcx, thn.info(), ~"then");
-    let else_bcx_in = scope_block(bcx, els.info(), ~"else");
+    let then_bcx_in = scope_block(bcx, thn.info(), "then");
+    let else_bcx_in = scope_block(bcx, els.info(), "else");
 
     let cond_val = bool_to_i1(bcx, cond_val);
     CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb);
@@ -105,7 +105,7 @@ pub fn trans_if(bcx: block,
 }
 
 pub fn join_blocks(parent_bcx: block, in_cxs: &[block]) -> block {
-    let out = sub_block(parent_bcx, ~"join");
+    let out = sub_block(parent_bcx, "join");
     let mut reachable = false;
     for in_cxs.each |bcx| {
         if !bcx.unreachable {
@@ -121,7 +121,7 @@ pub fn join_blocks(parent_bcx: block, in_cxs: &[block]) -> block {
 
 pub fn trans_while(bcx: block, cond: @ast::expr, body: &ast::blk) -> block {
     let _icx = bcx.insn_ctxt("trans_while");
-    let next_bcx = sub_block(bcx, ~"while next");
+    let next_bcx = sub_block(bcx, "while next");
 
     //            bcx
     //             |
@@ -136,10 +136,10 @@ pub fn trans_while(bcx: block, cond: @ast::expr, body: &ast::blk) -> block {
     //    |           body_bcx_out --+
     // next_bcx
 
-    let loop_bcx = loop_scope_block(bcx, next_bcx, None, ~"`while`",
+    let loop_bcx = loop_scope_block(bcx, next_bcx, None, "`while`",
                                     body.info());
-    let cond_bcx_in = scope_block(loop_bcx, cond.info(), ~"while loop cond");
-    let body_bcx_in = scope_block(loop_bcx, body.info(), ~"while loop body");
+    let cond_bcx_in = scope_block(loop_bcx, cond.info(), "while loop cond");
+    let body_bcx_in = scope_block(loop_bcx, body.info(), "while loop body");
     Br(bcx, loop_bcx.llbb);
     Br(loop_bcx, cond_bcx_in.llbb);
 
@@ -163,8 +163,8 @@ pub fn trans_loop(bcx:block,
                   opt_label: Option<ident>)
                -> block {
     let _icx = bcx.insn_ctxt("trans_loop");
-    let next_bcx = sub_block(bcx, ~"next");
-    let body_bcx_in = loop_scope_block(bcx, next_bcx, opt_label, ~"`loop`",
+    let next_bcx = sub_block(bcx, "next");
+    let body_bcx_in = loop_scope_block(bcx, next_bcx, opt_label, "`loop`",
                                        body.info());
     Br(bcx, body_bcx_in.llbb);
     let body_bcx_out = trans_block(body_bcx_in, body, expr::Ignore);
@@ -186,7 +186,7 @@ pub fn trans_log(log_ex: @ast::expr,
     let (modpath, modname) = {
         let path = &mut bcx.fcx.path;
         let modpath = vec::append(
-            ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name.to_owned()))],
+            ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name))],
             path.filtered(|e| match *e { path_mod(_) => true, _ => false }));
         let modname = path_str(ccx.sess, modpath);
         (modpath, modname)
@@ -196,7 +196,7 @@ pub fn trans_log(log_ex: @ast::expr,
         ccx.module_data.get_copy(&modname)
     } else {
         let s = link::mangle_internal_name_by_path_and_seq(
-            ccx, modpath, ~"loglevel");
+            ccx, modpath, "loglevel");
         let global;
         unsafe {
             global = str::as_c_str(s, |buf| {
@@ -211,14 +211,14 @@ pub fn trans_log(log_ex: @ast::expr,
     };
     let current_level = Load(bcx, global);
     let level = unpack_result!(bcx, {
-        do with_scope_result(bcx, lvl.info(), ~"level") |bcx| {
+        do with_scope_result(bcx, lvl.info(), "level") |bcx| {
             expr::trans_to_datum(bcx, lvl).to_result()
         }
     });
 
     let llenabled = ICmp(bcx, lib::llvm::IntUGE, current_level, level);
     do with_cond(bcx, llenabled) |bcx| {
-        do with_scope(bcx, log_ex.info(), ~"log") |bcx| {
+        do with_scope(bcx, log_ex.info(), "log") |bcx| {
             let mut bcx = bcx;
 
             // Translate the value to be logged

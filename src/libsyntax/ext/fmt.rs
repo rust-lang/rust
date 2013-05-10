@@ -49,12 +49,12 @@ pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
 fn pieces_to_expr(cx: @ext_ctxt, sp: span,
                   pieces: ~[Piece], args: ~[@ast::expr])
    -> @ast::expr {
-    fn make_path_vec(cx: @ext_ctxt, ident: @~str) -> ~[ast::ident] {
+    fn make_path_vec(cx: @ext_ctxt, ident: &str) -> ~[ast::ident] {
         let intr = cx.parse_sess().interner;
-        return ~[intr.intern(@~"unstable"), intr.intern(@~"extfmt"),
-                 intr.intern(@~"rt"), intr.intern(ident)];
+        return ~[intr.intern("unstable"), intr.intern("extfmt"),
+                 intr.intern("rt"), intr.intern(ident)];
     }
-    fn make_rt_path_expr(cx: @ext_ctxt, sp: span, nm: @~str) -> @ast::expr {
+    fn make_rt_path_expr(cx: @ext_ctxt, sp: span, nm: &str) -> @ast::expr {
         let path = make_path_vec(cx, nm);
         return mk_path_global(cx, sp, path);
     }
@@ -63,28 +63,28 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
 
     fn make_rt_conv_expr(cx: @ext_ctxt, sp: span, cnv: &Conv) -> @ast::expr {
         fn make_flags(cx: @ext_ctxt, sp: span, flags: ~[Flag]) -> @ast::expr {
-            let mut tmp_expr = make_rt_path_expr(cx, sp, @~"flag_none");
+            let mut tmp_expr = make_rt_path_expr(cx, sp, "flag_none");
             for flags.each |f| {
                 let fstr = match *f {
-                  FlagLeftJustify => ~"flag_left_justify",
-                  FlagLeftZeroPad => ~"flag_left_zero_pad",
-                  FlagSpaceForSign => ~"flag_space_for_sign",
-                  FlagSignAlways => ~"flag_sign_always",
-                  FlagAlternate => ~"flag_alternate"
+                  FlagLeftJustify => "flag_left_justify",
+                  FlagLeftZeroPad => "flag_left_zero_pad",
+                  FlagSpaceForSign => "flag_space_for_sign",
+                  FlagSignAlways => "flag_sign_always",
+                  FlagAlternate => "flag_alternate"
                 };
                 tmp_expr = mk_binary(cx, sp, ast::bitor, tmp_expr,
-                                     make_rt_path_expr(cx, sp, @fstr));
+                                     make_rt_path_expr(cx, sp, fstr));
             }
             return tmp_expr;
         }
         fn make_count(cx: @ext_ctxt, sp: span, cnt: Count) -> @ast::expr {
             match cnt {
               CountImplied => {
-                return make_rt_path_expr(cx, sp, @~"CountImplied");
+                return make_rt_path_expr(cx, sp, "CountImplied");
               }
               CountIs(c) => {
                 let count_lit = mk_uint(cx, sp, c as uint);
-                let count_is_path = make_path_vec(cx, @~"CountIs");
+                let count_is_path = make_path_vec(cx, "CountIs");
                 let count_is_args = ~[count_lit];
                 return mk_call_global(cx, sp, count_is_path, count_is_args);
               }
@@ -92,17 +92,16 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
             }
         }
         fn make_ty(cx: @ext_ctxt, sp: span, t: Ty) -> @ast::expr {
-            let rt_type;
-            match t {
+            let rt_type = match t {
               TyHex(c) => match c {
-                CaseUpper => rt_type = ~"TyHexUpper",
-                CaseLower => rt_type = ~"TyHexLower"
+                CaseUpper =>  "TyHexUpper",
+                CaseLower =>  "TyHexLower"
               },
-              TyBits => rt_type = ~"TyBits",
-              TyOctal => rt_type = ~"TyOctal",
-              _ => rt_type = ~"TyDefault"
-            }
-            return make_rt_path_expr(cx, sp, @rt_type);
+              TyBits =>  "TyBits",
+              TyOctal =>  "TyOctal",
+              _ =>  "TyDefault"
+            };
+            return make_rt_path_expr(cx, sp, rt_type);
         }
         fn make_conv_struct(cx: @ext_ctxt, sp: span, flags_expr: @ast::expr,
                          width_expr: @ast::expr, precision_expr: @ast::expr,
@@ -111,19 +110,19 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
             mk_global_struct_e(
                 cx,
                 sp,
-                make_path_vec(cx, @~"Conv"),
+                make_path_vec(cx, "Conv"),
                 ~[
                     build::Field {
-                        ident: intr.intern(@~"flags"), ex: flags_expr
+                        ident: intr.intern("flags"), ex: flags_expr
                     },
                     build::Field {
-                        ident: intr.intern(@~"width"), ex: width_expr
+                        ident: intr.intern("width"), ex: width_expr
                     },
                     build::Field {
-                        ident: intr.intern(@~"precision"), ex: precision_expr
+                        ident: intr.intern("precision"), ex: precision_expr
                     },
                     build::Field {
-                        ident: intr.intern(@~"ty"), ex: ty_expr
+                        ident: intr.intern("ty"), ex: ty_expr
                     },
                 ]
             )
@@ -138,7 +137,7 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
     fn make_conv_call(cx: @ext_ctxt, sp: span, conv_type: &str, cnv: &Conv,
                       arg: @ast::expr, buf: @ast::expr) -> @ast::expr {
         let fname = ~"conv_" + conv_type;
-        let path = make_path_vec(cx, @fname);
+        let path = make_path_vec(cx, fname);
         let cnv_expr = make_rt_conv_expr(cx, sp, cnv);
         let args = ~[cnv_expr, arg, buf];
         return mk_call_global(cx, arg.span, path, args);
@@ -259,10 +258,10 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
     let nargs = args.len();
 
     /* 'ident' is the local buffer building up the result of fmt! */
-    let ident = cx.parse_sess().interner.intern(@~"__fmtbuf");
+    let ident = cx.parse_sess().interner.intern("__fmtbuf");
     let buf = || mk_path(cx, fmt_sp, ~[ident]);
-    let str_ident = cx.parse_sess().interner.intern(@~"str");
-    let push_ident = cx.parse_sess().interner.intern(@~"push_str");
+    let str_ident = cx.parse_sess().interner.intern("str");
+    let push_ident = cx.parse_sess().interner.intern("push_str");
     let mut stms = ~[];
 
     /* Translate each piece (portion of the fmt expression) by invoking the

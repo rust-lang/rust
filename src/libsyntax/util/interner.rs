@@ -17,6 +17,7 @@
 
 use core::cmp::Equiv;
 use core::hashmap::HashMap;
+use syntax::parse::token::StringRef;
 
 pub struct Interner<T> {
     priv map: @mut HashMap<T, uint>,
@@ -69,6 +70,61 @@ pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
     fn len(&self) -> uint { let vect = &*self.vect; vect.len() }
 
     fn find_equiv<Q:Hash + IterBytes + Equiv<T>>(&self, val: &Q)
+                                              -> Option<uint> {
+        match self.map.find_equiv(val) {
+            Some(v) => Some(*v),
+            None => None,
+        }
+    }
+}
+
+pub struct StrInterner {
+    priv map: @mut HashMap<@~str, uint>,
+    priv vect: @mut ~[@~str],
+}
+
+// when traits can extend traits, we should extend index<uint,T> to get []
+pub impl StrInterner {
+    fn new() -> StrInterner {
+        StrInterner {
+            map: @mut HashMap::new(),
+            vect: @mut ~[],
+        }
+    }
+
+    fn prefill(init: &[&str]) -> StrInterner {
+        let rv = StrInterner::new();
+        for init.each() |v| { rv.intern(*v); }
+        rv
+    }
+
+    fn intern(&self, val: &str) -> uint {
+        match self.map.find_equiv(&StringRef(val)) {
+            Some(&idx) => return idx,
+            None => (),
+        }
+
+        let new_idx = self.len();
+        self.map.insert(@val.to_owned(), new_idx);
+        self.vect.push(@val.to_owned());
+        new_idx
+    }
+
+    fn gensym(&self, val: &str) -> uint {
+        let new_idx = self.len();
+        // leave out of .map to avoid colliding
+        self.vect.push(@val.to_owned());
+        new_idx
+    }
+
+    // this isn't "pure" in the traditional sense, because it can go from
+    // failing to returning a value as items are interned. But for typestate,
+    // where we first check a pred and then rely on it, ceasing to fail is ok.
+    fn get(&self, idx: uint) -> @~str { self.vect[idx] }
+
+    fn len(&self) -> uint { let vect = &*self.vect; vect.len() }
+
+    fn find_equiv<Q:Hash + IterBytes + Equiv<@~str>>(&self, val: &Q)
                                               -> Option<uint> {
         match self.map.find_equiv(val) {
             Some(v) => Some(*v),
