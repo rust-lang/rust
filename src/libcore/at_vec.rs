@@ -29,9 +29,9 @@ pub mod rustrt {
     #[abi = "cdecl"]
     #[link_name = "rustrt"]
     pub extern {
-        pub unsafe fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
-                                                ++v: **vec::raw::VecRepr,
-                                                ++n: libc::size_t);
+        pub unsafe fn vec_reserve_shared_actual(t: *sys::TypeDesc,
+                                                v: **vec::raw::VecRepr,
+                                                n: libc::size_t);
     }
 }
 
@@ -52,7 +52,7 @@ pub fn capacity<T>(v: @[T]) -> uint {
  * # Arguments
  *
  * * size - An initial size of the vector to reserve
- * * builder - A function that will construct the vector. It recieves
+ * * builder - A function that will construct the vector. It receives
  *             as an argument a function that will push an element
  *             onto the vector being constructed.
  */
@@ -60,7 +60,7 @@ pub fn capacity<T>(v: @[T]) -> uint {
 pub fn build_sized<A>(size: uint, builder: &fn(push: &fn(v: A))) -> @[A] {
     let mut vec: @[A] = @[];
     unsafe { raw::reserve(&mut vec, size); }
-    builder(|+x| unsafe { raw::push(&mut vec, x) });
+    builder(|x| unsafe { raw::push(&mut vec, x) });
     return unsafe { transmute(vec) };
 }
 
@@ -70,7 +70,7 @@ pub fn build_sized<A>(size: uint, builder: &fn(push: &fn(v: A))) -> @[A] {
  *
  * # Arguments
  *
- * * builder - A function that will construct the vector. It recieves
+ * * builder - A function that will construct the vector. It receives
  *             as an argument a function that will push an element
  *             onto the vector being constructed.
  */
@@ -87,7 +87,7 @@ pub fn build<A>(builder: &fn(push: &fn(v: A))) -> @[A] {
  * # Arguments
  *
  * * size - An option, maybe containing initial size of the vector to reserve
- * * builder - A function that will construct the vector. It recieves
+ * * builder - A function that will construct the vector. It receives
  *             as an argument a function that will push an element
  *             onto the vector being constructed.
  */
@@ -102,7 +102,7 @@ pub fn build_sized_opt<A>(size: Option<uint>,
 #[inline(always)]
 pub fn append<T:Copy>(lhs: @[T], rhs: &const [T]) -> @[T] {
     do build_sized(lhs.len() + rhs.len()) |push| {
-        for vec::each(lhs) |x| { push(*x); }
+        for lhs.each |x| { push(*x); }
         for uint::range(0, rhs.len()) |i| { push(rhs[i]); }
     }
 }
@@ -111,7 +111,7 @@ pub fn append<T:Copy>(lhs: @[T], rhs: &const [T]) -> @[T] {
 /// Apply a function to each element of a vector and return the results
 pub fn map<T, U>(v: &[T], f: &fn(x: &T) -> U) -> @[U] {
     do build_sized(v.len()) |push| {
-        for vec::each(v) |elem| {
+        for v.each |elem| {
             push(f(elem));
         }
     }
@@ -166,7 +166,7 @@ pub fn from_slice<T:Copy>(v: &[T]) -> @[T] {
     from_fn(v.len(), |i| v[i])
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 pub mod traits {
     use at_vec::append;
     use kinds::Copy;

@@ -112,13 +112,3 @@ pub fn pluralize(n: uint, s: ~str) -> ~str {
 
 // A set of node IDs (used to keep track of which node IDs are for statements)
 pub type stmt_set = @mut HashSet<ast::node_id>;
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

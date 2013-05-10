@@ -12,7 +12,7 @@ use core::cell::Cell;
 
 pub fn main() { test05(); }
 
-fn test05_start(&&f: ~fn(int)) {
+fn test05_start(f: ~fn(int)) {
     f(22);
 }
 

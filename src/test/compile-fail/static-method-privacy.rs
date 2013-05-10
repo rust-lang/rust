@@ -8,4 +8,3 @@ mod a {
 fn main() {
     let _ = a::S::new();    //~ ERROR function `new` is private
 }
-

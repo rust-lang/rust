@@ -17,8 +17,7 @@ breaking out of iteration. The adaptors in the module work with any such iterato
 tied to specific traits. For example:
 
 ~~~~
-use core::iter::iter_to_vec;
-println(iter_to_vec(|f| uint::range(0, 20, f)).to_str());
+println(iter::to_vec(|f| uint::range(0, 20, f)).to_str());
 ~~~~
 
 An external iterator object implementing the interface in the `iterator` module can be used as an
@@ -41,6 +40,9 @@ much easier to implement.
 
 */
 
+use cmp::Ord;
+use option::{Option, Some, None};
+
 pub trait Times {
     fn times(&self, it: &fn() -> bool);
 }
@@ -52,12 +54,12 @@ pub trait Times {
  *
  * ~~~
  * let xs = ~[1, 2, 3];
- * let ys = do iter_to_vec |f| { xs.each(|x| f(*x)) };
+ * let ys = do iter::to_vec |f| { xs.each(|x| f(*x)) };
  * assert_eq!(xs, ys);
  * ~~~
  */
 #[inline(always)]
-pub fn iter_to_vec<T>(iter: &fn(f: &fn(T) -> bool)) -> ~[T] {
+pub fn to_vec<T>(iter: &fn(f: &fn(T) -> bool)) -> ~[T] {
     let mut v = ~[];
     for iter |x| { v.push(x) }
     v
@@ -104,15 +106,87 @@ pub fn all<T>(predicate: &fn(T) -> bool, iter: &fn(f: &fn(T) -> bool)) -> bool {
     true
 }
 
+/**
+ * Return the first element where `predicate` returns `true`. Return `None` if no element is found.
+ *
+ * # Example:
+ *
+ * ~~~~
+ * let xs = ~[1u, 2, 3, 4, 5, 6];
+ * assert_eq!(*find(|& &x: & &uint| x > 3, |f| xs.each(f)).unwrap(), 4);
+ * ~~~~
+ */
+#[inline(always)]
+pub fn find<T>(predicate: &fn(&T) -> bool, iter: &fn(f: &fn(T) -> bool)) -> Option<T> {
+    for iter |x| {
+        if predicate(&x) {
+            return Some(x);
+        }
+    }
+    None
+}
+
+/**
+ * Return the largest item yielded by an iterator. Return `None` if the iterator is empty.
+ *
+ * # Example:
+ *
+ * ~~~~
+ * let xs = ~[8, 2, 3, 1, -5, 9, 11, 15];
+ * assert_eq!(max(|f| xs.each(f)).unwrap(), &15);
+ * ~~~~
+ */
+#[inline]
+pub fn max<T: Ord>(iter: &fn(f: &fn(T) -> bool)) -> Option<T> {
+    let mut result = None;
+    for iter |x| {
+        match result {
+            Some(ref mut y) => {
+                if x > *y {
+                    *y = x;
+                }
+            }
+            None => result = Some(x)
+        }
+    }
+    result
+}
+
+/**
+ * Return the smallest item yielded by an iterator. Return `None` if the iterator is empty.
+ *
+ * # Example:
+ *
+ * ~~~~
+ * let xs = ~[8, 2, 3, 1, -5, 9, 11, 15];
+ * assert_eq!(max(|f| xs.each(f)).unwrap(), &-5);
+ * ~~~~
+ */
+#[inline]
+pub fn min<T: Ord>(iter: &fn(f: &fn(T) -> bool)) -> Option<T> {
+    let mut result = None;
+    for iter |x| {
+        match result {
+            Some(ref mut y) => {
+                if x < *y {
+                    *y = x;
+                }
+            }
+            None => result = Some(x)
+        }
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use prelude::*;
 
     #[test]
-    fn test_iter_to_vec() {
+    fn test_to_vec() {
         let xs = ~[1, 2, 3];
-        let ys = do iter_to_vec |f| { xs.each(|x| f(*x)) };
+        let ys = do to_vec |f| { xs.each(|x| f(*x)) };
         assert_eq!(xs, ys);
     }
 
@@ -127,5 +201,23 @@ mod tests {
     fn test_all() {
         assert!(all(|x: uint| x < 6, |f| uint::range(1, 6, f)));
         assert!(!all(|x: uint| x < 5, |f| uint::range(1, 6, f)));
+    }
+
+    #[test]
+    fn test_find() {
+        let xs = ~[1u, 2, 3, 4, 5, 6];
+        assert_eq!(*find(|& &x: & &uint| x > 3, |f| xs.each(f)).unwrap(), 4);
+    }
+
+    #[test]
+    fn test_max() {
+        let xs = ~[8, 2, 3, 1, -5, 9, 11, 15];
+        assert_eq!(max(|f| xs.each(f)).unwrap(), &15);
+    }
+
+    #[test]
+    fn test_min() {
+        let xs = ~[8, 2, 3, 1, -5, 9, 11, 15];
+        assert_eq!(min(|f| xs.each(f)).unwrap(), &-5);
     }
 }

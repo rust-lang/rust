@@ -26,8 +26,8 @@ pub type Writer = ~fn(v: WriteInstr);
 pub type WriterFactory = ~fn(page: doc::Page) -> Writer;
 
 pub trait WriterUtils {
-    fn put_str(&self, +str: ~str);
-    fn put_line(&self, +str: ~str);
+    fn put_str(&self, str: ~str);
+    fn put_line(&self, str: ~str);
     fn put_done(&self);
 }
 
@@ -230,6 +230,7 @@ pub fn future_writer_factory(
         let markdown_ch = markdown_ch.clone();
         do task::spawn || {
             let (writer, future) = future_writer();
+            let mut future = future;
             writer_ch.send(writer);
             let s = future.get();
             markdown_ch.send((copy page, s));

@@ -30,8 +30,6 @@ The 4 kinds are
 * Const - types that are deeply immutable. Const types are used for
   freezable data structures.
 
-* Durable - types that do not contain borrowed pointers.
-
 `Copy` types include both implicitly copyable types that the compiler
 will copy automatically and non-implicitly copyable types that require
 the `copy` keyword to copy. Types that do not implement `Copy` may
@@ -55,6 +53,7 @@ pub trait Const {
 }
 
 #[lang="durable"]
+#[cfg(stage0)]
 pub trait Durable {
     // Empty.
 }

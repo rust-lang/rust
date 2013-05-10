@@ -147,10 +147,6 @@ public:
     void wait_for_schedulers();
     int run();
 
-#ifdef __WIN32__
-    void win32_require(LPCTSTR fn, BOOL ok);
-#endif
-
     rust_task_id generate_task_id();
 
     void set_exit_status(int code);

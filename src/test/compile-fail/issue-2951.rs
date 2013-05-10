@@ -15,5 +15,4 @@ fn foo<T, U>(x: T, y: U) {
 }
 
 fn main() {
-    
 }

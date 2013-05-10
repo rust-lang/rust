@@ -20,7 +20,7 @@ struct E {
 }
 
 impl A for E {
-  fn b<F:Copy + Const,G>(_x: F) -> F { fail!() } //~ ERROR in method `b`, type parameter 0 has 2 bounds, but
+  fn b<F:Copy + Const,G>(_x: F) -> F { fail!() } //~ ERROR type parameter 0 requires `Const`
 }
 
 fn main() {}

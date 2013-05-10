@@ -409,8 +409,8 @@ pub fn num_args(r: &Repr, discr: int) -> uint {
             st.fields.len() - (if dtor { 1 } else { 0 })
         }
         General(ref cases) => cases[discr as uint].fields.len() - 1,
-        NullablePointer{ nonnull: ref nonnull, nndiscr, _ } => {
-            if discr == nndiscr { nonnull.fields.len() } else { 0 }
+        NullablePointer{ nonnull: ref nonnull, nndiscr, nullfields: ref nullfields, _ } => {
+            if discr == nndiscr { nonnull.fields.len() } else { nullfields.len() }
         }
     }
 }

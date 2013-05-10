@@ -38,4 +38,3 @@ impl Eq for MyInt {
 impl MyNum for MyInt;
 
 fn mi(v: int) -> MyInt { MyInt { val: v } }
-

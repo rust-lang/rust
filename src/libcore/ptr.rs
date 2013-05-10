@@ -15,7 +15,7 @@ use libc;
 use libc::{c_void, size_t};
 use sys;
 
-#[cfg(notest)] use cmp::{Eq, Ord};
+#[cfg(not(test))] use cmp::{Eq, Ord};
 use uint;
 
 pub mod libc_ {
@@ -243,7 +243,7 @@ impl<T> Ptr<T> for *mut T {
 }
 
 // Equality for pointers
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<T> Eq for *const T {
     #[inline(always)]
     fn eq(&self, other: &*const T) -> bool {
@@ -258,7 +258,7 @@ impl<T> Eq for *const T {
 }
 
 // Comparison for pointers
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<T> Ord for *const T {
     #[inline(always)]
     fn lt(&self, other: &*const T) -> bool {
@@ -295,35 +295,35 @@ impl<T> Ord for *const T {
 }
 
 // Equality for region pointers
-#[cfg(notest)]
-impl<'self,T:Eq> Eq for &'self const T {
+#[cfg(not(test))]
+impl<'self,T:Eq> Eq for &'self T {
     #[inline(always)]
-    fn eq(&self, other: & &'self const T) -> bool {
+    fn eq(&self, other: & &'self T) -> bool {
         return *(*self) == *(*other);
     }
     #[inline(always)]
-    fn ne(&self, other: & &'self const T) -> bool {
+    fn ne(&self, other: & &'self T) -> bool {
         return *(*self) != *(*other);
     }
 }
 
 // Comparison for region pointers
-#[cfg(notest)]
-impl<'self,T:Ord> Ord for &'self const T {
+#[cfg(not(test))]
+impl<'self,T:Ord> Ord for &'self T {
     #[inline(always)]
-    fn lt(&self, other: & &'self const T) -> bool {
+    fn lt(&self, other: & &'self T) -> bool {
         *(*self) < *(*other)
     }
     #[inline(always)]
-    fn le(&self, other: & &'self const T) -> bool {
+    fn le(&self, other: & &'self T) -> bool {
         *(*self) <= *(*other)
     }
     #[inline(always)]
-    fn ge(&self, other: & &'self const T) -> bool {
+    fn ge(&self, other: & &'self T) -> bool {
         *(*self) >= *(*other)
     }
     #[inline(always)]
-    fn gt(&self, other: & &'self const T) -> bool {
+    fn gt(&self, other: & &'self T) -> bool {
         *(*self) > *(*other)
     }
 }
@@ -336,7 +336,10 @@ pub mod ptr_tests {
     #[test]
     fn test() {
         unsafe {
-            struct Pair {mut fst: int, mut snd: int};
+            struct Pair {
+                fst: int,
+                snd: int
+            };
             let mut p = Pair {fst: 10, snd: 20};
             let pptr: *mut Pair = &mut p;
             let iptr: *mut int = cast::transmute(pptr);

@@ -15,6 +15,10 @@ The `ToStr` trait for converting to strings
 */
 
 use str;
+use hashmap::HashMap;
+use container::Map;
+use hash::Hash;
+use cmp::Eq;
 
 pub trait ToStr {
     fn to_str(&self) -> ~str;
@@ -43,6 +47,26 @@ impl<A:ToStr> ToStr for (A,) {
                 ~"(" + a.to_str() + ~", " + ~")"
             }
         }
+    }
+}
+
+impl<A:ToStr+Hash+Eq, B:ToStr+Hash+Eq> ToStr for HashMap<A, B> {
+    #[inline(always)]
+    fn to_str(&self) -> ~str {
+        let mut acc = ~"{", first = true;
+        for self.each |key, value| {
+            if first {
+                first = false;
+            }
+            else {
+                str::push_str(&mut acc, ~", ");
+            }
+            str::push_str(&mut acc, key.to_str());
+            str::push_str(&mut acc, ~" : ");
+            str::push_str(&mut acc, value.to_str());
+        }
+        str::push_char(&mut acc, '}');
+        acc
     }
 }
 
@@ -120,6 +144,7 @@ impl<A:ToStr> ToStr for @[A] {
 #[cfg(test)]
 #[allow(non_implicitly_copyable_typarams)]
 mod tests {
+    use hashmap::HashMap;
     #[test]
     fn test_simple_types() {
         assert!(1i.to_str() == ~"1");
@@ -149,4 +174,16 @@ mod tests {
         assert!((~[~[], ~[1], ~[1, 1]]).to_str() ==
                ~"[[], [1], [1, 1]]");
     }
+
+    // #[test]
+    // fn test_hashmap() {
+    //     let mut table: HashMap<int, int> = HashMap::new();
+    //     let mut empty: HashMap<int, int> = HashMap::new();
+
+    //     table.insert(3, 4);
+    //     table.insert(1, 2);
+
+    //     assert!(table.to_str() == ~"{1 : 2, 3 : 4}");
+    //     assert!(empty.to_str() == ~"{}");
+    //}
 }

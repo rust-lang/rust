@@ -22,7 +22,7 @@ use metadata::csearch;
 use metadata::cstore::{CStore, iter_crate_data};
 use metadata::decoder::{dl_def, dl_field, dl_impl};
 use middle::resolve::{Impl, MethodInfo};
-use middle::ty::{ProvidedMethodSource, ProvidedMethodInfo, bound_copy, get};
+use middle::ty::{ProvidedMethodSource, ProvidedMethodInfo, get};
 use middle::ty::{lookup_item_type, subst};
 use middle::ty::{substs, t, ty_bool, ty_bot, ty_box, ty_enum, ty_err};
 use middle::ty::{ty_estr, ty_evec, ty_float, ty_infer, ty_int, ty_nil};
@@ -76,10 +76,8 @@ pub fn get_base_type(inference_context: @mut InferCtxt,
         }
         _ => {
             inference_context.tcx.sess.span_fatal(span,
-                                                  ~"the type of this value \
-                                                    must be known in order \
-                                                    to determine the base \
-                                                    type");
+                                                  "the type of this value must be known in order \
+                                                   to determine the base type");
         }
     }
 
@@ -240,8 +238,8 @@ pub impl CoherenceChecker {
 
     fn check_implementation(&self,
                             item: @item, associated_traits: ~[@trait_ref]) {
-        let self_type = self.crate_context.tcx.tcache.get(
-            &local_def(item.id));
+        let tcx = self.crate_context.tcx;
+        let self_type = ty::lookup_item_type(tcx, local_def(item.id));
 
         // If there are no traits, then this implementation must have a
         // base type.
@@ -257,9 +255,8 @@ pub impl CoherenceChecker {
                 None => {
                     let session = self.crate_context.tcx.sess;
                     session.span_err(item.span,
-                                     ~"no base type found for inherent \
-                                       implementation; implement a \
-                                       trait or new type instead");
+                                     "no base type found for inherent implementation; \
+                                      implement a trait or new type instead");
                 }
                 Some(_) => {
                     // Nothing to do.
@@ -393,7 +390,7 @@ pub impl CoherenceChecker {
 
             let pmm = self.crate_context.tcx.provided_methods;
             match pmm.find(&local_def(impl_id)) {
-                Some(mis) => {
+                Some(&mis) => {
                     // If the trait already has an entry in the
                     // provided_methods_map, we just need to add this
                     // method to that entry.
@@ -426,8 +423,8 @@ pub impl CoherenceChecker {
                 self.crate_context.coherence_info.inherent_methods
                     .insert(base_def_id, implementation_list);
             }
-            Some(existing_implementation_list) => {
-                implementation_list = *existing_implementation_list;
+            Some(&existing_implementation_list) => {
+                implementation_list = existing_implementation_list;
             }
         }
 
@@ -443,8 +440,8 @@ pub impl CoherenceChecker {
                 self.crate_context.coherence_info.extension_methods
                     .insert(trait_id, implementation_list);
             }
-            Some(existing_implementation_list) => {
-                implementation_list = *existing_implementation_list;
+            Some(&existing_implementation_list) => {
+                implementation_list = existing_implementation_list;
             }
         }
 
@@ -452,10 +449,8 @@ pub impl CoherenceChecker {
     }
 
     fn check_implementation_coherence(&self) {
-        let coherence_info = &mut self.crate_context.coherence_info;
-        let extension_methods = &coherence_info.extension_methods;
-
-        for extension_methods.each_key |&trait_id| {
+        let coherence_info = self.crate_context.coherence_info;
+        for coherence_info.extension_methods.each_key |&trait_id| {
             self.check_implementation_coherence_of(trait_id);
         }
     }
@@ -483,11 +478,9 @@ pub impl CoherenceChecker {
                     if self.polytypes_unify(polytype_a, polytype_b) {
                         let session = self.crate_context.tcx.sess;
                         session.span_err(self.span_of_impl(implementation_b),
-                                         ~"conflicting implementations for a \
-                                           trait");
+                                         "conflicting implementations for a trait");
                         session.span_note(self.span_of_impl(implementation_a),
-                                          ~"note conflicting implementation \
-                                            here");
+                                          "note conflicting implementation here");
                     }
                 }
             }
@@ -507,20 +500,23 @@ pub impl CoherenceChecker {
                 m.insert(self_t, the_impl);
                 self.crate_context.tcx.trait_impls.insert(trait_t, m);
             }
-            Some(m) => {
+            Some(&m) => {
                 m.insert(self_t, the_impl);
             }
         }
     }
 
     fn iter_impls_of_trait(&self, trait_def_id: def_id, f: &fn(@Impl)) {
-        let coherence_info = &mut self.crate_context.coherence_info;
-        let extension_methods = &coherence_info.extension_methods;
+        let coherence_info = self.crate_context.coherence_info;
+        let extension_methods = &*coherence_info.extension_methods;
 
         match extension_methods.find(&trait_def_id) {
             Some(impls) => {
-                let impls: &mut ~[@Impl] = *impls;
-                for uint::range(0, impls.len()) |i| {
+                let len = { // FIXME(#5074) stage0 requires this
+                    let impls: &mut ~[@Impl] = *impls;
+                    impls.len()
+                };
+                for uint::range(0, len) |i| {
                     f(impls[i]);
                 }
             }
@@ -607,34 +603,28 @@ pub impl CoherenceChecker {
                 // Check to ensure that each parameter binding respected its
                 // kind bounds.
                 for [ a, b ].each |result| {
-                    for vec::each2(result.type_variables, *result.type_param_defs)
-                            |ty_var, type_param_def| {
-                        match resolve_type(self.inference_context,
-                                           *ty_var,
-                                           resolve_nested_tvar) {
-                            Ok(resolved_ty) => {
-                                for type_param_def.bounds.each |bound| {
-                                    match *bound {
-                                        bound_copy => {
-                                            if !ty::type_is_copyable(
-                                                self.inference_context.tcx,
-                                                resolved_ty)
-                                            {
-                                                might_unify = false;
-                                                break;
-                                            }
-                                        }
-
-                                        // XXX: We could be smarter here.
-                                        // Check to see whether owned, send,
-                                        // const, trait param bounds could
-                                        // possibly unify.
-                                        _ => {}
+                    for vec::each2(result.type_variables,
+                                   *result.type_param_defs)
+                        |ty_var, type_param_def|
+                    {
+                        if type_param_def.bounds.builtin_bounds.contains_elem(
+                            ty::BoundCopy)
+                        {
+                            match resolve_type(self.inference_context,
+                                               *ty_var,
+                                               resolve_nested_tvar) {
+                                Ok(resolved_ty) => {
+                                    if !ty::type_is_copyable(
+                                        self.inference_context.tcx,
+                                        resolved_ty)
+                                    {
+                                        might_unify = false;
+                                        break;
                                     }
                                 }
-                            }
-                            Err(*) => {
-                                // Conservatively assume it might unify.
+                                Err(*) => {
+                                    // Conservatively assume it might unify.
+                                }
                             }
                         }
                     }
@@ -650,7 +640,7 @@ pub impl CoherenceChecker {
 
     fn get_self_type_for_implementation(&self, implementation: @Impl)
                                      -> ty_param_bounds_and_ty {
-        return *self.crate_context.tcx.tcache.get(&implementation.did);
+        return self.crate_context.tcx.tcache.get_copy(&implementation.did);
     }
 
     // Privileged scope checking
@@ -667,11 +657,9 @@ pub impl CoherenceChecker {
                             // This is an error.
                             let session = self.crate_context.tcx.sess;
                             session.span_err(item.span,
-                                             ~"cannot associate methods with \
-                                               a type outside the crate the \
-                                               type is defined in; define \
-                                               and implement a trait or new \
-                                               type instead");
+                                             "cannot associate methods with a type outside the \
+                                              crate the type is defined in; define and implement \
+                                              a trait or new type instead");
                         }
                     }
                     item_impl(_, Some(trait_ref), _, _) => {
@@ -690,10 +678,8 @@ pub impl CoherenceChecker {
                             if trait_def_id.crate != local_crate {
                                 let session = self.crate_context.tcx.sess;
                                 session.span_err(item.span,
-                                                 ~"cannot provide an \
-                                                   extension implementation \
-                                                   for a trait not defined \
-                                                   in this crate");
+                                                 "cannot provide an extension implementation \
+                                                  for a trait not defined in this crate");
                             }
                         }
 
@@ -710,7 +696,7 @@ pub impl CoherenceChecker {
 
     fn trait_ref_to_trait_def_id(&self, trait_ref: @trait_ref) -> def_id {
         let def_map = self.crate_context.tcx.def_map;
-        let trait_def = *def_map.get(&trait_ref.ref_id);
+        let trait_def = def_map.get_copy(&trait_ref.ref_id);
         let trait_id = def_id_of_def(trait_def);
         return trait_id;
     }
@@ -750,7 +736,7 @@ pub impl CoherenceChecker {
                                               -> bool {
         match original_type.node {
             ty_path(_, path_id) => {
-                match *self.crate_context.tcx.def_map.get(&path_id) {
+                match self.crate_context.tcx.def_map.get_copy(&path_id) {
                     def_ty(def_id) | def_struct(def_id) => {
                         if def_id.crate != local_crate {
                             return false;
@@ -765,7 +751,7 @@ pub impl CoherenceChecker {
                             None => {
                                 self.crate_context.tcx.sess.span_bug(
                                     original_type.span,
-                                    ~"resolve didn't resolve this type?!");
+                                    "resolve didn't resolve this type?!");
                             }
                             Some(&node_item(item, _)) => {
                                 match item.node {
@@ -849,8 +835,7 @@ pub impl CoherenceChecker {
             }
             _ => {
                 self.crate_context.tcx.sess.span_bug(item.span,
-                                                     ~"can't convert a \
-                                                       non-impl to an impl");
+                                                     "can't convert a non-impl to an impl");
             }
         }
     }
@@ -862,9 +847,8 @@ pub impl CoherenceChecker {
                 return item.span;
             }
             _ => {
-                self.crate_context.tcx.sess.bug(~"span_of_impl() called on \
-                                                  something that wasn't an \
-                                                  impl!");
+                self.crate_context.tcx.sess.bug("span_of_impl() called on something that \
+                                                 wasn't an impl!");
             }
         }
     }
@@ -1014,7 +998,7 @@ pub impl CoherenceChecker {
     //
 
     fn populate_destructor_table(&self) {
-        let coherence_info = &mut self.crate_context.coherence_info;
+        let coherence_info = self.crate_context.coherence_info;
         let tcx = self.crate_context.tcx;
         let drop_trait = tcx.lang_items.drop_trait();
         let impls_opt = coherence_info.extension_methods.find(&drop_trait);
@@ -1045,17 +1029,16 @@ pub impl CoherenceChecker {
                         match tcx.items.find(&impl_info.did.node) {
                             Some(&ast_map::node_item(@ref item, _)) => {
                                 tcx.sess.span_err((*item).span,
-                                                  ~"the Drop trait may only \
-                                                    be implemented on \
-                                                    structures");
+                                                  "the Drop trait may only be implemented on \
+                                                   structures");
                             }
                             _ => {
-                                tcx.sess.bug(~"didn't find impl in ast map");
+                                tcx.sess.bug("didn't find impl in ast map");
                             }
                         }
                     } else {
-                        tcx.sess.bug(~"found external impl of Drop trait on \
-                                       something other than a struct");
+                        tcx.sess.bug("found external impl of Drop trait on \
+                                      something other than a struct");
                     }
                 }
             }
@@ -1131,4 +1114,3 @@ pub fn check_coherence(crate_context: @mut CrateCtxt, crate: @crate) {
     let coherence_checker = @CoherenceChecker(crate_context);
     coherence_checker.check_coherence(crate);
 }
-

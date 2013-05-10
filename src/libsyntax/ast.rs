@@ -71,28 +71,29 @@ pub type Name = uint;
 pub type Mrk = uint;
 
 impl<S:Encoder> Encodable<S> for ident {
-    fn encode(&self, s: &S) {
-        let intr = match unsafe {
-            task::local_data::local_data_get(interner_key!())
-        } {
-            None => fail!(~"encode: TLS interner not set up"),
-            Some(intr) => intr
-        };
+    fn encode(&self, s: &mut S) {
+        unsafe {
+            let intr =
+                match local_data::local_data_get(interner_key!()) {
+                    None => fail!(~"encode: TLS interner not set up"),
+                    Some(intr) => intr
+                };
 
-        s.emit_str(*(*intr).get(*self));
+            s.emit_str(*(*intr).get(*self));
+        }
     }
 }
 
 impl<D:Decoder> Decodable<D> for ident {
-    fn decode(d: &D) -> ident {
+    fn decode(d: &mut D) -> ident {
         let intr = match unsafe {
-            task::local_data::local_data_get(interner_key!())
+            local_data::local_data_get(interner_key!())
         } {
             None => fail!(~"decode: TLS interner not set up"),
             Some(intr) => intr
         };
 
-        (*intr).intern(@d.read_str())
+        (*intr).intern(d.read_str())
     }
 }
 
@@ -389,7 +390,7 @@ pub enum binop {
     add,
     subtract,
     mul,
-    quot,
+    div,
     rem,
     and,
     or,
@@ -1158,6 +1159,7 @@ pub struct struct_field_ {
     kind: struct_field_kind,
     id: node_id,
     ty: @Ty,
+    attrs: ~[attribute],
 }
 
 pub type struct_field = spanned<struct_field_>;
@@ -1166,7 +1168,7 @@ pub type struct_field = spanned<struct_field_>;
 #[auto_decode]
 #[deriving(Eq)]
 pub enum struct_field_kind {
-    named_field(ident, struct_mutability, visibility),
+    named_field(ident, visibility),
     unnamed_field   // element of a tuple-like struct
 }
 
@@ -1174,10 +1176,7 @@ pub enum struct_field_kind {
 #[auto_decode]
 #[deriving(Eq)]
 pub struct struct_def {
-    fields: ~[@struct_field], /* fields */
-    /* (not including ctor or dtor) */
-    /* dtor is optional */
-    dtor: Option<struct_dtor>,
+    fields: ~[@struct_field], /* fields, not including ctor */
     /* ID of the constructor. This is only used for tuple- or enum-like
      * structs. */
     ctor_id: Option<node_id>
@@ -1222,29 +1221,6 @@ pub enum item_ {
 #[auto_encode]
 #[auto_decode]
 #[deriving(Eq)]
-pub enum struct_mutability { struct_mutable, struct_immutable }
-
-impl to_bytes::IterBytes for struct_mutability {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        (*self as u8).iter_bytes(lsb0, f)
-    }
-}
-
-pub type struct_dtor = spanned<struct_dtor_>;
-
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
-pub struct struct_dtor_ {
-    id: node_id,
-    attrs: ~[attribute],
-    self_id: node_id,
-    body: blk,
-}
-
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
 pub struct foreign_item {
     ident: ident,
     attrs: ~[attribute],
@@ -1272,7 +1248,6 @@ pub enum inlined_item {
     ii_item(@item),
     ii_method(def_id /* impl id */, @method),
     ii_foreign(@foreign_item),
-    ii_dtor(struct_dtor, ident, Generics, def_id /* parent id */)
 }
 
 /* hold off on tests ... they appear in a later merge.
@@ -1290,6 +1265,21 @@ mod test {
         xorPush(&mut s,14);
         assert_eq!(s,~[14]);
         xorPush(&mut s,14);
+        assert_eq!(s,~[]);
+        xorPush(&mut s,14);
+        assert_eq!(s,~[14]);
+        xorPush(&mut s,15);
+        assert_eq!(s,~[14,15]);
+        xorPush (&mut s,16);
+        assert_eq! (s,~[14,15,16]);
+        xorPush (&mut s,16);
+        assert_eq! (s,~[14,15]);
+        xorPush (&mut s,15);
+        assert_eq! (s,~[14]);
+    }
+
+    #[test] fn test_marksof () {
+        let stopname = uints_to_name(&~[12,14,78]);
         assert_eq!(s,~[]);
         xorPush(&mut s,14);
         assert_eq!(s,~[14]);

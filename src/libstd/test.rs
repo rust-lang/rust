@@ -32,7 +32,7 @@ pub mod rustrt {
 }
 
 // The name of a test. By convention this follows the rules for rust
-// paths; i.e. it should be a series of identifiers seperated by double
+// paths; i.e. it should be a series of identifiers separated by double
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
 
@@ -42,9 +42,9 @@ pub enum TestName {
 }
 impl ToStr for TestName {
     fn to_str(&self) -> ~str {
-        match self {
-            &StaticTestName(s) => s.to_str(),
-            &DynTestName(s) => s.to_str()
+        match copy *self {
+            StaticTestName(s) => s.to_str(),
+            DynTestName(s) => s.to_str()
         }
     }
 }
@@ -145,7 +145,7 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
 
     let filter =
         if vec::len(matches.free) > 0 {
-            option::Some(matches.free[0])
+            option::Some(copy (matches).free[0])
         } else { option::None };
 
     let run_ignored = getopts::opt_present(&matches, ~"ignored");
@@ -203,7 +203,7 @@ pub fn run_tests_console(opts: &TestOpts,
 
     fn callback(event: &TestEvent, st: &mut ConsoleTestState) {
         debug!("callback(event=%?)", event);
-        match *event {
+        match copy *event {
           TeFiltered(ref filtered_tests) => {
             st.total = filtered_tests.len();
             let noun = if st.total != 1 { ~"tests" } else { ~"test" };
@@ -213,7 +213,7 @@ pub fn run_tests_console(opts: &TestOpts,
               fmt!("test %s ... ", test.name.to_str())),
           TeResult(copy test, result) => {
             match st.log_out {
-                Some(f) => write_log(f, result, &test),
+                Some(f) => write_log(f, copy result, &test),
                 None => ()
             }
             match result {
@@ -355,7 +355,7 @@ fn print_failures(st: &ConsoleTestState) {
         failures.push(name.to_str());
     }
     sort::tim_sort(failures);
-    for vec::each(failures) |name| {
+    for failures.each |name| {
         st.out.write_line(fmt!("    %s", name.to_str()));
     }
 }
@@ -412,7 +412,7 @@ fn run_tests(opts: &TestOpts,
              callback: @fn(e: TestEvent)) {
     let mut filtered_tests = filter_tests(opts, tests);
 
-    let filtered_descs = filtered_tests.map(|t| t.desc);
+    let filtered_descs = filtered_tests.map(|t| copy t.desc);
     callback(TeFiltered(filtered_descs));
 
     let (filtered_tests, filtered_benchs) =
@@ -442,7 +442,7 @@ fn run_tests(opts: &TestOpts,
                 // We are doing one test at a time so we can print the name
                 // of the test before we run it. Useful for debugging tests
                 // that hang forever.
-                callback(TeWait(test.desc));
+                callback(TeWait(copy test.desc));
             }
             run_test(!opts.run_tests, test, ch.clone());
             pending += 1;
@@ -450,7 +450,7 @@ fn run_tests(opts: &TestOpts,
 
         let (desc, result) = p.recv();
         if concurrency != 1 {
-            callback(TeWait(desc));
+            callback(TeWait(copy desc));
         }
         callback(TeResult(desc, result));
         pending -= 1;
@@ -556,13 +556,16 @@ pub fn run_test(force_ignore: bool,
         let testfn_cell = ::core::cell::Cell(testfn);
         do task::spawn {
             let mut result_future = None; // task::future_result(builder);
-            task::task().unlinked().future_result(|+r| {
-                result_future = Some(r);
-            }).spawn(testfn_cell.take());
+
+            let mut task = task::task();
+            task.unlinked();
+            task.future_result(|r| { result_future = Some(r) });
+            task.spawn(testfn_cell.take());
+
             let task_result = result_future.unwrap().recv();
             let test_result = calc_result(&desc,
                                           task_result == task::Success);
-            monitor_ch.send((desc, test_result));
+            monitor_ch.send((copy desc, test_result));
         }
     }
 
@@ -688,7 +691,7 @@ pub mod bench {
         // not met, it may run as long as the Go algorithm.
         pub fn auto_bench(&mut self, f: &fn(&mut BenchHarness)) -> ~[f64] {
 
-            let rng = rand::rng();
+            let mut rng = rand::rng();
             let mut magnitude = 10;
             let mut prev_madp = 0.0;
 
@@ -847,7 +850,7 @@ mod tests {
           either::Left(copy o) => o,
           _ => fail!(~"Malformed arg in first_free_arg_should_be_a_filter")
         };
-        assert!(~"filter" == opts.filter.get());
+        assert!("filter" == (copy opts.filter).get());
     }
 
     #[test]
@@ -925,10 +928,10 @@ mod tests {
         {
             fn testfn() { }
             let mut tests = ~[];
-            for vec::each(names) |name| {
+            for names.each |name| {
                 let test = TestDescAndFn {
                     desc: TestDesc {
-                        name: DynTestName(*name),
+                        name: DynTestName(copy *name),
                         ignore: false,
                         should_fail: false
                     },
@@ -951,7 +954,7 @@ mod tests {
 
         let pairs = vec::zip(expected, filtered);
 
-        for vec::each(pairs) |p| {
+        for pairs.each |p| {
             match *p {
                 (ref a, ref b) => {
                     assert!((*a == b.desc.name.to_str()));
@@ -960,12 +963,3 @@ mod tests {
         }
     }
 }
-
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

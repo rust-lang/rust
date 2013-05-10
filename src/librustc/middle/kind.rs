@@ -10,11 +10,11 @@
 
 use middle::freevars::freevar_entry;
 use middle::freevars;
-use middle::liveness;
 use middle::pat_util;
 use middle::ty;
 use middle::typeck;
 use util::ppaux::{Repr, ty_to_str};
+use util::ppaux::UserString;
 
 use syntax::ast::*;
 use syntax::attr::attrs_contains_name;
@@ -56,19 +56,16 @@ pub static try_adding: &'static str = "Try adding a move";
 pub struct Context {
     tcx: ty::ctxt,
     method_map: typeck::method_map,
-    last_use_map: liveness::last_use_map,
-    current_item: node_id,
+    current_item: node_id
 }
 
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
-                   last_use_map: liveness::last_use_map,
                    crate: @crate) {
     let ctx = Context {
         tcx: tcx,
         method_map: method_map,
-        last_use_map: last_use_map,
-        current_item: -1,
+        current_item: -1
     };
     let visit = visit::mk_vt(@visit::Visitor {
         visit_arm: check_arm,
@@ -97,21 +94,21 @@ fn check_struct_safe_for_destructor(cx: Context,
         });
         if !ty::type_is_owned(cx.tcx, struct_ty) {
             cx.tcx.sess.span_err(span,
-                                 ~"cannot implement a destructor on a struct \
-                                   that is not Owned");
+                                 "cannot implement a destructor on a struct \
+                                  that is not Owned");
             cx.tcx.sess.span_note(span,
-                                  ~"use \"#[unsafe_destructor]\" on the \
-                                    implementation to force the compiler to \
-                                    allow this");
+                                  "use \"#[unsafe_destructor]\" on the \
+                                   implementation to force the compiler to \
+                                   allow this");
         }
     } else {
         cx.tcx.sess.span_err(span,
-                             ~"cannot implement a destructor on a struct \
-                               with type parameters");
+                             "cannot implement a destructor on a struct \
+                              with type parameters");
         cx.tcx.sess.span_note(span,
-                              ~"use \"#[unsafe_destructor]\" on the \
-                                implementation to force the compiler to \
-                                allow this");
+                              "use \"#[unsafe_destructor]\" on the \
+                               implementation to force the compiler to \
+                               allow this");
     }
 }
 
@@ -132,7 +129,7 @@ fn check_item(item: @item, cx: Context, visitor: visit::vt<Context>) {
                             // Yes, it's a destructor.
                             match self_type.node {
                                 ty_path(_, path_node_id) => {
-                                    let struct_def = *cx.tcx.def_map.get(
+                                    let struct_def = cx.tcx.def_map.get_copy(
                                         &path_node_id);
                                     let struct_did =
                                         ast_util::def_id_of_def(struct_def);
@@ -143,24 +140,13 @@ fn check_item(item: @item, cx: Context, visitor: visit::vt<Context>) {
                                 }
                                 _ => {
                                     cx.tcx.sess.span_bug(self_type.span,
-                                                         ~"the self type for \
-                                                           the Drop trait \
-                                                           impl is not a \
-                                                           path");
+                                                         "the self type for \
+                                                          the Drop trait \
+                                                          impl is not a \
+                                                          path");
                                 }
                             }
                         }
-                    }
-                }
-            }
-            item_struct(struct_def, _) => {
-                match struct_def.dtor {
-                    None => {}
-                    Some(ref dtor) => {
-                        let struct_did = def_id { crate: 0, node: item.id };
-                        check_struct_safe_for_destructor(cx,
-                                                         dtor.span,
-                                                         struct_did);
                     }
                 }
             }
@@ -204,7 +190,7 @@ fn with_appropriate_checker(cx: Context, id: node_id, b: &fn(check_fn)) {
     fn check_for_bare(cx: Context, fv: @freevar_entry) {
         cx.tcx.sess.span_err(
             fv.span,
-            ~"attempted dynamic environment capture");
+            "attempted dynamic environment capture");
     }
 
     let fty = ty::node_id_to_type(cx.tcx, id);
@@ -250,7 +236,7 @@ fn check_fn(
 }
 
 fn check_arm(a: &arm, cx: Context, v: visit::vt<Context>) {
-    for vec::each(a.pats) |p| {
+    for a.pats.each |p| {
         do pat_util::pat_bindings(cx.tcx.def_map, *p) |mode, id, span, _pth| {
             if mode == bind_by_copy {
                 let t = ty::node_id_to_type(cx.tcx, id);
@@ -272,11 +258,9 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
         _ => e.id
     };
     for cx.tcx.node_type_substs.find(&type_parameter_id).each |ts| {
-        // FIXME(#5562): removing this copy causes a segfault before stage2
-        let ts = /*bad*/ copy **ts;
         let type_param_defs = match e.node {
           expr_path(_) => {
-            let did = ast_util::def_id_of_def(*cx.tcx.def_map.get(&e.id));
+            let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&e.id));
             ty::lookup_item_type(cx.tcx, did).generics.type_param_defs
           }
           _ => {
@@ -297,7 +281,7 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
                        ts.repr(cx.tcx),
                        type_param_defs.repr(cx.tcx)));
         }
-        for vec::each2(ts, *type_param_defs) |&ty, type_param_def| {
+        for vec::each2(**ts, *type_param_defs) |&ty, type_param_def| {
             check_bounds(cx, type_parameter_id, e.span, ty, type_param_def)
         }
     }
@@ -335,12 +319,10 @@ fn check_ty(aty: @Ty, cx: Context, v: visit::vt<Context>) {
     match aty.node {
       ty_path(_, id) => {
         for cx.tcx.node_type_substs.find(&id).each |ts| {
-            // FIXME(#5562): removing this copy causes a segfault before stage2
-            let ts = /*bad*/ copy **ts;
-            let did = ast_util::def_id_of_def(*cx.tcx.def_map.get(&id));
+            let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&id));
             let type_param_defs =
                 ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
-            for vec::each2(ts, *type_param_defs) |&ty, type_param_def| {
+            for vec::each2(**ts, *type_param_defs) |&ty, type_param_def| {
                 check_bounds(cx, aty.id, aty.span, ty, type_param_def)
             }
         }
@@ -357,53 +339,26 @@ pub fn check_bounds(cx: Context,
                     type_param_def: &ty::TypeParameterDef)
 {
     let kind = ty::type_contents(cx.tcx, ty);
-    let mut missing = ~[];
-    for type_param_def.bounds.each |bound| {
-        match *bound {
-            ty::bound_trait(_) => {
-                /* Not our job, checking in typeck */
-            }
-
-            ty::bound_copy => {
-                if !kind.is_copy(cx.tcx) {
-                    missing.push("Copy");
-                }
-            }
-
-            ty::bound_durable => {
-                if !kind.is_durable(cx.tcx) {
-                    missing.push("'static");
-                }
-            }
-
-            ty::bound_owned => {
-                if !kind.is_owned(cx.tcx) {
-                    missing.push("Owned");
-                }
-            }
-
-            ty::bound_const => {
-                if !kind.is_const(cx.tcx) {
-                    missing.push("Const");
-                }
-            }
+    let mut missing = ty::EmptyBuiltinBounds();
+    for type_param_def.bounds.builtin_bounds.each |bound| {
+        if !kind.meets_bound(cx.tcx, bound) {
+            missing.add(bound);
         }
     }
-
     if !missing.is_empty() {
         cx.tcx.sess.span_err(
             sp,
             fmt!("instantiating a type parameter with an incompatible type \
                   `%s`, which does not fulfill `%s`",
                  ty_to_str(cx.tcx, ty),
-                 str::connect_slices(missing, " ")));
+                 missing.user_string(cx.tcx)));
     }
 }
 
 fn is_nullary_variant(cx: Context, ex: @expr) -> bool {
     match ex.node {
       expr_path(_) => {
-        match *cx.tcx.def_map.get(&ex.id) {
+        match cx.tcx.def_map.get_copy(&ex.id) {
           def_variant(edid, vdid) => {
             vec::len(ty::enum_variant_with_id(cx.tcx, edid, vdid).args) == 0u
           }
@@ -420,7 +375,7 @@ fn check_imm_free_var(cx: Context, def: def, sp: span) {
             if is_mutbl {
                 cx.tcx.sess.span_err(
                     sp,
-                    ~"mutable variables cannot be implicitly captured");
+                    "mutable variables cannot be implicitly captured");
             }
         }
         def_arg(*) => { /* ok */ }
@@ -459,15 +414,15 @@ pub fn check_owned(cx: Context, ty: ty::t, sp: span) -> bool {
 
 // note: also used from middle::typeck::regionck!
 pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
-    if !ty::type_is_durable(tcx, ty) {
+    if !ty::type_is_static(tcx, ty) {
         match ty::get(ty).sty {
           ty::ty_param(*) => {
-            tcx.sess.span_err(sp, ~"value may contain borrowed \
-                                    pointers; use `'static` bound");
+            tcx.sess.span_err(sp, "value may contain borrowed \
+                                   pointers; use `'static` bound");
           }
           _ => {
-            tcx.sess.span_err(sp, ~"value may contain borrowed \
-                                    pointers");
+            tcx.sess.span_err(sp, "value may contain borrowed \
+                                   pointers");
           }
         }
         false
@@ -592,19 +547,9 @@ pub fn check_kind_bounds_of_cast(cx: Context, source: @expr, target: @expr) {
             if !ty::type_is_owned(cx.tcx, source_ty) {
                 cx.tcx.sess.span_err(
                     target.span,
-                    ~"uniquely-owned trait objects must be sendable");
+                    "uniquely-owned trait objects must be sendable");
             }
         }
         _ => {} // Nothing to do.
     }
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

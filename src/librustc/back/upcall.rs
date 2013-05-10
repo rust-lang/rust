@@ -34,9 +34,9 @@ pub fn declare_upcalls(targ_cfg: @session::config,
     fn nothrow(f: ValueRef) -> ValueRef {
         base::set_no_unwind(f); f
     }
-    let d: &fn(+a: ~str, +b: ~[TypeRef], +c: TypeRef) -> ValueRef =
+    let d: &fn(a: ~str, b: ~[TypeRef], c: TypeRef) -> ValueRef =
         |a,b,c| decl(llmod, ~"upcall_", a, b, c);
-    let dv: &fn(+a: ~str, +b: ~[TypeRef]) -> ValueRef =
+    let dv: &fn(a: ~str, b: ~[TypeRef]) -> ValueRef =
         |a,b| decl(llmod, ~"upcall_", a, b, T_void());
 
     let int_t = T_int(targ_cfg);
@@ -59,12 +59,3 @@ pub fn declare_upcalls(targ_cfg: @session::config,
             nothrow(dv(~"reset_stack_limit", ~[]))
     }
 }
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

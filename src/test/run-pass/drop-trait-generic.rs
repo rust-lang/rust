@@ -22,4 +22,3 @@ impl<T> ::core::ops::Drop for S<T> {
 pub fn main() {
     let x = S { x: 1 };
 }
-

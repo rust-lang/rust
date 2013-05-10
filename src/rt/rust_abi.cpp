@@ -86,4 +86,3 @@ symbolicate(const std::vector<frame> &frames) {
 }
 
 }   // end namespace stack_walk
-

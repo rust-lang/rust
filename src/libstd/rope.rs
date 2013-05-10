@@ -565,7 +565,7 @@ pub mod node {
      *
      * # Fields
      *
-     * * byte_offset = The number of bytes skippen in `content`
+     * * byte_offset = The number of bytes skipped in `content`
      * * byte_len - The number of bytes of `content` to use
      * * char_len - The number of chars in the leaf.
      * * content - Contents of the leaf.
@@ -822,7 +822,7 @@ pub mod node {
                   None => break,
                   Some(x) => {
                     //FIXME (#2744): Replace with memcpy or something similar
-                    let local_buf: ~[u8] = cast::transmute(*x.content);
+                    let local_buf: ~[u8] = cast::transmute(copy *x.content);
                     let mut i = x.byte_offset;
                     while i < x.byte_len {
                         buf[offset] = local_buf[i];
@@ -1256,22 +1256,24 @@ mod tests {
         match (r) {
           node::Empty => return ~"",
           node::Content(x) => {
-            let str = @mut ~"";
-            fn aux(str: @mut ~str, node: @node::Node) {
+            let mut str = ~"";
+            fn aux(str: &mut ~str, node: @node::Node) {
                 match (*node) {
-                  node::Leaf(x) => {
-                    *str += str::slice(
-                        *x.content, x.byte_offset,
-                        x.byte_offset + x.byte_len).to_owned();
-                  }
-                  node::Concat(ref x) => {
-                    aux(str, x.left);
-                    aux(str, x.right);
-                  }
+                    node::Leaf(x) => {
+                        str::push_str(
+                            str,
+                            str::slice(
+                                *x.content, x.byte_offset,
+                                x.byte_offset + x.byte_len));
+                    }
+                    node::Concat(ref x) => {
+                        aux(str, x.left);
+                        aux(str, x.right);
+                    }
                 }
             }
-            aux(str, x);
-            return *str
+            aux(&mut str, x);
+            return str
           }
         }
     }
@@ -1297,12 +1299,12 @@ mod tests {
         let buf = @ mut ~"1234567890";
         let mut i = 0;
         while i < 10 {
-            let a = *buf;
-            let b = *buf;
+            let a = copy *buf;
+            let b = copy *buf;
             *buf = a + b;
             i+=1;
         }
-        let sample = @*buf;
+        let sample = @copy *buf;
         let r      = of_str(sample);
         assert!(char_len(r) == str::char_len(*sample));
         assert!(rope_to_string(r) == *sample);
@@ -1333,12 +1335,12 @@ mod tests {
         let buf = @ mut ~"1234567890";
         let mut i = 0;
         while i < 10 {
-            let a = *buf;
-            let b = *buf;
+            let a = copy *buf;
+            let b = copy *buf;
             *buf = a + b;
             i+=1;
         }
-        let sample = @*buf;
+        let sample = @copy *buf;
         let r      = of_str(sample);
 
         let mut len = 0u;
@@ -1356,15 +1358,15 @@ mod tests {
     #[test]
     fn bal1() {
         let init = @~"1234567890";
-        let buf  = @mut * init;
+        let buf  = @mut copy *init;
         let mut i = 0;
         while i < 8 {
-            let a = *buf;
-            let b = *buf;
+            let a = copy *buf;
+            let b = copy *buf;
             *buf = a + b;
             i+=1;
         }
-        let sample = @*buf;
+        let sample = @copy *buf;
         let r1     = of_str(sample);
         let mut r2 = of_str(init);
         i = 0;

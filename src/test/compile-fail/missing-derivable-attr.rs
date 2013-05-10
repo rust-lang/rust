@@ -24,4 +24,3 @@ impl MyEq for A;  //~ ERROR missing method
 
 fn main() {
 }
-

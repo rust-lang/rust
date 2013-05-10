@@ -13,4 +13,3 @@ extern "C" {
 }
 
 pub fn main() {}
-

@@ -55,7 +55,7 @@ priv fn parse_list(len: uint, io: @io::Reader) -> Result {
 priv fn chop(s: ~str) -> ~str {
   s.slice(0, s.len() - 1).to_owned()
 }
-  
+
 priv fn parse_bulk(io: @io::Reader) -> Result {
     match int::from_str(chop(io.read_line())) {
     None => fail!(),

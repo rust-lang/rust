@@ -222,4 +222,3 @@ fn main() {
       io::println(from_child[ii].recv());
    }
 }
-

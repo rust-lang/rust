@@ -27,6 +27,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                    fld: @ast_fold,
                    orig: @fn(&expr_, span, @ast_fold) -> (expr_, span))
                 -> (expr_, span) {
+    let mut cx = cx;
     match *e {
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
@@ -112,6 +113,8 @@ pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
                         fld: @ast_fold,
                         orig: @fn(&ast::_mod, @ast_fold) -> ast::_mod)
                      -> ast::_mod {
+    let mut cx = cx;
+
     // Fold the contents first:
     let module_ = orig(module_, fld);
 
@@ -483,11 +486,62 @@ pub fn core_macros() -> ~str {
         )
     )
 
+    macro_rules! assert_approx_eq (
+        ($given:expr , $expected:expr) => (
+            {
+                use core::cmp::ApproxEq;
+
+                let given_val = $given;
+                let expected_val = $expected;
+                // check both directions of equality....
+                if !(
+                    given_val.approx_eq(&expected_val) &&
+                    expected_val.approx_eq(&given_val)
+                ) {
+                    fail!(\"left: %? does not approximately equal right: %?\",
+                          given_val, expected_val);
+                }
+            }
+        );
+        ($given:expr , $expected:expr , $epsilon:expr) => (
+            {
+                use core::cmp::ApproxEq;
+
+                let given_val = $given;
+                let expected_val = $expected;
+                let epsilon_val = $epsilon;
+                // check both directions of equality....
+                if !(
+                    given_val.approx_eq_eps(&expected_val, &epsilon_val) &&
+                    expected_val.approx_eq_eps(&given_val, &epsilon_val)
+                ) {
+                    fail!(\"left: %? does not approximately equal right: %? with epsilon: %?\",
+                          given_val, expected_val, epsilon_val);
+                }
+            }
+        )
+    )
+
     macro_rules! condition (
+
+        { pub $c:ident: $in:ty -> $out:ty; } => {
+
+            pub mod $c {
+                fn key(_x: @::core::condition::Handler<$in,$out>) { }
+
+                pub static cond :
+                    ::core::condition::Condition<'static,$in,$out> =
+                    ::core::condition::Condition {
+                        name: stringify!($c),
+                        key: key
+                    };
+            }
+        };
 
         { $c:ident: $in:ty -> $out:ty; } => {
 
-            mod $c {
+            // FIXME (#6009): remove mod's `pub` below once variant above lands.
+            pub mod $c {
                 fn key(_x: @::core::condition::Handler<$in,$out>) { }
 
                 pub static cond :
@@ -721,11 +775,3 @@ mod test {
     }
 
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

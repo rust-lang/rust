@@ -12,5 +12,5 @@ struct foo(int);
 
 fn main() {
     let x = foo(3);
-    *x = 4; //~ ERROR assigning to anonymous field
+    *x = 4; //~ ERROR cannot assign to immutable anonymous field
 }

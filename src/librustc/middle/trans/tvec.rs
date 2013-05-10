@@ -28,7 +28,6 @@ use util::common::indenter;
 use util::ppaux::ty_to_str;
 
 use core::option::None;
-use core::vec;
 use syntax::ast;
 use syntax::codemap;
 
@@ -395,7 +394,7 @@ pub fn write_content(bcx: block,
                         add_clean_temp_mem(bcx, lleltptr, vt.unit_ty);
                         temp_cleanups.push(lleltptr);
                     }
-                    for vec::each(temp_cleanups) |cleanup| {
+                    for temp_cleanups.each |cleanup| {
                         revoke_clean(bcx, *cleanup);
                     }
                 }
@@ -422,11 +421,11 @@ pub fn write_content(bcx: block,
                         expr::trans_to_datum(bcx, element)
                     });
 
-                    let next_bcx = sub_block(bcx, ~"expr_repeat: while next");
-                    let loop_bcx = loop_scope_block(bcx, next_bcx, None, ~"expr_repeat", None);
-                    let cond_bcx = scope_block(loop_bcx, None, ~"expr_repeat: loop cond");
-                    let set_bcx = scope_block(loop_bcx, None, ~"expr_repeat: body: set");
-                    let inc_bcx = scope_block(loop_bcx, None, ~"expr_repeat: body: inc");
+                    let next_bcx = sub_block(bcx, "expr_repeat: while next");
+                    let loop_bcx = loop_scope_block(bcx, next_bcx, None, "expr_repeat", None);
+                    let cond_bcx = scope_block(loop_bcx, None, "expr_repeat: loop cond");
+                    let set_bcx = scope_block(loop_bcx, None, "expr_repeat: body: set");
+                    let inc_bcx = scope_block(loop_bcx, None, "expr_repeat: body: inc");
                     Br(bcx, loop_bcx.llbb);
 
                     let loop_counter = {
@@ -469,7 +468,7 @@ pub fn write_content(bcx: block,
         }
         _ => {
             bcx.tcx().sess.span_bug(content_expr.span,
-                                    ~"Unexpected evec content");
+                                    "Unexpected evec content");
         }
     }
 }
@@ -503,7 +502,7 @@ pub fn elements_required(bcx: block, content_expr: @ast::expr) -> uint {
             ty::eval_repeat_count(bcx.tcx(), count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,
-                                     ~"Unexpected evec content")
+                                     "Unexpected evec content")
     }
 }
 
@@ -562,14 +561,14 @@ pub fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
     let data_end_ptr = pointer_add(bcx, data_ptr, fill);
 
     // Now perform the iteration.
-    let header_bcx = base::sub_block(bcx, ~"iter_vec_loop_header");
+    let header_bcx = base::sub_block(bcx, "iter_vec_loop_header");
     Br(bcx, header_bcx.llbb);
     let data_ptr =
         Phi(header_bcx, val_ty(data_ptr), ~[data_ptr], ~[bcx.llbb]);
     let not_yet_at_end =
         ICmp(header_bcx, lib::llvm::IntULT, data_ptr, data_end_ptr);
-    let body_bcx = base::sub_block(header_bcx, ~"iter_vec_loop_body");
-    let next_bcx = base::sub_block(header_bcx, ~"iter_vec_next");
+    let body_bcx = base::sub_block(header_bcx, "iter_vec_loop_body");
+    let next_bcx = base::sub_block(header_bcx, "iter_vec_next");
     CondBr(header_bcx, not_yet_at_end, body_bcx.llbb, next_bcx.llbb);
     let body_bcx = f(body_bcx, data_ptr, unit_ty);
     AddIncomingToPhi(data_ptr, InBoundsGEP(body_bcx, data_ptr,
@@ -594,13 +593,3 @@ pub fn iter_vec_unboxed(bcx: block, body_ptr: ValueRef, vec_ty: ty::t,
     let dataptr = get_dataptr(bcx, body_ptr);
     return iter_vec_raw(bcx, dataptr, vec_ty, fill, f);
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

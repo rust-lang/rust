@@ -9,14 +9,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-// error-pattern: mismatched types
-
 fn main() {
     type X = int;
     type Y = X;
     if true {
-        type X = str;
-        let y: Y = "hello";
+        type X = &'static str;
+        let y: Y = "hello"; //~ ERROR mismatched types
     }
 }

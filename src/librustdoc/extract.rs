@@ -14,7 +14,7 @@ use astsrv;
 use doc::ItemUtils;
 use doc;
 
-use core::task::local_data::local_data_get;
+use core::local_data::local_data_get;
 use syntax::ast;
 use syntax;
 
@@ -22,7 +22,7 @@ use syntax;
  * there. */
 macro_rules! interner_key (
     () => (cast::transmute::<(uint, uint),
-           &fn(+v: @@syntax::parse::token::ident_interner)>((-3 as uint, 0u)))
+           &fn(v: @@syntax::parse::token::ident_interner)>((-3 as uint, 0u)))
 )
 
 // Hack; rather than thread an interner through everywhere, rely on
@@ -274,7 +274,7 @@ fn structdoc_from_struct(
         item: itemdoc,
         fields: do struct_def.fields.map |field| {
             match field.node.kind {
-                ast::named_field(ident, _, _) => to_str(ident),
+                ast::named_field(ident, _) => to_str(ident),
                 ast::unnamed_field => ~"(unnamed)",
             }
         },

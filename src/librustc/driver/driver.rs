@@ -119,9 +119,8 @@ pub fn build_configuration(sess: Session, argv0: @~str, input: &input) ->
     let default_cfg = default_configuration(sess, argv0, input);
     let user_cfg = /*bad*/copy sess.opts.cfg;
     // If the user wants a test runner, then add the test cfg
-    let user_cfg = append_configuration(
-        user_cfg,
-        if sess.opts.test { ~"test" } else { ~"notest" });
+    let user_cfg = if sess.opts.test { append_configuration(user_cfg, ~"test") }
+                   else { user_cfg };
     // If the user requested GC, then add the GC cfg
     let user_cfg = append_configuration(
         user_cfg,
@@ -225,6 +224,9 @@ pub fn compile_rest(sess: Session,
         time(time_passes, ~"resolution", ||
              middle::resolve::resolve_crate(sess, lang_items, crate));
 
+    time(time_passes, ~"looking for entry point",
+         || middle::entry::find_entry_point(sess, crate, ast_map));
+
     let freevars = time(time_passes, ~"freevar finding", ||
         freevars::annotate_freevars(def_map, crate));
 
@@ -233,7 +235,6 @@ pub fn compile_rest(sess: Session,
 
     let rp_set = time(time_passes, ~"region parameterization inference", ||
         middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
-
 
     let outputs = outputs.get();
 
@@ -263,7 +264,7 @@ pub fn compile_rest(sess: Session,
              middle::check_loop::check_crate(ty_cx, crate));
 
         let middle::moves::MoveMaps {moves_map, variable_moves_map,
-                                     capture_map} =
+                                     moved_variables_set, capture_map} =
             time(time_passes, ~"compute moves", ||
                  middle::moves::compute_moves(ty_cx, method_map, crate));
 
@@ -271,20 +272,19 @@ pub fn compile_rest(sess: Session,
              middle::check_match::check_crate(ty_cx, method_map,
                                               moves_map, crate));
 
-        let last_use_map =
-            time(time_passes, ~"liveness checking", ||
-                 middle::liveness::check_crate(ty_cx, method_map,
-                                               variable_moves_map,
-                                               capture_map, crate));
+        time(time_passes, ~"liveness checking", ||
+             middle::liveness::check_crate(ty_cx, method_map,
+                                           variable_moves_map,
+                                           capture_map, crate));
 
-        let (root_map, mutbl_map, write_guard_map) =
+        let (root_map, write_guard_map) =
             time(time_passes, ~"borrow checking", ||
                  middle::borrowck::check_crate(ty_cx, method_map,
-                                               moves_map, capture_map,
-                                               crate));
+                                               moves_map, moved_variables_set,
+                                               capture_map, crate));
 
         time(time_passes, ~"kind checking", ||
-             kind::check_crate(ty_cx, method_map, last_use_map, crate));
+             kind::check_crate(ty_cx, method_map, crate));
 
         time(time_passes, ~"lint checking", ||
              lint::check_crate(ty_cx, crate));
@@ -292,9 +292,7 @@ pub fn compile_rest(sess: Session,
         if upto == cu_no_trans { return (crate, Some(ty_cx)); }
 
         let maps = astencode::Maps {
-            mutbl_map: mutbl_map,
             root_map: root_map,
-            last_use_map: last_use_map,
             method_map: method_map,
             vtable_map: vtable_map,
             write_guard_map: write_guard_map,
@@ -308,6 +306,11 @@ pub fn compile_rest(sess: Session,
                                       exp_map2, maps))
 
     };
+
+    if (sess.opts.debugging_opts & session::print_link_args) != 0 {
+        io::println(str::connect(link::link_args(sess,
+            &outputs.obj_filename, &outputs.out_filename, link_meta), " "));
+    }
 
     // NB: Android hack
     if sess.targ_cfg.arch == abi::Arm &&
@@ -599,15 +602,10 @@ pub fn build_session_options(binary: @~str,
             link::output_type_bitcode
         } else { link::output_type_exe };
     let sysroot_opt = getopts::opt_maybe_str(matches, ~"sysroot");
-    let sysroot_opt = sysroot_opt.map(|m| Path(*m));
+    let sysroot_opt = sysroot_opt.map(|m| @Path(*m));
     let target_opt = getopts::opt_maybe_str(matches, ~"target");
     let target_feature_opt = getopts::opt_maybe_str(matches, ~"target-feature");
     let save_temps = getopts::opt_present(matches, ~"save-temps");
-    match output_type {
-      // unless we're emitting huamn-readable assembly, omit comments.
-      link::output_type_llvm_assembly | link::output_type_assembly => (),
-      _ => debugging_opts |= session::no_asm_comments
-    }
     let opt_level = {
         if (debugging_opts & session::no_opt) != 0 {
             No
@@ -645,13 +643,21 @@ pub fn build_session_options(binary: @~str,
         Some(s) => s
     };
 
-    let addl_lib_search_paths =
-        getopts::opt_strs(matches, ~"L")
-        .map(|s| Path(*s));
+    let addl_lib_search_paths = getopts::opt_strs(matches, ~"L").map(|s| Path(*s));
+    let linker = getopts::opt_maybe_str(matches, ~"linker");
+    let linker_args = getopts::opt_strs(matches, ~"link-args").flat_map( |a| {
+        let mut args = ~[];
+        for str::each_split_char(*a, ' ') |arg| {
+            args.push(str::from_slice(arg));
+        }
+        args
+    });
+
     let cfg = parse_cfgspecs(getopts::opt_strs(matches, ~"cfg"), demitter);
     let test = opt_present(matches, ~"test");
     let android_cross_path = getopts::opt_maybe_str(
         matches, ~"android-cross-path");
+
     let sopts = @session::options {
         crate_type: crate_type,
         is_static: static,
@@ -664,6 +670,8 @@ pub fn build_session_options(binary: @~str,
         jit: jit,
         output_type: output_type,
         addl_lib_search_paths: addl_lib_search_paths,
+        linker: linker,
+        linker_args: linker_args,
         maybe_sysroot: sysroot_opt,
         target_triple: target,
         target_feature: target_feature,
@@ -737,62 +745,65 @@ pub fn parse_pretty(sess: Session, name: &str) -> pp_mode {
 // rustc command line options
 pub fn optgroups() -> ~[getopts::groups::OptGroup] {
  ~[
-  optflag(~"",  ~"bin", ~"Compile an executable crate (default)"),
-  optflag(~"c", ~"",    ~"Compile and assemble, but do not link"),
-  optmulti(~"", ~"cfg", ~"Configure the compilation
-                          environment", ~"SPEC"),
-  optflag(~"",  ~"emit-llvm",
-                        ~"Produce an LLVM bitcode file"),
-  optflag(~"h", ~"help",~"Display this message"),
-  optmulti(~"L", ~"",   ~"Add a directory to the library search path",
-                              ~"PATH"),
-  optflag(~"",  ~"lib", ~"Compile a library crate"),
-  optflag(~"",  ~"ls",  ~"List the symbols defined by a library crate"),
-  optflag(~"", ~"no-trans",
-                        ~"Run all passes except translation; no output"),
-  optflag(~"O", ~"",    ~"Equivalent to --opt-level=2"),
-  optopt(~"o", ~"",     ~"Write output to <filename>", ~"FILENAME"),
-  optopt(~"", ~"opt-level",
-                        ~"Optimize with possible levels 0-3", ~"LEVEL"),
-  optopt( ~"",  ~"out-dir",
-                        ~"Write output to compiler-chosen filename
-                          in <dir>", ~"DIR"),
-  optflag(~"", ~"parse-only",
-                        ~"Parse only; do not compile, assemble, or link"),
-  optflagopt(~"", ~"pretty",
-                        ~"Pretty-print the input instead of compiling;
+  optflag("",  "bin", "Compile an executable crate (default)"),
+  optflag("c", "",    "Compile and assemble, but do not link"),
+  optmulti("", "cfg", "Configure the compilation
+                          environment", "SPEC"),
+  optflag("",  "emit-llvm",
+                        "Produce an LLVM bitcode file"),
+  optflag("h", "help","Display this message"),
+  optmulti("L", "",   "Add a directory to the library search path",
+                              "PATH"),
+  optflag("",  "lib", "Compile a library crate"),
+  optopt("", "linker", "Program to use for linking instead of the default.", "LINKER"),
+  optmulti("",  "link-args", "FLAGS is a space-separated list of flags
+                            passed to the linker", "FLAGS"),
+  optflag("",  "ls",  "List the symbols defined by a library crate"),
+  optflag("", "no-trans",
+                        "Run all passes except translation; no output"),
+  optflag("O", "",    "Equivalent to --opt-level=2"),
+  optopt("o", "",     "Write output to <filename>", "FILENAME"),
+  optopt("", "opt-level",
+                        "Optimize with possible levels 0-3", "LEVEL"),
+  optopt( "",  "out-dir",
+                        "Write output to compiler-chosen filename
+                          in <dir>", "DIR"),
+  optflag("", "parse-only",
+                        "Parse only; do not compile, assemble, or link"),
+  optflagopt("", "pretty",
+                        "Pretty-print the input instead of compiling;
                           valid types are: normal (un-annotated source),
                           expanded (crates expanded),
                           typed (crates expanded, with type annotations),
                           or identified (fully parenthesized,
-                          AST nodes and blocks with IDs)", ~"TYPE"),
-  optflag(~"S", ~"",    ~"Compile only; do not assemble or link"),
-  optflag(~"", ~"save-temps",
-                        ~"Write intermediate files (.bc, .opt.bc, .o)
+                          AST nodes and blocks with IDs)", "TYPE"),
+  optflag("S", "",    "Compile only; do not assemble or link"),
+  optflag("", "save-temps",
+                        "Write intermediate files (.bc, .opt.bc, .o)
                           in addition to normal output"),
-  optopt(~"", ~"sysroot",
-                        ~"Override the system root", ~"PATH"),
-  optflag(~"", ~"test", ~"Build a test harness"),
-  optopt(~"", ~"target",
-                        ~"Target triple cpu-manufacturer-kernel[-os]
+  optopt("", "sysroot",
+                        "Override the system root", "PATH"),
+  optflag("", "test", "Build a test harness"),
+  optopt("", "target",
+                        "Target triple cpu-manufacturer-kernel[-os]
                           to compile for (see chapter 3.4 of http://www.sourceware.org/autobook/
-                          for detail)", ~"TRIPLE"),
-  optopt(~"", ~"target-feature",
-                        ~"Target specific attributes (llc -mattr=help
-                          for detail)", ~"FEATURE"),
-  optopt(~"", ~"android-cross-path",
-         ~"The path to the Android NDK", "PATH"),
-  optmulti(~"W", ~"warn",
-                        ~"Set lint warnings", ~"OPT"),
-  optmulti(~"A", ~"allow",
-                        ~"Set lint allowed", ~"OPT"),
-  optmulti(~"D", ~"deny",
-                        ~"Set lint denied", ~"OPT"),
-  optmulti(~"F", ~"forbid",
-                        ~"Set lint forbidden", ~"OPT"),
-  optmulti(~"Z", ~"",   ~"Set internal debugging options", "FLAG"),
-  optflag( ~"v", ~"version",
-                        ~"Print version info and exit"),
+                          for detail)", "TRIPLE"),
+  optopt("", "target-feature",
+                        "Target specific attributes (llc -mattr=help
+                          for detail)", "FEATURE"),
+  optopt("", "android-cross-path",
+         "The path to the Android NDK", "PATH"),
+  optmulti("W", "warn",
+                        "Set lint warnings", "OPT"),
+  optmulti("A", "allow",
+                        "Set lint allowed", "OPT"),
+  optmulti("D", "deny",
+                        "Set lint denied", "OPT"),
+  optmulti("F", "forbid",
+                        "Set lint forbidden", "OPT"),
+  optmulti("Z", "",   "Set internal debugging options", "FLAG"),
+  optflag( "v", "version",
+                        "Print version info and exit"),
  ]
 }
 
@@ -936,11 +947,3 @@ mod test {
         assert!((vec::len(test_items) == 1u));
     }
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

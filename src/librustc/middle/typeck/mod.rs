@@ -214,7 +214,7 @@ pub fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
     match tcx.def_map.find(&id) {
       Some(&x) => x,
       _ => {
-        tcx.sess.span_fatal(sp, ~"internal error looking up a definition")
+        tcx.sess.span_fatal(sp, "internal error looking up a definition")
       }
     }
 }
@@ -301,8 +301,7 @@ fn check_main_fn_ty(ccx: @mut CrateCtxt,
                         if ps.is_parameterized() => {
                             tcx.sess.span_err(
                                 main_span,
-                                ~"main function is not allowed \
-                                  to have type parameters");
+                                "main function is not allowed to have type parameters");
                             return;
                         }
                         _ => ()
@@ -343,8 +342,7 @@ fn check_start_fn_ty(ccx: @mut CrateCtxt,
                         if ps.is_parameterized() => {
                             tcx.sess.span_err(
                                 start_span,
-                                ~"start function is not allowed to have type \
-                                parameters");
+                                "start function is not allowed to have type parameters");
                             return;
                         }
                         _ => ()
@@ -395,7 +393,7 @@ fn check_for_entry_fn(ccx: @mut CrateCtxt) {
               Some(session::EntryStart) => check_start_fn_ty(ccx, id, sp),
               None => tcx.sess.bug(~"entry function without a type")
           },
-          None => tcx.sess.err(~"entry function not found")
+          None => tcx.sess.bug(~"type checking without entry function")
         }
     }
 }
@@ -416,7 +414,11 @@ pub fn check_crate(tcx: ty::ctxt,
     time(time_passes, ~"type collecting", ||
         collect::collect_item_types(ccx, crate));
 
-    time(time_passes, ~"method resolution", ||
+    // this ensures that later parts of type checking can assume that items
+    // have valid types and not error
+    tcx.sess.abort_if_errors();
+
+    time(time_passes, ~"coherence checking", ||
         coherence::check_coherence(ccx, crate));
 
     time(time_passes, ~"type checking", ||
@@ -426,12 +428,3 @@ pub fn check_crate(tcx: ty::ctxt,
     tcx.sess.abort_if_errors();
     (ccx.method_map, ccx.vtable_map)
 }
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

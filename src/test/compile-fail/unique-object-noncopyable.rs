@@ -31,4 +31,3 @@ fn main() {
     let y: ~Foo = x as ~Foo;
     let _z = copy y; //~ ERROR copying a value of non-copyable type
 }
-

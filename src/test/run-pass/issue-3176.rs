@@ -20,15 +20,16 @@ pub fn main() {
             p2.recv();
             error!("sibling fails");
             fail!();
-        }   
+        }
         let (p3,c3) = comm::stream();
         c.send(c3);
         c2.send(());
         error!("child blocks");
         let (p, c) = comm::stream();
-        (p, p3).select();
+        let mut tuple = (p, p3);
+        tuple.select();
         c.send(());
-    };  
+    };
     error!("parent tries");
     assert!(!p.recv().try_send(()));
     error!("all done!");

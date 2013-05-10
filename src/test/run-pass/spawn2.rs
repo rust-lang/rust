@@ -11,7 +11,7 @@
 
 pub fn main() { task::spawn(|| child((10, 20, 30, 40, 50, 60, 70, 80, 90)) ); }
 
-fn child(&&args: (int, int, int, int, int, int, int, int, int)) {
+fn child(args: (int, int, int, int, int, int, int, int, int)) {
     let (i1, i2, i3, i4, i5, i6, i7, i8, i9) = args;
     error!(i1);
     error!(i2);
@@ -32,11 +32,3 @@ fn child(&&args: (int, int, int, int, int, int, int, int, int)) {
     assert!((i8 == 80));
     assert!((i9 == 90));
 }
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

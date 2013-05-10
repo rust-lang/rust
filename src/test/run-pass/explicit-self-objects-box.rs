@@ -30,5 +30,3 @@ pub fn main() {
     y.f();
     y.f();
 }
-
-

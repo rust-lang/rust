@@ -194,11 +194,3 @@ pub fn metas_in_cfg(cfg: ast::crate_cfg,
         })
     })
 }
-
-
-// Local Variables:
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

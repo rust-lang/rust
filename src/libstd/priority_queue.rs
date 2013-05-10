@@ -14,8 +14,10 @@ use core::old_iter::BaseIter;
 
 #[abi = "rust-intrinsic"]
 extern "rust-intrinsic" mod rusti {
-    fn move_val_init<T>(dst: &mut T, +src: T);
+    fn move_val_init<T>(dst: &mut T, src: T);
     fn init<T>() -> T;
+    #[cfg(not(stage0))]
+    fn uninit<T>() -> T;
 }
 
 pub struct PriorityQueue<T> {
@@ -45,25 +47,9 @@ impl<T:Ord> Mutable for PriorityQueue<T> {
 
 pub impl <T:Ord> PriorityQueue<T> {
     /// Returns the greatest item in the queue - fails if empty
-    #[cfg(stage0)]
-    fn top(&self) -> &'self T { &self.data[0] }
-
-    /// Returns the greatest item in the queue - fails if empty
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn top<'a>(&'a self) -> &'a T { &self.data[0] }
 
     /// Returns the greatest item in the queue - None if empty
-    #[cfg(stage0)]
-    fn maybe_top(&self) -> Option<&'self T> {
-        if self.is_empty() { None } else { Some(self.top()) }
-    }
-
-    /// Returns the greatest item in the queue - None if empty
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn maybe_top<'a>(&'a self) -> Option<&'a T> {
         if self.is_empty() { None } else { Some(self.top()) }
     }
@@ -148,6 +134,27 @@ pub impl <T:Ord> PriorityQueue<T> {
     // vector over the junk element.  This reduces the constant factor
     // compared to using swaps, which involves twice as many moves.
 
+    #[cfg(not(stage0))]
+    priv fn siftup(&mut self, start: uint, mut pos: uint) {
+        unsafe {
+            let new = *ptr::to_unsafe_ptr(&self.data[pos]);
+
+            while pos > start {
+                let parent = (pos - 1) >> 1;
+                if new > self.data[parent] {
+                    let mut x = rusti::uninit();
+                    x <-> self.data[parent];
+                    rusti::move_val_init(&mut self.data[pos], x);
+                    pos = parent;
+                    loop
+                }
+                break
+            }
+            rusti::move_val_init(&mut self.data[pos], new);
+        }
+    }
+
+    #[cfg(stage0)]
     priv fn siftup(&mut self, start: uint, mut pos: uint) {
         unsafe {
             let new = *ptr::to_unsafe_ptr(&self.data[pos]);
@@ -167,6 +174,32 @@ pub impl <T:Ord> PriorityQueue<T> {
         }
     }
 
+
+    #[cfg(not(stage0))]
+    priv fn siftdown_range(&mut self, mut pos: uint, end: uint) {
+        unsafe {
+            let start = pos;
+            let new = *ptr::to_unsafe_ptr(&self.data[pos]);
+
+            let mut child = 2 * pos + 1;
+            while child < end {
+                let right = child + 1;
+                if right < end && !(self.data[child] > self.data[right]) {
+                    child = right;
+                }
+                let mut x = rusti::uninit();
+                x <-> self.data[child];
+                rusti::move_val_init(&mut self.data[pos], x);
+                pos = child;
+                child = 2 * pos + 1;
+            }
+
+            rusti::move_val_init(&mut self.data[pos], new);
+            self.siftup(start, pos);
+        }
+    }
+
+    #[cfg(stage0)]
     priv fn siftdown_range(&mut self, mut pos: uint, end: uint) {
         unsafe {
             let start = pos;
@@ -286,8 +319,8 @@ mod tests {
     }
 
     fn check_to_vec(data: ~[int]) {
-        let heap = from_vec(data);
-        assert!(merge_sort(heap.to_vec(), le) == merge_sort(data, le));
+        let heap = from_vec(copy data);
+        assert!(merge_sort((copy heap).to_vec(), le) == merge_sort(data, le));
         assert!(heap.to_sorted_vec() == merge_sort(data, le));
     }
 

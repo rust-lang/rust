@@ -62,7 +62,7 @@ pub fn main() {
         calllink09,
         calllink10
     ];
-    let rng = rand::rng();
+    let mut rng = rand::rng();
     for fns.each |f| {
         let f = *f;
         let sz = rng.next() % 256u32 + 256u32;

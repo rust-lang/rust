@@ -11,7 +11,7 @@
 
 # Create variables HOST_<triple> containing the host part
 # of each target triple.  For example, the triple i686-darwin-macos
-# would create a variable HOST_i686-darwin-macos with the value 
+# would create a variable HOST_i686-darwin-macos with the value
 # i386.
 define DEF_HOST_VAR
   HOST_$(1) = $(subst i686,i386,$(word 1,$(subst -, ,$(1))))
@@ -247,12 +247,12 @@ AR_mips-unknown-linux-gnu=mips-linux-gnu-ar
 CFG_LIB_NAME_mips-unknown-linux-gnu=lib$(1).so
 CFG_LIB_GLOB_mips-unknown-linux-gnu=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_mips-unknown-linux-gnu=lib$(1)-*.dylib.dSYM
-CFG_GCCISH_CFLAGS_mips-unknown-linux-gnu := -Wall -g -fPIC -mips32r2 -msoft-float -mabi=32
+CFG_GCCISH_CFLAGS_mips-unknown-linux-gnu := -Wall -g -fPIC -mips32r2 -msoft-float -mabi=32 -mno-compact-eh
 CFG_GCCISH_CXXFLAGS_mips-unknown-linux-gnu := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_mips-unknown-linux-gnu := -shared -fPIC -g -mips32r2 -msoft-float -mabi=32
 CFG_GCCISH_DEF_FLAG_mips-unknown-linux-gnu := -Wl,--export-dynamic,--dynamic-list=
 CFG_GCCISH_PRE_LIB_FLAGS_mips-unknown-linux-gnu := -Wl,-whole-archive
-CFG_GCCISH_POST_LIB_FLAGS_mips-unknown-linux-gnu := -Wl,-no-whole-archive -Wl,-znoexecstack
+CFG_GCCISH_POST_LIB_FLAGS_mips-unknown-linux-gnu := -Wl,-no-whole-archive
 CFG_DEF_SUFFIX_mips-unknown-linux-gnu := .linux.def
 CFG_INSTALL_NAME_mips-unknown-linux-gnu =
 CFG_LIBUV_LINK_FLAGS_mips-unknown-linux-gnu =
@@ -276,8 +276,8 @@ CFG_GCCISH_CFLAGS_i686-pc-mingw32 := -Wall -Werror -g -march=i686
 CFG_GCCISH_CXXFLAGS_i686-pc-mingw32 := -fno-rtti
 CFG_GCCISH_LINK_FLAGS_i686-pc-mingw32 := -shared -fPIC -g
 CFG_GCCISH_DEF_FLAG_i686-pc-mingw32 :=
-CFG_GCCISH_PRE_LIB_FLAGS_i686-pc-mingw32 := 
-CFG_GCCISH_POST_LIB_FLAGS_i686-pc-mingw32 := 
+CFG_GCCISH_PRE_LIB_FLAGS_i686-pc-mingw32 :=
+CFG_GCCISH_POST_LIB_FLAGS_i686-pc-mingw32 :=
 CFG_DEF_SUFFIX_i686-pc-mingw32 := .mingw32.def
 CFG_INSTALL_NAME_i686-pc-mingw32 =
 CFG_LIBUV_LINK_FLAGS_i686-pc-mingw32 := -lWs2_32 -lpsapi -liphlpapi

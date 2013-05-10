@@ -28,60 +28,61 @@ use syntax::ast_util::local_def;
 use syntax::visit::{default_simple_visitor, mk_simple_visitor, SimpleVisitor};
 use syntax::visit::visit_crate;
 
-use core::cast::transmute;
 use core::hashmap::HashMap;
 
 pub enum LangItem {
     ConstTraitLangItem,         // 0
     CopyTraitLangItem,          // 1
     OwnedTraitLangItem,         // 2
-    DurableTraitLangItem,       // 3
 
-    DropTraitLangItem,          // 4
+    DropTraitLangItem,          // 3
 
-    AddTraitLangItem,           // 5
-    SubTraitLangItem,           // 6
-    MulTraitLangItem,           // 7
-    QuotTraitLangItem,          // 8
-    RemTraitLangItem,           // 9
-    NegTraitLangItem,           // 10
-    NotTraitLangItem,           // 11
-    BitXorTraitLangItem,        // 12
-    BitAndTraitLangItem,        // 13
-    BitOrTraitLangItem,         // 14
-    ShlTraitLangItem,           // 15
-    ShrTraitLangItem,           // 16
-    IndexTraitLangItem,         // 17
+    AddTraitLangItem,           // 4
+    SubTraitLangItem,           // 5
+    MulTraitLangItem,           // 6
+    DivTraitLangItem,           // 7
+    RemTraitLangItem,           // 8
+    NegTraitLangItem,           // 9
+    NotTraitLangItem,           // 10
+    BitXorTraitLangItem,        // 11
+    BitAndTraitLangItem,        // 12
+    BitOrTraitLangItem,         // 13
+    ShlTraitLangItem,           // 14
+    ShrTraitLangItem,           // 15
+    IndexTraitLangItem,         // 16
 
-    EqTraitLangItem,            // 18
-    OrdTraitLangItem,           // 19
+    EqTraitLangItem,            // 17
+    OrdTraitLangItem,           // 18
 
-    StrEqFnLangItem,            // 20
-    UniqStrEqFnLangItem,        // 21
-    AnnihilateFnLangItem,       // 22
-    LogTypeFnLangItem,          // 23
-    FailFnLangItem,             // 24
-    FailBoundsCheckFnLangItem,  // 25
-    ExchangeMallocFnLangItem,   // 26
-    ExchangeFreeFnLangItem,     // 27
-    MallocFnLangItem,           // 28
-    FreeFnLangItem,             // 29
-    BorrowAsImmFnLangItem,      // 30
+    StrEqFnLangItem,            // 19
+    UniqStrEqFnLangItem,        // 20
+    AnnihilateFnLangItem,       // 21
+    LogTypeFnLangItem,          // 22
+    FailFnLangItem,             // 23
+    FailBoundsCheckFnLangItem,  // 24
+    ExchangeMallocFnLangItem,   // 25
+    ExchangeFreeFnLangItem,     // 26
+    MallocFnLangItem,           // 27
+    FreeFnLangItem,             // 28
+    BorrowAsImmFnLangItem,      // 29
+    BorrowAsMutFnLangItem,      // 30
     ReturnToMutFnLangItem,      // 31
     CheckNotBorrowedFnLangItem, // 32
     StrDupUniqFnLangItem,       // 33
+    RecordBorrowFnLangItem,     // 34
+    UnrecordBorrowFnLangItem,   // 35
 
-    StartFnLangItem,            // 34
+    StartFnLangItem,            // 36
 }
 
 pub struct LanguageItems {
-    items: [Option<def_id>, ..35]
+    items: [Option<def_id>, ..37]
 }
 
 pub impl LanguageItems {
     pub fn new() -> LanguageItems {
         LanguageItems {
-            items: [ None, ..35 ]
+            items: [ None, ..37 ]
         }
     }
 
@@ -98,42 +99,44 @@ pub impl LanguageItems {
             0  => "const",
             1  => "copy",
             2  => "owned",
-            3  => "durable",
 
-            4  => "drop",
+            3  => "drop",
 
-            5  => "add",
-            6  => "sub",
-            7  => "mul",
-            8  => "quot",
-            9  => "rem",
-            10 => "neg",
-            11 => "not",
-            12 => "bitxor",
-            13 => "bitand",
-            14 => "bitor",
-            15 => "shl",
-            16 => "shr",
-            17 => "index",
-            18 => "eq",
-            19 => "ord",
+            4  => "add",
+            5  => "sub",
+            6  => "mul",
+            7  => "div",
+            8  => "rem",
+            9 => "neg",
+            10 => "not",
+            11 => "bitxor",
+            12 => "bitand",
+            13 => "bitor",
+            14 => "shl",
+            15 => "shr",
+            16 => "index",
+            17 => "eq",
+            18 => "ord",
 
-            20 => "str_eq",
-            21 => "uniq_str_eq",
-            22 => "annihilate",
-            23 => "log_type",
-            24 => "fail_",
-            25 => "fail_bounds_check",
-            26 => "exchange_malloc",
-            27 => "exchange_free",
-            28 => "malloc",
-            29 => "free",
-            30 => "borrow_as_imm",
+            19 => "str_eq",
+            20 => "uniq_str_eq",
+            21 => "annihilate",
+            22 => "log_type",
+            23 => "fail_",
+            24 => "fail_bounds_check",
+            25 => "exchange_malloc",
+            26 => "exchange_free",
+            27 => "malloc",
+            28 => "free",
+            29 => "borrow_as_imm",
+            30 => "borrow_as_mut",
             31 => "return_to_mut",
             32 => "check_not_borrowed",
             33 => "strdup_uniq",
+            34 => "record_borrow",
+            35 => "unrecord_borrow",
 
-            34 => "start",
+            36 => "start",
 
             _ => "???"
         }
@@ -150,9 +153,6 @@ pub impl LanguageItems {
     pub fn owned_trait(&const self) -> def_id {
         self.items[OwnedTraitLangItem as uint].get()
     }
-    pub fn durable_trait(&const self) -> def_id {
-        self.items[DurableTraitLangItem as uint].get()
-    }
 
     pub fn drop_trait(&const self) -> def_id {
         self.items[DropTraitLangItem as uint].get()
@@ -167,8 +167,8 @@ pub impl LanguageItems {
     pub fn mul_trait(&const self) -> def_id {
         self.items[MulTraitLangItem as uint].get()
     }
-    pub fn quot_trait(&const self) -> def_id {
-        self.items[QuotTraitLangItem as uint].get()
+    pub fn div_trait(&const self) -> def_id {
+        self.items[DivTraitLangItem as uint].get()
     }
     pub fn rem_trait(&const self) -> def_id {
         self.items[RemTraitLangItem as uint].get()
@@ -238,6 +238,9 @@ pub impl LanguageItems {
     pub fn borrow_as_imm_fn(&const self) -> def_id {
         self.items[BorrowAsImmFnLangItem as uint].get()
     }
+    pub fn borrow_as_mut_fn(&const self) -> def_id {
+        self.items[BorrowAsMutFnLangItem as uint].get()
+    }
     pub fn return_to_mut_fn(&const self) -> def_id {
         self.items[ReturnToMutFnLangItem as uint].get()
     }
@@ -247,28 +250,32 @@ pub impl LanguageItems {
     pub fn strdup_uniq_fn(&const self) -> def_id {
         self.items[StrDupUniqFnLangItem as uint].get()
     }
+    pub fn record_borrow_fn(&const self) -> def_id {
+        self.items[RecordBorrowFnLangItem as uint].get()
+    }
+    pub fn unrecord_borrow_fn(&const self) -> def_id {
+        self.items[UnrecordBorrowFnLangItem as uint].get()
+    }
     pub fn start_fn(&const self) -> def_id {
         self.items[StartFnLangItem as uint].get()
     }
 }
 
-fn LanguageItemCollector<'r>(crate: @crate,
-                             session: Session,
-                             items: &'r mut LanguageItems)
-                          -> LanguageItemCollector<'r> {
+fn LanguageItemCollector(crate: @crate,
+                         session: Session)
+                      -> LanguageItemCollector {
     let mut item_refs = HashMap::new();
 
     item_refs.insert(@~"const", ConstTraitLangItem as uint);
     item_refs.insert(@~"copy", CopyTraitLangItem as uint);
     item_refs.insert(@~"owned", OwnedTraitLangItem as uint);
-    item_refs.insert(@~"durable", DurableTraitLangItem as uint);
 
     item_refs.insert(@~"drop", DropTraitLangItem as uint);
 
     item_refs.insert(@~"add", AddTraitLangItem as uint);
     item_refs.insert(@~"sub", SubTraitLangItem as uint);
     item_refs.insert(@~"mul", MulTraitLangItem as uint);
-    item_refs.insert(@~"quot", QuotTraitLangItem as uint);
+    item_refs.insert(@~"div", DivTraitLangItem as uint);
     item_refs.insert(@~"rem", RemTraitLangItem as uint);
     item_refs.insert(@~"neg", NegTraitLangItem as uint);
     item_refs.insert(@~"not", NotTraitLangItem as uint);
@@ -294,22 +301,25 @@ fn LanguageItemCollector<'r>(crate: @crate,
     item_refs.insert(@~"malloc", MallocFnLangItem as uint);
     item_refs.insert(@~"free", FreeFnLangItem as uint);
     item_refs.insert(@~"borrow_as_imm", BorrowAsImmFnLangItem as uint);
+    item_refs.insert(@~"borrow_as_mut", BorrowAsMutFnLangItem as uint);
     item_refs.insert(@~"return_to_mut", ReturnToMutFnLangItem as uint);
     item_refs.insert(@~"check_not_borrowed",
                      CheckNotBorrowedFnLangItem as uint);
     item_refs.insert(@~"strdup_uniq", StrDupUniqFnLangItem as uint);
+    item_refs.insert(@~"record_borrow", RecordBorrowFnLangItem as uint);
+    item_refs.insert(@~"unrecord_borrow", UnrecordBorrowFnLangItem as uint);
     item_refs.insert(@~"start", StartFnLangItem as uint);
 
     LanguageItemCollector {
         crate: crate,
         session: session,
-        items: items,
+        items: LanguageItems::new(),
         item_refs: item_refs
     }
 }
 
-struct LanguageItemCollector<'self> {
-    items: &'self mut LanguageItems,
+struct LanguageItemCollector {
+    items: LanguageItems,
 
     crate: @crate,
     session: Session,
@@ -317,8 +327,8 @@ struct LanguageItemCollector<'self> {
     item_refs: HashMap<@~str, uint>,
 }
 
-pub impl<'self> LanguageItemCollector<'self> {
-    fn match_and_collect_meta_item(&self, item_def_id: def_id,
+pub impl LanguageItemCollector {
+    fn match_and_collect_meta_item(&mut self, item_def_id: def_id,
                                    meta_item: @meta_item) {
         match meta_item.node {
             meta_name_value(key, literal) => {
@@ -333,7 +343,7 @@ pub impl<'self> LanguageItemCollector<'self> {
         }
     }
 
-    fn collect_item(&self, item_index: uint, item_def_id: def_id) {
+    fn collect_item(&mut self, item_index: uint, item_def_id: def_id) {
         // Check for duplicates.
         match self.items.items[item_index] {
             Some(original_def_id) if original_def_id != item_def_id => {
@@ -349,42 +359,45 @@ pub impl<'self> LanguageItemCollector<'self> {
         self.items.items[item_index] = Some(item_def_id);
     }
 
-    fn match_and_collect_item(&self,
+    fn match_and_collect_item(&mut self,
                               item_def_id: def_id, key: @~str, value: @~str) {
         if *key != ~"lang" {
             return;    // Didn't match.
         }
 
-        match self.item_refs.find(&value) {
+        let item_index = self.item_refs.find(&value).map(|x| **x);
+        // prevent borrow checker from considering   ^~~~~~~~~~~
+        // self to be borrowed (annoying)
+
+        match item_index {
+            Some(item_index) => {
+                self.collect_item(item_index, item_def_id);
+            }
             None => {
                 // Didn't match.
-            }
-            Some(&item_index) => {
-                self.collect_item(item_index, item_def_id)
+                return;
             }
         }
     }
 
-    fn collect_local_language_items(&self) {
-        unsafe {
-            let this: *LanguageItemCollector<'self> = transmute(self);
-            visit_crate(self.crate, (), mk_simple_visitor(@SimpleVisitor {
-                visit_item: |item| {
-                    for item.attrs.each |attribute| {
-                        unsafe {
-                            (*this).match_and_collect_meta_item(
-                                local_def(item.id),
-                                attribute.node.value
-                            );
-                        }
+    fn collect_local_language_items(&mut self) {
+        let this: *mut LanguageItemCollector = &mut *self;
+        visit_crate(self.crate, (), mk_simple_visitor(@SimpleVisitor {
+            visit_item: |item| {
+                for item.attrs.each |attribute| {
+                    unsafe {
+                        (*this).match_and_collect_meta_item(
+                            local_def(item.id),
+                            attribute.node.value
+                        );
                     }
-                },
-                .. *default_simple_visitor()
-            }));
-        }
+                }
+            },
+            .. *default_simple_visitor()
+        }));
     }
 
-    fn collect_external_language_items(&self) {
+    fn collect_external_language_items(&mut self) {
         let crate_store = self.session.cstore;
         do iter_crate_data(crate_store) |crate_number, _crate_metadata| {
             for each_lang_item(crate_store, crate_number)
@@ -408,7 +421,7 @@ pub impl<'self> LanguageItemCollector<'self> {
         }
     }
 
-    fn collect(&self) {
+    fn collect(&mut self) {
         self.collect_local_language_items();
         self.collect_external_language_items();
         self.check_completeness();
@@ -418,9 +431,8 @@ pub impl<'self> LanguageItemCollector<'self> {
 pub fn collect_language_items(crate: @crate,
                               session: Session)
                            -> LanguageItems {
-    let mut items = LanguageItems::new();
-    let collector = LanguageItemCollector(crate, session, &mut items);
+    let mut collector = LanguageItemCollector(crate, session);
     collector.collect();
-    copy items
+    let LanguageItemCollector { items, _ } = collector;
+    items
 }
-

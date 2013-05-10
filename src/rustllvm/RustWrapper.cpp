@@ -120,18 +120,18 @@ void LLVMRustInitializeTargets() {
   LLVMInitializeX86TargetMC();
   LLVMInitializeX86AsmPrinter();
   LLVMInitializeX86AsmParser();
-	
+
   LLVMInitializeARMTargetInfo();
   LLVMInitializeARMTarget();
   LLVMInitializeARMTargetMC();
   LLVMInitializeARMAsmPrinter();
-  LLVMInitializeARMAsmParser();	
+  LLVMInitializeARMAsmParser();
 
   LLVMInitializeMipsTargetInfo();
   LLVMInitializeMipsTarget();
   LLVMInitializeMipsTargetMC();
   LLVMInitializeMipsAsmPrinter();
-  LLVMInitializeMipsAsmParser();	
+  LLVMInitializeMipsAsmParser();
 }
 
 // Custom memory manager for MCJITting. It needs special features
@@ -438,7 +438,7 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
                         const char *path,
                         TargetMachine::CodeGenFileType FileType,
                         CodeGenOpt::Level OptLevel,
-			bool EnableSegmentedStacks) {
+      bool EnableSegmentedStacks) {
 
   LLVMRustInitializeTargets();
 
@@ -449,7 +449,7 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   if (!EnableARMEHABI) {
     int argc = 3;
     const char* argv[] = {"rustc", "-arm-enable-ehabi",
-			  "-arm-enable-ehabi-descriptors"};
+        "-arm-enable-ehabi-descriptors"};
     cl::ParseCommandLineOptions(argc, argv);
   }
 
@@ -467,8 +467,8 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   const Target *TheTarget = TargetRegistry::lookupTarget(Trip, Err);
   TargetMachine *Target =
     TheTarget->createTargetMachine(Trip, CPUStr, FeaturesStr,
-				   Options, Reloc::PIC_,
-				   CodeModel::Default, OptLevel);
+           Options, Reloc::PIC_,
+           CodeModel::Default, OptLevel);
   Target->addAnalysisPasses(*PM);
 
   bool NoVerify = false;
@@ -511,10 +511,10 @@ extern "C" LLVMValueRef LLVMRustConstSmallInt(LLVMTypeRef IntTy, unsigned N,
   return LLVMConstInt(IntTy, (unsigned long long)N, SignExtend);
 }
 
-extern "C" LLVMValueRef LLVMRustConstInt(LLVMTypeRef IntTy, 
-					 unsigned N_hi,
-					 unsigned N_lo,
-					 LLVMBool SignExtend) {
+extern "C" LLVMValueRef LLVMRustConstInt(LLVMTypeRef IntTy,
+           unsigned N_hi,
+           unsigned N_lo,
+           LLVMBool SignExtend) {
   unsigned long long N = N_hi;
   N <<= 32;
   N |= N_lo;

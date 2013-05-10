@@ -54,17 +54,17 @@ pub fn check_crate(tcx: ty::ctxt, crate: @crate) {
               }
               expr_break(_) => {
                 if !cx.in_loop {
-                    tcx.sess.span_err(e.span, ~"`break` outside of loop");
+                    tcx.sess.span_err(e.span, "`break` outside of loop");
                 }
               }
               expr_again(_) => {
                 if !cx.in_loop {
-                    tcx.sess.span_err(e.span, ~"`again` outside of loop");
+                    tcx.sess.span_err(e.span, "`again` outside of loop");
                 }
               }
               expr_ret(oe) => {
                 if !cx.can_ret {
-                    tcx.sess.span_err(e.span, ~"`return` in block function");
+                    tcx.sess.span_err(e.span, "`return` in block function");
                 }
                 visit::visit_expr_opt(oe, cx, v);
               }

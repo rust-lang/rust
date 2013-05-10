@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Regresion test for issue #4935
+// Regression test for issue #4935
 
 fn foo(a: uint) {}
 fn main() { foo(5, 6) } //~ ERROR this function takes 1 parameter but 2 parameters were supplied

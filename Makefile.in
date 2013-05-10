@@ -101,7 +101,7 @@ endif
 
 ifdef CFG_ENABLE_DEBUG
   $(info cfg: enabling more debugging (CFG_ENABLE_DEBUG))
-  CFG_RUSTC_FLAGS +=
+  CFG_RUSTC_FLAGS += --cfg debug
   CFG_GCCISH_CFLAGS += -DRUST_DEBUG
 else
   CFG_GCCISH_CFLAGS += -DRUST_NDEBUG
@@ -109,6 +109,9 @@ endif
 
 ifdef SAVE_TEMPS
   CFG_RUSTC_FLAGS += --save-temps
+endif
+ifdef ASM_COMMENTS
+  CFG_RUSTC_FLAGS += -z asm-comments
 endif
 ifdef TIME_PASSES
   CFG_RUSTC_FLAGS += -Z time-passes
@@ -238,7 +241,7 @@ $(foreach target,$(CFG_TARGET_TRIPLES),\
 
 CORELIB_CRATE := $(S)src/libcore/core.rc
 CORELIB_INPUTS := $(wildcard $(addprefix $(S)src/libcore/,        \
-                                           core.rc *.rs */*.rs */*/*rs))
+                                           core.rc *.rs */*.rs */*/*rs */*/*/*rs))
 
 ######################################################################
 # Standard library variables

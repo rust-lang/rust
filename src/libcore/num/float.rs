@@ -20,17 +20,16 @@
 
 // PORT this must match in width according to architecture
 
-use from_str;
 use libc::c_int;
 use num::{Zero, One, strconv};
+use num::FPCategory;
 use prelude::*;
 
-pub use f64::{add, sub, mul, quot, rem, lt, le, eq, ne, ge, gt};
-pub use f64::logarithm;
+pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
 pub use f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
-pub use f64::{erf, erfc, exp, expm1, exp2, abs_sub};
+pub use f64::{erf, erfc, exp, exp_m1, exp2, abs_sub};
 pub use f64::{mul_add, fmax, fmin, next_after, frexp, hypot, ldexp};
-pub use f64::{lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix};
+pub use f64::{lgamma, ln, log_radix, ln_1p, log10, log2, ilog_radix};
 pub use f64::{modf, pow, powi, round, sinh, tanh, tgamma, trunc};
 pub use f64::{j0, j1, jn, y0, y1, yn};
 
@@ -289,7 +288,7 @@ pub fn from_str_radix(num: &str, radix: uint) -> Option<float> {
                              strconv::ExpNone, false, false)
 }
 
-impl from_str::FromStr for float {
+impl FromStr for float {
     #[inline(always)]
     fn from_str(val: &str) -> Option<float> { from_str(val) }
 }
@@ -364,7 +363,7 @@ pub fn tan(x: float) -> float {
 
 impl Num for float {}
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Eq for float {
     #[inline(always)]
     fn eq(&self, other: &float) -> bool { (*self) == (*other) }
@@ -372,7 +371,23 @@ impl Eq for float {
     fn ne(&self, other: &float) -> bool { (*self) != (*other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
+impl ApproxEq<float> for float {
+    #[inline(always)]
+    fn approx_epsilon() -> float { 1.0e-6 }
+
+    #[inline(always)]
+    fn approx_eq(&self, other: &float) -> bool {
+        self.approx_eq_eps(other, &ApproxEq::approx_epsilon::<float, float>())
+    }
+
+    #[inline(always)]
+    fn approx_eq_eps(&self, other: &float, approx_epsilon: &float) -> bool {
+        (*self - *other).abs() < *approx_epsilon
+    }
+}
+
+#[cfg(not(test))]
 impl Ord for float {
     #[inline(always)]
     fn lt(&self, other: &float) -> bool { (*self) < (*other) }
@@ -518,31 +533,37 @@ impl Trigonometric for float {
 }
 
 impl Exponential for float {
+    /// Returns the exponential of the number
     #[inline(always)]
     fn exp(&self) -> float {
         (*self as f64).exp() as float
     }
 
+    /// Returns 2 raised to the power of the number
     #[inline(always)]
     fn exp2(&self) -> float {
         (*self as f64).exp2() as float
     }
 
+    /// Returns the natural logarithm of the number
     #[inline(always)]
-    fn expm1(&self) -> float {
-        (*self as f64).expm1() as float
+    fn ln(&self) -> float {
+        (*self as f64).ln() as float
     }
 
+    /// Returns the logarithm of the number with respect to an arbitrary base
     #[inline(always)]
-    fn log(&self) -> float {
-        (*self as f64).log() as float
+    fn log(&self, base: float) -> float {
+        (*self as f64).log(base as f64) as float
     }
 
+    /// Returns the base 2 logarithm of the number
     #[inline(always)]
     fn log2(&self) -> float {
         (*self as f64).log2() as float
     }
 
+    /// Returns the base 10 logarithm of the number
     #[inline(always)]
     fn log10(&self) -> float {
         (*self as f64).log10() as float
@@ -627,13 +648,13 @@ impl Real for float {
     #[inline(always)]
     fn log10_e() -> float { 0.434294481903251827651128918916605082 }
 
-    /// log(2.0)
+    /// ln(2.0)
     #[inline(always)]
-    fn log_2() -> float { 0.693147180559945309417232121458176568 }
+    fn ln_2() -> float { 0.693147180559945309417232121458176568 }
 
-    /// log(10.0)
+    /// ln(10.0)
     #[inline(always)]
-    fn log_10() -> float { 2.30258509299404568401799145468436421 }
+    fn ln_10() -> float { 2.30258509299404568401799145468436421 }
 
     /// Converts to degrees, assuming the number is in radians
     #[inline(always)]
@@ -674,45 +695,36 @@ impl RealExt for float {
     fn yn(&self, n: int) -> float { yn(n as c_int, *self as f64) as float }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Add<float,float> for float {
     #[inline(always)]
     fn add(&self, other: &float) -> float { *self + *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Sub<float,float> for float {
     #[inline(always)]
     fn sub(&self, other: &float) -> float { *self - *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Mul<float,float> for float {
     #[inline(always)]
     fn mul(&self, other: &float) -> float { *self * *other }
 }
 
-#[cfg(stage0,notest)]
+#[cfg(not(test))]
 impl Div<float,float> for float {
     #[inline(always)]
     fn div(&self, other: &float) -> float { *self / *other }
 }
-#[cfg(not(stage0),notest)]
-impl Quot<float,float> for float {
-    #[inline(always)]
-    fn quot(&self, other: &float) -> float { *self / *other }
-}
-#[cfg(stage0,notest)]
-impl Modulo<float,float> for float {
-    #[inline(always)]
-    fn modulo(&self, other: &float) -> float { *self % *other }
-}
-#[cfg(not(stage0),notest)]
+
+#[cfg(not(test))]
 impl Rem<float,float> for float {
     #[inline(always)]
     fn rem(&self, other: &float) -> float { *self % *other }
 }
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Neg<float> for float {
     #[inline(always)]
     fn neg(&self) -> float { -*self }
@@ -722,6 +734,15 @@ impl Signed for float {
     /// Computes the absolute value. Returns `NaN` if the number is `NaN`.
     #[inline(always)]
     fn abs(&self) -> float { abs(*self) }
+
+    ///
+    /// The positive difference of two numbers. Returns `0.0` if the number is less than or
+    /// equal to `other`, otherwise the difference between`self` and `other` is returned.
+    ///
+    #[inline(always)]
+    fn abs_sub(&self, other: &float) -> float {
+        (*self as f64).abs_sub(&(*other as f64)) as float
+    }
 
     ///
     /// # Returns
@@ -762,19 +783,37 @@ impl Primitive for float {
 
 impl Float for float {
     #[inline(always)]
-    fn NaN() -> float { 0.0 / 0.0 }
+    fn NaN() -> float { Float::NaN::<f64>() as float }
 
     #[inline(always)]
-    fn infinity() -> float { 1.0 / 0.0 }
+    fn infinity() -> float { Float::infinity::<f64>() as float }
 
     #[inline(always)]
-    fn neg_infinity() -> float { -1.0 / 0.0 }
+    fn neg_infinity() -> float { Float::neg_infinity::<f64>() as float }
 
     #[inline(always)]
-    fn neg_zero() -> float { -0.0 }
+    fn neg_zero() -> float { Float::neg_zero::<f64>() as float }
 
+    /// Returns `true` if the number is NaN
     #[inline(always)]
-    fn is_NaN(&self) -> bool { *self != *self }
+    fn is_NaN(&self) -> bool { (*self as f64).is_NaN() }
+
+    /// Returns `true` if the number is infinite
+    #[inline(always)]
+    fn is_infinite(&self) -> bool { (*self as f64).is_infinite() }
+
+    /// Returns `true` if the number is neither infinite or NaN
+    #[inline(always)]
+    fn is_finite(&self) -> bool { (*self as f64).is_finite() }
+
+    /// Returns `true` if the number is neither zero, infinite, subnormal or NaN
+    #[inline(always)]
+    fn is_normal(&self) -> bool { (*self as f64).is_normal() }
+
+    /// Returns the floating point category of the number. If only one property is going to
+    /// be tested, it is generally faster to use the specific predicate instead.
+    #[inline(always)]
+    fn classify(&self) -> FPCategory { (*self as f64).classify() }
 
     #[inline(always)]
     fn mantissa_digits() -> uint { Float::mantissa_digits::<f64>() }
@@ -797,17 +836,21 @@ impl Float for float {
     #[inline(always)]
     fn max_10_exp() -> int { Float::max_10_exp::<f64>() }
 
-    /// Returns `true` if the number is infinite
+    ///
+    /// Returns the exponential of the number, minus `1`, in a way that is accurate
+    /// even if the number is close to zero
+    ///
     #[inline(always)]
-    fn is_infinite(&self) -> bool {
-        *self == Float::infinity() || *self == Float::neg_infinity()
+    fn exp_m1(&self) -> float {
+        (*self as f64).exp_m1() as float
     }
 
-    /// Returns `true` if the number is finite
+    ///
+    /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more accurately
+    /// than if the operations were performed separately
+    ///
     #[inline(always)]
-    fn is_finite(&self) -> bool {
-        !(self.is_NaN() || self.is_infinite())
-    }
+    fn ln_1p(&self) -> float { (*self as f64).ln_1p() as float }
 
     ///
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
@@ -828,17 +871,9 @@ impl Float for float {
 
 #[cfg(test)]
 mod tests {
+    use num::*;
     use super::*;
     use prelude::*;
-
-    macro_rules! assert_fuzzy_eq(
-        ($a:expr, $b:expr) => ({
-            let a = $a, b = $b;
-            if !((a - b).abs() < 1.0e-6) {
-                fail!(fmt!("The values were not approximately equal. Found: %? and %?", a, b));
-            }
-        })
-    )
 
     #[test]
     fn test_num() {
@@ -869,95 +904,95 @@ mod tests {
 
     #[test]
     fn test_floor() {
-        assert_fuzzy_eq!(1.0f.floor(), 1.0f);
-        assert_fuzzy_eq!(1.3f.floor(), 1.0f);
-        assert_fuzzy_eq!(1.5f.floor(), 1.0f);
-        assert_fuzzy_eq!(1.7f.floor(), 1.0f);
-        assert_fuzzy_eq!(0.0f.floor(), 0.0f);
-        assert_fuzzy_eq!((-0.0f).floor(), -0.0f);
-        assert_fuzzy_eq!((-1.0f).floor(), -1.0f);
-        assert_fuzzy_eq!((-1.3f).floor(), -2.0f);
-        assert_fuzzy_eq!((-1.5f).floor(), -2.0f);
-        assert_fuzzy_eq!((-1.7f).floor(), -2.0f);
+        assert_approx_eq!(1.0f.floor(), 1.0f);
+        assert_approx_eq!(1.3f.floor(), 1.0f);
+        assert_approx_eq!(1.5f.floor(), 1.0f);
+        assert_approx_eq!(1.7f.floor(), 1.0f);
+        assert_approx_eq!(0.0f.floor(), 0.0f);
+        assert_approx_eq!((-0.0f).floor(), -0.0f);
+        assert_approx_eq!((-1.0f).floor(), -1.0f);
+        assert_approx_eq!((-1.3f).floor(), -2.0f);
+        assert_approx_eq!((-1.5f).floor(), -2.0f);
+        assert_approx_eq!((-1.7f).floor(), -2.0f);
     }
 
     #[test]
     fn test_ceil() {
-        assert_fuzzy_eq!(1.0f.ceil(), 1.0f);
-        assert_fuzzy_eq!(1.3f.ceil(), 2.0f);
-        assert_fuzzy_eq!(1.5f.ceil(), 2.0f);
-        assert_fuzzy_eq!(1.7f.ceil(), 2.0f);
-        assert_fuzzy_eq!(0.0f.ceil(), 0.0f);
-        assert_fuzzy_eq!((-0.0f).ceil(), -0.0f);
-        assert_fuzzy_eq!((-1.0f).ceil(), -1.0f);
-        assert_fuzzy_eq!((-1.3f).ceil(), -1.0f);
-        assert_fuzzy_eq!((-1.5f).ceil(), -1.0f);
-        assert_fuzzy_eq!((-1.7f).ceil(), -1.0f);
+        assert_approx_eq!(1.0f.ceil(), 1.0f);
+        assert_approx_eq!(1.3f.ceil(), 2.0f);
+        assert_approx_eq!(1.5f.ceil(), 2.0f);
+        assert_approx_eq!(1.7f.ceil(), 2.0f);
+        assert_approx_eq!(0.0f.ceil(), 0.0f);
+        assert_approx_eq!((-0.0f).ceil(), -0.0f);
+        assert_approx_eq!((-1.0f).ceil(), -1.0f);
+        assert_approx_eq!((-1.3f).ceil(), -1.0f);
+        assert_approx_eq!((-1.5f).ceil(), -1.0f);
+        assert_approx_eq!((-1.7f).ceil(), -1.0f);
     }
 
     #[test]
     fn test_round() {
-        assert_fuzzy_eq!(1.0f.round(), 1.0f);
-        assert_fuzzy_eq!(1.3f.round(), 1.0f);
-        assert_fuzzy_eq!(1.5f.round(), 2.0f);
-        assert_fuzzy_eq!(1.7f.round(), 2.0f);
-        assert_fuzzy_eq!(0.0f.round(), 0.0f);
-        assert_fuzzy_eq!((-0.0f).round(), -0.0f);
-        assert_fuzzy_eq!((-1.0f).round(), -1.0f);
-        assert_fuzzy_eq!((-1.3f).round(), -1.0f);
-        assert_fuzzy_eq!((-1.5f).round(), -2.0f);
-        assert_fuzzy_eq!((-1.7f).round(), -2.0f);
+        assert_approx_eq!(1.0f.round(), 1.0f);
+        assert_approx_eq!(1.3f.round(), 1.0f);
+        assert_approx_eq!(1.5f.round(), 2.0f);
+        assert_approx_eq!(1.7f.round(), 2.0f);
+        assert_approx_eq!(0.0f.round(), 0.0f);
+        assert_approx_eq!((-0.0f).round(), -0.0f);
+        assert_approx_eq!((-1.0f).round(), -1.0f);
+        assert_approx_eq!((-1.3f).round(), -1.0f);
+        assert_approx_eq!((-1.5f).round(), -2.0f);
+        assert_approx_eq!((-1.7f).round(), -2.0f);
     }
 
     #[test]
     fn test_trunc() {
-        assert_fuzzy_eq!(1.0f.trunc(), 1.0f);
-        assert_fuzzy_eq!(1.3f.trunc(), 1.0f);
-        assert_fuzzy_eq!(1.5f.trunc(), 1.0f);
-        assert_fuzzy_eq!(1.7f.trunc(), 1.0f);
-        assert_fuzzy_eq!(0.0f.trunc(), 0.0f);
-        assert_fuzzy_eq!((-0.0f).trunc(), -0.0f);
-        assert_fuzzy_eq!((-1.0f).trunc(), -1.0f);
-        assert_fuzzy_eq!((-1.3f).trunc(), -1.0f);
-        assert_fuzzy_eq!((-1.5f).trunc(), -1.0f);
-        assert_fuzzy_eq!((-1.7f).trunc(), -1.0f);
+        assert_approx_eq!(1.0f.trunc(), 1.0f);
+        assert_approx_eq!(1.3f.trunc(), 1.0f);
+        assert_approx_eq!(1.5f.trunc(), 1.0f);
+        assert_approx_eq!(1.7f.trunc(), 1.0f);
+        assert_approx_eq!(0.0f.trunc(), 0.0f);
+        assert_approx_eq!((-0.0f).trunc(), -0.0f);
+        assert_approx_eq!((-1.0f).trunc(), -1.0f);
+        assert_approx_eq!((-1.3f).trunc(), -1.0f);
+        assert_approx_eq!((-1.5f).trunc(), -1.0f);
+        assert_approx_eq!((-1.7f).trunc(), -1.0f);
     }
 
     #[test]
     fn test_fract() {
-        assert_fuzzy_eq!(1.0f.fract(), 0.0f);
-        assert_fuzzy_eq!(1.3f.fract(), 0.3f);
-        assert_fuzzy_eq!(1.5f.fract(), 0.5f);
-        assert_fuzzy_eq!(1.7f.fract(), 0.7f);
-        assert_fuzzy_eq!(0.0f.fract(), 0.0f);
-        assert_fuzzy_eq!((-0.0f).fract(), -0.0f);
-        assert_fuzzy_eq!((-1.0f).fract(), -0.0f);
-        assert_fuzzy_eq!((-1.3f).fract(), -0.3f);
-        assert_fuzzy_eq!((-1.5f).fract(), -0.5f);
-        assert_fuzzy_eq!((-1.7f).fract(), -0.7f);
+        assert_approx_eq!(1.0f.fract(), 0.0f);
+        assert_approx_eq!(1.3f.fract(), 0.3f);
+        assert_approx_eq!(1.5f.fract(), 0.5f);
+        assert_approx_eq!(1.7f.fract(), 0.7f);
+        assert_approx_eq!(0.0f.fract(), 0.0f);
+        assert_approx_eq!((-0.0f).fract(), -0.0f);
+        assert_approx_eq!((-1.0f).fract(), -0.0f);
+        assert_approx_eq!((-1.3f).fract(), -0.3f);
+        assert_approx_eq!((-1.5f).fract(), -0.5f);
+        assert_approx_eq!((-1.7f).fract(), -0.7f);
     }
 
     #[test]
     fn test_real_consts() {
-        assert_fuzzy_eq!(Real::two_pi::<float>(), 2f * Real::pi::<float>());
-        assert_fuzzy_eq!(Real::frac_pi_2::<float>(), Real::pi::<float>() / 2f);
-        assert_fuzzy_eq!(Real::frac_pi_3::<float>(), Real::pi::<float>() / 3f);
-        assert_fuzzy_eq!(Real::frac_pi_4::<float>(), Real::pi::<float>() / 4f);
-        assert_fuzzy_eq!(Real::frac_pi_6::<float>(), Real::pi::<float>() / 6f);
-        assert_fuzzy_eq!(Real::frac_pi_8::<float>(), Real::pi::<float>() / 8f);
-        assert_fuzzy_eq!(Real::frac_1_pi::<float>(), 1f / Real::pi::<float>());
-        assert_fuzzy_eq!(Real::frac_2_pi::<float>(), 2f / Real::pi::<float>());
-        assert_fuzzy_eq!(Real::frac_2_sqrtpi::<float>(), 2f / Real::pi::<float>().sqrt());
-        assert_fuzzy_eq!(Real::sqrt2::<float>(), 2f.sqrt());
-        assert_fuzzy_eq!(Real::frac_1_sqrt2::<float>(), 1f / 2f.sqrt());
-        assert_fuzzy_eq!(Real::log2_e::<float>(), Real::e::<float>().log2());
-        assert_fuzzy_eq!(Real::log10_e::<float>(), Real::e::<float>().log10());
-        assert_fuzzy_eq!(Real::log_2::<float>(), 2f.log());
-        assert_fuzzy_eq!(Real::log_10::<float>(), 10f.log());
+        assert_approx_eq!(Real::two_pi::<float>(), 2f * Real::pi::<float>());
+        assert_approx_eq!(Real::frac_pi_2::<float>(), Real::pi::<float>() / 2f);
+        assert_approx_eq!(Real::frac_pi_3::<float>(), Real::pi::<float>() / 3f);
+        assert_approx_eq!(Real::frac_pi_4::<float>(), Real::pi::<float>() / 4f);
+        assert_approx_eq!(Real::frac_pi_6::<float>(), Real::pi::<float>() / 6f);
+        assert_approx_eq!(Real::frac_pi_8::<float>(), Real::pi::<float>() / 8f);
+        assert_approx_eq!(Real::frac_1_pi::<float>(), 1f / Real::pi::<float>());
+        assert_approx_eq!(Real::frac_2_pi::<float>(), 2f / Real::pi::<float>());
+        assert_approx_eq!(Real::frac_2_sqrtpi::<float>(), 2f / Real::pi::<float>().sqrt());
+        assert_approx_eq!(Real::sqrt2::<float>(), 2f.sqrt());
+        assert_approx_eq!(Real::frac_1_sqrt2::<float>(), 1f / 2f.sqrt());
+        assert_approx_eq!(Real::log2_e::<float>(), Real::e::<float>().log2());
+        assert_approx_eq!(Real::log10_e::<float>(), Real::e::<float>().log10());
+        assert_approx_eq!(Real::ln_2::<float>(), 2f.ln());
+        assert_approx_eq!(Real::ln_10::<float>(), 10f.ln());
     }
 
     #[test]
-    fn test_signed() {
+    fn test_abs() {
         assert_eq!(infinity.abs(), infinity);
         assert_eq!(1f.abs(), 1f);
         assert_eq!(0f.abs(), 0f);
@@ -966,7 +1001,24 @@ mod tests {
         assert_eq!(neg_infinity.abs(), infinity);
         assert_eq!((1f/neg_infinity).abs(), 0f);
         assert!(NaN.abs().is_NaN());
+    }
 
+    #[test]
+    fn test_abs_sub() {
+        assert_eq!((-1f).abs_sub(&1f), 0f);
+        assert_eq!(1f.abs_sub(&1f), 0f);
+        assert_eq!(1f.abs_sub(&0f), 1f);
+        assert_eq!(1f.abs_sub(&-1f), 2f);
+        assert_eq!(neg_infinity.abs_sub(&0f), 0f);
+        assert_eq!(infinity.abs_sub(&1f), infinity);
+        assert_eq!(0f.abs_sub(&neg_infinity), infinity);
+        assert_eq!(0f.abs_sub(&infinity), 0f);
+        assert!(NaN.abs_sub(&-1f).is_NaN());
+        assert!(1f.abs_sub(&NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_signum() {
         assert_eq!(infinity.signum(), 1f);
         assert_eq!(1f.signum(), 1f);
         assert_eq!(0f.signum(), 1f);
@@ -975,7 +1027,10 @@ mod tests {
         assert_eq!(neg_infinity.signum(), -1f);
         assert_eq!((1f/neg_infinity).signum(), -1f);
         assert!(NaN.signum().is_NaN());
+    }
 
+    #[test]
+    fn test_is_positive() {
         assert!(infinity.is_positive());
         assert!(1f.is_positive());
         assert!(0f.is_positive());
@@ -984,7 +1039,10 @@ mod tests {
         assert!(!neg_infinity.is_positive());
         assert!(!(1f/neg_infinity).is_positive());
         assert!(!NaN.is_positive());
+    }
 
+    #[test]
+    fn test_is_negative() {
         assert!(!infinity.is_negative());
         assert!(!1f.is_negative());
         assert!(!0f.is_negative());
@@ -996,9 +1054,42 @@ mod tests {
     }
 
     #[test]
+    fn test_approx_eq() {
+        assert!(1.0f.approx_eq(&1f));
+        assert!(0.9999999f.approx_eq(&1f));
+        assert!(1.000001f.approx_eq_eps(&1f, &1.0e-5));
+        assert!(1.0000001f.approx_eq_eps(&1f, &1.0e-6));
+        assert!(!1.0000001f.approx_eq_eps(&1f, &1.0e-7));
+    }
+
+    #[test]
     fn test_primitive() {
         assert_eq!(Primitive::bits::<float>(), sys::size_of::<float>() * 8);
         assert_eq!(Primitive::bytes::<float>(), sys::size_of::<float>());
+    }
+
+    #[test]
+    fn test_is_normal() {
+        assert!(!Float::NaN::<float>().is_normal());
+        assert!(!Float::infinity::<float>().is_normal());
+        assert!(!Float::neg_infinity::<float>().is_normal());
+        assert!(!Zero::zero::<float>().is_normal());
+        assert!(!Float::neg_zero::<float>().is_normal());
+        assert!(1f.is_normal());
+        assert!(1e-307f.is_normal());
+        assert!(!1e-308f.is_normal());
+    }
+
+    #[test]
+    fn test_classify() {
+        assert_eq!(Float::NaN::<float>().classify(), FPNaN);
+        assert_eq!(Float::infinity::<float>().classify(), FPInfinite);
+        assert_eq!(Float::neg_infinity::<float>().classify(), FPInfinite);
+        assert_eq!(Zero::zero::<float>().classify(), FPZero);
+        assert_eq!(Float::neg_zero::<float>().classify(), FPZero);
+        assert_eq!(1f.classify(), FPNormal);
+        assert_eq!(1e-307f.classify(), FPNormal);
+        assert_eq!(1e-308f.classify(), FPSubnormal);
     }
 
     #[test]
@@ -1143,13 +1234,3 @@ mod tests {
         assert_eq!(to_str_digits(-infinity, 10u), ~"-inf");
     }
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

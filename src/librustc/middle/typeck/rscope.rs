@@ -266,7 +266,7 @@ pub struct binding_rscope {
     region_param_names: RegionParamNames,
 }
 
-pub fn in_binding_rscope<RS:region_scope + Copy + Durable>(
+pub fn in_binding_rscope<RS:region_scope + Copy + 'static>(
         self: &RS,
         region_param_names: RegionParamNames)
      -> binding_rscope {

@@ -34,8 +34,8 @@ pub extern "rust-intrinsic" {
 
     pub fn size_of<T>() -> uint;
 
-    pub fn move_val<T>(dst: &mut T, +src: T);
-    pub fn move_val_init<T>(dst: &mut T, +src: T);
+    pub fn move_val<T>(dst: &mut T, src: T);
+    pub fn move_val_init<T>(dst: &mut T, src: T);
 
     pub fn min_align_of<T>() -> uint;
     pub fn pref_align_of<T>() -> uint;
@@ -44,11 +44,10 @@ pub extern "rust-intrinsic" {
 
     pub fn init<T>() -> T;
 
-    pub fn forget<T>(_: T) -> ();
+    #[cfg(not(stage0))]
+    pub unsafe fn uninit<T>() -> T;
 
-    // XXX: intrinsic uses legacy modes
-    #[cfg(stage0)]
-    fn reinterpret_cast<T,U>(&&src: T) -> U;
+    pub fn forget<T>(_: T) -> ();
 
     pub fn needs_drop<T>() -> bool;
 

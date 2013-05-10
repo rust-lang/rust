@@ -263,7 +263,7 @@ pub fn under(n: uint, it: &fn(uint)) {
     while i < n { it(i); i += 1u; }
 }
 
-pub fn as_str(f: @fn(+x: @io::Writer)) -> ~str {
+pub fn as_str(f: @fn(x: @io::Writer)) -> ~str {
     io::with_str_writer(f)
 }
 
@@ -693,10 +693,3 @@ pub fn main() {
 
     error!("Fuzzer done");
 }
-
-// Local Variables:
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

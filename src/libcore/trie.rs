@@ -11,6 +11,7 @@
 //! An ordered map and set for integer keys implemented as a radix trie
 
 use prelude::*;
+use util::{swap, replace};
 
 // FIXME: #5244: need to manually update the TrieNode constructor
 static SHIFT: uint = 4;
@@ -56,16 +57,6 @@ impl<T> Map<uint, T> for TrieMap<T> {
 
     /// Visit all key-value pairs in order
     #[inline(always)]
-    #[cfg(stage0)]
-    fn each(&self, f: &fn(&uint, &'self T) -> bool) {
-        self.root.each(f);
-    }
-
-    /// Visit all key-value pairs in order
-    #[inline(always)]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) {
         self.root.each(f);
     }
@@ -78,16 +69,6 @@ impl<T> Map<uint, T> for TrieMap<T> {
 
     /// Visit all values in order
     #[inline(always)]
-    #[cfg(stage0)]
-    fn each_value(&self, f: &fn(&T) -> bool) {
-        self.each(|_, v| f(v))
-    }
-
-    /// Visit all values in order
-    #[inline(always)]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn each_value<'a>(&'a self, f: &fn(&'a T) -> bool) {
         self.each(|_, v| f(v))
     }
@@ -99,31 +80,6 @@ impl<T> Map<uint, T> for TrieMap<T> {
     }
 
     /// Return a reference to the value corresponding to the key
-    #[cfg(stage0)]
-    #[inline(hint)]
-    fn find(&self, key: &uint) -> Option<&'self T> {
-        let mut node: &'self TrieNode<T> = &self.root;
-        let mut idx = 0;
-        loop {
-            match node.children[chunk(*key, idx)] {
-              Internal(ref x) => node = &**x,
-              External(stored, ref value) => {
-                if stored == *key {
-                    return Some(value)
-                } else {
-                    return None
-                }
-              }
-              Nothing => return None
-            }
-            idx += 1;
-        }
-    }
-
-    /// Return a reference to the value corresponding to the key
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     #[inline(hint)]
     fn find<'a>(&'a self, key: &uint) -> Option<&'a T> {
         let mut node: &'a TrieNode<T> = &self.root;
@@ -145,16 +101,6 @@ impl<T> Map<uint, T> for TrieMap<T> {
     }
 
     /// Return a mutable reference to the value corresponding to the key
-    #[cfg(stage0)]
-    #[inline(always)]
-    fn find_mut(&mut self, key: &uint) -> Option<&'self mut T> {
-        find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
-    }
-
-    /// Return a mutable reference to the value corresponding to the key
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     #[inline(always)]
     fn find_mut<'a>(&'a mut self, key: &uint) -> Option<&'a mut T> {
         find_mut(&mut self.root.children[chunk(*key, 0)], *key, 1)
@@ -165,21 +111,33 @@ impl<T> Map<uint, T> for TrieMap<T> {
     /// not already exist in the map.
     #[inline(always)]
     fn insert(&mut self, key: uint, value: T) -> bool {
-        let ret = insert(&mut self.root.count,
-                         &mut self.root.children[chunk(key, 0)],
-                         key, value, 1);
-        if ret { self.length += 1 }
-        ret
+        self.swap(key, value).is_none()
     }
 
     /// Remove a key-value pair from the map. Return true if the key
     /// was present in the map, otherwise false.
     #[inline(always)]
     fn remove(&mut self, key: &uint) -> bool {
+        self.pop(key).is_some()
+    }
+
+    /// Insert a key-value pair from the map. If the key already had a value
+    /// present in the map, that value is returned. Otherwise None is returned.
+    fn swap(&mut self, key: uint, value: T) -> Option<T> {
+        let ret = insert(&mut self.root.count,
+                         &mut self.root.children[chunk(key, 0)],
+                         key, value, 1);
+        if ret.is_none() { self.length += 1 }
+        ret
+    }
+
+    /// Removes a key from the map, returning the value at the key if the key
+    /// was previously in the map.
+    fn pop(&mut self, key: &uint) -> Option<T> {
         let ret = remove(&mut self.root.count,
                          &mut self.root.children[chunk(*key, 0)],
                          *key, 1);
-        if ret { self.length -= 1 }
+        if ret.is_some() { self.length -= 1 }
         ret
     }
 }
@@ -193,16 +151,6 @@ pub impl<T> TrieMap<T> {
 
     /// Visit all key-value pairs in reverse order
     #[inline(always)]
-    #[cfg(stage0)]
-    fn each_reverse(&self, f: &fn(&uint, &'self T) -> bool) {
-        self.root.each_reverse(f);
-    }
-
-    /// Visit all key-value pairs in reverse order
-    #[inline(always)]
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) {
         self.root.each_reverse(f);
     }
@@ -298,21 +246,6 @@ impl<T> TrieNode<T> {
 }
 
 impl<T> TrieNode<T> {
-    #[cfg(stage0)]
-    fn each(&self, f: &fn(&uint, &'self T) -> bool) -> bool {
-        for uint::range(0, self.children.len()) |idx| {
-            match self.children[idx] {
-                Internal(ref x) => if !x.each(f) { return false },
-                External(k, ref v) => if !f(&k, v) { return false },
-                Nothing => ()
-            }
-        }
-        true
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn each<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
         for uint::range(0, self.children.len()) |idx| {
             match self.children[idx] {
@@ -324,21 +257,6 @@ impl<T> TrieNode<T> {
         true
     }
 
-    #[cfg(stage0)]
-    fn each_reverse(&self, f: &fn(&uint, &'self T) -> bool) -> bool {
-        for uint::range_rev(self.children.len(), 0) |idx| {
-            match self.children[idx - 1] {
-                Internal(ref x) => if !x.each_reverse(f) { return false },
-                External(k, ref v) => if !f(&k, v) { return false },
-                Nothing => ()
-            }
-        }
-        true
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn each_reverse<'a>(&'a self, f: &fn(&uint, &'a T) -> bool) -> bool {
         for uint::range_rev(self.children.len(), 0) |idx| {
             match self.children[idx - 1] {
@@ -371,9 +289,9 @@ fn chunk(n: uint, idx: uint) -> uint {
     (n >> sh) & MASK
 }
 
-fn find_mut<'r, T>(child: &'r mut Child<T>, key: uint, idx: uint)
-                -> Option<&'r mut T> {
-    unsafe { // FIXME(#4903)---requires flow-sensitive borrow checker
+#[cfg(stage0)]
+fn find_mut<'r, T>(child: &'r mut Child<T>, key: uint, idx: uint) -> Option<&'r mut T> {
+    unsafe {
         (match *child {
             External(_, ref value) => Some(cast::transmute_mut(value)),
             Internal(ref x) => find_mut(cast::transmute_mut(&x.children[chunk(key, idx)]),
@@ -383,15 +301,25 @@ fn find_mut<'r, T>(child: &'r mut Child<T>, key: uint, idx: uint)
     }
 }
 
+#[cfg(not(stage0))]
+fn find_mut<'r, T>(child: &'r mut Child<T>, key: uint, idx: uint) -> Option<&'r mut T> {
+    match *child {
+        External(_, ref mut value) => Some(value),
+        Internal(ref mut x) => find_mut(&mut x.children[chunk(key, idx)], key, idx + 1),
+        Nothing => None
+    }
+}
+
 fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
-             idx: uint) -> bool {
+             idx: uint) -> Option<T> {
     let mut tmp = Nothing;
-    tmp <-> *child;
-    let mut added = false;
+    let ret;
+    swap(&mut tmp, child);
 
     *child = match tmp {
       External(stored_key, stored_value) => {
           if stored_key == key {
+              ret = Some(stored_value);
               External(stored_key, value)
           } else {
               // conflict - split the node
@@ -399,46 +327,49 @@ fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
               insert(&mut new.count,
                      &mut new.children[chunk(stored_key, idx)],
                      stored_key, stored_value, idx + 1);
-              insert(&mut new.count, &mut new.children[chunk(key, idx)], key,
-                     value, idx + 1);
-              added = true;
+              ret = insert(&mut new.count, &mut new.children[chunk(key, idx)],
+                           key, value, idx + 1);
               Internal(new)
           }
       }
       Internal(x) => {
         let mut x = x;
-        added = insert(&mut x.count, &mut x.children[chunk(key, idx)], key,
-                       value, idx + 1);
+        ret = insert(&mut x.count, &mut x.children[chunk(key, idx)], key,
+                     value, idx + 1);
         Internal(x)
       }
       Nothing => {
         *count += 1;
-        added = true;
+        ret = None;
         External(key, value)
       }
     };
-    added
+    return ret;
 }
 
 fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
-             idx: uint) -> bool {
+             idx: uint) -> Option<T> {
     let (ret, this) = match *child {
-      External(stored, _) => {
-          if stored == key { (true, true) } else { (false, false) }
+      External(stored, _) if stored == key => {
+        match replace(child, Nothing) {
+            External(_, value) => (Some(value), true),
+            _ => fail!()
+        }
       }
+      External(*) => (None, false),
       Internal(ref mut x) => {
           let ret = remove(&mut x.count, &mut x.children[chunk(key, idx)],
                            key, idx + 1);
           (ret, x.count == 0)
       }
-      Nothing => (false, false)
+      Nothing => (None, false)
     };
 
     if this {
         *child = Nothing;
         *count -= 1;
     }
-    ret
+    return ret;
 }
 
 #[cfg(test)]
@@ -610,5 +541,21 @@ mod tests {
             assert!(expected[i] == *x);
             i += 1;
         }
+    }
+
+    #[test]
+    fn test_swap() {
+        let mut m = TrieMap::new();
+        assert!(m.swap(1, 2) == None);
+        assert!(m.swap(1, 3) == Some(2));
+        assert!(m.swap(1, 4) == Some(3));
+    }
+
+    #[test]
+    fn test_pop() {
+        let mut m = TrieMap::new();
+        m.insert(1, 2);
+        assert!(m.pop(&1) == Some(2));
+        assert!(m.pop(&1) == None);
     }
 }

@@ -207,9 +207,11 @@ pub impl PurityState {
 }
 
 pub struct FnCtxt {
-    // var_bindings, locals and next_var_id are shared
-    // with any nested functions that capture the environment
-    // (and with any functions whose environment is being captured).
+    // Number of errors that had been reported when we started
+    // checking this function. On exit, if we find that *more* errors
+    // have been reported, we will skip regionck and other work that
+    // expects the types within the function to be consistent.
+    err_count_on_creation: uint,
 
     ret_ty: ty::t,
     // Used by loop bodies that return from the outer function
@@ -263,6 +265,7 @@ pub fn blank_fn_ctxt(ccx: @mut CrateCtxt,
 // It's kind of a kludge to manufacture a fake function context
 // and statement context, but we might as well do write the code only once
     @mut FnCtxt {
+        err_count_on_creation: ccx.tcx.sess.err_count(),
         ret_ty: rty,
         indirect_ret_ty: None,
         ps: PurityState::function(ast::pure_fn, 0),
@@ -328,6 +331,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
      */
 
     let tcx = ccx.tcx;
+    let err_count_on_creation = tcx.sess.err_count();
 
     // ______________________________________________________________________
     // First, we have to replace any bound regions in the fn and self
@@ -368,6 +372,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         };
 
         @mut FnCtxt {
+            err_count_on_creation: err_count_on_creation,
             ret_ty: ret_ty,
             indirect_ret_ty: indirect_ret_ty,
             ps: PurityState::function(purity, id),
@@ -433,7 +438,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             assign(self_info.self_id, Some(self_info.self_ty));
             debug!("self is assigned to %s",
                    fcx.infcx().ty_to_str(
-                       *fcx.inh.locals.get(&self_info.self_id)));
+                       fcx.inh.locals.get_copy(&self_info.self_id)));
         }
 
         // Add formal parameters.
@@ -466,7 +471,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             debug!("Local variable %s is assigned type %s",
                    fcx.pat_to_str(local.node.pat),
                    fcx.infcx().ty_to_str(
-                       *fcx.inh.locals.get(&local.node.id)));
+                       fcx.inh.locals.get_copy(&local.node.id)));
             visit::visit_local(local, e, v);
         };
 
@@ -479,7 +484,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                 debug!("Pattern binding %s is assigned to %s",
                        *tcx.sess.str_of(path.idents[0]),
                        fcx.infcx().ty_to_str(
-                           *fcx.inh.locals.get(&p.id)));
+                           fcx.inh.locals.get_copy(&p.id)));
               }
               _ => {}
             }
@@ -542,47 +547,28 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
         let (id, sp) = *p;
         let orig_sp = field_names.find(&id).map_consume(|x| *x);
         match orig_sp {
-          Some(orig_sp) => {
-            tcx.sess.span_err(sp, fmt!("Duplicate field \
-                                   name %s in record type declaration",
-                                        *tcx.sess.str_of(id)));
-            tcx.sess.span_note(orig_sp, ~"First declaration of \
-                                          this field occurred here");
-            break;
-          }
-          None => {
-            field_names.insert(id, sp);
-          }
+            Some(orig_sp) => {
+                tcx.sess.span_err(sp, fmt!("Duplicate field name %s in record type declaration",
+                                           *tcx.sess.str_of(id)));
+                tcx.sess.span_note(orig_sp, "First declaration of this field occurred here");
+                break;
+            }
+            None => {
+                field_names.insert(id, sp);
+            }
         }
     }
 }
 
-pub fn check_struct(ccx: @mut CrateCtxt,
-                    struct_def: @ast::struct_def,
-                    id: ast::node_id,
-                    span: span) {
+pub fn check_struct(ccx: @mut CrateCtxt, id: ast::node_id, span: span) {
     let tcx = ccx.tcx;
-    let self_ty = ty::node_id_to_type(tcx, id);
-
-    for struct_def.dtor.each |dtor| {
-        let class_t = SelfInfo {
-            self_ty: self_ty,
-            self_id: dtor.node.self_id,
-            span: dtor.span,
-        };
-        // typecheck the dtor
-        let dtor_dec = ast_util::dtor_dec();
-        check_bare_fn(
-            ccx,
-            &dtor_dec,
-            &dtor.node.body,
-            dtor.node.id,
-            Some(class_t)
-        );
-    };
 
     // Check that the class is instantiable
-    check_instantiable(ccx.tcx, span, id);
+    check_instantiable(tcx, span, id);
+
+    if ty::lookup_simd(tcx, local_def(id)) {
+        check_simd(tcx, span, id);
+    }
 }
 
 pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
@@ -623,8 +609,8 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
             }
         }
       }
-      ast::item_struct(struct_def, _) => {
-        check_struct(ccx, struct_def, it.id, it.span);
+      ast::item_struct(*) => {
+        check_struct(ccx, it.id, it.span);
       }
       ast::item_ty(t, ref generics) => {
         let tpt_ty = ty::node_id_to_type(ccx.tcx, it.id);
@@ -667,7 +653,12 @@ impl AstConv for FnCtxt {
 }
 
 pub impl FnCtxt {
-    fn infcx(&self) -> @mut infer::InferCtxt { self.inh.infcx }
+    fn infcx(&self) -> @mut infer::InferCtxt {
+        self.inh.infcx
+    }
+    fn err_count_since_creation(&self) -> uint {
+        self.ccx.tcx.sess.err_count() - self.err_count_on_creation
+    }
     fn search_in_scope_regions(
         &self,
         span: span,
@@ -923,11 +914,9 @@ pub impl FnCtxt {
 
     fn region_var_if_parameterized(&self,
                                    rp: Option<ty::region_variance>,
-                                   span: span,
-                                   lower_bound: ty::Region)
+                                   span: span)
                                 -> Option<ty::Region> {
-        rp.map(
-            |_rp| self.infcx().next_region_var_with_lb(span, lower_bound))
+        rp.map(|_rp| self.infcx().next_region_var_nb(span))
     }
 
     fn type_error_message(&self,
@@ -1108,8 +1097,7 @@ pub fn impl_self_ty(vcx: &VtableContext,
     };
 
     let self_r = if region_param.is_some() {
-        Some(vcx.infcx.next_region_var(location_info.span,
-                                         location_info.id))
+        Some(vcx.infcx.next_region_var_nb(location_info.span))
     } else {
         None
     };
@@ -1275,8 +1263,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                 ty::ty_rptr(_, mt) => formal_ty = mt.ty,
                                 ty::ty_err => (),
                                 _ => {
-                                    fcx.ccx.tcx.sess.span_bug(arg.span,
-                                                              ~"no ref");
+                                    fcx.ccx.tcx.sess.span_bug(arg.span, "no ref");
                                 }
                             }
                         }
@@ -1317,23 +1304,18 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // that they appear in call position.
         check_expr(fcx, f);
 
+        // Store the type of `f` as the type of the callee
+        let fn_ty = fcx.expr_ty(f);
+
+        // FIXME(#6273) should write callee type AFTER regions have
+        // been subst'd.  However, it is awkward to deal with this
+        // now. Best thing would I think be to just have a separate
+        // "callee table" that contains the FnSig and not a general
+        // purpose ty::t
+        fcx.write_ty(call_expr.callee_id, fn_ty);
 
         // Extract the function signature from `in_fty`.
-        let fn_ty = fcx.expr_ty(f);
         let fn_sty = structure_of(fcx, f.span, fn_ty);
-
-        // FIXME(#3678) For now, do not permit calls to C abi functions.
-        match fn_sty {
-            ty::ty_bare_fn(ty::BareFnTy {abis, _}) => {
-                if !abis.is_rust() {
-                    fcx.tcx().sess.span_err(
-                        call_expr.span,
-                        fmt!("Calls to C ABI functions are not (yet) \
-                              supported; be patient, dear user"));
-                }
-            }
-            _ => {}
-        }
 
         let fn_sig = match fn_sty {
             ty::ty_bare_fn(ty::BareFnTy {sig: sig, _}) |
@@ -1356,7 +1338,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let (_, _, fn_sig) =
             replace_bound_regions_in_fn_sig(
                 fcx.tcx(), @Nil, None, &fn_sig,
-                |_br| fcx.infcx().next_region_var(call_expr.span, call_expr.id));
+                |_br| fcx.infcx().next_region_var_nb(call_expr.span));
 
         // Call the generic checker.
         check_argument_types(fcx, call_expr.span, fn_sig.inputs, f,
@@ -1568,7 +1550,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                             lhs_resolved_t, None)
                 };
                 return lookup_op_method(fcx, ex, lhs_expr, lhs_resolved_t,
-                                       fcx.tcx().sess.ident_of(copy *name),
+                                       fcx.tcx().sess.ident_of(*name),
                                        ~[rhs], DoDerefArgs, DontAutoderefReceiver, if_op_unbound,
                                        expected_result);
             }
@@ -1582,8 +1564,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             match ty::get(lhs_resolved_t).sty {
                 ty::ty_bare_fn(_) | ty::ty_closure(_) => {
                     tcx.sess.span_note(
-                        ex.span, ~"did you forget the `do` keyword \
-                                   for the call?");
+                        ex.span, "did you forget the `do` keyword for the call?");
                 }
                 _ => ()
             }
@@ -1593,8 +1574,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     }
 
     fn check_user_unop(fcx: @mut FnCtxt,
-                       op_str: ~str,
-                       mname: ~str,
+                       op_str: &str,
+                       mname: &str,
                        ex: @ast::expr,
                        rhs_expr: @ast::expr,
                        rhs_t: ty::t,
@@ -1678,7 +1659,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         };
 
         // construct the function type
-        let mut fn_ty = astconv::ty_of_closure(fcx,
+        let fn_ty = astconv::ty_of_closure(fcx,
                                                fcx,
                                                sigil,
                                                purity,
@@ -1689,7 +1670,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                                &opt_vec::Empty,
                                                expr.span);
 
-        let mut fty_sig;
+        let fty_sig;
         let fty = if error_happened {
             fty_sig = FnSig {
                 bound_lifetime_names: opt_vec::Empty,
@@ -1874,9 +1855,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 tcx.sess.span_err(span,
                                   fmt!("missing field%s: %s",
                                        if missing_fields.len() == 1 {
-                                           ~""
+                                           ""
                                        } else {
-                                           ~"s"
+                                           "s"
                                        },
                                        str::connect(missing_fields, ~", ")));
              }
@@ -1924,7 +1905,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 }
                 _ => {
                     tcx.sess.span_bug(span,
-                                      ~"resolve didn't map this to a class");
+                                      "resolve didn't map this to a class");
                 }
             }
         } else {
@@ -1936,9 +1917,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         // Generate the struct type.
         let self_region =
-            fcx.region_var_if_parameterized(region_parameterized,
-                                            span,
-                                            ty::re_scope(id));
+            fcx.region_var_if_parameterized(region_parameterized, span);
         let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
         let substitutions = substs {
             self_r: self_region,
@@ -2012,7 +1991,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 }
                 _ => {
                     tcx.sess.span_bug(span,
-                                      ~"resolve didn't map this to an enum");
+                                      "resolve didn't map this to an enum");
                 }
             }
         } else {
@@ -2024,9 +2003,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         // Generate the enum type.
         let self_region =
-            fcx.region_var_if_parameterized(region_parameterized,
-                                            span,
-                                            ty::re_scope(id));
+            fcx.region_var_if_parameterized(region_parameterized, span);
         let type_parameters = fcx.infcx().next_ty_vars(type_parameter_count);
         let substitutions = substs {
             self_r: self_region,
@@ -2224,7 +2201,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             }
           }
           _ =>
-            tcx.sess.span_bug(expr.span, ~"vstore modifier on non-sequence")
+            tcx.sess.span_bug(expr.span, "vstore modifier on non-sequence")
         };
         fcx.write_ty(ev.id, typ);
         fcx.write_ty(id, typ);
@@ -2307,21 +2284,18 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                 ty::ty_enum(*) => {
                                     tcx.sess.span_err(
                                         expr.span,
-                                        ~"can only dereference enums \
-                                          with a single variant which has a \
-                                          single argument");
+                                        "can only dereference enums with a single variant which \
+                                         has a single argument");
                                 }
                                 ty::ty_struct(*) => {
                                     tcx.sess.span_err(
                                         expr.span,
-                                        ~"can only dereference structs with \
-                                          one anonymous field");
+                                        "can only dereference structs with one anonymous field");
                                 }
                                 _ => {
                                     fcx.type_error_message(expr.span,
                                         |actual| {
-                                            fmt!("type %s cannot be \
-                                                  dereferenced", actual)
+                                            fmt!("type %s cannot be dereferenced", actual)
                                     }, oprnd_t, None);
                                 }
                             }
@@ -2334,7 +2308,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     if !(ty::type_is_integral(oprnd_t) ||
                          ty::get(oprnd_t).sty == ty::ty_bool) {
                         oprnd_t = check_user_unop(fcx,
-                            ~"!", ~"not", expr, oprnd, oprnd_t,
+                            "!", "not", expr, oprnd, oprnd_t,
                                                   expected);
                     }
                 }
@@ -2344,7 +2318,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     if !(ty::type_is_integral(oprnd_t) ||
                          ty::type_is_fp(oprnd_t)) {
                         oprnd_t = check_user_unop(fcx,
-                            ~"-", ~"neg", expr, oprnd, oprnd_t, expected);
+                            "-", "neg", expr, oprnd, oprnd_t, expected);
                     }
                 }
             }
@@ -2366,13 +2340,12 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // (and how long it is valid), which we don't know yet until type
         // inference is complete.
         //
-        // Therefore, here we simply generate a region variable with
-        // the current expression as a lower bound.  The region
-        // inferencer will then select the ultimate value.  Finally,
-        // borrowck is charged with guaranteeing that the value whose
-        // address was taken can actually be made to live as long as
-        // it needs to live.
-        let region = fcx.infcx().next_region_var(expr.span, expr.id);
+        // Therefore, here we simply generate a region variable.  The
+        // region inferencer will then select the ultimate value.
+        // Finally, borrowck is charged with guaranteeing that the
+        // value whose address was taken can actually be made to live
+        // as long as it needs to live.
+        let region = fcx.infcx().next_region_var_nb(expr.span);
 
         let tm = ty::mt { ty: fcx.expr_ty(oprnd), mutbl: mutbl };
         let oprnd_t = if ty::type_is_error(tm.ty) {
@@ -2389,8 +2362,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let defn = lookup_def(fcx, pth.span, id);
 
         let tpt = ty_param_bounds_and_ty_for_def(fcx, expr.span, defn);
-        let region_lb = ty::re_scope(expr.id);
-        instantiate_path(fcx, pth, tpt, expr.span, expr.id, region_lb);
+        instantiate_path(fcx, pth, tpt, expr.span, expr.id);
       }
       ast::expr_inline_asm(ref ia) => {
           fcx.require_unsafe(expr.span, ~"use of inline assembly");
@@ -2417,7 +2389,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             result::Err(_) => {
                 tcx.sess.span_err(
                     expr.span,
-                    ~"`return;` in function returning non-nil");
+                    "`return;` in function returning non-nil");
             }
           },
           Some(e) => {
@@ -2781,8 +2753,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                           variant_id, *fields);
             }
             _ => {
-                tcx.sess.span_bug(path.span, ~"structure constructor does \
-                                               not name a structure type");
+                tcx.sess.span_bug(path.span,
+                                  "structure constructor does not name a structure type");
             }
         }
       }
@@ -2811,7 +2783,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                       let resolved = structurally_resolved_type(fcx,
                                                                 expr.span,
                                                                 raw_base_t);
-                      let index_ident = tcx.sess.ident_of(~"index");
+                      let index_ident = tcx.sess.ident_of("index");
                       let error_message = || {
                         fcx.type_error_message(expr.span,
                                                |actual| {
@@ -2966,7 +2938,8 @@ pub fn check_block(fcx0: @mut FnCtxt, blk: &ast::blk)  {
 pub fn check_block_with_expected(fcx: @mut FnCtxt,
                                  blk: &ast::blk,
                                  expected: Option<ty::t>) {
-    let prev = replace(&mut fcx.ps, fcx.ps.recurse(blk));
+    let purity_state = fcx.ps.recurse(blk);
+    let prev = replace(&mut fcx.ps, purity_state);
 
     do fcx.with_region_lb(blk.node.id) {
         let mut warned = false;
@@ -2984,7 +2957,7 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
                   }
                   _ => false
                 } {
-                fcx.ccx.tcx.sess.span_warn(s.span, ~"unreachable statement");
+                fcx.ccx.tcx.sess.span_warn(s.span, "unreachable statement");
                 warned = true;
             }
             if ty::type_is_bot(s_ty) {
@@ -3005,7 +2978,7 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
             },
           Some(e) => {
             if any_bot && !warned {
-                fcx.ccx.tcx.sess.span_warn(e.span, ~"unreachable expression");
+                fcx.ccx.tcx.sess.span_warn(e.span, "unreachable expression");
             }
             check_expr_with_opt_hint(fcx, e, expected);
               let ety = fcx.expr_ty(e);
@@ -3067,6 +3040,35 @@ pub fn check_instantiable(tcx: ty::ctxt,
     }
 }
 
+pub fn check_simd(tcx: ty::ctxt, sp: span, id: ast::node_id) {
+    let t = ty::node_id_to_type(tcx, id);
+    if ty::type_needs_subst(t) {
+        tcx.sess.span_err(sp, "SIMD vector cannot be generic");
+        return;
+    }
+    match ty::get(t).sty {
+        ty::ty_struct(did, ref substs) => {
+            let fields = ty::lookup_struct_fields(tcx, did);
+            if fields.is_empty() {
+                tcx.sess.span_err(sp, "SIMD vector cannot be empty");
+                return;
+            }
+            let e = ty::lookup_field_type(tcx, did, fields[0].id, substs);
+            if !vec::all(fields,
+                         |f| ty::lookup_field_type(tcx, did, f.id, substs) == e) {
+                tcx.sess.span_err(sp, "SIMD vector should be homogeneous");
+                return;
+            }
+            if !ty::type_is_machine(e) {
+                tcx.sess.span_err(sp, "SIMD vector element type should be \
+                                       machine type");
+                return;
+            }
+        }
+        _ => ()
+    }
+}
+
 pub fn check_enum_variants(ccx: @mut CrateCtxt,
                            sp: span,
                            vs: &[ast::variant],
@@ -3096,8 +3098,8 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                     *disr_val = val as int;
                   }
                   Ok(_) => {
-                    ccx.tcx.sess.span_err(e.span, ~"expected signed integer \
-                                                    constant");
+                    ccx.tcx.sess.span_err(e.span, "expected signed integer \
+                                                   constant");
                   }
                   Err(ref err) => {
                     ccx.tcx.sess.span_err(e.span,
@@ -3108,7 +3110,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
             }
             if vec::contains(*disr_vals, &*disr_val) {
                 ccx.tcx.sess.span_err(v.span,
-                                      ~"discriminator value already exists");
+                                      "discriminator value already exists");
             }
             disr_vals.push(*disr_val);
             let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
@@ -3165,9 +3167,9 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
           _ => false
         }
     }) {
-        ccx.tcx.sess.span_err(sp, ~"illegal recursive enum type; \
-                                 wrap the inner value in a box to \
-                                 make it representable");
+        ccx.tcx.sess.span_err(sp,
+                              "illegal recursive enum type; \
+                               wrap the inner value in a box to make it representable");
     }
 
     // Check that it is possible to instantiate this enum:
@@ -3228,26 +3230,25 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
       ast::def_ty(_) |
       ast::def_prim_ty(_) |
       ast::def_ty_param(*)=> {
-        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found type");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found type");
       }
       ast::def_mod(*) | ast::def_foreign_mod(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found module");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found module");
       }
       ast::def_use(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found use");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found use");
       }
       ast::def_region(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found region");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found region");
       }
       ast::def_typaram_binder(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found type \
-                                          parameter");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found type parameter");
       }
       ast::def_label(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found label");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found label");
       }
       ast::def_self_ty(*) => {
-        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found self ty");
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found self ty");
       }
     }
 }
@@ -3258,8 +3259,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
                         pth: @ast::Path,
                         tpt: ty_param_bounds_and_ty,
                         span: span,
-                        node_id: ast::node_id,
-                        region_lb: ty::Region) {
+                        node_id: ast::node_id) {
     debug!(">>> instantiate_path");
 
     let ty_param_count = tpt.generics.type_param_defs.len();
@@ -3276,7 +3276,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
         match tpt.generics.region_param {
           None => { // ...but the type is not lifetime parameterized!
             fcx.ccx.tcx.sess.span_err
-                (span, ~"this item is not region-parameterized");
+                (span, "this item is not region-parameterized");
             None
           }
           Some(_) => { // ...and the type is lifetime parameterized, ok.
@@ -3285,8 +3285,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
         }
       }
       None => { // no lifetime parameter supplied, insert default
-        fcx.region_var_if_parameterized(
-            tpt.generics.region_param, span, region_lb)
+        fcx.region_var_if_parameterized(tpt.generics.region_param, span)
       }
     };
 
@@ -3296,15 +3295,15 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
         fcx.infcx().next_ty_vars(ty_param_count)
     } else if ty_param_count == 0 {
         fcx.ccx.tcx.sess.span_err
-            (span, ~"this item does not take type parameters");
+            (span, "this item does not take type parameters");
         fcx.infcx().next_ty_vars(ty_param_count)
     } else if ty_substs_len > ty_param_count {
         fcx.ccx.tcx.sess.span_err
-            (span, ~"too many type parameters provided for this item");
+            (span, "too many type parameters provided for this item");
         fcx.infcx().next_ty_vars(ty_param_count)
     } else if ty_substs_len < ty_param_count {
         fcx.ccx.tcx.sess.span_err
-            (span, ~"not enough type parameters provided for this item");
+            (span, "not enough type parameters provided for this item");
         fcx.infcx().next_ty_vars(ty_param_count)
     } else {
         pth.types.map(|aty| fcx.to_ty(*aty))
@@ -3370,7 +3369,7 @@ pub fn ast_expr_vstore_to_vstore(fcx: @mut FnCtxt,
         ast::expr_vstore_uniq => ty::vstore_uniq,
         ast::expr_vstore_box | ast::expr_vstore_mut_box => ty::vstore_box,
         ast::expr_vstore_slice | ast::expr_vstore_mut_slice => {
-            let r = fcx.infcx().next_region_var(e.span, e.id);
+            let r = fcx.infcx().next_region_var_nb(e.span);
             ty::vstore_slice(r)
         }
     }
@@ -3448,6 +3447,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
       ~"size_of" |
       ~"pref_align_of" | ~"min_align_of" => (1u, ~[], ty::mk_uint()),
       ~"init" => (1u, ~[], param(ccx, 0u)),
+      ~"uninit" => (1u, ~[], param(ccx, 0u)),
       ~"forget" => (1u, ~[arg(param(ccx, 0u))], ty::mk_nil()),
       ~"transmute" => (2, ~[ arg(param(ccx, 0)) ], param(ccx, 1)),
       ~"move_val" | ~"move_val_init" => {
@@ -3493,7 +3493,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
       ~"visit_tydesc" => {
         let tydesc_name = special_idents::tydesc;
         assert!(tcx.intrinsic_defs.contains_key(&tydesc_name));
-        let (_, tydesc_ty) = *tcx.intrinsic_defs.get(&tydesc_name);
+        let (_, tydesc_ty) = tcx.intrinsic_defs.get_copy(&tydesc_name);
         let (_, visitor_object_ty) = ty::visitor_object_ty(tcx);
         let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
             ty: tydesc_ty,
@@ -3630,7 +3630,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
     };
     let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
         purity: ast::unsafe_fn,
-        abis: AbiSet::Rust(),
+        abis: AbiSet::Intrinsic(),
         sig: FnSig {bound_lifetime_names: opt_vec::Empty,
                     inputs: inputs,
                     output: output}

@@ -21,4 +21,3 @@ fn f() {
 pub fn main() {
     f();
 }
-

@@ -150,35 +150,32 @@ wrapping `malloc` and `free`:
 
 ~~~~
 use core::libc::{c_void, size_t, malloc, free};
-
-#[abi = "rust-intrinsic"]
-extern "rust-intrinsic" mod rusti {
-    fn init<T>() -> T;
-}
+use core::unstable::intrinsics;
 
 // a wrapper around the handle returned by the foreign code
 pub struct Unique<T> {
     priv ptr: *mut T
 }
 
-pub impl<'self, T: Owned> Unique<T> {
+pub impl<T: Owned> Unique<T> {
     fn new(value: T) -> Unique<T> {
         unsafe {
             let ptr = malloc(core::sys::size_of::<T>() as size_t) as *mut T;
             assert!(!ptr::is_null(ptr));
-            *ptr = value;
+            // `*ptr` is uninitialized, and `*ptr = value` would attempt to destroy it
+            intrinsics::move_val_init(&mut *ptr, value);
             Unique{ptr: ptr}
         }
     }
 
-    // the 'self lifetime results in the same semantics as `&*x` with ~T
-    fn borrow(&self) -> &'self T {
-        unsafe { cast::transmute(self.ptr) }
+    // the 'r lifetime results in the same semantics as `&*x` with ~T
+    fn borrow<'r>(&'r self) -> &'r T {
+        unsafe { cast::copy_lifetime(self, &*self.ptr) }
     }
 
-    // the 'self lifetime results in the same semantics as `&mut *x` with ~T
-    fn borrow_mut(&mut self) -> &'self mut T {
-        unsafe { cast::transmute(self.ptr) }
+    // the 'r lifetime results in the same semantics as `&mut *x` with ~T
+    fn borrow_mut<'r>(&'r mut self) -> &'r mut T {
+        unsafe { cast::copy_mut_lifetime(self, &mut *self.ptr) }
     }
 }
 
@@ -186,7 +183,7 @@ pub impl<'self, T: Owned> Unique<T> {
 impl<T: Owned> Drop for Unique<T> {
     fn finalize(&self) {
         unsafe {
-            let mut x = rusti::init(); // dummy value to swap in
+            let mut x = intrinsics::init(); // dummy value to swap in
             x <-> *self.ptr; // moving the object out is needed to call the destructor
             free(self.ptr as *c_void)
         }

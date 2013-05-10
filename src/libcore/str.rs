@@ -32,7 +32,7 @@ use uint;
 use vec;
 use to_str::ToStr;
 
-#[cfg(notest)] use cmp::{Eq, Ord, Equiv, TotalEq};
+#[cfg(not(test))] use cmp::{Eq, Ord, Equiv, TotalEq};
 
 /*
 Section: Creating a string
@@ -77,6 +77,7 @@ pub fn from_bytes_slice<'a>(vector: &'a [u8]) -> &'a str {
 }
 
 /// Copy a slice into a new unique str
+#[inline(always)]
 pub fn from_slice(s: &str) -> ~str {
     unsafe { raw::slice_bytes_owned(s, 0, len(s)) }
 }
@@ -188,7 +189,7 @@ pub fn from_char(ch: char) -> ~str {
 pub fn from_chars(chs: &[char]) -> ~str {
     let mut buf = ~"";
     reserve(&mut buf, chs.len());
-    for vec::each(chs) |ch| {
+    for chs.each |ch| {
         push_char(&mut buf, *ch);
     }
     buf
@@ -240,38 +241,132 @@ pub fn append(lhs: ~str, rhs: &str) -> ~str {
 
 /// Concatenate a vector of strings
 pub fn concat(v: &[~str]) -> ~str {
-    let mut s: ~str = ~"";
-    for vec::each(v) |ss| {
-        push_str(&mut s, *ss);
+    if v.is_empty() { return ~""; }
+
+    let mut len = 0;
+    for v.each |ss| {
+        len += ss.len();
+    }
+    let mut s = ~"";
+
+    reserve(&mut s, len);
+
+    unsafe {
+        do as_buf(s) |buf, _len| {
+            let mut buf = ::cast::transmute_mut_unsafe(buf);
+            for v.each |ss| {
+                do as_buf(*ss) |ssbuf, sslen| {
+                    let sslen = sslen - 1;
+                    ptr::copy_memory(buf, ssbuf, sslen);
+                    buf = buf.offset(sslen);
+                }
+            }
+        }
+        raw::set_len(&mut s, len);
     }
     s
 }
 
 /// Concatenate a vector of strings, placing a given separator between each
 pub fn connect(v: &[~str], sep: &str) -> ~str {
+    if v.is_empty() { return ~""; }
+
+    // concat is faster
+    if sep.is_empty() { return concat(v); }
+
+    // this is wrong without the guarantee that v is non-empty
+    let mut len = sep.len() * (v.len() - 1);
+    for v.each |ss| {
+        len += ss.len();
+    }
     let mut s = ~"", first = true;
-    for vec::each(v) |ss| {
-        if first { first = false; } else { push_str(&mut s, sep); }
-        push_str(&mut s, *ss);
+
+    reserve(&mut s, len);
+
+    unsafe {
+        do as_buf(s) |buf, _len| {
+            do as_buf(sep) |sepbuf, seplen| {
+                let seplen = seplen - 1;
+                let mut buf = ::cast::transmute_mut_unsafe(buf);
+                for v.each |ss| {
+                    do as_buf(*ss) |ssbuf, sslen| {
+                        let sslen = sslen - 1;
+                        if first {
+                            first = false;
+                        } else {
+                            ptr::copy_memory(buf, sepbuf, seplen);
+                            buf = buf.offset(seplen);
+                        }
+                        ptr::copy_memory(buf, ssbuf, sslen);
+                        buf = buf.offset(sslen);
+                    }
+                }
+            }
+        }
+        raw::set_len(&mut s, len);
     }
     s
 }
 
 /// Concatenate a vector of strings, placing a given separator between each
 pub fn connect_slices(v: &[&str], sep: &str) -> ~str {
+    if v.is_empty() { return ~""; }
+
+    // this is wrong without the guarantee that v is non-empty
+    let mut len = sep.len() * (v.len() - 1);
+    for v.each |ss| {
+        len += ss.len();
+    }
     let mut s = ~"", first = true;
-    for vec::each(v) |ss| {
-        if first { first = false; } else { push_str(&mut s, sep); }
-        push_str(&mut s, *ss);
+
+    reserve(&mut s, len);
+
+    unsafe {
+        do as_buf(s) |buf, _len| {
+            do as_buf(sep) |sepbuf, seplen| {
+                let seplen = seplen - 1;
+                let mut buf = ::cast::transmute_mut_unsafe(buf);
+                for v.each |ss| {
+                    do as_buf(*ss) |ssbuf, sslen| {
+                        let sslen = sslen - 1;
+                        if first {
+                            first = false;
+                        } else if seplen > 0 {
+                            ptr::copy_memory(buf, sepbuf, seplen);
+                            buf = buf.offset(seplen);
+                        }
+                        ptr::copy_memory(buf, ssbuf, sslen);
+                        buf = buf.offset(sslen);
+                    }
+                }
+            }
+        }
+        raw::set_len(&mut s, len);
     }
     s
 }
 
 /// Given a string, make a new string with repeated copies of it
 pub fn repeat(ss: &str, nn: uint) -> ~str {
-    let mut acc = ~"";
-    for nn.times { acc += ss; }
-    acc
+    do as_buf(ss) |buf, len| {
+        let mut ret = ~"";
+        // ignore the NULL terminator
+        let len = len - 1;
+        reserve(&mut ret, nn * len);
+
+        unsafe {
+            do as_buf(ret) |rbuf, _len| {
+                let mut rbuf = ::cast::transmute_mut_unsafe(rbuf);
+
+                for nn.times {
+                    ptr::copy_memory(rbuf, buf, len);
+                    rbuf = rbuf.offset(len);
+                }
+            }
+            raw::set_len(&mut ret, nn * len);
+        }
+        ret
+    }
 }
 
 /*
@@ -818,8 +913,9 @@ Section: Comparing strings
 */
 
 /// Bytewise slice equality
-#[cfg(notest)]
+#[cfg(not(test))]
 #[lang="str_eq"]
+#[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
     do as_buf(a) |ap, alen| {
         do as_buf(b) |bp, blen| {
@@ -836,6 +932,7 @@ pub fn eq_slice(a: &str, b: &str) -> bool {
 }
 
 #[cfg(test)]
+#[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
     do as_buf(a) |ap, alen| {
         do as_buf(b) |bp, blen| {
@@ -852,17 +949,20 @@ pub fn eq_slice(a: &str, b: &str) -> bool {
 }
 
 /// Bytewise string equality
-#[cfg(notest)]
+#[cfg(not(test))]
 #[lang="uniq_str_eq"]
+#[inline]
 pub fn eq(a: &~str, b: &~str) -> bool {
     eq_slice(*a, *b)
 }
 
 #[cfg(test)]
+#[inline]
 pub fn eq(a: &~str, b: &~str) -> bool {
     eq_slice(*a, *b)
 }
 
+#[inline]
 fn cmp(a: &str, b: &str) -> Ordering {
     let low = uint::min(a.len(), b.len());
 
@@ -877,22 +977,26 @@ fn cmp(a: &str, b: &str) -> Ordering {
     a.len().cmp(&b.len())
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self> TotalOrd for &'self str {
+    #[inline]
     fn cmp(&self, other: & &'self str) -> Ordering { cmp(*self, *other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl TotalOrd for ~str {
+    #[inline]
     fn cmp(&self, other: &~str) -> Ordering { cmp(*self, *other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl TotalOrd for @str {
+    #[inline]
     fn cmp(&self, other: &@str) -> Ordering { cmp(*self, *other) }
 }
 
 /// Bytewise slice less than
+#[inline]
 fn lt(a: &str, b: &str) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
     let end = uint::min(a_len, b_len);
@@ -909,21 +1013,24 @@ fn lt(a: &str, b: &str) -> bool {
 }
 
 /// Bytewise less than or equal
+#[inline]
 pub fn le(a: &str, b: &str) -> bool {
     !lt(b, a)
 }
 
 /// Bytewise greater than or equal
+#[inline]
 fn ge(a: &str, b: &str) -> bool {
     !lt(a, b)
 }
 
 /// Bytewise greater than
+#[inline]
 fn gt(a: &str, b: &str) -> bool {
     !le(a, b)
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self> Eq for &'self str {
     #[inline(always)]
     fn eq(&self, other: & &'self str) -> bool {
@@ -933,7 +1040,7 @@ impl<'self> Eq for &'self str {
     fn ne(&self, other: & &'self str) -> bool { !(*self).eq(other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Eq for ~str {
     #[inline(always)]
     fn eq(&self, other: &~str) -> bool {
@@ -943,7 +1050,7 @@ impl Eq for ~str {
     fn ne(&self, other: &~str) -> bool { !(*self).eq(other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Eq for @str {
     #[inline(always)]
     fn eq(&self, other: &@str) -> bool {
@@ -953,7 +1060,7 @@ impl Eq for @str {
     fn ne(&self, other: &@str) -> bool { !(*self).eq(other) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self> TotalEq for &'self str {
     #[inline(always)]
     fn equals(&self, other: & &'self str) -> bool {
@@ -961,7 +1068,7 @@ impl<'self> TotalEq for &'self str {
     }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl TotalEq for ~str {
     #[inline(always)]
     fn equals(&self, other: &~str) -> bool {
@@ -969,7 +1076,7 @@ impl TotalEq for ~str {
     }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl TotalEq for @str {
     #[inline(always)]
     fn equals(&self, other: &@str) -> bool {
@@ -977,7 +1084,7 @@ impl TotalEq for @str {
     }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Ord for ~str {
     #[inline(always)]
     fn lt(&self, other: &~str) -> bool { lt((*self), (*other)) }
@@ -989,7 +1096,7 @@ impl Ord for ~str {
     fn gt(&self, other: &~str) -> bool { gt((*self), (*other)) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self> Ord for &'self str {
     #[inline(always)]
     fn lt(&self, other: & &'self str) -> bool { lt((*self), (*other)) }
@@ -1001,7 +1108,7 @@ impl<'self> Ord for &'self str {
     fn gt(&self, other: & &'self str) -> bool { gt((*self), (*other)) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Ord for @str {
     #[inline(always)]
     fn lt(&self, other: &@str) -> bool { lt((*self), (*other)) }
@@ -1013,7 +1120,7 @@ impl Ord for @str {
     fn gt(&self, other: &@str) -> bool { gt((*self), (*other)) }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl<'self> Equiv<~str> for &'self str {
     #[inline(always)]
     fn equiv(&self, other: &~str) -> bool { eq_slice(*self, *other) }
@@ -1595,6 +1702,7 @@ Section: String properties
 */
 
 /// Returns true if the string has length 0
+#[inline(always)]
 pub fn is_empty(s: &str) -> bool { len(s) == 0u }
 
 /**
@@ -1616,11 +1724,13 @@ fn is_alphanumeric(s: &str) -> bool {
 }
 
 /// Returns the string length/size in bytes not counting the null terminator
+#[inline(always)]
 pub fn len(s: &str) -> uint {
     do as_buf(s) |_p, n| { n - 1u }
 }
 
 /// Returns the number of characters that a string holds
+#[inline(always)]
 pub fn char_len(s: &str) -> uint { count_chars(s, 0u, len(s)) }
 
 /*
@@ -1752,7 +1862,8 @@ pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
     return len;
 }
 
-/// Counts the number of bytes taken by the `n` in `s` starting from `start`.
+/// Counts the number of bytes taken by the first `n` chars in `s`
+/// starting from `start`.
 pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
     assert!(is_char_boundary(s, start));
     let mut end = start, cnt = n;
@@ -1988,6 +2099,7 @@ static tag_six_b: uint = 252u;
  * let i = str::as_bytes("Hello World") { |bytes| vec::len(bytes) };
  * ~~~
  */
+#[inline]
 pub fn as_bytes<T>(s: &const ~str, f: &fn(&~[u8]) -> T) -> T {
     unsafe {
         let v: *~[u8] = cast::transmute(copy s);
@@ -2023,6 +2135,7 @@ pub fn as_bytes_slice<'a>(s: &'a str) -> &'a [u8] {
  * let s = str::as_c_str("PATH", { |path| libc::getenv(path) });
  * ~~~
  */
+#[inline]
 pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
     do as_buf(s) |buf, len| {
         // NB: len includes the trailing null.
@@ -2099,6 +2212,7 @@ pub fn subslice_offset(outer: &str, inner: &str) -> uint {
  * * s - A string
  * * n - The number of bytes to reserve space for
  */
+#[inline(always)]
 pub fn reserve(s: &mut ~str, n: uint) {
     unsafe {
         let v: *mut ~[u8] = cast::transmute(s);
@@ -2126,6 +2240,7 @@ pub fn reserve(s: &mut ~str, n: uint) {
  * * s - A string
  * * n - The number of bytes to reserve space for
  */
+#[inline(always)]
 pub fn reserve_at_least(s: &mut ~str, n: uint) {
     reserve(s, uint::next_power_of_two(n + 1u) - 1u)
 }
@@ -2292,7 +2407,7 @@ pub mod raw {
     unsafe fn push_bytes(s: &mut ~str, bytes: &[u8]) {
         let new_len = s.len() + bytes.len();
         reserve_at_least(&mut *s, new_len);
-        for vec::each(bytes) |byte| { push_byte(&mut *s, *byte); }
+        for bytes.each |byte| { push_byte(&mut *s, *byte); }
     }
 
     /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
@@ -2314,6 +2429,7 @@ pub mod raw {
     }
 
     /// Sets the length of the string and adds the null terminator
+    #[inline]
     pub unsafe fn set_len(v: &mut ~str, new_len: uint) {
         let v: **mut vec::raw::VecRepr = cast::transmute(v);
         let repr: *mut vec::raw::VecRepr = *v;
@@ -2335,7 +2451,7 @@ pub mod raw {
 
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 pub mod traits {
     use ops::Add;
     use str::append;
@@ -2356,9 +2472,6 @@ pub trait StrSlice<'self> {
     fn any(&self, it: &fn(char) -> bool) -> bool;
     fn contains<'a>(&self, needle: &'a str) -> bool;
     fn contains_char(&self, needle: char) -> bool;
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn char_iter(&self) -> StrCharIterator<'self>;
     fn each(&self, it: &fn(u8) -> bool);
     fn eachi(&self, it: &fn(uint, u8) -> bool);
@@ -2420,9 +2533,6 @@ impl<'self> StrSlice<'self> for &'self str {
         contains_char(*self, needle)
     }
 
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     #[inline]
     fn char_iter(&self) -> StrCharIterator<'self> {
         StrCharIterator {
@@ -2489,7 +2599,7 @@ impl<'self> StrSlice<'self> for &'self str {
     #[inline]
     fn is_alphanumeric(&self) -> bool { is_alphanumeric(*self) }
     /// Returns the size in bytes not counting the null terminator
-    #[inline]
+    #[inline(always)]
     fn len(&self) -> uint { len(*self) }
     /// Returns the number of characters that a string holds
     #[inline]
@@ -2599,10 +2709,11 @@ pub trait OwnedStr {
 }
 
 impl OwnedStr for ~str {
+    #[inline]
     fn push_str(&mut self, v: &str) {
         push_str(self, v);
     }
-
+    #[inline]
     fn push_char(&mut self, c: char) {
         push_char(self, c);
     }
@@ -2615,17 +2726,11 @@ impl Clone for ~str {
     }
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
 pub struct StrCharIterator<'self> {
     priv index: uint,
     priv string: &'self str,
 }
 
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
 impl<'self> Iterator<char> for StrCharIterator<'self> {
     #[inline]
     fn next(&mut self) -> Option<char> {
@@ -3677,7 +3782,7 @@ mod tests {
                0xd801_u16, 0xdc95_u16, 0xd801_u16, 0xdc86_u16,
                0x000a_u16 ]) ];
 
-        for vec::each(pairs) |p| {
+        for pairs.each |p| {
             let (s, u) = copy *p;
             assert!(to_utf16(s) == u);
             assert!(from_utf16(u) == s);

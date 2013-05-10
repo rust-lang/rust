@@ -10,12 +10,11 @@
 
 fn main() {
     let msg;
-    match Some(~"Hello") { //~ ERROR illegal borrow
-        Some(ref m) => {
+    match Some(~"Hello") {
+        Some(ref m) => { //~ ERROR borrowed value does not live long enough
             msg = m;
-        },  
+        },
         None => { fail!() }
-    }   
+    }
     io::println(*msg);
 }
-

@@ -16,4 +16,3 @@ pub fn main() {
         Foo => { io::println("hi"); }
     }
 }
-

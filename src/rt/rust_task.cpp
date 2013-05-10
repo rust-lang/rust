@@ -36,12 +36,13 @@ rust_task::rust_task(rust_sched_loop *sched_loop, rust_task_state state,
     kernel(sched_loop->kernel),
     name(name),
     list_index(-1),
-    boxed(sched_loop->kernel->env, &local_region),
+    boxed(&local_region, sched_loop->kernel->env->poison_on_free),
     local_region(&sched_loop->local_region),
     unwinding(false),
     total_stack_sz(0),
     task_local_data(NULL),
     task_local_data_cleanup(NULL),
+    borrow_list(NULL),
     state(state),
     cond(NULL),
     cond_name("none"),
@@ -74,6 +75,9 @@ rust_task::delete_this()
        assertions that hold at task-lifecycle events. */
     assert(ref_count == 0); // ||
     //   (ref_count == 1 && this == sched->root_task));
+
+    // The borrow list should be freed in the task annihilator
+    assert(!borrow_list);
 
     sched_loop->release_task(this);
 }

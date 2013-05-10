@@ -13,5 +13,3 @@ impl Drop for Fd {
 
 pub fn main() {
 }
-
-

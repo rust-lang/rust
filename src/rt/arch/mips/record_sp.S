@@ -16,8 +16,8 @@ record_sp_limit:
         .set mips32r2
         rdhwr $3, $29
         .set pop
-        addiu $3, $3, -0x7008
-        sw $4, 4($3)
+        addiu $3, $3, -0x7004
+        sw $4, 0($3)
         jr $31
         nop
 .end record_sp_limit
@@ -33,8 +33,8 @@ get_sp_limit:
         .set mips32r2
         rdhwr $3, $29
         .set pop
-        addiu $3, $3, -0x7008
-        lw $2, 4($3)
+        addiu $3, $3, -0x7004
+        lw $2, 0($3)
         jr $31
         nop
 .end get_sp_limit

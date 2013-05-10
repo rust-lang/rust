@@ -12,4 +12,3 @@
 struct S((), ());
 
 pub fn main() {}
-

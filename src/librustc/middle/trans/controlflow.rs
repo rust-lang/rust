@@ -34,7 +34,7 @@ pub fn trans_block(bcx: block, b: &ast::blk, dest: expr::Dest) -> block {
     do block_locals(b) |local| {
         bcx = alloc_local(bcx, local);
     };
-    for vec::each(b.node.stmts) |s| {
+    for b.node.stmts.each |s| {
         debuginfo::update_source_pos(bcx, b.span);
         bcx = trans_stmt(bcx, *s);
     }
@@ -65,8 +65,8 @@ pub fn trans_if(bcx: block,
     let Result {bcx, val: cond_val} =
         expr::trans_to_datum(bcx, cond).to_result();
 
-    let then_bcx_in = scope_block(bcx, thn.info(), ~"then");
-    let else_bcx_in = scope_block(bcx, els.info(), ~"else");
+    let then_bcx_in = scope_block(bcx, thn.info(), "then");
+    let else_bcx_in = scope_block(bcx, els.info(), "else");
 
     let cond_val = bool_to_i1(bcx, cond_val);
     CondBr(bcx, cond_val, then_bcx_in.llbb, else_bcx_in.llbb);
@@ -105,9 +105,9 @@ pub fn trans_if(bcx: block,
 }
 
 pub fn join_blocks(parent_bcx: block, in_cxs: &[block]) -> block {
-    let out = sub_block(parent_bcx, ~"join");
+    let out = sub_block(parent_bcx, "join");
     let mut reachable = false;
-    for vec::each(in_cxs) |bcx| {
+    for in_cxs.each |bcx| {
         if !bcx.unreachable {
             Br(*bcx, out.llbb);
             reachable = true;
@@ -121,7 +121,7 @@ pub fn join_blocks(parent_bcx: block, in_cxs: &[block]) -> block {
 
 pub fn trans_while(bcx: block, cond: @ast::expr, body: &ast::blk) -> block {
     let _icx = bcx.insn_ctxt("trans_while");
-    let next_bcx = sub_block(bcx, ~"while next");
+    let next_bcx = sub_block(bcx, "while next");
 
     //            bcx
     //             |
@@ -136,10 +136,10 @@ pub fn trans_while(bcx: block, cond: @ast::expr, body: &ast::blk) -> block {
     //    |           body_bcx_out --+
     // next_bcx
 
-    let loop_bcx = loop_scope_block(bcx, next_bcx, None, ~"`while`",
+    let loop_bcx = loop_scope_block(bcx, next_bcx, None, "`while`",
                                     body.info());
-    let cond_bcx_in = scope_block(loop_bcx, cond.info(), ~"while loop cond");
-    let body_bcx_in = scope_block(loop_bcx, body.info(), ~"while loop body");
+    let cond_bcx_in = scope_block(loop_bcx, cond.info(), "while loop cond");
+    let body_bcx_in = scope_block(loop_bcx, body.info(), "while loop body");
     Br(bcx, loop_bcx.llbb);
     Br(loop_bcx, cond_bcx_in.llbb);
 
@@ -163,8 +163,8 @@ pub fn trans_loop(bcx:block,
                   opt_label: Option<ident>)
                -> block {
     let _icx = bcx.insn_ctxt("trans_loop");
-    let next_bcx = sub_block(bcx, ~"next");
-    let body_bcx_in = loop_scope_block(bcx, next_bcx, opt_label, ~"`loop`",
+    let next_bcx = sub_block(bcx, "next");
+    let body_bcx_in = loop_scope_block(bcx, next_bcx, opt_label, "`loop`",
                                        body.info());
     Br(bcx, body_bcx_in.llbb);
     let body_bcx_out = trans_block(body_bcx_in, body, expr::Ignore);
@@ -186,17 +186,17 @@ pub fn trans_log(log_ex: @ast::expr,
     let (modpath, modname) = {
         let path = &mut bcx.fcx.path;
         let modpath = vec::append(
-            ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name.to_owned()))],
+            ~[path_mod(ccx.sess.ident_of(ccx.link_meta.name))],
             path.filtered(|e| match *e { path_mod(_) => true, _ => false }));
         let modname = path_str(ccx.sess, modpath);
         (modpath, modname)
     };
 
     let global = if ccx.module_data.contains_key(&modname) {
-        *ccx.module_data.get(&modname)
+        ccx.module_data.get_copy(&modname)
     } else {
         let s = link::mangle_internal_name_by_path_and_seq(
-            ccx, modpath, ~"loglevel");
+            ccx, modpath, "loglevel");
         let global;
         unsafe {
             global = str::as_c_str(s, |buf| {
@@ -211,14 +211,14 @@ pub fn trans_log(log_ex: @ast::expr,
     };
     let current_level = Load(bcx, global);
     let level = unpack_result!(bcx, {
-        do with_scope_result(bcx, lvl.info(), ~"level") |bcx| {
+        do with_scope_result(bcx, lvl.info(), "level") |bcx| {
             expr::trans_to_datum(bcx, lvl).to_result()
         }
     });
 
     let llenabled = ICmp(bcx, lib::llvm::IntUGE, current_level, level);
     do with_cond(bcx, llenabled) |bcx| {
-        do with_scope(bcx, log_ex.info(), ~"log") |bcx| {
+        do with_scope(bcx, log_ex.info(), "log") |bcx| {
             let mut bcx = bcx;
 
             // Translate the value to be logged
@@ -243,8 +243,8 @@ pub fn trans_break_cont(bcx: block,
     let mut unwind = bcx;
     let mut target;
     loop {
-        match *unwind.kind {
-          block_scope(scope_info {
+        match unwind.kind {
+          block_scope(@scope_info {
             loop_break: Some(brk),
             loop_label: l,
             _
@@ -333,7 +333,7 @@ pub fn trans_fail_expr(bcx: block,
                 bcx, expr::trans_to_datum(bcx, arg_expr));
 
             if ty::type_is_str(arg_datum.ty) {
-                let (lldata, _lllen) = arg_datum.get_base_and_len(bcx);
+                let (lldata, _) = arg_datum.get_vec_base_and_len_no_root(bcx);
                 return trans_fail_value(bcx, sp_opt, lldata);
             } else if bcx.unreachable || ty::type_is_bot(arg_datum.ty) {
                 return bcx;
@@ -385,17 +385,10 @@ fn trans_fail_value(bcx: block,
 pub fn trans_fail_bounds_check(bcx: block, sp: span,
                                index: ValueRef, len: ValueRef) -> block {
     let _icx = bcx.insn_ctxt("trans_fail_bounds_check");
-    let ccx = bcx.ccx();
-
-    let loc = bcx.sess().parse_sess.cm.lookup_char_pos(sp.lo);
-    let line = C_int(ccx, loc.line as int);
-    let filename_cstr = C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name);
-    let filename = PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
-
+    let (filename, line) = filename_and_line_num_from_span(bcx, sp);
     let args = ~[filename, line, index, len];
     let bcx = callee::trans_lang_call(
         bcx, bcx.tcx().lang_items.fail_bounds_check_fn(), args, expr::Ignore);
     Unreachable(bcx);
     return bcx;
 }
-

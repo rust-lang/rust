@@ -252,6 +252,7 @@ struct RWARCInner<T> { lock: RWlock, failed: bool, data: T }
  *
  * Unlike mutex_arcs, rw_arcs are safe, because they cannot be nested.
  */
+#[mutable]
 struct RWARC<T> {
     x: SharedMutableState<RWARCInner<T>>,
     cant_nest: ()
@@ -419,26 +420,26 @@ pub struct RWReadMode<'self, T> {
 
 pub impl<'self, T:Const + Owned> RWWriteMode<'self, T> {
     /// Access the pre-downgrade RWARC in write mode.
-    fn write<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
+    fn write<U>(&mut self, blk: &fn(x: &mut T) -> U) -> U {
         match *self {
             RWWriteMode {
-                data: ref data,
+                data: &ref mut data,
                 token: ref token,
                 poison: _
             } => {
                 do token.write {
-                    blk(&mut **data)
+                    blk(data)
                 }
             }
         }
     }
     /// Access the pre-downgrade RWARC in write mode with a condvar.
-    fn write_cond<'x, 'c, U>(&self,
+    fn write_cond<'x, 'c, U>(&mut self,
                              blk: &fn(x: &'x mut T, c: &'c Condvar) -> U)
                           -> U {
         match *self {
             RWWriteMode {
-                data: ref data,
+                data: &ref mut data,
                 token: ref token,
                 poison: ref poison
             } => {
@@ -449,7 +450,7 @@ pub impl<'self, T:Const + Owned> RWWriteMode<'self, T> {
                             failed: &mut *poison.failed,
                             cond: cond
                         };
-                        blk(&mut **data, &cvar)
+                        blk(data, &cvar)
                     }
                 }
             }
@@ -483,7 +484,6 @@ mod tests {
 
     use core::cell::Cell;
     use core::task;
-    use core::vec;
 
     #[test]
     fn manually_share_arc() {
@@ -498,7 +498,7 @@ mod tests {
 
             let arc_v = p.recv();
 
-            let v = *arc::get::<~[int]>(&arc_v);
+            let v = copy *arc::get::<~[int]>(&arc_v);
             assert!(v[3] == 4);
         };
 
@@ -598,8 +598,8 @@ mod tests {
         let arc = ~RWARC(1);
         let arc2 = (*arc).clone();
         do task::try || {
-            do arc2.write_downgrade |write_mode| {
-                do (&write_mode).write |one| {
+            do arc2.write_downgrade |mut write_mode| {
+                do write_mode.write |one| {
                     assert!(*one == 2);
                 }
             }
@@ -672,8 +672,9 @@ mod tests {
         let mut children = ~[];
         for 5.times {
             let arc3 = (*arc).clone();
-            do task::task().future_result(|+r| children.push(r)).spawn
-                || {
+            let mut builder = task::task();
+            builder.future_result(|r| children.push(r));
+            do builder.spawn {
                 do arc3.read |num| {
                     assert!(*num >= 0);
                 }
@@ -681,11 +682,15 @@ mod tests {
         }
 
         // Wait for children to pass their asserts
-        for vec::each(children) |r| { r.recv(); }
+        for children.each |r| {
+            r.recv();
+        }
 
         // Wait for writer to finish
         p.recv();
-        do arc.read |num| { assert!(*num == 10); }
+        do arc.read |num| {
+            assert!(*num == 10);
+        }
     }
     #[test]
     fn test_rw_downgrade() {
@@ -733,8 +738,8 @@ mod tests {
         }
 
         // Downgrader (us)
-        do arc.write_downgrade |write_mode| {
-            do (&write_mode).write_cond |state, cond| {
+        do arc.write_downgrade |mut write_mode| {
+            do write_mode.write_cond |state, cond| {
                 wc1.send(()); // send to another writer who will wake us up
                 while *state == 0 {
                     cond.wait();
@@ -742,7 +747,7 @@ mod tests {
                 assert!(*state == 42);
                 *state = 31337;
                 // send to other readers
-                for vec::each(reader_convos) |x| {
+                for reader_convos.each |x| {
                     match *x {
                         (ref rc, _) => rc.send(()),
                     }
@@ -751,7 +756,7 @@ mod tests {
             let read_mode = arc.downgrade(write_mode);
             do (&read_mode).read |state| {
                 // complete handshake with other readers
-                for vec::each(reader_convos) |x| {
+                for reader_convos.each |x| {
                     match *x {
                         (_, ref rp) => rp.recv(),
                     }

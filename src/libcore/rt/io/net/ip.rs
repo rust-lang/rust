@@ -12,4 +12,3 @@ pub enum IpAddr {
     Ipv4(u8, u8, u8, u8, u16),
     Ipv6
 }
-

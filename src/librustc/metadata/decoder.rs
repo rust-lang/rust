@@ -204,18 +204,6 @@ fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) {
     }
 }
 
-fn field_mutability(d: ebml::Doc) -> ast::struct_mutability {
-    // Use maybe_get_doc in case it's a method
-    reader::maybe_get_doc(d, tag_struct_mut).map_default(
-        ast::struct_immutable,
-        |d| {
-            match reader::doc_as_u8(*d) as char {
-              'm' => ast::struct_mutable,
-              _   => ast::struct_immutable
-            }
-        })
-}
-
 fn variant_disr_val(d: ebml::Doc) -> Option<int> {
     do reader::maybe_get_doc(d, tag_disr_val).chain |val_doc| {
         int::parse_bytes(reader::doc_data(val_doc), 10u)
@@ -244,8 +232,8 @@ fn doc_transformed_self_ty(doc: ebml::Doc,
     }
 }
 
-pub fn item_type(_: ast::def_id, item: ebml::Doc, tcx: ty::ctxt, cdata: cmd)
-                 -> ty::t {
+pub fn item_type(_item_id: ast::def_id, item: ebml::Doc,
+                 tcx: ty::ctxt, cdata: cmd) -> ty::t {
     doc_type(item, tcx, cdata)
 }
 
@@ -274,7 +262,8 @@ fn item_ty_param_defs(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd,
 
 fn item_ty_region_param(item: ebml::Doc) -> Option<ty::region_variance> {
     reader::maybe_get_doc(item, tag_region_param).map(|doc| {
-        Decodable::decode(&reader::Decoder(*doc))
+        let mut decoder = reader::Decoder(*doc);
+        Decodable::decode(&mut decoder)
     })
 }
 
@@ -305,10 +294,10 @@ fn item_path(intr: @ident_interner, item_doc: ebml::Doc) -> ast_map::path {
     for reader::docs(path_doc) |tag, elt_doc| {
         if tag == tag_path_elt_mod {
             let str = reader::doc_as_str(elt_doc);
-            result.push(ast_map::path_mod(intr.intern(@str)));
+            result.push(ast_map::path_mod(intr.intern(str)));
         } else if tag == tag_path_elt_name {
             let str = reader::doc_as_str(elt_doc);
-            result.push(ast_map::path_name(intr.intern(@str)));
+            result.push(ast_map::path_name(intr.intern(str)));
         } else {
             // ignore tag_path_len element
         }
@@ -322,7 +311,7 @@ fn item_name(intr: @ident_interner, item: ebml::Doc) -> ast::ident {
     do reader::with_doc_data(name) |data| {
         let string = str::from_bytes_slice(data);
         match intr.find_equiv(&StringRef(string)) {
-            None => intr.intern(@(string.to_owned())),
+            None => intr.intern(string),
             Some(val) => val,
         }
     }
@@ -443,22 +432,6 @@ pub fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
             }
         }
     found.get()
-}
-
-pub fn struct_dtor(cdata: cmd, id: ast::node_id) -> Option<ast::def_id> {
-    let items = reader::get_doc(reader::Doc(cdata.data), tag_items);
-    let mut found = None;
-    let cls_items = match maybe_find_item(id, items) {
-            Some(it) => it,
-            None     => fail!(fmt!("struct_dtor: class id not found \
-              when looking up dtor for %d", id))
-    };
-    for reader::tagged_docs(cls_items, tag_item_dtor) |doc| {
-         let doc1 = reader::get_doc(doc, tag_def_id);
-         let did = reader::with_doc_data(doc1, |d| parse_def_id(d));
-         found = Some(translate_def_id(cdata, did));
-    };
-    found
 }
 
 pub fn get_symbol(data: @~[u8], id: ast::node_id) -> ~str {
@@ -855,7 +828,7 @@ pub fn get_type_name_if_impl(intr: @ident_interner,
     }
 
     for reader::tagged_docs(item, tag_item_impl_type_basename) |doc| {
-        return Some(intr.intern(@str::from_bytes(reader::doc_data(doc))));
+        return Some(intr.intern(str::from_bytes(reader::doc_data(doc))));
     }
 
     return None;
@@ -938,12 +911,10 @@ pub fn get_struct_fields(intr: @ident_interner, cdata: cmd, id: ast::node_id)
         if f == PublicField || f == PrivateField || f == InheritedField {
             let name = item_name(intr, an_item);
             let did = item_def_id(an_item, cdata);
-            let mt = field_mutability(an_item);
             result.push(ty::field_ty {
                 ident: name,
                 id: did, vis:
                 struct_field_family_to_visibility(f),
-                mutability: mt,
             });
         }
     }
@@ -953,7 +924,6 @@ pub fn get_struct_fields(intr: @ident_interner, cdata: cmd, id: ast::node_id)
             ident: special_idents::unnamed_field,
             id: did,
             vis: ast::inherited,
-            mutability: ast::struct_immutable,
         });
     }
     result
@@ -1110,7 +1080,7 @@ pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
     }
     for reader::tagged_docs(depsdoc, tag_crate_dep) |depdoc| {
         deps.push(crate_dep {cnum: crate_num,
-                  name: intr.intern(@docstr(depdoc, tag_crate_dep_name)),
+                  name: intr.intern(docstr(depdoc, tag_crate_dep_name)),
                   vers: @docstr(depdoc, tag_crate_dep_vers),
                   hash: @docstr(depdoc, tag_crate_dep_hash)});
         crate_num += 1;
@@ -1192,11 +1162,3 @@ pub fn get_link_args_for_crate(cdata: cmd) -> ~[~str] {
     }
     result
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

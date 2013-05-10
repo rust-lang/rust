@@ -215,16 +215,16 @@ pub struct Bitv {
     nbits: uint
 }
 
-priv impl Bitv {
+fn die() -> ! {
+    fail!(~"Tried to do operation on bit vectors with different sizes");
+}
 
-    fn die(&self) -> ! {
-        fail!(~"Tried to do operation on bit vectors with different sizes");
-    }
+priv impl Bitv {
 
     #[inline(always)]
     fn do_op(&mut self, op: Op, other: &Bitv) -> bool {
         if self.nbits != other.nbits {
-            self.die();
+            die();
         }
         match self.rep {
           Small(ref mut s) => match other.rep {
@@ -234,10 +234,10 @@ priv impl Bitv {
               Assign     => s.become(*s1,     self.nbits),
               Difference => s.difference(*s1, self.nbits)
             },
-            Big(_) => self.die()
+            Big(_) => die()
           },
           Big(ref mut s) => match other.rep {
-            Small(_) => self.die(),
+            Small(_) => die(),
             Big(ref s1) => match op {
               Union      => s.union(*s1,      self.nbits),
               Intersect  => s.intersect(*s1,  self.nbits),
@@ -1426,7 +1426,7 @@ mod tests {
 
     #[bench]
     fn bench_uint_small(b: &mut BenchHarness) {
-        let r = rng();
+        let mut r = rng();
         let mut bitv = 0 as uint;
         do b.iter {
             bitv |= (1 << ((r.next() as uint) % uint::bits));
@@ -1435,7 +1435,7 @@ mod tests {
 
     #[bench]
     fn bench_small_bitv_small(b: &mut BenchHarness) {
-        let r = rng();
+        let mut r = rng();
         let mut bitv = SmallBitv::new(uint::bits);
         do b.iter {
             bitv.set((r.next() as uint) % uint::bits, true);
@@ -1444,7 +1444,7 @@ mod tests {
 
     #[bench]
     fn bench_big_bitv_small(b: &mut BenchHarness) {
-        let r = rng();
+        let mut r = rng();
         let mut bitv = BigBitv::new(~[0]);
         do b.iter {
             bitv.set((r.next() as uint) % uint::bits, true);
@@ -1453,7 +1453,7 @@ mod tests {
 
     #[bench]
     fn bench_big_bitv_big(b: &mut BenchHarness) {
-        let r = rng();
+        let mut r = rng();
         let mut storage = ~[];
         storage.grow(bench_bits / uint::bits, &0);
         let mut bitv = BigBitv::new(storage);
@@ -1464,7 +1464,7 @@ mod tests {
 
     #[bench]
     fn bench_bitv_big(b: &mut BenchHarness) {
-        let r = rng();
+        let mut r = rng();
         let mut bitv = Bitv::new(bench_bits, false);
         do b.iter {
             bitv.set((r.next() as uint) % bench_bits, true);
@@ -1473,7 +1473,7 @@ mod tests {
 
     #[bench]
     fn bench_bitv_small(b: &mut BenchHarness) {
-        let r = rng();
+        let mut r = rng();
         let mut bitv = Bitv::new(uint::bits, false);
         do b.iter {
             bitv.set((r.next() as uint) % uint::bits, true);
@@ -1482,7 +1482,7 @@ mod tests {
 
     #[bench]
     fn bench_bitv_set_small(b: &mut BenchHarness) {
-        let r = rng();
+        let mut r = rng();
         let mut bitv = BitvSet::new();
         do b.iter {
             bitv.insert((r.next() as uint) % uint::bits);
@@ -1491,7 +1491,7 @@ mod tests {
 
     #[bench]
     fn bench_bitv_set_big(b: &mut BenchHarness) {
-        let r = rng();
+        let mut r = rng();
         let mut bitv = BitvSet::new();
         do b.iter {
             bitv.insert((r.next() as uint) % bench_bits);
@@ -1507,13 +1507,3 @@ mod tests {
         }
     }
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

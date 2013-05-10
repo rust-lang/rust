@@ -96,4 +96,3 @@ def check_license(name, contents):
         return True
 
     return False
-

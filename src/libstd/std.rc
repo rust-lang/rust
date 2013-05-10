@@ -26,9 +26,10 @@ not required in or otherwise suitable for the core library.
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[allow(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
-#[allow(deprecated_mutable_fields)];
+
+// Allow mutable fields only in stage0.
+#[warn(deprecated_mutable_fields)];
 
 pub mod uv_ll;
 
@@ -50,6 +51,7 @@ pub mod uv_global_loop;
 pub mod c_vec;
 pub mod timer;
 pub mod io_util;
+pub mod rc;
 
 // Concurrency
 
@@ -69,9 +71,15 @@ pub mod list;
 pub mod priority_queue;
 pub mod rope;
 pub mod smallintmap;
+
+#[cfg(stage0)]
+#[path="sort_stage0.rs"]
 pub mod sort;
-pub mod dlist;
+
 #[cfg(not(stage0))]
+pub mod sort;
+
+pub mod dlist;
 pub mod treemap;
 
 // And ... other stuff
@@ -87,17 +95,13 @@ pub mod term;
 pub mod time;
 pub mod arena;
 pub mod par;
-pub mod cmp;
 pub mod base64;
 pub mod rl;
 pub mod workcache;
-#[cfg(not(stage0))]
 #[path="num/bigint.rs"]
 pub mod bigint;
-#[cfg(not(stage0))]
 #[path="num/rational.rs"]
 pub mod rational;
-#[cfg(not(stage0))]
 #[path="num/complex.rs"]
 pub mod complex;
 pub mod stats;
@@ -121,11 +125,3 @@ pub mod std {
     pub use serialize;
     pub use test;
 }
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

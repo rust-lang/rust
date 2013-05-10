@@ -16,6 +16,12 @@ pub enum List<T> {
     Nil,
 }
 
+#[deriving(Eq)]
+pub enum MutList<T> {
+    MutCons(T, @mut MutList<T>),
+    MutNil,
+}
+
 /// Create a list from a vector
 pub fn from_vec<T:Copy>(v: &[T]) -> @List<T> {
     vec::foldr(v, @Nil::<T>, |h, t| @Cons(*h, t))
@@ -147,6 +153,25 @@ pub fn each<T>(l: @List<T>, f: &fn(&T) -> bool) {
     }
 }
 
+impl<T> MutList<T> {
+    /// Iterate over a mutable list
+    pub fn each(@mut self, f: &fn(&mut T) -> bool) {
+        let mut cur = self;
+        loop {
+            let borrowed = &mut *cur;
+            cur = match *borrowed {
+                MutCons(ref mut hd, tl) => {
+                    if !f(hd) {
+                        return;
+                    }
+                    tl
+                }
+                MutNil => break
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use list::*;
@@ -242,11 +267,3 @@ mod tests {
             == list::append(list::from_vec(~[1,2]), list::from_vec(~[3,4])));
     }
 }
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

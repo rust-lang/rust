@@ -226,13 +226,6 @@ pub fn map_err<T:Copy,E,F:Copy>(res: &Result<T, E>, op: &fn(&E) -> F)
 }
 
 pub impl<T, E> Result<T, E> {
-    #[cfg(stage0)]
-    #[inline(always)]
-    fn get_ref(&self) -> &'self T { get_ref(self) }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     #[inline(always)]
     fn get_ref<'a>(&'a self) -> &'a T { get_ref(self) }
 
@@ -307,7 +300,7 @@ pub fn map_vec<T,U:Copy,V:Copy>(
     ts: &[T], op: &fn(&T) -> Result<V,U>) -> Result<~[V],U> {
 
     let mut vs: ~[V] = vec::with_capacity(vec::len(ts));
-    for vec::each(ts) |t| {
+    for ts.each |t| {
         match op(t) {
           Ok(copy v) => vs.push(v),
           Err(copy u) => return Err(u)

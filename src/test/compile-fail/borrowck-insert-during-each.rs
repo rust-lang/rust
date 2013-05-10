@@ -23,8 +23,8 @@ pub impl Foo {
 }
 
 fn bar(f: &mut Foo) {
-  do f.foo |a| { //~ NOTE prior loan as mutable granted here
-    f.n.insert(*a); //~ ERROR conflicts with prior loan
+  do f.foo |a| {
+    f.n.insert(*a); //~ ERROR cannot borrow
   }
 }
 

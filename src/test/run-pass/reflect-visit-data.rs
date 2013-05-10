@@ -513,16 +513,16 @@ impl TyVisitor for my_visitor {
     fn visit_bot(&self) -> bool { true }
     fn visit_nil(&self) -> bool { true }
     fn visit_bool(&self) -> bool {
-      do self.get::<bool>() |b| {
-            self.vals += ~[bool::to_str(b)];
-      };
-      true
+        do self.get::<bool>() |b| {
+            self.vals.push(bool::to_str(b));
+        };
+        true
     }
     fn visit_int(&self) -> bool {
-      do self.get::<int>() |i| {
-            self.vals += ~[int::to_str(i)];
-      };
-      true
+        do self.get::<int>() |i| {
+            self.vals.push(int::to_str(i));
+        };
+        true
     }
     fn visit_i8(&self) -> bool { true }
     fn visit_i16(&self) -> bool { true }
@@ -633,7 +633,7 @@ impl TyVisitor for my_visitor {
     fn visit_closure_ptr(&self, _ck: uint) -> bool { true }
 }
 
-fn get_tydesc_for<T>(&&_t: T) -> *TyDesc {
+fn get_tydesc_for<T>(_t: T) -> *TyDesc {
     get_tydesc::<T>()
 }
 
