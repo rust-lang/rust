@@ -775,7 +775,7 @@ pub fn make_vtable(ccx: @CrateContext, ptrs: ~[ValueRef]) -> ValueRef {
     unsafe {
         let _icx = ccx.insn_ctxt("impl::make_vtable");
         let tbl = C_struct(ptrs);
-        let vtable = ccx.sess.str_of((ccx.names)(~"vtable"));
+        let vtable = ccx.sess.str_of((ccx.names)("vtable"));
         let vt_gvar = do str::as_c_str(*vtable) |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
         };

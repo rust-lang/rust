@@ -41,15 +41,15 @@ fn create_derived_encodable_impl(
 ) -> @item {
     let encoder_ty_param = build::mk_ty_param(
         cx,
-        cx.ident_of(~"__E"),
+        cx.ident_of("__E"),
         @opt_vec::with(
             build::mk_trait_ty_param_bound_global(
                 cx,
                 span,
                 ~[
-                    cx.ident_of(~"std"),
-                    cx.ident_of(~"serialize"),
-                    cx.ident_of(~"Encoder"),
+                    cx.ident_of("std"),
+                    cx.ident_of("serialize"),
+                    cx.ident_of("Encoder"),
                 ]
             )
         )
@@ -62,13 +62,13 @@ fn create_derived_encodable_impl(
     let trait_path = build::mk_raw_path_global_(
         span,
         ~[
-            cx.ident_of(~"std"),
-            cx.ident_of(~"serialize"),
-            cx.ident_of(~"Encodable")
+            cx.ident_of("std"),
+            cx.ident_of("serialize"),
+            cx.ident_of("Encodable")
         ],
         None,
         ~[
-            build::mk_simple_ty_path(cx, span, cx.ident_of(~"__E"))
+            build::mk_simple_ty_path(cx, span, cx.ident_of("__E"))
         ]
     );
     create_derived_impl(
@@ -94,11 +94,11 @@ fn create_encode_method(
     let e_arg_type = build::mk_ty_rptr(
         cx,
         span,
-        build::mk_simple_ty_path(cx, span, cx.ident_of(~"__E")),
+        build::mk_simple_ty_path(cx, span, cx.ident_of("__E")),
         None,
         ast::m_mutbl
     );
-    let e_arg = build::mk_arg(cx, span, cx.ident_of(~"__e"), e_arg_type);
+    let e_arg = build::mk_arg(cx, span, cx.ident_of("__e"), e_arg_type);
 
     // Create the type of the return value.
     let output_type = @ast::Ty { id: cx.next_id(), node: ty_nil, span: span };
@@ -112,7 +112,7 @@ fn create_encode_method(
 
     // Create the method.
     let self_ty = spanned { node: sty_region(None, m_imm), span: span };
-    let method_ident = cx.ident_of(~"encode");
+    let method_ident = cx.ident_of("encode");
     @ast::method {
         ident: method_ident,
         attrs: ~[],
@@ -134,11 +134,11 @@ fn call_substructure_encode_method(
     self_field: @expr
 ) -> @ast::expr {
     // Gather up the parameters we want to chain along.
-    let e_ident = cx.ident_of(~"__e");
+    let e_ident = cx.ident_of("__e");
     let e_expr = build::mk_path(cx, span, ~[e_ident]);
 
     // Call the substructure method.
-    let encode_ident = cx.ident_of(~"encode");
+    let encode_ident = cx.ident_of("encode");
     build::mk_method_call(
         cx,
         span,
@@ -204,7 +204,7 @@ fn expand_deriving_encodable_struct_method(
     type_ident: ident,
     struct_def: &struct_def
 ) -> @method {
-    let self_ident = cx.ident_of(~"self");
+    let self_ident = cx.ident_of("self");
 
     // Create the body of the method.
     let mut idx = 0;
@@ -227,7 +227,7 @@ fn expand_deriving_encodable_struct_method(
                     self_field
                 );
 
-                let e_ident = cx.ident_of(~"__e");
+                let e_ident = cx.ident_of("__e");
                 let e_arg = build::mk_arg(cx,
                                           span,
                                           e_ident,
@@ -243,8 +243,8 @@ fn expand_deriving_encodable_struct_method(
                 let call_expr = build::mk_method_call(
                     cx,
                     span,
-                    build::mk_path(cx, span, ~[cx.ident_of(~"__e")]),
-                    cx.ident_of(~"emit_struct_field"),
+                    build::mk_path(cx, span, ~[cx.ident_of("__e")]),
+                    cx.ident_of("emit_struct_field"),
                     ~[
                         build::mk_base_str(cx, span, cx.str_of(ident)),
                         build::mk_uint(cx, span, idx),
@@ -266,7 +266,7 @@ fn expand_deriving_encodable_struct_method(
 
     let e_arg = build::mk_arg(cx,
                               span,
-                              cx.ident_of(~"__e"),
+                              cx.ident_of("__e"),
                               build::mk_ty_infer(cx, span));
 
     let emit_struct_stmt = build::mk_method_call(
@@ -275,9 +275,9 @@ fn expand_deriving_encodable_struct_method(
         build::mk_path(
             cx,
             span,
-            ~[cx.ident_of(~"__e")]
+            ~[cx.ident_of("__e")]
         ),
-        cx.ident_of(~"emit_struct"),
+        cx.ident_of("emit_struct"),
         ~[
             build::mk_base_str(cx, span, cx.str_of(type_ident)),
             build::mk_uint(cx, span, statements.len()),
@@ -305,7 +305,7 @@ fn expand_deriving_encodable_enum_method(
     // Create the arms of the match in the method body.
     let arms = do enum_definition.variants.mapi |i, variant| {
         // Create the matching pattern.
-        let (pat, fields) = create_enum_variant_pattern(cx, span, variant, ~"__self", ast::m_imm);
+        let (pat, fields) = create_enum_variant_pattern(cx, span, variant, "__self", ast::m_imm);
 
         // Feed the discriminant to the encode function.
         let mut stmts = ~[];
@@ -317,7 +317,7 @@ fn expand_deriving_encodable_enum_method(
             // Call the substructure method.
             let expr = call_substructure_encode_method(cx, span, field);
 
-            let e_ident = cx.ident_of(~"__e");
+            let e_ident = cx.ident_of("__e");
             let e_arg = build::mk_arg(cx,
                                       span,
                                       e_ident,
@@ -333,8 +333,8 @@ fn expand_deriving_encodable_enum_method(
             let call_expr = build::mk_method_call(
                 cx,
                 span,
-                build::mk_path(cx, span, ~[cx.ident_of(~"__e")]),
-                cx.ident_of(~"emit_enum_variant_arg"),
+                build::mk_path(cx, span, ~[cx.ident_of("__e")]),
+                cx.ident_of("emit_enum_variant_arg"),
                 ~[
                     build::mk_uint(cx, span, j),
                     blk_expr,
@@ -347,13 +347,13 @@ fn expand_deriving_encodable_enum_method(
         // Create the pattern body.
         let e_arg = build::mk_arg(cx,
                                   span,
-                                  cx.ident_of(~"__e"),
+                                  cx.ident_of("__e"),
                                   build::mk_ty_infer(cx, span));
         let call_expr = build::mk_method_call(
             cx,
             span,
-            build::mk_path(cx, span, ~[cx.ident_of(~"__e")]),
-            cx.ident_of(~"emit_enum_variant"),
+            build::mk_path(cx, span, ~[cx.ident_of("__e")]),
+            cx.ident_of("emit_enum_variant"),
             ~[
                 build::mk_base_str(cx, span, cx.str_of(variant.node.name)),
                 build::mk_uint(cx, span, i),
@@ -377,7 +377,7 @@ fn expand_deriving_encodable_enum_method(
         }
     };
 
-    let e_ident = cx.ident_of(~"__e");
+    let e_ident = cx.ident_of("__e");
     let e_arg = build::mk_arg(cx,
                               span,
                               e_ident,
@@ -394,8 +394,8 @@ fn expand_deriving_encodable_enum_method(
     let call_expr = build::mk_method_call(
         cx,
         span,
-        build::mk_path(cx, span, ~[cx.ident_of(~"__e")]),
-        cx.ident_of(~"emit_enum"),
+        build::mk_path(cx, span, ~[cx.ident_of("__e")]),
+        cx.ident_of("emit_enum"),
         ~[
             build::mk_base_str(cx, span, cx.str_of(type_ident)),
             lambda_expr,

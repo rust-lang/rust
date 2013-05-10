@@ -285,8 +285,8 @@ pub impl Session_ {
     fn str_of(@self, id: ast::ident) -> @~str {
         self.parse_sess.interner.get(id)
     }
-    fn ident_of(@self, st: ~str) -> ast::ident {
-        self.parse_sess.interner.intern(@st)
+    fn ident_of(@self, st: &str) -> ast::ident {
+        self.parse_sess.interner.intern(st)
     }
     fn intr(@self) -> @syntax::parse::token::ident_interner {
         self.parse_sess.interner

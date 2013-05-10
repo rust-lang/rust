@@ -1223,7 +1223,7 @@ pub fn compile_guard(bcx: block,
 
     let val = unpack_result!(bcx, {
         do with_scope_result(bcx, guard_expr.info(),
-                             ~"guard") |bcx| {
+                             "guard") |bcx| {
             expr::trans_to_datum(bcx, guard_expr).to_result()
         }
     });
@@ -1447,7 +1447,7 @@ pub fn compile_submatch(bcx: block,
     }
     let else_cx = match kind {
         no_branch | single => bcx,
-        _ => sub_block(bcx, ~"match_else")
+        _ => sub_block(bcx, "match_else")
     };
     let sw = if kind == switch {
         Switch(bcx, test_val, else_cx.llbb, opts.len())
@@ -1465,7 +1465,7 @@ pub fn compile_submatch(bcx: block,
         i += 1u;
         let mut opt_cx = else_cx;
         if !exhaustive || i < len {
-            opt_cx = sub_block(bcx, ~"match_case");
+            opt_cx = sub_block(bcx, "match_case");
             match kind {
               single => Br(bcx, opt_cx.llbb),
               switch => {
@@ -1487,7 +1487,7 @@ pub fn compile_submatch(bcx: block,
                   let t = node_id_type(bcx, pat_id);
                   let Result {bcx: after_cx, val: matches} = {
                       do with_scope_result(bcx, None,
-                                           ~"compare_scope") |bcx| {
+                                           "compare_scope") |bcx| {
                           match trans_opt(bcx, opt) {
                               single_result(
                                   Result {bcx, val}) => {
@@ -1515,13 +1515,13 @@ pub fn compile_submatch(bcx: block,
                           }
                       }
                   };
-                  bcx = sub_block(after_cx, ~"compare_next");
+                  bcx = sub_block(after_cx, "compare_next");
                   CondBr(after_cx, matches, opt_cx.llbb, bcx.llbb);
               }
               compare_vec_len => {
                   let Result {bcx: after_cx, val: matches} = {
                       do with_scope_result(bcx, None,
-                                           ~"compare_vec_len_scope") |bcx| {
+                                           "compare_vec_len_scope") |bcx| {
                           match trans_opt(bcx, opt) {
                               single_result(
                                   Result {bcx, val}) => {
@@ -1553,7 +1553,7 @@ pub fn compile_submatch(bcx: block,
                           }
                       }
                   };
-                  bcx = sub_block(after_cx, ~"compare_vec_len_next");
+                  bcx = sub_block(after_cx, "compare_vec_len_next");
                   CondBr(after_cx, matches, opt_cx.llbb, bcx.llbb);
               }
               _ => ()
@@ -1611,7 +1611,7 @@ pub fn trans_match(bcx: block,
                    arms: ~[ast::arm],
                    dest: Dest) -> block {
     let _icx = bcx.insn_ctxt("match::trans_match");
-    do with_scope(bcx, match_expr.info(), ~"match") |bcx| {
+    do with_scope(bcx, match_expr.info(), "match") |bcx| {
         trans_match_inner(bcx, discr_expr, arms, dest)
     }
 }
@@ -1633,7 +1633,7 @@ pub fn trans_match_inner(scope_cx: block,
 
     let mut arm_datas = ~[], matches = ~[];
     for arms.each |arm| {
-        let body = scope_block(bcx, arm.body.info(), ~"case_body");
+        let body = scope_block(bcx, arm.body.info(), "case_body");
 
         // Create the bindings map, which is a mapping from each binding name
         // to an alloca() that will be the value for that local variable.
@@ -1717,7 +1717,7 @@ pub fn trans_match_inner(scope_cx: block,
     fn mk_fail(bcx: block, sp: span, msg: @~str,
                finished: @mut Option<BasicBlockRef>) -> BasicBlockRef {
         match *finished { Some(bb) => return bb, _ => () }
-        let fail_cx = sub_block(bcx, ~"case_fallthrough");
+        let fail_cx = sub_block(bcx, "case_fallthrough");
         controlflow::trans_fail(fail_cx, Some(sp), msg);
         *finished = Some(fail_cx.llbb);
         return fail_cx.llbb;

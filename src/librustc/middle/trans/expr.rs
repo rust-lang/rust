@@ -540,8 +540,8 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
                            src_datum_ref,
                            dst_datum_ref);
 
-            let swap_cx = base::sub_block(bcx, ~"swap");
-            let next_cx = base::sub_block(bcx, ~"next");
+            let swap_cx = base::sub_block(bcx, "swap");
+            let next_cx = base::sub_block(bcx, "next");
 
             CondBr(bcx, cmp, next_cx.llbb, swap_cx.llbb);
 
@@ -598,7 +598,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         }
         ast::expr_block(ref blk) => {
             return do base::with_scope(bcx, blk.info(),
-                                       ~"block-expr body") |bcx| {
+                                       "block-expr body") |bcx| {
                 controlflow::trans_block(bcx, blk, dest)
             };
         }
@@ -1478,7 +1478,7 @@ fn trans_lazy_binop(bcx: block,
     let bcx = bcx;
 
     let Result {bcx: past_lhs, val: lhs} = {
-        do base::with_scope_result(bcx, a.info(), ~"lhs") |bcx| {
+        do base::with_scope_result(bcx, a.info(), "lhs") |bcx| {
             trans_to_datum(bcx, a).to_result()
         }
     };
@@ -1487,8 +1487,8 @@ fn trans_lazy_binop(bcx: block,
         return immediate_rvalue_bcx(past_lhs, lhs, binop_ty);
     }
 
-    let join = base::sub_block(bcx, ~"join");
-    let before_rhs = base::sub_block(bcx, ~"rhs");
+    let join = base::sub_block(bcx, "join");
+    let before_rhs = base::sub_block(bcx, "rhs");
 
     let lhs_i1 = bool_to_i1(past_lhs, lhs);
     match op {
@@ -1497,7 +1497,7 @@ fn trans_lazy_binop(bcx: block,
     }
 
     let Result {bcx: past_rhs, val: rhs} = {
-        do base::with_scope_result(before_rhs, b.info(), ~"rhs") |bcx| {
+        do base::with_scope_result(before_rhs, b.info(), "rhs") |bcx| {
             trans_to_datum(bcx, b).to_result()
         }
     };
