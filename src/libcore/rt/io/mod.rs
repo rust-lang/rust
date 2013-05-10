@@ -316,6 +316,8 @@ pub mod native {
     }
 }
 
+/// Mock implementations for testing
+mod mock;
 
 /// The type passed to I/O condition handlers to indicate error
 ///
@@ -350,7 +352,8 @@ condition! {
 
 pub trait Reader {
     /// Read bytes, up to the length of `buf` and place them in `buf`.
-    /// Returns the number of bytes read, or `None` on EOF.
+    /// Returns the number of bytes read, or `None` on EOF. The number
+    /// of bytes read my be less than the number requested, even 0.
     ///
     /// # Failure
     ///
@@ -361,6 +364,7 @@ pub trait Reader {
     /// This doesn't take a `len` argument like the old `read`.
     /// Will people often need to slice their vectors to call this
     /// and will that be annoying?
+    /// Is it actually possible for 0 bytes to be read successfully?
     fn read(&mut self, buf: &mut [u8]) -> Option<uint>;
 
     /// Return whether the Reader has reached the end of the stream.
@@ -465,5 +469,13 @@ pub fn standard_error(kind: IoErrorKind) -> IoError {
             }
         }
         _ => fail!()
+    }
+}
+
+pub fn placeholder_error() -> IoError {
+    IoError {
+        kind: OtherIoError,
+        desc: "Placeholder error. You shouldn't be seeing this",
+        detail: None
     }
 }
