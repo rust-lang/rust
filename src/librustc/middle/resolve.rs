@@ -1909,7 +1909,6 @@ pub impl Resolver {
             }
 
             if self.unresolved_imports == prev_unresolved_imports {
-                self.session.err(~"failed to resolve imports");
                 self.report_unresolved_imports(module_root);
                 break;
             }
