@@ -572,6 +572,9 @@ pub enum expr_ {
     expr_field(@expr, ident, ~[@Ty]),
     expr_index(@expr, @expr),
     expr_path(@Path),
+
+    /// The special identifier `self`.
+    expr_self,
     expr_addr_of(mutability, @expr),
     expr_break(Option<ident>),
     expr_again(Option<ident>),

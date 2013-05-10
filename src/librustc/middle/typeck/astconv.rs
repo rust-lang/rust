@@ -102,7 +102,7 @@ pub fn get_region_reporting_err(
 }
 
 pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Copy + 'static>(
-    self: &AC,
+    this: &AC,
     rscope: &RS,
     default_span: span,
     opt_lifetime: Option<@ast::Lifetime>) -> ty::Region
@@ -111,7 +111,7 @@ pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Copy + 'static>(
         None => {
             (default_span, rscope.anon_region(default_span))
         }
-        Some(ref lifetime) if lifetime.ident == special_idents::static => {
+        Some(ref lifetime) if lifetime.ident == special_idents::statik => {
             (lifetime.span, Ok(ty::re_static))
         }
         Some(ref lifetime) if lifetime.ident == special_idents::self_ => {
@@ -123,11 +123,11 @@ pub fn ast_region_to_region<AC:AstConv,RS:region_scope + Copy + 'static>(
         }
     };
 
-    get_region_reporting_err(self.tcx(), span, opt_lifetime, res)
+    get_region_reporting_err(this.tcx(), span, opt_lifetime, res)
 }
 
 fn ast_path_substs<AC:AstConv,RS:region_scope + Copy + 'static>(
-    self: &AC,
+    this: &AC,
     rscope: &RS,
     def_id: ast::def_id,
     decl_generics: &ty::Generics,
@@ -141,9 +141,9 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Copy + 'static>(
      * set of substitutions for this particular reference to `I`.
      */
 
-    let tcx = self.tcx();
+    let tcx = this.tcx();
 
-    // If the type is parameterized by the self region, then replace self
+    // If the type is parameterized by the this region, then replace this
     // region with the current anon region binding (in other words,
     // whatever & would get replaced with).
     let self_r = match (&decl_generics.region_param, &path.rp) {
@@ -160,55 +160,55 @@ fn ast_path_substs<AC:AstConv,RS:region_scope + Copy + 'static>(
       }
       (&Some(_), &None) => {
         let res = rscope.anon_region(path.span);
-        let r = get_region_reporting_err(self.tcx(), path.span, None, res);
+        let r = get_region_reporting_err(this.tcx(), path.span, None, res);
         Some(r)
       }
       (&Some(_), &Some(_)) => {
-        Some(ast_region_to_region(self, rscope, path.span, path.rp))
+        Some(ast_region_to_region(this, rscope, path.span, path.rp))
       }
     };
 
     // Convert the type parameters supplied by the user.
     if !vec::same_length(*decl_generics.type_param_defs, path.types) {
-        self.tcx().sess.span_fatal(
+        this.tcx().sess.span_fatal(
             path.span,
             fmt!("wrong number of type arguments: expected %u but found %u",
                  decl_generics.type_param_defs.len(), path.types.len()));
     }
-    let tps = path.types.map(|a_t| ast_ty_to_ty(self, rscope, *a_t));
+    let tps = path.types.map(|a_t| ast_ty_to_ty(this, rscope, *a_t));
 
     substs {self_r:self_r, self_ty:self_ty, tps:tps}
 }
 
 pub fn ast_path_to_substs_and_ty<AC:AstConv,RS:region_scope + Copy + 'static>(
-    self: &AC,
+    this: &AC,
     rscope: &RS,
     did: ast::def_id,
     path: @ast::Path) -> ty_param_substs_and_ty
 {
-    let tcx = self.tcx();
+    let tcx = this.tcx();
     let ty::ty_param_bounds_and_ty {
         generics: generics,
         ty: decl_ty
-    } = self.get_item_ty(did);
+    } = this.get_item_ty(did);
 
-    let substs = ast_path_substs(self, rscope, did, &generics, None, path);
+    let substs = ast_path_substs(this, rscope, did, &generics, None, path);
     let ty = ty::subst(tcx, &substs, decl_ty);
     ty_param_substs_and_ty { substs: substs, ty: ty }
 }
 
 pub fn ast_path_to_trait_ref<AC:AstConv,RS:region_scope + Copy + 'static>(
-    self: &AC,
+    this: &AC,
     rscope: &RS,
     trait_def_id: ast::def_id,
     self_ty: Option<ty::t>,
     path: @ast::Path) -> @ty::TraitRef
 {
     let trait_def =
-        self.get_trait_def(trait_def_id);
+        this.get_trait_def(trait_def_id);
     let substs =
         ast_path_substs(
-            self,
+            this,
             rscope,
             trait_def.trait_ref.def_id,
             &trait_def.generics,
@@ -222,7 +222,7 @@ pub fn ast_path_to_trait_ref<AC:AstConv,RS:region_scope + Copy + 'static>(
 
 
 pub fn ast_path_to_ty<AC:AstConv,RS:region_scope + Copy + 'static>(
-        self: &AC,
+        this: &AC,
         rscope: &RS,
         did: ast::def_id,
         path: @ast::Path)
@@ -233,7 +233,7 @@ pub fn ast_path_to_ty<AC:AstConv,RS:region_scope + Copy + 'static>(
     let ty::ty_param_substs_and_ty {
         substs: substs,
         ty: ty
-    } = ast_path_to_substs_and_ty(self, rscope, did, path);
+    } = ast_path_to_substs_and_ty(this, rscope, did, path);
     ty_param_substs_and_ty { substs: substs, ty: ty }
 }
 
@@ -244,29 +244,29 @@ pub static NO_TPS: uint = 2;
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
 pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
-    self: &AC, rscope: &RS, ast_ty: @ast::Ty) -> ty::t {
+    this: &AC, rscope: &RS, ast_ty: @ast::Ty) -> ty::t {
 
     fn ast_mt_to_mt<AC:AstConv, RS:region_scope + Copy + 'static>(
-        self: &AC, rscope: &RS, mt: &ast::mt) -> ty::mt {
+        this: &AC, rscope: &RS, mt: &ast::mt) -> ty::mt {
 
-        ty::mt {ty: ast_ty_to_ty(self, rscope, mt.ty), mutbl: mt.mutbl}
+        ty::mt {ty: ast_ty_to_ty(this, rscope, mt.ty), mutbl: mt.mutbl}
     }
 
     // Handle @, ~, and & being able to mean estrs and evecs.
     // If a_seq_ty is a str or a vec, make it an estr/evec.
     // Also handle first-class trait types.
     fn mk_pointer<AC:AstConv,RS:region_scope + Copy + 'static>(
-        self: &AC,
+        this: &AC,
         rscope: &RS,
         a_seq_ty: &ast::mt,
         vst: ty::vstore,
         constr: &fn(ty::mt) -> ty::t) -> ty::t
     {
-        let tcx = self.tcx();
+        let tcx = this.tcx();
 
         match a_seq_ty.ty.node {
             ast::ty_vec(ref mt) => {
-                let mut mt = ast_mt_to_mt(self, rscope, mt);
+                let mut mt = ast_mt_to_mt(this, rscope, mt);
                 if a_seq_ty.mutbl == ast::m_mutbl ||
                         a_seq_ty.mutbl == ast::m_const {
                     mt = ty::mt { ty: mt.ty, mutbl: a_seq_ty.mutbl };
@@ -281,7 +281,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
                     }
                     Some(&ast::def_trait(trait_def_id)) => {
                         let result = ast_path_to_trait_ref(
-                            self, rscope, trait_def_id, None, path);
+                            this, rscope, trait_def_id, None, path);
                         let trait_store = match vst {
                             ty::vstore_box => ty::BoxTraitStore,
                             ty::vstore_uniq => ty::UniqTraitStore,
@@ -308,7 +308,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
             _ => {}
         }
 
-        let seq_ty = ast_mt_to_mt(self, rscope, a_seq_ty);
+        let seq_ty = ast_mt_to_mt(this, rscope, a_seq_ty);
         return constr(seq_ty);
     }
 
@@ -332,7 +332,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
         }
     }
 
-    let tcx = self.tcx();
+    let tcx = this.tcx();
 
     match tcx.ast_ty_to_ty_cache.find(&ast_ty.id) {
       Some(&ty::atttce_resolved(ty)) => return ty,
@@ -348,36 +348,36 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
       ast::ty_nil => ty::mk_nil(),
       ast::ty_bot => ty::mk_bot(),
       ast::ty_box(ref mt) => {
-        mk_pointer(self, rscope, mt, ty::vstore_box,
+        mk_pointer(this, rscope, mt, ty::vstore_box,
                    |tmt| ty::mk_box(tcx, tmt))
       }
       ast::ty_uniq(ref mt) => {
-        mk_pointer(self, rscope, mt, ty::vstore_uniq,
+        mk_pointer(this, rscope, mt, ty::vstore_uniq,
                    |tmt| ty::mk_uniq(tcx, tmt))
       }
       ast::ty_vec(ref mt) => {
         tcx.sess.span_err(ast_ty.span, "bare `[]` is not a type");
         // return /something/ so they can at least get more errors
-        ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, mt), ty::vstore_uniq)
+        ty::mk_evec(tcx, ast_mt_to_mt(this, rscope, mt), ty::vstore_uniq)
       }
       ast::ty_ptr(ref mt) => {
-        ty::mk_ptr(tcx, ast_mt_to_mt(self, rscope, mt))
+        ty::mk_ptr(tcx, ast_mt_to_mt(this, rscope, mt))
       }
       ast::ty_rptr(region, ref mt) => {
-        let r = ast_region_to_region(self, rscope, ast_ty.span, region);
-        mk_pointer(self, rscope, mt, ty::vstore_slice(r),
+        let r = ast_region_to_region(this, rscope, ast_ty.span, region);
+        mk_pointer(this, rscope, mt, ty::vstore_slice(r),
                    |tmt| ty::mk_rptr(tcx, r, tmt))
       }
       ast::ty_tup(ref fields) => {
-        let flds = fields.map(|t| ast_ty_to_ty(self, rscope, *t));
+        let flds = fields.map(|t| ast_ty_to_ty(this, rscope, *t));
         ty::mk_tup(tcx, flds)
       }
       ast::ty_bare_fn(ref bf) => {
-          ty::mk_bare_fn(tcx, ty_of_bare_fn(self, rscope, bf.purity,
+          ty::mk_bare_fn(tcx, ty_of_bare_fn(this, rscope, bf.purity,
                                             bf.abis, &bf.lifetimes, &bf.decl))
       }
       ast::ty_closure(ref f) => {
-          let fn_decl = ty_of_closure(self,
+          let fn_decl = ty_of_closure(this,
                                       rscope,
                                       f.sigil,
                                       f.purity,
@@ -407,7 +407,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
               ty::mk_err()
           }
           ast::def_ty(did) | ast::def_struct(did) => {
-            ast_path_to_ty(self, rscope, did, path).ty
+            ast_path_to_ty(this, rscope, did, path).ty
           }
           ast::def_prim_ty(nty) => {
             match nty {
@@ -440,7 +440,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
             ty::mk_param(tcx, n, id)
           }
           ast::def_self_ty(id) => {
-            // n.b.: resolve guarantees that the self type only appears in a
+            // n.b.: resolve guarantees that the this type only appears in a
             // trait, which we rely upon in various places when creating
             // substs
             check_path_args(tcx, path, NO_TPS | NO_REGIONS);
@@ -458,10 +458,10 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
           Ok(ref r) => {
             match *r {
               const_eval::const_int(i) =>
-                ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, a_mt),
+                ty::mk_evec(tcx, ast_mt_to_mt(this, rscope, a_mt),
                             ty::vstore_fixed(i as uint)),
               const_eval::const_uint(i) =>
-                ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, a_mt),
+                ty::mk_evec(tcx, ast_mt_to_mt(this, rscope, a_mt),
                             ty::vstore_fixed(i as uint)),
               _ => {
                 tcx.sess.span_fatal(
@@ -482,7 +482,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
         // values in a fn_expr, or as the type of local variables.  Both of
         // these cases are handled specially and should not descend into this
         // routine.
-        self.tcx().sess.span_bug(
+        this.tcx().sess.span_bug(
             ast_ty.span,
             "found `ty_infer` in unexpected place");
       }
@@ -498,15 +498,15 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
 
 pub fn ty_of_arg<AC:AstConv,
                  RS:region_scope + Copy + 'static>(
-                 self: &AC,
+                 this: &AC,
                  rscope: &RS,
                  a: ast::arg,
                  expected_ty: Option<ty::arg>)
                  -> ty::arg {
     let ty = match a.ty.node {
         ast::ty_infer if expected_ty.is_some() => expected_ty.get().ty,
-        ast::ty_infer => self.ty_infer(a.ty.span),
-        _ => ast_ty_to_ty(self, rscope, a.ty),
+        ast::ty_infer => this.ty_infer(a.ty.span),
+        _ => ast_ty_to_ty(this, rscope, a.ty),
     };
 
     arg {
@@ -515,28 +515,28 @@ pub fn ty_of_arg<AC:AstConv,
 }
 
 pub fn bound_lifetimes<AC:AstConv>(
-    self: &AC,
+    this: &AC,
     ast_lifetimes: &OptVec<ast::Lifetime>) -> OptVec<ast::ident>
 {
     /*!
      *
      * Converts a list of lifetimes into a list of bound identifier
-     * names.  Does not permit special names like 'static or 'self to
+     * names.  Does not permit special names like 'static or 'this to
      * be bound.  Note that this function is for use in closures,
-     * methods, and fn definitions.  It is legal to bind 'self in a
+     * methods, and fn definitions.  It is legal to bind 'this in a
      * type.  Eventually this distinction should go away and the same
-     * rules should apply everywhere ('self would not be a special name
+     * rules should apply everywhere ('this would not be a special name
      * at that point).
      */
 
-    let special_idents = [special_idents::static, special_idents::self_];
+    let special_idents = [special_idents::statik, special_idents::self_];
     let mut bound_lifetime_names = opt_vec::Empty;
     ast_lifetimes.map_to_vec(|ast_lifetime| {
         if special_idents.any(|&i| i == ast_lifetime.ident) {
-            self.tcx().sess.span_err(
+            this.tcx().sess.span_err(
                 ast_lifetime.span,
                 fmt!("illegal lifetime parameter name: `%s`",
-                     lifetime_to_str(ast_lifetime, self.tcx().sess.intr())));
+                     lifetime_to_str(ast_lifetime, this.tcx().sess.intr())));
         } else {
             bound_lifetime_names.push(ast_lifetime.ident);
         }
@@ -550,7 +550,7 @@ struct SelfInfo {
 }
 
 pub fn ty_of_method<AC:AstConv,RS:region_scope + Copy + 'static>(
-    self: &AC,
+    this: &AC,
     rscope: &RS,
     purity: ast::purity,
     lifetimes: &OptVec<ast::Lifetime>,
@@ -563,12 +563,12 @@ pub fn ty_of_method<AC:AstConv,RS:region_scope + Copy + 'static>(
         self_transform: self_transform
     };
     let (a, b) = ty_of_method_or_bare_fn(
-        self, rscope, purity, AbiSet::Rust(), lifetimes, Some(&self_info), decl);
+        this, rscope, purity, AbiSet::Rust(), lifetimes, Some(&self_info), decl);
     (a.get(), b)
 }
 
 pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
-    self: &AC,
+    this: &AC,
     rscope: &RS,
     purity: ast::purity,
     abi: AbiSet,
@@ -576,12 +576,12 @@ pub fn ty_of_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
     decl: &ast::fn_decl) -> ty::BareFnTy
 {
     let (_, b) = ty_of_method_or_bare_fn(
-        self, rscope, purity, abi, lifetimes, None, decl);
+        this, rscope, purity, abi, lifetimes, None, decl);
     b
 }
 
 fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
-    self: &AC,
+    this: &AC,
     rscope: &RS,
     purity: ast::purity,
     abi: AbiSet,
@@ -593,18 +593,18 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
 
     // new region names that appear inside of the fn decl are bound to
     // that function type
-    let bound_lifetime_names = bound_lifetimes(self, lifetimes);
+    let bound_lifetime_names = bound_lifetimes(this, lifetimes);
     let rb = in_binding_rscope(rscope, RegionParamNames(copy bound_lifetime_names));
 
     let opt_transformed_self_ty = opt_self_info.map(|&self_info| {
-        transform_self_ty(self, &rb, self_info)
+        transform_self_ty(this, &rb, self_info)
     });
 
-    let input_tys = decl.inputs.map(|a| ty_of_arg(self, &rb, *a, None));
+    let input_tys = decl.inputs.map(|a| ty_of_arg(this, &rb, *a, None));
 
     let output_ty = match decl.output.node {
-        ast::ty_infer => self.ty_infer(decl.output.span),
-        _ => ast_ty_to_ty(self, &rb, decl.output)
+        ast::ty_infer => this.ty_infer(decl.output.span),
+        _ => ast_ty_to_ty(this, &rb, decl.output)
     };
 
     return (opt_transformed_self_ty,
@@ -617,7 +617,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
             });
 
     fn transform_self_ty<AC:AstConv,RS:region_scope + Copy + 'static>(
-        self: &AC,
+        this: &AC,
         rscope: &RS,
         self_info: &SelfInfo) -> Option<ty::t>
     {
@@ -628,20 +628,20 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
             }
             ast::sty_region(lifetime, mutability) => {
                 let region =
-                    ast_region_to_region(self, rscope,
+                    ast_region_to_region(this, rscope,
                                          self_info.self_transform.span,
                                          lifetime);
-                Some(ty::mk_rptr(self.tcx(), region,
+                Some(ty::mk_rptr(this.tcx(), region,
                                  ty::mt {ty: self_info.untransformed_self_ty,
                                          mutbl: mutability}))
             }
             ast::sty_box(mutability) => {
-                Some(ty::mk_box(self.tcx(),
+                Some(ty::mk_box(this.tcx(),
                                 ty::mt {ty: self_info.untransformed_self_ty,
                                         mutbl: mutability}))
             }
             ast::sty_uniq(mutability) => {
-                Some(ty::mk_uniq(self.tcx(),
+                Some(ty::mk_uniq(this.tcx(),
                                  ty::mt {ty: self_info.untransformed_self_ty,
                                          mutbl: mutability}))
             }
@@ -650,7 +650,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
 }
 
 pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
-        self: &AC,
+        this: &AC,
         rscope: &RS,
         sigil: ast::Sigil,
         purity: ast::purity,
@@ -674,7 +674,7 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
     // scope `rscope`, not the scope of the function parameters
     let bound_region = match opt_lifetime {
         Some(_) => {
-            ast_region_to_region(self, rscope, span, opt_lifetime)
+            ast_region_to_region(this, rscope, span, opt_lifetime)
         }
         None => {
             match sigil {
@@ -685,7 +685,7 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
                 }
                 ast::BorrowedSigil => {
                     // &fn() defaults as normal for an omitted lifetime:
-                    ast_region_to_region(self, rscope, span, opt_lifetime)
+                    ast_region_to_region(this, rscope, span, opt_lifetime)
                 }
             }
         }
@@ -693,7 +693,7 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
 
     // new region names that appear inside of the fn decl are bound to
     // that function type
-    let bound_lifetime_names = bound_lifetimes(self, lifetimes);
+    let bound_lifetime_names = bound_lifetimes(this, lifetimes);
     let rb = in_binding_rscope(rscope, RegionParamNames(copy bound_lifetime_names));
 
     let input_tys = do decl.inputs.mapi |i, a| {
@@ -702,14 +702,14 @@ pub fn ty_of_closure<AC:AstConv,RS:region_scope + Copy + 'static>(
             // were supplied
             if i < e.inputs.len() {Some(e.inputs[i])} else {None}
         };
-        ty_of_arg(self, &rb, *a, expected_arg_ty)
+        ty_of_arg(this, &rb, *a, expected_arg_ty)
     };
 
     let expected_ret_ty = expected_sig.map(|e| e.output);
     let output_ty = match decl.output.node {
         ast::ty_infer if expected_ret_ty.is_some() => expected_ret_ty.get(),
-        ast::ty_infer => self.ty_infer(decl.output.span),
-        _ => ast_ty_to_ty(self, &rb, decl.output)
+        ast::ty_infer => this.ty_infer(decl.output.span),
+        _ => ast_ty_to_ty(this, &rb, decl.output)
     };
 
     ty::ClosureTy {

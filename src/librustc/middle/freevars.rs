@@ -45,7 +45,7 @@ fn collect_freevars(def_map: resolve::DefMap, blk: &ast::blk)
         |expr, depth, v| {
             match expr.node {
               ast::expr_fn_block(*) => visit::visit_expr(expr, depth + 1, v),
-              ast::expr_path(*) => {
+              ast::expr_path(*) | ast::expr_self => {
                   let mut i = 0;
                   match def_map.find(&expr.id) {
                     None => fail!(~"path not found"),

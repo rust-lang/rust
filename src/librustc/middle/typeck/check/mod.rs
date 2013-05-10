@@ -2391,6 +2391,12 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let tpt = ty_param_bounds_and_ty_for_def(fcx, expr.span, defn);
         instantiate_path(fcx, pth, tpt, expr.span, expr.id);
       }
+      ast::expr_self => {
+        let definition = lookup_def(fcx, expr.span, id);
+        let ty_param_bounds_and_ty =
+            ty_param_bounds_and_ty_for_def(fcx, expr.span, definition);
+        fcx.write_ty(id, ty_param_bounds_and_ty.ty);
+      }
       ast::expr_inline_asm(ref ia) => {
           fcx.require_unsafe(expr.span, ~"use of inline assembly");
 
