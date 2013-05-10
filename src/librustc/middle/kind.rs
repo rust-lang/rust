@@ -14,6 +14,7 @@ use middle::pat_util;
 use middle::ty;
 use middle::typeck;
 use util::ppaux::{Repr, ty_to_str};
+use util::ppaux::UserString;
 
 use syntax::ast::*;
 use syntax::attr::attrs_contains_name;
@@ -338,46 +339,19 @@ pub fn check_bounds(cx: Context,
                     type_param_def: &ty::TypeParameterDef)
 {
     let kind = ty::type_contents(cx.tcx, ty);
-    let mut missing = ~[];
-    for type_param_def.bounds.each |bound| {
-        match *bound {
-            ty::bound_trait(_) => {
-                /* Not our job, checking in typeck */
-            }
-
-            ty::bound_copy => {
-                if !kind.is_copy(cx.tcx) {
-                    missing.push("Copy");
-                }
-            }
-
-            ty::bound_durable => {
-                if !kind.is_durable(cx.tcx) {
-                    missing.push("'static");
-                }
-            }
-
-            ty::bound_owned => {
-                if !kind.is_owned(cx.tcx) {
-                    missing.push("Owned");
-                }
-            }
-
-            ty::bound_const => {
-                if !kind.is_const(cx.tcx) {
-                    missing.push("Const");
-                }
-            }
+    let mut missing = ty::EmptyBuiltinBounds();
+    for type_param_def.bounds.builtin_bounds.each |bound| {
+        if !kind.meets_bound(cx.tcx, bound) {
+            missing.add(bound);
         }
     }
-
     if !missing.is_empty() {
         cx.tcx.sess.span_err(
             sp,
             fmt!("instantiating a type parameter with an incompatible type \
                   `%s`, which does not fulfill `%s`",
                  ty_to_str(cx.tcx, ty),
-                 str::connect_slices(missing, " ")));
+                 missing.user_string(cx.tcx)));
     }
 }
 
@@ -440,7 +414,7 @@ pub fn check_owned(cx: Context, ty: ty::t, sp: span) -> bool {
 
 // note: also used from middle::typeck::regionck!
 pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
-    if !ty::type_is_durable(tcx, ty) {
+    if !ty::type_is_static(tcx, ty) {
         match ty::get(ty).sty {
           ty::ty_param(*) => {
             tcx.sess.span_err(sp, "value may contain borrowed \

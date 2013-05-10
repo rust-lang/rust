@@ -12,7 +12,7 @@ use metadata::encoder;
 use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
 use middle::ty::{br_fresh, ctxt, field, method};
-use middle::ty::{mt, t, param_bound, param_ty};
+use middle::ty::{mt, t, param_ty};
 use middle::ty::{re_bound, re_free, re_scope, re_infer, re_static, Region,
                  re_empty};
 use middle::ty::{ty_bool, ty_bot, ty_box, ty_struct, ty_enum};
@@ -29,8 +29,14 @@ use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 
+/// Produces a string suitable for debugging output.
 pub trait Repr {
     fn repr(&self, tcx: ctxt) -> ~str;
+}
+
+/// Produces a string suitable for showing to the user.
+pub trait UserString {
+    fn user_string(&self, tcx: ctxt) -> ~str;
 }
 
 pub fn note_and_explain_region(cx: ctxt,
@@ -273,10 +279,6 @@ pub fn tys_to_str(cx: ctxt, ts: &[t]) -> ~str {
     fmt!("(%s)", str::connect(tstrs, ", "))
 }
 
-pub fn bound_to_str(cx: ctxt, b: param_bound) -> ~str {
-    ty::param_bound_to_str(cx, &b)
-}
-
 pub fn fn_sig_to_str(cx: ctxt, typ: &ty::FnSig) -> ~str {
     fmt!("fn%s -> %s",
          tys_to_str(cx, typ.inputs.map(|a| a.ty)),
@@ -284,15 +286,7 @@ pub fn fn_sig_to_str(cx: ctxt, typ: &ty::FnSig) -> ~str {
 }
 
 pub fn trait_ref_to_str(cx: ctxt, trait_ref: &ty::TraitRef) -> ~str {
-    let path = ty::item_path(cx, trait_ref.def_id);
-    let base = ast_map::path_to_str(path, cx.sess.intr());
-    if cx.sess.verbose() && trait_ref.substs.self_ty.is_some() {
-        let mut all_tps = copy trait_ref.substs.tps;
-        for trait_ref.substs.self_ty.each |&t| { all_tps.push(t); }
-        parameterized(cx, base, trait_ref.substs.self_r, all_tps)
-    } else {
-        parameterized(cx, base, trait_ref.substs.self_r, trait_ref.substs.tps)
-    }
+    trait_ref.user_string(cx)
 }
 
 pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
@@ -555,15 +549,21 @@ impl Repr for ty::substs {
     }
 }
 
-impl Repr for ty::param_bound {
+impl Repr for ty::ParamBounds {
     fn repr(&self, tcx: ctxt) -> ~str {
-        match *self {
-            ty::bound_copy => ~"copy",
-            ty::bound_durable => ~"'static",
-            ty::bound_owned => ~"owned",
-            ty::bound_const => ~"const",
-            ty::bound_trait(ref t) => t.repr(tcx)
+        let mut res = ~[];
+        for self.builtin_bounds.each |b| {
+            res.push(match b {
+                ty::BoundCopy => ~"Copy",
+                ty::BoundStatic => ~"'static",
+                ty::BoundOwned => ~"Owned",
+                ty::BoundConst => ~"Const",
+            });
         }
+        for self.trait_bounds.each |t| {
+            res.push(t.repr(tcx));
+        }
+        str::connect(res, "+")
     }
 }
 
@@ -752,6 +752,56 @@ impl Repr for ast_map::path_elt {
         match *self {
             ast_map::path_mod(id) => id.repr(tcx),
             ast_map::path_name(id) => id.repr(tcx)
+        }
+    }
+}
+
+impl Repr for ty::BuiltinBound {
+    fn repr(&self, _tcx: ctxt) -> ~str {
+        fmt!("%?", *self)
+    }
+}
+
+impl UserString for ty::BuiltinBound {
+    fn user_string(&self, _tcx: ctxt) -> ~str {
+        match *self {
+            ty::BoundCopy => ~"Copy",
+            ty::BoundStatic => ~"'static",
+            ty::BoundOwned => ~"Owned",
+            ty::BoundConst => ~"Const"
+        }
+    }
+}
+
+impl Repr for ty::BuiltinBounds {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        self.user_string(tcx)
+    }
+}
+
+impl UserString for ty::BuiltinBounds {
+    fn user_string(&self, tcx: ctxt) -> ~str {
+        if self.is_empty() { ~"<no-bounds>" } else {
+            let mut result = ~[];
+            for self.each |bb| {
+                result.push(bb.user_string(tcx));
+            }
+            str::connect(result, "+")
+        }
+    }
+}
+
+impl UserString for ty::TraitRef {
+    fn user_string(&self, tcx: ctxt) -> ~str {
+        let path = ty::item_path(tcx, self.def_id);
+        let base = ast_map::path_to_str(path, tcx.sess.intr());
+        if tcx.sess.verbose() && self.substs.self_ty.is_some() {
+            let mut all_tps = copy self.substs.tps;
+            for self.substs.self_ty.each |&t| { all_tps.push(t); }
+            parameterized(tcx, base, self.substs.self_r, all_tps)
+        } else {
+            parameterized(tcx, base, self.substs.self_r,
+                          self.substs.tps)
         }
     }
 }
