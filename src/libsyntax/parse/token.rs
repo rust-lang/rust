@@ -462,7 +462,7 @@ pub fn mk_fresh_ident_interner() -> @ident_interner {
         interner: interner::StrInterner::prefill(init_vec)
     };
     unsafe {
-        task::local_data::local_data_set(interner_key!(), @rv);
+        local_data::local_data_set(interner_key!(), @rv);
     }
     rv
 }
@@ -471,7 +471,7 @@ pub fn mk_fresh_ident_interner() -> @ident_interner {
 // fresh one.
 pub fn mk_ident_interner() -> @ident_interner {
     unsafe {
-        match task::local_data::local_data_get(interner_key!()) {
+        match local_data::local_data_get(interner_key!()) {
             Some(interner) => *interner,
             None => {
                 mk_fresh_ident_interner()

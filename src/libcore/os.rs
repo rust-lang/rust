@@ -1208,7 +1208,7 @@ fn overridden_arg_key(_v: @OverriddenArgs) {}
 
 pub fn args() -> ~[~str] {
     unsafe {
-        match task::local_data::local_data_get(overridden_arg_key) {
+        match local_data::local_data_get(overridden_arg_key) {
             None => real_args(),
             Some(args) => copy args.val
         }
@@ -1218,7 +1218,7 @@ pub fn args() -> ~[~str] {
 pub fn set_args(new_args: ~[~str]) {
     unsafe {
         let overridden_args = @OverriddenArgs { val: copy new_args };
-        task::local_data::local_data_set(overridden_arg_key, overridden_args);
+        local_data::local_data_set(overridden_arg_key, overridden_args);
     }
 }
 
