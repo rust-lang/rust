@@ -4537,18 +4537,9 @@ pub fn each_bound_trait_and_supertraits(tcx: ctxt,
 // list.
 #[cfg(not(stage0))]
 pub fn each_bound_trait_and_supertraits(tcx: ctxt,
-                                        bounds: param_bounds,
-                                        f: &fn(&TraitRef) -> bool) -> bool {
-    for bounds.each |bound| {
-        let bound_trait_ref = match *bound {
-            ty::bound_trait(bound_t) => bound_t,
-
-            ty::bound_copy | ty::bound_owned |
-            ty::bound_const | ty::bound_durable => {
-                loop; // skip non-trait bounds
-            }
-        };
-
+                                        bounds: &ParamBounds,
+                                        f: &fn(@TraitRef) -> bool) -> bool {
+    for bounds.trait_bounds.each |&bound_trait_ref| {
         let mut supertrait_set = HashMap::new();
         let mut trait_refs = ~[];
         let mut i = 0;
