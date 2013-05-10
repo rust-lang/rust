@@ -1202,11 +1202,11 @@ mod big_tests {
     #[unsafe_destructor]
     impl<'self> Drop for LVal<'self> {
         fn finalize(&self) {
-            let x = unsafe { task::local_data::local_data_get(self.key) };
+            let x = unsafe { local_data::local_data_get(self.key) };
             match x {
                 Some(@y) => {
                     unsafe {
-                        task::local_data::local_data_set(self.key, @(y+1));
+                        local_data::local_data_set(self.key, @(y+1));
                     }
                 }
                 _ => fail!(~"Expected key to work"),

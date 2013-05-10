@@ -15,7 +15,7 @@ use cmp::Eq;
 use libc;
 use prelude::*;
 use task::rt;
-use task::local_data::LocalDataKey;
+use local_data::LocalDataKey;
 
 use super::rt::rust_task;
 use rt::local_services::LocalStorage;
