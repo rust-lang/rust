@@ -339,7 +339,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
         }
         i += 1;
     }
-    return Ok(Matches {opts: vec::from_slice(opts),
+    return Ok(Matches {opts: vec::to_owned(opts),
                vals: vals,
                free: free});
 }
