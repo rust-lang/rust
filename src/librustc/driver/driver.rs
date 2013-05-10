@@ -91,9 +91,9 @@ pub fn default_configuration(sess: Session, argv0: @~str, input: &input) ->
     };
 
     return ~[ // Target bindings.
-         attr::mk_word_item(@str::from_slice(os::FAMILY)),
+         attr::mk_word_item(@str::to_owned(os::FAMILY)),
          mk(@~"target_os", @tos),
-         mk(@~"target_family", @str::from_slice(os::FAMILY)),
+         mk(@~"target_family", @str::to_owned(os::FAMILY)),
          mk(@~"target_arch", @arch),
          mk(@~"target_endian", @end),
          mk(@~"target_word_size", @wordsz),
@@ -648,7 +648,7 @@ pub fn build_session_options(binary: @~str,
     let linker_args = getopts::opt_strs(matches, ~"link-args").flat_map( |a| {
         let mut args = ~[];
         for str::each_split_char(*a, ' ') |arg| {
-            args.push(str::from_slice(arg));
+            args.push(str::to_owned(arg));
         }
         args
     });

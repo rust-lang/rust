@@ -71,7 +71,7 @@ fn libname(cx: &Context) -> (~str, ~str) {
         os_freebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
     };
 
-    (str::from_slice(dll_prefix), str::from_slice(dll_suffix))
+    (str::to_owned(dll_prefix), str::to_owned(dll_suffix))
 }
 
 fn find_library_crate_aux(

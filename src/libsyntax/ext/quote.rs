@@ -123,7 +123,7 @@ pub mod rt {
 
     impl<'self> ToSource for &'self str {
         fn to_source(&self, _cx: @ext_ctxt) -> ~str {
-            let lit = dummy_spanned(ast::lit_str(@str::from_slice(*self)));
+            let lit = dummy_spanned(ast::lit_str(@str::to_owned(*self)));
             pprust::lit_to_str(@lit)
         }
     }

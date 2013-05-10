@@ -747,8 +747,8 @@ pub fn output_dll_filename(os: session::os, lm: LinkMeta) -> ~str {
         session::os_android => (android::DLL_PREFIX, android::DLL_SUFFIX),
         session::os_freebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
     };
-    return str::from_slice(dll_prefix) + libname +
-           str::from_slice(dll_suffix);
+    return str::to_owned(dll_prefix) + libname +
+           str::to_owned(dll_suffix);
 }
 
 // If the user wants an exe generated we need to invoke
