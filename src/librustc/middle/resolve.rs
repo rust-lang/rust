@@ -64,7 +64,7 @@ use syntax::attr::{attr_metas, contains_name, attrs_contains_name};
 use syntax::parse::token::ident_interner;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::path_to_str;
-use syntax::codemap::{span, dummy_sp};
+use syntax::codemap::{span, dummy_sp, BytePos};
 use syntax::visit::{default_visitor, mk_vt, Visitor, visit_block};
 use syntax::visit::{visit_crate, visit_expr, visit_expr_opt};
 use syntax::visit::{visit_foreign_item, visit_item};
@@ -2482,6 +2482,16 @@ pub impl Resolver {
                                               TypeNS,
                                               name_search_type) {
                 Failed => {
+                    let segment_name = self.session.str_of(name);
+                    let module_name = self.module_to_str(search_module);
+                    if module_name == ~"???" {
+                        self.session.span_err(span {lo: span.lo, hi: span.lo +
+                                              BytePos(str::len(*segment_name)), expn_info:
+                                              span.expn_info}, fmt!("unresolved import. maybe \
+                                                                    a missing 'extern mod %s'?",
+                                                                    *segment_name));
+                        return Failed;
+                    }
                     self.session.span_err(span, ~"unresolved name");
                     return Failed;
                 }
