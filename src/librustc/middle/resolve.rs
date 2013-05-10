@@ -1964,6 +1964,11 @@ pub impl Resolver {
                                        import_directive.module_path,
                                        *import_directive.subclass));
                     self.session.span_err(import_directive.span, msg);
+
+                    // Suggest to the user to declare library linkage.
+                    let msg2 = fmt!("possible fix: declare external link with `extern mod %s;`",
+                                    *self.session.str_of(import_directive.module_path[0]));
+                    self.session.span_note(import_directive.span, msg2);
                 }
                 Indeterminate => {
                     // Bail out. We'll come around next time.
