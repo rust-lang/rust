@@ -49,6 +49,7 @@ pub impl<E:CLike> EnumSet<E> {
         (self.bits & bit(e)) != 0
     }
 
+    #[cfg(stage0)]
     fn each(&self, f: &fn(E) -> bool) {
         let mut bits = self.bits;
         let mut index = 0;
@@ -62,6 +63,22 @@ pub impl<E:CLike> EnumSet<E> {
             index += 1;
             bits >>= 1;
         }
+    }
+    #[cfg(not(stage0))]
+    fn each(&self, f: &fn(E) -> bool) -> bool {
+        let mut bits = self.bits;
+        let mut index = 0;
+        while bits != 0 {
+            if (bits & 1) != 0 {
+                let e = CLike::from_uint(index);
+                if !f(e) {
+                    return false;
+                }
+            }
+            index += 1;
+            bits >>= 1;
+        }
+        return true;
     }
 }
 
