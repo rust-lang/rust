@@ -11,7 +11,7 @@
 use ast;
 use ast_util;
 use parse::token;
-use util::interner::Interner;
+use util::interner::StrInterner;
 use util::interner;
 
 use core::cmp::Equiv;
@@ -390,14 +390,14 @@ pub fn token_to_binop(tok: Token) -> Option<ast::binop> {
 }
 
 pub struct ident_interner {
-    priv interner: Interner<@~str>,
+    priv interner: StrInterner,
 }
 
 pub impl ident_interner {
-    fn intern(&self, val: @~str) -> ast::ident {
+    fn intern(&self, val: &str) -> ast::ident {
         ast::ident { repr: self.interner.intern(val), ctxt: 0 }
     }
-    fn gensym(&self, val: @~str) -> ast::ident {
+    fn gensym(&self, val: &str) -> ast::ident {
         ast::ident { repr: self.interner.gensym(val), ctxt: 0 }
     }
     fn get(&self, idx: ast::ident) -> @~str {
@@ -421,45 +421,45 @@ pub fn mk_fresh_ident_interner() -> @ident_interner {
     // the indices here must correspond to the numbers in
     // special_idents.
     let init_vec = ~[
-        @~"_",                  // 0
-        @~"anon",               // 1
-        @~"",                   // 2
-        @~"unary",              // 3
-        @~"!",                  // 4
-        @~"[]",                 // 5
-        @~"unary-",             // 6
-        @~"__extensions__",     // 7
-        @~"self",               // 8
-        @~"item",               // 9
-        @~"block",              // 10
-        @~"stmt",               // 11
-        @~"pat",                // 12
-        @~"expr",               // 13
-        @~"ty",                 // 14
-        @~"ident",              // 15
-        @~"path",               // 16
-        @~"tt",                 // 17
-        @~"matchers",           // 18
-        @~"str",                // 19
-        @~"TyVisitor",          // 20
-        @~"arg",                // 21
-        @~"descrim",            // 22
-        @~"__rust_abi",         // 23
-        @~"__rust_stack_shim",  // 24
-        @~"TyDesc",             // 25
-        @~"main",               // 26
-        @~"<opaque>",           // 27
-        @~"blk",                // 28
-        @~"static",             // 29
-        @~"intrinsic",          // 30
-        @~"__foreign_mod__",    // 31
-        @~"__field__",          // 32
-        @~"C",                  // 33
-        @~"Self",               // 34
+        "_",                  // 0
+        "anon",               // 1
+        "",                   // 2
+        "unary",              // 3
+        "!",                  // 4
+        "[]",                 // 5
+        "unary-",             // 6
+        "__extensions__",     // 7
+        "self",               // 8
+        "item",               // 9
+        "block",              // 10
+        "stmt",               // 11
+        "pat",                // 12
+        "expr",               // 13
+        "ty",                 // 14
+        "ident",              // 15
+        "path",               // 16
+        "tt",                 // 17
+        "matchers",           // 18
+        "str",                // 19
+        "TyVisitor",          // 20
+        "arg",                // 21
+        "descrim",            // 22
+        "__rust_abi",         // 23
+        "__rust_stack_shim",  // 24
+        "TyDesc",             // 25
+        "main",               // 26
+        "<opaque>",           // 27
+        "blk",                // 28
+        "static",             // 29
+        "intrinsic",          // 30
+        "__foreign_mod__",    // 31
+        "__field__",          // 32
+        "C",                  // 33
+        "Self",               // 34
     ];
 
     let rv = @ident_interner {
-        interner: interner::Interner::prefill(init_vec)
+        interner: interner::StrInterner::prefill(init_vec)
     };
     unsafe {
         task::local_data::local_data_set(interner_key!(), @rv);
@@ -483,7 +483,7 @@ pub fn mk_ident_interner() -> @ident_interner {
 /* for when we don't care about the contents; doesn't interact with TLD or
    serialization */
 pub fn mk_fake_ident_interner() -> @ident_interner {
-    @ident_interner { interner: interner::Interner::new() }
+    @ident_interner { interner: interner::StrInterner::new() }
 }
 
 /**

@@ -43,21 +43,21 @@ pub fn expand_deriving_totalord(cx: @ext_ctxt,
 
 pub fn ordering_const(cx: @ext_ctxt, span: span, cnst: Ordering) -> @expr {
     let cnst = match cnst {
-        Less => ~"Less",
-        Equal => ~"Equal",
-        Greater => ~"Greater"
+        Less => "Less",
+        Equal => "Equal",
+        Greater => "Greater"
     };
     build::mk_path_global(cx, span,
-                          ~[cx.ident_of(~"core"),
-                            cx.ident_of(~"cmp"),
+                          ~[cx.ident_of("core"),
+                            cx.ident_of("cmp"),
                             cx.ident_of(cnst)])
 }
 
 pub fn cs_cmp(cx: @ext_ctxt, span: span,
               substr: &Substructure) -> @expr {
-    let lexical_ord = ~[cx.ident_of(~"core"),
-                        cx.ident_of(~"cmp"),
-                        cx.ident_of(~"lexical_ordering")];
+    let lexical_ord = ~[cx.ident_of("core"),
+                        cx.ident_of("cmp"),
+                        cx.ident_of("lexical_ordering")];
 
     cs_same_method_fold(
         // foldr (possibly) nests the matches in lexical_ordering better

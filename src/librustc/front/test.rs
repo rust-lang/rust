@@ -274,7 +274,7 @@ fn mk_std(cx: &TestCtxt) -> @ast::view_item {
     let vers = nospan(vers);
     let mi = ast::meta_name_value(@~"vers", vers);
     let mi = nospan(mi);
-    let id_std = cx.sess.ident_of(~"std");
+    let id_std = cx.sess.ident_of("std");
     let vi = if is_std(cx) {
         ast::view_item_use(
             ~[@nospan(ast::view_path_simple(id_std,
@@ -322,7 +322,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
         attr::mk_attr(attr::mk_word_item(@~"!resolve_unexported"));
 
     let item = ast::item {
-        ident: cx.sess.ident_of(~"__test"),
+        ident: cx.sess.ident_of("__test"),
         attrs: ~[resolve_unexported_attr],
         id: cx.sess.next_node_id(),
         node: item_,

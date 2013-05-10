@@ -708,7 +708,7 @@ pub struct PrimitiveTypeTable {
 }
 
 pub impl PrimitiveTypeTable {
-    fn intern(&mut self, intr: @ident_interner, string: @~str,
+    fn intern(&mut self, intr: @ident_interner, string: &str,
               primitive_type: prim_ty) {
         let ident = intr.intern(string);
         self.primitive_types.insert(ident, primitive_type);
@@ -720,22 +720,22 @@ pub fn PrimitiveTypeTable(intr: @ident_interner) -> PrimitiveTypeTable {
         primitive_types: HashMap::new()
     };
 
-    table.intern(intr, @~"bool",    ty_bool);
-    table.intern(intr, @~"char",    ty_int(ty_char));
-    table.intern(intr, @~"float",   ty_float(ty_f));
-    table.intern(intr, @~"f32",     ty_float(ty_f32));
-    table.intern(intr, @~"f64",     ty_float(ty_f64));
-    table.intern(intr, @~"int",     ty_int(ty_i));
-    table.intern(intr, @~"i8",      ty_int(ty_i8));
-    table.intern(intr, @~"i16",     ty_int(ty_i16));
-    table.intern(intr, @~"i32",     ty_int(ty_i32));
-    table.intern(intr, @~"i64",     ty_int(ty_i64));
-    table.intern(intr, @~"str",     ty_str);
-    table.intern(intr, @~"uint",    ty_uint(ty_u));
-    table.intern(intr, @~"u8",      ty_uint(ty_u8));
-    table.intern(intr, @~"u16",     ty_uint(ty_u16));
-    table.intern(intr, @~"u32",     ty_uint(ty_u32));
-    table.intern(intr, @~"u64",     ty_uint(ty_u64));
+    table.intern(intr, "bool",    ty_bool);
+    table.intern(intr, "char",    ty_int(ty_char));
+    table.intern(intr, "float",   ty_float(ty_f));
+    table.intern(intr, "f32",     ty_float(ty_f32));
+    table.intern(intr, "f64",     ty_float(ty_f64));
+    table.intern(intr, "int",     ty_int(ty_i));
+    table.intern(intr, "i8",      ty_int(ty_i8));
+    table.intern(intr, "i16",     ty_int(ty_i16));
+    table.intern(intr, "i32",     ty_int(ty_i32));
+    table.intern(intr, "i64",     ty_int(ty_i64));
+    table.intern(intr, "str",     ty_str);
+    table.intern(intr, "uint",    ty_uint(ty_u));
+    table.intern(intr, "u8",      ty_uint(ty_u8));
+    table.intern(intr, "u16",     ty_uint(ty_u16));
+    table.intern(intr, "u32",     ty_uint(ty_u32));
+    table.intern(intr, "u64",     ty_uint(ty_u64));
 
     return table;
 }
@@ -1675,7 +1675,7 @@ pub impl Resolver {
 
             let mut current_module = root;
             for pieces.each |ident_str| {
-                let ident = self.session.ident_of(/*bad*/copy *ident_str);
+                let ident = self.session.ident_of(*ident_str);
                 // Create or reuse a graph node for the child.
                 let (child_name_bindings, new_parent) =
                     self.add_child(ident,

@@ -375,13 +375,13 @@ mod test {
 
         assert!(i.len() < 100);
         for int::range(0,100-((i.len()).to_int())) |_dc| {
-            i.gensym(@~"dontcare");
+            i.gensym("dontcare");
         }
-        i.intern(@~"a");
-        i.intern(@~"b");
-        i.intern(@~"c");
-        i.intern(@~"d");
-        i.intern(@~"return");
+        i.intern("a");
+        i.intern("b");
+        i.intern("c");
+        i.intern("d");
+        i.intern("return");
         assert!(i.get(ast::ident{repr:101,ctxt:0}) == @~"b");
         i
     }

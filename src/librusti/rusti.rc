@@ -156,7 +156,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
     for crate.node.module.items.each |item| {
         match item.node {
             ast::item_fn(_, _, _, _, blk) => {
-                if item.ident == sess.ident_of(~"main") {
+                if item.ident == sess.ident_of("main") {
                     opt = blk.node.expr;
                 }
             }

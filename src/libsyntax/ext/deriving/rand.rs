@@ -53,10 +53,10 @@ fn rand_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> @expr 
         _ => cx.bug("Incorrect number of arguments to `rand` in `deriving(Rand)`")
     };
     let rand_ident = ~[
-        cx.ident_of(~"core"),
-        cx.ident_of(~"rand"),
-        cx.ident_of(~"Rand"),
-        cx.ident_of(~"rand")
+        cx.ident_of("core"),
+        cx.ident_of("rand"),
+        cx.ident_of("Rand"),
+        cx.ident_of("rand")
     ];
     let rand_call = || {
         build::mk_call_global(cx,
@@ -77,8 +77,8 @@ fn rand_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> @expr 
             let variant_count = build::mk_uint(cx, span, variants.len());
 
             // need to specify the uint-ness of the random number
-            let u32_ty = build::mk_ty_path(cx, span, ~[cx.ident_of(~"uint")]);
-            let r_ty = build::mk_ty_path(cx, span, ~[cx.ident_of(~"R")]);
+            let u32_ty = build::mk_ty_path(cx, span, ~[cx.ident_of("uint")]);
+            let r_ty = build::mk_ty_path(cx, span, ~[cx.ident_of("R")]);
             let rand_name = build::mk_raw_path_(span, copy rand_ident, None, ~[ u32_ty, r_ty ]);
             let rand_name = build::mk_path_raw(cx, span, rand_name);
 

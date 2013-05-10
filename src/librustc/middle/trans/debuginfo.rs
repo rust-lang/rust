@@ -517,7 +517,7 @@ fn create_tuple(cx: @CrateContext, t: ty::t, elements: &[ty::t], span: span)
     let scx = create_structure(file_node,
                                cx.sess.str_of(
                                    ((/*bad*/copy cx.dbg_cx).get().names)
-                                   (~"tuple")),
+                                   ("tuple")),
                                line_from_span(cx.sess.codemap, span) as int);
     for elements.each |element| {
         let ty_md = create_ty(cx, *element, span);
@@ -973,7 +973,7 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
       ast_map::node_expr(expr) => {
         match expr.node {
           ast::expr_fn_block(ref decl, _) => {
-            ((dbg_cx.names)(~"fn"), decl.output, expr.id)
+            ((dbg_cx.names)("fn"), decl.output, expr.id)
           }
           _ => fcx.ccx.sess.span_bug(expr.span,
                   "create_function: expected an expr_fn_block here")

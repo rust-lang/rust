@@ -1550,7 +1550,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                             lhs_resolved_t, None)
                 };
                 return lookup_op_method(fcx, ex, lhs_expr, lhs_resolved_t,
-                                       fcx.tcx().sess.ident_of(copy *name),
+                                       fcx.tcx().sess.ident_of(*name),
                                        ~[rhs], DoDerefArgs, DontAutoderefReceiver, if_op_unbound,
                                        expected_result);
             }
@@ -1574,8 +1574,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     }
 
     fn check_user_unop(fcx: @mut FnCtxt,
-                       op_str: ~str,
-                       mname: ~str,
+                       op_str: &str,
+                       mname: &str,
                        ex: @ast::expr,
                        rhs_expr: @ast::expr,
                        rhs_t: ty::t,
@@ -2308,7 +2308,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     if !(ty::type_is_integral(oprnd_t) ||
                          ty::get(oprnd_t).sty == ty::ty_bool) {
                         oprnd_t = check_user_unop(fcx,
-                            ~"!", ~"not", expr, oprnd, oprnd_t,
+                            "!", "not", expr, oprnd, oprnd_t,
                                                   expected);
                     }
                 }
@@ -2318,7 +2318,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     if !(ty::type_is_integral(oprnd_t) ||
                          ty::type_is_fp(oprnd_t)) {
                         oprnd_t = check_user_unop(fcx,
-                            ~"-", ~"neg", expr, oprnd, oprnd_t, expected);
+                            "-", "neg", expr, oprnd, oprnd_t, expected);
                     }
                 }
             }
@@ -2783,7 +2783,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                       let resolved = structurally_resolved_type(fcx,
                                                                 expr.span,
                                                                 raw_base_t);
-                      let index_ident = tcx.sess.ident_of(~"index");
+                      let index_ident = tcx.sess.ident_of("index");
                       let error_message = || {
                         fcx.type_error_message(expr.span,
                                                |actual| {
