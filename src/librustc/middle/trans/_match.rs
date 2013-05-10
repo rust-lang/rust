@@ -426,10 +426,10 @@ pub fn enter_match<'r>(bcx: block,
                         vec::append(sub, vec::slice(br.pats, 0u, col)),
                         vec::slice(br.pats, col + 1u, br.pats.len()));
 
-                let self = br.pats[col];
-                match self.node {
+                let this = br.pats[col];
+                match this.node {
                     ast::pat_ident(_, path, None) => {
-                        if pat_is_binding(dm, self) {
+                        if pat_is_binding(dm, this) {
                             let binding_info =
                                 br.data.bindings_map.get(
                                     &path_to_ident(path));

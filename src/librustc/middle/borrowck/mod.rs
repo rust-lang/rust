@@ -110,7 +110,7 @@ fn borrowck_fn(fk: &visit::fn_kind,
                body: &ast::blk,
                sp: span,
                id: ast::node_id,
-               self: @BorrowckCtxt,
+               this: @BorrowckCtxt,
                v: visit::vt<@BorrowckCtxt>) {
     match fk {
         &visit::fk_anon(*) |
@@ -124,11 +124,11 @@ fn borrowck_fn(fk: &visit::fn_kind,
 
             // Check the body of fn items.
             let (id_range, all_loans) =
-                gather_loans::gather_loans(self, body);
+                gather_loans::gather_loans(this, body);
             let all_loans: &~[Loan] = &*all_loans; // FIXME(#5074)
             let mut dfcx =
-                DataFlowContext::new(self.tcx,
-                                     self.method_map,
+                DataFlowContext::new(this.tcx,
+                                     this.method_map,
                                      LoanDataFlowOperator,
                                      id_range,
                                      all_loans.len());
@@ -137,11 +137,11 @@ fn borrowck_fn(fk: &visit::fn_kind,
                 dfcx.add_kill(loan.kill_scope, loan_idx);
             }
             dfcx.propagate(body);
-            check_loans::check_loans(self, &dfcx, *all_loans, body);
+            check_loans::check_loans(this, &dfcx, *all_loans, body);
         }
     }
 
-    visit::visit_fn(fk, decl, body, sp, id, self, v);
+    visit::visit_fn(fk, decl, body, sp, id, this, v);
 }
 
 // ----------------------------------------------------------------------

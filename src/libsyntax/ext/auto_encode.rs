@@ -245,6 +245,7 @@ trait ExtCtxtMethods {
     fn expr_path(&self, span: span, strs: ~[ast::ident]) -> @ast::expr;
     fn expr_path_global(&self, span: span, strs: ~[ast::ident]) -> @ast::expr;
     fn expr_var(&self, span: span, var: &str) -> @ast::expr;
+    fn expr_self(&self, span: span) -> @ast::expr;
     fn expr_field(&self, span: span, expr: @ast::expr, ident: ast::ident)
                   -> @ast::expr;
     fn expr_call(&self, span: span, expr: @ast::expr, args: ~[@ast::expr])
@@ -448,6 +449,10 @@ impl ExtCtxtMethods for @ext_ctxt {
 
     fn expr_var(&self, span: span, var: &str) -> @ast::expr {
         self.expr_path(span, ~[self.ident_of(var)])
+    }
+
+    fn expr_self(&self, span: span) -> @ast::expr {
+        self.expr(span, ast::expr_self)
     }
 
     fn expr_field(
@@ -790,12 +795,8 @@ fn mk_struct_ser_impl(
         let expr_lambda = cx.lambda_expr_1(
             cx.expr_method_call(
                 span,
-                cx.expr_field(
-                    span,
-                    cx.expr_var(span, "self"),
-                    field.ident
-                ),
-                cx.ident_of("encode"),
+                cx.expr_field(span, cx.expr_self(span), field.ident),
+                cx.ident_of(~"encode"),
                 ~[cx.expr_var(span, "__s")]
             ),
             cx.ident_of("__s")
@@ -1062,13 +1063,10 @@ fn mk_enum_ser_body(
     // ast for `match *self { $(arms) }`
     let match_expr = cx.expr(
         span,
-        ast::expr_match(
-            cx.expr(
-                span,
-                ast::expr_unary(ast::deref, cx.expr_var(span, "self"))
-            ),
-            arms
-        )
+        ast::expr_match(cx.expr(span,
+                                ast::expr_unary(ast::deref,
+                                                cx.expr_self(span))),
+                        arms)
     );
 
     // ast for `__s.emit_enum($(name), || $(match_expr))`

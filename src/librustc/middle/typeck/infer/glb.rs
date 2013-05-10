@@ -198,7 +198,7 @@ impl Combine for Glb {
         debug!("sig1 = %s", sig1.inf_str(self.infcx));
         return Ok(sig1);
 
-        fn generalize_region(self: &Glb,
+        fn generalize_region(this: &Glb,
                              snapshot: uint,
                              new_vars: &[RegionVid],
                              a_isr: isr_alist,
@@ -209,19 +209,19 @@ impl Combine for Glb {
                 return r0;
             }
 
-            let tainted = self.infcx.region_vars.tainted(snapshot, r0);
+            let tainted = this.infcx.region_vars.tainted(snapshot, r0);
 
             let mut a_r = None, b_r = None, only_new_vars = true;
             for tainted.each |r| {
                 if is_var_in_set(a_vars, *r) {
                     if a_r.is_some() {
-                        return fresh_bound_variable(self);
+                        return fresh_bound_variable(this);
                     } else {
                         a_r = Some(*r);
                     }
                 } else if is_var_in_set(b_vars, *r) {
                     if b_r.is_some() {
-                        return fresh_bound_variable(self);
+                        return fresh_bound_variable(this);
                     } else {
                         b_r = Some(*r);
                     }
@@ -246,17 +246,17 @@ impl Combine for Glb {
 
             if a_r.is_some() && b_r.is_some() && only_new_vars {
                 // Related to exactly one bound variable from each fn:
-                return rev_lookup(self, a_isr, a_r.get());
+                return rev_lookup(this, a_isr, a_r.get());
             } else if a_r.is_none() && b_r.is_none() {
                 // Not related to bound variables from either fn:
                 return r0;
             } else {
                 // Other:
-                return fresh_bound_variable(self);
+                return fresh_bound_variable(this);
             }
         }
 
-        fn rev_lookup(self: &Glb,
+        fn rev_lookup(this: &Glb,
                       a_isr: isr_alist,
                       r: ty::Region) -> ty::Region
         {
@@ -267,13 +267,13 @@ impl Combine for Glb {
                 }
             }
 
-            self.infcx.tcx.sess.span_bug(
-                self.span,
+            this.infcx.tcx.sess.span_bug(
+                this.span,
                 fmt!("could not find original bound region for %?", r));
         }
 
-        fn fresh_bound_variable(self: &Glb) -> ty::Region {
-            self.infcx.region_vars.new_bound()
+        fn fresh_bound_variable(this: &Glb) -> ty::Region {
+            this.infcx.region_vars.new_bound()
         }
     }
 

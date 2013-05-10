@@ -341,11 +341,11 @@ pub impl IrMaps {
     }
 }
 
-fn visit_item(item: @item, self: @mut IrMaps, v: vt<@mut IrMaps>) {
-    let old_cur_item = self.cur_item;
-    self.cur_item = item.id;
-    visit::visit_item(item, self, v);
-    self.cur_item = old_cur_item;
+fn visit_item(item: @item, this: @mut IrMaps, v: vt<@mut IrMaps>) {
+    let old_cur_item = this.cur_item;
+    this.cur_item = item.id;
+    visit::visit_item(item, this, v);
+    this.cur_item = old_cur_item;
 }
 
 fn visit_fn(fk: &visit::fn_kind,
@@ -353,24 +353,24 @@ fn visit_fn(fk: &visit::fn_kind,
             body: &blk,
             sp: span,
             id: node_id,
-            self: @mut IrMaps,
+            this: @mut IrMaps,
             v: vt<@mut IrMaps>) {
     debug!("visit_fn: id=%d", id);
     let _i = ::util::common::indenter();
 
     // swap in a new set of IR maps for this function body:
-    let fn_maps = @mut IrMaps(self.tcx,
-                              self.method_map,
-                              self.variable_moves_map,
-                              self.capture_map,
-                              self.cur_item);
+    let fn_maps = @mut IrMaps(this.tcx,
+                              this.method_map,
+                              this.variable_moves_map,
+                              this.capture_map,
+                              this.cur_item);
 
     unsafe {
         debug!("creating fn_maps: %x", transmute(&*fn_maps));
     }
 
     for decl.inputs.each |arg| {
-        do pat_util::pat_bindings(self.tcx.def_map, arg.pat)
+        do pat_util::pat_bindings(this.tcx.def_map, arg.pat)
                 |_bm, arg_id, _x, path| {
             debug!("adding argument %d", arg_id);
             let ident = ast_util::path_to_ident(path);
@@ -378,7 +378,7 @@ fn visit_fn(fk: &visit::fn_kind,
         }
     };
 
-    // Add `self`, whether explicit or implicit.
+    // Add `this`, whether explicit or implicit.
     match *fk {
         fk_method(_, _, method) => {
             match method.self_ty.node {
@@ -423,35 +423,35 @@ fn visit_fn(fk: &visit::fn_kind,
     lsets.warn_about_unused_args(decl, entry_ln);
 }
 
-fn visit_local(local: @local, self: @mut IrMaps, vt: vt<@mut IrMaps>) {
-    let def_map = self.tcx.def_map;
+fn visit_local(local: @local, this: @mut IrMaps, vt: vt<@mut IrMaps>) {
+    let def_map = this.tcx.def_map;
     do pat_util::pat_bindings(def_map, local.node.pat) |_bm, p_id, sp, path| {
         debug!("adding local variable %d", p_id);
         let name = ast_util::path_to_ident(path);
-        self.add_live_node_for_node(p_id, VarDefNode(sp));
+        this.add_live_node_for_node(p_id, VarDefNode(sp));
         let kind = match local.node.init {
           Some(_) => FromLetWithInitializer,
           None => FromLetNoInitializer
         };
-        self.add_variable(Local(LocalInfo {
+        this.add_variable(Local(LocalInfo {
           id: p_id,
           ident: name,
           is_mutbl: local.node.is_mutbl,
           kind: kind
         }));
     }
-    visit::visit_local(local, self, vt);
+    visit::visit_local(local, this, vt);
 }
 
-fn visit_arm(arm: &arm, self: @mut IrMaps, vt: vt<@mut IrMaps>) {
-    let def_map = self.tcx.def_map;
+fn visit_arm(arm: &arm, this: @mut IrMaps, vt: vt<@mut IrMaps>) {
+    let def_map = this.tcx.def_map;
     for arm.pats.each |pat| {
         do pat_util::pat_bindings(def_map, *pat) |bm, p_id, sp, path| {
             debug!("adding local variable %d from match with bm %?",
                    p_id, bm);
             let name = ast_util::path_to_ident(path);
-            self.add_live_node_for_node(p_id, VarDefNode(sp));
-            self.add_variable(Local(LocalInfo {
+            this.add_live_node_for_node(p_id, VarDefNode(sp));
+            this.add_variable(Local(LocalInfo {
                 id: p_id,
                 ident: name,
                 is_mutbl: false,
@@ -459,35 +459,35 @@ fn visit_arm(arm: &arm, self: @mut IrMaps, vt: vt<@mut IrMaps>) {
             }));
         }
     }
-    visit::visit_arm(arm, self, vt);
+    visit::visit_arm(arm, this, vt);
 }
 
-fn visit_expr(expr: @expr, self: @mut IrMaps, vt: vt<@mut IrMaps>) {
+fn visit_expr(expr: @expr, this: @mut IrMaps, vt: vt<@mut IrMaps>) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
-      expr_path(_) => {
-        let def = self.tcx.def_map.get_copy(&expr.id);
+      expr_path(_) | expr_self => {
+        let def = this.tcx.def_map.get_copy(&expr.id);
         debug!("expr %d: path that leads to %?", expr.id, def);
         if moves::moved_variable_node_id_from_def(def).is_some() {
-            self.add_live_node_for_node(expr.id, ExprNode(expr.span));
+            this.add_live_node_for_node(expr.id, ExprNode(expr.span));
         }
-        visit::visit_expr(expr, self, vt);
+        visit::visit_expr(expr, this, vt);
       }
       expr_fn_block(*) => {
         // Interesting control flow (for loops can contain labeled
         // breaks or continues)
-        self.add_live_node_for_node(expr.id, ExprNode(expr.span));
+        this.add_live_node_for_node(expr.id, ExprNode(expr.span));
 
         // Make a live_node for each captured variable, with the span
         // being the location that the variable is used.  This results
         // in better error messages than just pointing at the closure
         // construction site.
-        let cvs = self.capture_map.get(&expr.id);
+        let cvs = this.capture_map.get(&expr.id);
         let mut call_caps = ~[];
         for cvs.each |cv| {
             match moves::moved_variable_node_id_from_def(cv.def) {
               Some(rv) => {
-                let cv_ln = self.add_live_node(FreeVarNode(cv.span));
+                let cv_ln = this.add_live_node(FreeVarNode(cv.span));
                 let is_move = match cv.mode {
                     // var must be dead afterwards
                     moves::CapMove => true,
@@ -502,19 +502,19 @@ fn visit_expr(expr: @expr, self: @mut IrMaps, vt: vt<@mut IrMaps>) {
               None => {}
             }
         }
-        self.set_captures(expr.id, call_caps);
+        this.set_captures(expr.id, call_caps);
 
-        visit::visit_expr(expr, self, vt);
+        visit::visit_expr(expr, this, vt);
       }
 
       // live nodes required for interesting control flow:
       expr_if(*) | expr_match(*) | expr_while(*) | expr_loop(*) => {
-        self.add_live_node_for_node(expr.id, ExprNode(expr.span));
-        visit::visit_expr(expr, self, vt);
+        this.add_live_node_for_node(expr.id, ExprNode(expr.span));
+        visit::visit_expr(expr, this, vt);
       }
       expr_binary(op, _, _) if ast_util::lazy_binop(op) => {
-        self.add_live_node_for_node(expr.id, ExprNode(expr.span));
-        visit::visit_expr(expr, self, vt);
+        this.add_live_node_for_node(expr.id, ExprNode(expr.span));
+        visit::visit_expr(expr, this, vt);
       }
 
       // otherwise, live nodes are not required:
@@ -526,7 +526,7 @@ fn visit_expr(expr: @expr, self: @mut IrMaps, vt: vt<@mut IrMaps>) {
       expr_assign(*) | expr_assign_op(*) | expr_mac(*) |
       expr_struct(*) | expr_repeat(*) | expr_paren(*) |
       expr_inline_asm(*) => {
-          visit::visit_expr(expr, self, vt);
+          visit::visit_expr(expr, this, vt);
       }
     }
 }
@@ -1006,7 +1006,7 @@ pub impl Liveness {
         match expr.node {
           // Interesting cases with control flow or which gen/kill
 
-          expr_path(_) => {
+          expr_path(_) | expr_self => {
               self.access_path(expr, succ, ACC_READ | ACC_USE)
           }
 
@@ -1409,13 +1409,13 @@ pub impl Liveness {
 // _______________________________________________________________________
 // Checking for error conditions
 
-fn check_local(local: @local, self: @Liveness, vt: vt<@Liveness>) {
+fn check_local(local: @local, this: @Liveness, vt: vt<@Liveness>) {
     match local.node.init {
       Some(_) => {
 
         // Initializer:
-        self.warn_about_unused_or_dead_vars_in_pat(local.node.pat);
-        self.check_for_reassignments_in_pat(local.node.pat,
+        this.warn_about_unused_or_dead_vars_in_pat(local.node.pat);
+        this.check_for_reassignments_in_pat(local.node.pat,
                                             local.node.is_mutbl);
       }
       None => {
@@ -1424,12 +1424,12 @@ fn check_local(local: @local, self: @Liveness, vt: vt<@Liveness>) {
         // should not be live at this point.
 
         debug!("check_local() with no initializer");
-        do self.pat_bindings(local.node.pat) |ln, var, sp, id| {
-            if !self.warn_about_unused(sp, id, ln, var) {
-                match self.live_on_exit(ln, var) {
+        do this.pat_bindings(local.node.pat) |ln, var, sp, id| {
+            if !this.warn_about_unused(sp, id, ln, var) {
+                match this.live_on_exit(ln, var) {
                   None => { /* not live: good */ }
                   Some(lnk) => {
-                    self.report_illegal_read(
+                    this.report_illegal_read(
                         local.span, lnk, var,
                         PossiblyUninitializedVariable);
                   }
@@ -1439,77 +1439,77 @@ fn check_local(local: @local, self: @Liveness, vt: vt<@Liveness>) {
       }
     }
 
-    visit::visit_local(local, self, vt);
+    visit::visit_local(local, this, vt);
 }
 
-fn check_arm(arm: &arm, self: @Liveness, vt: vt<@Liveness>) {
-    do self.arm_pats_bindings(arm.pats) |ln, var, sp, id| {
-        self.warn_about_unused(sp, id, ln, var);
+fn check_arm(arm: &arm, this: @Liveness, vt: vt<@Liveness>) {
+    do this.arm_pats_bindings(arm.pats) |ln, var, sp, id| {
+        this.warn_about_unused(sp, id, ln, var);
     }
-    visit::visit_arm(arm, self, vt);
+    visit::visit_arm(arm, this, vt);
 }
 
-fn check_expr(expr: @expr, self: @Liveness, vt: vt<@Liveness>) {
+fn check_expr(expr: @expr, this: @Liveness, vt: vt<@Liveness>) {
     match expr.node {
-      expr_path(_) => {
-        for self.variable_from_def_map(expr.id, expr.span).each |var| {
-            let ln = self.live_node(expr.id, expr.span);
+      expr_path(_) | expr_self => {
+        for this.variable_from_def_map(expr.id, expr.span).each |var| {
+            let ln = this.live_node(expr.id, expr.span);
 
-            match self.ir.variable_moves_map.find(&expr.id) {
+            match this.ir.variable_moves_map.find(&expr.id) {
                 None => {}
                 Some(&entire_expr) => {
                     debug!("(checking expr) is a move: `%s`",
-                           expr_to_str(expr, self.tcx.sess.intr()));
-                    self.check_move_from_var(ln, *var, entire_expr);
+                           expr_to_str(expr, this.tcx.sess.intr()));
+                    this.check_move_from_var(ln, *var, entire_expr);
                 }
             }
         }
 
-        visit::visit_expr(expr, self, vt);
+        visit::visit_expr(expr, this, vt);
       }
 
       expr_fn_block(*) => {
-        let caps = self.ir.captures(expr);
+        let caps = this.ir.captures(expr);
         for caps.each |cap| {
-            let var = self.variable(cap.var_nid, expr.span);
+            let var = this.variable(cap.var_nid, expr.span);
             if cap.is_move {
-                self.check_move_from_var(cap.ln, var, expr);
+                this.check_move_from_var(cap.ln, var, expr);
             }
         }
 
-        visit::visit_expr(expr, self, vt);
+        visit::visit_expr(expr, this, vt);
       }
 
       expr_assign(l, r) => {
-        self.check_lvalue(l, vt);
-        (vt.visit_expr)(r, self, vt);
+        this.check_lvalue(l, vt);
+        (vt.visit_expr)(r, this, vt);
 
-        visit::visit_expr(expr, self, vt);
+        visit::visit_expr(expr, this, vt);
       }
 
       expr_assign_op(_, l, _) => {
-        self.check_lvalue(l, vt);
+        this.check_lvalue(l, vt);
 
-        visit::visit_expr(expr, self, vt);
+        visit::visit_expr(expr, this, vt);
       }
 
       expr_inline_asm(ref ia) => {
         for ia.inputs.each |&(_, in)| {
-          (vt.visit_expr)(in, self, vt);
+          (vt.visit_expr)(in, this, vt);
         }
 
         // Output operands must be lvalues
         for ia.outputs.each |&(_, out)| {
           match out.node {
             expr_addr_of(_, inner) => {
-              self.check_lvalue(inner, vt);
+              this.check_lvalue(inner, vt);
             }
             _ => {}
           }
-          (vt.visit_expr)(out, self, vt);
+          (vt.visit_expr)(out, this, vt);
         }
 
-        visit::visit_expr(expr, self, vt);
+        visit::visit_expr(expr, this, vt);
       }
 
       // no correctness conditions related to liveness
@@ -1521,7 +1521,7 @@ fn check_expr(expr: @expr, self: @Liveness, vt: vt<@Liveness>) {
       expr_again(*) | expr_lit(_) | expr_block(*) |
       expr_mac(*) | expr_addr_of(*) | expr_struct(*) | expr_repeat(*) |
       expr_paren(*) => {
-        visit::visit_expr(expr, self, vt);
+        visit::visit_expr(expr, this, vt);
       }
     }
 }

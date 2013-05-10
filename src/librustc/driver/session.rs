@@ -62,7 +62,7 @@ pub static gc: uint = 1 << 18;
 pub static jit: uint = 1 << 19;
 pub static debug_info: uint = 1 << 20;
 pub static extra_debug_info: uint = 1 << 21;
-pub static static: uint = 1 << 22;
+pub static statik: uint = 1 << 22;
 pub static print_link_args: uint = 1 << 23;
 
 pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
@@ -98,7 +98,7 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
       extra_debug_info),
      (~"debug-info", ~"Produce debug info (experimental)", debug_info),
      (~"static", ~"Use or produce static libraries or binaries " +
-      "(experimental)", static)
+      "(experimental)", statik)
     ]
 }
 

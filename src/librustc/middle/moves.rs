@@ -435,7 +435,7 @@ pub impl VisitContext {
         debug!("comp_mode = %?", comp_mode);
 
         match expr.node {
-            expr_path(*) => {
+            expr_path(*) | expr_self => {
                 match comp_mode {
                     MoveInPart(entire_expr) => {
                         self.move_maps.variable_moves_map.insert(

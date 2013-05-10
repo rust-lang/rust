@@ -191,7 +191,7 @@ fn mk_generics(lifetimes: ~[ast::Lifetime],  ty_params: ~[ast::TyParam]) -> Gene
     }
 }
 
-/// Lifetimes and bounds on type paramers
+/// Lifetimes and bounds on type parameters
 pub struct LifetimeBounds {
     lifetimes: ~[~str],
     bounds: ~[(~str, ~[Path])]
@@ -218,7 +218,7 @@ pub impl LifetimeBounds {
 
 pub fn get_explicit_self(cx: @ext_ctxt, span: span, self_ptr: Option<PtrTy>)
     -> (@expr, ast::self_ty) {
-    let self_path = build::mk_path(cx, span, ~[cx.ident_of("self")]);
+    let self_path = build::make_self(cx, span);
     match self_ptr {
         None => {
             (self_path, respan(span, ast::sty_value))
