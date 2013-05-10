@@ -12,6 +12,7 @@ extern mod std;
 use core::hashmap::HashSet;
 use std::bitv::BitvSet;
 use std::treemap::TreeSet;
+use std::splay::SplaySet;
 
 struct Results {
     sequential_ints: float,
@@ -177,6 +178,14 @@ fn main() {
         results.bench_int(&mut rng, num_keys, max, || TreeSet::new::<uint>());
         results.bench_str(&mut rng, num_keys, || TreeSet::new::<~str>());
         write_results("std::treemap::TreeSet", &results);
+    }
+
+    {
+        let mut rng = rand::IsaacRng::new_seeded(seed);
+        let mut results = empty_results();
+        results.bench_int(&mut rng, num_keys, max, || SplaySet::new::<uint>());
+        results.bench_str(&mut rng, num_keys, || SplaySet::new::<~str>());
+        write_results("std::treemap::SplaySet", &results);
     }
 
     {

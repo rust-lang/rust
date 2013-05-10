@@ -81,6 +81,8 @@ pub mod sort;
 
 pub mod dlist;
 pub mod treemap;
+#[cfg(not(stage0))]
+pub mod splay;
 
 // And ... other stuff
 

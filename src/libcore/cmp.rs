@@ -127,6 +127,20 @@ totalord_impl!(uint)
 
 totalord_impl!(char)
 
+impl<'self, T: TotalEq> TotalEq for &'self T {
+    #[inline(always)]
+    fn equals(&self, other: & &'self T) -> bool {
+        (**self).equals(*other)
+    }
+}
+
+impl<'self, T: TotalOrd> TotalOrd for &'self T {
+    #[inline(always)]
+    fn cmp(&self, other: & &'self T) -> Ordering {
+        (**self).cmp(*other)
+    }
+}
+
 pub fn cmp2<A:TotalOrd,B:TotalOrd>(
     a1: &A, b1: &B,
     a2: &A, b2: &B) -> Ordering

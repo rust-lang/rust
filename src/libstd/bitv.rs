@@ -72,7 +72,7 @@ pub impl SmallBitv {
     }
 
     #[inline(always)]
-    fn equals(&self, b: &SmallBitv, nbits: uint) -> bool {
+    fn iseq(&self, b: &SmallBitv, nbits: uint) -> bool {
         let mask = small_mask(nbits);
         mask & self.bits == mask & b.bits
     }
@@ -193,7 +193,7 @@ pub impl BigBitv {
     }
 
     #[inline(always)]
-    fn equals(&self, b: &BigBitv, nbits: uint) -> bool {
+    fn iseq(&self, b: &BigBitv, nbits: uint) -> bool {
         let len = b.storage.len();
         for uint::iterate(0, len) |i| {
             let mask = big_mask(nbits, i);
@@ -327,11 +327,11 @@ pub impl Bitv {
       if self.nbits != v1.nbits { return false; }
       match self.rep {
         Small(ref b) => match v1.rep {
-          Small(ref b1) => b.equals(*b1, self.nbits),
+          Small(ref b1) => b.iseq(*b1, self.nbits),
           _ => false
         },
         Big(ref s) => match v1.rep {
-          Big(ref s1) => s.equals(*s1, self.nbits),
+          Big(ref s1) => s.iseq(*s1, self.nbits),
           Small(_) => return false
         }
       }
