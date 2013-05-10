@@ -26,7 +26,7 @@ pub fn md4(msg: &[u8]) -> Quad {
     let orig_len: u64 = (vec::len(msg) * 8u) as u64;
 
     // pad message
-    let mut msg = vec::append(vec::from_slice(msg), ~[0x80u8]);
+    let mut msg = vec::append(vec::to_owned(msg), ~[0x80u8]);
     let mut bitlen = orig_len + 8u64;
     while (bitlen + 64u64) % 512u64 > 0u64 {
         msg.push(0u8);

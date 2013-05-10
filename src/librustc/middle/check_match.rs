@@ -488,7 +488,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                 match cx.tcx.def_map.find(&pat_id) {
                     Some(&def_variant(_, id)) => {
                         if variant(id) == *ctor_id {
-                            Some(vec::from_slice(r.tail()))
+                            Some(vec::to_owned(r.tail()))
                         } else {
                             None
                         }
@@ -507,7 +507,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             _ => fail!(~"type error")
                         };
                         if match_ {
-                            Some(vec::from_slice(r.tail()))
+                            Some(vec::to_owned(r.tail()))
                         } else {
                             None
                         }
@@ -538,7 +538,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             _ => fail!(~"type error")
                         };
                         if match_ {
-                            Some(vec::from_slice(r.tail()))
+                            Some(vec::to_owned(r.tail()))
                         } else {
                             None
                         }
@@ -548,7 +548,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             Some(args) => args,
                             None => vec::from_elem(arity, wild())
                         };
-                        Some(vec::append(args, vec::from_slice(r.tail())))
+                        Some(vec::append(args, vec::to_owned(r.tail())))
                     }
                     def_variant(_, _) => None,
 
@@ -560,7 +560,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             Some(args) => new_args = args,
                             None => new_args = vec::from_elem(arity, wild())
                         }
-                        Some(vec::append(new_args, vec::from_slice(r.tail())))
+                        Some(vec::append(new_args, vec::to_owned(r.tail())))
                     }
                     _ => None
                 }
@@ -578,7 +578,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                                     _ => wild()
                                 }
                             });
-                            Some(vec::append(args, vec::from_slice(r.tail())))
+                            Some(vec::append(args, vec::to_owned(r.tail())))
                         } else {
                             None
                         }
@@ -608,7 +608,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                                 _ => wild()
                             }
                         });
-                        Some(vec::append(args, vec::from_slice(r.tail())))
+                        Some(vec::append(args, vec::to_owned(r.tail())))
                     }
                 }
             }
@@ -627,21 +627,21 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     single => true,
                     _ => fail!(~"type error")
                 };
-                if match_ { Some(vec::from_slice(r.tail())) } else { None }
+                if match_ { Some(vec::to_owned(r.tail())) } else { None }
             }
             pat_range(lo, hi) => {
                 let (c_lo, c_hi) = match *ctor_id {
                     val(ref v) => ((/*bad*/copy *v), (/*bad*/copy *v)),
                     range(ref lo, ref hi) =>
                         ((/*bad*/copy *lo), (/*bad*/copy *hi)),
-                    single => return Some(vec::from_slice(r.tail())),
+                    single => return Some(vec::to_owned(r.tail())),
                     _ => fail!(~"type error")
                 };
                 let v_lo = eval_const_expr(cx.tcx, lo),
                 v_hi = eval_const_expr(cx.tcx, hi);
                 let match_ = compare_const_vals(&c_lo, &v_lo) >= 0 &&
                     compare_const_vals(&c_hi, &v_hi) <= 0;
-          if match_ { Some(vec::from_slice(r.tail())) } else { None }
+          if match_ { Some(vec::to_owned(r.tail())) } else { None }
       }
             pat_vec(before, slice, after) => {
                 match *ctor_id {
@@ -674,7 +674,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
 }
 
 pub fn default(cx: @MatchCheckCtxt, r: &[@pat]) -> Option<~[@pat]> {
-    if is_wild(cx, r[0]) { Some(vec::from_slice(r.tail())) }
+    if is_wild(cx, r[0]) { Some(vec::to_owned(r.tail())) }
     else { None }
 }
 

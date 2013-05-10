@@ -669,7 +669,7 @@ fn expand_tts(cx: @ext_ctxt,
     let p = parse::new_parser_from_tts(
         cx.parse_sess(),
         cx.cfg(),
-        vec::from_slice(tts)
+        vec::to_owned(tts)
     );
     *p.quote_depth += 1u;
     let tts = p.parse_all_token_trees();
