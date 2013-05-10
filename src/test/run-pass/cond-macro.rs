@@ -10,8 +10,8 @@
 
 fn clamp<T:Copy + Ord + Signed>(x: T, mn: T, mx: T) -> T {
     cond!(
-        | x > mx { mx }
-        | x < mn { mn }
+        (x > mx) { mx }
+        (x < mn) { mn }
         _        { x  }
     )
 }

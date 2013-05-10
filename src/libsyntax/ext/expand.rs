@@ -559,8 +559,8 @@ pub fn core_macros() -> ~str {
     //
     // ~~~
     // let clamped = cond!(
-    //     | x > mx { mx }
-    //     | x < mn { mn }
+    //     (x > mx) { mx }
+    //     (x < mn) { mn }
     //     _        { x  }
     // );
     // ~~~
@@ -568,12 +568,12 @@ pub fn core_macros() -> ~str {
     // The optional default case is denoted by `_`.
     //
     macro_rules! cond (
-        ($( | $pred:expr $body:block)+ _ $default:block ) => (
+        ( $(($pred:expr) $body:block)+ _ $default:block ) => (
             $(if $pred $body else)+
             $default
         );
         // for if the default case was ommitted
-        ( $( | $pred:expr $body:block )+ ) => (
+        ( $(($pred:expr) $body:block)+ ) => (
             $(if $pred $body)else+
         );
     )
