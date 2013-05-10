@@ -17,7 +17,7 @@ impl Foo {
         Foo { baz: 0 }.bar();
     }
 
-    fn bar() { //~ ERROR duplicate definition of value bar
+    fn bar() { //~ ERROR duplicate definition of value `bar`
     }
 }
 
