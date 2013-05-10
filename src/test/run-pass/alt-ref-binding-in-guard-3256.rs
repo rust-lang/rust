@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let x = Some(unstable::exclusive(true));
+    let x = Some(unstable::sync::exclusive(true));
     match x {
         Some(ref z) if z.with(|b| *b) => {
             do z.with |b| { assert!(*b); }
