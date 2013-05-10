@@ -22,7 +22,7 @@ use metadata::csearch;
 use metadata::cstore::{CStore, iter_crate_data};
 use metadata::decoder::{dl_def, dl_field, dl_impl};
 use middle::resolve::{Impl, MethodInfo};
-use middle::ty::{ProvidedMethodSource, ProvidedMethodInfo, bound_copy, get};
+use middle::ty::{ProvidedMethodSource, ProvidedMethodInfo, get};
 use middle::ty::{lookup_item_type, subst};
 use middle::ty::{substs, t, ty_bool, ty_bot, ty_box, ty_enum, ty_err};
 use middle::ty::{ty_estr, ty_evec, ty_float, ty_infer, ty_int, ty_nil};
@@ -603,34 +603,28 @@ pub impl CoherenceChecker {
                 // Check to ensure that each parameter binding respected its
                 // kind bounds.
                 for [ a, b ].each |result| {
-                    for vec::each2(result.type_variables, *result.type_param_defs)
-                            |ty_var, type_param_def| {
-                        match resolve_type(self.inference_context,
-                                           *ty_var,
-                                           resolve_nested_tvar) {
-                            Ok(resolved_ty) => {
-                                for type_param_def.bounds.each |bound| {
-                                    match *bound {
-                                        bound_copy => {
-                                            if !ty::type_is_copyable(
-                                                self.inference_context.tcx,
-                                                resolved_ty)
-                                            {
-                                                might_unify = false;
-                                                break;
-                                            }
-                                        }
-
-                                        // XXX: We could be smarter here.
-                                        // Check to see whether owned, send,
-                                        // const, trait param bounds could
-                                        // possibly unify.
-                                        _ => {}
+                    for vec::each2(result.type_variables,
+                                   *result.type_param_defs)
+                        |ty_var, type_param_def|
+                    {
+                        if type_param_def.bounds.builtin_bounds.contains_elem(
+                            ty::BoundCopy)
+                        {
+                            match resolve_type(self.inference_context,
+                                               *ty_var,
+                                               resolve_nested_tvar) {
+                                Ok(resolved_ty) => {
+                                    if !ty::type_is_copyable(
+                                        self.inference_context.tcx,
+                                        resolved_ty)
+                                    {
+                                        might_unify = false;
+                                        break;
                                     }
                                 }
-                            }
-                            Err(*) => {
-                                // Conservatively assume it might unify.
+                                Err(*) => {
+                                    // Conservatively assume it might unify.
+                                }
                             }
                         }
                     }

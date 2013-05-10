@@ -26,6 +26,7 @@ use util::ppaux::{note_and_explain_region, bound_region_to_str};
 use util::ppaux::{trait_store_to_str, ty_to_str, vstore_to_str};
 use util::ppaux::Repr;
 use util::common::{indenter};
+use util::enum_set::{EnumSet, CLike};
 
 use core;
 use core::ptr::to_unsafe_ptr;
@@ -57,8 +58,6 @@ pub struct field {
     ident: ast::ident,
     mt: mt
 }
-
-pub type param_bounds = @~[param_bound];
 
 pub struct method {
     ident: ast::ident,
@@ -655,12 +654,32 @@ pub enum type_err {
 }
 
 #[deriving(Eq, IterBytes)]
-pub enum param_bound {
-    bound_copy,
-    bound_durable,
-    bound_owned,
-    bound_const,
-    bound_trait(@TraitRef),
+pub struct ParamBounds {
+    builtin_bounds: BuiltinBounds,
+    trait_bounds: ~[@TraitRef]
+}
+
+pub type BuiltinBounds = EnumSet<BuiltinBound>;
+
+#[deriving(Eq, IterBytes)]
+pub enum BuiltinBound {
+    BoundCopy,
+    BoundStatic,
+    BoundOwned,
+    BoundConst,
+}
+
+pub fn EmptyBuiltinBounds() -> BuiltinBounds {
+    EnumSet::empty()
+}
+
+impl CLike for BuiltinBound {
+    pub fn to_uint(&self) -> uint {
+        *self as uint
+    }
+    pub fn from_uint(v: uint) -> BuiltinBound {
+        unsafe { cast::transmute(v) }
+    }
 }
 
 #[deriving(Eq)]
@@ -817,7 +836,7 @@ impl to_bytes::IterBytes for RegionVid {
 
 pub struct TypeParameterDef {
     def_id: ast::def_id,
-    bounds: param_bounds
+    bounds: @ParamBounds
 }
 
 /// Information about the type/lifetime parametesr associated with an item.
@@ -1497,14 +1516,6 @@ pub fn substs_to_str(cx: ctxt, substs: &substs) -> ~str {
     substs.repr(cx)
 }
 
-pub fn param_bound_to_str(cx: ctxt, pb: &param_bound) -> ~str {
-    pb.repr(cx)
-}
-
-pub fn param_bounds_to_str(cx: ctxt, pbs: param_bounds) -> ~str {
-    pbs.repr(cx)
-}
-
 pub fn subst(cx: ctxt,
              substs: &substs,
              typ: t)
@@ -1795,6 +1806,19 @@ pub struct TypeContents {
 }
 
 pub impl TypeContents {
+    fn meets_bounds(&self, cx: ctxt, bbs: BuiltinBounds) -> bool {
+        iter::all(|bb| self.meets_bound(cx, bb), |f| bbs.each(f))
+    }
+
+    fn meets_bound(&self, cx: ctxt, bb: BuiltinBound) -> bool {
+        match bb {
+            BoundCopy => self.is_copy(cx),
+            BoundStatic => self.is_static(cx),
+            BoundConst => self.is_const(cx),
+            BoundOwned => self.is_owned(cx)
+        }
+    }
+
     fn intersects(&self, tc: TypeContents) -> bool {
         (self.bits & tc.bits) != 0
     }
@@ -1808,11 +1832,11 @@ pub impl TypeContents {
             TC_EMPTY_ENUM
     }
 
-    fn is_durable(&self, cx: ctxt) -> bool {
-        !self.intersects(TypeContents::nondurable(cx))
+    fn is_static(&self, cx: ctxt) -> bool {
+        !self.intersects(TypeContents::nonstatic(cx))
     }
 
-    fn nondurable(_cx: ctxt) -> TypeContents {
+    fn nonstatic(_cx: ctxt) -> TypeContents {
         TC_BORROWED_POINTER
     }
 
@@ -1917,8 +1941,8 @@ pub fn type_is_copyable(cx: ctxt, t: ty::t) -> bool {
     type_contents(cx, t).is_copy(cx)
 }
 
-pub fn type_is_durable(cx: ctxt, t: ty::t) -> bool {
-    type_contents(cx, t).is_durable(cx)
+pub fn type_is_static(cx: ctxt, t: ty::t) -> bool {
+    type_contents(cx, t).is_static(cx)
 }
 
 pub fn type_is_owned(cx: ctxt, t: ty::t) -> bool {
@@ -2198,19 +2222,19 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         debug!("type_param_def_to_contents(%s)", type_param_def.repr(cx));
         let _i = indenter();
 
-        let r = type_param_def.bounds.foldl(TC_ALL, |tc, bound| {
+        let mut tc = TC_ALL;
+        for type_param_def.bounds.builtin_bounds.each |bound| {
             debug!("tc = %s, bound = %?", tc.to_str(), bound);
-            match *bound {
-                bound_copy => tc - TypeContents::nonimplicitly_copyable(cx),
-                bound_durable => tc - TypeContents::nondurable(cx),
-                bound_owned => tc - TypeContents::nonowned(cx),
-                bound_const => tc - TypeContents::nonconst(cx),
-                bound_trait(_) => *tc
-            }
-        });
+            tc = tc - match bound {
+                BoundCopy => TypeContents::nonimplicitly_copyable(cx),
+                BoundStatic => TypeContents::nonstatic(cx),
+                BoundOwned => TypeContents::nonowned(cx),
+                BoundConst => TypeContents::nonconst(cx),
+            };
+        }
 
-        debug!("result = %s", r.to_str());
-        return r;
+        debug!("result = %s", tc.to_str());
+        return tc;
     }
 }
 
@@ -3577,7 +3601,7 @@ pub fn trait_supertraits(cx: ctxt,
 pub fn trait_ref_supertraits(cx: ctxt, trait_ref: &ty::TraitRef) -> ~[@TraitRef] {
     let supertrait_refs = trait_supertraits(cx, trait_ref.def_id);
     supertrait_refs.map(
-        |supertrait_ref| @supertrait_ref.subst(cx, &trait_ref.substs))
+        |supertrait_ref| supertrait_ref.subst(cx, &trait_ref.substs))
 }
 
 fn lookup_locally_or_in_crate_store<V:Copy>(
@@ -4261,18 +4285,9 @@ pub fn determine_inherited_purity(parent: (ast::purity, ast::node_id),
 // relation on the supertraits from each bounded trait's constraint
 // list.
 pub fn each_bound_trait_and_supertraits(tcx: ctxt,
-                                         bounds: param_bounds,
-                                         f: &fn(&TraitRef) -> bool) {
-    for bounds.each |bound| {
-        let bound_trait_ref = match *bound {
-            ty::bound_trait(bound_t) => bound_t,
-
-            ty::bound_copy | ty::bound_owned |
-            ty::bound_const | ty::bound_durable => {
-                loop; // skip non-trait bounds
-            }
-        };
-
+                                        bounds: &ParamBounds,
+                                        f: &fn(@TraitRef) -> bool) {
+    for bounds.trait_bounds.each |&bound_trait_ref| {
         let mut supertrait_set = HashMap::new();
         let mut trait_refs = ~[];
         let mut i = 0;

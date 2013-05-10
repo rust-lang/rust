@@ -348,14 +348,9 @@ pub fn make_mono_id(ccx: @CrateContext,
         let mut i = 0;
         vec::map_zip(*item_ty.generics.type_param_defs, substs, |type_param_def, subst| {
             let mut v = ~[];
-            for type_param_def.bounds.each |bound| {
-                match *bound {
-                  ty::bound_trait(_) => {
-                    v.push(meth::vtable_id(ccx, /*bad*/copy vts[i]));
-                    i += 1;
-                  }
-                  _ => ()
-                }
+            for type_param_def.bounds.trait_bounds.each |_bound| {
+                v.push(meth::vtable_id(ccx, /*bad*/copy vts[i]));
+                i += 1;
             }
             (*subst, if !v.is_empty() { Some(v) } else { None })
         })
