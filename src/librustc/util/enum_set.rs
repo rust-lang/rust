@@ -12,7 +12,9 @@ use core;
 
 #[deriving(Eq, IterBytes)]
 pub struct EnumSet<E> {
-    bits: uint
+    // We must maintain the invariant that no bits are set
+    // for which no variant exists
+    priv bits: uint
 }
 
 pub trait CLike {
@@ -37,8 +39,16 @@ pub impl<E:CLike> EnumSet<E> {
         (self.bits & e.bits) != 0
     }
 
+    fn intersection(&self, e: EnumSet<E>) -> EnumSet<E> {
+        EnumSet {bits: self.bits & e.bits}
+    }
+
     fn contains(&self, e: EnumSet<E>) -> bool {
         (self.bits & e.bits) == e.bits
+    }
+
+    fn union(&self, e: EnumSet<E>) -> EnumSet<E> {
+        EnumSet {bits: self.bits | e.bits}
     }
 
     fn add(&mut self, e: E) {

@@ -20,6 +20,7 @@ use middle::lint::{allow, level, unused_imports};
 use middle::lint::{get_lint_level, get_lint_settings_level};
 use middle::pat_util::pat_bindings;
 
+use syntax::ast::{TyParamBound, ty_closure};
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound, _mod, add, arm};
 use syntax::ast::{binding_mode, bitand, bitor, bitxor, blk};
 use syntax::ast::{bind_infer, bind_by_ref, bind_by_copy};
@@ -3732,14 +3733,20 @@ pub impl Resolver {
                                type_parameters: &OptVec<TyParam>,
                                visitor: ResolveVisitor) {
         for type_parameters.each |type_parameter| {
-            for type_parameter.bounds.each |&bound| {
-                match bound {
-                    TraitTyParamBound(tref) => {
-                        self.resolve_trait_reference(tref, visitor)
-                    }
-                    RegionTyParamBound => {}
-                }
+            for type_parameter.bounds.each |bound| {
+                self.resolve_type_parameter_bound(bound, visitor);
             }
+        }
+    }
+
+    fn resolve_type_parameter_bound(@mut self,
+                                    type_parameter_bound: &TyParamBound,
+                                    visitor: ResolveVisitor) {
+        match *type_parameter_bound {
+            TraitTyParamBound(tref) => {
+                self.resolve_trait_reference(tref, visitor)
+            }
+            RegionTyParamBound => {}
         }
     }
 
@@ -4068,6 +4075,13 @@ pub impl Resolver {
                                            self.idents_to_str(path.idents)));
                     }
                 }
+            }
+
+            ty_closure(c) => {
+                for c.bounds.each |bound| {
+                    self.resolve_type_parameter_bound(bound, visitor);
+                }
+                visit_ty(ty, (), visitor);
             }
 
             _ => {
