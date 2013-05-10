@@ -1007,7 +1007,7 @@ pub impl Resolver {
                     let ns = namespace_for_duplicate_checking_mode(
                         duplicate_checking_mode);
                     self.session.span_err(sp,
-                        fmt!("duplicate definition of %s %s",
+                        fmt!("duplicate definition of %s `%s`",
                              namespace_to_str(ns),
                              *self.session.str_of(name)));
                     for child.span_for_namespace(ns).each |sp| {
@@ -1959,7 +1959,7 @@ pub impl Resolver {
             match self.resolve_import_for_module(module, import_directive) {
                 Failed => {
                     // We presumably emitted an error. Continue.
-                    let msg = fmt!("failed to resolve import: %s",
+                    let msg = fmt!("failed to resolve import `%s`",
                                    *self.import_path_to_str(
                                        import_directive.module_path,
                                        *import_directive.subclass));
@@ -2488,7 +2488,7 @@ pub impl Resolver {
                         self.session.span_err(span {lo: span.lo, hi: span.lo +
                                               BytePos(str::len(*segment_name)), expn_info:
                                               span.expn_info}, fmt!("unresolved import. maybe \
-                                                                    a missing 'extern mod %s'?",
+                                                                    a missing `extern mod %s`?",
                                                                     *segment_name));
                         return Failed;
                     }
@@ -2511,7 +2511,7 @@ pub impl Resolver {
                                     // Not a module.
                                     self.session.span_err(span,
                                                           fmt!("not a \
-                                                                module: %s",
+                                                                module `%s`",
                                                                *self.session.
                                                                    str_of(
                                                                     name)));
@@ -2525,7 +2525,7 @@ pub impl Resolver {
                         None => {
                             // There are no type bindings at all.
                             self.session.span_err(span,
-                                                  fmt!("not a module: %s",
+                                                  fmt!("not a module `%s`",
                                                        *self.session.str_of(
                                                             name)));
                             return Failed;
@@ -2976,7 +2976,7 @@ pub impl Resolver {
         }
 
         // We're out of luck.
-        debug!("(resolving name in module) failed to resolve %s",
+        debug!("(resolving name in module) failed to resolve `%s`",
                *self.session.str_of(name));
         return Failed;
     }
@@ -4158,7 +4158,7 @@ pub impl Resolver {
                                       // in the same disjunct, which is an
                                       // error
                                      self.session.span_err(pattern.span,
-                                       fmt!("Identifier %s is bound more \
+                                       fmt!("Identifier `%s` is bound more \
                                              than once in the same pattern",
                                             path_to_str(path, self.session
                                                         .intr())));
@@ -4199,7 +4199,7 @@ pub impl Resolver {
                         Some(_) => {
                             self.session.span_err(
                                 path.span,
-                                fmt!("not an enum variant or constant: %s",
+                                fmt!("`%s` is not an enum variant or constant",
                                      *self.session.str_of(
                                          *path.idents.last())));
                         }
@@ -4227,7 +4227,7 @@ pub impl Resolver {
                         Some(_) => {
                             self.session.span_err(
                                 path.span,
-                                fmt!("not an enum variant, struct or const: %s",
+                                fmt!("`%s` is not an enum variant, struct or const",
                                      *self.session.str_of(
                                          *path.idents.last())));
                         }
@@ -4723,8 +4723,8 @@ pub impl Resolver {
                             path.idents);
                         if self.name_exists_in_scope_struct(wrong_name) {
                             self.session.span_err(expr.span,
-                                        fmt!("unresolved name: `%s`. \
-                                            Did you mean: `self.%s`?",
+                                        fmt!("unresolved name `%s`. \
+                                            Did you mean `self.%s`?",
                                         wrong_name,
                                         wrong_name));
                         }
@@ -4734,13 +4734,13 @@ pub impl Resolver {
                             match self.find_best_match_for_name(wrong_name, 5) {
                                 Some(m) => {
                                     self.session.span_err(expr.span,
-                                            fmt!("unresolved name: `%s`. \
-                                                Did you mean: `%s`?",
+                                            fmt!("unresolved name `%s`. \
+                                                Did you mean `%s`?",
                                                 wrong_name, m));
                                 }
                                 None => {
                                     self.session.span_err(expr.span,
-                                            fmt!("unresolved name: `%s`.",
+                                            fmt!("unresolved name `%s`.",
                                                 wrong_name));
                                 }
                             }

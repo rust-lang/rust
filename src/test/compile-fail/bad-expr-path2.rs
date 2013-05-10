@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: unresolved name: `m1::a`. Did you mean: `args`?
+// error-pattern: unresolved name `m1::a`. Did you mean `args`?
 
 mod m1 {
     pub mod a {}
