@@ -42,12 +42,17 @@ pub extern "rust-intrinsic" {
 
     pub fn get_tydesc<T>() -> *();
 
-    pub fn init<T>() -> T;
+    /// init is unsafe because it returns a zeroed-out datum,
+    /// which is unsafe unless T is POD. We don't have a POD
+    /// kind yet. (See #4074)
+    pub unsafe fn init<T>() -> T;
 
     #[cfg(not(stage0))]
     pub unsafe fn uninit<T>() -> T;
 
-    pub fn forget<T>(_: T) -> ();
+    /// forget is unsafe because the caller is responsible for
+    /// ensuring the argument is deallocated already
+    pub unsafe fn forget<T>(_: T) -> ();
 
     pub fn needs_drop<T>() -> bool;
 
