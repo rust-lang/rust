@@ -20,16 +20,16 @@ fn main()
 
     let _z = match g(1, 2) {
       g(x, x) => { debug!(x + x); }
-      //~^ ERROR Identifier x is bound more than once in the same pattern
+      //~^ ERROR Identifier `x` is bound more than once in the same pattern
     };
 
     let _z = match i(l(1, 2), m(3, 4)) {
-      i(l(x, _), m(_, x))  //~ ERROR Identifier x is bound more than once in the same pattern
+      i(l(x, _), m(_, x))  //~ ERROR Identifier `x` is bound more than once in the same pattern
         => { error!(x + x); }
     };
 
     let _z = match (1, 2) {
-        (x, x) => { x } //~ ERROR Identifier x is bound more than once in the same pattern
+        (x, x) => { x } //~ ERROR Identifier `x` is bound more than once in the same pattern
     };
 
 }
