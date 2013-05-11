@@ -73,6 +73,16 @@ impl EventLoop for UvEventLoop {
         }
     }
 
+    fn callback_ms(&mut self, ms: u64, f: ~fn()) {
+        let mut timer =  TimerWatcher::new(self.uvio.uv_loop());
+        do timer.start(ms, 0) |timer, status| {
+            assert!(status.is_none());
+            let mut timer = timer;
+            timer.close(||());
+            f();
+        }
+    }
+
     fn io<'a>(&'a mut self) -> Option<&'a mut IoFactoryObject> {
         Some(&mut self.uvio)
     }
@@ -419,7 +429,7 @@ fn test_read_and_block() {
                 do scheduler.deschedule_running_task_and_then |task| {
                     let task = Cell(task);
                     do local_sched::borrow |scheduler| {
-                        scheduler.task_queue.push_back(task.take());
+                        scheduler.enqueue_task(task.take());
                     }
                 }
             }

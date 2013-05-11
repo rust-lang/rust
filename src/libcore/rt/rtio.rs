@@ -25,6 +25,7 @@ pub type RtioTcpListenerObject = uvio::UvTcpListener;
 pub trait EventLoop {
     fn run(&mut self);
     fn callback(&mut self, ~fn());
+    fn callback_ms(&mut self, ms: u64, ~fn());
     /// The asynchronous I/O services. Not all event loops may provide one
     fn io<'a>(&'a mut self) -> Option<&'a mut IoFactoryObject>;
 }

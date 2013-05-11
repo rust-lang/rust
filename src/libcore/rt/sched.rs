@@ -31,7 +31,7 @@ pub mod local_sched;
 /// thread local storage and the running task is owned by the
 /// scheduler.
 pub struct Scheduler {
-    task_queue: WorkQueue<~Task>,
+    priv task_queue: WorkQueue<~Task>,
     stack_pool: StackPool,
     /// The event loop used to drive the scheduler and perform I/O
     event_loop: ~EventLoopObject,
@@ -91,44 +91,56 @@ pub impl Scheduler {
     fn run(~self) -> ~Scheduler {
         assert!(!self.in_task_context());
 
-        // Give ownership of the scheduler (self) to the thread
-        local_sched::put(self);
+        let mut self_sched = self;
 
         unsafe {
-            let scheduler = local_sched::unsafe_borrow();
-            fn run_scheduler_once() {
-                let scheduler = local_sched::take();
-                if scheduler.resume_task_from_queue() {
-                    // Ok, a task ran. Nice! We'll do it again later
-                    do local_sched::borrow |scheduler| {
-                        scheduler.event_loop.callback(run_scheduler_once);
-                    }
-                }
-            }
+            let event_loop: *mut ~EventLoopObject = {
+                let event_loop: *mut ~EventLoopObject = &mut self_sched.event_loop;
+                event_loop
+            };
 
-            let scheduler = &mut *scheduler;
-            scheduler.event_loop.callback(run_scheduler_once);
-            scheduler.event_loop.run();
+            // Give ownership of the scheduler (self) to the thread
+            local_sched::put(self_sched);
+
+            (*event_loop).run();
         }
 
-        return local_sched::take();
+        let sched = local_sched::take();
+        assert!(sched.task_queue.is_empty());
+        return sched;
+    }
+
+    /// Schedule a task to be executed later.
+    ///
+    /// Pushes the task onto the work stealing queue and tells the event loop
+    /// to run it later. Always use this instead of pushing to the work queue
+    /// directly.
+    fn enqueue_task(&mut self, task: ~Task) {
+        self.task_queue.push_front(task);
+        self.event_loop.callback(resume_task_from_queue);
+
+        fn resume_task_from_queue() {
+            let scheduler = local_sched::take();
+            scheduler.resume_task_from_queue();
+        }
     }
 
     // * Scheduler-context operations
 
-    fn resume_task_from_queue(~self) -> bool {
+    fn resume_task_from_queue(~self) {
         assert!(!self.in_task_context());
+
+        rtdebug!("looking in work queue for task to schedule");
 
         let mut this = self;
         match this.task_queue.pop_front() {
             Some(task) => {
+                rtdebug!("resuming task from work queue");
                 this.resume_task_immediately(task);
-                return true;
             }
             None => {
                 rtdebug!("no tasks in queue");
                 local_sched::put(this);
-                return false;
             }
         }
     }
@@ -158,7 +170,7 @@ pub impl Scheduler {
         do self.switch_running_tasks_and_then(task) |last_task| {
             let last_task = Cell(last_task);
             do local_sched::borrow |sched| {
-                sched.task_queue.push_front(last_task.take());
+                sched.enqueue_task(last_task.take());
             }
         }
     }
@@ -385,118 +397,153 @@ pub impl Task {
     }
 }
 
-#[test]
-fn test_simple_scheduling() {
-    do run_in_bare_thread {
-        let mut task_ran = false;
-        let task_ran_ptr: *mut bool = &mut task_ran;
+#[cfg(test)]
+mod test {
+    use int;
+    use cell::Cell;
+    use rt::uv::uvio::UvEventLoop;
+    use unstable::run_in_bare_thread;
+    use task::spawn;
+    use rt::test::*;
+    use super::*;
 
-        let mut sched = ~UvEventLoop::new_scheduler();
-        let task = ~do Task::new(&mut sched.stack_pool) {
-            unsafe { *task_ran_ptr = true; }
-        };
-        sched.task_queue.push_back(task);
-        sched.run();
-        assert!(task_ran);
-    }
-}
+    #[test]
+    fn test_simple_scheduling() {
+        do run_in_bare_thread {
+            let mut task_ran = false;
+            let task_ran_ptr: *mut bool = &mut task_ran;
 
-#[test]
-fn test_several_tasks() {
-    do run_in_bare_thread {
-        let total = 10;
-        let mut task_count = 0;
-        let task_count_ptr: *mut int = &mut task_count;
-
-        let mut sched = ~UvEventLoop::new_scheduler();
-        for int::range(0, total) |_| {
+            let mut sched = ~UvEventLoop::new_scheduler();
             let task = ~do Task::new(&mut sched.stack_pool) {
-                unsafe { *task_count_ptr = *task_count_ptr + 1; }
+                unsafe { *task_ran_ptr = true; }
             };
-            sched.task_queue.push_back(task);
+            sched.enqueue_task(task);
+            sched.run();
+            assert!(task_ran);
         }
-        sched.run();
-        assert!(task_count == total);
     }
-}
 
-#[test]
-fn test_swap_tasks_then() {
-    do run_in_bare_thread {
-        let mut count = 0;
-        let count_ptr: *mut int = &mut count;
+    #[test]
+    fn test_several_tasks() {
+        do run_in_bare_thread {
+            let total = 10;
+            let mut task_count = 0;
+            let task_count_ptr: *mut int = &mut task_count;
 
-        let mut sched = ~UvEventLoop::new_scheduler();
-        let task1 = ~do Task::new(&mut sched.stack_pool) {
-            unsafe { *count_ptr = *count_ptr + 1; }
-            let mut sched = local_sched::take();
-            let task2 = ~do Task::new(&mut sched.stack_pool) {
+            let mut sched = ~UvEventLoop::new_scheduler();
+            for int::range(0, total) |_| {
+                let task = ~do Task::new(&mut sched.stack_pool) {
+                    unsafe { *task_count_ptr = *task_count_ptr + 1; }
+                };
+                sched.enqueue_task(task);
+            }
+            sched.run();
+            assert!(task_count == total);
+        }
+    }
+
+    #[test]
+    fn test_swap_tasks_then() {
+        do run_in_bare_thread {
+            let mut count = 0;
+            let count_ptr: *mut int = &mut count;
+
+            let mut sched = ~UvEventLoop::new_scheduler();
+            let task1 = ~do Task::new(&mut sched.stack_pool) {
+                unsafe { *count_ptr = *count_ptr + 1; }
+                let mut sched = local_sched::take();
+                let task2 = ~do Task::new(&mut sched.stack_pool) {
+                    unsafe { *count_ptr = *count_ptr + 1; }
+                };
+                // Context switch directly to the new task
+                do sched.switch_running_tasks_and_then(task2) |task1| {
+                    let task1 = Cell(task1);
+                    do local_sched::borrow |sched| {
+                        sched.enqueue_task(task1.take());
+                    }
+                }
                 unsafe { *count_ptr = *count_ptr + 1; }
             };
-            // Context switch directly to the new task
-            do sched.switch_running_tasks_and_then(task2) |task1| {
-                let task1 = Cell(task1);
-                do local_sched::borrow |sched| {
-                    sched.task_queue.push_front(task1.take());
-                }
-            }
-            unsafe { *count_ptr = *count_ptr + 1; }
-        };
-        sched.task_queue.push_back(task1);
-        sched.run();
-        assert!(count == 3);
+            sched.enqueue_task(task1);
+            sched.run();
+            assert!(count == 3);
+        }
     }
-}
 
-#[bench] #[test] #[ignore(reason = "long test")]
-fn test_run_a_lot_of_tasks_queued() {
-    do run_in_bare_thread {
-        static MAX: int = 1000000;
-        let mut count = 0;
-        let count_ptr: *mut int = &mut count;
+    #[bench] #[test] #[ignore(reason = "long test")]
+    fn test_run_a_lot_of_tasks_queued() {
+        do run_in_bare_thread {
+            static MAX: int = 1000000;
+            let mut count = 0;
+            let count_ptr: *mut int = &mut count;
 
-        let mut sched = ~UvEventLoop::new_scheduler();
+            let mut sched = ~UvEventLoop::new_scheduler();
 
-        let start_task = ~do Task::new(&mut sched.stack_pool) {
-            run_task(count_ptr);
-        };
-        sched.task_queue.push_back(start_task);
-        sched.run();
+            let start_task = ~do Task::new(&mut sched.stack_pool) {
+                run_task(count_ptr);
+            };
+            sched.enqueue_task(start_task);
+            sched.run();
 
-        assert!(count == MAX);
+            assert!(count == MAX);
 
-        fn run_task(count_ptr: *mut int) {
-            do local_sched::borrow |sched| {
-                let task = ~do Task::new(&mut sched.stack_pool) {
-                    unsafe {
-                        *count_ptr = *count_ptr + 1;
-                        if *count_ptr != MAX {
-                            run_task(count_ptr);
+            fn run_task(count_ptr: *mut int) {
+                do local_sched::borrow |sched| {
+                    let task = ~do Task::new(&mut sched.stack_pool) {
+                        unsafe {
+                            *count_ptr = *count_ptr + 1;
+                            if *count_ptr != MAX {
+                                run_task(count_ptr);
+                            }
                         }
-                    }
-                };
-                sched.task_queue.push_back(task);
-            }
-        };
+                    };
+                    sched.enqueue_task(task);
+                }
+            };
+        }
     }
-}
 
-#[test]
-fn test_block_task() {
-    do run_in_bare_thread {
-        let mut sched = ~UvEventLoop::new_scheduler();
-        let task = ~do Task::new(&mut sched.stack_pool) {
-            let sched = local_sched::take();
-            assert!(sched.in_task_context());
-            do sched.deschedule_running_task_and_then() |task| {
-                let task = Cell(task);
-                do local_sched::borrow |sched| {
-                    assert!(!sched.in_task_context());
-                    sched.task_queue.push_back(task.take());
+    #[test]
+    fn test_block_task() {
+        do run_in_bare_thread {
+            let mut sched = ~UvEventLoop::new_scheduler();
+            let task = ~do Task::new(&mut sched.stack_pool) {
+                let sched = local_sched::take();
+                assert!(sched.in_task_context());
+                do sched.deschedule_running_task_and_then() |task| {
+                    let task = Cell(task);
+                    do local_sched::borrow |sched| {
+                        assert!(!sched.in_task_context());
+                        sched.enqueue_task(task.take());
+                    }
+                }
+            };
+            sched.enqueue_task(task);
+            sched.run();
+        }
+    }
+
+    #[test]
+    fn test_io_callback() {
+        // This is a regression test that when there are no schedulable tasks
+        // in the work queue, but we are performing I/O, that once we do put
+        // something in the work queue again the scheduler picks it up and doesn't
+        // exit before emptying the work queue
+        do run_in_newsched_task {
+            do spawn {
+                let sched = local_sched::take();
+                do sched.deschedule_running_task_and_then |task| {
+                    let mut sched = local_sched::take();
+                    let task = Cell(task);
+                    do sched.event_loop.callback_ms(10) {
+                        rtdebug!("in callback");
+                        let mut sched = local_sched::take();
+                        sched.enqueue_task(task.take());
+                        local_sched::put(sched);
+                    }
+                    local_sched::put(sched);
                 }
             }
-        };
-        sched.task_queue.push_back(task);
-        sched.run();
+        }
     }
 }

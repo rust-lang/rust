@@ -28,7 +28,7 @@ pub fn run_in_newsched_task(f: ~fn()) {
         let task = ~Task::with_local(&mut sched.stack_pool,
                                      LocalServices::without_unwinding(),
                                      f.take());
-        sched.task_queue.push_back(task);
+        sched.enqueue_task(task);
         sched.run();
     }
 }
@@ -59,7 +59,7 @@ pub fn spawntask_immediately(f: ~fn()) {
     do sched.switch_running_tasks_and_then(task) |task| {
         let task = Cell(task);
         do local_sched::borrow |sched| {
-            sched.task_queue.push_front(task.take());
+            sched.enqueue_task(task.take());
         }
     }
 }
@@ -73,7 +73,7 @@ pub fn spawntask_later(f: ~fn()) {
                                  LocalServices::without_unwinding(),
                                  f);
 
-    sched.task_queue.push_front(task);
+    sched.enqueue_task(task);
     local_sched::put(sched);
 }
 
@@ -94,11 +94,11 @@ pub fn spawntask_random(f: ~fn()) {
         do sched.switch_running_tasks_and_then(task) |task| {
             let task = Cell(task);
             do local_sched::borrow |sched| {
-                sched.task_queue.push_front(task.take());
+                sched.enqueue_task(task.take());
             }
         }
     } else {
-        sched.task_queue.push_front(task);
+        sched.enqueue_task(task);
         local_sched::put(sched);
     }
 }
@@ -132,7 +132,7 @@ pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
                 do sched.switch_running_tasks_and_then(old_task.take()) |new_task| {
                     let new_task = Cell(new_task);
                     do local_sched::borrow |sched| {
-                        sched.task_queue.push_front(new_task.take());
+                        sched.enqueue_task(new_task.take());
                     }
                 }
             }

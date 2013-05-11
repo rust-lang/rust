@@ -147,7 +147,7 @@ pub fn start(_argc: int, _argv: **u8, crate_map: *u8, main: ~fn()) -> int {
     let mut sched = ~Scheduler::new(loop_);
     let main_task = ~Task::new(&mut sched.stack_pool, main);
 
-    sched.task_queue.push_back(main_task);
+    sched.enqueue_task(main_task);
     sched.run();
 
     return 0;
@@ -225,11 +225,11 @@ fn test_context() {
                 assert!(context() == SchedulerContext);
                 let task = Cell(task);
                 do local_sched::borrow |sched| {
-                    sched.task_queue.push_back(task.take());
+                    sched.enqueue_task(task.take());
                 }
             }
         };
-        sched.task_queue.push_back(task);
+        sched.enqueue_task(task);
         sched.run();
     }
 }
