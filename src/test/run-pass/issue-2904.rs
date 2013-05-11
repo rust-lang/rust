@@ -79,12 +79,6 @@ mod test {
     pub fn trivial_to_str() {
         assert!(lambda.to_str() == "\\")
     }
-
-    #[test]
-    pub fn read_simple_board() {
-        let s = include_str!("./maps/contest1.map");
-        io::with_str_reader(s, read_board_grid)
-    }
 }
 
 pub fn main() {}

@@ -1,4 +1,4 @@
-// xfail-fast
+// xfail-test #4276
 
 // Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -15,7 +15,6 @@ extern mod std;
 
 use core::io::{WriterUtil};
 
-#[cfg(test)]
 fn check_strs(actual: &str, expected: &str) -> bool
 {
     if actual != expected
@@ -26,10 +25,9 @@ fn check_strs(actual: &str, expected: &str) -> bool
     return true;
 }
 
-#[test]
 fn tester()
 {
-    let mut table = core::hashmap::HashMap();
+    let mut table = core::hashmap::HashMap::new();
     table.insert(@~"one", 1);
     table.insert(@~"two", 2);
     assert!(check_strs(table.to_str(), ~"xxx"));   // not sure what expected should be
