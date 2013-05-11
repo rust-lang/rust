@@ -125,11 +125,15 @@ impl<'self,A:ToStr> ToStr for &'self [A] {
     fn to_str(&self) -> ~str {
         let mut acc = ~"[", first = true;
         for self.each |elt| {
-            if first { first = false; }
-            else { str::push_str(&mut acc, ~", "); }
-            str::push_str(&mut acc, elt.to_str());
+            if first {
+                first = false;
+            }
+            else {
+                acc.push_str(", ");
+            }
+            acc.push_str(elt.to_str());
         }
-        str::push_char(&mut acc, ']');
+        acc.push_char(']');
         acc
     }
 }
@@ -139,11 +143,15 @@ impl<A:ToStr> ToStr for ~[A] {
     fn to_str(&self) -> ~str {
         let mut acc = ~"[", first = true;
         for self.each |elt| {
-            if first { first = false; }
-            else { str::push_str(&mut acc, ~", "); }
-            str::push_str(&mut acc, elt.to_str());
+            if first {
+                first = false;
+            }
+            else {
+                acc.push_str(", ");
+            }
+            acc.push_str(elt.to_str());
         }
-        str::push_char(&mut acc, ']');
+        acc.push_char(']');
         acc
     }
 }
@@ -153,11 +161,15 @@ impl<A:ToStr> ToStr for @[A] {
     fn to_str(&self) -> ~str {
         let mut acc = ~"[", first = true;
         for self.each |elt| {
-            if first { first = false; }
-            else { str::push_str(&mut acc, ~", "); }
-            str::push_str(&mut acc, elt.to_str());
+            if first {
+                first = false;
+            }
+            else {
+                acc.push_str(", ");
+            }
+            acc.push_str(elt.to_str());
         }
-        str::push_char(&mut acc, ']');
+        acc.push_char(']');
         acc
     }
 }
