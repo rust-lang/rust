@@ -1016,7 +1016,6 @@ pub mod guarantor {
             ast::expr_while(*) |
             ast::expr_loop(*) |
             ast::expr_assign(*) |
-            ast::expr_swap(*) |
             ast::expr_assign_op(*) |
             ast::expr_cast(*) |
             ast::expr_call(*) |

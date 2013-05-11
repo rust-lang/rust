@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::util;
+
 pub fn main() {
     let mut x = 4;
 
@@ -24,6 +26,6 @@ pub fn main() {
             }
         }
         let mut y = 4;
-        y <-> x;
+        util::swap(&mut y, &mut x);
     }
 }

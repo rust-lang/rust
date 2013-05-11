@@ -314,7 +314,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
               }
           }
       }
-      expr_assign(val, _) | expr_swap(val, _) | expr_assign_op(_, val, _) |
+      expr_assign(val, _) | expr_assign_op(_, val, _) |
       expr_ret(Some(val)) => {
         node_type_needs(cx, use_repr, val.id);
       }

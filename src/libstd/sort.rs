@@ -13,6 +13,7 @@
 use core::cmp::{Eq, Ord};
 use core::vec::len;
 use core::vec;
+use core::util::swap;
 
 type Le<'self, T> = &'self fn(v1: &T, v2: &T) -> bool;
 
@@ -63,36 +64,36 @@ pub fn merge_sort<T:Copy>(v: &[T], le: Le<T>) -> ~[T] {
 #[cfg(stage0)]
 fn part<T>(arr: &mut [T], left: uint,
            right: uint, pivot: uint, compare_func: Le<T>) -> uint {
-    arr[pivot] <-> arr[right];
+    swap(&mut arr[pivot], &mut arr[right]);
     let mut storage_index: uint = left;
     let mut i: uint = left;
     while i < right {
         let a: &mut T = &mut arr[i];
         let b: &mut T = &mut arr[right];
         if compare_func(a, b) {
-            arr[i] <-> arr[storage_index];
+            swap(&mut arr[i], &mut arr[storage_index]);
             storage_index += 1;
         }
         i += 1;
     }
-    arr[storage_index] <-> arr[right];
+    swap(&mut arr[storage_index], &mut arr[right]);
     return storage_index;
 }
 
 #[cfg(not(stage0))]
 fn part<T>(arr: &mut [T], left: uint,
            right: uint, pivot: uint, compare_func: Le<T>) -> uint {
-    arr[pivot] <-> arr[right];
+    vec::swap(arr, pivot, right);
     let mut storage_index: uint = left;
     let mut i: uint = left;
     while i < right {
         if compare_func(&arr[i], &arr[right]) {
-            arr[i] <-> arr[storage_index];
+            vec::swap(arr, i, storage_index);
             storage_index += 1;
         }
         i += 1;
     }
-    arr[storage_index] <-> arr[right];
+    vec::swap(arr, storage_index, right);
     return storage_index;
 }
 
@@ -136,29 +137,29 @@ fn qsort3<T:Copy + Ord + Eq>(arr: &mut [T], left: int, right: int) {
             j -= 1;
         }
         if i >= j { break; }
-        arr[i] <-> arr[j];
+        vec::swap(arr, i as uint, j as uint);
         if arr[i] == v {
             p += 1;
-            arr[p] <-> arr[i];
+            vec::swap(arr, p as uint, i as uint);
         }
         if v == arr[j] {
             q -= 1;
-            arr[j] <-> arr[q];
+            vec::swap(arr, j as uint, q as uint);
         }
     }
-    arr[i] <-> arr[right];
+    vec::swap(arr, i as uint, right as uint);
     j = i - 1;
     i += 1;
     let mut k: int = left;
     while k < p {
-        arr[k] <-> arr[j];
+        vec::swap(arr, k as uint, j as uint);
         k += 1;
         j -= 1;
         if k == len::<T>(arr) as int { break; }
     }
     k = right - 1;
     while k > q {
-        arr[i] <-> arr[k];
+        vec::swap(arr, i as uint, k as uint);
         k -= 1;
         i += 1;
         if k == 0 { break; }
@@ -273,7 +274,7 @@ fn binarysort<T:Copy + Ord>(array: &mut [T], start: uint) {
 fn reverse_slice<T>(v: &mut [T], start: uint, end:uint) {
     let mut i = start;
     while i < end / 2 {
-        v[i] <-> v[end - i - 1];
+        vec::swap(v, i, end - i - 1);
         i += 1;
     }
 }
@@ -493,7 +494,7 @@ impl<T:Copy + Ord> MergeState<T> {
         let mut len1 = len1;
         let mut len2 = len2;
 
-        array[dest] <-> array[c2];
+        vec::swap(array, dest, c2);
         dest += 1; c2 += 1; len2 -= 1;
 
         if len2 == 0 {
@@ -502,7 +503,7 @@ impl<T:Copy + Ord> MergeState<T> {
         }
         if len1 == 1 {
             shift_vec(array, dest, c2, len2);
-            array[dest+len2] <-> tmp[c1];
+            swap(&mut tmp[c1], &mut array[dest+len2]);
             return;
         }
 
@@ -515,14 +516,14 @@ impl<T:Copy + Ord> MergeState<T> {
             loop {
                 assert!(len1 > 1 && len2 != 0);
                 if array[c2] < tmp[c1] {
-                    array[dest] <-> array[c2];
+                    vec::swap(array, dest, c2);
                     dest += 1; c2 += 1; len2 -= 1;
                     count2 += 1; count1 = 0;
                     if len2 == 0 {
                         break_outer = true;
                     }
                 } else {
-                    array[dest] <-> tmp[c1];
+                    swap(&mut array[dest], &mut tmp[c1]);
                     dest += 1; c1 += 1; len1 -= 1;
                     count1 += 1; count2 = 0;
                     if len1 == 1 {
@@ -548,7 +549,7 @@ impl<T:Copy + Ord> MergeState<T> {
                     dest += count1; c1 += count1; len1 -= count1;
                     if len1 <= 1 { break_outer = true; break; }
                 }
-                array[dest] <-> array[c2];
+                vec::swap(array, dest, c2);
                 dest += 1; c2 += 1; len2 -= 1;
                 if len2 == 0 { break_outer = true; break; }
 
@@ -561,7 +562,7 @@ impl<T:Copy + Ord> MergeState<T> {
                     dest += count2; c2 += count2; len2 -= count2;
                     if len2 == 0 { break_outer = true; break; }
                 }
-                array[dest] <-> tmp[c1];
+                swap(&mut array[dest], &mut tmp[c1]);
                 dest += 1; c1 += 1; len1 -= 1;
                 if len1 == 1 { break_outer = true; break; }
                 min_gallop -= 1;
@@ -578,7 +579,7 @@ impl<T:Copy + Ord> MergeState<T> {
         if len1 == 1 {
             assert!(len2 > 0);
             shift_vec(array, dest, c2, len2);
-            array[dest+len2] <-> tmp[c1];
+            swap(&mut array[dest+len2], &mut tmp[c1]);
         } else if len1 == 0 {
             fail!(~"Comparison violates its contract!");
         } else {
@@ -603,7 +604,7 @@ impl<T:Copy + Ord> MergeState<T> {
         let mut len1 = len1;
         let mut len2 = len2;
 
-        array[dest] <-> array[c1];
+        vec::swap(array, dest, c1);
         dest -= 1; c1 -= 1; len1 -= 1;
 
         if len1 == 0 {
@@ -614,7 +615,7 @@ impl<T:Copy + Ord> MergeState<T> {
             dest -= len1;
             c1 -= len1;
             shift_vec(array, dest+1, c1+1, len1);
-            array[dest] <-> tmp[c2];
+            swap(&mut array[dest], &mut tmp[c2]);
             return;
         }
 
@@ -627,14 +628,14 @@ impl<T:Copy + Ord> MergeState<T> {
             loop {
                 assert!(len1 != 0 && len2 > 1);
                 if tmp[c2] < array[c1] {
-                    array[dest] <-> array[c1];
+                    vec::swap(array, dest, c1);
                     dest -= 1; c1 -= 1; len1 -= 1;
                     count1 += 1; count2 = 0;
                     if len1 == 0 {
                         break_outer = true;
                     }
                 } else {
-                    array[dest] <-> tmp[c2];
+                    swap(&mut array[dest], &mut tmp[c2]);
                     dest -= 1; c2 -= 1; len2 -= 1;
                     count2 += 1; count1 = 0;
                     if len2 == 1 {
@@ -663,7 +664,7 @@ impl<T:Copy + Ord> MergeState<T> {
                     if len1 == 0 { break_outer = true; break; }
                 }
 
-                array[dest] <-> tmp[c2];
+                swap(&mut array[dest], &mut tmp[c2]);
                 dest -= 1; c2 -= 1; len2 -= 1;
                 if len2 == 1 { break_outer = true; break; }
 
@@ -680,7 +681,7 @@ impl<T:Copy + Ord> MergeState<T> {
                     copy_vec(array, dest+1, tmp.slice(c2+1, c2+1+count2));
                     if len2 <= 1 { break_outer = true; break; }
                 }
-                array[dest] <-> array[c1];
+                vec::swap(array, dest, c1);
                 dest -= 1; c1 -= 1; len1 -= 1;
                 if len1 == 0 { break_outer = true; break; }
                 min_gallop -= 1;
@@ -700,7 +701,7 @@ impl<T:Copy + Ord> MergeState<T> {
             dest -= len1;
             c1 -= len1;
             shift_vec(array, dest+1, c1+1, len1);
-            array[dest] <-> tmp[c2];
+            swap(&mut array[dest], &mut tmp[c2]);
         } else if len2 == 0 {
             fail!(~"Comparison violates its contract!");
         } else {
@@ -1090,7 +1091,7 @@ mod big_tests {
             for 3.times {
                 let i1 = rng.gen_uint_range(0, n);
                 let i2 = rng.gen_uint_range(0, n);
-                arr[i1] <-> arr[i2];
+                vec::swap(arr, i1, i2);
             }
             tim_sort(arr); // 3sort
             isSorted(arr);
@@ -1162,7 +1163,7 @@ mod big_tests {
             for 3.times {
                 let i1 = rng.gen_uint_range(0, n);
                 let i2 = rng.gen_uint_range(0, n);
-                arr[i1] <-> arr[i2];
+                vec::swap(arr, i1, i2);
             }
             tim_sort(arr); // 3sort
             isSorted(arr);

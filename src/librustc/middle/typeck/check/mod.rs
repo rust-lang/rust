@@ -2460,20 +2460,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             fcx.write_nil(id);
         }
       }
-      ast::expr_swap(lhs, rhs) => {
-        check_assignment(fcx, lhs, rhs, id);
-        let lhs_ty = fcx.expr_ty(lhs);
-        let rhs_ty = fcx.expr_ty(rhs);
-        if ty::type_is_error(lhs_ty) || ty::type_is_error(rhs_ty) {
-            fcx.write_error(id);
-        }
-        else if ty::type_is_bot(lhs_ty) || ty::type_is_bot(rhs_ty) {
-            fcx.write_bot(id);
-        }
-        else {
-            fcx.write_nil(id);
-        }
-      }
       ast::expr_if(cond, ref thn, elsopt) => {
         check_expr_has_type(fcx, cond, ty::mk_bool());
         check_then_else(fcx, thn, elsopt, id, expr.span);

@@ -26,6 +26,7 @@ use core::cell::Cell;
 use core::comm::{PortOne, oneshot, send_one};
 use core::pipes::recv;
 use core::task;
+use core::util::replace;
 
 #[doc = "The future type"]
 #[cfg(stage0)]
@@ -77,8 +78,7 @@ pub impl<A> Future<A> {
                 }
             }
             {
-                let mut state = Evaluating;
-                self.state <-> state;
+                let state = replace(&mut self.state, Evaluating);
                 match state {
                     Forced(_) | Evaluating => fail!(~"Logic error."),
                     Pending(f) => {
@@ -108,8 +108,7 @@ pub impl<A> Future<A> {
                 }
             }
             {
-                let mut state = Evaluating;
-                self.state <-> state;
+                let state = replace(&mut self.state, Evaluating);
                 match state {
                     Forced(_) | Evaluating => fail!(~"Logic error."),
                     Pending(f) => {

@@ -698,11 +698,6 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 self.walk_expr(l, in_out, loop_scopes);
             }
 
-            ast::expr_swap(l, r) => {
-                self.walk_expr(l, in_out, loop_scopes);
-                self.walk_expr(r, in_out, loop_scopes);
-            }
-
             ast::expr_vec(ref exprs, _) => {
                 self.walk_exprs(*exprs, in_out, loop_scopes)
             }

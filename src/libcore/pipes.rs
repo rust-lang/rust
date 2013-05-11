@@ -93,6 +93,7 @@ use unstable::intrinsics;
 use ptr;
 use task;
 use vec;
+use util::replace;
 
 static SPIN_COUNT: uint = 0;
 
@@ -428,8 +429,7 @@ fn try_recv_<T:Owned>(p: &mut Packet<T>) -> Option<T> {
     // optimistic path
     match p.header.state {
       Full => {
-        let mut payload = None;
-        payload <-> p.payload;
+        let payload = replace(&mut p.payload, None);
         p.header.state = Empty;
         return Some(payload.unwrap())
       },
@@ -480,8 +480,7 @@ fn try_recv_<T:Owned>(p: &mut Packet<T>) -> Option<T> {
             fail!(~"blocking on already blocked packet")
           },
           Full => {
-            let mut payload = None;
-            payload <-> p.payload;
+            let payload = replace(&mut p.payload, None);
             let old_task = swap_task(&mut p.header.blocked_task, ptr::null());
             if !old_task.is_null() {
                 unsafe {
@@ -675,8 +674,7 @@ impl<T:Owned,Tbuffer:Owned> Drop for SendPacketBuffered<T,Tbuffer> {
         unsafe {
             let this: &mut SendPacketBuffered<T,Tbuffer> = transmute(self);
             if this.p != None {
-                let mut p = None;
-                p <-> this.p;
+                let p = replace(&mut this.p, None);
                 sender_terminate(p.unwrap())
             }
         }
@@ -695,9 +693,7 @@ pub fn SendPacketBuffered<T,Tbuffer>(p: *mut Packet<T>)
 
 pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
     fn unwrap(&mut self) -> *mut Packet<T> {
-        let mut p = None;
-        p <-> self.p;
-        p.unwrap()
+        replace(&mut self.p, None).unwrap()
     }
 
     fn header(&mut self) -> *mut PacketHeader {
@@ -713,9 +709,7 @@ pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
 
     fn reuse_buffer(&mut self) -> BufferResource<Tbuffer> {
         //error!("send reuse_buffer");
-        let mut tmp = None;
-        tmp <-> self.buffer;
-        tmp.unwrap()
+        replace(&mut self.buffer, None).unwrap()
     }
 }
 
@@ -738,8 +732,7 @@ impl<T:Owned,Tbuffer:Owned> Drop for RecvPacketBuffered<T,Tbuffer> {
         unsafe {
             let this: &mut RecvPacketBuffered<T,Tbuffer> = transmute(self);
             if this.p != None {
-                let mut p = None;
-                p <-> this.p;
+                let p = replace(&mut this.p, None);
                 receiver_terminate(p.unwrap())
             }
         }
@@ -748,15 +741,11 @@ impl<T:Owned,Tbuffer:Owned> Drop for RecvPacketBuffered<T,Tbuffer> {
 
 pub impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
     fn unwrap(&mut self) -> *mut Packet<T> {
-        let mut p = None;
-        p <-> self.p;
-        p.unwrap()
+        replace(&mut self.p, None).unwrap()
     }
 
     fn reuse_buffer(&mut self) -> BufferResource<Tbuffer> {
-        let mut tmp = None;
-        tmp <-> self.buffer;
-        tmp.unwrap()
+        replace(&mut self.buffer, None).unwrap()
     }
 }
 

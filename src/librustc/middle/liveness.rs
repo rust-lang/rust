@@ -523,7 +523,7 @@ fn visit_expr(expr: @expr, self: @mut IrMaps, vt: vt<@mut IrMaps>) {
       expr_binary(*) | expr_addr_of(*) | expr_copy(*) | expr_loop_body(*) |
       expr_do_body(*) | expr_cast(*) | expr_unary(*) | expr_break(_) |
       expr_again(_) | expr_lit(_) | expr_ret(*) | expr_block(*) |
-      expr_assign(*) | expr_swap(*) | expr_assign_op(*) | expr_mac(*) |
+      expr_assign(*) | expr_assign_op(*) | expr_mac(*) |
       expr_struct(*) | expr_repeat(*) | expr_paren(*) |
       expr_inline_asm(*) => {
           visit::visit_expr(expr, self, vt);
@@ -1141,21 +1141,6 @@ pub impl Liveness {
             self.propagate_through_expr(r, succ)
           }
 
-          expr_swap(l, r) => {
-            // see comment on lvalues in
-            // propagate_through_lvalue_components()
-
-            // I count swaps as `used` cause it might be something like:
-            //    foo.bar <-> x
-            // and I am too lazy to distinguish this case from
-            //    y <-> x
-            // (where both x, y are unused) just for a warning.
-            let succ = self.write_lvalue(r, succ, ACC_WRITE|ACC_READ|ACC_USE);
-            let succ = self.write_lvalue(l, succ, ACC_WRITE|ACC_READ|ACC_USE);
-            let succ = self.propagate_through_lvalue_components(r, succ);
-            self.propagate_through_lvalue_components(l, succ)
-          }
-
           expr_assign_op(_, l, r) => {
             // see comment on lvalues in
             // propagate_through_lvalue_components()
@@ -1533,7 +1518,7 @@ fn check_expr(expr: @expr, self: @Liveness, vt: vt<@Liveness>) {
       expr_vstore(*) | expr_vec(*) | expr_tup(*) | expr_log(*) |
       expr_binary(*) | expr_copy(*) | expr_loop_body(*) | expr_do_body(*) |
       expr_cast(*) | expr_unary(*) | expr_ret(*) | expr_break(*) |
-      expr_again(*) | expr_lit(_) | expr_block(*) | expr_swap(*) |
+      expr_again(*) | expr_lit(_) | expr_block(*) |
       expr_mac(*) | expr_addr_of(*) | expr_struct(*) | expr_repeat(*) |
       expr_paren(*) => {
         visit::visit_expr(expr, self, vt);
