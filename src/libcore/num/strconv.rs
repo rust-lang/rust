@@ -486,11 +486,11 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
         }
     }
 
-    let (start, accum_positive) = match buf[0] {
-      '-' as u8 if !negative => return None,
-      '-' as u8 => (1u, false),
-      '+' as u8 => (1u, true),
-       _        => (0u, true)
+    let (start, accum_positive) = match buf[0] as char {
+      '-' if !negative => return None,
+      '-' => (1u, false),
+      '+' => (1u, true),
+       _  => (0u, true)
     };
 
     // Initialize accumulator with signed zero for floating point parsing to
