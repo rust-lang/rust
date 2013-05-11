@@ -175,15 +175,17 @@ mod tests {
                ~"[[], [1], [1, 1]]");
     }
 
-    // #[test]
-    // fn test_hashmap() {
-    //     let mut table: HashMap<int, int> = HashMap::new();
-    //     let mut empty: HashMap<int, int> = HashMap::new();
+    #[test]
+    fn test_hashmap() {
+        let mut table: HashMap<int, int> = HashMap::new();
+        let empty: HashMap<int, int> = HashMap::new();
 
-    //     table.insert(3, 4);
-    //     table.insert(1, 2);
+        table.insert(3, 4);
+        table.insert(1, 2);
 
-    //     assert!(table.to_str() == ~"{1 : 2, 3 : 4}");
-    //     assert!(empty.to_str() == ~"{}");
-    //}
+        let table_str = table.to_str();
+
+        assert!(table_str == ~"{1 : 2, 3 : 4}" || table_str == ~"{3 : 4, 1 : 2}");
+        assert!(empty.to_str() == ~"{}");
+    }
 }
