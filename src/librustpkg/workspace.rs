@@ -21,9 +21,10 @@ pub fn pkg_parent_workspaces(pkgid: &PkgId, action: &fn(&Path) -> bool) -> bool 
         workspace_contains_package_id(pkgid, ws));
     if workspaces.is_empty() {
         // tjc: make this a condition
-        fail!("Package %s not found in any of the following workspaces: %s",
-              pkgid.path.to_str(),
-              rust_path().to_str());
+        fail!("Package %s not found in any of \
+                    the following workspaces: %s",
+                   pkgid.remote_path.to_str(),
+                   rust_path().to_str());
     }
     for workspaces.each |ws| {
         if action(ws) {
