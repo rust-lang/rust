@@ -915,6 +915,24 @@ pub impl Parser {
         codemap::spanned { node: lit, span: mk_sp(lo, self.last_span.hi) }
     }
 
+    // matches '-' lit | lit
+    fn parse_literal_maybe_minus(&self) -> @expr {
+        let minus_lo = self.span.lo;
+        let minus_present = self.eat(&token::BINOP(token::MINUS));
+
+        let lo = self.span.lo;
+        let literal = @self.parse_lit();
+        let hi = self.span.hi;
+        let expr = self.mk_expr(lo, hi, expr_lit(literal));
+
+        if minus_present {
+            let minus_hi = self.span.hi;
+            self.mk_expr(minus_lo, minus_hi, expr_unary(neg, expr))
+        } else {
+            expr
+        }
+    }
+
     // parse a path into a vector of idents, whether the path starts
     // with ::, and a span.
     fn parse_path(&self) -> (~[ast::ident],bool,span) {
@@ -2360,10 +2378,19 @@ pub impl Parser {
                 || self.is_keyword(&~"true")
                 || self.is_keyword(&~"false")
             {
-                // parse an expression pattern or exp .. exp
-                let val = self.parse_expr_res(RESTRICT_NO_BAR_OP);
+                // Parse an expression pattern or exp .. exp.
+                //
+                // These expressions are limited to literals (possibly
+                // preceded by unary-minus) or identifiers.
+                let val = self.parse_literal_maybe_minus();
                 if self.eat(&token::DOTDOT) {
-                    let end = self.parse_expr_res(RESTRICT_NO_BAR_OP);
+                    let end = if is_ident_or_path(&tok) {
+                        let path = self.parse_path_with_tps(true);
+                        let hi = self.span.hi;
+                        self.mk_expr(lo, hi, expr_path(path))
+                    } else {
+                        self.parse_literal_maybe_minus()
+                    };
                     pat = pat_range(val, end);
                 } else {
                     pat = pat_lit(val);
