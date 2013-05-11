@@ -178,6 +178,7 @@ impl<A:ToStr> ToStr for @[A] {
 #[allow(non_implicitly_copyable_typarams)]
 mod tests {
     use hashmap::HashMap;
+    use hashmap::HashSet;
     #[test]
     fn test_simple_types() {
         assert!(1i.to_str() == ~"1");
@@ -224,8 +225,8 @@ mod tests {
 
     #[test]
     fn test_hashset() {
-        let mut set: HashSet<int, int> = HashSet::new();
-        let empty_set: HashSet<int, int> = HashSet::new();
+        let mut set: HashSet<int> = HashSet::new();
+        let empty_set: HashSet<int> = HashSet::new();
 
         set.insert(1);
         set.insert(2);
@@ -233,6 +234,6 @@ mod tests {
         let set_str = set.to_str();
 
         assert!(set_str == ~"{1, 2}" || set_str == ~"{2, 1}");
-        assert!(empty.to_str() == ~"{}");
+        assert!(empty_set.to_str() == ~"{}");
     }
 }
