@@ -825,6 +825,10 @@ pub impl <T:Hash + Eq> HashSet<T> {
     fn consume(&mut self, f: &fn(T)) {
         self.map.consume(|k, _| f(k))
     }
+
+    fn contains_equiv<Q:Hash + Equiv<T>>(&self, value: &Q) -> bool {
+      self.map.contains_key_equiv(value)
+    }
 }
 
 #[cfg(test)]
