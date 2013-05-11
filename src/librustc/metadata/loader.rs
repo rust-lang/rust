@@ -22,7 +22,7 @@ use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::{ast, attr};
 
-use core::flate;
+use std::flate;
 use core::os::consts::{macos, freebsd, linux, android, win32};
 
 pub enum os {
