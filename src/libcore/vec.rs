@@ -29,6 +29,7 @@ use sys;
 use uint;
 use unstable::intrinsics;
 use vec;
+use util;
 
 #[cfg(not(test))] use cmp::Equiv;
 
@@ -470,7 +471,7 @@ pub fn shift<T>(v: &mut ~[T]) -> T {
         let next_ln = v.len() - 1;
 
         // Save the last element. We're going to overwrite its position
-        let mut work_elt = v.pop();
+        let work_elt = v.pop();
         // We still should have room to work where what last element was
         assert!(capacity(v) >= ln);
         // Pretend like we have the original length so we can use
@@ -501,16 +502,14 @@ pub fn shift<T>(v: &mut ~[T]) -> T {
         // Swap out the element we want from the end
         let vp = raw::to_mut_ptr(*v);
         let vp = ptr::mut_offset(vp, next_ln - 1);
-        *vp <-> work_elt;
 
-        work_elt
+        util::replace_ptr(vp, work_elt)
     }
 }
 
 /// Prepend an element to the vector
 pub fn unshift<T>(v: &mut ~[T], x: T) {
-    let mut vv = ~[x];
-    *v <-> vv;
+    let vv = util::replace(v, ~[x]);
     v.push_all_move(vv);
 }
 
@@ -523,7 +522,7 @@ pub fn insert<T>(v: &mut ~[T], i: uint, x: T) {
     v.push(x);
     let mut j = len;
     while j > i {
-        v[j] <-> v[j - 1];
+        swap(*v, j, j - 1);
         j -= 1;
     }
 }
@@ -536,7 +535,7 @@ pub fn remove<T>(v: &mut ~[T], i: uint) -> T {
 
     let mut j = i;
     while j < len - 1 {
-        v[j] <-> v[j + 1];
+        swap(*v, j, j + 1);
         j += 1;
     }
     v.pop()
@@ -550,10 +549,9 @@ pub fn consume<T>(mut v: ~[T], f: &fn(uint, v: T)) {
                 // holes we create in the vector. That ensures that, if the
                 // iterator fails then we won't try to clean up the consumed
                 // elements during unwinding
-                let mut x = intrinsics::init();
+                let x = intrinsics::init();
                 let p = ptr::mut_offset(p, i);
-                x <-> *p;
-                f(i, x);
+                f(i, util::replace_ptr(p, x));
             }
         }
 
@@ -572,10 +570,9 @@ pub fn consume_reverse<T>(mut v: ~[T], f: &fn(uint, v: T)) {
                 // holes we create in the vector. That ensures that, if the
                 // iterator fails then we won't try to clean up the consumed
                 // elements during unwinding
-                let mut x = intrinsics::init();
+                let x = intrinsics::init();
                 let p = ptr::mut_offset(p, i);
-                x <-> *p;
-                f(i, x);
+                f(i, util::replace_ptr(p, x));
             }
         }
 
@@ -592,8 +589,7 @@ pub fn pop<T>(v: &mut ~[T]) -> T {
     }
     let valptr = ptr::to_mut_unsafe_ptr(&mut v[ln - 1u]);
     unsafe {
-        let mut val = intrinsics::uninit();
-        val <-> *valptr;
+        let val = util::replace_ptr(valptr, intrinsics::uninit());
         raw::set_len(v, ln - 1u);
         val
     }
@@ -607,8 +603,7 @@ pub fn pop<T>(v: &mut ~[T]) -> T {
     }
     let valptr = ptr::to_mut_unsafe_ptr(&mut v[ln - 1u]);
     unsafe {
-        let mut val = intrinsics::init();
-        val <-> *valptr;
+        let val = util::replace_ptr(valptr, intrinsics::init());
         raw::set_len(v, ln - 1u);
         val
     }
@@ -626,7 +621,7 @@ pub fn swap_remove<T>(v: &mut ~[T], index: uint) -> T {
         fail!(fmt!("vec::swap_remove - index %u >= length %u", index, ln));
     }
     if index < ln - 1 {
-        v[index] <-> v[ln - 1];
+        swap(*v, index, ln - 1);
     }
     v.pop()
 }
@@ -682,8 +677,8 @@ pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
     unsafe {
         do as_mut_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
-                let mut x = intrinsics::uninit();
-                x <-> *ptr::mut_offset(p, i);
+                let x = util::replace_ptr(ptr::mut_offset(p, i),
+                                          intrinsics::uninit());
                 push(&mut *v, x);
             }
         }
@@ -699,8 +694,8 @@ pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
     unsafe {
         do as_mut_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
-                let mut x = intrinsics::init();
-                x <-> *ptr::mut_offset(p, i);
+                let x = util::replace_ptr(ptr::mut_offset(p, i),
+                                          intrinsics::init());
                 push(&mut *v, x);
             }
         }
@@ -716,8 +711,7 @@ pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
         unsafe {
             // This loop is optimized out for non-drop types.
             for uint::range(newlen, oldlen) |i| {
-                let mut dropped = intrinsics::uninit();
-                dropped <-> *ptr::mut_offset(p, i);
+                util::replace_ptr(ptr::mut_offset(p, i), intrinsics::uninit());
             }
         }
     }
@@ -732,8 +726,7 @@ pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
         unsafe {
             // This loop is optimized out for non-drop types.
             for uint::range(newlen, oldlen) |i| {
-                let mut dropped = intrinsics::init();
-                dropped <-> *ptr::mut_offset(p, i);
+                util::replace_ptr(ptr::mut_offset(p, i), intrinsics::init());
             }
         }
     }
@@ -758,14 +751,14 @@ pub fn dedup<T:Eq>(v: &mut ~[T]) {
                 // last_written < next_to_read < ln
                 if *ptr::mut_offset(p, next_to_read) ==
                     *ptr::mut_offset(p, last_written) {
-                    let mut dropped = intrinsics::uninit();
-                    dropped <-> *ptr::mut_offset(p, next_to_read);
+                    util::replace_ptr(ptr::mut_offset(p, next_to_read),
+                                      intrinsics::uninit());
                 } else {
                     last_written += 1;
                     // last_written <= next_to_read < ln
                     if next_to_read != last_written {
-                        *ptr::mut_offset(p, last_written) <->
-                            *ptr::mut_offset(p, next_to_read);
+                        util::swap_ptr(ptr::mut_offset(p, last_written),
+                                       ptr::mut_offset(p, next_to_read));
                     }
                 }
                 // last_written <= next_to_read < ln
@@ -796,14 +789,14 @@ pub fn dedup<T:Eq>(v: &mut ~[T]) {
                 // last_written < next_to_read < ln
                 if *ptr::mut_offset(p, next_to_read) ==
                     *ptr::mut_offset(p, last_written) {
-                    let mut dropped = intrinsics::init();
-                    dropped <-> *ptr::mut_offset(p, next_to_read);
+                    util::replace_ptr(ptr::mut_offset(p, next_to_read),
+                                      intrinsics::init());
                 } else {
                     last_written += 1;
                     // last_written <= next_to_read < ln
                     if next_to_read != last_written {
-                        *ptr::mut_offset(p, last_written) <->
-                            *ptr::mut_offset(p, next_to_read);
+                        util::swap_ptr(ptr::mut_offset(p, last_written),
+                                       ptr::mut_offset(p, next_to_read));
                     }
                 }
                 // last_written <= next_to_read < ln
@@ -1028,7 +1021,7 @@ pub fn retain<T>(v: &mut ~[T], f: &fn(t: &T) -> bool) {
         if !f(&v[i]) {
             deleted += 1;
         } else if deleted > 0 {
-            v[i - deleted] <-> v[i];
+            swap(*v, i - deleted, i);
         }
     }
 
@@ -1429,15 +1422,25 @@ pub fn zip<T, U>(mut v: ~[T], mut u: ~[U]) -> ~[(T, U)] {
  * * a - The index of the first element
  * * b - The index of the second element
  */
+#[inline(always)]
 pub fn swap<T>(v: &mut [T], a: uint, b: uint) {
-    v[a] <-> v[b];
+    unsafe {
+        // Can't take two mutable loans from one vector, so instead just cast
+        // them to their raw pointers to do the swap
+        let pa: *mut T = ptr::to_mut_unsafe_ptr(&mut v[a]);
+        let pb: *mut T = ptr::to_mut_unsafe_ptr(&mut v[b]);
+        util::swap_ptr(pa, pb);
+    }
 }
 
 /// Reverse the order of elements in a vector, in place
 pub fn reverse<T>(v: &mut [T]) {
     let mut i: uint = 0;
     let ln = len::<T>(v);
-    while i < ln / 2 { v[i] <-> v[ln - i - 1]; i += 1; }
+    while i < ln / 2 {
+        swap(v, i, ln - i - 1);
+        i += 1;
+    }
 }
 
 /// Returns a vector with the order of elements reversed
@@ -2476,6 +2479,7 @@ pub mod raw {
     use sys;
     use unstable::intrinsics;
     use vec::{UnboxedVecRepr, as_const_buf, as_mut_buf, len, with_capacity};
+    use util;
 
     /// The internal representation of a (boxed) vector
     pub struct VecRepr {
@@ -2573,8 +2577,7 @@ pub mod raw {
     pub unsafe fn init_elem<T>(v: &mut [T], i: uint, val: T) {
         let mut box = Some(val);
         do as_mut_buf(v) |p, _len| {
-            let mut box2 = None;
-            box2 <-> box;
+            let box2 = util::replace(&mut box, None);
             intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)),
                                       box2.unwrap());
         }

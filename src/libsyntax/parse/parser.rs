@@ -26,7 +26,7 @@ use ast::{expr_break, expr_call, expr_cast, expr_copy, expr_do_body};
 use ast::{expr_field, expr_fn_block, expr_if, expr_index};
 use ast::{expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac};
 use ast::{expr_method_call, expr_paren, expr_path, expr_repeat};
-use ast::{expr_ret, expr_swap, expr_struct, expr_tup, expr_unary};
+use ast::{expr_ret, expr_struct, expr_tup, expr_unary};
 use ast::{expr_vec, expr_vstore, expr_vstore_mut_box};
 use ast::{expr_vstore_slice, expr_vstore_box};
 use ast::{expr_vstore_mut_slice, expr_while, extern_fn, field, fn_decl};
@@ -70,7 +70,7 @@ use parse::lexer::reader;
 use parse::lexer::TokenAndSpan;
 use parse::obsolete::{ObsoleteClassTraits};
 use parse::obsolete::{ObsoleteLet, ObsoleteFieldTerminator};
-use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove};
+use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove, ObsoleteSwap};
 use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
 use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
@@ -1849,9 +1849,11 @@ pub impl Parser {
                            expr_break(None))
           }
           token::DARROW => {
+            self.obsolete(*self.span, ObsoleteSwap);
             self.bump();
-            let rhs = self.parse_expr();
-            self.mk_expr(lo, rhs.span.hi, expr_swap(lhs, rhs))
+            // Ignore what we get, this is an error anyway
+            self.parse_expr();
+            self.mk_expr(lo, self.span.hi, expr_break(None))
           }
           _ => {
               lhs

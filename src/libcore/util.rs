@@ -15,6 +15,7 @@ Miscellaneous helpers for common patterns.
 */
 
 use prelude::*;
+use unstable::intrinsics;
 
 /// The identity function.
 #[inline(always)]
@@ -34,12 +35,12 @@ pub fn ignore<T>(_x: T) { }
 #[inline(always)]
 pub fn with<T,R>(
     ptr: @mut T,
-    mut value: T,
+    value: T,
     op: &fn() -> R) -> R
 {
-    value <-> *ptr;
+    let prev = replace(ptr, value);
     let result = op();
-    *ptr = value;
+    *ptr = prev;
     return result;
 }
 
@@ -49,7 +50,55 @@ pub fn with<T,R>(
  */
 #[inline(always)]
 pub fn swap<T>(x: &mut T, y: &mut T) {
-    *x <-> *y;
+    unsafe {
+        swap_ptr(ptr::to_mut_unsafe_ptr(x), ptr::to_mut_unsafe_ptr(y));
+    }
+}
+
+/**
+ * Swap the values at two mutable locations of the same type, without
+ * deinitialising or copying either one.
+ */
+#[inline]
+#[cfg(not(stage0))]
+pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
+    if x == y { return }
+
+    // Give ourselves some scratch space to work with
+    let mut tmp: T = intrinsics::uninit();
+    let t = ptr::to_mut_unsafe_ptr(&mut tmp);
+
+    // Perform the swap
+    ptr::copy_memory(t, x, 1);
+    ptr::copy_memory(x, y, 1);
+    ptr::copy_memory(y, t, 1);
+
+    // y and t now point to the same thing, but we need to completely forget t
+    // because it's no longer relevant.
+    cast::forget(tmp);
+}
+
+/**
+ * Swap the values at two mutable locations of the same type, without
+ * deinitialising or copying either one.
+ */
+#[inline]
+#[cfg(stage0)]
+pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
+    if x == y { return }
+
+    // Give ourselves some scratch space to work with
+    let mut tmp: T = intrinsics::init();
+    let t = ptr::to_mut_unsafe_ptr(&mut tmp);
+
+    // Perform the swap
+    ptr::copy_memory(t, x, 1);
+    ptr::copy_memory(x, y, 1);
+    ptr::copy_memory(y, t, 1);
+
+    // y and t now point to the same thing, but we need to completely forget t
+    // because it's no longer relevant.
+    cast::forget(tmp);
 }
 
 /**
@@ -57,10 +106,19 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
  * value, without deinitialising or copying either one.
  */
 #[inline(always)]
-pub fn replace<T>(dest: &mut T, src: T) -> T {
-    let mut tmp = src;
-    swap(dest, &mut tmp);
-    tmp
+pub fn replace<T>(dest: &mut T, mut src: T) -> T {
+    swap(dest, &mut src);
+    src
+}
+
+/**
+ * Replace the value at a mutable location with a new one, returning the old
+ * value, without deinitialising or copying either one.
+ */
+#[inline(always)]
+pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
+    swap_ptr(dest, ptr::to_mut_unsafe_ptr(&mut src));
+    src
 }
 
 /// A non-copyable dummy type.

@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::util;
+
 pub fn main() {
     let mut i = ~100;
     let mut j = ~200;
-    i <-> j;
+    util::swap(&mut i, &mut j);
     assert!(i == ~200);
     assert!(j == ~100);
 }

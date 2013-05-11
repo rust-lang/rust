@@ -516,10 +516,6 @@ pub fn visit_expr<E: Copy>(ex: @expr, e: E, v: vt<E>) {
             (v.visit_expr)(a, e, v);
         }
         expr_copy(a) => (v.visit_expr)(a, e, v),
-        expr_swap(a, b) => {
-            (v.visit_expr)(a, e, v);
-            (v.visit_expr)(b, e, v);
-        }
         expr_assign_op(_, a, b) => {
             (v.visit_expr)(b, e, v);
             (v.visit_expr)(a, e, v);

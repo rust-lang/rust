@@ -151,6 +151,7 @@ wrapping `malloc` and `free`:
 ~~~~
 use core::libc::{c_void, size_t, malloc, free};
 use core::unstable::intrinsics;
+use core::util;
 
 // a wrapper around the handle returned by the foreign code
 pub struct Unique<T> {
@@ -184,7 +185,8 @@ impl<T: Owned> Drop for Unique<T> {
     fn finalize(&self) {
         unsafe {
             let mut x = intrinsics::init(); // dummy value to swap in
-            x <-> *self.ptr; // moving the object out is needed to call the destructor
+            // moving the object out is needed to call the destructor
+            util::replace_ptr(self.ptr, x);
             free(self.ptr as *c_void)
         }
     }

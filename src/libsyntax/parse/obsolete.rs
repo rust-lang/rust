@@ -40,6 +40,7 @@ pub enum ObsoleteSyntax {
     ObsoleteModeInFnType,
     ObsoleteMoveInit,
     ObsoleteBinaryMove,
+    ObsoleteSwap,
     ObsoleteUnsafeBlock,
     ObsoleteUnenforcedBound,
     ObsoleteImplSyntax,
@@ -128,6 +129,10 @@ pub impl Parser {
             ObsoleteBinaryMove => (
                 "binary move",
                 "Write `foo = move bar` instead"
+            ),
+            ObsoleteSwap => (
+                "swap",
+                "Use core::util::{swap, replace} instead"
             ),
             ObsoleteUnsafeBlock => (
                 "non-standalone unsafe block",
