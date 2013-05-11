@@ -13,7 +13,6 @@ use core::cmp::Ord;
 use core::hash::Streaming;
 use core::rt::io::Writer;
 use rustc::driver::{driver, session};
-use rustc::driver::session::{lib_crate, unknown_crate};
 use rustc::metadata::filesearch;
 use std::getopts::groups::getopts;
 use std::semver;
@@ -26,7 +25,7 @@ use syntax::{ast, attr, codemap, diagnostic, fold};
 use syntax::ast::{meta_name_value, meta_list, attribute};
 use syntax::attr::{mk_attr};
 use rustc::back::link::output_type_exe;
-use rustc::driver::session::{lib_crate, unknown_crate, crate_type};
+use rustc::driver::session::{lib_crate, bin_crate};
 
 static Commands: &'static [&'static str] =
     &["build", "clean", "do", "info", "install", "prefer", "test", "uninstall",
@@ -83,14 +82,28 @@ impl ToStr for Version {
     }
 }
 
+#[deriving(Eq)]
+pub enum OutputType { Main, Lib, Bench, Test }
+
 /// Placeholder
 pub fn default_version() -> Version { ExactRevision(0.1) }
 
-// Path-fragment identifier of a package such as
-// 'github.com/graydon/test'; path must be a relative
-// path with >=1 component.
+/// Path-fragment identifier of a package such as
+/// 'github.com/graydon/test'; path must be a relative
+/// path with >=1 component.
 pub struct PkgId {
-    path: Path,
+    /// Remote path: for example, github.com/mozilla/quux-whatever
+    remote_path: RemotePath,
+    /// Local path: for example, /home/quux/github.com/mozilla/quux_whatever
+    /// Note that '-' normalizes to '_' when mapping a remote path
+    /// onto a local path
+    /// Also, this will change when we implement #6407, though we'll still
+    /// need to keep track of separate local and remote paths
+    local_path: LocalPath,
+    /// Short name. This is the local path's filestem, but we store it
+    /// redundantly so as to not call get() everywhere (filestem() returns an
+    /// option)
+    short_name: ~str,
     version: Version
 }
 
@@ -105,24 +118,31 @@ pub impl PkgId {
         if p.components.len() < 1 {
             return cond.raise((p, ~"0-length pkgid"));
         }
+        let remote_path = RemotePath(p);
+        let local_path = normalize(remote_path);
         PkgId {
-            path: p,
+            local_path: local_path,
+            remote_path: remote_path,
+            short_name: local_path.filestem().expect(fmt!("Strange path! %s", s)),
             version: default_version()
         }
     }
 
     fn hash(&self) -> ~str {
-        fmt!("%s-%s-%s", self.path.to_str(),
-             hash(self.path.to_str() + self.version.to_str()),
+        fmt!("%s-%s-%s", self.remote_path.to_str(),
+             hash(self.remote_path.to_str() + self.version.to_str()),
              self.version.to_str())
     }
 
+    fn short_name_with_version(&self) -> ~str {
+        fmt!("%s-%s", self.short_name, self.version.to_str())
+    }
 }
 
 impl ToStr for PkgId {
     fn to_str(&self) -> ~str {
         // should probably use the filestem and not the whole path
-        fmt!("%s-%s", self.path.to_str(),
+        fmt!("%s-%s", self.local_path.to_str(),
              // Replace dots with -s in the version
              // this is because otherwise rustc will think
              // that foo-0.1 has .1 as its extension
@@ -444,31 +464,26 @@ pub fn compile_input(sysroot: Option<@Path>,
                      flags: &[~str],
                      cfgs: &[~str],
                      opt: bool,
-                     test: bool,
-                     crate_type: session::crate_type) -> bool {
+                     what: OutputType) -> bool {
 
-    // Want just the directory component here
-    let pkg_filename = pkg_id.path.filename().expect(~"Weird pkg id");
-    let short_name = fmt!("%s-%s", pkg_filename, pkg_id.version.to_str());
+    let short_name = pkg_id.short_name_with_version();
 
     assert!(in_file.components.len() > 1);
     let input = driver::file_input(copy *in_file);
-    debug!("compile_input: %s / %?", in_file.to_str(), crate_type);
+    debug!("compile_input: %s / %?", in_file.to_str(), what);
     // tjc: by default, use the package ID name as the link name
     // not sure if we should support anything else
 
-    let binary = @copy os::args()[0];
-    let building_library = match crate_type {
-        lib_crate | unknown_crate => true,
-        _ => false
-    };
+    let binary = os::args()[0];
+    let building_library = what == Lib;
 
     let out_file = if building_library {
         out_dir.push(os::dll_filename(short_name))
     }
     else {
-        out_dir.push(short_name + if test { ~"test" } else { ~"" }
-                     + os::EXE_SUFFIX)
+        out_dir.push(short_name + match what {
+            Test => ~"test", Bench => ~"bench", Main | Lib => ~""
+        } + os::EXE_SUFFIX)
     };
 
     debug!("compiling %s into %s",
@@ -478,18 +493,24 @@ pub fn compile_input(sysroot: Option<@Path>,
     debug!("cfgs: %s", str::connect(cfgs, ~" "));
     debug!("compile_input's sysroot = %?", sysroot);
 
+    let crate_type = match what {
+        Lib => lib_crate,
+        Test | Bench | Main => bin_crate
+    };
     let matches = getopts(~[~"-Z", ~"time-passes"]
-                          + if building_library { ~[~"--lib"] }
-                            else if test { ~[~"--test"] }
-                            // bench?
-                            else { ~[] }
+                          + match what {
+                              Lib => ~[~"--lib"],
+                              // --test compiles both #[test] and #[bench] fns
+                              Test | Bench => ~[~"--test"],
+                              Main => ~[]
+                          }
                           + flags
                           + cfgs.flat_map(|&c| { ~[~"--cfg", c] }),
                           driver::optgroups()).get();
     let mut options = session::options {
         crate_type: crate_type,
         optimize: if opt { session::Aggressive } else { session::No },
-        test: test,
+        test: what == Test || what == Bench,
         maybe_sysroot: sysroot,
         addl_lib_search_paths: ~[copy *out_dir],
         // output_type should be conditional
@@ -549,13 +570,11 @@ pub fn compile_crate_from_input(input: &driver::input,
             debug!("How many attrs? %?", attr::find_linkage_metas(crate.node.attrs).len());
 
             if attr::find_linkage_metas(crate.node.attrs).is_empty() {
-                crate_to_use = add_attrs(copy *crate,
-                    ~[mk_attr(@dummy_spanned(meta_list(@~"link",
-                                                  // change PkgId to have a <shortname> field?
+                crate_to_use = add_attrs(*crate, ~[mk_attr(@dummy_spanned(meta_list(@~"link",
                     ~[@dummy_spanned(meta_name_value(@~"name",
-                                                    mk_string_lit(@pkg_id.path.filestem().get()))),
+                                         mk_string_lit(@pkg_id.short_name))),
                       @dummy_spanned(meta_name_value(@~"vers",
-                                                    mk_string_lit(@pkg_id.version.to_str())))])))]);
+                                         mk_string_lit(@pkg_id.version.to_str())))])))]);
             }
 
             driver::compile_rest(sess, cfg, what, Some(outputs), Some(crate_to_use));
@@ -586,16 +605,34 @@ fn add_attrs(mut c: ast::crate, new_attrs: ~[attribute]) -> @ast::crate {
 pub fn compile_crate(sysroot: Option<@Path>, pkg_id: &PkgId,
                      crate: &Path, dir: &Path,
                      flags: &[~str], cfgs: &[~str], opt: bool,
-                     test: bool, crate_type: crate_type) -> bool {
+                     what: OutputType) -> bool {
     debug!("compile_crate: crate=%s, dir=%s", crate.to_str(), dir.to_str());
     debug!("compile_crate: short_name = %s, flags =...", pkg_id.to_str());
     for flags.each |&fl| {
         debug!("+++ %s", fl);
     }
-    compile_input(sysroot, pkg_id,
-                  crate, dir, flags, cfgs, opt, test, crate_type)
+    compile_input(sysroot, pkg_id, crate, dir, flags, cfgs, opt, what)
 }
 
+// normalize should be the only way to construct a LocalPath
+// (though this isn't enforced)
+/// Replace all occurrences of '-' in the stem part of path with '_'
+/// This is because we treat rust-foo-bar-quux and rust_foo_bar_quux
+/// as the same name
+pub fn normalize(p: RemotePath) -> LocalPath {
+    match p.filestem() {
+        None => LocalPath(*p),
+        Some(st) => {
+            let replaced = str::replace(st, "-", "_");
+            if replaced != st {
+                LocalPath(p.with_filestem(replaced))
+            }
+            else {
+                LocalPath(*p)
+            }
+        }
+    }
+}
 
 #[cfg(windows)]
 pub fn link_exe(_src: &Path, _dest: &Path) -> bool {
@@ -627,6 +664,10 @@ pub fn mk_string_lit(s: @~str) -> ast::lit {
         span: dummy_sp()
     }
 }
+
+/// Wrappers to prevent local and remote paths from getting confused
+pub struct RemotePath (Path);
+pub struct LocalPath (Path);
 
 #[cfg(test)]
 mod test {
