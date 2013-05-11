@@ -137,27 +137,27 @@ pub impl Parser {
 
     // A sanity check that the word we are asking for is a known keyword
     // NOTE: this could be done statically....
-    fn require_keyword(&self, word: &~str) {
-        if !self.keywords.contains(word) {
-            self.bug(fmt!("unknown keyword: %s", *word));
+    fn require_keyword(&self, word: &str) {
+        if !self.keywords.contains_equiv(&word) {
+            self.bug(fmt!("unknown keyword: %s", word));
         }
     }
 
     // return true when this token represents the given string, and is not
     // followed immediately by :: .
-    fn token_is_word(&self, word: &~str, tok: &token::Token) -> bool {
+    fn token_is_word(&self, word: &str, tok: &token::Token) -> bool {
         match *tok {
-            token::IDENT(sid, false) => { *self.id_to_str(sid) == *word }
+            token::IDENT(sid, false) => { word == *self.id_to_str(sid) }
              _ => { false }
         }
     }
 
-    fn token_is_keyword(&self, word: &~str, tok: &token::Token) -> bool {
+    fn token_is_keyword(&self, word: &str, tok: &token::Token) -> bool {
         self.require_keyword(word);
         self.token_is_word(word, tok)
     }
 
-    fn is_keyword(&self, word: &~str) -> bool {
+    fn is_keyword(&self, word: &str) -> bool {
         self.token_is_keyword(word, &copy *self.token)
     }
 
@@ -177,10 +177,10 @@ pub impl Parser {
     // if the given word is not a keyword, signal an error.
     // if the next token is the given keyword, eat it and return
     // true. Otherwise, return false.
-    fn eat_keyword(&self, word: &~str) -> bool {
+    fn eat_keyword(&self, word: &str) -> bool {
         self.require_keyword(word);
         let is_kw = match *self.token {
-            token::IDENT(sid, false) => *word == *self.id_to_str(sid),
+            token::IDENT(sid, false) => word == *self.id_to_str(sid),
             _ => false
         };
         if is_kw { self.bump() }
@@ -190,13 +190,13 @@ pub impl Parser {
     // if the given word is not a keyword, signal an error.
     // if the next token is not the given word, signal an error.
     // otherwise, eat it.
-    fn expect_keyword(&self, word: &~str) {
+    fn expect_keyword(&self, word: &str) {
         self.require_keyword(word);
         if !self.eat_keyword(word) {
             self.fatal(
                 fmt!(
                     "expected `%s`, found `%s`",
-                    *word,
+                    word,
                     self.this_token_to_str()
                 )
             );
@@ -204,8 +204,8 @@ pub impl Parser {
     }
 
     // return true if the given string is a strict keyword
-    fn is_strict_keyword(&self, word: &~str) -> bool {
-        self.strict_keywords.contains(word)
+    fn is_strict_keyword(&self, word: &str) -> bool {
+        self.strict_keywords.contains_equiv(&word)
     }
 
     // signal an error if the current token is a strict keyword
@@ -213,23 +213,23 @@ pub impl Parser {
         match *self.token {
             token::IDENT(_, false) => {
                 let w = token_to_str(self.reader, &copy *self.token);
-                self.check_strict_keywords_(&w);
+                self.check_strict_keywords_(w);
             }
             _ => ()
         }
     }
 
     // signal an error if the given string is a strict keyword
-    fn check_strict_keywords_(&self, w: &~str) {
+    fn check_strict_keywords_(&self, w: &str) {
         if self.is_strict_keyword(w) {
             self.span_err(*self.last_span,
-                          fmt!("found `%s` in ident position", *w));
+                          fmt!("found `%s` in ident position", w));
         }
     }
 
     // return true if this is a reserved keyword
-    fn is_reserved_keyword(&self, word: &~str) -> bool {
-        self.reserved_keywords.contains(word)
+    fn is_reserved_keyword(&self, word: &str) -> bool {
+        self.reserved_keywords.contains_equiv(&word)
     }
 
     // signal an error if the current token is a reserved keyword
@@ -237,16 +237,16 @@ pub impl Parser {
         match *self.token {
             token::IDENT(_, false) => {
                 let w = token_to_str(self.reader, &copy *self.token);
-                self.check_reserved_keywords_(&w);
+                self.check_reserved_keywords_(w);
             }
             _ => ()
         }
     }
 
     // signal an error if the given string is a reserved keyword
-    fn check_reserved_keywords_(&self, w: &~str) {
+    fn check_reserved_keywords_(&self, w: &str) {
         if self.is_reserved_keyword(w) {
-            self.fatal(fmt!("`%s` is a reserved keyword", *w));
+            self.fatal(fmt!("`%s` is a reserved keyword", w));
         }
     }
 
