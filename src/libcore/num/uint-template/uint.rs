@@ -154,6 +154,7 @@ pub mod inst {
         return true;
     }
 
+    #[cfg(stage0)]
     impl iter::Times for uint {
         #[inline(always)]
         ///
@@ -172,6 +173,29 @@ pub mod inst {
                 if !it() { break }
                 i -= 1;
             }
+        }
+    }
+
+    #[cfg(not(stage0))]
+    impl iter::Times for uint {
+        #[inline(always)]
+        ///
+        /// A convenience form for basic iteration. Given a uint `x`,
+        /// `for x.times { ... }` executes the given block x times.
+        ///
+        /// Equivalent to `for uint::range(0, x) |_| { ... }`.
+        ///
+        /// Not defined on all integer types to permit unambiguous
+        /// use with integer literals of inferred integer-type as
+        /// the self-value (eg. `for 100.times { ... }`).
+        ///
+        fn times(&self, it: &fn() -> bool) -> bool {
+            let mut i = *self;
+            while i > 0 {
+                if !it() { return false; }
+                i -= 1;
+            }
+            return true;
         }
     }
 

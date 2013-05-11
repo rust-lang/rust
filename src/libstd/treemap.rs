@@ -105,23 +105,47 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
     }
 
     /// Visit all key-value pairs in order
+    #[cfg(stage0)]
     fn each<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) {
+        each(&self.root, f);
+    }
+    /// Visit all key-value pairs in order
+    #[cfg(not(stage0))]
+    fn each<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) -> bool {
         each(&self.root, f)
     }
 
     /// Visit all keys in order
+    #[cfg(stage0)]
     fn each_key(&self, f: &fn(&K) -> bool) {
+        self.each(|k, _| f(k))
+    }
+    /// Visit all keys in order
+    #[cfg(not(stage0))]
+    fn each_key(&self, f: &fn(&K) -> bool) -> bool {
         self.each(|k, _| f(k))
     }
 
     /// Visit all values in order
+    #[cfg(stage0)]
     fn each_value<'a>(&'a self, f: &fn(&'a V) -> bool) {
+        self.each(|_, v| f(v))
+    }
+    /// Visit all values in order
+    #[cfg(not(stage0))]
+    fn each_value<'a>(&'a self, f: &fn(&'a V) -> bool) -> bool {
         self.each(|_, v| f(v))
     }
 
     /// Iterate over the map and mutate the contained values
+    #[cfg(stage0)]
     fn mutate_values(&mut self, f: &fn(&K, &mut V) -> bool) {
         mutate_values(&mut self.root, f);
+    }
+    /// Iterate over the map and mutate the contained values
+    #[cfg(not(stage0))]
+    fn mutate_values(&mut self, f: &fn(&K, &mut V) -> bool) -> bool {
+        mutate_values(&mut self.root, f)
     }
 
     /// Return a reference to the value corresponding to the key
@@ -177,6 +201,7 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
     }
 }
 
+#[cfg(stage0)]
 pub impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
@@ -193,6 +218,32 @@ pub impl<K: TotalOrd, V> TreeMap<K, V> {
 
     /// Visit all values in reverse order
     fn each_value_reverse(&self, f: &fn(&V) -> bool) {
+        self.each_reverse(|_, v| f(v))
+    }
+
+    /// Get a lazy iterator over the key-value pairs in the map.
+    /// Requires that it be frozen (immutable).
+    fn iter<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
+        TreeMapIterator{stack: ~[], node: &self.root}
+    }
+}
+#[cfg(not(stage0))]
+pub impl<K: TotalOrd, V> TreeMap<K, V> {
+    /// Create an empty TreeMap
+    fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
+
+    /// Visit all key-value pairs in reverse order
+    fn each_reverse<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) -> bool {
+        each_reverse(&self.root, f)
+    }
+
+    /// Visit all keys in reverse order
+    fn each_key_reverse(&self, f: &fn(&K) -> bool) -> bool {
+        self.each_reverse(|k, _| f(k))
+    }
+
+    /// Visit all values in reverse order
+    fn each_value_reverse(&self, f: &fn(&V) -> bool) -> bool {
         self.each_reverse(|_, v| f(v))
     }
 
@@ -246,15 +297,27 @@ pub struct TreeSet<T> {
 impl<T: TotalOrd> BaseIter<T> for TreeSet<T> {
     /// Visit all values in order
     #[inline(always)]
+    #[cfg(stage0)]
     fn each(&self, f: &fn(&T) -> bool) { self.map.each_key(f) }
+    /// Visit all values in order
+    #[inline(always)]
+    #[cfg(not(stage0))]
+    fn each(&self, f: &fn(&T) -> bool) -> bool { self.map.each_key(f) }
     #[inline(always)]
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 impl<T: TotalOrd> ReverseIter<T> for TreeSet<T> {
     /// Visit all values in reverse order
+    #[cfg(stage0)]
     #[inline(always)]
     fn each_reverse(&self, f: &fn(&T) -> bool) {
+        self.map.each_key_reverse(f)
+    }
+    /// Visit all values in reverse order
+    #[cfg(not(stage0))]
+    #[inline(always)]
+    fn each_reverse(&self, f: &fn(&T) -> bool) -> bool {
         self.map.each_key_reverse(f)
     }
 }
@@ -361,6 +424,7 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
     }
 
     /// Visit the values (in-order) representing the difference
+    #[cfg(stage0)]
     fn difference(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) {
         let mut x = self.iter();
         let mut y = other.iter();
@@ -389,8 +453,38 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
             }
         }
     }
+    /// Visit the values (in-order) representing the difference
+    #[cfg(not(stage0))]
+    fn difference(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
+        let mut x = self.iter();
+        let mut y = other.iter();
+
+        let mut a = x.next();
+        let mut b = y.next();
+
+        while a.is_some() {
+            if b.is_none() {
+                return f(a.unwrap()) && x.advance(f);
+            }
+
+            let a1 = a.unwrap();
+            let b1 = b.unwrap();
+
+            let cmp = a1.cmp(b1);
+
+            if cmp == Less {
+                if !f(a1) { return false; }
+                a = x.next();
+            } else {
+                if cmp == Equal { a = x.next() }
+                b = y.next();
+            }
+        }
+        return true;
+    }
 
     /// Visit the values (in-order) representing the symmetric difference
+    #[cfg(stage0)]
     fn symmetric_difference(&self, other: &TreeSet<T>,
                                  f: &fn(&T) -> bool) {
         let mut x = self.iter();
@@ -427,8 +521,43 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
             if f(b1) { y.next() } else { None }
         }
     }
+    /// Visit the values (in-order) representing the symmetric difference
+    #[cfg(not(stage0))]
+    fn symmetric_difference(&self, other: &TreeSet<T>,
+                            f: &fn(&T) -> bool) -> bool {
+        let mut x = self.iter();
+        let mut y = other.iter();
+
+        let mut a = x.next();
+        let mut b = y.next();
+
+        while a.is_some() {
+            if b.is_none() {
+                return f(a.unwrap()) && x.advance(f);
+            }
+
+            let a1 = a.unwrap();
+            let b1 = b.unwrap();
+
+            let cmp = a1.cmp(b1);
+
+            if cmp == Less {
+                if !f(a1) { return false; }
+                a = x.next();
+            } else {
+                if cmp == Greater {
+                    if !f(b1) { return false; }
+                } else {
+                    a = x.next();
+                }
+                b = y.next();
+            }
+        }
+        return b.each(|&x| f(x)) && y.advance(f);
+    }
 
     /// Visit the values (in-order) representing the intersection
+    #[cfg(stage0)]
     fn intersection(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) {
         let mut x = self.iter();
         let mut y = other.iter();
@@ -452,8 +581,35 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
             }
         }
     }
+    /// Visit the values (in-order) representing the intersection
+    #[cfg(not(stage0))]
+    fn intersection(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
+        let mut x = self.iter();
+        let mut y = other.iter();
+
+        let mut a = x.next();
+        let mut b = y.next();
+
+        while a.is_some() && b.is_some() {
+            let a1 = a.unwrap();
+            let b1 = b.unwrap();
+
+            let cmp = a1.cmp(b1);
+
+            if cmp == Less {
+                a = x.next();
+            } else {
+                if cmp == Equal {
+                    if !f(a1) { return false }
+                }
+                b = y.next();
+            }
+        }
+        return true;
+    }
 
     /// Visit the values (in-order) representing the union
+    #[cfg(stage0)]
     fn union(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) {
         let mut x = self.iter();
         let mut y = other.iter();
@@ -487,6 +643,38 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
         do b.while_some |b1| {
             if f(b1) { y.next() } else { None }
         }
+    }
+    /// Visit the values (in-order) representing the union
+    #[cfg(not(stage0))]
+    fn union(&self, other: &TreeSet<T>, f: &fn(&T) -> bool) -> bool {
+        let mut x = self.iter();
+        let mut y = other.iter();
+
+        let mut a = x.next();
+        let mut b = y.next();
+
+        while a.is_some() {
+            if b.is_none() {
+                return f(a.unwrap()) && x.advance(f);
+            }
+
+            let a1 = a.unwrap();
+            let b1 = b.unwrap();
+
+            let cmp = a1.cmp(b1);
+
+            if cmp == Greater {
+                if !f(b1) { return false; }
+                b = y.next();
+            } else {
+                if !f(a1) { return false; }
+                if cmp == Equal {
+                    b = y.next();
+                }
+                a = x.next();
+            }
+        }
+        return b.each(|&x| f(x)) && y.advance(f);
     }
 }
 
@@ -525,20 +713,28 @@ pub impl<K: TotalOrd, V> TreeNode<K, V> {
     }
 }
 
+#[cfg(stage0)]
+fn each<'r, K: TotalOrd, V>(_: &'r Option<~TreeNode<K, V>>,
+                            _: &fn(&'r K, &'r V) -> bool) -> bool {
+    fail!(~"don't use me in stage0!")
+}
+#[cfg(not(stage0))]
 fn each<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
-                            f: &fn(&'r K, &'r V) -> bool) {
-    for node.each |x| {
-        each(&x.left, f);
-        if f(&x.key, &x.value) { each(&x.right, f) }
-    }
+                            f: &fn(&'r K, &'r V) -> bool) -> bool {
+    node.each(|x| each(&x.left, f) && f(&x.key, &x.value) &&
+                  each(&x.right, f))
 }
 
+#[cfg(stage0)]
+fn each_reverse<'r, K: TotalOrd, V>(_: &'r Option<~TreeNode<K, V>>,
+                                    _: &fn(&'r K, &'r V) -> bool) -> bool {
+    fail!(~"don't use me in stage0!")
+}
+#[cfg(not(stage0))]
 fn each_reverse<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
-                                    f: &fn(&'r K, &'r V) -> bool) {
-    for node.each |x| {
-        each_reverse(&x.right, f);
-        if f(&x.key, &x.value) { each_reverse(&x.left, f) }
-    }
+                                    f: &fn(&'r K, &'r V) -> bool) -> bool {
+    node.each(|x| each_reverse(&x.right, f) && f(&x.key, &x.value) &&
+                  each_reverse(&x.left, f))
 }
 
 fn mutate_values<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
@@ -1130,7 +1326,7 @@ mod test_set {
     }
 
     fn check(a: &[int], b: &[int], expected: &[int],
-             f: &fn(&TreeSet<int>, &TreeSet<int>, f: &fn(&int) -> bool)) {
+             f: &fn(&TreeSet<int>, &TreeSet<int>, f: &fn(&int) -> bool) -> bool) {
         let mut set_a = TreeSet::new();
         let mut set_b = TreeSet::new();
 

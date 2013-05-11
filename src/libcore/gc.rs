@@ -129,7 +129,7 @@ type Visitor<'self> = &'self fn(root: **Word, tydesc: *Word) -> bool;
 
 // Walks the list of roots for the given safe point, and calls visitor
 // on each root.
-unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) {
+unsafe fn _walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) -> bool {
     let fp_bytes: *u8 = cast::transmute(fp);
     let sp_meta: *u32 = cast::transmute(sp.sp_meta);
 
@@ -155,7 +155,7 @@ unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) {
             } else {
                 ptr::null()
             };
-            if !visitor(root, tydesc) { return; }
+            if !visitor(root, tydesc) { return false; }
         }
         sri += 1;
     }
@@ -168,6 +168,16 @@ unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) {
         }
         rri += 1;
     }
+    return true;
+}
+
+#[cfg(stage0)]
+unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) {
+    _walk_safe_point(fp, sp, visitor);
+}
+#[cfg(not(stage0))]
+unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) -> bool {
+    _walk_safe_point(fp, sp, visitor)
 }
 
 // Is fp contained in segment?
@@ -222,7 +232,7 @@ static need_cleanup:    Memory = exchange_heap | stack;
 
 // Walks stack, searching for roots of the requested type, and passes
 // each root to the visitor.
-unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
+unsafe fn _walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) -> bool {
     let mut segment = rustrt::rust_get_stack_segment();
     let mut last_ret: *Word = ptr::null();
     // To avoid collecting memory used by the GC itself, skip stack
@@ -274,14 +284,14 @@ unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
                     // Root is a generic box.
                     let refcount = **root;
                     if mem | task_local_heap != 0 && refcount != -1 {
-                        if !visitor(root, tydesc) { return; }
+                        if !visitor(root, tydesc) { return false; }
                     } else if mem | exchange_heap != 0 && refcount == -1 {
-                        if !visitor(root, tydesc) { return; }
+                        if !visitor(root, tydesc) { return false; }
                     }
                 } else {
                     // Root is a non-immediate.
                     if mem | stack != 0 {
-                        if !visitor(root, tydesc) { return; }
+                        if !visitor(root, tydesc) { return false; }
                     }
                 }
             }
@@ -290,8 +300,17 @@ unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
         }
         reached_sentinel = delay_reached_sentinel;
     }
+    return true;
 }
 
+#[cfg(stage0)]
+unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
+    _walk_gc_roots(mem, sentinel, visitor);
+}
+#[cfg(not(stage0))]
+unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) -> bool {
+    _walk_gc_roots(mem, sentinel, visitor)
+}
 pub fn gc() {
     unsafe {
         // Abort when GC is disabled.

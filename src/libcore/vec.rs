@@ -1489,13 +1489,14 @@ pub fn reversed<T:Copy>(v: &const [T]) -> ~[T] {
  * ~~~
  */
 #[inline(always)]
-pub fn each<'r,T>(v: &'r [T], f: &fn(&'r T) -> bool) {
+pub fn _each<'r,T>(v: &'r [T], f: &fn(&'r T) -> bool) -> bool {
     //             ^^^^
     // NB---this CANNOT be &const [T]!  The reason
     // is that you are passing it to `f()` using
     // an immutable.
 
-    do vec::as_imm_buf(v) |p, n| {
+    let mut broke = false;
+    do as_imm_buf(v) |p, n| {
         let mut n = n;
         let mut p = p;
         while n > 0u {
@@ -1506,42 +1507,69 @@ pub fn each<'r,T>(v: &'r [T], f: &fn(&'r T) -> bool) {
             }
             n -= 1u;
         }
+        broke = n > 0;
     }
+    return true;
 }
+
+#[cfg(stage0)]
+pub fn each<'r,T>(v: &'r [T], f: &fn(&'r T) -> bool) { _each(v, f); }
+#[cfg(not(stage0))]
+pub fn each<'r,T>(v: &'r [T], f: &fn(&'r T) -> bool) -> bool { _each(v, f) }
 
 /// Like `each()`, but for the case where you have
 /// a vector with mutable contents and you would like
 /// to mutate the contents as you iterate.
 #[inline(always)]
-pub fn each_mut<'r,T>(v: &'r mut [T], f: &fn(elem: &'r mut T) -> bool) {
-    do vec::as_mut_buf(v) |p, n| {
+pub fn _each_mut<'r,T>(v: &'r mut [T], f: &fn(elem: &'r mut T) -> bool) -> bool {
+    let mut broke = false;
+    do as_mut_buf(v) |p, n| {
         let mut n = n;
         let mut p = p;
         while n > 0 {
             unsafe {
                 let q: &'r mut T = cast::transmute_mut_region(&mut *p);
-                if !f(q) {
-                    break;
-                }
+                if !f(q) { break; }
                 p = p.offset(1);
             }
             n -= 1;
         }
+        broke = n > 0;
     }
+    return broke;
+}
+
+#[cfg(stage0)]
+pub fn each_mut<'r,T>(v: &'r mut [T], f: &fn(elem: &'r mut T) -> bool) {
+    _each_mut(v, f);
+}
+#[cfg(not(stage0))]
+pub fn each_mut<'r,T>(v: &'r mut [T], f: &fn(elem: &'r mut T) -> bool) -> bool {
+    _each_mut(v, f)
 }
 
 /// Like `each()`, but for the case where you have a vector that *may or may
 /// not* have mutable contents.
 #[inline(always)]
-pub fn each_const<T>(v: &const [T], f: &fn(elem: &const T) -> bool) {
+pub fn _each_const<T>(v: &const [T], f: &fn(elem: &const T) -> bool) -> bool {
     let mut i = 0;
     let n = v.len();
     while i < n {
         if !f(&const v[i]) {
-            return;
+            return false;
         }
         i += 1;
     }
+    return true;
+}
+
+#[cfg(stage0)]
+pub fn each_const<t>(v: &const [t], f: &fn(elem: &const t) -> bool) {
+    _each_const(v, f);
+}
+#[cfg(not(stage0))]
+pub fn each_const<t>(v: &const [t], f: &fn(elem: &const t) -> bool) -> bool {
+    _each_const(v, f)
 }
 
 /**
@@ -1550,12 +1578,20 @@ pub fn each_const<T>(v: &const [T], f: &fn(elem: &const T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pub fn eachi<'r,T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) {
+pub fn _eachi<'r,T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) -> bool {
     let mut i = 0;
     for each(v) |p| {
-        if !f(i, p) { return; }
+        if !f(i, p) { return false; }
         i += 1;
     }
+    return true;
+}
+
+#[cfg(stage0)]
+pub fn eachi<'r,T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) { _eachi(v, f); }
+#[cfg(not(stage0))]
+pub fn eachi<'r,T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) -> bool {
+    _eachi(v, f)
 }
 
 /**
@@ -1564,14 +1600,26 @@ pub fn eachi<'r,T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pub fn eachi_mut<'r,T>(v: &'r mut [T], f: &fn(uint, v: &'r mut T) -> bool) {
+pub fn _eachi_mut<'r,T>(v: &'r mut [T],
+                        f: &fn(uint, v: &'r mut T) -> bool) -> bool {
     let mut i = 0;
     for each_mut(v) |p| {
         if !f(i, p) {
-            return;
+            return false;
         }
         i += 1;
     }
+    return true;
+}
+
+#[cfg(stage0)]
+pub fn eachi_mut<'r,T>(v: &'r mut [T], f: &fn(uint, v: &'r mut T) -> bool) {
+    _eachi_mut(v, f);
+}
+#[cfg(not(stage0))]
+pub fn eachi_mut<'r,T>(v: &'r mut [T],
+                       f: &fn(uint, v: &'r mut T) -> bool) -> bool {
+    _eachi_mut(v, f)
 }
 
 /**
@@ -1580,8 +1628,17 @@ pub fn eachi_mut<'r,T>(v: &'r mut [T], f: &fn(uint, v: &'r mut T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
+pub fn _each_reverse<'r,T>(v: &'r [T], blk: &fn(v: &'r T) -> bool) -> bool {
+    _eachi_reverse(v, |_i, v| blk(v))
+}
+
+#[cfg(stage0)]
 pub fn each_reverse<'r,T>(v: &'r [T], blk: &fn(v: &'r T) -> bool) {
-    eachi_reverse(v, |_i, v| blk(v))
+    _each_reverse(v, blk);
+}
+#[cfg(not(stage0))]
+pub fn each_reverse<'r,T>(v: &'r [T], blk: &fn(v: &'r T) -> bool) -> bool {
+    _each_reverse(v, blk)
 }
 
 /**
@@ -1590,14 +1647,26 @@ pub fn each_reverse<'r,T>(v: &'r [T], blk: &fn(v: &'r T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pub fn eachi_reverse<'r,T>(v: &'r [T], blk: &fn(i: uint, v: &'r T) -> bool) {
+pub fn _eachi_reverse<'r,T>(v: &'r [T],
+                            blk: &fn(i: uint, v: &'r T) -> bool) -> bool {
     let mut i = v.len();
     while i > 0 {
         i -= 1;
         if !blk(i, &v[i]) {
-            return;
+            return false;
         }
     }
+    return true;
+}
+
+#[cfg(stage0)]
+pub fn eachi_reverse<'r,T>(v: &'r [T], blk: &fn(i: uint, v: &'r T) -> bool) {
+    _eachi_reverse(v, blk);
+}
+#[cfg(not(stage0))]
+pub fn eachi_reverse<'r,T>(v: &'r [T],
+                           blk: &fn(i: uint, v: &'r T) -> bool) -> bool {
+    _eachi_reverse(v, blk)
 }
 
 /**
@@ -1608,13 +1677,23 @@ pub fn eachi_reverse<'r,T>(v: &'r [T], blk: &fn(i: uint, v: &'r T) -> bool) {
  * Both vectors must have the same length
  */
 #[inline]
-pub fn each2<U, T>(v1: &[U], v2: &[T], f: &fn(u: &U, t: &T) -> bool) {
+pub fn _each2<U, T>(v1: &[U], v2: &[T], f: &fn(u: &U, t: &T) -> bool) -> bool {
     assert!(len(v1) == len(v2));
     for uint::range(0u, len(v1)) |i| {
         if !f(&v1[i], &v2[i]) {
-            return;
+            return false;
         }
     }
+    return true;
+}
+
+#[cfg(stage0)]
+pub fn each2<U, T>(v1: &[U], v2: &[T], f: &fn(u: &U, t: &T) -> bool) {
+    _each2(v1, v2, f);
+}
+#[cfg(not(stage0))]
+pub fn each2<U, T>(v1: &[U], v2: &[T], f: &fn(u: &U, t: &T) -> bool) -> bool {
+    _each2(v1, v2, f)
 }
 
 /**
@@ -1627,7 +1706,8 @@ pub fn each2<U, T>(v1: &[U], v2: &[T], f: &fn(u: &U, t: &T) -> bool) {
  * The total number of permutations produced is `len(v)!`.  If `v` contains
  * repeated elements, then some permutations are repeated.
  */
-pub fn each_permutation<T:Copy>(v: &[T], put: &fn(ts: &[T]) -> bool) {
+#[cfg(not(stage0))]
+pub fn each_permutation<T:Copy>(v: &[T], put: &fn(ts: &[T]) -> bool) -> bool {
     let ln = len(v);
     if ln <= 1 {
         put(v);
@@ -1641,12 +1721,13 @@ pub fn each_permutation<T:Copy>(v: &[T], put: &fn(ts: &[T]) -> bool) {
             rest.push_all(const_slice(v, i+1u, ln));
             for each_permutation(rest) |permutation| {
                 if !put(append(~[elt], permutation)) {
-                    return;
+                    return false;
                 }
             }
             i += 1u;
         }
     }
+    return true;
 }
 
 /**
@@ -1663,12 +1744,36 @@ pub fn each_permutation<T:Copy>(v: &[T], put: &fn(ts: &[T]) -> bool) {
  * ~~~
  *
  */
+#[cfg(stage0)]
 pub fn windowed<'r, T>(n: uint, v: &'r [T], it: &fn(&'r [T]) -> bool) {
     assert!(1u <= n);
     if n > v.len() { return; }
     for uint::range(0, v.len() - n + 1) |i| {
         if !it(v.slice(i, i + n)) { return }
     }
+}
+/**
+ * Iterate over all contiguous windows of length `n` of the vector `v`.
+ *
+ * # Example
+ *
+ * Print the adjacent pairs of a vector (i.e. `[1,2]`, `[2,3]`, `[3,4]`)
+ *
+ * ~~~
+ * for windowed(2, &[1,2,3,4]) |v| {
+ *     io::println(fmt!("%?", v));
+ * }
+ * ~~~
+ *
+ */
+#[cfg(not(stage0))]
+pub fn windowed<'r, T>(n: uint, v: &'r [T], it: &fn(&'r [T]) -> bool) -> bool {
+    assert!(1u <= n);
+    if n > v.len() { return true; }
+    for uint::range(0, v.len() - n + 1) |i| {
+        if !it(v.slice(i, i + n)) { return false; }
+    }
+    return true;
 }
 
 /**
@@ -1932,8 +2037,14 @@ pub trait ImmutableVector<'self, T> {
     fn initn(&self, n: uint) -> &'self [T];
     fn last(&self) -> &'self T;
     fn last_opt(&self) -> Option<&'self T>;
+    #[cfg(stage0)]
     fn each_reverse(&self, blk: &fn(&T) -> bool);
+    #[cfg(not(stage0))]
+    fn each_reverse(&self, blk: &fn(&T) -> bool) -> bool;
+    #[cfg(stage0)]
     fn eachi_reverse(&self, blk: &fn(uint, &T) -> bool);
+    #[cfg(not(stage0))]
+    fn eachi_reverse(&self, blk: &fn(uint, &T) -> bool) -> bool;
     fn foldr<'a, U>(&'a self, z: U, p: &fn(t: &'a T, u: U) -> U) -> U;
     fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U];
     fn mapi<U>(&self, f: &fn(uint, t: &T) -> U) -> ~[U];
@@ -1995,13 +2106,27 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
 
     /// Iterates over a vector's elements in reverse.
     #[inline]
+    #[cfg(stage0)]
     fn each_reverse(&self, blk: &fn(&T) -> bool) {
+        each_reverse(*self, blk)
+    }
+    /// Iterates over a vector's elements in reverse.
+    #[inline]
+    #[cfg(not(stage0))]
+    fn each_reverse(&self, blk: &fn(&T) -> bool) -> bool {
         each_reverse(*self, blk)
     }
 
     /// Iterates over a vector's elements and indices in reverse.
+    #[cfg(stage0)]
     #[inline]
     fn eachi_reverse(&self, blk: &fn(uint, &T) -> bool) {
+        eachi_reverse(*self, blk)
+    }
+    /// Iterates over a vector's elements and indices in reverse.
+    #[cfg(not(stage0))]
+    #[inline]
+    fn eachi_reverse(&self, blk: &fn(uint, &T) -> bool) -> bool {
         eachi_reverse(*self, blk)
     }
 
@@ -2555,44 +2680,81 @@ pub mod bytes {
 // ITERATION TRAIT METHODS
 
 impl<'self,A> old_iter::BaseIter<A> for &'self [A] {
+    #[cfg(stage0)]
     #[inline(always)]
-    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) { each(*self, blk) }
+    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) {
+        each(*self, blk)
+    }
+    #[cfg(not(stage0))]
+    #[inline(always)]
+    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) -> bool {
+        each(*self, blk)
+    }
     #[inline(always)]
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 // FIXME(#4148): This should be redundant
 impl<A> old_iter::BaseIter<A> for ~[A] {
+    #[cfg(stage0)]
     #[inline(always)]
-    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) { each(*self, blk) }
+    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) {
+        each(*self, blk)
+    }
+    #[cfg(not(stage0))]
+    #[inline(always)]
+    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) -> bool {
+        each(*self, blk)
+    }
     #[inline(always)]
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 // FIXME(#4148): This should be redundant
 impl<A> old_iter::BaseIter<A> for @[A] {
+    #[cfg(stage0)]
     #[inline(always)]
-    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) { each(*self, blk) }
+    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) {
+        each(*self, blk)
+    }
+    #[cfg(not(stage0))]
+    #[inline(always)]
+    fn each<'a>(&'a self, blk: &fn(v: &'a A) -> bool) -> bool {
+        each(*self, blk)
+    }
     #[inline(always)]
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
 
 impl<'self,A> old_iter::MutableIter<A> for &'self mut [A] {
+    #[cfg(stage0)]
     #[inline(always)]
     fn each_mut<'a>(&'a mut self, blk: &fn(v: &'a mut A) -> bool) {
+        each_mut(*self, blk)
+    }
+    #[cfg(not(stage0))]
+    #[inline(always)]
+    fn each_mut<'a>(&'a mut self, blk: &fn(v: &'a mut A) -> bool) -> bool {
         each_mut(*self, blk)
     }
 }
 
 // FIXME(#4148): This should be redundant
 impl<A> old_iter::MutableIter<A> for ~[A] {
+    #[cfg(stage0)]
     #[inline(always)]
     fn each_mut<'a>(&'a mut self, blk: &fn(v: &'a mut A) -> bool) {
+        each_mut(*self, blk)
+    }
+    #[cfg(not(stage0))]
+    #[inline(always)]
+    fn each_mut<'a>(&'a mut self, blk: &fn(v: &'a mut A) -> bool) -> bool {
         each_mut(*self, blk)
     }
 }
 
 // FIXME(#4148): This should be redundant
+#[cfg(stage0)]
 impl<A> old_iter::MutableIter<A> for @mut [A] {
     #[inline(always)]
     fn each_mut(&mut self, blk: &fn(v: &mut A) -> bool) {
@@ -2600,8 +2762,21 @@ impl<A> old_iter::MutableIter<A> for @mut [A] {
     }
 }
 
+#[cfg(not(stage0))]
+impl<A> old_iter::MutableIter<A> for @mut [A] {
+    #[inline(always)]
+    fn each_mut(&mut self, blk: &fn(v: &mut A) -> bool) -> bool {
+        each_mut(*self, blk)
+    }
+}
+
 impl<'self,A> old_iter::ExtendedIter<A> for &'self [A] {
+    #[cfg(stage0)]
     pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) {
+        old_iter::eachi(self, blk)
+    }
+    #[cfg(not(stage0))]
+    pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) -> bool {
         old_iter::eachi(self, blk)
     }
     pub fn all(&self, blk: &fn(&A) -> bool) -> bool {
@@ -2627,14 +2802,25 @@ impl<'self,A> old_iter::ExtendedIter<A> for &'self [A] {
 
 impl<'self,A> old_iter::ExtendedMutableIter<A> for &'self mut [A] {
     #[inline(always)]
+    #[cfg(stage0)]
     pub fn eachi_mut(&mut self, blk: &fn(uint, v: &mut A) -> bool) {
+        eachi_mut(*self, blk)
+    }
+    #[inline(always)]
+    #[cfg(not(stage0))]
+    pub fn eachi_mut(&mut self, blk: &fn(uint, v: &mut A) -> bool) -> bool {
         eachi_mut(*self, blk)
     }
 }
 
 // FIXME(#4148): This should be redundant
 impl<A> old_iter::ExtendedIter<A> for ~[A] {
+    #[cfg(stage0)]
     pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) {
+        old_iter::eachi(self, blk)
+    }
+    #[cfg(not(stage0))]
+    pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) -> bool {
         old_iter::eachi(self, blk)
     }
     pub fn all(&self, blk: &fn(&A) -> bool) -> bool {
@@ -2660,7 +2846,12 @@ impl<A> old_iter::ExtendedIter<A> for ~[A] {
 
 // FIXME(#4148): This should be redundant
 impl<A> old_iter::ExtendedIter<A> for @[A] {
+    #[cfg(stage0)]
     pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) {
+        old_iter::eachi(self, blk)
+    }
+    #[cfg(not(stage0))]
+    pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) -> bool {
         old_iter::eachi(self, blk)
     }
     pub fn all(&self, blk: &fn(&A) -> bool) -> bool {
@@ -4399,7 +4590,7 @@ mod tests {
             }
             i += 0;
             false
-        }
+        };
     }
 
     #[test]
@@ -4414,7 +4605,7 @@ mod tests {
             }
             i += 0;
             false
-        }
+        };
     }
 
     #[test]

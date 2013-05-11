@@ -182,6 +182,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
     }
 
 
+    #[cfg(stage0)]
     pub fn each_bit_on_entry(&self,
                              id: ast::node_id,
                              f: &fn(uint) -> bool) {
@@ -194,7 +195,21 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
                id, bits_to_str(on_entry));
         self.each_bit(on_entry, f);
     }
+    #[cfg(not(stage0))]
+    pub fn each_bit_on_entry(&self,
+                             id: ast::node_id,
+                             f: &fn(uint) -> bool) -> bool {
+        //! Iterates through each bit that is set on entry to `id`.
+        //! Only useful after `propagate()` has been called.
 
+        let (start, end) = self.compute_id_range(id);
+        let on_entry = vec::slice(self.on_entry, start, end);
+        debug!("each_bit_on_entry(id=%?, on_entry=%s)",
+               id, bits_to_str(on_entry));
+        self.each_bit(on_entry, f)
+    }
+
+    #[cfg(stage0)]
     pub fn each_gen_bit(&self,
                         id: ast::node_id,
                         f: &fn(uint) -> bool) {
@@ -206,7 +221,20 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
                id, bits_to_str(gens));
         self.each_bit(gens, f)
     }
+    #[cfg(not(stage0))]
+    pub fn each_gen_bit(&self,
+                        id: ast::node_id,
+                        f: &fn(uint) -> bool) -> bool {
+        //! Iterates through each bit in the gen set for `id`.
 
+        let (start, end) = self.compute_id_range(id);
+        let gens = vec::slice(self.gens, start, end);
+        debug!("each_gen_bit(id=%?, gens=%s)",
+               id, bits_to_str(gens));
+        self.each_bit(gens, f)
+    }
+
+    #[cfg(stage0)]
     fn each_bit(&self,
                 words: &[uint],
                 f: &fn(uint) -> bool) {
@@ -235,6 +263,39 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
                 }
             }
         }
+    }
+    #[cfg(not(stage0))]
+    fn each_bit(&self,
+                words: &[uint],
+                f: &fn(uint) -> bool) -> bool {
+        //! Helper for iterating over the bits in a bit set.
+
+        for words.eachi |word_index, &word| {
+            if word != 0 {
+                let base_index = word_index * uint::bits;
+                for uint::range(0, uint::bits) |offset| {
+                    let bit = 1 << offset;
+                    if (word & bit) != 0 {
+                        // NB: we round up the total number of bits
+                        // that we store in any given bit set so that
+                        // it is an even multiple of uint::bits.  This
+                        // means that there may be some stray bits at
+                        // the end that do not correspond to any
+                        // actual value.  So before we callback, check
+                        // whether the bit_index is greater than the
+                        // actual value the user specified and stop
+                        // iterating if so.
+                        let bit_index = base_index + offset;
+                        if bit_index >= self.bits_per_id {
+                            return true;
+                        } else if !f(bit_index) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+        return true;
     }
 }
 

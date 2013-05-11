@@ -81,6 +81,7 @@ static AbiDatas: &'static [AbiData] = &[
     AbiData {abi: RustIntrinsic, name: "rust-intrinsic", abi_arch: RustArch},
 ];
 
+#[cfg(stage0)]
 fn each_abi(op: &fn(abi: Abi) -> bool) {
     /*!
      *
@@ -92,6 +93,15 @@ fn each_abi(op: &fn(abi: Abi) -> bool) {
             return;
         }
     }
+}
+#[cfg(not(stage0))]
+fn each_abi(op: &fn(abi: Abi) -> bool) -> bool {
+    /*!
+     *
+     * Iterates through each of the defined ABIs.
+     */
+
+    AbiDatas.each(|abi_data| op(abi_data.abi))
 }
 
 pub fn lookup(name: &str) -> Option<Abi> {
@@ -189,6 +199,7 @@ pub impl AbiSet {
         self.bits |= (1 << abi.index());
     }
 
+    #[cfg(stage0)]
     fn each(&self, op: &fn(abi: Abi) -> bool) {
         for each_abi |abi| {
             if self.contains(abi) {
@@ -197,6 +208,10 @@ pub impl AbiSet {
                 }
             }
         }
+    }
+    #[cfg(not(stage0))]
+    fn each(&self, op: &fn(abi: Abi) -> bool) -> bool {
+        each_abi(|abi| !self.contains(abi) || op(abi))
     }
 
     fn is_empty(&self) -> bool {
@@ -252,14 +267,28 @@ pub impl AbiSet {
     }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for Abi {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         self.index().iter_bytes(lsb0, f)
     }
 }
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for Abi {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
+        self.index().iter_bytes(lsb0, f)
+    }
+}
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for AbiSet {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        self.bits.iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for AbiSet {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         self.bits.iter_bytes(lsb0, f)
     }
 }

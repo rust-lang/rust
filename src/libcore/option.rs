@@ -101,8 +101,15 @@ impl<T: Copy + Add<T,T>> Add<Option<T>, Option<T>> for Option<T> {
 impl<T> BaseIter<T> for Option<T> {
     /// Performs an operation on the contained value by reference
     #[inline(always)]
+    #[cfg(stage0)]
     fn each<'a>(&'a self, f: &fn(x: &'a T) -> bool) {
         match *self { None => (), Some(ref t) => { f(t); } }
+    }
+    /// Performs an operation on the contained value by reference
+    #[inline(always)]
+    #[cfg(not(stage0))]
+    fn each<'a>(&'a self, f: &fn(x: &'a T) -> bool) -> bool {
+        match *self { None => true, Some(ref t) => { f(t) } }
     }
 
     #[inline(always)]
@@ -112,14 +119,25 @@ impl<T> BaseIter<T> for Option<T> {
 }
 
 impl<T> MutableIter<T> for Option<T> {
+    #[cfg(stage0)]
     #[inline(always)]
     fn each_mut<'a>(&'a mut self, f: &fn(&'a mut T) -> bool) {
         match *self { None => (), Some(ref mut t) => { f(t); } }
     }
+    #[cfg(not(stage0))]
+    #[inline(always)]
+    fn each_mut<'a>(&'a mut self, f: &fn(&'a mut T) -> bool) -> bool {
+        match *self { None => true, Some(ref mut t) => { f(t) } }
+    }
 }
 
 impl<A> ExtendedIter<A> for Option<A> {
+    #[cfg(stage0)]
     pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) {
+        old_iter::eachi(self, blk)
+    }
+    #[cfg(not(stage0))]
+    pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) -> bool {
         old_iter::eachi(self, blk)
     }
     pub fn all(&self, blk: &fn(&A) -> bool) -> bool {
