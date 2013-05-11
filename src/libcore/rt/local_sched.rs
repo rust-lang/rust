@@ -97,7 +97,10 @@ pub unsafe fn unsafe_borrow_io() -> *mut IoFactoryObject {
 }
 
 fn tls_key() -> tls::Key {
-    maybe_tls_key().get()
+    match maybe_tls_key() {
+        Some(key) => key,
+        None => abort!("runtime tls key not initialized")
+    }
 }
 
 fn maybe_tls_key() -> Option<tls::Key> {
