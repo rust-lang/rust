@@ -472,7 +472,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
         /*##################################################################*
          * Step 1. Get spawner's taskgroup info.
          *##################################################################*/
-        let mut spawner_group: @@mut TCB =
+        let spawner_group: @@mut TCB =
             match local_get(OldHandle(spawner), taskgroup_key!()) {
                 None => {
                     // Main task, doing first spawn ever. Lazily initialise
