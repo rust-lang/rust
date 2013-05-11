@@ -11,7 +11,6 @@
 /*! Condition handling */
 
 use prelude::*;
-use task;
 use local_data::{local_data_pop, local_data_set};
 
 // helper for transmutation, shown below.

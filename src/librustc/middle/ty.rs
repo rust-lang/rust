@@ -28,7 +28,8 @@ use util::ppaux::Repr;
 use util::common::{indenter};
 use util::enum_set::{EnumSet, CLike};
 
-use core;
+#[cfg(stage0)]
+use core; // NOTE: this can be removed after the next snapshot
 use core::ptr::to_unsafe_ptr;
 use core::to_bytes;
 use core::hashmap::{HashMap, HashSet};

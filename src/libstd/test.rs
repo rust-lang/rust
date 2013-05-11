@@ -412,7 +412,7 @@ fn run_tests(opts: &TestOpts,
              callback: @fn(e: TestEvent)) {
 
     let filtered_tests = filter_tests(opts, tests);
-    let filtered_descs = filtered_tests.map(|t| t.desc);
+    let filtered_descs = filtered_tests.map(|t| copy t.desc);
 
     callback(TeFiltered(filtered_descs));
 

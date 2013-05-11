@@ -43,7 +43,6 @@ fn main () {
 use int;
 use prelude::*;
 use str;
-use task;
 use u32;
 use uint;
 use util;
