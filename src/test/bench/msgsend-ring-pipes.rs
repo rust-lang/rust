@@ -43,8 +43,8 @@ fn thread_ring(i: uint,
     // Send/Receive lots of messages.
     for uint::range(0, count) |j| {
         //error!("task %?, iter %?", i, j);
-        let num_chan2 = replace(&mut num_chan, None);
-        let num_port2 = replace(&mut num_port, None);
+        let num_chan2 = util::replace(&mut num_chan, None);
+        let num_port2 = util::replace(&mut num_port, None);
         num_chan = Some(ring::client::num(num_chan2.unwrap(), i * j));
         let port = num_port2.unwrap();
         match recv(port) {
