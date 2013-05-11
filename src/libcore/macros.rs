@@ -11,7 +11,7 @@
 #[macro_escape];
 
 // Some basic logging
-macro_rules! rtdebug (
+macro_rules! rtdebug_ (
     ($( $arg:expr),+) => ( {
         dumb_println(fmt!( $($arg),+ ));
 
@@ -26,7 +26,7 @@ macro_rules! rtdebug (
 )
 
 // An alternate version with no output, for turning off logging
-macro_rules! rtdebug_ (
+macro_rules! rtdebug (
     ($( $arg:expr),+) => ( $(let _ = $arg)*; )
 )
 
