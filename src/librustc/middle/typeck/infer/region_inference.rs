@@ -560,8 +560,24 @@ enum Constraint {
     ConstrainVarSubReg(RegionVid, Region)
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for Constraint {
    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        match *self {
+          ConstrainVarSubVar(ref v0, ref v1) =>
+          to_bytes::iter_bytes_3(&0u8, v0, v1, lsb0, f),
+
+          ConstrainRegSubVar(ref ra, ref va) =>
+          to_bytes::iter_bytes_3(&1u8, ra, va, lsb0, f),
+
+          ConstrainVarSubReg(ref va, ref ra) =>
+          to_bytes::iter_bytes_3(&2u8, va, ra, lsb0, f)
+        }
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for Constraint {
+   fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
           ConstrainVarSubVar(ref v0, ref v1) =>
           to_bytes::iter_bytes_3(&0u8, v0, v1, lsb0, f),
@@ -1756,6 +1772,7 @@ pub impl RegionVarBindings {
         }
     }
 
+    #[cfg(stage0)]
     fn each_edge(&mut self,
                  graph: &Graph,
                  node_idx: RegionVid,
@@ -1770,6 +1787,23 @@ pub impl RegionVarBindings {
             }
             edge_idx = edge_ptr.next_edge[dir as uint];
         }
+    }
+    #[cfg(not(stage0))]
+    fn each_edge(&mut self,
+                 graph: &Graph,
+                 node_idx: RegionVid,
+                 dir: Direction,
+                 op: &fn(edge: &GraphEdge) -> bool) -> bool {
+        let mut edge_idx =
+            graph.nodes[node_idx.to_uint()].head_edge[dir as uint];
+        while edge_idx != uint::max_value {
+            let edge_ptr = &graph.edges[edge_idx];
+            if !op(edge_ptr) {
+                return false;
+            }
+            edge_idx = edge_ptr.next_edge[dir as uint];
+        }
+        return true;
     }
 }
 

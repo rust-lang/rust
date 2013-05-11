@@ -12,12 +12,13 @@
 
 use core::cmp::Eq;
 
-fn iter<T>(v: ~[T], it: &fn(&T) -> bool) {
+fn iter<T>(v: ~[T], it: &fn(&T) -> bool) -> bool {
     let mut i = 0u, l = v.len();
     while i < l {
-        if !it(&v[i]) { break; }
+        if !it(&v[i]) { return false; }
         i += 1u;
     }
+    return true;
 }
 
 fn find_pos<T:Eq + Copy + Clone>(n: T, h: ~[T]) -> Option<uint> {

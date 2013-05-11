@@ -40,11 +40,16 @@ much easier to implement.
 
 */
 
-use cmp::Ord;
-use option::{Option, Some, None};
+#[cfg(not(stage0))] use cmp::Ord;
+#[cfg(not(stage0))] use option::{Option, Some, None};
 
+#[cfg(stage0)]
 pub trait Times {
     fn times(&self, it: &fn() -> bool);
+}
+#[cfg(not(stage0))]
+pub trait Times {
+    fn times(&self, it: &fn() -> bool) -> bool;
 }
 
 /**
@@ -59,7 +64,8 @@ pub trait Times {
  * ~~~
  */
 #[inline(always)]
-pub fn to_vec<T>(iter: &fn(f: &fn(T) -> bool)) -> ~[T] {
+#[cfg(not(stage0))]
+pub fn to_vec<T>(iter: &fn(f: &fn(T) -> bool) -> bool) -> ~[T] {
     let mut v = ~[];
     for iter |x| { v.push(x) }
     v
@@ -77,13 +83,15 @@ pub fn to_vec<T>(iter: &fn(f: &fn(T) -> bool)) -> ~[T] {
  * ~~~~
  */
 #[inline(always)]
-pub fn any<T>(predicate: &fn(T) -> bool, iter: &fn(f: &fn(T) -> bool)) -> bool {
+#[cfg(not(stage0))]
+pub fn any<T>(predicate: &fn(T) -> bool,
+              iter: &fn(f: &fn(T) -> bool) -> bool) -> bool {
     for iter |x| {
         if predicate(x) {
-            return true
+            return true;
         }
     }
-    false
+    return false;
 }
 
 /**
@@ -97,13 +105,34 @@ pub fn any<T>(predicate: &fn(T) -> bool, iter: &fn(f: &fn(T) -> bool)) -> bool {
  * ~~~~
  */
 #[inline(always)]
-pub fn all<T>(predicate: &fn(T) -> bool, iter: &fn(f: &fn(T) -> bool)) -> bool {
+#[cfg(stage0)]
+pub fn all<T>(predicate: &fn(T) -> bool,
+              iter: &fn(f: &fn(T) -> bool)) -> bool {
     for iter |x| {
         if !predicate(x) {
-            return false
+            return false;
         }
     }
-    true
+    return true;
+}
+
+/**
+ * Return true if `predicate` is true for all values yielded by an internal iterator.
+ *
+ * # Example:
+ *
+ * ~~~~
+ * assert!(all(|&x: &uint| x < 6, |f| uint::range(1, 6, f)));
+ * assert!(!all(|&x: &uint| x < 5, |f| uint::range(1, 6, f)));
+ * ~~~~
+ */
+#[inline(always)]
+#[cfg(not(stage0))]
+pub fn all<T>(predicate: &fn(T) -> bool,
+              iter: &fn(f: &fn(T) -> bool) -> bool) -> bool {
+    // If we ever break, iter will return false, so this will only return true
+    // if predicate returns true for everything.
+    iter(|x| predicate(x))
 }
 
 /**
@@ -117,7 +146,9 @@ pub fn all<T>(predicate: &fn(T) -> bool, iter: &fn(f: &fn(T) -> bool)) -> bool {
  * ~~~~
  */
 #[inline(always)]
-pub fn find<T>(predicate: &fn(&T) -> bool, iter: &fn(f: &fn(T) -> bool)) -> Option<T> {
+#[cfg(not(stage0))]
+pub fn find<T>(predicate: &fn(&T) -> bool,
+               iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
     for iter |x| {
         if predicate(&x) {
             return Some(x);
@@ -137,7 +168,8 @@ pub fn find<T>(predicate: &fn(&T) -> bool, iter: &fn(f: &fn(T) -> bool)) -> Opti
  * ~~~~
  */
 #[inline]
-pub fn max<T: Ord>(iter: &fn(f: &fn(T) -> bool)) -> Option<T> {
+#[cfg(not(stage0))]
+pub fn max<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
     let mut result = None;
     for iter |x| {
         match result {
@@ -163,7 +195,8 @@ pub fn max<T: Ord>(iter: &fn(f: &fn(T) -> bool)) -> Option<T> {
  * ~~~~
  */
 #[inline]
-pub fn min<T: Ord>(iter: &fn(f: &fn(T) -> bool)) -> Option<T> {
+#[cfg(not(stage0))]
+pub fn min<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
     let mut result = None;
     for iter |x| {
         match result {

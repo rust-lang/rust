@@ -18,7 +18,7 @@ fn add_int(x: &mut Ints, v: int) {
     x.values <-> values;
 }
 
-fn iter_ints(x: &Ints, f: &fn(x: &int) -> bool) {
+fn iter_ints(x: &Ints, f: &fn(x: &int) -> bool) -> bool {
     let l = x.values.len();
     uint::range(0, l, |i| f(&x.values[i]))
 }

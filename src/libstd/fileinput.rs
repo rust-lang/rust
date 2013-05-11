@@ -256,9 +256,20 @@ impl FileInput {
     (line numbers and file names, see documentation for
     `FileInputState`). Otherwise identical to `lines_each`.
     */
+    #[cfg(stage0)]
     pub fn each_line_state(&self,
                             f: &fn(&str, FileInputState) -> bool) {
          self.each_line(|line| f(line, copy self.fi.state));
+    }
+    /**
+    Apply `f` to each line successively, along with some state
+    (line numbers and file names, see documentation for
+    `FileInputState`). Otherwise identical to `lines_each`.
+    */
+    #[cfg(not(stage0))]
+    pub fn each_line_state(&self,
+                            f: &fn(&str, FileInputState) -> bool) -> bool {
+         self.each_line(|line| f(line, copy self.fi.state))
     }
 
 
@@ -367,9 +378,21 @@ reading from `stdin`).
 
 Fails when attempting to read from a file that can't be opened.
 */
+#[cfg(stage0)]
 pub fn input(f: &fn(&str) -> bool) {
     let mut i = FileInput::from_args();
     i.each_line(f);
+}
+/**
+Iterate directly over the command line arguments (no arguments implies
+reading from `stdin`).
+
+Fails when attempting to read from a file that can't be opened.
+*/
+#[cfg(not(stage0))]
+pub fn input(f: &fn(&str) -> bool) -> bool {
+    let mut i = FileInput::from_args();
+    i.each_line(f)
 }
 
 /**
@@ -379,9 +402,22 @@ provided at each call.
 
 Fails when attempting to read from a file that can't be opened.
 */
+#[cfg(stage0)]
 pub fn input_state(f: &fn(&str, FileInputState) -> bool) {
     let mut i = FileInput::from_args();
     i.each_line_state(f);
+}
+/**
+Iterate directly over the command line arguments (no arguments
+implies reading from `stdin`) with the current state of the iteration
+provided at each call.
+
+Fails when attempting to read from a file that can't be opened.
+*/
+#[cfg(not(stage0))]
+pub fn input_state(f: &fn(&str, FileInputState) -> bool) -> bool {
+    let mut i = FileInput::from_args();
+    i.each_line_state(f)
 }
 
 /**
@@ -389,9 +425,20 @@ Iterate over a vector of files (an empty vector implies just `stdin`).
 
 Fails when attempting to read from a file that can't be opened.
 */
+#[cfg(stage0)]
 pub fn input_vec(files: ~[Option<Path>], f: &fn(&str) -> bool) {
     let mut i = FileInput::from_vec(files);
     i.each_line(f);
+}
+/**
+Iterate over a vector of files (an empty vector implies just `stdin`).
+
+Fails when attempting to read from a file that can't be opened.
+*/
+#[cfg(not(stage0))]
+pub fn input_vec(files: ~[Option<Path>], f: &fn(&str) -> bool) -> bool {
+    let mut i = FileInput::from_vec(files);
+    i.each_line(f)
 }
 
 /**
@@ -400,10 +447,23 @@ with the current state of the iteration provided at each call.
 
 Fails when attempting to read from a file that can't be opened.
 */
+#[cfg(stage0)]
 pub fn input_vec_state(files: ~[Option<Path>],
                        f: &fn(&str, FileInputState) -> bool) {
     let mut i = FileInput::from_vec(files);
     i.each_line_state(f);
+}
+/**
+Iterate over a vector of files (an empty vector implies just `stdin`)
+with the current state of the iteration provided at each call.
+
+Fails when attempting to read from a file that can't be opened.
+*/
+#[cfg(not(stage0))]
+pub fn input_vec_state(files: ~[Option<Path>],
+                       f: &fn(&str, FileInputState) -> bool) -> bool {
+    let mut i = FileInput::from_vec(files);
+    i.each_line_state(f)
 }
 
 #[cfg(test)]

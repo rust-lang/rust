@@ -143,6 +143,7 @@ pub impl BigBitv {
     }
 
     #[inline(always)]
+    #[cfg(stage0)]
     fn each_storage(&mut self, op: &fn(v: &mut uint) -> bool) {
         for uint::range(0, self.storage.len()) |i| {
             let mut w = self.storage[i];
@@ -150,7 +151,12 @@ pub impl BigBitv {
             self.storage[i] = w;
             if !b { break; }
         }
-     }
+    }
+    #[inline(always)]
+    #[cfg(not(stage0))]
+    fn each_storage(&mut self, op: &fn(v: &mut uint) -> bool) -> bool {
+        uint::range(0, self.storage.len(), |i| op(&mut self.storage[i]))
+    }
 
     #[inline(always)]
     fn invert(&mut self) { for self.each_storage |w| { *w = !*w } }
@@ -193,6 +199,7 @@ pub impl BigBitv {
     }
 
     #[inline(always)]
+    #[cfg(stage0)]
     fn equals(&self, b: &BigBitv, nbits: uint) -> bool {
         let len = b.storage.len();
         for uint::iterate(0, len) |i| {
@@ -201,6 +208,19 @@ pub impl BigBitv {
                 return false;
             }
         }
+    }
+
+    #[inline(always)]
+    #[cfg(not(stage0))]
+    fn equals(&self, b: &BigBitv, nbits: uint) -> bool {
+        let len = b.storage.len();
+        for uint::iterate(0, len) |i| {
+            let mask = big_mask(nbits, i);
+            if mask & self.storage[i] != mask & b.storage[i] {
+                return false;
+            }
+        }
+        return true;
     }
 
 }
@@ -387,12 +407,23 @@ pub impl Bitv {
     }
 
     #[inline(always)]
+    #[cfg(stage0)]
     fn each(&self, f: &fn(bool) -> bool) {
         let mut i = 0;
         while i < self.nbits {
             if !f(self.get(i)) { break; }
             i += 1;
         }
+    }
+    #[inline(always)]
+    #[cfg(not(stage0))]
+    fn each(&self, f: &fn(bool) -> bool) -> bool {
+        let mut i = 0;
+        while i < self.nbits {
+            if !f(self.get(i)) { return false; }
+            i += 1;
+        }
+        return true;
     }
 
     /// Returns true if all bits are 0
@@ -488,12 +519,17 @@ pub impl Bitv {
         true
     }
 
+    #[cfg(stage0)]
     fn ones(&self, f: &fn(uint) -> bool) {
         for uint::range(0, self.nbits) |i| {
             if self.get(i) {
                 if !f(i) { break }
             }
         }
+    }
+    #[cfg(not(stage0))]
+    fn ones(&self, f: &fn(uint) -> bool) -> bool {
+        uint::range(0, self.nbits, |i| !self.get(i) || f(i))
     }
 
 }
@@ -661,18 +697,21 @@ pub impl BitvSet {
     }
 }
 
+#[cfg(not(stage0))]
 impl BaseIter<uint> for BitvSet {
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 
-    fn each(&self, blk: &fn(v: &uint) -> bool) {
+    fn each(&self, blk: &fn(v: &uint) -> bool) -> bool {
         for self.bitv.storage.eachi |i, &w| {
             if !iterate_bits(i * uint::bits, w, |b| blk(&b)) {
-                return;
+                return false;
             }
         }
+        return true;
     }
 }
 
+#[cfg(not(stage0))]
 impl cmp::Eq for BitvSet {
     fn eq(&self, other: &BitvSet) -> bool {
         if self.size != other.size {
@@ -706,6 +745,7 @@ impl Mutable for BitvSet {
     }
 }
 
+#[cfg(not(stage0))]
 impl Set<uint> for BitvSet {
     fn contains(&self, value: &uint) -> bool {
         *value < self.bitv.storage.len() * uint::bits && self.bitv.get(*value)
@@ -773,64 +813,55 @@ impl Set<uint> for BitvSet {
         other.is_subset(self)
     }
 
-    fn difference(&self, other: &BitvSet, f: &fn(&uint) -> bool) {
+    fn difference(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
         for self.each_common(other) |i, w1, w2| {
             if !iterate_bits(i, w1 & !w2, |b| f(&b)) {
-                return;
+                return false;
             }
         }
         /* everything we have that they don't also shows up */
         self.each_outlier(other, |mine, i, w|
             !mine || iterate_bits(i, w, |b| f(&b))
-        );
+        )
     }
 
     fn symmetric_difference(&self, other: &BitvSet,
-                                 f: &fn(&uint) -> bool) {
+                            f: &fn(&uint) -> bool) -> bool {
         for self.each_common(other) |i, w1, w2| {
             if !iterate_bits(i, w1 ^ w2, |b| f(&b)) {
-                return;
+                return false;
             }
         }
-        self.each_outlier(other, |_, i, w|
-            iterate_bits(i, w, |b| f(&b))
-        );
+        self.each_outlier(other, |_, i, w| iterate_bits(i, w, |b| f(&b)))
     }
 
-    fn intersection(&self, other: &BitvSet, f: &fn(&uint) -> bool) {
-        for self.each_common(other) |i, w1, w2| {
-            if !iterate_bits(i, w1 & w2, |b| f(&b)) {
-                return;
-            }
-        }
+    fn intersection(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
+        self.each_common(other, |i, w1, w2| iterate_bits(i, w1 & w2, |b| f(&b)))
     }
 
-    fn union(&self, other: &BitvSet, f: &fn(&uint) -> bool) {
+    fn union(&self, other: &BitvSet, f: &fn(&uint) -> bool) -> bool {
         for self.each_common(other) |i, w1, w2| {
             if !iterate_bits(i, w1 | w2, |b| f(&b)) {
-                return;
+                return false;
             }
         }
-        self.each_outlier(other, |_, i, w|
-            iterate_bits(i, w, |b| f(&b))
-        );
+        self.each_outlier(other, |_, i, w| iterate_bits(i, w, |b| f(&b)))
     }
 }
 
+#[cfg(not(stage0))]
 priv impl BitvSet {
     /// Visits each of the words that the two bit vectors (self and other)
     /// both have in common. The three yielded arguments are (bit location,
     /// w1, w2) where the bit location is the number of bits offset so far,
     /// and w1/w2 are the words coming from the two vectors self, other.
     fn each_common(&self, other: &BitvSet,
-                        f: &fn(uint, uint, uint) -> bool) {
+                   f: &fn(uint, uint, uint) -> bool) -> bool {
         let min = uint::min(self.bitv.storage.len(),
                             other.bitv.storage.len());
-        for self.bitv.storage.slice(0, min).eachi |i, &w| {
-            if !f(i * uint::bits, w, other.bitv.storage[i]) {
-                return;
-            }
-        }
+        self.bitv.storage.slice(0, min).eachi(|i, &w| {
+            f(i * uint::bits, w, other.bitv.storage[i])
+        })
     }
 
     /// Visits each word in self or other that extends beyond the other. This
@@ -841,7 +872,7 @@ priv impl BitvSet {
     /// is true if the word comes from 'self', and false if it comes from
     /// 'other'.
     fn each_outlier(&self, other: &BitvSet,
-                         f: &fn(bool, uint, uint) -> bool) {
+                    f: &fn(bool, uint, uint) -> bool) -> bool {
         let len1 = self.bitv.storage.len();
         let len2 = other.bitv.storage.len();
         let min = uint::min(len1, len2);
@@ -849,14 +880,15 @@ priv impl BitvSet {
         /* only one of these loops will execute and that's the point */
         for self.bitv.storage.slice(min, len1).eachi |i, &w| {
             if !f(true, (i + min) * uint::bits, w) {
-                return;
+                return false;
             }
         }
         for other.bitv.storage.slice(min, len2).eachi |i, &w| {
             if !f(false, (i + min) * uint::bits, w) {
-                return;
+                return false;
             }
         }
+        return true;
     }
 }
 

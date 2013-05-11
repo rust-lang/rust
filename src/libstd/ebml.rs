@@ -200,6 +200,7 @@ pub mod reader {
         }
     }
 
+    #[cfg(stage0)]
     pub fn docs(d: Doc, it: &fn(uint, Doc) -> bool) {
         let mut pos = d.start;
         while pos < d.end {
@@ -212,7 +213,22 @@ pub mod reader {
             }
         }
     }
+    #[cfg(not(stage0))]
+    pub fn docs(d: Doc, it: &fn(uint, Doc) -> bool) -> bool {
+        let mut pos = d.start;
+        while pos < d.end {
+            let elt_tag = vuint_at(*d.data, pos);
+            let elt_size = vuint_at(*d.data, elt_tag.next);
+            pos = elt_size.next + elt_size.val;
+            let doc = Doc { data: d.data, start: elt_size.next, end: pos };
+            if !it(elt_tag.val, doc) {
+                return false;
+            }
+        }
+        return true;
+    }
 
+    #[cfg(stage0)]
     pub fn tagged_docs(d: Doc, tg: uint, it: &fn(Doc) -> bool) {
         let mut pos = d.start;
         while pos < d.end {
@@ -227,6 +243,23 @@ pub mod reader {
                 }
             }
         }
+    }
+    #[cfg(not(stage0))]
+    pub fn tagged_docs(d: Doc, tg: uint, it: &fn(Doc) -> bool) -> bool {
+        let mut pos = d.start;
+        while pos < d.end {
+            let elt_tag = vuint_at(*d.data, pos);
+            let elt_size = vuint_at(*d.data, elt_tag.next);
+            pos = elt_size.next + elt_size.val;
+            if elt_tag.val == tg {
+                let doc = Doc { data: d.data, start: elt_size.next,
+                                end: pos };
+                if !it(doc) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     pub fn doc_data(d: Doc) -> ~[u8] {

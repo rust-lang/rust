@@ -155,8 +155,15 @@ pub impl DatumMode {
     }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for DatumMode {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (*self as uint).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for DatumMode {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as uint).iter_bytes(lsb0, f)
     }
 }
