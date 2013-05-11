@@ -363,6 +363,47 @@ fn encode_path(ecx: @EncodeContext,
     ebml_w.end_tag();
 }
 
+fn encode_reexported_static_method(ecx: @EncodeContext,
+                                   ebml_w: &mut writer::Encoder,
+                                   exp: &middle::resolve::Export2,
+                                   m: @ty::method) {
+    debug!("(encode static trait method) reexport '%s::%s'",
+            *exp.name, *ecx.tcx.sess.str_of(m.ident));
+    ebml_w.start_tag(tag_items_data_item_reexport);
+    ebml_w.start_tag(tag_items_data_item_reexport_def_id);
+    ebml_w.wr_str(def_to_str(m.def_id));
+    ebml_w.end_tag();
+    ebml_w.start_tag(tag_items_data_item_reexport_name);
+    ebml_w.wr_str(*exp.name + "::" + *ecx.tcx.sess.str_of(m.ident));
+    ebml_w.end_tag();
+    ebml_w.end_tag();
+}
+
+fn encode_reexported_static_methods(ecx: @EncodeContext,
+                                    ebml_w: &mut writer::Encoder,
+                                    mod_path: &[ast_map::path_elt],
+                                    exp: &middle::resolve::Export2) {
+    match ecx.tcx.trait_methods_cache.find(&exp.def_id) {
+        Some(methods) => {
+            match ecx.tcx.items.find(&exp.def_id.node) {
+                Some(&ast_map::node_item(_, path)) => {
+                    if mod_path != *path {
+                        for methods.each |&m| {
+                            if m.self_ty  == ast::sty_static {
+                                encode_reexported_static_method(ecx,
+                                                                ebml_w,
+                                                                exp, m);
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        _ => {}
+    }
+}
+
 fn encode_info_for_mod(ecx: @EncodeContext,
                        ebml_w: &mut writer::Encoder,
                        md: &_mod,
@@ -413,6 +454,7 @@ fn encode_info_for_mod(ecx: @EncodeContext,
                 ebml_w.wr_str(*exp.name);
                 ebml_w.end_tag();
                 ebml_w.end_tag();
+                encode_reexported_static_methods(ecx, ebml_w, path, exp);
             }
         }
         None => {
