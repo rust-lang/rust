@@ -72,6 +72,24 @@ impl<A:ToStr+Hash+Eq, B:ToStr+Hash+Eq> ToStr for HashMap<A, B> {
     }
 }
 
+impl<A:ToStr+Hash+Eq> ToStr for HashSet<A> {
+    #[inline(always)]
+    fn to_str(&self) -> ~str {
+    let mut acc = ~"{", first = true;
+    for self.each |element| {
+        if first {
+            first = false;
+        }
+        else {
+            acc.push_str(", ");
+        }
+        acc.push_str(element.to_str());
+    }
+    acc.push_char('}');
+    acc
+    }
+}
+
 impl<A:ToStr,B:ToStr> ToStr for (A, B) {
     #[inline(always)]
     fn to_str(&self) -> ~str {
