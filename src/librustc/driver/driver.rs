@@ -182,15 +182,15 @@ pub fn compile_rest(sess: Session,
     *sess.building_library = session::building_library(
         sess.opts.crate_type, crate, sess.opts.test);
 
+    crate = time(time_passes, ~"expansion", ||
+        syntax::ext::expand::expand_crate(sess.parse_sess, copy cfg,
+                                          crate));
+
     crate = time(time_passes, ~"configuration", ||
         front::config::strip_unconfigured_items(crate));
 
     crate = time(time_passes, ~"maybe building test harness", ||
         front::test::modify_for_testing(sess, crate));
-
-    crate = time(time_passes, ~"expansion", ||
-        syntax::ext::expand::expand_crate(sess.parse_sess, copy cfg,
-                                          crate));
 
     if upto == cu_expand { return (crate, None); }
 
