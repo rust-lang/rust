@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct X {
-    x: ~str,
+#[deriving(Eq)]
+struct A { x: uint }
+
+impl Drop for A {
+    fn finalize(&self) {}
 }
 
-impl Drop for X {
-    fn finalize(&self) {
-        error!("value: %s", self.x);
-    }
-}
-
-fn unwrap(x: X) -> ~str {
-    let X { x: y } = x; //~ ERROR deconstructing struct not allowed in pattern
-    y
-}
-
-fn main() {
-    let x = X { x: ~"hello" };
-    let y = unwrap(x);
-    error!("contents: %s", y);
-}
+fn main() {}
