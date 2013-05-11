@@ -209,4 +209,18 @@ mod tests {
         assert!(table_str == ~"{1: 2, 3: 4}" || table_str == ~"{3: 4, 1: 2}");
         assert!(empty.to_str() == ~"{}");
     }
+
+    #[test]
+    fn test_hashset() {
+        let mut set: HashSet<int, int> = HashSet::new();
+        let empty_set: HashSet<int, int> = HashSet::new();
+
+        set.insert(1);
+        set.insert(2);
+
+        let set_str = set.to_str();
+
+        assert!(set_str == ~"{1, 2}" || set_str == ~"{2, 1}");
+        assert!(empty.to_str() == ~"{}");
+    }
 }
