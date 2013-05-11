@@ -78,21 +78,21 @@ pub fn from_bytes_slice<'a>(vector: &'a [u8]) -> &'a str {
 
 /// Copy a slice into a new unique str
 #[inline(always)]
-pub fn from_slice(s: &str) -> ~str {
+pub fn to_owned(s: &str) -> ~str {
     unsafe { raw::slice_bytes_owned(s, 0, len(s)) }
 }
 
 impl ToStr for ~str {
     #[inline(always)]
-    fn to_str(&self) -> ~str { from_slice(*self) }
+    fn to_str(&self) -> ~str { to_owned(*self) }
 }
 impl<'self> ToStr for &'self str {
     #[inline(always)]
-    fn to_str(&self) -> ~str { from_slice(*self) }
+    fn to_str(&self) -> ~str { to_owned(*self) }
 }
 impl ToStr for @str {
     #[inline(always)]
-    fn to_str(&self) -> ~str { from_slice(*self) }
+    fn to_str(&self) -> ~str { to_owned(*self) }
 }
 
 /**
@@ -511,7 +511,7 @@ Section: Transforming strings
  */
 pub fn to_bytes(s: &str) -> ~[u8] {
     unsafe {
-        let mut v: ~[u8] = ::cast::transmute(from_slice(s));
+        let mut v: ~[u8] = ::cast::transmute(to_owned(s));
         vec::raw::set_len(&mut v, len(s));
         v
     }
@@ -2438,7 +2438,7 @@ pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
         // NB: len includes the trailing null.
         assert!(len > 0);
         if unsafe { *(ptr::offset(buf,len-1)) != 0 } {
-            as_c_str(from_slice(s), f)
+            as_c_str(to_owned(s), f)
         } else {
             f(buf as *libc::c_char)
         }
@@ -3069,7 +3069,7 @@ impl<'self> StrSlice<'self> for &'self str {
 
 
     #[inline]
-    fn to_owned(&self) -> ~str { from_slice(*self) }
+    fn to_owned(&self) -> ~str { to_owned(*self) }
 
     #[inline]
     fn to_managed(&self) -> @str {
@@ -3109,7 +3109,7 @@ impl OwnedStr for ~str {
 impl Clone for ~str {
     #[inline(always)]
     fn clone(&self) -> ~str {
-        from_slice(*self)
+        to_owned(*self)
     }
 }
 

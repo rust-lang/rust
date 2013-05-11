@@ -192,7 +192,7 @@ fn do_command(command: &Command, args: &[~str]) -> ValidUsage {
             let (prog, prog_args) = (words.head(), words.tail());
             let exitstatus = run::run_program(
                 *prog,
-                vec::append(vec::from_slice(prog_args), args)
+                vec::append(vec::to_owned(prog_args), args)
             );
             os::set_exit_status(exitstatus);
             Valid

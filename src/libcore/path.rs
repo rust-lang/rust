@@ -506,7 +506,7 @@ impl GenericPath for PosixPath {
     fn with_filestem(&self, s: &str) -> PosixPath {
         match self.filetype() {
           None => self.with_filename(s),
-          Some(ref t) => self.with_filename(str::from_slice(s) + *t)
+          Some(ref t) => self.with_filename(str::to_owned(s) + *t)
         }
     }
 
@@ -517,7 +517,7 @@ impl GenericPath for PosixPath {
               Some(ref s) => self.with_filename(*s)
             }
         } else {
-            let t = ~"." + str::from_slice(t);
+            let t = ~"." + str::to_owned(t);
             match self.filestem() {
               None => self.with_filename(t),
               Some(ref s) => self.with_filename(*s + t)
@@ -650,7 +650,7 @@ impl GenericPath for WindowsPath {
               None => {
                 host = None;
                 device = None;
-                rest = str::from_slice(s);
+                rest = str::to_owned(s);
               }
             }
           }
@@ -723,7 +723,7 @@ impl GenericPath for WindowsPath {
     fn with_filestem(&self, s: &str) -> WindowsPath {
         match self.filetype() {
           None => self.with_filename(s),
-          Some(ref t) => self.with_filename(str::from_slice(s) + *t)
+          Some(ref t) => self.with_filename(str::to_owned(s) + *t)
         }
     }
 
@@ -734,7 +734,7 @@ impl GenericPath for WindowsPath {
               Some(ref s) => self.with_filename(*s)
             }
         } else {
-            let t = ~"." + str::from_slice(t);
+            let t = ~"." + str::to_owned(t);
             match self.filestem() {
               None => self.with_filename(t),
               Some(ref s) =>
@@ -985,7 +985,7 @@ mod tests {
     fn test_posix_paths() {
         fn t(wp: &PosixPath, s: &str) {
             let ss = wp.to_str();
-            let sss = str::from_slice(s);
+            let sss = str::to_owned(s);
             if (ss != sss) {
                 debug!("got %s", ss);
                 debug!("expected %s", sss);
@@ -1043,7 +1043,7 @@ mod tests {
     fn test_normalize() {
         fn t(wp: &PosixPath, s: &str) {
             let ss = wp.to_str();
-            let sss = str::from_slice(s);
+            let sss = str::to_owned(s);
             if (ss != sss) {
                 debug!("got %s", ss);
                 debug!("expected %s", sss);
@@ -1106,7 +1106,7 @@ mod tests {
     fn test_windows_paths() {
         fn t(wp: &WindowsPath, s: &str) {
             let ss = wp.to_str();
-            let sss = str::from_slice(s);
+            let sss = str::to_owned(s);
             if (ss != sss) {
                 debug!("got %s", ss);
                 debug!("expected %s", sss);

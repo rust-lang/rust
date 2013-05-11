@@ -101,7 +101,7 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
     @FileSearchImpl {
         sysroot: sysroot,
         addl_lib_search_paths: addl_lib_search_paths,
-        target_triple: str::from_slice(target_triple)
+        target_triple: str::to_owned(target_triple)
     } as @FileSearch
 }
 
@@ -127,7 +127,7 @@ pub fn search<T:Copy>(filesearch: @FileSearch, pick: pick<T>) -> Option<T> {
 
 pub fn relative_target_lib_path(target_triple: &str) -> Path {
     Path(libdir()).push_many([~"rustc",
-                              str::from_slice(target_triple),
+                              str::to_owned(target_triple),
                               libdir()])
 }
 

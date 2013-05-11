@@ -396,8 +396,8 @@ fn dup2(src: c_int, dst: c_int) -> c_int {
 
 
 pub fn dll_filename(base: &str) -> ~str {
-    return str::from_slice(DLL_PREFIX) + str::from_slice(base) +
-           str::from_slice(DLL_SUFFIX)
+    return str::to_owned(DLL_PREFIX) + str::to_owned(base) +
+           str::to_owned(DLL_SUFFIX)
 }
 
 

@@ -22,7 +22,7 @@ pub fn expand_syntax_ext(cx: @ext_ctxt,
     cx.print_backtrace();
     io::stdout().write_line(
         print::pprust::tt_to_str(
-            ast::tt_delim(vec::from_slice(tt)),
+            ast::tt_delim(vec::to_owned(tt)),
             cx.parse_sess().interner));
 
     //trivial expression

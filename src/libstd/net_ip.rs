@@ -225,7 +225,7 @@ pub mod v4 {
             let input_is_inaddr_none =
                 result::get(&ip_rep_result).as_u32() == INADDR_NONE;
 
-            let new_addr = uv_ip4_addr(str::from_slice(ip), 22);
+            let new_addr = uv_ip4_addr(str::to_owned(ip), 22);
             let reformatted_name = uv_ip4_name(&new_addr);
             debug!("try_parse_addr: input ip: %s reparsed ip: %s",
                             ip, reformatted_name);
@@ -278,7 +278,7 @@ pub mod v6 {
     pub fn try_parse_addr(ip: &str) -> result::Result<IpAddr,ParseAddrErr> {
         unsafe {
             // need to figure out how to establish a parse failure..
-            let new_addr = uv_ip6_addr(str::from_slice(ip), 22);
+            let new_addr = uv_ip6_addr(str::to_owned(ip), 22);
             let reparsed_name = uv_ip6_name(&new_addr);
             debug!("v6::try_parse_addr ip: '%s' reparsed '%s'",
                             ip, reparsed_name);
