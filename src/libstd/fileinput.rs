@@ -389,7 +389,7 @@ Fails when attempting to read from a file that can't be opened.
 */
 #[cfg(not(stage0))]
 pub fn input(f: &fn(&str) -> bool) -> bool {
-    let mut i = FileInput::from_args();
+    let i = FileInput::from_args();
     i.each_line(f)
 }
 
@@ -413,7 +413,7 @@ Fails when attempting to read from a file that can't be opened.
 */
 #[cfg(not(stage0))]
 pub fn input_state(f: &fn(&str, FileInputState) -> bool) -> bool {
-    let mut i = FileInput::from_args();
+    let i = FileInput::from_args();
     i.each_line_state(f)
 }
 
@@ -433,7 +433,7 @@ Fails when attempting to read from a file that can't be opened.
 */
 #[cfg(not(stage0))]
 pub fn input_vec(files: ~[Option<Path>], f: &fn(&str) -> bool) -> bool {
-    let mut i = FileInput::from_vec(files);
+    let i = FileInput::from_vec(files);
     i.each_line(f)
 }
 
@@ -457,7 +457,7 @@ Fails when attempting to read from a file that can't be opened.
 #[cfg(not(stage0))]
 pub fn input_vec_state(files: ~[Option<Path>],
                        f: &fn(&str, FileInputState) -> bool) -> bool {
-    let mut i = FileInput::from_vec(files);
+    let i = FileInput::from_vec(files);
     i.each_line_state(f)
 }
 

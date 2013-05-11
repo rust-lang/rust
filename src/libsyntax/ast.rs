@@ -16,7 +16,6 @@ use opt_vec::OptVec;
 
 use core::cast;
 use core::option::{None, Option, Some};
-use core::task;
 use core::to_bytes;
 use core::to_str::ToStr;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
