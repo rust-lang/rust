@@ -15,7 +15,9 @@ The `ToStr` trait for converting to strings
 */
 
 use str;
+use str::OwnedStr;
 use hashmap::HashMap;
+use hashmap::HashSet;
 use container::Map;
 use hash::Hash;
 use cmp::Eq;
@@ -59,13 +61,13 @@ impl<A:ToStr+Hash+Eq, B:ToStr+Hash+Eq> ToStr for HashMap<A, B> {
                 first = false;
             }
             else {
-                str::push_str(&mut acc, ~", ");
+                acc.push_str(", ");
             }
-            str::push_str(&mut acc, key.to_str());
-            str::push_str(&mut acc, ~" : ");
-            str::push_str(&mut acc, value.to_str());
+            acc.push_str(key.to_str());
+            acc.push_str(": ");
+            acc.push_str(value.to_str());
         }
-        str::push_char(&mut acc, '}');
+        acc.push_char('}');
         acc
     }
 }
@@ -82,6 +84,7 @@ impl<A:ToStr,B:ToStr> ToStr for (A, B) {
         }
     }
 }
+
 impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
     #[inline(always)]
     fn to_str(&self) -> ~str {
@@ -185,7 +188,7 @@ mod tests {
 
         let table_str = table.to_str();
 
-        assert!(table_str == ~"{1 : 2, 3 : 4}" || table_str == ~"{3 : 4, 1 : 2}");
+        assert!(table_str == ~"{1: 2, 3: 4}" || table_str == ~"{3: 4, 1: 2}");
         assert!(empty.to_str() == ~"{}");
     }
 }
