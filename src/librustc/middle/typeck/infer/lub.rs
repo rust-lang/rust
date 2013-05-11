@@ -149,7 +149,7 @@ impl Combine for Lub {
                                               a_isr, r));
         return Ok(sig1);
 
-        fn generalize_region(self: &Lub,
+        fn generalize_region(this: &Lub,
                              snapshot: uint,
                              new_vars: &[RegionVid],
                              a_isr: isr_alist,
@@ -160,7 +160,7 @@ impl Combine for Lub {
                 return r0;
             }
 
-            let tainted = self.infcx.region_vars.tainted(snapshot, r0);
+            let tainted = this.infcx.region_vars.tainted(snapshot, r0);
 
             // Variables created during LUB computation which are
             // *related* to regions that pre-date the LUB computation
@@ -187,8 +187,8 @@ impl Combine for Lub {
                 }
             }
 
-            self.infcx.tcx.sess.span_bug(
-                self.span,
+            this.infcx.tcx.sess.span_bug(
+                this.span,
                 fmt!("Region %? is not associated with \
                       any bound region from A!", r0));
         }

@@ -60,6 +60,7 @@ pub enum ObsoleteSyntax {
     ObsoleteStaticMethod,
     ObsoleteConstItem,
     ObsoleteFixedLengthVectorType,
+    ObsoleteNamedExternModule,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -211,6 +212,11 @@ pub impl Parser {
             ObsoleteFixedLengthVectorType => (
                 "fixed-length vector notation",
                 "instead of `[T * N]`, write `[T, ..N]`"
+            ),
+            ObsoleteNamedExternModule => (
+                "named external module",
+                "instead of `extern mod foo { ... }`, write `mod foo { \
+                 extern { ... } }`"
             ),
         };
 

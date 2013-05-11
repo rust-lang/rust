@@ -370,7 +370,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                           });
     }
 
-    fn ty_method_of_trait_method(self: &CrateCtxt,
+    fn ty_method_of_trait_method(this: &CrateCtxt,
                                  trait_id: ast::node_id,
                                  trait_rp: Option<ty::region_variance>,
                                  trait_generics: &ast::Generics,
@@ -381,15 +381,15 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                                  m_purity: &ast::purity,
                                  m_decl: &ast::fn_decl) -> ty::method
     {
-        let trait_self_ty = ty::mk_self(self.tcx, local_def(trait_id));
+        let trait_self_ty = ty::mk_self(this.tcx, local_def(trait_id));
         let rscope = MethodRscope::new(m_self_ty.node, trait_rp, trait_generics);
         let (transformed_self_ty, fty) =
-            astconv::ty_of_method(self, &rscope, *m_purity, &m_generics.lifetimes,
+            astconv::ty_of_method(this, &rscope, *m_purity, &m_generics.lifetimes,
                                   trait_self_ty, *m_self_ty, m_decl);
         let num_trait_type_params = trait_generics.ty_params.len();
         ty::method {
             ident: *m_ident,
-            generics: ty_generics(self, None, m_generics, num_trait_type_params),
+            generics: ty_generics(this, None, m_generics, num_trait_type_params),
             transformed_self_ty: transformed_self_ty,
             fty: fty,
             self_ty: m_self_ty.node,

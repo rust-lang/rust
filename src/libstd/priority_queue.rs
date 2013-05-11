@@ -13,7 +13,7 @@
 use core::old_iter::BaseIter;
 
 #[abi = "rust-intrinsic"]
-extern "rust-intrinsic" mod rusti {
+extern "rust-intrinsic" {
     fn move_val_init<T>(dst: &mut T, src: T);
     fn init<T>() -> T;
     #[cfg(not(stage0))]
@@ -142,15 +142,15 @@ pub impl <T:Ord> PriorityQueue<T> {
             while pos > start {
                 let parent = (pos - 1) >> 1;
                 if new > self.data[parent] {
-                    let mut x = rusti::uninit();
+                    let mut x = uninit();
                     x <-> self.data[parent];
-                    rusti::move_val_init(&mut self.data[pos], x);
+                    move_val_init(&mut self.data[pos], x);
                     pos = parent;
                     loop
                 }
                 break
             }
-            rusti::move_val_init(&mut self.data[pos], new);
+            move_val_init(&mut self.data[pos], new);
         }
     }
 
@@ -162,15 +162,15 @@ pub impl <T:Ord> PriorityQueue<T> {
             while pos > start {
                 let parent = (pos - 1) >> 1;
                 if new > self.data[parent] {
-                    let mut x = rusti::init();
+                    let mut x = init();
                     x <-> self.data[parent];
-                    rusti::move_val_init(&mut self.data[pos], x);
+                    move_val_init(&mut self.data[pos], x);
                     pos = parent;
                     loop
                 }
                 break
             }
-            rusti::move_val_init(&mut self.data[pos], new);
+            move_val_init(&mut self.data[pos], new);
         }
     }
 
@@ -187,14 +187,14 @@ pub impl <T:Ord> PriorityQueue<T> {
                 if right < end && !(self.data[child] > self.data[right]) {
                     child = right;
                 }
-                let mut x = rusti::uninit();
+                let mut x = uninit();
                 x <-> self.data[child];
-                rusti::move_val_init(&mut self.data[pos], x);
+                move_val_init(&mut self.data[pos], x);
                 pos = child;
                 child = 2 * pos + 1;
             }
 
-            rusti::move_val_init(&mut self.data[pos], new);
+            move_val_init(&mut self.data[pos], new);
             self.siftup(start, pos);
         }
     }
@@ -211,14 +211,14 @@ pub impl <T:Ord> PriorityQueue<T> {
                 if right < end && !(self.data[child] > self.data[right]) {
                     child = right;
                 }
-                let mut x = rusti::init();
+                let mut x = init();
                 x <-> self.data[child];
-                rusti::move_val_init(&mut self.data[pos], x);
+                move_val_init(&mut self.data[pos], x);
                 pos = child;
                 child = 2 * pos + 1;
             }
 
-            rusti::move_val_init(&mut self.data[pos], new);
+            move_val_init(&mut self.data[pos], new);
             self.siftup(start, pos);
         }
     }

@@ -256,13 +256,11 @@ pub impl param_substs {
     }
 }
 
-fn param_substs_to_str(self: &param_substs,
-                       tcx: ty::ctxt) -> ~str
-{
+fn param_substs_to_str(this: &param_substs, tcx: ty::ctxt) -> ~str {
     fmt!("param_substs {tys:%s, vtables:%s, type_param_defs:%s}",
-         self.tys.repr(tcx),
-         self.vtables.repr(tcx),
-         self.type_param_defs.repr(tcx))
+         this.tys.repr(tcx),
+         this.vtables.repr(tcx),
+         this.type_param_defs.repr(tcx))
 }
 
 impl Repr for param_substs {

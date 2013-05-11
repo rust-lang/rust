@@ -12,8 +12,10 @@
 
 #[deny(unused_unsafe)];
 
-extern mod foo {
-    fn bar();
+mod foo {
+    pub extern {
+        pub fn bar();
+    }
 }
 
 fn callback<T>(_f: &fn() -> T) -> T { fail!() }
