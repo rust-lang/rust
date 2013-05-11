@@ -25,7 +25,7 @@ pub fn expand_trace_macros(cx: @ext_ctxt,
         copy cx.parse_sess().span_diagnostic,
         cx.parse_sess().interner,
         None,
-        vec::from_slice(tt)
+        vec::to_owned(tt)
     );
     let rdr = tt_rdr as @reader;
     let rust_parser = Parser(

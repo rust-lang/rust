@@ -1461,7 +1461,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
     //
     // Should be:
     //
-    //   vec::from_slice(metadata_encoding_version) +
+    //   vec::to_owned(metadata_encoding_version) +
 
     let writer_bytes: &mut ~[u8] = wr.bytes;
 

@@ -106,7 +106,7 @@ pub struct Opt {
 }
 
 fn mkname(nm: &str) -> Name {
-    let unm = str::from_slice(nm);
+    let unm = str::to_owned(nm);
     return if nm.len() == 1u {
             Short(str::char_at(unm, 0u))
         } else { Long(unm) };
@@ -339,7 +339,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
         }
         i += 1;
     }
-    return Ok(Matches {opts: vec::from_slice(opts),
+    return Ok(Matches {opts: vec::to_owned(opts),
                vals: vals,
                free: free});
 }
@@ -441,7 +441,7 @@ pub fn opt_default(mm: &Matches, nm: &str, def: &str) -> Option<~str> {
     let vals = opt_vals(mm, nm);
     if vec::len::<Optval>(vals) == 0u { return None::<~str>; }
     return match vals[0] { Val(copy s) => Some::<~str>(s),
-                           _      => Some::<~str>(str::from_slice(def)) }
+                           _      => Some::<~str>(str::to_owned(def)) }
 }
 
 #[deriving(Eq)]
@@ -481,10 +481,10 @@ pub mod groups {
                   desc: &str, hint: &str) -> OptGroup {
         let len = short_name.len();
         assert!(len == 1 || len == 0);
-        return OptGroup { short_name: str::from_slice(short_name),
-                long_name: str::from_slice(long_name),
-                hint: str::from_slice(hint),
-                desc: str::from_slice(desc),
+        return OptGroup { short_name: str::to_owned(short_name),
+                long_name: str::to_owned(long_name),
+                hint: str::to_owned(hint),
+                desc: str::to_owned(desc),
                 hasarg: Yes,
                 occur: Req};
     }
@@ -494,10 +494,10 @@ pub mod groups {
                   desc: &str, hint: &str) -> OptGroup {
         let len = short_name.len();
         assert!(len == 1 || len == 0);
-        return OptGroup {short_name: str::from_slice(short_name),
-                long_name: str::from_slice(long_name),
-                hint: str::from_slice(hint),
-                desc: str::from_slice(desc),
+        return OptGroup {short_name: str::to_owned(short_name),
+                long_name: str::to_owned(long_name),
+                hint: str::to_owned(hint),
+                desc: str::to_owned(desc),
                 hasarg: Yes,
                 occur: Optional};
     }
@@ -507,10 +507,10 @@ pub mod groups {
                    desc: &str) -> OptGroup {
         let len = short_name.len();
         assert!(len == 1 || len == 0);
-        return OptGroup {short_name: str::from_slice(short_name),
-                long_name: str::from_slice(long_name),
+        return OptGroup {short_name: str::to_owned(short_name),
+                long_name: str::to_owned(long_name),
                 hint: ~"",
-                desc: str::from_slice(desc),
+                desc: str::to_owned(desc),
                 hasarg: No,
                 occur: Optional};
     }
@@ -520,10 +520,10 @@ pub mod groups {
                       desc: &str, hint: &str) -> OptGroup {
         let len = short_name.len();
         assert!(len == 1 || len == 0);
-        return OptGroup {short_name: str::from_slice(short_name),
-                long_name: str::from_slice(long_name),
-                hint: str::from_slice(hint),
-                desc: str::from_slice(desc),
+        return OptGroup {short_name: str::to_owned(short_name),
+                long_name: str::to_owned(long_name),
+                hint: str::to_owned(hint),
+                desc: str::to_owned(desc),
                 hasarg: Maybe,
                 occur: Optional};
     }
@@ -536,10 +536,10 @@ pub mod groups {
                     desc: &str, hint: &str) -> OptGroup {
         let len = short_name.len();
         assert!(len == 1 || len == 0);
-        return OptGroup {short_name: str::from_slice(short_name),
-                long_name: str::from_slice(long_name),
-                hint: str::from_slice(hint),
-                desc: str::from_slice(desc),
+        return OptGroup {short_name: str::to_owned(short_name),
+                long_name: str::to_owned(long_name),
+                hint: str::to_owned(hint),
+                desc: str::to_owned(desc),
                 hasarg: Yes,
                 occur: Multi};
     }
@@ -648,7 +648,7 @@ pub mod groups {
             row
         });
 
-        return str::from_slice(brief)    +
+        return str::to_owned(brief)    +
                ~"\n\nOptions:\n"         +
                str::connect(rows, ~"\n") +
                ~"\n\n";

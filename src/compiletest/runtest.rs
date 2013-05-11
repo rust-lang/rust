@@ -371,7 +371,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
             was_expected = true;
         }
 
-        if !was_expected && is_compiler_error_or_warning(str::from_slice(line)) {
+        if !was_expected && is_compiler_error_or_warning(str::to_owned(line)) {
             fatal_ProcRes(fmt!("unexpected compiler error or warning: '%s'",
                                line),
                           ProcRes);
@@ -596,7 +596,7 @@ fn make_lib_name(config: config, auxfile: &Path, testfile: &Path) -> Path {
 
 fn make_exe_name(config: config, testfile: &Path) -> Path {
     Path(output_base_name(config, testfile).to_str() +
-            str::from_slice(os::EXE_SUFFIX))
+            str::to_owned(os::EXE_SUFFIX))
 }
 
 fn make_run_args(config: config, _props: TestProps, testfile: &Path) ->
