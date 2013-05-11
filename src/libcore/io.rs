@@ -758,7 +758,7 @@ impl<T:Reader> ReaderUtil for T {
     fn read_lines(&self) -> ~[~str] {
         do vec::build |push| {
             for self.each_line |line| {
-                push(str::from_slice(line));
+                push(str::to_owned(line));
             }
         }
     }

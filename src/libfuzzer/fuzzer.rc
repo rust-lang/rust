@@ -316,7 +316,7 @@ pub fn check_variants_T<T:Copy>(crate: @ast::crate,
     if L < 100 {
         do under(uint::min(L, 20)) |i| {
             error!("Replacing... #%?", uint::to_str(i));
-            let fname = str::from_slice(filename.to_str());
+            let fname = str::to_owned(filename.to_str());
             do under(uint::min(L, 30)) |j| {
                 let fname = fname.to_str();
                 error!("With... %?", stringifier(things[j], intr));

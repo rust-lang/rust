@@ -167,7 +167,7 @@ pub fn from_elem<T:Copy>(n_elts: uint, t: T) -> ~[T] {
 }
 
 /// Creates a new unique vector with the same contents as the slice
-pub fn from_slice<T:Copy>(t: &[T]) -> ~[T] {
+pub fn to_owned<T:Copy>(t: &[T]) -> ~[T] {
     from_fn(t.len(), |i| t[i])
 }
 
@@ -3645,19 +3645,19 @@ mod tests {
         let mut results: ~[~[int]];
 
         results = ~[];
-        for each_permutation(~[]) |v| { results.push(from_slice(v)); }
+        for each_permutation(~[]) |v| { results.push(to_owned(v)); }
         assert!(results == ~[~[]]);
 
         results = ~[];
-        for each_permutation(~[7]) |v| { results.push(from_slice(v)); }
+        for each_permutation(~[7]) |v| { results.push(to_owned(v)); }
         assert!(results == ~[~[7]]);
 
         results = ~[];
-        for each_permutation(~[1,1]) |v| { results.push(from_slice(v)); }
+        for each_permutation(~[1,1]) |v| { results.push(to_owned(v)); }
         assert!(results == ~[~[1,1],~[1,1]]);
 
         results = ~[];
-        for each_permutation(~[5,2,0]) |v| { results.push(from_slice(v)); }
+        for each_permutation(~[5,2,0]) |v| { results.push(to_owned(v)); }
         assert!(results ==
             ~[~[5,2,0],~[5,0,2],~[2,5,0],~[2,0,5],~[0,5,2],~[0,2,5]]);
     }

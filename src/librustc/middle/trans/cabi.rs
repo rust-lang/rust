@@ -71,8 +71,8 @@ pub impl FnType {
             let llretptr = GEPi(bcx, llargbundle, [0u, n]);
             let llretloc = Load(bcx, llretptr);
                 llargvals = ~[llretloc];
-                atys = vec::from_slice(atys.tail());
-                attrs = vec::from_slice(attrs.tail());
+                atys = vec::to_owned(atys.tail());
+                attrs = vec::to_owned(attrs.tail());
         }
 
         while i < n {
@@ -137,8 +137,8 @@ pub impl FnType {
         let mut attrs = /*bad*/copy self.attrs;
         let mut j = 0u;
         let llretptr = if self.sret {
-            atys = vec::from_slice(atys.tail());
-            attrs = vec::from_slice(attrs.tail());
+            atys = vec::to_owned(atys.tail());
+            attrs = vec::to_owned(attrs.tail());
             j = 1u;
             get_param(llwrapfn, 0u)
         } else if self.ret_ty.cast {
