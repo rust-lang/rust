@@ -14,5 +14,5 @@
 fn foo() {}
 
 fn main() {
-    foo(); //~ ERROR unresolved name: `foo`.
+    foo(); //~ ERROR unresolved name `foo`.
 }

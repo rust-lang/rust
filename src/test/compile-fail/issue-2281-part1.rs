@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: unresolved name: `foobar`.
+// error-pattern: unresolved name `foobar`.
 
 fn main(args: ~[str]) { debug!(foobar); }

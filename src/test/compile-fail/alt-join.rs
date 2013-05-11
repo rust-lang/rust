@@ -16,6 +16,6 @@ fn my_fail() -> ! { fail!(); }
 fn main() {
     match true { false => { my_fail(); } true => { } }
 
-    debug!(x); //~ ERROR unresolved name: `x`.
+    debug!(x); //~ ERROR unresolved name `x`.
     let x: int;
 }
