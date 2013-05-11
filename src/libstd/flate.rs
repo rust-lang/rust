@@ -15,14 +15,14 @@ Simple compression
 */
 
 use libc;
-use libc::{c_void, size_t, c_int};
+use core::libc::{c_void, size_t, c_int};
 use vec;
 
-#[cfg(test)] use rand;
-#[cfg(test)] use rand::RngUtil;
+#[cfg(test)] use core::rand;
+#[cfg(test)] use core::rand::RngUtil;
 
 pub mod rustrt {
-    use libc::{c_int, c_void, size_t};
+    use core::libc::{c_int, c_void, size_t};
 
     #[link_name = "rustrt"]
     pub extern {
