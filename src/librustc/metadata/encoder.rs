@@ -20,7 +20,7 @@ use middle::ty;
 use middle;
 use util::ppaux::ty_to_str;
 
-use core::flate;
+use std::flate;
 use core::hash::HashUtil;
 use core::hashmap::HashMap;
 use std::serialize::Encodable;
