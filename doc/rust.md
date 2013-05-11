@@ -1946,35 +1946,6 @@ fn avg(v: &[float]) -> float {
 }
 ~~~~
 
-#### Swap expressions
-
-A _swap expression_ consists of an [lvalue](#lvalues-rvalues-and-temporaries) followed by a bi-directional arrow (`<->`) and another [lvalue](#lvalues-rvalues-and-temporaries).
-
-Evaluating a swap expression causes, as a side effect, the values held in the left-hand-side and right-hand-side [lvalues](#lvalues-rvalues-and-temporaries) to be exchanged indivisibly.
-
-Evaluating a swap expression neither changes reference counts,
-nor deeply copies any owned structure pointed to by the moved [rvalue](#lvalues-rvalues-and-temporaries).
-Instead, the swap expression represents an indivisible *exchange of ownership*,
-between the right-hand-side and the left-hand-side of the expression.
-No allocation or destruction is entailed.
-
-An example of three different swap expressions:
-
-~~~~~~~~
-# let mut x = &mut [0];
-# let mut a = &mut [0];
-# let i = 0;
-# struct S1 { z: int };
-# struct S2 { c: int };
-# let mut y = S1{z: 0};
-# let mut b = S2{c: 0};
-
-x <-> a;
-x[i] <-> a[i];
-y.z <-> b.c;
-~~~~~~~~
-
-
 #### Assignment expressions
 
 An _assignment expression_ consists of an [lvalue](#lvalues-rvalues-and-temporaries) expression followed by an
@@ -2015,7 +1986,7 @@ as
 == !=
 &&
 ||
-= <->
+=
 ~~~~
 
 Operators at the same precedence level are evaluated left-to-right.

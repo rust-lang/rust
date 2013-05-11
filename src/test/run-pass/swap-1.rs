@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::util;
+
 pub fn main() {
     let mut x = 3; let mut y = 7;
-    x <-> y; assert!((x == 7)); assert!((y == 3));
+    util::swap(&mut x, &mut y);
+    assert!((x == 7)); assert!((y == 3));
 }

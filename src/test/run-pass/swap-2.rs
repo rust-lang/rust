@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn swap<T>(v: &mut [T], i: int, j: int) { v[i] <-> v[j]; }
+use core::util;
 
 pub fn main() {
     let mut a: ~[int] = ~[0, 1, 2, 3, 4, 5, 6];
-    swap(a, 2, 4);
+    vec::swap(a, 2, 4);
     assert!((a[2] == 4));
     assert!((a[4] == 2));
     let mut n = 42;
-    n <-> a[0];
+    util::swap(&mut n, &mut a[0]);
     assert!((a[0] == 42));
     assert!((n == 0));
 }

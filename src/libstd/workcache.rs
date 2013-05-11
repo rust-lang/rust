@@ -22,6 +22,7 @@ use core::io;
 use core::pipes::recv;
 use core::run;
 use core::to_bytes;
+use core::util::replace;
 
 /**
 *
@@ -352,9 +353,7 @@ impl TPrep for Prep {
 
             _ => {
                 let (port, chan) = oneshot();
-                let mut blk = None;
-                blk <-> bo;
-                let blk = blk.unwrap();
+                let blk = replace(&mut bo, None).unwrap();
                 let chan = Cell(chan);
 
                 do task::spawn {
@@ -386,9 +385,7 @@ fn unwrap<T:Owned +
             Decodable<json::Decoder>>( // FIXME(#5121)
         w: Work<T>) -> T {
     let mut ww = w;
-    let mut s = None;
-
-    ww.res <-> s;
+    let s = replace(&mut ww.res, None);
 
     match s {
         None => fail!(),

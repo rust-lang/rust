@@ -20,6 +20,7 @@ extern mod std;
 
 use core::cell::Cell;
 use core::pipes::recv;
+use core::util;
 use std::time;
 use std::future;
 
@@ -42,10 +43,8 @@ fn thread_ring(i: uint,
     // Send/Receive lots of messages.
     for uint::range(0, count) |j| {
         //error!("task %?, iter %?", i, j);
-        let mut num_chan2 = None;
-        let mut num_port2 = None;
-        num_chan2 <-> num_chan;
-        num_port2 <-> num_port;
+        let num_chan2 = util::replace(&mut num_chan, None);
+        let num_port2 = util::replace(&mut num_port, None);
         num_chan = Some(ring::client::num(num_chan2.unwrap(), i * j));
         let port = num_port2.unwrap();
         match recv(port) {

@@ -758,10 +758,6 @@ fn check_loans_in_expr<'a>(expr: @ast::expr,
     }
 
     match expr.node {
-      ast::expr_swap(l, r) => {
-        self.check_assignment(l);
-        self.check_assignment(r);
-      }
       ast::expr_assign(dest, _) |
       ast::expr_assign_op(_, dest, _) => {
         self.check_assignment(dest);

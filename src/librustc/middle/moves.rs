@@ -650,11 +650,6 @@ pub impl VisitContext {
                 self.consume_expr(count, visitor);
             }
 
-            expr_swap(lhs, rhs) => {
-                self.use_expr(lhs, Read, visitor);
-                self.use_expr(rhs, Read, visitor);
-            }
-
             expr_loop_body(base) |
             expr_do_body(base) => {
                 self.use_expr(base, comp_mode, visitor);
