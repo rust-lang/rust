@@ -541,10 +541,7 @@ pub fn AtomicLoad(cx: block, PointerVal: ValueRef, order: AtomicOrdering) -> Val
     unsafe {
         let ccx = cx.fcx.ccx;
         if cx.unreachable {
-            let ty = val_ty(PointerVal);
-            let eltty = if llvm::LLVMGetTypeKind(ty) == lib::llvm::Array {
-                llvm::LLVMGetElementType(ty) } else { ccx.int_type };
-            return llvm::LLVMGetUndef(eltty);
+            return llvm::LLVMGetUndef(ccx.int_type);
         }
         count_insn(cx, "load.atomic");
         return llvm::LLVMBuildAtomicLoad(B(cx), PointerVal, order);
