@@ -2945,34 +2945,37 @@ impl<A:Copy + Ord> old_iter::CopyableOrderedIter<A> for @[A] {
 }
 
 impl<'self,A:Copy> old_iter::CopyableNonstrictIter<A> for &'self [A] {
-    fn each_val(&const self, f: &fn(A) -> bool) {
+    fn each_val(&const self, f: &fn(A) -> bool) -> bool {
         let mut i = 0;
         while i < self.len() {
-            if !f(copy self[i]) { break; }
+            if !f(copy self[i]) { return false; }
             i += 1;
         }
+        return true;
     }
 }
 
 // FIXME(#4148): This should be redundant
 impl<A:Copy> old_iter::CopyableNonstrictIter<A> for ~[A] {
-    fn each_val(&const self, f: &fn(A) -> bool) {
+    fn each_val(&const self, f: &fn(A) -> bool) -> bool {
         let mut i = 0;
         while i < uniq_len(self) {
-            if !f(copy self[i]) { break; }
+            if !f(copy self[i]) { return false; }
             i += 1;
         }
+        return true;
     }
 }
 
 // FIXME(#4148): This should be redundant
 impl<A:Copy> old_iter::CopyableNonstrictIter<A> for @[A] {
-    fn each_val(&const self, f: &fn(A) -> bool) {
+    fn each_val(&const self, f: &fn(A) -> bool) -> bool {
         let mut i = 0;
         while i < self.len() {
-            if !f(copy self[i]) { break; }
+            if !f(copy self[i]) { return false; }
             i += 1;
         }
+        return true;
     }
 }
 
@@ -4687,5 +4690,15 @@ mod tests {
             assert_eq!(x, ys[i]);
             i += 1;
         }
+    }
+
+    #[test]
+    fn test_each_val() {
+        use old_iter::CopyableNonstrictIter;
+        let mut i = 0;
+        for [1, 2, 3].each_val |v| {
+            i += v;
+        }
+        assert!(i == 6);
     }
 }
