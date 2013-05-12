@@ -67,7 +67,7 @@ use ptr::Ptr;
 /// The global (exchange) heap.
 pub mod global_heap;
 
-/// The Scheduler and Task types.
+/// The Scheduler and Coroutine types.
 mod sched;
 
 /// Thread-local access to the current Scheduler.
@@ -138,14 +138,14 @@ pub mod tube;
 /// The return value is used as the process return code. 0 on success, 101 on error.
 pub fn start(_argc: int, _argv: **u8, crate_map: *u8, main: ~fn()) -> int {
 
-    use self::sched::{Scheduler, Task};
+    use self::sched::{Scheduler, Coroutine};
     use self::uv::uvio::UvEventLoop;
 
     init(crate_map);
 
     let loop_ = ~UvEventLoop::new();
     let mut sched = ~Scheduler::new(loop_);
-    let main_task = ~Task::new(&mut sched.stack_pool, main);
+    let main_task = ~Coroutine::new(&mut sched.stack_pool, main);
 
     sched.enqueue_task(main_task);
     sched.run();
@@ -210,7 +210,7 @@ pub fn context() -> RuntimeContext {
 #[test]
 fn test_context() {
     use unstable::run_in_bare_thread;
-    use self::sched::{local_sched, Task};
+    use self::sched::{local_sched, Coroutine};
     use rt::uv::uvio::UvEventLoop;
     use cell::Cell;
 
@@ -218,7 +218,7 @@ fn test_context() {
     do run_in_bare_thread {
         assert!(context() == GlobalContext);
         let mut sched = ~UvEventLoop::new_scheduler();
-        let task = ~do Task::new(&mut sched.stack_pool) {
+        let task = ~do Coroutine::new(&mut sched.stack_pool) {
             assert!(context() == TaskContext);
             let sched = local_sched::take();
             do sched.deschedule_running_task_and_then() |task| {
