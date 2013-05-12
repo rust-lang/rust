@@ -356,7 +356,7 @@ fn idle_new_then_close() {
     do run_in_bare_thread {
         let mut loop_ = Loop::new();
         let idle_watcher = { IdleWatcher::new(&mut loop_) };
-        idle_watcher.close();
+        idle_watcher.close(||());
     }
 }
 
@@ -372,7 +372,7 @@ fn idle_smoke_test() {
             assert!(status.is_none());
             if unsafe { *count_ptr == 10 } {
                 idle_watcher.stop();
-                idle_watcher.close();
+                idle_watcher.close(||());
             } else {
                 unsafe { *count_ptr = *count_ptr + 1; }
             }
@@ -396,7 +396,7 @@ fn idle_start_stop_start() {
                 assert!(status.is_none());
                 let mut idle_watcher = idle_watcher;
                 idle_watcher.stop();
-                idle_watcher.close();
+                idle_watcher.close(||());
             }
         }
         loop_.run();
