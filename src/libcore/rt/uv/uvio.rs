@@ -66,7 +66,7 @@ impl EventLoop for UvEventLoop {
             assert!(status.is_none());
             let mut idle_watcher = idle_watcher;
             idle_watcher.stop();
-            idle_watcher.close();
+            idle_watcher.close(||());
             f();
         }
     }
@@ -124,22 +124,26 @@ impl IoFactory for UvIoFactory {
             // Wait for a connection
             do tcp_watcher.connect(addr) |stream_watcher, status| {
                 rtdebug!("connect: in connect callback");
-                let maybe_stream = if status.is_none() {
+                if status.is_none() {
                     rtdebug!("status is none");
-                    Ok(~UvTcpStream { watcher: stream_watcher })
+                    let res = Ok(~UvTcpStream { watcher: stream_watcher });
+
+                    // Store the stream in the task's stack
+                    unsafe { (*result_cell_ptr).put_back(res); }
+
+                    // Context switch
+                    let scheduler = local_sched::take();
+                    scheduler.resume_task_immediately(task_cell.take());
                 } else {
                     rtdebug!("status is some");
-                    // XXX: Wait for close
-                    stream_watcher.close(||());
-                    Err(uv_error_to_io_error(status.get()))
+                    let task_cell = Cell(task_cell.take());
+                    do stream_watcher.close {
+                        let res = Err(uv_error_to_io_error(status.get()));
+                        unsafe { (*result_cell_ptr).put_back(res); }
+                        let scheduler = local_sched::take();
+                        scheduler.resume_task_immediately(task_cell.take());
+                    }
                 };
-
-                // Store the stream in the task's stack
-                unsafe { (*result_cell_ptr).put_back(maybe_stream); }
-
-                // Context switch
-                let scheduler = local_sched::take();
-                scheduler.resume_task_immediately(task_cell.take());
             }
         }
 
@@ -152,8 +156,14 @@ impl IoFactory for UvIoFactory {
         match watcher.bind(addr) {
             Ok(_) => Ok(~UvTcpListener::new(watcher)),
             Err(uverr) => {
-                // XXX: Should we wait until close completes?
-                watcher.as_stream().close(||());
+                let scheduler = local_sched::take();
+                do scheduler.deschedule_running_task_and_then |task| {
+                    let task_cell = Cell(task);
+                    do watcher.as_stream().close {
+                        let scheduler = local_sched::take();
+                        scheduler.resume_task_immediately(task_cell.take());
+                    }
+                }
                 Err(uv_error_to_io_error(uverr))
             }
         }
@@ -181,8 +191,15 @@ impl UvTcpListener {
 
 impl Drop for UvTcpListener {
     fn finalize(&self) {
-        // XXX: Need to wait until close finishes before returning
-        self.watcher().as_stream().close(||());
+        let watcher = self.watcher();
+        let scheduler = local_sched::take();
+        do scheduler.deschedule_running_task_and_then |task| {
+            let task_cell = Cell(task);
+            do watcher.as_stream().close {
+                let scheduler = local_sched::take();
+                scheduler.resume_task_immediately(task_cell.take());
+            }
+        }
     }
 }
 
@@ -235,8 +252,16 @@ impl UvTcpStream {
 
 impl Drop for UvTcpStream {
     fn finalize(&self) {
-        rtdebug!("closing stream");
-        self.watcher().close(||());
+        rtdebug!("closing tcp stream");
+        let watcher = self.watcher();
+        let scheduler = local_sched::take();
+        do scheduler.deschedule_running_task_and_then |task| {
+            let task_cell = Cell(task);
+            do watcher.close {
+                let scheduler = local_sched::take();
+                scheduler.resume_task_immediately(task_cell.take());
+            }
+        }
     }
 }
 
