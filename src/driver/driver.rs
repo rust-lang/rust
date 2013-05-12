@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[no_core];
-extern mod core(vers = "0.7-pre");
-
 #[cfg(rustpkg)]
 extern mod this(name = "rustpkg", vers = "0.7-pre");
 

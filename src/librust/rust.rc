@@ -20,6 +20,11 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
+extern mod rustpkg(vers = "0.7-pre");
+extern mod rustdoc(vers = "0.7-pre");
+extern mod rusti(vers = "0.7-pre");
+extern mod rustc(vers = "0.7-pre");
+
 use core::run;
 
 enum ValidUsage {
@@ -36,13 +41,13 @@ impl ValidUsage {
 }
 
 enum Action<'self> {
-    Exec(&'self str),
-    Call(&'self fn(args: &[~str]) -> ValidUsage)
+    Call(&'self fn(args: &[~str]) -> ValidUsage),
+    CallMain(&'static str, &'self fn()),
 }
 
 enum UsageSource<'self> {
-    UsgExec(&'self str),
-    UsgStr(&'self str)
+    UsgStr(&'self str),
+    UsgCall(&'self fn()),
 }
 
 struct Command<'self> {
@@ -55,9 +60,9 @@ struct Command<'self> {
 static commands: &'static [Command<'static>] = &[
     Command{
         cmd: "build",
-        action: Exec("rustc"),
+        action: CallMain("rustc", rustc::main),
         usage_line: "compile rust source files",
-        usage_full: UsgExec("rustc --help")
+        usage_full: UsgCall(rustc_help),
     },
     Command{
         cmd: "run",
@@ -81,21 +86,21 @@ static commands: &'static [Command<'static>] = &[
     },
     Command{
         cmd: "doc",
-        action: Exec("rustdoc"),
+        action: CallMain("rustdoc", rustdoc::main),
         usage_line: "generate documentation from doc comments",
-        usage_full: UsgExec("rustdoc --help")
+        usage_full: UsgCall(rustdoc::config::usage),
     },
     Command{
         cmd: "pkg",
-        action: Exec("rustpkg"),
+        action: CallMain("rustpkg", rustpkg::main),
         usage_line: "download, build, install rust packages",
-        usage_full: UsgExec("rustpkg --help")
+        usage_full: UsgCall(rustpkg::usage::general),
     },
     Command{
         cmd: "sketch",
-        action: Exec("rusti"),
+        action: CallMain("rusti", rusti::main),
         usage_line: "run a rust interpreter",
-        usage_full: UsgStr("\nUsage:\trusti")
+        usage_full: UsgStr("\nUsage:\trusti"),
     },
     Command{
         cmd: "help",
@@ -109,6 +114,10 @@ static commands: &'static [Command<'static>] = &[
     }
 ];
 
+fn rustc_help() {
+    rustc::usage(copy os::args()[0])
+}
+
 fn find_cmd(command_string: &str) -> Option<Command> {
     do commands.find |command| {
         command.cmd == command_string
@@ -120,20 +129,14 @@ fn cmd_help(args: &[~str]) -> ValidUsage {
         match find_cmd(command_string) {
             Some(command) => {
                 match command.action {
-                    Exec(s) => io::println(fmt!(
+                    CallMain(prog, _) => io::println(fmt!(
                         "The %s command is an alias for the %s program.",
-                        command.cmd, s)),
+                        command.cmd, prog)),
                     _       => ()
                 }
                 match command.usage_full {
-                    UsgStr(msg)          => io::println(fmt!("%s\n", msg)),
-                    UsgExec(commandline) => {
-                        let mut words = ~[];
-                        for str::each_word(commandline) |word| { words.push(word.to_owned()) }
-                        let words = words;
-                        let (prog, args) = (words.head(), words.tail());
-                        run::run_program(*prog, args);
-                    }
+                    UsgStr(msg) => io::println(fmt!("%s\n", msg)),
+                    UsgCall(f)  => f(),
                 }
                 Valid
             },
@@ -151,17 +154,12 @@ fn cmd_test(args: &[~str]) -> ValidUsage {
     match args {
         [filename] => {
             let test_exec = Path(filename).filestem().unwrap() + "test~";
-            if run::run_program("rustc", [
-                ~"--test",
-                filename.to_owned(),
-                ~"-o",
-                test_exec.to_owned()
-            ]) == 0 {
-                run::run_program(~"./" + test_exec, []);
-            }
+            invoke("rustc", &[~"--test", filename.to_owned(),
+                              ~"-o", test_exec.to_owned()], rustc::main);
+            run::run_program(~"./" + test_exec, []);
             Valid
         }
-        _          => Invalid
+        _ => Invalid
     }
 }
 
@@ -169,32 +167,27 @@ fn cmd_run(args: &[~str]) -> ValidUsage {
     match args {
         [filename, ..prog_args] => {
             let exec = Path(filename).filestem().unwrap() + "~";
-            if run::run_program("rustc", [
-                filename.to_owned(),
-                ~"-o",
-                exec.to_owned()
-            ]) == 0 {
-                run::run_program(~"./"+exec, prog_args);
-            }
+            invoke("rustc", &[filename.to_owned(), ~"-o", exec.to_owned()],
+                   rustc::main);
+            run::run_program(~"./"+exec, prog_args);
             Valid
         }
-        _          => Invalid
+        _ => Invalid
     }
+}
+
+fn invoke(prog: &str, args: &[~str], f: &fn()) {
+    let mut osargs = ~[prog.to_owned()];
+    osargs.push_all_move(args.to_owned());
+    os::set_args(osargs);
+    f();
 }
 
 fn do_command(command: &Command, args: &[~str]) -> ValidUsage {
     match command.action {
         Call(f) => f(args),
-        Exec(commandline) => {
-            let mut words = ~[];
-            for str::each_word(commandline) |word| { words.push(word.to_owned()) }
-            let words = words;
-            let (prog, prog_args) = (words.head(), words.tail());
-            let exitstatus = run::run_program(
-                *prog,
-                vec::append(vec::to_owned(prog_args), args)
-            );
-            os::set_exit_status(exitstatus);
+        CallMain(prog, f) => {
+            invoke(prog, args, f);
             Valid
         }
     }
@@ -232,11 +225,9 @@ pub fn main() {
     let args = os_args.tail();
 
     if !args.is_empty() {
-        for commands.each |command| {
-            if command.cmd == *args.head() {
-                let result = do_command(command, args.tail());
-                if result.is_valid() { return; }
-            }
+        for find_cmd(*args.head()).each |command| {
+            let result = do_command(command, args.tail());
+            if result.is_valid() { return; }
         }
     }
 

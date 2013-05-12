@@ -42,11 +42,12 @@ use context::Ctx;
 
 mod conditions;
 mod context;
-mod usage;
 mod path_util;
 mod tests;
 mod util;
 mod workspace;
+
+pub mod usage;
 
 /// A PkgScript represents user-supplied custom logic for
 /// special build hooks. This only exists for packages with
