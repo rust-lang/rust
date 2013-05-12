@@ -14,8 +14,6 @@ use metadata::csearch;
 use metadata;
 use middle::const_eval;
 use middle::freevars;
-use middle::lint::{get_lint_level, allow};
-use middle::lint;
 use middle::resolve::{Impl, MethodInfo};
 use middle::resolve;
 use middle::ty;
@@ -241,7 +239,6 @@ struct ctxt_ {
     diag: @syntax::diagnostic::span_handler,
     interner: @mut HashMap<intern_key, ~t_box_>,
     next_id: @mut uint,
-    vecs_implicitly_copyable: bool,
     legacy_modes: bool,
     cstore: @mut metadata::cstore::CStore,
     sess: session::Session,
@@ -992,14 +989,10 @@ pub fn mk_ctxt(s: session::Session,
         }
     }
 
-    let vecs_implicitly_copyable =
-        get_lint_level(s.lint_settings.default_settings,
-                       lint::vecs_implicitly_copyable) == allow;
     @ctxt_ {
         diag: s.diagnostic(),
         interner: @mut HashMap::new(),
         next_id: @mut primitives::LAST_PRIMITIVE_ID,
-        vecs_implicitly_copyable: vecs_implicitly_copyable,
         legacy_modes: legacy_modes,
         cstore: s.cstore,
         sess: s,
@@ -1946,8 +1939,7 @@ pub impl TypeContents {
     }
 
     fn nonimplicitly_copyable(cx: ctxt) -> TypeContents {
-        let base = TypeContents::noncopyable(cx) + TC_OWNED_POINTER;
-        if cx.vecs_implicitly_copyable {base} else {base + TC_OWNED_VEC}
+        TypeContents::noncopyable(cx) + TC_OWNED_POINTER + TC_OWNED_VEC
     }
 
     fn needs_drop(&self, cx: ctxt) -> bool {
