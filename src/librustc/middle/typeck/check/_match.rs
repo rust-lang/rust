@@ -146,13 +146,12 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
                     kind_name = "variant";
                 }
                 None => {
-                    let resolved_expected =
-                        fcx.infcx().ty_to_str(fcx.infcx().resolve_type_vars_if_possible(expected));
-                    fcx.infcx().type_error_message_str(pat.span,
-                                                       |actual| {
+                    fcx.infcx().type_error_message_str_with_expected(pat.span,
+                                                       |expected, actual| {
+                                                       expected.map_default(~"", |&e| {
                         fmt!("mismatched types: expected `%s` but found %s",
-                             resolved_expected, actual)},
-                             ~"a structure pattern",
+                             e, actual)})},
+                             Some(expected), ~"a structure pattern",
                              None);
                     fcx.write_error(pat.id);
                     kind_name = "[error]";
@@ -189,13 +188,12 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
             kind_name = "structure";
         }
         _ => {
-            let resolved_expected =
-                fcx.infcx().ty_to_str(fcx.infcx().resolve_type_vars_if_possible(expected));
-            fcx.infcx().type_error_message_str(pat.span,
-                                               |actual| {
+            fcx.infcx().type_error_message_str_with_expected(pat.span,
+                                               |expected, actual| {
+                                               expected.map_default(~"", |&e| {
                     fmt!("mismatched types: expected `%s` but found %s",
-                         resolved_expected, actual)},
-                    ~"an enum or structure pattern",
+                         e, actual)})},
+                    Some(expected), ~"an enum or structure pattern",
                     None);
             fcx.write_error(pat.id);
             kind_name = "[error]";
@@ -508,9 +506,6 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
                 for elts.each |elt| {
                     check_pat(pcx, *elt, ty::mk_err());
                 }
-                let actual = ty::mk_tup(tcx, elts.map(|pat_var| {
-                    fcx.node_ty(pat_var.id)
-                }));
                 // use terr_tuple_size if both types are tuples
                 let type_error = match s {
                     ty::ty_tup(ref ex_elts) =>
@@ -518,10 +513,10 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
                                                            found: e_count}),
                     _ => ty::terr_mismatch
                 };
-                fcx.infcx().report_mismatched_types(pat.span,
-                                                    expected,
-                                                    actual,
-                                                    &type_error);
+                fcx.infcx().type_error_message_str_with_expected(pat.span, |expected, actual| {
+                expected.map_default(~"", |&e| {
+                    fmt!("mismatched types: expected `%s` but found %s",
+                                     e, actual)})}, Some(expected), ~"tuple", Some(&type_error));
                 fcx.write_error(pat.id);
             }
         }
@@ -566,14 +561,15 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
               for after.each |&elt| {
                   check_pat(pcx, elt, ty::mk_err());
               }
-              let resolved_expected =
-                  fcx.infcx().ty_to_str(fcx.infcx().resolve_type_vars_if_possible(expected));
-              fcx.infcx().type_error_message_str(pat.span,
-                  |actual| {
-                      fmt!("mismatched types: expected `%s` but found %s",
-                           resolved_expected, actual)},
-                                                 ~"a vector pattern",
-                                                 None);
+              fcx.infcx().type_error_message_str_with_expected(
+                  pat.span,
+                  |expected, actual| {
+                      expected.map_default(~"", |&e| {
+                          fmt!("mismatched types: expected `%s` but found %s",
+                               e, actual)})},
+                  Some(expected),
+                  ~"a vector pattern",
+                  None);
               fcx.write_error(pat.id);
               return;
           }
@@ -623,17 +619,19 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
         }
         _ => {
             check_pat(pcx, inner, ty::mk_err());
-            let resolved_expected =
-                fcx.infcx().ty_to_str(fcx.infcx().resolve_type_vars_if_possible(expected));
-            fcx.infcx().type_error_message_str(span, |actual| {
-                    fmt!("mismatched types: expected `%s` but found %s",
-                         resolved_expected, actual)},
-                                               fmt!("%s pattern", match pointer_kind {
-                                                   Managed => "an @-box",
-                                                   Owned => "a ~-box",
-                                                   Borrowed => "an &-pointer"
-                                               }),
-                    None);
+            fcx.infcx().type_error_message_str_with_expected(
+                span,
+                |expected, actual| {
+                    expected.map_default(~"", |&e| {
+                        fmt!("mismatched types: expected `%s` but found %s",
+                             e, actual)})},
+                Some(expected),
+                fmt!("%s pattern", match pointer_kind {
+                    Managed => "an @-box",
+                    Owned => "a ~-box",
+                    Borrowed => "an &-pointer"
+                }),
+                None);
             fcx.write_error(pat_id);
           }
     }
