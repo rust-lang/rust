@@ -124,7 +124,9 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                 ~"get_tydesc" | ~"needs_drop" => use_tydesc,
 
                 ~"atomic_cxchg"    | ~"atomic_cxchg_acq"|
-                ~"atomic_cxchg_rel"| ~"atomic_xchg"     |
+                ~"atomic_cxchg_rel"| ~"atomic_load"     |
+                ~"atomic_load_acq" | ~"atomic_store"    |
+                ~"atomic_store_rel"| ~"atomic_xchg"     |
                 ~"atomic_xadd"     | ~"atomic_xsub"     |
                 ~"atomic_xchg_acq" | ~"atomic_xadd_acq" |
                 ~"atomic_xsub_acq" | ~"atomic_xchg_rel" |

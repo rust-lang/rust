@@ -3486,6 +3486,25 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
          ],
          ty::mk_int())
       }
+      ~"atomic_load"     | ~"atomic_load_acq" => {
+        (0,
+         ~[
+            arg(ty::mk_imm_rptr(tcx,
+                            ty::re_bound(ty::br_anon(0)),
+                            ty::mk_int()))
+         ],
+        ty::mk_int())
+      }
+      ~"atomic_store"    | ~"atomic_store_rel" => {
+        (0,
+         ~[
+            arg(ty::mk_mut_rptr(tcx,
+                                ty::re_bound(ty::br_anon(0)),
+                                ty::mk_int())),
+            arg(ty::mk_int())
+         ],
+         ty::mk_nil())
+      }
       ~"atomic_xchg"     | ~"atomic_xadd"     | ~"atomic_xsub"     |
       ~"atomic_xchg_acq" | ~"atomic_xadd_acq" | ~"atomic_xsub_acq" |
       ~"atomic_xchg_rel" | ~"atomic_xadd_rel" | ~"atomic_xsub_rel" => {
