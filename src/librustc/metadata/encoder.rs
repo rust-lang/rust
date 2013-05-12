@@ -386,8 +386,10 @@ fn encode_reexported_static_methods(ecx: @EncodeContext,
     match ecx.tcx.trait_methods_cache.find(&exp.def_id) {
         Some(methods) => {
             match ecx.tcx.items.find(&exp.def_id.node) {
-                Some(&ast_map::node_item(_, path)) => {
-                    if mod_path != *path {
+                Some(&ast_map::node_item(item, path)) => {
+                    let interner = ecx.tcx.sess.parse_sess.interner;
+                    let original_name = ecx.tcx.sess.str_of(item.ident);
+                    if mod_path != *path || *exp.name != *original_name {
                         for methods.each |&m| {
                             if m.explicit_self == ast::sty_static {
                                 encode_reexported_static_method(ecx,
