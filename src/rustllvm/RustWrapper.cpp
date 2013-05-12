@@ -545,6 +545,28 @@ extern "C" LLVMTypeRef LLVMMetadataType(void) {
   return LLVMMetadataTypeInContext(LLVMGetGlobalContext());
 }
 
+extern "C" LLVMValueRef LLVMBuildAtomicLoad(LLVMBuilderRef B,
+                                            LLVMValueRef source,
+                                            const char* Name,
+                                            AtomicOrdering order) {
+    LoadInst* li = new LoadInst(unwrap(source),0);
+    li->setVolatile(true);
+    li->setAtomic(order);
+    li->setAlignment(sizeof(intptr_t));
+    return wrap(unwrap(B)->Insert(li));
+}
+
+extern "C" LLVMValueRef LLVMBuildAtomicStore(LLVMBuilderRef B,
+                                            LLVMValueRef val,
+                                            LLVMValueRef target,
+                                            AtomicOrdering order) {
+    StoreInst* si = new StoreInst(unwrap(val),unwrap(target));
+    si->setVolatile(true);
+    si->setAtomic(order);
+    si->setAlignment(sizeof(intptr_t));
+    return wrap(unwrap(B)->Insert(si));
+}
+
 extern "C" LLVMValueRef LLVMBuildAtomicCmpXchg(LLVMBuilderRef B,
                                                LLVMValueRef target,
                                                LLVMValueRef old,

@@ -15,6 +15,12 @@ mod rusti {
         pub fn atomic_cxchg_acq(dst: &mut int, old: int, src: int) -> int;
         pub fn atomic_cxchg_rel(dst: &mut int, old: int, src: int) -> int;
 
+        pub fn atomic_load(src: &int) -> int;
+        pub fn atomic_load_acq(src: &int) -> int;
+        
+        pub fn atomic_store(dst: &mut int, val: int);
+        pub fn atomic_store_rel(dst: &mut int, val: int);
+
         pub fn atomic_xchg(dst: &mut int, src: int) -> int;
         pub fn atomic_xchg_acq(dst: &mut int, src: int) -> int;
         pub fn atomic_xchg_rel(dst: &mut int, src: int) -> int;
@@ -32,6 +38,15 @@ mod rusti {
 pub fn main() {
     unsafe {
         let mut x = ~1;
+
+        assert!(rusti::atomic_load(x) == 1);
+        *x = 5;
+        assert!(rusti::atomic_load_acq(x) == 5);
+        
+        rusti::atomic_store(x,3);
+        assert!(*x == 3);
+        rusti::atomic_store_rel(x,1);
+        assert!(*x == 1);
 
         assert!(rusti::atomic_cxchg(x, 1, 2) == 1);
         assert!(*x == 2);
