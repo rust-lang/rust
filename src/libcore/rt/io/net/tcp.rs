@@ -122,7 +122,7 @@ mod test {
     use rt::io::net::ip::Ipv4;
     use rt::io::*;
 
-    #[test]
+    #[test] #[ignore]
     fn bind_error() {
         do run_in_newsched_task {
             let mut called = false;
