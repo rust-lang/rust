@@ -679,19 +679,19 @@ mod test {
     #[test] fn xorpush_test () {
         let mut s = ~[];
         xorPush(&mut s,14);
-        assert_eq!(s,~[14]);
+        assert_eq!(copy s,~[14]);
         xorPush(&mut s,14);
-        assert_eq!(s,~[]);
+        assert_eq!(copy s,~[]);
         xorPush(&mut s,14);
-        assert_eq!(s,~[14]);
+        assert_eq!(copy s,~[14]);
         xorPush(&mut s,15);
-        assert_eq!(s,~[14,15]);
+        assert_eq!(copy s,~[14,15]);
         xorPush (&mut s,16);
-        assert_eq! (s,~[14,15,16]);
+        assert_eq!(copy s,~[14,15,16]);
         xorPush (&mut s,16);
-        assert_eq! (s,~[14,15]);
+        assert_eq!(copy s,~[14,15]);
         xorPush (&mut s,15);
-        assert_eq! (s,~[14]);
+        assert_eq!(copy s,~[14]);
     }
 
     // convert a list of uints to an @~[ident]
@@ -746,7 +746,7 @@ mod test {
         let mut t = mk_sctable();
 
         let test_sc = ~[M(3),R(id(101,0),14),M(9)];
-        assert_eq!(unfold_test_sc(test_sc,empty_ctxt,&mut t),3);
+        assert_eq!(unfold_test_sc(copy test_sc,empty_ctxt,&mut t),3);
         assert_eq!(t[1],Mark(9,0));
         assert_eq!(t[2],Rename(id(101,0),14,1));
         assert_eq!(t[3],Mark(3,2));
