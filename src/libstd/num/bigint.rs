@@ -445,7 +445,7 @@ impl Integer for BigUint {
         if self.data.is_empty() {
             true
         } else {
-            self.data.last().is_even()
+            self.data[0].is_even()
         }
     }
 
@@ -1444,6 +1444,17 @@ mod biguint_tests {
         check(8, 9, 72);
         check(11, 5, 55);
         check(99, 17, 1683);
+    }
+
+    #[test]
+    fn test_is_even() {
+        assert!(FromStr::from_str::<BigUint>("1").get().is_odd());
+        assert!(FromStr::from_str::<BigUint>("2").get().is_even());
+        assert!(FromStr::from_str::<BigUint>("1000").get().is_even());
+        assert!(FromStr::from_str::<BigUint>("1000000000000000000000").get().is_even());
+        assert!(FromStr::from_str::<BigUint>("1000000000000000000001").get().is_odd());
+        assert!((BigUint::from_uint(1) << 64).is_even());
+        assert!(((BigUint::from_uint(1) << 64) + BigUint::from_uint(1)).is_odd());
     }
 
     fn to_str_pairs() -> ~[ (BigUint, ~[(uint, ~str)]) ] {
