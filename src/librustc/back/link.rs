@@ -403,14 +403,14 @@ pub mod write {
         cc_args.push(object.to_str());
         cc_args.push(assembly.to_str());
 
-        let prog = run::program_output(cc_prog, cc_args);
+        let prog = run::process_output(cc_prog, cc_args);
 
         if prog.status != 0 {
             sess.err(fmt!("building with `%s` failed with code %d",
                         cc_prog, prog.status));
             sess.note(fmt!("%s arguments: %s",
                         cc_prog, str::connect(cc_args, " ")));
-            sess.note(prog.err + prog.out);
+            sess.note(str::from_bytes(prog.error + prog.output));
             sess.abort_if_errors();
         }
     }
@@ -817,19 +817,19 @@ pub fn link_binary(sess: Session,
     let cc_args = link_args(sess, obj_filename, out_filename, lm);
     debug!("%s link args: %s", cc_prog, str::connect(cc_args, " "));
     // We run 'cc' here
-    let prog = run::program_output(cc_prog, cc_args);
+    let prog = run::process_output(cc_prog, cc_args);
     if 0 != prog.status {
         sess.err(fmt!("linking with `%s` failed with code %d",
                       cc_prog, prog.status));
         sess.note(fmt!("%s arguments: %s",
                        cc_prog, str::connect(cc_args, " ")));
-        sess.note(prog.err + prog.out);
+        sess.note(str::from_bytes(prog.error + prog.output));
         sess.abort_if_errors();
     }
 
     // Clean up on Darwin
     if sess.targ_cfg.os == session::os_macos {
-        run::run_program("dsymutil", [output.to_str()]);
+        run::process_status("dsymutil", [output.to_str()]);
     }
 
     // Remove the temporary object file if we aren't saving temps
