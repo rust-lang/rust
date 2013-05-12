@@ -74,7 +74,7 @@ pub fn expand_proto(cx: @ext_ctxt, _sp: span, id: ast::ident,
     let rdr = tt_rdr as @reader;
     let rust_parser = Parser(sess, cfg, rdr.dup());
 
-    let mut proto = rust_parser.parse_proto(cx.str_of(id));
+    let proto = rust_parser.parse_proto(cx.str_of(id));
 
     // check for errors
     visit(proto, cx);

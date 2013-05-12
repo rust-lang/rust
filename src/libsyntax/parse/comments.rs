@@ -202,15 +202,14 @@ fn all_whitespace(s: ~str, begin: uint, end: uint) -> bool {
 
 fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
                                         s: ~str, col: CharPos) {
-    let mut s1;
-    let len = str::len(s);
+    let len = s.len();
     // FIXME #3961: Doing bytewise comparison and slicing with CharPos
     let col = col.to_uint();
-    if all_whitespace(s, 0u, uint::min(len, col)) {
+    let s1 = if all_whitespace(s, 0, uint::min(len, col)) {
         if col < len {
-            s1 = str::slice(s, col, len).to_owned();
-        } else { s1 = ~""; }
-    } else { s1 = s; }
+            str::slice(s, col, len).to_owned()
+        } else {  ~"" }
+    } else { s };
     debug!("pushing line: %s", s1);
     lines.push(s1);
 }
