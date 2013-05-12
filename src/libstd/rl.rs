@@ -28,7 +28,7 @@ pub mod rustrt {
 }
 
 /// Add a line to history
-pub unsafe fn add_history(line: ~str) -> bool {
+pub unsafe fn add_history(line: &str) -> bool {
     do str::as_c_str(line) |buf| {
         rustrt::linenoiseHistoryAdd(buf) == 1 as c_int
     }
@@ -40,21 +40,21 @@ pub unsafe fn set_history_max_len(len: int) -> bool {
 }
 
 /// Save line history to a file
-pub unsafe fn save_history(file: ~str) -> bool {
+pub unsafe fn save_history(file: &str) -> bool {
     do str::as_c_str(file) |buf| {
         rustrt::linenoiseHistorySave(buf) == 1 as c_int
     }
 }
 
 /// Load line history from a file
-pub unsafe fn load_history(file: ~str) -> bool {
+pub unsafe fn load_history(file: &str) -> bool {
     do str::as_c_str(file) |buf| {
         rustrt::linenoiseHistoryLoad(buf) == 1 as c_int
     }
 }
 
 /// Print out a prompt and then wait for input and return it
-pub unsafe fn read(prompt: ~str) -> Option<~str> {
+pub unsafe fn read(prompt: &str) -> Option<~str> {
     do str::as_c_str(prompt) |buf| {
         let line = rustrt::linenoise(buf);
 

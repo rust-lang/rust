@@ -18,14 +18,12 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[allow(vecs_implicitly_copyable,
-        non_implicitly_copyable_typarams)];
-
 extern mod std(vers = "0.7-pre");
 extern mod rustc(vers = "0.7-pre");
 extern mod syntax(vers = "0.7-pre");
 
 use core::*;
+use core::cell::Cell;
 use rustc::driver::{driver, session};
 use syntax::{ast, diagnostic};
 use syntax::ast_util::*;
@@ -71,8 +69,8 @@ fn with_pp(intr: @token::ident_interner,
  * because it has to parse the statements and view_items on each
  * input.
  */
-fn record(repl: Repl, blk: @ast::blk, intr: @token::ident_interner) -> Repl {
-    let view_items = if blk.node.view_items.len() > 0 {
+fn record(mut repl: Repl, blk: &ast::blk, intr: @token::ident_interner) -> Repl {
+    if blk.node.view_items.len() > 0 {
         let new_view_items = do with_pp(intr) |pp, writer| {
             for blk.node.view_items.each |view_item| {
                 pprust::print_view_item(pp, *view_item);
@@ -82,9 +80,9 @@ fn record(repl: Repl, blk: @ast::blk, intr: @token::ident_interner) -> Repl {
 
         debug!("new view items %s", new_view_items);
 
-        repl.view_items + "\n" + new_view_items
-    } else { repl.view_items };
-    let stmts = if blk.node.stmts.len() > 0 {
+        repl.view_items = repl.view_items + "\n" + new_view_items
+    }
+    if blk.node.stmts.len() > 0 {
         let new_stmts = do with_pp(intr) |pp, writer| {
             for blk.node.stmts.each |stmt| {
                 match stmt.node {
@@ -105,24 +103,21 @@ fn record(repl: Repl, blk: @ast::blk, intr: @token::ident_interner) -> Repl {
 
         debug!("new stmts %s", new_stmts);
 
-        repl.stmts + "\n" + new_stmts
-    } else { repl.stmts };
-
-    Repl{
-        view_items: view_items,
-        stmts: stmts,
-        .. repl
+        repl.stmts = repl.stmts + "\n" + new_stmts
     }
+
+    return repl;
 }
 
 /// Run an input string in a Repl, returning the new Repl.
 fn run(repl: Repl, input: ~str) -> Repl {
+    let binary = @copy repl.binary;
     let options = @session::options {
         crate_type: session::unknown_crate,
-        binary: @repl.binary,
+        binary: binary,
         addl_lib_search_paths: repl.lib_search_paths.map(|p| Path(*p)),
         jit: true,
-        .. *session::basic_options()
+        .. copy *session::basic_options()
     };
 
     debug!("building driver input");
@@ -138,7 +133,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
 
     debug!("building driver configuration");
     let cfg = driver::build_configuration(sess,
-                                          @repl.binary,
+                                          binary,
                                           &wrapped);
 
     let outputs = driver::build_output_filenames(&wrapped, &None, &None, sess);
@@ -151,7 +146,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
 
     for crate.node.module.items.each |item| {
         match item.node {
-            ast::item_fn(_, _, _, _, blk) => {
+            ast::item_fn(_, _, _, _, ref blk) => {
                 if item.ident == sess.ident_of("main") {
                     opt = blk.node.expr;
                 }
@@ -160,10 +155,11 @@ fn run(repl: Repl, input: ~str) -> Repl {
         }
     }
 
-    let blk = match opt.get().node {
-        ast::expr_call(_, exprs, _) => {
+    let e = opt.unwrap();
+    let blk = match e.node {
+        ast::expr_call(_, ref exprs, _) => {
             match exprs[0].node {
-                ast::expr_block(blk) => @blk,
+                ast::expr_block(ref blk) => blk,
                 _ => fail!()
             }
         }
@@ -182,15 +178,16 @@ fn run(repl: Repl, input: ~str) -> Repl {
 fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
     match do task::try {
         let src_path = Path(src_filename);
+        let binary = @copy binary;
         let options = @session::options {
-            binary: @binary,
+            binary: binary,
             addl_lib_search_paths: ~[os::getcwd()],
-            .. *session::basic_options()
+            .. copy *session::basic_options()
         };
-        let input = driver::file_input(src_path);
+        let input = driver::file_input(copy src_path);
         let sess = driver::build_session(options, diagnostic::emit);
         *sess.building_library = true;
-        let cfg = driver::build_configuration(sess, @binary, &input);
+        let cfg = driver::build_configuration(sess, binary, &input);
         let outputs = driver::build_output_filenames(
             &input, &None, &None, sess);
         // If the library already exists and is newer than the source
@@ -233,7 +230,7 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
 
 /// Tries to get a line from rl after outputting a prompt. Returns
 /// None if no input was read (e.g. EOF was reached).
-fn get_line(use_rl: bool, prompt: ~str) -> Option<~str> {
+fn get_line(use_rl: bool, prompt: &str) -> Option<~str> {
     if use_rl {
         let result = unsafe { rl::read(prompt) };
 
@@ -280,11 +277,11 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             for args.each |arg| {
                 let (crate, filename) =
                     if arg.ends_with(".rs") || arg.ends_with(".rc") {
-                    (arg.substr(0, arg.len() - 3).to_owned(), *arg)
+                    (arg.substr(0, arg.len() - 3).to_owned(), copy *arg)
                 } else {
-                    (*arg, arg + ~".rs")
+                    (copy *arg, arg + ".rs")
                 };
-                match compile_crate(filename, repl.binary) {
+                match compile_crate(filename, copy repl.binary) {
                     Some(_) => loaded_crates.push(crate),
                     None => { }
                 }
@@ -311,7 +308,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             let mut multiline_cmd = ~"";
             let mut end_multiline = false;
             while (!end_multiline) {
-                match get_line(use_rl, ~"rusti| ") {
+                match get_line(use_rl, "rusti| ") {
                     None => fail!("unterminated multiline command :{ .. :}"),
                     Some(line) => {
                         if str::trim(line) == ~":}" {
@@ -334,14 +331,14 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
 fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
             use_rl: bool)
     -> Option<Repl> {
-    if line.starts_with(~":") {
+    if line.starts_with(":") {
         let full = line.substr(1, line.len() - 1);
         let mut split = ~[];
         for str::each_word(full) |word| { split.push(word.to_owned()) }
         let len = split.len();
 
         if len > 0 {
-            let cmd = split[0];
+            let cmd = copy split[0];
 
             if !cmd.is_empty() {
                 let args = if len > 1 {
@@ -361,9 +358,10 @@ fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
         }
     }
 
-    let r = *repl;
+    let line = Cell(line);
+    let r = Cell(copy *repl);
     let result = do task::try {
-        run(r, line)
+        run(r.take(), line.take())
     };
 
     if result.is_ok() {
@@ -378,7 +376,7 @@ pub fn main() {
     let out = io::stdout();
     let mut repl = Repl {
         prompt: ~"rusti> ",
-        binary: args[0],
+        binary: copy args[0],
         running: true,
         view_items: ~"",
         lib_search_paths: ~[],

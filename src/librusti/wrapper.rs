@@ -13,13 +13,15 @@
 #[allow(implicit_copies)];
 #[allow(managed_heap_memory)];
 #[allow(non_camel_case_types)];
-#[allow(non_implicitly_copyable_typarams)];
 #[allow(owned_heap_memory)];
 #[allow(path_statement)];
 #[allow(unrecognized_lint)];
 #[allow(unused_imports)];
-#[allow(vecs_implicitly_copyable)];
 #[allow(while_true)];
+#[allow(dead_assignment)];
+#[allow(unused_variable)];
+#[allow(unused_unsafe)];
+#[allow(unused_mut)];
 
 extern mod std;
 
