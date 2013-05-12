@@ -14,7 +14,6 @@ The `ToStr` trait for converting to strings
 
 */
 
-use str;
 use str::OwnedStr;
 use hashmap::HashMap;
 use hashmap::HashSet;
@@ -179,6 +178,7 @@ impl<A:ToStr> ToStr for @[A] {
 mod tests {
     use hashmap::HashMap;
     use hashmap::HashSet;
+    use container::Set;
     #[test]
     fn test_simple_types() {
         assert!(1i.to_str() == ~"1");
