@@ -29,17 +29,12 @@ use core::task;
 use core::util::replace;
 
 #[doc = "The future type"]
-#[cfg(stage0)]
-pub struct Future<A> {
-    priv mut state: FutureState<A>,
-}
-
-#[doc = "The future type"]
-#[cfg(not(stage0))]
 pub struct Future<A> {
     priv state: FutureState<A>,
 }
 
+// n.b. It should be possible to get rid of this.
+// Add a test, though -- tjc
 // FIXME(#2829) -- futures should not be copyable, because they close
 // over ~fn's that have pipes and so forth within!
 #[unsafe_destructor]
@@ -62,37 +57,6 @@ pub impl<A:Copy> Future<A> {
 }
 
 pub impl<A> Future<A> {
-    #[cfg(stage0)]
-    fn get_ref<'a>(&'a self) -> &'a A {
-        /*!
-        * Executes the future's closure and then returns a borrowed
-        * pointer to the result.  The borrowed pointer lasts as long as
-        * the future.
-        */
-        unsafe {
-            {
-                match self.state {
-                    Forced(ref mut v) => { return cast::transmute(v); }
-                    Evaluating => fail!(~"Recursive forcing of future!"),
-                    Pending(_) => {}
-                }
-            }
-            {
-                let state = replace(&mut self.state, Evaluating);
-                match state {
-                    Forced(_) | Evaluating => fail!(~"Logic error."),
-                    Pending(f) => {
-                        self.state = Forced(f());
-                        cast::transmute(self.get_ref())
-                    }
-                }
-            }
-        }
-    }
-
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
     fn get_ref<'a>(&'a mut self) -> &'a A {
         /*!
         * Executes the future's closure and then returns a borrowed

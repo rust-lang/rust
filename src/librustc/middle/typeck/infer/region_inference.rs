@@ -544,12 +544,13 @@ use middle::typeck::infer::cres;
 use util::common::indenter;
 use util::ppaux::note_and_explain_region;
 
+#[cfg(stage0)]
+use core; // NOTE: this can be removed after next snapshot
 use core::cell::{Cell, empty_cell};
 use core::hashmap::{HashMap, HashSet};
 use core::to_bytes;
 use core::uint;
 use core::vec;
-use core;
 use syntax::codemap::span;
 use syntax::ast;
 
