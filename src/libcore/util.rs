@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -131,6 +131,20 @@ impl Drop for NonCopyable {
 }
 
 pub fn NonCopyable() -> NonCopyable { NonCopyable { i: () } }
+
+
+/// A type with no inhabitants
+pub enum Void { }
+
+pub impl Void {
+    /// A utility function for ignoring this uninhabited type
+    fn uninhabited(&self) -> ! {
+        match *self {
+            // Nothing to match on
+        }
+    }
+}
+
 
 /**
 A utility function for indicating unreachable code. It will fail if
