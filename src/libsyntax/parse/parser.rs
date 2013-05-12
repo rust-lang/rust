@@ -2388,7 +2388,7 @@ pub impl Parser {
                 // preceded by unary-minus) or identifiers.
                 let val = self.parse_literal_maybe_minus();
                 if self.eat(&token::DOTDOT) {
-                    let end = if is_ident_or_path(&tok) {
+                    let end = if is_ident_or_path(tok) {
                         let path = self.parse_path_with_tps(true);
                         let hi = self.span.hi;
                         self.mk_expr(lo, hi, expr_path(path))

@@ -23,7 +23,7 @@ use syntax::codemap::{dummy_sp, spanned, dummy_spanned};
 use syntax::ext::base::{mk_ctxt, ext_ctxt};
 use syntax::ext::build;
 use syntax::{ast, attr, codemap, diagnostic, fold};
-use syntax::ast::{meta_name_value, meta_list, attribute, crate_};
+use syntax::ast::{meta_name_value, meta_list, attribute};
 use syntax::attr::{mk_attr};
 use rustc::back::link::output_type_exe;
 use rustc::driver::session::{lib_crate, unknown_crate, crate_type};

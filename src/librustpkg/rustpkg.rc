@@ -41,6 +41,7 @@ use context::Ctx;
 mod conditions;
 mod context;
 mod path_util;
+#[cfg(test)]
 mod tests;
 mod util;
 mod workspace;

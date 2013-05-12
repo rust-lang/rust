@@ -662,12 +662,11 @@ mod test {
     #[test] fn fail_exists_test () {
         let src = ~"fn main() { fail!(\"something appropriately gloomy\");}";
         let sess = parse::new_parse_sess(None);
-        let cfg = ~[];
         let crate_ast = parse::parse_crate_from_source_str(
             ~"<test>",
             @src,
-            cfg,sess);
-        expand_crate(sess,cfg,crate_ast);
+            ~[],sess);
+        expand_crate(sess,~[],crate_ast);
     }
 
     // these following tests are quite fragile, in that they don't test what
@@ -679,13 +678,12 @@ mod test {
         let src = ~"fn bogus() {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
         let sess = parse::new_parse_sess(None);
-        let cfg = ~[];
         let crate_ast = parse::parse_crate_from_source_str(
             ~"<test>",
             @src,
-            cfg,sess);
+            ~[],sess);
         // should fail:
-        expand_crate(sess,cfg,crate_ast);
+        expand_crate(sess,~[],crate_ast);
     }
 
     // make sure that macros can leave scope for modules
@@ -694,13 +692,12 @@ mod test {
         let src = ~"mod foo {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
         let sess = parse::new_parse_sess(None);
-        let cfg = ~[];
         let crate_ast = parse::parse_crate_from_source_str(
             ~"<test>",
             @src,
-            cfg,sess);
+            ~[],sess);
         // should fail:
-        expand_crate(sess,cfg,crate_ast);
+        expand_crate(sess,~[],crate_ast);
     }
 
     // macro_escape modules shouldn't cause macros to leave scope
@@ -708,13 +705,12 @@ mod test {
         let src = ~"#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
         let sess = parse::new_parse_sess(None);
-        let cfg = ~[];
         let crate_ast = parse::parse_crate_from_source_str(
             ~"<test>",
             @src,
-            cfg,sess);
+            ~[], sess);
         // should fail:
-        expand_crate(sess,cfg,crate_ast);
+        expand_crate(sess,~[],crate_ast);
     }
 
     #[test] fn core_macros_must_parse () {
