@@ -125,7 +125,7 @@ fn fold_enum(
                             }.get();
 
                             pprust::variant_to_str(
-                                ast_variant, extract::interner())
+                                &ast_variant, extract::interner())
                         }
                         _ => fail!("enum variant not bound to an enum item")
                     }
