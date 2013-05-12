@@ -26,12 +26,12 @@ use cell::Cell;
 // A more convenient name for external callers, e.g. `local_sched::take()`
 pub mod local_sched;
 
-/// The Scheduler is responsible for coordinating execution of Tasks
+/// The Scheduler is responsible for coordinating execution of Coroutines
 /// on a single thread. When the scheduler is running it is owned by
 /// thread local storage and the running task is owned by the
 /// scheduler.
 pub struct Scheduler {
-    priv work_queue: WorkQueue<~Task>,
+    priv work_queue: WorkQueue<~Coroutine>,
     stack_pool: StackPool,
     /// The event loop used to drive the scheduler and perform I/O
     event_loop: ~EventLoopObject,
@@ -39,7 +39,7 @@ pub struct Scheduler {
     /// Always valid when a task is executing, otherwise not
     priv saved_context: Context,
     /// The currently executing task
-    current_task: Option<~Task>,
+    current_task: Option<~Coroutine>,
     /// An action performed after a context switch on behalf of the
     /// code running before the context switch
     priv cleanup_job: Option<CleanupJob>
@@ -49,17 +49,17 @@ pub struct Scheduler {
 // complaining
 type UnsafeTaskReceiver = sys::Closure;
 trait ClosureConverter {
-    fn from_fn(&fn(~Task)) -> Self;
-    fn to_fn(self) -> &fn(~Task);
+    fn from_fn(&fn(~Coroutine)) -> Self;
+    fn to_fn(self) -> &fn(~Coroutine);
 }
 impl ClosureConverter for UnsafeTaskReceiver {
-    fn from_fn(f: &fn(~Task)) -> UnsafeTaskReceiver { unsafe { transmute(f) } }
-    fn to_fn(self) -> &fn(~Task) { unsafe { transmute(self) } }
+    fn from_fn(f: &fn(~Coroutine)) -> UnsafeTaskReceiver { unsafe { transmute(f) } }
+    fn to_fn(self) -> &fn(~Coroutine) { unsafe { transmute(self) } }
 }
 
 enum CleanupJob {
     DoNothing,
-    GiveTask(~Task, UnsafeTaskReceiver)
+    GiveTask(~Coroutine, UnsafeTaskReceiver)
 }
 
 pub impl Scheduler {
@@ -115,7 +115,7 @@ pub impl Scheduler {
     /// Pushes the task onto the work stealing queue and tells the event loop
     /// to run it later. Always use this instead of pushing to the work queue
     /// directly.
-    fn enqueue_task(&mut self, task: ~Task) {
+    fn enqueue_task(&mut self, task: ~Coroutine) {
         self.work_queue.push_front(task);
         self.event_loop.callback(resume_task_from_queue);
 
@@ -164,7 +164,7 @@ pub impl Scheduler {
         abort!("control reached end of task");
     }
 
-    fn schedule_new_task(~self, task: ~Task) {
+    fn schedule_new_task(~self, task: ~Coroutine) {
         assert!(self.in_task_context());
 
         do self.switch_running_tasks_and_then(task) |last_task| {
@@ -177,7 +177,7 @@ pub impl Scheduler {
 
     // Core scheduling ops
 
-    fn resume_task_immediately(~self, task: ~Task) {
+    fn resume_task_immediately(~self, task: ~Coroutine) {
         let mut this = self;
         assert!(!this.in_task_context());
 
@@ -215,7 +215,7 @@ pub impl Scheduler {
     /// The closure here is a *stack* closure that lives in the
     /// running task.  It gets transmuted to the scheduler's lifetime
     /// and called while the task is blocked.
-    fn deschedule_running_task_and_then(~self, f: &fn(~Task)) {
+    fn deschedule_running_task_and_then(~self, f: &fn(~Coroutine)) {
         let mut this = self;
         assert!(this.in_task_context());
 
@@ -223,7 +223,7 @@ pub impl Scheduler {
 
         unsafe {
             let blocked_task = this.current_task.swap_unwrap();
-            let f_fake_region = transmute::<&fn(~Task), &fn(~Task)>(f);
+            let f_fake_region = transmute::<&fn(~Coroutine), &fn(~Coroutine)>(f);
             let f_opaque = ClosureConverter::from_fn(f_fake_region);
             this.enqueue_cleanup_job(GiveTask(blocked_task, f_opaque));
         }
@@ -245,14 +245,14 @@ pub impl Scheduler {
     /// Switch directly to another task, without going through the scheduler.
     /// You would want to think hard about doing this, e.g. if there are
     /// pending I/O events it would be a bad idea.
-    fn switch_running_tasks_and_then(~self, next_task: ~Task, f: &fn(~Task)) {
+    fn switch_running_tasks_and_then(~self, next_task: ~Coroutine, f: &fn(~Coroutine)) {
         let mut this = self;
         assert!(this.in_task_context());
 
         rtdebug!("switching tasks");
 
         let old_running_task = this.current_task.swap_unwrap();
-        let f_fake_region = unsafe { transmute::<&fn(~Task), &fn(~Task)>(f) };
+        let f_fake_region = unsafe { transmute::<&fn(~Coroutine), &fn(~Coroutine)>(f) };
         let f_opaque = ClosureConverter::from_fn(f_fake_region);
         this.enqueue_cleanup_job(GiveTask(old_running_task, f_opaque));
         this.current_task = Some(next_task);
@@ -318,7 +318,7 @@ pub impl Scheduler {
         // because borrowck thinks the three patterns are conflicting
         // borrows
         unsafe {
-            let last_task = transmute::<Option<&Task>, Option<&mut Task>>(last_task);
+            let last_task = transmute::<Option<&Coroutine>, Option<&mut Coroutine>>(last_task);
             let last_task_context = match last_task {
                 Some(t) => Some(&mut t.saved_context), None => None
             };
@@ -333,9 +333,9 @@ pub impl Scheduler {
     }
 }
 
-static TASK_MIN_STACK_SIZE: uint = 10000000; // XXX: Too much stack
+static MIN_STACK_SIZE: uint = 10000000; // XXX: Too much stack
 
-pub struct Task {
+pub struct Coroutine {
     /// The segment of stack on which the task is currently running or,
     /// if the task is blocked, on which the task will resume execution
     priv current_stack_segment: StackSegment,
@@ -346,19 +346,19 @@ pub struct Task {
     local_services: LocalServices
 }
 
-pub impl Task {
-    fn new(stack_pool: &mut StackPool, start: ~fn()) -> Task {
-        Task::with_local(stack_pool, LocalServices::new(), start)
+pub impl Coroutine {
+    fn new(stack_pool: &mut StackPool, start: ~fn()) -> Coroutine {
+        Coroutine::with_local(stack_pool, LocalServices::new(), start)
     }
 
     fn with_local(stack_pool: &mut StackPool,
                   local_services: LocalServices,
-                  start: ~fn()) -> Task {
-        let start = Task::build_start_wrapper(start);
-        let mut stack = stack_pool.take_segment(TASK_MIN_STACK_SIZE);
+                  start: ~fn()) -> Coroutine {
+        let start = Coroutine::build_start_wrapper(start);
+        let mut stack = stack_pool.take_segment(MIN_STACK_SIZE);
         // NB: Context holds a pointer to that ~fn
         let initial_context = Context::new(start, &mut stack);
-        return Task {
+        return Coroutine {
             current_stack_segment: stack,
             saved_context: initial_context,
             local_services: local_services
@@ -390,7 +390,7 @@ pub impl Task {
     /// Destroy the task and try to reuse its components
     fn recycle(~self, stack_pool: &mut StackPool) {
         match self {
-            ~Task {current_stack_segment, _} => {
+            ~Coroutine {current_stack_segment, _} => {
                 stack_pool.give_segment(current_stack_segment);
             }
         }
@@ -414,7 +414,7 @@ mod test {
             let task_ran_ptr: *mut bool = &mut task_ran;
 
             let mut sched = ~UvEventLoop::new_scheduler();
-            let task = ~do Task::new(&mut sched.stack_pool) {
+            let task = ~do Coroutine::new(&mut sched.stack_pool) {
                 unsafe { *task_ran_ptr = true; }
             };
             sched.enqueue_task(task);
@@ -432,7 +432,7 @@ mod test {
 
             let mut sched = ~UvEventLoop::new_scheduler();
             for int::range(0, total) |_| {
-                let task = ~do Task::new(&mut sched.stack_pool) {
+                let task = ~do Coroutine::new(&mut sched.stack_pool) {
                     unsafe { *task_count_ptr = *task_count_ptr + 1; }
                 };
                 sched.enqueue_task(task);
@@ -449,10 +449,10 @@ mod test {
             let count_ptr: *mut int = &mut count;
 
             let mut sched = ~UvEventLoop::new_scheduler();
-            let task1 = ~do Task::new(&mut sched.stack_pool) {
+            let task1 = ~do Coroutine::new(&mut sched.stack_pool) {
                 unsafe { *count_ptr = *count_ptr + 1; }
                 let mut sched = local_sched::take();
-                let task2 = ~do Task::new(&mut sched.stack_pool) {
+                let task2 = ~do Coroutine::new(&mut sched.stack_pool) {
                     unsafe { *count_ptr = *count_ptr + 1; }
                 };
                 // Context switch directly to the new task
@@ -479,7 +479,7 @@ mod test {
 
             let mut sched = ~UvEventLoop::new_scheduler();
 
-            let start_task = ~do Task::new(&mut sched.stack_pool) {
+            let start_task = ~do Coroutine::new(&mut sched.stack_pool) {
                 run_task(count_ptr);
             };
             sched.enqueue_task(start_task);
@@ -489,7 +489,7 @@ mod test {
 
             fn run_task(count_ptr: *mut int) {
                 do local_sched::borrow |sched| {
-                    let task = ~do Task::new(&mut sched.stack_pool) {
+                    let task = ~do Coroutine::new(&mut sched.stack_pool) {
                         unsafe {
                             *count_ptr = *count_ptr + 1;
                             if *count_ptr != MAX {
@@ -507,7 +507,7 @@ mod test {
     fn test_block_task() {
         do run_in_bare_thread {
             let mut sched = ~UvEventLoop::new_scheduler();
-            let task = ~do Task::new(&mut sched.stack_pool) {
+            let task = ~do Coroutine::new(&mut sched.stack_pool) {
                 let sched = local_sched::take();
                 assert!(sched.in_task_context());
                 do sched.deschedule_running_task_and_then() |task| {
