@@ -130,7 +130,6 @@ pub fn count_names(ms: &[matcher]) -> uint {
         }})
 }
 
-#[allow(non_implicitly_copyable_typarams)]
 pub fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
                         -> ~MatcherPos {
     let mut match_idx_hi = 0u;
@@ -184,15 +183,15 @@ pub enum named_match {
 
 pub type earley_item = ~MatcherPos;
 
-pub fn nameize(p_s: @mut ParseSess, ms: ~[matcher], res: ~[@named_match])
+pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
             -> HashMap<ident,@named_match> {
-    fn n_rec(p_s: @mut ParseSess, m: matcher, res: ~[@named_match],
+    fn n_rec(p_s: @mut ParseSess, m: &matcher, res: &[@named_match],
              ret_val: &mut HashMap<ident, @named_match>) {
-        match m {
+        match *m {
           codemap::spanned {node: match_tok(_), _} => (),
           codemap::spanned {node: match_seq(ref more_ms, _, _, _, _), _} => {
-            for (*more_ms).each() |next_m| {
-                n_rec(p_s, *next_m, res, ret_val)
+            for more_ms.each |next_m| {
+                n_rec(p_s, next_m, res, ret_val)
             };
           }
           codemap::spanned {
@@ -207,7 +206,7 @@ pub fn nameize(p_s: @mut ParseSess, ms: ~[matcher], res: ~[@named_match])
         }
     }
     let mut ret_val = HashMap::new();
-    for ms.each() |m| { n_rec(p_s, *m, res, &mut ret_val) }
+    for ms.each |m| { n_rec(p_s, m, res, &mut ret_val) }
     return ret_val;
 }
 
@@ -234,10 +233,10 @@ pub fn parse(
     sess: @mut ParseSess,
     cfg: ast::crate_cfg,
     rdr: @reader,
-    ms: ~[matcher]
+    ms: &[matcher]
 ) -> parse_result {
     let mut cur_eis = ~[];
-    cur_eis.push(initial_matcher_pos(copy ms, None, rdr.peek().sp.lo));
+    cur_eis.push(initial_matcher_pos(ms.to_owned(), None, rdr.peek().sp.lo));
 
     loop {
         let mut bb_eis = ~[]; // black-box parsed by parser.rs
@@ -277,7 +276,7 @@ pub fn parse(
 
                         // Only touch the binders we have actually bound
                         for uint::range(ei.match_lo, ei.match_hi) |idx| {
-                            let sub = ei.matches[idx];
+                            let sub = copy ei.matches[idx];
                             new_pos.matches[idx]
                                 .push(@matched_seq(sub,
                                                    mk_sp(ei.sp_lo,
@@ -410,31 +409,31 @@ pub fn parse(
     }
 }
 
-pub fn parse_nt(p: &Parser, name: ~str) -> nonterminal {
+pub fn parse_nt(p: &Parser, name: &str) -> nonterminal {
     match name {
-      ~"item" => match p.parse_item(~[]) {
+      "item" => match p.parse_item(~[]) {
         Some(i) => token::nt_item(i),
         None => p.fatal(~"expected an item keyword")
       },
-      ~"block" => token::nt_block(p.parse_block()),
-      ~"stmt" => token::nt_stmt(p.parse_stmt(~[])),
-      ~"pat" => token::nt_pat(p.parse_pat(true)),
-      ~"expr" => token::nt_expr(p.parse_expr()),
-      ~"ty" => token::nt_ty(p.parse_ty(false /* no need to disambiguate*/)),
+      "block" => token::nt_block(p.parse_block()),
+      "stmt" => token::nt_stmt(p.parse_stmt(~[])),
+      "pat" => token::nt_pat(p.parse_pat(true)),
+      "expr" => token::nt_expr(p.parse_expr()),
+      "ty" => token::nt_ty(p.parse_ty(false /* no need to disambiguate*/)),
       // this could be handled like a token, since it is one
-      ~"ident" => match *p.token {
+      "ident" => match *p.token {
         token::IDENT(sn,b) => { p.bump(); token::nt_ident(sn,b) }
         _ => p.fatal(~"expected ident, found "
                      + token::to_str(p.reader.interner(), &copy *p.token))
       },
-      ~"path" => token::nt_path(p.parse_path_with_tps(false)),
-      ~"tt" => {
+      "path" => token::nt_path(p.parse_path_with_tps(false)),
+      "tt" => {
         *p.quote_depth += 1u; //but in theory, non-quoted tts might be useful
         let res = token::nt_tt(@p.parse_token_tree());
         *p.quote_depth -= 1u;
         res
       }
-      ~"matchers" => token::nt_matchers(p.parse_matchers()),
+      "matchers" => token::nt_matchers(p.parse_matchers()),
       _ => p.fatal(~"Unsupported builtin nonterminal parser: " + name)
     }
 }

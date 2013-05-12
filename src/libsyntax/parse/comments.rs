@@ -192,7 +192,7 @@ fn read_line_comments(rdr: @mut StringReader, code_to_the_left: bool,
 
 // FIXME #3961: This is not the right way to convert string byte
 // offsets to characters.
-fn all_whitespace(s: ~str, begin: uint, end: uint) -> bool {
+fn all_whitespace(s: &str, begin: uint, end: uint) -> bool {
     let mut i: uint = begin;
     while i != end {
         if !is_whitespace(s[i] as char) { return false; } i += 1u;

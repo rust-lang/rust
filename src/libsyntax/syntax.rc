@@ -20,7 +20,6 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];
 #[deny(deprecated_pattern)];
 
