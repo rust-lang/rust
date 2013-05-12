@@ -14,7 +14,12 @@ The `ToStr` trait for converting to strings
 
 */
 
-use str;
+use str::OwnedStr;
+use hashmap::HashMap;
+use hashmap::HashSet;
+use container::Map;
+use hash::Hash;
+use cmp::Eq;
 
 pub trait ToStr {
     fn to_str(&self) -> ~str;
@@ -46,6 +51,44 @@ impl<A:ToStr> ToStr for (A,) {
     }
 }
 
+impl<A:ToStr+Hash+Eq, B:ToStr+Hash+Eq> ToStr for HashMap<A, B> {
+    #[inline(always)]
+    fn to_str(&self) -> ~str {
+        let mut acc = ~"{", first = true;
+        for self.each |key, value| {
+            if first {
+                first = false;
+            }
+            else {
+                acc.push_str(", ");
+            }
+            acc.push_str(key.to_str());
+            acc.push_str(": ");
+            acc.push_str(value.to_str());
+        }
+        acc.push_char('}');
+        acc
+    }
+}
+
+impl<A:ToStr+Hash+Eq> ToStr for HashSet<A> {
+    #[inline(always)]
+    fn to_str(&self) -> ~str {
+    let mut acc = ~"{", first = true;
+    for self.each |element| {
+        if first {
+            first = false;
+        }
+        else {
+            acc.push_str(", ");
+        }
+        acc.push_str(element.to_str());
+    }
+    acc.push_char('}');
+    acc
+    }
+}
+
 impl<A:ToStr,B:ToStr> ToStr for (A, B) {
     #[inline(always)]
     fn to_str(&self) -> ~str {
@@ -58,6 +101,7 @@ impl<A:ToStr,B:ToStr> ToStr for (A, B) {
         }
     }
 }
+
 impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
     #[inline(always)]
     fn to_str(&self) -> ~str {
@@ -80,11 +124,15 @@ impl<'self,A:ToStr> ToStr for &'self [A] {
     fn to_str(&self) -> ~str {
         let mut acc = ~"[", first = true;
         for self.each |elt| {
-            if first { first = false; }
-            else { str::push_str(&mut acc, ~", "); }
-            str::push_str(&mut acc, elt.to_str());
+            if first {
+                first = false;
+            }
+            else {
+                acc.push_str(", ");
+            }
+            acc.push_str(elt.to_str());
         }
-        str::push_char(&mut acc, ']');
+        acc.push_char(']');
         acc
     }
 }
@@ -94,11 +142,15 @@ impl<A:ToStr> ToStr for ~[A] {
     fn to_str(&self) -> ~str {
         let mut acc = ~"[", first = true;
         for self.each |elt| {
-            if first { first = false; }
-            else { str::push_str(&mut acc, ~", "); }
-            str::push_str(&mut acc, elt.to_str());
+            if first {
+                first = false;
+            }
+            else {
+                acc.push_str(", ");
+            }
+            acc.push_str(elt.to_str());
         }
-        str::push_char(&mut acc, ']');
+        acc.push_char(']');
         acc
     }
 }
@@ -108,11 +160,15 @@ impl<A:ToStr> ToStr for @[A] {
     fn to_str(&self) -> ~str {
         let mut acc = ~"[", first = true;
         for self.each |elt| {
-            if first { first = false; }
-            else { str::push_str(&mut acc, ~", "); }
-            str::push_str(&mut acc, elt.to_str());
+            if first {
+                first = false;
+            }
+            else {
+                acc.push_str(", ");
+            }
+            acc.push_str(elt.to_str());
         }
-        str::push_char(&mut acc, ']');
+        acc.push_char(']');
         acc
     }
 }
@@ -120,6 +176,9 @@ impl<A:ToStr> ToStr for @[A] {
 #[cfg(test)]
 #[allow(non_implicitly_copyable_typarams)]
 mod tests {
+    use hashmap::HashMap;
+    use hashmap::HashSet;
+    use container::Set;
     #[test]
     fn test_simple_types() {
         assert!(1i.to_str() == ~"1");
@@ -148,5 +207,33 @@ mod tests {
         assert!((~[1, 2, 3]).to_str() == ~"[1, 2, 3]");
         assert!((~[~[], ~[1], ~[1, 1]]).to_str() ==
                ~"[[], [1], [1, 1]]");
+    }
+
+    #[test]
+    fn test_hashmap() {
+        let mut table: HashMap<int, int> = HashMap::new();
+        let empty: HashMap<int, int> = HashMap::new();
+
+        table.insert(3, 4);
+        table.insert(1, 2);
+
+        let table_str = table.to_str();
+
+        assert!(table_str == ~"{1: 2, 3: 4}" || table_str == ~"{3: 4, 1: 2}");
+        assert!(empty.to_str() == ~"{}");
+    }
+
+    #[test]
+    fn test_hashset() {
+        let mut set: HashSet<int> = HashSet::new();
+        let empty_set: HashSet<int> = HashSet::new();
+
+        set.insert(1);
+        set.insert(2);
+
+        let set_str = set.to_str();
+
+        assert!(set_str == ~"{1, 2}" || set_str == ~"{2, 1}");
+        assert!(empty_set.to_str() == ~"{}");
     }
 }
