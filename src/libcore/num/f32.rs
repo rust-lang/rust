@@ -578,10 +578,7 @@ impl Float for f32 {
     /// Returns `true` if the number is neither zero, infinite, subnormal or NaN
     #[inline(always)]
     fn is_normal(&self) -> bool {
-        match self.classify() {
-            FPNormal => true,
-            _ => false,
-        }
+        self.classify() == FPNormal
     }
 
     /// Returns the floating point category of the number. If only one property is going to
@@ -591,14 +588,14 @@ impl Float for f32 {
         static MAN_MASK: u32 = 0x007fffff;
 
         match (
+            unsafe { ::cast::transmute::<f32,u32>(*self) } & MAN_MASK,
             unsafe { ::cast::transmute::<f32,u32>(*self) } & EXP_MASK,
-            unsafe { ::cast::transmute::<f32,u32>(*self) } & MAN_MASK
         ) {
-            (EXP_MASK, 0)        => FPInfinite,
-            (EXP_MASK, _)        => FPNaN,
-            (exp, _) if exp != 0 => FPNormal,
-            _ if self.is_zero()  => FPZero,
-            _                    => FPSubnormal,
+            (0, 0)        => FPZero,
+            (_, 0)        => FPSubnormal,
+            (0, EXP_MASK) => FPInfinite,
+            (_, EXP_MASK) => FPNaN,
+            _             => FPNormal,
         }
     }
 
