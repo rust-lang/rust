@@ -17,7 +17,7 @@ fn main() {
     }
 
     match (true, false) {
-        (true, false, false) => () //~ ERROR mismatched types: expected `(bool,bool)` but found `(bool,bool,bool)` (expected a tuple with 2 elements but found one with 3 elements)
+        (true, false, false) => () //~ ERROR mismatched types: expected `(bool,bool)` but found tuple (expected a tuple with 2 elements but found one with 3 elements)
     }
 
     match (true, false) {
