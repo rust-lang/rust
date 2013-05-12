@@ -105,7 +105,7 @@ fn tls_key() -> tls::Key {
 
 fn maybe_tls_key() -> Option<tls::Key> {
     unsafe {
-        let key: *mut c_void = rust_get_sched_tls_key();
+        let key: *mut c_void = rust_get_rt_tls_key();
         let key: &mut tls::Key = cast::transmute(key);
         let key = *key;
         // Check that the key has been initialized.
@@ -130,7 +130,7 @@ fn maybe_tls_key() -> Option<tls::Key> {
 
 extern {
     #[fast_ffi]
-    fn rust_get_sched_tls_key() -> *mut c_void;
+    fn rust_get_rt_tls_key() -> *mut c_void;
 }
 
 #[test]
