@@ -972,19 +972,17 @@ impl io::Reader for TcpSocketBuf {
 /// Implementation of `io::Reader` trait for a buffered `net::tcp::TcpSocket`
 impl io::Writer for TcpSocketBuf {
     pub fn write(&self, data: &[u8]) {
-        unsafe {
-            let socket_data_ptr: *TcpSocketData =
-                &(*((*(self.data)).sock).socket_data);
-            let w_result = write_common_impl(socket_data_ptr,
-                                             vec::slice(data,
-                                                        0,
-                                                        data.len()).to_vec());
-            if w_result.is_err() {
-                let err_data = w_result.get_err();
-                debug!(
-                    "ERROR sock_buf as io::writer.writer err: %? %?",
-                         err_data.err_name, err_data.err_msg);
-            }
+        let socket_data_ptr: *TcpSocketData =
+            &(*((*(self.data)).sock).socket_data);
+        let w_result = write_common_impl(socket_data_ptr,
+                                         vec::slice(data,
+                                                    0,
+                                                    data.len()).to_vec());
+        if w_result.is_err() {
+            let err_data = w_result.get_err();
+            debug!(
+                "ERROR sock_buf as io::writer.writer err: %? %?",
+                err_data.err_name, err_data.err_msg);
         }
     }
     fn seek(&self, dist: int, seek: io::SeekStyle) {

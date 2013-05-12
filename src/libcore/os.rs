@@ -36,7 +36,6 @@ use option::{Some, None};
 use prelude::*;
 use ptr;
 use str;
-use task;
 use uint;
 use unstable::finally::Finally;
 use vec;
