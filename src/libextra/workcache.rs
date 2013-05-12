@@ -415,7 +415,7 @@ fn test() {
         prep.declare_input("file", pth.to_str(), digest_file(&pth));
         do prep.exec |_exe| {
             let out = Path("foo.o");
-            run::run_program("gcc", [~"foo.c", ~"-o", out.to_str()]);
+            run::process_status("gcc", [~"foo.c", ~"-o", out.to_str()]);
             out.to_str()
         }
     };
