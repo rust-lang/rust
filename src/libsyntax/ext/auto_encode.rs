@@ -836,7 +836,7 @@ fn mk_struct_deser_impl(
     cx: @ext_ctxt,
     span: span,
     ident: ast::ident,
-    fields: ~[@ast::struct_field],
+    fields: &[@ast::struct_field],
     generics: &ast::Generics
 ) -> @ast::item {
     let fields = do mk_struct_fields(fields).mapi |idx, field| {
@@ -1120,7 +1120,7 @@ fn mk_enum_deser_body(
     ext_cx: @ext_ctxt,
     span: span,
     name: ast::ident,
-    variants: ~[ast::variant]
+    variants: &[ast::variant]
 ) -> @ast::expr {
     let expr_arm_names = build::mk_base_vec_e(
         ext_cx,

@@ -55,15 +55,16 @@ pub fn ordering_const(cx: @ext_ctxt, span: span, cnst: Ordering) -> @expr {
 
 pub fn cs_cmp(cx: @ext_ctxt, span: span,
               substr: &Substructure) -> @expr {
-    let lexical_ord = ~[cx.ident_of("core"),
-                        cx.ident_of("cmp"),
-                        cx.ident_of("lexical_ordering")];
 
     cs_same_method_fold(
         // foldr (possibly) nests the matches in lexical_ordering better
         false,
         |cx, span, old, new| {
-            build::mk_call_global(cx, span, lexical_ord, ~[old, new])
+            build::mk_call_global(cx, span,
+                                  ~[cx.ident_of("core"),
+                                    cx.ident_of("cmp"),
+                                    cx.ident_of("lexical_ordering")],
+                                  ~[old, new])
         },
         ordering_const(cx, span, Equal),
         |cx, span, list, _| {

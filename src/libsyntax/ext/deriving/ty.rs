@@ -63,7 +63,7 @@ pub impl Path {
     fn to_path(&self, cx: @ext_ctxt, span: span,
                self_ty: ident, self_generics: &Generics) -> @ast::Path {
         let idents = self.path.map(|s| cx.ident_of(*s) );
-        let lt = mk_lifetime(cx, span, self.lifetime);
+        let lt = mk_lifetime(cx, span, &self.lifetime);
         let tys = self.params.map(|t| t.to_ty(cx, span, self_ty, self_generics));
 
         if self.global {
@@ -106,9 +106,9 @@ pub fn nil_ty() -> Ty {
     Tuple(~[])
 }
 
-fn mk_lifetime(cx: @ext_ctxt, span: span, lt: Option<~str>) -> Option<@ast::Lifetime> {
-    match lt {
-        Some(s) => Some(@build::mk_lifetime(cx, span, cx.ident_of(s))),
+fn mk_lifetime(cx: @ext_ctxt, span: span, lt: &Option<~str>) -> Option<@ast::Lifetime> {
+    match *lt {
+        Some(ref s) => Some(@build::mk_lifetime(cx, span, cx.ident_of(*s))),
         None => None
     }
 }
@@ -123,10 +123,10 @@ pub impl Ty {
                     Owned => {
                         build::mk_ty_uniq(cx, span, raw_ty)
                     }
-                    Managed(copy mutbl) => {
+                    Managed(mutbl) => {
                         build::mk_ty_box(cx, span, raw_ty, mutbl)
                     }
-                    Borrowed(copy lt, copy mutbl) => {
+                    Borrowed(ref lt, mutbl) => {
                         let lt = mk_lifetime(cx, span, lt);
                         build::mk_ty_rptr(cx, span, raw_ty, lt, mutbl)
                     }
@@ -216,20 +216,20 @@ pub impl LifetimeBounds {
 }
 
 
-pub fn get_explicit_self(cx: @ext_ctxt, span: span, self_ptr: Option<PtrTy>)
+pub fn get_explicit_self(cx: @ext_ctxt, span: span, self_ptr: &Option<PtrTy>)
     -> (@expr, ast::self_ty) {
     let self_path = build::make_self(cx, span);
-    match self_ptr {
+    match *self_ptr {
         None => {
             (self_path, respan(span, ast::sty_value))
         }
-        Some(ptr) => {
+        Some(ref ptr) => {
             let self_ty = respan(
                 span,
-                match ptr {
+                match *ptr {
                     Owned => ast::sty_uniq(ast::m_imm),
                     Managed(mutbl) => ast::sty_box(mutbl),
-                    Borrowed(lt, mutbl) => {
+                    Borrowed(ref lt, mutbl) => {
                         let lt = lt.map(|s| @build::mk_lifetime(cx, span,
                                                                 cx.ident_of(*s)));
                         ast::sty_region(lt, mutbl)

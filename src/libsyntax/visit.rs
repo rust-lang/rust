@@ -179,7 +179,7 @@ pub fn visit_item<E: Copy>(i: @item, e: E, v: vt<E>) {
         item_enum(ref enum_definition, ref tps) => {
             (v.visit_generics)(tps, e, v);
             visit_enum_def(
-                *enum_definition,
+                enum_definition,
                 tps,
                 e,
                 v
@@ -206,11 +206,11 @@ pub fn visit_item<E: Copy>(i: @item, e: E, v: vt<E>) {
                 (v.visit_trait_method)(m, e, v);
             }
         }
-        item_mac(ref m) => visit_mac((*m), e, v)
+        item_mac(ref m) => visit_mac(m, e, v)
     }
 }
 
-pub fn visit_enum_def<E: Copy>(enum_definition: ast::enum_def,
+pub fn visit_enum_def<E: Copy>(enum_definition: &ast::enum_def,
                                tps: &Generics,
                                e: E,
                                v: vt<E>) {
@@ -422,7 +422,7 @@ pub fn visit_stmt<E>(s: @stmt, e: E, v: vt<E>) {
       stmt_decl(d, _) => (v.visit_decl)(d, e, v),
       stmt_expr(ex, _) => (v.visit_expr)(ex, e, v),
       stmt_semi(ex, _) => (v.visit_expr)(ex, e, v),
-      stmt_mac(ref mac, _) => visit_mac((*mac), e, v)
+      stmt_mac(ref mac, _) => visit_mac(mac, e, v)
     }
 }
 
@@ -445,7 +445,7 @@ pub fn visit_exprs<E: Copy>(exprs: &[@expr], e: E, v: vt<E>) {
     for exprs.each |ex| { (v.visit_expr)(*ex, e, v); }
 }
 
-pub fn visit_mac<E>(_m: mac, _e: E, _v: vt<E>) {
+pub fn visit_mac<E>(_m: &mac, _e: E, _v: vt<E>) {
     /* no user-serviceable parts inside */
 }
 
@@ -537,7 +537,7 @@ pub fn visit_expr<E: Copy>(ex: @expr, e: E, v: vt<E>) {
             (v.visit_expr)(lv, e, v);
             (v.visit_expr)(x, e, v);
         }
-        expr_mac(ref mac) => visit_mac((*mac), e, v),
+        expr_mac(ref mac) => visit_mac(mac, e, v),
         expr_paren(x) => (v.visit_expr)(x, e, v),
         expr_inline_asm(ref a) => {
             for a.inputs.each |&(_, in)| {

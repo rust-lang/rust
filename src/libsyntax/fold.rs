@@ -44,7 +44,7 @@ pub trait ast_fold {
 pub struct AstFoldFns {
     //unlike the others, item_ is non-trivial
     fold_crate: @fn(&crate_, span, @ast_fold) -> (crate_, span),
-    fold_view_item: @fn(view_item_, @ast_fold) -> view_item_,
+    fold_view_item: @fn(&view_item_, @ast_fold) -> view_item_,
     fold_foreign_item: @fn(@foreign_item, @ast_fold) -> @foreign_item,
     fold_item: @fn(@item, @ast_fold) -> Option<@item>,
     fold_struct_field: @fn(@struct_field, @ast_fold) -> @struct_field,
@@ -112,7 +112,7 @@ fn fold_arg_(a: arg, fld: @ast_fold) -> arg {
     }
 }
 //used in noop_fold_expr, and possibly elsewhere in the future
-fn fold_mac_(m: mac, fld: @ast_fold) -> mac {
+fn fold_mac_(m: &mac, fld: @ast_fold) -> mac {
     spanned {
         node: match m.node { mac_invoc_tt(*) => copy m.node },
         span: fld.new_span(m.span),
@@ -174,8 +174,8 @@ pub fn noop_fold_crate(c: &crate_, fld: @ast_fold) -> crate_ {
     }
 }
 
-fn noop_fold_view_item(vi: view_item_, _fld: @ast_fold) -> view_item_ {
-    return /* FIXME (#2543) */ copy vi;
+fn noop_fold_view_item(vi: &view_item_, _fld: @ast_fold) -> view_item_ {
+    return /* FIXME (#2543) */ copy *vi;
 }
 
 
@@ -351,7 +351,7 @@ fn noop_fold_stmt(s: &stmt_, fld: @ast_fold) -> stmt_ {
         stmt_decl(d, nid) => stmt_decl(fld.fold_decl(d), fld.new_id(nid)),
         stmt_expr(e, nid) => stmt_expr(fld.fold_expr(e), fld.new_id(nid)),
         stmt_semi(e, nid) => stmt_semi(fld.fold_expr(e), fld.new_id(nid)),
-        stmt_mac(ref mac, semi) => stmt_mac(fold_mac((*mac)), semi)
+        stmt_mac(ref mac, semi) => stmt_mac(fold_mac(mac), semi)
     }
 }
 
@@ -540,14 +540,14 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 fld.fold_expr(e)
             )
         }
-        expr_inline_asm(a) => {
+        expr_inline_asm(ref a) => {
             expr_inline_asm(inline_asm {
                 inputs: a.inputs.map(|&(c, in)| (c, fld.fold_expr(in))),
                 outputs: a.outputs.map(|&(c, out)| (c, fld.fold_expr(out))),
-                .. a
+                .. copy *a
             })
         }
-        expr_mac(ref mac) => expr_mac(fold_mac((*mac))),
+        expr_mac(ref mac) => expr_mac(fold_mac(mac)),
         expr_struct(path, ref fields, maybe_expr) => {
             expr_struct(
                 fld.fold_path(path),
@@ -590,12 +590,12 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
                 region: f.region,
                 onceness: f.onceness,
                 decl: fold_fn_decl(&f.decl, fld),
-                lifetimes: f.lifetimes,
+                lifetimes: copy f.lifetimes,
             })
         }
         ty_bare_fn(ref f) => {
             ty_bare_fn(@TyBareFn {
-                lifetimes: f.lifetimes,
+                lifetimes: copy f.lifetimes,
                 purity: f.purity,
                 abis: f.abis,
                 decl: fold_fn_decl(&f.decl, fld)
@@ -609,7 +609,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
                 fld.fold_expr(e)
             )
         }
-        ty_mac(ref mac) => ty_mac(fold_mac(*mac))
+        ty_mac(ref mac) => ty_mac(fold_mac(mac))
     }
 }
 
@@ -740,7 +740,7 @@ impl ast_fold for AstFoldFns {
     fn fold_view_item(@self, x: @view_item) ->
        @view_item {
         @ast::view_item {
-            node: (self.fold_view_item)(x.node, self as @ast_fold),
+            node: (self.fold_view_item)(&x.node, self as @ast_fold),
             attrs: vec::map(x.attrs, |a|
                   fold_attribute_(*a, self as @ast_fold)),
             vis: x.vis,

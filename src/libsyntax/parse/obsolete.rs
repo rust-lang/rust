@@ -253,9 +253,9 @@ pub impl Parser {
         }
     }
 
-    fn token_is_obsolete_ident(&self, ident: &str, token: Token) -> bool {
-        match token {
-            token::IDENT(copy sid, _) => {
+    fn token_is_obsolete_ident(&self, ident: &str, token: &Token) -> bool {
+        match *token {
+            token::IDENT(sid, _) => {
                 str::eq_slice(*self.id_to_str(sid), ident)
             }
             _ => false
@@ -263,7 +263,7 @@ pub impl Parser {
     }
 
     fn is_obsolete_ident(&self, ident: &str) -> bool {
-        self.token_is_obsolete_ident(ident, *self.token)
+        self.token_is_obsolete_ident(ident, self.token)
     }
 
     fn eat_obsolete_ident(&self, ident: &str) -> bool {
@@ -289,7 +289,7 @@ pub impl Parser {
     fn try_parse_obsolete_with(&self) -> bool {
         if *self.token == token::COMMA
             && self.token_is_obsolete_ident("with",
-                                            self.look_ahead(1u)) {
+                                            &self.look_ahead(1u)) {
             self.bump();
         }
         if self.eat_obsolete_ident("with") {
@@ -301,13 +301,13 @@ pub impl Parser {
         }
     }
 
-    fn try_parse_obsolete_priv_section(&self, attrs: ~[attribute]) -> bool {
+    fn try_parse_obsolete_priv_section(&self, attrs: &[attribute]) -> bool {
         if self.is_keyword(&~"priv") && self.look_ahead(1) == token::LBRACE {
             self.obsolete(copy *self.span, ObsoletePrivSection);
             self.eat_keyword(&~"priv");
             self.bump();
             while *self.token != token::RBRACE {
-                self.parse_single_struct_field(ast::private, attrs);
+                self.parse_single_struct_field(ast::private, attrs.to_owned());
             }
             self.bump();
             true

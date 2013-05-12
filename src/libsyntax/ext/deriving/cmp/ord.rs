@@ -65,8 +65,6 @@ fn cs_ord(less: bool, equal: bool,
     let false_blk_expr = build::mk_block(cx, span,
                                          ~[], ~[],
                                          Some(build::mk_bool(cx, span, false)));
-    let true_blk = build::mk_simple_block(cx, span,
-                                          build::mk_bool(cx, span, true));
     let base = build::mk_bool(cx, span, equal);
 
     cs_fold(
@@ -108,6 +106,8 @@ fn cs_ord(less: bool, equal: bool,
 
             let cmp = build::mk_method_call(cx, span,
                                             self_f, binop, other_fs.to_owned());
+            let true_blk = build::mk_simple_block(cx, span,
+                                                  build::mk_bool(cx, span, true));
             let if_ = expr_if(cmp, true_blk, Some(elseif));
 
             build::mk_expr(cx, span, if_)
