@@ -31,7 +31,7 @@ pub mod local_sched;
 /// thread local storage and the running task is owned by the
 /// scheduler.
 pub struct Scheduler {
-    priv task_queue: WorkQueue<~Task>,
+    priv work_queue: WorkQueue<~Task>,
     stack_pool: StackPool,
     /// The event loop used to drive the scheduler and perform I/O
     event_loop: ~EventLoopObject,
@@ -76,7 +76,7 @@ pub impl Scheduler {
 
         Scheduler {
             event_loop: event_loop,
-            task_queue: WorkQueue::new(),
+            work_queue: WorkQueue::new(),
             stack_pool: StackPool::new(),
             saved_context: Context::empty(),
             current_task: None,
@@ -106,7 +106,7 @@ pub impl Scheduler {
         }
 
         let sched = local_sched::take();
-        assert!(sched.task_queue.is_empty());
+        assert!(sched.work_queue.is_empty());
         return sched;
     }
 
@@ -116,7 +116,7 @@ pub impl Scheduler {
     /// to run it later. Always use this instead of pushing to the work queue
     /// directly.
     fn enqueue_task(&mut self, task: ~Task) {
-        self.task_queue.push_front(task);
+        self.work_queue.push_front(task);
         self.event_loop.callback(resume_task_from_queue);
 
         fn resume_task_from_queue() {
@@ -133,7 +133,7 @@ pub impl Scheduler {
         rtdebug!("looking in work queue for task to schedule");
 
         let mut this = self;
-        match this.task_queue.pop_front() {
+        match this.work_queue.pop_front() {
             Some(task) => {
                 rtdebug!("resuming task from work queue");
                 this.resume_task_immediately(task);
