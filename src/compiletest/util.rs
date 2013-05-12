@@ -12,7 +12,7 @@ use common::config;
 
 use core::os::getenv;
 
-pub fn make_new_path(path: ~str) -> ~str {
+pub fn make_new_path(path: &str) -> ~str {
 
     // Windows just uses PATH as the library search path, so we have to
     // maintain the current value while adding our own
@@ -20,7 +20,7 @@ pub fn make_new_path(path: ~str) -> ~str {
       Some(curr) => {
         fmt!("%s%s%s", path, path_div(), curr)
       }
-      None => path
+      None => path.to_str()
     }
 }
 
@@ -42,7 +42,7 @@ pub fn path_div() -> ~str { ~":" }
 #[cfg(target_os = "win32")]
 pub fn path_div() -> ~str { ~";" }
 
-pub fn logv(config: config, s: ~str) {
+pub fn logv(config: &config, s: ~str) {
     debug!("%s", s);
     if config.verbose { io::println(s); }
 }
