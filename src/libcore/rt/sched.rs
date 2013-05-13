@@ -19,10 +19,6 @@ use super::context::Context;
 use super::local_services::LocalServices;
 use cell::Cell;
 
-#[cfg(test)] use rt::uv::uvio::UvEventLoop;
-#[cfg(test)] use unstable::run_in_bare_thread;
-#[cfg(test)] use int;
-
 // A more convenient name for external callers, e.g. `local_sched::take()`
 pub mod local_sched;
 

@@ -71,7 +71,7 @@ pub impl IdleWatcher {
             unsafe {
                 let mut idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
                 {
-                    let mut data = idle_watcher.get_watcher_data();
+                    let data = idle_watcher.get_watcher_data();
                     data.close_cb.swap_unwrap()();
                 }
                 idle_watcher.drop_watcher_data();

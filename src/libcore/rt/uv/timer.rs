@@ -69,7 +69,7 @@ impl TimerWatcher {
         extern fn close_cb(handle: *uvll::uv_timer_t) {
             let mut watcher: TimerWatcher = NativeHandle::from_native_handle(handle);
             {
-                let mut data = watcher.get_watcher_data();
+                let data = watcher.get_watcher_data();
                 data.close_cb.swap_unwrap()();
             }
             watcher.drop_watcher_data();
@@ -125,7 +125,6 @@ mod test {
                 assert!(status.is_none());
                 unsafe { *count_ptr += 1 };
                 do timer.start(10, 0) |timer, status| {
-                    let mut timer = timer;
                     assert!(status.is_none());
                     unsafe { *count_ptr += 1 };
                     timer.close(||());
@@ -159,18 +158,16 @@ mod test {
 
                         let mut loop_ = timer.event_loop();
                         let mut timer2 = TimerWatcher::new(&mut loop_);
-                        do timer2.start(10, 0) |timer2, status| {
+                        do timer2.start(10, 0) |timer2, _| {
 
                             unsafe { *count_ptr += 1; }
 
-                            let mut timer2 = timer2;
                             timer2.close(||());
 
                             // Restart the original timer
                             let mut timer = timer;
-                            do timer.start(10, 0) |timer, status| {
+                            do timer.start(10, 0) |timer, _| {
                                 unsafe { *count_ptr += 1; }
-                                let mut timer = timer;
                                 timer.close(||());
                             }
                         }
