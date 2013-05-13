@@ -32,7 +32,7 @@ impl proto_parser for parser::Parser {
                 sep: None,
                 trailing_sep_allowed: false,
             },
-            |self| self.parse_state(proto)
+            |this| this.parse_state(proto)
         );
 
         return proto;
@@ -70,7 +70,7 @@ impl proto_parser for parser::Parser {
                 sep: Some(token::COMMA),
                 trailing_sep_allowed: true,
             },
-            |self| self.parse_message(state)
+            |this| this.parse_message(state)
         );
     }
 

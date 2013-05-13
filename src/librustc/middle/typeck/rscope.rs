@@ -267,10 +267,10 @@ pub struct binding_rscope {
 }
 
 pub fn in_binding_rscope<RS:region_scope + Copy + 'static>(
-        self: &RS,
+        this: &RS,
         region_param_names: RegionParamNames)
      -> binding_rscope {
-    let base = @copy *self;
+    let base = @copy *this;
     let base = base as @region_scope;
     binding_rscope {
         base: base,

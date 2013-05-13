@@ -753,7 +753,8 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_lit(*) |
-            ast::expr_path(*) => {
+            ast::expr_path(*) |
+            ast::expr_self => {
             }
 
             ast::expr_addr_of(_, e) |

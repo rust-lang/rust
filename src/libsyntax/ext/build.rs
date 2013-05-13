@@ -518,6 +518,10 @@ pub fn mk_unreachable_arm(cx: @ext_ctxt, span: span) -> ast::arm {
     mk_arm(cx, span, ~[mk_pat_wild(cx, span)], mk_unreachable(cx, span))
 }
 
+pub fn make_self(cx: @ext_ctxt, span: span) -> @ast::expr {
+    build::mk_expr(cx, span, ast::expr_self)
+}
+
 //
 // Duplication functions
 //

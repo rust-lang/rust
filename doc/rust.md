@@ -618,7 +618,7 @@ each of which may have some number of [attributes](#attributes) attached to it.
 
 ~~~~~~~~ {.ebnf .gram}
 item : mod_item | fn_item | type_item | struct_item | enum_item
-     | static_item | trait_item | impl_item | foreign_mod_item ;
+     | static_item | trait_item | impl_item | extern_block ;
 ~~~~~~~~
 
 An _item_ is a component of a crate; some module items can be defined in crate
@@ -752,10 +752,11 @@ link_attr : ident '=' literal ;
 ~~~~~~~~
 
 An _`extern mod` declaration_ specifies a dependency on an external crate.
-The external crate is then bound into the declaring scope as the `ident` provided in the `extern_mod_decl`.
+The external crate is then bound into the declaring scope
+as the `ident` provided in the `extern_mod_decl`.
 
-The external crate is resolved to a specific `soname` at compile time, and a
-runtime linkage requirement to that `soname` is passed to the linker for
+The external crate is resolved to a specific `soname` at compile time,
+and a runtime linkage requirement to that `soname` is passed to the linker for
 loading at runtime. The `soname` is resolved at compile time by scanning the
 compiler's library path and matching the `link_attrs` provided in the
 `use_decl` against any `#link` attributes that were declared on the external
@@ -992,10 +993,10 @@ Thus the return type on `f` only needs to reflect the `if` branch of the conditi
 #### Extern functions
 
 Extern functions are part of Rust's foreign function interface,
-providing the opposite functionality to [foreign modules](#foreign-modules).
-Whereas foreign modules allow Rust code to call foreign code,
-extern functions with bodies defined in Rust code _can be called by foreign code_.
-They are defined in the same way as any other Rust function,
+providing the opposite functionality to [external blocks](#external-blocks).
+Whereas external blocks allow Rust code to call foreign code,
+extern functions with bodies defined in Rust code _can be called by foreign
+code_. They are defined in the same way as any other Rust function,
 except that they have the `extern` modifier.
 
 ~~~
@@ -1011,7 +1012,8 @@ let fptr: *u8 = new_vec;
 ~~~
 
 The primary motivation for extern functions is
-to create callbacks for foreign functions that expect to receive function pointers.
+to create callbacks for foreign functions that expect to receive function
+pointers.
 
 ### Type definitions
 
@@ -1308,64 +1310,61 @@ impl Seq<bool> for u32 {
 }
 ~~~~
 
-### Foreign modules
+### External blocks
 
 ~~~ {.ebnf .gram}
-foreign_mod_item : "extern mod" ident '{' foreign_mod '} ;
-foreign_mod : [ foreign_fn ] * ;
+extern_block_item : "extern" '{' extern_block '} ;
+extern_block : [ foreign_fn ] * ;
 ~~~
 
-Foreign modules form the basis for Rust's foreign function interface. A
-foreign module describes functions in external, non-Rust
-libraries.
-Functions within foreign modules are declared in the same way as other Rust functions,
-with the exception that they may not have a body and are instead terminated by a semicolon.
+External blocks form the basis for Rust's foreign function interface.
+Declarations in an external block describe symbols
+in external, non-Rust libraries.
+
+Functions within external blocks
+are declared in the same way as other Rust functions,
+with the exception that they may not have a body
+and are instead terminated by a semicolon.
 
 ~~~
 # use core::libc::{c_char, FILE};
 # #[nolink]
 
-extern mod c {
+extern {
     fn fopen(filename: *c_char, mode: *c_char) -> *FILE;
 }
 ~~~
 
-Functions within foreign modules may be called by Rust code, just like functions defined in Rust.
-The Rust compiler automatically translates between the Rust ABI and the foreign ABI.
+Functions within external blocks may be called by Rust code,
+just like functions defined in Rust.
+The Rust compiler automatically translates
+between the Rust ABI and the foreign ABI.
 
-The name of the foreign module has special meaning to the Rust compiler in
-that it will treat the module name as the name of a library to link to,
-performing the linking as appropriate for the target platform. The name
-given for the foreign module will be transformed in a platform-specific way
-to determine the name of the library. For example, on Linux the name of the
-foreign module is prefixed with 'lib' and suffixed with '.so', so the
-foreign mod 'rustrt' would be linked to a library named 'librustrt.so'.
+A number of [attributes](#attributes) control the behavior of external
+blocks.
 
-A number of [attributes](#attributes) control the behavior of foreign
-modules.
-
-By default foreign modules assume that the library they are calling use the
-standard C "cdecl" ABI. Other ABIs may be specified using the `abi`
-attribute as in
+By default external blocks assume
+that the library they are calling uses the standard C "cdecl" ABI.
+Other ABIs may be specified using the `abi` attribute as in
 
 ~~~{.xfail-test}
 // Interface to the Windows API
 #[abi = "stdcall"]
-extern mod kernel32 { }
+extern { }
 ~~~
 
-The `link_name` attribute allows the default library naming behavior to
-be overridden by explicitly specifying the name of the library.
+The `link_name` attribute allows the name of the library to be specified.
 
 ~~~{.xfail-test}
 #[link_name = "crypto"]
-extern mod mycrypto { }
+extern { }
 ~~~
 
-The `nolink` attribute tells the Rust compiler not to do any linking for the foreign module.
-This is particularly useful for creating foreign
-modules for libc, which tends to not follow standard library naming
-conventions and is linked to all Rust programs anyway.
+The `nolink` attribute tells the Rust compiler
+not to do any linking for the external block.
+This is particularly useful for creating external blocks for libc,
+which tends to not follow standard library naming conventions
+and is linked to all Rust programs anyway.
 
 ## Attributes
 

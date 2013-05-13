@@ -257,12 +257,12 @@ pub mod ct {
         let mut flags = ~[];
 
         while i < lim {
-            let f = match s[i] {
-                '-' as u8 => FlagLeftJustify,
-                '0' as u8 => FlagLeftZeroPad,
-                ' ' as u8 => FlagSpaceForSign,
-                '+' as u8 => FlagSignAlways,
-                '#' as u8 => FlagAlternate,
+            let f = match s[i] as char {
+                '-' => FlagLeftJustify,
+                '0' => FlagLeftZeroPad,
+                ' ' => FlagSpaceForSign,
+                '+' => FlagSignAlways,
+                '#' => FlagAlternate,
                 _ => break
             };
 
@@ -313,18 +313,18 @@ pub mod ct {
 
         // FIXME (#2249): Do we really want two signed types here?
         // How important is it to be printf compatible?
-        let t = match s[i] {
-            'b' as u8 => TyBool,
-            's' as u8 => TyStr,
-            'c' as u8 => TyChar,
-            'd' as u8 | 'i' as u8 => TyInt(Signed),
-            'u' as u8 => TyInt(Unsigned),
-            'x' as u8 => TyHex(CaseLower),
-            'X' as u8 => TyHex(CaseUpper),
-            't' as u8 => TyBits,
-            'o' as u8 => TyOctal,
-            'f' as u8 => TyFloat,
-            '?' as u8 => TyPoly,
+        let t = match s[i] as char {
+            'b' => TyBool,
+            's' => TyStr,
+            'c' => TyChar,
+            'd' | 'i' => TyInt(Signed),
+            'u' => TyInt(Unsigned),
+            'x' => TyHex(CaseLower),
+            'X' => TyHex(CaseUpper),
+            't' => TyBits,
+            'o' => TyOctal,
+            'f' => TyFloat,
+            '?' => TyPoly,
             _ => err(~"unknown type in conversion: " + s.substr(i, 1))
         };
 

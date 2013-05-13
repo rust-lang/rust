@@ -310,14 +310,14 @@ pub impl RegionMaps {
             }
         }
 
-        fn ancestors_of(self: &RegionMaps, scope: ast::node_id)
+        fn ancestors_of(this: &RegionMaps, scope: ast::node_id)
             -> ~[ast::node_id]
         {
             // debug!("ancestors_of(scope=%d)", scope);
             let mut result = ~[scope];
             let mut scope = scope;
             loop {
-                match self.scope_map.find(&scope) {
+                match this.scope_map.find(&scope) {
                     None => return result,
                     Some(&superscope) => {
                         result.push(superscope);
@@ -685,7 +685,7 @@ pub impl DetermineRpCtxt {
             None => {
                 self.anon_implies_rp
             }
-            Some(ref l) if l.ident == special_idents::static => {
+            Some(ref l) if l.ident == special_idents::statik => {
                 false
             }
             Some(ref l) if l.ident == special_idents::self_ => {
