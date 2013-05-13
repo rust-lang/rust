@@ -350,16 +350,30 @@ condition! {
     /*pub*/ io_error: super::IoError -> ();
 }
 
+// XXX: Can't put doc comments on macros
+// Raised by `read` on error
+condition! {
+    // FIXME (#6009): uncomment `pub` after expansion support lands.
+    /*pub*/ read_error: super::IoError -> ();
+}
+
 pub trait Reader {
     /// Read bytes, up to the length of `buf` and place them in `buf`.
-    /// Returns the number of bytes read, or `None` on EOF. The number
-    /// of bytes read my be less than the number requested, even 0.
+    /// Returns the number of bytes read. The number of bytes read my
+    /// be less than the number requested, even 0. Returns `None` on EOF.
     ///
     /// # Failure
     ///
-    /// Raises the `io_error` condition on error, then returns `None`.
+    /// Raises the `read_error` condition on error. If the condition
+    /// is handled then no guarantee is made about the number of bytes
+    /// read and the contents of `buf`. If the condition is handled
+    /// returns `None` (XXX see below).
     ///
     /// # XXX
+    ///
+    /// * Should raise error on eof
+    /// * If the condition is handled it should still return the bytes read,
+    ///   in which case there's no need to return Option
     ///
     /// This doesn't take a `len` argument like the old `read`.
     /// Will people often need to slice their vectors to call this
