@@ -122,7 +122,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
 
     debug!("building driver input");
     let head = include_str!("wrapper.rs").to_owned();
-    let foot = fmt!("%s\nfn main() {\n%s\n\nprint({\n%s\n})\n}",
+    let foot = fmt!("fn main() {\n%s\n%s\n\nprint({\n%s\n})\n}",
                     repl.view_items, repl.stmts, input);
     let wrapped = driver::str_input(head + foot);
 
@@ -444,6 +444,7 @@ mod tests {
     }
 
     fn use_does_not_crash() {
+        // Regression tests for #5937
         let mut r = repl();
         let result = run_line(&mut r, io::stdin(), io::stdout(),
                               ~"use core::util::with;", false);
