@@ -253,20 +253,6 @@ mod test {
     }
 
     #[test]
-    fn should_index_foreign_mod_pages() {
-        let doc = mk_doc(
-            config::DocPerMod,
-            ~"extern mod a { }"
-        );
-        assert!((&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
-            kind: ~"Foreign module",
-            name: ~"a",
-            brief: None,
-            link: ~"a.html"
-        });
-    }
-
-    #[test]
     fn should_add_brief_desc_to_index() {
         let doc = mk_doc(
             config::DocPerMod,
@@ -280,7 +266,7 @@ mod test {
     fn should_index_foreign_mod_contents() {
         let doc = mk_doc(
             config::DocPerCrate,
-            ~"extern mod a { fn b(); }"
+            ~"extern { fn b(); }"
         );
         assert!((&doc.cratemod().nmods()[0].index).get().entries[0]
                 == doc::IndexEntry {
