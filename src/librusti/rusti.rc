@@ -35,7 +35,7 @@ use std::rl;
  * A structure shared across REPL instances for storing history
  * such as statements and view items. I wish the AST was sendable.
  */
-struct Repl {
+pub struct Repl {
     prompt: ~str,
     binary: ~str,
     running: bool,
@@ -328,8 +328,8 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
 
 /// Executes a line of input, which may either be rust code or a
 /// :command. Returns a new Repl if it has changed.
-fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
-            use_rl: bool)
+pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
+                use_rl: bool)
     -> Option<Repl> {
     if line.starts_with(":") {
         let full = line.substr(1, line.len() - 1);
@@ -419,5 +419,52 @@ pub fn main() {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn repl() -> Repl {
+        Repl {
+            prompt: ~"rusti> ",
+            binary: ~"rusti",
+            running: true,
+            view_items: ~"",
+            lib_search_paths: ~[],
+            stmts: ~""
+        }
+    }
+
+    fn super_simple() {
+        let mut r = repl();
+        let result = run_line(&mut r, io::stdin(), io::stdout(), ~"", false);
+        result.expect("empty input shouldn't fail in rusti");
+    }
+
+    fn use_does_not_crash() {
+        let mut r = repl();
+        let result = run_line(&mut r, io::stdin(), io::stdout(),
+                              ~"use core::util::with;", false);
+        r = result.expect("use statements should't fail in rusti");
+        let result = run_line(&mut r, io::stdin(), io::stdout(),
+                              ~"", false);
+        result.expect("something should be able to happen after a use statement");
+    }
+
+    #[test]
+    fn run_all() {
+        // By default, unit tests are run in parallel. Rusti, on the other hand,
+        // does not enjoy doing this. I suspect that it is because the LLVM
+        // bindings are not thread-safe (when running parallel tests, some tests
+        // were triggering assertions in LLVM (or segfaults). Hence, this
+        // function exists to run everything serially (sadface).
+        //
+        // To get some interesting output, run with RUST_LOG=rusti::tests
+
+        debug!("super_simple");       super_simple();
+        debug!("use_does_not_crash"); use_does_not_crash();
+
     }
 }
