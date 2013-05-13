@@ -365,7 +365,7 @@ mod test {
 
     #[test]
     fn should_add_foreign_fn_sig() {
-        let doc = mk_doc(~"extern mod a { fn a<T>() -> int; }");
+        let doc = mk_doc(~"extern { fn a<T>() -> int; }");
         assert!(doc.cratemod().nmods()[0].fns[0].sig ==
                 Some(~"fn a<T>() -> int"));
     }

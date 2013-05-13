@@ -35,7 +35,7 @@ use syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
 use syntax::ast::{def_upvar, def_use, def_variant, div, eq};
 use syntax::ast::{expr, expr_again, expr_assign_op};
 use syntax::ast::{expr_index, expr_loop};
-use syntax::ast::{expr_path, expr_struct, expr_unary, fn_decl};
+use syntax::ast::{expr_path, expr_self, expr_struct, expr_unary, fn_decl};
 use syntax::ast::{foreign_item, foreign_item_const, foreign_item_fn, ge};
 use syntax::ast::Generics;
 use syntax::ast::{gt, ident, inherited, item, item_struct};
@@ -326,12 +326,14 @@ pub fn namespace_for_duplicate_checking_mode(mode: DuplicateCheckingMode)
 /// One local scope.
 pub struct Rib {
     bindings: @mut HashMap<ident,def_like>,
+    self_binding: @mut Option<def_like>,
     kind: RibKind,
 }
 
 pub fn Rib(kind: RibKind) -> Rib {
     Rib {
         bindings: @mut HashMap::new(),
+        self_binding: @mut None,
         kind: kind
     }
 }
@@ -762,7 +764,7 @@ pub fn Resolver(session: Session,
 
     let current_module = graph_root.get_module();
 
-    let self = Resolver {
+    let this = Resolver {
         session: @session,
         lang_items: copy lang_items,
         crate: crate,
@@ -800,7 +802,7 @@ pub fn Resolver(session: Session,
         intr: session.intr()
     };
 
-    self
+    this
 }
 
 /// The main resolver class.
@@ -3669,8 +3671,7 @@ pub impl Resolver {
                 HasSelfBinding(self_node_id, is_implicit) => {
                     let def_like = dl_def(def_self(self_node_id,
                                                    is_implicit));
-                    (*function_value_rib).bindings.insert(self.self_ident,
-                                                          def_like);
+                    *function_value_rib.self_binding = Some(def_like);
                 }
             }
 
@@ -4576,7 +4577,7 @@ pub impl Resolver {
                                         ident: ident,
                                         namespace: Namespace,
                                         span: span)
-                                     -> Option<def> {
+                                        -> Option<def> {
         // Check the local set of ribs.
         let search_result;
         match namespace {
@@ -4603,6 +4604,35 @@ pub impl Resolver {
                 return None;
             }
         }
+    }
+
+    fn resolve_self_value_in_local_ribs(@mut self, span: span)
+                                        -> Option<def> {
+        // FIXME #4950: This should not use a while loop.
+        let ribs = &mut self.value_ribs;
+        let mut i = ribs.len();
+        while i != 0 {
+            i -= 1;
+            match *ribs[i].self_binding {
+                Some(def_like) => {
+                    match self.upvarify(*ribs,
+                                        i,
+                                        def_like,
+                                        span,
+                                        DontAllowCapturingSelf) {
+                        Some(dl_def(def)) => return Some(def),
+                        _ => {
+                            self.session.span_bug(span,
+                                                  ~"self wasn't mapped to a \
+                                                    def?!")
+                        }
+                    }
+                }
+                None => {}
+            }
+        }
+
+        None
     }
 
     fn resolve_item_by_identifier_in_lexical_scope(@mut self,
@@ -4819,12 +4849,25 @@ pub impl Resolver {
                                                    `%s`",
                                                    *self.session.str_of(
                                                        label))),
-                    Some(dl_def(def @ def_label(_))) =>
-                        self.record_def(expr.id, def),
-                    Some(_) =>
+                    Some(dl_def(def @ def_label(_))) => {
+                        self.record_def(expr.id, def)
+                    }
+                    Some(_) => {
                         self.session.span_bug(expr.span,
                                               ~"label wasn't mapped to a \
                                                 label def!")
+                    }
+                }
+            }
+
+            expr_self => {
+                match self.resolve_self_value_in_local_ribs(expr.span) {
+                    None => {
+                        self.session.span_err(expr.span,
+                                              ~"`self` is not allowed in \
+                                                this context")
+                    }
+                    Some(def) => self.record_def(expr.id, def),
                 }
             }
 

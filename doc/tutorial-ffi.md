@@ -237,7 +237,8 @@ convention to use:
 ~~~~
 #[cfg(target_os = "win32")]
 #[abi = "stdcall"]
-extern mod kernel32 {
+#[link_name = "kernel32"]
+extern {
     fn SetEnvironmentVariableA(n: *u8, v: *u8) -> int;
 }
 ~~~~

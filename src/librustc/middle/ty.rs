@@ -3383,7 +3383,7 @@ pub fn expr_kind(tcx: ctxt,
     }
 
     match expr.node {
-        ast::expr_path(*) => {
+        ast::expr_path(*) | ast::expr_self => {
             match resolve_expr(tcx, expr) {
                 ast::def_variant(*) | ast::def_struct(*) => RvalueDpsExpr,
 

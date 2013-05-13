@@ -340,7 +340,7 @@ pub mod special_idents {
     pub static main : ident = ident { repr: 26, ctxt: 0};
     pub static opaque : ident = ident { repr: 27, ctxt: 0};
     pub static blk : ident = ident { repr: 28, ctxt: 0};
-    pub static static : ident = ident { repr: 29, ctxt: 0};
+    pub static statik : ident = ident { repr: 29, ctxt: 0};
     pub static intrinsic : ident = ident { repr: 30, ctxt: 0};
     pub static clownshoes_foreign_mod: ident = ident { repr: 31, ctxt: 0};
     pub static unnamed_field: ident = ident { repr: 32, ctxt: 0};
@@ -504,26 +504,17 @@ pub fn mk_fake_ident_interner() -> @ident_interner {
  */
 pub fn keyword_table() -> HashSet<~str> {
     let mut keywords = HashSet::new();
-    let mut tmp = temporary_keyword_table();
     let mut strict = strict_keyword_table();
     let mut reserved = reserved_keyword_table();
 
-    do tmp.consume |word|      { keywords.insert(word); }
-    do strict.consume |word|   { keywords.insert(word); }
-    do reserved.consume |word| { keywords.insert(word); }
-    return keywords;
-}
-
-/// Keywords that may be used as identifiers
-pub fn temporary_keyword_table() -> HashSet<~str> {
-    let mut words = HashSet::new();
-    let keys = ~[
-        ~"self", ~"static",
-    ];
-    do vec::consume(keys) |_, s| {
-        words.insert(s);
+    do strict.consume |word| {
+        keywords.insert(word);
     }
-    return words;
+    do reserved.consume |word| {
+        keywords.insert(word);
+    }
+
+    keywords
 }
 
 /// Full keywords. May not appear anywhere else.
@@ -542,7 +533,7 @@ pub fn strict_keyword_table() -> HashSet<~str> {
         ~"once",
         ~"priv", ~"pub", ~"pure",
         ~"ref", ~"return",
-        ~"struct", ~"super",
+        ~"static", ~"self", ~"struct", ~"super",
         ~"true", ~"trait", ~"type",
         ~"unsafe", ~"use",
         ~"while"

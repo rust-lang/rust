@@ -406,7 +406,7 @@ pub impl mem_categorization_ctxt {
             self.cat_index(expr, base_cmt, 0)
           }
 
-          ast::expr_path(_) => {
+          ast::expr_path(_) | ast::expr_self => {
             let def = self.tcx.def_map.get_copy(&expr.id);
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }

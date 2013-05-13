@@ -702,7 +702,7 @@ mod test {
 
     #[test]
     fn should_write_index_for_foreign_mods() {
-        let markdown = render(~"extern mod a { fn a(); }");
+        let markdown = render(~"extern { fn a(); }");
         assert!(str::contains(
             markdown,
             ~"\n\n* [Function `a`](#function-a)\n\n"
@@ -710,23 +710,16 @@ mod test {
     }
 
     #[test]
-    fn should_write_foreign_mods() {
-        let markdown = render(~"#[doc = \"test\"] extern mod a { }");
-        assert!(str::contains(markdown, ~"Foreign module `a`"));
-        assert!(str::contains(markdown, ~"test"));
-    }
-
-    #[test]
     fn should_write_foreign_fns() {
         let markdown = render(
-            ~"extern mod a { #[doc = \"test\"] fn a(); }");
+            ~"extern { #[doc = \"test\"] fn a(); }");
         assert!(str::contains(markdown, ~"test"));
     }
 
     #[test]
     fn should_write_foreign_fn_headers() {
         let markdown = render(
-            ~"extern mod a { #[doc = \"test\"] fn a(); }");
+            ~"extern { #[doc = \"test\"] fn a(); }");
         assert!(str::contains(markdown, ~"## Function `a`"));
     }
 
