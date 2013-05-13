@@ -152,7 +152,7 @@ FIXME #4726: It would probably be appropriate to make this a real global
 */
 fn with_env_lock<T>(f: &fn() -> T) -> T {
     use unstable::global::global_data_clone_create;
-    use unstable::{Exclusive, exclusive};
+    use unstable::sync::{Exclusive, exclusive};
 
     struct SharedValue(());
     type ValueMutex = Exclusive<SharedValue>;
@@ -855,7 +855,7 @@ pub fn change_dir(p: &Path) -> bool {
 /// is otherwise unsuccessful.
 pub fn change_dir_locked(p: &Path, action: &fn()) -> bool {
     use unstable::global::global_data_clone_create;
-    use unstable::{Exclusive, exclusive};
+    use unstable::sync::{Exclusive, exclusive};
 
     fn key(_: Exclusive<()>) { }
 
