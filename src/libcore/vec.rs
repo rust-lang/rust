@@ -1681,8 +1681,8 @@ pub fn eachi_reverse<'r,T>(v: &'r [T],
  */
 #[inline]
 pub fn _each2<U, T>(v1: &[U], v2: &[T], f: &fn(u: &U, t: &T) -> bool) -> bool {
-    assert!(len(v1) == len(v2));
-    for uint::range(0u, len(v1)) |i| {
+    assert!(v1.len() == v2.len());
+    for uint::range(0u, v1.len()) |i| {
         if !f(&v1[i], &v2[i]) {
             return false;
         }
@@ -1697,6 +1697,35 @@ pub fn each2<U, T>(v1: &[U], v2: &[T], f: &fn(u: &U, t: &T) -> bool) {
 #[cfg(not(stage0))]
 pub fn each2<U, T>(v1: &[U], v2: &[T], f: &fn(u: &U, t: &T) -> bool) -> bool {
     _each2(v1, v2, f)
+}
+
+/**
+ *
+ * Iterates over two vector with mutable.
+ *
+ * # Failure
+ *
+ * Both vectors must have the same length
+ */
+#[inline]
+pub fn _each2_mut<U, T>(v1: &mut [U], v2: &mut [T], f: &fn(u: &mut U, t: &mut T) -> bool) -> bool {
+    assert!(v1.len() == v2.len());
+    for uint::range(0u, v1.len()) |i| {
+        if !f(&mut v1[i], &mut v2[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+#[cfg(stage0)]
+pub fn each2_mut<U, T>(v1: &mut [U], v2: &mut [T], f: &fn(u: &mut U, t: &mut T) -> bool) {
+    _each2_mut(v1, v2, f);
+}
+
+#[cfg(not(stage0))]
+pub fn each2_mut<U, T>(v1: &mut [U], v2: &mut [T], f: &fn(u: &mut U, t: &mut T) -> bool) -> bool {
+    _each2_mut(v1, v2, f)
 }
 
 /**
