@@ -17,6 +17,7 @@ use vec;
 use rt::io::Reader;
 use option::{Option, Some, None};
 use unstable::finally::Finally;
+use util;
 
 pub trait ReaderUtil {
 
@@ -60,11 +61,12 @@ impl<T: Reader> ReaderUtil for T {
     fn read_byte(&mut self) -> Option<u8> {
         let mut buf = [0];
         match self.read(buf) {
-            Some(nread) if nread == 0 => {
+            Some(0) => {
                 debug!("read 0 bytes. trying again");
                 self.read_byte()
             }
-            Some(nread) => Some(buf[0]),
+            Some(1) => Some(buf[0]),
+            Some(_) => util::unreachable(),
             None => None
         }
     }

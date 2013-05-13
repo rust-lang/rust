@@ -243,7 +243,7 @@ mod test {
             }
 
             do spawntask_immediately {
-                let stream = TcpStream::connect(addr);
+                let _stream = TcpStream::connect(addr);
                 // Close
             }
         }

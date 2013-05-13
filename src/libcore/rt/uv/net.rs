@@ -131,7 +131,7 @@ pub impl StreamWatcher {
         extern fn close_cb(handle: *uvll::uv_stream_t) {
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
             {
-                let mut data = stream_watcher.get_watcher_data();
+                let data = stream_watcher.get_watcher_data();
                 data.close_cb.swap_unwrap()();
             }
             stream_watcher.drop_watcher_data();
@@ -373,7 +373,7 @@ mod test {
                 assert!(status.is_none());
                 let mut server_stream_watcher = server_stream_watcher;
                 let mut loop_ = loop_;
-                let mut client_tcp_watcher = TcpWatcher::new(&mut loop_);
+                let client_tcp_watcher = TcpWatcher::new(&mut loop_);
                 let mut client_tcp_watcher = client_tcp_watcher.as_stream();
                 server_stream_watcher.accept(client_tcp_watcher);
                 let count_cell = Cell(0);
