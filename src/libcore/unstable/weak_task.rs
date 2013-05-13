@@ -191,7 +191,7 @@ fn test_select_stream_and_oneshot() {
     use comm::select2i;
     use either::{Left, Right};
 
-    let mut (port, chan) = stream();
+    let (port, chan) = stream();
     let port = Cell(port);
     let (waitport, waitchan) = stream();
     do spawn {

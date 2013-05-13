@@ -15,10 +15,12 @@ use super::io::net::ip::IpAddr;
 use super::uv::*;
 use super::rtio::*;
 use ops::Drop;
+use old_iter::CopyableIter;
 use cell::{Cell, empty_cell};
 use cast::transmute;
 use super::sched::{Scheduler, local_sched};
 
+#[cfg(test)] use container::Container;
 #[cfg(test)] use uint;
 #[cfg(test)] use unstable::run_in_bare_thread;
 #[cfg(test)] use super::test::*;
@@ -426,7 +428,7 @@ fn test_read_read_read() {
                 let io = local_sched::unsafe_borrow_io();
                 let mut listener = io.bind(addr).unwrap();
                 let mut stream = listener.listen().unwrap();
-                let mut buf = [1, .. 2048];
+                let buf = [1, .. 2048];
                 let mut total_bytes_written = 0;
                 while total_bytes_written < MAX {
                     stream.write(buf);

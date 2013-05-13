@@ -25,10 +25,11 @@ use managed;
 use ptr;
 use reflect;
 use reflect::{MovePtr, align};
+use str::StrSlice;
 use to_str::ToStr;
-use vec::UnboxedVecRepr;
 use vec::raw::{VecRepr, SliceRepr};
 use vec;
+use vec::{OwnedVector, UnboxedVecRepr};
 
 #[cfg(test)] use io;
 

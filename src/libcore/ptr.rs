@@ -353,7 +353,7 @@ pub mod ptr_tests {
             assert!((p.fst == 50));
             assert!((p.snd == 60));
 
-            let mut v0 = ~[32000u16, 32001u16, 32002u16];
+            let v0 = ~[32000u16, 32001u16, 32002u16];
             let mut v1 = ~[0u16, 0u16, 0u16];
 
             copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 1u),

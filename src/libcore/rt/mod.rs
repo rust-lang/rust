@@ -13,6 +13,7 @@
 #[doc(hidden)];
 
 use libc::c_char;
+use ptr::Ptr;
 
 #[path = "sched/mod.rs"]
 mod sched;

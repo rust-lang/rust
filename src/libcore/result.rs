@@ -17,7 +17,9 @@ use either;
 use either::Either;
 use kinds::Copy;
 use option::{None, Option, Some};
+use old_iter::BaseIter;
 use vec;
+use vec::OwnedVector;
 
 /// The result type
 #[deriving(Clone, Eq)]

@@ -15,7 +15,7 @@
 
 extern mod core;
 
-fn last<T>(v: ~[&T]) -> core::Option<T> {
+fn last<T>(v: ~[&T]) -> core::option::Option<T> {
     fail!();
 }
 
