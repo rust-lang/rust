@@ -592,6 +592,30 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                                     Release);
             Store(bcx, old, fcx.llretptr.get());
         }
+        ~"atomic_load" => {
+            let old = AtomicLoad(bcx,
+                                 get_param(decl, first_real_arg),
+                                 SequentiallyConsistent);
+            Store(bcx, old, fcx.llretptr.get());
+        }
+        ~"atomic_load_acq" => {
+            let old = AtomicLoad(bcx,
+                                 get_param(decl, first_real_arg),
+                                 Acquire);
+            Store(bcx, old, fcx.llretptr.get());
+        }
+        ~"atomic_store" => {
+            AtomicStore(bcx,
+                        get_param(decl, first_real_arg + 1u),
+                        get_param(decl, first_real_arg),
+                        SequentiallyConsistent);
+        }
+        ~"atomic_store_rel" => {
+            AtomicStore(bcx,
+                        get_param(decl, first_real_arg + 1u),
+                        get_param(decl, first_real_arg),
+                        Release);
+        }
         ~"atomic_xchg" => {
             let old = AtomicRMW(bcx, Xchg,
                                 get_param(decl, first_real_arg),

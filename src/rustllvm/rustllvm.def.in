@@ -84,6 +84,8 @@ LLVMArrayType
 LLVMBasicBlockAsValue
 LLVMBlockAddress
 LLVMBuildAShr
+LLVMBuildAtomicLoad
+LLVMBuildAtomicStore
 LLVMBuildAtomicCmpXchg
 LLVMBuildAtomicRMW
 LLVMBuildAdd

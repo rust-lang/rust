@@ -537,6 +537,18 @@ pub fn Load(cx: block, PointerVal: ValueRef) -> ValueRef {
     }
 }
 
+pub fn AtomicLoad(cx: block, PointerVal: ValueRef, order: AtomicOrdering) -> ValueRef {
+    unsafe {
+        let ccx = cx.fcx.ccx;
+        if cx.unreachable {
+            return llvm::LLVMGetUndef(ccx.int_type);
+        }
+        count_insn(cx, "load.atomic");
+        return llvm::LLVMBuildAtomicLoad(B(cx), PointerVal, order);
+    }
+}
+
+
 pub fn LoadRangeAssert(cx: block, PointerVal: ValueRef, lo: c_ulonglong,
                        hi: c_ulonglong, signed: lib::llvm::Bool) -> ValueRef {
     let value = Load(cx, PointerVal);
@@ -564,6 +576,17 @@ pub fn Store(cx: block, Val: ValueRef, Ptr: ValueRef) {
                val_str(cx.ccx().tn, Ptr));
         count_insn(cx, "store");
         llvm::LLVMBuildStore(B(cx), Val, Ptr);
+    }
+}
+
+pub fn AtomicStore(cx: block, Val: ValueRef, Ptr: ValueRef, order: AtomicOrdering) {
+    unsafe {
+        if cx.unreachable { return; }
+        debug!("Store %s -> %s",
+               val_str(cx.ccx().tn, Val),
+               val_str(cx.ccx().tn, Ptr));
+        count_insn(cx, "store.atomic");
+        llvm::LLVMBuildAtomicStore(B(cx), Val, Ptr, order);
     }
 }
 

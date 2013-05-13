@@ -20,6 +20,16 @@ pub extern "rust-intrinsic" {
     pub fn atomic_cxchg_acq(dst: &mut int, old: int, src: int) -> int;
     pub fn atomic_cxchg_rel(dst: &mut int, old: int, src: int) -> int;
 
+    #[cfg(not(stage0))]
+    pub fn atomic_load(src: &int) -> int;
+    #[cfg(not(stage0))]
+    pub fn atomic_load_acq(src: &int) -> int;
+
+    #[cfg(not(stage0))]
+    pub fn atomic_store(dst: &mut int, val: int);
+    #[cfg(not(stage0))]
+    pub fn atomic_store_rel(dst: &mut int, val: int);
+
     pub fn atomic_xchg(dst: &mut int, src: int) -> int;
     pub fn atomic_xchg_acq(dst: &mut int, src: int) -> int;
     pub fn atomic_xchg_rel(dst: &mut int, src: int) -> int;
