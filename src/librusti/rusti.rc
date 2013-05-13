@@ -437,21 +437,13 @@ mod tests {
         }
     }
 
-    fn super_simple() {
+    fn run_cmds(cmds: &[&str]) {
         let mut r = repl();
-        let result = run_line(&mut r, io::stdin(), io::stdout(), ~"", false);
-        result.expect("empty input shouldn't fail in rusti");
-    }
-
-    fn use_does_not_crash() {
-        // Regression tests for #5937
-        let mut r = repl();
-        let result = run_line(&mut r, io::stdin(), io::stdout(),
-                              ~"use core::util::with;", false);
-        r = result.expect("use statements should't fail in rusti");
-        let result = run_line(&mut r, io::stdin(), io::stdout(),
-                              ~"", false);
-        result.expect("something should be able to happen after a use statement");
+        for cmds.each |&cmd| {
+            let result = run_line(&mut r, io::stdin(), io::stdout(),
+                                  cmd.to_owned(), false);
+            r = result.expect(fmt!("the command '%s' failed", cmd));
+        }
     }
 
     #[test]
@@ -464,8 +456,17 @@ mod tests {
         //
         // To get some interesting output, run with RUST_LOG=rusti::tests
 
-        debug!("super_simple");       super_simple();
-        debug!("use_does_not_crash"); use_does_not_crash();
+        debug!("hopefully this runs");
+        run_cmds([""]);
 
+        debug!("regression test for #5937");
+        run_cmds(["use core;", ""]);
+
+        debug!("regression test for #5784");
+        run_cmds(["let a = 1;"]);
+
+        debug!("regression test for #5803");
+        run_cmds(["spawn( || println(\"Please don't segfault\") );",
+                  "do spawn { println(\"Please?\"); }"]);
     }
 }
