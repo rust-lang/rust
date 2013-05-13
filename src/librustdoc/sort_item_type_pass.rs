@@ -43,8 +43,6 @@ fn test() {
 
     let source =
         ~"mod imod { } \
-         extern mod inmod {
-         } \
          static iconst: int = 0; \
          fn ifn() { } \
          enum ienum { ivar } \
@@ -63,6 +61,5 @@ fn test() {
         assert!(doc.cratemod().items[5].name() == ~"__extensions__");
         assert!(doc.cratemod().items[6].name() == ~"ifn");
         assert!(doc.cratemod().items[7].name() == ~"imod");
-        assert!(doc.cratemod().items[8].name() == ~"inmod");
     }
 }
