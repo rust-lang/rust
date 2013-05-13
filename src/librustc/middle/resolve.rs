@@ -2505,8 +2505,8 @@ pub impl Resolver {
                                                                     *segment_name));
                         return Failed;
                     }
-                    self.session.span_err(span, fmt!("unresolved import: could not find %s in %s.",
-                                                     *segment_name, module_name));
+                    self.session.span_err(span, fmt!("unresolved import: could not find `%s` in \
+                                                     `%s`.", *segment_name, module_name));
                     return Failed;
                 }
                 Indeterminate => {
