@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use x = m::f; //~ ERROR failed to resolve imports
+use x = m::f; //~ ERROR failed to resolve import
 
 mod m {
 }
