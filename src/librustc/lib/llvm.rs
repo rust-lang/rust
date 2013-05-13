@@ -1339,13 +1339,16 @@ pub mod llvm {
                                     PointerVal: ValueRef) -> ValueRef;
         #[fast_ffi]
         pub unsafe fn LLVMBuildLoad(B: BuilderRef,
-                                PointerVal: ValueRef,
-                                Name: *c_char)
-                             -> ValueRef;
+                                    PointerVal: ValueRef,
+                                    Name: *c_char)
+                                 -> ValueRef;
+
         #[fast_ffi]
         pub unsafe fn LLVMBuildStore(B: BuilderRef,
                                      Val: ValueRef,
-                                     Ptr: ValueRef) -> ValueRef;
+                                     Ptr: ValueRef)
+                                  -> ValueRef;
+
         #[fast_ffi]
         pub unsafe fn LLVMBuildGEP(B: BuilderRef,
                                Pointer: ValueRef,
@@ -1561,6 +1564,17 @@ pub mod llvm {
                                        Name: *c_char) -> ValueRef;
 
         /* Atomic Operations */
+        pub unsafe fn LLVMBuildAtomicLoad(B: BuilderRef,
+                                          PointerVal: ValueRef,
+                                          Order: AtomicOrdering)
+                                       -> ValueRef;
+
+        pub unsafe fn LLVMBuildAtomicStore(B: BuilderRef,
+                                           Val: ValueRef,
+                                           Ptr: ValueRef,
+                                           Order: AtomicOrdering)
+                                        -> ValueRef;
+
         pub unsafe fn LLVMBuildAtomicCmpXchg(B: BuilderRef,
                                              LHS: ValueRef,
                                              CMP: ValueRef,
