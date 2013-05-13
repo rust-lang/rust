@@ -187,7 +187,7 @@ In particular code written to ignore errors and expect conditions to be unhandle
 will start passing around null or zero objects when wrapped in a condition handler.
 
 * XXX: How should we use condition handlers that return values?
-
+* XXX: Should EOF raise default conditions when EOF is not an error?
 
 # Issues withi/o scheduler affinity, work stealing, task pinning
 
@@ -323,6 +323,10 @@ pub mod native {
 /// Mock implementations for testing
 mod mock;
 
+/// The default buffer size for various I/O operations
+/// XXX: Not pub
+pub static DEFAULT_BUF_SIZE: uint = 1024 * 64;
+
 /// The type passed to I/O condition handlers to indicate error
 ///
 /// # XXX
@@ -375,7 +379,7 @@ pub trait Reader {
     ///
     /// # XXX
     ///
-    /// * Should raise error on eof
+    /// * Should raise_default error on eof?
     /// * If the condition is handled it should still return the bytes read,
     ///   in which case there's no need to return Option - but then you *have*
     ///   to install a handler to detect eof.
