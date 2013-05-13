@@ -260,8 +260,11 @@ pub use self::net::tcp::TcpStream;
 pub use self::net::udp::UdpStream;
 
 // Some extension traits that all Readers and Writers get.
+#[cfg(not(stage0))] // Requires condition! fixes
 pub use self::extensions::ReaderUtil;
+#[cfg(not(stage0))] // Requires condition! fixes
 pub use self::extensions::ReaderByteConversions;
+#[cfg(not(stage0))] // Requires condition! fixes
 pub use self::extensions::WriterByteConversions;
 
 /// Synchronous, non-blocking file I/O.
@@ -295,6 +298,7 @@ pub mod flate;
 pub mod comm_adapters;
 
 /// Extension traits
+#[cfg(not(stage0))] // Requires condition! fixes
 mod extensions;
 
 /// Non-I/O things needed by the I/O module
@@ -373,7 +377,8 @@ pub trait Reader {
     ///
     /// * Should raise error on eof
     /// * If the condition is handled it should still return the bytes read,
-    ///   in which case there's no need to return Option
+    ///   in which case there's no need to return Option - but then you *have*
+    ///   to install a handler to detect eof.
     ///
     /// This doesn't take a `len` argument like the old `read`.
     /// Will people often need to slice their vectors to call this
@@ -479,6 +484,13 @@ pub fn standard_error(kind: IoErrorKind) -> IoError {
             IoError {
                 kind: PreviousIoError,
                 desc: "Failing due to a previous I/O error",
+                detail: None
+            }
+        }
+        EndOfFile => {
+            IoError {
+                kind: EndOfFile,
+                desc: "End of file",
                 detail: None
             }
         }
