@@ -138,8 +138,8 @@ pub enum Void { }
 
 pub impl Void {
     /// A utility function for ignoring this uninhabited type
-    fn uninhabited(&self) -> ! {
-        match *self {
+    fn uninhabited(self) -> ! {
+        match self {
             // Nothing to match on
         }
     }
@@ -177,7 +177,8 @@ pub fn unreachable() -> ! {
 #[cfg(test)]
 mod tests {
     use option::{None, Some};
-    use util::{NonCopyable, id, replace, swap};
+    use util::{Void, NonCopyable, id, replace, swap};
+    use either::{Either, Left, Right};
 
     #[test]
     pub fn identity_crisis() {
@@ -201,5 +202,13 @@ mod tests {
         let y = replace(&mut x, None);
         assert!(x.is_none());
         assert!(y.is_some());
+    }
+    #[test]
+    pub fn test_uninhabited() {
+        let could_only_be_coin : Either <Void, ()> = Right (());
+        match could_only_be_coin {
+            Right (coin) => coin,
+            Left (is_void) => is_void.uninhabited ()
+        }
     }
 }
