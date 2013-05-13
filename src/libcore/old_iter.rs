@@ -128,18 +128,20 @@ pub fn _eachi<A,IA:BaseIter<A>>(this: &IA, blk: &fn(uint, &A) -> bool) -> bool {
 }
 
 #[cfg(stage0)]
-pub fn eachi<A,IA:BaseIter<A>>(self: &IA, blk: &fn(uint, &A) -> bool) {
-    _eachi(self, blk);
+pub fn eachi<A,IA:BaseIter<A>>(this: &IA, blk: &fn(uint, &A) -> bool) {
+    _eachi(this, blk);
 }
 #[cfg(not(stage0))]
-pub fn eachi<A,IA:BaseIter<A>>(self: &IA, blk: &fn(uint, &A) -> bool) -> bool {
-    _eachi(self, blk)
+pub fn eachi<A,IA:BaseIter<A>>(this: &IA, blk: &fn(uint, &A) -> bool) -> bool {
+    _eachi(this, blk)
 }
 
 #[inline(always)]
 pub fn all<A,IA:BaseIter<A>>(this: &IA, blk: &fn(&A) -> bool) -> bool {
     for this.each |a| {
-        if !blk(a) { return false; }
+        if !blk(a) {
+            return false;
+        }
     }
     return true;
 }
@@ -147,7 +149,9 @@ pub fn all<A,IA:BaseIter<A>>(this: &IA, blk: &fn(&A) -> bool) -> bool {
 #[inline(always)]
 pub fn any<A,IA:BaseIter<A>>(this: &IA, blk: &fn(&A) -> bool) -> bool {
     for this.each |a| {
-        if blk(a) { return true; }
+        if blk(a) {
+            return true;
+        }
     }
     return false;
 }
