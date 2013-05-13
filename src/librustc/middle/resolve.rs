@@ -2282,17 +2282,19 @@ pub impl Resolver {
         }
 
         let i = import_resolution;
+        let mut resolve_fail = false;
+        let mut priv_fail = false;
         match (i.value_target, i.type_target) {
             // If this name wasn't found in either namespace, it's definitely
             // unresolved.
-            (None, None) => { return Failed; }
+            (None, None) => { resolve_fail = true; }
             // If it's private, it's also unresolved.
             (Some(t), None) | (None, Some(t)) => {
                 let bindings = &mut *t.bindings;
                 match bindings.type_def {
                     Some(ref type_def) => {
                         if type_def.privacy == Private {
-                            return Failed;
+                            priv_fail = true;
                         }
                     }
                     _ => ()
@@ -2300,7 +2302,7 @@ pub impl Resolver {
                 match bindings.value_def {
                     Some(ref value_def) => {
                         if value_def.privacy == Private {
-                            return Failed;
+                            priv_fail = true;
                         }
                     }
                     _ => ()
@@ -2313,11 +2315,23 @@ pub impl Resolver {
                     (Some(ref value_def), Some(ref type_def)) =>
                         if value_def.privacy == Private
                             && type_def.privacy == Private {
-                            return Failed;
+                                priv_fail = true;
                         },
                     _ => ()
                 }
             }
+        }
+
+        if resolve_fail {
+            self.session.err(fmt!("unresolved import: there is no `%s` in `%s`",
+                                  *self.session.str_of(source),
+                                  self.module_to_str(containing_module)));
+            return Failed;
+        } else if priv_fail {
+            self.session.err(fmt!("unresolved import: found `%s` in `%s` but it is private",
+                                  *self.session.str_of(source),
+                                  self.module_to_str(containing_module)));
+            return Failed;
         }
 
         assert!(import_resolution.outstanding_references >= 1);
@@ -2491,7 +2505,8 @@ pub impl Resolver {
                                                                     *segment_name));
                         return Failed;
                     }
-                    self.session.span_err(span, ~"unresolved name");
+                    self.session.span_err(span, fmt!("unresolved import: could not find `%s` in \
+                                                     `%s`.", *segment_name, module_name));
                     return Failed;
                 }
                 Indeterminate => {
