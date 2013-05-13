@@ -1574,7 +1574,7 @@ pub mod llvm {
                                            Ptr: ValueRef,
                                            Order: AtomicOrdering)
                                         -> ValueRef;
-        
+
         pub unsafe fn LLVMBuildAtomicCmpXchg(B: BuilderRef,
                                              LHS: ValueRef,
                                              CMP: ValueRef,
