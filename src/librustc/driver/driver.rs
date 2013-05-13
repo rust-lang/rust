@@ -632,7 +632,7 @@ pub fn build_session_options(binary: @~str,
     let extra_debuginfo = debugging_opts & session::extra_debug_info != 0;
     let debuginfo = debugging_opts & session::debug_info != 0 ||
         extra_debuginfo;
-    let static = debugging_opts & session::static != 0;
+    let statik = debugging_opts & session::statik != 0;
     let target =
         match target_opt {
             None => host_triple(),
@@ -660,7 +660,7 @@ pub fn build_session_options(binary: @~str,
 
     let sopts = @session::options {
         crate_type: crate_type,
-        is_static: static,
+        is_static: statik,
         gc: gc,
         optimize: opt_level,
         debuginfo: debuginfo,

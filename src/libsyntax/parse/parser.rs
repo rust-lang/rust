@@ -26,7 +26,7 @@ use ast::{expr_break, expr_call, expr_cast, expr_copy, expr_do_body};
 use ast::{expr_field, expr_fn_block, expr_if, expr_index};
 use ast::{expr_lit, expr_log, expr_loop, expr_loop_body, expr_mac};
 use ast::{expr_method_call, expr_paren, expr_path, expr_repeat};
-use ast::{expr_ret, expr_struct, expr_tup, expr_unary};
+use ast::{expr_ret, expr_self, expr_struct, expr_tup, expr_unary};
 use ast::{expr_vec, expr_vstore, expr_vstore_mut_box};
 use ast::{expr_vstore_slice, expr_vstore_box};
 use ast::{expr_vstore_mut_slice, expr_while, extern_fn, field, fn_decl};
@@ -82,6 +82,7 @@ use parse::obsolete::ObsoleteMode;
 use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
 use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
 use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
+use parse::obsolete::{ObsoleteNamedExternModule};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, special_idents, token_to_binop};
 use parse::token;
@@ -415,8 +416,7 @@ pub impl Parser {
         self.expect_keyword(&~"fn");
 
         if self.parse_fn_ty_sigil().is_some() {
-            self.obsolete(*self.span,
-                          ObsoletePostFnTySigil);
+            self.obsolete(*self.span, ObsoletePostFnTySigil);
         }
 
         let (decl, lifetimes) = self.parse_ty_fn_decl();
@@ -430,8 +430,12 @@ pub impl Parser {
             lifetimes: lifetimes,
         });
 
-        fn parse_onceness(self: &Parser) -> Onceness {
-            if self.eat_keyword(&~"once") { Once } else { Many }
+        fn parse_onceness(this: &Parser) -> Onceness {
+            if this.eat_keyword(&~"once") {
+                Once
+            } else {
+                Many
+            }
         }
     }
 
@@ -911,6 +915,24 @@ pub impl Parser {
         codemap::spanned { node: lit, span: mk_sp(lo, self.last_span.hi) }
     }
 
+    // matches '-' lit | lit
+    fn parse_literal_maybe_minus(&self) -> @expr {
+        let minus_lo = self.span.lo;
+        let minus_present = self.eat(&token::BINOP(token::MINUS));
+
+        let lo = self.span.lo;
+        let literal = @self.parse_lit();
+        let hi = self.span.hi;
+        let expr = self.mk_expr(lo, hi, expr_lit(literal));
+
+        if minus_present {
+            let minus_hi = self.span.hi;
+            self.mk_expr(minus_lo, minus_hi, expr_unary(neg, expr))
+        } else {
+            expr
+        }
+    }
+
     // parse a path into a vector of idents, whether the path starts
     // with ::, and a span.
     fn parse_path(&self) -> (~[ast::ident],bool,span) {
@@ -1224,6 +1246,9 @@ pub impl Parser {
                                  expr_block(blk));
         } else if token::is_bar(&*self.token) {
             return self.parse_lambda_expr();
+        } else if self.eat_keyword(&~"self") {
+            ex = expr_self;
+            hi = self.span.hi;
         } else if self.eat_keyword(&~"if") {
             return self.parse_if_expr();
         } else if self.eat_keyword(&~"for") {
@@ -2353,10 +2378,19 @@ pub impl Parser {
                 || self.is_keyword(&~"true")
                 || self.is_keyword(&~"false")
             {
-                // parse an expression pattern or exp .. exp
-                let val = self.parse_expr_res(RESTRICT_NO_BAR_OP);
+                // Parse an expression pattern or exp .. exp.
+                //
+                // These expressions are limited to literals (possibly
+                // preceded by unary-minus) or identifiers.
+                let val = self.parse_literal_maybe_minus();
                 if self.eat(&token::DOTDOT) {
-                    let end = self.parse_expr_res(RESTRICT_NO_BAR_OP);
+                    let end = if is_ident_or_path(&tok) {
+                        let path = self.parse_path_with_tps(true);
+                        let hi = self.span.hi;
+                        self.mk_expr(lo, hi, expr_path(path))
+                    } else {
+                        self.parse_literal_maybe_minus()
+                    };
                     pat = pat_range(val, end);
                 } else {
                     pat = pat_lit(val);
@@ -2984,9 +3018,7 @@ pub impl Parser {
             }
         }
 
-        fn maybe_parse_borrowed_self_ty(
-            self: &Parser
-        ) -> ast::self_ty_ {
+        fn maybe_parse_borrowed_self_ty(this: &Parser) -> ast::self_ty_ {
             // The following things are possible to see here:
             //
             //     fn(&self)
@@ -2996,37 +3028,29 @@ pub impl Parser {
             //
             // We already know that the current token is `&`.
 
-            if (
-                self.token_is_keyword(&~"self", &self.look_ahead(1)))
-            {
-                self.bump();
-                self.expect_self_ident();
+            if (this.token_is_keyword(&~"self", &this.look_ahead(1))) {
+                this.bump();
+                this.expect_self_ident();
                 sty_region(None, m_imm)
-            } else if (
-                self.token_is_mutability(&self.look_ahead(1)) &&
-                self.token_is_keyword(&~"self", &self.look_ahead(2)))
-            {
-                self.bump();
-                let mutability = self.parse_mutability();
-                self.expect_self_ident();
+            } else if (this.token_is_mutability(&this.look_ahead(1)) &&
+                       this.token_is_keyword(&~"self", &this.look_ahead(2))) {
+                this.bump();
+                let mutability = this.parse_mutability();
+                this.expect_self_ident();
                 sty_region(None, mutability)
-            } else if (
-                self.token_is_lifetime(&self.look_ahead(1)) &&
-                self.token_is_keyword(&~"self", &self.look_ahead(2)))
-            {
-                self.bump();
-                let lifetime = @self.parse_lifetime();
-                self.expect_self_ident();
+            } else if (this.token_is_lifetime(&this.look_ahead(1)) &&
+                       this.token_is_keyword(&~"self", &this.look_ahead(2))) {
+                this.bump();
+                let lifetime = @this.parse_lifetime();
+                this.expect_self_ident();
                 sty_region(Some(lifetime), m_imm)
-            } else if (
-                self.token_is_lifetime(&self.look_ahead(1)) &&
-                self.token_is_mutability(&self.look_ahead(2)) &&
-                self.token_is_keyword(&~"self", &self.look_ahead(3)))
-            {
-                self.bump();
-                let lifetime = @self.parse_lifetime();
-                let mutability = self.parse_mutability();
-                self.expect_self_ident();
+            } else if (this.token_is_lifetime(&this.look_ahead(1)) &&
+                       this.token_is_mutability(&this.look_ahead(2)) &&
+                       this.token_is_keyword(&~"self", &this.look_ahead(3))) {
+                this.bump();
+                let lifetime = @this.parse_lifetime();
+                let mutability = this.parse_mutability();
+                this.expect_self_ident();
                 sty_region(Some(lifetime), mutability)
             } else {
                 sty_static
@@ -3688,10 +3712,11 @@ pub impl Parser {
 
     // at this point, this is essentially a wrapper for
     // parse_foreign_items.
-    fn parse_foreign_mod_items(&self, sort: ast::foreign_mod_sort,
+    fn parse_foreign_mod_items(&self,
+                               sort: ast::foreign_mod_sort,
                                abis: AbiSet,
                                first_item_attrs: ~[attribute])
-                            -> foreign_mod {
+                               -> foreign_mod {
         let ParsedItemsAndViewItems {
             attrs_remaining: _,
             view_items: view_items,
@@ -3714,8 +3739,7 @@ pub impl Parser {
                               visibility: visibility,
                               attrs: ~[attribute],
                               items_allowed: bool)
-                           -> item_or_view_item
-    {
+                              -> item_or_view_item {
         let mut must_be_named_mod = false;
         if self.is_keyword(&~"mod") {
             must_be_named_mod = true;
@@ -3750,6 +3774,11 @@ pub impl Parser {
 
         // extern mod foo { ... } or extern { ... }
         if items_allowed && self.eat(&token::LBRACE) {
+            // `extern mod foo { ... }` is obsolete.
+            if sort == ast::named {
+                self.obsolete(*self.last_span, ObsoleteNamedExternModule);
+            }
+
             let abis = opt_abis.get_or_default(AbiSet::C());
 
             let (inner, next) = self.parse_inner_attrs_and_next();

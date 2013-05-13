@@ -204,8 +204,6 @@ fn expand_deriving_encodable_struct_method(
     type_ident: ident,
     struct_def: &struct_def
 ) -> @method {
-    let self_ident = cx.ident_of("self");
-
     // Create the body of the method.
     let mut idx = 0;
     let mut statements = ~[];
@@ -213,12 +211,10 @@ fn expand_deriving_encodable_struct_method(
         match struct_field.node.kind {
             named_field(ident, _) => {
                 // Create the accessor for this field.
-                let self_field = build::mk_access(
-                    cx,
-                    span,
-                    ~[self_ident],
-                    ident
-                );
+                let self_field = build::mk_access_(cx,
+                                                   span,
+                                                   build::make_self(cx, span),
+                                                   ident);
 
                 // Call the substructure method.
                 let encode_expr = call_substructure_encode_method(

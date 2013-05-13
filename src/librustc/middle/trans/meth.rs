@@ -174,14 +174,15 @@ pub fn trans_self_arg(bcx: block,
 
 pub fn trans_method_callee(bcx: block,
                            callee_id: ast::node_id,
-                           self: @ast::expr,
+                           this: @ast::expr,
                            mentry: typeck::method_map_entry)
-                        -> Callee {
+                           -> Callee {
     let _icx = bcx.insn_ctxt("impl::trans_method_callee");
     let tcx = bcx.tcx();
 
-    debug!("trans_method_callee(callee_id=%?, self=%s, mentry=%s)",
-           callee_id, bcx.expr_to_str(self),
+    debug!("trans_method_callee(callee_id=%?, this=%s, mentry=%s)",
+           callee_id,
+           bcx.expr_to_str(this),
            mentry.repr(bcx.tcx()));
 
     // Replace method_self with method_static here.
@@ -202,7 +203,7 @@ pub fn trans_method_callee(bcx: block,
         }
         typeck::method_super(trait_id, method_index) => {
             // <self_ty> is the self type for this method call
-            let self_ty = node_id_type(bcx, self.id);
+            let self_ty = node_id_type(bcx, this.id);
             // <impl_id> is the ID of the implementation of
             // trait <trait_id> for type <self_ty>
             let impl_id = ty::get_impl_id(tcx, trait_id, self_ty);
@@ -232,13 +233,13 @@ pub fn trans_method_callee(bcx: block,
     match origin {
         typeck::method_static(did) => {
             let callee_fn = callee::trans_fn_ref(bcx, did, callee_id);
-            let Result {bcx, val} = trans_self_arg(bcx, self, mentry);
+            let Result {bcx, val} = trans_self_arg(bcx, this, mentry);
             Callee {
                 bcx: bcx,
                 data: Method(MethodData {
                     llfn: callee_fn.llfn,
                     llself: val,
-                    self_ty: node_id_type(bcx, self.id),
+                    self_ty: node_id_type(bcx, this.id),
                     self_mode: mentry.self_mode,
                 })
             }
@@ -252,7 +253,7 @@ pub fn trans_method_callee(bcx: block,
             match bcx.fcx.param_substs {
                 Some(substs) => {
                     let vtbl = find_vtable(bcx.tcx(), substs, p, b);
-                    trans_monomorphized_callee(bcx, callee_id, self, mentry,
+                    trans_monomorphized_callee(bcx, callee_id, this, mentry,
                                                trait_id, off, vtbl)
                 }
                 // how to get rid of this?
@@ -263,7 +264,7 @@ pub fn trans_method_callee(bcx: block,
             trans_trait_callee(bcx,
                                callee_id,
                                off,
-                               self,
+                               this,
                                store,
                                mentry.explicit_self)
         }

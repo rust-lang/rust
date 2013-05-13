@@ -876,7 +876,7 @@ pub impl RegionVarBindings {
                     a: Region,
                     b: Region,
                     span: span,
-                    relate: &fn(self: &mut RegionVarBindings,
+                    relate: &fn(this: &mut RegionVarBindings,
                                 old_r: Region,
                                 new_r: Region) -> cres<()>)
                  -> cres<Region> {
@@ -1103,11 +1103,11 @@ priv impl RegionVarBindings {
             Equal => ty::re_free(*a)
         };
 
-        fn helper(self: &RegionVarBindings,
+        fn helper(this: &RegionVarBindings,
                   a: &FreeRegion,
                   b: &FreeRegion) -> ty::Region
         {
-            let rm = self.tcx.region_maps;
+            let rm = this.tcx.region_maps;
             if rm.sub_free_region(*a, *b) {
                 ty::re_free(*b)
             } else if rm.sub_free_region(*b, *a) {
@@ -1198,17 +1198,17 @@ priv impl RegionVarBindings {
             Equal => Ok(ty::re_free(*a))
         };
 
-        fn helper(self: &RegionVarBindings,
+        fn helper(this: &RegionVarBindings,
                   a: &FreeRegion,
                   b: &FreeRegion) -> cres<ty::Region>
         {
-            let rm = self.tcx.region_maps;
+            let rm = this.tcx.region_maps;
             if rm.sub_free_region(*a, *b) {
                 Ok(ty::re_free(*a))
             } else if rm.sub_free_region(*b, *a) {
                 Ok(ty::re_free(*b))
             } else {
-                self.intersect_scopes(ty::re_free(*a), ty::re_free(*b),
+                this.intersect_scopes(ty::re_free(*a), ty::re_free(*b),
                                       a.scope_id, b.scope_id)
             }
         }
@@ -1461,13 +1461,13 @@ pub impl RegionVarBindings {
             }
         };
 
-        fn check_node(self: &mut RegionVarBindings,
+        fn check_node(this: &mut RegionVarBindings,
                       a_vid: RegionVid,
                       a_node: &mut GraphNode,
                       a_region: Region,
                       b_region: Region)
                    -> bool {
-            if !self.is_subregion_of(a_region, b_region) {
+            if !this.is_subregion_of(a_region, b_region) {
                 debug!("Setting %? to ErrorValue: %? not subregion of %?",
                        a_vid, a_region, b_region);
                 a_node.value = ErrorValue;
@@ -1475,13 +1475,13 @@ pub impl RegionVarBindings {
             false
         }
 
-        fn adjust_node(self: &mut RegionVarBindings,
+        fn adjust_node(this: &mut RegionVarBindings,
                        a_vid: RegionVid,
                        a_node: &mut GraphNode,
                        a_region: Region,
                        b_region: Region)
                     -> bool {
-            match self.glb_concrete_regions(a_region, b_region) {
+            match this.glb_concrete_regions(a_region, b_region) {
                 Ok(glb) => {
                     if glb == a_region {
                         false
@@ -1744,14 +1744,14 @@ pub impl RegionVarBindings {
         let WalkState {result, dup_found, _} = state;
         return (result, dup_found);
 
-        fn process_edges(self: &mut RegionVarBindings,
+        fn process_edges(this: &mut RegionVarBindings,
                          state: &mut WalkState,
                          graph: &Graph,
                          source_vid: RegionVid,
                          dir: Direction) {
             debug!("process_edges(source_vid=%?, dir=%?)", source_vid, dir);
 
-            for self.each_edge(graph, source_vid, dir) |edge| {
+            for this.each_edge(graph, source_vid, dir) |edge| {
                 match edge.constraint {
                     ConstrainVarSubVar(from_vid, to_vid) => {
                         let opp_vid =

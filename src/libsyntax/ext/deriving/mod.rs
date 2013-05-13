@@ -371,8 +371,7 @@ pub fn expand_enum_or_struct_match(cx: @ext_ctxt,
                                span: span,
                                arms: ~[ ast::arm ])
                             -> @expr {
-    let self_ident = cx.ident_of("self");
-    let self_expr = build::mk_path(cx, span, ~[ self_ident ]);
+    let self_expr = build::make_self(cx, span);
     let self_expr = build::mk_unary(cx, span, ast::deref, self_expr);
     let self_match_expr = ast::expr_match(self_expr, arms);
     build::mk_expr(cx, span, self_match_expr)

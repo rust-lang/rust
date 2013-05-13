@@ -1352,6 +1352,7 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
         word(s.s, ~"]");
       }
       ast::expr_path(path) => print_path(s, path, true),
+      ast::expr_self => word(s.s, ~"self"),
       ast::expr_break(opt_ident) => {
         word(s.s, ~"break");
         space(s.s);

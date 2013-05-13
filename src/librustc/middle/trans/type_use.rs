@@ -295,7 +295,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
           _ => ()
         }
       }
-      expr_path(_) => {
+      expr_path(_) | expr_self => {
         let opt_ts = cx.ccx.tcx.node_type_substs.find_copy(&e.id);
         for opt_ts.each |ts| {
             let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get_copy(&e.id));

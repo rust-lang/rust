@@ -524,6 +524,7 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
             expr_index(fld.fold_expr(el), fld.fold_expr(er))
         }
         expr_path(pth) => expr_path(fld.fold_path(pth)),
+        expr_self => expr_self,
         expr_break(ref opt_ident) => {
             expr_break(opt_ident.map(|x| fld.fold_ident(*x)))
         }

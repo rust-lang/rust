@@ -451,7 +451,7 @@ fn trans_rvalue_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     trace_span!(bcx, expr.span, @shorten(bcx.expr_to_str(expr)));
 
     match expr.node {
-        ast::expr_path(_) => {
+        ast::expr_path(_) | ast::expr_self => {
             return trans_def_datum_unadjusted(bcx, expr, bcx.def(expr.id));
         }
         ast::expr_vstore(contents, ast::expr_vstore_box) |
@@ -558,7 +558,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
         ast::expr_paren(e) => {
             return trans_rvalue_dps_unadjusted(bcx, e, dest);
         }
-        ast::expr_path(_) => {
+        ast::expr_path(_) | ast::expr_self => {
             return trans_def_dps_unadjusted(bcx, expr,
                                             bcx.def(expr.id), dest);
         }
@@ -810,7 +810,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         ast::expr_paren(e) => {
             trans_lvalue_unadjusted(bcx, e)
         }
-        ast::expr_path(_) => {
+        ast::expr_path(_) | ast::expr_self => {
             trans_def_lvalue(bcx, expr, bcx.def(expr.id))
         }
         ast::expr_field(base, ident, _) => {
