@@ -2290,6 +2290,27 @@ let nonsense = mycircle.radius() * mycircle.area();
 
 > ***Note:*** Trait inheritance does not actually work with objects yet
 
+## Deriving implementations for traits
+
+A small number of traits in `core` and `std` can have implementations
+that can be automatically derived. These instances are specified by
+placing the `deriving` attribute on a data type declaration. For
+example, the following will mean that `Circle` has an implementation
+for `Eq` and can be used with the equality operators, and that a value
+of type `ABC` can be randomly generated and converted to a string:
+
+~~~
+#[deriving(Eq)]
+struct Circle { radius: float }
+
+#[deriving(Rand, ToStr)]
+enum ABC { A, B, C }
+~~~
+
+The full list of derivable traits is `Eq`, `TotalEq`, `Ord`,
+`TotalOrd`, `Encodable` `Decodable`, `Clone`, `IterBytes`, `Rand` and
+`ToStr`.
+
 # Modules and crates
 
 The Rust namespace is arranged in a hierarchy of modules. Each source

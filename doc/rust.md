@@ -1425,6 +1425,8 @@ names are effectively reserved. Some significant attributes include:
 * The `test` attribute, for marking functions as unit tests.
 * The `allow`, `warn`, `forbid`, and `deny` attributes, for controlling lint checks. Lint checks supported
 by the compiler can be found via `rustc -W help`.
+* The `deriving` attribute, for automatically generating
+  implementations of certain traits.
 
 Other attributes may be added or removed during development of the language.
 
@@ -1525,6 +1527,47 @@ A complete list of the built-in language items follows:
 
 > **Note:** This list is likely to become out of date. We should auto-generate it
 > from `librustc/middle/lang_items.rs`.
+
+### Deriving
+
+The `deriving` attribute allows certain traits to be automatically
+implemented for data structures. For example, the following will
+create an `impl` for the `Eq` and `Clone` traits for `Foo`, the type
+parameter `T` will be given the `Eq` or `Clone` constraints for the
+appropriate `impl`:
+
+~~~
+#[deriving(Eq, Clone)]
+struct Foo<T> {
+    a: int,
+    b: T
+}
+~~~
+
+The generated `impl` for `Eq` is equivalent to
+
+~~~
+# struct Foo<T> { a: int, b: T }
+impl<T: Eq> Eq for Foo<T> {
+    fn eq(&self, other: &Foo<T>) -> bool {
+        self.a == other.a && self.b == other.b
+    }
+
+    fn ne(&self, other: &Foo<T>) -> bool {
+        self.a != other.a || self.b != other.b
+    }
+}
+~~~
+
+Supported traits for `deriving` are:
+
+* Comparison traits: `Eq`, `TotalEq`, `Ord`, `TotalOrd`.
+* Serialization: `Encodable`, `Decodable`. These require `std`.
+* `Clone`, to perform deep copies.
+* `IterBytes`, to iterate over the bytes in a data type.
+* `Rand`, to create a random instance of a data type.
+* `ToStr`, to convert to a string. For a type with this instance,
+  `obj.to_str()` has the same output as `fmt!("%?", obj)`.
 
 # Statements and expressions
 
