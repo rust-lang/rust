@@ -14,7 +14,7 @@
 // XXX: Iteration should probably be considered separately
 
 use vec;
-use rt::io::Reader;
+use rt::io::{Reader, read_error, standard_error, EndOfFile};
 use option::{Option, Some, None};
 use unstable::finally::Finally;
 use util;
@@ -36,16 +36,19 @@ pub trait ReaderUtil {
     ///
     /// # Failure
     ///
-    /// Raises the same conditions as `read`. Returns `false` if
-    /// the condition is handled.
-    fn push_bytes(&mut self, buf: &mut ~[u8], len: uint) -> bool;
+    /// Raises the same conditions as `read`. Additionally raises `read_error`
+    /// on EOF. If `read_error` is handled then `push_bytes` returns without
+    /// pushing any bytes onto `buf` - that is, `buf` has the same length
+    /// upon exit as it did on entry.
+    fn push_bytes(&mut self, buf: &mut ~[u8], len: uint);
 
-    /// Reads `len` bytes and gives you back a new vector
+    /// Reads `len` bytes and gives you back a new vector of length `len`
     ///
     /// # Failure
     ///
-    /// Raises the same conditions as the `read` method. May return
-    /// less than the requested number of bytes on error or EOF.
+    /// Raises the same conditions as `read`. Additionally raises `read_error`
+    /// on EOF. If `read_error` is handled then the returned vector has
+    /// length 0.
     fn read_bytes(&mut self, len: uint) -> ~[u8];
 
     /// Reads all remaining bytes from the stream.
@@ -71,11 +74,10 @@ impl<T: Reader> ReaderUtil for T {
         }
     }
 
-    fn push_bytes(&mut self, buf: &mut ~[u8], len: uint) -> bool {
+    fn push_bytes(&mut self, buf: &mut ~[u8], len: uint) {
         unsafe {
             let start_len = buf.len();
             let mut total_read = 0;
-            let mut eof = false;
 
             vec::reserve_at_least(buf, start_len + len);
             vec::raw::set_len(buf, start_len + len);
@@ -88,7 +90,9 @@ impl<T: Reader> ReaderUtil for T {
                             total_read += nread;
                         }
                         None => {
-                            eof = true;
+                            read_error::cond.raise(standard_error(EndOfFile));
+                            // Reset the vector length as though we didn't read anything
+                            total_read = 0;
                             break;
                         }
                     }
@@ -96,8 +100,6 @@ impl<T: Reader> ReaderUtil for T {
             }).finally {
                 vec::raw::set_len(buf, start_len + total_read);
             }
-
-            return !eof;
         }
     }
 
@@ -408,10 +410,19 @@ mod test {
     }
 
     #[test]
+    fn read_bytes_eof() {
+        let mut reader = MemReader::new(~[10, 11]);
+        do read_error::cond.trap(|_| {
+        }).in {
+            assert!(reader.read_bytes(4) == ~[]);
+        }
+    }
+
+    #[test]
     fn push_bytes() {
         let mut reader = MemReader::new(~[10, 11, 12, 13]);
         let mut buf = ~[8, 9];
-        assert!(reader.push_bytes(&mut buf, 4));
+        reader.push_bytes(&mut buf, 4);
         assert!(buf == ~[8, 9, 10, 11, 12, 13]);
     }
 
@@ -434,7 +445,7 @@ mod test {
             }
         };
         let mut buf = ~[8, 9];
-        assert!(reader.push_bytes(&mut buf, 4));
+        reader.push_bytes(&mut buf, 4);
         assert!(buf == ~[8, 9, 10, 11, 12, 13]);
     }
 
@@ -442,8 +453,11 @@ mod test {
     fn push_bytes_eof() {
         let mut reader = MemReader::new(~[10, 11]);
         let mut buf = ~[8, 9];
-        assert!(!reader.push_bytes(&mut buf, 4));
-        assert!(buf == ~[8, 9, 10, 11]);
+        do read_error::cond.trap(|_| {
+        }).in {
+            reader.push_bytes(&mut buf, 4);
+            assert!(buf == ~[8, 9]);
+        }
     }
 
     #[test]
@@ -464,9 +478,9 @@ mod test {
         };
         let mut buf = ~[8, 9];
         do read_error::cond.trap(|_| { } ).in {
-            assert!(!reader.push_bytes(&mut buf, 4));
+            reader.push_bytes(&mut buf, 4);
         }
-        assert!(buf == ~[8, 9, 10]);
+        assert!(buf == ~[8, 9]);
     }
 
     #[test]
