@@ -111,6 +111,9 @@ $$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUST_$(4)):		\
 		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_CORELIB_$(4))	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(4))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTPKG_$(4))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTI_$(4))		\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTDOC_$(4))	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(4))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
