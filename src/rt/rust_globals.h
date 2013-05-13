@@ -20,7 +20,7 @@
 #endif
 
 #if defined(__GNUC__)
-#define ALWAYS_INLINE __attribute((always_inline)) INLINE
+#define ALWAYS_INLINE __attribute__((always_inline)) INLINE
 #elif defined(_MSC_VER)
 #define ALWAYS_INLINE __forceinline
 #else
