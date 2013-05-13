@@ -463,6 +463,58 @@ impl Hyperbolic for f64 {
 
     #[inline(always)]
     fn tanh(&self) -> f64 { tanh(*self) }
+
+    ///
+    /// Inverse hyperbolic sine
+    ///
+    /// # Returns
+    ///
+    /// - on success, the inverse hyperbolic sine of `self` will be returned
+    /// - `self` if `self` is `0.0`, `-0.0`, `infinity`, or `neg_infinity`
+    /// - `NaN` if `self` is `NaN`
+    ///
+    #[inline(always)]
+    fn asinh(&self) -> f64 {
+        match *self {
+            infinity     => infinity,
+            neg_infinity => neg_infinity,
+            x            => (x + ((x * x) + 1.0).sqrt()).ln(),
+        }
+    }
+
+    ///
+    /// Inverse hyperbolic cosine
+    ///
+    /// # Returns
+    ///
+    /// - on success, the inverse hyperbolic cosine of `self` will be returned
+    /// - `infinity` if `self` is `infinity`
+    /// - `NaN` if `self` is `NaN` or `self < 1.0` (including `neg_infinity`)
+    ///
+    #[inline(always)]
+    fn acosh(&self) -> f64 {
+        match *self {
+            x if x < 1.0 => Float::NaN(),
+            x => (x + ((x * x) - 1.0).sqrt()).ln(),
+        }
+    }
+
+    ///
+    /// Inverse hyperbolic tangent
+    ///
+    /// # Returns
+    ///
+    /// - on success, the inverse hyperbolic tangent of `self` will be returned
+    /// - `self` if `self` is `0.0` or `-0.0`
+    /// - `infinity` if `self` is `1.0`
+    /// - `neg_infinity` if `self` is `-1.0`
+    /// - `NaN` if the `self` is `NaN` or outside the domain of `-1.0 <= self <= 1.0`
+    ///   (including `infinity` and `neg_infinity`)
+    ///
+    #[inline(always)]
+    fn atanh(&self) -> f64 {
+        0.5 * ((2.0 * *self) / (1.0 - *self)).ln_1p()
+    }
 }
 
 impl Real for f64 {
@@ -1017,6 +1069,43 @@ mod tests {
         assert_approx_eq!((-1.3f64).fract(), -0.3f64);
         assert_approx_eq!((-1.5f64).fract(), -0.5f64);
         assert_approx_eq!((-1.7f64).fract(), -0.7f64);
+    }
+
+    #[test]
+    fn test_asinh() {
+        assert_eq!(0.0f64.asinh(), 0.0f64);
+        assert_eq!((-0.0f64).asinh(), -0.0f64);
+        assert_eq!(Float::infinity::<f64>().asinh(), Float::infinity::<f64>());
+        assert_eq!(Float::neg_infinity::<f64>().asinh(), Float::neg_infinity::<f64>());
+        assert!(Float::NaN::<f64>().asinh().is_NaN());
+        assert_approx_eq!(2.0f64.asinh(), 1.443635475178810342493276740273105f64);
+        assert_approx_eq!((-2.0f64).asinh(), -1.443635475178810342493276740273105f64);
+    }
+
+    #[test]
+    fn test_acosh() {
+        assert_eq!(1.0f64.acosh(), 0.0f64);
+        assert!(0.999f64.acosh().is_NaN());
+        assert_eq!(Float::infinity::<f64>().acosh(), Float::infinity::<f64>());
+        assert!(Float::neg_infinity::<f64>().acosh().is_NaN());
+        assert!(Float::NaN::<f64>().acosh().is_NaN());
+        assert_approx_eq!(2.0f64.acosh(), 1.31695789692481670862504634730796844f64);
+        assert_approx_eq!(3.0f64.acosh(), 1.76274717403908605046521864995958461f64);
+    }
+
+    #[test]
+    fn test_atanh() {
+        assert_eq!(0.0f64.atanh(), 0.0f64);
+        assert_eq!((-0.0f64).atanh(), -0.0f64);
+        assert_eq!(1.0f64.atanh(), Float::infinity::<f64>());
+        assert_eq!((-1.0f64).atanh(), Float::neg_infinity::<f64>());
+        assert!(2f64.atanh().atanh().is_NaN());
+        assert!((-2f64).atanh().atanh().is_NaN());
+        assert!(Float::infinity::<f64>().atanh().is_NaN());
+        assert!(Float::neg_infinity::<f64>().atanh().is_NaN());
+        assert!(Float::NaN::<f64>().atanh().is_NaN());
+        assert_approx_eq!(0.5f64.atanh(), 0.54930614433405484569762261846126285f64);
+        assert_approx_eq!((-0.5f64).atanh(), -0.54930614433405484569762261846126285f64);
     }
 
     #[test]
