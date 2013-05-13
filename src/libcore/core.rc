@@ -238,6 +238,7 @@ pub mod util;
 /* Unsupported interfaces */
 
 // Private APIs
+#[path = "unstable/mod.rs"]
 pub mod unstable;
 
 /* For internal use, not exported */

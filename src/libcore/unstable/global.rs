@@ -31,14 +31,13 @@ use kinds::Owned;
 use libc::{c_void};
 use option::{Option, Some, None};
 use ops::Drop;
-use unstable::{Exclusive, exclusive};
+use unstable::sync::{Exclusive, exclusive};
 use unstable::at_exit::at_exit;
 use unstable::intrinsics::atomic_cxchg;
 use hashmap::HashMap;
 use sys::Closure;
 
-#[cfg(test)] use unstable::{SharedMutableState, shared_mutable_state};
-#[cfg(test)] use unstable::get_shared_immutable_state;
+#[cfg(test)] use unstable::sync::{UnsafeAtomicRcBox};
 #[cfg(test)] use task::spawn;
 #[cfg(test)] use uint;
 
@@ -234,18 +233,16 @@ extern {
 
 #[test]
 fn test_clone_rc() {
-    type MyType = SharedMutableState<int>;
-
-    fn key(_v: SharedMutableState<int>) { }
+    fn key(_v: UnsafeAtomicRcBox<int>) { }
 
     for uint::range(0, 100) |_| {
         do spawn {
             unsafe {
                 let val = do global_data_clone_create(key) {
-                    ~shared_mutable_state(10)
+                    ~UnsafeAtomicRcBox::new(10)
                 };
 
-                assert!(get_shared_immutable_state(&val) == &10);
+                assert!(val.get() == &10);
             }
         }
     }
@@ -253,16 +250,14 @@ fn test_clone_rc() {
 
 #[test]
 fn test_modify() {
-    type MyType = SharedMutableState<int>;
-
-    fn key(_v: SharedMutableState<int>) { }
+    fn key(_v: UnsafeAtomicRcBox<int>) { }
 
     unsafe {
         do global_data_modify(key) |v| {
             match v {
                 None => {
                     unsafe {
-                        Some(~shared_mutable_state(10))
+                        Some(~UnsafeAtomicRcBox::new(10))
                     }
                 }
                 _ => fail!()
@@ -272,7 +267,7 @@ fn test_modify() {
         do global_data_modify(key) |v| {
             match v {
                 Some(sms) => {
-                    let v = get_shared_immutable_state(sms);
+                    let v = sms.get();
                     assert!(*v == 10);
                     None
                 },
@@ -284,7 +279,7 @@ fn test_modify() {
             match v {
                 None => {
                     unsafe {
-                        Some(~shared_mutable_state(10))
+                        Some(~UnsafeAtomicRcBox::new(10))
                     }
                 }
                 _ => fail!()

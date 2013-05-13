@@ -17,9 +17,7 @@ use sync;
 use sync::{Mutex, mutex_with_condvars, RWlock, rwlock_with_condvars};
 
 use core::cast;
-use core::unstable::{SharedMutableState, shared_mutable_state};
-use core::unstable::{clone_shared_mutable_state};
-use core::unstable::{get_shared_mutable_state, get_shared_immutable_state};
+use core::unstable::sync::UnsafeAtomicRcBox;
 use core::ptr;
 use core::task;
 
@@ -83,11 +81,11 @@ pub impl<'self> Condvar<'self> {
  ****************************************************************************/
 
 /// An atomically reference counted wrapper for shared immutable state.
-struct ARC<T> { x: SharedMutableState<T> }
+struct ARC<T> { x: UnsafeAtomicRcBox<T> }
 
 /// Create an atomically reference counted wrapper.
 pub fn ARC<T:Const + Owned>(data: T) -> ARC<T> {
-    ARC { x: unsafe { shared_mutable_state(data) } }
+    ARC { x: UnsafeAtomicRcBox::new(data) }
 }
 
 /**
@@ -95,7 +93,7 @@ pub fn ARC<T:Const + Owned>(data: T) -> ARC<T> {
  * wrapper.
  */
 pub fn get<'a, T:Const + Owned>(rc: &'a ARC<T>) -> &'a T {
-    unsafe { get_shared_immutable_state(&rc.x) }
+    unsafe { &*rc.x.get_immut() }
 }
 
 /**
@@ -106,7 +104,7 @@ pub fn get<'a, T:Const + Owned>(rc: &'a ARC<T>) -> &'a T {
  * allowing them to share the underlying data.
  */
 pub fn clone<T:Const + Owned>(rc: &ARC<T>) -> ARC<T> {
-    ARC { x: unsafe { clone_shared_mutable_state(&rc.x) } }
+    ARC { x: rc.x.clone() }
 }
 
 impl<T:Const + Owned> Clone for ARC<T> {
@@ -122,7 +120,7 @@ impl<T:Const + Owned> Clone for ARC<T> {
 #[doc(hidden)]
 struct MutexARCInner<T> { lock: Mutex, failed: bool, data: T }
 /// An ARC with mutable data protected by a blocking mutex.
-struct MutexARC<T> { x: SharedMutableState<MutexARCInner<T>> }
+struct MutexARC<T> { x: UnsafeAtomicRcBox<MutexARCInner<T>> }
 
 /// Create a mutex-protected ARC with the supplied data.
 pub fn MutexARC<T:Owned>(user_data: T) -> MutexARC<T> {
@@ -137,7 +135,7 @@ pub fn mutex_arc_with_condvars<T:Owned>(user_data: T,
     let data =
         MutexARCInner { lock: mutex_with_condvars(num_condvars),
                           failed: false, data: user_data };
-    MutexARC { x: unsafe { shared_mutable_state(data) } }
+    MutexARC { x: UnsafeAtomicRcBox::new(data) }
 }
 
 impl<T:Owned> Clone for MutexARC<T> {
@@ -145,7 +143,7 @@ impl<T:Owned> Clone for MutexARC<T> {
     fn clone(&self) -> MutexARC<T> {
         // NB: Cloning the underlying mutex is not necessary. Its reference
         // count would be exactly the same as the shared state's.
-        MutexARC { x: unsafe { clone_shared_mutable_state(&self.x) } }
+        MutexARC { x: self.x.clone() }
     }
 }
 
@@ -176,7 +174,7 @@ pub impl<T:Owned> MutexARC<T> {
      */
     #[inline(always)]
     unsafe fn access<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
-        let state = get_shared_mutable_state(&self.x);
+        let state = self.x.get();
         // Borrowck would complain about this if the function were
         // not already unsafe. See borrow_rwlock, far below.
         do (&(*state).lock).lock {
@@ -192,7 +190,7 @@ pub impl<T:Owned> MutexARC<T> {
         &self,
         blk: &fn(x: &'x mut T, c: &'c Condvar) -> U) -> U
     {
-        let state = get_shared_mutable_state(&self.x);
+        let state = self.x.get();
         do (&(*state).lock).lock_cond |cond| {
             check_poison(true, (*state).failed);
             let _z = PoisonOnFail(&mut (*state).failed);
@@ -254,7 +252,7 @@ struct RWARCInner<T> { lock: RWlock, failed: bool, data: T }
  */
 #[mutable]
 struct RWARC<T> {
-    x: SharedMutableState<RWARCInner<T>>,
+    x: UnsafeAtomicRcBox<RWARCInner<T>>,
     cant_nest: ()
 }
 
@@ -273,13 +271,13 @@ pub fn rw_arc_with_condvars<T:Const + Owned>(
     let data =
         RWARCInner { lock: rwlock_with_condvars(num_condvars),
                      failed: false, data: user_data };
-    RWARC { x: unsafe { shared_mutable_state(data) }, cant_nest: () }
+    RWARC { x: UnsafeAtomicRcBox::new(data), cant_nest: () }
 }
 
 pub impl<T:Const + Owned> RWARC<T> {
     /// Duplicate a rwlock-protected ARC, as arc::clone.
     fn clone(&self) -> RWARC<T> {
-        RWARC { x: unsafe { clone_shared_mutable_state(&self.x) },
+        RWARC { x: self.x.clone(),
                 cant_nest: () }
     }
 
@@ -299,7 +297,7 @@ pub impl<T:Const + Owned> RWARC<T> {
     #[inline(always)]
     fn write<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
         unsafe {
-            let state = get_shared_mutable_state(&self.x);
+            let state = self.x.get();
             do (*borrow_rwlock(state)).write {
                 check_poison(false, (*state).failed);
                 let _z = PoisonOnFail(&mut (*state).failed);
@@ -313,7 +311,7 @@ pub impl<T:Const + Owned> RWARC<T> {
                              blk: &fn(x: &'x mut T, c: &'c Condvar) -> U)
                           -> U {
         unsafe {
-            let state = get_shared_mutable_state(&self.x);
+            let state = self.x.get();
             do (*borrow_rwlock(state)).write_cond |cond| {
                 check_poison(false, (*state).failed);
                 let _z = PoisonOnFail(&mut (*state).failed);
@@ -334,10 +332,12 @@ pub impl<T:Const + Owned> RWARC<T> {
      * access modes, this will not poison the ARC.
      */
     fn read<U>(&self, blk: &fn(x: &T) -> U) -> U {
-        let state = unsafe { get_shared_immutable_state(&self.x) };
-        do (&state.lock).read {
-            check_poison(false, state.failed);
-            blk(&state.data)
+        let state = self.x.get();
+        unsafe {
+            do (*state).lock.read {
+                check_poison(false, (*state).failed);
+                blk(&(*state).data)
+            }
         }
     }
 
@@ -360,7 +360,7 @@ pub impl<T:Const + Owned> RWARC<T> {
      */
     fn write_downgrade<U>(&self, blk: &fn(v: RWWriteMode<T>) -> U) -> U {
         unsafe {
-            let state = get_shared_mutable_state(&self.x);
+            let state = self.x.get();
             do (*borrow_rwlock(state)).write_downgrade |write_mode| {
                 check_poison(false, (*state).failed);
                 blk(RWWriteMode {
@@ -374,25 +374,27 @@ pub impl<T:Const + Owned> RWARC<T> {
 
     /// To be called inside of the write_downgrade block.
     fn downgrade<'a>(&self, token: RWWriteMode<'a, T>) -> RWReadMode<'a, T> {
-        // The rwlock should assert that the token belongs to us for us.
-        let state = unsafe { get_shared_immutable_state(&self.x) };
-        let RWWriteMode {
-            data: data,
-            token: t,
-            poison: _poison
-        } = token;
-        // Let readers in
-        let new_token = (&state.lock).downgrade(t);
-        // Whatever region the input reference had, it will be safe to use
-        // the same region for the output reference. (The only 'unsafe' part
-        // of this cast is removing the mutability.)
-        let new_data = unsafe { cast::transmute_immut(data) };
-        // Downgrade ensured the token belonged to us. Just a sanity check.
-        assert!(ptr::ref_eq(&state.data, new_data));
-        // Produce new token
-        RWReadMode {
-            data: new_data,
-            token: new_token,
+        unsafe {
+            // The rwlock should assert that the token belongs to us for us.
+            let state = self.x.get();
+            let RWWriteMode {
+                data: data,
+                token: t,
+                poison: _poison
+            } = token;
+            // Let readers in
+            let new_token = (*state).lock.downgrade(t);
+            // Whatever region the input reference had, it will be safe to use
+            // the same region for the output reference. (The only 'unsafe' part
+            // of this cast is removing the mutability.)
+            let new_data = cast::transmute_immut(data);
+            // Downgrade ensured the token belonged to us. Just a sanity check.
+            assert!(ptr::ref_eq(&(*state).data, new_data));
+            // Produce new token
+            RWReadMode {
+                data: new_data,
+                token: new_token,
+            }
         }
     }
 }
