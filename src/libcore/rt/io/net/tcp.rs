@@ -13,7 +13,7 @@ use result::{Ok, Err};
 use rt::sched::local_sched::unsafe_borrow_io;
 use rt::io::net::ip::IpAddr;
 use rt::io::{Reader, Writer, Listener};
-use rt::io::{io_error, EndOfFile};
+use rt::io::{io_error, read_error, EndOfFile};
 use rt::rtio::{IoFactory,
                RtioTcpListener, RtioTcpListenerObject,
                RtioTcpStream, RtioTcpStreamObject};
@@ -58,7 +58,7 @@ impl Reader for TcpStream {
             Err(ioerr) => {
                 // EOF is indicated by returning None
                 if ioerr.kind != EndOfFile {
-                    io_error::cond.raise(ioerr);
+                    read_error::cond.raise(ioerr);
                 }
                 return None;
             }
