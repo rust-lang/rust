@@ -14,7 +14,7 @@
 // XXX: Iteration should probably be considered separately
 
 use vec;
-use rt::io::{Reader, read_error, standard_error, EndOfFile};
+use rt::io::{Reader, read_error, standard_error, EndOfFile, DEFAULT_BUF_SIZE};
 use option::{Option, Some, None};
 use unstable::finally::Finally;
 use util;
@@ -37,9 +37,8 @@ pub trait ReaderUtil {
     /// # Failure
     ///
     /// Raises the same conditions as `read`. Additionally raises `read_error`
-    /// on EOF. If `read_error` is handled then `push_bytes` returns without
-    /// pushing any bytes onto `buf` - that is, `buf` has the same length
-    /// upon exit as it did on entry.
+    /// on EOF. If `read_error` is handled then `push_bytes` may push less
+    /// than the requested number of bytes.
     fn push_bytes(&mut self, buf: &mut ~[u8], len: uint);
 
     /// Reads `len` bytes and gives you back a new vector of length `len`
@@ -47,8 +46,8 @@ pub trait ReaderUtil {
     /// # Failure
     ///
     /// Raises the same conditions as `read`. Additionally raises `read_error`
-    /// on EOF. If `read_error` is handled then the returned vector has
-    /// length 0.
+    /// on EOF. If `read_error` is handled then the returned vector may
+    /// contain less than the requested number of bytes.
     fn read_bytes(&mut self, len: uint) -> ~[u8];
 
     /// Reads all remaining bytes from the stream.
@@ -58,60 +57,6 @@ pub trait ReaderUtil {
     /// Raises the same conditions as the `read` method.
     fn read_to_end(&mut self) -> ~[u8];
 
-}
-
-impl<T: Reader> ReaderUtil for T {
-    fn read_byte(&mut self) -> Option<u8> {
-        let mut buf = [0];
-        match self.read(buf) {
-            Some(0) => {
-                debug!("read 0 bytes. trying again");
-                self.read_byte()
-            }
-            Some(1) => Some(buf[0]),
-            Some(_) => util::unreachable(),
-            None => None
-        }
-    }
-
-    fn push_bytes(&mut self, buf: &mut ~[u8], len: uint) {
-        unsafe {
-            let start_len = buf.len();
-            let mut total_read = 0;
-
-            vec::reserve_at_least(buf, start_len + len);
-            vec::raw::set_len(buf, start_len + len);
-
-            do (|| {
-                while total_read < len {
-                    let slice = vec::mut_slice(*buf, start_len + total_read, buf.len());
-                    match self.read(slice) {
-                        Some(nread) => {
-                            total_read += nread;
-                        }
-                        None => {
-                            read_error::cond.raise(standard_error(EndOfFile));
-                            // Reset the vector length as though we didn't read anything
-                            total_read = 0;
-                            break;
-                        }
-                    }
-                }
-            }).finally {
-                vec::raw::set_len(buf, start_len + total_read);
-            }
-        }
-    }
-
-    fn read_bytes(&mut self, len: uint) -> ~[u8] {
-        let mut buf = vec::with_capacity(len);
-        self.push_bytes(&mut buf, len);
-        return buf;
-    }
-
-    fn read_to_end(&mut self) -> ~[u8] {
-        fail!()
-    }
 }
 
 pub trait ReaderByteConversions {
@@ -323,6 +268,71 @@ pub trait WriterByteConversions {
     fn write_i8(&mut self, n: i8);
 }
 
+impl<T: Reader> ReaderUtil for T {
+    fn read_byte(&mut self) -> Option<u8> {
+        let mut buf = [0];
+        match self.read(buf) {
+            Some(0) => {
+                debug!("read 0 bytes. trying again");
+                self.read_byte()
+            }
+            Some(1) => Some(buf[0]),
+            Some(_) => util::unreachable(),
+            None => None
+        }
+    }
+
+    fn push_bytes(&mut self, buf: &mut ~[u8], len: uint) {
+        unsafe {
+            let start_len = buf.len();
+            let mut total_read = 0;
+
+            vec::reserve_at_least(buf, start_len + len);
+            vec::raw::set_len(buf, start_len + len);
+
+            do (|| {
+                while total_read < len {
+                    let slice = vec::mut_slice(*buf, start_len + total_read, buf.len());
+                    match self.read(slice) {
+                        Some(nread) => {
+                            total_read += nread;
+                        }
+                        None => {
+                            read_error::cond.raise(standard_error(EndOfFile));
+                            break;
+                        }
+                    }
+                }
+            }).finally {
+                vec::raw::set_len(buf, start_len + total_read);
+            }
+        }
+    }
+
+    fn read_bytes(&mut self, len: uint) -> ~[u8] {
+        let mut buf = vec::with_capacity(len);
+        self.push_bytes(&mut buf, len);
+        return buf;
+    }
+
+    fn read_to_end(&mut self) -> ~[u8] {
+        let mut buf = vec::with_capacity(DEFAULT_BUF_SIZE);
+        let mut keep_reading = true;
+        do read_error::cond.trap(|e| {
+            if e.kind == EndOfFile {
+                keep_reading = false;
+            } else {
+                read_error::cond.raise(e)
+            }
+        }).in {
+            while keep_reading {
+                self.push_bytes(&mut buf, DEFAULT_BUF_SIZE)
+            }
+        }
+        return buf;
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -414,7 +424,7 @@ mod test {
         let mut reader = MemReader::new(~[10, 11]);
         do read_error::cond.trap(|_| {
         }).in {
-            assert!(reader.read_bytes(4) == ~[]);
+            assert!(reader.read_bytes(4) == ~[10, 11]);
         }
     }
 
@@ -456,7 +466,7 @@ mod test {
         do read_error::cond.trap(|_| {
         }).in {
             reader.push_bytes(&mut buf, 4);
-            assert!(buf == ~[8, 9]);
+            assert!(buf == ~[8, 9, 10, 11]);
         }
     }
 
@@ -480,7 +490,7 @@ mod test {
         do read_error::cond.trap(|_| { } ).in {
             reader.push_bytes(&mut buf, 4);
         }
-        assert!(buf == ~[8, 9]);
+        assert!(buf == ~[8, 9, 10]);
     }
 
     #[test]
@@ -512,6 +522,54 @@ mod test {
             // NB: Using rtassert here to trigger abort on failure since this is a should_fail test
             rtassert!(*buf == ~[8, 9, 10]);
         }
+    }
+
+    #[test]
+    fn read_to_end() {
+        let mut reader = MockReader::new();
+        let count = Cell(0);
+        reader.read = |buf| {
+            do count.with_mut_ref |count| {
+                if *count == 0 {
+                    *count = 1;
+                    buf[0] = 10;
+                    buf[1] = 11;
+                    Some(2)
+                } else if *count == 1 {
+                    *count = 2;
+                    buf[0] = 12;
+                    buf[1] = 13;
+                    Some(2)
+                } else {
+                    None
+                }
+            }
+        };
+        let buf = reader.read_to_end();
+        assert!(buf == ~[10, 11, 12, 13]);
+    }
+
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn read_to_end_error() {
+        let mut reader = MockReader::new();
+        let count = Cell(0);
+        reader.read = |buf| {
+            do count.with_mut_ref |count| {
+                if *count == 0 {
+                    *count = 1;
+                    buf[0] = 10;
+                    buf[1] = 11;
+                    Some(2)
+                } else {
+                    read_error::cond.raise(placeholder_error());
+                    None
+                }
+            }
+        };
+        let buf = reader.read_to_end();
+        assert!(buf == ~[10, 11]);
     }
 
 }
