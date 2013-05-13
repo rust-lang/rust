@@ -574,7 +574,7 @@ fn padding(size: u64) -> ValueRef {
 }
 
 // XXX this utility routine should be somewhere more general
-#[always_inline]
+#[inline(always)]
 fn roundup(x: u64, a: u64) -> u64 { ((x + (a - 1)) / a) * a }
 
 /// Get the discriminant of a constant value.  (Not currently used.)
