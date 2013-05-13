@@ -13,6 +13,7 @@
 use core::io;
 use core::option;
 use core::os;
+use core::path;
 
 // FIXME (#2807): Windows support.
 
@@ -45,17 +46,20 @@ pub fn reset(writer: @io::Writer) {
 
 /// Returns true if the terminal supports color
 pub fn color_supported() -> bool {
-    let supported_terms = ~[~"xterm-color", ~"xterm",
-                           ~"screen-bce", ~"xterm-256color"];
-    return match os::getenv(~"TERM") {
-          option::Some(ref env) => {
-            for supported_terms.each |term| {
-                if *term == *env { return true; }
-            }
-            false
-          }
-          option::None => false
-        };
+    let term = match os::getenv(~"TERM") {
+        option::Some(env) => env,
+        option::None => ~""
+    };
+    let terminfodir = match os::getenv(~"TERMINFO") {
+        option::Some(env) => env,
+        option::None => ~"/usr/share/terminfo"
+    };
+    if os::path_exists(&path::PosixPath(terminfodir + "/" + str::substr(term, 0, 1) + "/" +
+                                        term)) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 pub fn set_color(writer: @io::Writer, first_char: u8, color: u8) {
