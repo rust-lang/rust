@@ -184,10 +184,10 @@ fn main() {
 
       if str::len(line) == 0u { loop; }
 
-      match (line[0], proc_mode) {
+      match (line[0] as char, proc_mode) {
 
          // start processing if this is the one
-         ('>' as u8, false) => {
+         ('>', false) => {
             match str::find_str_from(line, ~"THREE", 1u) {
                option::Some(_) => { proc_mode = true; }
                option::None    => { }
@@ -195,7 +195,7 @@ fn main() {
          }
 
          // break our processing
-         ('>' as u8, true) => { break; }
+         ('>', true) => { break; }
 
          // process the sequence for k-mers
          (_, true) => {
