@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use baz::zed::bar;  //~ ERROR unresolved name
+use baz::zed::bar;  //~ ERROR unresolved import
 //~^ ERROR failed to resolve import
 
 mod baz {}
