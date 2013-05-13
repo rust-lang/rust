@@ -14,12 +14,16 @@ Cross-platform file path handling
 
 */
 
+use container::Container;
 use cmp::Eq;
 use libc;
 use option::{None, Option, Some};
 use str;
+use str::StrSlice;
 use to_str::ToStr;
 use ascii::{AsciiCast, AsciiStr};
+use old_iter::BaseIter;
+use vec::OwnedVector;
 
 #[cfg(windows)]
 pub use Path = self::WindowsPath;

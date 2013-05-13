@@ -255,11 +255,7 @@ fn test_modify() {
     unsafe {
         do global_data_modify(key) |v| {
             match v {
-                None => {
-                    unsafe {
-                        Some(~UnsafeAtomicRcBox::new(10))
-                    }
-                }
+                None => { Some(~UnsafeAtomicRcBox::new(10)) }
                 _ => fail!()
             }
         }
@@ -277,11 +273,7 @@ fn test_modify() {
 
         do global_data_modify(key) |v| {
             match v {
-                None => {
-                    unsafe {
-                        Some(~UnsafeAtomicRcBox::new(10))
-                    }
-                }
+                None => { Some(~UnsafeAtomicRcBox::new(10)) }
                 _ => fail!()
             }
         }

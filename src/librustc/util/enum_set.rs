@@ -82,19 +82,19 @@ pub impl<E:CLike> EnumSet<E> {
     }
 }
 
-impl<E:CLike> core::Sub<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+impl<E:CLike> Sub<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     fn sub(&self, e: &EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits & !e.bits}
     }
 }
 
-impl<E:CLike> core::BitOr<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+impl<E:CLike> BitOr<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     fn bitor(&self, e: &EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits | e.bits}
     }
 }
 
-impl<E:CLike> core::BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
+impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
     fn bitand(&self, e: &EnumSet<E>) -> EnumSet<E> {
         EnumSet {bits: self.bits & e.bits}
     }

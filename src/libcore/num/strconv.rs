@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use container::Container;
 use core::cmp::{Ord, Eq};
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use option::{None, Option, Some};
@@ -15,6 +16,8 @@ use char;
 use str;
 use kinds::Copy;
 use vec;
+use vec::{CopyableVector, ImmutableVector};
+use vec::OwnedVector;
 use num::{NumCast, Zero, One, cast, pow_with_uint};
 use f64;
 

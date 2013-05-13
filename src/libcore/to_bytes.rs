@@ -17,6 +17,7 @@ The `ToBytes` and `IterBytes` traits
 use io;
 use io::Writer;
 use option::{None, Option, Some};
+use old_iter::BaseIter;
 use str;
 
 pub type Cb<'self> = &'self fn(buf: &[u8]) -> bool;
