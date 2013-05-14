@@ -22,9 +22,11 @@ use old_iter;
 use iterator::Iterator;
 use kinds::Copy;
 use libc;
+use old_iter::{BaseIter, CopyableIter};
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
+use ptr::Ptr;
 use sys;
 use uint;
 use unstable::intrinsics;
@@ -3594,7 +3596,7 @@ mod tests {
         fn sub(a: int, b: &int) -> int {
             a - *b
         }
-        let mut v = ~[1, 2, 3, 4];
+        let v = ~[1, 2, 3, 4];
         let sum = foldl(0, v, sub);
         assert!(sum == -10);
     }
@@ -3604,7 +3606,7 @@ mod tests {
         fn sub(a: &int, b: int) -> int {
             *a - b
         }
-        let mut v = ~[1, 2, 3, 4];
+        let v = ~[1, 2, 3, 4];
         let sum = foldr(v, 0, sub);
         assert!(sum == -2);
     }
@@ -3768,7 +3770,7 @@ mod tests {
         assert!(position_between(~[], 0u, 0u, f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert!(position_between(v, 0u, 0u, f).is_none());
         assert!(position_between(v, 0u, 1u, f).is_none());
@@ -3797,7 +3799,7 @@ mod tests {
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
-        let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert!(find(v, f) == Some((1, 'b')));
         assert!(find(v, g).is_none());
@@ -3808,7 +3810,7 @@ mod tests {
         assert!(find_between(~[], 0u, 0u, f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert!(find_between(v, 0u, 0u, f).is_none());
         assert!(find_between(v, 0u, 1u, f).is_none());
@@ -3837,7 +3839,7 @@ mod tests {
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
-        let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert!(position(v, f) == Some(1u));
         assert!(position(v, g).is_none());
@@ -3848,7 +3850,7 @@ mod tests {
         assert!(rposition_between(~[], 0u, 0u, f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert!(rposition_between(v, 0u, 0u, f).is_none());
         assert!(rposition_between(v, 0u, 1u, f).is_none());
@@ -3877,7 +3879,7 @@ mod tests {
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
-        let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert!(rfind(v, f) == Some((3, 'b')));
         assert!(rfind(v, g).is_none());
@@ -3888,7 +3890,7 @@ mod tests {
         assert!(rfind_between(~[], 0u, 0u, f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
-        let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
+        let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert!(rfind_between(v, 0u, 0u, f).is_none());
         assert!(rfind_between(v, 0u, 1u, f).is_none());
@@ -4357,7 +4359,7 @@ mod tests {
     #[ignore(windows)]
     #[should_fail]
     fn test_map_fail() {
-        let mut v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
         let mut i = 0;
         do map(v) |_elt| {
             if i == 2 {

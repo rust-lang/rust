@@ -48,6 +48,7 @@ use util;
 use num::Zero;
 use old_iter::{BaseIter, MutableIter, ExtendedIter};
 use old_iter;
+use str::StrSlice;
 
 #[cfg(test)] use str;
 

@@ -13,12 +13,13 @@ Message passing
 */
 
 use cast::{transmute, transmute_mut};
+use container::Container;
 use either::{Either, Left, Right};
 use kinds::Owned;
 use option::{Option, Some, None};
 use uint;
-use unstable;
 use vec;
+use vec::OwnedVector;
 use util::replace;
 use unstable::sync::{Exclusive, exclusive};
 
@@ -577,7 +578,7 @@ impl<T:Owned,
 #[cfg(test)]
 mod test {
     use either::Right;
-    use super::{Chan, Port, oneshot, recv_one, stream};
+    use super::{Chan, Port, oneshot, stream};
 
     #[test]
     fn test_select2() {

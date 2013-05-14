@@ -68,48 +68,6 @@ they contained the following prologue:
 #[cfg(test)] pub use ops = realcore::ops;
 #[cfg(test)] pub use cmp = realcore::cmp;
 
-/* Reexported core operators */
-
-pub use kinds::{Const, Copy, Owned};
-pub use ops::{Drop};
-pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
-pub use ops::{BitAnd, BitOr, BitXor};
-pub use ops::{Shl, Shr, Index};
-
-
-/* Reexported types and traits */
-
-pub use option::{Option, Some, None};
-pub use result::{Result, Ok, Err};
-
-pub use path::Path;
-pub use path::GenericPath;
-pub use path::WindowsPath;
-pub use path::PosixPath;
-
-pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
-pub use str::{StrSlice};
-pub use container::{Container, Mutable};
-pub use vec::{CopyableVector, ImmutableVector};
-pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
-pub use vec::{OwnedVector, OwnedCopyableVector, MutableVector};
-pub use old_iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
-pub use old_iter::{CopyableOrderedIter, CopyableNonstrictIter};
-pub use old_iter::{ExtendedMutableIter};
-pub use iter::Times;
-
-pub use num::{Num, NumCast};
-pub use num::{Orderable, Signed, Unsigned, Round};
-pub use num::{Algebraic, Trigonometric, Exponential, Hyperbolic};
-pub use num::{Integer, Fractional, Real, RealExt};
-pub use num::{Bitwise, BitCount, Bounded};
-pub use num::{Primitive, Int, Float};
-
-pub use ptr::Ptr;
-pub use from_str::FromStr;
-pub use to_str::ToStr;
-pub use clone::Clone;
-
 // On Linux, link to the runtime with -lrt.
 #[cfg(target_os = "linux")]
 #[doc(hidden)]

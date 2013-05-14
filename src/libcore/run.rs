@@ -778,7 +778,6 @@ pub fn waitpid(pid: pid_t) -> int {
 
 #[cfg(test)]
 mod tests {
-    use libc;
     use option::None;
     use os;
     use run::{readclose, writeclose};

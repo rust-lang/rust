@@ -23,14 +23,19 @@ use cast;
 use char;
 use clone::Clone;
 use cmp::{TotalOrd, Ordering, Less, Equal, Greater};
+use container::Container;
+use iter::Times;
+use iterator::Iterator;
 use libc;
 use option::{None, Option, Some};
-use iterator::Iterator;
+use old_iter::{BaseIter, EqIter};
 use ptr;
+use ptr::Ptr;
 use str;
+use to_str::ToStr;
 use uint;
 use vec;
-use to_str::ToStr;
+use vec::{OwnedVector, OwnedCopyableVector};
 
 #[cfg(not(test))] use cmp::{Eq, Ord, Equiv, TotalEq};
 
@@ -3133,13 +3138,16 @@ impl<'self> Iterator<char> for StrCharIterator<'self> {
 
 #[cfg(test)]
 mod tests {
+    use container::Container;
     use char;
     use option::Some;
     use libc::c_char;
     use libc;
+    use old_iter::BaseIter;
     use ptr;
     use str::*;
     use vec;
+    use vec::ImmutableVector;
     use cmp::{TotalOrd, Less, Equal, Greater};
 
     #[test]

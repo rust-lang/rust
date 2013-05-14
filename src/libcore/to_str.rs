@@ -20,6 +20,7 @@ use hashmap::HashSet;
 use container::Map;
 use hash::Hash;
 use cmp::Eq;
+use old_iter::BaseIter;
 
 pub trait ToStr {
     fn to_str(&self) -> ~str;
