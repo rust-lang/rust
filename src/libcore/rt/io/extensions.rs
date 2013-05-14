@@ -13,11 +13,16 @@
 // XXX: Not sure how this should be structured
 // XXX: Iteration should probably be considered separately
 
+use uint;
+use int;
 use vec;
-use rt::io::{Reader, read_error, standard_error, EndOfFile, DEFAULT_BUF_SIZE};
+use rt::io::{Reader, Writer};
+use rt::io::{read_error, standard_error, EndOfFile, DEFAULT_BUF_SIZE};
 use option::{Option, Some, None};
 use unstable::finally::Finally;
 use util;
+use cast;
+use io::{u64_to_le_bytes, u64_to_be_bytes};
 
 pub trait ReaderUtil {
 
@@ -212,7 +217,7 @@ pub trait WriterByteConversions {
     fn write_be_int(&mut self, n: int);
 
     /// Write a big-endian u64 (8 bytes).
-    fn write_be_u64(&mut self, n: u64);
+    fn write_be_u64_(&mut self, n: u64);
 
     /// Write a big-endian u32 (4 bytes).
     fn write_be_u32(&mut self, n: u32);
@@ -236,7 +241,7 @@ pub trait WriterByteConversions {
     fn write_be_f32(&mut self, f: f32);
 
     /// Write a little-endian u64 (8 bytes).
-    fn write_le_u64(&mut self, n: u64);
+    fn write_le_u64_(&mut self, n: u64);
 
     /// Write a little-endian u32 (4 bytes).
     fn write_le_u32(&mut self, n: u32);
@@ -333,13 +338,262 @@ impl<T: Reader> ReaderUtil for T {
     }
 }
 
+impl<T: Reader> ReaderByteConversions for T {
+    fn read_le_uint_n(&mut self, nbytes: uint) -> u64 {
+        assert!(nbytes > 0 && nbytes <= 8);
+
+        let mut val = 0u64, pos = 0, i = nbytes;
+        while i > 0 {
+            val += (self.read_u8() as u64) << pos;
+            pos += 8;
+            i -= 1;
+        }
+        val
+    }
+
+    fn read_le_int_n(&mut self, nbytes: uint) -> i64 {
+        extend_sign(self.read_le_uint_n(nbytes), nbytes)
+    }
+
+    fn read_be_uint_n(&mut self, nbytes: uint) -> u64 {
+        assert!(nbytes > 0 && nbytes <= 8);
+
+        let mut val = 0u64, i = nbytes;
+        while i > 0 {
+            i -= 1;
+            val += (self.read_u8() as u64) << i * 8;
+        }
+        val
+    }
+
+    fn read_be_int_n(&mut self, nbytes: uint) -> i64 {
+        extend_sign(self.read_be_uint_n(nbytes), nbytes)
+    }
+
+    fn read_le_uint(&mut self) -> uint {
+        self.read_le_uint_n(uint::bytes) as uint
+    }
+
+    fn read_le_int(&mut self) -> int {
+        self.read_le_int_n(int::bytes) as int
+    }
+
+    fn read_be_uint(&mut self) -> uint {
+        self.read_be_uint_n(uint::bytes) as uint
+    }
+
+    fn read_be_int(&mut self) -> int {
+        self.read_be_int_n(int::bytes) as int
+    }
+
+    fn read_be_u64(&mut self) -> u64 {
+        self.read_be_uint_n(8) as u64
+    }
+
+    fn read_be_u32(&mut self) -> u32 {
+        self.read_be_uint_n(4) as u32
+    }
+
+    fn read_be_u16(&mut self) -> u16 {
+        self.read_be_uint_n(2) as u16
+    }
+
+    fn read_be_i64(&mut self) -> i64 {
+        self.read_be_int_n(8) as i64
+    }
+
+    fn read_be_i32(&mut self) -> i32 {
+        self.read_be_int_n(4) as i32
+    }
+
+    fn read_be_i16(&mut self) -> i16 {
+        self.read_be_int_n(2) as i16
+    }
+
+    fn read_be_f64(&mut self) -> f64 {
+        unsafe {
+            cast::transmute::<u64, f64>(self.read_be_u64())
+        }
+    }
+
+    fn read_be_f32(&mut self) -> f32 {
+        unsafe {
+            cast::transmute::<u32, f32>(self.read_be_u32())
+        }
+    }
+
+    fn read_le_u64(&mut self) -> u64 {
+        self.read_le_uint_n(8) as u64
+    }
+
+    fn read_le_u32(&mut self) -> u32 {
+        self.read_le_uint_n(4) as u32
+    }
+
+    fn read_le_u16(&mut self) -> u16 {
+        self.read_le_uint_n(2) as u16
+    }
+
+    fn read_le_i64(&mut self) -> i64 {
+        self.read_le_int_n(8) as i64
+    }
+
+    fn read_le_i32(&mut self) -> i32 {
+        self.read_le_int_n(4) as i32
+    }
+
+    fn read_le_i16(&mut self) -> i16 {
+        self.read_le_int_n(2) as i16
+    }
+
+    fn read_le_f64(&mut self) -> f64 {
+        unsafe {
+            cast::transmute::<u64, f64>(self.read_le_u64())
+        }
+    }
+
+    fn read_le_f32(&mut self) -> f32 {
+        unsafe {
+            cast::transmute::<u32, f32>(self.read_le_u32())
+        }
+    }
+
+    fn read_u8(&mut self) -> u8 {
+        match self.read_byte() {
+            Some(b) => b as u8,
+            None => 0
+        }
+    }
+
+    fn read_i8(&mut self) -> i8 {
+        match self.read_byte() {
+            Some(b) => b as i8,
+            None => 0
+        }
+    }
+
+}
+
+impl<T: Writer> WriterByteConversions for T {
+    fn write_int(&mut self, n: int) {
+        int::to_str_bytes(n, 10u, |bytes| self.write(bytes))
+    }
+
+    fn write_uint(&mut self, n: uint) {
+        uint::to_str_bytes(n, 10u, |bytes| self.write(bytes))
+    }
+
+    fn write_le_uint(&mut self, n: uint) {
+        u64_to_le_bytes(n as u64, uint::bytes, |v| self.write(v))
+    }
+
+    fn write_le_int(&mut self, n: int) {
+        u64_to_le_bytes(n as u64, int::bytes, |v| self.write(v))
+    }
+
+    fn write_be_uint(&mut self, n: uint) {
+        u64_to_be_bytes(n as u64, uint::bytes, |v| self.write(v))
+    }
+
+    fn write_be_int(&mut self, n: int) {
+        u64_to_be_bytes(n as u64, int::bytes, |v| self.write(v))
+    }
+
+    fn write_be_u64_(&mut self, n: u64) {
+        u64_to_be_bytes(n, 8u, |v| self.write(v))
+    }
+
+    fn write_be_u32(&mut self, n: u32) {
+        u64_to_be_bytes(n as u64, 4u, |v| self.write(v))
+    }
+
+    fn write_be_u16(&mut self, n: u16) {
+        u64_to_be_bytes(n as u64, 2u, |v| self.write(v))
+    }
+
+    fn write_be_i64(&mut self, n: i64) {
+        u64_to_be_bytes(n as u64, 8u, |v| self.write(v))
+    }
+
+    fn write_be_i32(&mut self, n: i32) {
+        u64_to_be_bytes(n as u64, 4u, |v| self.write(v))
+    }
+
+    fn write_be_i16(&mut self, n: i16) {
+        u64_to_be_bytes(n as u64, 2u, |v| self.write(v))
+    }
+
+    fn write_be_f64(&mut self, f: f64) {
+        unsafe {
+            self.write_be_u64_(cast::transmute(f))
+        }
+    }
+
+    fn write_be_f32(&mut self, f: f32) {
+        unsafe {
+            self.write_be_u32(cast::transmute(f))
+        }
+    }
+
+    fn write_le_u64_(&mut self, n: u64) {
+        u64_to_le_bytes(n, 8u, |v| self.write(v))
+    }
+
+    fn write_le_u32(&mut self, n: u32) {
+        u64_to_le_bytes(n as u64, 4u, |v| self.write(v))
+    }
+
+    fn write_le_u16(&mut self, n: u16) {
+        u64_to_le_bytes(n as u64, 2u, |v| self.write(v))
+    }
+
+    fn write_le_i64(&mut self, n: i64) {
+        u64_to_le_bytes(n as u64, 8u, |v| self.write(v))
+    }
+
+    fn write_le_i32(&mut self, n: i32) {
+        u64_to_le_bytes(n as u64, 4u, |v| self.write(v))
+    }
+
+    fn write_le_i16(&mut self, n: i16) {
+        u64_to_le_bytes(n as u64, 2u, |v| self.write(v))
+    }
+
+    fn write_le_f64(&mut self, f: f64) {
+        unsafe {
+            self.write_le_u64_(cast::transmute(f))
+        }
+    }
+
+    fn write_le_f32(&mut self, f: f32) {
+        unsafe {
+            self.write_le_u32(cast::transmute(f))
+        }
+    }
+
+    fn write_u8(&mut self, n: u8) {
+        self.write([n]) 
+    }
+
+    fn write_i8(&mut self, n: i8) {
+        self.write([n as u8]) 
+    }
+}
+
+fn extend_sign(val: u64, nbytes: uint) -> i64 {
+    let shift = (8 - nbytes) * 8;
+    (val << shift) as i64 >> shift
+}
+
 #[cfg(test)]
 mod test {
-    use super::*;
+    use super::{ReaderUtil, ReaderByteConversions, WriterByteConversions};
+    use u64;
+    use i32;
     use option::{Some, None};
     use cell::Cell;
-    use rt::io::mem::MemReader;
-    use rt::io::mock::*;
+    use rt::io::mem::{MemReader, MemWriter};
+    use rt::io::mock::MockReader;
     use rt::io::{read_error, placeholder_error};
 
     #[test]
@@ -571,5 +825,79 @@ mod test {
         let buf = reader.read_to_end();
         assert!(buf == ~[10, 11]);
     }
+
+    // XXX: Some problem with resolve here
+    /*#[test]
+    fn test_read_write_le() {
+        let uints = [0, 1, 2, 42, 10_123, 100_123_456, u64::max_value];
+
+        let mut writer = MemWriter::new();
+        for uints.each |i| {
+            writer.write_le_u64(*i);
+        }
+
+        let mut reader = MemReader::new(writer.inner());
+        for uints.each |i| {
+            assert!(reader.read_le_u64() == *i);
+        }
+    }
+
+    #[test]
+    fn test_read_write_be() {
+        let uints = [0, 1, 2, 42, 10_123, 100_123_456, u64::max_value];
+
+        let mut writer = MemWriter::new();
+        for uints.each |i| {
+            writer.write_be_u64(*i);
+        }
+
+        let mut reader = MemReader::new(writer.inner());
+        for uints.each |i| {
+            assert!(reader.read_be_u64() == *i);
+        }
+    }
+
+    #[test]
+    fn test_read_be_int_n() {
+        let ints = [i32::min_value, -123456, -42, -5, 0, 1, i32::max_value];
+
+        let mut writer = MemWriter::new();
+        for ints.each |i| {
+            writer.write_be_i32(*i);
+        }
+
+        let mut reader = MemReader::new(writer.inner());
+        for ints.each |i| {
+            // this tests that the sign extension is working
+            // (comparing the values as i32 would not test this)
+            assert!(reader.read_be_int_n(4) == *i as i64);
+        }
+    }
+
+    #[test]
+    fn test_read_f32() {
+        //big-endian floating-point 8.1250
+        let buf = ~[0x41, 0x02, 0x00, 0x00];
+
+        let mut writer = MemWriter::new();
+        writer.write(buf);
+
+        let mut reader = MemReader::new(writer.inner());
+        let f = reader.read_be_f32();
+        assert!(f == 8.1250);
+    }
+
+    #[test]
+    fn test_read_write_f32() {
+        let f:f32 = 8.1250;
+
+        let mut writer = MemWriter::new();
+        writer.write_be_f32(f);
+        writer.write_le_f32(f);
+
+        let mut reader = MemReader::new(writer.inner());
+        assert!(reader.read_be_f32() == 8.1250);
+        assert!(reader.read_le_f32() == 8.1250);
+    }*/
 
 }
