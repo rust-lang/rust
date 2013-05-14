@@ -154,14 +154,14 @@ pub struct protocol_ {
 
 pub impl protocol_ {
     /// Get a state.
-    fn get_state(&self, name: ~str) -> state {
-        self.states.find(|i| i.name == name).get()
+    fn get_state(&self, name: &str) -> state {
+        self.states.find(|i| name == i.name).get()
     }
 
     fn get_state_by_id(&self, id: uint) -> state { self.states[id] }
 
-    fn has_state(&self, name: ~str) -> bool {
-        self.states.find(|i| i.name == name).is_some()
+    fn has_state(&self, name: &str) -> bool {
+        self.states.find(|i| name == i.name).is_some()
     }
 
     fn filename(&self) -> ~str {

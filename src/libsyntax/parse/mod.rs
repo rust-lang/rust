@@ -351,15 +351,14 @@ mod test {
     use core::option::None;
     use core::int;
     use core::num::NumCast;
-    use core::path::Path;
-    use codemap::{dummy_sp, CodeMap, span, BytePos, spanned};
+    use codemap::{CodeMap, span, BytePos, spanned};
     use opt_vec;
     use ast;
     use abi;
     use ast_util::mk_ident;
     use parse::parser::Parser;
-    use parse::token::{ident_interner, mk_ident_interner, mk_fresh_ident_interner};
-    use diagnostic::{span_handler, mk_span_handler, mk_handler, Emitter};
+    use parse::token::{ident_interner, mk_fresh_ident_interner};
+    use diagnostic::{mk_span_handler, mk_handler};
 
     // add known names to interner for testing
     fn mk_testing_interner() -> @ident_interner {
@@ -408,7 +407,7 @@ mod test {
 
     // map a string to tts, return the tt without its parsesess
     fn string_to_tts_only(source_str : @~str) -> ~[ast::token_tree] {
-        let (tts,ps) = string_to_tts_t(source_str);
+        let (tts,_ps) = string_to_tts_t(source_str);
         tts
     }
 
@@ -483,7 +482,7 @@ mod test {
     }*/
 
     #[test] fn string_to_tts_1 () {
-        let (tts,ps) = string_to_tts_t(@~"fn a (b : int) { b; }");
+        let (tts,_ps) = string_to_tts_t(@~"fn a (b : int) { b; }");
         assert_eq!(to_json_str(@tts),
                    ~"[\
                 [\"tt_tok\",null,[\"IDENT\",\"fn\",false]],\
@@ -548,7 +547,7 @@ mod test {
     }
 
     fn parser_done(p: Parser){
-        assert_eq!(*p.token,token::EOF);
+        assert_eq!(copy *p.token,token::EOF);
     }
 
     #[test] fn parse_ident_pat () {

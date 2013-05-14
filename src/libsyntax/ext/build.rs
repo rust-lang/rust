@@ -509,7 +509,7 @@ pub fn mk_unreachable(cx: @ext_ctxt, span: span) -> @ast::expr {
         ],
         ~[
             mk_base_str(cx, span, ~"internal error: entered unreachable code"),
-            mk_base_str(cx, span, loc.file.name),
+            mk_base_str(cx, span, copy loc.file.name),
             mk_uint(cx, span, loc.line),
         ]
     )

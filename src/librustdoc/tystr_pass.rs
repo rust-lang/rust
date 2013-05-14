@@ -63,7 +63,7 @@ fn fold_fn(
 
 fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
     do astsrv::exec(srv) |ctxt| {
-        match *ctxt.ast_map.get(&fn_id) {
+        match ctxt.ast_map.get_copy(&fn_id) {
             ast_map::node_item(@ast::item {
                 ident: ident,
                 node: ast::item_fn(ref decl, purity, _, ref tys, _), _
@@ -90,7 +90,7 @@ fn fold_const(
         sig: Some({
             let doc = copy doc;
             do astsrv::exec(srv) |ctxt| {
-                match *ctxt.ast_map.get(&doc.id()) {
+                match ctxt.ast_map.get_copy(&doc.id()) {
                     ast_map::node_item(@ast::item {
                         node: ast::item_const(ty, _), _
                     }, _) => {
@@ -115,7 +115,7 @@ fn fold_enum(
             let sig = {
                 let variant = copy *variant;
                 do astsrv::exec(srv.clone()) |ctxt| {
-                    match *ctxt.ast_map.get(&doc_id) {
+                    match ctxt.ast_map.get_copy(&doc_id) {
                         ast_map::node_item(@ast::item {
                             node: ast::item_enum(ref enum_definition, _), _
                         }, _) => {
@@ -125,7 +125,7 @@ fn fold_enum(
                             }.get();
 
                             pprust::variant_to_str(
-                                ast_variant, extract::interner())
+                                &ast_variant, extract::interner())
                         }
                         _ => fail!("enum variant not bound to an enum item")
                     }
@@ -170,7 +170,7 @@ fn get_method_sig(
     method_name: ~str
 ) -> Option<~str> {
     do astsrv::exec(srv) |ctxt| {
-        match *ctxt.ast_map.get(&item_id) {
+        match ctxt.ast_map.get_copy(&item_id) {
             ast_map::node_item(@ast::item {
                 node: ast::item_trait(_, _, ref methods), _
             }, _) => {
@@ -241,7 +241,7 @@ fn fold_impl(
     let (bounds, trait_types, self_ty) = {
         let doc = copy doc;
         do astsrv::exec(srv) |ctxt| {
-            match *ctxt.ast_map.get(&doc.id()) {
+            match ctxt.ast_map.get_copy(&doc.id()) {
                 ast_map::node_item(@ast::item {
                     node: ast::item_impl(ref generics, opt_trait_type, self_ty, _), _
                 }, _) => {
@@ -280,7 +280,7 @@ fn fold_type(
         sig: {
             let doc = copy doc;
             do astsrv::exec(srv) |ctxt| {
-                match *ctxt.ast_map.get(&doc.id()) {
+                match ctxt.ast_map.get_copy(&doc.id()) {
                     ast_map::node_item(@ast::item {
                         ident: ident,
                         node: ast::item_ty(ty, ref params), _
@@ -312,7 +312,7 @@ fn fold_struct(
         sig: {
             let doc = copy doc;
             do astsrv::exec(srv) |ctxt| {
-                match *ctxt.ast_map.get(&doc.id()) {
+                match ctxt.ast_map.get_copy(&doc.id()) {
                     ast_map::node_item(item, _) => {
                         let item = strip_struct_extra_stuff(item);
                         Some(pprust::item_to_str(item,

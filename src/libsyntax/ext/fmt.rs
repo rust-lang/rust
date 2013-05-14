@@ -62,7 +62,7 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
     // which tells the RT::conv* functions how to perform the conversion
 
     fn make_rt_conv_expr(cx: @ext_ctxt, sp: span, cnv: &Conv) -> @ast::expr {
-        fn make_flags(cx: @ext_ctxt, sp: span, flags: ~[Flag]) -> @ast::expr {
+        fn make_flags(cx: @ext_ctxt, sp: span, flags: &[Flag]) -> @ast::expr {
             let mut tmp_expr = make_rt_path_expr(cx, sp, "flag_none");
             for flags.each |f| {
                 let fstr = match *f {
