@@ -715,6 +715,25 @@ impl Float for f64 {
     #[inline(always)]
     fn max_10_exp() -> int { 308 }
 
+    /// Constructs a floating point number by multiplying `x` by 2 raised to the power of `exp`
+    #[inline(always)]
+    fn ldexp(x: f64, exp: int) -> f64 {
+        ldexp(x, exp as c_int)
+    }
+
+    ///
+    /// Breaks the number into a normalized fraction and a base-2 exponent, satisfying:
+    ///
+    /// - `self = x * pow(2, exp)`
+    /// - `0.5 <= abs(x) < 1.0`
+    ///
+    #[inline(always)]
+    fn frexp(&self) -> (f64, int) {
+        let mut exp = 0;
+        let x = frexp(*self, &mut exp);
+        (x, exp as int)
+    }
+
     ///
     /// Returns the exponential of the number, minus `1`, in a way that is accurate
     /// even if the number is close to zero
@@ -1225,5 +1244,45 @@ mod tests {
         assert_eq!(Float::neg_zero::<f64>().classify(), FPZero);
         assert_eq!(1e-307f64.classify(), FPNormal);
         assert_eq!(1e-308f64.classify(), FPSubnormal);
+    }
+
+    #[test]
+    fn test_ldexp() {
+        // We have to use from_str until base-2 exponents
+        // are supported in floating-point literals
+        let f1: f64 = from_str_hex("1p-123").unwrap();
+        let f2: f64 = from_str_hex("1p-111").unwrap();
+        assert_eq!(Float::ldexp(1f64, -123), f1);
+        assert_eq!(Float::ldexp(1f64, -111), f2);
+
+        assert_eq!(Float::ldexp(0f64, -123), 0f64);
+        assert_eq!(Float::ldexp(-0f64, -123), -0f64);
+        assert_eq!(Float::ldexp(Float::infinity::<f64>(), -123),
+                   Float::infinity::<f64>());
+        assert_eq!(Float::ldexp(Float::neg_infinity::<f64>(), -123),
+                   Float::neg_infinity::<f64>());
+        assert!(Float::ldexp(Float::NaN::<f64>(), -123).is_NaN());
+    }
+
+    #[test]
+    fn test_frexp() {
+        // We have to use from_str until base-2 exponents
+        // are supported in floating-point literals
+        let f1: f64 = from_str_hex("1p-123").unwrap();
+        let f2: f64 = from_str_hex("1p-111").unwrap();
+        let (x1, exp1) = f1.frexp();
+        let (x2, exp2) = f2.frexp();
+        assert_eq!((x1, exp1), (0.5f64, -122));
+        assert_eq!((x2, exp2), (0.5f64, -110));
+        assert_eq!(Float::ldexp(x1, exp1), f1);
+        assert_eq!(Float::ldexp(x2, exp2), f2);
+
+        assert_eq!(0f64.frexp(), (0f64, 0));
+        assert_eq!((-0f64).frexp(), (-0f64, 0));
+        assert_eq!(match Float::infinity::<f64>().frexp() { (x, _) => x },
+                   Float::infinity::<f64>())
+        assert_eq!(match Float::neg_infinity::<f64>().frexp() { (x, _) => x },
+                   Float::neg_infinity::<f64>())
+        assert!(match Float::NaN::<f64>().frexp() { (x, _) => x.is_NaN() })
     }
 }

@@ -10,6 +10,7 @@
 
 //! Operations and constants for `f32`
 
+use libc::c_int;
 use num::{Zero, One, strconv};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
 use prelude::*;
@@ -672,6 +673,25 @@ impl Float for f32 {
     #[inline(always)]
     fn max_10_exp() -> int { 38 }
 
+    /// Constructs a floating point number by multiplying `x` by 2 raised to the power of `exp`
+    #[inline(always)]
+    fn ldexp(x: f32, exp: int) -> f32 {
+        ldexp(x, exp as c_int)
+    }
+
+    ///
+    /// Breaks the number into a normalized fraction and a base-2 exponent, satisfying:
+    ///
+    /// - `self = x * pow(2, exp)`
+    /// - `0.5 <= abs(x) < 1.0`
+    ///
+    #[inline(always)]
+    fn frexp(&self) -> (f32, int) {
+        let mut exp = 0;
+        let x = frexp(*self, &mut exp);
+        (x, exp as int)
+    }
+
     ///
     /// Returns the exponential of the number, minus `1`, in a way that is accurate
     /// even if the number is close to zero
@@ -1179,5 +1199,45 @@ mod tests {
         assert_eq!(1f32.classify(), FPNormal);
         assert_eq!(1e-37f32.classify(), FPNormal);
         assert_eq!(1e-38f32.classify(), FPSubnormal);
+    }
+
+    #[test]
+    fn test_ldexp() {
+        // We have to use from_str until base-2 exponents
+        // are supported in floating-point literals
+        let f1: f32 = from_str_hex("1p-123").unwrap();
+        let f2: f32 = from_str_hex("1p-111").unwrap();
+        assert_eq!(Float::ldexp(1f32, -123), f1);
+        assert_eq!(Float::ldexp(1f32, -111), f2);
+
+        assert_eq!(Float::ldexp(0f32, -123), 0f32);
+        assert_eq!(Float::ldexp(-0f32, -123), -0f32);
+        assert_eq!(Float::ldexp(Float::infinity::<f32>(), -123),
+                   Float::infinity::<f32>());
+        assert_eq!(Float::ldexp(Float::neg_infinity::<f32>(), -123),
+                   Float::neg_infinity::<f32>());
+        assert!(Float::ldexp(Float::NaN::<f32>(), -123).is_NaN());
+    }
+
+    #[test]
+    fn test_frexp() {
+        // We have to use from_str until base-2 exponents
+        // are supported in floating-point literals
+        let f1: f32 = from_str_hex("1p-123").unwrap();
+        let f2: f32 = from_str_hex("1p-111").unwrap();
+        let (x1, exp1) = f1.frexp();
+        let (x2, exp2) = f2.frexp();
+        assert_eq!((x1, exp1), (0.5f32, -122));
+        assert_eq!((x2, exp2), (0.5f32, -110));
+        assert_eq!(Float::ldexp(x1, exp1), f1);
+        assert_eq!(Float::ldexp(x2, exp2), f2);
+
+        assert_eq!(0f32.frexp(), (0f32, 0));
+        assert_eq!((-0f32).frexp(), (-0f32, 0));
+        assert_eq!(match Float::infinity::<f32>().frexp() { (x, _) => x },
+                   Float::infinity::<f32>())
+        assert_eq!(match Float::neg_infinity::<f32>().frexp() { (x, _) => x },
+                   Float::neg_infinity::<f32>())
+        assert!(match Float::NaN::<f32>().frexp() { (x, _) => x.is_NaN() })
     }
 }
