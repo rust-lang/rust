@@ -830,9 +830,9 @@ rust_get_rt_env() {
 }
 
 #ifndef _WIN32
-pthread_key_t sched_key;
+pthread_key_t sched_key = -1;
 #else
-DWORD sched_key;
+DWORD sched_key = -1;
 #endif
 
 extern "C" void*

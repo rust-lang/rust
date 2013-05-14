@@ -19,7 +19,7 @@ use super::context::Context;
 use super::local_services::LocalServices;
 use cell::Cell;
 
-#[cfg(test)] use super::uvio::UvEventLoop;
+#[cfg(test)] use rt::uv::uvio::UvEventLoop;
 #[cfg(test)] use unstable::run_in_bare_thread;
 #[cfg(test)] use int;
 
@@ -106,6 +106,7 @@ pub impl Scheduler {
                 }
             }
 
+            let scheduler = &mut *scheduler;
             scheduler.event_loop.callback(run_scheduler_once);
             scheduler.event_loop.run();
         }
@@ -179,7 +180,7 @@ pub impl Scheduler {
         // Take pointers to both the task and scheduler's saved registers.
         unsafe {
             let sched = local_sched::unsafe_borrow();
-            let (sched_context, _, next_task_context) = sched.get_contexts();
+            let (sched_context, _, next_task_context) = (*sched).get_contexts();
             let next_task_context = next_task_context.unwrap();
             // Context switch to the task, restoring it's registers
             // and saving the scheduler's
@@ -187,10 +188,10 @@ pub impl Scheduler {
 
             let sched = local_sched::unsafe_borrow();
             // The running task should have passed ownership elsewhere
-            assert!(sched.current_task.is_none());
+            assert!((*sched).current_task.is_none());
 
             // Running tasks may have asked us to do some cleanup
-            sched.run_cleanup_job();
+            (*sched).run_cleanup_job();
         }
     }
 
@@ -208,21 +209,25 @@ pub impl Scheduler {
 
         rtdebug!("blocking task");
 
-        let blocked_task = this.current_task.swap_unwrap();
-        let f_fake_region = unsafe { transmute::<&fn(~Task), &fn(~Task)>(f) };
-        let f_opaque = ClosureConverter::from_fn(f_fake_region);
-        this.enqueue_cleanup_job(GiveTask(blocked_task, f_opaque));
+        unsafe {
+            let blocked_task = this.current_task.swap_unwrap();
+            let f_fake_region = transmute::<&fn(~Task), &fn(~Task)>(f);
+            let f_opaque = ClosureConverter::from_fn(f_fake_region);
+            this.enqueue_cleanup_job(GiveTask(blocked_task, f_opaque));
+        }
 
         local_sched::put(this);
 
-        let sched = unsafe { local_sched::unsafe_borrow() };
-        let (sched_context, last_task_context, _) = sched.get_contexts();
-        let last_task_context = last_task_context.unwrap();
-        Context::swap(last_task_context, sched_context);
+        unsafe {
+            let sched = local_sched::unsafe_borrow();
+            let (sched_context, last_task_context, _) = (*sched).get_contexts();
+            let last_task_context = last_task_context.unwrap();
+            Context::swap(last_task_context, sched_context);
 
-        // We could be executing in a different thread now
-        let sched = unsafe { local_sched::unsafe_borrow() };
-        sched.run_cleanup_job();
+            // We could be executing in a different thread now
+            let sched = local_sched::unsafe_borrow();
+            (*sched).run_cleanup_job();
+        }
     }
 
     /// Switch directly to another task, without going through the scheduler.
@@ -244,14 +249,14 @@ pub impl Scheduler {
 
         unsafe {
             let sched = local_sched::unsafe_borrow();
-            let (_, last_task_context, next_task_context) = sched.get_contexts();
+            let (_, last_task_context, next_task_context) = (*sched).get_contexts();
             let last_task_context = last_task_context.unwrap();
             let next_task_context = next_task_context.unwrap();
             Context::swap(last_task_context, next_task_context);
 
             // We could be executing in a different thread now
             let sched = local_sched::unsafe_borrow();
-            sched.run_cleanup_job();
+            (*sched).run_cleanup_job();
         }
     }
 
@@ -356,10 +361,10 @@ pub impl Task {
             // have asked us to do some cleanup.
             unsafe {
                 let sched = local_sched::unsafe_borrow();
-                sched.run_cleanup_job();
+                (*sched).run_cleanup_job();
 
                 let sched = local_sched::unsafe_borrow();
-                let task = sched.current_task.get_mut_ref();
+                let task = (*sched).current_task.get_mut_ref();
                 // FIXME #6141: shouldn't neet to put `start()` in another closure
                 task.local_services.run(||start());
             }
