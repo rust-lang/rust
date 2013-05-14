@@ -2058,7 +2058,8 @@ pub impl Resolver {
                             self.resolve_single_import(module_,
                                                        containing_module,
                                                        target,
-                                                       source);
+                                                       source,
+                                                       span);
                     }
                     GlobImport => {
                         let span = import_directive.span;
@@ -2121,7 +2122,8 @@ pub impl Resolver {
                              module_: @mut Module,
                              containing_module: @mut Module,
                              target: ident,
-                             source: ident)
+                             source: ident,
+                             span: span)
                           -> ResolveResult<()> {
         debug!("(resolving single import) resolving `%s` = `%s::%s` from \
                 `%s`",
@@ -2325,14 +2327,14 @@ pub impl Resolver {
         }
 
         if resolve_fail {
-            self.session.err(fmt!("unresolved import: there is no `%s` in `%s`",
-                                  *self.session.str_of(source),
-                                  self.module_to_str(containing_module)));
+            self.session.span_err(span, fmt!("unresolved import: there is no `%s` in `%s`",
+                                             *self.session.str_of(source),
+                                             self.module_to_str(containing_module)));
             return Failed;
         } else if priv_fail {
-            self.session.err(fmt!("unresolved import: found `%s` in `%s` but it is private",
-                                  *self.session.str_of(source),
-                                  self.module_to_str(containing_module)));
+            self.session.span_err(span, fmt!("unresolved import: found `%s` in `%s` but it is \
+                                             private", *self.session.str_of(source),
+                                             self.module_to_str(containing_module)));
             return Failed;
         }
 
