@@ -15,7 +15,7 @@
  * in std.
  */
 
-use core::unstable::{Exclusive, exclusive};
+use core::unstable::sync::{Exclusive, exclusive};
 use core::ptr;
 use core::task;
 use core::util;
@@ -997,7 +997,7 @@ mod tests {
                     }
                 }
             }
-            for vec::each(sibling_convos) |p| {
+            for sibling_convos.each |p| {
                 let _ = p.recv(); // wait for sibling to get in the mutex
             }
             do m2.lock { }

@@ -72,7 +72,7 @@ impl<T:Owned,U:Owned> Peekable<U> for DuplexStream<T, U> {
 }
 
 impl<T:Owned,U:Owned> Selectable for DuplexStream<T, U> {
-    fn header(&self) -> *pipes::PacketHeader {
+    fn header(&mut self) -> *mut pipes::PacketHeader {
         self.port.header()
     }
 }

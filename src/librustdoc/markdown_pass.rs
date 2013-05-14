@@ -276,7 +276,7 @@ fn write_desc(
 }
 
 fn write_sections(ctxt: &Ctxt, sections: &[doc::Section]) {
-    for vec::each(sections) |section| {
+    for sections.each |section| {
         write_section(ctxt, copy *section);
     }
 }
@@ -439,7 +439,7 @@ fn write_variants(
 
     write_header_(ctxt, H4, ~"Variants");
 
-    for vec::each(docs) |variant| {
+    for docs.each |variant| {
         write_variant(ctxt, copy *variant);
     }
 
@@ -465,7 +465,7 @@ fn write_trait(ctxt: &Ctxt, doc: doc::TraitDoc) {
 }
 
 fn write_methods(ctxt: &Ctxt, docs: &[doc::MethodDoc]) {
-    for vec::each(docs) |doc| {
+    for docs.each |doc| {
         write_method(ctxt, copy *doc);
     }
 }
@@ -702,7 +702,7 @@ mod test {
 
     #[test]
     fn should_write_index_for_foreign_mods() {
-        let markdown = render(~"extern mod a { fn a(); }");
+        let markdown = render(~"extern { fn a(); }");
         assert!(str::contains(
             markdown,
             ~"\n\n* [Function `a`](#function-a)\n\n"
@@ -710,23 +710,16 @@ mod test {
     }
 
     #[test]
-    fn should_write_foreign_mods() {
-        let markdown = render(~"#[doc = \"test\"] extern mod a { }");
-        assert!(str::contains(markdown, ~"Foreign module `a`"));
-        assert!(str::contains(markdown, ~"test"));
-    }
-
-    #[test]
     fn should_write_foreign_fns() {
         let markdown = render(
-            ~"extern mod a { #[doc = \"test\"] fn a(); }");
+            ~"extern { #[doc = \"test\"] fn a(); }");
         assert!(str::contains(markdown, ~"test"));
     }
 
     #[test]
     fn should_write_foreign_fn_headers() {
         let markdown = render(
-            ~"extern mod a { #[doc = \"test\"] fn a(); }");
+            ~"extern { #[doc = \"test\"] fn a(); }");
         assert!(str::contains(markdown, ~"## Function `a`"));
     }
 

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,6 +15,7 @@ Miscellaneous helpers for common patterns.
 */
 
 use prelude::*;
+use unstable::intrinsics;
 
 /// The identity function.
 #[inline(always)]
@@ -26,19 +27,20 @@ pub fn ignore<T>(_x: T) { }
 
 /// Sets `*ptr` to `new_value`, invokes `op()`, and then restores the
 /// original value of `*ptr`.
+///
+/// NB: This function accepts `@mut T` and not `&mut T` to avoid
+/// an obvious borrowck hazard. Typically passing in `&mut T` will
+/// cause borrow check errors because it freezes whatever location
+/// that `&mut T` is stored in (either statically or dynamically).
 #[inline(always)]
-pub fn with<T:Copy,R>(
-    ptr: &mut T,
-    new_value: T,
+pub fn with<T,R>(
+    ptr: @mut T,
+    value: T,
     op: &fn() -> R) -> R
 {
-    // NDM: if swap operator were defined somewhat differently,
-    // we wouldn't need to copy...
-
-    let old_value = *ptr;
-    *ptr = new_value;
+    let prev = replace(ptr, value);
     let result = op();
-    *ptr = old_value;
+    *ptr = prev;
     return result;
 }
 
@@ -48,7 +50,55 @@ pub fn with<T:Copy,R>(
  */
 #[inline(always)]
 pub fn swap<T>(x: &mut T, y: &mut T) {
-    *x <-> *y;
+    unsafe {
+        swap_ptr(ptr::to_mut_unsafe_ptr(x), ptr::to_mut_unsafe_ptr(y));
+    }
+}
+
+/**
+ * Swap the values at two mutable locations of the same type, without
+ * deinitialising or copying either one.
+ */
+#[inline]
+#[cfg(not(stage0))]
+pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
+    if x == y { return }
+
+    // Give ourselves some scratch space to work with
+    let mut tmp: T = intrinsics::uninit();
+    let t = ptr::to_mut_unsafe_ptr(&mut tmp);
+
+    // Perform the swap
+    ptr::copy_memory(t, x, 1);
+    ptr::copy_memory(x, y, 1);
+    ptr::copy_memory(y, t, 1);
+
+    // y and t now point to the same thing, but we need to completely forget t
+    // because it's no longer relevant.
+    cast::forget(tmp);
+}
+
+/**
+ * Swap the values at two mutable locations of the same type, without
+ * deinitialising or copying either one.
+ */
+#[inline]
+#[cfg(stage0)]
+pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
+    if x == y { return }
+
+    // Give ourselves some scratch space to work with
+    let mut tmp: T = intrinsics::init();
+    let t = ptr::to_mut_unsafe_ptr(&mut tmp);
+
+    // Perform the swap
+    ptr::copy_memory(t, x, 1);
+    ptr::copy_memory(x, y, 1);
+    ptr::copy_memory(y, t, 1);
+
+    // y and t now point to the same thing, but we need to completely forget t
+    // because it's no longer relevant.
+    cast::forget(tmp);
 }
 
 /**
@@ -56,10 +106,19 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
  * value, without deinitialising or copying either one.
  */
 #[inline(always)]
-pub fn replace<T>(dest: &mut T, src: T) -> T {
-    let mut tmp = src;
-    swap(dest, &mut tmp);
-    tmp
+pub fn replace<T>(dest: &mut T, mut src: T) -> T {
+    swap(dest, &mut src);
+    src
+}
+
+/**
+ * Replace the value at a mutable location with a new one, returning the old
+ * value, without deinitialising or copying either one.
+ */
+#[inline(always)]
+pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
+    swap_ptr(dest, ptr::to_mut_unsafe_ptr(&mut src));
+    src
 }
 
 /// A non-copyable dummy type.
@@ -72,6 +131,20 @@ impl Drop for NonCopyable {
 }
 
 pub fn NonCopyable() -> NonCopyable { NonCopyable { i: () } }
+
+
+/// A type with no inhabitants
+pub enum Void { }
+
+pub impl Void {
+    /// A utility function for ignoring this uninhabited type
+    fn uninhabited(&self) -> ! {
+        match *self {
+            // Nothing to match on
+        }
+    }
+}
+
 
 /**
 A utility function for indicating unreachable code. It will fail if

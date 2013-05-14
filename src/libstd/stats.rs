@@ -52,7 +52,7 @@ impl<'self> Stats for &'self [f64] {
 
     fn median(self) -> f64 {
         assert!(self.len() != 0);
-        let mut tmp = vec::from_slice(self);
+        let mut tmp = vec::to_owned(self);
         sort::tim_sort(tmp);
         if tmp.len() & 1 == 0 {
             let m = tmp.len() / 2;

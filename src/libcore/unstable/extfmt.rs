@@ -257,12 +257,12 @@ pub mod ct {
         let mut flags = ~[];
 
         while i < lim {
-            let f = match s[i] {
-                '-' as u8 => FlagLeftJustify,
-                '0' as u8 => FlagLeftZeroPad,
-                ' ' as u8 => FlagSpaceForSign,
-                '+' as u8 => FlagSignAlways,
-                '#' as u8 => FlagAlternate,
+            let f = match s[i] as char {
+                '-' => FlagLeftJustify,
+                '0' => FlagLeftZeroPad,
+                ' ' => FlagSpaceForSign,
+                '+' => FlagSignAlways,
+                '#' => FlagAlternate,
                 _ => break
             };
 
@@ -313,18 +313,18 @@ pub mod ct {
 
         // FIXME (#2249): Do we really want two signed types here?
         // How important is it to be printf compatible?
-        let t = match s[i] {
-            'b' as u8 => TyBool,
-            's' as u8 => TyStr,
-            'c' as u8 => TyChar,
-            'd' as u8 | 'i' as u8 => TyInt(Signed),
-            'u' as u8 => TyInt(Unsigned),
-            'x' as u8 => TyHex(CaseLower),
-            'X' as u8 => TyHex(CaseUpper),
-            't' as u8 => TyBits,
-            'o' as u8 => TyOctal,
-            'f' as u8 => TyFloat,
-            '?' as u8 => TyPoly,
+        let t = match s[i] as char {
+            'b' => TyBool,
+            's' => TyStr,
+            'c' => TyChar,
+            'd' | 'i' => TyInt(Signed),
+            'u' => TyInt(Unsigned),
+            'x' => TyHex(CaseLower),
+            'X' => TyHex(CaseUpper),
+            't' => TyBits,
+            'o' => TyOctal,
+            'f' => TyFloat,
+            '?' => TyPoly,
             _ => err(~"unknown type in conversion: " + s.substr(i, 1))
         };
 
@@ -501,7 +501,7 @@ pub mod rt {
     pub fn conv_int(cv: Conv, i: int, buf: &mut ~str) {
         let radix = 10;
         let prec = get_int_precision(cv);
-        let mut s : ~str = uint_to_str_prec(int::abs(i) as uint, radix, prec);
+        let s : ~str = uint_to_str_prec(int::abs(i) as uint, radix, prec);
 
         let head = if i >= 0 {
             if have_flag(cv.flags, flag_sign_always) {
@@ -516,7 +516,7 @@ pub mod rt {
     }
     pub fn conv_uint(cv: Conv, u: uint, buf: &mut ~str) {
         let prec = get_int_precision(cv);
-        let mut rs =
+        let rs =
             match cv.ty {
               TyDefault => uint_to_str_prec(u, 10, prec),
               TyHexLower => uint_to_str_prec(u, 16, prec),
@@ -559,7 +559,7 @@ pub mod rt {
               CountIs(c) => (float::to_str_exact, c as uint),
               CountImplied => (float::to_str_digits, 6u)
         };
-        let mut s = to_str(f, digits);
+        let s = to_str(f, digits);
         let head = if 0.0 <= f {
             if have_flag(cv.flags, flag_sign_always) {
                 Some('+')
@@ -688,11 +688,3 @@ mod test {
         let _s = fmt!("%s", s);
     }
 }
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

@@ -289,7 +289,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
 
         let mut i = 0u;
         while i < digits {
-            let range = str::char_range_at(str::from_slice(ss), pos);
+            let range = str::char_range_at(str::to_owned(ss), pos);
             pos = range.next;
 
             match range.ch {
@@ -628,7 +628,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         }
     }
 
-    do io::with_str_reader(str::from_slice(format)) |rdr| {
+    do io::with_str_reader(str::to_owned(format)) |rdr| {
         let mut tm = Tm {
             tm_sec: 0_i32,
             tm_min: 0_i32,
@@ -840,7 +840,7 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
 
     let mut buf = ~"";
 
-    do io::with_str_reader(str::from_slice(format)) |rdr| {
+    do io::with_str_reader(str::to_owned(format)) |rdr| {
         while !rdr.eof() {
             match rdr.read_char() {
                 '%' => buf += parse_type(rdr.read_char(), tm),
@@ -861,7 +861,6 @@ mod tests {
     use core::result;
     use core::result::{Err, Ok};
     use core::str;
-    use core::vec;
 
     fn test_get_time() {
         static some_recent_date: i64 = 1325376000i64; // 2012-01-01T00:00:00Z
@@ -1023,12 +1022,12 @@ mod tests {
 
         fn test(s: &str, format: &str) -> bool {
             match strptime(s, format) {
-              Ok(ref tm) => tm.strftime(format) == str::from_slice(s),
+              Ok(ref tm) => tm.strftime(format) == str::to_owned(s),
               Err(copy e) => fail!(e)
             }
         }
 
-        for vec::each([
+        for [
             ~"Sunday",
             ~"Monday",
             ~"Tuesday",
@@ -1036,11 +1035,11 @@ mod tests {
             ~"Thursday",
             ~"Friday",
             ~"Saturday"
-        ]) |day| {
+        ].each |day| {
             assert!(test(*day, ~"%A"));
         }
 
-        for vec::each([
+        for [
             ~"Sun",
             ~"Mon",
             ~"Tue",
@@ -1048,11 +1047,11 @@ mod tests {
             ~"Thu",
             ~"Fri",
             ~"Sat"
-        ]) |day| {
+        ].each |day| {
             assert!(test(*day, ~"%a"));
         }
 
-        for vec::each([
+        for [
             ~"January",
             ~"February",
             ~"March",
@@ -1065,11 +1064,11 @@ mod tests {
             ~"October",
             ~"November",
             ~"December"
-        ]) |day| {
+        ].each |day| {
             assert!(test(*day, ~"%B"));
         }
 
-        for vec::each([
+        for [
             ~"Jan",
             ~"Feb",
             ~"Mar",
@@ -1082,7 +1081,7 @@ mod tests {
             ~"Oct",
             ~"Nov",
             ~"Dec"
-        ]) |day| {
+        ].each |day| {
             assert!(test(*day, ~"%b"));
         }
 

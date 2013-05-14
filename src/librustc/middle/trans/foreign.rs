@@ -294,7 +294,7 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
         Some(abi) => abi,
     };
 
-    for vec::each(foreign_mod.items) |&foreign_item| {
+    for foreign_mod.items.each |&foreign_item| {
         match foreign_item.node {
             ast::foreign_item_fn(*) => {
                 let id = foreign_item.id;
@@ -592,6 +592,30 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                                     Release);
             Store(bcx, old, fcx.llretptr.get());
         }
+        ~"atomic_load" => {
+            let old = AtomicLoad(bcx,
+                                 get_param(decl, first_real_arg),
+                                 SequentiallyConsistent);
+            Store(bcx, old, fcx.llretptr.get());
+        }
+        ~"atomic_load_acq" => {
+            let old = AtomicLoad(bcx,
+                                 get_param(decl, first_real_arg),
+                                 Acquire);
+            Store(bcx, old, fcx.llretptr.get());
+        }
+        ~"atomic_store" => {
+            AtomicStore(bcx,
+                        get_param(decl, first_real_arg + 1u),
+                        get_param(decl, first_real_arg),
+                        SequentiallyConsistent);
+        }
+        ~"atomic_store_rel" => {
+            AtomicStore(bcx,
+                        get_param(decl, first_real_arg + 1u),
+                        get_param(decl, first_real_arg),
+                        Release);
+        }
         ~"atomic_xchg" => {
             let old = AtomicRMW(bcx, Xchg,
                                 get_param(decl, first_real_arg),
@@ -715,6 +739,9 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                 Store(bcx, C_null(lltp_ty), fcx.llretptr.get());
             }
         }
+        ~"uninit" => {
+            // Do nothing, this is effectively a no-op
+        }
         ~"forget" => {}
         ~"transmute" => {
             let (in_type, out_type) = (substs.tys[0], substs.tys[1]);
@@ -724,7 +751,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             let in_type_size = machine::llbitsize_of_real(ccx, llintype);
             let out_type_size = machine::llbitsize_of_real(ccx, llouttype);
             if in_type_size != out_type_size {
-                let sp = match *ccx.tcx.items.get(&ref_id.get()) {
+                let sp = match ccx.tcx.items.get_copy(&ref_id.get()) {
                     ast_map::node_expr(e) => e.span,
                     _ => fail!(~"transmute has non-expr arg"),
                 };
@@ -1080,7 +1107,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         _ => {
             // Could we make this an enum rather than a string? does it get
             // checked earlier?
-            ccx.sess.span_bug(item.span, ~"unknown intrinsic");
+            ccx.sess.span_bug(item.span, "unknown intrinsic");
         }
     }
     build_return(bcx);

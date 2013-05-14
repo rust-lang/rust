@@ -13,7 +13,7 @@ fn lerp(a: f32, b: f32, v: f32) -> f32 { a * (1.0 - v) + b * v }
 #[inline(always)]
 fn smooth(v: f32) -> f32 { v * v * (3.0 - 2.0 * v) }
 
-fn random_gradient<R:Rng>(r: &R) -> Vec2 {
+fn random_gradient<R:Rng>(r: &mut R) -> Vec2 {
     let v = 2.0 * float::consts::pi * r.gen();
     Vec2 {
         x: float::cos(v) as f32,
@@ -33,11 +33,15 @@ struct Noise2DContext {
 
 pub impl Noise2DContext {
     fn new() -> Noise2DContext {
-        let r = rand::rng();
+        let mut r = rand::rng();
         let mut rgradients = [ Vec2 { x: 0.0, y: 0.0 }, ..256 ];
-        for int::range(0, 256) |i| { rgradients[i] = random_gradient(&r); }
+        for int::range(0, 256) |i| {
+            rgradients[i] = random_gradient(&mut r);
+        }
         let mut permutations = [ 0, ..256 ];
-        for int::range(0, 256) |i| { permutations[i] = i; }
+        for int::range(0, 256) |i| {
+            permutations[i] = i;
+        }
         r.shuffle_mut(permutations);
 
         Noise2DContext {
@@ -53,7 +57,11 @@ pub impl Noise2DContext {
     }
 
     #[inline]
-    fn get_gradients(&self, gradients: &mut [Vec2, ..4], origins: &mut [Vec2, ..4], x: f32, y: f32) {
+    fn get_gradients(&self,
+                     gradients: &mut [Vec2, ..4],
+                     origins: &mut [Vec2, ..4],
+                     x: f32,
+                     y: f32) {
         let x0f = f32::floor(x);
         let y0f = f32::floor(y);
         let x0 = x0f as int;

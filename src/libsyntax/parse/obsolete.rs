@@ -18,7 +18,7 @@ removed.
 */
 
 
-use ast::{expr, expr_lit, lit_nil};
+use ast::{expr, expr_lit, lit_nil, attribute};
 use ast;
 use codemap::{span, respan};
 use parse::parser::Parser;
@@ -40,6 +40,7 @@ pub enum ObsoleteSyntax {
     ObsoleteModeInFnType,
     ObsoleteMoveInit,
     ObsoleteBinaryMove,
+    ObsoleteSwap,
     ObsoleteUnsafeBlock,
     ObsoleteUnenforcedBound,
     ObsoleteImplSyntax,
@@ -60,12 +61,21 @@ pub enum ObsoleteSyntax {
     ObsoleteStaticMethod,
     ObsoleteConstItem,
     ObsoleteFixedLengthVectorType,
+    ObsoleteNamedExternModule,
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for ObsoleteSyntax {
     #[inline(always)]
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f);
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for ObsoleteSyntax {
+    #[inline(always)]
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
+        (*self as uint).iter_bytes(lsb0, f)
     }
 }
 
@@ -120,6 +130,10 @@ pub impl Parser {
             ObsoleteBinaryMove => (
                 "binary move",
                 "Write `foo = move bar` instead"
+            ),
+            ObsoleteSwap => (
+                "swap",
+                "Use core::util::{swap, replace} instead"
             ),
             ObsoleteUnsafeBlock => (
                 "non-standalone unsafe block",
@@ -212,6 +226,11 @@ pub impl Parser {
                 "fixed-length vector notation",
                 "instead of `[T * N]`, write `[T, ..N]`"
             ),
+            ObsoleteNamedExternModule => (
+                "named external module",
+                "instead of `extern mod foo { ... }`, write `mod foo { \
+                 extern { ... } }`"
+            ),
         };
 
         self.report(sp, kind, kind_str, desc);
@@ -282,13 +301,13 @@ pub impl Parser {
         }
     }
 
-    fn try_parse_obsolete_priv_section(&self) -> bool {
+    fn try_parse_obsolete_priv_section(&self, attrs: ~[attribute]) -> bool {
         if self.is_keyword(&~"priv") && self.look_ahead(1) == token::LBRACE {
             self.obsolete(copy *self.span, ObsoletePrivSection);
             self.eat_keyword(&~"priv");
             self.bump();
             while *self.token != token::RBRACE {
-                self.parse_single_struct_field(ast::private);
+                self.parse_single_struct_field(ast::private, attrs);
             }
             self.bump();
             true
@@ -298,4 +317,3 @@ pub impl Parser {
     }
 
 }
-

@@ -16,6 +16,7 @@ use super::work_queue::WorkQueue;
 use super::stack::{StackPool, StackSegment};
 use super::rtio::{EventLoop, EventLoopObject};
 use super::context::Context;
+use super::local_services::LocalServices;
 use cell::Cell;
 
 #[cfg(test)] use super::uvio::UvEventLoop;
@@ -38,7 +39,7 @@ pub struct Scheduler {
     /// Always valid when a task is executing, otherwise not
     priv saved_context: Context,
     /// The currently executing task
-    priv current_task: Option<~Task>,
+    current_task: Option<~Task>,
     /// An action performed after a context switch on behalf of the
     /// code running before the context switch
     priv cleanup_job: Option<CleanupJob>
@@ -117,15 +118,15 @@ pub impl Scheduler {
     fn resume_task_from_queue(~self) -> bool {
         assert!(!self.in_task_context());
 
-        let mut self = self;
-        match self.task_queue.pop_front() {
+        let mut this = self;
+        match this.task_queue.pop_front() {
             Some(task) => {
-                self.resume_task_immediately(task);
+                this.resume_task_immediately(task);
                 return true;
             }
             None => {
                 rtdebug!("no tasks in queue");
-                local_sched::put(self);
+                local_sched::put(this);
                 return false;
             }
         }
@@ -136,7 +137,6 @@ pub impl Scheduler {
     /// Called by a running task to end execution, after which it will
     /// be recycled by the scheduler for reuse in a new task.
     fn terminate_current_task(~self) {
-        let mut self = self;
         assert!(self.in_task_context());
 
         rtdebug!("ending running task");
@@ -148,11 +148,10 @@ pub impl Scheduler {
             }
         }
 
-        // Control never reaches here
+        abort!("control reached end of task");
     }
 
     fn schedule_new_task(~self, task: ~Task) {
-        let mut self = self;
         assert!(self.in_task_context());
 
         do self.switch_running_tasks_and_then(task) |last_task| {
@@ -166,16 +165,16 @@ pub impl Scheduler {
     // Core scheduling ops
 
     fn resume_task_immediately(~self, task: ~Task) {
-        let mut self = self;
-        assert!(!self.in_task_context());
+        let mut this = self;
+        assert!(!this.in_task_context());
 
         rtdebug!("scheduling a task");
 
         // Store the task in the scheduler so it can be grabbed later
-        self.current_task = Some(task);
-        self.enqueue_cleanup_job(DoNothing);
+        this.current_task = Some(task);
+        this.enqueue_cleanup_job(DoNothing);
 
-        local_sched::put(self);
+        local_sched::put(this);
 
         // Take pointers to both the task and scheduler's saved registers.
         unsafe {
@@ -204,17 +203,17 @@ pub impl Scheduler {
     /// running task.  It gets transmuted to the scheduler's lifetime
     /// and called while the task is blocked.
     fn deschedule_running_task_and_then(~self, f: &fn(~Task)) {
-        let mut self = self;
-        assert!(self.in_task_context());
+        let mut this = self;
+        assert!(this.in_task_context());
 
         rtdebug!("blocking task");
 
-        let blocked_task = self.current_task.swap_unwrap();
+        let blocked_task = this.current_task.swap_unwrap();
         let f_fake_region = unsafe { transmute::<&fn(~Task), &fn(~Task)>(f) };
         let f_opaque = ClosureConverter::from_fn(f_fake_region);
-        self.enqueue_cleanup_job(GiveTask(blocked_task, f_opaque));
+        this.enqueue_cleanup_job(GiveTask(blocked_task, f_opaque));
 
-        local_sched::put(self);
+        local_sched::put(this);
 
         let sched = unsafe { local_sched::unsafe_borrow() };
         let (sched_context, last_task_context, _) = sched.get_contexts();
@@ -230,18 +229,18 @@ pub impl Scheduler {
     /// You would want to think hard about doing this, e.g. if there are
     /// pending I/O events it would be a bad idea.
     fn switch_running_tasks_and_then(~self, next_task: ~Task, f: &fn(~Task)) {
-        let mut self = self;
-        assert!(self.in_task_context());
+        let mut this = self;
+        assert!(this.in_task_context());
 
         rtdebug!("switching tasks");
 
-        let old_running_task = self.current_task.swap_unwrap();
+        let old_running_task = this.current_task.swap_unwrap();
         let f_fake_region = unsafe { transmute::<&fn(~Task), &fn(~Task)>(f) };
         let f_opaque = ClosureConverter::from_fn(f_fake_region);
-        self.enqueue_cleanup_job(GiveTask(old_running_task, f_opaque));
-        self.current_task = Some(next_task);
+        this.enqueue_cleanup_job(GiveTask(old_running_task, f_opaque));
+        this.current_task = Some(next_task);
 
-        local_sched::put(self);
+        local_sched::put(this);
 
         unsafe {
             let sched = local_sched::unsafe_borrow();
@@ -304,7 +303,7 @@ pub impl Scheduler {
         unsafe {
             let last_task = transmute::<Option<&Task>, Option<&mut Task>>(last_task);
             let last_task_context = match last_task {
-                Some(ref t) => Some(&mut t.saved_context), None => None
+                Some(t) => Some(&mut t.saved_context), None => None
             };
             let next_task_context = match self.current_task {
                 Some(ref mut t) => Some(&mut t.saved_context), None => None
@@ -326,10 +325,18 @@ pub struct Task {
     /// These are always valid when the task is not running, unless
     /// the task is dead
     priv saved_context: Context,
+    /// The heap, GC, unwinding, local storage, logging
+    local_services: LocalServices
 }
 
 pub impl Task {
     fn new(stack_pool: &mut StackPool, start: ~fn()) -> Task {
+        Task::with_local(stack_pool, LocalServices::new(), start)
+    }
+
+    fn with_local(stack_pool: &mut StackPool,
+                  local_services: LocalServices,
+                  start: ~fn()) -> Task {
         let start = Task::build_start_wrapper(start);
         let mut stack = stack_pool.take_segment(TASK_MIN_STACK_SIZE);
         // NB: Context holds a pointer to that ~fn
@@ -337,6 +344,7 @@ pub impl Task {
         return Task {
             current_stack_segment: stack,
             saved_context: initial_context,
+            local_services: local_services
         };
     }
 
@@ -349,9 +357,12 @@ pub impl Task {
             unsafe {
                 let sched = local_sched::unsafe_borrow();
                 sched.run_cleanup_job();
-            }
 
-            start();
+                let sched = local_sched::unsafe_borrow();
+                let task = sched.current_task.get_mut_ref();
+                // FIXME #6141: shouldn't neet to put `start()` in another closure
+                task.local_services.run(||start());
+            }
 
             let sched = local_sched::take();
             sched.terminate_current_task();

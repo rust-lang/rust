@@ -22,7 +22,7 @@ use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::{ast, attr};
 
-use core::flate;
+use std::flate;
 use core::os::consts::{macos, freebsd, linux, android, win32};
 
 pub enum os {
@@ -71,7 +71,7 @@ fn libname(cx: &Context) -> (~str, ~str) {
         os_freebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
     };
 
-    (str::from_slice(dll_prefix), str::from_slice(dll_suffix))
+    (str::to_owned(dll_prefix), str::to_owned(dll_suffix))
 }
 
 fn find_library_crate_aux(
@@ -196,7 +196,7 @@ fn get_metadata_section(os: os,
         while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
             let name_buf = llvm::LLVMGetSectionName(si.llsi);
             let name = unsafe { str::raw::from_c_str(name_buf) };
-            debug!("get_matadata_section: name %s", name);
+            debug!("get_metadata_section: name %s", name);
             if name == read_meta_section_name(os) {
                 let cbuf = llvm::LLVMGetSectionContents(si.llsi);
                 let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;

@@ -57,6 +57,13 @@ pub static n_tydesc_fields: uint = 8u;
 pub static fn_field_code: uint = 0u;
 pub static fn_field_box: uint = 1u;
 
+// The three fields of a trait object/trait instance: vtable, box, and type
+// description.
+pub static trt_field_vtable: uint = 0u;
+pub static trt_field_box: uint = 1u;
+// This field is only present in unique trait objects, so it comes last.
+pub static trt_field_tydesc: uint = 2u;
+
 pub static vec_elt_fill: uint = 0u;
 
 pub static vec_elt_alloc: uint = 1u;
@@ -77,12 +84,3 @@ pub fn bzero_glue_name() -> ~str { return ~"rust_bzero_glue"; }
 pub fn yield_glue_name() -> ~str { return ~"rust_yield_glue"; }
 
 pub fn no_op_type_glue_name() -> ~str { return ~"rust_no_op_type_glue"; }
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

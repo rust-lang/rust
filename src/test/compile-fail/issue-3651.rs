@@ -10,4 +10,5 @@
 
 fn main() {
     for task::spawn { return true; } //~ ERROR A `for` loop iterator should expect a closure that
+                                     //~^ ERROR expected `for` closure to return `bool`
 }

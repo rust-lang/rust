@@ -29,7 +29,7 @@ pub trait Iterator<A> {
 ///
 /// In the future these will be default methods instead of a utility trait.
 pub trait IteratorUtil<A> {
-    fn chain(self, other: Self) -> ChainIterator<Self>;
+    fn chain<U: Iterator<A>>(self, other: U) -> ChainIterator<Self, U>;
     fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<Self, U>;
     // FIXME: #5898: should be called map
     fn transform<'r, B>(self, f: &'r fn(A) -> B) -> MapIterator<'r, A, B, Self>;
@@ -41,7 +41,10 @@ pub trait IteratorUtil<A> {
     fn take(self, n: uint) -> TakeIterator<Self>;
     fn scan<'r, St, B>(self, initial_state: St, f: &'r fn(&mut St, A) -> Option<B>)
         -> ScanIterator<'r, A, B, Self, St>;
+    #[cfg(stage0)]
     fn advance(&mut self, f: &fn(A) -> bool);
+    #[cfg(not(stage0))]
+    fn advance(&mut self, f: &fn(A) -> bool) -> bool;
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -50,7 +53,7 @@ pub trait IteratorUtil<A> {
 /// In the future these will be default methods instead of a utility trait.
 impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline(always)]
-    fn chain(self, other: T) -> ChainIterator<T> {
+    fn chain<U: Iterator<A>>(self, other: U) -> ChainIterator<T, U> {
         ChainIterator{a: self, b: other, flag: false}
     }
 
@@ -103,25 +106,40 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
 
     /// A shim implementing the `for` loop iteration protocol for iterator objects
     #[inline]
+    #[cfg(stage0)]
     fn advance(&mut self, f: &fn(A) -> bool) {
         loop {
             match self.next() {
                 Some(x) => {
-                    if !f(x) { return }
+                    if !f(x) { return; }
                 }
-                None => return
+                None => { return; }
+            }
+        }
+    }
+
+    /// A shim implementing the `for` loop iteration protocol for iterator objects
+    #[inline]
+    #[cfg(not(stage0))]
+    fn advance(&mut self, f: &fn(A) -> bool) -> bool {
+        loop {
+            match self.next() {
+                Some(x) => {
+                    if !f(x) { return false; }
+                }
+                None => { return true; }
             }
         }
     }
 }
 
-pub struct ChainIterator<T> {
+pub struct ChainIterator<T, U> {
     priv a: T,
-    priv b: T,
+    priv b: U,
     priv flag: bool
 }
 
-impl<A, T: Iterator<A>> Iterator<A> for ChainIterator<T> {
+impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for ChainIterator<T, U> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.flag {
@@ -378,18 +396,27 @@ mod tests {
     #[test]
     fn test_counter_to_vec() {
         let mut it = Counter::new(0, 5).take(10);
-        let xs = iter::iter_to_vec(|f| it.advance(f));
+        let xs = iter::to_vec(|f| it.advance(f));
         assert_eq!(xs, ~[0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
     }
 
     #[test]
     fn test_iterator_chain() {
         let xs = [0u, 1, 2, 3, 4, 5];
-        let ys = [30, 40, 50, 60];
+        let ys = [30u, 40, 50, 60];
         let expected = [0, 1, 2, 3, 4, 5, 30, 40, 50, 60];
         let mut it = xs.iter().chain(ys.iter());
         let mut i = 0;
         for it.advance |&x: &uint| {
+            assert_eq!(x, expected[i]);
+            i += 1;
+        }
+        assert_eq!(i, expected.len());
+
+        let ys = Counter::new(30u, 10).take(4);
+        let mut it = xs.iter().transform(|&x| x).chain(ys);
+        let mut i = 0;
+        for it.advance |x: uint| {
             assert_eq!(x, expected[i]);
             i += 1;
         }

@@ -38,12 +38,12 @@ rust_sched_loop::rust_sched_loop(rust_scheduler *sched, int id, bool killed) :
     sched(sched),
     log_lvl(log_debug),
     min_stack_size(kernel->env->min_stack_size),
-    local_region(kernel->env, false),
+    local_region(false, kernel->env->detailed_leaks, kernel->env->poison_on_free),
     // FIXME #2891: calculate a per-scheduler name.
     name("main")
 {
     LOGPTR(this, "new dom", (uintptr_t)this);
-    rng_init(kernel, &rng, NULL, 0);
+    rng_init(&rng, kernel->env->rust_seed, NULL, 0);
 
     if (!tls_initialized)
         init_tls();
@@ -154,7 +154,7 @@ rust_sched_loop::schedule_task() {
     lock.must_have_lock();
     size_t tasks = running_tasks.length();
     if (tasks > 0) {
-        size_t i = (tasks > 1) ? (rng_gen_u32(kernel, &rng) % tasks) : 0;
+        size_t i = (tasks > 1) ? (rng_gen_u32(&rng) % tasks) : 0;
         return running_tasks[i];
     }
     return NULL;

@@ -35,4 +35,3 @@ fn main() {
     d.chase_cat();
     debug!("cats_chased: %u", d.cats_chased);
 }
-

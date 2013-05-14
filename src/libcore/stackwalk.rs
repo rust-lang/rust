@@ -24,6 +24,7 @@ pub fn Frame(fp: *Word) -> Frame {
     }
 }
 
+#[cfg(stage0)]
 pub fn walk_stack(visit: &fn(Frame) -> bool) {
 
     debug!("beginning stack walk");
@@ -51,6 +52,35 @@ pub fn walk_stack(visit: &fn(Frame) -> bool) {
         }
     }
 }
+#[cfg(not(stage0))]
+pub fn walk_stack(visit: &fn(Frame) -> bool) -> bool {
+
+    debug!("beginning stack walk");
+
+    do frame_address |frame_pointer| {
+        let mut frame_address: *Word = unsafe {
+            transmute(frame_pointer)
+        };
+        loop {
+            let fr = Frame(frame_address);
+
+            debug!("frame: %x", unsafe { transmute(fr.fp) });
+            visit(fr);
+
+            unsafe {
+                let next_fp: **Word = transmute(frame_address);
+                frame_address = *next_fp;
+                if *frame_address == 0u {
+                    debug!("encountered task_start_wrapper. ending walk");
+                    // This is the task_start_wrapper_frame. There is
+                    // no stack beneath it and it is a foreign frame.
+                    break;
+                }
+            }
+        }
+    }
+    return true;
+}
 
 #[test]
 fn test_simple() {
@@ -64,18 +94,12 @@ fn test_simple_deep() {
         if i == 0 { return }
 
         for walk_stack |_frame| {
-            breakpoint();
+            // Would be nice to test something here...
         }
         run(i - 1);
     }
 
     run(10);
-}
-
-fn breakpoint() {
-    unsafe {
-        rustrt::rust_dbg_breakpoint()
-    }
 }
 
 fn frame_address(f: &fn(x: *u8)) {
@@ -84,19 +108,9 @@ fn frame_address(f: &fn(x: *u8)) {
     }
 }
 
-pub mod rustrt {
-    pub extern {
-        pub unsafe fn rust_dbg_breakpoint();
-    }
-}
-
 pub mod rusti {
     #[abi = "rust-intrinsic"]
     pub extern "rust-intrinsic" {
-        #[cfg(stage0)]
         pub fn frame_address(f: &once fn(x: *u8));
-        #[cfg(not(stage0))]
-        pub fn frame_address(+f: &once fn(x: *u8));
     }
 }
-

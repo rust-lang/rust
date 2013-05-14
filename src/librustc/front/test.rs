@@ -69,7 +69,8 @@ fn generate_test_harness(sess: session::Session,
         testfns: ~[]
     };
 
-    cx.ext_cx.bt_push(ExpandedFrom(CallInfo {
+    let ext_cx = cx.ext_cx;
+    ext_cx.bt_push(ExpandedFrom(CallInfo {
         call_site: dummy_sp(),
         callee: NameAndSpan {
             name: ~"test",
@@ -84,7 +85,7 @@ fn generate_test_harness(sess: session::Session,
 
     let fold = fold::make_fold(precursor);
     let res = @fold.fold_crate(&*crate);
-    cx.ext_cx.bt_pop();
+    ext_cx.bt_pop();
     return res;
 }
 
@@ -141,7 +142,7 @@ fn fold_item(cx: @mut TestCtxt, i: @ast::item, fld: @fold::ast_fold)
     debug!("current path: %s",
            ast_util::path_name_i(copy cx.path, cx.sess.parse_sess.interner));
 
-    if is_test_fn(i) || is_bench_fn(i) {
+    if is_test_fn(cx, i) || is_bench_fn(i) {
         match i.node {
           ast::item_fn(_, purity, _, _, _) if purity == ast::unsafe_fn => {
             let sess = cx.sess;
@@ -169,7 +170,7 @@ fn fold_item(cx: @mut TestCtxt, i: @ast::item, fld: @fold::ast_fold)
     return res;
 }
 
-fn is_test_fn(i: @ast::item) -> bool {
+fn is_test_fn(cx: @mut TestCtxt, i: @ast::item) -> bool {
     let has_test_attr = !attr::find_attrs_by_name(i.attrs,
                                                   ~"test").is_empty();
 
@@ -188,6 +189,13 @@ fn is_test_fn(i: @ast::item) -> bool {
         }
     }
 
+    if has_test_attr && !has_test_signature(i) {
+        let sess = cx.sess;
+        sess.span_err(
+            i.span,
+            ~"functions used as tests must have signature fn() -> ()."
+        );
+    }
     return has_test_attr && has_test_signature(i);
 }
 
@@ -266,7 +274,7 @@ fn mk_std(cx: &TestCtxt) -> @ast::view_item {
     let vers = nospan(vers);
     let mi = ast::meta_name_value(@~"vers", vers);
     let mi = nospan(mi);
-    let id_std = cx.sess.ident_of(~"std");
+    let id_std = cx.sess.ident_of("std");
     let vi = if is_std(cx) {
         ast::view_item_use(
             ~[@nospan(ast::view_path_simple(id_std,
@@ -314,7 +322,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
         attr::mk_attr(attr::mk_word_item(@~"!resolve_unexported"));
 
     let item = ast::item {
-        ident: cx.sess.ident_of(~"__test"),
+        ident: cx.sess.ident_of("__test"),
         attrs: ~[resolve_unexported_attr],
         id: cx.sess.next_node_id(),
         node: item_,
@@ -456,11 +464,3 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
     );
     e
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

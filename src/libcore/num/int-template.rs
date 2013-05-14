@@ -10,7 +10,6 @@
 
 use T = self::inst::T;
 
-use from_str::FromStr;
 use num::{ToStrRadix, FromStrRadix};
 use num::{Zero, One, strconv};
 use prelude::*;
@@ -30,7 +29,7 @@ pub fn sub(x: T, y: T) -> T { x - y }
 #[inline(always)]
 pub fn mul(x: T, y: T) -> T { x * y }
 #[inline(always)]
-pub fn quot(x: T, y: T) -> T { x / y }
+pub fn div(x: T, y: T) -> T { x / y }
 
 ///
 /// Returns the remainder of y / x.
@@ -87,37 +86,62 @@ pub fn gt(x: T, y: T) -> bool { x > y }
 ///
 #[inline(always)]
 /// Iterate over the range [`start`,`start`+`step`..`stop`)
-pub fn range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) {
+pub fn _range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) -> bool {
     let mut i = start;
     if step == 0 {
         fail!(~"range_step called with step == 0");
     } else if step > 0 { // ascending
         while i < stop {
-            if !it(i) { break }
+            if !it(i) { return false; }
             // avoiding overflow. break if i + step > max_value
-            if i > max_value - step { break; }
+            if i > max_value - step { return true; }
             i += step;
         }
     } else { // descending
         while i > stop {
-            if !it(i) { break }
+            if !it(i) { return false; }
             // avoiding underflow. break if i + step < min_value
-            if i < min_value - step { break; }
+            if i < min_value - step { return true; }
             i += step;
         }
     }
+    return true;
+}
+
+#[cfg(stage0)]
+pub fn range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) {
+    _range_step(start, stop, step, it);
+}
+#[cfg(not(stage0))]
+pub fn range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) -> bool {
+    _range_step(start, stop, step, it)
 }
 
 #[inline(always)]
+#[cfg(stage0)]
 /// Iterate over the range [`lo`..`hi`)
 pub fn range(lo: T, hi: T, it: &fn(T) -> bool) {
     range_step(lo, hi, 1 as T, it);
 }
 
 #[inline(always)]
+#[cfg(not(stage0))]
+/// Iterate over the range [`lo`..`hi`)
+pub fn range(lo: T, hi: T, it: &fn(T) -> bool) -> bool {
+    range_step(lo, hi, 1 as T, it)
+}
+
+#[inline(always)]
+#[cfg(stage0)]
 /// Iterate over the range [`hi`..`lo`)
 pub fn range_rev(hi: T, lo: T, it: &fn(T) -> bool) {
     range_step(hi, lo, -1 as T, it);
+}
+#[inline(always)]
+#[cfg(not(stage0))]
+/// Iterate over the range [`hi`..`lo`)
+pub fn range_rev(hi: T, lo: T, it: &fn(T) -> bool) -> bool {
+    range_step(hi, lo, -1 as T, it)
 }
 
 /// Computes the bitwise complement
@@ -132,7 +156,7 @@ pub fn abs(i: T) -> T { i.abs() }
 
 impl Num for T {}
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Ord for T {
     #[inline(always)]
     fn lt(&self, other: &T) -> bool { return (*self) < (*other); }
@@ -144,7 +168,7 @@ impl Ord for T {
     fn gt(&self, other: &T) -> bool { return (*self) > (*other); }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Eq for T {
     #[inline(always)]
     fn eq(&self, other: &T) -> bool { return (*self) == (*other); }
@@ -183,34 +207,29 @@ impl One for T {
     fn one() -> T { 1 }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Add<T,T> for T {
     #[inline(always)]
     fn add(&self, other: &T) -> T { *self + *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Sub<T,T> for T {
     #[inline(always)]
     fn sub(&self, other: &T) -> T { *self - *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Mul<T,T> for T {
     #[inline(always)]
     fn mul(&self, other: &T) -> T { *self * *other }
 }
 
-#[cfg(stage0,notest)]
+#[cfg(not(test))]
 impl Div<T,T> for T {
-    #[inline(always)]
-    fn div(&self, other: &T) -> T { *self / *other }
-}
-#[cfg(not(stage0),notest)]
-impl Quot<T,T> for T {
     ///
-    /// Returns the integer quotient, truncated towards 0. As this behaviour reflects
-    /// the underlying machine implementation it is more efficient than `Natural::div`.
+    /// Integer division, truncated towards 0. As this behaviour reflects the underlying
+    /// machine implementation it is more efficient than `Integer::div_floor`.
     ///
     /// # Examples
     ///
@@ -227,15 +246,10 @@ impl Quot<T,T> for T {
     /// ~~~
     ///
     #[inline(always)]
-    fn quot(&self, other: &T) -> T { *self / *other }
+    fn div(&self, other: &T) -> T { *self / *other }
 }
 
-#[cfg(stage0,notest)]
-impl Modulo<T,T> for T {
-    #[inline(always)]
-    fn modulo(&self, other: &T) -> T { *self % *other }
-}
-#[cfg(not(stage0),notest)]
+#[cfg(not(test))]
 impl Rem<T,T> for T {
     ///
     /// Returns the integer remainder after division, satisfying:
@@ -262,7 +276,7 @@ impl Rem<T,T> for T {
     fn rem(&self, other: &T) -> T { *self % *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Neg<T> for T {
     #[inline(always)]
     fn neg(&self) -> T { -*self }
@@ -273,6 +287,15 @@ impl Signed for T {
     #[inline(always)]
     fn abs(&self) -> T {
         if self.is_negative() { -*self } else { *self }
+    }
+
+    ///
+    /// The positive difference of two numbers. Returns `0` if the number is less than or
+    /// equal to `other`, otherwise the difference between`self` and `other` is returned.
+    ///
+    #[inline(always)]
+    fn abs_sub(&self, other: &T) -> T {
+        if *self <= *other { 0 } else { *self - *other }
     }
 
     ///
@@ -307,25 +330,25 @@ impl Integer for T {
     /// # Examples
     ///
     /// ~~~
-    /// assert!(( 8).div( 3) ==  2);
-    /// assert!(( 8).div(-3) == -3);
-    /// assert!((-8).div( 3) == -3);
-    /// assert!((-8).div(-3) ==  2);
+    /// assert!(( 8).div_floor( 3) ==  2);
+    /// assert!(( 8).div_floor(-3) == -3);
+    /// assert!((-8).div_floor( 3) == -3);
+    /// assert!((-8).div_floor(-3) ==  2);
     ///
-    /// assert!(( 1).div( 2) ==  0);
-    /// assert!(( 1).div(-2) == -1);
-    /// assert!((-1).div( 2) == -1);
-    /// assert!((-1).div(-2) ==  0);
+    /// assert!(( 1).div_floor( 2) ==  0);
+    /// assert!(( 1).div_floor(-2) == -1);
+    /// assert!((-1).div_floor( 2) == -1);
+    /// assert!((-1).div_floor(-2) ==  0);
     /// ~~~
     ///
     #[inline(always)]
-    fn div(&self, other: &T) -> T {
+    fn div_floor(&self, other: &T) -> T {
         // Algorithm from [Daan Leijen. _Division and Modulus for Computer Scientists_,
         // December 2001](http://research.microsoft.com/pubs/151917/divmodnote-letter.pdf)
-        match self.quot_rem(other) {
-            (q, r) if (r > 0 && *other < 0)
-                   || (r < 0 && *other > 0) => q - 1,
-            (q, _)                          => q,
+        match self.div_rem(other) {
+            (d, r) if (r > 0 && *other < 0)
+                   || (r < 0 && *other > 0) => d - 1,
+            (d, _)                          => d,
         }
     }
 
@@ -333,25 +356,25 @@ impl Integer for T {
     /// Integer modulo, satisfying:
     ///
     /// ~~~
-    /// assert!(n.div(d) * d + n.modulo(d) == n)
+    /// assert!(n.div_floor(d) * d + n.mod_floor(d) == n)
     /// ~~~
     ///
     /// # Examples
     ///
     /// ~~~
-    /// assert!(( 8).modulo( 3) ==  2);
-    /// assert!(( 8).modulo(-3) == -1);
-    /// assert!((-8).modulo( 3) ==  1);
-    /// assert!((-8).modulo(-3) == -2);
+    /// assert!(( 8).mod_floor( 3) ==  2);
+    /// assert!(( 8).mod_floor(-3) == -1);
+    /// assert!((-8).mod_floor( 3) ==  1);
+    /// assert!((-8).mod_floor(-3) == -2);
     ///
-    /// assert!(( 1).modulo( 2) ==  1);
-    /// assert!(( 1).modulo(-2) == -1);
-    /// assert!((-1).modulo( 2) ==  1);
-    /// assert!((-1).modulo(-2) == -1);
+    /// assert!(( 1).mod_floor( 2) ==  1);
+    /// assert!(( 1).mod_floor(-2) == -1);
+    /// assert!((-1).mod_floor( 2) ==  1);
+    /// assert!((-1).mod_floor(-2) == -1);
     /// ~~~
     ///
     #[inline(always)]
-    fn modulo(&self, other: &T) -> T {
+    fn mod_floor(&self, other: &T) -> T {
         // Algorithm from [Daan Leijen. _Division and Modulus for Computer Scientists_,
         // December 2001](http://research.microsoft.com/pubs/151917/divmodnote-letter.pdf)
         match *self % *other {
@@ -361,21 +384,21 @@ impl Integer for T {
         }
     }
 
-    /// Calculates `div` and `modulo` simultaneously
+    /// Calculates `div_floor` and `mod_floor` simultaneously
     #[inline(always)]
-    fn div_mod(&self, other: &T) -> (T,T) {
+    fn div_mod_floor(&self, other: &T) -> (T,T) {
         // Algorithm from [Daan Leijen. _Division and Modulus for Computer Scientists_,
         // December 2001](http://research.microsoft.com/pubs/151917/divmodnote-letter.pdf)
-        match self.quot_rem(other) {
-            (q, r) if (r > 0 && *other < 0)
-                   || (r < 0 && *other > 0) => (q - 1, r + *other),
-            (q, r)                          => (q, r),
+        match self.div_rem(other) {
+            (d, r) if (r > 0 && *other < 0)
+                   || (r < 0 && *other > 0) => (d - 1, r + *other),
+            (d, r)                          => (d, r),
         }
     }
 
-    /// Calculates `quot` (`\`) and `rem` (`%`) simultaneously
+    /// Calculates `div` (`\`) and `rem` (`%`) simultaneously
     #[inline(always)]
-    fn quot_rem(&self, other: &T) -> (T,T) {
+    fn div_rem(&self, other: &T) -> (T,T) {
         (*self / *other, *self % *other)
     }
 
@@ -419,37 +442,37 @@ impl Integer for T {
 
 impl Bitwise for T {}
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl BitOr<T,T> for T {
     #[inline(always)]
     fn bitor(&self, other: &T) -> T { *self | *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl BitAnd<T,T> for T {
     #[inline(always)]
     fn bitand(&self, other: &T) -> T { *self & *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl BitXor<T,T> for T {
     #[inline(always)]
     fn bitxor(&self, other: &T) -> T { *self ^ *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Shl<T,T> for T {
     #[inline(always)]
     fn shl(&self, other: &T) -> T { *self << *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Shr<T,T> for T {
     #[inline(always)]
     fn shr(&self, other: &T) -> T { *self >> *other }
 }
 
-#[cfg(notest)]
+#[cfg(not(test))]
 impl Not<T> for T {
     #[inline(always)]
     fn not(&self) -> T { !*self }
@@ -565,21 +588,38 @@ mod tests {
     }
 
     #[test]
-    pub fn test_signed() {
+    pub fn test_abs() {
         assert_eq!((1 as T).abs(), 1 as T);
         assert_eq!((0 as T).abs(), 0 as T);
         assert_eq!((-1 as T).abs(), 1 as T);
+    }
 
+    #[test]
+    fn test_abs_sub() {
+        assert_eq!((-1 as T).abs_sub(&(1 as T)), 0 as T);
+        assert_eq!((1 as T).abs_sub(&(1 as T)), 0 as T);
+        assert_eq!((1 as T).abs_sub(&(0 as T)), 1 as T);
+        assert_eq!((1 as T).abs_sub(&(-1 as T)), 2 as T);
+    }
+
+    #[test]
+    fn test_signum() {
         assert_eq!((1 as T).signum(), 1 as T);
         assert_eq!((0 as T).signum(), 0 as T);
         assert_eq!((-0 as T).signum(), 0 as T);
         assert_eq!((-1 as T).signum(), -1 as T);
+    }
 
+    #[test]
+    fn test_is_positive() {
         assert!((1 as T).is_positive());
         assert!(!(0 as T).is_positive());
         assert!(!(-0 as T).is_positive());
         assert!(!(-1 as T).is_positive());
+    }
 
+    #[test]
+    fn test_is_negative() {
         assert!(!(1 as T).is_negative());
         assert!(!(0 as T).is_negative());
         assert!(!(-0 as T).is_negative());
@@ -599,42 +639,42 @@ mod tests {
     }
 
     #[test]
-    fn test_quot_rem() {
-        fn test_nd_qr(nd: (T,T), qr: (T,T)) {
+    fn test_div_rem() {
+        fn test_nd_dr(nd: (T,T), qr: (T,T)) {
             let (n,d) = nd;
-            let separate_quot_rem = (n / d, n % d);
-            let combined_quot_rem = n.quot_rem(&d);
+            let separate_div_rem = (n / d, n % d);
+            let combined_div_rem = n.div_rem(&d);
 
-            assert_eq!(separate_quot_rem, qr);
-            assert_eq!(combined_quot_rem, qr);
+            assert_eq!(separate_div_rem, qr);
+            assert_eq!(combined_div_rem, qr);
 
-            test_division_rule(nd, separate_quot_rem);
-            test_division_rule(nd, combined_quot_rem);
+            test_division_rule(nd, separate_div_rem);
+            test_division_rule(nd, combined_div_rem);
         }
 
-        test_nd_qr(( 8,  3), ( 2,  2));
-        test_nd_qr(( 8, -3), (-2,  2));
-        test_nd_qr((-8,  3), (-2, -2));
-        test_nd_qr((-8, -3), ( 2, -2));
+        test_nd_dr(( 8,  3), ( 2,  2));
+        test_nd_dr(( 8, -3), (-2,  2));
+        test_nd_dr((-8,  3), (-2, -2));
+        test_nd_dr((-8, -3), ( 2, -2));
 
-        test_nd_qr(( 1,  2), ( 0,  1));
-        test_nd_qr(( 1, -2), ( 0,  1));
-        test_nd_qr((-1,  2), ( 0, -1));
-        test_nd_qr((-1, -2), ( 0, -1));
+        test_nd_dr(( 1,  2), ( 0,  1));
+        test_nd_dr(( 1, -2), ( 0,  1));
+        test_nd_dr((-1,  2), ( 0, -1));
+        test_nd_dr((-1, -2), ( 0, -1));
     }
 
     #[test]
-    fn test_div_mod() {
+    fn test_div_mod_floor() {
         fn test_nd_dm(nd: (T,T), dm: (T,T)) {
             let (n,d) = nd;
-            let separate_div_mod = (n.div(&d), n.modulo(&d));
-            let combined_div_mod = n.div_mod(&d);
+            let separate_div_mod_floor = (n.div_floor(&d), n.mod_floor(&d));
+            let combined_div_mod_floor = n.div_mod_floor(&d);
 
-            assert_eq!(separate_div_mod, dm);
-            assert_eq!(combined_div_mod, dm);
+            assert_eq!(separate_div_mod_floor, dm);
+            assert_eq!(combined_div_mod_floor, dm);
 
-            test_division_rule(nd, separate_div_mod);
-            test_division_rule(nd, combined_div_mod);
+            test_division_rule(nd, separate_div_mod_floor);
+            test_division_rule(nd, combined_div_mod_floor);
         }
 
         test_nd_dm(( 8,  3), ( 2,  2));

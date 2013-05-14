@@ -14,4 +14,3 @@ fn main() {
     let h: &fn() = ||();
     let i: &once fn() = h;  // ok
 }
-

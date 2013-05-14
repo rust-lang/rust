@@ -70,7 +70,9 @@ pub impl<T> TaskPool<T> {
                     task::spawn(task_body);
                 }
                 Some(sched_mode) => {
-                    task::task().sched_mode(sched_mode).spawn(task_body);
+                    let mut task = task::task();
+                    task.sched_mode(sched_mode);
+                    task.spawn(task_body);
                 }
             }
 
@@ -100,4 +102,3 @@ fn test_task_pool() {
         pool.execute(|i| io::println(fmt!("Hello from thread %u!", *i)));
     }
 }
-

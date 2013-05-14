@@ -18,5 +18,13 @@ condition! {
 }
 
 condition! {
-    nonexistent_package: (super::PkgId, ~str) -> super::Path;
+    nonexistent_package: (super::PkgId, ~str) -> ();
+}
+
+condition! {
+    copy_failed: (super::Path, super::Path) -> ();
+}
+
+condition! {
+    missing_pkg_files: (super::PkgId) -> ();
 }

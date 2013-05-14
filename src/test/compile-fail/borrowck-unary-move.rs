@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(+x: ~int) -> int {
-    let y = &*x; //~ NOTE loan of argument granted here
-    free(x); //~ ERROR moving out of argument prohibited due to outstanding loan
+fn foo(x: ~int) -> int {
+    let y = &*x;
+    free(x); //~ ERROR cannot move out of `*x` because it is borrowed
     *y
 }
 
-fn free(+_x: ~int) {
+fn free(_x: ~int) {
 }
 
 fn main() {

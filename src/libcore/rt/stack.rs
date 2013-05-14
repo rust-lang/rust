@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use container::Container;
+use ptr::Ptr;
 use vec;
 
 pub struct StackSegment {

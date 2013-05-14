@@ -77,4 +77,3 @@ while (my ($key, $substs) = each %funcs) {
     }
     print "\n";
 }
-

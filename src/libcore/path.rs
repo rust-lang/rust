@@ -14,12 +14,16 @@ Cross-platform file path handling
 
 */
 
+use container::Container;
 use cmp::Eq;
 use libc;
 use option::{None, Option, Some};
 use str;
+use str::StrSlice;
 use to_str::ToStr;
 use ascii::{AsciiCast, AsciiStr};
+use old_iter::BaseIter;
+use vec::OwnedVector;
 
 #[cfg(windows)]
 pub use Path = self::WindowsPath;
@@ -122,7 +126,6 @@ pub trait GenericPath {
 mod stat {
     #[cfg(target_arch = "x86")]
     #[cfg(target_arch = "arm")]
-    #[cfg(target_arch = "mips")]
     pub mod arch {
         use libc;
 
@@ -148,6 +151,36 @@ mod stat {
                 st_ctime_nsec: 0,
                 __unused4: 0,
                 __unused5: 0,
+            }
+        }
+    }
+
+    #[cfg(target_arch = "mips")]
+    pub mod arch {
+        use libc;
+
+        pub fn default_stat() -> libc::stat {
+            libc::stat {
+                st_dev: 0,
+                st_pad1: [0, ..3],
+                st_ino: 0,
+                st_mode: 0,
+                st_nlink: 0,
+                st_uid: 0,
+                st_gid: 0,
+                st_rdev: 0,
+                st_pad2: [0, ..2],
+                st_size: 0,
+                st_pad3: 0,
+                st_atime: 0,
+                st_atime_nsec: 0,
+                st_mtime: 0,
+                st_mtime_nsec: 0,
+                st_ctime: 0,
+                st_ctime_nsec: 0,
+                st_blksize: 0,
+                st_blocks: 0,
+                st_pad5: [0, ..14],
             }
         }
     }
@@ -477,7 +510,7 @@ impl GenericPath for PosixPath {
     fn with_filestem(&self, s: &str) -> PosixPath {
         match self.filetype() {
           None => self.with_filename(s),
-          Some(ref t) => self.with_filename(str::from_slice(s) + *t)
+          Some(ref t) => self.with_filename(str::to_owned(s) + *t)
         }
     }
 
@@ -488,7 +521,7 @@ impl GenericPath for PosixPath {
               Some(ref s) => self.with_filename(*s)
             }
         } else {
-            let t = ~"." + str::from_slice(t);
+            let t = ~"." + str::to_owned(t);
             match self.filestem() {
               None => self.with_filename(t),
               Some(ref s) => self.with_filename(*s + t)
@@ -621,7 +654,7 @@ impl GenericPath for WindowsPath {
               None => {
                 host = None;
                 device = None;
-                rest = str::from_slice(s);
+                rest = str::to_owned(s);
               }
             }
           }
@@ -694,7 +727,7 @@ impl GenericPath for WindowsPath {
     fn with_filestem(&self, s: &str) -> WindowsPath {
         match self.filetype() {
           None => self.with_filename(s),
-          Some(ref t) => self.with_filename(str::from_slice(s) + *t)
+          Some(ref t) => self.with_filename(str::to_owned(s) + *t)
         }
     }
 
@@ -705,7 +738,7 @@ impl GenericPath for WindowsPath {
               Some(ref s) => self.with_filename(*s)
             }
         } else {
-            let t = ~"." + str::from_slice(t);
+            let t = ~"." + str::to_owned(t);
             match self.filestem() {
               None => self.with_filename(t),
               Some(ref s) =>
@@ -956,7 +989,7 @@ mod tests {
     fn test_posix_paths() {
         fn t(wp: &PosixPath, s: &str) {
             let ss = wp.to_str();
-            let sss = str::from_slice(s);
+            let sss = str::to_owned(s);
             if (ss != sss) {
                 debug!("got %s", ss);
                 debug!("expected %s", sss);
@@ -1014,7 +1047,7 @@ mod tests {
     fn test_normalize() {
         fn t(wp: &PosixPath, s: &str) {
             let ss = wp.to_str();
-            let sss = str::from_slice(s);
+            let sss = str::to_owned(s);
             if (ss != sss) {
                 debug!("got %s", ss);
                 debug!("expected %s", sss);
@@ -1077,7 +1110,7 @@ mod tests {
     fn test_windows_paths() {
         fn t(wp: &WindowsPath, s: &str) {
             let ss = wp.to_str();
-            let sss = str::from_slice(s);
+            let sss = str::to_owned(s);
             if (ss != sss) {
                 debug!("got %s", ss);
                 debug!("expected %s", sss);

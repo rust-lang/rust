@@ -104,6 +104,7 @@ pub use libc::funcs::posix88::unistd::*;
 
 pub use libc::funcs::posix01::stat_::*;
 pub use libc::funcs::posix01::unistd::*;
+pub use libc::funcs::posix01::glob::*;
 pub use libc::funcs::posix08::unistd::*;
 
 pub use libc::funcs::bsd44::*;
@@ -210,7 +211,21 @@ pub mod types {
     #[cfg(target_os = "android")]
     pub mod os {
         pub mod common {
-            pub mod posix01 {}
+            pub mod posix01 {
+                use libc::types::common::c95::{c_void};
+                use libc::types::os::arch::c95::{c_char, size_t};
+                pub struct glob_t {
+                    gl_pathc: size_t,
+                    gl_pathv: **c_char,
+                    gl_offs:  size_t,
+
+                    __unused1: *c_void,
+                    __unused2: *c_void,
+                    __unused3: *c_void,
+                    __unused4: *c_void,
+                    __unused5: *c_void,
+                }
+            }
         }
 
         #[cfg(target_arch = "x86")]
@@ -253,8 +268,7 @@ pub mod types {
                 pub type ssize_t = i32;
             }
             pub mod posix01 {
-                use libc::types::os::arch::c95::{c_int, c_short, c_long,
-                                                 time_t};
+                use libc::types::os::arch::c95::{c_short, c_long, c_ulong, time_t};
                 use libc::types::os::arch::posix88::{dev_t, gid_t, ino_t};
                 use libc::types::os::arch::posix88::{mode_t, off_t};
                 use libc::types::os::arch::posix88::{uid_t};
@@ -262,6 +276,9 @@ pub mod types {
                 pub type nlink_t = u32;
                 pub type blksize_t = i32;
                 pub type blkcnt_t = i32;
+
+                #[cfg(target_arch = "x86")]
+                #[cfg(target_arch = "arm")]
                 pub struct stat {
                     st_dev: dev_t,
                     __pad1: c_short,
@@ -283,6 +300,30 @@ pub mod types {
                     st_ctime_nsec: c_long,
                     __unused4: c_long,
                     __unused5: c_long,
+                }
+
+                #[cfg(target_arch = "mips")]
+                pub struct stat {
+                    st_dev: c_ulong,
+                    st_pad1: [c_long, ..3],
+                    st_ino: ino_t,
+                    st_mode: mode_t,
+                    st_nlink: nlink_t,
+                    st_uid: uid_t,
+                    st_gid: gid_t,
+                    st_rdev: c_ulong,
+                    st_pad2: [c_long, ..2],
+                    st_size: off_t,
+                    st_pad3: c_long,
+                    st_atime: time_t,
+                    st_atime_nsec: c_long,
+                    st_mtime: time_t,
+                    st_mtime_nsec: c_long,
+                    st_ctime: time_t,
+                    st_ctime_nsec: c_long,
+                    st_blksize: blksize_t,
+                    st_blocks: blkcnt_t,
+                    st_pad5: [c_long, ..14],
                 }
             }
             pub mod posix08 {}
@@ -369,7 +410,25 @@ pub mod types {
     #[cfg(target_os = "freebsd")]
     pub mod os {
         pub mod common {
-            pub mod posix01 {}
+            pub mod posix01 {
+                use libc::types::common::c95::{c_void};
+                use libc::types::os::arch::c95::{c_char, c_int, size_t};
+                pub struct glob_t {
+                    gl_pathc:  size_t,
+                    __unused1: size_t,
+                    gl_offs:   size_t,
+                    __unused2: c_int,
+                    gl_pathv:  **c_char,
+
+                    __unused3: *c_void,
+
+                    __unused4: *c_void,
+                    __unused5: *c_void,
+                    __unused6: *c_void,
+                    __unused7: *c_void,
+                    __unused8: *c_void,
+                }
+            }
         }
 
         #[cfg(target_arch = "x86_64")]
@@ -549,12 +608,16 @@ pub mod types {
 
                 pub type LPWSTR = *mut WCHAR;
                 pub type LPSTR = *mut CHAR;
+                pub type LPTSTR = *mut CHAR;
 
                 // Not really, but opaque to us.
                 pub type LPSECURITY_ATTRIBUTES = LPVOID;
 
                 pub type LPVOID = *mut c_void;
+                pub type LPBYTE = *mut BYTE;
                 pub type LPWORD = *mut WORD;
+                pub type LPDWORD = *mut DWORD;
+                pub type LPHANDLE = *mut HANDLE;
 
                 pub type LRESULT = LONG_PTR;
                 pub type PBOOL = *mut BOOL;
@@ -563,6 +626,36 @@ pub mod types {
 
                 pub type time64_t = i64;
                 pub type int64 = i64;
+
+                pub struct STARTUPINFO {
+                    cb: DWORD,
+                    lpReserved: LPTSTR,
+                    lpDesktop: LPTSTR,
+                    lpTitle: LPTSTR,
+                    dwX: DWORD,
+                    dwY: DWORD,
+                    dwXSize: DWORD,
+                    dwYSize: DWORD,
+                    dwXCountChars: DWORD,
+                    dwYCountCharts: DWORD,
+                    dwFillAttribute: DWORD,
+                    dwFlags: DWORD,
+                    wShowWindow: WORD,
+                    cbReserved2: WORD,
+                    lpReserved2: LPBYTE,
+                    hStdInput: HANDLE,
+                    hStdOutput: HANDLE,
+                    hStdError: HANDLE
+                }
+                pub type LPSTARTUPINFO = *mut STARTUPINFO;
+
+                pub struct PROCESS_INFORMATION {
+                    hProcess: HANDLE,
+                    hThread: HANDLE,
+                    dwProcessId: DWORD,
+                    dwThreadId: DWORD
+                }
+                pub type LPPROCESS_INFORMATION = *mut PROCESS_INFORMATION;
             }
         }
     }
@@ -571,6 +664,23 @@ pub mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
+                use libc::types::common::c95::{c_void};
+                use libc::types::os::arch::c95::{c_char, c_int, size_t};
+                pub struct glob_t {
+                    gl_pathc:  size_t,
+                    __unused1: c_int,
+                    gl_offs:   size_t,
+                    __unused2: c_int,
+                    gl_pathv:  **c_char,
+
+                    __unused3: *c_void,
+
+                    __unused4: *c_void,
+                    __unused5: *c_void,
+                    __unused6: *c_void,
+                    __unused7: *c_void,
+                    __unused8: *c_void,
+                }
             }
         }
 
@@ -798,6 +908,11 @@ pub mod consts {
         pub mod bsd44 {
         }
         pub mod extra {
+            use libc::types::os::arch::extra::{DWORD, BOOL};
+
+            pub static TRUE : BOOL = 1;
+            pub static FALSE : BOOL = 0;
+
             pub static O_TEXT : int = 16384;
             pub static O_BINARY : int = 32768;
             pub static O_NOINHERIT: int = 128;
@@ -805,6 +920,50 @@ pub mod consts {
             pub static ERROR_SUCCESS : int = 0;
             pub static ERROR_INSUFFICIENT_BUFFER : int = 122;
             pub static INVALID_HANDLE_VALUE: int = -1;
+
+            pub static DELETE : DWORD = 0x00010000;
+            pub static READ_CONTROL : DWORD = 0x00020000;
+            pub static SYNCHRONIZE : DWORD = 0x00100000;
+            pub static WRITE_DAC : DWORD = 0x00040000;
+            pub static WRITE_OWNER : DWORD = 0x00080000;
+
+            pub static PROCESS_CREATE_PROCESS : DWORD = 0x0080;
+            pub static PROCESS_CREATE_THREAD : DWORD = 0x0002;
+            pub static PROCESS_DUP_HANDLE : DWORD = 0x0040;
+            pub static PROCESS_QUERY_INFORMATION : DWORD = 0x0400;
+            pub static PROCESS_QUERY_LIMITED_INFORMATION : DWORD = 0x1000;
+            pub static PROCESS_SET_INFORMATION : DWORD = 0x0200;
+            pub static PROCESS_SET_QUOTA : DWORD = 0x0100;
+            pub static PROCESS_SUSPEND_RESUME : DWORD = 0x0800;
+            pub static PROCESS_TERMINATE : DWORD = 0x0001;
+            pub static PROCESS_VM_OPERATION : DWORD = 0x0008;
+            pub static PROCESS_VM_READ : DWORD = 0x0010;
+            pub static PROCESS_VM_WRITE : DWORD = 0x0020;
+
+            pub static STARTF_FORCEONFEEDBACK : DWORD = 0x00000040;
+            pub static STARTF_FORCEOFFFEEDBACK : DWORD = 0x00000080;
+            pub static STARTF_PREVENTPINNING : DWORD = 0x00002000;
+            pub static STARTF_RUNFULLSCREEN : DWORD = 0x00000020;
+            pub static STARTF_TITLEISAPPID : DWORD = 0x00001000;
+            pub static STARTF_TITLEISLINKNAME : DWORD = 0x00000800;
+            pub static STARTF_USECOUNTCHARS : DWORD = 0x00000008;
+            pub static STARTF_USEFILLATTRIBUTE : DWORD = 0x00000010;
+            pub static STARTF_USEHOTKEY : DWORD = 0x00000200;
+            pub static STARTF_USEPOSITION : DWORD = 0x00000004;
+            pub static STARTF_USESHOWWINDOW : DWORD = 0x00000001;
+            pub static STARTF_USESIZE : DWORD = 0x00000002;
+            pub static STARTF_USESTDHANDLES : DWORD = 0x00000100;
+
+            pub static WAIT_ABANDONED : DWORD = 0x00000080;
+            pub static WAIT_OBJECT_0 : DWORD = 0x00000000;
+            pub static WAIT_TIMEOUT : DWORD = 0x00000102;
+            pub static WAIT_FAILED : DWORD = -1;
+
+            pub static DUPLICATE_CLOSE_SOURCE : DWORD = 0x00000001;
+            pub static DUPLICATE_SAME_ACCESS : DWORD = 0x00000002;
+
+            pub static INFINITE : DWORD = -1;
+            pub static STILL_ACTIVE : DWORD = 259;
         }
     }
 
@@ -831,6 +990,9 @@ pub mod consts {
         }
         pub mod c99 {
         }
+        #[cfg(target_arch = "x86")]
+        #[cfg(target_arch = "x86_64")]
+        #[cfg(target_arch = "arm")]
         pub mod posix88 {
             pub static O_RDONLY : int = 0;
             pub static O_WRONLY : int = 1;
@@ -875,17 +1037,83 @@ pub mod consts {
             pub static SIGALRM : int = 14;
             pub static SIGTERM : int = 15;
         }
+        #[cfg(target_arch = "mips")]
+        pub mod posix88 {
+            pub static O_RDONLY : int = 0;
+            pub static O_WRONLY : int = 1;
+            pub static O_RDWR : int = 2;
+            pub static O_APPEND : int = 8;
+            pub static O_CREAT : int = 256;
+            pub static O_EXCL : int = 1024;
+            pub static O_TRUNC : int = 512;
+            pub static S_IFIFO : int = 4096;
+            pub static S_IFCHR : int = 8192;
+            pub static S_IFBLK : int = 24576;
+            pub static S_IFDIR : int = 16384;
+            pub static S_IFREG : int = 32768;
+            pub static S_IFMT : int = 61440;
+            pub static S_IEXEC : int = 64;
+            pub static S_IWRITE : int = 128;
+            pub static S_IREAD : int = 256;
+            pub static S_IRWXU : int = 448;
+            pub static S_IXUSR : int = 64;
+            pub static S_IWUSR : int = 128;
+            pub static S_IRUSR : int = 256;
+            pub static F_OK : int = 0;
+            pub static R_OK : int = 4;
+            pub static W_OK : int = 2;
+            pub static X_OK : int = 1;
+            pub static STDIN_FILENO : int = 0;
+            pub static STDOUT_FILENO : int = 1;
+            pub static STDERR_FILENO : int = 2;
+            pub static F_LOCK : int = 1;
+            pub static F_TEST : int = 3;
+            pub static F_TLOCK : int = 2;
+            pub static F_ULOCK : int = 0;
+            pub static SIGHUP : int = 1;
+            pub static SIGINT : int = 2;
+            pub static SIGQUIT : int = 3;
+            pub static SIGILL : int = 4;
+            pub static SIGABRT : int = 6;
+            pub static SIGFPE : int = 8;
+            pub static SIGKILL : int = 9;
+            pub static SIGSEGV : int = 11;
+            pub static SIGPIPE : int = 13;
+            pub static SIGALRM : int = 14;
+            pub static SIGTERM : int = 15;
+        }
         pub mod posix01 {
             pub static SIGTRAP : int = 5;
+
+            pub static GLOB_ERR      : int = 1 << 0;
+            pub static GLOB_MARK     : int = 1 << 1;
+            pub static GLOB_NOSORT   : int = 1 << 2;
+            pub static GLOB_DOOFFS   : int = 1 << 3;
+            pub static GLOB_NOCHECK  : int = 1 << 4;
+            pub static GLOB_APPEND   : int = 1 << 5;
+            pub static GLOB_NOESCAPE : int = 1 << 6;
+
+            pub static GLOB_NOSPACE  : int = 1;
+            pub static GLOB_ABORTED  : int = 2;
+            pub static GLOB_NOMATCH  : int = 3;
         }
         pub mod posix08 {
         }
         pub mod bsd44 {
         }
+        #[cfg(target_arch = "x86")]
+        #[cfg(target_arch = "x86_64")]
+        #[cfg(target_arch = "arm")]
         pub mod extra {
             pub static O_RSYNC : int = 1052672;
             pub static O_DSYNC : int = 4096;
             pub static O_SYNC : int = 1052672;
+        }
+        #[cfg(target_arch = "mips")]
+        pub mod extra {
+            pub static O_RSYNC : int = 16400;
+            pub static O_DSYNC : int = 16;
+            pub static O_SYNC : int = 16400;
         }
     }
 
@@ -956,6 +1184,18 @@ pub mod consts {
         }
         pub mod posix01 {
             pub static SIGTRAP : int = 5;
+
+            pub static GLOB_APPEND   : int = 0x0001;
+            pub static GLOB_DOOFFS   : int = 0x0002;
+            pub static GLOB_ERR      : int = 0x0004;
+            pub static GLOB_MARK     : int = 0x0008;
+            pub static GLOB_NOCHECK  : int = 0x0010;
+            pub static GLOB_NOSORT   : int = 0x0020;
+            pub static GLOB_NOESCAPE : int = 0x2000;
+
+            pub static GLOB_NOSPACE  : int = -1;
+            pub static GLOB_ABORTED  : int = -2;
+            pub static GLOB_NOMATCH  : int = -3;
         }
         pub mod posix08 {
         }
@@ -1036,6 +1276,18 @@ pub mod consts {
         }
         pub mod posix01 {
             pub static SIGTRAP : int = 5;
+
+            pub static GLOB_APPEND   : int = 0x0001;
+            pub static GLOB_DOOFFS   : int = 0x0002;
+            pub static GLOB_ERR      : int = 0x0004;
+            pub static GLOB_MARK     : int = 0x0008;
+            pub static GLOB_NOCHECK  : int = 0x0010;
+            pub static GLOB_NOSORT   : int = 0x0020;
+            pub static GLOB_NOESCAPE : int = 0x2000;
+
+            pub static GLOB_NOSPACE  : int = -1;
+            pub static GLOB_ABORTED  : int = -2;
+            pub static GLOB_NOMATCH  : int = -3;
         }
         pub mod posix08 {
         }
@@ -1606,6 +1858,21 @@ pub mod funcs {
                                -> pid_t;
             }
         }
+
+        #[nolink]
+        #[abi = "cdecl"]
+        pub mod glob {
+            use libc::types::common::c95::{c_void};
+            use libc::types::os::arch::c95::{c_char, c_int};
+            use libc::types::os::common::posix01::{glob_t};
+
+            pub extern {
+                unsafe fn glob(pattern: *c_char, flags: c_int,
+                               errfunc: *c_void, // XXX callback
+                               pglob: *mut glob_t);
+                unsafe fn globfree(pglob: *mut glob_t);
+            }
+        }
     }
 
     #[cfg(target_os = "win32")]
@@ -1614,6 +1881,9 @@ pub mod funcs {
         }
 
         pub mod unistd {
+        }
+
+        pub mod glob {
         }
     }
 
@@ -1647,12 +1917,24 @@ pub mod funcs {
 
             unsafe fn sysctlnametomib(name: *c_char, mibp: *mut c_int,
                                sizep: *mut size_t) -> c_int;
+
+            unsafe fn getdtablesize() -> c_int;
         }
     }
 
 
     #[cfg(target_os = "linux")]
     #[cfg(target_os = "android")]
+    pub mod bsd44 {
+        use libc::types::os::arch::c95::{c_int};
+
+        #[abi = "cdecl"]
+        pub extern {
+            unsafe fn getdtablesize() -> c_int;
+        }
+    }
+
+
     #[cfg(target_os = "win32")]
     pub mod bsd44 {
     }
@@ -1686,9 +1968,11 @@ pub mod funcs {
         pub mod kernel32 {
             use libc::types::os::arch::c95::{c_uint};
             use libc::types::os::arch::extra::{BOOL, DWORD, HMODULE};
-            use libc::types::os::arch::extra::{LPCWSTR, LPWSTR, LPTCH};
-            use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES};
-            use libc::types::os::arch::extra::{HANDLE};
+            use libc::types::os::arch::extra::{LPCWSTR, LPWSTR, LPCTSTR,
+                                               LPTSTR, LPTCH, LPDWORD, LPVOID};
+            use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, LPSTARTUPINFO,
+                                               LPPROCESS_INFORMATION};
+            use libc::types::os::arch::extra::{HANDLE, LPHANDLE};
 
             #[abi = "stdcall"]
             pub extern "stdcall" {
@@ -1725,29 +2009,46 @@ pub mod funcs {
                                        findFileData: HANDLE)
                     -> BOOL;
                 unsafe fn FindClose(findFile: HANDLE) -> BOOL;
+                unsafe fn DuplicateHandle(hSourceProcessHandle: HANDLE,
+                                          hSourceHandle: HANDLE,
+                                          hTargetProcessHandle: HANDLE,
+                                          lpTargetHandle: LPHANDLE,
+                                          dwDesiredAccess: DWORD,
+                                          bInheritHandle: BOOL,
+                                          dwOptions: DWORD) -> BOOL;
                 unsafe fn CloseHandle(hObject: HANDLE) -> BOOL;
+                unsafe fn OpenProcess(dwDesiredAccess: DWORD,
+                                      bInheritHandle: BOOL,
+                                      dwProcessId: DWORD) -> HANDLE;
+                unsafe fn GetCurrentProcess() -> HANDLE;
+                unsafe fn CreateProcessA(lpApplicationName: LPCTSTR,
+                                         lpCommandLine: LPTSTR,
+                                         lpProcessAttributes: LPSECURITY_ATTRIBUTES,
+                                         lpThreadAttributes: LPSECURITY_ATTRIBUTES,
+                                         bInheritHandles: BOOL,
+                                         dwCreationFlags: DWORD,
+                                         lpEnvironment: LPVOID,
+                                         lpCurrentDirectory: LPCTSTR,
+                                         lpStartupInfo: LPSTARTUPINFO,
+                                         lpProcessInformation: LPPROCESS_INFORMATION) -> BOOL;
+                unsafe fn WaitForSingleObject(hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD;
                 unsafe fn TerminateProcess(hProcess: HANDLE, uExitCode: c_uint) -> BOOL;
+                unsafe fn GetExitCodeProcess(hProcess: HANDLE, lpExitCode: LPDWORD) -> BOOL;
             }
         }
 
         pub mod msvcrt {
-            use libc::types::os::arch::c95::c_int;
+            use libc::types::os::arch::c95::{c_int, c_long};
 
             #[abi = "cdecl"]
             #[nolink]
             pub extern {
                 #[link_name = "_commit"]
                 unsafe fn commit(fd: c_int) -> c_int;
+
+                #[link_name = "_get_osfhandle"]
+                unsafe fn get_osfhandle(fd: c_int) -> c_long;
             }
         }
     }
 }
-
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

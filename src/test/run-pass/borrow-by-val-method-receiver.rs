@@ -20,4 +20,3 @@ pub fn main() {
     let items = ~[ 3, 5, 1, 2, 4 ];
     items.foo();
 }
-

@@ -29,7 +29,7 @@ mod test {
     use core::pipes::recv;
     use pingpong::{ping, pong};
 
-    pub fn client(+chan: ::pingpong::client::ping) {
+    pub fn client(chan: ::pingpong::client::ping) {
         use pingpong::client;
 
         let chan = client::ping(chan);
@@ -37,8 +37,8 @@ mod test {
         let pong(_chan) = recv(chan);
         error!(~"Received pong");
     }
-    
-    pub fn server(+chan: ::pingpong::server::ping) {
+
+    pub fn server(chan: ::pingpong::server::ping) {
         use pingpong::server;
 
         let ping(chan) = recv(chan);

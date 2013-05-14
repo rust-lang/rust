@@ -13,7 +13,7 @@ use driver::session;
 use lib::llvm::ValueRef;
 use middle::trans::base::{get_insn_ctxt};
 use middle::trans::base::{set_inline_hint_if_appr, set_inline_hint};
-use middle::trans::base::{trans_enum_variant, trans_struct_dtor};
+use middle::trans::base::{trans_enum_variant};
 use middle::trans::base::{trans_fn, decl_internal_cdecl_fn};
 use middle::trans::base::{get_item_val, no_self};
 use middle::trans::base;
@@ -35,7 +35,6 @@ use syntax::ast_map;
 use syntax::ast_map::path_name;
 use syntax::ast_util::local_def;
 use syntax::opt_vec;
-use syntax::parse::token::special_idents;
 use syntax::abi::AbiSet;
 
 pub fn monomorphic_fn(ccx: @CrateContext,
@@ -101,12 +100,14 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
     let llitem_ty = tpt.ty;
 
-    let map_node = session::expect(ccx.sess, ccx.tcx.items.find(&fn_id.node),
-     || fmt!("While monomorphizing %?, couldn't find it in the item map \
-        (may have attempted to monomorphize an item defined in a different \
-        crate?)", fn_id));
+    let map_node = session::expect(
+        ccx.sess,
+        ccx.tcx.items.find_copy(&fn_id.node),
+        || fmt!("While monomorphizing %?, couldn't find it in the item map \
+                 (may have attempted to monomorphize an item \
+                 defined in a different crate?)", fn_id));
     // Get the path so that we can create a symbol
-    let (pt, name, span) = match *map_node {
+    let (pt, name, span) = match map_node {
       ast_map::node_item(i, pt) => (pt, i.ident, i.span),
       ast_map::node_variant(ref v, enm, pt) => (pt, (*v).node.name, enm.span),
       ast_map::node_method(m, _, pt) => (pt, m.ident, m.span),
@@ -116,8 +117,6 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         // Foreign externs don't have to be monomorphized.
         return (get_item_val(ccx, fn_id.node), true);
       }
-      ast_map::node_dtor(_, dtor, _, pt) =>
-          (pt, special_idents::dtor, dtor.span),
       ast_map::node_trait_method(@ast::provided(m), _, pt) => {
         (pt, m.ident, m.span)
       }
@@ -136,6 +135,9 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       }
       ast_map::node_local(*) => {
           ccx.tcx.sess.bug(~"Can't monomorphize a local")
+      }
+      ast_map::node_callee_scope(*) => {
+          ccx.tcx.sess.bug(~"Can't monomorphize a callee-scope")
       }
       ast_map::node_struct_ctor(_, i, pt) => (pt, i.ident, i.span)
     };
@@ -163,13 +165,13 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     // causing an infinite expansion.
     if depth > 30 {
         ccx.sess.span_fatal(
-            span, ~"overly deep expansion of inlined function");
+            span, "overly deep expansion of inlined function");
     }
     ccx.monomorphizing.insert(fn_id, depth + 1);
 
     let pt = vec::append(/*bad*/copy *pt,
                          ~[path_name((ccx.names)(
-                             copy *ccx.sess.str_of(name)))]);
+                             *ccx.sess.str_of(name)))]);
     let s = mangle_exported_name(ccx, /*bad*/copy pt, mono_ty);
 
     let mk_lldecl = || {
@@ -185,7 +187,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         self_ty: impl_ty_opt
     });
 
-    let lldecl = match *map_node {
+    let lldecl = match map_node {
       ast_map::node_item(i@@ast::item {
                 node: ast::item_fn(ref decl, _, _, _, ref body),
                 _
@@ -243,16 +245,6 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         meth::trans_method(ccx, pt, mth, psubsts, None, d, impl_did);
         d
       }
-      ast_map::node_dtor(_, dtor, _, pt) => {
-        let parent_id = match ty::ty_to_def_id(ty::node_id_to_type(ccx.tcx,
-                                              dtor.node.self_id)) {
-                Some(did) => did,
-                None      => ccx.sess.span_bug(dtor.span, ~"Bad self ty in \
-                                                            dtor")
-        };
-        trans_struct_dtor(ccx, /*bad*/copy *pt, &dtor.node.body,
-          dtor.node.id, psubsts, Some(hash_id), parent_id)
-      }
       ast_map::node_trait_method(@ast::provided(mth), _, pt) => {
         let d = mk_lldecl();
         set_inline_hint_if_appr(/*bad*/copy mth.attrs, d);
@@ -279,6 +271,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       ast_map::node_trait_method(*) |
       ast_map::node_arg(*) |
       ast_map::node_block(*) |
+      ast_map::node_callee_scope(*) |
       ast_map::node_local(*) => {
         ccx.tcx.sess.bug(fmt!("Can't monomorphize a %?", map_node))
       }
@@ -355,14 +348,9 @@ pub fn make_mono_id(ccx: @CrateContext,
         let mut i = 0;
         vec::map_zip(*item_ty.generics.type_param_defs, substs, |type_param_def, subst| {
             let mut v = ~[];
-            for type_param_def.bounds.each |bound| {
-                match *bound {
-                  ty::bound_trait(_) => {
-                    v.push(meth::vtable_id(ccx, /*bad*/copy vts[i]));
-                    i += 1;
-                  }
-                  _ => ()
-                }
+            for type_param_def.bounds.trait_bounds.each |_bound| {
+                v.push(meth::vtable_id(ccx, /*bad*/copy vts[i]));
+                i += 1;
             }
             (*subst, if !v.is_empty() { Some(v) } else { None })
         })

@@ -41,15 +41,15 @@ use middle::typeck::infer;
 use middle::typeck::rscope::*;
 use middle::typeck::rscope;
 use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
-use util::common::{indenter, pluralize};
+use util::common::pluralize;
 use util::ppaux;
+use util::ppaux::UserString;
 
 use syntax::abi::AbiSet;
 use syntax::ast::{RegionTyParamBound, TraitTyParamBound};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, split_trait_methods};
-use syntax::ast_util;
 use syntax::codemap::span;
 use syntax::codemap;
 use syntax::print::pprust::{path_to_str, self_ty_to_str};
@@ -117,7 +117,7 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
 }
 
 impl CrateCtxt {
-    fn to_ty<RS:region_scope + Copy + Durable>(
+    fn to_ty<RS:region_scope + Copy + 'static>(
         &self, rs: &RS, ast_ty: @ast::Ty) -> ty::t
     {
         ast_ty_to_ty(self, rs, ast_ty)
@@ -135,8 +135,8 @@ impl AstConv for CrateCtxt {
               Some(&ast_map::node_item(item, _)) => {
                 ty_of_item(self, item)
               }
-              Some(&ast_map::node_foreign_item(foreign_item, _, _, _)) => {
-                ty_of_foreign_item(self, foreign_item)
+              Some(&ast_map::node_foreign_item(foreign_item, abis, _, _)) => {
+                ty_of_foreign_item(self, foreign_item, abis)
               }
               ref x => {
                 self.tcx.sess.bug(fmt!("unexpected sort of item \
@@ -152,7 +152,7 @@ impl AstConv for CrateCtxt {
 
     fn ty_infer(&self, span: span) -> ty::t {
         self.tcx.sess.span_bug(span,
-                               ~"found `ty_infer` in unexpected place");
+                               "found `ty_infer` in unexpected place");
     }
 }
 
@@ -220,7 +220,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 {
     let tcx = ccx.tcx;
     let region_paramd = tcx.region_paramd_items.find(&trait_id).map(|&x| *x);
-    match *tcx.items.get(&trait_id) {
+    match tcx.items.get_copy(&trait_id) {
         ast_map::node_item(@ast::item {
             node: ast::item_trait(ref generics, _, ref ms),
             _
@@ -342,10 +342,13 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 
         // add in the "self" type parameter
         let self_trait_def = get_trait_def(ccx, local_def(trait_id));
-        let self_trait_ref = @self_trait_def.trait_ref.subst(tcx, &substs);
+        let self_trait_ref = self_trait_def.trait_ref.subst(tcx, &substs);
         new_type_param_defs.push(ty::TypeParameterDef {
             def_id: dummy_defid,
-            bounds: @~[ty::bound_trait(self_trait_ref)]
+            bounds: @ty::ParamBounds {
+                builtin_bounds: ty::EmptyBuiltinBounds(),
+                trait_bounds: ~[self_trait_ref]
+            }
         });
 
         // add in the type parameters from the method
@@ -367,7 +370,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                           });
     }
 
-    fn ty_method_of_trait_method(self: &CrateCtxt,
+    fn ty_method_of_trait_method(this: &CrateCtxt,
                                  trait_id: ast::node_id,
                                  trait_rp: Option<ty::region_variance>,
                                  trait_generics: &ast::Generics,
@@ -378,15 +381,15 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                                  m_purity: &ast::purity,
                                  m_decl: &ast::fn_decl) -> ty::method
     {
-        let trait_self_ty = ty::mk_self(self.tcx, local_def(trait_id));
+        let trait_self_ty = ty::mk_self(this.tcx, local_def(trait_id));
         let rscope = MethodRscope::new(m_self_ty.node, trait_rp, trait_generics);
         let (transformed_self_ty, fty) =
-            astconv::ty_of_method(self, &rscope, *m_purity, &m_generics.lifetimes,
+            astconv::ty_of_method(this, &rscope, *m_purity, &m_generics.lifetimes,
                                   trait_self_ty, *m_self_ty, m_decl);
         let num_trait_type_params = trait_generics.ty_params.len();
         ty::method {
             ident: *m_ident,
-            generics: ty_generics(self, None, m_generics, num_trait_type_params),
+            generics: ty_generics(this, None, m_generics, num_trait_type_params),
             transformed_self_ty: transformed_self_ty,
             fty: fty,
             self_ty: m_self_ty.node,
@@ -417,8 +420,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
         if ty_trait_refs.any(|other_trait| other_trait.def_id == trait_ref.def_id) {
             // This means a trait inherited from the same supertrait more
             // than once.
-            tcx.sess.span_err(sp, ~"Duplicate supertrait in trait \
-                                     declaration");
+            tcx.sess.span_err(sp, "Duplicate supertrait in trait declaration");
             break;
         } else {
             ty_trait_refs.push(trait_ref);
@@ -446,7 +448,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
                            trait_substs: &ty::substs,
                            self_ty: ty::t) {
     debug!("compare_impl_method()");
-    let _indenter = indenter();
+    let infcx = infer::new_infer_ctxt(tcx);
 
     let impl_m = &cm.mty;
 
@@ -509,27 +511,49 @@ pub fn compare_impl_method(tcx: ty::ctxt,
         return;
     }
 
-    // FIXME(#2687)---we should be checking that the bounds of the
-    // trait imply the bounds of the subtype, but it appears
-    // we are...not checking this.
     for trait_m.generics.type_param_defs.eachi |i, trait_param_def| {
         // For each of the corresponding impl ty param's bounds...
         let impl_param_def = &impl_m.generics.type_param_defs[i];
-        // Make sure the bounds lists have the same length
-        // Would be nice to use the ty param names in the error message,
-        // but we don't have easy access to them here
-        if impl_param_def.bounds.len() != trait_param_def.bounds.len() {
+
+        // Check that the impl does not require any builtin-bounds
+        // that the trait does not guarantee:
+        let extra_bounds =
+            impl_param_def.bounds.builtin_bounds -
+            trait_param_def.bounds.builtin_bounds;
+        if !extra_bounds.is_empty() {
            tcx.sess.span_err(
                cm.span,
                fmt!("in method `%s`, \
-                     type parameter %u has %u %s, but the same type \
-                     parameter in its trait declaration has %u %s",
+                     type parameter %u requires `%s`, \
+                     which is not required by \
+                     the corresponding type parameter \
+                     in the trait declaration",
                     *tcx.sess.str_of(trait_m.ident),
-                    i, impl_param_def.bounds.len(),
-                    pluralize(impl_param_def.bounds.len(), ~"bound"),
-                    trait_param_def.bounds.len(),
-                    pluralize(trait_param_def.bounds.len(), ~"bound")));
+                    i,
+                    extra_bounds.user_string(tcx)));
            return;
+        }
+
+        // FIXME(#2687)---we should be checking that the bounds of the
+        // trait imply the bounds of the subtype, but it appears we
+        // are...not checking this.
+        if impl_param_def.bounds.trait_bounds.len() !=
+            trait_param_def.bounds.trait_bounds.len()
+        {
+            tcx.sess.span_err(
+                cm.span,
+                fmt!("in method `%s`, \
+                      type parameter %u has %u trait %s, but the \
+                      corresponding type parameter in \
+                      the trait declaration has %u trait %s",
+                     *tcx.sess.str_of(trait_m.ident),
+                     i, impl_param_def.bounds.trait_bounds.len(),
+                     pluralize(impl_param_def.bounds.trait_bounds.len(),
+                               ~"bound"),
+                     trait_param_def.bounds.trait_bounds.len(),
+                     pluralize(trait_param_def.bounds.trait_bounds.len(),
+                               ~"bound")));
+            return;
         }
     }
 
@@ -621,7 +645,6 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     };
     debug!("trait_fty (post-subst): %s", trait_fty.repr(tcx));
 
-    let infcx = infer::new_infer_ctxt(tcx);
     match infer::mk_subty(infcx, false, cm.span, impl_fty, trait_fty) {
         result::Ok(()) => {}
         result::Err(ref terr) => {
@@ -897,30 +920,6 @@ pub fn convert_struct(ccx: &CrateCtxt,
                       id: ast::node_id) {
     let tcx = ccx.tcx;
 
-    for struct_def.dtor.each |dtor| {
-        let region_parameterization =
-            RegionParameterization::from_variance_and_generics(rp, generics);
-
-        // Write the dtor type
-        let t_dtor = ty::mk_bare_fn(
-            tcx,
-            astconv::ty_of_bare_fn(
-                ccx,
-                &type_rscope(region_parameterization),
-                ast::impure_fn,
-                AbiSet::Rust(),
-                &opt_vec::Empty,
-                &ast_util::dtor_dec()));
-        write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
-        tcx.tcache.insert(local_def(dtor.node.id),
-                          ty_param_bounds_and_ty {
-                              generics: ty::Generics {
-                                  type_param_defs: tpt.generics.type_param_defs,
-                                  region_param: rp
-                              },
-                              ty: t_dtor});
-    };
-
     // Write the type of each of the members
     for struct_def.fields.each |f| {
        convert_field(ccx, rp, tpt.generics.type_param_defs, *f, generics);
@@ -958,7 +957,20 @@ pub fn convert_foreign(ccx: &CrateCtxt, i: @ast::foreign_item) {
     // As above, this call populates the type table with the converted
     // type of the foreign item. We simply write it into the node type
     // table.
-    let tpt = ty_of_foreign_item(ccx, i);
+
+    // For reasons I cannot fully articulate, I do so hate the AST
+    // map, and I regard each time that I use it as a personal and
+    // moral failing, but at the moment it seems like the only
+    // convenient way to extract the ABI. - ndm
+    let abis = match ccx.tcx.items.find(&i.id) {
+        Some(&ast_map::node_foreign_item(_, abis, _, _)) => abis,
+        ref x => {
+            ccx.tcx.sess.bug(fmt!("unexpected sort of item \
+                                   in get_item_ty(): %?", (*x)));
+        }
+    };
+
+    let tpt = ty_of_foreign_item(ccx, i, abis);
     write_ty_to_tcx(ccx.tcx, i.id, tpt.ty);
     ccx.tcx.tcache.insert(local_def(i.id), tpt);
 }
@@ -1129,14 +1141,17 @@ pub fn ty_of_item(ccx: &CrateCtxt, it: @ast::item)
     }
 }
 
-pub fn ty_of_foreign_item(ccx: &CrateCtxt, it: @ast::foreign_item)
-    -> ty::ty_param_bounds_and_ty {
+pub fn ty_of_foreign_item(ccx: &CrateCtxt,
+                          it: @ast::foreign_item,
+                          abis: AbiSet) -> ty::ty_param_bounds_and_ty
+{
     match it.node {
         ast::foreign_item_fn(ref fn_decl, _, ref generics) => {
             ty_of_foreign_fn_decl(ccx,
                                   fn_decl,
                                   local_def(it.id),
-                                  generics)
+                                  generics,
+                                  abis)
         }
         ast::foreign_item_const(t) => {
             ty::ty_param_bounds_and_ty {
@@ -1162,8 +1177,8 @@ pub fn ty_generics(ccx: &CrateCtxt,
                 None => {
                     let param_ty = ty::param_ty {idx: base_index + offset,
                                                  def_id: local_def(param.id)};
-                    let bounds = compute_bounds(ccx, rp, generics,
-                                                param_ty, param.bounds);
+                    let bounds = @compute_bounds(ccx, rp, generics,
+                                                 param_ty, param.bounds);
                     let def = ty::TypeParameterDef {
                         def_id: local_def(param.id),
                         bounds: bounds
@@ -1181,7 +1196,7 @@ pub fn ty_generics(ccx: &CrateCtxt,
         rp: Option<ty::region_variance>,
         generics: &ast::Generics,
         param_ty: ty::param_ty,
-        ast_bounds: @OptVec<ast::TyParamBound>) -> ty::param_bounds
+        ast_bounds: @OptVec<ast::TyParamBound>) -> ty::ParamBounds
     {
         /*!
          *
@@ -1189,41 +1204,46 @@ pub fn ty_generics(ccx: &CrateCtxt,
          * enum consisting of a newtyped Ty or a region) to ty's
          * notion of ty param bounds, which can either be user-defined
          * traits, or one of the four built-in traits (formerly known
-         * as kinds): Const, Copy, Durable, and Send.
+         * as kinds): Const, Copy, and Send.
          */
 
-        @ast_bounds.flat_map_to_vec(|b| {
+        let mut param_bounds = ty::ParamBounds {
+            builtin_bounds: ty::EmptyBuiltinBounds(),
+            trait_bounds: ~[]
+        };
+        for ast_bounds.each |b| {
             match b {
                 &TraitTyParamBound(b) => {
                     let li = &ccx.tcx.lang_items;
                     let ty = ty::mk_param(ccx.tcx, param_ty.idx, param_ty.def_id);
                     let trait_ref = instantiate_trait_ref(ccx, b, rp, generics, ty);
                     if trait_ref.def_id == li.owned_trait() {
-                        ~[ty::bound_owned]
+                        param_bounds.builtin_bounds.add(ty::BoundOwned);
                     } else if trait_ref.def_id == li.copy_trait() {
-                        ~[ty::bound_copy]
+                        param_bounds.builtin_bounds.add(ty::BoundCopy);
                     } else if trait_ref.def_id == li.const_trait() {
-                        ~[ty::bound_const]
-                    } else if trait_ref.def_id == li.durable_trait() {
-                        ~[ty::bound_durable]
+                        param_bounds.builtin_bounds.add(ty::BoundConst);
                     } else {
                         // Must be a user-defined trait
-                        ~[ty::bound_trait(trait_ref)]
+                        param_bounds.trait_bounds.push(trait_ref);
                     }
                 }
 
                 &RegionTyParamBound => {
-                    ~[ty::bound_durable]
+                    param_bounds.builtin_bounds.add(ty::BoundStatic);
                 }
             }
-        })
+        }
+
+        param_bounds
     }
 }
 
 pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
                              decl: &ast::fn_decl,
                              def_id: ast::def_id,
-                             ast_generics: &ast::Generics)
+                             ast_generics: &ast::Generics,
+                             abis: AbiSet)
                           -> ty::ty_param_bounds_and_ty {
     let ty_generics = ty_generics(ccx, None, ast_generics, 0);
     let region_param_names = RegionParamNames::from_generics(ast_generics);
@@ -1234,7 +1254,7 @@ pub fn ty_of_foreign_fn_decl(ccx: &CrateCtxt,
     let t_fn = ty::mk_bare_fn(
         ccx.tcx,
         ty::BareFnTy {
-            abis: AbiSet::Rust(),
+            abis: abis,
             purity: ast::unsafe_fn,
             sig: ty::FnSig {bound_lifetime_names: opt_vec::Empty,
                             inputs: input_tys,

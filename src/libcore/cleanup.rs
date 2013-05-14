@@ -15,8 +15,9 @@ use ptr::mut_null;
 use repr::BoxRepr;
 use sys::TypeDesc;
 use cast::transmute;
+#[cfg(not(test))] use unstable::lang::clear_task_borrow_list;
 
-#[cfg(notest)] use ptr::to_unsafe_ptr;
+#[cfg(not(test))] use ptr::to_unsafe_ptr;
 
 /**
  * Runtime structures
@@ -126,23 +127,58 @@ struct AnnihilateStats {
     n_bytes_freed: uint
 }
 
-unsafe fn each_live_alloc(f: &fn(box: *mut BoxRepr, uniq: bool) -> bool) {
+#[cfg(stage0)]
+unsafe fn each_live_alloc(read_next_before: bool,
+                          f: &fn(box: *mut BoxRepr, uniq: bool) -> bool) {
+    //! Walks the internal list of allocations
+
     use managed;
 
     let task: *Task = transmute(rustrt::rust_get_task());
     let box = (*task).boxed_region.live_allocs;
     let mut box: *mut BoxRepr = transmute(copy box);
     while box != mut_null() {
-        let next = transmute(copy (*box).header.next);
+        let next_before = transmute(copy (*box).header.next);
         let uniq =
             (*box).header.ref_count == managed::raw::RC_MANAGED_UNIQUE;
 
-        if ! f(box, uniq) {
-            break
+        if !f(box, uniq) {
+            return;
         }
 
-        box = next
+        if read_next_before {
+            box = next_before;
+        } else {
+            box = transmute(copy (*box).header.next);
+        }
     }
+}
+#[cfg(not(stage0))]
+unsafe fn each_live_alloc(read_next_before: bool,
+                          f: &fn(box: *mut BoxRepr, uniq: bool) -> bool) -> bool {
+    //! Walks the internal list of allocations
+
+    use managed;
+
+    let task: *Task = transmute(rustrt::rust_get_task());
+    let box = (*task).boxed_region.live_allocs;
+    let mut box: *mut BoxRepr = transmute(copy box);
+    while box != mut_null() {
+        let next_before = transmute(copy (*box).header.next);
+        let uniq =
+            (*box).header.ref_count == managed::raw::RC_MANAGED_UNIQUE;
+
+        if !f(box, uniq) {
+            return false;
+        }
+
+        if read_next_before {
+            box = next_before;
+        } else {
+            box = transmute(copy (*box).header.next);
+        }
+    }
+    return true;
 }
 
 #[cfg(unix)]
@@ -156,7 +192,7 @@ fn debug_mem() -> bool {
 }
 
 /// Destroys all managed memory (i.e. @ boxes) held by the current task.
-#[cfg(notest)]
+#[cfg(not(test))]
 #[lang="annihilate"]
 pub unsafe fn annihilate() {
     use unstable::lang::local_free;
@@ -172,8 +208,15 @@ pub unsafe fn annihilate() {
         n_bytes_freed: 0
     };
 
+    // Quick hack: we need to free this list upon task exit, and this
+    // is a convenient place to do it.
+    clear_task_borrow_list();
+
     // Pass 1: Make all boxes immortal.
-    for each_live_alloc |box, uniq| {
+    //
+    // In this pass, nothing gets freed, so it does not matter whether
+    // we read the next field before or after the callback.
+    for each_live_alloc(true) |box, uniq| {
         stats.n_total_boxes += 1;
         if uniq {
             stats.n_unique_boxes += 1;
@@ -183,7 +226,11 @@ pub unsafe fn annihilate() {
     }
 
     // Pass 2: Drop all boxes.
-    for each_live_alloc |box, uniq| {
+    //
+    // In this pass, unique-managed boxes may get freed, but not
+    // managed boxes, so we must read the `next` field *after* the
+    // callback, as the original value may have been freed.
+    for each_live_alloc(false) |box, uniq| {
         if !uniq {
             let tydesc: *TypeDesc = transmute(copy (*box).header.type_desc);
             let drop_glue: DropGlue = transmute(((*tydesc).drop_glue, 0));
@@ -192,7 +239,12 @@ pub unsafe fn annihilate() {
     }
 
     // Pass 3: Free all boxes.
-    for each_live_alloc |box, uniq| {
+    //
+    // In this pass, managed boxes may get freed (but not
+    // unique-managed boxes, though I think that none of those are
+    // left), so we must read the `next` field before, since it will
+    // not be valid after.
+    for each_live_alloc(true) |box, uniq| {
         if !uniq {
             stats.n_bytes_freed +=
                 (*((*box).header.type_desc)).size
@@ -226,4 +278,3 @@ pub mod rustrt {
         pub unsafe fn rust_get_task() -> *c_void;
     }
 }
-

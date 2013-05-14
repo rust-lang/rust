@@ -9,27 +9,25 @@
 // except according to those terms.
 
 // This test should behave exactly like issue-2735-3
-struct defer<'self> {
-    b: &'self mut bool,
+struct defer {
+    b: @mut bool,
 }
 
 #[unsafe_destructor]
-impl<'self> Drop for defer<'self> {
+impl Drop for defer {
     fn finalize(&self) {
-        unsafe {
-            *(self.b) = true;
-        }
+        *self.b = true;
     }
 }
 
-fn defer<'r>(b: &'r mut bool) -> defer<'r> {
+fn defer(b: @mut bool) -> defer {
     defer {
         b: b
     }
 }
 
 pub fn main() {
-    let mut dtor_ran = false;
-    let _  = defer(&mut dtor_ran);
-    assert!((dtor_ran));
+    let dtor_ran = @mut false;
+    let _  = defer(dtor_ran);
+    assert!(*dtor_ran);
 }

@@ -87,7 +87,7 @@ fn f110() {
 
 fn f120() {
     let x = ~[~"hi", ~"ho"];
-    x[0] <-> x[1];
+    vec::swap(x, 0, 1);
     touch(&x[0]);
     touch(&x[1]);
 }

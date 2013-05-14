@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use container::Container;
 use option::*;
+use vec::OwnedVector;
 
 pub struct WorkQueue<T> {
     priv queue: ~[T]

@@ -8,9 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Operations on ASCII strings and characters.
+
 use to_str::{ToStr,ToStrConsume};
 use str;
+use str::StrSlice;
 use cast;
+use old_iter::BaseIter;
+use vec::{CopyableVector, ImmutableVector, OwnedVector};
 
 /// Datatype to hold one ascii character. It is 8 bit long.
 #[deriving(Clone, Eq)]

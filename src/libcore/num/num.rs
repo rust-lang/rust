@@ -9,15 +9,8 @@
 // except according to those terms.
 
 //! An interface for numeric types
-use cmp::{Eq, Ord};
-#[cfg(stage0)]
-use ops::{Add, Sub, Mul, Neg};
-#[cfg(stage0)]
-use Quot = ops::Div;
-#[cfg(stage0)]
-use Rem = ops::Modulo;
-#[cfg(not(stage0))]
-use ops::{Add, Sub, Mul, Quot, Rem, Neg};
+use cmp::{Eq, ApproxEq, Ord};
+use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::Option;
 use kinds::Copy;
@@ -32,7 +25,7 @@ pub trait Num: Eq + Zero + One
              + Add<Self,Self>
              + Sub<Self,Self>
              + Mul<Self,Self>
-             + Quot<Self,Self>
+             + Div<Self,Self>
              + Rem<Self,Self> {}
 
 pub trait IntConvertible {
@@ -62,7 +55,9 @@ pub trait One {
 pub trait Signed: Num
                 + Neg<Self> {
     fn abs(&self) -> Self;
+    fn abs_sub(&self, other: &Self) -> Self;
     fn signum(&self) -> Self;
+
     fn is_positive(&self) -> bool;
     fn is_negative(&self) -> bool;
 }
@@ -76,12 +71,13 @@ pub fn abs<T:Ord + Zero + Neg<T>>(v: T) -> T {
 
 pub trait Integer: Num
                  + Orderable
-                 + Quot<Self,Self>
+                 + Div<Self,Self>
                  + Rem<Self,Self> {
-    fn div(&self, other: &Self) -> Self;
-    fn modulo(&self, other: &Self) -> Self;
-    fn div_mod(&self, other: &Self) -> (Self,Self);
-    fn quot_rem(&self, other: &Self) -> (Self,Self);
+    fn div_rem(&self, other: &Self) -> (Self,Self);
+
+    fn div_floor(&self, other: &Self) -> Self;
+    fn mod_floor(&self, other: &Self) -> Self;
+    fn div_mod_floor(&self, other: &Self) -> (Self,Self);
 
     fn gcd(&self, other: &Self) -> Self;
     fn lcm(&self, other: &Self) -> Self;
@@ -102,7 +98,7 @@ pub trait Round {
 pub trait Fractional: Num
                     + Orderable
                     + Round
-                    + Quot<Self,Self> {
+                    + Div<Self,Self> {
     fn recip(&self) -> Self;
 }
 
@@ -127,8 +123,8 @@ pub trait Trigonometric {
 pub trait Exponential {
     fn exp(&self) -> Self;
     fn exp2(&self) -> Self;
-    fn expm1(&self) -> Self;
-    fn log(&self) -> Self;
+    fn ln(&self) -> Self;
+    fn log(&self, base: Self) -> Self;
     fn log2(&self) -> Self;
     fn log10(&self) -> Self;
 }
@@ -164,8 +160,8 @@ pub trait Real: Signed
     fn e() -> Self;
     fn log2_e() -> Self;
     fn log10_e() -> Self;
-    fn log_2() -> Self;
-    fn log_10() -> Self;
+    fn ln_2() -> Self;
+    fn ln_10() -> Self;
 
     // Angular conversions
     fn to_degrees(&self) -> Self;
@@ -226,7 +222,7 @@ pub trait Primitive: Num
                    + Add<Self,Self>
                    + Sub<Self,Self>
                    + Mul<Self,Self>
-                   + Quot<Self,Self>
+                   + Div<Self,Self>
                    + Rem<Self,Self> {
     // FIXME (#5527): These should be associated constants
     fn bits() -> uint;
@@ -242,11 +238,29 @@ pub trait Int: Integer
              + BitCount {}
 
 ///
+/// Used for representing the classification of floating point numbers
+///
+#[deriving(Eq)]
+pub enum FPCategory {
+    /// "Not a Number", often obtained by dividing by zero
+    FPNaN,
+    /// Positive or negative infinity
+    FPInfinite ,
+    /// Positive or negative zero
+    FPZero,
+    /// De-normalized floating point representation (less precise than `FPNormal`)
+    FPSubnormal,
+    /// A regular floating point number
+    FPNormal,
+}
+
+///
 /// Primitive floating point numbers
 ///
 pub trait Float: Real
                + Signed
-               + Primitive {
+               + Primitive
+               + ApproxEq<Self> {
     // FIXME (#5527): These should be associated constants
     fn NaN() -> Self;
     fn infinity() -> Self;
@@ -256,6 +270,8 @@ pub trait Float: Real
     fn is_NaN(&self) -> bool;
     fn is_infinite(&self) -> bool;
     fn is_finite(&self) -> bool;
+    fn is_normal(&self) -> bool;
+    fn classify(&self) -> FPCategory;
 
     fn mantissa_digits() -> uint;
     fn digits() -> uint;
@@ -265,6 +281,8 @@ pub trait Float: Real
     fn min_10_exp() -> int;
     fn max_10_exp() -> int;
 
+    fn exp_m1(&self) -> Self;
+    fn ln_1p(&self) -> Self;
     fn mul_add(&self, a: Self, b: Self) -> Self;
     fn next_after(&self, other: Self) -> Self;
 }
@@ -371,7 +389,7 @@ pub trait FromStrRadix {
 /// - If code written to use this function doesn't care about it, it's
 ///   probably assuming that `x^0` always equals `1`.
 ///
-pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Quot<T,T>+Mul<T,T>>(
+pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Div<T,T>+Mul<T,T>>(
     radix: uint, pow: uint) -> T {
     let _0: T = Zero::zero();
     let _1: T = One::one();
@@ -392,34 +410,18 @@ pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Quot<T,T>+Mul<T,T>>(
 }
 
 /// Helper function for testing numeric operations
-#[cfg(stage0,test)]
-pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
-    assert_eq!(ten.add(&two),    cast(12));
-    assert_eq!(ten.sub(&two),    cast(8));
-    assert_eq!(ten.mul(&two),    cast(20));
-    assert_eq!(ten.div(&two),    cast(5));
-    assert_eq!(ten.modulo(&two), cast(0));
-
-    assert_eq!(ten.add(&two),    ten + two);
-    assert_eq!(ten.sub(&two),    ten - two);
-    assert_eq!(ten.mul(&two),    ten * two);
-    assert_eq!(ten.div(&two),    ten / two);
-    assert_eq!(ten.modulo(&two), ten % two);
-}
-#[cfg(stage1,test)]
-#[cfg(stage2,test)]
-#[cfg(stage3,test)]
+#[cfg(test)]
 pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
     assert_eq!(ten.add(&two),  cast(12));
     assert_eq!(ten.sub(&two),  cast(8));
     assert_eq!(ten.mul(&two),  cast(20));
-    assert_eq!(ten.quot(&two), cast(5));
+    assert_eq!(ten.div(&two), cast(5));
     assert_eq!(ten.rem(&two),  cast(0));
 
     assert_eq!(ten.add(&two),  ten + two);
     assert_eq!(ten.sub(&two),  ten - two);
     assert_eq!(ten.mul(&two),  ten * two);
-    assert_eq!(ten.quot(&two), ten / two);
+    assert_eq!(ten.div(&two), ten / two);
     assert_eq!(ten.rem(&two),  ten % two);
 }
 

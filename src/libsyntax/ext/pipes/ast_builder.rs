@@ -138,9 +138,9 @@ pub trait ext_ctxt_ast_builder {
 impl ext_ctxt_ast_builder for @ext_ctxt {
     fn ty_option(&self, ty: @ast::Ty) -> @ast::Ty {
         self.ty_path_ast_builder(path_global(~[
-            self.ident_of(~"core"),
-            self.ident_of(~"option"),
-            self.ident_of(~"Option")
+            self.ident_of("core"),
+            self.ident_of("option"),
+            self.ident_of("Option")
         ], dummy_sp()).add_ty(ty))
     }
 
@@ -360,12 +360,12 @@ impl ext_ctxt_ast_builder for @ext_ctxt {
         let vi = ast::view_item_use(~[
             @codemap::spanned {
                 node: ast::view_path_simple(
-                    self.ident_of(~"Owned"),
+                    self.ident_of("Owned"),
                     path(
                         ~[
-                            self.ident_of(~"core"),
-                            self.ident_of(~"kinds"),
-                            self.ident_of(~"Owned")
+                            self.ident_of("core"),
+                            self.ident_of("kinds"),
+                            self.ident_of("Owned")
                         ],
                         codemap::dummy_sp()
                     ),

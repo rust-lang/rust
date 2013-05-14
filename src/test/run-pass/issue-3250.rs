@@ -2,6 +2,4 @@
 
 type t = (uint, uint);
 
- 
-
 pub fn main() { }

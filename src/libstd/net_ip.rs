@@ -175,7 +175,7 @@ pub mod v4 {
     pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
           result::Ok(addr) => addr,
-          result::Err(ref err_data) => fail!(err_data.err_msg)
+          result::Err(ref err_data) => fail!(copy err_data.err_msg)
         }
     }
     // the simple, old style numberic representation of
@@ -225,7 +225,7 @@ pub mod v4 {
             let input_is_inaddr_none =
                 result::get(&ip_rep_result).as_u32() == INADDR_NONE;
 
-            let new_addr = uv_ip4_addr(str::from_slice(ip), 22);
+            let new_addr = uv_ip4_addr(str::to_owned(ip), 22);
             let reformatted_name = uv_ip4_name(&new_addr);
             debug!("try_parse_addr: input ip: %s reparsed ip: %s",
                             ip, reformatted_name);
@@ -272,13 +272,13 @@ pub mod v6 {
     pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
           result::Ok(addr) => addr,
-          result::Err(copy err_data) => fail!(err_data.err_msg)
+          result::Err(copy err_data) => fail!(copy err_data.err_msg)
         }
     }
     pub fn try_parse_addr(ip: &str) -> result::Result<IpAddr,ParseAddrErr> {
         unsafe {
             // need to figure out how to establish a parse failure..
-            let new_addr = uv_ip6_addr(str::from_slice(ip), 22);
+            let new_addr = uv_ip6_addr(str::to_owned(ip), 22);
             let reparsed_name = uv_ip6_name(&new_addr);
             debug!("v6::try_parse_addr ip: '%s' reparsed '%s'",
                             ip, reparsed_name);
@@ -420,12 +420,12 @@ mod test {
         if result::is_err(&ga_result) {
             fail!(~"got err result from net::ip::get_addr();")
         }
-        // note really sure how to realiably test/assert
+        // note really sure how to reliably test/assert
         // this.. mostly just wanting to see it work, atm.
         let results = result::unwrap(ga_result);
         debug!("test_get_addr: Number of results for %s: %?",
                         localhost_name, vec::len(results));
-        for vec::each(results) |r| {
+        for results.each |r| {
             let ipv_prefix = match *r {
               Ipv4(_) => ~"IPv4",
               Ipv6(_) => ~"IPv6"

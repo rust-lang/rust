@@ -94,7 +94,7 @@ pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, s: (), v: visit::vt<()>) {
        }
        let arms = vec::concat(arms.filter_mapped(unguarded_pat));
        if arms.is_empty() {
-           cx.tcx.sess.span_err(ex.span, ~"non-exhaustive patterns");
+           cx.tcx.sess.span_err(ex.span, "non-exhaustive patterns");
        } else {
            check_exhaustive(cx, ex.span, arms);
        }
@@ -111,7 +111,7 @@ pub fn check_arms(cx: @MatchCheckCtxt, arms: &[arm]) {
             let v = ~[*pat];
             match is_useful(cx, &seen, v) {
               not_useful => {
-                cx.tcx.sess.span_err(pat.span, ~"unreachable pattern");
+                cx.tcx.sess.span_err(pat.span, "unreachable pattern");
               }
               _ => ()
             }
@@ -366,7 +366,7 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
         }
         let variants = ty::enum_variants(cx.tcx, eid);
         if found.len() != (*variants).len() {
-            for vec::each(*variants) |v| {
+            for (*variants).each |v| {
                 if !found.contains(&(variant(v.id))) {
                     return Some(variant(v.id));
                 }
@@ -488,7 +488,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                 match cx.tcx.def_map.find(&pat_id) {
                     Some(&def_variant(_, id)) => {
                         if variant(id) == *ctor_id {
-                            Some(vec::from_slice(r.tail()))
+                            Some(vec::to_owned(r.tail()))
                         } else {
                             None
                         }
@@ -507,7 +507,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             _ => fail!(~"type error")
                         };
                         if match_ {
-                            Some(vec::from_slice(r.tail()))
+                            Some(vec::to_owned(r.tail()))
                         } else {
                             None
                         }
@@ -523,7 +523,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                 }
             }
             pat_enum(_, args) => {
-                match *cx.tcx.def_map.get(&pat_id) {
+                match cx.tcx.def_map.get_copy(&pat_id) {
                     def_const(did) => {
                         let const_expr =
                             lookup_const_by_id(cx.tcx, did).get();
@@ -538,7 +538,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             _ => fail!(~"type error")
                         };
                         if match_ {
-                            Some(vec::from_slice(r.tail()))
+                            Some(vec::to_owned(r.tail()))
                         } else {
                             None
                         }
@@ -548,7 +548,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             Some(args) => args,
                             None => vec::from_elem(arity, wild())
                         };
-                        Some(vec::append(args, vec::from_slice(r.tail())))
+                        Some(vec::append(args, vec::to_owned(r.tail())))
                     }
                     def_variant(_, _) => None,
 
@@ -560,14 +560,14 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             Some(args) => new_args = args,
                             None => new_args = vec::from_elem(arity, wild())
                         }
-                        Some(vec::append(new_args, vec::from_slice(r.tail())))
+                        Some(vec::append(new_args, vec::to_owned(r.tail())))
                     }
                     _ => None
                 }
             }
             pat_struct(_, ref flds, _) => {
                 // Is this a struct or an enum variant?
-                match *cx.tcx.def_map.get(&pat_id) {
+                match cx.tcx.def_map.get_copy(&pat_id) {
                     def_variant(_, variant_id) => {
                         if variant(variant_id) == *ctor_id {
                             // FIXME #4731: Is this right? --pcw
@@ -578,7 +578,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                                     _ => wild()
                                 }
                             });
-                            Some(vec::append(args, vec::from_slice(r.tail())))
+                            Some(vec::append(args, vec::to_owned(r.tail())))
                         } else {
                             None
                         }
@@ -608,7 +608,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                                 _ => wild()
                             }
                         });
-                        Some(vec::append(args, vec::from_slice(r.tail())))
+                        Some(vec::append(args, vec::to_owned(r.tail())))
                     }
                 }
             }
@@ -627,21 +627,21 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     single => true,
                     _ => fail!(~"type error")
                 };
-                if match_ { Some(vec::from_slice(r.tail())) } else { None }
+                if match_ { Some(vec::to_owned(r.tail())) } else { None }
             }
             pat_range(lo, hi) => {
                 let (c_lo, c_hi) = match *ctor_id {
                     val(ref v) => ((/*bad*/copy *v), (/*bad*/copy *v)),
                     range(ref lo, ref hi) =>
                         ((/*bad*/copy *lo), (/*bad*/copy *hi)),
-                    single => return Some(vec::from_slice(r.tail())),
+                    single => return Some(vec::to_owned(r.tail())),
                     _ => fail!(~"type error")
                 };
                 let v_lo = eval_const_expr(cx.tcx, lo),
                 v_hi = eval_const_expr(cx.tcx, hi);
                 let match_ = compare_const_vals(&c_lo, &v_lo) >= 0 &&
                     compare_const_vals(&c_hi, &v_hi) <= 0;
-          if match_ { Some(vec::from_slice(r.tail())) } else { None }
+          if match_ { Some(vec::to_owned(r.tail())) } else { None }
       }
             pat_vec(before, slice, after) => {
                 match *ctor_id {
@@ -674,7 +674,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
 }
 
 pub fn default(cx: @MatchCheckCtxt, r: &[@pat]) -> Option<~[@pat]> {
-    if is_wild(cx, r[0]) { Some(vec::from_slice(r.tail())) }
+    if is_wild(cx, r[0]) { Some(vec::to_owned(r.tail())) }
     else { None }
 }
 
@@ -685,7 +685,7 @@ pub fn check_local(cx: @MatchCheckCtxt,
     visit::visit_local(loc, s, v);
     if is_refutable(cx, loc.node.pat) {
         cx.tcx.sess.span_err(loc.node.pat.span,
-                          ~"refutable pattern in local binding");
+                             "refutable pattern in local binding");
     }
 
     // Check legality of move bindings.
@@ -708,7 +708,7 @@ pub fn check_fn(cx: @MatchCheckCtxt,
     for decl.inputs.each |input| {
         if is_refutable(cx, input.pat) {
             cx.tcx.sess.span_err(input.pat.span,
-                              ~"refutable pattern in function argument");
+                                 "refutable pattern in function argument");
         }
     }
 }
@@ -780,24 +780,24 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
         if sub.is_some() {
             tcx.sess.span_err(
                 p.span,
-                ~"cannot bind by-move with sub-bindings");
+                "cannot bind by-move with sub-bindings");
         } else if has_guard {
             tcx.sess.span_err(
                 p.span,
-                ~"cannot bind by-move into a pattern guard");
+                "cannot bind by-move into a pattern guard");
         } else if by_ref_span.is_some() {
             tcx.sess.span_err(
                 p.span,
-                ~"cannot bind by-move and by-ref \
-                  in the same pattern");
+                "cannot bind by-move and by-ref \
+                 in the same pattern");
             tcx.sess.span_note(
                 by_ref_span.get(),
-                ~"by-ref binding occurs here");
+                "by-ref binding occurs here");
         } else if is_lvalue {
             tcx.sess.span_err(
                 p.span,
-                ~"cannot bind by-move when \
-                  matching an lvalue");
+                "cannot bind by-move when \
+                 matching an lvalue");
         }
     };
 
@@ -822,51 +822,65 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
             }
         }
 
-        // Now check to ensure that any move binding is not behind an @ or &.
-        // This is always illegal.
+        // Now check to ensure that any move binding is not behind an
+        // @ or &, or within a struct with a destructor.  This is
+        // always illegal.
         let vt = visit::mk_vt(@visit::Visitor {
-            visit_pat: |pat, behind_bad_pointer: bool, v| {
+            visit_pat: |pat, (behind_bad_pointer, behind_dtor_struct): (bool, bool), v| {
                 match pat.node {
                     pat_ident(_, _, sub) => {
                         debug!("(check legality of move) checking pat \
-                                ident with behind_bad_pointer %?",
-                                behind_bad_pointer);
+                                ident with behind_bad_pointer %? and behind_dtor_struct %?",
+                               behind_bad_pointer, behind_dtor_struct);
 
-                        if behind_bad_pointer &&
+                        if behind_bad_pointer || behind_dtor_struct &&
                             cx.moves_map.contains(&pat.id)
                         {
-                            cx.tcx.sess.span_err(
-                                pat.span,
-                                ~"by-move pattern \
-                                  bindings may not occur \
-                                  behind @ or & bindings");
+                            let msg = if behind_bad_pointer {
+                                "by-move pattern bindings may not occur behind @ or & bindings"
+                            } else {
+                                "cannot bind by-move within struct (it has a destructor)"
+                            };
+                            cx.tcx.sess.span_err(pat.span, msg);
                         }
 
                         match sub {
                             None => {}
                             Some(subpat) => {
-                                (v.visit_pat)(subpat, behind_bad_pointer, v);
+                                (v.visit_pat)(subpat,
+                                              (behind_bad_pointer, behind_dtor_struct),
+                                              v);
                             }
                         }
                     }
 
                     pat_box(subpat) | pat_region(subpat) => {
-                        (v.visit_pat)(subpat, true, v);
+                        (v.visit_pat)(subpat, (true, behind_dtor_struct), v);
                     }
 
-                    _ => visit::visit_pat(pat, behind_bad_pointer, v)
+                    pat_struct(_, ref fields, _) => {
+                        let behind_dtor_struct = behind_dtor_struct ||
+                            (match cx.tcx.def_map.find(&pat.id) {
+                                Some(&def_struct(id)) => {
+                                    ty::has_dtor(cx.tcx, id)
+                                }
+                                _ => false
+                            });
+                        debug!("(check legality of move) checking pat \
+                                struct with behind_bad_pointer %? and behind_dtor_struct %?",
+                               behind_bad_pointer, behind_dtor_struct);
+
+                        for fields.each |fld| {
+                            (v.visit_pat)(fld.pat, (behind_bad_pointer,
+                                                    behind_dtor_struct), v)
+                        }
+                    }
+
+                    _ => visit::visit_pat(pat, (behind_bad_pointer, behind_dtor_struct), v)
                 }
             },
-            .. *visit::default_visitor::<bool>()
+            .. *visit::default_visitor::<(bool, bool)>()
         });
-        (vt.visit_pat)(*pat, false, vt);
+        (vt.visit_pat)(*pat, (false, false), vt);
     }
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

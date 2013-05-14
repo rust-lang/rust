@@ -122,7 +122,7 @@ pub impl Parser {
     fn parse_path_list_ident(&self) -> ast::path_list_ident {
         let lo = self.span.lo;
         let ident = self.parse_ident();
-        let hi = self.span.hi;
+        let hi = self.last_span.hi;
         spanned(lo, hi, ast::path_list_ident_ { name: ident,
                                                 id: self.get_id() })
     }
@@ -222,7 +222,8 @@ pub impl Parser {
     // signal an error if the given string is a strict keyword
     fn check_strict_keywords_(&self, w: &~str) {
         if self.is_strict_keyword(w) {
-            self.fatal(fmt!("found `%s` in ident position", *w));
+            self.span_err(*self.last_span,
+                          fmt!("found `%s` in ident position", *w));
         }
     }
 

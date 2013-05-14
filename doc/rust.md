@@ -618,7 +618,7 @@ each of which may have some number of [attributes](#attributes) attached to it.
 
 ~~~~~~~~ {.ebnf .gram}
 item : mod_item | fn_item | type_item | struct_item | enum_item
-     | static_item | trait_item | impl_item | foreign_mod_item ;
+     | static_item | trait_item | impl_item | extern_block ;
 ~~~~~~~~
 
 An _item_ is a component of a crate; some module items can be defined in crate
@@ -752,10 +752,11 @@ link_attr : ident '=' literal ;
 ~~~~~~~~
 
 An _`extern mod` declaration_ specifies a dependency on an external crate.
-The external crate is then bound into the declaring scope as the `ident` provided in the `extern_mod_decl`.
+The external crate is then bound into the declaring scope
+as the `ident` provided in the `extern_mod_decl`.
 
-The external crate is resolved to a specific `soname` at compile time, and a
-runtime linkage requirement to that `soname` is passed to the linker for
+The external crate is resolved to a specific `soname` at compile time,
+and a runtime linkage requirement to that `soname` is passed to the linker for
 loading at runtime. The `soname` is resolved at compile time by scanning the
 compiler's library path and matching the `link_attrs` provided in the
 `use_decl` against any `#link` attributes that were declared on the external
@@ -992,10 +993,10 @@ Thus the return type on `f` only needs to reflect the `if` branch of the conditi
 #### Extern functions
 
 Extern functions are part of Rust's foreign function interface,
-providing the opposite functionality to [foreign modules](#foreign-modules).
-Whereas foreign modules allow Rust code to call foreign code,
-extern functions with bodies defined in Rust code _can be called by foreign code_.
-They are defined in the same way as any other Rust function,
+providing the opposite functionality to [external blocks](#external-blocks).
+Whereas external blocks allow Rust code to call foreign code,
+extern functions with bodies defined in Rust code _can be called by foreign
+code_. They are defined in the same way as any other Rust function,
 except that they have the `extern` modifier.
 
 ~~~
@@ -1011,7 +1012,8 @@ let fptr: *u8 = new_vec;
 ~~~
 
 The primary motivation for extern functions is
-to create callbacks for foreign functions that expect to receive function pointers.
+to create callbacks for foreign functions that expect to receive function
+pointers.
 
 ### Type definitions
 
@@ -1308,64 +1310,61 @@ impl Seq<bool> for u32 {
 }
 ~~~~
 
-### Foreign modules
+### External blocks
 
 ~~~ {.ebnf .gram}
-foreign_mod_item : "extern mod" ident '{' foreign_mod '} ;
-foreign_mod : [ foreign_fn ] * ;
+extern_block_item : "extern" '{' extern_block '} ;
+extern_block : [ foreign_fn ] * ;
 ~~~
 
-Foreign modules form the basis for Rust's foreign function interface. A
-foreign module describes functions in external, non-Rust
-libraries.
-Functions within foreign modules are declared in the same way as other Rust functions,
-with the exception that they may not have a body and are instead terminated by a semicolon.
+External blocks form the basis for Rust's foreign function interface.
+Declarations in an external block describe symbols
+in external, non-Rust libraries.
+
+Functions within external blocks
+are declared in the same way as other Rust functions,
+with the exception that they may not have a body
+and are instead terminated by a semicolon.
 
 ~~~
 # use core::libc::{c_char, FILE};
 # #[nolink]
 
-extern mod c {
+extern {
     fn fopen(filename: *c_char, mode: *c_char) -> *FILE;
 }
 ~~~
 
-Functions within foreign modules may be called by Rust code, just like functions defined in Rust.
-The Rust compiler automatically translates between the Rust ABI and the foreign ABI.
+Functions within external blocks may be called by Rust code,
+just like functions defined in Rust.
+The Rust compiler automatically translates
+between the Rust ABI and the foreign ABI.
 
-The name of the foreign module has special meaning to the Rust compiler in
-that it will treat the module name as the name of a library to link to,
-performing the linking as appropriate for the target platform. The name
-given for the foreign module will be transformed in a platform-specific way
-to determine the name of the library. For example, on Linux the name of the
-foreign module is prefixed with 'lib' and suffixed with '.so', so the
-foreign mod 'rustrt' would be linked to a library named 'librustrt.so'.
+A number of [attributes](#attributes) control the behavior of external
+blocks.
 
-A number of [attributes](#attributes) control the behavior of foreign
-modules.
-
-By default foreign modules assume that the library they are calling use the
-standard C "cdecl" ABI. Other ABIs may be specified using the `abi`
-attribute as in
+By default external blocks assume
+that the library they are calling uses the standard C "cdecl" ABI.
+Other ABIs may be specified using the `abi` attribute as in
 
 ~~~{.xfail-test}
 // Interface to the Windows API
 #[abi = "stdcall"]
-extern mod kernel32 { }
+extern { }
 ~~~
 
-The `link_name` attribute allows the default library naming behavior to
-be overridden by explicitly specifying the name of the library.
+The `link_name` attribute allows the name of the library to be specified.
 
 ~~~{.xfail-test}
 #[link_name = "crypto"]
-extern mod mycrypto { }
+extern { }
 ~~~
 
-The `nolink` attribute tells the Rust compiler not to do any linking for the foreign module.
-This is particularly useful for creating foreign
-modules for libc, which tends to not follow standard library naming
-conventions and is linked to all Rust programs anyway.
+The `nolink` attribute tells the Rust compiler
+not to do any linking for the external block.
+This is particularly useful for creating external blocks for libc,
+which tends to not follow standard library naming conventions
+and is linked to all Rust programs anyway.
 
 ## Attributes
 
@@ -1425,6 +1424,8 @@ names are effectively reserved. Some significant attributes include:
 * The `test` attribute, for marking functions as unit tests.
 * The `allow`, `warn`, `forbid`, and `deny` attributes, for controlling lint checks. Lint checks supported
 by the compiler can be found via `rustc -W help`.
+* The `deriving` attribute, for automatically generating
+  implementations of certain traits.
 
 Other attributes may be added or removed during development of the language.
 
@@ -1467,8 +1468,8 @@ A complete list of the built-in language items follows:
   : Elements can be subtracted.
 `mul`
   : Elements can be multiplied.
-`quot`
-  : Elements have a quotient operation.
+`div`
+  : Elements have a division operation.
 `rem`
   : Elements have a remainder operation.
 `neg`
@@ -1525,6 +1526,47 @@ A complete list of the built-in language items follows:
 
 > **Note:** This list is likely to become out of date. We should auto-generate it
 > from `librustc/middle/lang_items.rs`.
+
+### Deriving
+
+The `deriving` attribute allows certain traits to be automatically
+implemented for data structures. For example, the following will
+create an `impl` for the `Eq` and `Clone` traits for `Foo`, the type
+parameter `T` will be given the `Eq` or `Clone` constraints for the
+appropriate `impl`:
+
+~~~
+#[deriving(Eq, Clone)]
+struct Foo<T> {
+    a: int,
+    b: T
+}
+~~~
+
+The generated `impl` for `Eq` is equivalent to
+
+~~~
+# struct Foo<T> { a: int, b: T }
+impl<T: Eq> Eq for Foo<T> {
+    fn eq(&self, other: &Foo<T>) -> bool {
+        self.a == other.a && self.b == other.b
+    }
+
+    fn ne(&self, other: &Foo<T>) -> bool {
+        self.a != other.a || self.b != other.b
+    }
+}
+~~~
+
+Supported traits for `deriving` are:
+
+* Comparison traits: `Eq`, `TotalEq`, `Ord`, `TotalOrd`.
+* Serialization: `Encodable`, `Decodable`. These require `std`.
+* `Clone`, to perform deep copies.
+* `IterBytes`, to iterate over the bytes in a data type.
+* `Rand`, to create a random instance of a data type.
+* `ToStr`, to convert to a string. For a type with this instance,
+  `obj.to_str()` has the same output as `fmt!("%?", obj)`.
 
 # Statements and expressions
 
@@ -1857,7 +1899,7 @@ The default meaning of the operators on standard types is given here.
     Calls the `mul` method on the `core::ops::Mul` trait.
 `/`
   : Quotient.
-    Calls the `quot` method on the `core::ops::Quot` trait.
+    Calls the `div` method on the `core::ops::Div` trait.
 `%`
   : Remainder.
     Calls the `rem` method on the `core::ops::Rem` trait.
@@ -1946,35 +1988,6 @@ fn avg(v: &[float]) -> float {
 }
 ~~~~
 
-#### Swap expressions
-
-A _swap expression_ consists of an [lvalue](#lvalues-rvalues-and-temporaries) followed by a bi-directional arrow (`<->`) and another [lvalue](#lvalues-rvalues-and-temporaries).
-
-Evaluating a swap expression causes, as a side effect, the values held in the left-hand-side and right-hand-side [lvalues](#lvalues-rvalues-and-temporaries) to be exchanged indivisibly.
-
-Evaluating a swap expression neither changes reference counts,
-nor deeply copies any owned structure pointed to by the moved [rvalue](#lvalues-rvalues-and-temporaries).
-Instead, the swap expression represents an indivisible *exchange of ownership*,
-between the right-hand-side and the left-hand-side of the expression.
-No allocation or destruction is entailed.
-
-An example of three different swap expressions:
-
-~~~~~~~~
-# let mut x = &mut [0];
-# let mut a = &mut [0];
-# let i = 0;
-# struct S1 { z: int };
-# struct S2 { c: int };
-# let mut y = S1{z: 0};
-# let mut b = S2{c: 0};
-
-x <-> a;
-x[i] <-> a[i];
-y.z <-> b.c;
-~~~~~~~~
-
-
 #### Assignment expressions
 
 An _assignment expression_ consists of an [lvalue](#lvalues-rvalues-and-temporaries) expression followed by an
@@ -2015,7 +2028,7 @@ as
 == !=
 &&
 ||
-= <->
+=
 ~~~~
 
 Operators at the same precedence level are evaluated left-to-right.
@@ -2393,7 +2406,7 @@ variables in the arm's block, and control enters the block.
 An example of an `match` expression:
 
 
-~~~~ {.xfail-test}
+~~~~
 # fn process_pair(a: int, b: int) { }
 # fn process_ten() { }
 
@@ -3351,4 +3364,3 @@ Additional specific influences can be seen from the following languages:
 * The typeclass system of Haskell.
 * The lexical identifier rule of Python.
 * The block syntax of Ruby.
-

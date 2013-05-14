@@ -21,4 +21,3 @@ pub fn main() {
     error!("%?", x);
     error!("%?", y);
 }
-

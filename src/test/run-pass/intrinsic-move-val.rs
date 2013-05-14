@@ -11,8 +11,8 @@
 mod rusti {
     #[abi = "rust-intrinsic"]
     pub extern "rust-intrinsic" {
-        pub fn move_val_init<T>(dst: &mut T, +src: T);
-        pub fn move_val<T>(dst: &mut T, +src: T);
+        pub fn move_val_init<T>(dst: &mut T, src: T);
+        pub fn move_val<T>(dst: &mut T, src: T);
     }
 }
 

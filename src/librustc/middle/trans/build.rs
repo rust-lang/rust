@@ -537,6 +537,18 @@ pub fn Load(cx: block, PointerVal: ValueRef) -> ValueRef {
     }
 }
 
+pub fn AtomicLoad(cx: block, PointerVal: ValueRef, order: AtomicOrdering) -> ValueRef {
+    unsafe {
+        let ccx = cx.fcx.ccx;
+        if cx.unreachable {
+            return llvm::LLVMGetUndef(ccx.int_type);
+        }
+        count_insn(cx, "load.atomic");
+        return llvm::LLVMBuildAtomicLoad(B(cx), PointerVal, order);
+    }
+}
+
+
 pub fn LoadRangeAssert(cx: block, PointerVal: ValueRef, lo: c_ulonglong,
                        hi: c_ulonglong, signed: lib::llvm::Bool) -> ValueRef {
     let value = Load(cx, PointerVal);
@@ -564,6 +576,17 @@ pub fn Store(cx: block, Val: ValueRef, Ptr: ValueRef) {
                val_str(cx.ccx().tn, Ptr));
         count_insn(cx, "store");
         llvm::LLVMBuildStore(B(cx), Val, Ptr);
+    }
+}
+
+pub fn AtomicStore(cx: block, Val: ValueRef, Ptr: ValueRef, order: AtomicOrdering) {
+    unsafe {
+        if cx.unreachable { return; }
+        debug!("Store %s -> %s",
+               val_str(cx.ccx().tn, Val),
+               val_str(cx.ccx().tn, Ptr));
+        count_insn(cx, "store.atomic");
+        llvm::LLVMBuildAtomicStore(B(cx), Val, Ptr, order);
     }
 }
 
@@ -846,7 +869,7 @@ pub fn _UndefReturn(cx: block, Fn: ValueRef) -> ValueRef {
 
 pub fn add_span_comment(bcx: block, sp: span, text: &str) {
     let ccx = bcx.ccx();
-    if !ccx.sess.no_asm_comments() {
+    if ccx.sess.asm_comments() {
         let s = fmt!("%s (%s)", text, ccx.sess.codemap.span_to_str(sp));
         debug!("%s", copy s);
         add_comment(bcx, s);
@@ -856,7 +879,7 @@ pub fn add_span_comment(bcx: block, sp: span, text: &str) {
 pub fn add_comment(bcx: block, text: &str) {
     unsafe {
         let ccx = bcx.ccx();
-        if !ccx.sess.no_asm_comments() {
+        if ccx.sess.asm_comments() {
             let sanitized = str::replace(text, ~"$", ~"");
             let comment_text = ~"# " +
                 str::replace(sanitized, ~"\n", ~"\n\t# ");
@@ -963,20 +986,28 @@ pub fn ExtractElement(cx: block, VecVal: ValueRef, Index: ValueRef) ->
 }
 
 pub fn InsertElement(cx: block, VecVal: ValueRef, EltVal: ValueRef,
-                 Index: ValueRef) {
+                     Index: ValueRef) -> ValueRef {
     unsafe {
-        if cx.unreachable { return; }
+        if cx.unreachable { return llvm::LLVMGetUndef(T_nil()); }
         count_insn(cx, "insertelement");
-        llvm::LLVMBuildInsertElement(B(cx), VecVal, EltVal, Index, noname());
+        llvm::LLVMBuildInsertElement(B(cx), VecVal, EltVal, Index, noname())
     }
 }
 
 pub fn ShuffleVector(cx: block, V1: ValueRef, V2: ValueRef,
-                     Mask: ValueRef) {
+                     Mask: ValueRef) -> ValueRef {
     unsafe {
-        if cx.unreachable { return; }
+        if cx.unreachable { return llvm::LLVMGetUndef(T_nil()); }
         count_insn(cx, "shufflevector");
-        llvm::LLVMBuildShuffleVector(B(cx), V1, V2, Mask, noname());
+        llvm::LLVMBuildShuffleVector(B(cx), V1, V2, Mask, noname())
+    }
+}
+
+pub fn VectorSplat(cx: block, NumElts: uint, EltVal: ValueRef) -> ValueRef {
+    unsafe {
+        let Undef = llvm::LLVMGetUndef(T_vector(val_ty(EltVal), NumElts));
+        let VecVal = InsertElement(cx, Undef, EltVal, C_i32(0));
+        ShuffleVector(cx, VecVal, Undef, C_null(T_vector(T_i32(), NumElts)))
     }
 }
 
@@ -1086,13 +1117,3 @@ pub fn AtomicRMW(cx: block, op: AtomicBinOp,
         llvm::LLVMBuildAtomicRMW(B(cx), op, dst, src, order)
     }
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

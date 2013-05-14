@@ -96,10 +96,6 @@ fn record(repl: Repl, blk: @ast::blk, intr: @token::ident_interner) -> Repl {
                         match expr.node {
                             ast::expr_assign(*) |
                             ast::expr_assign_op(*) |
-                            ast::expr_swap(*) => {
-                                pprust::print_stmt(pp, *stmt);
-                                writer.write_line(~"");
-                            }
                             _ => {}
                         }
                     }
@@ -156,7 +152,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
     for crate.node.module.items.each |item| {
         match item.node {
             ast::item_fn(_, _, _, _, blk) => {
-                if item.ident == sess.ident_of(~"main") {
+                if item.ident == sess.ident_of("main") {
                     opt = blk.node.expr;
                 }
             }

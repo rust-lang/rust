@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:assigning to captured outer immutable variable in a stack closure
 // Make sure that nesting a block within a @fn doesn't let us
 // mutate upvars from a @fn.
 fn f2(x: &fn()) { x(); }
@@ -16,6 +15,7 @@ fn f2(x: &fn()) { x(); }
 fn main() {
     let i = 0;
     let ctr: @fn() -> int = || { f2(|| i = i + 1 ); i };
+    //~^ ERROR cannot assign
     error!(ctr());
     error!(ctr());
     error!(ctr());

@@ -17,6 +17,7 @@ use core::hashmap::HashMap;
 use core::io::ReaderUtil;
 use core::comm::{stream, Port, Chan};
 use core::cmp::Ord;
+use core::util;
 
 // given a map, print a sorted version of it
 fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
@@ -159,8 +160,7 @@ fn main() {
     let mut from_child = ~[];
     let to_child   = vec::mapi(sizes, |ii, sz| {
         let sz = *sz;
-        let mut stream = None;
-        stream <-> streams[ii];
+        let stream = util::replace(&mut streams[ii], None);
         let (from_child_, to_parent_) = stream.unwrap();
 
         from_child.push(from_child_);
@@ -184,10 +184,10 @@ fn main() {
 
       if str::len(line) == 0u { loop; }
 
-      match (line[0], proc_mode) {
+      match (line[0] as char, proc_mode) {
 
          // start processing if this is the one
-         ('>' as u8, false) => {
+         ('>', false) => {
             match str::find_str_from(line, ~"THREE", 1u) {
                option::Some(_) => { proc_mode = true; }
                option::None    => { }
@@ -195,7 +195,7 @@ fn main() {
          }
 
          // break our processing
-         ('>' as u8, true) => { break; }
+         ('>', true) => { break; }
 
          // process the sequence for k-mers
          (_, true) => {
@@ -222,4 +222,3 @@ fn main() {
       io::println(from_child[ii].recv());
    }
 }
-

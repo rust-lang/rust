@@ -12,12 +12,14 @@ extern mod std;
 
 pub fn main() { test00(); }
 
-fn start(&&task_number: int) { debug!("Started / Finished task."); }
+fn start(task_number: int) { debug!("Started / Finished task."); }
 
 fn test00() {
     let i: int = 0;
     let mut result = None;
-    do task::task().future_result(|+r| { result = Some(r); }).spawn {
+    let mut builder = task::task();
+    builder.future_result(|r| result = Some(r));
+    do builder.spawn {
         start(i)
     }
 

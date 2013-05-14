@@ -63,7 +63,10 @@ fn make_random_fasta(wr: @io::Writer,
                      genelist: ~[AminoAcids],
                      n: int) {
     wr.write_line(~">" + id + ~" " + desc);
-    let rng = @mut MyRandom {last: rand::rng().next()};
+    let mut rng = rand::rng();
+    let rng = @mut MyRandom {
+        last: rng.next()
+    };
     let mut op: ~str = ~"";
     for uint::range(0u, n as uint) |_i| {
         str::push_char(&mut op, select_random(myrandom_next(rng, 100u32),

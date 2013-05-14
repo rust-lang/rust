@@ -1339,13 +1339,16 @@ pub mod llvm {
                                     PointerVal: ValueRef) -> ValueRef;
         #[fast_ffi]
         pub unsafe fn LLVMBuildLoad(B: BuilderRef,
-                                PointerVal: ValueRef,
-                                Name: *c_char)
-                             -> ValueRef;
+                                    PointerVal: ValueRef,
+                                    Name: *c_char)
+                                 -> ValueRef;
+
         #[fast_ffi]
         pub unsafe fn LLVMBuildStore(B: BuilderRef,
                                      Val: ValueRef,
-                                     Ptr: ValueRef) -> ValueRef;
+                                     Ptr: ValueRef)
+                                  -> ValueRef;
+
         #[fast_ffi]
         pub unsafe fn LLVMBuildGEP(B: BuilderRef,
                                Pointer: ValueRef,
@@ -1561,12 +1564,29 @@ pub mod llvm {
                                        Name: *c_char) -> ValueRef;
 
         /* Atomic Operations */
-        pub unsafe fn LLVMBuildAtomicCmpXchg(B: BuilderRef, LHS: ValueRef,
-                                  CMP: ValueRef, RHS: ValueRef,
-                                  ++Order: AtomicOrdering) -> ValueRef;
-        pub unsafe fn LLVMBuildAtomicRMW(B: BuilderRef, ++Op: AtomicBinOp,
-                              LHS: ValueRef, RHS: ValueRef,
-                              ++Order: AtomicOrdering) -> ValueRef;
+        pub unsafe fn LLVMBuildAtomicLoad(B: BuilderRef,
+                                          PointerVal: ValueRef,
+                                          Order: AtomicOrdering)
+                                       -> ValueRef;
+
+        pub unsafe fn LLVMBuildAtomicStore(B: BuilderRef,
+                                           Val: ValueRef,
+                                           Ptr: ValueRef,
+                                           Order: AtomicOrdering)
+                                        -> ValueRef;
+
+        pub unsafe fn LLVMBuildAtomicCmpXchg(B: BuilderRef,
+                                             LHS: ValueRef,
+                                             CMP: ValueRef,
+                                             RHS: ValueRef,
+                                             Order: AtomicOrdering)
+                                             -> ValueRef;
+        pub unsafe fn LLVMBuildAtomicRMW(B: BuilderRef,
+                                         Op: AtomicBinOp,
+                                         LHS: ValueRef,
+                                         RHS: ValueRef,
+                                         Order: AtomicOrdering)
+                                         -> ValueRef;
 
         /* Selected entries from the downcasts. */
         #[fast_ffi]
@@ -2196,13 +2216,3 @@ pub fn mk_section_iter(llof: ObjectFileRef) -> SectionIter {
         }
     }
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

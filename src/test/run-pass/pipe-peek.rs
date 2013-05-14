@@ -22,11 +22,11 @@ proto! oneshot (
 )
 
 pub fn main() {
-    let (c, p) = oneshot::init();
+    let mut (c, p) = oneshot::init();
 
-    assert!(!pipes::peek(&p));
+    assert!(!pipes::peek(&mut p));
 
     oneshot::client::signal(c);
 
-    assert!(pipes::peek(&p));
+    assert!(pipes::peek(&mut p));
 }

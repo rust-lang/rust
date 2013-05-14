@@ -20,6 +20,7 @@ extern mod std;
 
 use core::cell::Cell;
 use core::pipes::recv;
+use core::util;
 use std::time;
 use std::future;
 
@@ -35,17 +36,15 @@ macro_rules! move_out (
 
 fn thread_ring(i: uint,
                count: uint,
-               +num_chan: ring::client::num,
-               +num_port: ring::server::num) {
+               num_chan: ring::client::num,
+               num_port: ring::server::num) {
     let mut num_chan = Some(num_chan);
     let mut num_port = Some(num_port);
     // Send/Receive lots of messages.
     for uint::range(0, count) |j| {
         //error!("task %?, iter %?", i, j);
-        let mut num_chan2 = None;
-        let mut num_port2 = None;
-        num_chan2 <-> num_chan;
-        num_port2 <-> num_port;
+        let num_chan2 = util::replace(&mut num_chan, None);
+        let num_port2 = util::replace(&mut num_port, None);
         num_chan = Some(ring::client::num(num_chan2.unwrap(), i * j));
         let port = num_port2.unwrap();
         match recv(port) {
@@ -65,7 +64,7 @@ fn main() {
         ~[~"", ~"100", ~"1000"]
     } else {
         copy args
-    }; 
+    };
 
     let num_tasks = uint::from_str(args[1]).get();
     let msg_per_task = uint::from_str(args[2]).get();
@@ -96,7 +95,9 @@ fn main() {
     thread_ring(0, msg_per_task, num_chan.take(), num_port);
 
     // synchronize
-    for futures.each |f| { f.get() };
+    for futures.each_mut |f| {
+        let _ = f.get();
+    }
 
     let stop = time::precise_time_s();
 

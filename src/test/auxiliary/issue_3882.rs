@@ -12,7 +12,7 @@ mod issue_3882 {
     struct Completions {
         len: libc::size_t,
     }
-    
+
     mod c {
         extern {
             fn linenoiseAddCompletion(lc: *mut Completions);

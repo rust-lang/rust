@@ -12,6 +12,7 @@
 
 use cast::transmute_mut;
 use prelude::*;
+use util::replace;
 
 /*
 A dynamic, mutable location.
@@ -19,6 +20,7 @@ A dynamic, mutable location.
 Similar to a mutable option type, but friendlier.
 */
 
+#[mutable]
 pub struct Cell<T> {
     priv value: Option<T>
 }
@@ -42,23 +44,21 @@ pub fn empty_cell<T>() -> Cell<T> {
 pub impl<T> Cell<T> {
     /// Yields the value, failing if the cell is empty.
     fn take(&self) -> T {
-        let mut self = unsafe { transmute_mut(self) };
-        if self.is_empty() {
+        let this = unsafe { transmute_mut(self) };
+        if this.is_empty() {
             fail!(~"attempt to take an empty cell");
         }
 
-        let mut value = None;
-        value <-> self.value;
-        value.unwrap()
+        replace(&mut this.value, None).unwrap()
     }
 
     /// Returns the value, failing if the cell is full.
     fn put_back(&self, value: T) {
-        let mut self = unsafe { transmute_mut(self) };
-        if !self.is_empty() {
+        let this = unsafe { transmute_mut(self) };
+        if !this.is_empty() {
             fail!(~"attempt to put a value back into a full cell");
         }
-        self.value = Some(value);
+        this.value = Some(value);
     }
 
     /// Returns true if the cell is empty and false if the cell is full.

@@ -3,4 +3,3 @@
 pub mod extern_mod_ordering_lib {
     pub fn f() {}
 }
-

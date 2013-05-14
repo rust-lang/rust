@@ -129,7 +129,7 @@ we have a file `hello.rs` containing this program:
 
 ~~~~
 fn main() {
-    io::println("hello?");
+    println("hello?");
 }
 ~~~~
 
@@ -139,12 +139,12 @@ Windows) which, upon running, will likely do exactly what you expect.
 
 The Rust compiler tries to provide useful information when it encounters an
 error. If you introduce an error into the program (for example, by changing
-`io::println` to some nonexistent function), and then compile it, you'll see
+`println` to some nonexistent function), and then compile it, you'll see
 an error message like this:
 
 ~~~~ {.notrust}
-hello.rs:2:4: 2:16 error: unresolved name: io::print_with_unicorns
-hello.rs:2     io::print_with_unicorns("hello?");
+hello.rs:2:4: 2:16 error: unresolved name: print_with_unicorns
+hello.rs:2     print_with_unicorns("hello?");
                ^~~~~~~~~~~~~~~~~~~~~~~
 ~~~~
 
@@ -227,7 +227,7 @@ let hi = "hi";
 let mut count = 0;
 
 while count < 10 {
-    io::println(fmt!("count: %?", count));
+    println(fmt!("count: %?", count));
     count += 1;
 }
 ~~~~
@@ -400,10 +400,10 @@ don't match the types of the arguments.
 ~~~~
 # let mystery_object = ();
 
-io::println(fmt!("%s is %d", "the answer", 43));
+println(fmt!("%s is %d", "the answer", 43));
 
 // %? will conveniently print any type
-io::println(fmt!("what is this thing: %?", mystery_object));
+println(fmt!("what is this thing: %?", mystery_object));
 ~~~~
 
 [pf]: http://en.cppreference.com/w/cpp/io/c/fprintf
@@ -422,11 +422,11 @@ compulsory, an `if` can have an optional `else` clause, and multiple
 
 ~~~~
 if false {
-    io::println("that's odd");
+    println("that's odd");
 } else if true {
-    io::println("right");
+    println("right");
 } else {
-    io::println("neither true nor false");
+    println("neither true nor false");
 }
 ~~~~
 
@@ -454,10 +454,10 @@ executes its corresponding arm.
 ~~~~
 # let my_number = 1;
 match my_number {
-  0     => io::println("zero"),
-  1 | 2 => io::println("one or two"),
-  3..10 => io::println("three to ten"),
-  _     => io::println("something else")
+  0     => println("zero"),
+  1 | 2 => println("one or two"),
+  3..10 => println("three to ten"),
+  _     => println("something else")
 }
 ~~~~
 
@@ -483,8 +483,8 @@ commas are optional.
 ~~~
 # let my_number = 1;
 match my_number {
-  0 => { io::println("zero") }
-  _ => { io::println("something else") }
+  0 => { println("zero") }
+  _ => { println("something else") }
 }
 ~~~
 
@@ -560,7 +560,7 @@ let mut x = 5;
 loop {
     x += x - 3;
     if x % 5 == 0 { break; }
-    io::println(int::to_str(x));
+    println(int::to_str(x));
 }
 ~~~~
 
@@ -614,8 +614,8 @@ origin.y += 1.0; // ERROR: assigning to immutable field
 # struct Point { x: float, y: float }
 # let mypoint = Point { x: 0.0, y: 0.0 };
 match mypoint {
-    Point { x: 0.0, y: yy } => { io::println(yy.to_str());                     }
-    Point { x: xx,  y: yy } => { io::println(xx.to_str() + " " + yy.to_str()); }
+    Point { x: 0.0, y: yy } => { println(yy.to_str());                     }
+    Point { x: xx,  y: yy } => { println(xx.to_str() + " " + yy.to_str()); }
 }
 ~~~~
 
@@ -630,7 +630,7 @@ reuses the field name as the binding name.
 # struct Point { x: float, y: float }
 # let mypoint = Point { x: 0.0, y: 0.0 };
 match mypoint {
-    Point { x, _ } => { io::println(x.to_str()) }
+    Point { x, _ } => { println(x.to_str()) }
 }
 ~~~
 
@@ -1006,9 +1006,9 @@ let mut d = @mut 5; // mutable variable, mutable box
 d = @mut 15;
 ~~~~
 
-A mutable variable and an immutable variable can refer to the same box, given 
-that their types are compatible. Mutability of a box is a property of its type, 
-however, so for example a mutable handle to an immutable box cannot be 
+A mutable variable and an immutable variable can refer to the same box, given
+that their types are compatible. Mutability of a box is a property of its type,
+however, so for example a mutable handle to an immutable box cannot be
 assigned a reference to a mutable box.
 
 ~~~~
@@ -1041,7 +1041,7 @@ let y = x.clone(); // y is a newly allocated box
 let z = x; // no new memory allocated, x can no longer be used
 ~~~~
 
-Since in owned boxes mutability is a property of the owner, not the 
+Since in owned boxes mutability is a property of the owner, not the
 box, mutable boxes may become immutable when they are moved, and vice-versa.
 
 ~~~~
@@ -1231,7 +1231,7 @@ something silly like
 ~~~
 # struct Point { x: float, y: float }
 let point = &@~Point { x: 10f, y: 20f };
-io::println(fmt!("%f", point.x));
+println(fmt!("%f", point.x));
 ~~~
 
 The indexing operator (`[]`) also auto-dereferences.
@@ -1373,7 +1373,6 @@ and [`core::str`]. Here are some examples.
 [`core::str`]: core/str.html
 
 ~~~
-# use core::io::println;
 # enum Crayon {
 #     Almond, AntiqueBrass, Apricot,
 #     Aquamarine, Asparagus, AtomicTangerine,
@@ -1428,7 +1427,6 @@ Rust also supports _closures_, functions that can access variables in
 the enclosing scope.
 
 ~~~~
-# use println = core::io::println;
 fn call_closure_with_ten(b: &fn(int)) { b(10); }
 
 let captured_var = 20;
@@ -1490,7 +1488,7 @@ fn mk_appender(suffix: ~str) -> @fn(~str) -> ~str {
 
 fn main() {
     let shout = mk_appender(~"!");
-    io::println(shout(~"hey ho, let's go"));
+    println(shout(~"hey ho, let's go"));
 }
 ~~~~
 
@@ -1632,7 +1630,6 @@ And using this function to iterate over a vector:
 
 ~~~~
 # use each = core::vec::each;
-# use println = core::io::println;
 each([2, 4, 8, 5, 16], |n| {
     if *n % 2 != 0 {
         println("found odd number!");
@@ -1649,7 +1646,6 @@ to the next iteration, write `loop`.
 
 ~~~~
 # use each = core::vec::each;
-# use println = core::io::println;
 for each([2, 4, 8, 5, 16]) |n| {
     if *n % 2 != 0 {
         println("found odd number!");
@@ -1982,7 +1978,7 @@ struct TimeBomb {
 impl Drop for TimeBomb {
     fn finalize(&self) {
         for old_iter::repeat(self.explosivity) {
-            io::println("blam!");
+            println("blam!");
         }
     }
 }
@@ -2014,11 +2010,11 @@ and `~str`.
 ~~~~
 # trait Printable { fn print(&self); }
 impl Printable for int {
-    fn print(&self) { io::println(fmt!("%d", *self)) }
+    fn print(&self) { println(fmt!("%d", *self)) }
 }
 
 impl Printable for ~str {
-    fn print(&self) { io::println(*self) }
+    fn print(&self) { println(*self) }
 }
 
 # 1.print();
@@ -2294,6 +2290,27 @@ let nonsense = mycircle.radius() * mycircle.area();
 
 > ***Note:*** Trait inheritance does not actually work with objects yet
 
+## Deriving implementations for traits
+
+A small number of traits in `core` and `std` can have implementations
+that can be automatically derived. These instances are specified by
+placing the `deriving` attribute on a data type declaration. For
+example, the following will mean that `Circle` has an implementation
+for `Eq` and can be used with the equality operators, and that a value
+of type `ABC` can be randomly generated and converted to a string:
+
+~~~
+#[deriving(Eq)]
+struct Circle { radius: float }
+
+#[deriving(Rand, ToStr)]
+enum ABC { A, B, C }
+~~~
+
+The full list of derivable traits is `Eq`, `TotalEq`, `Ord`,
+`TotalOrd`, `Encodable` `Decodable`, `Clone`, `IterBytes`, `Rand` and
+`ToStr`.
+
 # Modules and crates
 
 The Rust namespace is arranged in a hierarchy of modules. Each source
@@ -2307,7 +2324,7 @@ mod farm {
 }
 
 fn main() {
-    io::println(farm::chicken());
+    println(farm::chicken());
 }
 ~~~~
 
@@ -2507,7 +2524,7 @@ pub fn explore() -> &str { "world" }
 ~~~~ {.xfail-test}
 // main.rs
 extern mod world;
-fn main() { io::println(~"hello " + world::explore()); }
+fn main() { println(~"hello " + world::explore()); }
 ~~~~
 
 Now compile and run like this (adjust to your platform if necessary):

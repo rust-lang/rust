@@ -20,6 +20,16 @@ pub extern "rust-intrinsic" {
     pub fn atomic_cxchg_acq(dst: &mut int, old: int, src: int) -> int;
     pub fn atomic_cxchg_rel(dst: &mut int, old: int, src: int) -> int;
 
+    #[cfg(not(stage0))]
+    pub fn atomic_load(src: &int) -> int;
+    #[cfg(not(stage0))]
+    pub fn atomic_load_acq(src: &int) -> int;
+
+    #[cfg(not(stage0))]
+    pub fn atomic_store(dst: &mut int, val: int);
+    #[cfg(not(stage0))]
+    pub fn atomic_store_rel(dst: &mut int, val: int);
+
     pub fn atomic_xchg(dst: &mut int, src: int) -> int;
     pub fn atomic_xchg_acq(dst: &mut int, src: int) -> int;
     pub fn atomic_xchg_rel(dst: &mut int, src: int) -> int;
@@ -34,21 +44,25 @@ pub extern "rust-intrinsic" {
 
     pub fn size_of<T>() -> uint;
 
-    pub fn move_val<T>(dst: &mut T, +src: T);
-    pub fn move_val_init<T>(dst: &mut T, +src: T);
+    pub fn move_val<T>(dst: &mut T, src: T);
+    pub fn move_val_init<T>(dst: &mut T, src: T);
 
     pub fn min_align_of<T>() -> uint;
     pub fn pref_align_of<T>() -> uint;
 
     pub fn get_tydesc<T>() -> *();
 
-    pub fn init<T>() -> T;
+    /// init is unsafe because it returns a zeroed-out datum,
+    /// which is unsafe unless T is POD. We don't have a POD
+    /// kind yet. (See #4074)
+    pub unsafe fn init<T>() -> T;
 
-    pub fn forget<T>(_: T) -> ();
+    #[cfg(not(stage0))]
+    pub unsafe fn uninit<T>() -> T;
 
-    // XXX: intrinsic uses legacy modes
-    #[cfg(stage0)]
-    fn reinterpret_cast<T,U>(&&src: T) -> U;
+    /// forget is unsafe because the caller is responsible for
+    /// ensuring the argument is deallocated already
+    pub unsafe fn forget<T>(_: T) -> ();
 
     pub fn needs_drop<T>() -> bool;
 

@@ -1,13 +1,13 @@
 #!/bin/sh
 
-TARG_DIR=$1 
+TARG_DIR=$1
 PREFIX=$2
 
 BINDIR=bin
 LIBDIR=lib
 
 OS=`uname -s`
-case $OS in 
+case $OS in
     ("Linux"|"FreeBSD")
 	BIN_SUF=
 	LIB_SUF=.so

@@ -10,7 +10,7 @@
 
 // Testing that we can drop the || in for/do exprs
 
-fn f(f: @fn() -> bool) { }
+fn f(f: @fn() -> bool) -> bool { true }
 
 fn d(f: @fn()) { }
 

@@ -21,4 +21,3 @@ pub fn main() {
     let (y,) = x;
     assert!(y == 'd');
 }
-

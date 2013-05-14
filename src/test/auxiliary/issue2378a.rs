@@ -8,13 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[link (name = "issue2378a")];
+#[crate_type = "lib"];
+
 enum maybe<T> { just(T), nothing }
 
-impl copy> for maybe<T> for methods<T {
-    fn ~[](idx: uint) -> T {
+impl <T:Copy> Index<uint,T> for maybe<T> {
+    fn index(&self, idx: &uint) -> T {
         match self {
-          just(t) { t }
-          nothing { fail!(); }
+            &just(ref t) => copy *t,
+            &nothing => { fail!(); }
         }
     }
 }

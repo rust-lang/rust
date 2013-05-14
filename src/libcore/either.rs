@@ -10,11 +10,14 @@
 
 //! A type that represents one of two alternatives
 
+use container::Container;
 use cmp::Eq;
 use kinds::Copy;
+use old_iter::BaseIter;
 use result::Result;
 use result;
 use vec;
+use vec::OwnedVector;
 
 /// The either type
 #[deriving(Clone, Eq)]
@@ -44,7 +47,7 @@ pub fn lefts<T:Copy,U>(eithers: &[Either<T, U>]) -> ~[T] {
     //! Extracts from a vector of either all the left values
 
     do vec::build_sized(eithers.len()) |push| {
-        for vec::each(eithers) |elt| {
+        for eithers.each |elt| {
             match *elt {
                 Left(ref l) => { push(*l); }
                 _ => { /* fallthrough */ }
@@ -57,7 +60,7 @@ pub fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
     //! Extracts from a vector of either all the right values
 
     do vec::build_sized(eithers.len()) |push| {
-        for vec::each(eithers) |elt| {
+        for eithers.each |elt| {
             match *elt {
                 Right(ref r) => { push(*r); }
                 _ => { /* fallthrough */ }
@@ -263,13 +266,3 @@ fn test_partition_empty() {
     assert_eq!(vec::len(lefts), 0u);
     assert_eq!(vec::len(rights), 0u);
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

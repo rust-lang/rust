@@ -87,7 +87,7 @@ pub fn nonzero_llsize_of(cx: @CrateContext, t: TypeRef) -> ValueRef {
 }
 
 // Returns the preferred alignment of the given type for the current target.
-// The preffered alignment may be larger than the alignment used when
+// The preferred alignment may be larger than the alignment used when
 // packing the type into structs. This will be used for things like
 // allocations inside a stack frame, which LLVM has a free hand in.
 pub fn llalign_of_pref(cx: @CrateContext, t: TypeRef) -> uint {
@@ -96,7 +96,7 @@ pub fn llalign_of_pref(cx: @CrateContext, t: TypeRef) -> uint {
     }
 }
 
-// Returns the minimum alignment of a type required by the plattform.
+// Returns the minimum alignment of a type required by the platform.
 // This is the alignment that will be used for struct fields, arrays,
 // and similar ABI-mandated things.
 pub fn llalign_of_min(cx: @CrateContext, t: TypeRef) -> uint {
@@ -118,7 +118,7 @@ pub fn llalign_of(cx: @CrateContext, t: TypeRef) -> ValueRef {
 // Computes the size of the data part of an enum.
 pub fn static_size_of_enum(cx: @CrateContext, t: ty::t) -> uint {
     if cx.enum_sizes.contains_key(&t) {
-        return *cx.enum_sizes.get(&t);
+        return cx.enum_sizes.get_copy(&t);
     }
 
     debug!("static_size_of_enum %s", ty_to_str(cx.tcx, t));
@@ -153,4 +153,3 @@ pub fn static_size_of_enum(cx: @CrateContext, t: ty::t) -> uint {
         _ => cx.sess.bug(~"static_size_of_enum called on non-enum")
     }
 }
-

@@ -102,9 +102,9 @@ impl<T: Copy + Num> Mul<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
 
 // (a + i b) / (c + i d) == [(a + i b) * (c - i d)] / (c*c + d*d)
 //   == [(a*c + b*d) / (c*c + d*d)] + i [(b*c - a*d) / (c*c + d*d)]
-impl<T: Copy + Num> Quot<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
+impl<T: Copy + Num> Div<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
     #[inline]
-    fn quot(&self, other: &Cmplx<T>) -> Cmplx<T> {
+    fn div(&self, other: &Cmplx<T>) -> Cmplx<T> {
         let norm_sqr = other.norm_sqr();
         Cmplx::new((self.re*other.re + self.im*other.im) / norm_sqr,
                      (self.im*other.re - self.re*other.im) / norm_sqr)
@@ -275,7 +275,7 @@ mod test {
             }
         }
         #[test]
-        fn test_quot() {
+        fn test_div() {
             assert_eq!(_neg1_1i / _0_1i, _1_1i);
             for all_consts.each |&c| {
                 if c != Zero::zero() {

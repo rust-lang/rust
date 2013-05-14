@@ -12,11 +12,11 @@
 struct HasNested {
     mut nest: ~[~[int]],
 }
-    
+
 impl HasNested {
     fn method_push_local(&self) {
         self.nest[0].push(0);
     }
 }
-    
+
 fn main() {}

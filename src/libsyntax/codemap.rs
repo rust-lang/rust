@@ -65,8 +65,15 @@ impl Sub<BytePos, BytePos> for BytePos {
     }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for BytePos {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (**self).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for BytePos {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (**self).iter_bytes(lsb0, f)
     }
 }
@@ -83,8 +90,15 @@ impl cmp::Ord for CharPos {
     fn gt(&self, other: &CharPos) -> bool { **self > **other }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for CharPos {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (**self).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for CharPos {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (**self).iter_bytes(lsb0, f)
     }
 }
@@ -127,11 +141,13 @@ impl cmp::Eq for span {
 
 impl<S:Encoder> Encodable<S> for span {
     /* Note #1972 -- spans are encoded but not decoded */
-    fn encode(&self, _s: &S) { _s.emit_nil() }
+    fn encode(&self, s: &mut S) {
+        s.emit_nil()
+    }
 }
 
 impl<D:Decoder> Decodable<D> for span {
-    fn decode(_d: &D) -> span {
+    fn decode(_d: &mut D) -> span {
         dummy_sp()
     }
 }
@@ -246,7 +262,7 @@ pub impl FileMap {
         // the new charpos must be > the last one (or it's the first one).
         let lines = &mut *self.lines;
         assert!((lines.len() == 0) || (lines[lines.len() - 1] < pos));
-        self.lines.push(pos);
+        lines.push(pos);
     }
 
     // get a line from the list of pre-computed line-beginnings
@@ -308,7 +324,7 @@ pub impl CodeMap {
             multibyte_chars: @mut ~[],
         };
 
-        self.files.push(filemap);
+        files.push(filemap);
 
         return filemap;
     }
@@ -355,7 +371,7 @@ pub impl CodeMap {
     }
 
     pub fn span_to_str(&self, sp: span) -> ~str {
-        let files = &mut *self.files;
+        let files = &*self.files;
         if files.len() == 0 && sp == dummy_sp() {
             return ~"no-location";
         }
@@ -522,15 +538,3 @@ mod test {
         fm.next_line(BytePos(2));
     }
 }
-
-
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

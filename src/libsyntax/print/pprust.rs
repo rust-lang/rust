@@ -72,6 +72,12 @@ pub fn end(s: @ps) {
 }
 
 pub fn rust_printer(writer: @io::Writer, intr: @ident_interner) -> @ps {
+    return rust_printer_annotated(writer, intr, no_ann());
+}
+
+pub fn rust_printer_annotated(writer: @io::Writer,
+                              intr: @ident_interner,
+                              ann: pp_ann) -> @ps {
     return @ps {
         s: pp::mk_printer(writer, default_columns),
         cm: None::<@CodeMap>,
@@ -83,7 +89,7 @@ pub fn rust_printer(writer: @io::Writer, intr: @ident_interner) -> @ps {
             cur_lit: 0
         },
         boxes: @mut ~[],
-        ann: no_ann()
+        ann: ann
     };
 }
 
@@ -693,24 +699,15 @@ pub fn print_struct(s: @ps,
         nbsp(s);
         bopen(s);
         hardbreak_if_not_bol(s);
-        for struct_def.dtor.each |dtor| {
-          hardbreak_if_not_bol(s);
-          maybe_print_comment(s, dtor.span.lo);
-          print_outer_attributes(s, dtor.node.attrs);
-          head(s, ~"drop");
-          print_block(s, &dtor.node.body);
-        }
 
         for struct_def.fields.each |field| {
             match field.node.kind {
                 ast::unnamed_field => fail!(~"unexpected unnamed field"),
-                ast::named_field(ident, mutability, visibility) => {
+                ast::named_field(ident, visibility) => {
                     hardbreak_if_not_bol(s);
                     maybe_print_comment(s, field.span.lo);
+                    print_outer_attributes(s, field.node.attrs);
                     print_visibility(s, visibility);
-                    if mutability == ast::struct_mutable {
-                        word_nbsp(s, ~"mut");
-                    }
                     print_ident(s, ident);
                     word_nbsp(s, ~":");
                     print_type(s, field.node.ty);
@@ -1331,12 +1328,6 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
         word_space(s, ~"=");
         print_expr(s, rhs);
       }
-      ast::expr_swap(lhs, rhs) => {
-        print_expr(s, lhs);
-        space(s.s);
-        word_space(s, ~"<->");
-        print_expr(s, rhs);
-      }
       ast::expr_assign_op(op, lhs, rhs) => {
         print_expr(s, lhs);
         space(s.s);
@@ -1361,6 +1352,7 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
         word(s.s, ~"]");
       }
       ast::expr_path(path) => print_path(s, path, true),
+      ast::expr_self => word(s.s, ~"self"),
       ast::expr_break(opt_ident) => {
         word(s.s, ~"break");
         space(s.s);
@@ -2252,7 +2244,7 @@ mod test {
     #[test]
     fn test_fun_to_str() {
         let mock_interner = parse::token::mk_fake_ident_interner();
-        let abba_ident = mock_interner.intern(@~"abba");
+        let abba_ident = mock_interner.intern("abba");
 
         let decl = ast::fn_decl {
             inputs: ~[],
@@ -2270,7 +2262,7 @@ mod test {
     #[test]
     fn test_variant_to_str() {
         let mock_interner = parse::token::mk_fake_ident_interner();
-        let ident = mock_interner.intern(@~"principal_skinner");
+        let ident = mock_interner.intern("principal_skinner");
 
         let var = codemap::respan(codemap::dummy_sp(), ast::variant_ {
             name: ident,
@@ -2286,13 +2278,3 @@ mod test {
         assert_eq!(&varstr,&~"pub principal_skinner");
     }
 }
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

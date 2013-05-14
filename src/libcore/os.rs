@@ -36,8 +36,8 @@ use option::{Some, None};
 use prelude::*;
 use ptr;
 use str;
-use task;
 use uint;
+use unstable::finally::Finally;
 use vec;
 
 pub use libc::fclose;
@@ -152,7 +152,7 @@ FIXME #4726: It would probably be appropriate to make this a real global
 */
 fn with_env_lock<T>(f: &fn() -> T) -> T {
     use unstable::global::global_data_clone_create;
-    use unstable::{Exclusive, exclusive};
+    use unstable::sync::{Exclusive, exclusive};
 
     struct SharedValue(());
     type ValueMutex = Exclusive<SharedValue>;
@@ -196,10 +196,10 @@ pub fn env() -> ~[(~str,~str)] {
         }
         #[cfg(unix)]
         unsafe fn get_env_pairs() -> ~[~str] {
-            extern mod rustrt {
+            extern {
                 unsafe fn rust_env_pairs() -> **libc::c_char;
             }
-            let environ = rustrt::rust_env_pairs();
+            let environ = rust_env_pairs();
             if (environ as uint == 0) {
                 fail!(fmt!("os::env() failure getting env string from OS: %s",
                            os::last_os_error()));
@@ -351,13 +351,16 @@ pub fn fsync_fd(fd: c_int, _l: io::fsync::Level) -> c_int {
     }
 }
 
-pub struct Pipe { mut in: c_int, mut out: c_int }
+pub struct Pipe {
+    in: c_int,
+    out: c_int
+}
 
 #[cfg(unix)]
 pub fn pipe() -> Pipe {
     unsafe {
         let mut fds = Pipe {in: 0 as c_int,
-                        out: 0 as c_int };
+                            out: 0 as c_int };
         assert!((libc::pipe(&mut fds.in) == (0 as c_int)));
         return Pipe {in: fds.in, out: fds.out};
     }
@@ -372,7 +375,7 @@ pub fn pipe() -> Pipe {
         // inheritance has to be handled in a different way that I do not
         // fully understand. Here we explicitly make the pipe non-inheritable,
         // which means to pass it to a subprocess they need to be duplicated
-        // first, as in rust_run_program.
+        // first, as in core::run.
         let mut fds = Pipe {in: 0 as c_int,
                     out: 0 as c_int };
         let res = libc::pipe(&mut fds.in, 1024 as ::libc::c_uint,
@@ -392,8 +395,8 @@ fn dup2(src: c_int, dst: c_int) -> c_int {
 
 
 pub fn dll_filename(base: &str) -> ~str {
-    return str::from_slice(DLL_PREFIX) + str::from_slice(base) +
-           str::from_slice(DLL_SUFFIX)
+    return str::to_owned(DLL_PREFIX) + str::to_owned(base) +
+           str::to_owned(DLL_SUFFIX)
 }
 
 
@@ -546,6 +549,7 @@ pub fn tmpdir() -> Path {
     }
 }
 /// Recursively walk a directory structure
+#[cfg(stage0)]
 pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) {
 
     walk_dir_(p, f);
@@ -572,6 +576,14 @@ pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) {
         }
         return keepgoing;
     }
+}
+/// Recursively walk a directory structure
+#[cfg(not(stage0))]
+pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) -> bool {
+    list_dir(p).each(|q| {
+        let path = &p.push(*q);
+        f(path) && (!path_is_dir(path) || walk_dir(path, f))
+    })
 }
 
 /// Indicates whether a path represents a directory
@@ -673,9 +685,8 @@ pub fn list_dir(p: &Path) -> ~[~str] {
         unsafe fn get_list(p: &Path) -> ~[~str] {
             use libc::{dirent_t};
             use libc::{opendir, readdir, closedir};
-            extern mod rustrt {
-                unsafe fn rust_list_dir_val(ptr: *dirent_t)
-                    -> *libc::c_char;
+            extern {
+                unsafe fn rust_list_dir_val(ptr: *dirent_t) -> *libc::c_char;
             }
             let input = p.to_str();
             let mut strings = ~[];
@@ -686,10 +697,8 @@ pub fn list_dir(p: &Path) -> ~[~str] {
         debug!("os::list_dir -- opendir() SUCCESS");
                 let mut entry_ptr = readdir(dir_ptr);
                 while (entry_ptr as uint != 0) {
-                    strings.push(
-                        str::raw::from_c_str(
-                            rustrt::rust_list_dir_val(
-                                entry_ptr)));
+                    strings.push(str::raw::from_c_str(rust_list_dir_val(
+                        entry_ptr)));
                     entry_ptr = readdir(dir_ptr);
                 }
                 closedir(dir_ptr);
@@ -717,7 +726,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
             };
             use unstable::exchange_alloc::{malloc_raw, free_raw};
             #[nolink]
-            extern mod rustrt {
+            extern {
                 unsafe fn rust_list_dir_wfd_size() -> libc::size_t;
                 unsafe fn rust_list_dir_wfd_fp_buf(wfd: *libc::c_void)
                     -> *u16;
@@ -725,8 +734,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
             fn star(p: &Path) -> Path { p.push("*") }
             do as_utf16_p(star(p).to_str()) |path_ptr| {
                 let mut strings = ~[];
-                let wfd_ptr = malloc_raw(
-                    rustrt::rust_list_dir_wfd_size() as uint);
+                let wfd_ptr = malloc_raw(rust_list_dir_wfd_size() as uint);
                 let find_handle =
                     FindFirstFileW(
                         path_ptr,
@@ -734,8 +742,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
                 if find_handle as int != INVALID_HANDLE_VALUE {
                     let mut more_files = 1 as libc::c_int;
                     while more_files != 0 {
-                        let fp_buf = rustrt::rust_list_dir_wfd_fp_buf(
-                            wfd_ptr);
+                        let fp_buf = rust_list_dir_wfd_fp_buf(wfd_ptr);
                         if fp_buf as uint == 0 {
                             fail!(~"os::list_dir() failure:"+
                                   ~" got null ptr from wfd");
@@ -769,6 +776,28 @@ pub fn list_dir(p: &Path) -> ~[~str] {
  */
 pub fn list_dir_path(p: &Path) -> ~[~Path] {
     list_dir(p).map(|f| ~p.push(*f))
+}
+
+/// Removes a directory at the specified path, after removing
+/// all its contents. Use carefully!
+pub fn remove_dir_recursive(p: &Path) -> bool {
+    let mut error_happened = false;
+    for walk_dir(p) |inner| {
+        if !error_happened {
+            if path_is_dir(inner) {
+                if !remove_dir_recursive(inner) {
+                    error_happened = true;
+                }
+            }
+            else {
+                if !remove_file(inner) {
+                    error_happened = true;
+                }
+            }
+        }
+    };
+    // Directory should now be empty
+    !error_happened && remove_dir(p)
 }
 
 /// Removes a directory at the specified path
@@ -818,6 +847,36 @@ pub fn change_dir(p: &Path) -> bool {
     }
 }
 
+/// Changes the current working directory to the specified
+/// path while acquiring a global lock, then calls `action`.
+/// If the change is successful, releases the lock and restores the
+/// CWD to what it was before, returning true.
+/// Returns false if the directory doesn't exist or if the directory change
+/// is otherwise unsuccessful.
+pub fn change_dir_locked(p: &Path, action: &fn()) -> bool {
+    use unstable::global::global_data_clone_create;
+    use unstable::sync::{Exclusive, exclusive};
+
+    fn key(_: Exclusive<()>) { }
+
+    let result = unsafe {
+        global_data_clone_create(key, || {
+            ~exclusive(())
+        })
+    };
+
+    do result.with_imm() |_| {
+        let old_dir = os::getcwd();
+        if change_dir(p) {
+            action();
+            change_dir(&old_dir)
+        }
+        else {
+            false
+        }
+    }
+}
+
 /// Copies a file from one location to another
 pub fn copy_file(from: &Path, to: &Path) -> bool {
     return do_copy_file(from, to);
@@ -846,6 +905,10 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
             if istream as uint == 0u {
                 return false;
             }
+            // Preserve permissions
+            let from_mode = from.get_mode().expect("copy_file: couldn't get permissions \
+                                                    for source file");
+
             let ostream = do as_c_charp(to.to_str()) |top| {
                 do as_c_charp("w+b") |modebuf| {
                     libc::fopen(top, modebuf)
@@ -877,6 +940,15 @@ pub fn copy_file(from: &Path, to: &Path) -> bool {
             }
             fclose(istream);
             fclose(ostream);
+
+            // Give the new file the old file's permissions
+            unsafe {
+                if do str::as_c_str(to.to_str()) |to_buf| {
+                    libc::chmod(to_buf, from_mode as mode_t)
+                } != 0 {
+                    return false; // should be a condition...
+                }
+            }
             return ok;
         }
     }
@@ -959,10 +1031,10 @@ pub fn last_os_error() -> ~str {
         #[cfg(target_os = "macos")]
         #[cfg(target_os = "android")]
         #[cfg(target_os = "freebsd")]
-        fn strerror_r(errnum: c_int, buf: *c_char, buflen: size_t) -> c_int {
+        fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: size_t) -> c_int {
             #[nolink]
             extern {
-                unsafe fn strerror_r(errnum: c_int, buf: *c_char,
+                unsafe fn strerror_r(errnum: c_int, buf: *mut c_char,
                                      buflen: size_t) -> c_int;
             }
             unsafe {
@@ -974,10 +1046,10 @@ pub fn last_os_error() -> ~str {
         // and requires macros to instead use the POSIX compliant variant.
         // So we just use __xpg_strerror_r which is always POSIX compliant
         #[cfg(target_os = "linux")]
-        fn strerror_r(errnum: c_int, buf: *c_char, buflen: size_t) -> c_int {
+        fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: size_t) -> c_int {
             #[nolink]
             extern {
-                unsafe fn __xpg_strerror_r(errnum: c_int, buf: *c_char,
+                unsafe fn __xpg_strerror_r(errnum: c_int, buf: *mut c_char,
                                            buflen: size_t) -> c_int;
             }
             unsafe {
@@ -987,7 +1059,7 @@ pub fn last_os_error() -> ~str {
 
         let mut buf = [0 as c_char, ..TMPBUF_SZ];
         unsafe {
-            let err = strerror_r(errno() as c_int, &buf[0],
+            let err = strerror_r(errno() as c_int, &mut buf[0],
                                  TMPBUF_SZ as size_t);
             if err < 0 {
                 fail!(~"strerror_r failure");
@@ -1139,7 +1211,7 @@ fn overridden_arg_key(_v: @OverriddenArgs) {}
 
 pub fn args() -> ~[~str] {
     unsafe {
-        match task::local_data::local_data_get(overridden_arg_key) {
+        match local_data::local_data_get(overridden_arg_key) {
             None => real_args(),
             Some(args) => copy args.val
         }
@@ -1149,8 +1221,90 @@ pub fn args() -> ~[~str] {
 pub fn set_args(new_args: ~[~str]) {
     unsafe {
         let overridden_args = @OverriddenArgs { val: copy new_args };
-        task::local_data::local_data_set(overridden_arg_key, overridden_args);
+        local_data::local_data_set(overridden_arg_key, overridden_args);
     }
+}
+
+// FIXME #6100 we should really use an internal implementation of this - using
+// the POSIX glob functions isn't portable to windows, probably has slight
+// inconsistencies even where it is implemented, and makes extending
+// functionality a lot more difficult
+// FIXME #6101 also provide a non-allocating version - each_glob or so?
+/// Returns a vector of Path objects that match the given glob pattern
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "android")]
+#[cfg(target_os = "freebsd")]
+#[cfg(target_os = "macos")]
+pub fn glob(pattern: &str) -> ~[Path] {
+    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "android")]
+    fn default_glob_t () -> libc::glob_t {
+        libc::glob_t {
+            gl_pathc: 0,
+            gl_pathv: ptr::null(),
+            gl_offs: 0,
+            __unused1: ptr::null(),
+            __unused2: ptr::null(),
+            __unused3: ptr::null(),
+            __unused4: ptr::null(),
+            __unused5: ptr::null(),
+        }
+    }
+
+    #[cfg(target_os = "freebsd")]
+    fn default_glob_t () -> libc::glob_t {
+        libc::glob_t {
+            gl_pathc: 0,
+            __unused1: 0,
+            gl_offs: 0,
+            __unused2: 0,
+            gl_pathv: ptr::null(),
+            __unused3: ptr::null(),
+            __unused4: ptr::null(),
+            __unused5: ptr::null(),
+            __unused6: ptr::null(),
+            __unused7: ptr::null(),
+            __unused8: ptr::null(),
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    fn default_glob_t () -> libc::glob_t {
+        libc::glob_t {
+            gl_pathc: 0,
+            __unused1: 0,
+            gl_offs: 0,
+            __unused2: 0,
+            gl_pathv: ptr::null(),
+            __unused3: ptr::null(),
+            __unused4: ptr::null(),
+            __unused5: ptr::null(),
+            __unused6: ptr::null(),
+            __unused7: ptr::null(),
+            __unused8: ptr::null(),
+        }
+    }
+
+    let mut g = default_glob_t();
+    do str::as_c_str(pattern) |c_pattern| {
+        unsafe { libc::glob(c_pattern, 0, ptr::null(), &mut g) }
+    };
+    do(|| {
+        let paths = unsafe {
+            vec::raw::from_buf_raw(g.gl_pathv, g.gl_pathc as uint)
+        };
+        do paths.map |&c_str| {
+            Path(unsafe { str::raw::from_c_str(c_str) })
+        }
+    }).finally {
+        unsafe { libc::globfree(&mut g) };
+    }
+}
+
+/// Returns a vector of Path objects that match the given glob pattern
+#[cfg(target_os = "win32")]
+pub fn glob(pattern: &str) -> ~[Path] {
+    fail!(~"glob() is unimplemented on Windows")
 }
 
 #[cfg(target_os = "macos")]
@@ -1284,7 +1438,7 @@ mod tests {
     }
 
     fn make_rand_name() -> ~str {
-        let rng = rand::rng();
+        let mut rng = rand::rng();
         let n = ~"TEST" + rng.gen_str(10u);
         assert!(getenv(n).is_none());
         n
@@ -1340,7 +1494,7 @@ mod tests {
     fn test_env_getenv() {
         let e = env();
         assert!(vec::len(e) > 0u);
-        for vec::each(e) |p| {
+        for e.each |p| {
             let (n, v) = copy *p;
             debug!(copy n);
             let v2 = getenv(n);
@@ -1432,7 +1586,7 @@ mod tests {
         // Just assuming that we've got some contents in the current directory
         assert!((vec::len(dirs) > 0u));
 
-        for vec::each(dirs) |dir| {
+        for dirs.each |dir| {
             debug!(copy *dir);
         }
     }
@@ -1481,6 +1635,7 @@ mod tests {
                       == buf.len() as size_t))
           }
           assert!((libc::fclose(ostream) == (0u as c_int)));
+          let in_mode = in.get_mode();
           let rs = os::copy_file(&in, &out);
           if (!os::path_exists(&in)) {
             fail!(fmt!("%s doesn't exist", in.to_str()));
@@ -1488,6 +1643,7 @@ mod tests {
           assert!((rs));
           let rslt = run::run_program(~"diff", ~[in.to_str(), out.to_str()]);
           assert!((rslt == 0));
+          assert!(out.get_mode() == in_mode);
           assert!((remove_file(&in)));
           assert!((remove_file(&out)));
         }

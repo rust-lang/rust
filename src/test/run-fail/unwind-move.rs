@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // error-pattern:fail
-fn f(+_a: @int) {
+fn f(_a: @int) {
     fail!();
 }
 

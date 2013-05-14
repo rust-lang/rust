@@ -16,7 +16,6 @@ use opt_vec::OptVec;
 
 use core::cast;
 use core::option::{None, Option, Some};
-use core::task;
 use core::to_bytes;
 use core::to_str::ToStr;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -71,33 +70,41 @@ pub type Name = uint;
 pub type Mrk = uint;
 
 impl<S:Encoder> Encodable<S> for ident {
-    fn encode(&self, s: &S) {
-        let intr = match unsafe {
-            task::local_data::local_data_get(interner_key!())
-        } {
-            None => fail!(~"encode: TLS interner not set up"),
-            Some(intr) => intr
-        };
+    fn encode(&self, s: &mut S) {
+        unsafe {
+            let intr =
+                match local_data::local_data_get(interner_key!()) {
+                    None => fail!(~"encode: TLS interner not set up"),
+                    Some(intr) => intr
+                };
 
-        s.emit_str(*(*intr).get(*self));
+            s.emit_str(*(*intr).get(*self));
+        }
     }
 }
 
 impl<D:Decoder> Decodable<D> for ident {
-    fn decode(d: &D) -> ident {
+    fn decode(d: &mut D) -> ident {
         let intr = match unsafe {
-            task::local_data::local_data_get(interner_key!())
+            local_data::local_data_get(interner_key!())
         } {
             None => fail!(~"decode: TLS interner not set up"),
             Some(intr) => intr
         };
 
-        (*intr).intern(@d.read_str())
+        (*intr).intern(d.read_str())
     }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for ident {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        self.repr.iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for ident {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         self.repr.iter_bytes(lsb0, f)
     }
 }
@@ -283,6 +290,7 @@ pub enum binding_mode {
     bind_infer
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for binding_mode {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         match *self {
@@ -293,6 +301,18 @@ impl to_bytes::IterBytes for binding_mode {
 
           bind_infer =>
           2u8.iter_bytes(lsb0, f),
+        }
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for binding_mode {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
+        match *self {
+          bind_by_copy => 0u8.iter_bytes(lsb0, f),
+
+          bind_by_ref(ref m) => to_bytes::iter_bytes_2(&1u8, m, lsb0, f),
+
+          bind_infer => 2u8.iter_bytes(lsb0, f),
         }
     }
 }
@@ -329,8 +349,15 @@ pub enum pat_ {
 #[deriving(Eq)]
 pub enum mutability { m_mutbl, m_imm, m_const, }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for mutability {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for mutability {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
     }
 }
@@ -344,8 +371,15 @@ pub enum Sigil {
     ManagedSigil
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for Sigil {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (*self as uint).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for Sigil {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as uint).iter_bytes(lsb0, f)
     }
 }
@@ -389,7 +423,7 @@ pub enum binop {
     add,
     subtract,
     mul,
-    quot,
+    div,
     rem,
     and,
     or,
@@ -534,11 +568,13 @@ pub enum expr_ {
 
     expr_copy(@expr),
     expr_assign(@expr, @expr),
-    expr_swap(@expr, @expr),
     expr_assign_op(binop, @expr, @expr),
     expr_field(@expr, ident, ~[@Ty]),
     expr_index(@expr, @expr),
     expr_path(@Path),
+
+    /// The special identifier `self`.
+    expr_self,
     expr_addr_of(mutability, @expr),
     expr_break(Option<ident>),
     expr_again(Option<ident>),
@@ -743,8 +779,15 @@ impl ToStr for int_ty {
     }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for int_ty {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for int_ty {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
     }
 }
@@ -760,8 +803,15 @@ impl ToStr for uint_ty {
     }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for uint_ty {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for uint_ty {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
     }
 }
@@ -777,8 +827,15 @@ impl ToStr for float_ty {
     }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for float_ty {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for float_ty {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
     }
 }
@@ -822,9 +879,16 @@ impl ToStr for Onceness {
     }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for Onceness {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         (*self as uint).iter_bytes(lsb0, f);
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for Onceness {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
+        (*self as uint).iter_bytes(lsb0, f)
     }
 }
 
@@ -873,9 +937,16 @@ pub enum ty_ {
     ty_infer,
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for Ty {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.span.lo, &self.span.hi, lsb0, f);
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for Ty {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
+        to_bytes::iter_bytes_2(&self.span.lo, &self.span.hi, lsb0, f)
     }
 }
 
@@ -940,8 +1011,15 @@ impl ToStr for purity {
     }
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for purity {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for purity {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
     }
 }
@@ -955,8 +1033,15 @@ pub enum ret_style {
     return_val, // everything else
 }
 
+#[cfg(stage0)]
 impl to_bytes::IterBytes for ret_style {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        (*self as u8).iter_bytes(lsb0, f)
+    }
+}
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for ret_style {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
     }
 }
@@ -1158,6 +1243,7 @@ pub struct struct_field_ {
     kind: struct_field_kind,
     id: node_id,
     ty: @Ty,
+    attrs: ~[attribute],
 }
 
 pub type struct_field = spanned<struct_field_>;
@@ -1166,7 +1252,7 @@ pub type struct_field = spanned<struct_field_>;
 #[auto_decode]
 #[deriving(Eq)]
 pub enum struct_field_kind {
-    named_field(ident, struct_mutability, visibility),
+    named_field(ident, visibility),
     unnamed_field   // element of a tuple-like struct
 }
 
@@ -1174,10 +1260,7 @@ pub enum struct_field_kind {
 #[auto_decode]
 #[deriving(Eq)]
 pub struct struct_def {
-    fields: ~[@struct_field], /* fields */
-    /* (not including ctor or dtor) */
-    /* dtor is optional */
-    dtor: Option<struct_dtor>,
+    fields: ~[@struct_field], /* fields, not including ctor */
     /* ID of the constructor. This is only used for tuple- or enum-like
      * structs. */
     ctor_id: Option<node_id>
@@ -1222,29 +1305,6 @@ pub enum item_ {
 #[auto_encode]
 #[auto_decode]
 #[deriving(Eq)]
-pub enum struct_mutability { struct_mutable, struct_immutable }
-
-impl to_bytes::IterBytes for struct_mutability {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        (*self as u8).iter_bytes(lsb0, f)
-    }
-}
-
-pub type struct_dtor = spanned<struct_dtor_>;
-
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
-pub struct struct_dtor_ {
-    id: node_id,
-    attrs: ~[attribute],
-    self_id: node_id,
-    body: blk,
-}
-
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
 pub struct foreign_item {
     ident: ident,
     attrs: ~[attribute],
@@ -1272,7 +1332,6 @@ pub enum inlined_item {
     ii_item(@item),
     ii_method(def_id /* impl id */, @method),
     ii_foreign(@foreign_item),
-    ii_dtor(struct_dtor, ident, Generics, def_id /* parent id */)
 }
 
 /* hold off on tests ... they appear in a later merge.
@@ -1290,6 +1349,21 @@ mod test {
         xorPush(&mut s,14);
         assert_eq!(s,~[14]);
         xorPush(&mut s,14);
+        assert_eq!(s,~[]);
+        xorPush(&mut s,14);
+        assert_eq!(s,~[14]);
+        xorPush(&mut s,15);
+        assert_eq!(s,~[14,15]);
+        xorPush (&mut s,16);
+        assert_eq! (s,~[14,15,16]);
+        xorPush (&mut s,16);
+        assert_eq! (s,~[14,15]);
+        xorPush (&mut s,15);
+        assert_eq! (s,~[14]);
+    }
+
+    #[test] fn test_marksof () {
+        let stopname = uints_to_name(&~[12,14,78]);
         assert_eq!(s,~[]);
         xorPush(&mut s,14);
         assert_eq!(s,~[14]);

@@ -13,4 +13,3 @@ use core::io::println;
 pub fn main() {
     println("Hello world!");
 }
-

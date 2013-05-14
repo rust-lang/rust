@@ -11,13 +11,13 @@
 struct Foo {
       baz: uint
 }
-    
+
 impl Foo {
     fn bar() {
         Foo { baz: 0 }.bar();
     }
-    
-    fn bar() { //~ ERROR duplicate definition of value bar
+
+    fn bar() { //~ ERROR duplicate definition of value `bar`
     }
 }
 

@@ -15,7 +15,7 @@ Runtime type reflection
 */
 
 use intrinsic::{TyDesc, TyVisitor};
-#[cfg(not(stage0))] use intrinsic::Opaque;
+use intrinsic::Opaque;
 use libc::c_void;
 use sys;
 use vec;
@@ -394,17 +394,6 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    #[cfg(stage0)]
-    fn visit_enter_enum(&self, n_variants: uint, sz: uint, align: uint)
-                     -> bool {
-        self.align(align);
-        if ! self.inner.visit_enter_enum(n_variants, sz, align) {
-            return false;
-        }
-        true
-    }
-
-    #[cfg(not(stage0))]
     fn visit_enter_enum(&self, n_variants: uint,
                         get_disr: extern unsafe fn(ptr: *Opaque) -> int,
                         sz: uint, align: uint)
@@ -420,7 +409,6 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
                                 disr_val: int,
                                 n_fields: uint,
                                 name: &str) -> bool {
-        self.inner.push_ptr(); // NOTE remove after next snapshot
         if ! self.inner.visit_enter_enum_variant(variant, disr_val,
                                                  n_fields, name) {
             return false;
@@ -428,15 +416,6 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    #[cfg(stage0)]
-    fn visit_enum_variant_field(&self, i: uint, inner: *TyDesc) -> bool {
-        unsafe { self.align((*inner).align); }
-        if ! self.inner.visit_enum_variant_field(i, inner) { return false; }
-        unsafe { self.bump((*inner).size); }
-        true
-    }
-
-    #[cfg(not(stage0))]
     fn visit_enum_variant_field(&self, i: uint, offset: uint, inner: *TyDesc) -> bool {
         self.inner.push_ptr();
         self.bump(offset);
@@ -453,21 +432,9 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
                                                  n_fields, name) {
             return false;
         }
-        self.inner.pop_ptr(); // NOTE remove after next snapshot
         true
     }
 
-    #[cfg(stage0)]
-    fn visit_leave_enum(&self, n_variants: uint, sz: uint, align: uint)
-                     -> bool {
-        if ! self.inner.visit_leave_enum(n_variants, sz, align) {
-            return false;
-        }
-        self.bump(sz);
-        true
-    }
-
-    #[cfg(not(stage0))]
     fn visit_leave_enum(&self, n_variants: uint,
                         get_disr: extern unsafe fn(ptr: *Opaque) -> int,
                         sz: uint, align: uint) -> bool {

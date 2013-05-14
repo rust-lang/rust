@@ -18,10 +18,9 @@ fn x_coord<'r>(p: &'r point) -> &'r int {
 }
 
 fn foo(p: @point) -> &int {
-    let xc = x_coord(p); //~ ERROR illegal borrow
+    let xc = x_coord(p); //~ ERROR cannot root
     assert!(*xc == 3);
     return xc;
 }
 
 fn main() {}
-

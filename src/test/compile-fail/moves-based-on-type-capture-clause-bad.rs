@@ -5,4 +5,3 @@ fn main() {
     }
     io::println(x); //~ ERROR use of moved value
 }
-

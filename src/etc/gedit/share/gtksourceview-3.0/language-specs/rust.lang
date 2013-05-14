@@ -123,11 +123,11 @@
 		<keyword>mode_t</keyword>
 		<keyword>ssize_t</keyword>
     </context>
-    
+
     <context id="self" style-ref="identifier">
 		<keyword>self</keyword>
     </context>
-    
+
     <context id="constants" style-ref="constant">
 		<keyword>true</keyword>
 		<keyword>false</keyword>
@@ -261,4 +261,3 @@
   </definitions>
 
 </language>
-

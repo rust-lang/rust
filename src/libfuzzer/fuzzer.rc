@@ -263,7 +263,7 @@ pub fn under(n: uint, it: &fn(uint)) {
     while i < n { it(i); i += 1u; }
 }
 
-pub fn as_str(f: @fn(+x: @io::Writer)) -> ~str {
+pub fn as_str(f: @fn(x: @io::Writer)) -> ~str {
     io::with_str_writer(f)
 }
 
@@ -316,7 +316,7 @@ pub fn check_variants_T<T:Copy>(crate: @ast::crate,
     if L < 100 {
         do under(uint::min(L, 20)) |i| {
             error!("Replacing... #%?", uint::to_str(i));
-            let fname = str::from_slice(filename.to_str());
+            let fname = str::to_owned(filename.to_str());
             do under(uint::min(L, 30)) |j| {
                 let fname = fname.to_str();
                 error!("With... %?", stringifier(things[j], intr));
@@ -693,10 +693,3 @@ pub fn main() {
 
     error!("Fuzzer done");
 }
-
-// Local Variables:
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

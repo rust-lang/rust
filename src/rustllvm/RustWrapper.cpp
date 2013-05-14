@@ -120,18 +120,18 @@ void LLVMRustInitializeTargets() {
   LLVMInitializeX86TargetMC();
   LLVMInitializeX86AsmPrinter();
   LLVMInitializeX86AsmParser();
-	
+
   LLVMInitializeARMTargetInfo();
   LLVMInitializeARMTarget();
   LLVMInitializeARMTargetMC();
   LLVMInitializeARMAsmPrinter();
-  LLVMInitializeARMAsmParser();	
+  LLVMInitializeARMAsmParser();
 
   LLVMInitializeMipsTargetInfo();
   LLVMInitializeMipsTarget();
   LLVMInitializeMipsTargetMC();
   LLVMInitializeMipsAsmPrinter();
-  LLVMInitializeMipsAsmParser();	
+  LLVMInitializeMipsAsmParser();
 }
 
 // Custom memory manager for MCJITting. It needs special features
@@ -438,7 +438,7 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
                         const char *path,
                         TargetMachine::CodeGenFileType FileType,
                         CodeGenOpt::Level OptLevel,
-			bool EnableSegmentedStacks) {
+      bool EnableSegmentedStacks) {
 
   LLVMRustInitializeTargets();
 
@@ -449,7 +449,7 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   if (!EnableARMEHABI) {
     int argc = 3;
     const char* argv[] = {"rustc", "-arm-enable-ehabi",
-			  "-arm-enable-ehabi-descriptors"};
+        "-arm-enable-ehabi-descriptors"};
     cl::ParseCommandLineOptions(argc, argv);
   }
 
@@ -467,8 +467,8 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   const Target *TheTarget = TargetRegistry::lookupTarget(Trip, Err);
   TargetMachine *Target =
     TheTarget->createTargetMachine(Trip, CPUStr, FeaturesStr,
-				   Options, Reloc::PIC_,
-				   CodeModel::Default, OptLevel);
+           Options, Reloc::PIC_,
+           CodeModel::Default, OptLevel);
   Target->addAnalysisPasses(*PM);
 
   bool NoVerify = false;
@@ -511,10 +511,10 @@ extern "C" LLVMValueRef LLVMRustConstSmallInt(LLVMTypeRef IntTy, unsigned N,
   return LLVMConstInt(IntTy, (unsigned long long)N, SignExtend);
 }
 
-extern "C" LLVMValueRef LLVMRustConstInt(LLVMTypeRef IntTy, 
-					 unsigned N_hi,
-					 unsigned N_lo,
-					 LLVMBool SignExtend) {
+extern "C" LLVMValueRef LLVMRustConstInt(LLVMTypeRef IntTy,
+           unsigned N_hi,
+           unsigned N_lo,
+           LLVMBool SignExtend) {
   unsigned long long N = N_hi;
   N <<= 32;
   N |= N_lo;
@@ -543,6 +543,28 @@ extern "C" LLVMTypeRef LLVMMetadataTypeInContext(LLVMContextRef C) {
 }
 extern "C" LLVMTypeRef LLVMMetadataType(void) {
   return LLVMMetadataTypeInContext(LLVMGetGlobalContext());
+}
+
+extern "C" LLVMValueRef LLVMBuildAtomicLoad(LLVMBuilderRef B,
+                                            LLVMValueRef source,
+                                            const char* Name,
+                                            AtomicOrdering order) {
+    LoadInst* li = new LoadInst(unwrap(source),0);
+    li->setVolatile(true);
+    li->setAtomic(order);
+    li->setAlignment(sizeof(intptr_t));
+    return wrap(unwrap(B)->Insert(li));
+}
+
+extern "C" LLVMValueRef LLVMBuildAtomicStore(LLVMBuilderRef B,
+                                            LLVMValueRef val,
+                                            LLVMValueRef target,
+                                            AtomicOrdering order) {
+    StoreInst* si = new StoreInst(unwrap(val),unwrap(target));
+    si->setVolatile(true);
+    si->setAtomic(order);
+    si->setAlignment(sizeof(intptr_t));
+    return wrap(unwrap(B)->Insert(si));
 }
 
 extern "C" LLVMValueRef LLVMBuildAtomicCmpXchg(LLVMBuilderRef B,

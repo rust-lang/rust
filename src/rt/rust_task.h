@@ -144,7 +144,7 @@
 #define RED_ZONE_SIZE RZ_LINUX_64
 #endif
 #ifdef __mips__
-#define RED_ZONE_SIZE RZ_LINUX_32
+#define RED_ZONE_SIZE RZ_MAC_32
 #endif
 #endif
 #ifdef __APPLE__
@@ -173,6 +173,10 @@
 #endif
 #ifdef __ANDROID__
 #define RED_ZONE_SIZE RZ_MAC_32
+#endif
+
+#ifndef RED_ZONE_SIZE
+# error "Red zone not defined for this platform"
 #endif
 
 struct frame_glue_fns {
@@ -240,6 +244,11 @@ rust_task : public kernel_owned<rust_task>
     // Used by rust task management routines in libcore/task.rs.
     void *task_local_data;
     void (*task_local_data_cleanup)(void *data);
+
+    // Contains a ~[BorrowRecord] pointer, or NULL.
+    //
+    // Used by borrow management code in libcore/unstable/lang.rs.
+    void *borrow_list;
 
 private:
 

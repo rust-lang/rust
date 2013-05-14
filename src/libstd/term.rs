@@ -13,7 +13,6 @@
 use core::io;
 use core::option;
 use core::os;
-use core::vec;
 
 // FIXME (#2807): Windows support.
 
@@ -50,7 +49,7 @@ pub fn color_supported() -> bool {
                            ~"screen-bce", ~"xterm-256color"];
     return match os::getenv(~"TERM") {
           option::Some(ref env) => {
-            for vec::each(supported_terms) |term| {
+            for supported_terms.each |term| {
                 if *term == *env { return true; }
             }
             false
@@ -76,10 +75,3 @@ pub fn fg(writer: @io::Writer, color: u8) {
 pub fn bg(writer: @io::Writer, color: u8) {
     return set_color(writer, '4' as u8, color);
 }
-
-// Local Variables:
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

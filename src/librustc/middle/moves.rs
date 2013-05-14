@@ -246,10 +246,19 @@ pub type MovesMap = @mut HashSet<node_id>;
  * expression */
 pub type VariableMovesMap = @mut HashMap<node_id, @expr>;
 
+/**
+ * Set of variable node-ids that are moved.
+ *
+ * Note: The `VariableMovesMap` stores expression ids that
+ * are moves, whereas this set stores the ids of the variables
+ * that are moved at some point */
+pub type MovedVariablesSet = @mut HashSet<node_id>;
+
 /** See the section Output on the module comment for explanation. */
 pub struct MoveMaps {
     moves_map: MovesMap,
     variable_moves_map: VariableMovesMap,
+    moved_variables_set: MovedVariablesSet,
     capture_map: CaptureMap
 }
 
@@ -279,11 +288,23 @@ pub fn compute_moves(tcx: ty::ctxt,
         move_maps: MoveMaps {
             moves_map: @mut HashSet::new(),
             variable_moves_map: @mut HashMap::new(),
-            capture_map: @mut HashMap::new()
+            capture_map: @mut HashMap::new(),
+            moved_variables_set: @mut HashSet::new()
         }
     };
     visit::visit_crate(crate, visit_cx, visitor);
     return visit_cx.move_maps;
+}
+
+pub fn moved_variable_node_id_from_def(def: def) -> Option<node_id> {
+    match def {
+      def_binding(nid, _) |
+      def_arg(nid, _) |
+      def_local(nid, _) |
+      def_self(nid, _) => Some(nid),
+
+      _ => None
+    }
 }
 
 // ______________________________________________________________________
@@ -414,17 +435,22 @@ pub impl VisitContext {
         debug!("comp_mode = %?", comp_mode);
 
         match expr.node {
-            expr_path(*) => {
+            expr_path(*) | expr_self => {
                 match comp_mode {
                     MoveInPart(entire_expr) => {
                         self.move_maps.variable_moves_map.insert(
                             expr.id, entire_expr);
+
+                        let def = self.tcx.def_map.get_copy(&expr.id);
+                        for moved_variable_node_id_from_def(def).each |&id| {
+                            self.move_maps.moved_variables_set.insert(id);
+                        }
                     }
                     Read => {}
                     MoveInWhole => {
                         self.tcx.sess.span_bug(
                             expr.span,
-                            fmt!("Component mode can never be MoveInWhole"));
+                            "Component mode can never be MoveInWhole");
                     }
                 }
             }
@@ -624,11 +650,6 @@ pub impl VisitContext {
                 self.consume_expr(count, visitor);
             }
 
-            expr_swap(lhs, rhs) => {
-                self.use_expr(lhs, Read, visitor);
-                self.use_expr(rhs, Read, visitor);
-            }
-
             expr_loop_body(base) |
             expr_do_body(base) => {
                 self.use_expr(base, comp_mode, visitor);
@@ -647,7 +668,7 @@ pub impl VisitContext {
             expr_mac(*) => {
                 self.tcx.sess.span_bug(
                     expr.span,
-                    ~"macro expression remains after expansion");
+                    "macro expression remains after expansion");
             }
         }
     }

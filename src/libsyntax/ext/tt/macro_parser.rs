@@ -247,8 +247,8 @@ pub fn parse(
         let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
 
         /* we append new items to this while we go */
-        while cur_eis.len() > 0u { /* for each Earley Item */
-            let mut ei = cur_eis.pop();
+        while !cur_eis.is_empty() { /* for each Earley Item */
+            let ei = cur_eis.pop();
 
             let idx = ei.idx;
             let len = ei.elts.len();
@@ -438,11 +438,3 @@ pub fn parse_nt(p: &Parser, name: ~str) -> nonterminal {
       _ => p.fatal(~"Unsupported builtin nonterminal parser: " + name)
     }
 }
-
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

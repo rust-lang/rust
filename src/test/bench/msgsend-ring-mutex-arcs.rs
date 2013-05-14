@@ -45,10 +45,7 @@ fn init() -> (pipe,pipe) {
 }
 
 
-fn thread_ring(i: uint,
-               count: uint,
-               +num_chan: pipe,
-               +num_port: pipe) {
+fn thread_ring(i: uint, count: uint, num_chan: pipe, num_port: pipe) {
     let mut num_chan = Some(num_chan);
     let mut num_port = Some(num_port);
     // Send/Receive lots of messages.
@@ -72,7 +69,7 @@ fn main() {
         ~[~"", ~"10", ~"100"]
     } else {
         copy args
-    }; 
+    };
 
     let num_tasks = uint::from_str(args[1]).get();
     let msg_per_task = uint::from_str(args[2]).get();
@@ -103,7 +100,9 @@ fn main() {
     thread_ring(0, msg_per_task, num_chan.take(), num_port);
 
     // synchronize
-    for futures.each |f| { f.get() };
+    for futures.each_mut |f| {
+        f.get()
+    }
 
     let stop = time::precise_time_s();
 

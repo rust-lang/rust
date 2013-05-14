@@ -217,7 +217,7 @@ fn mk_struct(cx: @CrateContext, tys: &[ty::t], packed: bool) -> Struct {
         size: machine::llsize_of_alloc(cx, llty_rec) /*bad*/as u64,
         align: machine::llalign_of_min(cx, llty_rec) /*bad*/as u64,
         packed: packed,
-        fields: vec::from_slice(tys)
+        fields: vec::to_owned(tys)
     }
 }
 
@@ -409,8 +409,8 @@ pub fn num_args(r: &Repr, discr: int) -> uint {
             st.fields.len() - (if dtor { 1 } else { 0 })
         }
         General(ref cases) => cases[discr as uint].fields.len() - 1,
-        NullablePointer{ nonnull: ref nonnull, nndiscr, _ } => {
-            if discr == nndiscr { nonnull.fields.len() } else { 0 }
+        NullablePointer{ nonnull: ref nonnull, nndiscr, nullfields: ref nullfields, _ } => {
+            if discr == nndiscr { nonnull.fields.len() } else { nullfields.len() }
         }
     }
 }
@@ -574,7 +574,7 @@ fn padding(size: u64) -> ValueRef {
 }
 
 // XXX this utility routine should be somewhere more general
-#[always_inline]
+#[inline(always)]
 fn roundup(x: u64, a: u64) -> u64 { ((x + (a - 1)) / a) * a }
 
 /// Get the discriminant of a constant value.  (Not currently used.)

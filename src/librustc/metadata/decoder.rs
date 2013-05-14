@@ -196,6 +196,7 @@ fn item_def_id(d: ebml::Doc, cdata: cmd) -> ast::def_id {
                                                     |d| parse_def_id(d)));
 }
 
+#[cfg(stage0)]
 fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) {
     for reader::tagged_docs(d, tag_items_data_item_reexport) |reexport_doc| {
         if !f(reexport_doc) {
@@ -203,17 +204,14 @@ fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) {
         }
     }
 }
-
-fn field_mutability(d: ebml::Doc) -> ast::struct_mutability {
-    // Use maybe_get_doc in case it's a method
-    reader::maybe_get_doc(d, tag_struct_mut).map_default(
-        ast::struct_immutable,
-        |d| {
-            match reader::doc_as_u8(*d) as char {
-              'm' => ast::struct_mutable,
-              _   => ast::struct_immutable
-            }
-        })
+#[cfg(not(stage0))]
+fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) -> bool {
+    for reader::tagged_docs(d, tag_items_data_item_reexport) |reexport_doc| {
+        if !f(reexport_doc) {
+            return false;
+        }
+    }
+    return true;
 }
 
 fn variant_disr_val(d: ebml::Doc) -> Option<int> {
@@ -244,8 +242,8 @@ fn doc_transformed_self_ty(doc: ebml::Doc,
     }
 }
 
-pub fn item_type(_: ast::def_id, item: ebml::Doc, tcx: ty::ctxt, cdata: cmd)
-                 -> ty::t {
+pub fn item_type(_item_id: ast::def_id, item: ebml::Doc,
+                 tcx: ty::ctxt, cdata: cmd) -> ty::t {
     doc_type(item, tcx, cdata)
 }
 
@@ -274,7 +272,8 @@ fn item_ty_param_defs(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd,
 
 fn item_ty_region_param(item: ebml::Doc) -> Option<ty::region_variance> {
     reader::maybe_get_doc(item, tag_region_param).map(|doc| {
-        Decodable::decode(&reader::Decoder(*doc))
+        let mut decoder = reader::Decoder(*doc);
+        Decodable::decode(&mut decoder)
     })
 }
 
@@ -305,10 +304,10 @@ fn item_path(intr: @ident_interner, item_doc: ebml::Doc) -> ast_map::path {
     for reader::docs(path_doc) |tag, elt_doc| {
         if tag == tag_path_elt_mod {
             let str = reader::doc_as_str(elt_doc);
-            result.push(ast_map::path_mod(intr.intern(@str)));
+            result.push(ast_map::path_mod(intr.intern(str)));
         } else if tag == tag_path_elt_name {
             let str = reader::doc_as_str(elt_doc);
-            result.push(ast_map::path_name(intr.intern(@str)));
+            result.push(ast_map::path_name(intr.intern(str)));
         } else {
             // ignore tag_path_len element
         }
@@ -322,7 +321,7 @@ fn item_name(intr: @ident_interner, item: ebml::Doc) -> ast::ident {
     do reader::with_doc_data(name) |data| {
         let string = str::from_bytes_slice(data);
         match intr.find_equiv(&StringRef(string)) {
-            None => intr.intern(@(string.to_owned())),
+            None => intr.intern(string),
             Some(val) => val,
         }
     }
@@ -445,22 +444,6 @@ pub fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     found.get()
 }
 
-pub fn struct_dtor(cdata: cmd, id: ast::node_id) -> Option<ast::def_id> {
-    let items = reader::get_doc(reader::Doc(cdata.data), tag_items);
-    let mut found = None;
-    let cls_items = match maybe_find_item(id, items) {
-            Some(it) => it,
-            None     => fail!(fmt!("struct_dtor: class id not found \
-              when looking up dtor for %d", id))
-    };
-    for reader::tagged_docs(cls_items, tag_item_dtor) |doc| {
-         let doc1 = reader::get_doc(doc, tag_def_id);
-         let did = reader::with_doc_data(doc1, |d| parse_def_id(d));
-         found = Some(translate_def_id(cdata, did));
-    };
-    found
-}
-
 pub fn get_symbol(data: @~[u8], id: ast::node_id) -> ~str {
     return item_symbol(lookup_item(id, data));
 }
@@ -481,6 +464,7 @@ fn def_like_to_def(def_like: def_like) -> ast::def {
 }
 
 /// Iterates over the language items in the given crate.
+#[cfg(stage0)]
 pub fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) {
     let root = reader::Doc(cdata.data);
     let lang_items = reader::get_doc(root, tag_lang_items);
@@ -496,11 +480,29 @@ pub fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) {
         }
     }
 }
+/// Iterates over the language items in the given crate.
+#[cfg(not(stage0))]
+pub fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) -> bool {
+    let root = reader::Doc(cdata.data);
+    let lang_items = reader::get_doc(root, tag_lang_items);
+    for reader::tagged_docs(lang_items, tag_lang_items_item) |item_doc| {
+        let id_doc = reader::get_doc(item_doc, tag_lang_items_item_id);
+        let id = reader::doc_as_u32(id_doc) as uint;
+        let node_id_doc = reader::get_doc(item_doc,
+                                          tag_lang_items_item_node_id);
+        let node_id = reader::doc_as_u32(node_id_doc) as ast::node_id;
+
+        if !f(node_id, id) {
+            return false;
+        }
+    }
+    return true;
+}
 
 /// Iterates over all the paths in the given crate.
-pub fn each_path(intr: @ident_interner, cdata: cmd,
-                 get_crate_data: GetCrateDataCb,
-                 f: &fn(&str, def_like) -> bool) {
+pub fn _each_path(intr: @ident_interner, cdata: cmd,
+                  get_crate_data: GetCrateDataCb,
+                  f: &fn(&str, def_like) -> bool) -> bool {
     let root = reader::Doc(cdata.data);
     let items = reader::get_doc(root, tag_items);
     let items_data = reader::get_doc(items, tag_items_data);
@@ -582,10 +584,20 @@ pub fn each_path(intr: @ident_interner, cdata: cmd,
         }
     }
 
-    // If broken, stop here.
-    if broken {
-        return;
-    }
+    return broken;
+}
+
+#[cfg(stage0)]
+pub fn each_path(intr: @ident_interner, cdata: cmd,
+                 get_crate_data: GetCrateDataCb,
+                 f: &fn(&str, def_like) -> bool) {
+    _each_path(intr, cdata, get_crate_data, f);
+}
+#[cfg(not(stage0))]
+pub fn each_path(intr: @ident_interner, cdata: cmd,
+                 get_crate_data: GetCrateDataCb,
+                 f: &fn(&str, def_like) -> bool) -> bool {
+    _each_path(intr, cdata, get_crate_data, f)
 }
 
 pub fn get_item_path(intr: @ident_interner, cdata: cmd, id: ast::node_id)
@@ -607,7 +619,7 @@ pub fn maybe_get_item_ast(intr: @ident_interner, cdata: cmd, tcx: ty::ctxt,
     let item_doc = lookup_item(id, cdata.data);
     let path = {
         let item_path = item_path(intr, item_doc);
-        vec::from_slice(item_path.init())
+        vec::to_owned(item_path.init())
     };
     match decode_inlined_item(cdata, tcx, copy path, item_doc) {
       Some(ref ii) => csearch::found((/*bad*/copy *ii)),
@@ -855,7 +867,7 @@ pub fn get_type_name_if_impl(intr: @ident_interner,
     }
 
     for reader::tagged_docs(item, tag_item_impl_type_basename) |doc| {
-        return Some(intr.intern(@str::from_bytes(reader::doc_data(doc))));
+        return Some(intr.intern(str::from_bytes(reader::doc_data(doc))));
     }
 
     return None;
@@ -938,12 +950,10 @@ pub fn get_struct_fields(intr: @ident_interner, cdata: cmd, id: ast::node_id)
         if f == PublicField || f == PrivateField || f == InheritedField {
             let name = item_name(intr, an_item);
             let did = item_def_id(an_item, cdata);
-            let mt = field_mutability(an_item);
             result.push(ty::field_ty {
                 ident: name,
                 id: did, vis:
                 struct_field_family_to_visibility(f),
-                mutability: mt,
             });
         }
     }
@@ -953,7 +963,6 @@ pub fn get_struct_fields(intr: @ident_interner, cdata: cmd, id: ast::node_id)
             ident: special_idents::unnamed_field,
             id: did,
             vis: ast::inherited,
-            mutability: ast::struct_immutable,
         });
     }
     result
@@ -1110,7 +1119,7 @@ pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
     }
     for reader::tagged_docs(depsdoc, tag_crate_dep) |depdoc| {
         deps.push(crate_dep {cnum: crate_num,
-                  name: intr.intern(@docstr(depdoc, tag_crate_dep_name)),
+                  name: intr.intern(docstr(depdoc, tag_crate_dep_name)),
                   vers: @docstr(depdoc, tag_crate_dep_vers),
                   hash: @docstr(depdoc, tag_crate_dep_hash)});
         crate_num += 1;
@@ -1192,11 +1201,3 @@ pub fn get_link_args_for_crate(cdata: cmd) -> ~[~str] {
     }
     result
 }
-
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:

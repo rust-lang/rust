@@ -41,7 +41,7 @@ pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
                -> base::MacResult {
     let p = parse::new_parser_from_tts(cx.parse_sess(),
                                        cx.cfg(),
-                                       vec::from_slice(tts));
+                                       vec::to_owned(tts));
 
     let mut asm = ~"";
     let mut outputs = ~[];
@@ -187,15 +187,3 @@ pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
         span: sp
     })
 }
-
-
-
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//

@@ -332,13 +332,7 @@ fn fold_struct(
 /// what I actually want
 fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
     let node = match copy item.node {
-        ast::item_struct(def, tys) => {
-            let def = @ast::struct_def {
-                dtor: None, // Remove the drop { } block
-                .. copy *def
-            };
-            ast::item_struct(def, tys)
-        }
+        ast::item_struct(def, tys) => ast::item_struct(def, tys),
         _ => fail!(~"not a struct")
     };
 
@@ -371,7 +365,7 @@ mod test {
 
     #[test]
     fn should_add_foreign_fn_sig() {
-        let doc = mk_doc(~"extern mod a { fn a<T>() -> int; }");
+        let doc = mk_doc(~"extern { fn a<T>() -> int; }");
         assert!(doc.cratemod().nmods()[0].fns[0].sig ==
                 Some(~"fn a<T>() -> int"));
     }
@@ -438,13 +432,6 @@ mod test {
         let doc = mk_doc(~"struct S { field: () }");
         assert!((&doc.cratemod().structs()[0].sig).get().contains(
             "struct S {"));
-    }
-
-    #[test]
-    fn should_not_serialize_struct_drop_blocks() {
-        // All we care about are the fields
-        let doc = mk_doc(~"struct S { field: (), drop { } }");
-        assert!(!(&doc.cratemod().structs()[0].sig).get().contains("drop"));
     }
 
     #[test]

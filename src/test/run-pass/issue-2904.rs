@@ -37,7 +37,7 @@ impl to_str::ToStr for square {
           closed_lift => { ~"L" }
           open_lift => { ~"O" }
           earth => { ~"." }
-          empty => { ~" " } 
+          empty => { ~" " }
         }
     }
 }
@@ -59,7 +59,7 @@ fn square_from_char(c: char) -> square {
     }
 }
 
-fn read_board_grid<rdr:'static + io::Reader>(+in: rdr) -> ~[~[square]] {
+fn read_board_grid<rdr:'static + io::Reader>(in: rdr) -> ~[~[square]] {
     let in = @in as @io::Reader;
     let mut grid = ~[];
     for in.each_line |line| {
@@ -78,12 +78,6 @@ mod test {
     #[test]
     pub fn trivial_to_str() {
         assert!(lambda.to_str() == "\\")
-    }
-
-    #[test]
-    pub fn read_simple_board() {
-        let s = include_str!("./maps/contest1.map");
-        io::with_str_reader(s, read_board_grid)
     }
 }
 

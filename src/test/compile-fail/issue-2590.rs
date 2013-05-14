@@ -18,7 +18,7 @@ trait parse {
 
 impl parse for parser {
     fn parse(&self) -> ~[int] {
-        self.tokens //~ ERROR moving out of immutable field
+        self.tokens //~ ERROR cannot move out of field
     }
 }
 

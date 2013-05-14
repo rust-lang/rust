@@ -10,6 +10,8 @@
 
 //! A double-ended queue implemented as a circular buffer
 
+use core::util::replace;
+
 static initial_capacity: uint = 32u; // 2^5
 
 pub struct Deque<T> {
@@ -37,128 +39,6 @@ impl<T> Mutable for Deque<T> {
     }
 }
 
-#[cfg(stage0)]
-pub impl<T> Deque<T> {
-    /// Create an empty Deque
-    fn new() -> Deque<T> {
-        Deque{nelts: 0, lo: 0, hi: 0,
-              elts: vec::from_fn(initial_capacity, |_| None)}
-    }
-
-    /// Return a reference to the first element in the deque
-    ///
-    /// Fails if the deque is empty
-    #[cfg(stage0)]
-    fn peek_front(&self) -> &'self T { get(self.elts, self.lo) }
-
-    /// Return a reference to the first element in the deque
-    ///
-    /// Fails if the deque is empty
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
-    fn peek_front<'a>(&'a self) -> &'a T { get(self.elts, self.lo) }
-
-    /// Return a reference to the last element in the deque
-    ///
-    /// Fails if the deque is empty
-    #[cfg(stage0)]
-    fn peek_back(&self) -> &'self T { get(self.elts, self.hi - 1u) }
-
-    /// Return a reference to the last element in the deque
-    ///
-    /// Fails if the deque is empty
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
-    fn peek_back<'a>(&'a self) -> &'a T { get(self.elts, self.hi - 1u) }
-
-    /// Retrieve an element in the deque by index
-    ///
-    /// Fails if there is no element with the given index
-    #[cfg(stage0)]
-    fn get(&self, i: int) -> &'self T {
-        let idx = (self.lo + (i as uint)) % self.elts.len();
-        get(self.elts, idx)
-    }
-
-    /// Retrieve an element in the deque by index
-    ///
-    /// Fails if there is no element with the given index
-    #[cfg(stage1)]
-    #[cfg(stage2)]
-    #[cfg(stage3)]
-    fn get<'a>(&'a self, i: int) -> &'a T {
-        let idx = (self.lo + (i as uint)) % self.elts.len();
-        get(self.elts, idx)
-    }
-
-    /// Iterate over the elements in the deque
-    fn each(&self, f: &fn(&T) -> bool) {
-        self.eachi(|_i, e| f(e))
-    }
-
-    /// Iterate over the elements in the deque by index
-    fn eachi(&self, f: &fn(uint, &T) -> bool) {
-        for uint::range(0, self.nelts) |i| {
-            if !f(i, self.get(i as int)) { return; }
-        }
-    }
-
-    /// Remove and return the first element in the deque
-    ///
-    /// Fails if the deque is empty
-    fn pop_front(&mut self) -> T {
-        let result = self.elts[self.lo].swap_unwrap();
-        self.lo = (self.lo + 1u) % self.elts.len();
-        self.nelts -= 1u;
-        result
-    }
-
-    /// Remove and return the last element in the deque
-    ///
-    /// Fails if the deque is empty
-    fn pop_back(&mut self) -> T {
-        if self.hi == 0u {
-            self.hi = self.elts.len() - 1u;
-        } else { self.hi -= 1u; }
-        let result = self.elts[self.hi].swap_unwrap();
-        self.elts[self.hi] = None;
-        self.nelts -= 1u;
-        result
-    }
-
-    /// Prepend an element to the deque
-    fn add_front(&mut self, t: T) {
-        let oldlo = self.lo;
-        if self.lo == 0u {
-            self.lo = self.elts.len() - 1u;
-        } else { self.lo -= 1u; }
-        if self.lo == self.hi {
-            self.elts = grow(self.nelts, oldlo, self.elts);
-            self.lo = self.elts.len() - 1u;
-            self.hi = self.nelts;
-        }
-        self.elts[self.lo] = Some(t);
-        self.nelts += 1u;
-    }
-
-    /// Append an element to the deque
-    fn add_back(&mut self, t: T) {
-        if self.lo == self.hi && self.nelts != 0u {
-            self.elts = grow(self.nelts, self.lo, self.elts);
-            self.lo = 0u;
-            self.hi = self.nelts;
-        }
-        self.elts[self.hi] = Some(t);
-        self.hi = (self.hi + 1u) % self.elts.len();
-        self.nelts += 1u;
-    }
-}
-
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
 pub impl<T> Deque<T> {
     /// Create an empty Deque
     fn new() -> Deque<T> {
@@ -185,15 +65,25 @@ pub impl<T> Deque<T> {
     }
 
     /// Iterate over the elements in the deque
+    #[cfg(stage0)]
     fn each(&self, f: &fn(&T) -> bool) {
+        self.eachi(|_i, e| f(e))
+    }
+    /// Iterate over the elements in the deque
+    #[cfg(not(stage0))]
+    fn each(&self, f: &fn(&T) -> bool) -> bool {
         self.eachi(|_i, e| f(e))
     }
 
     /// Iterate over the elements in the deque by index
+    #[cfg(stage0)]
     fn eachi(&self, f: &fn(uint, &T) -> bool) {
-        for uint::range(0, self.nelts) |i| {
-            if !f(i, self.get(i as int)) { return; }
-        }
+        uint::range(0, self.nelts, |i| f(i, self.get(i as int)))
+    }
+    /// Iterate over the elements in the deque by index
+    #[cfg(not(stage0))]
+    fn eachi(&self, f: &fn(uint, &T) -> bool) -> bool {
+        uint::range(0, self.nelts, |i| f(i, self.get(i as int)))
     }
 
     /// Remove and return the first element in the deque
@@ -254,9 +144,7 @@ fn grow<T>(nelts: uint, lo: uint, elts: &mut [Option<T>]) -> ~[Option<T>] {
     let mut rv = ~[];
 
     do rv.grow_fn(nelts + 1) |i| {
-        let mut element = None;
-        element <-> elts[(lo + i) % nelts];
-        element
+        replace(&mut elts[(lo + i) % nelts], None)
     }
 
     rv
@@ -270,7 +158,7 @@ fn get<'r, T>(elts: &'r [Option<T>], i: uint) -> &'r T {
 mod tests {
     use super::*;
     use core::cmp::Eq;
-    use core::kinds::{Durable, Copy};
+    use core::kinds::Copy;
 
     #[test]
     fn test_simple() {
@@ -353,8 +241,8 @@ mod tests {
         assert!(*deq.get(3) == d);
     }
 
-    #[test]
-    fn test_parameterized<T:Copy + Eq + Durable>(a: T, b: T, c: T, d: T) {
+    #[cfg(test)]
+    fn test_parameterized<T:Copy + Eq>(a: T, b: T, c: T, d: T) {
         let mut deq = Deque::new();
         assert!(deq.len() == 0);
         deq.add_front(a);
