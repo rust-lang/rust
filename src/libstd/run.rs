@@ -45,10 +45,10 @@ pub struct Process {
     /// Some(fd), or None when stdin is being redirected from a fd not created by Process::new.
     priv input: Option<c_int>,
 
-    /// Some(fd), or None when stdout is being redirected to a fd not created by Process::new.
+    /// Some(file), or None when stdout is being redirected to a fd not created by Process::new.
     priv output: Option<*libc::FILE>,
 
-    /// Some(fd), or None when stderr is being redirected to a fd not created by Process::new.
+    /// Some(file), or None when stderr is being redirected to a fd not created by Process::new.
     priv error: Option<*libc::FILE>,
 
     /// None until finish() is called.
@@ -191,7 +191,7 @@ pub impl Process {
     /// Returns the unique id of the process
     fn get_id(&self) -> pid_t { self.pid }
 
-    priv fn unwrap_input(&mut self) -> c_int {
+    priv fn input_fd(&mut self) -> c_int {
         match self.input {
             Some(fd) => fd,
             None => fail!("This Process's stdin was redirected to an \
@@ -199,7 +199,7 @@ pub impl Process {
         }
     }
 
-    priv fn unwrap_output(&mut self) -> *libc::FILE {
+    priv fn output_file(&mut self) -> *libc::FILE {
         match self.output {
             Some(file) => file,
             None => fail!("This Process's stdout was redirected to an \
@@ -207,7 +207,7 @@ pub impl Process {
         }
     }
 
-    priv fn unwrap_error(&mut self) -> *libc::FILE {
+    priv fn error_file(&mut self) -> *libc::FILE {
         match self.error {
             Some(file) => file,
             None => fail!("This Process's stderr was redirected to an \
@@ -255,7 +255,7 @@ pub impl Process {
      */
     fn input(&mut self) -> @io::Writer {
         // FIXME: the Writer can still be used after self is destroyed: #2625
-       io::fd_writer(self.unwrap_input(), false)
+       io::fd_writer(self.input_fd(), false)
     }
 
     /**
@@ -265,7 +265,7 @@ pub impl Process {
      */
     fn output(&mut self) -> @io::Reader {
         // FIXME: the Reader can still be used after self is destroyed: #2625
-        io::FILE_reader(self.unwrap_output(), false)
+        io::FILE_reader(self.output_file(), false)
     }
 
     /**
@@ -275,7 +275,7 @@ pub impl Process {
      */
     fn error(&mut self) -> @io::Reader {
         // FIXME: the Reader can still be used after self is destroyed: #2625
-        io::FILE_reader(self.unwrap_error(), false)
+        io::FILE_reader(self.error_file(), false)
     }
 
     /**
@@ -341,8 +341,8 @@ pub impl Process {
      */
     fn finish_with_output(&mut self) -> ProcessOutput {
 
-        let output_file = self.unwrap_output();
-        let error_file = self.unwrap_error();
+        let output_file = self.output_file();
+        let error_file = self.error_file();
 
         // Spawn two entire schedulers to read both stdout and sterr
         // in parallel so we don't deadlock while blocking on one
@@ -814,7 +814,7 @@ pub fn process_output(prog: &str, args: &[~str]) -> ProcessOutput {
  *
  * Note that this is private to avoid race conditions on unix where if
  * a user calls waitpid(some_process.get_id()) then some_process.finish()
- * and some_process.destroy() and some_process.drop() will then either
+ * and some_process.destroy() and some_process.finalize() will then either
  * operate on a none-existant process or, even worse, on a newer process
  * with the same id.
  */
