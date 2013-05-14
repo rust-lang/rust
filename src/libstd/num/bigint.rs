@@ -144,6 +144,8 @@ impl FromStr for BigUint {
     }
 }
 
+impl Num for BigUint {}
+
 impl Shl<uint, BigUint> for BigUint {
     #[inline(always)]
     fn shl(&self, rhs: &uint) -> BigUint {
@@ -787,6 +789,8 @@ impl FromStr for BigInt {
         FromStrRadix::from_str_radix(s, 10)
     }
 }
+
+impl Num for BigInt {}
 
 impl Shl<uint, BigInt> for BigInt {
     #[inline(always)]
