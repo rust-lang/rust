@@ -79,10 +79,10 @@ fn is_rwx(p: &Path) -> bool {
 
 fn test_sysroot() -> Path {
     // Totally gross hack but it's just for test cases.
-    // Infer the sysroot from the exe name and tack "stage2"
-    // onto it. (Did I mention it was a gross hack?)
+    // Infer the sysroot from the exe name and pray that it's right.
+    // (Did I mention it was a gross hack?)
     let self_path = os::self_exe_path().expect("Couldn't get self_exe path");
-    self_path.pop().push("stage2")
+    self_path.pop()
 }
 
 #[test]

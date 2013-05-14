@@ -35,7 +35,7 @@ use std::rl;
  * A structure shared across REPL instances for storing history
  * such as statements and view items. I wish the AST was sendable.
  */
-struct Repl {
+pub struct Repl {
     prompt: ~str,
     binary: ~str,
     running: bool,
@@ -122,7 +122,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
 
     debug!("building driver input");
     let head = include_str!("wrapper.rs").to_owned();
-    let foot = fmt!("%s\nfn main() {\n%s\n\nprint({\n%s\n})\n}",
+    let foot = fmt!("fn main() {\n%s\n%s\n\nprint({\n%s\n})\n}",
                     repl.view_items, repl.stmts, input);
     let wrapped = driver::str_input(head + foot);
 
@@ -328,8 +328,8 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
 
 /// Executes a line of input, which may either be rust code or a
 /// :command. Returns a new Repl if it has changed.
-fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
-            use_rl: bool)
+pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
+                use_rl: bool)
     -> Option<Repl> {
     if line.starts_with(":") {
         let full = line.substr(1, line.len() - 1);
@@ -419,5 +419,54 @@ pub fn main() {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn repl() -> Repl {
+        Repl {
+            prompt: ~"rusti> ",
+            binary: ~"rusti",
+            running: true,
+            view_items: ~"",
+            lib_search_paths: ~[],
+            stmts: ~""
+        }
+    }
+
+    fn run_cmds(cmds: &[&str]) {
+        let mut r = repl();
+        for cmds.each |&cmd| {
+            let result = run_line(&mut r, io::stdin(), io::stdout(),
+                                  cmd.to_owned(), false);
+            r = result.expect(fmt!("the command '%s' failed", cmd));
+        }
+    }
+
+    #[test]
+    fn run_all() {
+        // By default, unit tests are run in parallel. Rusti, on the other hand,
+        // does not enjoy doing this. I suspect that it is because the LLVM
+        // bindings are not thread-safe (when running parallel tests, some tests
+        // were triggering assertions in LLVM (or segfaults). Hence, this
+        // function exists to run everything serially (sadface).
+        //
+        // To get some interesting output, run with RUST_LOG=rusti::tests
+
+        debug!("hopefully this runs");
+        run_cmds([""]);
+
+        debug!("regression test for #5937");
+        run_cmds(["use core;", ""]);
+
+        debug!("regression test for #5784");
+        run_cmds(["let a = 1;"]);
+
+        debug!("regression test for #5803");
+        run_cmds(["spawn( || println(\"Please don't segfault\") );",
+                  "do spawn { println(\"Please?\"); }"]);
     }
 }
