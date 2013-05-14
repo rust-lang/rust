@@ -10,9 +10,7 @@
 
 #[crate_type = "bin"];
 
-#[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];
-#[allow(deprecated_pattern)];
 
 extern mod std(vers = "0.7-pre");
 
@@ -43,8 +41,8 @@ pub mod errors;
 pub fn main() {
     let args = os::args();
     let config = parse_config(args);
-    log_config(config);
-    run_tests(config);
+    log_config(&config);
+    run_tests(&config);
 }
 
 pub fn parse_config(args: ~[~str]) -> config {
@@ -89,22 +87,23 @@ pub fn parse_config(args: ~[~str]) -> config {
         run_ignored: getopts::opt_present(matches, ~"ignored"),
         filter:
              if vec::len(matches.free) > 0u {
-                 option::Some(matches.free[0])
+                 option::Some(copy matches.free[0])
              } else { option::None },
         logfile: getopts::opt_maybe_str(matches, ~"logfile").map(|s| Path(*s)),
         runtool: getopts::opt_maybe_str(matches, ~"runtool"),
         rustcflags: getopts::opt_maybe_str(matches, ~"rustcflags"),
         jit: getopts::opt_present(matches, ~"jit"),
         newrt: getopts::opt_present(matches, ~"newrt"),
-        target: opt_str(getopts::opt_maybe_str(matches, ~"target")),
-        adb_path: opt_str(getopts::opt_maybe_str(matches, ~"adb-path")),
-        adb_test_dir: opt_str(getopts::opt_maybe_str(matches, ~"adb-test-dir")),
+        target: opt_str2(getopts::opt_maybe_str(matches, ~"target")).to_str(),
+        adb_path: opt_str2(getopts::opt_maybe_str(matches, ~"adb-path")).to_str(),
+        adb_test_dir:
+            opt_str2(getopts::opt_maybe_str(matches, ~"adb-test-dir")).to_str(),
         adb_device_status:
-            if (opt_str(getopts::opt_maybe_str(matches, ~"target")) ==
+            if (opt_str2(getopts::opt_maybe_str(matches, ~"target")) ==
                 ~"arm-linux-androideabi") {
-                if (opt_str(getopts::opt_maybe_str(matches, ~"adb-test-dir")) !=
+                if (opt_str2(getopts::opt_maybe_str(matches, ~"adb-test-dir")) !=
                     ~"(none)" &&
-                    opt_str(getopts::opt_maybe_str(matches, ~"adb-test-dir")) !=
+                    opt_str2(getopts::opt_maybe_str(matches, ~"adb-test-dir")) !=
                     ~"") { true }
                 else { false }
             } else { false },
@@ -112,7 +111,7 @@ pub fn parse_config(args: ~[~str]) -> config {
     }
 }
 
-pub fn log_config(config: config) {
+pub fn log_config(config: &config) {
     let c = config;
     logv(c, fmt!("configuration:"));
     logv(c, fmt!("compile_lib_path: %s", config.compile_lib_path));
@@ -123,9 +122,9 @@ pub fn log_config(config: config) {
     logv(c, fmt!("stage_id: %s", config.stage_id));
     logv(c, fmt!("mode: %s", mode_str(config.mode)));
     logv(c, fmt!("run_ignored: %b", config.run_ignored));
-    logv(c, fmt!("filter: %s", opt_str(config.filter)));
-    logv(c, fmt!("runtool: %s", opt_str(config.runtool)));
-    logv(c, fmt!("rustcflags: %s", opt_str(config.rustcflags)));
+    logv(c, fmt!("filter: %s", opt_str(&config.filter)));
+    logv(c, fmt!("runtool: %s", opt_str(&config.runtool)));
+    logv(c, fmt!("rustcflags: %s", opt_str(&config.rustcflags)));
     logv(c, fmt!("jit: %b", config.jit));
     logv(c, fmt!("newrt: %b", config.newrt));
     logv(c, fmt!("target: %s", config.target));
@@ -136,8 +135,18 @@ pub fn log_config(config: config) {
     logv(c, fmt!("\n"));
 }
 
-pub fn opt_str(maybestr: Option<~str>) -> ~str {
-    match maybestr { option::Some(s) => s, option::None => ~"(none)" }
+pub fn opt_str<'a>(maybestr: &'a Option<~str>) -> &'a str {
+    match *maybestr {
+        option::None => "(none)",
+        option::Some(ref s) => {
+            let s: &'a str = *s;
+            s
+        }
+    }
+}
+
+pub fn opt_str2(maybestr: Option<~str>) -> ~str {
+    match maybestr { None => ~"(none)", Some(s) => { s } }
 }
 
 pub fn str_opt(maybestr: ~str) -> Option<~str> {
@@ -165,16 +174,16 @@ pub fn mode_str(mode: mode) -> ~str {
     }
 }
 
-pub fn run_tests(config: config) {
+pub fn run_tests(config: &config) {
     let opts = test_opts(config);
     let tests = make_tests(config);
     let res = test::run_tests_console(&opts, tests);
     if !res { fail!("Some tests failed"); }
 }
 
-pub fn test_opts(config: config) -> test::TestOpts {
+pub fn test_opts(config: &config) -> test::TestOpts {
     test::TestOpts {
-        filter: config.filter,
+        filter: copy config.filter,
         run_ignored: config.run_ignored,
         logfile: copy config.logfile,
         run_tests: true,
@@ -184,7 +193,7 @@ pub fn test_opts(config: config) -> test::TestOpts {
     }
 }
 
-pub fn make_tests(config: config) -> ~[test::TestDescAndFn] {
+pub fn make_tests(config: &config) -> ~[test::TestDescAndFn] {
     debug!("making tests from %s",
            config.src_base.to_str());
     let mut tests = ~[];
@@ -198,7 +207,7 @@ pub fn make_tests(config: config) -> ~[test::TestDescAndFn] {
     tests
 }
 
-pub fn is_test(config: config, testfile: &Path) -> bool {
+pub fn is_test(config: &config, testfile: &Path) -> bool {
     // Pretty-printer does not work with .rc files yet
     let valid_extensions =
         match config.mode {
@@ -221,7 +230,7 @@ pub fn is_test(config: config, testfile: &Path) -> bool {
     return valid;
 }
 
-pub fn make_test(config: config, testfile: &Path) -> test::TestDescAndFn {
+pub fn make_test(config: &config, testfile: &Path) -> test::TestDescAndFn {
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: make_test_name(config, testfile),
@@ -232,13 +241,15 @@ pub fn make_test(config: config, testfile: &Path) -> test::TestDescAndFn {
     }
 }
 
-pub fn make_test_name(config: config, testfile: &Path) -> test::TestName {
+pub fn make_test_name(config: &config, testfile: &Path) -> test::TestName {
     test::DynTestName(fmt!("[%s] %s",
                            mode_str(config.mode),
                            testfile.to_str()))
 }
 
-pub fn make_test_closure(config: config, testfile: &Path) -> test::TestFn {
-    let testfile = testfile.to_str();
-    test::DynTestFn(|| runtest::run(config, testfile))
+pub fn make_test_closure(config: &config, testfile: &Path) -> test::TestFn {
+    use core::cell::Cell;
+    let config = Cell(copy *config);
+    let testfile = Cell(testfile.to_str());
+    test::DynTestFn(|| { runtest::run(config.take(), testfile.take()) })
 }

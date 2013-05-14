@@ -63,19 +63,19 @@ pub fn add_new_extension(cx: @ext_ctxt,
 
     // Extract the arguments:
     let lhses = match *argument_map.get(&lhs_nm) {
-        @matched_seq(ref s, _) => /* FIXME (#2543) */ copy *s,
+        @matched_seq(ref s, _) => /* FIXME (#2543) */ @copy *s,
         _ => cx.span_bug(sp, ~"wrong-structured lhs")
     };
 
     let rhses = match *argument_map.get(&rhs_nm) {
-      @matched_seq(ref s, _) => /* FIXME (#2543) */ copy *s,
+      @matched_seq(ref s, _) => /* FIXME (#2543) */ @copy *s,
       _ => cx.span_bug(sp, ~"wrong-structured rhs")
     };
 
     // Given `lhses` and `rhses`, this is the new macro we create
     fn generic_extension(cx: @ext_ctxt, sp: span, name: ident,
                          arg: &[ast::token_tree],
-                         lhses: ~[@named_match], rhses: ~[@named_match])
+                         lhses: &[@named_match], rhses: &[@named_match])
     -> MacResult {
 
         if cx.trace_macros() {
@@ -93,7 +93,7 @@ pub fn add_new_extension(cx: @ext_ctxt,
         let s_d = cx.parse_sess().span_diagnostic;
         let itr = cx.parse_sess().interner;
 
-        for lhses.eachi() |i, lhs| { // try each arm's matchers
+        for lhses.eachi |i, lhs| { // try each arm's matchers
             match *lhs {
               @matched_nonterminal(nt_matchers(ref mtcs)) => {
                 // `none` is because we're not interpolating
@@ -103,7 +103,7 @@ pub fn add_new_extension(cx: @ext_ctxt,
                     None,
                     vec::to_owned(arg)
                 ) as @reader;
-                match parse(cx.parse_sess(), cx.cfg(), arg_rdr, (*mtcs)) {
+                match parse(cx.parse_sess(), cx.cfg(), arg_rdr, *mtcs) {
                   success(named_matches) => {
                     let rhs = match rhses[i] {
                         // okay, what's your transcriber?
@@ -146,7 +146,7 @@ pub fn add_new_extension(cx: @ext_ctxt,
     }
 
     let exp: @fn(@ext_ctxt, span, &[ast::token_tree]) -> MacResult =
-        |cx, sp, arg| generic_extension(cx, sp, name, arg, lhses, rhses);
+        |cx, sp, arg| generic_extension(cx, sp, name, arg, *lhses, *rhses);
 
     return MRDef(MacroDef{
         name: copy *cx.parse_sess().interner.get(name),

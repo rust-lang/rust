@@ -457,9 +457,9 @@ pub impl Printer {
             }
         }
     }
-    fn print_str(&mut self, s: ~str) {
+    fn print_str(&mut self, s: &str) {
         while self.pending_indentation > 0 {
-            (*self.out).write_str(~" ");
+            (*self.out).write_str(" ");
             self.pending_indentation -= 1;
         }
         (*self.out).write_str(s);
@@ -562,16 +562,16 @@ pub fn end(p: @mut Printer) { p.pretty_print(END); }
 
 pub fn eof(p: @mut Printer) { p.pretty_print(EOF); }
 
-pub fn word(p: @mut Printer, wrd: ~str) {
-    p.pretty_print(STRING(@/*bad*/ copy wrd, wrd.len() as int));
+pub fn word(p: @mut Printer, wrd: &str) {
+    p.pretty_print(STRING(@/*bad*/ wrd.to_owned(), wrd.len() as int));
 }
 
-pub fn huge_word(p: @mut Printer, wrd: ~str) {
-    p.pretty_print(STRING(@/*bad*/ copy wrd, size_infinity));
+pub fn huge_word(p: @mut Printer, wrd: &str) {
+    p.pretty_print(STRING(@/*bad*/ wrd.to_owned(), size_infinity));
 }
 
-pub fn zero_word(p: @mut Printer, wrd: ~str) {
-    p.pretty_print(STRING(@/*bad*/ copy wrd, 0));
+pub fn zero_word(p: @mut Printer, wrd: &str) {
+    p.pretty_print(STRING(@/*bad*/ wrd.to_owned(), 0));
 }
 
 pub fn spaces(p: @mut Printer, n: uint) { break_offset(p, n, 0); }

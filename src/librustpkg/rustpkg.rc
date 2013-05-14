@@ -17,8 +17,6 @@
 
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
-#[allow(vecs_implicitly_copyable,
-        non_implicitly_copyable_typarams)];
 
 extern mod std(vers = "0.7-pre");
 extern mod rustc(vers = "0.7-pre");
@@ -43,6 +41,7 @@ use context::Ctx;
 mod conditions;
 mod context;
 mod path_util;
+#[cfg(test)]
 mod tests;
 mod util;
 mod workspace;
@@ -52,9 +51,9 @@ pub mod usage;
 /// A PkgScript represents user-supplied custom logic for
 /// special build hooks. This only exists for packages with
 /// an explicit package script.
-struct PkgScript {
+struct PkgScript<'self> {
     /// Uniquely identifies this package
-    id: PkgId,
+    id: &'self PkgId,
     // Used to have this field:    deps: ~[(~str, Option<~str>)]
     // but I think it shouldn't be stored here
     /// The contents of the package script: either a file path,
@@ -71,24 +70,24 @@ struct PkgScript {
     build_dir: Path
 }
 
-impl PkgScript {
+impl<'self> PkgScript<'self> {
     /// Given the path name for a package script
     /// and a package ID, parse the package script into
     /// a PkgScript that we can then execute
-    fn parse(script: Path, workspace: &Path, id: PkgId) -> PkgScript {
+    fn parse<'a>(script: Path, workspace: &Path, id: &'a PkgId) -> PkgScript<'a> {
         // Get the executable name that was invoked
-        let binary = os::args()[0];
+        let binary = @copy os::args()[0];
         // Build the rustc session data structures to pass
         // to the compiler
         let options = @session::options {
-            binary: @binary,
+            binary: binary,
             crate_type: session::bin_crate,
-            .. *session::basic_options()
+            .. copy *session::basic_options()
         };
         let input = driver::file_input(script);
         let sess = driver::build_session(options, diagnostic::emit);
-        let cfg = driver::build_configuration(sess, @binary, &input);
-        let (crate, _) = driver::compile_upto(sess, cfg, &input,
+        let cfg = driver::build_configuration(sess, binary, &input);
+        let (crate, _) = driver::compile_upto(sess, copy cfg, &input,
                                               driver::cu_parse, None);
         let work_dir = build_pkg_id_in_workspace(id, workspace);
 
@@ -123,10 +122,10 @@ impl PkgScript {
                 let root = r.pop().pop().pop().pop(); // :-\
                 debug!("Root is %s, calling compile_rest", root.to_str());
                 let exe = self.build_dir.push(~"pkg" + util::exe_suffix());
-                util::compile_crate_from_input(self.input, self.id,
-                                               Some(self.build_dir),
+                util::compile_crate_from_input(&self.input, self.id,
+                                               Some(copy self.build_dir),
                                                sess, Some(crate),
-                                               exe, os::args()[0],
+                                               &exe, @copy os::args()[0],
                                                driver::cu_everything);
                 debug!("Running program: %s %s %s", exe.to_str(), root.to_str(), what);
                 let status = run::run_program(exe.to_str(), ~[root.to_str(), what]);
@@ -188,9 +187,9 @@ impl Ctx {
                 }
                 // The package id is presumed to be the first command-line
                 // argument
-                let pkgid = PkgId::new(args[0]);
-                for pkg_parent_workspaces(pkgid) |workspace| {
-                    self.build(workspace, pkgid);
+                let pkgid = PkgId::new(copy args[0]);
+                for pkg_parent_workspaces(&pkgid) |workspace| {
+                    self.build(workspace, &pkgid);
                 }
             }
             ~"clean" => {
@@ -199,16 +198,16 @@ impl Ctx {
                 }
                 // The package id is presumed to be the first command-line
                 // argument
-                let pkgid = PkgId::new(args[0]);
+                let pkgid = PkgId::new(copy args[0]);
                 let cwd = os::getcwd();
-                self.clean(&cwd, pkgid); // tjc: should use workspace, not cwd
+                self.clean(&cwd, &pkgid); // tjc: should use workspace, not cwd
             }
             ~"do" => {
                 if args.len() < 2 {
                     return usage::do_cmd();
                 }
 
-                self.do_cmd(args[0], args[1]);
+                self.do_cmd(copy args[0], copy args[1]);
             }
             ~"info" => {
                 self.info();
@@ -221,8 +220,8 @@ impl Ctx {
                 // The package id is presumed to be the first command-line
                 // argument
                 let pkgid = PkgId::new(args[0]);
-                for pkg_parent_workspaces(pkgid) |workspace| {
-                    self.install(workspace, pkgid);
+                for pkg_parent_workspaces(&pkgid) |workspace| {
+                    self.install(workspace, &pkgid);
                 }
             }
             ~"prefer" => {
@@ -230,7 +229,7 @@ impl Ctx {
                     return usage::uninstall();
                 }
 
-                let (name, vers) = sep_name_vers(args[0]);
+                let (name, vers) = sep_name_vers(copy args[0]);
 
                 self.prefer(name.get(), vers);
             }
@@ -242,7 +241,7 @@ impl Ctx {
                     return usage::uninstall();
                 }
 
-                let (name, vers) = sep_name_vers(args[0]);
+                let (name, vers) = sep_name_vers(copy args[0]);
 
                 self.uninstall(name.get(), vers);
             }
@@ -251,7 +250,7 @@ impl Ctx {
                     return usage::uninstall();
                 }
 
-                let (name, vers) = sep_name_vers(args[0]);
+                let (name, vers) = sep_name_vers(copy args[0]);
 
                 self.unprefer(name.get(), vers);
             }
@@ -259,18 +258,18 @@ impl Ctx {
         }
     }
 
-    fn do_cmd(&self, _cmd: ~str, _pkgname: ~str)  {
+    fn do_cmd(&self, _cmd: &str, _pkgname: &str)  {
         // stub
         fail!("`do` not yet implemented");
     }
 
-    fn build(&self, workspace: &Path, pkgid: PkgId) {
+    fn build(&self, workspace: &Path, pkgid: &PkgId) {
         let src_dir   = pkgid_src_in_workspace(pkgid, workspace);
         let build_dir = build_pkg_id_in_workspace(pkgid, workspace);
         debug!("Destination dir = %s", build_dir.to_str());
 
         // Create the package source
-        let mut src = PkgSrc::new(&workspace.push("src"), &build_dir, &pkgid);
+        let mut src = PkgSrc::new(&workspace.push("src"), &build_dir, pkgid);
         debug!("Package src = %?", src);
 
         // Is there custom build logic? If so, use it
@@ -311,7 +310,7 @@ impl Ctx {
 
     }
 
-    fn clean(&self, workspace: &Path, id: PkgId)  {
+    fn clean(&self, workspace: &Path, id: &PkgId)  {
         // Could also support a custom build hook in the pkg
         // script for cleaning files rustpkg doesn't know about.
         // Do something reasonable for now
@@ -332,7 +331,7 @@ impl Ctx {
         fail!("info not yet implemented");
     }
 
-    fn install(&self, workspace: &Path, id: PkgId)  {
+    fn install(&self, workspace: &Path, id: &PkgId)  {
         use conditions::copy_failed::cond;
 
         // Should use RUST_PATH in the future.
@@ -348,13 +347,13 @@ impl Ctx {
         for maybe_executable.each |exec| {
             debug!("Copying: %s -> %s", exec.to_str(), target_exec.to_str());
             if !os::copy_file(exec, &target_exec) {
-                cond.raise((*exec, target_exec));
+                cond.raise((copy *exec, copy target_exec));
             }
         }
         for maybe_library.each |lib| {
             debug!("Copying: %s -> %s", lib.to_str(), target_lib.to_str());
             if !os::copy_file(lib, &target_lib) {
-                cond.raise((*lib, target_lib));
+                cond.raise((copy *lib, copy target_lib));
             }
         }
     }
@@ -387,7 +386,7 @@ impl Ctx {
         }
     }
 
-    fn fetch_git(&self, dir: &Path, url: ~str, target: Option<~str>)  {
+    fn fetch_git(&self, dir: &Path, url: ~str, mut target: Option<~str>)  {
         util::note(fmt!("fetching from %s using git", url));
 
         // Git can't clone into a non-empty directory
@@ -405,7 +404,7 @@ impl Ctx {
             do util::temp_change_dir(dir) {
                 success = run::program_output(~"git",
                                               ~[~"checkout",
-                                                target.get()]).status != 0
+                                                target.swap_unwrap()]).status != 0
             }
 
             if !success {
@@ -525,7 +524,7 @@ pub struct Listener {
 }
 
 pub fn run(listeners: ~[Listener]) {
-    let rcmd = os::args()[2];
+    let rcmd = copy os::args()[2];
     let mut found = false;
 
     for listeners.each |listener| {
@@ -652,12 +651,12 @@ impl PkgSrc {
         // tjc: Rather than erroring out, need to try downloading the
         // contents of the path to a local directory (#5679)
         if !os::path_exists(&dir) {
-            cond.raise((self.id, ~"missing package dir"));
+            cond.raise((copy self.id, ~"missing package dir"));
         }
 
         if !os::path_is_dir(&dir) {
-            cond.raise((self.id, ~"supplied path for package dir is a \
-                                   non-directory"));
+            cond.raise((copy self.id, ~"supplied path for package dir is a \
+                                        non-directory"));
         }
 
         dir
@@ -681,7 +680,7 @@ impl PkgSrc {
     /// Requires that dashes in p have already been normalized to
     /// underscores
     fn stem_matches(&self, p: &Path) -> bool {
-        let self_id = normalize(~self.id.path).filestem();
+        let self_id = normalize(~copy self.id.path).filestem();
         if self_id == p.filestem() {
             return true;
         }
@@ -737,7 +736,7 @@ impl PkgSrc {
             util::note(~"Couldn't infer any crates to build.\n\
                          Try naming a crate `main.rs`, `lib.rs`, \
                          `test.rs`, or `bench.rs`.");
-            cond.raise(self.id);
+            cond.raise(copy self.id);
         }
 
         debug!("found %u libs, %u mains, %u tests, %u benchs",
@@ -752,7 +751,7 @@ impl PkgSrc {
                     dst_dir: &Path,
                     src_dir: &Path,
                     crates: &[Crate],
-                    cfgs: ~[~str],
+                    cfgs: &[~str],
                     test: bool, crate_type: crate_type) {
 
         for crates.each |&crate| {
@@ -760,7 +759,7 @@ impl PkgSrc {
             util::note(fmt!("build_crates: compiling %s", path.to_str()));
             util::note(fmt!("build_crates: destination dir is %s", dst_dir.to_str()));
 
-            let result = util::compile_crate(maybe_sysroot, self.id, path,
+            let result = util::compile_crate(maybe_sysroot, &self.id, path,
                                      dst_dir,
                                      crate.flags,
                                      crate.cfgs + cfgs,

@@ -60,11 +60,11 @@ fn cs_clone(cx: @ext_ctxt, span: span,
         build::mk_method_call(cx, span, field, clone_ident, ~[]);
 
     match *substr.fields {
-        Struct(af) => {
+        Struct(ref af) => {
             ctor_ident = ~[ substr.type_ident ];
             all_fields = af;
         }
-        EnumMatching(_, variant, af) => {
+        EnumMatching(_, variant, ref af) => {
             ctor_ident = ~[ variant.node.name ];
             all_fields = af;
         },
@@ -72,7 +72,7 @@ fn cs_clone(cx: @ext_ctxt, span: span,
         StaticEnum(*) | StaticStruct(*) => cx.span_bug(span, "Static method in `deriving(Clone)`")
     }
 
-    match all_fields {
+    match *all_fields {
         [(None, _, _), .. _] => {
             // enum-like
             let subcalls = all_fields.map(|&(_, self_f, _)| subcall(self_f));

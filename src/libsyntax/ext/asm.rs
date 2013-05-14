@@ -119,13 +119,13 @@ pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
                 cons = str::connect(clobs, ",");
             }
             Options => {
-                let option = *p.parse_str();
+                let option = p.parse_str();
 
-                if option == ~"volatile" {
+                if "volatile" == *option {
                     volatile = true;
-                } else if option == ~"alignstack" {
+                } else if "alignstack" == *option {
                     alignstack = true;
-                } else if option == ~"intel" {
+                } else if "intel" == *option {
                     dialect = ast::asm_intel;
                 }
 

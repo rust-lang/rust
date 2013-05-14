@@ -103,7 +103,7 @@ fn parse_item_attrs<T:Owned>(
     id: doc::AstId,
     parse_attrs: ~fn(a: ~[ast::attribute]) -> T) -> T {
     do astsrv::exec(srv) |ctxt| {
-        let attrs = match *ctxt.ast_map.get(&id) {
+        let attrs = match ctxt.ast_map.get_copy(&id) {
             ast_map::node_item(item, _) => copy item.attrs,
             ast_map::node_foreign_item(item, _, _, _) => copy item.attrs,
             _ => fail!("parse_item_attrs: not an item")
@@ -127,7 +127,7 @@ fn fold_enum(
             let desc = {
                 let variant = copy variant;
                 do astsrv::exec(srv.clone()) |ctxt| {
-                    match *ctxt.ast_map.get(&doc_id) {
+                    match ctxt.ast_map.get_copy(&doc_id) {
                         ast_map::node_item(@ast::item {
                             node: ast::item_enum(ref enum_definition, _), _
                         }, _) => {
@@ -177,7 +177,7 @@ fn merge_method_attrs(
 
     // Create an assoc list from method name to attributes
     let attrs: ~[(~str, Option<~str>)] = do astsrv::exec(srv) |ctxt| {
-        match *ctxt.ast_map.get(&item_id) {
+        match ctxt.ast_map.get_copy(&item_id) {
             ast_map::node_item(@ast::item {
                 node: ast::item_trait(_, _, ref methods), _
             }, _) => {

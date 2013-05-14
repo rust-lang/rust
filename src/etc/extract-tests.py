@@ -60,7 +60,6 @@ while cur < len(lines):
             if not re.search(r"\bextern mod std\b", block):
                 block = "extern mod std;\n" + block
             block = """#[ forbid(ctypes) ];
-#[ forbid(deprecated_mode) ];
 #[ forbid(deprecated_pattern) ];
 #[ forbid(implicit_copies) ];
 #[ forbid(non_implicitly_copyable_typarams) ];
@@ -68,12 +67,9 @@ while cur < len(lines):
 #[ forbid(type_limits) ];
 #[ forbid(unrecognized_lint) ];
 #[ forbid(unused_imports) ];
-#[ forbid(vecs_implicitly_copyable) ];
 #[ forbid(while_true) ];
 
-#[ warn(deprecated_self) ];
-#[ warn(non_camel_case_types) ];
-#[ warn(structural_records) ];\n
+#[ warn(non_camel_case_types) ];\n
 """ + block
             if xfail:
                 block = "// xfail-test\n" + block

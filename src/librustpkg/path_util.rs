@@ -55,21 +55,21 @@ pub fn normalize(p: ~Path) -> ~Path {
 
 /// True if there's a directory in <workspace> with
 /// pkgid's short name
-pub fn workspace_contains_package_id(pkgid: PkgId, workspace: &Path) -> bool {
+pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
     let pkgpath = workspace.push("src").push(pkgid.path.to_str());
     os::path_is_dir(&pkgpath)
 }
 
 /// Return the directory for <pkgid>'s source files in <workspace>.
 /// Doesn't check that it exists.
-pub fn pkgid_src_in_workspace(pkgid: PkgId, workspace: &Path) -> Path {
+pub fn pkgid_src_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     let result = workspace.push("src");
     result.push(pkgid.path.to_str())
 }
 
 /// Figure out what the executable name for <pkgid> in <workspace>'s build
 /// directory is, and if the file exists, return it.
-pub fn built_executable_in_workspace(pkgid: PkgId, workspace: &Path) -> Option<Path> {
+pub fn built_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
     let mut result = workspace.push("build");
     result = result.push_rel(&pkgid.path);
     // should use a target-specific subdirectory
@@ -87,7 +87,7 @@ pub fn built_executable_in_workspace(pkgid: PkgId, workspace: &Path) -> Option<P
 
 /// Figure out what the library name for <pkgid> in <workspace>'s build
 /// directory is, and if the file exists, return it.
-pub fn built_library_in_workspace(pkgid: PkgId, workspace: &Path) -> Option<Path> {
+pub fn built_library_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
     let mut result = workspace.push("build");
     result = result.push_rel(&pkgid.path);
     // should use a target-specific subdirectory
@@ -159,7 +159,7 @@ pub fn built_library_in_workspace(pkgid: PkgId, workspace: &Path) -> Option<Path
 /// Returns the executable that would be installed for <pkgid>
 /// in <workspace>
 /// As a side effect, creates the bin-dir if it doesn't exist
-pub fn target_executable_in_workspace(pkgid: PkgId, workspace: &Path) -> Path {
+pub fn target_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     target_file_in_workspace(pkgid, workspace, Main)
 }
 
@@ -167,23 +167,23 @@ pub fn target_executable_in_workspace(pkgid: PkgId, workspace: &Path) -> Path {
 /// Returns the executable that would be installed for <pkgid>
 /// in <workspace>
 /// As a side effect, creates the bin-dir if it doesn't exist
-pub fn target_library_in_workspace(pkgid: PkgId, workspace: &Path) -> Path {
+pub fn target_library_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     target_file_in_workspace(pkgid, workspace, Lib)
 }
 
 /// Returns the test executable that would be installed for <pkgid>
 /// in <workspace>
-pub fn target_test_in_workspace(pkgid: PkgId, workspace: &Path) -> Path {
+pub fn target_test_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     target_file_in_workspace(pkgid, workspace, Test)
 }
 
 /// Returns the bench executable that would be installed for <pkgid>
 /// in <workspace>
-pub fn target_bench_in_workspace(pkgid: PkgId, workspace: &Path) -> Path {
+pub fn target_bench_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     target_file_in_workspace(pkgid, workspace, Bench)
 }
 
-fn target_file_in_workspace(pkgid: PkgId, workspace: &Path,
+fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
                             what: OutputType) -> Path {
     use conditions::bad_path::cond;
 
@@ -193,7 +193,8 @@ fn target_file_in_workspace(pkgid: PkgId, workspace: &Path,
     let result = workspace.push(subdir);
     if create_dir {
         if !os::path_exists(&result) && !mkdir_recursive(&result, u_rwx) {
-            cond.raise((result, fmt!("I couldn't create the %s dir", subdir)));
+            cond.raise((copy result,
+                        fmt!("I couldn't create the %s dir", subdir)));
         }
     }
     mk_output_path(what, pkgid.path.to_str(), result)
@@ -202,13 +203,13 @@ fn target_file_in_workspace(pkgid: PkgId, workspace: &Path,
 
 /// Return the directory for <pkgid>'s build artifacts in <workspace>.
 /// Creates it if it doesn't exist.
-pub fn build_pkg_id_in_workspace(pkgid: PkgId, workspace: &Path) -> Path {
+pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     use conditions::bad_path::cond;
 
     let mut result = workspace.push("build");
     // n.b. Should actually use a target-specific
     // subdirectory of build/
-    result = result.push(normalize(~pkgid.path).to_str());
+    result = result.push(normalize(~copy pkgid.path).to_str());
     if os::path_exists(&result) || os::mkdir_recursive(&result, u_rwx) {
         result
     }
