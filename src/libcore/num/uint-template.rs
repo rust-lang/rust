@@ -57,7 +57,7 @@ pub fn _range_step(start: T,
                    it: &fn(T) -> bool) -> bool {
     let mut i = start;
     if step == 0 {
-        fail!(~"range_step called with step == 0");
+        fail!("range_step called with step == 0");
     }
     if step >= 0 {
         while i < stop {
@@ -630,16 +630,16 @@ mod tests {
 
         // None of the `fail`s should execute.
         for range(0,0) |_i| {
-            fail!(~"unreachable");
+            fail!("unreachable");
         }
         for range_rev(0,0) |_i| {
-            fail!(~"unreachable");
+            fail!("unreachable");
         }
         for range_step(10,0,1) |_i| {
-            fail!(~"unreachable");
+            fail!("unreachable");
         }
         for range_step(0,1,-10) |_i| {
-            fail!(~"unreachable");
+            fail!("unreachable");
         }
     }
 

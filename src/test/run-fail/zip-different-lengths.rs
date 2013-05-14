@@ -37,5 +37,5 @@ fn main() {
 
     assert!(same_length(chars, ints));
     let ps = zip(chars, ints);
-    fail!(~"the impossible happened");
+    fail!("the impossible happened");
 }

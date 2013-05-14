@@ -163,7 +163,7 @@ pub fn borrow_local_services(f: &fn(&mut LocalServices)) {
                 f(&mut task.local_services)
             }
             None => {
-                fail!(~"no local services for schedulers yet")
+                fail!("no local services for schedulers yet")
             }
         }
     }
@@ -177,7 +177,7 @@ pub unsafe fn unsafe_borrow_local_services() -> &mut LocalServices {
             transmute_mut_region(&mut task.local_services)
         }
         None => {
-            fail!(~"no local services for schedulers yet")
+            fail!("no local services for schedulers yet")
         }
     }
 }

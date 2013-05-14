@@ -430,10 +430,10 @@ pub fn print_type(s: @ps, ty: @ast::Ty) {
         word(s.s, ~"]");
       }
       ast::ty_mac(_) => {
-          fail!(~"print_type doesn't know how to print a ty_mac");
+          fail!("print_type doesn't know how to print a ty_mac");
       }
       ast::ty_infer => {
-          fail!(~"print_type shouldn't see a ty_infer");
+          fail!("print_type shouldn't see a ty_infer");
       }
 
     }
@@ -683,7 +683,7 @@ pub fn print_struct(s: @ps,
             popen(s);
             do commasep(s, inconsistent, struct_def.fields) |s, field| {
                 match field.node.kind {
-                    ast::named_field(*) => fail!(~"unexpected named field"),
+                    ast::named_field(*) => fail!("unexpected named field"),
                     ast::unnamed_field => {
                         maybe_print_comment(s, field.span.lo);
                         print_type(s, field.node.ty);
@@ -702,7 +702,7 @@ pub fn print_struct(s: @ps,
 
         for struct_def.fields.each |field| {
             match field.node.kind {
-                ast::unnamed_field => fail!(~"unexpected unnamed field"),
+                ast::unnamed_field => fail!("unexpected unnamed field"),
                 ast::named_field(ident, visibility) => {
                     hardbreak_if_not_bol(s);
                     maybe_print_comment(s, field.span.lo);
@@ -984,7 +984,7 @@ pub fn print_if(s: @ps, test: @ast::expr, blk: &ast::blk,
               }
               // BLEAH, constraints would be great here
               _ => {
-                  fail!(~"print_if saw if with weird alternative");
+                  fail!("print_if saw if with weird alternative");
               }
             }
           }
@@ -2237,7 +2237,7 @@ mod test {
 
     fn string_check<T:Eq> (given : &T, expected: &T) {
         if !(given == expected) {
-            fail!(fmt!("given %?, expected %?",given,expected));
+            fail!("given %?, expected %?", given, expected);
         }
     }
 

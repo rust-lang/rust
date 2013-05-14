@@ -89,7 +89,7 @@ pub fn test_main(args: &[~str], tests: ~[TestDescAndFn]) {
           either::Left(o) => o,
           either::Right(m) => fail!(m)
         };
-    if !run_tests_console(&opts, tests) { fail!(~"Some tests failed"); }
+    if !run_tests_console(&opts, tests) { fail!("Some tests failed"); }
 }
 
 // A variant optimized for invocation with a static test vector.
@@ -109,7 +109,7 @@ pub fn test_main_static(args: &[~str], tests: &[TestDescAndFn]) {
             TestDescAndFn { testfn: StaticBenchFn(f), desc: copy t.desc },
 
             _ => {
-                fail!(~"non-static tests passed to test::test_main_static");
+                fail!("non-static tests passed to test::test_main_static");
             }
         }
     };
@@ -250,7 +250,7 @@ pub fn run_tests_console(opts: &TestOpts,
                                                   io::Truncate]) {
           result::Ok(w) => Some(w),
           result::Err(ref s) => {
-              fail!(fmt!("can't open output file: %s", *s))
+              fail!("can't open output file: %s", *s)
           }
         },
         None => None
@@ -849,7 +849,7 @@ mod tests {
         let args = ~[~"progname", ~"filter"];
         let opts = match parse_opts(args) {
           either::Left(copy o) => o,
-          _ => fail!(~"Malformed arg in first_free_arg_should_be_a_filter")
+          _ => fail!("Malformed arg in first_free_arg_should_be_a_filter")
         };
         assert!("filter" == (copy opts.filter).get());
     }
@@ -859,7 +859,7 @@ mod tests {
         let args = ~[~"progname", ~"filter", ~"--ignored"];
         let opts = match parse_opts(args) {
           either::Left(copy o) => o,
-          _ => fail!(~"Malformed arg in parse_ignored_flag")
+          _ => fail!("Malformed arg in parse_ignored_flag")
         };
         assert!((opts.run_ignored));
     }

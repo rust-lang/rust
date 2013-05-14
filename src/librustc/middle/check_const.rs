@@ -241,7 +241,7 @@ pub fn check_item_recursion(sess: Session,
                     ast_map::node_item(it, _) => {
                       (v.visit_item)(it, env, v);
                     }
-                    _ => fail!(~"const not bound to an item")
+                    _ => fail!("const not bound to an item")
                   }
                 }
               }

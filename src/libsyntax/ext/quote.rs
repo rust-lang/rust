@@ -556,7 +556,7 @@ fn mk_token(cx: @ext_ctxt, sp: span, tok: token::Token) -> @ast::expr {
                                   ~[mk_ident(cx, sp, ident)]);
         }
 
-        INTERPOLATED(_) => fail!(~"quote! with interpolated token"),
+        INTERPOLATED(_) => fail!("quote! with interpolated token"),
 
         _ => ()
     }
@@ -623,7 +623,7 @@ fn mk_tt(cx: @ext_ctxt, sp: span, tt: &ast::token_tree)
         }
 
         ast::tt_delim(ref tts) => mk_tts(cx, sp, *tts),
-        ast::tt_seq(*) => fail!(~"tt_seq in quote!"),
+        ast::tt_seq(*) => fail!("tt_seq in quote!"),
 
         ast::tt_nonterminal(sp, ident) => {
 

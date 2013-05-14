@@ -47,7 +47,7 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
         let e = match out.node {
             ast::expr_addr_of(_, e) => e,
-            _ => fail!(~"Expression must be addr of")
+            _ => fail!("Expression must be addr of")
         };
 
         let outty = ty::arg {

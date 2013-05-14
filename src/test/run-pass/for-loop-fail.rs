@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn main() { let x: ~[int] = ~[]; for x.each |_i| { fail!(~"moop"); } }
+pub fn main() { let x: ~[int] = ~[]; for x.each |_i| { fail!("moop"); } }

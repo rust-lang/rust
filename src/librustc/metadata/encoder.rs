@@ -696,7 +696,7 @@ fn purity_static_method_family(p: purity) -> char {
       unsafe_fn => 'U',
       pure_fn => 'P',
       impure_fn => 'F',
-      _ => fail!(~"extern fn can't be static")
+      _ => fail!("extern fn can't be static")
     }
 }
 
@@ -1009,7 +1009,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
             ebml_w.end_tag();
         }
       }
-      item_mac(*) => fail!(~"item macros unimplemented")
+      item_mac(*) => fail!("item macros unimplemented")
     }
 }
 
@@ -1068,7 +1068,7 @@ fn encode_info_for_items(ecx: @EncodeContext,
                         let mut ebml_w = copy ebml_w;
                         encode_info_for_item(ecx, &mut ebml_w, i, index, *pt);
                     }
-                    _ => fail!(~"bad item")
+                    _ => fail!("bad item")
                 }
             }
         },
@@ -1087,7 +1087,7 @@ fn encode_info_for_items(ecx: @EncodeContext,
                                                      abi);
                     }
                     // case for separate item and foreign-item tables
-                    _ => fail!(~"bad foreign item")
+                    _ => fail!("bad foreign item")
                 }
             }
         },

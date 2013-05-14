@@ -79,7 +79,7 @@ impl<T> Map<int, T> for cat<T> {
     }
 
     fn mutate_values(&mut self, _f: &fn(&int, &mut T) -> bool) -> bool {
-        fail!(~"nope")
+        fail!("nope")
     }
 
     fn insert(&mut self, k: int, _: T) -> bool {
@@ -114,7 +114,7 @@ pub impl<T> cat<T> {
     fn get<'a>(&'a self, k: &int) -> &'a T {
         match self.find(k) {
           Some(v) => { v }
-          None    => { fail!(~"epic fail"); }
+          None    => { fail!("epic fail"); }
         }
     }
 

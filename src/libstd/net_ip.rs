@@ -59,14 +59,14 @@ pub fn format_addr(ip: &IpAddr) -> ~str {
       Ipv4(ref addr) =>  unsafe {
         let result = uv_ip4_name(addr);
         if result == ~"" {
-            fail!(~"failed to convert inner sockaddr_in address to str")
+            fail!("failed to convert inner sockaddr_in address to str")
         }
         result
       },
       Ipv6(ref addr) => unsafe {
         let result = uv_ip6_name(addr);
         if result == ~"" {
-            fail!(~"failed to convert inner sockaddr_in address to str")
+            fail!("failed to convert inner sockaddr_in address to str")
         }
         result
       }
@@ -394,7 +394,7 @@ mod test {
             assert!(true);
           }
           result::Ok(ref addr) => {
-            fail!(fmt!("Expected failure, but got addr %?", addr));
+            fail!("Expected failure, but got addr %?", addr);
           }
         }
     }
@@ -407,7 +407,7 @@ mod test {
             assert!(true);
           }
           result::Ok(ref addr) => {
-            fail!(fmt!("Expected failure, but got addr %?", addr));
+            fail!("Expected failure, but got addr %?", addr);
           }
         }
     }
@@ -418,7 +418,7 @@ mod test {
         let iotask = &uv::global_loop::get();
         let ga_result = get_addr(localhost_name, iotask);
         if result::is_err(&ga_result) {
-            fail!(~"got err result from net::ip::get_addr();")
+            fail!("got err result from net::ip::get_addr();")
         }
         // note really sure how to reliably test/assert
         // this.. mostly just wanting to see it work, atm.

@@ -151,7 +151,7 @@ pub fn str_mode(s: ~str) -> mode {
       ~"run-pass" => mode_run_pass,
       ~"pretty" => mode_pretty,
       ~"debug-info" => mode_debug_info,
-      _ => fail!(~"invalid mode")
+      _ => fail!("invalid mode")
     }
 }
 
@@ -169,7 +169,7 @@ pub fn run_tests(config: config) {
     let opts = test_opts(config);
     let tests = make_tests(config);
     let res = test::run_tests_console(&opts, tests);
-    if !res { fail!(~"Some tests failed"); }
+    if !res { fail!("Some tests failed"); }
 }
 
 pub fn test_opts(config: config) -> test::TestOpts {

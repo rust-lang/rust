@@ -28,7 +28,7 @@ impl<T> E<T> {
     }
     fn get_ref<'r>(&'r self) -> (int, &'r T) {
         match *self {
-            Nothing(*) => fail!(fmt!("E::get_ref(Nothing::<%s>)",  stringify!($T))),
+            Nothing(*) => fail!("E::get_ref(Nothing::<%s>)",  stringify!($T)),
             Thing(x, ref y) => (x, y)
         }
     }
@@ -57,8 +57,8 @@ macro_rules! check_fancy {
         let t_ = Thing::<$T>(23, $e);
         match t_.get_ref() {
             (23, $v) => { $chk }
-            _ => fail!(fmt!("Thing::<%s>(23, %s).get_ref() != (23, _)",
-                            stringify!($T), stringify!($e)))
+            _ => fail!("Thing::<%s>(23, %s).get_ref() != (23, _)",
+                       stringify!($T), stringify!($e))
         }
     }}
 }

@@ -569,10 +569,10 @@ pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
             spawn_raw_newsched(opts, f)
         }
         SchedulerContext => {
-            fail!(~"can't spawn from scheduler context")
+            fail!("can't spawn from scheduler context")
         }
         GlobalContext => {
-            fail!(~"can't spawn from global context")
+            fail!("can't spawn from global context")
         }
     }
 }
@@ -708,7 +708,7 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
 
     fn new_task_in_sched(opts: SchedOpts) -> *rust_task {
         if opts.foreign_stack_size != None {
-            fail!(~"foreign_stack_size scheduler option unimplemented");
+            fail!("foreign_stack_size scheduler option unimplemented");
         }
 
         let num_threads = match opts.mode {
@@ -719,11 +719,11 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
             SingleThreaded => 1u,
             ThreadPerCore => unsafe { rt::rust_num_threads() },
             ThreadPerTask => {
-                fail!(~"ThreadPerTask scheduling mode unimplemented")
+                fail!("ThreadPerTask scheduling mode unimplemented")
             }
             ManualThreads(threads) => {
                 if threads == 0u {
-                    fail!(~"can not create a scheduler with no threads");
+                    fail!("can not create a scheduler with no threads");
                 }
                 threads
             }

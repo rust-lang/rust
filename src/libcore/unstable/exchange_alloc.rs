@@ -46,7 +46,7 @@ stuff in exchange_alloc::malloc
 pub unsafe fn malloc_raw(size: uint) -> *c_void {
     let p = c_malloc(size as size_t);
     if p.is_null() {
-        fail!(~"Failure in malloc_raw: result ptr is null");
+        fail!("Failure in malloc_raw: result ptr is null");
     }
     p
 }

@@ -140,7 +140,7 @@ fn fixup_substs(vcx: &VtableContext, location_info: &LocationInfo,
     do fixup_ty(vcx, location_info, t, is_early).map |t_f| {
         match ty::get(*t_f).sty {
           ty::ty_trait(_, ref substs_f, _, _) => (/*bad*/copy *substs_f),
-          _ => fail!(~"t_f should be a trait")
+          _ => fail!("t_f should be a trait")
         }
     }
 }

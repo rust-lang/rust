@@ -293,7 +293,7 @@ fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
                                              span: _}, _) => true,
               ast::stmt_decl(@codemap::spanned { node: ast::decl_item(_),
                                              span: _}, _) => false,
-              ast::stmt_mac(*) => fail!(~"unexpanded macro in astencode")
+              ast::stmt_mac(*) => fail!("unexpanded macro in astencode")
             }
         };
         let blk_sans_items = ast::blk_ {
@@ -686,7 +686,7 @@ impl vtable_decoder_helpers for reader::Decoder {
                     )
                   }
                   // hard to avoid - user input
-                  _ => fail!(~"bad enum variant")
+                  _ => fail!("bad enum variant")
                 }
             }
         }
