@@ -10,7 +10,7 @@
 
 use foo::bar; //~ ERROR unresolved import. maybe a missing `extern mod foo`?
               //~^ ERROR failed to resolve import
-use x = bar::baz; //~ ERROR unresolved import: could not find `baz` in `foo`
+use x = bar::baz; //~ ERROR unresolved import: could not find `baz` in `bar`
 
 mod bar {
     struct bar;
