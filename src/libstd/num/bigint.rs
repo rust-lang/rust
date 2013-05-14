@@ -17,7 +17,7 @@ A BigInt is a combination of BigUint and Sign.
 */
 
 use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
-use core::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix};
+use core::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable};
 
 /**
 A BigDigit is a BigUint's composing element.
@@ -145,6 +145,24 @@ impl FromStr for BigUint {
 }
 
 impl Num for BigUint {}
+
+impl Orderable for BigUint {
+    #[inline(always)]
+    fn min(&self, other: &BigUint) -> BigUint {
+        if self < other { self.clone() } else { other.clone() }
+    }
+
+    #[inline(always)]
+    fn max(&self, other: &BigUint) -> BigUint {
+        if self > other { self.clone() } else { other.clone() }
+    }
+
+    #[inline(always)]
+    fn clamp(&self, mn: &BigUint, mx: &BigUint) -> BigUint {
+        if self > mx { mx.clone() } else
+        if self < mn { mn.clone() } else { self.clone() }
+    }
+}
 
 impl Shl<uint, BigUint> for BigUint {
     #[inline(always)]
@@ -791,6 +809,24 @@ impl FromStr for BigInt {
 }
 
 impl Num for BigInt {}
+
+impl Orderable for BigInt {
+    #[inline(always)]
+    fn min(&self, other: &BigInt) -> BigInt {
+        if self < other { self.clone() } else { other.clone() }
+    }
+
+    #[inline(always)]
+    fn max(&self, other: &BigInt) -> BigInt {
+        if self > other { self.clone() } else { other.clone() }
+    }
+
+    #[inline(always)]
+    fn clamp(&self, mn: &BigInt, mx: &BigInt) -> BigInt {
+        if self > mx { mx.clone() } else
+        if self < mn { mn.clone() } else { self.clone() }
+    }
+}
 
 impl Shl<uint, BigInt> for BigInt {
     #[inline(always)]
