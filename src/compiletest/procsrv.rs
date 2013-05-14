@@ -14,7 +14,7 @@ use core::run::spawn_process;
 use core::run;
 
 #[cfg(target_os = "win32")]
-fn target_env(lib_path: ~str, prog: ~str) -> ~[(~str,~str)] {
+fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
 
     let mut env = os::env();
 
@@ -27,7 +27,7 @@ fn target_env(lib_path: ~str, prog: ~str) -> ~[(~str,~str)] {
         if k == ~"PATH" { (~"PATH", v + ~";" + lib_path + ~";" + aux_path) }
         else { (k,v) }
     };
-    if str::ends_with(prog, ~"rustc.exe") {
+    if str::ends_with(prog, "rustc.exe") {
         env.push((~"RUST_THREADS", ~"1"));
     }
     return env;
@@ -36,16 +36,16 @@ fn target_env(lib_path: ~str, prog: ~str) -> ~[(~str,~str)] {
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
-fn target_env(_lib_path: ~str, _prog: ~str) -> ~[(~str,~str)] {
+fn target_env(_lib_path: &str, _prog: &str) -> ~[(~str,~str)] {
     ~[]
 }
 
-struct Result {status: int, out: ~str, err: ~str}
+pub struct Result {status: int, out: ~str, err: ~str}
 
 // FIXME (#2659): This code is duplicated in core::run::program_output
-pub fn run(lib_path: ~str,
-           prog: ~str,
-           args: ~[~str],
+pub fn run(lib_path: &str,
+           prog: &str,
+           args: &[~str],
            env: ~[(~str, ~str)],
            input: Option<~str>) -> Result {
     let pipe_in = os::pipe();

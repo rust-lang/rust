@@ -91,11 +91,11 @@ pub fn dup_tt_reader(r: @mut TtReader) -> @mut TtReader {
         sp_diag: r.sp_diag,
         interner: r.interner,
         stack: dup_tt_frame(r.stack),
-        interpolations: r.interpolations,
         repeat_idx: copy r.repeat_idx,
         repeat_len: copy r.repeat_len,
         cur_tok: copy r.cur_tok,
-        cur_span: r.cur_span
+        cur_span: r.cur_span,
+        interpolations: copy r.interpolations,
     }
 }
 
@@ -127,7 +127,7 @@ enum lis {
     lis_unconstrained, lis_constraint(uint, ident), lis_contradiction(~str)
 }
 
-fn lockstep_iter_size(t: token_tree, r: &mut TtReader) -> lis {
+fn lockstep_iter_size(t: &token_tree, r: &mut TtReader) -> lis {
     fn lis_merge(lhs: lis, rhs: lis, r: &mut TtReader) -> lis {
         match lhs {
           lis_unconstrained => copy rhs,
@@ -146,10 +146,10 @@ fn lockstep_iter_size(t: token_tree, r: &mut TtReader) -> lis {
           }
         }
     }
-    match t {
+    match *t {
       tt_delim(ref tts) | tt_seq(_, ref tts, _, _) => {
-        vec::foldl(lis_unconstrained, (*tts), |lis, tt| {
-            let lis2 = lockstep_iter_size(*tt, r);
+        vec::foldl(lis_unconstrained, *tts, |lis, tt| {
+            let lis2 = lockstep_iter_size(tt, r);
             lis_merge(lis, lis2, r)
         })
       }
@@ -230,7 +230,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
           }
           tt_seq(sp, copy tts, copy sep, zerok) => {
             let t = tt_seq(sp, copy tts, copy sep, zerok);
-            match lockstep_iter_size(t, r) {
+            match lockstep_iter_size(&t, r) {
               lis_unconstrained => {
                 r.sp_diag.span_fatal(
                     sp, /* blame macro writer */

@@ -77,7 +77,6 @@ fn is_rwx(p: &Path) -> bool {
     }
 }
 
-#[cfg(test)]
 fn test_sysroot() -> Path {
     // Totally gross hack but it's just for test cases.
     // Infer the sysroot from the exe name and tack "stage2"
@@ -107,19 +106,19 @@ fn test_install_valid() {
     let temp_pkg_id = fake_pkg();
     let temp_workspace = mk_temp_workspace(&temp_pkg_id.path);
     // should have test, bench, lib, and main
-    ctxt.install(&temp_workspace, temp_pkg_id);
+    ctxt.install(&temp_workspace, &temp_pkg_id);
     // Check that all files exist
-    let exec = target_executable_in_workspace(temp_pkg_id, &temp_workspace);
+    let exec = target_executable_in_workspace(&temp_pkg_id, &temp_workspace);
     debug!("exec = %s", exec.to_str());
     assert!(os::path_exists(&exec));
     assert!(is_rwx(&exec));
-    let lib = target_library_in_workspace(temp_pkg_id, &temp_workspace);
+    let lib = target_library_in_workspace(&temp_pkg_id, &temp_workspace);
     debug!("lib = %s", lib.to_str());
     assert!(os::path_exists(&lib));
     assert!(is_rwx(&lib));
     // And that the test and bench executables aren't installed
-    assert!(!os::path_exists(&target_test_in_workspace(temp_pkg_id, &temp_workspace)));
-    let bench = target_bench_in_workspace(temp_pkg_id, &temp_workspace);
+    assert!(!os::path_exists(&target_test_in_workspace(&temp_pkg_id, &temp_workspace)));
+    let bench = target_bench_in_workspace(&temp_pkg_id, &temp_workspace);
     debug!("bench = %s", bench.to_str());
     assert!(!os::path_exists(&bench));
 }
@@ -140,7 +139,7 @@ fn test_install_invalid() {
         do cond.trap(|_| {
             error_occurred = true;
         }).in {
-            ctxt.install(&temp_workspace, pkgid);
+            ctxt.install(&temp_workspace, &pkgid);
         }
     }
     assert!(error_occurred && error1_occurred);
@@ -155,19 +154,19 @@ fn test_install_url() {
     let temp_pkg_id = remote_pkg();
     let temp_workspace = mk_temp_workspace(&temp_pkg_id.path);
     // should have test, bench, lib, and main
-    ctxt.install(&temp_workspace, temp_pkg_id);
+    ctxt.install(&temp_workspace, &temp_pkg_id);
     // Check that all files exist
-    let exec = target_executable_in_workspace(temp_pkg_id, &temp_workspace);
+    let exec = target_executable_in_workspace(&temp_pkg_id, &temp_workspace);
     debug!("exec = %s", exec.to_str());
     assert!(os::path_exists(&exec));
     assert!(is_rwx(&exec));
-    let lib = target_library_in_workspace(temp_pkg_id, &temp_workspace);
+    let lib = target_library_in_workspace(&temp_pkg_id, &temp_workspace);
     debug!("lib = %s", lib.to_str());
     assert!(os::path_exists(&lib));
     assert!(is_rwx(&lib));
     // And that the test and bench executables aren't installed
-    assert!(!os::path_exists(&target_test_in_workspace(temp_pkg_id, &temp_workspace)));
-    let bench = target_bench_in_workspace(temp_pkg_id, &temp_workspace);
+    assert!(!os::path_exists(&target_test_in_workspace(&temp_pkg_id, &temp_workspace)));
+    let bench = target_bench_in_workspace(&temp_pkg_id, &temp_workspace);
     debug!("bench = %s", bench.to_str());
     assert!(!os::path_exists(&bench));
 }

@@ -60,12 +60,12 @@ pub fn path_to_str_with_sep(p: &[path_elt], sep: ~str, itr: @ident_interner)
     str::connect(strs, sep)
 }
 
-pub fn path_ident_to_str(p: path, i: ident, itr: @ident_interner) -> ~str {
-    if vec::is_empty(p) {
+pub fn path_ident_to_str(p: &path, i: ident, itr: @ident_interner) -> ~str {
+    if vec::is_empty(*p) {
         //FIXME /* FIXME (#2543) */ copy *i
         copy *itr.get(i)
     } else {
-        fmt!("%s::%s", path_to_str(p, itr), *itr.get(i))
+        fmt!("%s::%s", path_to_str(*p, itr), *itr.get(i))
     }
 }
 
@@ -338,7 +338,7 @@ pub fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
         fmt!("unknown node (id=%d)", id)
       }
       Some(&node_item(item, path)) => {
-        let path_str = path_ident_to_str(*path, item.ident, itr);
+        let path_str = path_ident_to_str(path, item.ident, itr);
         let item_str = match item.node {
           item_const(*) => ~"const",
           item_fn(*) => ~"fn",
@@ -355,7 +355,7 @@ pub fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {
       }
       Some(&node_foreign_item(item, abi, _, path)) => {
         fmt!("foreign item %s with abi %? (id=%?)",
-             path_ident_to_str(*path, item.ident, itr), abi, id)
+             path_ident_to_str(path, item.ident, itr), abi, id)
       }
       Some(&node_method(m, _, path)) => {
         fmt!("method %s in %s (id=%?)",

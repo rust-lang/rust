@@ -59,7 +59,7 @@ pub fn expand_meta_deriving(cx: @ext_ctxt,
     use ast::{meta_list, meta_name_value, meta_word};
 
     match mitem.node {
-        meta_name_value(_, l) => {
+        meta_name_value(_, ref l) => {
             cx.span_err(l.span, ~"unexpected value in `deriving`");
             in_items
         }
@@ -67,7 +67,7 @@ pub fn expand_meta_deriving(cx: @ext_ctxt,
             cx.span_warn(mitem.span, ~"empty trait list in `deriving`");
             in_items
         }
-        meta_list(_, titems) => {
+        meta_list(_, ref titems) => {
             do titems.foldr(in_items) |&titem, in_items| {
                 match titem.node {
                     meta_name_value(tname, _) |
@@ -92,9 +92,9 @@ pub fn expand_meta_deriving(cx: @ext_ctxt,
 
                             ~"ToStr" => expand!(to_str::expand_deriving_to_str),
 
-                            tname => {
+                            ref tname => {
                                 cx.span_err(titem.span, fmt!("unknown \
-                                    `deriving` trait: `%s`", tname));
+                                    `deriving` trait: `%s`", *tname));
                                 in_items
                             }
                         }

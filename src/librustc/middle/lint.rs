@@ -51,7 +51,6 @@ pub enum lint {
     implicit_copies,
     unrecognized_lint,
     non_implicitly_copyable_typarams,
-    vecs_implicitly_copyable,
     deprecated_pattern,
     non_camel_case_types,
     type_limits,
@@ -129,14 +128,6 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: non_implicitly_copyable_typarams,
         desc: "passing non implicitly copyable types as copy type params",
-        default: warn
-     }),
-
-    ("vecs_implicitly_copyable",
-     LintSpec {
-        lint: vecs_implicitly_copyable,
-        desc: "make vecs and strs not implicitly copyable \
-              (only checked at top level)",
         default: warn
      }),
 

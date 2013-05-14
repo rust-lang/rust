@@ -23,10 +23,15 @@ use syntax::codemap::{dummy_sp, spanned, dummy_spanned};
 use syntax::ext::base::{mk_ctxt, ext_ctxt};
 use syntax::ext::build;
 use syntax::{ast, attr, codemap, diagnostic, fold};
-use syntax::ast::{meta_name_value, meta_list, attribute, crate_};
+use syntax::ast::{meta_name_value, meta_list, attribute};
 use syntax::attr::{mk_attr};
 use rustc::back::link::output_type_exe;
 use rustc::driver::session::{lib_crate, unknown_crate, crate_type};
+
+static Commands: &'static [&'static str] =
+    &["build", "clean", "do", "info", "install", "prefer", "test", "uninstall",
+      "unprefer"];
+
 
 pub type ExitCode = int; // For now
 
@@ -41,28 +46,28 @@ impl Ord for Version {
     fn lt(&self, other: &Version) -> bool {
         match (self, other) {
             (&ExactRevision(f1), &ExactRevision(f2)) => f1 < f2,
-            (&SemVersion(v1), &SemVersion(v2)) => v1 < v2,
+            (&SemVersion(ref v1), &SemVersion(ref v2)) => v1 < v2,
             _ => false // incomparable, really
         }
     }
     fn le(&self, other: &Version) -> bool {
         match (self, other) {
             (&ExactRevision(f1), &ExactRevision(f2)) => f1 <= f2,
-            (&SemVersion(v1), &SemVersion(v2)) => v1 <= v2,
+            (&SemVersion(ref v1), &SemVersion(ref v2)) => v1 <= v2,
             _ => false // incomparable, really
         }
     }
     fn ge(&self, other: &Version) -> bool {
         match (self, other) {
             (&ExactRevision(f1), &ExactRevision(f2)) => f1 > f2,
-            (&SemVersion(v1), &SemVersion(v2)) => v1 > v2,
+            (&SemVersion(ref v1), &SemVersion(ref v2)) => v1 > v2,
             _ => false // incomparable, really
         }
     }
     fn gt(&self, other: &Version) -> bool {
         match (self, other) {
             (&ExactRevision(f1), &ExactRevision(f2)) => f1 >= f2,
-            (&SemVersion(v1), &SemVersion(v2)) => v1 >= v2,
+            (&SemVersion(ref v1), &SemVersion(ref v2)) => v1 >= v2,
             _ => false // incomparable, really
         }
     }
@@ -72,8 +77,8 @@ impl Ord for Version {
 impl ToStr for Version {
     fn to_str(&self) -> ~str {
         match *self {
-            ExactRevision(n) => n.to_str(),
-            SemVersion(v) => v.to_str()
+            ExactRevision(ref n) => n.to_str(),
+            SemVersion(ref v) => v.to_str()
         }
     }
 }
@@ -147,11 +152,8 @@ pub fn root() -> Path {
     }
 }
 
-pub fn is_cmd(cmd: ~str) -> bool {
-    let cmds = &[~"build", ~"clean", ~"do", ~"info", ~"install", ~"prefer",
-                 ~"test", ~"uninstall", ~"unprefer"];
-
-    vec::contains(cmds, &cmd)
+pub fn is_cmd(cmd: &str) -> bool {
+    Commands.any(|&c| c == cmd)
 }
 
 pub fn parse_name(id: ~str) -> result::Result<~str, ~str> {
@@ -220,7 +222,7 @@ fn fold_item(ctx: @mut ReadyCtx,
 
         for attrs.each |attr| {
             match attr.node.value.node {
-                ast::meta_list(_, mis) => {
+                ast::meta_list(_, ref mis) => {
                     for mis.each |mi| {
                         match mi.node {
                             ast::meta_word(cmd) => cmds.push(copy *cmd),
@@ -266,15 +268,14 @@ fn add_pkg_module(ctx: @mut ReadyCtx, m: ast::_mod) -> ast::_mod {
 }
 
 fn mk_listener_vec(ctx: @mut ReadyCtx) -> @ast::expr {
-    let fns = ctx.fns;
-    let descs = do fns.map |listener| {
-        mk_listener_rec(ctx, *listener)
+    let descs = do ctx.fns.map |listener| {
+        mk_listener_rec(ctx, listener)
     };
     let ext_cx = ctx.ext_cx;
     build::mk_slice_vec_e(ext_cx, dummy_sp(), descs)
 }
 
-fn mk_listener_rec(ctx: @mut ReadyCtx, listener: ListenerFn) -> @ast::expr {
+fn mk_listener_rec(ctx: @mut ReadyCtx, listener: &ListenerFn) -> @ast::expr {
     let span = listener.span;
     let cmds = do listener.cmds.map |&cmd| {
         let ext_cx = ctx.ext_cx;
@@ -437,11 +438,11 @@ pub fn add_pkg(pkg: &Pkg) -> bool {
 
 // FIXME (#4432): Use workcache to only compile when needed
 pub fn compile_input(sysroot: Option<@Path>,
-                     pkg_id: PkgId,
+                     pkg_id: &PkgId,
                      in_file: &Path,
                      out_dir: &Path,
-                     flags: ~[~str],
-                     cfgs: ~[~str],
+                     flags: &[~str],
+                     cfgs: &[~str],
                      opt: bool,
                      test: bool,
                      crate_type: session::crate_type) -> bool {
@@ -456,7 +457,7 @@ pub fn compile_input(sysroot: Option<@Path>,
     // tjc: by default, use the package ID name as the link name
     // not sure if we should support anything else
 
-    let binary = os::args()[0];
+    let binary = @copy os::args()[0];
     let building_library = match crate_type {
         lib_crate | unknown_crate => true,
         _ => false
@@ -485,32 +486,27 @@ pub fn compile_input(sysroot: Option<@Path>,
                           + flags
                           + cfgs.flat_map(|&c| { ~[~"--cfg", c] }),
                           driver::optgroups()).get();
-    let options = @session::options {
+    let mut options = session::options {
         crate_type: crate_type,
         optimize: if opt { session::Aggressive } else { session::No },
         test: test,
         maybe_sysroot: sysroot,
         addl_lib_search_paths: ~[copy *out_dir],
-        .. *driver::build_session_options(@binary, &matches, diagnostic::emit)
-    };
-    let mut crate_cfg = options.cfg;
-
-    for cfgs.each |&cfg| {
-        crate_cfg.push(attr::mk_word_item(@cfg));
-    }
-
-    let options = @session::options {
-        cfg: vec::append(options.cfg, crate_cfg),
         // output_type should be conditional
         output_type: output_type_exe, // Use this to get a library? That's weird
-        .. *options
+        .. copy *driver::build_session_options(binary, &matches, diagnostic::emit)
     };
-    let sess = driver::build_session(options, diagnostic::emit);
+
+    for cfgs.each |&cfg| {
+        options.cfg.push(attr::mk_word_item(@cfg));
+    }
+
+    let sess = driver::build_session(@options, diagnostic::emit);
 
     debug!("calling compile_crate_from_input, out_dir = %s,
            building_library = %?", out_dir.to_str(), sess.building_library);
-    let _ = compile_crate_from_input(input, pkg_id, Some(*out_dir), sess, None,
-                                     out_file, binary,
+    let _ = compile_crate_from_input(&input, pkg_id, Some(copy *out_dir), sess,
+                                     None, &out_file, binary,
                                      driver::cu_everything);
     true
 }
@@ -520,18 +516,19 @@ pub fn compile_input(sysroot: Option<@Path>,
 // If crate_opt is present, then finish compilation. If it's None, then
 // call compile_upto and return the crate
 // also, too many arguments
-pub fn compile_crate_from_input(input: driver::input,
-                                pkg_id: PkgId,
+pub fn compile_crate_from_input(input: &driver::input,
+                                pkg_id: &PkgId,
                                 build_dir_opt: Option<Path>,
                                 sess: session::Session,
                                 crate_opt: Option<@ast::crate>,
-                                out_file: Path,
-                                binary: ~str,
+                                out_file: &Path,
+                                binary: @~str,
                                 what: driver::compile_upto) -> @ast::crate {
     debug!("Calling build_output_filenames with %? and %s", build_dir_opt, out_file.to_str());
-    let outputs = driver::build_output_filenames(&input, &build_dir_opt, &Some(out_file), sess);
+    let outputs = driver::build_output_filenames(input, &build_dir_opt,
+                                                 &Some(copy *out_file), sess);
     debug!("Outputs are %? and output type = %?", outputs, sess.opts.output_type);
-    let cfg = driver::build_configuration(sess, @binary, &input);
+    let cfg = driver::build_configuration(sess, binary, input);
     match crate_opt {
         Some(c) => {
             debug!("Calling compile_rest, outputs = %?", outputs);
@@ -541,7 +538,7 @@ pub fn compile_crate_from_input(input: driver::input,
         }
         None => {
             debug!("Calling compile_upto, outputs = %?", outputs);
-            let (crate, _) = driver::compile_upto(sess, cfg, &input,
+            let (crate, _) = driver::compile_upto(sess, copy cfg, input,
                                                   driver::cu_parse, Some(outputs));
 
             debug!("About to inject link_meta info...");
@@ -552,7 +549,8 @@ pub fn compile_crate_from_input(input: driver::input,
             debug!("How many attrs? %?", attr::find_linkage_metas(crate.node.attrs).len());
 
             if attr::find_linkage_metas(crate.node.attrs).is_empty() {
-                crate_to_use = add_attrs(*crate, ~[mk_attr(@dummy_spanned(meta_list(@~"link",
+                crate_to_use = add_attrs(copy *crate,
+                    ~[mk_attr(@dummy_spanned(meta_list(@~"link",
                                                   // change PkgId to have a <shortname> field?
                     ~[@dummy_spanned(meta_name_value(@~"name",
                                                     mk_string_lit(@pkg_id.path.filestem().get()))),
@@ -578,20 +576,16 @@ pub fn exe_suffix() -> ~str { ~"" }
 
 /// Returns a copy of crate `c` with attributes `attrs` added to its
 /// attributes
-fn add_attrs(c: ast::crate, new_attrs: ~[attribute]) -> @ast::crate {
-    @spanned {
-        node: crate_ {
-            attrs: c.node.attrs + new_attrs, ..c.node
-        },
-        span: c.span
-    }
+fn add_attrs(mut c: ast::crate, new_attrs: ~[attribute]) -> @ast::crate {
+    c.node.attrs += new_attrs;
+    @c
 }
 
 // Called by build_crates
 // FIXME (#4432): Use workcache to only compile when needed
-pub fn compile_crate(sysroot: Option<@Path>, pkg_id: PkgId,
+pub fn compile_crate(sysroot: Option<@Path>, pkg_id: &PkgId,
                      crate: &Path, dir: &Path,
-                     flags: ~[~str], cfgs: ~[~str], opt: bool,
+                     flags: &[~str], cfgs: &[~str], opt: bool,
                      test: bool, crate_type: crate_type) -> bool {
     debug!("compile_crate: crate=%s, dir=%s", crate.to_str(), dir.to_str());
     debug!("compile_crate: short_name = %s, flags =...", pkg_id.to_str());

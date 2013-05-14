@@ -708,7 +708,7 @@ pub impl Parser {
             self.obsolete(*self.last_span, ObsoleteBareFnType);
             result
         } else if *self.token == token::MOD_SEP
-            || is_ident_or_path(&*self.token) {
+            || is_ident_or_path(self.token) {
             // NAMED TYPE
             let path = self.parse_path_with_tps(false);
             ty_path(path, self.get_id())
@@ -1556,9 +1556,12 @@ pub impl Parser {
                         |p| p.parse_token_tree()
                     );
                     let (s, z) = p.parse_sep_and_zerok();
+                    let seq = match seq {
+                        spanned { node, _ } => node,
+                    };
                     tt_seq(
-                        mk_sp(sp.lo ,p.span.hi),
-                        seq.node,
+                        mk_sp(sp.lo, p.span.hi),
+                        seq,
                         s,
                         z
                     )
@@ -1624,9 +1627,9 @@ pub impl Parser {
             token::LBRACE | token::LPAREN | token::LBRACKET => {
                 self.parse_matcher_subseq(
                     name_idx,
-                    *self.token,
+                    copy *self.token,
                     // tjc: not sure why we need a copy
-                    token::flip_delimiter(&*self.token)
+                    token::flip_delimiter(self.token)
                 )
             }
             _ => self.fatal(~"expected open delimiter")
@@ -1986,14 +1989,15 @@ pub impl Parser {
         // them as the lambda arguments
         let e = self.parse_expr_res(RESTRICT_NO_BAR_OR_DOUBLEBAR_OP);
         match e.node {
-            expr_call(f, args, NoSugar) => {
+            expr_call(f, /*bad*/ copy args, NoSugar) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
                 let args = vec::append(args, ~[last_arg]);
                 self.mk_expr(lo.lo, block.span.hi, expr_call(f, args, sugar))
             }
-            expr_method_call(f, i, tps, args, NoSugar) => {
+            expr_method_call(f, i, /*bad*/ copy tps,
+                             /*bad*/ copy args, NoSugar) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
@@ -2001,7 +2005,7 @@ pub impl Parser {
                 self.mk_expr(lo.lo, block.span.hi,
                              expr_method_call(f, i, tps, args, sugar))
             }
-            expr_field(f, i, tps) => {
+            expr_field(f, i, /*bad*/ copy tps) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
@@ -2259,7 +2263,7 @@ pub impl Parser {
         let lo = self.span.lo;
         let mut hi = self.span.hi;
         let pat;
-        match *self.token {
+        match /*bad*/ copy *self.token {
             // parse _
           token::UNDERSCORE => { self.bump(); pat = pat_wild; }
             // parse @pat
@@ -2373,8 +2377,8 @@ pub impl Parser {
             self.expect(&token::RBRACKET);
             pat = ast::pat_vec(before, slice, after);
           }
-          tok => {
-            if !is_ident_or_path(&tok)
+          ref tok => {
+            if !is_ident_or_path(tok)
                 || self.is_keyword(&~"true")
                 || self.is_keyword(&~"false")
             {
@@ -2384,7 +2388,7 @@ pub impl Parser {
                 // preceded by unary-minus) or identifiers.
                 let val = self.parse_literal_maybe_minus();
                 if self.eat(&token::DOTDOT) {
-                    let end = if is_ident_or_path(&tok) {
+                    let end = if is_ident_or_path(tok) {
                         let path = self.parse_path_with_tps(true);
                         let hi = self.span.hi;
                         self.mk_expr(lo, hi, expr_path(path))
@@ -2897,7 +2901,7 @@ pub impl Parser {
                 loop;
             }
 
-            if is_ident_or_path(&*self.token) {
+            if is_ident_or_path(self.token) {
                 self.obsolete(*self.span,
                               ObsoleteTraitBoundSeparator);
             }
@@ -3531,6 +3535,7 @@ pub impl Parser {
     fn parse_item_mod(&self, outer_attrs: ~[ast::attribute]) -> item_info {
         let id_span = *self.span;
         let id = self.parse_ident();
+        let merge = ::attr::first_attr_value_str_by_name(outer_attrs, "merge");
         let info_ = if *self.token == token::SEMI {
             self.bump();
             // This mod is in an external file. Let's go get it!
@@ -3550,7 +3555,7 @@ pub impl Parser {
         // (int-template, iter-trait). If there's a 'merge' attribute
         // on the mod, then we'll go and suck in another file and merge
         // its contents
-        match ::attr::first_attr_value_str_by_name(outer_attrs, ~"merge") {
+        match merge {
             Some(path) => {
                 let prefix = Path(
                     self.sess.cm.span_to_filename(*self.span));
@@ -3636,10 +3641,7 @@ pub impl Parser {
             new_sub_parser_from_file(self.sess, copy self.cfg,
                                      &full_path, id_sp);
         let (inner, next) = p0.parse_inner_attrs_and_next();
-        let mod_attrs = vec::append(
-            /*bad*/ copy outer_attrs,
-            inner
-        );
+        let mod_attrs = vec::append(outer_attrs, inner);
         let first_item_outer_attrs = next;
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
         return (ast::item_mod(m0), mod_attrs);
@@ -4105,7 +4107,8 @@ pub impl Parser {
         }
         if self.eat_keyword(&~"mod") {
             // MODULE ITEM
-            let (ident, item_, extra_attrs) = self.parse_item_mod(attrs);
+            let (ident, item_, extra_attrs) =
+                self.parse_item_mod(/*bad*/ copy attrs);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));

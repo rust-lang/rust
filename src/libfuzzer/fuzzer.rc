@@ -134,7 +134,7 @@ pub fn stash_expr_if(c: @fn(@ast::expr, test_mode)->bool,
                      e: @ast::expr,
                      tm: test_mode) {
     if c(e, tm) {
-        *es += ~[e];
+        *es = *es + ~[e];
     } else {
         /* now my indices are wrong :( */
     }

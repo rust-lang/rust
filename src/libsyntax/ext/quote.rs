@@ -452,9 +452,9 @@ fn mk_binop(cx: @ext_ctxt, sp: span, bop: token::binop) -> @ast::expr {
                    ids_ext(cx, ~[name.to_owned()]))
 }
 
-fn mk_token(cx: @ext_ctxt, sp: span, tok: token::Token) -> @ast::expr {
+fn mk_token(cx: @ext_ctxt, sp: span, tok: &token::Token) -> @ast::expr {
 
-    match tok {
+    match *tok {
         BINOP(binop) => {
             return build::mk_call(cx, sp,
                                   ids_ext(cx, ~[~"BINOP"]),
@@ -561,7 +561,7 @@ fn mk_token(cx: @ext_ctxt, sp: span, tok: token::Token) -> @ast::expr {
         _ => ()
     }
 
-    let name = match tok {
+    let name = match *tok {
         EQ => "EQ",
         LT => "LT",
         LE => "LE",
@@ -612,7 +612,7 @@ fn mk_tt(cx: @ext_ctxt, sp: span, tt: &ast::token_tree)
             let e_tok =
                 build::mk_call(cx, sp,
                                ids_ext(cx, ~[~"tt_tok"]),
-                               ~[e_sp, mk_token(cx, sp, *tok)]);
+                               ~[e_sp, mk_token(cx, sp, tok)]);
             let e_push =
                 build::mk_method_call(cx, sp,
                                       build::mk_path(cx, sp, ids_ext(cx, ~[~"tt"])),
