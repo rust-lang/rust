@@ -585,6 +585,51 @@ impl Hyperbolic for float {
     fn tanh(&self) -> float {
         (*self as f64).tanh() as float
     }
+
+    ///
+    /// Inverse hyperbolic sine
+    ///
+    /// # Returns
+    ///
+    /// - on success, the inverse hyperbolic sine of `self` will be returned
+    /// - `self` if `self` is `0.0`, `-0.0`, `infinity`, or `neg_infinity`
+    /// - `NaN` if `self` is `NaN`
+    ///
+    #[inline(always)]
+    fn asinh(&self) -> float {
+        (*self as f64).asinh() as float
+    }
+
+    ///
+    /// Inverse hyperbolic cosine
+    ///
+    /// # Returns
+    ///
+    /// - on success, the inverse hyperbolic cosine of `self` will be returned
+    /// - `infinity` if `self` is `infinity`
+    /// - `NaN` if `self` is `NaN` or `self < 1.0` (including `neg_infinity`)
+    ///
+    #[inline(always)]
+    fn acosh(&self) -> float {
+        (*self as f64).acosh() as float
+    }
+
+    ///
+    /// Inverse hyperbolic tangent
+    ///
+    /// # Returns
+    ///
+    /// - on success, the inverse hyperbolic tangent of `self` will be returned
+    /// - `self` if `self` is `0.0` or `-0.0`
+    /// - `infinity` if `self` is `1.0`
+    /// - `neg_infinity` if `self` is `-1.0`
+    /// - `NaN` if the `self` is `NaN` or outside the domain of `-1.0 <= self <= 1.0`
+    ///   (including `infinity` and `neg_infinity`)
+    ///
+    #[inline(always)]
+    fn atanh(&self) -> float {
+        (*self as f64).atanh() as float
+    }
 }
 
 impl Real for float {
@@ -836,6 +881,25 @@ impl Float for float {
     #[inline(always)]
     fn max_10_exp() -> int { Float::max_10_exp::<f64>() }
 
+    /// Constructs a floating point number by multiplying `x` by 2 raised to the power of `exp`
+    #[inline(always)]
+    fn ldexp(x: float, exp: int) -> float {
+        Float::ldexp(x as f64, exp) as float
+    }
+
+    ///
+    /// Breaks the number into a normalized fraction and a base-2 exponent, satisfying:
+    ///
+    /// - `self = x * pow(2, exp)`
+    /// - `0.5 <= abs(x) < 1.0`
+    ///
+    #[inline(always)]
+    fn frexp(&self) -> (float, int) {
+        match (*self as f64).frexp() {
+            (x, exp) => (x as float, exp)
+        }
+    }
+
     ///
     /// Returns the exponential of the number, minus `1`, in a way that is accurate
     /// even if the number is close to zero
@@ -850,7 +914,9 @@ impl Float for float {
     /// than if the operations were performed separately
     ///
     #[inline(always)]
-    fn ln_1p(&self) -> float { (*self as f64).ln_1p() as float }
+    fn ln_1p(&self) -> float {
+        (*self as f64).ln_1p() as float
+    }
 
     ///
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
@@ -973,6 +1039,43 @@ mod tests {
     }
 
     #[test]
+    fn test_asinh() {
+        assert_eq!(0.0f.asinh(), 0.0f);
+        assert_eq!((-0.0f).asinh(), -0.0f);
+        assert_eq!(Float::infinity::<float>().asinh(), Float::infinity::<float>());
+        assert_eq!(Float::neg_infinity::<float>().asinh(), Float::neg_infinity::<float>());
+        assert!(Float::NaN::<float>().asinh().is_NaN());
+        assert_approx_eq!(2.0f.asinh(), 1.443635475178810342493276740273105f);
+        assert_approx_eq!((-2.0f).asinh(), -1.443635475178810342493276740273105f);
+    }
+
+    #[test]
+    fn test_acosh() {
+        assert_eq!(1.0f.acosh(), 0.0f);
+        assert!(0.999f.acosh().is_NaN());
+        assert_eq!(Float::infinity::<float>().acosh(), Float::infinity::<float>());
+        assert!(Float::neg_infinity::<float>().acosh().is_NaN());
+        assert!(Float::NaN::<float>().acosh().is_NaN());
+        assert_approx_eq!(2.0f.acosh(), 1.31695789692481670862504634730796844f);
+        assert_approx_eq!(3.0f.acosh(), 1.76274717403908605046521864995958461f);
+    }
+
+    #[test]
+    fn test_atanh() {
+        assert_eq!(0.0f.atanh(), 0.0f);
+        assert_eq!((-0.0f).atanh(), -0.0f);
+        assert_eq!(1.0f.atanh(), Float::infinity::<float>());
+        assert_eq!((-1.0f).atanh(), Float::neg_infinity::<float>());
+        assert!(2f64.atanh().atanh().is_NaN());
+        assert!((-2f64).atanh().atanh().is_NaN());
+        assert!(Float::infinity::<f64>().atanh().is_NaN());
+        assert!(Float::neg_infinity::<f64>().atanh().is_NaN());
+        assert!(Float::NaN::<float>().atanh().is_NaN());
+        assert_approx_eq!(0.5f.atanh(), 0.54930614433405484569762261846126285f);
+        assert_approx_eq!((-0.5f).atanh(), -0.54930614433405484569762261846126285f);
+    }
+
+    #[test]
     fn test_real_consts() {
         assert_approx_eq!(Real::two_pi::<float>(), 2f * Real::pi::<float>());
         assert_approx_eq!(Real::frac_pi_2::<float>(), Real::pi::<float>() / 2f);
@@ -1090,6 +1193,46 @@ mod tests {
         assert_eq!(1f.classify(), FPNormal);
         assert_eq!(1e-307f.classify(), FPNormal);
         assert_eq!(1e-308f.classify(), FPSubnormal);
+    }
+
+    #[test]
+    fn test_ldexp() {
+        // We have to use from_str until base-2 exponents
+        // are supported in floating-point literals
+        let f1: float = from_str_hex("1p-123").unwrap();
+        let f2: float = from_str_hex("1p-111").unwrap();
+        assert_eq!(Float::ldexp(1f, -123), f1);
+        assert_eq!(Float::ldexp(1f, -111), f2);
+
+        assert_eq!(Float::ldexp(0f, -123), 0f);
+        assert_eq!(Float::ldexp(-0f, -123), -0f);
+        assert_eq!(Float::ldexp(Float::infinity::<float>(), -123),
+                   Float::infinity::<float>());
+        assert_eq!(Float::ldexp(Float::neg_infinity::<float>(), -123),
+                   Float::neg_infinity::<float>());
+        assert!(Float::ldexp(Float::NaN::<float>(), -123).is_NaN());
+    }
+
+    #[test]
+    fn test_frexp() {
+        // We have to use from_str until base-2 exponents
+        // are supported in floating-point literals
+        let f1: float = from_str_hex("1p-123").unwrap();
+        let f2: float = from_str_hex("1p-111").unwrap();
+        let (x1, exp1) = f1.frexp();
+        let (x2, exp2) = f2.frexp();
+        assert_eq!((x1, exp1), (0.5f, -122));
+        assert_eq!((x2, exp2), (0.5f, -110));
+        assert_eq!(Float::ldexp(x1, exp1), f1);
+        assert_eq!(Float::ldexp(x2, exp2), f2);
+
+        assert_eq!(0f.frexp(), (0f, 0));
+        assert_eq!((-0f).frexp(), (-0f, 0));
+        assert_eq!(match Float::infinity::<float>().frexp() { (x, _) => x },
+                   Float::infinity::<float>())
+        assert_eq!(match Float::neg_infinity::<float>().frexp() { (x, _) => x },
+                   Float::neg_infinity::<float>())
+        assert!(match Float::NaN::<float>().frexp() { (x, _) => x.is_NaN() })
     }
 
     #[test]

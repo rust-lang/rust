@@ -133,6 +133,9 @@ pub trait Hyperbolic: Exponential {
     fn sinh(&self) -> Self;
     fn cosh(&self) -> Self;
     fn tanh(&self) -> Self;
+    fn asinh(&self) -> Self;
+    fn acosh(&self) -> Self;
+    fn atanh(&self) -> Self;
 }
 
 ///
@@ -280,6 +283,9 @@ pub trait Float: Real
     fn max_exp() -> int;
     fn min_10_exp() -> int;
     fn max_10_exp() -> int;
+
+    fn ldexp(x: Self, exp: int) -> Self;
+    fn frexp(&self) -> (Self, int);
 
     fn exp_m1(&self) -> Self;
     fn ln_1p(&self) -> Self;
