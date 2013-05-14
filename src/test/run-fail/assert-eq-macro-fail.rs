@@ -1,4 +1,4 @@
-// error-pattern:left: 14 != right: 15
+// error-pattern:left: 14 does not equal right: 15
 
 #[deriving(Eq)]
 struct Point { x : int }

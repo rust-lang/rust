@@ -205,29 +205,29 @@ fn spawn_process_internal(prog: &str, args: &[~str],
 
         let orig_std_in = get_osfhandle(if in_fd > 0 { in_fd } else { 0 }) as HANDLE;
         if orig_std_in == INVALID_HANDLE_VALUE as HANDLE {
-            fail!(fmt!("failure in get_osfhandle: %s", os::last_os_error()));
+            fail!("failure in get_osfhandle: %s", os::last_os_error());
         }
         if DuplicateHandle(cur_proc, orig_std_in, cur_proc, &mut si.hStdInput,
                            0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE {
-            fail!(fmt!("failure in DuplicateHandle: %s", os::last_os_error()));
+            fail!("failure in DuplicateHandle: %s", os::last_os_error());
         }
 
         let orig_std_out = get_osfhandle(if out_fd > 0 { out_fd } else { 1 }) as HANDLE;
         if orig_std_out == INVALID_HANDLE_VALUE as HANDLE {
-            fail!(fmt!("failure in get_osfhandle: %s", os::last_os_error()));
+            fail!("failure in get_osfhandle: %s", os::last_os_error());
         }
         if DuplicateHandle(cur_proc, orig_std_out, cur_proc, &mut si.hStdOutput,
                            0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE {
-            fail!(fmt!("failure in DuplicateHandle: %s", os::last_os_error()));
+            fail!("failure in DuplicateHandle: %s", os::last_os_error());
         }
 
         let orig_std_err = get_osfhandle(if err_fd > 0 { err_fd } else { 2 }) as HANDLE;
         if orig_std_err as HANDLE == INVALID_HANDLE_VALUE as HANDLE {
-            fail!(fmt!("failure in get_osfhandle: %s", os::last_os_error()));
+            fail!("failure in get_osfhandle: %s", os::last_os_error());
         }
         if DuplicateHandle(cur_proc, orig_std_err, cur_proc, &mut si.hStdError,
                            0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE {
-            fail!(fmt!("failure in DuplicateHandle: %s", os::last_os_error()));
+            fail!("failure in DuplicateHandle: %s", os::last_os_error());
         }
 
         let cmd = make_command_line(prog, args);
@@ -252,7 +252,7 @@ fn spawn_process_internal(prog: &str, args: &[~str],
         CloseHandle(si.hStdError);
 
         for create_err.each |msg| {
-            fail!(fmt!("failure in CreateProcess: %s", *msg));
+            fail!("failure in CreateProcess: %s", *msg);
         }
 
         // We close the thread handle because we don't care about keeping the thread id valid,
@@ -379,7 +379,7 @@ fn spawn_process_internal(prog: &str, args: &[~str],
 
         let pid = fork();
         if pid < 0 {
-            fail!(fmt!("failure in fork: %s", os::last_os_error()));
+            fail!("failure in fork: %s", os::last_os_error());
         } else if pid > 0 {
             return RunProgramResult {pid: pid, handle: ptr::null()};
         }
@@ -387,13 +387,13 @@ fn spawn_process_internal(prog: &str, args: &[~str],
         rustrt::rust_unset_sigprocmask();
 
         if in_fd > 0 && dup2(in_fd, 0) == -1 {
-            fail!(fmt!("failure in dup2(in_fd, 0): %s", os::last_os_error()));
+            fail!("failure in dup2(in_fd, 0): %s", os::last_os_error());
         }
         if out_fd > 0 && dup2(out_fd, 1) == -1 {
-            fail!(fmt!("failure in dup2(out_fd, 1): %s", os::last_os_error()));
+            fail!("failure in dup2(out_fd, 1): %s", os::last_os_error());
         }
         if err_fd > 0 && dup2(err_fd, 2) == -1 {
-            fail!(fmt!("failure in dup3(err_fd, 2): %s", os::last_os_error()));
+            fail!("failure in dup3(err_fd, 2): %s", os::last_os_error());
         }
         // close all other fds
         for int::range_rev(getdtablesize() as int - 1, 2) |fd| {
@@ -403,7 +403,7 @@ fn spawn_process_internal(prog: &str, args: &[~str],
         for dir.each |dir| {
             do str::as_c_str(*dir) |dirp| {
                 if chdir(dirp) == -1 {
-                    fail!(fmt!("failure in chdir: %s", os::last_os_error()));
+                    fail!("failure in chdir: %s", os::last_os_error());
                 }
             }
         }
@@ -415,7 +415,7 @@ fn spawn_process_internal(prog: &str, args: &[~str],
             do with_argv(prog, args) |argv| {
                 execvp(*argv, argv);
                 // execvp only returns if an error occurred
-                fail!(fmt!("failure in execvp: %s", os::last_os_error()));
+                fail!("failure in execvp: %s", os::last_os_error());
             }
         }
     }
@@ -646,8 +646,7 @@ pub fn program_output(prog: &str, args: &[~str]) -> ProgramOutput {
                 errs = s;
             }
             (n, _) => {
-                fail!(fmt!("program_output received an unexpected file \
-                           number: %u", n));
+                fail!("program_output received an unexpected file number: %u", n);
             }
         };
         count -= 1;
@@ -713,14 +712,14 @@ pub fn waitpid(pid: pid_t) -> int {
 
             let proc = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_INFORMATION, FALSE, pid as DWORD);
             if proc.is_null() {
-                fail!(fmt!("failure in OpenProcess: %s", os::last_os_error()));
+                fail!("failure in OpenProcess: %s", os::last_os_error());
             }
 
             loop {
                 let mut status = 0;
                 if GetExitCodeProcess(proc, &mut status) == FALSE {
                     CloseHandle(proc);
-                    fail!(fmt!("failure in GetExitCodeProcess: %s", os::last_os_error()));
+                    fail!("failure in GetExitCodeProcess: %s", os::last_os_error());
                 }
                 if status != STILL_ACTIVE {
                     CloseHandle(proc);
@@ -728,7 +727,7 @@ pub fn waitpid(pid: pid_t) -> int {
                 }
                 if WaitForSingleObject(proc, INFINITE) == WAIT_FAILED {
                     CloseHandle(proc);
-                    fail!(fmt!("failure in WaitForSingleObject: %s", os::last_os_error()));
+                    fail!("failure in WaitForSingleObject: %s", os::last_os_error());
                 }
             }
         }
@@ -765,7 +764,7 @@ pub fn waitpid(pid: pid_t) -> int {
 
         let mut status = 0 as c_int;
         if unsafe { waitpid(pid, &mut status, 0) } == -1 {
-            fail!(fmt!("failure in waitpid: %s", os::last_os_error()));
+            fail!("failure in waitpid: %s", os::last_os_error());
         }
 
         return if WIFEXITED(status) {

@@ -35,7 +35,7 @@ impl<K:Eq,V:Copy> Index<K,V> for AssociationList<K,V> {
                 return copy pair.value;
             }
         }
-        fail!(fmt!("No value found for key: %?", index));
+        fail!("No value found for key: %?", index);
     }
 }
 

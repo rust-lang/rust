@@ -75,7 +75,7 @@ fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
                 Some(pprust::fun_to_str(decl, purity, ident, None, tys,
                                         extract::interner()))
             }
-            _ => fail!(~"get_fn_sig: fn_id not bound to a fn item")
+            _ => fail!("get_fn_sig: fn_id not bound to a fn item")
         }
     }
 }
@@ -96,7 +96,7 @@ fn fold_const(
                     }, _) => {
                         pprust::ty_to_str(ty, extract::interner())
                     }
-                    _ => fail!(~"fold_const: id not bound to a const item")
+                    _ => fail!("fold_const: id not bound to a const item")
                 }
             }}),
         .. doc
@@ -127,7 +127,7 @@ fn fold_enum(
                             pprust::variant_to_str(
                                 ast_variant, extract::interner())
                         }
-                        _ => fail!(~"enum variant not bound to an enum item")
+                        _ => fail!("enum variant not bound to an enum item")
                     }
                 }
             };
@@ -204,7 +204,7 @@ fn get_method_sig(
                             }
                         }
                     }
-                    _ => fail!(~"method not found")
+                    _ => fail!("method not found")
                 }
             }
             ast_map::node_item(@ast::item {
@@ -223,10 +223,10 @@ fn get_method_sig(
                             extract::interner()
                         ))
                     }
-                    None => fail!(~"method not found")
+                    None => fail!("method not found")
                 }
             }
-            _ => fail!(~"get_method_sig: item ID not bound to trait or impl")
+            _ => fail!("get_method_sig: item ID not bound to trait or impl")
         }
     }
 }
@@ -255,7 +255,7 @@ fn fold_impl(
                      Some(pprust::ty_to_str(
                          self_ty, extract::interner())))
                 }
-                _ => fail!(~"expected impl")
+                _ => fail!("expected impl")
             }
         }
     };
@@ -294,7 +294,7 @@ fn fold_type(
                                               extract::interner())
                         ))
                     }
-                    _ => fail!(~"expected type")
+                    _ => fail!("expected type")
                 }
             }
         },
@@ -318,7 +318,7 @@ fn fold_struct(
                         Some(pprust::item_to_str(item,
                                                  extract::interner()))
                     }
-                    _ => fail!(~"not an item")
+                    _ => fail!("not an item")
                 }
             }
         },
@@ -333,7 +333,7 @@ fn fold_struct(
 fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
     let node = match copy item.node {
         ast::item_struct(def, tys) => ast::item_struct(def, tys),
-        _ => fail!(~"not a struct")
+        _ => fail!("not a struct")
     };
 
     @ast::item {

@@ -116,7 +116,7 @@ pub mod reader {
                         (data[start + 3u] as uint),
                     next: start + 4u};
         }
-        fail!(~"vint too big");
+        fail!("vint too big");
     }
 
     #[cfg(target_arch = "x86")]
@@ -319,9 +319,7 @@ pub mod reader {
                     self.pos = r_doc.end;
                     let str = doc_as_str(r_doc);
                     if lbl != str {
-                        fail!(fmt!("Expected label %s but found %s",
-                                   lbl,
-                                   str));
+                        fail!("Expected label %s but found %s", lbl, str);
                     }
                 }
             }
@@ -330,7 +328,7 @@ pub mod reader {
         fn next_doc(&mut self, exp_tag: EbmlEncoderTag) -> Doc {
             debug!(". next_doc(exp_tag=%?)", exp_tag);
             if self.pos >= self.parent.end {
-                fail!(~"no more documents in current node!");
+                fail!("no more documents in current node!");
             }
             let TaggedDoc { tag: r_tag, doc: r_doc } =
                 doc_at(self.parent.data, self.pos);
@@ -338,12 +336,11 @@ pub mod reader {
                    copy self.parent.start, copy self.parent.end,
                    copy self.pos, r_tag, r_doc.start, r_doc.end);
             if r_tag != (exp_tag as uint) {
-                fail!(fmt!("expected EBML doc with tag %? but found tag %?",
-                          exp_tag, r_tag));
+                fail!("expected EBML doc with tag %? but found tag %?", exp_tag, r_tag);
             }
             if r_doc.end > self.parent.end {
-                fail!(fmt!("invalid EBML, child extends to 0x%x, \
-                           parent to 0x%x", r_doc.end, self.parent.end));
+                fail!("invalid EBML, child extends to 0x%x, parent to 0x%x",
+                      r_doc.end, self.parent.end);
             }
             self.pos = r_doc.end;
             r_doc
@@ -393,7 +390,7 @@ pub mod reader {
         fn read_uint(&mut self) -> uint {
             let v = doc_as_u64(self.next_doc(EsUint));
             if v > (::core::uint::max_value as u64) {
-                fail!(fmt!("uint %? too large for this architecture", v));
+                fail!("uint %? too large for this architecture", v);
             }
             v as uint
         }
@@ -414,7 +411,7 @@ pub mod reader {
             let v = doc_as_u64(self.next_doc(EsInt)) as i64;
             if v > (int::max_value as i64) || v < (int::min_value as i64) {
                 debug!("FIXME #6122: Removing this makes this function miscompile");
-                fail!(fmt!("int %? out of range for this architecture", v));
+                fail!("int %? out of range for this architecture", v);
             }
             v as int
         }
@@ -423,10 +420,10 @@ pub mod reader {
             doc_as_u8(self.next_doc(EsBool)) as bool
         }
 
-        fn read_f64(&mut self) -> f64 { fail!(~"read_f64()"); }
-        fn read_f32(&mut self) -> f32 { fail!(~"read_f32()"); }
-        fn read_float(&mut self) -> float { fail!(~"read_float()"); }
-        fn read_char(&mut self) -> char { fail!(~"read_char()"); }
+        fn read_f64(&mut self) -> f64 { fail!("read_f64()"); }
+        fn read_f32(&mut self) -> f32 { fail!("read_f32()"); }
+        fn read_float(&mut self) -> float { fail!("read_float()"); }
+        fn read_char(&mut self) -> char { fail!("read_char()"); }
         fn read_str(&mut self) -> ~str { doc_as_str(self.next_doc(EsStr)) }
 
         // Compound types:
@@ -602,7 +599,7 @@ pub mod reader {
 
         fn read_map<T>(&mut self, _: &fn(&mut Decoder, uint) -> T) -> T {
             debug!("read_map()");
-            fail!(~"read_map is unimplemented");
+            fail!("read_map is unimplemented");
         }
 
         fn read_map_elt_key<T>(&mut self,
@@ -610,7 +607,7 @@ pub mod reader {
                                _: &fn(&mut Decoder) -> T)
                                -> T {
             debug!("read_map_elt_key(idx=%u)", idx);
-            fail!(~"read_map_elt_val is unimplemented");
+            fail!("read_map_elt_val is unimplemented");
         }
 
         fn read_map_elt_val<T>(&mut self,
@@ -618,7 +615,7 @@ pub mod reader {
                                _: &fn(&mut Decoder) -> T)
                                -> T {
             debug!("read_map_elt_val(idx=%u)", idx);
-            fail!(~"read_map_elt_val is unimplemented");
+            fail!("read_map_elt_val is unimplemented");
         }
     }
 }
@@ -647,7 +644,7 @@ pub mod writer {
                             n as u8]),
             4u => w.write(&[0x10u8 | ((n >> 24_u) as u8), (n >> 16_u) as u8,
                             (n >> 8_u) as u8, n as u8]),
-            _ => fail!(fmt!("vint to write too big: %?", n))
+            _ => fail!("vint to write too big: %?", n)
         };
     }
 
@@ -656,7 +653,7 @@ pub mod writer {
         if n < 0x4000_u { write_sized_vuint(w, n, 2u); return; }
         if n < 0x200000_u { write_sized_vuint(w, n, 3u); return; }
         if n < 0x10000000_u { write_sized_vuint(w, n, 4u); return; }
-        fail!(fmt!("vint to write too big: %?", n));
+        fail!("vint to write too big: %?", n);
     }
 
     #[cfg(stage0)]
@@ -847,17 +844,17 @@ pub mod writer {
 
         // FIXME (#2742): implement these
         fn emit_f64(&mut self, _v: f64) {
-            fail!(~"Unimplemented: serializing an f64");
+            fail!("Unimplemented: serializing an f64");
         }
         fn emit_f32(&mut self, _v: f32) {
-            fail!(~"Unimplemented: serializing an f32");
+            fail!("Unimplemented: serializing an f32");
         }
         fn emit_float(&mut self, _v: float) {
-            fail!(~"Unimplemented: serializing a float");
+            fail!("Unimplemented: serializing a float");
         }
 
         fn emit_char(&mut self, _v: char) {
-            fail!(~"Unimplemented: serializing a char");
+            fail!("Unimplemented: serializing a char");
         }
 
         fn emit_str(&mut self, v: &str) {
@@ -954,15 +951,15 @@ pub mod writer {
         }
 
         fn emit_map(&mut self, _len: uint, _f: &fn(&mut Encoder)) {
-            fail!(~"emit_map is unimplemented");
+            fail!("emit_map is unimplemented");
         }
 
         fn emit_map_elt_key(&mut self, _idx: uint, _f: &fn(&mut Encoder)) {
-            fail!(~"emit_map_elt_key is unimplemented");
+            fail!("emit_map_elt_key is unimplemented");
         }
 
         fn emit_map_elt_val(&mut self, _idx: uint, _f: &fn(&mut Encoder)) {
-            fail!(~"emit_map_elt_val is unimplemented");
+            fail!("emit_map_elt_val is unimplemented");
         }
     }
 }

@@ -332,7 +332,7 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, st: ty::sty) {
           debug!("~~~~ %s", ~"]");
           w.write_char(']');
       }
-      ty::ty_err => fail!(~"Shouldn't encode error type")
+      ty::ty_err => fail!("Shouldn't encode error type")
     }
 }
 

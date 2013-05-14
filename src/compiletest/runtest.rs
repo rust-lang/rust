@@ -561,7 +561,7 @@ fn compose_and_run_compiler(
 fn ensure_dir(path: &Path) {
     if os::path_is_dir(path) { return; }
     if !os::make_dir(path, 0x1c0i32) {
-        fail!(fmt!("can't make dir %s", path.to_str()));
+        fail!("can't make dir %s", path.to_str());
     }
 }
 

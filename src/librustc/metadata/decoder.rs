@@ -87,7 +87,7 @@ fn find_item(item_id: int, items: ebml::Doc) -> ebml::Doc {
 fn lookup_item(item_id: int, data: @~[u8]) -> ebml::Doc {
     let items = reader::get_doc(reader::Doc(data), tag_items);
     match maybe_find_item(item_id, items) {
-       None => fail!(fmt!("lookup_item: id not found: %d", item_id)),
+       None => fail!("lookup_item: id not found: %d", item_id),
        Some(d) => d
     }
 }
@@ -139,7 +139,7 @@ fn item_family(item: ebml::Doc) -> Family {
       'g' => PublicField,
       'j' => PrivateField,
       'N' => InheritedField,
-       c => fail!(fmt!("unexpected family char: %c", c))
+       c => fail!("unexpected family char: %c", c)
     }
 }
 
@@ -151,7 +151,7 @@ fn item_visibility(item: ebml::Doc) -> ast::visibility {
                 'y' => ast::public,
                 'n' => ast::private,
                 'i' => ast::inherited,
-                _ => fail!(~"unknown visibility character")
+                _ => fail!("unknown visibility character")
             }
         }
     }
@@ -458,8 +458,8 @@ pub enum def_like {
 fn def_like_to_def(def_like: def_like) -> ast::def {
     match def_like {
         dl_def(def) => return def,
-        dl_impl(*) => fail!(~"found impl in def_like_to_def"),
-        dl_field => fail!(~"found field in def_like_to_def")
+        dl_impl(*) => fail!("found impl in def_like_to_def"),
+        dl_field => fail!("found field in def_like_to_def")
     }
 }
 
@@ -677,7 +677,7 @@ fn get_self_ty(item: ebml::Doc) -> ast::self_ty_ {
             'm' => { ast::m_mutbl }
             'c' => { ast::m_const }
             _ => {
-                fail!(fmt!("unknown mutability character: `%c`", ch as char))
+                fail!("unknown mutability character: `%c`", ch as char)
             }
         }
     }
@@ -696,7 +696,7 @@ fn get_self_ty(item: ebml::Doc) -> ast::self_ty_ {
             return ast::sty_region(None, get_mutability(string[1]));
         }
         _ => {
-            fail!(fmt!("unknown self type code: `%c`", self_ty_kind as char));
+            fail!("unknown self type code: `%c`", self_ty_kind as char);
         }
     }
 }
@@ -998,7 +998,7 @@ fn describe_def(items: ebml::Doc, id: ast::def_id) -> ~str {
     if id.crate != ast::local_crate { return ~"external"; }
     let it = match maybe_find_item(id.node, items) {
         Some(it) => it,
-        None => fail!(fmt!("describe_def: item not found %?", id))
+        None => fail!("describe_def: item not found %?", id)
     };
     return item_family_to_str(item_family(it));
 }
@@ -1189,7 +1189,7 @@ pub fn translate_def_id(cdata: cmd, did: ast::def_id) -> ast::def_id {
 
     match cdata.cnum_map.find(&did.crate) {
       option::Some(&n) => ast::def_id { crate: n, node: did.node },
-      option::None => fail!(~"didn't find a crate in the cnum_map")
+      option::None => fail!("didn't find a crate in the cnum_map")
     }
 }
 

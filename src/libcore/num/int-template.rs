@@ -89,7 +89,7 @@ pub fn gt(x: T, y: T) -> bool { x > y }
 pub fn _range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) -> bool {
     let mut i = start;
     if step == 0 {
-        fail!(~"range_step called with step == 0");
+        fail!("range_step called with step == 0");
     } else if step > 0 { // ascending
         while i < stop {
             if !it(i) { return false; }
@@ -923,16 +923,16 @@ mod tests {
 
         // None of the `fail`s should execute.
         for range(10,0) |_i| {
-            fail!(~"unreachable");
+            fail!("unreachable");
         }
         for range_rev(0,10) |_i| {
-            fail!(~"unreachable");
+            fail!("unreachable");
         }
         for range_step(10,0,1) |_i| {
-            fail!(~"unreachable");
+            fail!("unreachable");
         }
         for range_step(0,10,-1) |_i| {
-            fail!(~"unreachable");
+            fail!("unreachable");
         }
     }
 

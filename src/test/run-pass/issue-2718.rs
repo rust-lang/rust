@@ -85,7 +85,7 @@ pub mod pipes {
             // The receiver will eventually clean this up.
             unsafe { forget(p); }
           }
-          full => { fail!(~"duplicate send") }
+          full => { fail!("duplicate send") }
           blocked => {
 
             // The receiver will eventually clean this up.
@@ -127,7 +127,7 @@ pub mod pipes {
           }
           full => {
             // This is impossible
-            fail!(~"you dun goofed")
+            fail!("you dun goofed")
           }
           terminated => {
             // I have to clean up, use drop_glue
@@ -144,7 +144,7 @@ pub mod pipes {
           }
           blocked => {
             // this shouldn't happen.
-            fail!(~"terminating a blocked packet")
+            fail!("terminating a blocked packet")
           }
           terminated | full => {
             // I have to clean up, use drop_glue
@@ -269,7 +269,7 @@ pub mod pingpong {
         pub fn do_pong(c: pong) -> (ping, ()) {
             let packet = ::pipes::recv(c);
             if packet.is_none() {
-                fail!(~"sender closed the connection")
+                fail!("sender closed the connection")
             }
             (pingpong::liberate_pong(packet.unwrap()), ())
         }
@@ -284,7 +284,7 @@ pub mod pingpong {
         pub fn do_ping(c: ping) -> (pong, ()) {
             let packet = ::pipes::recv(c);
             if packet.is_none() {
-                fail!(~"sender closed the connection")
+                fail!("sender closed the connection")
             }
             (pingpong::liberate_ping(packet.unwrap()), ())
         }

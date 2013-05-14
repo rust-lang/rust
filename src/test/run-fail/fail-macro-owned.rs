@@ -11,5 +11,5 @@
 // error-pattern:task failed at 'test-fail-owned'
 
 fn main() {
-    fail!(~"test-fail-owned");
+    fail!("test-fail-owned");
 }

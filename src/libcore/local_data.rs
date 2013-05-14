@@ -132,15 +132,15 @@ fn test_tls_modify() {
         fn my_key(_x: @~str) { }
         local_data_modify(my_key, |data| {
             match data {
-                Some(@ref val) => fail!(~"unwelcome value: " + *val),
-                None       => Some(@~"first data")
+                Some(@ref val) => fail!("unwelcome value: %s", *val),
+                None           => Some(@~"first data")
             }
         });
         local_data_modify(my_key, |data| {
             match data {
                 Some(@~"first data") => Some(@~"next data"),
-                Some(@ref val)           => fail!(~"wrong value: " + *val),
-                None                 => fail!(~"missing value")
+                Some(@ref val)       => fail!("wrong value: %s", *val),
+                None                 => fail!("missing value")
             }
         });
         assert!(*(local_data_pop(my_key).get()) == ~"next data");

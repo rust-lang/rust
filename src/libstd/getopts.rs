@@ -554,7 +554,7 @@ pub mod groups {
                      _} = copy *lopt;
 
         match (short_name.len(), long_name.len()) {
-           (0,0) => fail!(~"this long-format option was given no name"),
+           (0,0) => fail!("this long-format option was given no name"),
 
            (0,_) => ~[Opt {name: Long((long_name)),
                            hasarg: hasarg,
@@ -571,7 +571,7 @@ pub mod groups {
                            hasarg: hasarg,
                            occur:  occur}],
 
-           (_,_) => fail!(~"something is wrong with the long-form opt")
+           (_,_) => fail!("something is wrong with the long-form opt")
         }
     }
 
@@ -603,7 +603,7 @@ pub mod groups {
             row += match short_name.len() {
                 0 => ~"",
                 1 => ~"-" + short_name + " ",
-                _ => fail!(~"the short name should only be 1 ascii char long"),
+                _ => fail!("the short name should only be 1 ascii char long"),
             };
 
             // long option
@@ -686,7 +686,7 @@ mod tests {
             assert!((opt_present(m, ~"test")));
             assert!((opt_str(m, ~"test") == ~"20"));
           }
-          _ => { fail!(~"test_reqopt_long failed"); }
+          _ => { fail!("test_reqopt_long failed"); }
         }
     }
 

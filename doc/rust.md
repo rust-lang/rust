@@ -2386,9 +2386,9 @@ enum List<X> { Nil, Cons(X, @List<X>) }
 let x: List<int> = Cons(10, @Cons(11, @Nil));
 
 match x {
-    Cons(_, @Nil) => fail!(~"singleton list"),
+    Cons(_, @Nil) => fail!("singleton list"),
     Cons(*)       => return,
-    Nil           => fail!(~"empty list")
+    Nil           => fail!("empty list")
 }
 ~~~~
 

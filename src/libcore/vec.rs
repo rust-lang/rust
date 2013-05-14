@@ -237,7 +237,7 @@ pub fn build_sized_opt<A>(size: Option<uint>,
 
 /// Returns the first element of a vector
 pub fn head<'r,T>(v: &'r [T]) -> &'r T {
-    if v.len() == 0 { fail!(~"head: empty vector") }
+    if v.len() == 0 { fail!("head: empty vector") }
     &v[0]
 }
 
@@ -263,7 +263,7 @@ pub fn initn<'r,T>(v: &'r [T], n: uint) -> &'r [T] {
 
 /// Returns the last element of the slice `v`, failing if the slice is empty.
 pub fn last<'r,T>(v: &'r [T]) -> &'r T {
-    if v.len() == 0 { fail!(~"last: empty vector") }
+    if v.len() == 0 { fail!("last: empty vector") }
     &v[v.len() - 1]
 }
 
@@ -587,7 +587,7 @@ pub fn consume_reverse<T>(mut v: ~[T], f: &fn(uint, v: T)) {
 pub fn pop<T>(v: &mut ~[T]) -> T {
     let ln = v.len();
     if ln == 0 {
-        fail!(~"sorry, cannot vec::pop an empty vector")
+        fail!("sorry, cannot vec::pop an empty vector")
     }
     let valptr = ptr::to_mut_unsafe_ptr(&mut v[ln - 1u]);
     unsafe {
@@ -601,7 +601,7 @@ pub fn pop<T>(v: &mut ~[T]) -> T {
 pub fn pop<T>(v: &mut ~[T]) -> T {
     let ln = v.len();
     if ln == 0 {
-        fail!(~"sorry, cannot vec::pop an empty vector")
+        fail!("sorry, cannot vec::pop an empty vector")
     }
     let valptr = ptr::to_mut_unsafe_ptr(&mut v[ln - 1u]);
     unsafe {
@@ -620,7 +620,7 @@ pub fn pop<T>(v: &mut ~[T]) -> T {
 pub fn swap_remove<T>(v: &mut ~[T], index: uint) -> T {
     let ln = v.len();
     if index >= ln {
-        fail!(fmt!("vec::swap_remove - index %u >= length %u", index, ln));
+        fail!("vec::swap_remove - index %u >= length %u", index, ln);
     }
     if index < ln - 1 {
         swap(*v, index, ln - 1);

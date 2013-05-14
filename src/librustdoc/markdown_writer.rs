@@ -135,7 +135,7 @@ fn pandoc_writer(
         if status != 0 {
             error!("pandoc-out: %s", stdout);
             error!("pandoc-err: %s", stderr);
-            fail!(~"pandoc failed");
+            fail!("pandoc failed");
         }
     }
 }

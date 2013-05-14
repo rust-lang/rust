@@ -60,7 +60,7 @@ fn ty_align(ty: TypeRef) -> uint {
                 let elt = llvm::LLVMGetElementType(ty);
                 ty_align(elt)
             }
-            _ => fail!(~"ty_size: unhandled type")
+            _ => fail!("ty_size: unhandled type")
         };
     }
 }
@@ -92,7 +92,7 @@ fn ty_size(ty: TypeRef) -> uint {
               let eltsz = ty_size(elt);
               len * eltsz
             }
-            _ => fail!(~"ty_size: unhandled type")
+            _ => fail!("ty_size: unhandled type")
         };
     }
 }

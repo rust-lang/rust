@@ -532,7 +532,7 @@ impl TyVisitor for ReprVisitor {
                         -> bool {
         let var_stk: &mut ~[VariantState] = self.var_stk;
         match var_stk.pop() {
-            SearchingFor(*) => fail!(~"enum value matched no variant"),
+            SearchingFor(*) => fail!("enum value matched no variant"),
             _ => true
         }
     }

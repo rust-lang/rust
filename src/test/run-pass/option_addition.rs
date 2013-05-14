@@ -20,7 +20,7 @@ pub fn main() {
 
     match nope {
         None => (),
-        Some(foo) => fail!(fmt!("expected None, but found %?", foo))
+        Some(foo) => fail!("expected None, but found %?", foo)
     }
     assert!(foo == somefoo.get());
     assert!(bar == somebar.get());

@@ -853,7 +853,7 @@ impl serialize::Decoder for Decoder {
         debug!("read_nil");
         match self.stack.pop() {
             Null => (),
-            value => fail!(fmt!("not a null: %?", value))
+            value => fail!("not a null: %?", value)
         }
     }
 
@@ -873,7 +873,7 @@ impl serialize::Decoder for Decoder {
         debug!("read_bool");
         match self.stack.pop() {
             Boolean(b) => b,
-            value => fail!(fmt!("not a boolean: %?", value))
+            value => fail!("not a boolean: %?", value)
         }
     }
 
@@ -883,14 +883,14 @@ impl serialize::Decoder for Decoder {
         debug!("read_float");
         match self.stack.pop() {
             Number(f) => f,
-            value => fail!(fmt!("not a number: %?", value))
+            value => fail!("not a number: %?", value)
         }
     }
 
     fn read_char(&mut self) -> char {
         let mut v = ~[];
         for str::each_char(self.read_str()) |c| { v.push(c) }
-        if v.len() != 1 { fail!(~"string must have one character") }
+        if v.len() != 1 { fail!("string must have one character") }
         v[0]
     }
 
@@ -898,7 +898,7 @@ impl serialize::Decoder for Decoder {
         debug!("read_str");
         match self.stack.pop() {
             String(s) => s,
-            json => fail!(fmt!("not a string: %?", json))
+            json => fail!("not a string: %?", json)
         }
     }
 
@@ -920,14 +920,14 @@ impl serialize::Decoder for Decoder {
                 }
                 match self.stack.pop() {
                     String(s) => s,
-                    value => fail!(fmt!("invalid variant name: %?", value)),
+                    value => fail!("invalid variant name: %?", value),
                 }
             }
-            ref json => fail!(fmt!("invalid variant: %?", *json)),
+            ref json => fail!("invalid variant: %?", *json),
         };
         let idx = match vec::position(names, |n| str::eq_slice(*n, name)) {
             Some(idx) => idx,
-            None => fail!(fmt!("Unknown variant name: %?", name)),
+            None => fail!("Unknown variant name: %?", name),
         };
         f(self, idx)
     }
@@ -979,7 +979,7 @@ impl serialize::Decoder for Decoder {
             Object(obj) => {
                 let mut obj = obj;
                 let value = match obj.pop(&name.to_owned()) {
-                    None => fail!(fmt!("no such field: %s", name)),
+                    None => fail!("no such field: %s", name),
                     Some(json) => {
                         self.stack.push(json);
                         f(self)
@@ -988,7 +988,7 @@ impl serialize::Decoder for Decoder {
                 self.stack.push(Object(obj));
                 value
             }
-            value => fail!(fmt!("not an object: %?", value))
+            value => fail!("not an object: %?", value)
         }
     }
 
@@ -1038,7 +1038,7 @@ impl serialize::Decoder for Decoder {
                 }
                 len
             }
-            _ => fail!(~"not a list"),
+            _ => fail!("not a list"),
         };
         f(self, len)
     }
@@ -1060,7 +1060,7 @@ impl serialize::Decoder for Decoder {
                 }
                 len
             }
-            json => fail!(fmt!("not an object: %?", json)),
+            json => fail!("not an object: %?", json),
         };
         f(self, len)
     }

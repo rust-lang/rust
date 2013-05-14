@@ -208,9 +208,9 @@ pub impl<T:Owned> MutexARC<T> {
 fn check_poison(is_mutex: bool, failed: bool) {
     if failed {
         if is_mutex {
-            fail!(~"Poisoned MutexARC - another task failed inside!");
+            fail!("Poisoned MutexARC - another task failed inside!");
         } else {
-            fail!(~"Poisoned rw_arc - another task failed inside!");
+            fail!("Poisoned rw_arc - another task failed inside!");
         }
     }
 }

@@ -198,8 +198,7 @@ pub impl<T:Owned> Exclusive<T> {
         let rec = self.x.get();
         do (*rec).lock.lock {
             if (*rec).failed {
-                fail!(
-                    ~"Poisoned exclusive - another task failed inside!");
+                fail!("Poisoned exclusive - another task failed inside!");
             }
             (*rec).failed = true;
             let result = f(&mut (*rec).data);

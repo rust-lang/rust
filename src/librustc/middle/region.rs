@@ -127,7 +127,7 @@ pub impl RegionMaps {
 
         match self.scope_map.find(&id) {
             Some(&r) => r,
-            None => { fail!(fmt!("No enclosing scope for id %?", id)); }
+            None => { fail!("No enclosing scope for id %?", id); }
         }
     }
 

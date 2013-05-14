@@ -89,7 +89,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                     let elt = llvm::LLVMGetElementType(ty);
                     ty_align(elt)
                 }
-                _ => fail!(~"ty_size: unhandled type")
+                _ => fail!("ty_size: unhandled type")
             };
         }
     }
@@ -121,7 +121,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                   let eltsz = ty_size(elt);
                   len * eltsz
                 }
-                _ => fail!(~"ty_size: unhandled type")
+                _ => fail!("ty_size: unhandled type")
             };
         }
     }
@@ -214,7 +214,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                         i += 1u;
                     }
                 }
-                _ => fail!(~"classify: unhandled type")
+                _ => fail!("classify: unhandled type")
             }
         }
     }
@@ -315,7 +315,7 @@ fn llreg_ty(cls: &[x86_64_reg_class]) -> TypeRef {
                 sse_ds_class => {
                     tys.push(T_f64());
                 }
-                _ => fail!(~"llregtype: unhandled class")
+                _ => fail!("llregtype: unhandled class")
             }
             i += 1u;
         }

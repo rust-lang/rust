@@ -295,7 +295,7 @@ pub impl Scheduler {
             Some(DoNothing) => {
                 None
             }
-            None => fail!(fmt!("all context switches should have a cleanup job"))
+            None => fail!("all context switches should have a cleanup job")
         };
         // XXX: Pattern matching mutable pointers above doesn't work
         // because borrowck thinks the three patterns are conflicting

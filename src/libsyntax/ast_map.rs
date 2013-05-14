@@ -304,7 +304,7 @@ pub fn map_struct_def(
                     cx.map.insert(ctor_id,
                                   node_struct_ctor(struct_def, item, p));
                 }
-                _ => fail!(~"struct def parent wasn't an item")
+                _ => fail!("struct def parent wasn't an item")
             }
         }
     }

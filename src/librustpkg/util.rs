@@ -324,7 +324,7 @@ pub fn parse_vers(vers: ~str) -> result::Result<semver::Version, ~str> {
 
 pub fn need_dir(s: &Path) {
     if !os::path_is_dir(s) && !os::make_dir(s, 493_i32) {
-        fail!(fmt!("can't create dir: %s", s.to_str()));
+        fail!("can't create dir: %s", s.to_str());
     }
 }
 
@@ -421,12 +421,12 @@ pub fn wait_for_lock(path: &Path) {
 }
 
 pub fn load_pkgs() -> result::Result<~[json::Json], ~str> {
-    fail!(~"load_pkg not implemented");
+    fail!("load_pkg not implemented");
 }
 
 pub fn get_pkg(_id: ~str,
                _vers: Option<~str>) -> result::Result<Pkg, ~str> {
-    fail!(~"get_pkg not implemented");
+    fail!("get_pkg not implemented");
 }
 
 pub fn add_pkg(pkg: &Pkg) -> bool {

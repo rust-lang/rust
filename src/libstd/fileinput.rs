@@ -598,7 +598,7 @@ mod test {
             let expected_path = match line {
                 "1" | "2" => copy filenames[0],
                 "3" | "4" => copy filenames[2],
-                _ => fail!(~"unexpected line")
+                _ => fail!("unexpected line")
             };
             assert_eq!(copy state.current_path, expected_path);
             count += 1;
