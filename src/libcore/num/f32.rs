@@ -464,9 +464,8 @@ impl Hyperbolic for f32 {
     #[inline(always)]
     fn asinh(&self) -> f32 {
         match *self {
-            infinity     => infinity,
             neg_infinity => neg_infinity,
-            x            => (x + ((x * x) + 1.0).sqrt()).ln(),
+            x => (x + ((x * x) + 1.0).sqrt()).ln(),
         }
     }
 
