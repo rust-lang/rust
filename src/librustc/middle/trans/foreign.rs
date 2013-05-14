@@ -509,7 +509,7 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
                       llargbundle: ValueRef) {
             let _icx = bcx.insn_ctxt("foreign::wrap::build_args");
             let ccx = bcx.ccx();
-            let n = vec::len(tys.llsig.llarg_tys);
+            let n = tys.llsig.llarg_tys.len();
             let implicit_args = first_real_arg; // return + env
             for uint::range(0, n) |i| {
                 let mut llargval = get_param(llwrapfn, i + implicit_args);

@@ -13,7 +13,7 @@
 // same as cci_iter_lib, more-or-less, but not marked inline
 pub fn iter(v: ~[uint], f: &fn(uint)) {
     let mut i = 0u;
-    let n = vec::len(v);
+    let n = v.len();
     while i < n {
         f(v[i]);
         i += 1u;

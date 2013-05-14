@@ -201,14 +201,14 @@ fn test_lefts() {
 fn test_lefts_none() {
     let input: ~[Either<int, int>] = ~[Right(10), Right(10)];
     let result = lefts(input);
-    assert_eq!(vec::len(result), 0u);
+    assert_eq!(result.len(), 0u);
 }
 
 #[test]
 fn test_lefts_empty() {
     let input: ~[Either<int, int>] = ~[];
     let result = lefts(input);
-    assert_eq!(vec::len(result), 0u);
+    assert_eq!(result.len(), 0u);
 }
 
 #[test]
@@ -222,14 +222,14 @@ fn test_rights() {
 fn test_rights_none() {
     let input: ~[Either<int, int>] = ~[Left(10), Left(10)];
     let result = rights(input);
-    assert_eq!(vec::len(result), 0u);
+    assert_eq!(result.len(), 0u);
 }
 
 #[test]
 fn test_rights_empty() {
     let input: ~[Either<int, int>] = ~[];
     let result = rights(input);
-    assert_eq!(vec::len(result), 0u);
+    assert_eq!(result.len(), 0u);
 }
 
 #[test]
@@ -247,22 +247,22 @@ fn test_partition() {
 fn test_partition_no_lefts() {
     let input: ~[Either<int, int>] = ~[Right(10), Right(11)];
     let (lefts, rights) = partition(input);
-    assert_eq!(vec::len(lefts), 0u);
-    assert_eq!(vec::len(rights), 2u);
+    assert_eq!(lefts.len(), 0u);
+    assert_eq!(rights.len(), 2u);
 }
 
 #[test]
 fn test_partition_no_rights() {
     let input: ~[Either<int, int>] = ~[Left(10), Left(11)];
     let (lefts, rights) = partition(input);
-    assert_eq!(vec::len(lefts), 2u);
-    assert_eq!(vec::len(rights), 0u);
+    assert_eq!(lefts.len(), 2u);
+    assert_eq!(rights.len(), 0u);
 }
 
 #[test]
 fn test_partition_empty() {
     let input: ~[Either<int, int>] = ~[];
     let (lefts, rights) = partition(input);
-    assert_eq!(vec::len(lefts), 0u);
-    assert_eq!(vec::len(rights), 0u);
+    assert_eq!(lefts.len(), 0u);
+    assert_eq!(rights.len(), 0u);
 }

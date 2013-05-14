@@ -19,7 +19,6 @@ use core::unstable::sync::{Exclusive, exclusive};
 use core::ptr;
 use core::task;
 use core::util;
-use core::vec;
 
 /****************************************************************************
  * Internals
@@ -220,7 +219,7 @@ pub impl<'self> Condvar<'self> {
             do task::unkillable {
                 // Release lock, 'atomically' enqueuing ourselves in so doing.
                 do (**self.sem).with |state| {
-                    if condvar_id < vec::len(state.blocked) {
+                    if condvar_id < state.blocked.len() {
                         // Drop the lock.
                         state.count += 1;
                         if state.count <= 0 {
@@ -230,7 +229,7 @@ pub impl<'self> Condvar<'self> {
                         let SignalEnd = SignalEnd.swap_unwrap();
                         state.blocked[condvar_id].tail.send(SignalEnd);
                     } else {
-                        out_of_bounds = Some(vec::len(state.blocked));
+                        out_of_bounds = Some(state.blocked.len());
                     }
                 }
 
@@ -285,10 +284,10 @@ pub impl<'self> Condvar<'self> {
         let mut out_of_bounds = None;
         let mut result = false;
         do (**self.sem).with |state| {
-            if condvar_id < vec::len(state.blocked) {
+            if condvar_id < state.blocked.len() {
                 result = signal_waitqueue(&state.blocked[condvar_id]);
             } else {
-                out_of_bounds = Some(vec::len(state.blocked));
+                out_of_bounds = Some(state.blocked.len());
             }
         }
         do check_cvar_bounds(out_of_bounds, condvar_id, "cond.signal_on()") {
@@ -304,14 +303,14 @@ pub impl<'self> Condvar<'self> {
         let mut out_of_bounds = None;
         let mut queue = None;
         do (**self.sem).with |state| {
-            if condvar_id < vec::len(state.blocked) {
+            if condvar_id < state.blocked.len() {
                 // To avoid :broadcast_heavy, we make a new waitqueue,
                 // swap it out with the old one, and broadcast on the
                 // old one outside of the little-lock.
                 queue = Some(util::replace(&mut state.blocked[condvar_id],
                                            new_waitqueue()));
             } else {
-                out_of_bounds = Some(vec::len(state.blocked));
+                out_of_bounds = Some(state.blocked.len());
             }
         }
         do check_cvar_bounds(out_of_bounds, condvar_id, "cond.signal_on()") {

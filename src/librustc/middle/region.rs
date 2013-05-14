@@ -283,8 +283,8 @@ pub impl RegionMaps {
 
         let a_ancestors = ancestors_of(self, scope_a);
         let b_ancestors = ancestors_of(self, scope_b);
-        let mut a_index = vec::len(a_ancestors) - 1u;
-        let mut b_index = vec::len(b_ancestors) - 1u;
+        let mut a_index = a_ancestors.len() - 1u;
+        let mut b_index = b_ancestors.len() - 1u;
 
         // Here, ~[ab]_ancestors is a vector going from narrow to broad.
         // The end of each vector will be the item where the scope is

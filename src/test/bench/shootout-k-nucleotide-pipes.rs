@@ -95,7 +95,7 @@ fn windows_with_carry(bb: &[u8], nn: uint,
                       it: &fn(window: &[u8])) -> ~[u8] {
    let mut ii = 0u;
 
-   let len = vec::len(bb);
+   let len = bb.len();
    while ii < len - (nn - 1u) {
       it(vec::slice(bb, ii, ii+nn));
       ii += 1u;

@@ -628,7 +628,6 @@ pub mod writer {
 
     use core::io;
     use core::str;
-    use core::vec;
 
     // ebml writing
     pub struct Encoder {
@@ -707,7 +706,7 @@ pub mod writer {
 
         fn wr_tagged_bytes(&mut self, tag_id: uint, b: &[u8]) {
             write_vuint(self.writer, tag_id);
-            write_vuint(self.writer, vec::len(b));
+            write_vuint(self.writer, b.len());
             self.writer.write(b);
         }
 
@@ -760,7 +759,7 @@ pub mod writer {
         }
 
         fn wr_bytes(&mut self, b: &[u8]) {
-            debug!("Write %u bytes", vec::len(b));
+            debug!("Write %u bytes", b.len());
             self.writer.write(b);
         }
 

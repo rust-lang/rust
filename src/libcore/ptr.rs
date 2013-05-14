@@ -441,7 +441,7 @@ pub mod ptr_tests {
             let arr_ptr = &arr[0];
             let mut ctr = 0;
             let mut iteration_count = 0;
-            array_each_with_len(arr_ptr, vec::len(arr),
+            array_each_with_len(arr_ptr, arr.len(),
                                 |e| {
                                          let actual = str::raw::from_c_str(e);
                                          let expected = copy expected_arr[ctr];

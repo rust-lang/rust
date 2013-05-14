@@ -824,7 +824,7 @@ fn mk_struct_ser_impl(
         cx.ident_of("emit_struct"),
         ~[
             cx.lit_str(span, @cx.str_of(ident)),
-            cx.lit_uint(span, vec::len(fields)),
+            cx.lit_uint(span, fields.len()),
             cx.lambda_stmts_1(span, fields, cx.ident_of("__s")),
         ]
     );
@@ -886,7 +886,7 @@ fn mk_struct_deser_impl(
         cx.ident_of("read_struct"),
         ~[
             cx.lit_str(span, @cx.str_of(ident)),
-            cx.lit_uint(span, vec::len(fields)),
+            cx.lit_uint(span, fields.len()),
             cx.lambda_expr_1(
                 cx.expr(
                     span,
