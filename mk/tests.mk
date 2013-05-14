@@ -289,50 +289,50 @@ else
 STDTESTDEP_$(1)_$(2)_$(3) =
 endif
 
-$(3)/test/coretest.stage$(1)-$(2)$$(X_$(2)):			\
+$(3)/stage$(1)/test/coretest-$(2)$$(X_$(2)):			\
 		$$(CORELIB_CRATE) $$(CORELIB_INPUTS)	\
 		$$(STDTESTDEP_$(1)_$(2)_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-$(3)/test/stdtest.stage$(1)-$(2)$$(X_$(2)):			\
+$(3)/stage$(1)/test/stdtest-$(2)$$(X_$(2)):			\
 		$$(STDLIB_CRATE) $$(STDLIB_INPUTS)	\
 		$$(STDTESTDEP_$(1)_$(2)_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-$(3)/test/syntaxtest.stage$(1)-$(2)$$(X_$(2)):			\
+$(3)/stage$(1)/test/syntaxtest-$(2)$$(X_$(2)):			\
 		$$(LIBSYNTAX_CRATE) $$(LIBSYNTAX_INPUTS)	\
 		$$(STDTESTDEP_$(1)_$(2)_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-$(3)/test/rustctest.stage$(1)-$(2)$$(X_$(2)):					\
+$(3)/stage$(1)/test/rustctest-$(2)$$(X_$(2)):					\
 		$$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM_$(2)) \
                 $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-$(3)/test/rustpkgtest.stage$(1)-$(2)$$(X_$(2)):					\
+$(3)/stage$(1)/test/rustpkgtest-$(2)$$(X_$(2)):					\
 		$$(RUSTPKG_LIB) $$(RUSTPKG_INPUTS)		\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-$(3)/test/rustitest.stage$(1)-$(2)$$(X_$(2)):					\
+$(3)/stage$(1)/test/rustitest-$(2)$$(X_$(2)):					\
 		$$(RUSTI_LIB) $$(RUSTI_INPUTS)		\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-$(3)/test/rusttest.stage$(1)-$(2)$$(X_$(2)):					\
+$(3)/stage$(1)/test/rusttest-$(2)$$(X_$(2)):					\
 		$$(RUST_LIB) $$(RUST_INPUTS)		\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-$(3)/test/rustdoctest.stage$(1)-$(2)$$(X_$(2)):					\
+$(3)/stage$(1)/test/rustdoctest-$(2)$$(X_$(2)):					\
 		$$(RUSTDOC_LIB) $$(RUSTDOC_INPUTS)		\
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2))
 	@$$(call E, compile_and_link: $$@)
@@ -349,7 +349,7 @@ define DEF_TEST_CRATE_RULES
 check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
 
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
-		$(3)/test/$(4)test.stage$(1)-$(2)$$(X_$(2))
+		$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2))
 	@$$(call E, run: $$<)
 	$$(Q)$$(call CFG_RUN_TEST_$(2),$$<,$(2),$(3)) $$(TESTARGS)	\
 	--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
@@ -360,7 +360,7 @@ define DEF_TEST_CRATE_RULES_arm-linux-androideabi
 check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
 
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
-		$(3)/test/$(4)test.stage$(1)-$(2)$$(X_$(2))
+		$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2))
 	@$$(call E, run: $$< via adb)
 	@$(CFG_ADB) push $$< $(CFG_ADB_TEST_DIR)
 	@$(CFG_ADB) shell LD_LIBRARY_PATH=$(CFG_ADB_TEST_DIR) \
@@ -385,7 +385,7 @@ define DEF_TEST_CRATE_RULES_null
 check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
 
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
-		$(3)/test/$(4)test.stage$(1)-$(2)$$(X_$(2))
+		$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2))
 	@$$(call E, run: skipped $$< )
 	@touch $$@
 endef

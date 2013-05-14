@@ -18,8 +18,8 @@
 #[allow(unrecognized_lint)];
 #[allow(unused_imports)];
 #[allow(while_true)];
-#[allow(dead_assignment)];
 #[allow(unused_variable)];
+#[allow(dead_assignment)];
 #[allow(unused_unsafe)];
 #[allow(unused_mut)];
 

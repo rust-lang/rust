@@ -695,6 +695,9 @@ do
             # host lib dir
             make_dir $h/stage$i/$CFG_LIBDIR
 
+            # host test dir
+            make_dir $h/stage$i/test
+
             # target bin dir
             make_dir $h/stage$i/$CFG_LIBDIR/rustc/$t/bin
 
