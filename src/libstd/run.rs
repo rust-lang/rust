@@ -1108,13 +1108,15 @@ mod tests {
     #[test]
     fn test_change_working_directory() {
 
-        let tmp_path = os::tmpdir().normalize();
-        let mut prog = run_pwd(Some(&tmp_path));
+        // test changing to the parent of os::getcwd() because we know
+        // the path exists (and os::getcwd() is not expected to be root)
+        let parent_path = os::getcwd().dir_path().normalize();
+        let mut prog = run_pwd(Some(&parent_path));
 
         let output = str::from_bytes(prog.finish_with_output().output);
         let child_dir = Path(output.trim()).normalize();
 
-        assert_eq!(child_dir.to_str(), tmp_path.to_str());
+        assert_eq!(child_dir.to_str(), parent_path.to_str());
     }
 
     #[cfg(unix)]
