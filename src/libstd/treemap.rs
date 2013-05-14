@@ -716,7 +716,7 @@ pub impl<K: TotalOrd, V> TreeNode<K, V> {
 #[cfg(stage0)]
 fn each<'r, K: TotalOrd, V>(_: &'r Option<~TreeNode<K, V>>,
                             _: &fn(&'r K, &'r V) -> bool) -> bool {
-    fail!(~"don't use me in stage0!")
+    fail!("don't use me in stage0!")
 }
 #[cfg(not(stage0))]
 fn each<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
@@ -728,7 +728,7 @@ fn each<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
 #[cfg(stage0)]
 fn each_reverse<'r, K: TotalOrd, V>(_: &'r Option<~TreeNode<K, V>>,
                                     _: &fn(&'r K, &'r V) -> bool) -> bool {
-    fail!(~"don't use me in stage0!")
+    fail!("don't use me in stage0!")
 }
 #[cfg(not(stage0))]
 fn each_reverse<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,

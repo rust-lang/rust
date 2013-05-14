@@ -211,7 +211,7 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
                       nt_block(*) => ~"block",
                       nt_stmt(*) => ~"statement",
                       nt_pat(*) => ~"pattern",
-                      nt_expr(*) => fail!(~"should have been handled above"),
+                      nt_expr(*) => fail!("should have been handled above"),
                       nt_ty(*) => ~"type",
                       nt_ident(*) => ~"identifier",
                       nt_path(*) => ~"path",

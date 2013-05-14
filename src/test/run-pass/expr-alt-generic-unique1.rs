@@ -16,7 +16,7 @@ type compare<T> = @fn(~T, ~T) -> bool;
 fn test_generic<T:Copy+Clone>(expected: ~T, eq: compare<T>) {
     let actual: ~T = match true {
         true => { expected.clone() },
-        _ => fail!(~"wat")
+        _ => fail!("wat")
     };
     assert!((eq(expected, actual)));
 }

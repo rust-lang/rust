@@ -275,11 +275,11 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
         };
         if ts.len() != type_param_defs.len() {
             // Fail earlier to make debugging easier
-            fail!(fmt!("internal error: in kind::check_expr, length \
-                       mismatch between actual and declared bounds: actual = \
-                        %s, declared = %s",
-                       ts.repr(cx.tcx),
-                       type_param_defs.repr(cx.tcx)));
+            fail!("internal error: in kind::check_expr, length \
+                  mismatch between actual and declared bounds: actual = \
+                  %s, declared = %s",
+                  ts.repr(cx.tcx),
+                  type_param_defs.repr(cx.tcx));
         }
         for vec::each2(**ts, *type_param_defs) |&ty, type_param_def| {
             check_bounds(cx, type_parameter_id, e.span, ty, type_param_def)

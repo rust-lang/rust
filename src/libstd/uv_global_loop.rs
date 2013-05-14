@@ -180,11 +180,11 @@ mod test {
                                                            simple_timer_cb,
                                                            1u, 0u);
                         if(start_status != 0i32) {
-                            fail!(~"failure on ll::timer_start()");
+                            fail!("failure on ll::timer_start()");
                         }
                     }
                     else {
-                        fail!(~"failure on ll::timer_init()");
+                        fail!("failure on ll::timer_init()");
                     }
                 }
             };

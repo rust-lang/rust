@@ -173,7 +173,7 @@ pub fn get_install_prefix_rpath(target_triple: &str) -> Path {
     let install_prefix = env!("CFG_PREFIX");
 
     if install_prefix == ~"" {
-        fail!(~"rustc compiled without CFG_PREFIX environment variable");
+        fail!("rustc compiled without CFG_PREFIX environment variable");
     }
 
     let tlib = filesearch::relative_target_lib_path(target_triple);

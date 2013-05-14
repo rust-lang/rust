@@ -479,11 +479,11 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
     // names? I think not.
     // delaying implementing this....
     fn each_key (&self, _f: &fn (&K)->bool) {
-        fail!(~"unimplemented 2013-02-15T10:01");
+        fail!("unimplemented 2013-02-15T10:01");
     }
 
     fn each_value (&self, _f: &fn (&V) -> bool) {
-        fail!(~"unimplemented 2013-02-15T10:02");
+        fail!("unimplemented 2013-02-15T10:02");
     }
 
     // Returns a copy of the value that the name maps to.

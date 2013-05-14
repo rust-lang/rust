@@ -16,7 +16,7 @@ struct r {
 }
 
 impl Drop for r {
-    fn finalize(&self) { fail!(~"wombat") }
+    fn finalize(&self) { fail!("wombat") }
 }
 
 fn r(i: int) -> r { r { i: i } }

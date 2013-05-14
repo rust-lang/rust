@@ -146,8 +146,7 @@ impl PkgScript {
                 }
             }
             Err(e) => {
-                fail!(fmt!("Running package script, couldn't find rustpkg sysroot (%s)",
-                           e))
+                fail!("Running package script, couldn't find rustpkg sysroot (%s)", e)
             }
         }
     }
@@ -256,13 +255,13 @@ impl Ctx {
 
                 self.unprefer(name.get(), vers);
             }
-            _ => fail!(~"reached an unhandled command")
+            _ => fail!("reached an unhandled command")
         }
     }
 
     fn do_cmd(&self, _cmd: ~str, _pkgname: ~str)  {
         // stub
-        fail!(~"`do` not yet implemented");
+        fail!("`do` not yet implemented");
     }
 
     fn build(&self, workspace: &Path, pkgid: PkgId) {
@@ -289,7 +288,7 @@ impl Ctx {
                 let (cfgs, hook_result) = pscript.run_custom(~"post_build");
                 debug!("Command return code = %?", hook_result);
                 if hook_result != 0 {
-                    fail!(fmt!("Error running custom build command"))
+                    fail!("Error running custom build command")
                 }
                 custom = true;
                 // otherwise, the package script succeeded
@@ -330,7 +329,7 @@ impl Ctx {
 
     fn info(&self) {
         // stub
-        fail!(~"info not yet implemented");
+        fail!("info not yet implemented");
     }
 
     fn install(&self, workspace: &Path, id: PkgId)  {
@@ -362,7 +361,7 @@ impl Ctx {
 
     fn fetch(&self, _dir: &Path, _url: ~str, _target: Option<~str>)  {
         // stub
-        fail!(~"fetch not yet implemented");
+        fail!("fetch not yet implemented");
     }
 
     fn fetch_curl(&self, dir: &Path, url: ~str)  {
@@ -448,15 +447,15 @@ impl Ctx {
 
     fn test(&self)  {
         // stub
-        fail!(~"test not yet implemented");
+        fail!("test not yet implemented");
     }
 
     fn uninstall(&self, _id: ~str, _vers: Option<~str>)  {
-        fail!(~"uninstall not yet implemented");
+        fail!("uninstall not yet implemented");
     }
 
     fn unprefer(&self, _id: ~str, _vers: Option<~str>)  {
-        fail!(~"unprefer not yet implemented");
+        fail!("unprefer not yet implemented");
     }
 }
 

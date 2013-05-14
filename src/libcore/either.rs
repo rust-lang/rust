@@ -135,7 +135,7 @@ pub fn unwrap_left<T,U>(eith: Either<T,U>) -> T {
 
     match eith {
         Left(x) => x,
-        Right(_) => fail!(~"either::unwrap_left Right")
+        Right(_) => fail!("either::unwrap_left Right")
     }
 }
 
@@ -145,7 +145,7 @@ pub fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
 
     match eith {
         Right(x) => x,
-        Left(_) => fail!(~"either::unwrap_right Left")
+        Left(_) => fail!("either::unwrap_right Left")
     }
 }
 

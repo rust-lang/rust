@@ -176,7 +176,7 @@ pub fn ref_eq<'a,'b,T>(thing: &'a T, other: &'b T) -> bool {
 pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: &fn(*T)) {
     debug!("array_each_with_len: before iterate");
     if (arr as uint == 0) {
-        fail!(~"ptr::array_each_with_len failure: arr input is null pointer");
+        fail!("ptr::array_each_with_len failure: arr input is null pointer");
     }
     //let start_ptr = *arr;
     uint::iterate(0, len, |e| {
@@ -198,7 +198,7 @@ pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: &fn(*T)) {
 */
 pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
     if (arr as uint == 0) {
-        fail!(~"ptr::array_each_with_len failure: arr input is null pointer");
+        fail!("ptr::array_each_with_len failure: arr input is null pointer");
     }
     let len = buf_len(arr);
     debug!("array_each inferred len: %u",

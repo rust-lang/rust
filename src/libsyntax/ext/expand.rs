@@ -468,7 +468,7 @@ pub fn core_macros() -> ~str {
                 let expected_val = $expected;
                 // check both directions of equality....
                 if !((given_val == expected_val) && (expected_val == given_val)) {
-                    fail!(fmt!(\"left: %? != right: %?\", given_val, expected_val));
+                    fail!(\"left: %? does not equal right: %?\", given_val, expected_val);
                 }
             }
         )
@@ -660,7 +660,7 @@ mod test {
 
     // make sure that fail! is present
     #[test] fn fail_exists_test () {
-        let src = ~"fn main() { fail!(~\"something appropriately gloomy\");}";
+        let src = ~"fn main() { fail!(\"something appropriately gloomy\");}";
         let sess = parse::new_parse_sess(None);
         let cfg = ~[];
         let crate_ast = parse::parse_crate_from_source_str(
@@ -733,7 +733,7 @@ mod test {
             cfg,~[make_dummy_attr (@~"macro_escape")],sess);
         match item_ast {
             Some(_) => (), // success
-            None => fail!(~"expected this to parse")
+            None => fail!("expected this to parse")
         }
     }
 

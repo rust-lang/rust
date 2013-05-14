@@ -227,7 +227,7 @@ impl region_scope for type_rscope {
             None => {
                 // if the self region is used, region parameterization should
                 // have inferred that this type is RP
-                fail!(~"region parameterization should have inferred that \
+                fail!("region parameterization should have inferred that \
                         this type is RP");
             }
             Some(ref region_parameterization) => {

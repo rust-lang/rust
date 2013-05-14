@@ -200,7 +200,7 @@ priv impl<K:Hash + Eq,V> HashMap<K, V> {
     fn value_for_bucket<'a>(&'a self, idx: uint) -> &'a V {
         match self.buckets[idx] {
             Some(ref bkt) => &bkt.value,
-            None => fail!(~"HashMap::find: internal logic error"),
+            None => fail!("HashMap::find: internal logic error"),
         }
     }
 
@@ -217,7 +217,7 @@ priv impl<K:Hash + Eq,V> HashMap<K, V> {
     /// True if there was no previous entry with that key
     fn insert_internal(&mut self, hash: uint, k: K, v: V) -> Option<V> {
         match self.bucket_for_key_with_hash(hash, &k) {
-            TableFull => { fail!(~"Internal logic error"); }
+            TableFull => { fail!("Internal logic error"); }
             FoundHole(idx) => {
                 debug!("insert fresh (%?->%?) at idx %?, hash %?",
                        k, v, idx, hash);
@@ -230,7 +230,7 @@ priv impl<K:Hash + Eq,V> HashMap<K, V> {
                 debug!("insert overwrite (%?->%?) at idx %?, hash %?",
                        k, v, idx, hash);
                 match self.buckets[idx] {
-                    None => { fail!(~"insert_internal: Internal logic error") }
+                    None => { fail!("insert_internal: Internal logic error") }
                     Some(ref mut b) => {
                         b.hash = hash;
                         b.key = k;
@@ -500,7 +500,7 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
         let hash = k.hash_keyed(self.k0, self.k1) as uint;
         let idx = match self.bucket_for_key_with_hash(hash, &k) {
-            TableFull => fail!(~"Internal logic error"),
+            TableFull => fail!("Internal logic error"),
             FoundEntry(idx) => idx,
             FoundHole(idx) => {
                 self.buckets[idx] = Some(Bucket{hash: hash, key: k,
@@ -531,7 +531,7 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
         let hash = k.hash_keyed(self.k0, self.k1) as uint;
         let idx = match self.bucket_for_key_with_hash(hash, &k) {
-            TableFull => fail!(~"Internal logic error"),
+            TableFull => fail!("Internal logic error"),
             FoundEntry(idx) => idx,
             FoundHole(idx) => {
                 self.buckets[idx] = Some(Bucket{hash: hash, key: k,
@@ -560,7 +560,7 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
         let hash = k.hash_keyed(self.k0, self.k1) as uint;
         let idx = match self.bucket_for_key_with_hash(hash, &k) {
-            TableFull => fail!(~"Internal logic error"),
+            TableFull => fail!("Internal logic error"),
             FoundEntry(idx) => idx,
             FoundHole(idx) => {
                 let v = f(&k);
@@ -592,7 +592,7 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
         let hash = k.hash_keyed(self.k0, self.k1) as uint;
         let idx = match self.bucket_for_key_with_hash(hash, &k) {
-            TableFull => fail!(~"Internal logic error"),
+            TableFull => fail!("Internal logic error"),
             FoundEntry(idx) => idx,
             FoundHole(idx) => {
                 let v = f(&k);
@@ -623,7 +623,7 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
     fn get<'a>(&'a self, k: &K) -> &'a V {
         match self.find(k) {
             Some(v) => v,
-            None => fail!(fmt!("No entry found for key: %?", k)),
+            None => fail!("No entry found for key: %?", k),
         }
     }
 

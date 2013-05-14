@@ -837,7 +837,7 @@ pub fn create_local_var(bcx: block, local: @ast::local)
     let name = match local.node.pat.node {
       ast::pat_ident(_, pth, _) => ast_util::path_to_ident(pth),
       // FIXME this should be handled (#2533)
-      _ => fail!(~"no single variable name for local")
+      _ => fail!("no single variable name for local")
     };
     let loc = cx.sess.codemap.lookup_char_pos(local.span.lo);
     let ty = node_id_type(bcx, local.node.id);

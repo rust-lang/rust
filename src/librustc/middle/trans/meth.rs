@@ -257,7 +257,7 @@ pub fn trans_method_callee(bcx: block,
                                                trait_id, off, vtbl)
                 }
                 // how to get rid of this?
-                None => fail!(~"trans_method_callee: missing param_substs")
+                None => fail!("trans_method_callee: missing param_substs")
             }
         }
         typeck::method_trait(_, off, store) => {
@@ -269,7 +269,7 @@ pub fn trans_method_callee(bcx: block,
                                mentry.explicit_self)
         }
         typeck::method_self(*) | typeck::method_super(*) => {
-            fail!(~"method_self or method_super should have been handled \
+            fail!("method_self or method_super should have been handled \
                 above")
         }
     }
@@ -317,13 +317,13 @@ pub fn trans_static_method_callee(bcx: block,
             ast_map::node_trait_method(trait_method, _, _) => {
                 ast_util::trait_method_to_ty_method(trait_method).ident
             }
-            _ => fail!(~"callee is not a trait method")
+            _ => fail!("callee is not a trait method")
         }
     } else {
         let path = csearch::get_item_path(bcx.tcx(), method_id);
         match path[path.len()-1] {
             path_name(s) => { s }
-            path_mod(_) => { fail!(~"path doesn't have a name?") }
+            path_mod(_) => { fail!("path doesn't have a name?") }
         }
     };
     debug!("trans_static_method_callee: method_id=%?, callee_id=%?, \
@@ -354,7 +354,7 @@ pub fn trans_static_method_callee(bcx: block,
             FnData {llfn: PointerCast(bcx, lval, llty)}
         }
         _ => {
-            fail!(~"vtable_param left in monomorphized \
+            fail!("vtable_param left in monomorphized \
                    function's vtable substs");
         }
     }
@@ -375,7 +375,7 @@ pub fn method_with_name(ccx: @CrateContext, impl_id: ast::def_id,
             }, _) => {
             method_from_methods(*ms, name).get()
           }
-          _ => fail!(~"method_with_name")
+          _ => fail!("method_with_name")
         }
     } else {
         csearch::get_impl_method(ccx.sess.cstore, impl_id, name)
@@ -410,7 +410,7 @@ pub fn method_with_name_or_default(ccx: @CrateContext,
                   }
               }
           }
-          _ => fail!(~"method_with_name")
+          _ => fail!("method_with_name")
         }
     } else {
         csearch::get_impl_method(ccx.sess.cstore, impl_id, name)
@@ -436,7 +436,7 @@ pub fn method_ty_param_count(ccx: @CrateContext, m_id: ast::def_id,
                                             _, _)) => {
                 m.generics.ty_params.len()
             }
-            copy e => fail!(fmt!("method_ty_param_count %?", e))
+            copy e => fail!("method_ty_param_count %?", e)
         }
     } else {
         csearch::get_type_param_count(ccx.sess.cstore, m_id) -
@@ -495,8 +495,7 @@ pub fn trans_monomorphized_callee(bcx: block,
           }
       }
       typeck::vtable_param(*) => {
-          fail!(~"vtable_param left in monomorphized function's " +
-              "vtable substs");
+          fail!("vtable_param left in monomorphized function's vtable substs");
       }
     };
 
@@ -752,7 +751,7 @@ pub fn vtable_id(ccx: @CrateContext,
         }
 
         // can't this be checked at the callee?
-        _ => fail!(~"vtable_id")
+        _ => fail!("vtable_id")
     }
 }
 
@@ -767,7 +766,7 @@ pub fn get_vtable(ccx: @CrateContext,
         typeck::vtable_static(id, substs, sub_vtables) => {
             make_impl_vtable(ccx, id, substs, sub_vtables)
         }
-        _ => fail!(~"get_vtable: expected a static origin")
+        _ => fail!("get_vtable: expected a static origin")
       }
     }
 }

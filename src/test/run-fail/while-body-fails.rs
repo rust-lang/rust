@@ -9,4 +9,4 @@
 // except according to those terms.
 
 // error-pattern:quux
-fn main() { let x: int = { while true { fail!(~"quux"); } ; 8 } ; }
+fn main() { let x: int = { while true { fail!("quux"); } ; 8 } ; }

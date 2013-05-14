@@ -40,18 +40,18 @@ priv impl<T> DListNode<T> {
         match self.next {
             Some(neighbour) => match neighbour.prev {
               Some(me) => if !managed::mut_ptr_eq(self, me) {
-                  fail!(~"Asymmetric next-link in dlist node.")
+                  fail!("Asymmetric next-link in dlist node.")
               },
-              None => fail!(~"One-way next-link in dlist node.")
+              None => fail!("One-way next-link in dlist node.")
             },
             None => ()
         }
         match self.prev {
             Some(neighbour) => match neighbour.next {
               Some(me) => if !managed::mut_ptr_eq(me, self) {
-                  fail!(~"Asymmetric prev-link in dlist node.")
+                  fail!("Asymmetric prev-link in dlist node.")
               },
-              None => fail!(~"One-way prev-link in dlist node.")
+              None => fail!("One-way prev-link in dlist node.")
             },
             None => ()
         }
@@ -68,7 +68,7 @@ pub impl<T> DListNode<T> {
     fn next_node(@mut self) -> @mut DListNode<T> {
         match self.next_link() {
             Some(nobe) => nobe,
-            None       => fail!(~"This dlist node has no next neighbour.")
+            None       => fail!("This dlist node has no next neighbour.")
         }
     }
     /// Get the previous node in the list, if there is one.
@@ -80,7 +80,7 @@ pub impl<T> DListNode<T> {
     fn prev_node(@mut self) -> @mut DListNode<T> {
         match self.prev_link() {
             Some(nobe) => nobe,
-            None       => fail!(~"This dlist node has no previous neighbour.")
+            None       => fail!("This dlist node has no previous neighbour.")
         }
     }
 }
@@ -132,21 +132,21 @@ priv impl<T> DList<T> {
         // These asserts could be stronger if we had node-root back-pointers,
         // but those wouldn't allow for O(1) append.
         if self.size == 0 {
-            fail!(~"This dlist is empty; that node can't be on it.")
+            fail!("This dlist is empty; that node can't be on it.")
         }
-        if !nobe.linked { fail!(~"That node isn't linked to any dlist.") }
+        if !nobe.linked { fail!("That node isn't linked to any dlist.") }
         if !((nobe.prev.is_some()
               || managed::mut_ptr_eq(self.hd.expect(~"headless dlist?"),
                                  nobe)) &&
              (nobe.next.is_some()
               || managed::mut_ptr_eq(self.tl.expect(~"tailless dlist?"),
                                  nobe))) {
-            fail!(~"That node isn't on this dlist.")
+            fail!("That node isn't on this dlist.")
         }
     }
     fn make_mine(&self, nobe: @mut DListNode<T>) {
         if nobe.prev.is_some() || nobe.next.is_some() || nobe.linked {
-            fail!(~"Cannot insert node that's already on a dlist!")
+            fail!("Cannot insert node that's already on a dlist!")
         }
         nobe.linked = true;
     }
@@ -318,16 +318,14 @@ pub impl<T> DList<T> {
     fn head_n(@mut self) -> @mut DListNode<T> {
         match self.hd {
             Some(nobe) => nobe,
-            None       => fail!(
-                ~"Attempted to get the head of an empty dlist.")
+            None       => fail!("Attempted to get the head of an empty dlist.")
         }
     }
     /// Get the node at the list's tail, failing if empty. O(1).
     fn tail_n(@mut self) -> @mut DListNode<T> {
         match self.tl {
             Some(nobe) => nobe,
-            None       => fail!(
-                ~"Attempted to get the tail of an empty dlist.")
+            None       => fail!("Attempted to get the tail of an empty dlist.")
         }
     }
 
@@ -340,7 +338,7 @@ pub impl<T> DList<T> {
      */
     fn append(@mut self, them: @mut DList<T>) {
         if managed::mut_ptr_eq(self, them) {
-            fail!(~"Cannot append a dlist to itself!")
+            fail!("Cannot append a dlist to itself!")
         }
         if them.len() > 0 {
             self.link(self.tl, them.hd);
@@ -357,7 +355,7 @@ pub impl<T> DList<T> {
      */
     fn prepend(@mut self, them: @mut DList<T>) {
         if managed::mut_ptr_eq(self, them) {
-            fail!(~"Cannot prepend a dlist to itself!")
+            fail!("Cannot prepend a dlist to itself!")
         }
         if them.len() > 0 {
             self.link(them.tl, self.hd);
@@ -524,7 +522,7 @@ impl<T> BaseIter<T> for @mut DList<T> {
 
             // Check (weakly) that the user didn't do a remove.
             if self.size == 0 {
-                fail!(~"The dlist became empty during iteration??")
+                fail!("The dlist became empty during iteration??")
             }
             if !nobe.linked ||
                 (!((nobe.prev.is_some()
@@ -533,7 +531,7 @@ impl<T> BaseIter<T> for @mut DList<T> {
                    && (nobe.next.is_some()
                     || managed::mut_ptr_eq(self.tl.expect(~"tailless dlist?"),
                                            nobe)))) {
-                fail!(~"Removing a dlist node during iteration is forbidden!")
+                fail!("Removing a dlist node during iteration is forbidden!")
             }
             link = nobe.next_link();
         }
