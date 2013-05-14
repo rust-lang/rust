@@ -30,7 +30,7 @@ pub type Rational64 = Ratio<i64>;
 /// Alias for arbitrary precision rationals.
 pub type BigRational = Ratio<BigInt>;
 
-impl<T: Copy + Num + Ord>
+impl<T: Copy + Integer + Ord>
     Ratio<T> {
     /// Create a ratio representing the integer `t`.
     #[inline(always)]
@@ -57,7 +57,7 @@ impl<T: Copy + Num + Ord>
 
     /// Put self into lowest terms, with denom > 0.
     fn reduce(&mut self) {
-        let g : T = gcd(self.numer, self.denom);
+        let g : T = self.numer.gcd(&self.denom);
 
         self.numer /= g;
         self.denom /= g;
@@ -74,34 +74,6 @@ impl<T: Copy + Num + Ord>
         ret.reduce();
         ret
     }
-}
-
-/**
-Compute the greatest common divisor of two numbers, via Euclid's algorithm.
-
-The result can be negative.
-*/
-#[inline]
-pub fn gcd_raw<T: Num>(n: T, m: T) -> T {
-    let mut m = m, n = n;
-    while m != Zero::zero() {
-        let temp = m;
-        m = n % temp;
-        n = temp;
-    }
-    n
-}
-
-/**
-Compute the greatest common divisor of two numbers, via Euclid's algorithm.
-
-The result is always positive.
-*/
-#[inline]
-pub fn gcd<T: Num + Ord>(n: T, m: T) -> T {
-    let g = gcd_raw(n, m);
-    if g < Zero::zero() { -g }
-    else { g }
 }
 
 /* Comparisons */
@@ -133,7 +105,7 @@ cmp_impl!(impl TotalOrd, cmp -> cmp::Ordering)
 
 /* Arithmetic */
 // a/b * c/d = (a*c)/(b*d)
-impl<T: Copy + Num + Ord>
+impl<T: Copy + Integer + Ord>
     Mul<Ratio<T>,Ratio<T>> for Ratio<T> {
     #[inline]
     fn mul(&self, rhs: &Ratio<T>) -> Ratio<T> {
@@ -142,7 +114,7 @@ impl<T: Copy + Num + Ord>
 }
 
 // (a/b) / (c/d) = (a*d)/(b*c)
-impl<T: Copy + Num + Ord>
+impl<T: Copy + Integer + Ord>
     Div<Ratio<T>,Ratio<T>> for Ratio<T> {
     #[inline]
     fn div(&self, rhs: &Ratio<T>) -> Ratio<T> {
@@ -153,7 +125,7 @@ impl<T: Copy + Num + Ord>
 // Abstracts the a/b `op` c/d = (a*d `op` b*d) / (b*d) pattern
 macro_rules! arith_impl {
     (impl $imp:ident, $method:ident) => {
-        impl<T: Copy + Num + Ord>
+        impl<T: Copy + Integer + Ord>
             $imp<Ratio<T>,Ratio<T>> for Ratio<T> {
             #[inline]
             fn $method(&self, rhs: &Ratio<T>) -> Ratio<T> {
@@ -173,16 +145,16 @@ arith_impl!(impl Sub, sub)
 // a/b % c/d = (a*d % b*c)/(b*d)
 arith_impl!(impl Rem, rem)
 
-impl<T: Copy + Num + Ord>
+impl<T: Copy + Integer + Ord>
     Neg<Ratio<T>> for Ratio<T> {
     #[inline]
     fn neg(&self) -> Ratio<T> {
-        Ratio::new_raw(-self.numer, self.denom)
+        Ratio::new_raw(-self.numer, self.denom.clone())
     }
 }
 
 /* Constants */
-impl<T: Copy + Num + Ord>
+impl<T: Copy + Integer + Ord>
     Zero for Ratio<T> {
     #[inline]
     fn zero() -> Ratio<T> {
@@ -195,7 +167,7 @@ impl<T: Copy + Num + Ord>
     }
 }
 
-impl<T: Copy + Num + Ord>
+impl<T: Copy + Integer + Ord>
     One for Ratio<T> {
     #[inline]
     fn one() -> Ratio<T> {
@@ -203,11 +175,11 @@ impl<T: Copy + Num + Ord>
     }
 }
 
-impl<T: Copy + Num + Ord>
+impl<T: Copy + Integer + Ord>
     Num for Ratio<T> {}
 
 /* Utils */
-impl<T: Copy + Num + Ord>
+impl<T: Copy + Integer + Ord>
     Round for Ratio<T> {
 
     fn floor(&self) -> Ratio<T> {
@@ -245,7 +217,7 @@ impl<T: Copy + Num + Ord>
     }
 }
 
-impl<T: Copy + Num + Ord> Fractional for Ratio<T> {
+impl<T: Copy + Integer + Ord> Fractional for Ratio<T> {
     #[inline]
     fn recip(&self) -> Ratio<T> {
         Ratio::new_raw(self.denom, self.numer)
@@ -266,7 +238,7 @@ impl<T: ToStrRadix> ToStrRadix for Ratio<T> {
     }
 }
 
-impl<T: FromStr + Copy + Num + Ord>
+impl<T: FromStr + Copy + Integer + Ord>
     FromStr for Ratio<T> {
     /// Parses `numer/denom`.
     fn from_str(s: &str) -> Option<Ratio<T>> {
@@ -283,7 +255,7 @@ impl<T: FromStr + Copy + Num + Ord>
         }
     }
 }
-impl<T: FromStrRadix + Copy + Num + Ord>
+impl<T: FromStrRadix + Copy + Integer + Ord>
     FromStrRadix for Ratio<T> {
     /// Parses `numer/denom` where the numbers are in base `radix`.
     fn from_str_radix(s: &str, radix: uint) -> Option<Ratio<T>> {
@@ -316,17 +288,6 @@ mod test {
     pub static _3_2: Rational = Ratio { numer: 3, denom: 2};
     pub static _neg1_2: Rational =  Ratio { numer: -1, denom: 2};
 
-    #[test]
-    fn test_gcd() {
-        assert_eq!(gcd(10,2),2);
-        assert_eq!(gcd(10,3),1);
-        assert_eq!(gcd(0,3),3);
-        assert_eq!(gcd(3,3),3);
-
-        assert_eq!(gcd(3,-3), 3);
-        assert_eq!(gcd(-6,3), 3);
-        assert_eq!(gcd(-4,-2), 2);
-    }
 
     #[test]
     fn test_test_constants() {
