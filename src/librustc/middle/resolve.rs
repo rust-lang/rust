@@ -2596,11 +2596,17 @@ pub impl Resolver {
         match module_prefix_result {
             Failed => {
                 let mpath = self.idents_to_str(module_path);
-                let idx = str::rfind(self.idents_to_str(module_path), |c| { c == ':' }).unwrap();
-                self.session.span_err(span, fmt!("unresolved import: could not find `%s` in `%s`",
-                                                 str::substr(mpath, idx, mpath.len() - idx),
-                                                 // idx - 1 to account for the extra semicolon
-                                                 str::substr(mpath, 0, idx - 1)));
+                match str::rfind(self.idents_to_str(module_path), |c| { c == ':' }) {
+                    Some(idx) => {
+                        self.session.span_err(span, fmt!("unresolved import: could not find `%s` \
+                                                         in `%s`", str::substr(mpath, idx,
+                                                                               mpath.len() - idx),
+                                                         // idx - 1 to account for the extra
+                                                         // colon
+                                                         str::substr(mpath, 0, idx - 1)));
+                    },
+                    None => (),
+                };
                 return Failed;
             }
             Indeterminate => {
