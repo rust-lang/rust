@@ -72,7 +72,8 @@ pub enum SyntaxContext_ {
     IllegalCtxt()
 }
 
-// a name represents an identifier
+// a name is a part of an identifier, representing a string
+// or gensym. It's the result of interning.
 pub type Name = uint;
 // a mark represents a unique id associated
 // with a macro expansion
