@@ -2069,6 +2069,8 @@ pub trait ImmutableVector<'self, T> {
     fn initn(&self, n: uint) -> &'self [T];
     fn last(&self) -> &'self T;
     fn last_opt(&self) -> Option<&'self T>;
+    fn position(&self, f: &fn(t: &T) -> bool) -> Option<uint>;
+    fn rposition(&self, f: &fn(t: &T) -> bool) -> Option<uint>;
     #[cfg(stage0)]
     fn each_reverse(&self, blk: &fn(&T) -> bool);
     #[cfg(not(stage0))]
@@ -2135,6 +2137,30 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     /// Returns the last element of a `v`, failing if the vector is empty.
     #[inline]
     fn last_opt(&self) -> Option<&'self T> { last_opt(*self) }
+
+    /**
+     * Find the first index matching some predicate
+     *
+     * Apply function `f` to each element of `v`.  When function `f` returns
+     * true then an option containing the index is returned. If `f` matches no
+     * elements then none is returned.
+     */
+    #[inline]
+    fn position(&self, f: &fn(t: &T) -> bool) -> Option<uint> {
+        position(*self, f)
+    }
+
+    /**
+     * Find the last index matching some predicate
+     *
+     * Apply function `f` to each element of `v` in reverse order.  When
+     * function `f` returns true then an option containing the index is
+     * returned. If `f` matches no elements then none is returned.
+     */
+    #[inline]
+    fn rposition(&self, f: &fn(t: &T) -> bool) -> Option<uint> {
+        rposition(*self, f)
+    }
 
     /// Iterates over a vector's elements in reverse.
     #[inline]
@@ -2228,41 +2254,15 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
 }
 
 pub trait ImmutableEqVector<T:Eq> {
-    fn position(&self, f: &fn(t: &T) -> bool) -> Option<uint>;
     fn position_elem(&self, t: &T) -> Option<uint>;
-    fn rposition(&self, f: &fn(t: &T) -> bool) -> Option<uint>;
     fn rposition_elem(&self, t: &T) -> Option<uint>;
 }
 
 impl<'self,T:Eq> ImmutableEqVector<T> for &'self [T] {
-    /**
-     * Find the first index matching some predicate
-     *
-     * Apply function `f` to each element of `v`.  When function `f` returns
-     * true then an option containing the index is returned. If `f` matches no
-     * elements then none is returned.
-     */
-    #[inline]
-    fn position(&self, f: &fn(t: &T) -> bool) -> Option<uint> {
-        position(*self, f)
-    }
-
     /// Find the first index containing a matching value
     #[inline]
     fn position_elem(&self, x: &T) -> Option<uint> {
         position_elem(*self, x)
-    }
-
-    /**
-     * Find the last index matching some predicate
-     *
-     * Apply function `f` to each element of `v` in reverse order.  When
-     * function `f` returns true then an option containing the index is
-     * returned. If `f` matches no elements then none is returned.
-     */
-    #[inline]
-    fn rposition(&self, f: &fn(t: &T) -> bool) -> Option<uint> {
-        rposition(*self, f)
     }
 
     /// Find the last index containing a matching value
