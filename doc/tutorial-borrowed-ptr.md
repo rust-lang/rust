@@ -42,14 +42,14 @@ point, but allocated in a different place:
 ~~~
 # struct Point {x: float, y: float}
 let on_the_stack :  Point =  Point {x: 3.0, y: 4.0};
-let shared_box   : @Point = @Point {x: 5.0, y: 1.0};
-let unique_box   : ~Point = ~Point {x: 7.0, y: 9.0};
+let managed_box  : @Point = @Point {x: 5.0, y: 1.0};
+let owned_box    : ~Point = ~Point {x: 7.0, y: 9.0};
 ~~~
 
 Suppose we wanted to write a procedure that computed the distance between any
 two points, no matter where they were stored. For example, we might like to
-compute the distance between `on_the_stack` and `shared_box`, or between
-`shared_box` and `unique_box`. One option is to define a function that takes
+compute the distance between `on_the_stack` and `managed_box`, or between
+`managed_box` and `owned_box`. One option is to define a function that takes
 two arguments of type `Point`—that is, it takes the points by value. But if we
 define it this way, calling the function will cause the points to be
 copied. For points, this is probably not so bad, but often copies are
@@ -73,11 +73,11 @@ Now we can call `compute_distance()` in various ways:
 ~~~
 # struct Point {x: float, y: float}
 # let on_the_stack :  Point =  Point{x: 3.0, y: 4.0};
-# let shared_box   : @Point = @Point{x: 5.0, y: 1.0};
-# let unique_box   : ~Point = ~Point{x: 7.0, y: 9.0};
+# let managed_box  : @Point = @Point{x: 5.0, y: 1.0};
+# let owned_box    : ~Point = ~Point{x: 7.0, y: 9.0};
 # fn compute_distance(p1: &Point, p2: &Point) -> float { 0f }
-compute_distance(&on_the_stack, shared_box);
-compute_distance(shared_box, unique_box);
+compute_distance(&on_the_stack, managed_box);
+compute_distance(managed_box, owned_box);
 ~~~
 
 Here, the `&` operator takes the address of the variable
@@ -87,11 +87,11 @@ value. We also call this _borrowing_ the local variable
 `on_the_stack`, because we have created an alias: that is, another
 name for the same data.
 
-In contrast, we can pass the boxes `shared_box` and `unique_box` to
+In contrast, we can pass the boxes `managed_box` and `owned_box` to
 `compute_distance` directly. The compiler automatically converts a box like
 `@Point` or `~Point` to a borrowed pointer like `&Point`. This is another form
-of borrowing: in this case, the caller lends the contents of the shared or
-unique box to the callee.
+of borrowing: in this case, the caller lends the contents of the managed or
+owned box to the callee.
 
 Whenever a caller lends data to a callee, there are some limitations on what
 the caller can do with the original. For example, if the contents of a
@@ -155,7 +155,7 @@ let rect_stack   = &Rectangle {origin: Point {x: 1f, y: 2f},
                                size: Size {w: 3f, h: 4f}};
 let rect_managed = @Rectangle {origin: Point {x: 3f, y: 4f},
                                size: Size {w: 3f, h: 4f}};
-let rect_unique  = ~Rectangle {origin: Point {x: 5f, y: 6f},
+let rect_owned   = ~Rectangle {origin: Point {x: 5f, y: 6f},
                                size: Size {w: 3f, h: 4f}};
 ~~~
 
@@ -168,7 +168,7 @@ operator. For example, I could write:
 # struct Rectangle {origin: Point, size: Size}
 # let rect_stack  = &Rectangle {origin: Point {x: 1f, y: 2f}, size: Size {w: 3f, h: 4f}};
 # let rect_managed = @Rectangle {origin: Point {x: 3f, y: 4f}, size: Size {w: 3f, h: 4f}};
-# let rect_unique = ~Rectangle {origin: Point {x: 5f, y: 6f}, size: Size {w: 3f, h: 4f}};
+# let rect_owned = ~Rectangle {origin: Point {x: 5f, y: 6f}, size: Size {w: 3f, h: 4f}};
 # fn compute_distance(p1: &Point, p2: &Point) -> float { 0f }
 compute_distance(&rect_stack.origin, &rect_managed.origin);
 ~~~
@@ -179,7 +179,7 @@ as well as from the managed box, and then compute the distance between them.
 # Borrowing managed boxes and rooting
 
 We’ve seen a few examples so far of borrowing heap boxes, both managed
-and unique. Up till this point, we’ve glossed over issues of
+and owned. Up till this point, we’ve glossed over issues of
 safety. As stated in the introduction, at runtime a borrowed pointer
 is simply a pointer, nothing more. Therefore, avoiding C's problems
 with dangling pointers requires a compile-time safety check.
@@ -258,18 +258,18 @@ fn example2() {
 Now if `x` is reassigned, the pointer `y` will still remain valid. This
 process is called *rooting*.
 
-# Borrowing unique boxes
+# Borrowing owned boxes
 
 The previous example demonstrated *rooting*, the process by which the
 compiler ensures that managed boxes remain live for the duration of a
-borrow. Unfortunately, rooting does not work for borrows of unique
-boxes, because it is not possible to have two references to a unique
+borrow. Unfortunately, rooting does not work for borrows of owned
+boxes, because it is not possible to have two references to a owned
 box.
 
-For unique boxes, therefore, the compiler will only allow a borrow *if
-the compiler can guarantee that the unique box will not be reassigned
+For owned boxes, therefore, the compiler will only allow a borrow *if
+the compiler can guarantee that the owned box will not be reassigned
 or moved for the lifetime of the pointer*. This does not necessarily
-mean that the unique box is stored in immutable memory. For example,
+mean that the owned box is stored in immutable memory. For example,
 the following function is legal:
 
 ~~~
@@ -294,7 +294,7 @@ and `x` is declared as mutable. However, the compiler can prove that
 and in fact is mutated later in the function.
 
 It may not be clear why we are so concerned about mutating a borrowed
-variable. The reason is that the runtime system frees any unique box
+variable. The reason is that the runtime system frees any owned box
 _as soon as its owning reference changes or goes out of
 scope_. Therefore, a program like this is illegal (and would be
 rejected by the compiler):
@@ -342,7 +342,7 @@ which has been freed.
 
 In fact, the compiler can apply the same kind of reasoning to any
 memory that is _(uniquely) owned by the stack frame_. So we could
-modify the previous example to introduce additional unique pointers
+modify the previous example to introduce additional owned pointers
 and structs, and the compiler will still be able to detect possible
 mutations:
 
@@ -366,7 +366,7 @@ invalidate the pointer `y`.
 # Borrowing and enums
 
 The previous example showed that the type system forbids any borrowing
-of unique boxes found in aliasable, mutable memory. This restriction
+of owned boxes found in aliasable, mutable memory. This restriction
 prevents pointers from pointing into freed memory. There is one other
 case where the compiler must be very careful to ensure that pointers
 remain valid: pointers into the interior of an `enum`.
@@ -462,14 +462,14 @@ of a `float` as if it were a struct with two fields would be a memory
 safety violation.
 
 So, in fact, for every `ref` binding, the compiler will impose the
-same rules as the ones we saw for borrowing the interior of a unique
+same rules as the ones we saw for borrowing the interior of a owned
 box: it must be able to guarantee that the `enum` will not be
 overwritten for the duration of the borrow.  In fact, the compiler
 would accept the example we gave earlier. The example is safe because
 the shape pointer has type `&Shape`, which means "borrowed pointer to
 immutable memory containing a `shape`". If, however, the type of that
 pointer were `&mut Shape`, then the ref binding would be ill-typed.
-Just as with unique boxes, the compiler will permit `ref` bindings
+Just as with owned boxes, the compiler will permit `ref` bindings
 into data owned by the stack frame even if the data are mutable,
 but otherwise it requires that the data reside in immutable memory.
 
@@ -550,7 +550,7 @@ guarantees; in fact, it cannot guarantee that the pointer will remain
 valid at all once it returns, as the parameter `p` may or may not be
 live in the caller. Therefore, the compiler will report an error here.
 
-In general, if you borrow a managed (or unique) box to create a
+In general, if you borrow a managed (or owned) box to create a
 borrowed pointer, the pointer will only be valid within the function
 and cannot be returned. This is why the typical way to return borrowed
 pointers is to take borrowed pointers as input (the only other case in
