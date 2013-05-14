@@ -283,7 +283,7 @@ impl<T: FromStrRadix + Clone + Integer + Ord>
 #[cfg(test)]
 mod test {
     use super::*;
-    use core::num::{Zero,One,FromStrRadix};
+    use core::num::{Zero,One,FromStrRadix,IntConvertible};
     use core::from_str::FromStr;
 
     pub static _0 : Rational = Ratio { numer: 0, denom: 1};
@@ -293,6 +293,12 @@ mod test {
     pub static _3_2: Rational = Ratio { numer: 3, denom: 2};
     pub static _neg1_2: Rational =  Ratio { numer: -1, denom: 2};
 
+    pub fn to_big(n: Rational) -> BigRational {
+        Ratio::new(
+            IntConvertible::from_int(n.numer),
+            IntConvertible::from_int(n.denom)
+        )
+    }
 
     #[test]
     fn test_test_constants() {
@@ -340,45 +346,75 @@ mod test {
 
         #[test]
         fn test_add() {
-            assert_eq!(_1 + _1_2, _3_2);
-            assert_eq!(_1 + _1, _2);
-            assert_eq!(_1_2 + _3_2, _2);
-            assert_eq!(_1_2 + _neg1_2, _0);
+            fn test(a: Rational, b: Rational, c: Rational) {
+                assert_eq!(a + b, c);
+                assert_eq!(to_big(a) + to_big(b), to_big(c));
+            }
+
+            test(_1, _1_2, _3_2);
+            test(_1, _1, _2);
+            test(_1_2, _3_2, _2);
+            test(_1_2, _neg1_2, _0);
         }
 
         #[test]
         fn test_sub() {
-            assert_eq!(_1 - _1_2, _1_2);
-            assert_eq!(_3_2 - _1_2, _1);
-            assert_eq!(_1 - _neg1_2, _3_2);
+            fn test(a: Rational, b: Rational, c: Rational) {
+                assert_eq!(a - b, c);
+                assert_eq!(to_big(a) - to_big(b), to_big(c))
+            }
+
+            test(_1, _1_2, _1_2);
+            test(_3_2, _1_2, _1);
+            test(_1, _neg1_2, _3_2);
         }
 
         #[test]
         fn test_mul() {
-            assert_eq!(_1 * _1_2, _1_2);
-            assert_eq!(_1_2 * _3_2, Ratio::new(3,4));
-            assert_eq!(_1_2 * _neg1_2, Ratio::new(-1, 4));
+            fn test(a: Rational, b: Rational, c: Rational) {
+                assert_eq!(a * b, c);
+                assert_eq!(to_big(a) * to_big(b), to_big(c))
+            }
+
+            test(_1, _1_2, _1_2);
+            test(_1_2, _3_2, Ratio::new(3,4));
+            test(_1_2, _neg1_2, Ratio::new(-1, 4));
         }
 
         #[test]
         fn test_div() {
-            assert_eq!(_1 / _1_2, _2);
-            assert_eq!(_3_2 / _1_2, _1 + _2);
-            assert_eq!(_1 / _neg1_2, _neg1_2 + _neg1_2 + _neg1_2 + _neg1_2);
+            fn test(a: Rational, b: Rational, c: Rational) {
+                assert_eq!(a / b, c);
+                assert_eq!(to_big(a) / to_big(b), to_big(c))
+            }
+
+            test(_1, _1_2, _2);
+            test(_3_2, _1_2, _1 + _2);
+            test(_1, _neg1_2, _neg1_2 + _neg1_2 + _neg1_2 + _neg1_2);
         }
 
         #[test]
         fn test_rem() {
-            assert_eq!(_3_2 % _1, _1_2);
-            assert_eq!(_2 % _neg1_2, _0);
-            assert_eq!(_1_2 % _2,  _1_2);
+            fn test(a: Rational, b: Rational, c: Rational) {
+                assert_eq!(a % b, c);
+                assert_eq!(to_big(a) % to_big(b), to_big(c))
+            }
+
+            test(_3_2, _1, _1_2);
+            test(_2, _neg1_2, _0);
+            test(_1_2, _2,  _1_2);
         }
 
         #[test]
         fn test_neg() {
-            assert_eq!(-_0, _0);
-            assert_eq!(-_1_2, _neg1_2);
-            assert_eq!(-(-_1), _1);
+            fn test(a: Rational, b: Rational) {
+                assert_eq!(-a, b);
+                assert_eq!(-to_big(a), to_big(b))
+            }
+
+            test(_0, _0);
+            test(_1_2, _neg1_2);
+            test(-_1, _1);
         }
         #[test]
         fn test_zero() {
