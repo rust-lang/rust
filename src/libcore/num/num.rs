@@ -284,6 +284,9 @@ pub trait Float: Real
     fn min_10_exp() -> int;
     fn max_10_exp() -> int;
 
+    fn ldexp(x: Self, exp: int) -> Self;
+    fn frexp(&self) -> (Self, int);
+
     fn exp_m1(&self) -> Self;
     fn ln_1p(&self) -> Self;
     fn mul_add(&self, a: Self, b: Self) -> Self;
