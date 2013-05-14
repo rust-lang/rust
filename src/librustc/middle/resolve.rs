@@ -2593,7 +2593,12 @@ pub impl Resolver {
         let start_index;
         match module_prefix_result {
             Failed => {
-                self.session.span_err(span, ~"unresolved name");
+                let mpath = self.idents_to_str(module_path);
+                let idx = str::rfind(self.idents_to_str(module_path), |c| { c == ':' }).unwrap();
+                self.session.span_err(span, fmt!("unresolved import: could not find `%s` in `%s`",
+                                                 str::substr(mpath, idx, mpath.len() - idx),
+                                                 // idx - 1 to account for the extra semicolon
+                                                 str::substr(mpath, 0, idx - 1)));
                 return Failed;
             }
             Indeterminate => {
