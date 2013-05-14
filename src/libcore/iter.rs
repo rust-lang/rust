@@ -42,6 +42,7 @@ much easier to implement.
 
 #[cfg(not(stage0))] use cmp::Ord;
 #[cfg(not(stage0))] use option::{Option, Some, None};
+#[cfg(not(stage0))] use vec::OwnedVector;
 
 #[cfg(stage0)]
 pub trait Times {

@@ -10,11 +10,14 @@
 
 //! A type that represents one of two alternatives
 
+use container::Container;
 use cmp::Eq;
 use kinds::Copy;
+use old_iter::BaseIter;
 use result::Result;
 use result;
 use vec;
+use vec::OwnedVector;
 
 /// The either type
 #[deriving(Clone, Eq)]

@@ -16,6 +16,7 @@ Basic input/output
 
 use result::Result;
 
+use container::Container;
 use int;
 use libc;
 use libc::{c_int, c_long, c_void, size_t, ssize_t};
@@ -24,11 +25,15 @@ use os;
 use cast;
 use path::Path;
 use ops::Drop;
+use old_iter::{BaseIter, CopyableIter};
 use ptr;
 use result;
 use str;
+use str::StrSlice;
+use to_str::ToStr;
 use uint;
 use vec;
+use vec::{OwnedVector, OwnedCopyableVector};
 
 #[allow(non_camel_case_types)] // not sure what to do about this
 pub type fd_t = c_int;

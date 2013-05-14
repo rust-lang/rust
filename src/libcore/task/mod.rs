@@ -772,7 +772,7 @@ fn test_add_wrapper() {
     do b0.add_wrapper |body| {
         let ch = Cell(ch.take());
         let result: ~fn() = || {
-            let mut ch = ch.take();
+            let ch = ch.take();
             body();
             ch.send(());
         };

@@ -45,6 +45,7 @@ pub fn console_off() {
 #[cfg(not(test))]
 #[lang="log_type"]
 pub fn log_type<T>(level: u32, object: &T) {
+    use container::Container;
     use cast::transmute;
     use io;
     use libc;

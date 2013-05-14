@@ -82,6 +82,7 @@ bounded and unbounded protocols allows for less code duplication.
 
 */
 
+use container::Container;
 use cast::{forget, transmute, transmute_copy};
 use either::{Either, Left, Right};
 use kinds::Owned;
@@ -91,8 +92,10 @@ use option::{None, Option, Some};
 use unstable::finally::Finally;
 use unstable::intrinsics;
 use ptr;
+use ptr::Ptr;
 use task;
 use vec;
+use vec::OwnedVector;
 use util::replace;
 
 static SPIN_COUNT: uint = 0;

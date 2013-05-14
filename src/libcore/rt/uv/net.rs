@@ -388,7 +388,7 @@ fn listen() {
             assert!(status.is_none());
             let mut server_stream_watcher = server_stream_watcher;
             let mut loop_ = loop_;
-            let mut client_tcp_watcher = TcpWatcher::new(&mut loop_);
+            let client_tcp_watcher = TcpWatcher::new(&mut loop_);
             let mut client_tcp_watcher = client_tcp_watcher.as_stream();
             server_stream_watcher.accept(client_tcp_watcher);
             let count_cell = Cell(0);
