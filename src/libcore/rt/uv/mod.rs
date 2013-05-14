@@ -34,11 +34,13 @@ via `close` and `delete` methods.
 
 */
 
+use container::Container;
 use option::*;
 use str::raw::from_c_str;
 use to_str::ToStr;
 use vec;
 use ptr;
+use ptr::Ptr;
 use libc::{c_void, c_int, size_t, malloc, free};
 use cast::transmute;
 use ptr::null;

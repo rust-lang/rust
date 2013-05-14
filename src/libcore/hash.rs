@@ -21,6 +21,8 @@
 
 #[cfg(stage0)]
 use cast;
+use container::Container;
+use old_iter::BaseIter;
 use rt::io::Writer;
 use to_bytes::IterBytes;
 use uint;

@@ -11,8 +11,10 @@
 //! Managed vectors
 
 use cast::transmute;
+use container::Container;
 use kinds::Copy;
 use old_iter;
+use old_iter::BaseIter;
 use option::Option;
 use sys;
 use uint;
