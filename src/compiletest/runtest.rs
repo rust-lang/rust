@@ -264,7 +264,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
         fatal(~"gdb failed to execute");
     }
 
-    let num_check_lines = vec::len(check_lines);
+    let num_check_lines = check_lines.len();
     if num_check_lines > 0 {
         // check if each line in props.check_lines appears in the
         // output (in order)
@@ -303,7 +303,7 @@ fn check_error_patterns(props: &TestProps,
         if str::contains(line, *next_err_pat) {
             debug!("found error pattern %s", *next_err_pat);
             next_err_idx += 1u;
-            if next_err_idx == vec::len(props.error_patterns) {
+            if next_err_idx == props.error_patterns.len() {
                 debug!("found all error patterns");
                 done = true;
                 break;
@@ -315,8 +315,8 @@ fn check_error_patterns(props: &TestProps,
 
     let missing_patterns =
         vec::slice(props.error_patterns, next_err_idx,
-                   vec::len(props.error_patterns));
-    if vec::len(missing_patterns) == 1u {
+                   props.error_patterns.len());
+    if missing_patterns.len() == 1u {
         fatal_ProcRes(fmt!("error pattern '%s' not found!",
                            missing_patterns[0]), ProcRes);
     } else {
@@ -333,7 +333,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
 
     // true if we found the error in question
     let mut found_flags = vec::from_elem(
-        vec::len(expected_errors), false);
+        expected_errors.len(), false);
 
     if ProcRes.status == 0 {
         fatal(~"process did not return an error status");
@@ -377,7 +377,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         }
     }
 
-    for uint::range(0u, vec::len(found_flags)) |i| {
+    for uint::range(0u, found_flags.len()) |i| {
         if !found_flags[i] {
             let ee = &expected_errors[i];
             fatal_ProcRes(fmt!("expected %s on line %u not found: %s",

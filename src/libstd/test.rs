@@ -144,7 +144,7 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
         };
 
     let filter =
-        if vec::len(matches.free) > 0 {
+        if matches.free.len() > 0 {
             option::Some(copy (matches).free[0])
         } else { option::None };
 
@@ -901,7 +901,7 @@ mod tests {
         ];
         let filtered = filter_tests(&opts, tests);
 
-        assert!((vec::len(filtered) == 1));
+        assert!(filtered.len() == 1);
         assert!((filtered[0].desc.name.to_str() == ~"1"));
         assert!((filtered[0].desc.ignore == false));
     }

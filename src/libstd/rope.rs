@@ -164,7 +164,7 @@ pub fn append_rope(left: Rope, right: Rope) -> Rope {
  */
 pub fn concat(v: ~[Rope]) -> Rope {
     //Copy `v` into a mut vector
-    let mut len = vec::len(v);
+    let mut len = v.len();
     if len == 0u { return node::Empty; }
     let mut ropes = vec::from_elem(len, v[0]);
     for uint::range(1u, len) |i| {
@@ -770,7 +770,7 @@ pub mod node {
      */
     pub fn tree_from_forest_destructive(forest: &mut [@Node]) -> @Node {
         let mut i;
-        let mut len = vec::len(forest);
+        let mut len = forest.len();
         while len > 1u {
             i = 0u;
             while i < len - 1u {//Concat nodes 0 with 1, 2 with 3 etc.

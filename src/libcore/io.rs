@@ -673,10 +673,10 @@ impl<T:Reader> ReaderUtil for T {
 
     fn read_char(&self) -> char {
         let c = self.read_chars(1);
-        if vec::len(c) == 0 {
+        if c.len() == 0 {
             return -1 as char; // FIXME will this stay valid? // #2004
         }
-        assert!((vec::len(c) == 1));
+        assert!(c.len() == 1);
         return c[0];
     }
 
@@ -1802,7 +1802,7 @@ mod tests {
     fn test_readchars_empty() {
         do io::with_str_reader(~"") |inp| {
             let res : ~[char] = inp.read_chars(128);
-            assert!((vec::len(res) == 0));
+            assert!(res.len() == 0);
         }
     }
 
@@ -1841,10 +1841,10 @@ mod tests {
         fn check_read_ln(len : uint, s: &str, ivals: &[int]) {
             do io::with_str_reader(s) |inp| {
                 let res : ~[char] = inp.read_chars(len);
-                if (len <= vec::len(ivals)) {
-                    assert!((vec::len(res) == len));
+                if len <= ivals.len() {
+                    assert!(res.len() == len);
                 }
-                assert!(vec::slice(ivals, 0u, vec::len(res)) ==
+                assert!(vec::slice(ivals, 0u, res.len()) ==
                              vec::map(res, |x| *x as int));
             }
         }

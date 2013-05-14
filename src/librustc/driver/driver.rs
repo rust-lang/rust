@@ -905,7 +905,6 @@ mod test {
     use driver::driver::{build_configuration, build_session};
     use driver::driver::{build_session_options, optgroups, str_input};
 
-    use core::vec;
     use std::getopts::groups::getopts;
     use std::getopts;
     use syntax::attr;
@@ -942,6 +941,6 @@ mod test {
         let sess = build_session(sessopts, diagnostic::emit);
         let cfg = build_configuration(sess, @~"whatever", &str_input(~""));
         let test_items = attr::find_meta_items_by_name(cfg, ~"test");
-        assert!((vec::len(test_items) == 1u));
+        assert!(test_items.len() == 1u);
     }
 }

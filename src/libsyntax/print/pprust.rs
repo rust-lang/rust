@@ -1798,7 +1798,7 @@ pub fn print_meta_item(s: @ps, item: @ast::meta_item) {
 pub fn print_view_path(s: @ps, vp: @ast::view_path) {
     match vp.node {
       ast::view_path_simple(ident, path, _) => {
-        if path.idents[vec::len(path.idents)-1u] != ident {
+        if path.idents[path.idents.len()-1u] != ident {
             print_ident(s, ident);
             space(s.s);
             word_space(s, ~"=");
@@ -2067,7 +2067,7 @@ pub fn maybe_print_comment(s: @ps, pos: BytePos) {
 pub fn print_comment(s: @ps, cmnt: &comments::cmnt) {
     match cmnt.style {
       comments::mixed => {
-        assert!((vec::len(cmnt.lines) == 1u));
+        assert!(cmnt.lines.len() == 1u);
         zerobreak(s.s);
         word(s.s, cmnt.lines[0]);
         zerobreak(s.s);
@@ -2083,7 +2083,7 @@ pub fn print_comment(s: @ps, cmnt: &comments::cmnt) {
       }
       comments::trailing => {
         word(s.s, ~" ");
-        if vec::len(cmnt.lines) == 1u {
+        if cmnt.lines.len() == 1u {
             word(s.s, cmnt.lines[0]);
             hardbreak(s.s);
         } else {

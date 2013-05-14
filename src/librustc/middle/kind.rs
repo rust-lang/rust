@@ -360,7 +360,7 @@ fn is_nullary_variant(cx: Context, ex: @expr) -> bool {
       expr_path(_) => {
         match cx.tcx.def_map.get_copy(&ex.id) {
           def_variant(edid, vdid) => {
-            vec::len(ty::enum_variant_with_id(cx.tcx, edid, vdid).args) == 0u
+              vec::len(ty::enum_variant_with_id(cx.tcx, edid, vdid).args) == 0u
           }
           _ => false
         }

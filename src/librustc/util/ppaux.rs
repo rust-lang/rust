@@ -470,7 +470,7 @@ pub fn parameterized(cx: ctxt,
       }
     };
 
-    if vec::len(tps) > 0u {
+    if tps.len() > 0u {
         let strs = vec::map(tps, |t| ty_to_str(cx, *t));
         fmt!("%s%s<%s>", base, r_str, str::connect(strs, ","))
     } else {
