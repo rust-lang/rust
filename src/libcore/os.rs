@@ -722,7 +722,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
             use os::win32::{
                 as_utf16_p
             };
-            use unstable::exchange_alloc::{malloc_raw, free_raw};
+            use rt::global_heap::{malloc_raw, free_raw};
             #[nolink]
             extern {
                 unsafe fn rust_list_dir_wfd_size() -> libc::size_t;

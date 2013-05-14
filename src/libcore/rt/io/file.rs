@@ -10,7 +10,7 @@
 
 use prelude::*;
 use super::support::PathLike;
-use super::{Reader, Writer, Seek, Close};
+use super::{Reader, Writer, Seek};
 use super::SeekStyle;
 
 /// # XXX
@@ -67,10 +67,6 @@ impl Seek for FileStream {
     fn tell(&self) -> u64 { fail!() }
 
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
-}
-
-impl Close for FileStream {
-    fn close(&mut self) { fail!() }
 }
 
 #[test]

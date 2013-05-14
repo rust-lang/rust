@@ -234,3 +234,5 @@ rust_try
 rust_begin_unwind
 rust_take_task_borrow_list
 rust_set_task_borrow_list
+rust_valgrind_stack_register
+rust_valgrind_stack_deregister

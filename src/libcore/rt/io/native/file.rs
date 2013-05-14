@@ -40,10 +40,6 @@ impl Writer for FileDesc {
     fn flush(&mut self) { fail!() }
 }
 
-impl Close for FileDesc {
-    fn close(&mut self) { fail!() }
-}
-
 impl Seek for FileDesc {
     fn tell(&self) -> u64 { fail!() }
 
@@ -70,10 +66,6 @@ impl Writer for CFile {
     fn write(&mut self, _buf: &[u8]) { fail!() }
 
     fn flush(&mut self) { fail!() }
-}
-
-impl Close for CFile {
-    fn close(&mut self) { fail!() }
 }
 
 impl Seek for CFile {
