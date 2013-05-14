@@ -352,7 +352,14 @@ pub impl mem_categorization_ctxt {
                 // Equivalent to &*expr or something similar.
                 // Result is an rvalue.
                 let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
-                self.cat_rvalue(expr, expr_ty, autoref.mutbl == m_mutbl)
+                let mutbl = match autoref {
+                    ty::AutoPtr(_, m) => m,
+                    ty::AutoBorrowVec(_, m) => m,
+                    ty::AutoBorrowVecRef(_, m) => m,
+                    ty::AutoUnsafe(m) => m,
+                    _ => ast::m_imm
+                };
+                self.cat_rvalue(expr, expr_ty, mutbl == m_mutbl)
             }
 
             Some(

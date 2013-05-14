@@ -248,7 +248,14 @@ pub impl GatherLoanCtxt {
                 let mcx = &mc::mem_categorization_ctxt {
                     tcx: self.tcx(),
                     method_map: self.bccx.method_map};
-                let cmt = mcx.cat_expr_autoderefd(expr, autoderefs);
+                let mutbl = match *autoref {
+                    ty::AutoPtr(_, m) => m,
+                    ty::AutoBorrowVec(_, m) => m,
+                    ty::AutoBorrowVecRef(_, m) => m,
+                    ty::AutoUnsafe(m) => m,
+                    _ => ast::m_imm
+                };
+                let cmt = mcx.cat_expr_autoderefd(expr, autoderefs, mutbl == m_mutbl);
                 debug!("after autoderef, cmt=%s", cmt.repr(self.tcx()));
 
                 match *autoref {
