@@ -2059,7 +2059,7 @@ pub impl Resolver {
                                                        containing_module,
                                                        target,
                                                        source,
-                                                       span);
+                                                       import_directive.span);
                     }
                     GlobImport => {
                         let span = import_directive.span;
