@@ -23,7 +23,8 @@ by convention implementing the `Clone` trait and calling the
 */
 
 pub trait Clone {
-    /// Return a deep copy of the owned object tree. Managed boxes are cloned with a shallow copy.
+    /// Return a deep copy of the owned object tree. Types with shared ownership like managed boxes
+    /// are cloned with a shallow copy.
     fn clone(&self) -> Self;
 }
 
@@ -33,7 +34,7 @@ impl Clone for () {
     fn clone(&self) -> () { () }
 }
 
-impl<T:Clone> Clone for ~T {
+impl<T: Clone> Clone for ~T {
     /// Return a deep copy of the owned box.
     #[inline(always)]
     fn clone(&self) -> ~T { ~(**self).clone() }
