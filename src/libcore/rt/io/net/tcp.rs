@@ -233,7 +233,8 @@ mod test {
                 loop {
                     let mut stop = false;
                     do io_error::cond.trap(|e| {
-                        assert!(e.kind == ConnectionReset);
+                        // NB: ECONNRESET on linux, EPIPE on mac
+                        assert!(e.kind == ConnectionReset || e.kind == BrokenPipe);
                         stop = true;
                     }).in {
                         stream.write(buf);
