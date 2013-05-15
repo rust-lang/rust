@@ -17,8 +17,8 @@ use std::tempfile::mkdtemp;
 use util::{PkgId, default_version};
 use path_util::{target_executable_in_workspace, target_library_in_workspace,
                target_test_in_workspace, target_bench_in_workspace,
-               make_dir_rwx, u_rwx};
-use core::os::mkdir_recursive;
+               make_dir_rwx, u_rwx, RemotePath, LocalPath, normalize,
+               built_bench_in_workspace, built_test_in_workspace};
 
 fn fake_ctxt(sysroot_opt: Option<@Path>) -> Ctx {
     Ctx {
@@ -29,15 +29,22 @@ fn fake_ctxt(sysroot_opt: Option<@Path>) -> Ctx {
 }
 
 fn fake_pkg() -> PkgId {
+    let sn = ~"bogus";
+    let remote = RemotePath(Path(sn));
     PkgId {
-        path: Path(~"bogus"),
+        local_path: normalize(copy remote),
+        remote_path: remote,
+        short_name: sn,
         version: default_version()
     }
 }
 
 fn remote_pkg() -> PkgId {
+    let remote = RemotePath(Path(~"github.com/catamorphism/test-pkg"));
     PkgId {
-        path: Path(~"github.com/catamorphism/test-pkg"),
+        local_path: normalize(copy remote),
+        remote_path: remote,
+        short_name: ~"test_pkg",
         version: default_version()
     }
 }
@@ -49,10 +56,11 @@ fn writeFile(file_path: &Path, contents: ~str) {
     out.write_line(contents);
 }
 
-fn mk_temp_workspace(short_name: &Path) -> Path {
+fn mk_temp_workspace(short_name: &LocalPath) -> Path {
     let workspace = mkdtemp(&os::tmpdir(), "test").expect("couldn't create temp dir");
-    let package_dir = workspace.push(~"src").push_rel(short_name);
-    assert!(mkdir_recursive(&package_dir, u_rwx));
+    // include version number in directory name
+    let package_dir = workspace.push(~"src").push(fmt!("%s-0.1", short_name.to_str()));
+    assert!(os::mkdir_recursive(&package_dir, u_rwx));
     // Create main, lib, test, and bench files
     writeFile(&package_dir.push(~"main.rs"),
               ~"fn main() { let _x = (); }");
@@ -104,7 +112,7 @@ fn test_install_valid() {
     debug!("sysroot = %s", sysroot.to_str());
     let ctxt = fake_ctxt(Some(@sysroot));
     let temp_pkg_id = fake_pkg();
-    let temp_workspace = mk_temp_workspace(&temp_pkg_id.path);
+    let temp_workspace = mk_temp_workspace(&temp_pkg_id.local_path);
     // should have test, bench, lib, and main
     ctxt.install(&temp_workspace, &temp_pkg_id);
     // Check that all files exist
@@ -146,27 +154,79 @@ fn test_install_invalid() {
 }
 
 #[test]
-#[ignore(reason = "install from URL-fragment not yet implemented")]
 fn test_install_url() {
+    let workspace = mkdtemp(&os::tmpdir(), "test").expect("couldn't create temp dir");
     let sysroot = test_sysroot();
     debug!("sysroot = %s", sysroot.to_str());
     let ctxt = fake_ctxt(Some(@sysroot));
     let temp_pkg_id = remote_pkg();
-    let temp_workspace = mk_temp_workspace(&temp_pkg_id.path);
     // should have test, bench, lib, and main
-    ctxt.install(&temp_workspace, &temp_pkg_id);
+    ctxt.install(&workspace, &temp_pkg_id);
     // Check that all files exist
-    let exec = target_executable_in_workspace(&temp_pkg_id, &temp_workspace);
+    let exec = target_executable_in_workspace(&temp_pkg_id, &workspace);
     debug!("exec = %s", exec.to_str());
     assert!(os::path_exists(&exec));
     assert!(is_rwx(&exec));
-    let lib = target_library_in_workspace(&temp_pkg_id, &temp_workspace);
+    let lib = target_library_in_workspace(&temp_pkg_id, &workspace);
     debug!("lib = %s", lib.to_str());
     assert!(os::path_exists(&lib));
     assert!(is_rwx(&lib));
+    let built_test = built_test_in_workspace(&temp_pkg_id, &workspace).expect(~"test_install_url");
+    assert!(os::path_exists(&built_test));
+    let built_bench = built_bench_in_workspace(&temp_pkg_id,
+                                               &workspace).expect(~"test_install_url");
+    assert!(os::path_exists(&built_bench));
     // And that the test and bench executables aren't installed
-    assert!(!os::path_exists(&target_test_in_workspace(&temp_pkg_id, &temp_workspace)));
-    let bench = target_bench_in_workspace(&temp_pkg_id, &temp_workspace);
+    let test = target_test_in_workspace(&temp_pkg_id, &workspace);
+    assert!(!os::path_exists(&test));
+    debug!("test = %s", test.to_str());
+    let bench = target_bench_in_workspace(&temp_pkg_id, &workspace);
     debug!("bench = %s", bench.to_str());
     assert!(!os::path_exists(&bench));
+}
+
+#[test]
+fn test_package_ids_must_be_relative_path_like() {
+    use conditions::bad_pkg_id::cond;
+
+    /*
+    Okay:
+    - One identifier, with no slashes
+    - Several slash-delimited things, with no / at the root
+
+    Not okay:
+    - Empty string
+    - Absolute path (as per os::is_absolute)
+
+    */
+
+    let default_version_str = "0.1";
+    let addversion = |s| {
+        fmt!("%s-%s", s, default_version_str)
+    };
+
+    let whatever = PkgId::new("foo");
+
+    assert!(addversion("foo") == whatever.to_str());
+    assert!(addversion("github.com/mozilla/rust") ==
+            PkgId::new("github.com/mozilla/rust").to_str());
+
+    do cond.trap(|(p, e)| {
+        assert!("" == p.to_str());
+        assert!("0-length pkgid" == e);
+        copy whatever
+    }).in {
+        let x = PkgId::new("");
+        assert!(addversion("foo") == x.to_str());
+    }
+
+    do cond.trap(|(p, e)| {
+        assert!(p.to_str() == os::make_absolute(&Path("foo/bar/quux")).to_str());
+        assert!("absolute pkgid" == e);
+        copy whatever
+    }).in {
+        let z = PkgId::new(os::make_absolute(&Path("foo/bar/quux")).to_str());
+        assert!(addversion("foo") == z.to_str());
+    }
+
 }
