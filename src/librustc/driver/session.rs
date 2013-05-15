@@ -66,6 +66,7 @@ pub static debug_info: uint = 1 << 20;
 pub static extra_debug_info: uint = 1 << 21;
 pub static statik: uint = 1 << 22;
 pub static print_link_args: uint = 1 << 23;
+pub static no_debug_borrows: uint = 1 << 24;
 
 pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -100,7 +101,10 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
       extra_debug_info),
      (~"debug-info", ~"Produce debug info (experimental)", debug_info),
      (~"static", ~"Use or produce static libraries or binaries " +
-      "(experimental)", statik)
+      "(experimental)", statik),
+     (~"no-debug-borrows",
+      ~"do not show where borrow checks fail",
+      no_debug_borrows),
     ]
 }
 
@@ -141,7 +145,7 @@ pub struct options {
     parse_only: bool,
     no_trans: bool,
     debugging_opts: uint,
-    android_cross_path: Option<~str>
+    android_cross_path: Option<~str>,
 }
 
 pub struct crate_metadata {
@@ -271,6 +275,9 @@ pub impl Session_ {
     fn no_monomorphic_collapse(@self) -> bool {
         self.debugging_opt(no_monomorphic_collapse)
     }
+    fn debug_borrows(@self) -> bool {
+        self.opts.optimize == No && !self.debugging_opt(no_debug_borrows)
+    }
 
     fn str_of(@self, id: ast::ident) -> @~str {
         self.parse_sess.interner.get(id)
@@ -308,7 +315,7 @@ pub fn basic_options() -> @options {
         parse_only: false,
         no_trans: false,
         debugging_opts: 0u,
-        android_cross_path: None
+        android_cross_path: None,
     }
 }
 

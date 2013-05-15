@@ -122,6 +122,10 @@ endif
 ifdef TRACE
   CFG_RUSTC_FLAGS += -Z trace
 endif
+ifndef DEBUG_BORROWS
+  RUSTFLAGS_STAGE1 += -Z no-debug-borrows
+  RUSTFLAGS_STAGE2 += -Z no-debug-borrows
+endif
 
 # platform-specific auto-configuration
 include $(CFG_SRC_DIR)mk/platform.mk
