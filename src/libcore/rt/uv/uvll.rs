@@ -33,6 +33,15 @@ use libc::{size_t, c_int, c_uint, c_void, c_char, uintptr_t};
 use libc::{malloc, free};
 use prelude::*;
 
+pub static UNKNOWN: c_int = -1;
+pub static OK: c_int = 0;
+pub static EOF: c_int = 1;
+pub static EADDRINFO: c_int = 2;
+pub static EACCES: c_int = 3;
+pub static ECONNREFUSED: c_int = 12;
+pub static ECONNRESET: c_int = 13;
+pub static EPIPE: c_int = 36;
+
 pub struct uv_err_t {
     code: c_int,
     sys_errno_: c_int
@@ -260,9 +269,9 @@ pub unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
 pub unsafe fn timer_init(loop_ptr: *c_void, timer_ptr: *uv_timer_t) -> c_int {
     return rust_uv_timer_init(loop_ptr, timer_ptr);
 }
-pub unsafe fn timer_start(timer_ptr: *uv_timer_t, cb: *u8, timeout: uint,
-                          repeat: uint) -> c_int {
-    return rust_uv_timer_start(timer_ptr, cb, timeout as c_uint, repeat as c_uint);
+pub unsafe fn timer_start(timer_ptr: *uv_timer_t, cb: *u8, timeout: u64,
+                          repeat: u64) -> c_int {
+    return rust_uv_timer_start(timer_ptr, cb, timeout, repeat);
 }
 pub unsafe fn timer_stop(timer_ptr: *uv_timer_t) -> c_int {
     return rust_uv_timer_stop(timer_ptr);
@@ -423,8 +432,8 @@ extern {
                           timer_handle: *uv_timer_t) -> c_int;
     fn rust_uv_timer_start(timer_handle: *uv_timer_t,
                            cb: *u8,
-                           timeout: c_uint,
-                           repeat: c_uint) -> c_int;
+                           timeout: libc::uint64_t,
+                           repeat: libc::uint64_t) -> c_int;
     fn rust_uv_timer_stop(handle: *uv_timer_t) -> c_int;
 
     fn rust_uv_malloc_buf_base_of(sug_size: size_t) -> *u8;

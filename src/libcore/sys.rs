@@ -202,10 +202,12 @@ impl FailWithCause for &'static str {
 
 // FIXME #4427: Temporary until rt::rt_fail_ goes away
 pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
-    use rt::{context, OldTaskContext};
-    use rt::local_services::unsafe_borrow_local_services;
+    use option::Option;
+    use rt::{context, OldTaskContext, TaskContext};
+    use rt::local_services::{unsafe_borrow_local_services, Unwinder};
 
-    match context() {
+    let context = context();
+    match context {
         OldTaskContext => {
             unsafe {
                 gc::cleanup_stack_for_failure();
@@ -214,11 +216,26 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
             }
         }
         _ => {
-            // XXX: Need to print the failure message
-            gc::cleanup_stack_for_failure();
             unsafe {
+                // XXX: Bad re-allocations. fail! needs some refactoring
+                let msg = str::raw::from_c_str(msg);
+                let file = str::raw::from_c_str(file);
+
+                let outmsg = fmt!("%s at line %i of file %s", msg, line as int, file);
+
+                // XXX: Logging doesn't work correctly in non-task context because it
+                // invokes the local heap
+                if context == TaskContext {
+                    error!(outmsg);
+                } else {
+                    rtdebug!("%s", outmsg);
+                }
+
+                gc::cleanup_stack_for_failure();
+
                 let local_services = unsafe_borrow_local_services();
-                match local_services.unwinder {
+                let unwinder: &mut Option<Unwinder> = &mut (*local_services).unwinder;
+                match *unwinder {
                     Some(ref mut unwinder) => unwinder.begin_unwind(),
                     None => abort!("failure without unwinder. aborting process")
                 }

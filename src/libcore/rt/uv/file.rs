@@ -11,15 +11,11 @@
 use prelude::*;
 use ptr::null;
 use libc::c_void;
-use super::{UvError, Callback, Request, NativeHandle, Loop};
-use super::super::uvll;
-use super::super::uvll::*;
-
-pub type FsCallback = ~fn(FsRequest, Option<UvError>);
-impl Callback for FsCallback { }
+use rt::uv::{Request, NativeHandle, Loop, FsCallback};
+use rt::uv::uvll;
+use rt::uv::uvll::*;
 
 pub struct FsRequest(*uvll::uv_fs_t);
-
 impl Request for FsRequest;
 
 impl FsRequest {

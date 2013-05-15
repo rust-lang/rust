@@ -581,7 +581,7 @@ fn spawn_raw_newsched(_opts: TaskOpts, f: ~fn()) {
     use rt::sched::*;
 
     let mut sched = local_sched::take();
-    let task = ~Task::new(&mut sched.stack_pool, f);
+    let task = ~Coroutine::new(&mut sched.stack_pool, f);
     sched.schedule_new_task(task);
 }
 

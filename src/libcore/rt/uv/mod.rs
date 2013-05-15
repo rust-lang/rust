@@ -10,7 +10,7 @@
 
 /*!
 
-Bindings to libuv.
+Bindings to libuv, along with the default implementation of `core::rt::rtio`.
 
 UV types consist of the event loop (Loop), Watchers, Requests and
 Callbacks.
@@ -38,29 +38,46 @@ use container::Container;
 use option::*;
 use str::raw::from_c_str;
 use to_str::ToStr;
+use ptr::Ptr;
+use libc;
 use vec;
 use ptr;
-use ptr::Ptr;
+use cast;
+use str;
+use option::*;
+use str::raw::from_c_str;
+use to_str::ToStr;
 use libc::{c_void, c_int, size_t, malloc, free};
 use cast::transmute;
 use ptr::null;
-use super::uvll;
 use unstable::finally::Finally;
+
+use rt::io::IoError;
 
 #[cfg(test)] use unstable::run_in_bare_thread;
 
-pub use self::file::{FsRequest, FsCallback};
+pub use self::file::FsRequest;
 pub use self::net::{StreamWatcher, TcpWatcher};
-pub use self::net::{ReadCallback, AllocCallback, ConnectionCallback, ConnectCallback};
+pub use self::idle::IdleWatcher;
+pub use self::timer::TimerWatcher;
+
+/// The implementation of `rtio` for libuv
+pub mod uvio;
+
+/// C bindings to libuv
+pub mod uvll;
 
 pub mod file;
 pub mod net;
+pub mod idle;
+pub mod timer;
 
-/// A trait for callbacks to implement. Provides a little extra type safety
-/// for generic, unsafe interop functions like `set_watcher_callback`.
-pub trait Callback { }
-
-pub trait Request { }
+/// XXX: Loop(*handle) is buggy with destructors. Normal structs
+/// with dtors may not be destructured, but tuple structs can,
+/// but the results are not correct.
+pub struct Loop {
+    handle: *uvll::uv_loop_t
+}
 
 /// The trait implemented by uv 'watchers' (handles). Watchers are
 /// non-owning wrappers around the uv handles and are not completely
@@ -68,24 +85,14 @@ pub trait Request { }
 /// handle.  Watchers are generally created, then `start`ed, `stop`ed
 /// and `close`ed, but due to their complex life cycle may not be
 /// entirely memory safe if used in unanticipated patterns.
-pub trait Watcher {
-    fn event_loop(&self) -> Loop;
-}
+pub trait Watcher { }
 
-pub type NullCallback = ~fn();
-impl Callback for NullCallback { }
+pub trait Request { }
 
 /// A type that wraps a native handle
 pub trait NativeHandle<T> {
     pub fn from_native_handle(T) -> Self;
     pub fn native_handle(&self) -> T;
-}
-
-/// XXX: Loop(*handle) is buggy with destructors. Normal structs
-/// with dtors may not be destructured, but tuple structs can,
-/// but the results are not correct.
-pub struct Loop {
-    handle: *uvll::uv_loop_t
 }
 
 pub impl Loop {
@@ -113,64 +120,74 @@ impl NativeHandle<*uvll::uv_loop_t> for Loop {
     }
 }
 
-pub struct IdleWatcher(*uvll::uv_idle_t);
-
-impl Watcher for IdleWatcher {
-    fn event_loop(&self) -> Loop {
-        loop_from_watcher(self)
-    }
-}
-
+// XXX: The uv alloc callback also has a *uv_handle_t arg
+pub type AllocCallback = ~fn(uint) -> Buf;
+pub type ReadCallback = ~fn(StreamWatcher, int, Buf, Option<UvError>);
+pub type NullCallback = ~fn();
 pub type IdleCallback = ~fn(IdleWatcher, Option<UvError>);
-impl Callback for IdleCallback { }
+pub type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
+pub type FsCallback = ~fn(FsRequest, Option<UvError>);
+pub type TimerCallback = ~fn(TimerWatcher, Option<UvError>);
 
-pub impl IdleWatcher {
-    fn new(loop_: &mut Loop) -> IdleWatcher {
-        unsafe {
-            let handle = uvll::idle_new();
-            assert!(handle.is_not_null());
-            assert!(0 == uvll::idle_init(loop_.native_handle(), handle));
-            uvll::set_data_for_uv_handle(handle, null::<()>());
-            NativeHandle::from_native_handle(handle)
-        }
-    }
 
-    fn start(&mut self, cb: IdleCallback) {
-
-        set_watcher_callback(self, cb);
-        unsafe {
-            assert!(0 == uvll::idle_start(self.native_handle(), idle_cb))
-        };
-
-        extern fn idle_cb(handle: *uvll::uv_idle_t, status: c_int) {
-            let idle_watcher: IdleWatcher = NativeHandle::from_native_handle(handle);
-            let cb: &IdleCallback = borrow_callback_from_watcher(&idle_watcher);
-            let status = status_to_maybe_uv_error(handle, status);
-            (*cb)(idle_watcher, status);
-        }
-    }
-
-    fn stop(&mut self) {
-        unsafe { assert!(0 == uvll::idle_stop(self.native_handle())); }
-    }
-
-    fn close(self) {
-        unsafe { uvll::close(self.native_handle(), close_cb) };
-
-        extern fn close_cb(handle: *uvll::uv_idle_t) {
-            let mut idle_watcher = NativeHandle::from_native_handle(handle);
-            drop_watcher_callback::<uvll::uv_idle_t, IdleWatcher, IdleCallback>(&mut idle_watcher);
-            unsafe { uvll::idle_delete(handle) };
-        }
-    }
+/// Callbacks used by StreamWatchers, set as custom data on the foreign handle
+struct WatcherData {
+    read_cb: Option<ReadCallback>,
+    write_cb: Option<ConnectionCallback>,
+    connect_cb: Option<ConnectionCallback>,
+    close_cb: Option<NullCallback>,
+    alloc_cb: Option<AllocCallback>,
+    idle_cb: Option<IdleCallback>,
+    timer_cb: Option<TimerCallback>
 }
 
-impl NativeHandle<*uvll::uv_idle_t> for IdleWatcher {
-    fn from_native_handle(handle: *uvll::uv_idle_t) -> IdleWatcher {
-        IdleWatcher(handle)
+pub trait WatcherInterop {
+    fn event_loop(&self) -> Loop;
+    fn install_watcher_data(&mut self);
+    fn get_watcher_data<'r>(&'r mut self) -> &'r mut WatcherData;
+    fn drop_watcher_data(&mut self);
+}
+
+impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
+    /// Get the uv event loop from a Watcher
+    pub fn event_loop(&self) -> Loop {
+        unsafe {
+            let handle = self.native_handle();
+            let loop_ = uvll::get_loop_for_uv_handle(handle);
+            NativeHandle::from_native_handle(loop_)
+        }
     }
-    fn native_handle(&self) -> *uvll::uv_idle_t {
-        match self { &IdleWatcher(ptr) => ptr }
+
+    pub fn install_watcher_data(&mut self) {
+        unsafe {
+            let data = ~WatcherData {
+                read_cb: None,
+                write_cb: None,
+                connect_cb: None,
+                close_cb: None,
+                alloc_cb: None,
+                idle_cb: None,
+                timer_cb: None
+            };
+            let data = transmute::<~WatcherData, *c_void>(data);
+            uvll::set_data_for_uv_handle(self.native_handle(), data);
+        }
+    }
+
+    pub fn get_watcher_data<'r>(&'r mut self) -> &'r mut WatcherData {
+        unsafe {
+            let data = uvll::get_data_for_uv_handle(self.native_handle());
+            let data = transmute::<&*c_void, &mut ~WatcherData>(&data);
+            return &mut **data;
+        }
+    }
+
+    pub fn drop_watcher_data(&mut self) {
+        unsafe {
+            let data = uvll::get_data_for_uv_handle(self.native_handle());
+            let _data = transmute::<*c_void, ~WatcherData>(data);
+            uvll::set_data_for_uv_handle(self.native_handle(), null::<()>());
+        }
     }
 }
 
@@ -198,6 +215,10 @@ pub impl UvError {
             from_c_str(desc_str)
         }
     }
+
+    fn is_eof(&self) -> bool {
+        self.code == uvll::EOF
+    }
 }
 
 impl ToStr for UvError {
@@ -213,6 +234,59 @@ fn error_smoke_test() {
     assert!(err.to_str() == ~"EOF: end of file");
 }
 
+pub fn last_uv_error<H, W: Watcher + NativeHandle<*H>>(watcher: &W) -> UvError {
+    unsafe {
+        let loop_ = watcher.event_loop();
+        UvError(uvll::last_error(loop_.native_handle()))
+    }
+}
+
+pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
+
+    // XXX: Could go in str::raw
+    unsafe fn c_str_to_static_slice(s: *libc::c_char) -> &'static str {
+        let s = s as *u8;
+        let mut curr = s, len = 0u;
+        while *curr != 0u8 {
+            len += 1u;
+            curr = ptr::offset(s, len);
+        }
+
+        str::raw::buf_as_slice(s, len, |d| cast::transmute(d))
+    }
+
+
+    unsafe {
+        // Importing error constants
+        use rt::uv::uvll::*;
+        use rt::io::*;
+
+        // uv error descriptions are static
+        let c_desc = uvll::strerror(&*uverr);
+        let desc = c_str_to_static_slice(c_desc);
+
+        let kind = match uverr.code {
+            UNKNOWN => OtherIoError,
+            OK => OtherIoError,
+            EOF => EndOfFile,
+            EACCES => PermissionDenied,
+            ECONNREFUSED => ConnectionRefused,
+            ECONNRESET => ConnectionReset,
+            EPIPE => BrokenPipe,
+            e => {
+                rtdebug!("e %u", e as uint);
+                // XXX: Need to map remaining uv error types
+                OtherIoError
+            }
+        };
+
+        IoError {
+            kind: kind,
+            desc: desc,
+            detail: None
+        }
+    }
+}
 
 /// Given a uv handle, convert a callback status to a UvError
 // XXX: Follow the pattern below by parameterizing over T: Watcher, not T
@@ -228,133 +302,6 @@ pub fn status_to_maybe_uv_error<T>(handle: *T, status: c_int) -> Option<UvError>
             Some(UvError(err))
         }
     }
-}
-
-/// Get the uv event loop from a Watcher
-pub fn loop_from_watcher<H, W: Watcher + NativeHandle<*H>>(
-    watcher: &W) -> Loop {
-
-    let handle = watcher.native_handle();
-    let loop_ = unsafe { uvll::get_loop_for_uv_handle(handle) };
-    NativeHandle::from_native_handle(loop_)
-}
-
-/// Set the custom data on a handle to a callback Note: This is only
-/// suitable for watchers that make just one type of callback.  For
-/// others use WatcherData
-pub fn set_watcher_callback<H, W: Watcher + NativeHandle<*H>, CB: Callback>(
-    watcher: &mut W, cb: CB) {
-
-    drop_watcher_callback::<H, W, CB>(watcher);
-    // XXX: Boxing the callback so it fits into a
-    // pointer. Unfortunate extra allocation
-    let boxed_cb = ~cb;
-    let data = unsafe { transmute::<~CB, *c_void>(boxed_cb) };
-    unsafe { uvll::set_data_for_uv_handle(watcher.native_handle(), data) };
-}
-
-/// Delete a callback from a handle's custom data
-pub fn drop_watcher_callback<H, W: Watcher + NativeHandle<*H>, CB: Callback>(
-    watcher: &mut W) {
-
-    unsafe {
-        let handle = watcher.native_handle();
-        let handle_data: *c_void = uvll::get_data_for_uv_handle(handle);
-        if handle_data.is_not_null() {
-            // Take ownership of the callback and drop it
-            let _cb = transmute::<*c_void, ~CB>(handle_data);
-            // Make sure the pointer is zeroed
-            uvll::set_data_for_uv_handle(watcher.native_handle(), null::<()>());
-        }
-    }
-}
-
-/// Take a pointer to the callback installed as custom data
-pub fn borrow_callback_from_watcher<H, W: Watcher + NativeHandle<*H>,
-                                CB: Callback>(watcher: &W) -> &CB {
-
-    unsafe {
-        let handle = watcher.native_handle();
-        let handle_data: *c_void = uvll::get_data_for_uv_handle(handle);
-        assert!(handle_data.is_not_null());
-        let cb = transmute::<&*c_void, &~CB>(&handle_data);
-        return &**cb;
-    }
-}
-
-/// Take ownership of the callback installed as custom data
-pub fn take_callback_from_watcher<H, W: Watcher + NativeHandle<*H>, CB: Callback>(
-    watcher: &mut W) -> CB {
-
-    unsafe {
-        let handle = watcher.native_handle();
-        let handle_data: *c_void = uvll::get_data_for_uv_handle(handle);
-        assert!(handle_data.is_not_null());
-        uvll::set_data_for_uv_handle(handle, null::<()>());
-        let cb: ~CB = transmute::<*c_void, ~CB>(handle_data);
-        let cb = match cb { ~cb => cb };
-        return cb;
-    }
-}
-
-/// Callbacks used by StreamWatchers, set as custom data on the foreign handle
-struct WatcherData {
-    read_cb: Option<ReadCallback>,
-    write_cb: Option<ConnectionCallback>,
-    connect_cb: Option<ConnectionCallback>,
-    close_cb: Option<NullCallback>,
-    alloc_cb: Option<AllocCallback>,
-    buf: Option<Buf>
-}
-
-pub fn install_watcher_data<H, W: Watcher + NativeHandle<*H>>(watcher: &mut W) {
-    unsafe {
-        let data = ~WatcherData {
-            read_cb: None,
-            write_cb: None,
-            connect_cb: None,
-            close_cb: None,
-            alloc_cb: None,
-            buf: None
-        };
-        let data = transmute::<~WatcherData, *c_void>(data);
-        uvll::set_data_for_uv_handle(watcher.native_handle(), data);
-    }
-}
-
-pub fn get_watcher_data<'r, H, W: Watcher + NativeHandle<*H>>(
-    watcher: &'r mut W) -> &'r mut WatcherData {
-
-    unsafe {
-        let data = uvll::get_data_for_uv_handle(watcher.native_handle());
-        let data = transmute::<&*c_void, &mut ~WatcherData>(&data);
-        return &mut **data;
-    }
-}
-
-pub fn drop_watcher_data<H, W: Watcher + NativeHandle<*H>>(watcher: &mut W) {
-    unsafe {
-        let data = uvll::get_data_for_uv_handle(watcher.native_handle());
-        let _data = transmute::<*c_void, ~WatcherData>(data);
-        uvll::set_data_for_uv_handle(watcher.native_handle(), null::<()>());
-    }
-}
-
-#[test]
-fn test_slice_to_uv_buf() {
-    let slice = [0, .. 20];
-    let buf = slice_to_uv_buf(slice);
-
-    assert!(buf.len == 20);
-
-    unsafe {
-        let base = transmute::<*u8, *mut u8>(buf.base);
-        (*base) = 1;
-        (*ptr::mut_offset(base, 1)) = 2;
-    }
-
-    assert!(slice[0] == 1);
-    assert!(slice[1] == 2);
 }
 
 /// The uv buffer type
@@ -395,6 +342,24 @@ pub fn vec_from_uv_buf(buf: Buf) -> Option<~[u8]> {
 }
 
 #[test]
+fn test_slice_to_uv_buf() {
+    let slice = [0, .. 20];
+    let buf = slice_to_uv_buf(slice);
+
+    assert!(buf.len == 20);
+
+    unsafe {
+        let base = transmute::<*u8, *mut u8>(buf.base);
+        (*base) = 1;
+        (*ptr::mut_offset(base, 1)) = 2;
+    }
+
+    assert!(slice[0] == 1);
+    assert!(slice[1] == 2);
+}
+
+
+#[test]
 fn loop_smoke_test() {
     do run_in_bare_thread {
         let mut loop_ = Loop::new();
@@ -409,7 +374,7 @@ fn idle_new_then_close() {
     do run_in_bare_thread {
         let mut loop_ = Loop::new();
         let idle_watcher = { IdleWatcher::new(&mut loop_) };
-        idle_watcher.close();
+        idle_watcher.close(||());
     }
 }
 
@@ -425,7 +390,7 @@ fn idle_smoke_test() {
             assert!(status.is_none());
             if unsafe { *count_ptr == 10 } {
                 idle_watcher.stop();
-                idle_watcher.close();
+                idle_watcher.close(||());
             } else {
                 unsafe { *count_ptr = *count_ptr + 1; }
             }
@@ -449,7 +414,7 @@ fn idle_start_stop_start() {
                 assert!(status.is_none());
                 let mut idle_watcher = idle_watcher;
                 idle_watcher.stop();
-                idle_watcher.close();
+                idle_watcher.close(||());
             }
         }
         loop_.run();
