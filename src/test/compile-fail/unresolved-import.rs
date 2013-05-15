@@ -8,5 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use foo::bar; //~ ERROR unresolved import. maybe a missing
-              //~^ ERROR failed to resolve import
+use foo::bar; //~ ERROR unresolved import. maybe a missing `extern mod foo`?
+              //~^ ERROR failed to resolve import `foo::bar`
+use x = bar::baz; //~ ERROR unresolved import: there is no `baz` in `bar`
+                  //~^ ERROR failed to resolve import `bar::baz`
+
+mod bar {
+    struct bar;
+}

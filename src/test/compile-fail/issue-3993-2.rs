@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use zoo::{duck, goose}; //~ ERROR failed to resolve import
+                        //~^ ERROR unresolved import: found `goose` in `zoo` but it is private
 
 mod zoo {
     pub enum bird {

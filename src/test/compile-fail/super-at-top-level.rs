@@ -1,5 +1,4 @@
-use super::f;   //~ ERROR unresolved name
-//~^ ERROR failed to resolve import
+use super::f; //~ ERROR failed to resolve import
 
 fn main() {
 }
