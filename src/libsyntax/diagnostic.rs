@@ -232,7 +232,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
     let max_lines = 6u;
     let mut elided = false;
     let mut display_lines = /* FIXME (#2543) */ copy lines.lines;
-    if vec::len(display_lines) > max_lines {
+    if display_lines.len() > max_lines {
         display_lines = vec::slice(display_lines, 0u, max_lines).to_vec();
         elided = true;
     }
@@ -243,7 +243,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
         io::stderr().write_str(s);
     }
     if elided {
-        let last_line = display_lines[vec::len(display_lines) - 1u];
+        let last_line = display_lines[display_lines.len() - 1u];
         let s = fmt!("%s:%u ", fm.name, last_line + 1u);
         let mut indent = str::len(s);
         let mut out = ~"";
@@ -254,7 +254,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
 
     // FIXME (#3260)
     // If there's one line at fault we can easily point to the problem
-    if vec::len(lines.lines) == 1u {
+    if lines.lines.len() == 1u {
         let lo = cm.lookup_char_pos(sp.lo);
         let mut digits = 0u;
         let mut num = (lines.lines[0] + 1u) / 10u;

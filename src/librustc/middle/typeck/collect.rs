@@ -499,15 +499,15 @@ pub fn compare_impl_method(tcx: ty::ctxt,
         return;
     }
 
-    if vec::len(impl_m.fty.sig.inputs) != vec::len(trait_m.fty.sig.inputs) {
+    if impl_m.fty.sig.inputs.len() != trait_m.fty.sig.inputs.len() {
         tcx.sess.span_err(
             cm.span,
             fmt!("method `%s` has %u parameter%s \
                   but the trait has %u",
                  *tcx.sess.str_of(trait_m.ident),
-                 vec::len(impl_m.fty.sig.inputs),
-                 if vec::len(impl_m.fty.sig.inputs) == 1 { "" } else { "s" },
-                 vec::len(trait_m.fty.sig.inputs)));
+                 impl_m.fty.sig.inputs.len(),
+                 if impl_m.fty.sig.inputs.len() == 1 { "" } else { "s" },
+                 trait_m.fty.sig.inputs.len()));
         return;
     }
 

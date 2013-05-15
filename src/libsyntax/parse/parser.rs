@@ -2471,7 +2471,7 @@ pub impl Parser {
                                   }
                               },
                               _ => {
-                                  if vec::len(enum_path.idents)==1u {
+                                  if enum_path.idents.len()==1u {
                                       // it could still be either an enum
                                       // or an identifier pattern, resolve
                                       // will sort it out:
@@ -4337,7 +4337,7 @@ pub impl Parser {
           }
           _ => ()
         }
-        let last = path[vec::len(path) - 1u];
+        let last = path[path.len() - 1u];
         let path = @ast::Path { span: mk_sp(lo, self.span.hi),
                                 global: false,
                                 idents: path,

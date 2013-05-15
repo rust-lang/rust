@@ -2634,7 +2634,7 @@ pub fn deref_sty(cx: ctxt, sty: &sty, explicit: bool) -> Option<mt> {
 
       ty_enum(did, ref substs) => {
         let variants = enum_variants(cx, did);
-        if vec::len(*variants) == 1u && vec::len(variants[0].args) == 1u {
+        if (*variants).len() == 1u && variants[0].args.len() == 1u {
             let v_t = subst(cx, substs, variants[0].args[0]);
             Some(mt {ty: v_t, mutbl: ast::m_imm})
         } else {

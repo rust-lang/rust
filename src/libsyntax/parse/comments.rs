@@ -276,7 +276,7 @@ fn read_block_comment(rdr: @mut StringReader,
 
     let mut style = if code_to_the_left { trailing } else { isolated };
     consume_non_eol_whitespace(rdr);
-    if !is_eof(rdr) && rdr.curr != '\n' && vec::len(lines) == 1u {
+    if !is_eof(rdr) && rdr.curr != '\n' && lines.len() == 1u {
         style = mixed;
     }
     debug!("<<< block comment");

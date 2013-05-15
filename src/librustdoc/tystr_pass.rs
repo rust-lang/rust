@@ -405,7 +405,7 @@ mod test {
     #[test]
     fn should_not_add_impl_trait_types_if_none() {
         let doc = mk_doc(~"impl int { fn a() { } }");
-        assert!(vec::len(doc.cratemod().impls()[0].trait_types) == 0);
+        assert!(doc.cratemod().impls()[0].trait_types.len() == 0);
     }
 
     #[test]

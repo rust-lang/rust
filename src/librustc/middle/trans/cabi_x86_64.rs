@@ -50,7 +50,7 @@ fn is_sse(c: x86_64_reg_class) -> bool {
 }
 
 fn is_ymm(cls: &[x86_64_reg_class]) -> bool {
-    let len = vec::len(cls);
+    let len = cls.len();
     return (len > 2u &&
          is_sse(cls[0]) &&
          cls[1] == sseup_class &&
@@ -223,8 +223,8 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
         unsafe {
             let mut i = 0u;
             let llty = llvm::LLVMGetTypeKind(ty) as int;
-            let e = vec::len(cls);
-            if vec::len(cls) > 2u &&
+            let e = cls.len();
+            if cls.len() > 2u &&
                (llty == 10 /* struct */ ||
                 llty == 11 /* array */) {
                 if is_sse(cls[i]) {
@@ -295,7 +295,7 @@ fn llreg_ty(cls: &[x86_64_reg_class]) -> TypeRef {
     unsafe {
         let mut tys = ~[];
         let mut i = 0u;
-        let e = vec::len(cls);
+        let e = cls.len();
         while i < e {
             match cls[i] {
                 integer_class => {

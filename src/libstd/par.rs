@@ -58,9 +58,8 @@ fn map_slices<A:Copy + Owned,B:Copy + Owned>(
                         info!("pre-slice: %?", (base, slice));
                         let slice : &[A] =
                             cast::transmute(slice);
-                        info!("slice: %?",
-                                       (base, vec::len(slice), end - base));
-                        assert!((vec::len(slice) == end - base));
+                        info!("slice: %?", (base, slice.len(), end - base));
+                        assert!(slice.len() == end - base);
                         f(base, slice)
                     }
                 };

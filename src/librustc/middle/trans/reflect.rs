@@ -93,7 +93,7 @@ pub impl Reflector {
         let mth_ty =
             ty::mk_bare_fn(tcx, copy self.visitor_methods[mth_idx].fty);
         let v = self.visitor_val;
-        debug!("passing %u args:", vec::len(args));
+        debug!("passing %u args:", args.len());
         let bcx = self.bcx;
         for args.eachi |i, a| {
             debug!("arg %u: %s", i, val_str(bcx.ccx().tn, *a));
@@ -224,7 +224,7 @@ pub impl Reflector {
             let retval = if ty::type_is_bot(fty.sig.output) {0u} else {1u};
             let extra = ~[self.c_uint(pureval),
                           self.c_uint(sigilval),
-                          self.c_uint(vec::len(fty.sig.inputs)),
+                          self.c_uint(fty.sig.inputs.len()),
                           self.c_uint(retval)];
             self.visit(~"enter_fn", copy extra);    // XXX: Bad copy.
             self.visit_sig(retval, &fty.sig);
@@ -239,7 +239,7 @@ pub impl Reflector {
             let retval = if ty::type_is_bot(fty.sig.output) {0u} else {1u};
             let extra = ~[self.c_uint(pureval),
                           self.c_uint(sigilval),
-                          self.c_uint(vec::len(fty.sig.inputs)),
+                          self.c_uint(fty.sig.inputs.len()),
                           self.c_uint(retval)];
             self.visit(~"enter_fn", copy extra);    // XXX: Bad copy.
             self.visit_sig(retval, &fty.sig);
@@ -304,13 +304,13 @@ pub impl Reflector {
                 llfdecl
             };
 
-            let enum_args = ~[self.c_uint(vec::len(variants)), make_get_disr()]
+            let enum_args = ~[self.c_uint(variants.len()), make_get_disr()]
                 + self.c_size_and_align(t);
             do self.bracketed(~"enum", enum_args) |this| {
                 for variants.eachi |i, v| {
                     let variant_args = ~[this.c_uint(i),
                                          this.c_int(v.disr_val),
-                                         this.c_uint(vec::len(v.args)),
+                                         this.c_uint(v.args.len()),
                                          this.c_slice(ccx.sess.str_of(v.name))];
                     do this.bracketed(~"enum_variant", variant_args) |this| {
                         for v.args.eachi |j, a| {

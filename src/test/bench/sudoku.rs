@@ -70,7 +70,7 @@ pub impl Sudoku {
             let line = reader.read_line();
             let mut comps = ~[];
             for str::each_split_char(line.trim(), ',') |s| { comps.push(s.to_owned()) }
-            if vec::len(comps) == 3u {
+            if comps.len() == 3u {
                 let row     = uint::from_str(comps[0]).get() as u8;
                 let col     = uint::from_str(comps[1]).get() as u8;
                 g[row][col] = uint::from_str(comps[2]).get() as u8;
@@ -103,7 +103,7 @@ pub impl Sudoku {
         }
 
         let mut ptr = 0u;
-        let end = vec::len(work);
+        let end = work.len();
         while (ptr < end) {
             let (row, col) = work[ptr];
             // is there another color to try?
@@ -265,7 +265,7 @@ fn check_default_sudoku_solution() {
 
 fn main() {
     let args        = os::args();
-    let use_default = vec::len(args) == 1u;
+    let use_default = args.len() == 1u;
     let mut sudoku = if use_default {
         Sudoku::from_vec(&default_sudoku)
     } else {

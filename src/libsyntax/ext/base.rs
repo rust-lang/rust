@@ -351,7 +351,7 @@ pub fn expr_to_ident(cx: @ext_ctxt,
                      err_msg: &str) -> ast::ident {
     match expr.node {
       ast::expr_path(p) => {
-        if vec::len(p.types) > 0u || vec::len(p.idents) != 1u {
+        if p.types.len() > 0u || p.idents.len() != 1u {
             cx.span_fatal(expr.span, err_msg);
         }
         return p.idents[0];

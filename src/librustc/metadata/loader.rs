@@ -171,7 +171,7 @@ pub fn metadata_matches(extern_metas: &[@ast::meta_item],
                         local_metas: &[@ast::meta_item]) -> bool {
 
     debug!("matching %u metadata requirements against %u items",
-           vec::len(local_metas), vec::len(extern_metas));
+           local_metas.len(), extern_metas.len());
 
     for local_metas.each |needed| {
         if !attr::contains(extern_metas, *needed) {

@@ -71,7 +71,7 @@ mod map_reduce {
 
         start_mappers(ctrl_chan, inputs.clone());
 
-        let mut num_mappers = vec::len(inputs) as int;
+        let mut num_mappers = inputs.len() as int;
 
         while num_mappers > 0 {
             match ctrl_port.recv() {
