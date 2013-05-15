@@ -40,6 +40,7 @@ pub static EADDRINFO: c_int = 2;
 pub static EACCES: c_int = 3;
 pub static ECONNREFUSED: c_int = 12;
 pub static ECONNRESET: c_int = 13;
+pub static EPIPE: c_int = 36;
 
 pub struct uv_err_t {
     code: c_int,
