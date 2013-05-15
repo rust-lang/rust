@@ -1779,7 +1779,7 @@ to a borrowed pointer.
 #    fn draw_value(self) { ... }
 # }
 # let s = Circle(Point { x: 1f, y: 2f }, 3f);
-// As with typical function arguments, managed and unique pointers
+// As with typical function arguments, managed and owned pointers
 // are automatically converted to borrowed pointers
 
 (@s).draw_borrowed();
