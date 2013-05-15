@@ -713,7 +713,7 @@ fn mk_ser_method(
         ident: cx.ident_of("encode"),
         attrs: ~[],
         generics: ast_util::empty_generics(),
-        self_ty: codemap::spanned {
+        explicit_self: codemap::spanned {
             node: ast::sty_region(None, ast::m_imm),
             span: span
         },
@@ -772,7 +772,7 @@ fn mk_deser_method(
         ident: cx.ident_of("decode"),
         attrs: ~[],
         generics: ast_util::empty_generics(),
-        self_ty: codemap::spanned { node: ast::sty_static, span: span },
+        explicit_self: codemap::spanned { node: ast::sty_static, span: span },
         purity: ast::impure_fn,
         decl: deser_decl,
         body: deser_body,

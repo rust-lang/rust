@@ -27,7 +27,7 @@ pub fn expand_deriving_totalord(cx: @ext_ctxt,
             MethodDef {
                 name: ~"cmp",
                 generics: LifetimeBounds::empty(),
-                self_ty: borrowed_explicit_self(),
+                explicit_self: borrowed_explicit_self(),
                 args: ~[borrowed_self()],
                 ret_ty: Literal(Path::new(~[~"core", ~"cmp", ~"Ordering"])),
                 const_nonmatching: false,

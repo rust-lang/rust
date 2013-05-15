@@ -35,7 +35,7 @@ use syntax::parse::token::special_idents;
 
 pub struct Reflector {
     visitor_val: ValueRef,
-    visitor_methods: @~[@ty::method],
+    visitor_methods: @~[@ty::Method],
     final_bcx: block,
     tydesc_ty: TypeRef,
     bcx: block
@@ -284,13 +284,8 @@ pub impl Reflector {
                 let sym = mangle_internal_name_by_path_and_seq(ccx,
                                                                sub_path,
                                                                "get_disr");
-                let args = [
-                    ty::arg {
-                        ty: opaqueptrty
-                    }
-                ];
 
-                let llfty = type_of_fn(ccx, args, ty::mk_int());
+                let llfty = type_of_fn(ccx, [opaqueptrty], ty::mk_int());
                 let llfdecl = decl_internal_cdecl_fn(ccx.llmod, sym, llfty);
                 let arg = unsafe {
                     llvm::LLVMGetParam(llfdecl, first_real_arg as c_uint)
@@ -357,7 +352,7 @@ pub impl Reflector {
             let modeval = 5u;   // "by copy"
             let extra = ~[self.c_uint(i),
                          self.c_uint(modeval),
-                         self.c_tydesc(arg.ty)];
+                         self.c_tydesc(*arg)];
             self.visit(~"fn_input", extra);
         }
         let extra = ~[self.c_uint(retval),

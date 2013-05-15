@@ -674,7 +674,7 @@ pub enum AutorefArg {
 // temp_cleanups: cleanups that should run only if failure occurs before the
 // call takes place:
 pub fn trans_arg_expr(bcx: block,
-                      formal_ty: ty::arg,
+                      formal_arg_ty: ty::t,
                       self_mode: ty::SelfMode,
                       arg_expr: @ast::expr,
                       temp_cleanups: &mut ~[ValueRef],
@@ -683,9 +683,9 @@ pub fn trans_arg_expr(bcx: block,
     let _icx = bcx.insn_ctxt("trans_arg_expr");
     let ccx = bcx.ccx();
 
-    debug!("trans_arg_expr(formal_ty=(%s), self_mode=%?, arg_expr=%s, \
+    debug!("trans_arg_expr(formal_arg_ty=(%s), self_mode=%?, arg_expr=%s, \
             ret_flag=%?)",
-           formal_ty.ty.repr(bcx.tcx()),
+           formal_arg_ty.repr(bcx.tcx()),
            self_mode,
            arg_expr.repr(bcx.tcx()),
            ret_flag.map(|v| bcx.val_str(*v)));
@@ -734,9 +734,9 @@ pub fn trans_arg_expr(bcx: block,
         // "undef" value, as such a value should never
         // be inspected. It's important for the value
         // to have type lldestty (the callee's expected type).
-        let llformal_ty = type_of::type_of(ccx, formal_ty.ty);
+        let llformal_arg_ty = type_of::type_of(ccx, formal_arg_ty);
         unsafe {
-            val = llvm::LLVMGetUndef(llformal_ty);
+            val = llvm::LLVMGetUndef(llformal_arg_ty);
         }
     } else {
         // FIXME(#3548) use the adjustments table
@@ -784,16 +784,16 @@ pub fn trans_arg_expr(bcx: block,
             }
         }
 
-        if formal_ty.ty != arg_datum.ty {
+        if formal_arg_ty != arg_datum.ty {
             // this could happen due to e.g. subtyping
-            let llformal_ty = type_of::type_of_explicit_arg(ccx, &formal_ty);
-            let llformal_ty = match self_mode {
-                ty::ByRef => T_ptr(llformal_ty),
-                ty::ByCopy => llformal_ty,
+            let llformal_arg_ty = type_of::type_of_explicit_arg(ccx, &formal_arg_ty);
+            let llformal_arg_ty = match self_mode {
+                ty::ByRef => T_ptr(llformal_arg_ty),
+                ty::ByCopy => llformal_arg_ty,
             };
             debug!("casting actual type (%s) to match formal (%s)",
-                   bcx.val_str(val), bcx.llty_str(llformal_ty));
-            val = PointerCast(bcx, val, llformal_ty);
+                   bcx.val_str(val), bcx.llty_str(llformal_arg_ty));
+            val = PointerCast(bcx, val, llformal_arg_ty);
         }
     }
 

@@ -55,7 +55,7 @@
 // now.
 
 use middle::ty::{FloatVar, FnSig, IntVar, TyVar};
-use middle::ty::{IntType, UintType, arg, substs};
+use middle::ty::{IntType, UintType, substs};
 use middle::ty;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
@@ -95,7 +95,7 @@ pub trait Combine {
                    b: &ty::ClosureTy) -> cres<ty::ClosureTy>;
     fn fn_sigs(&self, a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig>;
     fn flds(&self, a: ty::field, b: ty::field) -> cres<ty::field>;
-    fn args(&self, a: ty::arg, b: ty::arg) -> cres<ty::arg>;
+    fn args(&self, a: ty::t, b: ty::t) -> cres<ty::t>;
     fn sigils(&self, p1: ast::Sigil, p2: ast::Sigil) -> cres<ast::Sigil>;
     fn purities(&self, a: purity, b: purity) -> cres<purity>;
     fn abis(&self, a: AbiSet, b: AbiSet) -> cres<AbiSet>;
@@ -311,12 +311,9 @@ pub fn super_flds<C:Combine>(
     }
 }
 
-pub fn super_args<C:Combine>(this: &C, a: ty::arg, b: ty::arg)
-                             -> cres<ty::arg> {
-    do this.contratys(a.ty, b.ty).chain |t| {
-        Ok(arg {
-            ty: t
-        })
+pub fn super_args<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
+    do this.contratys(a, b).chain |t| {
+        Ok(t)
     }
 }
 
@@ -407,10 +404,7 @@ pub fn super_bare_fn_tys<C:Combine>(
 pub fn super_fn_sigs<C:Combine>(
     this: &C, a_f: &ty::FnSig, b_f: &ty::FnSig) -> cres<ty::FnSig>
 {
-    fn argvecs<C:Combine>(this: &C,
-                          a_args: &[ty::arg],
-                          b_args: &[ty::arg]) -> cres<~[ty::arg]>
-    {
+    fn argvecs<C:Combine>(this: &C, a_args: &[ty::t], b_args: &[ty::t]) -> cres<~[ty::t]> {
         if vec::same_length(a_args, b_args) {
             map_vec2(a_args, b_args, |a, b| this.args(*a, *b))
         } else {

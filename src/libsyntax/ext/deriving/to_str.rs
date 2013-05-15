@@ -27,7 +27,7 @@ pub fn expand_deriving_to_str(cx: @ext_ctxt,
             MethodDef {
                 name: ~"to_str",
                 generics: LifetimeBounds::empty(),
-                self_ty: borrowed_explicit_self(),
+                explicit_self: borrowed_explicit_self(),
                 args: ~[],
                 ret_ty: Ptr(~Literal(Path::new_local(~"str")), Owned),
                 const_nonmatching: false,

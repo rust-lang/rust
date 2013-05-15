@@ -19,21 +19,21 @@ use util::ppaux;
 
 use syntax::ast;
 
-pub fn arg_is_indirect(_: @CrateContext, arg: &ty::arg) -> bool {
-    !ty::type_is_immediate(arg.ty)
+pub fn arg_is_indirect(_: @CrateContext, arg_ty: &ty::t) -> bool {
+    !ty::type_is_immediate(*arg_ty)
 }
 
-pub fn type_of_explicit_arg(ccx: @CrateContext, arg: &ty::arg) -> TypeRef {
-    let llty = type_of(ccx, arg.ty);
-    if arg_is_indirect(ccx, arg) {T_ptr(llty)} else {llty}
+pub fn type_of_explicit_arg(ccx: @CrateContext, arg_ty: &ty::t) -> TypeRef {
+    let llty = type_of(ccx, *arg_ty);
+    if arg_is_indirect(ccx, arg_ty) {T_ptr(llty)} else {llty}
 }
 
 pub fn type_of_explicit_args(ccx: @CrateContext,
-                             inputs: &[ty::arg]) -> ~[TypeRef] {
-    inputs.map(|arg| type_of_explicit_arg(ccx, arg))
+                             inputs: &[ty::t]) -> ~[TypeRef] {
+    inputs.map(|arg_ty| type_of_explicit_arg(ccx, arg_ty))
 }
 
-pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::arg], output: ty::t)
+pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::t], output: ty::t)
                -> TypeRef {
     unsafe {
         let mut atys: ~[TypeRef] = ~[];

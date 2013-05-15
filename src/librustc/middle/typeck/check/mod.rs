@@ -81,7 +81,7 @@ use middle::pat_util::pat_id_map;
 use middle::pat_util;
 use middle::ty::{FnSig, VariantInfo_};
 use middle::ty::{ty_param_bounds_and_ty, ty_param_substs_and_ty};
-use middle::ty::{substs, arg, param_ty};
+use middle::ty::{substs, param_ty};
 use middle::ty;
 use middle::typeck::astconv::AstConv;
 use middle::typeck::astconv::{ast_region_to_region, ast_ty_to_ty};
@@ -352,7 +352,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
 
     relate_free_regions(tcx, opt_self_info.map(|s| s.self_ty), &fn_sig);
 
-    let arg_tys = fn_sig.inputs.map(|a| a.ty);
+    let arg_tys = fn_sig.inputs.map(|a| *a);
     let ret_ty = fn_sig.output;
 
     debug!("check_fn(arg_tys=%?, ret_ty=%?, opt_self_ty=%?)",
@@ -527,7 +527,7 @@ pub fn check_method(ccx: @mut CrateCtxt,
     let opt_self_info = method_ty.transformed_self_ty.map(|&ty| {
         SelfInfo {self_ty: ty,
                   self_id: method.self_id,
-                  span: method.self_ty.span}
+                  span: method.explicit_self.span}
     });
 
     check_bare_fn(
@@ -1192,7 +1192,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     fn check_argument_types(
         fcx: @mut FnCtxt,
         sp: span,
-        fn_inputs: &[ty::arg],
+        fn_inputs: &[ty::t],
         callee_expr: @ast::expr,
         args: &[@ast::expr],
         sugar: ast::CallSugar,
@@ -1211,7 +1211,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let supplied_arg_count = args.len();
         let expected_arg_count = fn_inputs.len();
         let formal_tys = if expected_arg_count == supplied_arg_count {
-            fn_inputs.map(|a| a.ty)
+            fn_inputs.map(|a| *a)
         } else {
             let suffix = match sugar {
                 ast::NoSugar => "",
@@ -1287,8 +1287,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
     }
 
-    fn err_args(len: uint) -> ~[ty::arg] {
-        vec::from_fn(len, |_| ty::arg { ty: ty::mk_err() })
+    fn err_args(len: uint) -> ~[ty::t] {
+        vec::from_fn(len, |_| ty::mk_err())
     }
 
     // A generic function for checking assignment expressions
@@ -1701,11 +1701,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let fty = if error_happened {
             fty_sig = FnSig {
                 bound_lifetime_names: opt_vec::Empty,
-                inputs: fn_ty.sig.inputs.map(|_| {
-                    arg {
-                        ty: ty::mk_err()
-                    }
-                }),
+                inputs: fn_ty.sig.inputs.map(|_| ty::mk_err()),
                 output: ty::mk_err()
             };
             ty::mk_err()
@@ -3132,24 +3128,23 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
             }
             disr_vals.push(*disr_val);
             let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
-            let arg_tys;
 
             let this_disr_val = *disr_val;
             *disr_val += 1;
 
-            match v.node.kind {
+            let arg_tys = match v.node.kind {
                 ast::tuple_variant_kind(ref args) if args.len() > 0u => {
-                    arg_tys = Some(ty::ty_fn_args(ctor_ty).map(|a| a.ty));
+                    Some(ty::ty_fn_args(ctor_ty).map(|a| *a))
                 }
                 ast::tuple_variant_kind(_) => {
-                    arg_tys = Some(~[]);
+                    Some(~[])
                 }
                 ast::struct_variant_kind(_) => {
-                    arg_tys = Some(ty::lookup_struct_fields(
+                    Some(ty::lookup_struct_fields(
                         ccx.tcx, local_def(v.node.id)).map(|cf|
-                            ty::node_id_to_type(ccx.tcx, cf.id.node)));
+                            ty::node_id_to_type(ccx.tcx, cf.id.node)))
                 }
-            }
+            };
 
             match arg_tys {
                 None => {}
@@ -3454,11 +3449,6 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
     fn param(ccx: @mut CrateCtxt, n: uint) -> ty::t {
         ty::mk_param(ccx.tcx, n, local_def(0))
     }
-    fn arg(ty: ty::t) -> ty::arg {
-        arg {
-            ty: ty
-        }
-    }
 
     let tcx = ccx.tcx;
     let (n_tps, inputs, output) = match *ccx.tcx.sess.str_of(it.ident) {
@@ -3466,15 +3456,13 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
       ~"pref_align_of" | ~"min_align_of" => (1u, ~[], ty::mk_uint()),
       ~"init" => (1u, ~[], param(ccx, 0u)),
       ~"uninit" => (1u, ~[], param(ccx, 0u)),
-      ~"forget" => (1u, ~[arg(param(ccx, 0u))], ty::mk_nil()),
-      ~"transmute" => (2, ~[ arg(param(ccx, 0)) ], param(ccx, 1)),
+      ~"forget" => (1u, ~[ param(ccx, 0) ], ty::mk_nil()),
+      ~"transmute" => (2, ~[ param(ccx, 0) ], param(ccx, 1)),
       ~"move_val" | ~"move_val_init" => {
           (1u,
            ~[
-            arg(ty::mk_mut_rptr(tcx,
-                                ty::re_bound(ty::br_anon(0)),
-                                param(ccx, 0))),
-               arg(param(ccx, 0u))
+              ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), param(ccx, 0)),
+              param(ccx, 0u)
             ],
          ty::mk_nil())
       }
@@ -3483,30 +3471,26 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
       ~"atomic_cxchg"    | ~"atomic_cxchg_acq"| ~"atomic_cxchg_rel" => {
         (0,
          ~[
-            arg(ty::mk_mut_rptr(tcx,
-                                ty::re_bound(ty::br_anon(0)),
-                                ty::mk_int())),
-               arg(ty::mk_int()),
-               arg(ty::mk_int())
+            ty::mk_mut_rptr(tcx,
+                            ty::re_bound(ty::br_anon(0)),
+                            ty::mk_int()),
+            ty::mk_int(),
+            ty::mk_int()
          ],
          ty::mk_int())
       }
       ~"atomic_load"     | ~"atomic_load_acq" => {
         (0,
          ~[
-            arg(ty::mk_imm_rptr(tcx,
-                            ty::re_bound(ty::br_anon(0)),
-                            ty::mk_int()))
+            ty::mk_imm_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int())
          ],
         ty::mk_int())
       }
       ~"atomic_store"    | ~"atomic_store_rel" => {
         (0,
          ~[
-            arg(ty::mk_mut_rptr(tcx,
-                                ty::re_bound(ty::br_anon(0)),
-                                ty::mk_int())),
-            arg(ty::mk_int())
+            ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int()),
+            ty::mk_int()
          ],
          ty::mk_nil())
       }
@@ -3515,10 +3499,8 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
       ~"atomic_xchg_rel" | ~"atomic_xadd_rel" | ~"atomic_xsub_rel" => {
         (0,
          ~[
-            arg(ty::mk_mut_rptr(tcx,
-                                ty::re_bound(ty::br_anon(0)),
-                                ty::mk_int())),
-            arg(ty::mk_int())
+            ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int()),
+            ty::mk_int()
          ],
          ty::mk_int())
       }
@@ -3536,7 +3518,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             ty: tydesc_ty,
             mutbl: ast::m_imm
         });
-        (0, ~[ arg(td_ptr), arg(visitor_object_ty) ], ty::mk_nil())
+        (0, ~[ td_ptr, visitor_object_ty ], ty::mk_nil())
       }
       ~"frame_address" => {
         let fty = ty::mk_closure(ccx.tcx, ty::ClosureTy {
@@ -3546,16 +3528,11 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             region: ty::re_bound(ty::br_anon(0)),
             sig: ty::FnSig {
                 bound_lifetime_names: opt_vec::Empty,
-                inputs: ~[
-                    arg {
-                        ty: ty::mk_imm_ptr(ccx.tcx,
-                                           ty::mk_mach_uint(ast::ty_u8))
-                    }
-                ],
+                inputs: ~[ty::mk_imm_ptr(ccx.tcx, ty::mk_mach_uint(ast::ty_u8))],
                 output: ty::mk_nil()
             }
         });
-        (0u, ~[ arg(fty) ], ty::mk_nil())
+        (0u, ~[fty], ty::mk_nil())
       }
       ~"morestack_addr" => {
         (0u, ~[], ty::mk_nil_ptr(ccx.tcx))
@@ -3563,101 +3540,102 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
       ~"memmove32" => {
         (0,
          ~[
-            arg(ty::mk_ptr(tcx, ty::mt {
+            ty::mk_ptr(tcx, ty::mt {
                 ty: ty::mk_u8(),
                 mutbl: ast::m_mutbl
-            })),
-            arg(ty::mk_ptr(tcx, ty::mt {
+            }),
+            ty::mk_ptr(tcx, ty::mt {
                 ty: ty::mk_u8(),
                 mutbl: ast::m_imm
-            })),
-            arg(ty::mk_u32())
+            }),
+            ty::mk_u32()
          ],
          ty::mk_nil())
       }
       ~"memmove64" => {
         (0,
-         ~[arg(ty::mk_ptr(tcx, ty::mt {
-            ty: ty::mk_u8(),
-            mutbl: ast::m_mutbl
-           })),
-           arg(ty::mk_ptr(tcx, ty::mt {
-            ty: ty::mk_u8(),
-            mutbl: ast::m_imm
-           })),
-           arg(ty::mk_u64())
+         ~[
+            ty::mk_ptr(tcx, ty::mt {
+                ty: ty::mk_u8(),
+                mutbl: ast::m_mutbl
+            }),
+            ty::mk_ptr(tcx, ty::mt {
+                ty: ty::mk_u8(),
+                mutbl: ast::m_imm
+            }),
+            ty::mk_u64()
          ],
          ty::mk_nil())
       }
-        ~"sqrtf32" => (0, ~[ arg(ty::mk_f32()) ], ty::mk_f32()),
-        ~"sqrtf64" => (0, ~[ arg(ty::mk_f64()) ], ty::mk_f64()),
+        ~"sqrtf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        ~"sqrtf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
         ~"powif32" => {
            (0,
-            ~[ arg(ty::mk_f32()), arg(ty::mk_i32()) ],
+            ~[ ty::mk_f32(), ty::mk_i32() ],
             ty::mk_f32())
         }
         ~"powif64" => {
            (0,
-            ~[ arg(ty::mk_f64()), arg(ty::mk_i32()) ],
+            ~[ ty::mk_f64(), ty::mk_i32() ],
             ty::mk_f64())
         }
-        ~"sinf32" => (0, ~[ arg(ty::mk_f32()) ], ty::mk_f32()),
-        ~"sinf64" => (0, ~[ arg(ty::mk_f64()) ], ty::mk_f64()),
-        ~"cosf32" => (0, ~[ arg(ty::mk_f32()) ], ty::mk_f32()),
-        ~"cosf64" => (0, ~[ arg(ty::mk_f64()) ], ty::mk_f64()),
+        ~"sinf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        ~"sinf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        ~"cosf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        ~"cosf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
         ~"powf32" => {
            (0,
-            ~[ arg(ty::mk_f32()), arg(ty::mk_f32()) ],
+            ~[ ty::mk_f32(), ty::mk_f32() ],
             ty::mk_f32())
         }
         ~"powf64" => {
            (0,
-            ~[ arg(ty::mk_f64()), arg(ty::mk_f64()) ],
+            ~[ ty::mk_f64(), ty::mk_f64() ],
             ty::mk_f64())
         }
-        ~"expf32"   => (0, ~[ arg(ty::mk_f32()) ], ty::mk_f32()),
-        ~"expf64"   => (0, ~[ arg(ty::mk_f64()) ], ty::mk_f64()),
-        ~"exp2f32"  => (0, ~[ arg(ty::mk_f32()) ], ty::mk_f32()),
-        ~"exp2f64"  => (0, ~[ arg(ty::mk_f64()) ], ty::mk_f64()),
-        ~"logf32"   => (0, ~[ arg(ty::mk_f32()) ], ty::mk_f32()),
-        ~"logf64"   => (0, ~[ arg(ty::mk_f64()) ], ty::mk_f64()),
-        ~"log10f32" => (0, ~[ arg(ty::mk_f32()) ], ty::mk_f32()),
-        ~"log10f64" => (0, ~[ arg(ty::mk_f64()) ], ty::mk_f64()),
-        ~"log2f32"  => (0, ~[ arg(ty::mk_f32()) ], ty::mk_f32()),
-        ~"log2f64"  => (0, ~[ arg(ty::mk_f64()) ], ty::mk_f64()),
+        ~"expf32"   => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        ~"expf64"   => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        ~"exp2f32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        ~"exp2f64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        ~"logf32"   => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        ~"logf64"   => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        ~"log10f32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        ~"log10f64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        ~"log2f32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        ~"log2f64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
         ~"fmaf32" => {
             (0,
-             ~[ arg(ty::mk_f32()), arg(ty::mk_f32()), arg(ty::mk_f32()) ],
+             ~[ ty::mk_f32(), ty::mk_f32(), ty::mk_f32() ],
              ty::mk_f32())
         }
         ~"fmaf64" => {
             (0,
-             ~[ arg(ty::mk_f64()), arg(ty::mk_f64()), arg(ty::mk_f64()) ],
+             ~[ ty::mk_f64(), ty::mk_f64(), ty::mk_f64() ],
              ty::mk_f64())
         }
-        ~"fabsf32"  => (0, ~[ arg(ty::mk_f32()) ], ty::mk_f32()),
-        ~"fabsf64"  => (0, ~[ arg(ty::mk_f64()) ], ty::mk_f64()),
-        ~"floorf32" => (0, ~[ arg(ty::mk_f32()) ], ty::mk_f32()),
-        ~"floorf64" => (0, ~[ arg(ty::mk_f64()) ], ty::mk_f64()),
-        ~"ceilf32"  => (0, ~[ arg(ty::mk_f32()) ], ty::mk_f32()),
-        ~"ceilf64"  => (0, ~[ arg(ty::mk_f64()) ], ty::mk_f64()),
-        ~"truncf32" => (0, ~[ arg(ty::mk_f32()) ], ty::mk_f32()),
-        ~"truncf64" => (0, ~[ arg(ty::mk_f64()) ], ty::mk_f64()),
-        ~"ctpop8"   => (0, ~[ arg(ty::mk_i8())  ], ty::mk_i8()),
-        ~"ctpop16"  => (0, ~[ arg(ty::mk_i16()) ], ty::mk_i16()),
-        ~"ctpop32"  => (0, ~[ arg(ty::mk_i32()) ], ty::mk_i32()),
-        ~"ctpop64"  => (0, ~[ arg(ty::mk_i64()) ], ty::mk_i64()),
-        ~"ctlz8"    => (0, ~[ arg(ty::mk_i8())  ], ty::mk_i8()),
-        ~"ctlz16"   => (0, ~[ arg(ty::mk_i16()) ], ty::mk_i16()),
-        ~"ctlz32"   => (0, ~[ arg(ty::mk_i32()) ], ty::mk_i32()),
-        ~"ctlz64"   => (0, ~[ arg(ty::mk_i64()) ], ty::mk_i64()),
-        ~"cttz8"    => (0, ~[ arg(ty::mk_i8())  ], ty::mk_i8()),
-        ~"cttz16"   => (0, ~[ arg(ty::mk_i16()) ], ty::mk_i16()),
-        ~"cttz32"   => (0, ~[ arg(ty::mk_i32()) ], ty::mk_i32()),
-        ~"cttz64"   => (0, ~[ arg(ty::mk_i64()) ], ty::mk_i64()),
-        ~"bswap16"  => (0, ~[ arg(ty::mk_i16()) ], ty::mk_i16()),
-        ~"bswap32"  => (0, ~[ arg(ty::mk_i32()) ], ty::mk_i32()),
-        ~"bswap64"  => (0, ~[ arg(ty::mk_i64()) ], ty::mk_i64()),
+        ~"fabsf32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        ~"fabsf64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        ~"floorf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        ~"floorf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        ~"ceilf32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        ~"ceilf64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        ~"truncf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        ~"truncf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        ~"ctpop8"   => (0, ~[ ty::mk_i8()  ], ty::mk_i8()),
+        ~"ctpop16"  => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
+        ~"ctpop32"  => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
+        ~"ctpop64"  => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
+        ~"ctlz8"    => (0, ~[ ty::mk_i8()  ], ty::mk_i8()),
+        ~"ctlz16"   => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
+        ~"ctlz32"   => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
+        ~"ctlz64"   => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
+        ~"cttz8"    => (0, ~[ ty::mk_i8()  ], ty::mk_i8()),
+        ~"cttz16"   => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
+        ~"cttz32"   => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
+        ~"cttz64"   => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
+        ~"bswap16"  => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
+        ~"bswap32"  => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
+        ~"bswap64"  => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
         ref other => {
             tcx.sess.span_err(it.span,
                               ~"unrecognized intrinsic function: `" +

@@ -119,13 +119,13 @@ fn create_decode_method(
     let body_block = build::mk_simple_block(cx, span, expr);
 
     // Create the method.
-    let self_ty = spanned { node: sty_static, span: span };
+    let explicit_self = spanned { node: sty_static, span: span };
     let method_ident = cx.ident_of("decode");
     @ast::method {
         ident: method_ident,
         attrs: ~[],
         generics: ast_util::empty_generics(),
-        self_ty: self_ty,
+        explicit_self: explicit_self,
         purity: impure_fn,
         decl: fn_decl,
         body: body_block,

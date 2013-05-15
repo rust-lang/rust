@@ -53,7 +53,7 @@
  */
 
 use middle::const_eval;
-use middle::ty::{arg, substs};
+use middle::ty::{substs};
 use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
 use middle::typeck::rscope::in_binding_rscope;
@@ -501,16 +501,12 @@ pub fn ty_of_arg<AC:AstConv,
                  this: &AC,
                  rscope: &RS,
                  a: ast::arg,
-                 expected_ty: Option<ty::arg>)
-                 -> ty::arg {
-    let ty = match a.ty.node {
-        ast::ty_infer if expected_ty.is_some() => expected_ty.get().ty,
+                 expected_ty: Option<ty::t>)
+                 -> ty::t {
+    match a.ty.node {
+        ast::ty_infer if expected_ty.is_some() => expected_ty.get(),
         ast::ty_infer => this.ty_infer(a.ty.span),
         _ => ast_ty_to_ty(this, rscope, a.ty),
-    };
-
-    arg {
-        ty: ty
     }
 }
 
@@ -546,7 +542,7 @@ pub fn bound_lifetimes<AC:AstConv>(
 
 struct SelfInfo {
     untransformed_self_ty: ty::t,
-    self_transform: ast::self_ty
+    explicit_self: ast::explicit_self
 }
 
 pub fn ty_of_method<AC:AstConv,RS:region_scope + Copy + 'static>(
@@ -555,12 +551,12 @@ pub fn ty_of_method<AC:AstConv,RS:region_scope + Copy + 'static>(
     purity: ast::purity,
     lifetimes: &OptVec<ast::Lifetime>,
     untransformed_self_ty: ty::t,
-    self_transform: ast::self_ty,
+    explicit_self: ast::explicit_self,
     decl: &ast::fn_decl) -> (Option<ty::t>, ty::BareFnTy)
 {
     let self_info = SelfInfo {
         untransformed_self_ty: untransformed_self_ty,
-        self_transform: self_transform
+        explicit_self: explicit_self
     };
     let (a, b) = ty_of_method_or_bare_fn(
         this, rscope, purity, AbiSet::Rust(), lifetimes, Some(&self_info), decl);
@@ -621,7 +617,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
         rscope: &RS,
         self_info: &SelfInfo) -> Option<ty::t>
     {
-        match self_info.self_transform.node {
+        match self_info.explicit_self.node {
             ast::sty_static => None,
             ast::sty_value => {
                 Some(self_info.untransformed_self_ty)
@@ -629,7 +625,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv,RS:region_scope + Copy + 'static>(
             ast::sty_region(lifetime, mutability) => {
                 let region =
                     ast_region_to_region(this, rscope,
-                                         self_info.self_transform.span,
+                                         self_info.explicit_self.span,
                                          lifetime);
                 Some(ty::mk_rptr(this.tcx(), region,
                                  ty::mt {ty: self_info.untransformed_self_ty,

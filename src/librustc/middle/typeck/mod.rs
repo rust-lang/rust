@@ -118,13 +118,13 @@ pub struct method_param {
 pub struct method_map_entry {
     // the type of the self parameter, which is not reflected in the fn type
     // (FIXME #3446)
-    self_arg: ty::arg,
+    self_ty: ty::t,
 
     // the mode of `self`
     self_mode: ty::SelfMode,
 
     // the type of explicit self on the method
-    explicit_self: ast::self_ty_,
+    explicit_self: ast::explicit_self_,
 
     // method details being invoked
     origin: method_origin,
@@ -351,22 +351,15 @@ fn check_start_fn_ty(ccx: @mut CrateCtxt,
                 _ => ()
             }
 
-            fn arg(ty: ty::t) -> ty::arg {
-                ty::arg {
-                    ty: ty
-                }
-            }
-
             let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
                 purity: ast::impure_fn,
                 abis: abi::AbiSet::Rust(),
                 sig: ty::FnSig {
                     bound_lifetime_names: opt_vec::Empty,
                     inputs: ~[
-                        arg(ty::mk_int()),
-                        arg(ty::mk_imm_ptr(tcx,
-                                           ty::mk_imm_ptr(tcx, ty::mk_u8()))),
-                        arg(ty::mk_imm_ptr(tcx, ty::mk_u8()))
+                        ty::mk_int(),
+                        ty::mk_imm_ptr(tcx, ty::mk_imm_ptr(tcx, ty::mk_u8())),
+                        ty::mk_imm_ptr(tcx, ty::mk_u8())
                     ],
                     output: ty::mk_int()
                 }

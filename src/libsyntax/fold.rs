@@ -323,7 +323,7 @@ fn noop_fold_method(m: @method, fld: @ast_fold) -> @method {
         ident: fld.fold_ident(m.ident),
         attrs: /* FIXME (#2543) */ copy m.attrs,
         generics: fold_generics(&m.generics, fld),
-        self_ty: m.self_ty,
+        explicit_self: m.explicit_self,
         purity: m.purity,
         decl: fold_fn_decl(&m.decl, fld),
         body: fld.fold_block(&m.body),

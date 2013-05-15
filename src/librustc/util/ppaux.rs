@@ -11,7 +11,7 @@
 use metadata::encoder;
 use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
-use middle::ty::{br_fresh, ctxt, field, method};
+use middle::ty::{br_fresh, ctxt, field};
 use middle::ty::{mt, t, param_ty};
 use middle::ty::{re_bound, re_free, re_scope, re_infer, re_static, Region,
                  re_empty};
@@ -281,7 +281,7 @@ pub fn tys_to_str(cx: ctxt, ts: &[t]) -> ~str {
 
 pub fn fn_sig_to_str(cx: ctxt, typ: &ty::FnSig) -> ~str {
     fmt!("fn%s -> %s",
-         tys_to_str(cx, typ.inputs.map(|a| a.ty)),
+         tys_to_str(cx, typ.inputs.map(|a| *a)),
          ty_to_str(cx, typ.output))
 }
 
@@ -290,8 +290,8 @@ pub fn trait_ref_to_str(cx: ctxt, trait_ref: &ty::TraitRef) -> ~str {
 }
 
 pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
-    fn fn_input_to_str(cx: ctxt, input: ty::arg) -> ~str {
-        ty_to_str(cx, input.ty)
+    fn fn_input_to_str(cx: ctxt, input: ty::t) -> ~str {
+        ty_to_str(cx, input)
     }
     fn bare_fn_to_str(cx: ctxt,
                       purity: ast::purity,
@@ -375,7 +375,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
             }
         }
     }
-    fn method_to_str(cx: ctxt, m: method) -> ~str {
+    fn method_to_str(cx: ctxt, m: ty::Method) -> ~str {
         bare_fn_to_str(cx,
                        m.fty.purity,
                        m.fty.abis,
@@ -633,15 +633,15 @@ impl Repr for ty::Generics {
     }
 }
 
-impl Repr for ty::method {
+impl Repr for ty::Method {
     fn repr(&self, tcx: ctxt) -> ~str {
         fmt!("method {ident: %s, generics: %s, transformed_self_ty: %s, \
-              fty: %s, self_ty: %s, vis: %s, def_id: %s}",
+              fty: %s, explicit_self: %s, vis: %s, def_id: %s}",
              self.ident.repr(tcx),
              self.generics.repr(tcx),
              self.transformed_self_ty.repr(tcx),
              self.fty.repr(tcx),
-             self.self_ty.repr(tcx),
+             self.explicit_self.repr(tcx),
              self.vis.repr(tcx),
              self.def_id.repr(tcx))
     }
@@ -653,7 +653,7 @@ impl Repr for ast::ident {
     }
 }
 
-impl Repr for ast::self_ty_ {
+impl Repr for ast::explicit_self_ {
     fn repr(&self, _tcx: ctxt) -> ~str {
         fmt!("%?", *self)
     }
@@ -685,15 +685,9 @@ impl Repr for typeck::method_map_entry {
         fmt!("method_map_entry {self_arg: %s, \
               explicit_self: %s, \
               origin: %s}",
-             self.self_arg.repr(tcx),
+             self.self_ty.repr(tcx),
              self.explicit_self.repr(tcx),
              self.origin.repr(tcx))
-    }
-}
-
-impl Repr for ty::arg {
-    fn repr(&self, tcx: ctxt) -> ~str {
-        fmt!("(%s)", self.ty.repr(tcx))
     }
 }
 
