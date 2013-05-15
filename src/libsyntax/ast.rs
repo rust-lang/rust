@@ -98,12 +98,14 @@ impl<D:Decoder> Decodable<D> for ident {
 
 #[cfg(stage0)]
 impl to_bytes::IterBytes for ident {
+    #[inline(always)]
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
         self.repr.iter_bytes(lsb0, f)
     }
 }
 #[cfg(not(stage0))]
 impl to_bytes::IterBytes for ident {
+    #[inline(always)]
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         self.repr.iter_bytes(lsb0, f)
     }
