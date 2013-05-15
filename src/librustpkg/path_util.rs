@@ -35,7 +35,7 @@ pub fn make_dir_rwx(p: &Path) -> bool { os::make_dir(p, u_rwx) }
 
 /// True if there's a directory in <workspace> with
 /// pkgid's short name
-pub fn workspace_contains_package_id(pkgid: PkgId, workspace: &Path) -> bool {
+pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
     let pkgpath = workspace.push("src").push(pkgid.local_path.to_str());
     os::path_is_dir(&pkgpath)
 }
@@ -67,17 +67,17 @@ pub fn built_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<
 
 /// Figure out what the test name for <pkgid> in <workspace>'s build
 /// directory is, and if the file exists, return it.
-pub fn built_test_in_workspace(pkgid: PkgId, workspace: &Path) -> Option<Path> {
+pub fn built_test_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
     output_in_workspace(pkgid, workspace, Test)
 }
 
 /// Figure out what the test name for <pkgid> in <workspace>'s build
 /// directory is, and if the file exists, return it.
-pub fn built_bench_in_workspace(pkgid: PkgId, workspace: &Path) -> Option<Path> {
+pub fn built_bench_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
     output_in_workspace(pkgid, workspace, Bench)
 }
 
-fn output_in_workspace(pkgid: PkgId, workspace: &Path, what: OutputType) -> Option<Path> {
+fn output_in_workspace(pkgid: &PkgId, workspace: &Path, what: OutputType) -> Option<Path> {
     let mut result = workspace.push("build");
     // should use a target-specific subdirectory
     result = mk_output_path(what, pkgid, &result);
@@ -94,7 +94,7 @@ fn output_in_workspace(pkgid: PkgId, workspace: &Path, what: OutputType) -> Opti
 
 /// Figure out what the library name for <pkgid> in <workspace>'s build
 /// directory is, and if the file exists, return it.
-pub fn built_library_in_workspace(pkgid: PkgId, workspace: &Path) -> Option<Path> {
+pub fn built_library_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
     let result = mk_output_path(Lib, pkgid, &workspace.push("build"));
     debug!("built_library_in_workspace: checking whether %s exists",
            result.to_str());
@@ -177,14 +177,14 @@ pub fn target_library_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
 /// Returns the test executable that would be installed for <pkgid>
 /// in <workspace>
 /// note that we *don't* install test executables, so this is just for unit testing
-pub fn target_test_in_workspace(pkgid: PkgId, workspace: &Path) -> Path {
+pub fn target_test_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     target_file_in_workspace(pkgid, workspace, Test)
 }
 
 /// Returns the bench executable that would be installed for <pkgid>
 /// in <workspace>
 /// note that we *don't* install bench executables, so this is just for unit testing
-pub fn target_bench_in_workspace(pkgid: PkgId, workspace: &Path) -> Path {
+pub fn target_bench_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
     target_file_in_workspace(pkgid, workspace, Bench)
 }
 
@@ -192,13 +192,12 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
                             what: OutputType) -> Path {
     use conditions::bad_path::cond;
 
-    let (subdir, create_dir) = match what {
+    let subdir = match what {
         Lib => "lib", Main | Test | Bench => "bin"
     };
     let result = workspace.push(subdir);
-    debug!("target_file_in_workspace: %s %?", result.to_str(), create_dir);
     if !os::path_exists(&result) && !mkdir_recursive(&result, u_rwx) {
-        cond.raise((result, fmt!("I couldn't create the %s dir", subdir)));
+        cond.raise((copy result, fmt!("I couldn't create the %s dir", subdir)));
     }
     mk_output_path(what, pkgid, &result)
 }
@@ -222,17 +221,19 @@ pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
 
 /// Return the output file for a given directory name,
 /// given whether we're building a library and whether we're building tests
-pub fn mk_output_path(what: OutputType, pkg_id: PkgId, workspace: &Path) -> Path {
-    let short_name = pkg_id.short_name_with_version();
+pub fn mk_output_path(what: OutputType, pkg_id: &PkgId, workspace: &Path) -> Path {
+    let short_name_with_version = pkg_id.short_name_with_version();
     // Not local_path.dir_path()! For package foo/bar/blat/, we want
     // the executable blat-0.5 to live under blat/
     let dir = workspace.push_rel(&*pkg_id.local_path);
     debug!("mk_output_path: short_name = %s, path = %s",
-           short_name, dir.to_str());
+           if what == Lib { copy short_name_with_version } else { copy pkg_id.short_name },
+           dir.to_str());
     let output_path = match what {
         // this code is duplicated from elsewhere; fix this
-        Lib => dir.push(os::dll_filename(short_name)),
-        _ => dir.push(fmt!("%s%s%s", short_name,
+        Lib => dir.push(os::dll_filename(short_name_with_version)),
+        // executable names *aren't* versioned
+        _ => dir.push(fmt!("%s%s%s", copy pkg_id.short_name,
                            match what {
                                Test => "test",
                                Bench => "bench",

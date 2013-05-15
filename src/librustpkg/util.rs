@@ -16,13 +16,12 @@ use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use std::getopts::groups::getopts;
 use std::semver;
-use std::{json, term, getopts};
+use std::{term, getopts};
 use syntax::ast_util::*;
 use syntax::codemap::{dummy_sp, spanned, dummy_spanned};
 use syntax::ext::base::{mk_ctxt, ext_ctxt};
-use syntax::ext::build;
 use syntax::{ast, attr, codemap, diagnostic, fold};
-use syntax::ast::{meta_name_value, meta_list, attribute};
+use syntax::ast::{meta_name_value, meta_list};
 use syntax::attr::{mk_attr};
 use rustc::back::link::output_type_exe;
 use rustc::driver::session::{lib_crate, bin_crate};
@@ -109,7 +108,7 @@ pub struct PkgId {
 
 pub impl PkgId {
     fn new(s: &str) -> PkgId {
-        use bad_pkg_id::cond;
+        use conditions::bad_pkg_id::cond;
 
         let p = Path(s);
         if p.is_absolute {
@@ -119,11 +118,12 @@ pub impl PkgId {
             return cond.raise((p, ~"0-length pkgid"));
         }
         let remote_path = RemotePath(p);
-        let local_path = normalize(remote_path);
+        let local_path = normalize(copy remote_path);
+        let short_name = (copy local_path).filestem().expect(fmt!("Strange path! %s", s));
         PkgId {
             local_path: local_path,
             remote_path: remote_path,
-            short_name: local_path.filestem().expect(fmt!("Strange path! %s", s)),
+            short_name: short_name,
             version: default_version()
         }
     }
@@ -142,14 +142,7 @@ pub impl PkgId {
 impl ToStr for PkgId {
     fn to_str(&self) -> ~str {
         // should probably use the filestem and not the whole path
-        fmt!("%s-%s", self.local_path.to_str(),
-             // Replace dots with -s in the version
-             // this is because otherwise rustc will think
-             // that foo-0.1 has .1 as its extension
-             // (Temporary hack until I figure out how to
-             // get rustc to not name the object file
-             // foo-0.o if I pass in foo-0.1 to build_output_filenames)
-             str::replace(self.version.to_str(), ".", "-"))
+        fmt!("%s-%s", self.local_path.to_str(), self.version.to_str())
     }
 }
 
@@ -174,26 +167,6 @@ pub fn root() -> Path {
 
 pub fn is_cmd(cmd: &str) -> bool {
     Commands.any(|&c| c == cmd)
-}
-
-pub fn parse_name(id: ~str) -> result::Result<~str, ~str> {
-    let mut last_part = None;
-
-    for str::each_split_char(id, '.') |part| {
-        for str::each_char(part) |char| {
-            if char::is_whitespace(char) {
-                return result::Err(
-                    ~"could not parse id: contains whitespace");
-            } else if char::is_uppercase(char) {
-                return result::Err(
-                    ~"could not parse id: should be all lowercase");
-            }
-        }
-        last_part = Some(part.to_owned());
-    }
-    if last_part.is_none() { return result::Err(~"could not parse id: is empty"); }
-
-    result::Ok(last_part.unwrap())
 }
 
 struct ListenerFn {
@@ -266,52 +239,6 @@ fn fold_item(ctx: @mut ReadyCtx,
     ctx.path.pop();
 
     res
-}
-
-fn add_pkg_module(ctx: @mut ReadyCtx, m: ast::_mod) -> ast::_mod {
-    let listeners = mk_listener_vec(ctx);
-    let ext_cx = ctx.ext_cx;
-    let item = quote_item! (
-        mod __pkg {
-            extern mod rustpkg (vers="0.7-pre");
-            static listeners : &[rustpkg::Listener] = $listeners;
-            #[main]
-            fn main() {
-                rustpkg::run(listeners);
-            }
-        }
-    );
-    ast::_mod {
-        items: vec::append_one(/*bad*/copy m.items, item.get()),
-        .. m
-    }
-}
-
-fn mk_listener_vec(ctx: @mut ReadyCtx) -> @ast::expr {
-    let descs = do ctx.fns.map |listener| {
-        mk_listener_rec(ctx, listener)
-    };
-    let ext_cx = ctx.ext_cx;
-    build::mk_slice_vec_e(ext_cx, dummy_sp(), descs)
-}
-
-fn mk_listener_rec(ctx: @mut ReadyCtx, listener: &ListenerFn) -> @ast::expr {
-    let span = listener.span;
-    let cmds = do listener.cmds.map |&cmd| {
-        let ext_cx = ctx.ext_cx;
-        build::mk_base_str(ext_cx, span, cmd)
-    };
-
-    let ext_cx = ctx.ext_cx;
-    let cmds_expr = build::mk_slice_vec_e(ext_cx, span, cmds);
-    let cb_expr = build::mk_path(ext_cx, span, copy listener.path);
-
-    quote_expr!(
-        Listener {
-            cmds: $cmds_expr,
-            cb: $cb_expr
-        }
-    )
 }
 
 /// Generate/filter main function, add the list of commands, etc.
@@ -395,67 +322,6 @@ pub fn hash(data: ~str) -> ~str {
     hasher.result_str()
 }
 
-pub fn temp_change_dir<T>(dir: &Path, cb: &fn() -> T) {
-    let cwd = os::getcwd();
-
-    os::change_dir(dir);
-    cb();
-    os::change_dir(&cwd);
-}
-
-pub fn touch(path: &Path) {
-    match io::mk_file_writer(path, ~[io::Create]) {
-        result::Ok(writer) => writer.write_line(~""),
-        _ => {}
-    }
-}
-
-pub fn remove_dir_r(path: &Path) {
-    for os::walk_dir(path) |&file| {
-        let mut cdir = file;
-
-        loop {
-            if os::path_is_dir(&cdir) {
-                os::remove_dir(&cdir);
-            } else {
-                os::remove_file(&cdir);
-            }
-
-            cdir = cdir.dir_path();
-
-            if cdir == *path { break; }
-        }
-    }
-
-    os::remove_dir(path);
-}
-
-pub fn wait_for_lock(path: &Path) {
-    if os::path_exists(path) {
-        warn(fmt!("the database appears locked, please wait (or rm %s)",
-                        path.to_str()));
-
-        loop {
-            if !os::path_exists(path) { break; }
-        }
-    }
-}
-
-pub fn load_pkgs() -> result::Result<~[json::Json], ~str> {
-    fail!("load_pkg not implemented");
-}
-
-pub fn get_pkg(_id: ~str,
-               _vers: Option<~str>) -> result::Result<Pkg, ~str> {
-    fail!("get_pkg not implemented");
-}
-
-pub fn add_pkg(pkg: &Pkg) -> bool {
-    note(fmt!("Would be adding package, but add_pkg is not yet implemented %s",
-         pkg.to_str()));
-    false
-}
-
 // FIXME (#4432): Use workcache to only compile when needed
 pub fn compile_input(sysroot: Option<@Path>,
                      pkg_id: &PkgId,
@@ -466,22 +332,20 @@ pub fn compile_input(sysroot: Option<@Path>,
                      opt: bool,
                      what: OutputType) -> bool {
 
-    let short_name = pkg_id.short_name_with_version();
-
     assert!(in_file.components.len() > 1);
     let input = driver::file_input(copy *in_file);
     debug!("compile_input: %s / %?", in_file.to_str(), what);
     // tjc: by default, use the package ID name as the link name
     // not sure if we should support anything else
 
-    let binary = os::args()[0];
+    let binary = @(copy os::args()[0]);
     let building_library = what == Lib;
 
     let out_file = if building_library {
-        out_dir.push(os::dll_filename(short_name))
+        out_dir.push(os::dll_filename(pkg_id.short_name))
     }
     else {
-        out_dir.push(short_name + match what {
+        out_dir.push(pkg_id.short_name + match what {
             Test => ~"test", Bench => ~"bench", Main | Lib => ~""
         } + os::EXE_SUFFIX)
     };
@@ -561,24 +425,27 @@ pub fn compile_crate_from_input(input: &driver::input,
             debug!("Calling compile_upto, outputs = %?", outputs);
             let (crate, _) = driver::compile_upto(sess, copy cfg, input,
                                                   driver::cu_parse, Some(outputs));
+            let mut crate = crate;
 
             debug!("About to inject link_meta info...");
             // Inject the inferred link_meta info if it's not already there
             // (assumes that name and vers are the only linkage metas)
-            let mut crate_to_use = crate;
 
             debug!("How many attrs? %?", attr::find_linkage_metas(crate.node.attrs).len());
 
             if attr::find_linkage_metas(crate.node.attrs).is_empty() {
-                crate_to_use = add_attrs(*crate, ~[mk_attr(@dummy_spanned(meta_list(@~"link",
-                    ~[@dummy_spanned(meta_name_value(@~"name",
-                                         mk_string_lit(@pkg_id.short_name))),
-                      @dummy_spanned(meta_name_value(@~"vers",
-                                         mk_string_lit(@pkg_id.version.to_str())))])))]);
+                crate = @codemap::respan(crate.span, ast::crate_ {
+                    attrs: ~[mk_attr(@dummy_spanned(
+                        meta_list(@~"link",
+                                  ~[@dummy_spanned(meta_name_value(@~"name",
+                                        mk_string_lit(@(copy pkg_id.short_name)))),
+                                    @dummy_spanned(meta_name_value(@~"vers",
+                                        mk_string_lit(@(copy pkg_id.version.to_str()))))])))],
+                    ..copy crate.node});
             }
 
-            driver::compile_rest(sess, cfg, what, Some(outputs), Some(crate_to_use));
-            crate_to_use
+            driver::compile_rest(sess, cfg, what, Some(outputs), Some(crate));
+            crate
         }
     }
 }
@@ -591,14 +458,6 @@ pub fn exe_suffix() -> ~str { ~".exe" }
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "macos")]
 pub fn exe_suffix() -> ~str { ~"" }
-
-
-/// Returns a copy of crate `c` with attributes `attrs` added to its
-/// attributes
-fn add_attrs(mut c: ast::crate, new_attrs: ~[attribute]) -> @ast::crate {
-    c.node.attrs += new_attrs;
-    @c
-}
 
 // Called by build_crates
 // FIXME (#4432): Use workcache to only compile when needed
@@ -619,16 +478,17 @@ pub fn compile_crate(sysroot: Option<@Path>, pkg_id: &PkgId,
 /// Replace all occurrences of '-' in the stem part of path with '_'
 /// This is because we treat rust-foo-bar-quux and rust_foo_bar_quux
 /// as the same name
-pub fn normalize(p: RemotePath) -> LocalPath {
+pub fn normalize(p_: RemotePath) -> LocalPath {
+    let RemotePath(p) = p_;
     match p.filestem() {
-        None => LocalPath(*p),
+        None => LocalPath(p),
         Some(st) => {
             let replaced = str::replace(st, "-", "_");
             if replaced != st {
                 LocalPath(p.with_filestem(replaced))
             }
             else {
-                LocalPath(*p)
+                LocalPath(p)
             }
         }
     }
@@ -671,7 +531,7 @@ pub struct LocalPath (Path);
 
 #[cfg(test)]
 mod test {
-    use super::{is_cmd, parse_name};
+    use super::is_cmd;
 
     #[test]
     fn test_is_cmd() {
@@ -686,9 +546,4 @@ mod test {
         assert!(is_cmd(~"unprefer"));
     }
 
-    #[test]
-    fn test_parse_name() {
-        assert!(parse_name(~"org.mozilla.servo").get() == ~"servo");
-        assert!(parse_name(~"org. mozilla.servo 2131").is_err());
-    }
 }
