@@ -302,9 +302,9 @@ pub impl Parser {
     }
 
     fn try_parse_obsolete_priv_section(&self, attrs: &[attribute]) -> bool {
-        if self.is_keyword(&~"priv") && self.look_ahead(1) == token::LBRACE {
+        if self.is_keyword("priv") && self.look_ahead(1) == token::LBRACE {
             self.obsolete(copy *self.span, ObsoletePrivSection);
-            self.eat_keyword(&~"priv");
+            self.eat_keyword("priv");
             self.bump();
             while *self.token != token::RBRACE {
                 self.parse_single_struct_field(ast::private, attrs.to_owned());
