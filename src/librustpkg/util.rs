@@ -13,20 +13,18 @@ use core::cmp::Ord;
 use core::hash::Streaming;
 use core::rt::io::Writer;
 use rustc::driver::{driver, session};
-use rustc::driver::session::{lib_crate, unknown_crate};
 use rustc::metadata::filesearch;
 use std::getopts::groups::getopts;
 use std::semver;
-use std::{json, term, getopts};
+use std::{term, getopts};
 use syntax::ast_util::*;
 use syntax::codemap::{dummy_sp, spanned, dummy_spanned};
 use syntax::ext::base::{mk_ctxt, ext_ctxt};
-use syntax::ext::build;
 use syntax::{ast, attr, codemap, diagnostic, fold};
-use syntax::ast::{meta_name_value, meta_list, attribute};
+use syntax::ast::{meta_name_value, meta_list};
 use syntax::attr::{mk_attr};
 use rustc::back::link::output_type_exe;
-use rustc::driver::session::{lib_crate, unknown_crate, crate_type};
+use rustc::driver::session::{lib_crate, bin_crate};
 
 static Commands: &'static [&'static str] =
     &["build", "clean", "do", "info", "install", "prefer", "test", "uninstall",
@@ -83,20 +81,34 @@ impl ToStr for Version {
     }
 }
 
+#[deriving(Eq)]
+pub enum OutputType { Main, Lib, Bench, Test }
+
 /// Placeholder
 pub fn default_version() -> Version { ExactRevision(0.1) }
 
-// Path-fragment identifier of a package such as
-// 'github.com/graydon/test'; path must be a relative
-// path with >=1 component.
+/// Path-fragment identifier of a package such as
+/// 'github.com/graydon/test'; path must be a relative
+/// path with >=1 component.
 pub struct PkgId {
-    path: Path,
+    /// Remote path: for example, github.com/mozilla/quux-whatever
+    remote_path: RemotePath,
+    /// Local path: for example, /home/quux/github.com/mozilla/quux_whatever
+    /// Note that '-' normalizes to '_' when mapping a remote path
+    /// onto a local path
+    /// Also, this will change when we implement #6407, though we'll still
+    /// need to keep track of separate local and remote paths
+    local_path: LocalPath,
+    /// Short name. This is the local path's filestem, but we store it
+    /// redundantly so as to not call get() everywhere (filestem() returns an
+    /// option)
+    short_name: ~str,
     version: Version
 }
 
 pub impl PkgId {
     fn new(s: &str) -> PkgId {
-        use bad_pkg_id::cond;
+        use conditions::bad_pkg_id::cond;
 
         let p = Path(s);
         if p.is_absolute {
@@ -105,31 +117,32 @@ pub impl PkgId {
         if p.components.len() < 1 {
             return cond.raise((p, ~"0-length pkgid"));
         }
+        let remote_path = RemotePath(p);
+        let local_path = normalize(copy remote_path);
+        let short_name = (copy local_path).filestem().expect(fmt!("Strange path! %s", s));
         PkgId {
-            path: p,
+            local_path: local_path,
+            remote_path: remote_path,
+            short_name: short_name,
             version: default_version()
         }
     }
 
     fn hash(&self) -> ~str {
-        fmt!("%s-%s-%s", self.path.to_str(),
-             hash(self.path.to_str() + self.version.to_str()),
+        fmt!("%s-%s-%s", self.remote_path.to_str(),
+             hash(self.remote_path.to_str() + self.version.to_str()),
              self.version.to_str())
     }
 
+    fn short_name_with_version(&self) -> ~str {
+        fmt!("%s-%s", self.short_name, self.version.to_str())
+    }
 }
 
 impl ToStr for PkgId {
     fn to_str(&self) -> ~str {
         // should probably use the filestem and not the whole path
-        fmt!("%s-%s", self.path.to_str(),
-             // Replace dots with -s in the version
-             // this is because otherwise rustc will think
-             // that foo-0.1 has .1 as its extension
-             // (Temporary hack until I figure out how to
-             // get rustc to not name the object file
-             // foo-0.o if I pass in foo-0.1 to build_output_filenames)
-             str::replace(self.version.to_str(), ".", "-"))
+        fmt!("%s-%s", self.local_path.to_str(), self.version.to_str())
     }
 }
 
@@ -154,26 +167,6 @@ pub fn root() -> Path {
 
 pub fn is_cmd(cmd: &str) -> bool {
     Commands.any(|&c| c == cmd)
-}
-
-pub fn parse_name(id: ~str) -> result::Result<~str, ~str> {
-    let mut last_part = None;
-
-    for str::each_split_char(id, '.') |part| {
-        for str::each_char(part) |char| {
-            if char::is_whitespace(char) {
-                return result::Err(
-                    ~"could not parse id: contains whitespace");
-            } else if char::is_uppercase(char) {
-                return result::Err(
-                    ~"could not parse id: should be all lowercase");
-            }
-        }
-        last_part = Some(part.to_owned());
-    }
-    if last_part.is_none() { return result::Err(~"could not parse id: is empty"); }
-
-    result::Ok(last_part.unwrap())
 }
 
 struct ListenerFn {
@@ -246,52 +239,6 @@ fn fold_item(ctx: @mut ReadyCtx,
     ctx.path.pop();
 
     res
-}
-
-fn add_pkg_module(ctx: @mut ReadyCtx, m: ast::_mod) -> ast::_mod {
-    let listeners = mk_listener_vec(ctx);
-    let ext_cx = ctx.ext_cx;
-    let item = quote_item! (
-        mod __pkg {
-            extern mod rustpkg (vers="0.7-pre");
-            static listeners : &[rustpkg::Listener] = $listeners;
-            #[main]
-            fn main() {
-                rustpkg::run(listeners);
-            }
-        }
-    );
-    ast::_mod {
-        items: vec::append_one(/*bad*/copy m.items, item.get()),
-        .. m
-    }
-}
-
-fn mk_listener_vec(ctx: @mut ReadyCtx) -> @ast::expr {
-    let descs = do ctx.fns.map |listener| {
-        mk_listener_rec(ctx, listener)
-    };
-    let ext_cx = ctx.ext_cx;
-    build::mk_slice_vec_e(ext_cx, dummy_sp(), descs)
-}
-
-fn mk_listener_rec(ctx: @mut ReadyCtx, listener: &ListenerFn) -> @ast::expr {
-    let span = listener.span;
-    let cmds = do listener.cmds.map |&cmd| {
-        let ext_cx = ctx.ext_cx;
-        build::mk_base_str(ext_cx, span, cmd)
-    };
-
-    let ext_cx = ctx.ext_cx;
-    let cmds_expr = build::mk_slice_vec_e(ext_cx, span, cmds);
-    let cb_expr = build::mk_path(ext_cx, span, copy listener.path);
-
-    quote_expr!(
-        Listener {
-            cmds: $cmds_expr,
-            cb: $cb_expr
-        }
-    )
 }
 
 /// Generate/filter main function, add the list of commands, etc.
@@ -375,67 +322,6 @@ pub fn hash(data: ~str) -> ~str {
     hasher.result_str()
 }
 
-pub fn temp_change_dir<T>(dir: &Path, cb: &fn() -> T) {
-    let cwd = os::getcwd();
-
-    os::change_dir(dir);
-    cb();
-    os::change_dir(&cwd);
-}
-
-pub fn touch(path: &Path) {
-    match io::mk_file_writer(path, ~[io::Create]) {
-        result::Ok(writer) => writer.write_line(~""),
-        _ => {}
-    }
-}
-
-pub fn remove_dir_r(path: &Path) {
-    for os::walk_dir(path) |&file| {
-        let mut cdir = file;
-
-        loop {
-            if os::path_is_dir(&cdir) {
-                os::remove_dir(&cdir);
-            } else {
-                os::remove_file(&cdir);
-            }
-
-            cdir = cdir.dir_path();
-
-            if cdir == *path { break; }
-        }
-    }
-
-    os::remove_dir(path);
-}
-
-pub fn wait_for_lock(path: &Path) {
-    if os::path_exists(path) {
-        warn(fmt!("the database appears locked, please wait (or rm %s)",
-                        path.to_str()));
-
-        loop {
-            if !os::path_exists(path) { break; }
-        }
-    }
-}
-
-pub fn load_pkgs() -> result::Result<~[json::Json], ~str> {
-    fail!("load_pkg not implemented");
-}
-
-pub fn get_pkg(_id: ~str,
-               _vers: Option<~str>) -> result::Result<Pkg, ~str> {
-    fail!("get_pkg not implemented");
-}
-
-pub fn add_pkg(pkg: &Pkg) -> bool {
-    note(fmt!("Would be adding package, but add_pkg is not yet implemented %s",
-         pkg.to_str()));
-    false
-}
-
 // FIXME (#4432): Use workcache to only compile when needed
 pub fn compile_input(sysroot: Option<@Path>,
                      pkg_id: &PkgId,
@@ -444,31 +330,24 @@ pub fn compile_input(sysroot: Option<@Path>,
                      flags: &[~str],
                      cfgs: &[~str],
                      opt: bool,
-                     test: bool,
-                     crate_type: session::crate_type) -> bool {
-
-    // Want just the directory component here
-    let pkg_filename = pkg_id.path.filename().expect(~"Weird pkg id");
-    let short_name = fmt!("%s-%s", pkg_filename, pkg_id.version.to_str());
+                     what: OutputType) -> bool {
 
     assert!(in_file.components.len() > 1);
     let input = driver::file_input(copy *in_file);
-    debug!("compile_input: %s / %?", in_file.to_str(), crate_type);
+    debug!("compile_input: %s / %?", in_file.to_str(), what);
     // tjc: by default, use the package ID name as the link name
     // not sure if we should support anything else
 
-    let binary = @copy os::args()[0];
-    let building_library = match crate_type {
-        lib_crate | unknown_crate => true,
-        _ => false
-    };
+    let binary = @(copy os::args()[0]);
+    let building_library = what == Lib;
 
     let out_file = if building_library {
-        out_dir.push(os::dll_filename(short_name))
+        out_dir.push(os::dll_filename(pkg_id.short_name))
     }
     else {
-        out_dir.push(short_name + if test { ~"test" } else { ~"" }
-                     + os::EXE_SUFFIX)
+        out_dir.push(pkg_id.short_name + match what {
+            Test => ~"test", Bench => ~"bench", Main | Lib => ~""
+        } + os::EXE_SUFFIX)
     };
 
     debug!("compiling %s into %s",
@@ -478,18 +357,24 @@ pub fn compile_input(sysroot: Option<@Path>,
     debug!("cfgs: %s", str::connect(cfgs, ~" "));
     debug!("compile_input's sysroot = %?", sysroot);
 
+    let crate_type = match what {
+        Lib => lib_crate,
+        Test | Bench | Main => bin_crate
+    };
     let matches = getopts(~[~"-Z", ~"time-passes"]
-                          + if building_library { ~[~"--lib"] }
-                            else if test { ~[~"--test"] }
-                            // bench?
-                            else { ~[] }
+                          + match what {
+                              Lib => ~[~"--lib"],
+                              // --test compiles both #[test] and #[bench] fns
+                              Test | Bench => ~[~"--test"],
+                              Main => ~[]
+                          }
                           + flags
                           + cfgs.flat_map(|&c| { ~[~"--cfg", c] }),
                           driver::optgroups()).get();
     let mut options = session::options {
         crate_type: crate_type,
         optimize: if opt { session::Aggressive } else { session::No },
-        test: test,
+        test: what == Test || what == Bench,
         maybe_sysroot: sysroot,
         addl_lib_search_paths: ~[copy *out_dir],
         // output_type should be conditional
@@ -540,26 +425,27 @@ pub fn compile_crate_from_input(input: &driver::input,
             debug!("Calling compile_upto, outputs = %?", outputs);
             let (crate, _) = driver::compile_upto(sess, copy cfg, input,
                                                   driver::cu_parse, Some(outputs));
+            let mut crate = crate;
 
             debug!("About to inject link_meta info...");
             // Inject the inferred link_meta info if it's not already there
             // (assumes that name and vers are the only linkage metas)
-            let mut crate_to_use = crate;
 
             debug!("How many attrs? %?", attr::find_linkage_metas(crate.node.attrs).len());
 
             if attr::find_linkage_metas(crate.node.attrs).is_empty() {
-                crate_to_use = add_attrs(copy *crate,
-                    ~[mk_attr(@dummy_spanned(meta_list(@~"link",
-                                                  // change PkgId to have a <shortname> field?
-                    ~[@dummy_spanned(meta_name_value(@~"name",
-                                                    mk_string_lit(@pkg_id.path.filestem().get()))),
-                      @dummy_spanned(meta_name_value(@~"vers",
-                                                    mk_string_lit(@pkg_id.version.to_str())))])))]);
+                crate = @codemap::respan(crate.span, ast::crate_ {
+                    attrs: ~[mk_attr(@dummy_spanned(
+                        meta_list(@~"link",
+                                  ~[@dummy_spanned(meta_name_value(@~"name",
+                                        mk_string_lit(@(copy pkg_id.short_name)))),
+                                    @dummy_spanned(meta_name_value(@~"vers",
+                                        mk_string_lit(@(copy pkg_id.version.to_str()))))])))],
+                    ..copy crate.node});
             }
 
-            driver::compile_rest(sess, cfg, what, Some(outputs), Some(crate_to_use));
-            crate_to_use
+            driver::compile_rest(sess, cfg, what, Some(outputs), Some(crate));
+            crate
         }
     }
 }
@@ -573,29 +459,40 @@ pub fn exe_suffix() -> ~str { ~".exe" }
 #[cfg(target_os = "macos")]
 pub fn exe_suffix() -> ~str { ~"" }
 
-
-/// Returns a copy of crate `c` with attributes `attrs` added to its
-/// attributes
-fn add_attrs(mut c: ast::crate, new_attrs: ~[attribute]) -> @ast::crate {
-    c.node.attrs += new_attrs;
-    @c
-}
-
 // Called by build_crates
 // FIXME (#4432): Use workcache to only compile when needed
 pub fn compile_crate(sysroot: Option<@Path>, pkg_id: &PkgId,
                      crate: &Path, dir: &Path,
                      flags: &[~str], cfgs: &[~str], opt: bool,
-                     test: bool, crate_type: crate_type) -> bool {
+                     what: OutputType) -> bool {
     debug!("compile_crate: crate=%s, dir=%s", crate.to_str(), dir.to_str());
     debug!("compile_crate: short_name = %s, flags =...", pkg_id.to_str());
     for flags.each |&fl| {
         debug!("+++ %s", fl);
     }
-    compile_input(sysroot, pkg_id,
-                  crate, dir, flags, cfgs, opt, test, crate_type)
+    compile_input(sysroot, pkg_id, crate, dir, flags, cfgs, opt, what)
 }
 
+// normalize should be the only way to construct a LocalPath
+// (though this isn't enforced)
+/// Replace all occurrences of '-' in the stem part of path with '_'
+/// This is because we treat rust-foo-bar-quux and rust_foo_bar_quux
+/// as the same name
+pub fn normalize(p_: RemotePath) -> LocalPath {
+    let RemotePath(p) = p_;
+    match p.filestem() {
+        None => LocalPath(p),
+        Some(st) => {
+            let replaced = str::replace(st, "-", "_");
+            if replaced != st {
+                LocalPath(p.with_filestem(replaced))
+            }
+            else {
+                LocalPath(p)
+            }
+        }
+    }
+}
 
 #[cfg(windows)]
 pub fn link_exe(_src: &Path, _dest: &Path) -> bool {
@@ -628,9 +525,13 @@ pub fn mk_string_lit(s: @~str) -> ast::lit {
     }
 }
 
+/// Wrappers to prevent local and remote paths from getting confused
+pub struct RemotePath (Path);
+pub struct LocalPath (Path);
+
 #[cfg(test)]
 mod test {
-    use super::{is_cmd, parse_name};
+    use super::is_cmd;
 
     #[test]
     fn test_is_cmd() {
@@ -645,9 +546,4 @@ mod test {
         assert!(is_cmd(~"unprefer"));
     }
 
-    #[test]
-    fn test_parse_name() {
-        assert!(parse_name(~"org.mozilla.servo").get() == ~"servo");
-        assert!(parse_name(~"org. mozilla.servo 2131").is_err());
-    }
 }

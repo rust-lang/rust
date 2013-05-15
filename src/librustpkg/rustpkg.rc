@@ -30,12 +30,10 @@ use rustc::metadata::filesearch;
 use std::{getopts};
 use syntax::{ast, diagnostic};
 use util::*;
-use path_util::normalize;
-use path_util::{build_pkg_id_in_workspace, pkgid_src_in_workspace};
+use path_util::{build_pkg_id_in_workspace, pkgid_src_in_workspace, u_rwx};
 use path_util::{built_executable_in_workspace, built_library_in_workspace};
 use path_util::{target_executable_in_workspace, target_library_in_workspace};
 use workspace::pkg_parent_workspaces;
-use rustc::driver::session::{lib_crate, bin_crate, crate_type};
 use context::Ctx;
 
 mod conditions;
@@ -159,27 +157,6 @@ impl<'self> PkgScript<'self> {
 impl Ctx {
 
     fn run(&self, cmd: ~str, args: ~[~str]) {
-        let root = util::root();
-
-        util::need_dir(&root);
-        util::need_dir(&root.push(~"work"));
-        util::need_dir(&root.push(~"lib"));
-        util::need_dir(&root.push(~"bin"));
-        util::need_dir(&root.push(~"tmp"));
-
-        fn sep_name_vers(in: ~str) -> (Option<~str>, Option<~str>) {
-            let mut name = None;
-            let mut vers = None;
-
-            for str::each_split_char(in, '@') |s| {
-                if      name.is_none() { name = Some(s.to_owned()); }
-                else if vers.is_none() { vers = Some(s.to_owned()); }
-                else                   { break;               }
-            }
-
-            (name, vers)
-        }
-
         match cmd {
             ~"build" => {
                 if args.len() < 1 {
@@ -229,9 +206,7 @@ impl Ctx {
                     return usage::uninstall();
                 }
 
-                let (name, vers) = sep_name_vers(copy args[0]);
-
-                self.prefer(name.get(), vers);
+                self.prefer(args[0], None);
             }
             ~"test" => {
                 self.test();
@@ -241,20 +216,16 @@ impl Ctx {
                     return usage::uninstall();
                 }
 
-                let (name, vers) = sep_name_vers(copy args[0]);
-
-                self.uninstall(name.get(), vers);
+                self.uninstall(args[0], None);
             }
             ~"unprefer" => {
                 if args.len() < 1 {
                     return usage::uninstall();
                 }
 
-                let (name, vers) = sep_name_vers(copy args[0]);
-
-                self.unprefer(name.get(), vers);
+                self.unprefer(args[0], None);
             }
-            _ => fail!("reached an unhandled command")
+            _ => fail!(fmt!("I don't know the command `%s`", cmd))
         }
     }
 
@@ -269,7 +240,7 @@ impl Ctx {
         debug!("Destination dir = %s", build_dir.to_str());
 
         // Create the package source
-        let mut src = PkgSrc::new(&workspace.push("src"), &build_dir, pkgid);
+        let mut src = PkgSrc::new(workspace, &build_dir, pkgid);
         debug!("Package src = %?", src);
 
         // Is there custom build logic? If so, use it
@@ -307,7 +278,6 @@ impl Ctx {
             // Build it!
             src.build(&build_dir, cfgs, self.sysroot_opt);
         }
-
     }
 
     fn clean(&self, workspace: &Path, id: &PkgId)  {
@@ -319,7 +289,7 @@ impl Ctx {
         util::note(fmt!("Cleaning package %s (removing directory %s)",
                         id.to_str(), dir.to_str()));
         if os::path_exists(&dir) {
-            util::remove_dir_r(&dir);
+            os::remove_dir_recursive(&dir);
             util::note(fmt!("Removed directory %s", dir.to_str()));
         }
 
@@ -337,6 +307,8 @@ impl Ctx {
         // Should use RUST_PATH in the future.
         // Also should use workcache to not build if not necessary.
         self.build(workspace, id);
+        debug!("install: workspace = %s, id = %s", workspace.to_str(),
+               id.to_str());
 
         // Now copy stuff into the install dirs
         let maybe_executable = built_executable_in_workspace(id, workspace);
@@ -344,104 +316,29 @@ impl Ctx {
         let target_exec = target_executable_in_workspace(id, workspace);
         let target_lib = target_library_in_workspace(id, workspace);
 
+        debug!("target_exec = %s target_lib = %s \
+                maybe_executable = %? maybe_library = %?",
+               target_exec.to_str(), target_lib.to_str(),
+               maybe_executable, maybe_library);
+
         for maybe_executable.each |exec| {
             debug!("Copying: %s -> %s", exec.to_str(), target_exec.to_str());
-            if !os::copy_file(exec, &target_exec) {
+            if !(os::mkdir_recursive(&target_exec.dir_path(), u_rwx) &&
+                 os::copy_file(exec, &target_exec)) {
                 cond.raise((copy *exec, copy target_exec));
             }
         }
         for maybe_library.each |lib| {
             debug!("Copying: %s -> %s", lib.to_str(), target_lib.to_str());
-            if !os::copy_file(lib, &target_lib) {
+            if !(os::mkdir_recursive(&target_lib.dir_path(), u_rwx) &&
+                 os::copy_file(lib, &target_lib)) {
                 cond.raise((copy *lib, copy target_lib));
             }
         }
     }
 
-    fn fetch(&self, _dir: &Path, _url: ~str, _target: Option<~str>)  {
-        // stub
-        fail!("fetch not yet implemented");
-    }
-
-    fn fetch_curl(&self, dir: &Path, url: ~str)  {
-        util::note(fmt!("fetching from %s using curl", url));
-
-        let tar = dir.dir_path().push(&dir.file_path().to_str() + ~".tar");
-
-        if run::program_output(~"curl", ~[~"-f", ~"-s",
-                                          ~"-o", tar.to_str(),
-                                          url]).status != 0 {
-            util::error(~"fetching failed: downloading using curl failed");
-
-            fail!();
-        }
-
-        if run::program_output(~"tar", ~[~"-x", ~"--strip-components=1",
-                                         ~"-C", dir.to_str(), ~"-f",
-                                         tar.to_str()]).status != 0 {
-            util::error(~"fetching failed: extracting using tar failed" +
-                        ~"(is it a valid tar archive?)");
-
-           fail!();
-        }
-    }
-
-    fn fetch_git(&self, dir: &Path, url: ~str, mut target: Option<~str>)  {
-        util::note(fmt!("fetching from %s using git", url));
-
-        // Git can't clone into a non-empty directory
-        util::remove_dir_r(dir);
-
-        if run::program_output(~"git", ~[~"clone", url,
-                                         dir.to_str()]).status != 0 {
-            util::error(~"fetching failed: can't clone repository");
-            fail!();
-        }
-
-        if !target.is_none() {
-            let mut success = true;
-
-            do util::temp_change_dir(dir) {
-                success = run::program_output(~"git",
-                                              ~[~"checkout",
-                                                target.swap_unwrap()]).status != 0
-            }
-
-            if !success {
-                util::error(~"fetching failed: can't checkout target");
-                fail!();
-            }
-        }
-    }
-
-    fn prefer(&self, id: ~str, vers: Option<~str>)  {
-        let package = match util::get_pkg(id, vers) {
-            result::Ok(package) => package,
-            result::Err(err) => {
-                util::error(err);
-                fail!(); // Condition?
-            }
-        };
-        let name = package.id.path.to_str(); // ???
-
-        util::note(fmt!("preferring %s v%s", name, package.id.version.to_str()));
-
-        let bin_dir = util::root().push(~"bin");
-
-        for package.bins.each |&bin| {
-            let path = Path(bin);
-            let mut name = None;
-            for str::each_split_char(path.file_path().to_str(), '-') |s| {
-                name = Some(s.to_owned());
-                break;
-            }
-            let out = bin_dir.push(name.unwrap());
-
-            util::link_exe(&path, &out);
-            util::note(fmt!("linked %s", out.to_str()));
-        }
-
-        util::note(fmt!("preferred %s v%s", name, package.id.version.to_str()));
+    fn prefer(&self, _id: &str, _vers: Option<~str>)  {
+        fail!(~"prefer not yet implemented");
     }
 
     fn test(&self)  {
@@ -449,14 +346,15 @@ impl Ctx {
         fail!("test not yet implemented");
     }
 
-    fn uninstall(&self, _id: ~str, _vers: Option<~str>)  {
+    fn uninstall(&self, _id: &str, _vers: Option<~str>)  {
         fail!("uninstall not yet implemented");
     }
 
-    fn unprefer(&self, _id: ~str, _vers: Option<~str>)  {
+    fn unprefer(&self, _id: &str, _vers: Option<~str>)  {
         fail!("unprefer not yet implemented");
     }
 }
+
 
 pub fn main() {
     io::println("WARNING: The Rust package manager is experimental and may be unstable");
@@ -518,32 +416,6 @@ pub struct Crate {
     cfgs: ~[~str]
 }
 
-pub struct Listener {
-    cmds: ~[~str],
-    cb: ~fn()
-}
-
-pub fn run(listeners: ~[Listener]) {
-    let rcmd = copy os::args()[2];
-    let mut found = false;
-
-    for listeners.each |listener| {
-        for listener.cmds.each |&cmd| {
-            if cmd == rcmd {
-                (listener.cb)();
-
-                found = true;
-
-                break;
-            }
-        }
-    }
-
-    if !found {
-        os::set_exit_status(42);
-    }
-}
-
 pub impl Crate {
 
     fn new(p: &Path) -> Crate {
@@ -602,10 +474,6 @@ pub fn src_dir() -> Path {
     os::getcwd()
 }
 
-condition! {
-    bad_pkg_id: (super::Path, ~str) -> ::util::PkgId;
-}
-
 // An enumeration of the unpacked source of a package workspace.
 // This contains a list of files found in the source workspace.
 pub struct PkgSrc {
@@ -641,17 +509,19 @@ impl PkgSrc {
     fn check_dir(&self) -> Path {
         use conditions::nonexistent_package::cond;
 
-        debug!("Pushing onto root: %s | %s", self.id.path.to_str(),
+        debug!("Pushing onto root: %s | %s", self.id.to_str(),
                self.root.to_str());
 
-        let dir = self.root.push_rel(&self.id.path).normalize();
+        let mut dir = self.root.push("src");
+        dir = dir.push(self.id.to_str()); // ?? Should this use the version number?
 
         debug!("Checking dir: %s", dir.to_str());
 
-        // tjc: Rather than erroring out, need to try downloading the
-        // contents of the path to a local directory (#5679)
         if !os::path_exists(&dir) {
-            cond.raise((copy self.id, ~"missing package dir"));
+            if !self.fetch_git() {
+                cond.raise((copy self.id, ~"supplied path for package dir does not \
+                    exist, and couldn't interpret it as a URL fragment"));
+            }
         }
 
         if !os::path_is_dir(&dir) {
@@ -661,6 +531,28 @@ impl PkgSrc {
 
         dir
     }
+
+    /// Try interpreting self's package id as a remote package, and try
+    /// fetching it and caching it in a local directory. If that didn't
+    /// work, return false.
+    /// (right now we only support git)
+    fn fetch_git(&self) -> bool {
+
+        let mut local = self.root.push("src");
+        local = local.push(self.id.to_str());
+        // Git can't clone into a non-empty directory
+        os::remove_dir_recursive(&local);
+
+        let url = fmt!("https://%s", self.id.remote_path.to_str());
+        util::note(fmt!("git clone %s %s", url, local.to_str()));
+
+        if run::program_output(~"git", ~[~"clone", copy url, local.to_str()]).status != 0 {
+            util::note(fmt!("fetching %s failed: can't clone repository", url));
+            return false;
+        }
+        true
+    }
+
 
     // If a file named "pkg.rs" in the current directory exists,
     // return the path for it. Otherwise, None
@@ -680,7 +572,7 @@ impl PkgSrc {
     /// Requires that dashes in p have already been normalized to
     /// underscores
     fn stem_matches(&self, p: &Path) -> bool {
-        let self_id = normalize(~copy self.id.path).filestem();
+        let self_id = self.id.local_path.filestem();
         if self_id == p.filestem() {
             return true;
         }
@@ -715,7 +607,7 @@ impl PkgSrc {
 
         let dir = self.check_dir();
         let prefix = dir.components.len();
-        debug!("Matching against %?", self.id.path.filestem());
+        debug!("Matching against %?", self.id.local_path.filestem());
         for os::walk_dir(&dir) |pth| {
             match pth.filename() {
                 Some(~"lib.rs") => push_crate(&mut self.libs,
@@ -752,8 +644,7 @@ impl PkgSrc {
                     src_dir: &Path,
                     crates: &[Crate],
                     cfgs: &[~str],
-                    test: bool, crate_type: crate_type) {
-
+                    what: OutputType) {
         for crates.each |&crate| {
             let path = &src_dir.push_rel(&crate.file).normalize();
             util::note(fmt!("build_crates: compiling %s", path.to_str()));
@@ -763,7 +654,7 @@ impl PkgSrc {
                                      dst_dir,
                                      crate.flags,
                                      crate.cfgs + cfgs,
-                                     false, test, crate_type);
+                                     false, what);
             if !result {
                 build_err::cond.raise(fmt!("build failure on %s",
                                            path.to_str()));
@@ -776,12 +667,13 @@ impl PkgSrc {
     fn build(&self, dst_dir: &Path, cfgs: ~[~str], maybe_sysroot: Option<@Path>) {
         let dir = self.check_dir();
         debug!("Building libs");
-        self.build_crates(maybe_sysroot, dst_dir, &dir, self.libs, cfgs, false, lib_crate);
+        self.build_crates(maybe_sysroot, dst_dir, &dir, self.libs, cfgs, Lib);
         debug!("Building mains");
-        self.build_crates(maybe_sysroot, dst_dir, &dir, self.mains, cfgs, false, bin_crate);
+        self.build_crates(maybe_sysroot, dst_dir, &dir, self.mains, cfgs, Main);
         debug!("Building tests");
-        self.build_crates(maybe_sysroot, dst_dir, &dir, self.tests, cfgs, true, bin_crate);
+        self.build_crates(maybe_sysroot, dst_dir, &dir, self.tests, cfgs, Test);
         debug!("Building benches");
-        self.build_crates(maybe_sysroot, dst_dir, &dir, self.benchs, cfgs, true, bin_crate);
+        self.build_crates(maybe_sysroot, dst_dir, &dir, self.benchs, cfgs, Bench);
     }
 }
+
