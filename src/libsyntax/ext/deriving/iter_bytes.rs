@@ -41,16 +41,6 @@ pub fn expand_deriving_iter_bytes(cx: @ext_ctxt,
     expand_deriving_generic(cx, span, mitem, in_items, &trait_def)
 }
 
-pub fn expand_deriving_obsolete(cx: @ext_ctxt,
-                                span: span,
-                                _mitem: @meta_item,
-                                in_items: ~[@item])
-                             -> ~[@item] {
-    cx.span_err(span, ~"`#[deriving_iter_bytes]` is obsolete; use `#[deriving(IterBytes)]` \
-                        instead");
-    in_items
-}
-
 fn iter_bytes_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> @expr {
     let lsb0_f = match substr.nonself_args {
         [l, f] => ~[l, f],
