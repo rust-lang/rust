@@ -63,6 +63,7 @@ pub mod flatpipes;
 
 pub mod bitv;
 pub mod deque;
+#[cfg(not(stage0))]
 pub mod fun_treemap;
 pub mod list;
 pub mod priority_queue;
