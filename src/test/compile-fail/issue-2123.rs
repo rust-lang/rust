@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use x = m::f; //~ ERROR failed to resolve import
+              //~^ unresolved import: there is no `f` in `m`
 
 mod m {
 }
