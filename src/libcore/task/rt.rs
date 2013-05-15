@@ -17,6 +17,7 @@ The task interface to the runtime
 #[doc(hidden)]; // FIXME #3538
 
 use libc;
+use task::local_data_priv::TaskLocalMap;
 
 #[allow(non_camel_case_types)] // runtime type
 pub type sched_id = int;
@@ -67,5 +68,11 @@ pub extern {
     #[rust_stack]
     fn rust_set_task_local_data(task: *rust_task, map: *libc::c_void);
     #[rust_stack]
+    #[cfg(stage0)]
     fn rust_task_local_data_atexit(task: *rust_task, cleanup_fn: *u8);
+    #[rust_stack]
+    #[cfg(not(stage0))]
+    fn rust_task_local_data_atexit(
+        task: *rust_task,
+        cleanup_fn: extern "C" fn(a: *libc::c_void));
 }
