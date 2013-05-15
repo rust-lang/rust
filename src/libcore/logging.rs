@@ -10,17 +10,16 @@
 
 //! Logging
 
-pub mod rustrt {
-    use libc;
-
-    pub extern {
-        unsafe fn rust_log_console_on();
-        unsafe fn rust_log_console_off();
-        unsafe fn rust_log_str(level: u32,
-                               string: *libc::c_char,
-                               size: libc::size_t);
-    }
-}
+use option::*;
+use either::*;
+use rt;
+use rt::logging::{Logger, StdErrLogger};
+use io;
+use libc;
+use repr;
+use vec;
+use cast;
+use str;
 
 /// Turns on logging to stdout globally
 pub fn console_on() {
@@ -55,8 +54,46 @@ pub fn log_type<T>(level: u32, object: &T) {
     let bytes = do io::with_bytes_writer |writer| {
         repr::write_repr(writer, object);
     };
+
+    match rt::context() {
+        rt::OldTaskContext => {
+            unsafe {
+                let len = bytes.len() as libc::size_t;
+                rustrt::rust_log_str(level, cast::transmute(vec::raw::to_ptr(bytes)), len);
+            }
+        }
+        _ => {
+            // XXX: Bad allocation
+            let msg = str::from_bytes(bytes);
+            newsched_log_str(msg);
+        }
+    }
+}
+
+fn newsched_log_str(msg: ~str) {
     unsafe {
-        let len = bytes.len() as libc::size_t;
-        rustrt::rust_log_str(level, transmute(vec::raw::to_ptr(bytes)), len);
+        match rt::local_services::unsafe_try_borrow_local_services() {
+            Some(local) => {
+                // Use the available logger
+                (*local).logger.log(Left(msg));
+            }
+            None => {
+                // There is no logger anywhere, just write to stderr
+                let mut logger = StdErrLogger;
+                logger.log(Left(msg));
+            }
+        }
+    }
+}
+
+pub mod rustrt {
+    use libc;
+
+    pub extern {
+        unsafe fn rust_log_console_on();
+        unsafe fn rust_log_console_off();
+        unsafe fn rust_log_str(level: u32,
+                               string: *libc::c_char,
+                               size: libc::size_t);
     }
 }

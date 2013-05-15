@@ -195,8 +195,8 @@ rust_register_exit_function
 rust_get_global_data_ptr
 rust_inc_kernel_live_count
 rust_dec_kernel_live_count
-rust_get_exchange_count_ptr
-rust_get_sched_tls_key
+rust_exchange_count
+rust_get_rt_tls_key
 swap_registers
 rust_readdir
 rust_opendir
@@ -234,3 +234,8 @@ rust_try
 rust_begin_unwind
 rust_take_task_borrow_list
 rust_set_task_borrow_list
+rust_valgrind_stack_register
+rust_valgrind_stack_deregister
+rust_take_env_lock
+rust_drop_env_lock
+rust_update_log_settings

@@ -10,20 +10,24 @@
 
 use option::*;
 use result::*;
-
-use super::io::net::ip::IpAddr;
-use super::uv::*;
-use super::rtio::*;
 use ops::Drop;
 use old_iter::CopyableIter;
 use cell::{Cell, empty_cell};
 use cast::transmute;
-use super::sched::{Scheduler, local_sched};
+use clone::Clone;
+use rt::io::IoError;
+use rt::io::net::ip::IpAddr;
+use rt::uv::*;
+use rt::uv::idle::IdleWatcher;
+use rt::rtio::*;
+use rt::sched::{Scheduler, local_sched};
+use rt::io::{standard_error, OtherIoError};
+use rt::tube::Tube;
 
 #[cfg(test)] use container::Container;
 #[cfg(test)] use uint;
 #[cfg(test)] use unstable::run_in_bare_thread;
-#[cfg(test)] use super::test::*;
+#[cfg(test)] use rt::test::*;
 
 pub struct UvEventLoop {
     uvio: UvIoFactory
@@ -64,7 +68,16 @@ impl EventLoop for UvEventLoop {
             assert!(status.is_none());
             let mut idle_watcher = idle_watcher;
             idle_watcher.stop();
-            idle_watcher.close();
+            idle_watcher.close(||());
+            f();
+        }
+    }
+
+    fn callback_ms(&mut self, ms: u64, f: ~fn()) {
+        let mut timer =  TimerWatcher::new(self.uvio.uv_loop());
+        do timer.start(ms, 0) |timer, status| {
+            assert!(status.is_none());
+            timer.close(||());
             f();
         }
     }
@@ -100,11 +113,11 @@ impl IoFactory for UvIoFactory {
     // Connect to an address and return a new stream
     // NB: This blocks the task waiting on the connection.
     // It would probably be better to return a future
-    fn connect(&mut self, addr: IpAddr) -> Option<~StreamObject> {
+    fn tcp_connect(&mut self, addr: IpAddr) -> Result<~RtioTcpStreamObject, IoError> {
         // Create a cell in the task to hold the result. We will fill
         // the cell before resuming the task.
         let result_cell = empty_cell();
-        let result_cell_ptr: *Cell<Option<~StreamObject>> = &result_cell;
+        let result_cell_ptr: *Cell<Result<~RtioTcpStreamObject, IoError>> = &result_cell;
 
         let scheduler = local_sched::take();
         assert!(scheduler.in_task_context());
@@ -122,21 +135,26 @@ impl IoFactory for UvIoFactory {
             // Wait for a connection
             do tcp_watcher.connect(addr) |stream_watcher, status| {
                 rtdebug!("connect: in connect callback");
-                let maybe_stream = if status.is_none() {
+                if status.is_none() {
                     rtdebug!("status is none");
-                    Some(~UvStream(stream_watcher))
+                    let res = Ok(~UvTcpStream { watcher: stream_watcher });
+
+                    // Store the stream in the task's stack
+                    unsafe { (*result_cell_ptr).put_back(res); }
+
+                    // Context switch
+                    let scheduler = local_sched::take();
+                    scheduler.resume_task_immediately(task_cell.take());
                 } else {
                     rtdebug!("status is some");
-                    stream_watcher.close(||());
-                    None
+                    let task_cell = Cell(task_cell.take());
+                    do stream_watcher.close {
+                        let res = Err(uv_error_to_io_error(status.get()));
+                        unsafe { (*result_cell_ptr).put_back(res); }
+                        let scheduler = local_sched::take();
+                        scheduler.resume_task_immediately(task_cell.take());
+                    }
                 };
-
-                // Store the stream in the task's stack
-                unsafe { (*result_cell_ptr).put_back(maybe_stream); }
-
-                // Context switch
-                let scheduler = local_sched::take();
-                scheduler.resume_task_immediately(task_cell.take());
             }
         }
 
@@ -144,103 +162,124 @@ impl IoFactory for UvIoFactory {
         return result_cell.take();
     }
 
-    fn bind(&mut self, addr: IpAddr) -> Option<~TcpListenerObject> {
+    fn tcp_bind(&mut self, addr: IpAddr) -> Result<~RtioTcpListenerObject, IoError> {
         let mut watcher = TcpWatcher::new(self.uv_loop());
-        watcher.bind(addr);
-        return Some(~UvTcpListener(watcher));
+        match watcher.bind(addr) {
+            Ok(_) => Ok(~UvTcpListener::new(watcher)),
+            Err(uverr) => {
+                let scheduler = local_sched::take();
+                do scheduler.deschedule_running_task_and_then |task| {
+                    let task_cell = Cell(task);
+                    do watcher.as_stream().close {
+                        let scheduler = local_sched::take();
+                        scheduler.resume_task_immediately(task_cell.take());
+                    }
+                }
+                Err(uv_error_to_io_error(uverr))
+            }
+        }
     }
 }
 
-pub struct UvTcpListener(TcpWatcher);
+// FIXME #6090: Prefer newtype structs but Drop doesn't work
+pub struct UvTcpListener {
+    watcher: TcpWatcher,
+    listening: bool,
+    incoming_streams: Tube<Result<~RtioTcpStreamObject, IoError>>
+}
 
 impl UvTcpListener {
-    fn watcher(&self) -> TcpWatcher {
-        match self { &UvTcpListener(w) => w }
+    fn new(watcher: TcpWatcher) -> UvTcpListener {
+        UvTcpListener {
+            watcher: watcher,
+            listening: false,
+            incoming_streams: Tube::new()
+        }
     }
 
-    fn close(&self) {
-        // XXX: Need to wait until close finishes before returning
-        self.watcher().as_stream().close(||());
-    }
+    fn watcher(&self) -> TcpWatcher { self.watcher }
 }
 
 impl Drop for UvTcpListener {
     fn finalize(&self) {
-        // XXX: Again, this never gets called. Use .close() instead
-        //self.watcher().as_stream().close(||());
-    }
-}
-
-impl TcpListener for UvTcpListener {
-
-    fn listen(&mut self) -> Option<~StreamObject> {
-        rtdebug!("entering listen");
-        let result_cell = empty_cell();
-        let result_cell_ptr: *Cell<Option<~StreamObject>> = &result_cell;
-
-        let server_tcp_watcher = self.watcher();
-
+        let watcher = self.watcher();
         let scheduler = local_sched::take();
-        assert!(scheduler.in_task_context());
-
         do scheduler.deschedule_running_task_and_then |task| {
             let task_cell = Cell(task);
-            let mut server_tcp_watcher = server_tcp_watcher;
-            do server_tcp_watcher.listen |server_stream_watcher, status| {
-                let maybe_stream = if status.is_none() {
-                    let mut server_stream_watcher = server_stream_watcher;
-                    let mut loop_ = loop_from_watcher(&server_stream_watcher);
-                    let client_tcp_watcher = TcpWatcher::new(&mut loop_).as_stream();
-                    // XXX: Needs to be surfaced in interface
-                    server_stream_watcher.accept(client_tcp_watcher);
-                    Some(~UvStream::new(client_tcp_watcher))
-                } else {
-                    None
-                };
-
-                unsafe { (*result_cell_ptr).put_back(maybe_stream); }
-
-                rtdebug!("resuming task from listen");
-                // Context switch
+            do watcher.as_stream().close {
                 let scheduler = local_sched::take();
                 scheduler.resume_task_immediately(task_cell.take());
             }
         }
-
-        assert!(!result_cell.is_empty());
-        return result_cell.take();
     }
 }
 
-pub struct UvStream(StreamWatcher);
+impl RtioTcpListener for UvTcpListener {
 
-impl UvStream {
-    fn new(watcher: StreamWatcher) -> UvStream {
-        UvStream(watcher)
-    }
+    fn accept(&mut self) -> Result<~RtioTcpStreamObject, IoError> {
+        rtdebug!("entering listen");
 
-    fn watcher(&self) -> StreamWatcher {
-        match self { &UvStream(w) => w }
-    }
+        if self.listening {
+            return self.incoming_streams.recv();
+        }
 
-    // XXX: finalize isn't working for ~UvStream???
-    fn close(&self) {
-        // XXX: Need to wait until this finishes before returning
-        self.watcher().close(||());
+        self.listening = true;
+
+        let server_tcp_watcher = self.watcher();
+        let incoming_streams_cell = Cell(self.incoming_streams.clone());
+
+        let incoming_streams_cell = Cell(incoming_streams_cell.take());
+        let mut server_tcp_watcher = server_tcp_watcher;
+        do server_tcp_watcher.listen |server_stream_watcher, status| {
+            let maybe_stream = if status.is_none() {
+                let mut server_stream_watcher = server_stream_watcher;
+                let mut loop_ = server_stream_watcher.event_loop();
+                let client_tcp_watcher = TcpWatcher::new(&mut loop_);
+                let client_tcp_watcher = client_tcp_watcher.as_stream();
+                // XXX: Need's to be surfaced in interface
+                server_stream_watcher.accept(client_tcp_watcher);
+                Ok(~UvTcpStream { watcher: client_tcp_watcher })
+            } else {
+                Err(standard_error(OtherIoError))
+            };
+
+            let mut incoming_streams = incoming_streams_cell.take();
+            incoming_streams.send(maybe_stream);
+            incoming_streams_cell.put_back(incoming_streams);
+        }
+
+        return self.incoming_streams.recv();
     }
 }
 
-impl Drop for UvStream {
+// FIXME #6090: Prefer newtype structs but Drop doesn't work
+pub struct UvTcpStream {
+    watcher: StreamWatcher
+}
+
+impl UvTcpStream {
+    fn watcher(&self) -> StreamWatcher { self.watcher }
+}
+
+impl Drop for UvTcpStream {
     fn finalize(&self) {
-        rtdebug!("closing stream");
-        //self.watcher().close(||());
+        rtdebug!("closing tcp stream");
+        let watcher = self.watcher();
+        let scheduler = local_sched::take();
+        do scheduler.deschedule_running_task_and_then |task| {
+            let task_cell = Cell(task);
+            do watcher.close {
+                let scheduler = local_sched::take();
+                scheduler.resume_task_immediately(task_cell.take());
+            }
+        }
     }
 }
 
-impl Stream for UvStream {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, ()> {
+impl RtioTcpStream for UvTcpStream {
+    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
         let result_cell = empty_cell();
-        let result_cell_ptr: *Cell<Result<uint, ()>> = &result_cell;
+        let result_cell_ptr: *Cell<Result<uint, IoError>> = &result_cell;
 
         let scheduler = local_sched::take();
         assert!(scheduler.in_task_context());
@@ -271,7 +310,7 @@ impl Stream for UvStream {
                     assert!(nread >= 0);
                     Ok(nread as uint)
                 } else {
-                    Err(())
+                    Err(uv_error_to_io_error(status.unwrap()))
                 };
 
                 unsafe { (*result_cell_ptr).put_back(result); }
@@ -285,9 +324,9 @@ impl Stream for UvStream {
         return result_cell.take();
     }
 
-    fn write(&mut self, buf: &[u8]) -> Result<(), ()> {
+    fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
         let result_cell = empty_cell();
-        let result_cell_ptr: *Cell<Result<(), ()>> = &result_cell;
+        let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
         let scheduler = local_sched::take();
         assert!(scheduler.in_task_context());
         let watcher = self.watcher();
@@ -295,14 +334,12 @@ impl Stream for UvStream {
         do scheduler.deschedule_running_task_and_then |task| {
             let mut watcher = watcher;
             let task_cell = Cell(task);
-            let buf = unsafe { &*buf_ptr };
-            // XXX: OMGCOPIES
-            let buf = buf.to_vec();
+            let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
             do watcher.write(buf) |_watcher, status| {
                 let result = if status.is_none() {
                     Ok(())
                 } else {
-                    Err(())
+                    Err(uv_error_to_io_error(status.unwrap()))
                 };
 
                 unsafe { (*result_cell_ptr).put_back(result); }
@@ -320,10 +357,12 @@ impl Stream for UvStream {
 #[test]
 fn test_simple_io_no_connect() {
     do run_in_newsched_task {
-        let io = unsafe { local_sched::unsafe_borrow_io() };
-        let addr = next_test_ip4();
-        let maybe_chan = io.connect(addr);
-        assert!(maybe_chan.is_none());
+        unsafe {
+            let io = local_sched::unsafe_borrow_io();
+            let addr = next_test_ip4();
+            let maybe_chan = (*io).tcp_connect(addr);
+            assert!(maybe_chan.is_err());
+        }
     }
 }
 
@@ -336,8 +375,8 @@ fn test_simple_tcp_server_and_client() {
         do spawntask_immediately {
             unsafe {
                 let io = local_sched::unsafe_borrow_io();
-                let mut listener = io.bind(addr).unwrap();
-                let mut stream = listener.listen().unwrap();
+                let mut listener = (*io).tcp_bind(addr).unwrap();
+                let mut stream = listener.accept().unwrap();
                 let mut buf = [0, .. 2048];
                 let nread = stream.read(buf).unwrap();
                 assert!(nread == 8);
@@ -345,17 +384,14 @@ fn test_simple_tcp_server_and_client() {
                     rtdebug!("%u", buf[i] as uint);
                     assert!(buf[i] == i as u8);
                 }
-                stream.close();
-                listener.close();
             }
         }
 
         do spawntask_immediately {
             unsafe {
                 let io = local_sched::unsafe_borrow_io();
-                let mut stream = io.connect(addr).unwrap();
+                let mut stream = (*io).tcp_connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
-                stream.close();
             }
         }
     }
@@ -368,8 +404,8 @@ fn test_read_and_block() {
 
         do spawntask_immediately {
             let io = unsafe { local_sched::unsafe_borrow_io() };
-            let mut listener = io.bind(addr).unwrap();
-            let mut stream = listener.listen().unwrap();
+            let mut listener = unsafe { (*io).tcp_bind(addr).unwrap() };
+            let mut stream = listener.accept().unwrap();
             let mut buf = [0, .. 2048];
 
             let expected = 32;
@@ -392,26 +428,24 @@ fn test_read_and_block() {
                 do scheduler.deschedule_running_task_and_then |task| {
                     let task = Cell(task);
                     do local_sched::borrow |scheduler| {
-                        scheduler.task_queue.push_back(task.take());
+                        scheduler.enqueue_task(task.take());
                     }
                 }
             }
 
             // Make sure we had multiple reads
             assert!(reads > 1);
-
-            stream.close();
-            listener.close();
         }
 
         do spawntask_immediately {
-            let io = unsafe { local_sched::unsafe_borrow_io() };
-            let mut stream = io.connect(addr).unwrap();
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
-            stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
-            stream.close();
+            unsafe {
+                let io = local_sched::unsafe_borrow_io();
+                let mut stream = (*io).tcp_connect(addr).unwrap();
+                stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
+                stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
+                stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
+                stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
+            }
         }
 
     }
@@ -426,34 +460,33 @@ fn test_read_read_read() {
         do spawntask_immediately {
             unsafe {
                 let io = local_sched::unsafe_borrow_io();
-                let mut listener = io.bind(addr).unwrap();
-                let mut stream = listener.listen().unwrap();
+                let mut listener = (*io).tcp_bind(addr).unwrap();
+                let mut stream = listener.accept().unwrap();
                 let buf = [1, .. 2048];
                 let mut total_bytes_written = 0;
                 while total_bytes_written < MAX {
                     stream.write(buf);
                     total_bytes_written += buf.len();
                 }
-                stream.close();
-                listener.close();
             }
         }
 
         do spawntask_immediately {
-            let io = unsafe { local_sched::unsafe_borrow_io() };
-            let mut stream = io.connect(addr).unwrap();
-            let mut buf = [0, .. 2048];
-            let mut total_bytes_read = 0;
-            while total_bytes_read < MAX {
-                let nread = stream.read(buf).unwrap();
-                rtdebug!("read %u bytes", nread as uint);
-                total_bytes_read += nread;
-                for uint::range(0, nread) |i| {
-                    assert!(buf[i] == 1);
+            unsafe {
+                let io = local_sched::unsafe_borrow_io();
+                let mut stream = (*io).tcp_connect(addr).unwrap();
+                let mut buf = [0, .. 2048];
+                let mut total_bytes_read = 0;
+                while total_bytes_read < MAX {
+                    let nread = stream.read(buf).unwrap();
+                    rtdebug!("read %u bytes", nread as uint);
+                    total_bytes_read += nread;
+                    for uint::range(0, nread) |i| {
+                        assert!(buf[i] == 1);
+                    }
                 }
+                rtdebug!("read %u bytes total", total_bytes_read as uint);
             }
-            rtdebug!("read %u bytes total", total_bytes_read as uint);
-            stream.close();
         }
     }
 }
