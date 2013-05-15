@@ -39,6 +39,7 @@
 *.diff
 *.rej
 *.swp
+*.swo
 *.tmp
 *.pyc
 *.elc
