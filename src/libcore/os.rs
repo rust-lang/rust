@@ -289,6 +289,33 @@ pub fn setenv(n: &str, v: &str) {
     }
 }
 
+/// Remove a variable from the environment entirely
+pub fn unsetenv(n: &str) {
+    #[cfg(unix)]
+    fn _unsetenv(n: &str) {
+        unsafe {
+            do with_env_lock {
+                do str::as_c_str(n) |nbuf| {
+                    libc::funcs::posix01::unistd::unsetenv(nbuf);
+                }
+            }
+        }
+    }
+    #[cfg(windows)]
+    fn _unsetenv(n: &str) {
+        unsafe {
+            do with_env_lock {
+                use os::win32::as_utf16_p;
+                do as_utf16_p(n) |nbuf| {
+                    libc::SetEnvironmentVariableW(nbuf, ptr::null());
+                }
+            }
+        }
+    }
+
+    _unsetenv(n);
+}
+
 pub fn fdopen(fd: c_int) -> *FILE {
     unsafe {
         return do as_c_charp("r") |modebuf| {
@@ -1412,7 +1439,7 @@ mod tests {
     use option::Some;
     use option;
     use os::{as_c_charp, env, getcwd, getenv, make_absolute, real_args};
-    use os::{remove_file, setenv};
+    use os::{remove_file, setenv, unsetenv};
     use os;
     use path::Path;
     use rand::RngUtil;
@@ -1446,6 +1473,14 @@ mod tests {
         let n = make_rand_name();
         setenv(n, ~"VALUE");
         assert!(getenv(n) == option::Some(~"VALUE"));
+    }
+
+    #[test]
+    fn test_unsetenv() {
+        let n = make_rand_name();
+        setenv(n, ~"VALUE");
+        unsetenv(n);
+        assert!(getenv(n) == option::None);
     }
 
     #[test]
