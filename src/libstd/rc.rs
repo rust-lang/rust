@@ -103,28 +103,20 @@ mod test_rc {
     fn test_clone() {
         let x = Rc::new(Cell(5));
         let y = x.clone();
-        do x.with_borrow |cell| {
-            do value.with_mut_ref |inner| {
-                *inner = 20;
-            }
+        do x.borrow().with_mut_ref |inner| {
+            *inner = 20;
         }
-        do y.with_borrow |value| {
-            assert_eq!(value.take(), 20);
-        }
+        assert_eq!(y.borrow().take(), 20);
     }
 
     #[test]
     fn test_deep_clone() {
         let x = Rc::new(Cell(5));
         let y = x.deep_clone();
-        do x.with_borrow |cell| {
-            do value.with_mut_ref |inner| {
-                *inner = 20;
-            }
+        do x.borrow().with_mut_ref |inner| {
+            *inner = 20;
         }
-        do y.with_borrow |value| {
-            assert_eq!(value.take(), 5);
-        }
+        assert_eq!(y.borrow().take(), 5);
     }
 
     #[test]
@@ -134,7 +126,7 @@ mod test_rc {
     }
 
     #[test]
-    fn test_clone() {
+    fn test_simple_clone() {
         let x = Rc::new(5);
         let y = x.clone();
         assert_eq!(*x.borrow(), 5);
