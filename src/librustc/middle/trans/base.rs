@@ -1664,12 +1664,12 @@ pub fn new_fn_ctxt(ccx: @CrateContext,
 // the function's fn_ctxt).  create_llargs_for_fn_args populates the llargs
 // field of the fn_ctxt with
 pub fn create_llargs_for_fn_args(cx: fn_ctxt,
-                                 ty_self: self_arg,
+                                 self_arg: self_arg,
                                  args: &[ast::arg])
                               -> ~[ValueRef] {
     let _icx = cx.insn_ctxt("create_llargs_for_fn_args");
 
-    match ty_self {
+    match self_arg {
       impl_self(tt) => {
         cx.llself = Some(ValSelfData {
             v: cx.llenv,
@@ -1701,7 +1701,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
                             bcx: block,
                             args: &[ast::arg],
                             raw_llargs: &[ValueRef],
-                            arg_tys: &[ty::arg]) -> block {
+                            arg_tys: &[ty::t]) -> block {
     let _icx = fcx.insn_ctxt("copy_args_to_allocas");
     let mut bcx = bcx;
 
@@ -1720,7 +1720,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
     }
 
     for uint::range(0, arg_tys.len()) |arg_n| {
-        let arg_ty = &arg_tys[arg_n];
+        let arg_ty = arg_tys[arg_n];
         let raw_llarg = raw_llargs[arg_n];
         let arg_id = args[arg_n].id;
 
@@ -1732,15 +1732,15 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
         // This alloca should be optimized away by LLVM's mem-to-reg pass in
         // the event it's not truly needed.
         // only by value if immediate:
-        let llarg = if datum::appropriate_mode(arg_ty.ty).is_by_value() {
-            let alloc = alloc_ty(bcx, arg_ty.ty);
+        let llarg = if datum::appropriate_mode(arg_ty).is_by_value() {
+            let alloc = alloc_ty(bcx, arg_ty);
             Store(bcx, raw_llarg, alloc);
             alloc
         } else {
             raw_llarg
         };
 
-        add_clean(bcx, llarg, arg_ty.ty);
+        add_clean(bcx, llarg, arg_ty);
 
         bcx = _match::bind_irrefutable_pat(bcx,
                                           args[arg_n].pat,
@@ -1801,7 +1801,7 @@ pub fn trans_closure(ccx: @CrateContext,
                      decl: &ast::fn_decl,
                      body: &ast::blk,
                      llfndecl: ValueRef,
-                     ty_self: self_arg,
+                     self_arg: self_arg,
                      param_substs: Option<@param_substs>,
                      id: ast::node_id,
                      impl_id: Option<ast::def_id>,
@@ -1825,7 +1825,7 @@ pub fn trans_closure(ccx: @CrateContext,
                                impl_id,
                                param_substs,
                                Some(body.span));
-    let raw_llargs = create_llargs_for_fn_args(fcx, ty_self, decl.inputs);
+    let raw_llargs = create_llargs_for_fn_args(fcx, self_arg, decl.inputs);
 
     // Set the fixed stack segment flag if necessary.
     if attr::attrs_contains_name(attributes, "fixed_stack_segment") {
@@ -1882,7 +1882,7 @@ pub fn trans_fn(ccx: @CrateContext,
                 decl: &ast::fn_decl,
                 body: &ast::blk,
                 llfndecl: ValueRef,
-                ty_self: self_arg,
+                self_arg: self_arg,
                 param_substs: Option<@param_substs>,
                 id: ast::node_id,
                 impl_id: Option<ast::def_id>,
@@ -1890,8 +1890,8 @@ pub fn trans_fn(ccx: @CrateContext,
     let do_time = ccx.sess.trans_stats();
     let start = if do_time { time::get_time() }
                 else { time::Timespec::new(0, 0) };
-    debug!("trans_fn(ty_self=%?, param_substs=%s)",
-           ty_self,
+    debug!("trans_fn(self_arg=%?, param_substs=%s)",
+           self_arg,
            param_substs.repr(ccx.tcx));
     let _icx = ccx.insn_ctxt("trans_fn");
     ccx.stats.n_fns += 1;
@@ -1902,7 +1902,7 @@ pub fn trans_fn(ccx: @CrateContext,
                   decl,
                   body,
                   llfndecl,
-                  ty_self,
+                  self_arg,
                   param_substs,
                   id,
                   impl_id,
@@ -1987,7 +1987,7 @@ pub fn trans_enum_variant(ccx: @CrateContext,
             Some(&local_mem(x)) => x,
             _ => fail!("trans_enum_variant: how do we know this works?"),
         };
-        let arg_ty = arg_tys[i].ty;
+        let arg_ty = arg_tys[i];
         memcpy_ty(bcx, lldestptr, llarg, arg_ty);
     }
     build_return(bcx);
@@ -2061,7 +2061,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
                                    local_mem")
             }
         };
-        let arg_ty = arg_tys[i].ty;
+        let arg_ty = arg_tys[i];
         memcpy_ty(bcx, lldestptr, llarg, arg_ty);
     }
 

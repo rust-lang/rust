@@ -187,7 +187,7 @@ fn get_method_sig(
                                     &ty_m.decl,
                                     ty_m.purity,
                                     ty_m.ident,
-                                    Some(ty_m.self_ty.node),
+                                    Some(ty_m.explicit_self.node),
                                     &ty_m.generics,
                                     extract::interner()
                                 ))
@@ -197,7 +197,7 @@ fn get_method_sig(
                                     &m.decl,
                                     m.purity,
                                     m.ident,
-                                    Some(m.self_ty.node),
+                                    Some(m.explicit_self.node),
                                     &m.generics,
                                     extract::interner()
                                 ))
@@ -218,7 +218,7 @@ fn get_method_sig(
                             &method.decl,
                             method.purity,
                             method.ident,
-                            Some(method.self_ty.node),
+                            Some(method.explicit_self.node),
                             &method.generics,
                             extract::interner()
                         ))

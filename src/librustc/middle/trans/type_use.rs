@@ -78,7 +78,7 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
         ty::ty_bare_fn(ty::BareFnTy {sig: ref sig, _}) |
         ty::ty_closure(ty::ClosureTy {sig: ref sig, _}) => {
             for sig.inputs.each |arg| {
-                type_needs(cx, use_repr, arg.ty);
+                type_needs(cx, use_repr, *arg);
             }
         }
         _ => ()
@@ -331,18 +331,16 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
         node_type_needs(cx, use_tydesc, val.id);
       }
       expr_call(f, _, _) => {
-          for vec::each(ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx,
-                                                           f.id))) |a| {
-              type_needs(cx, use_repr, a.ty);
+          for ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id)).each |a| {
+              type_needs(cx, use_repr, *a);
           }
       }
       expr_method_call(rcvr, _, _, _, _) => {
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, rcvr.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
 
-        for ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx,
-                                               e.callee_id)).each |a| {
-            type_needs(cx, use_repr, a.ty);
+        for ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, e.callee_id)).each |a| {
+            type_needs(cx, use_repr, *a);
         }
         mark_for_method_call(cx, e.id, e.callee_id);
       }

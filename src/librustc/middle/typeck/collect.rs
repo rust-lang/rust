@@ -52,7 +52,7 @@ use syntax::ast_map;
 use syntax::ast_util::{local_def, split_trait_methods};
 use syntax::codemap::span;
 use syntax::codemap;
-use syntax::print::pprust::{path_to_str, self_ty_to_str};
+use syntax::print::pprust::{path_to_str, explicit_self_to_str};
 use syntax::visit;
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
@@ -227,26 +227,26 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         }, _) => {
             let trait_ty_generics = ty_generics(ccx, region_paramd, generics, 0);
 
-            // For each method, construct a suitable ty::method and
+            // For each method, construct a suitable ty::Method and
             // store it into the `tcx.methods` table:
             for ms.each |m| {
                 let ty_method = @match m {
                     &ast::required(ref m) => {
                         ty_method_of_trait_method(
                             ccx, trait_id, region_paramd, generics,
-                            &m.id, &m.ident, &m.self_ty,
+                            &m.id, &m.ident, &m.explicit_self,
                             &m.generics, &m.purity, &m.decl)
                     }
 
                     &ast::provided(ref m) => {
                         ty_method_of_trait_method(
                             ccx, trait_id, region_paramd, generics,
-                            &m.id, &m.ident, &m.self_ty,
+                            &m.id, &m.ident, &m.explicit_self,
                             &m.generics, &m.purity, &m.decl)
                     }
                 };
 
-                if ty_method.self_ty == ast::sty_static {
+                if ty_method.explicit_self == ast::sty_static {
                     make_static_method_ty(ccx, trait_id, ty_method,
                                           &trait_ty_generics);
                 }
@@ -270,7 +270,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 
     fn make_static_method_ty(ccx: &CrateCtxt,
                              trait_id: ast::node_id,
-                             m: &ty::method,
+                             m: &ty::Method,
                              trait_ty_generics: &ty::Generics) {
         // If declaration is
         //
@@ -376,27 +376,27 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                                  trait_generics: &ast::Generics,
                                  m_id: &ast::node_id,
                                  m_ident: &ast::ident,
-                                 m_self_ty: &ast::self_ty,
+                                 m_explicit_self: &ast::explicit_self,
                                  m_generics: &ast::Generics,
                                  m_purity: &ast::purity,
-                                 m_decl: &ast::fn_decl) -> ty::method
+                                 m_decl: &ast::fn_decl) -> ty::Method
     {
         let trait_self_ty = ty::mk_self(this.tcx, local_def(trait_id));
-        let rscope = MethodRscope::new(m_self_ty.node, trait_rp, trait_generics);
+        let rscope = MethodRscope::new(m_explicit_self.node, trait_rp, trait_generics);
         let (transformed_self_ty, fty) =
             astconv::ty_of_method(this, &rscope, *m_purity, &m_generics.lifetimes,
-                                  trait_self_ty, *m_self_ty, m_decl);
+                                  trait_self_ty, *m_explicit_self, m_decl);
         let num_trait_type_params = trait_generics.ty_params.len();
-        ty::method {
-            ident: *m_ident,
-            generics: ty_generics(this, None, m_generics, num_trait_type_params),
-            transformed_self_ty: transformed_self_ty,
-            fty: fty,
-            self_ty: m_self_ty.node,
+        ty::Method::new(
+            *m_ident,
+            ty_generics(this, None, m_generics, num_trait_type_params),
+            transformed_self_ty,
+            fty,
+            m_explicit_self.node,
             // assume public, because this is only invoked on trait methods
-            vis: ast::public,
-            def_id: local_def(*m_id)
-        }
+            ast::public,
+            local_def(*m_id)
+        )
     }
 }
 
@@ -444,7 +444,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
 pub fn compare_impl_method(tcx: ty::ctxt,
                            impl_tps: uint,
                            cm: &ConvertedMethod,
-                           trait_m: &ty::method,
+                           trait_m: &ty::Method,
                            trait_substs: &ty::substs,
                            self_ty: ty::t) {
     debug!("compare_impl_method()");
@@ -459,7 +459,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     // that the error messages you get out of this code are a bit more
     // inscrutable, particularly for cases where one method has no
     // self.
-    match (&trait_m.self_ty, &impl_m.self_ty) {
+    match (&trait_m.explicit_self, &impl_m.explicit_self) {
         (&ast::sty_static, &ast::sty_static) => {}
         (&ast::sty_static, _) => {
             tcx.sess.span_err(
@@ -467,7 +467,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
                 fmt!("method `%s` has a `%s` declaration in the impl, \
                       but not in the trait",
                      *tcx.sess.str_of(trait_m.ident),
-                     self_ty_to_str(impl_m.self_ty, tcx.sess.intr())));
+                     explicit_self_to_str(impl_m.explicit_self, tcx.sess.intr())));
             return;
         }
         (_, &ast::sty_static) => {
@@ -476,7 +476,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
                 fmt!("method `%s` has a `%s` declaration in the trait, \
                       but not in the impl",
                      *tcx.sess.str_of(trait_m.ident),
-                     self_ty_to_str(trait_m.self_ty, tcx.sess.intr())));
+                     explicit_self_to_str(trait_m.explicit_self, tcx.sess.intr())));
             return;
         }
         _ => {
@@ -576,14 +576,10 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     // represent the self argument (unless this is a static method).
     // This argument will have the *transformed* self type.
     for trait_m.transformed_self_ty.each |&t| {
-        trait_fn_args.push(ty::arg {
-            ty: t
-        });
+        trait_fn_args.push(t);
     }
     for impl_m.transformed_self_ty.each |&t| {
-        impl_fn_args.push(ty::arg {
-            ty: t
-        });
+        impl_fn_args.push(t);
     }
 
     // Add in the normal arguments.
@@ -727,7 +723,7 @@ pub fn convert_field(ccx: &CrateCtxt,
 }
 
 pub struct ConvertedMethod {
-    mty: @ty::method,
+    mty: @ty::Method,
     id: ast::node_id,
     span: span,
     body_id: ast::node_id
@@ -780,16 +776,16 @@ pub fn convert_methods(ccx: &CrateCtxt,
                     untransformed_rcvr_ty: ty::t,
                     rcvr_generics: &ast::Generics,
                     rcvr_visibility: ast::visibility,
-                    method_generics: &ast::Generics) -> ty::method
+                    method_generics: &ast::Generics) -> ty::Method
     {
-        let rscope = MethodRscope::new(m.self_ty.node,
+        let rscope = MethodRscope::new(m.explicit_self.node,
                                        rp,
                                        rcvr_generics);
         let (transformed_self_ty, fty) =
             astconv::ty_of_method(ccx, &rscope, m.purity,
                                   &method_generics.lifetimes,
                                   untransformed_rcvr_ty,
-                                  m.self_ty, &m.decl);
+                                  m.explicit_self, &m.decl);
 
         // if the method specifies a visibility, use that, otherwise
         // inherit the visibility from the impl (so `foo` in `pub impl
@@ -798,15 +794,15 @@ pub fn convert_methods(ccx: &CrateCtxt,
         let method_vis = m.vis.inherit_from(rcvr_visibility);
 
         let num_rcvr_type_params = rcvr_generics.ty_params.len();
-        ty::method {
-            ident: m.ident,
-            generics: ty_generics(ccx, None, &m.generics, num_rcvr_type_params),
-            transformed_self_ty: transformed_self_ty,
-            fty: fty,
-            self_ty: m.self_ty.node,
-            vis: method_vis,
-            def_id: local_def(m.id)
-        }
+        ty::Method::new(
+            m.ident,
+            ty_generics(ccx, None, &m.generics, num_rcvr_type_params),
+            transformed_self_ty,
+            fty,
+            m.explicit_self.node,
+            method_vis,
+            local_def(m.id)
+        )
     }
 }
 

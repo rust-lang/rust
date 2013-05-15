@@ -25,7 +25,6 @@ use middle::trans::inline;
 use middle::trans::monomorphize;
 use middle::trans::type_of::*;
 use middle::ty;
-use middle::ty::arg;
 use middle::typeck;
 use util::common::indenter;
 use util::ppaux::Repr;
@@ -70,7 +69,12 @@ pub fn trans_impl(ccx: @CrateContext, path: path, name: ast::ident,
                 }
             }
 
-            trans_method(ccx, path, *method, param_substs_opt, self_ty, llfn,
+            trans_method(ccx,
+                         path,
+                         *method,
+                         param_substs_opt,
+                         self_ty,
+                         llfn,
                          ast_util::local_def(id));
         }
     }
@@ -99,18 +103,17 @@ pub fn trans_method(ccx: @CrateContext,
                     llfn: ValueRef,
                     impl_id: ast::def_id) {
     // figure out how self is being passed
-    let self_arg = match method.self_ty.node {
+    let self_arg = match method.explicit_self.node {
       ast::sty_static => {
         no_self
       }
       _ => {
         // determine the (monomorphized) type that `self` maps to for
         // this method
-        let self_ty;
-        match base_self_ty {
-            None => self_ty = ty::node_id_to_type(ccx.tcx, method.self_id),
-            Some(provided_self_ty) => self_ty = provided_self_ty
-        }
+        let self_ty = match base_self_ty {
+            None => ty::node_id_to_type(ccx.tcx, method.self_id),
+            Some(provided_self_ty) => provided_self_ty,
+        };
         let self_ty = match param_substs {
             None => self_ty,
             Some(@param_substs {tys: ref tys, _}) => {
@@ -120,7 +123,7 @@ pub fn trans_method(ccx: @CrateContext,
         debug!("calling trans_fn with base_self_ty %s, self_ty %s",
                base_self_ty.repr(ccx.tcx),
                self_ty.repr(ccx.tcx));
-        match method.self_ty.node {
+        match method.explicit_self.node {
           ast::sty_value => {
             impl_owned_self(self_ty)
           }
@@ -151,12 +154,10 @@ pub fn trans_self_arg(bcx: block,
     let mut temp_cleanups = ~[];
 
     // Compute the type of self.
-    let self_arg = arg {
-        ty: monomorphize_type(bcx, mentry.self_arg.ty)
-    };
+    let self_ty = monomorphize_type(bcx, mentry.self_ty);
 
     let result = trans_arg_expr(bcx,
-                                self_arg,
+                                self_ty,
                                 mentry.self_mode,
                                 base,
                                 &mut temp_cleanups,
@@ -589,7 +590,7 @@ pub fn trans_trait_callee(bcx: block,
                           n_method: uint,
                           self_expr: @ast::expr,
                           store: ty::TraitStore,
-                          explicit_self: ast::self_ty_)
+                          explicit_self: ast::explicit_self_)
                        -> Callee {
     //!
     //
@@ -626,7 +627,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
                                      n_method: uint,
                                      llpair: ValueRef,
                                      store: ty::TraitStore,
-                                     explicit_self: ast::self_ty_)
+                                     explicit_self: ast::explicit_self_)
                                   -> Callee {
     //!
     //

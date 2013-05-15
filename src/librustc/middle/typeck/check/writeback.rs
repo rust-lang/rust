@@ -13,7 +13,6 @@
 // substitutions.
 
 use middle::pat_util;
-use middle::ty::arg;
 use middle::ty;
 use middle::typeck::check::{FnCtxt, SelfInfo};
 use middle::typeck::infer::{force_all, resolve_all, resolve_region};
@@ -63,14 +62,9 @@ fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
     match fcx.inh.method_map.find(&id) {
         None => {}
         Some(mme) => {
-            for resolve_type_vars_in_type(fcx, sp, mme.self_arg.ty).each |t| {
+            for resolve_type_vars_in_type(fcx, sp, mme.self_ty).each |t| {
                 let method_map = fcx.ccx.method_map;
-                let new_entry = method_map_entry {
-                    self_arg: arg {
-                        ty: *t
-                    },
-                    ..*mme
-                };
+                let new_entry = method_map_entry { self_ty: *t, ..*mme };
                 debug!("writeback::resolve_method_map_entry(id=%?, \
                         new_entry=%?)",
                        id, new_entry);

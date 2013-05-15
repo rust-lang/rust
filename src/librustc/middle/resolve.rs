@@ -10,7 +10,7 @@
 
 use driver::session::Session;
 use metadata::csearch::{each_path, get_trait_method_def_ids};
-use metadata::csearch::get_method_name_and_self_ty;
+use metadata::csearch::get_method_name_and_explicit_self;
 use metadata::csearch::get_static_methods_if_impl;
 use metadata::csearch::get_type_name_if_impl;
 use metadata::cstore::find_extern_mod_stmt_cnum;
@@ -28,7 +28,7 @@ use syntax::ast::{def_const, def_foreign_mod, def_fn, def_id, def_label};
 use syntax::ast::{def_local, def_mod, def_prim_ty, def_region, def_self};
 use syntax::ast::{def_self_ty, def_static_method, def_struct, def_ty};
 use syntax::ast::{def_ty_param, def_typaram_binder, def_trait};
-use syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
+use syntax::ast::{def_upvar, def_use, def_variant, explicit_self_, expr, expr_assign_op};
 use syntax::ast::{expr_binary, expr_break, expr_field};
 use syntax::ast::{expr_fn_block, expr_index, expr_method_call, expr_path};
 use syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
@@ -45,7 +45,7 @@ use syntax::ast::{local, local_crate, lt, method, mul};
 use syntax::ast::{named_field, ne, neg, node_id, pat, pat_enum, pat_ident};
 use syntax::ast::{Path, pat_lit, pat_range, pat_struct};
 use syntax::ast::{prim_ty, private, provided};
-use syntax::ast::{public, required, rem, self_ty_, shl, shr, stmt_decl};
+use syntax::ast::{public, required, rem, shl, shr, stmt_decl};
 use syntax::ast::{struct_field, struct_variant_kind};
 use syntax::ast::{sty_static, subtract, trait_ref, tuple_variant_kind, Ty};
 use syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
@@ -96,7 +96,7 @@ pub struct MethodInfo {
     did: def_id,
     n_tps: uint,
     ident: ident,
-    self_type: self_ty_
+    explicit_self: explicit_self_
 }
 
 pub struct Impl {
@@ -1203,7 +1203,7 @@ pub impl Resolver {
                 // Bail out early if there are no static methods.
                 let mut has_static_methods = false;
                 for methods.each |method| {
-                    match method.self_ty.node {
+                    match method.explicit_self.node {
                         sty_static => has_static_methods = true,
                         _ => {}
                     }
@@ -1236,7 +1236,7 @@ pub impl Resolver {
 
                         // For each static method...
                         for methods.each |method| {
-                            match method.self_ty.node {
+                            match method.explicit_self.node {
                                 sty_static => {
                                     // Add the static method to the
                                     // module.
@@ -1274,7 +1274,7 @@ pub impl Resolver {
                 let mut has_static_methods = false;
                 for (*methods).each |method| {
                     let ty_m = trait_method_to_ty_method(method);
-                    match ty_m.self_ty.node {
+                    match ty_m.explicit_self.node {
                         sty_static => {
                             has_static_methods = true;
                             break;
@@ -1306,7 +1306,7 @@ pub impl Resolver {
                     let ident = ty_m.ident;
                     // Add it to the trait info if not static,
                     // add it as a name in the trait module otherwise.
-                    match ty_m.self_ty.node {
+                    match ty_m.explicit_self.node {
                         sty_static => {
                             let def = def_static_method(
                                 local_def(ty_m.id),
@@ -1612,9 +1612,9 @@ pub impl Resolver {
                                                             def_id);
               let mut interned_method_names = HashSet::new();
               for method_def_ids.each |&method_def_id| {
-                  let (method_name, self_ty) =
-                      get_method_name_and_self_ty(self.session.cstore,
-                                                  method_def_id);
+                  let (method_name, explicit_self) =
+                      get_method_name_and_explicit_self(self.session.cstore,
+                                                        method_def_id);
 
                   debug!("(building reduced graph for \
                           external crate) ... adding \
@@ -1622,7 +1622,7 @@ pub impl Resolver {
                          *self.session.str_of(method_name));
 
                   // Add it to the trait info if not static.
-                  if self_ty != sty_static {
+                  if explicit_self != sty_static {
                       interned_method_names.insert(method_name);
                   }
               }
@@ -3774,7 +3774,7 @@ pub impl Resolver {
                               outer_type_parameter_count,
                               rib_kind);
         // we only have self ty if it is a non static method
-        let self_binding = match method.self_ty.node {
+        let self_binding = match method.explicit_self.node {
           sty_static => { NoSelfBinding }
           _ => { HasSelfBinding(method.self_id, false) }
         };

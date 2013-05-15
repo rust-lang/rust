@@ -653,7 +653,7 @@ pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
                                 item, tcx, cdata);
         let name = item_name(intr, item);
         let arg_tys = match ty::get(ctor_ty).sty {
-          ty::ty_bare_fn(ref f) => f.sig.inputs.map(|a| a.ty),
+          ty::ty_bare_fn(ref f) => copy f.sig.inputs,
           _ => ~[], // Nullary enum variant.
         };
         match variant_disr_val(item) {
@@ -670,7 +670,7 @@ pub fn get_enum_variants(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     return infos;
 }
 
-fn get_self_ty(item: ebml::Doc) -> ast::self_ty_ {
+fn get_explicit_self(item: ebml::Doc) -> ast::explicit_self_ {
     fn get_mutability(ch: u8) -> ast::mutability {
         match ch as char {
             'i' => { ast::m_imm }
@@ -682,11 +682,11 @@ fn get_self_ty(item: ebml::Doc) -> ast::self_ty_ {
         }
     }
 
-    let self_type_doc = reader::get_doc(item, tag_item_trait_method_self_ty);
-    let string = reader::doc_as_str(self_type_doc);
+    let explicit_self_doc = reader::get_doc(item, tag_item_trait_method_explicit_self);
+    let string = reader::doc_as_str(explicit_self_doc);
 
-    let self_ty_kind = string[0];
-    match self_ty_kind as char {
+    let explicit_self_kind = string[0];
+    match explicit_self_kind as char {
         's' => { return ast::sty_static; }
         'v' => { return ast::sty_value; }
         '@' => { return ast::sty_box(get_mutability(string[1])); }
@@ -696,7 +696,7 @@ fn get_self_ty(item: ebml::Doc) -> ast::self_ty_ {
             return ast::sty_region(None, get_mutability(string[1]));
         }
         _ => {
-            fail!("unknown self type code: `%c`", self_ty_kind as char);
+            fail!("unknown self type code: `%c`", explicit_self_kind as char);
         }
     }
 }
@@ -707,12 +707,12 @@ fn item_impl_methods(intr: @ident_interner, cdata: cmd, item: ebml::Doc,
     for reader::tagged_docs(item, tag_item_impl_method) |doc| {
         let m_did = reader::with_doc_data(doc, |d| parse_def_id(d));
         let mth_item = lookup_item(m_did.node, cdata.data);
-        let self_ty = get_self_ty(mth_item);
+        let explicit_self = get_explicit_self(mth_item);
         rslt.push(@resolve::MethodInfo {
                     did: translate_def_id(cdata, m_did),
                     n_tps: item_ty_param_count(mth_item) - base_tps,
                     ident: item_name(intr, mth_item),
-                    self_type: self_ty});
+                    explicit_self: explicit_self});
     }
     rslt
 }
@@ -748,19 +748,19 @@ pub fn get_impls_for_mod(intr: @ident_interner,
     @result
 }
 
-pub fn get_method_name_and_self_ty(
+pub fn get_method_name_and_explicit_self(
     intr: @ident_interner,
     cdata: cmd,
-    id: ast::node_id) -> (ast::ident, ast::self_ty_)
+    id: ast::node_id) -> (ast::ident, ast::explicit_self_)
 {
     let method_doc = lookup_item(id, cdata.data);
     let name = item_name(intr, method_doc);
-    let self_ty = get_self_ty(method_doc);
-    (name, self_ty)
+    let explicit_self = get_explicit_self(method_doc);
+    (name, explicit_self)
 }
 
 pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
-                  tcx: ty::ctxt) -> ty::method
+                  tcx: ty::ctxt) -> ty::Method
 {
     let method_doc = lookup_item(id, cdata.data);
     let def_id = item_def_id(method_doc, cdata);
@@ -770,19 +770,20 @@ pub fn get_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     let transformed_self_ty = doc_transformed_self_ty(method_doc, tcx, cdata);
     let fty = doc_method_fty(method_doc, tcx, cdata);
     let vis = item_visibility(method_doc);
-    let self_ty = get_self_ty(method_doc);
-    ty::method {
-        ident: name,
-        generics: ty::Generics {
+    let explicit_self = get_explicit_self(method_doc);
+
+    ty::Method::new(
+        name,
+        ty::Generics {
             type_param_defs: type_param_defs,
             region_param: None
         },
-        transformed_self_ty: transformed_self_ty,
-        fty: fty,
-        self_ty: self_ty,
-        vis: vis,
-        def_id: def_id
-    }
+        transformed_self_ty,
+        fty,
+        explicit_self,
+        vis,
+        def_id
+    )
 }
 
 pub fn get_trait_method_def_ids(cdata: cmd,
@@ -823,19 +824,20 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
         };
 
         let transformed_self_ty = doc_transformed_self_ty(mth, tcx, cdata);
-        let self_ty = get_self_ty(mth);
-        let ty_method = ty::method {
-            ident: name,
-            generics: ty::Generics {
+        let explicit_self = get_explicit_self(mth);
+
+        let ty_method = ty::Method::new(
+            name,
+            ty::Generics {
                 type_param_defs: type_param_defs,
                 region_param: None
             },
-            transformed_self_ty: transformed_self_ty,
-            fty: fty,
-            self_ty: self_ty,
-            vis: ast::public,
-            def_id: did
-        };
+            transformed_self_ty,
+            fty,
+            explicit_self,
+            ast::public,
+            did
+        );
         let provided_trait_method_info = ProvidedTraitMethodInfo {
             ty: ty_method,
             def_id: did

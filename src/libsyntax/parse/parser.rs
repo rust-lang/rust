@@ -19,7 +19,7 @@ use ast::{_mod, add, arg, arm, attribute, bind_by_ref, bind_infer};
 use ast::{bind_by_copy, bitand, bitor, bitxor, blk};
 use ast::{blk_check_mode, box};
 use ast::{crate, crate_cfg, decl, decl_item};
-use ast::{decl_local, default_blk, deref, div, enum_def};
+use ast::{decl_local, default_blk, deref, div, enum_def, explicit_self};
 use ast::{expr, expr_, expr_addr_of, expr_match, expr_again};
 use ast::{expr_assign, expr_assign_op, expr_binary, expr_block};
 use ast::{expr_break, expr_call, expr_cast, expr_copy, expr_do_body};
@@ -43,7 +43,7 @@ use ast::{named_field, neg, node_id, noreturn, not, pat, pat_box, pat_enum};
 use ast::{pat_ident, pat_lit, pat_range, pat_region, pat_struct};
 use ast::{pat_tup, pat_uniq, pat_wild, private};
 use ast::{rem, required};
-use ast::{ret_style, return_val, self_ty, shl, shr, stmt, stmt_decl};
+use ast::{ret_style, return_val, shl, shr, stmt, stmt_decl};
 use ast::{stmt_expr, stmt_semi, stmt_mac, struct_def, struct_field};
 use ast::{struct_variant_kind, subtract};
 use ast::{sty_box, sty_region, sty_static, sty_uniq, sty_value};
@@ -504,7 +504,7 @@ pub impl Parser {
 
             let generics = p.parse_generics();
 
-            let (self_ty, d) = do self.parse_fn_decl_with_self() |p| {
+            let (explicit_self, d) = do self.parse_fn_decl_with_self() |p| {
                 // This is somewhat dubious; We don't want to allow argument
                 // names to be left off if there is a definition...
                 either::Left(p.parse_arg_general(false))
@@ -526,7 +526,7 @@ pub impl Parser {
                     purity: pur,
                     decl: d,
                     generics: generics,
-                    self_ty: self_ty,
+                    explicit_self: explicit_self,
                     id: p.get_id(),
                     span: mk_sp(lo, hi)
                 })
@@ -540,7 +540,7 @@ pub impl Parser {
                     ident: ident,
                     attrs: attrs,
                     generics: generics,
-                    self_ty: self_ty,
+                    explicit_self: explicit_self,
                     purity: pur,
                     decl: d,
                     body: body,
@@ -3002,11 +3002,11 @@ pub impl Parser {
         &self,
         parse_arg_fn:
         &fn(&Parser) -> arg_or_capture_item
-    ) -> (self_ty, fn_decl) {
-        fn maybe_parse_self_ty(
-            cnstr: &fn(v: mutability) -> ast::self_ty_,
+    ) -> (explicit_self, fn_decl) {
+        fn maybe_parse_explicit_self(
+            cnstr: &fn(v: mutability) -> ast::explicit_self_,
             p: &Parser
-        ) -> ast::self_ty_ {
+        ) -> ast::explicit_self_ {
             // We need to make sure it isn't a mode or a type
             if p.token_is_keyword(&~"self", &p.look_ahead(1)) ||
                 ((p.token_is_keyword(&~"const", &p.look_ahead(1)) ||
@@ -3022,7 +3022,7 @@ pub impl Parser {
             }
         }
 
-        fn maybe_parse_borrowed_self_ty(this: &Parser) -> ast::self_ty_ {
+        fn maybe_parse_borrowed_explicit_self(this: &Parser) -> ast::explicit_self_ {
             // The following things are possible to see here:
             //
             //     fn(&self)
@@ -3066,15 +3066,15 @@ pub impl Parser {
         // A bit of complexity and lookahead is needed here in order to to be
         // backwards compatible.
         let lo = self.span.lo;
-        let self_ty = match *self.token {
+        let explicit_self = match *self.token {
           token::BINOP(token::AND) => {
-            maybe_parse_borrowed_self_ty(self)
+            maybe_parse_borrowed_explicit_self(self)
           }
           token::AT => {
-            maybe_parse_self_ty(sty_box, self)
+            maybe_parse_explicit_self(sty_box, self)
           }
           token::TILDE => {
-            maybe_parse_self_ty(sty_uniq, self)
+            maybe_parse_explicit_self(sty_uniq, self)
           }
           token::IDENT(*) if self.is_self_ident() => {
             self.bump();
@@ -3087,7 +3087,7 @@ pub impl Parser {
 
         // If we parsed a self type, expect a comma before the argument list.
         let args_or_capture_items;
-        if self_ty != sty_static {
+        if explicit_self != sty_static {
             match *self.token {
                 token::COMMA => {
                     self.bump();
@@ -3132,7 +3132,7 @@ pub impl Parser {
             cf: ret_style
         };
 
-        (spanned(lo, hi, self_ty), fn_decl)
+        (spanned(lo, hi, explicit_self), fn_decl)
     }
 
     // parse the |arg, arg| header on a lambda
@@ -3199,7 +3199,7 @@ pub impl Parser {
         let pur = self.parse_fn_purity();
         let ident = self.parse_ident();
         let generics = self.parse_generics();
-        let (self_ty, decl) = do self.parse_fn_decl_with_self() |p| {
+        let (explicit_self, decl) = do self.parse_fn_decl_with_self() |p| {
             p.parse_arg()
         };
 
@@ -3210,7 +3210,7 @@ pub impl Parser {
             ident: ident,
             attrs: attrs,
             generics: generics,
-            self_ty: self_ty,
+            explicit_self: explicit_self,
             purity: pur,
             decl: decl,
             body: body,

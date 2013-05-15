@@ -28,7 +28,7 @@ pub fn expand_deriving_clone(cx: @ext_ctxt,
             MethodDef {
                 name: ~"clone",
                 generics: LifetimeBounds::empty(),
-                self_ty: borrowed_explicit_self(),
+                explicit_self: borrowed_explicit_self(),
                 args: ~[],
                 ret_ty: Self,
                 const_nonmatching: false,
