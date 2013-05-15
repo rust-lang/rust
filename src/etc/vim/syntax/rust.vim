@@ -15,7 +15,7 @@ syn keyword   rustOperator    as
 
 syn keyword   rustKeyword     break copy do drop extern
 syn keyword   rustKeyword     for if impl let log
-syn keyword   rustKeyword     copy do drop extern
+syn keyword   rustKeyword     copy do extern
 syn keyword   rustKeyword     for impl let log
 syn keyword   rustKeyword     loop mod once priv pub
 syn keyword   rustKeyword     return
