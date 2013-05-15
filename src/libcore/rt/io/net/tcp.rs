@@ -238,7 +238,7 @@ mod test {
         }
     }
 
-    #[test]
+    #[test] #[ignore(reason = "hangs on mac")]
     fn multiple_connect_interleaved_lazy_schedule() {
         do run_in_newsched_task {
             let addr = next_test_ip4();
