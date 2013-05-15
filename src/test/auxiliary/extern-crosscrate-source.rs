@@ -15,8 +15,10 @@
 
 pub mod rustrt {
     pub extern {
-        pub fn rust_dbg_call(cb: *u8, data: libc::uintptr_t)
-                          -> libc::uintptr_t;
+        pub fn rust_dbg_call(cb: extern "C" fn(data: libc::uintptr_t)
+                                               -> libc::uintptr_t,
+                             data: libc::uintptr_t)
+                             -> libc::uintptr_t;
     }
 }
 

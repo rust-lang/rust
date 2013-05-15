@@ -15,10 +15,10 @@ extern fn g() {
 }
 
 pub fn main() {
-    // extern functions are *u8 types
-    let a: *u8 = f;
-    let b: *u8 = f;
-    let c: *u8 = g;
+    // extern functions are extern function types
+    let a: extern "C" fn() = f;
+    let b: extern "C" fn() = f;
+    let c: extern "C" fn() = g;
 
     assert_eq!(a, b);
     assert!(a != c);

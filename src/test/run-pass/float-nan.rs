@@ -10,16 +10,14 @@
 
 extern mod std;
 
-use core::num::Float::{
-  NaN, infinity, neg_infinity
-};
+use core::num::Float;
 
 pub fn main() {
-  let nan = NaN::<float>();
+  let nan = Float::NaN::<float>();
   assert!((nan).is_NaN());
 
-  let inf = infinity::<float>();
-  assert_eq!(-inf, neg_infinity::<float>());
+  let inf = Float::infinity::<float>();
+  assert_eq!(-inf, Float::neg_infinity::<float>());
 
   assert!( nan !=  nan);
   assert!( nan != -nan);
