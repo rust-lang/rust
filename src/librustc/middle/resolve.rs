@@ -28,6 +28,7 @@ use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ast_util::{Privacy, Public, Private};
 use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
 use syntax::attr::{attr_metas, contains_name};
+use syntax::parse::token;
 use syntax::parse::token::ident_interner;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::path_to_str;
@@ -805,8 +806,7 @@ pub fn Resolver(session: Session,
         self_ident: special_idents::self_,
         type_self_ident: special_idents::type_self,
 
-        primitive_type_table: @PrimitiveTypeTable(session.
-                                                  parse_sess.interner),
+        primitive_type_table: @PrimitiveTypeTable(token::get_ident_interner()),
 
         namespaces: ~[ TypeNS, ValueNS ],
 
@@ -2942,7 +2942,7 @@ impl Resolver {
                                  module_: @mut Module,
                                  module_path: &[ident])
                                  -> ResolveResult<ModulePrefixResult> {
-        let interner = self.session.parse_sess.interner;
+        let interner = token::get_ident_interner();
 
         // Start at the current module if we see `self` or `super`, or at the
         // top of the crate otherwise.

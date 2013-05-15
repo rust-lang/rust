@@ -35,6 +35,7 @@ use syntax::ast_util::{Private, Public, is_local};
 use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
 use syntax::attr;
 use syntax::codemap::span;
+use syntax::parse::token;
 use syntax::visit;
 
 pub fn check_crate(tcx: ty::ctxt,
@@ -120,7 +121,7 @@ pub fn check_crate(tcx: ty::ctxt,
                                        ast_map::node_id_to_str(
                                             tcx.items,
                                             method_id,
-                                            tcx.sess.parse_sess.interner)));
+                                           token::get_ident_interner())));
             }
             None => {
                 tcx.sess.span_bug(span, "method not found in \
@@ -184,7 +185,7 @@ pub fn check_crate(tcx: ty::ctxt,
                                        ast_map::node_id_to_str(
                                             tcx.items,
                                             method_id,
-                                            tcx.sess.parse_sess.interner)));
+                                           token::get_ident_interner())));
             }
             None => {
                 tcx.sess.span_bug(span, "method not found in \
@@ -216,9 +217,7 @@ pub fn check_crate(tcx: ty::ctxt,
                                            ast_map::node_id_to_str(
                                                 tcx.items,
                                                 item_id,
-                                                tcx.sess
-                                                   .parse_sess
-                                                   .interner)));
+                                               token::get_ident_interner())));
                 }
                 None => {
                     tcx.sess.span_bug(span, "item not found in AST map?!");
@@ -236,8 +235,8 @@ pub fn check_crate(tcx: ty::ctxt,
             if field.ident != ident { loop; }
             if field.vis == private {
                 tcx.sess.span_err(span, fmt!("field `%s` is private",
-                                             *tcx.sess.parse_sess.interner
-                                                 .get(ident)));
+                                             *token::get_ident_interner()
+                                             .get(ident)));
             }
             break;
         }
@@ -257,9 +256,7 @@ pub fn check_crate(tcx: ty::ctxt,
                      !privileged_items.contains(&(container_id.node))) {
                 tcx.sess.span_err(span,
                                   fmt!("method `%s` is private",
-                                       *tcx.sess
-                                           .parse_sess
-                                           .interner
+                                       *token::get_ident_interner()
                                            .get(*name)));
             }
         } else {
@@ -268,7 +265,7 @@ pub fn check_crate(tcx: ty::ctxt,
             if visibility != public {
                 tcx.sess.span_err(span,
                                   fmt!("method `%s` is private",
-                                       *tcx.sess.parse_sess.interner
+                                       *token::get_ident_interner()
                                            .get(*name)));
             }
         }
@@ -289,9 +286,7 @@ pub fn check_crate(tcx: ty::ctxt,
                             !privileged_items.contains(&def_id.node) {
                         tcx.sess.span_err(span,
                                           fmt!("function `%s` is private",
-                                               *tcx.sess
-                                                   .parse_sess
-                                                   .interner
+                                               *token::get_ident_interner()
                                                    .get(copy *path
                                                              .idents
                                                              .last())));
@@ -300,9 +295,7 @@ pub fn check_crate(tcx: ty::ctxt,
                                                        def_id) != public {
                     tcx.sess.span_err(span,
                                       fmt!("function `%s` is private",
-                                           *tcx.sess
-                                               .parse_sess
-                                               .interner
+                                           *token::get_ident_interner()
                                                .get(copy *path
                                                          .idents
                                                          .last())));
@@ -350,10 +343,7 @@ pub fn check_crate(tcx: ty::ctxt,
                                                                     `%s` \
                                                                     is \
                                                                     private",
-                                                                   *tcx
-                                                                   .sess
-                                                                   .parse_sess
-                                                                   .interner
+                                                                   *token::get_ident_interner()
                                                                    .get
                                                                    (method
                                                                     .ident)));

@@ -43,14 +43,10 @@ pub mod classify;
 pub mod obsolete;
 
 // info about a parsing session.
-// This structure and the reader both have
-// an interner associated with them. If they're
-// not the same, bad things can happen.
 pub struct ParseSess {
     cm: @codemap::CodeMap, // better be the same as the one in the reader!
     next_id: node_id,
     span_diagnostic: @span_handler, // better be the same as the one in the reader!
-    interner: @ident_interner,
 }
 
 pub fn new_parse_sess(demitter: Option<Emitter>) -> @mut ParseSess {
@@ -59,7 +55,6 @@ pub fn new_parse_sess(demitter: Option<Emitter>) -> @mut ParseSess {
         cm: cm,
         next_id: 1,
         span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
-        interner: get_ident_interner(),
     }
 }
 
@@ -70,7 +65,6 @@ pub fn new_parse_sess_special_handler(sh: @span_handler,
         cm: cm,
         next_id: 1,
         span_diagnostic: sh,
-        interner: get_ident_interner(),
     }
 }
 
