@@ -49,6 +49,7 @@ use num::Zero;
 use old_iter::{BaseIter, MutableIter, ExtendedIter};
 use old_iter;
 use str::StrSlice;
+use clone::DeepClone;
 
 #[cfg(test)] use str;
 
@@ -57,6 +58,15 @@ use str::StrSlice;
 pub enum Option<T> {
     None,
     Some(T),
+}
+
+impl<T: DeepClone> DeepClone for Option<T> {
+    fn deep_clone(&self) -> Option<T> {
+        match *self {
+            Some(ref x) => Some(x.deep_clone()),
+            None => None
+        }
+    }
 }
 
 impl<T:Ord> Ord for Option<T> {
