@@ -458,6 +458,7 @@ pub fn iter_bytes_2<A:IterBytes,B:IterBytes>(a: &A, b: &B,
     b.iter_bytes(lsb0, |bytes| {flag = z(bytes); flag});
 }
 #[cfg(not(stage0))]
+#[inline(always)]
 pub fn iter_bytes_2<A:IterBytes,B:IterBytes>(a: &A, b: &B,
                                              lsb0: bool, z: Cb) -> bool {
     a.iter_bytes(lsb0, z) && b.iter_bytes(lsb0, z)
