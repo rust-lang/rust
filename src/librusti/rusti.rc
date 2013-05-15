@@ -446,7 +446,7 @@ mod tests {
         }
     }
 
-    #[test]
+    #[test] #[ignore]
     fn run_all() {
         // By default, unit tests are run in parallel. Rusti, on the other hand,
         // does not enjoy doing this. I suspect that it is because the LLVM
