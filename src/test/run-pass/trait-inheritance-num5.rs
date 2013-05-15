@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use core::cmp::{Eq, Ord};
-use core::num::NumCast::from;
+use core::num::NumCast;
 
 pub trait NumExt: Eq + Num + NumCast {}
 
@@ -17,7 +17,7 @@ impl NumExt for f32 {}
 impl NumExt for int {}
 
 fn num_eq_one<T:NumExt>() -> T {
-    from(1)
+    NumCast::from(1)
 }
 
 pub fn main() {

@@ -13,13 +13,13 @@
 extern mod std;
 
 use core::cmp::{Eq, Ord};
-use core::num::NumCast::from;
+use core::num::NumCast;
 
 pub trait NumExt: Num + NumCast + Eq + Ord {}
 
 pub trait FloatExt: NumExt + ApproxEq<Self> {}
 
-fn greater_than_one<T:NumExt>(n: &T) -> bool { *n > from(1) }
-fn greater_than_one_float<T:FloatExt>(n: &T) -> bool { *n > from(1) }
+fn greater_than_one<T:NumExt>(n: &T) -> bool { *n > NumCast::from(1) }
+fn greater_than_one_float<T:FloatExt>(n: &T) -> bool { *n > NumCast::from(1) }
 
 pub fn main() {}

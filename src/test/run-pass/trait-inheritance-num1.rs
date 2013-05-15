@@ -9,12 +9,12 @@
 // except according to those terms.
 
 use core::cmp::Ord;
-use core::num::NumCast::from;
+use core::num::NumCast;
 
 pub trait NumExt: Num + NumCast + Ord { }
 
 fn greater_than_one<T:NumExt>(n: &T) -> bool {
-    *n > from(1)
+    *n > NumCast::from(1)
 }
 
 pub fn main() {}

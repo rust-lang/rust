@@ -15,7 +15,6 @@
 extern mod std;
 
 use core::cmp::{Eq, Ord};
-use core::num::NumCast::from;
 
 pub trait TypeExt {}
 
