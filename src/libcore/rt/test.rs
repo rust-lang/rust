@@ -19,7 +19,7 @@ use rt::local_services::LocalServices;
 pub fn run_in_newsched_task(f: ~fn()) {
     use unstable::run_in_bare_thread;
     use super::sched::Task;
-    use super::uvio::UvEventLoop;
+    use rt::uv::uvio::UvEventLoop;
 
     let f = Cell(f);
 
@@ -63,6 +63,46 @@ pub fn spawntask_immediately(f: ~fn()) {
         }
     }
 }
+
+/// Create a new task and run it right now. Aborts on failure
+pub fn spawntask_later(f: ~fn()) {
+    use super::sched::*;
+
+    let mut sched = local_sched::take();
+    let task = ~Task::with_local(&mut sched.stack_pool,
+                                 LocalServices::without_unwinding(),
+                                 f);
+
+    sched.task_queue.push_front(task);
+    local_sched::put(sched);
+}
+
+/// Spawn a task and either run it immediately or run it later
+pub fn spawntask_random(f: ~fn()) {
+    use super::sched::*;
+    use rand::{Rand, rng};
+
+    let mut rng = rng();
+    let run_now: bool = Rand::rand(&mut rng);
+
+    let mut sched = local_sched::take();
+    let task = ~Task::with_local(&mut sched.stack_pool,
+                                 LocalServices::without_unwinding(),
+                                 f);
+
+    if run_now {
+        do sched.switch_running_tasks_and_then(task) |task| {
+            let task = Cell(task);
+            do local_sched::borrow |sched| {
+                sched.task_queue.push_front(task.take());
+            }
+        }
+    } else {
+        sched.task_queue.push_front(task);
+        local_sched::put(sched);
+    }
+}
+
 
 /// Spawn a task and wait for it to finish, returning whether it completed successfully or failed
 pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {

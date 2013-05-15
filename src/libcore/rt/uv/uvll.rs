@@ -33,6 +33,13 @@ use libc::{size_t, c_int, c_uint, c_void, c_char, uintptr_t};
 use libc::{malloc, free};
 use prelude::*;
 
+pub static UNKNOWN: c_int = -1;
+pub static OK: c_int = 0;
+pub static EOF: c_int = 1;
+pub static EADDRINFO: c_int = 2;
+pub static EACCES: c_int = 3;
+pub static ECONNREFUSED: c_int = 12;
+
 pub struct uv_err_t {
     code: c_int,
     sys_errno_: c_int

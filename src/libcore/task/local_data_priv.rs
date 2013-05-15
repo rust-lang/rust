@@ -36,7 +36,7 @@ impl Handle {
                 }
                 _ => {
                     let local_services = unsafe_borrow_local_services();
-                    NewHandle(&mut local_services.storage)
+                    NewHandle(&mut (*local_services).storage)
                 }
             }
         }
