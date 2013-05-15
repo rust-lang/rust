@@ -31,7 +31,6 @@ pub trait reader {
     fn next_token(@mut self) -> TokenAndSpan;
     fn fatal(@mut self, ~str) -> !;
     fn span_diag(@mut self) -> @span_handler;
-    fn interner(@mut self) -> @token::ident_interner;
     fn peek(@mut self) -> TokenAndSpan;
     fn dup(@mut self) -> @reader;
 }
@@ -122,7 +121,6 @@ impl reader for StringReader {
         self.span_diagnostic.span_fatal(copy self.peek_span, m)
     }
     fn span_diag(@mut self) -> @span_handler { self.span_diagnostic }
-    fn interner(@mut self) -> @token::ident_interner { get_ident_interner() }
     fn peek(@mut self) -> TokenAndSpan {
         TokenAndSpan {
             tok: copy self.peek_tok,
@@ -139,7 +137,6 @@ impl reader for TtReader {
         self.sp_diag.span_fatal(copy self.cur_span, m);
     }
     fn span_diag(@mut self) -> @span_handler { self.sp_diag }
-    fn interner(@mut self) -> @token::ident_interner { get_ident_interner() }
     fn peek(@mut self) -> TokenAndSpan {
         TokenAndSpan {
             tok: copy self.cur_tok,

@@ -30,6 +30,7 @@ use core::hashmap::{HashMap, HashSet};
 use syntax::ast_map;
 use syntax::codemap::span;
 use syntax::print::pprust;
+use syntax::parse::token;
 use syntax::parse::token::special_idents;
 use syntax::{ast, visit};
 
@@ -595,7 +596,7 @@ impl DetermineRpCtxt {
 
         debug!("add_rp() variance for %s: %? == %? ^ %?",
                ast_map::node_id_to_str(self.ast_map, id,
-                                       self.sess.parse_sess.interner),
+                                       token::get_ident_interner()),
                joined_variance, old_variance, variance);
 
         if Some(joined_variance) != old_variance {
@@ -614,9 +615,9 @@ impl DetermineRpCtxt {
         debug!("add dependency from %d -> %d (%s -> %s) with variance %?",
                from, self.item_id,
                ast_map::node_id_to_str(self.ast_map, from,
-                                       self.sess.parse_sess.interner),
+                                       token::get_ident_interner()),
                ast_map::node_id_to_str(self.ast_map, self.item_id,
-                                       self.sess.parse_sess.interner),
+                                       token::get_ident_interner()),
                copy self.ambient_variance);
         let vec = match self.dep_map.find(&from) {
             Some(&vec) => vec,
@@ -951,7 +952,7 @@ pub fn determine_rp_in_crate(sess: Session,
             debug!("item %? (%s) is parameterized with variance %?",
                    key,
                    ast_map::node_id_to_str(ast_map, key,
-                                           sess.parse_sess.interner),
+                                           token::get_ident_interner()),
                    value);
         }
         "----"

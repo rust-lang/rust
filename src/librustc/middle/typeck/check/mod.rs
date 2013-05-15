@@ -127,6 +127,7 @@ use syntax::codemap::span;
 use syntax::codemap;
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
+use syntax::parse::token;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust;
 use syntax::visit;
@@ -815,7 +816,7 @@ impl FnCtxt {
                     fmt!("no type for node %d: %s in fcx %s",
                          id, ast_map::node_id_to_str(
                              self.tcx().items, id,
-                             self.tcx().sess.parse_sess.interner),
+                             token::get_ident_interner()),
                          self.tag()));
             }
         }
@@ -829,7 +830,7 @@ impl FnCtxt {
                     fmt!("no type substs for node %d: %s in fcx %s",
                          id, ast_map::node_id_to_str(
                              self.tcx().items, id,
-                             self.tcx().sess.parse_sess.interner),
+                             token::get_ident_interner()),
                          self.tag()));
             }
         }
