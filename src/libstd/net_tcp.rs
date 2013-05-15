@@ -1802,7 +1802,7 @@ mod test {
         debug!("BUF_WRITE: val len %?", str::len(val));
         do str::byte_slice(val) |b_slice| {
             debug!("BUF_WRITE: b_slice len %?",
-                            vec::len(b_slice));
+                            b_slice.len());
             w.write(b_slice)
         }
     }
@@ -1810,7 +1810,7 @@ mod test {
     fn buf_read<R:io::Reader>(r: &R, len: uint) -> ~str {
         let new_bytes = (*r).read_bytes(len);
         debug!("in buf_read.. new_bytes len: %?",
-                        vec::len(new_bytes));
+                        new_bytes.len());
         str::from_bytes(new_bytes)
     }
 
@@ -1863,7 +1863,7 @@ mod test {
                           result::Ok(data) => {
                             debug!("SERVER: got REQ str::from_bytes..");
                             debug!("SERVER: REQ data len: %?",
-                                            vec::len(data));
+                                            data.len());
                             server_ch.send(
                                 str::from_bytes(data));
                             debug!("SERVER: before write");

@@ -126,7 +126,7 @@ fn gen_search_keys(graph: &[~[node_id]], n: uint) -> ~[node_id] {
  */
 fn bfs(graph: graph, key: node_id) -> bfs_result {
     let mut marks : ~[node_id]
-        = vec::from_elem(vec::len(graph), -1i64);
+        = vec::from_elem(graph.len(), -1i64);
 
     let mut q = Deque::new();
 
@@ -429,7 +429,7 @@ fn main() {
     let stop = time::precise_time_s();
 
     io::stdout().write_line(fmt!("Generated %? edges in %? seconds.",
-                                 vec::len(edges), stop - start));
+                                 edges.len(), stop - start));
 
     let start = time::precise_time_s();
     let graph = make_graph(1 << scale, copy edges);

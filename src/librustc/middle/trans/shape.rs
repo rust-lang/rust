@@ -18,7 +18,6 @@ use middle::trans::common::*;
 use middle::trans;
 
 use core::str;
-use core::vec;
 
 pub struct Ctxt {
     next_tag_id: u16,
@@ -71,6 +70,6 @@ pub fn add_u16(dest: &mut ~[u8], val: u16) {
 }
 
 pub fn add_substr(dest: &mut ~[u8], src: ~[u8]) {
-    add_u16(&mut *dest, vec::len(src) as u16);
+    add_u16(&mut *dest, src.len() as u16);
     *dest += src;
 }

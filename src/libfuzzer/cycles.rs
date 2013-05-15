@@ -19,7 +19,7 @@ fn under(r : rand::rng, n : uint) -> uint {
 
 // random choice from a vec
 fn choice<T:copy>(r : rand::rng, v : ~[const T]) -> T {
-    assert!(vec::len(v) != 0u); v[under(r, vec::len(v))]
+    assert!(v.len() != 0u); v[under(r, v.len())]
 }
 
 // k in n chance of being true

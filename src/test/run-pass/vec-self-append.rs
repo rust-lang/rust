@@ -14,7 +14,7 @@ fn test_heap_to_heap() {
     // a spills onto the heap
     let mut a = ~[0, 1, 2, 3, 4];
     a = a + a; // FIXME(#3387)---can't write a += a
-    assert!((vec::len(a) == 10u));
+    assert!(a.len() == 10u);
     assert!((a[0] == 0));
     assert!((a[1] == 1));
     assert!((a[2] == 2));
@@ -32,7 +32,7 @@ fn test_stack_to_heap() {
     let mut a = ~[0, 1, 2];
     // a spills to the heap
     a = a + a; // FIXME(#3387)---can't write a += a
-    assert!((vec::len(a) == 6u));
+    assert!(a.len() == 6u);
     assert!((a[0] == 0));
     assert!((a[1] == 1));
     assert!((a[2] == 2));
@@ -47,8 +47,8 @@ fn test_loop() {
     let mut i = 20;
     let mut expected_len = 1u;
     while i > 0 {
-        error!(vec::len(a));
-        assert!((vec::len(a) == expected_len));
+        error!(a.len());
+        assert!(a.len() == expected_len);
         a = a + a; // FIXME(#3387)---can't write a += a
         i -= 1;
         expected_len *= 2u;

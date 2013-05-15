@@ -137,8 +137,8 @@ pub fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
            abs1.to_str(), abs2.to_str());
     let split1: &[~str] = abs1.components;
     let split2: &[~str] = abs2.components;
-    let len1 = vec::len(split1);
-    let len2 = vec::len(split2);
+    let len1 = split1.len();
+    let len2 = split2.len();
     assert!(len1 > 0);
     assert!(len2 > 0);
 

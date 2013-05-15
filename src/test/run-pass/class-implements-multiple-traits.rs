@@ -103,7 +103,7 @@ fn annoy_neighbors<T:noisy>(critter: T) {
 
 fn bite_everything<T:bitey>(critter: T) -> bool {
   let mut left : ~[body_part] = ~[finger, toe, nose, ear];
-  while vec::len(left) > 0u {
+  while left.len() > 0u {
     let part = critter.bite();
     debug!("%? %?", left, part);
     if vec_includes(left, part) {

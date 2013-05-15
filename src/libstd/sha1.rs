@@ -90,8 +90,8 @@ pub fn sha1() -> @Sha1 {
         }
     }
     fn process_msg_block(st: &mut Sha1State) {
-        assert!((vec::len(st.h) == digest_buf_len));
-        assert!((vec::uniq_len(st.work_buf) == work_buf_len));
+        assert!(st.h.len() == digest_buf_len);
+        assert!(vec::uniq_len(st.work_buf) == work_buf_len);
         let mut t: int; // Loop counter
         let w = st.work_buf;
 
@@ -230,7 +230,7 @@ pub fn sha1() -> @Sha1 {
 
     impl Sha1 for Sha1State {
         fn reset(&mut self) {
-            assert!((vec::len(self.h) == digest_buf_len));
+            assert!(self.h.len() == digest_buf_len);
             self.len_low = 0u32;
             self.len_high = 0u32;
             self.msg_block_idx = 0u;

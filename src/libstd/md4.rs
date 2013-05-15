@@ -23,7 +23,7 @@ pub fn md4(msg: &[u8]) -> Quad {
     // subtle: if orig_len is merely uint, then the code below
     // which performs shifts by 32 bits or more has undefined
     // results.
-    let orig_len: u64 = (vec::len(msg) * 8u) as u64;
+    let orig_len: u64 = (msg.len() * 8u) as u64;
 
     // pad message
     let mut msg = vec::append(vec::to_owned(msg), ~[0x80u8]);
@@ -51,7 +51,7 @@ pub fn md4(msg: &[u8]) -> Quad {
     }
 
     let mut i = 0u;
-    let e = vec::len(msg);
+    let e = msg.len();
     let mut x = vec::from_elem(16u, 0u32);
     while i < e {
         let aa = a, bb = b, cc = c, dd = d;

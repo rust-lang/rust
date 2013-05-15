@@ -1358,7 +1358,7 @@ mod test {
             let req_msg_ptr: *u8 = vec::raw::to_ptr(req_str_bytes);
             debug!("req_msg ptr: %u", req_msg_ptr as uint);
             let req_msg = ~[
-                buf_init(req_msg_ptr, vec::len(req_str_bytes))
+                buf_init(req_msg_ptr, req_str_bytes.len())
             ];
             // this is the enclosing record, we'll pass a ptr to
             // this to C..
