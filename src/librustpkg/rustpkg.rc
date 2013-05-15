@@ -157,27 +157,6 @@ impl<'self> PkgScript<'self> {
 impl Ctx {
 
     fn run(&self, cmd: ~str, args: ~[~str]) {
-        let root = util::root();
-
-        util::need_dir(&root);
-        util::need_dir(&root.push(~"work"));
-        util::need_dir(&root.push(~"lib"));
-        util::need_dir(&root.push(~"bin"));
-        util::need_dir(&root.push(~"tmp"));
-
-        fn sep_name_vers(in: ~str) -> (Option<~str>, Option<~str>) {
-            let mut name = None;
-            let mut vers = None;
-
-            for str::each_split_char(in, '@') |s| {
-                if      name.is_none() { name = Some(s.to_owned()); }
-                else if vers.is_none() { vers = Some(s.to_owned()); }
-                else                   { break;               }
-            }
-
-            (name, vers)
-        }
-
         match cmd {
             ~"build" => {
                 if args.len() < 1 {
@@ -227,9 +206,7 @@ impl Ctx {
                     return usage::uninstall();
                 }
 
-                let (name, vers) = sep_name_vers(copy args[0]);
-
-                self.prefer(name.get(), vers);
+                self.prefer(args[0], None);
             }
             ~"test" => {
                 self.test();
@@ -239,20 +216,16 @@ impl Ctx {
                     return usage::uninstall();
                 }
 
-                let (name, vers) = sep_name_vers(copy args[0]);
-
-                self.uninstall(name.get(), vers);
+                self.uninstall(args[0], None);
             }
             ~"unprefer" => {
                 if args.len() < 1 {
                     return usage::uninstall();
                 }
 
-                let (name, vers) = sep_name_vers(copy args[0]);
-
-                self.unprefer(name.get(), vers);
+                self.unprefer(args[0], None);
             }
-            _ => fail!("reached an unhandled command")
+            _ => fail!(fmt!("I don't know the command `%s`", cmd))
         }
     }
 
@@ -267,7 +240,7 @@ impl Ctx {
         debug!("Destination dir = %s", build_dir.to_str());
 
         // Create the package source
-        let mut src = PkgSrc::new(workspace, &build_dir, &pkgid);
+        let mut src = PkgSrc::new(workspace, &build_dir, pkgid);
         debug!("Package src = %?", src);
 
         // Is there custom build logic? If so, use it
@@ -305,7 +278,6 @@ impl Ctx {
             // Build it!
             src.build(&build_dir, cfgs, self.sysroot_opt);
         }
-
     }
 
     fn clean(&self, workspace: &Path, id: &PkgId)  {
@@ -317,7 +289,7 @@ impl Ctx {
         util::note(fmt!("Cleaning package %s (removing directory %s)",
                         id.to_str(), dir.to_str()));
         if os::path_exists(&dir) {
-            util::remove_dir_r(&dir);
+            os::remove_dir_recursive(&dir);
             util::note(fmt!("Removed directory %s", dir.to_str()));
         }
 
@@ -353,19 +325,19 @@ impl Ctx {
             debug!("Copying: %s -> %s", exec.to_str(), target_exec.to_str());
             if !(os::mkdir_recursive(&target_exec.dir_path(), u_rwx) &&
                  os::copy_file(exec, &target_exec)) {
-                cond.raise((*exec, target_exec));
+                cond.raise((copy *exec, copy target_exec));
             }
         }
         for maybe_library.each |lib| {
             debug!("Copying: %s -> %s", lib.to_str(), target_lib.to_str());
             if !(os::mkdir_recursive(&target_lib.dir_path(), u_rwx) &&
                  os::copy_file(lib, &target_lib)) {
-                cond.raise((*lib, target_lib));
+                cond.raise((copy *lib, copy target_lib));
             }
         }
     }
 
-    fn prefer(&self, _id: ~str, _vers: Option<~str>)  {
+    fn prefer(&self, _id: &str, _vers: Option<~str>)  {
         fail!(~"prefer not yet implemented");
     }
 
@@ -374,14 +346,15 @@ impl Ctx {
         fail!("test not yet implemented");
     }
 
-    fn uninstall(&self, _id: ~str, _vers: Option<~str>)  {
+    fn uninstall(&self, _id: &str, _vers: Option<~str>)  {
         fail!("uninstall not yet implemented");
     }
 
-    fn unprefer(&self, _id: ~str, _vers: Option<~str>)  {
+    fn unprefer(&self, _id: &str, _vers: Option<~str>)  {
         fail!("unprefer not yet implemented");
     }
 }
+
 
 pub fn main() {
     io::println("WARNING: The Rust package manager is experimental and may be unstable");
@@ -443,32 +416,6 @@ pub struct Crate {
     cfgs: ~[~str]
 }
 
-pub struct Listener {
-    cmds: ~[~str],
-    cb: ~fn()
-}
-
-pub fn run(listeners: ~[Listener]) {
-    let rcmd = copy os::args()[2];
-    let mut found = false;
-
-    for listeners.each |listener| {
-        for listener.cmds.each |&cmd| {
-            if cmd == rcmd {
-                (listener.cb)();
-
-                found = true;
-
-                break;
-            }
-        }
-    }
-
-    if !found {
-        os::set_exit_status(42);
-    }
-}
-
 pub impl Crate {
 
     fn new(p: &Path) -> Crate {
@@ -527,10 +474,6 @@ pub fn src_dir() -> Path {
     os::getcwd()
 }
 
-condition! {
-    bad_pkg_id: (super::Path, ~str) -> ::util::PkgId;
-}
-
 // An enumeration of the unpacked source of a package workspace.
 // This contains a list of files found in the source workspace.
 pub struct PkgSrc {
@@ -576,7 +519,7 @@ impl PkgSrc {
 
         if !os::path_exists(&dir) {
             if !self.fetch_git() {
-                cond.raise((self.id, ~"supplied path for package dir does not \
+                cond.raise((copy self.id, ~"supplied path for package dir does not \
                     exist, and couldn't interpret it as a URL fragment"));
             }
         }
@@ -598,12 +541,12 @@ impl PkgSrc {
         let mut local = self.root.push("src");
         local = local.push(self.id.to_str());
         // Git can't clone into a non-empty directory
-        util::remove_dir_r(&local);
+        os::remove_dir_recursive(&local);
 
         let url = fmt!("https://%s", self.id.remote_path.to_str());
         util::note(fmt!("git clone %s %s", url, local.to_str()));
 
-        if run::program_output(~"git", ~[~"clone", url, local.to_str()]).status != 0 {
+        if run::program_output(~"git", ~[~"clone", copy url, local.to_str()]).status != 0 {
             util::note(fmt!("fetching %s failed: can't clone repository", url));
             return false;
         }
@@ -733,3 +676,4 @@ impl PkgSrc {
         self.build_crates(maybe_sysroot, dst_dir, &dir, self.benchs, cfgs, Bench);
     }
 }
+

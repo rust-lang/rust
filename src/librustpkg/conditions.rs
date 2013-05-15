@@ -28,3 +28,7 @@ condition! {
 condition! {
     missing_pkg_files: (super::PkgId) -> ();
 }
+
+condition! {
+    bad_pkg_id: (super::Path, ~str) -> ::util::PkgId;
+}
