@@ -538,3 +538,301 @@ pub fn duplicate_expr(cx: @ext_ctxt, expr: @ast::expr) -> @ast::expr {
     folder.fold_expr(expr)
 }
 
+
+
+// Transitional reexports so qquote can find the paths it is looking for
+mod syntax {
+    pub use ext;
+    pub use parse;
+}
+
+trait ExtCtxtMethods {
+    fn bind_path(&self,
+                 span: span,
+                 ident: ast::ident,
+                 path: @ast::Path,
+                 bounds: @OptVec<ast::TyParamBound>)
+                 -> ast::TyParam;
+    fn expr(&self, span: span, node: ast::expr_) -> @ast::expr;
+    fn path(&self, span: span, strs: ~[ast::ident]) -> @ast::Path;
+    fn path_global(&self, span: span, strs: ~[ast::ident]) -> @ast::Path;
+    fn path_tps(&self, span: span, strs: ~[ast::ident], tps: ~[@ast::Ty])
+                -> @ast::Path;
+    fn path_tps_global(&self,
+                       span: span,
+                       strs: ~[ast::ident],
+                       tps: ~[@ast::Ty])
+                       -> @ast::Path;
+    fn ty_path(&self, span: span, strs: ~[ast::ident], tps: ~[@ast::Ty])
+               -> @ast::Ty;
+    fn binder_pat(&self, span: span, nm: ast::ident) -> @ast::pat;
+    fn stmt(&self, expr: @ast::expr) -> @ast::stmt;
+    fn lit_str(&self, span: span, s: @~str) -> @ast::expr;
+    fn lit_uint(&self, span: span, i: uint) -> @ast::expr;
+    fn lambda0(&self, blk: ast::blk) -> @ast::expr;
+    fn lambda1(&self, blk: ast::blk, ident: ast::ident) -> @ast::expr;
+    fn blk(&self, span: span, stmts: ~[@ast::stmt]) -> ast::blk;
+    fn expr_blk(&self, expr: @ast::expr) -> ast::blk;
+    fn expr_path(&self, span: span, strs: ~[ast::ident]) -> @ast::expr;
+    fn expr_path_global(&self, span: span, strs: ~[ast::ident]) -> @ast::expr;
+    fn expr_var(&self, span: span, var: &str) -> @ast::expr;
+    fn expr_self(&self, span: span) -> @ast::expr;
+    fn expr_field(&self, span: span, expr: @ast::expr, ident: ast::ident)
+                  -> @ast::expr;
+    fn expr_call(&self, span: span, expr: @ast::expr, args: ~[@ast::expr])
+                 -> @ast::expr;
+    fn expr_method_call(&self,
+                        span: span,
+                        expr: @ast::expr,
+                        ident: ast::ident,
+                        args: ~[@ast::expr])
+                        -> @ast::expr;
+    fn lambda_expr_0(&self, expr: @ast::expr) -> @ast::expr;
+    fn lambda_expr_1(&self, expr: @ast::expr, ident: ast::ident)
+                    -> @ast::expr;
+    fn lambda_stmts_0(&self, span: span, stmts: ~[@ast::stmt]) -> @ast::expr;
+    fn lambda_stmts_1(&self,
+                      span: span,
+                      stmts: ~[@ast::stmt],
+                      ident: ast::ident)
+                      -> @ast::expr;
+}
+
+impl ExtCtxtMethods for @ext_ctxt {
+    fn bind_path(
+        &self,
+        _span: span,
+        ident: ast::ident,
+        path: @ast::Path,
+        bounds: @OptVec<ast::TyParamBound>
+    ) -> ast::TyParam {
+        let bound = ast::TraitTyParamBound(@ast::trait_ref {
+            ref_id: self.next_id(),
+            path: path
+        });
+
+        ast::TyParam {
+            ident: ident,
+            id: self.next_id(),
+            bounds: @bounds.prepend(bound)
+        }
+    }
+
+    fn expr(&self, span: span, node: ast::expr_) -> @ast::expr {
+        @ast::expr {
+            id: self.next_id(),
+            callee_id: self.next_id(),
+            node: node,
+            span: span,
+        }
+    }
+
+    fn path(&self, span: span, strs: ~[ast::ident]) -> @ast::Path {
+        @ast::Path {
+            span: span,
+            global: false,
+            idents: strs,
+            rp: None,
+            types: ~[]
+        }
+    }
+
+    fn path_global(&self, span: span, strs: ~[ast::ident]) -> @ast::Path {
+        @ast::Path {
+            span: span,
+            global: true,
+            idents: strs,
+            rp: None,
+            types: ~[]
+        }
+    }
+
+    fn path_tps(
+        &self,
+        span: span,
+        strs: ~[ast::ident],
+        tps: ~[@ast::Ty]
+    ) -> @ast::Path {
+        @ast::Path {
+            span: span,
+            global: false,
+            idents: strs,
+            rp: None,
+            types: tps
+        }
+    }
+
+    fn path_tps_global(
+        &self,
+        span: span,
+        strs: ~[ast::ident],
+        tps: ~[@ast::Ty]
+    ) -> @ast::Path {
+        @ast::Path {
+            span: span,
+            global: true,
+            idents: strs,
+            rp: None,
+            types: tps
+        }
+    }
+
+    fn ty_path(
+        &self,
+        span: span,
+        strs: ~[ast::ident],
+        tps: ~[@ast::Ty]
+    ) -> @ast::Ty {
+        @ast::Ty {
+            id: self.next_id(),
+            node: ast::ty_path(
+                self.path_tps(span, strs, tps),
+                self.next_id()),
+            span: span,
+        }
+    }
+
+    fn binder_pat(&self, span: span, nm: ast::ident) -> @ast::pat {
+        @ast::pat {
+            id: self.next_id(),
+            node: ast::pat_ident(
+                ast::bind_by_ref(ast::m_imm),
+                self.path(span, ~[nm]),
+                None),
+            span: span,
+        }
+    }
+
+    fn stmt(&self, expr: @ast::expr) -> @ast::stmt {
+        @codemap::spanned { node: ast::stmt_semi(expr, self.next_id()),
+                       span: expr.span }
+    }
+
+    fn lit_str(&self, span: span, s: @~str) -> @ast::expr {
+        self.expr(
+            span,
+            ast::expr_vstore(
+                self.expr(
+                    span,
+                    ast::expr_lit(
+                        @codemap::spanned { node: ast::lit_str(s),
+                                        span: span})),
+                ast::expr_vstore_uniq))
+    }
+
+    fn lit_uint(&self, span: span, i: uint) -> @ast::expr {
+        self.expr(
+            span,
+            ast::expr_lit(
+                @codemap::spanned { node: ast::lit_uint(i as u64, ast::ty_u),
+                                span: span}))
+    }
+
+    fn lambda0(&self, blk: ast::blk) -> @ast::expr {
+        let ext_cx = *self;
+        let blk_e = self.expr(copy blk.span, ast::expr_block(copy blk));
+        quote_expr!( || $blk_e )
+    }
+
+    fn lambda1(&self, blk: ast::blk, ident: ast::ident) -> @ast::expr {
+        let ext_cx = *self;
+        let blk_e = self.expr(copy blk.span, ast::expr_block(copy blk));
+        quote_expr!( |$ident| $blk_e )
+    }
+
+    fn blk(&self, span: span, stmts: ~[@ast::stmt]) -> ast::blk {
+        codemap::spanned {
+            node: ast::blk_ {
+                view_items: ~[],
+                stmts: stmts,
+                expr: None,
+                id: self.next_id(),
+                rules: ast::default_blk,
+            },
+            span: span,
+        }
+    }
+
+    fn expr_blk(&self, expr: @ast::expr) -> ast::blk {
+        codemap::spanned {
+            node: ast::blk_ {
+                view_items: ~[],
+                stmts: ~[],
+                expr: Some(expr),
+                id: self.next_id(),
+                rules: ast::default_blk,
+            },
+            span: expr.span,
+        }
+    }
+
+    fn expr_path(&self, span: span, strs: ~[ast::ident]) -> @ast::expr {
+        self.expr(span, ast::expr_path(self.path(span, strs)))
+    }
+
+    fn expr_path_global(
+        &self,
+        span: span,
+        strs: ~[ast::ident]
+    ) -> @ast::expr {
+        self.expr(span, ast::expr_path(self.path_global(span, strs)))
+    }
+
+    fn expr_var(&self, span: span, var: &str) -> @ast::expr {
+        self.expr_path(span, ~[self.ident_of(var)])
+    }
+
+    fn expr_self(&self, span: span) -> @ast::expr {
+        self.expr(span, ast::expr_self)
+    }
+
+    fn expr_field(
+        &self,
+        span: span,
+        expr: @ast::expr,
+        ident: ast::ident
+    ) -> @ast::expr {
+        self.expr(span, ast::expr_field(expr, ident, ~[]))
+    }
+
+    fn expr_call(
+        &self,
+        span: span,
+        expr: @ast::expr,
+        args: ~[@ast::expr]
+    ) -> @ast::expr {
+        self.expr(span, ast::expr_call(expr, args, ast::NoSugar))
+    }
+
+    fn expr_method_call(
+        &self,
+        span: span,
+        expr: @ast::expr,
+        ident: ast::ident,
+        args: ~[@ast::expr]
+    ) -> @ast::expr {
+        self.expr(span,
+                  ast::expr_method_call(expr, ident, ~[], args, ast::NoSugar))
+    }
+
+    fn lambda_expr_0(&self, expr: @ast::expr) -> @ast::expr {
+        self.lambda0(self.expr_blk(expr))
+    }
+
+    fn lambda_expr_1(&self, expr: @ast::expr, ident: ast::ident)
+                    -> @ast::expr {
+        self.lambda1(self.expr_blk(expr), ident)
+    }
+
+    fn lambda_stmts_0(&self, span: span, stmts: ~[@ast::stmt]) -> @ast::expr {
+        self.lambda0(self.blk(span, stmts))
+    }
+
+    fn lambda_stmts_1(&self,
+                      span: span,
+                      stmts: ~[@ast::stmt],
+                      ident: ast::ident)
+                      -> @ast::expr {
+        self.lambda1(self.blk(span, stmts), ident)
+    }
+}

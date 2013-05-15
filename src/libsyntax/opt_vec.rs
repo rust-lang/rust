@@ -20,8 +20,7 @@ use core::prelude::*;
 use core::old_iter;
 use core::old_iter::BaseIter;
 
-#[auto_encode]
-#[auto_decode]
+#[deriving(Encodable, Decodable)]
 pub enum OptVec<T> {
     Empty,
     Vec(~[T])

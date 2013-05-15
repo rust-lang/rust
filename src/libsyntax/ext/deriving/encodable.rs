@@ -8,6 +8,74 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/*!
+
+The compiler code necessary to implement the #[deriving(Encodable)]
+(and Decodable, in decodable.rs) extension.  The idea here is that
+type-defining items may be tagged with #[deriving(Encodable,
+Decodable)].
+
+For example, a type like:
+
+    #[deriving(Encodable, Decodable)]
+    struct Node {id: uint}
+
+would generate two implementations like:
+
+impl<S:std::serialize::Encoder> Encodable<S> for Node {
+    fn encode(&self, s: &S) {
+        do s.emit_struct("Node", 1) {
+            s.emit_field("id", 0, || s.emit_uint(self.id))
+        }
+    }
+}
+
+impl<D:Decoder> Decodable for node_id {
+    fn decode(d: &D) -> Node {
+        do d.read_struct("Node", 1) {
+            Node {
+                id: d.read_field(~"x", 0, || decode(d))
+            }
+        }
+    }
+}
+
+Other interesting scenarios are whe the item has type parameters or
+references other non-built-in types.  A type definition like:
+
+    #[deriving(Encodable, Decodable)]
+    struct spanned<T> {node: T, span: span}
+
+would yield functions like:
+
+    impl<
+        S: Encoder,
+        T: Encodable<S>
+    > spanned<T>: Encodable<S> {
+        fn encode<S:Encoder>(s: &S) {
+            do s.emit_rec {
+                s.emit_field("node", 0, || self.node.encode(s));
+                s.emit_field("span", 1, || self.span.encode(s));
+            }
+        }
+    }
+
+    impl<
+        D: Decoder,
+        T: Decodable<D>
+    > spanned<T>: Decodable<D> {
+        fn decode(d: &D) -> spanned<T> {
+            do d.read_rec {
+                {
+                    node: d.read_field(~"node", 0, || decode(d)),
+                    span: d.read_field(~"span", 1, || decode(d)),
+                }
+            }
+        }
+    }
+*/
+
+
 use ast;
 use ast::*;
 use ext::base::ext_ctxt;
@@ -402,4 +470,248 @@ fn expand_deriving_encodable_enum_method(
 
     // Create the method.
     create_encode_method(cx, span, ~[stmt])
+}
+
+#[cfg(test)]
+mod test {
+    extern mod std;
+    use core::option::{None, Some};
+    use std::serialize::Encodable;
+    use std::serialize::Encoder;
+
+    // just adding the ones I want to test, for now:
+    #[deriving(Eq)]
+    pub enum call {
+        CallToEmitEnum(~str),
+        CallToEmitEnumVariant(~str, uint, uint),
+        CallToEmitEnumVariantArg(uint),
+        CallToEmitUint(uint),
+        CallToEmitNil,
+        CallToEmitStruct(~str,uint),
+        CallToEmitField(~str,uint),
+        CallToEmitOption,
+        CallToEmitOptionNone,
+        CallToEmitOptionSome,
+        // all of the ones I was too lazy to handle:
+        CallToOther
+    }
+    // using `@mut` rather than changing the
+    // type of self in every method of every encoder everywhere.
+    pub struct TestEncoder {call_log : @mut ~[call]}
+
+    pub impl TestEncoder {
+        // these self's should be &mut self's, as well....
+        fn add_to_log (&self, c : call) {
+            self.call_log.push(copy c);
+        }
+        fn add_unknown_to_log (&self) {
+            self.add_to_log (CallToOther)
+        }
+    }
+
+    impl Encoder for TestEncoder {
+        fn emit_nil(&mut self) { self.add_to_log(CallToEmitNil) }
+
+        fn emit_uint(&mut self, v: uint) {
+            self.add_to_log(CallToEmitUint(v));
+        }
+        fn emit_u64(&mut self, _v: u64) { self.add_unknown_to_log(); }
+        fn emit_u32(&mut self, _v: u32) { self.add_unknown_to_log(); }
+        fn emit_u16(&mut self, _v: u16) { self.add_unknown_to_log(); }
+        fn emit_u8(&mut self, _v: u8)   { self.add_unknown_to_log(); }
+
+        fn emit_int(&mut self, _v: int) { self.add_unknown_to_log(); }
+        fn emit_i64(&mut self, _v: i64) { self.add_unknown_to_log(); }
+        fn emit_i32(&mut self, _v: i32) { self.add_unknown_to_log(); }
+        fn emit_i16(&mut self, _v: i16) { self.add_unknown_to_log(); }
+        fn emit_i8(&mut self, _v: i8)   { self.add_unknown_to_log(); }
+
+        fn emit_bool(&mut self, _v: bool) { self.add_unknown_to_log(); }
+
+        fn emit_f64(&mut self, _v: f64) { self.add_unknown_to_log(); }
+        fn emit_f32(&mut self, _v: f32) { self.add_unknown_to_log(); }
+        fn emit_float(&mut self, _v: float) { self.add_unknown_to_log(); }
+
+        fn emit_char(&mut self, _v: char) { self.add_unknown_to_log(); }
+        fn emit_str(&mut self, _v: &str) { self.add_unknown_to_log(); }
+
+        fn emit_enum(&mut self, name: &str, f: &fn(&mut TestEncoder)) {
+            self.add_to_log(CallToEmitEnum(name.to_str()));
+            f(self);
+        }
+
+        fn emit_enum_variant(&mut self,
+                             name: &str,
+                             id: uint,
+                             cnt: uint,
+                             f: &fn(&mut TestEncoder)) {
+            self.add_to_log(CallToEmitEnumVariant(name.to_str(), id, cnt));
+            f(self);
+        }
+
+        fn emit_enum_variant_arg(&mut self,
+                                 idx: uint,
+                                 f: &fn(&mut TestEncoder)) {
+            self.add_to_log(CallToEmitEnumVariantArg(idx));
+            f(self);
+        }
+
+        fn emit_enum_struct_variant(&mut self,
+                                    name: &str,
+                                    id: uint,
+                                    cnt: uint,
+                                    f: &fn(&mut TestEncoder)) {
+            self.emit_enum_variant(name, id, cnt, f)
+        }
+
+        fn emit_enum_struct_variant_field(&mut self,
+                                          _name: &str,
+                                          idx: uint,
+                                          f: &fn(&mut TestEncoder)) {
+            self.emit_enum_variant_arg(idx, f)
+        }
+
+        fn emit_struct(&mut self,
+                       name: &str,
+                       len: uint,
+                       f: &fn(&mut TestEncoder)) {
+            self.add_to_log(CallToEmitStruct (name.to_str(),len));
+            f(self);
+        }
+        fn emit_struct_field(&mut self,
+                             name: &str,
+                             idx: uint,
+                             f: &fn(&mut TestEncoder)) {
+            self.add_to_log(CallToEmitField (name.to_str(),idx));
+            f(self);
+        }
+
+        fn emit_tuple(&mut self, _len: uint, f: &fn(&mut TestEncoder)) {
+            self.add_unknown_to_log();
+            f(self);
+        }
+        fn emit_tuple_arg(&mut self, _idx: uint, f: &fn(&mut TestEncoder)) {
+            self.add_unknown_to_log();
+            f(self);
+        }
+
+        fn emit_tuple_struct(&mut self,
+                             _name: &str,
+                             _len: uint,
+                             f: &fn(&mut TestEncoder)) {
+            self.add_unknown_to_log();
+            f(self);
+        }
+
+        fn emit_tuple_struct_arg(&mut self,
+                                 _idx: uint,
+                                 f: &fn(&mut TestEncoder)) {
+            self.add_unknown_to_log();
+            f(self);
+        }
+
+        fn emit_option(&mut self, f: &fn(&mut TestEncoder)) {
+            self.add_to_log(CallToEmitOption);
+            f(self);
+        }
+        fn emit_option_none(&mut self) {
+            self.add_to_log(CallToEmitOptionNone);
+        }
+        fn emit_option_some(&mut self, f: &fn(&mut TestEncoder)) {
+            self.add_to_log(CallToEmitOptionSome);
+            f(self);
+        }
+
+        fn emit_seq(&mut self, _len: uint, f: &fn(&mut TestEncoder)) {
+            self.add_unknown_to_log();
+            f(self);
+        }
+        fn emit_seq_elt(&mut self, _idx: uint, f: &fn(&mut TestEncoder)) {
+            self.add_unknown_to_log();
+            f(self);
+        }
+
+        fn emit_map(&mut self, _len: uint, f: &fn(&mut TestEncoder)) {
+            self.add_unknown_to_log();
+            f(self);
+        }
+        fn emit_map_elt_key(&mut self, _idx: uint, f: &fn(&mut TestEncoder)) {
+            self.add_unknown_to_log();
+            f(self);
+        }
+        fn emit_map_elt_val(&mut self, _idx: uint, f: &fn(&mut TestEncoder)) {
+            self.add_unknown_to_log();
+            f(self);
+        }
+    }
+
+
+    fn to_call_log<E:Encodable<TestEncoder>>(val: E) -> ~[call] {
+        let mut te = TestEncoder {
+            call_log: @mut ~[]
+        };
+        val.encode(&mut te);
+        copy *te.call_log
+    }
+
+    #[deriving(Encodable)]
+    enum Written {
+        Book(uint,uint),
+        Magazine(~str)
+    }
+
+    #[test]
+    fn test_encode_enum() {
+        assert_eq!(
+            to_call_log(Book(34,44)),
+            ~[
+                CallToEmitEnum(~"Written"),
+                CallToEmitEnumVariant(~"Book",0,2),
+                CallToEmitEnumVariantArg(0),
+                CallToEmitUint(34),
+                CallToEmitEnumVariantArg(1),
+                CallToEmitUint(44),
+            ]
+        );
+    }
+
+    pub struct BPos(uint);
+
+    #[deriving(Encodable)]
+    pub struct HasPos { pos : BPos }
+
+    #[test]
+    fn test_encode_newtype() {
+        assert_eq!(
+            to_call_log(HasPos { pos:BPos(48) }),
+            ~[
+                CallToEmitStruct(~"HasPos",1),
+                CallToEmitField(~"pos",0),
+                CallToEmitUint(48),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_encode_option() {
+        let mut v = None;
+
+        assert_eq!(
+            to_call_log(v),
+            ~[
+                CallToEmitOption,
+                CallToEmitOptionNone,
+            ]
+        );
+
+        v = Some(54u);
+        assert_eq!(
+            to_call_log(v),
+            ~[
+                CallToEmitOption,
+                CallToEmitOptionSome,
+                CallToEmitUint(54)
+            ]
+        );
+    }
 }

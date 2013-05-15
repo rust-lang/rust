@@ -370,8 +370,7 @@ pub fn empty_generics() -> Generics {
 // ______________________________________________________________________
 // Enumerating the IDs which appear in an AST
 
-#[auto_encode]
-#[auto_decode]
+#[deriving(Encodable, Decodable)]
 pub struct id_range {
     min: node_id,
     max: node_id,
