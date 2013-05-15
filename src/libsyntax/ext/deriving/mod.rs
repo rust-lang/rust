@@ -8,8 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// The compiler code necessary to implement the #[deriving(Eq)] and
-/// #[deriving(IterBytes)] extensions.
+/*!
+The compiler code necessary to implement the #[deriving] extensions.
+
+
+FIXME (#2810)--Hygiene. Search for "__" strings (in other files too).
+We also assume "std" is the standard library, and "core" is the core
+library.
+
+*/
 
 use ast;
 use ast::{Ty, enum_def, expr, ident, item, Generics, meta_item, struct_def};
@@ -203,8 +210,6 @@ pub fn create_derived_impl(cx: @ext_ctxt,
      *
      * where B1, B2, ... are the bounds given by `bounds_paths`.
      *
-     * FIXME(#5090): Remove code duplication between this and the
-     * code in auto_encode.rs
      */
 
     // Copy the lifetimes

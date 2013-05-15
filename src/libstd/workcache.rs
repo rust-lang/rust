@@ -92,9 +92,7 @@ use core::util::replace;
 *
 */
 
-#[deriving(Eq)]
-#[auto_encode]
-#[auto_decode]
+#[deriving(Eq, Encodable, Decodable)]
 struct WorkKey {
     kind: ~str,
     name: ~str
