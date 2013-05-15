@@ -410,7 +410,7 @@ pub fn self_exe_path() -> Option<Path> {
                            KERN_PROC as c_int,
                            KERN_PROC_PATHNAME as c_int, -1 as c_int];
                 let mut sz = sz;
-                sysctl(vec::raw::to_ptr(mib), vec::len(mib) as ::libc::c_uint,
+                sysctl(vec::raw::to_ptr(mib), mib.len() as ::libc::c_uint,
                        buf as *mut c_void, &mut sz, ptr::null(),
                        0u as size_t) == (0 as c_int)
             }
@@ -1490,7 +1490,7 @@ mod tests {
     #[ignore]
     fn test_env_getenv() {
         let e = env();
-        assert!(vec::len(e) > 0u);
+        assert!(e.len() > 0u);
         for e.each |p| {
             let (n, v) = copy *p;
             debug!(copy n);
@@ -1581,7 +1581,7 @@ mod tests {
     fn list_dir() {
         let dirs = os::list_dir(&Path("."));
         // Just assuming that we've got some contents in the current directory
-        assert!((vec::len(dirs) > 0u));
+        assert!(dirs.len() > 0u);
 
         for dirs.each |dir| {
             debug!(copy *dir);

@@ -65,7 +65,7 @@ pub impl FnType {
 
         let mut llargvals = ~[];
         let mut i = 0u;
-        let n = vec::len(arg_tys);
+        let n = arg_tys.len();
 
         if self.sret {
             let llretptr = GEPi(bcx, llargbundle, [0u, n]);
@@ -113,7 +113,7 @@ pub impl FnType {
         if self.sret || !ret_def {
             return;
         }
-        let n = vec::len(arg_tys);
+        let n = arg_tys.len();
         // R** llretptr = &args->r;
         let llretptr = GEPi(bcx, llargbundle, [0u, n]);
         // R* llretloc = *llretptr; /* (args->r) */
@@ -149,7 +149,7 @@ pub impl FnType {
         };
 
         let mut i = 0u;
-        let n = vec::len(atys);
+        let n = atys.len();
         while i < n {
             let mut argval = get_param(llwrapfn, i + j);
             if attrs[i].is_some() {

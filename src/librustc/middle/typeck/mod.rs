@@ -310,7 +310,7 @@ fn check_main_fn_ty(ccx: @mut CrateCtxt,
                 _ => ()
             }
             let mut ok = ty::type_is_nil(fn_ty.sig.output);
-            let num_args = vec::len(fn_ty.sig.inputs);
+            let num_args = fn_ty.sig.inputs.len();
             ok &= num_args == 0u;
             if !ok {
                 tcx.sess.span_err(

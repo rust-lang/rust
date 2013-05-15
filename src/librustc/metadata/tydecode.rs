@@ -507,7 +507,7 @@ fn parse_sig(st: @mut PState, conv: conv_did) -> ty::FnSig {
 // Rust metadata parsing
 pub fn parse_def_id(buf: &[u8]) -> ast::def_id {
     let mut colon_idx = 0u;
-    let len = vec::len(buf);
+    let len = buf.len();
     while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1u; }
     if colon_idx == len {
         error!("didn't find ':' when parsing def id");

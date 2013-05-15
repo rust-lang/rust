@@ -3276,7 +3276,7 @@ pub fn instantiate_path(fcx: @mut FnCtxt,
     debug!(">>> instantiate_path");
 
     let ty_param_count = tpt.generics.type_param_defs.len();
-    let ty_substs_len = vec::len(pth.types);
+    let ty_substs_len = pth.types.len();
 
     debug!("ty_param_count=%? ty_substs_len=%?",
            ty_param_count,

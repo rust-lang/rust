@@ -4706,7 +4706,7 @@ pub impl Resolver {
             }
         }
 
-        if vec::len(values) > 0 &&
+        if values.len() > 0 &&
             values[smallest] != uint::max_value &&
             values[smallest] < str::len(name) + 2 &&
             values[smallest] <= max_distance &&

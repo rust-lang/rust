@@ -13,7 +13,7 @@
 #[inline]
 pub fn iter<T>(v: &[T], f: &fn(&T)) {
     let mut i = 0u;
-    let n = vec::len(v);
+    let n = v.len();
     while i < n {
         f(&v[i]);
         i += 1u;

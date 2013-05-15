@@ -2059,7 +2059,7 @@ pub fn is_utf8(v: &const [u8]) -> bool {
 
 /// Determines if a vector of `u16` contains valid UTF-16
 pub fn is_utf16(v: &[u16]) -> bool {
-    let len = vec::len(v);
+    let len = v.len();
     let mut i = 0u;
     while (i < len) {
         let u = v[i];
@@ -2103,7 +2103,7 @@ pub fn to_utf16(s: &str) -> ~[u16] {
 }
 
 pub fn utf16_chars(v: &[u16], f: &fn(char)) {
-    let len = vec::len(v);
+    let len = v.len();
     let mut i = 0u;
     while (i < len && v[i] != 0u16) {
         let u = v[i];
@@ -2128,7 +2128,7 @@ pub fn utf16_chars(v: &[u16], f: &fn(char)) {
 
 pub fn from_utf16(v: &[u16]) -> ~str {
     let mut buf = ~"";
-    reserve(&mut buf, vec::len(v));
+    reserve(&mut buf, v.len());
     utf16_chars(v, |ch| push_char(&mut buf, ch));
     buf
 }
@@ -2398,7 +2398,7 @@ static tag_six_b: uint = 252u;
  * # Example
  *
  * ~~~
- * let i = str::as_bytes("Hello World") { |bytes| vec::len(bytes) };
+ * let i = str::as_bytes("Hello World") { |bytes| bytes.len() };
  * ~~~
  */
 #[inline]

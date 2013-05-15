@@ -18,7 +18,7 @@ fn under(r : rand::rng, n : uint) -> uint {
 
 // random choice from a vec
 fn choice<T:copy>(r : rand::rng, v : ~[T]) -> T {
-    assert!(vec::len(v) != 0u); v[under(r, vec::len(v))]
+    assert!(v.len() != 0u); v[under(r, v.len())]
 }
 
 // 1 in n chance of being true
@@ -26,7 +26,7 @@ fn unlikely(r : rand::rng, n : uint) -> bool { under(r, n) == 0u }
 
 // shuffle a vec in place
 fn shuffle<T>(r : rand::rng, &v : ~[T]) {
-    let i = vec::len(v);
+    let i = v.len();
     while i >= 2u {
         // Loop invariant: elements with index >= i have been locked in place.
         i -= 1u;
@@ -49,7 +49,7 @@ fn shuffled<T:copy>(r : rand::rng, v : ~[T]) -> ~[T] {
 // * weighted_vec is O(total weight) space
 type weighted<T> = { weight: uint, item: T };
 fn weighted_choice<T:copy>(r : rand::rng, v : ~[weighted<T>]) -> T {
-    assert!(vec::len(v) != 0u);
+    assert!(v.len() != 0u);
     let total = 0u;
     for {weight: weight, item: _} in v {
         total += weight;

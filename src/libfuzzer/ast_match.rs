@@ -15,8 +15,8 @@ fn vec_equal<T>(v: ~[T],
                 u: ~[T],
                 element_equality_test: @fn(&&T, &&T) -> bool) ->
    bool {
-    let Lv = vec::len(v);
-    if Lv != vec::len(u) { return false; }
+    let Lv = v.len();
+    if Lv != u.len() { return false; }
     let i = 0u;
     while i < Lv {
         if !element_equality_test(v[i], u[i]) { return false; }

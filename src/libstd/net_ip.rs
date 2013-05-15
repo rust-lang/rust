@@ -15,7 +15,6 @@ use core::comm::{stream, SharedChan};
 use core::ptr;
 use core::result;
 use core::str;
-use core::vec;
 
 use iotask = uv::iotask::IoTask;
 use interact = uv::iotask::interact;
@@ -340,7 +339,7 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t,
                     }
                 }
                 debug!("successful process addrinfo result, len: %?",
-                                vec::len(out_vec));
+                                out_vec.len());
                 output_ch.send(result::Ok(out_vec));
             }
             else {
@@ -424,7 +423,7 @@ mod test {
         // this.. mostly just wanting to see it work, atm.
         let results = result::unwrap(ga_result);
         debug!("test_get_addr: Number of results for %s: %?",
-                        localhost_name, vec::len(results));
+                        localhost_name, results.len());
         for results.each |r| {
             let ipv_prefix = match *r {
               Ipv4(_) => ~"IPv4",
