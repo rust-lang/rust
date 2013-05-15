@@ -62,7 +62,6 @@ pub type AllocCallback = ~fn(uint) -> Buf;
 impl Callback for AllocCallback { }
 
 pub impl StreamWatcher {
-
     fn read_start(&mut self, alloc: AllocCallback, cb: ReadCallback) {
         // XXX: Borrowchk problems
         let data = get_watcher_data(unsafe { transmute_mut_region(self) });
@@ -70,7 +69,9 @@ pub impl StreamWatcher {
         data.read_cb = Some(cb);
 
         let handle = self.native_handle();
-        unsafe { uvll::read_start(handle, alloc_cb, read_cb); }
+        unsafe {
+            uvll::read_start(handle, alloc_cb, read_cb);
+        }
 
         extern fn alloc_cb(stream: *uvll::uv_stream_t, suggested_size: size_t) -> Buf {
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(stream);
@@ -112,8 +113,9 @@ pub impl StreamWatcher {
         let bufs = [buf];
         unsafe {
             assert!(0 == uvll::write(req.native_handle(),
-                                          self.native_handle(),
-                                          bufs, write_cb));
+                                     self.native_handle(),
+                                     bufs,
+                                     write_cb));
         }
 
         extern fn write_cb(req: *uvll::uv_write_t, status: c_int) {
@@ -147,7 +149,9 @@ pub impl StreamWatcher {
             data.close_cb = Some(cb);
         }
 
-        unsafe { uvll::close(self.native_handle(), close_cb); }
+        unsafe {
+            uvll::close(self.native_handle(), close_cb);
+        }
 
         extern fn close_cb(handle: *uvll::uv_stream_t) {
             let mut stream_watcher: StreamWatcher = NativeHandle::from_native_handle(handle);
@@ -219,8 +223,9 @@ pub impl TcpWatcher {
                     do ip4_as_uv_ip4(address) |addr| {
                         rtdebug!("connect_t: %x", connect_handle as uint);
                         assert!(0 == uvll::tcp_connect(connect_handle,
-                                                            self.native_handle(),
-                                                            addr, connect_cb));
+                                                       self.native_handle(),
+                                                       addr,
+                                                       connect_cb));
                     }
                 }
                 _ => fail!()
@@ -251,7 +256,8 @@ pub impl TcpWatcher {
             static BACKLOG: c_int = 128; // XXX should be configurable
             // XXX: This can probably fail
             assert!(0 == uvll::listen(self.native_handle(),
-                                           BACKLOG, connection_cb));
+                                      BACKLOG,
+                                      connection_cb));
         }
 
         extern fn connection_cb(handle: *uvll::uv_stream_t, status: c_int) {

@@ -1769,6 +1769,15 @@ pub fn type_is_unique(ty: t) -> bool {
     }
 }
 
+pub fn type_is_castable(ty: t) -> bool {
+    match get(ty).sty {
+        ty_nil | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
+        ty_infer(IntVar(_)) | ty_infer(FloatVar(_)) | ty_type |
+        ty_ptr(_) => true,
+        _ => false
+    }
+}
+
 /*
  A scalar type is one that denotes an atomic datum, with no sub-components.
  (A ty_ptr is scalar because it represents a non-managed pointer, so its

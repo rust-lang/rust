@@ -45,7 +45,7 @@ pub impl Context {
         // The C-ABI function that is the task entry point
         extern fn task_start_wrapper(f: &~fn()) { (*f)() }
 
-        let fp: *c_void = task_start_wrapper as *c_void;
+        let fp: *c_void = unsafe { transmute(task_start_wrapper) };
         let argp: *c_void = unsafe { transmute::<&~fn(), *c_void>(&*start) };
         let sp: *uint = stack.end();
         let sp: *mut uint = unsafe { transmute_mut_unsafe(sp) };

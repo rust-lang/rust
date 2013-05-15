@@ -138,7 +138,14 @@ impl Unwinder {
 
         extern {
             #[rust_stack]
+            #[cfg(stage0)]
             fn rust_try(f: *u8, code: *c_void, data: *c_void) -> uintptr_t;
+            #[rust_stack]
+            #[cfg(not(stage0))]
+            fn rust_try(f: extern "C" fn(code: *c_void, env: *c_void),
+                        code: *c_void,
+                        data: *c_void)
+                        -> uintptr_t;
         }
     }
 

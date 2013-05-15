@@ -1644,10 +1644,16 @@ fn trans_imm_cast(bcx: block, expr: @ast::expr,
                                               val_ty(lldiscrim_a),
                                               lldiscrim_a, true),
                     cast_float => SIToFP(bcx, lldiscrim_a, ll_t_out),
-                    _ => ccx.sess.bug(~"translating unsupported cast.")
+                    _ => {
+                        ccx.sess.span_bug(expr.span,
+                                          ~"translating unsupported cast.")
+                    }
                 }
             }
-            _ => ccx.sess.bug(~"translating unsupported cast.")
+            _ => {
+                ccx.sess.span_bug(expr.span,
+                                  ~"translating unsupported cast.")
+            }
         };
     return immediate_rvalue_bcx(bcx, newval, t_out);
 }

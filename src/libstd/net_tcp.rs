@@ -1408,7 +1408,8 @@ extern fn tcp_connect_on_connect_cb(connect_req_ptr: *uv::ll::uv_connect_t,
             result_ch.send(ConnFailure(err_data));
             uv::ll::set_data_for_uv_handle(tcp_stream_ptr,
                                            conn_data_ptr);
-            uv::ll::close(tcp_stream_ptr, stream_error_close_cb);
+            uv::ll::close(tcp_stream_ptr as *uv::ll::uv_tcp_t,
+                          stream_error_close_cb);
           }
         }
         debug!("leaving tcp_connect_on_connect_cb");

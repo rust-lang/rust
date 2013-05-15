@@ -2644,9 +2644,11 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         }, t_e, None);
                     }
 
-                    let t_1_is_scalar = type_is_scalar(fcx, expr.span, t_1);
+                    let t_1_is_castable = type_is_castable(fcx,
+                                                           expr.span,
+                                                           t_1);
                     if type_is_c_like_enum(fcx,expr.span,t_e)
-                        && t_1_is_scalar {
+                        && t_1_is_castable {
                         /* this case is allowed */
                     } else if type_is_region_ptr(fcx, expr.span, t_e) &&
                         type_is_unsafe_ptr(fcx, expr.span, t_1) {
@@ -2689,8 +2691,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                 demand::coerce(fcx, e.span, t_1, e);
                             }
                         }
-                    } else if !(type_is_scalar(fcx,expr.span,t_e)
-                                && t_1_is_scalar) {
+                    } else if !(type_is_castable(fcx,expr.span,t_e)
+                                && t_1_is_castable) {
                         /*
                         If more type combinations should be supported than are
                         supported here, then file an enhancement issue and
@@ -3214,21 +3216,6 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
           let typ = fcx.local_ty(sp, nid);
           return no_params(typ);
       }
-      ast::def_fn(_, ast::extern_fn) => {
-        // extern functions are just u8 pointers
-        return ty_param_bounds_and_ty {
-            generics: ty::Generics {
-                type_param_defs: @~[],
-                region_param: None
-            },
-            ty: ty::mk_ptr(
-                fcx.ccx.tcx,
-                ty::mt {
-                    ty: ty::mk_mach_uint(ast::ty_u8),
-                    mutbl: ast::m_imm
-                })
-        };
-      }
 
       ast::def_fn(id, ast::unsafe_fn) |
       ast::def_static_method(id, _, ast::unsafe_fn) => {
@@ -3248,7 +3235,7 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
       ast::def_trait(_) |
       ast::def_ty(_) |
       ast::def_prim_ty(_) |
-      ast::def_ty_param(*)=> {
+      ast::def_ty_param(*) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found type");
       }
       ast::def_mod(*) | ast::def_foreign_mod(*) => {
@@ -3358,6 +3345,11 @@ pub fn structure_of(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> ty::sty {
 pub fn type_is_integral(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> bool {
     let typ_s = structurally_resolved_type(fcx, sp, typ);
     return ty::type_is_integral(typ_s);
+}
+
+pub fn type_is_castable(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> bool {
+    let typ_s = structurally_resolved_type(fcx, sp, typ);
+    return ty::type_is_castable(typ_s);
 }
 
 pub fn type_is_scalar(fcx: @mut FnCtxt, sp: span, typ: ty::t) -> bool {

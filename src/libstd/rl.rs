@@ -22,8 +22,13 @@ pub mod rustrt {
         pub unsafe fn linenoiseHistorySetMaxLen(len: c_int) -> c_int;
         pub unsafe fn linenoiseHistorySave(file: *c_char) -> c_int;
         pub unsafe fn linenoiseHistoryLoad(file: *c_char) -> c_int;
-        pub unsafe fn linenoiseSetCompletionCallback(callback: *u8);
         pub unsafe fn linenoiseAddCompletion(completions: *(), line: *c_char);
+
+        #[cfg(stage0)]
+        pub unsafe fn linenoiseSetCompletionCallback(callback: *u8);
+        #[cfg(not(stage0))]
+        pub unsafe fn linenoiseSetCompletionCallback(
+            callback: extern "C" fn(a: *i8, b: *()));
     }
 }
 

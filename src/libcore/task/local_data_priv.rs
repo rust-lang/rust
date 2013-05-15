@@ -61,7 +61,7 @@ impl Eq for @LocalData {
 // proper map.
 type TaskLocalElement = (*libc::c_void, *libc::c_void, @LocalData);
 // Has to be a pointer at outermost layer; the foreign call returns void *.
-type TaskLocalMap = @mut ~[Option<TaskLocalElement>];
+pub type TaskLocalMap = @mut ~[Option<TaskLocalElement>];
 
 fn cleanup_task_local_map(map_ptr: *libc::c_void) {
     unsafe {
@@ -82,7 +82,6 @@ unsafe fn get_local_map(handle: Handle) -> TaskLocalMap {
 }
 
 unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
-
     extern fn cleanup_task_local_map_extern_cb(map_ptr: *libc::c_void) {
         cleanup_task_local_map(map_ptr);
     }
