@@ -56,11 +56,3 @@ pub fn expand_deriving_eq(cx: @ext_ctxt,
     expand_deriving_generic(cx, span, mitem, in_items,
                             &trait_def)
 }
-
-pub fn expand_deriving_obsolete(cx: @ext_ctxt,
-                                span: span,
-                                _mitem: @meta_item,
-                                in_items: ~[@item]) -> ~[@item] {
-    cx.span_err(span, ~"`#[deriving_eq]` is obsolete; use `#[deriving(Eq)]` instead");
-    in_items
-}
