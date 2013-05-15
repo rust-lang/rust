@@ -94,12 +94,10 @@ unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
     let map_ptr = rt::rust_get_task_local_data(task);
     if map_ptr.is_null() {
         let map: TaskLocalMap = @mut ~[];
+        // NB: This bumps the ref count before converting to an unsafe pointer,
+        // keeping the map alive until TLS is destroyed
         rt::rust_set_task_local_data(task, cast::transmute(map));
         rt::rust_task_local_data_atexit(task, cleanup_task_local_map_extern_cb);
-        // Also need to reference it an extra time to keep it for now.
-        let nonmut = cast::transmute::<TaskLocalMap,
-                                       @~[Option<TaskLocalElement>]>(map);
-        cast::bump_box_refcount(nonmut);
         map
     } else {
         let map = cast::transmute(map_ptr);
