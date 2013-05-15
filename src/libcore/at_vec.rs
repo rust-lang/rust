@@ -149,7 +149,7 @@ pub fn from_elem<T:Copy>(n_elts: uint, t: T) -> @[T] {
  * Creates and initializes an immutable managed vector by moving all the
  * elements from an owned vector.
  */
-pub fn from_owned<T>(v: ~[T]) -> @[T] {
+pub fn to_managed_consume<T>(v: ~[T]) -> @[T] {
     let mut av = @[];
     unsafe {
         raw::reserve(&mut av, v.len());
@@ -164,7 +164,7 @@ pub fn from_owned<T>(v: ~[T]) -> @[T] {
  * Creates and initializes an immutable managed vector by copying all the
  * elements of a slice.
  */
-pub fn from_slice<T:Copy>(v: &[T]) -> @[T] {
+pub fn to_managed<T:Copy>(v: &[T]) -> @[T] {
     from_fn(v.len(), |i| v[i])
 }
 
@@ -304,20 +304,20 @@ mod test {
     }
 
     #[test]
-    fn test_from_owned() {
-        assert!(from_owned::<int>(~[]) == @[]);
-        assert!(from_owned(~[true]) == @[true]);
-        assert!(from_owned(~[1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
-        assert!(from_owned(~[~"abc", ~"123"]) == @[~"abc", ~"123"]);
-        assert!(from_owned(~[~[42]]) == @[~[42]]);
+    fn test_to_managed_consume() {
+        assert!(to_managed_consume::<int>(~[]) == @[]);
+        assert!(to_managed_consume(~[true]) == @[true]);
+        assert!(to_managed_consume(~[1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
+        assert!(to_managed_consume(~[~"abc", ~"123"]) == @[~"abc", ~"123"]);
+        assert!(to_managed_consume(~[~[42]]) == @[~[42]]);
     }
 
     #[test]
-    fn test_from_slice() {
-        assert!(from_slice::<int>([]) == @[]);
-        assert!(from_slice([true]) == @[true]);
-        assert!(from_slice([1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
-        assert!(from_slice([@"abc", @"123"]) == @[@"abc", @"123"]);
-        assert!(from_slice([@[42]]) == @[@[42]]);
+    fn test_to_managed() {
+        assert!(to_managed::<int>([]) == @[]);
+        assert!(to_managed([true]) == @[true]);
+        assert!(to_managed([1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
+        assert!(to_managed([@"abc", @"123"]) == @[@"abc", @"123"]);
+        assert!(to_managed([@[42]]) == @[@[42]]);
     }
 }
