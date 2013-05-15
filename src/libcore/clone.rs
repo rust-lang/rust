@@ -23,17 +23,12 @@ by convention implementing the `Clone` trait and calling the
 */
 
 pub trait Clone {
-    /// Return a deep copy of the owned object tree. Managed boxes are cloned with a shallow copy.
+    /// Return a deep copy of the owned object tree. Types with shared ownership like managed boxes
+    /// are cloned with a shallow copy.
     fn clone(&self) -> Self;
 }
 
-impl Clone for () {
-    /// Return a copy of the value.
-    #[inline(always)]
-    fn clone(&self) -> () { () }
-}
-
-impl<T:Clone> Clone for ~T {
+impl<T: Clone> Clone for ~T {
     /// Return a deep copy of the owned box.
     #[inline(always)]
     fn clone(&self) -> ~T { ~(**self).clone() }
@@ -54,7 +49,7 @@ impl<T> Clone for @mut T {
 macro_rules! clone_impl(
     ($t:ty) => {
         impl Clone for $t {
-            /// Return a copy of the value.
+            /// Return a deep copy of the value.
             #[inline(always)]
             fn clone(&self) -> $t { *self }
         }
@@ -77,8 +72,52 @@ clone_impl!(float)
 clone_impl!(f32)
 clone_impl!(f64)
 
+clone_impl!(())
 clone_impl!(bool)
 clone_impl!(char)
+
+pub trait DeepClone {
+    /// Return a deep copy of the object tree. Types with shared ownership are also copied via a
+    /// deep copy, unlike `Clone`. Note that this is currently unimplemented for managed boxes, as
+    /// it would need to handle cycles.
+    fn deep_clone(&self) -> Self;
+}
+
+macro_rules! deep_clone_impl(
+    ($t:ty) => {
+        impl DeepClone for $t {
+            /// Return a deep copy of the value.
+            #[inline(always)]
+            fn deep_clone(&self) -> $t { *self }
+        }
+    }
+)
+
+impl<T: DeepClone> DeepClone for ~T {
+    /// Return a deep copy of the owned box.
+    #[inline(always)]
+    fn deep_clone(&self) -> ~T { ~(**self).deep_clone() }
+}
+
+deep_clone_impl!(int)
+deep_clone_impl!(i8)
+deep_clone_impl!(i16)
+deep_clone_impl!(i32)
+deep_clone_impl!(i64)
+
+deep_clone_impl!(uint)
+deep_clone_impl!(u8)
+deep_clone_impl!(u16)
+deep_clone_impl!(u32)
+deep_clone_impl!(u64)
+
+deep_clone_impl!(float)
+deep_clone_impl!(f32)
+deep_clone_impl!(f64)
+
+deep_clone_impl!(())
+deep_clone_impl!(bool)
+deep_clone_impl!(char)
 
 #[test]
 fn test_owned_clone() {

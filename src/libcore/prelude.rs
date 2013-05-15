@@ -27,7 +27,7 @@ pub use io::{print, println};
 
 /* Reexported types and traits */
 
-pub use clone::Clone;
+pub use clone::{Clone, DeepClone};
 pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
 pub use container::{Container, Mutable, Map, Set};
 pub use hash::Hash;
