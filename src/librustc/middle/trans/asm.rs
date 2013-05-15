@@ -32,12 +32,9 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
     let outputs = do ia.outputs.map |&(c, out)| {
         constraints.push(copy *c);
 
-        let aoutty = ty::arg {
-            ty: expr_ty(bcx, out)
-        };
         aoutputs.push(unpack_result!(bcx, {
             callee::trans_arg_expr(bcx,
-                                   aoutty,
+                                   expr_ty(bcx, out),
                                    ty::ByCopy,
                                    out,
                                    &mut cleanups,
@@ -50,13 +47,9 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
             _ => fail!("Expression must be addr of")
         };
 
-        let outty = ty::arg {
-            ty: expr_ty(bcx, e)
-        };
-
         unpack_result!(bcx, {
             callee::trans_arg_expr(bcx,
-                                   outty,
+                                   expr_ty(bcx, e),
                                    ty::ByCopy,
                                    e,
                                    &mut cleanups,
@@ -75,13 +68,9 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
     let inputs = do ia.inputs.map |&(c, in)| {
         constraints.push(copy *c);
 
-        let inty = ty::arg {
-            ty: expr_ty(bcx, in)
-        };
-
         unpack_result!(bcx, {
             callee::trans_arg_expr(bcx,
-                                   inty,
+                                   expr_ty(bcx, in),
                                    ty::ByCopy,
                                    in,
                                    &mut cleanups,

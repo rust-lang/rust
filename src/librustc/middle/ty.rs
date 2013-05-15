@@ -47,25 +47,47 @@ use syntax;
 
 // Data types
 
-#[deriving(Eq, IterBytes)]
-pub struct arg {
-    ty: t
-}
-
 #[deriving(Eq)]
 pub struct field {
     ident: ast::ident,
     mt: mt
 }
 
-pub struct method {
+pub struct Method {
     ident: ast::ident,
     generics: ty::Generics,
     transformed_self_ty: Option<ty::t>,
     fty: BareFnTy,
-    self_ty: ast::self_ty_,
+    explicit_self: ast::explicit_self_,
     vis: ast::visibility,
     def_id: ast::def_id
+}
+
+pub impl Method {
+    fn new(ident: ast::ident,
+           generics: ty::Generics,
+           transformed_self_ty: Option<ty::t>,
+           fty: BareFnTy,
+           explicit_self: ast::explicit_self_,
+           vis: ast::visibility,
+           def_id: ast::def_id) -> Method {
+        // Check the invariants.
+        if explicit_self == ast::sty_static {
+            assert!(transformed_self_ty.is_none());
+        } else {
+            assert!(transformed_self_ty.is_some());
+        }
+
+       Method {
+            ident: ident,
+            generics: generics,
+            transformed_self_ty: transformed_self_ty,
+            fty: fty,
+            explicit_self: explicit_self,
+            vis: vis,
+            def_id: def_id
+        }
+    }
 }
 
 #[deriving(Eq)]
@@ -259,13 +281,13 @@ struct ctxt_ {
     node_type_substs: @mut HashMap<node_id, ~[t]>,
 
     // Maps from a method to the method "descriptor"
-    methods: @mut HashMap<def_id, @method>,
+    methods: @mut HashMap<def_id, @Method>,
 
     // Maps from a trait def-id to a list of the def-ids of its methods
     trait_method_def_ids: @mut HashMap<def_id, @~[def_id]>,
 
     // A cache for the trait_methods() routine
-    trait_methods_cache: @mut HashMap<def_id, @~[@method]>,
+    trait_methods_cache: @mut HashMap<def_id, @~[@Method]>,
 
     trait_refs: @mut HashMap<node_id, @TraitRef>,
     trait_defs: @mut HashMap<def_id, @TraitDef>,
@@ -392,7 +414,7 @@ pub struct ClosureTy {
 #[deriving(Eq)]
 pub struct FnSig {
     bound_lifetime_names: OptVec<ast::ident>,
-    inputs: ~[arg],
+    inputs: ~[t],
     output: t
 }
 
@@ -1107,14 +1129,14 @@ fn mk_t(cx: ctxt, st: sty) -> t {
       }
       &ty_tup(ref ts) => for ts.each |tt| { flags |= get(*tt).flags; },
       &ty_bare_fn(ref f) => {
-        for f.sig.inputs.each |a| { flags |= get(a.ty).flags; }
+        for f.sig.inputs.each |a| { flags |= get(*a).flags; }
          flags |= get(f.sig.output).flags;
          // T -> _|_ is *not* _|_ !
          flags &= !(has_ty_bot as uint);
       }
       &ty_closure(ref f) => {
         flags |= rflags(f.region);
-        for f.sig.inputs.each |a| { flags |= get(a.ty).flags; }
+        for f.sig.inputs.each |a| { flags |= get(*a).flags; }
         flags |= get(f.sig.output).flags;
         // T -> _|_ is *not* _|_ !
         flags &= !(has_ty_bot as uint);
@@ -1298,7 +1320,7 @@ pub fn mk_bare_fn(cx: ctxt, fty: BareFnTy) -> t {
 }
 
 pub fn mk_ctor_fn(cx: ctxt, input_tys: &[ty::t], output: ty::t) -> t {
-    let input_args = input_tys.map(|t| arg { ty: *t });
+    let input_args = input_tys.map(|t| *t);
     mk_bare_fn(cx,
                BareFnTy {
                    purity: ast::pure_fn,
@@ -1372,11 +1394,11 @@ pub fn maybe_walk_ty(ty: t, f: &fn(t) -> bool) {
       }
       ty_tup(ref ts) => { for ts.each |tt| { maybe_walk_ty(*tt, f); } }
       ty_bare_fn(ref ft) => {
-        for ft.sig.inputs.each |a| { maybe_walk_ty(a.ty, f); }
+        for ft.sig.inputs.each |a| { maybe_walk_ty(*a, f); }
         maybe_walk_ty(ft.sig.output, f);
       }
       ty_closure(ref ft) => {
-        for ft.sig.inputs.each |a| { maybe_walk_ty(a.ty, f); }
+        for ft.sig.inputs.each |a| { maybe_walk_ty(*a, f); }
         maybe_walk_ty(ft.sig.output, f);
       }
     }
@@ -1387,11 +1409,7 @@ pub fn fold_sty_to_ty(tcx: ty::ctxt, sty: &sty, foldop: &fn(t) -> t) -> t {
 }
 
 pub fn fold_sig(sig: &FnSig, fldop: &fn(t) -> t) -> FnSig {
-    let args = do sig.inputs.map |arg| {
-        arg {
-            ty: fldop(arg.ty)
-        }
-    };
+    let args = sig.inputs.map(|arg| fldop(*arg));
 
     FnSig {
         bound_lifetime_names: copy sig.bound_lifetime_names,
@@ -2999,7 +3017,7 @@ pub fn ty_fn_sig(fty: t) -> FnSig {
 }
 
 // Type accessors for substructures of types
-pub fn ty_fn_args(fty: t) -> ~[arg] {
+pub fn ty_fn_args(fty: t) -> ~[t] {
     match get(fty).sty {
         ty_bare_fn(ref f) => copy f.sig.inputs,
         ty_closure(ref f) => copy f.sig.inputs,
@@ -3103,7 +3121,7 @@ pub fn replace_closure_return_type(tcx: ctxt, fn_type: t, ret_type: t) -> t {
 
 // Returns a vec of all the input and output types of fty.
 pub fn tys_in_fn_sig(sig: &FnSig) -> ~[t] {
-    vec::append_one(sig.inputs.map(|a| a.ty), sig.output)
+    vec::append_one(sig.inputs.map(|a| *a), sig.output)
 }
 
 // Type accessors for AST nodes
@@ -3507,7 +3525,7 @@ pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
         fields.map(|f| tcx.sess.str_of(f.ident))));
 }
 
-pub fn method_idx(id: ast::ident, meths: &[@method]) -> Option<uint> {
+pub fn method_idx(id: ast::ident, meths: &[@Method]) -> Option<uint> {
     vec::position(meths, |m| m.ident == id)
 }
 
@@ -3831,12 +3849,12 @@ fn lookup_locally_or_in_crate_store<V:Copy>(
     return v;
 }
 
-pub fn trait_method(cx: ctxt, trait_did: ast::def_id, idx: uint) -> @method {
+pub fn trait_method(cx: ctxt, trait_did: ast::def_id, idx: uint) -> @Method {
     let method_def_id = ty::trait_method_def_ids(cx, trait_did)[idx];
     ty::method(cx, method_def_id)
 }
 
-pub fn trait_methods(cx: ctxt, trait_did: ast::def_id) -> @~[@method] {
+pub fn trait_methods(cx: ctxt, trait_did: ast::def_id) -> @~[@Method] {
     match cx.trait_methods_cache.find(&trait_did) {
         Some(&methods) => methods,
         None => {
@@ -3848,7 +3866,7 @@ pub fn trait_methods(cx: ctxt, trait_did: ast::def_id) -> @~[@method] {
     }
 }
 
-pub fn method(cx: ctxt, id: ast::def_id) -> @method {
+pub fn method(cx: ctxt, id: ast::def_id) -> @Method {
     lookup_locally_or_in_crate_store(
         "methods", id, cx.methods,
         || @csearch::get_method(cx, id))
@@ -4061,7 +4079,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                         let ctor_ty = node_id_to_type(cx, variant.node.id);
                         let arg_tys = {
                             if args.len() > 0u {
-                                ty_fn_args(ctor_ty).map(|a| a.ty)
+                                ty_fn_args(ctor_ty).map(|a| *a)
                             } else {
                                 ~[]
                             }

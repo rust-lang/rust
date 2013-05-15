@@ -29,7 +29,7 @@ use middle::trans::machine;
 use middle::trans::type_of::*;
 use middle::trans::type_of;
 use middle::ty;
-use middle::ty::{FnSig, arg};
+use middle::ty::FnSig;
 use util::ppaux::ty_to_str;
 
 use syntax::codemap::span;
@@ -94,7 +94,7 @@ fn foreign_signature(ccx: @CrateContext, fn_sig: &ty::FnSig)
      * values by pointer like we do.
      */
 
-    let llarg_tys = fn_sig.inputs.map(|arg| type_of(ccx, arg.ty));
+    let llarg_tys = fn_sig.inputs.map(|arg_ty| type_of(ccx, *arg_ty));
     let llret_ty = type_of::type_of(ccx, fn_sig.output);
     LlvmSignature {
         llarg_tys: llarg_tys,
@@ -820,7 +820,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                 region: ty::re_bound(ty::br_anon(0)),
                 sig: FnSig {
                     bound_lifetime_names: opt_vec::Empty,
-                    inputs: ~[ arg { ty: star_u8 } ],
+                    inputs: ~[ star_u8 ],
                     output: ty::mk_nil()
                 }
             });

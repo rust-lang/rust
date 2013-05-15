@@ -26,7 +26,7 @@ pub fn expand_deriving_iter_bytes(cx: @ext_ctxt,
             MethodDef {
                 name: ~"iter_bytes",
                 generics: LifetimeBounds::empty(),
-                self_ty: borrowed_explicit_self(),
+                explicit_self: borrowed_explicit_self(),
                 args: ~[
                     Literal(Path::new(~[~"bool"])),
                     Literal(Path::new(~[~"core", ~"to_bytes", ~"Cb"]))

@@ -33,7 +33,7 @@ pub fn expand_deriving_totaleq(cx: @ext_ctxt,
             MethodDef {
                 name: ~"equals",
                 generics: LifetimeBounds::empty(),
-                self_ty: borrowed_explicit_self(),
+                explicit_self: borrowed_explicit_self(),
                 args: ~[borrowed_self()],
                 ret_ty: Literal(Path::new(~[~"bool"])),
                 const_nonmatching: true,

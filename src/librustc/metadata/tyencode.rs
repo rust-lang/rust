@@ -344,10 +344,6 @@ fn enc_sigil(w: @io::Writer, sigil: Sigil) {
     }
 }
 
-pub fn enc_arg(w: @io::Writer, cx: @ctxt, arg: ty::arg) {
-    enc_ty(w, cx, arg.ty);
-}
-
 fn enc_purity(w: @io::Writer, p: purity) {
     match p {
       pure_fn => w.write_char('p'),
@@ -389,8 +385,8 @@ fn enc_closure_ty(w: @io::Writer, cx: @ctxt, ft: &ty::ClosureTy) {
 
 fn enc_fn_sig(w: @io::Writer, cx: @ctxt, fsig: &ty::FnSig) {
     w.write_char('[');
-    for fsig.inputs.each |arg| {
-        enc_arg(w, cx, *arg);
+    for fsig.inputs.each |ty| {
+        enc_ty(w, cx, *ty);
     }
     w.write_char(']');
     enc_ty(w, cx, fsig.output);

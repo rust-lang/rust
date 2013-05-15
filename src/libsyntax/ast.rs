@@ -17,6 +17,7 @@ use opt_vec::OptVec;
 use core::cast;
 use core::option::{None, Option, Some};
 use core::to_bytes;
+use core::to_bytes::IterBytes;
 use core::to_str::ToStr;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -121,6 +122,20 @@ pub struct Lifetime {
     id: node_id,
     span: span,
     ident: ident
+}
+
+#[cfg(stage0)]
+impl to_bytes::IterBytes for Lifetime {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_3(&self.id, &self.span, &self.ident, lsb0, f)
+    }
+}
+
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for Lifetime {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
+        to_bytes::iter_bytes_3(&self.id, &self.span, &self.ident, lsb0, f)
+    }
 }
 
 // a "Path" is essentially Rust's notion of a name;
@@ -754,7 +769,7 @@ pub struct ty_method {
     purity: purity,
     decl: fn_decl,
     generics: Generics,
-    self_ty: self_ty,
+    explicit_self: explicit_self,
     id: node_id,
     span: span,
 }
@@ -1051,7 +1066,7 @@ impl to_bytes::IterBytes for ret_style {
 #[auto_encode]
 #[auto_decode]
 #[deriving(Eq)]
-pub enum self_ty_ {
+pub enum explicit_self_ {
     sty_static,                                // no self
     sty_value,                                 // `self`
     sty_region(Option<@Lifetime>, mutability), // `&'lt self`
@@ -1059,7 +1074,33 @@ pub enum self_ty_ {
     sty_uniq(mutability)                       // `~self`
 }
 
-pub type self_ty = spanned<self_ty_>;
+#[cfg(stage0)]
+impl to_bytes::IterBytes for explicit_self_ {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
+        match *self {
+            sty_static => 0u8.iter_bytes(lsb0, f),
+            sty_value => 1u8.iter_bytes(lsb0, f),
+            sty_region(ref lft, ref mutbl) => to_bytes::iter_bytes_3(&2u8, &lft, mutbl, lsb0, f),
+            sty_box(ref mutbl) => to_bytes::iter_bytes_2(&3u8, mutbl, lsb0, f),
+            sty_uniq(ref mutbl) => to_bytes::iter_bytes_2(&4u8, mutbl, lsb0, f),
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl to_bytes::IterBytes for explicit_self_ {
+    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
+        match *self {
+            sty_static => 0u8.iter_bytes(lsb0, f),
+            sty_value => 1u8.iter_bytes(lsb0, f),
+            sty_region(ref lft, ref mutbl) => to_bytes::iter_bytes_3(&2u8, &lft, mutbl, lsb0, f),
+            sty_box(ref mutbl) => to_bytes::iter_bytes_2(&3u8, mutbl, lsb0, f),
+            sty_uniq(ref mutbl) => to_bytes::iter_bytes_2(&4u8, mutbl, lsb0, f),
+        }
+    }
+}
+
+pub type explicit_self = spanned<explicit_self_>;
 
 #[auto_encode]
 #[auto_decode]
@@ -1068,7 +1109,7 @@ pub struct method {
     ident: ident,
     attrs: ~[attribute],
     generics: Generics,
-    self_ty: self_ty,
+    explicit_self: explicit_self,
     purity: purity,
     decl: fn_decl,
     body: blk,

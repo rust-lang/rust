@@ -31,7 +31,7 @@ impl InferStr for ty::t {
 impl InferStr for FnSig {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         fmt!("(%s) -> %s",
-             str::connect(self.inputs.map(|a| a.ty.inf_str(cx)), ", "),
+             str::connect(self.inputs.map(|a| a.inf_str(cx)), ", "),
              self.output.inf_str(cx))
     }
 }

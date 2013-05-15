@@ -366,7 +366,7 @@ fn encode_path(ecx: @EncodeContext,
 fn encode_reexported_static_method(ecx: @EncodeContext,
                                    ebml_w: &mut writer::Encoder,
                                    exp: &middle::resolve::Export2,
-                                   m: @ty::method) {
+                                   m: @ty::Method) {
     debug!("(encode static trait method) reexport '%s::%s'",
             *exp.name, *ecx.tcx.sess.str_of(m.ident));
     ebml_w.start_tag(tag_items_data_item_reexport);
@@ -389,7 +389,7 @@ fn encode_reexported_static_methods(ecx: @EncodeContext,
                 Some(&ast_map::node_item(_, path)) => {
                     if mod_path != *path {
                         for methods.each |&m| {
-                            if m.self_ty  == ast::sty_static {
+                            if m.explicit_self == ast::sty_static {
                                 encode_reexported_static_method(ecx,
                                                                 ebml_w,
                                                                 exp, m);
@@ -486,11 +486,11 @@ fn encode_visibility(ebml_w: &mut writer::Encoder, visibility: visibility) {
     ebml_w.end_tag();
 }
 
-fn encode_self_type(ebml_w: &mut writer::Encoder, self_type: ast::self_ty_) {
-    ebml_w.start_tag(tag_item_trait_method_self_ty);
+fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::explicit_self_) {
+    ebml_w.start_tag(tag_item_trait_method_explicit_self);
 
     // Encode the base self type.
-    match self_type {
+    match explicit_self {
         sty_static => {
             ebml_w.writer.write(&[ 's' as u8 ]);
         }
@@ -625,7 +625,7 @@ fn encode_info_for_struct_ctor(ecx: @EncodeContext,
 
 fn encode_method_ty_fields(ecx: @EncodeContext,
                            ebml_w: &mut writer::Encoder,
-                           method_ty: &ty::method) {
+                           method_ty: &ty::Method) {
     encode_def_id(ebml_w, method_ty.def_id);
     encode_name(ecx, ebml_w, method_ty.ident);
     encode_ty_type_param_defs(ebml_w, ecx,
@@ -634,7 +634,7 @@ fn encode_method_ty_fields(ecx: @EncodeContext,
     encode_transformed_self_ty(ecx, ebml_w, method_ty.transformed_self_ty);
     encode_method_fty(ecx, ebml_w, &method_ty.fty);
     encode_visibility(ebml_w, method_ty.vis);
-    encode_self_type(ebml_w, method_ty.self_ty);
+    encode_explicit_self(ebml_w, method_ty.explicit_self);
 }
 
 fn encode_info_for_method(ecx: @EncodeContext,
@@ -652,10 +652,10 @@ fn encode_info_for_method(ecx: @EncodeContext,
     ebml_w.start_tag(tag_items_data_item);
 
     let method_def_id = local_def(m.id);
-    let method_ty: @ty::method = ty::method(ecx.tcx, method_def_id);
+    let method_ty = ty::method(ecx.tcx, method_def_id);
     encode_method_ty_fields(ecx, ebml_w, method_ty);
 
-    match m.self_ty.node {
+    match m.explicit_self.node {
         ast::sty_static => {
             encode_family(ebml_w, purity_static_method_family(m.purity));
         }
@@ -948,7 +948,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
         for ty::trait_method_def_ids(tcx, local_def(item.id)).eachi |i, &method_def_id| {
             assert!(method_def_id.crate == ast::local_crate);
 
-            let method_ty: @ty::method = ty::method(tcx, method_def_id);
+            let method_ty = ty::method(tcx, method_def_id);
 
             index.push(entry {val: method_def_id.node, pos: ebml_w.writer.tell()});
 
@@ -962,7 +962,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
             trait_path.push(ast_map::path_name(item.ident));
             encode_path(ecx, ebml_w, trait_path, ast_map::path_name(method_ty.ident));
 
-            match method_ty.self_ty {
+            match method_ty.explicit_self {
                 sty_static => {
                     encode_family(ebml_w,
                                   purity_static_method_family(
@@ -991,7 +991,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
                     // This is obviously a bogus assert but I don't think this
                     // ever worked before anyhow...near as I can tell, before
                     // we would emit two items.
-                    if method_ty.self_ty == sty_static {
+                    if method_ty.explicit_self == sty_static {
                         tcx.sess.span_unimpl(
                             item.span,
                             fmt!("Method %s is both provided and static",

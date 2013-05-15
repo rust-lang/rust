@@ -272,7 +272,7 @@ pub fn trait_method_to_ty_method(method: &trait_method) -> ty_method {
                 purity: m.purity,
                 decl: copy m.decl,
                 generics: copy m.generics,
-                self_ty: m.self_ty,
+                explicit_self: m.explicit_self,
                 id: m.id,
                 span: m.span,
             }

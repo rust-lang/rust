@@ -24,7 +24,7 @@ pub fn expand_deriving_ord(cx: @ext_ctxt,
             MethodDef {
                 name: $name,
                 generics: LifetimeBounds::empty(),
-                self_ty: borrowed_explicit_self(),
+                explicit_self: borrowed_explicit_self(),
                 args: ~[borrowed_self()],
                 ret_ty: Literal(Path::new(~[~"bool"])),
                 const_nonmatching: false,
