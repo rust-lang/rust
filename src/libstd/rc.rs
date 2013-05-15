@@ -76,6 +76,7 @@ impl<T: Owned> Drop for Rc<T> {
 
 
 impl<T: Owned> Clone for Rc<T> {
+    /// Return a shallow copy of the reference counted pointer.
     #[inline]
     fn clone(&self) -> Rc<T> {
         unsafe {
@@ -85,9 +86,38 @@ impl<T: Owned> Clone for Rc<T> {
     }
 }
 
+impl<T: Owned + DeepClone> DeepClone for Rc<T> {
+    /// Return a deep copy of the reference counted pointer.
+    #[inline]
+    fn deep_clone(&self) -> Rc<T> {
+        Rc::new(self.borrow().deep_clone())
+    }
+}
+
 #[cfg(test)]
 mod test_rc {
     use super::*;
+    use core::cell::Cell;
+
+    #[test]
+    fn test_clone() {
+        let x = Rc::new(Cell(5));
+        let y = x.clone();
+        do x.borrow().with_mut_ref |inner| {
+            *inner = 20;
+        }
+        assert_eq!(y.borrow().take(), 20);
+    }
+
+    #[test]
+    fn test_deep_clone() {
+        let x = Rc::new(Cell(5));
+        let y = x.deep_clone();
+        do x.borrow().with_mut_ref |inner| {
+            *inner = 20;
+        }
+        assert_eq!(y.borrow().take(), 5);
+    }
 
     #[test]
     fn test_simple() {
@@ -96,7 +126,7 @@ mod test_rc {
     }
 
     #[test]
-    fn test_clone() {
+    fn test_simple_clone() {
         let x = Rc::new(5);
         let y = x.clone();
         assert_eq!(*x.borrow(), 5);
@@ -149,24 +179,26 @@ pub impl<T: Owned> RcMut<T> {
 
     /// Fails if there is already a mutable borrow of the box
     #[inline]
-    fn with_borrow(&self, f: &fn(&T)) {
+    fn with_borrow<U>(&self, f: &fn(&T) -> U) -> U {
         unsafe {
             assert!((*self.ptr).borrow != Mutable);
             let previous = (*self.ptr).borrow;
             (*self.ptr).borrow = Immutable;
-            f(&(*self.ptr).value);
+            let res = f(&(*self.ptr).value);
             (*self.ptr).borrow = previous;
+            res
         }
     }
 
     /// Fails if there is already a mutable or immutable borrow of the box
     #[inline]
-    fn with_mut_borrow(&self, f: &fn(&mut T)) {
+    fn with_mut_borrow<U>(&self, f: &fn(&mut T) -> U) -> U {
         unsafe {
             assert!((*self.ptr).borrow == Nothing);
             (*self.ptr).borrow = Mutable;
-            f(&mut (*self.ptr).value);
+            let res = f(&mut (*self.ptr).value);
             (*self.ptr).borrow = Nothing;
+            res
         }
     }
 }
@@ -200,6 +232,7 @@ impl<T: Owned> Drop for RcMut<T> {
 }
 
 impl<T: Owned> Clone for RcMut<T> {
+    /// Return a shallow copy of the reference counted pointer.
     #[inline]
     fn clone(&self) -> RcMut<T> {
         unsafe {
@@ -209,9 +242,44 @@ impl<T: Owned> Clone for RcMut<T> {
     }
 }
 
+impl<T: Owned + DeepClone> DeepClone for RcMut<T> {
+    /// Return a deep copy of the reference counted pointer.
+    #[inline]
+    fn deep_clone(&self) -> RcMut<T> {
+        do self.with_borrow |x| {
+            // FIXME: #6497: should avoid freeze (slow)
+            RcMut::new(x.deep_clone())
+        }
+    }
+}
+
 #[cfg(test)]
 mod test_rc_mut {
     use super::*;
+
+    #[test]
+    fn test_clone() {
+        let x = RcMut::new(5);
+        let y = x.clone();
+        do x.with_mut_borrow |value| {
+            *value = 20;
+        }
+        do y.with_borrow |value| {
+            assert_eq!(*value, 20);
+        }
+    }
+
+    #[test]
+    fn test_deep_clone() {
+        let x = RcMut::new(5);
+        let y = x.deep_clone();
+        do x.with_mut_borrow |value| {
+            *value = 20;
+        }
+        do y.with_borrow |value| {
+            assert_eq!(*value, 5);
+        }
+    }
 
     #[test]
     fn borrow_many() {
