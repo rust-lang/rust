@@ -139,6 +139,8 @@ pub fn syntax_expander_table() -> SyntaxEnv {
         @SE(ItemDecorator(ext::auto_encode::expand_auto_decode)));
     syntax_expanders.insert(@~"env",
                             builtin_normal_tt(ext::env::expand_syntax_ext));
+    syntax_expanders.insert(@~"bytes",
+                            builtin_normal_tt(ext::bytes::expand_syntax_ext));
     syntax_expanders.insert(@~"concat_idents",
                             builtin_normal_tt(
                                 ext::concat_idents::expand_syntax_ext));
