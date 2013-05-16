@@ -1108,7 +1108,7 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                 dcx.tcx.adjustments.insert(id, adj);
             } else if tag == (c::tag_table_capture_map as uint) {
                 let cvars =
-                    at_vec::from_owned(
+                    at_vec::to_managed_consume(
                         val_dsr.read_to_vec(
                             |val_dsr| val_dsr.read_capture_var(xcx)));
                 dcx.maps.capture_map.insert(id, cvars);
