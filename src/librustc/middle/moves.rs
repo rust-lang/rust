@@ -221,16 +221,14 @@ use syntax::visit::vt;
 use syntax::print::pprust;
 use syntax::codemap::span;
 
-#[auto_encode]
-#[auto_decode]
+#[deriving(Encodable, Decodable)]
 pub enum CaptureMode {
     CapCopy, // Copy the value into the closure.
     CapMove, // Move the value into the closure.
     CapRef,  // Reference directly from parent stack frame (used by `&fn()`).
 }
 
-#[auto_encode]
-#[auto_decode]
+#[deriving(Encodable, Decodable)]
 pub struct CaptureVar {
     def: def,         // Variable being accessed free
     span: span,       // Location of an access to this variable

@@ -1331,26 +1331,20 @@ mod tests {
 
     use std::serialize::Decodable;
 
-    #[auto_encode]
-    #[auto_decode]
-    #[deriving(Eq)]
+    #[deriving(Eq, Encodable, Decodable)]
     enum Animal {
         Dog,
         Frog(~str, int)
     }
 
-    #[auto_encode]
-    #[auto_decode]
-    #[deriving(Eq)]
+    #[deriving(Eq, Encodable, Decodable)]
     struct Inner {
         a: (),
         b: uint,
         c: ~[~str],
     }
 
-    #[auto_encode]
-    #[auto_decode]
-    #[deriving(Eq)]
+    #[deriving(Eq, Encodable, Decodable)]
     struct Outer {
         inner: ~[Inner],
     }

@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+/*!
+The compiler code necessary for #[deriving(Decodable)]. See
+encodable.rs for more.
+*/
+
 use ast;
 use ast::*;
 use ext::base::ext_ctxt;

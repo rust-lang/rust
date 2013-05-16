@@ -96,9 +96,7 @@ pub struct mt {
     mutbl: ast::mutability,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum vstore {
     vstore_fixed(uint),
     vstore_uniq,
@@ -106,9 +104,7 @@ pub enum vstore {
     vstore_slice(Region)
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, IterBytes, Encodable, Decodable)]
 pub enum TraitStore {
     BoxTraitStore,              // @Trait
     UniqTraitStore,             // ~Trait
@@ -117,9 +113,7 @@ pub enum TraitStore {
 
 // XXX: This should probably go away at some point. Maybe after destructors
 // do?
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum SelfMode {
     ByCopy,
     ByRef,
@@ -197,27 +191,22 @@ pub enum ast_ty_to_ty_cache_entry {
 
 pub type opt_region_variance = Option<region_variance>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Decodable, Encodable)]
 pub enum region_variance { rv_covariant, rv_invariant, rv_contravariant }
 
-#[auto_encode]
-#[auto_decode]
+#[deriving(Decodable, Encodable)]
 pub enum AutoAdjustment {
     AutoAddEnv(ty::Region, ast::Sigil),
     AutoDerefRef(AutoDerefRef)
 }
 
-#[auto_encode]
-#[auto_decode]
+#[deriving(Decodable, Encodable)]
 pub struct AutoDerefRef {
     autoderefs: uint,
     autoref: Option<AutoRef>
 }
 
-#[auto_encode]
-#[auto_decode]
+#[deriving(Decodable, Encodable)]
 pub enum AutoRef {
     /// Convert from T to &T
     AutoPtr(Region, ast::mutability),
@@ -453,9 +442,7 @@ pub struct param_ty {
 }
 
 /// Representation of regions:
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, IterBytes, Encodable, Decodable)]
 pub enum Region {
     /// Bound regions are found (primarily) in function types.  They indicate
     /// region parameters that have yet to be replaced with actual regions
@@ -501,17 +488,13 @@ pub impl Region {
     }
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, IterBytes, Encodable, Decodable)]
 pub struct FreeRegion {
     scope_id: node_id,
     bound_region: bound_region
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq, IterBytes)]
+#[deriving(Eq, IterBytes, Encodable, Decodable)]
 pub enum bound_region {
     /// The self region for structs, impls (&T in a type defn or &'self T)
     br_self,
@@ -742,9 +725,7 @@ pub struct IntVid(uint);
 #[deriving(Eq)]
 pub struct FloatVid(uint);
 
-#[deriving(Eq)]
-#[auto_encode]
-#[auto_decode]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct RegionVid {
     id: uint
 }
@@ -777,8 +758,7 @@ impl to_bytes::IterBytes for InferTy {
     }
 }
 
-#[auto_encode]
-#[auto_decode]
+#[deriving(Encodable, Decodable)]
 pub enum InferRegion {
     ReVar(RegionVid),
     ReSkolemized(uint, bound_region)
