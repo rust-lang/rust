@@ -312,7 +312,7 @@ be distributed on the available cores.
 fn partial_sum(start: uint) -> f64 {
     let mut local_sum = 0f64;
     for uint::range(start*100000, (start+1)*100000) |num| {
-        local_sum += (num as f64 + 1).pow(-2.0);
+        local_sum += (num as f64 + 1.0).pow(-2.0);
     }
     local_sum
 }
