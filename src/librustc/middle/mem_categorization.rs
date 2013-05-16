@@ -551,7 +551,7 @@ pub impl mem_categorization_ctxt {
             id:elt.id(),
             span:elt.span(),
             cat:cat_rvalue,
-            mutbl:McImmutable,
+            mutbl:McDeclared,
             ty:expr_ty
         }
     }
