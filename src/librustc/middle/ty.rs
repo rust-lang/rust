@@ -3883,23 +3883,23 @@ pub fn trait_method_def_ids(cx: ctxt, id: ast::def_id) -> @~[def_id] {
         || @csearch::get_trait_method_def_ids(cx.cstore, id))
 }
 
-pub fn impl_trait_refs(cx: ctxt, id: ast::def_id) -> ~[@TraitRef] {
+pub fn impl_trait_ref(cx: ctxt, id: ast::def_id) -> Option<@TraitRef> {
     if id.crate == ast::local_crate {
-        debug!("(impl_traits) searching for trait impl %?", id);
+        debug!("(impl_trait_ref) searching for trait impl %?", id);
         match cx.items.find(&id.node) {
            Some(&ast_map::node_item(@ast::item {
                         node: ast::item_impl(_, opt_trait, _, _),
                         _},
                     _)) => {
                match opt_trait {
-                   Some(t) => ~[ty::node_id_to_trait_ref(cx, t.ref_id)],
-                   None => ~[]
+                   Some(t) => Some(ty::node_id_to_trait_ref(cx, t.ref_id)),
+                   None => None
                }
            }
-           _ => ~[]
+           _ => None
         }
     } else {
-        csearch::get_impl_traits(cx, id)
+        csearch::get_impl_trait(cx, id)
     }
 }
 
