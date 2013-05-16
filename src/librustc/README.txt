@@ -35,19 +35,19 @@ ASTs -- are in a separate crate called "syntax", whose files are in
 ./../libsyntax, where . is the current directory (that is, the parent
 directory of front/, middle/, back/, and so on).
 
-The entry-point for the compiler is main() in driver/rustc.rs, and
+The entry-point for the compiler is main() in rustc.rc, and
 this file sequences the various parts together.
 
 
 The 3 central data structures:
 ------------------------------
 
-#1: ../libsyntax/ast.rs defines the AST. The AST is treated as immutable
+#1: ./../libsyntax/ast.rs defines the AST. The AST is treated as immutable
     after parsing, but it depends on mutable context data structures
     (mainly hash maps) to give it meaning.
 
       - Many -- though not all -- nodes within this data structure are
-        wrapped in the type spanned<T>, meaning that the front-end has
+        wrapped in the type `spanned<T>`, meaning that the front-end has
         marked the input coordinates of that node. The member .node is
         the data itself, the member .span is the input location (file,
         line, column; both low and high).
@@ -78,7 +78,7 @@ Control and information flow within the compiler:
 - main() in rustc.rc assumes control on startup. Options are
   parsed, platform is detected, etc.
 
-- libsyntax/parse/parser.rs parses the input files and produces an AST
+- ./../libsyntax/parse/parser.rs parses the input files and produces an AST
   that represents the input crate.
 
 - Multiple middle-end passes (middle/resolve.rs, middle/typeck.rs)
