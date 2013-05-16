@@ -380,6 +380,9 @@ fn enc_closure_ty(w: @io::Writer, cx: @ctxt, ft: &ty::ClosureTy) {
     enc_purity(w, ft.purity);
     enc_onceness(w, ft.onceness);
     enc_region(w, cx, ft.region);
+    let bounds = ty::ParamBounds {builtin_bounds: ft.bounds,
+                                  trait_bounds: ~[]};
+    enc_bounds(w, cx, &bounds);
     enc_fn_sig(w, cx, &ft.sig);
 }
 
@@ -392,7 +395,7 @@ fn enc_fn_sig(w: @io::Writer, cx: @ctxt, fsig: &ty::FnSig) {
     enc_ty(w, cx, fsig.output);
 }
 
-fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: @ty::ParamBounds) {
+fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: &ty::ParamBounds) {
     for bs.builtin_bounds.each |bound| {
         match bound {
             ty::BoundOwned => w.write_char('S'),

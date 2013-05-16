@@ -22,7 +22,7 @@ use middle::typeck;
 use middle;
 use util::ppaux::{note_and_explain_region, bound_region_to_str};
 use util::ppaux::{trait_store_to_str, ty_to_str, vstore_to_str};
-use util::ppaux::Repr;
+use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
 use util::enum_set::{EnumSet, CLike};
 
@@ -390,7 +390,8 @@ pub struct ClosureTy {
     sigil: ast::Sigil,
     onceness: ast::Onceness,
     region: Region,
-    sig: FnSig
+    bounds: BuiltinBounds,
+    sig: FnSig,
 }
 
 /**
@@ -685,6 +686,7 @@ pub enum type_err {
     terr_int_mismatch(expected_found<IntVarValue>),
     terr_float_mismatch(expected_found<ast::float_ty>),
     terr_traits(expected_found<ast::def_id>),
+    terr_builtin_bounds(expected_found<BuiltinBounds>),
 }
 
 #[deriving(Eq, IterBytes)]
@@ -705,6 +707,15 @@ pub enum BuiltinBound {
 
 pub fn EmptyBuiltinBounds() -> BuiltinBounds {
     EnumSet::empty()
+}
+
+pub fn AllBuiltinBounds() -> BuiltinBounds {
+    let mut set = EnumSet::empty();
+    set.add(BoundCopy);
+    set.add(BoundStatic);
+    set.add(BoundOwned);
+    set.add(BoundConst);
+    set
 }
 
 impl CLike for BuiltinBound {
@@ -3169,6 +3180,7 @@ pub fn adjust_ty(cx: ctxt,
                                        sigil: s,
                                        onceness: ast::Many,
                                        region: r,
+                                       bounds: ty::AllBuiltinBounds(),
                                        sig: copy b.sig})
                 }
                 ref b => {
@@ -3696,6 +3708,19 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
             fmt!("expected trait %s but found trait %s",
                  item_path_str(cx, values.expected),
                  item_path_str(cx, values.found))
+        }
+        terr_builtin_bounds(values) => {
+            if values.expected.is_empty() {
+                fmt!("expected no bounds but found `%s`",
+                     values.found.user_string(cx))
+            } else if values.found.is_empty() {
+                fmt!("expected bounds `%s` but found no bounds",
+                     values.expected.user_string(cx))
+            } else {
+                fmt!("expected bounds `%s` but found bounds `%s`",
+                     values.expected.user_string(cx),
+                     values.found.user_string(cx))
+            }
         }
         terr_self_substs => {
             ~"inconsistent self substitution" // XXX this is more of a bug

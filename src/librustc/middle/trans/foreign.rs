@@ -818,6 +818,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                 sigil: ast::BorrowedSigil,
                 onceness: ast::Many,
                 region: ty::re_bound(ty::br_anon(0)),
+                bounds: ty::EmptyBuiltinBounds(),
                 sig: FnSig {
                     bound_lifetime_names: opt_vec::Empty,
                     inputs: ~[ star_u8 ],

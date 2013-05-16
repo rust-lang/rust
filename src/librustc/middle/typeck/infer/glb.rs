@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::ty::{BuiltinBounds};
 use middle::ty::RegionVid;
 use middle::ty;
 use middle::typeck::infer::combine::*;
@@ -112,6 +113,12 @@ impl Combine for Glb {
             (Many, _) | (_, Many) => Ok(Many),
             (Once, Once) => Ok(Once)
         }
+    }
+
+    fn bounds(&self, a: BuiltinBounds, b: BuiltinBounds) -> cres<BuiltinBounds> {
+        // More bounds is a subtype of fewer bounds, so
+        // the GLB (mutual subtype) is the union.
+        Ok(a.union(b))
     }
 
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region> {

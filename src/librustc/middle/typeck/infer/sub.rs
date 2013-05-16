@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::ty::{BuiltinBounds};
 use middle::ty;
 use middle::ty::TyVar;
 use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
@@ -97,6 +98,19 @@ impl Combine for Sub {
         self.lub().oncenesses(a, b).compare(b, || {
             ty::terr_onceness_mismatch(expected_found(self, a, b))
         })
+    }
+
+    fn bounds(&self, a: BuiltinBounds, b: BuiltinBounds) -> cres<BuiltinBounds> {
+        // More bounds is a subtype of fewer bounds.
+        //
+        // e.g., fn:Copy() <: fn(), because the former is a function
+        // that only closes over copyable things, but the latter is
+        // any function at all.
+        if a.contains(b) {
+            Ok(a)
+        } else {
+            Err(ty::terr_builtin_bounds(expected_found(self, a, b)))
+        }
     }
 
     fn tys(&self, a: ty::t, b: ty::t) -> cres<ty::t> {

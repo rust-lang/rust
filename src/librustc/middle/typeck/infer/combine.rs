@@ -56,6 +56,7 @@
 
 use middle::ty::{FloatVar, FnSig, IntVar, TyVar};
 use middle::ty::{IntType, UintType, substs};
+use middle::ty::{BuiltinBounds};
 use middle::ty;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
@@ -100,6 +101,7 @@ pub trait Combine {
     fn purities(&self, a: purity, b: purity) -> cres<purity>;
     fn abis(&self, a: AbiSet, b: AbiSet) -> cres<AbiSet>;
     fn oncenesses(&self, a: Onceness, b: Onceness) -> cres<Onceness>;
+    fn bounds(&self, a: BuiltinBounds, b: BuiltinBounds) -> cres<BuiltinBounds>;
     fn contraregions(&self, a: ty::Region, b: ty::Region)
                   -> cres<ty::Region>;
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<ty::Region>;
@@ -372,11 +374,13 @@ pub fn super_closure_tys<C:Combine>(
     let r = if_ok!(this.contraregions(a_f.region, b_f.region));
     let purity = if_ok!(this.purities(a_f.purity, b_f.purity));
     let onceness = if_ok!(this.oncenesses(a_f.onceness, b_f.onceness));
+    let bounds = if_ok!(this.bounds(a_f.bounds, b_f.bounds));
     let sig = if_ok!(this.fn_sigs(&a_f.sig, &b_f.sig));
     Ok(ty::ClosureTy {purity: purity,
                       sigil: p,
                       onceness: onceness,
                       region: r,
+                      bounds: bounds,
                       sig: sig})
 }
 
