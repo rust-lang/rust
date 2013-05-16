@@ -172,7 +172,7 @@ impl GuaranteeLifetimeContext {
                               cmt: mc::cmt) -> bool {
         //! We can omit the root on an `@T` value if the location
         //! that holds the box is either (1) an rvalue, in which case
-        //! is is in a non-user-accessible temporary, or (2) an immutable
+        //! it is in a non-user-accessible temporary, or (2) an immutable
         //! lvalue.
 
         cmt.mutbl.is_immutable() || match cmt.guarantor().cat {
