@@ -58,9 +58,7 @@ enum AbiArchitecture {
     Archs(u32)  // Multiple architectures (bitset)
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct AbiSet {
     priv bits: u32   // each bit represents one of the abis below
 }

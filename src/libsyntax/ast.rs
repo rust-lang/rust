@@ -47,9 +47,7 @@ pub type SyntaxContext = uint;
 pub type SCTable = ~[SyntaxContext_];
 pub static empty_ctxt : uint = 0;
 
-#[deriving(Eq)]
-#[auto_encode]
-#[auto_decode]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum SyntaxContext_ {
     EmptyCtxt,
     Mark (Mrk,SyntaxContext),
@@ -115,9 +113,7 @@ impl to_bytes::IterBytes for ident {
 // Functions may or may not have names.
 pub type fn_ident = Option<ident>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct Lifetime {
     id: node_id,
     span: span,
@@ -142,9 +138,7 @@ impl to_bytes::IterBytes for Lifetime {
 // for instance: core::cmp::Eq  .  It's represented
 // as a sequence of identifiers, along with a bunch
 // of supporting information.
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct Path {
     span: span,
     global: bool,
@@ -157,9 +151,7 @@ pub type crate_num = int;
 
 pub type node_id = int;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct def_id {
     crate: crate_num,
     node: node_id,
@@ -168,9 +160,7 @@ pub struct def_id {
 pub static local_crate: crate_num = 0;
 pub static crate_node_id: node_id = 0;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 // The AST represents all type param bounds as types.
 // typeck::collect::compute_bounds matches these against
 // the "special" built-in traits (see middle::lang_items) and
@@ -180,18 +170,14 @@ pub enum TyParamBound {
     RegionTyParamBound
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct TyParam {
     ident: ident,
     id: node_id,
     bounds: @OptVec<TyParamBound>
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct Generics {
     lifetimes: OptVec<Lifetime>,
     ty_params: OptVec<TyParam>
@@ -209,9 +195,7 @@ pub impl Generics {
     }
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum def {
     def_fn(def_id, purity),
     def_static_method(/* method */ def_id,
@@ -248,9 +232,7 @@ pub type crate_cfg = ~[@meta_item];
 
 pub type crate = spanned<crate_>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct crate_ {
     module: _mod,
     attrs: ~[attribute],
@@ -259,9 +241,7 @@ pub struct crate_ {
 
 pub type meta_item = spanned<meta_item_>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum meta_item_ {
     meta_word(@~str),
     meta_list(@~str, ~[@meta_item]),
@@ -270,9 +250,7 @@ pub enum meta_item_ {
 
 pub type blk = spanned<blk_>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct blk_ {
     view_items: ~[@view_item],
     stmts: ~[@stmt],
@@ -281,26 +259,20 @@ pub struct blk_ {
     rules: blk_check_mode,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct pat {
     id: node_id,
     node: pat_,
     span: span,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct field_pat {
     ident: ident,
     pat: @pat,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum binding_mode {
     bind_by_copy,
     bind_by_ref(mutability),
@@ -334,9 +306,7 @@ impl to_bytes::IterBytes for binding_mode {
     }
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum pat_ {
     pat_wild,
     // A pat_ident may either be a new bound variable,
@@ -361,9 +331,7 @@ pub enum pat_ {
     pat_vec(~[@pat], Option<@pat>, ~[@pat])
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum mutability { m_mutbl, m_imm, m_const, }
 
 #[cfg(stage0)]
@@ -379,9 +347,7 @@ impl to_bytes::IterBytes for mutability {
     }
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum Sigil {
     BorrowedSigil,
     OwnedSigil,
@@ -411,9 +377,7 @@ impl ToStr for Sigil {
     }
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum vstore {
     // FIXME (#3469): Change uint to @expr (actually only constant exprs)
     vstore_fixed(Option<uint>),     // [1,2,3,4]
@@ -422,9 +386,7 @@ pub enum vstore {
     vstore_slice(Option<@Lifetime>) // &'foo? [1,2,3,4]
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum expr_vstore {
     expr_vstore_uniq,                  // ~[1,2,3,4]
     expr_vstore_box,                   // @[1,2,3,4]
@@ -433,9 +395,7 @@ pub enum expr_vstore {
     expr_vstore_mut_slice,             // &mut [1,2,3,4]
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum binop {
     add,
     subtract,
@@ -457,9 +417,7 @@ pub enum binop {
     gt,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum unop {
     box(mutability),
     uniq(mutability),
@@ -470,9 +428,7 @@ pub enum unop {
 
 pub type stmt = spanned<stmt_>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum stmt_ {
     stmt_decl(@decl, node_id),
 
@@ -488,9 +444,7 @@ pub enum stmt_ {
 
 // FIXME (pending discussion of #1697, #2178...): local should really be
 // a refinement on pat.
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct local_ {
     is_mutbl: bool,
     ty: @Ty,
@@ -503,23 +457,17 @@ pub type local = spanned<local_>;
 
 pub type decl = spanned<decl_>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum decl_ { decl_local(~[@local]), decl_item(@item), }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct arm {
     pats: ~[@pat],
     guard: Option<@expr>,
     body: blk,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct field_ {
     mutbl: mutability,
     ident: ident,
@@ -528,14 +476,10 @@ pub struct field_ {
 
 pub type field = spanned<field_>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum blk_check_mode { default_blk, unsafe_blk, }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct expr {
     id: node_id,
     // Extra node ID is only used for index, assign_op, unary, binary, method
@@ -545,18 +489,14 @@ pub struct expr {
     span: span,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum CallSugar {
     NoSugar,
     DoSugar,
     ForSugar
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum expr_ {
     expr_vstore(@expr, expr_vstore),
     expr_vec(~[@expr], mutability),
@@ -627,9 +567,7 @@ pub enum expr_ {
 // else knows what to do with them, so you'll probably get a syntax
 // error.
 //
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 #[doc="For macro invocations; parsing is delegated to the macro"]
 pub enum token_tree {
     // a single token
@@ -702,9 +640,7 @@ pub enum token_tree {
 //
 pub type matcher = spanned<matcher_>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum matcher_ {
     // match one token
     match_tok(::parse::token::Token),
@@ -717,18 +653,14 @@ pub enum matcher_ {
 
 pub type mac = spanned<mac_>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum mac_ {
     mac_invoc_tt(@Path,~[token_tree]),   // new macro-invocation
 }
 
 pub type lit = spanned<lit_>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum lit_ {
     lit_str(@~str),
     lit_int(i64, int_ty),
@@ -742,17 +674,13 @@ pub enum lit_ {
 
 // NB: If you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct mt {
     ty: @Ty,
     mutbl: mutability,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct ty_field_ {
     ident: ident,
     mt: mt,
@@ -760,9 +688,7 @@ pub struct ty_field_ {
 
 pub type ty_field = spanned<ty_field_>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct ty_method {
     ident: ident,
     attrs: ~[attribute],
@@ -774,9 +700,7 @@ pub struct ty_method {
     span: span,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 // A trait method is either required (meaning it doesn't have an
 // implementation, just a signature) or provided (meaning it has a default
 // implementation).
@@ -785,9 +709,7 @@ pub enum trait_method {
     provided(@method),
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum int_ty { ty_i, ty_char, ty_i8, ty_i16, ty_i32, ty_i64, }
 
 impl ToStr for int_ty {
@@ -809,9 +731,7 @@ impl to_bytes::IterBytes for int_ty {
     }
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum uint_ty { ty_u, ty_u8, ty_u16, ty_u32, ty_u64, }
 
 impl ToStr for uint_ty {
@@ -833,9 +753,7 @@ impl to_bytes::IterBytes for uint_ty {
     }
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum float_ty { ty_f, ty_f32, ty_f64, }
 
 impl ToStr for float_ty {
@@ -858,9 +776,7 @@ impl to_bytes::IterBytes for float_ty {
 }
 
 // NB Eq method appears below.
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct Ty {
     id: node_id,
     node: ty_,
@@ -868,9 +784,7 @@ pub struct Ty {
 }
 
 // Not represented directly in the AST, referred to by name through a ty_path.
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum prim_ty {
     ty_int(int_ty),
     ty_uint(uint_ty),
@@ -879,9 +793,7 @@ pub enum prim_ty {
     ty_bool,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum Onceness {
     Once,
     Many
@@ -909,9 +821,7 @@ impl to_bytes::IterBytes for Onceness {
     }
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct TyClosure {
     sigil: Sigil,
     region: Option<@Lifetime>,
@@ -921,9 +831,7 @@ pub struct TyClosure {
     decl: fn_decl
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct TyBareFn {
     purity: purity,
     abis: AbiSet,
@@ -931,9 +839,7 @@ pub struct TyBareFn {
     decl: fn_decl
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum ty_ {
     ty_nil,
     ty_bot, /* bottom type */
@@ -967,17 +873,13 @@ impl to_bytes::IterBytes for Ty {
     }
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum asm_dialect {
     asm_att,
     asm_intel
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct inline_asm {
     asm: @~str,
     clobbers: @~str,
@@ -988,9 +890,7 @@ pub struct inline_asm {
     dialect: asm_dialect
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct arg {
     is_mutbl: bool,
     ty: @Ty,
@@ -998,18 +898,14 @@ pub struct arg {
     id: node_id,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct fn_decl {
     inputs: ~[arg],
     output: @Ty,
     cf: ret_style,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum purity {
     pure_fn, // declared with "pure fn"
     unsafe_fn, // declared with "unsafe fn"
@@ -1041,9 +937,7 @@ impl to_bytes::IterBytes for purity {
     }
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum ret_style {
     noreturn, // functions with return type _|_ that always
               // raise an error or exit (i.e. never return to the caller)
@@ -1063,9 +957,7 @@ impl to_bytes::IterBytes for ret_style {
     }
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum explicit_self_ {
     sty_static,                                // no self
     sty_value,                                 // `self`
@@ -1102,9 +994,7 @@ impl to_bytes::IterBytes for explicit_self_ {
 
 pub type explicit_self = spanned<explicit_self_>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct method {
     ident: ident,
     attrs: ~[attribute],
@@ -1119,23 +1009,17 @@ pub struct method {
     vis: visibility,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct _mod {
     view_items: ~[@view_item],
     items: ~[@item],
 }
 
 // Foreign mods can be named or anonymous
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum foreign_mod_sort { named, anonymous }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct foreign_mod {
     sort: foreign_mod_sort,
     abis: AbiSet,
@@ -1143,32 +1027,24 @@ pub struct foreign_mod {
     items: ~[@foreign_item],
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct variant_arg {
     ty: @Ty,
     id: node_id,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum variant_kind {
     tuple_variant_kind(~[variant_arg]),
     struct_variant_kind(@struct_def),
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct enum_def {
     variants: ~[variant],
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct variant_ {
     name: ident,
     attrs: ~[attribute],
@@ -1180,9 +1056,7 @@ pub struct variant_ {
 
 pub type variant = spanned<variant_>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct path_list_ident_ {
     name: ident,
     id: node_id,
@@ -1192,9 +1066,7 @@ pub type path_list_ident = spanned<path_list_ident_>;
 
 pub type view_path = spanned<view_path_>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum view_path_ {
 
     // quux = foo::bar::baz
@@ -1211,9 +1083,7 @@ pub enum view_path_ {
     view_path_list(@Path, ~[path_list_ident], node_id)
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct view_item {
     node: view_item_,
     attrs: ~[attribute],
@@ -1221,9 +1091,7 @@ pub struct view_item {
     span: span,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum view_item_ {
     view_item_extern_mod(ident, ~[@meta_item], node_id),
     view_item_use(~[@view_path]),
@@ -1235,15 +1103,11 @@ pub type attribute = spanned<attribute_>;
 // Distinguishes between attributes that decorate items and attributes that
 // are contained as statements within items. These two cases need to be
 // distinguished for pretty-printing.
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum attr_style { attr_outer, attr_inner, }
 
 // doc-comments are promoted to attributes that have is_sugared_doc = true
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct attribute_ {
     style: attr_style,
     value: @meta_item,
@@ -1257,17 +1121,13 @@ pub struct attribute_ {
   If this impl is an item_impl, the impl_id is redundant (it could be the
   same as the impl's node id).
  */
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct trait_ref {
     path: @Path,
     ref_id: node_id,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum visibility { public, private, inherited }
 
 impl visibility {
@@ -1279,9 +1139,7 @@ impl visibility {
     }
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct struct_field_ {
     kind: struct_field_kind,
     id: node_id,
@@ -1291,17 +1149,13 @@ pub struct struct_field_ {
 
 pub type struct_field = spanned<struct_field_>;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum struct_field_kind {
     named_field(ident, visibility),
     unnamed_field   // element of a tuple-like struct
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct struct_def {
     fields: ~[@struct_field], /* fields, not including ctor */
     /* ID of the constructor. This is only used for tuple- or enum-like
@@ -1313,9 +1167,7 @@ pub struct struct_def {
   FIXME (#3300): Should allow items to be anonymous. Right now
   we just use dummy names for anon items.
  */
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct item {
     ident: ident,
     attrs: ~[attribute],
@@ -1325,9 +1177,7 @@ pub struct item {
     span: span,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum item_ {
     item_const(@Ty, @expr),
     item_fn(fn_decl, purity, AbiSet, Generics, blk),
@@ -1345,9 +1195,7 @@ pub enum item_ {
     item_mac(mac),
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub struct foreign_item {
     ident: ident,
     attrs: ~[attribute],
@@ -1357,9 +1205,7 @@ pub struct foreign_item {
     vis: visibility,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum foreign_item_ {
     foreign_item_fn(fn_decl, purity, Generics),
     foreign_item_const(@Ty)
@@ -1368,9 +1214,7 @@ pub enum foreign_item_ {
 // The data we save and restore about an inlined item or method.  This is not
 // part of the AST that we parse from a file, but it becomes part of the tree
 // that we trans.
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Eq, Encodable, Decodable)]
 pub enum inlined_item {
     ii_item(@item),
     ii_method(def_id /* impl id */, @method),

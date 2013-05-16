@@ -73,8 +73,7 @@ pub mod infer;
 pub mod collect;
 pub mod coherence;
 
-#[auto_encode]
-#[auto_decode]
+#[deriving(Encodable, Decodable)]
 pub enum method_origin {
     // supertrait method invoked on "self" inside a default method
     // first field is supertrait ID;
@@ -98,8 +97,7 @@ pub enum method_origin {
 
 // details for a method invoked with a receiver whose type is a type parameter
 // with a bounded trait.
-#[auto_encode]
-#[auto_decode]
+#[deriving(Encodable, Decodable)]
 pub struct method_param {
     // the trait containing the method to be invoked
     trait_id: ast::def_id,
