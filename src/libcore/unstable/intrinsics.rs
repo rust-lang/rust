@@ -8,62 +8,119 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-An attempt to move all intrinsic declarations to a single place,
-as mentioned in #3369
-The intrinsics are defined in librustc/middle/trans/foreign.rs.
+/*! rustc compiler intrinsics.
+
+The corresponding definitions are in librustc/middle/trans/foreign.rs.
+
+# Atomics
+
+The atomic intrinsics provide common atomic operations on machine
+words, with multiple possible memory orderings. They obey the same
+semantics as C++0x. See the LLVM documentation on [[atomics]].
+
+[atomics]: http://llvm.org/docs/Atomics.html
+
+A quick refresher on memory ordering:
+
+* Acquire - a barrier for aquiring a lock. Subsequent reads and writes
+  take place after the barrier.
+* Release - a barrier for releasing a lock. Preceding reads and writes
+  take place before the barrier.
+* Sequentially consistent - sequentially consistent operations are
+  guaranteed to happen in order. This is the standard mode for working
+  with atomic types and is equivalent to Java's `volatile`.
+
 */
 
 #[abi = "rust-intrinsic"]
 pub extern "rust-intrinsic" {
+
+    /// Atomic compare and exchange, sequentially consistent.
     pub fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;
+    /// Atomic compare and exchange, acquire ordering.
     pub fn atomic_cxchg_acq(dst: &mut int, old: int, src: int) -> int;
+    /// Atomic compare and exchange, release ordering.
     pub fn atomic_cxchg_rel(dst: &mut int, old: int, src: int) -> int;
 
+    /// Atomic load, sequentially consistent.
     #[cfg(not(stage0))]
     pub fn atomic_load(src: &int) -> int;
+    /// Atomic load, acquire ordering.
     #[cfg(not(stage0))]
     pub fn atomic_load_acq(src: &int) -> int;
 
+    /// Atomic store, sequentially consistent.
     #[cfg(not(stage0))]
     pub fn atomic_store(dst: &mut int, val: int);
+    /// Atomic store, release ordering.
     #[cfg(not(stage0))]
     pub fn atomic_store_rel(dst: &mut int, val: int);
 
+    /// Atomic exchange, sequentially consistent.
     pub fn atomic_xchg(dst: &mut int, src: int) -> int;
+    /// Atomic exchange, acquire ordering.
     pub fn atomic_xchg_acq(dst: &mut int, src: int) -> int;
+    /// Atomic exchange, release ordering.
     pub fn atomic_xchg_rel(dst: &mut int, src: int) -> int;
 
+    /// Atomic addition, sequentially consistent.
     pub fn atomic_xadd(dst: &mut int, src: int) -> int;
+    /// Atomic addition, acquire ordering.
     pub fn atomic_xadd_acq(dst: &mut int, src: int) -> int;
+    /// Atomic addition, release ordering.
     pub fn atomic_xadd_rel(dst: &mut int, src: int) -> int;
 
+    /// Atomic subtraction, sequentially consistent.
     pub fn atomic_xsub(dst: &mut int, src: int) -> int;
+    /// Atomic subtraction, acquire ordering.
     pub fn atomic_xsub_acq(dst: &mut int, src: int) -> int;
+    /// Atomic subtraction, release ordering.
     pub fn atomic_xsub_rel(dst: &mut int, src: int) -> int;
 
+    /// The size of a type in bytes.
+    ///
+    /// This is the exact number of bytes in memory taken up by a
+    /// value of the given type. In other words, a memset of this size
+    /// would *exactly* overwrite a value. When laid out in vectors
+    /// and structures there may be additional padding between
+    /// elements.
     pub fn size_of<T>() -> uint;
 
+    /// Move a value to a memory location containing a value.
+    ///
+    /// Drop glue is run on the destination, which must contain a
+    /// valid Rust value.
     pub fn move_val<T>(dst: &mut T, src: T);
+
+    /// Move a value to an uninitialized memory location.
+    ///
+    /// Drop glue is not run on the destination.
     pub fn move_val_init<T>(dst: &mut T, src: T);
 
     pub fn min_align_of<T>() -> uint;
     pub fn pref_align_of<T>() -> uint;
 
+    /// Get a static pointer to a type descriptor.
     pub fn get_tydesc<T>() -> *();
 
-    /// init is unsafe because it returns a zeroed-out datum,
+    /// Create a value initialized to zero.
+    ///
+    /// `init` is unsafe because it returns a zeroed-out datum,
     /// which is unsafe unless T is POD. We don't have a POD
-    /// kind yet. (See #4074)
+    /// kind yet. (See #4074).
     pub unsafe fn init<T>() -> T;
 
+    /// Create an uninitialized value.
     #[cfg(not(stage0))]
     pub unsafe fn uninit<T>() -> T;
 
-    /// forget is unsafe because the caller is responsible for
-    /// ensuring the argument is deallocated already
+    /// Move a value out of scope without running drop glue.
+    ///
+    /// `forget` is unsafe because the caller is responsible for
+    /// ensuring the argument is deallocated already.
     pub unsafe fn forget<T>(_: T) -> ();
 
+    /// Returns `true` if a type requires drop glue.
     pub fn needs_drop<T>() -> bool;
 
     // XXX: intrinsic uses legacy modes and has reference to TyDesc
@@ -72,9 +129,12 @@ pub extern "rust-intrinsic" {
     // XXX: intrinsic uses legacy modes
     //fn frame_address(f: &once fn(*u8));
 
+    /// Get the address of the `__morestack` stack growth function.
     pub fn morestack_addr() -> *();
 
+    /// Equivalent to the `llvm.memmove.p0i8.0i8.i32` intrinsic.
     pub fn memmove32(dst: *mut u8, src: *u8, size: u32);
+    /// Equivalent to the `llvm.memmove.p0i8.0i8.i64` intrinsic.
     pub fn memmove64(dst: *mut u8, src: *u8, size: u64);
 
     pub fn sqrtf32(x: f32) -> f32;
