@@ -512,13 +512,15 @@ pub impl Module {
 pub struct TypeNsDef {
     privacy: Privacy,
     module_def: Option<@mut Module>,
-    type_def: Option<def>
+    type_def: Option<def>,
+    type_span: Option<span>
 }
 
 // Records a possibly-private value definition.
 pub struct ValueNsDef {
     privacy: Privacy,
     def: def,
+    value_span: Option<span>,
 }
 
 // Records the definitions (at most one for each namespace) that a name is
@@ -526,11 +528,6 @@ pub struct ValueNsDef {
 pub struct NameBindings {
     type_def: Option<TypeNsDef>,    //< Meaning in type namespace.
     value_def: Option<ValueNsDef>,  //< Meaning in value namespace.
-
-    // For error reporting
-    // FIXME (#3783): Merge me into TypeNsDef and ValueNsDef.
-    type_span: Option<span>,
-    value_span: Option<span>,
 }
 
 pub impl NameBindings {
@@ -548,18 +545,19 @@ pub impl NameBindings {
                 self.type_def = Some(TypeNsDef {
                     privacy: privacy,
                     module_def: Some(module_),
-                    type_def: None
+                    type_def: None,
+                    type_span: Some(sp)
                 });
             }
             Some(copy type_def) => {
                 self.type_def = Some(TypeNsDef {
                     privacy: privacy,
                     module_def: Some(module_),
+                    type_span: Some(sp),
                     .. type_def
                 });
             }
         }
-        self.type_span = Some(sp);
     }
 
     /// Records a type definition.
@@ -570,24 +568,24 @@ pub impl NameBindings {
                 self.type_def = Some(TypeNsDef {
                     privacy: privacy,
                     module_def: None,
-                    type_def: Some(def)
+                    type_def: Some(def),
+                    type_span: Some(sp)
                 });
             }
             Some(copy type_def) => {
                 self.type_def = Some(TypeNsDef {
                     privacy: privacy,
                     type_def: Some(def),
+                    type_span: Some(sp),
                     .. type_def
                 });
             }
         }
-        self.type_span = Some(sp);
     }
 
     /// Records a value definition.
     fn define_value(@mut self, privacy: Privacy, def: def, sp: span) {
-        self.value_def = Some(ValueNsDef { privacy: privacy, def: def });
-        self.value_span = Some(sp);
+        self.value_def = Some(ValueNsDef { privacy: privacy, def: def, value_span: Some(sp) });
     }
 
     /// Returns the module node if applicable.
@@ -686,8 +684,18 @@ pub impl NameBindings {
     fn span_for_namespace(&self, namespace: Namespace) -> Option<span> {
         if self.defined_in_namespace(namespace) {
             match namespace {
-                TypeNS  => self.type_span,
-                ValueNS => self.value_span,
+                TypeNS  => {
+                    match self.type_def {
+                        None => None,
+                        Some(type_def) => type_def.type_span
+                    }
+                }
+                ValueNS => {
+                    match self.value_def {
+                        None => None,
+                        Some(value_def) => value_def.value_span
+                    }
+                }
             }
         } else {
             None
@@ -698,9 +706,7 @@ pub impl NameBindings {
 pub fn NameBindings() -> NameBindings {
     NameBindings {
         type_def: None,
-        value_def: None,
-        type_span: None,
-        value_span: None
+        value_def: None
     }
 }
 
@@ -2111,10 +2117,9 @@ pub impl Resolver {
                 privacy: Public,
                 module_def: Some(module),
                 type_def: None,
+                type_span: None
             }),
             value_def: None,
-            type_span: None,
-            value_span: None,
         }
     }
 
