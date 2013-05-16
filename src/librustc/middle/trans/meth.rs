@@ -795,8 +795,11 @@ pub fn make_impl_vtable(ccx: @CrateContext,
     let _icx = ccx.insn_ctxt("impl::make_impl_vtable");
     let tcx = ccx.tcx;
 
-    // XXX: This should support multiple traits.
-    let trt_id = ty::impl_trait_refs(tcx, impl_id)[0].def_id;
+    let trt_id = match ty::impl_trait_ref(tcx, impl_id) {
+        Some(t_id) => t_id.def_id,
+        None       => ccx.sess.bug("make_impl_vtable: don't know how to \
+                                    make a vtable for a type impl!")
+    };
 
     let has_tps =
         !ty::lookup_item_type(ccx.tcx, impl_id).generics.type_param_defs.is_empty();
