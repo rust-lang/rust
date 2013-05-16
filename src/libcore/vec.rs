@@ -2546,23 +2546,29 @@ pub mod raw {
      * would also make any pointers to it invalid.
      */
     #[inline(always)]
-    pub unsafe fn to_ptr<T>(v: &[T]) -> *T {
-        let repr: **SliceRepr = transmute(&v);
-        transmute(&((**repr).data))
+    pub fn to_ptr<T>(v: &[T]) -> *T {
+        unsafe {
+            let repr: **SliceRepr = transmute(&v);
+            transmute(&((**repr).data))
+        }
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
-    pub unsafe fn to_const_ptr<T>(v: &const [T]) -> *const T {
-        let repr: **SliceRepr = transmute(&v);
-        transmute(&((**repr).data))
+    pub fn to_const_ptr<T>(v: &const [T]) -> *const T {
+        unsafe {
+            let repr: **SliceRepr = transmute(&v);
+            transmute(&((**repr).data))
+        }
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
-    pub unsafe fn to_mut_ptr<T>(v: &mut [T]) -> *mut T {
-        let repr: **SliceRepr = transmute(&v);
-        transmute(&((**repr).data))
+    pub fn to_mut_ptr<T>(v: &mut [T]) -> *mut T {
+        unsafe {
+            let repr: **SliceRepr = transmute(&v);
+            transmute(&((**repr).data))
+        }
     }
 
     /**
