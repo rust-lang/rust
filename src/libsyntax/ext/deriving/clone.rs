@@ -91,11 +91,11 @@ fn cs_clone(
             all_fields = af;
         },
         EnumNonMatching(*) => cx.span_bug(span,
-                                          ~"Non-matching enum variants in `deriving(" +
-                                          name + ")`"),
+                                          fmt!("Non-matching enum variants in `deriving(%s)`",
+                                               name)),
         StaticEnum(*) | StaticStruct(*) => cx.span_bug(span,
-                                                       ~"Static method in `deriving(" +
-                                                       name + ")`")
+                                                       fmt!("Static method in `deriving(%s)`",
+                                                            name))
     }
 
     match *all_fields {
@@ -110,8 +110,8 @@ fn cs_clone(
                 let ident = match o_id {
                     Some(i) => i,
                     None => cx.span_bug(span,
-                                        ~"unnamed field in normal struct \
-                                          in `deriving(" + name + ")`")
+                                        fmt!("unnamed field in normal struct in `deriving(%s)`",
+                                             name))
                 };
                 build::Field { ident: ident, ex: subcall(self_f) }
             };
