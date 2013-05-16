@@ -93,7 +93,7 @@ impl GuaranteeLifetimeContext {
                 let omit_root = (
                     ptr_mutbl == m_imm &&
                     self.bccx.is_subregion_of(self.loan_region, base_scope) &&
-                    base.mutbl.is_immutable() &&
+                    self.is_rvalue_or_immutable(base) &&
                     !self.is_moved(base)
                 );
 
@@ -165,6 +165,19 @@ impl GuaranteeLifetimeContext {
                 // in the *arm* vs the *match*.
                 self.check(base, Some(new_discr_scope))
             }
+        }
+    }
+
+    fn is_rvalue_or_immutable(&self,
+                              cmt: mc::cmt) -> bool {
+        //! We can omit the root on an `@T` value if the location
+        //! that holds the box is either (1) an rvalue, in which case
+        //! it is in a non-user-accessible temporary, or (2) an immutable
+        //! lvalue.
+
+        cmt.mutbl.is_immutable() || match cmt.guarantor().cat {
+            mc::cat_rvalue => true,
+            _ => false
         }
     }
 
