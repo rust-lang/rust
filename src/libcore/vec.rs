@@ -1479,7 +1479,7 @@ pub fn reverse_part<T>(v: &mut [T], start: uint, end : uint) {
     let mut i = start;
     let mut j = end - 1;
     while i < j {
-        v[i] <-> v[j];
+        vec::swap(v, i, j);
         i += 1;
         j -= 1;
     }
@@ -1790,7 +1790,6 @@ pub fn each2_mut<U, T>(v1: &mut [U], v2: &mut [T], f: &fn(u: &mut U, t: &mut T) 
  *
  *  * `fun` - The function to iterate over the combinations
  */
-#[cfg(not(stage0))]
 pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) {
     let length = values.len();
     let mut permutation = vec::from_fn(length, |i| values[i]);
@@ -1816,16 +1815,13 @@ pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) {
         }
         // swap indices[k] and indices[l]; sort indices[k+1..]
         // (they're just reversed)
-        indices[k] <-> indices[l];
-        unsafe {
-            reverse_part(indices, k+1, length);
-        }
+        vec::swap(indices, k, l);
+        reverse_part(indices, k+1, length);
         // fixup permutation based on indices
         for uint::range(k, length) |i| {
             permutation[i] = values[indices[i]];
         }
     }
-    return true;
 }
 
 /**
@@ -1844,7 +1840,7 @@ pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) {
  * * `fun` - The function to iterate over the permutations
  */
 #[cfg(not(stage0))]
-pub fn each_permutation_ref<T>(values : &'v[T], fun : &fn(perm : &[&'v T]) -> bool) {
+pub fn each_permutation_ref<T>(values : &[T], fun : &fn(perm : &[&T]) -> bool) {
     each_permutation(vec::from_fn(values.len(), |i| &values[i]), fun);
 }
 
@@ -4814,15 +4810,11 @@ mod tests {
         }
     }
 
-    fn dup<T:Copy>(values : &[&T]) -> ~[T] {
-        from_fn(values.len(), |i| *values[i])
-    }
-
     #[test]
     fn test_reverse_part() {
         let mut values = [1,2,3,4,5];
         reverse_part(values,1,4);
-        assert values == [1,4,3,2,5];
+        assert_eq!(values, [1,4,3,2,5]);
     }
 
     #[test]
@@ -4830,9 +4822,9 @@ mod tests {
         let values = [];
         let mut v : ~[~[int]] = ~[];
         for each_permutation(values) |p| {
-            v.push(vec::from_slice(p));
+            v.push(p.to_owned());
         }
-        assert v == ~[~[]];
+        assert_eq!(v, ~[~[]]);
     }
 
     #[test]
@@ -4840,9 +4832,9 @@ mod tests {
         let values = [];
         let mut v : ~[~[int]] = ~[];
         for each_permutation_ref(values) |p| {
-            v.push(dup(p));
+            v.push(p.to_owned());
         }
-        assert v == ~[~[]];
+        assert_eq!(v, ~[~[]]);
     }
 
     #[test]
@@ -4850,9 +4842,9 @@ mod tests {
         let values = [1];
         let mut v : ~[~[int]] = ~[];
         for each_permutation(values) |p| {
-            v.push(vec::from_slice(p));
+            v.push(p.to_owned());
         }
-        assert v == ~[~[1]];
+        assert_eq!(v, ~[~[1]]);
     }
 
     #[test]
@@ -4860,9 +4852,9 @@ mod tests {
         let values = [1];
         let mut v : ~[~[int]] = ~[];
         for each_permutation_ref(values) |p| {
-            v.push(dup(p));
+            v.push(p.to_owned());
         }
-        assert v == ~[~[1]];
+        assert_eq!(v, ~[~[1]]);
     }
 
     #[test]
@@ -4870,9 +4862,9 @@ mod tests {
         let values = [1,2];
         let mut v : ~[~[int]] = ~[];
         for each_permutation(values) |p| {
-            v.push(vec::from_slice(p));
+            v.push(p.to_owned());
         }
-        assert v == ~[~[1,2],~[2,1]];
+        assert_eq!(v, ~[~[1,2],~[2,1]]);
     }
 
     #[test]
@@ -4880,9 +4872,9 @@ mod tests {
         let values = [1,2];
         let mut v : ~[~[int]] = ~[];
         for each_permutation_ref(values) |p| {
-            v.push(dup(p));
+            v.push(p.to_owned());
         }
-        assert v == ~[~[1,2],~[2,1]];
+        assert_eq!(v, ~[~[1,2],~[2,1]]);
     }
 
     #[test]
@@ -4890,9 +4882,9 @@ mod tests {
         let values = [1,2,3];
         let mut v : ~[~[int]] = ~[];
         for each_permutation(values) |p| {
-            v.push(vec::from_slice(p));
+            v.push(p.to_owned());
         }
-        assert v == ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]];
+        assert_eq!(v, ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]]);
     }
 
     #[test]
@@ -4900,9 +4892,9 @@ mod tests {
         let values = [1,2,3];
         let mut v : ~[~[int]] = ~[];
         for each_permutation_ref(values) |p| {
-            v.push(dup(p));
+            v.push(p.to_owned());
         }
-        assert v == ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]];
+        assert_eq!(v, ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]]);
     }
 
     #[test]
