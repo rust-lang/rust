@@ -18,9 +18,7 @@ use core::cmp::Equiv;
 use core::hashmap::HashSet;
 use core::to_bytes;
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Encodable, Decodable, Eq)]
 pub enum binop {
     PLUS,
     MINUS,
@@ -34,9 +32,7 @@ pub enum binop {
     SHR,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Encodable, Decodable, Eq)]
 pub enum Token {
     /* Expression-operator symbols. */
     EQ,
@@ -97,9 +93,7 @@ pub enum Token {
     EOF,
 }
 
-#[auto_encode]
-#[auto_decode]
-#[deriving(Eq)]
+#[deriving(Encodable, Decodable, Eq)]
 /// For interpolation during macro expansion.
 pub enum nonterminal {
     nt_item(@ast::item),

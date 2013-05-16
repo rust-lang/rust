@@ -20,8 +20,7 @@ use syntax::{ast, ast_util, visit};
 
 // A vector of defs representing the free variables referred to in a function.
 // (The def_upvar will already have been stripped).
-#[auto_encode]
-#[auto_decode]
+#[deriving(Encodable, Decodable)]
 pub struct freevar_entry {
     def: ast::def, //< The variable being accessed free.
     span: span     //< First span where it is accessed (there can be multiple)
