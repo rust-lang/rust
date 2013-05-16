@@ -35,7 +35,7 @@ ASTs -- are in a separate crate called "syntax", whose files are in
 ./../libsyntax, where . is the current directory (that is, the parent
 directory of front/, middle/, back/, and so on).
 
-The entry-point for the compiler is main() in driver/rustc.rs, and
+The entry-point for the compiler is main() in ./../librust/rust.rc, and
 this file sequences the various parts together.
 
 
