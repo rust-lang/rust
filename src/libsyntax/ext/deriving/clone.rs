@@ -32,7 +32,7 @@ pub fn expand_deriving_clone(cx: @ext_ctxt,
                 args: ~[],
                 ret_ty: Self,
                 const_nonmatching: false,
-                combine_substructure: cs_clone
+                combine_substructure: |c, s, sub| cs_clone("Clone", c, s, sub)
             }
         ]
     };
@@ -42,8 +42,39 @@ pub fn expand_deriving_clone(cx: @ext_ctxt,
                             &trait_def)
 }
 
-fn cs_clone(cx: @ext_ctxt, span: span,
-            substr: &Substructure) -> @expr {
+pub fn expand_deriving_deep_clone(cx: @ext_ctxt,
+                                 span: span,
+                                 mitem: @meta_item,
+                                 in_items: ~[@item])
+    -> ~[@item] {
+    let trait_def = TraitDef {
+        path: Path::new(~[~"core", ~"clone", ~"DeepClone"]),
+        additional_bounds: ~[],
+        generics: LifetimeBounds::empty(),
+        methods: ~[
+            MethodDef {
+                name: ~"deep_clone",
+                generics: LifetimeBounds::empty(),
+                explicit_self: borrowed_explicit_self(),
+                args: ~[],
+                ret_ty: Self,
+                const_nonmatching: false,
+                // cs_clone uses the ident passed to it, i.e. it will
+                // call deep_clone (not clone) here.
+                combine_substructure: |c, s, sub| cs_clone("DeepClone", c, s, sub)
+            }
+        ]
+    };
+
+    expand_deriving_generic(cx, span,
+                            mitem, in_items,
+                            &trait_def)
+}
+
+fn cs_clone(
+    name: &str,
+    cx: @ext_ctxt, span: span,
+    substr: &Substructure) -> @expr {
     let clone_ident = substr.method_ident;
     let ctor_ident;
     let all_fields;
@@ -59,8 +90,12 @@ fn cs_clone(cx: @ext_ctxt, span: span,
             ctor_ident = ~[ variant.node.name ];
             all_fields = af;
         },
-        EnumNonMatching(*) => cx.span_bug(span, "Non-matching enum variants in `deriving(Clone)`"),
-        StaticEnum(*) | StaticStruct(*) => cx.span_bug(span, "Static method in `deriving(Clone)`")
+        EnumNonMatching(*) => cx.span_bug(span,
+                                          fmt!("Non-matching enum variants in `deriving(%s)`",
+                                               name)),
+        StaticEnum(*) | StaticStruct(*) => cx.span_bug(span,
+                                                       fmt!("Static method in `deriving(%s)`",
+                                                            name))
     }
 
     match *all_fields {
@@ -75,8 +110,8 @@ fn cs_clone(cx: @ext_ctxt, span: span,
                 let ident = match o_id {
                     Some(i) => i,
                     None => cx.span_bug(span,
-                                        ~"unnamed field in normal struct \
-                                          in `deriving(Clone)`")
+                                        fmt!("unnamed field in normal struct in `deriving(%s)`",
+                                             name))
                 };
                 build::Field { ident: ident, ex: subcall(self_f) }
             };

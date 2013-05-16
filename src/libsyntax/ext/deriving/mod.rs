@@ -84,6 +84,7 @@ pub fn expand_meta_deriving(cx: @ext_ctxt,
                                                                    titem, in_items)));
                         match *tname {
                             ~"Clone" => expand!(clone::expand_deriving_clone),
+                            ~"DeepClone" => expand!(clone::expand_deriving_deep_clone),
 
                             ~"IterBytes" => expand!(iter_bytes::expand_deriving_iter_bytes),
 
