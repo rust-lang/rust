@@ -48,6 +48,12 @@ impl<T> Clone for @mut T {
     fn clone(&self) -> @mut T { *self }
 }
 
+impl<'self, T> Clone for &'self T {
+    /// Return a shallow copy of the borrowed pointer.
+    #[inline(always)]
+    fn clone(&self) -> &'self T { *self }
+}
+
 macro_rules! clone_impl(
     ($t:ty) => {
         impl Clone for $t {
@@ -165,4 +171,12 @@ fn test_managed_mut_clone() {
     assert!(a == b);
     *b = 10;
     assert!(a == b);
+}
+
+#[test]
+fn test_borrowed_clone() {
+    let x = 5i;
+    let y: &int = &x;
+    let z: &int = (&y).clone();
+    assert_eq!(*z, 5);
 }
