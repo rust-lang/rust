@@ -589,6 +589,7 @@ pub fn noop_fold_ty(t: &ty_, fld: @ast_fold) -> ty_ {
                 purity: f.purity,
                 region: f.region,
                 onceness: f.onceness,
+                bounds: f.bounds.map(|x| fold_ty_param_bound(x, fld)),
                 decl: fold_fn_decl(&f.decl, fld),
                 lifetimes: copy f.lifetimes,
             })
