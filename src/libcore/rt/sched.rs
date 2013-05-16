@@ -171,6 +171,17 @@ pub impl Scheduler {
         }
     }
 
+    fn schedule_task(~self, task: ~Coroutine) {
+        assert!(self.in_task_context());
+
+        do self.switch_running_tasks_and_then(task) |last_task| {
+            let last_task = Cell(last_task);
+            do local_sched::borrow |sched| {
+                sched.enqueue_task(last_task.take());
+            }
+        }
+    }
+
     // Core scheduling ops
 
     fn resume_task_immediately(~self, task: ~Coroutine) {
