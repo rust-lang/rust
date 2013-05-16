@@ -122,6 +122,9 @@ pub mod rc;
 /// scheduler and task context
 pub mod tube;
 
+/// Simple reimplementation of core::comm
+pub mod comm;
+
 /// Set up a default runtime configuration, given compiler-supplied arguments.
 ///
 /// This is invoked by the `start` _language item_ (unstable::lang) to

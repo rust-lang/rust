@@ -8,17 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use uint;
+use option::*;
 use cell::Cell;
 use result::{Result, Ok, Err};
 use super::io::net::ip::{IpAddr, Ipv4};
 use rt::local_services::LocalServices;
+use rt::thread::Thread;
 
 /// Creates a new scheduler in a new thread and runs a task in it,
 /// then waits for the scheduler to exit. Failure of the task
 /// will abort the process.
 pub fn run_in_newsched_task(f: ~fn()) {
+    use super::sched::*;
     use unstable::run_in_bare_thread;
-    use super::sched::Coroutine;
     use rt::uv::uvio::UvEventLoop;
 
     let f = Cell(f);
@@ -144,6 +147,23 @@ pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
     if !failed { Ok(()) } else { Err(()) }
 }
 
+// Spawn a new task in a new scheduler and return a thread handle.
+pub fn spawntask_thread(f: ~fn()) -> Thread {
+    use rt::sched::*;
+    use rt::uv::uvio::UvEventLoop;
+
+    let f = Cell(f);
+    let thread = do Thread::start {
+        let mut sched = ~UvEventLoop::new_scheduler();
+        let task = ~Coroutine::with_local(&mut sched.stack_pool,
+                                          LocalServices::without_unwinding(),
+                                          f.take());
+        sched.enqueue_task(task);
+        sched.run();
+    };
+    return thread;
+}
+
 /// Get a port number, starting at 9600, for use in tests
 pub fn next_test_port() -> u16 {
     unsafe {
@@ -158,3 +178,14 @@ pub fn next_test_port() -> u16 {
 pub fn next_test_ip4() -> IpAddr {
     Ipv4(127, 0, 0, 1, next_test_port())
 }
+
+/// Get a constant that represents the number of times to repeat stress tests. Default 1.
+pub fn stress_factor() -> uint {
+    use os::getenv;
+
+    match getenv("RUST_RT_STRESS") {
+        Some(val) => uint::from_str(val).get(),
+        None => 1
+    }
+}
+
