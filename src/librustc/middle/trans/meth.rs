@@ -39,9 +39,13 @@ for non-monomorphized methods only.  Other methods will
 be generated once they are invoked with specific type parameters,
 see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
-pub fn trans_impl(ccx: @CrateContext, path: path, name: ast::ident,
-                  methods: &[@ast::method], generics: &ast::Generics,
-                  self_ty: Option<ty::t>, id: ast::node_id) {
+pub fn trans_impl(ccx: @CrateContext,
+                  path: path,
+                  name: ast::ident,
+                  methods: &[@ast::method],
+                  generics: &ast::Generics,
+                  self_ty: Option<ty::t>,
+                  id: ast::node_id) {
     let _icx = ccx.insn_ctxt("impl::trans_impl");
     let tcx = ccx.tcx;
 
@@ -718,7 +722,10 @@ pub fn trans_trait_callee_from_llval(bcx: block,
     // Load the function from the vtable and cast it to the expected type.
     debug!("(translating trait callee) loading method");
     let llcallee_ty = type_of_fn_from_ty(ccx, callee_ty);
-    let mptr = Load(bcx, GEPi(bcx, llvtable, [0u, n_method]));
+
+    // Plus one in order to skip past the type descriptor.
+    let mptr = Load(bcx, GEPi(bcx, llvtable, [0u, n_method + 1]));
+
     let mptr = PointerCast(bcx, mptr, T_ptr(llcallee_ty));
 
     return Callee {
@@ -756,25 +763,40 @@ pub fn vtable_id(ccx: @CrateContext,
     }
 }
 
+/// Creates a returns a dynamic vtable for the given type and vtable origin.
+/// This is used only for objects.
 pub fn get_vtable(ccx: @CrateContext,
+                  self_ty: ty::t,
                   origin: typeck::vtable_origin)
-               -> ValueRef {
+                  -> ValueRef {
     let hash_id = vtable_id(ccx, &origin);
     match ccx.vtables.find(&hash_id) {
-      Some(&val) => val,
-      None => match origin {
-        typeck::vtable_static(id, substs, sub_vtables) => {
-            make_impl_vtable(ccx, id, substs, sub_vtables)
+        Some(&val) => val,
+        None => {
+            match origin {
+                typeck::vtable_static(id, substs, sub_vtables) => {
+                    make_impl_vtable(ccx, id, self_ty, substs, sub_vtables)
+                }
+                _ => fail!("get_vtable: expected a static origin"),
+            }
         }
-        _ => fail!("get_vtable: expected a static origin")
-      }
     }
 }
 
-pub fn make_vtable(ccx: @CrateContext, ptrs: ~[ValueRef]) -> ValueRef {
+/// Helper function to declare and initialize the vtable.
+pub fn make_vtable(ccx: @CrateContext,
+                   tydesc: @mut tydesc_info,
+                   ptrs: &[ValueRef])
+                   -> ValueRef {
     unsafe {
         let _icx = ccx.insn_ctxt("impl::make_vtable");
-        let tbl = C_struct(ptrs);
+
+        let mut components = ~[ tydesc.tydesc ];
+        for ptrs.each |&ptr| {
+            components.push(ptr)
+        }
+
+        let tbl = C_struct(components);
         let vtable = ccx.sess.str_of((ccx.names)("vtable"));
         let vt_gvar = do str::as_c_str(*vtable) |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
@@ -786,11 +808,13 @@ pub fn make_vtable(ccx: @CrateContext, ptrs: ~[ValueRef]) -> ValueRef {
     }
 }
 
+/// Generates a dynamic vtable for objects.
 pub fn make_impl_vtable(ccx: @CrateContext,
                         impl_id: ast::def_id,
+                        self_ty: ty::t,
                         substs: ~[ty::t],
                         vtables: typeck::vtable_res)
-                     -> ValueRef {
+                        -> ValueRef {
     let _icx = ccx.insn_ctxt("impl::make_impl_vtable");
     let tcx = ccx.tcx;
 
@@ -802,9 +826,13 @@ pub fn make_impl_vtable(ccx: @CrateContext,
 
     let has_tps =
         !ty::lookup_item_type(ccx.tcx, impl_id).generics.type_param_defs.is_empty();
-    make_vtable(ccx, ty::trait_method_def_ids(tcx, trt_id).map(|method_def_id| {
+
+    let trait_method_def_ids = ty::trait_method_def_ids(tcx, trt_id);
+    let methods = do trait_method_def_ids.map |method_def_id| {
         let im = ty::method(tcx, *method_def_id);
-        let fty = ty::subst_tps(tcx, substs, None,
+        let fty = ty::subst_tps(tcx,
+                                substs,
+                                None,
                                 ty::mk_bare_fn(tcx, copy im.fty));
         if im.generics.has_type_params() || ty::type_has_self(fty) {
             debug!("(making impl vtable) method has self or type params: %s",
@@ -830,7 +858,13 @@ pub fn make_impl_vtable(ccx: @CrateContext,
                 trans_external_path(ccx, m_id, fty)
             }
         }
-    }))
+    };
+
+    // Generate a type descriptor for the vtable.
+    let tydesc = get_tydesc(ccx, self_ty);
+    glue::lazily_emit_all_tydesc_glue(ccx, tydesc);
+
+    make_vtable(ccx, tydesc, methods)
 }
 
 pub fn trans_trait_cast(bcx: block,
@@ -852,40 +886,19 @@ pub fn trans_trait_cast(bcx: block,
     let ccx = bcx.ccx();
     let v_ty = expr_ty(bcx, val);
 
-    match store {
-        ty::RegionTraitStore(_) | ty::BoxTraitStore => {
-            let mut llboxdest = GEPi(bcx, lldest, [0u, abi::trt_field_box]);
-            // Just store the pointer into the pair. (Region/borrowed
-            // and boxed trait objects are represented as pairs, and
-            // have no type descriptor field.)
-            llboxdest = PointerCast(bcx,
-                                    llboxdest,
-                                    T_ptr(type_of(bcx.ccx(), v_ty)));
-            bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
-        }
-        ty::UniqTraitStore => {
-            // Translate the uniquely-owned value in the
-            // triple. (Unique trait objects are represented as
-            // triples.)
-            let mut llvaldest = GEPi(bcx, lldest, [0, abi::trt_field_box]);
-            llvaldest = PointerCast(bcx,
-                                    llvaldest,
-                                    T_ptr(type_of(bcx.ccx(), v_ty)));
-            bcx = expr::trans_into(bcx, val, SaveIn(llvaldest));
-
-            // Get the type descriptor of the wrapped value and store
-            // it in the triple as well.
-            let tydesc = get_tydesc(bcx.ccx(), v_ty);
-            glue::lazily_emit_all_tydesc_glue(bcx.ccx(), tydesc);
-            let lltydescdest = GEPi(bcx, lldest, [0, abi::trt_field_tydesc]);
-            Store(bcx, tydesc.tydesc, lltydescdest);
-        }
-    }
+    let mut llboxdest = GEPi(bcx, lldest, [0u, abi::trt_field_box]);
+    // Just store the pointer into the pair. (Region/borrowed
+    // and boxed trait objects are represented as pairs, and
+    // have no type descriptor field.)
+    llboxdest = PointerCast(bcx,
+                            llboxdest,
+                            T_ptr(type_of(bcx.ccx(), v_ty)));
+    bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
 
     // Store the vtable into the pair or triple.
     let orig = /*bad*/copy ccx.maps.vtable_map.get(&id)[0];
     let orig = resolve_vtable_in_fn_ctxt(bcx.fcx, orig);
-    let vtable = get_vtable(bcx.ccx(), orig);
+    let vtable = get_vtable(bcx.ccx(), v_ty, orig);
     Store(bcx, vtable, PointerCast(bcx,
                                    GEPi(bcx, lldest, [0u, abi::trt_field_vtable]),
                                    T_ptr(val_ty(vtable))));
