@@ -415,19 +415,20 @@ pub fn get_type_param_count(data: @~[u8], id: ast::node_id) -> uint {
     item_ty_param_count(lookup_item(id, data))
 }
 
-pub fn get_impl_traits(cdata: cmd,
+pub fn get_impl_trait(cdata: cmd,
                        id: ast::node_id,
-                       tcx: ty::ctxt) -> ~[@ty::TraitRef]
+                       tcx: ty::ctxt) -> Option<@ty::TraitRef>
 {
     let item_doc = lookup_item(id, cdata.data);
-    let mut results = ~[];
+    let mut result = None;
     for reader::tagged_docs(item_doc, tag_item_trait_ref) |tp| {
         let trait_ref =
             @parse_trait_ref_data(tp.data, cdata.cnum, tp.start, tcx,
                                   |_, did| translate_def_id(cdata, did));
-        results.push(trait_ref);
+        result = Some(trait_ref);
+        break;
     };
-    results
+    result
 }
 
 pub fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,

@@ -16,7 +16,7 @@
 
 
 use driver;
-use metadata::csearch::{each_path, get_impl_traits};
+use metadata::csearch::{each_path, get_impl_trait};
 use metadata::csearch::{get_impls_for_mod};
 use metadata::csearch;
 use metadata::cstore::{CStore, iter_crate_data};
@@ -898,13 +898,13 @@ pub impl CoherenceChecker {
 
             let self_type = lookup_item_type(self.crate_context.tcx,
                                              implementation.did);
-            let associated_traits = get_impl_traits(self.crate_context.tcx,
+            let associated_traits = get_impl_trait(self.crate_context.tcx,
                                                     implementation.did);
 
             // Do a sanity check to make sure that inherent methods have base
             // types.
 
-            if associated_traits.len() == 0 {
+            if associated_traits.is_none() {
                 match get_base_type_def_id(self.inference_context,
                                            dummy_sp(),
                                            self_type.ty) {
@@ -940,7 +940,7 @@ pub impl CoherenceChecker {
                 Some(base_type_def_id) => {
                     // inherent methods apply to `impl Type` but not
                     // `impl Trait for Type`:
-                    if associated_traits.len() == 0 {
+                    if associated_traits.is_none() {
                         self.add_inherent_method(base_type_def_id,
                                                  *implementation);
                     }
