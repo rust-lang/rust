@@ -261,24 +261,14 @@ fn lookup_vtable(vcx: &VtableContext,
                         }
                         impls_seen.insert(im.did);
 
-                        // ty::impl_traits gives us the list of all
-                        // traits that im implements. Again, usually
-                        // there's just one.
+                        // ty::impl_traits gives us the trait im implements,
+                        // if there is one (there's either zero or one).
                         //
-                        // For example, if im represented the struct
-                        // in:
-                        //
-                        //   struct foo : baz<int>, bar, quux { ... }
-                        //
-                        // then ty::impl_traits would return
-                        //
-                        //   ~[baz<int>, bar, quux]
-                        //
-                        // For each of the traits foo implements, if
-                        // it's the same trait as trait_ref, we need to
+                        // If foo implements a trait t, and if t is the
+                        // same trait as trait_ref, we need to
                         // unify it with trait_ref in order to get all
                         // the ty vars sorted out.
-                        for ty::impl_trait_refs(tcx, im.did).each |&of_trait_ref|
+                        for ty::impl_trait_ref(tcx, im.did).each |&of_trait_ref|
                         {
                             if of_trait_ref.def_id != trait_ref.def_id { loop; }
 
@@ -456,8 +446,12 @@ fn connect_trait_tps(vcx: &VtableContext,
 {
     let tcx = vcx.tcx();
 
-    // XXX: This should work for multiple traits.
-    let impl_trait_ref = ty::impl_trait_refs(tcx, impl_did)[0];
+    let impl_trait_ref = match ty::impl_trait_ref(tcx, impl_did) {
+        Some(t) => t,
+        None => vcx.tcx().sess.span_bug(location_info.span,
+                                  "connect_trait_tps invoked on a type impl")
+    };
+
     let impl_trait_ref = (*impl_trait_ref).subst(tcx, impl_substs);
     relate_trait_refs(vcx, location_info, &impl_trait_ref, trait_ref);
 }
