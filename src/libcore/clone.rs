@@ -22,6 +22,8 @@ by convention implementing the `Clone` trait and calling the
 
 */
 
+use core::kinds::Const;
+
 pub trait Clone {
     /// Return a deep copy of the owned object tree. Types with shared ownership like managed boxes
     /// are cloned with a shallow copy.
@@ -78,9 +80,30 @@ clone_impl!(char)
 
 pub trait DeepClone {
     /// Return a deep copy of the object tree. Types with shared ownership are also copied via a
-    /// deep copy, unlike `Clone`. Note that this is currently unimplemented for managed boxes, as
-    /// it would need to handle cycles.
+    /// deep copy, unlike `Clone`.
     fn deep_clone(&self) -> Self;
+}
+
+impl<T: DeepClone> DeepClone for ~T {
+    /// Return a deep copy of the owned box.
+    #[inline(always)]
+    fn deep_clone(&self) -> ~T { ~(**self).deep_clone() }
+}
+
+// FIXME: #6525: should also be implemented for `T: Owned + DeepClone`
+impl<T: Const + DeepClone> DeepClone for @T {
+    /// Return a deep copy of the managed box. The `Const` trait is required to prevent performing
+    /// a deep clone of a potentially cyclical type.
+    #[inline(always)]
+    fn deep_clone(&self) -> @T { @(**self).deep_clone() }
+}
+
+// FIXME: #6525: should also be implemented for `T: Owned + DeepClone`
+impl<T: Const + DeepClone> DeepClone for @mut T {
+    /// Return a deep copy of the managed box. The `Const` trait is required to prevent performing
+    /// a deep clone of a potentially cyclical type.
+    #[inline(always)]
+    fn deep_clone(&self) -> @mut T { @mut (**self).deep_clone() }
 }
 
 macro_rules! deep_clone_impl(
@@ -92,12 +115,6 @@ macro_rules! deep_clone_impl(
         }
     }
 )
-
-impl<T: DeepClone> DeepClone for ~T {
-    /// Return a deep copy of the owned box.
-    #[inline(always)]
-    fn deep_clone(&self) -> ~T { ~(**self).deep_clone() }
-}
 
 deep_clone_impl!(int)
 deep_clone_impl!(i8)
@@ -121,21 +138,29 @@ deep_clone_impl!(char)
 
 #[test]
 fn test_owned_clone() {
-    let a: ~int = ~5i;
+    let a = ~5i;
     let b: ~int = a.clone();
     assert!(a == b);
 }
 
 #[test]
 fn test_managed_clone() {
-    let a: @int = @5i;
+    let a = @5i;
     let b: @int = a.clone();
     assert!(a == b);
 }
 
 #[test]
+fn test_managed_mut_deep_clone() {
+    let x = @mut 5i;
+    let y: @mut int = x.deep_clone();
+    *x = 20;
+    assert_eq!(*y, 5);
+}
+
+#[test]
 fn test_managed_mut_clone() {
-    let a: @mut int = @mut 5i;
+    let a = @mut 5i;
     let b: @mut int = a.clone();
     assert!(a == b);
     *b = 10;
