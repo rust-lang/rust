@@ -539,7 +539,8 @@ pub impl NameBindings {
                 self.type_def = Some(TypeNsDef {
                     privacy: privacy,
                     module_def: Some(module),
-                    type_def: None
+                    type_def: None,
+                    type_span: None,
                 })
             }
             Some(type_def) => {
@@ -549,7 +550,8 @@ pub impl NameBindings {
                         self.type_def = Some(TypeNsDef {
                             privacy: privacy,
                             module_def: Some(module),
-                            type_def: type_def.type_def
+                            type_def: type_def.type_def,
+                            type_span: None,
                         })
                     }
                     Some(module_def) => module_def.kind = kind,
@@ -1392,10 +1394,8 @@ pub impl Resolver {
         }
     }
 
-    /**
-     * Constructs the reduced graph for one 'view item'. View items consist
-     * of imports and use directives.
-     */
+    /// Constructs the reduced graph for one 'view item'. View items consist
+    /// of imports and use directives.
     fn build_reduced_graph_for_view_item(@mut self,
                                          view_item: @view_item,
                                          parent: ReducedGraphParent,
@@ -1551,11 +1551,13 @@ pub impl Resolver {
 
     fn handle_external_def(@mut self,
                            def: def,
+                           visibility: ast::visibility,
                            modules: &mut HashMap<def_id, @mut Module>,
                            child_name_bindings: @mut NameBindings,
                            final_ident: &str,
                            ident: ident,
                            new_parent: ReducedGraphParent) {
+        let privacy = visibility_to_privacy(visibility);
         match def {
           def_mod(def_id) | def_foreign_mod(def_id) => {
             match child_name_bindings.type_def {
@@ -1573,7 +1575,7 @@ pub impl Resolver {
 
                 // FIXME (#5074): this should be a match on find
                 if !modules.contains_key(&def_id) {
-                    child_name_bindings.define_module(Public,
+                    child_name_bindings.define_module(privacy,
                                                       parent_link,
                                                       Some(def_id),
                                                       NormalModuleKind,
@@ -1582,9 +1584,9 @@ pub impl Resolver {
                                    child_name_bindings.get_module());
                 } else {
                     let existing_module = *modules.get(&def_id);
-                    // Create an import resolution to
-                    // avoid creating cycles in the
-                    // module graph.
+
+                    // Create an import resolution to avoid creating cycles in
+                    // the module graph.
 
                     let resolution = @mut ImportResolution(Public, 0);
                     resolution.outstanding_references = 0;
@@ -1610,11 +1612,19 @@ pub impl Resolver {
               }
             }
           }
-          def_fn(*) | def_static_method(*) | def_const(*) |
           def_variant(*) => {
+            debug!("(building reduced graph for external crate) building \
+                    variant %s",
+                   final_ident);
+            // We assume the parent is visible, or else we wouldn't have seen
+            // it.
+            let privacy = variant_visibility_to_privacy(visibility, true);
+            child_name_bindings.define_value(privacy, def, dummy_sp());
+          }
+          def_fn(*) | def_static_method(*) | def_const(*) => {
             debug!("(building reduced graph for external \
                     crate) building value %s", final_ident);
-            child_name_bindings.define_value(Public, def, dummy_sp());
+            child_name_bindings.define_value(privacy, def, dummy_sp());
           }
           def_trait(def_id) => {
               debug!("(building reduced graph for external \
@@ -1651,11 +1661,11 @@ pub impl Resolver {
                   }
               }
 
-              child_name_bindings.define_type(Public, def, dummy_sp());
+              child_name_bindings.define_type(privacy, def, dummy_sp());
 
               // Define a module if necessary.
               let parent_link = self.get_parent_link(new_parent, ident);
-              child_name_bindings.set_module_kind(Public,
+              child_name_bindings.set_module_kind(privacy,
                                                   parent_link,
                                                   Some(def_id),
                                                   TraitModuleKind,
@@ -1665,13 +1675,13 @@ pub impl Resolver {
               debug!("(building reduced graph for external \
                       crate) building type %s", final_ident);
 
-              child_name_bindings.define_type(Public, def, dummy_sp());
+              child_name_bindings.define_type(privacy, def, dummy_sp());
           }
           def_struct(def_id) => {
             debug!("(building reduced graph for external \
                     crate) building type %s",
                    final_ident);
-            child_name_bindings.define_type(Public, def, dummy_sp());
+            child_name_bindings.define_type(privacy, def, dummy_sp());
             self.structs.insert(def_id);
           }
           def_self(*) | def_arg(*) | def_local(*) |
@@ -1692,7 +1702,7 @@ pub impl Resolver {
 
         // Create all the items reachable by paths.
         for each_path(self.session.cstore, root.def_id.get().crate)
-                |path_string, def_like| {
+                |path_string, def_like, visibility| {
 
             debug!("(building reduced graph for external crate) found path \
                         entry: %s (%?)",
@@ -1760,6 +1770,7 @@ pub impl Resolver {
                                        dummy_sp());
 
                     self.handle_external_def(def,
+                                             visibility,
                                              &mut modules,
                                              child_name_bindings,
                                              *self.session.str_of(
@@ -2995,14 +3006,9 @@ pub impl Resolver {
 
         // If this is a search of all imports, we should be done with glob
         // resolution at this point.
-<<<<<<< HEAD
-        if name_search_type == SearchItemsAndAllImports {
-            assert_eq!(module_.glob_count, 0);
-=======
         if name_search_type == PathPublicOrPrivateSearch ||
                 name_search_type == PathPublicOnlySearch {
-            assert!(module_.glob_count == 0);
->>>>>>> librustc: Disallow `use` from reaching into impls or traits.
+            assert_eq!(module_.glob_count, 0);
         }
 
         // Check the list of resolved imports.

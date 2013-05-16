@@ -316,6 +316,7 @@ fn encode_enum_variant_info(ecx: @EncodeContext,
         encode_family(ebml_w, 'v');
         encode_name(ecx, ebml_w, variant.node.name);
         encode_parent_item(ebml_w, local_def(id));
+        encode_visibility(ebml_w, variant.node.vis);
         encode_type(ecx, ebml_w,
                     node_id_to_type(ecx.tcx, variant.node.id));
         match variant.node.kind {
