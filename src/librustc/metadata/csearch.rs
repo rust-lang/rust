@@ -52,9 +52,22 @@ pub fn each_lang_item(cstore: @mut cstore::CStore,
 }
 
 /// Iterates over all the paths in the given crate.
+#[cfg(stage0)]
 pub fn each_path(cstore: @mut cstore::CStore,
                  cnum: ast::crate_num,
-                 f: &fn(&str, decoder::def_like) -> bool) -> bool {
+                 f: &fn(&str, decoder::def_like, ast::visibility) -> bool) {
+    let crate_data = cstore::get_crate_data(cstore, cnum);
+    let get_crate_data: decoder::GetCrateDataCb = |cnum| {
+        cstore::get_crate_data(cstore, cnum)
+    };
+    decoder::each_path(cstore.intr, crate_data, get_crate_data, f)
+}
+/// Iterates over all the paths in the given crate.
+#[cfg(not(stage0))]
+pub fn each_path(cstore: @mut cstore::CStore,
+                 cnum: ast::crate_num,
+                 f: &fn(&str, decoder::def_like, ast::visibility) -> bool)
+                 -> bool {
     let crate_data = cstore::get_crate_data(cstore, cnum);
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore::get_crate_data(cstore, cnum)
