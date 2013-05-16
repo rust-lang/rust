@@ -395,12 +395,13 @@ pub impl Parser {
                         -> ty_ {
         /*
 
-        (&|~|@) ['r] [pure|unsafe] [once] fn <'lt> (S) -> T
-        ^~~~~~^ ^~~^ ^~~~~~~~~~~~^ ^~~~~^    ^~~~^ ^~^    ^
-           |     |     |             |         |    |     |
-           |     |     |             |         |    |   Return type
-           |     |     |             |         |  Argument types
-           |     |     |             |     Lifetimes
+        (&|~|@) ['r] [pure|unsafe] [once] fn [:Bounds] <'lt> (S) -> T
+        ^~~~~~^ ^~~^ ^~~~~~~~~~~~^ ^~~~~^    ^~~~~~~~^ ^~~~^ ^~^    ^
+           |     |     |             |           |       |    |     |
+           |     |     |             |           |       |    |   Return type
+           |     |     |             |           |       |  Argument types
+           |     |     |             |           |   Lifetimes
+           |     |     |             |       Closure bounds
            |     |     |          Once-ness (a.k.a., affine)
            |     |   Purity
            | Lifetime bound
@@ -414,6 +415,7 @@ pub impl Parser {
         let purity = self.parse_unsafety();
         let onceness = parse_onceness(self);
         self.expect_keyword("fn");
+        let bounds = self.parse_optional_ty_param_bounds();
 
         if self.parse_fn_ty_sigil().is_some() {
             self.obsolete(*self.span, ObsoletePostFnTySigil);
@@ -426,6 +428,7 @@ pub impl Parser {
             region: region,
             purity: purity,
             onceness: onceness,
+            bounds: bounds,
             decl: decl,
             lifetimes: lifetimes,
         });
@@ -2851,9 +2854,9 @@ pub impl Parser {
     // matches optbounds = ( ( : ( boundseq )? )? )
     // where   boundseq  = ( bound + boundseq ) | bound
     // and     bound     = 'static | ty
-    fn parse_optional_ty_param_bounds(&self) -> @OptVec<TyParamBound> {
+    fn parse_optional_ty_param_bounds(&self) -> OptVec<TyParamBound> {
         if !self.eat(&token::COLON) {
-            return @opt_vec::Empty;
+            return opt_vec::Empty;
         }
 
         let mut result = opt_vec::Empty;
@@ -2907,13 +2910,13 @@ pub impl Parser {
             }
         }
 
-        return @result;
+        return result;
     }
 
     // matches typaram = IDENT optbounds
     fn parse_ty_param(&self) -> TyParam {
         let ident = self.parse_ident();
-        let bounds = self.parse_optional_ty_param_bounds();
+        let bounds = @self.parse_optional_ty_param_bounds();
         ast::TyParam { ident: ident, id: self.get_id(), bounds: bounds }
     }
 

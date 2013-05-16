@@ -1207,25 +1207,21 @@ pub fn ty_generics(ccx: &CrateCtxt,
             builtin_bounds: ty::EmptyBuiltinBounds(),
             trait_bounds: ~[]
         };
-        for ast_bounds.each |b| {
-            match b {
-                &TraitTyParamBound(b) => {
-                    let li = &ccx.tcx.lang_items;
+        for ast_bounds.each |ast_bound| {
+            match *ast_bound {
+                TraitTyParamBound(b) => {
                     let ty = ty::mk_param(ccx.tcx, param_ty.idx, param_ty.def_id);
                     let trait_ref = instantiate_trait_ref(ccx, b, rp, generics, ty);
-                    if trait_ref.def_id == li.owned_trait() {
-                        param_bounds.builtin_bounds.add(ty::BoundOwned);
-                    } else if trait_ref.def_id == li.copy_trait() {
-                        param_bounds.builtin_bounds.add(ty::BoundCopy);
-                    } else if trait_ref.def_id == li.const_trait() {
-                        param_bounds.builtin_bounds.add(ty::BoundConst);
-                    } else {
+                    if !astconv::try_add_builtin_trait(
+                        ccx.tcx, trait_ref.def_id,
+                        &mut param_bounds.builtin_bounds)
+                    {
                         // Must be a user-defined trait
                         param_bounds.trait_bounds.push(trait_ref);
                     }
                 }
 
-                &RegionTyParamBound => {
+                RegionTyParamBound => {
                     param_bounds.builtin_bounds.add(ty::BoundStatic);
                 }
             }

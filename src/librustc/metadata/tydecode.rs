@@ -470,12 +470,14 @@ fn parse_closure_ty(st: @mut PState, conv: conv_did) -> ty::ClosureTy {
     let purity = parse_purity(next(st));
     let onceness = parse_onceness(next(st));
     let region = parse_region(st);
+    let bounds = parse_bounds(st, conv);
     let sig = parse_sig(st, conv);
     ty::ClosureTy {
         purity: purity,
         sigil: sigil,
         onceness: onceness,
         region: region,
+        bounds: bounds.builtin_bounds,
         sig: sig
     }
 }
@@ -540,10 +542,10 @@ pub fn parse_type_param_def_data(data: @~[u8], start: uint,
 
 fn parse_type_param_def(st: @mut PState, conv: conv_did) -> ty::TypeParameterDef {
     ty::TypeParameterDef {def_id: parse_def(st, NominalType, conv),
-                          bounds: parse_bounds(st, conv)}
+                          bounds: @parse_bounds(st, conv)}
 }
 
-fn parse_bounds(st: @mut PState, conv: conv_did) -> @ty::ParamBounds {
+fn parse_bounds(st: @mut PState, conv: conv_did) -> ty::ParamBounds {
     let mut param_bounds = ty::ParamBounds {
         builtin_bounds: ty::EmptyBuiltinBounds(),
         trait_bounds: ~[]
@@ -566,7 +568,7 @@ fn parse_bounds(st: @mut PState, conv: conv_did) -> @ty::ParamBounds {
                 param_bounds.trait_bounds.push(@parse_trait_ref(st, conv));
             }
             '.' => {
-                return @param_bounds;
+                return param_bounds;
             }
             _ => {
                 fail!("parse_bounds: bad bounds")
