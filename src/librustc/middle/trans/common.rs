@@ -1089,8 +1089,7 @@ pub fn T_opaque_trait(cx: @CrateContext, store: ty::TraitStore) -> TypeRef {
         }
         ty::UniqTraitStore => {
             T_struct([T_ptr(cx.tydesc_type),
-                      T_unique_ptr(T_unique(cx, T_i8())),
-                      T_ptr(cx.tydesc_type)],
+                      T_unique_ptr(T_unique(cx, T_i8()))],
                      false)
         }
         ty::RegionTraitStore(_) => {

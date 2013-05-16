@@ -23,7 +23,6 @@ use middle::trans::common::*;
 use middle::trans::datum::*;
 use middle::trans::expr;
 use middle::ty;
-use driver::session;
 use syntax::codemap::span;
 use syntax::ast;
 
