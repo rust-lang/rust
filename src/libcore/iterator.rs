@@ -50,6 +50,8 @@ pub trait IteratorUtil<A> {
     fn nth(&mut self, n: uint) -> A;
     fn first(&mut self) -> A;
     fn last(&mut self) -> A;
+    fn fold<B>(&mut self, start: B, f: &fn(B, A) -> B) -> B;
+    fn count(&mut self) -> uint;
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -184,6 +186,23 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
         for self.advance |e| { elm = e; }
         return elm;
     }
+
+    /// Reduce an iterator to an accumulated value
+    #[inline]
+    fn fold<B>(&mut self, init: B, f: &fn(B, A) -> B) -> B {
+        let mut accum = init;
+        loop {
+            match self.next() {
+                Some(x) => { accum = f(accum, x); }
+                None    => { break; }
+            }
+        }
+        return accum;
+    }
+
+    /// Count the number of an iterator elemenrs
+    #[inline(always)]
+    fn count(&mut self) -> uint { self.fold(0, |cnt, _x| cnt + 1) }
 }
 
 pub struct ChainIterator<T, U> {
@@ -647,5 +666,13 @@ mod tests {
     fn test_iterator_last_fail() {
         let v: &[uint] = &[];
         v.iter().last();
+    }
+
+    #[test]
+    fn test_iterator_count() {
+        let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(v.slice(0, 4).iter().count(), 4);
+        assert_eq!(v.slice(0, 10).iter().count(), 10);
+        assert_eq!(v.slice(0, 0).iter().count(), 0);
     }
 }
