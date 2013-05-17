@@ -8,22 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::serialize::Encodable;
-use std;
-use core::io;
 use core::option::{Option,None};
 use core::int;
 use core::num::NumCast;
-use codemap::{dummy_sp, CodeMap, BytePos, spanned};
-use opt_vec;
+use codemap::CodeMap;
 use ast;
-use abi;
-use ast_util::mk_ident;
 use parse::parser::Parser;
-use parse::token::{ident_interner, mk_ident_interner, mk_fresh_ident_interner};
-use diagnostic::{span_handler, mk_span_handler, mk_handler, Emitter};
+use parse::token::{ident_interner, mk_fresh_ident_interner};
+use diagnostic::{mk_handler, mk_span_handler};
 
-use syntax::parse::{ParseSess,new_parse_sess,string_to_filemap,filemap_to_tts};
+use syntax::parse::{ParseSess,string_to_filemap,filemap_to_tts};
 use syntax::parse::{new_parser_from_source_str};
 
 // add known names to interner for testing
@@ -71,10 +65,15 @@ pub fn string_to_tts_and_sess (source_str : @~str) -> (~[ast::token_tree],@mut P
     (filemap_to_tts(ps,string_to_filemap(ps,source_str,~"bogofile")),ps)
 }
 
+pub fn string_to_parser_and_sess(source_str: @~str) -> (Parser,@mut ParseSess) {
+    let ps = mk_testing_parse_sess();
+    (new_parser_from_source_str(ps,~[],~"bogofile",source_str),ps)
+}
+
 // map string to parser (via tts)
 pub fn string_to_parser(source_str: @~str) -> Parser {
-    let ps = mk_testing_parse_sess();
-    new_parser_from_source_str(ps,~[],~"bogofile",source_str)
+    let (p,_) = string_to_parser_and_sess(source_str);
+    p
 }
 
 pub fn string_to_crate (source_str : @~str) -> @ast::crate {
@@ -86,8 +85,15 @@ pub fn string_to_expr (source_str : @~str) -> @ast::expr {
     string_to_parser(source_str).parse_expr()
 }
 
+// parse a string, return an item
 pub fn string_to_item (source_str : @~str) -> Option<@ast::item> {
     string_to_parser(source_str).parse_item(~[])
+}
+
+// parse a string, return an item and the ParseSess
+pub fn string_to_item_and_sess (source_str : @~str) -> (Option<@ast::item>,@mut ParseSess) {
+    let (p,ps) = string_to_parser_and_sess(source_str);
+    (p.parse_item(~[]),ps)
 }
 
 pub fn string_to_stmt (source_str : @~str) -> @ast::stmt {
