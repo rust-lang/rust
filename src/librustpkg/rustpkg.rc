@@ -602,7 +602,6 @@ impl PkgSrc {
     /// Infers crates to build. Called only in the case where there
     /// is no custom build logic
     fn find_crates(&mut self) {
-        use PkgSrc::push_crate;
         use conditions::missing_pkg_files::cond;
 
         let dir = self.check_dir();
@@ -610,14 +609,18 @@ impl PkgSrc {
         debug!("Matching against %?", self.id.local_path.filestem());
         for os::walk_dir(&dir) |pth| {
             match pth.filename() {
-                Some(~"lib.rs") => push_crate(&mut self.libs,
-                                              prefix, pth),
-                Some(~"main.rs") => push_crate(&mut self.mains,
-                                               prefix, pth),
-                Some(~"test.rs") => push_crate(&mut self.tests,
-                                               prefix, pth),
-                Some(~"bench.rs") => push_crate(&mut self.benchs,
-                                                prefix, pth),
+                Some(~"lib.rs") => PkgSrc::push_crate(&mut self.libs,
+                                                      prefix,
+                                                      pth),
+                Some(~"main.rs") => PkgSrc::push_crate(&mut self.mains,
+                                                       prefix,
+                                                       pth),
+                Some(~"test.rs") => PkgSrc::push_crate(&mut self.tests,
+                                                       prefix,
+                                                       pth),
+                Some(~"bench.rs") => PkgSrc::push_crate(&mut self.benchs,
+                                                        prefix,
+                                                        pth),
                 _ => ()
             }
         }

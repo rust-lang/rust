@@ -175,7 +175,7 @@ fn begin_teardown(data: *IoTaskLoopData) {
     unsafe {
         debug!("iotask begin_teardown() called, close async_handle");
         let async_handle = (*data).async_handle;
-        ll::close(async_handle as *c_void, tear_down_close_cb);
+        ll::close(async_handle as *ll::uv_async_t, tear_down_close_cb);
     }
 }
 extern fn tear_down_walk_cb(handle: *libc::c_void, arg: *libc::c_void) {

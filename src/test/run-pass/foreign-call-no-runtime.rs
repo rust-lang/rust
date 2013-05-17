@@ -1,7 +1,8 @@
 use core::unstable::run_in_bare_thread;
 
 extern {
-    pub fn rust_dbg_call(cb: *u8,
+    pub fn rust_dbg_call(cb: extern "C" fn(libc::uintptr_t)
+                                           -> libc::uintptr_t,
                          data: libc::uintptr_t) -> libc::uintptr_t;
 }
 
