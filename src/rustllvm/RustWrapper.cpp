@@ -553,7 +553,7 @@ extern "C" LLVMValueRef LLVMBuildAtomicLoad(LLVMBuilderRef B,
     li->setVolatile(true);
     li->setAtomic(order);
     li->setAlignment(sizeof(intptr_t));
-    return wrap(unwrap(B)->Insert(li));
+    return wrap(unwrap(B)->Insert(li, Name));
 }
 
 extern "C" LLVMValueRef LLVMBuildAtomicStore(LLVMBuilderRef B,
