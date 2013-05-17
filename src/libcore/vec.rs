@@ -1790,23 +1790,23 @@ pub fn each2_mut<U, T>(v1: &mut [U], v2: &mut [T], f: &fn(u: &mut U, t: &mut T) 
  *
  *  * `fun` - The function to iterate over the combinations
  */
-pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) {
+pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) -> bool {
     let length = values.len();
     let mut permutation = vec::from_fn(length, |i| values[i]);
     if length <= 1 {
         fun(permutation);
-        return;
+        return true;
     }
     let mut indices = vec::from_fn(length, |i| i);
     loop {
-        if !fun(permutation) { return; }
+        if !fun(permutation) { return true; }
         // find largest k such that indices[k] < indices[k+1]
         // if no such k exists, all permutations have been generated
         let mut k = length - 2;
         while k > 0 && indices[k] >= indices[k+1] {
             k -= 1;
         }
-        if k == 0 && indices[0] > indices[1] { return; }
+        if k == 0 && indices[0] > indices[1] { return true; }
         // find largest l such that indices[k] < indices[l]
         // k+1 is guaranteed to be such
         let mut l = length - 1;
