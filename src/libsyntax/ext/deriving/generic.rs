@@ -195,13 +195,13 @@ pub fn expand_deriving_generic(cx: @ext_ctxt,
 
 pub struct TraitDef<'self> {
     /// Path of the trait, including any type parameters
-    path: Path,
+    path: Path<'self>,
     /// Additional bounds required of any type parameters of the type,
     /// other than the current trait
-    additional_bounds: ~[Ty],
+    additional_bounds: ~[Ty<'self>],
 
     /// Any extra lifetimes and/or bounds, e.g. `D: std::serialize::Decoder`
-    generics: LifetimeBounds,
+    generics: LifetimeBounds<'self>,
 
     methods: ~[MethodDef<'self>]
 }
@@ -209,20 +209,20 @@ pub struct TraitDef<'self> {
 
 pub struct MethodDef<'self> {
     /// name of the method
-    name: ~str,
+    name: &'self str,
     /// List of generics, e.g. `R: core::rand::Rng`
-    generics: LifetimeBounds,
+    generics: LifetimeBounds<'self>,
 
     /// Whether there is a self argument (outer Option) i.e. whether
     /// this is a static function, and whether it is a pointer (inner
     /// Option)
-    explicit_self: Option<Option<PtrTy>>,
+    explicit_self: Option<Option<PtrTy<'self>>>,
 
     /// Arguments other than the self argument
-    args: ~[Ty],
+    args: ~[Ty<'self>],
 
     /// Return type
-    ret_ty: Ty,
+    ret_ty: Ty<'self>,
 
     /// if the value of the nonmatching enums is independent of the
     /// actual enum variants, i.e. can use _ => .. match.

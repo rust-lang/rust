@@ -21,12 +21,12 @@ pub fn expand_deriving_clone(cx: @ext_ctxt,
                              in_items: ~[@item])
                           -> ~[@item] {
     let trait_def = TraitDef {
-        path: Path::new(~[~"core", ~"clone", ~"Clone"]),
+        path: Path::new(~["core", "clone", "Clone"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[
             MethodDef {
-                name: ~"clone",
+                name: "clone",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: ~[],
@@ -48,12 +48,12 @@ pub fn expand_deriving_deep_clone(cx: @ext_ctxt,
                                  in_items: ~[@item])
     -> ~[@item] {
     let trait_def = TraitDef {
-        path: Path::new(~[~"core", ~"clone", ~"DeepClone"]),
+        path: Path::new(~["core", "clone", "DeepClone"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[
             MethodDef {
-                name: ~"deep_clone",
+                name: "deep_clone",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: ~[],

@@ -21,20 +21,20 @@ pub fn expand_deriving_rand(cx: @ext_ctxt,
                             in_items: ~[@item])
     -> ~[@item] {
     let trait_def = TraitDef {
-        path: Path::new(~[~"core", ~"rand", ~"Rand"]),
+        path: Path::new(~["core", "rand", "Rand"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[
             MethodDef {
-                name: ~"rand",
+                name: "rand",
                 generics: LifetimeBounds {
                     lifetimes: ~[],
-                    bounds: ~[(~"R",
-                               ~[ Path::new(~[~"core", ~"rand", ~"Rng"]) ])]
+                    bounds: ~[("R",
+                               ~[ Path::new(~["core", "rand", "Rng"]) ])]
                 },
                 explicit_self: None,
                 args: ~[
-                    Ptr(~Literal(Path::new_local(~"R")),
+                    Ptr(~Literal(Path::new_local("R")),
                         Borrowed(None, ast::m_mutbl))
                 ],
                 ret_ty: Self,

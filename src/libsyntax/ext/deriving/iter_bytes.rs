@@ -19,19 +19,19 @@ pub fn expand_deriving_iter_bytes(cx: @ext_ctxt,
                                   mitem: @meta_item,
                                   in_items: ~[@item]) -> ~[@item] {
     let trait_def = TraitDef {
-        path: Path::new(~[~"core", ~"to_bytes", ~"IterBytes"]),
+        path: Path::new(~["core", "to_bytes", "IterBytes"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[
             MethodDef {
-                name: ~"iter_bytes",
+                name: "iter_bytes",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: ~[
-                    Literal(Path::new(~[~"bool"])),
-                    Literal(Path::new(~[~"core", ~"to_bytes", ~"Cb"]))
+                    Literal(Path::new(~["bool"])),
+                    Literal(Path::new(~["core", "to_bytes", "Cb"]))
                 ],
-                ret_ty: Literal(Path::new(~[~"bool"])),
+                ret_ty: Literal(Path::new(~["bool"])),
                 const_nonmatching: false,
                 combine_substructure: iter_bytes_substructure
             }
