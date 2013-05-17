@@ -357,87 +357,24 @@ mod test {
     use abi;
     use ast_util::mk_ident;
     use parse::parser::Parser;
-    use parse::token::{ident_interner, mk_fresh_ident_interner};
-    use diagnostic::{mk_span_handler, mk_handler};
-
-    // add known names to interner for testing
-    fn mk_testing_interner() -> @ident_interner {
-        let i = mk_fresh_ident_interner();
-        // baby hack; in order to put the identifiers
-        // 'a' and 'b' at known locations, we're going
-        // to fill up the interner to length 100. If
-        // the # of preloaded items on the interner
-        // ever gets larger than 100, we'll have to
-        // adjust this number (say, to 200) and
-        // change the numbers in the identifier
-        // test cases below.
-
-        assert!(i.len() < 100);
-        for int::range(0,100-((i.len()).to_int())) |_dc| {
-            i.gensym("dontcare");
-        }
-        i.intern("a");
-        i.intern("b");
-        i.intern("c");
-        i.intern("d");
-        i.intern("return");
-        assert_eq!(i.get(ast::ident{repr:101,ctxt:0}), @~"b");
-        i
-    }
-
-    // make a parse_sess that's closed over a
-    // testing interner (where a -> 100, b -> 101)
-    fn mk_testing_parse_sess() -> @mut ParseSess {
-        let interner = mk_testing_interner();
-        let cm = @CodeMap::new();
-        @mut ParseSess {
-            cm: cm,
-            next_id: 1,
-            span_diagnostic: mk_span_handler(mk_handler(None), cm),
-            interner: interner,
-        }
-    }
-
-    // map a string to tts, using a made-up filename: return both the token_trees
-    // and the ParseSess
-    fn string_to_tts_t (source_str : @~str) -> (~[ast::token_tree],@mut ParseSess) {
-        let ps = mk_testing_parse_sess();
-        (filemap_to_tts(ps,string_to_filemap(ps,source_str,~"bogofile")),ps)
-    }
+    use parse::token::{ident_interner, mk_ident_interner, mk_fresh_ident_interner};
+    use diagnostic::{span_handler, mk_span_handler, mk_handler, Emitter};
+    use util::parser_testing::{string_to_tts_and_sess,string_to_parser};
+    use util::parser_testing::{string_to_crate, string_to_expr, string_to_item};
+    use util::parser_testing::{string_to_stmt};
 
     // map a string to tts, return the tt without its parsesess
     fn string_to_tts_only(source_str : @~str) -> ~[ast::token_tree] {
-        let (tts,_ps) = string_to_tts_t(source_str);
+        let (tts,_ps) = string_to_tts_and_sess(source_str);
         tts
     }
 
-    // map string to parser (via tts)
-    fn string_to_parser(source_str: @~str) -> Parser {
-        let ps = mk_testing_parse_sess();
-        new_parser_from_source_str(ps,~[],~"bogofile",source_str)
-    }
 
     #[cfg(test)] fn to_json_str<E : Encodable<std::json::Encoder>>(val: @E) -> ~str {
         do io::with_str_writer |writer| {
             let mut encoder = std::json::Encoder(writer);
             val.encode(&mut encoder);
         }
-    }
-
-    fn string_to_crate (source_str : @~str) -> @ast::crate {
-        string_to_parser(source_str).parse_crate_mod()
-    }
-
-    fn string_to_expr (source_str : @~str) -> @ast::expr {
-        string_to_parser(source_str).parse_expr()
-    }
-
-    fn string_to_item (source_str : @~str) -> Option<@ast::item> {
-        string_to_parser(source_str).parse_item(~[])
-    }
-
-    fn string_to_stmt (source_str : @~str) -> @ast::stmt {
-        string_to_parser(source_str).parse_stmt(~[])
     }
 
     // produce a codemap::span
@@ -482,7 +419,7 @@ mod test {
     }*/
 
     #[test] fn string_to_tts_1 () {
-        let (tts,_ps) = string_to_tts_t(@~"fn a (b : int) { b; }");
+        let (tts,_ps) = string_to_tts_and_sess(@~"fn a (b : int) { b; }");
         assert_eq!(to_json_str(@tts),
                    ~"[\
                 [\"tt_tok\",null,[\"IDENT\",\"fn\",false]],\

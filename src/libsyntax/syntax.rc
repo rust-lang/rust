@@ -30,6 +30,8 @@ extern mod std;
 #[macro_escape]
 pub mod util {
     pub mod interner;
+    #[cfg(test)]
+    pub mod parser_testing;
 }
 
 pub mod syntax {
