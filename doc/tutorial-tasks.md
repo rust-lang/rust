@@ -43,15 +43,16 @@ in the core and standard libraries, which are still under development
 and do not always present a consistent or complete interface.
 
 For your reference, these are the standard modules involved in Rust
-concurrency at this writing.
+concurrency at this writing:
 
-* [`core::task`] - All code relating to tasks and task scheduling
-* [`core::comm`] - The message passing interface
-* [`core::pipes`] - The underlying messaging infrastructure
-* [`std::comm`] - Additional messaging types based on `core::pipes`
-* [`std::sync`] - More exotic synchronization tools, including locks
+* [`core::task`] - All code relating to tasks and task scheduling,
+* [`core::comm`] - The message passing interface,
+* [`core::pipes`] - The underlying messaging infrastructure,
+* [`std::comm`] - Additional messaging types based on `core::pipes`,
+* [`std::sync`] - More exotic synchronization tools, including locks,
 * [`std::arc`] - The ARC (atomically reference counted) type,
-  for safely sharing immutable data
+  for safely sharing immutable data,
+* [`std::future`] - A type representing values that may be computed concurrently and retrieved at a later time.
 
 [`core::task`]: core/task.html
 [`core::comm`]: core/comm.html
@@ -59,6 +60,7 @@ concurrency at this writing.
 [`std::comm`]: std/comm.html
 [`std::sync`]: std/sync.html
 [`std::arc`]: std/arc.html
+[`std::future`]: std/future.html
 
 # Basics
 
@@ -70,7 +72,7 @@ closure in the new task.
 
 ~~~~
 # use core::io::println;
-use core::task::spawn;
+# use core::task::spawn;
 
 // Print something profound in a different task using a named function
 fn print_message() { println("I am running in a different task!"); }
@@ -145,8 +147,8 @@ endpoint. Consider the following example of calculating two results
 concurrently:
 
 ~~~~
-use core::task::spawn;
-use core::comm::{stream, Port, Chan};
+# use core::task::spawn;
+# use core::comm::{stream, Port, Chan};
 
 let (port, chan): (Port<int>, Chan<int>) = stream();
 
@@ -233,7 +235,7 @@ Instead we can use a `SharedChan`, a type that allows a single
 
 ~~~
 # use core::task::spawn;
-use core::comm::{stream, SharedChan};
+# use core::comm::{stream, SharedChan};
 
 let (port, chan) = stream();
 let chan = SharedChan::new(chan);
@@ -280,6 +282,51 @@ let ports = do vec::from_fn(3) |init_val| {
 // Wait on each port, accumulating the results
 let result = ports.foldl(0, |accum, port| *accum + port.recv() );
 # fn some_expensive_computation(_i: uint) -> int { 42 }
+~~~
+
+## Futures
+With `std::future`, rust has a mechanism for requesting a computation and getting the result
+later.
+
+The basic example below illustrates this.
+~~~
+# fn make_a_sandwich() {};
+fn fib(n: uint) -> uint {
+    // lengthy computation returning an uint
+    12586269025
+}
+
+let mut delayed_fib = std::future::spawn (|| fib(50) );
+make_a_sandwich();
+println(fmt!("fib(50) = %?", delayed_fib.get()))
+~~~
+
+The call to `future::spawn` returns immediately a `future` object regardless of how long it
+takes to run `fib(50)`. You can then make yourself a sandwich while the computation of `fib` is
+running. The result of the execution of the method is obtained by calling `get` on the future.
+This call will block until the value is available (*i.e.* the computation is complete). Note that
+the future needs to be mutable so that it can save the result for next time `get` is called.
+
+Here is another example showing how futures allow you to background computations. The workload will
+be distributed on the available cores.
+~~~
+fn partial_sum(start: uint) -> f64 {
+    let mut local_sum = 0f64;
+    for uint::range(start*100000, (start+1)*100000) |num| {
+        local_sum += (num as f64 + 1.0).pow(-2.0);
+    }
+    local_sum
+}
+
+fn main() {
+    let mut futures = vec::from_fn(1000, |ind| do std::future::spawn { partial_sum(ind) });
+
+    let mut final_res = 0f64;
+    for futures.each_mut |ft|  {
+        final_res += ft.get();
+    }
+    println(fmt!("π^2/6 is not far from : %?", final_res));
+}
 ~~~
 
 # Handling task failure
@@ -363,8 +410,8 @@ either task fails, it kills the other one.
 ~~~
 # fn sleep_forever() { loop { task::yield() } }
 # do task::try {
-do task::spawn {
-    do task::spawn {
+do spawn {
+    do spawn {
         fail!();  // All three tasks will fail.
     }
     sleep_forever();  // Will get woken up by force, then fail
