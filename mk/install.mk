@@ -53,9 +53,9 @@ install-target-$(1)-host-$(2): $$(TSREQ$$(ISTAGE)_T_$(1)_H_$(2)) $$(SREQ$$(ISTAG
 	$$(Q)mkdir -p $$(PTL$(1)$(2))
 	$$(Q)$$(call INSTALL_LIB,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_RUNTIME_$(1)))
 	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CORELIB_GLOB_$(1)))
-	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(STDLIB_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB, \
+		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(EXTRALIB_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),libmorestack.a)
 
 endef
@@ -65,9 +65,9 @@ install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)mkdir -p $$(PTL$(1)$(2))
 	$$(Q)$$(call INSTALL_LIB,$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CFG_RUNTIME_$(1)))
 	$$(Q)$$(call INSTALL_LIB, \
-		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(CORELIB_GLOB_$(1)))
-	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(STDLIB_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB, \
+		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(EXTRALIB_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB, \
 		$$(TL$(1)$(2)),$$(PTL$(1)$(2)),$$(LIBRUSTC_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB, \
@@ -113,8 +113,8 @@ install-host: $(CSREQ$(ISTAGE)_T_$(CFG_BUILD_TRIPLE)_H_$(CFG_BUILD_TRIPLE))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rustdoc$(X_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rusti$(X_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL,$(HB2),$(PHB),rust$(X_$(CFG_BUILD_TRIPLE)))
-	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(CORELIB_GLOB_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(STDLIB_GLOB_$(CFG_BUILD_TRIPLE)))
+	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(EXTRALIB_GLOB_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBRUSTC_GLOB_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBSYNTAX_GLOB_$(CFG_BUILD_TRIPLE)))
 	$(Q)$(call INSTALL_LIB,$(HL),$(PHL),$(LIBRUSTI_GLOB_$(CFG_BUILD_TRIPLE)))
@@ -141,8 +141,8 @@ uninstall:
 	$(Q)rm -f $(PHL)/$(CFG_RUSTLLVM_$(CFG_BUILD_TRIPLE))
 	$(Q)rm -f $(PHL)/$(CFG_RUNTIME_$(CFG_BUILD_TRIPLE))
 	$(Q)for i in \
-          $(call HOST_LIB_FROM_HL_GLOB,$(CORELIB_GLOB_$(CFG_BUILD_TRIPLE))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(STDLIB_GLOB_$(CFG_BUILD_TRIPLE))) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(EXTRALIB_GLOB_$(CFG_BUILD_TRIPLE))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTC_GLOB_$(CFG_BUILD_TRIPLE))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBSYNTAX_GLOB_$(CFG_BUILD_TRIPLE))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTPKG_GLOB_$(CFG_BUILD_TRIPLE))) \
@@ -203,16 +203,16 @@ define INSTALL_RUNTIME_TARGET_N
 install-runtime-target-$(1)-host-$(2): $$(TSREQ$$(ISTAGE)_T_$(1)_H_$(2)) $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$(Q)$(call ADB_SHELL,mkdir,$(CFG_RUNTIME_PUSH_DIR))
 	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(CFG_RUNTIME_$(1)),$(CFG_RUNTIME_PUSH_DIR))
-	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(CORELIB_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
 	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(STDLIB_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
+	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(EXTRALIB_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
 endef
 
 define INSTALL_RUNTIME_TARGET_CLEANUP_N
 install-runtime-target-$(1)-cleanup:
 	$(Q)$(call ADB,remount)
 	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(CFG_RUNTIME_$(1)))
-	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(CORELIB_GLOB_$(1)))
 	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(STDLIB_GLOB_$(1)))
+	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(EXTRALIB_GLOB_$(1)))
 endef
 
 $(eval $(call INSTALL_RUNTIME_TARGET_N,arm-linux-androideabi,$(CFG_BUILD_TRIPLE)))

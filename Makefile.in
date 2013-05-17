@@ -205,8 +205,8 @@ define DEF_LIBS
 
 CFG_RUNTIME_$(1) :=$(call CFG_LIB_NAME_$(1),rustrt)
 CFG_RUSTLLVM_$(1) :=$(call CFG_LIB_NAME_$(1),rustllvm)
-CFG_CORELIB_$(1) :=$(call CFG_LIB_NAME_$(1),core)
 CFG_STDLIB_$(1) :=$(call CFG_LIB_NAME_$(1),std)
+CFG_EXTRALIB_$(1) :=$(call CFG_LIB_NAME_$(1),extra)
 CFG_LIBRUSTC_$(1) :=$(call CFG_LIB_NAME_$(1),rustc)
 CFG_LIBSYNTAX_$(1) :=$(call CFG_LIB_NAME_$(1),syntax)
 CFG_LIBFUZZER_$(1) :=$(call CFG_LIB_NAME_$(1),fuzzer)
@@ -215,8 +215,8 @@ CFG_LIBRUSTDOC_$(1) :=$(call CFG_LIB_NAME_$(1),rustdoc)
 CFG_LIBRUSTI_$(1) :=$(call CFG_LIB_NAME_$(1),rusti)
 CFG_LIBRUST_$(1) :=$(call CFG_LIB_NAME_$(1),rust)
 
-STDLIB_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),std)
-CORELIB_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),core)
+EXTRALIB_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),std)
+STDLIB_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),core)
 LIBRUSTC_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustc)
 LIBSYNTAX_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),syntax)
 LIBFUZZER_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),fuzzer)
@@ -224,8 +224,8 @@ LIBRUSTPKG_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustpkg)
 LIBRUSTDOC_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustdoc)
 LIBRUSTI_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rusti)
 LIBRUST_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rust)
+EXTRALIB_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),extra)
 STDLIB_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),std)
-CORELIB_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),core)
 LIBRUSTC_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustc)
 LIBSYNTAX_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),syntax)
 LIBFUZZER_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),fuzzer)
@@ -240,19 +240,19 @@ $(foreach target,$(CFG_TARGET_TRIPLES),\
   $(eval $(call DEF_LIBS,$(target))))
 
 ######################################################################
-# Core library variables
-######################################################################
-
-CORELIB_CRATE := $(S)src/libcore/core.rc
-CORELIB_INPUTS := $(wildcard $(addprefix $(S)src/libcore/,        \
-                                           core.rc *.rs */*.rs */*/*rs */*/*/*rs))
-
-######################################################################
 # Standard library variables
 ######################################################################
 
-STDLIB_CRATE := $(S)src/libstd/std.rc
-STDLIB_INPUTS := $(wildcard $(addprefix $(S)src/libstd/,          \
+STDLIB_CRATE := $(S)src/libstd/core.rc
+STDLIB_INPUTS := $(wildcard $(addprefix $(S)src/libstd/,        \
+                                           core.rc *.rs */*.rs */*/*rs */*/*/*rs))
+
+######################################################################
+# Extra library variables
+######################################################################
+
+EXTRALIB_CRATE := $(S)src/libextra/std.rc
+EXTRALIB_INPUTS := $(wildcard $(addprefix $(S)src/libextra/,          \
                                           std.rc *.rs */*.rs))
 
 ######################################################################
@@ -344,32 +344,32 @@ TROOT$(1)_T_$(2)_H_$(3) = $$(HLIB$(1)_H_$(3))/rustc/$(2)
 TBIN$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/bin
 TLIB$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/$$(CFG_LIBDIR)
 
-# The name of the core and standard libraries used by rustc
+# The name of the standard and extra libraries used by rustc
 ifdef CFG_DISABLE_SHAREDSTD
-  HCORELIB_DEFAULT$(1)_H_$(3) = \
-    $$(HLIB$(1)_H_$(3))/libcore.rlib
-  TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
-    $$(TLIB$(1)_T_$(2)_H_$(3))/libcore.rlib
-
   HSTDLIB_DEFAULT$(1)_H_$(3) = \
     $$(HLIB$(1)_H_$(3))/libstd.rlib
   TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
     $$(TLIB$(1)_T_$(2)_H_$(3))/libstd.rlib
+
+  HEXTRALIB_DEFAULT$(1)_H_$(3) = \
+    $$(HLIB$(1)_H_$(3))/libextra.rlib
+  TEXTRALIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
+    $$(TLIB$(1)_T_$(2)_H_$(3))/libextra.rlib
 
   HLIBRUSTC_DEFAULT$(1)_H_$(3) = \
     $$(HLIB$(1)_H_$(3))/librustc.rlib
   TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3) = \
     $$(TLIB$(1)_T_$(2)_H_$(3))/librustc.rlib
 else
-  HCORELIB_DEFAULT$(1)_H_$(3) = \
-    $$(HLIB$(1)_H_$(3))/$(CFG_CORELIB_$(3))
-  TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
-    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB_$(2))
-
   HSTDLIB_DEFAULT$(1)_H_$(3) = \
     $$(HLIB$(1)_H_$(3))/$(CFG_STDLIB_$(3))
   TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
     $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2))
+
+  HEXTRALIB_DEFAULT$(1)_H_$(3) = \
+    $$(HLIB$(1)_H_$(3))/$(CFG_EXTRALIB_$(3))
+  TEXTRALIB_DEFAULT$(1)_T_$(2)_H_$(3) = \
+    $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_EXTRALIB_$(2))
 
   HLIBRUSTC_DEFAULT$(1)_H_$(3) = \
     $$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTC_$(3))
@@ -382,8 +382,8 @@ HSREQ$(1)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_RUNTIME_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_RUSTLLVM_$(3)) \
-	$$(HCORELIB_DEFAULT$(1)_H_$(3)) \
 	$$(HSTDLIB_DEFAULT$(1)_H_$(3)) \
+	$$(HEXTRALIB_DEFAULT$(1)_H_$(3)) \
 	$$(HLIBSYNTAX_DEFAULT$(1)_H_$(3)) \
 	$$(HLIBRUSTC_DEFAULT$(1)_H_$(3)) \
 	$$(MKFILE_DEPS)
@@ -397,8 +397,8 @@ TSREQ$(1)_T_$(2)_H_$(3) = \
 # Prerequisites for a working stageN compiler and libraries, for a specific target
 SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB_$(2)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2))
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_EXTRALIB_$(2))
 
 # Prerequisites for a working stageN compiler and libraries, for a specific target
 CSREQ$(1)_T_$(2)_H_$(3) = \
@@ -413,8 +413,8 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTDOC_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTI_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUST_$(3)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB_$(2)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2))  \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_EXTRALIB_$(2))  \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(2))  \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(2)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBFUZZER_$(2)) \

@@ -643,7 +643,7 @@ fi
 step_msg "making directories"
 
 for i in \
-    doc doc/core doc/std \
+    doc doc/std doc/extra \
     dl tmp
 do
     make_dir $i
