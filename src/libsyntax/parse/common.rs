@@ -16,6 +16,7 @@ use parse::lexer::reader;
 use parse::parser::Parser;
 use parse::token::keywords;
 use parse::token;
+use parse::token::{get_ident_interner};
 
 use opt_vec;
 use opt_vec::OptVec;
@@ -49,13 +50,13 @@ pub fn seq_sep_none() -> SeqSep {
 // maps any token back to a string. not necessary if you know it's
 // an identifier....
 pub fn token_to_str(reader: @reader, token: &token::Token) -> ~str {
-    token::to_str(reader.interner(), token)
+    token::to_str(get_ident_interner(), token)
 }
 
 impl Parser {
     // convert a token to a string using self's reader
     pub fn token_to_str(&self, token: &token::Token) -> ~str {
-        token::to_str(self.reader.interner(), token)
+        token::to_str(get_ident_interner(), token)
     }
 
     // convert the current token to a string using self's reader
