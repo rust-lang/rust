@@ -15,10 +15,12 @@ use ast::{crate, expr_, expr_mac, mac_invoc_tt};
 use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
 use ast::{SCTable, illegal_ctxt};
 use ast;
-use ast_util::{new_rename, new_mark, resolve};
+use ast_util::{new_rename, new_mark, resolve, new_sctable};
 use attr;
 use codemap;
 use codemap::{span, CallInfo, ExpandedFrom, NameAndSpan, spanned};
+use core::cast;
+use core::local_data;
 use ext::base::*;
 use fold::*;
 use parse;
@@ -394,6 +396,51 @@ pub fn expand_block(extsbox: @mut SyntaxEnv,
         _ => cx.span_bug(sp, "expected ScopeMacros binding for \" block\"")
     }
 }
+
+// given a mutable list of renames, return a tree-folder that applies those
+// renames.
+fn renames_to_fold(renames : @mut ~[(ast::ident,ast::Name)]) -> @ast_fold {
+    let table = local_sctable_get();
+    let afp = default_ast_fold();
+    let f_pre = @AstFoldFns {
+        fold_ident: |id,_| {
+            // the individual elements are memoized... it would
+            // also be possible to memoize on the whole list at once.
+            let new_ctxt = renames.foldl(id.ctxt,|ctxt,&(from,to)| {
+                new_rename(from,to,*ctxt,table)
+            });
+            ast::ident{repr:id.repr,ctxt:new_ctxt}
+        },
+        .. *afp
+    };
+    make_fold(f_pre)
+}
+
+// perform a bunch of renames
+fn apply_pending_renames(folder : @ast_fold, stmt : ast::stmt) -> @ast::stmt {
+    match folder.fold_stmt(&stmt) {
+        Some(s) => s,
+        None => fail!(fmt!("renaming of stmt produced None"))
+    }
+}
+
+// fetch the SCTable from TLS, create one if it doesn't yet exist.
+fn local_sctable_get() -> @mut SCTable {
+    unsafe {
+        let sctable_key = (cast::transmute::<(uint, uint),
+                           &fn(v: @@mut SCTable)>(
+                               (-4 as uint, 0u)));
+        match local_data::local_data_get(sctable_key) {
+            None => {
+                let new_table = @@mut new_sctable();
+                local_data::local_data_set(sctable_key,new_table);
+                *new_table
+            },
+            Some(intr) => *intr
+        }
+    }
+}
+
 
 pub fn new_span(cx: @ExtCtxt, sp: span) -> span {
     /* this discards information in the case of macro-defining macros */
