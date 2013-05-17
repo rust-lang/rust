@@ -396,8 +396,7 @@ pub trait FromStrRadix {
 /// - If code written to use this function doesn't care about it, it's
 ///   probably assuming that `x^0` always equals `1`.
 ///
-pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Div<T,T>+Mul<T,T>>(
-    radix: uint, pow: uint) -> T {
+pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Div<T,T>+Mul<T,T>>(radix: uint, pow: uint) -> T {
     let _0: T = Zero::zero();
     let _1: T = One::one();
 
@@ -405,7 +404,7 @@ pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Div<T,T>+Mul<T,T>>(
     if radix == 0u { return _0; }
     let mut my_pow     = pow;
     let mut total      = _1;
-    let mut multiplier = cast(radix as int);
+    let mut multiplier = cast(radix);
     while (my_pow > 0u) {
         if my_pow % 2u == 1u {
             total *= multiplier;
@@ -422,13 +421,13 @@ pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
     assert_eq!(ten.add(&two),  cast(12));
     assert_eq!(ten.sub(&two),  cast(8));
     assert_eq!(ten.mul(&two),  cast(20));
-    assert_eq!(ten.div(&two), cast(5));
+    assert_eq!(ten.div(&two),  cast(5));
     assert_eq!(ten.rem(&two),  cast(0));
 
     assert_eq!(ten.add(&two),  ten + two);
     assert_eq!(ten.sub(&two),  ten - two);
     assert_eq!(ten.mul(&two),  ten * two);
-    assert_eq!(ten.div(&two), ten / two);
+    assert_eq!(ten.div(&two),  ten / two);
     assert_eq!(ten.rem(&two),  ten % two);
 }
 
