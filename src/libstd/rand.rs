@@ -25,7 +25,7 @@ distributions like normal and exponential.
 use core::rand::RngUtil;
 
 fn main() {
-    let rng = rand::rng();
+    let mut rng = rand::rng();
     if rng.gen() { // bool
         println(fmt!("int: %d, uint: %u", rng.gen(), rng.gen()))
     }
