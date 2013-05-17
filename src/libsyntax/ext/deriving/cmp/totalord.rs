@@ -20,16 +20,16 @@ pub fn expand_deriving_totalord(cx: @ext_ctxt,
                                 mitem: @meta_item,
                                 in_items: ~[@item]) -> ~[@item] {
     let trait_def = TraitDef {
-        path: Path::new(~[~"core", ~"cmp", ~"TotalOrd"]),
+        path: Path::new(~["core", "cmp", "TotalOrd"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[
             MethodDef {
-                name: ~"cmp",
+                name: "cmp",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: ~[borrowed_self()],
-                ret_ty: Literal(Path::new(~[~"core", ~"cmp", ~"Ordering"])),
+                ret_ty: Literal(Path::new(~["core", "cmp", "Ordering"])),
                 const_nonmatching: false,
                 combine_substructure: cs_cmp
             }

@@ -26,7 +26,7 @@ pub fn expand_deriving_ord(cx: @ext_ctxt,
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: ~[borrowed_self()],
-                ret_ty: Literal(Path::new(~[~"bool"])),
+                ret_ty: Literal(Path::new(~["bool"])),
                 const_nonmatching: false,
                 combine_substructure: |cx, span, substr|
                     cs_ord($less, $equal, cx, span, substr)
@@ -37,15 +37,15 @@ pub fn expand_deriving_ord(cx: @ext_ctxt,
 
 
     let trait_def = TraitDef {
-        path: Path::new(~[~"core", ~"cmp", ~"Ord"]),
+        path: Path::new(~["core", "cmp", "Ord"]),
         // XXX: Ord doesn't imply Eq yet
-        additional_bounds: ~[Literal(Path::new(~[~"core", ~"cmp", ~"Eq"]))],
+        additional_bounds: ~[Literal(Path::new(~["core", "cmp", "Eq"]))],
         generics: LifetimeBounds::empty(),
         methods: ~[
-            md!(~"lt", true,  false),
-            md!(~"le", true,  true),
-            md!(~"gt", false, false),
-            md!(~"ge", false, true)
+            md!("lt", true,  false),
+            md!("le", true,  true),
+            md!("gt", false, false),
+            md!("ge", false, true)
         ]
     };
 

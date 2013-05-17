@@ -26,16 +26,16 @@ pub fn expand_deriving_totaleq(cx: @ext_ctxt,
     }
 
     let trait_def = TraitDef {
-        path: Path::new(~[~"core", ~"cmp", ~"TotalEq"]),
+        path: Path::new(~["core", "cmp", "TotalEq"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[
             MethodDef {
-                name: ~"equals",
+                name: "equals",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: ~[borrowed_self()],
-                ret_ty: Literal(Path::new(~[~"bool"])),
+                ret_ty: Literal(Path::new(~["bool"])),
                 const_nonmatching: true,
                 combine_substructure: cs_equals
             }

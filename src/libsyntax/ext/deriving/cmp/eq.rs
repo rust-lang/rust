@@ -36,7 +36,7 @@ pub fn expand_deriving_eq(cx: @ext_ctxt,
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: ~[borrowed_self()],
-                ret_ty: Literal(Path::new(~[~"bool"])),
+                ret_ty: Literal(Path::new(~["bool"])),
                 const_nonmatching: true,
                 combine_substructure: $f
             },
@@ -44,12 +44,12 @@ pub fn expand_deriving_eq(cx: @ext_ctxt,
     );
 
     let trait_def = TraitDef {
-        path: Path::new(~[~"core", ~"cmp", ~"Eq"]),
+        path: Path::new(~["core", "cmp", "Eq"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[
-            md!(~"eq", cs_eq),
-            md!(~"ne", cs_ne)
+            md!("eq", cs_eq),
+            md!("ne", cs_ne)
         ]
     };
 

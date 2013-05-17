@@ -21,31 +21,30 @@ use codemap::{span,respan};
 use opt_vec;
 
 /// The types of pointers
-#[deriving(Eq)]
-pub enum PtrTy {
+pub enum PtrTy<'self> {
     Owned, // ~
     Managed(ast::mutability), // @[mut]
-    Borrowed(Option<~str>, ast::mutability), // &['lifetime] [mut]
+    Borrowed(Option<&'self str>, ast::mutability), // &['lifetime] [mut]
 }
 
 /// A path, e.g. `::core::option::Option::<int>` (global). Has support
 /// for type parameters and a lifetime.
-#[deriving(Eq)]
-pub struct Path {
-    path: ~[~str],
-    lifetime: Option<~str>,
-    params: ~[~Ty],
+pub struct Path<'self> {
+    path: ~[&'self str],
+    lifetime: Option<&'self str>,
+    params: ~[~Ty<'self>],
     global: bool
 }
 
-pub impl Path {
-    fn new(path: ~[~str]) -> Path {
+pub impl<'self> Path<'self> {
+    fn new<'r>(path: ~[&'r str]) -> Path<'r> {
         Path::new_(path, None, ~[], true)
     }
-    fn new_local(path: ~str) -> Path {
+    fn new_local<'r>(path: &'r str) -> Path<'r> {
         Path::new_(~[ path ], None, ~[], false)
     }
-    fn new_(path: ~[~str], lifetime: Option<~str>, params: ~[~Ty], global: bool) -> Path {
+    fn new_<'r>(path: ~[&'r str], lifetime: Option<&'r str>, params: ~[~Ty<'r>], global: bool)
+        -> Path<'r> {
         Path {
             path: path,
             lifetime: lifetime,
@@ -56,9 +55,9 @@ pub impl Path {
 
     fn to_ty(&self, cx: @ext_ctxt, span: span,
              self_ty: ident, self_generics: &Generics) -> @ast::Ty {
-                build::mk_ty_path_path(cx, span,
-                                       self.to_path(cx, span,
-                                                    self_ty, self_generics))
+        build::mk_ty_path_path(cx, span,
+                               self.to_path(cx, span,
+                                            self_ty, self_generics))
     }
     fn to_path(&self, cx: @ext_ctxt, span: span,
                self_ty: ident, self_generics: &Generics) -> @ast::Path {
@@ -75,45 +74,44 @@ pub impl Path {
 }
 
 /// A type. Supports pointers (except for *), Self, and literals
-#[deriving(Eq)]
-pub enum Ty {
+pub enum Ty<'self> {
     Self,
     // &/~/@ Ty
-    Ptr(~Ty, PtrTy),
+    Ptr(~Ty<'self>, PtrTy<'self>),
     // mod::mod::Type<[lifetime], [Params...]>, including a plain type
     // parameter, and things like `int`
-    Literal(Path),
+    Literal(Path<'self>),
     // includes nil
-    Tuple(~[Ty])
+    Tuple(~[Ty<'self>])
 }
 
-pub fn borrowed_ptrty() -> PtrTy {
+pub fn borrowed_ptrty<'r>() -> PtrTy<'r> {
     Borrowed(None, ast::m_imm)
 }
-pub fn borrowed(ty: ~Ty) -> Ty {
+pub fn borrowed<'r>(ty: ~Ty<'r>) -> Ty<'r> {
     Ptr(ty, borrowed_ptrty())
 }
 
-pub fn borrowed_explicit_self() -> Option<Option<PtrTy>> {
+pub fn borrowed_explicit_self<'r>() -> Option<Option<PtrTy<'r>>> {
     Some(Some(borrowed_ptrty()))
 }
 
-pub fn borrowed_self() -> Ty {
+pub fn borrowed_self<'r>() -> Ty<'r> {
     borrowed(~Self)
 }
 
-pub fn nil_ty() -> Ty {
+pub fn nil_ty() -> Ty<'static> {
     Tuple(~[])
 }
 
-fn mk_lifetime(cx: @ext_ctxt, span: span, lt: &Option<~str>) -> Option<@ast::Lifetime> {
+fn mk_lifetime(cx: @ext_ctxt, span: span, lt: &Option<&str>) -> Option<@ast::Lifetime> {
     match *lt {
         Some(ref s) => Some(@build::mk_lifetime(cx, span, cx.ident_of(*s))),
         None => None
     }
 }
 
-pub impl Ty {
+pub impl<'self> Ty<'self> {
     fn to_ty(&self, cx: @ext_ctxt, span: span,
              self_ty: ident, self_generics: &Generics) -> @ast::Ty {
         match *self {
@@ -174,7 +172,7 @@ pub impl Ty {
 }
 
 
-fn mk_ty_param(cx: @ext_ctxt, span: span, name: ~str, bounds: ~[Path],
+fn mk_ty_param(cx: @ext_ctxt, span: span, name: &str, bounds: &[Path],
                self_ident: ident, self_generics: &Generics) -> ast::TyParam {
     let bounds = opt_vec::from(
         do bounds.map |b| {
@@ -192,24 +190,28 @@ fn mk_generics(lifetimes: ~[ast::Lifetime],  ty_params: ~[ast::TyParam]) -> Gene
 }
 
 /// Lifetimes and bounds on type parameters
-pub struct LifetimeBounds {
-    lifetimes: ~[~str],
-    bounds: ~[(~str, ~[Path])]
+pub struct LifetimeBounds<'self> {
+    lifetimes: ~[&'self str],
+    bounds: ~[(&'self str, ~[Path<'self>])]
 }
 
-pub impl LifetimeBounds {
-    fn empty() -> LifetimeBounds {
+pub impl<'self> LifetimeBounds<'self> {
+    fn empty() -> LifetimeBounds<'static> {
         LifetimeBounds {
             lifetimes: ~[], bounds: ~[]
         }
     }
     fn to_generics(&self, cx: @ext_ctxt, span: span,
                    self_ty: ident, self_generics: &Generics) -> Generics {
-        let lifetimes = do self.lifetimes.map |&lt| {
-            build::mk_lifetime(cx, span, cx.ident_of(lt))
+        let lifetimes = do self.lifetimes.map |lt| {
+            build::mk_lifetime(cx, span, cx.ident_of(*lt))
         };
-        let ty_params = do self.bounds.map |&(name, bounds)| {
-            mk_ty_param(cx, span, name, bounds, self_ty, self_generics)
+        let ty_params = do self.bounds.map |t| {
+            match t {
+                &(ref name, ref bounds) => {
+                    mk_ty_param(cx, span, *name, *bounds, self_ty, self_generics)
+                }
+            }
         };
         mk_generics(lifetimes, ty_params)
     }
