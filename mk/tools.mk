@@ -41,8 +41,8 @@ define TOOLS_STAGE_N_TARGET
 $$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBFUZZER_$(4)):          \
 		$$(FUZZER_LIB) $$(FUZZER_INPUTS)			\
 		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_CORELIB_$(4))	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(4))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_EXTRALIB_$(4))	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(4))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
@@ -56,16 +56,16 @@ $$(TBIN$(1)_T_$(4)_H_$(3))/fuzzer$$(X_$(4)):				\
 $$(TBIN$(1)_T_$(4)_H_$(3))/compiletest$$(X_$(4)):			\
 		$$(COMPILETEST_CRATE) $$(COMPILETEST_INPUTS)	\
 		$$(TSREQ$(1)_T_$(4)_H_$(3))						\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_CORELIB_$(4))      \
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(4))
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(4))      \
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_EXTRALIB_$(4))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$<
 
 $$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTPKG_$(4)):		\
 		$$(RUSTPKG_LIB) $$(RUSTPKG_INPUTS)		    \
 		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_CORELIB_$(4))	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(4))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_EXTRALIB_$(4))	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(4))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
@@ -79,8 +79,8 @@ $$(TBIN$(1)_T_$(4)_H_$(3))/rustpkg$$(X_$(4)):				\
 $$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTDOC_$(4)):		\
 		$$(RUSTDOC_LIB) $$(RUSTDOC_INPUTS)			\
 		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_CORELIB_$(4))	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(4))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_EXTRALIB_$(4))	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(4))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
@@ -94,8 +94,8 @@ $$(TBIN$(1)_T_$(4)_H_$(3))/rustdoc$$(X_$(4)):			\
 $$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTI_$(4)):		\
 		$$(RUSTI_LIB) $$(RUSTI_INPUTS)			\
 		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_CORELIB_$(4))	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(4))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_EXTRALIB_$(4))	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(4))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(4)_H_$(3)) -o $$@ $$< && touch $$@
@@ -109,8 +109,8 @@ $$(TBIN$(1)_T_$(4)_H_$(3))/rusti$$(X_$(4)):			\
 $$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUST_$(4)):		\
 		$$(RUST_LIB) $$(RUST_INPUTS)			\
 		$$(TSREQ$(1)_T_$(4)_H_$(3))					\
-		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_CORELIB_$(4))	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(4))	\
+		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_EXTRALIB_$(4))	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTPKG_$(4))	\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTI_$(4))		\
 		$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTDOC_$(4))	\

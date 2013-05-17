@@ -28,8 +28,8 @@ $$(HBIN$(2)_H_$(4))/rustc$$(X_$(4)): \
 	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)) \
 	$$(HLIB$(2)_H_$(4))/$(CFG_RUSTLLVM_$(4)) \
 	$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(4)) \
-	$$(HCORELIB_DEFAULT$(2)_H_$(4)) \
 	$$(HSTDLIB_DEFAULT$(2)_H_$(4)) \
+	$$(HEXTRALIB_DEFAULT$(2)_H_$(4)) \
 	| $$(HBIN$(2)_H_$(4))/
 
 	@$$(call E, cp: $$@)
@@ -40,8 +40,8 @@ $$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(4)): \
 	$$(HLIB$(2)_H_$(4))/$(CFG_LIBSYNTAX_$(4)) \
 	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)) \
 	$$(HLIB$(2)_H_$(4))/$(CFG_RUSTLLVM_$(4)) \
-	$$(HCORELIB_DEFAULT$(2)_H_$(4)) \
 	$$(HSTDLIB_DEFAULT$(2)_H_$(4)) \
+	$$(HEXTRALIB_DEFAULT$(2)_H_$(4)) \
 	| $$(HLIB$(2)_H_$(4))/
 
 	@$$(call E, cp: $$@)
@@ -54,8 +54,8 @@ $$(HLIB$(2)_H_$(4))/$(CFG_LIBSYNTAX_$(4)): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBSYNTAX_$(4)) \
 	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)) \
 	$$(HLIB$(2)_H_$(4))/$(CFG_RUSTLLVM_$(4)) \
-	$$(HCORELIB_DEFAULT$(2)_H_$(4)) \
 	$$(HSTDLIB_DEFAULT$(2)_H_$(4)) \
+	$$(HEXTRALIB_DEFAULT$(2)_H_$(4)) \
 	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
@@ -69,44 +69,44 @@ $$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)): \
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-$$(HLIB$(2)_H_$(4))/$(CFG_CORELIB_$(4)): \
-	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_CORELIB_$(4)) \
-	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)) \
-	| $$(HLIB$(2)_H_$(4))/
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-# Subtle: We do not let the shell expand $(CORELIB_DSYM_GLOB) directly rather
-# we use Make's $$(wildcard) facility. The reason is that, on mac, when using
-# USE_SNAPSHOT_CORELIB, we copy the core.dylib file out of the snapshot.
-# In that case, there is no .dSYM file.  Annoyingly, bash then refuses to expand
-# glob, and cp reports an error because libcore-*.dylib.dsym does not exist.
-# Make instead expands the glob to nothing, which gives us the correct behavior.
-# (Copy .dsym file if it exists, but do nothing otherwise)
-	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(CORELIB_GLOB_$(4)) \
-		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(CORELIB_DSYM_GLOB_$(4))) \
-	        $$(HLIB$(2)_H_$(4))
-
 $$(HLIB$(2)_H_$(4))/$(CFG_STDLIB_$(4)): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(4)) \
-	$$(HLIB$(2)_H_$(4))/$(CFG_CORELIB_$(4)) \
 	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)) \
 	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
+# Subtle: We do not let the shell expand $(STDLIB_DSYM_GLOB) directly rather
+# we use Make's $$(wildcard) facility. The reason is that, on mac, when using
+# USE_SNAPSHOT_STDLIB, we copy the std.dylib file out of the snapshot.
+# In that case, there is no .dSYM file.  Annoyingly, bash then refuses to expand
+# glob, and cp reports an error because libstd-*.dylib.dsym does not exist.
+# Make instead expands the glob to nothing, which gives us the correct behavior.
+# (Copy .dsym file if it exists, but do nothing otherwise)
 	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(STDLIB_GLOB_$(4)) \
 		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(STDLIB_DSYM_GLOB_$(4))) \
 	        $$(HLIB$(2)_H_$(4))
 
-$$(HLIB$(2)_H_$(4))/libcore.rlib: \
-	$$(TLIB$(1)_T_$(4)_H_$(3))/libcore.rlib \
+$$(HLIB$(2)_H_$(4))/$(CFG_EXTRALIB_$(4)): \
+	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_EXTRALIB_$(4)) \
+	$$(HLIB$(2)_H_$(4))/$(CFG_STDLIB_$(4)) \
+	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)) \
+	| $$(HLIB$(2)_H_$(4))/
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$< $$@
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(EXTRALIB_GLOB_$(4)) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(EXTRALIB_DSYM_GLOB_$(4))) \
+	        $$(HLIB$(2)_H_$(4))
+
+$$(HLIB$(2)_H_$(4))/libstd.rlib: \
+	$$(TLIB$(1)_T_$(4)_H_$(3))/libstd.rlib \
 	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME_$(4)) \
 	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-$$(HLIB$(2)_H_$(4))/libstd.rlib: \
-	$$(TLIB$(1)_T_$(4)_H_$(3))/libstd.rlib \
-	$$(HLIB$(2)_H_$(4))/libcore.rlib \
+$$(HLIB$(2)_H_$(4))/libextra.rlib: \
+	$$(TLIB$(1)_T_$(4)_H_$(3))/libextra.rlib \
+	$$(HLIB$(2)_H_$(4))/libstd.rlib \
 	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME_$(4)) \
 	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
@@ -114,8 +114,8 @@ $$(HLIB$(2)_H_$(4))/libstd.rlib: \
 
 $$(HLIB$(2)_H_$(4))/librustc.rlib: \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/librustc.rlib \
-	$$(HLIB$(2)_H_$(4))/libcore.rlib \
 	$$(HLIB$(2)_H_$(4))/libstd.rlib \
+	$$(HLIB$(2)_H_$(4))/libextra.rlib \
 	$$(HLIB$(2)_H_$(4))/$$(CFG_RUNTIME_$(4)) \
 	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)

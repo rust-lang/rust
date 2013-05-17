@@ -173,7 +173,7 @@ endif
 
 
 ######################################################################
-# Rustdoc (libcore/std)
+# Rustdoc (libstd/extra)
 ######################################################################
 
 ifeq ($(CFG_PANDOC),)
@@ -199,8 +199,8 @@ doc/$(1)/rust.css: rust.css
 DOCS += doc/$(1)/index.html
 endef
 
-$(eval $(call libdoc,core,$(CORELIB_CRATE),$(CORELIB_INPUTS)))
 $(eval $(call libdoc,std,$(STDLIB_CRATE),$(STDLIB_INPUTS)))
+$(eval $(call libdoc,extra,$(EXTRALIB_CRATE),$(EXTRALIB_INPUTS)))
 endif
 
 
