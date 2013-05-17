@@ -738,7 +738,7 @@ mod test {
     use parse::token::{gensym, get_ident_interner};
     use core::io;
     use core::option::{None, Some};
-    use util::parser_testing::{string_to_item_and_sess};
+    use util::parser_testing::{string_to_item, string_to_pat, strs_to_idents};
 
     // make sure that fail! is present
     #[test] fn fail_exists_test () {
@@ -842,7 +842,7 @@ mod test {
 
     #[test]
     fn renaming () {
-        let (maybe_item_ast,sess) = string_to_item_and_sess(@~"fn a() -> int { let b = 13; b} ");
+        let maybe_item_ast = string_to_item(@~"fn a() -> int { let b = 13; b} ");
         let item_ast = match maybe_item_ast {
             Some(x) => x,
             None => fail!("test case fail")
