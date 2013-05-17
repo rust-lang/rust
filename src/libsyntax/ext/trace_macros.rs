@@ -10,12 +10,12 @@
 
 use ast;
 use codemap::span;
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::base;
 use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
 
-pub fn expand_trace_macros(cx: @ext_ctxt,
+pub fn expand_trace_macros(cx: @ExtCtxt,
                            sp: span,
                            tt: &[ast::token_tree])
                         -> base::MacResult {

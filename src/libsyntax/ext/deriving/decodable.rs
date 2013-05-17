@@ -15,7 +15,7 @@ encodable.rs for more.
 
 use ast;
 use ast::*;
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::build;
 use ext::deriving::*;
 use codemap::{span, spanned};
@@ -23,7 +23,7 @@ use ast_util;
 use opt_vec;
 
 pub fn expand_deriving_decodable(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     _mitem: @meta_item,
     in_items: ~[@item]
@@ -38,7 +38,7 @@ pub fn expand_deriving_decodable(
 }
 
 fn create_derived_decodable_impl(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     type_ident: ident,
     generics: &Generics,
@@ -91,7 +91,7 @@ fn create_derived_decodable_impl(
 // Creates a method from the given set of statements conforming to the
 // signature of the `decodable` method.
 fn create_decode_method(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     type_ident: ast::ident,
     generics: &Generics,
@@ -142,7 +142,7 @@ fn create_decode_method(
 }
 
 fn call_substructure_decode_method(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span
 ) -> @ast::expr {
     // Call the substructure method.
@@ -166,7 +166,7 @@ fn call_substructure_decode_method(
 }
 
 fn expand_deriving_decodable_struct_def(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     struct_def: &struct_def,
     type_ident: ident,
@@ -192,7 +192,7 @@ fn expand_deriving_decodable_struct_def(
 }
 
 fn expand_deriving_decodable_enum_def(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     enum_definition: &enum_def,
     type_ident: ident,
@@ -218,7 +218,7 @@ fn expand_deriving_decodable_enum_def(
 }
 
 fn create_read_struct_field(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     idx: uint,
     ident: ident
@@ -251,7 +251,7 @@ fn create_read_struct_field(
 }
 
 fn create_read_struct_arg(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     idx: uint,
     ident: ident
@@ -274,7 +274,7 @@ fn create_read_struct_arg(
 }
 
 fn expand_deriving_decodable_struct_method(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     struct_def: &struct_def,
     type_ident: ident,
@@ -334,7 +334,7 @@ fn expand_deriving_decodable_struct_method(
 }
 
 fn create_read_variant_arg(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     idx: uint,
     variant: &ast::variant
@@ -392,7 +392,7 @@ fn create_read_variant_arg(
 }
 
 fn create_read_enum_variant(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     enum_definition: &enum_def
 ) -> @expr {
@@ -459,7 +459,7 @@ fn create_read_enum_variant(
 }
 
 fn expand_deriving_decodable_enum_method(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     enum_definition: &enum_def,
     type_ident: ast::ident,

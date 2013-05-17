@@ -17,7 +17,7 @@ use syntax::ast_util::*;
 use syntax::attr;
 use syntax::codemap::{dummy_sp, span, ExpandedFrom, CallInfo, NameAndSpan};
 use syntax::codemap;
-use syntax::ext::base::{mk_ctxt, ext_ctxt};
+use syntax::ext::base::ExtCtxt;
 use syntax::fold;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
@@ -36,7 +36,7 @@ struct TestCtxt {
     sess: session::Session,
     crate: @ast::crate,
     path: ~[ast::ident],
-    ext_cx: @ext_ctxt,
+    ext_cx: @ExtCtxt,
     testfns: ~[Test]
 }
 
@@ -64,7 +64,7 @@ fn generate_test_harness(sess: session::Session,
     let cx: @mut TestCtxt = @mut TestCtxt {
         sess: sess,
         crate: crate,
-        ext_cx: mk_ctxt(sess.parse_sess, copy sess.opts.cfg),
+        ext_cx: ExtCtxt::new(sess.parse_sess, copy sess.opts.cfg),
         path: ~[],
         testfns: ~[]
     };

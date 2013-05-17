@@ -16,7 +16,7 @@ use ext::base::*;
 use ext::base;
 use ext::build::{mk_u8, mk_slice_vec_e};
 
-pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree]) -> base::MacResult {
+pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree]) -> base::MacResult {
     // Gather all argument expressions
     let exprs = get_exprs_from_tts(cx, tts);
     let mut bytes = ~[];

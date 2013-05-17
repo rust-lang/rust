@@ -23,7 +23,7 @@ use parse;
 use parse::{parse_item_from_source_str};
 
 pub fn expand_expr(extsbox: @mut SyntaxEnv,
-                   cx: @ext_ctxt,
+                   cx: @ExtCtxt,
                    e: &expr_,
                    s: span,
                    fld: @ast_fold,
@@ -109,7 +109,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
 // NB: there is some redundancy between this and expand_item, below, and
 // they might benefit from some amount of semantic and language-UI merger.
 pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
-                        cx: @ext_ctxt,
+                        cx: @ExtCtxt,
                         module_: &ast::_mod,
                         fld: @ast_fold,
                         orig: @fn(&ast::_mod, @ast_fold) -> ast::_mod)
@@ -161,7 +161,7 @@ macro_rules! with_exts_frame (
 
 // When we enter a module, record it, for the sake of `module!`
 pub fn expand_item(extsbox: @mut SyntaxEnv,
-                   cx: @ext_ctxt,
+                   cx: @ExtCtxt,
                    it: @ast::item,
                    fld: @ast_fold,
                    orig: @fn(@ast::item, @ast_fold) -> Option<@ast::item>)
@@ -227,7 +227,7 @@ macro_rules! without_macro_scoping(
 // Support for item-position macro invocations, exactly the same
 // logic as for expression-position macro invocations.
 pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
-                       cx: @ext_ctxt, it: @ast::item,
+                       cx: @ExtCtxt, it: @ast::item,
                        fld: @ast_fold)
                     -> Option<@ast::item> {
     let (pth, tts) = match it.node {
@@ -294,7 +294,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
 
 // expand a stmt
 pub fn expand_stmt(extsbox: @mut SyntaxEnv,
-                   cx: @ext_ctxt,
+                   cx: @ExtCtxt,
                    s: &stmt_,
                    sp: span,
                    fld: @ast_fold,
@@ -360,7 +360,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
 
 
 pub fn expand_block(extsbox: @mut SyntaxEnv,
-                    cx: @ext_ctxt,
+                    cx: @ExtCtxt,
                     blk: &blk_,
                     sp: span,
                     fld: @ast_fold,
@@ -381,7 +381,7 @@ pub fn expand_block(extsbox: @mut SyntaxEnv,
     }
 }
 
-pub fn new_span(cx: @ext_ctxt, sp: span) -> span {
+pub fn new_span(cx: @ExtCtxt, sp: span) -> span {
     /* this discards information in the case of macro-defining macros */
     return span {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
 }
@@ -590,7 +590,7 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     // every method/element of AstFoldFns in fold.rs.
     let extsbox = @mut syntax_expander_table();
     let afp = default_ast_fold();
-    let cx: @ext_ctxt = mk_ctxt(parse_sess, copy cfg);
+    let cx = ExtCtxt::new(parse_sess, copy cfg);
     let f_pre = @AstFoldFns {
         fold_expr: |expr,span,recur|
             expand_expr(extsbox, cx, expr, span, recur, afp.fold_expr),

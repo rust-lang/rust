@@ -11,11 +11,11 @@
 
 use ast::{meta_item, item, expr_if, expr};
 use codemap::span;
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::build;
 use ext::deriving::generic::*;
 
-pub fn expand_deriving_ord(cx: @ext_ctxt,
+pub fn expand_deriving_ord(cx: @ExtCtxt,
                            span: span,
                            mitem: @meta_item,
                            in_items: ~[@item]) -> ~[@item] {
@@ -55,7 +55,7 @@ pub fn expand_deriving_ord(cx: @ext_ctxt,
 
 /// `less`: is this `lt` or `le`? `equal`: is this `le` or `ge`?
 fn cs_ord(less: bool, equal: bool,
-          cx: @ext_ctxt, span: span,
+          cx: @ExtCtxt, span: span,
           substr: &Substructure) -> @expr {
     let binop = if less {
         cx.ident_of("lt")

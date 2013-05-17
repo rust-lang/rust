@@ -10,12 +10,12 @@
 
 use ast::{meta_item, item, expr};
 use codemap::span;
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::build;
 use ext::deriving::generic::*;
 
 
-pub fn expand_deriving_clone(cx: @ext_ctxt,
+pub fn expand_deriving_clone(cx: @ExtCtxt,
                              span: span,
                              mitem: @meta_item,
                              in_items: ~[@item])
@@ -42,7 +42,7 @@ pub fn expand_deriving_clone(cx: @ext_ctxt,
                             &trait_def)
 }
 
-pub fn expand_deriving_deep_clone(cx: @ext_ctxt,
+pub fn expand_deriving_deep_clone(cx: @ExtCtxt,
                                  span: span,
                                  mitem: @meta_item,
                                  in_items: ~[@item])
@@ -73,7 +73,7 @@ pub fn expand_deriving_deep_clone(cx: @ext_ctxt,
 
 fn cs_clone(
     name: &str,
-    cx: @ext_ctxt, span: span,
+    cx: @ExtCtxt, span: span,
     substr: &Substructure) -> @expr {
     let clone_ident = substr.method_ident;
     let ctor_ident;

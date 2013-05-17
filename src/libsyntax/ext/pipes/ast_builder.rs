@@ -19,7 +19,7 @@ use ast;
 use ast_util;
 use codemap::{span, respan, dummy_sp, spanned};
 use codemap;
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::quote::rt::*;
 use opt_vec;
 use opt_vec::OptVec;
@@ -135,7 +135,7 @@ pub trait ext_ctxt_ast_builder {
     fn strip_bounds(&self, bounds: &Generics) -> Generics;
 }
 
-impl ext_ctxt_ast_builder for @ext_ctxt {
+impl ext_ctxt_ast_builder for @ExtCtxt {
     fn ty_option(&self, ty: @ast::Ty) -> @ast::Ty {
         self.ty_path_ast_builder(path_global(~[
             self.ident_of("core"),

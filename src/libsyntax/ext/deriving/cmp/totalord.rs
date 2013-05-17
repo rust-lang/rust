@@ -10,12 +10,12 @@
 
 use ast::{meta_item, item, expr};
 use codemap::span;
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::build;
 use ext::deriving::generic::*;
 use core::cmp::{Ordering, Equal, Less, Greater};
 
-pub fn expand_deriving_totalord(cx: @ext_ctxt,
+pub fn expand_deriving_totalord(cx: @ExtCtxt,
                                 span: span,
                                 mitem: @meta_item,
                                 in_items: ~[@item]) -> ~[@item] {
@@ -41,7 +41,7 @@ pub fn expand_deriving_totalord(cx: @ext_ctxt,
 }
 
 
-pub fn ordering_const(cx: @ext_ctxt, span: span, cnst: Ordering) -> @expr {
+pub fn ordering_const(cx: @ExtCtxt, span: span, cnst: Ordering) -> @expr {
     let cnst = match cnst {
         Less => "Less",
         Equal => "Equal",
@@ -53,7 +53,7 @@ pub fn ordering_const(cx: @ext_ctxt, span: span, cnst: Ordering) -> @expr {
                             cx.ident_of(cnst)])
 }
 
-pub fn cs_cmp(cx: @ext_ctxt, span: span,
+pub fn cs_cmp(cx: @ExtCtxt, span: span,
               substr: &Substructure) -> @expr {
 
     cs_same_method_fold(

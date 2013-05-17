@@ -20,7 +20,7 @@ library.
 
 use ast;
 use ast::{Ty, enum_def, expr, ident, item, Generics, meta_item, struct_def};
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::build;
 use codemap::{span, respan};
 use parse::token::special_idents::clownshoes_extensions;
@@ -45,20 +45,20 @@ pub mod totalord;
 
 pub mod generic;
 
-pub type ExpandDerivingStructDefFn<'self> = &'self fn(@ext_ctxt,
+pub type ExpandDerivingStructDefFn<'self> = &'self fn(@ExtCtxt,
                                                        span,
                                                        x: &struct_def,
                                                        ident,
                                                        y: &Generics)
                                                  -> @item;
-pub type ExpandDerivingEnumDefFn<'self> = &'self fn(@ext_ctxt,
+pub type ExpandDerivingEnumDefFn<'self> = &'self fn(@ExtCtxt,
                                                     span,
                                                     x: &enum_def,
                                                     ident,
                                                     y: &Generics)
                                                  -> @item;
 
-pub fn expand_meta_deriving(cx: @ext_ctxt,
+pub fn expand_meta_deriving(cx: @ExtCtxt,
                             _span: span,
                             mitem: @meta_item,
                             in_items: ~[@item])
@@ -113,7 +113,7 @@ pub fn expand_meta_deriving(cx: @ext_ctxt,
     }
 }
 
-pub fn expand_deriving(cx: @ext_ctxt,
+pub fn expand_deriving(cx: @ExtCtxt,
                    span: span,
                    in_items: ~[@item],
                    expand_deriving_struct_def: ExpandDerivingStructDefFn,
@@ -143,7 +143,7 @@ pub fn expand_deriving(cx: @ext_ctxt,
     result
 }
 
-fn create_impl_item(cx: @ext_ctxt, span: span, item: ast::item_) -> @item {
+fn create_impl_item(cx: @ExtCtxt, span: span, item: ast::item_) -> @item {
     let doc_attr = respan(span,
                           ast::lit_str(@~"Automatically derived."));
     let doc_attr = respan(span, ast::meta_name_value(@~"doc", doc_attr));
@@ -164,7 +164,7 @@ fn create_impl_item(cx: @ext_ctxt, span: span, item: ast::item_) -> @item {
     }
 }
 
-pub fn create_self_type_with_params(cx: @ext_ctxt,
+pub fn create_self_type_with_params(cx: @ExtCtxt,
                                 span: span,
                                 type_ident: ident,
                                 generics: &Generics)
@@ -193,7 +193,7 @@ pub fn create_self_type_with_params(cx: @ext_ctxt,
     build::mk_ty_path_path(cx, span, self_type)
 }
 
-pub fn create_derived_impl(cx: @ext_ctxt,
+pub fn create_derived_impl(cx: @ExtCtxt,
                            span: span,
                            type_ident: ident,
                            generics: &Generics,
@@ -249,7 +249,7 @@ pub fn create_derived_impl(cx: @ext_ctxt,
     return create_impl_item(cx, span, impl_item);
 }
 
-pub fn create_subpatterns(cx: @ext_ctxt,
+pub fn create_subpatterns(cx: @ExtCtxt,
                           span: span,
                           field_paths: ~[@ast::Path],
                           mutbl: ast::mutability)
@@ -265,7 +265,7 @@ enum StructType {
     Unknown, Record, Tuple
 }
 
-pub fn create_struct_pattern(cx: @ext_ctxt,
+pub fn create_struct_pattern(cx: @ExtCtxt,
                              span: span,
                              struct_ident: ident,
                              struct_def: &struct_def,
@@ -326,7 +326,7 @@ pub fn create_struct_pattern(cx: @ext_ctxt,
     (pattern, ident_expr)
 }
 
-pub fn create_enum_variant_pattern(cx: @ext_ctxt,
+pub fn create_enum_variant_pattern(cx: @ExtCtxt,
                                    span: span,
                                    variant: &ast::variant,
                                    prefix: &str,
@@ -366,14 +366,14 @@ pub fn create_enum_variant_pattern(cx: @ext_ctxt,
     }
 }
 
-pub fn variant_arg_count(_cx: @ext_ctxt, _span: span, variant: &ast::variant) -> uint {
+pub fn variant_arg_count(_cx: @ExtCtxt, _span: span, variant: &ast::variant) -> uint {
     match variant.node.kind {
         ast::tuple_variant_kind(ref args) => args.len(),
         ast::struct_variant_kind(ref struct_def) => struct_def.fields.len(),
     }
 }
 
-pub fn expand_enum_or_struct_match(cx: @ext_ctxt,
+pub fn expand_enum_or_struct_match(cx: @ExtCtxt,
                                span: span,
                                arms: ~[ ast::arm ])
                             -> @expr {
