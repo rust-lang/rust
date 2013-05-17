@@ -78,7 +78,7 @@ would yield functions like:
 
 use ast;
 use ast::*;
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::build;
 use ext::deriving::*;
 use codemap::{span, spanned};
@@ -86,7 +86,7 @@ use ast_util;
 use opt_vec;
 
 pub fn expand_deriving_encodable(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     _mitem: @meta_item,
     in_items: ~[@item]
@@ -101,7 +101,7 @@ pub fn expand_deriving_encodable(
 }
 
 fn create_derived_encodable_impl(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     type_ident: ident,
     generics: &Generics,
@@ -154,7 +154,7 @@ fn create_derived_encodable_impl(
 // Creates a method from the given set of statements conforming to the
 // signature of the `encodable` method.
 fn create_encode_method(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     statements: ~[@stmt]
 ) -> @method {
@@ -197,7 +197,7 @@ fn create_encode_method(
 }
 
 fn call_substructure_encode_method(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     self_field: @expr
 ) -> @ast::expr {
@@ -217,7 +217,7 @@ fn call_substructure_encode_method(
 }
 
 fn expand_deriving_encodable_struct_def(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     struct_def: &struct_def,
     type_ident: ident,
@@ -242,7 +242,7 @@ fn expand_deriving_encodable_struct_def(
 }
 
 fn expand_deriving_encodable_enum_def(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     enum_definition: &enum_def,
     type_ident: ident,
@@ -267,7 +267,7 @@ fn expand_deriving_encodable_enum_def(
 }
 
 fn expand_deriving_encodable_struct_method(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     type_ident: ident,
     struct_def: &struct_def
@@ -361,7 +361,7 @@ fn expand_deriving_encodable_struct_method(
 }
 
 fn expand_deriving_encodable_enum_method(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     type_ident: ast::ident,
     enum_definition: &enum_def

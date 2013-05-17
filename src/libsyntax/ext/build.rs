@@ -12,7 +12,7 @@ use ast;
 use codemap;
 use codemap::span;
 use fold;
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::build;
 
 use opt_vec::OptVec;
@@ -22,7 +22,7 @@ pub struct Field {
     ex: @ast::expr
 }
 
-pub fn mk_expr(cx: @ext_ctxt,
+pub fn mk_expr(cx: @ExtCtxt,
                sp: codemap::span,
                expr: ast::expr_)
             -> @ast::expr {
@@ -34,32 +34,32 @@ pub fn mk_expr(cx: @ext_ctxt,
     }
 }
 
-pub fn mk_lit(cx: @ext_ctxt, sp: span, lit: ast::lit_) -> @ast::expr {
+pub fn mk_lit(cx: @ExtCtxt, sp: span, lit: ast::lit_) -> @ast::expr {
     let sp_lit = @codemap::spanned { node: lit, span: sp };
     mk_expr(cx, sp, ast::expr_lit(sp_lit))
 }
-pub fn mk_int(cx: @ext_ctxt, sp: span, i: int) -> @ast::expr {
+pub fn mk_int(cx: @ExtCtxt, sp: span, i: int) -> @ast::expr {
     let lit = ast::lit_int(i as i64, ast::ty_i);
     return mk_lit(cx, sp, lit);
 }
-pub fn mk_uint(cx: @ext_ctxt, sp: span, u: uint) -> @ast::expr {
+pub fn mk_uint(cx: @ExtCtxt, sp: span, u: uint) -> @ast::expr {
     let lit = ast::lit_uint(u as u64, ast::ty_u);
     return mk_lit(cx, sp, lit);
 }
-pub fn mk_u8(cx: @ext_ctxt, sp: span, u: u8) -> @ast::expr {
+pub fn mk_u8(cx: @ExtCtxt, sp: span, u: u8) -> @ast::expr {
     let lit = ast::lit_uint(u as u64, ast::ty_u8);
     return mk_lit(cx, sp, lit);
 }
-pub fn mk_binary(cx: @ext_ctxt, sp: span, op: ast::binop,
+pub fn mk_binary(cx: @ExtCtxt, sp: span, op: ast::binop,
                  lhs: @ast::expr, rhs: @ast::expr) -> @ast::expr {
     cx.next_id(); // see ast_util::op_expr_callee_id
     mk_expr(cx, sp, ast::expr_binary(op, lhs, rhs))
 }
 
-pub fn mk_deref(cx: @ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
+pub fn mk_deref(cx: @ExtCtxt, sp: span, e: @ast::expr) -> @ast::expr {
     mk_unary(cx, sp, ast::deref, e)
 }
-pub fn mk_unary(cx: @ext_ctxt, sp: span, op: ast::unop, e: @ast::expr)
+pub fn mk_unary(cx: @ExtCtxt, sp: span, op: ast::unop, e: @ast::expr)
              -> @ast::expr {
     cx.next_id(); // see ast_util::op_expr_callee_id
     mk_expr(cx, sp, ast::expr_unary(op, e))
@@ -91,78 +91,78 @@ pub fn mk_raw_path_global_(sp: span,
                  rp: rp,
                  types: types }
 }
-pub fn mk_path_raw(cx: @ext_ctxt, sp: span, path: @ast::Path)-> @ast::expr {
+pub fn mk_path_raw(cx: @ExtCtxt, sp: span, path: @ast::Path)-> @ast::expr {
     mk_expr(cx, sp, ast::expr_path(path))
 }
-pub fn mk_path(cx: @ext_ctxt, sp: span, idents: ~[ast::ident])
+pub fn mk_path(cx: @ExtCtxt, sp: span, idents: ~[ast::ident])
             -> @ast::expr {
     mk_path_raw(cx, sp, mk_raw_path(sp, idents))
 }
-pub fn mk_path_global(cx: @ext_ctxt, sp: span, idents: ~[ast::ident])
+pub fn mk_path_global(cx: @ExtCtxt, sp: span, idents: ~[ast::ident])
                    -> @ast::expr {
     mk_path_raw(cx, sp, mk_raw_path_global(sp, idents))
 }
-pub fn mk_access_(cx: @ext_ctxt, sp: span, p: @ast::expr, m: ast::ident)
+pub fn mk_access_(cx: @ExtCtxt, sp: span, p: @ast::expr, m: ast::ident)
                -> @ast::expr {
     mk_expr(cx, sp, ast::expr_field(p, m, ~[]))
 }
-pub fn mk_access(cx: @ext_ctxt, sp: span, p: ~[ast::ident], m: ast::ident)
+pub fn mk_access(cx: @ExtCtxt, sp: span, p: ~[ast::ident], m: ast::ident)
               -> @ast::expr {
     let pathexpr = mk_path(cx, sp, p);
     return mk_access_(cx, sp, pathexpr, m);
 }
-pub fn mk_addr_of(cx: @ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
+pub fn mk_addr_of(cx: @ExtCtxt, sp: span, e: @ast::expr) -> @ast::expr {
     return mk_expr(cx, sp, ast::expr_addr_of(ast::m_imm, e));
 }
-pub fn mk_mut_addr_of(cx: @ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
+pub fn mk_mut_addr_of(cx: @ExtCtxt, sp: span, e: @ast::expr) -> @ast::expr {
     return mk_expr(cx, sp, ast::expr_addr_of(ast::m_mutbl, e));
 }
-pub fn mk_method_call(cx: @ext_ctxt,
+pub fn mk_method_call(cx: @ExtCtxt,
                       sp: span,
                       rcvr_expr: @ast::expr,
                       method_ident: ast::ident,
                       args: ~[@ast::expr]) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_method_call(rcvr_expr, method_ident, ~[], args, ast::NoSugar))
 }
-pub fn mk_call_(cx: @ext_ctxt, sp: span, fn_expr: @ast::expr,
+pub fn mk_call_(cx: @ExtCtxt, sp: span, fn_expr: @ast::expr,
                 args: ~[@ast::expr]) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_call(fn_expr, args, ast::NoSugar))
 }
-pub fn mk_call(cx: @ext_ctxt, sp: span, fn_path: ~[ast::ident],
+pub fn mk_call(cx: @ExtCtxt, sp: span, fn_path: ~[ast::ident],
                args: ~[@ast::expr]) -> @ast::expr {
     let pathexpr = mk_path(cx, sp, fn_path);
     return mk_call_(cx, sp, pathexpr, args);
 }
-pub fn mk_call_global(cx: @ext_ctxt, sp: span, fn_path: ~[ast::ident],
+pub fn mk_call_global(cx: @ExtCtxt, sp: span, fn_path: ~[ast::ident],
                       args: ~[@ast::expr]) -> @ast::expr {
     let pathexpr = mk_path_global(cx, sp, fn_path);
     return mk_call_(cx, sp, pathexpr, args);
 }
 // e = expr, t = type
-pub fn mk_base_vec_e(cx: @ext_ctxt, sp: span, exprs: ~[@ast::expr])
+pub fn mk_base_vec_e(cx: @ExtCtxt, sp: span, exprs: ~[@ast::expr])
                   -> @ast::expr {
     let vecexpr = ast::expr_vec(exprs, ast::m_imm);
     mk_expr(cx, sp, vecexpr)
 }
-pub fn mk_vstore_e(cx: @ext_ctxt, sp: span, expr: @ast::expr,
+pub fn mk_vstore_e(cx: @ExtCtxt, sp: span, expr: @ast::expr,
                    vst: ast::expr_vstore) ->
    @ast::expr {
     mk_expr(cx, sp, ast::expr_vstore(expr, vst))
 }
-pub fn mk_uniq_vec_e(cx: @ext_ctxt, sp: span, exprs: ~[@ast::expr])
+pub fn mk_uniq_vec_e(cx: @ExtCtxt, sp: span, exprs: ~[@ast::expr])
                   -> @ast::expr {
     mk_vstore_e(cx, sp, mk_base_vec_e(cx, sp, exprs), ast::expr_vstore_uniq)
 }
-pub fn mk_slice_vec_e(cx: @ext_ctxt, sp: span, exprs: ~[@ast::expr])
+pub fn mk_slice_vec_e(cx: @ExtCtxt, sp: span, exprs: ~[@ast::expr])
                    -> @ast::expr {
     mk_vstore_e(cx, sp, mk_base_vec_e(cx, sp, exprs),
                 ast::expr_vstore_slice)
 }
-pub fn mk_base_str(cx: @ext_ctxt, sp: span, s: ~str) -> @ast::expr {
+pub fn mk_base_str(cx: @ExtCtxt, sp: span, s: ~str) -> @ast::expr {
     let lit = ast::lit_str(@s);
     return mk_lit(cx, sp, lit);
 }
-pub fn mk_uniq_str(cx: @ext_ctxt, sp: span, s: ~str) -> @ast::expr {
+pub fn mk_uniq_str(cx: @ExtCtxt, sp: span, s: ~str) -> @ast::expr {
     mk_vstore_e(cx, sp, mk_base_str(cx, sp, s), ast::expr_vstore_uniq)
 }
 pub fn mk_field(sp: span, f: &Field) -> ast::field {
@@ -174,7 +174,7 @@ pub fn mk_field(sp: span, f: &Field) -> ast::field {
 pub fn mk_fields(sp: span, fields: ~[Field]) -> ~[ast::field] {
     fields.map(|f| mk_field(sp, f))
 }
-pub fn mk_struct_e(cx: @ext_ctxt,
+pub fn mk_struct_e(cx: @ExtCtxt,
                    sp: span,
                    ctor_path: ~[ast::ident],
                    fields: ~[Field])
@@ -184,7 +184,7 @@ pub fn mk_struct_e(cx: @ext_ctxt,
                              mk_fields(sp, fields),
                                     option::None::<@ast::expr>))
 }
-pub fn mk_global_struct_e(cx: @ext_ctxt,
+pub fn mk_global_struct_e(cx: @ExtCtxt,
                           sp: span,
                           ctor_path: ~[ast::ident],
                           fields: ~[Field])
@@ -194,7 +194,7 @@ pub fn mk_global_struct_e(cx: @ext_ctxt,
                              mk_fields(sp, fields),
                                     option::None::<@ast::expr>))
 }
-pub fn mk_glob_use(cx: @ext_ctxt,
+pub fn mk_glob_use(cx: @ExtCtxt,
                    sp: span,
                    vis: ast::visibility,
                    path: ~[ast::ident]) -> @ast::view_item {
@@ -207,7 +207,7 @@ pub fn mk_glob_use(cx: @ext_ctxt,
                       vis: vis,
                       span: sp }
 }
-pub fn mk_local(cx: @ext_ctxt, sp: span, mutbl: bool,
+pub fn mk_local(cx: @ExtCtxt, sp: span, mutbl: bool,
                 ident: ast::ident, ex: @ast::expr) -> @ast::stmt {
 
     let pat = @ast::pat {
@@ -232,7 +232,7 @@ pub fn mk_local(cx: @ext_ctxt, sp: span, mutbl: bool,
     let decl = codemap::spanned {node: ast::decl_local(~[local]), span: sp};
     @codemap::spanned { node: ast::stmt_decl(@decl, cx.next_id()), span: sp }
 }
-pub fn mk_block(cx: @ext_ctxt, span: span,
+pub fn mk_block(cx: @ExtCtxt, span: span,
                 view_items: ~[@ast::view_item],
                 stmts: ~[@ast::stmt],
                 expr: Option<@ast::expr>) -> @ast::expr {
@@ -248,7 +248,7 @@ pub fn mk_block(cx: @ext_ctxt, span: span,
     };
     mk_expr(cx, span, ast::expr_block(blk))
 }
-pub fn mk_block_(cx: @ext_ctxt,
+pub fn mk_block_(cx: @ExtCtxt,
                  span: span,
                  stmts: ~[@ast::stmt])
               -> ast::blk {
@@ -263,7 +263,7 @@ pub fn mk_block_(cx: @ext_ctxt,
         span: span,
     }
 }
-pub fn mk_simple_block(cx: @ext_ctxt,
+pub fn mk_simple_block(cx: @ExtCtxt,
                        span: span,
                        expr: @ast::expr)
                     -> ast::blk {
@@ -278,14 +278,14 @@ pub fn mk_simple_block(cx: @ext_ctxt,
         span: span,
     }
 }
-pub fn mk_lambda_(cx: @ext_ctxt,
+pub fn mk_lambda_(cx: @ExtCtxt,
                  span: span,
                  fn_decl: ast::fn_decl,
                  blk: ast::blk)
               -> @ast::expr {
     mk_expr(cx, span, ast::expr_fn_block(fn_decl, blk))
 }
-pub fn mk_lambda(cx: @ext_ctxt,
+pub fn mk_lambda(cx: @ExtCtxt,
                  span: span,
                  fn_decl: ast::fn_decl,
                  expr: @ast::expr)
@@ -293,7 +293,7 @@ pub fn mk_lambda(cx: @ext_ctxt,
     let blk = mk_simple_block(cx, span, expr);
     mk_lambda_(cx, span, fn_decl, blk)
 }
-pub fn mk_lambda_stmts(cx: @ext_ctxt,
+pub fn mk_lambda_stmts(cx: @ExtCtxt,
                        span: span,
                        fn_decl: ast::fn_decl,
                        stmts: ~[@ast::stmt])
@@ -301,37 +301,37 @@ pub fn mk_lambda_stmts(cx: @ext_ctxt,
     let blk = mk_block(cx, span, ~[], stmts, None);
     mk_lambda(cx, span, fn_decl, blk)
 }
-pub fn mk_lambda_no_args(cx: @ext_ctxt,
+pub fn mk_lambda_no_args(cx: @ExtCtxt,
                          span: span,
                          expr: @ast::expr)
                       -> @ast::expr {
     let fn_decl = mk_fn_decl(~[], mk_ty_infer(cx, span));
     mk_lambda(cx, span, fn_decl, expr)
 }
-pub fn mk_copy(cx: @ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
+pub fn mk_copy(cx: @ExtCtxt, sp: span, e: @ast::expr) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_copy(e))
 }
-pub fn mk_managed(cx: @ext_ctxt, sp: span, e: @ast::expr) -> @ast::expr {
+pub fn mk_managed(cx: @ExtCtxt, sp: span, e: @ast::expr) -> @ast::expr {
     mk_expr(cx, sp, ast::expr_unary(ast::box(ast::m_imm), e))
 }
-pub fn mk_pat(cx: @ext_ctxt, span: span, pat: ast::pat_) -> @ast::pat {
+pub fn mk_pat(cx: @ExtCtxt, span: span, pat: ast::pat_) -> @ast::pat {
     @ast::pat { id: cx.next_id(), node: pat, span: span }
 }
-pub fn mk_pat_wild(cx: @ext_ctxt, span: span) -> @ast::pat {
+pub fn mk_pat_wild(cx: @ExtCtxt, span: span) -> @ast::pat {
     mk_pat(cx, span, ast::pat_wild)
 }
-pub fn mk_pat_lit(cx: @ext_ctxt,
+pub fn mk_pat_lit(cx: @ExtCtxt,
                   span: span,
                   expr: @ast::expr) -> @ast::pat {
     mk_pat(cx, span, ast::pat_lit(expr))
 }
-pub fn mk_pat_ident(cx: @ext_ctxt,
+pub fn mk_pat_ident(cx: @ExtCtxt,
                     span: span,
                     ident: ast::ident) -> @ast::pat {
     mk_pat_ident_with_binding_mode(cx, span, ident, ast::bind_by_copy)
 }
 
-pub fn mk_pat_ident_with_binding_mode(cx: @ext_ctxt,
+pub fn mk_pat_ident_with_binding_mode(cx: @ExtCtxt,
                                       span: span,
                                       ident: ast::ident,
                                       bm: ast::binding_mode) -> @ast::pat {
@@ -339,7 +339,7 @@ pub fn mk_pat_ident_with_binding_mode(cx: @ext_ctxt,
     let pat = ast::pat_ident(bm, path, None);
     mk_pat(cx, span, pat)
 }
-pub fn mk_pat_enum(cx: @ext_ctxt,
+pub fn mk_pat_enum(cx: @ExtCtxt,
                    span: span,
                    path: @ast::Path,
                    subpats: ~[@ast::pat])
@@ -347,7 +347,7 @@ pub fn mk_pat_enum(cx: @ext_ctxt,
     let pat = ast::pat_enum(path, Some(subpats));
     mk_pat(cx, span, pat)
 }
-pub fn mk_pat_struct(cx: @ext_ctxt,
+pub fn mk_pat_struct(cx: @ExtCtxt,
                      span: span,
                      path: @ast::Path,
                      field_pats: ~[ast::field_pat])
@@ -355,13 +355,13 @@ pub fn mk_pat_struct(cx: @ext_ctxt,
     let pat = ast::pat_struct(path, field_pats, false);
     mk_pat(cx, span, pat)
 }
-pub fn mk_bool(cx: @ext_ctxt, span: span, value: bool) -> @ast::expr {
+pub fn mk_bool(cx: @ExtCtxt, span: span, value: bool) -> @ast::expr {
     let lit_expr = ast::expr_lit(@codemap::spanned {
         node: ast::lit_bool(value),
         span: span });
     build::mk_expr(cx, span, lit_expr)
 }
-pub fn mk_stmt(cx: @ext_ctxt, span: span, expr: @ast::expr) -> @ast::stmt {
+pub fn mk_stmt(cx: @ExtCtxt, span: span, expr: @ast::expr) -> @ast::stmt {
     let stmt_ = ast::stmt_semi(expr, cx.next_id());
     @codemap::spanned { node: stmt_, span: span }
 }
@@ -373,7 +373,7 @@ pub fn mk_ty_mt(ty: @ast::Ty, mutbl: ast::mutability) -> ast::mt {
     }
 }
 
-pub fn mk_ty(cx: @ext_ctxt,
+pub fn mk_ty(cx: @ExtCtxt,
              span: span,
              ty: ast::ty_) -> @ast::Ty {
     @ast::Ty {
@@ -383,7 +383,7 @@ pub fn mk_ty(cx: @ext_ctxt,
     }
 }
 
-pub fn mk_ty_path(cx: @ext_ctxt,
+pub fn mk_ty_path(cx: @ExtCtxt,
                   span: span,
                   idents: ~[ ast::ident ])
                -> @ast::Ty {
@@ -391,7 +391,7 @@ pub fn mk_ty_path(cx: @ext_ctxt,
     mk_ty_path_path(cx, span, ty)
 }
 
-pub fn mk_ty_path_global(cx: @ext_ctxt,
+pub fn mk_ty_path_global(cx: @ExtCtxt,
                          span: span,
                          idents: ~[ ast::ident ])
                       -> @ast::Ty {
@@ -399,7 +399,7 @@ pub fn mk_ty_path_global(cx: @ext_ctxt,
     mk_ty_path_path(cx, span, ty)
 }
 
-pub fn mk_ty_path_path(cx: @ext_ctxt,
+pub fn mk_ty_path_path(cx: @ExtCtxt,
                        span: span,
                        path: @ast::Path)
                       -> @ast::Ty {
@@ -407,7 +407,7 @@ pub fn mk_ty_path_path(cx: @ext_ctxt,
     mk_ty(cx, span, ty)
 }
 
-pub fn mk_ty_rptr(cx: @ext_ctxt,
+pub fn mk_ty_rptr(cx: @ExtCtxt,
                   span: span,
                   ty: @ast::Ty,
                   lifetime: Option<@ast::Lifetime>,
@@ -416,39 +416,39 @@ pub fn mk_ty_rptr(cx: @ext_ctxt,
     mk_ty(cx, span,
           ast::ty_rptr(lifetime, mk_ty_mt(ty, mutbl)))
 }
-pub fn mk_ty_uniq(cx: @ext_ctxt, span: span, ty: @ast::Ty) -> @ast::Ty {
+pub fn mk_ty_uniq(cx: @ExtCtxt, span: span, ty: @ast::Ty) -> @ast::Ty {
     mk_ty(cx, span, ast::ty_uniq(mk_ty_mt(ty, ast::m_imm)))
 }
-pub fn mk_ty_box(cx: @ext_ctxt, span: span,
+pub fn mk_ty_box(cx: @ExtCtxt, span: span,
                  ty: @ast::Ty, mutbl: ast::mutability) -> @ast::Ty {
     mk_ty(cx, span, ast::ty_box(mk_ty_mt(ty, mutbl)))
 }
 
 
 
-pub fn mk_ty_infer(cx: @ext_ctxt, span: span) -> @ast::Ty {
+pub fn mk_ty_infer(cx: @ExtCtxt, span: span) -> @ast::Ty {
     mk_ty(cx, span, ast::ty_infer)
 }
-pub fn mk_trait_ref_global(cx: @ext_ctxt,
+pub fn mk_trait_ref_global(cx: @ExtCtxt,
                            span: span,
                            idents: ~[ ast::ident ])
     -> @ast::trait_ref
 {
     mk_trait_ref_(cx, build::mk_raw_path_global(span, idents))
 }
-pub fn mk_trait_ref_(cx: @ext_ctxt, path: @ast::Path) -> @ast::trait_ref {
+pub fn mk_trait_ref_(cx: @ExtCtxt, path: @ast::Path) -> @ast::trait_ref {
     @ast::trait_ref {
         path: path,
         ref_id: cx.next_id()
     }
 }
-pub fn mk_simple_ty_path(cx: @ext_ctxt,
+pub fn mk_simple_ty_path(cx: @ExtCtxt,
                          span: span,
                          ident: ast::ident)
                       -> @ast::Ty {
     mk_ty_path(cx, span, ~[ ident ])
 }
-pub fn mk_arg(cx: @ext_ctxt,
+pub fn mk_arg(cx: @ExtCtxt,
               span: span,
               ident: ast::ident,
               ty: @ast::Ty)
@@ -464,29 +464,29 @@ pub fn mk_arg(cx: @ext_ctxt,
 pub fn mk_fn_decl(inputs: ~[ast::arg], output: @ast::Ty) -> ast::fn_decl {
     ast::fn_decl { inputs: inputs, output: output, cf: ast::return_val }
 }
-pub fn mk_trait_ty_param_bound_global(cx: @ext_ctxt,
+pub fn mk_trait_ty_param_bound_global(cx: @ExtCtxt,
                                       span: span,
                                       idents: ~[ast::ident])
                                    -> ast::TyParamBound {
     ast::TraitTyParamBound(mk_trait_ref_global(cx, span, idents))
 }
-pub fn mk_trait_ty_param_bound_(cx: @ext_ctxt,
+pub fn mk_trait_ty_param_bound_(cx: @ExtCtxt,
                                 path: @ast::Path) -> ast::TyParamBound {
     ast::TraitTyParamBound(mk_trait_ref_(cx, path))
 }
-pub fn mk_ty_param(cx: @ext_ctxt,
+pub fn mk_ty_param(cx: @ExtCtxt,
                    ident: ast::ident,
                    bounds: @OptVec<ast::TyParamBound>)
                 -> ast::TyParam {
     ast::TyParam { ident: ident, id: cx.next_id(), bounds: bounds }
 }
-pub fn mk_lifetime(cx: @ext_ctxt,
+pub fn mk_lifetime(cx: @ExtCtxt,
                    span: span,
                    ident: ast::ident)
                 -> ast::Lifetime {
     ast::Lifetime { id: cx.next_id(), span: span, ident: ident }
 }
-pub fn mk_arm(cx: @ext_ctxt,
+pub fn mk_arm(cx: @ExtCtxt,
               span: span,
               pats: ~[@ast::pat],
               expr: @ast::expr)
@@ -497,7 +497,7 @@ pub fn mk_arm(cx: @ext_ctxt,
         body: mk_simple_block(cx, span, expr)
     }
 }
-pub fn mk_unreachable(cx: @ext_ctxt, span: span) -> @ast::expr {
+pub fn mk_unreachable(cx: @ExtCtxt, span: span) -> @ast::expr {
     let loc = cx.codemap().lookup_char_pos(span.lo);
     mk_call_global(
         cx,
@@ -515,11 +515,11 @@ pub fn mk_unreachable(cx: @ext_ctxt, span: span) -> @ast::expr {
         ]
     )
 }
-pub fn mk_unreachable_arm(cx: @ext_ctxt, span: span) -> ast::arm {
+pub fn mk_unreachable_arm(cx: @ExtCtxt, span: span) -> ast::arm {
     mk_arm(cx, span, ~[mk_pat_wild(cx, span)], mk_unreachable(cx, span))
 }
 
-pub fn make_self(cx: @ext_ctxt, span: span) -> @ast::expr {
+pub fn make_self(cx: @ExtCtxt, span: span) -> @ast::expr {
     build::mk_expr(cx, span, ast::expr_self)
 }
 
@@ -529,7 +529,7 @@ pub fn make_self(cx: @ext_ctxt, span: span) -> @ast::expr {
 // These functions just duplicate AST nodes.
 //
 
-pub fn duplicate_expr(cx: @ext_ctxt, expr: @ast::expr) -> @ast::expr {
+pub fn duplicate_expr(cx: @ExtCtxt, expr: @ast::expr) -> @ast::expr {
     let folder = fold::default_ast_fold();
     let folder = @fold::AstFoldFns {
         new_id: |_| cx.next_id(),
@@ -599,7 +599,7 @@ trait ExtCtxtMethods {
                       -> @ast::expr;
 }
 
-impl ExtCtxtMethods for @ext_ctxt {
+impl ExtCtxtMethods for @ExtCtxt {
     fn bind_path(
         &self,
         _span: span,

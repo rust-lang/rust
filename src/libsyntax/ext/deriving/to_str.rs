@@ -10,11 +10,11 @@
 
 use ast::{meta_item, item, expr};
 use codemap::span;
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::build;
 use ext::deriving::generic::*;
 
-pub fn expand_deriving_to_str(cx: @ext_ctxt,
+pub fn expand_deriving_to_str(cx: @ExtCtxt,
                               span: span,
                               mitem: @meta_item,
                               in_items: ~[@item])
@@ -39,7 +39,7 @@ pub fn expand_deriving_to_str(cx: @ext_ctxt,
     expand_deriving_generic(cx, span, mitem, in_items, &trait_def)
 }
 
-fn to_str_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> @expr {
+fn to_str_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
     match substr.self_args {
         [self_obj] => {
             let self_addr = build::mk_addr_of(cx, span, self_obj);

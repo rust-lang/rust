@@ -10,21 +10,21 @@
 
 use ast::{meta_item, item, expr};
 use codemap::span;
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::build;
 use ext::deriving::generic::*;
 
-pub fn expand_deriving_eq(cx: @ext_ctxt,
+pub fn expand_deriving_eq(cx: @ExtCtxt,
                           span: span,
                           mitem: @meta_item,
                           in_items: ~[@item]) -> ~[@item] {
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different
-    fn cs_eq(cx: @ext_ctxt, span: span, substr: &Substructure) -> @expr {
+    fn cs_eq(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
         cs_and(|cx, span, _, _| build::mk_bool(cx, span, false),
                                  cx, span, substr)
     }
-    fn cs_ne(cx: @ext_ctxt, span: span, substr: &Substructure) -> @expr {
+    fn cs_ne(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
         cs_or(|cx, span, _, _| build::mk_bool(cx, span, true),
               cx, span, substr)
     }

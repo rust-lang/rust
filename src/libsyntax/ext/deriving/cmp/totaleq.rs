@@ -11,16 +11,16 @@
 
 use ast::{meta_item, item, expr};
 use codemap::span;
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::build;
 use ext::deriving::generic::*;
 
-pub fn expand_deriving_totaleq(cx: @ext_ctxt,
+pub fn expand_deriving_totaleq(cx: @ExtCtxt,
                           span: span,
                           mitem: @meta_item,
                           in_items: ~[@item]) -> ~[@item] {
 
-    fn cs_equals(cx: @ext_ctxt, span: span, substr: &Substructure) -> @expr {
+    fn cs_equals(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
         cs_and(|cx, span, _, _| build::mk_bool(cx, span, false),
                cx, span, substr)
     }

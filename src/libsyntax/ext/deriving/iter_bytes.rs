@@ -10,11 +10,11 @@
 
 use ast::{meta_item, item, expr, and};
 use codemap::span;
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::build;
 use ext::deriving::generic::*;
 
-pub fn expand_deriving_iter_bytes(cx: @ext_ctxt,
+pub fn expand_deriving_iter_bytes(cx: @ExtCtxt,
                                   span: span,
                                   mitem: @meta_item,
                                   in_items: ~[@item]) -> ~[@item] {
@@ -41,7 +41,7 @@ pub fn expand_deriving_iter_bytes(cx: @ext_ctxt,
     expand_deriving_generic(cx, span, mitem, in_items, &trait_def)
 }
 
-fn iter_bytes_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> @expr {
+fn iter_bytes_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
     let lsb0_f = match substr.nonself_args {
         [l, f] => ~[l, f],
         _ => cx.span_bug(span, "Incorrect number of arguments in `deriving(IterBytes)`")

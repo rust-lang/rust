@@ -31,11 +31,11 @@ that.
 
 use ast;
 use codemap::span;
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::pipes::proto::{state, protocol, next_state};
 use ext::pipes::proto;
 
-impl proto::visitor<(), (), ()> for @ext_ctxt {
+impl proto::visitor<(), (), ()> for @ExtCtxt {
     fn visit_proto(&self, _proto: protocol, _states: &[()]) { }
 
     fn visit_state(&self, state: state, _m: &[()]) {

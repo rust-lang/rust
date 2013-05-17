@@ -10,7 +10,7 @@
 
 use ast;
 use codemap::{BytePos, Pos, span};
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::base;
 use ext::build;
 use parse::token::*;
@@ -30,7 +30,7 @@ use parse;
 
 pub mod rt {
     use ast;
-    use ext::base::ext_ctxt;
+    use ext::base::ExtCtxt;
     use parse;
     use print::pprust;
 
@@ -44,11 +44,11 @@ pub mod rt {
     use print::pprust::{item_to_str, ty_to_str};
 
     pub trait ToTokens {
-        pub fn to_tokens(&self, _cx: @ext_ctxt) -> ~[token_tree];
+        pub fn to_tokens(&self, _cx: @ExtCtxt) -> ~[token_tree];
     }
 
     impl ToTokens for ~[token_tree] {
-        pub fn to_tokens(&self, _cx: @ext_ctxt) -> ~[token_tree] {
+        pub fn to_tokens(&self, _cx: @ExtCtxt) -> ~[token_tree] {
             copy *self
         }
     }
@@ -57,10 +57,10 @@ pub mod rt {
 
     trait ToSource : ToTokens {
         // Takes a thing and generates a string containing rust code for it.
-        pub fn to_source(cx: @ext_ctxt) -> ~str;
+        pub fn to_source(cx: @ExtCtxt) -> ~str;
 
         // If you can make source, you can definitely make tokens.
-        pub fn to_tokens(cx: @ext_ctxt) -> ~[token_tree] {
+        pub fn to_tokens(cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
@@ -69,80 +69,80 @@ pub mod rt {
 
     pub trait ToSource {
         // Takes a thing and generates a string containing rust code for it.
-        pub fn to_source(&self, cx: @ext_ctxt) -> ~str;
+        pub fn to_source(&self, cx: @ExtCtxt) -> ~str;
     }
 
     impl ToSource for ast::ident {
-        fn to_source(&self, cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, cx: @ExtCtxt) -> ~str {
             copy *cx.parse_sess().interner.get(*self)
         }
     }
 
     impl ToSource for @ast::item {
-        fn to_source(&self, cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, cx: @ExtCtxt) -> ~str {
             item_to_str(*self, cx.parse_sess().interner)
         }
     }
 
     impl<'self> ToSource for &'self [@ast::item] {
-        fn to_source(&self, cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, cx: @ExtCtxt) -> ~str {
             str::connect(self.map(|i| i.to_source(cx)), "\n\n")
         }
     }
 
     impl ToSource for @ast::Ty {
-        fn to_source(&self, cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, cx: @ExtCtxt) -> ~str {
             ty_to_str(*self, cx.parse_sess().interner)
         }
     }
 
     impl<'self> ToSource for &'self [@ast::Ty] {
-        fn to_source(&self, cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, cx: @ExtCtxt) -> ~str {
             str::connect(self.map(|i| i.to_source(cx)), ", ")
         }
     }
 
     impl ToSource for Generics {
-        fn to_source(&self, cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, cx: @ExtCtxt) -> ~str {
             pprust::generics_to_str(self, cx.parse_sess().interner)
         }
     }
 
     impl ToSource for @ast::expr {
-        fn to_source(&self, cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, cx: @ExtCtxt) -> ~str {
             pprust::expr_to_str(*self, cx.parse_sess().interner)
         }
     }
 
     impl ToSource for ast::blk {
-        fn to_source(&self, cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, cx: @ExtCtxt) -> ~str {
             pprust::block_to_str(self, cx.parse_sess().interner)
         }
     }
 
     impl<'self> ToSource for &'self str {
-        fn to_source(&self, _cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, _cx: @ExtCtxt) -> ~str {
             let lit = dummy_spanned(ast::lit_str(@str::to_owned(*self)));
             pprust::lit_to_str(@lit)
         }
     }
 
     impl ToSource for int {
-        fn to_source(&self, _cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, _cx: @ExtCtxt) -> ~str {
             let lit = dummy_spanned(ast::lit_int(*self as i64, ast::ty_i));
             pprust::lit_to_str(@lit)
         }
     }
 
     impl ToSource for i8 {
-        fn to_source(&self, _cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, _cx: @ExtCtxt) -> ~str {
             let lit = dummy_spanned(ast::lit_int(*self as i64, ast::ty_i8));
             pprust::lit_to_str(@lit)
         }
     }
 
     impl ToSource for i16 {
-        fn to_source(&self, _cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, _cx: @ExtCtxt) -> ~str {
             let lit = dummy_spanned(ast::lit_int(*self as i64, ast::ty_i16));
             pprust::lit_to_str(@lit)
         }
@@ -150,49 +150,49 @@ pub mod rt {
 
 
     impl ToSource for i32 {
-        fn to_source(&self, _cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, _cx: @ExtCtxt) -> ~str {
             let lit = dummy_spanned(ast::lit_int(*self as i64, ast::ty_i32));
             pprust::lit_to_str(@lit)
         }
     }
 
     impl ToSource for i64 {
-        fn to_source(&self, _cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, _cx: @ExtCtxt) -> ~str {
             let lit = dummy_spanned(ast::lit_int(*self as i64, ast::ty_i64));
             pprust::lit_to_str(@lit)
         }
     }
 
     impl ToSource for uint {
-        fn to_source(&self, _cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, _cx: @ExtCtxt) -> ~str {
             let lit = dummy_spanned(ast::lit_uint(*self as u64, ast::ty_u));
             pprust::lit_to_str(@lit)
         }
     }
 
     impl ToSource for u8 {
-        fn to_source(&self, _cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, _cx: @ExtCtxt) -> ~str {
             let lit = dummy_spanned(ast::lit_uint(*self as u64, ast::ty_u8));
             pprust::lit_to_str(@lit)
         }
     }
 
     impl ToSource for u16 {
-        fn to_source(&self, _cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, _cx: @ExtCtxt) -> ~str {
             let lit = dummy_spanned(ast::lit_uint(*self as u64, ast::ty_u16));
             pprust::lit_to_str(@lit)
         }
     }
 
     impl ToSource for u32 {
-        fn to_source(&self, _cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, _cx: @ExtCtxt) -> ~str {
             let lit = dummy_spanned(ast::lit_uint(*self as u64, ast::ty_u32));
             pprust::lit_to_str(@lit)
         }
     }
 
     impl ToSource for u64 {
-        fn to_source(&self, _cx: @ext_ctxt) -> ~str {
+        fn to_source(&self, _cx: @ExtCtxt) -> ~str {
             let lit = dummy_spanned(ast::lit_uint(*self as u64, ast::ty_u64));
             pprust::lit_to_str(@lit)
         }
@@ -201,115 +201,115 @@ pub mod rt {
     // Alas ... we write these out instead. All redundant.
 
     impl ToTokens for ast::ident {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl ToTokens for @ast::item {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl<'self> ToTokens for &'self [@ast::item] {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl ToTokens for @ast::Ty {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl<'self> ToTokens for &'self [@ast::Ty] {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl ToTokens for Generics {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl ToTokens for @ast::expr {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl ToTokens for ast::blk {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl<'self> ToTokens for &'self str {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl ToTokens for int {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl ToTokens for i8 {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl ToTokens for i16 {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl ToTokens for i32 {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl ToTokens for i64 {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl ToTokens for uint {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl ToTokens for u8 {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl ToTokens for u16 {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl ToTokens for u32 {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
 
     impl ToTokens for u64 {
-        fn to_tokens(&self, cx: @ext_ctxt) -> ~[token_tree] {
+        fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
             cx.parse_tts(self.to_source(cx))
         }
     }
@@ -321,7 +321,7 @@ pub mod rt {
         fn parse_tts(&self, s: ~str) -> ~[ast::token_tree];
     }
 
-    impl ExtParseUtils for @ext_ctxt {
+    impl ExtParseUtils for ExtCtxt {
 
         fn parse_item(&self, s: ~str) -> @ast::item {
             let res = parse::parse_item_from_source_str(
@@ -367,19 +367,19 @@ pub mod rt {
 
 }
 
-pub fn expand_quote_tokens(cx: @ext_ctxt,
+pub fn expand_quote_tokens(cx: @ExtCtxt,
                            sp: span,
                            tts: &[ast::token_tree]) -> base::MacResult {
     base::MRExpr(expand_tts(cx, sp, tts))
 }
 
-pub fn expand_quote_expr(cx: @ext_ctxt,
+pub fn expand_quote_expr(cx: @ExtCtxt,
                          sp: span,
                          tts: &[ast::token_tree]) -> base::MacResult {
     base::MRExpr(expand_parse_call(cx, sp, "parse_expr", ~[], tts))
 }
 
-pub fn expand_quote_item(cx: @ext_ctxt,
+pub fn expand_quote_item(cx: @ExtCtxt,
                          sp: span,
                          tts: &[ast::token_tree]) -> base::MacResult {
     let e_attrs = build::mk_uniq_vec_e(cx, sp, ~[]);
@@ -387,7 +387,7 @@ pub fn expand_quote_item(cx: @ext_ctxt,
                                     ~[e_attrs], tts))
 }
 
-pub fn expand_quote_pat(cx: @ext_ctxt,
+pub fn expand_quote_pat(cx: @ExtCtxt,
                         sp: span,
                         tts: &[ast::token_tree]) -> base::MacResult {
     let e_refutable = build::mk_lit(cx, sp, ast::lit_bool(true));
@@ -395,7 +395,7 @@ pub fn expand_quote_pat(cx: @ext_ctxt,
                                     ~[e_refutable], tts))
 }
 
-pub fn expand_quote_ty(cx: @ext_ctxt,
+pub fn expand_quote_ty(cx: @ExtCtxt,
                        sp: span,
                        tts: &[ast::token_tree]) -> base::MacResult {
     let e_param_colons = build::mk_lit(cx, sp, ast::lit_bool(false));
@@ -403,7 +403,7 @@ pub fn expand_quote_ty(cx: @ext_ctxt,
                                     ~[e_param_colons], tts))
 }
 
-pub fn expand_quote_stmt(cx: @ext_ctxt,
+pub fn expand_quote_stmt(cx: @ExtCtxt,
                          sp: span,
                          tts: &[ast::token_tree]) -> base::MacResult {
     let e_attrs = build::mk_uniq_vec_e(cx, sp, ~[]);
@@ -411,16 +411,16 @@ pub fn expand_quote_stmt(cx: @ext_ctxt,
                                     ~[e_attrs], tts))
 }
 
-fn ids_ext(cx: @ext_ctxt, strs: ~[~str]) -> ~[ast::ident] {
+fn ids_ext(cx: @ExtCtxt, strs: ~[~str]) -> ~[ast::ident] {
     strs.map(|str| cx.parse_sess().interner.intern(*str))
 }
 
-fn id_ext(cx: @ext_ctxt, str: &str) -> ast::ident {
+fn id_ext(cx: @ExtCtxt, str: &str) -> ast::ident {
     cx.parse_sess().interner.intern(str)
 }
 
 // Lift an ident to the expr that evaluates to that ident.
-fn mk_ident(cx: @ext_ctxt, sp: span, ident: ast::ident) -> @ast::expr {
+fn mk_ident(cx: @ExtCtxt, sp: span, ident: ast::ident) -> @ast::expr {
     let e_str = build::mk_base_str(cx, sp, cx.str_of(ident));
     build::mk_method_call(cx, sp,
                           build::mk_path(cx, sp, ids_ext(cx, ~[~"ext_cx"])),
@@ -428,13 +428,13 @@ fn mk_ident(cx: @ext_ctxt, sp: span, ident: ast::ident) -> @ast::expr {
                           ~[e_str])
 }
 
-fn mk_bytepos(cx: @ext_ctxt, sp: span, bpos: BytePos) -> @ast::expr {
+fn mk_bytepos(cx: @ExtCtxt, sp: span, bpos: BytePos) -> @ast::expr {
     let path = ids_ext(cx, ~[~"BytePos"]);
     let arg = build::mk_uint(cx, sp, bpos.to_uint());
     build::mk_call(cx, sp, path, ~[arg])
 }
 
-fn mk_binop(cx: @ext_ctxt, sp: span, bop: token::binop) -> @ast::expr {
+fn mk_binop(cx: @ExtCtxt, sp: span, bop: token::binop) -> @ast::expr {
     let name = match bop {
         PLUS => "PLUS",
         MINUS => "MINUS",
@@ -451,7 +451,7 @@ fn mk_binop(cx: @ext_ctxt, sp: span, bop: token::binop) -> @ast::expr {
                    ids_ext(cx, ~[name.to_owned()]))
 }
 
-fn mk_token(cx: @ext_ctxt, sp: span, tok: &token::Token) -> @ast::expr {
+fn mk_token(cx: @ExtCtxt, sp: span, tok: &token::Token) -> @ast::expr {
 
     match *tok {
         BINOP(binop) => {
@@ -600,7 +600,7 @@ fn mk_token(cx: @ext_ctxt, sp: span, tok: &token::Token) -> @ast::expr {
 }
 
 
-fn mk_tt(cx: @ext_ctxt, sp: span, tt: &ast::token_tree)
+fn mk_tt(cx: @ExtCtxt, sp: span, tt: &ast::token_tree)
     -> ~[@ast::stmt] {
 
     match *tt {
@@ -646,7 +646,7 @@ fn mk_tt(cx: @ext_ctxt, sp: span, tt: &ast::token_tree)
     }
 }
 
-fn mk_tts(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
+fn mk_tts(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> ~[@ast::stmt] {
     let mut ss = ~[];
     for tts.each |tt| {
@@ -655,7 +655,7 @@ fn mk_tts(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
     ss
 }
 
-fn expand_tts(cx: @ext_ctxt,
+fn expand_tts(cx: @ExtCtxt,
               sp: span,
               tts: &[ast::token_tree]) -> @ast::expr {
 
@@ -729,7 +729,7 @@ fn expand_tts(cx: @ext_ctxt,
                                         ids_ext(cx, ~[~"tt"]))))
 }
 
-fn expand_parse_call(cx: @ext_ctxt,
+fn expand_parse_call(cx: @ExtCtxt,
                      sp: span,
                      parse_method: &str,
                      arg_exprs: ~[@ast::expr],
