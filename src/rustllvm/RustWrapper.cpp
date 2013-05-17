@@ -329,12 +329,12 @@ LLVMRustLoadCrate(void* mem, const char* crate) {
   return true;
 }
 
-extern "C" void*
-LLVMRustExecuteJIT(void* mem,
-                   LLVMPassManagerRef PMR,
-                   LLVMModuleRef M,
-                   CodeGenOpt::Level OptLevel,
-                   bool EnableSegmentedStacks) {
+extern "C" LLVMExecutionEngineRef
+LLVMRustBuildJIT(void* mem,
+                 LLVMPassManagerRef PMR,
+                 LLVMModuleRef M,
+                 CodeGenOpt::Level OptLevel,
+                 bool EnableSegmentedStacks) {
 
   InitializeNativeTarget();
   InitializeNativeTargetAsmPrinter();
@@ -371,21 +371,15 @@ LLVMRustExecuteJIT(void* mem,
 
   if(!EE || Err != "") {
     LLVMRustError = Err.c_str();
-    return 0;
+    // The EngineBuilder only takes ownership of these two structures if the
+    // create() call is successful, but here it wasn't successful.
+    LLVMDisposeModule(M);
+    delete MM;
+    return NULL;
   }
 
   MM->invalidateInstructionCache();
-  Function* func = EE->FindFunctionNamed("_rust_main");
-
-  if(!func || Err != "") {
-    LLVMRustError = Err.c_str();
-    return 0;
-  }
-
-  void* entry = EE->getPointerToFunction(func);
-  assert(entry);
-
-  return entry;
+  return wrap(EE);
 }
 
 extern "C" bool
