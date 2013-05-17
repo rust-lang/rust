@@ -19,7 +19,7 @@ use codemap::span;
 use ext::base::*;
 use ext::base;
 use ext::build;
-use ext::build::*;
+use ext::build::AstBuilder;
 
 use core::unstable::extfmt::ct::*;
 
@@ -56,7 +56,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
     }
     fn make_rt_path_expr(cx: @ExtCtxt, sp: span, nm: &str) -> @ast::expr {
         let path = make_path_vec(cx, nm);
-        return mk_path_global(cx, sp, path);
+        cx.mk_path_global(sp, path)
     }
     // Produces an AST expression that represents a RT::conv record,
     // which tells the RT::conv* functions how to perform the conversion
@@ -72,7 +72,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                   FlagSignAlways => "flag_sign_always",
                   FlagAlternate => "flag_alternate"
                 };
-                tmp_expr = mk_binary(cx, sp, ast::bitor, tmp_expr,
+                tmp_expr = cx.mk_binary(sp, ast::bitor, tmp_expr,
                                      make_rt_path_expr(cx, sp, fstr));
             }
             return tmp_expr;
@@ -83,10 +83,10 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                 return make_rt_path_expr(cx, sp, "CountImplied");
               }
               CountIs(c) => {
-                let count_lit = mk_uint(cx, sp, c as uint);
+                let count_lit = cx.mk_uint(sp, c as uint);
                 let count_is_path = make_path_vec(cx, "CountIs");
                 let count_is_args = ~[count_lit];
-                return mk_call_global(cx, sp, count_is_path, count_is_args);
+                return cx.mk_call_global(sp, count_is_path, count_is_args);
               }
               _ => cx.span_unimpl(sp, "unimplemented fmt! conversion")
             }
@@ -107,8 +107,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                          width_expr: @ast::expr, precision_expr: @ast::expr,
                          ty_expr: @ast::expr) -> @ast::expr {
             let intr = cx.parse_sess().interner;
-            mk_global_struct_e(
-                cx,
+            cx.mk_global_struct_e(
                 sp,
                 make_path_vec(cx, "Conv"),
                 ~[
@@ -140,7 +139,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
         let path = make_path_vec(cx, fname);
         let cnv_expr = make_rt_conv_expr(cx, sp, cnv);
         let args = ~[cnv_expr, arg, buf];
-        return mk_call_global(cx, arg.span, path, args);
+        cx.mk_call_global(arg.span, path, args)
     }
 
     fn make_new_conv(cx: @ExtCtxt, sp: span, cnv: &Conv,
@@ -198,10 +197,10 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
             TyChar => ("char", arg),
             TyBits | TyOctal | TyHex(_) | TyInt(Unsigned) => ("uint", arg),
             TyFloat => ("float", arg),
-            TyPoly => ("poly", mk_addr_of(cx, sp, arg))
+            TyPoly => ("poly", cx.mk_addr_of(sp, arg))
         };
         return make_conv_call(cx, arg.span, name, cnv, actual_arg,
-                              mk_mut_addr_of(cx, arg.span, buf));
+                              cx.mk_mut_addr_of(arg.span, buf));
     }
     fn log_conv(c: &Conv) {
         debug!("Building conversion:");
@@ -259,7 +258,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
 
     /* 'ident' is the local buffer building up the result of fmt! */
     let ident = cx.parse_sess().interner.intern("__fmtbuf");
-    let buf = || mk_path(cx, fmt_sp, ~[ident]);
+    let buf = || cx.mk_path(fmt_sp, ~[ident]);
     let str_ident = cx.parse_sess().interner.intern("str");
     let push_ident = cx.parse_sess().interner.intern("push_str");
     let mut stms = ~[];
@@ -276,14 +275,14 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                    buffer with it directly. If it's actually the only piece,
                    then there's no need for it to be mutable */
                 if i == 0 {
-                    stms.push(mk_local(cx, fmt_sp, npieces > 1, ident, mk_uniq_str(cx, fmt_sp, s)));
+                    stms.push(cx.mk_local(fmt_sp, npieces > 1, ident, cx.mk_uniq_str(fmt_sp, s)));
                 } else {
-                    let args = ~[mk_mut_addr_of(cx, fmt_sp, buf()), mk_base_str(cx, fmt_sp, s)];
-                    let call = mk_call_global(cx,
+                    let args = ~[cx.mk_mut_addr_of(fmt_sp, buf()), cx.mk_base_str(fmt_sp, s)];
+                    let call = cx.mk_call_global(
                                               fmt_sp,
                                               ~[str_ident, push_ident],
                                               args);
-                    stms.push(mk_stmt(cx, fmt_sp, call));
+                    stms.push(cx.mk_stmt(fmt_sp, call));
                 }
             }
 
@@ -300,12 +299,12 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                 /* If the first portion is a conversion, then the local buffer
                    must be initialized as an empty string */
                 if i == 0 {
-                    stms.push(mk_local(cx, fmt_sp, true, ident,
-                                       mk_uniq_str(cx, fmt_sp, ~"")));
+                    stms.push(cx.mk_local(fmt_sp, true, ident,
+                                          cx.mk_uniq_str(fmt_sp, ~"")));
                 }
-                stms.push(mk_stmt(cx, fmt_sp,
-                                  make_new_conv(cx, fmt_sp, conv,
-                                                args[n], buf())));
+                stms.push(cx.mk_stmt(fmt_sp,
+                                     make_new_conv(cx, fmt_sp, conv,
+                                                   args[n], buf())));
             }
         }
     }
@@ -317,5 +316,5 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                            nargs, expected_nargs));
     }
 
-    return mk_block(cx, fmt_sp, ~[], stms, Some(buf()));
+    cx.mk_block(fmt_sp, ~[], stms, Some(buf()))
 }

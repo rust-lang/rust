@@ -12,7 +12,7 @@
 use ast::{meta_item, item, expr_if, expr};
 use codemap::span;
 use ext::base::ExtCtxt;
-use ext::build;
+use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
 pub fn expand_deriving_ord(cx: @ExtCtxt,
@@ -62,10 +62,10 @@ fn cs_ord(less: bool, equal: bool,
     } else {
         cx.ident_of("gt")
     };
-    let false_blk_expr = build::mk_block(cx, span,
+    let false_blk_expr = cx.mk_block(span,
                                          ~[], ~[],
-                                         Some(build::mk_bool(cx, span, false)));
-    let base = build::mk_bool(cx, span, equal);
+                                         Some(cx.mk_bool(span, false)));
+    let base = cx.mk_bool(span, equal);
 
     cs_fold(
         false, // need foldr,
@@ -98,19 +98,19 @@ fn cs_ord(less: bool, equal: bool,
                 cx.span_bug(span, "Not exactly 2 arguments in `deriving(Ord)`");
             }
 
-            let cmp = build::mk_method_call(cx, span,
+            let cmp = cx.mk_method_call(span,
                                             self_f, cx.ident_of("eq"), other_fs.to_owned());
-            let subexpr = build::mk_simple_block(cx, span, subexpr);
+            let subexpr = cx.mk_simple_block(span, subexpr);
             let elseif = expr_if(cmp, subexpr, Some(false_blk_expr));
-            let elseif = build::mk_expr(cx, span, elseif);
+            let elseif = cx.mk_expr(span, elseif);
 
-            let cmp = build::mk_method_call(cx, span,
+            let cmp = cx.mk_method_call(span,
                                             self_f, binop, other_fs.to_owned());
-            let true_blk = build::mk_simple_block(cx, span,
-                                                  build::mk_bool(cx, span, true));
+            let true_blk = cx.mk_simple_block(span,
+                                                  cx.mk_bool(span, true));
             let if_ = expr_if(cmp, true_blk, Some(elseif));
 
-            build::mk_expr(cx, span, if_)
+            cx.mk_expr(span, if_)
         },
         base,
         |cx, span, args, _| {
@@ -119,7 +119,7 @@ fn cs_ord(less: bool, equal: bool,
             match args {
                 [(self_var, _, _),
                  (other_var, _, _)] =>
-                    build::mk_bool(cx, span,
+                    cx.mk_bool(span,
                                    if less {
                                        self_var < other_var
                                    } else {

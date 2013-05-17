@@ -11,7 +11,7 @@
 use ast::{meta_item, item, expr};
 use codemap::span;
 use ext::base::ExtCtxt;
-use ext::build;
+use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use core::cmp::{Ordering, Equal, Less, Greater};
 
@@ -47,7 +47,7 @@ pub fn ordering_const(cx: @ExtCtxt, span: span, cnst: Ordering) -> @expr {
         Equal => "Equal",
         Greater => "Greater"
     };
-    build::mk_path_global(cx, span,
+    cx.mk_path_global(span,
                           ~[cx.ident_of("core"),
                             cx.ident_of("cmp"),
                             cx.ident_of(cnst)])
@@ -60,7 +60,7 @@ pub fn cs_cmp(cx: @ExtCtxt, span: span,
         // foldr (possibly) nests the matches in lexical_ordering better
         false,
         |cx, span, old, new| {
-            build::mk_call_global(cx, span,
+            cx.mk_call_global(span,
                                   ~[cx.ident_of("core"),
                                     cx.ident_of("cmp"),
                                     cx.ident_of("lexical_ordering")],
