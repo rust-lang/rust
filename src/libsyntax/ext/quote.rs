@@ -41,7 +41,6 @@ pub mod rt {
     pub use parse::new_parser_from_tts;
     pub use codemap::{BytePos, span, dummy_spanned};
 
-    use print::pprust;
     use print::pprust::{item_to_str, ty_to_str};
 
     pub trait ToTokens {
@@ -678,10 +677,11 @@ fn expand_tts(cx: @ext_ctxt,
     // We want to emit a block expression that does a sequence of 'use's to
     // import the runtime module, followed by a tt-building expression.
 
-    let uses = ~[ build::mk_glob_use(cx, sp, ids_ext(cx, ~[~"syntax",
-                                                           ~"ext",
-                                                           ~"quote",
-                                                           ~"rt"])) ];
+    let uses = ~[ build::mk_glob_use(cx, sp, ast::public,
+                                     ids_ext(cx, ~[~"syntax",
+                                                   ~"ext",
+                                                   ~"quote",
+                                                   ~"rt"])) ];
 
     // We also bind a single value, sp, to ext_cx.call_site()
     //
