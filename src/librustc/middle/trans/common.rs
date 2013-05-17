@@ -61,7 +61,7 @@ pub fn new_namegen(intr: @ident_interner) -> namegen {
     let f: @fn(s: &str) -> ident = |prefix| {
         intr.gensym(fmt!("%s_%u",
                           prefix,
-                          intr.gensym(prefix).repr))
+                          intr.gensym(prefix).name))
     };
     f
 }
@@ -1195,7 +1195,7 @@ pub fn C_cstr(cx: @CrateContext, s: @~str) -> ValueRef {
             llvm::LLVMConstString(buf, s.len() as c_uint, False)
         };
         let g =
-            str::as_c_str(fmt!("str%u", (cx.names)("str").repr),
+            str::as_c_str(fmt!("str%u", (cx.names)("str").name),
                         |buf| llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf));
         llvm::LLVMSetInitializer(g, sc);
         llvm::LLVMSetGlobalConstant(g, True);
@@ -1287,7 +1287,7 @@ pub fn C_bytes_plus_null(bytes: &[u8]) -> ValueRef {
 pub fn C_shape(ccx: @CrateContext, bytes: ~[u8]) -> ValueRef {
     unsafe {
         let llshape = C_bytes_plus_null(bytes);
-        let name = fmt!("shape%u", (ccx.names)("shape").repr);
+        let name = fmt!("shape%u", (ccx.names)("shape").name);
         let llglobal = str::as_c_str(name, |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
         });

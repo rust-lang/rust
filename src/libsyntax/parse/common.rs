@@ -142,7 +142,7 @@ impl Parser {
     // true. Otherwise, return false.
     pub fn eat_keyword(&self, kw: keywords::Keyword) -> bool {
         let is_kw = match *self.token {
-            token::IDENT(sid, false) => kw.to_ident().repr == sid.repr,
+            token::IDENT(sid, false) => kw.to_ident().name == sid.name,
             _ => false
         };
         if is_kw { self.bump() }
