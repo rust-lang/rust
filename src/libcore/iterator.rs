@@ -53,6 +53,8 @@ pub trait IteratorUtil<A> {
     fn last(&mut self) -> A;
     fn fold<B>(&mut self, start: B, f: &fn(B, A) -> B) -> B;
     fn count(&mut self) -> uint;
+    fn all(&mut self, f: &fn(&A) -> bool) -> bool;
+    fn any(&mut self, f: &fn(&A) -> bool) -> bool;
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -204,6 +206,18 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     /// Count the number of an iterator elemenrs
     #[inline(always)]
     fn count(&mut self) -> uint { self.fold(0, |cnt, _x| cnt + 1) }
+
+    #[inline(always)]
+    fn all(&mut self, f: &fn(&A) -> bool) -> bool {
+        for self.advance |x| { if !f(&x) { return false; } }
+        return true;
+    }
+
+    #[inline(always)]
+    fn any(&mut self, f: &fn(&A) -> bool) -> bool {
+        for self.advance |x| { if f(&x) { return true; } }
+        return false;
+    }
 }
 
 pub trait AdditiveIterator<A> {
@@ -754,4 +768,21 @@ mod tests {
         assert_eq!(v.slice(0, 0).iter().transform(|&x| x).min(), None);
     }
 
+    #[test]
+    fn test_all() {
+        let v = ~&[1, 2, 3, 4, 5];
+        assert!(v.iter().all(|&x| *x < 10));
+        assert!(!v.iter().all(|&x| x.is_even()));
+        assert!(!v.iter().all(|&x| *x > 100));
+        assert!(v.slice(0, 0).iter().all(|_| fail!()));
+    }
+
+    #[test]
+    fn test_any() {
+        let v = ~&[1, 2, 3, 4, 5];
+        assert!(v.iter().any(|&x| *x < 10));
+        assert!(v.iter().any(|&x| x.is_even()));
+        assert!(!v.iter().any(|&x| *x > 100));
+        assert!(!v.slice(0, 0).iter().any(|_| fail!()));
+    }
 }
