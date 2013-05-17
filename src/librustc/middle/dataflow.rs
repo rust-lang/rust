@@ -16,6 +16,8 @@
  * GEN and KILL bits for each expression.
  */
 
+use core::prelude::*;
+
 use core::cast;
 use core::uint;
 use syntax::ast;

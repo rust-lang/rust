@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Finds crate binaries and loads their metadata
+
+use core::prelude::*;
 
 use lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
 use metadata::decoder;

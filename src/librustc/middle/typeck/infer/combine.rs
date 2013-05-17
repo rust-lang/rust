@@ -54,6 +54,8 @@
 // terms of error reporting, although we do not do that properly right
 // now.
 
+use core::prelude::*;
+
 use middle::ty::{FloatVar, FnSig, IntVar, TyVar};
 use middle::ty::{IntType, UintType, substs};
 use middle::ty::{BuiltinBounds};

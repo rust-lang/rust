@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
+use core;
+
 #[deriving(Eq, IterBytes)]
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set

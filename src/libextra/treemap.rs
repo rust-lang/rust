@@ -12,6 +12,8 @@
 //! trees. The only requirement for the types is that the key implements
 //! `TotalOrd`.
 
+use core::prelude::*;
+
 use core::iterator::*;
 use core::util::{swap, replace};
 

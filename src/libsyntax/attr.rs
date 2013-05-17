@@ -10,6 +10,8 @@
 
 // Functions dealing with attributes and meta_items
 
+use core::prelude::*;
+
 use ast;
 use codemap::{spanned, dummy_spanned};
 use attr;

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
 // cursor model. See the specification here:
 //     http://www.matroska.org/technical/specs/rfc/index.html
@@ -65,6 +67,8 @@ pub enum EbmlEncoderTag {
 // --------------------------------------
 
 pub mod reader {
+    use core::prelude::*;
+
     use ebml::{Doc, EbmlEncoderTag, EsBool, EsEnum, EsEnumBody, EsEnumVid};
     use ebml::{EsI16, EsI32, EsI64, EsI8, EsInt};
     use ebml::{EsLabel, EsOpaque, EsStr, EsU16, EsU32, EsU64, EsU8, EsUint};

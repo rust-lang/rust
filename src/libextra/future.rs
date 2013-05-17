@@ -23,6 +23,8 @@
  * ~~~
  */
 
+use core::prelude::*;
+
 use core::cast;
 use core::cell::Cell;
 use core::comm::{PortOne, oneshot, send_one, recv_one};

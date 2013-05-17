@@ -48,6 +48,8 @@ independently:
 
 */
 
+use core::prelude::*;
+
 use driver::session;
 
 use middle::resolve;

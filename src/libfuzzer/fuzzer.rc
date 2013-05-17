@@ -20,9 +20,14 @@
 
 #[allow(non_camel_case_types)];
 
-extern mod std;
-extern mod syntax;
+#[no_std];
 
+extern mod core(name = "std", vers = "0.7-pre");
+extern mod std(name = "extra", vers = "0.7-pre");
+
+extern mod syntax(vers = "0.7-pre");
+
+use core::prelude::*;
 use core::run;
 
 use syntax::diagnostic;

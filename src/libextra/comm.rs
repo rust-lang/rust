@@ -14,6 +14,8 @@ Higher level communication abstractions.
 
 */
 
+use core::prelude::*;
+
 use core::comm::{GenericChan, GenericSmartChan, GenericPort};
 use core::comm::{Chan, Port, Selectable, Peekable};
 use core::pipes;

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use common::mode_run_pass;
 use common::mode_run_fail;
 use common::mode_compile_fail;

@@ -19,6 +19,8 @@
  * of features.
  */
 
+use core::prelude::*;
+
 use core::cmp::{Eq, Ord};
 use core::option::{Some, None};
 

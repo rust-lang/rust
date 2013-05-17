@@ -94,6 +94,8 @@ total line count).
     }
 */
 
+use core::prelude::*;
+
 use core::io::ReaderUtil;
 
 /**

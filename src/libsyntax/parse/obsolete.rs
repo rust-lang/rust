@@ -17,6 +17,7 @@ Obsolete syntax that becomes too hard to parse can be
 removed.
 */
 
+use core::prelude::*;
 
 use ast::{expr, expr_lit, lit_nil, attribute};
 use ast;

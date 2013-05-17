@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use metadata::encoder;
 use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};

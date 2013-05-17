@@ -17,6 +17,8 @@
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves do not affect things loaned out in any way
 
+use core::prelude::*;
+
 use middle::moves;
 use middle::borrowck::*;
 use mc = middle::mem_categorization;

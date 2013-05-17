@@ -76,6 +76,8 @@ type parameter).
 
 */
 
+use core::prelude::*;
+
 use middle::const_eval;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;

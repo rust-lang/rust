@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use lib::llvm::llvm;
 use lib::llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect};
 use lib::llvm::{Opcode, IntPredicate, RealPredicate, False};

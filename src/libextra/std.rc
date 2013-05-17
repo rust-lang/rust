@@ -17,7 +17,7 @@ not required in or otherwise suitable for the core library.
 
 */
 
-#[link(name = "std",
+#[link(name = "extra",
        vers = "0.7-pre",
        uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
        url = "https://github.com/mozilla/rust/tree/master/src/libstd")];
@@ -27,6 +27,14 @@ not required in or otherwise suitable for the core library.
 #[crate_type = "lib"];
 
 #[deny(non_camel_case_types)];
+
+#[no_core];
+#[no_std];
+
+extern mod core(name = "std", vers = "0.7-pre");
+
+use core::{str, unstable};
+use core::str::{StrSlice, OwnedStr};
 
 pub mod uv_ll;
 

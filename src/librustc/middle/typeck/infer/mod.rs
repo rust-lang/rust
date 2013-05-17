@@ -242,6 +242,8 @@ section on "Type Combining" below for details.
 
 */
 
+use core::prelude::*;
+
 pub use middle::ty::IntVarValue;
 pub use middle::typeck::infer::resolve::resolve_and_force_all_but_regions;
 pub use middle::typeck::infer::resolve::{force_all, not_regions};

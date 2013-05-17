@@ -12,10 +12,13 @@
 
 #[allow(non_camel_case_types)];
 
-extern mod std;
+#[no_std];
 
+extern mod core(name = "std", vers = "0.7-pre");
+extern mod std(name = "extra", vers = "0.7-pre");
+
+use core::prelude::*;
 use core::*;
-
 
 use std::getopts;
 use std::test;

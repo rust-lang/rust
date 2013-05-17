@@ -79,6 +79,8 @@ obtained the type `Foo`, we would never match this method.
 
 */
 
+use core::prelude::*;
+
 use middle::resolve;
 use middle::ty::*;
 use middle::ty;

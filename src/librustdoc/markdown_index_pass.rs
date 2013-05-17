@@ -10,6 +10,8 @@
 
 //! Build indexes as appropriate for the markdown pass
 
+use core::prelude::*;
+
 use astsrv;
 use config;
 use doc::ItemUtils;

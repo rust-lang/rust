@@ -10,6 +10,8 @@
 
 //! Types/fns concerning URLs (see RFC 3986)
 
+use core::prelude::*;
+
 use core::cmp::Eq;
 use core::io::{Reader, ReaderUtil};
 use core::io;

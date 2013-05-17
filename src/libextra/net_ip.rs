@@ -10,6 +10,8 @@
 
 //! Types/fns concerning Internet Protocol (IP), versions 4 & 6
 
+use core::prelude::*;
+
 use core::libc;
 use core::comm::{stream, SharedChan};
 use core::ptr;
@@ -145,6 +147,8 @@ pub fn get_addr(node: &str, iotask: &iotask)
 }
 
 pub mod v4 {
+    use core::prelude::*;
+
     use net::ip::{IpAddr, Ipv4, ParseAddrErr};
     use uv::ll;
     use uv_ip4_addr = uv::ll::ip4_addr;
@@ -246,6 +250,8 @@ pub mod v4 {
     }
 }
 pub mod v6 {
+    use core::prelude::*;
+
     use net::ip::{IpAddr, Ipv6, ParseAddrErr};
     use uv_ip6_addr = uv::ll::ip6_addr;
     use uv_ip6_name = uv::ll::ip6_name;

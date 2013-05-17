@@ -37,6 +37,8 @@
  * ~~~
  */
 
+use core::prelude::*;
+
 use sync;
 use sync::{Mutex, mutex_with_condvars, RWlock, rwlock_with_condvars};
 

@@ -10,6 +10,8 @@
 
 //! A standard linked list
 
+use core::prelude::*;
+
 #[deriving(Eq)]
 pub enum List<T> {
     Cons(T, @List<T>),

@@ -60,6 +60,9 @@
  * line (which it can't) and so naturally place the content on its own line to
  * avoid combining it with other lines and making matters even worse.
  */
+
+use core::prelude::*;
+
 #[deriving(Eq)]
 pub enum breaks { consistent, inconsistent, }
 

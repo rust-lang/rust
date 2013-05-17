@@ -12,6 +12,8 @@
 //
 // Code relating to taking, dropping, etc as well as type descriptors.
 
+use core::prelude::*;
+
 use back::abi;
 use back::link::*;
 use driver::session;

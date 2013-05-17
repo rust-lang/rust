@@ -10,6 +10,8 @@
 
 //! Generate markdown from a document tree
 
+use core::prelude::*;
+
 use astsrv;
 use doc::ItemUtils;
 use doc;

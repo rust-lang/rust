@@ -28,7 +28,8 @@ vec_edits is not an iter because iters might go away.
 
 */
 
-extern mod std;
+use core::prelude::*;
+
 use vec::slice;
 use vec::len;
 

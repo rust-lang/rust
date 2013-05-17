@@ -11,6 +11,8 @@
 /// A task pool abstraction. Useful for achieving predictable CPU
 /// parallelism.
 
+use core::prelude::*;
+
 use core::comm::Chan;
 use core::task::SchedMode;
 use core::task;

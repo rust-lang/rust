@@ -10,6 +10,8 @@
 
 //! A double-ended queue implemented as a circular buffer
 
+use core::prelude::*;
+
 use core::util::replace;
 
 static initial_capacity: uint = 32u; // 2^5

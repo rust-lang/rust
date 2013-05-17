@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+use core::prelude::*;
 use std::rand;
 
 // random uint less than n

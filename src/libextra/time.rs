@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
 
 pub mod rustrt {

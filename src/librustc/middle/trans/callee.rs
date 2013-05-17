@@ -16,6 +16,8 @@
 // and methods are represented as just a fn ptr and not a full
 // closure.
 
+use core::prelude::*;
+
 use back::abi;
 use driver::session;
 use lib;

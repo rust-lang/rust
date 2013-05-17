@@ -10,6 +10,8 @@
 
 // Decoding metadata from a single crate's metadata
 
+use core::prelude::*;
+
 use metadata::cstore::crate_metadata;
 use metadata::common::*;
 use metadata::csearch::{ProvidedTraitMethodInfo, StaticMethodInfo};

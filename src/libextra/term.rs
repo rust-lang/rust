@@ -10,6 +10,8 @@
 
 //! Simple ANSI color library
 
+use core::prelude::*;
+
 use core::io;
 use core::option;
 use core::os;

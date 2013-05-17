@@ -17,6 +17,8 @@ region parameterized.
 
 */
 
+use core::prelude::*;
+
 use driver::session::Session;
 use metadata::csearch;
 use middle::resolve;

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use metadata::csearch;
 use middle::astencode;
 use middle::trans::base::{get_insn_ctxt};

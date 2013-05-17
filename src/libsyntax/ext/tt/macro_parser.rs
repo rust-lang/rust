@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // Earley-like parser for macros.
+
+use core::prelude::*;
+
 use ast;
 use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 use codemap::{BytePos, mk_sp};

@@ -13,6 +13,8 @@ The compiler code necessary for #[deriving(Decodable)]. See
 encodable.rs for more.
 */
 
+use core::prelude::*;
+
 use ast;
 use ast::*;
 use ext::base::ExtCtxt;

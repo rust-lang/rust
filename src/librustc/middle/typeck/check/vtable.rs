@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use middle::resolve::Impl;
 use middle::ty::param_ty;
 use middle::ty;

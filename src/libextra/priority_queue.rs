@@ -10,6 +10,8 @@
 
 //! A priority queue implemented with a binary heap
 
+use core::prelude::*;
+
 use core::old_iter::BaseIter;
 use core::unstable::intrinsics::{move_val_init, init};
 use core::unstable::intrinsics::uninit;

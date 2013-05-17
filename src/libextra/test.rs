@@ -15,6 +15,8 @@
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
+use core::prelude::*;
+
 use getopts;
 use sort;
 use term;
@@ -597,6 +599,8 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
 }
 
 pub mod bench {
+    use core::prelude::*;
+
     use time::precise_time_ns;
     use test::{BenchHarness, BenchSamples};
     use stats::Stats;

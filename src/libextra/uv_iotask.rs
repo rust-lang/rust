@@ -15,6 +15,8 @@
  * `interact` function you can execute code in a uv callback.
  */
 
+use core::prelude::*;
+
 use ll = uv_ll;
 
 use core::comm::{stream, Port, Chan, SharedChan};

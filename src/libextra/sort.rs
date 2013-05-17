@@ -10,6 +10,8 @@
 
 //! Sorting methods
 
+use core::prelude::*;
+
 use core::cmp::{Eq, Ord};
 use core::vec::len;
 use core::vec;

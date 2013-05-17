@@ -75,6 +75,7 @@ would yield functions like:
     }
 */
 
+use core::prelude::*;
 
 use ast;
 use ast::*;

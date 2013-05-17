@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use back::link;
 use back::{arm, x86, x86_64, mips};
 use driver::session::{Aggressive};

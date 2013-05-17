@@ -10,6 +10,8 @@
 
 //! Semver parsing and logic
 
+use core::prelude::*;
+
 use core::char;
 use core::cmp;
 use core::io::{ReaderUtil};
