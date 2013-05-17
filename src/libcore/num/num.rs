@@ -118,6 +118,7 @@ pub trait Trigonometric {
     fn acos(&self) -> Self;
     fn atan(&self) -> Self;
     fn atan2(&self, other: Self) -> Self;
+    fn sin_cos(&self) -> (Self, Self);
 }
 
 pub trait Exponential {

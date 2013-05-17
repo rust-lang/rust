@@ -530,6 +530,14 @@ impl Trigonometric for float {
     fn atan2(&self, other: float) -> float {
         (*self as f64).atan2(other as f64) as float
     }
+
+    /// Simultaneously computes the sine and cosine of the number
+    #[inline(always)]
+    fn sin_cos(&self) -> (float, float) {
+        match (*self as f64).sin_cos() {
+            (s, c) => (s as float, c as float)
+        }
+    }
 }
 
 impl Exponential for float {
