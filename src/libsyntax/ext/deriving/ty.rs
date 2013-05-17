@@ -16,7 +16,7 @@ explicit `Self` type to use when specifying impls to be derived.
 use ast;
 use ast::{expr,Generics,ident};
 use ext::base::ExtCtxt;
-use ext::build;
+use ext::build::AstBuilder;
 use codemap::{span,respan};
 use opt_vec;
 
@@ -55,7 +55,7 @@ pub impl<'self> Path<'self> {
 
     fn to_ty(&self, cx: @ExtCtxt, span: span,
              self_ty: ident, self_generics: &Generics) -> @ast::Ty {
-        build::mk_ty_path_path(cx, span,
+        cx.mk_ty_path_path(span,
                                self.to_path(cx, span,
                                             self_ty, self_generics))
     }
@@ -66,9 +66,9 @@ pub impl<'self> Path<'self> {
         let tys = self.params.map(|t| t.to_ty(cx, span, self_ty, self_generics));
 
         if self.global {
-            build::mk_raw_path_global_(span, idents, lt, tys)
+            cx.mk_raw_path_global_(span, idents, lt, tys)
         } else {
-            build::mk_raw_path_(span, idents, lt, tys)
+            cx.mk_raw_path_(span, idents, lt, tys)
         }
     }
 }
@@ -106,7 +106,7 @@ pub fn nil_ty() -> Ty<'static> {
 
 fn mk_lifetime(cx: @ExtCtxt, span: span, lt: &Option<&str>) -> Option<@ast::Lifetime> {
     match *lt {
-        Some(ref s) => Some(@build::mk_lifetime(cx, span, cx.ident_of(*s))),
+        Some(ref s) => Some(@cx.mk_lifetime(span, cx.ident_of(*s))),
         None => None
     }
 }
@@ -119,20 +119,20 @@ pub impl<'self> Ty<'self> {
                 let raw_ty = ty.to_ty(cx, span, self_ty, self_generics);
                 match *ptr {
                     Owned => {
-                        build::mk_ty_uniq(cx, span, raw_ty)
+                        cx.mk_ty_uniq(span, raw_ty)
                     }
                     Managed(mutbl) => {
-                        build::mk_ty_box(cx, span, raw_ty, mutbl)
+                        cx.mk_ty_box(span, raw_ty, mutbl)
                     }
                     Borrowed(ref lt, mutbl) => {
                         let lt = mk_lifetime(cx, span, lt);
-                        build::mk_ty_rptr(cx, span, raw_ty, lt, mutbl)
+                        cx.mk_ty_rptr(span, raw_ty, lt, mutbl)
                     }
                 }
             }
             Literal(ref p) => { p.to_ty(cx, span, self_ty, self_generics) }
             Self  => {
-                build::mk_ty_path_path(cx, span, self.to_path(cx, span, self_ty, self_generics))
+                cx.mk_ty_path_path(span, self.to_path(cx, span, self_ty, self_generics))
             }
             Tuple(ref fields) => {
                 let ty = if fields.is_empty() {
@@ -141,7 +141,7 @@ pub impl<'self> Ty<'self> {
                     ast::ty_tup(fields.map(|f| f.to_ty(cx, span, self_ty, self_generics)))
                 };
 
-                build::mk_ty(cx, span, ty)
+                cx.mk_ty(span, ty)
             }
         }
     }
@@ -151,7 +151,7 @@ pub impl<'self> Ty<'self> {
         match *self {
             Self => {
                 let self_params = do self_generics.ty_params.map |ty_param| {
-                    build::mk_ty_path(cx, span, ~[ ty_param.ident ])
+                    cx.mk_ty_path(span, ~[ ty_param.ident ])
                 };
                 let lifetime = if self_generics.lifetimes.is_empty() {
                     None
@@ -159,7 +159,7 @@ pub impl<'self> Ty<'self> {
                     Some(@*self_generics.lifetimes.get(0))
                 };
 
-                build::mk_raw_path_(span, ~[self_ty], lifetime,
+                cx.mk_raw_path_(span, ~[self_ty], lifetime,
                                     opt_vec::take_vec(self_params))
             }
             Literal(ref p) => {
@@ -177,9 +177,9 @@ fn mk_ty_param(cx: @ExtCtxt, span: span, name: &str, bounds: &[Path],
     let bounds = opt_vec::from(
         do bounds.map |b| {
             let path = b.to_path(cx, span, self_ident, self_generics);
-            build::mk_trait_ty_param_bound_(cx, path)
+            cx.mk_trait_ty_param_bound_(path)
         });
-    build::mk_ty_param(cx, cx.ident_of(name), @bounds)
+    cx.mk_ty_param(cx.ident_of(name), @bounds)
 }
 
 fn mk_generics(lifetimes: ~[ast::Lifetime],  ty_params: ~[ast::TyParam]) -> Generics {
@@ -204,7 +204,7 @@ pub impl<'self> LifetimeBounds<'self> {
     fn to_generics(&self, cx: @ExtCtxt, span: span,
                    self_ty: ident, self_generics: &Generics) -> Generics {
         let lifetimes = do self.lifetimes.map |lt| {
-            build::mk_lifetime(cx, span, cx.ident_of(*lt))
+            cx.mk_lifetime(span, cx.ident_of(*lt))
         };
         let ty_params = do self.bounds.map |t| {
             match t {
@@ -220,7 +220,7 @@ pub impl<'self> LifetimeBounds<'self> {
 
 pub fn get_explicit_self(cx: @ExtCtxt, span: span, self_ptr: &Option<PtrTy>)
     -> (@expr, ast::explicit_self) {
-    let self_path = build::make_self(cx, span);
+    let self_path = cx.make_self(span);
     match *self_ptr {
         None => {
             (self_path, respan(span, ast::sty_value))
@@ -232,12 +232,12 @@ pub fn get_explicit_self(cx: @ExtCtxt, span: span, self_ptr: &Option<PtrTy>)
                     Owned => ast::sty_uniq(ast::m_imm),
                     Managed(mutbl) => ast::sty_box(mutbl),
                     Borrowed(ref lt, mutbl) => {
-                        let lt = lt.map(|s| @build::mk_lifetime(cx, span,
+                        let lt = lt.map(|s| @cx.mk_lifetime(span,
                                                                 cx.ident_of(*s)));
                         ast::sty_region(lt, mutbl)
                     }
                 });
-            let self_expr = build::mk_deref(cx, span, self_path);
+            let self_expr = cx.mk_deref(span, self_path);
             (self_expr, self_ty)
         }
     }

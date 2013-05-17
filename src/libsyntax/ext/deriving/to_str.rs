@@ -11,7 +11,7 @@
 use ast::{meta_item, item, expr};
 use codemap::span;
 use ext::base::ExtCtxt;
-use ext::build;
+use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
 pub fn expand_deriving_to_str(cx: @ExtCtxt,
@@ -42,8 +42,8 @@ pub fn expand_deriving_to_str(cx: @ExtCtxt,
 fn to_str_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
     match substr.self_args {
         [self_obj] => {
-            let self_addr = build::mk_addr_of(cx, span, self_obj);
-            build::mk_call_global(cx, span,
+            let self_addr = cx.mk_addr_of(span, self_obj);
+            cx.mk_call_global(span,
                                   ~[cx.ident_of("core"),
                                     cx.ident_of("sys"),
                                     cx.ident_of("log_str")],

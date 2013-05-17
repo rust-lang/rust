@@ -11,7 +11,7 @@
 use ast::{meta_item, item, expr, and};
 use codemap::span;
 use ext::base::ExtCtxt;
-use ext::build;
+use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
 pub fn expand_deriving_iter_bytes(cx: @ExtCtxt,
@@ -48,7 +48,7 @@ fn iter_bytes_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @
     };
     let iter_bytes_ident = substr.method_ident;
     let call_iterbytes = |thing_expr| {
-        build::mk_method_call(cx, span,
+        cx.mk_method_call(span,
                               thing_expr, iter_bytes_ident,
                               copy lsb0_f)
     };
@@ -63,7 +63,7 @@ fn iter_bytes_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @
             // iteration function.
             let discriminant = match variant.node.disr_expr {
                 Some(copy d)=> d,
-                None => build::mk_uint(cx, span, index)
+                None => cx.mk_uint(span, index)
             };
 
             exprs.push(call_iterbytes(discriminant));
@@ -82,6 +82,6 @@ fn iter_bytes_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @
     }
 
     do vec::foldl(exprs[0], exprs.slice(1, exprs.len())) |prev, me| {
-        build::mk_binary(cx, span, and, prev, *me)
+        cx.mk_binary(span, and, prev, *me)
     }
 }

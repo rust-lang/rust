@@ -12,7 +12,7 @@
 use ast::{meta_item, item, expr};
 use codemap::span;
 use ext::base::ExtCtxt;
-use ext::build;
+use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
 pub fn expand_deriving_totaleq(cx: @ExtCtxt,
@@ -21,7 +21,7 @@ pub fn expand_deriving_totaleq(cx: @ExtCtxt,
                           in_items: ~[@item]) -> ~[@item] {
 
     fn cs_equals(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
-        cs_and(|cx, span, _, _| build::mk_bool(cx, span, false),
+        cs_and(|cx, span, _, _| cx.mk_bool(span, false),
                cx, span, substr)
     }
 

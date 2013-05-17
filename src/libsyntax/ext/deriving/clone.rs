@@ -12,6 +12,7 @@ use ast::{meta_item, item, expr};
 use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build;
+use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
 
@@ -79,7 +80,7 @@ fn cs_clone(
     let ctor_ident;
     let all_fields;
     let subcall = |field|
-        build::mk_method_call(cx, span, field, clone_ident, ~[]);
+        cx.mk_method_call(span, field, clone_ident, ~[]);
 
     match *substr.fields {
         Struct(ref af) => {
@@ -102,7 +103,7 @@ fn cs_clone(
         [(None, _, _), .. _] => {
             // enum-like
             let subcalls = all_fields.map(|&(_, self_f, _)| subcall(self_f));
-            build::mk_call(cx, span, ctor_ident, subcalls)
+            cx.mk_call(span, ctor_ident, subcalls)
         },
         _ => {
             // struct-like
@@ -118,9 +119,9 @@ fn cs_clone(
 
             if fields.is_empty() {
                 // no fields, so construct like `None`
-                build::mk_path(cx, span, ctor_ident)
+                cx.mk_path(span, ctor_ident)
             } else {
-                build::mk_struct_e(cx, span,
+                cx.mk_struct_e(span,
                                    ctor_ident,
                                    fields)
             }

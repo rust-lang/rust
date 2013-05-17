@@ -166,7 +166,7 @@ use ast;
 use ast::{enum_def, expr, ident, Generics, struct_def};
 
 use ext::base::ExtCtxt;
-use ext::build;
+use ext::build::AstBuilder;
 use ext::deriving::*;
 use codemap::{span,respan};
 use opt_vec;
@@ -431,7 +431,7 @@ impl<'self> MethodDef<'self> {
             let ident = cx.ident_of(fmt!("__arg_%u", i));
             arg_tys.push((ident, ast_ty));
 
-            let arg_expr = build::mk_path(cx, span, ~[ident]);
+            let arg_expr = cx.mk_path(span, ~[ident]);
 
             match *ty {
                 // for static methods, just treat any Self
@@ -440,7 +440,7 @@ impl<'self> MethodDef<'self> {
                     self_args.push(arg_expr);
                 }
                 Ptr(~Self, _) if nonstatic => {
-                    self_args.push(build::mk_deref(cx, span, arg_expr))
+                    self_args.push(cx.mk_deref(span, arg_expr))
                 }
                 _ => {
                     nonself_args.push(arg_expr);
@@ -461,14 +461,14 @@ impl<'self> MethodDef<'self> {
         let fn_generics = self.generics.to_generics(cx, span, type_ident, generics);
 
         let args = do arg_types.map |&(id, ty)| {
-            build::mk_arg(cx, span, id, ty)
+            cx.mk_arg(span, id, ty)
         };
 
         let ret_type = self.get_ret_ty(cx, span, generics, type_ident);
 
         let method_ident = cx.ident_of(self.name);
-        let fn_decl = build::mk_fn_decl(args, ret_type);
-        let body_block = build::mk_simple_block(cx, span, body);
+        let fn_decl = cx.mk_fn_decl(args, ret_type);
+        let body_block = cx.mk_simple_block(span, body);
 
 
         // Create the method.
@@ -558,10 +558,10 @@ impl<'self> MethodDef<'self> {
             let match_arm = ast::arm {
                 pats: ~[ pat ],
                 guard: None,
-                body: build::mk_simple_block(cx, span, body)
+                body: cx.mk_simple_block(span, body)
             };
 
-            body = build::mk_expr(cx, span, ast::expr_match(arg_expr, ~[match_arm]))
+            body = cx.mk_expr(span, ast::expr_match(arg_expr, ~[match_arm]))
         }
         body
     }
@@ -738,15 +738,15 @@ impl<'self> MethodDef<'self> {
                                                      matches_so_far,
                                                      match_count + 1);
                 matches_so_far.pop();
-                arms.push(build::mk_arm(cx, span, ~[ pattern ], arm_expr));
+                arms.push(cx.mk_arm(span, ~[ pattern ], arm_expr));
 
                 if enum_def.variants.len() > 1 {
                     let e = &EnumNonMatching(&[]);
                     let wild_expr = self.call_substructure_method(cx, span, type_ident,
                                                                   self_args, nonself_args,
                                                                   e);
-                    let wild_arm = build::mk_arm(cx, span,
-                                                 ~[ build::mk_pat_wild(cx, span) ],
+                    let wild_arm = cx.mk_arm(span,
+                                                 ~[ cx.mk_pat_wild(span) ],
                                                  wild_expr);
                     arms.push(wild_arm);
                 }
@@ -774,13 +774,13 @@ impl<'self> MethodDef<'self> {
                                                          match_count + 1);
                     matches_so_far.pop();
 
-                    let arm = build::mk_arm(cx, span, ~[ pattern ], arm_expr);
+                    let arm = cx.mk_arm(span, ~[ pattern ], arm_expr);
                     arms.push(arm);
                 }
             }
 
             // match foo { arm, arm, arm, ... }
-            build::mk_expr(cx, span,
+            cx.mk_expr(span,
                            ast::expr_match(self_args[match_count], arms))
         }
     }
@@ -887,7 +887,7 @@ pub fn cs_same_method(f: &fn(@ExtCtxt, span, ~[@expr]) -> @expr,
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             // call self_n.method(other_1_n, other_2_n, ...)
             let called = do all_fields.map |&(_, self_field, other_fields)| {
-                build::mk_method_call(cx, span,
+                cx.mk_method_call(span,
                                       self_field,
                                       substructure.method_ident,
                                       other_fields)
@@ -945,7 +945,7 @@ pub fn cs_binop(binop: ast::binop, base: @expr,
     cs_same_method_fold(
         true, // foldl is good enough
         |cx, span, old, new| {
-            build::mk_binary(cx, span,
+            cx.mk_binary(span,
                              binop,
                              old, new)
 
@@ -960,7 +960,7 @@ pub fn cs_binop(binop: ast::binop, base: @expr,
 pub fn cs_or(enum_nonmatch_f: EnumNonMatchFunc,
              cx: @ExtCtxt, span: span,
              substructure: &Substructure) -> @expr {
-    cs_binop(ast::or, build::mk_bool(cx, span, false),
+    cs_binop(ast::or, cx.mk_bool(span, false),
              enum_nonmatch_f,
              cx, span, substructure)
 }
@@ -969,7 +969,7 @@ pub fn cs_or(enum_nonmatch_f: EnumNonMatchFunc,
 pub fn cs_and(enum_nonmatch_f: EnumNonMatchFunc,
               cx: @ExtCtxt, span: span,
               substructure: &Substructure) -> @expr {
-    cs_binop(ast::and, build::mk_bool(cx, span, true),
+    cs_binop(ast::and, cx.mk_bool(span, true),
              enum_nonmatch_f,
              cx, span, substructure)
 }
