@@ -13,7 +13,8 @@
 use ast;
 use codemap::{dummy_sp, spanned};
 use ext::base::ExtCtxt;
-use ext::pipes::ast_builder::{append_types, ext_ctxt_ast_builder, path};
+use ext::build::AstBuilder;
+use ext::pipes::ast_builder::{append_types, path};
 use ext::pipes::ast_builder::{path_global};
 use ext::pipes::proto::*;
 use ext::quote::rt::*;
@@ -54,7 +55,7 @@ impl gen_send for message {
             let arg_names = tys.mapi(|i, _ty| cx.ident_of(~"x_"+i.to_str()));
             let args_ast = vec::map_zip(arg_names, *tys, |n, t| cx.arg(*n, *t));
 
-            let pipe_ty = cx.ty_path_ast_builder(
+            let pipe_ty = cx.ty_path(
                 path(~[this.data_name()], span)
                 .add_tys(cx.ty_vars_global(&this.generics.ty_params)));
             let args_ast = vec::append(
@@ -111,7 +112,7 @@ impl gen_send for message {
 
             let body = cx.parse_expr(body);
 
-            let mut rty = cx.ty_path_ast_builder(path(~[next.data_name()],
+            let mut rty = cx.ty_path(path(~[next.data_name()],
                                                       span)
                                                .add_tys(copy next_state.tys));
             if try {
@@ -124,7 +125,7 @@ impl gen_send for message {
                             args_ast,
                             rty,
                             self.get_generics(),
-                            cx.expr_block(body))
+                            cx.blk_expr(body))
           }
 
             message(ref _id, span, ref tys, this, None) => {
@@ -137,7 +138,7 @@ impl gen_send for message {
 
                 let args_ast = vec::append(
                     ~[cx.arg(cx.ident_of("pipe"),
-                             cx.ty_path_ast_builder(
+                             cx.ty_path(
                                  path(~[this.data_name()], span)
                                  .add_tys(cx.ty_vars_global(
                                      &this.generics.ty_params))))],
@@ -179,13 +180,13 @@ impl gen_send for message {
                                     cx.ty_nil_ast_builder()
                                 },
                                 self.get_generics(),
-                                cx.expr_block(body))
+                                cx.blk_expr(body))
             }
           }
         }
 
     fn to_ty(&mut self, cx: @ExtCtxt) -> @ast::Ty {
-        cx.ty_path_ast_builder(path(~[cx.ident_of(self.name())], self.span())
+        cx.ty_path(path(~[cx.ident_of(self.name())], self.span())
           .add_tys(cx.ty_vars_global(&self.get_generics().ty_params)))
     }
 }
@@ -217,7 +218,7 @@ impl to_type_decls for state {
                 };
 
                 vec::append_one(tys,
-                                cx.ty_path_ast_builder(
+                                cx.ty_path(
                                     path(~[cx.ident_of(dir),
                                            cx.ident_of(next_name)], span)
                                     .add_tys(copy next_state.tys)))
@@ -264,12 +265,12 @@ impl to_type_decls for state {
                 cx.item_ty_poly(
                     self.data_name(),
                     self.span,
-                    cx.ty_path_ast_builder(
+                    cx.ty_path(
                         path_global(~[cx.ident_of("core"),
                                       cx.ident_of("pipes"),
                                       cx.ident_of(dir.to_str() + "Packet")],
                              dummy_sp())
-                        .add_ty(cx.ty_path_ast_builder(
+                        .add_ty(cx.ty_path(
                             path(~[cx.ident_of("super"),
                                    self.data_name()],
                                  dummy_sp())
@@ -282,13 +283,13 @@ impl to_type_decls for state {
                 cx.item_ty_poly(
                     self.data_name(),
                     self.span,
-                    cx.ty_path_ast_builder(
+                    cx.ty_path(
                         path_global(~[cx.ident_of("core"),
                                       cx.ident_of("pipes"),
                                       cx.ident_of(dir.to_str()
                                                   + "PacketBuffered")],
                              dummy_sp())
-                        .add_tys(~[cx.ty_path_ast_builder(
+                        .add_tys(~[cx.ty_path(
                             path(~[cx.ident_of("super"),
                                    self.data_name()],
                                         dummy_sp())
@@ -341,7 +342,7 @@ impl gen_init for protocol {
     }
 
     fn gen_buffer_init(&self, ext_cx: @ExtCtxt) -> @ast::expr {
-        ext_cx.struct_expr(path(~[ext_cx.ident_of("__Buffer")],
+        ext_cx.expr_struct(path(~[ext_cx.ident_of("__Buffer")],
                                 dummy_sp()),
                       self.states.map_to_vec(|s| {
             let fty = s.to_ty(ext_cx);
@@ -360,15 +361,16 @@ impl gen_init for protocol {
             data: $buffer_fields,
         });
 
-        let entangle_body = ext_cx.block_expr(
-            ext_cx.block(
+        let entangle_body = ext_cx.expr_blk(
+            ext_cx.blk(
+                dummy_sp(),
                 self.states.map_to_vec(
                     |s| ext_cx.parse_stmt(
                         fmt!("data.%s.set_buffer(buffer)",
                              s.name))),
-                ext_cx.parse_expr(fmt!(
+                Some(ext_cx.parse_expr(fmt!(
                     "::core::ptr::to_mut_unsafe_ptr(&mut (data.%s))",
-                    self.states[0].name))));
+                    self.states[0].name)))));
 
         quote_expr!({
             let buffer = $buffer;
@@ -389,7 +391,7 @@ impl gen_init for protocol {
             }
         }
 
-        cx.ty_path_ast_builder(path(~[cx.ident_of("super"),
+        cx.ty_path(path(~[cx.ident_of("super"),
                                       cx.ident_of("__Buffer")],
                                     copy self.span)
                                .add_tys(cx.ty_vars_global(&params)))
