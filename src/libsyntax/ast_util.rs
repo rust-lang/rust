@@ -620,8 +620,8 @@ pub enum Privacy {
 
 // HYGIENE FUNCTIONS
 
-/// Construct an identifier with the given repr and an empty context:
-pub fn new_ident(repr: uint) -> ident { ident {repr: repr, ctxt: 0}}
+/// Construct an identifier with the given name and an empty context:
+pub fn new_ident(name: Name) -> ident { ident {name: name, ctxt: 0}}
 
 /// Extend a syntax context with a given mark
 pub fn new_mark (m:Mrk, tail:SyntaxContext,table:&mut SCTable)
@@ -686,14 +686,14 @@ fn idx_push<T>(vec: &mut ~[T], val: T) -> uint {
 /// Resolve a syntax object to a name, per MTWT.
 pub fn resolve (id : ident, table : &mut SCTable) -> Name {
     match table.table[id.ctxt] {
-        EmptyCtxt => id.repr,
+        EmptyCtxt => id.name,
         // ignore marks here:
-        Mark(_,subctxt) => resolve (ident{repr:id.repr, ctxt: subctxt},table),
+        Mark(_,subctxt) => resolve (ident{name:id.name, ctxt: subctxt},table),
         // do the rename if necessary:
-        Rename(ident{repr,ctxt},toname,subctxt) => {
+        Rename(ident{name,ctxt},toname,subctxt) => {
             // this could be cached or computed eagerly:
-            let resolvedfrom = resolve(ident{repr:repr,ctxt:ctxt},table);
-            let resolvedthis = resolve(ident{repr:id.repr,ctxt:subctxt},table);
+            let resolvedfrom = resolve(ident{name:name,ctxt:ctxt},table);
+            let resolvedthis = resolve(ident{name:id.name,ctxt:subctxt},table);
             if ((resolvedthis == resolvedfrom)
                 && (marksof (ctxt,resolvedthis,table)
                     == marksof (subctxt,resolvedthis,table))) {
@@ -777,11 +777,11 @@ mod test {
     // convert a list of uints to an @~[ident]
     // (ignores the interner completely)
     fn uints_to_idents (uints: &~[uint]) -> @~[ident] {
-        @uints.map(|u|{ ident {repr:*u, ctxt: empty_ctxt} })
+        @uints.map(|u|{ ident {name:*u, ctxt: empty_ctxt} })
     }
 
     fn id (u : uint, s: SyntaxContext) -> ident {
-        ident{repr:u, ctxt: s}
+        ident{name:u, ctxt: s}
     }
 
     // because of the SCTable, I now need a tidy way of

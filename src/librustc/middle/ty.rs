@@ -2678,7 +2678,7 @@ impl cmp::TotalOrd for bound_region {
             (&ty::br_anon(ref a1), &ty::br_anon(ref a2)) => a1.cmp(a2),
             (&ty::br_anon(*), _) => cmp::Less,
 
-            (&ty::br_named(ref a1), &ty::br_named(ref a2)) => a1.repr.cmp(&a2.repr),
+            (&ty::br_named(ref a1), &ty::br_named(ref a2)) => a1.name.cmp(&a2.name),
             (&ty::br_named(*), _) => cmp::Less,
 
             (&ty::br_cap_avoid(ref a1, @ref b1),
