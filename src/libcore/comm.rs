@@ -22,6 +22,8 @@ use vec;
 use vec::OwnedVector;
 use util::replace;
 use unstable::sync::{Exclusive, exclusive};
+use rtcomm = rt::comm;
+use rt;
 
 use pipes::{recv, try_recv, wait_many, peek, PacketHeader};
 
@@ -335,180 +337,280 @@ impl<T: Owned> ::clone::Clone for SharedChan<T> {
     }
 }
 
-/*proto! oneshot (
-    Oneshot:send<T:Owned> {
-        send(T) -> !
-    }
-)*/
-
-#[allow(non_camel_case_types)]
-pub mod oneshot {
-    priv use core::kinds::Owned;
-    use ptr::to_mut_unsafe_ptr;
-
-    pub fn init<T: Owned>() -> (client::Oneshot<T>, server::Oneshot<T>) {
-        pub use core::pipes::HasBuffer;
-
-        let buffer = ~::core::pipes::Buffer {
-            header: ::core::pipes::BufferHeader(),
-            data: __Buffer {
-                Oneshot: ::core::pipes::mk_packet::<Oneshot<T>>()
-            },
-        };
-        do ::core::pipes::entangle_buffer(buffer) |buffer, data| {
-            data.Oneshot.set_buffer(buffer);
-            to_mut_unsafe_ptr(&mut data.Oneshot)
-        }
-    }
-    #[allow(non_camel_case_types)]
-    pub enum Oneshot<T> { pub send(T), }
-    #[allow(non_camel_case_types)]
-    pub struct __Buffer<T> {
-        Oneshot: ::core::pipes::Packet<Oneshot<T>>,
-    }
-
-    #[allow(non_camel_case_types)]
-    pub mod client {
-
-        priv use core::kinds::Owned;
-
-        #[allow(non_camel_case_types)]
-        pub fn try_send<T: Owned>(pipe: Oneshot<T>, x_0: T) ->
-            ::core::option::Option<()> {
-            {
-                use super::send;
-                let message = send(x_0);
-                if ::core::pipes::send(pipe, message) {
-                    ::core::pipes::rt::make_some(())
-                } else { ::core::pipes::rt::make_none() }
-            }
-        }
-
-        #[allow(non_camel_case_types)]
-        pub fn send<T: Owned>(pipe: Oneshot<T>, x_0: T) {
-            {
-                use super::send;
-                let message = send(x_0);
-                ::core::pipes::send(pipe, message);
-            }
-        }
-
-        #[allow(non_camel_case_types)]
-        pub type Oneshot<T> =
-            ::core::pipes::SendPacketBuffered<super::Oneshot<T>,
-                                              super::__Buffer<T>>;
-    }
-
-    #[allow(non_camel_case_types)]
-    pub mod server {
-        #[allow(non_camel_case_types)]
-        pub type Oneshot<T> =
-            ::core::pipes::RecvPacketBuffered<super::Oneshot<T>,
-                                              super::__Buffer<T>>;
-    }
-}
-
-/// The send end of a oneshot pipe.
-pub struct ChanOne<T> {
-    contents: oneshot::client::Oneshot<T>
-}
-
-impl<T> ChanOne<T> {
-    pub fn new(contents: oneshot::client::Oneshot<T>) -> ChanOne<T> {
-        ChanOne {
-            contents: contents
-        }
-    }
-}
-
-/// The receive end of a oneshot pipe.
 pub struct PortOne<T> {
-    contents: oneshot::server::Oneshot<T>
+    inner: Either<pipesy::PortOne<T>, rtcomm::PortOne<T>>
 }
 
-impl<T> PortOne<T> {
-    pub fn new(contents: oneshot::server::Oneshot<T>) -> PortOne<T> {
-        PortOne {
-            contents: contents
-        }
-    }
+pub struct ChanOne<T> {
+    inner: Either<pipesy::ChanOne<T>, rtcomm::ChanOne<T>>
 }
 
-/// Initialiase a (send-endpoint, recv-endpoint) oneshot pipe pair.
 pub fn oneshot<T: Owned>() -> (PortOne<T>, ChanOne<T>) {
-    let (chan, port) = oneshot::init();
-    (PortOne::new(port), ChanOne::new(chan))
+    let (port, chan) = match rt::context() {
+        rt::OldTaskContext => match pipesy::oneshot() {
+            (p, c) => (Left(p), Left(c)),
+        },
+        _ => match rtcomm::oneshot() {
+            (p, c) => (Right(p), Right(c))
+        }
+    };
+    let port = PortOne {
+        inner: port
+    };
+    let chan = ChanOne {
+        inner: chan
+    };
+    return (port, chan);
 }
 
-pub impl<T: Owned> PortOne<T> {
-    fn recv(self) -> T { recv_one(self) }
-    fn try_recv(self) -> Option<T> { try_recv_one(self) }
-    fn unwrap(self) -> oneshot::server::Oneshot<T> {
-        match self {
-            PortOne { contents: s } => s
+impl<T: Owned> PortOne<T> {
+    pub fn recv(self) -> T {
+        let PortOne { inner } = self;
+        match inner {
+            Left(p) => p.recv(),
+            Right(p) => p.recv()
+        }
+    }
+
+    pub fn try_recv(self) -> Option<T> {
+        let PortOne { inner } = self;
+        match inner {
+            Left(p) => p.try_recv(),
+            Right(p) => p.try_recv()
         }
     }
 }
 
-pub impl<T: Owned> ChanOne<T> {
-    fn send(self, data: T) { send_one(self, data) }
-    fn try_send(self, data: T) -> bool { try_send_one(self, data) }
-    fn unwrap(self) -> oneshot::client::Oneshot<T> {
-        match self {
-            ChanOne { contents: s } => s
+impl<T: Owned> ChanOne<T> {
+    pub fn send(self, data: T) {
+        let ChanOne { inner } = self;
+        match inner {
+            Left(p) => p.send(data),
+            Right(p) => p.send(data)
+        }
+    }
+
+    pub fn try_send(self, data: T) -> bool {
+        let ChanOne { inner } = self;
+        match inner {
+            Left(p) => p.try_send(data),
+            Right(p) => p.try_send(data)
         }
     }
 }
 
-/**
- * Receive a message from a oneshot pipe, failing if the connection was
- * closed.
- */
 pub fn recv_one<T: Owned>(port: PortOne<T>) -> T {
-    match port {
-        PortOne { contents: port } => {
-            let oneshot::send(message) = recv(port);
-            message
-        }
+    let PortOne { inner } = port;
+    match inner {
+        Left(p) => pipesy::recv_one(p),
+        Right(p) => p.recv()
     }
 }
 
-/// Receive a message from a oneshot pipe unless the connection was closed.
-pub fn try_recv_one<T: Owned> (port: PortOne<T>) -> Option<T> {
-    match port {
-        PortOne { contents: port } => {
-            let message = try_recv(port);
+pub fn try_recv_one<T: Owned>(port: PortOne<T>) -> Option<T> {
+    let PortOne { inner } = port;
+    match inner {
+        Left(p) => pipesy::try_recv_one(p),
+        Right(p) => p.try_recv()
+    }
+}
 
-            if message.is_none() {
-                None
-            } else {
-                let oneshot::send(message) = message.unwrap();
-                Some(message)
+pub fn send_one<T: Owned>(chan: ChanOne<T>, data: T) {
+    let ChanOne { inner } = chan;
+    match inner {
+        Left(c) => pipesy::send_one(c, data),
+        Right(c) => c.send(data)
+    }
+}
+
+pub fn try_send_one<T: Owned>(chan: ChanOne<T>, data: T) -> bool {
+    let ChanOne { inner } = chan;
+    match inner {
+        Left(c) => pipesy::try_send_one(c, data),
+        Right(c) => c.try_send(data)
+    }
+}
+
+mod pipesy {
+
+    use kinds::Owned;
+    use option::{Option, Some, None};
+    use pipes::{recv, try_recv};
+
+    /*proto! oneshot (
+        Oneshot:send<T:Owned> {
+            send(T) -> !
+        }
+    )*/
+
+    #[allow(non_camel_case_types)]
+    pub mod oneshot {
+        priv use core::kinds::Owned;
+        use ptr::to_mut_unsafe_ptr;
+
+        pub fn init<T: Owned>() -> (client::Oneshot<T>, server::Oneshot<T>) {
+            pub use core::pipes::HasBuffer;
+
+            let buffer = ~::core::pipes::Buffer {
+                header: ::core::pipes::BufferHeader(),
+                data: __Buffer {
+                    Oneshot: ::core::pipes::mk_packet::<Oneshot<T>>()
+                },
+            };
+            do ::core::pipes::entangle_buffer(buffer) |buffer, data| {
+                data.Oneshot.set_buffer(buffer);
+                to_mut_unsafe_ptr(&mut data.Oneshot)
+            }
+        }
+        #[allow(non_camel_case_types)]
+        pub enum Oneshot<T> { pub send(T), }
+        #[allow(non_camel_case_types)]
+        pub struct __Buffer<T> {
+            Oneshot: ::core::pipes::Packet<Oneshot<T>>,
+        }
+
+        #[allow(non_camel_case_types)]
+        pub mod client {
+
+            priv use core::kinds::Owned;
+
+            #[allow(non_camel_case_types)]
+            pub fn try_send<T: Owned>(pipe: Oneshot<T>, x_0: T) ->
+                ::core::option::Option<()> {
+                {
+                    use super::send;
+                    let message = send(x_0);
+                    if ::core::pipes::send(pipe, message) {
+                        ::core::pipes::rt::make_some(())
+                    } else { ::core::pipes::rt::make_none() }
+                }
+            }
+
+            #[allow(non_camel_case_types)]
+            pub fn send<T: Owned>(pipe: Oneshot<T>, x_0: T) {
+                {
+                    use super::send;
+                    let message = send(x_0);
+                    ::core::pipes::send(pipe, message);
+                }
+            }
+
+            #[allow(non_camel_case_types)]
+            pub type Oneshot<T> =
+                ::core::pipes::SendPacketBuffered<super::Oneshot<T>,
+            super::__Buffer<T>>;
+        }
+
+        #[allow(non_camel_case_types)]
+        pub mod server {
+            #[allow(non_camel_case_types)]
+            pub type Oneshot<T> =
+                ::core::pipes::RecvPacketBuffered<super::Oneshot<T>,
+            super::__Buffer<T>>;
+        }
+    }
+
+    /// The send end of a oneshot pipe.
+    pub struct ChanOne<T> {
+        contents: oneshot::client::Oneshot<T>
+    }
+
+    impl<T> ChanOne<T> {
+        pub fn new(contents: oneshot::client::Oneshot<T>) -> ChanOne<T> {
+            ChanOne {
+                contents: contents
             }
         }
     }
-}
 
-/// Send a message on a oneshot pipe, failing if the connection was closed.
-pub fn send_one<T: Owned>(chan: ChanOne<T>, data: T) {
-    match chan {
-        ChanOne { contents: chan } => oneshot::client::send(chan, data),
+    /// The receive end of a oneshot pipe.
+    pub struct PortOne<T> {
+        contents: oneshot::server::Oneshot<T>
     }
-}
 
-/**
- * Send a message on a oneshot pipe, or return false if the connection was
- * closed.
- */
-pub fn try_send_one<T: Owned>(chan: ChanOne<T>, data: T) -> bool {
-    match chan {
-        ChanOne { contents: chan } => {
-            oneshot::client::try_send(chan, data).is_some()
+    impl<T> PortOne<T> {
+        pub fn new(contents: oneshot::server::Oneshot<T>) -> PortOne<T> {
+            PortOne {
+                contents: contents
+            }
         }
     }
+
+    /// Initialiase a (send-endpoint, recv-endpoint) oneshot pipe pair.
+    pub fn oneshot<T: Owned>() -> (PortOne<T>, ChanOne<T>) {
+        let (chan, port) = oneshot::init();
+        (PortOne::new(port), ChanOne::new(chan))
+    }
+
+    pub impl<T: Owned> PortOne<T> {
+        fn recv(self) -> T { recv_one(self) }
+        fn try_recv(self) -> Option<T> { try_recv_one(self) }
+        fn unwrap(self) -> oneshot::server::Oneshot<T> {
+            match self {
+                PortOne { contents: s } => s
+            }
+        }
+    }
+
+    pub impl<T: Owned> ChanOne<T> {
+        fn send(self, data: T) { send_one(self, data) }
+        fn try_send(self, data: T) -> bool { try_send_one(self, data) }
+        fn unwrap(self) -> oneshot::client::Oneshot<T> {
+            match self {
+                ChanOne { contents: s } => s
+            }
+        }
+    }
+
+    /**
+    * Receive a message from a oneshot pipe, failing if the connection was
+    * closed.
+    */
+    pub fn recv_one<T: Owned>(port: PortOne<T>) -> T {
+        match port {
+            PortOne { contents: port } => {
+                let oneshot::send(message) = recv(port);
+                message
+            }
+        }
+    }
+
+    /// Receive a message from a oneshot pipe unless the connection was closed.
+    pub fn try_recv_one<T: Owned> (port: PortOne<T>) -> Option<T> {
+        match port {
+            PortOne { contents: port } => {
+                let message = try_recv(port);
+
+                if message.is_none() {
+                    None
+                } else {
+                    let oneshot::send(message) = message.unwrap();
+                    Some(message)
+                }
+            }
+        }
+    }
+
+    /// Send a message on a oneshot pipe, failing if the connection was closed.
+    pub fn send_one<T: Owned>(chan: ChanOne<T>, data: T) {
+        match chan {
+            ChanOne { contents: chan } => oneshot::client::send(chan, data),
+        }
+    }
+
+    /**
+    * Send a message on a oneshot pipe, or return false if the connection was
+    * closed.
+    */
+    pub fn try_send_one<T: Owned>(chan: ChanOne<T>, data: T) -> bool {
+        match chan {
+            ChanOne { contents: chan } => {
+                oneshot::client::try_send(chan, data).is_some()
+            }
+        }
+    }
+
 }
-
-
 
 /// Returns the index of an endpoint that is ready to receive.
 pub fn selecti<T: Selectable>(endpoints: &mut [T]) -> uint {

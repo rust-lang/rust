@@ -244,5 +244,27 @@ mod test {
             info!("here i am. logging in a newsched task");
         }
     }
+
+    #[test]
+    fn comm_oneshot() {
+        use comm::*;
+
+        do run_in_newsched_task {
+            let (port, chan) = oneshot();
+            send_one(chan, 10);
+            assert!(recv_one(port) == 10);
+        }
+    }
+
+    #[test]
+    fn comm_stream() {
+        use comm::*;
+
+        do run_in_newsched_task() {
+            let (port, chan) = oneshot();
+            chan.send(10);
+            assert!(port.recv() == 10);
+        }
+    }
 }
 

@@ -15,11 +15,10 @@ use sort;
 
 use core::cell::Cell;
 use core::cmp;
-use core::comm::{PortOne, oneshot, send_one};
+use core::comm::{PortOne, oneshot, send_one, recv_one};
 use core::either::{Either, Left, Right};
 use core::hashmap::HashMap;
 use core::io;
-use core::pipes::recv;
 use core::run;
 use core::to_bytes;
 use core::util::replace;
@@ -389,9 +388,7 @@ fn unwrap<T:Owned +
         None => fail!(),
         Some(Left(v)) => v,
         Some(Right(port)) => {
-            let (exe, v) = match recv(port.unwrap()) {
-                oneshot::send(data) => data
-            };
+            let (exe, v) = recv_one(port);
 
             let s = json_encode(&v);
 
