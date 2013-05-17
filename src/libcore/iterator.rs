@@ -47,6 +47,9 @@ pub trait IteratorUtil<A> {
     #[cfg(not(stage0))]
     fn advance(&mut self, f: &fn(A) -> bool) -> bool;
     fn to_vec(self) -> ~[A];
+    fn nth(&mut self, n: uint) -> A;
+    fn first(&mut self) -> A;
+    fn last(&mut self) -> A;
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -145,6 +148,41 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
         let mut it = self;
         for it.advance() |x| { v.push(x); }
         return v;
+    }
+
+    /// Get `n`th element of an iterator.
+    #[inline(always)]
+    fn nth(&mut self, n: uint) -> A {
+        let mut i = n;
+        loop {
+            match self.next() {
+                Some(x) => { if i == 0 { return x; }}
+                None => { fail!("cannot get %uth element", n) }
+            }
+            i -= 1;
+        }
+    }
+
+    // Get first elemet of an iterator.
+    #[inline(always)]
+    fn first(&mut self) -> A {
+        match self.next() {
+            Some(x) => x ,
+            None => fail!("cannot get first element")
+        }
+    }
+
+    // Get last element of an iterator.
+    //
+    // If the iterator have an infinite length, this method won't return.
+    #[inline(always)]
+    fn last(&mut self) -> A {
+        let mut elm = match self.next() {
+            Some(x) => x,
+            None    => fail!("cannot get last element")
+        };
+        for self.advance |e| { elm = e; }
+        return elm;
     }
 }
 
@@ -566,5 +604,48 @@ mod tests {
             i += 1;
         }
         assert_eq!(i, 10);
+    }
+
+    #[test]
+    fn test_iterator_nth() {
+        let v = &[0, 1, 2, 3, 4];
+        for uint::range(0, v.len()) |i| {
+            assert_eq!(v.iter().nth(i), &v[i]);
+        }
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_iterator_nth_fail() {
+        let v = &[0, 1, 2, 3, 4];
+        v.iter().nth(5);
+    }
+
+    #[test]
+    fn test_iterator_first() {
+        let v = &[0, 1, 2, 3, 4];
+        assert_eq!(v.iter().first(), &0);
+        assert_eq!(v.slice(2, 5).iter().first(), &2);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_iterator_first_fail() {
+        let v: &[uint] = &[];
+        v.iter().first();
+    }
+
+    #[test]
+    fn test_iterator_last() {
+        let v = &[0, 1, 2, 3, 4];
+        assert_eq!(v.iter().last(), &4);
+        assert_eq!(v.slice(0, 1).iter().last(), &0);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_iterator_last_fail() {
+        let v: &[uint] = &[];
+        v.iter().last();
     }
 }
