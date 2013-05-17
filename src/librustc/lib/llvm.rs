@@ -1566,6 +1566,7 @@ pub mod llvm {
         /* Atomic Operations */
         pub unsafe fn LLVMBuildAtomicLoad(B: BuilderRef,
                                           PointerVal: ValueRef,
+                                          Name: *c_char,
                                           Order: AtomicOrdering)
                                        -> ValueRef;
 
