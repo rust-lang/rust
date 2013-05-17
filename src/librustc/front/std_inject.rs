@@ -16,23 +16,22 @@ use syntax::codemap;
 use syntax::codemap::dummy_sp;
 use syntax::fold;
 
-static CORE_VERSION: &'static str = "0.7-pre";
+static STD_VERSION: &'static str = "0.7-pre";
 
-pub fn maybe_inject_libcore_ref(sess: Session,
-                                crate: @ast::crate) -> @ast::crate {
-    if use_core(crate) {
-        inject_libcore_ref(sess, crate)
+pub fn maybe_inject_libstd_ref(sess: Session, crate: @ast::crate)
+                               -> @ast::crate {
+    if use_std(crate) {
+        inject_libstd_ref(sess, crate)
     } else {
         crate
     }
 }
 
-fn use_core(crate: @ast::crate) -> bool {
-    !attr::attrs_contains_name(crate.node.attrs, "no_core")
+fn use_std(crate: @ast::crate) -> bool {
+    !attr::attrs_contains_name(crate.node.attrs, "no_std")
 }
 
-fn inject_libcore_ref(sess: Session,
-                      crate: @ast::crate) -> @ast::crate {
+fn inject_libstd_ref(sess: Session, crate: @ast::crate) -> @ast::crate {
     fn spanned<T:Copy>(x: T) -> codemap::spanned<T> {
         codemap::spanned { node: x, span: dummy_sp() }
     }
@@ -48,7 +47,7 @@ fn inject_libcore_ref(sess: Session,
                         style: ast::attr_inner,
                         value: @spanned(ast::meta_name_value(
                             @~"vers",
-                            spanned(ast::lit_str(@CORE_VERSION.to_str()))
+                            spanned(ast::lit_str(@STD_VERSION.to_str()))
                         )),
                         is_sugared_doc: false
                     })

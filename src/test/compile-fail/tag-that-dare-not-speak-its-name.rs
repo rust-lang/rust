@@ -11,7 +11,7 @@
 // error-pattern:mismatched types: expected `char` but found
 // Issue #876
 
-#[no_core];
+#[no_std];
 
 extern mod core;
 
