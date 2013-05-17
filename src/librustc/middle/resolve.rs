@@ -16,47 +16,10 @@ use metadata::csearch::get_type_name_if_impl;
 use metadata::cstore::find_extern_mod_stmt_cnum;
 use metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 use middle::lang_items::LanguageItems;
-use middle::lint::{allow, level, unused_imports};
-use middle::lint::{get_lint_level, get_lint_settings_level};
+use middle::lint::unused_imports;
 use middle::pat_util::pat_bindings;
 
-use syntax::ast::{TyParamBound, ty_closure};
-use syntax::ast::{RegionTyParamBound, TraitTyParamBound, _mod, add, arm};
-use syntax::ast::{binding_mode, bitand, bitor, bitxor, blk};
-use syntax::ast::{bind_infer, bind_by_ref, bind_by_copy};
-use syntax::ast::{crate, decl_item, def, def_arg, def_binding};
-use syntax::ast::{def_const, def_foreign_mod, def_fn, def_id, def_label};
-use syntax::ast::{def_local, def_mod, def_prim_ty, def_region, def_self};
-use syntax::ast::{def_self_ty, def_static_method, def_struct, def_ty};
-use syntax::ast::{def_ty_param, def_typaram_binder, def_trait};
-use syntax::ast::{def_upvar, def_use, def_variant, explicit_self_, expr, expr_assign_op};
-use syntax::ast::{expr_binary, expr_break, expr_field};
-use syntax::ast::{expr_fn_block, expr_index, expr_method_call, expr_path};
-use syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
-use syntax::ast::{def_upvar, def_use, def_variant, div, eq};
-use syntax::ast::{expr, expr_again, expr_assign_op};
-use syntax::ast::{expr_index, expr_loop};
-use syntax::ast::{expr_path, expr_self, expr_struct, expr_unary, fn_decl};
-use syntax::ast::{foreign_item, foreign_item_const, foreign_item_fn, ge};
-use syntax::ast::Generics;
-use syntax::ast::{gt, ident, inherited, item, item_struct};
-use syntax::ast::{item_const, item_enum, item_fn, item_foreign_mod};
-use syntax::ast::{item_impl, item_mac, item_mod, item_trait, item_ty, le};
-use syntax::ast::{local, local_crate, lt, method, mul};
-use syntax::ast::{named_field, ne, neg, node_id, pat, pat_enum, pat_ident};
-use syntax::ast::{Path, pat_lit, pat_range, pat_struct};
-use syntax::ast::{prim_ty, private, provided};
-use syntax::ast::{public, required, rem, shl, shr, stmt_decl};
-use syntax::ast::{struct_field, struct_variant_kind};
-use syntax::ast::{sty_static, subtract, trait_ref, tuple_variant_kind, Ty};
-use syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
-use syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, TyParam, ty_path};
-use syntax::ast::{ty_str, ty_u, ty_u16, ty_u32, ty_u64, ty_u8, ty_uint};
-use syntax::ast::unnamed_field;
-use syntax::ast::{variant, view_item, view_item_extern_mod};
-use syntax::ast::{view_item_use, view_path_glob, view_path_list};
-use syntax::ast::{view_path_simple, anonymous, named, not};
-use syntax::ast::{unsafe_fn};
+use syntax::ast::*;
 use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ast_util::{Privacy, Public, Private};
@@ -66,6 +29,7 @@ use syntax::parse::token::ident_interner;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::path_to_str;
 use syntax::codemap::{span, dummy_sp, BytePos};
+use syntax::visit::{mk_simple_visitor, default_simple_visitor, SimpleVisitor};
 use syntax::visit::{default_visitor, mk_vt, Visitor, visit_block};
 use syntax::visit::{visit_crate, visit_expr, visit_expr_opt};
 use syntax::visit::{visit_foreign_item, visit_item};
@@ -346,18 +310,21 @@ pub struct ImportDirective {
     module_path: ~[ident],
     subclass: @ImportDirectiveSubclass,
     span: span,
+    id: node_id,
 }
 
 pub fn ImportDirective(privacy: Privacy,
                        module_path: ~[ident],
                        subclass: @ImportDirectiveSubclass,
-                       span: span)
+                       span: span,
+                       id: node_id)
                     -> ImportDirective {
     ImportDirective {
         privacy: privacy,
         module_path: module_path,
         subclass: subclass,
-        span: span
+        span: span,
+        id: id
     }
 }
 
@@ -381,7 +348,7 @@ pub struct ImportResolution {
     /// The privacy of this `use` directive (whether it's `use` or
     /// `pub use`.
     privacy: Privacy,
-    span: span,
+    id: node_id,
 
     // The number of outstanding references to this name. When this reaches
     // zero, outside modules can count on the targets being correct. Before
@@ -393,21 +360,16 @@ pub struct ImportResolution {
     value_target: Option<Target>,
     /// The type that this `use` directive names, if there is one.
     type_target: Option<Target>,
-
-    /// There exists one state per import statement
-    state: @mut ImportState,
 }
 
 pub fn ImportResolution(privacy: Privacy,
-                        span: span,
-                        state: @mut ImportState) -> ImportResolution {
+                        id: node_id) -> ImportResolution {
     ImportResolution {
         privacy: privacy,
-        span: span,
+        id: id,
         outstanding_references: 0,
         value_target: None,
         type_target: None,
-        state: state,
     }
 }
 
@@ -418,15 +380,6 @@ pub impl ImportResolution {
             ValueNS     => return copy self.value_target
         }
     }
-}
-
-pub struct ImportState {
-    used: bool,
-    warned: bool
-}
-
-pub fn ImportState() -> ImportState {
-    ImportState{ used: false, warned: false }
 }
 
 /// The link from a module up to its nearest parent node.
@@ -805,6 +758,7 @@ pub fn Resolver(session: Session,
         def_map: @mut HashMap::new(),
         export_map2: @mut HashMap::new(),
         trait_map: HashMap::new(),
+        used_imports: HashSet::new(),
 
         intr: session.intr()
     };
@@ -862,6 +816,8 @@ pub struct Resolver {
     def_map: DefMap,
     export_map2: ExportMap2,
     trait_map: TraitMap,
+
+    used_imports: HashSet<node_id>,
 }
 
 pub impl Resolver {
@@ -879,7 +835,7 @@ pub impl Resolver {
         self.resolve_crate();
         self.session.abort_if_errors();
 
-        self.check_for_unused_imports_if_necessary();
+        self.check_for_unused_imports();
     }
 
     //
@@ -1424,7 +1380,7 @@ pub impl Resolver {
                     // Build up the import directives.
                     let module_ = self.get_module_from_parent(parent);
                     match view_path.node {
-                        view_path_simple(binding, full_path, _) => {
+                        view_path_simple(binding, full_path, id) => {
                             let source_ident = *full_path.idents.last();
                             let subclass = @SingleImport(binding,
                                                          source_ident);
@@ -1432,7 +1388,8 @@ pub impl Resolver {
                                                         module_,
                                                         module_path,
                                                         subclass,
-                                                        view_path.span);
+                                                        view_path.span,
+                                                        id);
                         }
                         view_path_list(_, ref source_idents, _) => {
                             for source_idents.each |source_ident| {
@@ -1442,15 +1399,17 @@ pub impl Resolver {
                                                             module_,
                                                             copy module_path,
                                                             subclass,
-                                                            source_ident.span);
+                                                            source_ident.span,
+                                                            source_ident.node.id);
                             }
                         }
-                        view_path_glob(_, _) => {
+                        view_path_glob(_, id) => {
                             self.build_import_directive(privacy,
                                                         module_,
                                                         module_path,
                                                         @GlobImport,
-                                                        view_path.span);
+                                                        view_path.span,
+                                                        id);
                         }
                     }
                 }
@@ -1575,10 +1534,7 @@ pub impl Resolver {
                     // avoid creating cycles in the
                     // module graph.
 
-                    let resolution =
-                        @mut ImportResolution(Public,
-                                              dummy_sp(),
-                                              @mut ImportState());
+                    let resolution = @mut ImportResolution(Public, 0);
                     resolution.outstanding_references = 0;
 
                     match existing_module.parent_link {
@@ -1840,9 +1796,10 @@ pub impl Resolver {
                               module_: @mut Module,
                               module_path: ~[ident],
                               subclass: @ImportDirectiveSubclass,
-                              span: span) {
+                              span: span,
+                              id: node_id) {
         let directive = @ImportDirective(privacy, module_path,
-                                         subclass, span);
+                                         subclass, span, id);
         module_.imports.push(directive);
 
         // Bump the reference count on the name. Or, if this is a glob, set
@@ -1864,16 +1821,7 @@ pub impl Resolver {
                     }
                     None => {
                         debug!("(building import directive) creating new");
-                        let state = @mut ImportState();
-                        let resolution = @mut ImportResolution(privacy,
-                                                               span,
-                                                               state);
-                        let name = self.idents_to_str(directive.module_path);
-                        // Don't warn about unused intrinsics because they're
-                        // automatically appended to all files
-                        if name == ~"intrinsic::rusti" {
-                            resolution.state.warned = true;
-                        }
+                        let resolution = @mut ImportResolution(privacy, id);
                         resolution.outstanding_references = 1;
                         module_.import_resolutions.insert(target, resolution);
                     }
@@ -2069,13 +2017,12 @@ pub impl Resolver {
                                                        import_directive.span);
                     }
                     GlobImport => {
-                        let span = import_directive.span;
                         let privacy = import_directive.privacy;
                         resolution_result =
                             self.resolve_glob_import(privacy,
                                                      module_,
                                                      containing_module,
-                                                     span);
+                                                     import_directive.id);
                     }
                 }
             }
@@ -2202,7 +2149,8 @@ pub impl Resolver {
                             if import_resolution.outstanding_references
                                 == 0 => {
 
-                        fn get_binding(import_resolution:
+                        fn get_binding(this: @mut Resolver,
+                                       import_resolution:
                                           @mut ImportResolution,
                                        namespace: Namespace)
                                     -> NamespaceResult {
@@ -2219,7 +2167,7 @@ pub impl Resolver {
                                     return UnboundResult;
                                 }
                                 Some(target) => {
-                                    import_resolution.state.used = true;
+                                    this.used_imports.insert(import_resolution.id);
                                     return BoundResult(target.target_module,
                                                     target.bindings);
                                 }
@@ -2229,11 +2177,11 @@ pub impl Resolver {
                         // The name is an import which has been fully
                         // resolved. We can, therefore, just follow it.
                         if value_result.is_unknown() {
-                            value_result = get_binding(*import_resolution,
+                            value_result = get_binding(self, *import_resolution,
                                                        ValueNS);
                         }
                         if type_result.is_unknown() {
-                            type_result = get_binding(*import_resolution,
+                            type_result = get_binding(self, *import_resolution,
                                                       TypeNS);
                         }
                     }
@@ -2358,13 +2306,12 @@ pub impl Resolver {
                            privacy: Privacy,
                            module_: @mut Module,
                            containing_module: @mut Module,
-                           span: span)
+                           id: node_id)
                         -> ResolveResult<()> {
         // This function works in a highly imperative manner; it eagerly adds
         // everything it can to the list of import resolutions of the module
         // node.
         debug!("(resolving glob import) resolving %? glob import", privacy);
-        let state = @mut ImportState();
 
         // We must bail out if the node has unresolved imports of any kind
         // (including globs).
@@ -2390,9 +2337,7 @@ pub impl Resolver {
                 None if target_import_resolution.privacy == Public => {
                     // Simple: just copy the old import resolution.
                     let new_import_resolution =
-                        @mut ImportResolution(privacy,
-                                              target_import_resolution.span,
-                                              state);
+                        @mut ImportResolution(privacy, id);
                     new_import_resolution.value_target =
                         copy target_import_resolution.value_target;
                     new_import_resolution.type_target =
@@ -2434,9 +2379,7 @@ pub impl Resolver {
             match module_.import_resolutions.find(&ident) {
                 None => {
                     // Create a new import resolution from this child.
-                    dest_import_resolution = @mut ImportResolution(privacy,
-                                                                   span,
-                                                                   state);
+                    dest_import_resolution = @mut ImportResolution(privacy, id);
                     module_.import_resolutions.insert
                         (ident, dest_import_resolution);
                 }
@@ -2714,7 +2657,7 @@ pub impl Resolver {
                     Some(target) => {
                         debug!("(resolving item in lexical scope) using \
                                 import resolution");
-                        import_resolution.state.used = true;
+                        self.used_imports.insert(import_resolution.id);
                         return Success(copy target);
                     }
                 }
@@ -2985,7 +2928,7 @@ pub impl Resolver {
                             import_resolution.privacy == Public => {
                         debug!("(resolving name in module) resolved to \
                                 import");
-                        import_resolution.state.used = true;
+                        self.used_imports.insert(import_resolution.id);
                         return Success(copy target);
                     }
                     Some(_) => {
@@ -4466,7 +4409,7 @@ pub impl Resolver {
                                     namespace)) {
                             (Some(def), Some(Public)) => {
                                 // Found it.
-                                import_resolution.state.used = true;
+                                self.used_imports.insert(import_resolution.id);
                                 return ImportNameDefinition(def);
                             }
                             (Some(_), _) | (None, _) => {
@@ -5046,8 +4989,8 @@ pub impl Resolver {
                                             &mut found_traits,
                                             trait_def_id, name);
                                         if added {
-                                            import_resolution.state.used =
-                                                true;
+                                            self.used_imports.insert(
+                                                import_resolution.id);
                                         }
                                     }
                                     _ => {
@@ -5145,85 +5088,49 @@ pub impl Resolver {
     // resolve data structures.
     //
 
-    fn unused_import_lint_level(@mut self, m: @mut Module) -> level {
-        let settings = self.session.lint_settings;
-        match m.def_id {
-            Some(def) => get_lint_settings_level(settings, unused_imports,
-                                                 def.node, def.node),
-            None => get_lint_level(settings.default_settings, unused_imports)
-        }
+    fn check_for_unused_imports(@mut self) {
+        let vt = mk_simple_visitor(@SimpleVisitor {
+            visit_view_item: |vi| self.check_for_item_unused_imports(vi),
+            .. *default_simple_visitor()
+        });
+        visit_crate(self.crate, (), vt);
     }
 
-    fn check_for_unused_imports_if_necessary(@mut self) {
-        if self.unused_import_lint_level(self.current_module) == allow {
-            return;
-        }
+    fn check_for_item_unused_imports(&mut self, vi: @view_item) {
+        // Ignore public import statements because there's no way to be sure
+        // whether they're used or not. Also ignore imports with a dummy span
+        // because this means that they were generated in some fashion by the
+        // compiler and we don't need to consider them.
+        if vi.vis == public { return }
+        if vi.span == dummy_sp() { return }
 
-        let root_module = self.graph_root.get_module();
-        self.check_for_unused_imports_in_module_subtree(root_module);
-    }
+        match vi.node {
+            view_item_extern_mod(*) => {} // ignore
+            view_item_use(ref path) => {
+                for path.each |p| {
+                    match p.node {
+                        view_path_simple(_, _, id) | view_path_glob(_, id) => {
+                            if !self.used_imports.contains(&id) {
+                                self.session.add_lint(unused_imports,
+                                                      id, vi.span,
+                                                      ~"unused import");
+                            }
+                        }
 
-    fn check_for_unused_imports_in_module_subtree(@mut self,
-                                                  module_: @mut Module) {
-        // If this isn't a local crate, then bail out. We don't need to check
-        // for unused imports in external crates.
-
-        match module_.def_id {
-            Some(def_id) if def_id.crate == local_crate => {
-                // OK. Continue.
-            }
-            None => {
-                // Check for unused imports in the root module.
-            }
-            Some(_) => {
-                // Bail out.
-                debug!("(checking for unused imports in module subtree) not \
-                        checking for unused imports for `%s`",
-                       self.module_to_str(module_));
-                return;
-            }
-        }
-
-        self.check_for_unused_imports_in_module(module_);
-
-        for module_.children.each_value |&child_name_bindings| {
-            match (*child_name_bindings).get_module_if_available() {
-                None => {
-                    // Nothing to do.
-                }
-                Some(child_module) => {
-                    self.check_for_unused_imports_in_module_subtree
-                        (child_module);
+                        view_path_list(_, ref list, _) => {
+                            for list.each |i| {
+                                if !self.used_imports.contains(&i.node.id) {
+                                    self.session.add_lint(unused_imports,
+                                                          i.node.id, i.span,
+                                                          ~"unused import");
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
-
-        for module_.anonymous_children.each_value |&child_module| {
-            self.check_for_unused_imports_in_module_subtree(child_module);
-        }
     }
-
-    fn check_for_unused_imports_in_module(@mut self, module_: @mut Module) {
-        for module_.import_resolutions.each_value |&import_resolution| {
-            // Ignore dummy spans for things like automatically injected
-            // imports for the prelude, and also don't warn about the same
-            // import statement being unused more than once. Furthermore, if
-            // the import is public, then we can't be sure whether it's unused
-            // or not so don't warn about it.
-            if !import_resolution.state.used &&
-                    !import_resolution.state.warned &&
-                    import_resolution.span != dummy_sp() &&
-                    import_resolution.privacy != Public {
-                import_resolution.state.warned = true;
-                let span = import_resolution.span;
-                self.session.span_lint_level(
-                    self.unused_import_lint_level(module_),
-                    span,
-                    ~"unused import");
-            }
-        }
-    }
-
 
     //
     // Diagnostics

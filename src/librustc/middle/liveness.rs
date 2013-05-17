@@ -153,15 +153,13 @@ pub fn check_crate(tcx: ty::ctxt,
         visit_local: visit_local,
         visit_expr: visit_expr,
         visit_arm: visit_arm,
-        visit_item: visit_item,
         .. *visit::default_visitor()
     });
 
     let initial_maps = @mut IrMaps(tcx,
                                    method_map,
                                    variable_moves_map,
-                                   capture_map,
-                                   0);
+                                   capture_map);
     visit::visit_crate(crate, initial_maps, visitor);
     tcx.sess.abort_if_errors();
 }
@@ -240,15 +238,12 @@ struct IrMaps {
     capture_info_map: HashMap<node_id, @~[CaptureInfo]>,
     var_kinds: ~[VarKind],
     lnks: ~[LiveNodeKind],
-
-    cur_item: node_id,
 }
 
 fn IrMaps(tcx: ty::ctxt,
           method_map: typeck::method_map,
           variable_moves_map: moves::VariableMovesMap,
-          capture_map: moves::CaptureMap,
-          cur_item: node_id)
+          capture_map: moves::CaptureMap)
        -> IrMaps {
     IrMaps {
         tcx: tcx,
@@ -262,7 +257,6 @@ fn IrMaps(tcx: ty::ctxt,
         capture_info_map: HashMap::new(),
         var_kinds: ~[],
         lnks: ~[],
-        cur_item: cur_item,
     }
 }
 
@@ -341,13 +335,6 @@ pub impl IrMaps {
     }
 }
 
-fn visit_item(item: @item, this: @mut IrMaps, v: vt<@mut IrMaps>) {
-    let old_cur_item = this.cur_item;
-    this.cur_item = item.id;
-    visit::visit_item(item, this, v);
-    this.cur_item = old_cur_item;
-}
-
 fn visit_fn(fk: &visit::fn_kind,
             decl: &fn_decl,
             body: &blk,
@@ -362,8 +349,7 @@ fn visit_fn(fk: &visit::fn_kind,
     let fn_maps = @mut IrMaps(this.tcx,
                               this.method_map,
                               this.variable_moves_map,
-                              this.capture_map,
-                              this.cur_item);
+                              this.capture_map);
 
     unsafe {
         debug!("creating fn_maps: %x", transmute(&*fn_maps));
@@ -1802,13 +1788,11 @@ pub impl Liveness {
                 };
 
                 if is_assigned {
-                    self.tcx.sess.span_lint(unused_variable, id,
-                        self.ir.cur_item, sp,
+                    self.tcx.sess.add_lint(unused_variable, id, sp,
                         fmt!("variable `%s` is assigned to, \
                                   but never used", **name));
                 } else {
-                    self.tcx.sess.span_lint(unused_variable, id,
-                        self.ir.cur_item, sp,
+                    self.tcx.sess.add_lint(unused_variable, id, sp,
                         fmt!("unused variable: `%s`", **name));
                 }
             }
@@ -1821,8 +1805,7 @@ pub impl Liveness {
                               ln: LiveNode, var: Variable) {
         if self.live_on_exit(ln, var).is_none() {
             for self.should_warn(var).each |name| {
-                self.tcx.sess.span_lint(dead_assignment, id,
-                    self.ir.cur_item, sp,
+                self.tcx.sess.add_lint(dead_assignment, id, sp,
                     fmt!("value assigned to `%s` is never read", **name));
             }
         }
