@@ -8,14 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Clone, DeepClone)]
-enum E<T,U> {
-    A(T),
-    B(T,U),
-    C
+#[allow(while_true)];
+
+struct A(int);
+
+impl A {
+    fn foo(&self) { while true {} }
+
+    #[deny(while_true)]
+    fn bar(&self) { while true {} } //~ ERROR: infinite loops
 }
 
+#[deny(while_true)]
+mod foo {
+    struct B(int);
+
+    impl B {
+        fn foo(&self) { while true {} } //~ ERROR: infinite loops
+
+        #[allow(while_true)]
+        fn bar(&self) { while true {} }
+    }
+}
+
+#[deny(while_true)]
 fn main() {
-    let _ = A::<int, int>(1i).clone();
-    let _ = B(1i, 1.234).deep_clone();
+    while true {} //~ ERROR: infinite loops
 }

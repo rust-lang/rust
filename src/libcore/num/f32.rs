@@ -414,6 +414,12 @@ impl Trigonometric for f32 {
 
     #[inline(always)]
     fn atan2(&self, other: f32) -> f32 { atan2(*self, other) }
+
+    /// Simultaneously computes the sine and cosine of the number
+    #[inline(always)]
+    fn sin_cos(&self) -> (f32, f32) {
+        (self.sin(), self.cos())
+    }
 }
 
 impl Exponential for f32 {

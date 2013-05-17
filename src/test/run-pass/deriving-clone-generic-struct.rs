@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deriving(Clone)]
+#[deriving(Clone, DeepClone)]
 struct S<T> {
     foo: (),
     bar: (),
     baz: T,
 }
 
-pub fn main() {}
+pub fn main() {
+    let _ = S { foo: (), bar: (), baz: 1i }.clone().deep_clone();
+}

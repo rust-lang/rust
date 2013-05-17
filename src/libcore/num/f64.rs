@@ -426,6 +426,12 @@ impl Trigonometric for f64 {
 
     #[inline(always)]
     fn atan2(&self, other: f64) -> f64 { atan2(*self, other) }
+
+    /// Simultaneously computes the sine and cosine of the number
+    #[inline(always)]
+    fn sin_cos(&self) -> (f64, f64) {
+        (self.sin(), self.cos())
+    }
 }
 
 impl Exponential for f64 {

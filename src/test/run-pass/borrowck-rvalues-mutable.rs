@@ -8,22 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(dead_assignment)];
-
-fn f1(x: &mut int) {
-    *x = 1; // no error
+struct Counter {
+    value: uint
 }
 
-fn f2() {
-    let mut x = 3; //~ ERROR: value assigned to `x` is never read
-    x = 4;
-    copy x;
+impl Counter {
+    fn new(v: uint) -> Counter {
+        Counter {value: v}
+    }
+
+    fn get_and_inc(&mut self) -> uint {
+        let v = self.value;
+        self.value += 1;
+        v
+    }
 }
 
-fn f3() {
-    let mut x = 3;
-    copy x;
-    x = 4; //~ ERROR: value assigned to `x` is never read
+pub fn main() {
+    let v = Counter::new(22).get_and_inc();
+    assert_eq!(v, 22);
 }
-
-fn main() {}

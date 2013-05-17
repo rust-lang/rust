@@ -171,7 +171,6 @@ pub mod write {
     use back::link::{output_type_assembly, output_type_bitcode};
     use back::link::{output_type_exe, output_type_llvm_assembly};
     use back::link::{output_type_object};
-    use back::link::output_type;
     use driver::session::Session;
     use driver::session;
     use lib::llvm::llvm;

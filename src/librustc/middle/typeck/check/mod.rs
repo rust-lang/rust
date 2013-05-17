@@ -1661,7 +1661,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let (expected_sig,
              expected_purity,
              expected_sigil,
-             expected_onceness) = {
+             expected_onceness,
+             expected_bounds) = {
             match expected_sty {
                 Some(ty::ty_closure(ref cenv)) => {
                     let id = expr.id;
@@ -1669,11 +1670,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                         replace_bound_regions_in_fn_sig(
                             tcx, @Nil, None, &cenv.sig,
                             |br| ty::re_bound(ty::br_cap_avoid(id, @br)));
-                    (Some(sig), cenv.purity, cenv.sigil, cenv.onceness)
+                    (Some(sig), cenv.purity, cenv.sigil,
+                     cenv.onceness, cenv.bounds)
                 }
                 _ => {
                     // Not an error! Means we're inferring the closure type
-                    (None, ast::impure_fn, ast::BorrowedSigil, ast::Many)
+                    (None, ast::impure_fn, ast::BorrowedSigil,
+                     ast::Many, ty::EmptyBuiltinBounds())
                 }
             }
         };
@@ -1687,15 +1690,16 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         // construct the function type
         let fn_ty = astconv::ty_of_closure(fcx,
-                                               fcx,
-                                               sigil,
-                                               purity,
-                                               expected_onceness,
-                                               None,
-                                               decl,
-                                               expected_sig,
-                                               &opt_vec::Empty,
-                                               expr.span);
+                                           fcx,
+                                           sigil,
+                                           purity,
+                                           expected_onceness,
+                                           expected_bounds,
+                                           None,
+                                           decl,
+                                           expected_sig,
+                                           &opt_vec::Empty,
+                                           expr.span);
 
         let fty_sig;
         let fty = if error_happened {
@@ -3526,6 +3530,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
             sigil: ast::BorrowedSigil,
             onceness: ast::Once,
             region: ty::re_bound(ty::br_anon(0)),
+            bounds: ty::EmptyBuiltinBounds(),
             sig: ty::FnSig {
                 bound_lifetime_names: opt_vec::Empty,
                 inputs: ~[ty::mk_imm_ptr(ccx.tcx, ty::mk_mach_uint(ast::ty_u8))],

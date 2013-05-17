@@ -330,6 +330,7 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
                 sigil: sigil,
                 onceness: ast::Many,
                 region: ty::re_static,
+                bounds: ty::EmptyBuiltinBounds(),
                 sig: ty::FnSig {bound_lifetime_names: opt_vec::Empty,
                                 inputs: ~[],
                                 output: ty::mk_nil()}})

@@ -234,14 +234,13 @@ pub fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
     }
 }
 
-// Given a def_id for an impl or class, return the traits it implements,
-// or the empty vector if it's not for an impl or for a class that implements
-// traits
-pub fn get_impl_traits(tcx: ty::ctxt,
-                       def: ast::def_id) -> ~[@ty::TraitRef] {
+// Given a def_id for an impl, return the trait it implements,
+// if there is one.
+pub fn get_impl_trait(tcx: ty::ctxt,
+                      def: ast::def_id) -> Option<@ty::TraitRef> {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_impl_traits(cdata, def.node, tcx)
+    decoder::get_impl_trait(cdata, def.node, tcx)
 }
 
 pub fn get_impl_method(cstore: @mut cstore::CStore,

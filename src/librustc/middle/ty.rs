@@ -22,7 +22,7 @@ use middle::typeck;
 use middle;
 use util::ppaux::{note_and_explain_region, bound_region_to_str};
 use util::ppaux::{trait_store_to_str, ty_to_str, vstore_to_str};
-use util::ppaux::Repr;
+use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
 use util::enum_set::{EnumSet, CLike};
 
@@ -390,7 +390,8 @@ pub struct ClosureTy {
     sigil: ast::Sigil,
     onceness: ast::Onceness,
     region: Region,
-    sig: FnSig
+    bounds: BuiltinBounds,
+    sig: FnSig,
 }
 
 /**
@@ -685,6 +686,7 @@ pub enum type_err {
     terr_int_mismatch(expected_found<IntVarValue>),
     terr_float_mismatch(expected_found<ast::float_ty>),
     terr_traits(expected_found<ast::def_id>),
+    terr_builtin_bounds(expected_found<BuiltinBounds>),
 }
 
 #[deriving(Eq, IterBytes)]
@@ -705,6 +707,15 @@ pub enum BuiltinBound {
 
 pub fn EmptyBuiltinBounds() -> BuiltinBounds {
     EnumSet::empty()
+}
+
+pub fn AllBuiltinBounds() -> BuiltinBounds {
+    let mut set = EnumSet::empty();
+    set.add(BoundCopy);
+    set.add(BoundStatic);
+    set.add(BoundOwned);
+    set.add(BoundConst);
+    set
 }
 
 impl CLike for BuiltinBound {
@@ -3169,6 +3180,7 @@ pub fn adjust_ty(cx: ctxt,
                                        sigil: s,
                                        onceness: ast::Many,
                                        region: r,
+                                       bounds: ty::AllBuiltinBounds(),
                                        sig: copy b.sig})
                 }
                 ref b => {
@@ -3697,6 +3709,19 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
                  item_path_str(cx, values.expected),
                  item_path_str(cx, values.found))
         }
+        terr_builtin_bounds(values) => {
+            if values.expected.is_empty() {
+                fmt!("expected no bounds but found `%s`",
+                     values.found.user_string(cx))
+            } else if values.found.is_empty() {
+                fmt!("expected bounds `%s` but found no bounds",
+                     values.expected.user_string(cx))
+            } else {
+                fmt!("expected bounds `%s` but found bounds `%s`",
+                     values.expected.user_string(cx),
+                     values.found.user_string(cx))
+            }
+        }
         terr_self_substs => {
             ~"inconsistent self substitution" // XXX this is more of a bug
         }
@@ -3858,23 +3883,23 @@ pub fn trait_method_def_ids(cx: ctxt, id: ast::def_id) -> @~[def_id] {
         || @csearch::get_trait_method_def_ids(cx.cstore, id))
 }
 
-pub fn impl_trait_refs(cx: ctxt, id: ast::def_id) -> ~[@TraitRef] {
+pub fn impl_trait_ref(cx: ctxt, id: ast::def_id) -> Option<@TraitRef> {
     if id.crate == ast::local_crate {
-        debug!("(impl_traits) searching for trait impl %?", id);
+        debug!("(impl_trait_ref) searching for trait impl %?", id);
         match cx.items.find(&id.node) {
            Some(&ast_map::node_item(@ast::item {
                         node: ast::item_impl(_, opt_trait, _, _),
                         _},
                     _)) => {
                match opt_trait {
-                   Some(t) => ~[ty::node_id_to_trait_ref(cx, t.ref_id)],
-                   None => ~[]
+                   Some(t) => Some(ty::node_id_to_trait_ref(cx, t.ref_id)),
+                   None => None
                }
            }
-           _ => ~[]
+           _ => None
         }
     } else {
-        csearch::get_impl_traits(cx, id)
+        csearch::get_impl_trait(cx, id)
     }
 }
 

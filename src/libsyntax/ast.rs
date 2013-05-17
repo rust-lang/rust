@@ -828,7 +828,8 @@ pub struct TyClosure {
     lifetimes: OptVec<Lifetime>,
     purity: purity,
     onceness: Onceness,
-    decl: fn_decl
+    decl: fn_decl,
+    bounds: OptVec<TyParamBound>
 }
 
 #[deriving(Eq, Encodable, Decodable)]

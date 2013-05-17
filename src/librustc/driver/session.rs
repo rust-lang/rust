@@ -26,6 +26,8 @@ use syntax::{ast, codemap};
 use syntax::abi;
 use syntax;
 
+use core::hashmap::HashMap;
+
 #[deriving(Eq)]
 pub enum os { os_win32, os_macos, os_linux, os_android, os_freebsd, }
 
@@ -170,7 +172,7 @@ pub struct Session_ {
     filesearch: @filesearch::FileSearch,
     building_library: @mut bool,
     working_dir: Path,
-    lint_settings: lint::LintSettings
+    lints: @mut HashMap<ast::node_id, ~[(lint::lint, codemap::span, ~str)]>,
 }
 
 pub type Session = @Session_;
@@ -221,24 +223,12 @@ pub impl Session_ {
     fn unimpl(@self, msg: &str) -> ! {
         self.span_diagnostic.handler().unimpl(msg)
     }
-    fn span_lint_level(@self, level: lint::level, sp: span, msg: &str) {
-        match level {
-          lint::allow => { },
-          lint::warn => self.span_warn(sp, msg),
-          lint::deny | lint::forbid => {
-            self.span_err(sp, msg);
-          }
+    fn add_lint(@self, lint: lint::lint, id: ast::node_id, sp: span, msg: ~str) {
+        match self.lints.find_mut(&id) {
+            Some(arr) => { arr.push((lint, sp, msg)); return; }
+            None => {}
         }
-    }
-    fn span_lint(@self, lint_mode: lint::lint,
-                 expr_id: ast::node_id,
-                 item_id: ast::node_id,
-                 span: span,
-                 msg: &str) {
-        let level = lint::get_lint_settings_level(
-            self.lint_settings, lint_mode, expr_id, item_id);
-        let msg = fmt!("%s [-W %s]", msg, lint::get_lint_name(lint_mode));
-        self.span_lint_level(level, span, msg);
+        self.lints.insert(id, ~[(lint, sp, msg)]);
     }
     fn next_node_id(@self) -> ast::node_id {
         return syntax::parse::next_node_id(self.parse_sess);
