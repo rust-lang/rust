@@ -1825,26 +1825,6 @@ pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) {
 }
 
 /**
- * Iterate over all permutations of vector `values`.
- *
- * This is an alternative to each_permutation that uses references to
- * avoid copying the elements of the values vector.
- *
- * To avoid copying, the iterator will be passed a reference to a vector
- * containing references to the elements in the original `values` vector.
- *
- * # Arguments
- *
- * * `values` - A vector of values from which the permutations are chosen
- *
- * * `fun` - The function to iterate over the permutations
- */
-#[cfg(not(stage0))]
-pub fn each_permutation_ref<T>(values : &[T], fun : &fn(perm : &[&T]) -> bool) {
-    each_permutation(vec::from_fn(values.len(), |i| &values[i]), fun);
-}
-
-/**
  * Iterate over all contiguous windows of length `n` of the vector `v`.
  *
  * # Example
@@ -4828,30 +4808,10 @@ mod tests {
     }
 
     #[test]
-    fn test_permutations0_ref() {
-        let values = [];
-        let mut v : ~[~[int]] = ~[];
-        for each_permutation_ref(values) |p| {
-            v.push(p.to_owned());
-        }
-        assert_eq!(v, ~[~[]]);
-    }
-
-    #[test]
     fn test_permutations1() {
         let values = [1];
         let mut v : ~[~[int]] = ~[];
         for each_permutation(values) |p| {
-            v.push(p.to_owned());
-        }
-        assert_eq!(v, ~[~[1]]);
-    }
-
-    #[test]
-    fn test_permutations1_ref() {
-        let values = [1];
-        let mut v : ~[~[int]] = ~[];
-        for each_permutation_ref(values) |p| {
             v.push(p.to_owned());
         }
         assert_eq!(v, ~[~[1]]);
@@ -4868,30 +4828,10 @@ mod tests {
     }
 
     #[test]
-    fn test_permutations2_ref() {
-        let values = [1,2];
-        let mut v : ~[~[int]] = ~[];
-        for each_permutation_ref(values) |p| {
-            v.push(p.to_owned());
-        }
-        assert_eq!(v, ~[~[1,2],~[2,1]]);
-    }
-
-    #[test]
     fn test_permutations3() {
         let values = [1,2,3];
         let mut v : ~[~[int]] = ~[];
         for each_permutation(values) |p| {
-            v.push(p.to_owned());
-        }
-        assert_eq!(v, ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]]);
-    }
-
-    #[test]
-    fn test_permutations3_ref() {
-        let values = [1,2,3];
-        let mut v : ~[~[int]] = ~[];
-        for each_permutation_ref(values) |p| {
             v.push(p.to_owned());
         }
         assert_eq!(v, ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]]);
