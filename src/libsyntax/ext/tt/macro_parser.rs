@@ -19,7 +19,7 @@ use codemap;
 use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
 use parse::parser::Parser;
-use parse::token::{Token, EOF, to_str, nonterminal};
+use parse::token::{Token, EOF, to_str, nonterminal, get_ident_interner};
 use parse::token;
 
 use core::hashmap::HashMap;
@@ -205,7 +205,7 @@ pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
           } => {
             if ret_val.contains_key(&bind_name) {
                 p_s.span_diagnostic.span_fatal(sp, ~"Duplicated bind name: "+
-                                               *p_s.interner.get(bind_name))
+                                               *get_ident_interner().get(bind_name))
             }
             ret_val.insert(bind_name, res[idx]);
           }
@@ -373,8 +373,8 @@ pub fn parse(
                 let nts = str::connect(vec::map(bb_eis, |ei| {
                     match ei.elts[ei.idx].node {
                       match_nonterminal(bind,name,_) => {
-                        fmt!("%s ('%s')", *sess.interner.get(name),
-                             *sess.interner.get(bind))
+                        fmt!("%s ('%s')", *get_ident_interner().get(name),
+                             *get_ident_interner().get(bind))
                       }
                       _ => fail!()
                     } }), " or ");
@@ -384,7 +384,7 @@ pub fn parse(
                     nts, next_eis.len()));
             } else if (bb_eis.len() == 0u && next_eis.len() == 0u) {
                 return failure(sp, ~"No rules expected the token: "
-                            + to_str(rdr.interner(), &tok));
+                            + to_str(get_ident_interner(), &tok));
             } else if (next_eis.len() > 0u) {
                 /* Now process the next token */
                 while(next_eis.len() > 0u) {
@@ -398,7 +398,7 @@ pub fn parse(
                 match ei.elts[ei.idx].node {
                   match_nonterminal(_, name, idx) => {
                     ei.matches[idx].push(@matched_nonterminal(
-                        parse_nt(&rust_parser, *sess.interner.get(name))));
+                        parse_nt(&rust_parser, *get_ident_interner().get(name))));
                     ei.idx += 1u;
                   }
                   _ => fail!()
@@ -430,7 +430,7 @@ pub fn parse_nt(p: &Parser, name: &str) -> nonterminal {
       "ident" => match *p.token {
         token::IDENT(sn,b) => { p.bump(); token::nt_ident(sn,b) }
         _ => p.fatal(~"expected ident, found "
-                     + token::to_str(p.reader.interner(), &copy *p.token))
+                     + token::to_str(get_ident_interner(), &copy *p.token))
       },
       "path" => token::nt_path(p.parse_path_with_tps(false)),
       "tt" => {

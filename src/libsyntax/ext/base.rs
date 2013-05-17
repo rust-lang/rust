@@ -19,7 +19,7 @@ use diagnostic::span_handler;
 use ext;
 use parse;
 use parse::token;
-use parse::token::{intern};
+use parse::token::{intern, get_ident_interner};
 
 use core::hashmap::HashMap;
 use core::vec;
@@ -310,10 +310,10 @@ impl ExtCtxt {
         *self.trace_mac = x
     }
     pub fn str_of(&self, id: ast::ident) -> ~str {
-        copy *self.parse_sess.interner.get(id)
+        copy *get_ident_interner().get(id)
     }
     pub fn ident_of(&self, st: &str) -> ast::ident {
-        self.parse_sess.interner.intern(st)
+        get_ident_interner().intern(st)
     }
 }
 

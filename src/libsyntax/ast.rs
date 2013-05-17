@@ -81,15 +81,13 @@ pub type Mrk = uint;
 
 impl<S:Encoder> Encodable<S> for ident {
     fn encode(&self, s: &mut S) {
-        let intr = get_ident_interner();
-        s.emit_str(*(*intr).get(*self));
+        s.emit_str(*get_ident_interner().get(*self));
     }
 }
 
 impl<D:Decoder> Decodable<D> for ident {
     fn decode(d: &mut D) -> ident {
-        let intr = get_ident_interner();
-        (*intr).intern(d.read_str())
+        get_ident_interner().intern(d.read_str())
     }
 }
 

@@ -15,7 +15,7 @@ use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
 use codemap::{span, dummy_sp};
 use diagnostic::span_handler;
 use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
-use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident, ident_interner};
+use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident, ident_interner, get_ident_interner};
 use parse::lexer::TokenAndSpan;
 
 use core::hashmap::HashMap;
@@ -93,7 +93,7 @@ fn dup_tt_frame(f: @mut TtFrame) -> @mut TtFrame {
 pub fn dup_tt_reader(r: @mut TtReader) -> @mut TtReader {
     @mut TtReader {
         sp_diag: r.sp_diag,
-        interner: r.interner,
+        interner: get_ident_interner(),
         stack: dup_tt_frame(r.stack),
         repeat_idx: copy r.repeat_idx,
         repeat_len: copy r.repeat_len,
@@ -144,8 +144,8 @@ fn lockstep_iter_size(t: &token_tree, r: &mut TtReader) -> lis {
             lis_contradiction(_) => copy rhs,
             lis_constraint(r_len, _) if l_len == r_len => copy lhs,
             lis_constraint(r_len, r_id) => {
-                let l_n = copy *r.interner.get(l_id);
-                let r_n = copy *r.interner.get(r_id);
+                let l_n = copy *get_ident_interner().get(l_id);
+                let r_n = copy *get_ident_interner().get(r_id);
                 lis_contradiction(fmt!("Inconsistent lockstep iteration: \
                                        '%s' has %u items, but '%s' has %u",
                                         l_n, l_len, r_n, r_len))
@@ -295,7 +295,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 r.sp_diag.span_fatal(
                     copy r.cur_span, /* blame the macro writer */
                     fmt!("variable '%s' is still repeating at this depth",
-                         *r.interner.get(ident)));
+                         *get_ident_interner().get(ident)));
               }
             }
           }

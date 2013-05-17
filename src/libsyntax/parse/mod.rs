@@ -314,7 +314,7 @@ pub fn filemap_to_tts(sess: @mut ParseSess, filemap: @FileMap)
     let cfg = ~[];
     let srdr = lexer::new_string_reader(copy sess.span_diagnostic,
                                         filemap,
-                                        sess.interner);
+                                        get_ident_interner());
     let p1 = Parser(sess, cfg, srdr as @reader);
     p1.parse_all_token_trees()
 }
@@ -325,7 +325,7 @@ pub fn tts_to_parser(sess: @mut ParseSess,
                      cfg: ast::crate_cfg) -> Parser {
     let trdr = lexer::new_tt_reader(
         copy sess.span_diagnostic,
-        sess.interner,
+        get_ident_interner(),
         None,
         tts
     );

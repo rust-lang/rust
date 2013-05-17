@@ -735,6 +735,7 @@ mod test {
     use codemap;
     use codemap::spanned;
     use parse;
+    use parse::token::{get_ident_interner};
     use core::io;
     use core::option::{None, Some};
     use util::parser_testing::{string_to_item_and_sess};
