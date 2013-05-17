@@ -101,7 +101,6 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
-use core::container::Set; // XXX: this should not be necessary
 use core::to_bytes;
 use syntax::ast;
 use syntax::codemap::span;
