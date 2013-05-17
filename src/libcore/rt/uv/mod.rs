@@ -362,7 +362,7 @@ pub type Buf = uvll::uv_buf_t;
 
 /// Borrow a slice to a Buf
 pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
-    let data = unsafe { vec::raw::to_ptr(v) };
+    let data = vec::raw::to_ptr(v);
     unsafe { uvll::buf_init(data, v.len()) }
 }
 
