@@ -198,8 +198,8 @@ pub fn compile_rest(sess: Session,
     crate = time(time_passes, ~"intrinsic injection", ||
         front::intrinsic_inject::inject_intrinsic(sess, crate));
 
-    crate = time(time_passes, ~"core injection", ||
-        front::core_inject::maybe_inject_libcore_ref(sess, crate));
+    crate = time(time_passes, ~"std injection", ||
+        front::std_inject::maybe_inject_libstd_ref(sess, crate));
 
     let ast_map = time(time_passes, ~"ast indexing", ||
             syntax::ast_map::map_crate(sess.diagnostic(), crate));

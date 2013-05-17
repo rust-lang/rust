@@ -10,7 +10,7 @@
 
 // xfail-fast
 
-#[no_core];
+#[no_std];
 
 extern mod core;
 

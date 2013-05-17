@@ -57,8 +57,9 @@ they contained the following prologue:
 #[crate_type = "lib"];
 
 
-// Don't link to core. We are core.
-#[no_core];
+// Don't link to std. We are std.
+#[no_core]; // for stage0
+#[no_std];
 
 #[deny(non_camel_case_types)];
 
