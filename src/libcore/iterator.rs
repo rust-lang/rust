@@ -34,6 +34,7 @@ pub trait IteratorUtil<A> {
     // FIXME: #5898: should be called map
     fn transform<'r, B>(self, f: &'r fn(A) -> B) -> MapIterator<'r, A, B, Self>;
     fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> FilterIterator<'r, A, Self>;
+    fn filter_map<'r,  B>(self, f: &'r fn(A) -> Option<B>) -> FilterMapIterator<'r, A, B, Self>;
     fn enumerate(self) -> EnumerateIterator<Self>;
     fn skip_while<'r>(self, predicate: &'r fn(&A) -> bool) -> SkipWhileIterator<'r, A, Self>;
     fn take_while<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhileIterator<'r, A, Self>;
@@ -72,6 +73,11 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline(always)]
     fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> FilterIterator<'r, A, T> {
         FilterIterator{iter: self, predicate: predicate}
+    }
+
+    #[inline(always)]
+    fn filter_map<'r, B>(self, f: &'r fn(A) -> Option<B>) -> FilterMapIterator<'r, A, B, T> {
+        FilterMapIterator { iter: self, f: f }
     }
 
     #[inline(always)]
@@ -210,6 +216,28 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for FilterIterator<'self, A, T> {
             }
         }
         None
+    }
+}
+
+pub struct FilterMapIterator<'self, A, B, T> {
+    priv iter: T,
+    priv f: &'self fn(A) -> Option<B>
+}
+
+impl<'self, A, B, T: Iterator<A>> Iterator<B> for FilterMapIterator<'self, A, B, T> {
+    #[inline]
+    fn next(&mut self) -> Option<B> {
+        loop {
+            match self.iter.next() {
+                None    => { return None; }
+                Some(a) => {
+                    match (self.f)(a) {
+                        Some(b) => { return Some(b); }
+                        None    => { loop; }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -430,6 +458,13 @@ mod tests {
             i += 1;
         }
         assert_eq!(i, expected.len());
+    }
+
+    #[test]
+    fn test_filter_map() {
+        let it  = Counter::new(0u, 1u).take(10)
+            .filter_map(|x: uint| if x.is_even() { Some(x*x) } else { None });
+        assert_eq!(it.to_vec(), ~[0*0, 2*2, 4*4, 6*6, 8*8]);
     }
 
     #[test]
