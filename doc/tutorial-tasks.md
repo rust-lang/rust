@@ -236,7 +236,6 @@ Instead we can use a `SharedChan`, a type that allows a single
 ~~~
 # use core::task::spawn;
 # use core::comm::{stream, SharedChan};
-use core::comm::SharedChan;
 
 let (port, chan) = stream();
 let chan = SharedChan::new(chan);
@@ -291,13 +290,15 @@ later.
 
 The basic example below illustrates this.
 ~~~
+# fn make_a_sandwich() {};
 fn fib(n: uint) -> uint {
     // lengthy computation returning an uint
+    12586269025
 }
 
-let mut delayed_fib = future::spawn (|| fib(5000) );
+let mut delayed_fib = std::future::spawn (|| fib(50) );
 make_a_sandwich();
-println(fmt!("fib(5000) = %?", delayed_fib.get()))
+println(fmt!("fib(50) = %?", delayed_fib.get()))
 ~~~
 
 The call to `future::spawn` returns immediately a `future` object regardless of how long it
