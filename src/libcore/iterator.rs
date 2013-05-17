@@ -45,6 +45,7 @@ pub trait IteratorUtil<A> {
     fn advance(&mut self, f: &fn(A) -> bool);
     #[cfg(not(stage0))]
     fn advance(&mut self, f: &fn(A) -> bool) -> bool;
+    fn to_vec(self) -> ~[A];
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -130,6 +131,14 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
                 None => { return true; }
             }
         }
+    }
+
+    #[inline(always)]
+    fn to_vec(self) -> ~[A] {
+        let mut v = ~[];
+        let mut it = self;
+        for it.advance() |x| { v.push(x); }
+        return v;
     }
 }
 
