@@ -12,7 +12,7 @@
 
 // Extending Num and using inherited static methods
 
-use core::num::NumCast::from;
+use core::num::NumCast;
 
 trait Num {
     fn from_int(i: int) -> Self;
@@ -22,7 +22,7 @@ trait Num {
 pub trait NumExt: Num + NumCast { }
 
 fn greater_than_one<T:NumExt>(n: &T) -> bool {
-    n.gt(&from(1))
+    n.gt(&NumCast::from(1))
 }
 
 pub fn main() {}

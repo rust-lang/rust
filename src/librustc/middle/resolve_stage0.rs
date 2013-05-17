@@ -57,6 +57,7 @@ use syntax::ast::{variant, view_item, view_item_extern_mod};
 use syntax::ast::{view_item_use, view_path_glob, view_path_list};
 use syntax::ast::{view_path_simple, anonymous, named, not};
 use syntax::ast::{unsafe_fn};
+use syntax::ast;
 use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ast_util::{Privacy, Public, Private};
@@ -1393,10 +1394,8 @@ pub impl Resolver {
         }
     }
 
-    /**
-     * Constructs the reduced graph for one 'view item'. View items consist
-     * of imports and use directives.
-     */
+    /// Constructs the reduced graph for one 'view item'. View items consist
+    /// of imports and use directives.
     fn build_reduced_graph_for_view_item(@mut self,
                                          view_item: @view_item,
                                          parent: ReducedGraphParent,
@@ -1549,11 +1548,13 @@ pub impl Resolver {
 
     fn handle_external_def(@mut self,
                            def: def,
+                           visibility: ast::visibility,
                            modules: &mut HashMap<def_id, @mut Module>,
                            child_name_bindings: @mut NameBindings,
                            final_ident: &str,
                            ident: ident,
                            new_parent: ReducedGraphParent) {
+        let privacy = visibility_to_privacy(visibility);
         match def {
           def_mod(def_id) | def_foreign_mod(def_id) => {
             match child_name_bindings.type_def {
@@ -1571,7 +1572,7 @@ pub impl Resolver {
 
                 // FIXME (#5074): this should be a match on find
                 if !modules.contains_key(&def_id) {
-                    child_name_bindings.define_module(Public,
+                    child_name_bindings.define_module(privacy,
                                                       parent_link,
                                                       Some(def_id),
                                                       NormalModuleKind,
@@ -1580,12 +1581,12 @@ pub impl Resolver {
                                    child_name_bindings.get_module());
                 } else {
                     let existing_module = *modules.get(&def_id);
-                    // Create an import resolution to
-                    // avoid creating cycles in the
-                    // module graph.
+
+                    // Create an import resolution to avoid creating cycles in
+                    // the module graph.
 
                     let resolution =
-                        @mut ImportResolution(Public,
+                        @mut ImportResolution(privacy,
                                               dummy_sp(),
                                               @mut ImportState());
                     resolution.outstanding_references = 0;
@@ -1615,7 +1616,7 @@ pub impl Resolver {
           def_variant(*) => {
             debug!("(building reduced graph for external \
                     crate) building value %s", final_ident);
-            child_name_bindings.define_value(Public, def, dummy_sp());
+            child_name_bindings.define_value(privacy, def, dummy_sp());
           }
           def_trait(def_id) => {
               debug!("(building reduced graph for external \
@@ -1650,13 +1651,13 @@ pub impl Resolver {
               debug!("(building reduced graph for external \
                       crate) building type %s", final_ident);
 
-              child_name_bindings.define_type(Public, def, dummy_sp());
+              child_name_bindings.define_type(privacy, def, dummy_sp());
           }
           def_struct(def_id) => {
             debug!("(building reduced graph for external \
                     crate) building type %s",
                    final_ident);
-            child_name_bindings.define_type(Public, def, dummy_sp());
+            child_name_bindings.define_type(privacy, def, dummy_sp());
             self.structs.insert(def_id);
           }
           def_self(*) | def_arg(*) | def_local(*) |
@@ -1677,7 +1678,7 @@ pub impl Resolver {
 
         // Create all the items reachable by paths.
         for each_path(self.session.cstore, root.def_id.get().crate)
-                |path_string, def_like| {
+                |path_string, def_like, visibility| {
 
             debug!("(building reduced graph for external crate) found path \
                         entry: %s (%?)",
@@ -1745,6 +1746,7 @@ pub impl Resolver {
                                        dummy_sp());
 
                     self.handle_external_def(def,
+                                             visibility,
                                              &mut modules,
                                              child_name_bindings,
                                              *self.session.str_of(
