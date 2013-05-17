@@ -18,6 +18,7 @@ implementing the `Iterator` trait.
 */
 
 use prelude::*;
+use num::{Zero, One};
 
 pub trait Iterator<A> {
     /// Advance the iterator and return the next value. Return `None` when the end is reached.
@@ -203,6 +204,51 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     /// Count the number of an iterator elemenrs
     #[inline(always)]
     fn count(&mut self) -> uint { self.fold(0, |cnt, _x| cnt + 1) }
+}
+
+pub trait AdditiveIterator<A> {
+    fn sum(&mut self) -> A;
+}
+
+impl<A: Add<A, A> + Zero, T: Iterator<A>> AdditiveIterator<A> for T {
+    #[inline(always)]
+    fn sum(&mut self) -> A { self.fold(Zero::zero::<A>(), |s, x| s + x) }
+}
+
+pub trait MultiplicativeIterator<A> {
+    fn product(&mut self) -> A;
+}
+
+impl<A: Mul<A, A> + One, T: Iterator<A>> MultiplicativeIterator<A> for T {
+    #[inline(always)]
+    fn product(&mut self) -> A { self.fold(One::one::<A>(), |p, x| p * x) }
+}
+
+pub trait OrdIterator<A> {
+    fn max(&mut self) -> Option<A>;
+    fn min(&mut self) -> Option<A>;
+}
+
+impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
+    #[inline(always)]
+    fn max(&mut self) -> Option<A> {
+        self.fold(None, |max, x| {
+            match max {
+                None    => Some(x),
+                Some(y) => Some(cmp::max(x, y))
+            }
+        })
+    }
+
+    #[inline(always)]
+    fn min(&mut self) -> Option<A> {
+        self.fold(None, |min, x| {
+            match min {
+                None    => Some(x),
+                Some(y) => Some(cmp::min(x, y))
+            }
+        })
+    }
 }
 
 pub struct ChainIterator<T, U> {
@@ -675,4 +721,37 @@ mod tests {
         assert_eq!(v.slice(0, 10).iter().count(), 10);
         assert_eq!(v.slice(0, 0).iter().count(), 0);
     }
+
+    #[test]
+    fn test_iterator_sum() {
+        let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(v.slice(0, 4).iter().transform(|&x| x).sum(), 6);
+        assert_eq!(v.iter().transform(|&x| x).sum(), 55);
+        assert_eq!(v.slice(0, 0).iter().transform(|&x| x).sum(), 0);
+    }
+
+    #[test]
+    fn test_iterator_product() {
+        let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(v.slice(0, 4).iter().transform(|&x| x).product(), 0);
+        assert_eq!(v.slice(1, 5).iter().transform(|&x| x).product(), 24);
+        assert_eq!(v.slice(0, 0).iter().transform(|&x| x).product(), 1);
+    }
+
+    #[test]
+    fn test_iterator_max() {
+        let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(v.slice(0, 4).iter().transform(|&x| x).max(), Some(3));
+        assert_eq!(v.iter().transform(|&x| x).max(), Some(10));
+        assert_eq!(v.slice(0, 0).iter().transform(|&x| x).max(), None);
+    }
+
+    #[test]
+    fn test_iterator_min() {
+        let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(v.slice(0, 4).iter().transform(|&x| x).min(), Some(0));
+        assert_eq!(v.iter().transform(|&x| x).min(), Some(0));
+        assert_eq!(v.slice(0, 0).iter().transform(|&x| x).min(), None);
+    }
+
 }
