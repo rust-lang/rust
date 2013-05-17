@@ -779,7 +779,7 @@ pub mod writer {
     priv impl Encoder {
         // used internally to emit things like the vector length and so on
         fn _emit_tagged_uint(&mut self, t: EbmlEncoderTag, v: uint) {
-            assert!(v <= 0xFFFF_FFFF_u); // FIXME(#6130) assert warns on 32-bit
+            assert!(v <= 0xFFFF_FFFF_u);
             self.wr_tagged_u32(t as uint, v as u32);
         }
 
