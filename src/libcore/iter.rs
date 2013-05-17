@@ -43,6 +43,8 @@ much easier to implement.
 #[cfg(not(stage0))] use cmp::Ord;
 #[cfg(not(stage0))] use option::{Option, Some, None};
 #[cfg(not(stage0))] use vec::OwnedVector;
+#[cfg(not(stage0))] use num::{One, Zero};
+#[cfg(not(stage0))] use ops::{Add, Mul};
 
 #[cfg(stage0)]
 pub trait Times {
@@ -212,6 +214,81 @@ pub fn min<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
     result
 }
 
+/**
+ * Reduce an iterator to an accumulated value.
+ *
+ * # Example:
+ *
+ * ~~~~
+ * assert_eq!(fold(0i, |f| int::range(1, 5, f), |a, x| *a += x), 10);
+ * ~~~~
+ */
+#[cfg(not(stage0))]
+#[inline]
+pub fn fold<T, U>(start: T, iter: &fn(f: &fn(U) -> bool) -> bool, f: &fn(&mut T, U)) -> T {
+    let mut result = start;
+    for iter |x| {
+        f(&mut result, x);
+    }
+    result
+}
+
+/**
+ * Reduce an iterator to an accumulated value.
+ *
+ * `fold_ref` is usable in some generic functions where `fold` is too lenient to type-check, but it
+ * forces the iterator to yield borrowed pointers.
+ *
+ * # Example:
+ *
+ * ~~~~
+ * fn product<T: One + Mul<T, T>>(iter: &fn(f: &fn(&T) -> bool) -> bool) -> T {
+ *     fold_ref(One::one::<T>(), iter, |a, x| *a = a.mul(x))
+ * }
+ * ~~~~
+ */
+#[cfg(not(stage0))]
+#[inline]
+pub fn fold_ref<T, U>(start: T, iter: &fn(f: &fn(&U) -> bool) -> bool, f: &fn(&mut T, &U)) -> T {
+    let mut result = start;
+    for iter |x| {
+        f(&mut result, x);
+    }
+    result
+}
+
+/**
+ * Return the sum of the items yielding by an iterator.
+ *
+ * # Example:
+ *
+ * ~~~~
+ * let xs: ~[int] = ~[1, 2, 3, 4];
+ * assert_eq!(do sum |f| { xs.each(f) }, 10);
+ * ~~~~
+ */
+#[cfg(not(stage0))]
+#[inline(always)]
+pub fn sum<T: Zero + Add<T, T>>(iter: &fn(f: &fn(&T) -> bool) -> bool) -> T {
+    fold_ref(Zero::zero::<T>(), iter, |a, x| *a = a.add(x))
+}
+
+/**
+ * Return the product of the items yielded by an iterator.
+ *
+ * # Example:
+ *
+ * ~~~~
+ * let xs: ~[int] = ~[1, 2, 3, 4];
+ * assert_eq!(do product |f| { xs.each(f) }, 24);
+ * ~~~~
+ */
+#[cfg(not(stage0))]
+#[inline(always)]
+pub fn product<T: One + Mul<T, T>>(iter: &fn(f: &fn(&T) -> bool) -> bool) -> T {
+    fold_ref(One::one::<T>(), iter, |a, x| *a = a.mul(x))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -253,5 +330,34 @@ mod tests {
     fn test_min() {
         let xs = ~[8, 2, 3, 1, -5, 9, 11, 15];
         assert_eq!(min(|f| xs.each(f)).unwrap(), &-5);
+    }
+
+    #[test]
+    fn test_fold() {
+        assert_eq!(fold(0i, |f| int::range(1, 5, f), |a, x| *a += x), 10);
+    }
+
+    #[test]
+    fn test_sum() {
+        let xs: ~[int] = ~[1, 2, 3, 4];
+        assert_eq!(do sum |f| { xs.each(f) }, 10);
+    }
+
+    #[test]
+    fn test_empty_sum() {
+        let xs: ~[int] = ~[];
+        assert_eq!(do sum |f| { xs.each(f) }, 0);
+    }
+
+    #[test]
+    fn test_product() {
+        let xs: ~[int] = ~[1, 2, 3, 4];
+        assert_eq!(do product |f| { xs.each(f) }, 24);
+    }
+
+    #[test]
+    fn test_empty_product() {
+        let xs: ~[int] = ~[];
+        assert_eq!(do product |f| { xs.each(f) }, 1);
     }
 }
