@@ -2228,8 +2228,7 @@ pub fn register_fn_fuller(ccx: @CrateContext,
         mangle_exported_name(ccx, /*bad*/copy path, node_type)
     };
 
-    // XXX: Bad copy.
-    let llfn: ValueRef = decl_fn(ccx.llmod, copy ps, cc, llfty);
+    let llfn: ValueRef = decl_fn(ccx.llmod, ps, cc, llfty);
     ccx.item_symbols.insert(node_id, ps);
 
     // FIXME #4404 android JNI hacks
