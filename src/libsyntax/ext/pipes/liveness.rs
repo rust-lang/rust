@@ -37,6 +37,8 @@ updating the states using rule (2) until there are no changes.
 
 */
 
+use core::prelude::*;
+
 use ext::base::ExtCtxt;
 use ext::pipes::proto::{protocol_};
 

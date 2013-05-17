@@ -64,6 +64,8 @@ we may want to adjust precisely when coercions occur.
 
 */
 
+use core::prelude::*;
+
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowFn};
 use middle::ty::{AutoDerefRef};
 use middle::ty::{vstore_slice, vstore_box, vstore_uniq};

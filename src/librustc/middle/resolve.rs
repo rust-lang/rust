@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use driver::session::Session;
 use metadata::csearch::{each_path, get_trait_method_def_ids};
 use metadata::csearch::get_method_name_and_explicit_self;

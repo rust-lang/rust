@@ -11,6 +11,8 @@
 
 //! Complex numbers.
 
+use core::prelude::*;
+
 use core::num::{Zero,One,ToStrRadix};
 
 // FIXME #1284: handle complex NaN & infinity etc. This

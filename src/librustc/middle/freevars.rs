@@ -11,6 +11,8 @@
 // A pass that annotates for each loops and functions with the free
 // variables that they contain.
 
+use core::prelude::*;
+
 use middle::resolve;
 use middle::ty;
 

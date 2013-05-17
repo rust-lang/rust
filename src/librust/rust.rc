@@ -20,10 +20,16 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
+#[no_std];
+
+extern mod core(name = "std");
+
 extern mod rustpkg;
 extern mod rustdoc;
 extern mod rusti;
 extern mod rustc;
+
+use core::prelude::*;
 
 use core::run;
 

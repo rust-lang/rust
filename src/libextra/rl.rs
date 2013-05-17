@@ -11,6 +11,8 @@
 // FIXME #3921. This is unsafe because linenoise uses global mutable
 // state without mutexes.
 
+use core::prelude::*;
+
 use core::libc::{c_char, c_int};
 
 pub mod rustrt {

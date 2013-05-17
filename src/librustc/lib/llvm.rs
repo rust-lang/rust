@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use core::hashmap::HashMap;
 use core::libc::{c_uint, c_ushort};
 

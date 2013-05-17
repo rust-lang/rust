@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Validates all used crates and extern libraries and loads their metadata
+
+use core::prelude::*;
 
 use metadata::cstore;
 use metadata::decoder;

@@ -32,6 +32,8 @@
 
 #[allow(non_camel_case_types)]; // C types
 
+use core::prelude::*;
+
 use core::libc::size_t;
 use core::libc::c_void;
 use core::ptr::to_unsafe_ptr;

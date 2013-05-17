@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Code that is useful in various trans modules.
 
-/**
-   Code that is useful in various trans modules.
-
-*/
+use core::prelude::*;
 
 use back::{abi, upcall};
 use driver::session;

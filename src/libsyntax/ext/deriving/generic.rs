@@ -162,6 +162,8 @@ StaticEnum(<ast::enum_def of C>, ~[(<ident of C0>, Left(1)),
 
 */
 
+use core::prelude::*;
+
 use ast;
 use ast::{enum_def, expr, ident, Generics, struct_def};
 

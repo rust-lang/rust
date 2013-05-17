@@ -10,6 +10,12 @@
 
 //! Base64 binary-to-text encoding
 
+use core::prelude::*;
+
+use core::old_iter;
+use core::str;
+use core::vec;
+
 pub trait ToBase64 {
     fn to_base64(&self) -> ~str;
 }

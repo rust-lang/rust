@@ -46,6 +46,8 @@
  * then an index to jump forward to the relevant item.
  */
 
+use core::prelude::*;
+
 use middle::ty;
 use middle::typeck;
 use util::ppaux::{ty_to_str, region_to_str, Repr};

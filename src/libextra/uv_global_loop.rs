@@ -10,6 +10,8 @@
 
 //! A process-wide libuv event loop for library use.
 
+use core::prelude::*;
+
 use iotask = uv_iotask;
 use uv_iotask::{IoTask, spawn_iotask};
 

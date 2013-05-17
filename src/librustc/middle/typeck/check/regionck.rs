@@ -27,6 +27,8 @@ this point a bit better.
 
 */
 
+use core::prelude::*;
+
 use middle::freevars::get_freevars;
 use middle::ty::{re_scope};
 use middle::ty;
@@ -777,6 +779,8 @@ pub mod guarantor {
      * So this is very similar logic to what you would find there,
      * but more special purpose.
      */
+
+    use core::prelude::*;
 
     use middle::typeck::check::regionck::{Rcx, infallibly_mk_subr};
     use middle::typeck::check::regionck::mk_subregion_due_to_derefence;

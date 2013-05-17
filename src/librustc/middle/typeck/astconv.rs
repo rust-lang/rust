@@ -52,6 +52,8 @@
  * an rptr (`&r.T`) use the region `r` that appears in the rptr.
  */
 
+use core::prelude::*;
+
 use middle::const_eval;
 use middle::ty::{substs};
 use middle::ty::{ty_param_substs_and_ty};

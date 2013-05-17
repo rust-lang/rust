@@ -10,6 +10,8 @@
 
 //! Temporary files and directories
 
+use core::prelude::*;
+
 use core::rand::RngUtil;
 
 pub fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {

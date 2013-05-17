@@ -10,6 +10,8 @@
 
 // Parsing pipes protocols from token trees.
 
+use core::prelude::*;
+
 use ast_util;
 use ext::pipes::proto::*;
 use parse::common::SeqSep;

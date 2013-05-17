@@ -21,6 +21,8 @@ source code snippets, etc.
 
 */
 
+use core::prelude::*;
+
 use core::to_bytes;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 

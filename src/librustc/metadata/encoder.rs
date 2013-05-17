@@ -10,6 +10,8 @@
 
 // Metadata encoding
 
+use core::prelude::*;
+
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;

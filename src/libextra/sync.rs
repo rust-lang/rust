@@ -15,6 +15,8 @@
  * in std.
  */
 
+use core::prelude::*;
+
 use core::unstable::sync::{Exclusive, exclusive};
 use core::ptr;
 use core::task;

@@ -23,7 +23,13 @@
 #[allow(non_camel_case_types)];
 #[deny(deprecated_pattern)];
 
-extern mod std;
+#[no_core];
+#[no_std];
+
+extern mod core(name = "std");
+extern mod std(name = "extra");
+
+use core::prelude::*;
 
 pub mod util {
     pub mod interner;

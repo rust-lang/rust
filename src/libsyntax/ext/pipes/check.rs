@@ -29,6 +29,8 @@ that.
 
 */
 
+use core::prelude::*;
+
 use ast;
 use codemap::span;
 use ext::base::ExtCtxt;

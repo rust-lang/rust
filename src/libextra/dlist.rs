@@ -18,6 +18,8 @@ Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
 
 */
 
+use core::prelude::*;
+
 use core::managed;
 
 pub type DListLink<T> = Option<@mut DListNode<T>>;

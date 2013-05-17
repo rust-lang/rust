@@ -11,6 +11,8 @@
 
 //! Rational numbers
 
+use core::prelude::*;
+
 use core::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
 use core::from_str::FromStr;
 use super::bigint::BigInt;

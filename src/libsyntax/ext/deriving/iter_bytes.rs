@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast::{meta_item, item, expr, and};
 use codemap::span;
 use ext::base::ExtCtxt;

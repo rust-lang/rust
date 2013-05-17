@@ -32,6 +32,8 @@
  * a lattice.
  */
 
+use core::prelude::*;
+
 use middle::ty::{RegionVid, TyVar, Vid};
 use middle::ty;
 use middle::typeck::isr_alist;

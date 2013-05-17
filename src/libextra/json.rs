@@ -14,6 +14,8 @@
 
 //! json serialization
 
+use core::prelude::*;
+
 use core::io::{WriterUtil, ReaderUtil};
 use core::hashmap::HashMap;
 

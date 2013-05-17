@@ -47,6 +47,8 @@ block the scheduler thread, so will their pipes.
 
 */
 
+use core::prelude::*;
+
 // The basic send/recv interface FlatChan and PortChan will implement
 use core::io;
 use core::comm::GenericChan;
@@ -168,6 +170,8 @@ POD are not equivelant.
 
 */
 pub mod pod {
+    use core::prelude::*;
+
     use flatpipes::flatteners::{PodUnflattener, PodFlattener};
     use flatpipes::bytepipes::{ReaderBytePort, WriterByteChan};
     use flatpipes::bytepipes::{PipeBytePort, PipeByteChan};
@@ -331,6 +335,8 @@ pub impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C> {
 
 
 pub mod flatteners {
+    use core::prelude::*;
+
     use ebml;
     use flatpipes::{Flattener, Unflattener};
     use io_util::BufReader;
@@ -501,6 +507,8 @@ pub mod flatteners {
 }
 
 pub mod bytepipes {
+    use core::prelude::*;
+
     use flatpipes::{ByteChan, BytePort};
 
     use core::io::{Writer, Reader, ReaderUtil};
@@ -628,6 +636,8 @@ pub mod bytepipes {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use flatpipes::{Flattener, Unflattener};
     use flatpipes::bytepipes::*;
     use flatpipes::pod;

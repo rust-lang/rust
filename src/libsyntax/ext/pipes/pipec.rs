@@ -10,6 +10,8 @@
 
 // A protocol compiler for Rust.
 
+use core::prelude::*;
+
 use ast;
 use codemap::{dummy_sp, spanned};
 use ext::base::ExtCtxt;

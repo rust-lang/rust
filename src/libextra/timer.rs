@@ -10,6 +10,8 @@
 
 //! Utilities that leverage libuv's `uv_timer_*` API
 
+use core::prelude::*;
+
 use uv;
 use uv::iotask;
 use uv::iotask::IoTask;

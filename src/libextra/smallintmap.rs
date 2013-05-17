@@ -13,6 +13,8 @@
  * are O(highest integer key).
  */
 
+use core::prelude::*;
+
 use core::container::{Container, Mutable, Map, Set};
 use core::old_iter::BaseIter;
 use core::old_iter;

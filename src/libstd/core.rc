@@ -47,7 +47,7 @@ they contained the following prologue:
 */
 
 
-#[link(name = "core",
+#[link(name = "std",
        vers = "0.7-pre",
        uuid = "c70c24a7-5551-4f73-8e37-380b11d80be8",
        url = "https://github.com/mozilla/rust/tree/master/src/libcore")];
@@ -64,10 +64,10 @@ they contained the following prologue:
 #[deny(non_camel_case_types)];
 
 // Make core testable by not duplicating lang items. See #2912
-#[cfg(test)] extern mod realcore(name = "core");
-#[cfg(test)] pub use kinds = realcore::kinds;
-#[cfg(test)] pub use ops = realcore::ops;
-#[cfg(test)] pub use cmp = realcore::cmp;
+#[cfg(test)] extern mod realstd(name = "std");
+#[cfg(test)] pub use kinds = realstd::kinds;
+#[cfg(test)] pub use ops = realstd::ops;
+#[cfg(test)] pub use cmp = realstd::cmp;
 
 // On Linux, link to the runtime with -lrt.
 #[cfg(target_os = "linux")]
@@ -213,8 +213,8 @@ mod stackwalk;
 pub mod rt;
 
 // A curious inner-module that's not exported that contains the binding
-// 'core' so that macro-expanded references to core::error and such
-// can be resolved within libcore.
+// 'std' so that macro-expanded references to std::error and such
+// can be resolved within libstd.
 #[doc(hidden)]
 mod core {
     pub use clone;
@@ -225,3 +225,4 @@ mod core {
     pub use sys;
     pub use pipes;
 }
+

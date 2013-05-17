@@ -10,6 +10,8 @@
 
 //! Breaks rustdocs into sections according to their headers
 
+use core::prelude::*;
+
 use astsrv;
 use doc::ItemUtils;
 use doc;

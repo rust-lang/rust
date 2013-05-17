@@ -14,9 +14,9 @@ Simple compression
 
 */
 
-use libc;
 use core::libc::{c_void, size_t, c_int};
-use vec;
+use core::libc;
+use core::vec;
 
 #[cfg(test)] use core::rand;
 #[cfg(test)] use core::rand::RngUtil;

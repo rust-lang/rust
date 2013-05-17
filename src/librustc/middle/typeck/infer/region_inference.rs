@@ -536,6 +536,8 @@ more convincing in the future.
 
 */
 
+use core::prelude::*;
+
 use middle::ty;
 use middle::ty::{FreeRegion, Region, RegionVid};
 use middle::ty::{re_empty, re_static, re_infer, re_free, re_bound};

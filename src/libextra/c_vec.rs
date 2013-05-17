@@ -36,6 +36,8 @@
  * still held if needed.
  */
 
+use core::prelude::*;
+
 /**
  * The type representing a foreign chunk of memory
  *

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use back::rpath;
 use driver::session::Session;
 use driver::session;
@@ -90,6 +92,8 @@ pub fn WriteOutputFile(sess: Session,
 }
 
 pub mod jit {
+    use core::prelude::*;
+
     use back::link::llvm_err;
     use driver::session::Session;
     use lib::llvm::llvm;
@@ -166,6 +170,8 @@ pub mod jit {
 }
 
 pub mod write {
+    use core::prelude::*;
+
     use back::link::jit;
     use back::link::{WriteOutputFile, output_type};
     use back::link::{output_type_assembly, output_type_bitcode};

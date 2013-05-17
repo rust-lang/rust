@@ -12,6 +12,11 @@
 // allows bidirectional lookup; i.e. given a value, one can easily find the
 // type, and vice versa.
 
+// allow the interner_key macro to escape this module:
+#[macro_escape];
+
+use core::prelude::*;
+
 use core::cmp::Equiv;
 use core::hashmap::HashMap;
 use syntax::parse::token::StringRef;

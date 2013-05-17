@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use back::link::mangle_exported_name;
 use driver::session;
 use lib::llvm::ValueRef;

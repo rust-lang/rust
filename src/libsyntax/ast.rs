@@ -10,6 +10,8 @@
 
 // The Rust abstract syntax tree.
 
+use core::prelude::*;
+
 use codemap::{span, spanned};
 use abi::AbiSet;
 use opt_vec::OptVec;

@@ -14,6 +14,7 @@
 // has at most one implementation for each type. Then we build a mapping from
 // each trait in the system to its implementations.
 
+use core::prelude::*;
 
 use driver;
 use metadata::csearch::{each_path, get_impl_trait};

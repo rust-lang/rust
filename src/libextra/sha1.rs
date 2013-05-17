@@ -22,6 +22,8 @@
  * the `reset` method.
  */
 
+use core::prelude::*;
+
 use core::str;
 use core::uint;
 use core::vec;

@@ -18,11 +18,17 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-extern mod std;
+#[no_std];
+
+extern mod core(name = "std");
+extern mod std(name = "extra");
+
 extern mod rustc;
 extern mod syntax;
 
+use core::prelude::*;
 use core::*;
+
 use core::cell::Cell;
 use rustc::driver::{driver, session};
 use syntax::{ast, diagnostic};
