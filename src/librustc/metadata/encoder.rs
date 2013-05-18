@@ -22,11 +22,11 @@ use middle::ty;
 use middle;
 use util::ppaux::ty_to_str;
 
-use std::flate;
+use extra::flate;
 use core::hash::HashUtil;
 use core::hashmap::HashMap;
-use std::serialize::Encodable;
-use std;
+use extra::serialize::Encodable;
+use extra;
 use syntax::abi::AbiSet;
 use syntax::ast::*;
 use syntax::ast;
@@ -39,7 +39,7 @@ use syntax::{ast_util, visit};
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
 use syntax;
-use writer = std::ebml::writer;
+use writer = extra::ebml::writer;
 
 // used by astencode:
 type abbrev_map = @mut HashMap<ty::t, tyencode::ty_abbrev>;
@@ -1288,7 +1288,7 @@ fn encode_crate_deps(ecx: @EncodeContext,
         };
 
         // Sort by cnum
-        std::sort::quick_sort(deps, |kv1, kv2| kv1.cnum <= kv2.cnum);
+        extra::sort::quick_sort(deps, |kv1, kv2| kv1.cnum <= kv2.cnum);
 
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;

@@ -15,13 +15,13 @@ use syntax::codemap::{span};
 use syntax::visit;
 
 use core::hashmap::HashSet;
-use std;
+use extra;
 
 pub fn time<T>(do_it: bool, what: ~str, thunk: &fn() -> T) -> T {
     if !do_it { return thunk(); }
-    let start = std::time::precise_time_s();
+    let start = extra::time::precise_time_s();
     let rv = thunk();
-    let end = std::time::precise_time_s();
+    let end = extra::time::precise_time_s();
     io::println(fmt!("time: %3.3f s\t%s", end - start, what));
     rv
 }

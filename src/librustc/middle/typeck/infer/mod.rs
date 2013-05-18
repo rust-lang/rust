@@ -267,8 +267,8 @@ use middle::typeck::isr_alist;
 use util::common::indent;
 use util::ppaux::{bound_region_to_str, ty_to_str, trait_ref_to_str};
 
-use std::list::Nil;
-use std::smallintmap::SmallIntMap;
+use extra::list::Nil;
+use extra::smallintmap::SmallIntMap;
 use syntax::ast::{m_imm, m_mutbl};
 use syntax::ast;
 use syntax::codemap;

@@ -30,9 +30,9 @@ use core::io;
 use core::os;
 use core::str;
 use core::vec;
-use std::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
-use std::getopts::{opt_present};
-use std::getopts;
+use extra::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
+use extra::getopts::{opt_present};
+use extra::getopts;
 use syntax::ast;
 use syntax::abi;
 use syntax::attr;
@@ -200,7 +200,7 @@ pub fn compile_rest(sess: Session,
     crate = time(time_passes, ~"intrinsic injection", ||
         front::intrinsic_inject::inject_intrinsic(sess, crate));
 
-    crate = time(time_passes, ~"std injection", ||
+    crate = time(time_passes, ~"extra injection", ||
         front::std_inject::maybe_inject_libstd_ref(sess, crate));
 
     let ast_map = time(time_passes, ~"ast indexing", ||
@@ -923,8 +923,8 @@ mod test {
     use driver::driver::{build_configuration, build_session};
     use driver::driver::{build_session_options, optgroups, str_input};
 
-    use std::getopts::groups::getopts;
-    use std::getopts;
+    use extra::getopts::groups::getopts;
+    use extra::getopts;
     use syntax::attr;
     use syntax::diagnostic;
 

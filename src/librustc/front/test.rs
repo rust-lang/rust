@@ -258,13 +258,13 @@ We're going to be building a module that looks more or less like:
 
 mod __test {
   #[!resolve_unexported]
-  extern mod std (name = "std", vers = "...");
+  extern mod extra (name = "extra", vers = "...");
   fn main() {
     #[main];
-    std::test::test_main_static(::os::args(), tests)
+    extra::test::test_main_static(::os::args(), tests)
   }
 
-  static tests : &'static [std::test::TestDescAndFn] = &[
+  static tests : &'static [extra::test::TestDescAndFn] = &[
     ... the list of tests in the crate ...
   ];
 }
@@ -276,7 +276,7 @@ fn mk_std(cx: &TestCtxt) -> @ast::view_item {
     let vers = nospan(vers);
     let mi = ast::meta_name_value(@~"vers", vers);
     let mi = nospan(mi);
-    let id_std = cx.sess.ident_of("std");
+    let id_std = cx.sess.ident_of("extra");
     let vi = if is_std(cx) {
         ast::view_item_use(
             ~[@nospan(ast::view_path_simple(id_std,
@@ -297,7 +297,7 @@ fn mk_std(cx: &TestCtxt) -> @ast::view_item {
 
 fn mk_test_module(cx: &TestCtxt) -> @ast::item {
 
-    // Link to std
+    // Link to extra
     let view_items = ~[mk_std(cx)];
 
     // A constant vector of test descriptors.
@@ -309,7 +309,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
     let mainfn = (quote_item!(
         pub fn main() {
             #[main];
-            std::test::test_main_static(::os::args(), tests);
+            extra::test::test_main_static(::os::args(), tests);
         }
     )).get();
 
@@ -366,7 +366,7 @@ fn mk_tests(cx: &TestCtxt) -> @ast::item {
     let test_descs = mk_test_descs(cx);
 
     (quote_item!(
-        pub static tests : &'static [self::std::test::TestDescAndFn] =
+        pub static tests : &'static [self::extra::test::TestDescAndFn] =
             $test_descs
         ;
     )).get()
@@ -376,7 +376,7 @@ fn is_std(cx: &TestCtxt) -> bool {
     let is_std = {
         let items = attr::find_linkage_metas(cx.crate.node.attrs);
         match attr::last_meta_item_value_str_by_name(items, "name") {
-          Some(@~"std") => true,
+          Some(@~"extra") => true,
           _ => false
         }
     };
@@ -437,9 +437,9 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
     };
 
     let t_expr = if test.bench {
-        quote_expr!( self::std::test::StaticBenchFn($fn_expr) )
+        quote_expr!( self::extra::test::StaticBenchFn($fn_expr) )
     } else {
-        quote_expr!( self::std::test::StaticTestFn($fn_expr) )
+        quote_expr!( self::extra::test::StaticTestFn($fn_expr) )
     };
 
     let ignore_expr = if test.ignore {
@@ -455,9 +455,9 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
     };
 
     let e = quote_expr!(
-        self::std::test::TestDescAndFn {
-            desc: self::std::test::TestDesc {
-                name: self::std::test::StaticTestName($name_expr),
+        self::extra::test::TestDescAndFn {
+            desc: self::extra::test::TestDesc {
+                name: self::extra::test::StaticTestName($name_expr),
                 ignore: $ignore_expr,
                 should_fail: $fail_expr
             },

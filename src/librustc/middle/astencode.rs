@@ -25,11 +25,11 @@ use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;
 
-use std::ebml::reader;
-use std::ebml;
-use std::serialize;
-use std::serialize::{Encoder, Encodable, EncoderHelpers, DecoderHelpers};
-use std::serialize::{Decoder, Decodable};
+use extra::ebml::reader;
+use extra::ebml;
+use extra::serialize;
+use extra::serialize::{Encoder, Encodable, EncoderHelpers, DecoderHelpers};
+use extra::serialize::{Decoder, Decodable};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::inlined_item_utils;
@@ -39,7 +39,7 @@ use syntax::codemap;
 use syntax::fold::*;
 use syntax::fold;
 use syntax;
-use writer = std::ebml::writer;
+use writer = extra::ebml::writer;
 
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::print::pprust;

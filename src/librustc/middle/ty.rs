@@ -30,7 +30,7 @@ use util::enum_set::{EnumSet, CLike};
 use core::ptr::to_unsafe_ptr;
 use core::to_bytes;
 use core::hashmap::{HashMap, HashSet};
-use std::smallintmap::SmallIntMap;
+use extra::smallintmap::SmallIntMap;
 use syntax::ast::*;
 use syntax::ast_util::is_local;
 use syntax::ast_util;

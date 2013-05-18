@@ -23,8 +23,8 @@ use middle::typeck::infer::to_str::InferStr;
 use util::common::{indent, indenter};
 use util::ppaux::bound_region_to_str;
 
-use std::list::Nil;
-use std::list;
+use extra::list::Nil;
+use extra::list;
 use syntax::abi::AbiSet;
 use syntax::ast;
 use syntax::ast::{Onceness, m_const, purity};

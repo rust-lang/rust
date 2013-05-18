@@ -27,6 +27,10 @@
 #[no_std];
 
 extern mod core(name = "std");
+extern mod extra(name = "extra");
+
+// For deriving(Encodable) purposes...
+#[cfg(stage0)]
 extern mod std(name = "extra");
 
 use core::prelude::*;

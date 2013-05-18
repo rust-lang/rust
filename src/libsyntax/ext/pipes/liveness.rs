@@ -42,7 +42,7 @@ use core::prelude::*;
 use ext::base::ExtCtxt;
 use ext::pipes::proto::{protocol_};
 
-use std::bitv::Bitv;
+use extra::bitv::Bitv;
 
 pub fn analyze(proto: @mut protocol_, _cx: @ExtCtxt) {
     debug!("initializing colive analysis");

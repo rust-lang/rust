@@ -125,9 +125,9 @@ pub mod jit {
 
             // We need to tell JIT where to resolve all linked
             // symbols from. The equivalent of -lstd, -lcore, etc.
-            // By default the JIT will resolve symbols from the std and
+            // By default the JIT will resolve symbols from the extra and
             // core linked into rustc. We don't want that,
-            // incase the user wants to use an older std library.
+            // incase the user wants to use an older extra library.
 
             let cstore = sess.cstore;
             for cstore::get_used_crate_files(cstore).each |cratepath| {

@@ -25,8 +25,11 @@
 #[no_std];
 
 extern mod core(name = "std");
-extern mod std(name = "extra");
+extern mod extra(name = "extra");
 extern mod syntax;
+
+// For deriving(Encodable) purposes...
+extern mod std(name = "extra", vers = "0.7-pre");
 
 use core::prelude::*;
 
@@ -38,8 +41,8 @@ use driver::driver::{compile_input};
 use driver::session;
 use middle::lint;
 
-use std::getopts::{groups, opt_present};
-use std::getopts;
+use extra::getopts::{groups, opt_present};
+use extra::getopts;
 use syntax::codemap;
 use syntax::diagnostic;
 
