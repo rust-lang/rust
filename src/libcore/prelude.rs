@@ -52,6 +52,8 @@ pub use from_str::{FromStr};
 pub use to_bytes::IterBytes;
 pub use to_str::{ToStr, ToStrConsume};
 pub use tuple::{CopyableTuple, ImmutableTuple, ExtendedTupleOps};
+pub use tuple::{Tuple2, Tuple3, Tuple4, Tuple5, Tuple6, Tuple7, Tuple8, Tuple9};
+pub use tuple::{Tuple10, Tuple11, Tuple12};
 pub use vec::{CopyableVector, ImmutableVector};
 pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
 pub use vec::{OwnedVector, OwnedCopyableVector, MutableVector};
