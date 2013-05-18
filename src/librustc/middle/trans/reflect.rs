@@ -84,7 +84,7 @@ pub impl Reflector {
           self.c_tydesc(mt.ty)]
     }
 
-    fn visit(&mut self, ty_name: ~str, args: ~[ValueRef]) {
+    fn visit(&mut self, ty_name: ~str, args: &[ValueRef]) {
         let tcx = self.bcx.tcx();
         let mth_idx = ty::method_idx(
             tcx.sess.ident_of(~"visit_" + ty_name),
@@ -121,10 +121,9 @@ pub impl Reflector {
 
     fn bracketed(&mut self,
                  bracket_name: ~str,
-                 extra: ~[ValueRef],
+                 extra: &[ValueRef],
                  inner: &fn(&mut Reflector)) {
-        // XXX: Bad copy.
-        self.visit(~"enter_" + bracket_name, copy extra);
+        self.visit(~"enter_" + bracket_name, extra);
         inner(self);
         self.visit(~"leave_" + bracket_name, extra);
     }
@@ -226,7 +225,7 @@ pub impl Reflector {
                           self.c_uint(sigilval),
                           self.c_uint(fty.sig.inputs.len()),
                           self.c_uint(retval)];
-            self.visit(~"enter_fn", copy extra);    // XXX: Bad copy.
+            self.visit(~"enter_fn", extra);
             self.visit_sig(retval, &fty.sig);
             self.visit(~"leave_fn", extra);
           }
@@ -241,7 +240,7 @@ pub impl Reflector {
                           self.c_uint(sigilval),
                           self.c_uint(fty.sig.inputs.len()),
                           self.c_uint(retval)];
-            self.visit(~"enter_fn", copy extra);    // XXX: Bad copy.
+            self.visit(~"enter_fn", extra);
             self.visit_sig(retval, &fty.sig);
             self.visit(~"leave_fn", extra);
           }

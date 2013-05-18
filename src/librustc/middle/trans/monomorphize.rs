@@ -70,8 +70,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     for real_substs.each() |s| { assert!(!ty::type_has_params(*s)); }
     for substs.each() |s| { assert!(!ty::type_has_params(*s)); }
     let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
-    // XXX: Bad copy.
-    let hash_id = make_mono_id(ccx, fn_id, copy substs, vtables, impl_did_opt,
+    let hash_id = make_mono_id(ccx, fn_id, substs, vtables, impl_did_opt,
                                Some(param_uses));
     if vec::any(hash_id.params,
                 |p| match *p { mono_precise(_, _) => false, _ => true }) {
@@ -350,10 +349,10 @@ pub fn make_mono_id(ccx: @CrateContext,
         vec::map_zip(*item_ty.generics.type_param_defs, substs, |type_param_def, subst| {
             let mut v = ~[];
             for type_param_def.bounds.trait_bounds.each |_bound| {
-                v.push(meth::vtable_id(ccx, /*bad*/copy vts[i]));
+                v.push(meth::vtable_id(ccx, &vts[i]));
                 i += 1;
             }
-            (*subst, if !v.is_empty() { Some(v) } else { None })
+            (*subst, if !v.is_empty() { Some(@v) } else { None })
         })
       }
       None => {
@@ -369,8 +368,7 @@ pub fn make_mono_id(ccx: @CrateContext,
                 }
             } else {
                 match *id {
-                    // XXX: Bad copy.
-                    (a, copy b@Some(_)) => mono_precise(a, b),
+                    (a, b@Some(_)) => mono_precise(a, b),
                     (subst, None) => {
                         if *uses == 0 {
                             mono_any

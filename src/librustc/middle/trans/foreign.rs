@@ -550,14 +550,13 @@ pub fn trans_intrinsic(ccx: @CrateContext,
 
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, item.id));
 
-    // XXX: Bad copy.
     let fcx = new_fn_ctxt_w_id(ccx,
                                path,
                                decl,
                                item.id,
                                output_type,
                                None,
-                               Some(copy substs),
+                               Some(substs),
                                Some(item.span));
 
     // Set the fixed stack segment flag if necessary.
