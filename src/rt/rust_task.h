@@ -146,6 +146,9 @@
 #ifdef __mips__
 #define RED_ZONE_SIZE RZ_MAC_32
 #endif
+#ifdef __arm__
+#define RED_ZONE_SIZE RZ_LINUX_32
+#endif
 #endif
 #ifdef __APPLE__
 #ifdef __i386__

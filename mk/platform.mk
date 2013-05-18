@@ -239,6 +239,32 @@ CFG_RUN_arm-linux-androideabi=
 CFG_RUN_TARG_arm-linux-androideabi=
 RUSTC_FLAGS_arm-linux-androideabi :=--android-cross-path=$(CFG_ANDROID_CROSS_PATH)
 
+# arm-unknown-linux-gnueabihf configuration
+CC_arm-unknown-linux-gnueabihf=arm-linux-gnueabihf-gcc
+CXX_arm-unknown-linux-gnueabihf=arm-linux-gnueabihf-g++
+CPP_arm-unknown-linux-gnueabihf=arm-linux-gnueabihf-gcc -E
+AR_arm-unknown-linux-gnueabihf=arm-linux-gnueabihf-ar
+CFG_LIB_NAME_arm-unknown-linux-gnueabihf=lib$(1).so
+CFG_LIB_GLOB_arm-unknown-linux-gnueabihf=lib$(1)-*.so
+CFG_LIB_DSYM_GLOB_arm-unknown-linux-gnueabihf=lib$(1)-*.dylib.dSYM
+CFG_GCCISH_CFLAGS_arm-unknown-linux-gnueabihf := -Wall -g -fPIC
+CFG_GCCISH_CXXFLAGS_arm-unknown-linux-gnueabihf := -fno-rtti
+CFG_GCCISH_LINK_FLAGS_arm-unknown-linux-gnueabihf := -shared -fPIC -g
+CFG_GCCISH_DEF_FLAG_arm-unknown-linux-gnueabihf := -Wl,--export-dynamic,--dynamic-list=
+CFG_GCCISH_PRE_LIB_FLAGS_arm-unknown-linux-gnueabihf := -Wl,-whole-archive
+CFG_GCCISH_POST_LIB_FLAGS_arm-unknown-linux-gnueabihf := -Wl,-no-whole-archive
+CFG_DEF_SUFFIX_arm-unknown-linux-gnueabihf := .linux.def
+CFG_INSTALL_NAME_ar,-unknown-linux-gnueabihf =
+CFG_LIBUV_LINK_FLAGS_arm-unknown-linux-gnueabihf =
+CFG_EXE_SUFFIX_arm-unknown-linux-gnueabihf :=
+CFG_WINDOWSY_arm-unknown-linux-gnueabihf :=
+CFG_UNIXY_arm-unknown-linux-gnueabihf := 1
+CFG_PATH_MUNGE_arm-unknown-linux-gnueabihf := true
+CFG_LDPATH_arm-unknown-linux-gnueabihf :=
+CFG_RUN_arm-unknown-linux-gnueabihf=
+CFG_RUN_TARG_arm-unknown-linux-gnueabihf=
+RUSTC_FLAGS_arm-unknown-linux-gnueabihf := --linker=$(CC_arm-unknown-linux-gnueabihf)
+
 # mips-unknown-linux-gnu configuration
 CC_mips-unknown-linux-gnu=mips-linux-gnu-gcc
 CXX_mips-unknown-linux-gnu=mips-linux-gnu-g++
