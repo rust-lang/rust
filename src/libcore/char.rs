@@ -60,25 +60,25 @@ pub fn is_alphabetic(c: char) -> bool   { derived_property::Alphabetic(c) }
 pub fn is_XID_start(c: char) -> bool    { derived_property::XID_Start(c) }
 pub fn is_XID_continue(c: char) -> bool { derived_property::XID_Continue(c) }
 
-/**
- * Indicates whether a character is in lower case, defined
- * in terms of the Unicode General Category 'Ll'
- */
+///
+/// Indicates whether a character is in lower case, defined
+/// in terms of the Unicode General Category 'Ll'
+///
 #[inline(always)]
 pub fn is_lowercase(c: char) -> bool { general_category::Ll(c) }
 
-/**
- * Indicates whether a character is in upper case, defined
- * in terms of the Unicode General Category 'Lu'.
- */
+///
+/// Indicates whether a character is in upper case, defined
+/// in terms of the Unicode General Category 'Lu'.
+///
 #[inline(always)]
 pub fn is_uppercase(c: char) -> bool { general_category::Lu(c) }
 
-/**
- * Indicates whether a character is whitespace. Whitespace is defined in
- * terms of the Unicode General Categories 'Zs', 'Zl', 'Zp'
- * additional 'Cc'-category control codes in the range [0x09, 0x0d]
- */
+///
+/// Indicates whether a character is whitespace. Whitespace is defined in
+/// terms of the Unicode General Categories 'Zs', 'Zl', 'Zp'
+/// additional 'Cc'-category control codes in the range [0x09, 0x0d]
+///
 #[inline(always)]
 pub fn is_whitespace(c: char) -> bool {
     ('\x09' <= c && c <= '\x0d')
@@ -87,11 +87,11 @@ pub fn is_whitespace(c: char) -> bool {
         || general_category::Zp(c)
 }
 
-/**
- * Indicates whether a character is alphanumeric. Alphanumericness is
- * defined in terms of the Unicode General Categories 'Nd', 'Nl', 'No'
- * and the Derived Core Property 'Alphabetic'.
- */
+///
+/// Indicates whether a character is alphanumeric. Alphanumericness is
+/// defined in terms of the Unicode General Categories 'Nd', 'Nl', 'No'
+/// and the Derived Core Property 'Alphabetic'.
+///
 #[inline(always)]
 pub fn is_alphanumeric(c: char) -> bool {
     derived_property::Alphabetic(c)
@@ -108,18 +108,24 @@ pub fn is_digit(c: char) -> bool {
         || general_category::No(c)
 }
 
-/**
- * Checks if a character parses as a numeric digit in the given radix.
- * Compared to `is_digit()`, this function only recognizes the
- * characters `0-9`, `a-z` and `A-Z`.
- *
- * Returns `true` if `c` is a valid digit under `radix`, and `false`
- * otherwise.
- *
- * Fails if given a `radix` > 36.
- *
- * Note: This just wraps `to_digit()`.
- */
+///
+/// Checks if a character parses as a numeric digit in the given radix.
+/// Compared to `is_digit()`, this function only recognizes the
+/// characters `0-9`, `a-z` and `A-Z`.
+///
+/// # Return value
+///
+/// Returns `true` if `c` is a valid digit under `radix`, and `false`
+/// otherwise.
+///
+/// # Failure
+///
+/// Fails if given a `radix` > 36.
+///
+/// # Note
+///
+/// This just wraps `to_digit()`.
+///
 #[inline(always)]
 pub fn is_digit_radix(c: char, radix: uint) -> bool {
     match to_digit(c, radix) {
@@ -128,19 +134,20 @@ pub fn is_digit_radix(c: char, radix: uint) -> bool {
     }
 }
 
-/**
- * Convert a char to the corresponding digit.
- *
- * # Return value
- *
- * If `c` is between '0' and '9', the corresponding value
- * between 0 and 9. If `c` is 'a' or 'A', 10. If `c` is
- * 'b' or 'B', 11, etc. Returns none if the char does not
- * refer to a digit in the given radix.
- *
- * # Failure
- * Fails if given a `radix` outside the range `[0..36]`.
- */
+///
+/// Convert a char to the corresponding digit.
+///
+/// # Return value
+///
+/// If `c` is between '0' and '9', the corresponding value
+/// between 0 and 9. If `c` is 'a' or 'A', 10. If `c` is
+/// 'b' or 'B', 11, etc. Returns none if the char does not
+/// refer to a digit in the given radix.
+///
+/// # Failure
+///
+/// Fails if given a `radix` outside the range `[0..36]`.
+///
 #[inline]
 pub fn to_digit(c: char, radix: uint) -> Option<uint> {
     if radix > 36 {
@@ -156,14 +163,18 @@ pub fn to_digit(c: char, radix: uint) -> Option<uint> {
     else { None }
 }
 
-/**
- * Converts a number to the character representing it.
- *
- * Returns `Some(char)` if `num` represents one digit under `radix`,
- * using one character of `0-9` or `a-z`, or `None` if it doesn't.
- *
- * Fails if given an `radix` > 36.
- */
+///
+/// Converts a number to the character representing it.
+///
+/// # Return value
+///
+/// Returns `Some(char)` if `num` represents one digit under `radix`,
+/// using one character of `0-9` or `a-z`, or `None` if it doesn't.
+///
+/// # Failure
+///
+/// Fails if given an `radix` > 36.
+///
 #[inline]
 pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     if radix > 36 {
@@ -195,15 +206,15 @@ pub fn escape_unicode(c: char) -> ~str {
     out
 }
 
-/**
- * Return the hexadecimal unicode escape of a char.
- *
- * The rules are as follows:
- *
- *   - chars in [0,0xff] get 2-digit escapes: `\\xNN`
- *   - chars in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`
- *   - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
- */
+///
+/// Return the hexadecimal unicode escape of a char.
+///
+/// The rules are as follows:
+///
+/// - chars in [0,0xff] get 2-digit escapes: `\\xNN`
+/// - chars in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`
+/// - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
+///
 #[cfg(not(stage0))]
 pub fn escape_unicode(c: char) -> ~str {
     let s = u32::to_str_radix(c as u32, 16u);
@@ -222,18 +233,18 @@ pub fn escape_unicode(c: char) -> ~str {
     out
 }
 
-/**
- * Return a 'default' ASCII and C++11-like char-literal escape of a char.
- *
- * The default is chosen with a bias toward producing literals that are
- * legal in a variety of languages, including C++11 and similar C-family
- * languages. The exact rules are:
- *
- *   - Tab, CR and LF are escaped as '\t', '\r' and '\n' respectively.
- *   - Single-quote, double-quote and backslash chars are backslash-escaped.
- *   - Any other chars in the range [0x20,0x7e] are not escaped.
- *   - Any other chars are given hex unicode escapes; see `escape_unicode`.
- */
+///
+/// Return a 'default' ASCII and C++11-like char-literal escape of a char.
+///
+/// The default is chosen with a bias toward producing literals that are
+/// legal in a variety of languages, including C++11 and similar C-family
+/// languages. The exact rules are:
+///
+/// - Tab, CR and LF are escaped as '\t', '\r' and '\n' respectively.
+/// - Single-quote, double-quote and backslash chars are backslash-escaped.
+/// - Any other chars in the range [0x20,0x7e] are not escaped.
+/// - Any other chars are given hex unicode escapes; see `escape_unicode`.
+///
 pub fn escape_default(c: char) -> ~str {
     match c {
         '\t' => ~"\\t",
