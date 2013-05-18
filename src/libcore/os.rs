@@ -147,23 +147,25 @@ pub mod win32 {
 
 /*
 Accessing environment variables is not generally threadsafe.
-This uses a per-runtime lock to serialize access.
-FIXME #4726: It would probably be appropriate to make this a real global
+Serialize access through a global lock.
 */
 fn with_env_lock<T>(f: &fn() -> T) -> T {
-    use unstable::global::global_data_clone_create;
-    use unstable::sync::{Exclusive, exclusive};
-
-    struct SharedValue(());
-    type ValueMutex = Exclusive<SharedValue>;
-    fn key(_: ValueMutex) { }
+    use unstable::finally::Finally;
 
     unsafe {
-        let lock: ValueMutex = global_data_clone_create(key, || {
-            ~exclusive(SharedValue(()))
-        });
+        return do (|| {
+            rust_take_env_lock();
+            f()
+        }).finally {
+            rust_drop_env_lock();
+        };
+    }
 
-        lock.with_imm(|_| f() )
+    extern {
+        #[fast_ffi]
+        fn rust_take_env_lock();
+        #[fast_ffi]
+        fn rust_drop_env_lock();
     }
 }
 
@@ -749,7 +751,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
             use os::win32::{
                 as_utf16_p
             };
-            use unstable::exchange_alloc::{malloc_raw, free_raw};
+            use rt::global_heap::{malloc_raw, free_raw};
             #[nolink]
             extern {
                 unsafe fn rust_list_dir_wfd_size() -> libc::size_t;

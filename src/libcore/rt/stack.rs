@@ -11,27 +11,51 @@
 use container::Container;
 use ptr::Ptr;
 use vec;
+use ops::Drop;
+use libc::{c_uint, uintptr_t};
 
 pub struct StackSegment {
-    buf: ~[u8]
+    buf: ~[u8],
+    valgrind_id: c_uint
 }
 
 pub impl StackSegment {
     fn new(size: uint) -> StackSegment {
-        // Crate a block of uninitialized values
-        let mut stack = vec::with_capacity(size);
         unsafe {
+            // Crate a block of uninitialized values
+            let mut stack = vec::with_capacity(size);
             vec::raw::set_len(&mut stack, size);
-        }
 
-        StackSegment {
-            buf: stack
+            let mut stk = StackSegment {
+                buf: stack,
+                valgrind_id: 0
+            };
+
+            // XXX: Using the FFI to call a C macro. Slow
+            stk.valgrind_id = rust_valgrind_stack_register(stk.start(), stk.end());
+            return stk;
+        }
+    }
+
+    /// Point to the low end of the allocated stack
+    fn start(&self) -> *uint {
+        unsafe {
+            vec::raw::to_ptr(self.buf) as *uint
         }
     }
 
     /// Point one word beyond the high end of the allocated stack
     fn end(&self) -> *uint {
         vec::raw::to_ptr(self.buf).offset(self.buf.len()) as *uint
+    }
+}
+
+impl Drop for StackSegment {
+    fn finalize(&self) {
+        unsafe {
+            // XXX: Using the FFI to call a C macro. Slow
+            rust_valgrind_stack_deregister(self.valgrind_id);
+        }
     }
 }
 
@@ -46,4 +70,9 @@ impl StackPool {
 
     fn give_segment(&self, _stack: StackSegment) {
     }
+}
+
+extern {
+    fn rust_valgrind_stack_register(start: *uintptr_t, end: *uintptr_t) -> c_uint;
+    fn rust_valgrind_stack_deregister(id: c_uint);
 }
