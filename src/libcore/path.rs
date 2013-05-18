@@ -311,9 +311,10 @@ pub impl Path {
         unsafe {
              do str::as_c_str(self.to_str()) |buf| {
                 let mut st = stat::arch::default_stat();
-                let r = libc::stat(buf, &mut st);
-
-                if r == 0 { Some(st) } else { None }
+                match libc::stat(buf, &mut st) {
+                    0 => Some(st),
+                    _ => None,
+                }
             }
         }
     }
@@ -323,9 +324,10 @@ pub impl Path {
         unsafe {
             do str::as_c_str(self.to_str()) |buf| {
                 let mut st = stat::arch::default_stat();
-                let r = libc::lstat(buf, &mut st);
-
-                if r == 0 { Some(st) } else { None }
+                match libc::lstat(buf, &mut st) {
+                    0 => Some(st),
+                    _ => None,
+                }
             }
         }
     }
@@ -456,10 +458,9 @@ impl GenericPath for PosixPath {
 
     fn dirname(&self) -> ~str {
         let s = self.dir_path().to_str();
-        if s.len() == 0 {
-            ~"."
-        } else {
-            s
+        match s.len() {
+            0 => ~".",
+            _ => s,
         }
     }
 
@@ -515,25 +516,18 @@ impl GenericPath for PosixPath {
     }
 
     fn with_filetype(&self, t: &str) -> PosixPath {
-        if t.len() == 0 {
-            match self.filestem() {
-              None => copy *self,
-              Some(ref s) => self.with_filename(*s)
-            }
-        } else {
-            let t = ~"." + str::to_owned(t);
-            match self.filestem() {
-              None => self.with_filename(t),
-              Some(ref s) => self.with_filename(*s + t)
-            }
+        match (t.len(), self.filestem()) {
+            (0, None)        => copy *self,
+            (0, Some(ref s)) => self.with_filename(*s),
+            (_, None)        => self.with_filename(fmt!(".%s", t)),
+            (_, Some(ref s)) => self.with_filename(fmt!("%s.%s", *s, t)),
         }
     }
 
     fn dir_path(&self) -> PosixPath {
-        if self.components.len() != 0 {
-            self.pop()
-        } else {
-            copy *self
+        match self.components.len() {
+            0 => copy *self,
+            _ => self.pop(),
         }
     }
 
@@ -638,26 +632,25 @@ impl GenericPath for WindowsPath {
         let device;
         let rest;
 
-        match windows::extract_drive_prefix(s) {
-          Some((ref d, ref r)) => {
-            host = None;
-            device = Some(copy *d);
-            rest = copy *r;
-          }
-          None => {
-            match windows::extract_unc_prefix(s) {
-              Some((ref h, ref r)) => {
+        match (
+            windows::extract_drive_prefix(s),
+            windows::extract_unc_prefix(s),
+        ) {
+            (Some((ref d, ref r)), _) => {
+                host = None;
+                device = Some(copy *d);
+                rest = copy *r;
+            }
+            (None, Some((ref h, ref r))) => {
                 host = Some(copy *h);
                 device = None;
                 rest = copy *r;
-              }
-              None => {
+            }
+            (None, None) => {
                 host = None;
                 device = None;
                 rest = str::to_owned(s);
-              }
             }
-          }
         }
 
         let mut components = ~[];
@@ -673,10 +666,9 @@ impl GenericPath for WindowsPath {
 
     fn dirname(&self) -> ~str {
         let s = self.dir_path().to_str();
-        if s.len() == 0 {
-            ~"."
-        } else {
-            s
+        match s.len() {
+            0 => ~".",
+            _ => s,
         }
     }
 
@@ -732,26 +724,18 @@ impl GenericPath for WindowsPath {
     }
 
     fn with_filetype(&self, t: &str) -> WindowsPath {
-        if t.len() == 0 {
-            match self.filestem() {
-              None => copy *self,
-              Some(ref s) => self.with_filename(*s)
-            }
-        } else {
-            let t = ~"." + str::to_owned(t);
-            match self.filestem() {
-              None => self.with_filename(t),
-              Some(ref s) =>
-              self.with_filename(*s + t)
-            }
+        match (t.len(), self.filestem()) {
+            (0, None)        => copy *self,
+            (0, Some(ref s)) => self.with_filename(*s),
+            (_, None)        => self.with_filename(fmt!(".%s", t)),
+            (_, Some(ref s)) => self.with_filename(fmt!("%s.%s", *s, t)),
         }
     }
 
     fn dir_path(&self) -> WindowsPath {
-        if self.components.len() != 0 {
-            self.pop()
-        } else {
-            copy *self
+        match self.components.len() {
+            0 => copy *self,
+            _ => self.pop(),
         }
     }
 
