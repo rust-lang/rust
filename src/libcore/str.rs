@@ -128,57 +128,43 @@ pub fn push_char(s: &mut ~str, ch: char) {
         let off = len;
         do as_buf(*s) |buf, _len| {
             let buf: *mut u8 = ::cast::transmute(buf);
-            if nb == 1u {
-                *ptr::mut_offset(buf, off) =
-                    code as u8;
-            } else if nb == 2u {
-                *ptr::mut_offset(buf, off) =
-                    (code >> 6u & 31u | tag_two_b) as u8;
-                *ptr::mut_offset(buf, off + 1u) =
-                    (code & 63u | tag_cont) as u8;
-            } else if nb == 3u {
-                *ptr::mut_offset(buf, off) =
-                    (code >> 12u & 15u | tag_three_b) as u8;
-                *ptr::mut_offset(buf, off + 1u) =
-                    (code >> 6u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 2u) =
-                    (code & 63u | tag_cont) as u8;
-            } else if nb == 4u {
-                *ptr::mut_offset(buf, off) =
-                    (code >> 18u & 7u | tag_four_b) as u8;
-                *ptr::mut_offset(buf, off + 1u) =
-                    (code >> 12u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 2u) =
-                    (code >> 6u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 3u) =
-                    (code & 63u | tag_cont) as u8;
-            } else if nb == 5u {
-                *ptr::mut_offset(buf, off) =
-                    (code >> 24u & 3u | tag_five_b) as u8;
-                *ptr::mut_offset(buf, off + 1u) =
-                    (code >> 18u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 2u) =
-                    (code >> 12u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 3u) =
-                    (code >> 6u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 4u) =
-                    (code & 63u | tag_cont) as u8;
-            } else if nb == 6u {
-                *ptr::mut_offset(buf, off) =
-                    (code >> 30u & 1u | tag_six_b) as u8;
-                *ptr::mut_offset(buf, off + 1u) =
-                    (code >> 24u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 2u) =
-                    (code >> 18u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 3u) =
-                    (code >> 12u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 4u) =
-                    (code >> 6u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 5u) =
-                    (code & 63u | tag_cont) as u8;
+            match nb {
+                1u => {
+                    *ptr::mut_offset(buf, off) = code as u8;
+                }
+                2u => {
+                    *ptr::mut_offset(buf, off) = (code >> 6u & 31u | tag_two_b) as u8;
+                    *ptr::mut_offset(buf, off + 1u) = (code & 63u | tag_cont) as u8;
+                }
+                3u => {
+                    *ptr::mut_offset(buf, off) = (code >> 12u & 15u | tag_three_b) as u8;
+                    *ptr::mut_offset(buf, off + 1u) = (code >> 6u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 2u) = (code & 63u | tag_cont) as u8;
+                }
+                4u => {
+                    *ptr::mut_offset(buf, off) = (code >> 18u & 7u | tag_four_b) as u8;
+                    *ptr::mut_offset(buf, off + 1u) = (code >> 12u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 2u) = (code >> 6u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 3u) = (code & 63u | tag_cont) as u8;
+                }
+                5u => {
+                    *ptr::mut_offset(buf, off) = (code >> 24u & 3u | tag_five_b) as u8;
+                    *ptr::mut_offset(buf, off + 1u) = (code >> 18u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 2u) = (code >> 12u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 3u) = (code >> 6u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 4u) = (code & 63u | tag_cont) as u8;
+                }
+                6u => {
+                    *ptr::mut_offset(buf, off) = (code >> 30u & 1u | tag_six_b) as u8;
+                    *ptr::mut_offset(buf, off + 1u) = (code >> 24u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 2u) = (code >> 18u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 3u) = (code >> 12u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 4u) = (code >> 6u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 5u) = (code & 63u | tag_cont) as u8;
+                }
+                _ => {}
             }
         }
-
         raw::set_len(s, new_len);
     }
 }
