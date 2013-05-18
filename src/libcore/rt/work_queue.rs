@@ -23,25 +23,21 @@ pub impl<T> WorkQueue<T> {
         }
     }
 
-    fn push_back(&mut self, value: T) {
-        self.queue.push(value)
+    fn push(&mut self, value: T) {
+        self.queue.unshift(value)
     }
 
-    fn pop_back(&mut self) -> Option<T> {
+    fn pop(&mut self) -> Option<T> {
         if !self.queue.is_empty() {
-            Some(self.queue.pop())
+            Some(self.queue.shift())
         } else {
             None
         }
     }
 
-    fn push_front(&mut self, value: T) {
-        self.queue.unshift(value)
-    }
-
-    fn pop_front(&mut self) -> Option<T> {
+    fn steal(&mut self) -> Option<T> {
         if !self.queue.is_empty() {
-            Some(self.queue.shift())
+            Some(self.queue.pop())
         } else {
             None
         }
