@@ -25,7 +25,7 @@ use unstable::sync::{Exclusive, exclusive};
 use rtcomm = rt::comm;
 use rt;
 
-use pipes::{recv, try_recv, wait_many, peek, PacketHeader};
+use pipes::{wait_many, PacketHeader};
 
 // FIXME #5160: Making this public exposes some plumbing from
 // pipes. Needs some refactoring
@@ -61,76 +61,14 @@ pub trait Peekable<T> {
     fn peek(&self) -> bool;
 }
 
-
-// Streams - Make pipes a little easier in general.
-
-/*proto! streamp (
-    Open:send<T: Owned> {
-        data(T) -> Open<T>
-    }
-)*/
-
-#[allow(non_camel_case_types)]
-pub mod streamp {
-    priv use core::kinds::Owned;
-
-    pub fn init<T: Owned>() -> (client::Open<T>, server::Open<T>) {
-        pub use core::pipes::HasBuffer;
-        ::core::pipes::entangle()
-    }
-
-    #[allow(non_camel_case_types)]
-    pub enum Open<T> { pub data(T, server::Open<T>), }
-
-    #[allow(non_camel_case_types)]
-    pub mod client {
-        priv use core::kinds::Owned;
-
-        #[allow(non_camel_case_types)]
-        pub fn try_data<T: Owned>(pipe: Open<T>, x_0: T) ->
-            ::core::option::Option<Open<T>> {
-            {
-                use super::data;
-                let (c, s) = ::core::pipes::entangle();
-                let message = data(x_0, s);
-                if ::core::pipes::send(pipe, message) {
-                    ::core::pipes::rt::make_some(c)
-                } else { ::core::pipes::rt::make_none() }
-            }
-        }
-
-        #[allow(non_camel_case_types)]
-        pub fn data<T: Owned>(pipe: Open<T>, x_0: T) -> Open<T> {
-            {
-                use super::data;
-                let (c, s) = ::core::pipes::entangle();
-                let message = data(x_0, s);
-                ::core::pipes::send(pipe, message);
-                c
-            }
-        }
-
-        #[allow(non_camel_case_types)]
-        pub type Open<T> = ::core::pipes::SendPacket<super::Open<T>>;
-    }
-
-    #[allow(non_camel_case_types)]
-    pub mod server {
-        #[allow(non_camel_case_types)]
-        pub type Open<T> = ::core::pipes::RecvPacket<super::Open<T>>;
-    }
-}
-
 /// An endpoint that can send many messages.
-#[unsafe_mut_field(endp)]
 pub struct Chan<T> {
-    endp: Option<streamp::client::Open<T>>
+    inner: Either<pipesy::Chan<T>, rtcomm::Chan<T>>
 }
 
 /// An endpoint that can receive many messages.
-#[unsafe_mut_field(endp)]
 pub struct Port<T> {
-    endp: Option<streamp::server::Open<T>>,
+    inner: Either<pipesy::Port<T>, rtcomm::Port<T>>
 }
 
 /** Creates a `(Port, Chan)` pair.
@@ -139,100 +77,75 @@ These allow sending or receiving an unlimited number of messages.
 
 */
 pub fn stream<T:Owned>() -> (Port<T>, Chan<T>) {
-    let (c, s) = streamp::init();
-
-    (Port {
-        endp: Some(s)
-    }, Chan {
-        endp: Some(c)
-    })
+    let (port, chan) = match rt::context() {
+        rt::OldTaskContext => match pipesy::stream() {
+            (p, c) => (Left(p), Left(c))
+        },
+        _ => match rtcomm::stream() {
+            (p, c) => (Right(p), Right(c))
+        }
+    };
+    let port = Port { inner: port };
+    let chan = Chan { inner: chan };
+    return (port, chan);
 }
 
 impl<T: Owned> GenericChan<T> for Chan<T> {
-    #[inline(always)]
     fn send(&self, x: T) {
-        unsafe {
-            let self_endp = transmute_mut(&self.endp);
-            let endp = replace(self_endp, None);
-            *self_endp = Some(streamp::client::data(endp.unwrap(), x))
+        match self.inner {
+            Left(ref chan) => chan.send(x),
+            Right(ref chan) => chan.send(x)
         }
     }
 }
 
 impl<T: Owned> GenericSmartChan<T> for Chan<T> {
-    #[inline(always)]
     fn try_send(&self, x: T) -> bool {
-        unsafe {
-            let self_endp = transmute_mut(&self.endp);
-            let endp = replace(self_endp, None);
-            match streamp::client::try_data(endp.unwrap(), x) {
-                Some(next) => {
-                    *self_endp = Some(next);
-                    true
-                }
-                None => false
-            }
+        match self.inner {
+            Left(ref chan) => chan.try_send(x),
+            Right(ref chan) => chan.try_send(x)
         }
     }
 }
 
 impl<T: Owned> GenericPort<T> for Port<T> {
-    #[inline(always)]
     fn recv(&self) -> T {
-        unsafe {
-            let self_endp = transmute_mut(&self.endp);
-            let endp = replace(self_endp, None);
-            let streamp::data(x, endp) = recv(endp.unwrap());
-            *self_endp = Some(endp);
-            x
+        match self.inner {
+            Left(ref port) => port.recv(),
+            Right(ref port) => port.recv()
         }
     }
 
-    #[inline(always)]
     fn try_recv(&self) -> Option<T> {
-        unsafe {
-            let self_endp = transmute_mut(&self.endp);
-            let endp = replace(self_endp, None);
-            match try_recv(endp.unwrap()) {
-                Some(streamp::data(x, endp)) => {
-                    *self_endp = Some(endp);
-                    Some(x)
-                }
-                None => None
-            }
+        match self.inner {
+            Left(ref port) => port.try_recv(),
+            Right(ref port) => port.try_recv()
         }
     }
 }
 
 impl<T: Owned> Peekable<T> for Port<T> {
-    #[inline(always)]
     fn peek(&self) -> bool {
-        unsafe {
-            let self_endp = transmute_mut(&self.endp);
-            let mut endp = replace(self_endp, None);
-            let peek = match endp {
-                Some(ref mut endp) => peek(endp),
-                None => fail!("peeking empty stream")
-            };
-            *self_endp = endp;
-            peek
+        match self.inner {
+            Left(ref port) => port.peek(),
+            Right(ref port) => port.peek()
         }
     }
 }
 
 impl<T: Owned> Selectable for Port<T> {
     fn header(&mut self) -> *mut PacketHeader {
-            match self.endp {
-                Some(ref mut endp) => endp.header(),
-                None => fail!("peeking empty stream")
-            }
+        match self.inner {
+            Left(ref mut port) => port.header(),
+            Right(_) => fail!("can't select on newsched ports")
+        }
     }
 }
 
 /// Treat many ports as one.
 #[unsafe_mut_field(ports)]
 pub struct PortSet<T> {
-    ports: ~[Port<T>],
+    ports: ~[pipesy::Port<T>],
 }
 
 pub impl<T: Owned> PortSet<T> {
@@ -243,6 +156,11 @@ pub impl<T: Owned> PortSet<T> {
     }
 
     fn add(&self, port: Port<T>) {
+        let Port { inner } = port;
+        let port = match inner {
+            Left(p) => p,
+            Right(_) => fail!("PortSet not implemented")
+        };
         unsafe {
             let self_ports = transmute_mut(&self.ports);
             self_ports.push(port)
@@ -290,7 +208,7 @@ impl<T: Owned> Peekable<T> for PortSet<T> {
         // It'd be nice to use self.port.each, but that version isn't
         // pure.
         for uint::range(0, vec::uniq_len(&const self.ports)) |i| {
-            let port: &Port<T> = &self.ports[i];
+            let port: &pipesy::Port<T> = &self.ports[i];
             if port.peek() {
                 return true;
             }
@@ -301,12 +219,17 @@ impl<T: Owned> Peekable<T> for PortSet<T> {
 
 /// A channel that can be shared between many senders.
 pub struct SharedChan<T> {
-    ch: Exclusive<Chan<T>>
+    ch: Exclusive<pipesy::Chan<T>>
 }
 
 impl<T: Owned> SharedChan<T> {
     /// Converts a `chan` into a `shared_chan`.
     pub fn new(c: Chan<T>) -> SharedChan<T> {
+        let Chan { inner } = c;
+        let c = match inner {
+            Left(c) => c,
+            Right(_) => fail!("SharedChan not implemented")
+        };
         SharedChan { ch: exclusive(c) }
     }
 }
@@ -354,12 +277,8 @@ pub fn oneshot<T: Owned>() -> (PortOne<T>, ChanOne<T>) {
             (p, c) => (Right(p), Right(c))
         }
     };
-    let port = PortOne {
-        inner: port
-    };
-    let chan = ChanOne {
-        inner: chan
-    };
+    let port = PortOne { inner: port };
+    let chan = ChanOne { inner: chan };
     return (port, chan);
 }
 
@@ -435,7 +354,10 @@ mod pipesy {
 
     use kinds::Owned;
     use option::{Option, Some, None};
-    use pipes::{recv, try_recv};
+    use pipes::{recv, try_recv, peek, PacketHeader};
+    use super::{GenericChan, GenericSmartChan, GenericPort, Peekable, Selectable};
+    use cast::transmute_mut;
+    use util::replace;
 
     /*proto! oneshot (
         Oneshot:send<T:Owned> {
@@ -609,6 +531,173 @@ mod pipesy {
             }
         }
     }
+
+    // Streams - Make pipes a little easier in general.
+
+    /*proto! streamp (
+        Open:send<T: Owned> {
+            data(T) -> Open<T>
+        }
+    )*/
+
+    #[allow(non_camel_case_types)]
+    pub mod streamp {
+        priv use core::kinds::Owned;
+
+        pub fn init<T: Owned>() -> (client::Open<T>, server::Open<T>) {
+            pub use core::pipes::HasBuffer;
+            ::core::pipes::entangle()
+        }
+
+        #[allow(non_camel_case_types)]
+        pub enum Open<T> { pub data(T, server::Open<T>), }
+
+        #[allow(non_camel_case_types)]
+        pub mod client {
+            priv use core::kinds::Owned;
+
+            #[allow(non_camel_case_types)]
+            pub fn try_data<T: Owned>(pipe: Open<T>, x_0: T) ->
+                ::core::option::Option<Open<T>> {
+                {
+                    use super::data;
+                    let (c, s) = ::core::pipes::entangle();
+                    let message = data(x_0, s);
+                    if ::core::pipes::send(pipe, message) {
+                        ::core::pipes::rt::make_some(c)
+                    } else { ::core::pipes::rt::make_none() }
+                }
+            }
+
+            #[allow(non_camel_case_types)]
+            pub fn data<T: Owned>(pipe: Open<T>, x_0: T) -> Open<T> {
+                {
+                    use super::data;
+                    let (c, s) = ::core::pipes::entangle();
+                    let message = data(x_0, s);
+                    ::core::pipes::send(pipe, message);
+                    c
+                }
+            }
+
+            #[allow(non_camel_case_types)]
+            pub type Open<T> = ::core::pipes::SendPacket<super::Open<T>>;
+        }
+
+        #[allow(non_camel_case_types)]
+        pub mod server {
+            #[allow(non_camel_case_types)]
+            pub type Open<T> = ::core::pipes::RecvPacket<super::Open<T>>;
+        }
+    }
+
+    /// An endpoint that can send many messages.
+    #[unsafe_mut_field(endp)]
+    pub struct Chan<T> {
+        endp: Option<streamp::client::Open<T>>
+    }
+
+    /// An endpoint that can receive many messages.
+    #[unsafe_mut_field(endp)]
+    pub struct Port<T> {
+        endp: Option<streamp::server::Open<T>>,
+    }
+
+    /** Creates a `(Port, Chan)` pair.
+
+    These allow sending or receiving an unlimited number of messages.
+
+    */
+    pub fn stream<T:Owned>() -> (Port<T>, Chan<T>) {
+        let (c, s) = streamp::init();
+
+        (Port {
+            endp: Some(s)
+        }, Chan {
+            endp: Some(c)
+        })
+    }
+
+    impl<T: Owned> GenericChan<T> for Chan<T> {
+        #[inline(always)]
+        fn send(&self, x: T) {
+            unsafe {
+                let self_endp = transmute_mut(&self.endp);
+                let endp = replace(self_endp, None);
+                *self_endp = Some(streamp::client::data(endp.unwrap(), x))
+            }
+        }
+    }
+
+    impl<T: Owned> GenericSmartChan<T> for Chan<T> {
+        #[inline(always)]
+        fn try_send(&self, x: T) -> bool {
+            unsafe {
+                let self_endp = transmute_mut(&self.endp);
+                let endp = replace(self_endp, None);
+                match streamp::client::try_data(endp.unwrap(), x) {
+                    Some(next) => {
+                        *self_endp = Some(next);
+                        true
+                    }
+                    None => false
+                }
+            }
+        }
+    }
+
+    impl<T: Owned> GenericPort<T> for Port<T> {
+        #[inline(always)]
+        fn recv(&self) -> T {
+            unsafe {
+                let self_endp = transmute_mut(&self.endp);
+                let endp = replace(self_endp, None);
+                let streamp::data(x, endp) = recv(endp.unwrap());
+                *self_endp = Some(endp);
+                x
+            }
+        }
+
+        #[inline(always)]
+        fn try_recv(&self) -> Option<T> {
+            unsafe {
+                let self_endp = transmute_mut(&self.endp);
+                let endp = replace(self_endp, None);
+                match try_recv(endp.unwrap()) {
+                    Some(streamp::data(x, endp)) => {
+                        *self_endp = Some(endp);
+                        Some(x)
+                    }
+                    None => None
+                }
+            }
+        }
+    }
+
+    impl<T: Owned> Peekable<T> for Port<T> {
+        #[inline(always)]
+        fn peek(&self) -> bool {
+            unsafe {
+                let self_endp = transmute_mut(&self.endp);
+                let mut endp = replace(self_endp, None);
+                let peek = match endp {
+                    Some(ref mut endp) => peek(endp),
+                    None => fail!("peeking empty stream")
+                };
+                *self_endp = endp;
+                peek
+            }
+        }
+    }
+
+    impl<T: Owned> Selectable for Port<T> {
+        fn header(&mut self) -> *mut PacketHeader {
+            match self.endp {
+                Some(ref mut endp) => endp.header(),
+                None => fail!("peeking empty stream")
+            }
+    }
+}
 
 }
 
