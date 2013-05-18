@@ -47,7 +47,7 @@ pub trait IteratorUtil<A> {
     fn advance(&mut self, f: &fn(A) -> bool);
     #[cfg(not(stage0))]
     fn advance(&mut self, f: &fn(A) -> bool) -> bool;
-    fn to_vec(self) -> ~[A];
+    fn to_vec(&mut self) -> ~[A];
     fn nth(&mut self, n: uint) -> Option<A>;
     fn last(&mut self) -> Option<A>;
     fn fold<B>(&mut self, start: B, f: &fn(B, A) -> B) -> B;
@@ -147,11 +147,8 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     }
 
     #[inline(always)]
-    fn to_vec(self) -> ~[A] {
-        let mut v = ~[];
-        let mut it = self;
-        for it.advance() |x| { v.push(x); }
-        return v;
+    fn to_vec(&mut self) -> ~[A] {
+        iter::to_vec::<A>(|f| self.advance(f))
     }
 
     /// Return the `n`th item yielded by an iterator.
@@ -563,7 +560,7 @@ mod tests {
 
     #[test]
     fn test_filter_map() {
-        let it  = Counter::new(0u, 1u).take(10)
+        let mut it = Counter::new(0u, 1u).take(10)
             .filter_map(|x: uint| if x.is_even() { Some(x*x) } else { None });
         assert_eq!(it.to_vec(), ~[0*0, 2*2, 4*4, 6*6, 8*8]);
     }
