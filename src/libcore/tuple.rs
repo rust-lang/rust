@@ -10,13 +10,10 @@
 
 //! Operations on tuples
 
-use clone::Clone;
 use kinds::Copy;
 use vec;
 
-#[cfg(not(test))] use cmp::{Eq, Ord};
-
-pub use self::getters::*;
+pub use self::inner::*;
 
 pub trait CopyableTuple<T, U> {
     fn first(&self) -> T;
@@ -45,16 +42,6 @@ impl<T:Copy,U:Copy> CopyableTuple<T, U> for (T, U) {
     fn swap(&self) -> (U, T) {
         let (t, u) = *self;
         return (u, t);
-    }
-
-}
-
-impl<T:Clone,U:Clone> Clone for (T, U) {
-    fn clone(&self) -> (T, U) {
-        let (a, b) = match *self {
-            (ref a, ref b) => (a, b)
-        };
-        (a.clone(), b.clone())
     }
 }
 
@@ -124,158 +111,81 @@ impl<A:Copy,B:Copy> ExtendedTupleOps<A,B> for (~[A], ~[B]) {
     }
 }
 
-#[cfg(not(test))]
-impl<A:Eq> Eq for (A,) {
-    #[inline(always)]
-    fn eq(&self, other: &(A,)) -> bool {
-        match (*self) {
-            (ref self_a,) => match other {
-                &(ref other_a,) => {
-                    (*self_a).eq(other_a)
-                }
-            }
-        }
-    }
-    #[inline(always)]
-    fn ne(&self, other: &(A,)) -> bool { !(*self).eq(other) }
-}
+// macro for implementing n-ary tuple functions and operations
 
-#[cfg(not(test))]
-impl<A:Ord> Ord for (A,) {
-    #[inline(always)]
-    fn lt(&self, other: &(A,)) -> bool {
-        match (*self) {
-            (ref self_a,) => {
-                match (*other) {
-                    (ref other_a,) => {
-                        if (*self_a).lt(other_a) { return true; }
-                        return false;
-                    }
-                }
-            }
-        }
-    }
-    #[inline(always)]
-    fn le(&self, other: &(A,)) -> bool { !other.lt(&(*self)) }
-    #[inline(always)]
-    fn ge(&self, other: &(A,)) -> bool { !self.lt(other) }
-    #[inline(always)]
-    fn gt(&self, other: &(A,)) -> bool { other.lt(&(*self))  }
-}
-
-#[cfg(not(test))]
-impl<A:Eq,B:Eq> Eq for (A, B) {
-    #[inline(always)]
-    fn eq(&self, other: &(A, B)) -> bool {
-        match (*self) {
-            (ref self_a, ref self_b) => match other {
-                &(ref other_a, ref other_b) => {
-                    (*self_a).eq(other_a) && (*self_b).eq(other_b)
-                }
-            }
-        }
-    }
-    #[inline(always)]
-    fn ne(&self, other: &(A, B)) -> bool { !(*self).eq(other) }
-}
-
-#[cfg(not(test))]
-impl<A:Ord,B:Ord> Ord for (A, B) {
-    #[inline(always)]
-    fn lt(&self, other: &(A, B)) -> bool {
-        match (*self) {
-            (ref self_a, ref self_b) => {
-                match (*other) {
-                    (ref other_a, ref other_b) => {
-                        if (*self_a).lt(other_a) { return true; }
-                        if (*other_a).lt(self_a) { return false; }
-                        if (*self_b).lt(other_b) { return true; }
-                        return false;
-                    }
-                }
-            }
-        }
-    }
-    #[inline(always)]
-    fn le(&self, other: &(A, B)) -> bool { !(*other).lt(&(*self)) }
-    #[inline(always)]
-    fn ge(&self, other: &(A, B)) -> bool { !(*self).lt(other) }
-    #[inline(always)]
-    fn gt(&self, other: &(A, B)) -> bool { (*other).lt(&(*self))  }
-}
-
-#[cfg(not(test))]
-impl<A:Eq,B:Eq,C:Eq> Eq for (A, B, C) {
-    #[inline(always)]
-    fn eq(&self, other: &(A, B, C)) -> bool {
-        match (*self) {
-            (ref self_a, ref self_b, ref self_c) => match other {
-                &(ref other_a, ref other_b, ref other_c) => {
-                    (*self_a).eq(other_a) && (*self_b).eq(other_b)
-                        && (*self_c).eq(other_c)
-                }
-            }
-        }
-    }
-    #[inline(always)]
-    fn ne(&self, other: &(A, B, C)) -> bool { !(*self).eq(other) }
-}
-
-#[cfg(not(test))]
-impl<A:Ord,B:Ord,C:Ord> Ord for (A, B, C) {
-    #[inline(always)]
-    fn lt(&self, other: &(A, B, C)) -> bool {
-        match (*self) {
-            (ref self_a, ref self_b, ref self_c) => {
-                match (*other) {
-                    (ref other_a, ref other_b, ref other_c) => {
-                        if (*self_a).lt(other_a) { return true; }
-                        if (*other_a).lt(self_a) { return false; }
-                        if (*self_b).lt(other_b) { return true; }
-                        if (*other_b).lt(self_b) { return false; }
-                        if (*self_c).lt(other_c) { return true; }
-                        return false;
-                    }
-                }
-            }
-        }
-    }
-    #[inline(always)]
-    fn le(&self, other: &(A, B, C)) -> bool { !(*other).lt(&(*self)) }
-    #[inline(always)]
-    fn ge(&self, other: &(A, B, C)) -> bool { !(*self).lt(other) }
-    #[inline(always)]
-    fn gt(&self, other: &(A, B, C)) -> bool { (*other).lt(&(*self))  }
-}
-
-// Tuple element getters
-
-macro_rules! tuple_getters(
+macro_rules! tuple_impls(
     ($(
         $name:ident {
-            $(fn $method:ident -> $T:ident { $accessor:pat => $t:expr })+
+            $(fn $get_fn:ident -> $T:ident { $get_pattern:pat => $ret:expr })+
         }
     )+) => (
-        pub mod getters {
-            $(pub trait $name<$($T),+> {
-                    $(fn $method<'a>(&'a self) -> &'a $T;)+
-            })+
+        pub mod inner {
+            use clone::Clone;
+            #[cfg(not(test))] use cmp::{Eq, Ord};
 
-            $(impl<$($T),+> $name<$($T),+> for ($($T),+) {
-                $(
-                    #[inline(always)]
-                    fn $method<'a>(&'a self) -> &'a $T {
-                        match *self {
-                            $accessor => $t
+            $(
+                pub trait $name<$($T),+> {
+                    $(fn $get_fn<'a>(&'a self) -> &'a $T;)+
+                }
+
+                impl<$($T),+> $name<$($T),+> for ($($T),+) {
+                    $(
+                        #[inline(always)]
+                        fn $get_fn<'a>(&'a self) -> &'a $T {
+                            match *self {
+                                $get_pattern => $ret
+                            }
                         }
+                    )+
+                }
+
+                impl<$($T:Clone),+> Clone for ($($T),+) {
+                    fn clone(&self) -> ($($T),+) {
+                        ($(self.$get_fn().clone()),+)
                     }
-                )+
-            })+
+                }
+
+                #[cfg(not(test))]
+                impl<$($T:Eq),+> Eq for ($($T),+) {
+                    #[inline(always)]
+                    fn eq(&self, other: &($($T),+)) -> bool {
+                        $(*self.$get_fn() == *other.$get_fn())&&+
+                    }
+
+                    #[inline(always)]
+                    fn ne(&self, other: &($($T),+)) -> bool {
+                        !(*self == *other)
+                    }
+                }
+
+                #[cfg(not(test))]
+                impl<$($T:Ord),+> Ord for ($($T),+) {
+                    #[inline(always)]
+                    fn lt(&self, other: &($($T),+)) -> bool {
+                        $(*self.$get_fn() < *other.$get_fn())&&+
+                    }
+
+                    #[inline(always)]
+                    fn le(&self, other: &($($T),+)) -> bool {
+                        $(*self.$get_fn() <= *other.$get_fn())&&+
+                    }
+
+                    #[inline(always)]
+                    fn ge(&self, other: &($($T),+)) -> bool {
+                        $(*self.$get_fn() >= *other.$get_fn())&&+
+                    }
+
+                    #[inline(always)]
+                    fn gt(&self, other: &($($T),+)) -> bool {
+                        $(*self.$get_fn() > *other.$get_fn())&&+
+                    }
+                }
+            )+
         }
     )
 )
 
-tuple_getters!(
+tuple_impls!(
     Tuple2 {
         fn n0 -> A { (ref a,_) => a }
         fn n1 -> B { (_,ref b) => b }
