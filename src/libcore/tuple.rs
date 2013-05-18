@@ -311,55 +311,61 @@ tuple_impls!(
     }
 )
 
-#[test]
-fn test_tuple_ref() {
-    let x = (~"foo", ~"bar");
-    assert_eq!(x.first_ref(), &~"foo");
-    assert_eq!(x.second_ref(), &~"bar");
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clone::Clone;
 
-#[test]
-#[allow(non_implicitly_copyable_typarams)]
-fn test_tuple() {
-    assert_eq!((948, 4039.48).first(), 948);
-    assert_eq!((34.5, ~"foo").second(), ~"foo");
-    assert_eq!(('a', 2).swap(), (2, 'a'));
-}
+    #[test]
+    fn test_tuple_ref() {
+        let x = (~"foo", ~"bar");
+        assert_eq!(x.first_ref(), &~"foo");
+        assert_eq!(x.second_ref(), &~"bar");
+    }
 
-#[test]
-fn test_clone() {
-    let a = (1, ~"2");
-    let b = a.clone();
-    assert_eq!(a.first(), b.first());
-    assert_eq!(a.second(), b.second());
-}
+    #[test]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_tuple() {
+        assert_eq!((948, 4039.48).first(), 948);
+        assert_eq!((34.5, ~"foo").second(), ~"foo");
+        assert_eq!(('a', 2).swap(), (2, 'a'));
+    }
 
-#[test]
-fn test_n_tuple() {
-    let t = (0u8, 1u16, 2u32, 3u64, 4u, 5i8, 6i16, 7i32, 8i64, 9i, 10f32, 11f64);
-    assert_eq!(t.n0(), 0u8);
-    assert_eq!(t.n1(), 1u16);
-    assert_eq!(t.n2(), 2u32);
-    assert_eq!(t.n3(), 3u64);
-    assert_eq!(t.n4(), 4u);
-    assert_eq!(t.n5(), 5i8);
-    assert_eq!(t.n6(), 6i16);
-    assert_eq!(t.n7(), 7i32);
-    assert_eq!(t.n8(), 8i64);
-    assert_eq!(t.n9(), 9i);
-    assert_eq!(t.n10(), 10f32);
-    assert_eq!(t.n11(), 11f64);
+    #[test]
+    fn test_clone() {
+        let a = (1, ~"2");
+        let b = a.clone();
+        assert_eq!(a.first(), b.first());
+        assert_eq!(a.second(), b.second());
+    }
 
-    assert_eq!(t.n0_ref(), &0u8);
-    assert_eq!(t.n1_ref(), &1u16);
-    assert_eq!(t.n2_ref(), &2u32);
-    assert_eq!(t.n3_ref(), &3u64);
-    assert_eq!(t.n4_ref(), &4u);
-    assert_eq!(t.n5_ref(), &5i8);
-    assert_eq!(t.n6_ref(), &6i16);
-    assert_eq!(t.n7_ref(), &7i32);
-    assert_eq!(t.n8_ref(), &8i64);
-    assert_eq!(t.n9_ref(), &9i);
-    assert_eq!(t.n10_ref(), &10f32);
-    assert_eq!(t.n11_ref(), &11f64);
+    #[test]
+    fn test_n_tuple() {
+        let t = (0u8, 1u16, 2u32, 3u64, 4u, 5i8, 6i16, 7i32, 8i64, 9i, 10f32, 11f64);
+        assert_eq!(t.n0(), 0u8);
+        assert_eq!(t.n1(), 1u16);
+        assert_eq!(t.n2(), 2u32);
+        assert_eq!(t.n3(), 3u64);
+        assert_eq!(t.n4(), 4u);
+        assert_eq!(t.n5(), 5i8);
+        assert_eq!(t.n6(), 6i16);
+        assert_eq!(t.n7(), 7i32);
+        assert_eq!(t.n8(), 8i64);
+        assert_eq!(t.n9(), 9i);
+        assert_eq!(t.n10(), 10f32);
+        assert_eq!(t.n11(), 11f64);
+
+        assert_eq!(t.n0_ref(), &0u8);
+        assert_eq!(t.n1_ref(), &1u16);
+        assert_eq!(t.n2_ref(), &2u32);
+        assert_eq!(t.n3_ref(), &3u64);
+        assert_eq!(t.n4_ref(), &4u);
+        assert_eq!(t.n5_ref(), &5i8);
+        assert_eq!(t.n6_ref(), &6i16);
+        assert_eq!(t.n7_ref(), &7i32);
+        assert_eq!(t.n8_ref(), &8i64);
+        assert_eq!(t.n9_ref(), &9i);
+        assert_eq!(t.n10_ref(), &10f32);
+        assert_eq!(t.n11_ref(), &11f64);
+    }
 }
