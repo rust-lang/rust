@@ -10,47 +10,50 @@
 
 //! Utilities for manipulating the char type
 
-#[cfg(not(test))]
-use cmp::Ord;
 use option::{None, Option, Some};
 use str;
+#[cfg(stage0)]
+use str::StrSlice;
+#[cfg(not(stage0))]
+use str::{StrSlice, OwnedStr};
 use u32;
 use uint;
 use unicode::{derived_property, general_category};
 
-#[cfg(not(test))] use cmp::Eq;
+#[cfg(not(test))]
+use cmp::{Eq, Ord};
 
 /*
-    Lu  Uppercase_Letter    an uppercase letter
-    Ll  Lowercase_Letter    a lowercase letter
-    Lt  Titlecase_Letter    a digraphic character, with first part uppercase
-    Lm  Modifier_Letter     a modifier letter
-    Lo  Other_Letter    other letters, including syllables and ideographs
-    Mn  Nonspacing_Mark     a nonspacing combining mark (zero advance width)
-    Mc  Spacing_Mark    a spacing combining mark (positive advance width)
-    Me  Enclosing_Mark  an enclosing combining mark
-    Nd  Decimal_Number  a decimal digit
-    Nl  Letter_Number   a letterlike numeric character
-    No  Other_Number    a numeric character of other type
+    Lu  Uppercase_Letter        an uppercase letter
+    Ll  Lowercase_Letter        a lowercase letter
+    Lt  Titlecase_Letter        a digraphic character, with first part uppercase
+    Lm  Modifier_Letter         a modifier letter
+    Lo  Other_Letter            other letters, including syllables and ideographs
+    Mn  Nonspacing_Mark         a nonspacing combining mark (zero advance width)
+    Mc  Spacing_Mark            a spacing combining mark (positive advance width)
+    Me  Enclosing_Mark          an enclosing combining mark
+    Nd  Decimal_Number          a decimal digit
+    Nl  Letter_Number           a letterlike numeric character
+    No  Other_Number            a numeric character of other type
     Pc  Connector_Punctuation   a connecting punctuation mark, like a tie
-    Pd  Dash_Punctuation    a dash or hyphen punctuation mark
-    Ps  Open_Punctuation    an opening punctuation mark (of a pair)
-    Pe  Close_Punctuation   a closing punctuation mark (of a pair)
+    Pd  Dash_Punctuation        a dash or hyphen punctuation mark
+    Ps  Open_Punctuation        an opening punctuation mark (of a pair)
+    Pe  Close_Punctuation       a closing punctuation mark (of a pair)
     Pi  Initial_Punctuation     an initial quotation mark
-    Pf  Final_Punctuation   a final quotation mark
-    Po  Other_Punctuation   a punctuation mark of other type
-    Sm  Math_Symbol     a symbol of primarily mathematical use
-    Sc  Currency_Symbol     a currency sign
-    Sk  Modifier_Symbol     a non-letterlike modifier symbol
-    So  Other_Symbol    a symbol of other type
-    Zs  Space_Separator     a space character (of various non-zero widths)
-    Zl  Line_Separator  U+2028 LINE SEPARATOR only
+    Pf  Final_Punctuation       a final quotation mark
+    Po  Other_Punctuation       a punctuation mark of other type
+    Sm  Math_Symbol             a symbol of primarily mathematical use
+    Sc  Currency_Symbol         a currency sign
+    Sk  Modifier_Symbol         a non-letterlike modifier symbol
+    So  Other_Symbol            a symbol of other type
+    Zs  Space_Separator         a space character (of various non-zero widths)
+    Zl  Line_Separator          U+2028 LINE SEPARATOR only
     Zp  Paragraph_Separator     U+2029 PARAGRAPH SEPARATOR only
-    Cc  Control     a C0 or C1 control code
-    Cf  Format  a format control character
-    Cs  Surrogate   a surrogate code point
-    Co  Private_Use     a private-use character
-    Cn  Unassigned  a reserved unassigned code point or a noncharacter
+    Cc  Control                 a C0 or C1 control code
+    Cf  Format                  a format control character
+    Cs  Surrogate               a surrogate code point
+    Co  Private_Use             a private-use character
+    Cn  Unassigned              a reserved unassigned code point or a noncharacter
 */
 
 pub fn is_alphabetic(c: char) -> bool   { derived_property::Alphabetic(c) }
@@ -62,18 +65,14 @@ pub fn is_XID_continue(c: char) -> bool { derived_property::XID_Continue(c) }
  * in terms of the Unicode General Category 'Ll'
  */
 #[inline(always)]
-pub fn is_lowercase(c: char) -> bool {
-    return general_category::Ll(c);
-}
+pub fn is_lowercase(c: char) -> bool { general_category::Ll(c) }
 
 /**
  * Indicates whether a character is in upper case, defined
  * in terms of the Unicode General Category 'Lu'.
  */
 #[inline(always)]
-pub fn is_uppercase(c: char) -> bool {
-    return general_category::Lu(c);
-}
+pub fn is_uppercase(c: char) -> bool { general_category::Lu(c) }
 
 /**
  * Indicates whether a character is whitespace. Whitespace is defined in
@@ -82,10 +81,10 @@ pub fn is_uppercase(c: char) -> bool {
  */
 #[inline(always)]
 pub fn is_whitespace(c: char) -> bool {
-    return ('\x09' <= c && c <= '\x0d')
+    ('\x09' <= c && c <= '\x0d')
         || general_category::Zs(c)
         || general_category::Zl(c)
-        || general_category::Zp(c);
+        || general_category::Zp(c)
 }
 
 /**
@@ -95,18 +94,18 @@ pub fn is_whitespace(c: char) -> bool {
  */
 #[inline(always)]
 pub fn is_alphanumeric(c: char) -> bool {
-    return derived_property::Alphabetic(c) ||
-        general_category::Nd(c) ||
-        general_category::Nl(c) ||
-        general_category::No(c);
+    derived_property::Alphabetic(c)
+        || general_category::Nd(c)
+        || general_category::Nl(c)
+        || general_category::No(c)
 }
 
 /// Indicates whether the character is numeric (Nd, Nl, or No)
 #[inline(always)]
 pub fn is_digit(c: char) -> bool {
-    return general_category::Nd(c) ||
-        general_category::Nl(c) ||
-        general_category::No(c);
+    general_category::Nd(c)
+        || general_category::Nl(c)
+        || general_category::No(c)
 }
 
 /**
@@ -125,7 +124,7 @@ pub fn is_digit(c: char) -> bool {
 pub fn is_digit_radix(c: char, radix: uint) -> bool {
     match to_digit(c, radix) {
         Some(_) => true,
-        None    => false
+        None    => false,
     }
 }
 
@@ -151,7 +150,7 @@ pub fn to_digit(c: char, radix: uint) -> Option<uint> {
       '0' .. '9' => c as uint - ('0' as uint),
       'a' .. 'z' => c as uint + 10u - ('a' as uint),
       'A' .. 'Z' => c as uint + 10u - ('A' as uint),
-      _ => return None
+      _ => return None,
     };
     if val < radix { Some(val) }
     else { None }
@@ -181,15 +180,7 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     }
 }
 
-/**
- * Return the hexadecimal unicode escape of a char.
- *
- * The rules are as follows:
- *
- *   - chars in [0,0xff] get 2-digit escapes: `\\xNN`
- *   - chars in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`
- *   - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
- */
+#[cfg(stage0)]
 pub fn escape_unicode(c: char) -> ~str {
     let s = u32::to_str_radix(c as u32, 16u);
     let (c, pad) = (if c <= '\xff' { ('x', 2u) }
@@ -201,6 +192,33 @@ pub fn escape_unicode(c: char) -> ~str {
     for uint::range(str::len(s), pad) |_i|
         { str::push_str(&mut out, ~"0"); }
     str::push_str(&mut out, s);
+    out
+}
+
+/**
+ * Return the hexadecimal unicode escape of a char.
+ *
+ * The rules are as follows:
+ *
+ *   - chars in [0,0xff] get 2-digit escapes: `\\xNN`
+ *   - chars in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`
+ *   - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
+ */
+#[cfg(not(stage0))]
+pub fn escape_unicode(c: char) -> ~str {
+    let s = u32::to_str_radix(c as u32, 16u);
+    let (c, pad) = cond!(
+        (c <= '\xff')   { ('x', 2u) }
+        (c <= '\uffff') { ('u', 4u) }
+        _               { ('U', 8u) }
+    );
+    assert!(s.len() <= pad);
+    let mut out = ~"\\";
+    out.push_str(str::from_char(c));
+    for uint::range(s.len(), pad) |_| {
+        out.push_str("0");
+    }
+    out.push_str(s);
     out
 }
 
@@ -218,18 +236,18 @@ pub fn escape_unicode(c: char) -> ~str {
  */
 pub fn escape_default(c: char) -> ~str {
     match c {
-      '\t' => ~"\\t",
-      '\r' => ~"\\r",
-      '\n' => ~"\\n",
-      '\\' => ~"\\\\",
-      '\'' => ~"\\'",
-      '"'  => ~"\\\"",
-      '\x20' .. '\x7e' => str::from_char(c),
-      _ => escape_unicode(c)
+        '\t' => ~"\\t",
+        '\r' => ~"\\r",
+        '\n' => ~"\\n",
+        '\\' => ~"\\\\",
+        '\'' => ~"\\'",
+        '"'  => ~"\\\"",
+        '\x20' .. '\x7e' => str::from_char(c),
+        _ => c.escape_unicode(),
     }
 }
 
-/// Returns the amount of bytes this character would need if encoded in utf8
+#[cfg(stage0)]
 pub fn len_utf8_bytes(c: char) -> uint {
     static max_one_b: uint = 128u;
     static max_two_b: uint = 2048u;
@@ -242,6 +260,24 @@ pub fn len_utf8_bytes(c: char) -> uint {
     else if code < max_three_b { 3u }
     else if code < max_four_b { 4u }
     else { fail!("invalid character!") }
+}
+
+/// Returns the amount of bytes this character would need if encoded in utf8
+#[cfg(not(stage0))]
+pub fn len_utf8_bytes(c: char) -> uint {
+    static MAX_ONE_B:   uint = 128u;
+    static MAX_TWO_B:   uint = 2048u;
+    static MAX_THREE_B: uint = 65536u;
+    static MAX_FOUR_B:  uint = 2097152u;
+
+    let code = c as uint;
+    cond!(
+        (code < MAX_ONE_B)   { 1u }
+        (code < MAX_TWO_B)   { 2u }
+        (code < MAX_THREE_B) { 3u }
+        (code < MAX_FOUR_B)  { 4u }
+        _ { fail!("invalid character!") }
+    )
 }
 
 pub trait Char {
