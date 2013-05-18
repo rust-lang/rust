@@ -401,7 +401,7 @@ pub fn method_with_name_or_default(ccx: @CrateContext,
                       Some(pmis) => {
                           for pmis.each |pmi| {
                               if pmi.method_info.ident == name {
-                                  debug!("XXX %?", pmi.method_info.did);
+                                  debug!("pmi.method_info.did = %?", pmi.method_info.did);
                                   return pmi.method_info.did;
                               }
                           }
@@ -734,15 +734,15 @@ pub fn trans_trait_callee_from_llval(bcx: block,
 }
 
 pub fn vtable_id(ccx: @CrateContext,
-                 origin: typeck::vtable_origin)
+                 origin: &typeck::vtable_origin)
               -> mono_id {
     match origin {
-        typeck::vtable_static(impl_id, substs, sub_vtables) => {
+        &typeck::vtable_static(impl_id, ref substs, sub_vtables) => {
             monomorphize::make_mono_id(
                 ccx,
                 impl_id,
-                substs,
-                if (*sub_vtables).len() == 0u {
+                *substs,
+                if sub_vtables.is_empty() {
                     None
                 } else {
                     Some(sub_vtables)
@@ -759,8 +759,7 @@ pub fn vtable_id(ccx: @CrateContext,
 pub fn get_vtable(ccx: @CrateContext,
                   origin: typeck::vtable_origin)
                -> ValueRef {
-    // XXX: Bad copy.
-    let hash_id = vtable_id(ccx, copy origin);
+    let hash_id = vtable_id(ccx, &origin);
     match ccx.vtables.find(&hash_id) {
       Some(&val) => val,
       None => match origin {

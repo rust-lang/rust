@@ -576,7 +576,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             };
         }
         ast::expr_struct(_, ref fields, base) => {
-            return trans_rec_or_struct(bcx, (*fields), base, expr.id, dest);
+            return trans_rec_or_struct(bcx, (*fields), base, expr.span, expr.id, dest);
         }
         ast::expr_tup(ref args) => {
             let repr = adt::represent_type(bcx.ccx(), expr_ty(bcx, expr));
@@ -721,7 +721,7 @@ fn trans_def_dps_unadjusted(bcx: block, ref_expr: @ast::expr,
         }
         ast::def_struct(*) => {
             // Nothing to do here.
-            // XXX: May not be true in the case of classes with destructors.
+            // FIXME #6572: May not be true in the case of classes with destructors.
             return bcx;
         }
         _ => {
@@ -1129,6 +1129,7 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
 fn trans_rec_or_struct(bcx: block,
                        fields: &[ast::field],
                        base: Option<@ast::expr>,
+                       expr_span: codemap::span,
                        id: ast::node_id,
                        dest: Dest) -> block
 {
@@ -1167,8 +1168,7 @@ fn trans_rec_or_struct(bcx: block,
             }
             None => {
                 if need_base.any(|b| *b) {
-                    // XXX should be span bug
-                    tcx.sess.bug(~"missing fields and no base expr")
+                    tcx.sess.span_bug(expr_span, ~"missing fields and no base expr")
                 }
                 None
             }
@@ -1232,8 +1232,8 @@ fn trans_adt(bcx: block, repr: &adt::Repr, discr: int,
         temp_cleanups.push(dest);
     }
     for optbase.each |base| {
-        // XXX is it sound to use the destination's repr on the base?
-        // XXX would it ever be reasonable to be here with discr != 0?
+        // FIXME #6573: is it sound to use the destination's repr on the base?
+        // And, would it ever be reasonable to be here with discr != 0?
         let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base.expr));
         for base.fields.each |&(i, t)| {
             let datum = do base_datum.get_element(bcx, t, ZeroMem) |srcval| {

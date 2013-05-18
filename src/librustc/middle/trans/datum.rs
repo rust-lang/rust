@@ -652,7 +652,7 @@ pub impl Datum {
                     ByRef => {
                         // Recast lv.val as a pointer to the newtype rather
                         // than a pointer to the struct type.
-                        // XXX: This isn't correct for structs with
+                        // FIXME #6572: This isn't correct for structs with
                         // destructors.
                         (
                             Some(Datum {
