@@ -681,7 +681,6 @@ pub enum type_err {
     terr_trait_stores_differ(terr_vstore_kind, expected_found<TraitStore>),
     terr_in_field(@type_err, ast::ident),
     terr_sorts(expected_found<t>),
-    terr_self_substs,
     terr_integer_as_char,
     terr_int_mismatch(expected_found<IntVarValue>),
     terr_float_mismatch(expected_found<ast::float_ty>),
@@ -3721,9 +3720,6 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
                      values.expected.user_string(cx),
                      values.found.user_string(cx))
             }
-        }
-        terr_self_substs => {
-            ~"inconsistent self substitution" // XXX this is more of a bug
         }
         terr_integer_as_char => {
             fmt!("expected an integral type but found char")

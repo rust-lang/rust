@@ -137,7 +137,7 @@ pub fn mk_tuplified_uniq_cbox_ty(tcx: ty::ctxt, cdata_ty: ty::t) -> ty::t {
 
 // Given a closure ty, emits a corresponding tuple ty
 pub fn mk_closure_tys(tcx: ty::ctxt,
-                      bound_values: ~[EnvValue])
+                      bound_values: &[EnvValue])
                    -> ty::t {
     // determine the types of the values in the env.  Note that this
     // is the actual types that will be stored in the map, not the
@@ -203,8 +203,7 @@ pub fn store_environment(bcx: block,
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     // compute the shape of the closure
-    // XXX: Bad copy.
-    let cdata_ty = mk_closure_tys(tcx, copy bound_values);
+    let cdata_ty = mk_closure_tys(tcx, bound_values);
 
     // allocate closure in the heap
     let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, sigil, cdata_ty);
