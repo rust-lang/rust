@@ -22,26 +22,28 @@ pub trait CopyableTuple<T, U> {
 }
 
 impl<T:Copy,U:Copy> CopyableTuple<T, U> for (T, U) {
-
     /// Return the first element of self
     #[inline(always)]
     fn first(&self) -> T {
-        let (t, _) = *self;
-        return t;
+        match *self {
+            (t, _) => t,
+        }
     }
 
     /// Return the second element of self
     #[inline(always)]
     fn second(&self) -> U {
-        let (_, u) = *self;
-        return u;
+        match *self {
+            (_, u) => u,
+        }
     }
 
     /// Return the results of swapping the two elements of self
     #[inline(always)]
     fn swap(&self) -> (U, T) {
-        let (t, u) = *self;
-        return (u, t);
+        match *self {
+            (t, u) => (u, t),
+        }
     }
 }
 
