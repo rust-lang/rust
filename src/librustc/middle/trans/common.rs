@@ -1325,7 +1325,7 @@ pub fn is_null(val: ValueRef) -> bool {
 // Used to identify cached monomorphized functions and vtables
 #[deriving(Eq)]
 pub enum mono_param_id {
-    mono_precise(ty::t, Option<~[mono_id]>),
+    mono_precise(ty::t, Option<@~[mono_id]>),
     mono_any,
     mono_repr(uint /* size */,
               uint /* align */,

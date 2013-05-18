@@ -1817,7 +1817,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let mut class_field_map = HashMap::new();
         let mut fields_found = 0;
         for field_types.each |field| {
-            // XXX: Check visibility here.
             class_field_map.insert(field.ident, (field.id, false));
         }
 
