@@ -184,7 +184,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
         return accum;
     }
 
-    /// Count the number of an iterator elemenrs
+    /// Count the number of items yielded by an iterator
     #[inline(always)]
     fn count(&mut self) -> uint { self.fold(0, |cnt, _x| cnt + 1) }
 
