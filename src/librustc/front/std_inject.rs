@@ -43,7 +43,7 @@ fn inject_libstd_ref(sess: Session, crate: @ast::crate) -> @ast::crate {
             let n1 = sess.next_node_id();
             let vi1 = @ast::view_item {
                 node: ast::view_item_extern_mod(
-                        sess.ident_of("core"), ~[], n1),
+                        sess.ident_of("std"), ~[], n1),
                 attrs: ~[
                     spanned(ast::attribute_ {
                         style: ast::attr_inner,
@@ -79,7 +79,7 @@ fn inject_libstd_ref(sess: Session, crate: @ast::crate) -> @ast::crate {
                 span: dummy_sp(),
                 global: false,
                 idents: ~[
-                    sess.ident_of("core"),
+                    sess.ident_of("std"),
                     sess.ident_of("prelude")
                 ],
                 rp: None,
