@@ -325,17 +325,13 @@ pub struct FilterMapIterator<'self, A, B, T> {
 impl<'self, A, B, T: Iterator<A>> Iterator<B> for FilterMapIterator<'self, A, B, T> {
     #[inline]
     fn next(&mut self) -> Option<B> {
-        loop {
-            match self.iter.next() {
-                None    => { return None; }
-                Some(a) => {
-                    match (self.f)(a) {
-                        Some(b) => { return Some(b); }
-                        None    => { loop; }
-                    }
-                }
+        for self.iter.advance |x| {
+            match (self.f)(x) {
+                Some(y) => return Some(y),
+                None => ()
             }
         }
+        None
     }
 }
 
