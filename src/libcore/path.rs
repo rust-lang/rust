@@ -452,8 +452,10 @@ impl GenericPath for PosixPath {
             components.push(s.to_owned())
         }
         let is_absolute = (s.len() != 0 && s[0] == '/' as u8);
-        return PosixPath { is_absolute: is_absolute,
-                           components: components }
+        PosixPath {
+            is_absolute: is_absolute,
+            components: components,
+        }
     }
 
     fn dirname(&self) -> ~str {
@@ -466,40 +468,40 @@ impl GenericPath for PosixPath {
 
     fn filename(&self) -> Option<~str> {
         match self.components.len() {
-          0 => None,
-          n => Some(copy self.components[n - 1])
+            0 => None,
+            n => Some(copy self.components[n - 1]),
         }
     }
 
     fn filestem(&self) -> Option<~str> {
         match self.filename() {
-          None => None,
-          Some(ref f) => {
-            match str::rfind_char(*f, '.') {
-              Some(p) => Some(f.slice(0, p).to_owned()),
-              None => Some(copy *f)
+            None => None,
+            Some(ref f) => {
+                match str::rfind_char(*f, '.') {
+                    Some(p) => Some(f.slice(0, p).to_owned()),
+                    None => Some(copy *f),
+                }
             }
-          }
         }
     }
 
     fn filetype(&self) -> Option<~str> {
         match self.filename() {
-          None => None,
-          Some(ref f) => {
-            match str::rfind_char(*f, '.') {
-              Some(p) if p < f.len() => Some(f.slice(p, f.len()).to_owned()),
-              _ => None
+            None => None,
+            Some(ref f) => {
+                match str::rfind_char(*f, '.') {
+                    Some(p) if p < f.len() => Some(f.slice(p, f.len()).to_owned()),
+                    _ => None,
+                }
             }
-          }
         }
     }
 
     fn with_dirname(&self, d: &str) -> PosixPath {
         let dpath = PosixPath(d);
         match self.filename() {
-          Some(ref f) => dpath.push(*f),
-          None => dpath
+            Some(ref f) => dpath.push(*f),
+            None => dpath,
         }
     }
 
@@ -510,8 +512,8 @@ impl GenericPath for PosixPath {
 
     fn with_filestem(&self, s: &str) -> PosixPath {
         match self.filetype() {
-          None => self.with_filename(s),
-          Some(ref t) => self.with_filename(str::to_owned(s) + *t)
+            None => self.with_filename(s),
+            Some(ref t) => self.with_filename(str::to_owned(s) + *t),
         }
     }
 
@@ -536,8 +538,10 @@ impl GenericPath for PosixPath {
           None => ~[],
           Some(ref f) => ~[copy *f]
         };
-        return PosixPath { is_absolute: false,
-                           components: cs }
+        PosixPath {
+            is_absolute: false,
+            components: cs,
+        }
     }
 
     fn push_rel(&self, other: &PosixPath) -> PosixPath {
@@ -547,8 +551,10 @@ impl GenericPath for PosixPath {
 
     fn unsafe_join(&self, other: &PosixPath) -> PosixPath {
         if other.is_absolute {
-            PosixPath { is_absolute: true,
-                        components: copy other.components }
+            PosixPath {
+                is_absolute: true,
+                components: copy other.components,
+            }
         } else {
             self.push_rel(other)
         }
@@ -567,8 +573,10 @@ impl GenericPath for PosixPath {
             }
             v.push_all_move(ss);
         }
-        PosixPath { is_absolute: self.is_absolute,
-                    components: v }
+        PosixPath {
+            is_absolute: self.is_absolute,
+            components: v,
+        }
     }
 
     fn push(&self, s: &str) -> PosixPath {
@@ -586,19 +594,17 @@ impl GenericPath for PosixPath {
         if cs.len() != 0 {
             cs.pop();
         }
-        return PosixPath {
+        PosixPath {
             is_absolute: self.is_absolute,
-            components: cs
-        }
-                          //..self }
+            components: cs,
+        } //..self }
     }
 
     fn normalize(&self) -> PosixPath {
-        return PosixPath {
+        PosixPath {
             is_absolute: self.is_absolute,
-            components: normalize(self.components)
-          //  ..self
-        }
+            components: normalize(self.components),
+        } // ..self }
     }
 
     fn is_absolute(&self) -> bool {
@@ -658,10 +664,12 @@ impl GenericPath for WindowsPath {
             components.push(s.to_owned())
         }
         let is_absolute = (rest.len() != 0 && windows::is_sep(rest[0]));
-        return WindowsPath { host: host,
-                             device: device,
-                             is_absolute: is_absolute,
-                             components: components }
+        WindowsPath {
+            host: host,
+            device: device,
+            is_absolute: is_absolute,
+            components: components,
+        }
     }
 
     fn dirname(&self) -> ~str {
@@ -674,20 +682,20 @@ impl GenericPath for WindowsPath {
 
     fn filename(&self) -> Option<~str> {
         match self.components.len() {
-          0 => None,
-          n => Some(copy self.components[n - 1])
+            0 => None,
+            n => Some(copy self.components[n - 1]),
         }
     }
 
     fn filestem(&self) -> Option<~str> {
         match self.filename() {
-          None => None,
-          Some(ref f) => {
-            match str::rfind_char(*f, '.') {
-              Some(p) => Some(f.slice(0, p).to_owned()),
-              None => Some(copy *f)
+            None => None,
+            Some(ref f) => {
+                match str::rfind_char(*f, '.') {
+                    Some(p) => Some(f.slice(0, p).to_owned()),
+                    None => Some(copy *f),
+                }
             }
-          }
         }
     }
 
@@ -696,8 +704,8 @@ impl GenericPath for WindowsPath {
           None => None,
           Some(ref f) => {
             match str::rfind_char(*f, '.') {
-              Some(p) if p < f.len() => Some(f.slice(p, f.len()).to_owned()),
-              _ => None
+                Some(p) if p < f.len() => Some(f.slice(p, f.len()).to_owned()),
+                _ => None,
             }
           }
         }
@@ -706,8 +714,8 @@ impl GenericPath for WindowsPath {
     fn with_dirname(&self, d: &str) -> WindowsPath {
         let dpath = WindowsPath(d);
         match self.filename() {
-          Some(ref f) => dpath.push(*f),
-          None => dpath
+            Some(ref f) => dpath.push(*f),
+            None => dpath,
         }
     }
 
@@ -718,8 +726,8 @@ impl GenericPath for WindowsPath {
 
     fn with_filestem(&self, s: &str) -> WindowsPath {
         match self.filetype() {
-          None => self.with_filename(s),
-          Some(ref t) => self.with_filename(str::to_owned(s) + *t)
+            None => self.with_filename(s),
+            Some(ref t) => self.with_filename(str::to_owned(s) + *t),
         }
     }
 
@@ -740,14 +748,15 @@ impl GenericPath for WindowsPath {
     }
 
     fn file_path(&self) -> WindowsPath {
-        let cs = match self.filename() {
-          None => ~[],
-          Some(ref f) => ~[copy *f]
-        };
-        return WindowsPath { host: None,
-                             device: None,
-                             is_absolute: false,
-                             components: cs }
+        WindowsPath {
+            host: None,
+            device: None,
+            is_absolute: false,
+            components: match self.filename() {
+                None => ~[],
+                Some(ref f) => ~[copy *f],
+            }
+        }
     }
 
     fn push_rel(&self, other: &WindowsPath) -> WindowsPath {
@@ -768,7 +777,7 @@ impl GenericPath for WindowsPath {
                     host: Some(host),
                     device: copy other.device,
                     is_absolute: true,
-                    components: copy other.components
+                    components: copy other.components,
                 };
             }
             _ => {}
@@ -781,7 +790,7 @@ impl GenericPath for WindowsPath {
                     host: None,
                     device: Some(device),
                     is_absolute: true,
-                    components: copy other.components
+                    components: copy other.components,
                 };
             }
             _ => {}
@@ -793,7 +802,7 @@ impl GenericPath for WindowsPath {
             host: copy self.host,
             device: copy self.device,
             is_absolute: self.is_absolute || other.is_absolute,
-            components: copy other.components
+            components: copy other.components,
         }
     }
 
@@ -822,7 +831,7 @@ impl GenericPath for WindowsPath {
             v.push_all_move(ss);
         }
         // tedious, but as-is, we can't use ..self
-        return WindowsPath {
+        WindowsPath {
             host: copy self.host,
             device: copy self.device,
             is_absolute: self.is_absolute,
@@ -837,7 +846,7 @@ impl GenericPath for WindowsPath {
             ss.push(s.to_owned())
         }
         v.push_all_move(ss);
-        return WindowsPath { components: v, ..copy *self }
+        WindowsPath { components: v, ..copy *self }
     }
 
     fn pop(&self) -> WindowsPath {
@@ -845,16 +854,16 @@ impl GenericPath for WindowsPath {
         if cs.len() != 0 {
             cs.pop();
         }
-        return WindowsPath {
+        WindowsPath {
             host: copy self.host,
             device: copy self.device,
             is_absolute: self.is_absolute,
-            components: cs
+            components: cs,
         }
     }
 
     fn normalize(&self) -> WindowsPath {
-        return WindowsPath {
+        WindowsPath {
             host: copy self.host,
             device: match self.device {
                 None => None,
