@@ -261,7 +261,7 @@ mod test {
         use comm::*;
 
         do run_in_newsched_task() {
-            let (port, chan) = oneshot();
+            let (port, chan) = stream();
             chan.send(10);
             assert!(port.recv() == 10);
         }
