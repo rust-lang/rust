@@ -26,26 +26,22 @@ pub enum Either<T, U> {
     Right(U)
 }
 
+/// Applies a function based on the given either value
+///
+/// If `value` is left(T) then `f_left` is applied to its contents, if
+/// `value` is right(U) then `f_right` is applied to its contents, and the
+/// result is returned.
 #[inline(always)]
 pub fn either<T, U, V>(f_left: &fn(&T) -> V,
                        f_right: &fn(&U) -> V, value: &Either<T, U>) -> V {
-    /*!
-     * Applies a function based on the given either value
-     *
-     * If `value` is left(T) then `f_left` is applied to its contents, if
-     * `value` is right(U) then `f_right` is applied to its contents, and the
-     * result is returned.
-     */
-
     match *value {
-      Left(ref l) => f_left(l),
-      Right(ref r) => f_right(r)
+        Left(ref l) => f_left(l),
+        Right(ref r) => f_right(r)
     }
 }
 
+/// Extracts from a vector of either all the left values
 pub fn lefts<T:Copy,U>(eithers: &[Either<T, U>]) -> ~[T] {
-    //! Extracts from a vector of either all the left values
-
     do vec::build_sized(eithers.len()) |push| {
         for eithers.each |elt| {
             match *elt {
@@ -56,9 +52,8 @@ pub fn lefts<T:Copy,U>(eithers: &[Either<T, U>]) -> ~[T] {
     }
 }
 
+/// Extracts from a vector of either all the right values
 pub fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
-    //! Extracts from a vector of either all the right values
-
     do vec::build_sized(eithers.len()) |push| {
         for eithers.each |elt| {
             match *elt {
@@ -69,80 +64,73 @@ pub fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
     }
 }
 
-pub fn partition<T, U>(eithers: ~[Either<T, U>])
-    -> (~[T], ~[U]) {
-    /*!
-     * Extracts from a vector of either all the left values and right values
-     *
-     * Returns a structure containing a vector of left values and a vector of
-     * right values.
-     */
-
+/// Extracts from a vector of either all the left values and right values
+///
+/// Returns a structure containing a vector of left values and a vector of
+/// right values.
+pub fn partition<T, U>(eithers: ~[Either<T, U>]) -> (~[T], ~[U]) {
     let mut lefts: ~[T] = ~[];
     let mut rights: ~[U] = ~[];
     do vec::consume(eithers) |_i, elt| {
         match elt {
-          Left(l) => lefts.push(l),
-          Right(r) => rights.push(r)
+            Left(l) => lefts.push(l),
+            Right(r) => rights.push(r)
         }
     }
     return (lefts, rights);
 }
 
+/// Flips between left and right of a given either
 #[inline(always)]
 pub fn flip<T, U>(eith: Either<T, U>) -> Either<U, T> {
-    //! Flips between left and right of a given either
-
     match eith {
-      Right(r) => Left(r),
-      Left(l) => Right(l)
+        Right(r) => Left(r),
+        Left(l) => Right(l)
     }
 }
 
+/// Converts either::t to a result::t
+///
+/// Converts an `either` type to a `result` type, making the "right" choice
+/// an ok result, and the "left" choice a fail
 #[inline(always)]
-pub fn to_result<T, U>(eith: Either<T, U>)
-    -> Result<U, T> {
-    /*!
-     * Converts either::t to a result::t
-     *
-     * Converts an `either` type to a `result` type, making the "right" choice
-     * an ok result, and the "left" choice a fail
-     */
-
+pub fn to_result<T, U>(eith: Either<T, U>) -> Result<U, T> {
     match eith {
-      Right(r) => result::Ok(r),
-      Left(l) => result::Err(l)
+        Right(r) => result::Ok(r),
+        Left(l) => result::Err(l)
     }
 }
 
+/// Checks whether the given value is a left
 #[inline(always)]
 pub fn is_left<T, U>(eith: &Either<T, U>) -> bool {
-    //! Checks whether the given value is a left
-
-    match *eith { Left(_) => true, _ => false }
+    match *eith {
+        Left(_) => true,
+        _ => false
+    }
 }
 
+/// Checks whether the given value is a right
 #[inline(always)]
 pub fn is_right<T, U>(eith: &Either<T, U>) -> bool {
-    //! Checks whether the given value is a right
-
-    match *eith { Right(_) => true, _ => false }
+    match *eith {
+        Right(_) => true,
+        _ => false
+    }
 }
 
+/// Retrieves the value in the left branch. Fails if the either is Right.
 #[inline(always)]
 pub fn unwrap_left<T,U>(eith: Either<T,U>) -> T {
-    //! Retrieves the value in the left branch. Fails if the either is Right.
-
     match eith {
         Left(x) => x,
         Right(_) => fail!("either::unwrap_left Right")
     }
 }
 
+/// Retrieves the value in the right branch. Fails if the either is Left.
 #[inline(always)]
 pub fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
-    //! Retrieves the value in the right branch. Fails if the either is Left.
-
     match eith {
         Right(x) => x,
         Left(_) => fail!("either::unwrap_right Left")

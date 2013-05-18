@@ -18,6 +18,7 @@ implementing the `Iterator` trait.
 */
 
 use prelude::*;
+use num::{Zero, One};
 
 pub trait Iterator<A> {
     /// Advance the iterator and return the next value. Return `None` when the end is reached.
@@ -34,6 +35,7 @@ pub trait IteratorUtil<A> {
     // FIXME: #5898: should be called map
     fn transform<'r, B>(self, f: &'r fn(A) -> B) -> MapIterator<'r, A, B, Self>;
     fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> FilterIterator<'r, A, Self>;
+    fn filter_map<'r,  B>(self, f: &'r fn(A) -> Option<B>) -> FilterMapIterator<'r, A, B, Self>;
     fn enumerate(self) -> EnumerateIterator<Self>;
     fn skip_while<'r>(self, predicate: &'r fn(&A) -> bool) -> SkipWhileIterator<'r, A, Self>;
     fn take_while<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhileIterator<'r, A, Self>;
@@ -45,6 +47,14 @@ pub trait IteratorUtil<A> {
     fn advance(&mut self, f: &fn(A) -> bool);
     #[cfg(not(stage0))]
     fn advance(&mut self, f: &fn(A) -> bool) -> bool;
+    fn to_vec(self) -> ~[A];
+    fn nth(&mut self, n: uint) -> A;
+    fn first(&mut self) -> A;
+    fn last(&mut self) -> A;
+    fn fold<B>(&mut self, start: B, f: &fn(B, A) -> B) -> B;
+    fn count(&mut self) -> uint;
+    fn all(&mut self, f: &fn(&A) -> bool) -> bool;
+    fn any(&mut self, f: &fn(&A) -> bool) -> bool;
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -71,6 +81,11 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline(always)]
     fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> FilterIterator<'r, A, T> {
         FilterIterator{iter: self, predicate: predicate}
+    }
+
+    #[inline(always)]
+    fn filter_map<'r, B>(self, f: &'r fn(A) -> Option<B>) -> FilterMapIterator<'r, A, B, T> {
+        FilterMapIterator { iter: self, f: f }
     }
 
     #[inline(always)]
@@ -130,6 +145,123 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
                 None => { return true; }
             }
         }
+    }
+
+    #[inline(always)]
+    fn to_vec(self) -> ~[A] {
+        let mut v = ~[];
+        let mut it = self;
+        for it.advance() |x| { v.push(x); }
+        return v;
+    }
+
+    /// Get `n`th element of an iterator.
+    #[inline(always)]
+    fn nth(&mut self, n: uint) -> A {
+        let mut i = n;
+        loop {
+            match self.next() {
+                Some(x) => { if i == 0 { return x; }}
+                None => { fail!("cannot get %uth element", n) }
+            }
+            i -= 1;
+        }
+    }
+
+    // Get first elemet of an iterator.
+    #[inline(always)]
+    fn first(&mut self) -> A {
+        match self.next() {
+            Some(x) => x ,
+            None => fail!("cannot get first element")
+        }
+    }
+
+    // Get last element of an iterator.
+    //
+    // If the iterator have an infinite length, this method won't return.
+    #[inline(always)]
+    fn last(&mut self) -> A {
+        let mut elm = match self.next() {
+            Some(x) => x,
+            None    => fail!("cannot get last element")
+        };
+        for self.advance |e| { elm = e; }
+        return elm;
+    }
+
+    /// Reduce an iterator to an accumulated value
+    #[inline]
+    fn fold<B>(&mut self, init: B, f: &fn(B, A) -> B) -> B {
+        let mut accum = init;
+        loop {
+            match self.next() {
+                Some(x) => { accum = f(accum, x); }
+                None    => { break; }
+            }
+        }
+        return accum;
+    }
+
+    /// Count the number of an iterator elemenrs
+    #[inline(always)]
+    fn count(&mut self) -> uint { self.fold(0, |cnt, _x| cnt + 1) }
+
+    #[inline(always)]
+    fn all(&mut self, f: &fn(&A) -> bool) -> bool {
+        for self.advance |x| { if !f(&x) { return false; } }
+        return true;
+    }
+
+    #[inline(always)]
+    fn any(&mut self, f: &fn(&A) -> bool) -> bool {
+        for self.advance |x| { if f(&x) { return true; } }
+        return false;
+    }
+}
+
+pub trait AdditiveIterator<A> {
+    fn sum(&mut self) -> A;
+}
+
+impl<A: Add<A, A> + Zero, T: Iterator<A>> AdditiveIterator<A> for T {
+    #[inline(always)]
+    fn sum(&mut self) -> A { self.fold(Zero::zero::<A>(), |s, x| s + x) }
+}
+
+pub trait MultiplicativeIterator<A> {
+    fn product(&mut self) -> A;
+}
+
+impl<A: Mul<A, A> + One, T: Iterator<A>> MultiplicativeIterator<A> for T {
+    #[inline(always)]
+    fn product(&mut self) -> A { self.fold(One::one::<A>(), |p, x| p * x) }
+}
+
+pub trait OrdIterator<A> {
+    fn max(&mut self) -> Option<A>;
+    fn min(&mut self) -> Option<A>;
+}
+
+impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
+    #[inline(always)]
+    fn max(&mut self) -> Option<A> {
+        self.fold(None, |max, x| {
+            match max {
+                None    => Some(x),
+                Some(y) => Some(cmp::max(x, y))
+            }
+        })
+    }
+
+    #[inline(always)]
+    fn min(&mut self) -> Option<A> {
+        self.fold(None, |min, x| {
+            match min {
+                None    => Some(x),
+                Some(y) => Some(cmp::min(x, y))
+            }
+        })
     }
 }
 
@@ -201,6 +333,28 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for FilterIterator<'self, A, T> {
             }
         }
         None
+    }
+}
+
+pub struct FilterMapIterator<'self, A, B, T> {
+    priv iter: T,
+    priv f: &'self fn(A) -> Option<B>
+}
+
+impl<'self, A, B, T: Iterator<A>> Iterator<B> for FilterMapIterator<'self, A, B, T> {
+    #[inline]
+    fn next(&mut self) -> Option<B> {
+        loop {
+            match self.iter.next() {
+                None    => { return None; }
+                Some(a) => {
+                    match (self.f)(a) {
+                        Some(b) => { return Some(b); }
+                        None    => { loop; }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -424,6 +578,13 @@ mod tests {
     }
 
     #[test]
+    fn test_filter_map() {
+        let it  = Counter::new(0u, 1u).take(10)
+            .filter_map(|x: uint| if x.is_even() { Some(x*x) } else { None });
+        assert_eq!(it.to_vec(), ~[0*0, 2*2, 4*4, 6*6, 8*8]);
+    }
+
+    #[test]
     fn test_iterator_enumerate() {
         let xs = [0u, 1, 2, 3, 4, 5];
         let mut it = xs.iter().enumerate();
@@ -522,5 +683,106 @@ mod tests {
             i += 1;
         }
         assert_eq!(i, 10);
+    }
+
+    #[test]
+    fn test_iterator_nth() {
+        let v = &[0, 1, 2, 3, 4];
+        for uint::range(0, v.len()) |i| {
+            assert_eq!(v.iter().nth(i), &v[i]);
+        }
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_iterator_nth_fail() {
+        let v = &[0, 1, 2, 3, 4];
+        v.iter().nth(5);
+    }
+
+    #[test]
+    fn test_iterator_first() {
+        let v = &[0, 1, 2, 3, 4];
+        assert_eq!(v.iter().first(), &0);
+        assert_eq!(v.slice(2, 5).iter().first(), &2);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_iterator_first_fail() {
+        let v: &[uint] = &[];
+        v.iter().first();
+    }
+
+    #[test]
+    fn test_iterator_last() {
+        let v = &[0, 1, 2, 3, 4];
+        assert_eq!(v.iter().last(), &4);
+        assert_eq!(v.slice(0, 1).iter().last(), &0);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_iterator_last_fail() {
+        let v: &[uint] = &[];
+        v.iter().last();
+    }
+
+    #[test]
+    fn test_iterator_count() {
+        let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(v.slice(0, 4).iter().count(), 4);
+        assert_eq!(v.slice(0, 10).iter().count(), 10);
+        assert_eq!(v.slice(0, 0).iter().count(), 0);
+    }
+
+    #[test]
+    fn test_iterator_sum() {
+        let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(v.slice(0, 4).iter().transform(|&x| x).sum(), 6);
+        assert_eq!(v.iter().transform(|&x| x).sum(), 55);
+        assert_eq!(v.slice(0, 0).iter().transform(|&x| x).sum(), 0);
+    }
+
+    #[test]
+    fn test_iterator_product() {
+        let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(v.slice(0, 4).iter().transform(|&x| x).product(), 0);
+        assert_eq!(v.slice(1, 5).iter().transform(|&x| x).product(), 24);
+        assert_eq!(v.slice(0, 0).iter().transform(|&x| x).product(), 1);
+    }
+
+    #[test]
+    fn test_iterator_max() {
+        let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(v.slice(0, 4).iter().transform(|&x| x).max(), Some(3));
+        assert_eq!(v.iter().transform(|&x| x).max(), Some(10));
+        assert_eq!(v.slice(0, 0).iter().transform(|&x| x).max(), None);
+    }
+
+    #[test]
+    fn test_iterator_min() {
+        let v = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(v.slice(0, 4).iter().transform(|&x| x).min(), Some(0));
+        assert_eq!(v.iter().transform(|&x| x).min(), Some(0));
+        assert_eq!(v.slice(0, 0).iter().transform(|&x| x).min(), None);
+    }
+
+    #[test]
+    fn test_all() {
+        let v = ~&[1, 2, 3, 4, 5];
+        assert!(v.iter().all(|&x| *x < 10));
+        assert!(!v.iter().all(|&x| x.is_even()));
+        assert!(!v.iter().all(|&x| *x > 100));
+        assert!(v.slice(0, 0).iter().all(|_| fail!()));
+    }
+
+    #[test]
+    fn test_any() {
+        let v = ~&[1, 2, 3, 4, 5];
+        assert!(v.iter().any(|&x| *x < 10));
+        assert!(v.iter().any(|&x| x.is_even()));
+        assert!(!v.iter().any(|&x| *x > 100));
+        assert!(!v.slice(0, 0).iter().any(|_| fail!()));
     }
 }

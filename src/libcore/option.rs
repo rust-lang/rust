@@ -89,11 +89,11 @@ impl<T:Ord> Ord for Option<T> {
     }
 
     fn ge(&self, other: &Option<T>) -> bool {
-        ! (self < other)
+        !(self < other)
     }
 
     fn gt(&self, other: &Option<T>) -> bool {
-        ! (self <= other)
+        !(self <= other)
     }
 }
 
@@ -182,12 +182,10 @@ pub impl<T> Option<T> {
     #[inline(always)]
     fn is_some(&const self) -> bool { !self.is_none() }
 
+    /// Update an optional value by optionally running its content through a
+    /// function that returns an option.
     #[inline(always)]
     fn chain<U>(self, f: &fn(t: T) -> Option<U>) -> Option<U> {
-        /*!
-         * Update an optional value by optionally running its content through a
-         * function that returns an option.
-         */
 
         match self {
             Some(t) => f(t),
@@ -195,21 +193,17 @@ pub impl<T> Option<T> {
         }
     }
 
+    /// Returns the leftmost Some() value, or None if both are None.
     #[inline(always)]
     fn or(self, optb: Option<T>) -> Option<T> {
-        /*!
-         * Returns the leftmost Some() value, or None if both are None.
-         */
         match self {
             Some(opta) => Some(opta),
             _ => optb
         }
     }
 
-    /**
-     * Update an optional value by optionally running its content by reference
-     * through a function that returns an option.
-     */
+    /// Update an optional value by optionally running its content by reference
+    /// through a function that returns an option.
     #[inline(always)]
     fn chain_ref<'a, U>(&'a self, f: &fn(x: &'a T) -> Option<U>) -> Option<U> {
         match *self { Some(ref x) => f(x), None => None }

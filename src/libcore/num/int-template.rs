@@ -187,10 +187,22 @@ impl Orderable for T {
         if *self > *other { *self } else { *other }
     }
 
+    #[cfg(stage0)]
     #[inline(always)]
     fn clamp(&self, mn: &T, mx: &T) -> T {
         if *self > *mx { *mx } else
         if *self < *mn { *mn } else { *self }
+    }
+
+    /// Returns the number constrained within the range `mn <= self <= mx`.
+    #[cfg(not(stage0))]
+    #[inline(always)]
+    fn clamp(&self, mn: &T, mx: &T) -> T {
+        cond!(
+            (*self > *mx) { *mx   }
+            (*self < *mn) { *mn   }
+            _             { *self }
+        )
     }
 }
 

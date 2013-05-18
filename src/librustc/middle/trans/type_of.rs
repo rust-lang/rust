@@ -45,7 +45,7 @@ pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::t], output: ty::t)
         if !output_is_immediate {
             atys.push(T_ptr(lloutputtype));
         } else {
-            // XXX: Eliminate this.
+            // FIXME #6575: Eliminate this.
             atys.push(T_ptr(T_i8()));
         }
 
@@ -200,7 +200,6 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
         return llty;
     }
 
-    // XXX: This is a terrible terrible copy.
     let llty = match ty::get(t).sty {
       ty::ty_nil | ty::ty_bot => T_nil(),
       ty::ty_bool => T_bool(),
@@ -219,7 +218,7 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
         common::T_named_struct(llvm_type_name(cx,
                                               an_enum,
                                               did,
-                                              /*bad*/copy substs.tps))
+                                              substs.tps))
       }
       ty::ty_estr(ty::vstore_box) => {
         T_box_ptr(T_box(cx, T_vec(cx, T_i8())))
@@ -280,7 +279,7 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
           T_named_struct(llvm_type_name(cx,
                                         a_struct,
                                         did,
-                                        /*bad*/ copy substs.tps))
+                                        substs.tps))
         }
       }
       ty::ty_self(*) => cx.tcx.sess.unimpl(~"type_of: ty_self"),

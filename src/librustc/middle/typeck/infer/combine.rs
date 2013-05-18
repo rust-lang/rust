@@ -286,7 +286,9 @@ pub fn super_self_tys<C:Combine>(
         // I think it should never happen that we unify two substs and
         // one of them has a self_ty and one doesn't...? I could be
         // wrong about this.
-        Err(ty::terr_self_substs)
+          this.infcx().tcx.sess.bug(
+              fmt!("substitution a had a self_ty and substitution b didn't, \
+                    or vice versa"));
       }
     }
 }
