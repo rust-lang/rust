@@ -165,7 +165,6 @@ macro_rules! tuple_impls(
                     fn eq(&self, other: &($($T),+)) -> bool {
                         $(*self.$get_ref_fn() == *other.$get_ref_fn())&&+
                     }
-
                     #[inline(always)]
                     fn ne(&self, other: &($($T),+)) -> bool {
                         !(*self == *other)
@@ -176,27 +175,28 @@ macro_rules! tuple_impls(
                 impl<$($T:Ord),+> Ord for ($($T),+) {
                     #[inline(always)]
                     fn lt(&self, other: &($($T),+)) -> bool {
-                        $(*self.$get_ref_fn() < *other.$get_ref_fn())&&+
+                        lexical_lt!($(*self.$get_ref_fn(), *other.$get_ref_fn()),+)
                     }
-
                     #[inline(always)]
-                    fn le(&self, other: &($($T),+)) -> bool {
-                        $(*self.$get_ref_fn() <= *other.$get_ref_fn())&&+
-                    }
-
+                    fn le(&self, other: &($($T),+)) -> bool { !(*other).lt(&(*self)) }
                     #[inline(always)]
-                    fn ge(&self, other: &($($T),+)) -> bool {
-                        $(*self.$get_ref_fn() >= *other.$get_ref_fn())&&+
-                    }
-
+                    fn ge(&self, other: &($($T),+)) -> bool { !(*self).lt(other) }
                     #[inline(always)]
-                    fn gt(&self, other: &($($T),+)) -> bool {
-                        $(*self.$get_ref_fn() > *other.$get_ref_fn())&&+
-                    }
+                    fn gt(&self, other: &($($T),+)) -> bool { (*other).lt(&(*self)) }
                 }
             )+
         }
     )
+)
+
+// Constructs an expression that performs a lexical less-than ordering.
+// The values are interleaved, so the macro invocation for
+// `(a1, a2, a3) < (b1, b2, b3)` would be `lexical_lt!(a1, b1, a2, b2, a3, b3)`
+macro_rules! lexical_lt(
+    ($a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => (
+        if $a < $b { true } else { lexical_lt!($($rest_a, $rest_b),+) }
+    );
+    ($a:expr, $b:expr) => ($a < $b);
 )
 
 tuple_impls!(
