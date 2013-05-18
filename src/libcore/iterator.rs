@@ -48,8 +48,8 @@ pub trait IteratorUtil<A> {
     #[cfg(not(stage0))]
     fn advance(&mut self, f: &fn(A) -> bool) -> bool;
     fn to_vec(self) -> ~[A];
-    fn nth(&mut self, n: uint) -> A;
-    fn last(&mut self) -> A;
+    fn nth(&mut self, n: uint) -> Option<A>;
+    fn last(&mut self) -> Option<A>;
     fn fold<B>(&mut self, start: B, f: &fn(B, A) -> B) -> B;
     fn count(&mut self) -> uint;
     fn all(&mut self, f: &fn(&A) -> bool) -> bool;
@@ -154,30 +154,24 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
         return v;
     }
 
-    /// Get `n`th element of an iterator.
+    /// Return the `n`th item yielded by an iterator.
     #[inline(always)]
-    fn nth(&mut self, n: uint) -> A {
-        let mut i = n;
+    fn nth(&mut self, mut n: uint) -> Option<A> {
         loop {
             match self.next() {
-                Some(x) => { if i == 0 { return x; }}
-                None => { fail!("cannot get %uth element", n) }
+                Some(x) => if n == 0 { return Some(x) },
+                None => return None
             }
-            i -= 1;
+            n -= 1;
         }
     }
 
-    // Get last element of an iterator.
-    //
-    // If the iterator have an infinite length, this method won't return.
+    /// Return the last item yielded by an iterator.
     #[inline(always)]
-    fn last(&mut self) -> A {
-        let mut elm = match self.next() {
-            Some(x) => x,
-            None    => fail!("cannot get last element")
-        };
-        for self.advance |e| { elm = e; }
-        return elm;
+    fn last(&mut self) -> Option<A> {
+        let mut last = None;
+        for self.advance |x| { last = Some(x); }
+        last
     }
 
     /// Reduce an iterator to an accumulated value
@@ -679,29 +673,15 @@ mod tests {
     fn test_iterator_nth() {
         let v = &[0, 1, 2, 3, 4];
         for uint::range(0, v.len()) |i| {
-            assert_eq!(v.iter().nth(i), &v[i]);
+            assert_eq!(v.iter().nth(i).unwrap(), &v[i]);
         }
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_iterator_nth_fail() {
-        let v = &[0, 1, 2, 3, 4];
-        v.iter().nth(5);
     }
 
     #[test]
     fn test_iterator_last() {
         let v = &[0, 1, 2, 3, 4];
-        assert_eq!(v.iter().last(), &4);
-        assert_eq!(v.slice(0, 1).iter().last(), &0);
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_iterator_last_fail() {
-        let v: &[uint] = &[];
-        v.iter().last();
+        assert_eq!(v.iter().last().unwrap(), &4);
+        assert_eq!(v.slice(0, 1).iter().last().unwrap(), &0);
     }
 
     #[test]
