@@ -22,7 +22,7 @@ For example, a type like:
 
 would generate two implementations like:
 
-impl<S:std::serialize::Encoder> Encodable<S> for Node {
+impl<S:extra::serialize::Encoder> Encodable<S> for Node {
     fn encode(&self, s: &S) {
         do s.emit_struct("Node", 1) {
             s.emit_field("id", 0, || s.emit_uint(self.id))
@@ -115,7 +115,7 @@ fn create_derived_encodable_impl(
                 cx.path_global(
                     span,
                     ~[
-                        cx.ident_of("std"),
+                        cx.ident_of("extra"),
                         cx.ident_of("serialize"),
                         cx.ident_of("Encoder"),
                     ]))));
@@ -128,7 +128,7 @@ fn create_derived_encodable_impl(
         span,
         true,
         ~[
-            cx.ident_of("std"),
+            cx.ident_of("extra"),
             cx.ident_of("serialize"),
             cx.ident_of("Encodable")
         ],
@@ -411,10 +411,10 @@ fn expand_deriving_encodable_enum_method(
 
 #[cfg(test)]
 mod test {
-    extern mod std;
+    extern mod extra;
     use core::option::{None, Some};
-    use std::serialize::Encodable;
-    use std::serialize::Encoder;
+    use extra::serialize::Encodable;
+    use extra::serialize::Encoder;
 
     // just adding the ones I want to test, for now:
     #[deriving(Eq)]

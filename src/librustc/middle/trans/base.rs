@@ -67,7 +67,7 @@ use util::ppaux::{Repr, ty_to_str};
 use core::hash;
 use core::hashmap::{HashMap, HashSet};
 use core::libc::c_uint;
-use std::time;
+use extra::time;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt_to_str, path_name};
 use syntax::ast_util::{local_def, path_to_ident};

@@ -18,12 +18,12 @@ use opt_vec::OptVec;
 use parse::token::get_ident_interner;
 
 use core::cast;
-use core::option::{Option};
-use core::to_bytes;
-use core::to_bytes::IterBytes;
-use core::to_str::ToStr;
 use core::hashmap::HashMap;
-use std::serialize::{Encodable, Decodable, Encoder, Decoder};
+use core::option::{Option};
+use core::to_bytes::IterBytes;
+use core::to_bytes;
+use core::to_str::ToStr;
+use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 
 // an identifier contains an index into the interner
@@ -1117,7 +1117,7 @@ pub enum inlined_item {
 mod test {
     use core::option::{None, Option, Some};
     use core::uint;
-    use std;
+    use extra;
     use codemap::*;
     use super::*;
 
@@ -1206,7 +1206,7 @@ mod test {
             },
             span: bogus_span};
         // doesn't matter which encoder we use....
-        let _f = (@e as @std::serialize::Encodable<std::json::Encoder>);
+        let _f = (@e as @extra::serialize::Encodable<extra::json::Encoder>);
     }
 
 

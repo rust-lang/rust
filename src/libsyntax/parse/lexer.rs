@@ -20,8 +20,6 @@ use parse::token;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
-//use std;
-
 pub trait reader {
     fn is_eof(@mut self) -> bool;
     fn next_token(@mut self) -> TokenAndSpan;

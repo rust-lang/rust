@@ -53,7 +53,7 @@ fn create_derived_decodable_impl(
                 cx.path_global(
                     span,
                     ~[
-                        cx.ident_of("std"),
+                        cx.ident_of("extra"),
                         cx.ident_of("serialize"),
                         cx.ident_of("Decoder"),
                     ]))));
@@ -66,7 +66,7 @@ fn create_derived_decodable_impl(
         span,
         true,
         ~[
-            cx.ident_of("std"),
+            cx.ident_of("extra"),
             cx.ident_of("serialize"),
             cx.ident_of("Decodable")
         ],
@@ -150,7 +150,7 @@ fn call_substructure_decode_method(
             cx.path_global(
                 span,
                 ~[
-                    cx.ident_of("std"),
+                    cx.ident_of("extra"),
                     cx.ident_of("serialize"),
                     cx.ident_of("Decodable"),
                     cx.ident_of("decode"),

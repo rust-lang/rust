@@ -112,7 +112,7 @@ use util::ppaux;
 use core::cast::transmute;
 use core::hashmap::HashMap;
 use core::util::replace;
-use std::list::Nil;
+use extra::list::Nil;
 use syntax::abi::AbiSet;
 use syntax::ast::{provided, required};
 use syntax::ast;

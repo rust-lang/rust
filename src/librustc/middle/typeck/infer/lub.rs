@@ -24,7 +24,7 @@ use middle::typeck::isr_alist;
 use util::common::indent;
 use util::ppaux::mt_to_str;
 
-use std::list;
+use extra::list;
 use syntax::abi::AbiSet;
 use syntax::ast;
 use syntax::ast::{Many, Once, extern_fn, m_const, impure_fn};

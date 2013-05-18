@@ -30,7 +30,7 @@ use syntax::codemap::span;
 use util::common::{indent, indenter};
 use util::ppaux::mt_to_str;
 
-use std::list;
+use extra::list;
 
 pub struct Glb(CombineFields);  // "greatest lower bound" (common subtype)
 

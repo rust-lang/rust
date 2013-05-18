@@ -46,7 +46,7 @@ use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
 use util::common::indenter;
 
-use std::list;
+use extra::list;
 
 pub trait LatticeValue {
     fn sub(cf: &CombineFields, a: &Self, b: &Self) -> ures;

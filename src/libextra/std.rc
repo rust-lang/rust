@@ -119,10 +119,16 @@ pub mod test;
 pub mod serialize;
 
 // A curious inner-module that's not exported that contains the binding
-// 'std' so that macro-expanded references to std::serialize and such
-// can be resolved within libcore.
+// 'extra' so that macro-expanded references to std::serialize and such
+// can be resolved within libextra.
 #[doc(hidden)] // FIXME #3538
 pub mod std {
     pub use serialize;
     pub use test;
 }
+#[doc(hidden)] // FIXME #3538
+pub mod extra {
+    pub use serialize;
+    pub use test;
+}
+

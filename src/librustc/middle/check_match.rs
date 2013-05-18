@@ -19,7 +19,7 @@ use middle::typeck::method_map;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
-use std::sort;
+use extra::sort;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};
 use syntax::codemap::{span, dummy_sp, spanned};

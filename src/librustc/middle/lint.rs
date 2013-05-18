@@ -17,7 +17,7 @@ use middle::pat_util;
 use util::ppaux::{ty_to_str};
 
 use core::hashmap::HashMap;
-use std::smallintmap::SmallIntMap;
+use extra::smallintmap::SmallIntMap;
 use syntax::attr;
 use syntax::codemap::span;
 use syntax::codemap;

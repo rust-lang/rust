@@ -202,7 +202,7 @@ pub struct TraitDef<'self> {
     /// other than the current trait
     additional_bounds: ~[Ty<'self>],
 
-    /// Any extra lifetimes and/or bounds, e.g. `D: std::serialize::Decoder`
+    /// Any extra lifetimes and/or bounds, e.g. `D: extra::serialize::Decoder`
     generics: LifetimeBounds<'self>,
 
     methods: ~[MethodDef<'self>]

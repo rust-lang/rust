@@ -10,7 +10,7 @@
 
 use core::prelude::*;
 
-use std::smallintmap::SmallIntMap;
+use extra::smallintmap::SmallIntMap;
 
 use middle::ty::{Vid, expected_found, IntVarValue};
 use middle::ty;

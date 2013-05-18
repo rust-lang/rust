@@ -36,7 +36,7 @@ use util::ppaux;
 use util::ppaux::ty_to_short_str;
 
 use core::libc::c_uint;
-use std::time;
+use extra::time;
 use syntax::ast;
 
 pub fn trans_free(cx: block, v: ValueRef) -> block {

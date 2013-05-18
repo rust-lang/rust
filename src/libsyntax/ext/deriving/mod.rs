@@ -13,7 +13,7 @@ The compiler code necessary to implement the #[deriving] extensions.
 
 
 FIXME (#2810)--Hygiene. Search for "__" strings (in other files too).
-We also assume "std" is the standard library, and "core" is the core
+We also assume "extra" is the standard library, and "core" is the core
 library.
 
 */
