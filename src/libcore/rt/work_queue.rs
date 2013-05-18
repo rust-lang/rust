@@ -14,6 +14,7 @@ use vec::OwnedVector;
 use unstable::sync::{Exclusive, exclusive};
 use cell::Cell;
 use kinds::Owned;
+use clone::Clone;
 
 pub struct WorkQueue<T> {
     // XXX: Another mystery bug fixed by boxing this lock
@@ -54,5 +55,13 @@ pub impl<T: Owned> WorkQueue<T> {
 
     fn is_empty(&self) -> bool {
         self.queue.with_imm(|q| q.is_empty() )
+    }
+}
+
+impl<T> Clone for WorkQueue<T> {
+    fn clone(&self) -> WorkQueue<T> {
+        WorkQueue {
+            queue: self.queue.clone()
+        }
     }
 }
