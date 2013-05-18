@@ -127,12 +127,11 @@ totalord_impl!(uint)
 
 totalord_impl!(char)
 
+/// Compares (a1, b1) against (a2, b2), where the a values are more significant.
 pub fn cmp2<A:TotalOrd,B:TotalOrd>(
     a1: &A, b1: &B,
     a2: &A, b2: &B) -> Ordering
 {
-    //! Compares (a1, b1) against (a2, b2), where the a values are more significant.
-
     match a1.cmp(a2) {
         Less => Less,
         Greater => Greater,
