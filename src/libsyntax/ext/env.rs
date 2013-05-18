@@ -18,7 +18,7 @@ use ast;
 use codemap::span;
 use ext::base::*;
 use ext::base;
-use ext::build::mk_uniq_str;
+use ext::build::mk_base_str;
 
 pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
@@ -29,8 +29,8 @@ pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
     // Option<str> rather than just an maybe-empty string.
 
     let e = match os::getenv(var) {
-      None => mk_uniq_str(cx, sp, ~""),
-      Some(ref s) => mk_uniq_str(cx, sp, copy *s)
+      None => mk_base_str(cx, sp, ~""),
+      Some(ref s) => mk_base_str(cx, sp, copy *s)
     };
     MRExpr(e)
 }
