@@ -35,8 +35,8 @@ pub enum Either<T, U> {
 pub fn either<T, U, V>(f_left: &fn(&T) -> V,
                        f_right: &fn(&U) -> V, value: &Either<T, U>) -> V {
     match *value {
-      Left(ref l) => f_left(l),
-      Right(ref r) => f_right(r)
+        Left(ref l) => f_left(l),
+        Right(ref r) => f_right(r)
     }
 }
 
@@ -73,8 +73,8 @@ pub fn partition<T, U>(eithers: ~[Either<T, U>]) -> (~[T], ~[U]) {
     let mut rights: ~[U] = ~[];
     do vec::consume(eithers) |_i, elt| {
         match elt {
-          Left(l) => lefts.push(l),
-          Right(r) => rights.push(r)
+            Left(l) => lefts.push(l),
+            Right(r) => rights.push(r)
         }
     }
     return (lefts, rights);
@@ -84,8 +84,8 @@ pub fn partition<T, U>(eithers: ~[Either<T, U>]) -> (~[T], ~[U]) {
 #[inline(always)]
 pub fn flip<T, U>(eith: Either<T, U>) -> Either<U, T> {
     match eith {
-      Right(r) => Left(r),
-      Left(l) => Right(l)
+        Right(r) => Left(r),
+        Left(l) => Right(l)
     }
 }
 
@@ -96,21 +96,27 @@ pub fn flip<T, U>(eith: Either<T, U>) -> Either<U, T> {
 #[inline(always)]
 pub fn to_result<T, U>(eith: Either<T, U>) -> Result<U, T> {
     match eith {
-      Right(r) => result::Ok(r),
-      Left(l) => result::Err(l)
+        Right(r) => result::Ok(r),
+        Left(l) => result::Err(l)
     }
 }
 
 /// Checks whether the given value is a left
 #[inline(always)]
 pub fn is_left<T, U>(eith: &Either<T, U>) -> bool {
-    match *eith { Left(_) => true, _ => false }
+    match *eith {
+        Left(_) => true,
+        _ => false
+    }
 }
 
 /// Checks whether the given value is a right
 #[inline(always)]
 pub fn is_right<T, U>(eith: &Either<T, U>) -> bool {
-    match *eith { Right(_) => true, _ => false }
+    match *eith {
+        Right(_) => true,
+        _ => false
+    }
 }
 
 /// Retrieves the value in the left branch. Fails if the either is Right.

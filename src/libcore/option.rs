@@ -89,11 +89,11 @@ impl<T:Ord> Ord for Option<T> {
     }
 
     fn ge(&self, other: &Option<T>) -> bool {
-        ! (self < other)
+        !(self < other)
     }
 
     fn gt(&self, other: &Option<T>) -> bool {
-        ! (self <= other)
+        !(self <= other)
     }
 }
 
