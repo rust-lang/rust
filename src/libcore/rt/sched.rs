@@ -112,7 +112,7 @@ pub impl Scheduler {
     /// to run it later. Always use this instead of pushing to the work queue
     /// directly.
     fn enqueue_task(&mut self, task: ~Coroutine) {
-        self.work_queue.push_front(task);
+        self.work_queue.push(task);
         self.event_loop.callback(resume_task_from_queue);
 
         fn resume_task_from_queue() {
@@ -129,7 +129,7 @@ pub impl Scheduler {
         rtdebug!("looking in work queue for task to schedule");
 
         let mut this = self;
-        match this.work_queue.pop_front() {
+        match this.work_queue.pop() {
             Some(task) => {
                 rtdebug!("resuming task from work queue");
                 this.resume_task_immediately(task);
