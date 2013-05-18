@@ -187,7 +187,7 @@ In particular code written to ignore errors and expect conditions to be unhandle
 will start passing around null or zero objects when wrapped in a condition handler.
 
 * XXX: How should we use condition handlers that return values?
-
+* XXX: Should EOF raise default conditions when EOF is not an error?
 
 # Issues withi/o scheduler affinity, work stealing, task pinning
 
@@ -238,6 +238,7 @@ Out of scope
 * How does I/O relate to the Iterator trait?
 * std::base64 filters
 * Using conditions is a big unknown since we don't have much experience with them
+* Too many uses of OtherIoError
 
 */
 
@@ -252,13 +253,18 @@ pub use self::stdio::println;
 
 pub use self::file::FileStream;
 pub use self::net::ip::IpAddr;
+#[cfg(not(stage0))]
 pub use self::net::tcp::TcpListener;
+#[cfg(not(stage0))]
 pub use self::net::tcp::TcpStream;
 pub use self::net::udp::UdpStream;
 
 // Some extension traits that all Readers and Writers get.
+#[cfg(not(stage0))] // Requires condition! fixes
 pub use self::extensions::ReaderUtil;
+#[cfg(not(stage0))] // Requires condition! fixes
 pub use self::extensions::ReaderByteConversions;
+#[cfg(not(stage0))] // Requires condition! fixes
 pub use self::extensions::WriterByteConversions;
 
 /// Synchronous, non-blocking file I/O.
@@ -266,6 +272,7 @@ pub mod file;
 
 /// Synchronous, non-blocking network I/O.
 pub mod net {
+    #[cfg(not(stage0))]
     pub mod tcp;
     pub mod udp;
     pub mod ip;
@@ -291,6 +298,7 @@ pub mod flate;
 pub mod comm_adapters;
 
 /// Extension traits
+#[cfg(not(stage0))] // Requires condition! fixes
 mod extensions;
 
 /// Non-I/O things needed by the I/O module
@@ -312,6 +320,12 @@ pub mod native {
     }
 }
 
+/// Mock implementations for testing
+mod mock;
+
+/// The default buffer size for various I/O operations
+/// XXX: Not pub
+pub static DEFAULT_BUF_SIZE: uint = 1024 * 64;
 
 /// The type passed to I/O condition handlers to indicate error
 ///
@@ -326,12 +340,16 @@ pub struct IoError {
 
 #[deriving(Eq)]
 pub enum IoErrorKind {
+    PreviousIoError,
+    OtherIoError,
+    EndOfFile,
     FileNotFound,
-    FilePermission,
+    PermissionDenied,
     ConnectionFailed,
     Closed,
-    OtherIoError,
-    PreviousIoError
+    ConnectionRefused,
+    ConnectionReset,
+    BrokenPipe
 }
 
 // XXX: Can't put doc comments on macros
@@ -341,19 +359,36 @@ condition! {
     /*pub*/ io_error: super::IoError -> ();
 }
 
+// XXX: Can't put doc comments on macros
+// Raised by `read` on error
+condition! {
+    // FIXME (#6009): uncomment `pub` after expansion support lands.
+    /*pub*/ read_error: super::IoError -> ();
+}
+
 pub trait Reader {
     /// Read bytes, up to the length of `buf` and place them in `buf`.
-    /// Returns the number of bytes read, or `None` on EOF.
+    /// Returns the number of bytes read. The number of bytes read my
+    /// be less than the number requested, even 0. Returns `None` on EOF.
     ///
     /// # Failure
     ///
-    /// Raises the `io_error` condition on error, then returns `None`.
+    /// Raises the `read_error` condition on error. If the condition
+    /// is handled then no guarantee is made about the number of bytes
+    /// read and the contents of `buf`. If the condition is handled
+    /// returns `None` (XXX see below).
     ///
     /// # XXX
+    ///
+    /// * Should raise_default error on eof?
+    /// * If the condition is handled it should still return the bytes read,
+    ///   in which case there's no need to return Option - but then you *have*
+    ///   to install a handler to detect eof.
     ///
     /// This doesn't take a `len` argument like the old `read`.
     /// Will people often need to slice their vectors to call this
     /// and will that be annoying?
+    /// Is it actually possible for 0 bytes to be read successfully?
     fn read(&mut self, buf: &mut [u8]) -> Option<uint>;
 
     /// Return whether the Reader has reached the end of the stream.
@@ -383,16 +418,7 @@ pub trait Writer {
     fn flush(&mut self);
 }
 
-/// I/O types that may be closed
-///
-/// Any further operations performed on a closed resource will raise
-/// on `io_error`
-pub trait Close {
-    /// Close the I/O resource
-    fn close(&mut self);
-}
-
-pub trait Stream: Reader + Writer + Close { }
+pub trait Stream: Reader + Writer { }
 
 pub enum SeekStyle {
     /// Seek from the beginning of the stream
@@ -466,6 +492,21 @@ pub fn standard_error(kind: IoErrorKind) -> IoError {
                 detail: None
             }
         }
+        EndOfFile => {
+            IoError {
+                kind: EndOfFile,
+                desc: "End of file",
+                detail: None
+            }
+        }
         _ => fail!()
+    }
+}
+
+pub fn placeholder_error() -> IoError {
+    IoError {
+        kind: OtherIoError,
+        desc: "Placeholder error. You shouldn't be seeing this",
+        detail: None
     }
 }

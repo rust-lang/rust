@@ -830,14 +830,14 @@ rust_get_rt_env() {
 }
 
 #ifndef _WIN32
-pthread_key_t sched_key;
+pthread_key_t rt_key = -1;
 #else
-DWORD sched_key;
+DWORD rt_key = -1;
 #endif
 
 extern "C" void*
-rust_get_sched_tls_key() {
-    return &sched_key;
+rust_get_rt_tls_key() {
+    return &rt_key;
 }
 
 // Initialize the global state required by the new scheduler
@@ -852,10 +852,10 @@ rust_initialize_global_state() {
     if (!initialized) {
 
 #ifndef _WIN32
-        assert(!pthread_key_create(&sched_key, NULL));
+        assert(!pthread_key_create(&rt_key, NULL));
 #else
-        sched_key = TlsAlloc();
-        assert(sched_key != TLS_OUT_OF_INDEXES);
+        rt_key = TlsAlloc();
+        assert(rt_key != TLS_OUT_OF_INDEXES);
 #endif
 
         initialized = true;
