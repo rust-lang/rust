@@ -397,24 +397,24 @@ impl_n_tuple!(Tuple12:
 #[test]
 fn test_tuple_ref() {
     let x = (~"foo", ~"bar");
-    assert!(x.first_ref() == &~"foo");
-    assert!(x.second_ref() == &~"bar");
+    assert_eq!(x.first_ref(), &~"foo");
+    assert_eq!(x.second_ref(), &~"bar");
 }
 
 #[test]
 #[allow(non_implicitly_copyable_typarams)]
 fn test_tuple() {
-    assert!((948, 4039.48).first() == 948);
-    assert!((34.5, ~"foo").second() == ~"foo");
-    assert!(('a', 2).swap() == (2, 'a'));
+    assert_eq!((948, 4039.48).first(), 948);
+    assert_eq!((34.5, ~"foo").second(), ~"foo");
+    assert_eq!(('a', 2).swap(), (2, 'a'));
 }
 
 #[test]
 fn test_clone() {
     let a = (1, ~"2");
     let b = a.clone();
-    assert!(a.first() == b.first());
-    assert!(a.second() == b.second());
+    assert_eq!(a.first(), b.first());
+    assert_eq!(a.second(), b.second());
 }
 
 #[test]
