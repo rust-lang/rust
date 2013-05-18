@@ -91,8 +91,11 @@ pub mod uv;
 /// Bindings to pthread/windows thread-local storage.
 pub mod thread_local_storage;
 
-/// A parallel work-stealing dequeue.
+/// A parallel work-stealing deque.
 mod work_queue;
+
+/// A parallel queue.
+mod message_queue;
 
 /// Stack segments and caching.
 mod stack;
