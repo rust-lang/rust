@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,9 +15,11 @@
  * # Example
  *
  * ~~~
- * let delayed_fib = future::spawn {|| fib(5000) };
+ * # fn fib(n: uint) -> uint {42};
+ * # fn make_a_sandwich() {};
+ * let mut delayed_fib = std::future::spawn (|| fib(5000) );
  * make_a_sandwich();
- * io::println(fmt!("fib(5000) = %?", delayed_fib.get()))
+ * println(fmt!("fib(5000) = %?", delayed_fib.get()))
  * ~~~
  */
 
@@ -51,7 +53,7 @@ priv enum FutureState<A> {
 /// Methods on the `future` type
 pub impl<A:Copy> Future<A> {
     fn get(&mut self) -> A {
-        //! Get the value of the future
+        //! Get the value of the future.
         *(self.get_ref())
     }
 }
@@ -87,7 +89,7 @@ pub impl<A> Future<A> {
 
 pub fn from_value<A>(val: A) -> Future<A> {
     /*!
-     * Create a future from a value
+     * Create a future from a value.
      *
      * The value is immediately available and calling `get` later will
      * not block.
@@ -117,7 +119,7 @@ pub fn from_fn<A>(f: ~fn() -> A) -> Future<A> {
     /*!
      * Create a future from a function.
      *
-     * The first time that the value is requested it will be retreived by
+     * The first time that the value is requested it will be retrieved by
      * calling the function.  Note that this function is a local
      * function. It is not spawned into another task.
      */
