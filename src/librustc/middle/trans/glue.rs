@@ -669,7 +669,7 @@ pub fn declare_tydesc(ccx: @CrateContext, t: ty::t) -> @mut tydesc_info {
     let llsize = llsize_of(ccx, llty);
     let llalign = llalign_of(ccx, llty);
     let addrspace = declare_tydesc_addrspace(ccx, t);
-    //XXX this triggers duplicate LLVM symbols
+    // FIXME #6574: this triggers duplicate LLVM symbols
     let name = @(if false /*ccx.sess.opts.debuginfo*/ {
         mangle_internal_name_by_type_only(ccx, t, "tydesc")
     } else {
@@ -703,14 +703,13 @@ pub fn declare_generic_glue(ccx: @CrateContext, t: ty::t, llfnty: TypeRef,
                             name: ~str) -> ValueRef {
     let _icx = ccx.insn_ctxt("declare_generic_glue");
     let name = name;
-    //XXX this triggers duplicate LLVM symbols
+    // FIXME #6574 this triggers duplicate LLVM symbols
     let fn_nm = @(if false /*ccx.sess.opts.debuginfo*/ {
         mangle_internal_name_by_type_only(ccx, t, (~"glue_" + name))
     } else {
         mangle_internal_name_by_seq(ccx, (~"glue_" + name))
     });
     debug!("%s is for type %s", *fn_nm, ppaux::ty_to_str(ccx.tcx, t));
-    // XXX: Bad copy.
     note_unique_llvm_symbol(ccx, fn_nm);
     let llfn = decl_cdecl_fn(ccx.llmod, *fn_nm, llfnty);
     set_glue_inlining(llfn, t);
