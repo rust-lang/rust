@@ -49,7 +49,6 @@ pub trait IteratorUtil<A> {
     fn advance(&mut self, f: &fn(A) -> bool) -> bool;
     fn to_vec(self) -> ~[A];
     fn nth(&mut self, n: uint) -> A;
-    fn first(&mut self) -> A;
     fn last(&mut self) -> A;
     fn fold<B>(&mut self, start: B, f: &fn(B, A) -> B) -> B;
     fn count(&mut self) -> uint;
@@ -165,15 +164,6 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
                 None => { fail!("cannot get %uth element", n) }
             }
             i -= 1;
-        }
-    }
-
-    // Get first elemet of an iterator.
-    #[inline(always)]
-    fn first(&mut self) -> A {
-        match self.next() {
-            Some(x) => x ,
-            None => fail!("cannot get first element")
         }
     }
 
@@ -698,20 +688,6 @@ mod tests {
     fn test_iterator_nth_fail() {
         let v = &[0, 1, 2, 3, 4];
         v.iter().nth(5);
-    }
-
-    #[test]
-    fn test_iterator_first() {
-        let v = &[0, 1, 2, 3, 4];
-        assert_eq!(v.iter().first(), &0);
-        assert_eq!(v.slice(2, 5).iter().first(), &2);
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_iterator_first_fail() {
-        let v: &[uint] = &[];
-        v.iter().first();
     }
 
     #[test]
