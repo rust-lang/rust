@@ -244,6 +244,53 @@ pub fn len_utf8_bytes(c: char) -> uint {
     else { fail!("invalid character!") }
 }
 
+pub trait Char {
+    fn is_alphabetic(&self) -> bool;
+    fn is_XID_start(&self) -> bool;
+    fn is_XID_continue(&self) -> bool;
+    fn is_lowercase(&self) -> bool;
+    fn is_uppercase(&self) -> bool;
+    fn is_whitespace(&self) -> bool;
+    fn is_alphanumeric(&self) -> bool;
+    fn is_digit(&self) -> bool;
+    fn is_digit_radix(&self, radix: uint) -> bool;
+    fn to_digit(&self, radix: uint) -> Option<uint>;
+    fn from_digit(num: uint, radix: uint) -> Option<char>;
+    fn escape_unicode(&self) -> ~str;
+    fn escape_default(&self) -> ~str;
+    fn len_utf8_bytes(&self) -> uint;
+}
+
+impl Char for char {
+    fn is_alphabetic(&self) -> bool { is_alphabetic(*self) }
+
+    fn is_XID_start(&self) -> bool { is_XID_start(*self) }
+
+    fn is_XID_continue(&self) -> bool { is_XID_continue(*self) }
+
+    fn is_lowercase(&self) -> bool { is_lowercase(*self) }
+
+    fn is_uppercase(&self) -> bool { is_uppercase(*self) }
+
+    fn is_whitespace(&self) -> bool { is_whitespace(*self) }
+
+    fn is_alphanumeric(&self) -> bool { is_alphanumeric(*self) }
+
+    fn is_digit(&self) -> bool { is_digit(*self) }
+
+    fn is_digit_radix(&self, radix: uint) -> bool { is_digit_radix(*self, radix) }
+
+    fn to_digit(&self, radix: uint) -> Option<uint> { to_digit(*self, radix) }
+
+    fn from_digit(num: uint, radix: uint) -> Option<char> { from_digit(num, radix) }
+
+    fn escape_unicode(&self) -> ~str { escape_unicode(*self) }
+
+    fn escape_default(&self) -> ~str { escape_default(*self) }
+
+    fn len_utf8_bytes(&self) -> uint { len_utf8_bytes(*self) }
+}
+
 #[cfg(not(test))]
 impl Eq for char {
     #[inline(always)]
@@ -266,84 +313,82 @@ impl Ord for char {
 
 #[test]
 fn test_is_lowercase() {
-    assert!(is_lowercase('a'));
-    assert!(is_lowercase('ö'));
-    assert!(is_lowercase('ß'));
-    assert!(!is_lowercase('Ü'));
-    assert!(!is_lowercase('P'));
+    assert!('a'.is_lowercase());
+    assert!('ö'.is_lowercase());
+    assert!('ß'.is_lowercase());
+    assert!(!'Ü'.is_lowercase());
+    assert!(!'P'.is_lowercase());
 }
 
 #[test]
 fn test_is_uppercase() {
-    assert!(!is_uppercase('h'));
-    assert!(!is_uppercase('ä'));
-    assert!(!is_uppercase('ß'));
-    assert!(is_uppercase('Ö'));
-    assert!(is_uppercase('T'));
+    assert!(!'h'.is_uppercase());
+    assert!(!'ä'.is_uppercase());
+    assert!(!'ß'.is_uppercase());
+    assert!('Ö'.is_uppercase());
+    assert!('T'.is_uppercase());
 }
 
 #[test]
 fn test_is_whitespace() {
-    assert!(is_whitespace(' '));
-    assert!(is_whitespace('\u2007'));
-    assert!(is_whitespace('\t'));
-    assert!(is_whitespace('\n'));
-
-    assert!(!is_whitespace('a'));
-    assert!(!is_whitespace('_'));
-    assert!(!is_whitespace('\u0000'));
+    assert!(' '.is_whitespace());
+    assert!('\u2007'.is_whitespace());
+    assert!('\t'.is_whitespace());
+    assert!('\n'.is_whitespace());
+    assert!(!'a'.is_whitespace());
+    assert!(!'_'.is_whitespace());
+    assert!(!'\u0000'.is_whitespace());
 }
 
 #[test]
 fn test_to_digit() {
-    assert_eq!(to_digit('0', 10u), Some(0u));
-    assert_eq!(to_digit('1', 2u), Some(1u));
-    assert_eq!(to_digit('2', 3u), Some(2u));
-    assert_eq!(to_digit('9', 10u), Some(9u));
-    assert_eq!(to_digit('a', 16u), Some(10u));
-    assert_eq!(to_digit('A', 16u), Some(10u));
-    assert_eq!(to_digit('b', 16u), Some(11u));
-    assert_eq!(to_digit('B', 16u), Some(11u));
-    assert_eq!(to_digit('z', 36u), Some(35u));
-    assert_eq!(to_digit('Z', 36u), Some(35u));
-
-    assert!(to_digit(' ', 10u).is_none());
-    assert!(to_digit('$', 36u).is_none());
+    assert_eq!('0'.to_digit(10u), Some(0u));
+    assert_eq!('1'.to_digit(2u), Some(1u));
+    assert_eq!('2'.to_digit(3u), Some(2u));
+    assert_eq!('9'.to_digit(10u), Some(9u));
+    assert_eq!('a'.to_digit(16u), Some(10u));
+    assert_eq!('A'.to_digit(16u), Some(10u));
+    assert_eq!('b'.to_digit(16u), Some(11u));
+    assert_eq!('B'.to_digit(16u), Some(11u));
+    assert_eq!('z'.to_digit(36u), Some(35u));
+    assert_eq!('Z'.to_digit(36u), Some(35u));
+    assert_eq!(' '.to_digit(10u), None);
+    assert_eq!('$'.to_digit(36u), None);
 }
 
 #[test]
 fn test_is_digit() {
-   assert!(is_digit('2'));
-   assert!(is_digit('7'));
-   assert!(! is_digit('c'));
-   assert!(! is_digit('i'));
-   assert!(! is_digit('z'));
-   assert!(! is_digit('Q'));
+   assert!('2'.is_digit());
+   assert!('7'.is_digit());
+   assert!(!'c'.is_digit());
+   assert!(!'i'.is_digit());
+   assert!(!'z'.is_digit());
+   assert!(!'Q'.is_digit());
 }
 
 #[test]
 fn test_escape_default() {
-    assert_eq!(escape_default('\n'), ~"\\n");
-    assert_eq!(escape_default('\r'), ~"\\r");
-    assert_eq!(escape_default('\''), ~"\\'");
-    assert_eq!(escape_default('"'), ~"\\\"");
-    assert_eq!(escape_default(' '), ~" ");
-    assert_eq!(escape_default('a'), ~"a");
-    assert_eq!(escape_default('~'), ~"~");
-    assert_eq!(escape_default('\x00'), ~"\\x00");
-    assert_eq!(escape_default('\x1f'), ~"\\x1f");
-    assert_eq!(escape_default('\x7f'), ~"\\x7f");
-    assert_eq!(escape_default('\xff'), ~"\\xff");
-    assert_eq!(escape_default('\u011b'), ~"\\u011b");
-    assert_eq!(escape_default('\U0001d4b6'), ~"\\U0001d4b6");
+    assert_eq!('\n'.escape_default(), ~"\\n");
+    assert_eq!('\r'.escape_default(), ~"\\r");
+    assert_eq!('\''.escape_default(), ~"\\'");
+    assert_eq!('"'.escape_default(), ~"\\\"");
+    assert_eq!(' '.escape_default(), ~" ");
+    assert_eq!('a'.escape_default(), ~"a");
+    assert_eq!('~'.escape_default(), ~"~");
+    assert_eq!('\x00'.escape_default(), ~"\\x00");
+    assert_eq!('\x1f'.escape_default(), ~"\\x1f");
+    assert_eq!('\x7f'.escape_default(), ~"\\x7f");
+    assert_eq!('\xff'.escape_default(), ~"\\xff");
+    assert_eq!('\u011b'.escape_default(), ~"\\u011b");
+    assert_eq!('\U0001d4b6'.escape_default(), ~"\\U0001d4b6");
 }
 
 #[test]
 fn test_escape_unicode() {
-    assert_eq!(escape_unicode('\x00'), ~"\\x00");
-    assert_eq!(escape_unicode('\n'), ~"\\x0a");
-    assert_eq!(escape_unicode(' '), ~"\\x20");
-    assert_eq!(escape_unicode('a'), ~"\\x61");
-    assert_eq!(escape_unicode('\u011b'), ~"\\u011b");
-    assert_eq!(escape_unicode('\U0001d4b6'), ~"\\U0001d4b6");
+    assert_eq!('\x00'.escape_unicode(), ~"\\x00");
+    assert_eq!('\n'.escape_unicode(), ~"\\x0a");
+    assert_eq!(' '.escape_unicode(), ~"\\x20");
+    assert_eq!('a'.escape_unicode(), ~"\\x61");
+    assert_eq!('\u011b'.escape_unicode(), ~"\\u011b");
+    assert_eq!('\U0001d4b6'.escape_unicode(), ~"\\U0001d4b6");
 }

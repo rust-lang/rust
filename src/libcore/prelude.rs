@@ -29,6 +29,7 @@ pub use io::{print, println};
 
 pub use clone::{Clone, DeepClone};
 pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
+pub use char::Char;
 pub use container::{Container, Mutable, Map, Set};
 pub use hash::Hash;
 pub use old_iter::{BaseIter, ReverseIter, MutableIter, ExtendedIter, EqIter};
