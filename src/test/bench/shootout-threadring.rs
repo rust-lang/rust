@@ -10,18 +10,18 @@
 
 // Based on threadring.erlang by Jira Isa
 
-// xfail-test FIXME #5985 OOM's on the mac bot
+use std::os;
 
 fn start(n_tasks: int, token: int) {
-    let mut (p, ch1) = comm::stream();
+    let mut (p, ch1) = stream();
     ch1.send(token);
     //  XXX could not get this to work with a range closure
     let mut i = 2;
     while i <= n_tasks {
-        let (next_p, ch) = comm::stream();
+        let (next_p, ch) = stream();
         let imm_i = i;
         let imm_p = p;
-        do task::spawn {
+        do spawn {
             roundtrip(imm_i, n_tasks, &imm_p, &ch);
         };
         p = next_p;
@@ -29,16 +29,16 @@ fn start(n_tasks: int, token: int) {
     }
     let imm_p = p;
     let imm_ch = ch1;
-    do task::spawn {
+    do spawn {
         roundtrip(1, n_tasks, &imm_p, &imm_ch);
     }
 }
 
-fn roundtrip(id: int, n_tasks: int, p: &comm::Port<int>, ch: &comm::Chan<int>) {
+fn roundtrip(id: int, n_tasks: int, p: &Port<int>, ch: &Chan<int>) {
     while (true) {
         match p.recv() {
           1 => {
-            io::println(fmt!("%d\n", id));
+            println(fmt!("%d\n", id));
             return;
           }
           token => {
@@ -60,13 +60,13 @@ fn main() {
         os::args()
     };
     let token = if args.len() > 1u {
-        int::from_str(args[1]).get()
+        FromStr::from_str(args[1]).get()
     }
     else {
         1000
     };
     let n_tasks = if args.len() > 2u {
-        int::from_str(args[2]).get()
+        FromStr::from_str(args[2]).get()
     }
     else {
         503
