@@ -572,11 +572,11 @@ impl<T: Writer> WriterByteConversions for T {
     }
 
     fn write_u8(&mut self, n: u8) {
-        self.write([n]) 
+        self.write([n])
     }
 
     fn write_i8(&mut self, n: i8) {
-        self.write([n as u8]) 
+        self.write([n as u8])
     }
 }
 
