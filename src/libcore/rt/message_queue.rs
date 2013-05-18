@@ -14,6 +14,7 @@ use vec::OwnedVector;
 use cell::Cell;
 use option::*;
 use unstable::sync::{Exclusive, exclusive};
+use clone::Clone;
 
 pub struct MessageQueue<T> {
     // XXX: Another mystery bug fixed by boxing this lock
@@ -39,6 +40,14 @@ impl<T: Owned> MessageQueue<T> {
             } else {
                 None
             }
+        }
+    }
+}
+
+impl<T> Clone for MessageQueue<T> {
+    fn clone(&self) -> MessageQueue<T> {
+        MessageQueue {
+            queue: self.queue.clone()
         }
     }
 }
