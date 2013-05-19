@@ -28,7 +28,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree]) -> bas
                 // string literal, push each byte to vector expression
                 ast::lit_str(s) => {
                     for s.each |byte| {
-                        bytes.push(cx.mk_u8(sp, byte));
+                        bytes.push(cx.expr_u8(sp, byte));
                     }
                 }
 
@@ -37,7 +37,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree]) -> bas
                     if v > 0xFF {
                         cx.span_err(sp, "Too large u8 literal in bytes!")
                     } else {
-                        bytes.push(cx.mk_u8(sp, v as u8));
+                        bytes.push(cx.expr_u8(sp, v as u8));
                     }
                 }
 
@@ -48,14 +48,14 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree]) -> bas
                     } else if v < 0 {
                         cx.span_err(sp, "Negative integer literal in bytes!")
                     } else {
-                        bytes.push(cx.mk_u8(sp, v as u8));
+                        bytes.push(cx.expr_u8(sp, v as u8));
                     }
                 }
 
                 // char literal, push to vector expression
                 ast::lit_int(v, ast::ty_char) => {
                     if (v as char).is_ascii() {
-                        bytes.push(cx.mk_u8(sp, v as u8));
+                        bytes.push(cx.expr_u8(sp, v as u8));
                     } else {
                         cx.span_err(sp, "Non-ascii char literal in bytes!")
                     }
@@ -68,6 +68,6 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree]) -> bas
         }
     }
 
-    let e = cx.mk_slice_vec_e(sp, bytes);
+    let e = cx.expr_vec_slice(sp, bytes);
     MRExpr(e)
 }

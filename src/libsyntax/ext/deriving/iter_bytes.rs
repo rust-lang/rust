@@ -48,7 +48,7 @@ fn iter_bytes_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @
     };
     let iter_bytes_ident = substr.method_ident;
     let call_iterbytes = |thing_expr| {
-        cx.mk_method_call(span,
+        cx.expr_method_call(span,
                               thing_expr, iter_bytes_ident,
                               copy lsb0_f)
     };
@@ -63,7 +63,7 @@ fn iter_bytes_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @
             // iteration function.
             let discriminant = match variant.node.disr_expr {
                 Some(copy d)=> d,
-                None => cx.mk_uint(span, index)
+                None => cx.expr_uint(span, index)
             };
 
             exprs.push(call_iterbytes(discriminant));
@@ -82,6 +82,6 @@ fn iter_bytes_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @
     }
 
     do vec::foldl(exprs[0], exprs.slice(1, exprs.len())) |prev, me| {
-        cx.mk_binary(span, and, prev, *me)
+        cx.expr_binary(span, and, prev, *me)
     }
 }

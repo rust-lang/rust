@@ -382,7 +382,7 @@ pub fn expand_quote_expr(cx: @ExtCtxt,
 pub fn expand_quote_item(cx: @ExtCtxt,
                          sp: span,
                          tts: &[ast::token_tree]) -> base::MacResult {
-    let e_attrs = cx.mk_uniq_vec_e(sp, ~[]);
+    let e_attrs = cx.expr_vec_uniq(sp, ~[]);
     base::MRExpr(expand_parse_call(cx, sp, "parse_item",
                                     ~[e_attrs], tts))
 }
@@ -390,7 +390,7 @@ pub fn expand_quote_item(cx: @ExtCtxt,
 pub fn expand_quote_pat(cx: @ExtCtxt,
                         sp: span,
                         tts: &[ast::token_tree]) -> base::MacResult {
-    let e_refutable = cx.mk_lit(sp, ast::lit_bool(true));
+    let e_refutable = cx.expr_lit(sp, ast::lit_bool(true));
     base::MRExpr(expand_parse_call(cx, sp, "parse_pat",
                                     ~[e_refutable], tts))
 }
@@ -398,7 +398,7 @@ pub fn expand_quote_pat(cx: @ExtCtxt,
 pub fn expand_quote_ty(cx: @ExtCtxt,
                        sp: span,
                        tts: &[ast::token_tree]) -> base::MacResult {
-    let e_param_colons = cx.mk_lit(sp, ast::lit_bool(false));
+    let e_param_colons = cx.expr_lit(sp, ast::lit_bool(false));
     base::MRExpr(expand_parse_call(cx, sp, "parse_ty",
                                     ~[e_param_colons], tts))
 }
@@ -406,7 +406,7 @@ pub fn expand_quote_ty(cx: @ExtCtxt,
 pub fn expand_quote_stmt(cx: @ExtCtxt,
                          sp: span,
                          tts: &[ast::token_tree]) -> base::MacResult {
-    let e_attrs = cx.mk_uniq_vec_e(sp, ~[]);
+    let e_attrs = cx.expr_vec_uniq(sp, ~[]);
     base::MRExpr(expand_parse_call(cx, sp, "parse_stmt",
                                     ~[e_attrs], tts))
 }
@@ -421,17 +421,17 @@ fn id_ext(cx: @ExtCtxt, str: &str) -> ast::ident {
 
 // Lift an ident to the expr that evaluates to that ident.
 fn mk_ident(cx: @ExtCtxt, sp: span, ident: ast::ident) -> @ast::expr {
-    let e_str = cx.mk_base_str(sp, cx.str_of(ident));
-    cx.mk_method_call(sp,
-                      cx.mk_path(sp, ids_ext(cx, ~[~"ext_cx"])),
-                      id_ext(cx, "ident_of"),
-                      ~[e_str])
+    let e_str = cx.expr_str(sp, cx.str_of(ident));
+    cx.expr_method_call(sp,
+                        cx.expr_ident(sp, id_ext(cx, "ext_cx")),
+                        id_ext(cx, "ident_of"),
+                        ~[e_str])
 }
 
 fn mk_bytepos(cx: @ExtCtxt, sp: span, bpos: BytePos) -> @ast::expr {
-    let path = ids_ext(cx, ~[~"BytePos"]);
-    let arg = cx.mk_uint(sp, bpos.to_uint());
-    cx.mk_call(sp, path, ~[arg])
+    let path = id_ext(cx, "BytePos");
+    let arg = cx.expr_uint(sp, bpos.to_uint());
+    cx.expr_call_ident(sp, path, ~[arg])
 }
 
 fn mk_binop(cx: @ExtCtxt, sp: span, bop: token::binop) -> @ast::expr {
@@ -447,22 +447,21 @@ fn mk_binop(cx: @ExtCtxt, sp: span, bop: token::binop) -> @ast::expr {
         SHL => "SHL",
         SHR => "SHR"
     };
-    cx.mk_path(sp,
-                   ids_ext(cx, ~[name.to_owned()]))
+    cx.expr_ident(sp, id_ext(cx, name))
 }
 
 fn mk_token(cx: @ExtCtxt, sp: span, tok: &token::Token) -> @ast::expr {
 
     match *tok {
         BINOP(binop) => {
-            return cx.mk_call(sp,
-                                  ids_ext(cx, ~[~"BINOP"]),
-                                  ~[mk_binop(cx, sp, binop)]);
+            return cx.expr_call_ident(sp,
+                                      id_ext(cx, "BINOP"),
+                                      ~[mk_binop(cx, sp, binop)]);
         }
         BINOPEQ(binop) => {
-            return cx.mk_call(sp,
-                                  ids_ext(cx, ~[~"BINOPEQ"]),
-                                  ~[mk_binop(cx, sp, binop)]);
+            return cx.expr_call_ident(sp,
+                                      id_ext(cx, "BINOPEQ"),
+                                      ~[mk_binop(cx, sp, binop)]);
         }
 
         LIT_INT(i, ity) => {
@@ -474,15 +473,13 @@ fn mk_token(cx: @ExtCtxt, sp: span, tok: &token::Token) -> @ast::expr {
                 ast::ty_i32 => ~"ty_i32",
                 ast::ty_i64 => ~"ty_i64"
             };
-            let e_ity =
-                cx.mk_path(sp,
-                               ids_ext(cx, ~[s_ity]));
+            let e_ity = cx.expr_ident(sp, id_ext(cx, s_ity));
 
-            let e_i64 = cx.mk_lit(sp, ast::lit_int(i, ast::ty_i64));
+            let e_i64 = cx.expr_lit(sp, ast::lit_int(i, ast::ty_i64));
 
-            return cx.mk_call(sp,
-                                  ids_ext(cx, ~[~"LIT_INT"]),
-                                  ~[e_i64, e_ity]);
+            return cx.expr_call_ident(sp,
+                                      id_ext(cx, "LIT_INT"),
+                                      ~[e_i64, e_ity]);
         }
 
         LIT_UINT(u, uty) => {
@@ -493,24 +490,21 @@ fn mk_token(cx: @ExtCtxt, sp: span, tok: &token::Token) -> @ast::expr {
                 ast::ty_u32 => ~"ty_u32",
                 ast::ty_u64 => ~"ty_u64"
             };
-            let e_uty =
-                cx.mk_path(sp,
-                               ids_ext(cx, ~[s_uty]));
+            let e_uty = cx.expr_ident(sp, id_ext(cx, s_uty));
 
-            let e_u64 = cx.mk_lit(sp, ast::lit_uint(u, ast::ty_u64));
+            let e_u64 = cx.expr_lit(sp, ast::lit_uint(u, ast::ty_u64));
 
-            return cx.mk_call(sp,
-                                  ids_ext(cx, ~[~"LIT_UINT"]),
-                                  ~[e_u64, e_uty]);
+            return cx.expr_call_ident(sp,
+                                      id_ext(cx, "LIT_UINT"),
+                                      ~[e_u64, e_uty]);
         }
 
         LIT_INT_UNSUFFIXED(i) => {
-            let e_i64 = cx.mk_lit(sp,
-                                      ast::lit_int(i, ast::ty_i64));
+            let e_i64 = cx.expr_lit(sp, ast::lit_int(i, ast::ty_i64));
 
-            return cx.mk_call(sp,
-                                  ids_ext(cx, ~[~"LIT_INT_UNSUFFIXED"]),
-                                  ~[e_i64]);
+            return cx.expr_call_ident(sp,
+                                      id_ext(cx, "LIT_INT_UNSUFFIXED"),
+                                      ~[e_i64]);
         }
 
         LIT_FLOAT(fident, fty) => {
@@ -519,40 +513,38 @@ fn mk_token(cx: @ExtCtxt, sp: span, tok: &token::Token) -> @ast::expr {
                 ast::ty_f32 => ~"ty_f32",
                 ast::ty_f64 => ~"ty_f64"
             };
-            let e_fty =
-                cx.mk_path(sp,
-                               ids_ext(cx, ~[s_fty]));
+            let e_fty = cx.expr_ident(sp, id_ext(cx, s_fty));
 
             let e_fident = mk_ident(cx, sp, fident);
 
-            return cx.mk_call(sp,
-                                  ids_ext(cx, ~[~"LIT_FLOAT"]),
-                                  ~[e_fident, e_fty]);
+            return cx.expr_call_ident(sp,
+                                      id_ext(cx, "LIT_FLOAT"),
+                                      ~[e_fident, e_fty]);
         }
 
         LIT_STR(ident) => {
-            return cx.mk_call(sp,
-                                  ids_ext(cx, ~[~"LIT_STR"]),
-                                  ~[mk_ident(cx, sp, ident)]);
+            return cx.expr_call_ident(sp,
+                                      id_ext(cx, "LIT_STR"),
+                                      ~[mk_ident(cx, sp, ident)]);
         }
 
         IDENT(ident, b) => {
-            return cx.mk_call(sp,
-                                  ids_ext(cx, ~[~"IDENT"]),
-                                  ~[mk_ident(cx, sp, ident),
-                                    cx.mk_lit(sp, ast::lit_bool(b))]);
+            return cx.expr_call_ident(sp,
+                                      id_ext(cx, "IDENT"),
+                                      ~[mk_ident(cx, sp, ident),
+                                        cx.expr_bool(sp, b)]);
         }
 
         LIFETIME(ident) => {
-            return cx.mk_call(sp,
-                                  ids_ext(cx, ~[~"LIFETIME"]),
-                                  ~[mk_ident(cx, sp, ident)]);
+            return cx.expr_call_ident(sp,
+                                      id_ext(cx, "LIFETIME"),
+                                      ~[mk_ident(cx, sp, ident)]);
         }
 
         DOC_COMMENT(ident) => {
-            return cx.mk_call(sp,
-                                  ids_ext(cx, ~[~"DOC_COMMENT"]),
-                                  ~[mk_ident(cx, sp, ident)]);
+            return cx.expr_call_ident(sp,
+                                      id_ext(cx, "DOC_COMMENT"),
+                                      ~[mk_ident(cx, sp, ident)]);
         }
 
         INTERPOLATED(_) => fail!("quote! with interpolated token"),
@@ -595,8 +587,7 @@ fn mk_token(cx: @ExtCtxt, sp: span, tok: &token::Token) -> @ast::expr {
         EOF => "EOF",
         _ => fail!()
     };
-    cx.mk_path(sp,
-                   ids_ext(cx, ~[name.to_owned()]))
+    cx.expr_ident(sp, id_ext(cx, name))
 }
 
 
@@ -606,19 +597,16 @@ fn mk_tt(cx: @ExtCtxt, sp: span, tt: &ast::token_tree)
     match *tt {
 
         ast::tt_tok(sp, ref tok) => {
-            let e_sp = cx.mk_path(sp,
-                                      ids_ext(cx, ~[~"sp"]));
-            let e_tok =
-                cx.mk_call(sp,
-                               ids_ext(cx, ~[~"tt_tok"]),
-                               ~[e_sp, mk_token(cx, sp, tok)]);
+            let e_sp = cx.expr_ident(sp, id_ext(cx, "sp"));
+            let e_tok = cx.expr_call_ident(sp,
+                                           id_ext(cx, "tt_tok"),
+                                           ~[e_sp, mk_token(cx, sp, tok)]);
             let e_push =
-                cx.mk_method_call(sp,
-                                      cx.mk_path(sp, ids_ext(cx, ~[~"tt"])),
-                                      id_ext(cx, "push"),
-                                      ~[e_tok]);
-            ~[cx.mk_stmt(sp, e_push)]
-
+                cx.expr_method_call(sp,
+                                    cx.expr_ident(sp, id_ext(cx, "tt")),
+                                    id_ext(cx, "push"),
+                                    ~[e_tok]);
+            ~[cx.stmt_expr(e_push)]
         }
 
         ast::tt_delim(ref tts) => mk_tts(cx, sp, *tts),
@@ -629,19 +617,18 @@ fn mk_tt(cx: @ExtCtxt, sp: span, tt: &ast::token_tree)
             // tt.push_all_move($ident.to_tokens(ext_cx))
 
             let e_to_toks =
-                cx.mk_method_call(sp,
-                                      cx.mk_path(sp, ~[ident]),
-                                      id_ext(cx, "to_tokens"),
-                                      ~[cx.mk_path(sp,
-                                                       ids_ext(cx, ~[~"ext_cx"]))]);
+                cx.expr_method_call(sp,
+                                    cx.expr_ident(sp, ident),
+                                    id_ext(cx, "to_tokens"),
+                                    ~[cx.expr_ident(sp, id_ext(cx, "ext_cx"))]);
 
             let e_push =
-                cx.mk_method_call(sp,
-                                      cx.mk_path(sp, ids_ext(cx, ~[~"tt"])),
-                                      id_ext(cx, "push_all_move"),
-                                      ~[e_to_toks]);
+                cx.expr_method_call(sp,
+                                    cx.expr_ident(sp, id_ext(cx, "tt")),
+                                    id_ext(cx, "push_all_move"),
+                                    ~[e_to_toks]);
 
-            ~[cx.mk_stmt(sp, e_push)]
+            ~[cx.stmt_expr(e_push)]
         }
     }
 }
@@ -677,11 +664,11 @@ fn expand_tts(cx: @ExtCtxt,
     // We want to emit a block expression that does a sequence of 'use's to
     // import the runtime module, followed by a tt-building expression.
 
-    let uses = ~[ cx.mk_glob_use(sp, ast::public,
-                                 ids_ext(cx, ~[~"syntax",
-                                               ~"ext",
-                                               ~"quote",
-                                               ~"rt"])) ];
+    let uses = ~[ cx.view_use_glob(sp, ast::public,
+                                   ids_ext(cx, ~[~"syntax",
+                                                 ~"ext",
+                                                 ~"quote",
+                                                 ~"rt"])) ];
 
     // We also bind a single value, sp, to ext_cx.call_site()
     //
@@ -709,24 +696,24 @@ fn expand_tts(cx: @ExtCtxt,
     // of quotes, for example) but at this point it seems not likely to be
     // worth the hassle.
 
-    let e_sp = cx.mk_method_call(sp,
-                                     cx.mk_path(sp, ids_ext(cx, ~[~"ext_cx"])),
-                                     id_ext(cx, "call_site"),
-                                     ~[]);
+    let e_sp = cx.expr_method_call(sp,
+                                   cx.expr_ident(sp, id_ext(cx, "ext_cx")),
+                                   id_ext(cx, "call_site"),
+                                   ~[]);
 
-    let stmt_let_sp = cx.mk_local(sp, false,
-                                      id_ext(cx, "sp"),
-                                      e_sp);
+    let stmt_let_sp = cx.stmt_let(sp, false,
+                                  id_ext(cx, "sp"),
+                                  e_sp);
 
-    let stmt_let_tt = cx.mk_local(sp, true,
-                                      id_ext(cx, "tt"),
-                                      cx.mk_uniq_vec_e(sp, ~[]));
+    let stmt_let_tt = cx.stmt_let(sp, true,
+                                  id_ext(cx, "tt"),
+                                  cx.expr_vec_uniq(sp, ~[]));
 
-    cx.mk_block(sp, uses,
-                    ~[stmt_let_sp,
-                      stmt_let_tt] + mk_tts(cx, sp, tts),
-                    Some(cx.mk_path(sp,
-                                        ids_ext(cx, ~[~"tt"]))))
+    cx.expr_blk(
+        cx.blk_all(sp, uses,
+                   ~[stmt_let_sp,
+                     stmt_let_tt] + mk_tts(cx, sp, tts),
+                   Some(cx.expr_ident(sp, id_ext(cx, "tt")))))
 }
 
 fn expand_parse_call(cx: @ExtCtxt,
@@ -736,27 +723,26 @@ fn expand_parse_call(cx: @ExtCtxt,
                      tts: &[ast::token_tree]) -> @ast::expr {
     let tts_expr = expand_tts(cx, sp, tts);
 
-    let cfg_call = || cx.mk_method_call(
-        sp, cx.mk_path(sp, ids_ext(cx, ~[~"ext_cx"])),
+    let cfg_call = || cx.expr_method_call(
+        sp, cx.expr_ident(sp, id_ext(cx, "ext_cx")),
         id_ext(cx, "cfg"), ~[]);
 
-    let parse_sess_call = || cx.mk_method_call(
-        sp, cx.mk_path(sp, ids_ext(cx, ~[~"ext_cx"])),
+    let parse_sess_call = || cx.expr_method_call(
+        sp, cx.expr_ident(sp, id_ext(cx, "ext_cx")),
         id_ext(cx, "parse_sess"), ~[]);
 
     let new_parser_call =
-        cx.mk_call_global(sp,
-                              ids_ext(cx, ~[~"syntax",
-                                            ~"ext",
-                                            ~"quote",
-                                            ~"rt",
-                                            ~"new_parser_from_tts"]),
-                              ~[parse_sess_call(),
-                                cfg_call(),
-                                tts_expr]);
+        cx.expr_call_global(sp,
+                            ids_ext(cx, ~[~"syntax",
+                                          ~"ext",
+                                          ~"quote",
+                                          ~"rt",
+                                          ~"new_parser_from_tts"]),
+                            ~[parse_sess_call(),
+                              cfg_call(),
+                              tts_expr]);
 
-    cx.mk_method_call(sp,
-                          new_parser_call,
-                          id_ext(cx, parse_method),
-                          arg_exprs)
+    cx.expr_method_call(sp, new_parser_call,
+                        id_ext(cx, parse_method),
+                        arg_exprs)
 }

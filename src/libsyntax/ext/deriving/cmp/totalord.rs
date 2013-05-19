@@ -47,10 +47,11 @@ pub fn ordering_const(cx: @ExtCtxt, span: span, cnst: Ordering) -> @expr {
         Equal => "Equal",
         Greater => "Greater"
     };
-    cx.mk_path_global(span,
-                          ~[cx.ident_of("core"),
-                            cx.ident_of("cmp"),
-                            cx.ident_of(cnst)])
+    cx.expr_path(
+        cx.path_global(span,
+                       ~[cx.ident_of("core"),
+                         cx.ident_of("cmp"),
+                         cx.ident_of(cnst)]))
 }
 
 pub fn cs_cmp(cx: @ExtCtxt, span: span,
@@ -60,11 +61,11 @@ pub fn cs_cmp(cx: @ExtCtxt, span: span,
         // foldr (possibly) nests the matches in lexical_ordering better
         false,
         |cx, span, old, new| {
-            cx.mk_call_global(span,
-                                  ~[cx.ident_of("core"),
-                                    cx.ident_of("cmp"),
-                                    cx.ident_of("lexical_ordering")],
-                                  ~[old, new])
+            cx.expr_call_global(span,
+                                ~[cx.ident_of("core"),
+                                  cx.ident_of("cmp"),
+                                  cx.ident_of("lexical_ordering")],
+                                ~[old, new])
         },
         ordering_const(cx, span, Equal),
         |cx, span, list, _| {

@@ -16,7 +16,6 @@ encodable.rs for more.
 use ast;
 use ast::*;
 use ext::base::ExtCtxt;
-use ext::build::Field;
 use ext::build::AstBuilder;
 use ext::deriving::*;
 use codemap::{span, spanned};
@@ -45,26 +44,25 @@ fn create_derived_decodable_impl(
     generics: &Generics,
     method: @method
 ) -> @item {
-    let decoder_ty_param = cx.mk_ty_param(
+    let decoder_ty_param = cx.typaram(
         cx.ident_of("__D"),
         @opt_vec::with(
-            cx.mk_trait_ty_param_bound_global(
-                span,
-                ~[
-                    cx.ident_of("std"),
-                    cx.ident_of("serialize"),
-                    cx.ident_of("Decoder"),
-                ]
-            )
-        )
-    );
+            cx.typarambound(
+                cx.path_global(
+                    span,
+                    ~[
+                        cx.ident_of("std"),
+                        cx.ident_of("serialize"),
+                        cx.ident_of("Decoder"),
+                    ]))));
 
     // All the type parameters need to bound to the trait.
     let generic_ty_params = opt_vec::with(decoder_ty_param);
 
     let methods = [method];
-    let trait_path = cx.mk_raw_path_global_(
+    let trait_path = cx.path_all(
         span,
+        true,
         ~[
             cx.ident_of("std"),
             cx.ident_of("serialize"),
@@ -72,7 +70,7 @@ fn create_derived_decodable_impl(
         ],
         None,
         ~[
-            cx.mk_simple_ty_path(span, cx.ident_of("__D"))
+            cx.ty_ident(span, cx.ident_of("__D"))
         ]
     );
     create_derived_impl(
@@ -97,14 +95,14 @@ fn create_decode_method(
     expr: @ast::expr
 ) -> @method {
     // Create the `e` parameter.
-    let d_arg_type = cx.mk_ty_rptr(
+    let d_arg_type = cx.ty_rptr(
         span,
-        cx.mk_simple_ty_path(span, cx.ident_of("__D")),
+        cx.ty_ident(span, cx.ident_of("__D")),
         None,
         ast::m_mutbl
     );
     let d_ident = cx.ident_of("__d");
-    let d_arg = cx.mk_arg(span, d_ident, d_arg_type);
+    let d_arg = cx.arg(span, d_ident, d_arg_type);
 
     // Create the type of the return value.
     let output_type = create_self_type_with_params(
@@ -116,10 +114,10 @@ fn create_decode_method(
 
     // Create the function declaration.
     let inputs = ~[d_arg];
-    let fn_decl = cx.mk_fn_decl(inputs, output_type);
+    let fn_decl = cx.fn_decl(inputs, output_type);
 
     // Create the body block.
-    let body_block = cx.mk_simple_block(span, expr);
+    let body_block = cx.blk_expr(expr);
 
     // Create the method.
     let explicit_self = spanned { node: sty_static, span: span };
@@ -144,19 +142,21 @@ fn call_substructure_decode_method(
     span: span
 ) -> @ast::expr {
     // Call the substructure method.
-    cx.mk_call_(
+    cx.expr_call(
         span,
-        cx.mk_path_global(
-            span,
-            ~[
-                cx.ident_of("std"),
-                cx.ident_of("serialize"),
-                cx.ident_of("Decodable"),
-                cx.ident_of("decode"),
-            ]
+        cx.expr_path(
+            cx.path_global(
+                span,
+                ~[
+                    cx.ident_of("std"),
+                    cx.ident_of("serialize"),
+                    cx.ident_of("Decodable"),
+                    cx.ident_of("decode"),
+                ]
+            )
         ),
         ~[
-            cx.mk_path(span, ~[cx.ident_of("__d")])
+            cx.expr_ident(span, cx.ident_of("__d"))
         ]
     )
 }
@@ -218,31 +218,24 @@ fn create_read_struct_field(
     span: span,
     idx: uint,
     ident: ident
-) -> Field {
+) -> ast::field {
     // Call the substructure method.
     let decode_expr = call_substructure_decode_method(cx, span);
 
-    let d_arg = cx.mk_arg(
-                              span,
-                              cx.ident_of("__d"),
-                              cx.mk_ty_infer(span));
+    let d_id = cx.ident_of("__d");
 
-    let call_expr = cx.mk_method_call(
+    let call_expr = cx.expr_method_call(
         span,
-        cx.mk_path(span, ~[cx.ident_of("__d")]),
+        cx.expr_ident(span, d_id),
         cx.ident_of("read_struct_field"),
         ~[
-            cx.mk_base_str(span, cx.str_of(ident)),
-            cx.mk_uint(span, idx),
-            cx.mk_lambda(
-                             span,
-                             cx.mk_fn_decl(~[d_arg],
-                                           cx.mk_ty_infer(span)),
-                             decode_expr),
+            cx.expr_str(span, cx.str_of(ident)),
+            cx.expr_uint(span, idx),
+            cx.lambda_expr_1(span, decode_expr, d_id)
         ]
     );
 
-    Field { ident: ident, ex: call_expr }
+    cx.field_imm(span, ident, call_expr)
 }
 
 fn create_read_struct_arg(
@@ -250,21 +243,21 @@ fn create_read_struct_arg(
     span: span,
     idx: uint,
     ident: ident
-) -> Field {
+) -> ast::field {
     // Call the substructure method.
     let decode_expr = call_substructure_decode_method(cx, span);
 
-    let call_expr = cx.mk_method_call(
+    let call_expr = cx.expr_method_call(
         span,
-        cx.mk_path(span, ~[cx.ident_of("__d")]),
+        cx.expr_ident(span, cx.ident_of("__d")),
         cx.ident_of("read_struct_arg"),
         ~[
-            cx.mk_uint(span, idx),
-            cx.mk_lambda_no_args(span, decode_expr),
+            cx.expr_uint(span, idx),
+            cx.lambda_expr_0(span, decode_expr),
         ]
     );
 
-    Field { ident: ident, ex: call_expr }
+    cx.field_imm(span, ident, call_expr)
 }
 
 fn expand_deriving_decodable_struct_method(
@@ -292,30 +285,19 @@ fn expand_deriving_decodable_struct_method(
         i += 1;
     }
 
-    let d_arg = cx.mk_arg(
-                              span,
-                              cx.ident_of("__d"),
-                              cx.mk_ty_infer(span));
+    let d_id = cx.ident_of("__d");
 
-    let read_struct_expr = cx.mk_method_call(
+    let read_struct_expr = cx.expr_method_call(
         span,
-        cx.mk_path(
-            span,
-            ~[cx.ident_of("__d")]
-        ),
+        cx.expr_ident(span, d_id),
         cx.ident_of("read_struct"),
         ~[
-            cx.mk_base_str(span, cx.str_of(type_ident)),
-            cx.mk_uint(span, fields.len()),
-            cx.mk_lambda(
+            cx.expr_str(span, cx.str_of(type_ident)),
+            cx.expr_uint(span, fields.len()),
+            cx.lambda_expr_1(
                 span,
-                cx.mk_fn_decl(~[d_arg], cx.mk_ty_infer(span)),
-                cx.mk_struct_e(
-                    span,
-                    ~[type_ident],
-                    fields
-                )
-            ),
+                cx.expr_struct_ident(span, type_ident, fields),
+                d_id)
         ]
     );
 
@@ -330,14 +312,14 @@ fn create_read_variant_arg(
     variant: &ast::variant
 ) -> ast::arm {
     // Create the matching pattern.
-    let pat = cx.mk_pat_lit(span, cx.mk_uint(span, idx));
+    let pat = cx.pat_lit(span, cx.expr_uint(span, idx));
 
     // Feed each argument in this variant to the decode function
     // as well.
     let variant_arg_len = variant_arg_count(cx, span, variant);
 
     let expr = if variant_arg_len == 0 {
-        cx.mk_path(span, ~[variant.node.name])
+        cx.expr_ident(span, variant.node.name)
     } else {
         // Feed the discriminant to the decode function.
         let mut args = ~[];
@@ -346,37 +328,26 @@ fn create_read_variant_arg(
             // Call the substructure method.
             let expr = call_substructure_decode_method(cx, span);
 
-            let d_arg = cx.mk_arg(
-                                      span,
-                                      cx.ident_of("__d"),
-                                      cx.mk_ty_infer(span));
-            let t_infer = cx.mk_ty_infer(span);
+            let d_id = cx.ident_of("__d");
 
-            let call_expr = cx.mk_method_call(
+            let call_expr = cx.expr_method_call(
                 span,
-                cx.mk_path(span, ~[cx.ident_of("__d")]),
+                cx.expr_ident(span, d_id),
                 cx.ident_of("read_enum_variant_arg"),
                 ~[
-                    cx.mk_uint(span, j),
-                    cx.mk_lambda(
-                                     span,
-                                     cx.mk_fn_decl(~[d_arg], t_infer),
-                                     expr),
+                    cx.expr_uint(span, j),
+                    cx.lambda_expr_1(span, expr, d_id),
                 ]
             );
 
             args.push(call_expr);
         }
 
-        cx.mk_call(
-            span,
-            ~[variant.node.name],
-            args
-        )
+        cx.expr_call_ident(span, variant.node.name, args)
     };
 
     // Create the arm.
-    cx.mk_arm(span, ~[pat], expr)
+    cx.arm(span, ~[pat], expr)
 }
 
 fn create_read_enum_variant(
@@ -385,10 +356,10 @@ fn create_read_enum_variant(
     enum_definition: &enum_def
 ) -> @expr {
     // Create a vector that contains all the variant names.
-    let expr_arm_names = cx.mk_base_vec_e(
+    let expr_arm_names = cx.expr_vec(
         span,
         do enum_definition.variants.map |variant| {
-            cx.mk_base_str(
+            cx.expr_str(
                 span,
                 cx.str_of(variant.node.name)
             )
@@ -401,40 +372,18 @@ fn create_read_enum_variant(
     };
 
     // Add the impossible case arm.
-    arms.push(cx.mk_unreachable_arm(span));
+    arms.push(cx.arm_unreachable(span));
 
     // Create the read_enum_variant expression.
-    cx.mk_method_call(
+    cx.expr_method_call(
         span,
-        cx.mk_path(span, ~[cx.ident_of("__d")]),
+        cx.expr_ident(span, cx.ident_of("__d")),
         cx.ident_of("read_enum_variant"),
         ~[
             expr_arm_names,
-            cx.mk_lambda(
-                span,
-                cx.mk_fn_decl(
-                    ~[
-                        cx.mk_arg(
-                            span,
-                            cx.ident_of("__d"),
-                            cx.mk_ty_infer(span)
-                        ),
-                        cx.mk_arg(
-                            span,
-                            cx.ident_of("__i"),
-                            cx.mk_ty_infer(span)
-                        )
-                    ],
-                    cx.mk_ty_infer(span)
-                ),
-                cx.mk_expr(
-                    span,
-                    ast::expr_match(
-                        cx.mk_path(span, ~[cx.ident_of("__i")]),
-                        arms
-                    )
-                )
-            )
+            cx.lambda_expr(span,
+                           ~[cx.ident_of("__d"), cx.ident_of("__i")],
+                           cx.expr_match(span, cx.expr_ident(span, cx.ident_of("__i")), arms))
         ]
     )
 }
@@ -452,23 +401,16 @@ fn expand_deriving_decodable_enum_method(
         enum_definition
     );
 
-    let d_arg = cx.mk_arg(
-                              span,
-                              cx.ident_of("__d"),
-                              cx.mk_ty_infer(span));
+    let d_id = cx.ident_of("__d");
 
     // Create the read_enum expression
-    let read_enum_expr = cx.mk_method_call(
+    let read_enum_expr = cx.expr_method_call(
         span,
-        cx.mk_path(span, ~[cx.ident_of("__d")]),
+        cx.expr_ident(span, d_id),
         cx.ident_of("read_enum"),
         ~[
-            cx.mk_base_str(span, cx.str_of(type_ident)),
-            cx.mk_lambda(
-                             span,
-                             cx.mk_fn_decl(~[d_arg],
-                                               cx.mk_ty_infer(span)),
-                             read_enum_variant_expr),
+            cx.expr_str(span, cx.str_of(type_ident)),
+            cx.lambda_expr_1(span, read_enum_variant_expr, d_id)
         ]
     );
 

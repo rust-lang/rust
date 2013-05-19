@@ -21,7 +21,7 @@ pub fn expand_deriving_totaleq(cx: @ExtCtxt,
                           in_items: ~[@item]) -> ~[@item] {
 
     fn cs_equals(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
-        cs_and(|cx, span, _, _| cx.mk_bool(span, false),
+        cs_and(|cx, span, _, _| cx.expr_bool(span, false),
                cx, span, substr)
     }
 

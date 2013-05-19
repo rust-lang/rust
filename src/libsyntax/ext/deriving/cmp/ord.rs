@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use ast::{meta_item, item, expr_if, expr};
+use ast::{meta_item, item, expr};
 use codemap::span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -62,10 +62,7 @@ fn cs_ord(less: bool, equal: bool,
     } else {
         cx.ident_of("gt")
     };
-    let false_blk_expr = cx.mk_block(span,
-                                         ~[], ~[],
-                                         Some(cx.mk_bool(span, false)));
-    let base = cx.mk_bool(span, equal);
+    let base = cx.expr_bool(span, equal);
 
     cs_fold(
         false, // need foldr,
@@ -98,19 +95,15 @@ fn cs_ord(less: bool, equal: bool,
                 cx.span_bug(span, "Not exactly 2 arguments in `deriving(Ord)`");
             }
 
-            let cmp = cx.mk_method_call(span,
-                                            self_f, cx.ident_of("eq"), other_fs.to_owned());
-            let subexpr = cx.mk_simple_block(span, subexpr);
-            let elseif = expr_if(cmp, subexpr, Some(false_blk_expr));
-            let elseif = cx.mk_expr(span, elseif);
+            let cmp = cx.expr_method_call(span,
+                                          self_f, cx.ident_of("eq"), other_fs.to_owned());
+            let elseif = cx.expr_if(span, cmp,
+                                    subexpr, Some(cx.expr_bool(span, false)));
 
-            let cmp = cx.mk_method_call(span,
-                                            self_f, binop, other_fs.to_owned());
-            let true_blk = cx.mk_simple_block(span,
-                                                  cx.mk_bool(span, true));
-            let if_ = expr_if(cmp, true_blk, Some(elseif));
-
-            cx.mk_expr(span, if_)
+            let cmp = cx.expr_method_call(span,
+                                          self_f, binop, other_fs.to_owned());
+            cx.expr_if(span, cmp,
+                        cx.expr_bool(span, true), Some(elseif))
         },
         base,
         |cx, span, args, _| {
@@ -119,7 +112,7 @@ fn cs_ord(less: bool, equal: bool,
             match args {
                 [(self_var, _, _),
                  (other_var, _, _)] =>
-                    cx.mk_bool(span,
+                    cx.expr_bool(span,
                                    if less {
                                        self_var < other_var
                                    } else {

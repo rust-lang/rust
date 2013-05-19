@@ -53,14 +53,13 @@ impl gen_send for message {
             assert!(next_state.tys.len() ==
                 next.generics.ty_params.len());
             let arg_names = tys.mapi(|i, _ty| cx.ident_of(~"x_"+i.to_str()));
-            let args_ast = vec::map_zip(arg_names, *tys, |n, t| cx.arg(*n, *t));
+            let args_ast = vec::map_zip(arg_names, *tys, |n, t| cx.arg(span, *n, *t));
 
             let pipe_ty = cx.ty_path(
                 path(~[this.data_name()], span)
-                .add_tys(cx.ty_vars_global(&this.generics.ty_params)));
+                .add_tys(cx.ty_vars(&this.generics.ty_params)));
             let args_ast = vec::append(
-                ~[cx.arg(cx.ident_of("pipe"),
-                              pipe_ty)],
+                ~[cx.arg(span, cx.ident_of("pipe"), pipe_ty)],
                 args_ast);
 
             let mut body = ~"{\n";
@@ -113,15 +112,16 @@ impl gen_send for message {
             let body = cx.parse_expr(body);
 
             let mut rty = cx.ty_path(path(~[next.data_name()],
-                                                      span)
-                                               .add_tys(copy next_state.tys));
+                                          span)
+                                     .add_tys(copy next_state.tys));
             if try {
                 rty = cx.ty_option(rty);
             }
 
             let name = cx.ident_of(if try { ~"try_" + name } else { name } );
 
-            cx.item_fn_poly(name,
+            cx.item_fn_poly(dummy_sp(),
+                            name,
                             args_ast,
                             rty,
                             self.get_generics(),
@@ -133,14 +133,15 @@ impl gen_send for message {
                 let arg_names = tys.mapi(|i, _ty| (~"x_" + i.to_str()));
 
                 let args_ast = do vec::map_zip(arg_names, *tys) |n, t| {
-                    cx.arg(cx.ident_of(*n), *t)
+                    cx.arg(span, cx.ident_of(*n), *t)
                 };
 
                 let args_ast = vec::append(
-                    ~[cx.arg(cx.ident_of("pipe"),
+                    ~[cx.arg(span,
+                             cx.ident_of("pipe"),
                              cx.ty_path(
                                  path(~[this.data_name()], span)
-                                 .add_tys(cx.ty_vars_global(
+                                 .add_tys(cx.ty_vars(
                                      &this.generics.ty_params))))],
                     args_ast);
 
@@ -172,12 +173,13 @@ impl gen_send for message {
 
                 let name = if try { ~"try_" + name } else { name };
 
-                cx.item_fn_poly(cx.ident_of(name),
+                cx.item_fn_poly(dummy_sp(),
+                                cx.ident_of(name),
                                 args_ast,
                                 if try {
-                                    cx.ty_option(cx.ty_nil_ast_builder())
+                                    cx.ty_option(cx.ty_nil())
                                 } else {
-                                    cx.ty_nil_ast_builder()
+                                    cx.ty_nil()
                                 },
                                 self.get_generics(),
                                 cx.blk_expr(body))
@@ -187,7 +189,7 @@ impl gen_send for message {
 
     fn to_ty(&mut self, cx: @ExtCtxt) -> @ast::Ty {
         cx.ty_path(path(~[cx.ident_of(self.name())], self.span())
-          .add_tys(cx.ty_vars_global(&self.get_generics().ty_params)))
+          .add_tys(cx.ty_vars(&self.get_generics().ty_params)))
     }
 }
 
@@ -226,15 +228,15 @@ impl to_type_decls for state {
               None => tys
             };
 
-            let v = cx.variant(cx.ident_of(name), span, tys);
+            let v = cx.variant(span, cx.ident_of(name), tys);
 
             items_msg.push(v);
         }
 
         ~[
             cx.item_enum_poly(
-                name,
                 self.span,
+                name,
                 ast::enum_def { variants: items_msg },
                 cx.strip_bounds(&self.generics)
             )
@@ -263,8 +265,8 @@ impl to_type_decls for state {
         if !self.proto.is_bounded() {
             items.push(
                 cx.item_ty_poly(
-                    self.data_name(),
                     self.span,
+                    self.data_name(),
                     cx.ty_path(
                         path_global(~[cx.ident_of("core"),
                                       cx.ident_of("pipes"),
@@ -274,15 +276,15 @@ impl to_type_decls for state {
                             path(~[cx.ident_of("super"),
                                    self.data_name()],
                                  dummy_sp())
-                            .add_tys(cx.ty_vars_global(
+                            .add_tys(cx.ty_vars(
                                 &self.generics.ty_params))))),
                     cx.strip_bounds(&self.generics)));
         }
         else {
             items.push(
                 cx.item_ty_poly(
-                    self.data_name(),
                     self.span,
+                    self.data_name(),
                     cx.ty_path(
                         path_global(~[cx.ident_of("core"),
                                       cx.ident_of("pipes"),
@@ -342,15 +344,18 @@ impl gen_init for protocol {
     }
 
     fn gen_buffer_init(&self, ext_cx: @ExtCtxt) -> @ast::expr {
-        ext_cx.expr_struct(path(~[ext_cx.ident_of("__Buffer")],
-                                dummy_sp()),
-                      self.states.map_to_vec(|s| {
-            let fty = s.to_ty(ext_cx);
-            ext_cx.field_imm(ext_cx.ident_of(s.name),
-                             quote_expr!(
-                                 ::core::pipes::mk_packet::<$fty>()
-                             ))
-        }))
+        ext_cx.expr_struct(
+            dummy_sp(),
+            path(~[ext_cx.ident_of("__Buffer")],
+                 dummy_sp()),
+            self.states.map_to_vec(|s| {
+                let fty = s.to_ty(ext_cx);
+                ext_cx.field_imm(dummy_sp(),
+                                 ext_cx.ident_of(s.name),
+                                 quote_expr!(
+                                     ::core::pipes::mk_packet::<$fty>()
+                                 ))
+            }))
     }
 
     fn gen_init_bounded(&self, ext_cx: @ExtCtxt) -> @ast::expr {
@@ -392,9 +397,9 @@ impl gen_init for protocol {
         }
 
         cx.ty_path(path(~[cx.ident_of("super"),
-                                      cx.ident_of("__Buffer")],
-                                    copy self.span)
-                               .add_tys(cx.ty_vars_global(&params)))
+                          cx.ident_of("__Buffer")],
+                        copy self.span)
+                   .add_tys(cx.ty_vars_global(&params)))
     }
 
     fn gen_buffer_type(&self, cx: @ExtCtxt) -> @ast::item {
@@ -429,8 +434,8 @@ impl gen_init for protocol {
         };
 
         cx.item_struct_poly(
-            cx.ident_of("__Buffer"),
             dummy_sp(),
+            cx.ident_of("__Buffer"),
             ast::struct_def {
                 fields: fields,
                 ctor_id: None
@@ -454,13 +459,24 @@ impl gen_init for protocol {
             items.push(self.gen_buffer_type(cx))
         }
 
-        items.push(cx.item_mod(cx.ident_of("client"),
-                               copy self.span,
+        items.push(cx.item_mod(copy self.span,
+                               cx.ident_of("client"),
+                               ~[], ~[],
                                client_states));
-        items.push(cx.item_mod(cx.ident_of("server"),
-                               copy self.span,
+        items.push(cx.item_mod(copy self.span,
+                               cx.ident_of("server"),
+                               ~[], ~[],
                                server_states));
 
-        cx.item_mod(cx.ident_of(copy self.name), copy self.span, items)
+        // XXX: Would be nice if our generated code didn't violate
+        // Rust coding conventions
+        let allows = cx.attribute(
+            copy self.span,
+            cx.meta_list(copy self.span,
+                         ~"allow",
+                         ~[cx.meta_word(copy self.span, ~"non_camel_case_types"),
+                           cx.meta_word(copy self.span, ~"unused_mut")]));
+        cx.item_mod(copy self.span, cx.ident_of(copy self.name),
+                    ~[allows], ~[], items)
     }
 }

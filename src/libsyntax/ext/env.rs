@@ -29,8 +29,8 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     // Option<str> rather than just an maybe-empty string.
 
     let e = match os::getenv(var) {
-      None => cx.mk_base_str(sp, ~""),
-      Some(ref s) => cx.mk_base_str(sp, copy *s)
+      None => cx.expr_str(sp, ~""),
+      Some(ref s) => cx.expr_str(sp, copy *s)
     };
     MRExpr(e)
 }
