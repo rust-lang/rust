@@ -496,7 +496,7 @@ pub fn get_res_dtor(ccx: @CrateContext,
         } else {
             did
         };
-        assert!(did.crate == ast::local_crate);
+        assert_eq!(did.crate, ast::local_crate);
         let (val, _) = monomorphize::monomorphic_fn(ccx,
                                                     did,
                                                     substs,

@@ -229,23 +229,23 @@ mod tests {
 
     #[test]
     fn test_to_base64() {
-        assert!((~"").to_base64()       == ~"");
+        assert_eq!((~"").to_base64(), ~"");
         assert!((~"f").to_base64()      == ~"Zg==");
-        assert!((~"fo").to_base64()     == ~"Zm8=");
-        assert!((~"foo").to_base64()    == ~"Zm9v");
+        assert_eq!((~"fo").to_base64(), ~"Zm8=");
+        assert_eq!((~"foo").to_base64(), ~"Zm9v");
         assert!((~"foob").to_base64()   == ~"Zm9vYg==");
-        assert!((~"fooba").to_base64()  == ~"Zm9vYmE=");
-        assert!((~"foobar").to_base64() == ~"Zm9vYmFy");
+        assert_eq!((~"fooba").to_base64(), ~"Zm9vYmE=");
+        assert_eq!((~"foobar").to_base64(), ~"Zm9vYmFy");
     }
 
     #[test]
     fn test_from_base64() {
-        assert!((~"").from_base64() == str::to_bytes(~""));
+        assert_eq!((~"").from_base64(), str::to_bytes(~""));
         assert!((~"Zg==").from_base64() == str::to_bytes(~"f"));
-        assert!((~"Zm8=").from_base64() == str::to_bytes(~"fo"));
-        assert!((~"Zm9v").from_base64() == str::to_bytes(~"foo"));
+        assert_eq!((~"Zm8=").from_base64(), str::to_bytes(~"fo"));
+        assert_eq!((~"Zm9v").from_base64(), str::to_bytes(~"foo"));
         assert!((~"Zm9vYg==").from_base64() == str::to_bytes(~"foob"));
-        assert!((~"Zm9vYmE=").from_base64() == str::to_bytes(~"fooba"));
-        assert!((~"Zm9vYmFy").from_base64() == str::to_bytes(~"foobar"));
+        assert_eq!((~"Zm9vYmE=").from_base64(), str::to_bytes(~"fooba"))
+        assert_eq!((~"Zm9vYmFy").from_base64(), str::to_bytes(~"foobar"));
     }
 }

@@ -445,7 +445,7 @@ mod test {
                 sched.enqueue_task(task);
             }
             sched.run();
-            assert!(task_count == total);
+            assert_eq!(task_count, total);
         }
     }
 
@@ -473,7 +473,7 @@ mod test {
             };
             sched.enqueue_task(task1);
             sched.run();
-            assert!(count == 3);
+            assert_eq!(count, 3);
         }
     }
 
@@ -492,7 +492,7 @@ mod test {
             sched.enqueue_task(start_task);
             sched.run();
 
-            assert!(count == MAX);
+            assert_eq!(count, MAX);
 
             fn run_task(count_ptr: *mut int) {
                 do local_sched::borrow |sched| {

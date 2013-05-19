@@ -122,7 +122,7 @@ fn test_with_ref() {
     let good = 6;
     let c = Cell(~[1, 2, 3, 4, 5, 6]);
     let l = do c.with_ref() |v| { v.len() };
-    assert!(l == good);
+    assert_eq!(l, good);
 }
 
 #[test]
@@ -132,5 +132,5 @@ fn test_with_mut_ref() {
     let c = Cell(v);
     do c.with_mut_ref() |v| { v.push(3); }
     let v = c.take();
-    assert!(v == good);
+    assert_eq!(v, good);
 }

@@ -353,7 +353,7 @@ pub fn send<T,Tbuffer>(mut p: SendPacketBuffered<T,Tbuffer>,
     let header = p.header();
     let p_ = p.unwrap();
     let p = unsafe { &mut *p_ };
-    assert!(ptr::to_unsafe_ptr(&(p.header)) == header);
+    assert_eq!(ptr::to_unsafe_ptr(&(p.header)), header);
     assert!(p.payload.is_none());
     p.payload = Some(payload);
     let old_state = swap_state_rel(&mut p.header.state, Full);
@@ -494,7 +494,7 @@ fn try_recv_<T:Owned>(p: &mut Packet<T>) -> Option<T> {
           Terminated => {
             // This assert detects when we've accidentally unsafely
             // casted too big of a number to a state.
-            assert!(old_state == Terminated);
+            assert_eq!(old_state, Terminated);
 
             let old_task = swap_task(&mut p.header.blocked_task, ptr::null());
             if !old_task.is_null() {
@@ -566,7 +566,7 @@ fn receiver_terminate<T:Owned>(p: *mut Packet<T>) {
         if !old_task.is_null() {
             unsafe {
                 rustrt::rust_task_deref(old_task);
-                assert!(old_task == rustrt::rust_get_task());
+                assert_eq!(old_task, rustrt::rust_get_task());
             }
         }
       }

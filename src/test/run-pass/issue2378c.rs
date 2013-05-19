@@ -20,5 +20,5 @@ use issue2378b::{two_maybes};
 
 pub fn main() {
     let x = two_maybes{a: just(3), b: just(5)};
-    assert!(x[0u] == (3, 5));
+    assert_eq!(x[0u], (3, 5));
 }

@@ -20,12 +20,12 @@ pub fn main () {
     let a2 = B2 as int;
     let a3 = A2 as float;
     let a4 = B2 as float;
-    assert!(c1 == 1);
-    assert!(c2 == 2);
-    assert!(c3 == 1.0);
-    assert!(c4 == 2.0);
-    assert!(a1 == 1);
-    assert!(a2 == 2);
-    assert!(a3 == 1.0);
-    assert!(a4 == 2.0);
+    assert_eq!(c1, 1);
+    assert_eq!(c2, 2);
+    assert_eq!(c3, 1.0);
+    assert_eq!(c4, 2.0);
+    assert_eq!(a1, 1);
+    assert_eq!(a2, 2);
+    assert_eq!(a3, 1.0);
+    assert_eq!(a4, 2.0);
 }

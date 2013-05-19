@@ -383,7 +383,7 @@ mod test {
         let format_result = format_addr(&v6::parse_addr(localhost_str));
         debug!("results: expected: '%s' actual: '%s'",
             localhost_str, format_result);
-        assert!(format_result == localhost_str);
+        assert_eq!(format_result, localhost_str);
     }
     #[test]
     fn test_ip_ipv4_bad_parse() {

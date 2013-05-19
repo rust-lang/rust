@@ -2194,7 +2194,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // If this assertion failures, it is likely because of a
                 // failure in the cross-crate inlining code to translate a
                 // def-id.
-                assert!(p.def_id.crate == ast::local_crate);
+                assert_eq!(p.def_id.crate, ast::local_crate);
 
                 type_param_def_to_contents(
                     cx, cx.ty_param_defs.get(&p.def_id.node))

@@ -24,8 +24,8 @@ pub fn main() {
       some(t) => {
         debug!(t.x);
         debug!(t.y);
-        assert!((t.x == 17));
-        assert!((t.y == 42));
+        assert_eq!(t.x, 17);
+        assert_eq!(t.y, 42);
       }
     }
 }

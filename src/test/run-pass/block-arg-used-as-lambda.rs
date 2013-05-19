@@ -19,6 +19,6 @@ pub fn main() {
     let x_r = x(22u);
     let y_r = y(x_r);
 
-    assert!(x_r == 44u);
-    assert!(y_r == 88u);
+    assert_eq!(x_r, 44u);
+    assert_eq!(y_r, 88u);
 }

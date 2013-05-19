@@ -11,7 +11,7 @@
 fn test1() {
     let mut ints = [0, ..32];
     ints[0] += 1;
-    assert!(ints[0] == 1);
+    assert_eq!(ints[0], 1);
 }
 
 fn test2() {

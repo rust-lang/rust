@@ -15,5 +15,5 @@ static C: S = S(V16(0xDEAD), 0x600D, 0xBAD);
 pub fn main() {
     let S(_, n, _) = C;
     assert!(n != 0xBAD);
-    assert!(n == 0x600D);
+    assert_eq!(n, 0x600D);
 }

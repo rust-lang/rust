@@ -262,7 +262,7 @@ mod test {
                     let mut stream = listener.accept();
                     let mut buf = [0];
                     stream.read(buf);
-                    assert!(buf[0] == 99);
+                    assert_eq!(buf[0], 99);
                 }
             }
 

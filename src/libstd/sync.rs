@@ -839,7 +839,7 @@ mod tests {
             access_shared(sharedstate, m, 10);
             let _ = p.recv();
 
-            assert!(*sharedstate == 20);
+            assert_eq!(*sharedstate, 20);
         }
 
         fn access_shared(sharedstate: &mut int, m: &Mutex, n: uint) {
@@ -906,7 +906,7 @@ mod tests {
         for ports.each |port| { let _ = port.recv(); }
         do m.lock_cond |cond| {
             let num_woken = cond.broadcast();
-            assert!(num_woken == num_waiters);
+            assert_eq!(num_woken, num_waiters);
         }
         // wait until all children wake up
         for ports.each |port| { let _ = port.recv(); }
@@ -1006,7 +1006,7 @@ mod tests {
         for vec::each(p.recv()) |p| { p.recv(); } // wait on all its siblings
         do m.lock_cond |cond| {
             let woken = cond.broadcast();
-            assert!(woken == 0);
+            assert_eq!(woken, 0);
         }
         struct SendOnFailure {
             c: comm::Chan<()>,
@@ -1120,7 +1120,7 @@ mod tests {
             access_shared(sharedstate, x, mode2, 10);
             let _ = p.recv();
 
-            assert!(*sharedstate == 20);
+            assert_eq!(*sharedstate, 20);
         }
 
         fn access_shared(sharedstate: &mut int, x: &RWlock, mode: RWlockMode,
@@ -1273,7 +1273,7 @@ mod tests {
         for ports.each |port| { let _ = port.recv(); }
         do lock_cond(x, dg2) |cond| {
             let num_woken = cond.broadcast();
-            assert!(num_woken == num_waiters);
+            assert_eq!(num_woken, num_waiters);
         }
         // wait until all children wake up
         for ports.each |port| { let _ = port.recv(); }

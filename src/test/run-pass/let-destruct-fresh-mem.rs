@@ -16,8 +16,8 @@ pub fn main() {
     let mut X {x: x, y: @A {a: a}} = u;
     x = 100;
     a = 100;
-    assert!((x == 100));
-    assert!((a == 100));
-    assert!((u.x == 10));
-    assert!((u.y.a == 20));
+    assert_eq!(x, 100);
+    assert_eq!(a, 100);
+    assert_eq!(u.x, 10);
+    assert_eq!(u.y.a, 20);
 }

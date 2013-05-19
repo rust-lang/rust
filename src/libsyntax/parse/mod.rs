@@ -381,7 +381,7 @@ mod test {
         i.intern("c");
         i.intern("d");
         i.intern("return");
-        assert!(i.get(ast::ident{repr:101,ctxt:0}) == @~"b");
+        assert_eq!(i.get(ast::ident{repr:101,ctxt:0}), @~"b");
         i
     }
 

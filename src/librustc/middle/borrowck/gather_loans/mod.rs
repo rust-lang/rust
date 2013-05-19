@@ -218,7 +218,7 @@ pub impl GatherLoanCtxt {
 
     fn pop_repeating_id(&mut self, id: ast::node_id) {
         let popped = self.repeating_ids.pop();
-        assert!(id == popped);
+        assert_eq!(id, popped);
     }
 
     fn guarantee_adjustments(&mut self,

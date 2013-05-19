@@ -14,6 +14,6 @@ pub fn main() {
     let mut i = ~100;
     let mut j = ~200;
     util::swap(&mut i, &mut j);
-    assert!(i == ~200);
-    assert!(j == ~100);
+    assert_eq!(i, ~200);
+    assert_eq!(j, ~100);
 }

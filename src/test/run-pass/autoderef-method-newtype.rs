@@ -20,5 +20,5 @@ struct foo(uint);
 
 pub fn main() {
     let x = foo(3u);
-    assert!(x.double() == 6u);
+    assert_eq!(x.double(), 6u);
 }

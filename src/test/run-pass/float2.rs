@@ -22,13 +22,13 @@ pub fn main() {
     let i = 1.0E7f64;
     let j = 3.1e+9;
     let k = 3.2e-10;
-    assert!((a == b));
+    assert_eq!(a, b);
     assert!((c < b));
-    assert!((c == d));
+    assert_eq!(c, d);
     assert!((e < g));
     assert!((f < h));
-    assert!((g == 1000000.0f32));
-    assert!((h == i));
+    assert_eq!(g, 1000000.0f32);
+    assert_eq!(h, i);
     assert!((j > k));
     assert!((k < a));
 }

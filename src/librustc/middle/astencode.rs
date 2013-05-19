@@ -206,7 +206,7 @@ pub impl ExtendedDecodeContext {
          * refer to the current crate and to the new, inlined node-id.
          */
 
-        assert!(did.crate == ast::local_crate);
+        assert_eq!(did.crate, ast::local_crate);
         ast::def_id { crate: ast::local_crate, node: self.tr_id(did.node) }
     }
     fn tr_span(&self, _span: span) -> span {

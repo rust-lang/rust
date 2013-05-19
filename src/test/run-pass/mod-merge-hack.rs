@@ -14,6 +14,6 @@
 mod myint32;
 
 pub fn main() {
-    assert!(myint32::bits == 32);
-    assert!(myint32::min(10, 20) == 10);
+    assert_eq!(myint32::bits, 32);
+    assert_eq!(myint32::min(10, 20), 10);
 }

@@ -16,8 +16,8 @@ fn box_imm() {
     let mut v = ~3;
     do borrow(v) |w| {
         v = ~4; //~ ERROR cannot assign to `v` because it is borrowed
-        assert!(*v == 3);
-        assert!(*w == 4);
+        assert_eq!(*v, 3);
+        assert_eq!(*w, 4);
     }
 }
 

@@ -83,7 +83,7 @@ fn test_at_exit() {
     let i = 10;
     do at_exit {
         debug!("at_exit1");
-        assert!(i == 10);
+        assert_eq!(i, 10);
     }
 }
 
@@ -93,7 +93,7 @@ fn test_at_exit_many() {
     for uint::range(20, 100) |j| {
         do at_exit {
             debug!("at_exit2");
-            assert!(i == 10);
+            assert_eq!(i, 10);
             assert!(j > i);
         }
     }

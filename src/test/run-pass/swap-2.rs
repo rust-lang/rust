@@ -13,10 +13,10 @@ use core::util;
 pub fn main() {
     let mut a: ~[int] = ~[0, 1, 2, 3, 4, 5, 6];
     vec::swap(a, 2, 4);
-    assert!((a[2] == 4));
-    assert!((a[4] == 2));
+    assert_eq!(a[2], 4);
+    assert_eq!(a[4], 2);
     let mut n = 42;
     util::swap(&mut n, &mut a[0]);
-    assert!((a[0] == 42));
-    assert!((n == 0));
+    assert_eq!(a[0], 42);
+    assert_eq!(n, 0);
 }

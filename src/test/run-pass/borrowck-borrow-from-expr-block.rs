@@ -16,7 +16,7 @@ fn test1(x: @~int) {
     do borrow(&*(*x).clone()) |p| {
         let x_a = ptr::to_unsafe_ptr(&**x);
         assert!((x_a as uint) != ptr::to_uint(p));
-        assert!(unsafe{*x_a} == *p);
+        assert_eq!(unsafe{*x_a}, *p);
     }
 }
 

@@ -32,7 +32,7 @@ pub fn main() {
     let gray: color = rgb(127, 127, 127);
     let clear: color = rgba(50, 150, 250, 0);
     let red: color = hsl(0, 255, 255);
-    assert!((process(gray) == 127));
-    assert!((process(clear) == 0));
-    assert!((process(red) == 255));
+    assert_eq!(process(gray), 127);
+    assert_eq!(process(clear), 0);
+    assert_eq!(process(red), 255);
 }

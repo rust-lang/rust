@@ -17,7 +17,7 @@ pub fn main() {
     let mut expected_len = 1u;
     while i > 0 {
         error!(str::len(a));
-        assert!((str::len(a) == expected_len));
+        assert_eq!(str::len(a), expected_len);
         a = a + a; // FIXME(#3387)---can't write a += a
         i -= 1;
         expected_len *= 2u;

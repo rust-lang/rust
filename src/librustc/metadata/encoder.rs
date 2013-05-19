@@ -946,7 +946,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
 
         // Now output the method info for each method.
         for ty::trait_method_def_ids(tcx, local_def(item.id)).eachi |i, &method_def_id| {
-            assert!(method_def_id.crate == ast::local_crate);
+            assert_eq!(method_def_id.crate, ast::local_crate);
 
             let method_ty = ty::method(tcx, method_def_id);
 
@@ -1278,7 +1278,7 @@ fn encode_crate_deps(ecx: @EncodeContext,
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;
         for deps.each |n| {
-            assert!((n.cnum == expected_cnum));
+            assert_eq!(n.cnum, expected_cnum);
             expected_cnum += 1;
         }
 

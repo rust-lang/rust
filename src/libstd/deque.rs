@@ -140,7 +140,7 @@ pub impl<T> Deque<T> {
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.
 fn grow<T>(nelts: uint, lo: uint, elts: &mut [Option<T>]) -> ~[Option<T>] {
-    assert!(nelts == elts.len());
+    assert_eq!(nelts, elts.len());
     let mut rv = ~[];
 
     do rv.grow_fn(nelts + 1) |i| {
@@ -163,46 +163,46 @@ mod tests {
     #[test]
     fn test_simple() {
         let mut d = Deque::new();
-        assert!(d.len() == 0u);
+        assert_eq!(d.len(), 0u);
         d.add_front(17);
         d.add_front(42);
         d.add_back(137);
-        assert!(d.len() == 3u);
+        assert_eq!(d.len(), 3u);
         d.add_back(137);
-        assert!(d.len() == 4u);
+        assert_eq!(d.len(), 4u);
         debug!(d.peek_front());
-        assert!(*d.peek_front() == 42);
+        assert_eq!(*d.peek_front(), 42);
         debug!(d.peek_back());
-        assert!(*d.peek_back() == 137);
+        assert_eq!(*d.peek_back(), 137);
         let mut i: int = d.pop_front();
         debug!(i);
-        assert!(i == 42);
+        assert_eq!(i, 42);
         i = d.pop_back();
         debug!(i);
-        assert!(i == 137);
+        assert_eq!(i, 137);
         i = d.pop_back();
         debug!(i);
-        assert!(i == 137);
+        assert_eq!(i, 137);
         i = d.pop_back();
         debug!(i);
-        assert!(i == 17);
-        assert!(d.len() == 0u);
+        assert_eq!(i, 17);
+        assert_eq!(d.len(), 0u);
         d.add_back(3);
-        assert!(d.len() == 1u);
+        assert_eq!(d.len(), 1u);
         d.add_front(2);
-        assert!(d.len() == 2u);
+        assert_eq!(d.len(), 2u);
         d.add_back(4);
-        assert!(d.len() == 3u);
+        assert_eq!(d.len(), 3u);
         d.add_front(1);
-        assert!(d.len() == 4u);
+        assert_eq!(d.len(), 4u);
         debug!(d.get(0));
         debug!(d.get(1));
         debug!(d.get(2));
         debug!(d.get(3));
-        assert!(*d.get(0) == 1);
-        assert!(*d.get(1) == 2);
-        assert!(*d.get(2) == 3);
-        assert!(*d.get(3) == 4);
+        assert_eq!(*d.get(0), 1);
+        assert_eq!(*d.get(1), 2);
+        assert_eq!(*d.get(2), 3);
+        assert_eq!(*d.get(3), 4);
     }
 
     #[test]
@@ -213,63 +213,63 @@ mod tests {
         let d: @int = @175;
 
         let mut deq = Deque::new();
-        assert!(deq.len() == 0);
+        assert_eq!(deq.len(), 0);
         deq.add_front(a);
         deq.add_front(b);
         deq.add_back(c);
-        assert!(deq.len() == 3);
+        assert_eq!(deq.len(), 3);
         deq.add_back(d);
-        assert!(deq.len() == 4);
-        assert!(*deq.peek_front() == b);
-        assert!(*deq.peek_back() == d);
-        assert!(deq.pop_front() == b);
-        assert!(deq.pop_back() == d);
-        assert!(deq.pop_back() == c);
-        assert!(deq.pop_back() == a);
-        assert!(deq.len() == 0);
+        assert_eq!(deq.len(), 4);
+        assert_eq!(*deq.peek_front(), b);
+        assert_eq!(*deq.peek_back(), d);
+        assert_eq!(deq.pop_front(), b);
+        assert_eq!(deq.pop_back(), d);
+        assert_eq!(deq.pop_back(), c);
+        assert_eq!(deq.pop_back(), a);
+        assert_eq!(deq.len(), 0);
         deq.add_back(c);
-        assert!(deq.len() == 1);
+        assert_eq!(deq.len(), 1);
         deq.add_front(b);
-        assert!(deq.len() == 2);
+        assert_eq!(deq.len(), 2);
         deq.add_back(d);
-        assert!(deq.len() == 3);
+        assert_eq!(deq.len(), 3);
         deq.add_front(a);
-        assert!(deq.len() == 4);
-        assert!(*deq.get(0) == a);
-        assert!(*deq.get(1) == b);
-        assert!(*deq.get(2) == c);
-        assert!(*deq.get(3) == d);
+        assert_eq!(deq.len(), 4);
+        assert_eq!(*deq.get(0), a);
+        assert_eq!(*deq.get(1), b);
+        assert_eq!(*deq.get(2), c);
+        assert_eq!(*deq.get(3), d);
     }
 
     #[cfg(test)]
     fn test_parameterized<T:Copy + Eq>(a: T, b: T, c: T, d: T) {
         let mut deq = Deque::new();
-        assert!(deq.len() == 0);
+        assert_eq!(deq.len(), 0);
         deq.add_front(a);
         deq.add_front(b);
         deq.add_back(c);
-        assert!(deq.len() == 3);
+        assert_eq!(deq.len(), 3);
         deq.add_back(d);
-        assert!(deq.len() == 4);
-        assert!(*deq.peek_front() == b);
-        assert!(*deq.peek_back() == d);
-        assert!(deq.pop_front() == b);
-        assert!(deq.pop_back() == d);
-        assert!(deq.pop_back() == c);
-        assert!(deq.pop_back() == a);
-        assert!(deq.len() == 0);
+        assert_eq!(deq.len(), 4);
+        assert_eq!(*deq.peek_front(), b);
+        assert_eq!(*deq.peek_back(), d);
+        assert_eq!(deq.pop_front(), b);
+        assert_eq!(deq.pop_back(), d);
+        assert_eq!(deq.pop_back(), c);
+        assert_eq!(deq.pop_back(), a);
+        assert_eq!(deq.len(), 0);
         deq.add_back(c);
-        assert!(deq.len() == 1);
+        assert_eq!(deq.len(), 1);
         deq.add_front(b);
-        assert!(deq.len() == 2);
+        assert_eq!(deq.len(), 2);
         deq.add_back(d);
-        assert!(deq.len() == 3);
+        assert_eq!(deq.len(), 3);
         deq.add_front(a);
-        assert!(deq.len() == 4);
-        assert!(*deq.get(0) == a);
-        assert!(*deq.get(1) == b);
-        assert!(*deq.get(2) == c);
-        assert!(*deq.get(3) == d);
+        assert_eq!(deq.len(), 4);
+        assert_eq!(*deq.get(0), a);
+        assert_eq!(*deq.get(1), b);
+        assert_eq!(*deq.get(2), c);
+        assert_eq!(*deq.get(3), d);
     }
 
     #[deriving(Eq)]

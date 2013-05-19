@@ -29,5 +29,5 @@ fn strlen(str: ~str) -> uint {
 
 pub fn main() {
     let len = strlen(~"Rust");
-    assert!((len == 4u));
+    assert_eq!(len, 4u);
 }

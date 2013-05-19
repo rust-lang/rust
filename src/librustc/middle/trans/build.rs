@@ -837,7 +837,7 @@ pub fn Phi(cx: block, Ty: TypeRef, vals: &[ValueRef], bbs: &[BasicBlockRef])
     -> ValueRef {
     unsafe {
         if cx.unreachable { return llvm::LLVMGetUndef(Ty); }
-        assert!(vals.len() == bbs.len());
+        assert_eq!(vals.len(), bbs.len());
         let phi = EmptyPhi(cx, Ty);
         count_insn(cx, "addincoming");
         llvm::LLVMAddIncoming(phi, vec::raw::to_ptr(vals),
