@@ -84,13 +84,15 @@ pub trait Reader {
 
     // FIXME (#2982): This should probably return an error.
     /**
-    * Reads bytes and puts them into `bytes`. Returns the number of
-    * bytes read.
+    * Reads bytes and puts them into `bytes`, advancing the cursor. Returns the
+    * number of bytes read.
     *
     * The number of bytes to be read is `len` or the end of the file,
     * whichever comes first.
     *
     * The buffer must be at least `len` bytes long.
+    *
+    * `read` is conceptually similar to C's `fread`.
     *
     * # Examples
     *
@@ -99,9 +101,11 @@ pub trait Reader {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint;
 
     /**
-    * Reads a single byte.
+    * Reads a single byte, advancing the cursor.
     *
     * In the case of an EOF or an error, returns a negative value.
+    *
+    * `read_byte` is conceptually similar to C's `getc` function.
     *
     * # Examples
     *
@@ -111,6 +115,8 @@ pub trait Reader {
 
     /**
     * Returns a boolean value: are we currently at EOF?
+    *
+    * `eof` is conceptually similar to C's `feof` function.
     *
     * # Examples
     *
@@ -124,6 +130,8 @@ pub trait Reader {
     * Takes an optional SeekStyle, which affects how we seek from the
     * position. See `SeekStyle` docs for more details.
     *
+    * `seek` is conceptually similar to C's `fseek`.
+    *
     * # Examples
     *
     * None right now.
@@ -132,6 +140,8 @@ pub trait Reader {
 
     /**
     * Returns the current position within the stream.
+    *
+    * `tell` is conceptually similar to C's `ftell` function.
     *
     * # Examples
     *
