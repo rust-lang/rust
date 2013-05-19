@@ -1587,7 +1587,7 @@ pub fn stderr() -> @Writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 
 /**
 * Prints a string to standard output.
-* 
+*
 * This string will not have an implicit newline at the end. If you want
 * an implicit newline, please see `println`.
 *
@@ -1603,7 +1603,7 @@ pub fn print(s: &str) {
 
 /**
 * Prints a string to standard output, followed by a newline.
-* 
+*
 * If you do not want an implicit newline, please see `print`.
 *
 * # Examples
