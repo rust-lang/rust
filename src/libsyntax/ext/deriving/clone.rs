@@ -11,7 +11,6 @@
 use ast::{meta_item, item, expr};
 use codemap::span;
 use ext::base::ExtCtxt;
-use ext::build;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
@@ -80,15 +79,15 @@ fn cs_clone(
     let ctor_ident;
     let all_fields;
     let subcall = |field|
-        cx.mk_method_call(span, field, clone_ident, ~[]);
+        cx.expr_method_call(span, field, clone_ident, ~[]);
 
     match *substr.fields {
         Struct(ref af) => {
-            ctor_ident = ~[ substr.type_ident ];
+            ctor_ident = substr.type_ident;
             all_fields = af;
         }
         EnumMatching(_, variant, ref af) => {
-            ctor_ident = ~[ variant.node.name ];
+            ctor_ident = variant.node.name;
             all_fields = af;
         },
         EnumNonMatching(*) => cx.span_bug(span,
@@ -103,7 +102,7 @@ fn cs_clone(
         [(None, _, _), .. _] => {
             // enum-like
             let subcalls = all_fields.map(|&(_, self_f, _)| subcall(self_f));
-            cx.mk_call(span, ctor_ident, subcalls)
+            cx.expr_call_ident(span, ctor_ident, subcalls)
         },
         _ => {
             // struct-like
@@ -114,16 +113,14 @@ fn cs_clone(
                                         fmt!("unnamed field in normal struct in `deriving(%s)`",
                                              name))
                 };
-                build::Field { ident: ident, ex: subcall(self_f) }
+                cx.field_imm(span, ident, subcall(self_f))
             };
 
             if fields.is_empty() {
                 // no fields, so construct like `None`
-                cx.mk_path(span, ctor_ident)
+                cx.expr_ident(span, ctor_ident)
             } else {
-                cx.mk_struct_e(span,
-                                   ctor_ident,
-                                   fields)
+                cx.expr_struct_ident(span, ctor_ident, fields)
             }
         }
     }

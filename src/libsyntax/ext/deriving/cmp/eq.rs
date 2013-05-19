@@ -21,11 +21,11 @@ pub fn expand_deriving_eq(cx: @ExtCtxt,
     // structures are equal if all fields are equal, and non equal, if
     // any fields are not equal or if the enum variants are different
     fn cs_eq(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
-        cs_and(|cx, span, _, _| cx.mk_bool(span, false),
+        cs_and(|cx, span, _, _| cx.expr_bool(span, false),
                                  cx, span, substr)
     }
     fn cs_ne(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
-        cs_or(|cx, span, _, _| cx.mk_bool(span, true),
+        cs_or(|cx, span, _, _| cx.expr_bool(span, true),
               cx, span, substr)
     }
 

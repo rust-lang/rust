@@ -22,7 +22,7 @@ use ast;
 use ast::{Ty, enum_def, expr, ident, item, Generics, meta_item, struct_def};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
-use codemap::{span, respan};
+use codemap::span;
 use parse::token::special_idents::clownshoes_extensions;
 use opt_vec;
 
@@ -143,38 +143,15 @@ pub fn expand_deriving(cx: @ExtCtxt,
     result
 }
 
-fn create_impl_item(cx: @ExtCtxt, span: span, item: ast::item_) -> @item {
-    let doc_attr = respan(span,
-                          ast::lit_str(@~"Automatically derived."));
-    let doc_attr = respan(span, ast::meta_name_value(@~"doc", doc_attr));
-    let doc_attr = ast::attribute_ {
-        style: ast::attr_outer,
-        value: @doc_attr,
-        is_sugared_doc: false
-    };
-    let doc_attr = respan(span, doc_attr);
-
-    @ast::item {
-        ident: clownshoes_extensions,
-        attrs: ~[doc_attr],
-        id: cx.next_id(),
-        node: item,
-        vis: ast::public,
-        span: span,
-    }
-}
-
 pub fn create_self_type_with_params(cx: @ExtCtxt,
-                                span: span,
-                                type_ident: ident,
-                                generics: &Generics)
-                             -> @Ty {
+                                    span: span,
+                                    type_ident: ident,
+                                    generics: &Generics)
+    -> @Ty {
     // Create the type parameters on the `self` path.
     let mut self_ty_params = ~[];
     for generics.ty_params.each |ty_param| {
-        let self_ty_param = cx.mk_simple_ty_path(
-                                                     span,
-                                                     ty_param.ident);
+        let self_ty_param = cx.ty_ident(span, ty_param.ident);
         self_ty_params.push(self_ty_param);
     }
 
@@ -186,11 +163,7 @@ pub fn create_self_type_with_params(cx: @ExtCtxt,
 
 
     // Create the type of `self`.
-    let self_type = cx.mk_raw_path_(span,
-                                    ~[ type_ident ],
-                                        lifetime,
-                                        self_ty_params);
-    cx.mk_ty_path_path(span, self_type)
+    cx.ty_path(cx.path_all(span, false, ~[ type_ident ], lifetime, self_ty_params))
 }
 
 pub fn create_derived_impl(cx: @ExtCtxt,
@@ -222,18 +195,17 @@ pub fn create_derived_impl(cx: @ExtCtxt,
     for generics.ty_params.each |ty_param| {
         // extra restrictions on the generics parameters to the type being derived upon
         let mut bounds = do bounds_paths.map |&bound_path| {
-            cx.mk_trait_ty_param_bound_(bound_path)
+            cx.typarambound(bound_path)
         };
 
-        let this_trait_bound =
-            cx.mk_trait_ty_param_bound_(trait_path);
+        let this_trait_bound = cx.typarambound(trait_path);
         bounds.push(this_trait_bound);
 
-        impl_generics.ty_params.push(cx.mk_ty_param(ty_param.ident, @bounds));
+        impl_generics.ty_params.push(cx.typaram(ty_param.ident, @bounds));
     }
 
     // Create the reference to the trait.
-    let trait_ref = cx.mk_trait_ref_(trait_path);
+    let trait_ref = cx.trait_ref(trait_path);
 
     // Create the type of `self`.
     let self_type = create_self_type_with_params(cx,
@@ -241,12 +213,18 @@ pub fn create_derived_impl(cx: @ExtCtxt,
                                                  type_ident,
                                                  generics);
 
-    // Create the impl item.
-    let impl_item = ast::item_impl(impl_generics,
-                              Some(trait_ref),
-                              self_type,
-                              methods.map(|x| *x));
-    return create_impl_item(cx, span, impl_item);
+    let doc_attr = cx.attribute(
+        span,
+        cx.meta_name_value(span,
+                           ~"doc", ast::lit_str(@~"Automatically derived.")));
+    cx.item(
+        span,
+        clownshoes_extensions,
+        ~[doc_attr],
+        ast::item_impl(impl_generics,
+                       Some(trait_ref),
+                       self_type,
+                       methods.map(|x| *x)))
 }
 
 pub fn create_subpatterns(cx: @ExtCtxt,
@@ -255,7 +233,7 @@ pub fn create_subpatterns(cx: @ExtCtxt,
                           mutbl: ast::mutability)
                    -> ~[@ast::pat] {
     do field_paths.map |&path| {
-        cx.mk_pat(span,
+        cx.pat(span,
                       ast::pat_ident(ast::bind_by_ref(mutbl), path, None))
     }
 }
@@ -274,12 +252,12 @@ pub fn create_struct_pattern(cx: @ExtCtxt,
     -> (@ast::pat, ~[(Option<ident>, @expr)]) {
     if struct_def.fields.is_empty() {
         return (
-            cx.mk_pat_ident_with_binding_mode(
+            cx.pat_ident_binding_mode(
                 span, struct_ident, ast::bind_infer),
             ~[]);
     }
 
-    let matching_path = cx.mk_raw_path(span, ~[ struct_ident ]);
+    let matching_path = cx.path(span, ~[ struct_ident ]);
 
     let mut paths = ~[], ident_expr = ~[];
 
@@ -301,10 +279,10 @@ pub fn create_struct_pattern(cx: @ExtCtxt,
                 cx.span_bug(span, "A struct with named and unnamed fields in `deriving`");
             }
         };
-        let path = cx.mk_raw_path(span,
-                                      ~[ cx.ident_of(fmt!("%s_%u", prefix, i)) ]);
+        let path = cx.path_ident(span,
+                                 cx.ident_of(fmt!("%s_%u", prefix, i)));
         paths.push(path);
-        ident_expr.push((opt_id, cx.mk_path_raw(span, path)));
+        ident_expr.push((opt_id, cx.expr_path(path)));
     }
 
     let subpats = create_subpatterns(cx, span, paths, mutbl);
@@ -318,9 +296,9 @@ pub fn create_struct_pattern(cx: @ExtCtxt,
                 push(ast::field_pat { ident: id.get(), pat: pat })
             }
         };
-        cx.mk_pat_struct(span, matching_path, field_pats)
+        cx.pat_struct(span, matching_path, field_pats)
     } else {
-        cx.mk_pat_enum(span, matching_path, subpats)
+        cx.pat_enum(span, matching_path, subpats)
     };
 
     (pattern, ident_expr)
@@ -337,24 +315,24 @@ pub fn create_enum_variant_pattern(cx: @ExtCtxt,
     match variant.node.kind {
         ast::tuple_variant_kind(ref variant_args) => {
             if variant_args.is_empty() {
-                return (cx.mk_pat_ident_with_binding_mode(
+                return (cx.pat_ident_binding_mode(
                     span, variant_ident, ast::bind_infer), ~[]);
             }
 
-            let matching_path = cx.mk_raw_path(span, ~[ variant_ident ]);
+            let matching_path = cx.path_ident(span, variant_ident);
 
             let mut paths = ~[], ident_expr = ~[];
             for uint::range(0, variant_args.len()) |i| {
-                let path = cx.mk_raw_path(span,
-                                              ~[ cx.ident_of(fmt!("%s_%u", prefix, i)) ]);
+                let path = cx.path_ident(span,
+                                         cx.ident_of(fmt!("%s_%u", prefix, i)));
 
                 paths.push(path);
-                ident_expr.push((None, cx.mk_path_raw(span, path)));
+                ident_expr.push((None, cx.expr_path(path)));
             }
 
             let subpats = create_subpatterns(cx, span, paths, mutbl);
 
-            (cx.mk_pat_enum(span, matching_path, subpats),
+            (cx.pat_enum(span, matching_path, subpats),
              ident_expr)
         }
         ast::struct_variant_kind(struct_def) => {
@@ -377,8 +355,6 @@ pub fn expand_enum_or_struct_match(cx: @ExtCtxt,
                                span: span,
                                arms: ~[ ast::arm ])
                             -> @expr {
-    let self_expr = cx.make_self(span);
-    let self_expr = cx.mk_unary(span, ast::deref, self_expr);
-    let self_match_expr = ast::expr_match(self_expr, arms);
-    cx.mk_expr(span, self_match_expr)
+    let self_expr = cx.expr_deref(span, cx.expr_self(span));
+    cx.expr_match(span, self_expr, arms)
 }

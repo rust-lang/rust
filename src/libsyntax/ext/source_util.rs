@@ -30,7 +30,7 @@ pub fn expand_line(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     let topmost = topmost_expn_info(cx.backtrace().get());
     let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
 
-    base::MRExpr(cx.mk_uint(topmost.call_site, loc.line))
+    base::MRExpr(cx.expr_uint(topmost.call_site, loc.line))
 }
 
 /* col!(): expands to the current column number */
@@ -40,7 +40,7 @@ pub fn expand_col(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
 
     let topmost = topmost_expn_info(cx.backtrace().get());
     let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
-    base::MRExpr(cx.mk_uint(topmost.call_site, loc.col.to_uint()))
+    base::MRExpr(cx.expr_uint(topmost.call_site, loc.col.to_uint()))
 }
 
 /* file!(): expands to the current filename */
@@ -53,19 +53,19 @@ pub fn expand_file(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     let topmost = topmost_expn_info(cx.backtrace().get());
     let Loc { file: @FileMap { name: filename, _ }, _ } =
         cx.codemap().lookup_char_pos(topmost.call_site.lo);
-    base::MRExpr(cx.mk_base_str(topmost.call_site, filename))
+    base::MRExpr(cx.expr_str(topmost.call_site, filename))
 }
 
 pub fn expand_stringify(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     let s = pprust::tts_to_str(tts, cx.parse_sess().interner);
-    base::MRExpr(cx.mk_base_str(sp, s))
+    base::MRExpr(cx.expr_str(sp, s))
 }
 
 pub fn expand_mod(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "module_path!");
-    base::MRExpr(cx.mk_base_str(sp,
+    base::MRExpr(cx.expr_str(sp,
                               str::connect(cx.mod_path().map(
                                   |x| cx.str_of(*x)), "::")))
 }
@@ -94,7 +94,7 @@ pub fn expand_include_str(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
       }
     }
 
-    base::MRExpr(cx.mk_base_str(sp, result::unwrap(res)))
+    base::MRExpr(cx.expr_str(sp, result::unwrap(res)))
 }
 
 pub fn expand_include_bin(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
@@ -103,9 +103,9 @@ pub fn expand_include_bin(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     match io::read_whole_file(&res_rel_file(cx, sp, &Path(file))) {
       result::Ok(src) => {
         let u8_exprs = vec::map(src, |char| {
-            cx.mk_u8(sp, *char)
+            cx.expr_u8(sp, *char)
         });
-        base::MRExpr(cx.mk_base_vec_e(sp, u8_exprs))
+        base::MRExpr(cx.expr_vec(sp, u8_exprs))
       }
       result::Err(ref e) => {
         cx.parse_sess().span_diagnostic.handler().fatal((*e))
