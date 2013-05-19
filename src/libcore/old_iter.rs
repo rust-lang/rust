@@ -239,26 +239,6 @@ pub fn position<A,IA:BaseIter<A>>(this: &IA, f: &fn(&A) -> bool)
 // it would have to be implemented with foldr, which is too inefficient.
 
 #[inline(always)]
-#[cfg(stage0)]
-pub fn repeat(times: uint, blk: &fn() -> bool) {
-    let mut i = 0;
-    while i < times {
-        if !blk() { break }
-        i += 1;
-    }
-}
-#[inline(always)]
-#[cfg(not(stage0))]
-pub fn repeat(times: uint, blk: &fn() -> bool) -> bool {
-    let mut i = 0;
-    while i < times {
-        if !blk() { return false; }
-        i += 1;
-    }
-    return true;
-}
-
-#[inline(always)]
 pub fn min<A:Copy + Ord,IA:BaseIter<A>>(this: &IA) -> A {
     match do foldl::<A,Option<A>,IA>(this, None) |a, b| {
         match a {
