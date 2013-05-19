@@ -17,7 +17,7 @@ use doc;
 use core::libc;
 use core::run;
 use core::comm::*;
-use std::future;
+use extra::future;
 
 pub enum WriteInstr {
     Write(~str),

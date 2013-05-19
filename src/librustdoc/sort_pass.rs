@@ -19,7 +19,7 @@ use util::NominalOp;
 
 #[cfg(test)] use extract;
 
-use std::sort;
+use extra::sort;
 
 pub type ItemLtEqOp = @fn(v1: &doc::ItemTag, v2:  &doc::ItemTag) -> bool;
 
