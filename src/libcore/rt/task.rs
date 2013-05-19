@@ -63,7 +63,7 @@ impl Task {
     pub fn run(&mut self, f: &fn()) {
         // This is just an assertion that `run` was called unsafely
         // and this instance of Task is still accessible.
-        do borrow_local_task |task| {
+        do Local::borrow::<Task> |task| {
             assert!(ptr::ref_eq(task, self));
         }
 
@@ -88,7 +88,7 @@ impl Task {
     fn destroy(&mut self) {
         // This is just an assertion that `destroy` was called unsafely
         // and this instance of Task is still accessible.
-        do borrow_local_task |task| {
+        do Local::borrow::<Task> |task| {
             assert!(ptr::ref_eq(task, self));
         }
         match self.storage {
@@ -147,42 +147,6 @@ impl Unwinder {
         extern {
             fn rust_begin_unwind(token: uintptr_t);
         }
-    }
-}
-
-/// Borrow a pointer to the installed local services.
-/// Fails (likely aborting the process) if local services are not available.
-pub fn borrow_local_task(f: &fn(&mut Task)) {
-    do Local::borrow::<Scheduler> |sched| {
-        match sched.current_task {
-            Some(~ref mut task) => {
-                f(&mut *task.task)
-            }
-            None => {
-                fail!("no local services for schedulers yet")
-            }
-        }
-    }
-}
-
-pub unsafe fn unsafe_borrow_local_task() -> *mut Task {
-    match (*Local::unsafe_borrow::<Scheduler>()).current_task {
-        Some(~ref mut task) => {
-            let s: *mut Task = &mut *task.task;
-            return s;
-        }
-        None => {
-            // Don't fail. Infinite recursion
-            abort!("no local services for schedulers yet")
-        }
-    }
-}
-
-pub unsafe fn unsafe_try_borrow_local_task() -> Option<*mut Task> {
-    if Local::exists::<Scheduler>() {
-        Some(unsafe_borrow_local_task())
-    } else {
-        None
     }
 }
 
