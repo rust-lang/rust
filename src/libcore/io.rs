@@ -1010,6 +1010,16 @@ pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> @Reader {
 // top-level functions that take a reader, or a set of default methods on
 // reader (which can then be called reader)
 
+/**
+* Gives a `Reader` that allows you to read values from standard input.
+*
+* # Examples
+* ~~~
+* let stdin = core::io::stdin();
+* let line = stdin.read_line();
+* core::io::print(line);
+* ~~~
+*/
 pub fn stdin() -> @Reader {
     unsafe {
         @rustrt::rust_get_stdin() as @Reader
