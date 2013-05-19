@@ -9,8 +9,10 @@
 // except according to those terms.
 
 use back::abi;
-use lib::llvm::{llvm, SetLinkage, PrivateLinkage,
-                ValueRef, TypeRef, Bool, True, False};
+use lib::llvm::{llvm, SetLinkage, PrivateLinkage, ValueRef, TypeRef, Bool, True, False};
+use lib::llvm::{IntEQ, IntNE, IntUGT, IntUGE, IntULT, IntULE, IntSGT, IntSGE, IntSLT, IntSLE,
+    RealOEQ, RealOGT, RealOGE, RealOLT, RealOLE, RealONE};
+
 use metadata::csearch;
 use middle::const_eval;
 use middle::trans::adt;
@@ -280,8 +282,8 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                 else if signed { llvm::LLVMConstSRem(te1, te2) }
                 else           { llvm::LLVMConstURem(te1, te2) }
               }
-              ast::and    |
-              ast::or     => cx.sess.span_unimpl(e.span, "binop logic"),
+              ast::and    => llvm::LLVMConstAnd(te1, te2),
+              ast::or     => llvm::LLVMConstOr(te1, te2),
               ast::bitxor => llvm::LLVMConstXor(te1, te2),
               ast::bitand => llvm::LLVMConstAnd(te1, te2),
               ast::bitor  => llvm::LLVMConstOr(te1, te2),
@@ -290,14 +292,44 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                 if signed { llvm::LLVMConstAShr(te1, te2) }
                 else      { llvm::LLVMConstLShr(te1, te2) }
               }
-              ast::eq     |
-              ast::lt     |
-              ast::le     |
-              ast::ne     |
-              ast::ge     |
-              ast::gt     => cx.sess.span_unimpl(e.span, "binop comparator")
-            }
-          }
+              ast::eq     => {
+                  if is_float { llvm::LLVMConstFCmp(RealOEQ, te1, te2) }
+                  else        { llvm::LLVMConstICmp(IntEQ, te1, te2)   }
+              },
+              ast::lt     => {
+                  if is_float { llvm::LLVMConstFCmp(RealOLT, te1, te2) }
+                  else        {
+                      if signed { llvm::LLVMConstICmp(IntSLT, te1, te2) }
+                      else      { llvm::LLVMConstICmp(IntULT, te1, te2) }
+                  }
+              },
+              ast::le     => {
+                  if is_float { llvm::LLVMConstFCmp(RealOLE, te1, te2) }
+                  else        {
+                      if signed { llvm::LLVMConstICmp(IntSLE, te1, te2) }
+                      else      { llvm::LLVMConstICmp(IntULE, te1, te2) }
+                  }
+              },
+              ast::ne     => {
+                  if is_float { llvm::LLVMConstFCmp(RealONE, te1, te2) }
+                  else        { llvm::LLVMConstICmp(IntNE, te1, te2) }
+              },
+              ast::ge     => {
+                  if is_float { llvm::LLVMConstFCmp(RealOGE, te1, te2) }
+                  else        {
+                      if signed { llvm::LLVMConstICmp(IntSGE, te1, te2) }
+                      else      { llvm::LLVMConstICmp(IntUGE, te1, te2) }
+                  }
+              },
+              ast::gt     => {
+                  if is_float { llvm::LLVMConstFCmp(RealOGT, te1, te2) }
+                  else        {
+                      if signed { llvm::LLVMConstICmp(IntSGT, te1, te2) }
+                      else      { llvm::LLVMConstICmp(IntUGT, te1, te2) }
+                  }
+              },
+            };
+          },
           ast::expr_unary(u, e) => {
             let te = const_expr(cx, e);
             let ty = ty::expr_ty(cx.tcx, e);
