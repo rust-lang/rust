@@ -69,6 +69,9 @@ pub extern "rust-intrinsic" {
     pub fn atomic_xadd_acq(dst: &mut int, src: int) -> int;
     /// Atomic addition, release ordering.
     pub fn atomic_xadd_rel(dst: &mut int, src: int) -> int;
+    /// Atomic addition, relaxed ordering
+    #[cfg(not(stage0))]
+    pub fn atomic_xadd_relaxed(dst: &mut int, src: int) -> int;
 
     /// Atomic subtraction, sequentially consistent.
     pub fn atomic_xsub(dst: &mut int, src: int) -> int;
@@ -76,6 +79,9 @@ pub extern "rust-intrinsic" {
     pub fn atomic_xsub_acq(dst: &mut int, src: int) -> int;
     /// Atomic subtraction, release ordering.
     pub fn atomic_xsub_rel(dst: &mut int, src: int) -> int;
+    /// Atomic subtraction, relaxed ordering
+    #[cfg(not(stage0))]
+    pub fn atomic_xsub_relaxed(dst: &mut int, src: int) -> int;
 
     /// The size of a type in bytes.
     ///

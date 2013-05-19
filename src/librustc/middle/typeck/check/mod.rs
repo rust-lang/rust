@@ -3498,6 +3498,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
          ty::mk_nil())
       }
       ~"atomic_xchg"     | ~"atomic_xadd"     | ~"atomic_xsub"     |
+      ~"atomic_xadd_relaxed"     | ~"atomic_xsub_relaxed"          |
       ~"atomic_xchg_acq" | ~"atomic_xadd_acq" | ~"atomic_xsub_acq" |
       ~"atomic_xchg_rel" | ~"atomic_xadd_rel" | ~"atomic_xsub_rel" => {
         (0,

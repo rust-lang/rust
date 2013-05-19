@@ -14,9 +14,23 @@ use c_malloc = libc::malloc;
 use c_free = libc::free;
 use managed::raw::{BoxHeaderRepr, BoxRepr};
 use cast::transmute;
-use unstable::intrinsics::{atomic_xadd,atomic_xsub};
 use ptr::null;
 use intrinsic::TyDesc;
+
+#[cfg(stage0)]
+use unstable::intrinsics::{atomic_xadd,atomic_xsub};
+#[cfg(not(stage0))]
+use unstable::intrinsics::{atomic_xadd_relaxed,atomic_xsub_relaxed};
+
+#[cfg(stage0)]
+unsafe fn atomic_xadd_relaxed(dst:&mut int, src:int) -> int {
+    atomic_xadd(dst, src)
+}
+
+#[cfg(stage0)]
+unsafe fn atomic_xsub_relaxed(dst:&mut int, src:int) -> int {
+    atomic_xsub(dst, src)
+}
 
 pub unsafe fn malloc(td: *TypeDesc, size: uint) -> *c_void {
     assert!(td.is_not_null());
@@ -35,7 +49,7 @@ pub unsafe fn malloc(td: *TypeDesc, size: uint) -> *c_void {
     box.header.next = null();
 
     let exchange_count = &mut *exchange_count_ptr();
-    atomic_xadd(exchange_count, 1);
+    atomic_xadd_relaxed(exchange_count, 1);
 
     return transmute(box);
 }
@@ -53,7 +67,7 @@ pub unsafe fn malloc_raw(size: uint) -> *c_void {
 
 pub unsafe fn free(ptr: *c_void) {
     let exchange_count = &mut *exchange_count_ptr();
-    atomic_xsub(exchange_count, 1);
+    atomic_xsub_relaxed(exchange_count, 1);
 
     assert!(ptr.is_not_null());
     c_free(ptr);
