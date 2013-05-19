@@ -18,7 +18,6 @@ use clone::Clone;
 use super::rc::RC;
 use rt::sched::{Scheduler, Coroutine};
 use rt::{context, TaskContext, SchedulerContext};
-use rt::local_sched;
 use rt::local::Local;
 use vec::OwnedVector;
 use container::Container;
@@ -95,7 +94,6 @@ impl<T> Clone for Tube<T> {
 mod test {
     use int;
     use cell::Cell;
-    use rt::local_sched;
     use rt::test::*;
     use rt::rtio::EventLoop;
     use rt::sched::Scheduler;

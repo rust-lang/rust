@@ -67,9 +67,6 @@ pub mod task;
 /// The coroutine task scheduler, built on the `io` event loop.
 mod sched;
 
-/// Thread-local access to the current Scheduler.
-pub mod local_sched;
-
 /// Synchronous I/O.
 #[path = "io/mod.rs"]
 pub mod io;
@@ -189,7 +186,7 @@ pub fn context() -> RuntimeContext {
 
     use task::rt::rust_task;
     use self::local::Local;
-    use self::sched::{local_sched, Scheduler};
+    use self::sched::Scheduler;
 
     // XXX: Hitting TLS twice to check if the scheduler exists
     // then to check for the task is not good for perf
@@ -220,7 +217,7 @@ pub fn context() -> RuntimeContext {
 #[test]
 fn test_context() {
     use unstable::run_in_bare_thread;
-    use self::sched::{local_sched, Scheduler, Coroutine};
+    use self::sched::{Scheduler, Coroutine};
     use rt::uv::uvio::UvEventLoop;
     use cell::Cell;
     use rt::local::Local;

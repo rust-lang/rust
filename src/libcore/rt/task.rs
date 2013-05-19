@@ -16,7 +16,7 @@
 use prelude::*;
 use libc::{c_void, uintptr_t};
 use cast::transmute;
-use super::sched::{Scheduler, local_sched};
+use super::sched::Scheduler;
 use rt::local::Local;
 use super::local_heap::LocalHeap;
 use rt::logging::StdErrLogger;

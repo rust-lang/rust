@@ -20,9 +20,7 @@ use super::context::Context;
 use super::task::Task;
 use rt::local_ptr;
 use rt::local::Local;
-
-// A more convenient name for external callers, e.g. `local_sched::take()`
-pub mod local_sched;
+use rt::rtio::IoFactoryObject;
 
 /// The Scheduler is responsible for coordinating execution of Coroutines
 /// on a single thread. When the scheduler is running it is owned by
@@ -401,6 +399,12 @@ pub impl Coroutine {
             }
         }
     }
+}
+
+pub unsafe fn unsafe_borrow_io() -> *mut IoFactoryObject {
+    let sched = Local::unsafe_borrow::<Scheduler>();
+    let io: *mut IoFactoryObject = (*sched).event_loop.io().unwrap();
+    return io;
 }
 
 #[cfg(test)]

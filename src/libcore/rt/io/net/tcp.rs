@@ -10,7 +10,7 @@
 
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use rt::sched::local_sched::unsafe_borrow_io;
+use rt::sched::unsafe_borrow_io;
 use rt::io::net::ip::IpAddr;
 use rt::io::{Reader, Writer, Listener};
 use rt::io::{io_error, read_error, EndOfFile};
