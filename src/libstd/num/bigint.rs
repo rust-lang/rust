@@ -238,7 +238,7 @@ impl Sub<BigUint, BigUint> for BigUint {
             lo
         };
 
-        assert!(borrow == 0);     // <=> assert!((self >= other));
+        assert_eq!(borrow, 0);     // <=> assert!((self >= other));
         return BigUint::new(diff);
     }
 }
@@ -1170,7 +1170,7 @@ mod biguint_tests {
                 if i == j {
                     assert_eq!(ni.cmp(nj), Equal);
                     assert_eq!(nj.cmp(ni), Equal);
-                    assert!(ni == nj);
+                    assert_eq!(ni, nj);
                     assert!(!(ni != nj));
                     assert!(ni <= nj);
                     assert!(ni >= nj);
@@ -1200,7 +1200,7 @@ mod biguint_tests {
     #[test]
     fn test_shl() {
         fn check(v: ~[BigDigit], shift: uint, ans: ~[BigDigit]) {
-            assert!(BigUint::new(v) << shift == BigUint::new(ans));
+            assert_eq!(BigUint::new(v) << shift, BigUint::new(ans));
         }
 
         check(~[], 3, ~[]);
@@ -1245,7 +1245,7 @@ mod biguint_tests {
     #[ignore(cfg(target_arch = "mips"))]
     fn test_shr() {
         fn check(v: ~[BigDigit], shift: uint, ans: ~[BigDigit]) {
-            assert!(BigUint::new(v) >> shift == BigUint::new(ans));
+            assert_eq!(BigUint::new(v) >> shift, BigUint::new(ans));
         }
 
         check(~[], 3, ~[]);
@@ -1298,9 +1298,9 @@ mod biguint_tests {
         check(~[ 0,  1], ((uint::max_value >> BigDigit::bits) + 1) as int);
         check(~[-1, -1 >> 1], int::max_value);
 
-        assert!(BigUint::new(~[0, -1]).to_int() == int::max_value);
-        assert!(BigUint::new(~[0, 0, 1]).to_int() == int::max_value);
-        assert!(BigUint::new(~[0, 0, -1]).to_int() == int::max_value);
+        assert_eq!(BigUint::new(~[0, -1]).to_int(), int::max_value);
+        assert_eq!(BigUint::new(~[0, 0, 1]).to_int(), int::max_value);
+        assert_eq!(BigUint::new(~[0, 0, -1]).to_int(), int::max_value);
     }
 
     #[test]
@@ -1318,8 +1318,8 @@ mod biguint_tests {
         check(~[ 0, -1], uint::max_value << BigDigit::bits);
         check(~[-1, -1], uint::max_value);
 
-        assert!(BigUint::new(~[0, 0, 1]).to_uint()  == uint::max_value);
-        assert!(BigUint::new(~[0, 0, -1]).to_uint() == uint::max_value);
+        assert_eq!(BigUint::new(~[0, 0, 1]).to_uint(), uint::max_value);
+        assert_eq!(BigUint::new(~[0, 0, -1]).to_uint(), uint::max_value);
     }
 
     static sum_triples: &'static [(&'static [BigDigit],
@@ -1433,10 +1433,10 @@ mod biguint_tests {
             let c = BigUint::from_slice(cVec);
 
             if !a.is_zero() {
-                assert!(c.div_rem(&a) == (b.clone(), Zero::zero()));
+                assert_eq!(c.div_rem(&a), (b.clone(), Zero::zero()));
             }
             if !b.is_zero() {
-                assert!(c.div_rem(&b) == (a.clone(), Zero::zero()));
+                assert_eq!(c.div_rem(&b), (a.clone(), Zero::zero()));
             }
         }
 
@@ -1560,7 +1560,7 @@ mod biguint_tests {
             let &(n, rs) = num_pair;
             for rs.each |str_pair| {
                 let &(radix, str) = str_pair;
-                assert!(n.to_str_radix(radix) == str);
+                assert_eq!(n.to_str_radix(radix), str);
             }
         }
     }
@@ -1597,7 +1597,7 @@ mod biguint_tests {
             let ans = match FromStrRadix::from_str_radix(s, 10) {
                 Some(x) => x, None => fail!()
             };
-            assert!(n == ans);
+            assert_eq!(n, ans);
         }
 
         check(3, "6");
@@ -1618,7 +1618,7 @@ mod bigint_tests {
         fn check(inp_s: Sign, inp_n: uint, ans_s: Sign, ans_n: uint) {
             let inp = BigInt::from_biguint(inp_s, BigUint::from_uint(inp_n));
             let ans = BigInt { sign: ans_s, data: BigUint::from_uint(ans_n)};
-            assert!(inp == ans);
+            assert_eq!(inp, ans);
         }
         check(Plus, 1, Plus, 1);
         check(Plus, 0, Zero, 0);
@@ -1640,7 +1640,7 @@ mod bigint_tests {
                 if i == j {
                     assert_eq!(ni.cmp(nj), Equal);
                     assert_eq!(nj.cmp(ni), Equal);
-                    assert!(ni == nj);
+                    assert_eq!(ni, nj);
                     assert!(!(ni != nj));
                     assert!(ni <= nj);
                     assert!(ni >= nj);
@@ -1751,7 +1751,7 @@ mod bigint_tests {
             assert!(c + (-b) == a);
             assert!(a + (-c) == (-b));
             assert!(b + (-c) == (-a));
-            assert!((-a) + (-b) == (-c));
+            assert!((-a) + (-b) == (-c))
             assert!(a + (-a) == Zero::zero());
         }
     }
@@ -1766,8 +1766,8 @@ mod bigint_tests {
 
             assert!(c - a == b);
             assert!(c - b == a);
-            assert!((-b) - a == (-c));
-            assert!((-a) - b == (-c));
+            assert!((-b) - a == (-c))
+            assert!((-a) - b == (-c))
             assert!(b - (-a) == c);
             assert!(a - (-b) == c);
             assert!((-c) - (-a) == (-b));
@@ -1845,7 +1845,7 @@ mod bigint_tests {
         fn check_sub(a: &BigInt, b: &BigInt, ans_d: &BigInt, ans_m: &BigInt) {
             let (d, m) = a.div_mod_floor(b);
             if !m.is_zero() {
-                assert!(m.sign == b.sign);
+                assert_eq!(m.sign, b.sign);
             }
             assert!(m.abs() <= b.abs());
             assert!(*a == b * d + m);
@@ -1896,7 +1896,7 @@ mod bigint_tests {
         fn check_sub(a: &BigInt, b: &BigInt, ans_q: &BigInt, ans_r: &BigInt) {
             let (q, r) = a.div_rem(b);
             if !r.is_zero() {
-                assert!(r.sign == a.sign);
+                assert_eq!(r.sign, a.sign);
             }
             assert!(r.abs() <= b.abs());
             assert!(*a == b * q + r);
@@ -1999,7 +1999,7 @@ mod bigint_tests {
     fn test_from_str_radix() {
         fn check(s: &str, ans: Option<int>) {
             let ans = ans.map(|&n| IntConvertible::from_int::<BigInt>(n));
-            assert!(FromStrRadix::from_str_radix(s, 10) == ans);
+            assert_eq!(FromStrRadix::from_str_radix(s, 10), ans);
         }
         check("10", Some(10));
         check("1", Some(1));
@@ -2016,6 +2016,6 @@ mod bigint_tests {
             BigInt::new(Minus, ~[1, 1, 1]));
         assert!(-BigInt::new(Minus, ~[1, 1, 1]) ==
             BigInt::new(Plus,  ~[1, 1, 1]));
-        assert!(-Zero::zero::<BigInt>() == Zero::zero::<BigInt>());
+        assert_eq!(-Zero::zero::<BigInt>(), Zero::zero::<BigInt>());
     }
 }

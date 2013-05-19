@@ -53,13 +53,13 @@ fn test() {
     do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv.clone(), ~"");
         let doc = (mk_pass().f)(srv.clone(), doc);
-        assert!(doc.cratemod().items[0].name() == ~"iconst");
-        assert!(doc.cratemod().items[1].name() == ~"itype");
-        assert!(doc.cratemod().items[2].name() == ~"ienum");
-        assert!(doc.cratemod().items[3].name() == ~"istruct");
-        assert!(doc.cratemod().items[4].name() == ~"itrait");
-        assert!(doc.cratemod().items[5].name() == ~"__extensions__");
-        assert!(doc.cratemod().items[6].name() == ~"ifn");
-        assert!(doc.cratemod().items[7].name() == ~"imod");
+        assert_eq!(doc.cratemod().items[0].name(), ~"iconst");
+        assert_eq!(doc.cratemod().items[1].name(), ~"itype");
+        assert_eq!(doc.cratemod().items[2].name(), ~"ienum");
+        assert_eq!(doc.cratemod().items[3].name(), ~"istruct");
+        assert_eq!(doc.cratemod().items[4].name(), ~"itrait");
+        assert_eq!(doc.cratemod().items[5].name(), ~"__extensions__");
+        assert_eq!(doc.cratemod().items[6].name(), ~"ifn");
+        assert_eq!(doc.cratemod().items[7].name(), ~"imod");
     }
 }

@@ -952,30 +952,30 @@ mod tests {
         let path = PosixPath("tmp/");
         let path = path.push("/hmm");
         let path = path.normalize();
-        assert!(~"tmp/hmm" == path.to_str());
+        assert_eq!(~"tmp/hmm", path.to_str());
 
         let path = WindowsPath("tmp/");
         let path = path.push("/hmm");
         let path = path.normalize();
-        assert!(~"tmp\\hmm" == path.to_str());
+        assert_eq!(~"tmp\\hmm", path.to_str());
     }
 
     #[test]
     fn test_filetype_foo_bar() {
         let wp = PosixPath("foo.bar");
-        assert!(wp.filetype() == Some(~".bar"));
+        assert_eq!(wp.filetype(), Some(~".bar"));
 
         let wp = WindowsPath("foo.bar");
-        assert!(wp.filetype() == Some(~".bar"));
+        assert_eq!(wp.filetype(), Some(~".bar"));
     }
 
     #[test]
     fn test_filetype_foo() {
         let wp = PosixPath("foo");
-        assert!(wp.filetype() == None);
+        assert_eq!(wp.filetype(), None);
 
         let wp = WindowsPath("foo");
-        assert!(wp.filetype() == None);
+        assert_eq!(wp.filetype(), None);
     }
 
     #[test]
@@ -986,7 +986,7 @@ mod tests {
             if (ss != sss) {
                 debug!("got %s", ss);
                 debug!("expected %s", sss);
-                assert!(ss == sss);
+                assert_eq!(ss, sss);
             }
         }
 
@@ -1044,7 +1044,7 @@ mod tests {
             if (ss != sss) {
                 debug!("got %s", ss);
                 debug!("expected %s", sss);
-                assert!(ss == sss);
+                assert_eq!(ss, sss);
             }
         }
 
@@ -1107,7 +1107,7 @@ mod tests {
             if (ss != sss) {
                 debug!("got %s", ss);
                 debug!("expected %s", sss);
-                assert!(ss == sss);
+                assert_eq!(ss, sss);
             }
         }
 
@@ -1192,9 +1192,9 @@ mod tests {
 
     #[test]
     fn test_windows_path_restrictions() {
-        assert!(WindowsPath("hi").is_restricted() == false);
-        assert!(WindowsPath("C:\\NUL").is_restricted() == true);
-        assert!(WindowsPath("C:\\COM1.TXT").is_restricted() == true);
-        assert!(WindowsPath("c:\\prn.exe").is_restricted() == true);
+        assert_eq!(WindowsPath("hi").is_restricted(), false);
+        assert_eq!(WindowsPath("C:\\NUL").is_restricted(), true);
+        assert_eq!(WindowsPath("C:\\COM1.TXT").is_restricted(), true);
+        assert_eq!(WindowsPath("c:\\prn.exe").is_restricted(), true);
     }
 }

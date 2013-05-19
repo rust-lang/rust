@@ -26,6 +26,6 @@ fn foo2() -> int { 3 }
 
 
 fn main() {
-    assert!(1 == foo1());
-    assert!(3 == foo2());
+    assert_eq!(1, foo1());
+    assert_eq!(3, foo2());
 }

@@ -375,7 +375,7 @@ pub impl Datum {
          * Schedules this datum for cleanup in `bcx`.  The datum
          * must be an rvalue. */
 
-        assert!(self.source == RevokeClean);
+        assert_eq!(self.source, RevokeClean);
         match self.mode {
             ByValue => {
                 add_clean_temp_immediate(bcx, self.val, self.ty);

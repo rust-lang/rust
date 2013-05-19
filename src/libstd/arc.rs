@@ -501,13 +501,13 @@ mod tests {
             let arc_v = p.recv();
 
             let v = copy *arc::get::<~[int]>(&arc_v);
-            assert!(v[3] == 4);
+            assert_eq!(v[3], 4);
         };
 
         let c = p.recv();
         c.send(arc::clone(&arc_v));
 
-        assert!((*arc::get(&arc_v))[2] == 3);
+        assert_eq!((*arc::get(&arc_v))[2], 3);
 
         info!(arc_v);
     }
@@ -545,7 +545,7 @@ mod tests {
             do arc2.access_cond |one, cond| {
                 cond.signal();
                 // Parent should fail when it wakes up.
-                assert!(*one == 0);
+                assert_eq!(*one, 0);
             }
         }
 
@@ -562,11 +562,11 @@ mod tests {
         let arc2 = ~arc.clone();
         do task::try || {
             do arc2.access |one| {
-                assert!(*one == 2);
+                assert_eq!(*one, 2);
             }
         };
         do arc.access |one| {
-            assert!(*one == 1);
+            assert_eq!(*one, 1);
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -575,11 +575,11 @@ mod tests {
         let arc2 = (*arc).clone();
         do task::try || {
             do arc2.write |one| {
-                assert!(*one == 2);
+                assert_eq!(*one, 2);
             }
         };
         do arc.read |one| {
-            assert!(*one == 1);
+            assert_eq!(*one, 1);
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -588,11 +588,11 @@ mod tests {
         let arc2 = (*arc).clone();
         do task::try || {
             do arc2.write |one| {
-                assert!(*one == 2);
+                assert_eq!(*one, 2);
             }
         };
         do arc.write |one| {
-            assert!(*one == 1);
+            assert_eq!(*one, 1);
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -602,12 +602,12 @@ mod tests {
         do task::try || {
             do arc2.write_downgrade |mut write_mode| {
                 do write_mode.write |one| {
-                    assert!(*one == 2);
+                    assert_eq!(*one, 2);
                 }
             }
         };
         do arc.write |one| {
-            assert!(*one == 1);
+            assert_eq!(*one, 1);
         }
     }
     #[test] #[ignore(cfg(windows))]
@@ -616,11 +616,11 @@ mod tests {
         let arc2 = (*arc).clone();
         do task::try || {
             do arc2.read |one| {
-                assert!(*one == 2);
+                assert_eq!(*one, 2);
             }
         };
         do arc.read |one| {
-            assert!(*one == 1);
+            assert_eq!(*one, 1);
         }
     }
     #[test] #[ignore(cfg(windows))]
@@ -629,11 +629,11 @@ mod tests {
         let arc2 = (*arc).clone();
         do task::try || {
             do arc2.read |one| {
-                assert!(*one == 2);
+                assert_eq!(*one, 2);
             }
         };
         do arc.write |one| {
-            assert!(*one == 1);
+            assert_eq!(*one, 1);
         }
     }
     #[test] #[ignore(cfg(windows))]
@@ -644,12 +644,12 @@ mod tests {
             do arc2.write_downgrade |write_mode| {
                 let read_mode = arc2.downgrade(write_mode);
                 do (&read_mode).read |one| {
-                    assert!(*one == 2);
+                    assert_eq!(*one, 2);
                 }
             }
         };
         do arc.write |one| {
-            assert!(*one == 1);
+            assert_eq!(*one, 1);
         }
     }
     #[test]
@@ -691,7 +691,7 @@ mod tests {
         // Wait for writer to finish
         p.recv();
         do arc.read |num| {
-            assert!(*num == 10);
+            assert_eq!(*num, 10);
         }
     }
     #[test]
@@ -713,7 +713,7 @@ mod tests {
             do task::spawn || {
                 rp1.recv(); // wait for downgrader to give go-ahead
                 do arcn.read |state| {
-                    assert!(*state == 31337);
+                    assert_eq!(*state, 31337);
                     rc2.send(());
                 }
             }
@@ -725,7 +725,7 @@ mod tests {
         do task::spawn || {
             wp1.recv();
             do arc2.write_cond |state, cond| {
-                assert!(*state == 0);
+                assert_eq!(*state, 0);
                 *state = 42;
                 cond.signal();
             }
@@ -733,7 +733,7 @@ mod tests {
             do arc2.write |state| {
                 // This shouldn't happen until after the downgrade read
                 // section, and all other readers, finish.
-                assert!(*state == 31337);
+                assert_eq!(*state, 31337);
                 *state = 42;
             }
             wc2.send(());
@@ -746,7 +746,7 @@ mod tests {
                 while *state == 0 {
                     cond.wait();
                 }
-                assert!(*state == 42);
+                assert_eq!(*state, 42);
                 *state = 31337;
                 // send to other readers
                 for reader_convos.each |x| {
@@ -764,7 +764,7 @@ mod tests {
                     }
                 }
                 wc1.send(()); // tell writer to try again
-                assert!(*state == 31337);
+                assert_eq!(*state, 31337);
             }
         }
 

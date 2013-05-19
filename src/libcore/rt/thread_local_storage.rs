@@ -21,12 +21,12 @@ pub type Key = pthread_key_t;
 
 #[cfg(unix)]
 pub unsafe fn create(key: &mut Key) {
-    assert!(0 == pthread_key_create(key, null()));
+    assert_eq!(0, pthread_key_create(key, null()));
 }
 
 #[cfg(unix)]
 pub unsafe fn set(key: Key, value: *mut c_void) {
-    assert!(0 == pthread_setspecific(key, value));
+    assert_eq!(0, pthread_setspecific(key, value));
 }
 
 #[cfg(unix)]
@@ -91,10 +91,10 @@ fn tls_smoke_test() {
         create(&mut key);
         set(key, transmute(value));
         let value: ~int = transmute(get(key));
-        assert!(value == ~20);
+        assert_eq!(value, ~20);
         let value = ~30;
         set(key, transmute(value));
         let value: ~int = transmute(get(key));
-        assert!(value == ~30);
+        assert_eq!(value, ~30);
     }
 }

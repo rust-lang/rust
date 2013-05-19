@@ -365,7 +365,7 @@ pub fn resolve_arm(arm: &ast::arm, cx: Context, visitor: visit::vt<Context>) {
 }
 
 pub fn resolve_pat(pat: @ast::pat, cx: Context, visitor: visit::vt<Context>) {
-    assert!(cx.var_parent == cx.parent);
+    assert_eq!(cx.var_parent, cx.parent);
     parent_to_expr(cx, pat.id);
     visit::visit_pat(pat, cx, visitor);
 }
@@ -427,7 +427,7 @@ pub fn resolve_expr(expr: @ast::expr, cx: Context, visitor: visit::vt<Context>) 
 pub fn resolve_local(local: @ast::local,
                      cx: Context,
                      visitor: visit::vt<Context>) {
-    assert!(cx.var_parent == cx.parent);
+    assert_eq!(cx.var_parent, cx.parent);
     parent_to_expr(cx, local.node.id);
     visit::visit_local(local, cx, visitor);
 }

@@ -15,7 +15,7 @@ fn f<T:Copy>(t: T) -> T {
 
 pub fn main() {
     let t = f(~100);
-    assert!(t == ~100);
+    assert_eq!(t, ~100);
     let t = f(~@~[100]);
-    assert!(t == ~@~[100]);
+    assert_eq!(t, ~@~[100]);
 }

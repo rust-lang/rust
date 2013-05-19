@@ -15,12 +15,12 @@ pub fn main() {
     let chs: ~[char] = ~['e', 'é', '€', 0x10000 as char];
     let s: ~str = str::from_chars(chs);
 
-    assert!((str::len(s) == 10u));
-    assert!((str::char_len(s) == 4u));
-    assert!((vec::len(str::to_chars(s)) == 4u));
-    assert!((str::from_chars(str::to_chars(s)) == s));
-    assert!((str::char_at(s, 0u) == 'e'));
-    assert!((str::char_at(s, 1u) == 'é'));
+    assert!(str::len(s) == 10u);
+    assert!(str::char_len(s) == 4u);
+    assert!(vec::len(str::to_chars(s)) == 4u);
+    assert!(str::from_chars(str::to_chars(s)) == s);
+    assert!(str::char_at(s, 0u) == 'e');
+    assert!(str::char_at(s, 1u) == 'é');
 
     assert!((str::is_utf8(str::to_bytes(s))));
     assert!((!str::is_utf8(~[0x80_u8])));
@@ -28,12 +28,12 @@ pub fn main() {
     assert!((!str::is_utf8(~[0xc0_u8, 0x10_u8])));
 
     let mut stack = ~"a×c€";
-    assert!((str::pop_char(&mut stack) == '€'));
-    assert!((str::pop_char(&mut stack) == 'c'));
+    assert_eq!(str::pop_char(&mut stack), '€');
+    assert_eq!(str::pop_char(&mut stack), 'c');
     str::push_char(&mut stack, 'u');
-    assert!((stack == ~"a×u"));
-    assert!((str::shift_char(&mut stack) == 'a'));
-    assert!((str::shift_char(&mut stack) == '×'));
+    assert!(stack == ~"a×u");
+    assert_eq!(str::shift_char(&mut stack), 'a');
+    assert_eq!(str::shift_char(&mut stack), '×');
     str::unshift_char(&mut stack, 'ß');
-    assert!((stack == ~"ßu"));
+    assert!(stack == ~"ßu");
 }

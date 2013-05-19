@@ -490,7 +490,7 @@ mod tests {
             let vec = u8to64_le!(vecs[t], 0);
             let out = buf.hash_keyed(k0, k1);
             debug!("got %?, expected %?", out, vec);
-            assert!(vec == out);
+            assert_eq!(vec, out);
 
             stream_full.reset();
             stream_full.input(buf);
@@ -512,19 +512,19 @@ mod tests {
     fn test_hash_uint() {
         let val = 0xdeadbeef_deadbeef_u64;
         assert!((val as u64).hash() != (val as uint).hash());
-        assert!((val as u32).hash() == (val as uint).hash());
+        assert_eq!((val as u32).hash(), (val as uint).hash());
     }
     #[test] #[cfg(target_arch = "x86_64")]
     fn test_hash_uint() {
         let val = 0xdeadbeef_deadbeef_u64;
-        assert!((val as u64).hash() == (val as uint).hash());
+        assert_eq!((val as u64).hash(), (val as uint).hash());
         assert!((val as u32).hash() != (val as uint).hash());
     }
     #[test] #[cfg(target_arch = "x86")]
     fn test_hash_uint() {
         let val = 0xdeadbeef_deadbeef_u64;
         assert!((val as u64).hash() != (val as uint).hash());
-        assert!((val as u32).hash() == (val as uint).hash());
+        assert_eq!((val as u32).hash(), (val as uint).hash());
     }
 
     #[test]

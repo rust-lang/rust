@@ -16,5 +16,5 @@ pub fn main() {
     let expected = @100;
     let actual = id::<@int>(expected);
     debug!(*actual);
-    assert!((*expected == *actual));
+    assert_eq!(*expected, *actual);
 }

@@ -684,7 +684,7 @@ mod tests {
         match rs {
           Ok(ref m) => {
             assert!((opt_present(m, ~"test")));
-            assert!((opt_str(m, ~"test") == ~"20"));
+            assert_eq!(opt_str(m, ~"test"), ~"20");
           }
           _ => { fail!("test_reqopt_long failed"); }
         }
@@ -731,7 +731,7 @@ mod tests {
         match rs {
           Ok(ref m) => {
             assert!((opt_present(m, ~"t")));
-            assert!((opt_str(m, ~"t") == ~"20"));
+            assert_eq!(opt_str(m, ~"t"), ~"20");
           }
           _ => fail!()
         }
@@ -780,7 +780,7 @@ mod tests {
         match rs {
           Ok(ref m) => {
             assert!((opt_present(m, ~"test")));
-            assert!((opt_str(m, ~"test") == ~"20"));
+            assert_eq!(opt_str(m, ~"test"), ~"20");
           }
           _ => fail!()
         }
@@ -827,7 +827,7 @@ mod tests {
         match rs {
           Ok(ref m) => {
             assert!((opt_present(m, ~"t")));
-            assert!((opt_str(m, ~"t") == ~"20"));
+            assert_eq!(opt_str(m, ~"t"), ~"20");
           }
           _ => fail!()
         }
@@ -946,7 +946,7 @@ mod tests {
           Ok(ref m) => {
             // The next variable after the flag is just a free argument
 
-            assert!((m.free[0] == ~"20"));
+            assert!(m.free[0] == ~"20");
           }
           _ => fail!()
         }
@@ -971,7 +971,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert!((opt_count(m, ~"v") == 1));
+            assert_eq!(opt_count(m, ~"v"), 1);
           }
           _ => fail!()
         }
@@ -984,7 +984,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert!((opt_count(m, ~"v") == 2));
+            assert_eq!(opt_count(m, ~"v"), 2);
           }
           _ => fail!()
         }
@@ -997,7 +997,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert!((opt_count(m, ~"v") == 2));
+            assert_eq!(opt_count(m, ~"v"), 2);
           }
           _ => fail!()
         }
@@ -1010,7 +1010,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert!((opt_count(m, ~"verbose") == 1));
+            assert_eq!(opt_count(m, ~"verbose"), 1);
           }
           _ => fail!()
         }
@@ -1023,7 +1023,7 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert!((opt_count(m, ~"verbose") == 2));
+            assert_eq!(opt_count(m, ~"verbose"), 2);
           }
           _ => fail!()
         }
@@ -1038,7 +1038,7 @@ mod tests {
         match rs {
           Ok(ref m) => {
             assert!((opt_present(m, ~"test")));
-            assert!((opt_str(m, ~"test") == ~"20"));
+            assert_eq!(opt_str(m, ~"test"), ~"20");
           }
           _ => fail!()
         }
@@ -1073,11 +1073,11 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-              assert!((opt_present(m, ~"test")));
-              assert!((opt_str(m, ~"test") == ~"20"));
+              assert!(opt_present(m, ~"test"));
+              assert_eq!(opt_str(m, ~"test"), ~"20");
               let pair = opt_strs(m, ~"test");
-              assert!((pair[0] == ~"20"));
-              assert!((pair[1] == ~"30"));
+              assert!(pair[0] == ~"20");
+              assert!(pair[1] == ~"30");
           }
           _ => fail!()
         }
@@ -1091,7 +1091,7 @@ mod tests {
         match rs {
           Ok(ref m) => {
             assert!((opt_present(m, ~"t")));
-            assert!((opt_str(m, ~"t") == ~"20"));
+            assert_eq!(opt_str(m, ~"t"), ~"20");
           }
           _ => fail!()
         }
@@ -1127,10 +1127,10 @@ mod tests {
         match rs {
           Ok(ref m) => {
             assert!((opt_present(m, ~"t")));
-            assert!((opt_str(m, ~"t") == ~"20"));
+            assert_eq!(opt_str(m, ~"t"), ~"20");
             let pair = opt_strs(m, ~"t");
-            assert!((pair[0] == ~"20"));
-            assert!((pair[1] == ~"30"));
+            assert!(pair[0] == ~"20");
+            assert!(pair[1] == ~"30");
           }
           _ => fail!()
         }
@@ -1171,19 +1171,19 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(ref m) => {
-            assert!((m.free[0] == ~"prog"));
-            assert!((m.free[1] == ~"free1"));
-            assert!((opt_str(m, ~"s") == ~"20"));
-            assert!((m.free[2] == ~"free2"));
+            assert!(m.free[0] == ~"prog");
+            assert!(m.free[1] == ~"free1");
+            assert_eq!(opt_str(m, ~"s"), ~"20");
+            assert!(m.free[2] == ~"free2");
             assert!((opt_present(m, ~"flag")));
-            assert!((opt_str(m, ~"long") == ~"30"));
+            assert_eq!(opt_str(m, ~"long"), ~"30");
             assert!((opt_present(m, ~"f")));
             let pair = opt_strs(m, ~"m");
-            assert!((pair[0] == ~"40"));
-            assert!((pair[1] == ~"50"));
+            assert!(pair[0] == ~"40");
+            assert!(pair[1] == ~"50");
             let pair = opt_strs(m, ~"n");
-            assert!((pair[0] == ~"-A B"));
-            assert!((pair[1] == ~"-60 70"));
+            assert!(pair[0] == ~"-A B");
+            assert!(pair[1] == ~"-60 70");
             assert!((!opt_present(m, ~"notpresent")));
           }
           _ => fail!()
@@ -1206,10 +1206,10 @@ mod tests {
         assert!(!opts_present(matches, ~[~"thing"]));
         assert!(!opts_present(matches, ~[]));
 
-        assert!(opts_str(matches, ~[~"e"]) == ~"foo");
-        assert!(opts_str(matches, ~[~"encrypt"]) == ~"foo");
-        assert!(opts_str(matches, ~[~"e", ~"encrypt"]) == ~"foo");
-        assert!(opts_str(matches, ~[~"encrypt", ~"e"]) == ~"foo");
+        assert_eq!(opts_str(matches, ~[~"e"]), ~"foo");
+        assert_eq!(opts_str(matches, ~[~"encrypt"]), ~"foo");
+        assert_eq!(opts_str(matches, ~[~"e", ~"encrypt"]), ~"foo");
+        assert_eq!(opts_str(matches, ~[~"encrypt", ~"e"]), ~"foo");
     }
 
     #[test]
@@ -1221,9 +1221,9 @@ mod tests {
           result::Err(_) => fail!()
         };
         assert!(opts_present(matches, ~[~"L"]));
-        assert!(opts_str(matches, ~[~"L"]) == ~"foo");
+        assert_eq!(opts_str(matches, ~[~"L"]), ~"foo");
         assert!(opts_present(matches, ~[~"M"]));
-        assert!(opts_str(matches, ~[~"M"]) == ~".");
+        assert_eq!(opts_str(matches, ~[~"M"]), ~".");
 
     }
 
@@ -1290,7 +1290,7 @@ mod tests {
         let verbose = groups::reqopt(~"b", ~"banana",
                                        ~"some bananas", ~"VAL");
 
-        assert!(groups::long_to_short(&verbose) == short);
+        assert_eq!(groups::long_to_short(&verbose), short);
     }
 
     #[test]
@@ -1347,7 +1347,7 @@ Options:
 
         debug!("expected: <<%s>>", expected);
         debug!("generated: <<%s>>", generated_usage);
-        assert!(generated_usage == expected);
+        assert_eq!(generated_usage, expected);
     }
 
     #[test]

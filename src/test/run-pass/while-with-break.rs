@@ -15,5 +15,5 @@ pub fn main() {
             break;
         }
     }
-    assert!((i == 95));
+    assert_eq!(i, 95);
 }

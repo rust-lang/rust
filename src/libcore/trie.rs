@@ -451,7 +451,7 @@ pub fn check_integrity<T>(trie: &TrieNode<T>) {
         }
     }
 
-    assert!(sum == trie.count);
+    assert_eq!(sum, trie.count);
 }
 
 #[cfg(test)]
@@ -521,8 +521,8 @@ mod tests {
 
         let mut n = 0;
         for m.each |k, v| {
-            assert!(*k == n);
-            assert!(*v == n * 2);
+            assert_eq!(*k, n);
+            assert_eq!(*v, n * 2);
             n += 1;
         }
     }
@@ -540,8 +540,8 @@ mod tests {
             if n == uint::max_value - 5000 { break }
             assert!(n < uint::max_value - 5000);
 
-            assert!(*k == n);
-            assert!(*v == n / 2);
+            assert_eq!(*k, n);
+            assert_eq!(*v, n / 2);
             n += 1;
         }
     }
@@ -558,8 +558,8 @@ mod tests {
 
         let mut n = 4;
         for m.each_reverse |k, v| {
-            assert!(*k == n);
-            assert!(*v == n * 2);
+            assert_eq!(*k, n);
+            assert_eq!(*v, n * 2);
             n -= 1;
         }
     }
@@ -577,8 +577,8 @@ mod tests {
             if n == uint::max_value - 5000 { break }
             assert!(n > uint::max_value - 5000);
 
-            assert!(*k == n);
-            assert!(*v == n / 2);
+            assert_eq!(*k, n);
+            assert_eq!(*v, n / 2);
             n -= 1;
         }
     }
@@ -593,14 +593,14 @@ mod tests {
         assert!(trie.insert(x));
         assert!(trie.insert(y));
 
-        assert!(trie.len() == 2);
+        assert_eq!(trie.len(), 2);
 
         let expected = [x, y];
 
         let mut i = 0;
 
         for trie.each |x| {
-            assert!(expected[i] == *x);
+            assert_eq!(expected[i], *x);
             i += 1;
         }
     }
@@ -608,16 +608,16 @@ mod tests {
     #[test]
     fn test_swap() {
         let mut m = TrieMap::new();
-        assert!(m.swap(1, 2) == None);
-        assert!(m.swap(1, 3) == Some(2));
-        assert!(m.swap(1, 4) == Some(3));
+        assert_eq!(m.swap(1, 2), None);
+        assert_eq!(m.swap(1, 3), Some(2));
+        assert_eq!(m.swap(1, 4), Some(3));
     }
 
     #[test]
     fn test_pop() {
         let mut m = TrieMap::new();
         m.insert(1, 2);
-        assert!(m.pop(&1) == Some(2));
-        assert!(m.pop(&1) == None);
+        assert_eq!(m.pop(&1), Some(2));
+        assert_eq!(m.pop(&1), None);
     }
 }

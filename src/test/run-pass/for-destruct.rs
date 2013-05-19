@@ -12,6 +12,6 @@ struct Pair { x: int, y: int }
 
 pub fn main() {
     for vec::each(~[Pair {x: 10, y: 20}, Pair {x: 30, y: 0}]) |elt| {
-        assert!((elt.x + elt.y == 30));
+        assert_eq!(elt.x + elt.y, 30);
     }
 }

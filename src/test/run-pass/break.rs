@@ -11,9 +11,9 @@
 pub fn main() {
     let mut i = 0;
     while i < 20 { i += 1; if i == 10 { break; } }
-    assert!((i == 10));
+    assert_eq!(i, 10);
     loop { i += 1; if i == 20 { break; } }
-    assert!((i == 20));
+    assert_eq!(i, 20);
     for vec::each(~[1, 2, 3, 4, 5, 6]) |x| {
         if *x == 3 { break; } assert!((*x <= 3));
     }

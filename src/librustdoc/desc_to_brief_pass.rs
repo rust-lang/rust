@@ -197,7 +197,7 @@ mod test {
     #[test]
     fn should_promote_desc() {
         let doc = mk_doc(~"#[doc = \"desc\"] mod m { }");
-        assert!(doc.cratemod().mods()[0].brief() == Some(~"desc"));
+        assert_eq!(doc.cratemod().mods()[0].brief(), Some(~"desc"));
     }
 
     #[test]
@@ -217,20 +217,20 @@ mod test {
     #[test]
     fn test_paragraphs_1() {
         let paras = paragraphs(~"1\n\n2");
-        assert!(paras == ~[~"1", ~"2"]);
+        assert_eq!(paras, ~[~"1", ~"2"]);
     }
 
     #[test]
     fn test_paragraphs_2() {
         let paras = paragraphs(~"\n\n1\n1\n\n2\n\n");
-        assert!(paras == ~[~"1\n1", ~"2"]);
+        assert_eq!(paras, ~[~"1\n1", ~"2"]);
     }
 
     #[test]
     fn should_promote_short_descs() {
         let desc = Some(~"desc");
         let brief = extract(copy desc);
-        assert!(brief == desc);
+        assert_eq!(brief, desc);
     }
 
     #[test]
@@ -244,7 +244,7 @@ Scotland in the mid 12th century, although it may have been built by
 King Henry II of England when he took control of England'snorthern
 counties.");
         let brief = extract(desc);
-        assert!(brief == None);
+        assert_eq!(brief, None);
     }
 
     #[test]

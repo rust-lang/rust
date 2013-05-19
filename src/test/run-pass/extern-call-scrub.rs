@@ -40,6 +40,6 @@ pub fn main() {
     do task::spawn {
         let result = count(12u);
         debug!("result = %?", result);
-        assert!(result == 2048u);
+        assert_eq!(result, 2048u);
     };
 }

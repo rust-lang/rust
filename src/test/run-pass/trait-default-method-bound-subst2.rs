@@ -21,5 +21,5 @@ fn f<T, V: A<T>>(i: V, j: T) -> T {
 }
 
 pub fn main () {
-    assert!(f(0, 2) == 2);
+    assert_eq!(f(0, 2), 2);
 }

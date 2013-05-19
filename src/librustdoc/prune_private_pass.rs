@@ -194,7 +194,7 @@ mod test {
               pub fn bar() { }\
               fn baz() { }\
               }");
-        assert!(doc.cratemod().impls()[0].methods.len() == 1);
+        assert_eq!(doc.cratemod().impls()[0].methods.len(), 1);
     }
 
     #[test]
@@ -204,7 +204,7 @@ mod test {
               pub fn bar() { }\
               priv fn baz() { }\
               }");
-        assert!(doc.cratemod().impls()[0].methods.len() == 1);
+        assert_eq!(doc.cratemod().impls()[0].methods.len(), 1);
     }
 
     #[test]
@@ -214,7 +214,7 @@ mod test {
               fn bar() { }\
               priv fn baz() { }\
               }");
-        assert!(doc.cratemod().impls()[0].methods.len() == 1);
+        assert_eq!(doc.cratemod().impls()[0].methods.len(), 1);
     }
 
     #[test]
@@ -224,7 +224,7 @@ mod test {
               pub fn bar() { }\
               fn baz() { }\
               }");
-        assert!(doc.cratemod().impls()[0].methods.len() == 1);
+        assert_eq!(doc.cratemod().impls()[0].methods.len(), 1);
     }
 
     #[test]
@@ -234,7 +234,7 @@ mod test {
               pub fn bar() { }\
               priv fn baz() { }\
               }");
-        assert!(doc.cratemod().impls()[0].methods.len() == 1);
+        assert_eq!(doc.cratemod().impls()[0].methods.len(), 1);
     }
 
     #[test]

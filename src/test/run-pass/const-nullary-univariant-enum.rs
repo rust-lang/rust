@@ -15,8 +15,8 @@ enum Foo {
 static X: Foo = Bar;
 
 pub fn main() {
-    assert!(((X as uint) == 0xDEADBEE));
-    assert!(((Y as uint) == 0xDEADBEE));
+    assert_eq!((X as uint), 0xDEADBEE);
+    assert_eq!((Y as uint), 0xDEADBEE);
 }
 
 static Y: Foo = Bar;

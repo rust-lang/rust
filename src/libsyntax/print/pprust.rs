@@ -2067,7 +2067,7 @@ pub fn maybe_print_comment(s: @ps, pos: BytePos) {
 pub fn print_comment(s: @ps, cmnt: &comments::cmnt) {
     match cmnt.style {
       comments::mixed => {
-        assert!(cmnt.lines.len() == 1u);
+        assert_eq!(cmnt.lines.len(), 1u);
         zerobreak(s.s);
         word(s.s, cmnt.lines[0]);
         zerobreak(s.s);

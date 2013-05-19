@@ -18,5 +18,5 @@ fn ret_plus_one() -> extern fn(&fn() -> int) -> int {
 
 pub fn main() {
     let z = do (ret_plus_one()) || { 2 };
-    assert!(z == 3);
+    assert_eq!(z, 3);
 }

@@ -111,7 +111,7 @@ pub fn tok_str(t: token) -> ~str {
 pub fn buf_str(toks: ~[token], szs: ~[int], left: uint, right: uint,
                lim: uint) -> ~str {
     let n = toks.len();
-    assert!(n == szs.len());
+    assert_eq!(n, szs.len());
     let mut i = left;
     let mut L = lim;
     let mut s = ~"[";
@@ -400,7 +400,7 @@ pub impl Printer {
             match x {
               BREAK(b) => self.left_total += b.blank_space,
               STRING(_, len) => {
-                assert!((len == L)); self.left_total += len;
+                assert_eq!(len, L); self.left_total += len;
               }
               _ => ()
             }
@@ -526,7 +526,7 @@ pub impl Printer {
           }
           STRING(s, len) => {
             debug!("print STRING(%s)", *s);
-            assert!((L == len));
+            assert_eq!(L, len);
             // assert!(L <= space);
             self.space -= len;
             self.print_str(*s);

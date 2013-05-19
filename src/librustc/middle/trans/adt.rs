@@ -169,7 +169,7 @@ fn represent_type_uncached(cx: @CrateContext, t: ty::t) -> Repr {
 
             if cases.len() == 1 {
                 // Equivalent to a struct/tuple/newtype.
-                assert!(cases[0].discr == 0);
+                assert_eq!(cases[0].discr, 0);
                 return Univariant(mk_struct(cx, cases[0].tys, false), false)
             }
 
@@ -377,12 +377,12 @@ pub fn trans_start_init(bcx: block, r: &Repr, val: ValueRef, discr: int) {
             Store(bcx, C_int(bcx.ccx(), discr), GEPi(bcx, val, [0, 0]))
         }
         Univariant(ref st, true) => {
-            assert!(discr == 0);
+            assert_eq!(discr, 0);
             Store(bcx, C_bool(true),
                   GEPi(bcx, val, [0, st.fields.len() - 1]))
         }
         Univariant(*) => {
-            assert!(discr == 0);
+            assert_eq!(discr, 0);
         }
         General(*) => {
             Store(bcx, C_int(bcx.ccx(), discr), GEPi(bcx, val, [0, 0]))
@@ -405,7 +405,7 @@ pub fn num_args(r: &Repr, discr: int) -> uint {
     match *r {
         CEnum(*) => 0,
         Univariant(ref st, dtor) => {
-            assert!(discr == 0);
+            assert_eq!(discr, 0);
             st.fields.len() - (if dtor { 1 } else { 0 })
         }
         General(ref cases) => cases[discr as uint].fields.len() - 1,
@@ -426,7 +426,7 @@ pub fn trans_field_ptr(bcx: block, r: &Repr, val: ValueRef, discr: int,
             bcx.ccx().sess.bug(~"element access in C-like enum")
         }
         Univariant(ref st, _dtor) => {
-            assert!(discr == 0);
+            assert_eq!(discr, 0);
             struct_field_ptr(bcx, st, val, ix, false)
         }
         General(ref cases) => {
@@ -439,7 +439,7 @@ pub fn trans_field_ptr(bcx: block, r: &Repr, val: ValueRef, discr: int,
                 // The unit-like case might have a nonzero number of unit-like fields.
                 // (e.g., Result or Either with () as one side.)
                 let llty = type_of::type_of(bcx.ccx(), nullfields[ix]);
-                assert!(machine::llsize_of_alloc(bcx.ccx(), llty) == 0);
+                assert_eq!(machine::llsize_of_alloc(bcx.ccx(), llty), 0);
                 // The contents of memory at this pointer can't matter, but use
                 // the value that's "reasonable" in case of pointer comparison.
                 PointerCast(bcx, val, T_ptr(llty))
@@ -498,12 +498,12 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
                    vals: &[ValueRef]) -> ValueRef {
     match *r {
         CEnum(min, max) => {
-            assert!(vals.len() == 0);
+            assert_eq!(vals.len(), 0);
             assert!(min <= discr && discr <= max);
             C_int(ccx, discr)
         }
         Univariant(ref st, _dro) => {
-            assert!(discr == 0);
+            assert_eq!(discr, 0);
             C_struct(build_const_struct(ccx, st, vals))
         }
         General(ref cases) => {
@@ -517,7 +517,7 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
             if discr == nndiscr {
                 C_struct(build_const_struct(ccx, nonnull, vals))
             } else {
-                assert!(vals.len() == 0);
+                assert_eq!(vals.len(), 0);
                 let vals = do nonnull.fields.mapi |i, &ty| {
                     let llty = type_of::sizing_type_of(ccx, ty);
                     if i == ptrfield { C_null(llty) } else { C_undef(llty) }
@@ -540,7 +540,7 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
  */
 fn build_const_struct(ccx: @CrateContext, st: &Struct, vals: &[ValueRef])
     -> ~[ValueRef] {
-    assert!(vals.len() == st.fields.len());
+    assert_eq!(vals.len(), st.fields.len());
 
     let mut offset = 0;
     let mut cfields = ~[];

@@ -14,7 +14,7 @@ fn bip(v: &[uint]) -> ~[uint] {
 
 pub fn main() {
     let mut the_vec = ~[1, 2, 3, 100];
-    assert!(the_vec == foo(the_vec));
-    assert!(the_vec == bar(the_vec));
-    assert!(the_vec == bip(the_vec));
+    assert_eq!(the_vec, foo(the_vec));
+    assert_eq!(the_vec, bar(the_vec));
+    assert_eq!(the_vec, bip(the_vec));
 }

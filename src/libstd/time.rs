@@ -952,8 +952,8 @@ mod tests {
         let time = ::time::Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
 
-        assert!(utc.to_timespec() == time);
-        assert!(utc.to_local().to_timespec() == time);
+        assert_eq!(utc.to_timespec(), time);
+        assert_eq!(utc.to_local().to_timespec(), time);
     }
 
     fn test_conversions() {
@@ -985,7 +985,7 @@ mod tests {
             assert!(tm.tm_mon == 0_i32);
             assert!(tm.tm_year == 0_i32);
             assert!(tm.tm_wday == 0_i32);
-            assert!(tm.tm_isdst== 0_i32);
+            assert!(tm.tm_isdst == 0_i32);
             assert!(tm.tm_gmtoff == 0_i32);
             assert!(tm.tm_zone == ~"");
             assert!(tm.tm_nsec == 0_i32);
@@ -994,7 +994,7 @@ mod tests {
         }
 
         let format = ~"%a %b %e %T %Y";
-        assert!(strptime(~"", format) == Err(~"Invalid time"));
+        assert_eq!(strptime(~"", format), Err(~"Invalid time"));
         assert!(strptime(~"Fri Feb 13 15:31:30", format)
             == Err(~"Invalid time"));
 
@@ -1140,8 +1140,8 @@ mod tests {
 
         error!("test_ctime: %? %?", utc.ctime(), local.ctime());
 
-        assert!(utc.ctime()   == ~"Fri Feb 13 23:31:30 2009");
-        assert!(local.ctime() == ~"Fri Feb 13 15:31:30 2009");
+        assert_eq!(utc.ctime(), ~"Fri Feb 13 23:31:30 2009");
+        assert_eq!(local.ctime(), ~"Fri Feb 13 15:31:30 2009");
     }
 
     fn test_strftime() {
@@ -1152,53 +1152,53 @@ mod tests {
         let utc = at_utc(time);
         let local = at(time);
 
-        assert!(local.strftime(~"") == ~"");
-        assert!(local.strftime(~"%A") == ~"Friday");
-        assert!(local.strftime(~"%a") == ~"Fri");
-        assert!(local.strftime(~"%B") == ~"February");
-        assert!(local.strftime(~"%b") == ~"Feb");
-        assert!(local.strftime(~"%C") == ~"20");
-        assert!(local.strftime(~"%c") == ~"Fri Feb 13 15:31:30 2009");
-        assert!(local.strftime(~"%D") == ~"02/13/09");
-        assert!(local.strftime(~"%d") == ~"13");
-        assert!(local.strftime(~"%e") == ~"13");
-        assert!(local.strftime(~"%F") == ~"2009-02-13");
+        assert_eq!(local.strftime(~""), ~"");
+        assert_eq!(local.strftime(~"%A"), ~"Friday");
+        assert_eq!(local.strftime(~"%a"), ~"Fri");
+        assert_eq!(local.strftime(~"%B"), ~"February");
+        assert_eq!(local.strftime(~"%b"), ~"Feb");
+        assert_eq!(local.strftime(~"%C"), ~"20");
+        assert_eq!(local.strftime(~"%c"), ~"Fri Feb 13 15:31:30 2009");
+        assert_eq!(local.strftime(~"%D"), ~"02/13/09");
+        assert_eq!(local.strftime(~"%d"), ~"13");
+        assert_eq!(local.strftime(~"%e"), ~"13");
+        assert_eq!(local.strftime(~"%F"), ~"2009-02-13");
         // assert!(local.strftime("%G") == "2009");
         // assert!(local.strftime("%g") == "09");
-        assert!(local.strftime(~"%H") == ~"15");
-        assert!(local.strftime(~"%I") == ~"03");
-        assert!(local.strftime(~"%j") == ~"044");
-        assert!(local.strftime(~"%k") == ~"15");
-        assert!(local.strftime(~"%l") == ~" 3");
-        assert!(local.strftime(~"%M") == ~"31");
-        assert!(local.strftime(~"%m") == ~"02");
-        assert!(local.strftime(~"%n") == ~"\n");
-        assert!(local.strftime(~"%P") == ~"pm");
-        assert!(local.strftime(~"%p") == ~"PM");
-        assert!(local.strftime(~"%R") == ~"15:31");
-        assert!(local.strftime(~"%r") == ~"03:31:30 PM");
-        assert!(local.strftime(~"%S") == ~"30");
-        assert!(local.strftime(~"%s") == ~"1234567890");
-        assert!(local.strftime(~"%T") == ~"15:31:30");
-        assert!(local.strftime(~"%t") == ~"\t");
+        assert_eq!(local.strftime(~"%H"), ~"15");
+        assert_eq!(local.strftime(~"%I"), ~"03");
+        assert_eq!(local.strftime(~"%j"), ~"044");
+        assert_eq!(local.strftime(~"%k"), ~"15");
+        assert_eq!(local.strftime(~"%l"), ~" 3");
+        assert_eq!(local.strftime(~"%M"), ~"31");
+        assert_eq!(local.strftime(~"%m"), ~"02");
+        assert_eq!(local.strftime(~"%n"), ~"\n");
+        assert_eq!(local.strftime(~"%P"), ~"pm");
+        assert_eq!(local.strftime(~"%p"), ~"PM");
+        assert_eq!(local.strftime(~"%R"), ~"15:31");
+        assert_eq!(local.strftime(~"%r"), ~"03:31:30 PM");
+        assert_eq!(local.strftime(~"%S"), ~"30");
+        assert_eq!(local.strftime(~"%s"), ~"1234567890");
+        assert_eq!(local.strftime(~"%T"), ~"15:31:30");
+        assert_eq!(local.strftime(~"%t"), ~"\t");
         // assert!(local.strftime("%U") == "06");
-        assert!(local.strftime(~"%u") == ~"5");
+        assert_eq!(local.strftime(~"%u"), ~"5");
         // assert!(local.strftime("%V") == "07");
-        assert!(local.strftime(~"%v") == ~"13-Feb-2009");
+        assert_eq!(local.strftime(~"%v"), ~"13-Feb-2009");
         // assert!(local.strftime("%W") == "06");
-        assert!(local.strftime(~"%w") == ~"5");
+        assert_eq!(local.strftime(~"%w"), ~"5");
         // handle "%X"
         // handle "%x"
-        assert!(local.strftime(~"%Y") == ~"2009");
-        assert!(local.strftime(~"%y") == ~"09");
+        assert_eq!(local.strftime(~"%Y"), ~"2009");
+        assert_eq!(local.strftime(~"%y"), ~"09");
 
         // FIXME (#2350): We should probably standardize on the timezone
         // abbreviation.
         let zone = local.strftime(~"%Z");
         assert!(zone == ~"PST" || zone == ~"Pacific Standard Time");
 
-        assert!(local.strftime(~"%z") == ~"-0800");
-        assert!(local.strftime(~"%%") == ~"%");
+        assert_eq!(local.strftime(~"%z"), ~"-0800");
+        assert_eq!(local.strftime(~"%%"), ~"%");
 
         // FIXME (#2350): We should probably standardize on the timezone
         // abbreviation.
@@ -1207,14 +1207,14 @@ mod tests {
         assert!(rfc822 == prefix + ~"PST" ||
                      rfc822 == prefix + ~"Pacific Standard Time");
 
-        assert!(local.ctime() == ~"Fri Feb 13 15:31:30 2009");
-        assert!(local.rfc822z() == ~"Fri, 13 Feb 2009 15:31:30 -0800");
-        assert!(local.rfc3339() == ~"2009-02-13T15:31:30-08:00");
+        assert_eq!(local.ctime(), ~"Fri Feb 13 15:31:30 2009");
+        assert_eq!(local.rfc822z(), ~"Fri, 13 Feb 2009 15:31:30 -0800");
+        assert_eq!(local.rfc3339(), ~"2009-02-13T15:31:30-08:00");
 
-        assert!(utc.ctime() == ~"Fri Feb 13 23:31:30 2009");
-        assert!(utc.rfc822() == ~"Fri, 13 Feb 2009 23:31:30 GMT");
-        assert!(utc.rfc822z() == ~"Fri, 13 Feb 2009 23:31:30 -0000");
-        assert!(utc.rfc3339() == ~"2009-02-13T23:31:30Z");
+        assert_eq!(utc.ctime(), ~"Fri Feb 13 23:31:30 2009");
+        assert_eq!(utc.rfc822(), ~"Fri, 13 Feb 2009 23:31:30 GMT");
+        assert_eq!(utc.rfc822z(), ~"Fri, 13 Feb 2009 23:31:30 -0000");
+        assert_eq!(utc.rfc3339(), ~"2009-02-13T23:31:30Z");
     }
 
     fn test_timespec_eq_ord() {

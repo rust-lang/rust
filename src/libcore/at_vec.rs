@@ -294,30 +294,30 @@ mod test {
         }
 
         assert_eq!(seq_range(10, 15), @[10, 11, 12, 13, 14]);
-        assert!(from_fn(5, |x| x+1) == @[1, 2, 3, 4, 5]);
-        assert!(from_elem(5, 3.14) == @[3.14, 3.14, 3.14, 3.14, 3.14]);
+        assert_eq!(from_fn(5, |x| x+1), @[1, 2, 3, 4, 5]);
+        assert_eq!(from_elem(5, 3.14), @[3.14, 3.14, 3.14, 3.14, 3.14]);
     }
 
     #[test]
     fn append_test() {
-        assert!(@[1,2,3] + @[4,5,6] == @[1,2,3,4,5,6]);
+        assert_eq!(@[1,2,3] + @[4,5,6], @[1,2,3,4,5,6]);
     }
 
     #[test]
     fn test_to_managed_consume() {
-        assert!(to_managed_consume::<int>(~[]) == @[]);
-        assert!(to_managed_consume(~[true]) == @[true]);
-        assert!(to_managed_consume(~[1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
-        assert!(to_managed_consume(~[~"abc", ~"123"]) == @[~"abc", ~"123"]);
-        assert!(to_managed_consume(~[~[42]]) == @[~[42]]);
+        assert_eq!(to_managed_consume::<int>(~[]), @[]);
+        assert_eq!(to_managed_consume(~[true]), @[true]);
+        assert_eq!(to_managed_consume(~[1, 2, 3, 4, 5]), @[1, 2, 3, 4, 5]);
+        assert_eq!(to_managed_consume(~[~"abc", ~"123"]), @[~"abc", ~"123"]);
+        assert_eq!(to_managed_consume(~[~[42]]), @[~[42]]);
     }
 
     #[test]
     fn test_to_managed() {
-        assert!(to_managed::<int>([]) == @[]);
-        assert!(to_managed([true]) == @[true]);
-        assert!(to_managed([1, 2, 3, 4, 5]) == @[1, 2, 3, 4, 5]);
-        assert!(to_managed([@"abc", @"123"]) == @[@"abc", @"123"]);
-        assert!(to_managed([@[42]]) == @[@[42]]);
+        assert_eq!(to_managed::<int>([]), @[]);
+        assert_eq!(to_managed([true]), @[true]);
+        assert_eq!(to_managed([1, 2, 3, 4, 5]), @[1, 2, 3, 4, 5]);
+        assert_eq!(to_managed([@"abc", @"123"]), @[@"abc", @"123"]);
+        assert_eq!(to_managed([@[42]]), @[@[42]]);
     }
 }

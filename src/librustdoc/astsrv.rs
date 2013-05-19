@@ -162,6 +162,6 @@ fn srv_should_return_request_result() {
     let source = ~"fn a() { }";
     do from_str(source) |srv| {
         let result = exec(srv, |_ctxt| 1000 );
-        assert!(result == 1000);
+        assert_eq!(result, 1000);
     }
 }

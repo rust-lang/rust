@@ -26,6 +26,6 @@ pub fn main() {
     //  fn b(x:int) -> int { fail!(); }
 
     let z = b(42);
-    assert!((z.i == 42));
-    assert!((z.do_stuff() == 37));
+    assert_eq!(z.i, 42);
+    assert_eq!(z.do_stuff(), 37);
 }

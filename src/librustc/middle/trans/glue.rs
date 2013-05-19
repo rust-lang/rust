@@ -483,7 +483,7 @@ pub fn trans_struct_drop(bcx: block,
         // Class dtors have no explicit args, so the params should
         // just consist of the output pointer and the environment
         // (self)
-        assert!((params.len() == 2));
+        assert_eq!(params.len(), 2);
 
         // Take a reference to the class (because it's using the Drop trait),
         // do so now.

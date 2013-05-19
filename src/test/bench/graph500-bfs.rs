@@ -296,7 +296,7 @@ fn pbfs(graph: &arc::ARC<graph>, key: node_id) -> bfs_result {
             };
             result
         };
-        assert!((colors.len() == old_len));
+        assert_eq!(colors.len(), old_len);
     }
 
     // Convert the results.

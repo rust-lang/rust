@@ -285,7 +285,7 @@ mod test {
         let doc = mk_doc(~"test", ~"");
         let page = doc::CratePage(doc.CrateDoc());
         let filename = make_local_filename(config, page);
-        assert!(filename.to_str() == ~"output/dir/test.md");
+        assert_eq!(filename.to_str(), ~"output/dir/test.md");
     }
 
     #[test]
@@ -299,7 +299,7 @@ mod test {
         let doc = mk_doc(~"", ~"");
         let page = doc::CratePage(doc.CrateDoc());
         let filename = make_local_filename(config, page);
-        assert!(filename.to_str() == ~"output/dir/index.html");
+        assert_eq!(filename.to_str(), ~"output/dir/index.html");
     }
 
     #[test]
@@ -314,6 +314,6 @@ mod test {
         let modb = copy doc.cratemod().mods()[0].mods()[0];
         let page = doc::ItemPage(doc::ModTag(modb));
         let filename = make_local_filename(config, page);
-        assert!(filename == Path("output/dir/a_b.html"));
+        assert_eq!(filename, Path("output/dir/a_b.html"));
     }
 }

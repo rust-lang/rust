@@ -722,53 +722,53 @@ impl IterBytes for Url {
 #[test]
 fn test_split_char_first() {
     let (u,v) = split_char_first(~"hello, sweet world", ',');
-    assert!(u == ~"hello");
-    assert!(v == ~" sweet world");
+    assert_eq!(u, ~"hello");
+    assert_eq!(v, ~" sweet world");
 
     let (u,v) = split_char_first(~"hello sweet world", ',');
-    assert!(u == ~"hello sweet world");
-    assert!(v == ~"");
+    assert_eq!(u, ~"hello sweet world");
+    assert_eq!(v, ~"");
 }
 
 #[test]
 fn test_get_authority() {
     let (u, h, p, r) = get_authority(
         "//user:pass@rust-lang.org/something").unwrap();
-    assert!(u == Some(UserInfo::new(~"user", Some(~"pass"))));
-    assert!(h == ~"rust-lang.org");
+    assert_eq!(u, Some(UserInfo::new(~"user", Some(~"pass"))));
+    assert_eq!(h, ~"rust-lang.org");
     assert!(p.is_none());
-    assert!(r == ~"/something");
+    assert_eq!(r, ~"/something");
 
     let (u, h, p, r) = get_authority(
         "//rust-lang.org:8000?something").unwrap();
     assert!(u.is_none());
-    assert!(h == ~"rust-lang.org");
-    assert!(p == Some(~"8000"));
-    assert!(r == ~"?something");
+    assert_eq!(h, ~"rust-lang.org");
+    assert_eq!(p, Some(~"8000"));
+    assert_eq!(r, ~"?something");
 
     let (u, h, p, r) = get_authority(
         "//rust-lang.org#blah").unwrap();
     assert!(u.is_none());
-    assert!(h == ~"rust-lang.org");
+    assert_eq!(h, ~"rust-lang.org");
     assert!(p.is_none());
-    assert!(r == ~"#blah");
+    assert_eq!(r, ~"#blah");
 
     // ipv6 tests
     let (_, h, _, _) = get_authority(
         "//2001:0db8:85a3:0042:0000:8a2e:0370:7334#blah").unwrap();
-    assert!(h == ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334");
+    assert_eq!(h, ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334");
 
     let (_, h, p, _) = get_authority(
         "//2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000#blah").unwrap();
-    assert!(h == ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334");
-    assert!(p == Some(~"8000"));
+    assert_eq!(h, ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334");
+    assert_eq!(p, Some(~"8000"));
 
     let (u, h, p, _) = get_authority(
         "//us:p@2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000#blah"
     ).unwrap();
-    assert!(u == Some(UserInfo::new(~"us", Some(~"p"))));
-    assert!(h == ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334");
-    assert!(p == Some(~"8000"));
+    assert_eq!(u, Some(UserInfo::new(~"us", Some(~"p"))));
+    assert_eq!(h, ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334");
+    assert_eq!(p, Some(~"8000"));
 
     // invalid authorities;
     assert!(get_authority("//user:pass@rust-lang:something").is_err());
@@ -780,22 +780,22 @@ fn test_get_authority() {
 
     // these parse as empty, because they don't start with '//'
     let (_, h, _, _) = get_authority(~"user:pass@rust-lang").unwrap();
-    assert!(h == ~"");
+    assert_eq!(h, ~"");
     let (_, h, _, _) = get_authority(~"rust-lang.org").unwrap();
-    assert!(h == ~"");
+    assert_eq!(h, ~"");
 }
 
 #[test]
 fn test_get_path() {
     let (p, r) = get_path("/something+%20orother", true).unwrap();
-    assert!(p == ~"/something+ orother");
-    assert!(r == ~"");
+    assert_eq!(p, ~"/something+ orother");
+    assert_eq!(r, ~"");
     let (p, r) = get_path("test@email.com#fragment", false).unwrap();
-    assert!(p == ~"test@email.com");
-    assert!(r == ~"#fragment");
+    assert_eq!(p, ~"test@email.com");
+    assert_eq!(r, ~"#fragment");
     let (p, r) = get_path(~"/gen/:addr=?q=v", false).unwrap();
-    assert!(p == ~"/gen/:addr=");
-    assert!(r == ~"?q=v");
+    assert_eq!(p, ~"/gen/:addr=");
+    assert_eq!(r, ~"?q=v");
 
     //failure cases
     assert!(get_path(~"something?q", true).is_err());
@@ -860,56 +860,56 @@ mod tests {
     #[test]
     fn test_full_url_parse_and_format() {
         let url = ~"http://user:pass@rust-lang.org/doc?s=v#something";
-        assert!(from_str(url).unwrap().to_str() == url);
+        assert_eq!(from_str(url).unwrap().to_str(), url);
     }
 
     #[test]
     fn test_userless_url_parse_and_format() {
         let url = ~"http://rust-lang.org/doc?s=v#something";
-        assert!(from_str(url).unwrap().to_str() == url);
+        assert_eq!(from_str(url).unwrap().to_str(), url);
     }
 
     #[test]
     fn test_queryless_url_parse_and_format() {
         let url = ~"http://user:pass@rust-lang.org/doc#something";
-        assert!(from_str(url).unwrap().to_str() == url);
+        assert_eq!(from_str(url).unwrap().to_str(), url);
     }
 
     #[test]
     fn test_empty_query_url_parse_and_format() {
         let url = ~"http://user:pass@rust-lang.org/doc?#something";
         let should_be = ~"http://user:pass@rust-lang.org/doc#something";
-        assert!(from_str(url).unwrap().to_str() == should_be);
+        assert_eq!(from_str(url).unwrap().to_str(), should_be);
     }
 
     #[test]
     fn test_fragmentless_url_parse_and_format() {
         let url = ~"http://user:pass@rust-lang.org/doc?q=v";
-        assert!(from_str(url).unwrap().to_str() == url);
+        assert_eq!(from_str(url).unwrap().to_str(), url);
     }
 
     #[test]
     fn test_minimal_url_parse_and_format() {
         let url = ~"http://rust-lang.org/doc";
-        assert!(from_str(url).unwrap().to_str() == url);
+        assert_eq!(from_str(url).unwrap().to_str(), url);
     }
 
     #[test]
     fn test_scheme_host_only_url_parse_and_format() {
         let url = ~"http://rust-lang.org";
-        assert!(from_str(url).unwrap().to_str() == url);
+        assert_eq!(from_str(url).unwrap().to_str(), url);
     }
 
     #[test]
     fn test_pathless_url_parse_and_format() {
         let url = ~"http://user:pass@rust-lang.org?q=v#something";
-        assert!(from_str(url).unwrap().to_str() == url);
+        assert_eq!(from_str(url).unwrap().to_str(), url);
     }
 
     #[test]
     fn test_scheme_host_fragment_only_url_parse_and_format() {
         let url = ~"http://rust-lang.org#something";
-        assert!(from_str(url).unwrap().to_str() == url);
+        assert_eq!(from_str(url).unwrap().to_str(), url);
     }
 
     #[test]
@@ -923,134 +923,134 @@ mod tests {
     #[test]
     fn test_url_without_authority() {
         let url = ~"mailto:test@email.com";
-        assert!(from_str(url).unwrap().to_str() == url);
+        assert_eq!(from_str(url).unwrap().to_str(), url);
     }
 
     #[test]
     fn test_encode() {
-        assert!(encode("") == ~"");
-        assert!(encode("http://example.com") == ~"http://example.com");
-        assert!(encode("foo bar% baz") == ~"foo%20bar%25%20baz");
-        assert!(encode(" ") == ~"%20");
-        assert!(encode("!") == ~"!");
-        assert!(encode("\"") == ~"\"");
-        assert!(encode("#") == ~"#");
-        assert!(encode("$") == ~"$");
-        assert!(encode("%") == ~"%25");
-        assert!(encode("&") == ~"&");
-        assert!(encode("'") == ~"%27");
-        assert!(encode("(") == ~"(");
-        assert!(encode(")") == ~")");
-        assert!(encode("*") == ~"*");
-        assert!(encode("+") == ~"+");
-        assert!(encode(",") == ~",");
-        assert!(encode("/") == ~"/");
-        assert!(encode(":") == ~":");
-        assert!(encode(";") == ~";");
-        assert!(encode("=") == ~"=");
-        assert!(encode("?") == ~"?");
-        assert!(encode("@") == ~"@");
-        assert!(encode("[") == ~"[");
-        assert!(encode("]") == ~"]");
+        assert_eq!(encode(""), ~"");
+        assert_eq!(encode("http://example.com"), ~"http://example.com");
+        assert_eq!(encode("foo bar% baz"), ~"foo%20bar%25%20baz");
+        assert_eq!(encode(" "), ~"%20");
+        assert_eq!(encode("!"), ~"!");
+        assert_eq!(encode("\""), ~"\"");
+        assert_eq!(encode("#"), ~"#");
+        assert_eq!(encode("$"), ~"$");
+        assert_eq!(encode("%"), ~"%25");
+        assert_eq!(encode("&"), ~"&");
+        assert_eq!(encode("'"), ~"%27");
+        assert_eq!(encode("("), ~"(");
+        assert_eq!(encode(")"), ~")");
+        assert_eq!(encode("*"), ~"*");
+        assert_eq!(encode("+"), ~"+");
+        assert_eq!(encode(","), ~",");
+        assert_eq!(encode("/"), ~"/");
+        assert_eq!(encode(":"), ~":");
+        assert_eq!(encode(";"), ~";");
+        assert_eq!(encode("="), ~"=");
+        assert_eq!(encode("?"), ~"?");
+        assert_eq!(encode("@"), ~"@");
+        assert_eq!(encode("["), ~"[");
+        assert_eq!(encode("]"), ~"]");
     }
 
     #[test]
     fn test_encode_component() {
-        assert!(encode_component("") == ~"");
+        assert_eq!(encode_component(""), ~"");
         assert!(encode_component("http://example.com") ==
             ~"http%3A%2F%2Fexample.com");
         assert!(encode_component("foo bar% baz") ==
             ~"foo%20bar%25%20baz");
-        assert!(encode_component(" ") == ~"%20");
-        assert!(encode_component("!") == ~"%21");
-        assert!(encode_component("#") == ~"%23");
-        assert!(encode_component("$") == ~"%24");
-        assert!(encode_component("%") == ~"%25");
-        assert!(encode_component("&") == ~"%26");
-        assert!(encode_component("'") == ~"%27");
-        assert!(encode_component("(") == ~"%28");
-        assert!(encode_component(")") == ~"%29");
-        assert!(encode_component("*") == ~"%2A");
-        assert!(encode_component("+") == ~"%2B");
-        assert!(encode_component(",") == ~"%2C");
-        assert!(encode_component("/") == ~"%2F");
-        assert!(encode_component(":") == ~"%3A");
-        assert!(encode_component(";") == ~"%3B");
-        assert!(encode_component("=") == ~"%3D");
-        assert!(encode_component("?") == ~"%3F");
-        assert!(encode_component("@") == ~"%40");
-        assert!(encode_component("[") == ~"%5B");
-        assert!(encode_component("]") == ~"%5D");
+        assert_eq!(encode_component(" "), ~"%20");
+        assert_eq!(encode_component("!"), ~"%21");
+        assert_eq!(encode_component("#"), ~"%23");
+        assert_eq!(encode_component("$"), ~"%24");
+        assert_eq!(encode_component("%"), ~"%25");
+        assert_eq!(encode_component("&"), ~"%26");
+        assert_eq!(encode_component("'"), ~"%27");
+        assert_eq!(encode_component("("), ~"%28");
+        assert_eq!(encode_component(")"), ~"%29");
+        assert_eq!(encode_component("*"), ~"%2A");
+        assert_eq!(encode_component("+"), ~"%2B");
+        assert_eq!(encode_component(","), ~"%2C");
+        assert_eq!(encode_component("/"), ~"%2F");
+        assert_eq!(encode_component(":"), ~"%3A");
+        assert_eq!(encode_component(";"), ~"%3B");
+        assert_eq!(encode_component("="), ~"%3D");
+        assert_eq!(encode_component("?"), ~"%3F");
+        assert_eq!(encode_component("@"), ~"%40");
+        assert_eq!(encode_component("["), ~"%5B");
+        assert_eq!(encode_component("]"), ~"%5D");
     }
 
     #[test]
     fn test_decode() {
-        assert!(decode("") == ~"");
-        assert!(decode("abc/def 123") == ~"abc/def 123");
-        assert!(decode("abc%2Fdef%20123") == ~"abc%2Fdef 123");
-        assert!(decode("%20") == ~" ");
-        assert!(decode("%21") == ~"%21");
-        assert!(decode("%22") == ~"%22");
-        assert!(decode("%23") == ~"%23");
-        assert!(decode("%24") == ~"%24");
-        assert!(decode("%25") == ~"%");
-        assert!(decode("%26") == ~"%26");
-        assert!(decode("%27") == ~"'");
-        assert!(decode("%28") == ~"%28");
-        assert!(decode("%29") == ~"%29");
-        assert!(decode("%2A") == ~"%2A");
-        assert!(decode("%2B") == ~"%2B");
-        assert!(decode("%2C") == ~"%2C");
-        assert!(decode("%2F") == ~"%2F");
-        assert!(decode("%3A") == ~"%3A");
-        assert!(decode("%3B") == ~"%3B");
-        assert!(decode("%3D") == ~"%3D");
-        assert!(decode("%3F") == ~"%3F");
-        assert!(decode("%40") == ~"%40");
-        assert!(decode("%5B") == ~"%5B");
-        assert!(decode("%5D") == ~"%5D");
+        assert_eq!(decode(""), ~"");
+        assert_eq!(decode("abc/def 123"), ~"abc/def 123");
+        assert_eq!(decode("abc%2Fdef%20123"), ~"abc%2Fdef 123");
+        assert_eq!(decode("%20"), ~" ");
+        assert_eq!(decode("%21"), ~"%21");
+        assert_eq!(decode("%22"), ~"%22");
+        assert_eq!(decode("%23"), ~"%23");
+        assert_eq!(decode("%24"), ~"%24");
+        assert_eq!(decode("%25"), ~"%");
+        assert_eq!(decode("%26"), ~"%26");
+        assert_eq!(decode("%27"), ~"'");
+        assert_eq!(decode("%28"), ~"%28");
+        assert_eq!(decode("%29"), ~"%29");
+        assert_eq!(decode("%2A"), ~"%2A");
+        assert_eq!(decode("%2B"), ~"%2B");
+        assert_eq!(decode("%2C"), ~"%2C");
+        assert_eq!(decode("%2F"), ~"%2F");
+        assert_eq!(decode("%3A"), ~"%3A");
+        assert_eq!(decode("%3B"), ~"%3B");
+        assert_eq!(decode("%3D"), ~"%3D");
+        assert_eq!(decode("%3F"), ~"%3F");
+        assert_eq!(decode("%40"), ~"%40");
+        assert_eq!(decode("%5B"), ~"%5B");
+        assert_eq!(decode("%5D"), ~"%5D");
     }
 
     #[test]
     fn test_decode_component() {
-        assert!(decode_component("") == ~"");
-        assert!(decode_component("abc/def 123") == ~"abc/def 123");
-        assert!(decode_component("abc%2Fdef%20123") == ~"abc/def 123");
-        assert!(decode_component("%20") == ~" ");
-        assert!(decode_component("%21") == ~"!");
-        assert!(decode_component("%22") == ~"\"");
-        assert!(decode_component("%23") == ~"#");
-        assert!(decode_component("%24") == ~"$");
-        assert!(decode_component("%25") == ~"%");
-        assert!(decode_component("%26") == ~"&");
-        assert!(decode_component("%27") == ~"'");
-        assert!(decode_component("%28") == ~"(");
-        assert!(decode_component("%29") == ~")");
-        assert!(decode_component("%2A") == ~"*");
-        assert!(decode_component("%2B") == ~"+");
-        assert!(decode_component("%2C") == ~",");
-        assert!(decode_component("%2F") == ~"/");
-        assert!(decode_component("%3A") == ~":");
-        assert!(decode_component("%3B") == ~";");
-        assert!(decode_component("%3D") == ~"=");
-        assert!(decode_component("%3F") == ~"?");
-        assert!(decode_component("%40") == ~"@");
-        assert!(decode_component("%5B") == ~"[");
-        assert!(decode_component("%5D") == ~"]");
+        assert_eq!(decode_component(""), ~"");
+        assert_eq!(decode_component("abc/def 123"), ~"abc/def 123");
+        assert_eq!(decode_component("abc%2Fdef%20123"), ~"abc/def 123");
+        assert_eq!(decode_component("%20"), ~" ");
+        assert_eq!(decode_component("%21"), ~"!");
+        assert_eq!(decode_component("%22"), ~"\"");
+        assert_eq!(decode_component("%23"), ~"#");
+        assert_eq!(decode_component("%24"), ~"$");
+        assert_eq!(decode_component("%25"), ~"%");
+        assert_eq!(decode_component("%26"), ~"&");
+        assert_eq!(decode_component("%27"), ~"'");
+        assert_eq!(decode_component("%28"), ~"(");
+        assert_eq!(decode_component("%29"), ~")");
+        assert_eq!(decode_component("%2A"), ~"*");
+        assert_eq!(decode_component("%2B"), ~"+");
+        assert_eq!(decode_component("%2C"), ~",");
+        assert_eq!(decode_component("%2F"), ~"/");
+        assert_eq!(decode_component("%3A"), ~":");
+        assert_eq!(decode_component("%3B"), ~";");
+        assert_eq!(decode_component("%3D"), ~"=");
+        assert_eq!(decode_component("%3F"), ~"?");
+        assert_eq!(decode_component("%40"), ~"@");
+        assert_eq!(decode_component("%5B"), ~"[");
+        assert_eq!(decode_component("%5D"), ~"]");
     }
 
     #[test]
     fn test_encode_form_urlencoded() {
         let mut m = HashMap::new();
-        assert!(encode_form_urlencoded(&m) == ~"");
+        assert_eq!(encode_form_urlencoded(&m), ~"");
 
         m.insert(~"", ~[]);
         m.insert(~"foo", ~[]);
-        assert!(encode_form_urlencoded(&m) == ~"");
+        assert_eq!(encode_form_urlencoded(&m), ~"");
 
         let mut m = HashMap::new();
         m.insert(~"foo", ~[~"bar", ~"123"]);
-        assert!(encode_form_urlencoded(&m) == ~"foo=bar&foo=123");
+        assert_eq!(encode_form_urlencoded(&m), ~"foo=bar&foo=123");
 
         let mut m = HashMap::new();
         m.insert(~"foo bar", ~[~"abc", ~"12 = 34"]);
@@ -1063,13 +1063,13 @@ mod tests {
         // FIXME #4449: Commented out because this causes an ICE, but only
         // on FreeBSD
         /*
-        assert!(decode_form_urlencoded(~[]).len() == 0);
+        assert_eq!(decode_form_urlencoded(~[]).len(), 0);
 
         let s = str::to_bytes("a=1&foo+bar=abc&foo+bar=12+%3D+34");
         let form = decode_form_urlencoded(s);
-        assert!(form.len() == 2);
-        assert!(form.get_ref(&~"a") == &~[~"1"]);
-        assert!(form.get_ref(&~"foo bar") == &~[~"abc", ~"12 = 34"]);
+        assert_eq!(form.len(), 2);
+        assert_eq!(form.get_ref(&~"a"), &~[~"1"]);
+        assert_eq!(form.get_ref(&~"foo bar"), &~[~"abc", ~"12 = 34"]);
         */
     }
 }

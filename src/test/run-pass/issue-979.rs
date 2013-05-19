@@ -33,5 +33,5 @@ pub fn main() {
         let p = Some(r(b));
     }
 
-    assert!(*b == 1);
+    assert_eq!(*b, 1);
 }
