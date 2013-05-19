@@ -81,6 +81,10 @@ mod rtio;
 #[path = "uv/mod.rs"]
 pub mod uv;
 
+/// The Local trait for types that are accessible via thread-local
+/// or task-local storage.
+pub mod local;
+
 // FIXME #5248: The import in `sched` doesn't resolve unless this is pub!
 /// Bindings to pthread/windows thread-local storage.
 pub mod thread_local_storage;
