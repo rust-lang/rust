@@ -21,9 +21,8 @@
 #[allow(non_camel_case_types)];
 #[deny(deprecated_pattern)];
 
-extern mod std(vers = "0.7-pre");
-extern mod syntax(vers = "0.7-pre");
-
+extern mod std;
+extern mod syntax;
 
 use driver::driver::{host_triple, optgroups, early_error};
 use driver::driver::{str_input, file_input, build_session_options};
