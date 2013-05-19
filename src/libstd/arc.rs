@@ -18,8 +18,8 @@
  * With simple pipes, without ARC, a copy would have to be made for each task.
  *
  * ~~~
- * # extern mod std;
- * # use std::arc;
+ * extern mod std;
+ * use std::arc;
  * let numbers=vec::from_fn(100, |ind| (ind as float)*rand::random());
  * let shared_numbers=arc::ARC(numbers);
  *
