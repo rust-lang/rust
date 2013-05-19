@@ -47,6 +47,7 @@ pub trait IteratorUtil<A> {
     fn advance(&mut self, f: &fn(A) -> bool);
     #[cfg(not(stage0))]
     fn advance(&mut self, f: &fn(A) -> bool) -> bool;
+    #[cfg(not(stage0))]
     fn to_vec(&mut self) -> ~[A];
     fn nth(&mut self, n: uint) -> Option<A>;
     fn last(&mut self) -> Option<A>;
@@ -146,6 +147,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
         }
     }
 
+    #[cfg(not(stage0))]
     #[inline(always)]
     fn to_vec(&mut self) -> ~[A] {
         iter::to_vec::<A>(|f| self.advance(f))
