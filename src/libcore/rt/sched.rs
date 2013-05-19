@@ -11,13 +11,14 @@
 use option::*;
 use sys;
 use cast::transmute;
+use cell::Cell;
 
 use super::work_queue::WorkQueue;
 use super::stack::{StackPool, StackSegment};
 use super::rtio::{EventLoop, EventLoopObject};
 use super::context::Context;
 use super::task::Task;
-use cell::Cell;
+use rt::local_ptr;
 
 // A more convenient name for external callers, e.g. `local_sched::take()`
 pub mod local_sched;
@@ -64,8 +65,8 @@ pub impl Scheduler {
 
     fn new(event_loop: ~EventLoopObject) -> Scheduler {
 
-        // Lazily initialize the scheduler TLS key
-        local_sched::init_tls_key();
+        // Lazily initialize the runtime TLS key
+        local_ptr::init_tls_key();
 
         Scheduler {
             event_loop: event_loop,
