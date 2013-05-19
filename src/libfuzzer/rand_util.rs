@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use core::prelude::*;
-use std::rand;
+use extra::rand;
 
 // random uint less than n
 fn under(r : rand::rng, n : uint) -> uint {

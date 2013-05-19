@@ -10,8 +10,8 @@
 
 use core::prelude::*;
 
-use std;
-use std::rand;
+use extra;
+use extra::rand;
 use uint::range;
 
 // random uint less than n

@@ -23,7 +23,7 @@
 #[no_std];
 
 extern mod core(name = "std", vers = "0.7-pre");
-extern mod std(name = "extra", vers = "0.7-pre");
+extern mod extra(name = "extra", vers = "0.7-pre");
 
 extern mod syntax(vers = "0.7-pre");
 
