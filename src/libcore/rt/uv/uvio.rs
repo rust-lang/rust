@@ -19,7 +19,8 @@ use rt::io::net::ip::IpAddr;
 use rt::uv::*;
 use rt::uv::idle::IdleWatcher;
 use rt::rtio::*;
-use rt::sched::{Scheduler, local_sched};
+use rt::sched::unsafe_borrow_io;
+use rt::sched::Scheduler;
 use rt::io::{standard_error, OtherIoError};
 use rt::tube::Tube;
 use rt::local::Local;
@@ -358,7 +359,7 @@ impl RtioTcpStream for UvTcpStream {
 fn test_simple_io_no_connect() {
     do run_in_newsched_task {
         unsafe {
-            let io = local_sched::unsafe_borrow_io();
+            let io = unsafe_borrow_io();
             let addr = next_test_ip4();
             let maybe_chan = (*io).tcp_connect(addr);
             assert!(maybe_chan.is_err());
@@ -374,7 +375,7 @@ fn test_simple_tcp_server_and_client() {
         // Start the server first so it's listening when we connect
         do spawntask_immediately {
             unsafe {
-                let io = local_sched::unsafe_borrow_io();
+                let io = unsafe_borrow_io();
                 let mut listener = (*io).tcp_bind(addr).unwrap();
                 let mut stream = listener.accept().unwrap();
                 let mut buf = [0, .. 2048];
@@ -389,7 +390,7 @@ fn test_simple_tcp_server_and_client() {
 
         do spawntask_immediately {
             unsafe {
-                let io = local_sched::unsafe_borrow_io();
+                let io = unsafe_borrow_io();
                 let mut stream = (*io).tcp_connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
             }
@@ -403,7 +404,7 @@ fn test_read_and_block() {
         let addr = next_test_ip4();
 
         do spawntask_immediately {
-            let io = unsafe { local_sched::unsafe_borrow_io() };
+            let io = unsafe { unsafe_borrow_io() };
             let mut listener = unsafe { (*io).tcp_bind(addr).unwrap() };
             let mut stream = listener.accept().unwrap();
             let mut buf = [0, .. 2048];
@@ -439,7 +440,7 @@ fn test_read_and_block() {
 
         do spawntask_immediately {
             unsafe {
-                let io = local_sched::unsafe_borrow_io();
+                let io = unsafe_borrow_io();
                 let mut stream = (*io).tcp_connect(addr).unwrap();
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
                 stream.write([0, 1, 2, 3, 4, 5, 6, 7]);
@@ -459,7 +460,7 @@ fn test_read_read_read() {
 
         do spawntask_immediately {
             unsafe {
-                let io = local_sched::unsafe_borrow_io();
+                let io = unsafe_borrow_io();
                 let mut listener = (*io).tcp_bind(addr).unwrap();
                 let mut stream = listener.accept().unwrap();
                 let buf = [1, .. 2048];
@@ -473,7 +474,7 @@ fn test_read_read_read() {
 
         do spawntask_immediately {
             unsafe {
-                let io = local_sched::unsafe_borrow_io();
+                let io = unsafe_borrow_io();
                 let mut stream = (*io).tcp_connect(addr).unwrap();
                 let mut buf = [0, .. 2048];
                 let mut total_bytes_read = 0;
