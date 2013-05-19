@@ -12,7 +12,7 @@
 
 #[allow(non_camel_case_types)];
 
-extern mod std(vers = "0.7-pre");
+extern mod std;
 
 use core::*;
 
