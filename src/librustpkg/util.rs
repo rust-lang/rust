@@ -417,7 +417,7 @@ pub fn compile_crate_from_input(input: &driver::input,
     match crate_opt {
         Some(c) => {
             debug!("Calling compile_rest, outputs = %?", outputs);
-            assert!(what == driver::cu_everything);
+            assert_eq!(what, driver::cu_everything);
             driver::compile_rest(sess, cfg, driver::cu_everything, Some(outputs), Some(c));
             c
         }

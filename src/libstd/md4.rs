@@ -125,9 +125,9 @@ pub fn md4_text(msg: &str) -> ~str { md4_str(str::to_bytes(msg)) }
 
 #[test]
 fn test_md4() {
-    assert!(md4_text(~"") == ~"31d6cfe0d16ae931b73c59d7e0c089c0");
-    assert!(md4_text(~"a") == ~"bde52cb31de33e46245e05fbdbd6fb24");
-    assert!(md4_text(~"abc") == ~"a448017aaf21d8525fc10ae87aa6729d");
+    assert_eq!(md4_text(~""), ~"31d6cfe0d16ae931b73c59d7e0c089c0");
+    assert_eq!(md4_text(~"a"), ~"bde52cb31de33e46245e05fbdbd6fb24");
+    assert_eq!(md4_text(~"abc"), ~"a448017aaf21d8525fc10ae87aa6729d");
     assert!(md4_text(~"message digest") ==
         ~"d9130a8164549fe818874806e1c7014b");
     assert!(md4_text(~"abcdefghijklmnopqrstuvwxyz") ==

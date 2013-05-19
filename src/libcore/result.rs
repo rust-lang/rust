@@ -407,12 +407,12 @@ mod tests {
 
     #[test]
     pub fn chain_success() {
-        assert!(get(&chain(op1(), op2)) == 667u);
+        assert_eq!(get(&chain(op1(), op2)), 667u);
     }
 
     #[test]
     pub fn chain_failure() {
-        assert!(get_err(&chain(op3(), op2)) == ~"sadface");
+        assert_eq!(get_err(&chain(op3(), op2)), ~"sadface");
     }
 
     #[test]
@@ -438,19 +438,19 @@ mod tests {
 
     #[test]
     pub fn test_impl_map() {
-        assert!(Ok::<~str, ~str>(~"a").map(|_x| ~"b") == Ok(~"b"));
-        assert!(Err::<~str, ~str>(~"a").map(|_x| ~"b") == Err(~"a"));
+        assert_eq!(Ok::<~str, ~str>(~"a").map(|_x| ~"b"), Ok(~"b"));
+        assert_eq!(Err::<~str, ~str>(~"a").map(|_x| ~"b"), Err(~"a"));
     }
 
     #[test]
     pub fn test_impl_map_err() {
-        assert!(Ok::<~str, ~str>(~"a").map_err(|_x| ~"b") == Ok(~"a"));
-        assert!(Err::<~str, ~str>(~"a").map_err(|_x| ~"b") == Err(~"b"));
+        assert_eq!(Ok::<~str, ~str>(~"a").map_err(|_x| ~"b"), Ok(~"a"));
+        assert_eq!(Err::<~str, ~str>(~"a").map_err(|_x| ~"b"), Err(~"b"));
     }
 
     #[test]
     pub fn test_get_ref_method() {
         let foo: Result<int, ()> = Ok(100);
-        assert!(*foo.get_ref() == 100);
+        assert_eq!(*foo.get_ref(), 100);
     }
 }

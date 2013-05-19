@@ -17,7 +17,7 @@ fn main() {
 
     do task::spawn() { //~ NOTE `arc_v` moved into closure environment here
         let v = *arc::get(&arc_v);
-        assert!(v[3] == 4);
+        assert_eq!(v[3], 4);
     };
 
     assert!((*arc::get(&arc_v))[2] == 3); //~ ERROR use of moved value: `arc_v`

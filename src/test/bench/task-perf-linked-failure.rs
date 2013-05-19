@@ -54,7 +54,7 @@ fn spawn_supervised_blocking(myname: &str, f: ~fn()) {
     builder.spawn(f);
     error!("%s group waiting", myname);
     let x = res.unwrap().recv();
-    assert!(x == task::Success);
+    assert_eq!(x, task::Success);
 }
 
 fn main() {

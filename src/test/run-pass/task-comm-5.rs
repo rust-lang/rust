@@ -21,5 +21,5 @@ fn test00() {
     while i < number_of_messages { c.send(i + 0); i += 1; }
     i = 0;
     while i < number_of_messages { sum += p.recv(); i += 1; }
-    assert!((sum == number_of_messages * (number_of_messages - 1) / 2));
+    assert_eq!(sum, number_of_messages * (number_of_messages - 1) / 2);
 }

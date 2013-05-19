@@ -319,7 +319,7 @@ pub impl FileMap {
     fn next_line(&self, pos: BytePos) {
         // the new charpos must be > the last one (or it's the first one).
         let lines = &mut *self.lines;
-        assert!((lines.len() == 0) || (lines[lines.len() - 1] < pos));
+        assert!((lines.len() == 0) || (lines[lines.len() - 1] < pos))
         lines.push(pos);
     }
 
@@ -458,7 +458,7 @@ pub impl CodeMap {
     pub fn span_to_snippet(&self, sp: span) -> ~str {
         let begin = self.lookup_byte_offset(sp.lo);
         let end = self.lookup_byte_offset(sp.hi);
-        assert!(begin.fm.start_pos == end.fm.start_pos);
+        assert_eq!(begin.fm.start_pos, end.fm.start_pos);
         return str::slice(*begin.fm.src,
                           begin.pos.to_uint(), end.pos.to_uint()).to_owned();
     }

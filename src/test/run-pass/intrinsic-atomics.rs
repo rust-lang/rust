@@ -39,41 +39,41 @@ pub fn main() {
     unsafe {
         let mut x = ~1;
 
-        assert!(rusti::atomic_load(x) == 1);
+        assert_eq!(rusti::atomic_load(x), 1);
         *x = 5;
-        assert!(rusti::atomic_load_acq(x) == 5);
+        assert_eq!(rusti::atomic_load_acq(x), 5);
 
         rusti::atomic_store(x,3);
-        assert!(*x == 3);
+        assert_eq!(*x, 3);
         rusti::atomic_store_rel(x,1);
-        assert!(*x == 1);
+        assert_eq!(*x, 1);
 
-        assert!(rusti::atomic_cxchg(x, 1, 2) == 1);
-        assert!(*x == 2);
+        assert_eq!(rusti::atomic_cxchg(x, 1, 2), 1);
+        assert_eq!(*x, 2);
 
-        assert!(rusti::atomic_cxchg_acq(x, 1, 3) == 2);
-        assert!(*x == 2);
+        assert_eq!(rusti::atomic_cxchg_acq(x, 1, 3), 2);
+        assert_eq!(*x, 2);
 
-        assert!(rusti::atomic_cxchg_rel(x, 2, 1) == 2);
-        assert!(*x == 1);
+        assert_eq!(rusti::atomic_cxchg_rel(x, 2, 1), 2);
+        assert_eq!(*x, 1);
 
-        assert!(rusti::atomic_xchg(x, 0) == 1);
-        assert!(*x == 0);
+        assert_eq!(rusti::atomic_xchg(x, 0), 1);
+        assert_eq!(*x, 0);
 
-        assert!(rusti::atomic_xchg_acq(x, 1) == 0);
-        assert!(*x == 1);
+        assert_eq!(rusti::atomic_xchg_acq(x, 1), 0);
+        assert_eq!(*x, 1);
 
-        assert!(rusti::atomic_xchg_rel(x, 0) == 1);
-        assert!(*x == 0);
+        assert_eq!(rusti::atomic_xchg_rel(x, 0), 1);
+        assert_eq!(*x, 0);
 
-        assert!(rusti::atomic_xadd(x, 1) == 0);
-        assert!(rusti::atomic_xadd_acq(x, 1) == 1);
-        assert!(rusti::atomic_xadd_rel(x, 1) == 2);
-        assert!(*x == 3);
+        assert_eq!(rusti::atomic_xadd(x, 1), 0);
+        assert_eq!(rusti::atomic_xadd_acq(x, 1), 1);
+        assert_eq!(rusti::atomic_xadd_rel(x, 1), 2);
+        assert_eq!(*x, 3);
 
-        assert!(rusti::atomic_xsub(x, 1) == 3);
-        assert!(rusti::atomic_xsub_acq(x, 1) == 2);
-        assert!(rusti::atomic_xsub_rel(x, 1) == 1);
-        assert!(*x == 0);
+        assert_eq!(rusti::atomic_xsub(x, 1), 3);
+        assert_eq!(rusti::atomic_xsub_acq(x, 1), 2);
+        assert_eq!(rusti::atomic_xsub_rel(x, 1), 1);
+        assert_eq!(*x, 0);
     }
 }

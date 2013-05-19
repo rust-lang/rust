@@ -97,7 +97,7 @@ fn test_callback_run_once() {
             unsafe { *count_ptr += 1 }
         }
         event_loop.run();
-        assert!(count == 1);
+        assert_eq!(count, 1);
     }
 }
 
@@ -379,10 +379,10 @@ fn test_simple_tcp_server_and_client() {
                 let mut stream = listener.accept().unwrap();
                 let mut buf = [0, .. 2048];
                 let nread = stream.read(buf).unwrap();
-                assert!(nread == 8);
+                assert_eq!(nread, 8);
                 for uint::range(0, nread) |i| {
                     rtdebug!("%u", buf[i] as uint);
-                    assert!(buf[i] == i as u8);
+                    assert_eq!(buf[i], i as u8);
                 }
             }
         }
@@ -416,7 +416,7 @@ fn test_read_and_block() {
                 let nread = stream.read(buf).unwrap();
                 for uint::range(0, nread) |i| {
                     let val = buf[i] as uint;
-                    assert!(val == current % 8);
+                    assert_eq!(val, current % 8);
                     current += 1;
                 }
                 reads += 1;
@@ -482,7 +482,7 @@ fn test_read_read_read() {
                     rtdebug!("read %u bytes", nread as uint);
                     total_bytes_read += nread;
                     for uint::range(0, nread) |i| {
-                        assert!(buf[i] == 1);
+                        assert_eq!(buf[i], 1);
                     }
                 }
                 rtdebug!("read %u bytes total", total_bytes_read as uint);

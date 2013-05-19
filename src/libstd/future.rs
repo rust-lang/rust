@@ -154,7 +154,7 @@ mod test {
     #[test]
     fn test_from_value() {
         let mut f = from_value(~"snail");
-        assert!(f.get() == ~"snail");
+        assert_eq!(f.get(), ~"snail");
     }
 
     #[test]
@@ -162,31 +162,31 @@ mod test {
         let (po, ch) = oneshot();
         send_one(ch, ~"whale");
         let mut f = from_port(po);
-        assert!(f.get() == ~"whale");
+        assert_eq!(f.get(), ~"whale");
     }
 
     #[test]
     fn test_from_fn() {
         let mut f = from_fn(|| ~"brail");
-        assert!(f.get() == ~"brail");
+        assert_eq!(f.get(), ~"brail");
     }
 
     #[test]
     fn test_interface_get() {
         let mut f = from_value(~"fail");
-        assert!(f.get() == ~"fail");
+        assert_eq!(f.get(), ~"fail");
     }
 
     #[test]
     fn test_get_ref_method() {
         let mut f = from_value(22);
-        assert!(*f.get_ref() == 22);
+        assert_eq!(*f.get_ref(), 22);
     }
 
     #[test]
     fn test_spawn() {
         let mut f = spawn(|| ~"bale");
-        assert!(f.get() == ~"bale");
+        assert_eq!(f.get(), ~"bale");
     }
 
     #[test]
@@ -204,7 +204,7 @@ mod test {
         do task::spawn {
             let mut f = f.take();
             let actual = f.get();
-            assert!(actual == expected);
+            assert_eq!(actual, expected);
         }
     }
 }

@@ -144,7 +144,7 @@ fn configure_main(ctxt: @mut EntryContext) {
         } else {
             // If we *are* building a library, then we're on android where we still might
             // optionally want to translate main $4404
-            assert!(this.session.targ_cfg.os == session::os_android);
+            assert_eq!(this.session.targ_cfg.os, session::os_android);
         }
     }
 }

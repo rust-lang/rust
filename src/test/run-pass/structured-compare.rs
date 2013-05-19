@@ -22,7 +22,7 @@ impl cmp::Eq for foo {
 pub fn main() {
     let a = (1, 2, 3);
     let b = (1, 2, 3);
-    assert!((a == b));
+    assert_eq!(a, b);
     assert!((a != (1, 2, 4)));
     assert!((a < (1, 2, 4)));
     assert!((a <= (1, 2, 4)));
@@ -31,6 +31,6 @@ pub fn main() {
     let x = large;
     let y = small;
     assert!((x != y));
-    assert!((x == large));
+    assert_eq!(x, large);
     assert!((x != small));
 }

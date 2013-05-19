@@ -774,7 +774,7 @@ fn test_spawn_raw_notify_success() {
     };
     do spawn_raw(opts) {
     }
-    assert!(notify_po.recv() == Success);
+    assert_eq!(notify_po.recv(), Success);
 }
 
 #[test]
@@ -791,5 +791,5 @@ fn test_spawn_raw_notify_failure() {
     do spawn_raw(opts) {
         fail!();
     }
-    assert!(notify_po.recv() == Failure);
+    assert_eq!(notify_po.recv(), Failure);
 }

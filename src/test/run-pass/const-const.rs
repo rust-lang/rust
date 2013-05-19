@@ -12,5 +12,5 @@ static a: int = 1;
 static b: int = a + 2;
 
 pub fn main() {
-    assert!(b == 3);
+    assert_eq!(b, 3);
 }

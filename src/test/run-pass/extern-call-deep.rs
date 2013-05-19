@@ -33,5 +33,5 @@ fn count(n: uint) -> uint {
 pub fn main() {
     let result = count(1000u);
     debug!("result = %?", result);
-    assert!(result == 1000u);
+    assert_eq!(result, 1000u);
 }

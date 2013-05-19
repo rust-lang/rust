@@ -114,7 +114,7 @@ pub impl StreamWatcher {
         let self_handle = self.native_handle() as *c_void;
         let stream_handle = stream.native_handle() as *c_void;
         unsafe {
-            assert!(0 == uvll::accept(self_handle, stream_handle));
+            assert_eq!(0, uvll::accept(self_handle, stream_handle));
         }
     }
 
@@ -158,7 +158,7 @@ pub impl TcpWatcher {
         unsafe {
             let handle = malloc_handle(UV_TCP);
             assert!(handle.is_not_null());
-            assert!(0 == uvll::tcp_init(loop_.native_handle(), handle));
+            assert_eq!(0, uvll::tcp_init(loop_.native_handle(), handle));
             let mut watcher: TcpWatcher = NativeHandle::from_native_handle(handle);
             watcher.install_watcher_data();
             return watcher;
@@ -350,7 +350,7 @@ mod test {
             do tcp_watcher.connect(addr) |stream_watcher, status| {
                 rtdebug!("tcp_watcher.connect!");
                 assert!(status.is_some());
-                assert!(status.get().name() == ~"ECONNREFUSED");
+                assert_eq!(status.get().name(), ~"ECONNREFUSED");
                 stream_watcher.close(||());
             }
             loop_.run();
@@ -397,7 +397,7 @@ mod test {
                             count += 1;
                         }
                     } else {
-                        assert!(count == MAX);
+                        assert_eq!(count, MAX);
                         do stream_watcher.close {
                             server_stream_watcher.close(||());
                         }

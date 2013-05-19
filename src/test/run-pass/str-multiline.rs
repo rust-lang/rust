@@ -21,6 +21,6 @@ is a test";
                is \
                another \
                test";
-    assert!((a == ~"this is a test"));
-    assert!((b == ~"this is another test"));
+    assert_eq!(a, ~"this is a test");
+    assert_eq!(b, ~"this is another test");
 }

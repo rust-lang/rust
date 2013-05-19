@@ -158,13 +158,13 @@ mod test {
     #[test]
     fn should_execute_op_on_enum_brief() {
         let doc = mk_doc(~"#[doc = \" a \"] enum a { b }");
-        assert!(doc.cratemod().enums()[0].brief() == Some(~"a"));
+        assert_eq!(doc.cratemod().enums()[0].brief(), Some(~"a"));
     }
 
     #[test]
     fn should_execute_op_on_enum_desc() {
         let doc = mk_doc(~"#[doc = \" a \"] enum a { b }");
-        assert!(doc.cratemod().enums()[0].desc() == Some(~"a"));
+        assert_eq!(doc.cratemod().enums()[0].desc(), Some(~"a"));
     }
 
     #[test]
@@ -177,14 +177,14 @@ mod test {
     fn should_execute_op_on_trait_brief() {
         let doc = mk_doc(
             ~"#[doc = \" a \"] trait i { fn a(); }");
-        assert!(doc.cratemod().traits()[0].brief() == Some(~"a"));
+        assert_eq!(doc.cratemod().traits()[0].brief(), Some(~"a"));
     }
 
     #[test]
     fn should_execute_op_on_trait_desc() {
         let doc = mk_doc(
             ~"#[doc = \" a \"] trait i { fn a(); }");
-        assert!(doc.cratemod().traits()[0].desc() == Some(~"a"));
+        assert_eq!(doc.cratemod().traits()[0].desc(), Some(~"a"));
     }
 
     #[test]
@@ -205,14 +205,14 @@ mod test {
     fn should_execute_op_on_impl_brief() {
         let doc = mk_doc(
             ~"#[doc = \" a \"] impl int { fn a() { } }");
-        assert!(doc.cratemod().impls()[0].brief() == Some(~"a"));
+        assert_eq!(doc.cratemod().impls()[0].brief(), Some(~"a"));
     }
 
     #[test]
     fn should_execute_op_on_impl_desc() {
         let doc = mk_doc(
             ~"#[doc = \" a \"] impl int { fn a() { } }");
-        assert!(doc.cratemod().impls()[0].desc() == Some(~"a"));
+        assert_eq!(doc.cratemod().impls()[0].desc(), Some(~"a"));
     }
 
     #[test]
@@ -233,14 +233,14 @@ mod test {
     fn should_execute_op_on_type_brief() {
         let doc = mk_doc(
             ~"#[doc = \" a \"] type t = int;");
-        assert!(doc.cratemod().types()[0].brief() == Some(~"a"));
+        assert_eq!(doc.cratemod().types()[0].brief(), Some(~"a"));
     }
 
     #[test]
     fn should_execute_op_on_type_desc() {
         let doc = mk_doc(
             ~"#[doc = \" a \"] type t = int;");
-        assert!(doc.cratemod().types()[0].desc() == Some(~"a"));
+        assert_eq!(doc.cratemod().types()[0].desc(), Some(~"a"));
     }
 
     #[test]

@@ -343,15 +343,15 @@ pub mod ptr_tests {
             let mut p = Pair {fst: 10, snd: 20};
             let pptr: *mut Pair = &mut p;
             let iptr: *mut int = cast::transmute(pptr);
-            assert!((*iptr == 10));;
+            assert_eq!(*iptr, 10);
             *iptr = 30;
-            assert!((*iptr == 30));
-            assert!((p.fst == 30));;
+            assert_eq!(*iptr, 30);
+            assert_eq!(p.fst, 30);
 
             *pptr = Pair {fst: 50, snd: 60};
-            assert!((*iptr == 50));
-            assert!((p.fst == 50));
-            assert!((p.snd == 60));
+            assert_eq!(*iptr, 50);
+            assert_eq!(p.fst, 50);
+            assert_eq!(p.snd, 60);
 
             let v0 = ~[32000u16, 32001u16, 32002u16];
             let mut v1 = ~[0u16, 0u16, 0u16];
@@ -396,8 +396,8 @@ pub mod ptr_tests {
                 do str::as_c_str(s2) |p2| {
                     let v = ~[p0, p1, p2, null()];
                     do vec::as_imm_buf(v) |vp, len| {
-                        assert!(unsafe { buf_len(vp) } == 3u);
-                        assert!(len == 4u);
+                        assert_eq!(unsafe { buf_len(vp) }, 3u);
+                        assert_eq!(len, 4u);
                     }
                 }
             }
@@ -448,11 +448,11 @@ pub mod ptr_tests {
                                          debug!(
                                              "test_ptr_array_each e: %s, a: %s",
                                              expected, actual);
-                                         assert!(actual == expected);
+                                         assert_eq!(actual, expected);
                                          ctr += 1;
                                          iteration_count += 1;
                                      });
-            assert!(iteration_count == 3u);
+            assert_eq!(iteration_count, 3u);
         }
     }
     #[test]
@@ -480,11 +480,11 @@ pub mod ptr_tests {
                 debug!(
                     "test_ptr_array_each e: %s, a: %s",
                     expected, actual);
-                assert!(actual == expected);
+                assert_eq!(actual, expected);
                 ctr += 1;
                 iteration_count += 1;
             });
-            assert!(iteration_count == 3);
+            assert_eq!(iteration_count, 3);
         }
     }
     #[test]

@@ -12,5 +12,5 @@
 
 pub fn main() {
     let foo = 1;
-    assert!(ptr::to_unsafe_ptr(&foo) == ptr::to_unsafe_ptr(&foo));
+    assert_eq!(ptr::to_unsafe_ptr(&foo), ptr::to_unsafe_ptr(&foo));
 }

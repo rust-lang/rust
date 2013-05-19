@@ -15,13 +15,13 @@ struct S<T>(int, T);
 
 macro_rules! check_option {
     ($T:ty) => {
-        assert!(sys::size_of::<Option<$T>>() == sys::size_of::<$T>());
+        assert_eq!(sys::size_of::<Option<$T>>(), sys::size_of::<$T>());
     }
 }
 
 macro_rules! check_fancy {
     ($T:ty) => {
-        assert!(sys::size_of::<E<$T>>() == sys::size_of::<S<$T>>());
+        assert_eq!(sys::size_of::<E<$T>>(), sys::size_of::<S<$T>>());
     }
 }
 

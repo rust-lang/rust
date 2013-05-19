@@ -56,14 +56,14 @@ pub fn main() {
     let mut p = Point {x: 10, y: 20};
     p += Point {x: 101, y: 102};
     p = p - Point {x: 100, y: 100};
-    assert!(p + Point {x: 5, y: 5} == Point {x: 16, y: 27});
-    assert!(-p == Point {x: -11, y: -22});
-    assert!(p[true] == 11);
-    assert!(p[false] == 22);
+    assert_eq!(p + Point {x: 5, y: 5}, Point {x: 16, y: 27});
+    assert_eq!(-p, Point {x: -11, y: -22});
+    assert_eq!(p[true], 11);
+    assert_eq!(p[false], 22);
 
     let q = !p;
-    assert!(q.x == !(p.x));
-    assert!(q.y == !(p.y));
+    assert_eq!(q.x, !(p.x));
+    assert_eq!(q.y, !(p.y));
 
     // Issue #1733
     let result: ~fn(int) = |_|();

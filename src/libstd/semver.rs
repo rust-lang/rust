@@ -239,16 +239,16 @@ pub fn parse(s: &str) -> Option<Version> {
 
 #[test]
 fn test_parse() {
-    assert!(parse("") == None);
-    assert!(parse("  ") == None);
-    assert!(parse("1") == None);
-    assert!(parse("1.2") == None);
-    assert!(parse("1.2") == None);
-    assert!(parse("1") == None);
-    assert!(parse("1.2") == None);
-    assert!(parse("1.2.3-") == None);
-    assert!(parse("a.b.c") == None);
-    assert!(parse("1.2.3 abc") == None);
+    assert_eq!(parse(""), None);
+    assert_eq!(parse("  "), None);
+    assert_eq!(parse("1"), None);
+    assert_eq!(parse("1.2"), None);
+    assert_eq!(parse("1.2"), None);
+    assert_eq!(parse("1"), None);
+    assert_eq!(parse("1.2"), None);
+    assert_eq!(parse("1.2.3-"), None);
+    assert_eq!(parse("a.b.c"), None);
+    assert_eq!(parse("1.2.3 abc"), None);
 
     assert!(parse("1.2.3") == Some(Version {
         major: 1u,
@@ -320,8 +320,8 @@ fn test_parse() {
 
 #[test]
 fn test_eq() {
-    assert!(parse("1.2.3")        == parse("1.2.3"));
-    assert!(parse("1.2.3-alpha1") == parse("1.2.3-alpha1"));
+    assert_eq!(parse("1.2.3"), parse("1.2.3"));
+    assert_eq!(parse("1.2.3-alpha1"), parse("1.2.3-alpha1"));
 }
 
 #[test]

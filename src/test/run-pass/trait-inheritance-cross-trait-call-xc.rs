@@ -25,5 +25,5 @@ impl Bar for aux::A {
 
 pub fn main() {
     let a = &aux::A { x: 3 };
-    assert!(a.g() == 10);
+    assert_eq!(a.g(), 10);
 }
