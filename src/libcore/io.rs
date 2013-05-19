@@ -1561,13 +1561,55 @@ pub fn buffered_file_writer(path: &Path) -> Result<@Writer, ~str> {
 // FIXME (#2004) it would be great if this could be a const
 // FIXME (#2004) why are these different from the way stdin() is
 // implemented?
+
+
+/**
+* Gives a `Writer` which allows you to write to the standard output.
+*
+* # Examples
+* ~~~
+* let stdout = core::io::stdout();
+* stdout.write_str("hello\n");
+* ~~~
+*/
 pub fn stdout() -> @Writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
+
+/**
+* Gives a `Writer` which allows you to write to standard error.
+*
+* # Examples
+* ~~~
+* let stderr = core::io::stderr();
+* stderr.write_str("hello\n");
+* ~~~
+*/
 pub fn stderr() -> @Writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 
+/**
+* Prints a string to standard output.
+* 
+* This string will not have an implicit newline at the end. If you want
+* an implicit newline, please see `println`.
+*
+* # Examples
+* ~~~
+* core::io::print("hello");
+* ~~~
+*/
 pub fn print(s: &str) {
     stdout().write_str(s);
 }
 
+/**
+* Prints a string to standard output, followed by a newline.
+* 
+* If you do not want an implicit newline, please see `print`.
+*
+* # Examples
+* ~~~
+* core::io::println("hello");
+* ~~~
+*/
 pub fn println(s: &str) {
     stdout().write_line(s);
 }
