@@ -96,6 +96,11 @@ pub fn get<'a, T:Const + Owned>(rc: &'a ARC<T>) -> &'a T {
     unsafe { &*rc.x.get_immut() }
 }
 
+impl<T: Const + Owned> ARC<T> {
+    pub fn get<'a>(&'a self) -> &'a T {
+        get(self)
+    }
+}
 /**
  * Duplicate an atomically reference counted wrapper.
  *
@@ -508,6 +513,7 @@ mod tests {
         c.send(arc::clone(&arc_v));
 
         assert_eq!((*arc::get(&arc_v))[2], 3);
+        assert_eq!(arc_v.get()[4], 5);
 
         info!(arc_v);
     }
