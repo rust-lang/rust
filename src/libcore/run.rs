@@ -835,7 +835,7 @@ mod tests {
 
         debug!(copy expected);
         debug!(copy actual);
-        assert!((expected == actual));
+        assert_eq!(expected, actual);
     }
 
     #[test]
@@ -844,7 +844,7 @@ mod tests {
                                      &None, &None,
                                      0i32, 0i32, 0i32);
         let status = run::waitpid(pid);
-        assert!(status == 1);
+        assert_eq!(status, 1);
     }
 
     #[test]

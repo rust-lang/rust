@@ -211,46 +211,46 @@ pub mod inst {
 
     #[test]
     fn test_next_power_of_two() {
-        assert!((next_power_of_two(0u) == 0u));
-        assert!((next_power_of_two(1u) == 1u));
-        assert!((next_power_of_two(2u) == 2u));
-        assert!((next_power_of_two(3u) == 4u));
-        assert!((next_power_of_two(4u) == 4u));
-        assert!((next_power_of_two(5u) == 8u));
-        assert!((next_power_of_two(6u) == 8u));
-        assert!((next_power_of_two(7u) == 8u));
-        assert!((next_power_of_two(8u) == 8u));
-        assert!((next_power_of_two(9u) == 16u));
-        assert!((next_power_of_two(10u) == 16u));
-        assert!((next_power_of_two(11u) == 16u));
-        assert!((next_power_of_two(12u) == 16u));
-        assert!((next_power_of_two(13u) == 16u));
-        assert!((next_power_of_two(14u) == 16u));
-        assert!((next_power_of_two(15u) == 16u));
-        assert!((next_power_of_two(16u) == 16u));
-        assert!((next_power_of_two(17u) == 32u));
-        assert!((next_power_of_two(18u) == 32u));
-        assert!((next_power_of_two(19u) == 32u));
-        assert!((next_power_of_two(20u) == 32u));
-        assert!((next_power_of_two(21u) == 32u));
-        assert!((next_power_of_two(22u) == 32u));
-        assert!((next_power_of_two(23u) == 32u));
-        assert!((next_power_of_two(24u) == 32u));
-        assert!((next_power_of_two(25u) == 32u));
-        assert!((next_power_of_two(26u) == 32u));
-        assert!((next_power_of_two(27u) == 32u));
-        assert!((next_power_of_two(28u) == 32u));
-        assert!((next_power_of_two(29u) == 32u));
-        assert!((next_power_of_two(30u) == 32u));
-        assert!((next_power_of_two(31u) == 32u));
-        assert!((next_power_of_two(32u) == 32u));
-        assert!((next_power_of_two(33u) == 64u));
-        assert!((next_power_of_two(34u) == 64u));
-        assert!((next_power_of_two(35u) == 64u));
-        assert!((next_power_of_two(36u) == 64u));
-        assert!((next_power_of_two(37u) == 64u));
-        assert!((next_power_of_two(38u) == 64u));
-        assert!((next_power_of_two(39u) == 64u));
+        assert_eq!(next_power_of_two(0u), 0u);
+        assert_eq!(next_power_of_two(1u), 1u);
+        assert_eq!(next_power_of_two(2u), 2u);
+        assert_eq!(next_power_of_two(3u), 4u);
+        assert_eq!(next_power_of_two(4u), 4u);
+        assert_eq!(next_power_of_two(5u), 8u);
+        assert_eq!(next_power_of_two(6u), 8u);
+        assert_eq!(next_power_of_two(7u), 8u);
+        assert_eq!(next_power_of_two(8u), 8u);
+        assert_eq!(next_power_of_two(9u), 16u);
+        assert_eq!(next_power_of_two(10u), 16u);
+        assert_eq!(next_power_of_two(11u), 16u);
+        assert_eq!(next_power_of_two(12u), 16u);
+        assert_eq!(next_power_of_two(13u), 16u);
+        assert_eq!(next_power_of_two(14u), 16u);
+        assert_eq!(next_power_of_two(15u), 16u);
+        assert_eq!(next_power_of_two(16u), 16u);
+        assert_eq!(next_power_of_two(17u), 32u);
+        assert_eq!(next_power_of_two(18u), 32u);
+        assert_eq!(next_power_of_two(19u), 32u);
+        assert_eq!(next_power_of_two(20u), 32u);
+        assert_eq!(next_power_of_two(21u), 32u);
+        assert_eq!(next_power_of_two(22u), 32u);
+        assert_eq!(next_power_of_two(23u), 32u);
+        assert_eq!(next_power_of_two(24u), 32u);
+        assert_eq!(next_power_of_two(25u), 32u);
+        assert_eq!(next_power_of_two(26u), 32u);
+        assert_eq!(next_power_of_two(27u), 32u);
+        assert_eq!(next_power_of_two(28u), 32u);
+        assert_eq!(next_power_of_two(29u), 32u);
+        assert_eq!(next_power_of_two(30u), 32u);
+        assert_eq!(next_power_of_two(31u), 32u);
+        assert_eq!(next_power_of_two(32u), 32u);
+        assert_eq!(next_power_of_two(33u), 64u);
+        assert_eq!(next_power_of_two(34u), 64u);
+        assert_eq!(next_power_of_two(35u), 64u);
+        assert_eq!(next_power_of_two(36u), 64u);
+        assert_eq!(next_power_of_two(37u), 64u);
+        assert_eq!(next_power_of_two(38u), 64u);
+        assert_eq!(next_power_of_two(39u), 64u);
     }
 
     #[test]
@@ -258,14 +258,14 @@ pub mod inst {
         use uint;
         assert!((uint::max_value > 0u));
         assert!((uint::min_value <= 0u));
-        assert!((uint::min_value + uint::max_value + 1u == 0u));
+        assert_eq!(uint::min_value + uint::max_value + 1u, 0u);
     }
 
     #[test]
     fn test_div() {
-        assert!((div_floor(3u, 4u) == 0u));
-        assert!((div_ceil(3u, 4u)  == 1u));
-        assert!((div_round(3u, 4u) == 1u));
+        assert_eq!(div_floor(3u, 4u), 0u);
+        assert_eq!(div_ceil(3u, 4u), 1u);
+        assert_eq!(div_round(3u, 4u), 1u);
     }
 
     #[test]
@@ -274,6 +274,6 @@ pub mod inst {
         let ten = 10 as uint;
         let mut accum = 0;
         for ten.times { accum += 1; }
-        assert!((accum == 10));
+        assert_eq!(accum, 10);
     }
 }

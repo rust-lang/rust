@@ -27,8 +27,8 @@ pub fn main() {
     }
     match Z {
         Quux(d,h) => {
-            assert!((d == 0x123456789abcdef0));
-            assert!((h == 0x1234));
+            assert_eq!(d, 0x123456789abcdef0);
+            assert_eq!(h, 0x1234);
         }
         _ => fail!()
     }

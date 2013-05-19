@@ -21,9 +21,9 @@ pub trait Quux: Foo + Bar + Baz { }
 impl<T:Foo + Bar + Baz> Quux for T { }
 
 fn f<T:Quux>(a: &T) {
-    assert!(a.f() == 10);
-    assert!(a.g() == 20);
-    assert!(a.h() == 30);
+    assert_eq!(a.f(), 10);
+    assert_eq!(a.g(), 20);
+    assert_eq!(a.h(), 30);
 }
 
 pub fn main() {

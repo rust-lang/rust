@@ -438,7 +438,7 @@ pub impl<T> DList<T> {
             link = nobe.next_link();
             count += 1;
         }
-        assert!(count == self.len());
+        assert_eq!(count, self.len());
         // iterate backwards - some of this is probably redundant.
         link = self.peek_tail_n();
         rabbit = link;
@@ -459,7 +459,7 @@ pub impl<T> DList<T> {
             link = nobe.prev_link();
             count -= 1;
         }
-        assert!(count == 0);
+        assert_eq!(count, 0);
     }
 }
 

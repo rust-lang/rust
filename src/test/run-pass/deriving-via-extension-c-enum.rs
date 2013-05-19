@@ -18,7 +18,7 @@ enum Foo {
 pub fn main() {
     let a = Bar;
     let b = Bar;
-    assert!(a == b);
+    assert_eq!(a, b);
     assert!(!(a != b));
     assert!(a.eq(&b));
     assert!(!a.ne(&b));

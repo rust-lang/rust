@@ -113,14 +113,14 @@ mod tests {
 
     #[test]
     fn test_bool_to_str() {
-        assert!(to_str(false) == ~"false");
-        assert!(to_str(true) == ~"true");
+        assert_eq!(to_str(false), ~"false");
+        assert_eq!(to_str(true), ~"true");
     }
 
     #[test]
     fn test_bool_to_bit() {
         do all_values |v| {
-            assert!(to_bit(v) == if is_true(v) { 1u8 } else { 0u8 });
+            assert_eq!(to_bit(v), if is_true(v) { 1u8 } else { 0u8 });
         }
     }
 

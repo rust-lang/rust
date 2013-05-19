@@ -20,5 +20,5 @@ mod mod_dir_simple {
 }
 
 pub fn main() {
-    assert!(mod_dir_simple::load_another_mod::test::foo() == 10);
+    assert_eq!(mod_dir_simple::load_another_mod::test::foo(), 10);
 }

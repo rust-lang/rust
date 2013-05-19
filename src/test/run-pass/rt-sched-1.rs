@@ -44,7 +44,7 @@ pub fn main() {
                 let child_sched_id = rustrt::rust_get_sched_id();
                 error!("child_sched_id %?", child_sched_id);
                 assert!(child_sched_id != parent_sched_id);
-                assert!(child_sched_id == new_sched_id);
+                assert_eq!(child_sched_id, new_sched_id);
                 ch.send(());
             }
         };

@@ -920,7 +920,7 @@ mod test_treemap {
         assert!(m.insert(1, 2));
         assert!(m.insert(5, 3));
         assert!(m.insert(9, 3));
-        assert!(m.find(&2) == None);
+        assert_eq!(m.find(&2), None);
     }
 
     #[test]
@@ -942,7 +942,7 @@ mod test_treemap {
         assert!(m.insert(5, 2));
         assert!(m.insert(2, 9));
         assert!(!m.insert(2, 11));
-        assert!(m.find(&2).unwrap() == &11);
+        assert_eq!(m.find(&2).unwrap(), &11);
     }
 
     #[test]
@@ -971,13 +971,13 @@ mod test_treemap {
         m.insert(copy k1, copy v1);
         m.insert(copy k2, copy v2);
 
-        assert!(m.find(&k2) == Some(&v2));
-        assert!(m.find(&k1) == Some(&v1));
+        assert_eq!(m.find(&k2), Some(&v2));
+        assert_eq!(m.find(&k1), Some(&v1));
     }
 
     fn check_equal<K: Eq + TotalOrd, V: Eq>(ctrl: &[(K, V)],
                                             map: &TreeMap<K, V>) {
-        assert!(ctrl.is_empty() == map.is_empty());
+        assert_eq!(ctrl.is_empty(), map.is_empty());
         for ctrl.each |x| {
             let &(k, v) = x;
             assert!(map.find(&k).unwrap() == &v)
@@ -1000,7 +1000,7 @@ mod test_treemap {
                                   parent: &~TreeNode<K, V>) {
         match *node {
           Some(ref r) => {
-            assert!(r.key.cmp(&parent.key) == Less);
+            assert_eq!(r.key.cmp(&parent.key), Less);
             assert!(r.level == parent.level - 1); // left is black
             check_left(&r.left, r);
             check_right(&r.right, r, false);
@@ -1014,7 +1014,7 @@ mod test_treemap {
                                    parent_red: bool) {
         match *node {
           Some(ref r) => {
-            assert!(r.key.cmp(&parent.key) == Greater);
+            assert_eq!(r.key.cmp(&parent.key), Greater);
             let red = r.level == parent.level;
             if parent_red { assert!(!red) } // no dual horizontal links
             // Right red or black
@@ -1072,19 +1072,19 @@ mod test_treemap {
     fn test_len() {
         let mut m = TreeMap::new();
         assert!(m.insert(3, 6));
-        assert!(m.len() == 1);
+        assert_eq!(m.len(), 1);
         assert!(m.insert(0, 0));
-        assert!(m.len() == 2);
+        assert_eq!(m.len(), 2);
         assert!(m.insert(4, 8));
-        assert!(m.len() == 3);
+        assert_eq!(m.len(), 3);
         assert!(m.remove(&3));
-        assert!(m.len() == 2);
+        assert_eq!(m.len(), 2);
         assert!(!m.remove(&5));
-        assert!(m.len() == 2);
+        assert_eq!(m.len(), 2);
         assert!(m.insert(2, 4));
-        assert!(m.len() == 3);
+        assert_eq!(m.len(), 3);
         assert!(m.insert(1, 2));
-        assert!(m.len() == 4);
+        assert_eq!(m.len(), 4);
     }
 
     #[test]
@@ -1099,8 +1099,8 @@ mod test_treemap {
 
         let mut n = 0;
         for m.each |k, v| {
-            assert!(*k == n);
-            assert!(*v == n * 2);
+            assert_eq!(*k, n);
+            assert_eq!(*v, n * 2);
             n += 1;
         }
     }
@@ -1117,8 +1117,8 @@ mod test_treemap {
 
         let mut n = 4;
         for m.each_reverse |k, v| {
-            assert!(*k == n);
-            assert!(*v == n * 2);
+            assert_eq!(*k, n);
+            assert_eq!(*v, n * 2);
             n -= 1;
         }
     }
@@ -1191,11 +1191,11 @@ mod test_treemap {
         let m = m;
         let mut a = m.iter();
 
-        assert!(a.next().unwrap() == (&x1, &y1));
-        assert!(a.next().unwrap() == (&x2, &y2));
-        assert!(a.next().unwrap() == (&x3, &y3));
-        assert!(a.next().unwrap() == (&x4, &y4));
-        assert!(a.next().unwrap() == (&x5, &y5));
+        assert_eq!(a.next().unwrap(), (&x1, &y1));
+        assert_eq!(a.next().unwrap(), (&x2, &y2));
+        assert_eq!(a.next().unwrap(), (&x3, &y3));
+        assert_eq!(a.next().unwrap(), (&x4, &y4));
+        assert_eq!(a.next().unwrap(), (&x5, &y5));
 
         assert!(a.next().is_none());
 
@@ -1206,7 +1206,7 @@ mod test_treemap {
         let mut i = 0;
 
         for b.advance |x| {
-            assert!(expected[i] == x);
+            assert_eq!(expected[i], x);
             i += 1;
 
             if i == 2 {
@@ -1215,7 +1215,7 @@ mod test_treemap {
         }
 
         for b.advance |x| {
-            assert!(expected[i] == x);
+            assert_eq!(expected[i], x);
             i += 1;
         }
     }
@@ -1303,7 +1303,7 @@ mod test_set {
 
         let mut n = 0;
         for m.each |x| {
-            assert!(*x == n);
+            assert_eq!(*x, n);
             n += 1
         }
     }
@@ -1320,7 +1320,7 @@ mod test_set {
 
         let mut n = 4;
         for m.each_reverse |x| {
-            assert!(*x == n);
+            assert_eq!(*x, n);
             n -= 1
         }
     }
@@ -1335,10 +1335,10 @@ mod test_set {
 
         let mut i = 0;
         for f(&set_a, &set_b) |x| {
-            assert!(*x == expected[i]);
+            assert_eq!(*x, expected[i]);
             i += 1;
         }
-        assert!(i == expected.len());
+        assert_eq!(i, expected.len());
     }
 
     #[test]
@@ -1421,10 +1421,10 @@ mod test_set {
 
         // FIXME: #5801: this needs a type hint to compile...
         let result: Option<(&uint, & &'static str)> = z.next();
-        assert!(result.unwrap() == (&5u, & &"bar"));
+        assert_eq!(result.unwrap(), (&5u, & &"bar"));
 
         let result: Option<(&uint, & &'static str)> = z.next();
-        assert!(result.unwrap() == (&11u, & &"foo"));
+        assert_eq!(result.unwrap(), (&11u, & &"foo"));
 
         let result: Option<(&uint, & &'static str)> = z.next();
         assert!(result.is_none());
@@ -1433,16 +1433,16 @@ mod test_set {
     #[test]
     fn test_swap() {
         let mut m = TreeMap::new();
-        assert!(m.swap(1, 2) == None);
-        assert!(m.swap(1, 3) == Some(2));
-        assert!(m.swap(1, 4) == Some(3));
+        assert_eq!(m.swap(1, 2), None);
+        assert_eq!(m.swap(1, 3), Some(2));
+        assert_eq!(m.swap(1, 4), Some(3));
     }
 
     #[test]
     fn test_pop() {
         let mut m = TreeMap::new();
         m.insert(1, 2);
-        assert!(m.pop(&1) == Some(2));
-        assert!(m.pop(&1) == None);
+        assert_eq!(m.pop(&1), Some(2));
+        assert_eq!(m.pop(&1), None);
     }
 }

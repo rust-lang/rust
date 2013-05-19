@@ -19,7 +19,7 @@ fn foo(cond: &fn() -> bool, box: &fn() -> @int) {
         // of this borrow is the fn body as a whole.
         y = borrow(x); //~ ERROR cannot root
 
-        assert!(*x == *y);
+        assert_eq!(*x, *y);
         if cond() { break; }
     }
     assert!(*y != 0);

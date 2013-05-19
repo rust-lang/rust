@@ -16,5 +16,5 @@
 mod m;
 
 pub fn main() {
-    assert!(m::foo() == 10);
+    assert_eq!(m::foo(), 10);
 }

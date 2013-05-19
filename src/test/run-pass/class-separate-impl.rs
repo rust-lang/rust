@@ -62,7 +62,7 @@ impl ToStr for cat {
 fn print_out(thing: @ToStr, expected: ~str) {
   let actual = thing.to_str();
   debug!("%s", actual);
-  assert!((actual == expected));
+  assert_eq!(actual, expected);
 }
 
 pub fn main() {

@@ -29,5 +29,5 @@ impl Movable for Point;
 pub fn main() {
     let mut p = Point{ x: 1, y: 2};
     p.translate(3);
-    assert!(p.X() == 4);
+    assert_eq!(p.X(), 4);
 }

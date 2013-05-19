@@ -36,5 +36,5 @@ pub fn main() {
         let (c, _d) = b;
         debug!(c);
     }
-    assert!(*i == 1);
+    assert_eq!(*i, 1);
 }

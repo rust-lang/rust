@@ -16,5 +16,5 @@ pub fn main() {
     let p = @22u;
     let r = foo(p);
     debug!("r=%u", r);
-    assert!(r == 22u);
+    assert_eq!(r, 22u);
 }

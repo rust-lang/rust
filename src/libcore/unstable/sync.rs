@@ -275,11 +275,11 @@ mod tests {
         let x2 = x.clone();
         do task::try || {
             do x2.with |one| {
-                assert!(*one == 2);
+                assert_eq!(*one, 2);
             }
         };
         do x.with |one| {
-            assert!(*one == 1);
+            assert_eq!(*one, 1);
         }
     }
 }

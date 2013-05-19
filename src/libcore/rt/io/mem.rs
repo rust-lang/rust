@@ -86,7 +86,7 @@ impl Reader for MemReader {
         {
             let input = self.buf.slice(self.pos, self.pos + write_len);
             let output = vec::mut_slice(buf, 0, write_len);
-            assert!(input.len() == output.len());
+            assert_eq!(input.len(), output.len());
             vec::bytes::copy_memory(output, input, write_len);
         }
         self.pos += write_len;
@@ -189,33 +189,33 @@ mod test {
     #[test]
     fn test_mem_writer() {
         let mut writer = MemWriter::new();
-        assert!(writer.tell() == 0);
+        assert_eq!(writer.tell(), 0);
         writer.write([0]);
-        assert!(writer.tell() == 1);
+        assert_eq!(writer.tell(), 1);
         writer.write([1, 2, 3]);
         writer.write([4, 5, 6, 7]);
-        assert!(writer.tell() == 8);
-        assert!(writer.inner() == ~[0, 1, 2, 3, 4, 5 , 6, 7]);
+        assert_eq!(writer.tell(), 8);
+        assert_eq!(writer.inner(), ~[0, 1, 2, 3, 4, 5 , 6, 7]);
     }
 
     #[test]
     fn test_mem_reader() {
         let mut reader = MemReader::new(~[0, 1, 2, 3, 4, 5, 6, 7]);
         let mut buf = [];
-        assert!(reader.read(buf) == Some(0));
-        assert!(reader.tell() == 0);
+        assert_eq!(reader.read(buf), Some(0));
+        assert_eq!(reader.tell(), 0);
         let mut buf = [0];
-        assert!(reader.read(buf) == Some(1));
-        assert!(reader.tell() == 1);
-        assert!(buf == [0]);
+        assert_eq!(reader.read(buf), Some(1));
+        assert_eq!(reader.tell(), 1);
+        assert_eq!(buf, [0]);
         let mut buf = [0, ..4];
-        assert!(reader.read(buf) == Some(4));
-        assert!(reader.tell() == 5);
-        assert!(buf == [1, 2, 3, 4]);
-        assert!(reader.read(buf) == Some(3));
-        assert!(buf.slice(0, 3) == [5, 6, 7]);
+        assert_eq!(reader.read(buf), Some(4));
+        assert_eq!(reader.tell(), 5);
+        assert_eq!(buf, [1, 2, 3, 4]);
+        assert_eq!(reader.read(buf), Some(3));
+        assert_eq!(buf.slice(0, 3), [5, 6, 7]);
         assert!(reader.eof());
-        assert!(reader.read(buf) == None);
+        assert_eq!(reader.read(buf), None);
         assert!(reader.eof());
     }
 }

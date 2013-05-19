@@ -19,7 +19,7 @@ pub extern {
 pub fn main() {
     unsafe {
         let y = rust_dbg_extern_return_TwoU64s();
-        assert!(y.one == 10);
-        assert!(y.two == 20);
+        assert_eq!(y.one, 10);
+        assert_eq!(y.two, 20);
     }
 }

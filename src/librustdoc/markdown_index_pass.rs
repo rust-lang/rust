@@ -209,7 +209,7 @@ mod test {
 
     #[test]
     fn should_trim_whitespace_after_removing_punctuation() {
-        assert!(pandoc_header_id("impl foo for ()") == ~"impl-foo-for");
+        assert_eq!(pandoc_header_id("impl foo for ()"), ~"impl-foo-for");
     }
 
     #[test]

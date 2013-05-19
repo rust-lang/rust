@@ -272,7 +272,7 @@ pub fn trans_fn_ref_with_vtables(
     // Create a monomorphic verison of generic functions
     if must_monomorphise {
         // Should be either intra-crate or inlined.
-        assert!(def_id.crate == ast::local_crate);
+        assert_eq!(def_id.crate, ast::local_crate);
 
         let mut (val, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, type_params,

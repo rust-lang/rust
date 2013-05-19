@@ -15,5 +15,5 @@ extern mod mod_trait_with_static_methods_lib;
 use mod_trait_with_static_methods_lib::Foo;
 
 pub fn main() {
-    assert!(42 == Foo::foo());
+    assert_eq!(42, Foo::foo());
 }

@@ -102,6 +102,6 @@ fn test_flate_round_trip() {
         debug!("%u bytes deflated to %u (%.1f%% size)",
                in.len(), cmp.len(),
                100.0 * ((cmp.len() as float) / (in.len() as float)));
-        assert!((in == out));
+        assert_eq!(in, out);
     }
 }

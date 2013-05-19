@@ -93,7 +93,7 @@ fn run(args: &[~str]) {
     io::stdout().write_str(fmt!("Test took %? seconds\n", elapsed));
     let thruput = ((size / workers * workers) as float) / (elapsed as float);
     io::stdout().write_str(fmt!("Throughput=%f per sec\n", thruput));
-    assert!(result == num_bytes * size);
+    assert_eq!(result, num_bytes * size);
 }
 
 fn main() {
