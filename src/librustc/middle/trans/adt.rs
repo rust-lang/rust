@@ -158,7 +158,7 @@ fn represent_type_uncached(cx: @CrateContext, t: ty::t) -> Repr {
 
             if cases.len() == 0 {
                 // Uninhabitable; represent as unit
-                return Univariant(mk_struct(cx, ~[], false), false);
+                return Univariant(mk_struct(cx, [], false), false);
             }
 
             if cases.all(|c| c.tys.len() == 0) {
@@ -206,7 +206,7 @@ fn represent_type_uncached(cx: @CrateContext, t: ty::t) -> Repr {
             let discr = ~[ty::mk_int()];
             return General(cases.map(|c| mk_struct(cx, discr + c.tys, false)))
         }
-        _ => cx.sess.bug(~"adt::represent_type called on non-ADT type")
+        _ => cx.sess.bug("adt::represent_type called on non-ADT type")
     }
 }
 
@@ -353,7 +353,7 @@ pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
             _match::single_result(rslt(bcx, C_int(bcx.ccx(), discr)))
         }
         Univariant(*) => {
-            bcx.ccx().sess.bug(~"no cases for univariants or structs")
+            bcx.ccx().sess.bug("no cases for univariants or structs")
         }
         General(*) => {
             _match::single_result(rslt(bcx, C_int(bcx.ccx(), discr)))
@@ -423,7 +423,7 @@ pub fn trans_field_ptr(bcx: block, r: &Repr, val: ValueRef, discr: int,
     // someday), it will need to return a possibly-new bcx as well.
     match *r {
         CEnum(*) => {
-            bcx.ccx().sess.bug(~"element access in C-like enum")
+            bcx.ccx().sess.bug("element access in C-like enum")
         }
         Univariant(ref st, _dtor) => {
             assert_eq!(discr, 0);
@@ -468,8 +468,7 @@ fn struct_field_ptr(bcx: block, st: &Struct, val: ValueRef, ix: uint,
 pub fn trans_drop_flag_ptr(bcx: block, r: &Repr, val: ValueRef) -> ValueRef {
     match *r {
         Univariant(ref st, true) => GEPi(bcx, val, [0, st.fields.len() - 1]),
-        _ => bcx.ccx().sess.bug(~"tried to get drop flag of non-droppable \
-                                  type")
+        _ => bcx.ccx().sess.bug("tried to get drop flag of non-droppable type")
     }
 }
 
@@ -600,7 +599,7 @@ pub fn const_get_discrim(ccx: @CrateContext, r: &Repr, val: ValueRef)
 pub fn const_get_field(ccx: @CrateContext, r: &Repr, val: ValueRef,
                        _discr: int, ix: uint) -> ValueRef {
     match *r {
-        CEnum(*) => ccx.sess.bug(~"element access in C-like enum const"),
+        CEnum(*) => ccx.sess.bug("element access in C-like enum const"),
         Univariant(*) => const_struct_field(ccx, val, ix),
         General(*) => const_struct_field(ccx, val, ix + 1),
         NullablePointer{ _ } => const_struct_field(ccx, val, ix)

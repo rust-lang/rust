@@ -86,7 +86,7 @@ pub mod rt {
 
     impl<'self> ToSource for &'self [@ast::item] {
         fn to_source(&self, cx: @ext_ctxt) -> ~str {
-            str::connect(self.map(|i| i.to_source(cx)), ~"\n\n")
+            str::connect(self.map(|i| i.to_source(cx)), "\n\n")
         }
     }
 
@@ -98,7 +98,7 @@ pub mod rt {
 
     impl<'self> ToSource for &'self [@ast::Ty] {
         fn to_source(&self, cx: @ext_ctxt) -> ~str {
-            str::connect(self.map(|i| i.to_source(cx)), ~", ")
+            str::connect(self.map(|i| i.to_source(cx)), ", ")
         }
     }
 
@@ -421,7 +421,7 @@ fn id_ext(cx: @ext_ctxt, str: &str) -> ast::ident {
 
 // Lift an ident to the expr that evaluates to that ident.
 fn mk_ident(cx: @ext_ctxt, sp: span, ident: ast::ident) -> @ast::expr {
-    let e_str = build::mk_uniq_str(cx, sp, cx.str_of(ident));
+    let e_str = build::mk_base_str(cx, sp, cx.str_of(ident));
     build::mk_method_call(cx, sp,
                           build::mk_path(cx, sp, ids_ext(cx, ~[~"ext_cx"])),
                           id_ext(cx, "ident_of"),

@@ -387,8 +387,8 @@ pub mod write {
                 fmt!("%s/bin/arm-linux-androideabi-gcc", path)
             }
             &None => {
-                sess.fatal(~"need Android NDK path for building \
-                             (--android-cross-path)")
+                sess.fatal("need Android NDK path for building \
+                            (--android-cross-path)")
             }
         };
         let mut cc_args = ~[];
@@ -403,7 +403,7 @@ pub mod write {
             sess.err(fmt!("building with `%s` failed with code %d",
                         cc_prog, prog.status));
             sess.note(fmt!("%s arguments: %s",
-                        cc_prog, str::connect(cc_args, ~" ")));
+                        cc_prog, str::connect(cc_args, " ")));
             sess.note(prog.err + prog.out);
             sess.abort_if_errors();
         }
@@ -566,7 +566,7 @@ pub fn build_link_meta(sess: Session,
                                   || fmt!("output file name `%s` doesn't\
                                            appear to have a stem",
                                           output.to_str())).to_managed();
-                warn_missing(sess, ~"name", name);
+                warn_missing(sess, "name", name);
                 name
               }
             };
@@ -577,7 +577,7 @@ pub fn build_link_meta(sess: Session,
               Some(v) => v,
               None => {
                 let vers = @"0.0";
-                warn_missing(sess, ~"vers", vers);
+                warn_missing(sess, "vers", vers);
                 vers
               }
             };
@@ -618,9 +618,9 @@ pub fn symbol_hash(tcx: ty::ctxt,
 
     symbol_hasher.reset();
     write_string(symbol_hasher, link_meta.name);
-    write_string(symbol_hasher, ~"-");
+    write_string(symbol_hasher, "-");
     write_string(symbol_hasher, link_meta.extras_hash);
-    write_string(symbol_hasher, ~"-");
+    write_string(symbol_hasher, "-");
     write_string(symbol_hasher, encoder::encoded_ty(tcx, t));
     let mut hash = truncated_hash_result(symbol_hasher);
     // Prefix with _ so that it never blends into adjacent digits
@@ -770,8 +770,8 @@ pub fn link_binary(sess: Session,
                         fmt!("%s/bin/arm-linux-androideabi-gcc", path)
                     }
                     &None => {
-                        sess.fatal(~"need Android NDK path for linking \
-                                     (--android-cross-path)")
+                        sess.fatal("need Android NDK path for linking \
+                                    (--android-cross-path)")
                     }
                 }
             } else if sess.targ_cfg.os == session::os_win32 {
@@ -798,21 +798,21 @@ pub fn link_binary(sess: Session,
 
     debug!("output: %s", output.to_str());
     let cc_args = link_args(sess, obj_filename, out_filename, lm);
-    debug!("%s link args: %s", cc_prog, str::connect(cc_args, ~" "));
+    debug!("%s link args: %s", cc_prog, str::connect(cc_args, " "));
     // We run 'cc' here
     let prog = run::program_output(cc_prog, cc_args);
     if 0 != prog.status {
         sess.err(fmt!("linking with `%s` failed with code %d",
                       cc_prog, prog.status));
         sess.note(fmt!("%s arguments: %s",
-                       cc_prog, str::connect(cc_args, ~" ")));
+                       cc_prog, str::connect(cc_args, " ")));
         sess.note(prog.err + prog.out);
         sess.abort_if_errors();
     }
 
     // Clean up on Darwin
     if sess.targ_cfg.os == session::os_macos {
-        run::run_program(~"dsymutil", ~[output.to_str()]);
+        run::run_program("dsymutil", [output.to_str()]);
     }
 
     // Remove the temporary object file if we aren't saving temps
@@ -920,7 +920,7 @@ pub fn link_args(sess: Session,
     // On linux librt and libdl are an indirect dependencies via rustrt,
     // and binutils 2.22+ won't add them automatically
     if sess.targ_cfg.os == session::os_linux {
-        args.push_all(~[~"-lrt", ~"-ldl"]);
+        args.push_all([~"-lrt", ~"-ldl"]);
 
         // LLVM implements the `frem` instruction as a call to `fmod`,
         // which lives in libm. Similar to above, on some linuxes we
@@ -928,19 +928,18 @@ pub fn link_args(sess: Session,
         args.push(~"-lm");
     }
     else if sess.targ_cfg.os == session::os_android {
-        args.push_all(~[~"-ldl", ~"-llog",  ~"-lsupc++",
-                           ~"-lgnustl_shared"]);
+        args.push_all([~"-ldl", ~"-llog",  ~"-lsupc++", ~"-lgnustl_shared"]);
         args.push(~"-lm");
     }
 
     if sess.targ_cfg.os == session::os_freebsd {
-        args.push_all(~[~"-pthread", ~"-lrt",
-                        ~"-L/usr/local/lib", ~"-lexecinfo",
-                        ~"-L/usr/local/lib/gcc46",
-                        ~"-L/usr/local/lib/gcc44", ~"-lstdc++",
-                        ~"-Wl,-z,origin",
-                        ~"-Wl,-rpath,/usr/local/lib/gcc46",
-                        ~"-Wl,-rpath,/usr/local/lib/gcc44"]);
+        args.push_all([~"-pthread", ~"-lrt",
+                       ~"-L/usr/local/lib", ~"-lexecinfo",
+                       ~"-L/usr/local/lib/gcc46",
+                       ~"-L/usr/local/lib/gcc44", ~"-lstdc++",
+                       ~"-Wl,-z,origin",
+                       ~"-Wl,-rpath,/usr/local/lib/gcc46",
+                       ~"-Wl,-rpath,/usr/local/lib/gcc44"]);
     }
 
     // OS X 10.6 introduced 'compact unwind info', which is produced by the

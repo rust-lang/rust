@@ -85,7 +85,7 @@ pub fn analyze(proto: @mut protocol_, _cx: @ext_ctxt) {
     }
 
     if self_live.len() > 0 {
-        let states = str::connect(self_live.map(|s| copy s.name), ~" ");
+        let states = str::connect(self_live.map(|s| copy s.name), " ");
 
         debug!("protocol %s is unbounded due to loops involving: %s",
                copy proto.name, states);

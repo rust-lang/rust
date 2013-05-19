@@ -726,7 +726,7 @@ pub impl Liveness {
         for uint::range(0, self.ir.num_vars) |var_idx| {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
-                wr.write_str(~" ");
+                wr.write_str(" ");
                 wr.write_str(Variable(var_idx).to_str());
             }
         }
@@ -750,7 +750,7 @@ pub impl Liveness {
                     loop_scope.len()
                 };
                 if len == 0 {
-                    self.tcx.sess.span_bug(sp, ~"break outside loop");
+                    self.tcx.sess.span_bug(sp, "break outside loop");
                 } else {
                     // FIXME(#5275): this shouldn't have to be a method...
                     self.last_loop_scope()
@@ -766,18 +766,18 @@ pub impl Liveness {
 
     fn ln_str(&self, ln: LiveNode) -> ~str {
         do io::with_str_writer |wr| {
-            wr.write_str(~"[ln(");
+            wr.write_str("[ln(");
             wr.write_uint(*ln);
-            wr.write_str(~") of kind ");
+            wr.write_str(") of kind ");
             wr.write_str(fmt!("%?", copy self.ir.lnks[*ln]));
-            wr.write_str(~" reads");
+            wr.write_str(" reads");
             self.write_vars(wr, ln, |idx| self.users[idx].reader );
-            wr.write_str(~"  writes");
+            wr.write_str("  writes");
             self.write_vars(wr, ln, |idx| self.users[idx].writer );
-            wr.write_str(~" ");
-            wr.write_str(~" precedes ");
+            wr.write_str(" ");
+            wr.write_str(" precedes ");
             wr.write_str((copy self.successors[*ln]).to_str());
-            wr.write_str(~"]");
+            wr.write_str("]");
         }
     }
 
@@ -1195,7 +1195,7 @@ pub impl Liveness {
           expr_log(l, r) |
           expr_index(l, r) |
           expr_binary(_, l, r) => {
-            self.propagate_through_exprs(~[l, r], succ)
+            self.propagate_through_exprs([l, r], succ)
           }
 
           expr_addr_of(_, e) |

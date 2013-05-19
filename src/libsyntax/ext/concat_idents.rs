@@ -21,15 +21,13 @@ pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
         if i & 1 == 1 {
             match *e {
                 ast::tt_tok(_, token::COMMA) => (),
-                _ => cx.span_fatal(sp, ~"concat_idents! \
-                                         expecting comma.")
+                _ => cx.span_fatal(sp, "concat_idents! expecting comma.")
             }
         } else {
             match *e {
                 ast::tt_tok(_, token::IDENT(ident,_)) =>
                 res_str += cx.str_of(ident),
-                _ => cx.span_fatal(sp, ~"concat_idents! \
-                                         requires ident args.")
+                _ => cx.span_fatal(sp, "concat_idents! requires ident args.")
             }
         }
     }

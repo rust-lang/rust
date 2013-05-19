@@ -127,7 +127,7 @@ pub fn get_rustpkg_sysroot() -> Result<Path, ~str> {
 }
 
 pub fn get_rustpkg_root() -> Result<Path, ~str> {
-    match os::getenv(~"RUSTPKG_ROOT") {
+    match os::getenv("RUSTPKG_ROOT") {
         Some(ref _p) => result::Ok(Path((*_p))),
         None => match os::homedir() {
           Some(ref _q) => result::Ok((*_q).push(".rustpkg")),
@@ -181,5 +181,5 @@ pub fn libdir() -> ~str {
    if str::is_empty(libdir) {
       fail!("rustc compiled without CFG_LIBDIR environment variable");
    }
-   libdir
+   libdir.to_owned()
 }

@@ -539,8 +539,8 @@ impl<'self> MethodDef<'self> {
                     (opt_id, field, other_fields)
                 }
             }
-            [] => { cx.span_bug(span, ~"No self arguments to non-static \
-                                        method in generic `deriving`") }
+            [] => { cx.span_bug(span, "No self arguments to non-static \
+                                       method in generic `deriving`") }
         };
 
         // body of the inner most destructuring match
@@ -658,8 +658,8 @@ impl<'self> MethodDef<'self> {
             // we've matched against all arguments, so make the final
             // expression at the bottom of the match tree
             if matches_so_far.len() == 0 {
-                cx.span_bug(span, ~"no self match on an enum in generic \
-                                    `deriving`");
+                cx.span_bug(span, "no self match on an enum in generic \
+                                   `deriving`");
             }
             // we currently have a vec of vecs, where each
             // subvec is the fields of one of the arguments,
@@ -718,8 +718,8 @@ impl<'self> MethodDef<'self> {
                 // make a matching-variant match, and a _ match.
                 let index = match matching {
                     Some(i) => i,
-                    None => cx.span_bug(span, ~"Non-matching variants when required to \
-                                                be matching in generic `deriving`")
+                    None => cx.span_bug(span, "Non-matching variants when required to \
+                                               be matching in generic `deriving`")
                 };
 
                 // matching-variant match

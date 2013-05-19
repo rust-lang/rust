@@ -317,7 +317,7 @@ pub fn load_environment(fcx: fn_ctxt,
         Some(ll) => ll,
         None => {
             let ll =
-                str::as_c_str(~"load_env",
+                str::as_c_str("load_env",
                               |buf|
                               unsafe {
                                 llvm::LLVMAppendBasicBlock(fcx.llfn, buf)
@@ -516,7 +516,7 @@ pub fn make_opaque_cbox_take_glue(
         let bcx = callee::trans_lang_call(
             bcx,
             bcx.tcx().lang_items.exchange_malloc_fn(),
-            ~[opaque_tydesc, sz],
+            [opaque_tydesc, sz],
             expr::SaveIn(rval));
         let cbox_out = PointerCast(bcx, Load(bcx, rval), llopaquecboxty);
         call_memcpy(bcx, cbox_out, cbox_in, sz);
@@ -589,7 +589,7 @@ pub fn make_opaque_cbox_free_glue(
             ast::ManagedSigil => glue::trans_free(bcx, cbox),
             ast::OwnedSigil => glue::trans_exchange_free(bcx, cbox),
             ast::BorrowedSigil => {
-                bcx.sess().bug(~"impossible")
+                bcx.sess().bug("impossible")
             }
         }
     }

@@ -93,14 +93,14 @@ pub fn trans_if(bcx: block,
             trans_block(else_bcx_in, blk, dest)
           }
           // would be nice to have a constraint on ifs
-          _ => bcx.tcx().sess.bug(~"strange alternative in if")
+          _ => bcx.tcx().sess.bug("strange alternative in if")
         }
       }
       _ => else_bcx_in
     };
     let else_bcx_out = trans_block_cleanups(else_bcx_out,
                                             block_cleanups(else_bcx_in));
-    return join_blocks(bcx, ~[then_bcx_out, else_bcx_out]);
+    return join_blocks(bcx, [then_bcx_out, else_bcx_out]);
 
 }
 
@@ -228,7 +228,7 @@ pub fn trans_log(log_ex: @ast::expr,
             let val = val_datum.to_ref_llval(bcx);
             let did = bcx.tcx().lang_items.log_type_fn();
             let bcx = callee::trans_lang_call_with_type_params(
-                bcx, did, ~[level, val], ~[val_datum.ty], expr::Ignore);
+                bcx, did, [level, val], [val_datum.ty], expr::Ignore);
             bcx
         }
     }

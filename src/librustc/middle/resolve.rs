@@ -2584,7 +2584,7 @@ pub impl Resolver {
                         match result {
                             Failed => {
                                 self.session.span_err(span,
-                                                      ~"unresolved name");
+                                                      "unresolved name");
                                 return Failed;
                             }
                             Indeterminate => {
@@ -2966,7 +2966,7 @@ pub impl Resolver {
         if index != import_count {
             let sn = self.session.codemap.span_to_snippet(imports[index].span);
             if str::contains(sn, "::") {
-                self.session.span_err(imports[index].span, ~"unresolved import");
+                self.session.span_err(imports[index].span, "unresolved import");
             } else {
                 let err = fmt!("unresolved import (maybe you meant `%s::*`?)",
                                sn.slice(0, sn.len() - 1)); // -1 to adjust for semicolon
@@ -3249,14 +3249,14 @@ pub impl Resolver {
 
                         self.session.span_err(
                             span,
-                            ~"attempted dynamic environment-capture");
+                            "attempted dynamic environment-capture");
                     } else {
                         // This was an attempt to use a type parameter outside
                         // its scope.
 
                         self.session.span_err(span,
-                                              ~"attempt to use a type \
-                                               argument out of scope");
+                                              "attempt to use a type \
+                                              argument out of scope");
                     }
 
                     return None;
@@ -3271,14 +3271,14 @@ pub impl Resolver {
 
                         self.session.span_err(
                             span,
-                            ~"attempted dynamic environment-capture");
+                            "attempted dynamic environment-capture");
                     } else {
                         // This was an attempt to use a type parameter outside
                         // its scope.
 
                         self.session.span_err(span,
-                                              ~"attempt to use a type \
-                                               argument out of scope");
+                                              "attempt to use a type \
+                                              argument out of scope");
                     }
 
                     return None;
@@ -3286,8 +3286,8 @@ pub impl Resolver {
                 ConstantItemRibKind => {
                     // Still doesn't deal with upvars
                     self.session.span_err(span,
-                                          ~"attempt to use a non-constant \
-                                            value in a constant");
+                                          "attempt to use a non-constant \
+                                           value in a constant");
 
                 }
             }
@@ -3352,7 +3352,7 @@ pub impl Resolver {
         // This is used to allow the test runner to run unexported tests.
         let orig_xray_flag = self.xray_context;
         if contains_name(attr_metas(item.attrs),
-                         ~"!resolve_unexported") {
+                         "!resolve_unexported") {
             self.xray_context = Xray;
         }
 
@@ -3424,8 +3424,8 @@ pub impl Resolver {
                                                 visitor) {
                             None =>
                                 self.session.span_err(trt.path.span,
-                                                      ~"attempt to derive a \
-                                                       nonexistent trait"),
+                                                      "attempt to derive a \
+                                                      nonexistent trait"),
                             Some(def) => {
                                 // Write a mapping from the trait ID to the
                                 // definition of the trait into the definition
@@ -3699,8 +3699,8 @@ pub impl Resolver {
         match self.resolve_path(trait_reference.path, TypeNS, true, visitor) {
             None => {
                 self.session.span_err(trait_reference.path.span,
-                                      ~"attempt to implement an \
-                                        unknown trait");
+                                      "attempt to implement an \
+                                       unknown trait");
             }
             Some(def) => {
                 self.record_def(trait_reference.ref_id, def);
@@ -4094,8 +4094,8 @@ pub impl Resolver {
                         }
                         FoundConst(_) => {
                             self.session.span_err(pattern.span,
-                                                  ~"only refutable patterns \
-                                                    allowed here");
+                                                  "only refutable patterns \
+                                                   allowed here");
                         }
                         BareIdentifierPatternUnresolved => {
                             debug!("(resolving pattern) binding `%s`",
@@ -4195,7 +4195,7 @@ pub impl Resolver {
                         }
                         None => {
                             self.session.span_err(path.span,
-                                                  ~"unresolved enum variant");
+                                                  "unresolved enum variant");
                         }
                     }
 
@@ -4223,8 +4223,8 @@ pub impl Resolver {
                         }
                         None => {
                             self.session.span_err(path.span,
-                                                  ~"unresolved enum variant, \
-                                                    struct or const");
+                                                  "unresolved enum variant, \
+                                                   struct or const");
                         }
                     }
 
@@ -4598,8 +4598,8 @@ pub impl Resolver {
                         Some(dl_def(def)) => return Some(def),
                         _ => {
                             self.session.span_bug(span,
-                                                  ~"self wasn't mapped to a \
-                                                    def?!")
+                                                  "self wasn't mapped to a \
+                                                   def?!")
                         }
                     }
                 }
@@ -4829,8 +4829,8 @@ pub impl Resolver {
                     }
                     Some(_) => {
                         self.session.span_bug(expr.span,
-                                              ~"label wasn't mapped to a \
-                                                label def!")
+                                              "label wasn't mapped to a \
+                                               label def!")
                     }
                 }
             }
@@ -4839,8 +4839,8 @@ pub impl Resolver {
                 match self.resolve_self_value_in_local_ribs(expr.span) {
                     None => {
                         self.session.span_err(expr.span,
-                                              ~"`self` is not allowed in \
-                                                this context")
+                                              "`self` is not allowed in \
+                                               this context")
                     }
                     Some(def) => self.record_def(expr.id, def),
                 }

@@ -136,10 +136,10 @@ priv impl<T> DList<T> {
         }
         if !nobe.linked { fail!("That node isn't linked to any dlist.") }
         if !((nobe.prev.is_some()
-              || managed::mut_ptr_eq(self.hd.expect(~"headless dlist?"),
+              || managed::mut_ptr_eq(self.hd.expect("headless dlist?"),
                                  nobe)) &&
              (nobe.next.is_some()
-              || managed::mut_ptr_eq(self.tl.expect(~"tailless dlist?"),
+              || managed::mut_ptr_eq(self.tl.expect("tailless dlist?"),
                                  nobe))) {
             fail!("That node isn't on this dlist.")
         }
@@ -514,10 +514,10 @@ impl<T> BaseIter<T> for @mut DList<T> {
             }
             if !nobe.linked ||
                 (!((nobe.prev.is_some()
-                    || managed::mut_ptr_eq(self.hd.expect(~"headless dlist?"),
+                    || managed::mut_ptr_eq(self.hd.expect("headless dlist?"),
                                            nobe))
                    && (nobe.next.is_some()
-                    || managed::mut_ptr_eq(self.tl.expect(~"tailless dlist?"),
+                    || managed::mut_ptr_eq(self.tl.expect("tailless dlist?"),
                                            nobe)))) {
                 fail!("Removing a dlist node during iteration is forbidden!")
             }
