@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use option::{Option, Some, None};
 use rt::sched::Scheduler;
+use rt::task::Task;
 use rt::local_ptr;
 
 pub trait Local {
@@ -17,6 +19,7 @@ pub trait Local {
     fn exists() -> bool;
     fn borrow(f: &fn(&mut Self));
     unsafe fn unsafe_borrow() -> *mut Self;
+    unsafe fn try_unsafe_borrow() -> Option<*mut Self>;
 }
 
 impl Local for Scheduler {
@@ -25,6 +28,44 @@ impl Local for Scheduler {
     fn exists() -> bool { local_ptr::exists() }
     fn borrow(f: &fn(&mut Scheduler)) { unsafe { local_ptr::borrow(f) } }
     unsafe fn unsafe_borrow() -> *mut Scheduler { local_ptr::unsafe_borrow() }
+    unsafe fn try_unsafe_borrow() -> Option<*mut Scheduler> { abort!("unimpl") }
+}
+
+impl Local for Task {
+    fn put(value: ~Task) { abort!("unimpl") }
+    fn take() -> ~Task { abort!("unimpl") }
+    fn exists() -> bool { abort!("unimpl") }
+    fn borrow(f: &fn(&mut Task)) {
+        do Local::borrow::<Scheduler> |sched| {
+            match sched.current_task {
+                Some(~ref mut task) => {
+                    f(&mut *task.task)
+                }
+                None => {
+                    abort!("no scheduler")
+                }
+            }
+        }
+    }
+    unsafe fn unsafe_borrow() -> *mut Task {
+        match (*Local::unsafe_borrow::<Scheduler>()).current_task {
+            Some(~ref mut task) => {
+                let s: *mut Task = &mut *task.task;
+                return s;
+            }
+            None => {
+                // Don't fail. Infinite recursion
+                abort!("no scheduler")
+            }
+        }
+    }
+    unsafe fn try_unsafe_borrow() -> Option<*mut Task> {
+        if Local::exists::<Scheduler>() {
+            Some(Local::unsafe_borrow())
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]

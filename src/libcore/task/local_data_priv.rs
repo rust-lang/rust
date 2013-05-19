@@ -18,7 +18,7 @@ use task::rt;
 use local_data::LocalDataKey;
 
 use super::rt::rust_task;
-use rt::task::LocalStorage;
+use rt::task::{Task, LocalStorage};
 
 pub enum Handle {
     OldHandle(*rust_task),
@@ -28,14 +28,14 @@ pub enum Handle {
 impl Handle {
     pub fn new() -> Handle {
         use rt::{context, OldTaskContext};
-        use rt::task::unsafe_borrow_local_task;
+        use rt::local::Local;
         unsafe {
             match context() {
                 OldTaskContext => {
                     OldHandle(rt::rust_get_task())
                 }
                 _ => {
-                    let task = unsafe_borrow_local_task();
+                    let task = Local::unsafe_borrow::<Task>();
                     NewHandle(&mut (*task).storage)
                 }
             }
