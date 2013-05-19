@@ -8,9 +8,33 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/**
+/*!
  * Concurrency-enabled mechanisms for sharing mutable and/or immutable state
  * between tasks.
+ *
+ * # Example
+ *
+ * In this example, a large vector of floats is shared between several tasks.
+ * With simple pipes, without ARC, a copy would have to be made for each task.
+ *
+ * ~~~
+ * # extern mod std;
+ * # use std::arc;
+ * let numbers=vec::from_fn(100, |ind| (ind as float)*rand::random());
+ * let shared_numbers=arc::ARC(numbers);
+ *
+ *   for 10.times {
+ *       let (port, chan)  = stream();
+ *       chan.send(shared_numbers.clone());
+ *
+ *       do spawn {
+ *           let shared_numbers=port.recv();
+ *           let local_numbers=shared_numbers.get();
+ *
+ *           // Work with the local numbers
+ *       }
+ *   }
+ * ~~~
  */
 
 use sync;
