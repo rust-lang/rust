@@ -635,7 +635,7 @@ impl<T:Reader> ReaderUtil for T {
                     let next = bytes[i] as int;
                     i += 1;
                     assert!((next > -1));
-                    assert!((next & 192 == 128));
+                    assert_eq!(next & 192, 128);
                     val <<= 6;
                     val += (next & 63) as uint;
                 }
@@ -676,7 +676,7 @@ impl<T:Reader> ReaderUtil for T {
         if c.len() == 0 {
             return -1 as char; // FIXME will this stay valid? // #2004
         }
-        assert!(c.len() == 1);
+        assert_eq!(c.len(), 1);
         return c[0];
     }
 
@@ -1795,14 +1795,14 @@ mod tests {
         let inp: @io::Reader = result::get(&io::file_reader(tmpfile));
         let frood2: ~str = inp.read_c_str();
         debug!(copy frood2);
-        assert!(frood == frood2);
+        assert_eq!(frood, frood2);
     }
 
     #[test]
     fn test_readchars_empty() {
         do io::with_str_reader(~"") |inp| {
             let res : ~[char] = inp.read_chars(128);
-            assert!(res.len() == 0);
+            assert_eq!(res.len(), 0);
         }
     }
 
@@ -1810,18 +1810,18 @@ mod tests {
     fn test_read_line_utf8() {
         do io::with_str_reader(~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤") |inp| {
             let line = inp.read_line();
-            assert!(line == ~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤");
+            assert_eq!(line, ~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤");
         }
     }
 
     #[test]
     fn test_read_lines() {
         do io::with_str_reader(~"a\nb\nc\n") |inp| {
-            assert!(inp.read_lines() == ~[~"a", ~"b", ~"c"]);
+            assert_eq!(inp.read_lines(), ~[~"a", ~"b", ~"c"]);
         }
 
         do io::with_str_reader(~"a\nb\nc") |inp| {
-            assert!(inp.read_lines() == ~[~"a", ~"b", ~"c"]);
+            assert_eq!(inp.read_lines(), ~[~"a", ~"b", ~"c"]);
         }
 
         do io::with_str_reader(~"") |inp| {
@@ -1842,7 +1842,7 @@ mod tests {
             do io::with_str_reader(s) |inp| {
                 let res : ~[char] = inp.read_chars(len);
                 if len <= ivals.len() {
-                    assert!(res.len() == len);
+                    assert_eq!(res.len(), len);
                 }
                 assert!(vec::slice(ivals, 0u, res.len()) ==
                              vec::map(res, |x| *x as int));
@@ -1861,7 +1861,7 @@ mod tests {
     fn test_readchar() {
         do io::with_str_reader(~"生") |inp| {
             let res : char = inp.read_char();
-            assert!((res as int == 29983));
+            assert_eq!(res as int, 29983);
         }
     }
 
@@ -1869,7 +1869,7 @@ mod tests {
     fn test_readchar_empty() {
         do io::with_str_reader(~"") |inp| {
             let res : char = inp.read_char();
-            assert!((res as int == -1));
+            assert_eq!(res as int, -1);
         }
     }
 
@@ -1877,7 +1877,7 @@ mod tests {
     fn file_reader_not_exist() {
         match io::file_reader(&Path("not a file")) {
           result::Err(copy e) => {
-            assert!(e == ~"error opening not a file");
+            assert_eq!(e, ~"error opening not a file");
           }
           result::Ok(_) => fail!()
         }
@@ -1966,7 +1966,7 @@ mod tests {
         {
             let file = io::file_reader(&path).get();
             for uints.each |i| {
-                assert!(file.read_le_u64() == *i);
+                assert_eq!(file.read_le_u64(), *i);
             }
         }
     }
@@ -1988,7 +1988,7 @@ mod tests {
         {
             let file = io::file_reader(&path).get();
             for uints.each |i| {
-                assert!(file.read_be_u64() == *i);
+                assert_eq!(file.read_be_u64(), *i);
             }
         }
     }
@@ -2012,7 +2012,7 @@ mod tests {
             for ints.each |i| {
                 // this tests that the sign extension is working
                 // (comparing the values as i32 would not test this)
-                assert!(file.read_be_int_n(4) == *i as i64);
+                assert_eq!(file.read_be_int_n(4), *i as i64);
             }
         }
     }
@@ -2031,7 +2031,7 @@ mod tests {
         {
             let file = io::file_reader(&path).get();
             let f = file.read_be_f32();
-            assert!(f == 8.1250);
+            assert_eq!(f, 8.1250);
         }
     }
 
@@ -2048,8 +2048,8 @@ mod tests {
 
         {
             let file = io::file_reader(&path).get();
-            assert!(file.read_be_f32() == 8.1250);
-            assert!(file.read_le_f32() == 8.1250);
+            assert_eq!(file.read_be_f32(), 8.1250);
+            assert_eq!(file.read_le_f32(), 8.1250);
         }
     }
 }

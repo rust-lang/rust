@@ -165,9 +165,9 @@ mod tests {
 
         set(cv, 3u, 8u8);
         set(cv, 4u, 9u8);
-        assert!(get(cv, 3u) == 8u8);
-        assert!(get(cv, 4u) == 9u8);
-        assert!(len(cv) == 16u);
+        assert_eq!(get(cv, 3u), 8u8);
+        assert_eq!(get(cv, 4u), 9u8);
+        assert_eq!(len(cv), 16u);
     }
 
     #[test]
@@ -195,7 +195,7 @@ mod tests {
 
         set(cv, 0u, 32u8);
         set(cv, 1u, 33u8);
-        assert!(unsafe { *p } == 32u8);
+        assert_eq!(unsafe { *p }, 32u8);
         set(cv, 2u, 34u8); /* safety */
     }
 

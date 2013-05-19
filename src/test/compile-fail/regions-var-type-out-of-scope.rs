@@ -15,7 +15,7 @@ fn foo(cond: bool) {
 
     if cond {
         x = &3; //~ ERROR borrowed value does not live long enough
-        assert!((*x == 3));
+        assert_eq!(*x, 3);
     }
 }
 

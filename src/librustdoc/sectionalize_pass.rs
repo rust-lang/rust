@@ -236,7 +236,7 @@ mod test {
               Body\"]\
               mod a {
 }");
-        assert!(doc.cratemod().mods()[0].desc() == None);
+        assert_eq!(doc.cratemod().mods()[0].desc(), None);
     }
 
     #[test]
@@ -247,7 +247,7 @@ mod test {
               # Header\n\
               Body\"]\
               fn a(); }");
-        assert!(doc.cratemod().traits()[0].methods[0].sections.len() == 1u);
+        assert_eq!(doc.cratemod().traits()[0].methods[0].sections.len(), 1u);
     }
 
     #[test]
@@ -258,6 +258,6 @@ mod test {
               # Header\n\
               Body\"]\
               fn a() { } }");
-        assert!(doc.cratemod().impls()[0].methods[0].sections.len() == 1u);
+        assert_eq!(doc.cratemod().impls()[0].methods[0].sections.len(), 1u);
     }
 }

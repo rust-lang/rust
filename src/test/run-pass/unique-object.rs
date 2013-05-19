@@ -25,5 +25,5 @@ impl Foo for Bar {
 pub fn main() {
     let x = ~Bar { x: 10 };
     let y = x as ~Foo;
-    assert!(y.f() == 10);
+    assert_eq!(y.f(), 10);
 }

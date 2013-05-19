@@ -79,10 +79,10 @@ fn test_success() {
         i = 10;
     }).finally {
         assert!(!failing());
-        assert!(i == 10);
+        assert_eq!(i, 10);
         i = 20;
     }
-    assert!(i == 20);
+    assert_eq!(i, 20);
 }
 
 #[test]
@@ -95,7 +95,7 @@ fn test_fail() {
         fail!();
     }).finally {
         assert!(failing());
-        assert!(i == 10);
+        assert_eq!(i, 10);
     }
 }
 
@@ -103,7 +103,7 @@ fn test_fail() {
 fn test_retval() {
     let closure: &fn() -> int = || 10;
     let i = do closure.finally { };
-    assert!(i == 10);
+    assert_eq!(i, 10);
 }
 
 #[test]
@@ -134,6 +134,6 @@ fn test_managed() {
         *i += 10;
         r
     };
-    assert!(do managed.finally {} == 10);
-    assert!(*i == 20);
+    assert_eq!(do managed.finally {}, 10);
+    assert_eq!(*i, 20);
 }

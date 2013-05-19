@@ -680,7 +680,7 @@ pub impl RegionVarBindings {
             match undo_item {
               Snapshot => {}
               AddVar(vid) => {
-                assert!(self.var_spans.len() == vid.to_uint() + 1);
+                assert_eq!(self.var_spans.len(), vid.to_uint() + 1);
                 self.var_spans.pop();
               }
               AddConstraint(ref constraint) => {
@@ -1440,7 +1440,7 @@ pub impl RegionVarBindings {
 
         return match a_node.value {
             NoValue => {
-                assert!(a_node.classification == Contracting);
+                assert_eq!(a_node.classification, Contracting);
                 a_node.value = Value(b_region);
                 true // changed
             }

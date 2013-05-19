@@ -11,5 +11,5 @@
 pub fn main() {
     let x = 1;
     let y = 1;
-    assert!(&x == &y);
+    assert_eq!(&x, &y);
 }

@@ -1623,7 +1623,7 @@ mod test {
         // This is what we are actually testing!
         assert!(net::ip::format_addr(&sock.get_peer_addr()) ==
             ~"127.0.0.1");
-        assert!(net::ip::get_port(&sock.get_peer_addr()) == 8887);
+        assert_eq!(net::ip::get_port(&sock.get_peer_addr()), 8887);
 
         // Fulfill the protocol the test server expects
         let resp_bytes = str::to_bytes(~"ping");

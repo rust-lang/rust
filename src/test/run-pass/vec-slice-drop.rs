@@ -32,7 +32,7 @@ pub fn main() {
     let x = @mut 0;
     {
         let l = &[foo(x)];
-        assert!(*l[0].x == 0);
+        assert_eq!(*l[0].x, 0);
     }
-    assert!(*x == 1);
+    assert_eq!(*x, 1);
 }

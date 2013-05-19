@@ -355,8 +355,8 @@ pub mod ct {
 
         fn test(s: &str, flags: &[Flag], next: uint) {
             let f = parse_flags(s, 0, s.len());
-            assert!(pack(f.val) == pack(flags));
-            assert!(f.next == next);
+            assert_eq!(pack(f.val), pack(flags));
+            assert_eq!(f.next, next);
         }
 
         test("", [], 0);
@@ -459,10 +459,10 @@ pub mod ct {
         assert!(peek_num(s2, 0, s2.len()).is_none());
 
         let s3 = "123";
-        assert!(peek_num(s3, 0, s3.len()) == Some(Parsed::new(123, 3)));
+        assert_eq!(peek_num(s3, 0, s3.len()), Some(Parsed::new(123, 3)));
 
         let s4 = "123foo";
-        assert!(peek_num(s4, 0, s4.len()) == Some(Parsed::new(123, 3)));
+        assert_eq!(peek_num(s4, 0, s4.len()), Some(Parsed::new(123, 3)));
     }
 }
 

@@ -59,7 +59,7 @@ fn map_slices<A:Copy + Owned,B:Copy + Owned>(
                         let slice : &[A] =
                             cast::transmute(slice);
                         info!("slice: %?", (base, slice.len(), end - base));
-                        assert!(slice.len() == end - base);
+                        assert_eq!(slice.len(), end - base);
                         f(base, slice)
                     }
                 };
@@ -70,7 +70,7 @@ fn map_slices<A:Copy + Owned,B:Copy + Owned>(
         info!("tasks spawned");
 
         info!("num_tasks: %?", (num_tasks, futures.len()));
-        assert!((num_tasks == futures.len()));
+        assert_eq!(num_tasks, futures.len());
 
         let r = do vec::map_consume(futures) |ys| {
             let mut ys = ys;
@@ -106,7 +106,7 @@ pub fn mapi<A:Copy + Owned,B:Copy + Owned>(
     });
     let r = vec::concat(slices);
     info!("%?", (r.len(), xs.len()));
-    assert!((r.len() == xs.len()));
+    assert_eq!(r.len(), xs.len());
     r
 }
 

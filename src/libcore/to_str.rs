@@ -182,30 +182,30 @@ mod tests {
     use container::Set;
     #[test]
     fn test_simple_types() {
-        assert!(1i.to_str() == ~"1");
-        assert!((-1i).to_str() == ~"-1");
-        assert!(200u.to_str() == ~"200");
-        assert!(2u8.to_str() == ~"2");
-        assert!(true.to_str() == ~"true");
-        assert!(false.to_str() == ~"false");
-        assert!(().to_str() == ~"()");
-        assert!((~"hi").to_str() == ~"hi");
-        assert!((@"hi").to_str() == ~"hi");
+        assert_eq!(1i.to_str(), ~"1");
+        assert_eq!((-1i).to_str(), ~"-1");
+        assert_eq!(200u.to_str(), ~"200");
+        assert_eq!(2u8.to_str(), ~"2");
+        assert_eq!(true.to_str(), ~"true");
+        assert_eq!(false.to_str(), ~"false");
+        assert_eq!(().to_str(), ~"()");
+        assert_eq!((~"hi").to_str(), ~"hi");
+        assert_eq!((@"hi").to_str(), ~"hi");
     }
 
     #[test]
     fn test_tuple_types() {
-        assert!((1, 2).to_str() == ~"(1, 2)");
-        assert!((~"a", ~"b", false).to_str() == ~"(a, b, false)");
-        assert!(((), ((), 100)).to_str() == ~"((), ((), 100))");
+        assert_eq!((1, 2).to_str(), ~"(1, 2)");
+        assert_eq!((~"a", ~"b", false).to_str(), ~"(a, b, false)");
+        assert_eq!(((), ((), 100)).to_str(), ~"((), ((), 100))");
     }
 
     #[test]
     fn test_vectors() {
         let x: ~[int] = ~[];
-        assert!(x.to_str() == ~"[]");
-        assert!((~[1]).to_str() == ~"[1]");
-        assert!((~[1, 2, 3]).to_str() == ~"[1, 2, 3]");
+        assert_eq!(x.to_str(), ~"[]");
+        assert_eq!((~[1]).to_str(), ~"[1]");
+        assert_eq!((~[1, 2, 3]).to_str(), ~"[1, 2, 3]");
         assert!((~[~[], ~[1], ~[1, 1]]).to_str() ==
                ~"[[], [1], [1, 1]]");
     }
@@ -221,7 +221,7 @@ mod tests {
         let table_str = table.to_str();
 
         assert!(table_str == ~"{1: 2, 3: 4}" || table_str == ~"{3: 4, 1: 2}");
-        assert!(empty.to_str() == ~"{}");
+        assert_eq!(empty.to_str(), ~"{}");
     }
 
     #[test]
@@ -235,6 +235,6 @@ mod tests {
         let set_str = set.to_str();
 
         assert!(set_str == ~"{1, 2}" || set_str == ~"{2, 1}");
-        assert!(empty_set.to_str() == ~"{}");
+        assert_eq!(empty_set.to_str(), ~"{}");
     }
 }

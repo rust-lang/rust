@@ -78,12 +78,12 @@ pub fn main() {
         debug!("y = %s", y);
 
         // per clang/gcc the alignment of `Inner` is 4 on x86.
-        assert!(rusti::min_align_of::<Inner>() == m::m::align());
+        assert_eq!(rusti::min_align_of::<Inner>(), m::m::align());
 
         // per clang/gcc the size of `Outer` should be 12
         // because `Inner`s alignment was 4.
-        assert!(sys::size_of::<Outer>() == m::m::size());
+        assert_eq!(sys::size_of::<Outer>(), m::m::size());
 
-        assert!(y == ~"{c8: 22, t: {c64: 44}}");
+        assert_eq!(y, ~"{c8: 22, t: {c64: 44}}");
     }
 }

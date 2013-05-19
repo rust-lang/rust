@@ -4,5 +4,5 @@ struct Foo<'self> {
 
 pub fn main() {
     let f = Foo { x: @3 };
-    assert!(*f.x == 3);
+    assert_eq!(*f.x, 3);
 }

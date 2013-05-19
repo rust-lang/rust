@@ -87,7 +87,7 @@ mod test {
             let mut writer: Option<MemWriter> = Some(MemWriter::new());
             writer.write([0, 1, 2]);
             writer.flush();
-            assert!(writer.unwrap().inner() == ~[0, 1, 2]);
+            assert_eq!(writer.unwrap().inner(), ~[0, 1, 2]);
         }
     }
 
@@ -98,7 +98,7 @@ mod test {
 
             let mut called = false;
             do io_error::cond.trap(|err| {
-                assert!(err.kind == PreviousIoError);
+                assert_eq!(err.kind, PreviousIoError);
                 called = true;
             }).in {
                 writer.write([0, 0, 0]);
@@ -107,7 +107,7 @@ mod test {
 
             let mut called = false;
             do io_error::cond.trap(|err| {
-                assert!(err.kind == PreviousIoError);
+                assert_eq!(err.kind, PreviousIoError);
                 called = true;
             }).in {
                 writer.flush();
@@ -122,7 +122,7 @@ mod test {
             let mut reader: Option<MemReader> = Some(MemReader::new(~[0, 1, 2, 3]));
             let mut buf = [0, 0];
             reader.read(buf);
-            assert!(buf == [0, 1]);
+            assert_eq!(buf, [0, 1]);
             assert!(!reader.eof());
         }
     }
@@ -134,7 +134,7 @@ mod test {
 
         let mut called = false;
         do read_error::cond.trap(|err| {
-            assert!(err.kind == PreviousIoError);
+            assert_eq!(err.kind, PreviousIoError);
             called = true;
         }).in {
             reader.read(buf);
@@ -143,7 +143,7 @@ mod test {
 
         let mut called = false;
         do io_error::cond.trap(|err| {
-            assert!(err.kind == PreviousIoError);
+            assert_eq!(err.kind, PreviousIoError);
             called = true;
         }).in {
             assert!(reader.eof());

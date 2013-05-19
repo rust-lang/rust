@@ -231,7 +231,7 @@ impl ToStr for UvError {
 fn error_smoke_test() {
     let err = uvll::uv_err_t { code: 1, sys_errno_: 1 };
     let err: UvError = UvError(err);
-    assert!(err.to_str() == ~"EOF: end of file");
+    assert_eq!(err.to_str(), ~"EOF: end of file");
 }
 
 pub fn last_uv_error<H, W: Watcher + NativeHandle<*H>>(watcher: &W) -> UvError {
@@ -397,7 +397,7 @@ fn idle_smoke_test() {
         }
         loop_.run();
         loop_.close();
-        assert!(count == 10);
+        assert_eq!(count, 10);
     }
 }
 

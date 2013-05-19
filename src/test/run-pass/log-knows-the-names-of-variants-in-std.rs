@@ -19,7 +19,7 @@ enum foo {
 }
 
 fn check_log<T>(exp: ~str, v: T) {
-    assert!(exp == fmt!("%?", v));
+    assert_eq!(exp, fmt!("%?", v));
 }
 
 pub fn main() {

@@ -13,5 +13,5 @@ struct X { x: int }
 pub fn main() {
     let x = ~X {x: 1};
     let bar = x;
-    assert!(bar.x == 1);
+    assert_eq!(bar.x, 1);
 }

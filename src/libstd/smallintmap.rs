@@ -249,16 +249,16 @@ mod tests {
     #[test]
     fn test_len() {
         let mut map = SmallIntMap::new();
-        assert!(map.len() == 0);
+        assert_eq!(map.len(), 0);
         assert!(map.is_empty());
         assert!(map.insert(5, 20));
-        assert!(map.len() == 1);
+        assert_eq!(map.len(), 1);
         assert!(!map.is_empty());
         assert!(map.insert(11, 12));
-        assert!(map.len() == 2);
+        assert_eq!(map.len(), 2);
         assert!(!map.is_empty());
         assert!(map.insert(14, 22));
-        assert!(map.len() == 3);
+        assert_eq!(map.len(), 3);
         assert!(!map.is_empty());
     }
 
@@ -297,9 +297,9 @@ mod tests {
         map.update_with_key(3, 2, addMoreToCount);
 
         // check the total counts
-        assert!(map.find(&3).get() == &10);
-        assert!(map.find(&5).get() == &3);
-        assert!(map.find(&9).get() == &1);
+        assert_eq!(map.find(&3).get(), &10);
+        assert_eq!(map.find(&5).get(), &3);
+        assert_eq!(map.find(&9).get(), &1);
 
         // sadly, no sevens were counted
         assert!(map.find(&7).is_none());
@@ -308,16 +308,16 @@ mod tests {
     #[test]
     fn test_swap() {
         let mut m = SmallIntMap::new();
-        assert!(m.swap(1, 2) == None);
-        assert!(m.swap(1, 3) == Some(2));
-        assert!(m.swap(1, 4) == Some(3));
+        assert_eq!(m.swap(1, 2), None);
+        assert_eq!(m.swap(1, 3), Some(2));
+        assert_eq!(m.swap(1, 4), Some(3));
     }
 
     #[test]
     fn test_pop() {
         let mut m = SmallIntMap::new();
         m.insert(1, 2);
-        assert!(m.pop(&1) == Some(2));
-        assert!(m.pop(&1) == None);
+        assert_eq!(m.pop(&1), Some(2));
+        assert_eq!(m.pop(&1), None);
     }
 }

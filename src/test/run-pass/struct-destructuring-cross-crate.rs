@@ -16,6 +16,6 @@ extern mod struct_destructuring_cross_crate;
 pub fn main() {
     let x = struct_destructuring_cross_crate::S { x: 1, y: 2 };
     let struct_destructuring_cross_crate::S { x: a, y: b } = x;
-    assert!(a == 1);
-    assert!(b == 2);
+    assert_eq!(a, 1);
+    assert_eq!(b, 2);
 }

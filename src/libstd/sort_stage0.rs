@@ -261,7 +261,7 @@ fn binarysort<T:Copy + Ord>(array: &mut [T], start: uint) {
                 left = mid+1;
             }
         }
-        assert!(left == right);
+        assert_eq!(left, right);
         let n = start-left;
 
         copy_vec(array, left+1, array, left, n);
@@ -357,7 +357,7 @@ fn gallop_left<T:Copy + Ord>(key: &const T,
             ofs = m;
         }
     }
-    assert!(last_ofs == ofs);
+    assert_eq!(last_ofs, ofs);
     return ofs;
 }
 
@@ -410,7 +410,7 @@ fn gallop_right<T:Copy + Ord>(key: &const T,
             ofs = m;
         }
     }
-    assert!(last_ofs == ofs);
+    assert_eq!(last_ofs, ofs);
     return ofs;
 }
 
@@ -449,7 +449,7 @@ impl<T:Copy + Ord> MergeState<T> {
         let l2 = self.runs[n+1].len;
 
         assert!(l1 > 0 && l2 > 0);
-        assert!(b1 + l1 == b2);
+        assert_eq!(b1 + l1, b2);
 
         self.runs[n].len = l1 + l2;
         if n == size-3 {
@@ -579,7 +579,7 @@ impl<T:Copy + Ord> MergeState<T> {
         } else if len1 == 0 {
             fail!("Comparison violates its contract!");
         } else {
-            assert!(len2 == 0);
+            assert_eq!(len2, 0);
             assert!(len1 > 1);
             copy_vec(array, dest, tmp, c1, len1);
         }
@@ -587,7 +587,7 @@ impl<T:Copy + Ord> MergeState<T> {
 
     fn merge_hi(&mut self, array: &mut [T], base1: uint, len1: uint,
                 base2: uint, len2: uint) {
-        assert!(len1 != 1 && len2 != 0 && base1 + len1 == base2);
+        assert!(len1 != 1 && len2 != 0 && base1+len1 == base2);
 
         let mut tmp = ~[];
         for uint::range(base2, base2+len2) |i| {
@@ -701,7 +701,7 @@ impl<T:Copy + Ord> MergeState<T> {
         } else if len2 == 0 {
             fail!("Comparison violates its contract!");
         } else {
-            assert!(len1 == 0);
+            assert_eq!(len1, 0);
             assert!(len2 != 0);
             copy_vec(array, dest-(len2-1), tmp, 0, len2);
         }
@@ -766,7 +766,7 @@ mod test_qsort3 {
         let mut i = 0;
         while i < len {
             // debug!(v2[i]);
-            assert!((v2[i] == v1[i]));
+            assert_eq!(v2[i], v1[i]);
             i += 1;
         }
     }
@@ -811,7 +811,7 @@ mod test_qsort {
         let mut i = 0u;
         while i < len {
             // debug!(v2[i]);
-            assert!((v2[i] == v1[i]));
+            assert_eq!(v2[i], v1[i]);
             i += 1;
         }
     }
@@ -856,7 +856,7 @@ mod test_qsort {
         for pairs.each |p| {
             let (a, b) = *p;
             debug!("%d %d", a, b);
-            assert!((a == b));
+            assert_eq!(a, b);
         }
     }
 }
@@ -876,7 +876,7 @@ mod tests {
         let mut i = 0u;
         while i < len {
             debug!(v3[i]);
-            assert!((v3[i] == v2[i]));
+            assert_eq!(v3[i], v2[i]);
             i += 1;
         }
     }
@@ -903,7 +903,7 @@ mod tests {
         pub fn le(a: &int, b: &int) -> bool { *a <= *b }
         let mut v1 = ~[3, 2, 1];
         let v2 = merge_sort(v1, le);
-        assert!(v2 == ~[1, 2, 3]);
+        assert_eq!(v2, ~[1, 2, 3]);
     }
 
     #[test]
@@ -925,7 +925,7 @@ mod tests {
         let names2 = ~["Alex Andy", "Jack Brown", "joe bob", "Joe Bob",
                        "JOE Bob", "JOE BOB", "Sally Mae"];
         let names3 = merge_sort(names1, ile);
-        assert!(names3 == names2);
+        assert_eq!(names3, names2);
     }
 }
 
@@ -955,7 +955,7 @@ mod test_tim_sort {
         let mut i = 0u;
         while i < len {
             // debug!(v2[i]);
-            assert!((v2[i] == v1[i]));
+            assert_eq!(v2[i], v1[i]);
             i += 1u;
         }
     }

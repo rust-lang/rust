@@ -217,15 +217,15 @@ fn test_context() {
     use rt::uv::uvio::UvEventLoop;
     use cell::Cell;
 
-    assert!(context() == OldTaskContext);
+    assert_eq!(context(), OldTaskContext);
     do run_in_bare_thread {
-        assert!(context() == GlobalContext);
+        assert_eq!(context(), GlobalContext);
         let mut sched = ~UvEventLoop::new_scheduler();
         let task = ~do Coroutine::new(&mut sched.stack_pool) {
-            assert!(context() == TaskContext);
+            assert_eq!(context(), TaskContext);
             let sched = local_sched::take();
             do sched.deschedule_running_task_and_then() |task| {
-                assert!(context() == SchedulerContext);
+                assert_eq!(context(), SchedulerContext);
                 let task = Cell(task);
                 do local_sched::borrow |sched| {
                     sched.enqueue_task(task.take());

@@ -273,22 +273,22 @@ pub mod reader {
     pub fn doc_as_str(d: Doc) -> ~str { str::from_bytes(doc_data(d)) }
 
     pub fn doc_as_u8(d: Doc) -> u8 {
-        assert!(d.end == d.start + 1u);
+        assert_eq!(d.end, d.start + 1u);
         (*d.data)[d.start]
     }
 
     pub fn doc_as_u16(d: Doc) -> u16 {
-        assert!(d.end == d.start + 2u);
+        assert_eq!(d.end, d.start + 2u);
         io::u64_from_be_bytes(*d.data, d.start, 2u) as u16
     }
 
     pub fn doc_as_u32(d: Doc) -> u32 {
-        assert!(d.end == d.start + 4u);
+        assert_eq!(d.end, d.start + 4u);
         io::u64_from_be_bytes(*d.data, d.start, 4u) as u32
     }
 
     pub fn doc_as_u64(d: Doc) -> u64 {
-        assert!(d.end == d.start + 8u);
+        assert_eq!(d.end, d.start + 8u);
         io::u64_from_be_bytes(*d.data, d.start, 8u)
     }
 
@@ -988,7 +988,7 @@ mod tests {
             let mut deser = reader::Decoder(ebml_doc);
             let v1 = serialize::Decodable::decode(&mut deser);
             debug!("v1 == %?", v1);
-            assert!(v == v1);
+            assert_eq!(v, v1);
         }
 
         test_v(Some(22));

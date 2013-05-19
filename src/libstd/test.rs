@@ -804,7 +804,7 @@ mod tests {
         let ch = SharedChan::new(ch);
         run_test(false, desc, ch);
         let (_, res) = p.recv();
-        assert!(res == TrIgnored);
+        assert_eq!(res, TrIgnored);
     }
 
     #[test]
@@ -823,7 +823,7 @@ mod tests {
         let ch = SharedChan::new(ch);
         run_test(false, desc, ch);
         let (_, res) = p.recv();
-        assert!(res == TrOk);
+        assert_eq!(res, TrOk);
     }
 
     #[test]
@@ -841,7 +841,7 @@ mod tests {
         let ch = SharedChan::new(ch);
         run_test(false, desc, ch);
         let (_, res) = p.recv();
-        assert!(res == TrFailed);
+        assert_eq!(res, TrFailed);
     }
 
     #[test]
@@ -901,9 +901,9 @@ mod tests {
         ];
         let filtered = filter_tests(&opts, tests);
 
-        assert!(filtered.len() == 1);
-        assert!((filtered[0].desc.name.to_str() == ~"1"));
-        assert!((filtered[0].desc.ignore == false));
+        assert_eq!(filtered.len(), 1);
+        assert_eq!(filtered[0].desc.name.to_str(), ~"1");
+        assert!(filtered[0].desc.ignore == false);
     }
 
     #[test]
@@ -958,7 +958,7 @@ mod tests {
         for pairs.each |p| {
             match *p {
                 (ref a, ref b) => {
-                    assert!((*a == b.desc.name.to_str()));
+                    assert!(*a == b.desc.name.to_str());
                 }
             }
         }

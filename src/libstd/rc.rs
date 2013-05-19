@@ -218,7 +218,7 @@ pub impl<T> RcMut<T> {
     #[inline]
     fn with_mut_borrow<U>(&self, f: &fn(&mut T) -> U) -> U {
         unsafe {
-            assert!((*self.ptr).borrow == Nothing);
+            assert_eq!((*self.ptr).borrow, Nothing);
             (*self.ptr).borrow = Mutable;
             let res = f(&mut (*self.ptr).value);
             (*self.ptr).borrow = Nothing;

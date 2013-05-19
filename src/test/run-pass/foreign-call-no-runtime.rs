@@ -19,6 +19,6 @@ pub fn main() {
 extern fn callback(data: libc::uintptr_t) {
     unsafe {
         let data: *int = cast::transmute(data);
-        assert!(*data == 100);
+        assert_eq!(*data, 100);
     }
 }

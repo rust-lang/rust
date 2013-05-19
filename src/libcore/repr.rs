@@ -220,7 +220,7 @@ pub impl ReprVisitor {
         } else if mtbl == 1 {
             // skip, this is ast::m_imm
         } else {
-            assert!(mtbl == 2);
+            assert_eq!(mtbl, 2);
             self.writer.write_str("const ");
         }
     }
@@ -592,7 +592,7 @@ fn test_repr() {
             error!("expected '%s', got '%s'",
                    e, s);
         }
-        assert!(s == e);
+        assert_eq!(s, e);
     }
 
     exact_test(&10, "10");
