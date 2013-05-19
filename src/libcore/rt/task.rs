@@ -16,7 +16,8 @@
 use prelude::*;
 use libc::{c_void, uintptr_t};
 use cast::transmute;
-use super::sched::local_sched;
+use super::sched::{Scheduler, local_sched};
+use rt::local::Local;
 use super::local_heap::LocalHeap;
 use rt::logging::StdErrLogger;
 
@@ -152,7 +153,7 @@ impl Unwinder {
 /// Borrow a pointer to the installed local services.
 /// Fails (likely aborting the process) if local services are not available.
 pub fn borrow_local_task(f: &fn(&mut Task)) {
-    do local_sched::borrow |sched| {
+    do Local::borrow::<Scheduler> |sched| {
         match sched.current_task {
             Some(~ref mut task) => {
                 f(&mut *task.task)
@@ -165,7 +166,7 @@ pub fn borrow_local_task(f: &fn(&mut Task)) {
 }
 
 pub unsafe fn unsafe_borrow_local_task() -> *mut Task {
-    match (*local_sched::unsafe_borrow()).current_task {
+    match (*Local::unsafe_borrow::<Scheduler>()).current_task {
         Some(~ref mut task) => {
             let s: *mut Task = &mut *task.task;
             return s;
@@ -178,7 +179,7 @@ pub unsafe fn unsafe_borrow_local_task() -> *mut Task {
 }
 
 pub unsafe fn unsafe_try_borrow_local_task() -> Option<*mut Task> {
-    if local_sched::exists() {
+    if Local::exists::<Scheduler>() {
         Some(unsafe_borrow_local_task())
     } else {
         None

@@ -12,17 +12,51 @@ use rt::sched::Scheduler;
 use rt::local_ptr;
 
 pub trait Local {
-    fn put_local(value: ~Self);
-    fn take_local() -> ~Self;
-    fn exists_local() -> bool;
-    fn borrow_local(f: &fn(&mut Self));
-    unsafe fn unsafe_borrow_local() -> *mut Self;
+    fn put(value: ~Self);
+    fn take() -> ~Self;
+    fn exists() -> bool;
+    fn borrow(f: &fn(&mut Self));
+    unsafe fn unsafe_borrow() -> *mut Self;
 }
 
 impl Local for Scheduler {
-    fn put_local(value: ~Scheduler) { unsafe { local_ptr::put(value) }}
-    fn take_local() -> ~Scheduler { unsafe { local_ptr::take() } }
-    fn exists_local() -> bool { local_ptr::exists() }
-    fn borrow_local(f: &fn(&mut Scheduler)) { unsafe { local_ptr::borrow(f) } }
-    unsafe fn unsafe_borrow_local() -> *mut Scheduler { local_ptr::unsafe_borrow() }
+    fn put(value: ~Scheduler) { unsafe { local_ptr::put(value) }}
+    fn take() -> ~Scheduler { unsafe { local_ptr::take() } }
+    fn exists() -> bool { local_ptr::exists() }
+    fn borrow(f: &fn(&mut Scheduler)) { unsafe { local_ptr::borrow(f) } }
+    unsafe fn unsafe_borrow() -> *mut Scheduler { local_ptr::unsafe_borrow() }
+}
+
+#[cfg(test)]
+mod test {
+    use rt::sched::Scheduler;
+    use rt::uv::uvio::UvEventLoop;
+    use super::*;
+
+    #[test]
+    fn thread_local_scheduler_smoke_test() {
+        let scheduler = ~UvEventLoop::new_scheduler();
+        Local::put(scheduler);
+        let _scheduler: ~Scheduler = Local::take();
+    }
+
+    #[test]
+    fn thread_local_scheduler_two_instances() {
+        let scheduler = ~UvEventLoop::new_scheduler();
+        Local::put(scheduler);
+        let _scheduler: ~Scheduler = Local::take();
+        let scheduler = ~UvEventLoop::new_scheduler();
+        Local::put(scheduler);
+        let _scheduler: ~Scheduler = Local::take();
+    }
+
+    #[test]
+    fn borrow_smoke_test() {
+        let scheduler = ~UvEventLoop::new_scheduler();
+        Local::put(scheduler);
+        unsafe {
+            let _scheduler: *mut Scheduler = Local::unsafe_borrow();
+        }
+        let _scheduler: ~Scheduler = Local::take();
+    }
 }

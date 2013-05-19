@@ -22,6 +22,7 @@ use rt::rtio::*;
 use rt::sched::{Scheduler, local_sched};
 use rt::io::{standard_error, OtherIoError};
 use rt::tube::Tube;
+use rt::local::Local;
 
 #[cfg(test)] use container::Container;
 #[cfg(test)] use uint;
@@ -118,14 +119,14 @@ impl IoFactory for UvIoFactory {
         let result_cell = empty_cell();
         let result_cell_ptr: *Cell<Result<~RtioTcpStreamObject, IoError>> = &result_cell;
 
-        let scheduler = local_sched::take();
+        let scheduler = Local::take::<Scheduler>();
         assert!(scheduler.in_task_context());
 
         // Block this task and take ownership, switch to scheduler context
         do scheduler.deschedule_running_task_and_then |task| {
 
             rtdebug!("connect: entered scheduler context");
-            do local_sched::borrow |scheduler| {
+            do Local::borrow::<Scheduler> |scheduler| {
                 assert!(!scheduler.in_task_context());
             }
             let mut tcp_watcher = TcpWatcher::new(self.uv_loop());
@@ -142,7 +143,7 @@ impl IoFactory for UvIoFactory {
                     unsafe { (*result_cell_ptr).put_back(res); }
 
                     // Context switch
-                    let scheduler = local_sched::take();
+                    let scheduler = Local::take::<Scheduler>();
                     scheduler.resume_task_immediately(task_cell.take());
                 } else {
                     rtdebug!("status is some");
@@ -150,7 +151,7 @@ impl IoFactory for UvIoFactory {
                     do stream_watcher.close {
                         let res = Err(uv_error_to_io_error(status.get()));
                         unsafe { (*result_cell_ptr).put_back(res); }
-                        let scheduler = local_sched::take();
+                        let scheduler = Local::take::<Scheduler>();
                         scheduler.resume_task_immediately(task_cell.take());
                     }
                 };
@@ -166,11 +167,11 @@ impl IoFactory for UvIoFactory {
         match watcher.bind(addr) {
             Ok(_) => Ok(~UvTcpListener::new(watcher)),
             Err(uverr) => {
-                let scheduler = local_sched::take();
+                let scheduler = Local::take::<Scheduler>();
                 do scheduler.deschedule_running_task_and_then |task| {
                     let task_cell = Cell(task);
                     do watcher.as_stream().close {
-                        let scheduler = local_sched::take();
+                        let scheduler = Local::take::<Scheduler>();
                         scheduler.resume_task_immediately(task_cell.take());
                     }
                 }
@@ -202,11 +203,11 @@ impl UvTcpListener {
 impl Drop for UvTcpListener {
     fn finalize(&self) {
         let watcher = self.watcher();
-        let scheduler = local_sched::take();
+        let scheduler = Local::take::<Scheduler>();
         do scheduler.deschedule_running_task_and_then |task| {
             let task_cell = Cell(task);
             do watcher.as_stream().close {
-                let scheduler = local_sched::take();
+                let scheduler = Local::take::<Scheduler>();
                 scheduler.resume_task_immediately(task_cell.take());
             }
         }
@@ -264,11 +265,11 @@ impl Drop for UvTcpStream {
     fn finalize(&self) {
         rtdebug!("closing tcp stream");
         let watcher = self.watcher();
-        let scheduler = local_sched::take();
+        let scheduler = Local::take::<Scheduler>();
         do scheduler.deschedule_running_task_and_then |task| {
             let task_cell = Cell(task);
             do watcher.close {
-                let scheduler = local_sched::take();
+                let scheduler = Local::take::<Scheduler>();
                 scheduler.resume_task_immediately(task_cell.take());
             }
         }
@@ -280,13 +281,13 @@ impl RtioTcpStream for UvTcpStream {
         let result_cell = empty_cell();
         let result_cell_ptr: *Cell<Result<uint, IoError>> = &result_cell;
 
-        let scheduler = local_sched::take();
+        let scheduler = Local::take::<Scheduler>();
         assert!(scheduler.in_task_context());
         let watcher = self.watcher();
         let buf_ptr: *&mut [u8] = &buf;
         do scheduler.deschedule_running_task_and_then |task| {
             rtdebug!("read: entered scheduler context");
-            do local_sched::borrow |scheduler| {
+            do Local::borrow::<Scheduler> |scheduler| {
                 assert!(!scheduler.in_task_context());
             }
             let mut watcher = watcher;
@@ -314,7 +315,7 @@ impl RtioTcpStream for UvTcpStream {
 
                 unsafe { (*result_cell_ptr).put_back(result); }
 
-                let scheduler = local_sched::take();
+                let scheduler = Local::take::<Scheduler>();
                 scheduler.resume_task_immediately(task_cell.take());
             }
         }
@@ -326,7 +327,7 @@ impl RtioTcpStream for UvTcpStream {
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
         let result_cell = empty_cell();
         let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
-        let scheduler = local_sched::take();
+        let scheduler = Local::take::<Scheduler>();
         assert!(scheduler.in_task_context());
         let watcher = self.watcher();
         let buf_ptr: *&[u8] = &buf;
@@ -343,7 +344,7 @@ impl RtioTcpStream for UvTcpStream {
 
                 unsafe { (*result_cell_ptr).put_back(result); }
 
-                let scheduler = local_sched::take();
+                let scheduler = Local::take::<Scheduler>();
                 scheduler.resume_task_immediately(task_cell.take());
             }
         }
@@ -420,13 +421,13 @@ fn test_read_and_block() {
                 }
                 reads += 1;
 
-                let scheduler = local_sched::take();
+                let scheduler = Local::take::<Scheduler>();
                 // Yield to the other task in hopes that it
                 // will trigger a read callback while we are
                 // not ready for it
                 do scheduler.deschedule_running_task_and_then |task| {
                     let task = Cell(task);
-                    do local_sched::borrow |scheduler| {
+                    do Local::borrow::<Scheduler> |scheduler| {
                         scheduler.enqueue_task(task.take());
                     }
                 }

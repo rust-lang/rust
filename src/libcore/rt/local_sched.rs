@@ -25,56 +25,8 @@ use rt::local::Local;
 
 #[cfg(test)] use rt::uv::uvio::UvEventLoop;
 
-/// Give the Scheduler to thread-local storage
-pub fn put(sched: ~Scheduler) { Local::put_local(sched) }
-
-/// Take ownership of the Scheduler from thread-local storage
-pub fn take() -> ~Scheduler { Local::take_local() }
-
-/// Check whether there is a thread-local Scheduler attached to the running thread
-pub fn exists() -> bool { Local::exists_local::<Scheduler>() }
-
-/// Borrow the thread-local scheduler from thread-local storage.
-/// While the scheduler is borrowed it is not available in TLS.
-pub fn borrow(f: &fn(&mut Scheduler)) { Local::borrow_local(f) }
-
-/// Borrow a mutable reference to the thread-local Scheduler
-///
-/// # Safety Note
-///
-/// Because this leaves the Scheduler in thread-local storage it is possible
-/// For the Scheduler pointer to be aliased
-pub unsafe fn unsafe_borrow() -> *mut Scheduler { Local::unsafe_borrow_local() }
-
 pub unsafe fn unsafe_borrow_io() -> *mut IoFactoryObject {
-    let sched = unsafe_borrow();
+    let sched = Local::unsafe_borrow::<Scheduler>();
     let io: *mut IoFactoryObject = (*sched).event_loop.io().unwrap();
     return io;
-}
-
-#[test]
-fn thread_local_scheduler_smoke_test() {
-    let scheduler = ~UvEventLoop::new_scheduler();
-    put(scheduler);
-    let _scheduler = take();
-}
-
-#[test]
-fn thread_local_scheduler_two_instances() {
-    let scheduler = ~UvEventLoop::new_scheduler();
-    put(scheduler);
-    let _scheduler = take();
-    let scheduler = ~UvEventLoop::new_scheduler();
-    put(scheduler);
-    let _scheduler = take();
-}
-
-#[test]
-fn borrow_smoke_test() {
-    let scheduler = ~UvEventLoop::new_scheduler();
-    put(scheduler);
-    unsafe {
-        let _scheduler = unsafe_borrow();
-    }
-    let _scheduler = take();
 }
