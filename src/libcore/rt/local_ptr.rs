@@ -8,11 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Access to a single thread-local pointer
+//! Access to a single thread-local pointer.
+//!
+//! The runtime will use this for storing ~Task.
+//!
+//! XXX: Add runtime checks for usage of inconsistent pointer types.
+//! and for overwriting an existing pointer.
 
 use libc::c_void;
 use cast;
+use ptr;
+use cell::Cell;
 use option::{Option, Some, None};
+use unstable::finally::Finally;
 use tls = rt::thread_local_storage;
 
 /// Initialize the TLS key. Other ops will fail if this isn't executed first.
@@ -25,14 +33,87 @@ pub fn init_tls_key() {
     }
 }
 
-pub fn tls_key() -> tls::Key {
+/// Give a pointer to thread-local storage.
+///
+/// # Safety note
+///
+/// Does not validate the pointer type.
+pub unsafe fn put<T>(sched: ~T) {
+    let key = tls_key();
+    let void_ptr: *mut c_void = cast::transmute(sched);
+    tls::set(key, void_ptr);
+}
+
+/// Take ownership of a pointer from thread-local storage.
+///
+/// # Safety note
+///
+/// Does not validate the pointer type.
+pub unsafe fn take<T>() -> ~T {
+    let key = tls_key();
+    let void_ptr: *mut c_void = tls::get(key);
+    rtassert!(void_ptr.is_not_null());
+    let ptr: ~T = cast::transmute(void_ptr);
+    tls::set(key, ptr::mut_null());
+    return ptr;
+}
+
+/// Check whether there is a thread-local pointer installed.
+pub fn exists() -> bool {
+    unsafe {
+        match maybe_tls_key() {
+            Some(key) => tls::get(key).is_not_null(),
+            None => false
+        }
+    }
+}
+
+/// Borrow the thread-local scheduler from thread-local storage.
+/// While the scheduler is borrowed it is not available in TLS.
+///
+/// # Safety note
+///
+/// Does not validate the pointer type.
+pub unsafe fn borrow<T>(f: &fn(&mut T)) {
+    let mut value = take();
+
+    // XXX: Need a different abstraction from 'finally' here to avoid unsafety
+    let unsafe_ptr = cast::transmute_mut_region(&mut *value);
+    let value_cell = Cell(value);
+
+    do (|| {
+        f(unsafe_ptr);
+    }).finally {
+        put(value_cell.take());
+    }
+}
+
+/// Borrow a mutable reference to the thread-local Scheduler
+///
+/// # Safety Note
+///
+/// Because this leaves the Scheduler in thread-local storage it is possible
+/// For the Scheduler pointer to be aliased
+pub unsafe fn unsafe_borrow<T>() -> *mut T {
+    let key = tls_key();
+    let mut void_sched: *mut c_void = tls::get(key);
+    rtassert!(void_sched.is_not_null());
+    {
+        let sched: *mut *mut c_void = &mut void_sched;
+        let sched: *mut ~T = sched as *mut ~T;
+        let sched: *mut T = &mut **sched;
+        return sched;
+    }
+}
+
+fn tls_key() -> tls::Key {
     match maybe_tls_key() {
         Some(key) => key,
         None => abort!("runtime tls key not initialized")
     }
 }
 
-pub fn maybe_tls_key() -> Option<tls::Key> {
+fn maybe_tls_key() -> Option<tls::Key> {
     unsafe {
         let key: *mut c_void = rust_get_rt_tls_key();
         let key: &mut tls::Key = cast::transmute(key);
@@ -55,9 +136,10 @@ pub fn maybe_tls_key() -> Option<tls::Key> {
             return None;
         }
     }
-}
 
-extern {
-    #[fast_ffi]
-    fn rust_get_rt_tls_key() -> *mut c_void;
+    extern {
+        #[fast_ffi]
+        fn rust_get_rt_tls_key() -> *mut c_void;
+    }
+
 }

@@ -25,53 +25,17 @@ use tls = rt::thread_local_storage;
 #[cfg(test)] use rt::uv::uvio::UvEventLoop;
 
 /// Give the Scheduler to thread-local storage
-pub fn put(sched: ~Scheduler) {
-    unsafe {
-        let key = local_ptr::tls_key();
-        let void_sched: *mut c_void = cast::transmute(sched);
-        tls::set(key, void_sched);
-    }
-}
+pub fn put(sched: ~Scheduler) { unsafe { local_ptr::put(sched) } }
 
 /// Take ownership of the Scheduler from thread-local storage
-pub fn take() -> ~Scheduler {
-    unsafe {
-        let key = local_ptr::tls_key();
-        let void_sched: *mut c_void = tls::get(key);
-        rtassert!(void_sched.is_not_null());
-        let sched: ~Scheduler = cast::transmute(void_sched);
-        tls::set(key, mut_null());
-        return sched;
-    }
-}
+pub fn take() -> ~Scheduler { unsafe { local_ptr::take() } }
 
 /// Check whether there is a thread-local Scheduler attached to the running thread
-pub fn exists() -> bool {
-    unsafe {
-        match local_ptr::maybe_tls_key() {
-            Some(key) => tls::get(key).is_not_null(),
-            None => false
-        }
-    }
-}
+pub fn exists() -> bool { local_ptr::exists() }
 
 /// Borrow the thread-local scheduler from thread-local storage.
 /// While the scheduler is borrowed it is not available in TLS.
-pub fn borrow(f: &fn(&mut Scheduler)) {
-    let mut sched = take();
-
-    // XXX: Need a different abstraction from 'finally' here to avoid unsafety
-    unsafe {
-        let unsafe_sched = cast::transmute_mut_region(&mut *sched);
-        let sched = Cell(sched);
-
-        do (|| {
-            f(unsafe_sched);
-        }).finally {
-            put(sched.take());
-        }
-    }
-}
+pub fn borrow(f: &fn(&mut Scheduler)) { unsafe { local_ptr::borrow(f) } }
 
 /// Borrow a mutable reference to the thread-local Scheduler
 ///
@@ -79,17 +43,7 @@ pub fn borrow(f: &fn(&mut Scheduler)) {
 ///
 /// Because this leaves the Scheduler in thread-local storage it is possible
 /// For the Scheduler pointer to be aliased
-pub unsafe fn unsafe_borrow() -> *mut Scheduler {
-    let key = local_ptr::tls_key();
-    let mut void_sched: *mut c_void = tls::get(key);
-    rtassert!(void_sched.is_not_null());
-    {
-        let sched: *mut *mut c_void = &mut void_sched;
-        let sched: *mut ~Scheduler = sched as *mut ~Scheduler;
-        let sched: *mut Scheduler = &mut **sched;
-        return sched;
-    }
-}
+pub unsafe fn unsafe_borrow() -> *mut Scheduler { local_ptr::unsafe_borrow() }
 
 pub unsafe fn unsafe_borrow_io() -> *mut IoFactoryObject {
     let sched = unsafe_borrow();
