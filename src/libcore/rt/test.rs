@@ -13,7 +13,7 @@ use option::*;
 use cell::Cell;
 use result::{Result, Ok, Err};
 use super::io::net::ip::{IpAddr, Ipv4};
-use rt::local_services::LocalServices;
+use rt::task::Task;
 use rt::thread::Thread;
 
 /// Creates a new scheduler in a new thread and runs a task in it,
@@ -28,9 +28,9 @@ pub fn run_in_newsched_task(f: ~fn()) {
 
     do run_in_bare_thread {
         let mut sched = ~UvEventLoop::new_scheduler();
-        let task = ~Coroutine::with_local(&mut sched.stack_pool,
-                                          LocalServices::without_unwinding(),
-                                          f.take());
+        let task = ~Coroutine::with_task(&mut sched.stack_pool,
+                                         Task::without_unwinding(),
+                                         f.take());
         sched.enqueue_task(task);
         sched.run();
     }
@@ -41,9 +41,9 @@ pub fn spawntask(f: ~fn()) {
     use super::sched::*;
 
     let mut sched = local_sched::take();
-    let task = ~Coroutine::with_local(&mut sched.stack_pool,
-                                      LocalServices::without_unwinding(),
-                                      f);
+    let task = ~Coroutine::with_task(&mut sched.stack_pool,
+                                     Task::without_unwinding(),
+                                     f);
     do sched.switch_running_tasks_and_then(task) |task| {
         let task = Cell(task);
         let sched = local_sched::take();
@@ -56,9 +56,9 @@ pub fn spawntask_immediately(f: ~fn()) {
     use super::sched::*;
 
     let mut sched = local_sched::take();
-    let task = ~Coroutine::with_local(&mut sched.stack_pool,
-                                      LocalServices::without_unwinding(),
-                                      f);
+    let task = ~Coroutine::with_task(&mut sched.stack_pool,
+                                     Task::without_unwinding(),
+                                     f);
     do sched.switch_running_tasks_and_then(task) |task| {
         let task = Cell(task);
         do local_sched::borrow |sched| {
@@ -72,9 +72,9 @@ pub fn spawntask_later(f: ~fn()) {
     use super::sched::*;
 
     let mut sched = local_sched::take();
-    let task = ~Coroutine::with_local(&mut sched.stack_pool,
-                                      LocalServices::without_unwinding(),
-                                      f);
+    let task = ~Coroutine::with_task(&mut sched.stack_pool,
+                                     Task::without_unwinding(),
+                                     f);
 
     sched.enqueue_task(task);
     local_sched::put(sched);
@@ -89,9 +89,9 @@ pub fn spawntask_random(f: ~fn()) {
     let run_now: bool = Rand::rand(&mut rng);
 
     let mut sched = local_sched::take();
-    let task = ~Coroutine::with_local(&mut sched.stack_pool,
-                                      LocalServices::without_unwinding(),
-                                      f);
+    let task = ~Coroutine::with_task(&mut sched.stack_pool,
+                                     Task::without_unwinding(),
+                                     f);
 
     if run_now {
         do sched.switch_running_tasks_and_then(task) |task| {
@@ -155,9 +155,9 @@ pub fn spawntask_thread(f: ~fn()) -> Thread {
     let f = Cell(f);
     let thread = do Thread::start {
         let mut sched = ~UvEventLoop::new_scheduler();
-        let task = ~Coroutine::with_local(&mut sched.stack_pool,
-                                          LocalServices::without_unwinding(),
-                                          f.take());
+        let task = ~Coroutine::with_task(&mut sched.stack_pool,
+                                         Task::without_unwinding(),
+                                         f.take());
         sched.enqueue_task(task);
         sched.run();
     };

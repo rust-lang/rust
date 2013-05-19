@@ -16,7 +16,7 @@ use super::work_queue::WorkQueue;
 use super::stack::{StackPool, StackSegment};
 use super::rtio::{EventLoop, EventLoopObject};
 use super::context::Context;
-use super::local_services::LocalServices;
+use super::task::Task;
 use cell::Cell;
 
 // A more convenient name for external callers, e.g. `local_sched::take()`
@@ -350,16 +350,16 @@ pub struct Coroutine {
     /// the task is dead
     priv saved_context: Context,
     /// The heap, GC, unwinding, local storage, logging
-    local_services: LocalServices
+    task: Task
 }
 
 pub impl Coroutine {
     fn new(stack_pool: &mut StackPool, start: ~fn()) -> Coroutine {
-        Coroutine::with_local(stack_pool, LocalServices::new(), start)
+        Coroutine::with_task(stack_pool, Task::new(), start)
     }
 
-    fn with_local(stack_pool: &mut StackPool,
-                  local_services: LocalServices,
+    fn with_task(stack_pool: &mut StackPool,
+                  task: Task,
                   start: ~fn()) -> Coroutine {
         let start = Coroutine::build_start_wrapper(start);
         let mut stack = stack_pool.take_segment(MIN_STACK_SIZE);
@@ -368,7 +368,7 @@ pub impl Coroutine {
         return Coroutine {
             current_stack_segment: stack,
             saved_context: initial_context,
-            local_services: local_services
+            task: task
         };
     }
 
@@ -385,7 +385,7 @@ pub impl Coroutine {
                 let sched = local_sched::unsafe_borrow();
                 let task = (*sched).current_task.get_mut_ref();
                 // FIXME #6141: shouldn't neet to put `start()` in another closure
-                task.local_services.run(||start());
+                task.task.run(||start());
             }
 
             let sched = local_sched::take();
