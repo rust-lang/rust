@@ -85,10 +85,6 @@ pub mod uv;
 /// or task-local storage.
 pub mod local;
 
-// FIXME #5248: The import in `sched` doesn't resolve unless this is pub!
-/// Bindings to pthread/windows thread-local storage.
-pub mod thread_local_storage;
-
 /// A parallel work-stealing deque.
 mod work_queue;
 
@@ -125,6 +121,15 @@ pub mod tube;
 
 /// Simple reimplementation of core::comm
 pub mod comm;
+
+// FIXME #5248 shouldn't be pub
+/// The runtime needs to be able to put a pointer into thread-local storage.
+pub mod local_ptr;
+
+// FIXME #5248: The import in `sched` doesn't resolve unless this is pub!
+/// Bindings to pthread/windows thread-local storage.
+pub mod thread_local_storage;
+
 
 /// Set up a default runtime configuration, given compiler-supplied arguments.
 ///
