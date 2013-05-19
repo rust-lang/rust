@@ -23,6 +23,16 @@ use unstable::finally::Finally;
 
 #[cfg(test)] use rt::uv::uvio::UvEventLoop;
 
+/// Initialize the TLS key. Other ops will fail if this isn't executed first.
+pub fn init_tls_key() {
+    unsafe {
+        rust_initialize_rt_tls_key();
+        extern {
+            fn rust_initialize_rt_tls_key();
+        }
+    }
+}
+
 /// Give the Scheduler to thread-local storage
 pub fn put(sched: ~Scheduler) {
     unsafe {
