@@ -31,14 +31,8 @@ access to the global heap. Unlike most of `rt` the global heap is
 truly a global resource and generally operates independently of the
 rest of the runtime.
 
-All other runtime features are 'local', either thread-local or
-task-local.  Those critical to the functioning of the language are
-defined in the module `local_services`. Local services are those which
-are expected to be available to Rust code generally but rely on
-thread- or task-local state. These currently include the local heap,
+All other runtime features are task-local, including the local heap,
 the garbage collector, local storage, logging and the stack unwinder.
-Local services are primarily implemented for tasks, but may also
-be implemented for use outside of tasks.
 
 The relationship between `rt` and the rest of the core library is
 not entirely clear yet and some modules will be moving into or
@@ -67,7 +61,10 @@ use ptr::Ptr;
 /// The global (exchange) heap.
 pub mod global_heap;
 
-/// The Scheduler and Coroutine types.
+/// Implementations of language-critical runtime features like @.
+pub mod task;
+
+/// The coroutine task scheduler, built on the `io` event loop.
 mod sched;
 
 /// Thread-local access to the current Scheduler.
@@ -76,9 +73,6 @@ pub mod local_sched;
 /// Synchronous I/O.
 #[path = "io/mod.rs"]
 pub mod io;
-
-/// Thread-local implementations of language-critical runtime features like @.
-pub mod local_services;
 
 /// The EventLoop and internal synchronous I/O interface.
 mod rtio;

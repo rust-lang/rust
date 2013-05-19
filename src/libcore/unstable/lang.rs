@@ -17,7 +17,7 @@ use managed::raw::BoxRepr;
 use str;
 use sys;
 use rt::{context, OldTaskContext};
-use rt::local_services::borrow_local_services;
+use rt::task::borrow_local_task;
 use option::{Option, Some, None};
 use io;
 use rt::global_heap;
@@ -243,8 +243,8 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
         }
         _ => {
             let mut alloc = ::ptr::null();
-            do borrow_local_services |srv| {
-                alloc = srv.heap.alloc(td as *c_void, size as uint) as *c_char;
+            do borrow_local_task |task| {
+                alloc = task.heap.alloc(td as *c_void, size as uint) as *c_char;
             }
             return alloc;
         }
@@ -261,8 +261,8 @@ pub unsafe fn local_free(ptr: *c_char) {
             rustrt::rust_upcall_free_noswitch(ptr);
         }
         _ => {
-            do borrow_local_services |srv| {
-                srv.heap.free(ptr as *c_void);
+            do borrow_local_task |task| {
+                task.heap.free(ptr as *c_void);
             }
         }
     }
