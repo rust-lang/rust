@@ -676,4 +676,3 @@ impl PkgSrc {
         self.build_crates(maybe_sysroot, dst_dir, &dir, self.benchs, cfgs, Bench);
     }
 }
-
