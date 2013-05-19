@@ -13,6 +13,7 @@
 use cast;
 use libc;
 use libc::{c_void, size_t};
+use option::{Option, Some, None};
 use sys;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
@@ -209,6 +210,7 @@ pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
 pub trait Ptr<T> {
     fn is_null(&const self) -> bool;
     fn is_not_null(&const self) -> bool;
+    fn to_option(&const self) -> Option<T>;
     fn offset(&self, count: uint) -> Self;
 }
 
@@ -221,6 +223,14 @@ impl<T> Ptr<T> for *T {
     /// Returns true if the pointer is not equal to the null pointer.
     #[inline(always)]
     fn is_not_null(&const self) -> bool { is_not_null(*self) }
+
+    /// Returns `None` if the pointer is null, or else returns the value wrapped in `Some`.
+    #[inline(always)]
+    fn to_option(&const self) -> Option<T> {
+        if self.is_null() { None } else {
+            Some(unsafe { **self })
+        }
+    }
 
     /// Calculates the offset from a pointer.
     #[inline(always)]
@@ -236,6 +246,14 @@ impl<T> Ptr<T> for *mut T {
     /// Returns true if the pointer is not equal to the null pointer.
     #[inline(always)]
     fn is_not_null(&const self) -> bool { is_not_null(*self) }
+
+    /// Returns `None` if the pointer is null, or else returns the value wrapped in `Some`.
+    #[inline(always)]
+    fn to_option(&const self) -> Option<T> {
+        if self.is_null() { None } else {
+            Some(unsafe { **self })
+        }
+    }
 
     /// Calculates the offset from a mutable pointer.
     #[inline(always)]
@@ -423,6 +441,21 @@ pub mod ptr_tests {
         assert!(mq.is_not_null());
     }
 
+    #[test]
+    #[allow(unused_mut)]
+    fn test_to_option() {
+        let p: *int = null();
+        assert_eq!(p.to_option(), None);
+
+        let q: *int = &2;
+        assert_eq!(q.to_option(), Some(2));
+
+        let p: *mut int = mut_null();
+        assert_eq!(p.to_option(), None);
+
+        let q: *mut int = &mut 2;
+        assert_eq!(q.to_option(), Some(2));
+    }
 
     #[test]
     fn test_ptr_array_each_with_len() {
