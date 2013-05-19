@@ -1593,7 +1593,8 @@ pub fn stderr() -> @Writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 *
 * # Examples
 * ~~~
-* core::io::print("hello");
+* // print is imported into the prelude, and so is always available.
+* print("hello");
 * ~~~
 */
 pub fn print(s: &str) {
@@ -1607,7 +1608,8 @@ pub fn print(s: &str) {
 *
 * # Examples
 * ~~~
-* core::io::println("hello");
+* // println is imported into the prelude, and so is always available.
+* println("hello");
 * ~~~
 */
 pub fn println(s: &str) {
