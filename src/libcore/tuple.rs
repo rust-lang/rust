@@ -114,17 +114,17 @@ impl<A:Copy,B:Copy> ExtendedTupleOps<A,B> for (~[A], ~[B]) {
 
 // macro for implementing n-ary tuple functions and operations
 
-macro_rules! tuple_impls(
+macro_rules! tuple_impls {
     ($(
         ($cloneable_trait:ident, $immutable_trait:ident) {
             $(($get_fn:ident, $get_ref_fn:ident) -> $T:ident {
                 $get_pattern:pat => $ret:expr
             })+
         }
-    )+) => (
+    )+) => {
         pub mod inner {
             use clone::Clone;
-            #[cfg(not(test))] use cmp::{Eq, Ord};
+            #[cfg(not(test))] use cmp::*;
 
             $(
                 pub trait $cloneable_trait<$($T),+> {
@@ -172,10 +172,18 @@ macro_rules! tuple_impls(
                 }
 
                 #[cfg(not(test))]
+                impl<$($T:TotalEq),+> TotalEq for ($($T),+) {
+                    #[inline(always)]
+                    fn equals(&self, other: &($($T),+)) -> bool {
+                        $(self.$get_ref_fn().equals(other.$get_ref_fn()))&&+
+                    }
+                }
+
+                #[cfg(not(test))]
                 impl<$($T:Ord),+> Ord for ($($T),+) {
                     #[inline(always)]
                     fn lt(&self, other: &($($T),+)) -> bool {
-                        lexical_lt!($(*self.$get_ref_fn(), *other.$get_ref_fn()),+)
+                        lexical_lt!($(self.$get_ref_fn(), other.$get_ref_fn()),+)
                     }
                     #[inline(always)]
                     fn le(&self, other: &($($T),+)) -> bool { !(*other).lt(&(*self)) }
@@ -184,22 +192,44 @@ macro_rules! tuple_impls(
                     #[inline(always)]
                     fn gt(&self, other: &($($T),+)) -> bool { (*other).lt(&(*self)) }
                 }
+
+                #[cfg(not(test))]
+                impl<$($T:TotalOrd),+> TotalOrd for ($($T),+) {
+                    #[inline]
+                    fn cmp(&self, other: &($($T),+)) -> Ordering {
+                        lexical_cmp!($(self.$get_ref_fn(), other.$get_ref_fn()),+)
+                    }
+                }
             )+
         }
-    )
-)
+    }
+}
 
-// Constructs an expression that performs a lexical less-than ordering.
-// The values are interleaved, so the macro invocation for
-// `(a1, a2, a3) < (b1, b2, b3)` would be `lexical_lt!(a1, b1, a2, b2, a3, b3)`
-macro_rules! lexical_lt(
-    ($a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => (
-        if $a < $b { true } else { lexical_lt!($($rest_a, $rest_b),+) }
-    );
-    ($a:expr, $b:expr) => ($a < $b);
-)
+// Constructs an expression that performs a lexical less-than
+// ordering.  The values are interleaved, so the macro invocation for
+// `(a1, a2, a3) < (b1, b2, b3)` would be `lexical_lt!(a1, b1, a2, b2,
+// a3, b3)` (and similarly for `lexical_cmp`)
+macro_rules! lexical_lt {
+    ($a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {
+        if *$a < *$b { true }
+        else if !(*$b < *$a) { lexical_lt!($($rest_a, $rest_b),+) }
+        else { false }
+    };
+    ($a:expr, $b:expr) => { *$a < *$b };
+}
 
-tuple_impls!(
+macro_rules! lexical_cmp {
+    ($a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {
+        match ($a).cmp($b) {
+            Equal => lexical_cmp!($($rest_a, $rest_b),+),
+            ordering   => ordering
+        }
+    };
+    ($a:expr, $b:expr) => { ($a).cmp($b) };
+}
+
+
+tuple_impls! {
     (CloneableTuple2, ImmutableTuple2) {
         (n0, n0_ref) -> A { (ref a,_) => a }
         (n1, n1_ref) -> B { (_,ref b) => b }
@@ -309,12 +339,13 @@ tuple_impls!(
         (n10, n10_ref) -> K { (_,_,_,_,_,_,_,_,_,_,ref k,_) => k }
         (n11, n11_ref) -> L { (_,_,_,_,_,_,_,_,_,_,_,ref l) => l }
     }
-)
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use clone::Clone;
+    use cmp::*;
 
     #[test]
     fn test_tuple_ref() {
@@ -367,5 +398,42 @@ mod tests {
         assert_eq!(t.n9_ref(), &9i);
         assert_eq!(t.n10_ref(), &10f32);
         assert_eq!(t.n11_ref(), &11f64);
+    }
+
+    #[test]
+    fn test_tuple_cmp() {
+        let small = (1u, 2u, 3u), big = (3u, 2u, 1u);
+
+        // Eq
+        assert_eq!(small, small);
+        assert_eq!(big, big);
+        assert!(small != big);
+        assert!(big != small);
+
+        // Ord
+        assert!(small < big);
+        assert!(!(small < small));
+        assert!(!(big < small));
+        assert!(!(big < big));
+
+        assert!(small <= small);
+        assert!(big <= big);
+
+        assert!(big > small);
+        assert!(small >= small);
+        assert!(big >= small);
+        assert!(big >= big);
+
+        // TotalEq
+        assert!(small.equals(&small));
+        assert!(big.equals(&big));
+        assert!(!small.equals(&big));
+        assert!(!big.equals(&small));
+
+        // TotalOrd
+        assert_eq!(small.cmp(&small), Equal);
+        assert_eq!(big.cmp(&big), Equal);
+        assert_eq!(small.cmp(&big), Less);
+        assert_eq!(big.cmp(&small), Greater);
     }
 }
