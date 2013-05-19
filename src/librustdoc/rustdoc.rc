@@ -24,7 +24,7 @@
 #[no_std];
 
 extern mod core(name = "std");
-extern mod std(name = "extra");
+extern mod extra(name = "extra");
 
 extern mod rustc;
 extern mod syntax;
@@ -145,9 +145,9 @@ fn run(config: Config) {
 }
 
 pub fn time<T>(what: ~str, f: &fn() -> T) -> T {
-    let start = std::time::precise_time_s();
+    let start = extra::time::precise_time_s();
     let rv = f();
-    let end = std::time::precise_time_s();
+    let end = extra::time::precise_time_s();
     info!("time: %3.3f s    %s", end - start, what);
     rv
 }

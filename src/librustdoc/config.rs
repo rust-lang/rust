@@ -14,7 +14,7 @@ use core::cell::Cell;
 use core::run;
 use core::run::ProgramOutput;
 use core::result::Result;
-use std::getopts;
+use extra::getopts;
 
 /// The type of document to output
 #[deriving(Eq)]
