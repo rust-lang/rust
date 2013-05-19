@@ -188,16 +188,17 @@ pub enum RuntimeContext {
 pub fn context() -> RuntimeContext {
 
     use task::rt::rust_task;
-    use self::sched::local_sched;
+    use self::local::Local;
+    use self::sched::{local_sched, Scheduler};
 
     // XXX: Hitting TLS twice to check if the scheduler exists
     // then to check for the task is not good for perf
     if unsafe { rust_try_get_task().is_not_null() } {
         return OldTaskContext;
     } else {
-        if local_sched::exists() {
+        if Local::exists::<Scheduler>() {
             let context = ::cell::empty_cell();
-            do local_sched::borrow |sched| {
+            do Local::borrow::<Scheduler> |sched| {
                 if sched.in_task_context() {
                     context.put_back(TaskContext);
                 } else {
@@ -219,9 +220,10 @@ pub fn context() -> RuntimeContext {
 #[test]
 fn test_context() {
     use unstable::run_in_bare_thread;
-    use self::sched::{local_sched, Coroutine};
+    use self::sched::{local_sched, Scheduler, Coroutine};
     use rt::uv::uvio::UvEventLoop;
     use cell::Cell;
+    use rt::local::Local;
 
     assert_eq!(context(), OldTaskContext);
     do run_in_bare_thread {
@@ -229,11 +231,11 @@ fn test_context() {
         let mut sched = ~UvEventLoop::new_scheduler();
         let task = ~do Coroutine::new(&mut sched.stack_pool) {
             assert_eq!(context(), TaskContext);
-            let sched = local_sched::take();
+            let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then() |task| {
                 assert_eq!(context(), SchedulerContext);
                 let task = Cell(task);
-                do local_sched::borrow |sched| {
+                do Local::borrow::<Scheduler> |sched| {
                     sched.enqueue_task(task.take());
                 }
             }

@@ -16,9 +16,10 @@
 use option::*;
 use clone::Clone;
 use super::rc::RC;
-use rt::sched::Coroutine;
+use rt::sched::{Scheduler, Coroutine};
 use rt::{context, TaskContext, SchedulerContext};
 use rt::local_sched;
+use rt::local::Local;
 use vec::OwnedVector;
 use container::Container;
 
@@ -53,7 +54,7 @@ impl<T> Tube<T> {
                 // There's a waiting task. Wake it up
                 rtdebug!("waking blocked tube");
                 let task = (*state).blocked_task.swap_unwrap();
-                let sched = local_sched::take();
+                let sched = Local::take::<Scheduler>();
                 sched.resume_task_immediately(task);
             }
         }
@@ -71,7 +72,7 @@ impl<T> Tube<T> {
                 rtdebug!("blocking on tube recv");
                 assert!(self.p.refcount() > 1); // There better be somebody to wake us up
                 assert!((*state).blocked_task.is_none());
-                let sched = local_sched::take();
+                let sched = Local::take::<Scheduler>();
                 do sched.deschedule_running_task_and_then |task| {
                     (*state).blocked_task = Some(task);
                 }
@@ -97,6 +98,8 @@ mod test {
     use rt::local_sched;
     use rt::test::*;
     use rt::rtio::EventLoop;
+    use rt::sched::Scheduler;
+    use rt::local::Local;
     use super::*;
 
     #[test]
@@ -105,11 +108,11 @@ mod test {
             let mut tube: Tube<int> = Tube::new();
             let tube_clone = tube.clone();
             let tube_clone_cell = Cell(tube_clone);
-            let sched = local_sched::take();
+            let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then |task| {
                 let mut tube_clone = tube_clone_cell.take();
                 tube_clone.send(1);
-                let sched = local_sched::take();
+                let sched = Local::take::<Scheduler>();
                 sched.resume_task_immediately(task);
             }
 
@@ -123,10 +126,10 @@ mod test {
             let mut tube: Tube<int> = Tube::new();
             let tube_clone = tube.clone();
             let tube_clone = Cell(Cell(Cell(tube_clone)));
-            let sched = local_sched::take();
+            let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then |task| {
                 let tube_clone = tube_clone.take();
-                do local_sched::borrow |sched| {
+                do Local::borrow::<Scheduler> |sched| {
                     let tube_clone = tube_clone.take();
                     do sched.event_loop.callback {
                         let mut tube_clone = tube_clone.take();
@@ -135,7 +138,7 @@ mod test {
                         tube_clone.send(1);
                     }
                 }
-                let sched = local_sched::take();
+                let sched = Local::take::<Scheduler>();
                 sched.resume_task_immediately(task);
             }
 
@@ -151,7 +154,7 @@ mod test {
             let mut tube: Tube<int> = Tube::new();
             let tube_clone = tube.clone();
             let tube_clone = Cell(tube_clone);
-            let sched = local_sched::take();
+            let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then |task| {
                 callback_send(tube_clone.take(), 0);
 
@@ -159,7 +162,7 @@ mod test {
                     if i == 100 { return; }
 
                     let tube = Cell(Cell(tube));
-                    do local_sched::borrow |sched| {
+                    do Local::borrow::<Scheduler> |sched| {
                         let tube = tube.take();
                         do sched.event_loop.callback {
                             let mut tube = tube.take();
@@ -171,7 +174,7 @@ mod test {
                     }
                 }
 
-                let sched = local_sched::take();
+                let sched = Local::take::<Scheduler>();
                 sched.resume_task_immediately(task);
             }
 
