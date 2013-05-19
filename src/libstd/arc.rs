@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -21,7 +21,7 @@ use core::unstable::sync::UnsafeAtomicRcBox;
 use core::ptr;
 use core::task;
 
-/// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
+/// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
 pub struct Condvar<'self> {
     is_mutex: bool,
     failed: &'self mut bool,
