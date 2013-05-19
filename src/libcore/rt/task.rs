@@ -155,7 +155,7 @@ pub fn borrow_local_task(f: &fn(&mut Task)) {
     do local_sched::borrow |sched| {
         match sched.current_task {
             Some(~ref mut task) => {
-                f(&mut task.task)
+                f(&mut *task.task)
             }
             None => {
                 fail!("no local services for schedulers yet")
@@ -167,7 +167,7 @@ pub fn borrow_local_task(f: &fn(&mut Task)) {
 pub unsafe fn unsafe_borrow_local_task() -> *mut Task {
     match (*local_sched::unsafe_borrow()).current_task {
         Some(~ref mut task) => {
-            let s: *mut Task = &mut task.task;
+            let s: *mut Task = &mut *task.task;
             return s;
         }
         None => {

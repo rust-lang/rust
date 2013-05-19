@@ -350,16 +350,16 @@ pub struct Coroutine {
     /// the task is dead
     priv saved_context: Context,
     /// The heap, GC, unwinding, local storage, logging
-    task: Task
+    task: ~Task
 }
 
 pub impl Coroutine {
     fn new(stack_pool: &mut StackPool, start: ~fn()) -> Coroutine {
-        Coroutine::with_task(stack_pool, Task::new(), start)
+        Coroutine::with_task(stack_pool, ~Task::new(), start)
     }
 
     fn with_task(stack_pool: &mut StackPool,
-                  task: Task,
+                  task: ~Task,
                   start: ~fn()) -> Coroutine {
         let start = Coroutine::build_start_wrapper(start);
         let mut stack = stack_pool.take_segment(MIN_STACK_SIZE);

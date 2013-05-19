@@ -29,7 +29,7 @@ pub fn run_in_newsched_task(f: ~fn()) {
     do run_in_bare_thread {
         let mut sched = ~UvEventLoop::new_scheduler();
         let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                         Task::without_unwinding(),
+                                         ~Task::without_unwinding(),
                                          f.take());
         sched.enqueue_task(task);
         sched.run();
@@ -42,7 +42,7 @@ pub fn spawntask(f: ~fn()) {
 
     let mut sched = local_sched::take();
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                     Task::without_unwinding(),
+                                     ~Task::without_unwinding(),
                                      f);
     do sched.switch_running_tasks_and_then(task) |task| {
         let task = Cell(task);
@@ -57,7 +57,7 @@ pub fn spawntask_immediately(f: ~fn()) {
 
     let mut sched = local_sched::take();
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                     Task::without_unwinding(),
+                                     ~Task::without_unwinding(),
                                      f);
     do sched.switch_running_tasks_and_then(task) |task| {
         let task = Cell(task);
@@ -73,7 +73,7 @@ pub fn spawntask_later(f: ~fn()) {
 
     let mut sched = local_sched::take();
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                     Task::without_unwinding(),
+                                     ~Task::without_unwinding(),
                                      f);
 
     sched.enqueue_task(task);
@@ -90,7 +90,7 @@ pub fn spawntask_random(f: ~fn()) {
 
     let mut sched = local_sched::take();
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                     Task::without_unwinding(),
+                                     ~Task::without_unwinding(),
                                      f);
 
     if run_now {
@@ -156,7 +156,7 @@ pub fn spawntask_thread(f: ~fn()) -> Thread {
     let thread = do Thread::start {
         let mut sched = ~UvEventLoop::new_scheduler();
         let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                         Task::without_unwinding(),
+                                         ~Task::without_unwinding(),
                                          f.take());
         sched.enqueue_task(task);
         sched.run();
