@@ -634,4 +634,3 @@ fn add_stmt_to_map(stmt: @ast::stmt,
     }
     visit::visit_stmt(stmt, this, vt);
 }
-

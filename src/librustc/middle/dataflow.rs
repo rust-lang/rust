@@ -1062,4 +1062,3 @@ fn reslice<'a>(v: &'a mut [uint]) -> &'a [uint] {
         cast::transmute(v)
     }
 }
-
