@@ -117,7 +117,7 @@ fn traverse_public_item(cx: @mut ctx, item: @item) {
       }
       item_fn(_, _, _, ref generics, ref blk) => {
         if generics.ty_params.len() > 0u ||
-           attr::find_inline_attr(item.attrs) != attr::ia_none {
+           attr::find_inline_attr(item.attrs) != attr::ia_none { // XXX why is this ia_none?
             traverse_inline_body(cx, blk);
         }
       }
@@ -125,7 +125,7 @@ fn traverse_public_item(cx: @mut ctx, item: @item) {
         for ms.each |m| {
             if generics.ty_params.len() > 0u ||
                 m.generics.ty_params.len() > 0u ||
-                attr::find_inline_attr(m.attrs) != attr::ia_none
+                attr::find_inline_attr(m.attrs) != attr::ia_none // XXX why is this ia_none?
             {
                 {
                     let cx = &mut *cx; // FIXME(#6269) reborrow @mut to &mut
