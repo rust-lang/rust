@@ -20,10 +20,10 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-extern mod rustpkg(vers = "0.7-pre");
-extern mod rustdoc(vers = "0.7-pre");
-extern mod rusti(vers = "0.7-pre");
-extern mod rustc(vers = "0.7-pre");
+extern mod rustpkg;
+extern mod rustdoc;
+extern mod rusti;
+extern mod rustc;
 
 use core::run;
 

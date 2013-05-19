@@ -63,7 +63,7 @@ they contained the following prologue:
 #[deny(non_camel_case_types)];
 
 // Make core testable by not duplicating lang items. See #2912
-#[cfg(test)] extern mod realcore(name = "core", vers = "0.7-pre");
+#[cfg(test)] extern mod realcore(name = "core");
 #[cfg(test)] pub use kinds = realcore::kinds;
 #[cfg(test)] pub use ops = realcore::ops;
 #[cfg(test)] pub use cmp = realcore::cmp;

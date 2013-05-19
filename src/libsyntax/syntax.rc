@@ -23,7 +23,7 @@
 #[allow(non_camel_case_types)];
 #[deny(deprecated_pattern)];
 
-extern mod std(vers = "0.7-pre");
+extern mod std;
 
 // allow the interner_key macro
 // to escape this module:
