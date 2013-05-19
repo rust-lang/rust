@@ -25,8 +25,7 @@
 
 use core::cast;
 use core::cell::Cell;
-use core::comm::{PortOne, oneshot, send_one};
-use core::pipes::recv;
+use core::comm::{PortOne, oneshot, send_one, recv_one};
 use core::task;
 use core::util::replace;
 
@@ -107,11 +106,8 @@ pub fn from_port<A:Owned>(port: PortOne<A>) -> Future<A> {
      */
 
     let port = Cell(port);
-    do from_fn || {
-        let port = port.take().unwrap();
-        match recv(port) {
-            oneshot::send(data) => data
-        }
+    do from_fn {
+        recv_one(port.take())
     }
 }
 
