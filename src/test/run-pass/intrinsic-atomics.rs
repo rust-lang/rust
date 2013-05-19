@@ -17,7 +17,7 @@ mod rusti {
 
         pub fn atomic_load(src: &int) -> int;
         pub fn atomic_load_acq(src: &int) -> int;
-        
+
         pub fn atomic_store(dst: &mut int, val: int);
         pub fn atomic_store_rel(dst: &mut int, val: int);
 
@@ -42,7 +42,7 @@ pub fn main() {
         assert!(rusti::atomic_load(x) == 1);
         *x = 5;
         assert!(rusti::atomic_load_acq(x) == 5);
-        
+
         rusti::atomic_store(x,3);
         assert!(*x == 3);
         rusti::atomic_store_rel(x,1);

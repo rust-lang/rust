@@ -198,4 +198,3 @@ fn perform_write_guard(datum: &Datum,
           line],
         expr::Ignore)
 }
-
