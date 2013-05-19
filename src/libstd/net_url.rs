@@ -350,7 +350,7 @@ pub fn query_to_str(query: &Query) -> ~str {
             }
         }
     }
-    return str::connect(strvec, ~"&");
+    return str::connect(strvec, "&");
 }
 
 // returns the scheme and the rest of the url, or a parsing error
@@ -390,7 +390,7 @@ enum Input {
 // returns userinfo, host, port, and unparsed part, or an error
 fn get_authority(rawurl: &str) ->
     Result<(Option<UserInfo>, ~str, Option<~str>, ~str), ~str> {
-    if !str::starts_with(rawurl, ~"//") {
+    if !str::starts_with(rawurl, "//") {
         // there is no authority.
         return Ok((None, ~"", None, rawurl.to_str()));
     }
@@ -575,7 +575,7 @@ fn get_path(rawurl: &str, authority: bool) ->
     }
 
     if authority {
-        if end != 0 && !str::starts_with(rawurl, ~"/") {
+        if end != 0 && !str::starts_with(rawurl, "/") {
             return Err(~"Non-empty path must begin with\
                                '/' in presence of authority.");
         }
@@ -588,8 +588,8 @@ fn get_path(rawurl: &str, authority: bool) ->
 // returns the parsed query and the fragment, if present
 fn get_query_fragment(rawurl: &str) ->
     Result<(Query, Option<~str>), ~str> {
-    if !str::starts_with(rawurl, ~"?") {
-        if str::starts_with(rawurl, ~"#") {
+    if !str::starts_with(rawurl, "?") {
+        if str::starts_with(rawurl, "#") {
             let f = decode_component(str::slice(rawurl,
                                                 1,
                                                 str::len(rawurl)).to_owned());

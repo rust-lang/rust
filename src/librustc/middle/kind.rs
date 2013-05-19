@@ -122,7 +122,7 @@ fn check_item(item: @item, cx: Context, visitor: visit::vt<Context>) {
         match item.node {
             item_impl(_, Some(trait_ref), self_type, _) => {
                 match cx.tcx.def_map.find(&trait_ref.ref_id) {
-                    None => cx.tcx.sess.bug(~"trait ref not in def map!"),
+                    None => cx.tcx.sess.bug("trait ref not in def map!"),
                     Some(&trait_def) => {
                         let trait_def_id = ast_util::def_id_of_def(trait_def);
                         if cx.tcx.lang_items.drop_trait() == trait_def_id {
@@ -270,7 +270,7 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
             // Even though the callee_id may have been the id with
             // node_type_substs, e.id is correct here.
             ty::method_call_type_param_defs(cx.tcx, cx.method_map, e.id).expect(
-                ~"non path/method call expr has type substs??")
+                "non path/method call expr has type substs??")
           }
         };
         if ts.len() != type_param_defs.len() {

@@ -357,7 +357,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::stmt_mac(*) => {
-                self.tcx().sess.span_bug(stmt.span, ~"unexpanded macro");
+                self.tcx().sess.span_bug(stmt.span, "unexpanded macro");
             }
         }
     }
@@ -724,7 +724,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_mac(*) => {
-                self.tcx().sess.span_bug(expr.span, ~"unexpanded macro");
+                self.tcx().sess.span_bug(expr.span, "unexpanded macro");
             }
         }
 

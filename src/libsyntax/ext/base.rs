@@ -250,7 +250,7 @@ pub fn mk_ctxt(parse_sess: @mut parse::ParseSess, cfg: ast::crate_cfg)
         fn call_site(&self) -> span {
             match *self.backtrace {
                 Some(@ExpandedFrom(CallInfo {call_site: cs, _})) => cs,
-                None => self.bug(~"missing top span")
+                None => self.bug("missing top span")
             }
         }
         fn print_backtrace(&self) { }
@@ -276,7 +276,7 @@ pub fn mk_ctxt(parse_sess: @mut parse::ParseSess, cfg: ast::crate_cfg)
               })) => {
                 *self.backtrace = prev
               }
-              _ => self.bug(~"tried to pop without a push")
+              _ => self.bug("tried to pop without a push")
             }
         }
         fn span_fatal(&self, sp: span, msg: &str) -> ! {

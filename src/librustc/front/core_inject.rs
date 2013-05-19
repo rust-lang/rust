@@ -28,7 +28,7 @@ pub fn maybe_inject_libcore_ref(sess: Session,
 }
 
 fn use_core(crate: @ast::crate) -> bool {
-    !attr::attrs_contains_name(crate.node.attrs, ~"no_core")
+    !attr::attrs_contains_name(crate.node.attrs, "no_core")
 }
 
 fn inject_libcore_ref(sess: Session,

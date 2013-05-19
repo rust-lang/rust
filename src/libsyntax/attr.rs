@@ -291,7 +291,7 @@ pub fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: &str) ->
  * linkage
  */
 pub fn find_linkage_metas(attrs: &[ast::attribute]) -> ~[@ast::meta_item] {
-    do find_attrs_by_name(attrs, ~"link").flat_map |attr| {
+    do find_attrs_by_name(attrs, "link").flat_map |attr| {
         match attr.node.value.node {
             ast::meta_list(_, ref items) => /* FIXME (#2543) */ copy *items,
             _ => ~[]
@@ -314,9 +314,9 @@ pub fn find_inline_attr(attrs: &[ast::attribute]) -> inline_attr {
         match attr.node.value.node {
           ast::meta_word(@~"inline") => ia_hint,
           ast::meta_list(@~"inline", ref items) => {
-            if !find_meta_items_by_name(*items, ~"always").is_empty() {
+            if !find_meta_items_by_name(*items, "always").is_empty() {
                 ia_always
-            } else if !find_meta_items_by_name(*items, ~"never").is_empty() {
+            } else if !find_meta_items_by_name(*items, "never").is_empty() {
                 ia_never
             } else {
                 ia_hint

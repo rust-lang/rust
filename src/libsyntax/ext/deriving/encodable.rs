@@ -321,7 +321,7 @@ fn expand_deriving_encodable_struct_method(
             unnamed_field => {
                 cx.span_unimpl(
                     span,
-                    ~"unnamed fields with `deriving(Encodable)`"
+                    "unnamed fields with `deriving(Encodable)`"
                 );
             }
         }

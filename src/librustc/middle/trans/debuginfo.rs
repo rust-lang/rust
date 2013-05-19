@@ -217,7 +217,7 @@ fn create_compile_unit(cx: @CrateContext) -> @Metadata<CompileUnitMetadata> {
                          llstr(env!("CFG_VERSION")),
                          lli1(true), // deprecated: main compile unit
                          lli1(cx.sess.opts.optimize != session::No),
-                         llstr(~""), // flags (???)
+                         llstr(""), // flags (???)
                          lli32(0) // runtime version (???)
                         ];
     let unit_node = llmdnode(unit_metadata);
@@ -368,7 +368,7 @@ fn create_basic_type(cx: @CrateContext, t: ty::t, span: span)
             ast::ty_f32 => (~"f32", DW_ATE_float),
             ast::ty_f64 => (~"f64", DW_ATE_float)
         },
-        _ => cx.sess.bug(~"debuginfo::create_basic_type - t is invalid type")
+        _ => cx.sess.bug("debuginfo::create_basic_type - t is invalid type")
     };
 
     let fname = filename_from_span(cx, span);
@@ -522,7 +522,7 @@ fn create_tuple(cx: @CrateContext, t: ty::t, elements: &[ty::t], span: span)
     for elements.each |element| {
         let ty_md = create_ty(cx, *element, span);
         let (size, align) = size_and_align_of(cx, *element);
-        add_member(scx, ~"", line_from_span(cx.sess.codemap, span) as int,
+        add_member(scx, "", line_from_span(cx.sess.codemap, span) as int,
                    size as int, align as int, ty_md.node);
     }
     let mdval = @Metadata {
@@ -539,7 +539,7 @@ fn voidptr() -> (ValueRef, int, int) {
     let null = ptr::null();
     let size = sys::size_of::<ValueRef>() as int;
     let align = sys::min_align_of::<ValueRef>() as int;
-    let vp = create_derived_type(PointerTypeTag, null, ~"", 0,
+    let vp = create_derived_type(PointerTypeTag, null, "", 0,
                                  size, align, 0, null);
     return (vp, size, align);
 }
@@ -561,16 +561,16 @@ fn create_boxed_type(cx: @CrateContext, contents: ty::t,
     let refcount_type = create_basic_type(cx, int_t, span);
     let name = ty_to_str(cx.tcx, contents);
     let scx = create_structure(file_node, @fmt!("box<%s>", name), 0);
-    add_member(scx, ~"refcnt", 0, sys::size_of::<uint>() as int,
+    add_member(scx, "refcnt", 0, sys::size_of::<uint>() as int,
                sys::min_align_of::<uint>() as int, refcount_type.node);
     // the tydesc and other pointers should be irrelevant to the
     // debugger, so treat them as void* types
     let (vp, vpsize, vpalign) = voidptr();
-    add_member(scx, ~"tydesc", 0, vpsize, vpalign, vp);
-    add_member(scx, ~"prev", 0, vpsize, vpalign, vp);
-    add_member(scx, ~"next", 0, vpsize, vpalign, vp);
+    add_member(scx, "tydesc", 0, vpsize, vpalign, vp);
+    add_member(scx, "prev", 0, vpsize, vpalign, vp);
+    add_member(scx, "next", 0, vpsize, vpalign, vp);
     let (size, align) = size_and_align_of(cx, contents);
-    add_member(scx, ~"boxed", 0, size, align, boxed.node);
+    add_member(scx, "boxed", 0, size, align, boxed.node);
     let llnode = finish_structure(scx);
     let mdval = @Metadata {
         node: llnode,
@@ -619,7 +619,7 @@ fn create_fixed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
     let (size, align) = size_and_align_of(cx, elem_t);
-    let subrange = llmdnode(~[lltag(SubrangeTag), lli64(0), lli64(len - 1)]);
+    let subrange = llmdnode([lltag(SubrangeTag), lli64(0), lli64(len - 1)]);
     let name = fmt!("[%s]", ty_to_str(cx.tcx, elem_t));
     let array = create_composite_type(ArrayTypeTag, name, file_node.node, 0,
                                       size * len, align, 0, Some(t_md.node),
@@ -641,18 +641,18 @@ fn create_boxed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
     let vec_scx = create_structure(file_node,
                                @/*bad*/ copy ty_to_str(cx.tcx, vec_t), 0);
     let size_t_type = create_basic_type(cx, ty::mk_uint(), vec_ty_span);
-    add_member(vec_scx, ~"fill", 0, sys::size_of::<libc::size_t>() as int,
+    add_member(vec_scx, "fill", 0, sys::size_of::<libc::size_t>() as int,
                sys::min_align_of::<libc::size_t>() as int, size_t_type.node);
-    add_member(vec_scx, ~"alloc", 0, sys::size_of::<libc::size_t>() as int,
+    add_member(vec_scx, "alloc", 0, sys::size_of::<libc::size_t>() as int,
                sys::min_align_of::<libc::size_t>() as int, size_t_type.node);
-    let subrange = llmdnode(~[lltag(SubrangeTag), lli64(0), lli64(0)]);
+    let subrange = llmdnode([lltag(SubrangeTag), lli64(0), lli64(0)]);
     let (arr_size, arr_align) = size_and_align_of(cx, elem_t);
     let name = fmt!("[%s]", ty_to_str(cx.tcx, elem_t));
     let data_ptr = create_composite_type(ArrayTypeTag, name, file_node.node, 0,
                                          arr_size, arr_align, 0,
                                          Some(elem_ty_md.node),
                                          Some(~[subrange]));
-    add_member(vec_scx, ~"data", 0, 0, // clang says the size should be 0
+    add_member(vec_scx, "data", 0, 0, // clang says the size should be 0
                sys::min_align_of::<u8>() as int, data_ptr);
     let llnode = finish_structure(vec_scx);
     let vec_md = @Metadata {
@@ -665,15 +665,15 @@ fn create_boxed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
     let box_scx = create_structure(file_node, @fmt!("box<%s>", name), 0);
     let int_t = ty::mk_int();
     let refcount_type = create_basic_type(cx, int_t, vec_ty_span);
-    add_member(box_scx, ~"refcnt", 0, sys::size_of::<uint>() as int,
+    add_member(box_scx, "refcnt", 0, sys::size_of::<uint>() as int,
                sys::min_align_of::<uint>() as int, refcount_type.node);
     let (vp, vpsize, vpalign) = voidptr();
-    add_member(box_scx, ~"tydesc", 0, vpsize, vpalign, vp);
-    add_member(box_scx, ~"prev", 0, vpsize, vpalign, vp);
-    add_member(box_scx, ~"next", 0, vpsize, vpalign, vp);
+    add_member(box_scx, "tydesc", 0, vpsize, vpalign, vp);
+    add_member(box_scx, "prev", 0, vpsize, vpalign, vp);
+    add_member(box_scx, "next", 0, vpsize, vpalign, vp);
     let size = 2 * sys::size_of::<int>() as int;
     let align = sys::min_align_of::<int>() as int;
-    add_member(box_scx, ~"boxed", 0, size, align, vec_md.node);
+    add_member(box_scx, "boxed", 0, size, align, vec_md.node);
     let llnode = finish_structure(box_scx);
     let mdval = @Metadata {
         node: llnode,
@@ -693,8 +693,8 @@ fn create_vec_slice(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t, span: span)
     let elem_ptr = create_pointer_type(cx, elem_t, span, elem_ty_md);
     let scx = create_structure(file_node, @ty_to_str(cx.tcx, vec_t), 0);
     let (_, ptr_size, ptr_align) = voidptr();
-    add_member(scx, ~"vec", 0, ptr_size, ptr_align, elem_ptr.node);
-    add_member(scx, ~"length", 0, sys::size_of::<uint>() as int,
+    add_member(scx, "vec", 0, ptr_size, ptr_align, elem_ptr.node);
+    add_member(scx, "length", 0, sys::size_of::<uint>() as int,
                sys::min_align_of::<uint>() as int, uint_type.node);
     let llnode = finish_structure(scx);
     let mdval = @Metadata {
@@ -715,7 +715,7 @@ fn create_fn_ty(cx: @CrateContext, fn_ty: ty::t, inputs: ~[ty::t], output: ty::t
     let output_ptr_md = create_pointer_type(cx, output, span, output_md);
     let inputs_vals = do inputs.map |arg| { create_ty(cx, *arg, span).node };
     let members = ~[output_ptr_md.node, vp] + inputs_vals;
-    let llnode = create_composite_type(SubroutineTag, ~"", file_node.node,
+    let llnode = create_composite_type(SubroutineTag, "", file_node.node,
                                        0, 0, 0, 0, None, Some(members));
     let mdval = @Metadata {
         node: llnode,
@@ -802,7 +802,7 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span)
         ty::ty_tup(ref elements) => {
             create_tuple(cx, t, *elements, span)
         },
-        _ => cx.sess.bug(~"debuginfo: unexpected type in create_ty")
+        _ => cx.sess.bug("debuginfo: unexpected type in create_ty")
     }
 }
 
@@ -869,7 +869,7 @@ pub fn create_local_var(bcx: block, local: @ast::local)
         }
       }
     };
-    let declargs = ~[llmdnode(~[llptr]), mdnode];
+    let declargs = ~[llmdnode([llptr]), mdnode];
     trans::build::Call(bcx, *cx.intrinsics.get(&~"llvm.dbg.declare"),
                        declargs);
     return mdval;
@@ -918,7 +918,7 @@ pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
             let llptr = match fcx.llargs.get_copy(&arg.id) {
               local_mem(v) | local_imm(v) => v,
             };
-            let declargs = ~[llmdnode(~[llptr]), mdnode];
+            let declargs = ~[llmdnode([llptr]), mdnode];
             trans::build::Call(bcx,
                                *cx.intrinsics.get(&~"llvm.dbg.declare"),
                                declargs);
@@ -1003,7 +1003,7 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
     } else {
         llnull()
     };
-    let sub_node = create_composite_type(SubroutineTag, ~"", file_node, 0, 0,
+    let sub_node = create_composite_type(SubroutineTag, "", file_node, 0, 0,
                                          0, 0, option::None,
                                          option::Some(~[ty_node]));
 
@@ -1013,7 +1013,7 @@ pub fn create_function(fcx: fn_ctxt) -> @Metadata<SubProgramMetadata> {
                        llstr(*cx.sess.str_of(ident)),
                         //XXX fully-qualified C++ name:
                        llstr(*cx.sess.str_of(ident)),
-                       llstr(~""), //XXX MIPS name?????
+                       llstr(""), //XXX MIPS name?????
                        file_node,
                        lli32(loc.line as int),
                        sub_node,

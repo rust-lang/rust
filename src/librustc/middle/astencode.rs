@@ -614,10 +614,10 @@ fn encode_vtable_res(ecx: @e::EncodeContext,
 fn encode_vtable_origin(ecx: @e::EncodeContext,
                         ebml_w: &mut writer::Encoder,
                         vtable_origin: &typeck::vtable_origin) {
-    do ebml_w.emit_enum(~"vtable_origin") |ebml_w| {
+    do ebml_w.emit_enum("vtable_origin") |ebml_w| {
         match *vtable_origin {
           typeck::vtable_static(def_id, ref tys, vtable_res) => {
-            do ebml_w.emit_enum_variant(~"vtable_static", 0u, 3u) |ebml_w| {
+            do ebml_w.emit_enum_variant("vtable_static", 0u, 3u) |ebml_w| {
                 do ebml_w.emit_enum_variant_arg(0u) |ebml_w| {
                     ebml_w.emit_def_id(def_id)
                 }
@@ -630,7 +630,7 @@ fn encode_vtable_origin(ecx: @e::EncodeContext,
             }
           }
           typeck::vtable_param(pn, bn) => {
-            do ebml_w.emit_enum_variant(~"vtable_param", 1u, 2u) |ebml_w| {
+            do ebml_w.emit_enum_variant("vtable_param", 1u, 2u) |ebml_w| {
                 do ebml_w.emit_enum_variant_arg(0u) |ebml_w| {
                     ebml_w.emit_uint(pn);
                 }
@@ -756,20 +756,20 @@ impl ebml_writer_helpers for writer::Encoder {
                  ecx: @e::EncodeContext,
                  tpbt: ty::ty_param_bounds_and_ty) {
         do self.emit_struct("ty_param_bounds_and_ty", 2) |this| {
-            do this.emit_struct_field(~"generics", 0) |this| {
+            do this.emit_struct_field("generics", 0) |this| {
                 do this.emit_struct("Generics", 2) |this| {
-                    do this.emit_struct_field(~"type_param_defs", 0) |this| {
+                    do this.emit_struct_field("type_param_defs", 0) |this| {
                         do this.emit_from_vec(*tpbt.generics.type_param_defs)
                                 |this, type_param_def| {
                             this.emit_type_param_def(ecx, type_param_def);
                         }
                     }
-                    do this.emit_struct_field(~"region_param", 1) |this| {
+                    do this.emit_struct_field("region_param", 1) |this| {
                         tpbt.generics.region_param.encode(this);
                     }
                 }
             }
-            do this.emit_struct_field(~"ty", 1) |this| {
+            do this.emit_struct_field("ty", 1) |this| {
                 this.emit_ty(ecx, tpbt.ty);
             }
         }

@@ -439,7 +439,7 @@ pub fn each_lint(sess: session::Session,
             let metas = match meta.node {
                 ast::meta_list(_, ref metas) => metas,
                 _ => {
-                    sess.span_err(meta.span, ~"malformed lint attribute");
+                    sess.span_err(meta.span, "malformed lint attribute");
                     loop;
                 }
             };
@@ -451,7 +451,7 @@ pub fn each_lint(sess: session::Session,
                         }
                     }
                     _ => {
-                        sess.span_err(meta.span, ~"malformed lint attribute");
+                        sess.span_err(meta.span, "malformed lint attribute");
                     }
                 }
             }

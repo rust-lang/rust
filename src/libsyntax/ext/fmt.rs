@@ -88,7 +88,7 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
                 let count_is_args = ~[count_lit];
                 return mk_call_global(cx, sp, count_is_path, count_is_args);
               }
-              _ => cx.span_unimpl(sp, ~"unimplemented fmt! conversion")
+              _ => cx.span_unimpl(sp, "unimplemented fmt! conversion")
             }
         }
         fn make_ty(cx: @ext_ctxt, sp: span, t: Ty) -> @ast::expr {

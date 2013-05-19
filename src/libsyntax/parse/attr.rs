@@ -51,7 +51,7 @@ impl parser_attr for Parser {
                     self.span.hi
                 );
                 if attr.node.style != ast::attr_outer {
-                  self.fatal(~"expected outer comment");
+                  self.fatal("expected outer comment");
                 }
                 attrs += ~[attr];
                 self.bump();

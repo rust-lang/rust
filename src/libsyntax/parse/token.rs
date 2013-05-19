@@ -173,14 +173,14 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
       LIT_INT_UNSUFFIXED(i) => { i.to_str() }
       LIT_FLOAT(s, t) => {
         let mut body = copy *in.get(s);
-        if body.ends_with(~".") {
+        if body.ends_with(".") {
             body = body + ~"0";  // `10.f` is not a float literal
         }
         body + ast_util::float_ty_to_str(t)
       }
       LIT_FLOAT_UNSUFFIXED(s) => {
         let mut body = copy *in.get(s);
-        if body.ends_with(~".") {
+        if body.ends_with(".") {
             body = body + ~"0";  // `10.f` is not a float literal
         }
         body

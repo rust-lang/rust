@@ -781,7 +781,7 @@ pub fn T_void() -> TypeRef {
 }
 
 pub fn T_nil() -> TypeRef {
-    return T_struct(~[], false)
+    return T_struct([], false)
 }
 
 pub fn T_metadata() -> TypeRef { unsafe { return llvm::LLVMMetadataType(); } }
@@ -864,7 +864,7 @@ pub fn T_fn(inputs: &[TypeRef], output: TypeRef) -> TypeRef {
 }
 
 pub fn T_fn_pair(cx: @CrateContext, tfn: TypeRef) -> TypeRef {
-    return T_struct(~[T_ptr(tfn), T_opaque_cbox_ptr(cx)], false);
+    return T_struct([T_ptr(tfn), T_opaque_cbox_ptr(cx)], false);
 }
 
 pub fn T_ptr(t: TypeRef) -> TypeRef {
@@ -903,7 +903,7 @@ pub fn set_struct_body(t: TypeRef, elts: &[TypeRef], packed: bool) {
     }
 }
 
-pub fn T_empty_struct() -> TypeRef { return T_struct(~[], false); }
+pub fn T_empty_struct() -> TypeRef { return T_struct([], false); }
 
 // A vtable is, in reality, a vtable pointer followed by zero or more pointers
 // to tydescs and other vtables that it closes over. But the types and number
@@ -912,7 +912,7 @@ pub fn T_empty_struct() -> TypeRef { return T_struct(~[], false); }
 pub fn T_vtable() -> TypeRef { T_array(T_ptr(T_i8()), 1u) }
 
 pub fn T_task(targ_cfg: @session::config) -> TypeRef {
-    let t = T_named_struct(~"task");
+    let t = T_named_struct("task");
 
     // Refcount
     // Delegate pointer
@@ -960,11 +960,11 @@ pub fn T_generic_glue_fn(cx: @CrateContext) -> TypeRef {
 }
 
 pub fn T_tydesc(targ_cfg: @session::config) -> TypeRef {
-    let tydesc = T_named_struct(~"tydesc");
+    let tydesc = T_named_struct("tydesc");
     let tydescpp = T_ptr(T_ptr(tydesc));
     let pvoid = T_ptr(T_i8());
     let glue_fn_ty =
-        T_ptr(T_fn(~[T_ptr(T_nil()), T_ptr(T_nil()), tydescpp,
+        T_ptr(T_fn([T_ptr(T_nil()), T_ptr(T_nil()), tydescpp,
                     pvoid], T_void()));
 
     let int_type = T_int(targ_cfg);
@@ -990,9 +990,9 @@ pub fn T_vector(t: TypeRef, n: uint) -> TypeRef {
 
 // Interior vector.
 pub fn T_vec2(targ_cfg: @session::config, t: TypeRef) -> TypeRef {
-    return T_struct(~[T_int(targ_cfg), // fill
-                      T_int(targ_cfg), // alloc
-                      T_array(t, 0u)], // elements
+    return T_struct([T_int(targ_cfg), // fill
+                     T_int(targ_cfg), // alloc
+                     T_array(t, 0u)], // elements
                     false);
 }
 
@@ -1028,7 +1028,7 @@ pub fn T_box_header(cx: @CrateContext) -> TypeRef {
 }
 
 pub fn T_box(cx: @CrateContext, t: TypeRef) -> TypeRef {
-    return T_struct(vec::append(T_box_header_fields(cx), ~[t]), false);
+    return T_struct(vec::append(T_box_header_fields(cx), [t]), false);
 }
 
 pub fn T_box_ptr(t: TypeRef) -> TypeRef {
@@ -1046,7 +1046,7 @@ pub fn T_opaque_box_ptr(cx: @CrateContext) -> TypeRef {
 }
 
 pub fn T_unique(cx: @CrateContext, t: TypeRef) -> TypeRef {
-    return T_struct(vec::append(T_box_header_fields(cx), ~[t]), false);
+    return T_struct(vec::append(T_box_header_fields(cx), [t]), false);
 }
 
 pub fn T_unique_ptr(t: TypeRef) -> TypeRef {
@@ -1056,12 +1056,12 @@ pub fn T_unique_ptr(t: TypeRef) -> TypeRef {
 }
 
 pub fn T_port(cx: @CrateContext, _t: TypeRef) -> TypeRef {
-    return T_struct(~[cx.int_type], false); // Refcount
+    return T_struct([cx.int_type], false); // Refcount
 
 }
 
 pub fn T_chan(cx: @CrateContext, _t: TypeRef) -> TypeRef {
-    return T_struct(~[cx.int_type], false); // Refcount
+    return T_struct([cx.int_type], false); // Refcount
 
 }
 
@@ -1085,16 +1085,16 @@ pub fn T_captured_tydescs(cx: @CrateContext, n: uint) -> TypeRef {
 pub fn T_opaque_trait(cx: @CrateContext, store: ty::TraitStore) -> TypeRef {
     match store {
         ty::BoxTraitStore => {
-            T_struct(~[T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)], false)
+            T_struct([T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)], false)
         }
         ty::UniqTraitStore => {
-            T_struct(~[T_ptr(cx.tydesc_type),
-                       T_unique_ptr(T_unique(cx, T_i8())),
-                       T_ptr(cx.tydesc_type)],
+            T_struct([T_ptr(cx.tydesc_type),
+                      T_unique_ptr(T_unique(cx, T_i8())),
+                      T_ptr(cx.tydesc_type)],
                      false)
         }
         ty::RegionTraitStore(_) => {
-            T_struct(~[T_ptr(cx.tydesc_type), T_ptr(T_i8())], false)
+            T_struct([T_ptr(cx.tydesc_type), T_ptr(T_i8())], false)
         }
     }
 }
@@ -1130,7 +1130,7 @@ pub fn C_floating(s: &str, t: TypeRef) -> ValueRef {
 }
 
 pub fn C_nil() -> ValueRef {
-    return C_struct(~[]);
+    return C_struct([]);
 }
 
 pub fn C_bool(b: bool) -> ValueRef {
@@ -1193,7 +1193,7 @@ pub fn C_estr_slice(cx: @CrateContext, s: @~str) -> ValueRef {
     unsafe {
         let len = s.len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), T_ptr(T_i8()));
-        C_struct(~[cs, C_uint(cx, len + 1u /* +1 for null */)])
+        C_struct([cs, C_uint(cx, len + 1u /* +1 for null */)])
     }
 }
 
