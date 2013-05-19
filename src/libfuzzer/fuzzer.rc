@@ -20,8 +20,8 @@
 
 #[allow(non_camel_case_types)];
 
-extern mod std(vers = "0.7-pre");
-extern mod syntax(vers = "0.7-pre");
+extern mod std;
+extern mod syntax;
 
 use core::run;
 
