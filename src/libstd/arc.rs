@@ -93,12 +93,12 @@ pub fn ARC<T:Const + Owned>(data: T) -> ARC<T> {
  * wrapper.
  */
 pub fn get<'a, T:Const + Owned>(rc: &'a ARC<T>) -> &'a T {
-    unsafe { &*rc.x.get_immut() }
+    rc.get()
 }
 
-impl<T: Const + Owned> ARC<T> {
+impl<T:Const+Owned> ARC<T> {
     pub fn get<'a>(&'a self) -> &'a T {
-        get(self)
+        unsafe { &*self.x.get_immut() }
     }
 }
 /**
