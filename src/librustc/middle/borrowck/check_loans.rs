@@ -816,4 +816,3 @@ fn check_loans_in_block<'a>(blk: &ast::blk,
     visit::visit_block(blk, this, vt);
     this.check_for_conflicting_loans(blk.node.id);
 }
-
