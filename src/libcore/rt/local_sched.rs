@@ -21,21 +21,22 @@ use rt::rtio::{EventLoop, IoFactoryObject};
 use unstable::finally::Finally;
 use rt::local_ptr;
 use tls = rt::thread_local_storage;
+use rt::local::Local;
 
 #[cfg(test)] use rt::uv::uvio::UvEventLoop;
 
 /// Give the Scheduler to thread-local storage
-pub fn put(sched: ~Scheduler) { unsafe { local_ptr::put(sched) } }
+pub fn put(sched: ~Scheduler) { Local::put_local(sched) }
 
 /// Take ownership of the Scheduler from thread-local storage
-pub fn take() -> ~Scheduler { unsafe { local_ptr::take() } }
+pub fn take() -> ~Scheduler { Local::take_local() }
 
 /// Check whether there is a thread-local Scheduler attached to the running thread
-pub fn exists() -> bool { local_ptr::exists() }
+pub fn exists() -> bool { Local::exists_local::<Scheduler>() }
 
 /// Borrow the thread-local scheduler from thread-local storage.
 /// While the scheduler is borrowed it is not available in TLS.
-pub fn borrow(f: &fn(&mut Scheduler)) { unsafe { local_ptr::borrow(f) } }
+pub fn borrow(f: &fn(&mut Scheduler)) { Local::borrow_local(f) }
 
 /// Borrow a mutable reference to the thread-local Scheduler
 ///
@@ -43,7 +44,7 @@ pub fn borrow(f: &fn(&mut Scheduler)) { unsafe { local_ptr::borrow(f) } }
 ///
 /// Because this leaves the Scheduler in thread-local storage it is possible
 /// For the Scheduler pointer to be aliased
-pub unsafe fn unsafe_borrow() -> *mut Scheduler { local_ptr::unsafe_borrow() }
+pub unsafe fn unsafe_borrow() -> *mut Scheduler { Local::unsafe_borrow_local() }
 
 pub unsafe fn unsafe_borrow_io() -> *mut IoFactoryObject {
     let sched = unsafe_borrow();
