@@ -858,4 +858,3 @@ impl AstFoldExtensions for @ast_fold {
 pub fn make_fold(afp: ast_fold_fns) -> @ast_fold {
     afp as @ast_fold
 }
-

@@ -19,4 +19,3 @@ pub mod sub_foo {
         pub fn foo() -> int { 42 }
     }
 }
-
