@@ -30,10 +30,24 @@ macro_rules! rtdebug (
     ($( $arg:expr),+) => ( $(let _ = $arg)*; )
 )
 
+macro_rules! rtassert (
+    ( $arg:expr ) => ( {
+        if !$arg {
+            abort!("assertion failed: %s", stringify!($arg));
+        }
+    } )
+)
+
 macro_rules! abort(
     ($( $msg:expr),+) => ( {
         rtdebug!($($msg),+);
 
-        unsafe { ::libc::abort(); }
+        do_abort();
+
+        // NB: This is in a fn to avoid putting the `unsafe` block in a macro,
+        // which causes spurious 'unnecessary unsafe block' warnings.
+        fn do_abort() -> ! {
+            unsafe { ::libc::abort(); }
+        }
     } )
 )

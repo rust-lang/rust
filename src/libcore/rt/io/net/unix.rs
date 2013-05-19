@@ -32,10 +32,6 @@ impl Writer for UnixStream {
     fn flush(&mut self) { fail!() }
 }
 
-impl Close for UnixStream {
-    fn close(&mut self) { fail!() }
-}
-
 pub struct UnixListener;
 
 impl UnixListener {

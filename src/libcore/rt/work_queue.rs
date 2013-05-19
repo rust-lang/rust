@@ -46,4 +46,8 @@ pub impl<T> WorkQueue<T> {
             None
         }
     }
+
+    fn is_empty(&self) -> bool {
+        return self.queue.is_empty();
+    }
 }

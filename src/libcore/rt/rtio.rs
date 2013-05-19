@@ -11,32 +11,35 @@
 use option::*;
 use result::*;
 
+use rt::io::IoError;
 use super::io::net::ip::IpAddr;
+use rt::uv::uvio;
 
 // XXX: ~object doesn't work currently so these are some placeholder
 // types to use instead
-pub type EventLoopObject = super::uvio::UvEventLoop;
-pub type IoFactoryObject = super::uvio::UvIoFactory;
-pub type StreamObject = super::uvio::UvStream;
-pub type TcpListenerObject = super::uvio::UvTcpListener;
+pub type EventLoopObject = uvio::UvEventLoop;
+pub type IoFactoryObject = uvio::UvIoFactory;
+pub type RtioTcpStreamObject = uvio::UvTcpStream;
+pub type RtioTcpListenerObject = uvio::UvTcpListener;
 
 pub trait EventLoop {
     fn run(&mut self);
     fn callback(&mut self, ~fn());
+    fn callback_ms(&mut self, ms: u64, ~fn());
     /// The asynchronous I/O services. Not all event loops may provide one
     fn io<'a>(&'a mut self) -> Option<&'a mut IoFactoryObject>;
 }
 
 pub trait IoFactory {
-    fn connect(&mut self, addr: IpAddr) -> Option<~StreamObject>;
-    fn bind(&mut self, addr: IpAddr) -> Option<~TcpListenerObject>;
+    fn tcp_connect(&mut self, addr: IpAddr) -> Result<~RtioTcpStreamObject, IoError>;
+    fn tcp_bind(&mut self, addr: IpAddr) -> Result<~RtioTcpListenerObject, IoError>;
 }
 
-pub trait TcpListener {
-    fn listen(&mut self) -> Option<~StreamObject>;
+pub trait RtioTcpListener {
+    fn accept(&mut self) -> Result<~RtioTcpStreamObject, IoError>;
 }
 
-pub trait Stream {
-    fn read(&mut self, buf: &mut [u8]) -> Result<uint, ()>;
-    fn write(&mut self, buf: &[u8]) -> Result<(), ()>;
+pub trait RtioTcpStream {
+    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
+    fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
 }

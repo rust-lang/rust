@@ -229,7 +229,7 @@ rust_uv_timer_init(uv_loop_t* loop, uv_timer_t* timer) {
 
 extern "C" int
 rust_uv_timer_start(uv_timer_t* the_timer, uv_timer_cb cb,
-                        uint32_t timeout, uint32_t repeat) {
+                    int64_t timeout, int64_t repeat) {
     return uv_timer_start(the_timer, cb, timeout, repeat);
 }
 
