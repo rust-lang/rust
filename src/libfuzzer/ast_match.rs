@@ -10,7 +10,6 @@
 
 use core::prelude::*;
 
-use std;
 use vec;
 
 fn vec_equal<T>(v: ~[T],
