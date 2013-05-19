@@ -32,10 +32,6 @@ impl Writer for UdpStream {
     fn flush(&mut self) { fail!() }
 }
 
-impl Close for UdpStream {
-    fn close(&mut self) { fail!() }
-}
-
 pub struct UdpListener;
 
 impl UdpListener {

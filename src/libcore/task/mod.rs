@@ -43,6 +43,7 @@ use task::rt::{task_id, sched_id};
 use util;
 use util::replace;
 use unstable::finally::Finally;
+use rt::{context, OldTaskContext};
 
 #[cfg(test)] use comm::SharedChan;
 
@@ -558,23 +559,33 @@ pub fn get_scheduler() -> Scheduler {
  * ~~~
  */
 pub unsafe fn unkillable<U>(f: &fn() -> U) -> U {
-    let t = rt::rust_get_task();
-    do (|| {
-        rt::rust_task_inhibit_kill(t);
+    if context() == OldTaskContext {
+        let t = rt::rust_get_task();
+        do (|| {
+            rt::rust_task_inhibit_kill(t);
+            f()
+        }).finally {
+            rt::rust_task_allow_kill(t);
+        }
+    } else {
+        // FIXME #6377
         f()
-    }).finally {
-        rt::rust_task_allow_kill(t);
     }
 }
 
 /// The inverse of unkillable. Only ever to be used nested in unkillable().
 pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
-    let t = rt::rust_get_task();
-    do (|| {
-        rt::rust_task_allow_kill(t);
+    if context() == OldTaskContext {
+        let t = rt::rust_get_task();
+        do (|| {
+            rt::rust_task_allow_kill(t);
+            f()
+        }).finally {
+            rt::rust_task_inhibit_kill(t);
+        }
+    } else {
+        // FIXME #6377
         f()
-    }).finally {
-        rt::rust_task_inhibit_kill(t);
     }
 }
 
@@ -583,14 +594,19 @@ pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
  * For use with exclusive ARCs, which use pthread mutexes directly.
  */
 pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
-    let t = rt::rust_get_task();
-    do (|| {
-        rt::rust_task_inhibit_kill(t);
-        rt::rust_task_inhibit_yield(t);
+    if context() == OldTaskContext {
+        let t = rt::rust_get_task();
+        do (|| {
+            rt::rust_task_inhibit_kill(t);
+            rt::rust_task_inhibit_yield(t);
+            f()
+        }).finally {
+            rt::rust_task_allow_yield(t);
+            rt::rust_task_allow_kill(t);
+        }
+    } else {
+        // FIXME #6377
         f()
-    }).finally {
-        rt::rust_task_allow_yield(t);
-        rt::rust_task_allow_kill(t);
     }
 }
 

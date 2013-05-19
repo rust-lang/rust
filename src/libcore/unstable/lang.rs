@@ -16,12 +16,12 @@ use libc::{c_char, c_uchar, c_void, size_t, uintptr_t, c_int, STDERR_FILENO};
 use managed::raw::BoxRepr;
 use str;
 use sys;
-use unstable::exchange_alloc;
 use cast::transmute;
 use rt::{context, OldTaskContext};
 use rt::local_services::borrow_local_services;
 use option::{Option, Some, None};
 use io;
+use rt::global_heap;
 
 #[allow(non_camel_case_types)]
 pub type rust_task = c_void;
@@ -153,7 +153,7 @@ unsafe fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
 #[lang="exchange_malloc"]
 #[inline(always)]
 pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    transmute(exchange_alloc::malloc(transmute(td), transmute(size)))
+    transmute(global_heap::malloc(transmute(td), transmute(size)))
 }
 
 /// Because this code is so perf. sensitive, use a static constant so that
@@ -233,7 +233,7 @@ impl DebugPrints for io::fd_t {
 #[lang="exchange_free"]
 #[inline(always)]
 pub unsafe fn exchange_free(ptr: *c_char) {
-    exchange_alloc::free(transmute(ptr))
+    global_heap::free(transmute(ptr))
 }
 
 #[lang="malloc"]
@@ -423,18 +423,31 @@ pub unsafe fn strdup_uniq(ptr: *c_uchar, len: uint) -> ~str {
 #[lang="start"]
 pub fn start(main: *u8, argc: int, argv: **c_char,
              crate_map: *u8) -> int {
-    use libc::getenv;
-    use rt::start;
+    use rt;
+    use sys::Closure;
+    use ptr;
+    use cast;
+    use os;
 
     unsafe {
-        let use_old_rt = do str::as_c_str("RUST_NEWRT") |s| {
-            getenv(s).is_null()
-        };
+        let use_old_rt = os::getenv("RUST_NEWRT").is_none();
         if use_old_rt {
             return rust_start(main as *c_void, argc as c_int, argv,
                               crate_map as *c_void) as int;
         } else {
-            return start(main, argc, argv, crate_map);
+            return do rt::start(argc, argv as **u8, crate_map) {
+                unsafe {
+                    // `main` is an `fn() -> ()` that doesn't take an environment
+                    // XXX: Could also call this as an `extern "Rust" fn` once they work
+                    let main = Closure {
+                        code: main as *(),
+                        env: ptr::null(),
+                    };
+                    let mainfn: &fn() = cast::transmute(main);
+
+                    mainfn();
+                }
+            };
         }
     }
 
