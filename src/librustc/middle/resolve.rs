@@ -734,7 +734,7 @@ pub fn Resolver(session: Session,
 
         graph_root: graph_root,
 
-        trait_info: HashMap::new(),
+        method_map: @mut HashMap::new(),
         structs: HashSet::new(),
 
         unresolved_imports: 0,
@@ -776,7 +776,7 @@ pub struct Resolver {
 
     graph_root: @mut NameBindings,
 
-    trait_info: HashMap<def_id, HashSet<ident>>,
+    method_map: @mut HashMap<ident, HashSet<def_id>>,
     structs: HashSet<def_id>,
 
     // The number of imports that are currently unresolved.
@@ -1292,7 +1292,15 @@ pub impl Resolver {
                 }
 
                 let def_id = local_def(item.id);
-                self.trait_info.insert(def_id, method_names);
+                for method_names.each |name| {
+                    if !self.method_map.contains_key(name) {
+                        self.method_map.insert(*name, HashSet::new());
+                    }
+                    match self.method_map.find_mut(name) {
+                        Some(s) => { s.insert(def_id); },
+                        _ => fail!("Can't happen"),
+                    }
+                }
 
                 name_bindings.define_type(privacy, def_trait(def_id), sp);
                 visit_item(item, new_parent, visitor);
@@ -1589,7 +1597,15 @@ pub impl Resolver {
                       interned_method_names.insert(method_name);
                   }
               }
-              self.trait_info.insert(def_id, interned_method_names);
+              for interned_method_names.each |name| {
+                  if !self.method_map.contains_key(name) {
+                      self.method_map.insert(*name, HashSet::new());
+                  }
+                  match self.method_map.find_mut(name) {
+                      Some(s) => { s.insert(def_id); },
+                      _ => fail!("Can't happen"),
+                  }
+              }
 
               child_name_bindings.define_type(Public, def, dummy_sp());
           }
@@ -4935,118 +4951,111 @@ pub impl Resolver {
         debug!("(searching for traits containing method) looking for '%s'",
                *self.session.str_of(name));
 
+
         let mut found_traits = ~[];
         let mut search_module = self.current_module;
-        loop {
-            // Look for the current trait.
-            match /*bad*/copy self.current_trait_refs {
-                Some(trait_def_ids) => {
-                    for trait_def_ids.each |trait_def_id| {
-                        self.add_trait_info_if_containing_method(
-                            &mut found_traits, *trait_def_id, name);
-                    }
-                }
-                None => {
-                    // Nothing to do.
-                }
-            }
-
-            // Look for trait children.
-            for search_module.children.each_value |&child_name_bindings| {
-                match child_name_bindings.def_for_namespace(TypeNS) {
-                    Some(def) => {
-                        match def {
-                            def_trait(trait_def_id) => {
-                                self.add_trait_info_if_containing_method(
-                                    &mut found_traits, trait_def_id, name);
-                            }
-                            _ => {
-                                // Continue.
+        match self.method_map.find(&name) {
+            Some(candidate_traits) => loop {
+                // Look for the current trait.
+                match /*bad*/copy self.current_trait_refs {
+                    Some(trait_def_ids) => {
+                        for trait_def_ids.each |trait_def_id| {
+                            if candidate_traits.contains(trait_def_id) {
+                                self.add_trait_info(
+                                    &mut found_traits,
+                                    *trait_def_id, name);
                             }
                         }
                     }
                     None => {
-                        // Continue.
+                        // Nothing to do.
                     }
                 }
-            }
 
-            // Look for imports.
-            for search_module.import_resolutions.each_value
-                    |&import_resolution| {
-
-                match import_resolution.target_for_namespace(TypeNS) {
-                    None => {
-                        // Continue.
-                    }
-                    Some(target) => {
-                        match target.bindings.def_for_namespace(TypeNS) {
-                            Some(def) => {
-                                match def {
-                                    def_trait(trait_def_id) => {
-                                        let added = self.
-                                        add_trait_info_if_containing_method(
+                // Look for trait children.
+                for search_module.children.each_value |&child_name_bindings| {
+                    match child_name_bindings.def_for_namespace(TypeNS) {
+                        Some(def) => {
+                            match def {
+                                def_trait(trait_def_id) => {
+                                    if candidate_traits.contains(&trait_def_id) {
+                                        self.add_trait_info(
                                             &mut found_traits,
                                             trait_def_id, name);
-                                        if added {
-                                            self.used_imports.insert(
-                                                import_resolution.id);
-                                        }
-                                    }
-                                    _ => {
-                                        // Continue.
                                     }
                                 }
+                                _ => {
+                                    // Continue.
+                                }
                             }
-                            None => {
-                                // Continue.
+                        }
+                        None => {
+                            // Continue.
+                        }
+                    }
+                }
+
+                // Look for imports.
+                for search_module.import_resolutions.each_value
+                        |&import_resolution| {
+
+                    match import_resolution.target_for_namespace(TypeNS) {
+                        None => {
+                            // Continue.
+                        }
+                        Some(target) => {
+                            match target.bindings.def_for_namespace(TypeNS) {
+                                Some(def) => {
+                                    match def {
+                                        def_trait(trait_def_id) => {
+                                            if candidate_traits.contains(&trait_def_id) {
+                                                self.add_trait_info(
+                                                    &mut found_traits,
+                                                    trait_def_id, name);
+                                                self.used_imports.insert(
+                                                    import_resolution.id);
+                                            }
+                                        }
+                                        _ => {
+                                            // Continue.
+                                        }
+                                    }
+                                }
+                                None => {
+                                    // Continue.
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            // Move to the next parent.
-            match search_module.parent_link {
-                NoParentLink => {
-                    // Done.
-                    break;
+                // Move to the next parent.
+                match search_module.parent_link {
+                    NoParentLink => {
+                        // Done.
+                        break;
+                    }
+                    ModuleParentLink(parent_module, _) |
+                    BlockParentLink(parent_module, _) => {
+                        search_module = parent_module;
+                    }
                 }
-                ModuleParentLink(parent_module, _) |
-                BlockParentLink(parent_module, _) => {
-                    search_module = parent_module;
-                }
-            }
+            },
+            _ => ()
         }
 
         return found_traits;
     }
 
-    fn add_trait_info_if_containing_method(&self,
-                                           found_traits: &mut ~[def_id],
-                                           trait_def_id: def_id,
-                                           name: ident)
-                                        -> bool {
-        debug!("(adding trait info if containing method) trying trait %d:%d \
-                for method '%s'",
+    fn add_trait_info(&self,
+                      found_traits: &mut ~[def_id],
+                      trait_def_id: def_id,
+                      name: ident) {
+        debug!("(adding trait info) found trait %d:%d for method '%s'",
                trait_def_id.crate,
                trait_def_id.node,
                *self.session.str_of(name));
-
-        match self.trait_info.find(&trait_def_id) {
-            Some(trait_info) if trait_info.contains(&name) => {
-                debug!("(adding trait info if containing method) found trait \
-                        %d:%d for method '%s'",
-                       trait_def_id.crate,
-                       trait_def_id.node,
-                       *self.session.str_of(name));
-                found_traits.push(trait_def_id);
-                true
-            }
-            Some(_) | None => {
-                false
-            }
-        }
+        found_traits.push(trait_def_id);
     }
 
     fn add_fixed_trait_for_expr(@mut self,
