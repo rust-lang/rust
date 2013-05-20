@@ -386,8 +386,20 @@ fn encode_reexported_static_methods(ecx: @EncodeContext,
     match ecx.tcx.trait_methods_cache.find(&exp.def_id) {
         Some(methods) => {
             match ecx.tcx.items.find(&exp.def_id.node) {
-                Some(&ast_map::node_item(_, path)) => {
-                    if mod_path != *path {
+                Some(&ast_map::node_item(item, path)) => {
+                    let original_name = ecx.tcx.sess.str_of(item.ident);
+
+                    //
+                    // We don't need to reexport static methods on traits
+                    // declared in the same module as our `pub use ...` since
+                    // that's done when we encode the trait item.
+                    //
+                    // The only exception is when the reexport *changes* the
+                    // name e.g. `pub use Foo = self::Bar` -- we have
+                    // encoded metadata for static methods relative to Bar,
+                    // but not yet for Foo.
+                    //
+                    if mod_path != *path || *exp.name != *original_name {
                         for methods.each |&m| {
                             if m.explicit_self == ast::sty_static {
                                 encode_reexported_static_method(ecx,
