@@ -60,35 +60,11 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
  * deinitialising or copying either one.
  */
 #[inline]
-#[cfg(not(stage0))]
 pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
     if x == y { return }
 
     // Give ourselves some scratch space to work with
     let mut tmp: T = intrinsics::uninit();
-    let t = ptr::to_mut_unsafe_ptr(&mut tmp);
-
-    // Perform the swap
-    ptr::copy_memory(t, x, 1);
-    ptr::copy_memory(x, y, 1);
-    ptr::copy_memory(y, t, 1);
-
-    // y and t now point to the same thing, but we need to completely forget t
-    // because it's no longer relevant.
-    cast::forget(tmp);
-}
-
-/**
- * Swap the values at two mutable locations of the same type, without
- * deinitialising or copying either one.
- */
-#[inline]
-#[cfg(stage0)]
-pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
-    if x == y { return }
-
-    // Give ourselves some scratch space to work with
-    let mut tmp: T = intrinsics::init();
     let t = ptr::to_mut_unsafe_ptr(&mut tmp);
 
     // Perform the swap

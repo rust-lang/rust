@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[cfg(stage0)]
-use core;
-
 #[deriving(Eq, IterBytes)]
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set
@@ -60,22 +57,6 @@ pub impl<E:CLike> EnumSet<E> {
         (self.bits & bit(e)) != 0
     }
 
-    #[cfg(stage0)]
-    fn each(&self, f: &fn(E) -> bool) {
-        let mut bits = self.bits;
-        let mut index = 0;
-        while bits != 0 {
-            if (bits & 1) != 0 {
-                let e = CLike::from_uint(index);
-                if !f(e) {
-                    return;
-                }
-            }
-            index += 1;
-            bits >>= 1;
-        }
-    }
-    #[cfg(not(stage0))]
     fn each(&self, f: &fn(E) -> bool) -> bool {
         let mut bits = self.bits;
         let mut index = 0;

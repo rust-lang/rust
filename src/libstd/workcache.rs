@@ -97,17 +97,6 @@ struct WorkKey {
     name: ~str
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for WorkKey {
-    #[inline(always)]
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        let mut flag = true;
-        self.kind.iter_bytes(lsb0, |bytes| {flag = f(bytes); flag});
-        if !flag { return; }
-        self.name.iter_bytes(lsb0, f);
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for WorkKey {
     #[inline(always)]
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {

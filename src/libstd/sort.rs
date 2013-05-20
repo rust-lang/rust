@@ -61,26 +61,6 @@ pub fn merge_sort<T:Copy>(v: &[T], le: Le<T>) -> ~[T] {
     }
 }
 
-#[cfg(stage0)]
-fn part<T>(arr: &mut [T], left: uint,
-           right: uint, pivot: uint, compare_func: Le<T>) -> uint {
-    swap(&mut arr[pivot], &mut arr[right]);
-    let mut storage_index: uint = left;
-    let mut i: uint = left;
-    while i < right {
-        let a: &mut T = &mut arr[i];
-        let b: &mut T = &mut arr[right];
-        if compare_func(a, b) {
-            swap(&mut arr[i], &mut arr[storage_index]);
-            storage_index += 1;
-        }
-        i += 1;
-    }
-    swap(&mut arr[storage_index], &mut arr[right]);
-    return storage_index;
-}
-
-#[cfg(not(stage0))]
 fn part<T>(arr: &mut [T], left: uint,
            right: uint, pivot: uint, compare_func: Le<T>) -> uint {
     vec::swap(arr, pivot, right);

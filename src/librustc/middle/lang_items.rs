@@ -86,15 +86,6 @@ pub impl LanguageItems {
         }
     }
 
-    #[cfg(stage0)]
-    fn each_item(&self, f: &fn(def_id: def_id, i: uint) -> bool) {
-        for self.items.eachi |i, &item| {
-            if !f(item.get(), i) {
-                break;
-            }
-        }
-    }
-    #[cfg(not(stage0))]
     fn each_item(&self, f: &fn(def_id: def_id, i: uint) -> bool) -> bool {
         self.items.eachi(|i, &item| f(item.get(), i))
     }

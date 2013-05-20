@@ -253,18 +253,13 @@ pub use self::stdio::println;
 
 pub use self::file::FileStream;
 pub use self::net::ip::IpAddr;
-#[cfg(not(stage0))]
 pub use self::net::tcp::TcpListener;
-#[cfg(not(stage0))]
 pub use self::net::tcp::TcpStream;
 pub use self::net::udp::UdpStream;
 
 // Some extension traits that all Readers and Writers get.
-#[cfg(not(stage0))] // Requires condition! fixes
 pub use self::extensions::ReaderUtil;
-#[cfg(not(stage0))] // Requires condition! fixes
 pub use self::extensions::ReaderByteConversions;
-#[cfg(not(stage0))] // Requires condition! fixes
 pub use self::extensions::WriterByteConversions;
 
 /// Synchronous, non-blocking file I/O.
@@ -272,7 +267,6 @@ pub mod file;
 
 /// Synchronous, non-blocking network I/O.
 pub mod net {
-    #[cfg(not(stage0))]
     pub mod tcp;
     pub mod udp;
     pub mod ip;
@@ -288,7 +282,6 @@ pub mod mem;
 pub mod stdio;
 
 /// Implementations for Option
-#[cfg(not(stage0))] // Requires condition! fixes
 mod option;
 
 /// Basic stream compression. XXX: Belongs with other flate code
@@ -298,7 +291,6 @@ pub mod flate;
 pub mod comm_adapters;
 
 /// Extension traits
-#[cfg(not(stage0))] // Requires condition! fixes
 mod extensions;
 
 /// Non-I/O things needed by the I/O module

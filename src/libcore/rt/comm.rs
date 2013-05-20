@@ -22,9 +22,6 @@ use ops::Drop;
 use kinds::Owned;
 use rt::sched::Coroutine;
 use rt::local_sched;
-#[cfg(stage0)]
-use unstable::intrinsics::{atomic_xchg};
-#[cfg(not(stage0))]
 use unstable::intrinsics::{atomic_xchg, atomic_load};
 use util::Void;
 use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable};
@@ -210,10 +207,6 @@ impl<T> PortOne<T> {
 }
 
 impl<T> Peekable<T> for PortOne<T> {
-    #[cfg(stage0)]
-    fn peek(&self) -> bool { fail!() }
-
-    #[cfg(not(stage0))]
     fn peek(&self) -> bool {
         unsafe {
             let packet: *mut Packet<T> = self.inner.packet();
