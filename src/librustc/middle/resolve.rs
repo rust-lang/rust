@@ -2321,7 +2321,7 @@ pub impl Resolver {
             return Indeterminate;
         }
 
-        assert!(containing_module.glob_count == 0);
+        assert_eq!(containing_module.glob_count, 0);
 
         // Add all resolved imports from the containing module.
         for containing_module.import_resolutions.each
@@ -2903,7 +2903,7 @@ pub impl Resolver {
         // If this is a search of all imports, we should be done with glob
         // resolution at this point.
         if name_search_type == SearchItemsAndAllImports {
-            assert!(module_.glob_count == 0);
+            assert_eq!(module_.glob_count, 0);
         }
 
         // Check the list of resolved imports.

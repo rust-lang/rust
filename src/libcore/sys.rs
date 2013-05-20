@@ -202,10 +202,12 @@ impl FailWithCause for &'static str {
 
 // FIXME #4427: Temporary until rt::rt_fail_ goes away
 pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
-    use rt::{context, OldTaskContext};
-    use rt::local_services::unsafe_borrow_local_services;
+    use option::Option;
+    use rt::{context, OldTaskContext, TaskContext};
+    use rt::local_services::{unsafe_borrow_local_services, Unwinder};
 
-    match context() {
+    let context = context();
+    match context {
         OldTaskContext => {
             unsafe {
                 gc::cleanup_stack_for_failure();
@@ -214,11 +216,26 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
             }
         }
         _ => {
-            // XXX: Need to print the failure message
-            gc::cleanup_stack_for_failure();
             unsafe {
+                // XXX: Bad re-allocations. fail! needs some refactoring
+                let msg = str::raw::from_c_str(msg);
+                let file = str::raw::from_c_str(file);
+
+                let outmsg = fmt!("%s at line %i of file %s", msg, line as int, file);
+
+                // XXX: Logging doesn't work correctly in non-task context because it
+                // invokes the local heap
+                if context == TaskContext {
+                    error!(outmsg);
+                } else {
+                    rtdebug!("%s", outmsg);
+                }
+
+                gc::cleanup_stack_for_failure();
+
                 let local_services = unsafe_borrow_local_services();
-                match local_services.unwinder {
+                let unwinder: &mut Option<Unwinder> = &mut (*local_services).unwinder;
+                match *unwinder {
                     Some(ref mut unwinder) => unwinder.begin_unwind(),
                     None => abort!("failure without unwinder. aborting process")
                 }
@@ -234,10 +251,10 @@ mod tests {
 
     #[test]
     fn size_of_basic() {
-        assert!(size_of::<u8>() == 1u);
-        assert!(size_of::<u16>() == 2u);
-        assert!(size_of::<u32>() == 4u);
-        assert!(size_of::<u64>() == 8u);
+        assert_eq!(size_of::<u8>(), 1u);
+        assert_eq!(size_of::<u16>(), 2u);
+        assert_eq!(size_of::<u32>(), 4u);
+        assert_eq!(size_of::<u64>(), 8u);
     }
 
     #[test]
@@ -245,15 +262,15 @@ mod tests {
     #[cfg(target_arch = "arm")]
     #[cfg(target_arch = "mips")]
     fn size_of_32() {
-        assert!(size_of::<uint>() == 4u);
-        assert!(size_of::<*uint>() == 4u);
+        assert_eq!(size_of::<uint>(), 4u);
+        assert_eq!(size_of::<*uint>(), 4u);
     }
 
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn size_of_64() {
-        assert!(size_of::<uint>() == 8u);
-        assert!(size_of::<*uint>() == 8u);
+        assert_eq!(size_of::<uint>(), 8u);
+        assert_eq!(size_of::<*uint>(), 8u);
     }
 
     #[test]
@@ -267,9 +284,9 @@ mod tests {
     #[test]
     fn nonzero_size_of_basic() {
         type Z = [i8, ..0];
-        assert!(size_of::<Z>() == 0u);
-        assert!(nonzero_size_of::<Z>() == 1u);
-        assert!(nonzero_size_of::<uint>() == size_of::<uint>());
+        assert_eq!(size_of::<Z>(), 0u);
+        assert_eq!(nonzero_size_of::<Z>(), 1u);
+        assert_eq!(nonzero_size_of::<uint>(), size_of::<uint>());
     }
 
     #[test]
@@ -282,9 +299,9 @@ mod tests {
 
     #[test]
     fn align_of_basic() {
-        assert!(pref_align_of::<u8>() == 1u);
-        assert!(pref_align_of::<u16>() == 2u);
-        assert!(pref_align_of::<u32>() == 4u);
+        assert_eq!(pref_align_of::<u8>(), 1u);
+        assert_eq!(pref_align_of::<u16>(), 2u);
+        assert_eq!(pref_align_of::<u32>(), 4u);
     }
 
     #[test]
@@ -292,15 +309,15 @@ mod tests {
     #[cfg(target_arch = "arm")]
     #[cfg(target_arch = "mips")]
     fn align_of_32() {
-        assert!(pref_align_of::<uint>() == 4u);
-        assert!(pref_align_of::<*uint>() == 4u);
+        assert_eq!(pref_align_of::<uint>(), 4u);
+        assert_eq!(pref_align_of::<*uint>(), 4u);
     }
 
     #[test]
     #[cfg(target_arch = "x86_64")]
     fn align_of_64() {
-        assert!(pref_align_of::<uint>() == 8u);
-        assert!(pref_align_of::<*uint>() == 8u);
+        assert_eq!(pref_align_of::<uint>(), 8u);
+        assert_eq!(pref_align_of::<*uint>(), 8u);
     }
 
     #[test]
@@ -316,7 +333,7 @@ mod tests {
             let x = 10;
             let f: &fn(int) -> int = |y| x + y;
 
-            assert!(f(20) == 30);
+            assert_eq!(f(20), 30);
 
             let original_closure: Closure = cast::transmute(f);
 
@@ -329,7 +346,7 @@ mod tests {
             };
 
             let new_f: &fn(int) -> int = cast::transmute(new_closure);
-            assert!(new_f(20) == 30);
+            assert_eq!(new_f(20), 30);
         }
     }
 

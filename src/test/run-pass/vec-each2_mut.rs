@@ -17,8 +17,8 @@ fn main(){
     t2.push('b');
 
     for vec::each2_mut(t1, t2) | i1, i2 | {
-        assert!(*i1 == 'a');
-        assert!(*i2 == 'b');
+        assert_eq!(*i1, 'a');
+        assert_eq!(*i2, 'b');
     }
 
     for vec::each2(t1, t2) | i1, i2 | {
@@ -28,8 +28,8 @@ fn main(){
     for vec::each2_mut(t1, t2) | i1, i2 | {
         *i1 = 'b';
         *i2 = 'a';
-        assert!(*i1 == 'b');
-        assert!(*i2 == 'a');
+        assert_eq!(*i1, 'b');
+        assert_eq!(*i2, 'a');
     }
 
     for vec::each2(t1, t2) | i1, i2 | {

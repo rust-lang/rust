@@ -21,5 +21,5 @@ pub fn main() {
         }
     });
     error!(odds);
-    assert!((odds == 4));
+    assert_eq!(odds, 4);
 }

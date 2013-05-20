@@ -193,8 +193,8 @@ mod tests {
         let mut x = 31337;
         let mut y = 42;
         swap(&mut x, &mut y);
-        assert!(x == 42);
-        assert!(y == 31337);
+        assert_eq!(x, 42);
+        assert_eq!(y, 31337);
     }
     #[test]
     pub fn test_replace() {

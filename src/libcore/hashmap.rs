@@ -842,8 +842,8 @@ mod test_map {
         let mut m = HashMap::new();
         assert!(m.insert(1, 2));
         assert!(m.insert(2, 4));
-        assert!(*m.get(&1) == 2);
-        assert!(*m.get(&2) == 4);
+        assert_eq!(*m.get(&1), 2);
+        assert_eq!(*m.get(&2), 4);
     }
 
     #[test]
@@ -863,9 +863,9 @@ mod test_map {
     fn test_insert_overwrite() {
         let mut m = HashMap::new();
         assert!(m.insert(1, 2));
-        assert!(*m.get(&1) == 2);
+        assert_eq!(*m.get(&1), 2);
         assert!(!m.insert(1, 3));
-        assert!(*m.get(&1) == 3);
+        assert_eq!(*m.get(&1), 3);
     }
 
     #[test]
@@ -874,9 +874,9 @@ mod test_map {
         assert!(m.insert(1, 2));
         assert!(m.insert(5, 3));
         assert!(m.insert(9, 4));
-        assert!(*m.get(&9) == 4);
-        assert!(*m.get(&5) == 3);
-        assert!(*m.get(&1) == 2);
+        assert_eq!(*m.get(&9), 4);
+        assert_eq!(*m.get(&5), 3);
+        assert_eq!(*m.get(&1), 2);
     }
 
     #[test]
@@ -886,8 +886,8 @@ mod test_map {
         assert!(m.insert(5, 3));
         assert!(m.insert(9, 4));
         assert!(m.remove(&1));
-        assert!(*m.get(&9) == 4);
-        assert!(*m.get(&5) == 3);
+        assert_eq!(*m.get(&9), 4);
+        assert_eq!(*m.get(&5), 3);
     }
 
     #[test]
@@ -903,30 +903,30 @@ mod test_map {
     fn test_pop() {
         let mut m = HashMap::new();
         m.insert(1, 2);
-        assert!(m.pop(&1) == Some(2));
-        assert!(m.pop(&1) == None);
+        assert_eq!(m.pop(&1), Some(2));
+        assert_eq!(m.pop(&1), None);
     }
 
     #[test]
     fn test_swap() {
         let mut m = HashMap::new();
-        assert!(m.swap(1, 2) == None);
-        assert!(m.swap(1, 3) == Some(2));
-        assert!(m.swap(1, 4) == Some(3));
+        assert_eq!(m.swap(1, 2), None);
+        assert_eq!(m.swap(1, 3), Some(2));
+        assert_eq!(m.swap(1, 4), Some(3));
     }
 
     #[test]
     fn test_find_or_insert() {
         let mut m = HashMap::new::<int, int>();
-        assert!(m.find_or_insert(1, 2) == &2);
-        assert!(m.find_or_insert(1, 3) == &2);
+        assert_eq!(m.find_or_insert(1, 2), &2);
+        assert_eq!(m.find_or_insert(1, 3), &2);
     }
 
     #[test]
     fn test_find_or_insert_with() {
         let mut m = HashMap::new::<int, int>();
-        assert!(m.find_or_insert_with(1, |_| 2) == &2);
-        assert!(m.find_or_insert_with(1, |_| 3) == &2);
+        assert_eq!(m.find_or_insert_with(1, |_| 2), &2);
+        assert_eq!(m.find_or_insert_with(1, |_| 3), &2);
     }
 
     #[test]
@@ -938,10 +938,10 @@ mod test_map {
         do m.consume |k, v| {
             m2.insert(k, v);
         }
-        assert!(m.len() == 0);
-        assert!(m2.len() == 2);
-        assert!(m2.get(&1) == &2);
-        assert!(m2.get(&2) == &3);
+        assert_eq!(m.len(), 0);
+        assert_eq!(m2.len(), 2);
+        assert_eq!(m2.get(&1), &2);
+        assert_eq!(m2.get(&2), &3);
     }
 
     #[test]
@@ -952,10 +952,10 @@ mod test_map {
         }
         let mut observed = 0;
         for m.each |k, v| {
-            assert!(*v == *k * 2);
+            assert_eq!(*v, *k * 2);
             observed |= (1 << *k);
         }
-        assert!(observed == 0xFFFF_FFFF);
+        assert_eq!(observed, 0xFFFF_FFFF);
     }
 
     #[test]
@@ -984,14 +984,14 @@ mod test_map {
 
         m2.insert(3, 4);
 
-        assert!(m1 == m2);
+        assert_eq!(m1, m2);
     }
 
     #[test]
     fn test_expand() {
         let mut m = HashMap::new();
 
-        assert!(m.len() == 0);
+        assert_eq!(m.len(), 0);
         assert!(m.is_empty());
 
         let mut i = 0u;
@@ -1001,7 +1001,7 @@ mod test_map {
             i += 1;
         }
 
-        assert!(m.len() == i);
+        assert_eq!(m.len(), i);
         assert!(!m.is_empty());
     }
 }
@@ -1090,7 +1090,7 @@ mod test_set {
             assert!(vec::contains(expected, x));
             i += 1
         }
-        assert!(i == expected.len());
+        assert_eq!(i, expected.len());
     }
 
     #[test]
@@ -1113,7 +1113,7 @@ mod test_set {
             assert!(vec::contains(expected, x));
             i += 1
         }
-        assert!(i == expected.len());
+        assert_eq!(i, expected.len());
     }
 
     #[test]
@@ -1139,7 +1139,7 @@ mod test_set {
             assert!(vec::contains(expected, x));
             i += 1
         }
-        assert!(i == expected.len());
+        assert_eq!(i, expected.len());
     }
 
     #[test]
@@ -1169,6 +1169,6 @@ mod test_set {
             assert!(vec::contains(expected, x));
             i += 1
         }
-        assert!(i == expected.len());
+        assert_eq!(i, expected.len());
     }
 }

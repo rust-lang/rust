@@ -46,5 +46,5 @@ fn test00() {
     r = p.recv();
     sum += r;
     debug!(r);
-    assert!((sum == 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8));
+    assert_eq!(sum, 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8);
 }

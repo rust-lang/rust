@@ -20,6 +20,6 @@ pub fn main() {
     let b: *u8 = f;
     let c: *u8 = g;
 
-    assert!(a == b);
+    assert_eq!(a, b);
     assert!(a != c);
 }

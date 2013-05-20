@@ -27,7 +27,6 @@ use util::ppaux::{Repr, ty_to_str};
 
 use core::libc::c_uint;
 use syntax::{ast, ast_util, ast_map};
-use util::ppaux::ty_to_str;
 
 pub fn const_lit(cx: @CrateContext, e: @ast::expr, lit: ast::lit)
     -> ValueRef {
@@ -113,7 +112,7 @@ fn const_deref_ptr(cx: @CrateContext, v: ValueRef) -> ValueRef {
         None => v
     };
     unsafe {
-        assert!(llvm::LLVMIsGlobalConstant(v) == True);
+        assert_eq!(llvm::LLVMIsGlobalConstant(v), True);
         llvm::LLVMGetInitializer(v)
     }
 }
@@ -209,8 +208,8 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                             assert!(m != ast::m_mutbl);
                             let size = machine::llsize_of(cx,
                                                           val_ty(llconst));
-                            assert!(abi::slice_elt_base == 0);
-                            assert!(abi::slice_elt_len == 1);
+                            assert_eq!(abi::slice_elt_base, 0);
+                            assert_eq!(abi::slice_elt_len, 1);
                             llconst = C_struct(~[llptr, size]);
                         }
                         _ => {
@@ -486,7 +485,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
             }
           }
           ast::expr_path(pth) => {
-            assert!(pth.types.len() == 0);
+            assert_eq!(pth.types.len(), 0);
             match cx.tcx.def_map.find(&e.id) {
                 Some(&ast::def_fn(def_id, _purity)) => {
                     if !ast_util::is_local(def_id) {

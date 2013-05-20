@@ -16,8 +16,6 @@
 // their associated scopes.  In phase two, checking loans, we will then make
 // sure that all of these loans are honored.
 
-use core::prelude::*;
-
 use middle::borrowck::*;
 use mc = middle::mem_categorization;
 use middle::pat_util;
@@ -218,7 +216,7 @@ pub impl GatherLoanCtxt {
 
     fn pop_repeating_id(&mut self, id: ast::node_id) {
         let popped = self.repeating_ids.pop();
-        assert!(id == popped);
+        assert_eq!(id, popped);
     }
 
     fn guarantee_adjustments(&mut self,
@@ -634,4 +632,3 @@ fn add_stmt_to_map(stmt: @ast::stmt,
     }
     visit::visit_stmt(stmt, this, vt);
 }
-

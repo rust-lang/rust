@@ -85,20 +85,20 @@ mod inst {
 
     #[test]
     fn test_pow() {
-        assert!((pow(0, 0u) == 1));
-        assert!((pow(0, 1u) == 0));
-        assert!((pow(0, 2u) == 0));
-        assert!((pow(-1, 0u) == 1));
-        assert!((pow(1, 0u) == 1));
-        assert!((pow(-3, 2u) == 9));
-        assert!((pow(-3, 3u) == -27));
-        assert!((pow(4, 9u) == 262144));
+        assert_eq!(pow(0, 0u), 1);
+        assert_eq!(pow(0, 1u), 0);
+        assert_eq!(pow(0, 2u), 0);
+        assert_eq!(pow(-1, 0u), 1);
+        assert_eq!(pow(1, 0u), 1);
+        assert_eq!(pow(-3, 2u), 9);
+        assert_eq!(pow(-3, 3u), -27);
+        assert_eq!(pow(4, 9u), 262144);
     }
 
     #[test]
     fn test_overflows() {
         assert!((::int::max_value > 0));
         assert!((::int::min_value <= 0));
-        assert!((::int::min_value + ::int::max_value + 1 == 0));
+        assert_eq!(::int::min_value + ::int::max_value + 1, 0);
     }
 }

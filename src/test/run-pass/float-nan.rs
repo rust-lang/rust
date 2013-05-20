@@ -19,7 +19,7 @@ pub fn main() {
   assert!((nan).is_NaN());
 
   let inf = infinity::<float>();
-  assert!(-inf == neg_infinity::<float>());
+  assert_eq!(-inf, neg_infinity::<float>());
 
   assert!( nan !=  nan);
   assert!( nan != -nan);
@@ -36,17 +36,17 @@ pub fn main() {
   assert!( inf !=  nan);
   assert!(-inf !=  nan);
 
-  assert!(!( nan ==  nan));
+  assert!(!( nan == nan));
   assert!(!( nan == -nan));
-  assert!(!( nan ==   1.));
-  assert!(!( nan ==   0.));
-  assert!(!( nan ==  inf));
+  assert!(!( nan == 1.));
+  assert!(!( nan == 0.));
+  assert!(!( nan == inf));
   assert!(!( nan == -inf));
-  assert!(!(  1. ==  nan));
-  assert!(!(  0. ==  nan));
-  assert!(!( inf ==  nan));
-  assert!(!(-inf ==  nan));
-  assert!(!(-nan ==  nan));
+  assert!(!(  1. == nan));
+  assert!(!(  0. == nan));
+  assert!(!( inf == nan));
+  assert!(!(-inf == nan));
+  assert!(!(-nan == nan));
   assert!(!(-nan == -nan));
 
   assert!(!( nan >  nan));

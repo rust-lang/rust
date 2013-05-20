@@ -938,6 +938,6 @@ mod test {
         let sess = build_session(sessopts, diagnostic::emit);
         let cfg = build_configuration(sess, @~"whatever", &str_input(~""));
         let test_items = attr::find_meta_items_by_name(cfg, ~"test");
-        assert!(test_items.len() == 1u);
+        assert_eq!(test_items.len(), 1u);
     }
 }

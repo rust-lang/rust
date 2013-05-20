@@ -23,19 +23,19 @@ use libc::{c_void, uintptr_t};
 use cast::transmute;
 use super::sched::local_sched;
 use super::local_heap::LocalHeap;
+use rt::logging::StdErrLogger;
 
 pub struct LocalServices {
     heap: LocalHeap,
     gc: GarbageCollector,
     storage: LocalStorage,
-    logger: Logger,
+    logger: StdErrLogger,
     unwinder: Option<Unwinder>,
     destroyed: bool
 }
 
 pub struct GarbageCollector;
 pub struct LocalStorage(*c_void, Option<~fn(*c_void)>);
-pub struct Logger;
 
 pub struct Unwinder {
     unwinding: bool,
@@ -47,7 +47,7 @@ impl LocalServices {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
             storage: LocalStorage(ptr::null(), None),
-            logger: Logger,
+            logger: StdErrLogger,
             unwinder: Some(Unwinder { unwinding: false }),
             destroyed: false
         }
@@ -58,7 +58,7 @@ impl LocalServices {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
             storage: LocalStorage(ptr::null(), None),
-            logger: Logger,
+            logger: StdErrLogger,
             unwinder: None,
             destroyed: false
         }
@@ -169,16 +169,24 @@ pub fn borrow_local_services(f: &fn(&mut LocalServices)) {
     }
 }
 
-pub unsafe fn unsafe_borrow_local_services() -> &mut LocalServices {
-    use cast::transmute_mut_region;
-
-    match local_sched::unsafe_borrow().current_task {
+pub unsafe fn unsafe_borrow_local_services() -> *mut LocalServices {
+    match (*local_sched::unsafe_borrow()).current_task {
         Some(~ref mut task) => {
-            transmute_mut_region(&mut task.local_services)
+            let s: *mut LocalServices = &mut task.local_services;
+            return s;
         }
         None => {
-            fail!("no local services for schedulers yet")
+            // Don't fail. Infinite recursion
+            abort!("no local services for schedulers yet")
         }
+    }
+}
+
+pub unsafe fn unsafe_try_borrow_local_services() -> Option<*mut LocalServices> {
+    if local_sched::exists() {
+        Some(unsafe_borrow_local_services())
+    } else {
+        None
     }
 }
 
@@ -229,4 +237,34 @@ mod test {
             let _ = r.next();
         }
     }
+
+    #[test]
+    fn logging() {
+        do run_in_newsched_task() {
+            info!("here i am. logging in a newsched task");
+        }
+    }
+
+    #[test]
+    fn comm_oneshot() {
+        use comm::*;
+
+        do run_in_newsched_task {
+            let (port, chan) = oneshot();
+            send_one(chan, 10);
+            assert!(recv_one(port) == 10);
+        }
+    }
+
+    #[test]
+    fn comm_stream() {
+        use comm::*;
+
+        do run_in_newsched_task() {
+            let (port, chan) = stream();
+            chan.send(10);
+            assert!(port.recv() == 10);
+        }
+    }
 }
+

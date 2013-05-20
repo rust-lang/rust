@@ -386,8 +386,20 @@ fn encode_reexported_static_methods(ecx: @EncodeContext,
     match ecx.tcx.trait_methods_cache.find(&exp.def_id) {
         Some(methods) => {
             match ecx.tcx.items.find(&exp.def_id.node) {
-                Some(&ast_map::node_item(_, path)) => {
-                    if mod_path != *path {
+                Some(&ast_map::node_item(item, path)) => {
+                    let original_name = ecx.tcx.sess.str_of(item.ident);
+
+                    //
+                    // We don't need to reexport static methods on traits
+                    // declared in the same module as our `pub use ...` since
+                    // that's done when we encode the trait item.
+                    //
+                    // The only exception is when the reexport *changes* the
+                    // name e.g. `pub use Foo = self::Bar` -- we have
+                    // encoded metadata for static methods relative to Bar,
+                    // but not yet for Foo.
+                    //
+                    if mod_path != *path || *exp.name != *original_name {
                         for methods.each |&m| {
                             if m.explicit_self == ast::sty_static {
                                 encode_reexported_static_method(ecx,
@@ -946,7 +958,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
 
         // Now output the method info for each method.
         for ty::trait_method_def_ids(tcx, local_def(item.id)).eachi |i, &method_def_id| {
-            assert!(method_def_id.crate == ast::local_crate);
+            assert_eq!(method_def_id.crate, ast::local_crate);
 
             let method_ty = ty::method(tcx, method_def_id);
 
@@ -1278,7 +1290,7 @@ fn encode_crate_deps(ecx: @EncodeContext,
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;
         for deps.each |n| {
-            assert!((n.cnum == expected_cnum));
+            assert_eq!(n.cnum, expected_cnum);
             expected_cnum += 1;
         }
 

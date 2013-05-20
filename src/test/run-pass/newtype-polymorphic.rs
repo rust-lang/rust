@@ -16,7 +16,7 @@ fn myvec_elt<X:Copy>(mv: myvec<X>) -> X { return mv[0]; }
 
 pub fn main() {
     let mv = myvec(~[1, 2, 3]);
-    assert!((myvec_deref(copy mv)[1] == 2));
-    assert!((myvec_elt(copy mv) == 1));
-    assert!((mv[2] == 3));
+    assert_eq!(myvec_deref(copy mv)[1], 2);
+    assert_eq!(myvec_elt(copy mv), 1);
+    assert_eq!(mv[2], 3);
 }

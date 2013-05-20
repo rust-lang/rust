@@ -21,5 +21,5 @@ impl foo of plus for uint { fn plus() -> int { self as int + 20 } }
 impl foo of plus for int { fn plus() -> int { self + 10 } }
 
 pub fn main() {
-    assert!(10.plus() == 20);
+    assert_eq!(10.plus(), 20);
 }

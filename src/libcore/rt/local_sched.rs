@@ -13,18 +13,21 @@
 use prelude::*;
 use ptr::mut_null;
 use libc::c_void;
-use cast::transmute;
+use cast;
+use cell::Cell;
 
-use super::Scheduler;
-use super::super::rtio::IoFactoryObject;
-use tls = super::super::thread_local_storage;
-#[cfg(test)] use super::super::uvio::UvEventLoop;
+use rt::sched::Scheduler;
+use rt::rtio::{EventLoop, IoFactoryObject};
+use tls = rt::thread_local_storage;
+use unstable::finally::Finally;
+
+#[cfg(test)] use rt::uv::uvio::UvEventLoop;
 
 /// Give the Scheduler to thread-local storage
 pub fn put(sched: ~Scheduler) {
     unsafe {
         let key = tls_key();
-        let void_sched: *mut c_void = transmute::<~Scheduler, *mut c_void>(sched);
+        let void_sched: *mut c_void = cast::transmute(sched);
         tls::set(key, void_sched);
     }
 }
@@ -34,8 +37,8 @@ pub fn take() -> ~Scheduler {
     unsafe {
         let key = tls_key();
         let void_sched: *mut c_void = tls::get(key);
-        assert!(void_sched.is_not_null());
-        let sched = transmute::<*mut c_void, ~Scheduler>(void_sched);
+        rtassert!(void_sched.is_not_null());
+        let sched: ~Scheduler = cast::transmute(void_sched);
         tls::set(key, mut_null());
         return sched;
     }
@@ -55,8 +58,18 @@ pub fn exists() -> bool {
 /// While the scheduler is borrowed it is not available in TLS.
 pub fn borrow(f: &fn(&mut Scheduler)) {
     let mut sched = take();
-    f(sched);
-    put(sched);
+
+    // XXX: Need a different abstraction from 'finally' here to avoid unsafety
+    unsafe {
+        let unsafe_sched = cast::transmute_mut_region(&mut *sched);
+        let sched = Cell(sched);
+
+        do (|| {
+            f(unsafe_sched);
+        }).finally {
+            put(sched.take());
+        }
+    }
 }
 
 /// Borrow a mutable reference to the thread-local Scheduler
@@ -65,33 +78,35 @@ pub fn borrow(f: &fn(&mut Scheduler)) {
 ///
 /// Because this leaves the Scheduler in thread-local storage it is possible
 /// For the Scheduler pointer to be aliased
-pub unsafe fn unsafe_borrow() -> &mut Scheduler {
+pub unsafe fn unsafe_borrow() -> *mut Scheduler {
     let key = tls_key();
     let mut void_sched: *mut c_void = tls::get(key);
-    assert!(void_sched.is_not_null());
+    rtassert!(void_sched.is_not_null());
     {
-        let void_sched_ptr = &mut void_sched;
-        let sched: &mut ~Scheduler = {
-            transmute::<&mut *mut c_void, &mut ~Scheduler>(void_sched_ptr)
-        };
-        let sched: &mut Scheduler = &mut **sched;
+        let sched: *mut *mut c_void = &mut void_sched;
+        let sched: *mut ~Scheduler = sched as *mut ~Scheduler;
+        let sched: *mut Scheduler = &mut **sched;
         return sched;
     }
 }
 
-pub unsafe fn unsafe_borrow_io() -> &mut IoFactoryObject {
+pub unsafe fn unsafe_borrow_io() -> *mut IoFactoryObject {
     let sched = unsafe_borrow();
-    return sched.event_loop.io().unwrap();
+    let io: *mut IoFactoryObject = (*sched).event_loop.io().unwrap();
+    return io;
 }
 
 fn tls_key() -> tls::Key {
-    maybe_tls_key().get()
+    match maybe_tls_key() {
+        Some(key) => key,
+        None => abort!("runtime tls key not initialized")
+    }
 }
 
 fn maybe_tls_key() -> Option<tls::Key> {
     unsafe {
-        let key: *mut c_void = rust_get_sched_tls_key();
-        let key: &mut tls::Key = transmute(key);
+        let key: *mut c_void = rust_get_rt_tls_key();
+        let key: &mut tls::Key = cast::transmute(key);
         let key = *key;
         // Check that the key has been initialized.
 
@@ -105,7 +120,7 @@ fn maybe_tls_key() -> Option<tls::Key> {
         // another thread. I think this is fine since the only action
         // they could take if it was initialized would be to check the
         // thread-local value and see that it's not set.
-        if key != 0 {
+        if key != -1 {
             return Some(key);
         } else {
             return None;
@@ -114,7 +129,8 @@ fn maybe_tls_key() -> Option<tls::Key> {
 }
 
 extern {
-    fn rust_get_sched_tls_key() -> *mut c_void;
+    #[fast_ffi]
+    fn rust_get_rt_tls_key() -> *mut c_void;
 }
 
 #[test]

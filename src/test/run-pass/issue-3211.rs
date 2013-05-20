@@ -3,6 +3,6 @@ pub fn main() {
     for 4096.times {
         x += 1;
     }
-    assert!(x == 4096);
+    assert_eq!(x, 4096);
     io::println(fmt!("x = %u", x));
 }

@@ -375,7 +375,7 @@ pub impl Datum {
          * Schedules this datum for cleanup in `bcx`.  The datum
          * must be an rvalue. */
 
-        assert!(self.source == RevokeClean);
+        assert_eq!(self.source, RevokeClean);
         match self.mode {
             ByValue => {
                 add_clean_temp_immediate(bcx, self.val, self.ty);
@@ -652,7 +652,7 @@ pub impl Datum {
                     ByRef => {
                         // Recast lv.val as a pointer to the newtype rather
                         // than a pointer to the struct type.
-                        // XXX: This isn't correct for structs with
+                        // FIXME #6572: This isn't correct for structs with
                         // destructors.
                         (
                             Some(Datum {

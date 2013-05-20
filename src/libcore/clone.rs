@@ -146,14 +146,14 @@ deep_clone_impl!(char)
 fn test_owned_clone() {
     let a = ~5i;
     let b: ~int = a.clone();
-    assert!(a == b);
+    assert_eq!(a, b);
 }
 
 #[test]
 fn test_managed_clone() {
     let a = @5i;
     let b: @int = a.clone();
-    assert!(a == b);
+    assert_eq!(a, b);
 }
 
 #[test]
@@ -168,9 +168,9 @@ fn test_managed_mut_deep_clone() {
 fn test_managed_mut_clone() {
     let a = @mut 5i;
     let b: @mut int = a.clone();
-    assert!(a == b);
+    assert_eq!(a, b);
     *b = 10;
-    assert!(a == b);
+    assert_eq!(a, b);
 }
 
 #[test]

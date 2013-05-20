@@ -19,7 +19,6 @@ pub mod at_exit;
 pub mod global;
 pub mod finally;
 pub mod weak_task;
-pub mod exchange_alloc;
 pub mod intrinsics;
 pub mod simd;
 pub mod extfmt;
@@ -56,7 +55,7 @@ pub fn run_in_bare_thread(f: ~fn()) {
 fn test_run_in_bare_thread() {
     let i = 100;
     do run_in_bare_thread {
-        assert!(i == 100);
+        assert_eq!(i, 100);
     }
 }
 

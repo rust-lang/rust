@@ -16,7 +16,7 @@ fn test_box() {
 fn test_str() {
   let res = match false { true => { ~"happy" },
      _ => fail!("non-exhaustive match failure") };
-  assert!(res == ~"happy");
+  assert_eq!(res, ~"happy");
 }
 fn main() {
     test_box();

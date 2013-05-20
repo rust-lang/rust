@@ -62,7 +62,7 @@ use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
-use middle::typeck::infer::{cres, InferCtxt, ures, IntType, UintType};
+use middle::typeck::infer::{cres, InferCtxt, ures};
 use util::common::indent;
 
 use core::result::{iter_vec2, map_vec2};
@@ -286,7 +286,9 @@ pub fn super_self_tys<C:Combine>(
         // I think it should never happen that we unify two substs and
         // one of them has a self_ty and one doesn't...? I could be
         // wrong about this.
-        Err(ty::terr_self_substs)
+          this.infcx().tcx.sess.bug(
+              fmt!("substitution a had a self_ty and substitution b didn't, \
+                    or vice versa"));
       }
     }
 }

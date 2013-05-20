@@ -42,7 +42,7 @@ fn mi(v: int) -> MyInt { MyInt { val: v } }
 pub fn main() {
     let (x, y) = (mi(3), mi(5));
     let (a, b, c) = f(x, y);
-    assert!(a == mi(8));
-    assert!(b == mi(-2));
-    assert!(c == mi(15));
+    assert_eq!(a, mi(8));
+    assert_eq!(b, mi(-2));
+    assert_eq!(c, mi(15));
 }

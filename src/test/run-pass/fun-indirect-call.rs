@@ -17,5 +17,5 @@ fn f() -> int { return 42; }
 pub fn main() {
     let g: extern fn() -> int = f;
     let i: int = g();
-    assert!((i == 42));
+    assert_eq!(i, 42);
 }

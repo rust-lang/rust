@@ -356,7 +356,7 @@ pub mod flatteners {
     impl<T:Copy + Owned> Unflattener<T> for PodUnflattener<T> {
         fn unflatten(&self, buf: ~[u8]) -> T {
             assert!(size_of::<T>() != 0);
-            assert!(size_of::<T>() == buf.len());
+            assert_eq!(size_of::<T>(), buf.len());
             let addr_of_init: &u8 = unsafe { &*vec::raw::to_ptr(buf) };
             let addr_of_value: &T = unsafe { cast::transmute(addr_of_init) };
             copy *addr_of_value
@@ -652,7 +652,7 @@ mod test {
         let port = serial::reader_port(reader);
 
         let res: int = port.recv();
-        assert!(res == 10i);
+        assert_eq!(res, 10i);
     }
 
     #[test]
@@ -700,7 +700,7 @@ mod test {
         let port = pod::reader_port(reader);
 
         let res: int = port.recv();
-        assert!(res == 10);
+        assert_eq!(res, 10);
     }
 
     #[test]
@@ -843,7 +843,7 @@ mod test {
             for int::range(0, 10) |i| {
                 let j = port.recv();
                 debug!("received %?", j);
-                assert!(i == j);
+                assert_eq!(i, j);
             }
 
             // The test is over!

@@ -602,7 +602,7 @@ pub fn GEP(cx: block, Pointer: ValueRef, Indices: &[ValueRef]) -> ValueRef {
 // Simple wrapper around GEP that takes an array of ints and wraps them
 // in C_i32()
 //
-// XXX: Use a small-vector optimization to avoid allocations here.
+// FIXME #6571: Use a small-vector optimization to avoid allocations here.
 pub fn GEPi(cx: block, base: ValueRef, ixs: &[uint]) -> ValueRef {
     let v = do vec::map(ixs) |i| { C_i32(*i as i32) };
     count_insn(cx, "gepi");
@@ -837,7 +837,7 @@ pub fn Phi(cx: block, Ty: TypeRef, vals: &[ValueRef], bbs: &[BasicBlockRef])
     -> ValueRef {
     unsafe {
         if cx.unreachable { return llvm::LLVMGetUndef(Ty); }
-        assert!(vals.len() == bbs.len());
+        assert_eq!(vals.len(), bbs.len());
         let phi = EmptyPhi(cx, Ty);
         count_insn(cx, "addincoming");
         llvm::LLVMAddIncoming(phi, vec::raw::to_ptr(vals),

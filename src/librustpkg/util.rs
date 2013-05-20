@@ -16,7 +16,7 @@ use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use std::getopts::groups::getopts;
 use std::semver;
-use std::{term, getopts};
+use std::term;
 use syntax::ast_util::*;
 use syntax::codemap::{dummy_sp, spanned, dummy_spanned};
 use syntax::ext::base::{mk_ctxt, ext_ctxt};
@@ -417,7 +417,7 @@ pub fn compile_crate_from_input(input: &driver::input,
     match crate_opt {
         Some(c) => {
             debug!("Calling compile_rest, outputs = %?", outputs);
-            assert!(what == driver::cu_everything);
+            assert_eq!(what, driver::cu_everything);
             driver::compile_rest(sess, cfg, driver::cu_everything, Some(outputs), Some(c));
             c
         }

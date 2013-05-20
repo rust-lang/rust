@@ -18,9 +18,9 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-extern mod std(vers = "0.7-pre");
-extern mod rustc(vers = "0.7-pre");
-extern mod syntax(vers = "0.7-pre");
+extern mod std;
+extern mod rustc;
+extern mod syntax;
 
 use core::*;
 use core::cell::Cell;

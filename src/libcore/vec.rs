@@ -1389,7 +1389,7 @@ pub fn zip_slice<T:Copy,U:Copy>(v: &const [T], u: &const [U])
     let mut zipped = ~[];
     let sz = len(v);
     let mut i = 0u;
-    assert!(sz == len(u));
+    assert_eq!(sz, len(u));
     while i < sz {
         zipped.push((v[i], u[i]));
         i += 1u;
@@ -1405,7 +1405,7 @@ pub fn zip_slice<T:Copy,U:Copy>(v: &const [T], u: &const [U])
  */
 pub fn zip<T, U>(mut v: ~[T], mut u: ~[U]) -> ~[(T, U)] {
     let mut i = len(v);
-    assert!(i == len(u));
+    assert_eq!(i, len(u));
     let mut w = with_capacity(i);
     while i > 0 {
         w.push((v.pop(),u.pop()));
@@ -1723,7 +1723,7 @@ pub fn eachi_reverse<'r,T>(v: &'r [T],
  */
 #[inline]
 pub fn _each2<U, T>(v1: &[U], v2: &[T], f: &fn(u: &U, t: &T) -> bool) -> bool {
-    assert!(v1.len() == v2.len());
+    assert_eq!(v1.len(), v2.len());
     for uint::range(0u, v1.len()) |i| {
         if !f(&v1[i], &v2[i]) {
             return false;
@@ -1751,7 +1751,7 @@ pub fn each2<U, T>(v1: &[U], v2: &[T], f: &fn(u: &U, t: &T) -> bool) -> bool {
  */
 #[inline]
 pub fn _each2_mut<U, T>(v1: &mut [U], v2: &mut [T], f: &fn(u: &mut U, t: &mut T) -> bool) -> bool {
-    assert!(v1.len() == v2.len());
+    assert_eq!(v1.len(), v2.len());
     for uint::range(0u, v1.len()) |i| {
         if !f(&mut v1[i], &mut v2[i]) {
             return false;
@@ -3139,21 +3139,21 @@ mod tests {
             let a = ~[1, 2, 3];
             let mut ptr = raw::to_ptr(a);
             let b = from_buf(ptr, 3u);
-            assert!(b.len() == 3u);
-            assert!(b[0] == 1);
-            assert!(b[1] == 2);
-            assert!(b[2] == 3);
+            assert_eq!(b.len(), 3u);
+            assert_eq!(b[0], 1);
+            assert_eq!(b[1], 2);
+            assert_eq!(b[2], 3);
 
             // Test on-heap copy-from-buf.
             let c = ~[1, 2, 3, 4, 5];
             ptr = raw::to_ptr(c);
             let d = from_buf(ptr, 5u);
-            assert!(d.len() == 5u);
-            assert!(d[0] == 1);
-            assert!(d[1] == 2);
-            assert!(d[2] == 3);
-            assert!(d[3] == 4);
-            assert!(d[4] == 5);
+            assert_eq!(d.len(), 5u);
+            assert_eq!(d[0], 1);
+            assert_eq!(d[1], 2);
+            assert_eq!(d[2], 3);
+            assert_eq!(d[3], 4);
+            assert_eq!(d[4], 5);
         }
     }
 
@@ -3161,37 +3161,37 @@ mod tests {
     fn test_from_fn() {
         // Test on-stack from_fn.
         let mut v = from_fn(3u, square);
-        assert!(v.len() == 3u);
-        assert!(v[0] == 0u);
-        assert!(v[1] == 1u);
-        assert!(v[2] == 4u);
+        assert_eq!(v.len(), 3u);
+        assert_eq!(v[0], 0u);
+        assert_eq!(v[1], 1u);
+        assert_eq!(v[2], 4u);
 
         // Test on-heap from_fn.
         v = from_fn(5u, square);
-        assert!(v.len() == 5u);
-        assert!(v[0] == 0u);
-        assert!(v[1] == 1u);
-        assert!(v[2] == 4u);
-        assert!(v[3] == 9u);
-        assert!(v[4] == 16u);
+        assert_eq!(v.len(), 5u);
+        assert_eq!(v[0], 0u);
+        assert_eq!(v[1], 1u);
+        assert_eq!(v[2], 4u);
+        assert_eq!(v[3], 9u);
+        assert_eq!(v[4], 16u);
     }
 
     #[test]
     fn test_from_elem() {
         // Test on-stack from_elem.
         let mut v = from_elem(2u, 10u);
-        assert!(v.len() == 2u);
-        assert!(v[0] == 10u);
-        assert!(v[1] == 10u);
+        assert_eq!(v.len(), 2u);
+        assert_eq!(v[0], 10u);
+        assert_eq!(v[1], 10u);
 
         // Test on-heap from_elem.
         v = from_elem(6u, 20u);
-        assert!(v[0] == 20u);
-        assert!(v[1] == 20u);
-        assert!(v[2] == 20u);
-        assert!(v[3] == 20u);
-        assert!(v[4] == 20u);
-        assert!(v[5] == 20u);
+        assert_eq!(v[0], 20u);
+        assert_eq!(v[1], 20u);
+        assert_eq!(v[2], 20u);
+        assert_eq!(v[3], 20u);
+        assert_eq!(v[4], 20u);
+        assert_eq!(v[5], 20u);
     }
 
     #[test]
@@ -3206,18 +3206,18 @@ mod tests {
         let v0 : &[Z] = &[];
         let v1 : &[Z] = &[[]];
         let v2 : &[Z] = &[[], []];
-        assert!(sys::size_of::<Z>() == 0);
-        assert!(v0.len() == 0);
-        assert!(v1.len() == 1);
-        assert!(v2.len() == 2);
+        assert_eq!(sys::size_of::<Z>(), 0);
+        assert_eq!(v0.len(), 0);
+        assert_eq!(v1.len(), 1);
+        assert_eq!(v2.len(), 2);
     }
 
     #[test]
     fn test_head() {
         let mut a = ~[11];
-        assert!(a.head() == &11);
+        assert_eq!(a.head(), &11);
         a = ~[11, 12];
-        assert!(a.head() == &11);
+        assert_eq!(a.head(), &11);
     }
 
     #[test]
@@ -3231,19 +3231,19 @@ mod tests {
     #[test]
     fn test_head_opt() {
         let mut a = ~[];
-        assert!(a.head_opt() == None);
+        assert_eq!(a.head_opt(), None);
         a = ~[11];
-        assert!(a.head_opt().unwrap() == &11);
+        assert_eq!(a.head_opt().unwrap(), &11);
         a = ~[11, 12];
-        assert!(a.head_opt().unwrap() == &11);
+        assert_eq!(a.head_opt().unwrap(), &11);
     }
 
     #[test]
     fn test_tail() {
         let mut a = ~[11];
-        assert!(a.tail() == &[]);
+        assert_eq!(a.tail(), &[]);
         a = ~[11, 12];
-        assert!(a.tail() == &[12]);
+        assert_eq!(a.tail(), &[12]);
     }
 
     #[test]
@@ -3257,9 +3257,9 @@ mod tests {
     #[test]
     fn test_tailn() {
         let mut a = ~[11, 12, 13];
-        assert!(a.tailn(0) == &[11, 12, 13]);
+        assert_eq!(a.tailn(0), &[11, 12, 13]);
         a = ~[11, 12, 13];
-        assert!(a.tailn(2) == &[13]);
+        assert_eq!(a.tailn(2), &[13]);
     }
 
     #[test]
@@ -3273,9 +3273,9 @@ mod tests {
     #[test]
     fn test_init() {
         let mut a = ~[11];
-        assert!(a.init() == &[]);
+        assert_eq!(a.init(), &[]);
         a = ~[11, 12];
-        assert!(a.init() == &[11]);
+        assert_eq!(a.init(), &[11]);
     }
 
     #[init]
@@ -3289,9 +3289,9 @@ mod tests {
     #[test]
     fn test_initn() {
         let mut a = ~[11, 12, 13];
-        assert!(a.initn(0) == &[11, 12, 13]);
+        assert_eq!(a.initn(0), &[11, 12, 13]);
         a = ~[11, 12, 13];
-        assert!(a.initn(2) == &[11]);
+        assert_eq!(a.initn(2), &[11]);
     }
 
     #[init]
@@ -3305,9 +3305,9 @@ mod tests {
     #[test]
     fn test_last() {
         let mut a = ~[11];
-        assert!(a.last() == &11);
+        assert_eq!(a.last(), &11);
         a = ~[11, 12];
-        assert!(a.last() == &12);
+        assert_eq!(a.last(), &12);
     }
 
     #[test]
@@ -3321,11 +3321,11 @@ mod tests {
     #[test]
     fn test_last_opt() {
         let mut a = ~[];
-        assert!(a.last_opt() == None);
+        assert_eq!(a.last_opt(), None);
         a = ~[11];
-        assert!(a.last_opt().unwrap() == &11);
+        assert_eq!(a.last_opt().unwrap(), &11);
         a = ~[11, 12];
-        assert!(a.last_opt().unwrap() == &12);
+        assert_eq!(a.last_opt().unwrap(), &12);
     }
 
     #[test]
@@ -3333,35 +3333,35 @@ mod tests {
         // Test fixed length vector.
         let vec_fixed = [1, 2, 3, 4];
         let v_a = slice(vec_fixed, 1u, vec_fixed.len()).to_vec();
-        assert!(v_a.len() == 3u);
-        assert!(v_a[0] == 2);
-        assert!(v_a[1] == 3);
-        assert!(v_a[2] == 4);
+        assert_eq!(v_a.len(), 3u);
+        assert_eq!(v_a[0], 2);
+        assert_eq!(v_a[1], 3);
+        assert_eq!(v_a[2], 4);
 
         // Test on stack.
         let vec_stack = &[1, 2, 3];
         let v_b = slice(vec_stack, 1u, 3u).to_vec();
-        assert!(v_b.len() == 2u);
-        assert!(v_b[0] == 2);
-        assert!(v_b[1] == 3);
+        assert_eq!(v_b.len(), 2u);
+        assert_eq!(v_b[0], 2);
+        assert_eq!(v_b[1], 3);
 
         // Test on managed heap.
         let vec_managed = @[1, 2, 3, 4, 5];
         let v_c = slice(vec_managed, 0u, 3u).to_vec();
-        assert!(v_c.len() == 3u);
-        assert!(v_c[0] == 1);
-        assert!(v_c[1] == 2);
-        assert!(v_c[2] == 3);
+        assert_eq!(v_c.len(), 3u);
+        assert_eq!(v_c[0], 1);
+        assert_eq!(v_c[1], 2);
+        assert_eq!(v_c[2], 3);
 
         // Test on exchange heap.
         let vec_unique = ~[1, 2, 3, 4, 5, 6];
         let v_d = slice(vec_unique, 1u, 6u).to_vec();
-        assert!(v_d.len() == 5u);
-        assert!(v_d[0] == 2);
-        assert!(v_d[1] == 3);
-        assert!(v_d[2] == 4);
-        assert!(v_d[3] == 5);
-        assert!(v_d[4] == 6);
+        assert_eq!(v_d.len(), 5u);
+        assert_eq!(v_d[0], 2);
+        assert_eq!(v_d[1], 3);
+        assert_eq!(v_d[2], 4);
+        assert_eq!(v_d[3], 5);
+        assert_eq!(v_d[4], 6);
     }
 
     #[test]
@@ -3369,27 +3369,27 @@ mod tests {
         // Test on-heap pop.
         let mut v = ~[1, 2, 3, 4, 5];
         let e = v.pop();
-        assert!(v.len() == 4u);
-        assert!(v[0] == 1);
-        assert!(v[1] == 2);
-        assert!(v[2] == 3);
-        assert!(v[3] == 4);
-        assert!(e == 5);
+        assert_eq!(v.len(), 4u);
+        assert_eq!(v[0], 1);
+        assert_eq!(v[1], 2);
+        assert_eq!(v[2], 3);
+        assert_eq!(v[3], 4);
+        assert_eq!(e, 5);
     }
 
     #[test]
     fn test_swap_remove() {
         let mut v = ~[1, 2, 3, 4, 5];
         let mut e = v.swap_remove(0);
-        assert!(v.len() == 4);
-        assert!(e == 1);
-        assert!(v[0] == 5);
+        assert_eq!(v.len(), 4);
+        assert_eq!(e, 1);
+        assert_eq!(v[0], 5);
         e = v.swap_remove(3);
-        assert!(v.len() == 3);
-        assert!(e == 4);
-        assert!(v[0] == 5);
-        assert!(v[1] == 2);
-        assert!(v[2] == 3);
+        assert_eq!(v.len(), 3);
+        assert_eq!(e, 4);
+        assert_eq!(v[0], 5);
+        assert_eq!(v[1], 2);
+        assert_eq!(v[2], 3);
     }
 
     #[test]
@@ -3399,11 +3399,11 @@ mod tests {
                       ::unstable::sync::exclusive(()),
                       ::unstable::sync::exclusive(())];
         let mut _e = v.swap_remove(0);
-        assert!(v.len() == 2);
+        assert_eq!(v.len(), 2);
         _e = v.swap_remove(1);
-        assert!(v.len() == 1);
+        assert_eq!(v.len(), 1);
         _e = v.swap_remove(0);
-        assert!(v.len() == 0);
+        assert_eq!(v.len(), 0);
     }
 
     #[test]
@@ -3411,14 +3411,14 @@ mod tests {
         // Test on-stack push().
         let mut v = ~[];
         v.push(1);
-        assert!(v.len() == 1u);
-        assert!(v[0] == 1);
+        assert_eq!(v.len(), 1u);
+        assert_eq!(v[0], 1);
 
         // Test on-heap push().
         v.push(2);
-        assert!(v.len() == 2u);
-        assert!(v[0] == 1);
-        assert!(v[1] == 2);
+        assert_eq!(v.len(), 2u);
+        assert_eq!(v[0], 1);
+        assert_eq!(v[1], 2);
     }
 
     #[test]
@@ -3426,48 +3426,48 @@ mod tests {
         // Test on-stack grow().
         let mut v = ~[];
         v.grow(2u, &1);
-        assert!(v.len() == 2u);
-        assert!(v[0] == 1);
-        assert!(v[1] == 1);
+        assert_eq!(v.len(), 2u);
+        assert_eq!(v[0], 1);
+        assert_eq!(v[1], 1);
 
         // Test on-heap grow().
         v.grow(3u, &2);
-        assert!(v.len() == 5u);
-        assert!(v[0] == 1);
-        assert!(v[1] == 1);
-        assert!(v[2] == 2);
-        assert!(v[3] == 2);
-        assert!(v[4] == 2);
+        assert_eq!(v.len(), 5u);
+        assert_eq!(v[0], 1);
+        assert_eq!(v[1], 1);
+        assert_eq!(v[2], 2);
+        assert_eq!(v[3], 2);
+        assert_eq!(v[4], 2);
     }
 
     #[test]
     fn test_grow_fn() {
         let mut v = ~[];
         v.grow_fn(3u, square);
-        assert!(v.len() == 3u);
-        assert!(v[0] == 0u);
-        assert!(v[1] == 1u);
-        assert!(v[2] == 4u);
+        assert_eq!(v.len(), 3u);
+        assert_eq!(v[0], 0u);
+        assert_eq!(v[1], 1u);
+        assert_eq!(v[2], 4u);
     }
 
     #[test]
     fn test_grow_set() {
         let mut v = ~[1, 2, 3];
         v.grow_set(4u, &4, 5);
-        assert!(v.len() == 5u);
-        assert!(v[0] == 1);
-        assert!(v[1] == 2);
-        assert!(v[2] == 3);
-        assert!(v[3] == 4);
-        assert!(v[4] == 5);
+        assert_eq!(v.len(), 5u);
+        assert_eq!(v[0], 1);
+        assert_eq!(v[1], 2);
+        assert_eq!(v[2], 3);
+        assert_eq!(v[3], 4);
+        assert_eq!(v[4], 5);
     }
 
     #[test]
     fn test_truncate() {
         let mut v = ~[@6,@5,@4];
         v.truncate(1);
-        assert!(v.len() == 1);
-        assert!(*(v[0]) == 6);
+        assert_eq!(v.len(), 1);
+        assert_eq!(*(v[0]), 6);
         // If the unsafe block didn't drop things properly, we blow up here.
     }
 
@@ -3475,7 +3475,7 @@ mod tests {
     fn test_clear() {
         let mut v = ~[@6,@5,@4];
         v.clear();
-        assert!(v.len() == 0);
+        assert_eq!(v.len(), 0);
         // If the unsafe block didn't drop things properly, we blow up here.
     }
 
@@ -3484,7 +3484,7 @@ mod tests {
         fn case(a: ~[uint], b: ~[uint]) {
             let mut v = a;
             v.dedup();
-            assert!(v == b);
+            assert_eq!(v, b);
         }
         case(~[], ~[]);
         case(~[1], ~[1]);
@@ -3529,20 +3529,20 @@ mod tests {
         // Test on-stack map.
         let mut v = ~[1u, 2u, 3u];
         let mut w = map(v, square_ref);
-        assert!(w.len() == 3u);
-        assert!(w[0] == 1u);
-        assert!(w[1] == 4u);
-        assert!(w[2] == 9u);
+        assert_eq!(w.len(), 3u);
+        assert_eq!(w[0], 1u);
+        assert_eq!(w[1], 4u);
+        assert_eq!(w[2], 9u);
 
         // Test on-heap map.
         v = ~[1u, 2u, 3u, 4u, 5u];
         w = map(v, square_ref);
-        assert!(w.len() == 5u);
-        assert!(w[0] == 1u);
-        assert!(w[1] == 4u);
-        assert!(w[2] == 9u);
-        assert!(w[3] == 16u);
-        assert!(w[4] == 25u);
+        assert_eq!(w.len(), 5u);
+        assert_eq!(w[0], 1u);
+        assert_eq!(w[1], 4u);
+        assert_eq!(w[2], 9u);
+        assert_eq!(w[3], 16u);
+        assert_eq!(w[4], 25u);
     }
 
     #[test]
@@ -3561,17 +3561,17 @@ mod tests {
         // Test on-stack filter-map.
         let mut v = ~[1u, 2u, 3u];
         let mut w = filter_mapped(v, square_if_odd_r);
-        assert!(w.len() == 2u);
-        assert!(w[0] == 1u);
-        assert!(w[1] == 9u);
+        assert_eq!(w.len(), 2u);
+        assert_eq!(w[0], 1u);
+        assert_eq!(w[1], 9u);
 
         // Test on-heap filter-map.
         v = ~[1u, 2u, 3u, 4u, 5u];
         w = filter_mapped(v, square_if_odd_r);
-        assert!(w.len() == 3u);
-        assert!(w[0] == 1u);
-        assert!(w[1] == 9u);
-        assert!(w[2] == 25u);
+        assert_eq!(w.len(), 3u);
+        assert_eq!(w[0], 1u);
+        assert_eq!(w[1], 9u);
+        assert_eq!(w[2], 25u);
 
         fn halve(i: &int) -> Option<int> {
             if *i % 2 == 0 {
@@ -3588,9 +3588,9 @@ mod tests {
         let mix_dest: ~[int] = ~[1, 3, 0, 0];
         assert!(filter_mapped(all_even, halve) ==
                      map(all_even, halve_for_sure));
-        assert!(filter_mapped(all_odd1, halve) == ~[]);
-        assert!(filter_mapped(all_odd2, halve) == ~[]);
-        assert!(filter_mapped(mix, halve) == mix_dest);
+        assert_eq!(filter_mapped(all_odd1, halve), ~[]);
+        assert_eq!(filter_mapped(all_odd2, halve), ~[]);
+        assert_eq!(filter_mapped(mix, halve), mix_dest);
     }
 
     #[test]
@@ -3598,17 +3598,17 @@ mod tests {
         // Test on-stack filter-map.
         let mut v = ~[1u, 2u, 3u];
         let mut w = filter_map(v, square_if_odd_v);
-        assert!(w.len() == 2u);
-        assert!(w[0] == 1u);
-        assert!(w[1] == 9u);
+        assert_eq!(w.len(), 2u);
+        assert_eq!(w[0], 1u);
+        assert_eq!(w[1], 9u);
 
         // Test on-heap filter-map.
         v = ~[1u, 2u, 3u, 4u, 5u];
         w = filter_map(v, square_if_odd_v);
-        assert!(w.len() == 3u);
-        assert!(w[0] == 1u);
-        assert!(w[1] == 9u);
-        assert!(w[2] == 25u);
+        assert_eq!(w.len(), 3u);
+        assert_eq!(w[0], 1u);
+        assert_eq!(w[1], 9u);
+        assert_eq!(w[2], 25u);
 
         fn halve(i: int) -> Option<int> {
             if i % 2 == 0 {
@@ -3626,22 +3626,22 @@ mod tests {
         let mix_dest: ~[int] = ~[1, 3, 0, 0];
         assert!(filter_map(all_even, halve) ==
                      map(all_even0, halve_for_sure));
-        assert!(filter_map(all_odd1, halve) == ~[]);
-        assert!(filter_map(all_odd2, halve) == ~[]);
-        assert!(filter_map(mix, halve) == mix_dest);
+        assert_eq!(filter_map(all_odd1, halve), ~[]);
+        assert_eq!(filter_map(all_odd2, halve), ~[]);
+        assert_eq!(filter_map(mix, halve), mix_dest);
     }
 
     #[test]
     fn test_filter() {
-        assert!(filter(~[1u, 2u, 3u], is_odd) == ~[1u, 3u]);
-        assert!(filter(~[1u, 2u, 4u, 8u, 16u], is_three) == ~[]);
+        assert_eq!(filter(~[1u, 2u, 3u], is_odd), ~[1u, 3u]);
+        assert_eq!(filter(~[1u, 2u, 4u, 8u, 16u], is_three), ~[]);
     }
 
     #[test]
     fn test_retain() {
         let mut v = ~[1, 2, 3, 4, 5];
         v.retain(is_odd);
-        assert!(v == ~[1, 3, 5]);
+        assert_eq!(v, ~[1, 3, 5]);
     }
 
     #[test]
@@ -3649,12 +3649,12 @@ mod tests {
         // Test on-stack fold.
         let mut v = ~[1u, 2u, 3u];
         let mut sum = foldl(0u, v, add);
-        assert!(sum == 6u);
+        assert_eq!(sum, 6u);
 
         // Test on-heap fold.
         v = ~[1u, 2u, 3u, 4u, 5u];
         sum = foldl(0u, v, add);
-        assert!(sum == 15u);
+        assert_eq!(sum, 15u);
     }
 
     #[test]
@@ -3664,7 +3664,7 @@ mod tests {
         }
         let v = ~[1, 2, 3, 4];
         let sum = foldl(0, v, sub);
-        assert!(sum == -10);
+        assert_eq!(sum, -10);
     }
 
     #[test]
@@ -3674,7 +3674,7 @@ mod tests {
         }
         let v = ~[1, 2, 3, 4];
         let sum = foldr(v, 0, sub);
-        assert!(sum == -2);
+        assert_eq!(sum, -2);
     }
 
     #[test]
@@ -3690,7 +3690,7 @@ mod tests {
         for each(~[1, 2, 3]) |v| {
             i += *v;
         }
-        assert!(i == 6);
+        assert_eq!(i, 6);
     }
 
     #[test]
@@ -3698,10 +3698,10 @@ mod tests {
         let mut i = 0;
         for eachi(~[1, 2, 3]) |j, v| {
             if i == 0 { assert!(*v == 1); }
-            assert!(j + 1u == *v as uint);
+            assert_eq!(j + 1u, *v as uint);
             i += *v;
         }
-        assert!(i == 6);
+        assert_eq!(i, 6);
     }
 
     #[test]
@@ -3719,7 +3719,7 @@ mod tests {
             if i == 0 { assert!(*v == 3); }
             i += *v
         }
-        assert!(i == 6);
+        assert_eq!(i, 6);
     }
 
     #[test]
@@ -3727,10 +3727,10 @@ mod tests {
         let mut i = 0;
         for eachi_reverse(~[0, 1, 2]) |j, v| {
             if i == 0 { assert!(*v == 2); }
-            assert!(j == *v as uint);
+            assert_eq!(j, *v as uint);
             i += *v;
         }
-        assert!(i == 3);
+        assert_eq!(i, 3);
     }
 
     #[test]
@@ -3747,15 +3747,15 @@ mod tests {
 
         results = ~[];
         for each_permutation(~[]) |v| { results.push(to_owned(v)); }
-        assert!(results == ~[~[]]);
+        assert_eq!(results, ~[~[]]);
 
         results = ~[];
         for each_permutation(~[7]) |v| { results.push(to_owned(v)); }
-        assert!(results == ~[~[7]]);
+        assert_eq!(results, ~[~[7]]);
 
         results = ~[];
         for each_permutation(~[1,1]) |v| { results.push(to_owned(v)); }
-        assert!(results == ~[~[1,1],~[1,1]]);
+        assert_eq!(results, ~[~[1,1],~[1,1]]);
 
         results = ~[];
         for each_permutation(~[5,2,0]) |v| { results.push(to_owned(v)); }
@@ -3797,15 +3797,15 @@ mod tests {
 
         let z1 = zip(v1, v2);
 
-        assert!((1, 4) == z1[0]);
-        assert!((2, 5) == z1[1]);
-        assert!((3, 6) == z1[2]);
+        assert_eq!((1, 4), z1[0]);
+        assert_eq!((2, 5), z1[1]);
+        assert_eq!((3, 6), z1[2]);
 
         let (left, right) = unzip(z1);
 
-        assert!((1, 4) == (left[0], right[0]));
-        assert!((2, 5) == (left[1], right[1]));
-        assert!((3, 6) == (left[2], right[2]));
+        assert_eq!((1, 4), (left[0], right[0]));
+        assert_eq!((2, 5), (left[1], right[1]));
+        assert_eq!((3, 6), (left[2], right[2]));
     }
 
     #[test]
@@ -3813,9 +3813,9 @@ mod tests {
         assert!(position_elem(~[], &1).is_none());
 
         let v1 = ~[1, 2, 3, 3, 2, 5];
-        assert!(position_elem(v1, &1) == Some(0u));
-        assert!(position_elem(v1, &2) == Some(1u));
-        assert!(position_elem(v1, &5) == Some(5u));
+        assert_eq!(position_elem(v1, &1), Some(0u));
+        assert_eq!(position_elem(v1, &2), Some(1u));
+        assert_eq!(position_elem(v1, &5), Some(5u));
         assert!(position_elem(v1, &4).is_none());
     }
 
@@ -3827,7 +3827,7 @@ mod tests {
         assert!(position(~[], less_than_three).is_none());
 
         let v1 = ~[5, 4, 3, 2, 1];
-        assert!(position(v1, less_than_three) == Some(3u));
+        assert_eq!(position(v1, less_than_three), Some(3u));
         assert!(position(v1, is_eighteen).is_none());
     }
 
@@ -3840,21 +3840,21 @@ mod tests {
 
         assert!(position_between(v, 0u, 0u, f).is_none());
         assert!(position_between(v, 0u, 1u, f).is_none());
-        assert!(position_between(v, 0u, 2u, f) == Some(1u));
-        assert!(position_between(v, 0u, 3u, f) == Some(1u));
-        assert!(position_between(v, 0u, 4u, f) == Some(1u));
+        assert_eq!(position_between(v, 0u, 2u, f), Some(1u));
+        assert_eq!(position_between(v, 0u, 3u, f), Some(1u));
+        assert_eq!(position_between(v, 0u, 4u, f), Some(1u));
 
         assert!(position_between(v, 1u, 1u, f).is_none());
-        assert!(position_between(v, 1u, 2u, f) == Some(1u));
-        assert!(position_between(v, 1u, 3u, f) == Some(1u));
-        assert!(position_between(v, 1u, 4u, f) == Some(1u));
+        assert_eq!(position_between(v, 1u, 2u, f), Some(1u));
+        assert_eq!(position_between(v, 1u, 3u, f), Some(1u));
+        assert_eq!(position_between(v, 1u, 4u, f), Some(1u));
 
         assert!(position_between(v, 2u, 2u, f).is_none());
         assert!(position_between(v, 2u, 3u, f).is_none());
-        assert!(position_between(v, 2u, 4u, f) == Some(3u));
+        assert_eq!(position_between(v, 2u, 4u, f), Some(3u));
 
         assert!(position_between(v, 3u, 3u, f).is_none());
-        assert!(position_between(v, 3u, 4u, f) == Some(3u));
+        assert_eq!(position_between(v, 3u, 4u, f), Some(3u));
 
         assert!(position_between(v, 4u, 4u, f).is_none());
     }
@@ -3867,7 +3867,7 @@ mod tests {
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
         let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert!(find(v, f) == Some((1, 'b')));
+        assert_eq!(find(v, f), Some((1, 'b')));
         assert!(find(v, g).is_none());
     }
 
@@ -3880,21 +3880,21 @@ mod tests {
 
         assert!(find_between(v, 0u, 0u, f).is_none());
         assert!(find_between(v, 0u, 1u, f).is_none());
-        assert!(find_between(v, 0u, 2u, f) == Some((1, 'b')));
-        assert!(find_between(v, 0u, 3u, f) == Some((1, 'b')));
-        assert!(find_between(v, 0u, 4u, f) == Some((1, 'b')));
+        assert_eq!(find_between(v, 0u, 2u, f), Some((1, 'b')));
+        assert_eq!(find_between(v, 0u, 3u, f), Some((1, 'b')));
+        assert_eq!(find_between(v, 0u, 4u, f), Some((1, 'b')));
 
         assert!(find_between(v, 1u, 1u, f).is_none());
-        assert!(find_between(v, 1u, 2u, f) == Some((1, 'b')));
-        assert!(find_between(v, 1u, 3u, f) == Some((1, 'b')));
-        assert!(find_between(v, 1u, 4u, f) == Some((1, 'b')));
+        assert_eq!(find_between(v, 1u, 2u, f), Some((1, 'b')));
+        assert_eq!(find_between(v, 1u, 3u, f), Some((1, 'b')));
+        assert_eq!(find_between(v, 1u, 4u, f), Some((1, 'b')));
 
         assert!(find_between(v, 2u, 2u, f).is_none());
         assert!(find_between(v, 2u, 3u, f).is_none());
-        assert!(find_between(v, 2u, 4u, f) == Some((3, 'b')));
+        assert_eq!(find_between(v, 2u, 4u, f), Some((3, 'b')));
 
         assert!(find_between(v, 3u, 3u, f).is_none());
-        assert!(find_between(v, 3u, 4u, f) == Some((3, 'b')));
+        assert_eq!(find_between(v, 3u, 4u, f), Some((3, 'b')));
 
         assert!(find_between(v, 4u, 4u, f).is_none());
     }
@@ -3907,7 +3907,7 @@ mod tests {
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
         let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert!(position(v, f) == Some(1u));
+        assert_eq!(position(v, f), Some(1u));
         assert!(position(v, g).is_none());
     }
 
@@ -3920,21 +3920,21 @@ mod tests {
 
         assert!(rposition_between(v, 0u, 0u, f).is_none());
         assert!(rposition_between(v, 0u, 1u, f).is_none());
-        assert!(rposition_between(v, 0u, 2u, f) == Some(1u));
-        assert!(rposition_between(v, 0u, 3u, f) == Some(1u));
-        assert!(rposition_between(v, 0u, 4u, f) == Some(3u));
+        assert_eq!(rposition_between(v, 0u, 2u, f), Some(1u));
+        assert_eq!(rposition_between(v, 0u, 3u, f), Some(1u));
+        assert_eq!(rposition_between(v, 0u, 4u, f), Some(3u));
 
         assert!(rposition_between(v, 1u, 1u, f).is_none());
-        assert!(rposition_between(v, 1u, 2u, f) == Some(1u));
-        assert!(rposition_between(v, 1u, 3u, f) == Some(1u));
-        assert!(rposition_between(v, 1u, 4u, f) == Some(3u));
+        assert_eq!(rposition_between(v, 1u, 2u, f), Some(1u));
+        assert_eq!(rposition_between(v, 1u, 3u, f), Some(1u));
+        assert_eq!(rposition_between(v, 1u, 4u, f), Some(3u));
 
         assert!(rposition_between(v, 2u, 2u, f).is_none());
         assert!(rposition_between(v, 2u, 3u, f).is_none());
-        assert!(rposition_between(v, 2u, 4u, f) == Some(3u));
+        assert_eq!(rposition_between(v, 2u, 4u, f), Some(3u));
 
         assert!(rposition_between(v, 3u, 3u, f).is_none());
-        assert!(rposition_between(v, 3u, 4u, f) == Some(3u));
+        assert_eq!(rposition_between(v, 3u, 4u, f), Some(3u));
 
         assert!(rposition_between(v, 4u, 4u, f).is_none());
     }
@@ -3947,7 +3947,7 @@ mod tests {
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
         let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert!(rfind(v, f) == Some((3, 'b')));
+        assert_eq!(rfind(v, f), Some((3, 'b')));
         assert!(rfind(v, g).is_none());
     }
 
@@ -3960,87 +3960,87 @@ mod tests {
 
         assert!(rfind_between(v, 0u, 0u, f).is_none());
         assert!(rfind_between(v, 0u, 1u, f).is_none());
-        assert!(rfind_between(v, 0u, 2u, f) == Some((1, 'b')));
-        assert!(rfind_between(v, 0u, 3u, f) == Some((1, 'b')));
-        assert!(rfind_between(v, 0u, 4u, f) == Some((3, 'b')));
+        assert_eq!(rfind_between(v, 0u, 2u, f), Some((1, 'b')));
+        assert_eq!(rfind_between(v, 0u, 3u, f), Some((1, 'b')));
+        assert_eq!(rfind_between(v, 0u, 4u, f), Some((3, 'b')));
 
         assert!(rfind_between(v, 1u, 1u, f).is_none());
-        assert!(rfind_between(v, 1u, 2u, f) == Some((1, 'b')));
-        assert!(rfind_between(v, 1u, 3u, f) == Some((1, 'b')));
-        assert!(rfind_between(v, 1u, 4u, f) == Some((3, 'b')));
+        assert_eq!(rfind_between(v, 1u, 2u, f), Some((1, 'b')));
+        assert_eq!(rfind_between(v, 1u, 3u, f), Some((1, 'b')));
+        assert_eq!(rfind_between(v, 1u, 4u, f), Some((3, 'b')));
 
         assert!(rfind_between(v, 2u, 2u, f).is_none());
         assert!(rfind_between(v, 2u, 3u, f).is_none());
-        assert!(rfind_between(v, 2u, 4u, f) == Some((3, 'b')));
+        assert_eq!(rfind_between(v, 2u, 4u, f), Some((3, 'b')));
 
         assert!(rfind_between(v, 3u, 3u, f).is_none());
-        assert!(rfind_between(v, 3u, 4u, f) == Some((3, 'b')));
+        assert_eq!(rfind_between(v, 3u, 4u, f), Some((3, 'b')));
 
         assert!(rfind_between(v, 4u, 4u, f).is_none());
     }
 
     #[test]
     fn test_bsearch_elem() {
-        assert!(bsearch_elem([1,2,3,4,5], &5) == Some(4));
-        assert!(bsearch_elem([1,2,3,4,5], &4) == Some(3));
-        assert!(bsearch_elem([1,2,3,4,5], &3) == Some(2));
-        assert!(bsearch_elem([1,2,3,4,5], &2) == Some(1));
-        assert!(bsearch_elem([1,2,3,4,5], &1) == Some(0));
+        assert_eq!(bsearch_elem([1,2,3,4,5], &5), Some(4));
+        assert_eq!(bsearch_elem([1,2,3,4,5], &4), Some(3));
+        assert_eq!(bsearch_elem([1,2,3,4,5], &3), Some(2));
+        assert_eq!(bsearch_elem([1,2,3,4,5], &2), Some(1));
+        assert_eq!(bsearch_elem([1,2,3,4,5], &1), Some(0));
 
-        assert!(bsearch_elem([2,4,6,8,10], &1) == None);
-        assert!(bsearch_elem([2,4,6,8,10], &5) == None);
-        assert!(bsearch_elem([2,4,6,8,10], &4) == Some(1));
-        assert!(bsearch_elem([2,4,6,8,10], &10) == Some(4));
+        assert_eq!(bsearch_elem([2,4,6,8,10], &1), None);
+        assert_eq!(bsearch_elem([2,4,6,8,10], &5), None);
+        assert_eq!(bsearch_elem([2,4,6,8,10], &4), Some(1));
+        assert_eq!(bsearch_elem([2,4,6,8,10], &10), Some(4));
 
-        assert!(bsearch_elem([2,4,6,8], &1) == None);
-        assert!(bsearch_elem([2,4,6,8], &5) == None);
-        assert!(bsearch_elem([2,4,6,8], &4) == Some(1));
-        assert!(bsearch_elem([2,4,6,8], &8) == Some(3));
+        assert_eq!(bsearch_elem([2,4,6,8], &1), None);
+        assert_eq!(bsearch_elem([2,4,6,8], &5), None);
+        assert_eq!(bsearch_elem([2,4,6,8], &4), Some(1));
+        assert_eq!(bsearch_elem([2,4,6,8], &8), Some(3));
 
-        assert!(bsearch_elem([2,4,6], &1) == None);
-        assert!(bsearch_elem([2,4,6], &5) == None);
-        assert!(bsearch_elem([2,4,6], &4) == Some(1));
-        assert!(bsearch_elem([2,4,6], &6) == Some(2));
+        assert_eq!(bsearch_elem([2,4,6], &1), None);
+        assert_eq!(bsearch_elem([2,4,6], &5), None);
+        assert_eq!(bsearch_elem([2,4,6], &4), Some(1));
+        assert_eq!(bsearch_elem([2,4,6], &6), Some(2));
 
-        assert!(bsearch_elem([2,4], &1) == None);
-        assert!(bsearch_elem([2,4], &5) == None);
-        assert!(bsearch_elem([2,4], &2) == Some(0));
-        assert!(bsearch_elem([2,4], &4) == Some(1));
+        assert_eq!(bsearch_elem([2,4], &1), None);
+        assert_eq!(bsearch_elem([2,4], &5), None);
+        assert_eq!(bsearch_elem([2,4], &2), Some(0));
+        assert_eq!(bsearch_elem([2,4], &4), Some(1));
 
-        assert!(bsearch_elem([2], &1) == None);
-        assert!(bsearch_elem([2], &5) == None);
-        assert!(bsearch_elem([2], &2) == Some(0));
+        assert_eq!(bsearch_elem([2], &1), None);
+        assert_eq!(bsearch_elem([2], &5), None);
+        assert_eq!(bsearch_elem([2], &2), Some(0));
 
-        assert!(bsearch_elem([], &1) == None);
-        assert!(bsearch_elem([], &5) == None);
+        assert_eq!(bsearch_elem([], &1), None);
+        assert_eq!(bsearch_elem([], &5), None);
 
         assert!(bsearch_elem([1,1,1,1,1], &1) != None);
         assert!(bsearch_elem([1,1,1,1,2], &1) != None);
         assert!(bsearch_elem([1,1,1,2,2], &1) != None);
         assert!(bsearch_elem([1,1,2,2,2], &1) != None);
-        assert!(bsearch_elem([1,2,2,2,2], &1) == Some(0));
+        assert_eq!(bsearch_elem([1,2,2,2,2], &1), Some(0));
 
-        assert!(bsearch_elem([1,2,3,4,5], &6) == None);
-        assert!(bsearch_elem([1,2,3,4,5], &0) == None);
+        assert_eq!(bsearch_elem([1,2,3,4,5], &6), None);
+        assert_eq!(bsearch_elem([1,2,3,4,5], &0), None);
     }
 
     #[test]
     fn reverse_and_reversed() {
         let mut v: ~[int] = ~[10, 20];
-        assert!(v[0] == 10);
-        assert!(v[1] == 20);
+        assert_eq!(v[0], 10);
+        assert_eq!(v[1], 20);
         reverse(v);
-        assert!(v[0] == 20);
-        assert!(v[1] == 10);
+        assert_eq!(v[0], 20);
+        assert_eq!(v[1], 10);
         let v2 = reversed::<int>(~[10, 20]);
-        assert!(v2[0] == 20);
-        assert!(v2[1] == 10);
+        assert_eq!(v2[0], 20);
+        assert_eq!(v2[1], 10);
         v[0] = 30;
-        assert!(v2[0] == 20);
+        assert_eq!(v2[0], 20);
         // Make sure they work with 0-length vectors too.
 
         let v4 = reversed::<int>(~[]);
-        assert!(v4 == ~[]);
+        assert_eq!(v4, ~[]);
         let mut v3: ~[int] = ~[];
         reverse::<int>(v3);
     }
@@ -4048,29 +4048,29 @@ mod tests {
     #[test]
     fn reversed_mut() {
         let v2 = reversed::<int>(~[10, 20]);
-        assert!(v2[0] == 20);
-        assert!(v2[1] == 10);
+        assert_eq!(v2[0], 20);
+        assert_eq!(v2[1], 10);
     }
 
     #[test]
     fn test_split() {
         fn f(x: &int) -> bool { *x == 3 }
 
-        assert!(split(~[], f) == ~[]);
-        assert!(split(~[1, 2], f) == ~[~[1, 2]]);
-        assert!(split(~[3, 1, 2], f) == ~[~[], ~[1, 2]]);
-        assert!(split(~[1, 2, 3], f) == ~[~[1, 2], ~[]]);
-        assert!(split(~[1, 2, 3, 4, 3, 5], f) == ~[~[1, 2], ~[4], ~[5]]);
+        assert_eq!(split(~[], f), ~[]);
+        assert_eq!(split(~[1, 2], f), ~[~[1, 2]]);
+        assert_eq!(split(~[3, 1, 2], f), ~[~[], ~[1, 2]]);
+        assert_eq!(split(~[1, 2, 3], f), ~[~[1, 2], ~[]]);
+        assert_eq!(split(~[1, 2, 3, 4, 3, 5], f), ~[~[1, 2], ~[4], ~[5]]);
     }
 
     #[test]
     fn test_splitn() {
         fn f(x: &int) -> bool { *x == 3 }
 
-        assert!(splitn(~[], 1u, f) == ~[]);
-        assert!(splitn(~[1, 2], 1u, f) == ~[~[1, 2]]);
-        assert!(splitn(~[3, 1, 2], 1u, f) == ~[~[], ~[1, 2]]);
-        assert!(splitn(~[1, 2, 3], 1u, f) == ~[~[1, 2], ~[]]);
+        assert_eq!(splitn(~[], 1u, f), ~[]);
+        assert_eq!(splitn(~[1, 2], 1u, f), ~[~[1, 2]]);
+        assert_eq!(splitn(~[3, 1, 2], 1u, f), ~[~[], ~[1, 2]]);
+        assert_eq!(splitn(~[1, 2, 3], 1u, f), ~[~[1, 2], ~[]]);
         assert!(splitn(~[1, 2, 3, 4, 3, 5], 1u, f) ==
                       ~[~[1, 2], ~[4, 3, 5]]);
     }
@@ -4079,9 +4079,9 @@ mod tests {
     fn test_rsplit() {
         fn f(x: &int) -> bool { *x == 3 }
 
-        assert!(rsplit(~[], f) == ~[]);
-        assert!(rsplit(~[1, 2], f) == ~[~[1, 2]]);
-        assert!(rsplit(~[1, 2, 3], f) == ~[~[1, 2], ~[]]);
+        assert_eq!(rsplit(~[], f), ~[]);
+        assert_eq!(rsplit(~[1, 2], f), ~[~[1, 2]]);
+        assert_eq!(rsplit(~[1, 2, 3], f), ~[~[1, 2], ~[]]);
         assert!(rsplit(~[1, 2, 3, 4, 3, 5], f) ==
             ~[~[1, 2], ~[4], ~[5]]);
     }
@@ -4090,9 +4090,9 @@ mod tests {
     fn test_rsplitn() {
         fn f(x: &int) -> bool { *x == 3 }
 
-        assert!(rsplitn(~[], 1u, f) == ~[]);
-        assert!(rsplitn(~[1, 2], 1u, f) == ~[~[1, 2]]);
-        assert!(rsplitn(~[1, 2, 3], 1u, f) == ~[~[1, 2], ~[]]);
+        assert_eq!(rsplitn(~[], 1u, f), ~[]);
+        assert_eq!(rsplitn(~[1, 2], 1u, f), ~[~[1, 2]]);
+        assert_eq!(rsplitn(~[1, 2, 3], 1u, f), ~[~[1, 2], ~[]]);
         assert!(rsplitn(~[1, 2, 3, 4, 3, 5], 1u, f) ==
                        ~[~[1, 2, 3, 4], ~[5]]);
     }
@@ -4100,7 +4100,7 @@ mod tests {
     #[test]
     fn test_partition() {
         // FIXME (#4355 maybe): using v.partition here crashes
-        assert!(partition(~[], |x: &int| *x < 3) == (~[], ~[]));
+        assert_eq!(partition(~[], |x: &int| *x < 3), (~[], ~[]));
         assert!(partition(~[1, 2, 3], |x: &int| *x < 4) ==
             (~[1, 2, 3], ~[]));
         assert!(partition(~[1, 2, 3], |x: &int| *x < 2) ==
@@ -4111,7 +4111,7 @@ mod tests {
 
     #[test]
     fn test_partitioned() {
-        assert!((~[]).partitioned(|x: &int| *x < 3) == (~[], ~[]));
+        assert_eq!((~[]).partitioned(|x: &int| *x < 3), (~[], ~[]))
         assert!((~[1, 2, 3]).partitioned(|x: &int| *x < 4) ==
                      (~[1, 2, 3], ~[]));
         assert!((~[1, 2, 3]).partitioned(|x: &int| *x < 2) ==
@@ -4122,14 +4122,14 @@ mod tests {
 
     #[test]
     fn test_concat() {
-        assert!(concat(~[~[1], ~[2,3]]) == ~[1, 2, 3]);
+        assert_eq!(concat(~[~[1], ~[2,3]]), ~[1, 2, 3]);
     }
 
     #[test]
     fn test_connect() {
-        assert!(connect(~[], &0) == ~[]);
-        assert!(connect(~[~[1], ~[2, 3]], &0) == ~[1, 0, 2, 3]);
-        assert!(connect(~[~[1], ~[2], ~[3]], &0) == ~[1, 0, 2, 0, 3]);
+        assert_eq!(connect(~[], &0), ~[]);
+        assert_eq!(connect(~[~[1], ~[2, 3]], &0), ~[1, 0, 2, 3]);
+        assert_eq!(connect(~[~[1], ~[2], ~[3]], &0), ~[1, 0, 2, 0, 3]);
     }
 
     #[test]
@@ -4161,26 +4161,26 @@ mod tests {
     fn test_unshift() {
         let mut x = ~[1, 2, 3];
         x.unshift(0);
-        assert!(x == ~[0, 1, 2, 3]);
+        assert_eq!(x, ~[0, 1, 2, 3]);
     }
 
     #[test]
     fn test_insert() {
         let mut a = ~[1, 2, 4];
         a.insert(2, 3);
-        assert!(a == ~[1, 2, 3, 4]);
+        assert_eq!(a, ~[1, 2, 3, 4]);
 
         let mut a = ~[1, 2, 3];
         a.insert(0, 0);
-        assert!(a == ~[0, 1, 2, 3]);
+        assert_eq!(a, ~[0, 1, 2, 3]);
 
         let mut a = ~[1, 2, 3];
         a.insert(3, 4);
-        assert!(a == ~[1, 2, 3, 4]);
+        assert_eq!(a, ~[1, 2, 3, 4]);
 
         let mut a = ~[];
         a.insert(0, 1);
-        assert!(a == ~[1]);
+        assert_eq!(a, ~[1]);
     }
 
     #[test]
@@ -4195,15 +4195,15 @@ mod tests {
     fn test_remove() {
         let mut a = ~[1, 2, 3, 4];
         a.remove(2);
-        assert!(a == ~[1, 2, 4]);
+        assert_eq!(a, ~[1, 2, 4]);
 
         let mut a = ~[1, 2, 3];
         a.remove(0);
-        assert!(a == ~[2, 3]);
+        assert_eq!(a, ~[2, 3]);
 
         let mut a = ~[1];
         a.remove(0);
-        assert!(a == ~[]);
+        assert_eq!(a, ~[]);
     }
 
     #[test]
@@ -4218,19 +4218,19 @@ mod tests {
     fn test_capacity() {
         let mut v = ~[0u64];
         reserve(&mut v, 10u);
-        assert!(capacity(&v) == 10u);
+        assert_eq!(capacity(&v), 10u);
         let mut v = ~[0u32];
         reserve(&mut v, 10u);
-        assert!(capacity(&v) == 10u);
+        assert_eq!(capacity(&v), 10u);
     }
 
     #[test]
     fn test_slice_2() {
         let v = ~[1, 2, 3, 4, 5];
         let v = v.slice(1u, 3u);
-        assert!(v.len() == 2u);
-        assert!(v[0] == 2);
-        assert!(v[1] == 3);
+        assert_eq!(v.len(), 2u);
+        assert_eq!(v[0], 2);
+        assert_eq!(v[1], 3);
     }
 
 
@@ -4844,6 +4844,6 @@ mod tests {
         for [1, 2, 3].each_val |v| {
             i += v;
         }
-        assert!(i == 6);
+        assert_eq!(i, 6);
     }
 }

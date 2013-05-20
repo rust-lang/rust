@@ -43,6 +43,7 @@ use task::rt::{task_id, sched_id};
 use util;
 use util::replace;
 use unstable::finally::Finally;
+use rt::{context, OldTaskContext};
 
 #[cfg(test)] use comm::SharedChan;
 
@@ -558,23 +559,33 @@ pub fn get_scheduler() -> Scheduler {
  * ~~~
  */
 pub unsafe fn unkillable<U>(f: &fn() -> U) -> U {
-    let t = rt::rust_get_task();
-    do (|| {
-        rt::rust_task_inhibit_kill(t);
+    if context() == OldTaskContext {
+        let t = rt::rust_get_task();
+        do (|| {
+            rt::rust_task_inhibit_kill(t);
+            f()
+        }).finally {
+            rt::rust_task_allow_kill(t);
+        }
+    } else {
+        // FIXME #6377
         f()
-    }).finally {
-        rt::rust_task_allow_kill(t);
     }
 }
 
 /// The inverse of unkillable. Only ever to be used nested in unkillable().
 pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
-    let t = rt::rust_get_task();
-    do (|| {
-        rt::rust_task_allow_kill(t);
+    if context() == OldTaskContext {
+        let t = rt::rust_get_task();
+        do (|| {
+            rt::rust_task_allow_kill(t);
+            f()
+        }).finally {
+            rt::rust_task_inhibit_kill(t);
+        }
+    } else {
+        // FIXME #6377
         f()
-    }).finally {
-        rt::rust_task_inhibit_kill(t);
     }
 }
 
@@ -583,14 +594,19 @@ pub unsafe fn rekillable<U>(f: &fn() -> U) -> U {
  * For use with exclusive ARCs, which use pthread mutexes directly.
  */
 pub unsafe fn atomically<U>(f: &fn() -> U) -> U {
-    let t = rt::rust_get_task();
-    do (|| {
-        rt::rust_task_inhibit_kill(t);
-        rt::rust_task_inhibit_yield(t);
+    if context() == OldTaskContext {
+        let t = rt::rust_get_task();
+        do (|| {
+            rt::rust_task_inhibit_kill(t);
+            rt::rust_task_inhibit_yield(t);
+            f()
+        }).finally {
+            rt::rust_task_allow_yield(t);
+            rt::rust_task_allow_kill(t);
+        }
+    } else {
+        // FIXME #6377
         f()
-    }).finally {
-        rt::rust_task_allow_yield(t);
-        rt::rust_task_allow_kill(t);
     }
 }
 
@@ -619,7 +635,7 @@ fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
         let ch = ch.clone();
         do spawn_unlinked {
             // Give middle task a chance to fail-but-not-kill-us.
-            for old_iter::repeat(16) { task::yield(); }
+            for 16.times { task::yield(); }
             ch.send(()); // If killed first, grandparent hangs.
         }
         fail!(); // Shouldn't kill either (grand)parent or (grand)child.
@@ -634,7 +650,7 @@ fn test_spawn_unlinked_unsup_no_fail_up() { // child unlinked fails
 fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
     do spawn_supervised { fail!(); }
     // Give child a chance to fail-but-not-kill-us.
-    for old_iter::repeat(16) { task::yield(); }
+    for 16.times { task::yield(); }
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_sup_fail_down() {
@@ -709,7 +725,7 @@ fn test_spawn_failure_propagate_grandchild() {
             loop { task::yield(); }
         }
     }
-    for old_iter::repeat(16) { task::yield(); }
+    for 16.times { task::yield(); }
     fail!();
 }
 
@@ -721,7 +737,7 @@ fn test_spawn_failure_propagate_secondborn() {
             loop { task::yield(); }
         }
     }
-    for old_iter::repeat(16) { task::yield(); }
+    for 16.times { task::yield(); }
     fail!();
 }
 
@@ -733,7 +749,7 @@ fn test_spawn_failure_propagate_nephew_or_niece() {
             loop { task::yield(); }
         }
     }
-    for old_iter::repeat(16) { task::yield(); }
+    for 16.times { task::yield(); }
     fail!();
 }
 
@@ -745,7 +761,7 @@ fn test_spawn_linked_sup_propagate_sibling() {
             loop { task::yield(); }
         }
     }
-    for old_iter::repeat(16) { task::yield(); }
+    for 16.times { task::yield(); }
     fail!();
 }
 
@@ -789,7 +805,7 @@ fn test_future_result() {
     let mut builder = task();
     builder.future_result(|r| result = Some(r));
     do builder.spawn {}
-    assert!(result.unwrap().recv() == Success);
+    assert_eq!(result.unwrap().recv(), Success);
 
     result = None;
     let mut builder = task();
@@ -798,7 +814,7 @@ fn test_future_result() {
     do builder.spawn {
         fail!();
     }
-    assert!(result.unwrap().recv() == Failure);
+    assert_eq!(result.unwrap().recv(), Failure);
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -875,7 +891,7 @@ fn test_spawn_sched_childs_on_default_sched() {
             let ch = ch.take();
             let child_sched_id = unsafe { rt::rust_get_sched_id() };
             assert!(parent_sched_id != child_sched_id);
-            assert!(child_sched_id == default_id);
+            assert_eq!(child_sched_id, default_id);
             ch.send(());
         };
     };
@@ -904,8 +920,7 @@ fn test_spawn_sched_blocking() {
 
         // Testing that a task in one scheduler can block in foreign code
         // without affecting other schedulers
-        for old_iter::repeat(20u) {
-
+        for 20u.times {
             let (start_po, start_ch) = stream();
             let (fin_po, fin_ch) = stream();
 
@@ -969,7 +984,7 @@ fn avoid_copying_the_body(spawnfn: &fn(v: ~fn())) {
     }
 
     let x_in_child = p.recv();
-    assert!(x_in_parent == x_in_child);
+    assert_eq!(x_in_parent, x_in_child);
 }
 
 #[test]
@@ -1024,7 +1039,7 @@ fn test_unkillable() {
 
     // We want to do this after failing
     do spawn_unlinked {
-        for old_iter::repeat(10) { yield() }
+        for 10.times { yield() }
         ch.send(());
     }
 
@@ -1059,7 +1074,7 @@ fn test_unkillable_nested() {
 
     // We want to do this after failing
     do spawn_unlinked || {
-        for old_iter::repeat(10) { yield() }
+        for 10.times { yield() }
         ch.send(());
     }
 
@@ -1127,7 +1142,7 @@ fn test_sched_thread_per_core() {
         unsafe {
             let cores = rt::rust_num_threads();
             let reported_threads = rt::rust_sched_threads();
-            assert!((cores as uint == reported_threads as uint));
+            assert_eq!(cores as uint, reported_threads as uint);
             chan.send(());
         }
     }
@@ -1142,9 +1157,9 @@ fn test_spawn_thread_on_demand() {
     do spawn_sched(ManualThreads(2)) || {
         unsafe {
             let max_threads = rt::rust_sched_threads();
-            assert!((max_threads as int == 2));
+            assert_eq!(max_threads as int, 2);
             let running_threads = rt::rust_sched_current_nonlazy_threads();
-            assert!((running_threads as int == 1));
+            assert_eq!(running_threads as int, 1);
 
             let (port2, chan2) = comm::stream();
 
@@ -1153,7 +1168,7 @@ fn test_spawn_thread_on_demand() {
             }
 
             let running_threads2 = rt::rust_sched_current_nonlazy_threads();
-            assert!((running_threads2 as int == 2));
+            assert_eq!(running_threads2 as int, 2);
 
             port2.recv();
             chan.send(());

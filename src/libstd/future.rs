@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,16 +15,17 @@
  * # Example
  *
  * ~~~
- * let delayed_fib = future::spawn {|| fib(5000) };
+ * # fn fib(n: uint) -> uint {42};
+ * # fn make_a_sandwich() {};
+ * let mut delayed_fib = std::future::spawn (|| fib(5000) );
  * make_a_sandwich();
- * io::println(fmt!("fib(5000) = %?", delayed_fib.get()))
+ * println(fmt!("fib(5000) = %?", delayed_fib.get()))
  * ~~~
  */
 
 use core::cast;
 use core::cell::Cell;
-use core::comm::{PortOne, oneshot, send_one};
-use core::pipes::recv;
+use core::comm::{PortOne, oneshot, send_one, recv_one};
 use core::task;
 use core::util::replace;
 
@@ -51,7 +52,7 @@ priv enum FutureState<A> {
 /// Methods on the `future` type
 pub impl<A:Copy> Future<A> {
     fn get(&mut self) -> A {
-        //! Get the value of the future
+        //! Get the value of the future.
         *(self.get_ref())
     }
 }
@@ -87,7 +88,7 @@ pub impl<A> Future<A> {
 
 pub fn from_value<A>(val: A) -> Future<A> {
     /*!
-     * Create a future from a value
+     * Create a future from a value.
      *
      * The value is immediately available and calling `get` later will
      * not block.
@@ -105,11 +106,8 @@ pub fn from_port<A:Owned>(port: PortOne<A>) -> Future<A> {
      */
 
     let port = Cell(port);
-    do from_fn || {
-        let port = port.take().unwrap();
-        match recv(port) {
-            oneshot::send(data) => data
-        }
+    do from_fn {
+        recv_one(port.take())
     }
 }
 
@@ -117,7 +115,7 @@ pub fn from_fn<A>(f: ~fn() -> A) -> Future<A> {
     /*!
      * Create a future from a function.
      *
-     * The first time that the value is requested it will be retreived by
+     * The first time that the value is requested it will be retrieved by
      * calling the function.  Note that this function is a local
      * function. It is not spawned into another task.
      */
@@ -156,7 +154,7 @@ mod test {
     #[test]
     fn test_from_value() {
         let mut f = from_value(~"snail");
-        assert!(f.get() == ~"snail");
+        assert_eq!(f.get(), ~"snail");
     }
 
     #[test]
@@ -164,31 +162,31 @@ mod test {
         let (po, ch) = oneshot();
         send_one(ch, ~"whale");
         let mut f = from_port(po);
-        assert!(f.get() == ~"whale");
+        assert_eq!(f.get(), ~"whale");
     }
 
     #[test]
     fn test_from_fn() {
         let mut f = from_fn(|| ~"brail");
-        assert!(f.get() == ~"brail");
+        assert_eq!(f.get(), ~"brail");
     }
 
     #[test]
     fn test_interface_get() {
         let mut f = from_value(~"fail");
-        assert!(f.get() == ~"fail");
+        assert_eq!(f.get(), ~"fail");
     }
 
     #[test]
     fn test_get_ref_method() {
         let mut f = from_value(22);
-        assert!(*f.get_ref() == 22);
+        assert_eq!(*f.get_ref(), 22);
     }
 
     #[test]
     fn test_spawn() {
         let mut f = spawn(|| ~"bale");
-        assert!(f.get() == ~"bale");
+        assert_eq!(f.get(), ~"bale");
     }
 
     #[test]
@@ -206,7 +204,7 @@ mod test {
         do task::spawn {
             let mut f = f.take();
             let actual = f.get();
-            assert!(actual == expected);
+            assert_eq!(actual, expected);
         }
     }
 }

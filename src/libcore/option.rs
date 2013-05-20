@@ -89,11 +89,11 @@ impl<T:Ord> Ord for Option<T> {
     }
 
     fn ge(&self, other: &Option<T>) -> bool {
-        ! (self < other)
+        !(self < other)
     }
 
     fn gt(&self, other: &Option<T>) -> bool {
-        ! (self <= other)
+        !(self <= other)
     }
 }
 
@@ -182,12 +182,10 @@ pub impl<T> Option<T> {
     #[inline(always)]
     fn is_some(&const self) -> bool { !self.is_none() }
 
+    /// Update an optional value by optionally running its content through a
+    /// function that returns an option.
     #[inline(always)]
     fn chain<U>(self, f: &fn(t: T) -> Option<U>) -> Option<U> {
-        /*!
-         * Update an optional value by optionally running its content through a
-         * function that returns an option.
-         */
 
         match self {
             Some(t) => f(t),
@@ -195,21 +193,17 @@ pub impl<T> Option<T> {
         }
     }
 
+    /// Returns the leftmost Some() value, or None if both are None.
     #[inline(always)]
     fn or(self, optb: Option<T>) -> Option<T> {
-        /*!
-         * Returns the leftmost Some() value, or None if both are None.
-         */
         match self {
             Some(opta) => Some(opta),
             _ => optb
         }
     }
 
-    /**
-     * Update an optional value by optionally running its content by reference
-     * through a function that returns an option.
-     */
+    /// Update an optional value by optionally running its content by reference
+    /// through a function that returns an option.
     #[inline(always)]
     fn chain_ref<'a, U>(&'a self, f: &fn(x: &'a T) -> Option<U>) -> Option<U> {
         match *self { Some(ref x) => f(x), None => None }
@@ -411,7 +405,7 @@ fn test_unwrap_ptr() {
         let opt = Some(x);
         let y = opt.unwrap();
         let addr_y: *int = ::cast::transmute(&*y);
-        assert!(addr_x == addr_y);
+        assert_eq!(addr_x, addr_y);
     }
 }
 
@@ -422,7 +416,7 @@ fn test_unwrap_str() {
     let opt = Some(x);
     let y = opt.unwrap();
     let addr_y = str::as_buf(y, |buf, _len| buf);
-    assert!(addr_x == addr_y);
+    assert_eq!(addr_x, addr_y);
 }
 
 #[test]
@@ -448,7 +442,7 @@ fn test_unwrap_resource() {
         let opt = Some(x);
         let _y = opt.unwrap();
     }
-    assert!(*i == 1);
+    assert_eq!(*i, 1);
 }
 
 #[test]
@@ -459,7 +453,7 @@ fn test_option_dance() {
     for x.each |_x| {
         y2 = y.swap_unwrap();
     }
-    assert!(y2 == 5);
+    assert_eq!(y2, 5);
     assert!(y.is_none());
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -480,13 +474,13 @@ fn test_option_while_some() {
             None
         }
     }
-    assert!(i == 11);
+    assert_eq!(i, 11);
 }
 
 #[test]
 fn test_get_or_zero() {
     let some_stuff = Some(42);
-    assert!(some_stuff.get_or_zero() == 42);
+    assert_eq!(some_stuff.get_or_zero(), 42);
     let no_stuff: Option<int> = None;
-    assert!(no_stuff.get_or_zero() == 0);
+    assert_eq!(no_stuff.get_or_zero(), 0);
 }

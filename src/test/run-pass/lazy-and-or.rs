@@ -17,6 +17,6 @@ pub fn main() {
     assert!((x));
     let mut y: int = 10;
     debug!(x || incr(&mut y));
-    assert!((y == 10));
+    assert_eq!(y, 10);
     if true && x { assert!((true)); } else { assert!((false)); }
 }
