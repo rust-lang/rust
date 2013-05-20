@@ -145,7 +145,7 @@ use middle::trans::type_of;
 use middle::ty::struct_fields;
 use middle::ty::{AutoDerefRef, AutoAddEnv};
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn,
-                 AutoDerefRef, AutoAddEnv, AutoUnsafe};
+                 AutoUnsafe};
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::Repr;

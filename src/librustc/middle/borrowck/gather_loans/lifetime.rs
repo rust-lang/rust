@@ -11,7 +11,6 @@
 //! This module implements the check that the lifetime of a borrow
 //! does not exceed the lifetime of the value being borrowed.
 
-use core::prelude::*;
 use middle::borrowck::*;
 use mc = middle::mem_categorization;
 use middle::ty;
