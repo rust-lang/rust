@@ -577,6 +577,55 @@ pub fn core_macros() -> ~str {
             $(if $pred $body)else+
         );
     )
+
+    //
+    // Declares a named or anonymous curried function.
+    //
+    // # Example
+    //
+    // ~~~
+    // curry!(
+    //     fn mul(x: int, y: int) -> int {
+    //         x * y
+    //     }
+    // )
+    //
+    // assert_eq!(mul(2)(3), 6);
+    //
+    // let mul2 = mul(2);
+    // assert_eq!(mul2(3), 6);
+    //
+    // let f: @fn(int) -> @fn(int) -> int = curry!(|x,y| x * y);
+    // assert_eq!(f(2)(3), 6);
+    // ~~~
+    //
+    // # Notes:
+    //
+    // - It would be nicer if the syntax for named declarations could be
+    //   `fn foo x: int -> y: int -> int` to reinforce the curried nature of the
+    //   resulting function, but this causes an ambiguity during macro expansion.
+    // - Unfortunately generics and lifetimes are not supported due to the
+    //   difficulty of implementing type parameter lists in macros.
+    // - Anonymous curried functions have difficulty inferring types.
+    //
+    macro_rules! curry(
+        // named curried function
+        (fn $fn_name:ident ($arg:ident : $arg_ty:ty,
+                          $($arg_rest:ident : $arg_rest_ty:ty),*)
+                          -> $ret_ty:ty $fn_body:expr
+        ) => (
+            fn $fn_name($arg: $arg_ty) $(-> @fn($arg_rest: $arg_rest_ty))* -> $ret_ty {
+                curry!(|$($arg_rest),*| $fn_body )
+            }
+        );
+        // anonymous curried function
+        (|$arg:ident, $($arg_rest:ident),*| $fn_body:expr) => (
+            |$arg| curry!(|$($arg_rest),*| $fn_body)
+        );
+        (|$arg:ident| $fn_body:expr) => (
+            |$arg| $fn_body
+        );
+    )
 }";
 }
 
