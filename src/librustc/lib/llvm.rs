@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use core::hashmap::HashMap;
-use core::libc::c_uint;
+use core::libc::{c_uint, c_ushort};
 
 pub type Opcode = u32;
 pub type Bool = c_uint;
@@ -221,7 +221,7 @@ pub mod llvm {
     use super::{SectionIteratorRef, TargetDataRef, TypeKind, TypeRef, UseRef};
     use super::{ValueRef};
 
-    use core::libc::{c_char, c_int, c_longlong, c_uint, c_ulonglong};
+    use core::libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong};
 
     #[link_args = "-Lrustllvm -lrustllvm"]
     #[link_name = "rustllvm"]
@@ -451,6 +451,10 @@ pub mod llvm {
         /* all zeroes */
         #[fast_ffi]
         pub unsafe fn LLVMConstAllOnes(Ty: TypeRef) -> ValueRef;
+        #[fast_ffi]
+        pub unsafe fn LLVMConstICmp(Pred: c_ushort, V1: ValueRef, V2: ValueRef) -> ValueRef;
+        #[fast_ffi]
+        pub unsafe fn LLVMConstFCmp(Pred: c_ushort, V1: ValueRef, V2: ValueRef) -> ValueRef;
         /* only for int/vector */
         #[fast_ffi]
         pub unsafe fn LLVMGetUndef(Ty: TypeRef) -> ValueRef;
@@ -1914,6 +1918,16 @@ pub fn SetLinkage(Global: ValueRef, Link: Linkage) {
     }
 }
 
+pub fn ConstICmp(Pred: IntPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef {
+    unsafe {
+        llvm::LLVMConstICmp(Pred as c_ushort, V1, V2)
+    }
+}
+pub fn ConstFCmp(Pred: RealPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef {
+    unsafe {
+        llvm::LLVMConstFCmp(Pred as c_ushort, V1, V2)
+    }
+}
 /* Memory-managed object interface to type handles. */
 
 pub struct TypeNames {
