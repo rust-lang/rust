@@ -11,7 +11,6 @@
 use option::*;
 use result::*;
 use ops::Drop;
-use old_iter::CopyableIter;
 use cell::{Cell, empty_cell};
 use cast::transmute;
 use clone::Clone;

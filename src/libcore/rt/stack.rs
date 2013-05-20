@@ -39,9 +39,7 @@ pub impl StackSegment {
 
     /// Point to the low end of the allocated stack
     fn start(&self) -> *uint {
-        unsafe {
-            vec::raw::to_ptr(self.buf) as *uint
-        }
+      vec::raw::to_ptr(self.buf) as *uint
     }
 
     /// Point one word beyond the high end of the allocated stack
