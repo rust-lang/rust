@@ -127,33 +127,6 @@ struct AnnihilateStats {
     n_bytes_freed: uint
 }
 
-#[cfg(stage0)]
-unsafe fn each_live_alloc(read_next_before: bool,
-                          f: &fn(box: *mut BoxRepr, uniq: bool) -> bool) {
-    //! Walks the internal list of allocations
-
-    use managed;
-
-    let task: *Task = transmute(rustrt::rust_get_task());
-    let box = (*task).boxed_region.live_allocs;
-    let mut box: *mut BoxRepr = transmute(copy box);
-    while box != mut_null() {
-        let next_before = transmute(copy (*box).header.next);
-        let uniq =
-            (*box).header.ref_count == managed::raw::RC_MANAGED_UNIQUE;
-
-        if !f(box, uniq) {
-            return;
-        }
-
-        if read_next_before {
-            box = next_before;
-        } else {
-            box = transmute(copy (*box).header.next);
-        }
-    }
-}
-#[cfg(not(stage0))]
 unsafe fn each_live_alloc(read_next_before: bool,
                           f: &fn(box: *mut BoxRepr, uniq: bool) -> bool) -> bool {
     //! Walks the internal list of allocations

@@ -19,8 +19,6 @@
  * CPRNG like rand::rng.
  */
 
-#[cfg(stage0)]
-use cast;
 use container::Container;
 use old_iter::BaseIter;
 use rt::io::Writer;
@@ -78,14 +76,6 @@ pub trait Streaming {
     fn reset(&mut self);
 }
 
-// XXX: Ugly workaround for bootstrapping.
-#[cfg(stage0)]
-fn transmute_for_stage0<'a>(bytes: &'a [const u8]) -> &'a [u8] {
-    unsafe {
-        cast::transmute(bytes)
-    }
-}
-#[cfg(not(stage0))]
 fn transmute_for_stage0<'a>(bytes: &'a [u8]) -> &'a [u8] {
     bytes
 }

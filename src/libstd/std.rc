@@ -63,18 +63,12 @@ pub mod flatpipes;
 
 pub mod bitv;
 pub mod deque;
-#[cfg(not(stage0))]
 pub mod fun_treemap;
 pub mod list;
 pub mod priority_queue;
 pub mod rope;
 pub mod smallintmap;
 
-#[cfg(stage0)]
-#[path="sort_stage0.rs"]
-pub mod sort;
-
-#[cfg(not(stage0))]
 pub mod sort;
 
 pub mod dlist;

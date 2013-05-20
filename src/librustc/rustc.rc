@@ -75,9 +75,6 @@ pub mod middle {
     }
     pub mod ty;
     pub mod subst;
-    #[cfg(stage0)] #[path = "resolve_stage0.rs"]
-    pub mod resolve;
-    #[cfg(not(stage0))]
     pub mod resolve;
     #[path = "typeck/mod.rs"]
     pub mod typeck;

@@ -67,25 +67,6 @@ enum MoveError {
 pub impl<'self> CheckLoanCtxt<'self> {
     fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
-    #[cfg(stage0)]
-    fn each_issued_loan(&self,
-                        scope_id: ast::node_id,
-                        op: &fn(&Loan) -> bool)
-    {
-        //! Iterates over each loan that that has been issued
-        //! on entrance to `scope_id`, regardless of whether it is
-        //! actually *in scope* at that point.  Sometimes loans
-        //! are issued for future scopes and thus they may have been
-        //! *issued* but not yet be in effect.
-
-        for self.dfcx.each_bit_on_entry(scope_id) |loan_index| {
-            let loan = &self.all_loans[loan_index];
-            if !op(loan) {
-                return;
-            }
-        }
-    }
-    #[cfg(not(stage0))]
     fn each_issued_loan(&self,
                         scope_id: ast::node_id,
                         op: &fn(&Loan) -> bool) -> bool
@@ -105,24 +86,6 @@ pub impl<'self> CheckLoanCtxt<'self> {
         return true;
     }
 
-    #[cfg(stage0)]
-    fn each_in_scope_loan(&self,
-                          scope_id: ast::node_id,
-                          op: &fn(&Loan) -> bool)
-    {
-        //! Like `each_issued_loan()`, but only considers loans that are
-        //! currently in scope.
-
-        let region_maps = self.tcx().region_maps;
-        for self.each_issued_loan(scope_id) |loan| {
-            if region_maps.is_subscope_of(scope_id, loan.kill_scope) {
-                if !op(loan) {
-                    return;
-                }
-            }
-        }
-    }
-    #[cfg(not(stage0))]
     fn each_in_scope_loan(&self,
                           scope_id: ast::node_id,
                           op: &fn(&Loan) -> bool) -> bool
@@ -141,26 +104,6 @@ pub impl<'self> CheckLoanCtxt<'self> {
         return true;
     }
 
-    #[cfg(stage0)]
-    fn each_in_scope_restriction(&self,
-                                 scope_id: ast::node_id,
-                                 loan_path: @LoanPath,
-                                 op: &fn(&Loan, &Restriction) -> bool)
-    {
-        //! Iterates through all the in-scope restrictions for the
-        //! given `loan_path`
-
-        for self.each_in_scope_loan(scope_id) |loan| {
-            for loan.restrictions.each |restr| {
-                if restr.loan_path == loan_path {
-                    if !op(loan, restr) {
-                        return;
-                    }
-                }
-            }
-        }
-    }
-    #[cfg(not(stage0))]
     fn each_in_scope_restriction(&self,
                                  scope_id: ast::node_id,
                                  loan_path: @LoanPath,

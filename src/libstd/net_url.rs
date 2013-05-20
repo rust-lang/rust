@@ -703,13 +703,6 @@ impl ToStr for Url {
     }
 }
 
-#[cfg(stage0)]
-impl IterBytes for Url {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        self.to_str().iter_bytes(lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl IterBytes for Url {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         self.to_str().iter_bytes(lsb0, f)

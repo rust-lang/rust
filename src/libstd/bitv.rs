@@ -143,17 +143,6 @@ pub impl BigBitv {
     }
 
     #[inline(always)]
-    #[cfg(stage0)]
-    fn each_storage(&mut self, op: &fn(v: &mut uint) -> bool) {
-        for uint::range(0, self.storage.len()) |i| {
-            let mut w = self.storage[i];
-            let b = op(&mut w);
-            self.storage[i] = w;
-            if !b { break; }
-        }
-    }
-    #[inline(always)]
-    #[cfg(not(stage0))]
     fn each_storage(&mut self, op: &fn(v: &mut uint) -> bool) -> bool {
         uint::range(0, self.storage.len(), |i| op(&mut self.storage[i]))
     }
@@ -199,19 +188,6 @@ pub impl BigBitv {
     }
 
     #[inline(always)]
-    #[cfg(stage0)]
-    fn equals(&self, b: &BigBitv, nbits: uint) -> bool {
-        let len = b.storage.len();
-        for uint::iterate(0, len) |i| {
-            let mask = big_mask(nbits, i);
-            if mask & self.storage[i] != mask & b.storage[i] {
-                return false;
-            }
-        }
-    }
-
-    #[inline(always)]
-    #[cfg(not(stage0))]
     fn equals(&self, b: &BigBitv, nbits: uint) -> bool {
         let len = b.storage.len();
         for uint::iterate(0, len) |i| {
@@ -407,16 +383,6 @@ pub impl Bitv {
     }
 
     #[inline(always)]
-    #[cfg(stage0)]
-    fn each(&self, f: &fn(bool) -> bool) {
-        let mut i = 0;
-        while i < self.nbits {
-            if !f(self.get(i)) { break; }
-            i += 1;
-        }
-    }
-    #[inline(always)]
-    #[cfg(not(stage0))]
     fn each(&self, f: &fn(bool) -> bool) -> bool {
         let mut i = 0;
         while i < self.nbits {
@@ -519,15 +485,6 @@ pub impl Bitv {
         true
     }
 
-    #[cfg(stage0)]
-    fn ones(&self, f: &fn(uint) -> bool) {
-        for uint::range(0, self.nbits) |i| {
-            if self.get(i) {
-                if !f(i) { break }
-            }
-        }
-    }
-    #[cfg(not(stage0))]
     fn ones(&self, f: &fn(uint) -> bool) -> bool {
         uint::range(0, self.nbits, |i| !self.get(i) || f(i))
     }
@@ -697,7 +654,6 @@ pub impl BitvSet {
     }
 }
 
-#[cfg(not(stage0))]
 impl BaseIter<uint> for BitvSet {
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 
@@ -711,7 +667,6 @@ impl BaseIter<uint> for BitvSet {
     }
 }
 
-#[cfg(not(stage0))]
 impl cmp::Eq for BitvSet {
     fn eq(&self, other: &BitvSet) -> bool {
         if self.size != other.size {
@@ -745,7 +700,6 @@ impl Mutable for BitvSet {
     }
 }
 
-#[cfg(not(stage0))]
 impl Set<uint> for BitvSet {
     fn contains(&self, value: &uint) -> bool {
         *value < self.bitv.storage.len() * uint::bits && self.bitv.get(*value)
@@ -849,7 +803,6 @@ impl Set<uint> for BitvSet {
     }
 }
 
-#[cfg(not(stage0))]
 priv impl BitvSet {
     /// Visits each of the words that the two bit vectors (self and other)
     /// both have in common. The three yielded arguments are (bit location,

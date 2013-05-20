@@ -349,14 +349,6 @@ impl<'self> Equiv<@~str> for StringRef<'self> {
     fn equiv(&self, other: &@~str) -> bool { str::eq_slice(**self, **other) }
 }
 
-#[cfg(stage0)]
-impl<'self> to_bytes::IterBytes for StringRef<'self> {
-    #[inline(always)]
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        (**self).iter_bytes(lsb0, f);
-    }
-}
-#[cfg(not(stage0))]
 impl<'self> to_bytes::IterBytes for StringRef<'self> {
     #[inline(always)]
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
