@@ -22,7 +22,6 @@ use old_iter;
 use iterator::Iterator;
 use kinds::Copy;
 use libc;
-use old_iter::{BaseIter, CopyableIter};
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
@@ -32,6 +31,9 @@ use uint;
 use unstable::intrinsics;
 use vec;
 use util;
+
+#[cfg(stage0)]
+use old_iter::{BaseIter, CopyableIter};
 
 #[cfg(not(test))] use cmp::Equiv;
 
