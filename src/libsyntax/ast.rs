@@ -13,12 +13,14 @@
 use codemap::{span, spanned};
 use abi::AbiSet;
 use opt_vec::OptVec;
+use parse::token::get_ident_interner;
 
 use core::cast;
-use core::option::{None, Option, Some};
+use core::option::{Option};
 use core::to_bytes;
 use core::to_bytes::IterBytes;
 use core::to_str::ToStr;
+use core::hashmap::HashMap;
 use std::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 
@@ -38,14 +40,20 @@ pub struct ident { repr: Name, ctxt: SyntaxContext }
 // that's causing unreleased memory to cause core dumps
 // and also perhaps to save some work in destructor checks.
 // the special uint '0' will be used to indicate an empty
-// syntax context
+// syntax context.
 
 // this uint is a reference to a table stored in thread-local
 // storage.
 pub type SyntaxContext = uint;
 
-pub type SCTable = ~[SyntaxContext_];
+pub struct SCTable {
+    table : ~[SyntaxContext_],
+    mark_memo : HashMap<(SyntaxContext,Mrk),SyntaxContext>,
+    rename_memo : HashMap<(SyntaxContext,ident,Name),SyntaxContext>
+}
+// NB: these must be placed in any SCTable...
 pub static empty_ctxt : uint = 0;
+pub static illegal_ctxt : uint = 1;
 
 #[deriving(Eq, Encodable, Decodable)]
 pub enum SyntaxContext_ {
@@ -59,7 +67,8 @@ pub enum SyntaxContext_ {
     // "to" slot must have the same name and context
     // in the "from" slot. In essence, they're all
     // pointers to a single "rename" event node.
-    Rename (ident,Name,SyntaxContext)
+    Rename (ident,Name,SyntaxContext),
+    IllegalCtxt()
 }
 
 // a name represents an identifier
@@ -70,27 +79,14 @@ pub type Mrk = uint;
 
 impl<S:Encoder> Encodable<S> for ident {
     fn encode(&self, s: &mut S) {
-        unsafe {
-            let intr =
-                match local_data::local_data_get(interner_key!()) {
-                    None => fail!("encode: TLS interner not set up"),
-                    Some(intr) => intr
-                };
-
-            s.emit_str(*(*intr).get(*self));
-        }
+        let intr = get_ident_interner();
+        s.emit_str(*(*intr).get(*self));
     }
 }
 
 impl<D:Decoder> Decodable<D> for ident {
     fn decode(d: &mut D) -> ident {
-        let intr = match unsafe {
-            local_data::local_data_get(interner_key!())
-        } {
-            None => fail!("decode: TLS interner not set up"),
-            Some(intr) => intr
-        };
-
+        let intr = get_ident_interner();
         (*intr).intern(d.read_str())
     }
 }

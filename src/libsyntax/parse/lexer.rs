@@ -786,7 +786,7 @@ mod test {
     fn setup(teststr: ~str) -> Env {
         let cm = CodeMap::new();
         let fm = cm.new_filemap(~"zebra.rs", @teststr);
-        let ident_interner = token::mk_ident_interner(); // interner::mk();
+        let ident_interner = token::get_ident_interner();
         let span_handler =
             diagnostic::mk_span_handler(diagnostic::mk_handler(None),@cm);
         Env {

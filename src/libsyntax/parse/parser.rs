@@ -2496,6 +2496,7 @@ pub impl Parser {
         @ast::pat { id: self.get_id(), node: pat, span: mk_sp(lo, hi) }
     }
 
+    // parse ident or ident @ pat
     // used by the copy foo and ref foo patterns to give a good
     // error message when parsing mistakes like ref foo(a,b)
     fn parse_pat_ident(&self,
@@ -2587,20 +2588,22 @@ pub impl Parser {
         })
     }
 
-    // parse a statement. may include decl
-    fn parse_stmt(&self, first_item_attrs: ~[attribute]) -> @stmt {
+    // parse a statement. may include decl.
+    // precondition: any attributes are parsed already
+    fn parse_stmt(&self, item_attrs: ~[attribute]) -> @stmt {
         maybe_whole!(self, nt_stmt);
 
         fn check_expected_item(p: &Parser, current_attrs: &[attribute]) {
             // If we have attributes then we should have an item
             if !current_attrs.is_empty() {
-                p.fatal(~"expected item after attrs");
+                p.span_err(*p.last_span,
+                           ~"expected item after attributes");
             }
         }
 
         let lo = self.span.lo;
         if self.is_keyword("let") {
-            check_expected_item(self, first_item_attrs);
+            check_expected_item(self, item_attrs);
             self.expect_keyword("let");
             let decl = self.parse_let();
             return @spanned(lo, decl.span.hi, stmt_decl(decl, self.get_id()));
@@ -2613,7 +2616,7 @@ pub impl Parser {
             // to the macro clause of parse_item_or_view_item. This
             // could use some cleanup, it appears to me.
 
-            check_expected_item(self, first_item_attrs);
+            check_expected_item(self, item_attrs);
 
             // Potential trouble: if we allow macros with paths instead of
             // idents, we'd need to look ahead past the whole path here...
@@ -2649,9 +2652,6 @@ pub impl Parser {
             }
 
         } else {
-            let item_attrs = vec::append(first_item_attrs,
-                                         self.parse_outer_attributes());
-
             match self.parse_item_or_view_item(/*bad*/ copy item_attrs,
                                                            false) {
                 iovi_item(i) => {
@@ -2726,6 +2726,7 @@ pub impl Parser {
         let mut stmts = ~[];
         let mut expr = None;
 
+        // wouldn't it be more uniform to parse view items only, here?
         let ParsedItemsAndViewItems {
             attrs_remaining: attrs_remaining,
             view_items: view_items,
@@ -2740,23 +2741,29 @@ pub impl Parser {
                                 stmt_decl(decl, self.get_id())));
         }
 
-        let mut initial_attrs = attrs_remaining;
+        let mut attributes_box = attrs_remaining;
 
-        if *self.token == token::RBRACE && !vec::is_empty(initial_attrs) {
-            self.fatal(~"expected item");
-        }
-
-        while *self.token != token::RBRACE {
+        while (*self.token != token::RBRACE) {
+            // parsing items even when they're not allowed lets us give
+            // better error messages and recover more gracefully.
+            attributes_box.push_all(self.parse_outer_attributes());
             match *self.token {
                 token::SEMI => {
+                    if !vec::is_empty(attributes_box) {
+                        self.span_err(*self.last_span,~"expected item after attributes");
+                        attributes_box = ~[];
+                    }
                     self.bump(); // empty
                 }
+                token::RBRACE => {
+                    // fall through and out.
+                }
                 _ => {
-                    let stmt = self.parse_stmt(initial_attrs);
-                    initial_attrs = ~[];
+                    let stmt = self.parse_stmt(attributes_box);
+                    attributes_box = ~[];
                     match stmt.node {
                         stmt_expr(e, stmt_id) => {
-                            // Expression without semicolon
+                            // expression without semicolon
                             match *self.token {
                                 token::SEMI => {
                                     self.bump();
@@ -2772,7 +2779,7 @@ pub impl Parser {
                                         self.fatal(
                                             fmt!(
                                                 "expected `;` or `}` after \
-                                                expression but found `%s`",
+                                                 expression but found `%s`",
                                                 self.token_to_str(&t)
                                             )
                                         );
@@ -2781,9 +2788,8 @@ pub impl Parser {
                                 }
                             }
                         }
-
                         stmt_mac(ref m, _) => {
-                            // Statement macro; might be an expr
+                            // statement macro; might be an expr
                             match *self.token {
                                 token::SEMI => {
                                     self.bump();
@@ -2802,8 +2808,7 @@ pub impl Parser {
                                 _ => { stmts.push(stmt); }
                             }
                         }
-
-                        _ => { // All other kinds of statements:
+                        _ => { // all other kinds of statements:
                             stmts.push(stmt);
 
                             if classify::stmt_ends_with_semi(stmt) {
@@ -2814,6 +2819,11 @@ pub impl Parser {
                 }
             }
         }
+
+        if !vec::is_empty(attributes_box) {
+            self.span_err(*self.last_span,~"expected item after attributes");
+        }
+
         let hi = self.span.hi;
         self.bump();
         let bloc = ast::blk_ {
@@ -3518,7 +3528,7 @@ pub impl Parser {
 
         if first && attrs_remaining_len > 0u {
             // We parsed attributes for the first item but didn't find it
-            self.fatal(~"expected item");
+            self.span_err(*self.last_span,~"expected item after attributes");
         }
 
         ast::_mod { view_items: view_items, items: items }
@@ -3723,11 +3733,15 @@ pub impl Parser {
                                first_item_attrs: ~[attribute])
                                -> foreign_mod {
         let ParsedItemsAndViewItems {
-            attrs_remaining: _,
+            attrs_remaining: attrs_remaining,
             view_items: view_items,
             items: _,
             foreign_items: foreign_items
         } = self.parse_foreign_items(first_item_attrs, true);
+        if (! attrs_remaining.is_empty()) {
+            self.span_err(*self.last_span,
+                          ~"expected item after attributes");
+        }
         assert!(*self.token == token::RBRACE);
         ast::foreign_mod {
             sort: sort,

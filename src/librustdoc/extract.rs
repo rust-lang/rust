@@ -17,24 +17,18 @@ use doc;
 use core::local_data::local_data_get;
 use syntax::ast;
 use syntax;
-
-/* can't import macros yet, so this is copied from token.rs. See its comment
- * there. */
-macro_rules! interner_key (
-    () => (cast::transmute::<(uint, uint),
-           &fn(v: @@syntax::parse::token::ident_interner)>((-3 as uint, 0u)))
-)
+use syntax::parse::token::{ident_interner};
+use syntax::parse::token;
 
 // Hack; rather than thread an interner through everywhere, rely on
 // thread-local data
 pub fn to_str(id: ast::ident) -> ~str {
-    let intr = unsafe{ local_data_get(interner_key!()) };
-
-    return copy *(*intr.get()).get(id);
+    let intr = token::get_ident_interner();
+    return copy *(*intr).get(id);
 }
 
-pub fn interner() -> @syntax::parse::token::ident_interner {
-    return *(unsafe{ local_data_get(interner_key!()) }).get();
+pub fn interner() -> @ident_interner {
+    return token::get_ident_interner();
 }
 
 pub fn from_srv(
