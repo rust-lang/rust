@@ -19,6 +19,7 @@ use libc;
 use libc::{c_void, c_char, size_t};
 use repr;
 use str;
+use unstable::intrinsics;
 
 pub type FreeGlue<'self> = &'self fn(*TypeDesc, *c_void);
 
@@ -36,16 +37,6 @@ pub struct TypeDesc {
 pub struct Closure {
     code: *(),
     env: *(),
-}
-
-pub mod rusti {
-    #[abi = "rust-intrinsic"]
-    pub extern "rust-intrinsic" {
-        fn get_tydesc<T>() -> *();
-        fn size_of<T>() -> uint;
-        fn pref_align_of<T>() -> uint;
-        fn min_align_of<T>() -> uint;
-    }
 }
 
 pub mod rustrt {
@@ -81,7 +72,7 @@ pub fn shape_le<T:Ord>(x1: &T, x2: &T) -> bool {
  */
 #[inline(always)]
 pub fn get_type_desc<T>() -> *TypeDesc {
-    unsafe { rusti::get_tydesc::<T>() as *TypeDesc }
+    unsafe { intrinsics::get_tydesc::<T>() as *TypeDesc }
 }
 
 /// Returns a pointer to a type descriptor.
@@ -93,7 +84,7 @@ pub fn get_type_desc_val<T>(_val: &T) -> *TypeDesc {
 /// Returns the size of a type
 #[inline(always)]
 pub fn size_of<T>() -> uint {
-    unsafe { rusti::size_of::<T>() }
+    unsafe { intrinsics::size_of::<T>() }
 }
 
 /// Returns the size of the type that `_val` points to
@@ -128,7 +119,7 @@ pub fn nonzero_size_of_val<T>(_val: &T) -> uint {
  */
 #[inline(always)]
 pub fn min_align_of<T>() -> uint {
-    unsafe { rusti::min_align_of::<T>() }
+    unsafe { intrinsics::min_align_of::<T>() }
 }
 
 /// Returns the ABI-required minimum alignment of the type of the value that
@@ -141,7 +132,7 @@ pub fn min_align_of_val<T>(_val: &T) -> uint {
 /// Returns the preferred alignment of a type
 #[inline(always)]
 pub fn pref_align_of<T>() -> uint {
-    unsafe { rusti::pref_align_of::<T>() }
+    unsafe { intrinsics::pref_align_of::<T>() }
 }
 
 /// Returns the preferred alignment of the type of the value that

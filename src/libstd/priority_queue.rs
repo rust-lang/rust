@@ -11,8 +11,9 @@
 //! A priority queue implemented with a binary heap
 
 use core::old_iter::BaseIter;
+use core::unstable::intrinsics::{move_val_init, init};
+use core::unstable::intrinsics::uninit;
 use core::util::{replace, swap};
-use core::unstable::intrinsics::{init, move_val_init};
 
 pub struct PriorityQueue<T> {
     priv data: ~[T],
