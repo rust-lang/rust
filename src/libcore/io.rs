@@ -10,7 +10,37 @@
 
 /*!
 
-Basic input/output
+The `io` module contains basic input and output routines.
+
+A quick summary:
+
+## `Reader` and `Writer` traits
+
+These traits define the minimal set of methods that anything that can do
+input and output should implement.
+
+## `ReaderUtil` and `WriterUtil` traits
+
+Richer methods that allow you to do more. `Reader` only lets you read a certain
+number of bytes into a buffer, while `ReaderUtil` allows you to read a whole
+line, for example.
+
+Generally, these richer methods are probably the ones you want to actually
+use in day-to-day Rust.
+
+Furthermore, because there is an implementation of `ReaderUtil` for
+`<T: Reader>`, when your input or output code implements `Reader`, you get
+all of these methods for free.
+
+## `print` and `println`
+
+These very useful functions are defined here. You generally don't need to
+import them, though, as the prelude already does.
+
+## `stdin`, `stdout`, and `stderr`
+
+These functions return references to the classic three file descriptors. They
+implement `Reader` and `Writer`, where appropriate.
 
 */
 
