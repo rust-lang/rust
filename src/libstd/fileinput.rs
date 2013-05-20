@@ -210,9 +210,7 @@ impl FileInput {
     pub fn next_file(&self) -> bool {
         // No more files
 
-        // unsafe block can be removed after the next snapshot
-        // (next one after 2013-05-03)
-        if unsafe { self.fi.files.is_empty() } {
+        if self.fi.files.is_empty() {
             self.fi.current_reader = None;
             return false;
         }
@@ -324,9 +322,7 @@ impl io::Reader for FileInput {
     fn eof(&self) -> bool {
         // we've run out of files, and current_reader is either None or eof.
 
-        // unsafe block can be removed after the next snapshot
-        // (next one after 2013-05-03)
-        (unsafe { self.fi.files.is_empty() }) &&
+        self.fi.files.is_empty() &&
             match self.fi.current_reader { None => true, Some(r) => r.eof() }
 
     }
