@@ -575,37 +575,8 @@ pub fn tmpdir() -> Path {
                    getenv_nonempty("WINDIR")))).get_or_default(Path("C:\\Windows"))
     }
 }
-/// Recursively walk a directory structure
-#[cfg(stage0)]
-pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) {
 
-    walk_dir_(p, f);
-
-    fn walk_dir_(p: &Path, f: &fn(&Path) -> bool) -> bool {
-        let mut keepgoing = true;
-        do list_dir(p).each |q| {
-            let path = &p.push(*q);
-            if !f(path) {
-                keepgoing = false;
-                false
-            } else {
-                if path_is_dir(path) {
-                    if !walk_dir_(path, f) {
-                        keepgoing = false;
-                        false
-                    } else {
-                        true
-                    }
-                } else {
-                    true
-                }
-            }
-        }
-        return keepgoing;
-    }
-}
 /// Recursively walk a directory structure
-#[cfg(not(stage0))]
 pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) -> bool {
     list_dir(p).each(|q| {
         let path = &p.push(*q);

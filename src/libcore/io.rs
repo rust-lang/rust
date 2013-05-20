@@ -282,9 +282,6 @@ pub trait ReaderUtil {
     *
     * None right now.
     */
-    #[cfg(stage0)]
-    fn each_byte(&self, it: &fn(int) -> bool);
-    #[cfg(not(stage0))]
     fn each_byte(&self, it: &fn(int) -> bool) -> bool;
 
     /**
@@ -294,9 +291,6 @@ pub trait ReaderUtil {
     *
     * None right now.
     */
-    #[cfg(stage0)]
-    fn each_char(&self, it: &fn(char) -> bool);
-    #[cfg(not(stage0))]
     fn each_char(&self, it: &fn(char) -> bool) -> bool;
 
     /**
@@ -306,9 +300,6 @@ pub trait ReaderUtil {
     *
     * None right now.
     */
-    #[cfg(stage0)]
-    fn each_line(&self, it: &fn(&str) -> bool);
-    #[cfg(not(stage0))]
     fn each_line(&self, it: &fn(&str) -> bool) -> bool;
 
     /**
@@ -720,13 +711,6 @@ impl<T:Reader> ReaderUtil for T {
         bytes
     }
 
-    #[cfg(stage0)]
-    fn each_byte(&self, it: &fn(int) -> bool) {
-        while !self.eof() {
-            if !it(self.read_byte()) { break; }
-        }
-    }
-    #[cfg(not(stage0))]
     fn each_byte(&self, it: &fn(int) -> bool) -> bool {
         while !self.eof() {
             if !it(self.read_byte()) { return false; }
@@ -734,13 +718,6 @@ impl<T:Reader> ReaderUtil for T {
         return true;
     }
 
-    #[cfg(stage0)]
-    fn each_char(&self, it: &fn(char) -> bool) {
-        while !self.eof() {
-            if !it(self.read_char()) { break; }
-        }
-    }
-    #[cfg(not(stage0))]
     fn each_char(&self, it: &fn(char) -> bool) -> bool {
         while !self.eof() {
             if !it(self.read_char()) { return false; }
@@ -748,27 +725,6 @@ impl<T:Reader> ReaderUtil for T {
         return true;
     }
 
-    #[cfg(stage0)]
-    fn each_line(&self, it: &fn(s: &str) -> bool) {
-        while !self.eof() {
-            // include the \n, so that we can distinguish an entirely empty
-            // line read after "...\n", and the trailing empty line in
-            // "...\n\n".
-            let mut line = self.read_until('\n' as u8, true);
-
-            // blank line at the end of the reader is ignored
-            if self.eof() && line.is_empty() { break; }
-
-            // trim the \n, so that each_line is consistent with read_line
-            let n = str::len(line);
-            if line[n-1] == '\n' as u8 {
-                unsafe { str::raw::set_len(&mut line, n-1); }
-            }
-
-            if !it(line) { break; }
-        }
-    }
-    #[cfg(not(stage0))]
     fn each_line(&self, it: &fn(s: &str) -> bool) -> bool {
         while !self.eof() {
             // include the \n, so that we can distinguish an entirely empty

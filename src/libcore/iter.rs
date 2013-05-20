@@ -40,17 +40,12 @@ much easier to implement.
 
 */
 
-#[cfg(not(stage0))] use cmp::Ord;
-#[cfg(not(stage0))] use option::{Option, Some, None};
-#[cfg(not(stage0))] use vec::OwnedVector;
-#[cfg(not(stage0))] use num::{One, Zero};
-#[cfg(not(stage0))] use ops::{Add, Mul};
+use cmp::Ord;
+use option::{Option, Some, None};
+use vec::OwnedVector;
+use num::{One, Zero};
+use ops::{Add, Mul};
 
-#[cfg(stage0)]
-pub trait Times {
-    fn times(&self, it: &fn() -> bool);
-}
-#[cfg(not(stage0))]
 pub trait Times {
     fn times(&self, it: &fn() -> bool) -> bool;
 }
@@ -67,7 +62,6 @@ pub trait Times {
  * ~~~
  */
 #[inline(always)]
-#[cfg(not(stage0))]
 pub fn to_vec<T>(iter: &fn(f: &fn(T) -> bool) -> bool) -> ~[T] {
     let mut v = ~[];
     for iter |x| { v.push(x) }
@@ -86,7 +80,6 @@ pub fn to_vec<T>(iter: &fn(f: &fn(T) -> bool) -> bool) -> ~[T] {
  * ~~~~
  */
 #[inline(always)]
-#[cfg(not(stage0))]
 pub fn any<T>(predicate: &fn(T) -> bool,
               iter: &fn(f: &fn(T) -> bool) -> bool) -> bool {
     for iter |x| {
@@ -108,29 +101,6 @@ pub fn any<T>(predicate: &fn(T) -> bool,
  * ~~~~
  */
 #[inline(always)]
-#[cfg(stage0)]
-pub fn all<T>(predicate: &fn(T) -> bool,
-              iter: &fn(f: &fn(T) -> bool)) -> bool {
-    for iter |x| {
-        if !predicate(x) {
-            return false;
-        }
-    }
-    return true;
-}
-
-/**
- * Return true if `predicate` is true for all values yielded by an internal iterator.
- *
- * # Example:
- *
- * ~~~~
- * assert!(all(|&x: &uint| x < 6, |f| uint::range(1, 6, f)));
- * assert!(!all(|&x: &uint| x < 5, |f| uint::range(1, 6, f)));
- * ~~~~
- */
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn all<T>(predicate: &fn(T) -> bool,
               iter: &fn(f: &fn(T) -> bool) -> bool) -> bool {
     // If we ever break, iter will return false, so this will only return true
@@ -149,7 +119,6 @@ pub fn all<T>(predicate: &fn(T) -> bool,
  * ~~~~
  */
 #[inline(always)]
-#[cfg(not(stage0))]
 pub fn find<T>(predicate: &fn(&T) -> bool,
                iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
     for iter |x| {
@@ -171,7 +140,6 @@ pub fn find<T>(predicate: &fn(&T) -> bool,
  * ~~~~
  */
 #[inline]
-#[cfg(not(stage0))]
 pub fn max<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
     let mut result = None;
     for iter |x| {
@@ -198,7 +166,6 @@ pub fn max<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
  * ~~~~
  */
 #[inline]
-#[cfg(not(stage0))]
 pub fn min<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
     let mut result = None;
     for iter |x| {
@@ -223,7 +190,6 @@ pub fn min<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
  * assert_eq!(fold(0i, |f| int::range(1, 5, f), |a, x| *a += x), 10);
  * ~~~~
  */
-#[cfg(not(stage0))]
 #[inline]
 pub fn fold<T, U>(start: T, iter: &fn(f: &fn(U) -> bool) -> bool, f: &fn(&mut T, U)) -> T {
     let mut result = start;
@@ -247,7 +213,6 @@ pub fn fold<T, U>(start: T, iter: &fn(f: &fn(U) -> bool) -> bool, f: &fn(&mut T,
  * }
  * ~~~~
  */
-#[cfg(not(stage0))]
 #[inline]
 pub fn fold_ref<T, U>(start: T, iter: &fn(f: &fn(&U) -> bool) -> bool, f: &fn(&mut T, &U)) -> T {
     let mut result = start;
@@ -267,7 +232,6 @@ pub fn fold_ref<T, U>(start: T, iter: &fn(f: &fn(&U) -> bool) -> bool, f: &fn(&m
  * assert_eq!(do sum |f| { xs.each(f) }, 10);
  * ~~~~
  */
-#[cfg(not(stage0))]
 #[inline(always)]
 pub fn sum<T: Zero + Add<T, T>>(iter: &fn(f: &fn(&T) -> bool) -> bool) -> T {
     fold_ref(Zero::zero::<T>(), iter, |a, x| *a = a.add(x))
@@ -283,7 +247,6 @@ pub fn sum<T: Zero + Add<T, T>>(iter: &fn(f: &fn(&T) -> bool) -> bool) -> T {
  * assert_eq!(do product |f| { xs.each(f) }, 24);
  * ~~~~
  */
-#[cfg(not(stage0))]
 #[inline(always)]
 pub fn product<T: One + Mul<T, T>>(iter: &fn(f: &fn(&T) -> bool) -> bool) -> T {
     fold_ref(One::one::<T>(), iter, |a, x| *a = a.mul(x))

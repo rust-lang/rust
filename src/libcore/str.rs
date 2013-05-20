@@ -557,27 +557,12 @@ pub fn slice<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
 }
 
 /// Splits a string into substrings at each occurrence of a given character
-#[cfg(stage0)]
-pub fn each_split_char<'a>(s: &'a str, sep: char, it: &fn(&'a str) -> bool) {
-    each_split_char_inner(s, sep, len(s), true, true, it);
-}
-
-/// Splits a string into substrings at each occurrence of a given character
-#[cfg(not(stage0))]
 pub fn each_split_char<'a>(s: &'a str, sep: char,
                            it: &fn(&'a str) -> bool) -> bool {
     each_split_char_inner(s, sep, len(s), true, true, it)
 }
 
 /// Like `each_split_char`, but a trailing empty string is omitted
-#[cfg(stage0)]
-pub fn each_split_char_no_trailing<'a>(s: &'a str,
-                                       sep: char,
-                                       it: &fn(&'a str) -> bool) {
-    each_split_char_inner(s, sep, len(s), true, false, it);
-}
-/// Like `each_split_char`, but a trailing empty string is omitted
-#[cfg(not(stage0))]
 pub fn each_split_char_no_trailing<'a>(s: &'a str,
                                        sep: char,
                                        it: &fn(&'a str) -> bool) -> bool {
@@ -590,20 +575,6 @@ pub fn each_split_char_no_trailing<'a>(s: &'a str,
  *
  * The character must be a valid UTF-8/ASCII character
  */
-#[cfg(stage0)]
-pub fn each_splitn_char<'a>(s: &'a str,
-                            sep: char,
-                            count: uint,
-                            it: &fn(&'a str) -> bool) {
-    each_split_char_inner(s, sep, count, true, true, it);
-}
-/**
- * Splits a string into substrings at each occurrence of a given
- * character up to 'count' times.
- *
- * The character must be a valid UTF-8/ASCII character
- */
-#[cfg(not(stage0))]
 pub fn each_splitn_char<'a>(s: &'a str,
                             sep: char,
                             count: uint,
@@ -612,14 +583,6 @@ pub fn each_splitn_char<'a>(s: &'a str,
 }
 
 /// Like `each_split_char`, but omits empty strings
-#[cfg(stage0)]
-pub fn each_split_char_nonempty<'a>(s: &'a str,
-                                    sep: char,
-                                    it: &fn(&'a str) -> bool) {
-    each_split_char_inner(s, sep, len(s), false, false, it);
-}
-/// Like `each_split_char`, but omits empty strings
-#[cfg(not(stage0))]
 pub fn each_split_char_nonempty<'a>(s: &'a str,
                                     sep: char,
                                     it: &fn(&'a str) -> bool) -> bool {
@@ -659,14 +622,6 @@ fn each_split_char_inner<'a>(s: &'a str,
 }
 
 /// Splits a string into substrings using a character function
-#[cfg(stage0)]
-pub fn each_split<'a>(s: &'a str,
-                      sepfn: &fn(char) -> bool,
-                      it: &fn(&'a str) -> bool) {
-    each_split_inner(s, sepfn, len(s), true, true, it);
-}
-/// Splits a string into substrings using a character function
-#[cfg(not(stage0))]
 pub fn each_split<'a>(s: &'a str,
                       sepfn: &fn(char) -> bool,
                       it: &fn(&'a str) -> bool) -> bool {
@@ -674,14 +629,6 @@ pub fn each_split<'a>(s: &'a str,
 }
 
 /// Like `each_split`, but a trailing empty string is omitted
-#[cfg(stage0)]
-pub fn each_split_no_trailing<'a>(s: &'a str,
-                                  sepfn: &fn(char) -> bool,
-                                  it: &fn(&'a str) -> bool) {
-    each_split_inner(s, sepfn, len(s), true, false, it);
-}
-/// Like `each_split`, but a trailing empty string is omitted
-#[cfg(not(stage0))]
 pub fn each_split_no_trailing<'a>(s: &'a str,
                                   sepfn: &fn(char) -> bool,
                                   it: &fn(&'a str) -> bool) -> bool {
@@ -692,18 +639,6 @@ pub fn each_split_no_trailing<'a>(s: &'a str,
  * Splits a string into substrings using a character function, cutting at
  * most `count` times.
  */
-#[cfg(stage0)]
-pub fn each_splitn<'a>(s: &'a str,
-                       sepfn: &fn(char) -> bool,
-                       count: uint,
-                       it: &fn(&'a str) -> bool) {
-    each_split_inner(s, sepfn, count, true, true, it);
-}
-/**
- * Splits a string into substrings using a character function, cutting at
- * most `count` times.
- */
-#[cfg(not(stage0))]
 pub fn each_splitn<'a>(s: &'a str,
                        sepfn: &fn(char) -> bool,
                        count: uint,
@@ -712,14 +647,6 @@ pub fn each_splitn<'a>(s: &'a str,
 }
 
 /// Like `each_split`, but omits empty strings
-#[cfg(stage0)]
-pub fn each_split_nonempty<'a>(s: &'a str,
-                               sepfn: &fn(char) -> bool,
-                               it: &fn(&'a str) -> bool) {
-    each_split_inner(s, sepfn, len(s), false, false, it);
-}
-/// Like `each_split`, but omits empty strings
-#[cfg(not(stage0))]
 pub fn each_split_nonempty<'a>(s: &'a str,
                                sepfn: &fn(char) -> bool,
                                it: &fn(&'a str) -> bool) -> bool {
@@ -754,36 +681,6 @@ fn each_split_inner<'a>(s: &'a str,
 }
 
 // See Issue #1932 for why this is a naive search
-#[cfg(stage0)]
-fn iter_matches<'a,'b>(s: &'a str, sep: &'b str,
-                       f: &fn(uint, uint) -> bool) {
-    let sep_len = len(sep), l = len(s);
-    assert!(sep_len > 0u);
-    let mut i = 0u, match_start = 0u, match_i = 0u;
-
-    while i < l {
-        if s[i] == sep[match_i] {
-            if match_i == 0u { match_start = i; }
-            match_i += 1u;
-            // Found a match
-            if match_i == sep_len {
-                if !f(match_start, i + 1u) { return; }
-                match_i = 0u;
-            }
-            i += 1u;
-        } else {
-            // Failed match, backtrack
-            if match_i > 0u {
-                match_i = 0u;
-                i = match_start + 1u;
-            } else {
-                i += 1u;
-            }
-        }
-    }
-}
-// See Issue #1932 for why this is a naive search
-#[cfg(not(stage0))]
 fn iter_matches<'a,'b>(s: &'a str, sep: &'b str,
                        f: &fn(uint, uint) -> bool) -> bool {
     let sep_len = len(sep), l = len(s);
@@ -813,18 +710,6 @@ fn iter_matches<'a,'b>(s: &'a str, sep: &'b str,
     return true;
 }
 
-#[cfg(stage0)]
-fn iter_between_matches<'a,'b>(s: &'a str,
-                               sep: &'b str,
-                               f: &fn(uint, uint) -> bool) {
-    let mut last_end = 0u;
-    for iter_matches(s, sep) |from, to| {
-        if !f(last_end, from) { return; }
-        last_end = to;
-    }
-    f(last_end, len(s));
-}
-#[cfg(not(stage0))]
 fn iter_between_matches<'a,'b>(s: &'a str,
                                sep: &'b str,
                                f: &fn(uint, uint) -> bool) -> bool {
@@ -847,26 +732,6 @@ fn iter_between_matches<'a,'b>(s: &'a str,
  * assert!(v == ["", "XXX", "YYY", ""]);
  * ~~~
  */
-#[cfg(stage0)]
-pub fn each_split_str<'a,'b>(s: &'a str,
-                             sep: &'b str,
-                             it: &fn(&'a str) -> bool) {
-    for iter_between_matches(s, sep) |from, to| {
-        if !it( unsafe { raw::slice_bytes(s, from, to) } ) { return; }
-    }
-}
-/**
- * Splits a string into a vector of the substrings separated by a given string
- *
- * # Example
- *
- * ~~~
- * let mut v = ~[];
- * for each_split_str(".XXX.YYY.", ".") |subs| { v.push(subs); }
- * assert!(v == ["", "XXX", "YYY", ""]);
- * ~~~
- */
-#[cfg(not(stage0))]
 pub fn each_split_str<'a,'b>(s: &'a str,
                              sep: &'b str,
                              it: &fn(&'a str) -> bool) -> bool {
@@ -876,18 +741,6 @@ pub fn each_split_str<'a,'b>(s: &'a str,
     return true;
 }
 
-#[cfg(stage0)]
-pub fn each_split_str_nonempty<'a,'b>(s: &'a str,
-                                      sep: &'b str,
-                                      it: &fn(&'a str) -> bool) {
-    for iter_between_matches(s, sep) |from, to| {
-        if to > from {
-            if !it( unsafe { raw::slice_bytes(s, from, to) } ) { return; }
-        }
-    }
-}
-
-#[cfg(not(stage0))]
 pub fn each_split_str_nonempty<'a,'b>(s: &'a str,
                                       sep: &'b str,
                                       it: &fn(&'a str) -> bool) -> bool {
@@ -936,14 +789,6 @@ pub fn levdistance(s: &str, t: &str) -> uint {
 /**
  * Splits a string into substrings separated by LF ('\n').
  */
-#[cfg(stage0)]
-pub fn each_line<'a>(s: &'a str, it: &fn(&'a str) -> bool) {
-    each_split_char_no_trailing(s, '\n', it);
-}
-/**
- * Splits a string into substrings separated by LF ('\n').
- */
-#[cfg(not(stage0))]
 pub fn each_line<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
     each_split_char_no_trailing(s, '\n', it)
 }
@@ -952,22 +797,6 @@ pub fn each_line<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
  * Splits a string into substrings separated by LF ('\n')
  * and/or CR LF ("\r\n")
  */
-#[cfg(stage0)]
-pub fn each_line_any<'a>(s: &'a str, it: &fn(&'a str) -> bool) {
-    for each_line(s) |s| {
-        let l = s.len();
-        if l > 0u && s[l - 1u] == '\r' as u8 {
-            if !it( unsafe { raw::slice_bytes(s, 0, l - 1) } ) { return; }
-        } else {
-            if !it( s ) { return; }
-        }
-    }
-}
-/**
- * Splits a string into substrings separated by LF ('\n')
- * and/or CR LF ("\r\n")
- */
-#[cfg(not(stage0))]
 pub fn each_line_any<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
     for each_line(s) |s| {
         let l = s.len();
@@ -981,12 +810,6 @@ pub fn each_line_any<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
 }
 
 /// Splits a string into substrings separated by whitespace
-#[cfg(stage0)]
-pub fn each_word<'a>(s: &'a str, it: &fn(&'a str) -> bool) {
-    each_split_nonempty(s, char::is_whitespace, it);
-}
-/// Splits a string into substrings separated by whitespace
-#[cfg(not(stage0))]
 pub fn each_word<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
     each_split_nonempty(s, char::is_whitespace, it)
 }
@@ -1063,13 +886,6 @@ pub fn _each_split_within<'a>(ss: &'a str,
     return cont;
 }
 
-#[cfg(stage0)]
-pub fn each_split_within<'a>(ss: &'a str,
-                             lim: uint,
-                             it: &fn(&'a str) -> bool) {
-    _each_split_within(ss, lim, it);
-}
-#[cfg(not(stage0))]
 pub fn each_split_within<'a>(ss: &'a str,
                              lim: uint,
                              it: &fn(&'a str) -> bool) -> bool {
@@ -1352,33 +1168,12 @@ pub fn map(ss: &str, ff: &fn(char) -> char) -> ~str {
 
 /// Iterate over the bytes in a string
 #[inline(always)]
-#[cfg(stage0)]
-pub fn each(s: &str, it: &fn(u8) -> bool) {
-    eachi(s, |_i, b| it(b))
-}
-/// Iterate over the bytes in a string
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn each(s: &str, it: &fn(u8) -> bool) -> bool {
     eachi(s, |_i, b| it(b))
 }
 
 /// Iterate over the bytes in a string, with indices
 #[inline(always)]
-#[cfg(stage0)]
-pub fn eachi(s: &str, it: &fn(uint, u8) -> bool) {
-    let mut pos = 0;
-    let len = s.len();
-
-    while pos < len {
-        if !it(pos, s[pos]) { break; }
-        pos += 1;
-    }
-}
-
-/// Iterate over the bytes in a string, with indices
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn eachi(s: &str, it: &fn(uint, u8) -> bool) -> bool {
     let mut pos = 0;
     let len = s.len();
@@ -1392,30 +1187,12 @@ pub fn eachi(s: &str, it: &fn(uint, u8) -> bool) -> bool {
 
 /// Iterate over the bytes in a string in reverse
 #[inline(always)]
-#[cfg(stage0)]
-pub fn each_reverse(s: &str, it: &fn(u8) -> bool) {
-    eachi_reverse(s, |_i, b| it(b) )
-}
-/// Iterate over the bytes in a string in reverse
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn each_reverse(s: &str, it: &fn(u8) -> bool) -> bool {
     eachi_reverse(s, |_i, b| it(b) )
 }
 
 /// Iterate over the bytes in a string in reverse, with indices
 #[inline(always)]
-#[cfg(stage0)]
-pub fn eachi_reverse(s: &str, it: &fn(uint, u8) -> bool) {
-    let mut pos = s.len();
-    while pos > 0 {
-        pos -= 1;
-        if !it(pos, s[pos]) { break; }
-    }
-}
-/// Iterate over the bytes in a string in reverse, with indices
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn eachi_reverse(s: &str, it: &fn(uint, u8) -> bool) -> bool {
     let mut pos = s.len();
     while pos > 0 {
@@ -1427,19 +1204,6 @@ pub fn eachi_reverse(s: &str, it: &fn(uint, u8) -> bool) -> bool {
 
 /// Iterate over each char of a string, without allocating
 #[inline(always)]
-#[cfg(stage0)]
-pub fn each_char(s: &str, it: &fn(char) -> bool) {
-    let mut i = 0;
-    let len = len(s);
-    while i < len {
-        let CharRange {ch, next} = char_range_at(s, i);
-        if !it(ch) { return; }
-        i = next;
-    }
-}
-/// Iterate over each char of a string, without allocating
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn each_char(s: &str, it: &fn(char) -> bool) -> bool {
     let mut i = 0;
     let len = len(s);
@@ -1453,21 +1217,6 @@ pub fn each_char(s: &str, it: &fn(char) -> bool) -> bool {
 
 /// Iterates over the chars in a string, with indices
 #[inline(always)]
-#[cfg(stage0)]
-pub fn each_chari(s: &str, it: &fn(uint, char) -> bool) {
-    let mut pos = 0;
-    let mut ch_pos = 0u;
-    let len = s.len();
-    while pos < len {
-        let CharRange {ch, next} = char_range_at(s, pos);
-        pos = next;
-        if !it(ch_pos, ch) { break; }
-        ch_pos += 1u;
-    }
-}
-/// Iterates over the chars in a string, with indices
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn each_chari(s: &str, it: &fn(uint, char) -> bool) -> bool {
     let mut pos = 0;
     let mut ch_pos = 0u;
@@ -1483,35 +1232,12 @@ pub fn each_chari(s: &str, it: &fn(uint, char) -> bool) -> bool {
 
 /// Iterates over the chars in a string in reverse
 #[inline(always)]
-#[cfg(stage0)]
-pub fn each_char_reverse(s: &str, it: &fn(char) -> bool) {
-    each_chari_reverse(s, |_, c| it(c))
-}
-/// Iterates over the chars in a string in reverse
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn each_char_reverse(s: &str, it: &fn(char) -> bool) -> bool {
     each_chari_reverse(s, |_, c| it(c))
 }
 
 // Iterates over the chars in a string in reverse, with indices
 #[inline(always)]
-#[cfg(stage0)]
-pub fn each_chari_reverse(s: &str, it: &fn(uint, char) -> bool) {
-    let mut pos = s.len();
-    let mut ch_pos = s.char_len();
-    while pos > 0 {
-        let CharRange {ch, next} = char_range_at_reverse(s, pos);
-        pos = next;
-        ch_pos -= 1;
-
-        if !it(ch_pos, ch) { break; }
-
-    }
-}
-// Iterates over the chars in a string in reverse, with indices
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn each_chari_reverse(s: &str, it: &fn(uint, char) -> bool) -> bool {
     let mut pos = s.len();
     let mut ch_pos = s.char_len();
@@ -2761,22 +2487,14 @@ pub trait StrSlice<'self> {
     fn contains<'a>(&self, needle: &'a str) -> bool;
     fn contains_char(&self, needle: char) -> bool;
     fn char_iter(&self) -> StrCharIterator<'self>;
-    #[cfg(stage0)]      fn each(&self, it: &fn(u8) -> bool);
-    #[cfg(not(stage0))] fn each(&self, it: &fn(u8) -> bool) -> bool;
-    #[cfg(stage0)]      fn eachi(&self, it: &fn(uint, u8) -> bool);
-    #[cfg(not(stage0))] fn eachi(&self, it: &fn(uint, u8) -> bool) -> bool;
-    #[cfg(stage0)]      fn each_reverse(&self, it: &fn(u8) -> bool);
-    #[cfg(not(stage0))] fn each_reverse(&self, it: &fn(u8) -> bool) -> bool;
-    #[cfg(stage0)]      fn eachi_reverse(&self, it: &fn(uint, u8) -> bool);
-    #[cfg(not(stage0))] fn eachi_reverse(&self, it: &fn(uint, u8) -> bool) -> bool;
-    #[cfg(stage0)]      fn each_char(&self, it: &fn(char) -> bool);
-    #[cfg(not(stage0))] fn each_char(&self, it: &fn(char) -> bool) -> bool;
-    #[cfg(stage0)]      fn each_chari(&self, it: &fn(uint, char) -> bool);
-    #[cfg(not(stage0))] fn each_chari(&self, it: &fn(uint, char) -> bool) -> bool;
-    #[cfg(stage0)]      fn each_char_reverse(&self, it: &fn(char) -> bool);
-    #[cfg(not(stage0))] fn each_char_reverse(&self, it: &fn(char) -> bool) -> bool;
-    #[cfg(stage0)]      fn each_chari_reverse(&self, it: &fn(uint, char) -> bool);
-    #[cfg(not(stage0))] fn each_chari_reverse(&self, it: &fn(uint, char) -> bool) -> bool;
+    fn each(&self, it: &fn(u8) -> bool) -> bool;
+    fn eachi(&self, it: &fn(uint, u8) -> bool) -> bool;
+    fn each_reverse(&self, it: &fn(u8) -> bool) -> bool;
+    fn eachi_reverse(&self, it: &fn(uint, u8) -> bool) -> bool;
+    fn each_char(&self, it: &fn(char) -> bool) -> bool;
+    fn each_chari(&self, it: &fn(uint, char) -> bool) -> bool;
+    fn each_char_reverse(&self, it: &fn(char) -> bool) -> bool;
+    fn each_chari_reverse(&self, it: &fn(uint, char) -> bool) -> bool;
     fn ends_with(&self, needle: &str) -> bool;
     fn is_empty(&self) -> bool;
     fn is_whitespace(&self) -> bool;
@@ -2784,17 +2502,8 @@ pub trait StrSlice<'self> {
     fn len(&self) -> uint;
     fn char_len(&self) -> uint;
     fn slice(&self, begin: uint, end: uint) -> &'self str;
-    #[cfg(stage0)]
-    fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&'self str) -> bool);
-    #[cfg(not(stage0))]
     fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&'self str) -> bool) -> bool;
-    #[cfg(stage0)]
-    fn each_split_char(&self, sep: char, it: &fn(&'self str) -> bool);
-    #[cfg(not(stage0))]
     fn each_split_char(&self, sep: char, it: &fn(&'self str) -> bool) -> bool;
-    #[cfg(stage0)]
-    fn each_split_str<'a>(&self, sep: &'a str, it: &fn(&'self str) -> bool);
-    #[cfg(not(stage0))]
     fn each_split_str<'a>(&self, sep: &'a str, it: &fn(&'self str) -> bool) -> bool;
     fn starts_with<'a>(&self, needle: &'a str) -> bool;
     fn substr(&self, begin: uint, n: uint) -> &'self str;
@@ -2848,83 +2557,34 @@ impl<'self> StrSlice<'self> for &'self str {
 
     /// Iterate over the bytes in a string
     #[inline]
-    #[cfg(stage0)]
-    fn each(&self, it: &fn(u8) -> bool) { each(*self, it) }
-    /// Iterate over the bytes in a string
-    #[inline]
-    #[cfg(not(stage0))]
     fn each(&self, it: &fn(u8) -> bool) -> bool { each(*self, it) }
     /// Iterate over the bytes in a string, with indices
     #[inline]
-    #[cfg(stage0)]
-    fn eachi(&self, it: &fn(uint, u8) -> bool) { eachi(*self, it) }
-    /// Iterate over the bytes in a string, with indices
-    #[inline]
-    #[cfg(not(stage0))]
     fn eachi(&self, it: &fn(uint, u8) -> bool) -> bool { eachi(*self, it) }
     /// Iterate over the bytes in a string
     #[inline]
-    #[cfg(stage0)]
-    fn each_reverse(&self, it: &fn(u8) -> bool) { each_reverse(*self, it) }
-    /// Iterate over the bytes in a string
-    #[inline]
-    #[cfg(not(stage0))]
     fn each_reverse(&self, it: &fn(u8) -> bool) -> bool { each_reverse(*self, it) }
     /// Iterate over the bytes in a string, with indices
     #[inline]
-    #[cfg(stage0)]
-    fn eachi_reverse(&self, it: &fn(uint, u8) -> bool) {
-        eachi_reverse(*self, it)
-    }
-    /// Iterate over the bytes in a string, with indices
-    #[inline]
-    #[cfg(not(stage0))]
     fn eachi_reverse(&self, it: &fn(uint, u8) -> bool) -> bool {
         eachi_reverse(*self, it)
     }
     /// Iterate over the chars in a string
     #[inline]
-    #[cfg(stage0)]
-    fn each_char(&self, it: &fn(char) -> bool) { each_char(*self, it) }
-    /// Iterate over the chars in a string
-    #[inline]
-    #[cfg(not(stage0))]
     fn each_char(&self, it: &fn(char) -> bool) -> bool { each_char(*self, it) }
     /// Iterate over the chars in a string, with indices
     #[inline]
-    #[cfg(stage0)]
-    fn each_chari(&self, it: &fn(uint, char) -> bool) {
-        each_chari(*self, it)
-    }
-    /// Iterate over the chars in a string, with indices
-    #[inline]
-    #[cfg(not(stage0))]
     fn each_chari(&self, it: &fn(uint, char) -> bool) -> bool {
         each_chari(*self, it)
     }
     /// Iterate over the chars in a string in reverse
     #[inline]
-    #[cfg(stage0)]
-    fn each_char_reverse(&self, it: &fn(char) -> bool) {
-        each_char_reverse(*self, it)
-    }
-    /// Iterate over the chars in a string in reverse
-    #[inline]
-    #[cfg(not(stage0))]
     fn each_char_reverse(&self, it: &fn(char) -> bool) -> bool {
         each_char_reverse(*self, it)
     }
     /// Iterate over the chars in a string in reverse, with indices from the
     /// end
     #[inline]
-    #[cfg(stage0)]
-    fn each_chari_reverse(&self, it: &fn(uint, char) -> bool) {
-        each_chari_reverse(*self, it)
-    }
-    /// Iterate over the chars in a string in reverse, with indices from the
-    /// end
-    #[inline]
-    #[cfg(not(stage0))]
     fn each_chari_reverse(&self, it: &fn(uint, char) -> bool) -> bool {
         each_chari_reverse(*self, it)
     }
@@ -2969,13 +2629,6 @@ impl<'self> StrSlice<'self> for &'self str {
     }
     /// Splits a string into substrings using a character function
     #[inline]
-    #[cfg(stage0)]
-    fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&'self str) -> bool) {
-        each_split(*self, sepfn, it)
-    }
-    /// Splits a string into substrings using a character function
-    #[inline]
-    #[cfg(not(stage0))]
     fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&'self str) -> bool) -> bool {
         each_split(*self, sepfn, it)
     }
@@ -2983,15 +2636,6 @@ impl<'self> StrSlice<'self> for &'self str {
      * Splits a string into substrings at each occurrence of a given character
      */
     #[inline]
-    #[cfg(stage0)]
-    fn each_split_char(&self, sep: char, it: &fn(&'self str) -> bool) {
-        each_split_char(*self, sep, it)
-    }
-    /**
-     * Splits a string into substrings at each occurrence of a given character
-     */
-    #[inline]
-    #[cfg(not(stage0))]
     fn each_split_char(&self, sep: char, it: &fn(&'self str) -> bool) -> bool {
         each_split_char(*self, sep, it)
     }
@@ -3000,16 +2644,6 @@ impl<'self> StrSlice<'self> for &'self str {
      * string
      */
     #[inline]
-    #[cfg(stage0)]
-    fn each_split_str<'a>(&self, sep: &'a str, it: &fn(&'self str) -> bool) {
-        each_split_str(*self, sep, it)
-    }
-    /**
-     * Splits a string into a vector of the substrings separated by a given
-     * string
-     */
-    #[inline]
-    #[cfg(not(stage0))]
     fn each_split_str<'a>(&self, sep: &'a str, it: &fn(&'self str) -> bool) -> bool {
         each_split_str(*self, sep, it)
     }

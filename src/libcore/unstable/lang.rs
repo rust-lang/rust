@@ -269,15 +269,6 @@ pub unsafe fn local_free(ptr: *c_char) {
     }
 }
 
-#[cfg(stage0)]
-#[lang="borrow_as_imm"]
-#[inline(always)]
-pub unsafe fn borrow_as_imm(a: *u8) {
-    let a: *mut BoxRepr = transmute(a);
-    (*a).header.ref_count |= FROZEN_BIT;
-}
-
-#[cfg(not(stage0))]
 #[lang="borrow_as_imm"]
 #[inline(always)]
 pub unsafe fn borrow_as_imm(a: *u8, file: *c_char, line: size_t) -> uint {
@@ -296,7 +287,6 @@ pub unsafe fn borrow_as_imm(a: *u8, file: *c_char, line: size_t) -> uint {
     old_ref_count
 }
 
-#[cfg(not(stage0))]
 #[lang="borrow_as_mut"]
 #[inline(always)]
 pub unsafe fn borrow_as_mut(a: *u8, file: *c_char, line: size_t) -> uint {
@@ -316,7 +306,6 @@ pub unsafe fn borrow_as_mut(a: *u8, file: *c_char, line: size_t) -> uint {
 }
 
 
-#[cfg(not(stage0))]
 #[lang="record_borrow"]
 pub unsafe fn record_borrow(a: *u8, old_ref_count: uint,
                             file: *c_char, line: size_t) {
@@ -332,7 +321,6 @@ pub unsafe fn record_borrow(a: *u8, old_ref_count: uint,
     }
 }
 
-#[cfg(not(stage0))]
 #[lang="unrecord_borrow"]
 pub unsafe fn unrecord_borrow(a: *u8, old_ref_count: uint,
                               file: *c_char, line: size_t) {
@@ -356,19 +344,6 @@ pub unsafe fn unrecord_borrow(a: *u8, old_ref_count: uint,
     }
 }
 
-#[cfg(stage0)]
-#[lang="return_to_mut"]
-#[inline(always)]
-pub unsafe fn return_to_mut(a: *u8) {
-    // Sometimes the box is null, if it is conditionally frozen.
-    // See e.g. #4904.
-    if !a.is_null() {
-        let a: *mut BoxRepr = transmute(a);
-        (*a).header.ref_count &= !FROZEN_BIT;
-    }
-}
-
-#[cfg(not(stage0))]
 #[lang="return_to_mut"]
 #[inline(always)]
 pub unsafe fn return_to_mut(a: *u8, orig_ref_count: uint,
@@ -388,19 +363,6 @@ pub unsafe fn return_to_mut(a: *u8, orig_ref_count: uint,
     }
 }
 
-#[cfg(stage0)]
-#[lang="check_not_borrowed"]
-#[inline(always)]
-pub unsafe fn check_not_borrowed(a: *u8) {
-    let a: *mut BoxRepr = transmute(a);
-    if ((*a).header.ref_count & FROZEN_BIT) != 0 {
-        do str::as_buf("XXX") |file_p, _| {
-            fail_borrowed(a, file_p as *c_char, 0);
-        }
-    }
-}
-
-#[cfg(not(stage0))]
 #[lang="check_not_borrowed"]
 #[inline(always)]
 pub unsafe fn check_not_borrowed(a: *u8,

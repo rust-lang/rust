@@ -524,27 +524,6 @@ pub impl CoherenceChecker {
         }
     }
 
-    #[cfg(stage0)]
-    fn each_provided_trait_method(&self,
-            trait_did: ast::def_id,
-            f: &fn(@ty::Method) -> bool) {
-        // Make a list of all the names of the provided methods.
-        // XXX: This is horrible.
-        let mut provided_method_idents = HashSet::new();
-        let tcx = self.crate_context.tcx;
-        for ty::provided_trait_methods(tcx, trait_did).each |ident| {
-            provided_method_idents.insert(*ident);
-        }
-
-        for ty::trait_methods(tcx, trait_did).each |&method| {
-            if provided_method_idents.contains(&method.ident) {
-                if !f(method) {
-                    break;
-                }
-            }
-        }
-    }
-    #[cfg(not(stage0))]
     fn each_provided_trait_method(&self,
             trait_did: ast::def_id,
             f: &fn(x: @ty::Method) -> bool) -> bool {

@@ -43,11 +43,7 @@ pub trait IteratorUtil<A> {
     fn take(self, n: uint) -> TakeIterator<Self>;
     fn scan<'r, St, B>(self, initial_state: St, f: &'r fn(&mut St, A) -> Option<B>)
         -> ScanIterator<'r, A, B, Self, St>;
-    #[cfg(stage0)]
-    fn advance(&mut self, f: &fn(A) -> bool);
-    #[cfg(not(stage0))]
     fn advance(&mut self, f: &fn(A) -> bool) -> bool;
-    #[cfg(not(stage0))]
     fn to_vec(&mut self) -> ~[A];
     fn nth(&mut self, n: uint) -> Option<A>;
     fn last(&mut self) -> Option<A>;
@@ -121,21 +117,6 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
 
     /// A shim implementing the `for` loop iteration protocol for iterator objects
     #[inline]
-    #[cfg(stage0)]
-    fn advance(&mut self, f: &fn(A) -> bool) {
-        loop {
-            match self.next() {
-                Some(x) => {
-                    if !f(x) { return; }
-                }
-                None => { return; }
-            }
-        }
-    }
-
-    /// A shim implementing the `for` loop iteration protocol for iterator objects
-    #[inline]
-    #[cfg(not(stage0))]
     fn advance(&mut self, f: &fn(A) -> bool) -> bool {
         loop {
             match self.next() {
@@ -147,7 +128,6 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
         }
     }
 
-    #[cfg(not(stage0))]
     #[inline(always)]
     fn to_vec(&mut self) -> ~[A] {
         iter::to_vec::<A>(|f| self.advance(f))

@@ -171,11 +171,6 @@ unsafe fn _walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) -> bool {
     return true;
 }
 
-#[cfg(stage0)]
-unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) {
-    _walk_safe_point(fp, sp, visitor);
-}
-#[cfg(not(stage0))]
 unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) -> bool {
     _walk_safe_point(fp, sp, visitor)
 }
@@ -303,11 +298,6 @@ unsafe fn _walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) -> boo
     return true;
 }
 
-#[cfg(stage0)]
-unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
-    _walk_gc_roots(mem, sentinel, visitor);
-}
-#[cfg(not(stage0))]
 unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) -> bool {
     _walk_gc_roots(mem, sentinel, visitor)
 }

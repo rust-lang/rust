@@ -51,9 +51,3 @@ pub trait Owned {
 pub trait Const {
     // Empty.
 }
-
-#[lang="durable"]
-#[cfg(stage0)]
-pub trait Durable {
-    // Empty.
-}
