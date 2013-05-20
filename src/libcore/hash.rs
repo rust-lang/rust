@@ -76,16 +76,12 @@ pub trait Streaming {
     fn reset(&mut self);
 }
 
-fn transmute_for_stage0<'a>(bytes: &'a [u8]) -> &'a [u8] {
-    bytes
-}
-
 impl<A:IterBytes> Hash for A {
     #[inline(always)]
     fn hash_keyed(&self, k0: u64, k1: u64) -> u64 {
         let mut s = State::new(k0, k1);
         for self.iter_bytes(true) |bytes| {
-            s.input(transmute_for_stage0(bytes));
+            s.input(bytes);
         }
         s.result_u64()
     }
@@ -95,10 +91,10 @@ fn hash_keyed_2<A: IterBytes,
                 B: IterBytes>(a: &A, b: &B, k0: u64, k1: u64) -> u64 {
     let mut s = State::new(k0, k1);
     for a.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for b.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     s.result_u64()
 }
@@ -108,13 +104,13 @@ fn hash_keyed_3<A: IterBytes,
                 C: IterBytes>(a: &A, b: &B, c: &C, k0: u64, k1: u64) -> u64 {
     let mut s = State::new(k0, k1);
     for a.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for b.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for c.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     s.result_u64()
 }
@@ -132,16 +128,16 @@ fn hash_keyed_4<A: IterBytes,
                 -> u64 {
     let mut s = State::new(k0, k1);
     for a.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for b.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for c.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for d.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     s.result_u64()
 }
@@ -161,19 +157,19 @@ fn hash_keyed_5<A: IterBytes,
                 -> u64 {
     let mut s = State::new(k0, k1);
     for a.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for b.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for c.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for d.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for e.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     s.result_u64()
 }
