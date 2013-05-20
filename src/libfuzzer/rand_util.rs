@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
+use std::prelude::*;
 use extra::rand;
 
 // random uint less than n
@@ -63,7 +63,7 @@ fn weighted_choice<T:copy>(r : rand::rng, v : ~[weighted<T>]) -> T {
             return item;
         }
     }
-    core::unreachable();
+    std::unreachable();
 }
 
 fn weighted_vec<T:copy>(v : ~[weighted<T>]) -> ~[T] {
