@@ -210,7 +210,7 @@ pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
 pub trait Ptr<T> {
     fn is_null(&const self) -> bool;
     fn is_not_null(&const self) -> bool;
-    fn to_option(&const self) -> Option<T>;
+    unsafe fn to_option(&const self) -> Option<&T>;
     fn offset(&self, count: uint) -> Self;
 }
 
@@ -224,11 +224,20 @@ impl<T> Ptr<T> for *T {
     #[inline(always)]
     fn is_not_null(&const self) -> bool { is_not_null(*self) }
 
-    /// Returns `None` if the pointer is null, or else returns the value wrapped in `Some`.
+    ///
+    /// Returns `None` if the pointer is null, or else returns the value wrapped
+    /// in `Some`.
+    ///
+    /// # Safety Notes
+    ///
+    /// While this method is useful for null-safety, it is important to note
+    /// that this is still an unsafe operation because the returned value could
+    /// be pointing to invalid memory.
+    ///
     #[inline(always)]
-    fn to_option(&const self) -> Option<T> {
+    unsafe fn to_option(&const self) -> Option<&T> {
         if self.is_null() { None } else {
-            Some(unsafe { **self })
+            Some(cast::transmute(*self))
         }
     }
 
@@ -247,11 +256,20 @@ impl<T> Ptr<T> for *mut T {
     #[inline(always)]
     fn is_not_null(&const self) -> bool { is_not_null(*self) }
 
-    /// Returns `None` if the pointer is null, or else returns the value wrapped in `Some`.
+    ///
+    /// Returns `None` if the pointer is null, or else returns the value wrapped
+    /// in `Some`.
+    ///
+    /// # Safety Notes
+    ///
+    /// While this method is useful for null-safety, it is important to note
+    /// that this is still an unsafe operation because the returned value could
+    /// be pointing to invalid memory.
+    ///
     #[inline(always)]
-    fn to_option(&const self) -> Option<T> {
+    unsafe fn to_option(&const self) -> Option<&T> {
         if self.is_null() { None } else {
-            Some(unsafe { **self })
+            Some(cast::transmute(*self))
         }
     }
 
@@ -442,19 +460,19 @@ pub mod ptr_tests {
     }
 
     #[test]
-    #[allow(unused_mut)]
     fn test_to_option() {
         let p: *int = null();
+        // FIXME (#6641): Usage of unsafe methods in safe code doesn't cause an error.
         assert_eq!(p.to_option(), None);
 
         let q: *int = &2;
-        assert_eq!(q.to_option(), Some(2));
+        assert_eq!(q.to_option().unwrap(), &2);     // FIXME (#6641)
 
         let p: *mut int = mut_null();
-        assert_eq!(p.to_option(), None);
+        assert_eq!(p.to_option(), None);            // FIXME (#6641)
 
         let q: *mut int = &mut 2;
-        assert_eq!(q.to_option(), Some(2));
+        assert_eq!(q.to_option().unwrap(), &2);     // FIXME (#6641)
     }
 
     #[test]
