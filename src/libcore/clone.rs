@@ -25,8 +25,9 @@ by convention implementing the `Clone` trait and calling the
 use core::kinds::Const;
 
 pub trait Clone {
-    /// Return a deep copy of the owned object tree. Types with shared ownership like managed boxes
-    /// are cloned with a shallow copy.
+    /// Returns a copy of the value. The contents of owned pointers
+    /// are copied to maintain uniqueness, while the contents of
+    /// managed pointers are not copied.
     fn clone(&self) -> Self;
 }
 
@@ -85,8 +86,9 @@ clone_impl!(bool)
 clone_impl!(char)
 
 pub trait DeepClone {
-    /// Return a deep copy of the object tree. Types with shared ownership are also copied via a
-    /// deep copy, unlike `Clone`.
+    /// Return a deep copy of the value. Unlike `Clone`, the contents of shared pointer types
+    /// *are* copied. Note that this is currently unimplemented for managed boxes, as
+    /// it would need to handle cycles, but it is implemented for other smart-pointer types.
     fn deep_clone(&self) -> Self;
 }
 
