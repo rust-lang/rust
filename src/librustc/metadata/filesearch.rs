@@ -21,9 +21,6 @@ pub fn pick_file(file: Path, path: &Path) -> Option<Path> {
 
 pub trait FileSearch {
     fn sysroot(&self) -> @Path;
-    #[cfg(stage0)]
-    fn for_each_lib_search_path(&self, f: &fn(&Path) -> bool);
-    #[cfg(not(stage0))]
     fn for_each_lib_search_path(&self, f: &fn(&Path) -> bool) -> bool;
     fn get_target_lib_path(&self) -> Path;
     fn get_target_lib_file_path(&self, file: &Path) -> Path;
@@ -40,31 +37,6 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
     }
     impl FileSearch for FileSearchImpl {
         fn sysroot(&self) -> @Path { self.sysroot }
-        #[cfg(stage0)]
-        fn for_each_lib_search_path(&self, f: &fn(&Path) -> bool) {
-            debug!("filesearch: searching additional lib search paths");
-            // a little weird
-            self.addl_lib_search_paths.each(f);
-
-            debug!("filesearch: searching target lib path");
-            if !f(&make_target_lib_path(self.sysroot,
-                                        self.target_triple)) {
-                return;
-            }
-            debug!("filesearch: searching rustpkg lib path nearest");
-            if match get_rustpkg_lib_path_nearest() {
-                    result::Ok(ref p) => f(p),
-                    result::Err(_) => true
-                } {
-                    return;
-                }
-           debug!("filesearch: searching rustpkg lib path");
-           match get_rustpkg_lib_path() {
-              result::Ok(ref p) => f(p),
-              result::Err(_) => true
-           };
-        }
-        #[cfg(not(stage0))]
         fn for_each_lib_search_path(&self, f: &fn(&Path) -> bool) -> bool {
             debug!("filesearch: searching additional lib search paths");
             // a little weird

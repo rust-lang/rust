@@ -65,23 +65,11 @@ pub impl<T> Deque<T> {
     }
 
     /// Iterate over the elements in the deque
-    #[cfg(stage0)]
-    fn each(&self, f: &fn(&T) -> bool) {
-        self.eachi(|_i, e| f(e))
-    }
-    /// Iterate over the elements in the deque
-    #[cfg(not(stage0))]
     fn each(&self, f: &fn(&T) -> bool) -> bool {
         self.eachi(|_i, e| f(e))
     }
 
     /// Iterate over the elements in the deque by index
-    #[cfg(stage0)]
-    fn eachi(&self, f: &fn(uint, &T) -> bool) {
-        uint::range(0, self.nelts, |i| f(i, self.get(i as int)))
-    }
-    /// Iterate over the elements in the deque by index
-    #[cfg(not(stage0))]
     fn eachi(&self, f: &fn(uint, &T) -> bool) -> bool {
         uint::range(0, self.nelts, |i| f(i, self.get(i as int)))
     }

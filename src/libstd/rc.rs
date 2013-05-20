@@ -61,7 +61,6 @@ pub impl<T> Rc<T> {
 }
 
 #[unsafe_destructor]
-#[cfg(not(stage0))]
 impl<T> Drop for Rc<T> {
     fn finalize(&self) {
         unsafe {
@@ -73,21 +72,6 @@ impl<T> Drop for Rc<T> {
         }
     }
 }
-
-#[unsafe_destructor]
-#[cfg(stage0)]
-impl<T> Drop for Rc<T> {
-    fn finalize(&self) {
-        unsafe {
-            (*self.ptr).count -= 1;
-            if (*self.ptr).count == 0 {
-                util::replace_ptr(self.ptr, intrinsics::init());
-                free(self.ptr as *c_void)
-            }
-        }
-    }
-}
-
 
 impl<T> Clone for Rc<T> {
     /// Return a shallow copy of the reference counted pointer.
@@ -157,7 +141,6 @@ mod test_rc {
 #[abi = "rust-intrinsic"]
 extern "rust-intrinsic" {
     fn init<T>() -> T;
-    #[cfg(not(stage0))]
     fn uninit<T>() -> T;
 }
 
@@ -228,27 +211,12 @@ pub impl<T> RcMut<T> {
 }
 
 #[unsafe_destructor]
-#[cfg(not(stage0))]
 impl<T> Drop for RcMut<T> {
     fn finalize(&self) {
         unsafe {
             (*self.ptr).count -= 1;
             if (*self.ptr).count == 0 {
                 util::replace_ptr(self.ptr, uninit());
-                free(self.ptr as *c_void)
-            }
-        }
-    }
-}
-
-#[unsafe_destructor]
-#[cfg(stage0)]
-impl<T> Drop for RcMut<T> {
-    fn finalize(&self) {
-        unsafe {
-            (*self.ptr).count -= 1;
-            if (*self.ptr).count == 0 {
-                util::replace_ptr(self.ptr, init());
                 free(self.ptr as *c_void)
             }
         }

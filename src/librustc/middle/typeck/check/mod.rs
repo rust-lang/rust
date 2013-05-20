@@ -828,15 +828,6 @@ pub impl FnCtxt {
         }
     }
 
-    #[cfg(stage0)]
-    fn opt_node_ty_substs(&self, id: ast::node_id,
-                          f: &fn(&ty::substs) -> bool) {
-        match self.inh.node_type_substs.find(&id) {
-            Some(s) => { f(s); }
-            None => ()
-        }
-    }
-    #[cfg(not(stage0))]
     fn opt_node_ty_substs(&self, id: ast::node_id,
                           f: &fn(&ty::substs) -> bool) -> bool {
         match self.inh.node_type_substs.find(&id) {

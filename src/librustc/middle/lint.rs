@@ -419,39 +419,6 @@ impl Context {
     }
 }
 
-#[cfg(stage0)]
-pub fn each_lint(sess: session::Session,
-                 attrs: &[ast::attribute],
-                 f: &fn(@ast::meta_item, level, &~str) -> bool)
-{
-    for [allow, warn, deny, forbid].each |&level| {
-        let level_name = level_to_str(level);
-        let attrs = attr::find_attrs_by_name(attrs, level_name);
-        for attrs.each |attr| {
-            let meta = attr.node.value;
-            let metas = match meta.node {
-                ast::meta_list(_, ref metas) => metas,
-                _ => {
-                    sess.span_err(meta.span, ~"malformed lint attribute");
-                    loop;
-                }
-            };
-            for metas.each |meta| {
-                match meta.node {
-                    ast::meta_word(lintname) => {
-                        if !f(*meta, level, lintname) {
-                            return;
-                        }
-                    }
-                    _ => {
-                        sess.span_err(meta.span, ~"malformed lint attribute");
-                    }
-                }
-            }
-        }
-    }
-}
-#[cfg(not(stage0))]
 pub fn each_lint(sess: session::Session,
                  attrs: &[ast::attribute],
                  f: &fn(@ast::meta_item, level, &~str) -> bool) -> bool

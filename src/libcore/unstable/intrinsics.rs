@@ -43,17 +43,13 @@ pub extern "rust-intrinsic" {
     pub fn atomic_cxchg_rel(dst: &mut int, old: int, src: int) -> int;
 
     /// Atomic load, sequentially consistent.
-    #[cfg(not(stage0))]
     pub fn atomic_load(src: &int) -> int;
     /// Atomic load, acquire ordering.
-    #[cfg(not(stage0))]
     pub fn atomic_load_acq(src: &int) -> int;
 
     /// Atomic store, sequentially consistent.
-    #[cfg(not(stage0))]
     pub fn atomic_store(dst: &mut int, val: int);
     /// Atomic store, release ordering.
-    #[cfg(not(stage0))]
     pub fn atomic_store_rel(dst: &mut int, val: int);
 
     /// Atomic exchange, sequentially consistent.
@@ -111,7 +107,6 @@ pub extern "rust-intrinsic" {
     pub unsafe fn init<T>() -> T;
 
     /// Create an uninitialized value.
-    #[cfg(not(stage0))]
     pub unsafe fn uninit<T>() -> T;
 
     /// Move a value out of scope without running drop glue.

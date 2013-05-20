@@ -200,20 +200,6 @@ pub mod reader {
         }
     }
 
-    #[cfg(stage0)]
-    pub fn docs(d: Doc, it: &fn(uint, Doc) -> bool) {
-        let mut pos = d.start;
-        while pos < d.end {
-            let elt_tag = vuint_at(*d.data, pos);
-            let elt_size = vuint_at(*d.data, elt_tag.next);
-            pos = elt_size.next + elt_size.val;
-            let doc = Doc { data: d.data, start: elt_size.next, end: pos };
-            if !it(elt_tag.val, doc) {
-                break;
-            }
-        }
-    }
-    #[cfg(not(stage0))]
     pub fn docs(d: Doc, it: &fn(uint, Doc) -> bool) -> bool {
         let mut pos = d.start;
         while pos < d.end {
@@ -228,23 +214,6 @@ pub mod reader {
         return true;
     }
 
-    #[cfg(stage0)]
-    pub fn tagged_docs(d: Doc, tg: uint, it: &fn(Doc) -> bool) {
-        let mut pos = d.start;
-        while pos < d.end {
-            let elt_tag = vuint_at(*d.data, pos);
-            let elt_size = vuint_at(*d.data, elt_tag.next);
-            pos = elt_size.next + elt_size.val;
-            if elt_tag.val == tg {
-                let doc = Doc { data: d.data, start: elt_size.next,
-                                end: pos };
-                if !it(doc) {
-                    break;
-                }
-            }
-        }
-    }
-    #[cfg(not(stage0))]
     pub fn tagged_docs(d: Doc, tg: uint, it: &fn(Doc) -> bool) -> bool {
         let mut pos = d.start;
         while pos < d.end {
@@ -655,16 +624,6 @@ pub mod writer {
         fail!("vint to write too big: %?", n);
     }
 
-    #[cfg(stage0)]
-    pub fn Encoder(w: @io::Writer) -> Encoder {
-        let size_positions: ~[uint] = ~[];
-        Encoder {
-            writer: w,
-            mut size_positions: size_positions
-        }
-    }
-
-    #[cfg(not(stage0))]
     pub fn Encoder(w: @io::Writer) -> Encoder {
         let size_positions: ~[uint] = ~[];
         Encoder {

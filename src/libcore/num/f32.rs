@@ -248,18 +248,8 @@ impl Orderable for f32 {
         if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmax(*self, *other) }
     }
 
-    #[cfg(stage0)]
-    #[inline(always)]
-    fn clamp(&self, mn: &f32, mx: &f32) -> f32 {
-        if self.is_NaN() { *self }
-        else if !(*self <= *mx) { *mx }
-        else if !(*self >= *mn) { *mn }
-        else { *self }
-    }
-
     /// Returns the number constrained within the range `mn <= self <= mx`.
     /// If any of the numbers are `NaN` then `NaN` is returned.
-    #[cfg(not(stage0))]
     #[inline(always)]
     fn clamp(&self, mn: &f32, mx: &f32) -> f32 {
         cond!(

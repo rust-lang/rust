@@ -14,19 +14,6 @@
 
 pub mod general_category {
 
-    #[cfg(stage0)]
-    fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
-        use cmp::{Equal, Less, Greater};
-        use vec::bsearch;
-        use option::None;
-        (do bsearch(r) |&(lo,hi)| {
-            if lo <= c && c <= hi { Equal }
-            else if hi < c { Less }
-            else { Greater }
-        }) != None
-    }
-
-    #[cfg(not(stage0))]
     fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
         use cmp::{Equal, Less, Greater};
         use vec::bsearch;
@@ -1462,19 +1449,6 @@ pub mod general_category {
 }
 
 pub mod derived_property {
-    #[cfg(stage0)]
-    fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
-        use cmp::{Equal, Less, Greater};
-        use vec::bsearch;
-        use option::None;
-        (do bsearch(r) |&(lo,hi)| {
-            if lo <= c && c <= hi { Equal }
-            else if hi < c { Less }
-            else { Greater }
-        }) != None
-    }
-
-    #[cfg(not(stage0))]
     fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
         use cmp::{Equal, Less, Greater};
         use vec::bsearch;
