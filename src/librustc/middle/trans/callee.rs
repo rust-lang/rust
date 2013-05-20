@@ -486,8 +486,22 @@ pub fn trans_call_inner(in_cx: block,
                 }
                 Method(d) => {
                     // Weird but true: we pass self in the *environment* slot!
+                    let llselfptr =
+                        if ty::type_is_immediate(bcx.tcx(), d.self_ty) &&
+                           d.self_mode != ty::ByRef &&
+                           llvm::LLVMGetTypeKind(val_ty(d.llself)) != lib::llvm::Pointer {
+
+                            let llselfptr = alloca(bcx, val_ty(d.llself));
+
+                            Store(bcx, d.llself, llselfptr);
+                            bcx = glue::drop_ty(bcx, llselfptr, d.self_ty);
+
+                            llselfptr
+                        } else {
+                            d.llself
+                        };
                     let llself = PointerCast(bcx,
-                                             d.llself,
+                                             llselfptr,
                                              T_opaque_box_ptr(ccx));
                     (d.llfn, llself)
                 }
