@@ -641,7 +641,7 @@ pub fn incr_refcnt_of_boxed(cx: block, box_ptr: ValueRef) {
 pub fn declare_tydesc_addrspace(ccx: @CrateContext, t: ty::t) -> addrspace {
     if !ty::type_needs_drop(ccx.tcx, t) {
         return default_addrspace;
-    } else if ty::type_is_immediate(t) {
+    } else if ty::type_is_immediate(ccx.tcx, t) {
         // For immediate types, we don't actually need an addrspace, because
         // e.g. boxed types include pointers to their contents which are
         // already correctly tagged with addrspaces.
