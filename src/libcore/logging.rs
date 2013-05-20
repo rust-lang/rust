@@ -14,10 +14,6 @@ use option::*;
 use either::*;
 use rt;
 use rt::logging::{Logger, StdErrLogger};
-use io;
-use libc;
-use repr;
-use vec;
 use cast;
 use str;
 
@@ -45,7 +41,6 @@ pub fn console_off() {
 #[lang="log_type"]
 pub fn log_type<T>(level: u32, object: &T) {
     use container::Container;
-    use cast::transmute;
     use io;
     use libc;
     use repr;
