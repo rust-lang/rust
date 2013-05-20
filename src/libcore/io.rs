@@ -92,7 +92,7 @@ pub trait Reader {
     *
     * The buffer must be at least `len` bytes long.
     *
-    * `read` is conceptually similar to C's `fread`.
+    * `read` is conceptually similar to C's `fread` function.
     *
     * # Examples
     *
@@ -130,7 +130,7 @@ pub trait Reader {
     * Takes an optional SeekStyle, which affects how we seek from the
     * position. See `SeekStyle` docs for more details.
     *
-    * `seek` is conceptually similar to C's `fseek`.
+    * `seek` is conceptually similar to C's `fseek` function.
     *
     * # Examples
     *
