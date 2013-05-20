@@ -9,7 +9,8 @@
 // except according to those terms.
 
 use back::abi;
-use lib::llvm::{llvm, SetLinkage, PrivateLinkage, ValueRef, TypeRef, Bool, True, False};
+use lib::llvm::{llvm, ConstFCmp, ConstICmp, SetLinkage, PrivateLinkage, ValueRef, TypeRef, Bool,
+    True, False};
 use lib::llvm::{IntEQ, IntNE, IntUGT, IntUGE, IntULT, IntULE, IntSGT, IntSGE, IntSLT, IntSLE,
     RealOEQ, RealOGT, RealOGE, RealOLT, RealOLE, RealONE};
 
@@ -293,39 +294,39 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                 else      { llvm::LLVMConstLShr(te1, te2) }
               }
               ast::eq     => {
-                  if is_float { llvm::LLVMConstFCmp(RealOEQ, te1, te2) }
-                  else        { llvm::LLVMConstICmp(IntEQ, te1, te2)   }
+                  if is_float { ConstFCmp(RealOEQ, te1, te2) }
+                  else        { ConstICmp(IntEQ, te1, te2)   }
               },
               ast::lt     => {
-                  if is_float { llvm::LLVMConstFCmp(RealOLT, te1, te2) }
+                  if is_float { ConstFCmp(RealOLT, te1, te2) }
                   else        {
-                      if signed { llvm::LLVMConstICmp(IntSLT, te1, te2) }
-                      else      { llvm::LLVMConstICmp(IntULT, te1, te2) }
+                      if signed { ConstICmp(IntSLT, te1, te2) }
+                      else      { ConstICmp(IntULT, te1, te2) }
                   }
               },
               ast::le     => {
-                  if is_float { llvm::LLVMConstFCmp(RealOLE, te1, te2) }
+                  if is_float { ConstFCmp(RealOLE, te1, te2) }
                   else        {
-                      if signed { llvm::LLVMConstICmp(IntSLE, te1, te2) }
-                      else      { llvm::LLVMConstICmp(IntULE, te1, te2) }
+                      if signed { ConstICmp(IntSLE, te1, te2) }
+                      else      { ConstICmp(IntULE, te1, te2) }
                   }
               },
               ast::ne     => {
-                  if is_float { llvm::LLVMConstFCmp(RealONE, te1, te2) }
-                  else        { llvm::LLVMConstICmp(IntNE, te1, te2) }
+                  if is_float { ConstFCmp(RealONE, te1, te2) }
+                  else        { ConstICmp(IntNE, te1, te2) }
               },
               ast::ge     => {
-                  if is_float { llvm::LLVMConstFCmp(RealOGE, te1, te2) }
+                  if is_float { ConstFCmp(RealOGE, te1, te2) }
                   else        {
-                      if signed { llvm::LLVMConstICmp(IntSGE, te1, te2) }
-                      else      { llvm::LLVMConstICmp(IntUGE, te1, te2) }
+                      if signed { ConstICmp(IntSGE, te1, te2) }
+                      else      { ConstICmp(IntUGE, te1, te2) }
                   }
               },
               ast::gt     => {
-                  if is_float { llvm::LLVMConstFCmp(RealOGT, te1, te2) }
+                  if is_float { ConstFCmp(RealOGT, te1, te2) }
                   else        {
-                      if signed { llvm::LLVMConstICmp(IntSGT, te1, te2) }
-                      else      { llvm::LLVMConstICmp(IntUGT, te1, te2) }
+                      if signed { ConstICmp(IntSGT, te1, te2) }
+                      else      { ConstICmp(IntUGT, te1, te2) }
                   }
               },
             };

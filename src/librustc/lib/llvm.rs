@@ -220,7 +220,6 @@ pub mod llvm {
     use super::{ObjectFileRef, Opcode, PassManagerRef, PassManagerBuilderRef};
     use super::{SectionIteratorRef, TargetDataRef, TypeKind, TypeRef, UseRef};
     use super::{ValueRef};
-    use super::{IntPredicate, RealPredicate};
 
     use core::libc::{c_char, c_int, c_longlong, c_uint, c_ulonglong};
 
@@ -453,9 +452,9 @@ pub mod llvm {
         #[fast_ffi]
         pub unsafe fn LLVMConstAllOnes(Ty: TypeRef) -> ValueRef;
         #[fast_ffi]
-        pub unsafe fn LLVMConstICmp(Pred: IntPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef;
+        pub unsafe fn LLVMConstICmp(Pred: c_uint, V1: ValueRef, V2: ValueRef) -> ValueRef;
         #[fast_ffi]
-        pub unsafe fn LLVMConstFCmp(Pred: RealPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef;
+        pub unsafe fn LLVMConstFCmp(Pred: c_uint, V1: ValueRef, V2: ValueRef) -> ValueRef;
         /* only for int/vector */
         #[fast_ffi]
         pub unsafe fn LLVMGetUndef(Ty: TypeRef) -> ValueRef;
@@ -1919,6 +1918,16 @@ pub fn SetLinkage(Global: ValueRef, Link: Linkage) {
     }
 }
 
+pub fn ConstICmp(Pred: IntPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef {
+    unsafe {
+        llvm::LLVMConstICmp(Pred as c_uint, V1, V2)
+    }
+}
+pub fn ConstFCmp(Pred: RealPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef {
+    unsafe {
+        llvm::LLVMConstICmp(Pred as c_uint, V1, V2)
+    }
+}
 /* Memory-managed object interface to type handles. */
 
 pub struct TypeNames {
