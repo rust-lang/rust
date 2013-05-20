@@ -13,7 +13,9 @@
 extern mod mod_trait_with_static_methods_lib;
 
 use mod_trait_with_static_methods_lib::Foo;
+use mod_trait_with_static_methods_lib::Baz;
 
 pub fn main() {
     assert_eq!(42, Foo::foo());
+    assert_eq!(84, Baz::bar());
 }

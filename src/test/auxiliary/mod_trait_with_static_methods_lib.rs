@@ -9,6 +9,15 @@
 // except according to those terms.
 
 pub use sub_foo::Foo;
+pub use Baz = self::Bar;
+
+pub trait Bar {
+    pub fn bar() -> Self;
+}
+
+impl Bar for int {
+    pub fn bar() -> int { 84 }
+}
 
 pub mod sub_foo {
     pub trait Foo {
@@ -18,4 +27,5 @@ pub mod sub_foo {
     impl Foo for int {
         pub fn foo() -> int { 42 }
     }
+
 }
