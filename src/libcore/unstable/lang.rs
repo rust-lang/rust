@@ -16,7 +16,6 @@ use libc::{c_char, c_uchar, c_void, size_t, uintptr_t, c_int, STDERR_FILENO};
 use managed::raw::BoxRepr;
 use str;
 use sys;
-use cast::transmute;
 use rt::{context, OldTaskContext};
 use rt::local_services::borrow_local_services;
 use option::{Option, Some, None};
