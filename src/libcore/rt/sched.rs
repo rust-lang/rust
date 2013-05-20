@@ -401,12 +401,6 @@ pub impl Coroutine {
     }
 }
 
-pub unsafe fn unsafe_borrow_io() -> *mut IoFactoryObject {
-    let sched = Local::unsafe_borrow::<Scheduler>();
-    let io: *mut IoFactoryObject = (*sched).event_loop.io().unwrap();
-    return io;
-}
-
 #[cfg(test)]
 mod test {
     use int;
