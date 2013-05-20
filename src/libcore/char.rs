@@ -12,9 +12,6 @@
 
 use option::{None, Option, Some};
 use str;
-#[cfg(stage0)]
-use str::StrSlice;
-#[cfg(not(stage0))]
 use str::{StrSlice, OwnedStr};
 use u32;
 use uint;
@@ -191,21 +188,6 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     }
 }
 
-#[cfg(stage0)]
-pub fn escape_unicode(c: char) -> ~str {
-    let s = u32::to_str_radix(c as u32, 16u);
-    let (c, pad) = (if c <= '\xff' { ('x', 2u) }
-                    else if c <= '\uffff' { ('u', 4u) }
-                    else { ('U', 8u) });
-    assert!(str::len(s) <= pad);
-    let mut out = ~"\\";
-    str::push_str(&mut out, str::from_char(c));
-    for uint::range(str::len(s), pad) |_i|
-        { str::push_str(&mut out, ~"0"); }
-    str::push_str(&mut out, s);
-    out
-}
-
 ///
 /// Return the hexadecimal unicode escape of a char.
 ///
@@ -215,7 +197,6 @@ pub fn escape_unicode(c: char) -> ~str {
 /// - chars in [0x100,0xffff] get 4-digit escapes: `\\uNNNN`
 /// - chars above 0x10000 get 8-digit escapes: `\\UNNNNNNNN`
 ///
-#[cfg(not(stage0))]
 pub fn escape_unicode(c: char) -> ~str {
     let s = u32::to_str_radix(c as u32, 16u);
     let (c, pad) = cond!(
@@ -258,23 +239,7 @@ pub fn escape_default(c: char) -> ~str {
     }
 }
 
-#[cfg(stage0)]
-pub fn len_utf8_bytes(c: char) -> uint {
-    static max_one_b: uint = 128u;
-    static max_two_b: uint = 2048u;
-    static max_three_b: uint = 65536u;
-    static max_four_b: uint = 2097152u;
-
-    let code = c as uint;
-    if code < max_one_b { 1u }
-    else if code < max_two_b { 2u }
-    else if code < max_three_b { 3u }
-    else if code < max_four_b { 4u }
-    else { fail!("invalid character!") }
-}
-
 /// Returns the amount of bytes this character would need if encoded in utf8
-#[cfg(not(stage0))]
 pub fn len_utf8_bytes(c: char) -> uint {
     static MAX_ONE_B:   uint = 128u;
     static MAX_TWO_B:   uint = 2048u;

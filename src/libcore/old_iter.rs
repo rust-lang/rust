@@ -22,39 +22,20 @@ use vec;
 /// A function used to initialize the elements of a sequence
 pub type InitOp<'self,T> = &'self fn(uint) -> T;
 
-#[cfg(stage0)]
-pub trait BaseIter<A> {
-    fn each(&self, blk: &fn(v: &A) -> bool);
-    fn size_hint(&self) -> Option<uint>;
-}
-#[cfg(not(stage0))]
 pub trait BaseIter<A> {
     fn each(&self, blk: &fn(v: &A) -> bool) -> bool;
     fn size_hint(&self) -> Option<uint>;
 }
 
-#[cfg(stage0)]
-pub trait ReverseIter<A>: BaseIter<A> {
-    fn each_reverse(&self, blk: &fn(&A) -> bool);
-}
-#[cfg(not(stage0))]
 pub trait ReverseIter<A>: BaseIter<A> {
     fn each_reverse(&self, blk: &fn(&A) -> bool) -> bool;
 }
 
-#[cfg(stage0)]
-pub trait MutableIter<A>: BaseIter<A> {
-    fn each_mut(&mut self, blk: &fn(&mut A) -> bool);
-}
-#[cfg(not(stage0))]
 pub trait MutableIter<A>: BaseIter<A> {
     fn each_mut(&mut self, blk: &fn(&mut A) -> bool) -> bool;
 }
 
 pub trait ExtendedIter<A> {
-    #[cfg(stage0)]
-    fn eachi(&self, blk: &fn(uint, v: &A) -> bool);
-    #[cfg(not(stage0))]
     fn eachi(&self, blk: &fn(uint, v: &A) -> bool) -> bool;
     fn all(&self, blk: &fn(&A) -> bool) -> bool;
     fn any(&self, blk: &fn(&A) -> bool) -> bool;
@@ -64,11 +45,6 @@ pub trait ExtendedIter<A> {
     fn flat_map_to_vec<B,IB: BaseIter<B>>(&self, op: &fn(&A) -> IB) -> ~[B];
 }
 
-#[cfg(stage0)]
-pub trait ExtendedMutableIter<A> {
-    fn eachi_mut(&mut self, blk: &fn(uint, &mut A) -> bool);
-}
-#[cfg(not(stage0))]
 pub trait ExtendedMutableIter<A> {
     fn eachi_mut(&mut self, blk: &fn(uint, &mut A) -> bool) -> bool;
 }
@@ -127,11 +103,6 @@ pub fn _eachi<A,IA:BaseIter<A>>(this: &IA, blk: &fn(uint, &A) -> bool) -> bool {
     return true;
 }
 
-#[cfg(stage0)]
-pub fn eachi<A,IA:BaseIter<A>>(this: &IA, blk: &fn(uint, &A) -> bool) {
-    _eachi(this, blk);
-}
-#[cfg(not(stage0))]
 pub fn eachi<A,IA:BaseIter<A>>(this: &IA, blk: &fn(uint, &A) -> bool) -> bool {
     _eachi(this, blk)
 }

@@ -191,15 +191,6 @@ pub fn is_call_expr(e: @expr) -> bool {
 }
 
 // This makes def_id hashable
-#[cfg(stage0)]
-impl to_bytes::IterBytes for def_id {
-    #[inline(always)]
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_2(&self.crate, &self.node, lsb0, f);
-    }
-}
-// This makes def_id hashable
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for def_id {
     #[inline(always)]
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {

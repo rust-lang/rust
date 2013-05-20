@@ -19,8 +19,6 @@ use middle::dataflow::DataFlowOperator;
 use util::common::stmt_set;
 use util::ppaux::{note_and_explain_region, Repr};
 
-#[cfg(stage0)]
-use core; // NOTE: this can be removed after the next snapshot
 use core::hashmap::{HashSet, HashMap};
 use core::io;
 use core::result::{Result};

@@ -24,35 +24,6 @@ pub fn Frame(fp: *Word) -> Frame {
     }
 }
 
-#[cfg(stage0)]
-pub fn walk_stack(visit: &fn(Frame) -> bool) {
-
-    debug!("beginning stack walk");
-
-    do frame_address |frame_pointer| {
-        let mut frame_address: *Word = unsafe {
-            transmute(frame_pointer)
-        };
-        loop {
-            let fr = Frame(frame_address);
-
-            debug!("frame: %x", unsafe { transmute(fr.fp) });
-            visit(fr);
-
-            unsafe {
-                let next_fp: **Word = transmute(frame_address);
-                frame_address = *next_fp;
-                if *frame_address == 0u {
-                    debug!("encountered task_start_wrapper. ending walk");
-                    // This is the task_start_wrapper_frame. There is
-                    // no stack beneath it and it is a foreign frame.
-                    break;
-                }
-            }
-        }
-    }
-}
-#[cfg(not(stage0))]
 pub fn walk_stack(visit: &fn(Frame) -> bool) -> bool {
 
     debug!("beginning stack walk");

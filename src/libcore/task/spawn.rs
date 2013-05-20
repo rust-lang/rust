@@ -110,11 +110,6 @@ fn taskset_remove(tasks: &mut TaskSet, task: *rust_task) {
     let was_present = tasks.remove(&task);
     assert!(was_present);
 }
-#[cfg(stage0)]
-pub fn taskset_each(tasks: &TaskSet, blk: &fn(v: *rust_task) -> bool) {
-    tasks.each(|k| blk(*k))
-}
-#[cfg(not(stage0))]
 pub fn taskset_each(tasks: &TaskSet, blk: &fn(v: *rust_task) -> bool) -> bool {
     tasks.each(|k| blk(*k))
 }
