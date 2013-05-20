@@ -11,7 +11,9 @@
 use ast::{blk_, attribute_, attr_outer, meta_word};
 use ast::{crate, expr_, expr_mac, mac_invoc_tt};
 use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
+use ast::{SCTable, illegal_ctxt};
 use ast;
+use ast_util::{new_rename, new_mark, resolve};
 use attr;
 use codemap;
 use codemap::{span, CallInfo, ExpandedFrom, NameAndSpan, spanned};
@@ -635,62 +637,65 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     @f.fold_crate(&*c)
 }
 
-// given a function from paths to paths, produce
+// given a function from idents to idents, produce
 // an ast_fold that applies that function:
-fn fun_to_path_folder(f: @fn(&ast::Path)->ast::Path) -> @ast_fold{
+pub fn fun_to_ident_folder(f: @fn(ast::ident)->ast::ident) -> @ast_fold{
     let afp = default_ast_fold();
     let f_pre = @AstFoldFns{
-        fold_path : |p, _| f(p),
+        fold_ident : |id, _| f(id),
         .. *afp
     };
     make_fold(f_pre)
 }
-/* going to have to figure out whether the table is passed in or
-extracted from TLS...
+
 // update the ctxts in a path to get a rename node
-fn ctxt_update_rename(from: ast::Name,
-                       fromctx: ast::SyntaxContext, to: ast::Name) ->
-    @fn(&ast::Path,@ast_fold)->ast::Path {
-    return |p:&ast::Path,_|
-    ast::Path {span: p.span,
-               global: p.global,
-               idents: p.idents.map(|id|
-                                    ast::ident{
-                                        repr: id.repr,
-                                        // this needs to be cached....
-                                        ctxt: Some(@ast::Rename(from,fromctx,
-                                                           to,id.ctxt))
-                                    }),
-               rp: p.rp,
-               types: p.types};
+pub fn new_ident_renamer(from: ast::ident,
+                      to: ast::Name,
+                      table: @mut SCTable) ->
+    @fn(ast::ident)->ast::ident {
+    |id : ast::ident|
+    ast::ident{
+        repr: id.repr,
+        ctxt: new_rename(from,to,id.ctxt,table)
+    }
 }
 
+
 // update the ctxts in a path to get a mark node
-fn ctxt_update_mark(mark: uint) ->
-    @fn(&ast::Path,@ast_fold)->ast::Path {
-    return |p:&ast::Path,_|
-    ast::Path {span: p.span,
-               global: p.global,
-               idents: p.idents.map(|id|
-                                    ast::ident{
-                                        repr: id.repr,
-                                        // this needs to be cached....
-                                        ctxt: Some(@ast::Mark(mark,id.ctxt))
-                                    }),
-               rp: p.rp,
-               types: p.types};
+pub fn new_ident_marker(mark: uint,
+                        table: @mut SCTable) ->
+    @fn(ast::ident)->ast::ident {
+    |id : ast::ident|
+    ast::ident{
+        repr: id.repr,
+        ctxt: new_mark(mark,id.ctxt,table)
+    }
 }
-*/
+
+// perform resolution (in the MTWT sense) on all of the
+// idents in the tree. This is the final step in expansion.
+pub fn new_ident_resolver(table: @mut SCTable) ->
+    @fn(ast::ident)->ast::ident {
+    |id : ast::ident|
+    ast::ident {
+        repr : resolve(id,table),
+        ctxt : illegal_ctxt
+    }
+}
+
 
 #[cfg(test)]
 mod test {
     use super::*;
     use ast;
-    use ast::{attribute_, attr_outer, meta_word};
+    use ast::{attribute_, attr_outer, meta_word, empty_ctxt};
+    use ast_util::{new_sctable};
     use codemap;
     use codemap::spanned;
     use parse;
+    use core::io;
     use core::option::{None, Some};
+    use util::parser_testing::{string_to_item_and_sess};
 
     // make sure that fail! is present
     #[test] fn fail_exists_test () {
@@ -790,6 +795,24 @@ mod test {
                 is_sugared_doc: false,
             }
         }
+    }
+
+    #[test]
+    fn renaming () {
+        let (maybe_item_ast,sess) = string_to_item_and_sess(@~"fn a() -> int { let b = 13; b} ");
+        let item_ast = match maybe_item_ast {
+            Some(x) => x,
+            None => fail!("test case fail")
+        };
+        let table = @mut new_sctable();
+        let a_name = 100; // enforced by testing_interner
+        let a2_name = sess.interner.gensym("a2").repr;
+        let renamer = new_ident_renamer(ast::ident{repr:a_name,ctxt:empty_ctxt},
+                                        a2_name,table);
+        let renamed_ast = fun_to_ident_folder(renamer).fold_item(item_ast).get();
+        let resolver = new_ident_resolver(table);
+        let resolved_ast = fun_to_ident_folder(resolver).fold_item(renamed_ast).get();
+        io::print(fmt!("ast: %?\n",resolved_ast))
     }
 
 }

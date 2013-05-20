@@ -25,11 +25,10 @@
 
 extern mod std;
 
-// allow the interner_key macro
-// to escape this module:
-#[macro_escape]
 pub mod util {
     pub mod interner;
+    #[cfg(test)]
+    pub mod parser_testing;
 }
 
 pub mod syntax {

@@ -2250,6 +2250,14 @@ do_expr : "do" expr [ '|' ident_list '|' ] ? '{' block '}' ;
 A _do expression_ provides a more-familiar block-syntax for a [lambda expression](#lambda-expressions),
 including a special translation of [return expressions](#return-expressions) inside the supplied block.
 
+Any occurrence of a [return expression](#return-expressions)
+inside this `block` expression is rewritten
+as a reference to an (anonymous) flag set in the caller's environment,
+which is checked on return from the `expr` and, if set,
+causes a corresponding return from the caller.
+In this way, the meaning of `return` statements in language built-in control blocks is preserved,
+if they are rewritten using lambda functions and `do` expressions as abstractions.
+
 The optional `ident_list` and `block` provided in a `do` expression are parsed as though they constitute a lambda expression;
 if the `ident_list` is missing, an empty `ident_list` is implied.
 
@@ -2296,19 +2304,15 @@ A _for expression_ is similar to a [`do` expression](#do-expressions),
 in that it provides a special block-form of lambda expression,
 suited to passing the `block` function to a higher-order function implementing a loop.
 
-Like a `do` expression, a `return` expression inside a `for` expresison is rewritten,
-to access a local flag that causes an early return in the caller.
+In contrast to a `do` expression, a `for` expression is designed to work
+with methods such as `each` and `times`, that require the body block to
+return a boolean. The `for` expression accommodates this by implicitly
+returning `true` at the end of each block, unless a `break` expression
+is evaluated.
 
-Additionally, any occurrence of a [return expression](#return-expressions)
-inside the `block` of a `for` expression is rewritten
-as a reference to an (anonymous) flag set in the caller's environment,
-which is checked on return from the `expr` and, if set,
-causes a corresponding return from the caller.
-In this way, the meaning of `return` statements in language built-in control blocks is preserved,
-if they are rewritten using lambda functions and `do` expressions as abstractions.
-
-Like `return` expressions, any [`break`](#break-expressions) and [`loop`](#loop-expressions) expressions
-are rewritten inside `for` expressions, with a combination of local flag variables,
+In addition, [`break`](#break-expressions) and [`loop`](#loop-expressions) expressions
+are rewritten inside `for` expressions in the same way that `return` expressions are,
+with a combination of local flag variables,
 and early boolean-valued returns from the `block` function,
 such that the meaning of `break` and `loop` is preserved in a primitive loop
 when rewritten as a `for` loop controlled by a higher order function.

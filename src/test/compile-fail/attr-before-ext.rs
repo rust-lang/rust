@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    #[attr]
-    debug!("hi"); //~ ERROR expected item after attrs
+    #[attr] //~ ERROR expected item after attributes
+    debug!("hi");
 }
