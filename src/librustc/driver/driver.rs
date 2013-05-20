@@ -239,7 +239,7 @@ pub fn compile_rest(sess: Session,
     let (llmod, link_meta) = {
 
         let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
-                                region_map, rp_set, lang_items, crate);
+                                region_map, rp_set, lang_items);
 
         // passes are timed inside typeck
         let (method_map, vtable_map) = typeck::check_crate(

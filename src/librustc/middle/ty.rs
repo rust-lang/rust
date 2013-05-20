@@ -232,7 +232,6 @@ struct ctxt_ {
     diag: @syntax::diagnostic::span_handler,
     interner: @mut HashMap<intern_key, ~t_box_>,
     next_id: @mut uint,
-    legacy_modes: bool,
     cstore: @mut metadata::cstore::CStore,
     sess: session::Session,
     def_map: resolve::DefMap,
@@ -906,24 +905,12 @@ pub fn mk_ctxt(s: session::Session,
                freevars: freevars::freevar_map,
                region_maps: @mut middle::region::RegionMaps,
                region_paramd_items: middle::region::region_paramd_items,
-               lang_items: middle::lang_items::LanguageItems,
-               crate: @ast::crate)
+               lang_items: middle::lang_items::LanguageItems)
             -> ctxt {
-    let mut legacy_modes = false;
-    for crate.node.attrs.each |attribute| {
-        match attribute.node.value.node {
-            ast::meta_word(w) if *w == ~"legacy_modes" => {
-                legacy_modes = true;
-            }
-            _ => {}
-        }
-    }
-
     @ctxt_ {
         diag: s.diagnostic(),
         interner: @mut HashMap::new(),
         next_id: @mut primitives::LAST_PRIMITIVE_ID,
-        legacy_modes: legacy_modes,
         cstore: s.cstore,
         sess: s,
         def_map: dm,
