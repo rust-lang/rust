@@ -62,7 +62,7 @@ use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
-use middle::typeck::infer::{cres, InferCtxt, ures, IntType, UintType};
+use middle::typeck::infer::{cres, InferCtxt, ures};
 use util::common::indent;
 
 use core::result::{iter_vec2, map_vec2};
