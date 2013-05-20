@@ -27,7 +27,7 @@ pub fn expand_deriving_totaleq(cx: @ExtCtxt,
     }
 
     let trait_def = TraitDef {
-        path: Path::new(~["core", "cmp", "TotalEq"]),
+        path: Path::new(~["std", "cmp", "TotalEq"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[

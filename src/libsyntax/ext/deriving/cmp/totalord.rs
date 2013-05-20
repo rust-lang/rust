@@ -22,7 +22,7 @@ pub fn expand_deriving_totalord(cx: @ExtCtxt,
                                 mitem: @meta_item,
                                 in_items: ~[@item]) -> ~[@item] {
     let trait_def = TraitDef {
-        path: Path::new(~["core", "cmp", "TotalOrd"]),
+        path: Path::new(~["std", "cmp", "TotalOrd"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[
@@ -31,7 +31,7 @@ pub fn expand_deriving_totalord(cx: @ExtCtxt,
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: ~[borrowed_self()],
-                ret_ty: Literal(Path::new(~["core", "cmp", "Ordering"])),
+                ret_ty: Literal(Path::new(~["std", "cmp", "Ordering"])),
                 const_nonmatching: false,
                 combine_substructure: cs_cmp
             }
@@ -51,7 +51,7 @@ pub fn ordering_const(cx: @ExtCtxt, span: span, cnst: Ordering) -> @expr {
     };
     cx.expr_path(
         cx.path_global(span,
-                       ~[cx.ident_of("core"),
+                       ~[cx.ident_of("std"),
                          cx.ident_of("cmp"),
                          cx.ident_of(cnst)]))
 }
@@ -64,7 +64,7 @@ pub fn cs_cmp(cx: @ExtCtxt, span: span,
         false,
         |cx, span, old, new| {
             cx.expr_call_global(span,
-                                ~[cx.ident_of("core"),
+                                ~[cx.ident_of("std"),
                                   cx.ident_of("cmp"),
                                   cx.ident_of("lexical_ordering")],
                                 ~[old, new])

@@ -23,7 +23,7 @@ pub fn expand_deriving_rand(cx: @ExtCtxt,
                             in_items: ~[@item])
     -> ~[@item] {
     let trait_def = TraitDef {
-        path: Path::new(~["core", "rand", "Rand"]),
+        path: Path::new(~["std", "rand", "Rand"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[
@@ -32,7 +32,7 @@ pub fn expand_deriving_rand(cx: @ExtCtxt,
                 generics: LifetimeBounds {
                     lifetimes: ~[],
                     bounds: ~[("R",
-                               ~[ Path::new(~["core", "rand", "Rng"]) ])]
+                               ~[ Path::new(~["std", "rand", "Rng"]) ])]
                 },
                 explicit_self: None,
                 args: ~[
@@ -55,7 +55,7 @@ fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
         _ => cx.bug("Incorrect number of arguments to `rand` in `deriving(Rand)`")
     };
     let rand_ident = ~[
-        cx.ident_of("core"),
+        cx.ident_of("std"),
         cx.ident_of("rand"),
         cx.ident_of("Rand"),
         cx.ident_of("rand")
