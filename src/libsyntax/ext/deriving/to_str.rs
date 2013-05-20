@@ -22,7 +22,7 @@ pub fn expand_deriving_to_str(cx: @ExtCtxt,
                               in_items: ~[@item])
     -> ~[@item] {
     let trait_def = TraitDef {
-        path: Path::new(~["core", "to_str", "ToStr"]),
+        path: Path::new(~["std", "to_str", "ToStr"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[
@@ -46,7 +46,7 @@ fn to_str_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr
         [self_obj] => {
             let self_addr = cx.expr_addr_of(span, self_obj);
             cx.expr_call_global(span,
-                                ~[cx.ident_of("core"),
+                                ~[cx.ident_of("std"),
                                   cx.ident_of("sys"),
                                   cx.ident_of("log_str")],
                                 ~[self_addr])

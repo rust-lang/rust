@@ -63,3 +63,4 @@ impl append_types for @ast::Path {
         }
     }
 }
+

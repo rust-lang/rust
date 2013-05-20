@@ -32,6 +32,8 @@ extern mod extra(name = "extra");
 // For deriving(Encodable) purposes...
 #[cfg(stage0)]
 extern mod std(name = "extra");
+#[cfg(not(stage0))]
+extern mod std(name = "std");
 
 use core::prelude::*;
 

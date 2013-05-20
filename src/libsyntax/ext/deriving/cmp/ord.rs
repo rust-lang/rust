@@ -38,9 +38,9 @@ pub fn expand_deriving_ord(cx: @ExtCtxt,
 
 
     let trait_def = TraitDef {
-        path: Path::new(~["core", "cmp", "Ord"]),
+        path: Path::new(~["std", "cmp", "Ord"]),
         // XXX: Ord doesn't imply Eq yet
-        additional_bounds: ~[Literal(Path::new(~["core", "cmp", "Eq"]))],
+        additional_bounds: ~[Literal(Path::new(~["std", "cmp", "Eq"]))],
         generics: LifetimeBounds::empty(),
         methods: ~[
             md!("lt", true,  false),

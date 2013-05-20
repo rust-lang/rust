@@ -225,4 +225,14 @@ mod core {
     pub use sys;
     pub use pipes;
 }
+#[doc(hidden)]
+mod std {
+    pub use clone;
+    pub use cmp;
+    pub use condition;
+    pub use option;
+    pub use kinds;
+    pub use sys;
+    pub use pipes;
+}
 

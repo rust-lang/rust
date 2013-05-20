@@ -125,6 +125,12 @@ pub mod serialize;
 pub mod std {
     pub use serialize;
     pub use test;
+
+    // For bootstrapping.
+    pub use core::clone;
+    pub use core::condition;
+    pub use core::cmp;
+    pub use core::sys;
 }
 #[doc(hidden)] // FIXME #3538
 pub mod extra {
