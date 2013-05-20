@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,33 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/**
+/*!
  * Concurrency-enabled mechanisms for sharing mutable and/or immutable state
  * between tasks.
+ *
+ * # Example
+ *
+ * In this example, a large vector of floats is shared between several tasks.
+ * With simple pipes, without ARC, a copy would have to be made for each task.
+ *
+ * ~~~
+ * extern mod std;
+ * use std::arc;
+ * let numbers=vec::from_fn(100, |ind| (ind as float)*rand::random());
+ * let shared_numbers=arc::ARC(numbers);
+ *
+ *   for 10.times {
+ *       let (port, chan)  = stream();
+ *       chan.send(shared_numbers.clone());
+ *
+ *       do spawn {
+ *           let shared_numbers=port.recv();
+ *           let local_numbers=shared_numbers.get();
+ *
+ *           // Work with the local numbers
+ *       }
+ *   }
+ * ~~~
  */
 
 use sync;
@@ -21,7 +45,7 @@ use core::unstable::sync::UnsafeAtomicRcBox;
 use core::ptr;
 use core::task;
 
-/// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
+/// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
 pub struct Condvar<'self> {
     is_mutex: bool,
     failed: &'self mut bool,
@@ -93,9 +117,14 @@ pub fn ARC<T:Const + Owned>(data: T) -> ARC<T> {
  * wrapper.
  */
 pub fn get<'a, T:Const + Owned>(rc: &'a ARC<T>) -> &'a T {
-    unsafe { &*rc.x.get_immut() }
+    rc.get()
 }
 
+impl<T:Const+Owned> ARC<T> {
+    pub fn get<'a>(&'a self) -> &'a T {
+        unsafe { &*self.x.get_immut() }
+    }
+}
 /**
  * Duplicate an atomically reference counted wrapper.
  *
@@ -508,6 +537,7 @@ mod tests {
         c.send(arc::clone(&arc_v));
 
         assert_eq!((*arc::get(&arc_v))[2], 3);
+        assert_eq!(arc_v.get()[4], 5);
 
         info!(arc_v);
     }
