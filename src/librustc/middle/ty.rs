@@ -1695,11 +1695,7 @@ pub fn type_is_newtype_scalar(cx: ctxt, ty: t) -> bool {
             let fields = struct_fields(cx, def_id, substs);
 
             // Is this a newtype/single field scalar struct?
-            if fields.len() == 1 {
-                type_is_scalar(fields[0].mt.ty)
-            } else {
-                false
-            }
+            fields.len() == 1 && type_is_scalar(fields[0].mt.ty)
         }
         _ => false
     }

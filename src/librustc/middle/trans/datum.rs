@@ -620,12 +620,6 @@ pub impl Datum {
                     ByValue => {
                         // Actually, this case cannot happen right
                         // now, because enums are never immediate.
-                        // But in principle newtype'd immediate
-                        // values should be immediate, and in that
-                        // case the * would be a no-op except for
-                        // changing the type, so I am putting this
-                        // code in place here to do the right
-                        // thing if this change ever goes through.
                         assert!(ty::type_is_immediate(bcx.tcx(), ty));
                         (Some(Datum {ty: ty, ..*self}), bcx)
                     }
@@ -659,13 +653,6 @@ pub impl Datum {
                         )
                     }
                     ByValue => {
-                        // Actually, this case cannot happen right now,
-                        // because structs are never immediate. But in
-                        // principle, newtype'd immediate values should be
-                        // immediate, and in that case the * would be a no-op
-                        // except for changing the type, so I am putting this
-                        // code in place here to do the right thing if this
-                        // change ever goes through.
                         assert!(ty::type_is_immediate(bcx.tcx(), ty));
                         (Some(Datum {ty: ty, ..*self}), bcx)
                     }
