@@ -38,23 +38,23 @@ static z: bool = 1.0 == 1.0;
 
 static aa: bool = 1 <= 2;
 static ab: bool = -1 <= 2;
-static ac: bool = 1.0 <= 2;
+static ac: bool = 1.0 <= 2.0;
 
 static ad: bool = 1 < 2;
 static ae: bool = -1 < 2;
-static af: bool = 1.0 < 2;
+static af: bool = 1.0 < 2.0;
 
 static ag: bool = 1 != 2;
 static ah: bool = -1 != 2;
-static ai: bool = 1.0 != 2;
+static ai: bool = 1.0 != 2.0;
 
 static aj: bool = 2 >= 1;
 static ak: bool = 2 >= -2;
-static al: bool = 1.0 >= -2;
+static al: bool = 1.0 >= -2.0;
 
 static am: bool = 2 > 1;
 static an: bool = 2 > -2;
-static ao: bool = 1.0 > -2;
+static ao: bool = 1.0 > -2.0;
 
 fn main() {
     assert_eq!(a, -1);
@@ -63,7 +63,7 @@ fn main() {
 
     assert_eq!(c, -1);
     assert_eq!(d, 0);
-    assert_approx_eq!(e, -0.3);
+    assert_approx_eq!(e, 0.3);
 
     assert_eq!(e2, -9);
     assert_eq!(f, 9);
