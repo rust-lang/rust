@@ -1818,6 +1818,10 @@ pub impl Resolver {
                         debug!("(building import directive) bumping \
                                 reference");
                         resolution.outstanding_references += 1;
+
+                        // the source of this name is different now
+                        resolution.privacy = privacy;
+                        resolution.id = id;
                     }
                     None => {
                         debug!("(building import directive) creating new");
