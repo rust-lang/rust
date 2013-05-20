@@ -12,26 +12,17 @@
 
 use sys;
 use unstable;
-
-pub mod rusti {
-    #[abi = "rust-intrinsic"]
-    #[link_name = "rusti"]
-    pub extern "rust-intrinsic" {
-        fn forget<T>(x: T);
-
-        fn transmute<T,U>(e: T) -> U;
-    }
-}
+use unstable::intrinsics;
 
 /// Casts the value at `src` to U. The two types must have the same length.
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
-    let mut dest: U = unstable::intrinsics::init();
+    let mut dest: U = intrinsics::init();
     {
-        let dest_ptr: *mut u8 = rusti::transmute(&mut dest);
-        let src_ptr: *u8 = rusti::transmute(src);
-        unstable::intrinsics::memmove64(dest_ptr,
-                                        src_ptr,
-                                        sys::size_of::<U>() as u64);
+        let dest_ptr: *mut u8 = transmute(&mut dest);
+        let src_ptr: *u8 = transmute(src);
+        intrinsics::memmove64(dest_ptr,
+                              src_ptr,
+                              sys::size_of::<U>() as u64);
     }
     dest
 }
@@ -45,7 +36,7 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
  * reinterpret_cast on pointer types.
  */
 #[inline(always)]
-pub unsafe fn forget<T>(thing: T) { rusti::forget(thing); }
+pub unsafe fn forget<T>(thing: T) { intrinsics::forget(thing); }
 
 /**
  * Force-increment the reference count on a shared box. If used
@@ -65,7 +56,7 @@ pub unsafe fn bump_box_refcount<T>(t: @T) { forget(t); }
  */
 #[inline(always)]
 pub unsafe fn transmute<L, G>(thing: L) -> G {
-    rusti::transmute(thing)
+    intrinsics::transmute(thing)
 }
 
 /// Coerce an immutable reference to be mutable.

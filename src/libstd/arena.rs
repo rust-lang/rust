@@ -43,14 +43,7 @@ use core::sys::TypeDesc;
 use core::sys;
 use core::uint;
 use core::vec;
-
-pub mod rusti {
-    #[abi = "rust-intrinsic"]
-    pub extern "rust-intrinsic" {
-        fn move_val_init<T>(dst: &mut T, src: T);
-        fn needs_drop<T>() -> bool;
-    }
-}
+use core::unstable::intrinsics;
 
 pub mod rustrt {
     use core::libc::size_t;
@@ -208,7 +201,7 @@ pub impl Arena {
             let tydesc = sys::get_type_desc::<T>();
             let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
             let ptr: *mut T = transmute(ptr);
-            rusti::move_val_init(&mut (*ptr), op());
+            intrinsics::move_val_init(&mut (*ptr), op());
             return transmute(ptr);
         }
     }
@@ -261,7 +254,7 @@ pub impl Arena {
             // has *not* been initialized yet.
             *ty_ptr = transmute(tydesc);
             // Actually initialize it
-            rusti::move_val_init(&mut(*ptr), op());
+            intrinsics::move_val_init(&mut(*ptr), op());
             // Now that we are done, update the tydesc to indicate that
             // the object is there.
             *ty_ptr = bitpack_tydesc_ptr(tydesc, true);
@@ -276,7 +269,7 @@ pub impl Arena {
         unsafe {
             // XXX: Borrow check
             let this = transmute_mut_region(self);
-            if !rusti::needs_drop::<T>() {
+            if !intrinsics::needs_drop::<T>() {
                 return this.alloc_pod(op);
             }
             // XXX: Borrow check
