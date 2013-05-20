@@ -16,13 +16,13 @@ A quick summary:
 
 ## `Reader` and `Writer` traits
 
-These traits define the simplest amount of methods that anything that can do
+These traits define the minimal set of methods that anything that can do
 input and output should implement.
 
 ## `ReaderUtil` and `WriterUtil` traits
 
 Richer methods that allow you to do more. `Reader` only lets you read a certain
-amount of bytes into a buffer, while `ReaderUtil` allows you to read a whole
+number of bytes into a buffer, while `ReaderUtil` allows you to read a whole
 line, for example.
 
 Generally, these richer methods are probably the ones you want to actually
