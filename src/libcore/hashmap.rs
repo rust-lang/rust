@@ -303,9 +303,9 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
 
     /// Visit all key-value pairs
     fn each<'a>(&'a self, blk: &fn(&K, &'a V) -> bool) -> bool {
-        for uint::range(0, self.buckets.len()) |i| {
-            for self.buckets[i].each |bucket| {
-                if !blk(&bucket.key, &bucket.value) {
+        for self.buckets.each |bucket| {
+            for bucket.each |pair| {
+                if !blk(&pair.key, &pair.value) {
                     return false;
                 }
             }
