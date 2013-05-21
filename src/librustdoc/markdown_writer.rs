@@ -101,7 +101,7 @@ fn pandoc_writer(
         use core::io::WriterUtil;
 
         debug!("pandoc cmd: %s", pandoc_cmd);
-        debug!("pandoc args: %s", str::connect(pandoc_args, ~" "));
+        debug!("pandoc args: %s", str::connect(pandoc_args, " "));
 
         let pipe_in = os::pipe();
         let pipe_out = os::pipe();
@@ -198,7 +198,7 @@ pub fn make_filename(
             }
           }
           doc::ItemPage(doc) => {
-            str::connect(doc.path() + ~[doc.name()], ~"_")
+            str::connect(doc.path() + ~[doc.name()], "_")
           }
         }
     };
@@ -213,7 +213,7 @@ pub fn make_filename(
 fn write_file(path: &Path, s: ~str) {
     use core::io::WriterUtil;
 
-    match io::file_writer(path, ~[io::Create, io::Truncate]) {
+    match io::file_writer(path, [io::Create, io::Truncate]) {
       result::Ok(writer) => {
         writer.write_str(s);
       }

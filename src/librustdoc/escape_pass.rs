@@ -20,7 +20,7 @@ pub fn mk_pass() -> Pass {
 }
 
 fn escape(s: &str) -> ~str {
-    str::replace(s, ~"\\", ~"\\\\")
+    str::replace(s, "\\", "\\\\")
 }
 
 #[test]
