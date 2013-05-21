@@ -21,12 +21,12 @@ use middle::trans::base::{get_item_val, no_self};
 use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::datum;
-use middle::trans::foreign;
 use middle::trans::machine;
 use middle::trans::meth;
 use middle::trans::type_of::type_of_fn_from_ty;
 use middle::trans::type_of;
 use middle::trans::type_use;
+use middle::trans::intrinsic;
 use middle::ty;
 use middle::ty::{FnSig};
 use middle::typeck;
@@ -211,8 +211,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       }
       ast_map::node_foreign_item(i, _, _, _) => {
           let d = mk_lldecl();
-          foreign::trans_intrinsic(ccx, d, i, pt, psubsts.get(), i.attrs,
-                                ref_id);
+          intrinsic::trans_intrinsic(ccx, d, i, pt, psubsts.get(), i.attrs,
+                                     ref_id);
           d
       }
       ast_map::node_variant(ref v, enum_item, _) => {
@@ -384,7 +384,7 @@ pub fn make_mono_id(ccx: @CrateContext,
 
                             // Special value for nil to prevent problems
                             // with undef return pointers.
-                            if size <= 8u && ty::type_is_nil(subst) {
+                            if size <= 8u && ty::type_is_voidish(subst) {
                                 mono_repr(0u, 0u, data_class, mode)
                             } else {
                                 mono_repr(size, align, data_class, mode)

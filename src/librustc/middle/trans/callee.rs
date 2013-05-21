@@ -39,6 +39,7 @@ use middle::trans::inline;
 use middle::trans::meth;
 use middle::trans::monomorphize;
 use middle::trans::type_of;
+use middle::trans::foreign;
 use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
@@ -46,6 +47,7 @@ use util::ppaux::Repr;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::visit;
+use syntax::abi::AbiSet;
 
 // Represents a (possibly monomorphized) top-level fn item or method
 // item.  Note that this is just the fn-ptr and is not a Rust closure
@@ -196,20 +198,20 @@ pub fn trans_fn_ref_with_vtables(
         type_params: &[ty::t], // values for fn's ty params
         vtables: Option<typeck::vtable_res>)
      -> FnData {
-    //!
-    //
-    // Translates a reference to a fn/method item, monomorphizing and
-    // inlining as it goes.
-    //
-    // # Parameters
-    //
-    // - `bcx`: the current block where the reference to the fn occurs
-    // - `def_id`: def id of the fn or method item being referenced
-    // - `ref_id`: node id of the reference to the fn/method, if applicable.
-    //   This parameter may be zero; but, if so, the resulting value may not
-    //   have the right type, so it must be cast before being used.
-    // - `type_params`: values for each of the fn/method's type parameters
-    // - `vtables`: values for each bound on each of the type parameters
+    /*!
+     * Translates a reference to a fn/method item, monomorphizing and
+     * inlining as it goes.
+     *
+     * # Parameters
+     *
+     * - `bcx`: the current block where the reference to the fn occurs
+     * - `def_id`: def id of the fn or method item being referenced
+     * - `ref_id`: node id of the reference to the fn/method, if applicable.
+     *   This parameter may be zero; but, if so, the resulting value may not
+     *   have the right type, so it must be cast before being used.
+     * - `type_params`: values for each of the fn/method's type parameters
+     * - `vtables`: values for each bound on each of the type parameters
+     */
 
     let _icx = bcx.insn_ctxt("trans_fn_ref_with_vtables");
     let ccx = bcx.ccx();
@@ -291,7 +293,7 @@ pub fn trans_fn_ref_with_vtables(
     }
 
     // Find the actual function pointer.
-    let val = {
+    let mut val = {
         if def_id.crate == ast::local_crate {
             // Internal reference.
             get_item_val(ccx, def_id.node)
@@ -300,6 +302,35 @@ pub fn trans_fn_ref_with_vtables(
             trans_external_path(ccx, def_id, fn_tpt.ty)
         }
     };
+
+    // This is subtle and surprising, but sometimes we have to bitcast
+    // the resulting fn pointer.  The reason has to do with external
+    // functions.  If you have two crates that both bind the same C
+    // library, they may not use precisely the same types: for
+    // example, they will probably each declare their own structs,
+    // which are distinct types from LLVM's point of view (nominal
+    // types).
+    //
+    // Now, if those two crates are linked into an application, and
+    // they contain inlined code, you can wind up with a situation
+    // where both of those functions wind up being loaded into this
+    // application simultaneously. In that case, the same function
+    // (from LLVM's point of view) requires two types. But of course
+    // LLVM won't allow one function to have two types.
+    //
+    // What we currently do, therefore, is declare the function with
+    // one of the two types (whichever happens to come first) and then
+    // bitcast as needed when the function is referenced to make sure
+    // it has the type we expect.
+    //
+    // This can occur on either a crate-local or crate-external
+    // reference. It also occurs when testing libcore and in some
+    // other weird situations. Annoying.
+    let llty = type_of::type_of_fn_from_ty(ccx, fn_tpt.ty);
+    let llptrty = T_ptr(llty);
+    if val_ty(val) != llptrty {
+        val = BitCast(bcx, val, llptrty);
+    }
 
     return FnData {llfn: val};
 }
@@ -449,7 +480,7 @@ pub fn body_contains_ret(body: &ast::blk) -> bool {
 // See [Note-arg-mode]
 pub fn trans_call_inner(in_cx: block,
                         call_info: Option<NodeInfo>,
-                        fn_expr_ty: ty::t,
+                        callee_ty: ty::t,
                         ret_ty: ty::t,
                         get_callee: &fn(block) -> Callee,
                         args: CallArgs,
@@ -506,79 +537,103 @@ pub fn trans_call_inner(in_cx: block,
             }
         };
 
-        let llretslot = trans_ret_slot(bcx, fn_expr_ty, dest);
+        let abi = match ty::get(callee_ty).sty {
+            ty::ty_bare_fn(ref f) => f.abis,
+            _ => AbiSet::Rust()
+        };
+        let is_rust_fn =
+            abi.is_rust() ||
+            abi.is_intrinsic();
 
-        let mut llargs = ~[];
+        // Generate a location to store the result. If the user does
+        // not care about the result, just make a stack slot.
+        let llretslot = match dest {
+            expr::SaveIn(dst) => dst,
+            expr::Ignore => {
+                if ty::type_is_voidish(ret_ty) {
+                    unsafe {
+                        llvm::LLVMGetUndef(T_ptr(T_nil()))
+                    }
+                } else {
+                    alloc_ty(bcx, ret_ty)
+                }
+            }
+        };
 
-        if ty::type_is_immediate(ret_ty) {
-            unsafe {
-                llargs.push(llvm::LLVMGetUndef(T_ptr(T_i8())));
+        // The code below invokes the function, using either the Rust
+        // conventions (if it is a rust fn) or the native conventions
+        // (otherwise).  The important part is that, when all is sad
+        // and done, the return value of the function will have been
+        // written in llretslot.
+        if is_rust_fn {
+            let mut llargs = ~[];
+            // Push the out-pointer if we use an out-pointer for this
+            // return type, otherwise push "undef".
+            if type_of::return_uses_outptr(ret_ty) {
+                llargs.push(llretslot);
+            } else {
+                unsafe {
+                    llargs.push(llvm::LLVMGetUndef(T_ptr(T_i8())));
+                }
+            }
+
+            // Push the environment.
+            llargs.push(llenv);
+
+            // Push the arguments.
+            bcx = trans_args(bcx, args, callee_ty,
+                             ret_flag, autoref_arg, &mut llargs);
+
+            // Now that the arguments have finished evaluating, we need to revoke
+            // the cleanup for the self argument, if it exists
+            match callee.data {
+                Method(d) if d.self_mode == ty::ByCopy => {
+                    revoke_clean(bcx, d.llself);
+                }
+                _ => {}
+            }
+
+            // Invoke the actual rust fn and update bcx/llresult.
+            let (llret, b) = base::invoke(bcx, llfn, llargs);
+            bcx = b;
+
+            // If the Rust convention for this type is return via
+            // the return value, copy it into llretslot.
+            if !type_of::return_uses_outptr(ret_ty) && !ty::type_is_voidish(ret_ty) {
+                Store(bcx, llret, llretslot);
             }
         } else {
-            llargs.push(llretslot);
+            let mut llargs = ~[];
+            bcx = trans_args(bcx, args, callee_ty,
+                             ret_flag, autoref_arg, &mut llargs);
+            bcx = foreign::trans_native_call(bcx, callee_ty,
+                                             llfn, llretslot, llargs);
         }
 
-        llargs.push(llenv);
-        bcx = trans_args(bcx, args, fn_expr_ty,
-                         ret_flag, autoref_arg, &mut llargs);
-
-
-        // Now that the arguments have finished evaluating, we need to revoke
-        // the cleanup for the self argument, if it exists
-        match callee.data {
-            Method(d) if d.self_mode == ty::ByCopy => {
-                revoke_clean(bcx, d.llself);
-            }
-            _ => {}
-        }
-
-        // Uncomment this to debug calls.
-        /*
-        io::println(fmt!("calling: %s", bcx.val_str(llfn)));
-        for llargs.each |llarg| {
-            io::println(fmt!("arg: %s", bcx.val_str(*llarg)));
-        }
-        io::println("---");
-        */
-
-        // If the block is terminated, then one or more of the args
-        // has type _|_. Since that means it diverges, the code for
-        // the call itself is unreachable.
-        let (llresult, new_bcx) = base::invoke(bcx, llfn, llargs);
-        bcx = new_bcx;
-
+        // If the caller doesn't care about the result of this fn call,
+        // drop the temporary slot we made.
         match dest {
             expr::Ignore => {
                 // drop the value if it is not being saved.
                 unsafe {
                     if llvm::LLVMIsUndef(llretslot) != lib::llvm::True {
-                        if ty::type_is_nil(ret_ty) {
+                        if ty::type_is_voidish(ret_ty) {
                             // When implementing the for-loop sugar syntax, the
                             // type of the for-loop is nil, but the function
                             // it's invoking returns a bool. This is a special
                             // case to ignore instead of invoking the Store
                             // below into a scratch pointer of a mismatched
                             // type.
-                        } else if ty::type_is_immediate(ret_ty) {
-                            let llscratchptr = alloc_ty(bcx, ret_ty);
-                            Store(bcx, llresult, llscratchptr);
-                            bcx = glue::drop_ty(bcx, llscratchptr, ret_ty);
                         } else {
                             bcx = glue::drop_ty(bcx, llretslot, ret_ty);
                         }
                     }
                 }
             }
-            expr::SaveIn(lldest) => {
-                // If this is an immediate, store into the result location.
-                // (If this was not an immediate, the result will already be
-                // directly written into the output slot.)
-                if ty::type_is_immediate(ret_ty) {
-                    Store(bcx, llresult, lldest);
-                }
-            }
+            expr::SaveIn(_) => { }
         }
 
+        // Do some other scary stuff that I don't want to read or comment. -nmatsakis
         if ty::type_is_bot(ret_ty) {
             Unreachable(bcx);
         } else if ret_in_loop {
@@ -597,28 +652,9 @@ pub fn trans_call_inner(in_cx: block,
     }
 }
 
-
 pub enum CallArgs<'self> {
     ArgExprs(&'self [@ast::expr]),
     ArgVals(&'self [ValueRef])
-}
-
-pub fn trans_ret_slot(bcx: block, fn_ty: ty::t, dest: expr::Dest)
-                      -> ValueRef {
-    let retty = ty::ty_fn_ret(fn_ty);
-
-    match dest {
-        expr::SaveIn(dst) => dst,
-        expr::Ignore => {
-            if ty::type_is_nil(retty) {
-                unsafe {
-                    llvm::LLVMGetUndef(T_ptr(T_nil()))
-                }
-            } else {
-                alloc_ty(bcx, retty)
-            }
-        }
-    }
 }
 
 pub fn trans_args(cx: block,
@@ -787,7 +823,7 @@ pub fn trans_arg_expr(bcx: block,
 
         if formal_arg_ty != arg_datum.ty {
             // this could happen due to e.g. subtyping
-            let llformal_arg_ty = type_of::type_of_explicit_arg(ccx, &formal_arg_ty);
+            let llformal_arg_ty = type_of::type_of_explicit_arg(ccx, formal_arg_ty);
             let llformal_arg_ty = match self_mode {
                 ty::ByRef => T_ptr(llformal_arg_ty),
                 ty::ByCopy => llformal_arg_ty,

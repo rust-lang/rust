@@ -149,7 +149,7 @@ pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
     }
 }
 
-pub type ExternMap = @mut HashMap<@str, ValueRef>;
+pub type ExternMap = @mut HashMap<~str, ValueRef>;
 
 // Crate context.  Every crate we compile has one of these.
 pub struct CrateContext {
@@ -318,10 +318,10 @@ pub struct fn_ctxt_ {
     // for that (flagptr, retptr)
     loop_ret: Option<(ValueRef, ValueRef)>,
 
-    // True if this function has an immediate return value, false otherwise.
-    // If this is false, the llretptr will alias the first argument of the
-    // function.
-    has_immediate_return_value: bool,
+    // True if the caller expects this fn to use the out pointer to
+    // return. Either way, your code should write into llretptr, but if
+    // this value is false, llretptr will be a local alloca.
+    caller_expects_out_pointer: bool,
 
     // Maps arguments to allocas created for them in llallocas.
     llargs: @mut HashMap<ast::node_id, local_val>,

@@ -10,38 +10,632 @@
 
 use core::prelude::*;
 
-use back::{link, abi};
-use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
-use lib::llvm::{TypeRef, ValueRef};
+use back::{link};
+use core::libc::c_uint;
+use lib::llvm::{TypeRef, ValueRef, Attribute};
+use lib::llvm::llvm;
 use lib;
-use middle::trans::base::*;
+use middle::trans::machine;
+use middle::trans::base;
+use middle::trans::base::get_insn_ctxt;
 use middle::trans::cabi;
 use middle::trans::cabi_x86;
 use middle::trans::cabi_x86_64;
 use middle::trans::cabi_arm;
 use middle::trans::cabi_mips;
 use middle::trans::build::*;
-use middle::trans::callee::*;
 use middle::trans::common::*;
-use middle::trans::datum::*;
-use middle::trans::expr::Ignore;
-use middle::trans::machine::llsize_of;
-use middle::trans::glue;
-use middle::trans::machine;
 use middle::trans::type_of::*;
 use middle::trans::type_of;
 use middle::ty;
-use middle::ty::FnSig;
-use util::ppaux::ty_to_str;
-
 use syntax::codemap::span;
-use syntax::{ast, ast_util};
+use syntax::{ast};
 use syntax::{attr, ast_map};
-use syntax::opt_vec;
 use syntax::parse::token::special_idents;
 use syntax::abi::{X86, X86_64, Arm, Mips};
 use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall,
-                  Cdecl, Aapcs, C};
+                  Cdecl, Aapcs, C, AbiSet};
+use util::ppaux::{Repr};
+
+///////////////////////////////////////////////////////////////////////////
+// Type definitions
+
+struct ForeignTypes {
+    /// Rust signature of the function
+    fn_sig: ty::FnSig,
+
+    /// Adapter object for handling native ABI rules (trust me, you
+    /// don't want to know)
+    fn_ty: cabi::FnType,
+
+    /// LLVM types that will appear on the foreign function
+    llsig: LlvmSignature,
+
+    /// True if there is a return value (not bottom, not unit)
+    ret_def: bool,
+}
+
+struct LlvmSignature {
+    // LLVM versions of the types of this function's arguments.
+    llarg_tys: ~[TypeRef],
+
+    // LLVM version of the type that this function returns.  Note that
+    // this *may not be* the declared return type of the foreign
+    // function, because the foreign function may opt to return via an
+    // out pointer.
+    llret_ty: TypeRef,
+
+    // True if *Rust* would use an outpointer for this function.
+    sret: bool,
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+// Calls to external functions
+
+pub fn register_foreign_item_fn(ccx: @CrateContext,
+                                abis: AbiSet,
+                                path: &ast_map::path,
+                                foreign_item: @ast::foreign_item) -> ValueRef {
+    /*!
+     * Registers a foreign function found in a library.
+     * Just adds a LLVM global.
+     */
+
+    debug!("register_foreign_item_fn(abis=%s, \
+            path=%s, \
+            foreign_item.id=%?)",
+           abis.repr(ccx.tcx),
+           path.repr(ccx.tcx),
+           foreign_item.id);
+
+    // Determine appropriate LLVM calling convention constant
+    let arch = ccx.sess.targ_cfg.arch;
+    let cc = match abis.for_arch(arch) {
+        None => {
+            ccx.sess.fatal(
+                fmt!("No suitable ABI for target architecture \
+                      in module %s",
+                     ast_map::path_to_str(*path,
+                                          ccx.sess.intr())));
+        }
+
+        Some(RustIntrinsic) => {
+            // Intrinsics are emitted by monomorphic fn
+            ccx.sess.bug(
+                fmt!("Asked to register intrinsic fn %s",
+                     ast_map::path_to_str(*path,
+                                          ccx.sess.intr())));
+        }
+
+        Some(Rust) => {
+            // FIXME(#3678) Implement linking to foreign fns with Rust ABI
+            ccx.sess.unimpl(
+                fmt!("Foreign functions with Rust ABI"));
+        }
+
+        Some(Stdcall) => lib::llvm::X86StdcallCallConv,
+        Some(Fastcall) => lib::llvm::X86FastcallCallConv,
+        Some(C) => lib::llvm::CCallConv,
+
+        // NOTE These API constants ought to be more specific
+        Some(Cdecl) => lib::llvm::CCallConv,
+        Some(Aapcs) => lib::llvm::CCallConv,
+    };
+
+    // Register the function as a C extern fn
+    let lname = link_name(ccx, foreign_item);
+    let tys = foreign_types_for_id(ccx, foreign_item.id);
+
+    // Create the LLVM value for the C extern fn
+    let llfn_ty = lltype_for_fn_from_foreign_types(&tys);
+    let llfn = base::get_extern_fn(ccx.externs, ccx.llmod,
+                                   *lname, cc, llfn_ty);
+    add_argument_attributes(&tys, llfn);
+
+    return llfn;
+}
+
+pub fn trans_native_call(bcx: block,
+                         callee_ty: ty::t,
+                         llfn: ValueRef,
+                         llretptr: ValueRef,
+                         llargs_rust: &[ValueRef]) -> block {
+    /*!
+     * Prepares a call to a native function. This requires adapting
+     * from the Rust argument passing rules to the native rules.
+     *
+     * # Parameters
+     *
+     * - `callee_ty`: Rust type for the function we are calling
+     * - `llfn`: the function pointer we are calling
+     * - `llretptr`: where to store the return value of the function
+     * - `llargs_rust`: a list of the argument values, prepared
+     *   as they would be if calling a Rust function
+     */
+
+    let ccx = bcx.ccx();
+    let tcx = bcx.tcx();
+
+    debug!("trans_native_call(callee_ty=%s, \
+            llfn=%s, \
+            llretptr=%s)",
+           callee_ty.repr(tcx),
+           val_str(ccx.tn, llfn),
+           val_str(ccx.tn, llretptr));
+
+    // make sure that the native call will have sufficient stack
+    base::set_fixed_stack_segment(bcx.fcx.llfn);
+
+    let abi_info = abi_info(ccx);
+    let fn_sig = match ty::get(callee_ty).sty {
+        ty::ty_bare_fn(ref fn_ty) => copy fn_ty.sig,
+        _ => ccx.sess.bug("trans_native_call called on non-function type")
+    };
+    let llsig = foreign_signature(ccx, &fn_sig);
+    let ret_def = !ty::type_is_voidish(fn_sig.output);
+    let fn_type = abi_info.compute_info(llsig.llarg_tys,
+                                        llsig.llret_ty,
+                                        ret_def);
+
+    let all_arg_tys: &[cabi::LLVMType] = fn_type.arg_tys;
+    let all_attributes: &[Option<Attribute>] = fn_type.attrs;
+
+    let mut llargs_foreign = ~[];
+
+    // If the foreign ABI expects return value by pointer, supply the
+    // pointer that Rust gave us. Sometimes we have to bitcast
+    // because foreign fns return slightly different (but equivalent)
+    // views on the same type (e.g., i64 in place of {i32,i32}).
+    let (arg_tys, attributes) = {
+        if fn_type.sret {
+            if all_arg_tys[0].cast {
+                let llcastedretptr =
+                    BitCast(bcx, llretptr, T_ptr(all_arg_tys[0].ty));
+                llargs_foreign.push(llcastedretptr);
+            } else {
+                llargs_foreign.push(llretptr);
+            }
+            (all_arg_tys.tail(), all_attributes.tail())
+        } else {
+            (all_arg_tys, all_attributes)
+        }
+    };
+
+    for llargs_rust.eachi |i, &llarg_rust| {
+        let mut llarg_rust = llarg_rust;
+
+        // Does Rust pass this argument by pointer?
+        let rust_indirect = type_of::arg_is_indirect(ccx, fn_sig.inputs[i]);
+
+        debug!("argument %u, llarg_rust=%s, rust_indirect=%b, arg_ty=%s",
+               i,
+               val_str(ccx.tn, llarg_rust),
+               rust_indirect,
+               ty_str(ccx.tn, arg_tys[i].ty));
+
+        // Ensure that we always have the Rust value indirectly,
+        // because it makes bitcasting easier.
+        if !rust_indirect {
+            let scratch = base::alloca(bcx, arg_tys[i].ty);
+            Store(bcx, llarg_rust, scratch);
+            llarg_rust = scratch;
+        }
+
+        debug!("llarg_rust=%s (after indirection)",
+               val_str(ccx.tn, llarg_rust));
+
+        // Check whether we need to do any casting
+        let foreignarg_ty = arg_tys[i].ty;
+        if arg_tys[i].cast {
+            llarg_rust = BitCast(bcx, llarg_rust, T_ptr(foreignarg_ty));
+        }
+
+        debug!("llarg_rust=%s (after casting)",
+               val_str(ccx.tn, llarg_rust));
+
+        // Finally, load the value if needed for the foreign ABI
+        let foreign_indirect = attributes[i].is_some();
+        let llarg_foreign = if foreign_indirect {
+            llarg_rust
+        } else {
+            Load(bcx, llarg_rust)
+        };
+
+        debug!("argument %u, llarg_foreign=%s",
+               i, val_str(ccx.tn, llarg_foreign));
+
+        llargs_foreign.push(llarg_foreign);
+    }
+
+    let llforeign_retval = Call(bcx, llfn, llargs_foreign);
+
+    // If the function we just called does not use an outpointer,
+    // store the result into the rust outpointer. Cast the outpointer
+    // type to match because some ABIs will use a different type than
+    // the Rust type. e.g., a {u32,u32} struct could be returned as
+    // u64.
+    if ret_def && !fn_type.sret {
+        let llrust_ret_ty = llsig.llret_ty;
+        let llforeign_ret_ty = fn_type.ret_ty.ty;
+
+        debug!("llretptr=%s", val_str(ccx.tn, llretptr));
+        debug!("llforeign_retval=%s", val_str(ccx.tn, llforeign_retval));
+        debug!("llrust_ret_ty=%s", ty_str(ccx.tn, llrust_ret_ty));
+        debug!("llforeign_ret_ty=%s", ty_str(ccx.tn, llforeign_ret_ty));
+
+        if llrust_ret_ty == llforeign_ret_ty {
+            Store(bcx, llforeign_retval, llretptr);
+        } else {
+            // The actual return type is a struct, but the ABI
+            // adaptation code has cast it into some scalar type.  The
+            // code that follows is the only reliable way I have
+            // found to do a transform like i64 -> {i32,i32}.
+            // Basically we dump the data onto the stack then memcpy it.
+            //
+            // Other approaches I tried:
+            // - Casting rust ret pointer to the foreign type and using Store
+            //   is (a) unsafe if size of foreign type > size of rust type and
+            //   (b) runs afoul of strict aliasing rules, yielding invalid
+            //   assembly under -O (specifically, the store gets removed).
+            // - Truncating foreign type to correct integral type and then
+            //   bitcasting to the struct type yields invalid cast errors.
+            let llscratch = base::alloca(bcx, llforeign_ret_ty);
+            Store(bcx, llforeign_retval, llscratch);
+            let llscratch_i8 = BitCast(bcx, llscratch, T_ptr(T_i8()));
+            let llretptr_i8 = BitCast(bcx, llretptr, T_ptr(T_i8()));
+            let llrust_size = machine::llsize_of_store(ccx, llrust_ret_ty);
+            let llforeign_align = machine::llalign_of_min(ccx, llforeign_ret_ty);
+            let llrust_align = machine::llalign_of_min(ccx, llrust_ret_ty);
+            let llalign = uint::min(llforeign_align, llrust_align);
+            debug!("llrust_size=%?", llrust_size);
+            base::call_memcpy(bcx, llretptr_i8, llscratch_i8,
+                              C_uint(ccx, llrust_size), llalign as u32);
+        }
+    }
+
+    return bcx;
+}
+
+pub fn trans_foreign_mod(ccx: @CrateContext,
+                         foreign_mod: &ast::foreign_mod) {
+    let _icx = ccx.insn_ctxt("foreign::trans_foreign_mod");
+    for vec::each(foreign_mod.items) |&foreign_item| {
+        let lname = link_name(ccx, foreign_item);
+        ccx.item_symbols.insert(foreign_item.id, copy *lname);
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Rust functions with foreign ABIs
+//
+// These are normal Rust functions defined with foreign ABIs.  For
+// now, and perhaps forever, we translate these using a "layer of
+// indirection". That is, given a Rust declaration like:
+//
+//     extern "C" fn foo(i: u32) -> u32 { ... }
+//
+// we will generate a function like:
+//
+//     S foo(T i) {
+//         S r;
+//         foo0(&r, NULL, i);
+//         return r;
+//     }
+//
+//     #[inline_always]
+//     void foo0(uint32_t *r, void *env, uint32_t i) { ... }
+//
+// Here the (internal) `foo0` function follows the Rust ABI as normal,
+// where the `foo` function follows the C ABI. We rely on LLVM to
+// inline the one into the other. Of course we could just generate the
+// correct code in the first place, but this is much simpler.
+
+pub fn register_rust_fn_with_foreign_abi(ccx: @CrateContext,
+                                         sp: span,
+                                         path: ast_map::path,
+                                         node_id: ast::node_id,
+                                         attrs: &[ast::attribute])
+                                         -> ValueRef {
+    let _icx = ccx.insn_ctxt("foreign::register_foreign_fn");
+
+    let t = ty::node_id_to_type(ccx.tcx, node_id);
+
+    let tys = foreign_types_for_id(ccx, node_id);
+    let llfn_ty = lltype_for_fn_from_foreign_types(&tys);
+    let llfn = base::register_fn_fuller(ccx,
+                                        sp,
+                                        /*bad*/copy path,
+                                        node_id,
+                                        attrs,
+                                        t,
+                                        lib::llvm::CCallConv,
+                                        llfn_ty);
+    add_argument_attributes(&tys, llfn);
+    debug!("register_rust_fn_with_foreign_abi(node_id=%?, llfn_ty=%s, llfn=%s)",
+           node_id, ty_str(ccx.tn, llfn_ty), val_str(ccx.tn, llfn));
+    llfn
+}
+
+pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
+                                      path: &ast_map::path,
+                                      decl: &ast::fn_decl,
+                                      body: &ast::blk,
+                                      llwrapfn: ValueRef,
+                                      id: ast::node_id) {
+    let _icx = ccx.insn_ctxt("foreign::build_foreign_fn");
+    let tys = foreign_types_for_id(ccx, id);
+
+    unsafe { // unsafe because we call LLVM operations
+        // Build up the Rust function (`foo0` above).
+        let llrustfn = build_rust_fn(ccx, path, decl, body, id);
+
+        // Build up the foreign wrapper (`foo` above).
+        return build_wrap_fn(ccx, llrustfn, llwrapfn, &tys);
+    }
+
+    fn build_rust_fn(ccx: @CrateContext,
+                     path: &ast_map::path,
+                     decl: &ast::fn_decl,
+                     body: &ast::blk,
+                     id: ast::node_id)
+                     -> ValueRef {
+        let _icx = ccx.insn_ctxt("foreign::foreign::build_rust_fn");
+        let t = ty::node_id_to_type(ccx.tcx, id);
+        let ps = link::mangle_internal_name_by_path(
+            ccx, vec::append_one(copy *path, ast_map::path_name(
+                special_idents::clownshoe_abi
+            )));
+        let llty = type_of_fn_from_ty(ccx, t);
+        let llfndecl = base::decl_internal_cdecl_fn(ccx.llmod, ps, llty);
+        base::trans_fn(ccx,
+                       copy *path,
+                       decl,
+                       body,
+                       llfndecl,
+                       base::no_self,
+                       None,
+                       id,
+                       None,
+                       []);
+        return llfndecl;
+    }
+
+    unsafe fn build_wrap_fn(ccx: @CrateContext,
+                            llrustfn: ValueRef,
+                            llwrapfn: ValueRef,
+                            tys: &ForeignTypes) {
+        let _icx = ccx.insn_ctxt(
+            "foreign::trans_rust_fn_with_foreign_abi::build_wrap_fn");
+
+        debug!("build_wrap_fn(llrustfn=%s, llwrapfn=%s)",
+               val_str(ccx.tn, llrustfn),
+               val_str(ccx.tn, llwrapfn));
+
+        // Avoid all the Rust generation stuff and just generate raw
+        // LLVM here.
+        //
+        // We want to generate code like this:
+        //
+        //     S foo(T i) {
+        //         S r;
+        //         foo0(&r, NULL, i);
+        //         return r;
+        //     }
+
+        let the_block =
+            str::as_c_str("the_block",
+                          |s| llvm::LLVMAppendBasicBlock(llwrapfn, s));
+
+        let builder = ccx.builder.B;
+        llvm::LLVMPositionBuilderAtEnd(builder, the_block);
+
+        // Array for the arguments we will pass to the rust function.
+        let mut llrust_args = ~[];
+        let mut next_foreign_arg_counter: c_uint = 0;
+        let next_foreign_arg: &fn() -> c_uint = {
+            || {
+                next_foreign_arg_counter += 1;
+                next_foreign_arg_counter - 1
+            }
+        };
+
+        // If there is an out pointer on the foreign function
+        let foreign_outptr = {
+            if tys.fn_ty.sret {
+                Some(llvm::LLVMGetParam(llwrapfn, next_foreign_arg()))
+            } else {
+                None
+            }
+        };
+
+        // Push Rust return pointer, using null if it will be unused.
+        let rust_uses_outptr = type_of::return_uses_outptr(tys.fn_sig.output);
+        let return_alloca: Option<ValueRef>;
+        let llrust_ret_ty = tys.llsig.llret_ty;
+        let llrust_retptr_ty = T_ptr(llrust_ret_ty);
+        if rust_uses_outptr {
+            // Rust expects to use an outpointer. If the foreign fn
+            // also uses an outpointer, we can reuse it, but the types
+            // may vary, so cast first to the Rust type. If the
+            // foriegn fn does NOT use an outpointer, we will have to
+            // alloca some scratch space on the stack.
+            match foreign_outptr {
+                Some(llforeign_outptr) => {
+                    debug!("out pointer, foreign=%s",
+                           val_str(ccx.tn, llforeign_outptr));
+                    let llrust_retptr =
+                        llvm::LLVMBuildBitCast(builder,
+                                               llforeign_outptr,
+                                               T_ptr(llrust_ret_ty),
+                                               noname());
+                    debug!("out pointer, foreign=%s (casted)",
+                           val_str(ccx.tn, llrust_retptr));
+                    llrust_args.push(llrust_retptr);
+                    return_alloca = None;
+                }
+
+                None => {
+                    let slot = {
+                        str::as_c_str(
+                            "return_alloca",
+                            |s| llvm::LLVMBuildAlloca(builder, llrust_ret_ty, s))
+                    };
+                    debug!("out pointer, \
+                            allocad=%s, \
+                            llrust_ret_ty=%s, \
+                            return_ty=%s",
+                           val_str(ccx.tn, slot),
+                           ty_str(ccx.tn, llrust_ret_ty),
+                           tys.fn_sig.output.repr(ccx.tcx));
+                    llrust_args.push(slot);
+                    return_alloca = Some(slot);
+                }
+            }
+        } else {
+            // Rust will not use the outpointer, so pass undefined.
+            let undef = llvm::LLVMGetUndef(T_ptr(T_i8()));
+            debug!("out pointer, undef=%s", val_str(ccx.tn, undef));
+            llrust_args.push(undef);
+            return_alloca = None;
+        };
+
+        // Push an (null) env pointer
+        let env_pointer = base::null_env_ptr(ccx);
+        debug!("env pointer=%s", val_str(ccx.tn, env_pointer));
+        llrust_args.push(env_pointer);
+
+        // Build up the arguments to the call to the rust function.
+        // Careful to adapt for cases where the native convention uses
+        // a pointer and Rust does not or vice versa.
+        for uint::range(0, tys.fn_sig.inputs.len()) |i| {
+            let rust_ty = tys.fn_sig.inputs[i];
+            let llrust_ty = tys.llsig.llarg_tys[i];
+            let foreign_index = next_foreign_arg();
+            let rust_indirect = type_of::arg_is_indirect(ccx, rust_ty);
+            let foreign_indirect = tys.fn_ty.attrs[foreign_index].is_some();
+            let mut llforeign_arg = llvm::LLVMGetParam(llwrapfn, foreign_index);
+
+            debug!("llforeign_arg #%u: %s",
+                   i, val_str(ccx.tn, llforeign_arg));
+            debug!("rust_indirect = %b, foreign_indirect = %b",
+                   rust_indirect, foreign_indirect);
+
+            // Ensure that the foreign argument is indirect (by
+            // pointer).  It makes adapting types easier, since we can
+            // always just bitcast pointers.
+            if !foreign_indirect {
+                let lltemp =
+                    llvm::LLVMBuildAlloca(
+                        builder, val_ty(llforeign_arg), noname());
+                llvm::LLVMBuildStore(
+                    builder, llforeign_arg, lltemp);
+                llforeign_arg = lltemp;
+            }
+
+            // If the types in the ABI and the Rust types don't match,
+            // bitcast the llforeign_arg pointer so it matches the types
+            // Rust expects.
+            if tys.fn_ty.arg_tys[foreign_index].cast {
+                assert!(!foreign_indirect);
+                llforeign_arg = llvm::LLVMBuildBitCast(builder, llforeign_arg,
+                                                       T_ptr(llrust_ty), noname());
+            }
+
+            let llrust_arg = if rust_indirect {
+                llforeign_arg
+            } else {
+                llvm::LLVMBuildLoad(builder, llforeign_arg, noname())
+            };
+
+            debug!("llrust_arg #%u: %s",
+                   i, val_str(ccx.tn, llrust_arg));
+            llrust_args.push(llrust_arg);
+        }
+
+        // Perform the call itself
+        let llrust_ret_val = do vec::as_imm_buf(llrust_args) |ptr, len| {
+            debug!("calling llrustfn = %s", val_str(ccx.tn, llrustfn));
+            llvm::LLVMBuildCall(builder, llrustfn, ptr,
+                                len as c_uint, noname())
+        };
+
+        // Get the return value where the foreign fn expects it.
+        let llforeign_ret_ty = tys.fn_ty.ret_ty.ty;
+        match foreign_outptr {
+            None if !tys.ret_def => {
+                // Function returns `()` or `bot`, which in Rust is the LLVM
+                // type "{}" but in foreign ABIs is "Void".
+                llvm::LLVMBuildRetVoid(builder);
+            }
+
+            None if rust_uses_outptr => {
+                // Rust uses an outpointer, but the foreign ABI does not. Load.
+                let llrust_outptr = return_alloca.get();
+                let llforeign_outptr_casted =
+                    llvm::LLVMBuildBitCast(builder,
+                                           llrust_outptr,
+                                           T_ptr(llforeign_ret_ty),
+                                           noname());
+                let llforeign_retval =
+                    llvm::LLVMBuildLoad(builder, llforeign_outptr_casted, noname());
+                llvm::LLVMBuildRet(builder, llforeign_retval);
+            }
+
+            None if llforeign_ret_ty != llrust_ret_ty => {
+                // Neither ABI uses an outpointer, but the types don't
+                // quite match. Must cast. Probably we should try and
+                // examine the types and use a concrete llvm cast, but
+                // right now we just use a temp memory location and
+                // bitcast the pointer, which is the same thing the
+                // old wrappers used to do.
+                let lltemp =
+                    llvm::LLVMBuildAlloca(
+                        builder, llforeign_ret_ty, noname());
+                let lltemp_casted =
+                    llvm::LLVMBuildBitCast(builder,
+                                           lltemp,
+                                           T_ptr(llrust_ret_ty),
+                                           noname());
+                llvm::LLVMBuildStore(
+                    builder, llrust_ret_val, lltemp_casted);
+                let llforeign_retval =
+                    llvm::LLVMBuildLoad(builder, lltemp, noname());
+                llvm::LLVMBuildRet(builder, llforeign_retval);
+            }
+
+            None => {
+                // Neither ABI uses an outpointer, and the types
+                // match. Easy peasy.
+                llvm::LLVMBuildRet(builder, llrust_ret_val);
+            }
+
+            Some(llforeign_outptr) if !rust_uses_outptr => {
+                // Foreign ABI requires an out pointer, but Rust doesn't.
+                // Store Rust return value.
+                let llforeign_outptr_casted =
+                    llvm::LLVMBuildBitCast(builder,
+                                           llforeign_outptr,
+                                           llrust_retptr_ty,
+                                           noname());
+                llvm::LLVMBuildStore(
+                    builder, llrust_ret_val, llforeign_outptr_casted);
+                llvm::LLVMBuildRetVoid(builder);
+            }
+
+            Some(_) => {
+                // Both ABIs use outpointers. Easy peasy.
+                llvm::LLVMBuildRetVoid(builder);
+            }
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// General ABI Support
+//
+// This code is kind of a confused mess and needs to be reworked given
+// the massive simplifications that have occurred.
 
 fn abi_info(ccx: @CrateContext) -> @cabi::ABIInfo {
     return match ccx.sess.targ_cfg.arch {
@@ -59,33 +653,6 @@ pub fn link_name(ccx: @CrateContext, i: @ast::foreign_item) -> @~str {
     }
 }
 
-struct ShimTypes {
-    fn_sig: ty::FnSig,
-
-    /// LLVM types that will appear on the foreign function
-    llsig: LlvmSignature,
-
-    /// True if there is a return value (not bottom, not unit)
-    ret_def: bool,
-
-    /// Type of the struct we will use to shuttle values back and forth.
-    /// This is always derived from the llsig.
-    bundle_ty: TypeRef,
-
-    /// Type of the shim function itself.
-    shim_fn_ty: TypeRef,
-
-    /// Adapter object for handling native ABI rules (trust me, you
-    /// don't want to know).
-    fn_ty: cabi::FnType
-}
-
-struct LlvmSignature {
-    llarg_tys: ~[TypeRef],
-    llret_ty: TypeRef,
-    sret: bool,
-}
-
 fn foreign_signature(ccx: @CrateContext, fn_sig: &ty::FnSig)
                      -> LlvmSignature {
     /*!
@@ -96,1305 +663,59 @@ fn foreign_signature(ccx: @CrateContext, fn_sig: &ty::FnSig)
      * values by pointer like we do.
      */
 
-    let llarg_tys = fn_sig.inputs.map(|arg_ty| type_of(ccx, *arg_ty));
+    let llarg_tys = fn_sig.inputs.map(|&arg| type_of(ccx, arg));
     let llret_ty = type_of::type_of(ccx, fn_sig.output);
     LlvmSignature {
         llarg_tys: llarg_tys,
         llret_ty: llret_ty,
-        sret: !ty::type_is_immediate(fn_sig.output),
+        sret: type_of::return_uses_outptr(fn_sig.output),
     }
 }
 
-fn shim_types(ccx: @CrateContext, id: ast::node_id) -> ShimTypes {
-    let fn_sig = match ty::get(ty::node_id_to_type(ccx.tcx, id)).sty {
+fn foreign_types_for_id(ccx: @CrateContext, id: ast::node_id) -> ForeignTypes {
+    foreign_types_for_fn_ty(ccx, ty::node_id_to_type(ccx.tcx, id))
+}
+
+fn foreign_types_for_fn_ty(ccx: @CrateContext, ty: ty::t) -> ForeignTypes {
+    let fn_sig = match ty::get(ty).sty {
         ty::ty_bare_fn(ref fn_ty) => copy fn_ty.sig,
-        _ => ccx.sess.bug("c_arg_and_ret_lltys called on non-function type")
+        _ => ccx.sess.bug("foreign_types_for_fn_ty called on non-function type")
     };
     let llsig = foreign_signature(ccx, &fn_sig);
-    let bundle_ty = T_struct(vec::append_one(copy llsig.llarg_tys,
-                                             T_ptr(llsig.llret_ty)),
-                             false);
-    let ret_def = !ty::type_is_bot(fn_sig.output) &&
-                  !ty::type_is_nil(fn_sig.output);
+    let ret_def = !ty::type_is_voidish(fn_sig.output);
     let fn_ty = abi_info(ccx).compute_info(llsig.llarg_tys,
                                            llsig.llret_ty,
                                            ret_def);
-    ShimTypes {
+    ForeignTypes {
         fn_sig: fn_sig,
         llsig: llsig,
         ret_def: ret_def,
-        bundle_ty: bundle_ty,
-        shim_fn_ty: T_fn([T_ptr(bundle_ty)], T_nil()),
         fn_ty: fn_ty
     }
 }
 
-type shim_arg_builder<'self> =
-    &'self fn(bcx: block, tys: &ShimTypes,
-              llargbundle: ValueRef) -> ~[ValueRef];
-
-type shim_ret_builder<'self> =
-    &'self fn(bcx: block, tys: &ShimTypes,
-              llargbundle: ValueRef,
-              llretval: ValueRef);
-
-fn build_shim_fn_(ccx: @CrateContext,
-                  shim_name: ~str,
-                  llbasefn: ValueRef,
-                  tys: &ShimTypes,
-                  cc: lib::llvm::CallConv,
-                  arg_builder: shim_arg_builder,
-                  ret_builder: shim_ret_builder)
-               -> ValueRef {
-    let llshimfn = decl_internal_cdecl_fn(
-        ccx.llmod, shim_name, tys.shim_fn_ty);
-
-    // Declare the body of the shim function:
-    let fcx = new_fn_ctxt(ccx, ~[], llshimfn, tys.fn_sig.output, None);
-    let bcx = top_scope_block(fcx, None);
-    let lltop = bcx.llbb;
-    let llargbundle = get_param(llshimfn, 0u);
-    let llargvals = arg_builder(bcx, tys, llargbundle);
-
-    // Create the call itself and store the return value:
-    let llretval = CallWithConv(bcx, llbasefn, llargvals, cc);
-
-    ret_builder(bcx, tys, llargbundle, llretval);
-
-    // Don't finish up the function in the usual way, because this doesn't
-    // follow the normal Rust calling conventions.
-    tie_up_header_blocks(fcx, lltop);
-
-    let ret_cx = raw_block(fcx, false, fcx.llreturn);
-    Ret(ret_cx, C_null(T_nil()));
-
-    return llshimfn;
+fn lltype_for_fn_from_foreign_types(tys: &ForeignTypes) -> TypeRef {
+    let llargument_tys = vec::map(tys.fn_ty.arg_tys, |t| t.ty);
+    let llreturn_ty = tys.fn_ty.ret_ty.ty;
+    T_fn(llargument_tys, llreturn_ty)
 }
 
-type wrap_arg_builder<'self> = &'self fn(bcx: block,
-                                         tys: &ShimTypes,
-                                         llwrapfn: ValueRef,
-                                         llargbundle: ValueRef);
-
-type wrap_ret_builder<'self> = &'self fn(bcx: block,
-                                         tys: &ShimTypes,
-                                         llargbundle: ValueRef);
-
-fn build_wrap_fn_(ccx: @CrateContext,
-                  tys: &ShimTypes,
-                  llshimfn: ValueRef,
-                  llwrapfn: ValueRef,
-                  shim_upcall: ValueRef,
-                  needs_c_return: bool,
-                  arg_builder: wrap_arg_builder,
-                  ret_builder: wrap_ret_builder) {
-    let _icx = ccx.insn_ctxt("foreign::build_wrap_fn_");
-    let fcx = new_fn_ctxt(ccx, ~[], llwrapfn, tys.fn_sig.output, None);
-
-    // Patch up the return type if it's not immediate and we're returning via
-    // the C ABI.
-    if needs_c_return && !ty::type_is_immediate(tys.fn_sig.output) {
-        let lloutputtype = type_of::type_of(*fcx.ccx, tys.fn_sig.output);
-        fcx.llretptr = Some(alloca(raw_block(fcx, false, fcx.llstaticallocas),
-                                   lloutputtype));
-    }
-
-    let bcx = top_scope_block(fcx, None);
-    let lltop = bcx.llbb;
-
-    // Allocate the struct and write the arguments into it.
-    let llargbundle = alloca(bcx, tys.bundle_ty);
-    arg_builder(bcx, tys, llwrapfn, llargbundle);
-
-    // Create call itself.
-    let llshimfnptr = PointerCast(bcx, llshimfn, T_ptr(T_i8()));
-    let llrawargbundle = PointerCast(bcx, llargbundle, T_ptr(T_i8()));
-    Call(bcx, shim_upcall, [llrawargbundle, llshimfnptr]);
-    ret_builder(bcx, tys, llargbundle);
-
-    // Perform a custom version of `finish_fn`. First, tie up the header
-    // blocks.
-    tie_up_header_blocks(fcx, lltop);
-
-    // Then return according to the C ABI.
-    unsafe {
-        let return_context = raw_block(fcx, false, fcx.llreturn);
-
-        let llfunctiontype = val_ty(llwrapfn);
-        let llfunctiontype =
-            ::lib::llvm::llvm::LLVMGetElementType(llfunctiontype);
-        let llfunctionreturntype =
-            ::lib::llvm::llvm::LLVMGetReturnType(llfunctiontype);
-        if ::lib::llvm::llvm::LLVMGetTypeKind(llfunctionreturntype) ==
-                ::lib::llvm::Void {
-            // XXX: This might be wrong if there are any functions for which
-            // the C ABI specifies a void output pointer and the Rust ABI
-            // does not.
-            RetVoid(return_context);
-        } else {
-            // Cast if we have to...
-            // XXX: This is ugly.
-            let llretptr = BitCast(return_context,
-                                   fcx.llretptr.get(),
-                                   T_ptr(llfunctionreturntype));
-            Ret(return_context, Load(return_context, llretptr));
-        }
-    }
+pub fn lltype_for_foreign_fn(ccx: @CrateContext, ty: ty::t) -> TypeRef {
+    let fn_types = foreign_types_for_fn_ty(ccx, ty);
+    lltype_for_fn_from_foreign_types(&fn_types)
 }
 
-// For each foreign function F, we generate a wrapper function W and a shim
-// function S that all work together.  The wrapper function W is the function
-// that other rust code actually invokes.  Its job is to marshall the
-// arguments into a struct.  It then uses a small bit of assembly to switch
-// over to the C stack and invoke the shim function.  The shim function S then
-// unpacks the arguments from the struct and invokes the actual function F
-// according to its specified calling convention.
-//
-// Example: Given a foreign c-stack function F(x: X, y: Y) -> Z,
-// we generate a wrapper function W that looks like:
-//
-//    void W(Z* dest, void *env, X x, Y y) {
-//        struct { X x; Y y; Z *z; } args = { x, y, z };
-//        call_on_c_stack_shim(S, &args);
-//    }
-//
-// The shim function S then looks something like:
-//
-//     void S(struct { X x; Y y; Z *z; } *args) {
-//         *args->z = F(args->x, args->y);
-//     }
-//
-// However, if the return type of F is dynamically sized or of aggregate type,
-// the shim function looks like:
-//
-//     void S(struct { X x; Y y; Z *z; } *args) {
-//         F(args->z, args->x, args->y);
-//     }
-//
-// Note: on i386, the layout of the args struct is generally the same
-// as the desired layout of the arguments on the C stack.  Therefore,
-// we could use upcall_alloc_c_stack() to allocate the `args`
-// structure and switch the stack pointer appropriately to avoid a
-// round of copies.  (In fact, the shim function itself is
-// unnecessary). We used to do this, in fact, and will perhaps do so
-// in the future.
-pub fn trans_foreign_mod(ccx: @CrateContext,
-                         path: &ast_map::path,
-                         foreign_mod: &ast::foreign_mod) {
-    let _icx = ccx.insn_ctxt("foreign::trans_foreign_mod");
-
-    let arch = ccx.sess.targ_cfg.arch;
-    let abi = match foreign_mod.abis.for_arch(arch) {
-        None => {
-            ccx.sess.fatal(
-                fmt!("No suitable ABI for target architecture \
-                      in module %s",
-                     ast_map::path_to_str(*path,
-                                          ccx.sess.intr())));
-        }
-
-        Some(abi) => abi,
-    };
-
-    for foreign_mod.items.each |&foreign_item| {
-        match foreign_item.node {
-            ast::foreign_item_fn(*) => {
-                let id = foreign_item.id;
-                match abi {
-                    RustIntrinsic => {
-                        // Intrinsics are emitted by monomorphic fn
-                    }
-
-                    Rust => {
-                        // FIXME(#3678) Implement linking to foreign fns with Rust ABI
-                        ccx.sess.unimpl(
-                            fmt!("Foreign functions with Rust ABI"));
-                    }
-
-                    Stdcall => {
-                        build_foreign_fn(ccx, id, foreign_item,
-                                         lib::llvm::X86StdcallCallConv);
-                    }
-
-                    Fastcall => {
-                        build_foreign_fn(ccx, id, foreign_item,
-                                         lib::llvm::X86FastcallCallConv);
-                    }
-
-                    Cdecl => {
-                        // FIXME(#3678) should really be more specific
-                        build_foreign_fn(ccx, id, foreign_item,
-                                         lib::llvm::CCallConv);
-                    }
-
-                    Aapcs => {
-                        // FIXME(#3678) should really be more specific
-                        build_foreign_fn(ccx, id, foreign_item,
-                                         lib::llvm::CCallConv);
-                    }
-
-                    C => {
-                        build_foreign_fn(ccx, id, foreign_item,
-                                         lib::llvm::CCallConv);
-                    }
+fn add_argument_attributes(tys: &ForeignTypes,
+                           llfn: ValueRef) {
+    for tys.fn_ty.attrs.eachi |i, a| {
+        match *a {
+            Some(attr) => {
+                let llarg = get_param(llfn, i);
+                unsafe {
+                    llvm::LLVMAddAttribute(llarg, attr as c_uint);
                 }
             }
-            ast::foreign_item_const(*) => {
-                let ident = ccx.sess.parse_sess.interner.get(
-                    foreign_item.ident);
-                ccx.item_symbols.insert(foreign_item.id, copy *ident);
-            }
+            None => ()
         }
-    }
-
-    fn build_foreign_fn(ccx: @CrateContext,
-                        id: ast::node_id,
-                        foreign_item: @ast::foreign_item,
-                        cc: lib::llvm::CallConv) {
-        let llwrapfn = get_item_val(ccx, id);
-        let tys = shim_types(ccx, id);
-        if attr::attrs_contains_name(foreign_item.attrs, "rust_stack") {
-            build_direct_fn(ccx, llwrapfn, foreign_item,
-                            &tys, cc);
-        } else if attr::attrs_contains_name(foreign_item.attrs, "fast_ffi") {
-            build_fast_ffi_fn(ccx, llwrapfn, foreign_item, &tys, cc);
-        } else {
-            let llshimfn = build_shim_fn(ccx, foreign_item, &tys, cc);
-            build_wrap_fn(ccx, &tys, llshimfn, llwrapfn);
-        }
-    }
-
-    fn build_shim_fn(ccx: @CrateContext,
-                     foreign_item: @ast::foreign_item,
-                     tys: &ShimTypes,
-                     cc: lib::llvm::CallConv)
-                  -> ValueRef {
-        /*!
-         *
-         * Build S, from comment above:
-         *
-         *     void S(struct { X x; Y y; Z *z; } *args) {
-         *         F(args->z, args->x, args->y);
-         *     }
-         */
-
-        let _icx = ccx.insn_ctxt("foreign::build_shim_fn");
-
-        fn build_args(bcx: block, tys: &ShimTypes, llargbundle: ValueRef)
-                   -> ~[ValueRef] {
-            let _icx = bcx.insn_ctxt("foreign::shim::build_args");
-            tys.fn_ty.build_shim_args(bcx, tys.llsig.llarg_tys, llargbundle)
-        }
-
-        fn build_ret(bcx: block,
-                     tys: &ShimTypes,
-                     llargbundle: ValueRef,
-                     llretval: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::shim::build_ret");
-            tys.fn_ty.build_shim_ret(bcx,
-                                     tys.llsig.llarg_tys,
-                                     tys.ret_def,
-                                     llargbundle,
-                                     llretval);
-            build_return(bcx);
-        }
-
-        let lname = link_name(ccx, foreign_item);
-        let llbasefn = base_fn(ccx, *lname, tys, cc);
-        // Name the shim function
-        let shim_name = *lname + "__c_stack_shim";
-        build_shim_fn_(ccx,
-                       shim_name,
-                       llbasefn,
-                       tys,
-                       cc,
-                       build_args,
-                       build_ret)
-    }
-
-    fn base_fn(ccx: @CrateContext,
-               lname: &str,
-               tys: &ShimTypes,
-               cc: lib::llvm::CallConv)
-               -> ValueRef {
-        // Declare the "prototype" for the base function F:
-        do tys.fn_ty.decl_fn |fnty| {
-            decl_fn(ccx.llmod, lname, cc, fnty)
-        }
-    }
-
-    // FIXME (#2535): this is very shaky and probably gets ABIs wrong all
-    // over the place
-    fn build_direct_fn(ccx: @CrateContext,
-                       decl: ValueRef,
-                       item: @ast::foreign_item,
-                       tys: &ShimTypes,
-                       cc: lib::llvm::CallConv) {
-        debug!("build_direct_fn(%s)", *link_name(ccx, item));
-
-        let fcx = new_fn_ctxt(ccx, ~[], decl, tys.fn_sig.output, None);
-        let bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
-        let llbasefn = base_fn(ccx, *link_name(ccx, item), tys, cc);
-        let ty = ty::lookup_item_type(ccx.tcx,
-                                      ast_util::local_def(item.id)).ty;
-        let args = vec::from_fn(ty::ty_fn_args(ty).len(), |i| {
-            get_param(decl, i + first_real_arg)
-        });
-        let retval = Call(bcx, llbasefn, args);
-        let ret_ty = ty::ty_fn_ret(ty);
-        if !ty::type_is_nil(ret_ty) && !ty::type_is_bot(ret_ty) {
-            Store(bcx, retval, fcx.llretptr.get());
-        }
-        build_return(bcx);
-        finish_fn(fcx, lltop);
-    }
-
-    // FIXME (#2535): this is very shaky and probably gets ABIs wrong all
-    // over the place
-    fn build_fast_ffi_fn(ccx: @CrateContext,
-                         decl: ValueRef,
-                         item: @ast::foreign_item,
-                         tys: &ShimTypes,
-                         cc: lib::llvm::CallConv) {
-        debug!("build_fast_ffi_fn(%s)", *link_name(ccx, item));
-
-        let fcx = new_fn_ctxt(ccx, ~[], decl, tys.fn_sig.output, None);
-        let bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
-        let llbasefn = base_fn(ccx, *link_name(ccx, item), tys, cc);
-        set_no_inline(fcx.llfn);
-        set_fixed_stack_segment(fcx.llfn);
-        let ty = ty::lookup_item_type(ccx.tcx,
-                                      ast_util::local_def(item.id)).ty;
-        let args = vec::from_fn(ty::ty_fn_args(ty).len(), |i| {
-            get_param(decl, i + first_real_arg)
-        });
-        let retval = Call(bcx, llbasefn, args);
-        let ret_ty = ty::ty_fn_ret(ty);
-        if !ty::type_is_nil(ret_ty) && !ty::type_is_bot(ret_ty) {
-            Store(bcx, retval, fcx.llretptr.get());
-        }
-        build_return(bcx);
-        finish_fn(fcx, lltop);
-    }
-
-    fn build_wrap_fn(ccx: @CrateContext,
-                     tys: &ShimTypes,
-                     llshimfn: ValueRef,
-                     llwrapfn: ValueRef) {
-        /*!
-         *
-         * Build W, from comment above:
-         *
-         *     void W(Z* dest, void *env, X x, Y y) {
-         *         struct { X x; Y y; Z *z; } args = { x, y, z };
-         *         call_on_c_stack_shim(S, &args);
-         *     }
-         *
-         * One thing we have to be very careful of is to
-         * account for the Rust modes.
-         */
-
-        let _icx = ccx.insn_ctxt("foreign::build_wrap_fn");
-
-        build_wrap_fn_(ccx,
-                       tys,
-                       llshimfn,
-                       llwrapfn,
-                       ccx.upcalls.call_shim_on_c_stack,
-                       false,
-                       build_args,
-                       build_ret);
-
-        fn build_args(bcx: block,
-                      tys: &ShimTypes,
-                      llwrapfn: ValueRef,
-                      llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::wrap::build_args");
-            let ccx = bcx.ccx();
-            let n = tys.llsig.llarg_tys.len();
-            let implicit_args = first_real_arg; // return + env
-            for uint::range(0, n) |i| {
-                let mut llargval = get_param(llwrapfn, i + implicit_args);
-
-                // In some cases, Rust will pass a pointer which the
-                // native C type doesn't have.  In that case, just
-                // load the value from the pointer.
-                if type_of::arg_is_indirect(ccx, &tys.fn_sig.inputs[i]) {
-                    llargval = Load(bcx, llargval);
-                }
-
-                store_inbounds(bcx, llargval, llargbundle, [0u, i]);
-            }
-            let llretptr = bcx.fcx.llretptr.get();
-            store_inbounds(bcx, llretptr, llargbundle, [0u, n]);
-        }
-
-        fn build_ret(bcx: block,
-                     shim_types: &ShimTypes,
-                     llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::wrap::build_ret");
-            let arg_count = shim_types.fn_sig.inputs.len();
-            let llretptr = load_inbounds(bcx, llargbundle, [0, arg_count]);
-            Store(bcx, Load(bcx, llretptr), bcx.fcx.llretptr.get());
-            build_return(bcx);
-        }
-    }
-}
-
-pub fn trans_intrinsic(ccx: @CrateContext,
-                       decl: ValueRef,
-                       item: @ast::foreign_item,
-                       path: ast_map::path,
-                       substs: @param_substs,
-                       attributes: &[ast::attribute],
-                       ref_id: Option<ast::node_id>) {
-    debug!("trans_intrinsic(item.ident=%s)", *ccx.sess.str_of(item.ident));
-
-    let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, item.id));
-
-    let fcx = new_fn_ctxt_w_id(ccx,
-                               path,
-                               decl,
-                               item.id,
-                               output_type,
-                               None,
-                               Some(substs),
-                               Some(item.span));
-
-    // Set the fixed stack segment flag if necessary.
-    if attr::attrs_contains_name(attributes, "fixed_stack_segment") {
-        set_fixed_stack_segment(fcx.llfn);
-    }
-
-    let mut bcx = top_scope_block(fcx, None);
-    let lltop = bcx.llbb;
-    match *ccx.sess.str_of(item.ident) {
-        ~"atomic_cxchg" => {
-            let old = AtomicCmpXchg(bcx,
-                                    get_param(decl, first_real_arg),
-                                    get_param(decl, first_real_arg + 1u),
-                                    get_param(decl, first_real_arg + 2u),
-                                    SequentiallyConsistent);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        ~"atomic_cxchg_acq" => {
-            let old = AtomicCmpXchg(bcx,
-                                    get_param(decl, first_real_arg),
-                                    get_param(decl, first_real_arg + 1u),
-                                    get_param(decl, first_real_arg + 2u),
-                                    Acquire);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        ~"atomic_cxchg_rel" => {
-            let old = AtomicCmpXchg(bcx,
-                                    get_param(decl, first_real_arg),
-                                    get_param(decl, first_real_arg + 1u),
-                                    get_param(decl, first_real_arg + 2u),
-                                    Release);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        ~"atomic_load" => {
-            let old = AtomicLoad(bcx,
-                                 get_param(decl, first_real_arg),
-                                 SequentiallyConsistent);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        ~"atomic_load_acq" => {
-            let old = AtomicLoad(bcx,
-                                 get_param(decl, first_real_arg),
-                                 Acquire);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        ~"atomic_store" => {
-            AtomicStore(bcx,
-                        get_param(decl, first_real_arg + 1u),
-                        get_param(decl, first_real_arg),
-                        SequentiallyConsistent);
-        }
-        ~"atomic_store_rel" => {
-            AtomicStore(bcx,
-                        get_param(decl, first_real_arg + 1u),
-                        get_param(decl, first_real_arg),
-                        Release);
-        }
-        ~"atomic_xchg" => {
-            let old = AtomicRMW(bcx, Xchg,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                SequentiallyConsistent);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        ~"atomic_xchg_acq" => {
-            let old = AtomicRMW(bcx, Xchg,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                Acquire);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        ~"atomic_xchg_rel" => {
-            let old = AtomicRMW(bcx, Xchg,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                Release);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        ~"atomic_xadd" => {
-            let old = AtomicRMW(bcx, lib::llvm::Add,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                SequentiallyConsistent);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        ~"atomic_xadd_acq" => {
-            let old = AtomicRMW(bcx, lib::llvm::Add,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                Acquire);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        ~"atomic_xadd_rel" => {
-            let old = AtomicRMW(bcx, lib::llvm::Add,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                Release);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        ~"atomic_xsub" => {
-            let old = AtomicRMW(bcx, lib::llvm::Sub,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                SequentiallyConsistent);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        ~"atomic_xsub_acq" => {
-            let old = AtomicRMW(bcx, lib::llvm::Sub,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                Acquire);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        ~"atomic_xsub_rel" => {
-            let old = AtomicRMW(bcx, lib::llvm::Sub,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                Release);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        ~"size_of" => {
-            let tp_ty = substs.tys[0];
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            Store(bcx, C_uint(ccx, machine::llsize_of_real(ccx, lltp_ty)),
-                  fcx.llretptr.get());
-        }
-        ~"move_val" => {
-            // Create a datum reflecting the value being moved:
-            //
-            // - the datum will be by ref if the value is non-immediate;
-            //
-            // - the datum has a RevokeClean source because, that way,
-            //   the `move_to()` method does not feel compelled to
-            //   zero out the memory where the datum resides.  Zeroing
-            //   is not necessary since, for intrinsics, there is no
-            //   cleanup to concern ourselves with.
-            let tp_ty = substs.tys[0];
-            let mode = appropriate_mode(tp_ty);
-            let src = Datum {val: get_param(decl, first_real_arg + 1u),
-                             ty: tp_ty, mode: mode, source: RevokeClean};
-            bcx = src.move_to(bcx, DROP_EXISTING,
-                              get_param(decl, first_real_arg));
-        }
-        ~"move_val_init" => {
-            // See comments for `"move_val"`.
-            let tp_ty = substs.tys[0];
-            let mode = appropriate_mode(tp_ty);
-            let src = Datum {val: get_param(decl, first_real_arg + 1u),
-                             ty: tp_ty, mode: mode, source: RevokeClean};
-            bcx = src.move_to(bcx, INIT, get_param(decl, first_real_arg));
-        }
-        ~"min_align_of" => {
-            let tp_ty = substs.tys[0];
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            Store(bcx, C_uint(ccx, machine::llalign_of_min(ccx, lltp_ty)),
-                  fcx.llretptr.get());
-        }
-        ~"pref_align_of"=> {
-            let tp_ty = substs.tys[0];
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            Store(bcx, C_uint(ccx, machine::llalign_of_pref(ccx, lltp_ty)),
-                  fcx.llretptr.get());
-        }
-        ~"get_tydesc" => {
-            let tp_ty = substs.tys[0];
-            let static_ti = get_tydesc(ccx, tp_ty);
-            glue::lazily_emit_all_tydesc_glue(ccx, static_ti);
-
-            // FIXME (#3727): change this to T_ptr(ccx.tydesc_ty) when the
-            // core::sys copy of the get_tydesc interface dies off.
-            let td = PointerCast(bcx, static_ti.tydesc, T_ptr(T_nil()));
-            Store(bcx, td, fcx.llretptr.get());
-        }
-        ~"init" => {
-            let tp_ty = substs.tys[0];
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            if !ty::type_is_nil(tp_ty) {
-                Store(bcx, C_null(lltp_ty), fcx.llretptr.get());
-            }
-        }
-        ~"uninit" => {
-            // Do nothing, this is effectively a no-op
-        }
-        ~"forget" => {}
-        ~"transmute" => {
-            let (in_type, out_type) = (substs.tys[0], substs.tys[1]);
-            let llintype = type_of::type_of(ccx, in_type);
-            let llouttype = type_of::type_of(ccx, out_type);
-
-            let in_type_size = machine::llbitsize_of_real(ccx, llintype);
-            let out_type_size = machine::llbitsize_of_real(ccx, llouttype);
-            if in_type_size != out_type_size {
-                let sp = match ccx.tcx.items.get_copy(&ref_id.get()) {
-                    ast_map::node_expr(e) => e.span,
-                    _ => fail!("transmute has non-expr arg"),
-                };
-                let pluralize = |n| if 1u == n { "" } else { "s" };
-                ccx.sess.span_fatal(sp,
-                                    fmt!("transmute called on types with \
-                                          different sizes: %s (%u bit%s) to \
-                                          %s (%u bit%s)",
-                                         ty_to_str(ccx.tcx, in_type),
-                                         in_type_size,
-                                         pluralize(in_type_size),
-                                         ty_to_str(ccx.tcx, out_type),
-                                         out_type_size,
-                                         pluralize(out_type_size)));
-            }
-
-            if !ty::type_is_nil(out_type) {
-                // NB: Do not use a Load and Store here. This causes massive
-                // code bloat when `transmute` is used on large structural
-                // types.
-                let lldestptr = fcx.llretptr.get();
-                let lldestptr = PointerCast(bcx, lldestptr, T_ptr(T_i8()));
-
-                let llsrcval = get_param(decl, first_real_arg);
-                let llsrcptr = if ty::type_is_immediate(in_type) {
-                    let llsrcptr = alloca(bcx, llintype);
-                    Store(bcx, llsrcval, llsrcptr);
-                    llsrcptr
-                } else {
-                    llsrcval
-                };
-                let llsrcptr = PointerCast(bcx, llsrcptr, T_ptr(T_i8()));
-
-                let llsize = llsize_of(ccx, llintype);
-                call_memcpy(bcx, lldestptr, llsrcptr, llsize, 1);
-            }
-        }
-        ~"needs_drop" => {
-            let tp_ty = substs.tys[0];
-            Store(bcx,
-                  C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)),
-                  fcx.llretptr.get());
-        }
-        ~"visit_tydesc" => {
-            let td = get_param(decl, first_real_arg);
-            let visitor = get_param(decl, first_real_arg + 1u);
-            //let llvisitorptr = alloca(bcx, val_ty(visitor));
-            //Store(bcx, visitor, llvisitorptr);
-            let td = PointerCast(bcx, td, T_ptr(ccx.tydesc_type));
-            glue::call_tydesc_glue_full(bcx,
-                                        visitor,
-                                        td,
-                                        abi::tydesc_field_visit_glue,
-                                        None);
-        }
-        ~"frame_address" => {
-            let frameaddress = *ccx.intrinsics.get(&~"llvm.frameaddress");
-            let frameaddress_val = Call(bcx, frameaddress, [C_i32(0i32)]);
-            let star_u8 = ty::mk_imm_ptr(
-                bcx.tcx(),
-                ty::mk_mach_uint(ast::ty_u8));
-            let fty = ty::mk_closure(bcx.tcx(), ty::ClosureTy {
-                purity: ast::impure_fn,
-                sigil: ast::BorrowedSigil,
-                onceness: ast::Many,
-                region: ty::re_bound(ty::br_anon(0)),
-                bounds: ty::EmptyBuiltinBounds(),
-                sig: FnSig {
-                    bound_lifetime_names: opt_vec::Empty,
-                    inputs: ~[ star_u8 ],
-                    output: ty::mk_nil()
-                }
-            });
-            let datum = Datum {val: get_param(decl, first_real_arg),
-                               mode: ByRef, ty: fty, source: ZeroMem};
-            let arg_vals = ~[frameaddress_val];
-            bcx = trans_call_inner(
-                bcx, None, fty, ty::mk_nil(),
-                |bcx| Callee {bcx: bcx, data: Closure(datum)},
-                ArgVals(arg_vals), Ignore, DontAutorefArg);
-        }
-        ~"morestack_addr" => {
-            // XXX This is a hack to grab the address of this particular
-            // native function. There should be a general in-language
-            // way to do this
-            let llfty = type_of_fn(bcx.ccx(), [], ty::mk_nil());
-            let morestack_addr = decl_cdecl_fn(
-                bcx.ccx().llmod, "__morestack", llfty);
-            let morestack_addr = PointerCast(bcx, morestack_addr,
-                                             T_ptr(T_nil()));
-            Store(bcx, morestack_addr, fcx.llretptr.get());
-        }
-        ~"memcpy32" => {
-            let tp_ty = substs.tys[0];
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
-            let size = C_i32(machine::llsize_of_real(ccx, lltp_ty) as i32);
-
-            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), T_ptr(T_i8()));
-            let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), T_ptr(T_i8()));
-            let count = get_param(decl, first_real_arg + 2);
-            let volatile = C_i1(false);
-            let llfn = *bcx.ccx().intrinsics.get(&~"llvm.memcpy.p0i8.p0i8.i32");
-            Call(bcx, llfn, [dst_ptr, src_ptr, Mul(bcx, size, count), align, volatile]);
-        }
-        ~"memcpy64" => {
-            let tp_ty = substs.tys[0];
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
-            let size = C_i64(machine::llsize_of_real(ccx, lltp_ty) as i64);
-
-            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), T_ptr(T_i8()));
-            let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), T_ptr(T_i8()));
-            let count = get_param(decl, first_real_arg + 2);
-            let volatile = C_i1(false);
-            let llfn = *bcx.ccx().intrinsics.get(&~"llvm.memcpy.p0i8.p0i8.i64");
-            Call(bcx, llfn, [dst_ptr, src_ptr, Mul(bcx, size, count), align, volatile]);
-        }
-        ~"memmove32" => {
-            let tp_ty = substs.tys[0];
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
-            let size = C_i32(machine::llsize_of_real(ccx, lltp_ty) as i32);
-
-            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), T_ptr(T_i8()));
-            let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), T_ptr(T_i8()));
-            let count = get_param(decl, first_real_arg + 2);
-            let volatile = C_i1(false);
-            let llfn = *bcx.ccx().intrinsics.get(&~"llvm.memmove.p0i8.p0i8.i32");
-            Call(bcx, llfn, [dst_ptr, src_ptr, Mul(bcx, size, count), align, volatile]);
-        }
-        ~"memmove64" => {
-            let tp_ty = substs.tys[0];
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
-            let size = C_i64(machine::llsize_of_real(ccx, lltp_ty) as i64);
-
-            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), T_ptr(T_i8()));
-            let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), T_ptr(T_i8()));
-            let count = get_param(decl, first_real_arg + 2);
-            let volatile = C_i1(false);
-            let llfn = *bcx.ccx().intrinsics.get(&~"llvm.memmove.p0i8.p0i8.i64");
-            Call(bcx, llfn, [dst_ptr, src_ptr, Mul(bcx, size, count), align, volatile]);
-        }
-        ~"memset32" => {
-            let tp_ty = substs.tys[0];
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
-            let size = C_i32(machine::llsize_of_real(ccx, lltp_ty) as i32);
-
-            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), T_ptr(T_i8()));
-            let val = get_param(decl, first_real_arg + 1);
-            let count = get_param(decl, first_real_arg + 2);
-            let volatile = C_i1(false);
-            let llfn = *bcx.ccx().intrinsics.get(&~"llvm.memset.p0i8.i32");
-            Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align, volatile]);
-        }
-        ~"memset64" => {
-            let tp_ty = substs.tys[0];
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
-            let size = C_i64(machine::llsize_of_real(ccx, lltp_ty) as i64);
-
-            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), T_ptr(T_i8()));
-            let val = get_param(decl, first_real_arg + 1);
-            let count = get_param(decl, first_real_arg + 2);
-            let volatile = C_i1(false);
-            let llfn = *bcx.ccx().intrinsics.get(&~"llvm.memset.p0i8.i64");
-            Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align, volatile]);
-        }
-        ~"sqrtf32" => {
-            let x = get_param(decl, first_real_arg);
-            let sqrtf = *ccx.intrinsics.get(&~"llvm.sqrt.f32");
-            Store(bcx, Call(bcx, sqrtf, [x]), fcx.llretptr.get());
-        }
-        ~"sqrtf64" => {
-            let x = get_param(decl, first_real_arg);
-            let sqrtf = *ccx.intrinsics.get(&~"llvm.sqrt.f64");
-            Store(bcx, Call(bcx, sqrtf, [x]), fcx.llretptr.get());
-        }
-        ~"powif32" => {
-            let a = get_param(decl, first_real_arg);
-            let x = get_param(decl, first_real_arg + 1u);
-            let powif = *ccx.intrinsics.get(&~"llvm.powi.f32");
-            Store(bcx, Call(bcx, powif, [a, x]), fcx.llretptr.get());
-        }
-        ~"powif64" => {
-            let a = get_param(decl, first_real_arg);
-            let x = get_param(decl, first_real_arg + 1u);
-            let powif = *ccx.intrinsics.get(&~"llvm.powi.f64");
-            Store(bcx, Call(bcx, powif, [a, x]), fcx.llretptr.get());
-        }
-        ~"sinf32" => {
-            let x = get_param(decl, first_real_arg);
-            let sinf = *ccx.intrinsics.get(&~"llvm.sin.f32");
-            Store(bcx, Call(bcx, sinf, [x]), fcx.llretptr.get());
-        }
-        ~"sinf64" => {
-            let x = get_param(decl, first_real_arg);
-            let sinf = *ccx.intrinsics.get(&~"llvm.sin.f64");
-            Store(bcx, Call(bcx, sinf, [x]), fcx.llretptr.get());
-        }
-        ~"cosf32" => {
-            let x = get_param(decl, first_real_arg);
-            let cosf = *ccx.intrinsics.get(&~"llvm.cos.f32");
-            Store(bcx, Call(bcx, cosf, [x]), fcx.llretptr.get());
-        }
-        ~"cosf64" => {
-            let x = get_param(decl, first_real_arg);
-            let cosf = *ccx.intrinsics.get(&~"llvm.cos.f64");
-            Store(bcx, Call(bcx, cosf, [x]), fcx.llretptr.get());
-        }
-        ~"powf32" => {
-            let a = get_param(decl, first_real_arg);
-            let x = get_param(decl, first_real_arg + 1u);
-            let powf = *ccx.intrinsics.get(&~"llvm.pow.f32");
-            Store(bcx, Call(bcx, powf, [a, x]), fcx.llretptr.get());
-        }
-        ~"powf64" => {
-            let a = get_param(decl, first_real_arg);
-            let x = get_param(decl, first_real_arg + 1u);
-            let powf = *ccx.intrinsics.get(&~"llvm.pow.f64");
-            Store(bcx, Call(bcx, powf, [a, x]), fcx.llretptr.get());
-        }
-        ~"expf32" => {
-            let x = get_param(decl, first_real_arg);
-            let expf = *ccx.intrinsics.get(&~"llvm.exp.f32");
-            Store(bcx, Call(bcx, expf, [x]), fcx.llretptr.get());
-        }
-        ~"expf64" => {
-            let x = get_param(decl, first_real_arg);
-            let expf = *ccx.intrinsics.get(&~"llvm.exp.f64");
-            Store(bcx, Call(bcx, expf, [x]), fcx.llretptr.get());
-        }
-        ~"exp2f32" => {
-            let x = get_param(decl, first_real_arg);
-            let exp2f = *ccx.intrinsics.get(&~"llvm.exp2.f32");
-            Store(bcx, Call(bcx, exp2f, [x]), fcx.llretptr.get());
-        }
-        ~"exp2f64" => {
-            let x = get_param(decl, first_real_arg);
-            let exp2f = *ccx.intrinsics.get(&~"llvm.exp2.f64");
-            Store(bcx, Call(bcx, exp2f, [x]), fcx.llretptr.get());
-        }
-        ~"logf32" => {
-            let x = get_param(decl, first_real_arg);
-            let logf = *ccx.intrinsics.get(&~"llvm.log.f32");
-            Store(bcx, Call(bcx, logf, [x]), fcx.llretptr.get());
-        }
-        ~"logf64" => {
-            let x = get_param(decl, first_real_arg);
-            let logf = *ccx.intrinsics.get(&~"llvm.log.f64");
-            Store(bcx, Call(bcx, logf, [x]), fcx.llretptr.get());
-        }
-        ~"log10f32" => {
-            let x = get_param(decl, first_real_arg);
-            let log10f = *ccx.intrinsics.get(&~"llvm.log10.f32");
-            Store(bcx, Call(bcx, log10f, [x]), fcx.llretptr.get());
-        }
-        ~"log10f64" => {
-            let x = get_param(decl, first_real_arg);
-            let log10f = *ccx.intrinsics.get(&~"llvm.log10.f64");
-            Store(bcx, Call(bcx, log10f, [x]), fcx.llretptr.get());
-        }
-        ~"log2f32" => {
-            let x = get_param(decl, first_real_arg);
-            let log2f = *ccx.intrinsics.get(&~"llvm.log2.f32");
-            Store(bcx, Call(bcx, log2f, [x]), fcx.llretptr.get());
-        }
-        ~"log2f64" => {
-            let x = get_param(decl, first_real_arg);
-            let log2f = *ccx.intrinsics.get(&~"llvm.log2.f64");
-            Store(bcx, Call(bcx, log2f, [x]), fcx.llretptr.get());
-        }
-        ~"fmaf32" => {
-            let a = get_param(decl, first_real_arg);
-            let b = get_param(decl, first_real_arg + 1u);
-            let c = get_param(decl, first_real_arg + 2u);
-            let fmaf = *ccx.intrinsics.get(&~"llvm.fma.f32");
-            Store(bcx, Call(bcx, fmaf, [a, b, c]), fcx.llretptr.get());
-        }
-        ~"fmaf64" => {
-            let a = get_param(decl, first_real_arg);
-            let b = get_param(decl, first_real_arg + 1u);
-            let c = get_param(decl, first_real_arg + 2u);
-            let fmaf = *ccx.intrinsics.get(&~"llvm.fma.f64");
-            Store(bcx, Call(bcx, fmaf, [a, b, c]), fcx.llretptr.get());
-        }
-        ~"fabsf32" => {
-            let x = get_param(decl, first_real_arg);
-            let fabsf = *ccx.intrinsics.get(&~"llvm.fabs.f32");
-            Store(bcx, Call(bcx, fabsf, [x]), fcx.llretptr.get());
-        }
-        ~"fabsf64" => {
-            let x = get_param(decl, first_real_arg);
-            let fabsf = *ccx.intrinsics.get(&~"llvm.fabs.f64");
-            Store(bcx, Call(bcx, fabsf, [x]), fcx.llretptr.get());
-        }
-        ~"floorf32" => {
-            let x = get_param(decl, first_real_arg);
-            let floorf = *ccx.intrinsics.get(&~"llvm.floor.f32");
-            Store(bcx, Call(bcx, floorf, [x]), fcx.llretptr.get());
-        }
-        ~"floorf64" => {
-            let x = get_param(decl, first_real_arg);
-            let floorf = *ccx.intrinsics.get(&~"llvm.floor.f64");
-            Store(bcx, Call(bcx, floorf, [x]), fcx.llretptr.get());
-        }
-        ~"ceilf32" => {
-            let x = get_param(decl, first_real_arg);
-            let ceilf = *ccx.intrinsics.get(&~"llvm.ceil.f32");
-            Store(bcx, Call(bcx, ceilf, [x]), fcx.llretptr.get());
-        }
-        ~"ceilf64" => {
-            let x = get_param(decl, first_real_arg);
-            let ceilf = *ccx.intrinsics.get(&~"llvm.ceil.f64");
-            Store(bcx, Call(bcx, ceilf, [x]), fcx.llretptr.get());
-        }
-        ~"truncf32" => {
-            let x = get_param(decl, first_real_arg);
-            let truncf = *ccx.intrinsics.get(&~"llvm.trunc.f32");
-            Store(bcx, Call(bcx, truncf, [x]), fcx.llretptr.get());
-        }
-        ~"truncf64" => {
-            let x = get_param(decl, first_real_arg);
-            let truncf = *ccx.intrinsics.get(&~"llvm.trunc.f64");
-            Store(bcx, Call(bcx, truncf, [x]), fcx.llretptr.get());
-        }
-        ~"ctpop8" => {
-            let x = get_param(decl, first_real_arg);
-            let ctpop = *ccx.intrinsics.get(&~"llvm.ctpop.i8");
-            Store(bcx, Call(bcx, ctpop, [x]), fcx.llretptr.get())
-        }
-        ~"ctpop16" => {
-            let x = get_param(decl, first_real_arg);
-            let ctpop = *ccx.intrinsics.get(&~"llvm.ctpop.i16");
-            Store(bcx, Call(bcx, ctpop, [x]), fcx.llretptr.get())
-        }
-        ~"ctpop32" => {
-            let x = get_param(decl, first_real_arg);
-            let ctpop = *ccx.intrinsics.get(&~"llvm.ctpop.i32");
-            Store(bcx, Call(bcx, ctpop, [x]), fcx.llretptr.get())
-        }
-        ~"ctpop64" => {
-            let x = get_param(decl, first_real_arg);
-            let ctpop = *ccx.intrinsics.get(&~"llvm.ctpop.i64");
-            Store(bcx, Call(bcx, ctpop, [x]), fcx.llretptr.get())
-        }
-        ~"ctlz8" => {
-            let x = get_param(decl, first_real_arg);
-            let y = C_i1(false);
-            let ctlz = *ccx.intrinsics.get(&~"llvm.ctlz.i8");
-            Store(bcx, Call(bcx, ctlz, [x, y]), fcx.llretptr.get())
-        }
-        ~"ctlz16" => {
-            let x = get_param(decl, first_real_arg);
-            let y = C_i1(false);
-            let ctlz = *ccx.intrinsics.get(&~"llvm.ctlz.i16");
-            Store(bcx, Call(bcx, ctlz, [x, y]), fcx.llretptr.get())
-        }
-        ~"ctlz32" => {
-            let x = get_param(decl, first_real_arg);
-            let y = C_i1(false);
-            let ctlz = *ccx.intrinsics.get(&~"llvm.ctlz.i32");
-            Store(bcx, Call(bcx, ctlz, [x, y]), fcx.llretptr.get())
-        }
-        ~"ctlz64" => {
-            let x = get_param(decl, first_real_arg);
-            let y = C_i1(false);
-            let ctlz = *ccx.intrinsics.get(&~"llvm.ctlz.i64");
-            Store(bcx, Call(bcx, ctlz, [x, y]), fcx.llretptr.get())
-        }
-        ~"cttz8" => {
-            let x = get_param(decl, first_real_arg);
-            let y = C_i1(false);
-            let cttz = *ccx.intrinsics.get(&~"llvm.cttz.i8");
-            Store(bcx, Call(bcx, cttz, [x, y]), fcx.llretptr.get())
-        }
-        ~"cttz16" => {
-            let x = get_param(decl, first_real_arg);
-            let y = C_i1(false);
-            let cttz = *ccx.intrinsics.get(&~"llvm.cttz.i16");
-            Store(bcx, Call(bcx, cttz, [x, y]), fcx.llretptr.get())
-        }
-        ~"cttz32" => {
-            let x = get_param(decl, first_real_arg);
-            let y = C_i1(false);
-            let cttz = *ccx.intrinsics.get(&~"llvm.cttz.i32");
-            Store(bcx, Call(bcx, cttz, [x, y]), fcx.llretptr.get())
-        }
-        ~"cttz64" => {
-            let x = get_param(decl, first_real_arg);
-            let y = C_i1(false);
-            let cttz = *ccx.intrinsics.get(&~"llvm.cttz.i64");
-            Store(bcx, Call(bcx, cttz, [x, y]), fcx.llretptr.get())
-        }
-        ~"bswap16" => {
-            let x = get_param(decl, first_real_arg);
-            let cttz = *ccx.intrinsics.get(&~"llvm.bswap.i16");
-            Store(bcx, Call(bcx, cttz, [x]), fcx.llretptr.get())
-        }
-        ~"bswap32" => {
-            let x = get_param(decl, first_real_arg);
-            let cttz = *ccx.intrinsics.get(&~"llvm.bswap.i32");
-            Store(bcx, Call(bcx, cttz, [x]), fcx.llretptr.get())
-        }
-        ~"bswap64" => {
-            let x = get_param(decl, first_real_arg);
-            let cttz = *ccx.intrinsics.get(&~"llvm.bswap.i64");
-            Store(bcx, Call(bcx, cttz, [x]), fcx.llretptr.get())
-        }
-        _ => {
-            // Could we make this an enum rather than a string? does it get
-            // checked earlier?
-            ccx.sess.span_bug(item.span, "unknown intrinsic");
-        }
-    }
-    build_return(bcx);
-    finish_fn(fcx, lltop);
-}
-
-/**
- * Translates a "crust" fn, meaning a Rust fn that can be called
- * from C code.  In this case, we have to perform some adaptation
- * to (1) switch back to the Rust stack and (2) adapt the C calling
- * convention to our own.
- *
- * Example: Given a crust fn F(x: X, y: Y) -> Z, we generate a
- * Rust function R as normal:
- *
- *    void R(Z* dest, void *env, X x, Y y) {...}
- *
- * and then we generate a wrapper function W that looks like:
- *
- *    Z W(X x, Y y) {
- *        struct { X x; Y y; Z *z; } args = { x, y, z };
- *        call_on_c_stack_shim(S, &args);
- *    }
- *
- * Note that the wrapper follows the foreign (typically "C") ABI.
- * The wrapper is the actual "value" of the foreign fn.  Finally,
- * we generate a shim function S that looks like:
- *
- *     void S(struct { X x; Y y; Z *z; } *args) {
- *         R(args->z, NULL, args->x, args->y);
- *     }
- */
-pub fn trans_foreign_fn(ccx: @CrateContext,
-                        path: ast_map::path,
-                        decl: &ast::fn_decl,
-                        body: &ast::blk,
-                        llwrapfn: ValueRef,
-                        id: ast::node_id) {
-    let _icx = ccx.insn_ctxt("foreign::build_foreign_fn");
-
-    fn build_rust_fn(ccx: @CrateContext,
-                     path: ast_map::path,
-                     decl: &ast::fn_decl,
-                     body: &ast::blk,
-                     id: ast::node_id)
-                  -> ValueRef {
-        let _icx = ccx.insn_ctxt("foreign::foreign::build_rust_fn");
-        let t = ty::node_id_to_type(ccx.tcx, id);
-        // XXX: Bad copy.
-        let ps = link::mangle_internal_name_by_path(
-            ccx, vec::append_one(copy path, ast_map::path_name(
-                special_idents::clownshoe_abi
-            )));
-        let llty = type_of_fn_from_ty(ccx, t);
-        let llfndecl = decl_internal_cdecl_fn(ccx.llmod, ps, llty);
-        trans_fn(ccx,
-                 path,
-                 decl,
-                 body,
-                 llfndecl,
-                 no_self,
-                 None,
-                 id,
-                 None,
-                 []);
-        return llfndecl;
-    }
-
-    fn build_shim_fn(ccx: @CrateContext,
-                     path: ast_map::path,
-                     llrustfn: ValueRef,
-                     tys: &ShimTypes)
-                     -> ValueRef {
-        /*!
-         *
-         * Generate the shim S:
-         *
-         *     void S(struct { X x; Y y; Z *z; } *args) {
-         *         R(args->z, NULL, &args->x, args->y);
-         *     }
-         *
-         * One complication is that we must adapt to the Rust
-         * calling convention, which introduces indirection
-         * in some cases.  To demonstrate this, I wrote one of the
-         * entries above as `&args->x`, because presumably `X` is
-         * one of those types that is passed by pointer in Rust.
-         */
-
-        let _icx = ccx.insn_ctxt("foreign::foreign::build_shim_fn");
-
-        fn build_args(bcx: block, tys: &ShimTypes, llargbundle: ValueRef)
-                      -> ~[ValueRef] {
-            let _icx = bcx.insn_ctxt("foreign::extern::shim::build_args");
-            let ccx = bcx.ccx();
-            let mut llargvals = ~[];
-            let mut i = 0u;
-            let n = tys.fn_sig.inputs.len();
-
-            if !ty::type_is_immediate(tys.fn_sig.output) {
-                let llretptr = load_inbounds(bcx, llargbundle, [0u, n]);
-                llargvals.push(llretptr);
-            } else {
-                llargvals.push(C_null(T_ptr(T_i8())));
-            }
-
-            let llenvptr = C_null(T_opaque_box_ptr(bcx.ccx()));
-            llargvals.push(llenvptr);
-            while i < n {
-                // Get a pointer to the argument:
-                let mut llargval = GEPi(bcx, llargbundle, [0u, i]);
-
-                if !type_of::arg_is_indirect(ccx, &tys.fn_sig.inputs[i]) {
-                    // If Rust would pass this by value, load the value.
-                    llargval = Load(bcx, llargval);
-                }
-
-                llargvals.push(llargval);
-                i += 1u;
-            }
-            return llargvals;
-        }
-
-        fn build_ret(bcx: block,
-                     shim_types: &ShimTypes,
-                     llargbundle: ValueRef,
-                     llretval: ValueRef) {
-            if ty::type_is_immediate(shim_types.fn_sig.output) {
-                // Write the value into the argument bundle.
-                let arg_count = shim_types.fn_sig.inputs.len();
-                let llretptr = load_inbounds(bcx,
-                                             llargbundle,
-                                             [0, arg_count]);
-                Store(bcx, llretval, llretptr);
-            } else {
-                // NB: The return pointer in the Rust ABI function is wired
-                // directly into the return slot in the shim struct.
-            }
-
-            build_return(bcx);
-        }
-
-        let shim_name = link::mangle_internal_name_by_path(
-            ccx,
-            vec::append_one(path, ast_map::path_name(
-                special_idents::clownshoe_stack_shim
-            )));
-        build_shim_fn_(ccx,
-                       shim_name,
-                       llrustfn,
-                       tys,
-                       lib::llvm::CCallConv,
-                       build_args,
-                       build_ret)
-    }
-
-    fn build_wrap_fn(ccx: @CrateContext,
-                     llshimfn: ValueRef,
-                     llwrapfn: ValueRef,
-                     tys: &ShimTypes) {
-        /*!
-         *
-         * Generate the wrapper W:
-         *
-         *    Z W(X x, Y y) {
-         *        struct { X x; Y y; Z *z; } args = { x, y, z };
-         *        call_on_c_stack_shim(S, &args);
-         *    }
-         */
-
-        let _icx = ccx.insn_ctxt("foreign::foreign::build_wrap_fn");
-
-        build_wrap_fn_(ccx,
-                       tys,
-                       llshimfn,
-                       llwrapfn,
-                       ccx.upcalls.call_shim_on_rust_stack,
-                       true,
-                       build_args,
-                       build_ret);
-
-        fn build_args(bcx: block,
-                      tys: &ShimTypes,
-                      llwrapfn: ValueRef,
-                      llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_args");
-            tys.fn_ty.build_wrap_args(bcx,
-                                      tys.llsig.llret_ty,
-                                      llwrapfn,
-                                      llargbundle);
-        }
-
-        fn build_ret(bcx: block, tys: &ShimTypes, llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_ret");
-            tys.fn_ty.build_wrap_ret(bcx, tys.llsig.llarg_tys, llargbundle);
-            build_return(bcx);
-        }
-    }
-
-    let tys = shim_types(ccx, id);
-    // The internal Rust ABI function - runs on the Rust stack
-    // XXX: Bad copy.
-    let llrustfn = build_rust_fn(ccx, copy path, decl, body, id);
-    // The internal shim function - runs on the Rust stack
-    let llshimfn = build_shim_fn(ccx, path, llrustfn, &tys);
-    // The foreign C function - runs on the C stack
-    build_wrap_fn(ccx, llshimfn, llwrapfn, &tys)
-}
-
-pub fn register_foreign_fn(ccx: @CrateContext,
-                           sp: span,
-                           path: ast_map::path,
-                           node_id: ast::node_id,
-                           attrs: &[ast::attribute])
-                           -> ValueRef {
-    let _icx = ccx.insn_ctxt("foreign::register_foreign_fn");
-
-    let t = ty::node_id_to_type(ccx.tcx, node_id);
-
-    let tys = shim_types(ccx, node_id);
-    do tys.fn_ty.decl_fn |fnty| {
-        register_fn_fuller(ccx,
-                           sp,
-                           /*bad*/copy path,
-                           node_id,
-                           attrs,
-                           t,
-                           lib::llvm::CCallConv,
-                           fnty)
     }
 }

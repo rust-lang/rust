@@ -801,3 +801,9 @@ impl UserString for ty::TraitRef {
         }
     }
 }
+
+impl Repr for AbiSet {
+    fn repr(&self, _tcx: ctxt) -> ~str {
+        self.to_str()
+    }
+}

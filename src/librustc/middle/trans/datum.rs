@@ -183,14 +183,14 @@ pub fn immediate_rvalue_bcx(bcx: block,
 
 pub fn scratch_datum(bcx: block, ty: ty::t, zero: bool) -> Datum {
     /*!
-     *
      * Allocates temporary space on the stack using alloca() and
      * returns a by-ref Datum pointing to it.  If `zero` is true, the
      * space will be zeroed when it is allocated; this is normally not
      * necessary, but in the case of automatic rooting in match
      * statements it is possible to have temporaries that may not get
      * initialized if a certain arm is not taken, so we must zero
-     * them. You must arrange any cleanups etc yourself! */
+     * them. You must arrange any cleanups etc yourself!
+     */
 
     let llty = type_of::type_of(bcx.ccx(), ty);
     let scratch = alloca_maybe_zeroed(bcx, llty, zero);
@@ -199,12 +199,12 @@ pub fn scratch_datum(bcx: block, ty: ty::t, zero: bool) -> Datum {
 
 pub fn appropriate_mode(ty: ty::t) -> DatumMode {
     /*!
-    *
-    * Indicates the "appropriate" mode for this value,
-    * which is either by ref or by value, depending
-    * on whether type is immediate or not. */
+     * Indicates the "appropriate" mode for this value,
+     * which is either by ref or by value, depending
+     * on whether type is immediate or not.
+     */
 
-    if ty::type_is_nil(ty) || ty::type_is_bot(ty) {
+    if ty::type_is_voidish(ty) {
         ByValue
     } else if ty::type_is_immediate(ty) {
         ByValue
@@ -272,7 +272,7 @@ pub impl Datum {
 
         let _icx = bcx.insn_ctxt("copy_to");
 
-        if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
+        if ty::type_is_voidish(self.ty) {
             return bcx;
         }
 
@@ -342,7 +342,7 @@ pub impl Datum {
         debug!("move_to(self=%s, action=%?, dst=%s)",
                self.to_str(bcx.ccx()), action, bcx.val_str(dst));
 
-        if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
+        if ty::type_is_voidish(self.ty) {
             return bcx;
         }
 
@@ -428,7 +428,7 @@ pub impl Datum {
          *
          * Yields the value itself. */
 
-        if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
+        if ty::type_is_voidish(self.ty) {
             C_nil()
         } else {
             match self.mode {
@@ -465,7 +465,7 @@ pub impl Datum {
         match self.mode {
             ByRef => self.val,
             ByValue => {
-                if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
+                if ty::type_is_voidish(self.ty) {
                     C_null(T_ptr(type_of::type_of(bcx.ccx(), self.ty)))
                 } else {
                     let slot = alloc_ty(bcx, self.ty);

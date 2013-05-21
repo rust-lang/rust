@@ -169,21 +169,23 @@ pub fn decl_internal_cdecl_fn(llmod: ModuleRef, name: ~str, llty: TypeRef) ->
 
 pub fn get_extern_fn(externs: ExternMap,
                      llmod: ModuleRef,
-                     name: @str,
+                     name: &str,
                      cc: lib::llvm::CallConv,
                      ty: TypeRef) -> ValueRef {
-    match externs.find(&name) {
-        Some(n) => return copy *n,
+    match externs.find_equiv(&name) {
+        Some(&n) => {
+            return n;
+        }
         None => ()
     }
     let f = decl_fn(llmod, name, cc, ty);
-    externs.insert(name, f);
+    externs.insert(name.to_owned(), f);
     return f;
 }
 
 pub fn get_extern_const(externs: ExternMap, llmod: ModuleRef,
-                        name: @str, ty: TypeRef) -> ValueRef {
-    match externs.find(&name) {
+                        name: &str, ty: TypeRef) -> ValueRef {
+    match externs.find_equiv(&name) {
         Some(n) => return copy *n,
         None => ()
     }
@@ -191,32 +193,9 @@ pub fn get_extern_const(externs: ExternMap, llmod: ModuleRef,
         let c = str::as_c_str(name, |buf| {
             llvm::LLVMAddGlobal(llmod, ty, buf)
         });
-        externs.insert(name, c);
+        externs.insert(name.to_owned(), c);
         return c;
     }
-}
-
-    fn get_simple_extern_fn(cx: block,
-                            externs: ExternMap,
-                            llmod: ModuleRef,
-                            name: @str,
-                            n_args: int) -> ValueRef {
-    let _icx = cx.insn_ctxt("get_simple_extern_fn");
-    let ccx = cx.fcx.ccx;
-    let inputs = vec::from_elem(n_args as uint, ccx.int_type);
-    let output = ccx.int_type;
-    let t = T_fn(inputs, output);
-    return get_extern_fn(externs, llmod, name, lib::llvm::CCallConv, t);
-}
-
-pub fn trans_foreign_call(cx: block, externs: ExternMap,
-                          llmod: ModuleRef, name: @str, args: &[ValueRef]) ->
-   ValueRef {
-    let _icx = cx.insn_ctxt("trans_foreign_call");
-    let n = args.len() as int;
-    let llforeign: ValueRef =
-        get_simple_extern_fn(cx, externs, llmod, name, n);
-    return Call(cx, llforeign, args);
 }
 
 pub fn umax(cx: block, a: ValueRef, b: ValueRef) -> ValueRef {
@@ -517,7 +496,6 @@ pub fn get_res_dtor(ccx: @CrateContext,
                                      None,
                                      ty::lookup_item_type(tcx, parent_id).ty);
         let llty = type_of_dtor(ccx, class_ty);
-        let name = name.to_managed(); // :-(
         get_extern_fn(ccx.externs,
                       ccx.llmod,
                       name,
@@ -805,13 +783,13 @@ pub fn fail_if_zero(cx: block, span: span, divrem: ast::binop,
     }
 }
 
-pub fn null_env_ptr(bcx: block) -> ValueRef {
-    C_null(T_opaque_box_ptr(bcx.ccx()))
+pub fn null_env_ptr(ccx: @CrateContext) -> ValueRef {
+    C_null(T_opaque_box_ptr(ccx))
 }
 
 pub fn trans_external_path(ccx: @CrateContext, did: ast::def_id, t: ty::t)
     -> ValueRef {
-    let name = csearch::get_symbol(ccx.sess.cstore, did).to_managed(); // Sad
+    let name = csearch::get_symbol(ccx.sess.cstore, did);
     match ty::get(t).sty {
       ty::ty_bare_fn(_) | ty::ty_closure(_) => {
         let llty = type_of_fn_from_ty(ccx, t);
@@ -823,6 +801,65 @@ pub fn trans_external_path(ccx: @CrateContext, did: ast::def_id, t: ty::t)
         return get_extern_const(ccx.externs, ccx.llmod, name, llty);
       }
     };
+}
+
+pub fn trans_external_path_casted(
+    ccx: @CrateContext,
+    did: ast::def_id,
+    t: ty::t,
+    cast_build: &fn(ValueRef, TypeRef) -> ValueRef)
+    -> ValueRef
+{
+    /*!
+     * Translates a reference to an external path,
+     * adding a new entry to the externs table if
+     * necessary.
+     *
+     * If this is a reference to an non-Rust function, and an entry in
+     * the externs table already exists but with an incompatible type,
+     * use the `cast_build` argument to construct a cast to the type
+     * `t`.  This is kind of a hack, but I don't know of a better
+     * solution. The problem is that if different crates may link to
+     * the same external function but declare it with distinct types.
+     * However, LLVM only permits us to declare a single prototype for any
+     * given function.
+     *
+     * Maybe this should just be an error, but it isn't *necessarily*
+     * invalid. First off, some functions accept multiple types of
+     * arguments, but worse we seem to get into this situation when
+     * testing libcore because the structs in the --test build are
+     * distinct from the structs in the normal build. So instead we
+     * just bitcast as needed for now.
+     *
+     * The same situation can arise with external structs but I'm choosing
+     * to ignore that for now.
+     */
+
+    let name = csearch::get_symbol(ccx.sess.cstore, did);
+    debug!("trans_external_path_casted: did=%?, t=%s, name=%?",
+           did, t.repr(ccx.tcx), name);
+    match ty::get(t).sty {
+        ty::ty_bare_fn(ref f) if f.abis.is_rust() => {
+            let llty = type_of_fn_from_ty(ccx, t);
+            get_extern_fn(ccx.externs, ccx.llmod, name,
+                          lib::llvm::CCallConv, llty)
+        }
+        ty::ty_bare_fn(_) => {
+            let llty = type_of_fn_from_ty(ccx, t);
+            let llval = get_extern_fn(ccx.externs, ccx.llmod, name,
+                                      lib::llvm::CCallConv, llty);
+            let llptr_ty = T_ptr(llty);
+            if val_ty(llval) != llptr_ty {
+                cast_build(llval, llptr_ty)
+            } else {
+                llval
+            }
+        }
+        _ => {
+            let llty = type_of(ccx, t);
+            get_extern_const(ccx.externs, ccx.llmod, name, llty)
+        }
+    }
 }
 
 pub fn invoke(bcx: block, llfn: ValueRef, llargs: ~[ValueRef])
@@ -1570,7 +1607,7 @@ pub fn mk_standard_basic_blocks(llfn: ValueRef) -> BasicBlocks {
 // slot where the return value of the function must go.
 pub fn make_return_pointer(fcx: fn_ctxt, output_type: ty::t) -> ValueRef {
     unsafe {
-        if !ty::type_is_immediate(output_type) {
+        if type_of::return_uses_outptr(output_type) {
             llvm::LLVMGetParam(fcx.llfn, 0)
         } else {
             let lloutputtype = type_of::type_of(*fcx.ccx, output_type);
@@ -1611,7 +1648,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
             ty::subst_tps(ccx.tcx, substs.tys, substs.self_ty, output_type)
         }
     };
-    let is_immediate = ty::type_is_immediate(substd_output_type);
+    let uses_outptr = type_of::return_uses_outptr(substd_output_type);
 
     let fcx = @mut fn_ctxt_ {
           llfn: llfndecl,
@@ -1623,7 +1660,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           llself: None,
           personality: None,
           loop_ret: None,
-          has_immediate_return_value: is_immediate,
+          caller_expects_out_pointer: uses_outptr,
           llargs: @mut HashMap::new(),
           lllocals: @mut HashMap::new(),
           llupvars: @mut HashMap::new(),
@@ -1783,7 +1820,7 @@ pub fn build_return_block(fcx: fn_ctxt) {
     let ret_cx = raw_block(fcx, false, fcx.llreturn);
 
     // Return the value if this function immediate; otherwise, return void.
-    if fcx.has_immediate_return_value {
+    if !fcx.caller_expects_out_pointer {
         Ret(ret_cx, Load(ret_cx, fcx.llretptr.get()))
     } else {
         RetVoid(ret_cx)
@@ -1871,9 +1908,7 @@ pub fn trans_closure(ccx: @CrateContext,
     // translation calls that don't have a return value (trans_crate,
     // trans_mod, trans_item, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
-    if body.node.expr.is_none() || ty::type_is_bot(block_ty) ||
-        ty::type_is_nil(block_ty)
-    {
+    if body.node.expr.is_none() || ty::type_is_voidish(block_ty) {
         bcx = controlflow::trans_block(bcx, body, expr::Ignore);
     } else {
         let dest = expr::SaveIn(fcx.llretptr.get());
@@ -2114,13 +2149,14 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
       ast::item_fn(ref decl, purity, _abis, ref generics, ref body) => {
         if purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
-            foreign::trans_foreign_fn(ccx,
-                                      vec::append(/*bad*/copy *path,
-                                                  [path_name(item.ident)]),
-                                      decl,
-                                      body,
-                                      llfndecl,
-                                      item.id);
+            foreign::trans_rust_fn_with_foreign_abi(
+                ccx,
+                &vec::append(/*bad*/copy *path,
+                             [path_name(item.ident)]),
+                decl,
+                body,
+                llfndecl,
+                item.id);
         } else if !generics.is_type_parameterized() {
             let llfndecl = get_item_val(ccx, item.id);
             trans_fn(ccx,
@@ -2180,7 +2216,7 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
           }
       },
       ast::item_foreign_mod(ref foreign_mod) => {
-        foreign::trans_foreign_mod(ccx, path, foreign_mod);
+        foreign::trans_foreign_mod(ccx, foreign_mod);
       }
       ast::item_struct(struct_def, ref generics) => {
         if !generics.is_type_parameterized() {
@@ -2293,7 +2329,7 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
 
     fn create_main(ccx: @CrateContext, main_llfn: ValueRef) -> ValueRef {
         let nt = ty::mk_nil();
-        let llfty = type_of_fn(ccx, [], nt);
+        let llfty = type_of_rust_fn(ccx, [], nt);
         let llfdecl = decl_fn(ccx.llmod, "_rust_main",
                               lib::llvm::CCallConv, llfty);
 
@@ -2456,11 +2492,11 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                 let llfn = if purity != ast::extern_fn {
                     register_fn(ccx, i.span, my_path, i.id, i.attrs)
                 } else {
-                    foreign::register_foreign_fn(ccx,
-                                                 i.span,
-                                                 my_path,
-                                                 i.id,
-                                                 i.attrs)
+                    foreign::register_rust_fn_with_foreign_abi(ccx,
+                                                               i.span,
+                                                               my_path,
+                                                               i.id,
+                                                               i.attrs)
                 };
                 set_inline_hint_if_appr(i.attrs, llfn);
                 llfn
@@ -2485,15 +2521,13 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
             exprt = true;
             register_method(ccx, id, pth, m)
           }
-          ast_map::node_foreign_item(ni, _, _, pth) => {
+          ast_map::node_foreign_item(ni, abis, _, pth) => {
             exprt = true;
             match ni.node {
                 ast::foreign_item_fn(*) => {
-                    register_fn(ccx, ni.span,
-                                vec::append(/*bad*/copy *pth,
-                                            [path_name(ni.ident)]),
-                                ni.id,
-                                ni.attrs)
+                    let path = vec::append(/*bad*/copy *pth,
+                                           [path_name(ni.ident)]);
+                    foreign::register_foreign_item_fn(ccx, abis, &path, ni)
                 }
                 ast::foreign_item_const(*) => {
                     let typ = ty::node_id_to_type(tcx, ni.id);

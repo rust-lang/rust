@@ -16,35 +16,61 @@ use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::common::*;
 use middle::trans::common;
+use middle::trans::foreign;
 use middle::ty;
 use util::ppaux;
 
 use syntax::ast;
 
-pub fn arg_is_indirect(_: @CrateContext, arg_ty: &ty::t) -> bool {
-    !ty::type_is_immediate(*arg_ty)
+pub fn arg_is_indirect(_: @CrateContext, arg_ty: ty::t) -> bool {
+    !ty::type_is_immediate(arg_ty)
 }
 
-pub fn type_of_explicit_arg(ccx: @CrateContext, arg_ty: &ty::t) -> TypeRef {
-    let llty = type_of(ccx, *arg_ty);
+pub fn return_uses_outptr(ty: ty::t) -> bool {
+    !ty::type_is_immediate(ty)
+}
+
+pub fn type_of_explicit_arg(ccx: @CrateContext, arg_ty: ty::t) -> TypeRef {
+    let llty = type_of(ccx, arg_ty);
     if arg_is_indirect(ccx, arg_ty) {T_ptr(llty)} else {llty}
 }
 
 pub fn type_of_explicit_args(ccx: @CrateContext,
                              inputs: &[ty::t]) -> ~[TypeRef] {
-    inputs.map(|arg_ty| type_of_explicit_arg(ccx, arg_ty))
+    inputs.map(|&arg_ty| type_of_explicit_arg(ccx, arg_ty))
 }
 
-pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::t], output: ty::t)
-               -> TypeRef {
+// Given a function type and a count of ty params, construct an llvm type
+pub fn type_of_fn_from_ty(cx: @CrateContext, fty: ty::t) -> TypeRef {
+    return match ty::get(fty).sty {
+        ty::ty_closure(ref f) => {
+            type_of_rust_fn(cx, f.sig.inputs, f.sig.output)
+        }
+        ty::ty_bare_fn(ref f) => {
+            if f.abis.is_rust() || f.abis.is_intrinsic() {
+                type_of_rust_fn(cx, f.sig.inputs, f.sig.output)
+            } else {
+                foreign::lltype_for_foreign_fn(cx, fty)
+            }
+        }
+        _ => {
+            cx.sess.bug("type_of_fn_from_ty given non-closure, non-bare-fn")
+        }
+    };
+}
+
+pub fn type_of_rust_fn(cx: @CrateContext,
+                       inputs: &[ty::t],
+                       output: ty::t) -> TypeRef
+{
     unsafe {
         let mut atys: ~[TypeRef] = ~[];
 
         // Arg 0: Output pointer.
         // (if the output type is non-immediate)
-        let output_is_immediate = ty::type_is_immediate(output);
+        let use_out_pointer = return_uses_outptr(output);
         let lloutputtype = type_of(cx, output);
-        if !output_is_immediate {
+        if use_out_pointer {
             atys.push(T_ptr(lloutputtype));
         } else {
             // FIXME #6575: Eliminate this.
@@ -58,21 +84,10 @@ pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::t], output: ty::t)
         atys.push_all(type_of_explicit_args(cx, inputs));
 
         // Use the output as the actual return value if it's immediate.
-        if output_is_immediate {
+        if !use_out_pointer {
             T_fn(atys, lloutputtype)
         } else {
             T_fn(atys, llvm::LLVMVoidType())
-        }
-    }
-}
-
-// Given a function type and a count of ty params, construct an llvm type
-pub fn type_of_fn_from_ty(cx: @CrateContext, fty: ty::t) -> TypeRef {
-    match ty::get(fty).sty {
-        ty::ty_closure(ref f) => type_of_fn(cx, f.sig.inputs, f.sig.output),
-        ty::ty_bare_fn(ref f) => type_of_fn(cx, f.sig.inputs, f.sig.output),
-        _ => {
-            cx.sess.bug("type_of_fn_from_ty given non-closure, non-bare-fn")
         }
     }
 }
