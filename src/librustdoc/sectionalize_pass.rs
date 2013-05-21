@@ -149,7 +149,7 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
 }
 
 fn parse_header(line: ~str) -> Option<~str> {
-    if str::starts_with(line, ~"# ") {
+    if str::starts_with(line, "# ") {
         Some(str::slice(line, 2u, str::len(line)).to_owned())
     } else {
         None

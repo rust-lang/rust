@@ -82,7 +82,7 @@ fn unindent(s: &str) -> ~str {
                 str::slice(*line, min_indent, str::len(*line)).to_owned()
             }
         };
-        str::connect(unindented, ~"\n")
+        str::connect(unindented, "\n")
     } else {
         s.to_str()
     }
