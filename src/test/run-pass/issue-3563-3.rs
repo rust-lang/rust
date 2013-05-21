@@ -12,15 +12,15 @@
 // Demonstrates traits, impls, operator overloading, non-copyable struct, unit testing.
 // To run execute: rustc --test shapes.rs && ./shapes
 
-// Rust's core library is tightly bound to the language itself so it is automatically linked in.
-// However the std library is designed to be optional (for code that must run on constrained
+// Rust's std library is tightly bound to the language itself so it is automatically linked in.
+// However the extra library is designed to be optional (for code that must run on constrained
 //  environments like embedded devices or special environments like kernel code) so it must
 // be explicitly linked in.
-extern mod std;
+extern mod extra;
 
 // Extern mod controls linkage. Use controls the visibility of names to modules that are
 // already linked in. Using WriterUtil allows us to use the write_line method.
-use core::io::WriterUtil;
+use std::io::WriterUtil;
 
 // Represents a position on a canvas.
 struct Point {

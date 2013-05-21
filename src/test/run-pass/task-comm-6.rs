@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::comm::Chan;
+use std::comm::Chan;
 
 pub fn main() { test00(); }
 

@@ -13,10 +13,10 @@
 
 // NB: These tests kill child processes. Valgrind sees these children as leaking
 // memory, which makes for some *confusing* logs. That's why these are here
-// instead of in core.
+// instead of in std.
 
-use core::run;
-use core::run::*;
+use std::run;
+use std::run::*;
 
 #[test]
 fn test_destroy_once() {
@@ -47,9 +47,9 @@ fn test_destroy_actually_kills(force: bool) {
     #[cfg(windows)]
     fn process_exists(pid: libc::pid_t) -> bool {
 
-        use core::libc::types::os::arch::extra::DWORD;
-        use core::libc::funcs::extra::kernel32::{CloseHandle, GetExitCodeProcess, OpenProcess};
-        use core::libc::consts::os::extra::{FALSE, PROCESS_QUERY_INFORMATION, STILL_ACTIVE };
+        use std::libc::types::os::arch::extra::DWORD;
+        use std::libc::funcs::extra::kernel32::{CloseHandle, GetExitCodeProcess, OpenProcess};
+        use std::libc::consts::os::extra::{FALSE, PROCESS_QUERY_INFORMATION, STILL_ACTIVE };
 
         unsafe {
             let proc = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid as DWORD);

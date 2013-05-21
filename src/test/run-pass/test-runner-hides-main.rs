@@ -11,7 +11,7 @@
 // compile-flags:--test
 // xfail-fast
 
-extern mod std;
+extern mod extra;
 
 // Building as a test runner means that a synthetic main will be run,
 // not ours

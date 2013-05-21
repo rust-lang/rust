@@ -18,5 +18,5 @@ fn main() {
     // because the def_id associated with the type was
     // not convertible to a path.
   let x: int = noexporttypelib::foo();
-    //~^ ERROR expected `int` but found `core::option::Option<int>`
+    //~^ ERROR expected `int` but found `std::option::Option<int>`
 }

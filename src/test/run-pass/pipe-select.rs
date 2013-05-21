@@ -13,13 +13,13 @@
 // xfail-pretty
 // xfail-win32
 
-extern mod std;
-use std::timer::sleep;
-use std::uv;
+extern mod extra;
+use extra::timer::sleep;
+use extra::uv;
 
-use core::cell::Cell;
-use core::pipes;
-use core::pipes::*;
+use std::cell::Cell;
+use std::pipes;
+use std::pipes::*;
 
 proto! oneshot (
     waiting:send {

@@ -10,8 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use std::deque::Deque;
+extern mod extra;
+use extra::deque::Deque;
 
 pub fn main() {
     let mut q = Deque::new();

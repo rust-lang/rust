@@ -11,9 +11,9 @@
 #[link(name = "req")];
 #[crate_type = "lib"];
 
-extern mod std;
+extern mod extra;
 
-use core::hashmap::HashMap;
+use std::hashmap::HashMap;
 
 pub type header_map = HashMap<~str, @mut ~[@~str]>;
 

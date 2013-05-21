@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::unstable::intrinsics::{init, forget};
+use std::unstable::intrinsics::{init, forget};
 
 // Test that the `forget` and `init` intrinsics are really unsafe
 pub fn main() {

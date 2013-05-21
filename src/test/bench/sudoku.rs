@@ -10,11 +10,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
 
-use core::io::{ReaderUtil, WriterUtil};
-use core::io;
-use core::unstable::intrinsics::cttz16;
+use std::io::{ReaderUtil, WriterUtil};
+use std::io;
+use std::unstable::intrinsics::cttz16;
 
 // Computes a single solution to a given 9x9 sudoku
 //

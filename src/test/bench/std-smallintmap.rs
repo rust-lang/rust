@@ -10,9 +10,9 @@
 
 // Microbenchmark for the smallintmap library
 
-extern mod std;
-use std::smallintmap::SmallIntMap;
-use core::io::WriterUtil;
+extern mod extra;
+use extra::smallintmap::SmallIntMap;
+use std::io::WriterUtil;
 
 fn append_sequential(min: uint, max: uint, map: &mut SmallIntMap<uint>) {
     for uint::range(min, max) |i| {
@@ -43,11 +43,11 @@ fn main() {
 
     for uint::range(0u, rep) |_r| {
         let mut map = SmallIntMap::new();
-        let start = std::time::precise_time_s();
+        let start = extra::time::precise_time_s();
         append_sequential(0u, max, &mut map);
-        let mid = std::time::precise_time_s();
+        let mid = extra::time::precise_time_s();
         check_sequential(0u, max, &map);
-        let end = std::time::precise_time_s();
+        let end = extra::time::precise_time_s();
 
         checkf += (end - mid) as float;
         appendf += (mid - start) as float;

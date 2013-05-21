@@ -10,8 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use std::list;
+extern mod extra;
+use extra::list;
 
 enum foo {
   a(uint),

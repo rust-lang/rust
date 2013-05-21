@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // error-pattern: cannot infer an appropriate lifetime
-extern mod std;
-use std::sync;
+extern mod extra;
+use extra::sync;
 fn main() {
     let x = ~sync::RWlock();
     let mut y = None;

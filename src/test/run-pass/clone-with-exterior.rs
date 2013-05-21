@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use core::task::spawn;
+extern mod extra;
+use std::task::spawn;
 
 struct Pair {
     a: int,

@@ -12,9 +12,9 @@
 
 #[no_std];
 
-extern mod core;
+extern mod std;
 
-use core::{str, int, vec};
+use std::{str, int, vec};
 
 trait to_str {
     fn to_str(&self) -> ~str;

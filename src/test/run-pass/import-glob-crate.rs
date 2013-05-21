@@ -11,8 +11,8 @@
 // except according to those terms.
 
 
-extern mod std;
-use core::vec::*;
+extern mod extra;
+use std::vec::*;
 
 pub fn main() {
     let mut v = from_elem(0u, 0);

@@ -10,12 +10,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::util;
+use std::util;
 
 // tjc: I don't know why
 pub mod pipes {
-    use core::util;
-    use core::cast::{forget, transmute};
+    use std::util;
+    use std::cast::{forget, transmute};
 
     pub struct Stuff<T> {
         state: state,
@@ -54,7 +54,7 @@ pub mod pipes {
       pub fn atomic_xchg_rel(_dst: &mut int, _src: int) -> int { fail!(); }
     }
 
-    // We should consider moving this to ::core::unsafe, although I
+    // We should consider moving this to ::std::unsafe, although I
     // suspect graydon would want us to use void pointers instead.
     pub unsafe fn uniquify<T>(x: *T) -> ~T {
         unsafe { cast::transmute(x) }
@@ -219,9 +219,9 @@ pub mod pipes {
 }
 
 pub mod pingpong {
-    use core::cast;
-    use core::ptr;
-    use core::util;
+    use std::cast;
+    use std::ptr;
+    use std::util;
 
     pub struct ping(::pipes::send_packet<pong>);
     pub struct pong(::pipes::send_packet<ping>);
@@ -253,7 +253,7 @@ pub mod pingpong {
     }
 
     pub mod client {
-        use core::option;
+        use std::option;
         use pingpong;
 
         pub type ping = ::pipes::send_packet<pingpong::ping>;

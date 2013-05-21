@@ -10,9 +10,9 @@
 
 // xfail-fast
 
-extern mod std;
-use core::io::WriterUtil;
-use std::tempfile;
+extern mod extra;
+use std::io::WriterUtil;
+use extra::tempfile;
 
 pub fn main() {
     let dir = tempfile::mkdtemp(&Path("."), "").unwrap();

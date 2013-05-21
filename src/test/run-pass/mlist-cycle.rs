@@ -10,9 +10,9 @@
 
 // xfail-test
 // -*- rust -*-
-extern mod core;
-use core::gc;
-use core::gc::rustrt;
+extern mod std;
+use std::gc;
+use std::gc::rustrt;
 
 struct cell {c: @list}
 

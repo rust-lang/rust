@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // rustc --test match_borrowed_str.rs.rs && ./match_borrowed_str.rs
-extern mod std;
+extern mod extra;
 
 fn compare(x: &str, y: &str) -> bool
 {

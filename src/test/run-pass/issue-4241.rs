@@ -9,11 +9,11 @@
 // except according to those terms.
 
 // xfail-test
-extern mod std;
+extern mod extra;
 
-use std::net::tcp::TcpSocketBuf;
+use extra::net::tcp::TcpSocketBuf;
 
-use core::io::{ReaderUtil,WriterUtil};
+use std::io::{ReaderUtil,WriterUtil};
 
 enum Result {
   Nil,

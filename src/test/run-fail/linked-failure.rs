@@ -11,7 +11,7 @@
 
 
 // error-pattern:1 == 2
-extern mod std;
+extern mod extra;
 
 fn child() { assert!((1 == 2)); }
 

@@ -9,5 +9,5 @@
 // except according to those terms.
 
 // error-pattern:moop
-extern mod std;
+extern mod extra;
 fn main() { for uint::range(0u, 10u) |_i| { fail!("moop"); } }

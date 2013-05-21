@@ -10,8 +10,8 @@
 
 // xfail-test
 
-extern mod std;
-use std::oldmap::*;
+extern mod extra;
+use extra::oldmap::*;
 use vec::*;
 use dvec::{dvec, extensions};
 

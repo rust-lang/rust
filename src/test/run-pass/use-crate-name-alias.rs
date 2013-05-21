@@ -9,6 +9,6 @@
 // except according to those terms.
 
 // Issue #1706
-extern mod stdlib(name="std");
+extern mod stdlib(name="extra");
 
 pub fn main() {}

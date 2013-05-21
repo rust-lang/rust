@@ -10,10 +10,10 @@
 
 // xfail-win32
 
-extern mod std;
+extern mod extra;
 
-use std::list::{List, Cons, Nil};
-use std::time::precise_time_s;
+use extra::list::{List, Cons, Nil};
+use extra::time::precise_time_s;
 
 enum UniqueList {
     ULNil, ULCons(~UniqueList)

@@ -10,7 +10,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::cmp::{Less,Equal,Greater};
+use std::cmp::{Less,Equal,Greater};
 
 #[deriving(TotalEq,TotalOrd)]
 struct A<'self> {

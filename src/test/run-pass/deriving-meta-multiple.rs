@@ -19,7 +19,7 @@ struct Foo {
 }
 
 pub fn main() {
-    use core::hash::{Hash, HashUtil}; // necessary for IterBytes check
+    use std::hash::{Hash, HashUtil}; // necessary for IterBytes check
 
     let a = Foo {bar: 4, baz: -3};
 

@@ -1,5 +1,5 @@
-use core::from_str::FromStr;
-use core::uint::range;
+use std::from_str::FromStr;
+use std::uint::range;
 
 static PI: f64 = 3.141592653589793;
 static SOLAR_MASS: f64 = 4.0 * PI * PI;

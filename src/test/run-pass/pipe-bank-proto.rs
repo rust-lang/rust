@@ -15,8 +15,8 @@
 //
 // http://theincredibleholk.wordpress.com/2012/07/06/rusty-pipes/
 
-use core::pipes;
-use core::pipes::try_recv;
+use std::pipes;
+use std::pipes::try_recv;
 
 pub type username = ~str;
 pub type password = ~str;

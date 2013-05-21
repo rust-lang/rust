@@ -1,4 +1,4 @@
-use core::io::println;
+use std::io::println;
 
 fn main() {
     let v: ~[int] = ~[ 1, ..5 ];

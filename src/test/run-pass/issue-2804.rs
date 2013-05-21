@@ -10,9 +10,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use core::hashmap::HashMap;
-use std::json;
+extern mod extra;
+use std::hashmap::HashMap;
+use extra::json;
 
 enum object {
     bool_value(bool),
@@ -23,7 +23,7 @@ fn lookup(table: ~json::Object, key: ~str, default: ~str) -> ~str
 {
     match table.find(&key)
     {
-        option::Some(&std::json::String(copy s)) =>
+        option::Some(&extra::json::String(copy s)) =>
         {
             copy s
         }
@@ -39,11 +39,11 @@ fn lookup(table: ~json::Object, key: ~str, default: ~str) -> ~str
     }
 }
 
-fn add_interface(store: int, managed_ip: ~str, data: std::json::Json) -> (~str, object)
+fn add_interface(store: int, managed_ip: ~str, data: extra::json::Json) -> (~str, object)
 {
     match &data
     {
-        &std::json::Object(copy interface) =>
+        &extra::json::Object(copy interface) =>
         {
             let name = lookup(copy interface, ~"ifDescr", ~"");
             let label = fmt!("%s-%s", managed_ip, name);
@@ -58,11 +58,11 @@ fn add_interface(store: int, managed_ip: ~str, data: std::json::Json) -> (~str, 
     }
 }
 
-fn add_interfaces(store: int, managed_ip: ~str, device: HashMap<~str, std::json::Json>) -> ~[(~str, object)]
+fn add_interfaces(store: int, managed_ip: ~str, device: HashMap<~str, extra::json::Json>) -> ~[(~str, object)]
 {
     match device.get(&~"interfaces")
     {
-        &std::json::List(ref interfaces) =>
+        &extra::json::List(ref interfaces) =>
         {
           do interfaces.map |interface| {
                 add_interface(store, copy managed_ip, copy *interface)

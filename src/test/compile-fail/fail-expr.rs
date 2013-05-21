@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:failed to find an implementation of trait core::sys::FailWithCause for int
+// error-pattern:failed to find an implementation of trait std::sys::FailWithCause for int
 
 fn main() { fail!(5); }

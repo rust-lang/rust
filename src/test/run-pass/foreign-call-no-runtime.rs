@@ -1,4 +1,4 @@
-use core::unstable::run_in_bare_thread;
+use std::unstable::run_in_bare_thread;
 
 extern {
     pub fn rust_dbg_call(cb: extern "C" fn(libc::uintptr_t)

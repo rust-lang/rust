@@ -12,23 +12,23 @@
 
 use cal = bar::c::cc;
 
-use core::either::Right;        //~ ERROR unused import
+use std::either::Right;        //~ ERROR unused import
 
-use core::util::*;              // shouldn't get errors for not using
+use std::util::*;              // shouldn't get errors for not using
                                 // everything imported
 
 // Should get errors for both 'Some' and 'None'
-use core::option::{Some, None}; //~ ERROR unused import
+use std::option::{Some, None}; //~ ERROR unused import
                                 //~^ ERROR unused import
 
-use core::io::ReaderUtil;       //~ ERROR unused import
+use std::io::ReaderUtil;       //~ ERROR unused import
 // Be sure that if we just bring some methods into scope that they're also
 // counted as being used.
-use core::io::WriterUtil;
+use std::io::WriterUtil;
 
 // Make sure this import is warned about when at least one of its imported names
 // is unused
-use core::vec::{filter, map};   //~ ERROR unused import
+use std::vec::{filter, map};   //~ ERROR unused import
 
 mod foo {
     pub struct Point{x: int, y: int}
@@ -37,7 +37,7 @@ mod foo {
 
 mod bar {
     // Don't ignore on 'pub use' because we're not sure if it's used or not
-    pub use core::cmp::Eq;
+    pub use std::cmp::Eq;
 
     pub mod c {
         use foo::Point;
@@ -47,7 +47,7 @@ mod bar {
 
     #[allow(unused_imports)]
     mod foo {
-        use core::cmp::Eq;
+        use std::cmp::Eq;
     }
 }
 
