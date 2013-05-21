@@ -9,31 +9,31 @@
 // except according to those terms.
 
 use container::Container;
-use option::*;
-use vec::OwnedVector;
-use unstable::sync::{Exclusive, exclusive};
-use cell::Cell;
 use kinds::Owned;
+use vec::OwnedVector;
+use cell::Cell;
+use option::*;
+use unstable::sync::{Exclusive, exclusive};
 use clone::Clone;
 
-pub struct WorkQueue<T> {
+pub struct MessageQueue<T> {
     // XXX: Another mystery bug fixed by boxing this lock
     priv queue: ~Exclusive<~[T]>
 }
 
-pub impl<T: Owned> WorkQueue<T> {
-    fn new() -> WorkQueue<T> {
-        WorkQueue {
+impl<T: Owned> MessageQueue<T> {
+    pub fn new() -> MessageQueue<T> {
+        MessageQueue {
             queue: ~exclusive(~[])
         }
     }
 
-    fn push(&mut self, value: T) {
+    pub fn push(&mut self, value: T) {
         let value = Cell(value);
-        self.queue.with(|q| q.unshift(value.take()) );
+        self.queue.with(|q| q.push(value.take()) );
     }
 
-    fn pop(&mut self) -> Option<T> {
+    pub fn pop(&mut self) -> Option<T> {
         do self.queue.with |q| {
             if !q.is_empty() {
                 Some(q.shift())
@@ -42,25 +42,11 @@ pub impl<T: Owned> WorkQueue<T> {
             }
         }
     }
-
-    fn steal(&mut self) -> Option<T> {
-        do self.queue.with |q| {
-            if !q.is_empty() {
-                Some(q.pop())
-            } else {
-                None
-            }
-        }
-    }
-
-    fn is_empty(&self) -> bool {
-        self.queue.with_imm(|q| q.is_empty() )
-    }
 }
 
-impl<T> Clone for WorkQueue<T> {
-    fn clone(&self) -> WorkQueue<T> {
-        WorkQueue {
+impl<T> Clone for MessageQueue<T> {
+    fn clone(&self) -> MessageQueue<T> {
+        MessageQueue {
             queue: self.queue.clone()
         }
     }

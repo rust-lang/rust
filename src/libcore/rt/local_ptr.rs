@@ -8,43 +8,57 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Access to the thread-local Scheduler
+//! Access to a single thread-local pointer.
+//!
+//! The runtime will use this for storing ~Task.
+//!
+//! XXX: Add runtime checks for usage of inconsistent pointer types.
+//! and for overwriting an existing pointer.
 
-use prelude::*;
-use ptr::mut_null;
 use libc::c_void;
 use cast;
+use ptr;
 use cell::Cell;
-
-use rt::sched::Scheduler;
-use rt::rtio::{EventLoop, IoFactoryObject};
-use tls = rt::thread_local_storage;
+use option::{Option, Some, None};
 use unstable::finally::Finally;
+use tls = rt::thread_local_storage;
 
-#[cfg(test)] use rt::uv::uvio::UvEventLoop;
-
-/// Give the Scheduler to thread-local storage
-pub fn put(sched: ~Scheduler) {
+/// Initialize the TLS key. Other ops will fail if this isn't executed first.
+pub fn init_tls_key() {
     unsafe {
-        let key = tls_key();
-        let void_sched: *mut c_void = cast::transmute(sched);
-        tls::set(key, void_sched);
+        rust_initialize_rt_tls_key();
+        extern {
+            fn rust_initialize_rt_tls_key();
+        }
     }
 }
 
-/// Take ownership of the Scheduler from thread-local storage
-pub fn take() -> ~Scheduler {
-    unsafe {
-        let key = tls_key();
-        let void_sched: *mut c_void = tls::get(key);
-        rtassert!(void_sched.is_not_null());
-        let sched: ~Scheduler = cast::transmute(void_sched);
-        tls::set(key, mut_null());
-        return sched;
-    }
+/// Give a pointer to thread-local storage.
+///
+/// # Safety note
+///
+/// Does not validate the pointer type.
+pub unsafe fn put<T>(sched: ~T) {
+    let key = tls_key();
+    let void_ptr: *mut c_void = cast::transmute(sched);
+    tls::set(key, void_ptr);
 }
 
-/// Check whether there is a thread-local Scheduler attached to the running thread
+/// Take ownership of a pointer from thread-local storage.
+///
+/// # Safety note
+///
+/// Does not validate the pointer type.
+pub unsafe fn take<T>() -> ~T {
+    let key = tls_key();
+    let void_ptr: *mut c_void = tls::get(key);
+    rtassert!(void_ptr.is_not_null());
+    let ptr: ~T = cast::transmute(void_ptr);
+    tls::set(key, ptr::mut_null());
+    return ptr;
+}
+
+/// Check whether there is a thread-local pointer installed.
 pub fn exists() -> bool {
     unsafe {
         match maybe_tls_key() {
@@ -56,19 +70,21 @@ pub fn exists() -> bool {
 
 /// Borrow the thread-local scheduler from thread-local storage.
 /// While the scheduler is borrowed it is not available in TLS.
-pub fn borrow(f: &fn(&mut Scheduler)) {
-    let mut sched = take();
+///
+/// # Safety note
+///
+/// Does not validate the pointer type.
+pub unsafe fn borrow<T>(f: &fn(&mut T)) {
+    let mut value = take();
 
     // XXX: Need a different abstraction from 'finally' here to avoid unsafety
-    unsafe {
-        let unsafe_sched = cast::transmute_mut_region(&mut *sched);
-        let sched = Cell(sched);
+    let unsafe_ptr = cast::transmute_mut_region(&mut *value);
+    let value_cell = Cell(value);
 
-        do (|| {
-            f(unsafe_sched);
-        }).finally {
-            put(sched.take());
-        }
+    do (|| {
+        f(unsafe_ptr);
+    }).finally {
+        put(value_cell.take());
     }
 }
 
@@ -78,22 +94,16 @@ pub fn borrow(f: &fn(&mut Scheduler)) {
 ///
 /// Because this leaves the Scheduler in thread-local storage it is possible
 /// For the Scheduler pointer to be aliased
-pub unsafe fn unsafe_borrow() -> *mut Scheduler {
+pub unsafe fn unsafe_borrow<T>() -> *mut T {
     let key = tls_key();
     let mut void_sched: *mut c_void = tls::get(key);
     rtassert!(void_sched.is_not_null());
     {
         let sched: *mut *mut c_void = &mut void_sched;
-        let sched: *mut ~Scheduler = sched as *mut ~Scheduler;
-        let sched: *mut Scheduler = &mut **sched;
+        let sched: *mut ~T = sched as *mut ~T;
+        let sched: *mut T = &mut **sched;
         return sched;
     }
-}
-
-pub unsafe fn unsafe_borrow_io() -> *mut IoFactoryObject {
-    let sched = unsafe_borrow();
-    let io: *mut IoFactoryObject = (*sched).event_loop.io().unwrap();
-    return io;
 }
 
 fn tls_key() -> tls::Key {
@@ -126,36 +136,10 @@ fn maybe_tls_key() -> Option<tls::Key> {
             return None;
         }
     }
-}
 
-extern {
-    #[fast_ffi]
-    fn rust_get_rt_tls_key() -> *mut c_void;
-}
-
-#[test]
-fn thread_local_scheduler_smoke_test() {
-    let scheduler = ~UvEventLoop::new_scheduler();
-    put(scheduler);
-    let _scheduler = take();
-}
-
-#[test]
-fn thread_local_scheduler_two_instances() {
-    let scheduler = ~UvEventLoop::new_scheduler();
-    put(scheduler);
-    let _scheduler = take();
-    let scheduler = ~UvEventLoop::new_scheduler();
-    put(scheduler);
-    let _scheduler = take();
-}
-
-#[test]
-fn borrow_smoke_test() {
-    let scheduler = ~UvEventLoop::new_scheduler();
-    put(scheduler);
-    unsafe {
-        let _scheduler = unsafe_borrow();
+    extern {
+        #[fast_ffi]
+        fn rust_get_rt_tls_key() -> *mut c_void;
     }
-    let _scheduler = take();
+
 }

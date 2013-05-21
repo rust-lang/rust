@@ -10,13 +10,13 @@
 
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use rt::sched::local_sched::unsafe_borrow_io;
 use rt::io::net::ip::IpAddr;
 use rt::io::{Reader, Writer, Listener};
 use rt::io::{io_error, read_error, EndOfFile};
-use rt::rtio::{IoFactory,
+use rt::rtio::{IoFactory, IoFactoryObject,
                RtioTcpListener, RtioTcpListenerObject,
                RtioTcpStream, RtioTcpStreamObject};
+use rt::local::Local;
 
 pub struct TcpStream {
     rtstream: ~RtioTcpStreamObject
@@ -32,7 +32,7 @@ impl TcpStream {
     pub fn connect(addr: IpAddr) -> Option<TcpStream> {
         let stream = unsafe {
             rtdebug!("borrowing io to connect");
-            let io = unsafe_borrow_io();
+            let io = Local::unsafe_borrow::<IoFactoryObject>();
             rtdebug!("about to connect");
             (*io).tcp_connect(addr)
         };
@@ -88,7 +88,10 @@ pub struct TcpListener {
 
 impl TcpListener {
     pub fn bind(addr: IpAddr) -> Option<TcpListener> {
-        let listener = unsafe { (*unsafe_borrow_io()).tcp_bind(addr) };
+        let listener = unsafe {
+            let io = Local::unsafe_borrow::<IoFactoryObject>();
+            (*io).tcp_bind(addr)
+        };
         match listener {
             Ok(l) => {
                 Some(TcpListener {

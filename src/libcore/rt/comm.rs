@@ -20,8 +20,8 @@ use cast;
 use util;
 use ops::Drop;
 use kinds::Owned;
-use rt::sched::Coroutine;
-use rt::local_sched;
+use rt::sched::{Scheduler, Coroutine};
+use rt::local::Local;
 use unstable::intrinsics::{atomic_xchg, atomic_load};
 use util::Void;
 use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable};
@@ -127,7 +127,7 @@ impl<T> ChanOne<T> {
                 task_as_state => {
                     // Port is blocked. Wake it up.
                     let recvr: ~Coroutine = cast::transmute(task_as_state);
-                    let sched = local_sched::take();
+                    let sched = Local::take::<Scheduler>();
                     sched.schedule_task(recvr);
                 }
             }
@@ -157,7 +157,7 @@ impl<T> PortOne<T> {
         // XXX: Optimize this to not require the two context switches when data is available
 
         // Switch to the scheduler to put the ~Task into the Packet state.
-        let sched = local_sched::take();
+        let sched = Local::take::<Scheduler>();
         do sched.deschedule_running_task_and_then |task| {
             unsafe {
                 // Atomically swap the task pointer into the Packet state, issuing
@@ -173,7 +173,7 @@ impl<T> PortOne<T> {
                     STATE_ONE => {
                         // Channel is closed. Switch back and check the data.
                         let task: ~Coroutine = cast::transmute(task_as_state);
-                        let sched = local_sched::take();
+                        let sched = Local::take::<Scheduler>();
                         sched.resume_task_immediately(task);
                     }
                     _ => util::unreachable()
@@ -239,7 +239,7 @@ impl<T> Drop for ChanOneHack<T> {
                     // The port is blocked waiting for a message we will never send. Wake it.
                     assert!((*this.packet()).payload.is_none());
                     let recvr: ~Coroutine = cast::transmute(task_as_state);
-                    let sched = local_sched::take();
+                    let sched = Local::take::<Scheduler>();
                     sched.schedule_task(recvr);
                 }
             }

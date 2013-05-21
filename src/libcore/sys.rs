@@ -195,7 +195,8 @@ impl FailWithCause for &'static str {
 pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
     use option::Option;
     use rt::{context, OldTaskContext, TaskContext};
-    use rt::local_services::{unsafe_borrow_local_services, Unwinder};
+    use rt::task::{Task, Unwinder};
+    use rt::local::Local;
 
     let context = context();
     match context {
@@ -224,8 +225,8 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
 
                 gc::cleanup_stack_for_failure();
 
-                let local_services = unsafe_borrow_local_services();
-                let unwinder: &mut Option<Unwinder> = &mut (*local_services).unwinder;
+                let task = Local::unsafe_borrow::<Task>();
+                let unwinder: &mut Option<Unwinder> = &mut (*task).unwinder;
                 match *unwinder {
                     Some(ref mut unwinder) => unwinder.begin_unwind(),
                     None => abort!("failure without unwinder. aborting process")

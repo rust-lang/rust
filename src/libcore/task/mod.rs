@@ -504,7 +504,8 @@ pub fn failing() -> bool {
     //! True if the running task has failed
 
     use rt::{context, OldTaskContext};
-    use rt::local_services::borrow_local_services;
+    use rt::local::Local;
+    use rt::task::Task;
 
     match context() {
         OldTaskContext => {
@@ -514,7 +515,7 @@ pub fn failing() -> bool {
         }
         _ => {
             let mut unwinding = false;
-            do borrow_local_services |local| {
+            do Local::borrow::<Task> |local| {
                 unwinding = match local.unwinder {
                     Some(unwinder) => {
                         unwinder.unwinding
