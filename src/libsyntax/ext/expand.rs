@@ -15,17 +15,15 @@ use ast::{crate, decl_local, expr_, expr_mac, mac_invoc_tt};
 use ast::{item_mac, local_, stmt_, stmt_decl, stmt_mac, stmt_expr, stmt_semi};
 use ast::{SCTable, illegal_ctxt};
 use ast;
-use ast_util::{new_rename, new_mark, resolve, new_sctable};
+use ast_util::{new_rename, new_mark, resolve, get_sctable};
 use attr;
 use codemap;
 use codemap::{span, CallInfo, ExpandedFrom, NameAndSpan, spanned};
-use core::cast;
-use core::local_data;
 use ext::base::*;
 use fold::*;
 use parse;
 use parse::{parse_item_from_source_str};
-use parse::token::{ident_to_str, intern};
+use parse::token::{ident_to_str, intern, fresh_name};
 use visit;
 use visit::{Visitor,mk_vt};
 
@@ -369,7 +367,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
 
 // return a visitor that extracts the pat_ident paths
 // from a given pattern and puts them in a mutable
-// array (passed in to the traversal
+// array (passed in to the traversal)
 pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
     let default_visitor = visit::default_visitor();
     @Visitor{
@@ -394,8 +392,6 @@ pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
         .. *default_visitor
     }
 }
-
-
 
 pub fn expand_block(extsbox: @mut SyntaxEnv,
                     cx: @ExtCtxt,
@@ -422,14 +418,13 @@ fn get_block_info(exts : SyntaxEnv) -> BlockInfo {
 // given a mutable list of renames, return a tree-folder that applies those
 // renames.
 fn renames_to_fold(renames : @mut ~[(ast::ident,ast::Name)]) -> @ast_fold {
-    let table = local_sctable_get();
     let afp = default_ast_fold();
     let f_pre = @AstFoldFns {
         fold_ident: |id,_| {
             // the individual elements are memoized... it would
             // also be possible to memoize on the whole list at once.
             let new_ctxt = renames.foldl(id.ctxt,|ctxt,&(from,to)| {
-                new_rename(from,to,*ctxt,table)
+                new_rename(from,to,*ctxt)
             });
             ast::ident{name:id.name,ctxt:new_ctxt}
         },
@@ -446,22 +441,6 @@ fn apply_pending_renames(folder : @ast_fold, stmt : ast::stmt) -> @ast::stmt {
     }
 }
 
-// fetch the SCTable from TLS, create one if it doesn't yet exist.
-fn local_sctable_get() -> @mut SCTable {
-    unsafe {
-        let sctable_key = (cast::transmute::<(uint, uint),
-                           &fn(v: @@mut SCTable)>(
-                               (-4 as uint, 0u)));
-        match local_data::local_data_get(sctable_key) {
-            None => {
-                let new_table = @@mut new_sctable();
-                local_data::local_data_set(sctable_key,new_table);
-                *new_table
-            },
-            Some(intr) => *intr
-        }
-    }
-}
 
 
 pub fn new_span(cx: @ExtCtxt, sp: span) -> span {
@@ -732,35 +711,33 @@ pub fn fun_to_ident_folder(f: @fn(ast::ident)->ast::ident) -> @ast_fold{
 
 // update the ctxts in a path to get a rename node
 pub fn new_ident_renamer(from: ast::ident,
-                      to: ast::Name,
-                      table: @mut SCTable) ->
+                      to: ast::Name) ->
     @fn(ast::ident)->ast::ident {
     |id : ast::ident|
     ast::ident{
         name: id.name,
-        ctxt: new_rename(from,to,id.ctxt,table)
+        ctxt: new_rename(from,to,id.ctxt)
     }
 }
 
 
 // update the ctxts in a path to get a mark node
-pub fn new_ident_marker(mark: uint,
-                        table: @mut SCTable) ->
+pub fn new_ident_marker(mark: uint) ->
     @fn(ast::ident)->ast::ident {
     |id : ast::ident|
     ast::ident{
         name: id.name,
-        ctxt: new_mark(mark,id.ctxt,table)
+        ctxt: new_mark(mark,id.ctxt)
     }
 }
 
 // perform resolution (in the MTWT sense) on all of the
 // idents in the tree. This is the final step in expansion.
-pub fn new_ident_resolver(table: @mut SCTable) ->
+pub fn new_ident_resolver() ->
     @fn(ast::ident)->ast::ident {
     |id : ast::ident|
     ast::ident {
-        name : resolve(id,table),
+        name : resolve(id),
         ctxt : illegal_ctxt
     }
 }
@@ -771,15 +748,17 @@ mod test {
     use super::*;
     use ast;
     use ast::{attribute_, attr_outer, meta_word, empty_ctxt};
-    use ast_util::{new_sctable};
+    use ast_util::{get_sctable};
     use codemap;
     use codemap::spanned;
     use parse;
-    use parse::token::{gensym};
-    use core::io;
-    use core::option::{None, Some};
+    use parse::token::{gensym, intern, get_ident_interner};
+    use print::pprust;
     use util::parser_testing::{string_to_item, string_to_pat, strs_to_idents};
     use visit::{mk_vt,Visitor};
+
+    use core::io;
+    use core::option::{None, Some};
 
     // make sure that fail! is present
     #[test] fn fail_exists_test () {
@@ -883,21 +862,26 @@ mod test {
 
     #[test]
     fn renaming () {
-        let maybe_item_ast = string_to_item(@~"fn a() -> int { let b = 13; b} ");
+        let maybe_item_ast = string_to_item(@~"fn a() -> int { let b = 13; b }");
         let item_ast = match maybe_item_ast {
             Some(x) => x,
             None => fail!("test case fail")
         };
-        let table = @mut new_sctable();
-        let a_name = 100; // enforced by testing_interner
-        let a2_name = gensym("a2");
+        let a_name = intern("a");
+        let a2_name = intern("a2");
         let renamer = new_ident_renamer(ast::ident{name:a_name,ctxt:empty_ctxt},
-                                        a2_name,table);
+                                        a2_name);
         let renamed_ast = fun_to_ident_folder(renamer).fold_item(item_ast).get();
-        let resolver = new_ident_resolver(table);
+        let resolver = new_ident_resolver();
         let resolved_ast = fun_to_ident_folder(resolver).fold_item(renamed_ast).get();
-        io::print(fmt!("ast: %?\n",resolved_ast))
+        let resolved_as_str = pprust::item_to_str(resolved_ast,
+                                                  get_ident_interner());
+        assert_eq!(resolved_as_str,~"fn a2() -> int { let b = 13; b }");
+
+
     }
+
+    // sigh... it looks like I have two different renaming mechanisms, now...
 
     #[test]
     fn pat_idents(){
