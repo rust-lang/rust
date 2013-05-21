@@ -5125,7 +5125,7 @@ pub impl Resolver {
                         view_path_simple(_, _, id) | view_path_glob(_, id) => {
                             if !self.used_imports.contains(&id) {
                                 self.session.add_lint(unused_imports,
-                                                      id, vi.span,
+                                                      id, p.span,
                                                       ~"unused import");
                             }
                         }
