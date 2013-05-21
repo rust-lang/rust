@@ -20,7 +20,7 @@ pub struct AsyncWatcher(*uvll::uv_async_t);
 impl Watcher for AsyncWatcher { }
 
 impl AsyncWatcher {
-    fn new(loop_: &mut Loop, cb: AsyncCallback) -> AsyncWatcher {
+    pub fn new(loop_: &mut Loop, cb: AsyncCallback) -> AsyncWatcher {
         unsafe {
             let handle = uvll::malloc_handle(UV_ASYNC);
             assert!(handle.is_not_null());
@@ -41,14 +41,14 @@ impl AsyncWatcher {
         }
     }
 
-    fn send(&mut self) {
+    pub fn send(&mut self) {
         unsafe {
             let handle = self.native_handle();
             uvll::async_send(handle);
         }
     }
 
-    fn close(self, cb: NullCallback) {
+    pub fn close(self, cb: NullCallback) {
         let mut this = self;
         let data = this.get_watcher_data();
         assert!(data.close_cb.is_none());

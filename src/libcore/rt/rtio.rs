@@ -18,6 +18,7 @@ use rt::uv::uvio;
 // XXX: ~object doesn't work currently so these are some placeholder
 // types to use instead
 pub type EventLoopObject = uvio::UvEventLoop;
+pub type RemoteCallbackObject = uvio::UvRemoteCallback;
 pub type IoFactoryObject = uvio::UvIoFactory;
 pub type RtioTcpStreamObject = uvio::UvTcpStream;
 pub type RtioTcpListenerObject = uvio::UvTcpListener;
@@ -26,8 +27,18 @@ pub trait EventLoop {
     fn run(&mut self);
     fn callback(&mut self, ~fn());
     fn callback_ms(&mut self, ms: u64, ~fn());
+    fn remote_callback(&mut self, ~fn()) -> ~RemoteCallbackObject;
     /// The asynchronous I/O services. Not all event loops may provide one
     fn io<'a>(&'a mut self) -> Option<&'a mut IoFactoryObject>;
+}
+
+pub trait RemoteCallback {
+    /// Trigger the remote callback. Note that the number of times the callback
+    /// is run is not guaranteed. All that is guaranteed is that, after calling 'fire',
+    /// the callback will be called at least once, but multiple callbacks may be coalesced
+    /// and callbacks may be called more often requested. Destruction also triggers the
+    /// callback.
+    fn fire(&mut self);
 }
 
 pub trait IoFactory {

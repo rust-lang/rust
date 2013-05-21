@@ -12,6 +12,7 @@ use option::*;
 use result::*;
 use ops::Drop;
 use cell::{Cell, empty_cell};
+use cast;
 use cast::transmute;
 use clone::Clone;
 use rt::io::IoError;
@@ -23,6 +24,8 @@ use rt::sched::Scheduler;
 use rt::io::{standard_error, OtherIoError};
 use rt::tube::Tube;
 use rt::local::Local;
+use unstable::sync::{UnsafeAtomicRcBox, AtomicInt};
+use unstable::intrinsics;
 
 #[cfg(test)] use container::Container;
 #[cfg(test)] use uint;
@@ -82,6 +85,10 @@ impl EventLoop for UvEventLoop {
         }
     }
 
+    fn remote_callback(&mut self, f: ~fn()) -> ~RemoteCallbackObject {
+        ~UvRemoteCallback::new(self.uvio.uv_loop(), f)
+    }
+
     fn io<'a>(&'a mut self) -> Option<&'a mut IoFactoryObject> {
         Some(&mut self.uvio)
     }
@@ -98,6 +105,85 @@ fn test_callback_run_once() {
         }
         event_loop.run();
         assert_eq!(count, 1);
+    }
+}
+
+pub struct UvRemoteCallback {
+    // The uv async handle for triggering the callback
+    async: AsyncWatcher,
+    // An atomic flag to tell the callback to exit,
+    // set from the dtor.
+    exit_flag: UnsafeAtomicRcBox<AtomicInt>
+}
+
+impl UvRemoteCallback {
+    pub fn new(loop_: &mut Loop, f: ~fn()) -> UvRemoteCallback {
+        let exit_flag = UnsafeAtomicRcBox::new(AtomicInt::new(0));
+        let exit_flag_clone = exit_flag.clone();
+        let async = do AsyncWatcher::new(loop_) |watcher, status| {
+            assert!(status.is_none());
+            f();
+            let exit_flag_ptr = exit_flag_clone.get();
+            unsafe {
+                if (*exit_flag_ptr).load() == 1 {
+                    watcher.close(||());
+                }
+            }
+        };
+        UvRemoteCallback {
+            async: async,
+            exit_flag: exit_flag
+        }
+    }
+}
+
+impl RemoteCallback for UvRemoteCallback {
+    fn fire(&mut self) { self.async.send() }
+}
+
+impl Drop for UvRemoteCallback {
+    fn finalize(&self) {
+        unsafe {
+            let mut this: &mut UvRemoteCallback = cast::transmute_mut(self);
+            let exit_flag_ptr = this.exit_flag.get();
+            (*exit_flag_ptr).store(1);
+            this.async.send();
+        }
+    }
+}
+
+#[cfg(test)]
+mod test_remote {
+    use super::*;
+    use cell;
+    use cell::Cell;
+    use rt::test::*;
+    use rt::thread::Thread;
+    use rt::tube::Tube;
+    use rt::rtio::EventLoop;
+    use rt::local::Local;
+    use rt::sched::Scheduler;
+
+    #[test]
+    fn test_uv_remote() {
+        do run_in_newsched_task {
+            let mut tube = Tube::new();
+            let tube_clone = tube.clone();
+            let remote_cell = cell::empty_cell();
+            do Local::borrow::<Scheduler>() |sched| {
+                let tube_clone = tube_clone.clone();
+                let tube_clone_cell = Cell(tube_clone);
+                let remote = do sched.event_loop.remote_callback {
+                    tube_clone_cell.take().send(1);
+                };
+                remote_cell.put_back(remote);
+            }
+            let _thread = do Thread::start {
+                remote_cell.take().fire();
+            };
+
+            assert!(tube.recv() == 1);
+        }
     }
 }
 
