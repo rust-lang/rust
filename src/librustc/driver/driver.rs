@@ -265,6 +265,9 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     time(time_passes, ~"loop checking", ||
          middle::check_loop::check_crate(ty_cx, crate));
 
+    time(time_passes, ~"stack checking", ||
+         middle::stack_check::stack_check_crate(ty_cx, crate));
+
     let middle::moves::MoveMaps {moves_map, moved_variables_set,
                                  capture_map} =
         time(time_passes, ~"compute moves", ||

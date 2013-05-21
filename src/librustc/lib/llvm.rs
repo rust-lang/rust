@@ -2246,6 +2246,11 @@ impl TypeNames {
         self.type_to_str_depth(ty, 30)
     }
 
+    pub fn types_to_str(&self, tys: &[Type]) -> ~str {
+        let strs = tys.map(|t| self.type_to_str(*t));
+        fmt!("[%s]", strs.connect(","))
+    }
+
     pub fn val_to_str(&self, val: ValueRef) -> ~str {
         unsafe {
             let ty = Type::from_ref(llvm::LLVMTypeOf(val));
