@@ -343,6 +343,7 @@ pub impl<'self> CheckLoanCtxt<'self> {
                         cmt = b;
                     }
 
+                    mc::cat_downcast(b) |
                     mc::cat_interior(b, _) => {
                         if cmt.mutbl == mc::McInherited {
                             cmt = b;

@@ -232,8 +232,8 @@ pub enum LoanPath {
 
 #[deriving(Eq)]
 pub enum LoanPathElem {
-    LpDeref,                      // `*LV` in doc.rs
-    LpInterior(mc::interior_kind) // `LV.f` in doc.rs
+    LpDeref,                     // `*LV` in doc.rs
+    LpInterior(mc::InteriorKind) // `LV.f` in doc.rs
 }
 
 pub impl LoanPath {
@@ -276,6 +276,7 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<@LoanPath> {
                 |&lp| @LpExtend(lp, cmt.mutbl, LpInterior(ik)))
         }
 
+        mc::cat_downcast(cmt_base) |
         mc::cat_stack_upvar(cmt_base) |
         mc::cat_discr(cmt_base, _) => {
             opt_loan_path(cmt_base)
@@ -612,22 +613,23 @@ pub impl BorrowckCtxt {
                 }
             }
 
-            LpExtend(lp_base, _, LpInterior(mc::interior_field(fld))) => {
+            LpExtend(lp_base, _, LpInterior(mc::InteriorField(fname))) => {
                 self.append_loan_path_to_str_from_interior(lp_base, out);
-                str::push_char(out, '.');
-                str::push_str(out, *self.tcx.sess.intr().get(fld));
+                match fname {
+                    mc::NamedField(fname) => {
+                        str::push_char(out, '.');
+                        str::push_str(out, *self.tcx.sess.intr().get(fname));
+                    }
+                    mc::PositionalField(idx) => {
+                        str::push_char(out, '#'); // invent a notation here
+                        str::push_str(out, idx.to_str());
+                    }
+                }
             }
 
-            LpExtend(lp_base, _, LpInterior(mc::interior_index(*))) => {
+            LpExtend(lp_base, _, LpInterior(mc::InteriorElement(_))) => {
                 self.append_loan_path_to_str_from_interior(lp_base, out);
                 str::push_str(out, "[]");
-            }
-
-            LpExtend(lp_base, _, LpInterior(mc::interior_tuple)) |
-            LpExtend(lp_base, _, LpInterior(mc::interior_anon_field)) |
-            LpExtend(lp_base, _, LpInterior(mc::interior_variant(_))) => {
-                self.append_loan_path_to_str_from_interior(lp_base, out);
-                str::push_str(out, ".(tuple)");
             }
 
             LpExtend(lp_base, _, LpDeref) => {
