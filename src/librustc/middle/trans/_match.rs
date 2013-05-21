@@ -296,7 +296,7 @@ pub fn variant_opt(bcx: block, pat_id: ast::node_id)
             return lit(UnitLikeStructLit(pat_id));
         }
         _ => {
-            ccx.sess.bug(~"non-variant or struct in variant_opt()");
+            ccx.sess.bug("non-variant or struct in variant_opt()");
         }
     }
 }
@@ -891,10 +891,10 @@ pub fn extract_vec_elems(bcx: block,
 
     let mut elems = do vec::from_fn(elem_count) |i| {
         match slice {
-            None => GEPi(bcx, base, ~[i]),
-            Some(n) if i < n => GEPi(bcx, base, ~[i]),
+            None => GEPi(bcx, base, [i]),
+            Some(n) if i < n => GEPi(bcx, base, [i]),
             Some(n) if i > n => {
-                InBoundsGEP(bcx, base, ~[
+                InBoundsGEP(bcx, base, [
                     Sub(bcx, count,
                         C_int(bcx.ccx(), (elem_count - i) as int))])
             }
@@ -1089,11 +1089,8 @@ pub fn compare_values(cx: block,
             let scratch_rhs = alloca(cx, val_ty(rhs));
             Store(cx, rhs, scratch_rhs);
             let did = cx.tcx().lang_items.uniq_str_eq_fn();
-            let bcx = callee::trans_lang_call(cx, did,
-                                                        ~[scratch_lhs,
-                                                          scratch_rhs],
-                                                        expr::SaveIn(
-                                                         scratch_result.val));
+            let bcx = callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs],
+                                              expr::SaveIn(scratch_result.val));
             let result = scratch_result.to_result(bcx);
             Result {
                 bcx: result.bcx,
@@ -1103,10 +1100,8 @@ pub fn compare_values(cx: block,
         ty::ty_estr(_) => {
             let scratch_result = scratch_datum(cx, ty::mk_bool(), false);
             let did = cx.tcx().lang_items.str_eq_fn();
-            let bcx = callee::trans_lang_call(cx, did,
-                                                        ~[lhs, rhs],
-                                                        expr::SaveIn(
-                                                         scratch_result.val));
+            let bcx = callee::trans_lang_call(cx, did, [lhs, rhs],
+                                              expr::SaveIn(scratch_result.val));
             let result = scratch_result.to_result(bcx);
             Result {
                 bcx: result.bcx,
@@ -1114,7 +1109,7 @@ pub fn compare_values(cx: block,
             }
         }
         _ => {
-            cx.tcx().sess.bug(~"only scalars and strings supported in \
+            cx.tcx().sess.bug("only scalars and strings supported in \
                                 compare_values");
         }
     }
@@ -1343,7 +1338,7 @@ pub fn compile_submatch(bcx: block,
         let tup_repr = adt::represent_type(bcx.ccx(), tup_ty);
         let n_tup_elts = match ty::get(tup_ty).sty {
           ty::ty_tup(ref elts) => elts.len(),
-          _ => ccx.sess.bug(~"non-tuple type in tuple pattern")
+          _ => ccx.sess.bug("non-tuple type in tuple pattern")
         };
         let tup_vals = do vec::from_fn(n_tup_elts) |i| {
             adt::trans_field_ptr(bcx, tup_repr, val, 0, i)
@@ -1362,7 +1357,7 @@ pub fn compile_submatch(bcx: block,
                     ty::lookup_struct_fields(tcx, struct_id).len();
             }
             _ => {
-                ccx.sess.bug(~"non-struct type in tuple struct pattern");
+                ccx.sess.bug("non-struct type in tuple struct pattern");
             }
         }
 
@@ -1478,8 +1473,8 @@ pub fn compile_submatch(bcx: block,
                       }
                       _ => {
                           bcx.sess().bug(
-                              ~"in compile_submatch, expected \
-                                trans_opt to return a single_result")
+                              "in compile_submatch, expected \
+                               trans_opt to return a single_result")
                       }
                   }
               }
@@ -1689,7 +1684,7 @@ pub fn trans_match_inner(scope_cx: block,
         }
     };
     let lldiscr = discr_datum.to_ref_llval(bcx);
-    compile_submatch(bcx, matches, ~[lldiscr], chk);
+    compile_submatch(bcx, matches, [lldiscr], chk);
 
     let mut arm_cxs = ~[];
     for arm_datas.each |arm_data| {

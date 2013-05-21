@@ -354,7 +354,7 @@ pub impl Parser {
     fn get_lifetime(&self, tok: &token::Token) -> ast::ident {
         match *tok {
             token::LIFETIME(ref ident) => copy *ident,
-            _ => self.bug(~"not a lifetime"),
+            _ => self.bug("not a lifetime"),
         }
     }
 
@@ -434,7 +434,7 @@ pub impl Parser {
         });
 
         fn parse_onceness(this: &Parser) -> Onceness {
-            if this.eat_keyword(~"once") {
+            if this.eat_keyword("once") {
                 Once
             } else {
                 Many
@@ -1354,7 +1354,7 @@ pub impl Parser {
                 self.bump();
                 match *self.token {
                     token::LPAREN | token::LBRACE => {}
-                    _ => self.fatal(~"expected open delimiter")
+                    _ => self.fatal("expected open delimiter")
                 };
 
                 let ket = token::flip_delimiter(&*self.token);
@@ -1520,7 +1520,7 @@ pub impl Parser {
                 self.bump();
                 (Some(sep), zerok)
             } else {
-                self.fatal(~"expected `*` or `+`");
+                self.fatal("expected `*` or `+`");
             }
         }
     }
@@ -1587,7 +1587,7 @@ pub impl Parser {
 
         match *self.token {
             token::EOF => {
-                self.fatal(~"file ended with unbalanced delimiters");
+                self.fatal("file ended with unbalanced delimiters");
             }
             token::LPAREN | token::LBRACE | token::LBRACKET => {
                 let close_delim = token::flip_delimiter(&*self.token);
@@ -1602,7 +1602,7 @@ pub impl Parser {
                                 |p| p.parse_token_tree()
                             ),
                             // the close delimiter:
-                            ~[parse_any_tt_tok(self)]
+                            [parse_any_tt_tok(self)]
                         )
                     )
                 )
@@ -1635,7 +1635,7 @@ pub impl Parser {
                     token::flip_delimiter(self.token)
                 )
             }
-            _ => self.fatal(~"expected open delimiter")
+            _ => self.fatal("expected open delimiter")
         }
     }
 
@@ -1678,7 +1678,7 @@ pub impl Parser {
                     token::RPAREN
                 );
                 if ms.len() == 0u {
-                    self.fatal(~"repetition body must be nonempty");
+                    self.fatal("repetition body must be nonempty");
                 }
                 let (sep, zerok) = self.parse_sep_and_zerok();
                 match_seq(ms, sep, zerok, name_idx_lo, *name_idx)
@@ -1996,7 +1996,7 @@ pub impl Parser {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
-                let args = vec::append(args, ~[last_arg]);
+                let args = vec::append(args, [last_arg]);
                 self.mk_expr(lo.lo, block.span.hi, expr_call(f, args, sugar))
             }
             expr_method_call(f, i, /*bad*/ copy tps,
@@ -2004,7 +2004,7 @@ pub impl Parser {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
-                let args = vec::append(args, ~[last_arg]);
+                let args = vec::append(args, [last_arg]);
                 self.mk_expr(lo.lo, block.span.hi,
                              expr_method_call(f, i, tps, args, sugar))
             }
@@ -2575,7 +2575,7 @@ pub impl Parser {
             // XXX: Remove after snapshot.
         }
         if !is_plain_ident(&*self.token) {
-            self.fatal(~"expected ident");
+            self.fatal("expected ident");
         }
         let name = self.parse_ident();
         self.expect(&token::COLON);
@@ -2597,7 +2597,7 @@ pub impl Parser {
             // If we have attributes then we should have an item
             if !current_attrs.is_empty() {
                 p.span_err(*p.last_span,
-                           ~"expected item after attributes");
+                           "expected item after attributes");
             }
         }
 
@@ -2664,7 +2664,7 @@ pub impl Parser {
                                     "view items must be declared at the top of the block");
                 }
                 iovi_foreign_item(_) => {
-                    self.fatal(~"foreign items are not allowed here");
+                    self.fatal("foreign items are not allowed here");
                 }
                 iovi_none() => { /* fallthrough */ }
             }
@@ -3528,7 +3528,7 @@ pub impl Parser {
 
         if first && attrs_remaining_len > 0u {
             // We parsed attributes for the first item but didn't find it
-            self.span_err(*self.last_span,~"expected item after attributes");
+            self.span_err(*self.last_span, "expected item after attributes");
         }
 
         ast::_mod { view_items: view_items, items: items }
@@ -3583,7 +3583,7 @@ pub impl Parser {
                 let (main_mod, new_mod) =
                     match (main_mod_item, new_mod_item) {
                     (item_mod(m), item_mod(n)) => (m, n),
-                    _ => self.bug(~"parsed mod item should be mod")
+                    _ => self.bug("parsed mod item should be mod")
                 };
                 let merged_mod = ast::_mod {
                     view_items: main_mod.view_items + new_mod.view_items,
@@ -3600,7 +3600,7 @@ pub impl Parser {
     fn push_mod_path(&self, id: ident, attrs: ~[ast::attribute]) {
         let default_path = self.sess.interner.get(id);
         let file_path = match ::attr::first_attr_value_str_by_name(
-            attrs, ~"path") {
+            attrs, "path") {
 
             Some(d) => copy *d,
             None => copy *default_path
@@ -3623,7 +3623,7 @@ pub impl Parser {
         let mod_path = Path(".").push_many(*mod_path_stack);
         let default_path = *self.sess.interner.get(id) + ~".rs";
         let file_path = match ::attr::first_attr_value_str_by_name(
-            outer_attrs, ~"path") {
+            outer_attrs, "path") {
             Some(d) => {
                 let path = Path(copy *d);
                 if !path.is_absolute {
@@ -3660,7 +3660,7 @@ pub impl Parser {
         return (ast::item_mod(m0), mod_attrs);
 
         fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {
-            match ::attr::first_attr_value_str_by_name(attrs, ~"path") {
+            match ::attr::first_attr_value_str_by_name(attrs, "path") {
                 Some(d) => copy *d,
                 None => default
             }
@@ -3915,7 +3915,7 @@ pub impl Parser {
         }
         self.expect(&token::RBRACE);
         if (have_disr && !all_nullary) {
-            self.fatal(~"discriminator values can only be used with a c-like \
+            self.fatal("discriminator values can only be used with a c-like \
                         enum");
         }
 
@@ -4209,7 +4209,7 @@ pub impl Parser {
                     || self.look_ahead(2) == token::LBRACE) {
             // MACRO INVOCATION ITEM
             if attrs.len() > 0 {
-                self.fatal(~"attrs on macros are not yet supported");
+                self.fatal("attrs on macros are not yet supported");
             }
 
             // item macro.
@@ -4235,7 +4235,7 @@ pub impl Parser {
                         |p| p.parse_token_tree()
                     )
                 }
-                _ => self.fatal(~"expected open delimiter")
+                _ => self.fatal("expected open delimiter")
             };
             // single-variant-enum... :
             let m = ast::mac_invoc_tt(pth, tts);
@@ -4262,9 +4262,9 @@ pub impl Parser {
             iovi_none =>
                 None,
             iovi_view_item(_) =>
-                self.fatal(~"view items are not allowed here"),
+                self.fatal("view items are not allowed here"),
             iovi_foreign_item(_) =>
-                self.fatal(~"foreign items are not allowed here"),
+                self.fatal("foreign items are not allowed here"),
             iovi_item(item) =>
                 Some(item)
         }
@@ -4404,7 +4404,7 @@ pub impl Parser {
             let metadata = self.parse_optional_meta();
             view_item_extern_mod(ident, metadata, self.get_id())
         } else {
-            self.bug(~"expected view item");
+            self.bug("expected view item");
         };
         self.expect(&token::SEMI);
         @ast::view_item { node: node,
@@ -4551,7 +4551,7 @@ pub impl Parser {
                 self.bump();
                 self.id_to_str(s)
             }
-            _ =>  self.fatal(~"expected string literal")
+            _ =>  self.fatal("expected string literal")
         }
     }
 }

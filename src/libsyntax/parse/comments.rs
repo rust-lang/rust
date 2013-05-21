@@ -33,15 +33,15 @@ pub struct cmnt {
 }
 
 pub fn is_doc_comment(s: &str) -> bool {
-    (s.starts_with(~"///") && !is_line_non_doc_comment(s)) ||
-    s.starts_with(~"//!") ||
-    (s.starts_with(~"/**") && !is_block_non_doc_comment(s)) ||
-    s.starts_with(~"/*!")
+    (s.starts_with("///") && !is_line_non_doc_comment(s)) ||
+    s.starts_with("//!") ||
+    (s.starts_with("/**") && !is_block_non_doc_comment(s)) ||
+    s.starts_with("/*!")
 }
 
 pub fn doc_comment_style(comment: &str) -> ast::attr_style {
     assert!(is_doc_comment(comment));
-    if comment.starts_with(~"//!") || comment.starts_with(~"/*!") {
+    if comment.starts_with("//!") || comment.starts_with("/*!") {
         ast::attr_inner
     } else {
         ast::attr_outer
@@ -92,14 +92,14 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         };
     }
 
-    if comment.starts_with(~"//") {
+    if comment.starts_with("//") {
         // FIXME #5475:
         // return comment.slice(3u, comment.len()).trim().to_owned();
         let r = comment.slice(3u, comment.len()); return r.trim().to_owned();
 
     }
 
-    if comment.starts_with(~"/*") {
+    if comment.starts_with("/*") {
         let mut lines = ~[];
         for str::each_line_any(comment.slice(3u, comment.len() - 2u)) |line| {
             lines.push(line.to_owned())
@@ -108,7 +108,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         let lines = block_trim(lines, ~"\t ", None);
         let lines = block_trim(lines, ~"*", Some(1u));
         let lines = block_trim(lines, ~"\t ", None);
-        return str::connect(lines, ~"\n");
+        return str::connect(lines, "\n");
     }
 
     fail!("not a doc-comment: %s", comment);

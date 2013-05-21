@@ -846,7 +846,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
                 struct_def.fields[0].node.kind == ast::unnamed_field {
             let ctor_id = match struct_def.ctor_id {
                 Some(ctor_id) => ctor_id,
-                None => ecx.tcx.sess.bug(~"struct def didn't have ctor id"),
+                None => ecx.tcx.sess.bug("struct def didn't have ctor id"),
             };
 
             encode_info_for_struct_ctor(ecx,
@@ -1067,7 +1067,7 @@ fn encode_info_for_items(ecx: @EncodeContext,
     ebml_w.start_tag(tag_items_data);
     index.push(entry { val: crate_node_id, pos: ebml_w.writer.tell() });
     encode_info_for_mod(ecx, ebml_w, &crate.node.module,
-                        crate_node_id, ~[],
+                        crate_node_id, [],
                         syntax::parse::token::special_idents::invalid);
     visit::visit_crate(crate, (), visit::mk_vt(@visit::Visitor {
         visit_expr: |_e, _cx, _v| { },
@@ -1235,8 +1235,8 @@ fn synthesize_crate_attrs(ecx: @EncodeContext,
 
         let other_items =
             {
-                let tmp = attr::remove_meta_items_by_name(items, ~"name");
-                attr::remove_meta_items_by_name(tmp, ~"vers")
+                let tmp = attr::remove_meta_items_by_name(items, "name");
+                attr::remove_meta_items_by_name(tmp, "vers")
             };
 
         let meta_items = vec::append(~[name_item, vers_item], other_items);

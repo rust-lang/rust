@@ -234,7 +234,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
         item_mac(codemap::spanned { node: mac_invoc_tt(pth, ref tts), _}) => {
             (pth, copy *tts)
         }
-        _ => cx.span_bug(it.span, ~"invalid item macro invocation")
+        _ => cx.span_bug(it.span, "invalid item macro invocation")
     };
 
     let extname = cx.parse_sess().interner.get(pth.idents[0]);
@@ -377,8 +377,7 @@ pub fn expand_block(extsbox: @mut SyntaxEnv,
             // see note below about treatment of exts table
             with_exts_frame!(extsbox,orig(blk,sp,fld))
         },
-        _ => cx.span_bug(sp,
-                         ~"expected ScopeMacros binding for \" block\"")
+        _ => cx.span_bug(sp, "expected ScopeMacros binding for \" block\"")
     }
 }
 
@@ -628,7 +627,7 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
                                               attrs,
                                               parse_sess) {
         Some(item) => item,
-        None => cx.bug(~"expected core macros to parse correctly")
+        None => cx.bug("expected core macros to parse correctly")
     };
     // This is run for its side-effects on the expander env,
     // as it registers all the core macros as expanders.

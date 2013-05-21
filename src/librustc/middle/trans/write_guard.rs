@@ -78,7 +78,7 @@ pub fn return_to_mut(mut bcx: block,
         bcx = callee::trans_lang_call(
             bcx,
             bcx.tcx().lang_items.unrecord_borrow_fn(),
-            ~[
+            [
                 box_ptr,
                 bits_val,
                 filename_val,
@@ -90,7 +90,7 @@ pub fn return_to_mut(mut bcx: block,
     callee::trans_lang_call(
         bcx,
         bcx.tcx().lang_items.return_to_mut_fn(),
-        ~[
+        [
             box_ptr,
             bits_val,
             filename_val,
@@ -153,7 +153,7 @@ fn root(datum: &Datum,
             bcx = callee::trans_lang_call(
                 bcx,
                 freeze_did,
-                ~[
+                [
                     box_ptr,
                     filename,
                     line
@@ -164,7 +164,7 @@ fn root(datum: &Datum,
                 bcx = callee::trans_lang_call(
                     bcx,
                     bcx.tcx().lang_items.record_borrow_fn(),
-                    ~[
+                    [
                         box_ptr,
                         Load(bcx, scratch_bits.val),
                         filename,
@@ -193,8 +193,6 @@ fn perform_write_guard(datum: &Datum,
     callee::trans_lang_call(
         bcx,
         bcx.tcx().lang_items.check_not_borrowed_fn(),
-        ~[PointerCast(bcx, llval, T_ptr(T_i8())),
-          filename,
-          line],
+        [PointerCast(bcx, llval, T_ptr(T_i8())), filename, line],
         expr::Ignore)
 }

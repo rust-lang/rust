@@ -376,7 +376,7 @@ pub fn pretty_print_input(sess: Session, cfg: ast::crate_cfg, input: &input,
         match node {
           pprust::node_expr(s, expr) => {
             pp::space(s.s);
-            pp::word(s.s, ~"as");
+            pp::word(s.s, "as");
             pp::space(s.s);
             pp::word(s.s, ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr)));
             pprust::pclose(s);
@@ -442,33 +442,33 @@ pub fn pretty_print_input(sess: Session, cfg: ast::crate_cfg, input: &input,
 }
 
 pub fn get_os(triple: &str) -> Option<session::os> {
-    if str::contains(triple, ~"win32") ||
-               str::contains(triple, ~"mingw32") {
+    if str::contains(triple, "win32") ||
+               str::contains(triple, "mingw32") {
             Some(session::os_win32)
-        } else if str::contains(triple, ~"darwin") {
+        } else if str::contains(triple, "darwin") {
             Some(session::os_macos)
-        } else if str::contains(triple, ~"android") {
+        } else if str::contains(triple, "android") {
             Some(session::os_android)
-        } else if str::contains(triple, ~"linux") {
+        } else if str::contains(triple, "linux") {
             Some(session::os_linux)
-        } else if str::contains(triple, ~"freebsd") {
+        } else if str::contains(triple, "freebsd") {
             Some(session::os_freebsd)
         } else { None }
 }
 
 pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
-    if str::contains(triple, ~"i386") ||
-        str::contains(triple, ~"i486") ||
-               str::contains(triple, ~"i586") ||
-               str::contains(triple, ~"i686") ||
-               str::contains(triple, ~"i786") {
+    if str::contains(triple, "i386") ||
+        str::contains(triple, "i486") ||
+               str::contains(triple, "i586") ||
+               str::contains(triple, "i686") ||
+               str::contains(triple, "i786") {
             Some(abi::X86)
-        } else if str::contains(triple, ~"x86_64") {
+        } else if str::contains(triple, "x86_64") {
             Some(abi::X86_64)
-        } else if str::contains(triple, ~"arm") ||
-                      str::contains(triple, ~"xscale") {
+        } else if str::contains(triple, "arm") ||
+                      str::contains(triple, "xscale") {
             Some(abi::Arm)
-        } else if str::contains(triple, ~"mips") {
+        } else if str::contains(triple, "mips") {
             Some(abi::Mips)
         } else { None }
 }
@@ -508,6 +508,7 @@ pub fn build_target_config(sopts: @session::options,
     return target_cfg;
 }
 
+#[cfg(stage0)]
 pub fn host_triple() -> ~str {
     // Get the host triple out of the build environment. This ensures that our
     // idea of the host triple is the same as for the set of libraries we've
@@ -525,19 +526,37 @@ pub fn host_triple() -> ~str {
         };
 }
 
+#[cfg(not(stage0))]
+pub fn host_triple() -> ~str {
+    // Get the host triple out of the build environment. This ensures that our
+    // idea of the host triple is the same as for the set of libraries we've
+    // actually built.  We can't just take LLVM's host triple because they
+    // normalize all ix86 architectures to i386.
+
+    // FIXME (#2400): Instead of grabbing the host triple we really should
+    // be grabbing (at compile time) the target triple that this rustc is
+    // built with and calling that (at runtime) the host triple.
+    let ht = env!("CFG_BUILD_TRIPLE");
+    return if ht != "" {
+            ht.to_owned()
+        } else {
+            fail!("rustc built without CFG_BUILD_TRIPLE")
+        };
+}
+
 pub fn build_session_options(binary: @~str,
                              matches: &getopts::Matches,
                              demitter: diagnostic::Emitter)
                           -> @session::options {
-    let crate_type = if opt_present(matches, ~"lib") {
+    let crate_type = if opt_present(matches, "lib") {
         session::lib_crate
-    } else if opt_present(matches, ~"bin") {
+    } else if opt_present(matches, "bin") {
         session::bin_crate
     } else {
         session::unknown_crate
     };
-    let parse_only = opt_present(matches, ~"parse-only");
-    let no_trans = opt_present(matches, ~"no-trans");
+    let parse_only = opt_present(matches, "parse-only");
+    let no_trans = opt_present(matches, "no-trans");
 
     let lint_levels = [lint::allow, lint::warn,
                        lint::deny, lint::forbid];
@@ -553,7 +572,7 @@ pub fn build_session_options(binary: @~str,
         let flags = vec::append(getopts::opt_strs(matches, level_short),
                                 getopts::opt_strs(matches, level_name));
         for flags.each |lint_name| {
-            let lint_name = str::replace(*lint_name, ~"-", ~"_");
+            let lint_name = str::replace(*lint_name, "-", "_");
             match lint_dict.find(&lint_name) {
               None => {
                 early_error(demitter, fmt!("unknown %s flag: %s",
@@ -567,7 +586,7 @@ pub fn build_session_options(binary: @~str,
     }
 
     let mut debugging_opts = 0u;
-    let debug_flags = getopts::opt_strs(matches, ~"Z");
+    let debug_flags = getopts::opt_strs(matches, "Z");
     let debug_map = session::debugging_opts_map();
     for debug_flags.each |debug_flag| {
         let mut this_bit = 0u;
@@ -589,31 +608,31 @@ pub fn build_session_options(binary: @~str,
     let output_type =
         if parse_only || no_trans {
             link::output_type_none
-        } else if opt_present(matches, ~"S") &&
-                  opt_present(matches, ~"emit-llvm") {
+        } else if opt_present(matches, "S") &&
+                  opt_present(matches, "emit-llvm") {
             link::output_type_llvm_assembly
-        } else if opt_present(matches, ~"S") {
+        } else if opt_present(matches, "S") {
             link::output_type_assembly
-        } else if opt_present(matches, ~"c") {
+        } else if opt_present(matches, "c") {
             link::output_type_object
-        } else if opt_present(matches, ~"emit-llvm") {
+        } else if opt_present(matches, "emit-llvm") {
             link::output_type_bitcode
         } else { link::output_type_exe };
-    let sysroot_opt = getopts::opt_maybe_str(matches, ~"sysroot");
+    let sysroot_opt = getopts::opt_maybe_str(matches, "sysroot");
     let sysroot_opt = sysroot_opt.map(|m| @Path(*m));
-    let target_opt = getopts::opt_maybe_str(matches, ~"target");
-    let target_feature_opt = getopts::opt_maybe_str(matches, ~"target-feature");
-    let save_temps = getopts::opt_present(matches, ~"save-temps");
+    let target_opt = getopts::opt_maybe_str(matches, "target");
+    let target_feature_opt = getopts::opt_maybe_str(matches, "target-feature");
+    let save_temps = getopts::opt_present(matches, "save-temps");
     let opt_level = {
         if (debugging_opts & session::no_opt) != 0 {
             No
-        } else if opt_present(matches, ~"O") {
-            if opt_present(matches, ~"opt-level") {
+        } else if opt_present(matches, "O") {
+            if opt_present(matches, "opt-level") {
                 early_error(demitter, ~"-O and --opt-level both provided");
             }
             Default
-        } else if opt_present(matches, ~"opt-level") {
-            match getopts::opt_str(matches, ~"opt-level") {
+        } else if opt_present(matches, "opt-level") {
+            match getopts::opt_str(matches, "opt-level") {
               ~"0" => No,
               ~"1" => Less,
               ~"2" => Default,
@@ -641,9 +660,9 @@ pub fn build_session_options(binary: @~str,
         Some(s) => s
     };
 
-    let addl_lib_search_paths = getopts::opt_strs(matches, ~"L").map(|s| Path(*s));
-    let linker = getopts::opt_maybe_str(matches, ~"linker");
-    let linker_args = getopts::opt_strs(matches, ~"link-args").flat_map( |a| {
+    let addl_lib_search_paths = getopts::opt_strs(matches, "L").map(|s| Path(*s));
+    let linker = getopts::opt_maybe_str(matches, "linker");
+    let linker_args = getopts::opt_strs(matches, "link-args").flat_map( |a| {
         let mut args = ~[];
         for str::each_split_char(*a, ' ') |arg| {
             args.push(str::to_owned(arg));
@@ -651,10 +670,10 @@ pub fn build_session_options(binary: @~str,
         args
     });
 
-    let cfg = parse_cfgspecs(getopts::opt_strs(matches, ~"cfg"), demitter);
-    let test = opt_present(matches, ~"test");
+    let cfg = parse_cfgspecs(getopts::opt_strs(matches, "cfg"), demitter);
+    let test = opt_present(matches, "test");
     let android_cross_path = getopts::opt_maybe_str(
-        matches, ~"android-cross-path");
+        matches, "android-cross-path");
 
     let sopts = @session::options {
         crate_type: crate_type,
@@ -732,9 +751,9 @@ pub fn parse_pretty(sess: Session, name: &str) -> pp_mode {
       &"expanded,identified" => ppm_expanded_identified,
       &"identified" => ppm_identified,
       _ => {
-        sess.fatal(~"argument to `pretty` must be one of `normal`, \
-                     `expanded`, `typed`, `identified`, \
-                     or `expanded,identified`");
+        sess.fatal("argument to `pretty` must be one of `normal`, \
+                    `expanded`, `typed`, `identified`, \
+                    or `expanded,identified`");
       }
     }
 }
@@ -875,7 +894,7 @@ pub fn build_output_filenames(input: &input,
         }
 
         if *odir != None {
-            sess.warn(~"ignoring --out-dir flag due to -o flag.");
+            sess.warn("ignoring --out-dir flag due to -o flag.");
         }
       }
     }

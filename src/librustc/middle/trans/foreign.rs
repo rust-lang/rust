@@ -51,7 +51,7 @@ fn abi_info(ccx: @CrateContext) -> @cabi::ABIInfo {
 }
 
 pub fn link_name(ccx: @CrateContext, i: @ast::foreign_item) -> @~str {
-     match attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
+     match attr::first_attr_value_str_by_name(i.attrs, "link_name") {
         None => ccx.sess.str_of(i.ident),
         Some(ln) => ln,
     }
@@ -106,7 +106,7 @@ fn foreign_signature(ccx: @CrateContext, fn_sig: &ty::FnSig)
 fn shim_types(ccx: @CrateContext, id: ast::node_id) -> ShimTypes {
     let fn_sig = match ty::get(ty::node_id_to_type(ccx.tcx, id)).sty {
         ty::ty_bare_fn(ref fn_ty) => copy fn_ty.sig,
-        _ => ccx.sess.bug(~"c_arg_and_ret_lltys called on non-function type")
+        _ => ccx.sess.bug("c_arg_and_ret_lltys called on non-function type")
     };
     let llsig = foreign_signature(ccx, &fn_sig);
     let bundle_ty = T_struct(vec::append_one(copy llsig.llarg_tys,
@@ -122,7 +122,7 @@ fn shim_types(ccx: @CrateContext, id: ast::node_id) -> ShimTypes {
         llsig: llsig,
         ret_def: ret_def,
         bundle_ty: bundle_ty,
-        shim_fn_ty: T_fn(~[T_ptr(bundle_ty)], T_nil()),
+        shim_fn_ty: T_fn([T_ptr(bundle_ty)], T_nil()),
         fn_ty: fn_ty
     }
 }
@@ -207,7 +207,7 @@ fn build_wrap_fn_(ccx: @CrateContext,
     // Create call itself.
     let llshimfnptr = PointerCast(bcx, llshimfn, T_ptr(T_i8()));
     let llrawargbundle = PointerCast(bcx, llargbundle, T_ptr(T_i8()));
-    Call(bcx, shim_upcall, ~[llrawargbundle, llshimfnptr]);
+    Call(bcx, shim_upcall, [llrawargbundle, llshimfnptr]);
     ret_builder(bcx, tys, llargbundle);
 
     // Perform a custom version of `finish_fn`. First, tie up the header
@@ -521,10 +521,10 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
                     llargval = Load(bcx, llargval);
                 }
 
-                store_inbounds(bcx, llargval, llargbundle, ~[0u, i]);
+                store_inbounds(bcx, llargval, llargbundle, [0u, i]);
             }
             let llretptr = bcx.fcx.llretptr.get();
-            store_inbounds(bcx, llretptr, llargbundle, ~[0u, n]);
+            store_inbounds(bcx, llretptr, llargbundle, [0u, n]);
         }
 
         fn build_ret(bcx: block,
@@ -532,7 +532,7 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
                      llargbundle: ValueRef) {
             let _icx = bcx.insn_ctxt("foreign::wrap::build_ret");
             let arg_count = shim_types.fn_sig.inputs.len();
-            let llretptr = load_inbounds(bcx, llargbundle, ~[0, arg_count]);
+            let llretptr = load_inbounds(bcx, llargbundle, [0, arg_count]);
             Store(bcx, Load(bcx, llretptr), bcx.fcx.llretptr.get());
             build_return(bcx);
         }
@@ -808,7 +808,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         }
         ~"frame_address" => {
             let frameaddress = *ccx.intrinsics.get(&~"llvm.frameaddress");
-            let frameaddress_val = Call(bcx, frameaddress, ~[C_i32(0i32)]);
+            let frameaddress_val = Call(bcx, frameaddress, [C_i32(0i32)]);
             let star_u8 = ty::mk_imm_ptr(
                 bcx.tcx(),
                 ty::mk_mach_uint(ast::ty_u8));
@@ -836,9 +836,9 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             // XXX This is a hack to grab the address of this particular
             // native function. There should be a general in-language
             // way to do this
-            let llfty = type_of_fn(bcx.ccx(), ~[], ty::mk_nil());
+            let llfty = type_of_fn(bcx.ccx(), [], ty::mk_nil());
             let morestack_addr = decl_cdecl_fn(
-                bcx.ccx().llmod, ~"__morestack", llfty);
+                bcx.ccx().llmod, "__morestack", llfty);
             let morestack_addr = PointerCast(bcx, morestack_addr,
                                              T_ptr(T_nil()));
             Store(bcx, morestack_addr, fcx.llretptr.get());
@@ -851,7 +851,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             let volatile = C_i1(false);
             let llfn = *bcx.ccx().intrinsics.get(
                 &~"llvm.memmove.p0i8.p0i8.i32");
-            Call(bcx, llfn, ~[dst_ptr, src_ptr, size, align, volatile]);
+            Call(bcx, llfn, [dst_ptr, src_ptr, size, align, volatile]);
         }
         ~"memmove64" => {
             let dst_ptr = get_param(decl, first_real_arg);
@@ -861,248 +861,248 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             let volatile = C_i1(false);
             let llfn = *bcx.ccx().intrinsics.get(
                 &~"llvm.memmove.p0i8.p0i8.i64");
-            Call(bcx, llfn, ~[dst_ptr, src_ptr, size, align, volatile]);
+            Call(bcx, llfn, [dst_ptr, src_ptr, size, align, volatile]);
         }
         ~"sqrtf32" => {
             let x = get_param(decl, first_real_arg);
             let sqrtf = *ccx.intrinsics.get(&~"llvm.sqrt.f32");
-            Store(bcx, Call(bcx, sqrtf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, sqrtf, [x]), fcx.llretptr.get());
         }
         ~"sqrtf64" => {
             let x = get_param(decl, first_real_arg);
             let sqrtf = *ccx.intrinsics.get(&~"llvm.sqrt.f64");
-            Store(bcx, Call(bcx, sqrtf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, sqrtf, [x]), fcx.llretptr.get());
         }
         ~"powif32" => {
             let a = get_param(decl, first_real_arg);
             let x = get_param(decl, first_real_arg + 1u);
             let powif = *ccx.intrinsics.get(&~"llvm.powi.f32");
-            Store(bcx, Call(bcx, powif, ~[a, x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, powif, [a, x]), fcx.llretptr.get());
         }
         ~"powif64" => {
             let a = get_param(decl, first_real_arg);
             let x = get_param(decl, first_real_arg + 1u);
             let powif = *ccx.intrinsics.get(&~"llvm.powi.f64");
-            Store(bcx, Call(bcx, powif, ~[a, x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, powif, [a, x]), fcx.llretptr.get());
         }
         ~"sinf32" => {
             let x = get_param(decl, first_real_arg);
             let sinf = *ccx.intrinsics.get(&~"llvm.sin.f32");
-            Store(bcx, Call(bcx, sinf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, sinf, [x]), fcx.llretptr.get());
         }
         ~"sinf64" => {
             let x = get_param(decl, first_real_arg);
             let sinf = *ccx.intrinsics.get(&~"llvm.sin.f64");
-            Store(bcx, Call(bcx, sinf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, sinf, [x]), fcx.llretptr.get());
         }
         ~"cosf32" => {
             let x = get_param(decl, first_real_arg);
             let cosf = *ccx.intrinsics.get(&~"llvm.cos.f32");
-            Store(bcx, Call(bcx, cosf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, cosf, [x]), fcx.llretptr.get());
         }
         ~"cosf64" => {
             let x = get_param(decl, first_real_arg);
             let cosf = *ccx.intrinsics.get(&~"llvm.cos.f64");
-            Store(bcx, Call(bcx, cosf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, cosf, [x]), fcx.llretptr.get());
         }
         ~"powf32" => {
             let a = get_param(decl, first_real_arg);
             let x = get_param(decl, first_real_arg + 1u);
             let powf = *ccx.intrinsics.get(&~"llvm.pow.f32");
-            Store(bcx, Call(bcx, powf, ~[a, x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, powf, [a, x]), fcx.llretptr.get());
         }
         ~"powf64" => {
             let a = get_param(decl, first_real_arg);
             let x = get_param(decl, first_real_arg + 1u);
             let powf = *ccx.intrinsics.get(&~"llvm.pow.f64");
-            Store(bcx, Call(bcx, powf, ~[a, x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, powf, [a, x]), fcx.llretptr.get());
         }
         ~"expf32" => {
             let x = get_param(decl, first_real_arg);
             let expf = *ccx.intrinsics.get(&~"llvm.exp.f32");
-            Store(bcx, Call(bcx, expf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, expf, [x]), fcx.llretptr.get());
         }
         ~"expf64" => {
             let x = get_param(decl, first_real_arg);
             let expf = *ccx.intrinsics.get(&~"llvm.exp.f64");
-            Store(bcx, Call(bcx, expf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, expf, [x]), fcx.llretptr.get());
         }
         ~"exp2f32" => {
             let x = get_param(decl, first_real_arg);
             let exp2f = *ccx.intrinsics.get(&~"llvm.exp2.f32");
-            Store(bcx, Call(bcx, exp2f, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, exp2f, [x]), fcx.llretptr.get());
         }
         ~"exp2f64" => {
             let x = get_param(decl, first_real_arg);
             let exp2f = *ccx.intrinsics.get(&~"llvm.exp2.f64");
-            Store(bcx, Call(bcx, exp2f, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, exp2f, [x]), fcx.llretptr.get());
         }
         ~"logf32" => {
             let x = get_param(decl, first_real_arg);
             let logf = *ccx.intrinsics.get(&~"llvm.log.f32");
-            Store(bcx, Call(bcx, logf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, logf, [x]), fcx.llretptr.get());
         }
         ~"logf64" => {
             let x = get_param(decl, first_real_arg);
             let logf = *ccx.intrinsics.get(&~"llvm.log.f64");
-            Store(bcx, Call(bcx, logf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, logf, [x]), fcx.llretptr.get());
         }
         ~"log10f32" => {
             let x = get_param(decl, first_real_arg);
             let log10f = *ccx.intrinsics.get(&~"llvm.log10.f32");
-            Store(bcx, Call(bcx, log10f, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, log10f, [x]), fcx.llretptr.get());
         }
         ~"log10f64" => {
             let x = get_param(decl, first_real_arg);
             let log10f = *ccx.intrinsics.get(&~"llvm.log10.f64");
-            Store(bcx, Call(bcx, log10f, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, log10f, [x]), fcx.llretptr.get());
         }
         ~"log2f32" => {
             let x = get_param(decl, first_real_arg);
             let log2f = *ccx.intrinsics.get(&~"llvm.log2.f32");
-            Store(bcx, Call(bcx, log2f, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, log2f, [x]), fcx.llretptr.get());
         }
         ~"log2f64" => {
             let x = get_param(decl, first_real_arg);
             let log2f = *ccx.intrinsics.get(&~"llvm.log2.f64");
-            Store(bcx, Call(bcx, log2f, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, log2f, [x]), fcx.llretptr.get());
         }
         ~"fmaf32" => {
             let a = get_param(decl, first_real_arg);
             let b = get_param(decl, first_real_arg + 1u);
             let c = get_param(decl, first_real_arg + 2u);
             let fmaf = *ccx.intrinsics.get(&~"llvm.fma.f32");
-            Store(bcx, Call(bcx, fmaf, ~[a, b, c]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, fmaf, [a, b, c]), fcx.llretptr.get());
         }
         ~"fmaf64" => {
             let a = get_param(decl, first_real_arg);
             let b = get_param(decl, first_real_arg + 1u);
             let c = get_param(decl, first_real_arg + 2u);
             let fmaf = *ccx.intrinsics.get(&~"llvm.fma.f64");
-            Store(bcx, Call(bcx, fmaf, ~[a, b, c]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, fmaf, [a, b, c]), fcx.llretptr.get());
         }
         ~"fabsf32" => {
             let x = get_param(decl, first_real_arg);
             let fabsf = *ccx.intrinsics.get(&~"llvm.fabs.f32");
-            Store(bcx, Call(bcx, fabsf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, fabsf, [x]), fcx.llretptr.get());
         }
         ~"fabsf64" => {
             let x = get_param(decl, first_real_arg);
             let fabsf = *ccx.intrinsics.get(&~"llvm.fabs.f64");
-            Store(bcx, Call(bcx, fabsf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, fabsf, [x]), fcx.llretptr.get());
         }
         ~"floorf32" => {
             let x = get_param(decl, first_real_arg);
             let floorf = *ccx.intrinsics.get(&~"llvm.floor.f32");
-            Store(bcx, Call(bcx, floorf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, floorf, [x]), fcx.llretptr.get());
         }
         ~"floorf64" => {
             let x = get_param(decl, first_real_arg);
             let floorf = *ccx.intrinsics.get(&~"llvm.floor.f64");
-            Store(bcx, Call(bcx, floorf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, floorf, [x]), fcx.llretptr.get());
         }
         ~"ceilf32" => {
             let x = get_param(decl, first_real_arg);
             let ceilf = *ccx.intrinsics.get(&~"llvm.ceil.f32");
-            Store(bcx, Call(bcx, ceilf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, ceilf, [x]), fcx.llretptr.get());
         }
         ~"ceilf64" => {
             let x = get_param(decl, first_real_arg);
             let ceilf = *ccx.intrinsics.get(&~"llvm.ceil.f64");
-            Store(bcx, Call(bcx, ceilf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, ceilf, [x]), fcx.llretptr.get());
         }
         ~"truncf32" => {
             let x = get_param(decl, first_real_arg);
             let truncf = *ccx.intrinsics.get(&~"llvm.trunc.f32");
-            Store(bcx, Call(bcx, truncf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, truncf, [x]), fcx.llretptr.get());
         }
         ~"truncf64" => {
             let x = get_param(decl, first_real_arg);
             let truncf = *ccx.intrinsics.get(&~"llvm.trunc.f64");
-            Store(bcx, Call(bcx, truncf, ~[x]), fcx.llretptr.get());
+            Store(bcx, Call(bcx, truncf, [x]), fcx.llretptr.get());
         }
         ~"ctpop8" => {
             let x = get_param(decl, first_real_arg);
             let ctpop = *ccx.intrinsics.get(&~"llvm.ctpop.i8");
-            Store(bcx, Call(bcx, ctpop, ~[x]), fcx.llretptr.get())
+            Store(bcx, Call(bcx, ctpop, [x]), fcx.llretptr.get())
         }
         ~"ctpop16" => {
             let x = get_param(decl, first_real_arg);
             let ctpop = *ccx.intrinsics.get(&~"llvm.ctpop.i16");
-            Store(bcx, Call(bcx, ctpop, ~[x]), fcx.llretptr.get())
+            Store(bcx, Call(bcx, ctpop, [x]), fcx.llretptr.get())
         }
         ~"ctpop32" => {
             let x = get_param(decl, first_real_arg);
             let ctpop = *ccx.intrinsics.get(&~"llvm.ctpop.i32");
-            Store(bcx, Call(bcx, ctpop, ~[x]), fcx.llretptr.get())
+            Store(bcx, Call(bcx, ctpop, [x]), fcx.llretptr.get())
         }
         ~"ctpop64" => {
             let x = get_param(decl, first_real_arg);
             let ctpop = *ccx.intrinsics.get(&~"llvm.ctpop.i64");
-            Store(bcx, Call(bcx, ctpop, ~[x]), fcx.llretptr.get())
+            Store(bcx, Call(bcx, ctpop, [x]), fcx.llretptr.get())
         }
         ~"ctlz8" => {
             let x = get_param(decl, first_real_arg);
             let y = C_i1(false);
             let ctlz = *ccx.intrinsics.get(&~"llvm.ctlz.i8");
-            Store(bcx, Call(bcx, ctlz, ~[x, y]), fcx.llretptr.get())
+            Store(bcx, Call(bcx, ctlz, [x, y]), fcx.llretptr.get())
         }
         ~"ctlz16" => {
             let x = get_param(decl, first_real_arg);
             let y = C_i1(false);
             let ctlz = *ccx.intrinsics.get(&~"llvm.ctlz.i16");
-            Store(bcx, Call(bcx, ctlz, ~[x, y]), fcx.llretptr.get())
+            Store(bcx, Call(bcx, ctlz, [x, y]), fcx.llretptr.get())
         }
         ~"ctlz32" => {
             let x = get_param(decl, first_real_arg);
             let y = C_i1(false);
             let ctlz = *ccx.intrinsics.get(&~"llvm.ctlz.i32");
-            Store(bcx, Call(bcx, ctlz, ~[x, y]), fcx.llretptr.get())
+            Store(bcx, Call(bcx, ctlz, [x, y]), fcx.llretptr.get())
         }
         ~"ctlz64" => {
             let x = get_param(decl, first_real_arg);
             let y = C_i1(false);
             let ctlz = *ccx.intrinsics.get(&~"llvm.ctlz.i64");
-            Store(bcx, Call(bcx, ctlz, ~[x, y]), fcx.llretptr.get())
+            Store(bcx, Call(bcx, ctlz, [x, y]), fcx.llretptr.get())
         }
         ~"cttz8" => {
             let x = get_param(decl, first_real_arg);
             let y = C_i1(false);
             let cttz = *ccx.intrinsics.get(&~"llvm.cttz.i8");
-            Store(bcx, Call(bcx, cttz, ~[x, y]), fcx.llretptr.get())
+            Store(bcx, Call(bcx, cttz, [x, y]), fcx.llretptr.get())
         }
         ~"cttz16" => {
             let x = get_param(decl, first_real_arg);
             let y = C_i1(false);
             let cttz = *ccx.intrinsics.get(&~"llvm.cttz.i16");
-            Store(bcx, Call(bcx, cttz, ~[x, y]), fcx.llretptr.get())
+            Store(bcx, Call(bcx, cttz, [x, y]), fcx.llretptr.get())
         }
         ~"cttz32" => {
             let x = get_param(decl, first_real_arg);
             let y = C_i1(false);
             let cttz = *ccx.intrinsics.get(&~"llvm.cttz.i32");
-            Store(bcx, Call(bcx, cttz, ~[x, y]), fcx.llretptr.get())
+            Store(bcx, Call(bcx, cttz, [x, y]), fcx.llretptr.get())
         }
         ~"cttz64" => {
             let x = get_param(decl, first_real_arg);
             let y = C_i1(false);
             let cttz = *ccx.intrinsics.get(&~"llvm.cttz.i64");
-            Store(bcx, Call(bcx, cttz, ~[x, y]), fcx.llretptr.get())
+            Store(bcx, Call(bcx, cttz, [x, y]), fcx.llretptr.get())
         }
         ~"bswap16" => {
             let x = get_param(decl, first_real_arg);
             let cttz = *ccx.intrinsics.get(&~"llvm.bswap.i16");
-            Store(bcx, Call(bcx, cttz, ~[x]), fcx.llretptr.get())
+            Store(bcx, Call(bcx, cttz, [x]), fcx.llretptr.get())
         }
         ~"bswap32" => {
             let x = get_param(decl, first_real_arg);
             let cttz = *ccx.intrinsics.get(&~"llvm.bswap.i32");
-            Store(bcx, Call(bcx, cttz, ~[x]), fcx.llretptr.get())
+            Store(bcx, Call(bcx, cttz, [x]), fcx.llretptr.get())
         }
         ~"bswap64" => {
             let x = get_param(decl, first_real_arg);
             let cttz = *ccx.intrinsics.get(&~"llvm.bswap.i64");
-            Store(bcx, Call(bcx, cttz, ~[x]), fcx.llretptr.get())
+            Store(bcx, Call(bcx, cttz, [x]), fcx.llretptr.get())
         }
         _ => {
             // Could we make this an enum rather than a string? does it get
@@ -1207,7 +1207,7 @@ pub fn trans_foreign_fn(ccx: @CrateContext,
             let n = tys.fn_sig.inputs.len();
 
             if !ty::type_is_immediate(tys.fn_sig.output) {
-                let llretptr = load_inbounds(bcx, llargbundle, ~[0u, n]);
+                let llretptr = load_inbounds(bcx, llargbundle, [0u, n]);
                 llargvals.push(llretptr);
             } else {
                 llargvals.push(C_null(T_ptr(T_i8())));
@@ -1239,7 +1239,7 @@ pub fn trans_foreign_fn(ccx: @CrateContext,
                 let arg_count = shim_types.fn_sig.inputs.len();
                 let llretptr = load_inbounds(bcx,
                                              llargbundle,
-                                             ~[0, arg_count]);
+                                             [0, arg_count]);
                 Store(bcx, llretval, llretptr);
             } else {
                 // NB: The return pointer in the Rust ABI function is wired

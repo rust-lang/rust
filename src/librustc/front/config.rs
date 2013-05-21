@@ -175,7 +175,7 @@ fn in_cfg(cfg: ast::crate_cfg, attrs: ~[ast::attribute]) -> bool {
 pub fn metas_in_cfg(cfg: ast::crate_cfg,
                     metas: ~[@ast::meta_item]) -> bool {
     // The "cfg" attributes on the item
-    let cfg_metas = attr::find_meta_items_by_name(metas, ~"cfg");
+    let cfg_metas = attr::find_meta_items_by_name(metas, "cfg");
 
     // Pull the inner meta_items from the #[cfg(meta_item, ...)]  attributes,
     // so we can match against them. This is the list of configurations for

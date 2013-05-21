@@ -120,23 +120,23 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         (pt, m.ident, m.span)
       }
       ast_map::node_trait_method(@ast::required(_), _, _) => {
-        ccx.tcx.sess.bug(~"Can't monomorphize a required trait method")
+        ccx.tcx.sess.bug("Can't monomorphize a required trait method")
       }
       ast_map::node_expr(*) => {
-        ccx.tcx.sess.bug(~"Can't monomorphize an expr")
+        ccx.tcx.sess.bug("Can't monomorphize an expr")
       }
       ast_map::node_stmt(*) => {
-        ccx.tcx.sess.bug(~"Can't monomorphize a stmt")
+        ccx.tcx.sess.bug("Can't monomorphize a stmt")
       }
-      ast_map::node_arg(*) => ccx.tcx.sess.bug(~"Can't monomorphize an arg"),
+      ast_map::node_arg(*) => ccx.tcx.sess.bug("Can't monomorphize an arg"),
       ast_map::node_block(*) => {
-          ccx.tcx.sess.bug(~"Can't monomorphize a block")
+          ccx.tcx.sess.bug("Can't monomorphize a block")
       }
       ast_map::node_local(*) => {
-          ccx.tcx.sess.bug(~"Can't monomorphize a local")
+          ccx.tcx.sess.bug("Can't monomorphize a local")
       }
       ast_map::node_callee_scope(*) => {
-          ccx.tcx.sess.bug(~"Can't monomorphize a callee-scope")
+          ccx.tcx.sess.bug("Can't monomorphize a callee-scope")
       }
       ast_map::node_struct_ctor(_, i, pt) => (pt, i.ident, i.span)
     };
@@ -169,8 +169,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     ccx.monomorphizing.insert(fn_id, depth + 1);
 
     let pt = vec::append(/*bad*/copy *pt,
-                         ~[path_name((ccx.names)(
-                             *ccx.sess.str_of(name)))]);
+                         [path_name((ccx.names)(*ccx.sess.str_of(name)))]);
     let s = mangle_exported_name(ccx, /*bad*/copy pt, mono_ty);
 
     let mk_lldecl = || {
@@ -206,7 +205,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         d
       }
       ast_map::node_item(*) => {
-          ccx.tcx.sess.bug(~"Can't monomorphize this kind of item")
+          ccx.tcx.sess.bug("Can't monomorphize this kind of item")
       }
       ast_map::node_foreign_item(i, _, _, _) => {
           let d = mk_lldecl();
@@ -225,7 +224,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                                    this_tv.disr_val, psubsts, d);
             }
             ast::struct_variant_kind(_) =>
-                ccx.tcx.sess.bug(~"can't monomorphize struct variants"),
+                ccx.tcx.sess.bug("can't monomorphize struct variants"),
         }
         d
       }
@@ -257,8 +256,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         set_inline_hint(d);
         base::trans_tuple_struct(ccx,
                                  /*bad*/copy struct_def.fields,
-                                 struct_def.ctor_id.expect(~"ast-mapped tuple struct \
-                                                             didn't have a ctor id"),
+                                 struct_def.ctor_id.expect("ast-mapped tuple struct \
+                                                            didn't have a ctor id"),
                                  psubsts,
                                  d);
         d
