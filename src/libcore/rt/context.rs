@@ -165,7 +165,9 @@ fn new_regs() -> ~Registers { ~([0, .. 32]) }
 
 #[cfg(target_arch = "arm")]
 fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
-    let sp = mut_offset(sp, -1);
+    let sp = align_down(sp);
+    // sp of arm eabi is 8-byte aligned
+    let sp = mut_offset(sp, -2);
 
     // The final return address. 0 indicates the bottom of the stack
     unsafe { *sp = 0; }
