@@ -656,10 +656,10 @@ pub fn visibility_to_str(vis: ast::visibility) -> ~str {
     }
 }
 
-pub fn visibility_qualified(vis: ast::visibility, s: ~str) -> ~str {
+pub fn visibility_qualified(vis: ast::visibility, s: &str) -> ~str {
     match vis {
         ast::private | ast::public => visibility_to_str(vis) + " " + s,
-        ast::inherited => copy s
+        ast::inherited => s.to_owned()
     }
 }
 
