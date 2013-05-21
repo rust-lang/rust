@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -498,10 +498,27 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             lookup_const_by_id(cx.tcx, did).get();
                         let e_v = eval_const_expr(cx.tcx, const_expr);
                         let match_ = match *ctor_id {
-                            val(ref v) => compare_const_vals(&e_v, v) == 0,
+                            val(ref v) => {
+                                match compare_const_vals(&e_v, v) {
+                                    Some(val1) => (val1 == 0),
+                                    None => {
+                                        cx.tcx.sess.span_err(pat_span,
+                                            "mismatched types between arms");
+                                        false
+                                    }
+                                }
+                            },
                             range(ref c_lo, ref c_hi) => {
-                                compare_const_vals(c_lo, &e_v) >= 0 &&
-                                    compare_const_vals(c_hi, &e_v) <= 0
+                                let m1 = compare_const_vals(c_lo, &e_v),
+                                    m2 = compare_const_vals(c_hi, &e_v);
+                                match (m1, m2) {
+                                    (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
+                                    _ => {
+                                        cx.tcx.sess.span_err(pat_span,
+                                            "mismatched types between ranges");
+                                        false
+                                    }
+                                }
                             }
                             single => true,
                             _ => fail!("type error")
@@ -529,10 +546,26 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             lookup_const_by_id(cx.tcx, did).get();
                         let e_v = eval_const_expr(cx.tcx, const_expr);
                         let match_ = match *ctor_id {
-                            val(ref v) => compare_const_vals(&e_v, v) == 0,
+                            val(ref v) =>
+                                match compare_const_vals(&e_v, v) {
+                                    Some(val1) => (val1 == 0),
+                                    None => {
+                                        cx.tcx.sess.span_err(pat_span,
+                                            "mismatched types between arms");
+                                        false
+                                    }
+                                },
                             range(ref c_lo, ref c_hi) => {
-                                compare_const_vals(c_lo, &e_v) >= 0 &&
-                                    compare_const_vals(c_hi, &e_v) <= 0
+                                let m1 = compare_const_vals(c_lo, &e_v),
+                                    m2 = compare_const_vals(c_hi, &e_v);
+                                match (m1, m2) {
+                                    (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
+                                    _ => {
+                                        cx.tcx.sess.span_err(pat_span,
+                                            "mismatched types between ranges");
+                                        false
+                                    }
+                                }
                             }
                             single => true,
                             _ => fail!("type error")
@@ -619,10 +652,27 @@ pub fn specialize(cx: @MatchCheckCtxt,
             pat_lit(expr) => {
                 let e_v = eval_const_expr(cx.tcx, expr);
                 let match_ = match *ctor_id {
-                    val(ref v) => compare_const_vals(&e_v, v) == 0,
+                    val(ref v) => {
+                        match compare_const_vals(&e_v, v) {
+                            Some(val1) => val1 == 0,
+                            None => {
+                                cx.tcx.sess.span_err(pat_span,
+                                    "mismatched types between arms");
+                                false
+                            }
+                        }
+                    },
                     range(ref c_lo, ref c_hi) => {
-                        compare_const_vals(c_lo, &e_v) >= 0 &&
-                            compare_const_vals(c_hi, &e_v) <= 0
+                        let m1 = compare_const_vals(c_lo, &e_v),
+                            m2 = compare_const_vals(c_hi, &e_v);
+                        match (m1, m2) {
+                            (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
+                            _ => {
+                                cx.tcx.sess.span_err(pat_span,
+                                    "mismatched types between ranges");
+                                false
+                            }
+                        }
                     }
                     single => true,
                     _ => fail!("type error")
@@ -638,11 +688,22 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     _ => fail!("type error")
                 };
                 let v_lo = eval_const_expr(cx.tcx, lo),
-                v_hi = eval_const_expr(cx.tcx, hi);
-                let match_ = compare_const_vals(&c_lo, &v_lo) >= 0 &&
-                    compare_const_vals(&c_hi, &v_hi) <= 0;
-          if match_ { Some(vec::to_owned(r.tail())) } else { None }
-      }
+                    v_hi = eval_const_expr(cx.tcx, hi);
+
+                let m1 = compare_const_vals(&c_lo, &v_lo),
+                    m2 = compare_const_vals(&c_hi, &v_hi);
+                match (m1, m2) {
+                    (Some(val1), Some(val2)) if val1 >= 0 && val2 <= 0 => {
+                        Some(vec::to_owned(r.tail()))
+                    },
+                    (Some(_), Some(_)) => None,
+                    _ => {
+                        cx.tcx.sess.span_err(pat_span,
+                            "mismatched types between ranges");
+                        None
+                    }
+                }
+            }
             pat_vec(before, slice, after) => {
                 match *ctor_id {
                     vec(_) => {

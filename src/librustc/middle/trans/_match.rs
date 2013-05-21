@@ -193,48 +193,55 @@ pub enum Opt {
 
 pub fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
     match (a, b) {
-      (&lit(a), &lit(b)) => {
-        match (a, b) {
-            (UnitLikeStructLit(a), UnitLikeStructLit(b)) => a == b,
-            _ => {
-                let a_expr;
-                match a {
-                    ExprLit(existing_a_expr) => a_expr = existing_a_expr,
-                    ConstLit(a_const) => {
-                        let e = const_eval::lookup_const_by_id(tcx, a_const);
-                        a_expr = e.get();
+        (&lit(a), &lit(b)) => {
+            match (a, b) {
+                (UnitLikeStructLit(a), UnitLikeStructLit(b)) => a == b,
+                _ => {
+                    let a_expr;
+                    match a {
+                        ExprLit(existing_a_expr) => a_expr = existing_a_expr,
+                            ConstLit(a_const) => {
+                                let e = const_eval::lookup_const_by_id(tcx, a_const);
+                                a_expr = e.get();
+                            }
+                        UnitLikeStructLit(_) => {
+                            fail!("UnitLikeStructLit should have been handled \
+                                    above")
+                        }
                     }
-                    UnitLikeStructLit(_) => {
-                        fail!("UnitLikeStructLit should have been handled \
-                               above")
+
+                    let b_expr;
+                    match b {
+                        ExprLit(existing_b_expr) => b_expr = existing_b_expr,
+                            ConstLit(b_const) => {
+                                let e = const_eval::lookup_const_by_id(tcx, b_const);
+                                b_expr = e.get();
+                            }
+                        UnitLikeStructLit(_) => {
+                            fail!("UnitLikeStructLit should have been handled \
+                                    above")
+                        }
+                    }
+
+                    match const_eval::compare_lit_exprs(tcx, a_expr, b_expr) {
+                        Some(val1) => val1 == 0,
+                        None => fail!("compare_list_exprs: type mismatch"),
                     }
                 }
-
-                let b_expr;
-                match b {
-                    ExprLit(existing_b_expr) => b_expr = existing_b_expr,
-                    ConstLit(b_const) => {
-                        let e = const_eval::lookup_const_by_id(tcx, b_const);
-                        b_expr = e.get();
-                    }
-                    UnitLikeStructLit(_) => {
-                        fail!("UnitLikeStructLit should have been handled \
-                               above")
-                    }
-                }
-
-                const_eval::compare_lit_exprs(tcx, a_expr, b_expr) == 0
             }
         }
-      }
-      (&range(a1, a2), &range(b1, b2)) => {
-        const_eval::compare_lit_exprs(tcx, a1, b1) == 0 &&
-        const_eval::compare_lit_exprs(tcx, a2, b2) == 0
-      }
-      (&var(a, _), &var(b, _)) => a == b,
-      (&vec_len_eq(a), &vec_len_eq(b)) => a == b,
-      (&vec_len_ge(a, _), &vec_len_ge(b, _)) => a == b,
-      _ => false
+        (&range(a1, a2), &range(b1, b2)) => {
+            let m1 = const_eval::compare_lit_exprs(tcx, a1, b1);
+            let m2 = const_eval::compare_lit_exprs(tcx, a2, b2);
+            match (m1, m2) {
+                (Some(val1), Some(val2)) => (val1 == 0 && val2 == 0),
+                _ => fail!("compare_list_exprs: type mismatch"),
+            }
+        }
+        (&var(a, _), &var(b, _)) => a == b,
+            (&vec_len_eq(a), &vec_len_eq(b)) => a == b,
+            (&vec_len_ge(a, _), &vec_len_ge(b, _)) => a == b,
+            _ => false
     }
 }
 
