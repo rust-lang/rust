@@ -327,9 +327,7 @@ pub fn gather_comments_and_literals(span_diagnostic:
     let itr = parse::token::mk_fake_ident_interner();
     let cm = CodeMap::new();
     let filemap = cm.new_filemap(path, src);
-    let rdr = lexer::new_low_level_string_reader(span_diagnostic,
-                                                 filemap,
-                                                 itr);
+    let rdr = lexer::new_low_level_string_reader(span_diagnostic, filemap);
 
     let mut comments: ~[cmnt] = ~[];
     let mut literals: ~[lit] = ~[];
