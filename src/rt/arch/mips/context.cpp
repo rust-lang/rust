@@ -34,9 +34,11 @@ void context::call(void *f, void *arg, void *stack)
 
   // set up the stack
   uint32_t *sp = (uint32_t *)stack;
-  //sp = align_down(sp);
+  sp = align_down(sp);
   // The final return address. 0 indicates the bottom of the stack
-  *--sp = 0;
+  // sp of mips o32 is 8-byte aligned
+  sp -= 2;
+  *sp = 0;
 
   regs.data[4] = (uint32_t)arg;
   regs.data[29] = (uint32_t)sp;
