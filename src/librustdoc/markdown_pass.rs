@@ -110,7 +110,7 @@ fn make_title(page: doc::Page) -> ~str {
         }
     };
     let title = markdown_pass::header_text(item);
-    let title = str::replace(title, ~"`", ~"");
+    let title = str::replace(title, "`", "");
     return title;
 }
 
@@ -169,7 +169,7 @@ pub fn header_kind(doc: doc::ItemTag) -> ~str {
 }
 
 pub fn header_name(doc: doc::ItemTag) -> ~str {
-    let fullpath = str::connect(doc.path() + ~[doc.name()], ~"::");
+    let fullpath = str::connect(doc.path() + ~[doc.name()], "::");
     match &doc {
         &doc::ModTag(_) if doc.id() != syntax::ast::crate_node_id => {
             fullpath
@@ -471,7 +471,7 @@ fn write_methods(ctxt: &Ctxt, docs: &[doc::MethodDoc]) {
 }
 
 fn write_method(ctxt: &Ctxt, doc: doc::MethodDoc) {
-    write_header_(ctxt, H3, header_text_(~"Method", doc.name));
+    write_header_(ctxt, H3, header_text_("Method", doc.name));
     write_fnlike(
         ctxt,
         copy doc.sig,
