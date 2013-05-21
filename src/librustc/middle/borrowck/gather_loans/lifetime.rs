@@ -104,6 +104,7 @@ impl GuaranteeLifetimeContext {
                 }
             }
 
+            mc::cat_downcast(base) |
             mc::cat_deref(base, _, mc::uniq_ptr(*)) |
             mc::cat_interior(base, _) => {
                 self.check(base, discr_scope)
@@ -302,6 +303,7 @@ impl GuaranteeLifetimeContext {
             mc::cat_deref(*) => {
                 false
             }
+            r @ mc::cat_downcast(*) |
             r @ mc::cat_interior(*) |
             r @ mc::cat_stack_upvar(*) |
             r @ mc::cat_discr(*) => {
@@ -339,6 +341,7 @@ impl GuaranteeLifetimeContext {
             mc::cat_deref(_, _, mc::region_ptr(_, r)) => {
                 r
             }
+            mc::cat_downcast(cmt) |
             mc::cat_deref(cmt, _, mc::uniq_ptr(*)) |
             mc::cat_deref(cmt, _, mc::gc_ptr(*)) |
             mc::cat_interior(cmt, _) |
