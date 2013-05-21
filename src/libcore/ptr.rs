@@ -13,6 +13,7 @@
 use cast;
 use libc;
 use libc::{c_void, size_t};
+use option::{Option, Some, None};
 use sys;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
@@ -209,6 +210,7 @@ pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
 pub trait Ptr<T> {
     fn is_null(&const self) -> bool;
     fn is_not_null(&const self) -> bool;
+    unsafe fn to_option(&const self) -> Option<&T>;
     fn offset(&self, count: uint) -> Self;
 }
 
@@ -221,6 +223,23 @@ impl<T> Ptr<T> for *T {
     /// Returns true if the pointer is not equal to the null pointer.
     #[inline(always)]
     fn is_not_null(&const self) -> bool { is_not_null(*self) }
+
+    ///
+    /// Returns `None` if the pointer is null, or else returns the value wrapped
+    /// in `Some`.
+    ///
+    /// # Safety Notes
+    ///
+    /// While this method is useful for null-safety, it is important to note
+    /// that this is still an unsafe operation because the returned value could
+    /// be pointing to invalid memory.
+    ///
+    #[inline(always)]
+    unsafe fn to_option(&const self) -> Option<&T> {
+        if self.is_null() { None } else {
+            Some(cast::transmute(*self))
+        }
+    }
 
     /// Calculates the offset from a pointer.
     #[inline(always)]
@@ -236,6 +255,23 @@ impl<T> Ptr<T> for *mut T {
     /// Returns true if the pointer is not equal to the null pointer.
     #[inline(always)]
     fn is_not_null(&const self) -> bool { is_not_null(*self) }
+
+    ///
+    /// Returns `None` if the pointer is null, or else returns the value wrapped
+    /// in `Some`.
+    ///
+    /// # Safety Notes
+    ///
+    /// While this method is useful for null-safety, it is important to note
+    /// that this is still an unsafe operation because the returned value could
+    /// be pointing to invalid memory.
+    ///
+    #[inline(always)]
+    unsafe fn to_option(&const self) -> Option<&T> {
+        if self.is_null() { None } else {
+            Some(cast::transmute(*self))
+        }
+    }
 
     /// Calculates the offset from a mutable pointer.
     #[inline(always)]
@@ -423,6 +459,21 @@ pub mod ptr_tests {
         assert!(mq.is_not_null());
     }
 
+    #[test]
+    fn test_to_option() {
+        let p: *int = null();
+        // FIXME (#6641): Usage of unsafe methods in safe code doesn't cause an error.
+        assert_eq!(p.to_option(), None);
+
+        let q: *int = &2;
+        assert_eq!(q.to_option().unwrap(), &2);     // FIXME (#6641)
+
+        let p: *mut int = mut_null();
+        assert_eq!(p.to_option(), None);            // FIXME (#6641)
+
+        let q: *mut int = &mut 2;
+        assert_eq!(q.to_option().unwrap(), &2);     // FIXME (#6641)
+    }
 
     #[test]
     fn test_ptr_array_each_with_len() {
