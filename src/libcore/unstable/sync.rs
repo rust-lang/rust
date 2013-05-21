@@ -205,6 +205,26 @@ extern {
     fn rust_unlock_little_lock(lock: rust_little_lock);
 }
 
+/* *********************************************************************/
+
+//FIXME: #5042 This should be replaced by proper atomic type
+pub struct AtomicUint(uint);
+pub impl AtomicUint {
+    fn load(&self) -> uint {
+        unsafe { intrinsics::atomic_load(cast::transmute(self)) as uint }
+    }
+    fn store(&mut self, val:uint) {
+        unsafe { intrinsics::atomic_store(cast::transmute(self), val as int); }
+    }
+    fn add(&mut self, val:int) -> uint {
+        unsafe { intrinsics::atomic_xadd(cast::transmute(self), val as int) as uint }
+    }
+    fn cas(&self, old:uint, new:uint) -> uint {
+        unsafe { intrinsics::atomic_cxchg(cast::transmute(self), old as int, new as int) as uint }
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use comm;
