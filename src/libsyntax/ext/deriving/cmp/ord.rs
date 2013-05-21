@@ -9,13 +9,13 @@
 // except according to those terms.
 
 
-use ast::{meta_item, item, expr_if, expr};
+use ast::{meta_item, item, expr};
 use codemap::span;
-use ext::base::ext_ctxt;
-use ext::build;
+use ext::base::ExtCtxt;
+use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
-pub fn expand_deriving_ord(cx: @ext_ctxt,
+pub fn expand_deriving_ord(cx: @ExtCtxt,
                            span: span,
                            mitem: @meta_item,
                            in_items: ~[@item]) -> ~[@item] {
@@ -26,7 +26,7 @@ pub fn expand_deriving_ord(cx: @ext_ctxt,
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: ~[borrowed_self()],
-                ret_ty: Literal(Path::new(~[~"bool"])),
+                ret_ty: Literal(Path::new(~["bool"])),
                 const_nonmatching: false,
                 combine_substructure: |cx, span, substr|
                     cs_ord($less, $equal, cx, span, substr)
@@ -37,15 +37,15 @@ pub fn expand_deriving_ord(cx: @ext_ctxt,
 
 
     let trait_def = TraitDef {
-        path: Path::new(~[~"core", ~"cmp", ~"Ord"]),
+        path: Path::new(~["core", "cmp", "Ord"]),
         // XXX: Ord doesn't imply Eq yet
-        additional_bounds: ~[Literal(Path::new(~[~"core", ~"cmp", ~"Eq"]))],
+        additional_bounds: ~[Literal(Path::new(~["core", "cmp", "Eq"]))],
         generics: LifetimeBounds::empty(),
         methods: ~[
-            md!(~"lt", true,  false),
-            md!(~"le", true,  true),
-            md!(~"gt", false, false),
-            md!(~"ge", false, true)
+            md!("lt", true,  false),
+            md!("le", true,  true),
+            md!("gt", false, false),
+            md!("ge", false, true)
         ]
     };
 
@@ -55,17 +55,14 @@ pub fn expand_deriving_ord(cx: @ext_ctxt,
 
 /// `less`: is this `lt` or `le`? `equal`: is this `le` or `ge`?
 fn cs_ord(less: bool, equal: bool,
-          cx: @ext_ctxt, span: span,
+          cx: @ExtCtxt, span: span,
           substr: &Substructure) -> @expr {
     let binop = if less {
         cx.ident_of("lt")
     } else {
         cx.ident_of("gt")
     };
-    let false_blk_expr = build::mk_block(cx, span,
-                                         ~[], ~[],
-                                         Some(build::mk_bool(cx, span, false)));
-    let base = build::mk_bool(cx, span, equal);
+    let base = cx.expr_bool(span, equal);
 
     cs_fold(
         false, // need foldr,
@@ -98,19 +95,15 @@ fn cs_ord(less: bool, equal: bool,
                 cx.span_bug(span, "Not exactly 2 arguments in `deriving(Ord)`");
             }
 
-            let cmp = build::mk_method_call(cx, span,
-                                            self_f, cx.ident_of("eq"), other_fs.to_owned());
-            let subexpr = build::mk_simple_block(cx, span, subexpr);
-            let elseif = expr_if(cmp, subexpr, Some(false_blk_expr));
-            let elseif = build::mk_expr(cx, span, elseif);
+            let cmp = cx.expr_method_call(span,
+                                          self_f, cx.ident_of("eq"), other_fs.to_owned());
+            let elseif = cx.expr_if(span, cmp,
+                                    subexpr, Some(cx.expr_bool(span, false)));
 
-            let cmp = build::mk_method_call(cx, span,
-                                            self_f, binop, other_fs.to_owned());
-            let true_blk = build::mk_simple_block(cx, span,
-                                                  build::mk_bool(cx, span, true));
-            let if_ = expr_if(cmp, true_blk, Some(elseif));
-
-            build::mk_expr(cx, span, if_)
+            let cmp = cx.expr_method_call(span,
+                                          self_f, binop, other_fs.to_owned());
+            cx.expr_if(span, cmp,
+                        cx.expr_bool(span, true), Some(elseif))
         },
         base,
         |cx, span, args, _| {
@@ -119,7 +112,7 @@ fn cs_ord(less: bool, equal: bool,
             match args {
                 [(self_var, _, _),
                  (other_var, _, _)] =>
-                    build::mk_bool(cx, span,
+                    cx.expr_bool(span,
                                    if less {
                                        self_var < other_var
                                    } else {

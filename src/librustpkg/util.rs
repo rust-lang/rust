@@ -19,7 +19,7 @@ use std::semver;
 use std::term;
 use syntax::ast_util::*;
 use syntax::codemap::{dummy_sp, spanned, dummy_spanned};
-use syntax::ext::base::{mk_ctxt, ext_ctxt};
+use syntax::ext::base::ExtCtxt;
 use syntax::{ast, attr, codemap, diagnostic, fold};
 use syntax::ast::{meta_name_value, meta_list};
 use syntax::attr::{mk_attr};
@@ -178,7 +178,7 @@ struct ListenerFn {
 struct ReadyCtx {
     sess: session::Session,
     crate: @ast::crate,
-    ext_cx: @ext_ctxt,
+    ext_cx: @ExtCtxt,
     path: ~[ast::ident],
     fns: ~[ListenerFn]
 }
@@ -247,7 +247,7 @@ pub fn ready_crate(sess: session::Session,
     let ctx = @mut ReadyCtx {
         sess: sess,
         crate: crate,
-        ext_cx: mk_ctxt(sess.parse_sess, copy sess.opts.cfg),
+        ext_cx: ExtCtxt::new(sess.parse_sess, copy sess.opts.cfg),
         path: ~[],
         fns: ~[]
     };

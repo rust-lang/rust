@@ -18,12 +18,11 @@ use ast;
 use codemap::span;
 use ext::base::*;
 use ext::base;
-use ext::build;
-use ext::build::*;
+use ext::build::AstBuilder;
 
 use core::unstable::extfmt::ct::*;
 
-pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
+pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     let args = get_exprs_from_tts(cx, tts);
     if args.len() == 0 {
@@ -34,7 +33,7 @@ pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
                     ~"first argument to fmt! must be a string literal.");
     let fmtspan = args[0].span;
     debug!("Format string: %s", fmt);
-    fn parse_fmt_err_(cx: @ext_ctxt, sp: span, msg: &str) -> ! {
+    fn parse_fmt_err_(cx: @ExtCtxt, sp: span, msg: &str) -> ! {
         cx.span_fatal(sp, msg);
     }
     let parse_fmt_err: @fn(&str) -> ! = |s| parse_fmt_err_(cx, fmtspan, s);
@@ -46,23 +45,23 @@ pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
 // probably be factored out in common with other code that builds
 // expressions.  Also: Cleanup the naming of these functions.
 // Note: Moved many of the common ones to build.rs --kevina
-fn pieces_to_expr(cx: @ext_ctxt, sp: span,
+fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                   pieces: ~[Piece], args: ~[@ast::expr])
    -> @ast::expr {
-    fn make_path_vec(cx: @ext_ctxt, ident: &str) -> ~[ast::ident] {
+    fn make_path_vec(cx: @ExtCtxt, ident: &str) -> ~[ast::ident] {
         let intr = cx.parse_sess().interner;
         return ~[intr.intern("unstable"), intr.intern("extfmt"),
                  intr.intern("rt"), intr.intern(ident)];
     }
-    fn make_rt_path_expr(cx: @ext_ctxt, sp: span, nm: &str) -> @ast::expr {
+    fn make_rt_path_expr(cx: @ExtCtxt, sp: span, nm: &str) -> @ast::expr {
         let path = make_path_vec(cx, nm);
-        return mk_path_global(cx, sp, path);
+        cx.expr_path(cx.path_global(sp, path))
     }
     // Produces an AST expression that represents a RT::conv record,
     // which tells the RT::conv* functions how to perform the conversion
 
-    fn make_rt_conv_expr(cx: @ext_ctxt, sp: span, cnv: &Conv) -> @ast::expr {
-        fn make_flags(cx: @ext_ctxt, sp: span, flags: &[Flag]) -> @ast::expr {
+    fn make_rt_conv_expr(cx: @ExtCtxt, sp: span, cnv: &Conv) -> @ast::expr {
+        fn make_flags(cx: @ExtCtxt, sp: span, flags: &[Flag]) -> @ast::expr {
             let mut tmp_expr = make_rt_path_expr(cx, sp, "flag_none");
             for flags.each |f| {
                 let fstr = match *f {
@@ -72,26 +71,26 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
                   FlagSignAlways => "flag_sign_always",
                   FlagAlternate => "flag_alternate"
                 };
-                tmp_expr = mk_binary(cx, sp, ast::bitor, tmp_expr,
-                                     make_rt_path_expr(cx, sp, fstr));
+                tmp_expr = cx.expr_binary(sp, ast::bitor, tmp_expr,
+                                          make_rt_path_expr(cx, sp, fstr));
             }
             return tmp_expr;
         }
-        fn make_count(cx: @ext_ctxt, sp: span, cnt: Count) -> @ast::expr {
+        fn make_count(cx: @ExtCtxt, sp: span, cnt: Count) -> @ast::expr {
             match cnt {
               CountImplied => {
                 return make_rt_path_expr(cx, sp, "CountImplied");
               }
               CountIs(c) => {
-                let count_lit = mk_uint(cx, sp, c as uint);
+                let count_lit = cx.expr_uint(sp, c as uint);
                 let count_is_path = make_path_vec(cx, "CountIs");
                 let count_is_args = ~[count_lit];
-                return mk_call_global(cx, sp, count_is_path, count_is_args);
+                return cx.expr_call_global(sp, count_is_path, count_is_args);
               }
               _ => cx.span_unimpl(sp, "unimplemented fmt! conversion")
             }
         }
-        fn make_ty(cx: @ext_ctxt, sp: span, t: Ty) -> @ast::expr {
+        fn make_ty(cx: @ExtCtxt, sp: span, t: Ty) -> @ast::expr {
             let rt_type = match t {
               TyHex(c) => match c {
                 CaseUpper =>  "TyHexUpper",
@@ -103,27 +102,18 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
             };
             return make_rt_path_expr(cx, sp, rt_type);
         }
-        fn make_conv_struct(cx: @ext_ctxt, sp: span, flags_expr: @ast::expr,
+        fn make_conv_struct(cx: @ExtCtxt, sp: span, flags_expr: @ast::expr,
                          width_expr: @ast::expr, precision_expr: @ast::expr,
                          ty_expr: @ast::expr) -> @ast::expr {
             let intr = cx.parse_sess().interner;
-            mk_global_struct_e(
-                cx,
+            cx.expr_struct(
                 sp,
-                make_path_vec(cx, "Conv"),
+                cx.path_global(sp, make_path_vec(cx, "Conv")),
                 ~[
-                    build::Field {
-                        ident: intr.intern("flags"), ex: flags_expr
-                    },
-                    build::Field {
-                        ident: intr.intern("width"), ex: width_expr
-                    },
-                    build::Field {
-                        ident: intr.intern("precision"), ex: precision_expr
-                    },
-                    build::Field {
-                        ident: intr.intern("ty"), ex: ty_expr
-                    },
+                    cx.field_imm(sp, intr.intern("flags"), flags_expr),
+                    cx.field_imm(sp, intr.intern("width"), width_expr),
+                    cx.field_imm(sp, intr.intern("precision"), precision_expr),
+                    cx.field_imm(sp, intr.intern("ty"), ty_expr)
                 ]
             )
         }
@@ -134,16 +124,16 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
         make_conv_struct(cx, sp, rt_conv_flags, rt_conv_width,
                          rt_conv_precision, rt_conv_ty)
     }
-    fn make_conv_call(cx: @ext_ctxt, sp: span, conv_type: &str, cnv: &Conv,
+    fn make_conv_call(cx: @ExtCtxt, sp: span, conv_type: &str, cnv: &Conv,
                       arg: @ast::expr, buf: @ast::expr) -> @ast::expr {
         let fname = ~"conv_" + conv_type;
         let path = make_path_vec(cx, fname);
         let cnv_expr = make_rt_conv_expr(cx, sp, cnv);
         let args = ~[cnv_expr, arg, buf];
-        return mk_call_global(cx, arg.span, path, args);
+        cx.expr_call_global(arg.span, path, args)
     }
 
-    fn make_new_conv(cx: @ext_ctxt, sp: span, cnv: &Conv,
+    fn make_new_conv(cx: @ExtCtxt, sp: span, cnv: &Conv,
                      arg: @ast::expr, buf: @ast::expr) -> @ast::expr {
         fn is_signed_type(cnv: &Conv) -> bool {
             match cnv.ty {
@@ -198,10 +188,10 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
             TyChar => ("char", arg),
             TyBits | TyOctal | TyHex(_) | TyInt(Unsigned) => ("uint", arg),
             TyFloat => ("float", arg),
-            TyPoly => ("poly", mk_addr_of(cx, sp, arg))
+            TyPoly => ("poly", cx.expr_addr_of(sp, arg))
         };
         return make_conv_call(cx, arg.span, name, cnv, actual_arg,
-                              mk_mut_addr_of(cx, arg.span, buf));
+                              cx.expr_mut_addr_of(arg.span, buf));
     }
     fn log_conv(c: &Conv) {
         debug!("Building conversion:");
@@ -259,7 +249,7 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
 
     /* 'ident' is the local buffer building up the result of fmt! */
     let ident = cx.parse_sess().interner.intern("__fmtbuf");
-    let buf = || mk_path(cx, fmt_sp, ~[ident]);
+    let buf = || cx.expr_ident(fmt_sp, ident);
     let str_ident = cx.parse_sess().interner.intern("str");
     let push_ident = cx.parse_sess().interner.intern("push_str");
     let mut stms = ~[];
@@ -276,14 +266,14 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
                    buffer with it directly. If it's actually the only piece,
                    then there's no need for it to be mutable */
                 if i == 0 {
-                    stms.push(mk_local(cx, fmt_sp, npieces > 1, ident, mk_uniq_str(cx, fmt_sp, s)));
+                    stms.push(cx.stmt_let(fmt_sp, npieces > 1,
+                                          ident, cx.expr_str_uniq(fmt_sp, s)));
                 } else {
-                    let args = ~[mk_mut_addr_of(cx, fmt_sp, buf()), mk_base_str(cx, fmt_sp, s)];
-                    let call = mk_call_global(cx,
-                                              fmt_sp,
-                                              ~[str_ident, push_ident],
-                                              args);
-                    stms.push(mk_stmt(cx, fmt_sp, call));
+                    let args = ~[cx.expr_mut_addr_of(fmt_sp, buf()), cx.expr_str(fmt_sp, s)];
+                    let call = cx.expr_call_global(fmt_sp,
+                                                   ~[str_ident, push_ident],
+                                                   args);
+                    stms.push(cx.stmt_expr(call));
                 }
             }
 
@@ -300,12 +290,11 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
                 /* If the first portion is a conversion, then the local buffer
                    must be initialized as an empty string */
                 if i == 0 {
-                    stms.push(mk_local(cx, fmt_sp, true, ident,
-                                       mk_uniq_str(cx, fmt_sp, ~"")));
+                    stms.push(cx.stmt_let(fmt_sp, true, ident,
+                                          cx.expr_str_uniq(fmt_sp, ~"")));
                 }
-                stms.push(mk_stmt(cx, fmt_sp,
-                                  make_new_conv(cx, fmt_sp, conv,
-                                                args[n], buf())));
+                stms.push(cx.stmt_expr(make_new_conv(cx, fmt_sp, conv,
+                                                     args[n], buf())));
             }
         }
     }
@@ -317,5 +306,5 @@ fn pieces_to_expr(cx: @ext_ctxt, sp: span,
                            nargs, expected_nargs));
     }
 
-    return mk_block(cx, fmt_sp, ~[], stms, Some(buf()));
+    cx.expr_blk(cx.blk(fmt_sp, stms, Some(buf())))
 }
