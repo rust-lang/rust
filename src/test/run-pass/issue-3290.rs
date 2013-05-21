@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // xfail-test
-fn foo<'a>() -> &'a int {  //~ ERROR unconstrained region
-    return &x;
+fn main() {
+   let mut x = ~3;
+   x = x;
+   assert_eq!(*x, 3);
 }
-static x: int = 5;
-fn main() {}
