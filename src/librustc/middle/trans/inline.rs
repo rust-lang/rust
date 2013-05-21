@@ -77,14 +77,14 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
                   ccx.external.insert(there.id, Some(here.id.node));
               }
             }
-            _ => ccx.sess.bug(~"maybe_instantiate_inline: item has a \
-                  non-enum parent")
+            _ => ccx.sess.bug("maybe_instantiate_inline: item has a \
+                               non-enum parent")
           }
           if translate { trans_item(ccx, item); }
           local_def(my_id)
         }
         csearch::found_parent(_, _) => {
-            ccx.sess.bug(~"maybe_get_item_ast returned a found_parent \
+            ccx.sess.bug("maybe_get_item_ast returned a found_parent \
              with a non-item parent");
         }
         csearch::found(ast::ii_method(impl_did, mth)) => {
@@ -98,7 +98,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
               let llfn = get_item_val(ccx, mth.id);
               let path = vec::append(
                   ty::item_path(ccx.tcx, impl_did),
-                  ~[path_name(mth.ident)]);
+                  [path_name(mth.ident)]);
               let self_kind = match mth.explicit_self.node {
                   ast::sty_static => no_self,
                   _ => {

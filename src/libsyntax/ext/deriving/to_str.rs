@@ -49,6 +49,6 @@ fn to_str_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> @exp
                                     cx.ident_of("log_str")],
                                   ~[self_addr])
         }
-        _ => cx.span_bug(span, ~"Invalid number of arguments in `deriving(ToStr)`")
+        _ => cx.span_bug(span, "Invalid number of arguments in `deriving(ToStr)`")
     }
 }

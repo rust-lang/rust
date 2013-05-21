@@ -64,12 +64,12 @@ pub fn add_new_extension(cx: @ext_ctxt,
     // Extract the arguments:
     let lhses = match *argument_map.get(&lhs_nm) {
         @matched_seq(ref s, _) => /* FIXME (#2543) */ @copy *s,
-        _ => cx.span_bug(sp, ~"wrong-structured lhs")
+        _ => cx.span_bug(sp, "wrong-structured lhs")
     };
 
     let rhses = match *argument_map.get(&rhs_nm) {
       @matched_seq(ref s, _) => /* FIXME (#2543) */ @copy *s,
-      _ => cx.span_bug(sp, ~"wrong-structured rhs")
+      _ => cx.span_bug(sp, "wrong-structured rhs")
     };
 
     // Given `lhses` and `rhses`, this is the new macro we create
@@ -114,10 +114,10 @@ pub fn add_new_extension(cx: @ext_ctxt,
                                     (*tts).slice(1u,(*tts).len()-1u).to_owned()
                                 }
                                 _ => cx.span_fatal(
-                                    sp, ~"macro rhs must be delimited")
+                                    sp, "macro rhs must be delimited")
                             }
                         },
-                        _ => cx.span_bug(sp, ~"bad thing in rhs")
+                        _ => cx.span_bug(sp, "bad thing in rhs")
                     };
                     // rhs has holes ( `$id` and `$(...)` that need filled)
                     let trncbr = new_tt_reader(s_d, itr, Some(named_matches),
@@ -139,7 +139,7 @@ pub fn add_new_extension(cx: @ext_ctxt,
                   error(sp, ref msg) => cx.span_fatal(sp, (*msg))
                 }
               }
-              _ => cx.bug(~"non-matcher found in parsed lhses")
+              _ => cx.bug("non-matcher found in parsed lhses")
             }
         }
         cx.span_fatal(best_fail_spot, best_fail_msg);

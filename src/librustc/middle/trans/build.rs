@@ -190,7 +190,7 @@ pub fn Invoke(cx: block,
            val_str(cx.ccx().tn, Fn),
            str::connect(vec::map(Args, |a| val_str(cx.ccx().tn,
                                                    *a).to_owned()),
-                        ~", "));
+                        ", "));
     unsafe {
         count_insn(cx, "invoke");
         llvm::LLVMBuildInvoke(B(cx),
@@ -864,7 +864,7 @@ pub fn _UndefReturn(cx: block, Fn: ValueRef) -> ValueRef {
         let ty = val_ty(Fn);
         let retty = if llvm::LLVMGetTypeKind(ty) == lib::llvm::Integer {
             llvm::LLVMGetReturnType(ty) } else { ccx.int_type };
-            count_insn(cx, ~"");
+            count_insn(cx, "");
         return llvm::LLVMGetUndef(retty);
     }
 }
@@ -882,17 +882,17 @@ pub fn add_comment(bcx: block, text: &str) {
     unsafe {
         let ccx = bcx.ccx();
         if ccx.sess.asm_comments() {
-            let sanitized = str::replace(text, ~"$", ~"");
+            let sanitized = str::replace(text, "$", "");
             let comment_text = ~"# " +
-                str::replace(sanitized, ~"\n", ~"\n\t# ");
+                str::replace(sanitized, "\n", "\n\t# ");
             let asm = str::as_c_str(comment_text, |c| {
-                str::as_c_str(~"", |e| {
-                    count_insn(bcx, ~"inlineasm");
-                    llvm::LLVMConstInlineAsm(T_fn(~[], T_void()), c, e,
+                str::as_c_str("", |e| {
+                    count_insn(bcx, "inlineasm");
+                    llvm::LLVMConstInlineAsm(T_fn([], T_void()), c, e,
                                              False, False)
                 })
             });
-            Call(bcx, asm, ~[]);
+            Call(bcx, asm, []);
         }
     }
 }
@@ -1064,7 +1064,7 @@ pub fn Trap(cx: block) {
         let BB: BasicBlockRef = llvm::LLVMGetInsertBlock(b);
         let FN: ValueRef = llvm::LLVMGetBasicBlockParent(BB);
         let M: ModuleRef = llvm::LLVMGetGlobalParent(FN);
-        let T: ValueRef = str::as_c_str(~"llvm.trap", |buf| {
+        let T: ValueRef = str::as_c_str("llvm.trap", |buf| {
             llvm::LLVMGetNamedFunction(M, buf)
         });
         assert!((T as int != 0));

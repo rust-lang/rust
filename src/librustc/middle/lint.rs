@@ -79,6 +79,7 @@ pub enum lint {
     unused_variable,
     dead_assignment,
     unused_mut,
+    unnecessary_allocation,
 }
 
 pub fn level_to_str(lv: level) -> &'static str {
@@ -240,6 +241,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: unused_mut,
         desc: "detect mut variables which don't need to be mutable",
+        default: warn
+    }),
+
+    ("unnecessary_allocation",
+     LintSpec {
+        lint: unnecessary_allocation,
+        desc: "detects unnecessary allocations that can be eliminated",
         default: warn
     }),
 ];
@@ -431,7 +439,7 @@ pub fn each_lint(sess: session::Session,
             let metas = match meta.node {
                 ast::meta_list(_, ref metas) => metas,
                 _ => {
-                    sess.span_err(meta.span, ~"malformed lint attribute");
+                    sess.span_err(meta.span, "malformed lint attribute");
                     loop;
                 }
             };
@@ -443,7 +451,7 @@ pub fn each_lint(sess: session::Session,
                         }
                     }
                     _ => {
-                        sess.span_err(meta.span, ~"malformed lint attribute");
+                        sess.span_err(meta.span, "malformed lint attribute");
                     }
                 }
             }
@@ -881,6 +889,67 @@ fn lint_session(cx: @mut Context) -> visit::vt<()> {
     })
 }
 
+fn lint_unnecessary_allocations(cx: @mut Context) -> visit::vt<()> {
+    // If the expression `e` has an allocated type, but `t` dictates that it's
+    // something like a slice (doesn't need allocation), emit a warning with the
+    // specified span.
+    //
+    // Currently, this only applies to string and vector literals with sigils in
+    // front. Those can have the sigil removed to get a borrowed pointer
+    // automatically.
+    fn check(cx: @mut Context, e: @ast::expr, t: ty::t) {
+        match e.node {
+            ast::expr_vstore(e2, ast::expr_vstore_uniq) |
+            ast::expr_vstore(e2, ast::expr_vstore_box) => {
+                match e2.node {
+                    ast::expr_lit(@codemap::spanned{
+                            node: ast::lit_str(*), _}) |
+                    ast::expr_vec(*) => {}
+                    _ => return
+                }
+            }
+
+            _ => return
+        }
+
+        match ty::get(t).sty {
+            ty::ty_estr(ty::vstore_slice(*)) |
+            ty::ty_evec(_, ty::vstore_slice(*)) => {
+                cx.span_lint(unnecessary_allocation,
+                             e.span, "unnecessary allocation, the sigil can be \
+                                      removed");
+            }
+
+            _ => ()
+        }
+    }
+
+    let visit_expr: @fn(@ast::expr) = |e| {
+        match e.node {
+            ast::expr_call(c, ref args, _) => {
+                let t = ty::node_id_to_type(cx.tcx, c.id);
+                let s = ty::ty_fn_sig(t);
+                for vec::each2(*args, s.inputs) |e, t| {
+                    check(cx, *e, *t);
+                }
+            }
+            ast::expr_method_call(_, _, _, ref args, _) => {
+                let t = ty::node_id_to_type(cx.tcx, e.callee_id);
+                let s = ty::ty_fn_sig(t);
+                for vec::each2(*args, s.inputs) |e, t| {
+                    check(cx, *e, *t);
+                }
+            }
+            _ => {}
+        }
+    };
+
+    visit::mk_simple_visitor(@visit::SimpleVisitor {
+        visit_expr: visit_expr,
+        .. *visit::default_simple_visitor()
+    })
+}
+
 pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
     let cx = @mut Context {
         dict: @get_lint_dict(),
@@ -908,6 +977,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
     cx.add_lint(lint_unused_unsafe(cx));
     cx.add_lint(lint_unused_mut(cx));
     cx.add_lint(lint_session(cx));
+    cx.add_lint(lint_unnecessary_allocations(cx));
 
     // type inference doesn't like this being declared below, we need to tell it
     // what the type of this first function is...

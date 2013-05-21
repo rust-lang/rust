@@ -509,7 +509,7 @@ pub fn self_exe_path() -> Option<Path> {
  * Otherwise, homedir returns option::none.
  */
 pub fn homedir() -> Option<Path> {
-    return match getenv(~"HOME") {
+    return match getenv("HOME") {
         Some(ref p) => if !str::is_empty(*p) {
           Some(Path(*p))
         } else {

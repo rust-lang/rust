@@ -39,7 +39,7 @@ pub fn expand_trace_macros(cx: @ext_ctxt,
     } else if rust_parser.is_keyword("false") {
         cx.set_trace_macros(false);
     } else {
-        cx.span_fatal(sp, ~"trace_macros! only accepts `true` or `false`")
+        cx.span_fatal(sp, "trace_macros! only accepts `true` or `false`")
     }
 
     rust_parser.bump();

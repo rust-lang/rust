@@ -96,7 +96,7 @@ impl gen_send for message {
                          name,
                          str::connect(vec::append_one(
                            arg_names.map(|x| cx.str_of(*x)),
-                             ~"s"), ~", "));
+                             ~"s"), ", "));
 
             if !try {
                 body += fmt!("::core::pipes::send(pipe, message);\n");
@@ -148,7 +148,7 @@ impl gen_send for message {
                 }
                 else {
                     ~"(" + str::connect(arg_names.map(|x| copy *x),
-                                        ~", ") + ~")"
+                                        ", ") + ~")"
                 };
 
                 let mut body = ~"{ ";

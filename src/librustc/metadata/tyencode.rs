@@ -155,7 +155,7 @@ fn enc_region(w: @io::Writer, cx: @ctxt, r: ty::Region) {
       }
       ty::re_infer(_) => {
         // these should not crop up after typeck
-        cx.diag.handler().bug(~"Cannot encode region variables");
+        cx.diag.handler().bug("Cannot encode region variables");
       }
     }
 }
@@ -301,7 +301,7 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, st: ty::sty) {
         enc_bare_fn_ty(w, cx, f);
       }
       ty::ty_infer(_) => {
-        cx.diag.handler().bug(~"Cannot encode inference variable types");
+        cx.diag.handler().bug("Cannot encode inference variable types");
       }
       ty::ty_param(param_ty {idx: id, def_id: did}) => {
         w.write_char('p');
@@ -321,15 +321,15 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, st: ty::sty) {
       }
       ty::ty_opaque_box => w.write_char('B'),
       ty::ty_struct(def, ref substs) => {
-          debug!("~~~~ %s", ~"a[");
+          debug!("~~~~ %s", "a[");
           w.write_str(&"a[");
           let s = (cx.ds)(def);
           debug!("~~~~ %s", s);
           w.write_str(s);
-          debug!("~~~~ %s", ~"|");
+          debug!("~~~~ %s", "|");
           w.write_char('|');
           enc_substs(w, cx, substs);
-          debug!("~~~~ %s", ~"]");
+          debug!("~~~~ %s", "]");
           w.write_char(']');
       }
       ty::ty_err => fail!("Shouldn't encode error type")

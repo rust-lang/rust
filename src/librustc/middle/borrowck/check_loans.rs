@@ -719,7 +719,7 @@ fn check_loans_in_expr<'a>(expr: @ast::expr,
                         None,
                         expr.callee_id,
                         expr.span,
-                        ~[rval]);
+                        [rval]);
       }
       ast::expr_unary(*) | ast::expr_index(*)
       if this.bccx.method_map.contains_key(&expr.id) => {
@@ -727,7 +727,7 @@ fn check_loans_in_expr<'a>(expr: @ast::expr,
                         None,
                         expr.callee_id,
                         expr.span,
-                        ~[]);
+                        []);
       }
       _ => { }
     }

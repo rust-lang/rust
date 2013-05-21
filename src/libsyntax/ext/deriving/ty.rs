@@ -167,8 +167,8 @@ pub impl Ty {
             Literal(ref p) => {
                 p.to_path(cx, span, self_ty, self_generics)
             }
-            Ptr(*) => { cx.span_bug(span, ~"Pointer in a path in generic `deriving`") }
-            Tuple(*) => { cx.span_bug(span, ~"Tuple in a path in generic `deriving`") }
+            Ptr(*) => { cx.span_bug(span, "Pointer in a path in generic `deriving`") }
+            Tuple(*) => { cx.span_bug(span, "Tuple in a path in generic `deriving`") }
         }
     }
 }

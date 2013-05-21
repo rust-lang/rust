@@ -104,9 +104,7 @@ pub impl Parser {
                 i
             }
             token::INTERPOLATED(token::nt_ident(*)) => {
-                self.bug(
-                    ~"ident interpolation not converted to real token"
-                );
+                self.bug("ident interpolation not converted to real token");
             }
             _ => {
                 self.fatal(

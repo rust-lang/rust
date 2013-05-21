@@ -524,9 +524,9 @@ priv impl Parser {
         if self.eof() { return self.error(~"EOF while parsing value"); }
 
         match self.ch {
-          'n' => self.parse_ident(~"ull", Null),
-          't' => self.parse_ident(~"rue", Boolean(true)),
-          'f' => self.parse_ident(~"alse", Boolean(false)),
+          'n' => self.parse_ident("ull", Null),
+          't' => self.parse_ident("rue", Boolean(true)),
+          'f' => self.parse_ident("alse", Boolean(false)),
           '0' .. '9' | '-' => self.parse_number(),
           '"' =>
             match self.parse_str() {

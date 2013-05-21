@@ -93,8 +93,8 @@ fn strip_test_functions(crate: @ast::crate) -> @ast::crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
     do config::strip_items(crate) |attrs| {
-        !attr::contains_name(attr::attr_metas(attrs), ~"test") &&
-        !attr::contains_name(attr::attr_metas(attrs), ~"bench")
+        !attr::contains_name(attr::attr_metas(attrs), "test") &&
+        !attr::contains_name(attr::attr_metas(attrs), "bench")
     }
 }
 
@@ -148,7 +148,7 @@ fn fold_item(cx: @mut TestCtxt, i: @ast::item, fld: @fold::ast_fold)
             let sess = cx.sess;
             sess.span_fatal(
                 i.span,
-                ~"unsafe functions cannot be used for tests");
+                "unsafe functions cannot be used for tests");
           }
           _ => {
             debug!("this is a test function");
@@ -172,7 +172,7 @@ fn fold_item(cx: @mut TestCtxt, i: @ast::item, fld: @fold::ast_fold)
 
 fn is_test_fn(cx: @mut TestCtxt, i: @ast::item) -> bool {
     let has_test_attr = !attr::find_attrs_by_name(i.attrs,
-                                                  ~"test").is_empty();
+                                                  "test").is_empty();
 
     fn has_test_signature(i: @ast::item) -> bool {
         match &i.node {
@@ -193,7 +193,7 @@ fn is_test_fn(cx: @mut TestCtxt, i: @ast::item) -> bool {
         let sess = cx.sess;
         sess.span_err(
             i.span,
-            ~"functions used as tests must have signature fn() -> ()."
+            "functions used as tests must have signature fn() -> ()."
         );
     }
     return has_test_attr && has_test_signature(i);
@@ -201,7 +201,7 @@ fn is_test_fn(cx: @mut TestCtxt, i: @ast::item) -> bool {
 
 fn is_bench_fn(i: @ast::item) -> bool {
     let has_bench_attr =
-        vec::len(attr::find_attrs_by_name(i.attrs, ~"bench")) > 0u;
+        vec::len(attr::find_attrs_by_name(i.attrs, "bench")) > 0u;
 
     fn has_test_signature(i: @ast::item) -> bool {
         match i.node {
@@ -239,7 +239,7 @@ fn is_ignored(cx: @mut TestCtxt, i: @ast::item) -> bool {
 }
 
 fn should_fail(i: @ast::item) -> bool {
-    vec::len(attr::find_attrs_by_name(i.attrs, ~"should_fail")) > 0u
+    vec::len(attr::find_attrs_by_name(i.attrs, "should_fail")) > 0u
 }
 
 fn add_test_module(cx: &TestCtxt, m: &ast::_mod) -> ast::_mod {
@@ -373,7 +373,7 @@ fn mk_tests(cx: &TestCtxt) -> @ast::item {
 fn is_std(cx: &TestCtxt) -> bool {
     let is_std = {
         let items = attr::find_linkage_metas(cx.crate.node.attrs);
-        match attr::last_meta_item_value_str_by_name(items, ~"name") {
+        match attr::last_meta_item_value_str_by_name(items, "name") {
           Some(@~"std") => true,
           _ => false
         }

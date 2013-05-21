@@ -1462,7 +1462,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                        )
                      -> ty::t {
         match method::lookup(fcx, op_ex, self_ex,
-                             op_ex.callee_id, opname, self_t, ~[],
+                             op_ex.callee_id, opname, self_t, [],
                              deref_args, CheckTraitsOnly, autoderef_receiver) {
             Some(ref origin) => {
                 let method_ty = fcx.node_ty(op_ex.callee_id);
@@ -1876,7 +1876,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                        } else {
                                            "s"
                                        },
-                                       str::connect(missing_fields, ~", ")));
+                                       str::connect(missing_fields, ", ")));
              }
         }
 
@@ -2111,7 +2111,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     }
                     None => fcx.tcx().sess.impossible_case(
                         expr.span,
-                        ~"loop body must have an expected type")
+                        "loop body must have an expected type")
                 }
             }
         };
@@ -2397,7 +2397,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
           }
           fcx.write_nil(id);
       }
-      ast::expr_mac(_) => tcx.sess.bug(~"unexpanded macro"),
+      ast::expr_mac(_) => tcx.sess.bug("unexpanded macro"),
       ast::expr_break(_) => { fcx.write_bot(id); }
       ast::expr_again(_) => { fcx.write_bot(id); }
       ast::expr_ret(expr_opt) => {
@@ -2551,7 +2551,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 None => {
                     fcx.tcx().sess.impossible_case(
                         expr.span,
-                        ~"do body must have expected type")
+                        "do body must have expected type")
                 }
             }
         };
@@ -2911,7 +2911,7 @@ pub fn check_stmt(fcx: @mut FnCtxt, stmt: @ast::stmt)  {
         saw_bot |= ty::type_is_bot(expr_ty);
         saw_err |= ty::type_is_error(expr_ty);
       }
-      ast::stmt_mac(*) => fcx.ccx.tcx.sess.bug(~"unexpanded macro")
+      ast::stmt_mac(*) => fcx.ccx.tcx.sess.bug("unexpanded macro")
     }
     if saw_bot {
         fcx.write_bot(node_id);

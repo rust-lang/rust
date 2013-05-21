@@ -381,7 +381,7 @@ pub fn resolve_stmt(stmt: @ast::stmt, cx: Context, visitor: visit::vt<Context>) 
             let expr_cx = Context {parent: Some(stmt_id), ..cx};
             visit::visit_stmt(stmt, expr_cx, visitor);
         }
-        ast::stmt_mac(*) => cx.sess.bug(~"unexpanded macro")
+        ast::stmt_mac(*) => cx.sess.bug("unexpanded macro")
     }
 }
 

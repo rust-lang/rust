@@ -106,7 +106,7 @@ Section: Adding things to a rope
  * * this function executes in near-constant time
  */
 pub fn append_char(rope: Rope, char: char) -> Rope {
-    return append_str(rope, @str::from_chars(~[char]));
+    return append_str(rope, @str::from_chars([char]));
 }
 
 /**
@@ -127,7 +127,7 @@ pub fn append_str(rope: Rope, str: @~str) -> Rope {
  * * this function executes in near-constant time
  */
 pub fn prepend_char(rope: Rope, char: char) -> Rope {
-    return prepend_str(rope, @str::from_chars(~[char]));
+    return prepend_str(rope, @str::from_chars([char]));
 }
 
 /**
