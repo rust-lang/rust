@@ -14,6 +14,7 @@ use lib::llvm::{Opcode, IntPredicate, RealPredicate, False};
 use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
 use lib;
 use middle::trans::common::*;
+use middle::trans::machine::llalign_of_min;
 use syntax::codemap::span;
 
 use core::hashmap::HashMap;
@@ -544,7 +545,8 @@ pub fn AtomicLoad(cx: block, PointerVal: ValueRef, order: AtomicOrdering) -> Val
             return llvm::LLVMGetUndef(ccx.int_type);
         }
         count_insn(cx, "load.atomic");
-        return llvm::LLVMBuildAtomicLoad(B(cx), PointerVal, noname(), order);
+        let align = llalign_of_min(*ccx, ccx.int_type);
+        return llvm::LLVMBuildAtomicLoad(B(cx), PointerVal, noname(), order, align as c_uint);
     }
 }
 
@@ -557,7 +559,6 @@ pub fn LoadRangeAssert(cx: block, PointerVal: ValueRef, lo: c_ulonglong,
         let t = llvm::LLVMGetElementType(llvm::LLVMTypeOf(PointerVal));
         let min = llvm::LLVMConstInt(t, lo, signed);
         let max = llvm::LLVMConstInt(t, hi, signed);
-
 
         do vec::as_imm_buf([min, max]) |ptr, len| {
             llvm::LLVMSetMetadata(value, lib::llvm::MD_range as c_uint,
@@ -586,7 +587,8 @@ pub fn AtomicStore(cx: block, Val: ValueRef, Ptr: ValueRef, order: AtomicOrderin
                val_str(cx.ccx().tn, Val),
                val_str(cx.ccx().tn, Ptr));
         count_insn(cx, "store.atomic");
-        llvm::LLVMBuildAtomicStore(B(cx), Val, Ptr, order);
+        let align = llalign_of_min(cx.ccx(), cx.ccx().int_type);
+        llvm::LLVMBuildAtomicStore(B(cx), Val, Ptr, order, align as c_uint);
     }
 }
 

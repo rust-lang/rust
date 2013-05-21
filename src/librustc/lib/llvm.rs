@@ -1571,13 +1571,15 @@ pub mod llvm {
         pub unsafe fn LLVMBuildAtomicLoad(B: BuilderRef,
                                           PointerVal: ValueRef,
                                           Name: *c_char,
-                                          Order: AtomicOrdering)
+                                          Order: AtomicOrdering,
+                                          Alignment: c_uint)
                                        -> ValueRef;
 
         pub unsafe fn LLVMBuildAtomicStore(B: BuilderRef,
                                            Val: ValueRef,
                                            Ptr: ValueRef,
-                                           Order: AtomicOrdering)
+                                           Order: AtomicOrdering,
+                                           Alignment: c_uint)
                                         -> ValueRef;
 
         pub unsafe fn LLVMBuildAtomicCmpXchg(B: BuilderRef,
