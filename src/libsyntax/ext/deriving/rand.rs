@@ -11,30 +11,30 @@
 use ast;
 use ast::{meta_item, item, expr, ident};
 use codemap::span;
-use ext::base::ext_ctxt;
-use ext::build;
+use ext::base::ExtCtxt;
+use ext::build::{AstBuilder, Duplicate};
 use ext::deriving::generic::*;
 
-pub fn expand_deriving_rand(cx: @ext_ctxt,
+pub fn expand_deriving_rand(cx: @ExtCtxt,
                             span: span,
                             mitem: @meta_item,
                             in_items: ~[@item])
     -> ~[@item] {
     let trait_def = TraitDef {
-        path: Path::new(~[~"core", ~"rand", ~"Rand"]),
+        path: Path::new(~["core", "rand", "Rand"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[
             MethodDef {
-                name: ~"rand",
+                name: "rand",
                 generics: LifetimeBounds {
                     lifetimes: ~[],
-                    bounds: ~[(~"R",
-                               ~[ Path::new(~[~"core", ~"rand", ~"Rng"]) ])]
+                    bounds: ~[("R",
+                               ~[ Path::new(~["core", "rand", "Rng"]) ])]
                 },
                 explicit_self: None,
                 args: ~[
-                    Ptr(~Literal(Path::new_local(~"R")),
+                    Ptr(~Literal(Path::new_local("R")),
                         Borrowed(None, ast::m_mutbl))
                 ],
                 ret_ty: Self,
@@ -47,7 +47,7 @@ pub fn expand_deriving_rand(cx: @ext_ctxt,
     expand_deriving_generic(cx, span, mitem, in_items, &trait_def)
 }
 
-fn rand_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> @expr {
+fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
     let rng = match substr.nonself_args {
         [rng] => ~[ rng ],
         _ => cx.bug("Incorrect number of arguments to `rand` in `deriving(Rand)`")
@@ -59,10 +59,9 @@ fn rand_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> @expr 
         cx.ident_of("rand")
     ];
     let rand_call = || {
-        build::mk_call_global(cx,
-                              span,
-                              copy rand_ident,
-                              ~[ build::duplicate_expr(cx, rng[0]) ])
+        cx.expr_call_global(span,
+                            copy rand_ident,
+                            ~[ rng[0].duplicate(cx) ])
     };
 
     return match *substr.fields {
@@ -74,67 +73,61 @@ fn rand_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> @expr 
                 cx.span_fatal(span, "`Rand` cannot be derived for enums with no variants");
             }
 
-            let variant_count = build::mk_uint(cx, span, variants.len());
+            let variant_count = cx.expr_uint(span, variants.len());
 
             // need to specify the uint-ness of the random number
-            let u32_ty = build::mk_ty_path(cx, span, ~[cx.ident_of("uint")]);
-            let r_ty = build::mk_ty_path(cx, span, ~[cx.ident_of("R")]);
-            let rand_name = build::mk_raw_path_(span, copy rand_ident, None, ~[ u32_ty, r_ty ]);
-            let rand_name = build::mk_path_raw(cx, span, rand_name);
+            let u32_ty = cx.ty_ident(span, cx.ident_of("uint"));
+            let r_ty = cx.ty_ident(span, cx.ident_of("R"));
+            let rand_name = cx.path_all(span, false, copy rand_ident, None, ~[ u32_ty, r_ty ]);
+            let rand_name = cx.expr_path(rand_name);
 
-            let rv_call = build::mk_call_(cx,
-                                          span,
-                                          rand_name,
-                                          ~[ build::duplicate_expr(cx, rng[0]) ]);
+            let rv_call = cx.expr_call(span,
+                                       rand_name,
+                                       ~[ rng[0].duplicate(cx) ]);
 
             // rand() % variants.len()
-            let rand_variant = build::mk_binary(cx, span, ast::rem,
+            let rand_variant = cx.expr_binary(span, ast::rem,
                                                 rv_call, variant_count);
 
             let mut arms = do variants.mapi |i, id_sum| {
-                let i_expr = build::mk_uint(cx, span, i);
-                let pat = build::mk_pat_lit(cx, span, i_expr);
+                let i_expr = cx.expr_uint(span, i);
+                let pat = cx.pat_lit(span, i_expr);
 
                 match *id_sum {
                     (ident, ref summary) => {
-                        build::mk_arm(cx, span,
-                                      ~[ pat ],
-                                      rand_thing(cx, span, ident, summary, rand_call))
+                        cx.arm(span,
+                               ~[ pat ],
+                               rand_thing(cx, span, ident, summary, rand_call))
                     }
                 }
             };
 
             // _ => {} at the end. Should never occur
-            arms.push(build::mk_unreachable_arm(cx, span));
+            arms.push(cx.arm_unreachable(span));
 
-            build::mk_expr(cx, span,
-                           ast::expr_match(rand_variant, arms))
+            cx.expr_match(span, rand_variant, arms)
         }
         _ => cx.bug("Non-static method in `deriving(Rand)`")
     };
 
-    fn rand_thing(cx: @ext_ctxt, span: span,
+    fn rand_thing(cx: @ExtCtxt, span: span,
                   ctor_ident: ident,
                   summary: &Either<uint, ~[ident]>,
                   rand_call: &fn() -> @expr) -> @expr {
-        let ctor_ident = ~[ ctor_ident ];
         match *summary {
             Left(copy count) => {
                 if count == 0 {
-                    build::mk_path(cx, span, ctor_ident)
+                    cx.expr_ident(span, ctor_ident)
                 } else {
                     let exprs = vec::from_fn(count, |_| rand_call());
-                    build::mk_call(cx, span, ctor_ident, exprs)
+                    cx.expr_call_ident(span, ctor_ident, exprs)
                 }
             }
             Right(ref fields) => {
                 let rand_fields = do fields.map |ident| {
-                    build::Field {
-                        ident: *ident,
-                        ex: rand_call()
-                    }
+                    cx.field_imm(span, *ident, rand_call())
                 };
-                build::mk_struct_e(cx, span, ctor_ident, rand_fields)
+                cx.expr_struct_ident(span, ctor_ident, rand_fields)
             }
         }
     }

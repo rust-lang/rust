@@ -10,26 +10,26 @@
 
 use ast::{meta_item, item, expr};
 use codemap::span;
-use ext::base::ext_ctxt;
-use ext::build;
+use ext::base::ExtCtxt;
+use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
-pub fn expand_deriving_to_str(cx: @ext_ctxt,
+pub fn expand_deriving_to_str(cx: @ExtCtxt,
                               span: span,
                               mitem: @meta_item,
                               in_items: ~[@item])
     -> ~[@item] {
     let trait_def = TraitDef {
-        path: Path::new(~[~"core", ~"to_str", ~"ToStr"]),
+        path: Path::new(~["core", "to_str", "ToStr"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[
             MethodDef {
-                name: ~"to_str",
+                name: "to_str",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: ~[],
-                ret_ty: Ptr(~Literal(Path::new_local(~"str")), Owned),
+                ret_ty: Ptr(~Literal(Path::new_local("str")), Owned),
                 const_nonmatching: false,
                 combine_substructure: to_str_substructure
             }
@@ -39,15 +39,15 @@ pub fn expand_deriving_to_str(cx: @ext_ctxt,
     expand_deriving_generic(cx, span, mitem, in_items, &trait_def)
 }
 
-fn to_str_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> @expr {
+fn to_str_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
     match substr.self_args {
         [self_obj] => {
-            let self_addr = build::mk_addr_of(cx, span, self_obj);
-            build::mk_call_global(cx, span,
-                                  ~[cx.ident_of("core"),
-                                    cx.ident_of("sys"),
-                                    cx.ident_of("log_str")],
-                                  ~[self_addr])
+            let self_addr = cx.expr_addr_of(span, self_obj);
+            cx.expr_call_global(span,
+                                ~[cx.ident_of("core"),
+                                  cx.ident_of("sys"),
+                                  cx.ident_of("log_str")],
+                                ~[self_addr])
         }
         _ => cx.span_bug(span, "Invalid number of arguments in `deriving(ToStr)`")
     }

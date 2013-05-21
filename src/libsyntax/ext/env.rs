@@ -18,9 +18,9 @@ use ast;
 use codemap::span;
 use ext::base::*;
 use ext::base;
-use ext::build::mk_base_str;
+use ext::build::AstBuilder;
 
-pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
+pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
 
     let var = get_single_str_from_tts(cx, sp, tts, "env!");
@@ -29,8 +29,8 @@ pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
     // Option<str> rather than just an maybe-empty string.
 
     let e = match os::getenv(var) {
-      None => mk_base_str(cx, sp, ~""),
-      Some(ref s) => mk_base_str(cx, sp, copy *s)
+      None => cx.expr_str(sp, ~""),
+      Some(ref s) => cx.expr_str(sp, copy *s)
     };
     MRExpr(e)
 }
