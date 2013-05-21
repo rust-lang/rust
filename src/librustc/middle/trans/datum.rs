@@ -190,12 +190,12 @@ pub fn scratch_datum(bcx: @mut Block, ty: ty::t, name: &str, zero: bool) -> Datu
 
 pub fn appropriate_mode(tcx: ty::ctxt, ty: ty::t) -> DatumMode {
     /*!
-    *
-    * Indicates the "appropriate" mode for this value,
-    * which is either by ref or by value, depending
-    * on whether type is immediate or not. */
+     * Indicates the "appropriate" mode for this value,
+     * which is either by ref or by value, depending
+     * on whether type is immediate or not.
+     */
 
-    if ty::type_is_nil(ty) || ty::type_is_bot(ty) {
+    if ty::type_is_voidish(ty) {
         ByValue
     } else if ty::type_is_immediate(tcx, ty) {
         ByValue
@@ -271,7 +271,7 @@ impl Datum {
 
         let _icx = push_ctxt("copy_to");
 
-        if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
+        if ty::type_is_voidish(self.ty) {
             return bcx;
         }
 
@@ -343,7 +343,7 @@ impl Datum {
         debug!("move_to(self=%s, action=%?, dst=%s)",
                self.to_str(bcx.ccx()), action, bcx.val_to_str(dst));
 
-        if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
+        if ty::type_is_voidish(self.ty) {
             return bcx;
         }
 
@@ -432,7 +432,7 @@ impl Datum {
          *
          * Yields the value itself. */
 
-        if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
+        if ty::type_is_voidish(self.ty) {
             C_nil()
         } else {
             match self.mode {
@@ -469,7 +469,7 @@ impl Datum {
         match self.mode {
             ByRef(_) => self.val,
             ByValue => {
-                if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
+                if ty::type_is_voidish(self.ty) {
                     C_null(type_of::type_of(bcx.ccx(), self.ty).ptr_to())
                 } else {
                     let slot = alloc_ty(bcx, self.ty, "");

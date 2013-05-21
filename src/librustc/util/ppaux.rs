@@ -862,3 +862,15 @@ impl UserString for ty::t {
         ty_to_str(tcx, *self)
     }
 }
+
+impl Repr for AbiSet {
+    fn repr(&self, _tcx: ctxt) -> ~str {
+        self.to_str()
+    }
+}
+
+impl UserString for AbiSet {
+    fn user_string(&self, _tcx: ctxt) -> ~str {
+        self.to_str()
+    }
+}

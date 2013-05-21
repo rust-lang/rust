@@ -121,7 +121,7 @@ pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
     }
 }
 
-pub type ExternMap = HashMap<@str, ValueRef>;
+pub type ExternMap = HashMap<~str, ValueRef>;
 
 // Types used for llself.
 pub struct ValSelfData {
@@ -197,10 +197,10 @@ pub struct FunctionContext {
     // outputting the resume instruction.
     personality: Option<ValueRef>,
 
-    // True if this function has an immediate return value, false otherwise.
-    // If this is false, the llretptr will alias the first argument of the
-    // function.
-    has_immediate_return_value: bool,
+    // True if the caller expects this fn to use the out pointer to
+    // return. Either way, your code should write into llretptr, but if
+    // this value is false, llretptr will be a local alloca.
+    caller_expects_out_pointer: bool,
 
     // Maps arguments to allocas created for them in llallocas.
     llargs: @mut HashMap<ast::NodeId, ValueRef>,
@@ -232,20 +232,20 @@ pub struct FunctionContext {
 
 impl FunctionContext {
     pub fn arg_pos(&self, arg: uint) -> uint {
-        if self.has_immediate_return_value {
-            arg + 1u
-        } else {
+        if self.caller_expects_out_pointer {
             arg + 2u
+        } else {
+            arg + 1u
         }
     }
 
     pub fn out_arg_pos(&self) -> uint {
-        assert!(!self.has_immediate_return_value);
+        assert!(self.caller_expects_out_pointer);
         0u
     }
 
     pub fn env_arg_pos(&self) -> uint {
-        if !self.has_immediate_return_value {
+        if self.caller_expects_out_pointer {
             1u
         } else {
             0u

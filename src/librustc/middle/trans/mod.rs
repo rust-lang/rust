@@ -35,6 +35,7 @@ pub mod cabi_x86_64;
 pub mod cabi_arm;
 pub mod cabi_mips;
 pub mod foreign;
+pub mod intrinsic;
 pub mod reflect;
 pub mod debuginfo;
 pub mod type_use;
