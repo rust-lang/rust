@@ -840,9 +840,9 @@ rust_get_rt_tls_key() {
     return &rt_key;
 }
 
-// Initialize the global state required by the new scheduler
+// Initialize the TLS key used by the new scheduler
 extern "C" CDECL void
-rust_initialize_global_state() {
+rust_initialize_rt_tls_key() {
 
     static lock_and_signal init_lock;
     static bool initialized = false;

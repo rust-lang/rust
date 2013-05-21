@@ -66,8 +66,11 @@ pub fn log_type<T>(level: u32, object: &T) {
 }
 
 fn newsched_log_str(msg: ~str) {
+    use rt::task::Task;
+    use rt::local::Local;
+
     unsafe {
-        match rt::local_services::unsafe_try_borrow_local_services() {
+        match Local::try_unsafe_borrow::<Task>() {
             Some(local) => {
                 // Use the available logger
                 (*local).logger.log(Left(msg));
