@@ -100,6 +100,15 @@ pub fn drop_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
       ty::ty_estr(ty::vstore_box) => {
         decr_refcnt_maybe_free(bcx, v, t)
       }
+      ty::ty_struct(def_id, ref substs) => {
+        let fields = ty::struct_fields(bcx.tcx(), def_id, substs);
+
+        if fields.len() == 1 {
+            drop_ty_immediate(bcx, v, fields[0].mt.ty)
+        } else {
+            bcx.tcx().sess.bug(~"drop_ty_immediate: non-box ty")
+        }
+      }
       _ => bcx.tcx().sess.bug(~"drop_ty_immediate: non-box ty")
     }
 }
@@ -119,6 +128,15 @@ pub fn take_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> Result {
       ty::ty_evec(_, ty::vstore_uniq) |
       ty::ty_estr(ty::vstore_uniq) => {
         tvec::duplicate_uniq(bcx, v, t)
+      }
+      ty::ty_struct(def_id, ref substs) => {
+        let fields = ty::struct_fields(bcx.tcx(), def_id, substs);
+
+        if fields.len() == 1 {
+            take_ty_immediate(bcx, v, fields[0].mt.ty)
+        } else {
+            rslt(bcx, v)
+        }
       }
       _ => rslt(bcx, v)
     }
@@ -146,6 +164,15 @@ pub fn free_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
         let vp = alloca(bcx, type_of(bcx.ccx(), t));
         Store(bcx, v, vp);
         free_ty(bcx, vp, t)
+      }
+      ty::ty_struct(def_id, ref substs) => {
+        let fields = ty::struct_fields(bcx.tcx(), def_id, substs);
+
+        if fields.len() == 1 {
+            free_ty_immediate(bcx, v, fields[0].mt.ty)
+        } else {
+            bcx.tcx().sess.bug(~"free_ty_immediate: non-box ty")
+        }
       }
       _ => bcx.tcx().sess.bug(~"free_ty_immediate: non-box ty")
     }
@@ -641,7 +668,7 @@ pub fn incr_refcnt_of_boxed(cx: block, box_ptr: ValueRef) {
 pub fn declare_tydesc_addrspace(ccx: @CrateContext, t: ty::t) -> addrspace {
     if !ty::type_needs_drop(ccx.tcx, t) {
         return default_addrspace;
-    } else if ty::type_is_immediate(t) {
+    } else if ty::type_is_immediate(ccx.tcx, t) {
         // For immediate types, we don't actually need an addrspace, because
         // e.g. boxed types include pointers to their contents which are
         // already correctly tagged with addrspaces.
