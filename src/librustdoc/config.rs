@@ -70,12 +70,12 @@ fn opts() -> ~[(getopts::Opt, ~str)] {
 pub fn usage() {
     use core::io::println;
 
-    println(~"Usage: rustdoc [options] <cratefile>\n");
-    println(~"Options:\n");
+    println("Usage: rustdoc [options] <cratefile>\n");
+    println("Options:\n");
     for opts().each |opt| {
         println(fmt!("    %s", opt.second()));
     }
-    println(~"");
+    println("");
 }
 
 pub fn default_config(input_crate: &Path) -> Config {
@@ -227,7 +227,7 @@ pub fn maybe_find_pandoc(
     };
 
     let pandoc = do vec::find(possible_pandocs) |pandoc| {
-        let output = program_output(*pandoc, ~[~"--version"]);
+        let output = program_output(*pandoc, [~"--version"]);
         debug!("testing pandoc cmd %s: %?", *pandoc, output);
         output.status == 0
     };
