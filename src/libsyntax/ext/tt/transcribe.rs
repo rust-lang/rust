@@ -34,7 +34,6 @@ struct TtFrame {
 
 pub struct TtReader {
     sp_diag: @span_handler,
-    interner: @ident_interner,
     // the unzipped tree:
     stack: @mut TtFrame,
     /* for MBE-style macro transcription */
@@ -50,13 +49,11 @@ pub struct TtReader {
  *  `src` contains no `tt_seq`s and `tt_nonterminal`s, `interp` can (and
  *  should) be none. */
 pub fn new_tt_reader(sp_diag: @span_handler,
-                     itr: @ident_interner,
                      interp: Option<HashMap<ident,@named_match>>,
                      src: ~[ast::token_tree])
                   -> @mut TtReader {
     let r = @mut TtReader {
         sp_diag: sp_diag,
-        interner: itr,
         stack: @mut TtFrame {
             forest: @mut src,
             idx: 0u,
@@ -94,7 +91,6 @@ fn dup_tt_frame(f: @mut TtFrame) -> @mut TtFrame {
 pub fn dup_tt_reader(r: @mut TtReader) -> @mut TtReader {
     @mut TtReader {
         sp_diag: r.sp_diag,
-        interner: get_ident_interner(),
         stack: dup_tt_frame(r.stack),
         repeat_idx: copy r.repeat_idx,
         repeat_len: copy r.repeat_len,
@@ -127,7 +123,7 @@ fn lookup_cur_matched(r: &mut TtReader, name: ident) -> @named_match {
         Some(s) => lookup_cur_matched_by_matched(r, s),
         None => {
             r.sp_diag.span_fatal(r.cur_span, fmt!("unknown macro variable `%s`",
-                                                  *r.interner.get(name.name)));
+                                                  *ident_to_str(&name)));
         }
     }
 }
