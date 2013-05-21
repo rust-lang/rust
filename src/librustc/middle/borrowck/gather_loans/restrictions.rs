@@ -79,24 +79,17 @@ impl RestrictionsContext {
                                           set: restrictions}])
             }
 
-            mc::cat_interior(cmt_base, i @ mc::interior_variant(_)) => {
+            mc::cat_downcast(cmt_base) => {
                 // When we borrow the interior of an enum, we have to
                 // ensure the enum itself is not mutated, because that
                 // could cause the type of the memory to change.
-                let result = self.compute(cmt_base, restrictions | RESTR_MUTATE);
-                self.extend(result, cmt.mutbl, LpInterior(i), restrictions)
+                self.compute(cmt_base, restrictions | RESTR_MUTATE)
             }
 
-            mc::cat_interior(cmt_base, i @ mc::interior_tuple) |
-            mc::cat_interior(cmt_base, i @ mc::interior_anon_field) |
-            mc::cat_interior(cmt_base, i @ mc::interior_field(*)) |
-            mc::cat_interior(cmt_base, i @ mc::interior_index(*)) => {
-                // For all of these cases, overwriting the base would
-                // not change the type of the memory, so no additional
-                // restrictions are needed.
-                //
-                // FIXME(#5397) --- Mut fields are not treated soundly
-                //                  (hopefully they will just get phased out)
+            mc::cat_interior(cmt_base, i) => {
+                // Overwriting the base would not change the type of
+                // the memory, so no additional restrictions are
+                // needed.
                 let result = self.compute(cmt_base, restrictions);
                 self.extend(result, cmt.mutbl, LpInterior(i), restrictions)
             }
