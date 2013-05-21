@@ -22,7 +22,7 @@ use old_iter;
 use iterator::Iterator;
 use kinds::Copy;
 use libc;
-use old_iter::{BaseIter, CopyableIter};
+use old_iter::CopyableIter;
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
