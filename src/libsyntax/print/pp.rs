@@ -437,7 +437,7 @@ pub impl Printer {
     }
     fn print_newline(&mut self, amount: int) {
         debug!("NEWLINE %d", amount);
-        (*self.out).write_str(~"\n");
+        (*self.out).write_str("\n");
         self.pending_indentation = 0;
         self.indent(amount);
     }

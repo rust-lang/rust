@@ -178,7 +178,7 @@ pub mod ct {
                 i += 1;
 
                 if i >= lim {
-                    err(~"unterminated conversion at end of string");
+                    err("unterminated conversion at end of string");
                 } else if s[i] == '%' as u8 {
                     push_slice(&mut pieces, s, h, i);
                     i += 1;
@@ -309,7 +309,7 @@ pub mod ct {
 
     pub fn parse_type(s: &str, i: uint, lim: uint, err: ErrorFn) ->
         Parsed<Ty> {
-        if i >= lim { err(~"missing type in conversion"); }
+        if i >= lim { err("missing type in conversion"); }
 
         // FIXME (#2249): Do we really want two signed types here?
         // How important is it to be printf compatible?

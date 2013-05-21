@@ -234,9 +234,9 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
               lis_unconstrained => {
                 r.sp_diag.span_fatal(
                     sp, /* blame macro writer */
-                      ~"attempted to repeat an expression \
-                        containing no syntax \
-                        variables matched as repeating at this depth");
+                      "attempted to repeat an expression \
+                       containing no syntax \
+                       variables matched as repeating at this depth");
                   }
                   lis_contradiction(ref msg) => {
                       /* FIXME #2887 blame macro invoker instead*/
@@ -247,8 +247,8 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                       if !zerok {
                         r.sp_diag.span_fatal(sp, /* FIXME #2887 blame invoker
                         */
-                                             ~"this must repeat at least \
-                                               once");
+                                             "this must repeat at least \
+                                              once");
                           }
 
                     r.stack.idx += 1u;

@@ -78,7 +78,7 @@ fn find_item(item: @item, ctxt: @mut EntryContext, visitor: EntryVisitor) {
                             } else {
                                 ctxt.session.span_err(
                                     item.span,
-                                    ~"multiple 'main' functions");
+                                    "multiple 'main' functions");
                             }
                         } else {
                             // This isn't main
@@ -89,23 +89,23 @@ fn find_item(item: @item, ctxt: @mut EntryContext, visitor: EntryVisitor) {
                 }
             }
 
-            if attrs_contains_name(item.attrs, ~"main") {
+            if attrs_contains_name(item.attrs, "main") {
                 if ctxt.attr_main_fn.is_none() {
                     ctxt.attr_main_fn = Some((item.id, item.span));
                 } else {
                     ctxt.session.span_err(
                         item.span,
-                        ~"multiple 'main' functions");
+                        "multiple 'main' functions");
                 }
             }
 
-            if attrs_contains_name(item.attrs, ~"start") {
+            if attrs_contains_name(item.attrs, "start") {
                 if ctxt.start_fn.is_none() {
                     ctxt.start_fn = Some((item.id, item.span));
                 } else {
                     ctxt.session.span_err(
                         item.span,
-                        ~"multiple 'start' functions");
+                        "multiple 'start' functions");
                 }
             }
         }
@@ -129,15 +129,15 @@ fn configure_main(ctxt: @mut EntryContext) {
     } else {
         if !*this.session.building_library {
             // No main function
-            this.session.err(~"main function not found");
+            this.session.err("main function not found");
             if !this.non_main_fns.is_empty() {
                 // There were some functions named 'main' though. Try to give the user a hint.
-                this.session.note(~"the main function must be defined at the crate level \
-                                    but you have one or more functions named 'main' that are not \
-                                    defined at the crate level. Either move the definition or \
-                                    attach the `#[main]` attribute to override this behavior.");
+                this.session.note("the main function must be defined at the crate level \
+                                   but you have one or more functions named 'main' that are not \
+                                   defined at the crate level. Either move the definition or \
+                                   attach the `#[main]` attribute to override this behavior.");
                 for this.non_main_fns.each |&(_, span)| {
-                    this.session.span_note(span, ~"here is a function named 'main'");
+                    this.session.span_note(span, "here is a function named 'main'");
                 }
             }
             this.session.abort_if_errors();

@@ -1481,7 +1481,7 @@ pub fn subst_tps(cx: ctxt, tps: &[t], self_ty_opt: Option<t>, typ: t) -> t {
         ty_param(p) => tps[p.idx],
         ty_self(_) => {
             match self_ty_opt {
-                None => cx.sess.bug(~"ty_self unexpected here"),
+                None => cx.sess.bug("ty_self unexpected here"),
                 Some(self_ty) => {
                     subst_tps(cx, tps, self_ty_opt, self_ty)
                 }
@@ -1582,8 +1582,7 @@ pub fn sequence_element_type(cx: ctxt, ty: t) -> t {
     match get(ty).sty {
       ty_estr(_) => return mk_mach_uint(ast::ty_u8),
       ty_evec(mt, _) | ty_unboxed_vec(mt) => return mt.ty,
-      _ => cx.sess.bug(
-          ~"sequence_element_type called on non-sequence value"),
+      _ => cx.sess.bug("sequence_element_type called on non-sequence value"),
     }
 }
 
@@ -2133,7 +2132,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             ty_type => TC_NONE,
 
             ty_err => {
-                cx.sess.bug(~"Asked to compute contents of fictitious type");
+                cx.sess.bug("Asked to compute contents of fictitious type");
             }
         };
 
@@ -2471,7 +2470,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       }
 
       ty_infer(*) | ty_self(*) | ty_err => {
-        cx.sess.bug(~"non concrete type in type_is_pod");
+        cx.sess.bug("non concrete type in type_is_pod");
       }
     }
 
@@ -3519,29 +3518,29 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
 pub fn note_and_explain_type_err(cx: ctxt, err: &type_err) {
     match *err {
         terr_regions_does_not_outlive(subregion, superregion) => {
-            note_and_explain_region(cx, ~"", subregion, ~"...");
-            note_and_explain_region(cx, ~"...does not necessarily outlive ",
-                                    superregion, ~"");
+            note_and_explain_region(cx, "", subregion, "...");
+            note_and_explain_region(cx, "...does not necessarily outlive ",
+                                    superregion, "");
         }
         terr_regions_not_same(region1, region2) => {
-            note_and_explain_region(cx, ~"", region1, ~"...");
-            note_and_explain_region(cx, ~"...is not the same lifetime as ",
-                                    region2, ~"");
+            note_and_explain_region(cx, "", region1, "...");
+            note_and_explain_region(cx, "...is not the same lifetime as ",
+                                    region2, "");
         }
         terr_regions_no_overlap(region1, region2) => {
-            note_and_explain_region(cx, ~"", region1, ~"...");
-            note_and_explain_region(cx, ~"...does not overlap ",
-                                    region2, ~"");
+            note_and_explain_region(cx, "", region1, "...");
+            note_and_explain_region(cx, "...does not overlap ",
+                                    region2, "");
         }
         terr_regions_insufficiently_polymorphic(_, conc_region) => {
             note_and_explain_region(cx,
-                                    ~"concrete lifetime that was found is ",
-                                    conc_region, ~"");
+                                    "concrete lifetime that was found is ",
+                                    conc_region, "");
         }
         terr_regions_overly_polymorphic(_, conc_region) => {
             note_and_explain_region(cx,
-                                    ~"expected concrete lifetime is ",
-                                    conc_region, ~"");
+                                    "expected concrete lifetime is ",
+                                    conc_region, "");
         }
         _ => {}
     }
@@ -3691,7 +3690,7 @@ pub fn ty_to_def_id(ty: t) -> Option<ast::def_id> {
 fn struct_ctor_id(cx: ctxt, struct_did: ast::def_id) -> Option<ast::def_id> {
     if struct_did.crate != ast::local_crate {
         // XXX: Cross-crate functionality.
-        cx.sess.unimpl(~"constructor ID of cross-crate tuple structs");
+        cx.sess.unimpl("constructor ID of cross-crate tuple structs");
     }
 
     match cx.items.find(&struct_did.node) {
@@ -3701,10 +3700,10 @@ fn struct_ctor_id(cx: ctxt, struct_did: ast::def_id) -> Option<ast::def_id> {
                     struct_def.ctor_id.map(|ctor_id|
                         ast_util::local_def(*ctor_id))
                 }
-                _ => cx.sess.bug(~"called struct_ctor_id on non-struct")
+                _ => cx.sess.bug("called struct_ctor_id on non-struct")
             }
         }
-        _ => cx.sess.bug(~"called struct_ctor_id on non-struct")
+        _ => cx.sess.bug("called struct_ctor_id on non-struct")
     }
 }
 
@@ -3869,7 +3868,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                             disr_val = match const_eval::eval_const_expr(cx,
                                                                          ex) {
                               const_eval::const_int(val) => val as int,
-                              _ => cx.sess.bug(~"tag_variants: bad disr expr")
+                              _ => cx.sess.bug("tag_variants: bad disr expr")
                             }
                           }
                           _ => disr_val += 1
@@ -3888,7 +3887,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                 }
             })
           }
-          _ => cx.sess.bug(~"tag_variants: id not bound to an enum")
+          _ => cx.sess.bug("tag_variants: id not bound to an enum")
         }
     };
     cx.enum_var_cache.insert(id, result);
@@ -3908,7 +3907,7 @@ pub fn enum_variant_with_id(cx: ctxt,
         if variant.id == variant_id { return variant; }
         i += 1;
     }
-    cx.sess.bug(~"enum_variant_with_id(): no variant exists with that ID");
+    cx.sess.bug("enum_variant_with_id(): no variant exists with that ID");
 }
 
 
@@ -4003,7 +4002,7 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
             ast::item_struct(struct_def, _) => {
                struct_field_tys(struct_def.fields)
             }
-            _ => cx.sess.bug(~"struct ID bound to non-struct")
+            _ => cx.sess.bug("struct ID bound to non-struct")
          }
        }
        Some(&ast_map::node_variant(ref variant, _, _)) => {
@@ -4012,8 +4011,8 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
               struct_field_tys(struct_def.fields)
             }
             _ => {
-              cx.sess.bug(~"struct ID bound to enum variant that isn't \
-                            struct-like")
+              cx.sess.bug("struct ID bound to enum variant that isn't \
+                           struct-like")
             }
           }
        }
@@ -4037,7 +4036,7 @@ pub fn lookup_struct_field(cx: ctxt,
     match vec::find(lookup_struct_fields(cx, parent),
                  |f| f.id.node == field_id.node) {
         Some(t) => t,
-        None => cx.sess.bug(~"struct ID not found in parent's fields")
+        None => cx.sess.bug("struct ID not found in parent's fields")
     }
 }
 
@@ -4338,11 +4337,11 @@ pub fn get_impl_id(tcx: ctxt, trait_id: def_id, self_ty: t) -> def_id {
             None => // try autoderef!
                 match deref(tcx, self_ty, false) {
                     Some(some_ty) => get_impl_id(tcx, trait_id, some_ty.ty),
-                    None => tcx.sess.bug(~"get_impl_id: no impl of trait for \
-                                           this type")
+                    None => tcx.sess.bug("get_impl_id: no impl of trait for \
+                                          this type")
             }
         },
-        None => tcx.sess.bug(~"get_impl_id: trait isn't in trait_impls")
+        None => tcx.sess.bug("get_impl_id: trait isn't in trait_impls")
     }
 }
 

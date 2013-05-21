@@ -25,7 +25,7 @@ pub fn inject_intrinsic(sess: Session, crate: @ast::crate) -> @ast::crate {
         match item {
           Some(i) => i,
           None => {
-            sess.fatal(~"no item found in intrinsic module");
+            sess.fatal("no item found in intrinsic module");
           }
         };
 

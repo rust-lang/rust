@@ -235,7 +235,7 @@ pub fn umin(cx: block, a: ValueRef, b: ValueRef) -> ValueRef {
 pub fn ptr_offs(bcx: block, base: ValueRef, sz: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("ptr_offs");
     let raw = PointerCast(bcx, base, T_ptr(T_i8()));
-    InBoundsGEP(bcx, raw, ~[sz])
+    InBoundsGEP(bcx, raw, [sz])
 }
 
 // Increment a pointer by a given amount and then cast it to be a pointer
@@ -296,7 +296,7 @@ pub fn malloc_raw_dyn(bcx: block,
     let bcx = callee::trans_lang_call(
         bcx,
         langcall,
-        ~[tydesc, size],
+        [tydesc, size],
         expr::SaveIn(rval));
     let r = rslt(bcx, PointerCast(bcx, Load(bcx, rval), llty));
     maybe_set_managed_unique_rc(r.bcx, r.val, heap);
@@ -314,7 +314,7 @@ pub fn malloc_raw_dyn(bcx: block,
 pub fn non_gc_box_cast(bcx: block, val: ValueRef) -> ValueRef {
     unsafe {
         debug!("non_gc_box_cast");
-        add_comment(bcx, ~"non_gc_box_cast");
+        add_comment(bcx, "non_gc_box_cast");
         assert!(llvm::LLVMGetPointerAddressSpace(val_ty(val)) ==
                      gc_box_addrspace || bcx.unreachable);
         let non_gc_t = T_ptr(llvm::LLVMGetElementType(val_ty(val)));
@@ -563,8 +563,8 @@ pub fn compare_scalar_types(cx: block,
         }
         _ => {
             // Should never get here, because t is scalar.
-            cx.sess().bug(~"non-scalar type passed to \
-                            compare_scalar_types")
+            cx.sess().bug("non-scalar type passed to \
+                           compare_scalar_types")
         }
     }
 }
@@ -579,8 +579,8 @@ pub fn compare_scalar_values(cx: block,
                           -> ValueRef {
     let _icx = cx.insn_ctxt("compare_scalar_values");
     fn die(cx: block) -> ! {
-        cx.tcx().sess.bug(~"compare_scalar_values: must be a\
-          comparison operator");
+        cx.tcx().sess.bug("compare_scalar_values: must be a\
+                           comparison operator");
     }
     match nt {
       nil_type => {
@@ -720,18 +720,18 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
                           _match::single_result(r) => {
                               AddCase(llswitch, r.val, variant_cx.llbb)
                           }
-                          _ => ccx.sess.unimpl(~"value from adt::trans_case \
-                                                 in iter_structural_ty")
+                          _ => ccx.sess.unimpl("value from adt::trans_case \
+                                                in iter_structural_ty")
                       }
                       Br(variant_cx, next_cx.llbb);
                   }
                   cx = next_cx;
               }
-              _ => ccx.sess.unimpl(~"value from adt::trans_switch \
-                                     in iter_structural_ty")
+              _ => ccx.sess.unimpl("value from adt::trans_switch \
+                                    in iter_structural_ty")
           }
       }
-      _ => cx.sess().unimpl(~"type in iter_structural_ty")
+      _ => cx.sess().unimpl("type in iter_structural_ty")
     }
     return cx;
 }
@@ -959,7 +959,7 @@ pub fn get_landing_pad(bcx: block) -> BasicBlockRef {
     // The landing pad return type (the type being propagated). Not sure what
     // this represents but it's determined by the personality function and
     // this is what the EH proposal example uses.
-    let llretty = T_struct(~[T_ptr(T_i8()), T_i32()], false);
+    let llretty = T_struct([T_ptr(T_i8()), T_i32()], false);
     // The exception handling personality function. This is the C++
     // personality function __gxx_personality_v0, wrapped in our naming
     // convention.
@@ -972,7 +972,7 @@ pub fn get_landing_pad(bcx: block) -> BasicBlockRef {
     // Because we may have unwound across a stack boundary, we must call into
     // the runtime to figure out which stack segment we are on and place the
     // stack limit back into the TLS.
-    Call(pad_bcx, bcx.ccx().upcalls.reset_stack_limit, ~[]);
+    Call(pad_bcx, bcx.ccx().upcalls.reset_stack_limit, []);
 
     // We store the retval in a function-central alloca, so that calls to
     // Resume can find it.
@@ -1159,7 +1159,7 @@ pub fn trans_stmt(cx: block, s: &ast::stmt) -> block {
                 ast::decl_item(i) => trans_item(*cx.fcx.ccx, i)
             }
         }
-        ast::stmt_mac(*) => cx.tcx().sess.bug(~"unexpanded macro")
+        ast::stmt_mac(*) => cx.tcx().sess.bug("unexpanded macro")
     }
 
     return bcx;
@@ -1462,7 +1462,7 @@ pub fn call_memcpy(cx: block, dst: ValueRef, src: ValueRef,
     let size = IntCast(cx, n_bytes, ccx.int_type);
     let align = C_i32(1i32);
     let volatile = C_i1(false);
-    Call(cx, memcpy, ~[dst_ptr, src_ptr, size, align, volatile]);
+    Call(cx, memcpy, [dst_ptr, src_ptr, size, align, volatile]);
 }
 
 pub fn memcpy_ty(bcx: block, dst: ValueRef, src: ValueRef, t: ty::t) {
@@ -1509,7 +1509,7 @@ pub fn memzero(cx: block, llptr: ValueRef, llty: TypeRef) {
     let size = IntCast(cx, machine::llsize_of(ccx, llty), ccx.int_type);
     let align = C_i32(1i32);
     let volatile = C_i1(false);
-    Call(cx, llintrinsicfn, ~[llptr, llzeroval, size, align, volatile]);
+    Call(cx, llintrinsicfn, [llptr, llzeroval, size, align, volatile]);
 }
 
 pub fn alloc_ty(bcx: block, t: ty::t) -> ValueRef {
@@ -1559,9 +1559,9 @@ pub struct BasicBlocks {
 pub fn mk_standard_basic_blocks(llfn: ValueRef) -> BasicBlocks {
     unsafe {
         BasicBlocks {
-            sa: str::as_c_str(~"static_allocas",
+            sa: str::as_c_str("static_allocas",
                            |buf| llvm::LLVMAppendBasicBlock(llfn, buf)),
-            rt: str::as_c_str(~"return",
+            rt: str::as_c_str("return",
                            |buf| llvm::LLVMAppendBasicBlock(llfn, buf))
         }
     }
@@ -2057,8 +2057,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
         let llarg = match fcx.llargs.get_copy(&field.node.id) {
             local_mem(x) => x,
             _ => {
-                ccx.tcx.sess.bug(~"trans_tuple_struct: llarg wasn't \
-                                   local_mem")
+                ccx.tcx.sess.bug("trans_tuple_struct: llarg wasn't local_mem")
             }
         };
         let arg_ty = arg_tys[i];
@@ -2105,7 +2104,7 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_foreign_fn(ccx,
                                       vec::append(/*bad*/copy *path,
-                                                  ~[path_name(item.ident)]),
+                                                  [path_name(item.ident)]),
                                       decl,
                                       body,
                                       llfndecl,
@@ -2113,7 +2112,7 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
         } else if !generics.is_type_parameterized() {
             let llfndecl = get_item_val(ccx, item.id);
             trans_fn(ccx,
-                     vec::append(/*bad*/copy *path, ~[path_name(item.ident)]),
+                     vec::append(/*bad*/copy *path, [path_name(item.ident)]),
                      decl,
                      body,
                      llfndecl,
@@ -2263,8 +2262,8 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
 
     fn create_main(ccx: @CrateContext, main_llfn: ValueRef) -> ValueRef {
         let nt = ty::mk_nil();
-        let llfty = type_of_fn(ccx, ~[], nt);
-        let llfdecl = decl_fn(ccx.llmod, ~"_rust_main",
+        let llfty = type_of_fn(ccx, [], nt);
+        let llfdecl = decl_fn(ccx.llmod, "_rust_main",
                               lib::llvm::CCallConv, llfty);
 
         let fcx = new_fn_ctxt(ccx, ~[], llfdecl, nt, None);
@@ -2287,11 +2286,11 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
     fn create_entry_fn(ccx: @CrateContext,
                        rust_main: ValueRef,
                        use_start_lang_item: bool) {
-        let llfty = T_fn(~[ccx.int_type, T_ptr(T_ptr(T_i8()))], ccx.int_type);
+        let llfty = T_fn([ccx.int_type, T_ptr(T_ptr(T_i8()))], ccx.int_type);
 
         // FIXME #4404 android JNI hacks
         let llfn = if *ccx.sess.building_library {
-            decl_cdecl_fn(ccx.llmod, ~"amain", llfty)
+            decl_cdecl_fn(ccx.llmod, "amain", llfty)
         } else {
             let main_name = match ccx.sess.targ_cfg.os {
                 session::os_win32 => ~"WinMain@16",
@@ -2299,7 +2298,7 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
             };
             decl_cdecl_fn(ccx.llmod, main_name, llfty)
         };
-        let llbb = str::as_c_str(~"top", |buf| {
+        let llbb = str::as_c_str("top", |buf| {
             unsafe {
                 llvm::LLVMAppendBasicBlock(llfn, buf)
             }
@@ -2310,7 +2309,7 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
 
             let start_def_id = ccx.tcx.lang_items.start_fn();
             if start_def_id.crate == ast::local_crate {
-                ccx.sess.bug(~"start lang item is never in the local crate")
+                ccx.sess.bug("start lang item is never in the local crate")
             } else {
                 let start_fn_type = csearch::get_type(ccx.tcx,
                                                       start_def_id).ty;
@@ -2328,8 +2327,8 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
             let (start_fn, args) = if use_start_lang_item {
                 let start_def_id = ccx.tcx.lang_items.start_fn();
                 let start_fn = if start_def_id.crate == ast::local_crate {
-                    ccx.sess.bug(~"start lang item is never in the local \
-                                   crate")
+                    ccx.sess.bug("start lang item is never in the local \
+                                  crate")
                 } else {
                     let start_fn_type = csearch::get_type(ccx.tcx,
                             start_def_id).ty;
@@ -2391,7 +2390,7 @@ pub fn item_path(ccx: @CrateContext, i: @ast::item) -> path {
             // separate map for paths?
         _ => fail!("item_path")
     };
-    vec::append(/*bad*/copy *base, ~[path_name(i.ident)])
+    vec::append(/*bad*/copy *base, [path_name(i.ident)])
 }
 
 pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
@@ -2404,7 +2403,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
         let val = match tcx.items.get_copy(&id) {
           ast_map::node_item(i, pth) => {
             let my_path = vec::append(/*bad*/copy *pth,
-                                      ~[path_name(i.ident)]);
+                                      [path_name(i.ident)]);
             match i.node {
               ast::item_const(_, expr) => {
                 let typ = ty::node_id_to_type(tcx, i.id);
@@ -2442,8 +2441,8 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
             debug!("get_item_val(): processing a node_trait_method");
             match *trait_method {
               ast::required(_) => {
-                ccx.sess.bug(~"unexpected variant: required trait method in \
-                               get_item_val()");
+                ccx.sess.bug("unexpected variant: required trait method in \
+                              get_item_val()");
               }
               ast::provided(m) => {
                 exprt = true;
@@ -2461,7 +2460,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                 ast::foreign_item_fn(*) => {
                     register_fn(ccx, ni.span,
                                 vec::append(/*bad*/copy *pth,
-                                            ~[path_name(ni.ident)]),
+                                            [path_name(ni.ident)]),
                                 ni.id,
                                 ni.attrs)
                 }
@@ -2486,8 +2485,8 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                 ast::tuple_variant_kind(ref args) => {
                     assert!(args.len() != 0u);
                     let pth = vec::append(/*bad*/copy *pth,
-                                          ~[path_name(enm.ident),
-                                            path_name((*v).node.name)]);
+                                          [path_name(enm.ident),
+                                           path_name((*v).node.name)]);
                     llfn = match enm.node {
                       ast::item_enum(_, _) => {
                         register_fn(ccx, (*v).span, pth, id, enm.attrs)
@@ -2507,8 +2506,8 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
             // Only register the constructor if this is a tuple-like struct.
             match struct_def.ctor_id {
                 None => {
-                    tcx.sess.bug(~"attempt to register a constructor of \
-                                       a non-tuple-like struct")
+                    tcx.sess.bug("attempt to register a constructor of \
+                                  a non-tuple-like struct")
                 }
                 Some(ctor_id) => {
                     let llfn = register_fn(ccx,
@@ -2541,7 +2540,7 @@ pub fn register_method(ccx: @CrateContext,
                        pth: @ast_map::path,
                        m: @ast::method) -> ValueRef {
     let mty = ty::node_id_to_type(ccx.tcx, id);
-    let pth = vec::append(/*bad*/copy *pth, ~[path_name((ccx.names)("meth")),
+    let pth = vec::append(/*bad*/copy *pth, [path_name((ccx.names)("meth")),
                                   path_name(m.ident)]);
     let llfn = register_fn_full(ccx, m.span, pth, id, m.attrs, mty);
     set_inline_hint_if_appr(m.attrs, llfn);
@@ -2559,7 +2558,7 @@ pub fn trans_constant(ccx: @CrateContext, it: @ast::item) {
         let mut i = 0;
         let path = item_path(ccx, it);
         for (*enum_definition).variants.each |variant| {
-            let p = vec::append(/*bad*/copy path, ~[
+            let p = vec::append(/*bad*/copy path, [
                 path_name(variant.node.name),
                 path_name(special_idents::descrim)
             ]);
@@ -2617,126 +2616,126 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
     let T_trap_args: ~[TypeRef] = ~[];
     let T_frameaddress_args: ~[TypeRef] = ~[T_i32()];
     let gcroot =
-        decl_cdecl_fn(llmod, ~"llvm.gcroot",
-                      T_fn(~[T_ptr(T_ptr(T_i8())), T_ptr(T_i8())],
+        decl_cdecl_fn(llmod, "llvm.gcroot",
+                      T_fn([T_ptr(T_ptr(T_i8())), T_ptr(T_i8())],
                            T_void()));
     let gcread =
-        decl_cdecl_fn(llmod, ~"llvm.gcread",
-                      T_fn(~[T_ptr(T_i8()), T_ptr(T_ptr(T_i8()))],
+        decl_cdecl_fn(llmod, "llvm.gcread",
+                      T_fn([T_ptr(T_i8()), T_ptr(T_ptr(T_i8()))],
                            T_void()));
     let memcpy32 =
-        decl_cdecl_fn(llmod, ~"llvm.memcpy.p0i8.p0i8.i32",
+        decl_cdecl_fn(llmod, "llvm.memcpy.p0i8.p0i8.i32",
                       T_fn(copy T_memcpy32_args, T_void()));
     let memcpy64 =
-        decl_cdecl_fn(llmod, ~"llvm.memcpy.p0i8.p0i8.i64",
+        decl_cdecl_fn(llmod, "llvm.memcpy.p0i8.p0i8.i64",
                       T_fn(copy T_memcpy64_args, T_void()));
     let memmove32 =
-        decl_cdecl_fn(llmod, ~"llvm.memmove.p0i8.p0i8.i32",
+        decl_cdecl_fn(llmod, "llvm.memmove.p0i8.p0i8.i32",
                       T_fn(T_memcpy32_args, T_void()));
     let memmove64 =
-        decl_cdecl_fn(llmod, ~"llvm.memmove.p0i8.p0i8.i64",
+        decl_cdecl_fn(llmod, "llvm.memmove.p0i8.p0i8.i64",
                       T_fn(T_memcpy64_args, T_void()));
     let memset32 =
-        decl_cdecl_fn(llmod, ~"llvm.memset.p0i8.i32",
+        decl_cdecl_fn(llmod, "llvm.memset.p0i8.i32",
                       T_fn(T_memset32_args, T_void()));
     let memset64 =
-        decl_cdecl_fn(llmod, ~"llvm.memset.p0i8.i64",
+        decl_cdecl_fn(llmod, "llvm.memset.p0i8.i64",
                       T_fn(T_memset64_args, T_void()));
-    let trap = decl_cdecl_fn(llmod, ~"llvm.trap", T_fn(T_trap_args,
+    let trap = decl_cdecl_fn(llmod, "llvm.trap", T_fn(T_trap_args,
                                                       T_void()));
-    let frameaddress = decl_cdecl_fn(llmod, ~"llvm.frameaddress",
+    let frameaddress = decl_cdecl_fn(llmod, "llvm.frameaddress",
                                      T_fn(T_frameaddress_args,
                                           T_ptr(T_i8())));
-    let sqrtf32 = decl_cdecl_fn(llmod, ~"llvm.sqrt.f32",
-                                T_fn(~[T_f32()], T_f32()));
-    let sqrtf64 = decl_cdecl_fn(llmod, ~"llvm.sqrt.f64",
-                                T_fn(~[T_f64()], T_f64()));
-    let powif32 = decl_cdecl_fn(llmod, ~"llvm.powi.f32",
-                                T_fn(~[T_f32(), T_i32()], T_f32()));
-    let powif64 = decl_cdecl_fn(llmod, ~"llvm.powi.f64",
-                                T_fn(~[T_f64(), T_i32()], T_f64()));
-    let sinf32 = decl_cdecl_fn(llmod, ~"llvm.sin.f32",
-                                T_fn(~[T_f32()], T_f32()));
-    let sinf64 = decl_cdecl_fn(llmod, ~"llvm.sin.f64",
-                                T_fn(~[T_f64()], T_f64()));
-    let cosf32 = decl_cdecl_fn(llmod, ~"llvm.cos.f32",
-                                T_fn(~[T_f32()], T_f32()));
-    let cosf64 = decl_cdecl_fn(llmod, ~"llvm.cos.f64",
-                                T_fn(~[T_f64()], T_f64()));
-    let powf32 = decl_cdecl_fn(llmod, ~"llvm.pow.f32",
-                                T_fn(~[T_f32(), T_f32()], T_f32()));
-    let powf64 = decl_cdecl_fn(llmod, ~"llvm.pow.f64",
-                                T_fn(~[T_f64(), T_f64()], T_f64()));
-    let expf32 = decl_cdecl_fn(llmod, ~"llvm.exp.f32",
-                                T_fn(~[T_f32()], T_f32()));
-    let expf64 = decl_cdecl_fn(llmod, ~"llvm.exp.f64",
-                                T_fn(~[T_f64()], T_f64()));
-    let exp2f32 = decl_cdecl_fn(llmod, ~"llvm.exp2.f32",
-                                T_fn(~[T_f32()], T_f32()));
-    let exp2f64 = decl_cdecl_fn(llmod, ~"llvm.exp2.f64",
-                                T_fn(~[T_f64()], T_f64()));
-    let logf32 = decl_cdecl_fn(llmod, ~"llvm.log.f32",
-                                T_fn(~[T_f32()], T_f32()));
-    let logf64 = decl_cdecl_fn(llmod, ~"llvm.log.f64",
-                                T_fn(~[T_f64()], T_f64()));
-    let log10f32 = decl_cdecl_fn(llmod, ~"llvm.log10.f32",
-                                T_fn(~[T_f32()], T_f32()));
-    let log10f64 = decl_cdecl_fn(llmod, ~"llvm.log10.f64",
-                                T_fn(~[T_f64()], T_f64()));
-    let log2f32 = decl_cdecl_fn(llmod, ~"llvm.log2.f32",
-                                T_fn(~[T_f32()], T_f32()));
-    let log2f64 = decl_cdecl_fn(llmod, ~"llvm.log2.f64",
-                                T_fn(~[T_f64()], T_f64()));
-    let fmaf32 = decl_cdecl_fn(llmod, ~"llvm.fma.f32",
-                                T_fn(~[T_f32(), T_f32(), T_f32()], T_f32()));
-    let fmaf64 = decl_cdecl_fn(llmod, ~"llvm.fma.f64",
-                                T_fn(~[T_f64(), T_f64(), T_f64()], T_f64()));
-    let fabsf32 = decl_cdecl_fn(llmod, ~"llvm.fabs.f32",
-                                T_fn(~[T_f32()], T_f32()));
-    let fabsf64 = decl_cdecl_fn(llmod, ~"llvm.fabs.f64",
-                                T_fn(~[T_f64()], T_f64()));
-    let floorf32 = decl_cdecl_fn(llmod, ~"llvm.floor.f32",
-                                T_fn(~[T_f32()], T_f32()));
-    let floorf64 = decl_cdecl_fn(llmod, ~"llvm.floor.f64",
-                                T_fn(~[T_f64()], T_f64()));
-    let ceilf32 = decl_cdecl_fn(llmod, ~"llvm.ceil.f32",
-                                T_fn(~[T_f32()], T_f32()));
-    let ceilf64 = decl_cdecl_fn(llmod, ~"llvm.ceil.f64",
-                                T_fn(~[T_f64()], T_f64()));
-    let truncf32 = decl_cdecl_fn(llmod, ~"llvm.trunc.f32",
-                                T_fn(~[T_f32()], T_f32()));
-    let truncf64 = decl_cdecl_fn(llmod, ~"llvm.trunc.f64",
-                                T_fn(~[T_f64()], T_f64()));
-    let ctpop8 = decl_cdecl_fn(llmod, ~"llvm.ctpop.i8",
-                                T_fn(~[T_i8()], T_i8()));
-    let ctpop16 = decl_cdecl_fn(llmod, ~"llvm.ctpop.i16",
-                                T_fn(~[T_i16()], T_i16()));
-    let ctpop32 = decl_cdecl_fn(llmod, ~"llvm.ctpop.i32",
-                                T_fn(~[T_i32()], T_i32()));
-    let ctpop64 = decl_cdecl_fn(llmod, ~"llvm.ctpop.i64",
-                                T_fn(~[T_i64()], T_i64()));
-    let ctlz8 = decl_cdecl_fn(llmod, ~"llvm.ctlz.i8",
-                                T_fn(~[T_i8(), T_i1()], T_i8()));
-    let ctlz16 = decl_cdecl_fn(llmod, ~"llvm.ctlz.i16",
-                                T_fn(~[T_i16(), T_i1()], T_i16()));
-    let ctlz32 = decl_cdecl_fn(llmod, ~"llvm.ctlz.i32",
-                                T_fn(~[T_i32(), T_i1()], T_i32()));
-    let ctlz64 = decl_cdecl_fn(llmod, ~"llvm.ctlz.i64",
-                                T_fn(~[T_i64(), T_i1()], T_i64()));
-    let cttz8 = decl_cdecl_fn(llmod, ~"llvm.cttz.i8",
-                                T_fn(~[T_i8(), T_i1()], T_i8()));
-    let cttz16 = decl_cdecl_fn(llmod, ~"llvm.cttz.i16",
-                                T_fn(~[T_i16(), T_i1()], T_i16()));
-    let cttz32 = decl_cdecl_fn(llmod, ~"llvm.cttz.i32",
-                                T_fn(~[T_i32(), T_i1()], T_i32()));
-    let cttz64 = decl_cdecl_fn(llmod, ~"llvm.cttz.i64",
-                                T_fn(~[T_i64(), T_i1()], T_i64()));
-    let bswap16 = decl_cdecl_fn(llmod, ~"llvm.bswap.i16",
-                                T_fn(~[T_i16()], T_i16()));
-    let bswap32 = decl_cdecl_fn(llmod, ~"llvm.bswap.i32",
-                                T_fn(~[T_i32()], T_i32()));
-    let bswap64 = decl_cdecl_fn(llmod, ~"llvm.bswap.i64",
-                                T_fn(~[T_i64()], T_i64()));
+    let sqrtf32 = decl_cdecl_fn(llmod, "llvm.sqrt.f32",
+                                T_fn([T_f32()], T_f32()));
+    let sqrtf64 = decl_cdecl_fn(llmod, "llvm.sqrt.f64",
+                                T_fn([T_f64()], T_f64()));
+    let powif32 = decl_cdecl_fn(llmod, "llvm.powi.f32",
+                                T_fn([T_f32(), T_i32()], T_f32()));
+    let powif64 = decl_cdecl_fn(llmod, "llvm.powi.f64",
+                                T_fn([T_f64(), T_i32()], T_f64()));
+    let sinf32 = decl_cdecl_fn(llmod, "llvm.sin.f32",
+                                T_fn([T_f32()], T_f32()));
+    let sinf64 = decl_cdecl_fn(llmod, "llvm.sin.f64",
+                                T_fn([T_f64()], T_f64()));
+    let cosf32 = decl_cdecl_fn(llmod, "llvm.cos.f32",
+                                T_fn([T_f32()], T_f32()));
+    let cosf64 = decl_cdecl_fn(llmod, "llvm.cos.f64",
+                                T_fn([T_f64()], T_f64()));
+    let powf32 = decl_cdecl_fn(llmod, "llvm.pow.f32",
+                                T_fn([T_f32(), T_f32()], T_f32()));
+    let powf64 = decl_cdecl_fn(llmod, "llvm.pow.f64",
+                                T_fn([T_f64(), T_f64()], T_f64()));
+    let expf32 = decl_cdecl_fn(llmod, "llvm.exp.f32",
+                                T_fn([T_f32()], T_f32()));
+    let expf64 = decl_cdecl_fn(llmod, "llvm.exp.f64",
+                                T_fn([T_f64()], T_f64()));
+    let exp2f32 = decl_cdecl_fn(llmod, "llvm.exp2.f32",
+                                T_fn([T_f32()], T_f32()));
+    let exp2f64 = decl_cdecl_fn(llmod, "llvm.exp2.f64",
+                                T_fn([T_f64()], T_f64()));
+    let logf32 = decl_cdecl_fn(llmod, "llvm.log.f32",
+                                T_fn([T_f32()], T_f32()));
+    let logf64 = decl_cdecl_fn(llmod, "llvm.log.f64",
+                                T_fn([T_f64()], T_f64()));
+    let log10f32 = decl_cdecl_fn(llmod, "llvm.log10.f32",
+                                T_fn([T_f32()], T_f32()));
+    let log10f64 = decl_cdecl_fn(llmod, "llvm.log10.f64",
+                                T_fn([T_f64()], T_f64()));
+    let log2f32 = decl_cdecl_fn(llmod, "llvm.log2.f32",
+                                T_fn([T_f32()], T_f32()));
+    let log2f64 = decl_cdecl_fn(llmod, "llvm.log2.f64",
+                                T_fn([T_f64()], T_f64()));
+    let fmaf32 = decl_cdecl_fn(llmod, "llvm.fma.f32",
+                                T_fn([T_f32(), T_f32(), T_f32()], T_f32()));
+    let fmaf64 = decl_cdecl_fn(llmod, "llvm.fma.f64",
+                                T_fn([T_f64(), T_f64(), T_f64()], T_f64()));
+    let fabsf32 = decl_cdecl_fn(llmod, "llvm.fabs.f32",
+                                T_fn([T_f32()], T_f32()));
+    let fabsf64 = decl_cdecl_fn(llmod, "llvm.fabs.f64",
+                                T_fn([T_f64()], T_f64()));
+    let floorf32 = decl_cdecl_fn(llmod, "llvm.floor.f32",
+                                T_fn([T_f32()], T_f32()));
+    let floorf64 = decl_cdecl_fn(llmod, "llvm.floor.f64",
+                                T_fn([T_f64()], T_f64()));
+    let ceilf32 = decl_cdecl_fn(llmod, "llvm.ceil.f32",
+                                T_fn([T_f32()], T_f32()));
+    let ceilf64 = decl_cdecl_fn(llmod, "llvm.ceil.f64",
+                                T_fn([T_f64()], T_f64()));
+    let truncf32 = decl_cdecl_fn(llmod, "llvm.trunc.f32",
+                                T_fn([T_f32()], T_f32()));
+    let truncf64 = decl_cdecl_fn(llmod, "llvm.trunc.f64",
+                                T_fn([T_f64()], T_f64()));
+    let ctpop8 = decl_cdecl_fn(llmod, "llvm.ctpop.i8",
+                                T_fn([T_i8()], T_i8()));
+    let ctpop16 = decl_cdecl_fn(llmod, "llvm.ctpop.i16",
+                                T_fn([T_i16()], T_i16()));
+    let ctpop32 = decl_cdecl_fn(llmod, "llvm.ctpop.i32",
+                                T_fn([T_i32()], T_i32()));
+    let ctpop64 = decl_cdecl_fn(llmod, "llvm.ctpop.i64",
+                                T_fn([T_i64()], T_i64()));
+    let ctlz8 = decl_cdecl_fn(llmod, "llvm.ctlz.i8",
+                                T_fn([T_i8(), T_i1()], T_i8()));
+    let ctlz16 = decl_cdecl_fn(llmod, "llvm.ctlz.i16",
+                                T_fn([T_i16(), T_i1()], T_i16()));
+    let ctlz32 = decl_cdecl_fn(llmod, "llvm.ctlz.i32",
+                                T_fn([T_i32(), T_i1()], T_i32()));
+    let ctlz64 = decl_cdecl_fn(llmod, "llvm.ctlz.i64",
+                                T_fn([T_i64(), T_i1()], T_i64()));
+    let cttz8 = decl_cdecl_fn(llmod, "llvm.cttz.i8",
+                                T_fn([T_i8(), T_i1()], T_i8()));
+    let cttz16 = decl_cdecl_fn(llmod, "llvm.cttz.i16",
+                                T_fn([T_i16(), T_i1()], T_i16()));
+    let cttz32 = decl_cdecl_fn(llmod, "llvm.cttz.i32",
+                                T_fn([T_i32(), T_i1()], T_i32()));
+    let cttz64 = decl_cdecl_fn(llmod, "llvm.cttz.i64",
+                                T_fn([T_i64(), T_i1()], T_i64()));
+    let bswap16 = decl_cdecl_fn(llmod, "llvm.bswap.i16",
+                                T_fn([T_i16()], T_i16()));
+    let bswap32 = decl_cdecl_fn(llmod, "llvm.bswap.i32",
+                                T_fn([T_i32()], T_i32()));
+    let bswap64 = decl_cdecl_fn(llmod, "llvm.bswap.i64",
+                                T_fn([T_i64()], T_i64()));
 
     let mut intrinsics = HashMap::new();
     intrinsics.insert(~"llvm.gcroot", gcroot);
@@ -2801,12 +2800,11 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
 pub fn declare_dbg_intrinsics(llmod: ModuleRef,
                               intrinsics: &mut HashMap<~str, ValueRef>) {
     let declare =
-        decl_cdecl_fn(llmod, ~"llvm.dbg.declare",
-                      T_fn(~[T_metadata(), T_metadata()], T_void()));
+        decl_cdecl_fn(llmod, "llvm.dbg.declare",
+                      T_fn([T_metadata(), T_metadata()], T_void()));
     let value =
-        decl_cdecl_fn(llmod, ~"llvm.dbg.value",
-                      T_fn(~[T_metadata(), T_i64(), T_metadata()],
-                           T_void()));
+        decl_cdecl_fn(llmod, "llvm.dbg.value",
+                      T_fn([T_metadata(), T_i64(), T_metadata()], T_void()));
     intrinsics.insert(~"llvm.dbg.declare", declare);
     intrinsics.insert(~"llvm.dbg.value", value);
 }
@@ -2815,7 +2813,7 @@ pub fn trap(bcx: block) {
     let v: ~[ValueRef] = ~[];
     match bcx.ccx().intrinsics.find(&~"llvm.trap") {
       Some(&x) => { Call(bcx, x, v); },
-      _ => bcx.sess().bug(~"unbound llvm.trap in trap")
+      _ => bcx.sess().bug("unbound llvm.trap in trap")
     }
 }
 
@@ -2838,9 +2836,9 @@ pub fn decl_gc_metadata(ccx: @CrateContext, llmod_id: &str) {
 }
 
 pub fn create_module_map(ccx: @CrateContext) -> ValueRef {
-    let elttype = T_struct(~[ccx.int_type, ccx.int_type], false);
+    let elttype = T_struct([ccx.int_type, ccx.int_type], false);
     let maptype = T_array(elttype, ccx.module_data.len() + 1);
-    let map = str::as_c_str(~"_rust_mod_map", |buf| {
+    let map = str::as_c_str("_rust_mod_map", |buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, maptype, buf)
         }
@@ -2848,11 +2846,11 @@ pub fn create_module_map(ccx: @CrateContext) -> ValueRef {
     lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
     let mut elts: ~[ValueRef] = ~[];
     for ccx.module_data.each |key, &val| {
-        let elt = C_struct(~[p2i(ccx, C_cstr(ccx, @/*bad*/ copy *key)),
+        let elt = C_struct([p2i(ccx, C_cstr(ccx, @/*bad*/ copy *key)),
                             p2i(ccx, val)]);
         elts.push(elt);
     }
-    let term = C_struct(~[C_int(ccx, 0), C_int(ccx, 0)]);
+    let term = C_struct([C_int(ccx, 0), C_int(ccx, 0)]);
     elts.push(term);
     unsafe {
         llvm::LLVMSetInitializer(map, C_array(elttype, elts));
@@ -2876,7 +2874,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     };
     let sym_name = ~"_rust_crate_map_" + mapname;
     let arrtype = T_array(int_type, n_subcrates as uint);
-    let maptype = T_struct(~[T_i32(), T_ptr(T_i8()), int_type, arrtype], false);
+    let maptype = T_struct([T_i32(), T_ptr(T_i8()), int_type, arrtype], false);
     let map = str::as_c_str(sym_name, |buf| {
         unsafe {
             llvm::LLVMAddGlobal(llmod, maptype, buf)
@@ -2919,11 +2917,11 @@ pub fn fill_crate_map(ccx: @CrateContext, map: ValueRef) {
 
     unsafe {
         llvm::LLVMSetInitializer(map, C_struct(
-            ~[C_i32(1),
-              lib::llvm::llvm::LLVMConstPointerCast(llannihilatefn,
-                                                    T_ptr(T_i8())),
-              p2i(ccx, create_module_map(ccx)),
-              C_array(ccx.int_type, subcrates)]));
+            [C_i32(1),
+             lib::llvm::llvm::LLVMConstPointerCast(llannihilatefn,
+                                                   T_ptr(T_i8())),
+             p2i(ccx, create_module_map(ccx)),
+             C_array(ccx.int_type, subcrates)]));
     }
 }
 
@@ -2950,8 +2948,8 @@ pub fn write_metadata(cx: @CrateContext, crate: &ast::crate) {
     if !*cx.sess.building_library { return; }
     let encode_parms = crate_ctxt_to_encode_parms(cx);
     let llmeta = C_bytes(encoder::encode_metadata(encode_parms, crate));
-    let llconst = C_struct(~[llmeta]);
-    let mut llglobal = str::as_c_str(~"rust_metadata", |buf| {
+    let llconst = C_struct([llmeta]);
+    let mut llglobal = str::as_c_str("rust_metadata", |buf| {
         unsafe {
             llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst), buf)
         }
@@ -2965,11 +2963,11 @@ pub fn write_metadata(cx: @CrateContext, crate: &ast::crate) {
 
         let t_ptr_i8 = T_ptr(T_i8());
         llglobal = llvm::LLVMConstBitCast(llglobal, t_ptr_i8);
-        let llvm_used = str::as_c_str(~"llvm.used", |buf| {
+        let llvm_used = str::as_c_str("llvm.used", |buf| {
             llvm::LLVMAddGlobal(cx.llmod, T_array(t_ptr_i8, 1u), buf)
         });
         lib::llvm::SetLinkage(llvm_used, lib::llvm::AppendingLinkage);
-        llvm::LLVMSetInitializer(llvm_used, C_array(t_ptr_i8, ~[llglobal]));
+        llvm::LLVMSetInitializer(llvm_used, C_array(t_ptr_i8, [llglobal]));
     }
 }
 
@@ -3122,7 +3120,7 @@ pub fn trans_crate(sess: session::Session,
         // Translate the metadata.
         write_metadata(ccx, crate);
         if ccx.sess.trans_stats() {
-            io::println(~"--- trans stats ---");
+            io::println("--- trans stats ---");
             io::println(fmt!("n_static_tydescs: %u",
                              ccx.stats.n_static_tydescs));
             io::println(fmt!("n_glues_created: %u",

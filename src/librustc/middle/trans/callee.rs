@@ -379,7 +379,7 @@ pub fn trans_lang_call(bcx: block,
                                 trans_fn_ref_with_vtables_to_callee(bcx,
                                                                     did,
                                                                     0,
-                                                                    ~[],
+                                                                    [],
                                                                     None)
                              },
                              ArgVals(args),
@@ -717,8 +717,7 @@ pub fn trans_arg_expr(bcx: block,
                 }
                 _ => {
                     bcx.sess().impossible_case(
-                        arg_expr.span, ~"ret_flag with non-loop-\
-                                         body expr");
+                        arg_expr.span, "ret_flag with non-loop-body expr");
                 }
             }
         }

@@ -1808,7 +1808,7 @@ pub fn to_utf16(s: &str) -> ~[u16] {
             ch -= 0x1_0000_u32;
             let w1 = 0xD800_u16 | ((ch >> 10) as u16);
             let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
-            u.push_all(~[w1, w2])
+            u.push_all([w1, w2])
         }
     }
     u

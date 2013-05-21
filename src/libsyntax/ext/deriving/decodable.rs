@@ -291,7 +291,7 @@ fn expand_deriving_decodable_struct_method(
             unnamed_field => {
                 cx.span_unimpl(
                     span,
-                    ~"unnamed fields with `deriving(Decodable)`"
+                    "unnamed fields with `deriving(Decodable)`"
                 );
             }
         }

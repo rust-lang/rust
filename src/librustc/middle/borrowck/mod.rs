@@ -79,7 +79,7 @@ pub fn check_crate(
     visit::visit_crate(crate, bccx, v);
 
     if tcx.sess.borrowck_stats() {
-        io::println(~"--- borrowck stats ---");
+        io::println("--- borrowck stats ---");
         io::println(fmt!("paths requiring guarantees: %u",
                         bccx.stats.guaranteed_paths));
         io::println(fmt!("paths requiring loans     : %s",
@@ -557,27 +557,27 @@ pub impl BorrowckCtxt {
             err_out_of_root_scope(super_scope, sub_scope) => {
                 note_and_explain_region(
                     self.tcx,
-                    ~"managed value would have to be rooted for ",
+                    "managed value would have to be rooted for ",
                     sub_scope,
-                    ~"...");
+                    "...");
                 note_and_explain_region(
                     self.tcx,
-                    ~"...but can only be rooted for ",
+                    "...but can only be rooted for ",
                     super_scope,
-                    ~"");
+                    "");
             }
 
             err_out_of_scope(super_scope, sub_scope) => {
                 note_and_explain_region(
                     self.tcx,
-                    ~"borrowed pointer must be valid for ",
+                    "borrowed pointer must be valid for ",
                     sub_scope,
-                    ~"...");
+                    "...");
                 note_and_explain_region(
                     self.tcx,
-                    ~"...but borrowed value is only valid for ",
+                    "...but borrowed value is only valid for ",
                     super_scope,
-                    ~"");
+                    "");
           }
         }
     }

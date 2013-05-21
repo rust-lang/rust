@@ -885,9 +885,9 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         };
 
         let vt = tvec::vec_types(bcx, base_datum.ty);
-        base::maybe_name_value(bcx.ccx(), vt.llunit_size, ~"unit_sz");
+        base::maybe_name_value(bcx.ccx(), vt.llunit_size, "unit_sz");
         let scaled_ix = Mul(bcx, ix_val, vt.llunit_size);
-        base::maybe_name_value(bcx.ccx(), scaled_ix, ~"scaled_ix");
+        base::maybe_name_value(bcx.ccx(), scaled_ix, "scaled_ix");
 
         let mut (bcx, base, len) =
             base_datum.get_vec_base_and_len(bcx, index_expr.span,
@@ -907,7 +907,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
             controlflow::trans_fail_bounds_check(bcx, index_expr.span,
                                                  ix_val, unscaled_len)
         };
-        let elt = InBoundsGEP(bcx, base, ~[ix_val]);
+        let elt = InBoundsGEP(bcx, base, [ix_val]);
         let elt = PointerCast(bcx, elt, T_ptr(vt.llunit_ty));
         return DatumBlock {
             bcx: bcx,
@@ -1110,8 +1110,8 @@ pub fn with_field_tys<R>(tcx: ty::ctxt,
                                struct_fields(tcx, variant_id, substs))
                         }
                         _ => {
-                            tcx.sess.bug(~"resolve didn't map this expr to a \
-                                           variant ID")
+                            tcx.sess.bug("resolve didn't map this expr to a \
+                                          variant ID")
                         }
                     }
                 }
@@ -1168,7 +1168,7 @@ fn trans_rec_or_struct(bcx: block,
             }
             None => {
                 if need_base.any(|b| *b) {
-                    tcx.sess.span_bug(expr_span, ~"missing fields and no base expr")
+                    tcx.sess.span_bug(expr_span, "missing fields and no base expr")
                 }
                 None
             }
@@ -1313,9 +1313,9 @@ fn trans_unary_datum(bcx: block,
             trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty, heap)
         }
         ast::deref => {
-            bcx.sess().bug(~"deref expressions should have been \
-                             translated using trans_lvalue(), not \
-                             trans_unary_datum()")
+            bcx.sess().bug("deref expressions should have been \
+                            translated using trans_lvalue(), not \
+                            trans_unary_datum()")
         }
     };
 
@@ -1482,8 +1482,8 @@ fn trans_lazy_binop(bcx: block,
     }
 
     Br(past_rhs, join.llbb);
-    let phi = Phi(join, T_bool(), ~[lhs, rhs], ~[past_lhs.llbb,
-                                                 past_rhs.llbb]);
+    let phi = Phi(join, T_bool(), [lhs, rhs], [past_lhs.llbb,
+                                               past_rhs.llbb]);
 
     return immediate_rvalue_bcx(join, phi, binop_ty);
 }
@@ -1644,10 +1644,10 @@ fn trans_imm_cast(bcx: block, expr: @ast::expr,
                                               val_ty(lldiscrim_a),
                                               lldiscrim_a, true),
                     cast_float => SIToFP(bcx, lldiscrim_a, ll_t_out),
-                    _ => ccx.sess.bug(~"translating unsupported cast.")
+                    _ => ccx.sess.bug("translating unsupported cast.")
                 }
             }
-            _ => ccx.sess.bug(~"translating unsupported cast.")
+            _ => ccx.sess.bug("translating unsupported cast.")
         };
     return immediate_rvalue_bcx(bcx, newval, t_out);
 }

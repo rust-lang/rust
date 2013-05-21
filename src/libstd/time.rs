@@ -199,7 +199,7 @@ pub impl Tm {
      * Return a string of the current time in the form
      * "Thu Jan  1 00:00:00 1970".
      */
-    fn ctime(&self) -> ~str { self.strftime(~"%c") }
+    fn ctime(&self) -> ~str { self.strftime("%c") }
 
     /// Formats the time according to the format string.
     fn strftime(&self, format: &str) -> ~str {
@@ -214,9 +214,9 @@ pub impl Tm {
      */
     fn rfc822(&self) -> ~str {
         if self.tm_gmtoff == 0_i32 {
-            self.strftime(~"%a, %d %b %Y %T GMT")
+            self.strftime("%a, %d %b %Y %T GMT")
         } else {
-            self.strftime(~"%a, %d %b %Y %T %Z")
+            self.strftime("%a, %d %b %Y %T %Z")
         }
     }
 
@@ -227,7 +227,7 @@ pub impl Tm {
      * utc:   "Thu, 22 Mar 2012 14:53:18 -0000"
      */
     fn rfc822z(&self) -> ~str {
-        self.strftime(~"%a, %d %b %Y %T %z")
+        self.strftime("%a, %d %b %Y %T %z")
     }
 
     /**
@@ -238,9 +238,9 @@ pub impl Tm {
      */
     fn rfc3339(&self) -> ~str {
         if self.tm_gmtoff == 0_i32 {
-            self.strftime(~"%Y-%m-%dT%H:%M:%SZ")
+            self.strftime("%Y-%m-%dT%H:%M:%SZ")
         } else {
-            let s = self.strftime(~"%Y-%m-%dT%H:%M:%S");
+            let s = self.strftime("%Y-%m-%dT%H:%M:%S");
             let sign = if self.tm_gmtoff > 0_i32 { '+' } else { '-' };
             let mut m = i32::abs(self.tm_gmtoff) / 60_i32;
             let h = m / 60_i32;
@@ -326,7 +326,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     fn parse_type(s: &str, pos: uint, ch: char, tm: &mut Tm)
       -> Result<uint, ~str> {
         match ch {
-          'A' => match match_strs(s, pos, ~[
+          'A' => match match_strs(s, pos, [
               (~"Sunday", 0_i32),
               (~"Monday", 1_i32),
               (~"Tuesday", 2_i32),
@@ -338,7 +338,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
             None => Err(~"Invalid day")
           },
-          'a' => match match_strs(s, pos, ~[
+          'a' => match match_strs(s, pos, [
               (~"Sun", 0_i32),
               (~"Mon", 1_i32),
               (~"Tue", 2_i32),
@@ -350,7 +350,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
             None => Err(~"Invalid day")
           },
-          'B' => match match_strs(s, pos, ~[
+          'B' => match match_strs(s, pos, [
               (~"January", 0_i32),
               (~"February", 1_i32),
               (~"March", 2_i32),
@@ -367,7 +367,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             Some(item) => { let (v, pos) = item; tm.tm_mon = v; Ok(pos) }
             None => Err(~"Invalid month")
           },
-          'b' | 'h' => match match_strs(s, pos, ~[
+          'b' | 'h' => match match_strs(s, pos, [
               (~"Jan", 0_i32),
               (~"Feb", 1_i32),
               (~"Mar", 2_i32),
@@ -488,13 +488,13 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
           }
           'n' => parse_char(s, pos, '\n'),
           'P' => match match_strs(s, pos,
-                                  ~[(~"am", 0_i32), (~"pm", 12_i32)]) {
+                                  [(~"am", 0_i32), (~"pm", 12_i32)]) {
 
             Some(item) => { let (v, pos) = item; tm.tm_hour += v; Ok(pos) }
             None => Err(~"Invalid hour")
           },
           'p' => match match_strs(s, pos,
-                                  ~[(~"AM", 0_i32), (~"PM", 12_i32)]) {
+                                  [(~"AM", 0_i32), (~"PM", 12_i32)]) {
 
             Some(item) => { let (v, pos) = item; tm.tm_hour += v; Ok(pos) }
             None => Err(~"Invalid hour")
@@ -579,7 +579,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             }
           }
           'Z' => {
-            if match_str(s, pos, ~"UTC") || match_str(s, pos, ~"GMT") {
+            if match_str(s, pos, "UTC") || match_str(s, pos, "GMT") {
                 tm.tm_gmtoff = 0_i32;
                 tm.tm_zone = ~"UTC";
                 Ok(pos + 3u)

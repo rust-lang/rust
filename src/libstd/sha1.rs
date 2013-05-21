@@ -177,7 +177,7 @@ pub fn sha1() -> @Sha1 {
             let b = (hpart >> 16u32 & 0xFFu32) as u8;
             let c = (hpart >> 8u32 & 0xFFu32) as u8;
             let d = (hpart & 0xFFu32) as u8;
-            rs = vec::append(copy rs, ~[a, b, c, d]);
+            rs = vec::append(copy rs, [a, b, c, d]);
         }
         return rs;
     }

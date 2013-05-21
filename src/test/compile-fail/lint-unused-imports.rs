@@ -55,8 +55,8 @@ fn main() {
     cal(foo::Point{x:3, y:9});
     let a = 3;
     ignore(a);
-    io::stdout().write_str(~"a");
-    let _a = do map(~[2]) |&x| {
+    io::stdout().write_str("a");
+    let _a = do map([2]) |&x| {
       x + 2
     };
 }

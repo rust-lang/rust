@@ -86,9 +86,9 @@ fn get_rpaths(os: session::os,
         }
     }
 
-    log_rpaths(~"relative", rel_rpaths);
-    log_rpaths(~"absolute", abs_rpaths);
-    log_rpaths(~"fallback", fallback_rpaths);
+    log_rpaths("relative", rel_rpaths);
+    log_rpaths("absolute", abs_rpaths);
+    log_rpaths("fallback", fallback_rpaths);
 
     let mut rpaths = rel_rpaths;
     rpaths.push_all(abs_rpaths);

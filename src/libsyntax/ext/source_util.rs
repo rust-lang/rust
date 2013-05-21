@@ -67,7 +67,7 @@ pub fn expand_mod(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
     base::check_zero_tts(cx, sp, tts, "module_path!");
     base::MRExpr(mk_base_str(cx, sp,
                               str::connect(cx.mod_path().map(
-                                  |x| cx.str_of(*x)), ~"::")))
+                                  |x| cx.str_of(*x)), "::")))
 }
 
 // include! : parse the given file as an expr

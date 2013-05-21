@@ -131,12 +131,12 @@ type OptRes = Either<TestOpts, ~str>;
 // Parses command line arguments into test options
 pub fn parse_opts(args: &[~str]) -> OptRes {
     let args_ = vec::tail(args);
-    let opts = ~[getopts::optflag(~"ignored"),
-                 getopts::optflag(~"test"),
-                 getopts::optflag(~"bench"),
-                 getopts::optopt(~"save"),
-                 getopts::optopt(~"diff"),
-                 getopts::optopt(~"logfile")];
+    let opts = ~[getopts::optflag("ignored"),
+                 getopts::optflag("test"),
+                 getopts::optflag("bench"),
+                 getopts::optopt("save"),
+                 getopts::optopt("diff"),
+                 getopts::optopt("logfile")];
     let matches =
         match getopts::getopts(args_, opts) {
           Ok(m) => m,
@@ -148,19 +148,19 @@ pub fn parse_opts(args: &[~str]) -> OptRes {
             option::Some(copy (matches).free[0])
         } else { option::None };
 
-    let run_ignored = getopts::opt_present(&matches, ~"ignored");
+    let run_ignored = getopts::opt_present(&matches, "ignored");
 
-    let logfile = getopts::opt_maybe_str(&matches, ~"logfile");
+    let logfile = getopts::opt_maybe_str(&matches, "logfile");
     let logfile = logfile.map(|s| Path(*s));
 
-    let run_benchmarks = getopts::opt_present(&matches, ~"bench");
+    let run_benchmarks = getopts::opt_present(&matches, "bench");
     let run_tests = ! run_benchmarks ||
-        getopts::opt_present(&matches, ~"test");
+        getopts::opt_present(&matches, "test");
 
-    let save_results = getopts::opt_maybe_str(&matches, ~"save");
+    let save_results = getopts::opt_maybe_str(&matches, "save");
     let save_results = save_results.map(|s| Path(*s));
 
-    let compare_results = getopts::opt_maybe_str(&matches, ~"diff");
+    let compare_results = getopts::opt_maybe_str(&matches, "diff");
     let compare_results = compare_results.map(|s| Path(*s));
 
     let test_opts = TestOpts {
@@ -220,18 +220,18 @@ pub fn run_tests_console(opts: &TestOpts,
               TrOk => {
                 st.passed += 1;
                 write_ok(st.out, st.use_color);
-                st.out.write_line(~"");
+                st.out.write_line("");
               }
               TrFailed => {
                 st.failed += 1;
                 write_failed(st.out, st.use_color);
-                st.out.write_line(~"");
+                st.out.write_line("");
                 st.failures.push(test);
               }
               TrIgnored => {
                 st.ignored += 1;
                 write_ignored(st.out, st.use_color);
-                st.out.write_line(~"");
+                st.out.write_line("");
               }
               TrBench(bs) => {
                 st.benchmarked += 1u;
@@ -246,8 +246,8 @@ pub fn run_tests_console(opts: &TestOpts,
 
     let log_out = match opts.logfile {
         Some(ref path) => match io::file_writer(path,
-                                                ~[io::Create,
-                                                  io::Truncate]) {
+                                                [io::Create,
+                                                 io::Truncate]) {
           result::Ok(w) => Some(w),
           result::Err(ref s) => {
               fail!("can't open output file: %s", *s)
@@ -318,19 +318,19 @@ pub fn run_tests_console(opts: &TestOpts,
     }
 
     fn write_ok(out: @io::Writer, use_color: bool) {
-        write_pretty(out, ~"ok", term::color_green, use_color);
+        write_pretty(out, "ok", term::color_green, use_color);
     }
 
     fn write_failed(out: @io::Writer, use_color: bool) {
-        write_pretty(out, ~"FAILED", term::color_red, use_color);
+        write_pretty(out, "FAILED", term::color_red, use_color);
     }
 
     fn write_ignored(out: @io::Writer, use_color: bool) {
-        write_pretty(out, ~"ignored", term::color_yellow, use_color);
+        write_pretty(out, "ignored", term::color_yellow, use_color);
     }
 
     fn write_bench(out: @io::Writer, use_color: bool) {
-        write_pretty(out, ~"bench", term::color_cyan, use_color);
+        write_pretty(out, "bench", term::color_cyan, use_color);
     }
 
     fn write_pretty(out: @io::Writer,
@@ -348,7 +348,7 @@ pub fn run_tests_console(opts: &TestOpts,
 }
 
 fn print_failures(st: &ConsoleTestState) {
-    st.out.write_line(~"\nfailures:");
+    st.out.write_line("\nfailures:");
     let mut failures = ~[];
     for uint::range(0, vec::uniq_len(&const st.failures)) |i| {
         let name = copy st.failures[i].name;

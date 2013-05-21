@@ -137,7 +137,7 @@ pub mod lib {
 pub fn version(argv0: &str) {
     let mut vers = ~"unknown version";
     let env_vers = env!("CFG_VERSION");
-    if env_vers.len() != 0 { vers = env_vers; }
+    if env_vers.len() != 0 { vers = env_vers.to_owned(); }
     io::println(fmt!("%s %s", argv0, vers));
     io::println(fmt!("host: %s", host_triple()));
 }
@@ -168,11 +168,11 @@ Available lint options:
     }
     io::println(fmt!("\nAvailable lint checks:\n"));
     io::println(fmt!("    %s  %7.7s  %s",
-                     padded(max_key, ~"name"), ~"default", ~"meaning"));
+                     padded(max_key, "name"), "default", "meaning"));
     io::println(fmt!("    %s  %7.7s  %s\n",
-                     padded(max_key, ~"----"), ~"-------", ~"-------"));
+                     padded(max_key, "----"), "-------", "-------"));
     for lint_dict.each |k, v| {
-        let k = str::replace(*k, ~"_", ~"-");
+        let k = str::replace(*k, "_", "-");
         io::println(fmt!("    %s  %7.7s  %s",
                          padded(max_key, k),
                          match v.default {
@@ -183,7 +183,7 @@ Available lint options:
                          },
                          v.desc));
     }
-    io::println(~"");
+    io::println("");
 }
 
 pub fn describe_debug_flags() {
@@ -211,24 +211,24 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
           }
         };
 
-    if opt_present(matches, ~"h") || opt_present(matches, ~"help") {
+    if opt_present(matches, "h") || opt_present(matches, "help") {
         usage(*binary);
         return;
     }
 
-    let lint_flags = vec::append(getopts::opt_strs(matches, ~"W"),
-                                 getopts::opt_strs(matches, ~"warn"));
+    let lint_flags = vec::append(getopts::opt_strs(matches, "W"),
+                                 getopts::opt_strs(matches, "warn"));
     if lint_flags.contains(&~"help") {
         describe_warnings();
         return;
     }
 
-    if getopts::opt_strs(matches, ~"Z").contains(&~"help") {
+    if getopts::opt_strs(matches, "Z").contains(&~"help") {
         describe_debug_flags();
         return;
     }
 
-    if opt_present(matches, ~"v") || opt_present(matches, ~"version") {
+    if opt_present(matches, "v") || opt_present(matches, "version") {
         version(*binary);
         return;
     }
@@ -248,12 +248,12 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
 
     let sopts = build_session_options(binary, matches, demitter);
     let sess = build_session(sopts, demitter);
-    let odir = getopts::opt_maybe_str(matches, ~"out-dir");
+    let odir = getopts::opt_maybe_str(matches, "out-dir");
     let odir = odir.map(|o| Path(*o));
-    let ofile = getopts::opt_maybe_str(matches, ~"o");
+    let ofile = getopts::opt_maybe_str(matches, "o");
     let ofile = ofile.map(|o| Path(*o));
     let cfg = build_configuration(sess, binary, &input);
-    let pretty = getopts::opt_default(matches, ~"pretty", "normal").map(
+    let pretty = getopts::opt_default(matches, "pretty", "normal").map(
                     |a| parse_pretty(sess, *a));
     match pretty {
       Some::<pp_mode>(ppm) => {
@@ -262,7 +262,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
       }
       None::<pp_mode> => {/* continue */ }
     }
-    let ls = opt_present(matches, ~"ls");
+    let ls = opt_present(matches, "ls");
     if ls {
         match input {
           file_input(ref ifile) => {
@@ -334,7 +334,7 @@ pub fn monitor(f: ~fn(diagnostic::Emitter)) {
             if p.recv() == done {
                 diagnostic::emit(
                     None,
-                    diagnostic::ice_msg(~"unexpected failure"),
+                    diagnostic::ice_msg("unexpected failure"),
                     diagnostic::error);
 
                 for [

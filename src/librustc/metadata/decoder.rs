@@ -186,7 +186,7 @@ fn translated_parent_item_opt(cnum: ast::crate_num, d: ebml::Doc) ->
 
 fn item_reqd_and_translated_parent_item(cnum: ast::crate_num,
                                         d: ebml::Doc) -> ast::def_id {
-    let trait_did = item_parent_item(d).expect(~"item without parent");
+    let trait_did = item_parent_item(d).expect("item without parent");
     ast::def_id { crate: cnum, node: trait_did.node }
 }
 
@@ -785,8 +785,8 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
         let fty = match ty::get(ty).sty {
             ty::ty_bare_fn(ref f) => copy *f,
             _ => {
-                tcx.diag.handler().bug(~"get_provided_trait_methods(): id \
-                                         has non-function type");
+                tcx.diag.handler().bug("get_provided_trait_methods(): id \
+                                        has non-function type");
             }
         };
 
@@ -1064,7 +1064,7 @@ fn list_crate_attributes(intr: @ident_interner, md: ebml::Doc, hash: &str,
         out.write_str(fmt!("%s\n", pprust::attribute_to_str(*attr, intr)));
     }
 
-    out.write_str(~"\n\n");
+    out.write_str("\n\n");
 }
 
 pub fn get_crate_attributes(data: @~[u8]) -> ~[ast::attribute] {
@@ -1097,7 +1097,7 @@ pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
 }
 
 fn list_crate_deps(intr: @ident_interner, data: @~[u8], out: @io::Writer) {
-    out.write_str(~"=External Dependencies=\n");
+    out.write_str("=External Dependencies=\n");
 
     for get_crate_deps(intr, data).each |dep| {
         out.write_str(
@@ -1105,7 +1105,7 @@ fn list_crate_deps(intr: @ident_interner, data: @~[u8], out: @io::Writer) {
                  dep.cnum, *intr.get(dep.name), *dep.hash, *dep.vers));
     }
 
-    out.write_str(~"\n");
+    out.write_str("\n");
 }
 
 pub fn get_crate_hash(data: @~[u8]) -> @~str {
@@ -1118,7 +1118,7 @@ pub fn get_crate_vers(data: @~[u8]) -> @~str {
     let attrs = decoder::get_crate_attributes(data);
     let linkage_attrs = attr::find_linkage_metas(attrs);
 
-    match attr::last_meta_item_value_str_by_name(linkage_attrs, ~"vers") {
+    match attr::last_meta_item_value_str_by_name(linkage_attrs, "vers") {
         Some(ver) => ver,
         None => @~"0.0"
     }
