@@ -472,7 +472,7 @@ pub fn print_item(s: @ps, item: @ast::item) {
     (s.ann.pre)(ann_node);
     match item.node {
       ast::item_const(ty, expr) => {
-        head(s, visibility_qualified(item.vis, ~"static"));
+        head(s, visibility_qualified(item.vis, "static"));
         print_ident(s, item.ident);
         word_space(s, ":");
         print_type(s, ty);
@@ -500,7 +500,7 @@ pub fn print_item(s: @ps, item: @ast::item) {
         print_block_with_attrs(s, body, item.attrs);
       }
       ast::item_mod(ref _mod) => {
-        head(s, visibility_qualified(item.vis, ~"mod"));
+        head(s, visibility_qualified(item.vis, "mod"));
         print_ident(s, item.ident);
         nbsp(s);
         bopen(s);
@@ -508,7 +508,7 @@ pub fn print_item(s: @ps, item: @ast::item) {
         bclose(s, item.span);
       }
       ast::item_foreign_mod(ref nmod) => {
-        head(s, visibility_qualified(item.vis, ~"extern"));
+        head(s, visibility_qualified(item.vis, "extern"));
         word_nbsp(s, nmod.abis.to_str());
         match nmod.sort {
             ast::named => {
@@ -525,7 +525,7 @@ pub fn print_item(s: @ps, item: @ast::item) {
       ast::item_ty(ty, ref params) => {
         ibox(s, indent_unit);
         ibox(s, 0u);
-        word_nbsp(s, visibility_qualified(item.vis, ~"type"));
+        word_nbsp(s, visibility_qualified(item.vis, "type"));
         print_ident(s, item.ident);
         print_generics(s, params);
         end(s); // end the inner ibox
@@ -547,12 +547,12 @@ pub fn print_item(s: @ps, item: @ast::item) {
         );
       }
       ast::item_struct(struct_def, ref generics) => {
-          head(s, visibility_qualified(item.vis, ~"struct"));
+          head(s, visibility_qualified(item.vis, "struct"));
           print_struct(s, struct_def, generics, item.ident, item.span);
       }
 
       ast::item_impl(ref generics, opt_trait, ty, ref methods) => {
-        head(s, visibility_qualified(item.vis, ~"impl"));
+        head(s, visibility_qualified(item.vis, "impl"));
         if generics.is_parameterized() {
             print_generics(s, generics);
             space(s.s);
@@ -581,7 +581,7 @@ pub fn print_item(s: @ps, item: @ast::item) {
         }
       }
       ast::item_trait(ref generics, ref traits, ref methods) => {
-        head(s, visibility_qualified(item.vis, ~"trait"));
+        head(s, visibility_qualified(item.vis, "trait"));
         print_ident(s, item.ident);
         print_generics(s, generics);
         if traits.len() != 0u {
@@ -624,7 +624,7 @@ fn print_trait_ref(s: @ps, t: &ast::trait_ref) {
 pub fn print_enum_def(s: @ps, enum_definition: &ast::enum_def,
                       generics: &ast::Generics, ident: ast::ident,
                       span: codemap::span, visibility: ast::visibility) {
-    head(s, visibility_qualified(visibility, ~"enum"));
+    head(s, visibility_qualified(visibility, "enum"));
     print_ident(s, ident);
     print_generics(s, generics);
     space(s.s);
@@ -656,10 +656,10 @@ pub fn visibility_to_str(vis: ast::visibility) -> ~str {
     }
 }
 
-pub fn visibility_qualified(vis: ast::visibility, s: ~str) -> ~str {
+pub fn visibility_qualified(vis: ast::visibility, s: &str) -> ~str {
     match vis {
         ast::private | ast::public => visibility_to_str(vis) + " " + s,
-        ast::inherited => copy s
+        ast::inherited => s.to_owned()
     }
 }
 
@@ -2169,7 +2169,7 @@ pub fn print_fn_header_info(s: @ps,
                             onceness: ast::Onceness,
                             opt_sigil: Option<ast::Sigil>,
                             vis: ast::visibility) {
-    word(s.s, visibility_qualified(vis, ~""));
+    word(s.s, visibility_qualified(vis, ""));
 
     if abis != AbiSet::Rust() {
         word_nbsp(s, "extern");
