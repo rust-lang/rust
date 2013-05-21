@@ -57,7 +57,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):
     let arg_reader = new_tt_reader(copy cx.parse_sess().span_diagnostic,
-                                   get_ident_interner(), None, copy arg);
+                                   None, copy arg);
     let argument_map = parse_or_else(cx.parse_sess(),
                                      cx.cfg(),
                                      arg_reader as @reader,
@@ -101,7 +101,6 @@ pub fn add_new_extension(cx: @ExtCtxt,
                 // `none` is because we're not interpolating
                 let arg_rdr = new_tt_reader(
                     s_d,
-                    itr,
                     None,
                     vec::to_owned(arg)
                 ) as @reader;
@@ -122,7 +121,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
                         _ => cx.span_bug(sp, "bad thing in rhs")
                     };
                     // rhs has holes ( `$id` and `$(...)` that need filled)
-                    let trncbr = new_tt_reader(s_d, itr, Some(named_matches),
+                    let trncbr = new_tt_reader(s_d, Some(named_matches),
                                                rhs);
                     let p = @Parser(cx.parse_sess(),
                                     cx.cfg(),

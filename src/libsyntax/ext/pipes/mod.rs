@@ -68,7 +68,6 @@ pub fn expand_proto(cx: @ExtCtxt, _sp: span, id: ast::ident,
     let sess = cx.parse_sess();
     let cfg = cx.cfg();
     let tt_rdr = new_tt_reader(copy cx.parse_sess().span_diagnostic,
-                               get_ident_interner(),
                                None,
                                copy tt);
     let rdr = tt_rdr as @reader;

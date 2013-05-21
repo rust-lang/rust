@@ -29,7 +29,6 @@ pub fn expand_trace_macros(cx: @ExtCtxt,
     let cfg = cx.cfg();
     let tt_rdr = new_tt_reader(
         copy cx.parse_sess().span_diagnostic,
-        get_ident_interner(),
         None,
         vec::to_owned(tt)
     );
