@@ -10,8 +10,8 @@
 
 // xfail-fast
 
-use core::container::{Container, Mutable, Map};
-use core::old_iter::BaseIter;
+use std::container::{Container, Mutable, Map};
+use std::old_iter::BaseIter;
 
 enum cat_type { tuxedo, tabby, tortoiseshell }
 

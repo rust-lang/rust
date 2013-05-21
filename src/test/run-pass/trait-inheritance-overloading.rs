@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::cmp::Eq;
+use std::cmp::Eq;
 
 trait MyNum : Add<Self,Self> + Sub<Self,Self> + Mul<Self,Self> + Eq { }
 

@@ -10,9 +10,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::cast;
-use core::libc::{c_double, c_int};
-use core::f64::*;
+use std::cast;
+use std::libc::{c_double, c_int};
+use std::f64::*;
 
 fn to_c_int(v: &mut int) -> &mut c_int {
     unsafe {
@@ -27,7 +27,7 @@ fn lgamma(n: c_double, value: &mut int) -> c_double {
 }
 
 mod m {
-    use core::libc::{c_double, c_int};
+    use std::libc::{c_double, c_int};
 
     #[link_name = "m"]
     #[abi = "cdecl"]

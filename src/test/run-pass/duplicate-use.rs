@@ -9,10 +9,10 @@
 // except according to those terms.
 
 // xfail-test
-extern mod std;
+extern mod extra;
 
-use list = std::oldmap::chained;
-use std::list;
+use list = extra::oldmap::chained;
+use extra::list;
 
 pub fn main() {
     let _x: list::T<int, int> = list::mk();

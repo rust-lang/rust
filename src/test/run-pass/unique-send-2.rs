@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::comm::*;
+use std::comm::*;
 
 fn child(c: &SharedChan<~uint>, i: uint) {
     c.send(~i);

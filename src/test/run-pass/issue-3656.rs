@@ -13,7 +13,7 @@
 // Incorrect struct size computation in the FFI, because of not taking
 // the alignment of elements into account.
 
-use core::libc::*;
+use std::libc::*;
 
 struct KEYGEN {
     hash_algorithm: [c_uint, ..2],

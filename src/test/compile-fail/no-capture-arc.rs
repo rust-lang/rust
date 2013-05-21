@@ -10,8 +10,8 @@
 
 // error-pattern: use of moved value
 
-extern mod std;
-use std::arc;
+extern mod extra;
+use extra::arc;
 
 fn main() {
     let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];

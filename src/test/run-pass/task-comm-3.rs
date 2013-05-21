@@ -10,8 +10,8 @@
 
 // xfail-fast
 
-extern mod std;
-use core::comm::Chan;
+extern mod extra;
+use std::comm::Chan;
 
 pub fn main() { debug!("===== WITHOUT THREADS ====="); test00(); }
 

@@ -13,9 +13,9 @@
 
 #[no_std];
 
-extern mod core;
+extern mod std;
 
-fn last<T>(v: ~[&T]) -> core::option::Option<T> {
+fn last<T>(v: ~[&T]) -> std::option::Option<T> {
     fail!();
 }
 

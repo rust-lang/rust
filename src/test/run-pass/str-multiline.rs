@@ -11,7 +11,7 @@
 
 
 // -*- rust -*-
-extern mod std;
+extern mod extra;
 
 pub fn main() {
     let a: ~str = ~"this \

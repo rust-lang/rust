@@ -10,7 +10,7 @@
 
 // xfail-fast
 
-extern mod std;
+extern mod extra;
 
 pub fn main() { test00(); }
 

@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // error-pattern: reference is not valid outside of its lifetime
-extern mod std;
-use std::sync;
+extern mod extra;
+use extra::sync;
 
 fn main() {
     let m = ~sync::Mutex();

@@ -11,8 +11,8 @@
 // xfail-test
 // xfail-fast
 
-extern mod std;
-use std::oldmap::*;
+extern mod extra;
+use extra::oldmap::*;
 
 class cat : map<int, bool> {
   priv {

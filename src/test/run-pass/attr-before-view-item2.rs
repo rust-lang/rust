@@ -12,7 +12,7 @@
 
 mod m {
     #[foo = "bar"]
-    extern mod std;
+    extern mod extra;
 }
 
 pub fn main() {

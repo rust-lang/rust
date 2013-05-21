@@ -1,6 +1,6 @@
-use core::from_str::FromStr;
-use core::i32::range;
-use core::vec::MutableVector;
+use std::from_str::FromStr;
+use std::i32::range;
+use std::vec::MutableVector;
 
 fn max(a: i32, b: i32) -> i32 {
     if a > b {

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
 
 pub fn main() {
     // Chars of 1, 2, 3, and 4 bytes

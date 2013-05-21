@@ -10,10 +10,10 @@
 
 // xfail-test Can't use syntax crate here
 
-extern mod std;
+extern mod extra;
 extern mod syntax;
 
-use std::io::*;
+use extra::io::*;
 
 use syntax::diagnostic;
 use syntax::ast;

@@ -10,7 +10,7 @@
 
 // xfail-test Can't use syntax crate here
 
-extern mod std;
+extern mod extra;
 extern mod syntax;
 
 use io::*;

@@ -14,7 +14,7 @@
   Arnold.
  */
 
-use core::comm::*;
+use std::comm::*;
 
 type ctx = Chan<int>;
 

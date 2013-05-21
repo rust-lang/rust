@@ -15,12 +15,12 @@
 
 // This also serves as a pipes test, because ARCs are implemented with pipes.
 
-extern mod std;
+extern mod extra;
 
-use core::cell::Cell;
-use std::time;
-use std::arc;
-use std::future;
+use std::cell::Cell;
+use extra::time;
+use extra::arc;
+use extra::future;
 
 // A poor man's pipe.
 type pipe = arc::RWARC<~[uint]>;

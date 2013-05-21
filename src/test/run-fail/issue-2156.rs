@@ -10,8 +10,8 @@
 
 // error-pattern:explicit failure
 // Don't double free the string
-extern mod std;
-use core::io::ReaderUtil;
+extern mod extra;
+use std::io::ReaderUtil;
 
 fn main() {
     do io::with_str_reader(~"") |rdr| {

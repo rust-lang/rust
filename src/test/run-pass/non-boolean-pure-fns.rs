@@ -10,9 +10,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
 
-use std::list::*;
+use extra::list::*;
 
 fn pure_length_go<T:Copy>(ls: @List<T>, acc: uint) -> uint {
     match *ls { Nil => { acc } Cons(_, tl) => { pure_length_go(tl, acc + 1u) } }

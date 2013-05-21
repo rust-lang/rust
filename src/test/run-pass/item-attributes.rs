@@ -17,10 +17,10 @@
 #[attr4(attr5)];
 
 // Special linkage attributes for the crate
-#[link(name = "std",
+#[link(name = "extra",
        vers = "0.1",
        uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
-       url = "http://rust-lang.org/src/std")];
+       url = "http://rust-lang.org/src/extra")];
 
 // These are are attributes of the following mod
 #[attr1 = "val"]
@@ -148,7 +148,7 @@ mod test_attr_inner_then_outer_multi {
 }
 
 mod test_distinguish_syntax_ext {
-    extern mod std;
+    extern mod extra;
 
     pub fn f() {
         fmt!("test%s", ~"s");

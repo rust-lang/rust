@@ -11,7 +11,7 @@
 
 
 // -*- rust -*-
-extern mod std;
+extern mod extra;
 
 fn grow(v: &mut ~[int]) { *v += ~[1]; }
 

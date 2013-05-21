@@ -10,10 +10,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
 
-use core::cmp::{Eq, Ord};
-use core::num::NumCast;
+use std::cmp::{Eq, Ord};
+use std::num::NumCast;
 
 pub trait NumExt: Num + NumCast + Eq + Ord {}
 

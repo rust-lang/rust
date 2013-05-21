@@ -10,7 +10,7 @@
 
 pub fn main() {
     enum x { foo }
-    impl ::core::cmp::Eq for x {
+    impl ::std::cmp::Eq for x {
         fn eq(&self, other: &x) -> bool {
             (*self) as int == (*other) as int
         }

@@ -12,7 +12,7 @@
 
 // Extending Num and using inherited static methods
 
-use core::num::NumCast;
+use std::num::NumCast;
 
 trait Num {
     fn from_int(i: int) -> Self;

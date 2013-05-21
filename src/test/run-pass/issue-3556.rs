@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use core::io::WriterUtil;
+extern mod extra;
+use std::io::WriterUtil;
 
 enum Token {
         Text(@~str),

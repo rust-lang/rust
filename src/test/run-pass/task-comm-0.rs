@@ -10,10 +10,10 @@
 
 // xfail-fast
 
-extern mod std;
+extern mod extra;
 
-use core::comm::Chan;
-use core::comm::Port;
+use std::comm::Chan;
+use std::comm::Port;
 
 pub fn main() { test05(); }
 

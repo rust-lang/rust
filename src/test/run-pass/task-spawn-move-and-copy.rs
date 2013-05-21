@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::comm::*;
+use std::comm::*;
 
 pub fn main() {
     let (p, ch) = stream::<uint>();

@@ -1,12 +1,12 @@
 // xfail-pretty
 // xfail-test
 
-use core::cast::transmute;
-use core::libc::{STDOUT_FILENO, c_int, fdopen, fgets, fopen, fputc, fwrite};
-use core::libc::{size_t};
-use core::ptr::null;
-use core::vec::{capacity, reserve, reserve_at_least};
-use core::vec::raw::set_len;
+use std::cast::transmute;
+use std::libc::{STDOUT_FILENO, c_int, fdopen, fgets, fopen, fputc, fwrite};
+use std::libc::{size_t};
+use std::ptr::null;
+use std::vec::{capacity, reserve, reserve_at_least};
+use std::vec::raw::set_len;
 
 static LINE_LEN: u32 = 80;
 

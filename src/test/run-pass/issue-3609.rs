@@ -1,6 +1,6 @@
-extern mod std;
+extern mod extra;
 
-use core::comm::Chan;
+use std::comm::Chan;
 
 type RingBuffer = ~[float];
 type SamplesFn = ~fn(samples: &RingBuffer);

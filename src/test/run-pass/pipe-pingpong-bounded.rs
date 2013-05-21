@@ -14,15 +14,15 @@
 // experiment with what code the compiler should generate for bounded
 // protocols.
 
-use core::cell::Cell;
+use std::cell::Cell;
 
 // This was generated initially by the pipe compiler, but it's been
 // modified in hopefully straightforward ways.
 
 mod pingpong {
-    use core::pipes;
-    use core::pipes::*;
-    use core::ptr;
+    use std::pipes;
+    use std::pipes::*;
+    use std::ptr;
 
     pub struct Packets {
         ping: Packet<ping>,
@@ -46,9 +46,9 @@ mod pingpong {
     pub struct ping(server::pong);
     pub struct pong(client::ping);
     pub mod client {
-        use core::pipes;
-        use core::pipes::*;
-        use core::ptr;
+        use std::pipes;
+        use std::pipes::*;
+        use std::ptr;
 
         pub fn ping(mut pipe: ping) -> pong {
             {
@@ -66,9 +66,9 @@ mod pingpong {
                                                   ::pingpong::Packets>;
     }
     pub mod server {
-        use core::pipes;
-        use core::pipes::*;
-        use core::ptr;
+        use std::pipes;
+        use std::pipes::*;
+        use std::ptr;
 
         pub type ping = pipes::RecvPacketBuffered<::pingpong::ping,
         ::pingpong::Packets>;
@@ -88,7 +88,7 @@ mod pingpong {
 }
 
 mod test {
-    use core::pipes::recv;
+    use std::pipes::recv;
     use pingpong::{ping, pong};
 
     pub fn client(chan: ::pingpong::client::ping) {

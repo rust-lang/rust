@@ -1,4 +1,4 @@
-extern mod std;
+extern mod extra;
 
 fn main() {
     let foo = ~3;

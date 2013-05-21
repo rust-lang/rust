@@ -1,14 +1,14 @@
 fn a() {
     let x = [1];
     match x {
-        [_, _, _, _, _, .._] => ::core::util::unreachable(),
-        [.._, _, _, _, _] => ::core::util::unreachable(),
-        [_, .._, _, _] => ::core::util::unreachable(),
-        [_, _] => ::core::util::unreachable(),
+        [_, _, _, _, _, .._] => ::std::util::unreachable(),
+        [.._, _, _, _, _] => ::std::util::unreachable(),
+        [_, .._, _, _] => ::std::util::unreachable(),
+        [_, _] => ::std::util::unreachable(),
         [a] => {
             assert_eq!(a, 1);
         }
-        [] => ::core::util::unreachable()
+        [] => ::std::util::unreachable()
     }
 }
 

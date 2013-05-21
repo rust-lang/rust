@@ -11,7 +11,7 @@
 // error-pattern:runned an unexported test
 // compile-flags:--test
 
-extern mod std;
+extern mod extra;
 
 mod m {
     pub fn exported() { }

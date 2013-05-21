@@ -11,16 +11,16 @@
 // except according to those terms.
 
 #[no_std];
-extern mod core;
-extern mod zed(name = "core");
-extern mod bar(name = "core", vers = "0.7-pre");
+extern mod std;
+extern mod zed(name = "std");
+extern mod bar(name = "std", vers = "0.7-pre");
 
 
-use core::str;
+use std::str;
 use x = zed::str;
 mod baz {
     pub use bar::str;
-    pub use x = core::str;
+    pub use x = std::str;
 }
 
 pub fn main() { }

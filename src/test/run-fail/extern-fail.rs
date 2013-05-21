@@ -12,7 +12,7 @@
 // Testing that runtime failure doesn't cause callbacks to abort abnormally.
 // Instead the failure will be delivered after the callbacks return.
 
-use core::old_iter;
+use std::old_iter;
 
 mod rustrt {
     pub extern {
