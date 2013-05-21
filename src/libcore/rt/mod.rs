@@ -31,14 +31,8 @@ access to the global heap. Unlike most of `rt` the global heap is
 truly a global resource and generally operates independently of the
 rest of the runtime.
 
-All other runtime features are 'local', either thread-local or
-task-local.  Those critical to the functioning of the language are
-defined in the module `local_services`. Local services are those which
-are expected to be available to Rust code generally but rely on
-thread- or task-local state. These currently include the local heap,
+All other runtime features are task-local, including the local heap,
 the garbage collector, local storage, logging and the stack unwinder.
-Local services are primarily implemented for tasks, but may also
-be implemented for use outside of tasks.
 
 The relationship between `rt` and the rest of the core library is
 not entirely clear yet and some modules will be moving into or
@@ -67,18 +61,15 @@ use ptr::Ptr;
 /// The global (exchange) heap.
 pub mod global_heap;
 
-/// The Scheduler and Coroutine types.
-mod sched;
+/// Implementations of language-critical runtime features like @.
+pub mod task;
 
-/// Thread-local access to the current Scheduler.
-pub mod local_sched;
+/// The coroutine task scheduler, built on the `io` event loop.
+mod sched;
 
 /// Synchronous I/O.
 #[path = "io/mod.rs"]
 pub mod io;
-
-/// Thread-local implementations of language-critical runtime features like @.
-pub mod local_services;
 
 /// The EventLoop and internal synchronous I/O interface.
 mod rtio;
@@ -87,12 +78,15 @@ mod rtio;
 #[path = "uv/mod.rs"]
 pub mod uv;
 
-// FIXME #5248: The import in `sched` doesn't resolve unless this is pub!
-/// Bindings to pthread/windows thread-local storage.
-pub mod thread_local_storage;
+/// The Local trait for types that are accessible via thread-local
+/// or task-local storage.
+pub mod local;
 
-/// A parallel work-stealing dequeue.
+/// A parallel work-stealing deque.
 mod work_queue;
+
+/// A parallel queue.
+mod message_queue;
 
 /// Stack segments and caching.
 mod stack;
@@ -124,6 +118,15 @@ pub mod tube;
 
 /// Simple reimplementation of core::comm
 pub mod comm;
+
+// FIXME #5248 shouldn't be pub
+/// The runtime needs to be able to put a pointer into thread-local storage.
+pub mod local_ptr;
+
+// FIXME #5248: The import in `sched` doesn't resolve unless this is pub!
+/// Bindings to pthread/windows thread-local storage.
+pub mod thread_local_storage;
+
 
 /// Set up a default runtime configuration, given compiler-supplied arguments.
 ///
@@ -182,16 +185,17 @@ pub enum RuntimeContext {
 pub fn context() -> RuntimeContext {
 
     use task::rt::rust_task;
-    use self::sched::local_sched;
+    use self::local::Local;
+    use self::sched::Scheduler;
 
     // XXX: Hitting TLS twice to check if the scheduler exists
     // then to check for the task is not good for perf
     if unsafe { rust_try_get_task().is_not_null() } {
         return OldTaskContext;
     } else {
-        if local_sched::exists() {
+        if Local::exists::<Scheduler>() {
             let context = ::cell::empty_cell();
-            do local_sched::borrow |sched| {
+            do Local::borrow::<Scheduler> |sched| {
                 if sched.in_task_context() {
                     context.put_back(TaskContext);
                 } else {
@@ -213,9 +217,10 @@ pub fn context() -> RuntimeContext {
 #[test]
 fn test_context() {
     use unstable::run_in_bare_thread;
-    use self::sched::{local_sched, Coroutine};
+    use self::sched::{Scheduler, Coroutine};
     use rt::uv::uvio::UvEventLoop;
     use cell::Cell;
+    use rt::local::Local;
 
     assert_eq!(context(), OldTaskContext);
     do run_in_bare_thread {
@@ -223,11 +228,11 @@ fn test_context() {
         let mut sched = ~UvEventLoop::new_scheduler();
         let task = ~do Coroutine::new(&mut sched.stack_pool) {
             assert_eq!(context(), TaskContext);
-            let sched = local_sched::take();
+            let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then() |task| {
                 assert_eq!(context(), SchedulerContext);
                 let task = Cell(task);
-                do local_sched::borrow |sched| {
+                do Local::borrow::<Scheduler> |sched| {
                     sched.enqueue_task(task.take());
                 }
             }
