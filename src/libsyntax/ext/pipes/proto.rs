@@ -10,8 +10,9 @@
 
 use ast;
 use codemap::span;
-use ext::base::ext_ctxt;
-use ext::pipes::ast_builder::{append_types, ext_ctxt_ast_builder, path};
+use ext::base::ExtCtxt;
+use ext::build::AstBuilder;
+use ext::pipes::ast_builder::{append_types, path};
 
 #[deriving(Eq)]
 pub enum direction { send, recv }
@@ -92,8 +93,8 @@ pub impl state_ {
     }
 
     /// Returns the type that is used for the messages.
-    fn to_ty(&self, cx: @ext_ctxt) -> @ast::Ty {
-        cx.ty_path_ast_builder
+    fn to_ty(&self, cx: @ExtCtxt) -> @ast::Ty {
+        cx.ty_path
             (path(~[cx.ident_of(self.name)],self.span).add_tys(
                 cx.ty_vars(&self.generics.ty_params)))
     }

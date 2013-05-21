@@ -10,28 +10,28 @@
 
 use ast::{meta_item, item, expr, and};
 use codemap::span;
-use ext::base::ext_ctxt;
-use ext::build;
+use ext::base::ExtCtxt;
+use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
-pub fn expand_deriving_iter_bytes(cx: @ext_ctxt,
+pub fn expand_deriving_iter_bytes(cx: @ExtCtxt,
                                   span: span,
                                   mitem: @meta_item,
                                   in_items: ~[@item]) -> ~[@item] {
     let trait_def = TraitDef {
-        path: Path::new(~[~"core", ~"to_bytes", ~"IterBytes"]),
+        path: Path::new(~["core", "to_bytes", "IterBytes"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[
             MethodDef {
-                name: ~"iter_bytes",
+                name: "iter_bytes",
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: ~[
-                    Literal(Path::new(~[~"bool"])),
-                    Literal(Path::new(~[~"core", ~"to_bytes", ~"Cb"]))
+                    Literal(Path::new(~["bool"])),
+                    Literal(Path::new(~["core", "to_bytes", "Cb"]))
                 ],
-                ret_ty: Literal(Path::new(~[~"bool"])),
+                ret_ty: Literal(Path::new(~["bool"])),
                 const_nonmatching: false,
                 combine_substructure: iter_bytes_substructure
             }
@@ -41,14 +41,14 @@ pub fn expand_deriving_iter_bytes(cx: @ext_ctxt,
     expand_deriving_generic(cx, span, mitem, in_items, &trait_def)
 }
 
-fn iter_bytes_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> @expr {
+fn iter_bytes_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
     let lsb0_f = match substr.nonself_args {
         [l, f] => ~[l, f],
         _ => cx.span_bug(span, "Incorrect number of arguments in `deriving(IterBytes)`")
     };
     let iter_bytes_ident = substr.method_ident;
     let call_iterbytes = |thing_expr| {
-        build::mk_method_call(cx, span,
+        cx.expr_method_call(span,
                               thing_expr, iter_bytes_ident,
                               copy lsb0_f)
     };
@@ -63,7 +63,7 @@ fn iter_bytes_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> 
             // iteration function.
             let discriminant = match variant.node.disr_expr {
                 Some(copy d)=> d,
-                None => build::mk_uint(cx, span, index)
+                None => cx.expr_uint(span, index)
             };
 
             exprs.push(call_iterbytes(discriminant));
@@ -82,6 +82,6 @@ fn iter_bytes_substructure(cx: @ext_ctxt, span: span, substr: &Substructure) -> 
     }
 
     do vec::foldl(exprs[0], exprs.slice(1, exprs.len())) |prev, me| {
-        build::mk_binary(cx, span, and, prev, *me)
+        cx.expr_binary(span, and, prev, *me)
     }
 }
