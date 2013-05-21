@@ -208,7 +208,7 @@ fn fold_item(ctx: @mut ReadyCtx,
              fold: @fold::ast_fold) -> Option<@ast::item> {
     ctx.path.push(item.ident);
 
-    let attrs = attr::find_attrs_by_name(item.attrs, ~"pkg_do");
+    let attrs = attr::find_attrs_by_name(item.attrs, "pkg_do");
 
     if attrs.len() > 0 {
         let mut cmds = ~[];
@@ -281,7 +281,7 @@ pub fn note(msg: ~str) {
 
     if term::color_supported() {
         term::fg(out, term::color_green);
-        out.write_str(~"note: ");
+        out.write_str("note: ");
         term::reset(out);
         out.write_line(msg);
     } else {
@@ -294,7 +294,7 @@ pub fn warn(msg: ~str) {
 
     if term::color_supported() {
         term::fg(out, term::color_yellow);
-        out.write_str(~"warning: ");
+        out.write_str("warning: ");
         term::reset(out);
         out.write_line(msg);
     } else {
@@ -307,7 +307,7 @@ pub fn error(msg: ~str) {
 
     if term::color_supported() {
         term::fg(out, term::color_red);
-        out.write_str(~"error: ");
+        out.write_str("error: ");
         term::reset(out);
         out.write_line(msg);
     } else {
@@ -353,8 +353,8 @@ pub fn compile_input(sysroot: Option<@Path>,
     debug!("compiling %s into %s",
            in_file.to_str(),
            out_file.to_str());
-    debug!("flags: %s", str::connect(flags, ~" "));
-    debug!("cfgs: %s", str::connect(cfgs, ~" "));
+    debug!("flags: %s", str::connect(flags, " "));
+    debug!("cfgs: %s", str::connect(cfgs, " "));
     debug!("compile_input's sysroot = %?", sysroot);
 
     let crate_type = match what {

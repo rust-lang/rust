@@ -104,7 +104,7 @@ fn first_sentence(s: ~str) -> Option<~str> {
     let paras = paragraphs(s);
     if !paras.is_empty() {
         let first_para = paras.head();
-        Some(str::replace(first_sentence_(*first_para), ~"\n", ~" "))
+        Some(str::replace(first_sentence_(*first_para), "\n", " "))
     } else {
         None
     }
@@ -132,7 +132,7 @@ fn first_sentence_(s: &str) -> ~str {
             str::to_owned(str::slice(s, 0, idx - 1))
         }
         _ => {
-            if str::ends_with(s, ~".") {
+            if str::ends_with(s, ".") {
                 str::to_owned(s)
             } else {
                 str::to_owned(s)
