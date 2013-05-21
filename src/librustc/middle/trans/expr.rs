@@ -499,6 +499,10 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
     let mut bcx = bcx;
     let _icx = bcx.insn_ctxt("trans_rvalue_stmt");
 
+    if bcx.unreachable {
+        return bcx;
+    }
+
     trace_span!(bcx, expr.span, @shorten(bcx.expr_to_str(expr)));
 
     match expr.node {
