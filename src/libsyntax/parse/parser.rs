@@ -1311,7 +1311,7 @@ pub impl Parser {
                     ex = expr_vec(~[first_expr], mutbl);
                 }
             }
-            hi = self.span.hi;
+            hi = self.last_span.hi;
         } else if self.eat_keyword("__log") {
             // LOG expression
             self.expect(&token::LPAREN);
