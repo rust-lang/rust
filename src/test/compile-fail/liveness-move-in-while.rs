@@ -13,10 +13,8 @@ fn main() {
     let y: ~int = ~42;
     let mut x: ~int;
     loop {
-        debug!(y);
-// tjc: not sure why it prints the same error twice
+        debug!(y); //~ ERROR use of moved value: `y`
         while true { while true { while true { x = y; copy x; } } }
         //~^ ERROR use of moved value: `y`
-        //~^^ ERROR use of moved value: `y`
     }
 }
