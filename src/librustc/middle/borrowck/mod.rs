@@ -19,7 +19,7 @@ use middle::moves;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::DataFlowOperator;
 use util::common::stmt_set;
-use util::ppaux::{note_and_explain_region, Repr};
+use util::ppaux::{note_and_explain_region, Repr, UserString};
 
 use core::hashmap::{HashSet, HashMap};
 use core::io;
@@ -45,6 +45,8 @@ pub mod check_loans;
 
 #[path="gather_loans/mod.rs"]
 pub mod gather_loans;
+
+pub mod move_data;
 
 pub struct LoanDataFlowOperator;
 pub type LoanDataFlow = DataFlowContext<LoanDataFlowOperator>;
@@ -121,21 +123,28 @@ fn borrowck_fn(fk: &visit::fn_kind,
             debug!("borrowck_fn(id=%?)", id);
 
             // Check the body of fn items.
-            let (id_range, all_loans) =
+            let (id_range, all_loans, move_data) =
                 gather_loans::gather_loans(this, body);
-            let all_loans: &~[Loan] = &*all_loans; // FIXME(#5074)
-            let mut dfcx =
+            let mut loan_dfcx =
                 DataFlowContext::new(this.tcx,
                                      this.method_map,
                                      LoanDataFlowOperator,
                                      id_range,
                                      all_loans.len());
             for all_loans.eachi |loan_idx, loan| {
-                dfcx.add_gen(loan.gen_scope, loan_idx);
-                dfcx.add_kill(loan.kill_scope, loan_idx);
+                loan_dfcx.add_gen(loan.gen_scope, loan_idx);
+                loan_dfcx.add_kill(loan.kill_scope, loan_idx);
             }
-            dfcx.propagate(body);
-            check_loans::check_loans(this, &dfcx, *all_loans, body);
+            loan_dfcx.propagate(body);
+
+            let flowed_moves = move_data::FlowedMoveData::new(move_data,
+                                                              this.tcx,
+                                                              this.method_map,
+                                                              id_range,
+                                                              body);
+
+            check_loans::check_loans(this, &loan_dfcx, flowed_moves,
+                                     *all_loans, body);
         }
     }
 
@@ -226,13 +235,13 @@ pub struct Loan {
     span: span,
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub enum LoanPath {
     LpVar(ast::node_id),               // `x` in doc.rs
     LpExtend(@LoanPath, mc::MutabilityCategory, LoanPathElem)
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub enum LoanPathElem {
     LpDeref,                     // `*LV` in doc.rs
     LpInterior(mc::InteriorKind) // `LV.f` in doc.rs
@@ -407,6 +416,11 @@ pub enum AliasableViolationKind {
     BorrowViolation
 }
 
+pub enum MovedValueUseKind {
+    MovedInUse,
+    MovedInCapture,
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Misc
 
@@ -417,6 +431,10 @@ pub impl BorrowckCtxt {
 
     fn is_subscope_of(&self, r_sub: ast::node_id, r_sup: ast::node_id) -> bool {
         self.tcx.region_maps.is_subscope_of(r_sub, r_sup)
+    }
+
+    fn is_move(&self, id: ast::node_id) -> bool {
+        self.moves_map.contains(&id)
     }
 
     fn cat_expr(&self, expr: @ast::expr) -> mc::cmt {
@@ -476,6 +494,83 @@ pub impl BorrowckCtxt {
             err.span,
             self.bckerr_to_str(err));
         self.note_and_explain_bckerr(err);
+    }
+
+    fn report_use_of_moved_value(&self,
+                                 use_span: span,
+                                 use_kind: MovedValueUseKind,
+                                 lp: @LoanPath,
+                                 move: &move_data::Move,
+                                 moved_lp: @LoanPath) {
+        let verb = match use_kind {
+            MovedInUse => "use",
+            MovedInCapture => "capture",
+        };
+
+        match move.kind {
+            move_data::Declared => {
+                self.tcx.sess.span_err(
+                    use_span,
+                    fmt!("%s of possibly uninitialized value: `%s`",
+                         verb,
+                         self.loan_path_to_str(lp)));
+            }
+            _ => {
+                let partially = if lp == moved_lp {""} else {"partially "};
+                self.tcx.sess.span_err(
+                    use_span,
+                    fmt!("%s of %smoved value: `%s`",
+                         verb,
+                         partially,
+                         self.loan_path_to_str(lp)));
+            }
+        }
+
+        match move.kind {
+            move_data::Declared => {}
+
+            move_data::MoveExpr(expr) => {
+                let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
+                self.tcx.sess.span_note(
+                    expr.span,
+                    fmt!("`%s` moved here because it has type `%s`, \
+                          which is moved by default (use `copy` to override)",
+                         self.loan_path_to_str(moved_lp),
+                         expr_ty.user_string(self.tcx)));
+            }
+
+            move_data::MovePat(pat) => {
+                let pat_ty = ty::node_id_to_type(self.tcx, pat.id);
+                self.tcx.sess.span_note(
+                    pat.span,
+                    fmt!("`%s` moved here because it has type `%s`, \
+                          which is moved by default (use `ref` to override)",
+                         self.loan_path_to_str(moved_lp),
+                         pat_ty.user_string(self.tcx)));
+            }
+
+            move_data::Captured(expr) => {
+                self.tcx.sess.span_note(
+                    expr.span,
+                    fmt!("`%s` moved into closure environment here \
+                          because its type is moved by default \
+                          (make a copy and capture that instead to override)",
+                         self.loan_path_to_str(moved_lp)));
+            }
+        }
+    }
+
+    fn report_reassigned_immutable_variable(&self,
+                                            span: span,
+                                            lp: @LoanPath,
+                                            assign: &move_data::Assignment) {
+        self.tcx.sess.span_err(
+            span,
+            fmt!("re-assignment of immutable variable `%s`",
+                 self.loan_path_to_str(lp)));
+        self.tcx.sess.span_note(
+            assign.span,
+            fmt!("prior assignment occurs here"));
     }
 
     fn span_err(&self, s: span, m: &str) {

@@ -181,12 +181,12 @@ pub fn header_name(doc: doc::ItemTag) -> ~str {
         }
         &doc::ImplTag(ref doc) => {
             assert!(doc.self_ty.is_some());
-            let bounds = if (&doc.bounds_str).is_some() {
-                fmt!(" where %s", (&doc.bounds_str).get())
+            let bounds = if doc.bounds_str.is_some() {
+                fmt!(" where %s", *doc.bounds_str.get_ref())
             } else {
                 ~""
             };
-            let self_ty = (&doc.self_ty).get();
+            let self_ty = doc.self_ty.get_ref();
             let mut trait_part = ~"";
             for doc.trait_types.eachi |i, trait_type| {
                 if i == 0 {
@@ -196,7 +196,7 @@ pub fn header_name(doc: doc::ItemTag) -> ~str {
                 }
                 trait_part += *trait_type;
             }
-            fmt!("%s for %s%s", trait_part, self_ty, bounds)
+            fmt!("%s for %s%s", trait_part, *self_ty, bounds)
         }
         _ => {
             doc.name()
@@ -208,17 +208,17 @@ pub fn header_text(doc: doc::ItemTag) -> ~str {
     match &doc {
         &doc::ImplTag(ref ImplDoc) => {
             let header_kind = header_kind(copy doc);
-            let bounds = if (&ImplDoc.bounds_str).is_some() {
-                fmt!(" where `%s`", (&ImplDoc.bounds_str).get())
+            let bounds = if ImplDoc.bounds_str.is_some() {
+                fmt!(" where `%s`", *ImplDoc.bounds_str.get_ref())
             } else {
                 ~""
             };
             let desc = if ImplDoc.trait_types.is_empty() {
-                fmt!("for `%s`%s", (&ImplDoc.self_ty).get(), bounds)
+                fmt!("for `%s`%s", *ImplDoc.self_ty.get_ref(), bounds)
             } else {
                 fmt!("of `%s` for `%s`%s",
                      ImplDoc.trait_types[0],
-                     (&ImplDoc.self_ty).get(),
+                     *ImplDoc.self_ty.get_ref(),
                      bounds)
             };
             return fmt!("%s %s", header_kind, desc);
@@ -295,7 +295,7 @@ fn write_mod_contents(
 ) {
     write_common(ctxt, doc.desc(), doc.sections());
     if doc.index.is_some() {
-        write_index(ctxt, (&doc.index).get());
+        write_index(ctxt, doc.index.get_ref());
     }
 
     for doc.items.each |itemTag| {
@@ -340,7 +340,7 @@ fn item_header_lvl(doc: &doc::ItemTag) -> Hlvl {
     }
 }
 
-fn write_index(ctxt: &Ctxt, index: doc::Index) {
+fn write_index(ctxt: &Ctxt, index: &doc::Index) {
     if vec::is_empty(index.entries) {
         return;
     }
@@ -353,7 +353,7 @@ fn write_index(ctxt: &Ctxt, index: doc::Index) {
         let id = copy entry.link;
         if entry.brief.is_some() {
             ctxt.w.put_line(fmt!("* [%s](%s) - %s",
-                                 header, id, (&entry.brief).get()));
+                                 header, id, *entry.brief.get_ref()));
         } else {
             ctxt.w.put_line(fmt!("* [%s](%s)", header, id));
         }
@@ -366,7 +366,7 @@ fn write_index(ctxt: &Ctxt, index: doc::Index) {
 fn write_nmod(ctxt: &Ctxt, doc: doc::NmodDoc) {
     write_common(ctxt, doc.desc(), doc.sections());
     if doc.index.is_some() {
-        write_index(ctxt, (&doc.index).get());
+        write_index(ctxt, doc.index.get_ref());
     }
 
     for doc.fns.each |FnDoc| {
@@ -450,17 +450,17 @@ fn write_variants(
 
 fn write_variant(ctxt: &Ctxt, doc: doc::VariantDoc) {
     assert!(doc.sig.is_some());
-    let sig = (&doc.sig).get();
+    let sig = doc.sig.get_ref();
 
     // space out list items so they all end up within paragraph elements
     ctxt.w.put_line(~"");
 
     match copy doc.desc {
         Some(desc) => {
-            ctxt.w.put_line(list_item_indent(fmt!("* `%s` - %s", sig, desc)));
+            ctxt.w.put_line(list_item_indent(fmt!("* `%s` - %s", *sig, desc)));
         }
         None => {
-            ctxt.w.put_line(fmt!("* `%s`", sig));
+            ctxt.w.put_line(fmt!("* `%s`", *sig));
         }
     }
 }

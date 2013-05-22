@@ -93,19 +93,26 @@ pub enum ptr_kind {
 
 // We use the term "interior" to mean "something reachable from the
 // base without a pointer dereference", e.g. a field
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub enum InteriorKind {
     InteriorField(FieldName),
-    InteriorElement(ty::t),    // ty::t is the type of the vec/str
+    InteriorElement(ElementKind),
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub enum FieldName {
     NamedField(ast::ident),
     PositionalField(uint)
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
+pub enum ElementKind {
+    VecElement,
+    StrElement,
+    OtherElement,
+}
+
+#[deriving(Eq, IterBytes)]
 pub enum MutabilityCategory {
     McImmutable, // Immutable.
     McReadOnly,  // Read-only (`const`)
@@ -192,7 +199,7 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
 
         ty::ty_evec(_, ty::vstore_fixed(_)) |
         ty::ty_estr(ty::vstore_fixed(_)) => {
-            Some(deref_interior(InteriorElement(t)))
+            Some(deref_interior(InteriorElement(element_kind(t))))
         }
 
         _ => None
@@ -749,7 +756,7 @@ pub impl mem_categorization_ctxt {
             @cmt_ {
                 id:elt.id(),
                 span:elt.span(),
-                cat:cat_interior(of_cmt, InteriorElement(vec_ty)),
+                cat:cat_interior(of_cmt, InteriorElement(element_kind(vec_ty))),
                 mutbl:mutbl,
                 ty:mt.ty
             }
@@ -993,12 +1000,14 @@ pub impl mem_categorization_ctxt {
           cat_interior(_, InteriorField(PositionalField(_))) => {
               ~"anonymous field"
           }
-          cat_interior(_, InteriorElement(t)) => {
-            match ty::get(t).sty {
-              ty::ty_evec(*) => ~"vec content",
-              ty::ty_estr(*) => ~"str content",
-              _ => ~"indexed content"
-            }
+          cat_interior(_, InteriorElement(VecElement)) => {
+              ~"vec content"
+          }
+          cat_interior(_, InteriorElement(StrElement)) => {
+              ~"str content"
+          }
+          cat_interior(_, InteriorElement(OtherElement)) => {
+              ~"indexed content"
           }
           cat_stack_upvar(_) => {
               ~"captured outer variable"
@@ -1191,5 +1200,13 @@ impl Repr for InteriorKind {
             InteriorField(PositionalField(i)) => fmt!("#%?", i),
             InteriorElement(_) => ~"[]",
         }
+    }
+}
+
+fn element_kind(t: ty::t) -> ElementKind {
+    match ty::get(t).sty {
+        ty::ty_evec(*) => VecElement,
+        ty::ty_estr(*) => StrElement,
+        _ => OtherElement
     }
 }
