@@ -1327,6 +1327,8 @@ impl to_str::ToStr for Error {
 
 #[cfg(test)]
 mod tests {
+    use core::prelude::*;
+
     use super::*;
 
     use core::hashmap::HashMap;

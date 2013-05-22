@@ -746,6 +746,8 @@ fn shift_vec<T:Copy>(dest: &mut [T],
 
 #[cfg(test)]
 mod test_qsort3 {
+    use core::prelude::*;
+
     use sort::*;
 
     use core::vec;
@@ -788,6 +790,8 @@ mod test_qsort3 {
 
 #[cfg(test)]
 mod test_qsort {
+    use core::prelude::*;
+
     use sort::*;
 
     use core::int;
@@ -852,6 +856,7 @@ mod test_qsort {
 
 #[cfg(test)]
 mod tests {
+    use core::prelude::*;
 
     use sort::*;
 
@@ -920,6 +925,8 @@ mod tests {
 
 #[cfg(test)]
 mod test_tim_sort {
+    use core::prelude::*;
+
     use sort::tim_sort;
     use core::rand::RngUtil;
 
@@ -1011,6 +1018,8 @@ mod test_tim_sort {
 
 #[cfg(test)]
 mod big_tests {
+    use core::prelude::*;
+
     use sort::*;
     use core::rand::RngUtil;
 

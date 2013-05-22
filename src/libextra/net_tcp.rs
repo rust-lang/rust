@@ -1440,6 +1440,8 @@ struct TcpBufferedSocketData {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use net::ip;
     use net::tcp::{GenericListenErr, TcpConnectErrData, TcpListenErrData};
     use net::tcp::{connect, accept, read, listen, TcpSocket, socket_buf};

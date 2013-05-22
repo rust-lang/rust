@@ -1145,6 +1145,8 @@ pub impl BigInt {
 
 #[cfg(test)]
 mod biguint_tests {
+    use core::prelude::*;
+
     use super::*;
     use core::num::{IntConvertible, Zero, One, FromStrRadix};
     use core::cmp::{Less, Equal, Greater};
@@ -1611,6 +1613,8 @@ mod biguint_tests {
 
 #[cfg(test)]
 mod bigint_tests {
+    use core::prelude::*;
+
     use super::*;
     use core::cmp::{Less, Equal, Greater};
     use core::num::{IntConvertible, Zero, One, FromStrRadix};

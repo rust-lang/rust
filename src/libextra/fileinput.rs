@@ -405,6 +405,8 @@ pub fn input_vec_state(files: ~[Option<Path>],
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use core::io::WriterUtil;
     use super::{FileInput, pathify, input_vec, input_vec_state};
 

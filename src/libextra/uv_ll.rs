@@ -1224,6 +1224,7 @@ pub unsafe fn addrinfo_as_sockaddr_in6(input: *addrinfo) -> *sockaddr_in6 {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
     use core::comm::{SharedChan, stream, GenericChan, GenericPort};
     use super::*;
 

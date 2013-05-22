@@ -534,6 +534,8 @@ impl<T> BaseIter<T> for @mut DList<T> {
 
 #[cfg(test)]
 mod tests {
+    use core::prelude::*;
+
     use super::*;
 
     #[test]

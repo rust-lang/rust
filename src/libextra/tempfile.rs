@@ -27,6 +27,8 @@ pub fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
 
 #[cfg(test)]
 mod tests {
+    use core::prelude::*;
+
     use tempfile::mkdtemp;
     use tempfile;
     use core::os;

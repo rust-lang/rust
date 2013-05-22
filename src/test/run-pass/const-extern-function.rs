@@ -10,7 +10,7 @@
 
 extern fn foopy() {}
 
-static f: extern "C" fn() = foopy;
+static f: *u8 = foopy;
 static s: S = S { f: foopy };
 
 struct S {

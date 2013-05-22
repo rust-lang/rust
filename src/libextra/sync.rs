@@ -711,6 +711,7 @@ pub impl<'self> RWlockReadMode<'self> {
 
 #[cfg(test)]
 mod tests {
+    use core::prelude::*;
 
     use sync::*;
 
