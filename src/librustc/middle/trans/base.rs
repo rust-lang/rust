@@ -2147,7 +2147,26 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
             trans_enum_def(ccx, enum_definition, item.id, vi, &mut i);
         }
       }
-      ast::item_const(_, expr) => consts::trans_const(ccx, expr, item.id),
+      ast::item_const(_, expr) => {
+          consts::trans_const(ccx, expr, item.id);
+          // Do static_assert checking. It can't really be done much earlier because we need to get
+          // the value of the bool out of LLVM
+          for item.attrs.each |attr| {
+              match attr.node.value.node {
+                  ast::meta_word(x) => {
+                      if x.slice(0, x.len()) == "static_assert" {
+                          let v = ccx.const_values.get_copy(&item.id);
+                          unsafe {
+                              if !(llvm::LLVMConstIntGetZExtValue(v) as bool) {
+                                  ccx.sess.span_fatal(expr.span, "static assertion failed");
+                              }
+                          }
+                      }
+                  },
+                  _ => ()
+              }
+          }
+      },
       ast::item_foreign_mod(ref foreign_mod) => {
         foreign::trans_foreign_mod(ccx, path, foreign_mod);
       }
