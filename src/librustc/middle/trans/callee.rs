@@ -510,11 +510,7 @@ pub fn trans_call_inner(in_cx: block,
 
         let mut llargs = ~[];
 
-        if ty::type_is_immediate(ret_ty) {
-            unsafe {
-                llargs.push(llvm::LLVMGetUndef(T_ptr(T_i8())));
-            }
-        } else {
+        if !ty::type_is_immediate(ret_ty) {
             llargs.push(llretslot);
         }
 

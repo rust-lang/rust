@@ -150,9 +150,14 @@ fn build_shim_fn_(ccx: @CrateContext,
         ccx.llmod, shim_name, tys.shim_fn_ty);
 
     // Declare the body of the shim function:
-    let fcx = new_fn_ctxt(ccx, ~[], llshimfn, tys.fn_sig.output, None);
+    let (fcx, imm) = new_fn_ctxt(ccx, ~[], llshimfn, tys.fn_sig.output, None);
     let bcx = top_scope_block(fcx, None);
     let lltop = bcx.llbb;
+
+    //
+    // FIXME [#6575] this seems to be making the assumption that the first
+    //               implicit argument is always available?
+    //
     let llargbundle = get_param(llshimfn, 0u);
     let llargvals = arg_builder(bcx, tys, llargbundle);
 
@@ -174,7 +179,8 @@ fn build_shim_fn_(ccx: @CrateContext,
 type wrap_arg_builder<'self> = &'self fn(bcx: block,
                                          tys: &ShimTypes,
                                          llwrapfn: ValueRef,
-                                         llargbundle: ValueRef);
+                                         llargbundle: ValueRef,
+                                         ret_imm: bool);
 
 type wrap_ret_builder<'self> = &'self fn(bcx: block,
                                          tys: &ShimTypes,
@@ -189,7 +195,7 @@ fn build_wrap_fn_(ccx: @CrateContext,
                   arg_builder: wrap_arg_builder,
                   ret_builder: wrap_ret_builder) {
     let _icx = ccx.insn_ctxt("foreign::build_wrap_fn_");
-    let fcx = new_fn_ctxt(ccx, ~[], llwrapfn, tys.fn_sig.output, None);
+    let (fcx, imm) = new_fn_ctxt(ccx, ~[], llwrapfn, tys.fn_sig.output, None);
 
     // Patch up the return type if it's not immediate and we're returning via
     // the C ABI.
@@ -204,7 +210,7 @@ fn build_wrap_fn_(ccx: @CrateContext,
 
     // Allocate the struct and write the arguments into it.
     let llargbundle = alloca(bcx, tys.bundle_ty);
-    arg_builder(bcx, tys, llwrapfn, llargbundle);
+    arg_builder(bcx, tys, llwrapfn, llargbundle, imm);
 
     // Create call itself.
     let llshimfnptr = PointerCast(bcx, llshimfn, T_ptr(T_i8()));
@@ -432,16 +438,16 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
                        cc: lib::llvm::CallConv) {
         debug!("build_direct_fn(%s)", *link_name(ccx, item));
 
-        let fcx = new_fn_ctxt(ccx, ~[], decl, tys.fn_sig.output, None);
+        let (fcx, imm) = new_fn_ctxt(ccx, ~[], decl, tys.fn_sig.output, None);
         let bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
         let llbasefn = base_fn(ccx, *link_name(ccx, item), tys, cc);
         let ty = ty::lookup_item_type(ccx.tcx,
                                       ast_util::local_def(item.id)).ty;
+        let ret_ty = ty::ty_fn_ret(ty);
         let args = vec::from_fn(ty::ty_fn_args(ty).len(), |i| {
-            get_param(decl, i + first_real_arg)
+            get_param(decl, arg_pos(imm, i))
         });
         let retval = Call(bcx, llbasefn, args);
-        let ret_ty = ty::ty_fn_ret(ty);
         if !ty::type_is_nil(ret_ty) && !ty::type_is_bot(ret_ty) {
             Store(bcx, retval, fcx.llretptr.get());
         }
@@ -458,18 +464,18 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
                          cc: lib::llvm::CallConv) {
         debug!("build_fast_ffi_fn(%s)", *link_name(ccx, item));
 
-        let fcx = new_fn_ctxt(ccx, ~[], decl, tys.fn_sig.output, None);
+        let (fcx, imm) = new_fn_ctxt(ccx, ~[], decl, tys.fn_sig.output, None);
         let bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
         let llbasefn = base_fn(ccx, *link_name(ccx, item), tys, cc);
         set_no_inline(fcx.llfn);
         set_fixed_stack_segment(fcx.llfn);
         let ty = ty::lookup_item_type(ccx.tcx,
                                       ast_util::local_def(item.id)).ty;
+        let ret_ty = ty::ty_fn_ret(ty);
         let args = vec::from_fn(ty::ty_fn_args(ty).len(), |i| {
-            get_param(decl, i + first_real_arg)
+            get_param(decl, arg_pos(imm, i))
         });
         let retval = Call(bcx, llbasefn, args);
-        let ret_ty = ty::ty_fn_ret(ty);
         if !ty::type_is_nil(ret_ty) && !ty::type_is_bot(ret_ty) {
             Store(bcx, retval, fcx.llretptr.get());
         }
@@ -508,13 +514,13 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
         fn build_args(bcx: block,
                       tys: &ShimTypes,
                       llwrapfn: ValueRef,
-                      llargbundle: ValueRef) {
+                      llargbundle: ValueRef,
+                      ret_imm: bool) {
             let _icx = bcx.insn_ctxt("foreign::wrap::build_args");
             let ccx = bcx.ccx();
             let n = tys.llsig.llarg_tys.len();
-            let implicit_args = first_real_arg; // return + env
             for uint::range(0, n) |i| {
-                let mut llargval = get_param(llwrapfn, i + implicit_args);
+                let mut llargval = get_param(llwrapfn, arg_pos(ret_imm, i));
 
                 // In some cases, Rust will pass a pointer which the
                 // native C type doesn't have.  In that case, just
@@ -552,14 +558,14 @@ pub fn trans_intrinsic(ccx: @CrateContext,
 
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, item.id));
 
-    let fcx = new_fn_ctxt_w_id(ccx,
-                               path,
-                               decl,
-                               item.id,
-                               output_type,
-                               None,
-                               Some(substs),
-                               Some(item.span));
+    let (fcx, imm) = new_fn_ctxt_w_id(ccx,
+                                       path,
+                                       decl,
+                                       item.id,
+                                       output_type,
+                                       None,
+                                       Some(substs),
+                                       Some(item.span));
 
     // Set the fixed stack segment flag if necessary.
     if attr::attrs_contains_name(attributes, "fixed_stack_segment") {
@@ -568,6 +574,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
 
     let mut bcx = top_scope_block(fcx, None);
     let lltop = bcx.llbb;
+    let first_real_arg = arg_pos(imm, 0u);
     match *ccx.sess.str_of(item.ident) {
         ~"atomic_cxchg" => {
             let old = AtomicCmpXchg(bcx,
@@ -1269,8 +1276,6 @@ pub fn trans_foreign_fn(ccx: @CrateContext,
             if !ty::type_is_immediate(tys.fn_sig.output) {
                 let llretptr = load_inbounds(bcx, llargbundle, [0u, n]);
                 llargvals.push(llretptr);
-            } else {
-                llargvals.push(C_null(T_ptr(T_i8())));
             }
 
             let llenvptr = C_null(T_opaque_box_ptr(bcx.ccx()));
@@ -1351,12 +1356,14 @@ pub fn trans_foreign_fn(ccx: @CrateContext,
         fn build_args(bcx: block,
                       tys: &ShimTypes,
                       llwrapfn: ValueRef,
-                      llargbundle: ValueRef) {
+                      llargbundle: ValueRef,
+                      ret_imm: bool) {
             let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_args");
             tys.fn_ty.build_wrap_args(bcx,
                                       tys.llsig.llret_ty,
                                       llwrapfn,
-                                      llargbundle);
+                                      llargbundle,
+                                      ret_imm);
         }
 
         fn build_ret(bcx: block, tys: &ShimTypes, llargbundle: ValueRef) {

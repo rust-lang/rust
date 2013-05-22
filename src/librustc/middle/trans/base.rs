@@ -1593,7 +1593,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
                         impl_id: Option<ast::def_id>,
                         param_substs: Option<@param_substs>,
                         sp: Option<span>)
-                     -> fn_ctxt {
+                     -> (fn_ctxt, bool) {
     for param_substs.each |p| { p.validate(); }
 
     debug!("new_fn_ctxt_w_id(path=%s, id=%?, impl_id=%?, \
@@ -1611,11 +1611,13 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
             ty::subst_tps(ccx.tcx, substs.tys, substs.self_ty, output_type)
         }
     };
-    let is_immediate = ty::type_is_immediate(substd_output_type);
+    let imm = ty::type_is_immediate(substd_output_type);
 
     let fcx = @mut fn_ctxt_ {
           llfn: llfndecl,
-          llenv: unsafe { llvm::LLVMGetParam(llfndecl, 1u as c_uint) },
+          llenv: unsafe {
+              llvm::LLVMGetParam(llfndecl, arg_env(imm) as c_uint)
+          },
           llretptr: None,
           llstaticallocas: llbbs.sa,
           llloadenv: None,
@@ -1623,7 +1625,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           llself: None,
           personality: None,
           loop_ret: None,
-          has_immediate_return_value: is_immediate,
+          has_immediate_return_value: imm,
           llargs: @mut HashMap::new(),
           lllocals: @mut HashMap::new(),
           llupvars: @mut HashMap::new(),
@@ -1636,7 +1638,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
     };
 
     fcx.llretptr = Some(make_return_pointer(fcx, substd_output_type));
-    fcx
+    (fcx, imm)
 }
 
 pub fn new_fn_ctxt(ccx: @CrateContext,
@@ -1644,7 +1646,7 @@ pub fn new_fn_ctxt(ccx: @CrateContext,
                    llfndecl: ValueRef,
                    output_type: ty::t,
                    sp: Option<span>)
-                -> fn_ctxt {
+                -> (fn_ctxt, bool) {
     new_fn_ctxt_w_id(ccx, path, llfndecl, -1, output_type, None, None, sp)
 }
 
@@ -1664,7 +1666,8 @@ pub fn new_fn_ctxt(ccx: @CrateContext,
 // field of the fn_ctxt with
 pub fn create_llargs_for_fn_args(cx: fn_ctxt,
                                  self_arg: self_arg,
-                                 args: &[ast::arg])
+                                 args: &[ast::arg],
+                                 ret_imm: bool)
                               -> ~[ValueRef] {
     let _icx = cx.insn_ctxt("create_llargs_for_fn_args");
 
@@ -1690,7 +1693,7 @@ pub fn create_llargs_for_fn_args(cx: fn_ctxt,
     // llvm::LLVMGetParam for each argument.
     vec::from_fn(args.len(), |i| {
         unsafe {
-            let arg_n = first_real_arg + i;
+            let arg_n = arg_pos(ret_imm, i);
             let arg = &args[i];
             let llarg = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
 
@@ -1829,15 +1832,15 @@ pub fn trans_closure(ccx: @CrateContext,
            param_substs.repr(ccx.tcx));
 
     // Set up arguments to the function.
-    let fcx = new_fn_ctxt_w_id(ccx,
-                               path,
-                               llfndecl,
-                               id,
-                               output_type,
-                               impl_id,
-                               param_substs,
-                               Some(body.span));
-    let raw_llargs = create_llargs_for_fn_args(fcx, self_arg, decl.inputs);
+    let (fcx, imm) = new_fn_ctxt_w_id(ccx,
+                                       path,
+                                       llfndecl,
+                                       id,
+                                       output_type,
+                                       impl_id,
+                                       param_substs,
+                                       Some(body.span));
+    let raw_llargs = create_llargs_for_fn_args(fcx, self_arg, decl.inputs, imm);
 
     // Set the fixed stack segment flag if necessary.
     if attr::attrs_contains_name(attributes, "fixed_stack_segment") {
@@ -1962,16 +1965,16 @@ pub fn trans_enum_variant(ccx: @CrateContext,
                                 ty_param_substs,
                                 None,
                                 ty::node_id_to_type(ccx.tcx, enum_id));
-    let fcx = new_fn_ctxt_w_id(ccx,
-                               ~[],
-                               llfndecl,
-                               variant.node.id,
-                               enum_ty,
-                               None,
-                               param_substs,
-                               None);
+    let (fcx, imm) = new_fn_ctxt_w_id(ccx,
+                                       ~[],
+                                       llfndecl,
+                                       variant.node.id,
+                                       enum_ty,
+                                       None,
+                                       param_substs,
+                                       None);
 
-    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
+    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args, imm);
     let bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, variant.node.id));
     let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
@@ -2041,16 +2044,16 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
                                ty_to_str(ccx.tcx, ctor_ty)))
     };
 
-    let fcx = new_fn_ctxt_w_id(ccx,
-                               ~[],
-                               llfndecl,
-                               ctor_id,
-                               tup_ty,
-                               None,
-                               param_substs,
-                               None);
+    let (fcx, imm) = new_fn_ctxt_w_id(ccx,
+                                       ~[],
+                                       llfndecl,
+                                       ctor_id,
+                                       tup_ty,
+                                       None,
+                                       param_substs,
+                                       None);
 
-    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
+    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args, imm);
 
     let bcx = top_scope_block(fcx, None);
     let lltop = bcx.llbb;
@@ -2293,19 +2296,21 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
 
     fn create_main(ccx: @CrateContext, main_llfn: ValueRef) -> ValueRef {
         let nt = ty::mk_nil();
+
         let llfty = type_of_fn(ccx, [], nt);
         let llfdecl = decl_fn(ccx.llmod, "_rust_main",
                               lib::llvm::CCallConv, llfty);
 
-        let fcx = new_fn_ctxt(ccx, ~[], llfdecl, nt, None);
+        let (fcx, _) = new_fn_ctxt(ccx, ~[], llfdecl, nt, None);
 
         let bcx = top_scope_block(fcx, None);
         let lltop = bcx.llbb;
 
         // Call main.
-        let lloutputarg = C_null(T_ptr(T_i8()));
-        let llenvarg = unsafe { llvm::LLVMGetParam(llfdecl, 1 as c_uint) };
-        let args = ~[lloutputarg, llenvarg];
+        let llenvarg = unsafe {
+            llvm::LLVMGetParam(llfdecl, arg_env(true) as c_uint)
+        };
+        let args = ~[llenvarg];
         let llresult = Call(bcx, main_llfn, args);
         Store(bcx, llresult, fcx.llretptr.get());
 
@@ -2347,8 +2352,6 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
                 trans_external_path(ccx, start_def_id, start_fn_type);
             }
 
-            let retptr = llvm::LLVMBuildAlloca(bld, T_i8(), noname());
-
             let crate_map = ccx.crate_map;
             let opaque_crate_map = llvm::LLVMBuildPointerCast(bld,
                                                               crate_map,
@@ -2371,7 +2374,6 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
                             bld, rust_main, T_ptr(T_i8()), noname());
 
                     ~[
-                        retptr,
                         C_null(T_opaque_box_ptr(ccx)),
                         opaque_rust_main,
                         llvm::LLVMGetParam(llfn, 0),
@@ -2384,7 +2386,6 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
                 debug!("using user-defined start fn");
                 let args = {
                     ~[
-                        retptr,
                         C_null(T_opaque_box_ptr(ccx)),
                         llvm::LLVMGetParam(llfn, 0 as c_uint),
                         llvm::LLVMGetParam(llfn, 1 as c_uint),

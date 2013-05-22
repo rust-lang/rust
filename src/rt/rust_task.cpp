@@ -162,9 +162,7 @@ void task_start_wrapper(spawn_args *a)
 
     bool threw_exception = false;
     try {
-        // The first argument is the return pointer; as the task fn
-        // must have void return type, we can safely pass 0.
-        a->f(0, a->envptr, a->argptr);
+        a->f(a->envptr, a->argptr);
     } catch (rust_task *ex) {
         assert(ex == task && "Expected this task to be thrown for unwinding");
         threw_exception = true;
@@ -185,7 +183,7 @@ void task_start_wrapper(spawn_args *a)
     if(env) {
         // free the environment (which should be a unique closure).
         const type_desc *td = env->td;
-        td->drop_glue(NULL, NULL, NULL, box_body(env));
+        td->drop_glue(NULL, NULL, box_body(env));
         task->kernel->region()->free(env);
     }
 

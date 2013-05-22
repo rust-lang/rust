@@ -660,8 +660,26 @@ pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>, kind: block_kind,
     @mut block_(llbb, parent, kind, is_lpad, node_info, fcx)
 }
 
-// First two args are retptr, env
-pub static first_real_arg: uint = 2u;
+pub fn arg_pos(ret_imm: bool, arg: uint) -> uint {
+    if ret_imm {
+        arg + 1u
+    } else {
+        arg + 2u
+    }
+}
+
+pub fn arg_out(ret_imm: bool) -> uint {
+    assert!(ret_imm);
+    0u
+}
+
+pub fn arg_env(ret_imm: bool) -> uint {
+    if !ret_imm {
+        1u
+    } else {
+        0u
+    }
+}
 
 pub struct Result {
     bcx: block,
@@ -962,8 +980,7 @@ pub fn T_tydesc(targ_cfg: @session::config) -> TypeRef {
     let tydescpp = T_ptr(T_ptr(tydesc));
     let pvoid = T_ptr(T_i8());
     let glue_fn_ty =
-        T_ptr(T_fn([T_ptr(T_nil()), T_ptr(T_nil()), tydescpp,
-                    pvoid], T_void()));
+        T_ptr(T_fn([T_ptr(T_nil()), tydescpp, pvoid], T_void()));
 
     let int_type = T_int(targ_cfg);
     let elems =
