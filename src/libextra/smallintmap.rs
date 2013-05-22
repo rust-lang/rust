@@ -267,6 +267,8 @@ pub impl SmallIntSet {
 
 #[cfg(test)]
 mod tests {
+    use core::prelude::*;
+
     use super::SmallIntMap;
 
     #[test]

@@ -866,6 +866,8 @@ mod test {
     // Tests that the different backends behave the same when the
     // binary streaming protocol is broken
     mod broken_protocol {
+        use core::prelude::*;
+
         use flatpipes::{BytePort, FlatPort};
         use flatpipes::flatteners::PodUnflattener;
         use flatpipes::pod;

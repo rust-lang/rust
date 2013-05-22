@@ -36,6 +36,8 @@ extern mod core(name = "std", vers = "0.7-pre");
 use core::{str, unstable};
 use core::str::{StrSlice, OwnedStr};
 
+pub use core::os;
+
 pub mod uv_ll;
 
 // General io and system-services modules

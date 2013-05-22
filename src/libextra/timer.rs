@@ -175,6 +175,8 @@ extern fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use timer::*;
     use uv;
     use core::cell::Cell;

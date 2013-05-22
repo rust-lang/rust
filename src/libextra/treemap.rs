@@ -699,6 +699,8 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
 
 #[cfg(test)]
 mod test_treemap {
+    use core::prelude::*;
+
     use core::iterator::*;
     use super::*;
     use core::rand::RngUtil;
@@ -1017,6 +1019,7 @@ mod test_treemap {
 
 #[cfg(test)]
 mod test_set {
+    use core::prelude::*;
     use core::iterator::*;
     use super::*;
 

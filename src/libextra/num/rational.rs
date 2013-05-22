@@ -284,6 +284,8 @@ impl<T: FromStrRadix + Clone + Integer + Ord>
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use super::*;
     use core::num::{Zero,One,FromStrRadix,IntConvertible};
     use core::from_str::FromStr;

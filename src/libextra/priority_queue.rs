@@ -185,13 +185,13 @@ pub impl <T:Ord> PriorityQueue<T> {
 mod tests {
     use sort::merge_sort;
     use core::cmp::le;
-    use priority_queue::PriorityQueue::{from_vec, new};
+    use priority_queue::PriorityQueue;
 
     #[test]
     fn test_top_and_pop() {
         let data = ~[2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1];
         let mut sorted = merge_sort(data, le);
-        let mut heap = from_vec(data);
+        let mut heap = PriorityQueue::from_vec(data);
         while !heap.is_empty() {
             assert_eq!(heap.top(), sorted.last());
             assert_eq!(heap.pop(), sorted.pop());
@@ -200,7 +200,7 @@ mod tests {
 
     #[test]
     fn test_push() {
-        let mut heap = from_vec(~[2, 4, 9]);
+        let mut heap = PriorityQueue::from_vec(~[2, 4, 9]);
         assert_eq!(heap.len(), 3);
         assert!(*heap.top() == 9);
         heap.push(11);
@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     fn test_push_unique() {
-        let mut heap = from_vec(~[~2, ~4, ~9]);
+        let mut heap = PriorityQueue::from_vec(~[~2, ~4, ~9]);
         assert_eq!(heap.len(), 3);
         assert!(*heap.top() == ~9);
         heap.push(~11);
@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn test_push_pop() {
-        let mut heap = from_vec(~[5, 5, 2, 1, 3]);
+        let mut heap = PriorityQueue::from_vec(~[5, 5, 2, 1, 3]);
         assert_eq!(heap.len(), 5);
         assert_eq!(heap.push_pop(6), 6);
         assert_eq!(heap.len(), 5);
@@ -258,7 +258,7 @@ mod tests {
 
     #[test]
     fn test_replace() {
-        let mut heap = from_vec(~[5, 5, 2, 1, 3]);
+        let mut heap = PriorityQueue::from_vec(~[5, 5, 2, 1, 3]);
         assert_eq!(heap.len(), 5);
         assert_eq!(heap.replace(6), 5);
         assert_eq!(heap.len(), 5);
@@ -271,7 +271,7 @@ mod tests {
     }
 
     fn check_to_vec(data: ~[int]) {
-        let heap = from_vec(copy data);
+        let heap = PriorityQueue::from_vec(copy data);
         assert_eq!(merge_sort((copy heap).to_vec(), le), merge_sort(data, le));
         assert_eq!(heap.to_sorted_vec(), merge_sort(data, le));
     }
@@ -296,27 +296,27 @@ mod tests {
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    fn test_empty_pop() { let mut heap = new::<int>(); heap.pop(); }
+    fn test_empty_pop() { let mut heap = PriorityQueue::new::<int>(); heap.pop(); }
 
     #[test]
     fn test_empty_maybe_pop() {
-        let mut heap = new::<int>();
+        let mut heap = PriorityQueue::new::<int>();
         assert!(heap.maybe_pop().is_none());
     }
 
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    fn test_empty_top() { let empty = new::<int>(); empty.top(); }
+    fn test_empty_top() { let empty = PriorityQueue::new::<int>(); empty.top(); }
 
     #[test]
     fn test_empty_maybe_top() {
-        let empty = new::<int>();
+        let empty = PriorityQueue::new::<int>();
         assert!(empty.maybe_top().is_none());
     }
 
     #[test]
     #[should_fail]
     #[ignore(cfg(windows))]
-    fn test_empty_replace() { let mut heap = new(); heap.replace(5); }
+    fn test_empty_replace() { let mut heap = PriorityQueue::new(); heap.replace(5); }
 }

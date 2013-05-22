@@ -511,6 +511,7 @@ pub impl<'self, T:Const + Owned> RWReadMode<'self, T> {
 
 #[cfg(test)]
 mod tests {
+    use core::prelude::*;
 
     use arc::*;
     use arc;
