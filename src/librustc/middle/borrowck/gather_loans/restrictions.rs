@@ -10,6 +10,8 @@
 
 //! Computes the restrictions that result from a borrow.
 
+use core::prelude::*;
+
 use middle::borrowck::*;
 use mc = middle::mem_categorization;
 use middle::ty;

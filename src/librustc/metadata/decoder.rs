@@ -566,14 +566,6 @@ pub fn _each_path(intr: @ident_interner,
     return broken;
 }
 
-#[cfg(stage0)]
-pub fn each_path(intr: @ident_interner,
-                 cdata: cmd,
-                 get_crate_data: GetCrateDataCb,
-                 f: &fn(&str, def_like, ast::visibility) -> bool) {
-    _each_path(intr, cdata, get_crate_data, f);
-}
-#[cfg(not(stage0))]
 pub fn each_path(intr: @ident_interner,
                  cdata: cmd,
                  get_crate_data: GetCrateDataCb,

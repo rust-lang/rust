@@ -16,6 +16,8 @@
 // their associated scopes.  In phase two, checking loans, we will then make
 // sure that all of these loans are honored.
 
+use core::prelude::*;
+
 use middle::borrowck::*;
 use mc = middle::mem_categorization;
 use middle::pat_util;
