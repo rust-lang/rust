@@ -127,7 +127,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
         foot.push_str("{");
         foot.push_str(*stmt);
     }
-    foot.push_str(fmt!("\nprint({\n%s\n})\n", input));
+    foot.push_str(fmt!("\npp({\n%s\n})\n", input));
     for repl.stmts.len().times {
         foot.push_str("}");
     }
