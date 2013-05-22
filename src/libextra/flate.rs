@@ -14,6 +14,8 @@ Simple compression
 
 */
 
+use core::prelude::*;
+
 use core::libc::{c_void, size_t, c_int};
 use core::libc;
 use core::vec;
