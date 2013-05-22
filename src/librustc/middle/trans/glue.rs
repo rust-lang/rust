@@ -19,6 +19,7 @@ use back::link::*;
 use driver::session;
 use lib;
 use lib::llvm::{llvm, ValueRef, TypeRef, True};
+use lib::llvm::type_to_str;
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::callee;
@@ -381,8 +382,9 @@ pub fn call_tydesc_glue_full(bcx: block,
         }
     };
 
-    Call(bcx, llfn, [C_null(T_ptr(T_nil())), C_null(T_ptr(T_nil())),
-                     C_null(T_ptr(T_ptr(bcx.ccx().tydesc_type))), llrawptr]);
+    Call(bcx, llfn, [C_null(T_ptr(T_nil())),
+                        C_null(T_ptr(T_ptr(bcx.ccx().tydesc_type))),
+                        llrawptr]);
 }
 
 // See [Note-arg-mode]
@@ -483,17 +485,16 @@ pub fn trans_struct_drop(bcx: block,
         };
 
         // Class dtors have no explicit args, so the params should
-        // just consist of the output pointer and the environment
-        // (self)
-        assert_eq!(params.len(), 2);
+        // just consist of the environment (self)
+        assert_eq!(params.len(), 1);
 
         // Take a reference to the class (because it's using the Drop trait),
         // do so now.
         let llval = alloca(bcx, val_ty(v0));
         Store(bcx, v0, llval);
 
-        let self_arg = PointerCast(bcx, llval, params[1]);
-        let args = ~[C_null(T_ptr(T_i8())), self_arg];
+        let self_arg = PointerCast(bcx, llval, params[0]);
+        let args = ~[self_arg];
 
         Call(bcx, dtor_addr, args);
 
@@ -726,7 +727,7 @@ pub fn make_generic_glue_inner(ccx: @CrateContext,
                                helper: glue_helper)
                             -> ValueRef {
     let _icx = ccx.insn_ctxt("make_generic_glue_inner");
-    let fcx = new_fn_ctxt(ccx, ~[], llfn, ty::mk_nil(), None);
+    let (fcx, imm) = new_fn_ctxt(ccx, ~[], llfn, ty::mk_nil(), None);
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     ccx.stats.n_glues_created += 1u;
     // All glue functions take values passed *by alias*; this is a
@@ -739,7 +740,7 @@ pub fn make_generic_glue_inner(ccx: @CrateContext,
 
     let bcx = top_scope_block(fcx, None);
     let lltop = bcx.llbb;
-    let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, 3u as c_uint) };
+    let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, arg_pos(true, 1u) as c_uint) };
     helper(bcx, llrawptr0, t);
     finish_fn(fcx, lltop);
     return llfn;
