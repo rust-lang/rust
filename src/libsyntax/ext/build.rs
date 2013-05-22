@@ -299,7 +299,7 @@ impl AstBuilder for @ExtCtxt {
             self.path_all(dummy_sp(),
                           true,
                           ~[
-                              self.ident_of("core"),
+                              self.ident_of("std"),
                               self.ident_of("option"),
                               self.ident_of("Option")
                           ],
@@ -537,7 +537,7 @@ impl AstBuilder for @ExtCtxt {
         self.expr_call_global(
             span,
             ~[
-                self.ident_of("core"),
+                self.ident_of("std"),
                 self.ident_of("sys"),
                 self.ident_of("FailWithCause"),
                 self.ident_of("fail_with"),
