@@ -260,7 +260,7 @@ pub fn make_test_name(config: &config, testfile: &Path) -> test::TestName {
 
 pub fn make_test_closure(config: &config, testfile: &Path) -> test::TestFn {
     use core::cell::Cell;
-    let config = Cell(copy *config);
-    let testfile = Cell(testfile.to_str());
+    let config = Cell::new(copy *config);
+    let testfile = Cell::new(testfile.to_str());
     test::DynTestFn(|| { runtest::run(config.take(), testfile.take()) })
 }

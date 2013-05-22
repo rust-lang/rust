@@ -308,7 +308,7 @@ impl TaskBuilder {
                 f
             }
         };
-        let prev_gen_body = Cell(prev_gen_body);
+        let prev_gen_body = Cell::new(prev_gen_body);
         let next_gen_body = {
             let f: ~fn(~fn()) -> ~fn() = |body| {
                 let prev_gen_body = prev_gen_body.take();
@@ -354,7 +354,7 @@ impl TaskBuilder {
 
     /// Runs a task, while transfering ownership of one argument to the child.
     pub fn spawn_with<A:Owned>(&mut self, arg: A, f: ~fn(v: A)) {
-        let arg = Cell(arg);
+        let arg = Cell::new(arg);
         do self.spawn {
             f(arg.take());
         }
@@ -791,9 +791,9 @@ struct Wrapper {
 fn test_add_wrapper() {
     let (po, ch) = stream::<()>();
     let mut b0 = task();
-    let ch = Cell(ch);
+    let ch = Cell::new(ch);
     do b0.add_wrapper |body| {
-        let ch = Cell(ch.take());
+        let ch = Cell::new(ch.take());
         let result: ~fn() = || {
             let ch = ch.take();
             body();
@@ -890,10 +890,10 @@ fn test_spawn_sched_childs_on_default_sched() {
     // Assuming tests run on the default scheduler
     let default_id = unsafe { rt::rust_get_sched_id() };
 
-    let ch = Cell(ch);
+    let ch = Cell::new(ch);
     do spawn_sched(SingleThreaded) {
         let parent_sched_id = unsafe { rt::rust_get_sched_id() };
-        let ch = Cell(ch.take());
+        let ch = Cell::new(ch.take());
         do spawn {
             let ch = ch.take();
             let child_sched_id = unsafe { rt::rust_get_sched_id() };

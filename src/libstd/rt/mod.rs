@@ -187,6 +187,7 @@ pub fn context() -> RuntimeContext {
     use task::rt::rust_task;
     use self::local::Local;
     use self::sched::Scheduler;
+    use cell::Cell;
 
     // XXX: Hitting TLS twice to check if the scheduler exists
     // then to check for the task is not good for perf
@@ -194,7 +195,7 @@ pub fn context() -> RuntimeContext {
         return OldTaskContext;
     } else {
         if Local::exists::<Scheduler>() {
-            let context = ::cell::empty_cell();
+            let context = Cell::empty();
             do Local::borrow::<Scheduler> |sched| {
                 if sched.in_task_context() {
                     context.put_back(TaskContext);
@@ -231,7 +232,7 @@ fn test_context() {
             let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then() |task| {
                 assert_eq!(context(), SchedulerContext);
-                let task = Cell(task);
+                let task = Cell::new(task);
                 do Local::borrow::<Scheduler> |sched| {
                     sched.enqueue_task(task.take());
                 }
