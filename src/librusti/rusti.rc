@@ -47,7 +47,7 @@ pub struct Repl {
     running: bool,
     view_items: ~str,
     lib_search_paths: ~[~str],
-    stmts: ~str
+    stmts: ~[~str],
 }
 
 // Action to do after reading a :command
@@ -88,28 +88,22 @@ fn record(mut repl: Repl, blk: &ast::blk, intr: @token::ident_interner) -> Repl 
 
         repl.view_items = repl.view_items + "\n" + new_view_items
     }
-    if blk.node.stmts.len() > 0 {
-        let new_stmts = do with_pp(intr) |pp, writer| {
-            for blk.node.stmts.each |stmt| {
-                match stmt.node {
-                    ast::stmt_decl(*) | ast::stmt_mac(*) => {
-                        pprust::print_stmt(pp, *stmt);
-                        writer.write_line("");
-                    }
-                    ast::stmt_expr(expr, _) | ast::stmt_semi(expr, _) => {
-                        match expr.node {
-                            ast::expr_assign(*) |
-                            ast::expr_assign_op(*) |
-                            _ => {}
-                        }
-                    }
+    for blk.node.stmts.each |stmt| {
+        match stmt.node {
+            ast::stmt_decl(*) | ast::stmt_mac(*) => {
+                let s = do with_pp(intr) |pp, _| {
+                    pprust::print_stmt(pp, *stmt);
+                };
+                repl.stmts.push(s);
+            }
+            ast::stmt_expr(expr, _) | ast::stmt_semi(expr, _) => {
+                match expr.node {
+                    ast::expr_assign(*) |
+                    ast::expr_assign_op(*) |
+                    _ => {}
                 }
             }
-        };
-
-        debug!("new stmts %s", new_stmts);
-
-        repl.stmts = repl.stmts + "\n" + new_stmts
+        }
     }
 
     return repl;
@@ -128,8 +122,16 @@ fn run(repl: Repl, input: ~str) -> Repl {
 
     debug!("building driver input");
     let head = include_str!("wrapper.rs").to_owned();
-    let foot = fmt!("fn main() {\n%s\n%s\n\nprint({\n%s\n})\n}",
-                    repl.view_items, repl.stmts, input);
+    let mut foot = fmt!("fn main() {\n%s\n", repl.view_items);
+    for repl.stmts.each |stmt| {
+        foot.push_str("{");
+        foot.push_str(*stmt);
+    }
+    foot.push_str(fmt!("\nprint({\n%s\n})\n", input));
+    for repl.stmts.len().times {
+        foot.push_str("}");
+    }
+    foot.push_str("\n}");
     let wrapped = driver::str_input(head + foot);
 
     debug!("inputting %s", head + foot);
@@ -161,18 +163,24 @@ fn run(repl: Repl, input: ~str) -> Repl {
         }
     }
 
-    let e = opt.unwrap();
-    let blk = match e.node {
-        ast::expr_call(_, ref exprs, _) => {
-            match exprs[0].node {
-                ast::expr_block(ref blk) => blk,
-                _ => fail!()
+    let mut e = opt.expect("the main function should exist");
+    loop {
+        match e.node {
+            ast::expr_call(_, ref exprs, _) => {
+                match exprs[0].node {
+                    ast::expr_block(ref blk) => {
+                        debug!("recording input into repl history");
+                        return record(repl, blk, sess.parse_sess.interner);
+                    }
+                    _ => fail!("expr_call should have a block inside"),
+                }
             }
+
+            ast::expr_block(ref blk) => { e = blk.node.expr.unwrap() }
+
+            _ => fail!("unknown ast node")
         }
-        _ => fail!()
-    };
-    debug!("recording input into repl history");
-    record(repl, blk, sess.parse_sess.interner)
+    }
 }
 
 // Compiles a crate given by the filename as a library if the compiled
@@ -264,7 +272,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
         ~"exit" => repl.running = false,
         ~"clear" => {
             repl.view_items = ~"";
-            repl.stmts = ~"";
+            repl.stmts = ~[];
 
             // XXX: Win32 version of linenoise can't do this
             //rl::clear();
@@ -386,7 +394,7 @@ pub fn main() {
         running: true,
         view_items: ~"",
         lib_search_paths: ~[],
-        stmts: ~""
+        stmts: ~[]
     };
 
     let istty = unsafe { libc::isatty(libc::STDIN_FILENO as i32) } != 0;
@@ -440,7 +448,7 @@ mod tests {
             running: true,
             view_items: ~"",
             lib_search_paths: ~[],
-            stmts: ~""
+            stmts: ~[]
         }
     }
 
@@ -453,7 +461,8 @@ mod tests {
         }
     }
 
-    #[test] #[ignore]
+    // FIXME(#6489): these tests mysteriously fail on i686
+    #[test] #[ignore(cfg(target_arch = "x86"))]
     fn run_all() {
         // By default, unit tests are run in parallel. Rusti, on the other hand,
         // does not enjoy doing this. I suspect that it is because the LLVM
@@ -475,5 +484,8 @@ mod tests {
         debug!("regression test for #5803");
         run_cmds(["spawn( || println(\"Please don't segfault\") );",
                   "do spawn { println(\"Please?\"); }"]);
+
+        debug!("regression test for #5675");
+        run_cmds(["fn f() {}", "fn f() {}", "fn f() {}"]);
     }
 }
