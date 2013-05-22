@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use back::{link, abi};
-use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
+use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg, Monotonic};
 use lib::llvm::{TypeRef, ValueRef};
 use lib;
 use middle::trans::base::*;
@@ -657,6 +657,13 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                                 Release);
             Store(bcx, old, fcx.llretptr.get());
         }
+        ~"atomic_xadd_relaxed" => {
+            let old = AtomicRMW(bcx, lib::llvm::Add,
+                                get_param(decl, first_real_arg),
+                                get_param(decl, first_real_arg + 1u),
+                                Monotonic);
+            Store(bcx, old, fcx.llretptr.get());
+        }
         ~"atomic_xsub" => {
             let old = AtomicRMW(bcx, lib::llvm::Sub,
                                 get_param(decl, first_real_arg),
@@ -676,6 +683,13 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                                 get_param(decl, first_real_arg),
                                 get_param(decl, first_real_arg + 1u),
                                 Release);
+            Store(bcx, old, fcx.llretptr.get());
+        }
+        ~"atomic_xsub_relaxed" => {
+            let old = AtomicRMW(bcx, lib::llvm::Sub,
+                                get_param(decl, first_real_arg),
+                                get_param(decl, first_real_arg + 1u),
+                                Monotonic);
             Store(bcx, old, fcx.llretptr.get());
         }
         ~"size_of" => {

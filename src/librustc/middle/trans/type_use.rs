@@ -130,6 +130,7 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                 ~"atomic_xadd"     | ~"atomic_xsub"     |
                 ~"atomic_xchg_acq" | ~"atomic_xadd_acq" |
                 ~"atomic_xsub_acq" | ~"atomic_xchg_rel" |
+                ~"atomic_xadd_relaxed" | ~"atomic_xsub_relaxed" |
                 ~"atomic_xadd_rel" | ~"atomic_xsub_rel" => 0,
 
                 ~"visit_tydesc"  | ~"forget" | ~"frame_address" |
