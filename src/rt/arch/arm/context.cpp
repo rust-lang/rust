@@ -26,9 +26,11 @@ void context::call(void *f, void *arg, void *stack)
 
   // set up the stack
   uint32_t *sp = ( uint32_t *)stack;
-  //sp = align_down(sp);
+  sp = align_down(sp);
   // The final return address. 0 indicates the bottom of the stack
-  *--sp = 0;
+  // sp of arm eabi is 8-byte aligned
+  sp -= 2;
+  *sp = 0;
 
   regs.data[0] = ( uint32_t )arg; // r0
   regs.data[13] = ( uint32_t )sp; //#52 sp, r13
