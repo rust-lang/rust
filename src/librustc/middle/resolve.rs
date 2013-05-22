@@ -22,6 +22,7 @@ use middle::lint::unused_imports;
 use middle::pat_util::pat_bindings;
 
 use syntax::ast::*;
+use syntax::ast;
 use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ast_util::{Privacy, Public, Private};
