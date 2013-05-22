@@ -13,52 +13,48 @@
 //! local storage, and logging. Even a 'freestanding' Rust would likely want
 //! to implement this.
 
-//! Local services may exist in at least three different contexts:
-//! when running as a task, when running in the scheduler's context,
-//! or when running outside of a scheduler but with local services
-//! (freestanding rust with local services?).
-
 use prelude::*;
 use libc::{c_void, uintptr_t};
 use cast::transmute;
-use super::sched::local_sched;
+use super::sched::Scheduler;
+use rt::local::Local;
 use super::local_heap::LocalHeap;
+use rt::logging::StdErrLogger;
 
-pub struct LocalServices {
+pub struct Task {
     heap: LocalHeap,
     gc: GarbageCollector,
     storage: LocalStorage,
-    logger: Logger,
+    logger: StdErrLogger,
     unwinder: Option<Unwinder>,
     destroyed: bool
 }
 
 pub struct GarbageCollector;
 pub struct LocalStorage(*c_void, Option<~fn(*c_void)>);
-pub struct Logger;
 
 pub struct Unwinder {
     unwinding: bool,
 }
 
-impl LocalServices {
-    pub fn new() -> LocalServices {
-        LocalServices {
+impl Task {
+    pub fn new() -> Task {
+        Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
             storage: LocalStorage(ptr::null(), None),
-            logger: Logger,
+            logger: StdErrLogger,
             unwinder: Some(Unwinder { unwinding: false }),
             destroyed: false
         }
     }
 
-    pub fn without_unwinding() -> LocalServices {
-        LocalServices {
+    pub fn without_unwinding() -> Task {
+        Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
             storage: LocalStorage(ptr::null(), None),
-            logger: Logger,
+            logger: StdErrLogger,
             unwinder: None,
             destroyed: false
         }
@@ -66,9 +62,9 @@ impl LocalServices {
 
     pub fn run(&mut self, f: &fn()) {
         // This is just an assertion that `run` was called unsafely
-        // and this instance of LocalServices is still accessible.
-        do borrow_local_services |sched| {
-            assert!(ptr::ref_eq(sched, self));
+        // and this instance of Task is still accessible.
+        do Local::borrow::<Task> |task| {
+            assert!(ptr::ref_eq(task, self));
         }
 
         match self.unwinder {
@@ -86,14 +82,14 @@ impl LocalServices {
 
     /// Must be called manually before finalization to clean up
     /// thread-local resources. Some of the routines here expect
-    /// LocalServices to be available recursively so this must be
-    /// called unsafely, without removing LocalServices from
+    /// Task to be available recursively so this must be
+    /// called unsafely, without removing Task from
     /// thread-local-storage.
     fn destroy(&mut self) {
         // This is just an assertion that `destroy` was called unsafely
-        // and this instance of LocalServices is still accessible.
-        do borrow_local_services |sched| {
-            assert!(ptr::ref_eq(sched, self));
+        // and this instance of Task is still accessible.
+        do Local::borrow::<Task> |task| {
+            assert!(ptr::ref_eq(task, self));
         }
         match self.storage {
             LocalStorage(ptr, Some(ref dtor)) => {
@@ -105,7 +101,7 @@ impl LocalServices {
     }
 }
 
-impl Drop for LocalServices {
+impl Drop for Task {
     fn finalize(&self) { assert!(self.destroyed) }
 }
 
@@ -150,34 +146,6 @@ impl Unwinder {
         }
         extern {
             fn rust_begin_unwind(token: uintptr_t);
-        }
-    }
-}
-
-/// Borrow a pointer to the installed local services.
-/// Fails (likely aborting the process) if local services are not available.
-pub fn borrow_local_services(f: &fn(&mut LocalServices)) {
-    do local_sched::borrow |sched| {
-        match sched.current_task {
-            Some(~ref mut task) => {
-                f(&mut task.local_services)
-            }
-            None => {
-                fail!("no local services for schedulers yet")
-            }
-        }
-    }
-}
-
-pub unsafe fn unsafe_borrow_local_services() -> &mut LocalServices {
-    use cast::transmute_mut_region;
-
-    match local_sched::unsafe_borrow().current_task {
-        Some(~ref mut task) => {
-            transmute_mut_region(&mut task.local_services)
-        }
-        None => {
-            fail!("no local services for schedulers yet")
         }
     }
 }
@@ -229,4 +197,34 @@ mod test {
             let _ = r.next();
         }
     }
+
+    #[test]
+    fn logging() {
+        do run_in_newsched_task() {
+            info!("here i am. logging in a newsched task");
+        }
+    }
+
+    #[test]
+    fn comm_oneshot() {
+        use comm::*;
+
+        do run_in_newsched_task {
+            let (port, chan) = oneshot();
+            send_one(chan, 10);
+            assert!(recv_one(port) == 10);
+        }
+    }
+
+    #[test]
+    fn comm_stream() {
+        use comm::*;
+
+        do run_in_newsched_task() {
+            let (port, chan) = stream();
+            chan.send(10);
+            assert!(port.recv() == 10);
+        }
+    }
 }
+

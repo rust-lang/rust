@@ -118,26 +118,6 @@ pub impl Rcx {
     }
 
     /// Try to resolve the type for the given node.
-    #[config(stage0)]
-    fn resolve_expr_type_adjusted(@mut self, expr: @ast::expr) -> ty::t {
-        let ty_unadjusted = self.resolve_node_type(expr.id);
-        if ty::type_is_error(ty_unadjusted) || ty::type_is_bot(ty_unadjusted) {
-            ty_unadjusted
-        } else {
-            let tcx = self.fcx.tcx();
-            let adjustments = self.fcx.inh.adjustments;
-            match adjustments.find_copy(&expr.id) {
-                None => ty_unadjusted,
-                Some(adjustment) => {
-                    ty::adjust_ty(tcx, expr.span, ty_unadjusted,
-                                  Some(adjustment))
-                }
-            }
-        }
-    }
-
-    /// Try to resolve the type for the given node.
-    #[config(not(stage0))]
     fn resolve_expr_type_adjusted(@mut self, expr: @ast::expr) -> ty::t {
         let ty_unadjusted = self.resolve_node_type(expr.id);
         if ty::type_is_error(ty_unadjusted) || ty::type_is_bot(ty_unadjusted) {

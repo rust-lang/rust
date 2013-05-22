@@ -15,11 +15,10 @@ use sort;
 
 use core::cell::Cell;
 use core::cmp;
-use core::comm::{PortOne, oneshot, send_one};
+use core::comm::{PortOne, oneshot, send_one, recv_one};
 use core::either::{Either, Left, Right};
 use core::hashmap::HashMap;
 use core::io;
-use core::pipes::recv;
 use core::run;
 use core::to_bytes;
 use core::util::replace;
@@ -98,17 +97,6 @@ struct WorkKey {
     name: ~str
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for WorkKey {
-    #[inline(always)]
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        let mut flag = true;
-        self.kind.iter_bytes(lsb0, |bytes| {flag = f(bytes); flag});
-        if !flag { return; }
-        self.name.iter_bytes(lsb0, f);
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for WorkKey {
     #[inline(always)]
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
@@ -389,9 +377,7 @@ fn unwrap<T:Owned +
         None => fail!(),
         Some(Left(v)) => v,
         Some(Right(port)) => {
-            let (exe, v) = match recv(port.unwrap()) {
-                oneshot::send(data) => data
-            };
+            let (exe, v) = recv_one(port);
 
             let s = json_encode(&v);
 

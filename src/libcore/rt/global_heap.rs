@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use sys::{TypeDesc, size_of};
-use libc::{c_void, size_t};
+use libc::{c_void, size_t, uintptr_t};
 use c_malloc = libc::malloc;
 use c_free = libc::free;
 use managed::raw::{BoxHeaderRepr, BoxRepr};
@@ -34,7 +34,7 @@ pub unsafe fn malloc(td: *TypeDesc, size: uint) -> *c_void {
     box.header.prev = null();
     box.header.next = null();
 
-    let exchange_count = &mut *rust_get_exchange_count_ptr();
+    let exchange_count = &mut *exchange_count_ptr();
     atomic_xadd(exchange_count, 1);
 
     return transmute(box);
@@ -52,7 +52,7 @@ pub unsafe fn malloc_raw(size: uint) -> *c_void {
 }
 
 pub unsafe fn free(ptr: *c_void) {
-    let exchange_count = &mut *rust_get_exchange_count_ptr();
+    let exchange_count = &mut *exchange_count_ptr();
     atomic_xsub(exchange_count, 1);
 
     assert!(ptr.is_not_null());
@@ -77,7 +77,11 @@ fn align_to(size: uint, align: uint) -> uint {
     (size + align - 1) & !(align - 1)
 }
 
+fn exchange_count_ptr() -> *mut int {
+    // XXX: Need mutable globals
+    unsafe { transmute(&rust_exchange_count) }
+}
+
 extern {
-    #[rust_stack]
-    fn rust_get_exchange_count_ptr() -> *mut int;
+    static rust_exchange_count: uintptr_t;
 }

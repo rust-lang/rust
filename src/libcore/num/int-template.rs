@@ -108,37 +108,17 @@ pub fn _range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) -> bool {
     return true;
 }
 
-#[cfg(stage0)]
-pub fn range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) {
-    _range_step(start, stop, step, it);
-}
-#[cfg(not(stage0))]
 pub fn range_step(start: T, stop: T, step: T, it: &fn(T) -> bool) -> bool {
     _range_step(start, stop, step, it)
 }
 
 #[inline(always)]
-#[cfg(stage0)]
-/// Iterate over the range [`lo`..`hi`)
-pub fn range(lo: T, hi: T, it: &fn(T) -> bool) {
-    range_step(lo, hi, 1 as T, it);
-}
-
-#[inline(always)]
-#[cfg(not(stage0))]
 /// Iterate over the range [`lo`..`hi`)
 pub fn range(lo: T, hi: T, it: &fn(T) -> bool) -> bool {
     range_step(lo, hi, 1 as T, it)
 }
 
 #[inline(always)]
-#[cfg(stage0)]
-/// Iterate over the range [`hi`..`lo`)
-pub fn range_rev(hi: T, lo: T, it: &fn(T) -> bool) {
-    range_step(hi, lo, -1 as T, it);
-}
-#[inline(always)]
-#[cfg(not(stage0))]
 /// Iterate over the range [`hi`..`lo`)
 pub fn range_rev(hi: T, lo: T, it: &fn(T) -> bool) -> bool {
     range_step(hi, lo, -1 as T, it)
@@ -187,10 +167,14 @@ impl Orderable for T {
         if *self > *other { *self } else { *other }
     }
 
+    /// Returns the number constrained within the range `mn <= self <= mx`.
     #[inline(always)]
     fn clamp(&self, mn: &T, mx: &T) -> T {
-        if *self > *mx { *mx } else
-        if *self < *mn { *mn } else { *self }
+        cond!(
+            (*self > *mx) { *mx   }
+            (*self < *mn) { *mn   }
+            _             { *self }
+        )
     }
 }
 

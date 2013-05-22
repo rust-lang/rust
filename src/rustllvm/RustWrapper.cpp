@@ -548,22 +548,24 @@ extern "C" LLVMTypeRef LLVMMetadataType(void) {
 extern "C" LLVMValueRef LLVMBuildAtomicLoad(LLVMBuilderRef B,
                                             LLVMValueRef source,
                                             const char* Name,
-                                            AtomicOrdering order) {
+                                            AtomicOrdering order,
+                                            unsigned alignment) {
     LoadInst* li = new LoadInst(unwrap(source),0);
     li->setVolatile(true);
     li->setAtomic(order);
-    li->setAlignment(sizeof(intptr_t));
+    li->setAlignment(alignment);
     return wrap(unwrap(B)->Insert(li, Name));
 }
 
 extern "C" LLVMValueRef LLVMBuildAtomicStore(LLVMBuilderRef B,
-                                            LLVMValueRef val,
-                                            LLVMValueRef target,
-                                            AtomicOrdering order) {
+                                             LLVMValueRef val,
+                                             LLVMValueRef target,
+                                             AtomicOrdering order,
+                                             unsigned alignment) {
     StoreInst* si = new StoreInst(unwrap(val),unwrap(target));
     si->setVolatile(true);
     si->setAtomic(order);
-    si->setAlignment(sizeof(intptr_t));
+    si->setAlignment(alignment);
     return wrap(unwrap(B)->Insert(si));
 }
 

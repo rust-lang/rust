@@ -43,17 +43,13 @@ pub extern "rust-intrinsic" {
     pub fn atomic_cxchg_rel(dst: &mut int, old: int, src: int) -> int;
 
     /// Atomic load, sequentially consistent.
-    #[cfg(not(stage0))]
     pub fn atomic_load(src: &int) -> int;
     /// Atomic load, acquire ordering.
-    #[cfg(not(stage0))]
     pub fn atomic_load_acq(src: &int) -> int;
 
     /// Atomic store, sequentially consistent.
-    #[cfg(not(stage0))]
     pub fn atomic_store(dst: &mut int, val: int);
     /// Atomic store, release ordering.
-    #[cfg(not(stage0))]
     pub fn atomic_store_rel(dst: &mut int, val: int);
 
     /// Atomic exchange, sequentially consistent.
@@ -111,7 +107,6 @@ pub extern "rust-intrinsic" {
     pub unsafe fn init<T>() -> T;
 
     /// Create an uninitialized value.
-    #[cfg(not(stage0))]
     pub unsafe fn uninit<T>() -> T;
 
     /// Move a value out of scope without running drop glue.
@@ -119,6 +114,7 @@ pub extern "rust-intrinsic" {
     /// `forget` is unsafe because the caller is responsible for
     /// ensuring the argument is deallocated already.
     pub unsafe fn forget<T>(_: T) -> ();
+    pub fn transmute<T,U>(e: T) -> U;
 
     /// Returns `true` if a type requires drop glue.
     pub fn needs_drop<T>() -> bool;
@@ -126,8 +122,8 @@ pub extern "rust-intrinsic" {
     // XXX: intrinsic uses legacy modes and has reference to TyDesc
     // and TyVisitor which are in librustc
     //fn visit_tydesc(++td: *TyDesc, &&tv: TyVisitor) -> ();
-    // XXX: intrinsic uses legacy modes
-    //fn frame_address(f: &once fn(*u8));
+
+    pub fn frame_address(f: &once fn(*u8));
 
     /// Get the address of the `__morestack` stack growth function.
     pub fn morestack_addr() -> *();

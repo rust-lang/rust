@@ -734,7 +734,7 @@ pub fn Resolver(session: Session,
 
         graph_root: graph_root,
 
-        trait_info: HashMap::new(),
+        method_map: @mut HashMap::new(),
         structs: HashSet::new(),
 
         unresolved_imports: 0,
@@ -776,7 +776,7 @@ pub struct Resolver {
 
     graph_root: @mut NameBindings,
 
-    trait_info: HashMap<def_id, HashSet<ident>>,
+    method_map: @mut HashMap<ident, HashSet<def_id>>,
     structs: HashSet<def_id>,
 
     // The number of imports that are currently unresolved.
@@ -1292,7 +1292,15 @@ pub impl Resolver {
                 }
 
                 let def_id = local_def(item.id);
-                self.trait_info.insert(def_id, method_names);
+                for method_names.each |name| {
+                    if !self.method_map.contains_key(name) {
+                        self.method_map.insert(*name, HashSet::new());
+                    }
+                    match self.method_map.find_mut(name) {
+                        Some(s) => { s.insert(def_id); },
+                        _ => fail!("Can't happen"),
+                    }
+                }
 
                 name_bindings.define_type(privacy, def_trait(def_id), sp);
                 visit_item(item, new_parent, visitor);
@@ -1589,7 +1597,15 @@ pub impl Resolver {
                       interned_method_names.insert(method_name);
                   }
               }
-              self.trait_info.insert(def_id, interned_method_names);
+              for interned_method_names.each |name| {
+                  if !self.method_map.contains_key(name) {
+                      self.method_map.insert(*name, HashSet::new());
+                  }
+                  match self.method_map.find_mut(name) {
+                      Some(s) => { s.insert(def_id); },
+                      _ => fail!("Can't happen"),
+                  }
+              }
 
               child_name_bindings.define_type(Public, def, dummy_sp());
           }
@@ -1818,6 +1834,10 @@ pub impl Resolver {
                         debug!("(building import directive) bumping \
                                 reference");
                         resolution.outstanding_references += 1;
+
+                        // the source of this name is different now
+                        resolution.privacy = privacy;
+                        resolution.id = id;
                     }
                     None => {
                         debug!("(building import directive) creating new");
@@ -2321,7 +2341,7 @@ pub impl Resolver {
             return Indeterminate;
         }
 
-        assert!(containing_module.glob_count == 0);
+        assert_eq!(containing_module.glob_count, 0);
 
         // Add all resolved imports from the containing module.
         for containing_module.import_resolutions.each
@@ -2584,7 +2604,7 @@ pub impl Resolver {
                         match result {
                             Failed => {
                                 self.session.span_err(span,
-                                                      ~"unresolved name");
+                                                      "unresolved name");
                                 return Failed;
                             }
                             Indeterminate => {
@@ -2903,7 +2923,7 @@ pub impl Resolver {
         // If this is a search of all imports, we should be done with glob
         // resolution at this point.
         if name_search_type == SearchItemsAndAllImports {
-            assert!(module_.glob_count == 0);
+            assert_eq!(module_.glob_count, 0);
         }
 
         // Check the list of resolved imports.
@@ -2966,7 +2986,7 @@ pub impl Resolver {
         if index != import_count {
             let sn = self.session.codemap.span_to_snippet(imports[index].span);
             if str::contains(sn, "::") {
-                self.session.span_err(imports[index].span, ~"unresolved import");
+                self.session.span_err(imports[index].span, "unresolved import");
             } else {
                 let err = fmt!("unresolved import (maybe you meant `%s::*`?)",
                                sn.slice(0, sn.len() - 1)); // -1 to adjust for semicolon
@@ -3249,14 +3269,14 @@ pub impl Resolver {
 
                         self.session.span_err(
                             span,
-                            ~"attempted dynamic environment-capture");
+                            "attempted dynamic environment-capture");
                     } else {
                         // This was an attempt to use a type parameter outside
                         // its scope.
 
                         self.session.span_err(span,
-                                              ~"attempt to use a type \
-                                               argument out of scope");
+                                              "attempt to use a type \
+                                              argument out of scope");
                     }
 
                     return None;
@@ -3271,14 +3291,14 @@ pub impl Resolver {
 
                         self.session.span_err(
                             span,
-                            ~"attempted dynamic environment-capture");
+                            "attempted dynamic environment-capture");
                     } else {
                         // This was an attempt to use a type parameter outside
                         // its scope.
 
                         self.session.span_err(span,
-                                              ~"attempt to use a type \
-                                               argument out of scope");
+                                              "attempt to use a type \
+                                              argument out of scope");
                     }
 
                     return None;
@@ -3286,8 +3306,8 @@ pub impl Resolver {
                 ConstantItemRibKind => {
                     // Still doesn't deal with upvars
                     self.session.span_err(span,
-                                          ~"attempt to use a non-constant \
-                                            value in a constant");
+                                          "attempt to use a non-constant \
+                                           value in a constant");
 
                 }
             }
@@ -3352,7 +3372,7 @@ pub impl Resolver {
         // This is used to allow the test runner to run unexported tests.
         let orig_xray_flag = self.xray_context;
         if contains_name(attr_metas(item.attrs),
-                         ~"!resolve_unexported") {
+                         "!resolve_unexported") {
             self.xray_context = Xray;
         }
 
@@ -3424,8 +3444,8 @@ pub impl Resolver {
                                                 visitor) {
                             None =>
                                 self.session.span_err(trt.path.span,
-                                                      ~"attempt to derive a \
-                                                       nonexistent trait"),
+                                                      "attempt to derive a \
+                                                      nonexistent trait"),
                             Some(def) => {
                                 // Write a mapping from the trait ID to the
                                 // definition of the trait into the definition
@@ -3699,8 +3719,8 @@ pub impl Resolver {
         match self.resolve_path(trait_reference.path, TypeNS, true, visitor) {
             None => {
                 self.session.span_err(trait_reference.path.span,
-                                      ~"attempt to implement an \
-                                        unknown trait");
+                                      "attempt to implement an \
+                                       unknown trait");
             }
             Some(def) => {
                 self.record_def(trait_reference.ref_id, def);
@@ -4043,7 +4063,7 @@ pub impl Resolver {
                        bindings_list: Option<@mut HashMap<ident,node_id>>,
                        visitor: ResolveVisitor) {
         let pat_id = pattern.id;
-        do walk_pat(pattern) |pattern| {
+        for walk_pat(pattern) |pattern| {
             match pattern.node {
                 pat_ident(binding_mode, path, _)
                         if !path.global && path.idents.len() == 1 => {
@@ -4094,8 +4114,8 @@ pub impl Resolver {
                         }
                         FoundConst(_) => {
                             self.session.span_err(pattern.span,
-                                                  ~"only refutable patterns \
-                                                    allowed here");
+                                                  "only refutable patterns \
+                                                   allowed here");
                         }
                         BareIdentifierPatternUnresolved => {
                             debug!("(resolving pattern) binding `%s`",
@@ -4195,7 +4215,7 @@ pub impl Resolver {
                         }
                         None => {
                             self.session.span_err(path.span,
-                                                  ~"unresolved enum variant");
+                                                  "unresolved enum variant");
                         }
                     }
 
@@ -4223,8 +4243,8 @@ pub impl Resolver {
                         }
                         None => {
                             self.session.span_err(path.span,
-                                                  ~"unresolved enum variant, \
-                                                    struct or const");
+                                                  "unresolved enum variant, \
+                                                   struct or const");
                         }
                     }
 
@@ -4598,8 +4618,8 @@ pub impl Resolver {
                         Some(dl_def(def)) => return Some(def),
                         _ => {
                             self.session.span_bug(span,
-                                                  ~"self wasn't mapped to a \
-                                                    def?!")
+                                                  "self wasn't mapped to a \
+                                                   def?!")
                         }
                     }
                 }
@@ -4829,8 +4849,8 @@ pub impl Resolver {
                     }
                     Some(_) => {
                         self.session.span_bug(expr.span,
-                                              ~"label wasn't mapped to a \
-                                                label def!")
+                                              "label wasn't mapped to a \
+                                               label def!")
                     }
                 }
             }
@@ -4839,8 +4859,8 @@ pub impl Resolver {
                 match self.resolve_self_value_in_local_ribs(expr.span) {
                     None => {
                         self.session.span_err(expr.span,
-                                              ~"`self` is not allowed in \
-                                                this context")
+                                              "`self` is not allowed in \
+                                               this context")
                     }
                     Some(def) => self.record_def(expr.id, def),
                 }
@@ -4935,118 +4955,111 @@ pub impl Resolver {
         debug!("(searching for traits containing method) looking for '%s'",
                *self.session.str_of(name));
 
+
         let mut found_traits = ~[];
         let mut search_module = self.current_module;
-        loop {
-            // Look for the current trait.
-            match /*bad*/copy self.current_trait_refs {
-                Some(trait_def_ids) => {
-                    for trait_def_ids.each |trait_def_id| {
-                        self.add_trait_info_if_containing_method(
-                            &mut found_traits, *trait_def_id, name);
-                    }
-                }
-                None => {
-                    // Nothing to do.
-                }
-            }
-
-            // Look for trait children.
-            for search_module.children.each_value |&child_name_bindings| {
-                match child_name_bindings.def_for_namespace(TypeNS) {
-                    Some(def) => {
-                        match def {
-                            def_trait(trait_def_id) => {
-                                self.add_trait_info_if_containing_method(
-                                    &mut found_traits, trait_def_id, name);
-                            }
-                            _ => {
-                                // Continue.
+        match self.method_map.find(&name) {
+            Some(candidate_traits) => loop {
+                // Look for the current trait.
+                match /*bad*/copy self.current_trait_refs {
+                    Some(trait_def_ids) => {
+                        for trait_def_ids.each |trait_def_id| {
+                            if candidate_traits.contains(trait_def_id) {
+                                self.add_trait_info(
+                                    &mut found_traits,
+                                    *trait_def_id, name);
                             }
                         }
                     }
                     None => {
-                        // Continue.
+                        // Nothing to do.
                     }
                 }
-            }
 
-            // Look for imports.
-            for search_module.import_resolutions.each_value
-                    |&import_resolution| {
-
-                match import_resolution.target_for_namespace(TypeNS) {
-                    None => {
-                        // Continue.
-                    }
-                    Some(target) => {
-                        match target.bindings.def_for_namespace(TypeNS) {
-                            Some(def) => {
-                                match def {
-                                    def_trait(trait_def_id) => {
-                                        let added = self.
-                                        add_trait_info_if_containing_method(
+                // Look for trait children.
+                for search_module.children.each_value |&child_name_bindings| {
+                    match child_name_bindings.def_for_namespace(TypeNS) {
+                        Some(def) => {
+                            match def {
+                                def_trait(trait_def_id) => {
+                                    if candidate_traits.contains(&trait_def_id) {
+                                        self.add_trait_info(
                                             &mut found_traits,
                                             trait_def_id, name);
-                                        if added {
-                                            self.used_imports.insert(
-                                                import_resolution.id);
-                                        }
-                                    }
-                                    _ => {
-                                        // Continue.
                                     }
                                 }
+                                _ => {
+                                    // Continue.
+                                }
                             }
-                            None => {
-                                // Continue.
+                        }
+                        None => {
+                            // Continue.
+                        }
+                    }
+                }
+
+                // Look for imports.
+                for search_module.import_resolutions.each_value
+                        |&import_resolution| {
+
+                    match import_resolution.target_for_namespace(TypeNS) {
+                        None => {
+                            // Continue.
+                        }
+                        Some(target) => {
+                            match target.bindings.def_for_namespace(TypeNS) {
+                                Some(def) => {
+                                    match def {
+                                        def_trait(trait_def_id) => {
+                                            if candidate_traits.contains(&trait_def_id) {
+                                                self.add_trait_info(
+                                                    &mut found_traits,
+                                                    trait_def_id, name);
+                                                self.used_imports.insert(
+                                                    import_resolution.id);
+                                            }
+                                        }
+                                        _ => {
+                                            // Continue.
+                                        }
+                                    }
+                                }
+                                None => {
+                                    // Continue.
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            // Move to the next parent.
-            match search_module.parent_link {
-                NoParentLink => {
-                    // Done.
-                    break;
+                // Move to the next parent.
+                match search_module.parent_link {
+                    NoParentLink => {
+                        // Done.
+                        break;
+                    }
+                    ModuleParentLink(parent_module, _) |
+                    BlockParentLink(parent_module, _) => {
+                        search_module = parent_module;
+                    }
                 }
-                ModuleParentLink(parent_module, _) |
-                BlockParentLink(parent_module, _) => {
-                    search_module = parent_module;
-                }
-            }
+            },
+            _ => ()
         }
 
         return found_traits;
     }
 
-    fn add_trait_info_if_containing_method(&self,
-                                           found_traits: &mut ~[def_id],
-                                           trait_def_id: def_id,
-                                           name: ident)
-                                        -> bool {
-        debug!("(adding trait info if containing method) trying trait %d:%d \
-                for method '%s'",
+    fn add_trait_info(&self,
+                      found_traits: &mut ~[def_id],
+                      trait_def_id: def_id,
+                      name: ident) {
+        debug!("(adding trait info) found trait %d:%d for method '%s'",
                trait_def_id.crate,
                trait_def_id.node,
                *self.session.str_of(name));
-
-        match self.trait_info.find(&trait_def_id) {
-            Some(trait_info) if trait_info.contains(&name) => {
-                debug!("(adding trait info if containing method) found trait \
-                        %d:%d for method '%s'",
-                       trait_def_id.crate,
-                       trait_def_id.node,
-                       *self.session.str_of(name));
-                found_traits.push(trait_def_id);
-                true
-            }
-            Some(_) | None => {
-                false
-            }
-        }
+        found_traits.push(trait_def_id);
     }
 
     fn add_fixed_trait_for_expr(@mut self,
@@ -5112,7 +5125,7 @@ pub impl Resolver {
                         view_path_simple(_, _, id) | view_path_glob(_, id) => {
                             if !self.used_imports.contains(&id) {
                                 self.session.add_lint(unused_imports,
-                                                      id, vi.span,
+                                                      id, p.span,
                                                       ~"unused import");
                             }
                         }

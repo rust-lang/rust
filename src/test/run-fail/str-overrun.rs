@@ -15,5 +15,5 @@ fn main() {
     let s: ~str = ~"hello";
 
     // Bounds-check failure.
-    assert!((s[5] == 0x0 as u8));
+    assert_eq!(s[5], 0x0 as u8);
 }

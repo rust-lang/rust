@@ -99,7 +99,7 @@ fn warn_if_multiple_versions(e: @mut Env,
             diag.handler().warn(
                 fmt!("using multiple versions of crate `%s`", *name));
             for matches.each |match_| {
-                diag.span_note(match_.span, ~"used here");
+                diag.span_note(match_.span, "used here");
                 let attrs = ~[
                     attr::mk_attr(attr::mk_list_item(
                         @~"link", /*bad*/copy *match_.metas))
@@ -164,7 +164,7 @@ fn visit_item(e: @mut Env, i: @ast::item) {
             ast::named => {
                 let foreign_name =
                     match attr::first_attr_value_str_by_name(i.attrs,
-                                                            ~"link_name") {
+                                                             "link_name") {
                         Some(nn) => {
                             if *nn == ~"" {
                                 e.diag.span_fatal(
@@ -176,7 +176,7 @@ fn visit_item(e: @mut Env, i: @ast::item) {
                         }
                         None => e.intr.get(i.ident)
                     };
-                if attr::find_attrs_by_name(i.attrs, ~"nolink").is_empty() {
+                if attr::find_attrs_by_name(i.attrs, "nolink").is_empty() {
                     already_added =
                         !cstore::add_used_library(cstore, foreign_name);
                 }
@@ -272,7 +272,7 @@ fn resolve_crate(e: @mut Env,
 
         let cname =
             match attr::last_meta_item_value_str_by_name(load_ctxt.metas,
-                                                         ~"name") {
+                                                         "name") {
                 Some(v) => v,
                 None => e.intr.get(ident),
             };

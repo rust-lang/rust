@@ -16,12 +16,12 @@ use libc::{c_char, c_uchar, c_void, size_t, uintptr_t, c_int, STDERR_FILENO};
 use managed::raw::BoxRepr;
 use str;
 use sys;
-use unstable::exchange_alloc;
-use cast::transmute;
 use rt::{context, OldTaskContext};
-use rt::local_services::borrow_local_services;
+use rt::task::Task;
+use rt::local::Local;
 use option::{Option, Some, None};
 use io;
+use rt::global_heap;
 
 #[allow(non_camel_case_types)]
 pub type rust_task = c_void;
@@ -153,7 +153,7 @@ unsafe fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
 #[lang="exchange_malloc"]
 #[inline(always)]
 pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    transmute(exchange_alloc::malloc(transmute(td), transmute(size)))
+    transmute(global_heap::malloc(transmute(td), transmute(size)))
 }
 
 /// Because this code is so perf. sensitive, use a static constant so that
@@ -233,7 +233,7 @@ impl DebugPrints for io::fd_t {
 #[lang="exchange_free"]
 #[inline(always)]
 pub unsafe fn exchange_free(ptr: *c_char) {
-    exchange_alloc::free(transmute(ptr))
+    global_heap::free(transmute(ptr))
 }
 
 #[lang="malloc"]
@@ -244,8 +244,8 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
         }
         _ => {
             let mut alloc = ::ptr::null();
-            do borrow_local_services |srv| {
-                alloc = srv.heap.alloc(td as *c_void, size as uint) as *c_char;
+            do Local::borrow::<Task> |task| {
+                alloc = task.heap.alloc(td as *c_void, size as uint) as *c_char;
             }
             return alloc;
         }
@@ -262,22 +262,13 @@ pub unsafe fn local_free(ptr: *c_char) {
             rustrt::rust_upcall_free_noswitch(ptr);
         }
         _ => {
-            do borrow_local_services |srv| {
-                srv.heap.free(ptr as *c_void);
+            do Local::borrow::<Task> |task| {
+                task.heap.free(ptr as *c_void);
             }
         }
     }
 }
 
-#[cfg(stage0)]
-#[lang="borrow_as_imm"]
-#[inline(always)]
-pub unsafe fn borrow_as_imm(a: *u8) {
-    let a: *mut BoxRepr = transmute(a);
-    (*a).header.ref_count |= FROZEN_BIT;
-}
-
-#[cfg(not(stage0))]
 #[lang="borrow_as_imm"]
 #[inline(always)]
 pub unsafe fn borrow_as_imm(a: *u8, file: *c_char, line: size_t) -> uint {
@@ -296,7 +287,6 @@ pub unsafe fn borrow_as_imm(a: *u8, file: *c_char, line: size_t) -> uint {
     old_ref_count
 }
 
-#[cfg(not(stage0))]
 #[lang="borrow_as_mut"]
 #[inline(always)]
 pub unsafe fn borrow_as_mut(a: *u8, file: *c_char, line: size_t) -> uint {
@@ -316,7 +306,6 @@ pub unsafe fn borrow_as_mut(a: *u8, file: *c_char, line: size_t) -> uint {
 }
 
 
-#[cfg(not(stage0))]
 #[lang="record_borrow"]
 pub unsafe fn record_borrow(a: *u8, old_ref_count: uint,
                             file: *c_char, line: size_t) {
@@ -332,7 +321,6 @@ pub unsafe fn record_borrow(a: *u8, old_ref_count: uint,
     }
 }
 
-#[cfg(not(stage0))]
 #[lang="unrecord_borrow"]
 pub unsafe fn unrecord_borrow(a: *u8, old_ref_count: uint,
                               file: *c_char, line: size_t) {
@@ -356,19 +344,6 @@ pub unsafe fn unrecord_borrow(a: *u8, old_ref_count: uint,
     }
 }
 
-#[cfg(stage0)]
-#[lang="return_to_mut"]
-#[inline(always)]
-pub unsafe fn return_to_mut(a: *u8) {
-    // Sometimes the box is null, if it is conditionally frozen.
-    // See e.g. #4904.
-    if !a.is_null() {
-        let a: *mut BoxRepr = transmute(a);
-        (*a).header.ref_count &= !FROZEN_BIT;
-    }
-}
-
-#[cfg(not(stage0))]
 #[lang="return_to_mut"]
 #[inline(always)]
 pub unsafe fn return_to_mut(a: *u8, orig_ref_count: uint,
@@ -388,19 +363,6 @@ pub unsafe fn return_to_mut(a: *u8, orig_ref_count: uint,
     }
 }
 
-#[cfg(stage0)]
-#[lang="check_not_borrowed"]
-#[inline(always)]
-pub unsafe fn check_not_borrowed(a: *u8) {
-    let a: *mut BoxRepr = transmute(a);
-    if ((*a).header.ref_count & FROZEN_BIT) != 0 {
-        do str::as_buf("XXX") |file_p, _| {
-            fail_borrowed(a, file_p as *c_char, 0);
-        }
-    }
-}
-
-#[cfg(not(stage0))]
 #[lang="check_not_borrowed"]
 #[inline(always)]
 pub unsafe fn check_not_borrowed(a: *u8,
@@ -423,18 +385,31 @@ pub unsafe fn strdup_uniq(ptr: *c_uchar, len: uint) -> ~str {
 #[lang="start"]
 pub fn start(main: *u8, argc: int, argv: **c_char,
              crate_map: *u8) -> int {
-    use libc::getenv;
-    use rt::start;
+    use rt;
+    use sys::Closure;
+    use ptr;
+    use cast;
+    use os;
 
     unsafe {
-        let use_old_rt = do str::as_c_str("RUST_NEWRT") |s| {
-            getenv(s).is_null()
-        };
+        let use_old_rt = os::getenv("RUST_NEWRT").is_none();
         if use_old_rt {
             return rust_start(main as *c_void, argc as c_int, argv,
                               crate_map as *c_void) as int;
         } else {
-            return start(main, argc, argv, crate_map);
+            return do rt::start(argc, argv as **u8, crate_map) {
+                unsafe {
+                    // `main` is an `fn() -> ()` that doesn't take an environment
+                    // XXX: Could also call this as an `extern "Rust" fn` once they work
+                    let main = Closure {
+                        code: main as *(),
+                        env: ptr::null(),
+                    };
+                    let mainfn: &fn() = cast::transmute(main);
+
+                    mainfn();
+                }
+            };
         }
     }
 

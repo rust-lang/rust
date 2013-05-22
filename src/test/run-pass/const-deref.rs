@@ -15,6 +15,6 @@ static E: &'static S = &S(C);
 static F: int = ***E;
 
 pub fn main() {
-    assert!(D == 1000);
-    assert!(F == 1000);
+    assert_eq!(D, 1000);
+    assert_eq!(F, 1000);
 }

@@ -25,13 +25,13 @@ fn testfn(cond: bool) {
     }
 
     debug!("*r = %d, exp = %d", *r, exp);
-    assert!(*r == exp);
+    assert_eq!(*r, exp);
 
     x = @5;
     y = @6;
 
     debug!("*r = %d, exp = %d", *r, exp);
-    assert!(*r == exp);
+    assert_eq!(*r, exp);
 }
 
 pub fn main() {

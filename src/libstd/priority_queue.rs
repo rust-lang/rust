@@ -11,8 +11,9 @@
 //! A priority queue implemented with a binary heap
 
 use core::old_iter::BaseIter;
+use core::unstable::intrinsics::{move_val_init, init};
+use core::unstable::intrinsics::uninit;
 use core::util::{replace, swap};
-use core::unstable::intrinsics::{init, move_val_init};
 
 pub struct PriorityQueue<T> {
     priv data: ~[T],
@@ -22,12 +23,6 @@ impl<T:Ord> BaseIter<T> for PriorityQueue<T> {
     /// Visit all values in the underlying vector.
     ///
     /// The values are **not** visited in order.
-    #[cfg(stage0)]
-    fn each(&self, f: &fn(&T) -> bool) { self.data.each(f) }
-    /// Visit all values in the underlying vector.
-    ///
-    /// The values are **not** visited in order.
-    #[cfg(not(stage0))]
     fn each(&self, f: &fn(&T) -> bool) -> bool { self.data.each(f) }
 
     fn size_hint(&self) -> Option<uint> { self.data.size_hint() }
@@ -196,87 +191,87 @@ mod tests {
         let mut sorted = merge_sort(data, le);
         let mut heap = from_vec(data);
         while !heap.is_empty() {
-            assert!(heap.top() == sorted.last());
-            assert!(heap.pop() == sorted.pop());
+            assert_eq!(heap.top(), sorted.last());
+            assert_eq!(heap.pop(), sorted.pop());
         }
     }
 
     #[test]
     fn test_push() {
         let mut heap = from_vec(~[2, 4, 9]);
-        assert!(heap.len() == 3);
+        assert_eq!(heap.len(), 3);
         assert!(*heap.top() == 9);
         heap.push(11);
-        assert!(heap.len() == 4);
+        assert_eq!(heap.len(), 4);
         assert!(*heap.top() == 11);
         heap.push(5);
-        assert!(heap.len() == 5);
+        assert_eq!(heap.len(), 5);
         assert!(*heap.top() == 11);
         heap.push(27);
-        assert!(heap.len() == 6);
+        assert_eq!(heap.len(), 6);
         assert!(*heap.top() == 27);
         heap.push(3);
-        assert!(heap.len() == 7);
+        assert_eq!(heap.len(), 7);
         assert!(*heap.top() == 27);
         heap.push(103);
-        assert!(heap.len() == 8);
+        assert_eq!(heap.len(), 8);
         assert!(*heap.top() == 103);
     }
 
     #[test]
     fn test_push_unique() {
         let mut heap = from_vec(~[~2, ~4, ~9]);
-        assert!(heap.len() == 3);
+        assert_eq!(heap.len(), 3);
         assert!(*heap.top() == ~9);
         heap.push(~11);
-        assert!(heap.len() == 4);
+        assert_eq!(heap.len(), 4);
         assert!(*heap.top() == ~11);
         heap.push(~5);
-        assert!(heap.len() == 5);
+        assert_eq!(heap.len(), 5);
         assert!(*heap.top() == ~11);
         heap.push(~27);
-        assert!(heap.len() == 6);
+        assert_eq!(heap.len(), 6);
         assert!(*heap.top() == ~27);
         heap.push(~3);
-        assert!(heap.len() == 7);
+        assert_eq!(heap.len(), 7);
         assert!(*heap.top() == ~27);
         heap.push(~103);
-        assert!(heap.len() == 8);
+        assert_eq!(heap.len(), 8);
         assert!(*heap.top() == ~103);
     }
 
     #[test]
     fn test_push_pop() {
         let mut heap = from_vec(~[5, 5, 2, 1, 3]);
-        assert!(heap.len() == 5);
-        assert!(heap.push_pop(6) == 6);
-        assert!(heap.len() == 5);
-        assert!(heap.push_pop(0) == 5);
-        assert!(heap.len() == 5);
-        assert!(heap.push_pop(4) == 5);
-        assert!(heap.len() == 5);
-        assert!(heap.push_pop(1) == 4);
-        assert!(heap.len() == 5);
+        assert_eq!(heap.len(), 5);
+        assert_eq!(heap.push_pop(6), 6);
+        assert_eq!(heap.len(), 5);
+        assert_eq!(heap.push_pop(0), 5);
+        assert_eq!(heap.len(), 5);
+        assert_eq!(heap.push_pop(4), 5);
+        assert_eq!(heap.len(), 5);
+        assert_eq!(heap.push_pop(1), 4);
+        assert_eq!(heap.len(), 5);
     }
 
     #[test]
     fn test_replace() {
         let mut heap = from_vec(~[5, 5, 2, 1, 3]);
-        assert!(heap.len() == 5);
-        assert!(heap.replace(6) == 5);
-        assert!(heap.len() == 5);
-        assert!(heap.replace(0) == 6);
-        assert!(heap.len() == 5);
-        assert!(heap.replace(4) == 5);
-        assert!(heap.len() == 5);
-        assert!(heap.replace(1) == 4);
-        assert!(heap.len() == 5);
+        assert_eq!(heap.len(), 5);
+        assert_eq!(heap.replace(6), 5);
+        assert_eq!(heap.len(), 5);
+        assert_eq!(heap.replace(0), 6);
+        assert_eq!(heap.len(), 5);
+        assert_eq!(heap.replace(4), 5);
+        assert_eq!(heap.len(), 5);
+        assert_eq!(heap.replace(1), 4);
+        assert_eq!(heap.len(), 5);
     }
 
     fn check_to_vec(data: ~[int]) {
         let heap = from_vec(copy data);
-        assert!(merge_sort((copy heap).to_vec(), le) == merge_sort(data, le));
-        assert!(heap.to_sorted_vec() == merge_sort(data, le));
+        assert_eq!(merge_sort((copy heap).to_vec(), le), merge_sort(data, le));
+        assert_eq!(heap.to_sorted_vec(), merge_sort(data, le));
     }
 
     #[test]

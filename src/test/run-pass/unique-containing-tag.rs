@@ -15,14 +15,14 @@ pub fn main() {
 
     /*alt *x {
       t1(a) {
-        assert!(a == 10);
+        assert_eq!(a, 10);
       }
       _ { fail!(); }
     }*/
 
     /*alt x {
       ~t1(a) {
-        assert!(a == 10);
+        assert_eq!(a, 10);
       }
       _ { fail!(); }
     }*/

@@ -16,10 +16,10 @@ use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use std::getopts::groups::getopts;
 use std::semver;
-use std::{term, getopts};
+use std::term;
 use syntax::ast_util::*;
 use syntax::codemap::{dummy_sp, spanned, dummy_spanned};
-use syntax::ext::base::{mk_ctxt, ext_ctxt};
+use syntax::ext::base::ExtCtxt;
 use syntax::{ast, attr, codemap, diagnostic, fold};
 use syntax::ast::{meta_name_value, meta_list};
 use syntax::attr::{mk_attr};
@@ -178,7 +178,7 @@ struct ListenerFn {
 struct ReadyCtx {
     sess: session::Session,
     crate: @ast::crate,
-    ext_cx: @ext_ctxt,
+    ext_cx: @ExtCtxt,
     path: ~[ast::ident],
     fns: ~[ListenerFn]
 }
@@ -208,7 +208,7 @@ fn fold_item(ctx: @mut ReadyCtx,
              fold: @fold::ast_fold) -> Option<@ast::item> {
     ctx.path.push(item.ident);
 
-    let attrs = attr::find_attrs_by_name(item.attrs, ~"pkg_do");
+    let attrs = attr::find_attrs_by_name(item.attrs, "pkg_do");
 
     if attrs.len() > 0 {
         let mut cmds = ~[];
@@ -247,7 +247,7 @@ pub fn ready_crate(sess: session::Session,
     let ctx = @mut ReadyCtx {
         sess: sess,
         crate: crate,
-        ext_cx: mk_ctxt(sess.parse_sess, copy sess.opts.cfg),
+        ext_cx: ExtCtxt::new(sess.parse_sess, copy sess.opts.cfg),
         path: ~[],
         fns: ~[]
     };
@@ -281,7 +281,7 @@ pub fn note(msg: ~str) {
 
     if term::color_supported() {
         term::fg(out, term::color_green);
-        out.write_str(~"note: ");
+        out.write_str("note: ");
         term::reset(out);
         out.write_line(msg);
     } else {
@@ -294,7 +294,7 @@ pub fn warn(msg: ~str) {
 
     if term::color_supported() {
         term::fg(out, term::color_yellow);
-        out.write_str(~"warning: ");
+        out.write_str("warning: ");
         term::reset(out);
         out.write_line(msg);
     } else {
@@ -307,7 +307,7 @@ pub fn error(msg: ~str) {
 
     if term::color_supported() {
         term::fg(out, term::color_red);
-        out.write_str(~"error: ");
+        out.write_str("error: ");
         term::reset(out);
         out.write_line(msg);
     } else {
@@ -353,8 +353,8 @@ pub fn compile_input(sysroot: Option<@Path>,
     debug!("compiling %s into %s",
            in_file.to_str(),
            out_file.to_str());
-    debug!("flags: %s", str::connect(flags, ~" "));
-    debug!("cfgs: %s", str::connect(cfgs, ~" "));
+    debug!("flags: %s", str::connect(flags, " "));
+    debug!("cfgs: %s", str::connect(cfgs, " "));
     debug!("compile_input's sysroot = %?", sysroot);
 
     let crate_type = match what {
@@ -417,7 +417,7 @@ pub fn compile_crate_from_input(input: &driver::input,
     match crate_opt {
         Some(c) => {
             debug!("Calling compile_rest, outputs = %?", outputs);
-            assert!(what == driver::cu_everything);
+            assert_eq!(what, driver::cu_everything);
             driver::compile_rest(sess, cfg, driver::cu_everything, Some(outputs), Some(c));
             c
         }

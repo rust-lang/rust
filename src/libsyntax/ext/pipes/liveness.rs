@@ -37,12 +37,12 @@ updating the states using rule (2) until there are no changes.
 
 */
 
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::pipes::proto::{protocol_};
 
 use std::bitv::Bitv;
 
-pub fn analyze(proto: @mut protocol_, _cx: @ext_ctxt) {
+pub fn analyze(proto: @mut protocol_, _cx: @ExtCtxt) {
     debug!("initializing colive analysis");
     let num_states = proto.num_states();
     let mut colive = do (copy proto.states).map_to_vec |state| {
@@ -85,7 +85,7 @@ pub fn analyze(proto: @mut protocol_, _cx: @ext_ctxt) {
     }
 
     if self_live.len() > 0 {
-        let states = str::connect(self_live.map(|s| copy s.name), ~" ");
+        let states = str::connect(self_live.map(|s| copy s.name), " ");
 
         debug!("protocol %s is unbounded due to loops involving: %s",
                copy proto.name, states);

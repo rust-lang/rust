@@ -178,7 +178,7 @@ pub mod ct {
                 i += 1;
 
                 if i >= lim {
-                    err(~"unterminated conversion at end of string");
+                    err("unterminated conversion at end of string");
                 } else if s[i] == '%' as u8 {
                     push_slice(&mut pieces, s, h, i);
                     i += 1;
@@ -309,7 +309,7 @@ pub mod ct {
 
     pub fn parse_type(s: &str, i: uint, lim: uint, err: ErrorFn) ->
         Parsed<Ty> {
-        if i >= lim { err(~"missing type in conversion"); }
+        if i >= lim { err("missing type in conversion"); }
 
         // FIXME (#2249): Do we really want two signed types here?
         // How important is it to be printf compatible?
@@ -355,8 +355,8 @@ pub mod ct {
 
         fn test(s: &str, flags: &[Flag], next: uint) {
             let f = parse_flags(s, 0, s.len());
-            assert!(pack(f.val) == pack(flags));
-            assert!(f.next == next);
+            assert_eq!(pack(f.val), pack(flags));
+            assert_eq!(f.next, next);
         }
 
         test("", [], 0);
@@ -459,10 +459,10 @@ pub mod ct {
         assert!(peek_num(s2, 0, s2.len()).is_none());
 
         let s3 = "123";
-        assert!(peek_num(s3, 0, s3.len()) == Some(Parsed::new(123, 3)));
+        assert_eq!(peek_num(s3, 0, s3.len()), Some(Parsed::new(123, 3)));
 
         let s4 = "123foo";
-        assert!(peek_num(s4, 0, s4.len()) == Some(Parsed::new(123, 3)));
+        assert_eq!(peek_num(s4, 0, s4.len()), Some(Parsed::new(123, 3)));
     }
 }
 

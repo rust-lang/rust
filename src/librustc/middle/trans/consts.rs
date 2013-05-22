@@ -9,8 +9,11 @@
 // except according to those terms.
 
 use back::abi;
-use lib::llvm::{llvm, SetLinkage, PrivateLinkage,
-                ValueRef, TypeRef, Bool, True, False};
+use lib::llvm::{llvm, ConstFCmp, ConstICmp, SetLinkage, PrivateLinkage, ValueRef, TypeRef, Bool,
+    True, False};
+use lib::llvm::{IntEQ, IntNE, IntUGT, IntUGE, IntULT, IntULE, IntSGT, IntSGE, IntSLT, IntSLE,
+    RealOEQ, RealOGT, RealOGE, RealOLT, RealOLE, RealONE};
+
 use metadata::csearch;
 use middle::const_eval;
 use middle::trans::adt;
@@ -27,7 +30,6 @@ use util::ppaux::{Repr, ty_to_str};
 
 use core::libc::c_uint;
 use syntax::{ast, ast_util, ast_map};
-use util::ppaux::ty_to_str;
 
 pub fn const_lit(cx: @CrateContext, e: @ast::expr, lit: ast::lit)
     -> ValueRef {
@@ -113,7 +115,7 @@ fn const_deref_ptr(cx: @CrateContext, v: ValueRef) -> ValueRef {
         None => v
     };
     unsafe {
-        assert!(llvm::LLVMIsGlobalConstant(v) == True);
+        assert_eq!(llvm::LLVMIsGlobalConstant(v), True);
         llvm::LLVMGetInitializer(v)
     }
 }
@@ -163,7 +165,7 @@ pub fn get_const_val(cx: @CrateContext, def_id: ast::def_id) -> ValueRef {
             }, _) => {
                 trans_const(cx, subexpr, def_id.node);
             }
-            _ => cx.tcx.sess.bug(~"expected a const to be an item")
+            _ => cx.tcx.sess.bug("expected a const to be an item")
         }
     }
     cx.const_values.get_copy(&def_id.node)
@@ -175,7 +177,7 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
     match cx.tcx.adjustments.find(&e.id) {
         None => { }
         Some(&@ty::AutoAddEnv(ty::re_static, ast::BorrowedSigil)) => {
-            llconst = C_struct(~[llconst, C_null(T_opaque_box_ptr(cx))])
+            llconst = C_struct([llconst, C_null(T_opaque_box_ptr(cx))])
         }
         Some(&@ty::AutoAddEnv(ref r, ref s)) => {
             cx.sess.span_bug(e.span, fmt!("unexpected static function: \
@@ -209,9 +211,9 @@ pub fn const_expr(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                             assert!(m != ast::m_mutbl);
                             let size = machine::llsize_of(cx,
                                                           val_ty(llconst));
-                            assert!(abi::slice_elt_base == 0);
-                            assert!(abi::slice_elt_len == 1);
-                            llconst = C_struct(~[llptr, size]);
+                            assert_eq!(abi::slice_elt_base, 0);
+                            assert_eq!(abi::slice_elt_len, 1);
+                            llconst = C_struct([llptr, size]);
                         }
                         _ => {
                             cx.sess.span_bug(e.span,
@@ -280,8 +282,8 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                 else if signed { llvm::LLVMConstSRem(te1, te2) }
                 else           { llvm::LLVMConstURem(te1, te2) }
               }
-              ast::and    |
-              ast::or     => cx.sess.span_unimpl(e.span, "binop logic"),
+              ast::and    => llvm::LLVMConstAnd(te1, te2),
+              ast::or     => llvm::LLVMConstOr(te1, te2),
               ast::bitxor => llvm::LLVMConstXor(te1, te2),
               ast::bitand => llvm::LLVMConstAnd(te1, te2),
               ast::bitor  => llvm::LLVMConstOr(te1, te2),
@@ -290,14 +292,44 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                 if signed { llvm::LLVMConstAShr(te1, te2) }
                 else      { llvm::LLVMConstLShr(te1, te2) }
               }
-              ast::eq     |
-              ast::lt     |
-              ast::le     |
-              ast::ne     |
-              ast::ge     |
-              ast::gt     => cx.sess.span_unimpl(e.span, "binop comparator")
-            }
-          }
+              ast::eq     => {
+                  if is_float { ConstFCmp(RealOEQ, te1, te2) }
+                  else        { ConstICmp(IntEQ, te1, te2)   }
+              },
+              ast::lt     => {
+                  if is_float { ConstFCmp(RealOLT, te1, te2) }
+                  else        {
+                      if signed { ConstICmp(IntSLT, te1, te2) }
+                      else      { ConstICmp(IntULT, te1, te2) }
+                  }
+              },
+              ast::le     => {
+                  if is_float { ConstFCmp(RealOLE, te1, te2) }
+                  else        {
+                      if signed { ConstICmp(IntSLE, te1, te2) }
+                      else      { ConstICmp(IntULE, te1, te2) }
+                  }
+              },
+              ast::ne     => {
+                  if is_float { ConstFCmp(RealONE, te1, te2) }
+                  else        { ConstICmp(IntNE, te1, te2) }
+              },
+              ast::ge     => {
+                  if is_float { ConstFCmp(RealOGE, te1, te2) }
+                  else        {
+                      if signed { ConstICmp(IntSGE, te1, te2) }
+                      else      { ConstICmp(IntUGE, te1, te2) }
+                  }
+              },
+              ast::gt     => {
+                  if is_float { ConstFCmp(RealOGT, te1, te2) }
+                  else        {
+                      if signed { ConstICmp(IntSGT, te1, te2) }
+                      else      { ConstICmp(IntUGT, te1, te2) }
+                  }
+              },
+            };
+          },
           ast::expr_unary(u, e) => {
             let te = const_expr(cx, e);
             let ty = ty::expr_ty(cx.tcx, e);
@@ -418,8 +450,8 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                         llvm::LLVMConstIntCast(iv, llty, s)
                     }
                     expr::cast_float => llvm::LLVMConstUIToFP(iv, llty),
-                    _ => cx.sess.bug(~"enum cast destination is not \
-                                       integral or float")
+                    _ => cx.sess.bug("enum cast destination is not \
+                                      integral or float")
                 }
               }
               (expr::cast_pointer, expr::cast_pointer) => {
@@ -430,7 +462,7 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
               }
               _ => {
                 cx.sess.impossible_case(e.span,
-                                        ~"bad combination of types for cast")
+                                        "bad combination of types for cast")
               }
             }
           }
@@ -480,13 +512,13 @@ fn const_expr_unadjusted(cx: @CrateContext, e: @ast::expr) -> ValueRef {
                 llvm::LLVMSetGlobalConstant(gv, True);
                 SetLinkage(gv, PrivateLinkage);
                 let p = const_ptrcast(cx, gv, llunitty);
-                C_struct(~[p, sz])
+                C_struct([p, sz])
               }
               _ => cx.sess.span_bug(e.span, "bad const-slice expr")
             }
           }
           ast::expr_path(pth) => {
-            assert!(pth.types.len() == 0);
+            assert_eq!(pth.types.len(), 0);
             match cx.tcx.def_map.find(&e.id) {
                 Some(&ast::def_fn(def_id, _purity)) => {
                     if !ast_util::is_local(def_id) {

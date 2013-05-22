@@ -149,7 +149,7 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
 }
 
 fn parse_header(line: ~str) -> Option<~str> {
-    if str::starts_with(line, ~"# ") {
+    if str::starts_with(line, "# ") {
         Some(str::slice(line, 2u, str::len(line)).to_owned())
     } else {
         None
@@ -236,7 +236,7 @@ mod test {
               Body\"]\
               mod a {
 }");
-        assert!(doc.cratemod().mods()[0].desc() == None);
+        assert_eq!(doc.cratemod().mods()[0].desc(), None);
     }
 
     #[test]
@@ -247,7 +247,7 @@ mod test {
               # Header\n\
               Body\"]\
               fn a(); }");
-        assert!(doc.cratemod().traits()[0].methods[0].sections.len() == 1u);
+        assert_eq!(doc.cratemod().traits()[0].methods[0].sections.len(), 1u);
     }
 
     #[test]
@@ -258,6 +258,6 @@ mod test {
               # Header\n\
               Body\"]\
               fn a() { } }");
-        assert!(doc.cratemod().impls()[0].methods[0].sections.len() == 1u);
+        assert_eq!(doc.cratemod().impls()[0].methods[0].sections.len(), 1u);
     }
 }

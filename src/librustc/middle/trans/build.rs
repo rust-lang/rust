@@ -14,6 +14,7 @@ use lib::llvm::{Opcode, IntPredicate, RealPredicate, False};
 use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
 use lib;
 use middle::trans::common::*;
+use middle::trans::machine::llalign_of_min;
 use syntax::codemap::span;
 
 use core::hashmap::HashMap;
@@ -189,7 +190,7 @@ pub fn Invoke(cx: block,
            val_str(cx.ccx().tn, Fn),
            str::connect(vec::map(Args, |a| val_str(cx.ccx().tn,
                                                    *a).to_owned()),
-                        ~", "));
+                        ", "));
     unsafe {
         count_insn(cx, "invoke");
         llvm::LLVMBuildInvoke(B(cx),
@@ -544,7 +545,8 @@ pub fn AtomicLoad(cx: block, PointerVal: ValueRef, order: AtomicOrdering) -> Val
             return llvm::LLVMGetUndef(ccx.int_type);
         }
         count_insn(cx, "load.atomic");
-        return llvm::LLVMBuildAtomicLoad(B(cx), PointerVal, noname(), order);
+        let align = llalign_of_min(*ccx, ccx.int_type);
+        return llvm::LLVMBuildAtomicLoad(B(cx), PointerVal, noname(), order, align as c_uint);
     }
 }
 
@@ -557,7 +559,6 @@ pub fn LoadRangeAssert(cx: block, PointerVal: ValueRef, lo: c_ulonglong,
         let t = llvm::LLVMGetElementType(llvm::LLVMTypeOf(PointerVal));
         let min = llvm::LLVMConstInt(t, lo, signed);
         let max = llvm::LLVMConstInt(t, hi, signed);
-
 
         do vec::as_imm_buf([min, max]) |ptr, len| {
             llvm::LLVMSetMetadata(value, lib::llvm::MD_range as c_uint,
@@ -586,7 +587,8 @@ pub fn AtomicStore(cx: block, Val: ValueRef, Ptr: ValueRef, order: AtomicOrderin
                val_str(cx.ccx().tn, Val),
                val_str(cx.ccx().tn, Ptr));
         count_insn(cx, "store.atomic");
-        llvm::LLVMBuildAtomicStore(B(cx), Val, Ptr, order);
+        let align = llalign_of_min(cx.ccx(), cx.ccx().int_type);
+        llvm::LLVMBuildAtomicStore(B(cx), Val, Ptr, order, align as c_uint);
     }
 }
 
@@ -602,7 +604,7 @@ pub fn GEP(cx: block, Pointer: ValueRef, Indices: &[ValueRef]) -> ValueRef {
 // Simple wrapper around GEP that takes an array of ints and wraps them
 // in C_i32()
 //
-// XXX: Use a small-vector optimization to avoid allocations here.
+// FIXME #6571: Use a small-vector optimization to avoid allocations here.
 pub fn GEPi(cx: block, base: ValueRef, ixs: &[uint]) -> ValueRef {
     let v = do vec::map(ixs) |i| { C_i32(*i as i32) };
     count_insn(cx, "gepi");
@@ -837,7 +839,7 @@ pub fn Phi(cx: block, Ty: TypeRef, vals: &[ValueRef], bbs: &[BasicBlockRef])
     -> ValueRef {
     unsafe {
         if cx.unreachable { return llvm::LLVMGetUndef(Ty); }
-        assert!(vals.len() == bbs.len());
+        assert_eq!(vals.len(), bbs.len());
         let phi = EmptyPhi(cx, Ty);
         count_insn(cx, "addincoming");
         llvm::LLVMAddIncoming(phi, vec::raw::to_ptr(vals),
@@ -862,7 +864,7 @@ pub fn _UndefReturn(cx: block, Fn: ValueRef) -> ValueRef {
         let ty = val_ty(Fn);
         let retty = if llvm::LLVMGetTypeKind(ty) == lib::llvm::Integer {
             llvm::LLVMGetReturnType(ty) } else { ccx.int_type };
-            count_insn(cx, ~"");
+            count_insn(cx, "");
         return llvm::LLVMGetUndef(retty);
     }
 }
@@ -880,17 +882,17 @@ pub fn add_comment(bcx: block, text: &str) {
     unsafe {
         let ccx = bcx.ccx();
         if ccx.sess.asm_comments() {
-            let sanitized = str::replace(text, ~"$", ~"");
+            let sanitized = str::replace(text, "$", "");
             let comment_text = ~"# " +
-                str::replace(sanitized, ~"\n", ~"\n\t# ");
+                str::replace(sanitized, "\n", "\n\t# ");
             let asm = str::as_c_str(comment_text, |c| {
-                str::as_c_str(~"", |e| {
-                    count_insn(bcx, ~"inlineasm");
-                    llvm::LLVMConstInlineAsm(T_fn(~[], T_void()), c, e,
+                str::as_c_str("", |e| {
+                    count_insn(bcx, "inlineasm");
+                    llvm::LLVMConstInlineAsm(T_fn([], T_void()), c, e,
                                              False, False)
                 })
             });
-            Call(bcx, asm, ~[]);
+            Call(bcx, asm, []);
         }
     }
 }
@@ -1062,7 +1064,7 @@ pub fn Trap(cx: block) {
         let BB: BasicBlockRef = llvm::LLVMGetInsertBlock(b);
         let FN: ValueRef = llvm::LLVMGetBasicBlockParent(BB);
         let M: ModuleRef = llvm::LLVMGetGlobalParent(FN);
-        let T: ValueRef = str::as_c_str(~"llvm.trap", |buf| {
+        let T: ValueRef = str::as_c_str("llvm.trap", |buf| {
             llvm::LLVMGetNamedFunction(M, buf)
         });
         assert!((T as int != 0));

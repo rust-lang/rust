@@ -10,12 +10,12 @@
 
 use ast;
 use codemap::span;
-use ext::base::ext_ctxt;
+use ext::base::ExtCtxt;
 use ext::base;
 use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
 
-pub fn expand_trace_macros(cx: @ext_ctxt,
+pub fn expand_trace_macros(cx: @ExtCtxt,
                            sp: span,
                            tt: &[ast::token_tree])
                         -> base::MacResult {
@@ -39,7 +39,7 @@ pub fn expand_trace_macros(cx: @ext_ctxt,
     } else if rust_parser.is_keyword("false") {
         cx.set_trace_macros(false);
     } else {
-        cx.span_fatal(sp, ~"trace_macros! only accepts `true` or `false`")
+        cx.span_fatal(sp, "trace_macros! only accepts `true` or `false`")
     }
 
     rust_parser.bump();

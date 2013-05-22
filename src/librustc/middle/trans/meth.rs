@@ -213,8 +213,8 @@ pub fn trans_method_callee(bcx: block,
             // Make sure to fail with a readable error message if
             // there's some internal error here
             if !(method_index < supertrait_method_def_ids.len()) {
-                tcx.sess.bug(~"trans_method_callee: supertrait method \
-                               index is out of bounds");
+                tcx.sess.bug("trans_method_callee: supertrait method \
+                              index is out of bounds");
             }
             // Get the method name using the method index in the origin
             let method_name =
@@ -401,7 +401,7 @@ pub fn method_with_name_or_default(ccx: @CrateContext,
                       Some(pmis) => {
                           for pmis.each |pmi| {
                               if pmi.method_info.ident == name {
-                                  debug!("XXX %?", pmi.method_info.did);
+                                  debug!("pmi.method_info.did = %?", pmi.method_info.did);
                                   return pmi.method_info.did;
                               }
                           }
@@ -657,11 +657,11 @@ pub fn trans_trait_callee_from_llval(bcx: block,
     let self_mode;
     match explicit_self {
         ast::sty_static => {
-            bcx.tcx().sess.bug(~"shouldn't see static method here");
+            bcx.tcx().sess.bug("shouldn't see static method here");
         }
         ast::sty_value => {
-            bcx.tcx().sess.bug(~"methods with by-value self should not be \
-                               called on objects");
+            bcx.tcx().sess.bug("methods with by-value self should not be \
+                                called on objects");
         }
         ast::sty_region(*) => {
             // As before, we need to pass a pointer to a pointer to the
@@ -691,7 +691,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
             // Pass a pointer to the box.
             match store {
                 ty::BoxTraitStore => llself = llbox,
-                _ => bcx.tcx().sess.bug(~"@self receiver with non-@Trait")
+                _ => bcx.tcx().sess.bug("@self receiver with non-@Trait")
             }
 
             let llscratch = alloca(bcx, val_ty(llself));
@@ -704,7 +704,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
             // Pass the unique pointer.
             match store {
                 ty::UniqTraitStore => llself = llbox,
-                _ => bcx.tcx().sess.bug(~"~self receiver with non-~Trait")
+                _ => bcx.tcx().sess.bug("~self receiver with non-~Trait")
             }
 
             let llscratch = alloca(bcx, val_ty(llself));
@@ -734,15 +734,15 @@ pub fn trans_trait_callee_from_llval(bcx: block,
 }
 
 pub fn vtable_id(ccx: @CrateContext,
-                 origin: typeck::vtable_origin)
+                 origin: &typeck::vtable_origin)
               -> mono_id {
     match origin {
-        typeck::vtable_static(impl_id, substs, sub_vtables) => {
+        &typeck::vtable_static(impl_id, ref substs, sub_vtables) => {
             monomorphize::make_mono_id(
                 ccx,
                 impl_id,
-                substs,
-                if (*sub_vtables).len() == 0u {
+                *substs,
+                if sub_vtables.is_empty() {
                     None
                 } else {
                     Some(sub_vtables)
@@ -759,8 +759,7 @@ pub fn vtable_id(ccx: @CrateContext,
 pub fn get_vtable(ccx: @CrateContext,
                   origin: typeck::vtable_origin)
                -> ValueRef {
-    // XXX: Bad copy.
-    let hash_id = vtable_id(ccx, copy origin);
+    let hash_id = vtable_id(ccx, &origin);
     match ccx.vtables.find(&hash_id) {
       Some(&val) => val,
       None => match origin {

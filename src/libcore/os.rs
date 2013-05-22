@@ -147,23 +147,25 @@ pub mod win32 {
 
 /*
 Accessing environment variables is not generally threadsafe.
-This uses a per-runtime lock to serialize access.
-FIXME #4726: It would probably be appropriate to make this a real global
+Serialize access through a global lock.
 */
 fn with_env_lock<T>(f: &fn() -> T) -> T {
-    use unstable::global::global_data_clone_create;
-    use unstable::sync::{Exclusive, exclusive};
-
-    struct SharedValue(());
-    type ValueMutex = Exclusive<SharedValue>;
-    fn key(_: ValueMutex) { }
+    use unstable::finally::Finally;
 
     unsafe {
-        let lock: ValueMutex = global_data_clone_create(key, || {
-            ~exclusive(SharedValue(()))
-        });
+        return do (|| {
+            rust_take_env_lock();
+            f()
+        }).finally {
+            rust_drop_env_lock();
+        };
+    }
 
-        lock.with_imm(|_| f() )
+    extern {
+        #[fast_ffi]
+        fn rust_take_env_lock();
+        #[fast_ffi]
+        fn rust_drop_env_lock();
     }
 }
 
@@ -219,7 +221,7 @@ pub fn env() -> ~[(~str,~str)] {
                 for str::each_splitn_char(*p, '=', 1) |s| { vs.push(s.to_owned()) }
                 debug!("splitting: len: %u",
                     vs.len());
-                assert!(vs.len() == 2);
+                assert_eq!(vs.len(), 2);
                 pairs.push((copy vs[0], copy vs[1]));
             }
             pairs
@@ -386,7 +388,7 @@ pub fn pipe() -> Pipe {
     unsafe {
         let mut fds = Pipe {in: 0 as c_int,
                             out: 0 as c_int };
-        assert!((libc::pipe(&mut fds.in) == (0 as c_int)));
+        assert_eq!(libc::pipe(&mut fds.in), (0 as c_int));
         return Pipe {in: fds.in, out: fds.out};
     }
 }
@@ -405,7 +407,7 @@ pub fn pipe() -> Pipe {
                     out: 0 as c_int };
         let res = libc::pipe(&mut fds.in, 1024 as ::libc::c_uint,
                              (libc::O_BINARY | libc::O_NOINHERIT) as c_int);
-        assert!((res == 0 as c_int));
+        assert_eq!(res, 0 as c_int);
         assert!((fds.in != -1 as c_int && fds.in != 0 as c_int));
         assert!((fds.out != -1 as c_int && fds.in != 0 as c_int));
         return Pipe {in: fds.in, out: fds.out};
@@ -507,7 +509,7 @@ pub fn self_exe_path() -> Option<Path> {
  * Otherwise, homedir returns option::none.
  */
 pub fn homedir() -> Option<Path> {
-    return match getenv(~"HOME") {
+    return match getenv("HOME") {
         Some(ref p) => if !str::is_empty(*p) {
           Some(Path(*p))
         } else {
@@ -573,37 +575,8 @@ pub fn tmpdir() -> Path {
                    getenv_nonempty("WINDIR")))).get_or_default(Path("C:\\Windows"))
     }
 }
-/// Recursively walk a directory structure
-#[cfg(stage0)]
-pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) {
 
-    walk_dir_(p, f);
-
-    fn walk_dir_(p: &Path, f: &fn(&Path) -> bool) -> bool {
-        let mut keepgoing = true;
-        do list_dir(p).each |q| {
-            let path = &p.push(*q);
-            if !f(path) {
-                keepgoing = false;
-                false
-            } else {
-                if path_is_dir(path) {
-                    if !walk_dir_(path, f) {
-                        keepgoing = false;
-                        false
-                    } else {
-                        true
-                    }
-                } else {
-                    true
-                }
-            }
-        }
-        return keepgoing;
-    }
-}
 /// Recursively walk a directory structure
-#[cfg(not(stage0))]
 pub fn walk_dir(p: &Path, f: &fn(&Path) -> bool) -> bool {
     list_dir(p).each(|q| {
         let path = &p.push(*q);
@@ -749,7 +722,7 @@ pub fn list_dir(p: &Path) -> ~[~str] {
             use os::win32::{
                 as_utf16_p
             };
-            use unstable::exchange_alloc::{malloc_raw, free_raw};
+            use rt::global_heap::{malloc_raw, free_raw};
             #[nolink]
             extern {
                 unsafe fn rust_list_dir_wfd_size() -> libc::size_t;
@@ -1472,7 +1445,7 @@ mod tests {
     fn test_setenv() {
         let n = make_rand_name();
         setenv(n, ~"VALUE");
-        assert!(getenv(n) == option::Some(~"VALUE"));
+        assert_eq!(getenv(n), option::Some(~"VALUE"));
     }
 
     #[test]
@@ -1480,7 +1453,7 @@ mod tests {
         let n = make_rand_name();
         setenv(n, ~"VALUE");
         unsetenv(n);
-        assert!(getenv(n) == option::None);
+        assert_eq!(getenv(n), option::None);
     }
 
     #[test]
@@ -1490,9 +1463,9 @@ mod tests {
         let n = make_rand_name();
         setenv(n, ~"1");
         setenv(n, ~"2");
-        assert!(getenv(n) == option::Some(~"2"));
+        assert_eq!(getenv(n), option::Some(~"2"));
         setenv(n, ~"");
-        assert!(getenv(n) == option::Some(~""));
+        assert_eq!(getenv(n), option::Some(~""));
     }
 
     // Windows GetEnvironmentVariable requires some extra work to make sure
@@ -1507,7 +1480,7 @@ mod tests {
         let n = make_rand_name();
         setenv(n, s);
         debug!(copy s);
-        assert!(getenv(n) == option::Some(s));
+        assert_eq!(getenv(n), option::Some(s));
     }
 
     #[test]
@@ -1565,7 +1538,7 @@ mod tests {
         let oldhome = getenv(~"HOME");
 
         setenv(~"HOME", ~"/home/MountainView");
-        assert!(os::homedir() == Some(Path("/home/MountainView")));
+        assert_eq!(os::homedir(), Some(Path("/home/MountainView")));
 
         setenv(~"HOME", ~"");
         assert!(os::homedir().is_none());
@@ -1586,16 +1559,16 @@ mod tests {
         assert!(os::homedir().is_none());
 
         setenv(~"HOME", ~"/home/MountainView");
-        assert!(os::homedir() == Some(Path("/home/MountainView")));
+        assert_eq!(os::homedir(), Some(Path("/home/MountainView")));
 
         setenv(~"HOME", ~"");
 
         setenv(~"USERPROFILE", ~"/home/MountainView");
-        assert!(os::homedir() == Some(Path("/home/MountainView")));
+        assert_eq!(os::homedir(), Some(Path("/home/MountainView")));
 
         setenv(~"HOME", ~"/home/MountainView");
         setenv(~"USERPROFILE", ~"/home/PaloAlto");
-        assert!(os::homedir() == Some(Path("/home/MountainView")));
+        assert_eq!(os::homedir(), Some(Path("/home/MountainView")));
 
         oldhome.each(|s| {setenv(~"HOME", *s);true});
         olduserprofile.each(|s| {setenv(~"USERPROFILE", *s);true});
@@ -1666,7 +1639,7 @@ mod tests {
                                    (str::len(s) + 1u) as size_t, ostream)
                       == buf.len() as size_t))
           }
-          assert!((libc::fclose(ostream) == (0u as c_int)));
+          assert_eq!(libc::fclose(ostream), (0u as c_int));
           let in_mode = in.get_mode();
           let rs = os::copy_file(&in, &out);
           if (!os::path_exists(&in)) {
@@ -1674,8 +1647,8 @@ mod tests {
           }
           assert!((rs));
           let rslt = run::run_program(~"diff", ~[in.to_str(), out.to_str()]);
-          assert!((rslt == 0));
-          assert!(out.get_mode() == in_mode);
+          assert_eq!(rslt, 0);
+          assert_eq!(out.get_mode(), in_mode);
           assert!((remove_file(&in)));
           assert!((remove_file(&out)));
         }

@@ -45,7 +45,7 @@ pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::t], output: ty::t)
         if !output_is_immediate {
             atys.push(T_ptr(lloutputtype));
         } else {
-            // XXX: Eliminate this.
+            // FIXME #6575: Eliminate this.
             atys.push(T_ptr(T_i8()));
         }
 
@@ -70,7 +70,7 @@ pub fn type_of_fn_from_ty(cx: @CrateContext, fty: ty::t) -> TypeRef {
         ty::ty_closure(ref f) => type_of_fn(cx, f.sig.inputs, f.sig.output),
         ty::ty_bare_fn(ref f) => type_of_fn(cx, f.sig.inputs, f.sig.output),
         _ => {
-            cx.sess.bug(~"type_of_fn_from_ty given non-closure, non-bare-fn")
+            cx.sess.bug("type_of_fn_from_ty given non-closure, non-bare-fn")
         }
     }
 }
@@ -90,7 +90,7 @@ pub fn type_of_non_gc_box(cx: @CrateContext, t: ty::t) -> TypeRef {
             T_ptr(T_unique(cx, type_of(cx, mt.ty)))
           }
           _ => {
-            cx.sess.bug(~"non-box in type_of_non_gc_box");
+            cx.sess.bug("non-box in type_of_non_gc_box");
           }
         }
     }
@@ -135,11 +135,11 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 
         ty::ty_estr(ty::vstore_slice(*)) |
         ty::ty_evec(_, ty::vstore_slice(*)) => {
-            T_struct(~[T_ptr(T_i8()), T_ptr(T_i8())], false)
+            T_struct([T_ptr(T_i8()), T_ptr(T_i8())], false)
         }
 
         ty::ty_bare_fn(*) => T_ptr(T_i8()),
-        ty::ty_closure(*) => T_struct(~[T_ptr(T_i8()), T_ptr(T_i8())], false),
+        ty::ty_closure(*) => T_struct([T_ptr(T_i8()), T_ptr(T_i8())], false),
         ty::ty_trait(_, _, store, _) => T_opaque_trait(cx, store),
 
         ty::ty_estr(ty::vstore_fixed(size)) => T_array(T_i8(), size),
@@ -200,7 +200,6 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
         return llty;
     }
 
-    // XXX: This is a terrible terrible copy.
     let llty = match ty::get(t).sty {
       ty::ty_nil | ty::ty_bot => T_nil(),
       ty::ty_bool => T_bool(),
@@ -219,7 +218,7 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
         common::T_named_struct(llvm_type_name(cx,
                                               an_enum,
                                               did,
-                                              /*bad*/copy substs.tps))
+                                              substs.tps))
       }
       ty::ty_estr(ty::vstore_box) => {
         T_box_ptr(T_box(cx, T_vec(cx, T_i8())))
@@ -240,15 +239,11 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
       ty::ty_rptr(_, ref mt) => T_ptr(type_of(cx, mt.ty)),
 
       ty::ty_evec(ref mt, ty::vstore_slice(_)) => {
-        T_struct(~[T_ptr(type_of(cx, mt.ty)),
-                   T_uint_ty(cx, ast::ty_u)],
-                 false)
+        T_struct([T_ptr(type_of(cx, mt.ty)), T_uint_ty(cx, ast::ty_u)], false)
       }
 
       ty::ty_estr(ty::vstore_slice(_)) => {
-        T_struct(~[T_ptr(T_i8()),
-                   T_uint_ty(cx, ast::ty_u)],
-                 false)
+        T_struct([T_ptr(T_i8()), T_uint_ty(cx, ast::ty_u)], false)
       }
 
       ty::ty_estr(ty::vstore_fixed(n)) => {
@@ -280,13 +275,13 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
           T_named_struct(llvm_type_name(cx,
                                         a_struct,
                                         did,
-                                        /*bad*/ copy substs.tps))
+                                        substs.tps))
         }
       }
-      ty::ty_self(*) => cx.tcx.sess.unimpl(~"type_of: ty_self"),
-      ty::ty_infer(*) => cx.tcx.sess.bug(~"type_of with ty_infer"),
-      ty::ty_param(*) => cx.tcx.sess.bug(~"type_of with ty_param"),
-      ty::ty_err(*) => cx.tcx.sess.bug(~"type_of with ty_err")
+      ty::ty_self(*) => cx.tcx.sess.unimpl("type_of: ty_self"),
+      ty::ty_infer(*) => cx.tcx.sess.bug("type_of with ty_infer"),
+      ty::ty_param(*) => cx.tcx.sess.bug("type_of with ty_param"),
+      ty::ty_err(*) => cx.tcx.sess.bug("type_of with ty_err")
     };
 
     cx.lltypes.insert(t, llty);
@@ -337,8 +332,8 @@ pub fn llvm_type_name(cx: @CrateContext,
 }
 
 pub fn type_of_dtor(ccx: @CrateContext, self_ty: ty::t) -> TypeRef {
-    T_fn(~[T_ptr(T_i8()),                   // output pointer
-           T_ptr(type_of(ccx, self_ty))],   // self arg
+    T_fn([T_ptr(T_i8()),                   // output pointer
+          T_ptr(type_of(ccx, self_ty))],   // self arg
          T_nil())
 }
 
@@ -352,6 +347,5 @@ pub fn type_of_rooted(ccx: @CrateContext, t: ty::t) -> TypeRef {
 pub fn type_of_glue_fn(ccx: @CrateContext, t: ty::t) -> TypeRef {
     let tydescpp = T_ptr(T_ptr(ccx.tydesc_type));
     let llty = T_ptr(type_of(ccx, t));
-    return T_fn(~[T_ptr(T_nil()), T_ptr(T_nil()), tydescpp, llty],
-                T_nil());
+    return T_fn([T_ptr(T_nil()), T_ptr(T_nil()), tydescpp, llty], T_nil());
 }

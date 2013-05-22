@@ -210,9 +210,7 @@ impl FileInput {
     pub fn next_file(&self) -> bool {
         // No more files
 
-        // unsafe block can be removed after the next snapshot
-        // (next one after 2013-05-03)
-        if unsafe { self.fi.files.is_empty() } {
+        if self.fi.files.is_empty() {
             self.fi.current_reader = None;
             return false;
         }
@@ -254,17 +252,6 @@ impl FileInput {
     (line numbers and file names, see documentation for
     `FileInputState`). Otherwise identical to `lines_each`.
     */
-    #[cfg(stage0)]
-    pub fn each_line_state(&self,
-                            f: &fn(&str, FileInputState) -> bool) {
-         self.each_line(|line| f(line, copy self.fi.state));
-    }
-    /**
-    Apply `f` to each line successively, along with some state
-    (line numbers and file names, see documentation for
-    `FileInputState`). Otherwise identical to `lines_each`.
-    */
-    #[cfg(not(stage0))]
     pub fn each_line_state(&self,
                             f: &fn(&str, FileInputState) -> bool) -> bool {
          self.each_line(|line| f(line, copy self.fi.state))
@@ -335,9 +322,7 @@ impl io::Reader for FileInput {
     fn eof(&self) -> bool {
         // we've run out of files, and current_reader is either None or eof.
 
-        // unsafe block can be removed after the next snapshot
-        // (next one after 2013-05-03)
-        (unsafe { self.fi.files.is_empty() }) &&
+        self.fi.files.is_empty() &&
             match self.fi.current_reader { None => true, Some(r) => r.eof() }
 
     }
@@ -377,17 +362,6 @@ reading from `stdin`).
 
 Fails when attempting to read from a file that can't be opened.
 */
-#[cfg(stage0)]
-pub fn input(f: &fn(&str) -> bool) {
-    FileInput::from_args().each_line(f);
-}
-/**
-Iterate directly over the command line arguments (no arguments implies
-reading from `stdin`).
-
-Fails when attempting to read from a file that can't be opened.
-*/
-#[cfg(not(stage0))]
 pub fn input(f: &fn(&str) -> bool) -> bool {
     let i = FileInput::from_args();
     i.each_line(f)
@@ -400,18 +374,6 @@ provided at each call.
 
 Fails when attempting to read from a file that can't be opened.
 */
-#[cfg(stage0)]
-pub fn input_state(f: &fn(&str, FileInputState) -> bool) {
-    FileInput::from_args().each_line_state(f);
-}
-/**
-Iterate directly over the command line arguments (no arguments
-implies reading from `stdin`) with the current state of the iteration
-provided at each call.
-
-Fails when attempting to read from a file that can't be opened.
-*/
-#[cfg(not(stage0))]
 pub fn input_state(f: &fn(&str, FileInputState) -> bool) -> bool {
     let i = FileInput::from_args();
     i.each_line_state(f)
@@ -422,16 +384,6 @@ Iterate over a vector of files (an empty vector implies just `stdin`).
 
 Fails when attempting to read from a file that can't be opened.
 */
-#[cfg(stage0)]
-pub fn input_vec(files: ~[Option<Path>], f: &fn(&str) -> bool) {
-    FileInput::from_vec(files).each_line(f);
-}
-/**
-Iterate over a vector of files (an empty vector implies just `stdin`).
-
-Fails when attempting to read from a file that can't be opened.
-*/
-#[cfg(not(stage0))]
 pub fn input_vec(files: ~[Option<Path>], f: &fn(&str) -> bool) -> bool {
     let i = FileInput::from_vec(files);
     i.each_line(f)
@@ -443,18 +395,6 @@ with the current state of the iteration provided at each call.
 
 Fails when attempting to read from a file that can't be opened.
 */
-#[cfg(stage0)]
-pub fn input_vec_state(files: ~[Option<Path>],
-                       f: &fn(&str, FileInputState) -> bool) {
-    FileInput::from_vec(files).each_line_state(f);
-}
-/**
-Iterate over a vector of files (an empty vector implies just `stdin`)
-with the current state of the iteration provided at each call.
-
-Fails when attempting to read from a file that can't be opened.
-*/
-#[cfg(not(stage0))]
 pub fn input_vec_state(files: ~[Option<Path>],
                        f: &fn(&str, FileInputState) -> bool) -> bool {
     let i = FileInput::from_vec(files);

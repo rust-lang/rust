@@ -90,6 +90,7 @@ use task::unkillable;
 use uint;
 use util;
 use unstable::sync::{Exclusive, exclusive};
+use rt::local::Local;
 
 #[cfg(test)] use task::default_task_opts;
 
@@ -110,11 +111,6 @@ fn taskset_remove(tasks: &mut TaskSet, task: *rust_task) {
     let was_present = tasks.remove(&task);
     assert!(was_present);
 }
-#[cfg(stage0)]
-pub fn taskset_each(tasks: &TaskSet, blk: &fn(v: *rust_task) -> bool) {
-    tasks.each(|k| blk(*k))
-}
-#[cfg(not(stage0))]
 pub fn taskset_each(tasks: &TaskSet, blk: &fn(v: *rust_task) -> bool) -> bool {
     tasks.each(|k| blk(*k))
 }
@@ -580,8 +576,8 @@ pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
 fn spawn_raw_newsched(_opts: TaskOpts, f: ~fn()) {
     use rt::sched::*;
 
-    let mut sched = local_sched::take();
-    let task = ~Task::new(&mut sched.stack_pool, f);
+    let mut sched = Local::take::<Scheduler>();
+    let task = ~Coroutine::new(&mut sched.stack_pool, f);
     sched.schedule_new_task(task);
 }
 
@@ -774,7 +770,7 @@ fn test_spawn_raw_notify_success() {
     };
     do spawn_raw(opts) {
     }
-    assert!(notify_po.recv() == Success);
+    assert_eq!(notify_po.recv(), Success);
 }
 
 #[test]
@@ -791,5 +787,5 @@ fn test_spawn_raw_notify_failure() {
     do spawn_raw(opts) {
         fail!();
     }
-    assert!(notify_po.recv() == Failure);
+    assert_eq!(notify_po.recv(), Failure);
 }

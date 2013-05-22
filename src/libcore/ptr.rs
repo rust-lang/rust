@@ -13,6 +13,7 @@
 use cast;
 use libc;
 use libc::{c_void, size_t};
+use option::{Option, Some, None};
 use sys;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
@@ -209,6 +210,7 @@ pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
 pub trait Ptr<T> {
     fn is_null(&const self) -> bool;
     fn is_not_null(&const self) -> bool;
+    unsafe fn to_option(&const self) -> Option<&T>;
     fn offset(&self, count: uint) -> Self;
 }
 
@@ -221,6 +223,23 @@ impl<T> Ptr<T> for *T {
     /// Returns true if the pointer is not equal to the null pointer.
     #[inline(always)]
     fn is_not_null(&const self) -> bool { is_not_null(*self) }
+
+    ///
+    /// Returns `None` if the pointer is null, or else returns the value wrapped
+    /// in `Some`.
+    ///
+    /// # Safety Notes
+    ///
+    /// While this method is useful for null-safety, it is important to note
+    /// that this is still an unsafe operation because the returned value could
+    /// be pointing to invalid memory.
+    ///
+    #[inline(always)]
+    unsafe fn to_option(&const self) -> Option<&T> {
+        if self.is_null() { None } else {
+            Some(cast::transmute(*self))
+        }
+    }
 
     /// Calculates the offset from a pointer.
     #[inline(always)]
@@ -236,6 +255,23 @@ impl<T> Ptr<T> for *mut T {
     /// Returns true if the pointer is not equal to the null pointer.
     #[inline(always)]
     fn is_not_null(&const self) -> bool { is_not_null(*self) }
+
+    ///
+    /// Returns `None` if the pointer is null, or else returns the value wrapped
+    /// in `Some`.
+    ///
+    /// # Safety Notes
+    ///
+    /// While this method is useful for null-safety, it is important to note
+    /// that this is still an unsafe operation because the returned value could
+    /// be pointing to invalid memory.
+    ///
+    #[inline(always)]
+    unsafe fn to_option(&const self) -> Option<&T> {
+        if self.is_null() { None } else {
+            Some(cast::transmute(*self))
+        }
+    }
 
     /// Calculates the offset from a mutable pointer.
     #[inline(always)]
@@ -343,15 +379,15 @@ pub mod ptr_tests {
             let mut p = Pair {fst: 10, snd: 20};
             let pptr: *mut Pair = &mut p;
             let iptr: *mut int = cast::transmute(pptr);
-            assert!((*iptr == 10));;
+            assert_eq!(*iptr, 10);
             *iptr = 30;
-            assert!((*iptr == 30));
-            assert!((p.fst == 30));;
+            assert_eq!(*iptr, 30);
+            assert_eq!(p.fst, 30);
 
             *pptr = Pair {fst: 50, snd: 60};
-            assert!((*iptr == 50));
-            assert!((p.fst == 50));
-            assert!((p.snd == 60));
+            assert_eq!(*iptr, 50);
+            assert_eq!(p.fst, 50);
+            assert_eq!(p.snd, 60);
 
             let v0 = ~[32000u16, 32001u16, 32002u16];
             let mut v1 = ~[0u16, 0u16, 0u16];
@@ -396,8 +432,8 @@ pub mod ptr_tests {
                 do str::as_c_str(s2) |p2| {
                     let v = ~[p0, p1, p2, null()];
                     do vec::as_imm_buf(v) |vp, len| {
-                        assert!(unsafe { buf_len(vp) } == 3u);
-                        assert!(len == 4u);
+                        assert_eq!(unsafe { buf_len(vp) }, 3u);
+                        assert_eq!(len, 4u);
                     }
                 }
             }
@@ -423,6 +459,21 @@ pub mod ptr_tests {
         assert!(mq.is_not_null());
     }
 
+    #[test]
+    fn test_to_option() {
+        let p: *int = null();
+        // FIXME (#6641): Usage of unsafe methods in safe code doesn't cause an error.
+        assert_eq!(p.to_option(), None);
+
+        let q: *int = &2;
+        assert_eq!(q.to_option().unwrap(), &2);     // FIXME (#6641)
+
+        let p: *mut int = mut_null();
+        assert_eq!(p.to_option(), None);            // FIXME (#6641)
+
+        let q: *mut int = &mut 2;
+        assert_eq!(q.to_option().unwrap(), &2);     // FIXME (#6641)
+    }
 
     #[test]
     fn test_ptr_array_each_with_len() {
@@ -448,11 +499,11 @@ pub mod ptr_tests {
                                          debug!(
                                              "test_ptr_array_each e: %s, a: %s",
                                              expected, actual);
-                                         assert!(actual == expected);
+                                         assert_eq!(actual, expected);
                                          ctr += 1;
                                          iteration_count += 1;
                                      });
-            assert!(iteration_count == 3u);
+            assert_eq!(iteration_count, 3u);
         }
     }
     #[test]
@@ -480,11 +531,11 @@ pub mod ptr_tests {
                 debug!(
                     "test_ptr_array_each e: %s, a: %s",
                     expected, actual);
-                assert!(actual == expected);
+                assert_eq!(actual, expected);
                 ctr += 1;
                 iteration_count += 1;
             });
-            assert!(iteration_count == 3);
+            assert_eq!(iteration_count, 3);
         }
     }
     #[test]

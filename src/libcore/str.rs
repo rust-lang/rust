@@ -67,7 +67,7 @@ pub fn from_bytes(vv: &const [u8]) -> ~str {
  * Fails if not null terminated
  */
 pub fn from_bytes_with_null<'a>(vv: &'a [u8]) -> &'a str {
-    assert!(vv[vv.len() - 1] == 0);
+    assert_eq!(vv[vv.len() - 1], 0);
     assert!(is_utf8(vv));
     return unsafe { raw::from_bytes_with_null(vv) };
 }
@@ -128,57 +128,43 @@ pub fn push_char(s: &mut ~str, ch: char) {
         let off = len;
         do as_buf(*s) |buf, _len| {
             let buf: *mut u8 = ::cast::transmute(buf);
-            if nb == 1u {
-                *ptr::mut_offset(buf, off) =
-                    code as u8;
-            } else if nb == 2u {
-                *ptr::mut_offset(buf, off) =
-                    (code >> 6u & 31u | tag_two_b) as u8;
-                *ptr::mut_offset(buf, off + 1u) =
-                    (code & 63u | tag_cont) as u8;
-            } else if nb == 3u {
-                *ptr::mut_offset(buf, off) =
-                    (code >> 12u & 15u | tag_three_b) as u8;
-                *ptr::mut_offset(buf, off + 1u) =
-                    (code >> 6u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 2u) =
-                    (code & 63u | tag_cont) as u8;
-            } else if nb == 4u {
-                *ptr::mut_offset(buf, off) =
-                    (code >> 18u & 7u | tag_four_b) as u8;
-                *ptr::mut_offset(buf, off + 1u) =
-                    (code >> 12u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 2u) =
-                    (code >> 6u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 3u) =
-                    (code & 63u | tag_cont) as u8;
-            } else if nb == 5u {
-                *ptr::mut_offset(buf, off) =
-                    (code >> 24u & 3u | tag_five_b) as u8;
-                *ptr::mut_offset(buf, off + 1u) =
-                    (code >> 18u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 2u) =
-                    (code >> 12u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 3u) =
-                    (code >> 6u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 4u) =
-                    (code & 63u | tag_cont) as u8;
-            } else if nb == 6u {
-                *ptr::mut_offset(buf, off) =
-                    (code >> 30u & 1u | tag_six_b) as u8;
-                *ptr::mut_offset(buf, off + 1u) =
-                    (code >> 24u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 2u) =
-                    (code >> 18u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 3u) =
-                    (code >> 12u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 4u) =
-                    (code >> 6u & 63u | tag_cont) as u8;
-                *ptr::mut_offset(buf, off + 5u) =
-                    (code & 63u | tag_cont) as u8;
+            match nb {
+                1u => {
+                    *ptr::mut_offset(buf, off) = code as u8;
+                }
+                2u => {
+                    *ptr::mut_offset(buf, off) = (code >> 6u & 31u | tag_two_b) as u8;
+                    *ptr::mut_offset(buf, off + 1u) = (code & 63u | tag_cont) as u8;
+                }
+                3u => {
+                    *ptr::mut_offset(buf, off) = (code >> 12u & 15u | tag_three_b) as u8;
+                    *ptr::mut_offset(buf, off + 1u) = (code >> 6u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 2u) = (code & 63u | tag_cont) as u8;
+                }
+                4u => {
+                    *ptr::mut_offset(buf, off) = (code >> 18u & 7u | tag_four_b) as u8;
+                    *ptr::mut_offset(buf, off + 1u) = (code >> 12u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 2u) = (code >> 6u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 3u) = (code & 63u | tag_cont) as u8;
+                }
+                5u => {
+                    *ptr::mut_offset(buf, off) = (code >> 24u & 3u | tag_five_b) as u8;
+                    *ptr::mut_offset(buf, off + 1u) = (code >> 18u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 2u) = (code >> 12u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 3u) = (code >> 6u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 4u) = (code & 63u | tag_cont) as u8;
+                }
+                6u => {
+                    *ptr::mut_offset(buf, off) = (code >> 30u & 1u | tag_six_b) as u8;
+                    *ptr::mut_offset(buf, off + 1u) = (code >> 24u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 2u) = (code >> 18u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 3u) = (code >> 12u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 4u) = (code >> 6u & 63u | tag_cont) as u8;
+                    *ptr::mut_offset(buf, off + 5u) = (code & 63u | tag_cont) as u8;
+                }
+                _ => {}
             }
         }
-
         raw::set_len(s, new_len);
     }
 }
@@ -571,27 +557,12 @@ pub fn slice<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
 }
 
 /// Splits a string into substrings at each occurrence of a given character
-#[cfg(stage0)]
-pub fn each_split_char<'a>(s: &'a str, sep: char, it: &fn(&'a str) -> bool) {
-    each_split_char_inner(s, sep, len(s), true, true, it);
-}
-
-/// Splits a string into substrings at each occurrence of a given character
-#[cfg(not(stage0))]
 pub fn each_split_char<'a>(s: &'a str, sep: char,
                            it: &fn(&'a str) -> bool) -> bool {
     each_split_char_inner(s, sep, len(s), true, true, it)
 }
 
 /// Like `each_split_char`, but a trailing empty string is omitted
-#[cfg(stage0)]
-pub fn each_split_char_no_trailing<'a>(s: &'a str,
-                                       sep: char,
-                                       it: &fn(&'a str) -> bool) {
-    each_split_char_inner(s, sep, len(s), true, false, it);
-}
-/// Like `each_split_char`, but a trailing empty string is omitted
-#[cfg(not(stage0))]
 pub fn each_split_char_no_trailing<'a>(s: &'a str,
                                        sep: char,
                                        it: &fn(&'a str) -> bool) -> bool {
@@ -604,20 +575,6 @@ pub fn each_split_char_no_trailing<'a>(s: &'a str,
  *
  * The character must be a valid UTF-8/ASCII character
  */
-#[cfg(stage0)]
-pub fn each_splitn_char<'a>(s: &'a str,
-                            sep: char,
-                            count: uint,
-                            it: &fn(&'a str) -> bool) {
-    each_split_char_inner(s, sep, count, true, true, it);
-}
-/**
- * Splits a string into substrings at each occurrence of a given
- * character up to 'count' times.
- *
- * The character must be a valid UTF-8/ASCII character
- */
-#[cfg(not(stage0))]
 pub fn each_splitn_char<'a>(s: &'a str,
                             sep: char,
                             count: uint,
@@ -626,14 +583,6 @@ pub fn each_splitn_char<'a>(s: &'a str,
 }
 
 /// Like `each_split_char`, but omits empty strings
-#[cfg(stage0)]
-pub fn each_split_char_nonempty<'a>(s: &'a str,
-                                    sep: char,
-                                    it: &fn(&'a str) -> bool) {
-    each_split_char_inner(s, sep, len(s), false, false, it);
-}
-/// Like `each_split_char`, but omits empty strings
-#[cfg(not(stage0))]
 pub fn each_split_char_nonempty<'a>(s: &'a str,
                                     sep: char,
                                     it: &fn(&'a str) -> bool) -> bool {
@@ -673,14 +622,6 @@ fn each_split_char_inner<'a>(s: &'a str,
 }
 
 /// Splits a string into substrings using a character function
-#[cfg(stage0)]
-pub fn each_split<'a>(s: &'a str,
-                      sepfn: &fn(char) -> bool,
-                      it: &fn(&'a str) -> bool) {
-    each_split_inner(s, sepfn, len(s), true, true, it);
-}
-/// Splits a string into substrings using a character function
-#[cfg(not(stage0))]
 pub fn each_split<'a>(s: &'a str,
                       sepfn: &fn(char) -> bool,
                       it: &fn(&'a str) -> bool) -> bool {
@@ -688,14 +629,6 @@ pub fn each_split<'a>(s: &'a str,
 }
 
 /// Like `each_split`, but a trailing empty string is omitted
-#[cfg(stage0)]
-pub fn each_split_no_trailing<'a>(s: &'a str,
-                                  sepfn: &fn(char) -> bool,
-                                  it: &fn(&'a str) -> bool) {
-    each_split_inner(s, sepfn, len(s), true, false, it);
-}
-/// Like `each_split`, but a trailing empty string is omitted
-#[cfg(not(stage0))]
 pub fn each_split_no_trailing<'a>(s: &'a str,
                                   sepfn: &fn(char) -> bool,
                                   it: &fn(&'a str) -> bool) -> bool {
@@ -706,18 +639,6 @@ pub fn each_split_no_trailing<'a>(s: &'a str,
  * Splits a string into substrings using a character function, cutting at
  * most `count` times.
  */
-#[cfg(stage0)]
-pub fn each_splitn<'a>(s: &'a str,
-                       sepfn: &fn(char) -> bool,
-                       count: uint,
-                       it: &fn(&'a str) -> bool) {
-    each_split_inner(s, sepfn, count, true, true, it);
-}
-/**
- * Splits a string into substrings using a character function, cutting at
- * most `count` times.
- */
-#[cfg(not(stage0))]
 pub fn each_splitn<'a>(s: &'a str,
                        sepfn: &fn(char) -> bool,
                        count: uint,
@@ -726,14 +647,6 @@ pub fn each_splitn<'a>(s: &'a str,
 }
 
 /// Like `each_split`, but omits empty strings
-#[cfg(stage0)]
-pub fn each_split_nonempty<'a>(s: &'a str,
-                               sepfn: &fn(char) -> bool,
-                               it: &fn(&'a str) -> bool) {
-    each_split_inner(s, sepfn, len(s), false, false, it);
-}
-/// Like `each_split`, but omits empty strings
-#[cfg(not(stage0))]
 pub fn each_split_nonempty<'a>(s: &'a str,
                                sepfn: &fn(char) -> bool,
                                it: &fn(&'a str) -> bool) -> bool {
@@ -768,36 +681,6 @@ fn each_split_inner<'a>(s: &'a str,
 }
 
 // See Issue #1932 for why this is a naive search
-#[cfg(stage0)]
-fn iter_matches<'a,'b>(s: &'a str, sep: &'b str,
-                       f: &fn(uint, uint) -> bool) {
-    let sep_len = len(sep), l = len(s);
-    assert!(sep_len > 0u);
-    let mut i = 0u, match_start = 0u, match_i = 0u;
-
-    while i < l {
-        if s[i] == sep[match_i] {
-            if match_i == 0u { match_start = i; }
-            match_i += 1u;
-            // Found a match
-            if match_i == sep_len {
-                if !f(match_start, i + 1u) { return; }
-                match_i = 0u;
-            }
-            i += 1u;
-        } else {
-            // Failed match, backtrack
-            if match_i > 0u {
-                match_i = 0u;
-                i = match_start + 1u;
-            } else {
-                i += 1u;
-            }
-        }
-    }
-}
-// See Issue #1932 for why this is a naive search
-#[cfg(not(stage0))]
 fn iter_matches<'a,'b>(s: &'a str, sep: &'b str,
                        f: &fn(uint, uint) -> bool) -> bool {
     let sep_len = len(sep), l = len(s);
@@ -827,18 +710,6 @@ fn iter_matches<'a,'b>(s: &'a str, sep: &'b str,
     return true;
 }
 
-#[cfg(stage0)]
-fn iter_between_matches<'a,'b>(s: &'a str,
-                               sep: &'b str,
-                               f: &fn(uint, uint) -> bool) {
-    let mut last_end = 0u;
-    for iter_matches(s, sep) |from, to| {
-        if !f(last_end, from) { return; }
-        last_end = to;
-    }
-    f(last_end, len(s));
-}
-#[cfg(not(stage0))]
 fn iter_between_matches<'a,'b>(s: &'a str,
                                sep: &'b str,
                                f: &fn(uint, uint) -> bool) -> bool {
@@ -861,26 +732,6 @@ fn iter_between_matches<'a,'b>(s: &'a str,
  * assert!(v == ["", "XXX", "YYY", ""]);
  * ~~~
  */
-#[cfg(stage0)]
-pub fn each_split_str<'a,'b>(s: &'a str,
-                             sep: &'b str,
-                             it: &fn(&'a str) -> bool) {
-    for iter_between_matches(s, sep) |from, to| {
-        if !it( unsafe { raw::slice_bytes(s, from, to) } ) { return; }
-    }
-}
-/**
- * Splits a string into a vector of the substrings separated by a given string
- *
- * # Example
- *
- * ~~~
- * let mut v = ~[];
- * for each_split_str(".XXX.YYY.", ".") |subs| { v.push(subs); }
- * assert!(v == ["", "XXX", "YYY", ""]);
- * ~~~
- */
-#[cfg(not(stage0))]
 pub fn each_split_str<'a,'b>(s: &'a str,
                              sep: &'b str,
                              it: &fn(&'a str) -> bool) -> bool {
@@ -890,18 +741,6 @@ pub fn each_split_str<'a,'b>(s: &'a str,
     return true;
 }
 
-#[cfg(stage0)]
-pub fn each_split_str_nonempty<'a,'b>(s: &'a str,
-                                      sep: &'b str,
-                                      it: &fn(&'a str) -> bool) {
-    for iter_between_matches(s, sep) |from, to| {
-        if to > from {
-            if !it( unsafe { raw::slice_bytes(s, from, to) } ) { return; }
-        }
-    }
-}
-
-#[cfg(not(stage0))]
 pub fn each_split_str_nonempty<'a,'b>(s: &'a str,
                                       sep: &'b str,
                                       it: &fn(&'a str) -> bool) -> bool {
@@ -950,14 +789,6 @@ pub fn levdistance(s: &str, t: &str) -> uint {
 /**
  * Splits a string into substrings separated by LF ('\n').
  */
-#[cfg(stage0)]
-pub fn each_line<'a>(s: &'a str, it: &fn(&'a str) -> bool) {
-    each_split_char_no_trailing(s, '\n', it);
-}
-/**
- * Splits a string into substrings separated by LF ('\n').
- */
-#[cfg(not(stage0))]
 pub fn each_line<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
     each_split_char_no_trailing(s, '\n', it)
 }
@@ -966,22 +797,6 @@ pub fn each_line<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
  * Splits a string into substrings separated by LF ('\n')
  * and/or CR LF ("\r\n")
  */
-#[cfg(stage0)]
-pub fn each_line_any<'a>(s: &'a str, it: &fn(&'a str) -> bool) {
-    for each_line(s) |s| {
-        let l = s.len();
-        if l > 0u && s[l - 1u] == '\r' as u8 {
-            if !it( unsafe { raw::slice_bytes(s, 0, l - 1) } ) { return; }
-        } else {
-            if !it( s ) { return; }
-        }
-    }
-}
-/**
- * Splits a string into substrings separated by LF ('\n')
- * and/or CR LF ("\r\n")
- */
-#[cfg(not(stage0))]
 pub fn each_line_any<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
     for each_line(s) |s| {
         let l = s.len();
@@ -995,12 +810,6 @@ pub fn each_line_any<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
 }
 
 /// Splits a string into substrings separated by whitespace
-#[cfg(stage0)]
-pub fn each_word<'a>(s: &'a str, it: &fn(&'a str) -> bool) {
-    each_split_nonempty(s, char::is_whitespace, it);
-}
-/// Splits a string into substrings separated by whitespace
-#[cfg(not(stage0))]
 pub fn each_word<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
     each_split_nonempty(s, char::is_whitespace, it)
 }
@@ -1077,13 +886,6 @@ pub fn _each_split_within<'a>(ss: &'a str,
     return cont;
 }
 
-#[cfg(stage0)]
-pub fn each_split_within<'a>(ss: &'a str,
-                             lim: uint,
-                             it: &fn(&'a str) -> bool) {
-    _each_split_within(ss, lim, it);
-}
-#[cfg(not(stage0))]
 pub fn each_split_within<'a>(ss: &'a str,
                              lim: uint,
                              it: &fn(&'a str) -> bool) -> bool {
@@ -1366,33 +1168,12 @@ pub fn map(ss: &str, ff: &fn(char) -> char) -> ~str {
 
 /// Iterate over the bytes in a string
 #[inline(always)]
-#[cfg(stage0)]
-pub fn each(s: &str, it: &fn(u8) -> bool) {
-    eachi(s, |_i, b| it(b))
-}
-/// Iterate over the bytes in a string
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn each(s: &str, it: &fn(u8) -> bool) -> bool {
     eachi(s, |_i, b| it(b))
 }
 
 /// Iterate over the bytes in a string, with indices
 #[inline(always)]
-#[cfg(stage0)]
-pub fn eachi(s: &str, it: &fn(uint, u8) -> bool) {
-    let mut pos = 0;
-    let len = s.len();
-
-    while pos < len {
-        if !it(pos, s[pos]) { break; }
-        pos += 1;
-    }
-}
-
-/// Iterate over the bytes in a string, with indices
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn eachi(s: &str, it: &fn(uint, u8) -> bool) -> bool {
     let mut pos = 0;
     let len = s.len();
@@ -1406,30 +1187,12 @@ pub fn eachi(s: &str, it: &fn(uint, u8) -> bool) -> bool {
 
 /// Iterate over the bytes in a string in reverse
 #[inline(always)]
-#[cfg(stage0)]
-pub fn each_reverse(s: &str, it: &fn(u8) -> bool) {
-    eachi_reverse(s, |_i, b| it(b) )
-}
-/// Iterate over the bytes in a string in reverse
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn each_reverse(s: &str, it: &fn(u8) -> bool) -> bool {
     eachi_reverse(s, |_i, b| it(b) )
 }
 
 /// Iterate over the bytes in a string in reverse, with indices
 #[inline(always)]
-#[cfg(stage0)]
-pub fn eachi_reverse(s: &str, it: &fn(uint, u8) -> bool) {
-    let mut pos = s.len();
-    while pos > 0 {
-        pos -= 1;
-        if !it(pos, s[pos]) { break; }
-    }
-}
-/// Iterate over the bytes in a string in reverse, with indices
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn eachi_reverse(s: &str, it: &fn(uint, u8) -> bool) -> bool {
     let mut pos = s.len();
     while pos > 0 {
@@ -1441,19 +1204,6 @@ pub fn eachi_reverse(s: &str, it: &fn(uint, u8) -> bool) -> bool {
 
 /// Iterate over each char of a string, without allocating
 #[inline(always)]
-#[cfg(stage0)]
-pub fn each_char(s: &str, it: &fn(char) -> bool) {
-    let mut i = 0;
-    let len = len(s);
-    while i < len {
-        let CharRange {ch, next} = char_range_at(s, i);
-        if !it(ch) { return; }
-        i = next;
-    }
-}
-/// Iterate over each char of a string, without allocating
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn each_char(s: &str, it: &fn(char) -> bool) -> bool {
     let mut i = 0;
     let len = len(s);
@@ -1467,21 +1217,6 @@ pub fn each_char(s: &str, it: &fn(char) -> bool) -> bool {
 
 /// Iterates over the chars in a string, with indices
 #[inline(always)]
-#[cfg(stage0)]
-pub fn each_chari(s: &str, it: &fn(uint, char) -> bool) {
-    let mut pos = 0;
-    let mut ch_pos = 0u;
-    let len = s.len();
-    while pos < len {
-        let CharRange {ch, next} = char_range_at(s, pos);
-        pos = next;
-        if !it(ch_pos, ch) { break; }
-        ch_pos += 1u;
-    }
-}
-/// Iterates over the chars in a string, with indices
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn each_chari(s: &str, it: &fn(uint, char) -> bool) -> bool {
     let mut pos = 0;
     let mut ch_pos = 0u;
@@ -1497,35 +1232,12 @@ pub fn each_chari(s: &str, it: &fn(uint, char) -> bool) -> bool {
 
 /// Iterates over the chars in a string in reverse
 #[inline(always)]
-#[cfg(stage0)]
-pub fn each_char_reverse(s: &str, it: &fn(char) -> bool) {
-    each_chari_reverse(s, |_, c| it(c))
-}
-/// Iterates over the chars in a string in reverse
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn each_char_reverse(s: &str, it: &fn(char) -> bool) -> bool {
     each_chari_reverse(s, |_, c| it(c))
 }
 
 // Iterates over the chars in a string in reverse, with indices
 #[inline(always)]
-#[cfg(stage0)]
-pub fn each_chari_reverse(s: &str, it: &fn(uint, char) -> bool) {
-    let mut pos = s.len();
-    let mut ch_pos = s.char_len();
-    while pos > 0 {
-        let CharRange {ch, next} = char_range_at_reverse(s, pos);
-        pos = next;
-        ch_pos -= 1;
-
-        if !it(ch_pos, ch) { break; }
-
-    }
-}
-// Iterates over the chars in a string in reverse, with indices
-#[inline(always)]
-#[cfg(not(stage0))]
 pub fn each_chari_reverse(s: &str, it: &fn(uint, char) -> bool) -> bool {
     let mut pos = s.len();
     let mut ch_pos = s.char_len();
@@ -2096,7 +1808,7 @@ pub fn to_utf16(s: &str) -> ~[u16] {
             ch -= 0x1_0000_u32;
             let w1 = 0xD800_u16 | ((ch >> 10) as u16);
             let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
-            u.push_all(~[w1, w2])
+            u.push_all([w1, w2])
         }
     }
     u
@@ -2261,7 +1973,7 @@ pub fn char_range_at(s: &str, i: uint) -> CharRange {
     let mut i = i + 1u;
     while i < end {
         let byte = s[i];
-        assert!((byte & 192u8 == tag_cont_u8));
+        assert_eq!(byte & 192u8, tag_cont_u8);
         val <<= 6u;
         val += (byte & 63u8) as uint;
         i += 1u;
@@ -2747,7 +2459,7 @@ pub mod raw {
             let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
             let b = vec::raw::to_ptr(a);
             let c = from_buf_len(b, 3u);
-            assert!((c == ~"AAA"));
+            assert_eq!(c, ~"AAA");
         }
     }
 
@@ -2775,22 +2487,14 @@ pub trait StrSlice<'self> {
     fn contains<'a>(&self, needle: &'a str) -> bool;
     fn contains_char(&self, needle: char) -> bool;
     fn char_iter(&self) -> StrCharIterator<'self>;
-    #[cfg(stage0)]      fn each(&self, it: &fn(u8) -> bool);
-    #[cfg(not(stage0))] fn each(&self, it: &fn(u8) -> bool) -> bool;
-    #[cfg(stage0)]      fn eachi(&self, it: &fn(uint, u8) -> bool);
-    #[cfg(not(stage0))] fn eachi(&self, it: &fn(uint, u8) -> bool) -> bool;
-    #[cfg(stage0)]      fn each_reverse(&self, it: &fn(u8) -> bool);
-    #[cfg(not(stage0))] fn each_reverse(&self, it: &fn(u8) -> bool) -> bool;
-    #[cfg(stage0)]      fn eachi_reverse(&self, it: &fn(uint, u8) -> bool);
-    #[cfg(not(stage0))] fn eachi_reverse(&self, it: &fn(uint, u8) -> bool) -> bool;
-    #[cfg(stage0)]      fn each_char(&self, it: &fn(char) -> bool);
-    #[cfg(not(stage0))] fn each_char(&self, it: &fn(char) -> bool) -> bool;
-    #[cfg(stage0)]      fn each_chari(&self, it: &fn(uint, char) -> bool);
-    #[cfg(not(stage0))] fn each_chari(&self, it: &fn(uint, char) -> bool) -> bool;
-    #[cfg(stage0)]      fn each_char_reverse(&self, it: &fn(char) -> bool);
-    #[cfg(not(stage0))] fn each_char_reverse(&self, it: &fn(char) -> bool) -> bool;
-    #[cfg(stage0)]      fn each_chari_reverse(&self, it: &fn(uint, char) -> bool);
-    #[cfg(not(stage0))] fn each_chari_reverse(&self, it: &fn(uint, char) -> bool) -> bool;
+    fn each(&self, it: &fn(u8) -> bool) -> bool;
+    fn eachi(&self, it: &fn(uint, u8) -> bool) -> bool;
+    fn each_reverse(&self, it: &fn(u8) -> bool) -> bool;
+    fn eachi_reverse(&self, it: &fn(uint, u8) -> bool) -> bool;
+    fn each_char(&self, it: &fn(char) -> bool) -> bool;
+    fn each_chari(&self, it: &fn(uint, char) -> bool) -> bool;
+    fn each_char_reverse(&self, it: &fn(char) -> bool) -> bool;
+    fn each_chari_reverse(&self, it: &fn(uint, char) -> bool) -> bool;
     fn ends_with(&self, needle: &str) -> bool;
     fn is_empty(&self) -> bool;
     fn is_whitespace(&self) -> bool;
@@ -2798,17 +2502,8 @@ pub trait StrSlice<'self> {
     fn len(&self) -> uint;
     fn char_len(&self) -> uint;
     fn slice(&self, begin: uint, end: uint) -> &'self str;
-    #[cfg(stage0)]
-    fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&'self str) -> bool);
-    #[cfg(not(stage0))]
     fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&'self str) -> bool) -> bool;
-    #[cfg(stage0)]
-    fn each_split_char(&self, sep: char, it: &fn(&'self str) -> bool);
-    #[cfg(not(stage0))]
     fn each_split_char(&self, sep: char, it: &fn(&'self str) -> bool) -> bool;
-    #[cfg(stage0)]
-    fn each_split_str<'a>(&self, sep: &'a str, it: &fn(&'self str) -> bool);
-    #[cfg(not(stage0))]
     fn each_split_str<'a>(&self, sep: &'a str, it: &fn(&'self str) -> bool) -> bool;
     fn starts_with<'a>(&self, needle: &'a str) -> bool;
     fn substr(&self, begin: uint, n: uint) -> &'self str;
@@ -2862,83 +2557,34 @@ impl<'self> StrSlice<'self> for &'self str {
 
     /// Iterate over the bytes in a string
     #[inline]
-    #[cfg(stage0)]
-    fn each(&self, it: &fn(u8) -> bool) { each(*self, it) }
-    /// Iterate over the bytes in a string
-    #[inline]
-    #[cfg(not(stage0))]
     fn each(&self, it: &fn(u8) -> bool) -> bool { each(*self, it) }
     /// Iterate over the bytes in a string, with indices
     #[inline]
-    #[cfg(stage0)]
-    fn eachi(&self, it: &fn(uint, u8) -> bool) { eachi(*self, it) }
-    /// Iterate over the bytes in a string, with indices
-    #[inline]
-    #[cfg(not(stage0))]
     fn eachi(&self, it: &fn(uint, u8) -> bool) -> bool { eachi(*self, it) }
     /// Iterate over the bytes in a string
     #[inline]
-    #[cfg(stage0)]
-    fn each_reverse(&self, it: &fn(u8) -> bool) { each_reverse(*self, it) }
-    /// Iterate over the bytes in a string
-    #[inline]
-    #[cfg(not(stage0))]
     fn each_reverse(&self, it: &fn(u8) -> bool) -> bool { each_reverse(*self, it) }
     /// Iterate over the bytes in a string, with indices
     #[inline]
-    #[cfg(stage0)]
-    fn eachi_reverse(&self, it: &fn(uint, u8) -> bool) {
-        eachi_reverse(*self, it)
-    }
-    /// Iterate over the bytes in a string, with indices
-    #[inline]
-    #[cfg(not(stage0))]
     fn eachi_reverse(&self, it: &fn(uint, u8) -> bool) -> bool {
         eachi_reverse(*self, it)
     }
     /// Iterate over the chars in a string
     #[inline]
-    #[cfg(stage0)]
-    fn each_char(&self, it: &fn(char) -> bool) { each_char(*self, it) }
-    /// Iterate over the chars in a string
-    #[inline]
-    #[cfg(not(stage0))]
     fn each_char(&self, it: &fn(char) -> bool) -> bool { each_char(*self, it) }
     /// Iterate over the chars in a string, with indices
     #[inline]
-    #[cfg(stage0)]
-    fn each_chari(&self, it: &fn(uint, char) -> bool) {
-        each_chari(*self, it)
-    }
-    /// Iterate over the chars in a string, with indices
-    #[inline]
-    #[cfg(not(stage0))]
     fn each_chari(&self, it: &fn(uint, char) -> bool) -> bool {
         each_chari(*self, it)
     }
     /// Iterate over the chars in a string in reverse
     #[inline]
-    #[cfg(stage0)]
-    fn each_char_reverse(&self, it: &fn(char) -> bool) {
-        each_char_reverse(*self, it)
-    }
-    /// Iterate over the chars in a string in reverse
-    #[inline]
-    #[cfg(not(stage0))]
     fn each_char_reverse(&self, it: &fn(char) -> bool) -> bool {
         each_char_reverse(*self, it)
     }
     /// Iterate over the chars in a string in reverse, with indices from the
     /// end
     #[inline]
-    #[cfg(stage0)]
-    fn each_chari_reverse(&self, it: &fn(uint, char) -> bool) {
-        each_chari_reverse(*self, it)
-    }
-    /// Iterate over the chars in a string in reverse, with indices from the
-    /// end
-    #[inline]
-    #[cfg(not(stage0))]
     fn each_chari_reverse(&self, it: &fn(uint, char) -> bool) -> bool {
         each_chari_reverse(*self, it)
     }
@@ -2983,13 +2629,6 @@ impl<'self> StrSlice<'self> for &'self str {
     }
     /// Splits a string into substrings using a character function
     #[inline]
-    #[cfg(stage0)]
-    fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&'self str) -> bool) {
-        each_split(*self, sepfn, it)
-    }
-    /// Splits a string into substrings using a character function
-    #[inline]
-    #[cfg(not(stage0))]
     fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&'self str) -> bool) -> bool {
         each_split(*self, sepfn, it)
     }
@@ -2997,15 +2636,6 @@ impl<'self> StrSlice<'self> for &'self str {
      * Splits a string into substrings at each occurrence of a given character
      */
     #[inline]
-    #[cfg(stage0)]
-    fn each_split_char(&self, sep: char, it: &fn(&'self str) -> bool) {
-        each_split_char(*self, sep, it)
-    }
-    /**
-     * Splits a string into substrings at each occurrence of a given character
-     */
-    #[inline]
-    #[cfg(not(stage0))]
     fn each_split_char(&self, sep: char, it: &fn(&'self str) -> bool) -> bool {
         each_split_char(*self, sep, it)
     }
@@ -3014,16 +2644,6 @@ impl<'self> StrSlice<'self> for &'self str {
      * string
      */
     #[inline]
-    #[cfg(stage0)]
-    fn each_split_str<'a>(&self, sep: &'a str, it: &fn(&'self str) -> bool) {
-        each_split_str(*self, sep, it)
-    }
-    /**
-     * Splits a string into a vector of the substrings separated by a given
-     * string
-     */
-    #[inline]
-    #[cfg(not(stage0))]
     fn each_split_str<'a>(&self, sep: &'a str, it: &fn(&'self str) -> bool) -> bool {
         each_split_str(*self, sep, it)
     }
@@ -3174,47 +2794,47 @@ mod tests {
 
     #[test]
     fn test_len() {
-        assert!((len(~"") == 0u));
-        assert!((len(~"hello world") == 11u));
-        assert!((len(~"\x63") == 1u));
-        assert!((len(~"\xa2") == 2u));
-        assert!((len(~"\u03c0") == 2u));
-        assert!((len(~"\u2620") == 3u));
-        assert!((len(~"\U0001d11e") == 4u));
+        assert_eq!(len(~""), 0u);
+        assert_eq!(len(~"hello world"), 11u);
+        assert_eq!(len(~"\x63"), 1u);
+        assert_eq!(len(~"\xa2"), 2u);
+        assert_eq!(len(~"\u03c0"), 2u);
+        assert_eq!(len(~"\u2620"), 3u);
+        assert_eq!(len(~"\U0001d11e"), 4u);
 
-        assert!((char_len(~"") == 0u));
-        assert!((char_len(~"hello world") == 11u));
-        assert!((char_len(~"\x63") == 1u));
-        assert!((char_len(~"\xa2") == 1u));
-        assert!((char_len(~"\u03c0") == 1u));
-        assert!((char_len(~"\u2620") == 1u));
-        assert!((char_len(~"\U0001d11e") == 1u));
-        assert!((char_len(~"ประเทศไทย中华Việt Nam") == 19u));
+        assert_eq!(char_len(~""), 0u);
+        assert_eq!(char_len(~"hello world"), 11u);
+        assert_eq!(char_len(~"\x63"), 1u);
+        assert_eq!(char_len(~"\xa2"), 1u);
+        assert_eq!(char_len(~"\u03c0"), 1u);
+        assert_eq!(char_len(~"\u2620"), 1u);
+        assert_eq!(char_len(~"\U0001d11e"), 1u);
+        assert_eq!(char_len(~"ประเทศไทย中华Việt Nam"), 19u);
     }
 
     #[test]
     fn test_rfind_char() {
-        assert!(rfind_char(~"hello", 'l') == Some(3u));
-        assert!(rfind_char(~"hello", 'o') == Some(4u));
-        assert!(rfind_char(~"hello", 'h') == Some(0u));
+        assert_eq!(rfind_char(~"hello", 'l'), Some(3u));
+        assert_eq!(rfind_char(~"hello", 'o'), Some(4u));
+        assert_eq!(rfind_char(~"hello", 'h'), Some(0u));
         assert!(rfind_char(~"hello", 'z').is_none());
-        assert!(rfind_char(~"ประเทศไทย中华Việt Nam", '华') == Some(30u));
+        assert_eq!(rfind_char(~"ประเทศไทย中华Việt Nam", '华'), Some(30u));
     }
 
     #[test]
     fn test_pop_char() {
         let mut data = ~"ประเทศไทย中华";
         let cc = pop_char(&mut data);
-        assert!(~"ประเทศไทย中" == data);
-        assert!('华' == cc);
+        assert_eq!(~"ประเทศไทย中", data);
+        assert_eq!('华', cc);
     }
 
     #[test]
     fn test_pop_char_2() {
         let mut data2 = ~"华";
         let cc2 = pop_char(&mut data2);
-        assert!(~"" == data2);
-        assert!('华' == cc2);
+        assert_eq!(~"", data2);
+        assert_eq!('华', cc2);
     }
 
     #[test]
@@ -3462,58 +3082,58 @@ mod tests {
     fn test_find_str() {
         // byte positions
         assert!(find_str(~"banana", ~"apple pie").is_none());
-        assert!(find_str(~"", ~"") == Some(0u));
+        assert_eq!(find_str(~"", ~""), Some(0u));
 
         let data = ~"ประเทศไทย中华Việt Nam";
-        assert!(find_str(data, ~"")     == Some(0u));
-        assert!(find_str(data, ~"ประเ") == Some( 0u));
-        assert!(find_str(data, ~"ะเ")   == Some( 6u));
-        assert!(find_str(data, ~"中华") == Some(27u));
+        assert_eq!(find_str(data, ~""), Some(0u));
+        assert_eq!(find_str(data, ~"ประเ"), Some( 0u));
+        assert_eq!(find_str(data, ~"ะเ"), Some( 6u));
+        assert_eq!(find_str(data, ~"中华"), Some(27u));
         assert!(find_str(data, ~"ไท华").is_none());
     }
 
     #[test]
     fn test_find_str_between() {
         // byte positions
-        assert!(find_str_between(~"", ~"", 0u, 0u) == Some(0u));
+        assert_eq!(find_str_between(~"", ~"", 0u, 0u), Some(0u));
 
         let data = ~"abcabc";
-        assert!(find_str_between(data, ~"ab", 0u, 6u) == Some(0u));
-        assert!(find_str_between(data, ~"ab", 2u, 6u) == Some(3u));
+        assert_eq!(find_str_between(data, ~"ab", 0u, 6u), Some(0u));
+        assert_eq!(find_str_between(data, ~"ab", 2u, 6u), Some(3u));
         assert!(find_str_between(data, ~"ab", 2u, 4u).is_none());
 
         let mut data = ~"ประเทศไทย中华Việt Nam";
         data = data + data;
-        assert!(find_str_between(data, ~"", 0u, 43u) == Some(0u));
-        assert!(find_str_between(data, ~"", 6u, 43u) == Some(6u));
+        assert_eq!(find_str_between(data, ~"", 0u, 43u), Some(0u));
+        assert_eq!(find_str_between(data, ~"", 6u, 43u), Some(6u));
 
-        assert!(find_str_between(data, ~"ประ", 0u, 43u) == Some( 0u));
-        assert!(find_str_between(data, ~"ทศไ", 0u, 43u) == Some(12u));
-        assert!(find_str_between(data, ~"ย中", 0u, 43u) == Some(24u));
-        assert!(find_str_between(data, ~"iệt", 0u, 43u) == Some(34u));
-        assert!(find_str_between(data, ~"Nam", 0u, 43u) == Some(40u));
+        assert_eq!(find_str_between(data, ~"ประ", 0u, 43u), Some( 0u));
+        assert_eq!(find_str_between(data, ~"ทศไ", 0u, 43u), Some(12u));
+        assert_eq!(find_str_between(data, ~"ย中", 0u, 43u), Some(24u));
+        assert_eq!(find_str_between(data, ~"iệt", 0u, 43u), Some(34u));
+        assert_eq!(find_str_between(data, ~"Nam", 0u, 43u), Some(40u));
 
-        assert!(find_str_between(data, ~"ประ", 43u, 86u) == Some(43u));
-        assert!(find_str_between(data, ~"ทศไ", 43u, 86u) == Some(55u));
-        assert!(find_str_between(data, ~"ย中", 43u, 86u) == Some(67u));
-        assert!(find_str_between(data, ~"iệt", 43u, 86u) == Some(77u));
-        assert!(find_str_between(data, ~"Nam", 43u, 86u) == Some(83u));
+        assert_eq!(find_str_between(data, ~"ประ", 43u, 86u), Some(43u));
+        assert_eq!(find_str_between(data, ~"ทศไ", 43u, 86u), Some(55u));
+        assert_eq!(find_str_between(data, ~"ย中", 43u, 86u), Some(67u));
+        assert_eq!(find_str_between(data, ~"iệt", 43u, 86u), Some(77u));
+        assert_eq!(find_str_between(data, ~"Nam", 43u, 86u), Some(83u));
     }
 
     #[test]
     fn test_substr() {
         fn t(a: &str, b: &str, start: int) {
-            assert!(substr(a, start as uint, len(b)) == b);
+            assert_eq!(substr(a, start as uint, len(b)), b);
         }
         t("hello", "llo", 2);
         t("hello", "el", 1);
-        assert!("ะเทศไท" == substr("ประเทศไทย中华Việt Nam", 6u, 6u));
+        assert_eq!("ะเทศไท", substr("ประเทศไทย中华Việt Nam", 6u, 6u));
     }
 
     #[test]
     fn test_concat() {
         fn t(v: &[~str], s: &str) {
-            assert!(concat(v) == s.to_str());
+            assert_eq!(concat(v), s.to_str());
         }
         t(~[~"you", ~"know", ~"I'm", ~"no", ~"good"], ~"youknowI'mnogood");
         let v: ~[~str] = ~[];
@@ -3524,7 +3144,7 @@ mod tests {
     #[test]
     fn test_connect() {
         fn t(v: &[~str], sep: &str, s: &str) {
-            assert!(connect(v, sep) == s.to_str());
+            assert_eq!(connect(v, sep), s.to_str());
         }
         t(~[~"you", ~"know", ~"I'm", ~"no", ~"good"],
           ~" ", ~"you know I'm no good");
@@ -3536,7 +3156,7 @@ mod tests {
     #[test]
     fn test_connect_slices() {
         fn t(v: &[&str], sep: &str, s: &str) {
-            assert!(connect_slices(v, sep) == s.to_str());
+            assert_eq!(connect_slices(v, sep), s.to_str());
         }
         t(["you", "know", "I'm", "no", "good"],
           " ", "you know I'm no good");
@@ -3546,18 +3166,18 @@ mod tests {
 
     #[test]
     fn test_repeat() {
-        assert!(repeat(~"x", 4) == ~"xxxx");
-        assert!(repeat(~"hi", 4) == ~"hihihihi");
-        assert!(repeat(~"ไท华", 3) == ~"ไท华ไท华ไท华");
-        assert!(repeat(~"", 4) == ~"");
-        assert!(repeat(~"hi", 0) == ~"");
+        assert_eq!(repeat(~"x", 4), ~"xxxx");
+        assert_eq!(repeat(~"hi", 4), ~"hihihihi");
+        assert_eq!(repeat(~"ไท华", 3), ~"ไท华ไท华ไท华");
+        assert_eq!(repeat(~"", 4), ~"");
+        assert_eq!(repeat(~"hi", 0), ~"");
     }
 
     #[test]
     fn test_unsafe_slice() {
-        assert!("ab" == unsafe {raw::slice_bytes("abc", 0, 2)});
-        assert!("bc" == unsafe {raw::slice_bytes("abc", 1, 3)});
-        assert!("" == unsafe {raw::slice_bytes("abc", 1, 1)});
+        assert_eq!("ab", unsafe {raw::slice_bytes("abc", 0, 2)});
+        assert_eq!("bc", unsafe {raw::slice_bytes("abc", 1, 3)});
+        assert_eq!("", unsafe {raw::slice_bytes("abc", 1, 1)});
         fn a_million_letter_a() -> ~str {
             let mut i = 0;
             let mut rs = ~"";
@@ -3602,13 +3222,13 @@ mod tests {
     #[test]
     fn test_replace() {
         let a = ~"a";
-        assert!(replace(~"", a, ~"b") == ~"");
-        assert!(replace(~"a", a, ~"b") == ~"b");
-        assert!(replace(~"ab", a, ~"b") == ~"bb");
+        assert_eq!(replace(~"", a, ~"b"), ~"");
+        assert_eq!(replace(~"a", a, ~"b"), ~"b");
+        assert_eq!(replace(~"ab", a, ~"b"), ~"bb");
         let test = ~"test";
         assert!(replace(~" test test ", test, ~"toast") ==
             ~" toast toast ");
-        assert!(replace(~" test test ", test, ~"") == ~"   ");
+        assert_eq!(replace(~" test test ", test, ~""), ~"   ");
     }
 
     #[test]
@@ -3618,7 +3238,7 @@ mod tests {
 
         let a = ~"ประเ";
         let A = ~"دولة الكويتทศไทย中华";
-        assert!((replace(data, a, repl) ==  A));
+        assert_eq!(replace(data, a, repl), A);
     }
 
     #[test]
@@ -3628,7 +3248,7 @@ mod tests {
 
         let b = ~"ะเ";
         let B = ~"ปรدولة الكويتทศไทย中华";
-        assert!((replace(data, b,   repl) ==  B));
+        assert_eq!(replace(data, b,   repl), B);
     }
 
     #[test]
@@ -3638,7 +3258,7 @@ mod tests {
 
         let c = ~"中华";
         let C = ~"ประเทศไทยدولة الكويت";
-        assert!((replace(data, c, repl) ==  C));
+        assert_eq!(replace(data, c, repl), C);
     }
 
     #[test]
@@ -3647,21 +3267,21 @@ mod tests {
         let repl = ~"دولة الكويت";
 
         let d = ~"ไท华";
-        assert!((replace(data, d, repl) == data));
+        assert_eq!(replace(data, d, repl), data);
     }
 
     #[test]
     fn test_slice() {
-        assert!("ab" == slice("abc", 0, 2));
-        assert!("bc" == slice("abc", 1, 3));
-        assert!("" == slice("abc", 1, 1));
-        assert!("\u65e5" == slice("\u65e5\u672c", 0, 3));
+        assert_eq!("ab", slice("abc", 0, 2));
+        assert_eq!("bc", slice("abc", 1, 3));
+        assert_eq!("", slice("abc", 1, 1));
+        assert_eq!("\u65e5", slice("\u65e5\u672c", 0, 3));
 
         let data = "ประเทศไทย中华";
-        assert!("ป" == slice(data, 0, 3));
-        assert!("ร" == slice(data, 3, 6));
-        assert!("" == slice(data, 3, 3));
-        assert!("华" == slice(data, 30, 33));
+        assert_eq!("ป", slice(data, 0, 3));
+        assert_eq!("ร", slice(data, 3, 6));
+        assert_eq!("", slice(data, 3, 3));
+        assert_eq!("华", slice(data, 30, 33));
 
         fn a_million_letter_X() -> ~str {
             let mut i = 0;
@@ -3687,16 +3307,16 @@ mod tests {
     fn test_slice_2() {
         let ss = "中华Việt Nam";
 
-        assert!("华" == slice(ss, 3u, 6u));
-        assert!("Việt Nam" == slice(ss, 6u, 16u));
+        assert_eq!("华", slice(ss, 3u, 6u));
+        assert_eq!("Việt Nam", slice(ss, 6u, 16u));
 
-        assert!("ab" == slice("abc", 0u, 2u));
-        assert!("bc" == slice("abc", 1u, 3u));
-        assert!("" == slice("abc", 1u, 1u));
+        assert_eq!("ab", slice("abc", 0u, 2u));
+        assert_eq!("bc", slice("abc", 1u, 3u));
+        assert_eq!("", slice("abc", 1u, 1u));
 
-        assert!("中" == slice(ss, 0u, 3u));
-        assert!("华V" == slice(ss, 3u, 7u));
-        assert!("" == slice(ss, 3u, 3u));
+        assert_eq!("中", slice(ss, 0u, 3u));
+        assert_eq!("华V", slice(ss, 3u, 7u));
+        assert_eq!("", slice(ss, 3u, 3u));
         /*0: 中
           3: 华
           6: V
@@ -3722,7 +3342,7 @@ mod tests {
                      " *** foo *** ");
         assert!(trim_left_chars(" *** foo *** ", ~['*', ' ']) ==
                      "foo *** ");
-        assert!(trim_left_chars(" ***  *** ", ~['*', ' ']) == "");
+        assert_eq!(trim_left_chars(" ***  *** ", ~['*', ' ']), "");
         assert!(trim_left_chars("foo *** ", ~['*', ' ']) ==
                      "foo *** ");
     }
@@ -3733,47 +3353,47 @@ mod tests {
                      " *** foo *** ");
         assert!(trim_right_chars(" *** foo *** ", ~['*', ' ']) ==
                      " *** foo");
-        assert!(trim_right_chars(" ***  *** ", ~['*', ' ']) == "");
+        assert_eq!(trim_right_chars(" ***  *** ", ~['*', ' ']), "");
         assert!(trim_right_chars(" *** foo", ~['*', ' ']) ==
                      " *** foo");
     }
 
     #[test]
     fn test_trim_chars() {
-        assert!(trim_chars(" *** foo *** ", ~[]) == " *** foo *** ");
-        assert!(trim_chars(" *** foo *** ", ~['*', ' ']) == "foo");
-        assert!(trim_chars(" ***  *** ", ~['*', ' ']) == "");
-        assert!(trim_chars("foo", ~['*', ' ']) == "foo");
+        assert_eq!(trim_chars(" *** foo *** ", ~[]), " *** foo *** ");
+        assert_eq!(trim_chars(" *** foo *** ", ~['*', ' ']), "foo");
+        assert_eq!(trim_chars(" ***  *** ", ~['*', ' ']), "");
+        assert_eq!(trim_chars("foo", ~['*', ' ']), "foo");
     }
 
     #[test]
     fn test_trim_left() {
-        assert!((trim_left("") == ""));
-        assert!((trim_left("a") == "a"));
-        assert!((trim_left("    ") == ""));
-        assert!((trim_left("     blah") == "blah"));
-        assert!((trim_left("   \u3000  wut") == "wut"));
-        assert!((trim_left("hey ") == "hey "));
+        assert_eq!(trim_left(""), "");
+        assert_eq!(trim_left("a"), "a");
+        assert_eq!(trim_left("    "), "");
+        assert_eq!(trim_left("     blah"), "blah");
+        assert_eq!(trim_left("   \u3000  wut"), "wut");
+        assert_eq!(trim_left("hey "), "hey ");
     }
 
     #[test]
     fn test_trim_right() {
-        assert!((trim_right("") == ""));
-        assert!((trim_right("a") == "a"));
-        assert!((trim_right("    ") == ""));
-        assert!((trim_right("blah     ") == "blah"));
-        assert!((trim_right("wut   \u3000  ") == "wut"));
-        assert!((trim_right(" hey") == " hey"));
+        assert_eq!(trim_right(""), "");
+        assert_eq!(trim_right("a"), "a");
+        assert_eq!(trim_right("    "), "");
+        assert_eq!(trim_right("blah     "), "blah");
+        assert_eq!(trim_right("wut   \u3000  "), "wut");
+        assert_eq!(trim_right(" hey"), " hey");
     }
 
     #[test]
     fn test_trim() {
-        assert!((trim("") == ""));
-        assert!((trim("a") == "a"));
-        assert!((trim("    ") == ""));
-        assert!((trim("    blah     ") == "blah"));
-        assert!((trim("\nwut   \u3000  ") == "wut"));
-        assert!((trim(" hey dude ") == "hey dude"));
+        assert_eq!(trim(""), "");
+        assert_eq!(trim("a"), "a");
+        assert_eq!(trim("    "), "");
+        assert_eq!(trim("    blah     "), "blah");
+        assert_eq!(trim("\nwut   \u3000  "), "wut");
+        assert_eq!(trim(" hey dude "), "hey dude");
     }
 
     #[test]
@@ -3789,23 +3409,23 @@ mod tests {
     fn test_shift_byte() {
         let mut s = ~"ABC";
         let b = unsafe{raw::shift_byte(&mut s)};
-        assert!((s == ~"BC"));
-        assert!((b == 65u8));
+        assert_eq!(s, ~"BC");
+        assert_eq!(b, 65u8);
     }
 
     #[test]
     fn test_pop_byte() {
         let mut s = ~"ABC";
         let b = unsafe{raw::pop_byte(&mut s)};
-        assert!((s == ~"AB"));
-        assert!((b == 67u8));
+        assert_eq!(s, ~"AB");
+        assert_eq!(b, 67u8);
     }
 
     #[test]
     fn test_unsafe_from_bytes() {
         let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8];
         let b = unsafe { raw::from_bytes(a) };
-        assert!((b == ~"AAAAAAA"));
+        assert_eq!(b, ~"AAAAAAA");
     }
 
     #[test]
@@ -3822,7 +3442,7 @@ mod tests {
                   0x20_u8, 0x4e_u8, 0x61_u8,
                   0x6d_u8];
 
-        assert!(ss == from_bytes(bb));
+        assert_eq!(ss, from_bytes(bb));
     }
 
     #[test]
@@ -3909,7 +3529,7 @@ mod tests {
             let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
             let b = vec::raw::to_ptr(a);
             let c = raw::from_buf(b);
-            assert!((c == ~"AAAAAAA"));
+            assert_eq!(c, ~"AAAAAAA");
         }
     }
 
@@ -3925,20 +3545,20 @@ mod tests {
     fn test_as_buf() {
         let a = ~"Abcdefg";
         let b = as_buf(a, |buf, _l| {
-            assert!(unsafe { *buf } == 65u8);
+            assert_eq!(unsafe { *buf }, 65u8);
             100
         });
-        assert!((b == 100));
+        assert_eq!(b, 100);
     }
 
     #[test]
     fn test_as_buf_small() {
         let a = ~"A";
         let b = as_buf(a, |buf, _l| {
-            assert!(unsafe { *buf } == 65u8);
+            assert_eq!(unsafe { *buf }, 65u8);
             100
         });
-        assert!((b == 100));
+        assert_eq!(b, 100);
     }
 
     #[test]
@@ -3947,7 +3567,7 @@ mod tests {
             let s = ~"hello";
             let sb = as_buf(s, |b, _l| b);
             let s_cstr = raw::from_buf(sb);
-            assert!(s_cstr == s);
+            assert_eq!(s_cstr, s);
         }
     }
 
@@ -3956,11 +3576,11 @@ mod tests {
         let a = ~"hello";
         do as_buf(a) |buf, len| {
             unsafe {
-                assert!(a[0] == 'h' as u8);
-                assert!(*buf == 'h' as u8);
-                assert!(len == 6u);
-                assert!(*ptr::offset(buf,4u) == 'o' as u8);
-                assert!(*ptr::offset(buf,5u) == 0u8);
+                assert_eq!(a[0], 'h' as u8);
+                assert_eq!(*buf, 'h' as u8);
+                assert_eq!(len, 6u);
+                assert_eq!(*ptr::offset(buf,4u), 'o' as u8);
+                assert_eq!(*ptr::offset(buf,5u), 0u8);
             }
         }
     }
@@ -3970,15 +3590,15 @@ mod tests {
         let a = "kernelsprite";
         let b = slice(a, 7, len(a));
         let c = slice(a, 0, len(a) - 6);
-        assert!(subslice_offset(a, b) == 7);
-        assert!(subslice_offset(a, c) == 0);
+        assert_eq!(subslice_offset(a, b), 7);
+        assert_eq!(subslice_offset(a, c), 0);
 
         let string = "a\nb\nc";
         let mut lines = ~[];
         for each_line(string) |line| { lines.push(line) }
-        assert!(subslice_offset(string, lines[0]) == 0);
-        assert!(subslice_offset(string, lines[1]) == 2);
-        assert!(subslice_offset(string, lines[2]) == 4);
+        assert_eq!(subslice_offset(string, lines[0]), 0);
+        assert_eq!(subslice_offset(string, lines[1]), 2);
+        assert_eq!(subslice_offset(string, lines[2]), 4);
     }
 
     #[test]
@@ -3998,13 +3618,13 @@ mod tests {
         let mut i: uint = 0u;
         let n1: uint = len(s1);
         let n2: uint = vec::len::<u8>(v);
-        assert!((n1 == n2));
+        assert_eq!(n1, n2);
         while i < n1 {
             let a: u8 = s1[i];
             let b: u8 = s2[i];
             debug!(a);
             debug!(b);
-            assert!((a == b));
+            assert_eq!(a, b);
             i += 1u;
         }
     }
@@ -4108,26 +3728,26 @@ mod tests {
 
     #[test]
     fn test_map() {
-        assert!(~"" == map(~"", |c| unsafe {libc::toupper(c as c_char)} as char));
-        assert!(~"YMCA" == map(~"ymca", |c| unsafe {libc::toupper(c as c_char)} as char));
+        assert_eq!(~"", map(~"", |c| unsafe {libc::toupper(c as c_char)} as char));
+        assert_eq!(~"YMCA", map(~"ymca", |c| unsafe {libc::toupper(c as c_char)} as char));
     }
 
     #[test]
     fn test_all() {
-        assert!(true  == all(~"", char::is_uppercase));
-        assert!(false == all(~"ymca", char::is_uppercase));
-        assert!(true  == all(~"YMCA", char::is_uppercase));
-        assert!(false == all(~"yMCA", char::is_uppercase));
-        assert!(false == all(~"YMCy", char::is_uppercase));
+        assert_eq!(true, all(~"", char::is_uppercase));
+        assert_eq!(false, all(~"ymca", char::is_uppercase));
+        assert_eq!(true, all(~"YMCA", char::is_uppercase));
+        assert_eq!(false, all(~"yMCA", char::is_uppercase));
+        assert_eq!(false, all(~"YMCy", char::is_uppercase));
     }
 
     #[test]
     fn test_any() {
-        assert!(false == any(~"", char::is_uppercase));
-        assert!(false == any(~"ymca", char::is_uppercase));
-        assert!(true  == any(~"YMCA", char::is_uppercase));
-        assert!(true  == any(~"yMCA", char::is_uppercase));
-        assert!(true  == any(~"Ymcy", char::is_uppercase));
+        assert_eq!(false, any(~"", char::is_uppercase));
+        assert_eq!(false, any(~"ymca", char::is_uppercase));
+        assert_eq!(true, any(~"YMCA", char::is_uppercase));
+        assert_eq!(true, any(~"yMCA", char::is_uppercase));
+        assert_eq!(true, any(~"Ymcy", char::is_uppercase));
     }
 
     #[test]
@@ -4219,7 +3839,7 @@ mod tests {
         let mut pos = 0;
 
         for s.each |b| {
-            assert!(b == v[pos]);
+            assert_eq!(b, v[pos]);
             pos += 1;
         }
     }
@@ -4227,7 +3847,7 @@ mod tests {
     #[test]
     fn test_each_empty() {
         for "".each |b| {
-            assert!(b == 0u8);
+            assert_eq!(b, 0u8);
         }
     }
 
@@ -4242,8 +3862,8 @@ mod tests {
         let mut pos = 0;
 
         for s.eachi |i, b| {
-            assert!(pos == i);
-            assert!(b == v[pos]);
+            assert_eq!(pos, i);
+            assert_eq!(b, v[pos]);
             pos += 1;
         }
     }
@@ -4251,8 +3871,8 @@ mod tests {
     #[test]
     fn test_eachi_empty() {
         for "".eachi |i, b| {
-            assert!(i == 0);
-            assert!(b == 0);
+            assert_eq!(i, 0);
+            assert_eq!(b, 0);
         }
     }
 
@@ -4268,14 +3888,14 @@ mod tests {
 
         for s.each_reverse |b| {
             pos -= 1;
-            assert!(b == v[pos]);
+            assert_eq!(b, v[pos]);
         }
     }
 
     #[test]
     fn test_each_empty_reverse() {
         for "".each_reverse |b| {
-            assert!(b == 0u8);
+            assert_eq!(b, 0u8);
         }
     }
 
@@ -4291,16 +3911,16 @@ mod tests {
 
         for s.eachi_reverse |i, b| {
             pos -= 1;
-            assert!(pos == i);
-            assert!(b == v[pos]);
+            assert_eq!(pos, i);
+            assert_eq!(b, v[pos]);
         }
     }
 
     #[test]
     fn test_eachi_reverse_empty() {
         for "".eachi_reverse |i, b| {
-            assert!(i == 0);
-            assert!(b == 0);
+            assert_eq!(i, 0);
+            assert_eq!(b, 0);
         }
     }
 
@@ -4310,7 +3930,7 @@ mod tests {
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = 0;
         for s.each_char |ch| {
-            assert!(ch == v[pos]);
+            assert_eq!(ch, v[pos]);
             pos += 1;
         }
     }
@@ -4321,8 +3941,8 @@ mod tests {
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = 0;
         for s.each_chari |i, ch| {
-            assert!(pos == i);
-            assert!(ch == v[pos]);
+            assert_eq!(pos, i);
+            assert_eq!(ch, v[pos]);
             pos += 1;
         }
     }
@@ -4334,7 +3954,7 @@ mod tests {
         let mut pos = v.len();
         for s.each_char_reverse |ch| {
             pos -= 1;
-            assert!(ch == v[pos]);
+            assert_eq!(ch, v[pos]);
         }
     }
 
@@ -4345,43 +3965,43 @@ mod tests {
         let mut pos = v.len();
         for s.each_chari_reverse |i, ch| {
             pos -= 1;
-            assert!(pos == i);
-            assert!(ch == v[pos]);
+            assert_eq!(pos, i);
+            assert_eq!(ch, v[pos]);
         }
     }
 
     #[test]
     fn test_escape_unicode() {
-        assert!(escape_unicode(~"abc") == ~"\\x61\\x62\\x63");
-        assert!(escape_unicode(~"a c") == ~"\\x61\\x20\\x63");
-        assert!(escape_unicode(~"\r\n\t") == ~"\\x0d\\x0a\\x09");
-        assert!(escape_unicode(~"'\"\\") == ~"\\x27\\x22\\x5c");
+        assert_eq!(escape_unicode(~"abc"), ~"\\x61\\x62\\x63");
+        assert_eq!(escape_unicode(~"a c"), ~"\\x61\\x20\\x63");
+        assert_eq!(escape_unicode(~"\r\n\t"), ~"\\x0d\\x0a\\x09");
+        assert_eq!(escape_unicode(~"'\"\\"), ~"\\x27\\x22\\x5c");
         assert!(escape_unicode(~"\x00\x01\xfe\xff") ==
                      ~"\\x00\\x01\\xfe\\xff");
-        assert!(escape_unicode(~"\u0100\uffff") == ~"\\u0100\\uffff");
+        assert_eq!(escape_unicode(~"\u0100\uffff"), ~"\\u0100\\uffff");
         assert!(escape_unicode(~"\U00010000\U0010ffff") ==
             ~"\\U00010000\\U0010ffff");
-        assert!(escape_unicode(~"ab\ufb00") == ~"\\x61\\x62\\ufb00");
-        assert!(escape_unicode(~"\U0001d4ea\r") == ~"\\U0001d4ea\\x0d");
+        assert_eq!(escape_unicode(~"ab\ufb00"), ~"\\x61\\x62\\ufb00");
+        assert_eq!(escape_unicode(~"\U0001d4ea\r"), ~"\\U0001d4ea\\x0d");
     }
 
     #[test]
     fn test_escape_default() {
-        assert!(escape_default(~"abc") == ~"abc");
-        assert!(escape_default(~"a c") == ~"a c");
-        assert!(escape_default(~"\r\n\t") == ~"\\r\\n\\t");
-        assert!(escape_default(~"'\"\\") == ~"\\'\\\"\\\\");
-        assert!(escape_default(~"\u0100\uffff") == ~"\\u0100\\uffff");
+        assert_eq!(escape_default(~"abc"), ~"abc");
+        assert_eq!(escape_default(~"a c"), ~"a c");
+        assert_eq!(escape_default(~"\r\n\t"), ~"\\r\\n\\t");
+        assert_eq!(escape_default(~"'\"\\"), ~"\\'\\\"\\\\");
+        assert_eq!(escape_default(~"\u0100\uffff"), ~"\\u0100\\uffff");
         assert!(escape_default(~"\U00010000\U0010ffff") ==
             ~"\\U00010000\\U0010ffff");
-        assert!(escape_default(~"ab\ufb00") == ~"ab\\ufb00");
-        assert!(escape_default(~"\U0001d4ea\r") == ~"\\U0001d4ea\\r");
+        assert_eq!(escape_default(~"ab\ufb00"), ~"ab\\ufb00");
+        assert_eq!(escape_default(~"\U0001d4ea\r"), ~"\\U0001d4ea\\r");
     }
 
     #[test]
     fn test_to_managed() {
-        assert!((~"abc").to_managed() == @"abc");
-        assert!(slice("abcdef", 1, 5).to_managed() == @"bcde");
+        assert_eq!((~"abc").to_managed(), @"abc");
+        assert_eq!(slice("abcdef", 1, 5).to_managed(), @"bcde");
     }
 
     #[test]
@@ -4395,7 +4015,7 @@ mod tests {
 
     #[test]
     fn test_char_range_at_reverse_underflow() {
-        assert!(char_range_at_reverse("abc", 0).next == 0);
+        assert_eq!(char_range_at_reverse("abc", 0).next, 0);
     }
 
     #[test]

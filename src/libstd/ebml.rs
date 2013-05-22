@@ -200,20 +200,6 @@ pub mod reader {
         }
     }
 
-    #[cfg(stage0)]
-    pub fn docs(d: Doc, it: &fn(uint, Doc) -> bool) {
-        let mut pos = d.start;
-        while pos < d.end {
-            let elt_tag = vuint_at(*d.data, pos);
-            let elt_size = vuint_at(*d.data, elt_tag.next);
-            pos = elt_size.next + elt_size.val;
-            let doc = Doc { data: d.data, start: elt_size.next, end: pos };
-            if !it(elt_tag.val, doc) {
-                break;
-            }
-        }
-    }
-    #[cfg(not(stage0))]
     pub fn docs(d: Doc, it: &fn(uint, Doc) -> bool) -> bool {
         let mut pos = d.start;
         while pos < d.end {
@@ -228,23 +214,6 @@ pub mod reader {
         return true;
     }
 
-    #[cfg(stage0)]
-    pub fn tagged_docs(d: Doc, tg: uint, it: &fn(Doc) -> bool) {
-        let mut pos = d.start;
-        while pos < d.end {
-            let elt_tag = vuint_at(*d.data, pos);
-            let elt_size = vuint_at(*d.data, elt_tag.next);
-            pos = elt_size.next + elt_size.val;
-            if elt_tag.val == tg {
-                let doc = Doc { data: d.data, start: elt_size.next,
-                                end: pos };
-                if !it(doc) {
-                    break;
-                }
-            }
-        }
-    }
-    #[cfg(not(stage0))]
     pub fn tagged_docs(d: Doc, tg: uint, it: &fn(Doc) -> bool) -> bool {
         let mut pos = d.start;
         while pos < d.end {
@@ -273,22 +242,22 @@ pub mod reader {
     pub fn doc_as_str(d: Doc) -> ~str { str::from_bytes(doc_data(d)) }
 
     pub fn doc_as_u8(d: Doc) -> u8 {
-        assert!(d.end == d.start + 1u);
+        assert_eq!(d.end, d.start + 1u);
         (*d.data)[d.start]
     }
 
     pub fn doc_as_u16(d: Doc) -> u16 {
-        assert!(d.end == d.start + 2u);
+        assert_eq!(d.end, d.start + 2u);
         io::u64_from_be_bytes(*d.data, d.start, 2u) as u16
     }
 
     pub fn doc_as_u32(d: Doc) -> u32 {
-        assert!(d.end == d.start + 4u);
+        assert_eq!(d.end, d.start + 4u);
         io::u64_from_be_bytes(*d.data, d.start, 4u) as u32
     }
 
     pub fn doc_as_u64(d: Doc) -> u64 {
-        assert!(d.end == d.start + 8u);
+        assert_eq!(d.end, d.start + 8u);
         io::u64_from_be_bytes(*d.data, d.start, 8u)
     }
 
@@ -655,16 +624,6 @@ pub mod writer {
         fail!("vint to write too big: %?", n);
     }
 
-    #[cfg(stage0)]
-    pub fn Encoder(w: @io::Writer) -> Encoder {
-        let size_positions: ~[uint] = ~[];
-        Encoder {
-            writer: w,
-            mut size_positions: size_positions
-        }
-    }
-
-    #[cfg(not(stage0))]
     pub fn Encoder(w: @io::Writer) -> Encoder {
         let size_positions: ~[uint] = ~[];
         Encoder {
@@ -988,7 +947,7 @@ mod tests {
             let mut deser = reader::Decoder(ebml_doc);
             let v1 = serialize::Decodable::decode(&mut deser);
             debug!("v1 == %?", v1);
-            assert!(v == v1);
+            assert_eq!(v, v1);
         }
 
         test_v(Some(22));

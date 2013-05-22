@@ -544,8 +544,6 @@ use middle::typeck::infer::cres;
 use util::common::indenter;
 use util::ppaux::note_and_explain_region;
 
-#[cfg(stage0)]
-use core; // NOTE: this can be removed after next snapshot
 use core::cell::{Cell, empty_cell};
 use core::hashmap::{HashMap, HashSet};
 use core::to_bytes;
@@ -561,22 +559,6 @@ enum Constraint {
     ConstrainVarSubReg(RegionVid, Region)
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for Constraint {
-   fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        match *self {
-          ConstrainVarSubVar(ref v0, ref v1) =>
-          to_bytes::iter_bytes_3(&0u8, v0, v1, lsb0, f),
-
-          ConstrainRegSubVar(ref ra, ref va) =>
-          to_bytes::iter_bytes_3(&1u8, ra, va, lsb0, f),
-
-          ConstrainVarSubReg(ref va, ref ra) =>
-          to_bytes::iter_bytes_3(&2u8, va, ra, lsb0, f)
-        }
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for Constraint {
    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
@@ -680,7 +662,7 @@ pub impl RegionVarBindings {
             match undo_item {
               Snapshot => {}
               AddVar(vid) => {
-                assert!(self.var_spans.len() == vid.to_uint() + 1);
+                assert_eq!(self.var_spans.len(), vid.to_uint() + 1);
                 self.var_spans.pop();
               }
               AddConstraint(ref constraint) => {
@@ -1440,7 +1422,7 @@ pub impl RegionVarBindings {
 
         return match a_node.value {
             NoValue => {
-                assert!(a_node.classification == Contracting);
+                assert_eq!(a_node.classification, Contracting);
                 a_node.value = Value(b_region);
                 true // changed
             }
@@ -1660,9 +1642,9 @@ pub impl RegionVarBindings {
 
                     note_and_explain_region(
                         self.tcx,
-                        ~"first, the lifetime must be contained by ",
+                        "first, the lifetime must be contained by ",
                         upper_bound_1.region,
-                        ~"...");
+                        "...");
 
                     self.tcx.sess.span_note(
                         upper_bound_1.span,
@@ -1670,9 +1652,9 @@ pub impl RegionVarBindings {
 
                     note_and_explain_region(
                         self.tcx,
-                        ~"but, the lifetime must also be contained by ",
+                        "but, the lifetime must also be contained by ",
                         upper_bound_2.region,
-                        ~"...");
+                        "...");
 
                     self.tcx.sess.span_note(
                         upper_bound_2.span,
@@ -1773,23 +1755,6 @@ pub impl RegionVarBindings {
         }
     }
 
-    #[cfg(stage0)]
-    fn each_edge(&mut self,
-                 graph: &Graph,
-                 node_idx: RegionVid,
-                 dir: Direction,
-                 op: &fn(edge: &GraphEdge) -> bool) {
-        let mut edge_idx =
-            graph.nodes[node_idx.to_uint()].head_edge[dir as uint];
-        while edge_idx != uint::max_value {
-            let edge_ptr = &graph.edges[edge_idx];
-            if !op(edge_ptr) {
-                return;
-            }
-            edge_idx = edge_ptr.next_edge[dir as uint];
-        }
-    }
-    #[cfg(not(stage0))]
     fn each_edge(&mut self,
                  graph: &Graph,
                  node_idx: RegionVid,

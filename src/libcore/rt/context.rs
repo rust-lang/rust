@@ -84,6 +84,7 @@ pub impl Context {
 }
 
 extern {
+    #[rust_stack]
     fn swap_registers(out_regs: *mut Registers, in_regs: *Registers);
 }
 
@@ -111,9 +112,9 @@ fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: 
     let sp = align_down(sp);
     let sp = mut_offset(sp, -4);
 
-    unsafe { *sp = arg as uint; }
+    unsafe { *sp = arg as uint };
     let sp = mut_offset(sp, -1);
-    unsafe { *sp = 0; } // The final return address
+    unsafe { *sp = 0 }; // The final return address
 
     regs.esp = sp as u32;
     regs.eip = fptr as u32;
@@ -164,7 +165,9 @@ fn new_regs() -> ~Registers { ~([0, .. 32]) }
 
 #[cfg(target_arch = "arm")]
 fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
-    let sp = mut_offset(sp, -1);
+    let sp = align_down(sp);
+    // sp of arm eabi is 8-byte aligned
+    let sp = mut_offset(sp, -2);
 
     // The final return address. 0 indicates the bottom of the stack
     unsafe { *sp = 0; }
@@ -182,7 +185,9 @@ fn new_regs() -> ~Registers { ~([0, .. 32]) }
 
 #[cfg(target_arch = "mips")]
 fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: *mut uint) {
-    let sp = mut_offset(sp, -1);
+    let sp = align_down(sp);
+    // sp of mips o32 is 8-byte aligned
+    let sp = mut_offset(sp, -2);
 
     // The final return address. 0 indicates the bottom of the stack
     unsafe { *sp = 0; }
@@ -195,7 +200,7 @@ fn initialize_call_frame(regs: &mut Registers, fptr: *c_void, arg: *c_void, sp: 
 
 fn align_down(sp: *mut uint) -> *mut uint {
     unsafe {
-        let sp = transmute::<*mut uint, uint>(sp);
+        let sp: uint = transmute(sp);
         let sp = sp & !(16 - 1);
         transmute::<uint, *mut uint>(sp)
     }

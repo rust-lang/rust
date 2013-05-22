@@ -195,8 +195,8 @@ rust_register_exit_function
 rust_get_global_data_ptr
 rust_inc_kernel_live_count
 rust_dec_kernel_live_count
-rust_get_exchange_count_ptr
-rust_get_sched_tls_key
+rust_exchange_count
+rust_get_rt_tls_key
 swap_registers
 rust_readdir
 rust_opendir
@@ -222,7 +222,7 @@ rust_uv_ip4_addrp
 rust_uv_ip6_addrp
 rust_uv_free_ip4_addr
 rust_uv_free_ip6_addr
-rust_initialize_global_state
+rust_initialize_rt_tls_key
 rust_dbg_next_port
 rust_new_memory_region
 rust_delete_memory_region
@@ -234,3 +234,8 @@ rust_try
 rust_begin_unwind
 rust_take_task_borrow_list
 rust_set_task_borrow_list
+rust_valgrind_stack_register
+rust_valgrind_stack_deregister
+rust_take_env_lock
+rust_drop_env_lock
+rust_update_log_settings

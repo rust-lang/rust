@@ -19,8 +19,6 @@
  * CPRNG like rand::rng.
  */
 
-#[cfg(stage0)]
-use cast;
 use container::Container;
 use old_iter::BaseIter;
 use rt::io::Writer;
@@ -78,24 +76,12 @@ pub trait Streaming {
     fn reset(&mut self);
 }
 
-// XXX: Ugly workaround for bootstrapping.
-#[cfg(stage0)]
-fn transmute_for_stage0<'a>(bytes: &'a [const u8]) -> &'a [u8] {
-    unsafe {
-        cast::transmute(bytes)
-    }
-}
-#[cfg(not(stage0))]
-fn transmute_for_stage0<'a>(bytes: &'a [u8]) -> &'a [u8] {
-    bytes
-}
-
 impl<A:IterBytes> Hash for A {
     #[inline(always)]
     fn hash_keyed(&self, k0: u64, k1: u64) -> u64 {
         let mut s = State::new(k0, k1);
         for self.iter_bytes(true) |bytes| {
-            s.input(transmute_for_stage0(bytes));
+            s.input(bytes);
         }
         s.result_u64()
     }
@@ -105,10 +91,10 @@ fn hash_keyed_2<A: IterBytes,
                 B: IterBytes>(a: &A, b: &B, k0: u64, k1: u64) -> u64 {
     let mut s = State::new(k0, k1);
     for a.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for b.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     s.result_u64()
 }
@@ -118,13 +104,13 @@ fn hash_keyed_3<A: IterBytes,
                 C: IterBytes>(a: &A, b: &B, c: &C, k0: u64, k1: u64) -> u64 {
     let mut s = State::new(k0, k1);
     for a.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for b.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for c.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     s.result_u64()
 }
@@ -142,16 +128,16 @@ fn hash_keyed_4<A: IterBytes,
                 -> u64 {
     let mut s = State::new(k0, k1);
     for a.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for b.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for c.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for d.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     s.result_u64()
 }
@@ -171,19 +157,19 @@ fn hash_keyed_5<A: IterBytes,
                 -> u64 {
     let mut s = State::new(k0, k1);
     for a.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for b.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for c.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for d.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     for e.iter_bytes(true) |bytes| {
-        s.input(transmute_for_stage0(bytes));
+        s.input(bytes);
     }
     s.result_u64()
 }
@@ -490,7 +476,7 @@ mod tests {
             let vec = u8to64_le!(vecs[t], 0);
             let out = buf.hash_keyed(k0, k1);
             debug!("got %?, expected %?", out, vec);
-            assert!(vec == out);
+            assert_eq!(vec, out);
 
             stream_full.reset();
             stream_full.input(buf);
@@ -512,19 +498,19 @@ mod tests {
     fn test_hash_uint() {
         let val = 0xdeadbeef_deadbeef_u64;
         assert!((val as u64).hash() != (val as uint).hash());
-        assert!((val as u32).hash() == (val as uint).hash());
+        assert_eq!((val as u32).hash(), (val as uint).hash());
     }
     #[test] #[cfg(target_arch = "x86_64")]
     fn test_hash_uint() {
         let val = 0xdeadbeef_deadbeef_u64;
-        assert!((val as u64).hash() == (val as uint).hash());
+        assert_eq!((val as u64).hash(), (val as uint).hash());
         assert!((val as u32).hash() != (val as uint).hash());
     }
     #[test] #[cfg(target_arch = "x86")]
     fn test_hash_uint() {
         let val = 0xdeadbeef_deadbeef_u64;
         assert!((val as u64).hash() != (val as uint).hash());
-        assert!((val as u32).hash() == (val as uint).hash());
+        assert_eq!((val as u32).hash(), (val as uint).hash());
     }
 
     #[test]

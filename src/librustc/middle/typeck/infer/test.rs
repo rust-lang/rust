@@ -67,7 +67,7 @@ fn setup_env(test_name: &str, source_string: &str) -> Env {
         cfg, parse_sess);
 
     let tcx = ty::mk_ctxt(sess, dm, amap, freevars, region_map,
-                          region_paramd_items, lang_items, crate);
+                          region_paramd_items, lang_items);
 
     let infcx = infer::new_infer_ctxt(tcx);
 

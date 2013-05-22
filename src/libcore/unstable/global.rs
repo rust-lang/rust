@@ -200,7 +200,7 @@ fn get_global_state() -> Exclusive<GlobalState> {
                 let prev_i = unsafe {
                     atomic_cxchg(&mut *global_ptr, state_i, POISON)
                 };
-                assert!(prev_i == state_i);
+                assert_eq!(prev_i, state_i);
 
                 // Capture the global state object in the at_exit closure
                 // so that it is destroyed at the right time

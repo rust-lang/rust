@@ -107,7 +107,7 @@ pub struct Ctx {
 pub type vt = visit::vt<@mut Ctx>;
 
 pub fn extend(cx: @mut Ctx, elt: ident) -> @path {
-    @(vec::append(copy cx.path, ~[path_name(elt)]))
+    @(vec::append(copy cx.path, [path_name(elt)]))
 }
 
 pub fn mk_ast_map_visitor() -> vt {

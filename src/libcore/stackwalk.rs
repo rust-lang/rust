@@ -11,6 +11,7 @@
 #[doc(hidden)]; // FIXME #3538
 
 use cast::transmute;
+use unstable::intrinsics;
 
 pub type Word = uint;
 
@@ -24,35 +25,6 @@ pub fn Frame(fp: *Word) -> Frame {
     }
 }
 
-#[cfg(stage0)]
-pub fn walk_stack(visit: &fn(Frame) -> bool) {
-
-    debug!("beginning stack walk");
-
-    do frame_address |frame_pointer| {
-        let mut frame_address: *Word = unsafe {
-            transmute(frame_pointer)
-        };
-        loop {
-            let fr = Frame(frame_address);
-
-            debug!("frame: %x", unsafe { transmute(fr.fp) });
-            visit(fr);
-
-            unsafe {
-                let next_fp: **Word = transmute(frame_address);
-                frame_address = *next_fp;
-                if *frame_address == 0u {
-                    debug!("encountered task_start_wrapper. ending walk");
-                    // This is the task_start_wrapper_frame. There is
-                    // no stack beneath it and it is a foreign frame.
-                    break;
-                }
-            }
-        }
-    }
-}
-#[cfg(not(stage0))]
 pub fn walk_stack(visit: &fn(Frame) -> bool) -> bool {
 
     debug!("beginning stack walk");
@@ -104,13 +76,6 @@ fn test_simple_deep() {
 
 fn frame_address(f: &fn(x: *u8)) {
     unsafe {
-        rusti::frame_address(f)
-    }
-}
-
-pub mod rusti {
-    #[abi = "rust-intrinsic"]
-    pub extern "rust-intrinsic" {
-        pub fn frame_address(f: &once fn(x: *u8));
+        intrinsics::frame_address(f)
     }
 }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // xfail-test
-fn foo() -> &'a int {
+fn foo<'a>() -> &'a int {  //~ ERROR unconstrained region
     return &x;
 }
 static x: int = 5;

@@ -58,8 +58,8 @@ pub fn main() {
 
   let num = 12;
 
-  assert!(if (true) { 12 } else { 12 } - num == 0);
-  assert!(12 - if (true) { 12 } else { 12 } == 0);
+  assert_eq!(if (true) { 12 } else { 12 } - num, 0);
+  assert_eq!(12 - if (true) { 12 } else { 12 }, 0);
   if (true) { 12; } {-num};
   if (true) { 12; }; {-num};
   if (true) { 12; };;; -num;

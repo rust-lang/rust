@@ -21,9 +21,9 @@
 
 #[allow(non_implicitly_copyable_typarams)];
 
-extern mod std(vers = "0.7-pre");
-extern mod rustc(vers = "0.7-pre");
-extern mod syntax(vers = "0.7-pre");
+extern mod std;
+extern mod rustc;
+extern mod syntax;
 
 use config::Config;
 use doc::Item;

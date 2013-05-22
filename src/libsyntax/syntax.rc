@@ -23,13 +23,12 @@
 #[allow(non_camel_case_types)];
 #[deny(deprecated_pattern)];
 
-extern mod std(vers = "0.7-pre");
+extern mod std;
 
-// allow the interner_key macro
-// to escape this module:
-#[macro_escape]
 pub mod util {
     pub mod interner;
+    #[cfg(test)]
+    pub mod parser_testing;
 }
 
 pub mod syntax {

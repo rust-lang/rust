@@ -26,8 +26,6 @@ use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
 use util::enum_set::{EnumSet, CLike};
 
-#[cfg(stage0)]
-use core; // NOTE: this can be removed after the next snapshot
 use core::ptr::to_unsafe_ptr;
 use core::to_bytes;
 use core::hashmap::{HashMap, HashSet};
@@ -136,13 +134,6 @@ pub struct creader_cache_key {
 
 type creader_cache = @mut HashMap<creader_cache_key, t>;
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for creader_cache_key {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_3(&self.cnum, &self.pos, &self.len, lsb0, f);
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for creader_cache_key {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         to_bytes::iter_bytes_3(&self.cnum, &self.pos, &self.len, lsb0, f)
@@ -167,15 +158,6 @@ impl cmp::Eq for intern_key {
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for intern_key {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        unsafe {
-            (*self.sty).iter_bytes(lsb0, f);
-        }
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for intern_key {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         unsafe {
@@ -250,7 +232,6 @@ struct ctxt_ {
     diag: @syntax::diagnostic::span_handler,
     interner: @mut HashMap<intern_key, ~t_box_>,
     next_id: @mut uint,
-    legacy_modes: bool,
     cstore: @mut metadata::cstore::CStore,
     sess: session::Session,
     def_map: resolve::DefMap,
@@ -408,27 +389,12 @@ pub struct FnSig {
     output: t
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for BareFnTy {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_3(&self.purity, &self.abis, &self.sig, lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for BareFnTy {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         to_bytes::iter_bytes_3(&self.purity, &self.abis, &self.sig, lsb0, f)
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for ClosureTy {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_5(&self.purity, &self.sigil, &self.onceness,
-                               &self.region, &self.sig, lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for ClosureTy {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         to_bytes::iter_bytes_5(&self.purity, &self.sigil, &self.onceness,
@@ -681,7 +647,6 @@ pub enum type_err {
     terr_trait_stores_differ(terr_vstore_kind, expected_found<TraitStore>),
     terr_in_field(@type_err, ast::ident),
     terr_sorts(expected_found<t>),
-    terr_self_substs,
     terr_integer_as_char,
     terr_int_mismatch(expected_found<IntVarValue>),
     terr_float_mismatch(expected_found<ast::float_ty>),
@@ -748,17 +713,6 @@ pub enum InferTy {
     FloatVar(FloatVid)
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for InferTy {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        match *self {
-          TyVar(ref tv) => to_bytes::iter_bytes_2(&0u8, tv, lsb0, f),
-          IntVar(ref iv) => to_bytes::iter_bytes_2(&1u8, iv, lsb0, f),
-          FloatVar(ref fv) => to_bytes::iter_bytes_2(&2u8, fv, lsb0, f),
-        }
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for InferTy {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
@@ -775,16 +729,6 @@ pub enum InferRegion {
     ReSkolemized(uint, bound_region)
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for InferRegion {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        match *self {
-            ReVar(ref rv) => to_bytes::iter_bytes_2(&0u8, rv, lsb0, f),
-            ReSkolemized(ref v, _) => to_bytes::iter_bytes_2(&1u8, v, lsb0, f)
-        }
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for InferRegion {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
@@ -873,52 +817,24 @@ impl ToStr for IntVarValue {
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for TyVid {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        self.to_uint().iter_bytes(lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for TyVid {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for IntVid {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        self.to_uint().iter_bytes(lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for IntVid {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for FloatVid {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        self.to_uint().iter_bytes(lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for FloatVid {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         self.to_uint().iter_bytes(lsb0, f)
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for RegionVid {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        self.to_uint().iter_bytes(lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for RegionVid {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         self.to_uint().iter_bytes(lsb0, f)
@@ -989,24 +905,12 @@ pub fn mk_ctxt(s: session::Session,
                freevars: freevars::freevar_map,
                region_maps: @mut middle::region::RegionMaps,
                region_paramd_items: middle::region::region_paramd_items,
-               lang_items: middle::lang_items::LanguageItems,
-               crate: @ast::crate)
+               lang_items: middle::lang_items::LanguageItems)
             -> ctxt {
-    let mut legacy_modes = false;
-    for crate.node.attrs.each |attribute| {
-        match attribute.node.value.node {
-            ast::meta_word(w) if *w == ~"legacy_modes" => {
-                legacy_modes = true;
-            }
-            _ => {}
-        }
-    }
-
     @ctxt_ {
         diag: s.diagnostic(),
         interner: @mut HashMap::new(),
         next_id: @mut primitives::LAST_PRIMITIVE_ID,
-        legacy_modes: legacy_modes,
         cstore: s.cstore,
         sess: s,
         def_map: dm,
@@ -1577,7 +1481,7 @@ pub fn subst_tps(cx: ctxt, tps: &[t], self_ty_opt: Option<t>, typ: t) -> t {
         ty_param(p) => tps[p.idx],
         ty_self(_) => {
             match self_ty_opt {
-                None => cx.sess.bug(~"ty_self unexpected here"),
+                None => cx.sess.bug("ty_self unexpected here"),
                 Some(self_ty) => {
                     subst_tps(cx, tps, self_ty_opt, self_ty)
                 }
@@ -1678,8 +1582,7 @@ pub fn sequence_element_type(cx: ctxt, ty: t) -> t {
     match get(ty).sty {
       ty_estr(_) => return mk_mach_uint(ast::ty_u8),
       ty_evec(mt, _) | ty_unboxed_vec(mt) => return mt.ty,
-      _ => cx.sess.bug(
-          ~"sequence_element_type called on non-sequence value"),
+      _ => cx.sess.bug("sequence_element_type called on non-sequence value"),
     }
 }
 
@@ -2195,7 +2098,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // If this assertion failures, it is likely because of a
                 // failure in the cross-crate inlining code to translate a
                 // def-id.
-                assert!(p.def_id.crate == ast::local_crate);
+                assert_eq!(p.def_id.crate, ast::local_crate);
 
                 type_param_def_to_contents(
                     cx, cx.ty_param_defs.get(&p.def_id.node))
@@ -2229,7 +2132,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             ty_type => TC_NONE,
 
             ty_err => {
-                cx.sess.bug(~"Asked to compute contents of fictitious type");
+                cx.sess.bug("Asked to compute contents of fictitious type");
             }
         };
 
@@ -2567,7 +2470,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       }
 
       ty_infer(*) | ty_self(*) | ty_err => {
-        cx.sess.bug(~"non concrete type in type_is_pod");
+        cx.sess.bug("non concrete type in type_is_pod");
       }
     }
 
@@ -2719,22 +2622,6 @@ impl cmp::TotalEq for bound_region {
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for vstore {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        match *self {
-          vstore_fixed(ref u) =>
-          to_bytes::iter_bytes_2(&0u8, u, lsb0, f),
-
-          vstore_uniq => 1u8.iter_bytes(lsb0, f),
-          vstore_box => 2u8.iter_bytes(lsb0, f),
-
-          vstore_slice(ref r) =>
-          to_bytes::iter_bytes_2(&3u8, r, lsb0, f),
-        }
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for vstore {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
@@ -2750,15 +2637,6 @@ impl to_bytes::IterBytes for vstore {
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for substs {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-          to_bytes::iter_bytes_3(&self.self_r,
-                                 &self.self_ty,
-                                 &self.tps, lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for substs {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
           to_bytes::iter_bytes_3(&self.self_r,
@@ -2767,14 +2645,6 @@ impl to_bytes::IterBytes for substs {
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for mt {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-          to_bytes::iter_bytes_2(&self.ty,
-                                 &self.mutbl, lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for mt {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
           to_bytes::iter_bytes_2(&self.ty,
@@ -2782,14 +2652,6 @@ impl to_bytes::IterBytes for mt {
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for field {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-          to_bytes::iter_bytes_2(&self.ident,
-                                 &self.mt, lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for field {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
           to_bytes::iter_bytes_2(&self.ident,
@@ -2797,15 +2659,6 @@ impl to_bytes::IterBytes for field {
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for FnSig {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_2(&self.inputs,
-                               &self.output,
-                               lsb0, f);
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for FnSig {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         to_bytes::iter_bytes_2(&self.inputs,
@@ -2814,82 +2667,6 @@ impl to_bytes::IterBytes for FnSig {
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for sty {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        match *self {
-          ty_nil => 0u8.iter_bytes(lsb0, f),
-          ty_bool => 1u8.iter_bytes(lsb0, f),
-
-          ty_int(ref t) =>
-          to_bytes::iter_bytes_2(&2u8, t, lsb0, f),
-
-          ty_uint(ref t) =>
-          to_bytes::iter_bytes_2(&3u8, t, lsb0, f),
-
-          ty_float(ref t) =>
-          to_bytes::iter_bytes_2(&4u8, t, lsb0, f),
-
-          ty_estr(ref v) =>
-          to_bytes::iter_bytes_2(&5u8, v, lsb0, f),
-
-          ty_enum(ref did, ref substs) =>
-          to_bytes::iter_bytes_3(&6u8, did, substs, lsb0, f),
-
-          ty_box(ref mt) =>
-          to_bytes::iter_bytes_2(&7u8, mt, lsb0, f),
-
-          ty_evec(ref mt, ref v) =>
-          to_bytes::iter_bytes_3(&8u8, mt, v, lsb0, f),
-
-          ty_unboxed_vec(ref mt) =>
-          to_bytes::iter_bytes_2(&9u8, mt, lsb0, f),
-
-          ty_tup(ref ts) =>
-          to_bytes::iter_bytes_2(&10u8, ts, lsb0, f),
-
-          ty_bare_fn(ref ft) =>
-          to_bytes::iter_bytes_2(&12u8, ft, lsb0, f),
-
-          ty_self(ref did) => to_bytes::iter_bytes_2(&13u8, did, lsb0, f),
-
-          ty_infer(ref v) =>
-          to_bytes::iter_bytes_2(&14u8, v, lsb0, f),
-
-          ty_param(ref p) =>
-          to_bytes::iter_bytes_2(&15u8, p, lsb0, f),
-
-          ty_type => 16u8.iter_bytes(lsb0, f),
-          ty_bot => 17u8.iter_bytes(lsb0, f),
-
-          ty_ptr(ref mt) =>
-          to_bytes::iter_bytes_2(&18u8, mt, lsb0, f),
-
-          ty_uniq(ref mt) =>
-          to_bytes::iter_bytes_2(&19u8, mt, lsb0, f),
-
-          ty_trait(ref did, ref substs, ref v, ref mutbl) =>
-          to_bytes::iter_bytes_5(&20u8, did, substs, v, mutbl, lsb0, f),
-
-          ty_opaque_closure_ptr(ref ck) =>
-          to_bytes::iter_bytes_2(&21u8, ck, lsb0, f),
-
-          ty_opaque_box => 22u8.iter_bytes(lsb0, f),
-
-          ty_struct(ref did, ref substs) =>
-          to_bytes::iter_bytes_3(&23u8, did, substs, lsb0, f),
-
-          ty_rptr(ref r, ref mt) =>
-          to_bytes::iter_bytes_3(&24u8, r, mt, lsb0, f),
-
-          ty_err => 25u8.iter_bytes(lsb0, f),
-
-          ty_closure(ref ct) =>
-          to_bytes::iter_bytes_2(&26u8, ct, lsb0, f),
-        }
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for sty {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
@@ -3722,9 +3499,6 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
                      values.found.user_string(cx))
             }
         }
-        terr_self_substs => {
-            ~"inconsistent self substitution" // XXX this is more of a bug
-        }
         terr_integer_as_char => {
             fmt!("expected an integral type but found char")
         }
@@ -3744,29 +3518,29 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
 pub fn note_and_explain_type_err(cx: ctxt, err: &type_err) {
     match *err {
         terr_regions_does_not_outlive(subregion, superregion) => {
-            note_and_explain_region(cx, ~"", subregion, ~"...");
-            note_and_explain_region(cx, ~"...does not necessarily outlive ",
-                                    superregion, ~"");
+            note_and_explain_region(cx, "", subregion, "...");
+            note_and_explain_region(cx, "...does not necessarily outlive ",
+                                    superregion, "");
         }
         terr_regions_not_same(region1, region2) => {
-            note_and_explain_region(cx, ~"", region1, ~"...");
-            note_and_explain_region(cx, ~"...is not the same lifetime as ",
-                                    region2, ~"");
+            note_and_explain_region(cx, "", region1, "...");
+            note_and_explain_region(cx, "...is not the same lifetime as ",
+                                    region2, "");
         }
         terr_regions_no_overlap(region1, region2) => {
-            note_and_explain_region(cx, ~"", region1, ~"...");
-            note_and_explain_region(cx, ~"...does not overlap ",
-                                    region2, ~"");
+            note_and_explain_region(cx, "", region1, "...");
+            note_and_explain_region(cx, "...does not overlap ",
+                                    region2, "");
         }
         terr_regions_insufficiently_polymorphic(_, conc_region) => {
             note_and_explain_region(cx,
-                                    ~"concrete lifetime that was found is ",
-                                    conc_region, ~"");
+                                    "concrete lifetime that was found is ",
+                                    conc_region, "");
         }
         terr_regions_overly_polymorphic(_, conc_region) => {
             note_and_explain_region(cx,
-                                    ~"expected concrete lifetime is ",
-                                    conc_region, ~"");
+                                    "expected concrete lifetime is ",
+                                    conc_region, "");
         }
         _ => {}
     }
@@ -3916,7 +3690,7 @@ pub fn ty_to_def_id(ty: t) -> Option<ast::def_id> {
 fn struct_ctor_id(cx: ctxt, struct_did: ast::def_id) -> Option<ast::def_id> {
     if struct_did.crate != ast::local_crate {
         // XXX: Cross-crate functionality.
-        cx.sess.unimpl(~"constructor ID of cross-crate tuple structs");
+        cx.sess.unimpl("constructor ID of cross-crate tuple structs");
     }
 
     match cx.items.find(&struct_did.node) {
@@ -3926,10 +3700,10 @@ fn struct_ctor_id(cx: ctxt, struct_did: ast::def_id) -> Option<ast::def_id> {
                     struct_def.ctor_id.map(|ctor_id|
                         ast_util::local_def(*ctor_id))
                 }
-                _ => cx.sess.bug(~"called struct_ctor_id on non-struct")
+                _ => cx.sess.bug("called struct_ctor_id on non-struct")
             }
         }
-        _ => cx.sess.bug(~"called struct_ctor_id on non-struct")
+        _ => cx.sess.bug("called struct_ctor_id on non-struct")
     }
 }
 
@@ -4094,7 +3868,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                             disr_val = match const_eval::eval_const_expr(cx,
                                                                          ex) {
                               const_eval::const_int(val) => val as int,
-                              _ => cx.sess.bug(~"tag_variants: bad disr expr")
+                              _ => cx.sess.bug("tag_variants: bad disr expr")
                             }
                           }
                           _ => disr_val += 1
@@ -4113,7 +3887,7 @@ pub fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[VariantInfo] {
                 }
             })
           }
-          _ => cx.sess.bug(~"tag_variants: id not bound to an enum")
+          _ => cx.sess.bug("tag_variants: id not bound to an enum")
         }
     };
     cx.enum_var_cache.insert(id, result);
@@ -4133,7 +3907,7 @@ pub fn enum_variant_with_id(cx: ctxt,
         if variant.id == variant_id { return variant; }
         i += 1;
     }
-    cx.sess.bug(~"enum_variant_with_id(): no variant exists with that ID");
+    cx.sess.bug("enum_variant_with_id(): no variant exists with that ID");
 }
 
 
@@ -4228,7 +4002,7 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
             ast::item_struct(struct_def, _) => {
                struct_field_tys(struct_def.fields)
             }
-            _ => cx.sess.bug(~"struct ID bound to non-struct")
+            _ => cx.sess.bug("struct ID bound to non-struct")
          }
        }
        Some(&ast_map::node_variant(ref variant, _, _)) => {
@@ -4237,8 +4011,8 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
               struct_field_tys(struct_def.fields)
             }
             _ => {
-              cx.sess.bug(~"struct ID bound to enum variant that isn't \
-                            struct-like")
+              cx.sess.bug("struct ID bound to enum variant that isn't \
+                           struct-like")
             }
           }
        }
@@ -4262,7 +4036,7 @@ pub fn lookup_struct_field(cx: ctxt,
     match vec::find(lookup_struct_fields(cx, parent),
                  |f| f.id.node == field_id.node) {
         Some(t) => t,
-        None => cx.sess.bug(~"struct ID not found in parent's fields")
+        None => cx.sess.bug("struct ID not found in parent's fields")
     }
 }
 
@@ -4503,52 +4277,6 @@ pub fn determine_inherited_purity(parent: (ast::purity, ast::node_id),
 // Here, the supertraits are the transitive closure of the supertrait
 // relation on the supertraits from each bounded trait's constraint
 // list.
-#[cfg(stage0)]
-pub fn each_bound_trait_and_supertraits(tcx: ctxt,
-                                        bounds: &ParamBounds,
-                                        f: &fn(@TraitRef) -> bool) {
-    for bounds.trait_bounds.each |&bound_trait_ref| {
-        let mut supertrait_set = HashMap::new();
-        let mut trait_refs = ~[];
-        let mut i = 0;
-
-        // Seed the worklist with the trait from the bound
-        supertrait_set.insert(bound_trait_ref.def_id, ());
-        trait_refs.push(bound_trait_ref);
-
-        // Add the given trait ty to the hash map
-        while i < trait_refs.len() {
-            debug!("each_bound_trait_and_supertraits(i=%?, trait_ref=%s)",
-                   i, trait_refs[i].repr(tcx));
-
-            if !f(trait_refs[i]) {
-                return;
-            }
-
-            // Add supertraits to supertrait_set
-            let supertrait_refs = trait_ref_supertraits(tcx, trait_refs[i]);
-            for supertrait_refs.each |&supertrait_ref| {
-                debug!("each_bound_trait_and_supertraits(supertrait_ref=%s)",
-                       supertrait_ref.repr(tcx));
-
-                let d_id = supertrait_ref.def_id;
-                if !supertrait_set.contains_key(&d_id) {
-                    // FIXME(#5527) Could have same trait multiple times
-                    supertrait_set.insert(d_id, ());
-                    trait_refs.push(supertrait_ref);
-                }
-            }
-
-            i += 1;
-        }
-    }
-}
-// Iterate over a type parameter's bounded traits and any supertraits
-// of those traits, ignoring kinds.
-// Here, the supertraits are the transitive closure of the supertrait
-// relation on the supertraits from each bounded trait's constraint
-// list.
-#[cfg(not(stage0))]
 pub fn each_bound_trait_and_supertraits(tcx: ctxt,
                                         bounds: &ParamBounds,
                                         f: &fn(@TraitRef) -> bool) -> bool {
@@ -4609,11 +4337,11 @@ pub fn get_impl_id(tcx: ctxt, trait_id: def_id, self_ty: t) -> def_id {
             None => // try autoderef!
                 match deref(tcx, self_ty, false) {
                     Some(some_ty) => get_impl_id(tcx, trait_id, some_ty.ty),
-                    None => tcx.sess.bug(~"get_impl_id: no impl of trait for \
-                                           this type")
+                    None => tcx.sess.bug("get_impl_id: no impl of trait for \
+                                          this type")
             }
         },
-        None => tcx.sess.bug(~"get_impl_id: trait isn't in trait_impls")
+        None => tcx.sess.bug("get_impl_id: trait isn't in trait_impls")
     }
 }
 

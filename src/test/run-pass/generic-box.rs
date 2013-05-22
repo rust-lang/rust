@@ -16,5 +16,5 @@ struct Box<T> {x: T, y: T, z: T}
 
 pub fn main() {
     let x: @Box<int> = box::<int>(Box{x: 1, y: 2, z: 3});
-    assert!((x.y == 2));
+    assert_eq!(x.y, 2);
 }

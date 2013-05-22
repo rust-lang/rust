@@ -252,10 +252,12 @@ impl Orderable for f32 {
     /// If any of the numbers are `NaN` then `NaN` is returned.
     #[inline(always)]
     fn clamp(&self, mn: &f32, mx: &f32) -> f32 {
-        if self.is_NaN() { *self }
-        else if !(*self <= *mx) { *mx }
-        else if !(*self >= *mn) { *mn }
-        else { *self }
+        cond!(
+            (self.is_NaN())   { *self }
+            (!(*self <= *mx)) { *mx   }
+            (!(*self >= *mn)) { *mn   }
+            _                 { *self }
+        )
     }
 }
 

@@ -10,7 +10,37 @@
 
 /*!
 
-Basic input/output
+The `io` module contains basic input and output routines.
+
+A quick summary:
+
+## `Reader` and `Writer` traits
+
+These traits define the minimal set of methods that anything that can do
+input and output should implement.
+
+## `ReaderUtil` and `WriterUtil` traits
+
+Richer methods that allow you to do more. `Reader` only lets you read a certain
+number of bytes into a buffer, while `ReaderUtil` allows you to read a whole
+line, for example.
+
+Generally, these richer methods are probably the ones you want to actually
+use in day-to-day Rust.
+
+Furthermore, because there is an implementation of `ReaderUtil` for
+`<T: Reader>`, when your input or output code implements `Reader`, you get
+all of these methods for free.
+
+## `print` and `println`
+
+These very useful functions are defined here. You generally don't need to
+import them, though, as the prelude already does.
+
+## `stdin`, `stdout`, and `stderr`
+
+These functions return references to the classic three file descriptors. They
+implement `Reader` and `Writer`, where appropriate.
 
 */
 
@@ -84,13 +114,15 @@ pub trait Reader {
 
     // FIXME (#2982): This should probably return an error.
     /**
-    * Reads bytes and puts them into `bytes`. Returns the number of
-    * bytes read.
+    * Reads bytes and puts them into `bytes`, advancing the cursor. Returns the
+    * number of bytes read.
     *
     * The number of bytes to be read is `len` or the end of the file,
     * whichever comes first.
     *
     * The buffer must be at least `len` bytes long.
+    *
+    * `read` is conceptually similar to C's `fread` function.
     *
     * # Examples
     *
@@ -99,9 +131,11 @@ pub trait Reader {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint;
 
     /**
-    * Reads a single byte.
+    * Reads a single byte, advancing the cursor.
     *
     * In the case of an EOF or an error, returns a negative value.
+    *
+    * `read_byte` is conceptually similar to C's `getc` function.
     *
     * # Examples
     *
@@ -111,6 +145,8 @@ pub trait Reader {
 
     /**
     * Returns a boolean value: are we currently at EOF?
+    *
+    * `eof` is conceptually similar to C's `feof` function.
     *
     * # Examples
     *
@@ -124,6 +160,8 @@ pub trait Reader {
     * Takes an optional SeekStyle, which affects how we seek from the
     * position. See `SeekStyle` docs for more details.
     *
+    * `seek` is conceptually similar to C's `fseek` function.
+    *
     * # Examples
     *
     * None right now.
@@ -132,6 +170,8 @@ pub trait Reader {
 
     /**
     * Returns the current position within the stream.
+    *
+    * `tell` is conceptually similar to C's `ftell` function.
     *
     * # Examples
     *
@@ -252,9 +292,6 @@ pub trait ReaderUtil {
     *
     * None right now.
     */
-    #[cfg(stage0)]
-    fn each_byte(&self, it: &fn(int) -> bool);
-    #[cfg(not(stage0))]
     fn each_byte(&self, it: &fn(int) -> bool) -> bool;
 
     /**
@@ -264,9 +301,6 @@ pub trait ReaderUtil {
     *
     * None right now.
     */
-    #[cfg(stage0)]
-    fn each_char(&self, it: &fn(char) -> bool);
-    #[cfg(not(stage0))]
     fn each_char(&self, it: &fn(char) -> bool) -> bool;
 
     /**
@@ -276,9 +310,6 @@ pub trait ReaderUtil {
     *
     * None right now.
     */
-    #[cfg(stage0)]
-    fn each_line(&self, it: &fn(&str) -> bool);
-    #[cfg(not(stage0))]
     fn each_line(&self, it: &fn(&str) -> bool) -> bool;
 
     /**
@@ -635,7 +666,7 @@ impl<T:Reader> ReaderUtil for T {
                     let next = bytes[i] as int;
                     i += 1;
                     assert!((next > -1));
-                    assert!((next & 192 == 128));
+                    assert_eq!(next & 192, 128);
                     val <<= 6;
                     val += (next & 63) as uint;
                 }
@@ -676,7 +707,7 @@ impl<T:Reader> ReaderUtil for T {
         if c.len() == 0 {
             return -1 as char; // FIXME will this stay valid? // #2004
         }
-        assert!(c.len() == 1);
+        assert_eq!(c.len(), 1);
         return c[0];
     }
 
@@ -690,13 +721,6 @@ impl<T:Reader> ReaderUtil for T {
         bytes
     }
 
-    #[cfg(stage0)]
-    fn each_byte(&self, it: &fn(int) -> bool) {
-        while !self.eof() {
-            if !it(self.read_byte()) { break; }
-        }
-    }
-    #[cfg(not(stage0))]
     fn each_byte(&self, it: &fn(int) -> bool) -> bool {
         while !self.eof() {
             if !it(self.read_byte()) { return false; }
@@ -704,13 +728,6 @@ impl<T:Reader> ReaderUtil for T {
         return true;
     }
 
-    #[cfg(stage0)]
-    fn each_char(&self, it: &fn(char) -> bool) {
-        while !self.eof() {
-            if !it(self.read_char()) { break; }
-        }
-    }
-    #[cfg(not(stage0))]
     fn each_char(&self, it: &fn(char) -> bool) -> bool {
         while !self.eof() {
             if !it(self.read_char()) { return false; }
@@ -718,27 +735,6 @@ impl<T:Reader> ReaderUtil for T {
         return true;
     }
 
-    #[cfg(stage0)]
-    fn each_line(&self, it: &fn(s: &str) -> bool) {
-        while !self.eof() {
-            // include the \n, so that we can distinguish an entirely empty
-            // line read after "...\n", and the trailing empty line in
-            // "...\n\n".
-            let mut line = self.read_until('\n' as u8, true);
-
-            // blank line at the end of the reader is ignored
-            if self.eof() && line.is_empty() { break; }
-
-            // trim the \n, so that each_line is consistent with read_line
-            let n = str::len(line);
-            if line[n-1] == '\n' as u8 {
-                unsafe { str::raw::set_len(&mut line, n-1); }
-            }
-
-            if !it(line) { break; }
-        }
-    }
-    #[cfg(not(stage0))]
     fn each_line(&self, it: &fn(s: &str) -> bool) -> bool {
         while !self.eof() {
             // include the \n, so that we can distinguish an entirely empty
@@ -1010,6 +1006,16 @@ pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> @Reader {
 // top-level functions that take a reader, or a set of default methods on
 // reader (which can then be called reader)
 
+/**
+* Gives a `Reader` that allows you to read values from standard input.
+*
+* # Examples
+* ~~~
+* let stdin = core::io::stdin();
+* let line = stdin.read_line();
+* core::io::print(line);
+* ~~~
+*/
 pub fn stdin() -> @Reader {
     unsafe {
         @rustrt::rust_get_stdin() as @Reader
@@ -1561,13 +1567,57 @@ pub fn buffered_file_writer(path: &Path) -> Result<@Writer, ~str> {
 // FIXME (#2004) it would be great if this could be a const
 // FIXME (#2004) why are these different from the way stdin() is
 // implemented?
+
+
+/**
+* Gives a `Writer` which allows you to write to the standard output.
+*
+* # Examples
+* ~~~
+* let stdout = core::io::stdout();
+* stdout.write_str("hello\n");
+* ~~~
+*/
 pub fn stdout() -> @Writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
+
+/**
+* Gives a `Writer` which allows you to write to standard error.
+*
+* # Examples
+* ~~~
+* let stderr = core::io::stderr();
+* stderr.write_str("hello\n");
+* ~~~
+*/
 pub fn stderr() -> @Writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 
+/**
+* Prints a string to standard output.
+*
+* This string will not have an implicit newline at the end. If you want
+* an implicit newline, please see `println`.
+*
+* # Examples
+* ~~~
+* // print is imported into the prelude, and so is always available.
+* print("hello");
+* ~~~
+*/
 pub fn print(s: &str) {
     stdout().write_str(s);
 }
 
+/**
+* Prints a string to standard output, followed by a newline.
+*
+* If you do not want an implicit newline, please see `print`.
+*
+* # Examples
+* ~~~
+* // println is imported into the prelude, and so is always available.
+* println("hello");
+* ~~~
+*/
 pub fn println(s: &str) {
     stdout().write_line(s);
 }
@@ -1795,14 +1845,14 @@ mod tests {
         let inp: @io::Reader = result::get(&io::file_reader(tmpfile));
         let frood2: ~str = inp.read_c_str();
         debug!(copy frood2);
-        assert!(frood == frood2);
+        assert_eq!(frood, frood2);
     }
 
     #[test]
     fn test_readchars_empty() {
         do io::with_str_reader(~"") |inp| {
             let res : ~[char] = inp.read_chars(128);
-            assert!(res.len() == 0);
+            assert_eq!(res.len(), 0);
         }
     }
 
@@ -1810,18 +1860,18 @@ mod tests {
     fn test_read_line_utf8() {
         do io::with_str_reader(~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤") |inp| {
             let line = inp.read_line();
-            assert!(line == ~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤");
+            assert_eq!(line, ~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤");
         }
     }
 
     #[test]
     fn test_read_lines() {
         do io::with_str_reader(~"a\nb\nc\n") |inp| {
-            assert!(inp.read_lines() == ~[~"a", ~"b", ~"c"]);
+            assert_eq!(inp.read_lines(), ~[~"a", ~"b", ~"c"]);
         }
 
         do io::with_str_reader(~"a\nb\nc") |inp| {
-            assert!(inp.read_lines() == ~[~"a", ~"b", ~"c"]);
+            assert_eq!(inp.read_lines(), ~[~"a", ~"b", ~"c"]);
         }
 
         do io::with_str_reader(~"") |inp| {
@@ -1842,7 +1892,7 @@ mod tests {
             do io::with_str_reader(s) |inp| {
                 let res : ~[char] = inp.read_chars(len);
                 if len <= ivals.len() {
-                    assert!(res.len() == len);
+                    assert_eq!(res.len(), len);
                 }
                 assert!(vec::slice(ivals, 0u, res.len()) ==
                              vec::map(res, |x| *x as int));
@@ -1861,7 +1911,7 @@ mod tests {
     fn test_readchar() {
         do io::with_str_reader(~"生") |inp| {
             let res : char = inp.read_char();
-            assert!((res as int == 29983));
+            assert_eq!(res as int, 29983);
         }
     }
 
@@ -1869,7 +1919,7 @@ mod tests {
     fn test_readchar_empty() {
         do io::with_str_reader(~"") |inp| {
             let res : char = inp.read_char();
-            assert!((res as int == -1));
+            assert_eq!(res as int, -1);
         }
     }
 
@@ -1877,7 +1927,7 @@ mod tests {
     fn file_reader_not_exist() {
         match io::file_reader(&Path("not a file")) {
           result::Err(copy e) => {
-            assert!(e == ~"error opening not a file");
+            assert_eq!(e, ~"error opening not a file");
           }
           result::Ok(_) => fail!()
         }
@@ -1966,7 +2016,7 @@ mod tests {
         {
             let file = io::file_reader(&path).get();
             for uints.each |i| {
-                assert!(file.read_le_u64() == *i);
+                assert_eq!(file.read_le_u64(), *i);
             }
         }
     }
@@ -1988,7 +2038,7 @@ mod tests {
         {
             let file = io::file_reader(&path).get();
             for uints.each |i| {
-                assert!(file.read_be_u64() == *i);
+                assert_eq!(file.read_be_u64(), *i);
             }
         }
     }
@@ -2012,7 +2062,7 @@ mod tests {
             for ints.each |i| {
                 // this tests that the sign extension is working
                 // (comparing the values as i32 would not test this)
-                assert!(file.read_be_int_n(4) == *i as i64);
+                assert_eq!(file.read_be_int_n(4), *i as i64);
             }
         }
     }
@@ -2031,7 +2081,7 @@ mod tests {
         {
             let file = io::file_reader(&path).get();
             let f = file.read_be_f32();
-            assert!(f == 8.1250);
+            assert_eq!(f, 8.1250);
         }
     }
 
@@ -2048,8 +2098,8 @@ mod tests {
 
         {
             let file = io::file_reader(&path).get();
-            assert!(file.read_be_f32() == 8.1250);
-            assert!(file.read_le_f32() == 8.1250);
+            assert_eq!(file.read_be_f32(), 8.1250);
+            assert_eq!(file.read_le_f32(), 8.1250);
         }
     }
 }

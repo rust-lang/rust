@@ -106,7 +106,7 @@ Section: Adding things to a rope
  * * this function executes in near-constant time
  */
 pub fn append_char(rope: Rope, char: char) -> Rope {
-    return append_str(rope, @str::from_chars(~[char]));
+    return append_str(rope, @str::from_chars([char]));
 }
 
 /**
@@ -127,7 +127,7 @@ pub fn append_str(rope: Rope, str: @~str) -> Rope {
  * * this function executes in near-constant time
  */
 pub fn prepend_char(rope: Rope, char: char) -> Rope {
-    return prepend_str(rope, @str::from_chars(~[char]));
+    return prepend_str(rope, @str::from_chars([char]));
 }
 
 /**
@@ -1281,8 +1281,8 @@ mod tests {
 
     #[test]
     fn trivial() {
-        assert!(char_len(empty()) == 0u);
-        assert!(byte_len(empty()) == 0u);
+        assert_eq!(char_len(empty()), 0u);
+        assert_eq!(byte_len(empty()), 0u);
     }
 
     #[test]
@@ -1290,7 +1290,7 @@ mod tests {
         let sample = @~"0123456789ABCDE";
         let r      = of_str(sample);
 
-        assert!(char_len(r) == str::char_len(*sample));
+        assert_eq!(char_len(r), str::char_len(*sample));
         assert!(rope_to_string(r) == *sample);
     }
 
@@ -1352,7 +1352,7 @@ mod tests {
             }
         }
 
-        assert!(len == str::char_len(*sample));
+        assert_eq!(len, str::char_len(*sample));
     }
 
     #[test]
@@ -1375,7 +1375,7 @@ mod tests {
 
         assert!(eq(r1, r2));
         let r3 = bal(r2);
-        assert!(char_len(r1) == char_len(r3));
+        assert_eq!(char_len(r1), char_len(r3));
 
         assert!(eq(r1, r3));
     }

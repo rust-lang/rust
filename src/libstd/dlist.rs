@@ -136,10 +136,10 @@ priv impl<T> DList<T> {
         }
         if !nobe.linked { fail!("That node isn't linked to any dlist.") }
         if !((nobe.prev.is_some()
-              || managed::mut_ptr_eq(self.hd.expect(~"headless dlist?"),
+              || managed::mut_ptr_eq(self.hd.expect("headless dlist?"),
                                  nobe)) &&
              (nobe.next.is_some()
-              || managed::mut_ptr_eq(self.tl.expect(~"tailless dlist?"),
+              || managed::mut_ptr_eq(self.tl.expect("tailless dlist?"),
                                  nobe))) {
             fail!("That node isn't on this dlist.")
         }
@@ -391,17 +391,6 @@ pub impl<T> DList<T> {
     }
 
     /// Iterate over nodes.
-    #[cfg(stage0)]
-    fn each_node(@mut self, f: &fn(@mut DListNode<T>) -> bool) {
-        let mut link = self.peek_n();
-        while link.is_some() {
-            let nobe = link.get();
-            if !f(nobe) { break; }
-            link = nobe.next_link();
-        }
-    }
-    /// Iterate over nodes.
-    #[cfg(not(stage0))]
     fn each_node(@mut self, f: &fn(@mut DListNode<T>) -> bool) -> bool {
         let mut link = self.peek_n();
         while link.is_some() {
@@ -438,7 +427,7 @@ pub impl<T> DList<T> {
             link = nobe.next_link();
             count += 1;
         }
-        assert!(count == self.len());
+        assert_eq!(count, self.len());
         // iterate backwards - some of this is probably redundant.
         link = self.peek_tail_n();
         rabbit = link;
@@ -459,7 +448,7 @@ pub impl<T> DList<T> {
             link = nobe.prev_link();
             count -= 1;
         }
-        assert!(count == 0);
+        assert_eq!(count, 0);
     }
 }
 
@@ -508,42 +497,6 @@ impl<T> BaseIter<T> for @mut DList<T> {
      * allow for e.g. breadth-first search with in-place enqueues), but
      * removing the current node is forbidden.
      */
-    #[cfg(stage0)]
-    fn each(&self, f: &fn(v: &T) -> bool) {
-        let mut link = self.peek_n();
-        while link.is_some() {
-            let nobe = link.get();
-            assert!(nobe.linked);
-
-            {
-                let frozen_nobe = &*nobe;
-                if !f(&frozen_nobe.data) { break; }
-            }
-
-            // Check (weakly) that the user didn't do a remove.
-            if self.size == 0 {
-                fail!("The dlist became empty during iteration??")
-            }
-            if !nobe.linked ||
-                (!((nobe.prev.is_some()
-                    || managed::mut_ptr_eq(self.hd.expect(~"headless dlist?"),
-                                           nobe))
-                   && (nobe.next.is_some()
-                    || managed::mut_ptr_eq(self.tl.expect(~"tailless dlist?"),
-                                           nobe)))) {
-                fail!("Removing a dlist node during iteration is forbidden!")
-            }
-            link = nobe.next_link();
-        }
-    }
-    /**
-     * Iterates through the current contents.
-     *
-     * Attempts to access this dlist during iteration are allowed (to
-     * allow for e.g. breadth-first search with in-place enqueues), but
-     * removing the current node is forbidden.
-     */
-    #[cfg(not(stage0))]
     fn each(&self, f: &fn(v: &T) -> bool) -> bool {
         let mut link = self.peek_n();
         while link.is_some() {
@@ -561,10 +514,10 @@ impl<T> BaseIter<T> for @mut DList<T> {
             }
             if !nobe.linked ||
                 (!((nobe.prev.is_some()
-                    || managed::mut_ptr_eq(self.hd.expect(~"headless dlist?"),
+                    || managed::mut_ptr_eq(self.hd.expect("headless dlist?"),
                                            nobe))
                    && (nobe.next.is_some()
-                    || managed::mut_ptr_eq(self.tl.expect(~"tailless dlist?"),
+                    || managed::mut_ptr_eq(self.tl.expect("tailless dlist?"),
                                            nobe)))) {
                 fail!("Removing a dlist node during iteration is forbidden!")
             }

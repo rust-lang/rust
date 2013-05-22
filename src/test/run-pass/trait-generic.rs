@@ -42,8 +42,8 @@ fn bar<U:to_str,T:map<U>>(x: T) -> ~[~str] {
 }
 
 pub fn main() {
-    assert!(foo(~[1]) == ~[~"hi"]);
-    assert!(bar::<int, ~[int]>(~[4, 5]) == ~[~"4", ~"5"]);
-    assert!(bar::<~str, ~[~str]>(~[~"x", ~"y"]) == ~[~"x", ~"y"]);
-    assert!(bar::<(), ~[()]>(~[()]) == ~[~"()"]);
+    assert_eq!(foo(~[1]), ~[~"hi"]);
+    assert_eq!(bar::<int, ~[int]>(~[4, 5]), ~[~"4", ~"5"]);
+    assert_eq!(bar::<~str, ~[~str]>(~[~"x", ~"y"]), ~[~"x", ~"y"]);
+    assert_eq!(bar::<(), ~[()]>(~[()]), ~[~"()"]);
 }

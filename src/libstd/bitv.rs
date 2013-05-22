@@ -127,7 +127,7 @@ pub impl BigBitv {
     fn process(&mut self, b: &BigBitv, nbits: uint,
                op: &fn(uint, uint) -> uint) -> bool {
         let len = b.storage.len();
-        assert!((self.storage.len() == len));
+        assert_eq!(self.storage.len(), len);
         let mut changed = false;
         for uint::range(0, len) |i| {
             let mask = big_mask(nbits, i);
@@ -143,17 +143,6 @@ pub impl BigBitv {
     }
 
     #[inline(always)]
-    #[cfg(stage0)]
-    fn each_storage(&mut self, op: &fn(v: &mut uint) -> bool) {
-        for uint::range(0, self.storage.len()) |i| {
-            let mut w = self.storage[i];
-            let b = op(&mut w);
-            self.storage[i] = w;
-            if !b { break; }
-        }
-    }
-    #[inline(always)]
-    #[cfg(not(stage0))]
     fn each_storage(&mut self, op: &fn(v: &mut uint) -> bool) -> bool {
         uint::range(0, self.storage.len(), |i| op(&mut self.storage[i]))
     }
@@ -199,19 +188,6 @@ pub impl BigBitv {
     }
 
     #[inline(always)]
-    #[cfg(stage0)]
-    fn equals(&self, b: &BigBitv, nbits: uint) -> bool {
-        let len = b.storage.len();
-        for uint::iterate(0, len) |i| {
-            let mask = big_mask(nbits, i);
-            if mask & self.storage[i] != mask & b.storage[i] {
-                return false;
-            }
-        }
-    }
-
-    #[inline(always)]
-    #[cfg(not(stage0))]
     fn equals(&self, b: &BigBitv, nbits: uint) -> bool {
         let len = b.storage.len();
         for uint::iterate(0, len) |i| {
@@ -407,16 +383,6 @@ pub impl Bitv {
     }
 
     #[inline(always)]
-    #[cfg(stage0)]
-    fn each(&self, f: &fn(bool) -> bool) {
-        let mut i = 0;
-        while i < self.nbits {
-            if !f(self.get(i)) { break; }
-            i += 1;
-        }
-    }
-    #[inline(always)]
-    #[cfg(not(stage0))]
     fn each(&self, f: &fn(bool) -> bool) -> bool {
         let mut i = 0;
         while i < self.nbits {
@@ -508,7 +474,7 @@ pub impl Bitv {
      * the bitvector and vector must have the same length
      */
     fn eq_vec(&self, v: ~[uint]) -> bool {
-        assert!(self.nbits == v.len());
+        assert_eq!(self.nbits, v.len());
         let mut i = 0;
         while i < self.nbits {
             let w0 = self.get(i);
@@ -519,15 +485,6 @@ pub impl Bitv {
         true
     }
 
-    #[cfg(stage0)]
-    fn ones(&self, f: &fn(uint) -> bool) {
-        for uint::range(0, self.nbits) |i| {
-            if self.get(i) {
-                if !f(i) { break }
-            }
-        }
-    }
-    #[cfg(not(stage0))]
     fn ones(&self, f: &fn(uint) -> bool) -> bool {
         uint::range(0, self.nbits, |i| !self.get(i) || f(i))
     }
@@ -697,7 +654,6 @@ pub impl BitvSet {
     }
 }
 
-#[cfg(not(stage0))]
 impl BaseIter<uint> for BitvSet {
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 
@@ -711,7 +667,6 @@ impl BaseIter<uint> for BitvSet {
     }
 }
 
-#[cfg(not(stage0))]
 impl cmp::Eq for BitvSet {
     fn eq(&self, other: &BitvSet) -> bool {
         if self.size != other.size {
@@ -745,7 +700,6 @@ impl Mutable for BitvSet {
     }
 }
 
-#[cfg(not(stage0))]
 impl Set<uint> for BitvSet {
     fn contains(&self, value: &uint) -> bool {
         *value < self.bitv.storage.len() * uint::bits && self.bitv.get(*value)
@@ -849,7 +803,6 @@ impl Set<uint> for BitvSet {
     }
 }
 
-#[cfg(not(stage0))]
 priv impl BitvSet {
     /// Visits each of the words that the two bit vectors (self and other)
     /// both have in common. The three yielded arguments are (bit location,
@@ -909,10 +862,10 @@ mod tests {
     #[test]
     fn test_to_str() {
         let zerolen = Bitv::new(0u, false);
-        assert!(zerolen.to_str() == ~"");
+        assert_eq!(zerolen.to_str(), ~"");
 
         let eightbits = Bitv::new(8u, false);
-        assert!(eightbits.to_str() == ~"00000000");
+        assert_eq!(eightbits.to_str(), ~"00000000");
     }
 
     #[test]
@@ -938,7 +891,7 @@ mod tests {
         let mut b = bitv::Bitv::new(2, false);
         b.set(0, true);
         b.set(1, false);
-        assert!(b.to_str() == ~"10");
+        assert_eq!(b.to_str(), ~"10");
     }
 
     #[test]
@@ -1248,19 +1201,19 @@ mod tests {
     fn test_from_bytes() {
         let bitv = from_bytes([0b10110110, 0b00000000, 0b11111111]);
         let str = ~"10110110" + ~"00000000" + ~"11111111";
-        assert!(bitv.to_str() == str);
+        assert_eq!(bitv.to_str(), str);
     }
 
     #[test]
     fn test_to_bytes() {
         let mut bv = Bitv::new(3, true);
         bv.set(1, false);
-        assert!(bv.to_bytes() == ~[0b10100000]);
+        assert_eq!(bv.to_bytes(), ~[0b10100000]);
 
         let mut bv = Bitv::new(9, false);
         bv.set(2, true);
         bv.set(8, true);
-        assert!(bv.to_bytes() == ~[0b00100000, 0b10000000]);
+        assert_eq!(bv.to_bytes(), ~[0b00100000, 0b10000000]);
     }
 
     #[test]
@@ -1272,7 +1225,7 @@ mod tests {
     #[test]
     fn test_to_bools() {
         let bools = ~[false, false, true, false, false, true, true, false];
-        assert!(from_bytes([0b00100110]).to_bools() == bools);
+        assert_eq!(from_bytes([0b00100110]).to_bools(), bools);
     }
 
     #[test]
@@ -1330,7 +1283,7 @@ mod tests {
         assert!(b.insert(400));
         assert!(!b.insert(400));
         assert!(b.contains(&400));
-        assert!(b.len() == 2);
+        assert_eq!(b.len(), 2);
     }
 
     #[test]
@@ -1354,10 +1307,10 @@ mod tests {
         let mut i = 0;
         let expected = [3, 5, 11, 77];
         for a.intersection(&b) |x| {
-            assert!(*x == expected[i]);
+            assert_eq!(*x, expected[i]);
             i += 1
         }
-        assert!(i == expected.len());
+        assert_eq!(i, expected.len());
     }
 
     #[test]
@@ -1377,10 +1330,10 @@ mod tests {
         let mut i = 0;
         let expected = [1, 5, 500];
         for a.difference(&b) |x| {
-            assert!(*x == expected[i]);
+            assert_eq!(*x, expected[i]);
             i += 1
         }
-        assert!(i == expected.len());
+        assert_eq!(i, expected.len());
     }
 
     #[test]
@@ -1402,10 +1355,10 @@ mod tests {
         let mut i = 0;
         let expected = [1, 5, 11, 14, 220];
         for a.symmetric_difference(&b) |x| {
-            assert!(*x == expected[i]);
+            assert_eq!(*x, expected[i]);
             i += 1
         }
-        assert!(i == expected.len());
+        assert_eq!(i, expected.len());
     }
 
     #[test]
@@ -1430,10 +1383,10 @@ mod tests {
         let mut i = 0;
         let expected = [1, 3, 5, 9, 11, 13, 19, 24, 160];
         for a.union(&b) |x| {
-            assert!(*x == expected[i]);
+            assert_eq!(*x, expected[i]);
             i += 1
         }
-        assert!(i == expected.len());
+        assert_eq!(i, expected.len());
     }
 
     #[test]
@@ -1448,7 +1401,7 @@ mod tests {
 
         assert!(a.insert(1000));
         assert!(a.remove(&1000));
-        assert!(a.capacity() == uint::bits);
+        assert_eq!(a.capacity(), uint::bits);
     }
 
     fn rng() -> rand::IsaacRng {

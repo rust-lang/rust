@@ -37,7 +37,7 @@ fn count(n: uint) -> uint {
 }
 
 fn main() {
-    for old_iter::repeat(10u) {
+    for 10u.times {
         do task::spawn {
             let result = count(5u);
             debug!("result = %?", result);

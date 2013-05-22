@@ -51,18 +51,6 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
     }
 
     /// Visit all key-value pairs in order
-    #[cfg(stage0)]
-    fn each<'a>(&'a self, it: &fn(&uint, &'a V) -> bool) {
-        for uint::range(0, self.v.len()) |i| {
-            match self.v[i] {
-              Some(ref elt) => if !it(&i, elt) { break },
-              None => ()
-            }
-        }
-    }
-
-    /// Visit all key-value pairs in order
-    #[cfg(not(stage0))]
     fn each<'a>(&'a self, it: &fn(&uint, &'a V) -> bool) -> bool {
         for uint::range(0, self.v.len()) |i| {
             match self.v[i] {
@@ -74,40 +62,16 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
     }
 
     /// Visit all keys in order
-    #[cfg(stage0)]
-    fn each_key(&self, blk: &fn(key: &uint) -> bool) {
-        self.each(|k, _| blk(k))
-    }
-    #[cfg(not(stage0))]
-    /// Visit all keys in order
     fn each_key(&self, blk: &fn(key: &uint) -> bool) -> bool {
         self.each(|k, _| blk(k))
     }
 
     /// Visit all values in order
-    #[cfg(stage0)]
-    fn each_value<'a>(&'a self, blk: &fn(value: &'a V) -> bool) {
-        self.each(|_, v| blk(v))
-    }
-
-    /// Visit all values in order
-    #[cfg(not(stage0))]
     fn each_value<'a>(&'a self, blk: &fn(value: &'a V) -> bool) -> bool {
         self.each(|_, v| blk(v))
     }
 
     /// Iterate over the map and mutate the contained values
-    #[cfg(stage0)]
-    fn mutate_values(&mut self, it: &fn(&uint, &mut V) -> bool) {
-        for uint::range(0, self.v.len()) |i| {
-            match self.v[i] {
-              Some(ref mut elt) => if !it(&i, elt) { return; },
-              None => ()
-            }
-        }
-    }
-    /// Iterate over the map and mutate the contained values
-    #[cfg(not(stage0))]
     fn mutate_values(&mut self, it: &fn(&uint, &mut V) -> bool) -> bool {
         for uint::range(0, self.v.len()) |i| {
             match self.v[i] {
@@ -187,18 +151,6 @@ pub impl<V> SmallIntMap<V> {
     fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
 
     /// Visit all key-value pairs in reverse order
-    #[cfg(stage0)]
-    fn each_reverse<'a>(&'a self, it: &fn(uint, &'a V) -> bool) {
-        for uint::range_rev(self.v.len(), 0) |i| {
-            match self.v[i - 1] {
-              Some(ref elt) => if !it(i - 1, elt) { break },
-              None => ()
-            }
-        }
-    }
-
-    /// Visit all key-value pairs in reverse order
-    #[cfg(not(stage0))]
     fn each_reverse<'a>(&'a self, it: &fn(uint, &'a V) -> bool) -> bool {
         for uint::range_rev(self.v.len(), 0) |i| {
             match self.v[i - 1] {
@@ -249,16 +201,16 @@ mod tests {
     #[test]
     fn test_len() {
         let mut map = SmallIntMap::new();
-        assert!(map.len() == 0);
+        assert_eq!(map.len(), 0);
         assert!(map.is_empty());
         assert!(map.insert(5, 20));
-        assert!(map.len() == 1);
+        assert_eq!(map.len(), 1);
         assert!(!map.is_empty());
         assert!(map.insert(11, 12));
-        assert!(map.len() == 2);
+        assert_eq!(map.len(), 2);
         assert!(!map.is_empty());
         assert!(map.insert(14, 22));
-        assert!(map.len() == 3);
+        assert_eq!(map.len(), 3);
         assert!(!map.is_empty());
     }
 
@@ -297,9 +249,9 @@ mod tests {
         map.update_with_key(3, 2, addMoreToCount);
 
         // check the total counts
-        assert!(map.find(&3).get() == &10);
-        assert!(map.find(&5).get() == &3);
-        assert!(map.find(&9).get() == &1);
+        assert_eq!(map.find(&3).get(), &10);
+        assert_eq!(map.find(&5).get(), &3);
+        assert_eq!(map.find(&9).get(), &1);
 
         // sadly, no sevens were counted
         assert!(map.find(&7).is_none());
@@ -308,16 +260,16 @@ mod tests {
     #[test]
     fn test_swap() {
         let mut m = SmallIntMap::new();
-        assert!(m.swap(1, 2) == None);
-        assert!(m.swap(1, 3) == Some(2));
-        assert!(m.swap(1, 4) == Some(3));
+        assert_eq!(m.swap(1, 2), None);
+        assert_eq!(m.swap(1, 3), Some(2));
+        assert_eq!(m.swap(1, 4), Some(3));
     }
 
     #[test]
     fn test_pop() {
         let mut m = SmallIntMap::new();
         m.insert(1, 2);
-        assert!(m.pop(&1) == Some(2));
-        assert!(m.pop(&1) == None);
+        assert_eq!(m.pop(&1), Some(2));
+        assert_eq!(m.pop(&1), None);
     }
 }

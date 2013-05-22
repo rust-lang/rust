@@ -1977,7 +1977,7 @@ struct TimeBomb {
 
 impl Drop for TimeBomb {
     fn finalize(&self) {
-        for old_iter::repeat(self.explosivity) {
+        for self.explosivity.times {
             println("blam!");
         }
     }

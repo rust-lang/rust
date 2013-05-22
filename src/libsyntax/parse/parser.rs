@@ -30,10 +30,10 @@ use ast::{expr_ret, expr_self, expr_struct, expr_tup, expr_unary};
 use ast::{expr_vec, expr_vstore, expr_vstore_mut_box};
 use ast::{expr_vstore_slice, expr_vstore_box};
 use ast::{expr_vstore_mut_slice, expr_while, extern_fn, field, fn_decl};
-use ast::{expr_vstore_uniq, TyClosure, TyBareFn, Onceness, Once, Many};
+use ast::{expr_vstore_uniq, Onceness, Once, Many};
 use ast::{foreign_item, foreign_item_const, foreign_item_fn, foreign_mod};
 use ast::{ident, impure_fn, inherited, item, item_, item_const};
-use ast::{item_const, item_enum, item_fn, item_foreign_mod, item_impl};
+use ast::{item_enum, item_fn, item_foreign_mod, item_impl};
 use ast::{item_mac, item_mod, item_struct, item_trait, item_ty, lit, lit_};
 use ast::{lit_bool, lit_float, lit_float_unsuffixed, lit_int};
 use ast::{lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local, m_const};
@@ -354,7 +354,7 @@ pub impl Parser {
     fn get_lifetime(&self, tok: &token::Token) -> ast::ident {
         match *tok {
             token::LIFETIME(ref ident) => copy *ident,
-            _ => self.bug(~"not a lifetime"),
+            _ => self.bug("not a lifetime"),
         }
     }
 
@@ -434,7 +434,7 @@ pub impl Parser {
         });
 
         fn parse_onceness(this: &Parser) -> Onceness {
-            if this.eat_keyword(~"once") {
+            if this.eat_keyword("once") {
                 Once
             } else {
                 Many
@@ -1311,7 +1311,7 @@ pub impl Parser {
                     ex = expr_vec(~[first_expr], mutbl);
                 }
             }
-            hi = self.span.hi;
+            hi = self.last_span.hi;
         } else if self.eat_keyword("__log") {
             // LOG expression
             self.expect(&token::LPAREN);
@@ -1354,7 +1354,7 @@ pub impl Parser {
                 self.bump();
                 match *self.token {
                     token::LPAREN | token::LBRACE => {}
-                    _ => self.fatal(~"expected open delimiter")
+                    _ => self.fatal("expected open delimiter")
                 };
 
                 let ket = token::flip_delimiter(&*self.token);
@@ -1520,7 +1520,7 @@ pub impl Parser {
                 self.bump();
                 (Some(sep), zerok)
             } else {
-                self.fatal(~"expected `*` or `+`");
+                self.fatal("expected `*` or `+`");
             }
         }
     }
@@ -1587,7 +1587,7 @@ pub impl Parser {
 
         match *self.token {
             token::EOF => {
-                self.fatal(~"file ended with unbalanced delimiters");
+                self.fatal("file ended with unbalanced delimiters");
             }
             token::LPAREN | token::LBRACE | token::LBRACKET => {
                 let close_delim = token::flip_delimiter(&*self.token);
@@ -1602,7 +1602,7 @@ pub impl Parser {
                                 |p| p.parse_token_tree()
                             ),
                             // the close delimiter:
-                            ~[parse_any_tt_tok(self)]
+                            [parse_any_tt_tok(self)]
                         )
                     )
                 )
@@ -1635,7 +1635,7 @@ pub impl Parser {
                     token::flip_delimiter(self.token)
                 )
             }
-            _ => self.fatal(~"expected open delimiter")
+            _ => self.fatal("expected open delimiter")
         }
     }
 
@@ -1678,7 +1678,7 @@ pub impl Parser {
                     token::RPAREN
                 );
                 if ms.len() == 0u {
-                    self.fatal(~"repetition body must be nonempty");
+                    self.fatal("repetition body must be nonempty");
                 }
                 let (sep, zerok) = self.parse_sep_and_zerok();
                 match_seq(ms, sep, zerok, name_idx_lo, *name_idx)
@@ -1996,7 +1996,7 @@ pub impl Parser {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
-                let args = vec::append(args, ~[last_arg]);
+                let args = vec::append(args, [last_arg]);
                 self.mk_expr(lo.lo, block.span.hi, expr_call(f, args, sugar))
             }
             expr_method_call(f, i, /*bad*/ copy tps,
@@ -2004,7 +2004,7 @@ pub impl Parser {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
-                let args = vec::append(args, ~[last_arg]);
+                let args = vec::append(args, [last_arg]);
                 self.mk_expr(lo.lo, block.span.hi,
                              expr_method_call(f, i, tps, args, sugar))
             }
@@ -2496,6 +2496,7 @@ pub impl Parser {
         @ast::pat { id: self.get_id(), node: pat, span: mk_sp(lo, hi) }
     }
 
+    // parse ident or ident @ pat
     // used by the copy foo and ref foo patterns to give a good
     // error message when parsing mistakes like ref foo(a,b)
     fn parse_pat_ident(&self,
@@ -2574,7 +2575,7 @@ pub impl Parser {
             // XXX: Remove after snapshot.
         }
         if !is_plain_ident(&*self.token) {
-            self.fatal(~"expected ident");
+            self.fatal("expected ident");
         }
         let name = self.parse_ident();
         self.expect(&token::COLON);
@@ -2587,20 +2588,22 @@ pub impl Parser {
         })
     }
 
-    // parse a statement. may include decl
-    fn parse_stmt(&self, first_item_attrs: ~[attribute]) -> @stmt {
+    // parse a statement. may include decl.
+    // precondition: any attributes are parsed already
+    fn parse_stmt(&self, item_attrs: ~[attribute]) -> @stmt {
         maybe_whole!(self, nt_stmt);
 
         fn check_expected_item(p: &Parser, current_attrs: &[attribute]) {
             // If we have attributes then we should have an item
             if !current_attrs.is_empty() {
-                p.fatal(~"expected item after attrs");
+                p.span_err(*p.last_span,
+                           "expected item after attributes");
             }
         }
 
         let lo = self.span.lo;
         if self.is_keyword("let") {
-            check_expected_item(self, first_item_attrs);
+            check_expected_item(self, item_attrs);
             self.expect_keyword("let");
             let decl = self.parse_let();
             return @spanned(lo, decl.span.hi, stmt_decl(decl, self.get_id()));
@@ -2613,7 +2616,7 @@ pub impl Parser {
             // to the macro clause of parse_item_or_view_item. This
             // could use some cleanup, it appears to me.
 
-            check_expected_item(self, first_item_attrs);
+            check_expected_item(self, item_attrs);
 
             // Potential trouble: if we allow macros with paths instead of
             // idents, we'd need to look ahead past the whole path here...
@@ -2649,9 +2652,6 @@ pub impl Parser {
             }
 
         } else {
-            let item_attrs = vec::append(first_item_attrs,
-                                         self.parse_outer_attributes());
-
             match self.parse_item_or_view_item(/*bad*/ copy item_attrs,
                                                            false) {
                 iovi_item(i) => {
@@ -2664,7 +2664,7 @@ pub impl Parser {
                                     "view items must be declared at the top of the block");
                 }
                 iovi_foreign_item(_) => {
-                    self.fatal(~"foreign items are not allowed here");
+                    self.fatal("foreign items are not allowed here");
                 }
                 iovi_none() => { /* fallthrough */ }
             }
@@ -2726,6 +2726,7 @@ pub impl Parser {
         let mut stmts = ~[];
         let mut expr = None;
 
+        // wouldn't it be more uniform to parse view items only, here?
         let ParsedItemsAndViewItems {
             attrs_remaining: attrs_remaining,
             view_items: view_items,
@@ -2740,23 +2741,29 @@ pub impl Parser {
                                 stmt_decl(decl, self.get_id())));
         }
 
-        let mut initial_attrs = attrs_remaining;
+        let mut attributes_box = attrs_remaining;
 
-        if *self.token == token::RBRACE && !vec::is_empty(initial_attrs) {
-            self.fatal(~"expected item");
-        }
-
-        while *self.token != token::RBRACE {
+        while (*self.token != token::RBRACE) {
+            // parsing items even when they're not allowed lets us give
+            // better error messages and recover more gracefully.
+            attributes_box.push_all(self.parse_outer_attributes());
             match *self.token {
                 token::SEMI => {
+                    if !vec::is_empty(attributes_box) {
+                        self.span_err(*self.last_span,~"expected item after attributes");
+                        attributes_box = ~[];
+                    }
                     self.bump(); // empty
                 }
+                token::RBRACE => {
+                    // fall through and out.
+                }
                 _ => {
-                    let stmt = self.parse_stmt(initial_attrs);
-                    initial_attrs = ~[];
+                    let stmt = self.parse_stmt(attributes_box);
+                    attributes_box = ~[];
                     match stmt.node {
                         stmt_expr(e, stmt_id) => {
-                            // Expression without semicolon
+                            // expression without semicolon
                             match *self.token {
                                 token::SEMI => {
                                     self.bump();
@@ -2772,7 +2779,7 @@ pub impl Parser {
                                         self.fatal(
                                             fmt!(
                                                 "expected `;` or `}` after \
-                                                expression but found `%s`",
+                                                 expression but found `%s`",
                                                 self.token_to_str(&t)
                                             )
                                         );
@@ -2781,9 +2788,8 @@ pub impl Parser {
                                 }
                             }
                         }
-
                         stmt_mac(ref m, _) => {
-                            // Statement macro; might be an expr
+                            // statement macro; might be an expr
                             match *self.token {
                                 token::SEMI => {
                                     self.bump();
@@ -2802,8 +2808,7 @@ pub impl Parser {
                                 _ => { stmts.push(stmt); }
                             }
                         }
-
-                        _ => { // All other kinds of statements:
+                        _ => { // all other kinds of statements:
                             stmts.push(stmt);
 
                             if classify::stmt_ends_with_semi(stmt) {
@@ -2814,6 +2819,11 @@ pub impl Parser {
                 }
             }
         }
+
+        if !vec::is_empty(attributes_box) {
+            self.span_err(*self.last_span,~"expected item after attributes");
+        }
+
         let hi = self.span.hi;
         self.bump();
         let bloc = ast::blk_ {
@@ -3518,7 +3528,7 @@ pub impl Parser {
 
         if first && attrs_remaining_len > 0u {
             // We parsed attributes for the first item but didn't find it
-            self.fatal(~"expected item");
+            self.span_err(*self.last_span, "expected item after attributes");
         }
 
         ast::_mod { view_items: view_items, items: items }
@@ -3573,7 +3583,7 @@ pub impl Parser {
                 let (main_mod, new_mod) =
                     match (main_mod_item, new_mod_item) {
                     (item_mod(m), item_mod(n)) => (m, n),
-                    _ => self.bug(~"parsed mod item should be mod")
+                    _ => self.bug("parsed mod item should be mod")
                 };
                 let merged_mod = ast::_mod {
                     view_items: main_mod.view_items + new_mod.view_items,
@@ -3590,7 +3600,7 @@ pub impl Parser {
     fn push_mod_path(&self, id: ident, attrs: ~[ast::attribute]) {
         let default_path = self.sess.interner.get(id);
         let file_path = match ::attr::first_attr_value_str_by_name(
-            attrs, ~"path") {
+            attrs, "path") {
 
             Some(d) => copy *d,
             None => copy *default_path
@@ -3613,7 +3623,7 @@ pub impl Parser {
         let mod_path = Path(".").push_many(*mod_path_stack);
         let default_path = *self.sess.interner.get(id) + ~".rs";
         let file_path = match ::attr::first_attr_value_str_by_name(
-            outer_attrs, ~"path") {
+            outer_attrs, "path") {
             Some(d) => {
                 let path = Path(copy *d);
                 if !path.is_absolute {
@@ -3650,7 +3660,7 @@ pub impl Parser {
         return (ast::item_mod(m0), mod_attrs);
 
         fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {
-            match ::attr::first_attr_value_str_by_name(attrs, ~"path") {
+            match ::attr::first_attr_value_str_by_name(attrs, "path") {
                 Some(d) => copy *d,
                 None => default
             }
@@ -3723,11 +3733,15 @@ pub impl Parser {
                                first_item_attrs: ~[attribute])
                                -> foreign_mod {
         let ParsedItemsAndViewItems {
-            attrs_remaining: _,
+            attrs_remaining: attrs_remaining,
             view_items: view_items,
             items: _,
             foreign_items: foreign_items
         } = self.parse_foreign_items(first_item_attrs, true);
+        if (! attrs_remaining.is_empty()) {
+            self.span_err(*self.last_span,
+                          ~"expected item after attributes");
+        }
         assert!(*self.token == token::RBRACE);
         ast::foreign_mod {
             sort: sort,
@@ -3901,7 +3915,7 @@ pub impl Parser {
         }
         self.expect(&token::RBRACE);
         if (have_disr && !all_nullary) {
-            self.fatal(~"discriminator values can only be used with a c-like \
+            self.fatal("discriminator values can only be used with a c-like \
                         enum");
         }
 
@@ -4195,7 +4209,7 @@ pub impl Parser {
                     || self.look_ahead(2) == token::LBRACE) {
             // MACRO INVOCATION ITEM
             if attrs.len() > 0 {
-                self.fatal(~"attrs on macros are not yet supported");
+                self.fatal("attrs on macros are not yet supported");
             }
 
             // item macro.
@@ -4221,7 +4235,7 @@ pub impl Parser {
                         |p| p.parse_token_tree()
                     )
                 }
-                _ => self.fatal(~"expected open delimiter")
+                _ => self.fatal("expected open delimiter")
             };
             // single-variant-enum... :
             let m = ast::mac_invoc_tt(pth, tts);
@@ -4248,9 +4262,9 @@ pub impl Parser {
             iovi_none =>
                 None,
             iovi_view_item(_) =>
-                self.fatal(~"view items are not allowed here"),
+                self.fatal("view items are not allowed here"),
             iovi_foreign_item(_) =>
-                self.fatal(~"foreign items are not allowed here"),
+                self.fatal("foreign items are not allowed here"),
             iovi_item(item) =>
                 Some(item)
         }
@@ -4390,7 +4404,7 @@ pub impl Parser {
             let metadata = self.parse_optional_meta();
             view_item_extern_mod(ident, metadata, self.get_id())
         } else {
-            self.bug(~"expected view item");
+            self.bug("expected view item");
         };
         self.expect(&token::SEMI);
         @ast::view_item { node: node,
@@ -4537,7 +4551,7 @@ pub impl Parser {
                 self.bump();
                 self.id_to_str(s)
             }
-            _ =>  self.fatal(~"expected string literal")
+            _ =>  self.fatal("expected string literal")
         }
     }
 }

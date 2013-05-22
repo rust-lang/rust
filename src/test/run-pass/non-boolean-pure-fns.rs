@@ -30,5 +30,5 @@ fn safe_head<T:Copy>(ls: @List<T>) -> T {
 pub fn main() {
     let mylist = @Cons(@1u, @Nil);
     assert!((nonempty_list(mylist)));
-    assert!((*safe_head(mylist) == 1u));
+    assert_eq!(*safe_head(mylist), 1u);
 }

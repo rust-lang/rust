@@ -41,18 +41,6 @@ impl<T: Owned> UnsafeAtomicRcBox<T> {
     }
 
     #[inline(always)]
-    #[cfg(stage0)]
-    pub unsafe fn get(&self) -> *mut T
-    {
-        let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
-        assert!(data.count > 0);
-        let r: *mut T = cast::transmute(data.data.get_mut_ref());
-        cast::forget(data);
-        return r;
-    }
-
-    #[inline(always)]
-    #[cfg(not(stage0))]
     pub unsafe fn get(&self) -> *mut T
     {
         let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
@@ -63,18 +51,6 @@ impl<T: Owned> UnsafeAtomicRcBox<T> {
     }
 
     #[inline(always)]
-    #[cfg(stage0)]
-    pub unsafe fn get_immut(&self) -> *T
-    {
-        let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
-        assert!(data.count > 0);
-        let r: *T = cast::transmute(data.data.get_mut_ref());
-        cast::forget(data);
-        return r;
-    }
-
-    #[inline(always)]
-    #[cfg(not(stage0))]
     pub unsafe fn get_immut(&self) -> *T
     {
         let mut data: ~AtomicRcBoxData<T> = cast::transmute(self.data);
@@ -275,11 +251,11 @@ mod tests {
         let x2 = x.clone();
         do task::try || {
             do x2.with |one| {
-                assert!(*one == 2);
+                assert_eq!(*one, 2);
             }
         };
         do x.with |one| {
-            assert!(*one == 1);
+            assert_eq!(*one, 1);
         }
     }
 }

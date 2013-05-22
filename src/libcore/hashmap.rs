@@ -87,22 +87,6 @@ priv impl<K:Hash + Eq,V> HashMap<K, V> {
     }
 
     #[inline(always)]
-    #[cfg(stage0)]
-    fn bucket_sequence(&self, hash: uint,
-                       op: &fn(uint) -> bool) {
-        let start_idx = self.to_bucket(hash);
-        let len_buckets = self.buckets.len();
-        let mut idx = start_idx;
-        loop {
-            if !op(idx) { return; }
-            idx = self.next_bucket(idx, len_buckets);
-            if idx == start_idx {
-                return;
-            }
-        }
-    }
-    #[inline(always)]
-    #[cfg(not(stage0))]
     fn bucket_sequence(&self, hash: uint,
                        op: &fn(uint) -> bool) -> bool {
         let start_idx = self.to_bucket(hash);
@@ -318,23 +302,10 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 
     /// Visit all key-value pairs
-    #[cfg(stage0)]
-    fn each<'a>(&'a self, blk: &fn(&K, &'a V) -> bool) {
-        for uint::range(0, self.buckets.len()) |i| {
-            for self.buckets[i].each |bucket| {
-                if !blk(&bucket.key, &bucket.value) {
-                    return;
-                }
-            }
-        }
-    }
-
-    /// Visit all key-value pairs
-    #[cfg(not(stage0))]
     fn each<'a>(&'a self, blk: &fn(&K, &'a V) -> bool) -> bool {
-        for uint::range(0, self.buckets.len()) |i| {
-            for self.buckets[i].each |bucket| {
-                if !blk(&bucket.key, &bucket.value) {
+        for self.buckets.each |bucket| {
+            for bucket.each |pair| {
+                if !blk(&pair.key, &pair.value) {
                     return false;
                 }
             }
@@ -343,44 +314,16 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 
     /// Visit all keys
-    #[cfg(stage0)]
-    fn each_key(&self, blk: &fn(k: &K) -> bool) {
-        self.each(|k, _| blk(k))
-    }
-
-    /// Visit all keys
-    #[cfg(not(stage0))]
     fn each_key(&self, blk: &fn(k: &K) -> bool) -> bool {
         self.each(|k, _| blk(k))
     }
 
     /// Visit all values
-    #[cfg(stage0)]
-    fn each_value<'a>(&'a self, blk: &fn(v: &'a V) -> bool) {
-        self.each(|_, v| blk(v))
-    }
-
-    /// Visit all values
-    #[cfg(not(stage0))]
     fn each_value<'a>(&'a self, blk: &fn(v: &'a V) -> bool) -> bool {
         self.each(|_, v| blk(v))
     }
 
     /// Iterate over the map and mutate the contained values
-    #[cfg(stage0)]
-    fn mutate_values(&mut self, blk: &fn(&K, &mut V) -> bool) {
-        for uint::range(0, self.buckets.len()) |i| {
-            match self.buckets[i] {
-              Some(Bucket{key: ref key, value: ref mut value, _}) => {
-                if !blk(key, value) { return }
-              }
-              None => ()
-            }
-        }
-    }
-
-    /// Iterate over the map and mutate the contained values
-    #[cfg(not(stage0))]
     fn mutate_values(&mut self, blk: &fn(&K, &mut V) -> bool) -> bool {
         for uint::range(0, self.buckets.len()) |i| {
             match self.buckets[i] {
@@ -402,19 +345,6 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 
     /// Return a mutable reference to the value corresponding to the key
-    #[cfg(stage0)]
-    fn find_mut<'a>(&'a mut self, k: &K) -> Option<&'a mut V> {
-        let idx = match self.bucket_for_key(k) {
-            FoundEntry(idx) => idx,
-            TableFull | FoundHole(_) => return None
-        };
-        unsafe {
-            Some(::cast::transmute_mut_region(self.mut_value_for_bucket(idx)))
-        }
-    }
-
-    /// Return a mutable reference to the value corresponding to the key
-    #[cfg(not(stage0))]
     fn find_mut<'a>(&'a mut self, k: &K) -> Option<&'a mut V> {
         let idx = match self.bucket_for_key(k) {
             FoundEntry(idx) => idx,
@@ -485,38 +415,6 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return the value corresponding to the key in the map, or insert
     /// and return the value if it doesn't exist.
-    #[cfg(stage0)]
-    fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> &'a V {
-        if self.size >= self.resize_at {
-            // n.b.: We could also do this after searching, so
-            // that we do not resize if this call to insert is
-            // simply going to update a key in place.  My sense
-            // though is that it's worse to have to search through
-            // buckets to find the right spot twice than to just
-            // resize in this corner case.
-            self.expand();
-        }
-
-        let hash = k.hash_keyed(self.k0, self.k1) as uint;
-        let idx = match self.bucket_for_key_with_hash(hash, &k) {
-            TableFull => fail!("Internal logic error"),
-            FoundEntry(idx) => idx,
-            FoundHole(idx) => {
-                self.buckets[idx] = Some(Bucket{hash: hash, key: k,
-                                     value: v});
-                self.size += 1;
-                idx
-            },
-        };
-
-        unsafe {
-            ::cast::transmute_region(self.value_for_bucket(idx))
-        }
-    }
-
-    /// Return the value corresponding to the key in the map, or insert
-    /// and return the value if it doesn't exist.
-    #[cfg(not(stage0))]
     fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> &'a V {
         if self.size >= self.resize_at {
             // n.b.: We could also do this after searching, so
@@ -545,39 +443,6 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return the value corresponding to the key in the map, or create,
     /// insert, and return a new value if it doesn't exist.
-    #[cfg(stage0)]
-    fn find_or_insert_with<'a>(&'a mut self, k: K, f: &fn(&K) -> V) -> &'a V {
-        if self.size >= self.resize_at {
-            // n.b.: We could also do this after searching, so
-            // that we do not resize if this call to insert is
-            // simply going to update a key in place.  My sense
-            // though is that it's worse to have to search through
-            // buckets to find the right spot twice than to just
-            // resize in this corner case.
-            self.expand();
-        }
-
-        let hash = k.hash_keyed(self.k0, self.k1) as uint;
-        let idx = match self.bucket_for_key_with_hash(hash, &k) {
-            TableFull => fail!("Internal logic error"),
-            FoundEntry(idx) => idx,
-            FoundHole(idx) => {
-                let v = f(&k);
-                self.buckets[idx] = Some(Bucket{hash: hash, key: k,
-                                     value: v});
-                self.size += 1;
-                idx
-            },
-        };
-
-        unsafe {
-            ::cast::transmute_region(self.value_for_bucket(idx))
-        }
-    }
-
-    /// Return the value corresponding to the key in the map, or create,
-    /// insert, and return a new value if it doesn't exist.
-    #[cfg(not(stage0))]
     fn find_or_insert_with<'a>(&'a mut self, k: K, f: &fn(&K) -> V) -> &'a V {
         if self.size >= self.resize_at {
             // n.b.: We could also do this after searching, so
@@ -680,9 +545,6 @@ pub struct HashSet<T> {
 
 impl<T:Hash + Eq> BaseIter<T> for HashSet<T> {
     /// Visit all values in order
-    #[cfg(stage0)]
-    fn each(&self, f: &fn(&T) -> bool) { self.map.each_key(f) }
-    #[cfg(not(stage0))]
     fn each(&self, f: &fn(&T) -> bool) -> bool { self.map.each_key(f) }
     fn size_hint(&self) -> Option<uint> { Some(self.len()) }
 }
@@ -734,32 +596,11 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
     }
 
     /// Visit the values representing the difference
-    #[cfg(stage0)]
-    fn difference(&self, other: &HashSet<T>, f: &fn(&T) -> bool) {
-        for self.each |v| {
-            if !other.contains(v) {
-                if !f(v) { return }
-            }
-        }
-    }
-
-    /// Visit the values representing the difference
-    #[cfg(not(stage0))]
     fn difference(&self, other: &HashSet<T>, f: &fn(&T) -> bool) -> bool {
         self.each(|v| other.contains(v) || f(v))
     }
 
     /// Visit the values representing the symmetric difference
-    #[cfg(stage0)]
-    fn symmetric_difference(&self,
-                            other: &HashSet<T>,
-                            f: &fn(&T) -> bool) {
-        self.difference(other, f);
-        other.difference(self, f);
-    }
-
-    /// Visit the values representing the symmetric difference
-    #[cfg(not(stage0))]
     fn symmetric_difference(&self,
                             other: &HashSet<T>,
                             f: &fn(&T) -> bool) -> bool {
@@ -767,37 +608,11 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
     }
 
     /// Visit the values representing the intersection
-    #[cfg(stage0)]
-    fn intersection(&self, other: &HashSet<T>, f: &fn(&T) -> bool) {
-        for self.each |v| {
-            if other.contains(v) {
-                if !f(v) { return }
-            }
-        }
-    }
-
-    /// Visit the values representing the intersection
-    #[cfg(not(stage0))]
     fn intersection(&self, other: &HashSet<T>, f: &fn(&T) -> bool) -> bool {
         self.each(|v| !other.contains(v) || f(v))
     }
 
     /// Visit the values representing the union
-    #[cfg(stage0)]
-    fn union(&self, other: &HashSet<T>, f: &fn(&T) -> bool) {
-        for self.each |v| {
-            if !f(v) { return }
-        }
-
-        for other.each |v| {
-            if !self.contains(v) {
-                if !f(v) { return }
-            }
-        }
-    }
-
-    /// Visit the values representing the union
-    #[cfg(not(stage0))]
     fn union(&self, other: &HashSet<T>, f: &fn(&T) -> bool) -> bool {
         self.each(f) && other.each(|v| self.contains(v) || f(v))
     }
@@ -842,8 +657,8 @@ mod test_map {
         let mut m = HashMap::new();
         assert!(m.insert(1, 2));
         assert!(m.insert(2, 4));
-        assert!(*m.get(&1) == 2);
-        assert!(*m.get(&2) == 4);
+        assert_eq!(*m.get(&1), 2);
+        assert_eq!(*m.get(&2), 4);
     }
 
     #[test]
@@ -863,9 +678,9 @@ mod test_map {
     fn test_insert_overwrite() {
         let mut m = HashMap::new();
         assert!(m.insert(1, 2));
-        assert!(*m.get(&1) == 2);
+        assert_eq!(*m.get(&1), 2);
         assert!(!m.insert(1, 3));
-        assert!(*m.get(&1) == 3);
+        assert_eq!(*m.get(&1), 3);
     }
 
     #[test]
@@ -874,9 +689,9 @@ mod test_map {
         assert!(m.insert(1, 2));
         assert!(m.insert(5, 3));
         assert!(m.insert(9, 4));
-        assert!(*m.get(&9) == 4);
-        assert!(*m.get(&5) == 3);
-        assert!(*m.get(&1) == 2);
+        assert_eq!(*m.get(&9), 4);
+        assert_eq!(*m.get(&5), 3);
+        assert_eq!(*m.get(&1), 2);
     }
 
     #[test]
@@ -886,8 +701,8 @@ mod test_map {
         assert!(m.insert(5, 3));
         assert!(m.insert(9, 4));
         assert!(m.remove(&1));
-        assert!(*m.get(&9) == 4);
-        assert!(*m.get(&5) == 3);
+        assert_eq!(*m.get(&9), 4);
+        assert_eq!(*m.get(&5), 3);
     }
 
     #[test]
@@ -903,30 +718,30 @@ mod test_map {
     fn test_pop() {
         let mut m = HashMap::new();
         m.insert(1, 2);
-        assert!(m.pop(&1) == Some(2));
-        assert!(m.pop(&1) == None);
+        assert_eq!(m.pop(&1), Some(2));
+        assert_eq!(m.pop(&1), None);
     }
 
     #[test]
     fn test_swap() {
         let mut m = HashMap::new();
-        assert!(m.swap(1, 2) == None);
-        assert!(m.swap(1, 3) == Some(2));
-        assert!(m.swap(1, 4) == Some(3));
+        assert_eq!(m.swap(1, 2), None);
+        assert_eq!(m.swap(1, 3), Some(2));
+        assert_eq!(m.swap(1, 4), Some(3));
     }
 
     #[test]
     fn test_find_or_insert() {
         let mut m = HashMap::new::<int, int>();
-        assert!(m.find_or_insert(1, 2) == &2);
-        assert!(m.find_or_insert(1, 3) == &2);
+        assert_eq!(m.find_or_insert(1, 2), &2);
+        assert_eq!(m.find_or_insert(1, 3), &2);
     }
 
     #[test]
     fn test_find_or_insert_with() {
         let mut m = HashMap::new::<int, int>();
-        assert!(m.find_or_insert_with(1, |_| 2) == &2);
-        assert!(m.find_or_insert_with(1, |_| 3) == &2);
+        assert_eq!(m.find_or_insert_with(1, |_| 2), &2);
+        assert_eq!(m.find_or_insert_with(1, |_| 3), &2);
     }
 
     #[test]
@@ -938,10 +753,10 @@ mod test_map {
         do m.consume |k, v| {
             m2.insert(k, v);
         }
-        assert!(m.len() == 0);
-        assert!(m2.len() == 2);
-        assert!(m2.get(&1) == &2);
-        assert!(m2.get(&2) == &3);
+        assert_eq!(m.len(), 0);
+        assert_eq!(m2.len(), 2);
+        assert_eq!(m2.get(&1), &2);
+        assert_eq!(m2.get(&2), &3);
     }
 
     #[test]
@@ -952,10 +767,10 @@ mod test_map {
         }
         let mut observed = 0;
         for m.each |k, v| {
-            assert!(*v == *k * 2);
+            assert_eq!(*v, *k * 2);
             observed |= (1 << *k);
         }
-        assert!(observed == 0xFFFF_FFFF);
+        assert_eq!(observed, 0xFFFF_FFFF);
     }
 
     #[test]
@@ -984,14 +799,14 @@ mod test_map {
 
         m2.insert(3, 4);
 
-        assert!(m1 == m2);
+        assert_eq!(m1, m2);
     }
 
     #[test]
     fn test_expand() {
         let mut m = HashMap::new();
 
-        assert!(m.len() == 0);
+        assert_eq!(m.len(), 0);
         assert!(m.is_empty());
 
         let mut i = 0u;
@@ -1001,7 +816,7 @@ mod test_map {
             i += 1;
         }
 
-        assert!(m.len() == i);
+        assert_eq!(m.len(), i);
         assert!(!m.is_empty());
     }
 }
@@ -1090,7 +905,7 @@ mod test_set {
             assert!(vec::contains(expected, x));
             i += 1
         }
-        assert!(i == expected.len());
+        assert_eq!(i, expected.len());
     }
 
     #[test]
@@ -1113,7 +928,7 @@ mod test_set {
             assert!(vec::contains(expected, x));
             i += 1
         }
-        assert!(i == expected.len());
+        assert_eq!(i, expected.len());
     }
 
     #[test]
@@ -1139,7 +954,7 @@ mod test_set {
             assert!(vec::contains(expected, x));
             i += 1
         }
-        assert!(i == expected.len());
+        assert_eq!(i, expected.len());
     }
 
     #[test]
@@ -1169,6 +984,6 @@ mod test_set {
             assert!(vec::contains(expected, x));
             i += 1
         }
-        assert!(i == expected.len());
+        assert_eq!(i, expected.len());
     }
 }

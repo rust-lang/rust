@@ -274,10 +274,12 @@ impl Orderable for f64 {
     /// If any of the numbers are `NaN` then `NaN` is returned.
     #[inline(always)]
     fn clamp(&self, mn: &f64, mx: &f64) -> f64 {
-        if self.is_NaN() { *self }
-        else if !(*self <= *mx) { *mx }
-        else if !(*self >= *mn) { *mn }
-        else { *self }
+        cond!(
+            (self.is_NaN())   { *self }
+            (!(*self <= *mx)) { *mx   }
+            (!(*self >= *mn)) { *mn   }
+            _                 { *self }
+        )
     }
 }
 

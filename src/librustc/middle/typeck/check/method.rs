@@ -438,7 +438,7 @@ pub impl<'self> LookupContext<'self> {
                 return; // inapplicable
             }
             ast::sty_region(_) => vstore_slice(r)
-            ast::sty_box(_) => vstore_box, // XXX NDM mutability
+            ast::sty_box(_) => vstore_box, // NDM mutability, as per #5762
             ast::sty_uniq(_) => vstore_uniq
         }
         */
@@ -594,7 +594,7 @@ pub impl<'self> LookupContext<'self> {
             let method = ty::method(self.tcx(),
                                     provided_method_info.method_info.did);
 
-            // XXX: Needs to support generics.
+            // FIXME #4099 (?) Needs to support generics.
             let dummy_substs = substs {
                 self_r: None,
                 self_ty: None,

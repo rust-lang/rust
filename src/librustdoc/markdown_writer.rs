@@ -101,7 +101,7 @@ fn pandoc_writer(
         use core::io::WriterUtil;
 
         debug!("pandoc cmd: %s", pandoc_cmd);
-        debug!("pandoc args: %s", str::connect(pandoc_args, ~" "));
+        debug!("pandoc args: %s", str::connect(pandoc_args, " "));
 
         let pipe_in = os::pipe();
         let pipe_out = os::pipe();
@@ -198,7 +198,7 @@ pub fn make_filename(
             }
           }
           doc::ItemPage(doc) => {
-            str::connect(doc.path() + ~[doc.name()], ~"_")
+            str::connect(doc.path() + ~[doc.name()], "_")
           }
         }
     };
@@ -213,7 +213,7 @@ pub fn make_filename(
 fn write_file(path: &Path, s: ~str) {
     use core::io::WriterUtil;
 
-    match io::file_writer(path, ~[io::Create, io::Truncate]) {
+    match io::file_writer(path, [io::Create, io::Truncate]) {
       result::Ok(writer) => {
         writer.write_str(s);
       }
@@ -285,7 +285,7 @@ mod test {
         let doc = mk_doc(~"test", ~"");
         let page = doc::CratePage(doc.CrateDoc());
         let filename = make_local_filename(config, page);
-        assert!(filename.to_str() == ~"output/dir/test.md");
+        assert_eq!(filename.to_str(), ~"output/dir/test.md");
     }
 
     #[test]
@@ -299,7 +299,7 @@ mod test {
         let doc = mk_doc(~"", ~"");
         let page = doc::CratePage(doc.CrateDoc());
         let filename = make_local_filename(config, page);
-        assert!(filename.to_str() == ~"output/dir/index.html");
+        assert_eq!(filename.to_str(), ~"output/dir/index.html");
     }
 
     #[test]
@@ -314,6 +314,6 @@ mod test {
         let modb = copy doc.cratemod().mods()[0].mods()[0];
         let page = doc::ItemPage(doc::ModTag(modb));
         let filename = make_local_filename(config, page);
-        assert!(filename == Path("output/dir/a_b.html"));
+        assert_eq!(filename, Path("output/dir/a_b.html"));
     }
 }

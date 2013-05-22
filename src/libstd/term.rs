@@ -35,19 +35,19 @@ pub static color_bright_magenta: u8 = 13u8;
 pub static color_bright_cyan: u8 = 14u8;
 pub static color_bright_white: u8 = 15u8;
 
-pub fn esc(writer: @io::Writer) { writer.write(~[0x1bu8, '[' as u8]); }
+pub fn esc(writer: @io::Writer) { writer.write([0x1bu8, '[' as u8]); }
 
 /// Reset the foreground and background colors to default
 pub fn reset(writer: @io::Writer) {
     esc(writer);
-    writer.write(~['0' as u8, 'm' as u8]);
+    writer.write(['0' as u8, 'm' as u8]);
 }
 
 /// Returns true if the terminal supports color
 pub fn color_supported() -> bool {
     let supported_terms = ~[~"xterm-color", ~"xterm",
                            ~"screen-bce", ~"xterm-256color"];
-    return match os::getenv(~"TERM") {
+    return match os::getenv("TERM") {
           option::Some(ref env) => {
             for supported_terms.each |term| {
                 if *term == *env { return true; }
@@ -62,8 +62,8 @@ pub fn set_color(writer: @io::Writer, first_char: u8, color: u8) {
     assert!((color < 16u8));
     esc(writer);
     let mut color = color;
-    if color >= 8u8 { writer.write(~['1' as u8, ';' as u8]); color -= 8u8; }
-    writer.write(~[first_char, ('0' as u8) + color, 'm' as u8]);
+    if color >= 8u8 { writer.write(['1' as u8, ';' as u8]); color -= 8u8; }
+    writer.write([first_char, ('0' as u8) + color, 'm' as u8]);
 }
 
 /// Set the foreground color

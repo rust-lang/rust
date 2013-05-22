@@ -173,14 +173,14 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
       LIT_INT_UNSUFFIXED(i) => { i.to_str() }
       LIT_FLOAT(s, t) => {
         let mut body = copy *in.get(s);
-        if body.ends_with(~".") {
+        if body.ends_with(".") {
             body = body + ~"0";  // `10.f` is not a float literal
         }
         body + ast_util::float_ty_to_str(t)
       }
       LIT_FLOAT_UNSUFFIXED(s) => {
         let mut body = copy *in.get(s);
-        if body.ends_with(~".") {
+        if body.ends_with(".") {
             body = body + ~"0";  // `10.f` is not a float literal
         }
         body
@@ -349,14 +349,6 @@ impl<'self> Equiv<@~str> for StringRef<'self> {
     fn equiv(&self, other: &@~str) -> bool { str::eq_slice(**self, **other) }
 }
 
-#[cfg(stage0)]
-impl<'self> to_bytes::IterBytes for StringRef<'self> {
-    #[inline(always)]
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        (**self).iter_bytes(lsb0, f);
-    }
-}
-#[cfg(not(stage0))]
 impl<'self> to_bytes::IterBytes for StringRef<'self> {
     #[inline(always)]
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
@@ -419,8 +411,7 @@ pub impl ident_interner {
 }
 
 // return a fresh interner, preloaded with special identifiers.
-// EFFECT: stores this interner in TLS
-pub fn mk_fresh_ident_interner() -> @ident_interner {
+fn mk_fresh_ident_interner() -> @ident_interner {
     // the indices here must correspond to the numbers in
     // special_idents.
     let init_vec = ~[
@@ -461,23 +452,27 @@ pub fn mk_fresh_ident_interner() -> @ident_interner {
         "Self",               // 34
     ];
 
-    let rv = @ident_interner {
+    @ident_interner {
         interner: interner::StrInterner::prefill(init_vec)
-    };
-    unsafe {
-        local_data::local_data_set(interner_key!(), @rv);
     }
-    rv
 }
 
 // if an interner exists in TLS, return it. Otherwise, prepare a
 // fresh one.
-pub fn mk_ident_interner() -> @ident_interner {
+pub fn get_ident_interner() -> @ident_interner {
     unsafe {
-        match local_data::local_data_get(interner_key!()) {
+        let key =
+            (cast::transmute::<(uint, uint),
+             &fn(v: @@::parse::token::ident_interner)>(
+                 (-3 as uint, 0u)));
+        match local_data::local_data_get(key) {
             Some(interner) => *interner,
             None => {
-                mk_fresh_ident_interner()
+                let interner = mk_fresh_ident_interner();
+                unsafe {
+                    local_data::local_data_set(key, @interner);
+                }
+                interner
             }
         }
     }
@@ -487,6 +482,12 @@ pub fn mk_ident_interner() -> @ident_interner {
    serialization */
 pub fn mk_fake_ident_interner() -> @ident_interner {
     @ident_interner { interner: interner::StrInterner::new() }
+}
+
+// maps a string to its interned representation
+pub fn intern(str : &str) -> ast::ident {
+    let interner = get_ident_interner();
+    interner.intern(str)
 }
 
 /**

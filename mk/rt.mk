@@ -26,7 +26,11 @@
 # Hack for passing flags into LIBUV, see below.
 LIBUV_FLAGS_i386 = -m32 -fPIC
 LIBUV_FLAGS_x86_64 = -m64 -fPIC
+ifeq ($(OSTYPE_$(1)), linux-androideabi)
 LIBUV_FLAGS_arm = -fPIC -DANDROID -std=gnu99
+else
+LIBUV_FLAGS_arm = -fPIC -std=gnu99
+endif
 LIBUV_FLAGS_mips = -fPIC -mips32r2 -msoft-float -mabi=32
 
 # when we're doing a snapshot build, we intentionally degrade as many
