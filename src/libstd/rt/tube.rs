@@ -105,7 +105,7 @@ mod test {
         do run_in_newsched_task {
             let mut tube: Tube<int> = Tube::new();
             let tube_clone = tube.clone();
-            let tube_clone_cell = Cell(tube_clone);
+            let tube_clone_cell = Cell::new(tube_clone);
             let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then |task| {
                 let mut tube_clone = tube_clone_cell.take();
@@ -123,7 +123,7 @@ mod test {
         do run_in_newsched_task {
             let mut tube: Tube<int> = Tube::new();
             let tube_clone = tube.clone();
-            let tube_clone = Cell(Cell(Cell(tube_clone)));
+            let tube_clone = Cell::new(Cell::new(Cell::new(tube_clone)));
             let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then |task| {
                 let tube_clone = tube_clone.take();
@@ -151,7 +151,7 @@ mod test {
         do run_in_newsched_task {
             let mut tube: Tube<int> = Tube::new();
             let tube_clone = tube.clone();
-            let tube_clone = Cell(tube_clone);
+            let tube_clone = Cell::new(tube_clone);
             let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then |task| {
                 callback_send(tube_clone.take(), 0);
@@ -159,7 +159,7 @@ mod test {
                 fn callback_send(tube: Tube<int>, i: int) {
                     if i == 100 { return; }
 
-                    let tube = Cell(Cell(tube));
+                    let tube = Cell::new(Cell::new(tube));
                     do Local::borrow::<Scheduler> |sched| {
                         let tube = tube.take();
                         do sched.event_loop.callback {

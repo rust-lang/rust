@@ -178,7 +178,7 @@ fn config_from_opts(
             }
         }
     };
-    let process_output = Cell(process_output);
+    let process_output = Cell::new(process_output);
     let result = do result::chain(result) |config| {
         let pandoc_cmd = getopts::opt_maybe_str(matches, opt_pandoc_cmd());
         let pandoc_cmd = maybe_find_pandoc(

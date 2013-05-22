@@ -374,7 +374,7 @@ mod test {
                 let client_tcp_watcher = TcpWatcher::new(&mut loop_);
                 let mut client_tcp_watcher = client_tcp_watcher.as_stream();
                 server_stream_watcher.accept(client_tcp_watcher);
-                let count_cell = Cell(0);
+                let count_cell = Cell::new(0);
                 let server_stream_watcher = server_stream_watcher;
                 rtdebug!("starting read");
                 let alloc: AllocCallback = |size| {
@@ -414,11 +414,11 @@ mod test {
                     let mut stream_watcher = stream_watcher;
                     let msg = ~[0, 1, 2, 3, 4, 5, 6 ,7 ,8, 9];
                     let buf = slice_to_uv_buf(msg);
-                    let msg_cell = Cell(msg);
+                    let msg_cell = Cell::new(msg);
                     do stream_watcher.write(buf) |stream_watcher, status| {
                         rtdebug!("writing");
                         assert!(status.is_none());
-                        let msg_cell = Cell(msg_cell.take());
+                        let msg_cell = Cell::new(msg_cell.take());
                         stream_watcher.close(||ignore(msg_cell.take()));
                     }
                 }

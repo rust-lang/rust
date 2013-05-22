@@ -146,7 +146,7 @@ impl Scheduler {
         rtdebug!("ending running task");
 
         do self.deschedule_running_task_and_then |dead_task| {
-            let dead_task = Cell(dead_task);
+            let dead_task = Cell::new(dead_task);
             do Local::borrow::<Scheduler> |sched| {
                 dead_task.take().recycle(&mut sched.stack_pool);
             }
@@ -159,7 +159,7 @@ impl Scheduler {
         assert!(self.in_task_context());
 
         do self.switch_running_tasks_and_then(task) |last_task| {
-            let last_task = Cell(last_task);
+            let last_task = Cell::new(last_task);
             do Local::borrow::<Scheduler> |sched| {
                 sched.enqueue_task(last_task.take());
             }
@@ -170,7 +170,7 @@ impl Scheduler {
         assert!(self.in_task_context());
 
         do self.switch_running_tasks_and_then(task) |last_task| {
-            let last_task = Cell(last_task);
+            let last_task = Cell::new(last_task);
             do Local::borrow::<Scheduler> |sched| {
                 sched.enqueue_task(last_task.take());
             }
@@ -462,7 +462,7 @@ mod test {
                 };
                 // Context switch directly to the new task
                 do sched.switch_running_tasks_and_then(task2) |task1| {
-                    let task1 = Cell(task1);
+                    let task1 = Cell::new(task1);
                     do Local::borrow::<Scheduler> |sched| {
                         sched.enqueue_task(task1.take());
                     }
@@ -516,7 +516,7 @@ mod test {
                 let sched = Local::take::<Scheduler>();
                 assert!(sched.in_task_context());
                 do sched.deschedule_running_task_and_then() |task| {
-                    let task = Cell(task);
+                    let task = Cell::new(task);
                     do Local::borrow::<Scheduler> |sched| {
                         assert!(!sched.in_task_context());
                         sched.enqueue_task(task.take());
@@ -539,7 +539,7 @@ mod test {
                 let sched = Local::take::<Scheduler>();
                 do sched.deschedule_running_task_and_then |task| {
                     let mut sched = Local::take::<Scheduler>();
-                    let task = Cell(task);
+                    let task = Cell::new(task);
                     do sched.event_loop.callback_ms(10) {
                         rtdebug!("in callback");
                         let mut sched = Local::take::<Scheduler>();

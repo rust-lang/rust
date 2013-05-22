@@ -65,8 +65,8 @@ fn run<T>(owner: SrvOwner<T>, source: ~str, parse: Parser) -> T {
 
     let (po, ch) = stream();
 
-    let source = Cell(source);
-    let parse = Cell(parse);
+    let source = Cell::new(source);
+    let parse = Cell::new(parse);
     do task::spawn {
         act(&po, source.take(), parse.take());
     }

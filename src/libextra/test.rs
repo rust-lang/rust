@@ -568,7 +568,7 @@ pub fn run_test(force_ignore: bool,
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: SharedChan<MonitorMsg>,
                       testfn: ~fn()) {
-        let testfn_cell = ::core::cell::Cell(testfn);
+        let testfn_cell = ::core::cell::Cell::new(testfn);
         do task::spawn {
             let mut result_future = None; // task::future_result(builder);
 

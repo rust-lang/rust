@@ -30,7 +30,7 @@ impl<T: Owned> MessageQueue<T> {
 
     pub fn push(&mut self, value: T) {
         unsafe {
-            let value = Cell(value);
+            let value = Cell::new(value);
             self.queue.with(|q| q.push(value.take()) );
         }
     }
