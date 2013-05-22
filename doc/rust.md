@@ -1426,6 +1426,7 @@ names are effectively reserved. Some significant attributes include:
 by the compiler can be found via `rustc -W help`.
 * The `deriving` attribute, for automatically generating
   implementations of certain traits.
+* The `static_assert` attribute, for asserting that a static bool is true at compiletime
 
 Other attributes may be added or removed during development of the language.
 
