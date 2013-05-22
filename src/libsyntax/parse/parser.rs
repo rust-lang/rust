@@ -4186,10 +4186,10 @@ pub impl Parser {
             return iovi_foreign_item(item);
         }
         if (self.is_keyword("fn") || self.is_keyword("pure") ||
-             self.is_keyword("unsafe")) {
+                self.is_keyword("unsafe")) {
             // FOREIGN FUNCTION ITEM
-                let item = self.parse_item_foreign_fn(attrs);
-                return iovi_foreign_item(item);
+            let item = self.parse_item_foreign_fn(attrs);
+            return iovi_foreign_item(item);
         }
         self.parse_macro_use_or_failure(attrs,macros_allowed,lo,visibility)
     }
@@ -4504,7 +4504,12 @@ pub impl Parser {
         let mut foreign_items = ~[];
         loop {
             match self.parse_foreign_item(/*bad*/ copy attrs, macros_allowed) {
-                iovi_none => break,
+                iovi_none => {
+                    if *self.token == token::RBRACE {
+                        break
+                    }
+                    self.unexpected();
+                },
                 iovi_view_item(view_item) => {
                     // I think this can't occur:
                     self.span_err(view_item.span,
