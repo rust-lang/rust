@@ -389,7 +389,7 @@ pub fn main() {
     if istty {
         io::println("WARNING: The Rust REPL is experimental and may be");
         io::println("unstable. If you encounter problems, please use the");
-        io::println("compiler instead.");
+        io::println("compiler instead. Type :help for help.");
 
         unsafe {
             do rl::complete |line, suggest| {
