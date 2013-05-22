@@ -803,7 +803,7 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
 
     if !any_by_move { return; } // pointless micro-optimization
     for pats.each |pat| {
-        do walk_pat(*pat) |p| {
+        for walk_pat(*pat) |p| {
             if pat_is_binding(def_map, p) {
                 match p.node {
                     pat_ident(_, _, sub) => {
