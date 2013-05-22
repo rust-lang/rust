@@ -118,10 +118,13 @@ fn lookup_cur_matched_by_matched(r: &mut TtReader,
 }
 
 fn lookup_cur_matched(r: &mut TtReader, name: ident) -> @named_match {
-    // FIXME (#3850): this looks a bit silly with an extra scope.
-    let start;
-    { start = *r.interpolations.get(&name); }
-    return lookup_cur_matched_by_matched(r, start);
+    match r.interpolations.find_copy(&name) {
+        Some(s) => lookup_cur_matched_by_matched(r, s),
+        None => {
+            r.sp_diag.span_fatal(r.cur_span, fmt!("unknown macro variable `%s`",
+                                                  *r.interner.get(name)));
+        }
+    }
 }
 enum lis {
     lis_unconstrained, lis_constraint(uint, ident), lis_contradiction(~str)
