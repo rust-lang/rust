@@ -15,6 +15,8 @@ Each page corresponds is a logical section. There may be pages for
 individual modules, pages for the crate, indexes, etc.
 */
 
+use core::prelude::*;
+
 use astsrv;
 use config;
 use doc::ItemUtils;

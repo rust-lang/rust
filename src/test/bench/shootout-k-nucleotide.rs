@@ -1,15 +1,15 @@
 // xfail-test
 
-extern mod std;
+extern mod extra;
 
-use core::cast::transmute;
-use core::i32::range;
-use core::libc::{STDIN_FILENO, c_int, fdopen, fgets, fileno, fopen, fstat};
-use core::libc::{stat, strlen};
-use core::ptr::null;
-use core::unstable::intrinsics::init;
-use core::vec::{reverse, slice};
-use std::sort::quick_sort3;
+use std::cast::transmute;
+use std::i32::range;
+use std::libc::{STDIN_FILENO, c_int, fdopen, fgets, fileno, fopen, fstat};
+use std::libc::{stat, strlen};
+use std::ptr::null;
+use std::unstable::intrinsics::init;
+use std::vec::{reverse, slice};
+use extra::sort::quick_sort3;
 
 static LINE_LEN: uint = 80;
 static TABLE: [u8, ..4] = [ 'A' as u8, 'C' as u8, 'G' as u8, 'T' as u8 ];

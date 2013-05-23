@@ -14,6 +14,7 @@
 // has at most one implementation for each type. Then we build a mapping from
 // each trait in the system to its implementations.
 
+use core::prelude::*;
 
 use driver;
 use metadata::csearch::{each_path, get_impl_trait};
@@ -975,7 +976,7 @@ pub impl CoherenceChecker {
                                       def_id { crate: crate_number,
                                                node: 0 });
 
-            for each_path(crate_store, crate_number) |_p, def_like| {
+            for each_path(crate_store, crate_number) |_, def_like, _| {
                 match def_like {
                     dl_def(def_mod(def_id)) => {
                         self.add_impls_for_module(&mut impls_seen,

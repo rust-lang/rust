@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use driver::session;
 use metadata::cstore;
 use metadata::filesearch;
@@ -193,6 +195,8 @@ pub fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
 
 #[cfg(unix)]
 mod test {
+    use core::prelude::*;
+
     // FIXME(#2119): the outer attribute should be #[cfg(unix, test)], then
     // these redundant #[cfg(test)] blocks can be removed
     #[cfg(test)]

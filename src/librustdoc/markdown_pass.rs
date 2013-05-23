@@ -10,6 +10,8 @@
 
 //! Generate markdown from a document tree
 
+use core::prelude::*;
+
 use astsrv;
 use doc::ItemUtils;
 use doc;
@@ -503,6 +505,8 @@ fn put_struct(
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use astsrv;
     use attr_pass;
     use config;

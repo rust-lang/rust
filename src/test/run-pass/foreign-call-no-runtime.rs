@@ -1,8 +1,7 @@
-use core::unstable::run_in_bare_thread;
+use std::unstable::run_in_bare_thread;
 
 extern {
-    pub fn rust_dbg_call(cb: *u8,
-                         data: libc::uintptr_t) -> libc::uintptr_t;
+    pub fn rust_dbg_call(cb: *u8, data: libc::uintptr_t) -> libc::uintptr_t;
 }
 
 pub fn main() {

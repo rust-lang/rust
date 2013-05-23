@@ -20,10 +20,15 @@
 
 #[allow(non_camel_case_types)];
 
-extern mod std;
-extern mod syntax;
+#[no_std];
 
-use core::run;
+extern mod std(name = "std", vers = "0.7-pre");
+extern mod extra(name = "extra", vers = "0.7-pre");
+
+extern mod syntax(vers = "0.7-pre");
+
+use std::prelude::*;
+use std::run;
 
 use syntax::diagnostic;
 use syntax::parse::token::ident_interner;
@@ -693,3 +698,10 @@ pub fn main() {
 
     error!("Fuzzer done");
 }
+
+// For bootstrapping purposes...
+pub mod core {
+    pub use std::cmp;
+    pub use std::sys;
+}
+

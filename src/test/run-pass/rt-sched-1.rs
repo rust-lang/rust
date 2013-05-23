@@ -10,7 +10,7 @@
 
 // Tests of the runtime's scheduler interface
 
-use core::comm::*;
+use std::comm::*;
 
 pub type sched_id = int;
 pub type task_id = *libc::c_void;

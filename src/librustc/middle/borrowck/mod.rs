@@ -10,6 +10,8 @@
 
 /*! See doc.rs for a thorough explanation of the borrow checker */
 
+use core::prelude::*;
+
 use mc = middle::mem_categorization;
 use middle::ty;
 use middle::typeck;

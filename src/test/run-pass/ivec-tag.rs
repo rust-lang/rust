@@ -1,4 +1,4 @@
-use core::comm::*;
+use std::comm::*;
 
 fn producer(c: &Chan<~[u8]>) {
     c.send(

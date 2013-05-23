@@ -10,7 +10,7 @@
 
 // xfail-fast
 
-extern mod std;
+extern mod extra;
 
 fn start(c: &comm::Chan<comm::Chan<int>>) {
     let (p, ch) = comm::stream();

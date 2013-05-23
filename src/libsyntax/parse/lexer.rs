@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos, span};
 use codemap;
@@ -17,8 +19,6 @@ use ext::tt::transcribe::{dup_tt_reader};
 use parse::token;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
-
-//use std;
 
 pub trait reader {
     fn is_eof(@mut self) -> bool;

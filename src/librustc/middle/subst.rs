@@ -10,6 +10,8 @@
 
 // Type substitutions.
 
+use core::prelude::*;
+
 use middle::ty;
 use util::ppaux::Repr;
 

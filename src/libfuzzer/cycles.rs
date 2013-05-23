@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std;
-use std::rand;
+use core::prelude::*;
+
+use extra;
+use extra::rand;
 use uint::range;
 
 // random uint less than n

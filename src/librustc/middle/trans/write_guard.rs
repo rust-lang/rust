@@ -14,6 +14,8 @@
 //! and for each in debugging (e.g., so you can use
 //! `RUST_LOG=rustc::middle::trans::write_guard`).
 
+use core::prelude::*;
+
 use lib::llvm::ValueRef;
 use middle::borrowck::{RootInfo, root_map_key, DynaImm, DynaMut};
 use middle::trans::base::*;
@@ -23,7 +25,6 @@ use middle::trans::common::*;
 use middle::trans::datum::*;
 use middle::trans::expr;
 use middle::ty;
-use driver::session;
 use syntax::codemap::span;
 use syntax::ast;
 
@@ -74,7 +75,7 @@ pub fn return_to_mut(mut bcx: block,
     let bits_val =
         Load(bcx, bits_val_ref);
 
-    if bcx.tcx().sess.opts.optimize == session::No {
+    if bcx.tcx().sess.debug_borrows() {
         bcx = callee::trans_lang_call(
             bcx,
             bcx.tcx().lang_items.unrecord_borrow_fn(),
@@ -160,7 +161,7 @@ fn root(datum: &Datum,
                 ],
                 expr::SaveIn(scratch_bits.val));
 
-            if bcx.tcx().sess.opts.optimize == session::No {
+            if bcx.tcx().sess.debug_borrows() {
                 bcx = callee::trans_lang_call(
                     bcx,
                     bcx.tcx().lang_items.record_borrow_fn(),

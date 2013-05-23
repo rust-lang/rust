@@ -11,7 +11,7 @@
 // error-pattern:expected item
 
 #[foo = "bar"]
-extern mod std;
+extern mod extra;
 
 pub fn main() {
 }

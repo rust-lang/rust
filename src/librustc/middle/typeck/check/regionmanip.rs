@@ -10,6 +10,8 @@
 
 // #[warn(deprecated_mode)];
 
+use core::prelude::*;
+
 use middle::ty;
 
 use middle::typeck::isr_alist;
@@ -17,7 +19,7 @@ use util::common::indenter;
 use util::ppaux::region_to_str;
 use util::ppaux;
 
-use std::list::Cons;
+use extra::list::Cons;
 
 // Helper functions related to manipulating region types.
 

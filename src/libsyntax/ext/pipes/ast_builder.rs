@@ -13,6 +13,9 @@
 // To start with, it will be use dummy spans, but it might someday do
 // something smarter.
 
+use core::prelude::*;
+
+use abi::AbiSet;
 use ast::ident;
 use ast;
 use codemap::span;
@@ -60,3 +63,4 @@ impl append_types for @ast::Path {
         }
     }
 }
+

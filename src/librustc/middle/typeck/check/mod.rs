@@ -76,6 +76,8 @@ type parameter).
 
 */
 
+use core::prelude::*;
+
 use middle::const_eval;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
@@ -110,7 +112,7 @@ use util::ppaux;
 use core::cast::transmute;
 use core::hashmap::HashMap;
 use core::util::replace;
-use std::list::Nil;
+use extra::list::Nil;
 use syntax::abi::AbiSet;
 use syntax::ast::{provided, required};
 use syntax::ast;

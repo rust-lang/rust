@@ -33,9 +33,9 @@ PKG_FILES := \
       compiletest                              \
       etc                                      \
       libfuzzer                                \
-      libcore                                  \
-      libsyntax                                \
+      libextra                                 \
       libstd                                   \
+      libsyntax                                \
       rt                                       \
       librustdoc                               \
       rustllvm                                 \

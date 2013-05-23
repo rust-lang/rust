@@ -343,8 +343,8 @@ pub fn maybe_aborted<T>(result : T, p: Parser) -> T {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::serialize::Encodable;
-    use std;
+    use extra::serialize::Encodable;
+    use extra;
     use core::io;
     use core::option::Some;
     use core::option::None;
@@ -365,9 +365,9 @@ mod test {
     }
 
 
-    #[cfg(test)] fn to_json_str<E : Encodable<std::json::Encoder>>(val: @E) -> ~str {
+    #[cfg(test)] fn to_json_str<E : Encodable<extra::json::Encoder>>(val: @E) -> ~str {
         do io::with_str_writer |writer| {
-            let mut encoder = std::json::Encoder(writer);
+            let mut encoder = extra::json::Encoder(writer);
             val.encode(&mut encoder);
         }
     }

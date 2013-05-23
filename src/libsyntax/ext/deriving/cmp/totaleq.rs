@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
 
 use ast::{meta_item, item, expr};
 use codemap::span;
@@ -26,7 +27,7 @@ pub fn expand_deriving_totaleq(cx: @ExtCtxt,
     }
 
     let trait_def = TraitDef {
-        path: Path::new(~["core", "cmp", "TotalEq"]),
+        path: Path::new(~["std", "cmp", "TotalEq"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[

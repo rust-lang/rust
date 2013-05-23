@@ -16,14 +16,14 @@ An implementation of the Graph500 Breadth First Search problem in Rust.
 
 */
 
-extern mod std;
-use std::arc;
-use std::time;
-use std::deque::Deque;
-use std::par;
-use core::hashmap::HashSet;
-use core::int::abs;
-use core::rand::RngUtil;
+extern mod extra;
+use extra::arc;
+use extra::time;
+use extra::deque::Deque;
+use extra::par;
+use std::hashmap::HashSet;
+use std::int::abs;
+use std::rand::RngUtil;
 
 type node_id = i64;
 type graph = ~[~[node_id]];

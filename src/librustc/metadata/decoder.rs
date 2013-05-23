@@ -10,6 +10,8 @@
 
 // Decoding metadata from a single crate's metadata
 
+use core::prelude::*;
+
 use metadata::cstore::crate_metadata;
 use metadata::common::*;
 use metadata::csearch::{ProvidedTraitMethodInfo, StaticMethodInfo};
@@ -28,9 +30,9 @@ use core::io;
 use core::option;
 use core::str;
 use core::vec;
-use std::ebml::reader;
-use std::ebml;
-use std::serialize::Decodable;
+use extra::ebml::reader;
+use extra::ebml;
+use extra::serialize::Decodable;
 use syntax::ast_map;
 use syntax::attr;
 use syntax::diagnostic::span_handler;
@@ -319,8 +321,7 @@ fn item_name(intr: @ident_interner, item: ebml::Doc) -> ast::ident {
 }
 
 fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
-    -> def_like
-{
+    -> def_like {
     let fam = item_family(item);
     match fam {
         Const     => dl_def(ast::def_const(did)),
@@ -474,9 +475,11 @@ pub fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) -> bool {
 }
 
 /// Iterates over all the paths in the given crate.
-pub fn _each_path(intr: @ident_interner, cdata: cmd,
+pub fn _each_path(intr: @ident_interner,
+                  cdata: cmd,
                   get_crate_data: GetCrateDataCb,
-                  f: &fn(&str, def_like) -> bool) -> bool {
+                  f: &fn(&str, def_like, ast::visibility) -> bool)
+                  -> bool {
     let root = reader::Doc(cdata.data);
     let items = reader::get_doc(root, tag_items);
     let items_data = reader::get_doc(items, tag_items_data);
@@ -497,8 +500,10 @@ pub fn _each_path(intr: @ident_interner, cdata: cmd,
                 debug!("(each_path) yielding explicit item: %s", path);
                 let def_like = item_to_def_like(item_doc, def_id, cdata.cnum);
 
+                let vis = item_visibility(item_doc);
+
                 // Hand the information off to the iteratee.
-                if !f(path, def_like) {
+                if !f(path, def_like, vis) {
                     broken = true;      // FIXME #4572: This is awful.
                 }
             }
@@ -548,7 +553,7 @@ pub fn _each_path(intr: @ident_interner, cdata: cmd,
                             debug!("(each_path) yielding reexported \
                                     item: %s", reexport_path);
 
-                            if (!f(reexport_path, def_like)) {
+                            if (!f(reexport_path, def_like, ast::public)) {
                                 broken = true;  // FIXME #4572: This is awful.
                             }
                         }
@@ -561,9 +566,11 @@ pub fn _each_path(intr: @ident_interner, cdata: cmd,
     return broken;
 }
 
-pub fn each_path(intr: @ident_interner, cdata: cmd,
+pub fn each_path(intr: @ident_interner,
+                 cdata: cmd,
                  get_crate_data: GetCrateDataCb,
-                 f: &fn(&str, def_like) -> bool) -> bool {
+                 f: &fn(&str, def_like, ast::visibility) -> bool)
+                 -> bool {
     _each_path(intr, cdata, get_crate_data, f)
 }
 
@@ -1127,7 +1134,7 @@ pub fn get_crate_vers(data: @~[u8]) -> @~str {
 fn iter_crate_items(intr: @ident_interner, cdata: cmd,
                     get_crate_data: GetCrateDataCb,
                     proc: &fn(path: &str, ast::def_id)) {
-    for each_path(intr, cdata, get_crate_data) |path_string, def_like| {
+    for each_path(intr, cdata, get_crate_data) |path_string, def_like, _| {
         match def_like {
             dl_impl(*) | dl_field => {}
             dl_def(def) => {

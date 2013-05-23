@@ -142,6 +142,8 @@
  *
  */
 
+use core::prelude::*;
+
 use back::abi;
 use lib::llvm::{llvm, ValueRef, BasicBlockRef};
 use middle::const_eval;

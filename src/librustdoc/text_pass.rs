@@ -10,6 +10,8 @@
 
 //! Generic pass for performing an operation on all descriptions
 
+use core::prelude::*;
+
 use astsrv;
 use doc::ItemUtils;
 use doc;
@@ -137,6 +139,8 @@ fn fold_impl(
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use astsrv;
     use attr_pass;
     use desc_to_brief_pass;

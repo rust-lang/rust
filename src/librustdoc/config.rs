@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
 
 use core::cell::Cell;
 use core::run;
 use core::run::ProgramOutput;
 use core::result::Result;
-use std::getopts;
+use extra::getopts;
 
 /// The type of document to output
 #[deriving(Eq)]
@@ -241,6 +242,7 @@ pub fn maybe_find_pandoc(
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
     use config::*;
     use core::run::ProgramOutput;
 

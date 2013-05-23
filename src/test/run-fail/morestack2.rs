@@ -15,7 +15,7 @@
 // See the hack in upcall_call_shim_on_c_stack where it messes
 // with the stack limit.
 
-extern mod std;
+extern mod extra;
 
 mod rustrt {
     pub extern {

@@ -13,11 +13,10 @@
 
 extern mod static_methods_crate;
 use static_methods_crate::read;
-use readMaybeRenamed = static_methods_crate::read::readMaybe;
 
 pub fn main() {
     let result: int = read(~"5");
     assert_eq!(result, 5);
-    assert_eq!(readMaybeRenamed(~"false"), Some(false));
-    assert_eq!(readMaybeRenamed(~"foo"), None::<bool>);
+    assert_eq!(read::readMaybe(~"false"), Some(false));
+    assert_eq!(read::readMaybe(~"foo"), None::<bool>);
 }

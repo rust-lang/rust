@@ -64,9 +64,9 @@ fn test_box() {
 
 fn test_ptr() {
     unsafe {
-        let p1: *u8 = ::core::cast::transmute(0);
-        let p2: *u8 = ::core::cast::transmute(0);
-        let p3: *u8 = ::core::cast::transmute(1);
+        let p1: *u8 = ::std::cast::transmute(0);
+        let p2: *u8 = ::std::cast::transmute(0);
+        let p3: *u8 = ::std::cast::transmute(1);
 
         assert_eq!(p1, p2);
         assert!(p1 != p3);
@@ -107,8 +107,8 @@ fn test_class() {
 
   unsafe {
   error!("q = %x, r = %x",
-         (::core::cast::transmute::<*p, uint>(&q)),
-         (::core::cast::transmute::<*p, uint>(&r)));
+         (::std::cast::transmute::<*p, uint>(&q)),
+         (::std::cast::transmute::<*p, uint>(&r)));
   }
   assert_eq!(q, r);
   r.y = 17;

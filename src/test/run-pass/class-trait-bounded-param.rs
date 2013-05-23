@@ -10,8 +10,8 @@
 
 // xfail-test
 
-extern mod std;
-use std::oldmap::{map, hashmap, int_hash};
+extern mod extra;
+use extra::oldmap::{map, hashmap, int_hash};
 
 class keys<K:Copy,V:Copy,M:Copy + map<K,V>>
     : old_iter::base_iter<K> {

@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
+use core;
+
 #[deriving(Eq, IterBytes)]
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set
@@ -94,7 +98,10 @@ impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use core::iter;
+
     use util::enum_set::*;
 
     #[deriving(Eq)]

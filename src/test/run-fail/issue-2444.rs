@@ -10,8 +10,8 @@
 
 // error-pattern:explicit failure
 
-extern mod std;
-use std::arc;
+extern mod extra;
+use extra::arc;
 
 enum e<T> { e(arc::ARC<T>) }
 

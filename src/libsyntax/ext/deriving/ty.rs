@@ -13,6 +13,8 @@ A mini version of ast::Ty, which is easier to use, and features an
 explicit `Self` type to use when specifying impls to be derived.
 */
 
+use core::prelude::*;
+
 use ast;
 use ast::{expr,Generics,ident};
 use ext::base::ExtCtxt;

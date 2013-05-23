@@ -10,6 +10,8 @@
 
 //! Pulls type information out of the AST and attaches it to the document
 
+use core::prelude::*;
+
 use astsrv;
 use doc::ItemUtils;
 use doc;
@@ -345,6 +347,8 @@ fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use astsrv;
     use doc;
     use extract;

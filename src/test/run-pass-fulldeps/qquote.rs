@@ -10,10 +10,10 @@
 
 // xfail-pretty
 
-extern mod std;
+extern mod extra;
 extern mod syntax;
 
-use core::io::*;
+use std::io::*;
 
 use syntax::diagnostic;
 use syntax::ast;

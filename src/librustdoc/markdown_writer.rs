@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use config;
 use doc::ItemUtils;
 use doc;
@@ -15,7 +17,7 @@ use doc;
 use core::libc;
 use core::run;
 use core::comm::*;
-use std::future;
+use extra::future;
 
 pub enum WriteInstr {
     Write(~str),
@@ -259,6 +261,8 @@ fn future_writer() -> (Writer, future::Future<~str>) {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use astsrv;
     use doc;
     use extract;

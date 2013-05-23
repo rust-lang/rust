@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::io::println;
+use std::io::println;
 
 static FOO: [int, ..3] = [1, 2, 3];
 

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use back::rpath;
 use driver::session::Session;
 use driver::session;
@@ -90,6 +92,8 @@ pub fn WriteOutputFile(sess: Session,
 }
 
 pub mod jit {
+    use core::prelude::*;
+
     use back::link::llvm_err;
     use driver::session::Session;
     use lib::llvm::llvm;
@@ -121,9 +125,9 @@ pub mod jit {
 
             // We need to tell JIT where to resolve all linked
             // symbols from. The equivalent of -lstd, -lcore, etc.
-            // By default the JIT will resolve symbols from the std and
+            // By default the JIT will resolve symbols from the extra and
             // core linked into rustc. We don't want that,
-            // incase the user wants to use an older std library.
+            // incase the user wants to use an older extra library.
 
             let cstore = sess.cstore;
             for cstore::get_used_crate_files(cstore).each |cratepath| {
@@ -166,6 +170,8 @@ pub mod jit {
 }
 
 pub mod write {
+    use core::prelude::*;
+
     use back::link::jit;
     use back::link::{WriteOutputFile, output_type};
     use back::link::{output_type_assembly, output_type_bitcode};

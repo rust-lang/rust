@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Finds crate binaries and loads their metadata
+
+use core::prelude::*;
 
 use lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
 use metadata::decoder;
@@ -22,7 +23,7 @@ use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::{ast, attr};
 
-use std::flate;
+use extra::flate;
 use core::os::consts::{macos, freebsd, linux, android, win32};
 
 pub enum os {

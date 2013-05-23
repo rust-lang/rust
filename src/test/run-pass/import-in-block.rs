@@ -9,10 +9,10 @@
 // except according to those terms.
 
 pub fn main() {
-    use core::vec::from_fn;
-    debug!(::core::vec::len(from_fn(2, |i| i)));
+    use std::vec::from_fn;
+    debug!(::std::vec::len(from_fn(2, |i| i)));
     {
-        use core::vec::*;
+        use std::vec::*;
         debug!(len(~[2]));
     }
 }

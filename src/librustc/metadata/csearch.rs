@@ -10,13 +10,15 @@
 
 // Searching for information from the cstore
 
+use core::prelude::*;
+
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
 use metadata;
 use middle::{ty, resolve};
 
-use reader = std::ebml::reader;
+use reader = extra::ebml::reader;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::diagnostic::expect;
@@ -54,7 +56,8 @@ pub fn each_lang_item(cstore: @mut cstore::CStore,
 /// Iterates over all the paths in the given crate.
 pub fn each_path(cstore: @mut cstore::CStore,
                  cnum: ast::crate_num,
-                 f: &fn(&str, decoder::def_like) -> bool) -> bool {
+                 f: &fn(&str, decoder::def_like, ast::visibility) -> bool)
+                 -> bool {
     let crate_data = cstore::get_crate_data(cstore, cnum);
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore::get_crate_data(cstore, cnum)

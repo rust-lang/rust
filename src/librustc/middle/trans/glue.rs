@@ -12,6 +12,8 @@
 //
 // Code relating to taking, dropping, etc as well as type descriptors.
 
+use core::prelude::*;
+
 use back::abi;
 use back::link::*;
 use driver::session;
@@ -34,7 +36,7 @@ use util::ppaux;
 use util::ppaux::ty_to_short_str;
 
 use core::libc::c_uint;
-use std::time;
+use extra::time;
 use syntax::ast;
 
 pub fn trans_free(cx: block, v: ValueRef) -> block {
@@ -545,9 +547,18 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       }
       ty::ty_trait(_, _, ty::UniqTraitStore, _) => {
         let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
-        let lltydesc = Load(bcx, GEPi(bcx, v0, [0, abi::trt_field_tydesc]));
-        call_tydesc_glue_full(bcx, lluniquevalue, lltydesc,
-                              abi::tydesc_field_free_glue, None);
+        let llvtable = Load(bcx, GEPi(bcx, v0, [0, abi::trt_field_vtable]));
+
+        // Cast the vtable to a pointer to a pointer to a tydesc.
+        let llvtable = PointerCast(bcx,
+                                   llvtable,
+                                   T_ptr(T_ptr(ccx.tydesc_type)));
+        let lltydesc = Load(bcx, llvtable);
+        call_tydesc_glue_full(bcx,
+                              lluniquevalue,
+                              lltydesc,
+                              abi::tydesc_field_free_glue,
+                              None);
         bcx
       }
       ty::ty_opaque_closure_ptr(ck) => {

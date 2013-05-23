@@ -15,6 +15,8 @@ If the first paragraph of a long description is short enough then it
 is interpreted as the brief description.
 */
 
+use core::prelude::*;
+
 use astsrv;
 use doc::ItemUtils;
 use doc;
@@ -180,6 +182,8 @@ pub fn paragraphs(s: &str) -> ~[~str] {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use astsrv;
     use attr_pass;
     use super::{extract, paragraphs, run};

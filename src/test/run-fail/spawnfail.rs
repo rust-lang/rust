@@ -10,7 +10,7 @@
 
 // xfail-win32
 // error-pattern:explicit
-extern mod std;
+extern mod extra;
 
 // We don't want to see any invalid reads
 fn main() {

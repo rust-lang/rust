@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod core;
-use core::sys::size_of;
+extern mod std;
+use std::sys::size_of;
 
 struct t {a: u8, b: i8}
 struct u {a: u8, b: i8, c: u8}

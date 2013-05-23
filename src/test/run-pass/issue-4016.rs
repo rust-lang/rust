@@ -9,11 +9,11 @@
 // except according to those terms.
 
 // xfail-test
-extern mod std;
+extern mod extra;
 
 use hashmap;
-use std::json;
-use std::serialization::{Deserializable, deserialize};
+use extra::json;
+use extra::serialization::{Deserializable, deserialize};
 
 trait JD : Deserializable<json::Deserializer> { }
 //type JD = Deserializable<json::Deserializer>;

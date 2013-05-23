@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast::{blk_, attribute_, attr_outer, meta_word};
 use ast::{crate, expr_, expr_mac, mac_invoc_tt};
 use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
@@ -436,28 +438,28 @@ pub fn core_macros() -> ~str {
             fail!(\"explicit failure\")
         );
         ($msg:expr) => (
-            ::core::sys::FailWithCause::fail_with($msg, file!(), line!())
+            ::std::sys::FailWithCause::fail_with($msg, file!(), line!())
         );
         ($( $arg:expr ),+) => (
-            ::core::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
+            ::std::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
         )
     )
 
     macro_rules! assert(
         ($cond:expr) => {
             if !$cond {
-                ::core::sys::FailWithCause::fail_with(
+                ::std::sys::FailWithCause::fail_with(
                     ~\"assertion failed: \" + stringify!($cond), file!(), line!())
             }
         };
         ($cond:expr, $msg:expr) => {
             if !$cond {
-                ::core::sys::FailWithCause::fail_with($msg, file!(), line!())
+                ::std::sys::FailWithCause::fail_with($msg, file!(), line!())
             }
         };
         ($cond:expr, $( $arg:expr ),+) => {
             if !$cond {
-                ::core::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
+                ::std::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
             }
         }
     )
@@ -478,7 +480,7 @@ pub fn core_macros() -> ~str {
     macro_rules! assert_approx_eq (
         ($given:expr , $expected:expr) => (
             {
-                use core::cmp::ApproxEq;
+                use std::cmp::ApproxEq;
 
                 let given_val = $given;
                 let expected_val = $expected;
@@ -494,7 +496,7 @@ pub fn core_macros() -> ~str {
         );
         ($given:expr , $expected:expr , $epsilon:expr) => (
             {
-                use core::cmp::ApproxEq;
+                use std::cmp::ApproxEq;
 
                 let given_val = $given;
                 let expected_val = $expected;
@@ -516,11 +518,11 @@ pub fn core_macros() -> ~str {
         { pub $c:ident: $in:ty -> $out:ty; } => {
 
             pub mod $c {
-                fn key(_x: @::core::condition::Handler<$in,$out>) { }
+                fn key(_x: @::std::condition::Handler<$in,$out>) { }
 
                 pub static cond :
-                    ::core::condition::Condition<'static,$in,$out> =
-                    ::core::condition::Condition {
+                    ::std::condition::Condition<'static,$in,$out> =
+                    ::std::condition::Condition {
                         name: stringify!($c),
                         key: key
                     };
@@ -531,11 +533,11 @@ pub fn core_macros() -> ~str {
 
             // FIXME (#6009): remove mod's `pub` below once variant above lands.
             pub mod $c {
-                fn key(_x: @::core::condition::Handler<$in,$out>) { }
+                fn key(_x: @::std::condition::Handler<$in,$out>) { }
 
                 pub static cond :
-                    ::core::condition::Condition<'static,$in,$out> =
-                    ::core::condition::Condition {
+                    ::std::condition::Condition<'static,$in,$out> =
+                    ::std::condition::Condition {
                         name: stringify!($c),
                         key: key
                     };

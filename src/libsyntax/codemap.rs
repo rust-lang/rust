@@ -21,8 +21,10 @@ source code snippets, etc.
 
 */
 
+use core::prelude::*;
+
 use core::to_bytes;
-use std::serialize::{Encodable, Decodable, Encoder, Decoder};
+use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 pub trait Pos {
     fn from_uint(n: uint) -> Self;

@@ -162,6 +162,8 @@ StaticEnum(<ast::enum_def of C>, ~[(<ident of C0>, Left(1)),
 
 */
 
+use core::prelude::*;
+
 use ast;
 use ast::{enum_def, expr, ident, Generics, struct_def};
 
@@ -200,7 +202,7 @@ pub struct TraitDef<'self> {
     /// other than the current trait
     additional_bounds: ~[Ty<'self>],
 
-    /// Any extra lifetimes and/or bounds, e.g. `D: std::serialize::Decoder`
+    /// Any extra lifetimes and/or bounds, e.g. `D: extra::serialize::Decoder`
     generics: LifetimeBounds<'self>,
 
     methods: ~[MethodDef<'self>]

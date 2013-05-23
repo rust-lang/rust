@@ -11,8 +11,8 @@
 // In this case, the code should compile but
 // the assert should fail at runtime
 // error-pattern:assertion failed
-extern mod std;
-use core::vec::{same_length, zip};
+extern mod extra;
+use std::vec::{same_length, zip};
 
 fn enum_chars(start: u8, end: u8) -> ~[char] {
     assert!(start < end);

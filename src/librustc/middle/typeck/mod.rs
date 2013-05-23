@@ -48,6 +48,8 @@ independently:
 
 */
 
+use core::prelude::*;
+
 use driver::session;
 
 use middle::resolve;
@@ -57,8 +59,8 @@ use util::ppaux::Repr;
 use util::ppaux;
 
 use core::hashmap::HashMap;
-use std::list::List;
-use std::list;
+use extra::list::List;
+use extra::list;
 use syntax::codemap::span;
 use syntax::print::pprust::*;
 use syntax::{ast, ast_map, abi};

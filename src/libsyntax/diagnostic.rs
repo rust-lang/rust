@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use codemap::{Pos, span};
 use codemap;
 
-use std::term;
+use extra::term;
 
 pub type Emitter = @fn(cmsp: Option<(@codemap::CodeMap, span)>,
                        msg: &str,

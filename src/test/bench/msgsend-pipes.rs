@@ -14,11 +14,11 @@
 //
 // I *think* it's the same, more or less.
 
-extern mod std;
-use core::io::Writer;
-use core::io::WriterUtil;
+extern mod extra;
+use std::io::Writer;
+use std::io::WriterUtil;
 
-use core::comm::{Port, PortSet, Chan, stream};
+use std::comm::{Port, PortSet, Chan, stream};
 
 macro_rules! move_out (
     { $x:expr } => { unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } }
@@ -57,7 +57,7 @@ fn run(args: &[~str]) {
     let size = uint::from_str(args[1]).get();
     let workers = uint::from_str(args[2]).get();
     let num_bytes = 100;
-    let start = std::time::precise_time_s();
+    let start = extra::time::precise_time_s();
     let mut worker_results = ~[];
     for uint::range(0, workers) |_i| {
         let (from_parent_, to_child) = stream();
@@ -84,7 +84,7 @@ fn run(args: &[~str]) {
     to_child.send(stop);
     move_out!(to_child);
     let result = from_child.recv();
-    let end = std::time::precise_time_s();
+    let end = extra::time::precise_time_s();
     let elapsed = end - start;
     io::stdout().write_str(fmt!("Count is %?\n", result));
     io::stdout().write_str(fmt!("Test took %? seconds\n", elapsed));

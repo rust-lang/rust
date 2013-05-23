@@ -15,6 +15,7 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
+use core::prelude::*;
 
 use middle::resolve;
 use middle::ty;

@@ -14,7 +14,7 @@
 */
 // xfail-test
 
-extern mod std;
+extern mod extra;
 
 fn loopy(n: int) {
     if n > 0 { do spawn { loopy(n - 1) }; do spawn { loopy(n - 1) }; }

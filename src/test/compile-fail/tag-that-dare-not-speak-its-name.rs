@@ -11,11 +11,11 @@
 // error-pattern:mismatched types: expected `char` but found
 // Issue #876
 
-#[no_core];
+#[no_std];
 
-extern mod core;
+extern mod std;
 
-fn last<T>(v: ~[&T]) -> core::option::Option<T> {
+fn last<T>(v: ~[&T]) -> std::option::Option<T> {
     fail!();
 }
 

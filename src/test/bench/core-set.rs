@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use core::hashmap::HashSet;
-use std::bitv::BitvSet;
-use std::treemap::TreeSet;
+extern mod extra;
+use std::hashmap::HashSet;
+use extra::bitv::BitvSet;
+use extra::treemap::TreeSet;
 
 struct Results {
     sequential_ints: float,
@@ -24,9 +24,9 @@ struct Results {
 }
 
 fn timed(result: &mut float, op: &fn()) {
-    let start = std::time::precise_time_s();
+    let start = extra::time::precise_time_s();
     op();
-    let end = std::time::precise_time_s();
+    let end = extra::time::precise_time_s();
     *result = (end - start);
 }
 
@@ -168,7 +168,7 @@ fn main() {
         let mut results = empty_results();
         results.bench_int(&mut rng, num_keys, max, || HashSet::new::<uint>());
         results.bench_str(&mut rng, num_keys, || HashSet::new::<~str>());
-        write_results("core::hashmap::HashSet", &results);
+        write_results("std::hashmap::HashSet", &results);
     }
 
     {
@@ -176,13 +176,13 @@ fn main() {
         let mut results = empty_results();
         results.bench_int(&mut rng, num_keys, max, || TreeSet::new::<uint>());
         results.bench_str(&mut rng, num_keys, || TreeSet::new::<~str>());
-        write_results("std::treemap::TreeSet", &results);
+        write_results("extra::treemap::TreeSet", &results);
     }
 
     {
         let mut rng = rand::IsaacRng::new_seeded(seed);
         let mut results = empty_results();
         results.bench_int(&mut rng, num_keys, max, || BitvSet::new());
-        write_results("std::bitv::BitvSet", &results);
+        write_results("extra::bitv::BitvSet", &results);
     }
 }

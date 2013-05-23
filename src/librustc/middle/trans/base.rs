@@ -23,6 +23,8 @@
 //     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
+use core::prelude::*;
+
 use back::link::{mangle_exported_name};
 use back::{link, abi, upcall};
 use driver::session;
@@ -65,7 +67,7 @@ use util::ppaux::{Repr, ty_to_str};
 use core::hash;
 use core::hashmap::{HashMap, HashSet};
 use core::libc::c_uint;
-use std::time;
+use extra::time;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt_to_str, path_name};
 use syntax::ast_util::{local_def, path_to_ident};

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use back::link;
 use back::{arm, x86, x86_64, mips};
 use driver::session::{Aggressive};
@@ -28,9 +30,9 @@ use core::io;
 use core::os;
 use core::str;
 use core::vec;
-use std::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
-use std::getopts::{opt_present};
-use std::getopts;
+use extra::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
+use extra::getopts::{opt_present};
+use extra::getopts;
 use syntax::ast;
 use syntax::abi;
 use syntax::attr;
@@ -198,8 +200,8 @@ pub fn compile_rest(sess: Session,
     crate = time(time_passes, ~"intrinsic injection", ||
         front::intrinsic_inject::inject_intrinsic(sess, crate));
 
-    crate = time(time_passes, ~"core injection", ||
-        front::core_inject::maybe_inject_libcore_ref(sess, crate));
+    crate = time(time_passes, ~"extra injection", ||
+        front::std_inject::maybe_inject_libstd_ref(sess, crate));
 
     let ast_map = time(time_passes, ~"ast indexing", ||
             syntax::ast_map::map_crate(sess.diagnostic(), crate));
@@ -918,11 +920,13 @@ pub fn list_metadata(sess: Session, path: &Path, out: @io::Writer) {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use driver::driver::{build_configuration, build_session};
     use driver::driver::{build_session_options, optgroups, str_input};
 
-    use std::getopts::groups::getopts;
-    use std::getopts;
+    use extra::getopts::groups::getopts;
+    use extra::getopts;
     use syntax::attr;
     use syntax::diagnostic;
 

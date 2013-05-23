@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use driver::session::Session;
 use metadata::csearch::{each_path, get_trait_method_def_ids};
 use metadata::csearch::get_method_name_and_explicit_self;
@@ -20,6 +22,7 @@ use middle::lint::unused_imports;
 use middle::pat_util::pat_bindings;
 
 use syntax::ast::*;
+use syntax::ast;
 use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ast_util::{Privacy, Public, Private};
@@ -255,8 +258,20 @@ pub enum AllowCapturingSelfFlag {
 
 #[deriving(Eq)]
 enum NameSearchType {
-    SearchItemsAndPublicImports,    //< Search items and public imports.
-    SearchItemsAndAllImports,       //< Search items and all imports.
+    /// We're doing a name search in order to resolve a `use` directive.
+    ImportSearch,
+
+    /// We're doing a name search in order to resolve a path type, a path
+    /// expression, or a path pattern. We can select public or private
+    /// names.
+    ///
+    /// XXX: This should be ripped out of resolve and handled later, in
+    /// the privacy checking phase.
+    PathPublicOrPrivateSearch,
+
+    /// We're doing a name search in order to resolve a path type, a path
+    /// expression, or a path pattern. Allow only public names to be selected.
+    PathPublicOnlySearch,
 }
 
 pub enum BareIdentifierPatternResolution {
@@ -394,6 +409,7 @@ pub enum ModuleKind {
     NormalModuleKind,
     ExternModuleKind,
     TraitModuleKind,
+    ImplModuleKind,
     AnonymousModuleKind,
 }
 
@@ -424,7 +440,6 @@ pub struct Module {
     //
     // There will be an anonymous module created around `g` with the ID of the
     // entry block for `f`.
-
     anonymous_children: @mut HashMap<node_id,@mut Module>,
 
     // The status of resolving each import in this module.
@@ -510,6 +525,40 @@ pub impl NameBindings {
                     type_span: Some(sp),
                     .. type_def
                 });
+            }
+        }
+    }
+
+    /// Sets the kind of the module, creating a new one if necessary.
+    fn set_module_kind(@mut self,
+                       privacy: Privacy,
+                       parent_link: ParentLink,
+                       def_id: Option<def_id>,
+                       kind: ModuleKind,
+                       sp: span) {
+        match self.type_def {
+            None => {
+                let module = @mut Module(parent_link, def_id, kind);
+                self.type_def = Some(TypeNsDef {
+                    privacy: privacy,
+                    module_def: Some(module),
+                    type_def: None,
+                    type_span: None,
+                })
+            }
+            Some(type_def) => {
+                match type_def.module_def {
+                    None => {
+                        let module = @mut Module(parent_link, def_id, kind);
+                        self.type_def = Some(TypeNsDef {
+                            privacy: privacy,
+                            module_def: Some(module),
+                            type_def: type_def.type_def,
+                            type_span: None,
+                        })
+                    }
+                    Some(module_def) => module_def.kind = kind,
+                }
             }
         }
     }
@@ -1191,7 +1240,7 @@ pub impl Resolver {
                         name_bindings.define_module(Public,
                                                     parent_link,
                                                     Some(def_id),
-                                                    TraitModuleKind,
+                                                    ImplModuleKind,
                                                     sp);
 
                         let new_parent = ModuleReducedGraphParent(
@@ -1348,10 +1397,8 @@ pub impl Resolver {
         }
     }
 
-    /**
-     * Constructs the reduced graph for one 'view item'. View items consist
-     * of imports and use directives.
-     */
+    /// Constructs the reduced graph for one 'view item'. View items consist
+    /// of imports and use directives.
     fn build_reduced_graph_for_view_item(@mut self,
                                          view_item: @view_item,
                                          parent: ReducedGraphParent,
@@ -1507,11 +1554,13 @@ pub impl Resolver {
 
     fn handle_external_def(@mut self,
                            def: def,
+                           visibility: ast::visibility,
                            modules: &mut HashMap<def_id, @mut Module>,
                            child_name_bindings: @mut NameBindings,
                            final_ident: &str,
                            ident: ident,
                            new_parent: ReducedGraphParent) {
+        let privacy = visibility_to_privacy(visibility);
         match def {
           def_mod(def_id) | def_foreign_mod(def_id) => {
             match child_name_bindings.type_def {
@@ -1529,7 +1578,7 @@ pub impl Resolver {
 
                 // FIXME (#5074): this should be a match on find
                 if !modules.contains_key(&def_id) {
-                    child_name_bindings.define_module(Public,
+                    child_name_bindings.define_module(privacy,
                                                       parent_link,
                                                       Some(def_id),
                                                       NormalModuleKind,
@@ -1538,9 +1587,9 @@ pub impl Resolver {
                                    child_name_bindings.get_module());
                 } else {
                     let existing_module = *modules.get(&def_id);
-                    // Create an import resolution to
-                    // avoid creating cycles in the
-                    // module graph.
+
+                    // Create an import resolution to avoid creating cycles in
+                    // the module graph.
 
                     let resolution = @mut ImportResolution(Public, 0);
                     resolution.outstanding_references = 0;
@@ -1566,11 +1615,19 @@ pub impl Resolver {
               }
             }
           }
-          def_fn(*) | def_static_method(*) | def_const(*) |
           def_variant(*) => {
+            debug!("(building reduced graph for external crate) building \
+                    variant %s",
+                   final_ident);
+            // We assume the parent is visible, or else we wouldn't have seen
+            // it.
+            let privacy = variant_visibility_to_privacy(visibility, true);
+            child_name_bindings.define_value(privacy, def, dummy_sp());
+          }
+          def_fn(*) | def_static_method(*) | def_const(*) => {
             debug!("(building reduced graph for external \
                     crate) building value %s", final_ident);
-            child_name_bindings.define_value(Public, def, dummy_sp());
+            child_name_bindings.define_value(privacy, def, dummy_sp());
           }
           def_trait(def_id) => {
               debug!("(building reduced graph for external \
@@ -1579,8 +1636,8 @@ pub impl Resolver {
               // If this is a trait, add all the method names
               // to the trait info.
 
-              let method_def_ids = get_trait_method_def_ids(self.session.cstore,
-                                                            def_id);
+              let method_def_ids =
+                get_trait_method_def_ids(self.session.cstore, def_id);
               let mut interned_method_names = HashSet::new();
               for method_def_ids.each |&method_def_id| {
                   let (method_name, explicit_self) =
@@ -1607,19 +1664,27 @@ pub impl Resolver {
                   }
               }
 
-              child_name_bindings.define_type(Public, def, dummy_sp());
+              child_name_bindings.define_type(privacy, def, dummy_sp());
+
+              // Define a module if necessary.
+              let parent_link = self.get_parent_link(new_parent, ident);
+              child_name_bindings.set_module_kind(privacy,
+                                                  parent_link,
+                                                  Some(def_id),
+                                                  TraitModuleKind,
+                                                  dummy_sp())
           }
           def_ty(_) => {
               debug!("(building reduced graph for external \
                       crate) building type %s", final_ident);
 
-              child_name_bindings.define_type(Public, def, dummy_sp());
+              child_name_bindings.define_type(privacy, def, dummy_sp());
           }
           def_struct(def_id) => {
             debug!("(building reduced graph for external \
                     crate) building type %s",
                    final_ident);
-            child_name_bindings.define_type(Public, def, dummy_sp());
+            child_name_bindings.define_type(privacy, def, dummy_sp());
             self.structs.insert(def_id);
           }
           def_self(*) | def_arg(*) | def_local(*) |
@@ -1640,7 +1705,7 @@ pub impl Resolver {
 
         // Create all the items reachable by paths.
         for each_path(self.session.cstore, root.def_id.get().crate)
-                |path_string, def_like| {
+                |path_string, def_like, visibility| {
 
             debug!("(building reduced graph for external crate) found path \
                         entry: %s (%?)",
@@ -1708,6 +1773,7 @@ pub impl Resolver {
                                        dummy_sp());
 
                     self.handle_external_def(def,
+                                             visibility,
                                              &mut modules,
                                              child_name_bindings,
                                              *self.session.str_of(
@@ -1750,6 +1816,10 @@ pub impl Resolver {
                                             // We already have a module. This
                                             // is OK.
                                             type_module = module_def;
+
+                                            // Mark it as an impl module if
+                                            // necessary.
+                                            type_module.kind = ImplModuleKind;
                                         }
                                         Some(_) | None => {
                                             let parent_link =
@@ -1759,7 +1829,7 @@ pub impl Resolver {
                                                 Public,
                                                 parent_link,
                                                 Some(def),
-                                                NormalModuleKind,
+                                                ImplModuleKind,
                                                 dummy_sp());
                                             type_module =
                                                 child_name_bindings.
@@ -1866,10 +1936,8 @@ pub impl Resolver {
     // remain or unsuccessfully when no forward progress in resolving imports
     // is made.
 
-    /**
-     * Resolves all imports for the crate. This method performs the fixed-
-     * point iteration.
-     */
+    /// Resolves all imports for the crate. This method performs the fixed-
+    /// point iteration.
     fn resolve_imports(@mut self) {
         let mut i = 0;
         let mut prev_unresolved_imports = 0;
@@ -1991,9 +2059,10 @@ pub impl Resolver {
     /// don't know whether the name exists at the moment due to other
     /// currently-unresolved imports, or success if we know the name exists.
     /// If successful, the resolved bindings are written into the module.
-    fn resolve_import_for_module(@mut self, module_: @mut Module,
+    fn resolve_import_for_module(@mut self,
+                                 module_: @mut Module,
                                  import_directive: @ImportDirective)
-                              -> ResolveResult<()> {
+                                 -> ResolveResult<()> {
         let mut resolution_result = Failed;
         let module_path = &import_directive.module_path;
 
@@ -2007,10 +2076,11 @@ pub impl Resolver {
             // Use the crate root.
             Some(self.graph_root.get_module())
         } else {
-            match self.resolve_module_path_for_import(module_,
-                                                      *module_path,
-                                                      DontUseLexicalScope,
-                                                      import_directive.span) {
+            match self.resolve_module_path(module_,
+                                           *module_path,
+                                           DontUseLexicalScope,
+                                           import_directive.span,
+                                           ImportSearch) {
 
                 Failed => None,
                 Indeterminate => {
@@ -2097,7 +2167,7 @@ pub impl Resolver {
                              target: ident,
                              source: ident,
                              span: span)
-                          -> ResolveResult<()> {
+                             -> ResolveResult<()> {
         debug!("(resolving single import) resolving `%s` = `%s::%s` from \
                 `%s`",
                *self.session.str_of(target),
@@ -2134,9 +2204,7 @@ pub impl Resolver {
         // Unless we managed to find a result in both namespaces (unlikely),
         // search imports as well.
         match (value_result, type_result) {
-            (BoundResult(*), BoundResult(*)) => {
-                // Continue.
-            }
+            (BoundResult(*), BoundResult(*)) => {} // Continue.
             _ => {
                 // If there is an unresolved glob at this point in the
                 // containing module, bail out. We don't know enough to be
@@ -2460,7 +2528,6 @@ pub impl Resolver {
         // Resolve the module part of the path. This does not involve looking
         // upward though scope chains; we simply resolve names directly in
         // modules as we go.
-
         while index < module_path_len {
             let name = module_path[index];
             match self.resolve_name_in_module(search_module,
@@ -2470,12 +2537,17 @@ pub impl Resolver {
                 Failed => {
                     let segment_name = self.session.str_of(name);
                     let module_name = self.module_to_str(search_module);
-                    if module_name == ~"???" {
-                        self.session.span_err(span {lo: span.lo, hi: span.lo +
-                                              BytePos(str::len(*segment_name)), expn_info:
-                                              span.expn_info}, fmt!("unresolved import. maybe \
-                                                                    a missing `extern mod %s`?",
-                                                                    *segment_name));
+                    if "???" == module_name {
+                        let span = span {
+                            lo: span.lo,
+                            hi: span.lo + BytePos(str::len(*segment_name)),
+                            expn_info: span.expn_info,
+                        };
+                        self.session.span_err(span,
+                                              fmt!("unresolved import. maybe \
+                                                    a missing `extern mod \
+                                                    %s`?",
+                                                    *segment_name));
                         return Failed;
                     }
                     self.session.span_err(span, fmt!("unresolved import: could not find `%s` in \
@@ -2504,8 +2576,22 @@ pub impl Resolver {
                                                                     name)));
                                     return Failed;
                                 }
-                                Some(copy module_def) => {
-                                    search_module = module_def;
+                                Some(module_def) => {
+                                    // If we're doing the search for an
+                                    // import, do not allow traits and impls
+                                    // to be selected.
+                                    match (name_search_type,
+                                           module_def.kind) {
+                                        (ImportSearch, TraitModuleKind) |
+                                        (ImportSearch, ImplModuleKind) => {
+                                            self.session.span_err(
+                                                span,
+                                                ~"cannot import from a trait \
+                                                  or type implementation");
+                                            return Failed;
+                                        }
+                                        (_, _) => search_module = module_def,
+                                    }
                                 }
                             }
                         }
@@ -2523,18 +2609,13 @@ pub impl Resolver {
 
             index += 1;
 
-            // After the first element of the path, allow searching through
-            // items and imports unconditionally. This allows things like:
+            // After the first element of the path, allow searching only
+            // through public identifiers.
             //
-            // pub mod core {
-            //     pub use vec;
-            // }
-            //
-            // pub mod something_else {
-            //     use core::vec;
-            // }
-
-            name_search_type = SearchItemsAndPublicImports;
+            // XXX: Rip this out and move it to the privacy checker.
+            if name_search_type == PathPublicOrPrivateSearch {
+                name_search_type = PathPublicOnlySearch
+            }
         }
 
         return Success(search_module);
@@ -2542,12 +2623,13 @@ pub impl Resolver {
 
     /// Attempts to resolve the module part of an import directive or path
     /// rooted at the given module.
-    fn resolve_module_path_for_import(@mut self,
-                                      module_: @mut Module,
-                                      module_path: &[ident],
-                                      use_lexical_scope: UseLexicalScopeFlag,
-                                      span: span)
-                                   -> ResolveResult<@mut Module> {
+    fn resolve_module_path(@mut self,
+                           module_: @mut Module,
+                           module_path: &[ident],
+                           use_lexical_scope: UseLexicalScopeFlag,
+                           span: span,
+                           name_search_type: NameSearchType)
+                           -> ResolveResult<@mut Module> {
         let module_path_len = module_path.len();
         assert!(module_path_len > 0);
 
@@ -2630,7 +2712,7 @@ pub impl Resolver {
                                            module_path,
                                            start_index,
                                            span,
-                                           SearchItemsAndPublicImports)
+                                           name_search_type)
     }
 
     /// Invariant: This must only be called during main resolution, not during
@@ -2722,6 +2804,7 @@ pub impl Resolver {
                                 }
                                 ExternModuleKind |
                                 TraitModuleKind |
+                                ImplModuleKind |
                                 AnonymousModuleKind => {
                                     search_module = parent_module_node;
                                 }
@@ -2741,7 +2824,7 @@ pub impl Resolver {
             match self.resolve_name_in_module(search_module,
                                               name,
                                               namespace,
-                                              SearchItemsAndAllImports) {
+                                              PathPublicOrPrivateSearch) {
                 Failed => {
                     // Continue up the search chain.
                 }
@@ -2822,6 +2905,7 @@ pub impl Resolver {
                         NormalModuleKind => return Some(new_module),
                         ExternModuleKind |
                         TraitModuleKind |
+                        ImplModuleKind |
                         AnonymousModuleKind => module_ = new_module,
                     }
                 }
@@ -2838,7 +2922,10 @@ pub impl Resolver {
                                              -> @mut Module {
         match module_.kind {
             NormalModuleKind => return module_,
-            ExternModuleKind | TraitModuleKind | AnonymousModuleKind => {
+            ExternModuleKind |
+            TraitModuleKind |
+            ImplModuleKind |
+            AnonymousModuleKind => {
                 match self.get_nearest_normal_module_parent(module_) {
                     None => module_,
                     Some(new_module) => new_module
@@ -2922,7 +3009,8 @@ pub impl Resolver {
 
         // If this is a search of all imports, we should be done with glob
         // resolution at this point.
-        if name_search_type == SearchItemsAndAllImports {
+        if name_search_type == PathPublicOrPrivateSearch ||
+                name_search_type == PathPublicOnlySearch {
             assert_eq!(module_.glob_count, 0);
         }
 
@@ -2944,7 +3032,7 @@ pub impl Resolver {
                     }
                     Some(target)
                             if name_search_type ==
-                                SearchItemsAndAllImports ||
+                                PathPublicOrPrivateSearch ||
                             import_resolution.privacy == Public => {
                         debug!("(resolving name in module) resolved to \
                                 import");
@@ -4483,10 +4571,11 @@ pub impl Resolver {
         let module_path_idents = self.intern_module_part_of_path(path);
 
         let containing_module;
-        match self.resolve_module_path_for_import(self.current_module,
-                                                  module_path_idents,
-                                                  UseLexicalScope,
-                                                  path.span) {
+        match self.resolve_module_path(self.current_module,
+                                       module_path_idents,
+                                       UseLexicalScope,
+                                       path.span,
+                                       PathPublicOnlySearch) {
             Failed => {
                 self.session.span_err(path.span,
                                       fmt!("use of undeclared module `%s`",
@@ -4535,7 +4624,7 @@ pub impl Resolver {
                                                  module_path_idents,
                                                  0,
                                                  path.span,
-                                                 SearchItemsAndAllImports) {
+                                                 PathPublicOrPrivateSearch) {
             Failed => {
                 self.session.span_err(path.span,
                                       fmt!("use of undeclared module `::%s`",

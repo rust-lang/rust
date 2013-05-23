@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-extern mod std;
+extern mod extra;
 
 struct Triple { a: int, b: int, c: int }
 

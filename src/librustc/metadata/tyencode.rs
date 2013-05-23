@@ -10,6 +10,8 @@
 
 // Type encoding
 
+use core::prelude::*;
+
 use middle::ty::param_ty;
 use middle::ty;
 

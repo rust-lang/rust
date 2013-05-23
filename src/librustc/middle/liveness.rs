@@ -102,6 +102,7 @@
  *   to return explicitly.
  */
 
+use core::prelude::*;
 
 use middle::lint::{unused_variable, dead_assignment};
 use middle::pat_util;
