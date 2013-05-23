@@ -145,12 +145,14 @@ pub mod thread_local_storage;
 pub fn start(_argc: int, _argv: **u8, crate_map: *u8, main: ~fn()) -> int {
 
     use self::sched::{Scheduler, Coroutine};
+    use self::work_queue::WorkQueue;
     use self::uv::uvio::UvEventLoop;
 
     init(crate_map);
 
     let loop_ = ~UvEventLoop::new();
-    let mut sched = ~Scheduler::new(loop_);
+    let work_queue = WorkQueue::new();
+    let mut sched = ~Scheduler::new(loop_, work_queue);
     let main_task = ~Coroutine::new(&mut sched.stack_pool, main);
 
     sched.enqueue_task(main_task);

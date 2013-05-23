@@ -65,14 +65,14 @@ pub impl Scheduler {
 
     fn in_task_context(&self) -> bool { self.current_task.is_some() }
 
-    fn new(event_loop: ~EventLoopObject) -> Scheduler {
+    fn new(event_loop: ~EventLoopObject, work_queue: WorkQueue<~Coroutine>) -> Scheduler {
 
         // Lazily initialize the runtime TLS key
         local_ptr::init_tls_key();
 
         Scheduler {
             event_loop: event_loop,
-            work_queue: WorkQueue::new(),
+            work_queue: work_queue,
             stack_pool: StackPool::new(),
             saved_context: Context::empty(),
             current_task: None,
