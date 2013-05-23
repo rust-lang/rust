@@ -57,8 +57,8 @@ while cur < len(lines):
         if not ignore:
             if not re.search(r"\bfn main\b", block):
                 block = "fn main() {\n" + block + "\n}\n"
-            if not re.search(r"\bextern mod std\b", block):
-                block = "extern mod std;\n" + block
+            if not re.search(r"\bextern mod extra\b", block):
+                block = "extern mod extra;\n" + block
             block = """#[ forbid(ctypes) ];
 #[ forbid(deprecated_pattern) ];
 #[ forbid(implicit_copies) ];

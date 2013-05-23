@@ -730,7 +730,7 @@ fn point_from_direction(dir: Direction) -> Point {
 Enum variants may also be structs. For example:
 
 ~~~~
-# use core::float;
+# use std::float;
 # struct Point { x: float, y: float }
 # fn square(x: float) -> float { x * x }
 enum Shape {
@@ -1366,11 +1366,11 @@ let exchange_crayons: ~str = ~"Black, BlizzardBlue, Blue";
 ~~~
 
 Both vectors and strings support a number of useful
-[methods](#functions-and-methods), defined in [`core::vec`]
-and [`core::str`]. Here are some examples.
+[methods](#functions-and-methods), defined in [`std::vec`]
+and [`std::str`]. Here are some examples.
 
-[`core::vec`]: core/vec.html
-[`core::str`]: core/str.html
+[`std::vec`]: std/vec.html
+[`std::str`]: std/str.html
 
 ~~~
 # enum Crayon {
@@ -1583,7 +1583,7 @@ words, it is a function that takes an owned closure that takes no
 arguments.
 
 ~~~~
-use core::task::spawn;
+use std::task::spawn;
 
 do spawn() || {
     debug!("I'm a task, whatever");
@@ -1595,7 +1595,7 @@ lists back to back. Since that is so unsightly, empty argument lists
 may be omitted from `do` expressions.
 
 ~~~~
-# use core::task::spawn;
+# use std::task::spawn;
 do spawn {
    debug!("Kablam!");
 }
@@ -1629,7 +1629,7 @@ fn each(v: &[int], op: &fn(v: &int) -> bool) {
 And using this function to iterate over a vector:
 
 ~~~~
-# use each = core::vec::each;
+# use each = std::vec::each;
 each([2, 4, 8, 5, 16], |n| {
     if *n % 2 != 0 {
         println("found odd number!");
@@ -1645,7 +1645,7 @@ out of the loop, you just write `break`. To skip ahead
 to the next iteration, write `loop`.
 
 ~~~~
-# use each = core::vec::each;
+# use each = std::vec::each;
 for each([2, 4, 8, 5, 16]) |n| {
     if *n % 2 != 0 {
         println("found odd number!");
@@ -1660,7 +1660,7 @@ normally allowed in closures, in a block that appears as the body of a
 the enclosing function, not just the loop body.
 
 ~~~~
-# use each = core::vec::each;
+# use each = std::vec::each;
 fn contains(v: &[int], elt: int) -> bool {
     for each(v) |x| {
         if (*x == elt) { return true; }
@@ -1675,7 +1675,7 @@ In these situations it can be convenient to lean on Rust's
 argument patterns to bind `x` to the actual value, not the pointer.
 
 ~~~~
-# use each = core::vec::each;
+# use each = std::vec::each;
 # fn contains(v: &[int], elt: int) -> bool {
     for each(v) |&x| {
         if (x == elt) { return true; }
@@ -1810,8 +1810,8 @@ impl Circle {
 To call such a method, just prefix it with the type name and a double colon:
 
 ~~~~
-# use core::float::consts::pi;
-# use core::float::sqrt;
+# use std::float::consts::pi;
+# use std::float::sqrt;
 struct Circle { radius: float }
 impl Circle {
     fn new(area: float) -> Circle { Circle { radius: sqrt(area / pi) } }
@@ -1857,7 +1857,7 @@ illegal to copy and pass by value.
 Generic `type`, `struct`, and `enum` declarations follow the same pattern:
 
 ~~~~
-# use core::hashmap::HashMap;
+# use std::hashmap::HashMap;
 type Set<T> = HashMap<T, ()>;
 
 struct Stack<T> {
@@ -2081,8 +2081,8 @@ name and a double colon.  The compiler uses type inference to decide which
 implementation to use.
 
 ~~~~
-# use core::float::consts::pi;
-# use core::float::sqrt;
+# use std::float::consts::pi;
+# use std::float::sqrt;
 trait Shape { fn new(area: float) -> Self; }
 struct Circle { radius: float }
 struct Square { length: float }
@@ -2238,8 +2238,8 @@ trait Circle : Shape { fn radius(&self) -> float; }
 Now, we can implement `Circle` on a type only if we also implement `Shape`.
 
 ~~~~
-# use core::float::consts::pi;
-# use core::float::sqrt;
+# use std::float::consts::pi;
+# use std::float::sqrt;
 # trait Shape { fn area(&self) -> float; }
 # trait Circle : Shape { fn radius(&self) -> float; }
 # struct Point { x: float, y: float }
@@ -2274,8 +2274,8 @@ fn radius_times_area<T: Circle>(c: T) -> float {
 Likewise, supertrait methods may also be called on trait objects.
 
 ~~~ {.xfail-test}
-# use core::float::consts::pi;
-# use core::float::sqrt;
+# use std::float::consts::pi;
+# use std::float::sqrt;
 # trait Shape { fn area(&self) -> float; }
 # trait Circle : Shape { fn radius(&self) -> float; }
 # struct Point { x: float, y: float }
@@ -2292,7 +2292,7 @@ let nonsense = mycircle.radius() * mycircle.area();
 
 ## Deriving implementations for traits
 
-A small number of traits in `core` and `std` can have implementations
+A small number of traits in `std` and `std` can have implementations
 that can be automatically derived. These instances are specified by
 placing the `deriving` attribute on a data type declaration. For
 example, the following will mean that `Circle` has an implementation
@@ -2541,17 +2541,17 @@ as well as an inscrutable string of alphanumerics. These are both
 part of Rust's library versioning scheme. The alphanumerics are
 a hash representing the crate metadata.
 
-## The core library
+## The std library
 
-The Rust core library provides runtime features required by the language,
+The Rust std library provides runtime features required by the language,
 including the task scheduler and memory allocators, as well as library
 support for Rust built-in types, platform abstractions, and other commonly
 used features.
 
-[`core`] includes modules corresponding to each of the integer types, each of
+[`std`] includes modules corresponding to each of the integer types, each of
 the floating point types, the [`bool`] type, [tuples], [characters], [strings],
 [vectors], [managed boxes], [owned boxes],
-and unsafe and borrowed [pointers].  Additionally, `core` provides
+and unsafe and borrowed [pointers].  Additionally, `std` provides
 some pervasive types ([`option`] and [`result`]),
 [task] creation and [communication] primitives,
 platform abstractions ([`os`] and [`path`]), basic
@@ -2561,47 +2561,47 @@ common traits ([`kinds`], [`ops`], [`cmp`], [`num`],
 
 ### Core injection and the Rust prelude
 
-`core` is imported at the topmost level of every crate by default, as
+`std` is imported at the topmost level of every crate by default, as
 if the first line of each crate was
 
-    extern mod core;
+    extern mod std;
 
-This means that the contents of core can be accessed from from any context
-with the `core::` path prefix, as in `use core::vec`, `use core::task::spawn`,
+This means that the contents of std can be accessed from from any context
+with the `std::` path prefix, as in `use std::vec`, `use std::task::spawn`,
 etc.
 
-Additionally, `core` contains a `prelude` module that reexports many of the
-most common core modules, types and traits. The contents of the prelude are
+Additionally, `std` contains a `prelude` module that reexports many of the
+most common std modules, types and traits. The contents of the prelude are
 imported into every *module* by default.  Implicitly, all modules behave as if
 they contained the following prologue:
 
-    use core::prelude::*;
+    use std::prelude::*;
 
-[`core`]: core/index.html
-[`bool`]: core/bool.html
-[tuples]: core/tuple.html
-[characters]: core/char.html
-[strings]: core/str.html
-[vectors]: core/vec.html
-[managed boxes]: core/managed.html
-[owned boxes]: core/owned.html
-[pointers]: core/ptr.html
-[`option`]: core/option.html
-[`result`]: core/result.html
-[task]: core/task.html
-[communication]: core/comm.html
-[`os`]: core/os.html
-[`path`]: core/path.html
-[`io`]: core/io.html
-[containers]: core/container.html
-[`hashmap`]: core/hashmap.html
-[`kinds`]: core/kinds.html
-[`ops`]: core/ops.html
-[`cmp`]: core/cmp.html
-[`num`]: core/num.html
-[`to_str`]: core/to_str.html
-[`clone`]: core/clone.html
-[`libc`]: core/libc.html
+[`std`]: std/index.html
+[`bool`]: std/bool.html
+[tuples]: std/tuple.html
+[characters]: std/char.html
+[strings]: std/str.html
+[vectors]: std/vec.html
+[managed boxes]: std/managed.html
+[owned boxes]: std/owned.html
+[pointers]: std/ptr.html
+[`option`]: std/option.html
+[`result`]: std/result.html
+[task]: std/task.html
+[communication]: std/comm.html
+[`os`]: std/os.html
+[`path`]: std/path.html
+[`io`]: std/io.html
+[containers]: std/container.html
+[`hashmap`]: std/hashmap.html
+[`kinds`]: std/kinds.html
+[`ops`]: std/ops.html
+[`cmp`]: std/cmp.html
+[`num`]: std/num.html
+[`to_str`]: std/to_str.html
+[`clone`]: std/clone.html
+[`libc`]: std/libc.html
 
 # What next?
 
