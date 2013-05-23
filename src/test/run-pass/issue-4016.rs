@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
 extern mod extra;
 
-use hashmap;
 use extra::json;
-use extra::serialization::{Deserializable, deserialize};
+use extra::serialize::Decodable;
 
-trait JD : Deserializable<json::Deserializer> { }
-//type JD = Deserializable<json::Deserializer>;
+trait JD : Decodable<json::Decoder> { }
 
-fn exec<T:JD>() {
+fn exec<T: JD>() {
     let doc = result::unwrap(json::from_str(""));
-    let _v: T = deserialize(&json::Deserializer(doc));
+    let mut decoder = json::Decoder(doc);
+    let _v: T = Decodable::decode(&mut decoder);
     fail!()
 }
 
