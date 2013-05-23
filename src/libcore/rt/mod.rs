@@ -223,11 +223,12 @@ fn test_context() {
     use rt::uv::uvio::UvEventLoop;
     use cell::Cell;
     use rt::local::Local;
+    use rt::test::new_test_uv_sched;
 
     assert_eq!(context(), OldTaskContext);
     do run_in_bare_thread {
         assert_eq!(context(), GlobalContext);
-        let mut sched = ~UvEventLoop::new_scheduler();
+        let mut sched = ~new_test_uv_sched();
         let task = ~do Coroutine::new(&mut sched.stack_pool) {
             assert_eq!(context(), TaskContext);
             let sched = Local::take::<Scheduler>();
