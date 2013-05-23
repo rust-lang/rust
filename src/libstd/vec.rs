@@ -2962,8 +2962,8 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        assert!(is_empty::<int>(~[]));
-        assert!(!is_empty(~[0]));
+        assert!(is_empty::<int>([]));
+        assert!(!is_empty([0]));
     }
 
     #[test]
@@ -3445,7 +3445,7 @@ mod tests {
 
     #[test]
     fn test_each_empty() {
-        for each::<int>(~[]) |_v| {
+        for each::<int>([]) |_v| {
             fail!(); // should never be executed
         }
     }
@@ -3453,7 +3453,7 @@ mod tests {
     #[test]
     fn test_each_nonempty() {
         let mut i = 0;
-        for each(~[1, 2, 3]) |v| {
+        for each([1, 2, 3]) |v| {
             i += *v;
         }
         assert_eq!(i, 6);
@@ -3462,7 +3462,7 @@ mod tests {
     #[test]
     fn test_eachi() {
         let mut i = 0;
-        for eachi(~[1, 2, 3]) |j, v| {
+        for eachi([1, 2, 3]) |j, v| {
             if i == 0 { assert!(*v == 1); }
             assert_eq!(j + 1u, *v as uint);
             i += *v;
@@ -3481,7 +3481,7 @@ mod tests {
     #[test]
     fn test_each_reverse_nonempty() {
         let mut i = 0;
-        for each_reverse(~[1, 2, 3]) |v| {
+        for each_reverse([1, 2, 3]) |v| {
             if i == 0 { assert!(*v == 3); }
             i += *v
         }
@@ -3491,7 +3491,7 @@ mod tests {
     #[test]
     fn test_eachi_reverse() {
         let mut i = 0;
-        for eachi_reverse(~[0, 1, 2]) |j, v| {
+        for eachi_reverse([0, 1, 2]) |j, v| {
             if i == 0 { assert!(*v == 2); }
             assert_eq!(j, *v as uint);
             i += *v;
@@ -3512,48 +3512,48 @@ mod tests {
         let mut results: ~[~[int]];
 
         results = ~[];
-        for each_permutation(~[]) |v| { results.push(to_owned(v)); }
+        for each_permutation([]) |v| { results.push(to_owned(v)); }
         assert_eq!(results, ~[~[]]);
 
         results = ~[];
-        for each_permutation(~[7]) |v| { results.push(to_owned(v)); }
+        for each_permutation([7]) |v| { results.push(to_owned(v)); }
         assert_eq!(results, ~[~[7]]);
 
         results = ~[];
-        for each_permutation(~[1,1]) |v| { results.push(to_owned(v)); }
+        for each_permutation([1,1]) |v| { results.push(to_owned(v)); }
         assert_eq!(results, ~[~[1,1],~[1,1]]);
 
         results = ~[];
-        for each_permutation(~[5,2,0]) |v| { results.push(to_owned(v)); }
+        for each_permutation([5,2,0]) |v| { results.push(to_owned(v)); }
         assert!(results ==
             ~[~[5,2,0],~[5,0,2],~[2,5,0],~[2,0,5],~[0,5,2],~[0,2,5]]);
     }
 
     #[test]
     fn test_any_and_all() {
-        assert!(any(~[1u, 2u, 3u], is_three));
-        assert!(!any(~[0u, 1u, 2u], is_three));
-        assert!(any(~[1u, 2u, 3u, 4u, 5u], is_three));
-        assert!(!any(~[1u, 2u, 4u, 5u, 6u], is_three));
+        assert!(any([1u, 2u, 3u], is_three));
+        assert!(!any([0u, 1u, 2u], is_three));
+        assert!(any([1u, 2u, 3u, 4u, 5u], is_three));
+        assert!(!any([1u, 2u, 4u, 5u, 6u], is_three));
 
-        assert!(all(~[3u, 3u, 3u], is_three));
-        assert!(!all(~[3u, 3u, 2u], is_three));
-        assert!(all(~[3u, 3u, 3u, 3u, 3u], is_three));
-        assert!(!all(~[3u, 3u, 0u, 1u, 2u], is_three));
+        assert!(all([3u, 3u, 3u], is_three));
+        assert!(!all([3u, 3u, 2u], is_three));
+        assert!(all([3u, 3u, 3u, 3u, 3u], is_three));
+        assert!(!all([3u, 3u, 0u, 1u, 2u], is_three));
     }
 
     #[test]
     fn test_any2_and_all2() {
 
-        assert!(any2(~[2u, 4u, 6u], ~[2u, 4u, 6u], is_equal));
-        assert!(any2(~[1u, 2u, 3u], ~[4u, 5u, 3u], is_equal));
-        assert!(!any2(~[1u, 2u, 3u], ~[4u, 5u, 6u], is_equal));
-        assert!(any2(~[2u, 4u, 6u], ~[2u, 4u], is_equal));
+        assert!(any2([2u, 4u, 6u], [2u, 4u, 6u], is_equal));
+        assert!(any2([1u, 2u, 3u], [4u, 5u, 3u], is_equal));
+        assert!(!any2([1u, 2u, 3u], [4u, 5u, 6u], is_equal));
+        assert!(any2([2u, 4u, 6u], [2u, 4u], is_equal));
 
-        assert!(all2(~[2u, 4u, 6u], ~[2u, 4u, 6u], is_equal));
-        assert!(!all2(~[1u, 2u, 3u], ~[4u, 5u, 3u], is_equal));
-        assert!(!all2(~[1u, 2u, 3u], ~[4u, 5u, 6u], is_equal));
-        assert!(!all2(~[2u, 4u, 6u], ~[2u, 4u], is_equal));
+        assert!(all2([2u, 4u, 6u], [2u, 4u, 6u], is_equal));
+        assert!(!all2([1u, 2u, 3u], [4u, 5u, 3u], is_equal));
+        assert!(!all2([1u, 2u, 3u], [4u, 5u, 6u], is_equal));
+        assert!(!all2([2u, 4u, 6u], [2u, 4u], is_equal));
     }
 
     #[test]
@@ -3576,7 +3576,7 @@ mod tests {
 
     #[test]
     fn test_position_elem() {
-        assert!(position_elem(~[], &1).is_none());
+        assert!(position_elem([], &1).is_none());
 
         let v1 = ~[1, 2, 3, 3, 2, 5];
         assert_eq!(position_elem(v1, &1), Some(0u));
@@ -3590,7 +3590,7 @@ mod tests {
         fn less_than_three(i: &int) -> bool { *i < 3 }
         fn is_eighteen(i: &int) -> bool { *i == 18 }
 
-        assert!(position(~[], less_than_three).is_none());
+        assert!(position([], less_than_three).is_none());
 
         let v1 = ~[5, 4, 3, 2, 1];
         assert_eq!(position(v1, less_than_three), Some(3u));
@@ -3599,7 +3599,7 @@ mod tests {
 
     #[test]
     fn test_position_between() {
-        assert!(position_between(~[], 0u, 0u, f).is_none());
+        assert!(position_between([], 0u, 0u, f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
@@ -3627,7 +3627,7 @@ mod tests {
 
     #[test]
     fn test_find() {
-        assert!(find(~[], f).is_none());
+        assert!(find([], f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
@@ -3639,7 +3639,7 @@ mod tests {
 
     #[test]
     fn test_find_between() {
-        assert!(find_between(~[], 0u, 0u, f).is_none());
+        assert!(find_between([], 0u, 0u, f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
@@ -3667,7 +3667,7 @@ mod tests {
 
     #[test]
     fn test_rposition() {
-        assert!(find(~[], f).is_none());
+        assert!(find([], f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
@@ -3679,7 +3679,7 @@ mod tests {
 
     #[test]
     fn test_rposition_between() {
-        assert!(rposition_between(~[], 0u, 0u, f).is_none());
+        assert!(rposition_between([], 0u, 0u, f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
@@ -3707,7 +3707,7 @@ mod tests {
 
     #[test]
     fn test_rfind() {
-        assert!(rfind(~[], f).is_none());
+        assert!(rfind([], f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
@@ -3719,7 +3719,7 @@ mod tests {
 
     #[test]
     fn test_rfind_between() {
-        assert!(rfind_between(~[], 0u, 0u, f).is_none());
+        assert!(rfind_between([], 0u, 0u, f).is_none());
 
         fn f(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'b' }
         let v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
@@ -3798,14 +3798,14 @@ mod tests {
         reverse(v);
         assert_eq!(v[0], 20);
         assert_eq!(v[1], 10);
-        let v2 = reversed::<int>(~[10, 20]);
+        let v2 = reversed::<int>([10, 20]);
         assert_eq!(v2[0], 20);
         assert_eq!(v2[1], 10);
         v[0] = 30;
         assert_eq!(v2[0], 20);
         // Make sure they work with 0-length vectors too.
 
-        let v4 = reversed::<int>(~[]);
+        let v4 = reversed::<int>([]);
         assert_eq!(v4, ~[]);
         let mut v3: ~[int] = ~[];
         reverse::<int>(v3);
@@ -3813,7 +3813,7 @@ mod tests {
 
     #[test]
     fn reversed_mut() {
-        let v2 = reversed::<int>(~[10, 20]);
+        let v2 = reversed::<int>([10, 20]);
         assert_eq!(v2[0], 20);
         assert_eq!(v2[1], 10);
     }
@@ -3822,22 +3822,22 @@ mod tests {
     fn test_split() {
         fn f(x: &int) -> bool { *x == 3 }
 
-        assert_eq!(split(~[], f), ~[]);
-        assert_eq!(split(~[1, 2], f), ~[~[1, 2]]);
-        assert_eq!(split(~[3, 1, 2], f), ~[~[], ~[1, 2]]);
-        assert_eq!(split(~[1, 2, 3], f), ~[~[1, 2], ~[]]);
-        assert_eq!(split(~[1, 2, 3, 4, 3, 5], f), ~[~[1, 2], ~[4], ~[5]]);
+        assert_eq!(split([], f), ~[]);
+        assert_eq!(split([1, 2], f), ~[~[1, 2]]);
+        assert_eq!(split([3, 1, 2], f), ~[~[], ~[1, 2]]);
+        assert_eq!(split([1, 2, 3], f), ~[~[1, 2], ~[]]);
+        assert_eq!(split([1, 2, 3, 4, 3, 5], f), ~[~[1, 2], ~[4], ~[5]]);
     }
 
     #[test]
     fn test_splitn() {
         fn f(x: &int) -> bool { *x == 3 }
 
-        assert_eq!(splitn(~[], 1u, f), ~[]);
-        assert_eq!(splitn(~[1, 2], 1u, f), ~[~[1, 2]]);
-        assert_eq!(splitn(~[3, 1, 2], 1u, f), ~[~[], ~[1, 2]]);
-        assert_eq!(splitn(~[1, 2, 3], 1u, f), ~[~[1, 2], ~[]]);
-        assert!(splitn(~[1, 2, 3, 4, 3, 5], 1u, f) ==
+        assert_eq!(splitn([], 1u, f), ~[]);
+        assert_eq!(splitn([1, 2], 1u, f), ~[~[1, 2]]);
+        assert_eq!(splitn([3, 1, 2], 1u, f), ~[~[], ~[1, 2]]);
+        assert_eq!(splitn([1, 2, 3], 1u, f), ~[~[1, 2], ~[]]);
+        assert!(splitn([1, 2, 3, 4, 3, 5], 1u, f) ==
                       ~[~[1, 2], ~[4, 3, 5]]);
     }
 
@@ -3845,10 +3845,10 @@ mod tests {
     fn test_rsplit() {
         fn f(x: &int) -> bool { *x == 3 }
 
-        assert_eq!(rsplit(~[], f), ~[]);
-        assert_eq!(rsplit(~[1, 2], f), ~[~[1, 2]]);
-        assert_eq!(rsplit(~[1, 2, 3], f), ~[~[1, 2], ~[]]);
-        assert!(rsplit(~[1, 2, 3, 4, 3, 5], f) ==
+        assert_eq!(rsplit([], f), ~[]);
+        assert_eq!(rsplit([1, 2], f), ~[~[1, 2]]);
+        assert_eq!(rsplit([1, 2, 3], f), ~[~[1, 2], ~[]]);
+        assert!(rsplit([1, 2, 3, 4, 3, 5], f) ==
             ~[~[1, 2], ~[4], ~[5]]);
     }
 
@@ -3856,53 +3856,46 @@ mod tests {
     fn test_rsplitn() {
         fn f(x: &int) -> bool { *x == 3 }
 
-        assert_eq!(rsplitn(~[], 1u, f), ~[]);
-        assert_eq!(rsplitn(~[1, 2], 1u, f), ~[~[1, 2]]);
-        assert_eq!(rsplitn(~[1, 2, 3], 1u, f), ~[~[1, 2], ~[]]);
-        assert!(rsplitn(~[1, 2, 3, 4, 3, 5], 1u, f) ==
-                       ~[~[1, 2, 3, 4], ~[5]]);
+        assert_eq!(rsplitn([], 1u, f), ~[]);
+        assert_eq!(rsplitn([1, 2], 1u, f), ~[~[1, 2]]);
+        assert_eq!(rsplitn([1, 2, 3], 1u, f), ~[~[1, 2], ~[]]);
+        assert_eq!(rsplitn([1, 2, 3, 4, 3, 5], 1u, f), ~[~[1, 2, 3, 4], ~[5]]);
     }
 
     #[test]
     fn test_partition() {
         // FIXME (#4355 maybe): using v.partition here crashes
         assert_eq!(partition(~[], |x: &int| *x < 3), (~[], ~[]));
-        assert!(partition(~[1, 2, 3], |x: &int| *x < 4) ==
-            (~[1, 2, 3], ~[]));
-        assert!(partition(~[1, 2, 3], |x: &int| *x < 2) ==
-            (~[1], ~[2, 3]));
-        assert!(partition(~[1, 2, 3], |x: &int| *x < 0) ==
-            (~[], ~[1, 2, 3]));
+        assert_eq!(partition(~[1, 2, 3], |x: &int| *x < 4), (~[1, 2, 3], ~[]));
+        assert_eq!(partition(~[1, 2, 3], |x: &int| *x < 2), (~[1], ~[2, 3]));
+        assert_eq!(partition(~[1, 2, 3], |x: &int| *x < 0), (~[], ~[1, 2, 3]));
     }
 
     #[test]
     fn test_partitioned() {
-        assert_eq!((~[]).partitioned(|x: &int| *x < 3), (~[], ~[]))
-        assert!((~[1, 2, 3]).partitioned(|x: &int| *x < 4) ==
-                     (~[1, 2, 3], ~[]));
-        assert!((~[1, 2, 3]).partitioned(|x: &int| *x < 2) ==
-                     (~[1], ~[2, 3]));
-        assert!((~[1, 2, 3]).partitioned(|x: &int| *x < 0) ==
-                     (~[], ~[1, 2, 3]));
+        assert_eq!(([]).partitioned(|x: &int| *x < 3), (~[], ~[]))
+        assert_eq!(([1, 2, 3]).partitioned(|x: &int| *x < 4), (~[1, 2, 3], ~[]));
+        assert_eq!(([1, 2, 3]).partitioned(|x: &int| *x < 2), (~[1], ~[2, 3]));
+        assert_eq!(([1, 2, 3]).partitioned(|x: &int| *x < 0), (~[], ~[1, 2, 3]));
     }
 
     #[test]
     fn test_concat() {
-        assert_eq!(concat(~[~[1], ~[2,3]]), ~[1, 2, 3]);
+        assert_eq!(concat([~[1], ~[2,3]]), ~[1, 2, 3]);
     }
 
     #[test]
     fn test_connect() {
-        assert_eq!(connect(~[], &0), ~[]);
-        assert_eq!(connect(~[~[1], ~[2, 3]], &0), ~[1, 0, 2, 3]);
-        assert_eq!(connect(~[~[1], ~[2], ~[3]], &0), ~[1, 0, 2, 0, 3]);
+        assert_eq!(connect([], &0), ~[]);
+        assert_eq!(connect([~[1], ~[2, 3]], &0), ~[1, 0, 2, 3]);
+        assert_eq!(connect([~[1], ~[2], ~[3]], &0), ~[1, 0, 2, 0, 3]);
     }
 
     #[test]
     fn test_windowed () {
         fn t(n: uint, expected: &[&[int]]) {
             let mut i = 0;
-            for windowed(n, ~[1,2,3,4,5,6]) |v| {
+            for windowed(n, [1,2,3,4,5,6]) |v| {
                 assert_eq!(v, expected[i]);
                 i += 1;
             }
@@ -3920,7 +3913,7 @@ mod tests {
     #[should_fail]
     #[ignore(cfg(windows))]
     fn test_windowed_() {
-        for windowed (0u, ~[1u,2u,3u,4u,5u,6u]) |_v| {}
+        for windowed (0u, [1u,2u,3u,4u,5u,6u]) |_v| {}
     }
 
     #[test]

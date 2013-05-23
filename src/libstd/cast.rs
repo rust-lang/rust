@@ -11,7 +11,6 @@
 //! Unsafe casting functions
 
 use sys;
-use unstable;
 use unstable::intrinsics;
 
 /// Casts the value at `src` to U. The two types must have the same length.
