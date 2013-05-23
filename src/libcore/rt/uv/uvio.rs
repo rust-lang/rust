@@ -24,6 +24,7 @@ use rt::sched::Scheduler;
 use rt::io::{standard_error, OtherIoError};
 use rt::tube::Tube;
 use rt::local::Local;
+use rt::work_queue::WorkQueue;
 use unstable::sync::{UnsafeAtomicRcBox, AtomicInt};
 use unstable::intrinsics;
 
@@ -45,7 +46,7 @@ pub impl UvEventLoop {
 
     /// A convenience constructor
     fn new_scheduler() -> Scheduler {
-        Scheduler::new(~UvEventLoop::new())
+        Scheduler::new(~UvEventLoop::new(), WorkQueue::new())
     }
 }
 
