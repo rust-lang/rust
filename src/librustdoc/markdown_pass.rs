@@ -451,14 +451,30 @@ fn write_variants(
 fn write_variant(ctxt: &Ctxt, doc: doc::VariantDoc) {
     assert!(doc.sig.is_some());
     let sig = (&doc.sig).get();
+
+    // space out list items so they all end up within paragraph elements
+    ctxt.w.put_line(~"");
+
     match copy doc.desc {
         Some(desc) => {
-            ctxt.w.put_line(fmt!("* `%s` - %s", sig, desc));
+            ctxt.w.put_line(list_item_indent(fmt!("* `%s` - %s", sig, desc)));
         }
         None => {
             ctxt.w.put_line(fmt!("* `%s`", sig));
         }
     }
+}
+
+fn list_item_indent(item: &str) -> ~str {
+    let mut indented = ~[];
+    for str::each_line_any(item) |line| {
+        indented.push(line);
+    }
+
+    // separate markdown elements within `*` lists must be indented by four
+    // spaces, or they will escape the list context. indenting everything
+    // seems fine though.
+    str::connect_slices(indented, "\n    ")
 }
 
 fn write_trait(ctxt: &Ctxt, doc: doc::TraitDoc) {
@@ -807,7 +823,9 @@ mod test {
         assert!(str::contains(
             markdown,
             "\n\n#### Variants\n\
+             \n\
              \n* `b` - test\
+             \n\
              \n* `c` - test\n\n"));
     }
 
@@ -817,7 +835,24 @@ mod test {
         assert!(str::contains(
             markdown,
             "\n\n#### Variants\n\
+             \n\
              \n* `b`\
+             \n\
+             \n* `c`\n\n"));
+    }
+
+    #[test]
+    fn should_write_variant_list_with_indent() {
+        let markdown = render(
+            ~"enum a { #[doc = \"line 1\\n\\nline 2\"] b, c }");
+        assert!(str::contains(
+            markdown,
+            "\n\n#### Variants\n\
+             \n\
+             \n* `b` - line 1\
+             \n    \
+             \n    line 2\
+             \n\
              \n* `c`\n\n"));
     }
 
@@ -827,7 +862,9 @@ mod test {
         assert!(str::contains(
             markdown,
             "\n\n#### Variants\n\
+             \n\
              \n* `b(int)`\
+             \n\
              \n* `c(int)` - a\n\n"));
     }
 
