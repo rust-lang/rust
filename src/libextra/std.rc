@@ -27,6 +27,7 @@ not required in or otherwise suitable for the core library.
 #[crate_type = "lib"];
 
 #[deny(non_camel_case_types)];
+#[allow(unnecessary_allocation)];
 
 #[no_core];
 #[no_std];
