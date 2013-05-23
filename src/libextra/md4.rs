@@ -115,7 +115,7 @@ pub fn md4_str(msg: &[u8]) -> ~str {
         let mut i = 0u32;
         while i < 4u32 {
             let byte = (u >> (i * 8u32)) as u8;
-            if byte <= 16u8 { result += ~"0"; }
+            if byte <= 16u8 { result += "0"; }
             result += uint::to_str_radix(byte as uint, 16u);
             i += 1u32;
         }

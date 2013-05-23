@@ -54,7 +54,7 @@ pub fn llvm_err(sess: Session, msg: ~str) -> ! {
         if cstr == ptr::null() {
             sess.fatal(msg);
         } else {
-            sess.fatal(msg + ~": " + str::raw::from_c_str(cstr));
+            sess.fatal(msg + ": " + str::raw::from_c_str(cstr));
         }
     }
 }
@@ -653,13 +653,13 @@ pub fn sanitize(s: &str) -> ~str {
     let mut result = ~"";
     for str::each_char(s) |c| {
         match c {
-          '@' => result += ~"_sbox_",
-          '~' => result += ~"_ubox_",
-          '*' => result += ~"_ptr_",
-          '&' => result += ~"_ref_",
-          ',' => result += ~"_",
+          '@' => result += "_sbox_",
+          '~' => result += "_ubox_",
+          '*' => result += "_ptr_",
+          '&' => result += "_ref_",
+          ',' => result += "_",
 
-          '{' | '(' => result += ~"_of_",
+          '{' | '(' => result += "_of_",
           'a' .. 'z'
           | 'A' .. 'Z'
           | '0' .. '9'
@@ -693,7 +693,7 @@ pub fn mangle(sess: Session, ss: path) -> ~str {
           n += fmt!("%u%s", str::len(sani), sani);
         } }
     }
-    n += ~"E"; // End name-sequence.
+    n += "E"; // End name-sequence.
     n
 }
 

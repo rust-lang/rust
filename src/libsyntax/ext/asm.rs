@@ -114,7 +114,7 @@ pub fn expand_asm(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
                         p.eat(&token::COMMA);
                     }
 
-                    let clob = ~"~{" + *p.parse_str() + ~"}";
+                    let clob = ~"~{" + *p.parse_str() + "}";
                     clobs.push(clob);
                 }
 

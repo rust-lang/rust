@@ -65,12 +65,12 @@ pub fn count_insn(cx: block, category: &str) {
         i = 0u;
         while i < len {
             i = *mm.get(&v[i]);
-            s += ~"/";
+            s += "/";
             s += v[i];
             i += 1u;
         }
 
-        s += ~"/";
+        s += "/";
         s += category;
 
         let n = match h.find(&s) {

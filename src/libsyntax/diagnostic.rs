@@ -241,7 +241,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
     // Print the offending lines
     for display_lines.each |line| {
         io::stderr().write_str(fmt!("%s:%u ", fm.name, *line + 1u));
-        let s = fm.get_line(*line as int) + ~"\n";
+        let s = fm.get_line(*line as int) + "\n";
         io::stderr().write_str(s);
     }
     if elided {
@@ -249,8 +249,8 @@ fn highlight_lines(cm: @codemap::CodeMap,
         let s = fmt!("%s:%u ", fm.name, last_line + 1u);
         let mut indent = str::len(s);
         let mut out = ~"";
-        while indent > 0u { out += ~" "; indent -= 1u; }
-        out += ~"...\n";
+        while indent > 0u { out += " "; indent -= 1u; }
+        out += "...\n";
         io::stderr().write_str(out);
     }
 
@@ -271,7 +271,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
         // part of the 'filename:line ' part of the previous line.
         let skip = str::len(fm.name) + digits + 3u;
         for skip.times() {
-            s += ~" ";
+            s += " ";
         }
         let orig = fm.get_line(lines.lines[0] as int);
         for uint::range(0u,left-skip) |pos| {
@@ -281,14 +281,14 @@ fn highlight_lines(cm: @codemap::CodeMap,
                 _ => " "         // -squigly-line as well (instead of a
             };                   // space). This way the squigly-line will
         }                        // usually appear in the correct position.
-        s += ~"^";
+        s += "^";
         let hi = cm.lookup_char_pos(sp.hi);
         if hi.col != lo.col {
             // the ^ already takes up one space
             let num_squiglies = hi.col.to_uint()-lo.col.to_uint()-1u;
-            for num_squiglies.times() { s += ~"~"; }
+            for num_squiglies.times() { s += "~"; }
         }
-        io::stderr().write_str(s + ~"\n");
+        io::stderr().write_str(s + "\n");
     }
 }
 

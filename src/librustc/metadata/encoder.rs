@@ -922,7 +922,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
 
         // >:-<
         let mut impl_path = vec::append(~[], path);
-        impl_path += ~[ast_map::path_name(item.ident)];
+        impl_path += [ast_map::path_name(item.ident)];
 
         for methods.each |m| {
             index.push(entry {val: m.id, pos: ebml_w.writer.tell()});
