@@ -716,11 +716,11 @@ impl IterBytes for Url {
 
 #[test]
 fn test_split_char_first() {
-    let (u,v) = split_char_first(~"hello, sweet world", ',');
+    let (u,v) = split_char_first("hello, sweet world", ',');
     assert_eq!(u, ~"hello");
     assert_eq!(v, ~" sweet world");
 
-    let (u,v) = split_char_first(~"hello sweet world", ',');
+    let (u,v) = split_char_first("hello sweet world", ',');
     assert_eq!(u, ~"hello sweet world");
     assert_eq!(v, ~"");
 }
@@ -774,9 +774,9 @@ fn test_get_authority() {
         "//2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000:00").is_err());
 
     // these parse as empty, because they don't start with '//'
-    let (_, h, _, _) = get_authority(~"user:pass@rust-lang").unwrap();
+    let (_, h, _, _) = get_authority("user:pass@rust-lang").unwrap();
     assert_eq!(h, ~"");
-    let (_, h, _, _) = get_authority(~"rust-lang.org").unwrap();
+    let (_, h, _, _) = get_authority("rust-lang.org").unwrap();
     assert_eq!(h, ~"");
 }
 
@@ -788,12 +788,12 @@ fn test_get_path() {
     let (p, r) = get_path("test@email.com#fragment", false).unwrap();
     assert_eq!(p, ~"test@email.com");
     assert_eq!(r, ~"#fragment");
-    let (p, r) = get_path(~"/gen/:addr=?q=v", false).unwrap();
+    let (p, r) = get_path("/gen/:addr=?q=v", false).unwrap();
     assert_eq!(p, ~"/gen/:addr=");
     assert_eq!(r, ~"?q=v");
 
     //failure cases
-    assert!(get_path(~"something?q", true).is_err());
+    assert!(get_path("something?q", true).is_err());
 }
 
 #[cfg(test)]
@@ -1058,7 +1058,7 @@ mod tests {
         // FIXME #4449: Commented out because this causes an ICE, but only
         // on FreeBSD
         /*
-        assert_eq!(decode_form_urlencoded(~[]).len(), 0);
+        assert_eq!(decode_form_urlencoded([]).len(), 0);
 
         let s = str::to_bytes("a=1&foo+bar=abc&foo+bar=12+%3D+34");
         let form = decode_form_urlencoded(s);

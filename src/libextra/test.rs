@@ -394,8 +394,8 @@ fn should_sort_failures_before_printing_them() {
         print_failures(st);
     };
 
-    let apos = str::find_str(s, ~"a").get();
-    let bpos = str::find_str(s, ~"b").get();
+    let apos = str::find_str(s, "a").get();
+    let bpos = str::find_str(s, "b").get();
     assert!(apos < bpos);
 }
 

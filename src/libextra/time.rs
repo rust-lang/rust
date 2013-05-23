@@ -899,7 +899,7 @@ mod tests {
     }
 
     fn test_at_utc() {
-        os::setenv(~"TZ", ~"America/Los_Angeles");
+        os::setenv("TZ", "America/Los_Angeles");
         tzset();
 
         let time = ::time::Timespec::new(1234567890, 54321);
@@ -920,7 +920,7 @@ mod tests {
     }
 
     fn test_at() {
-        os::setenv(~"TZ", ~"America/Los_Angeles");
+        os::setenv("TZ", "America/Los_Angeles");
         tzset();
 
         let time = ::time::Timespec::new(1234567890, 54321);
@@ -948,7 +948,7 @@ mod tests {
     }
 
     fn test_to_timespec() {
-        os::setenv(~"TZ", ~"America/Los_Angeles");
+        os::setenv("TZ", "America/Los_Angeles");
         tzset();
 
         let time = ::time::Timespec::new(1234567890, 54321);
@@ -959,7 +959,7 @@ mod tests {
     }
 
     fn test_conversions() {
-        os::setenv(~"TZ", ~"America/Los_Angeles");
+        os::setenv("TZ", "America/Los_Angeles");
         tzset();
 
         let time = ::time::Timespec::new(1234567890, 54321);
@@ -975,10 +975,10 @@ mod tests {
     }
 
     fn test_strptime() {
-        os::setenv(~"TZ", ~"America/Los_Angeles");
+        os::setenv("TZ", "America/Los_Angeles");
         tzset();
 
-        match strptime(~"", ~"") {
+        match strptime("", "") {
           Ok(ref tm) => {
             assert!(tm.tm_sec == 0_i32);
             assert!(tm.tm_min == 0_i32);
@@ -995,12 +995,12 @@ mod tests {
           Err(_) => ()
         }
 
-        let format = ~"%a %b %e %T %Y";
-        assert_eq!(strptime(~"", format), Err(~"Invalid time"));
-        assert!(strptime(~"Fri Feb 13 15:31:30", format)
+        let format = "%a %b %e %T %Y";
+        assert_eq!(strptime("", format), Err(~"Invalid time"));
+        assert!(strptime("Fri Feb 13 15:31:30", format)
             == Err(~"Invalid time"));
 
-        match strptime(~"Fri Feb 13 15:31:30 2009", format) {
+        match strptime("Fri Feb 13 15:31:30 2009", format) {
           Err(copy e) => fail!(e),
           Ok(ref tm) => {
             assert!(tm.tm_sec == 30_i32);
@@ -1034,7 +1034,7 @@ mod tests {
             ~"Friday",
             ~"Saturday"
         ].each |day| {
-            assert!(test(*day, ~"%A"));
+            assert!(test(*day, "%A"));
         }
 
         for [
@@ -1046,7 +1046,7 @@ mod tests {
             ~"Fri",
             ~"Sat"
         ].each |day| {
-            assert!(test(*day, ~"%a"));
+            assert!(test(*day, "%a"));
         }
 
         for [
@@ -1063,7 +1063,7 @@ mod tests {
             ~"November",
             ~"December"
         ].each |day| {
-            assert!(test(*day, ~"%B"));
+            assert!(test(*day, "%B"));
         }
 
         for [
@@ -1080,60 +1080,60 @@ mod tests {
             ~"Nov",
             ~"Dec"
         ].each |day| {
-            assert!(test(*day, ~"%b"));
+            assert!(test(*day, "%b"));
         }
 
-        assert!(test(~"19", ~"%C"));
-        assert!(test(~"Fri Feb 13 23:31:30 2009", ~"%c"));
-        assert!(test(~"02/13/09", ~"%D"));
-        assert!(test(~"03", ~"%d"));
-        assert!(test(~"13", ~"%d"));
-        assert!(test(~" 3", ~"%e"));
-        assert!(test(~"13", ~"%e"));
-        assert!(test(~"2009-02-13", ~"%F"));
-        assert!(test(~"03", ~"%H"));
-        assert!(test(~"13", ~"%H"));
-        assert!(test(~"03", ~"%I")); // FIXME (#2350): flesh out
-        assert!(test(~"11", ~"%I")); // FIXME (#2350): flesh out
-        assert!(test(~"044", ~"%j"));
-        assert!(test(~" 3", ~"%k"));
-        assert!(test(~"13", ~"%k"));
-        assert!(test(~" 1", ~"%l"));
-        assert!(test(~"11", ~"%l"));
-        assert!(test(~"03", ~"%M"));
-        assert!(test(~"13", ~"%M"));
-        assert!(test(~"\n", ~"%n"));
-        assert!(test(~"am", ~"%P"));
-        assert!(test(~"pm", ~"%P"));
-        assert!(test(~"AM", ~"%p"));
-        assert!(test(~"PM", ~"%p"));
-        assert!(test(~"23:31", ~"%R"));
-        assert!(test(~"11:31:30 AM", ~"%r"));
-        assert!(test(~"11:31:30 PM", ~"%r"));
-        assert!(test(~"03", ~"%S"));
-        assert!(test(~"13", ~"%S"));
-        assert!(test(~"15:31:30", ~"%T"));
-        assert!(test(~"\t", ~"%t"));
-        assert!(test(~"1", ~"%u"));
-        assert!(test(~"7", ~"%u"));
-        assert!(test(~"13-Feb-2009", ~"%v"));
-        assert!(test(~"0", ~"%w"));
-        assert!(test(~"6", ~"%w"));
-        assert!(test(~"2009", ~"%Y"));
-        assert!(test(~"09", ~"%y"));
-        assert!(result::unwrap(strptime(~"UTC", ~"%Z")).tm_zone ==
+        assert!(test("19", "%C"));
+        assert!(test("Fri Feb 13 23:31:30 2009", "%c"));
+        assert!(test("02/13/09", "%D"));
+        assert!(test("03", "%d"));
+        assert!(test("13", "%d"));
+        assert!(test(" 3", "%e"));
+        assert!(test("13", "%e"));
+        assert!(test("2009-02-13", "%F"));
+        assert!(test("03", "%H"));
+        assert!(test("13", "%H"));
+        assert!(test("03", "%I")); // FIXME (#2350): flesh out
+        assert!(test("11", "%I")); // FIXME (#2350): flesh out
+        assert!(test("044", "%j"));
+        assert!(test(" 3", "%k"));
+        assert!(test("13", "%k"));
+        assert!(test(" 1", "%l"));
+        assert!(test("11", "%l"));
+        assert!(test("03", "%M"));
+        assert!(test("13", "%M"));
+        assert!(test("\n", "%n"));
+        assert!(test("am", "%P"));
+        assert!(test("pm", "%P"));
+        assert!(test("AM", "%p"));
+        assert!(test("PM", "%p"));
+        assert!(test("23:31", "%R"));
+        assert!(test("11:31:30 AM", "%r"));
+        assert!(test("11:31:30 PM", "%r"));
+        assert!(test("03", "%S"));
+        assert!(test("13", "%S"));
+        assert!(test("15:31:30", "%T"));
+        assert!(test("\t", "%t"));
+        assert!(test("1", "%u"));
+        assert!(test("7", "%u"));
+        assert!(test("13-Feb-2009", "%v"));
+        assert!(test("0", "%w"));
+        assert!(test("6", "%w"));
+        assert!(test("2009", "%Y"));
+        assert!(test("09", "%y"));
+        assert!(result::unwrap(strptime("UTC", "%Z")).tm_zone ==
             ~"UTC");
-        assert!(result::unwrap(strptime(~"PST", ~"%Z")).tm_zone ==
+        assert!(result::unwrap(strptime("PST", "%Z")).tm_zone ==
             ~"");
-        assert!(result::unwrap(strptime(~"-0000", ~"%z")).tm_gmtoff ==
+        assert!(result::unwrap(strptime("-0000", "%z")).tm_gmtoff ==
             0);
-        assert!(result::unwrap(strptime(~"-0800", ~"%z")).tm_gmtoff ==
+        assert!(result::unwrap(strptime("-0800", "%z")).tm_gmtoff ==
             0);
-        assert!(test(~"%", ~"%%"));
+        assert!(test("%", "%%"));
     }
 
     fn test_ctime() {
-        os::setenv(~"TZ", ~"America/Los_Angeles");
+        os::setenv("TZ", "America/Los_Angeles");
         tzset();
 
         let time = ::time::Timespec::new(1234567890, 54321);
@@ -1147,60 +1147,60 @@ mod tests {
     }
 
     fn test_strftime() {
-        os::setenv(~"TZ", ~"America/Los_Angeles");
+        os::setenv("TZ", "America/Los_Angeles");
         tzset();
 
         let time = ::time::Timespec::new(1234567890, 54321);
         let utc = at_utc(time);
         let local = at(time);
 
-        assert_eq!(local.strftime(~""), ~"");
-        assert_eq!(local.strftime(~"%A"), ~"Friday");
-        assert_eq!(local.strftime(~"%a"), ~"Fri");
-        assert_eq!(local.strftime(~"%B"), ~"February");
-        assert_eq!(local.strftime(~"%b"), ~"Feb");
-        assert_eq!(local.strftime(~"%C"), ~"20");
-        assert_eq!(local.strftime(~"%c"), ~"Fri Feb 13 15:31:30 2009");
-        assert_eq!(local.strftime(~"%D"), ~"02/13/09");
-        assert_eq!(local.strftime(~"%d"), ~"13");
-        assert_eq!(local.strftime(~"%e"), ~"13");
-        assert_eq!(local.strftime(~"%F"), ~"2009-02-13");
+        assert_eq!(local.strftime(""), ~"");
+        assert_eq!(local.strftime("%A"), ~"Friday");
+        assert_eq!(local.strftime("%a"), ~"Fri");
+        assert_eq!(local.strftime("%B"), ~"February");
+        assert_eq!(local.strftime("%b"), ~"Feb");
+        assert_eq!(local.strftime("%C"), ~"20");
+        assert_eq!(local.strftime("%c"), ~"Fri Feb 13 15:31:30 2009");
+        assert_eq!(local.strftime("%D"), ~"02/13/09");
+        assert_eq!(local.strftime("%d"), ~"13");
+        assert_eq!(local.strftime("%e"), ~"13");
+        assert_eq!(local.strftime("%F"), ~"2009-02-13");
         // assert!(local.strftime("%G") == "2009");
         // assert!(local.strftime("%g") == "09");
-        assert_eq!(local.strftime(~"%H"), ~"15");
-        assert_eq!(local.strftime(~"%I"), ~"03");
-        assert_eq!(local.strftime(~"%j"), ~"044");
-        assert_eq!(local.strftime(~"%k"), ~"15");
-        assert_eq!(local.strftime(~"%l"), ~" 3");
-        assert_eq!(local.strftime(~"%M"), ~"31");
-        assert_eq!(local.strftime(~"%m"), ~"02");
-        assert_eq!(local.strftime(~"%n"), ~"\n");
-        assert_eq!(local.strftime(~"%P"), ~"pm");
-        assert_eq!(local.strftime(~"%p"), ~"PM");
-        assert_eq!(local.strftime(~"%R"), ~"15:31");
-        assert_eq!(local.strftime(~"%r"), ~"03:31:30 PM");
-        assert_eq!(local.strftime(~"%S"), ~"30");
-        assert_eq!(local.strftime(~"%s"), ~"1234567890");
-        assert_eq!(local.strftime(~"%T"), ~"15:31:30");
-        assert_eq!(local.strftime(~"%t"), ~"\t");
+        assert_eq!(local.strftime("%H"), ~"15");
+        assert_eq!(local.strftime("%I"), ~"03");
+        assert_eq!(local.strftime("%j"), ~"044");
+        assert_eq!(local.strftime("%k"), ~"15");
+        assert_eq!(local.strftime("%l"), ~" 3");
+        assert_eq!(local.strftime("%M"), ~"31");
+        assert_eq!(local.strftime("%m"), ~"02");
+        assert_eq!(local.strftime("%n"), ~"\n");
+        assert_eq!(local.strftime("%P"), ~"pm");
+        assert_eq!(local.strftime("%p"), ~"PM");
+        assert_eq!(local.strftime("%R"), ~"15:31");
+        assert_eq!(local.strftime("%r"), ~"03:31:30 PM");
+        assert_eq!(local.strftime("%S"), ~"30");
+        assert_eq!(local.strftime("%s"), ~"1234567890");
+        assert_eq!(local.strftime("%T"), ~"15:31:30");
+        assert_eq!(local.strftime("%t"), ~"\t");
         // assert!(local.strftime("%U") == "06");
-        assert_eq!(local.strftime(~"%u"), ~"5");
+        assert_eq!(local.strftime("%u"), ~"5");
         // assert!(local.strftime("%V") == "07");
-        assert_eq!(local.strftime(~"%v"), ~"13-Feb-2009");
+        assert_eq!(local.strftime("%v"), ~"13-Feb-2009");
         // assert!(local.strftime("%W") == "06");
-        assert_eq!(local.strftime(~"%w"), ~"5");
+        assert_eq!(local.strftime("%w"), ~"5");
         // handle "%X"
         // handle "%x"
-        assert_eq!(local.strftime(~"%Y"), ~"2009");
-        assert_eq!(local.strftime(~"%y"), ~"09");
+        assert_eq!(local.strftime("%Y"), ~"2009");
+        assert_eq!(local.strftime("%y"), ~"09");
 
         // FIXME (#2350): We should probably standardize on the timezone
         // abbreviation.
-        let zone = local.strftime(~"%Z");
+        let zone = local.strftime("%Z");
         assert!(zone == ~"PST" || zone == ~"Pacific Standard Time");
 
-        assert_eq!(local.strftime(~"%z"), ~"-0800");
-        assert_eq!(local.strftime(~"%%"), ~"%");
+        assert_eq!(local.strftime("%z"), ~"-0800");
+        assert_eq!(local.strftime("%%"), ~"%");
 
         // FIXME (#2350): We should probably standardize on the timezone
         // abbreviation.

@@ -16,12 +16,8 @@ Simple compression
 
 use core::prelude::*;
 
-use core::libc::{c_void, size_t, c_int};
 use core::libc;
-use core::vec;
-
-#[cfg(test)] use core::rand;
-#[cfg(test)] use core::rand::RngUtil;
+use core::libc::{c_void, size_t, c_int};
 
 pub mod rustrt {
     use core::libc::{c_int, c_void, size_t};
@@ -83,27 +79,34 @@ pub fn inflate_bytes(bytes: &const [u8]) -> ~[u8] {
     }
 }
 
-#[test]
-#[allow(non_implicitly_copyable_typarams)]
-fn test_flate_round_trip() {
-    let mut r = rand::rng();
-    let mut words = ~[];
-    for 20.times {
-        let range = r.gen_uint_range(1, 10);
-        words.push(r.gen_bytes(range));
-    }
-    for 20.times {
-        let mut in = ~[];
-        for 2000.times {
-            in.push_all(r.choose(words));
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::rand;
+    use core::rand::RngUtil;
+
+    #[test]
+    #[allow(non_implicitly_copyable_typarams)]
+    fn test_flate_round_trip() {
+        let mut r = rand::rng();
+        let mut words = ~[];
+        for 20.times {
+            let range = r.gen_uint_range(1, 10);
+            words.push(r.gen_bytes(range));
         }
-        debug!("de/inflate of %u bytes of random word-sequences",
-               in.len());
-        let cmp = deflate_bytes(in);
-        let out = inflate_bytes(cmp);
-        debug!("%u bytes deflated to %u (%.1f%% size)",
-               in.len(), cmp.len(),
-               100.0 * ((cmp.len() as float) / (in.len() as float)));
-        assert_eq!(in, out);
+        for 20.times {
+            let mut in = ~[];
+            for 2000.times {
+                in.push_all(r.choose(words));
+            }
+            debug!("de/inflate of %u bytes of random word-sequences",
+                   in.len());
+            let cmp = deflate_bytes(in);
+            let out = inflate_bytes(cmp);
+            debug!("%u bytes deflated to %u (%.1f%% size)",
+                   in.len(), cmp.len(),
+                   100.0 * ((cmp.len() as float) / (in.len() as float)));
+            assert_eq!(in, out);
+        }
     }
 }

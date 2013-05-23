@@ -1630,7 +1630,7 @@ mod test {
         assert_eq!(net::ip::get_port(&sock.get_peer_addr()), 8887);
 
         // Fulfill the protocol the test server expects
-        let resp_bytes = str::to_bytes(~"ping");
+        let resp_bytes = str::to_bytes("ping");
         tcp_write_single(&sock, resp_bytes);
         debug!("message sent");
         sock.read(0u);
