@@ -49,10 +49,10 @@ c.close()
 
 d = open("tmp/run_pass_stage2_driver.rs", "w")
 d.write("// AUTO-GENERATED FILE: DO NOT EDIT\n")
-d.write("extern mod std;\n")
+d.write("extern mod extra;\n")
 d.write("extern mod run_pass_stage2;\n")
 d.write("use run_pass_stage2::*;\n")
-d.write("use core::io::WriterUtil;\n");
+d.write("use std::io::WriterUtil;\n");
 d.write("fn main() {\n");
 d.write("    let out = io::stdout();\n");
 i = 0
