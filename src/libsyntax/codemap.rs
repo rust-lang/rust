@@ -140,7 +140,9 @@ impl<D:Decoder> Decodable<D> for span {
 
 impl to_bytes::IterBytes for span {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        to_bytes::iter_bytes_3(&self.lo, &self.hi, &self.expn_info, lsb0, f)
+        self.lo.iter_bytes(lsb0, f) &&
+        self.hi.iter_bytes(lsb0, f) &&
+        self.expn_info.iter_bytes(lsb0, f)
     }
 }
 
@@ -193,7 +195,7 @@ pub struct NameAndSpan {name: ~str, span: Option<span>}
 
 impl to_bytes::IterBytes for NameAndSpan {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        to_bytes::iter_bytes_2(&self.name, &self.span, lsb0, f)
+        self.name.iter_bytes(lsb0, f) && self.span.iter_bytes(lsb0, f)
     }
 }
 
@@ -204,7 +206,7 @@ pub struct CallInfo {
 
 impl to_bytes::IterBytes for CallInfo {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        to_bytes::iter_bytes_2(&self.call_site, &self.callee, lsb0, f)
+        self.call_site.iter_bytes(lsb0, f) && self.callee.iter_bytes(lsb0, f)
     }
 }
 
@@ -216,7 +218,9 @@ pub enum ExpnInfo {
 impl to_bytes::IterBytes for ExpnInfo {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
-            ExpandedFrom(ref call_info) => to_bytes::iter_bytes_2(&0u8, call_info, lsb0, f)
+            ExpandedFrom(ref call_info) => {
+                0u8.iter_bytes(lsb0, f) && call_info.iter_bytes(lsb0, f)
+            }
         }
     }
 }
