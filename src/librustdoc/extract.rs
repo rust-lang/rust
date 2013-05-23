@@ -16,9 +16,7 @@ use astsrv;
 use doc::ItemUtils;
 use doc;
 
-use core::local_data::local_data_get;
 use syntax::ast;
-use syntax;
 use syntax::parse::token::{ident_interner};
 use syntax::parse::token;
 
