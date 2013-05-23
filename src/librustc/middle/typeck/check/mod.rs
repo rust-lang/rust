@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1044,8 +1044,11 @@ pub fn check_lit(fcx: @mut FnCtxt, lit: @ast::lit) -> ty::t {
 pub fn valid_range_bounds(ccx: @mut CrateCtxt,
                           from: @ast::expr,
                           to: @ast::expr)
-                       -> bool {
-    const_eval::compare_lit_exprs(ccx.tcx, from, to) <= 0
+                       -> Option<bool> {
+    match const_eval::compare_lit_exprs(ccx.tcx, from, to) {
+        Some(val) => Some(val <= 0),
+        None => None
+    }
 }
 
 pub fn check_expr_has_type(
