@@ -234,6 +234,8 @@ fn fold_impl(
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use astsrv;
     use attr_pass::run;
     use doc;

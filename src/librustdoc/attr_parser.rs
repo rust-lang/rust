@@ -70,6 +70,7 @@ pub fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
     use syntax::ast;
     use syntax;
     use super::{parse_hidden, parse_crate, parse_desc};

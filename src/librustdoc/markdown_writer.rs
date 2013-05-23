@@ -261,6 +261,8 @@ fn future_writer() -> (Writer, future::Future<~str>) {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use astsrv;
     use doc;
     use extract;
