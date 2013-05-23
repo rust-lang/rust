@@ -675,7 +675,7 @@ pub fn mkdir_recursive(p: &Path, mode: c_int) -> bool {
 /// Lists the contents of a directory
 #[allow(non_implicitly_copyable_typarams)]
 pub fn list_dir(p: &Path) -> ~[~str] {
-    if p.components.is_empty() {
+    if p.components.is_empty() && !p.is_absolute() {
         // Not sure what the right behavior is here, but this
         // prevents a bounds check failure later
         return ~[];
@@ -1606,6 +1606,20 @@ mod tests {
         let dirs = os::list_dir(&Path(""));
         assert!(dirs.is_empty());
     }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn list_dir_root() {
+        let dirs = os::list_dir(&Path("/"));
+        assert!(dirs.len() > 1);
+    }
+    #[test]
+    #[cfg(windows)]
+    fn list_dir_root() {
+        let dirs = os::list_dir(&Path("C:\\"));
+        assert!(dirs.len() > 1);
+    }
+
 
     #[test]
     fn path_is_dir() {
