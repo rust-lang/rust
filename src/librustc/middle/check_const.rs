@@ -110,7 +110,7 @@ pub fn check_expr(sess: Session,
             if !ty::type_is_numeric(ety) && !ty::type_is_unsafe_ptr(ety) {
                 sess.span_err(e.span, ~"can not cast to `" +
                               ppaux::ty_to_str(tcx, ety) +
-                              ~"` in a constant expression");
+                              "` in a constant expression");
             }
           }
           expr_path(pth) => {

@@ -1996,7 +1996,7 @@ pub fn print_literal(s: @ps, lit: @ast::lit) {
     match lit.node {
       ast::lit_str(st) => print_string(s, *st),
       ast::lit_int(ch, ast::ty_char) => {
-        word(s.s, ~"'" + char::escape_default(ch as char) + ~"'");
+        word(s.s, ~"'" + char::escape_default(ch as char) + "'");
       }
       ast::lit_int(i, t) => {
         if i < 0_i64 {

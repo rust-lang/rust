@@ -382,10 +382,10 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
                        m.fty.purity,
                        m.fty.abis,
                        Some(m.ident),
-                       &m.fty.sig) + ~";"
+                       &m.fty.sig) + ";"
     }
     fn field_to_str(cx: ctxt, f: field) -> ~str {
-        return *cx.sess.str_of(f.ident) + ~": " + mt_to_str(cx, &f.mt);
+        return *cx.sess.str_of(f.ident) + ": " + mt_to_str(cx, &f.mt);
     }
 
     // if there is an id, print that instead of the structural type:
@@ -413,11 +413,11 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_rptr(r, ref tm) => {
         region_to_str_space(cx, "&", r) + mt_to_str(cx, tm)
       }
-      ty_unboxed_vec(ref tm) => { ~"unboxed_vec<" + mt_to_str(cx, tm) + ~">" }
+      ty_unboxed_vec(ref tm) => { ~"unboxed_vec<" + mt_to_str(cx, tm) + ">" }
       ty_type => ~"type",
       ty_tup(ref elems) => {
         let strs = elems.map(|elem| ty_to_str(cx, *elem));
-        ~"(" + str::connect(strs, ",") + ~")"
+        ~"(" + str::connect(strs, ",") + ")"
       }
       ty_closure(ref f) => {
           closure_to_str(cx, f)

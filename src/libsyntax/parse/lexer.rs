@@ -320,7 +320,7 @@ fn consume_block_comment(rdr: @mut StringReader)
         if is_eof(rdr) {
             rdr.fatal(~"unterminated block doc-comment");
         } else {
-            acc += ~"*/";
+            acc += "*/";
             bump(rdr);
             bump(rdr);
             // but comments with only "*"s between two "/"s are not

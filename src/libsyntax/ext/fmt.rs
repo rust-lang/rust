@@ -158,15 +158,15 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
               FlagSignAlways => {
                 if !is_signed_type(cnv) {
                     cx.span_fatal(sp,
-                                  ~"+ flag only valid in " +
-                                      ~"signed fmt! conversion");
+                                  "+ flag only valid in \
+                                   signed fmt! conversion");
                 }
               }
               FlagSpaceForSign => {
                 if !is_signed_type(cnv) {
                     cx.span_fatal(sp,
-                                  ~"space flag only valid in " +
-                                      ~"signed fmt! conversions");
+                                  "space flag only valid in \
+                                   signed fmt! conversions");
                 }
               }
               FlagLeftZeroPad => (),
@@ -284,8 +284,8 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                 n += 1u;
                 if n >= nargs {
                     cx.span_fatal(sp,
-                                  ~"not enough arguments to fmt! " +
-                                  ~"for the given format string");
+                                  "not enough arguments to fmt! \
+                                   for the given format string");
                 }
 
                 log_conv(conv);
