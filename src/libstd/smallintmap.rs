@@ -14,7 +14,8 @@
  */
 
 use core::container::{Container, Mutable, Map, Set};
-use core::old_iter::{BaseIter};
+use core::old_iter::BaseIter;
+use core::old_iter;
 use core::option::{Some, None};
 use core::util::replace;
 
@@ -181,6 +182,87 @@ pub impl<V:Copy> SmallIntMap<V> {
     }
 }
 
+pub struct SmallIntSet {
+    priv map: SmallIntMap<()>
+}
+
+impl Container for SmallIntSet {
+    /// Return the number of elements in the map
+    fn len(&const self) -> uint {
+        self.map.len()
+    }
+
+    /// Return true if the map contains no elements
+    fn is_empty(&const self) -> bool { self.len() == 0 }
+}
+
+impl Mutable for SmallIntSet {
+    /// Clear the map, removing all key-value pairs.
+    fn clear(&mut self) { self.map.clear() }
+}
+
+impl BaseIter<uint> for SmallIntSet {
+    /// Visit all values in order
+    fn each(&self, f: &fn(&uint) -> bool) -> bool { self.map.each_key(f) }
+    fn size_hint(&self) -> Option<uint> { Some(self.len()) }
+}
+
+impl Set<uint> for SmallIntSet {
+    /// Return true if the set contains a value
+    fn contains(&self, value: &uint) -> bool { self.map.contains_key(value) }
+
+    /// Add a value to the set. Return true if the value was not already
+    /// present in the set.
+    fn insert(&mut self, value: uint) -> bool { self.map.insert(value, ()) }
+
+    /// Remove a value from the set. Return true if the value was
+    /// present in the set.
+    fn remove(&mut self, value: &uint) -> bool { self.map.remove(value) }
+
+    /// Return true if the set has no elements in common with `other`.
+    /// This is equivalent to checking for an empty uintersection.
+    fn is_disjoint(&self, other: &SmallIntSet) -> bool {
+        old_iter::all(self, |v| !other.contains(v))
+    }
+
+    /// Return true if the set is a subset of another
+    fn is_subset(&self, other: &SmallIntSet) -> bool {
+        old_iter::all(self, |v| other.contains(v))
+    }
+
+    /// Return true if the set is a superset of another
+    fn is_superset(&self, other: &SmallIntSet) -> bool {
+        other.is_subset(self)
+    }
+
+    /// Visit the values representing the difference
+    fn difference(&self, other: &SmallIntSet, f: &fn(&uint) -> bool) -> bool {
+        self.each(|v| other.contains(v) || f(v))
+    }
+
+    /// Visit the values representing the symmetric difference
+    fn symmetric_difference(&self,
+                            other: &SmallIntSet,
+                            f: &fn(&uint) -> bool) -> bool {
+        self.difference(other, f) && other.difference(self, f)
+    }
+
+    /// Visit the values representing the uintersection
+    fn intersection(&self, other: &SmallIntSet, f: &fn(&uint) -> bool) -> bool {
+        self.each(|v| !other.contains(v) || f(v))
+    }
+
+    /// Visit the values representing the union
+    fn union(&self, other: &SmallIntSet, f: &fn(&uint) -> bool) -> bool {
+        self.each(f) && other.each(|v| self.contains(v) || f(v))
+    }
+}
+
+pub impl SmallIntSet {
+    /// Create an empty SmallIntSet
+    fn new() -> SmallIntSet { SmallIntSet{map: SmallIntMap::new()} }
+}
+
 #[cfg(test)]
 mod tests {
     use super::SmallIntMap;
@@ -271,5 +353,164 @@ mod tests {
         m.insert(1, 2);
         assert_eq!(m.pop(&1), Some(2));
         assert_eq!(m.pop(&1), None);
+    }
+}
+
+#[cfg(test)]
+mod test_set {
+    use super::SmallIntSet;
+
+    #[test]
+    fn test_disjoint() {
+        let mut xs = SmallIntSet::new();
+        let mut ys = SmallIntSet::new();
+        assert!(xs.is_disjoint(&ys));
+        assert!(ys.is_disjoint(&xs));
+        assert!(xs.insert(5));
+        assert!(ys.insert(11));
+        assert!(xs.is_disjoint(&ys));
+        assert!(ys.is_disjoint(&xs));
+        assert!(xs.insert(7));
+        assert!(xs.insert(19));
+        assert!(xs.insert(4));
+        assert!(ys.insert(2));
+        assert!(xs.is_disjoint(&ys));
+        assert!(ys.is_disjoint(&xs));
+        assert!(ys.insert(7));
+        assert!(!xs.is_disjoint(&ys));
+        assert!(!ys.is_disjoint(&xs));
+    }
+
+    #[test]
+    fn test_subset_and_superset() {
+        let mut a = SmallIntSet::new();
+        assert!(a.insert(0));
+        assert!(a.insert(5));
+        assert!(a.insert(11));
+        assert!(a.insert(7));
+
+        let mut b = SmallIntSet::new();
+        assert!(b.insert(0));
+        assert!(b.insert(7));
+        assert!(b.insert(19));
+        assert!(b.insert(250));
+        assert!(b.insert(11));
+        assert!(b.insert(200));
+
+        assert!(!a.is_subset(&b));
+        assert!(!a.is_superset(&b));
+        assert!(!b.is_subset(&a));
+        assert!(!b.is_superset(&a));
+
+        assert!(b.insert(5));
+
+        assert!(a.is_subset(&b));
+        assert!(!a.is_superset(&b));
+        assert!(!b.is_subset(&a));
+        assert!(b.is_superset(&a));
+    }
+
+    #[test]
+    fn test_intersection() {
+        let mut a = SmallIntSet::new();
+        let mut b = SmallIntSet::new();
+
+        assert!(a.insert(11));
+        assert!(a.insert(1));
+        assert!(a.insert(3));
+        assert!(a.insert(77));
+        assert!(a.insert(103));
+        assert!(a.insert(5));
+
+        assert!(b.insert(2));
+        assert!(b.insert(11));
+        assert!(b.insert(77));
+        assert!(b.insert(5));
+        assert!(b.insert(3));
+
+        let mut i = 0;
+        let expected = [3, 5, 11, 77];
+        for a.intersection(&b) |x| {
+            assert!(vec::contains(expected, x));
+            i += 1
+        }
+        assert_eq!(i, expected.len());
+    }
+
+    #[test]
+    fn test_difference() {
+        let mut a = SmallIntSet::new();
+        let mut b = SmallIntSet::new();
+
+        assert!(a.insert(1));
+        assert!(a.insert(3));
+        assert!(a.insert(5));
+        assert!(a.insert(9));
+        assert!(a.insert(11));
+
+        assert!(b.insert(3));
+        assert!(b.insert(9));
+
+        let mut i = 0;
+        let expected = [1, 5, 11];
+        for a.difference(&b) |x| {
+            assert!(vec::contains(expected, x));
+            i += 1
+        }
+        assert_eq!(i, expected.len());
+    }
+
+    #[test]
+    fn test_symmetric_difference() {
+        let mut a = SmallIntSet::new();
+        let mut b = SmallIntSet::new();
+
+        assert!(a.insert(1));
+        assert!(a.insert(3));
+        assert!(a.insert(5));
+        assert!(a.insert(9));
+        assert!(a.insert(11));
+
+        assert!(b.insert(3));
+        assert!(b.insert(9));
+        assert!(b.insert(14));
+        assert!(b.insert(22));
+
+        let mut i = 0;
+        let expected = [1, 5, 11, 14, 22];
+        for a.symmetric_difference(&b) |x| {
+            assert!(vec::contains(expected, x));
+            i += 1
+        }
+        assert_eq!(i, expected.len());
+    }
+
+    #[test]
+    fn test_union() {
+        let mut a = SmallIntSet::new();
+        let mut b = SmallIntSet::new();
+
+        assert!(a.insert(1));
+        assert!(a.insert(3));
+        assert!(a.insert(5));
+        assert!(a.insert(9));
+        assert!(a.insert(11));
+        assert!(a.insert(16));
+        assert!(a.insert(19));
+        assert!(a.insert(24));
+
+        assert!(b.insert(1));
+        assert!(b.insert(5));
+        assert!(b.insert(9));
+        assert!(b.insert(13));
+        assert!(b.insert(19));
+
+        let mut i = 0;
+        let expected = [1, 3, 5, 9, 11, 13, 16, 19, 24];
+        for a.union(&b) |x| {
+            assert!(vec::contains(expected, x));
+            i += 1
+        }
+        assert_eq!(i, expected.len());
     }
 }
