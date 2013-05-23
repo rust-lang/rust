@@ -10,8 +10,6 @@
 
 use core::prelude::*;
 
-use core::vec::from_elem;
-
 struct SmallBitv {
     /// only the lowest nbits of this value are used. the rest is undefined.
     bits: uint
@@ -257,7 +255,7 @@ pub impl Bitv {
             let nelems = nbits/uint::bits +
                          if nbits % uint::bits == 0 {0} else {1};
             let elem = if init {!0} else {0};
-            let s = from_elem(nelems, elem);
+            let s = vec::from_elem(nelems, elem);
             Big(~BigBitv::new(s))
         };
         Bitv {rep: rep, nbits: nbits}
@@ -502,7 +500,7 @@ impl Clone for Bitv {
             Bitv{nbits: self.nbits, rep: Small(~SmallBitv{bits: b.bits})}
           }
           Big(ref b) => {
-            let mut st = from_elem(self.nbits / uint::bits + 1, 0);
+            let mut st = vec::from_elem(self.nbits / uint::bits + 1, 0);
             let len = st.len();
             for uint::range(0, len) |i| { st[i] = b.storage[i]; };
             Bitv{nbits: self.nbits, rep: Big(~BigBitv{storage: st})}
@@ -872,17 +870,14 @@ mod tests {
 
     #[test]
     fn test_0_elements() {
-        let mut act;
-        let exp;
-        act = Bitv::new(0u, false);
-        exp = vec::from_elem::<uint>(0u, 0u);
+        let act = Bitv::new(0u, false);
+        let exp = vec::from_elem::<uint>(0u, 0u);
         assert!(act.eq_vec(exp));
     }
 
     #[test]
     fn test_1_element() {
-        let mut act;
-        act = Bitv::new(1u, false);
+        let mut act = Bitv::new(1u, false);
         assert!(act.eq_vec(~[0u]));
         act = Bitv::new(1u, true);
         assert!(act.eq_vec(~[1u]));
@@ -1488,7 +1483,7 @@ mod tests {
     #[bench]
     fn bench_bitv_big_union(b: &mut BenchHarness) {
         let mut b1 = Bitv::new(bench_bits, false);
-        let mut b2 = Bitv::new(bench_bits, false);
+        let b2 = Bitv::new(bench_bits, false);
         do b.iter {
             b1.union(&b2);
         }

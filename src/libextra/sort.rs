@@ -895,7 +895,7 @@ mod tests {
     #[test]
     fn test_merge_sort_mutable() {
         pub fn le(a: &int, b: &int) -> bool { *a <= *b }
-        let mut v1 = ~[3, 2, 1];
+        let v1 = ~[3, 2, 1];
         let v2 = merge_sort(v1, le);
         assert_eq!(v2, ~[1, 2, 3]);
     }
