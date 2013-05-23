@@ -142,6 +142,15 @@ pub use libc::consts::os::posix88::{S_IFDIR, S_IFIFO, S_IFMT, S_IFREG};
 pub use libc::consts::os::posix88::{S_IREAD, S_IRUSR, S_IRWXU, S_IWUSR};
 pub use libc::consts::os::posix88::{STDERR_FILENO, STDIN_FILENO};
 pub use libc::consts::os::posix88::{STDOUT_FILENO, W_OK, X_OK};
+pub use libc::consts::os::posix88::{EPERM, ENOENT, ESRCH, EINTR, EIO};
+pub use libc::consts::os::posix88::{ENXIO, E2BIG, ENOEXEC, EBADF, ECHILD};
+pub use libc::consts::os::posix88::{EDEADLK, ENOMEM, EACCES, EFAULT};
+pub use libc::consts::os::posix88::{ENOTBLK, EBUSY, EEXIST, EXDEV, ENODEV};
+pub use libc::consts::os::posix88::{ENOTDIR, EISDIR, EINVAL, ENFILE};
+pub use libc::consts::os::posix88::{EMFILE, ENOTTY, ETXTBSY, EFBIG, ENOSPC};
+pub use libc::consts::os::posix88::{ESPIPE, EROFS, EMLINK, EPIPE, EDOM};
+pub use libc::consts::os::posix88::{ERANGE, EAGAIN, EWOULDBLOCK};
+pub use libc::consts::os::posix88::{EINPROGRESS, EALREADY};
 
 pub use libc::funcs::c95::ctype::{isalnum, isalpha, iscntrl, isdigit};
 pub use libc::funcs::c95::ctype::{islower, isprint, ispunct, isspace};
@@ -873,6 +882,8 @@ pub mod consts {
         pub mod c99 {
         }
         pub mod posix88 {
+            use libc::types::os::arch::c95::c_int;
+
             pub static O_RDONLY : int = 0;
             pub static O_WRONLY : int = 1;
             pub static O_RDWR : int = 2;
@@ -900,6 +911,44 @@ pub mod consts {
             pub static STDIN_FILENO : int = 0;
             pub static STDOUT_FILENO : int = 1;
             pub static STDERR_FILENO : int = 2;
+            pub static EPERM: c_int = 1;
+            pub static ENOENT: c_int = 2;
+            pub static ESRCH: c_int = 3;
+            pub static EINTR: c_int = 4;
+            pub static EIO: c_int = 5;
+            pub static ENXIO: c_int = 6;
+            pub static E2BIG: c_int = 7;
+            pub static ENOEXEC: c_int = 8;
+            pub static EBADF: c_int = 9;
+            pub static ECHILD: c_int = 10;
+            pub static EDEADLK: c_int = 11;
+            pub static ENOMEM: c_int = 12;
+            pub static EACCES: c_int = 13;
+            pub static EFAULT: c_int = 14;
+            pub static ENOTBLK: c_int = 15;
+            pub static EBUSY: c_int = 16;
+            pub static EEXIST: c_int = 17;
+            pub static EXDEV: c_int = 18;
+            pub static ENODEV: c_int = 19;
+            pub static ENOTDIR: c_int = 20;
+            pub static EISDIR: c_int = 21;
+            pub static EINVAL: c_int = 22;
+            pub static ENFILE: c_int = 23;
+            pub static EMFILE: c_int = 24;
+            pub static ENOTTY: c_int = 25;
+            pub static ETXTBSY: c_int = 26;
+            pub static EFBIG: c_int = 27;
+            pub static ENOSPC: c_int = 28;
+            pub static ESPIPE: c_int = 29;
+            pub static EROFS: c_int = 30;
+            pub static EMLINK: c_int = 31;
+            pub static EPIPE: c_int = 32;
+            pub static EDOM: c_int = 33;
+            pub static ERANGE: c_int = 34;
+            pub static EAGAIN: c_int = 35;
+            pub static EWOULDBLOCK: c_int = EAGAIN;
+            pub static EINPROGRESS: c_int = 36;
+            pub static EALREADY: c_int = 37;
         }
         pub mod posix01 {
         }
@@ -994,6 +1043,8 @@ pub mod consts {
         #[cfg(target_arch = "x86_64")]
         #[cfg(target_arch = "arm")]
         pub mod posix88 {
+            use libc::types::os::arch::c95::c_int;
+
             pub static O_RDONLY : int = 0;
             pub static O_WRONLY : int = 1;
             pub static O_RDWR : int = 2;
@@ -1036,6 +1087,44 @@ pub mod consts {
             pub static SIGPIPE : int = 13;
             pub static SIGALRM : int = 14;
             pub static SIGTERM : int = 15;
+            pub static EPERM: c_int = 1;
+            pub static ENOENT: c_int = 2;
+            pub static ESRCH: c_int = 3;
+            pub static EINTR: c_int = 4;
+            pub static EIO: c_int = 5;
+            pub static ENXIO: c_int = 6;
+            pub static E2BIG: c_int = 7;
+            pub static ENOEXEC: c_int = 8;
+            pub static EBADF: c_int = 9;
+            pub static ECHILD: c_int = 10;
+            pub static EDEADLK: c_int = 11;
+            pub static ENOMEM: c_int = 12;
+            pub static EACCES: c_int = 13;
+            pub static EFAULT: c_int = 14;
+            pub static ENOTBLK: c_int = 15;
+            pub static EBUSY: c_int = 16;
+            pub static EEXIST: c_int = 17;
+            pub static EXDEV: c_int = 18;
+            pub static ENODEV: c_int = 19;
+            pub static ENOTDIR: c_int = 20;
+            pub static EISDIR: c_int = 21;
+            pub static EINVAL: c_int = 22;
+            pub static ENFILE: c_int = 23;
+            pub static EMFILE: c_int = 24;
+            pub static ENOTTY: c_int = 25;
+            pub static ETXTBSY: c_int = 26;
+            pub static EFBIG: c_int = 27;
+            pub static ENOSPC: c_int = 28;
+            pub static ESPIPE: c_int = 29;
+            pub static EROFS: c_int = 30;
+            pub static EMLINK: c_int = 31;
+            pub static EPIPE: c_int = 32;
+            pub static EDOM: c_int = 33;
+            pub static ERANGE: c_int = 34;
+            pub static EAGAIN: c_int = 35;
+            pub static EWOULDBLOCK: c_int = EAGAIN;
+            pub static EINPROGRESS: c_int = 36;
+            pub static EALREADY: c_int = 37;
         }
         #[cfg(target_arch = "mips")]
         pub mod posix88 {
@@ -1139,6 +1228,8 @@ pub mod consts {
         pub mod c99 {
         }
         pub mod posix88 {
+            use libc::types::os::arch::c95::c_int;
+
             pub static O_RDONLY : int = 0;
             pub static O_WRONLY : int = 1;
             pub static O_RDWR : int = 2;
@@ -1181,6 +1272,44 @@ pub mod consts {
             pub static SIGPIPE : int = 13;
             pub static SIGALRM : int = 14;
             pub static SIGTERM : int = 15;
+            pub static EPERM: c_int = 1;
+            pub static ENOENT: c_int = 2;
+            pub static ESRCH: c_int = 3;
+            pub static EINTR: c_int = 4;
+            pub static EIO: c_int = 5;
+            pub static ENXIO: c_int = 6;
+            pub static E2BIG: c_int = 7;
+            pub static ENOEXEC: c_int = 8;
+            pub static EBADF: c_int = 9;
+            pub static ECHILD: c_int = 10;
+            pub static EDEADLK: c_int = 11;
+            pub static ENOMEM: c_int = 12;
+            pub static EACCES: c_int = 13;
+            pub static EFAULT: c_int = 14;
+            pub static ENOTBLK: c_int = 15;
+            pub static EBUSY: c_int = 16;
+            pub static EEXIST: c_int = 17;
+            pub static EXDEV: c_int = 18;
+            pub static ENODEV: c_int = 19;
+            pub static ENOTDIR: c_int = 20;
+            pub static EISDIR: c_int = 21;
+            pub static EINVAL: c_int = 22;
+            pub static ENFILE: c_int = 23;
+            pub static EMFILE: c_int = 24;
+            pub static ENOTTY: c_int = 25;
+            pub static ETXTBSY: c_int = 26;
+            pub static EFBIG: c_int = 27;
+            pub static ENOSPC: c_int = 28;
+            pub static ESPIPE: c_int = 29;
+            pub static EROFS: c_int = 30;
+            pub static EMLINK: c_int = 31;
+            pub static EPIPE: c_int = 32;
+            pub static EDOM: c_int = 33;
+            pub static ERANGE: c_int = 34;
+            pub static EAGAIN: c_int = 35;
+            pub static EWOULDBLOCK: c_int = EAGAIN;
+            pub static EINPROGRESS: c_int = 36;
+            pub static EALREADY: c_int = 37;
         }
         pub mod posix01 {
             pub static SIGTRAP : int = 5;
@@ -1231,6 +1360,8 @@ pub mod consts {
         pub mod c99 {
         }
         pub mod posix88 {
+            use libc::types::os::arch::c95::c_int;
+            
             pub static O_RDONLY : int = 0;
             pub static O_WRONLY : int = 1;
             pub static O_RDWR : int = 2;
@@ -1273,6 +1404,44 @@ pub mod consts {
             pub static SIGPIPE : int = 13;
             pub static SIGALRM : int = 14;
             pub static SIGTERM : int = 15;
+            pub static EPERM: c_int = 1;
+            pub static ENOENT: c_int = 2;
+            pub static ESRCH: c_int = 3;
+            pub static EINTR: c_int = 4;
+            pub static EIO: c_int = 5;
+            pub static ENXIO: c_int = 6;
+            pub static E2BIG: c_int = 7;
+            pub static ENOEXEC: c_int = 8;
+            pub static EBADF: c_int = 9;
+            pub static ECHILD: c_int = 10;
+            pub static EDEADLK: c_int = 11;
+            pub static ENOMEM: c_int = 12;
+            pub static EACCES: c_int = 13;
+            pub static EFAULT: c_int = 14;
+            pub static ENOTBLK: c_int = 15;
+            pub static EBUSY: c_int = 16;
+            pub static EEXIST: c_int = 17;
+            pub static EXDEV: c_int = 18;
+            pub static ENODEV: c_int = 19;
+            pub static ENOTDIR: c_int = 20;
+            pub static EISDIR: c_int = 21;
+            pub static EINVAL: c_int = 22;
+            pub static ENFILE: c_int = 23;
+            pub static EMFILE: c_int = 24;
+            pub static ENOTTY: c_int = 25;
+            pub static ETXTBSY: c_int = 26;
+            pub static EFBIG: c_int = 27;
+            pub static ENOSPC: c_int = 28;
+            pub static ESPIPE: c_int = 29;
+            pub static EROFS: c_int = 30;
+            pub static EMLINK: c_int = 31;
+            pub static EPIPE: c_int = 32;
+            pub static EDOM: c_int = 33;
+            pub static ERANGE: c_int = 34;
+            pub static EAGAIN: c_int = 35;
+            pub static EWOULDBLOCK: c_int = EAGAIN;
+            pub static EINPROGRESS: c_int = 36;
+            pub static EALREADY: c_int = 37;
         }
         pub mod posix01 {
             pub static SIGTRAP : int = 5;
