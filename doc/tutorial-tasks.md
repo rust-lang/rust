@@ -39,40 +39,40 @@ data through the global _exchange heap_.
 
 While Rust's type system provides the building blocks needed for safe
 and efficient tasks, all of the task functionality itself is implemented
-in the core and standard libraries, which are still under development
+in the standard and extra libraries, which are still under development
 and do not always present a consistent or complete interface.
 
 For your reference, these are the standard modules involved in Rust
 concurrency at this writing:
 
-* [`core::task`] - All code relating to tasks and task scheduling,
-* [`core::comm`] - The message passing interface,
-* [`core::pipes`] - The underlying messaging infrastructure,
-* [`std::comm`] - Additional messaging types based on `core::pipes`,
-* [`std::sync`] - More exotic synchronization tools, including locks,
-* [`std::arc`] - The ARC (atomically reference counted) type,
+* [`std::task`] - All code relating to tasks and task scheduling,
+* [`std::comm`] - The message passing interface,
+* [`std::pipes`] - The underlying messaging infrastructure,
+* [`extra::comm`] - Additional messaging types based on `std::pipes`,
+* [`extra::sync`] - More exotic synchronization tools, including locks,
+* [`extra::arc`] - The ARC (atomically reference counted) type,
   for safely sharing immutable data,
-* [`std::future`] - A type representing values that may be computed concurrently and retrieved at a later time.
+* [`extra::future`] - A type representing values that may be computed concurrently and retrieved at a later time.
 
-[`core::task`]: core/task.html
-[`core::comm`]: core/comm.html
-[`core::pipes`]: core/pipes.html
+[`std::task`]: std/task.html
 [`std::comm`]: std/comm.html
-[`std::sync`]: std/sync.html
-[`std::arc`]: std/arc.html
-[`std::future`]: std/future.html
+[`std::pipes`]: std/pipes.html
+[`extra::comm`]: extra/comm.html
+[`extra::sync`]: extra/sync.html
+[`extra::arc`]: extra/arc.html
+[`extra::future`]: extra/future.html
 
 # Basics
 
 The programming interface for creating and managing tasks lives
-in the `task` module of the `core` library, and is thus available to all
+in the `task` module of the `std` library, and is thus available to all
 Rust code by default. At its simplest, creating a task is a matter of
 calling the `spawn` function with a closure argument. `spawn` executes the
 closure in the new task.
 
 ~~~~
-# use core::io::println;
-# use core::task::spawn;
+# use std::io::println;
+# use std::task::spawn;
 
 // Print something profound in a different task using a named function
 fn print_message() { println("I am running in a different task!"); }
@@ -90,7 +90,7 @@ do spawn {
 In Rust, there is nothing special about creating tasks: a task is not a
 concept that appears in the language semantics. Instead, Rust's type system
 provides all the tools necessary to implement safe concurrency: particularly,
-_owned types_. The language leaves the implementation details to the core
+_owned types_. The language leaves the implementation details to the standard
 library.
 
 The `spawn` function has a very simple type signature: `fn spawn(f:
@@ -101,8 +101,8 @@ execution. Like any closure, the function passed to `spawn` may capture
 an environment that it carries across tasks.
 
 ~~~
-# use core::io::println;
-# use core::task::spawn;
+# use std::io::println;
+# use std::task::spawn;
 # fn generate_task_number() -> int { 0 }
 // Generate some state locally
 let child_task_number = generate_task_number();
@@ -118,8 +118,8 @@ in parallel. Thus, on a multicore machine, running the following code
 should interleave the output in vaguely random order.
 
 ~~~
-# use core::io::print;
-# use core::task::spawn;
+# use std::io::print;
+# use std::task::spawn;
 
 for int::range(0, 20) |child_task_number| {
     do spawn {
@@ -147,8 +147,8 @@ endpoint. Consider the following example of calculating two results
 concurrently:
 
 ~~~~
-# use core::task::spawn;
-# use core::comm::{stream, Port, Chan};
+# use std::task::spawn;
+# use std::comm::{stream, Port, Chan};
 
 let (port, chan): (Port<int>, Chan<int>) = stream();
 
@@ -169,7 +169,7 @@ stream for sending and receiving integers (the left-hand side of the `let`,
 a tuple into its component parts).
 
 ~~~~
-# use core::comm::{stream, Chan, Port};
+# use std::comm::{stream, Chan, Port};
 let (port, chan): (Port<int>, Chan<int>) = stream();
 ~~~~
 
@@ -178,8 +178,8 @@ which will wait to receive the data on the port. The next statement
 spawns the child task.
 
 ~~~~
-# use core::task::spawn;
-# use core::comm::stream;
+# use std::task::spawn;
+# use std::comm::stream;
 # fn some_expensive_computation() -> int { 42 }
 # let (port, chan) = stream();
 do spawn || {
@@ -199,7 +199,7 @@ computation, then waits for the child's result to arrive on the
 port:
 
 ~~~~
-# use core::comm::{stream};
+# use std::comm::{stream};
 # fn some_other_expensive_computation() {}
 # let (port, chan) = stream::<int>();
 # chan.send(0);
@@ -214,8 +214,8 @@ example needed to compute multiple results across a number of tasks? The
 following program is ill-typed:
 
 ~~~ {.xfail-test}
-# use core::task::{spawn};
-# use core::comm::{stream, Port, Chan};
+# use std::task::{spawn};
+# use std::comm::{stream, Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
 let (port, chan) = stream();
 
@@ -234,8 +234,8 @@ Instead we can use a `SharedChan`, a type that allows a single
 `Chan` to be shared by multiple senders.
 
 ~~~
-# use core::task::spawn;
-# use core::comm::{stream, SharedChan};
+# use std::task::spawn;
+# use std::comm::{stream, SharedChan};
 
 let (port, chan) = stream();
 let chan = SharedChan::new(chan);
@@ -267,8 +267,8 @@ illustrate the point. For reference, written with multiple streams, it
 might look like the example below.
 
 ~~~
-# use core::task::spawn;
-# use core::comm::stream;
+# use std::task::spawn;
+# use std::comm::stream;
 
 // Create a vector of ports, one for each child task
 let ports = do vec::from_fn(3) |init_val| {
@@ -285,7 +285,7 @@ let result = ports.foldl(0, |accum, port| *accum + port.recv() );
 ~~~
 
 ## Futures
-With `std::future`, rust has a mechanism for requesting a computation and getting the result
+With `extra::future`, rust has a mechanism for requesting a computation and getting the result
 later.
 
 The basic example below illustrates this.
@@ -296,7 +296,7 @@ fn fib(n: uint) -> uint {
     12586269025
 }
 
-let mut delayed_fib = std::future::spawn (|| fib(50) );
+let mut delayed_fib = extra::future::spawn (|| fib(50) );
 make_a_sandwich();
 println(fmt!("fib(50) = %?", delayed_fib.get()))
 ~~~
@@ -319,7 +319,7 @@ fn partial_sum(start: uint) -> f64 {
 }
 
 fn main() {
-    let mut futures = vec::from_fn(1000, |ind| do std::future::spawn { partial_sum(ind) });
+    let mut futures = vec::from_fn(1000, |ind| do extra::future::spawn { partial_sum(ind) });
 
     let mut final_res = 0f64;
     for futures.each_mut |ft|  {
@@ -344,7 +344,7 @@ All tasks are, by default, _linked_ to each other. That means that the fates
 of all tasks are intertwined: if one fails, so do all the others.
 
 ~~~
-# use core::task::spawn;
+# use std::task::spawn;
 # fn do_some_work() { loop { task::yield() } }
 # do task::try {
 // Create a child task that fails
@@ -384,7 +384,7 @@ enum. If the child task terminates successfully, `try` will
 return an `Ok` result; if the child task fails, `try` will return
 an `Error` result.
 
-[`Result`]: core/result.html
+[`Result`]: std/result.html
 
 > ***Note:*** A failed task does not currently produce a useful error
 > value (`try` always returns `Err(())`). In the
@@ -428,8 +428,8 @@ internally, with additional logic to wait for the child task to finish
 before returning. Hence:
 
 ~~~
-# use core::comm::{stream, Chan, Port};
-# use core::task::{spawn, try};
+# use std::comm::{stream, Chan, Port};
+# use std::task::{spawn, try};
 # fn sleep_forever() { loop { task::yield() } }
 # do task::try {
 let (receiver, sender): (Port<int>, Chan<int>) = stream();
@@ -493,7 +493,7 @@ fail!();
 
 A very common thing to do is to spawn a child task where the parent
 and child both need to exchange messages with each other. The
-function `std::comm::DuplexStream()` supports this pattern.  We'll
+function `extra::comm::DuplexStream()` supports this pattern.  We'll
 look briefly at how to use it.
 
 To see how `DuplexStream()` works, we will create a child task
@@ -502,7 +502,7 @@ the string in response.  The child terminates when it receives `0`.
 Here is the function that implements the child task:
 
 ~~~~
-# use std::comm::DuplexStream;
+# use extra::comm::DuplexStream;
 fn stringifier(channel: &DuplexStream<~str, uint>) {
     let mut value: uint;
     loop {
@@ -524,8 +524,8 @@ response itself is simply the stringified version of the received value,
 Here is the code for the parent task:
 
 ~~~~
-# use core::task::spawn;
-# use std::comm::DuplexStream;
+# use std::task::spawn;
+# use extra::comm::DuplexStream;
 # fn stringifier(channel: &DuplexStream<~str, uint>) {
 #     let mut value: uint;
 #     loop {

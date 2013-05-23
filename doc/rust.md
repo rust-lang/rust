@@ -17,14 +17,14 @@ This document does not serve as a tutorial introduction to the
 language. Background familiarity with the language is assumed. A separate
 [tutorial] document is available to help acquire such background familiarity.
 
-This document also does not serve as a reference to the [core] or [standard]
+This document also does not serve as a reference to the [standard] or [extra]
 libraries included in the language distribution. Those libraries are
 documented separately by extracting documentation attributes from their
 source code.
 
 [tutorial]: tutorial.html
-[core]: core/index.html
 [standard]: std/index.html
+[extra]: extra/index.html
 
 ## Disclaimer
 
@@ -441,7 +441,7 @@ expression context, the final namespace qualifier is omitted.
 Two examples of paths with type arguments:
 
 ~~~~
-# use core::hashmap::HashMap;
+# use std::hashmap::HashMap;
 # fn f() {
 # fn id<T:Copy>(t: T) -> T { t }
 type t = HashMap<int,~str>;  // Type arguments used in a type expression
@@ -768,9 +768,9 @@ Three examples of `extern mod` declarations:
 ~~~~~~~~{.xfail-test}
 extern mod pcre (uuid = "54aba0f8-a7b1-4beb-92f1-4cf625264841");
 
-extern mod std; // equivalent to: extern mod std ( name = "std" );
+extern mod extra; // equivalent to: extern mod extra ( name = "extra" );
 
-extern mod ruststd (name = "std"); // linking to 'std' under another name
+extern mod rustextra (name = "extra"); // linking to 'extra' under another name
 ~~~~~~~~
 
 ##### Use declarations
@@ -802,19 +802,19 @@ Use declarations support a number of convenient shortcuts:
 An example of `use` declarations:
 
 ~~~~
-use core::float::sin;
-use core::str::{slice, contains};
-use core::option::Some;
+use std::float::sin;
+use std::str::{slice, contains};
+use std::option::Some;
 
 fn main() {
-    // Equivalent to 'info!(core::float::sin(1.0));'
+    // Equivalent to 'info!(std::float::sin(1.0));'
     info!(sin(1.0));
 
-    // Equivalent to 'info!(core::option::Some(1.0));'
+    // Equivalent to 'info!(std::option::Some(1.0));'
     info!(Some(1.0));
 
     // Equivalent to
-    // 'info!(core::str::contains(core::str::slice("foo", 0, 1), "oo"));'
+    // 'info!(std::str::contains(std::str::slice("foo", 0, 1), "oo"));'
     info!(contains(slice("foo", 0, 1), "oo"));
 }
 ~~~~
@@ -1327,7 +1327,7 @@ with the exception that they may not have a body
 and are instead terminated by a semicolon.
 
 ~~~
-# use core::libc::{c_char, FILE};
+# use std::libc::{c_char, FILE};
 # #[nolink]
 
 extern {
@@ -1436,7 +1436,7 @@ Some primitive Rust operations are defined in Rust code,
 rather than being implemented directly in C or assembly language.
 The definitions of these operations have to be easy for the compiler to find.
 The `lang` attribute makes it possible to declare these operations.
-For example, the `str` module in the Rust core library defines the string equality function:
+For example, the `str` module in the Rust standard library defines the string equality function:
 
 ~~~ {.xfail-test}
 #[lang="str_eq"]
@@ -1562,7 +1562,7 @@ impl<T: Eq> Eq for Foo<T> {
 Supported traits for `deriving` are:
 
 * Comparison traits: `Eq`, `TotalEq`, `Ord`, `TotalOrd`.
-* Serialization: `Encodable`, `Decodable`. These require `std`.
+* Serialization: `Encodable`, `Decodable`. These require `extra`.
 * `Clone` and `DeepClone`, to perform (deep) copies.
 * `IterBytes`, to iterate over the bytes in a data type.
 * `Rand`, to create a random instance of a data type.
@@ -1885,25 +1885,25 @@ Binary operators expressions are given in terms of
 #### Arithmetic operators
 
 Binary arithmetic expressions are syntactic sugar for calls to built-in traits,
-defined in the `core::ops` module of the `core` library.
+defined in the `std::ops` module of the `std` library.
 This means that arithmetic operators can be overridden for user-defined types.
 The default meaning of the operators on standard types is given here.
 
 `+`
   : Addition and vector/string concatenation.
-    Calls the `add` method on the `core::ops::Add` trait.
+    Calls the `add` method on the `std::ops::Add` trait.
 `-`
   : Subtraction.
-    Calls the `sub` method on the `core::ops::Sub` trait.
+    Calls the `sub` method on the `std::ops::Sub` trait.
 `*`
   : Multiplication.
-    Calls the `mul` method on the `core::ops::Mul` trait.
+    Calls the `mul` method on the `std::ops::Mul` trait.
 `/`
   : Quotient.
-    Calls the `div` method on the `core::ops::Div` trait.
+    Calls the `div` method on the `std::ops::Div` trait.
 `%`
   : Remainder.
-    Calls the `rem` method on the `core::ops::Rem` trait.
+    Calls the `rem` method on the `std::ops::Rem` trait.
 
 #### Bitwise operators
 
@@ -1914,19 +1914,19 @@ The default meaning of the operators on standard types is given here.
 
 `&`
   : And.
-    Calls the `bitand` method of the `core::ops::BitAnd` trait.
+    Calls the `bitand` method of the `std::ops::BitAnd` trait.
 `|`
   : Inclusive or.
-    Calls the `bitor` method of the `core::ops::BitOr` trait.
+    Calls the `bitor` method of the `std::ops::BitOr` trait.
 `^`
   : Exclusive or.
-    Calls the `bitxor` method of the `core::ops::BitXor` trait.
+    Calls the `bitxor` method of the `std::ops::BitXor` trait.
 `<<`
   : Logical left shift.
-    Calls the `shl` method of the `core::ops::Shl` trait.
+    Calls the `shl` method of the `std::ops::Shl` trait.
 `>>`
   : Logical right shift.
-    Calls the `shr` method of the `core::ops::Shr` trait.
+    Calls the `shr` method of the `std::ops::Shr` trait.
 
 #### Lazy boolean operators
 
@@ -1947,22 +1947,22 @@ The default meaning of the operators on standard types is given here.
 
 `==`
   : Equal to.
-    Calls the `eq` method on the `core::cmp::Eq` trait.
+    Calls the `eq` method on the `std::cmp::Eq` trait.
 `!=`
   : Unequal to.
-    Calls the `ne` method on the `core::cmp::Eq` trait.
+    Calls the `ne` method on the `std::cmp::Eq` trait.
 `<`
   : Less than.
-    Calls the `lt` method on the `core::cmp::Ord` trait.
+    Calls the `lt` method on the `std::cmp::Ord` trait.
 `>`
   : Greater than.
-    Calls the `gt` method on the `core::cmp::Ord` trait.
+    Calls the `gt` method on the `std::cmp::Ord` trait.
 `<=`
   : Less than or equal.
-    Calls the `le` method on the `core::cmp::Ord` trait.
+    Calls the `le` method on the `std::cmp::Ord` trait.
 `>=`
   : Greater than or equal.
-    Calls the `ge` method on the `core::cmp::Ord` trait.
+    Calls the `ge` method on the `std::cmp::Ord` trait.
 
 
 #### Type cast expressions
@@ -2121,11 +2121,11 @@ then the expression completes.
 Some examples of call expressions:
 
 ~~~~
-# use core::from_str::FromStr::from_str;
+# use std::from_str::FromStr;
 # fn add(x: int, y: int) -> int { 0 }
 
 let x: int = add(1, 2);
-let pi = from_str::<f32>("3.14");
+let pi = FromStr::from_str::<f32>("3.14");
 ~~~~
 
 ### Lambda expressions
@@ -3168,7 +3168,7 @@ execute, after which it is *descheduled* at a loop-edge or similar
 preemption point, and another task within is scheduled, pseudo-randomly.
 
 An executing task can yield control at any time, by making a library call to
-`core::task::yield`, which deschedules it immediately. Entering any other
+`std::task::yield`, which deschedules it immediately. Entering any other
 non-executing state (blocked, dead) similarly deschedules the task.
 
 
@@ -3181,7 +3181,7 @@ run-time. It is smaller and simpler than many modern language runtimes. It is
 tightly integrated into the language's execution model of memory, tasks,
 communication and logging.
 
-> **Note:** The runtime library will merge with the `core` library in future versions of Rust.
+> **Note:** The runtime library will merge with the `std` library in future versions of Rust.
 
 ### Memory allocation
 
