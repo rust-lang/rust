@@ -435,7 +435,7 @@ mod test {
             let mut task_ran = false;
             let task_ran_ptr: *mut bool = &mut task_ran;
 
-            let mut sched = ~UvEventLoop::new_scheduler();
+            let mut sched = ~new_test_uv_sched();
             let task = ~do Coroutine::new(&mut sched.stack_pool) {
                 unsafe { *task_ran_ptr = true; }
             };
@@ -452,7 +452,7 @@ mod test {
             let mut task_count = 0;
             let task_count_ptr: *mut int = &mut task_count;
 
-            let mut sched = ~UvEventLoop::new_scheduler();
+            let mut sched = ~new_test_uv_sched();
             for int::range(0, total) |_| {
                 let task = ~do Coroutine::new(&mut sched.stack_pool) {
                     unsafe { *task_count_ptr = *task_count_ptr + 1; }
@@ -470,7 +470,7 @@ mod test {
             let mut count = 0;
             let count_ptr: *mut int = &mut count;
 
-            let mut sched = ~UvEventLoop::new_scheduler();
+            let mut sched = ~new_test_uv_sched();
             let task1 = ~do Coroutine::new(&mut sched.stack_pool) {
                 unsafe { *count_ptr = *count_ptr + 1; }
                 let mut sched = Local::take::<Scheduler>();
@@ -499,7 +499,7 @@ mod test {
             let mut count = 0;
             let count_ptr: *mut int = &mut count;
 
-            let mut sched = ~UvEventLoop::new_scheduler();
+            let mut sched = ~new_test_uv_sched();
 
             let start_task = ~do Coroutine::new(&mut sched.stack_pool) {
                 run_task(count_ptr);
@@ -528,7 +528,7 @@ mod test {
     #[test]
     fn test_block_task() {
         do run_in_bare_thread {
-            let mut sched = ~UvEventLoop::new_scheduler();
+            let mut sched = ~new_test_uv_sched();
             let task = ~do Coroutine::new(&mut sched.stack_pool) {
                 let sched = Local::take::<Scheduler>();
                 assert!(sched.in_task_context());
@@ -577,7 +577,7 @@ mod test {
             let (port, chan) = oneshot::<()>();
             let port_cell = Cell(port);
             let chan_cell = Cell(chan);
-            let mut sched1 = ~UvEventLoop::new_scheduler();
+            let mut sched1 = ~new_test_uv_sched();
             let handle1 = sched1.make_handle();
             let handle1_cell = Cell(handle1);
             let task1 = ~do Coroutine::new(&mut sched1.stack_pool) {
@@ -585,7 +585,7 @@ mod test {
             };
             sched1.enqueue_task(task1);
 
-            let mut sched2 = ~UvEventLoop::new_scheduler();
+            let mut sched2 = ~new_test_uv_sched();
             let task2 = ~do Coroutine::new(&mut sched2.stack_pool) {
                 port_cell.take().recv();
                 // Release the other scheduler's handle so it can exit

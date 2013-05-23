@@ -43,11 +43,6 @@ pub impl UvEventLoop {
             uvio: UvIoFactory(Loop::new())
         }
     }
-
-    /// A convenience constructor
-    fn new_scheduler() -> Scheduler {
-        Scheduler::new(~UvEventLoop::new(), WorkQueue::new())
-    }
 }
 
 impl Drop for UvEventLoop {

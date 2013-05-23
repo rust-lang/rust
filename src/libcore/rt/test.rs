@@ -16,6 +16,14 @@ use super::io::net::ip::{IpAddr, Ipv4};
 use rt::task::Task;
 use rt::thread::Thread;
 use rt::local::Local;
+use rt::sched::Scheduler;
+
+pub fn new_test_uv_sched() -> Scheduler {
+    use rt::uv::uvio::UvEventLoop;
+    use rt::work_queue::WorkQueue;
+
+    Scheduler::new(~UvEventLoop::new(), WorkQueue::new())
+}
 
 /// Creates a new scheduler in a new thread and runs a task in it,
 /// then waits for the scheduler to exit. Failure of the task
@@ -28,7 +36,7 @@ pub fn run_in_newsched_task(f: ~fn()) {
     let f = Cell(f);
 
     do run_in_bare_thread {
-        let mut sched = ~UvEventLoop::new_scheduler();
+        let mut sched = ~new_test_uv_sched();
         let task = ~Coroutine::with_task(&mut sched.stack_pool,
                                          ~Task::without_unwinding(),
                                          f.take());
@@ -155,7 +163,7 @@ pub fn spawntask_thread(f: ~fn()) -> Thread {
 
     let f = Cell(f);
     let thread = do Thread::start {
-        let mut sched = ~UvEventLoop::new_scheduler();
+        let mut sched = ~new_test_uv_sched();
         let task = ~Coroutine::with_task(&mut sched.stack_pool,
                                          ~Task::without_unwinding(),
                                          f.take());
