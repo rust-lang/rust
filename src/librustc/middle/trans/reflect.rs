@@ -145,7 +145,7 @@ pub impl Reflector {
     }
 
     fn leaf(&mut self, name: ~str) {
-        self.visit(name, ~[]);
+        self.visit(name, []);
     }
 
     // Entrypoint

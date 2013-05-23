@@ -211,8 +211,8 @@ mod test {
 
     #[test]
     fn test_rpaths_to_flags() {
-        let flags = rpaths_to_flags(~[Path("path1"),
-                                      Path("path2")]);
+        let flags = rpaths_to_flags([Path("path1"),
+                                     Path("path2")]);
         assert_eq!(flags, ~[~"-Wl,-rpath,path1", ~"-Wl,-rpath,path2"]);
     }
 
@@ -243,10 +243,10 @@ mod test {
 
     #[test]
     fn test_minimize2() {
-        let res = minimize_rpaths(~[Path("1a"), Path("2"), Path("2"),
-                                    Path("1a"), Path("4a"),Path("1a"),
-                                    Path("2"), Path("3"), Path("4a"),
-                                    Path("3")]);
+        let res = minimize_rpaths([Path("1a"), Path("2"), Path("2"),
+                                   Path("1a"), Path("4a"),Path("1a"),
+                                   Path("2"), Path("3"), Path("4a"),
+                                   Path("3")]);
         assert_eq!(res, ~[Path("1a"), Path("2"), Path("4a"), Path("3")]);
     }
 

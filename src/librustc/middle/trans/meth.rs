@@ -873,7 +873,7 @@ pub fn trans_trait_cast(bcx: block,
                         val: @ast::expr,
                         id: ast::node_id,
                         dest: expr::Dest,
-                        store: ty::TraitStore)
+                        _store: ty::TraitStore)
                      -> block {
     let mut bcx = bcx;
     let _icx = bcx.insn_ctxt("impl::trans_cast");
