@@ -362,6 +362,8 @@ mod tests {
 
 #[cfg(test)]
 mod test_set {
+    use core::prelude::*;
+
     use super::SmallIntSet;
 
     #[test]
