@@ -188,7 +188,7 @@ mod test {
 }");
         assert!(str::contains(
             doc.cratemod().mods()[0].item.sections[0].header,
-            ~"Header"));
+            "Header"));
     }
 
     #[test]
@@ -201,7 +201,7 @@ mod test {
 }");
         assert!(str::contains(
             doc.cratemod().mods()[0].item.sections[0].body,
-            ~"Body"));
+            "Body"));
     }
 
     #[test]
@@ -226,10 +226,10 @@ mod test {
 }");
         assert!(!str::contains(
             doc.cratemod().mods()[0].desc().get(),
-            ~"Header"));
+            "Header"));
         assert!(!str::contains(
             doc.cratemod().mods()[0].desc().get(),
-            ~"Body"));
+            "Body"));
     }
 
     #[test]
