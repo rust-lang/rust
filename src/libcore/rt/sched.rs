@@ -114,6 +114,8 @@ pub impl Scheduler {
         };
 
         fn wake_up() {
+            let sched = Local::take::<Scheduler>();
+            sched.resume_task_from_queue();
         }
     }
 
@@ -127,8 +129,8 @@ pub impl Scheduler {
         self.event_loop.callback(resume_task_from_queue);
 
         fn resume_task_from_queue() {
-            let scheduler = Local::take::<Scheduler>();
-            scheduler.resume_task_from_queue();
+            let sched = Local::take::<Scheduler>();
+            sched.resume_task_from_queue();
         }
     }
 
@@ -602,6 +604,72 @@ mod test {
             let sched2_cell = Cell(sched2);
             let _thread2 = do Thread::start {
                 let mut sched2 = sched2_cell.take();
+                sched2.run();
+            };
+        }
+    }
+
+    #[test]
+    fn multithreading() {
+        use clone::Clone;
+        use iter::Times;
+        use rt::work_queue::WorkQueue;
+        use rt::comm::*;
+        use container::Container;
+        use vec::OwnedVector;
+        use rt::rtio::RemoteCallback;
+
+        do run_in_bare_thread {
+            let work_queue1 = WorkQueue::new();
+            let work_queue2 = work_queue1.clone();
+
+            let loop1 = ~UvEventLoop::new();
+            let mut sched1 = ~Scheduler::new(loop1, work_queue1.clone());
+            let handle1 = sched1.make_handle();
+            let sched1_cell = Cell(sched1);
+            let handle1_cell = Cell(handle1);
+
+            let loop2 = ~UvEventLoop::new();
+            let mut sched2 = ~Scheduler::new(loop2, work_queue2.clone());
+            let handle2 = sched2.make_handle();
+            let sched2_cell = Cell(sched2);
+            let handle2_cell = Cell(handle2);
+
+            let _thread1 = do Thread::start {
+                let mut sched1 = sched1_cell.take();
+                sched1.run();
+            };
+
+            let _thread2 = do Thread::start {
+                let mut sched2 = sched2_cell.take();
+                let handle1_cell = Cell(handle1_cell.take());
+                let handle2_cell = Cell(handle2_cell.take());
+
+                let task = ~do Coroutine::new(&mut sched2.stack_pool) {
+                    // Hold handles to keep the schedulers alive
+                    let mut handle1 = handle1_cell.take();
+                    let mut handle2 = handle2_cell.take();
+
+                    let mut ports = ~[];
+                    for 10.times {
+                        let (port, chan) = oneshot();
+                        let chan_cell = Cell(chan);
+                        do spawntask_later {
+                            chan_cell.take().send(());
+                        }
+                        ports.push(port);
+
+                        // Make sure the other scheduler is awake
+                        handle1.remote.fire();
+                        handle2.remote.fire();
+                    }
+
+                    while !ports.is_empty() {
+                        ports.pop().recv();
+                    }
+                };
+
+                sched2.enqueue_task(task);
                 sched2.run();
             };
         }
