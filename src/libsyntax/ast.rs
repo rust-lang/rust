@@ -17,9 +17,8 @@ use abi::AbiSet;
 use opt_vec::OptVec;
 use parse::token::get_ident_interner;
 
-use core::cast;
 use core::hashmap::HashMap;
-use core::option::{Option};
+use core::option::Option;
 use core::to_bytes::IterBytes;
 use core::to_bytes;
 use core::to_str::ToStr;
