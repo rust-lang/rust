@@ -2752,7 +2752,7 @@ pub impl Parser {
             match *self.token {
                 token::SEMI => {
                     if !vec::is_empty(attributes_box) {
-                        self.span_err(*self.last_span,~"expected item after attributes");
+                        self.span_err(*self.last_span, "expected item after attributes");
                         attributes_box = ~[];
                     }
                     self.bump(); // empty
@@ -2823,7 +2823,7 @@ pub impl Parser {
         }
 
         if !vec::is_empty(attributes_box) {
-            self.span_err(*self.last_span,~"expected item after attributes");
+            self.span_err(*self.last_span, "expected item after attributes");
         }
 
         let hi = self.span.hi;
@@ -3742,7 +3742,7 @@ pub impl Parser {
         } = self.parse_foreign_items(first_item_attrs, true);
         if (! attrs_remaining.is_empty()) {
             self.span_err(*self.last_span,
-                          ~"expected item after attributes");
+                          "expected item after attributes");
         }
         assert!(*self.token == token::RBRACE);
         ast::foreign_mod {
