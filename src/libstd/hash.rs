@@ -488,7 +488,7 @@ mod tests {
             assert!(f == i && f == v);
 
             buf += ~[t as u8];
-            stream_inc.input(~[t as u8]);
+            stream_inc.input([t as u8]);
 
             t += 1;
         }
