@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -408,8 +408,18 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
             // no-op
         } else if !ty::type_is_numeric(b_ty) {
             tcx.sess.span_err(pat.span, "non-numeric type used in range");
-        } else if !valid_range_bounds(fcx.ccx, begin, end) {
-            tcx.sess.span_err(begin.span, "lower range bound must be less than upper");
+        } else {
+            match valid_range_bounds(fcx.ccx, begin, end) {
+                Some(false) => {
+                    tcx.sess.span_err(begin.span,
+                        "lower range bound must be less than upper");
+                },
+                None => {
+                    tcx.sess.span_err(begin.span,
+                        "mismatched types in range");
+                },
+                _ => { },
+            }
         }
         fcx.write_ty(pat.id, b_ty);
       }
