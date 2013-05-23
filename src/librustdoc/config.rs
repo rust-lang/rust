@@ -242,6 +242,7 @@ pub fn maybe_find_pandoc(
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
     use config::*;
     use core::run::ProgramOutput;
 

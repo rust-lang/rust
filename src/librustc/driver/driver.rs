@@ -920,6 +920,8 @@ pub fn list_metadata(sess: Session, path: &Path, out: @io::Writer) {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use driver::driver::{build_configuration, build_session};
     use driver::driver::{build_session_options, optgroups, str_input};
 

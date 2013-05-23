@@ -182,6 +182,8 @@ pub fn paragraphs(s: &str) -> ~[~str] {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use astsrv;
     use attr_pass;
     use super::{extract, paragraphs, run};

@@ -164,6 +164,8 @@ pub fn pandoc_header_id(header: &str) -> ~str {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use astsrv;
     use attr_pass;
     use config;

@@ -162,6 +162,8 @@ fn parse_header(line: ~str) -> Option<~str> {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use astsrv;
     use attr_pass;
     use doc;

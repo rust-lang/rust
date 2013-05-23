@@ -98,7 +98,10 @@ impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use core::iter;
+
     use util::enum_set::*;
 
     #[deriving(Eq)]
