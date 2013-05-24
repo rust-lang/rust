@@ -16,7 +16,7 @@ The corresponding definitions are in librustc/middle/trans/foreign.rs.
 
 The atomic intrinsics provide common atomic operations on machine
 words, with multiple possible memory orderings. They obey the same
-semantics as C++0x. See the LLVM documentation on [[atomics]].
+semantics as C++11. See the LLVM documentation on [[atomics]].
 
 [atomics]: http://llvm.org/docs/Atomics.html
 
