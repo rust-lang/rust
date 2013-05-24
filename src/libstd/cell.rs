@@ -21,22 +21,9 @@ Similar to a mutable option type, but friendlier.
 */
 
 #[mutable]
-#[deriving(Clone)]
+#[deriving(Clone, DeepClone, Eq)]
 pub struct Cell<T> {
     priv value: Option<T>
-}
-
-impl<T: DeepClone> DeepClone for Cell<T> {
-    fn deep_clone(&self) -> Cell<T> {
-        Cell{value: self.value.deep_clone()}
-    }
-}
-
-impl<T:cmp::Eq> cmp::Eq for Cell<T> {
-    fn eq(&self, other: &Cell<T>) -> bool {
-        (self.value) == (other.value)
-    }
-    fn ne(&self, other: &Cell<T>) -> bool { !self.eq(other) }
 }
 
 /// Creates a new full cell with the given value.
