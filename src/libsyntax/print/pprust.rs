@@ -1083,7 +1083,6 @@ pub fn print_call_post(s: @ps,
 pub fn print_expr(s: @ps, expr: @ast::expr) {
     fn print_field(s: @ps, field: ast::field) {
         ibox(s, indent_unit);
-        if field.node.mutbl == ast::m_mutbl { word_nbsp(s, "mut"); }
         print_ident(s, field.node.ident);
         word_space(s, ":");
         print_expr(s, field.node.expr);
