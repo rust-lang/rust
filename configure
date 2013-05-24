@@ -665,12 +665,16 @@ make_dir rt
 for t in $CFG_TARGET_TRIPLES
 do
   make_dir rt/$t
-  for i in                                          \
-    isaac linenoise sync test \
-    arch/i386 arch/x86_64 arch/arm arch/mips  \
-    libuv libuv/src/ares libuv/src/eio libuv/src/ev
+  for s in 0 1 2 3
   do
-    make_dir rt/$t/$i
+    make_dir rt/$t/stage$s
+    for i in                                          \
+      isaac linenoise sync test \
+      arch/i386 arch/x86_64 arch/arm arch/mips  \
+      libuv libuv/src/ares libuv/src/eio libuv/src/ev
+    do
+      make_dir rt/$t/stage$s/$i
+    done
   done
 done
 

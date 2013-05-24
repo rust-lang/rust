@@ -41,14 +41,19 @@ ifneq ($(strip $(findstring snap,$(MAKECMDGOALS))),)
 	SNAP_DEFINES=-DRUST_SNAPSHOT
 endif
 
-
 define DEF_RUNTIME_TARGETS
 
 ######################################################################
 # Runtime (C++) library variables
 ######################################################################
 
-RUNTIME_CXXS_$(1) := \
+# $(1) is the target triple
+# $(2) is the stage number
+
+RUNTIME_CFLAGS_$(1)_$(2) = -D_RUST_STAGE$(2)
+RUNTIME_CXXFLAGS_$(1)_$(2) = -D_RUST_STAGE$(2)
+
+RUNTIME_CXXS_$(1)_$(2) := \
               rt/sync/timer.cpp \
               rt/sync/lock_and_signal.cpp \
               rt/sync/rust_thread.cpp \
@@ -83,70 +88,70 @@ RUNTIME_CXXS_$(1) := \
               rt/rust_android_dummy.cpp \
               rt/rust_test_helpers.cpp
 
-RUNTIME_CS_$(1) := rt/linenoise/linenoise.c rt/linenoise/utf8.c
+RUNTIME_CS_$(1)_$(2) := rt/linenoise/linenoise.c rt/linenoise/utf8.c
 
-RUNTIME_S_$(1) := rt/arch/$$(HOST_$(1))/_context.S \
-                  rt/arch/$$(HOST_$(1))/ccall.S \
-                  rt/arch/$$(HOST_$(1))/record_sp.S
+RUNTIME_S_$(1)_$(2) := rt/arch/$$(HOST_$(1))/_context.S \
+			rt/arch/$$(HOST_$(1))/ccall.S \
+			rt/arch/$$(HOST_$(1))/record_sp.S
 
 ifeq ($$(CFG_WINDOWSY_$(1)), 1)
-  LIBUV_OSTYPE_$(1) := win
-  LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
+  LIBUV_OSTYPE_$(1)_$(2) := win
+  LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
 else ifeq ($(OSTYPE_$(1)), apple-darwin)
-  LIBUV_OSTYPE_$(1) := mac
-  LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
+  LIBUV_OSTYPE_$(1)_$(2) := mac
+  LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
 else ifeq ($(OSTYPE_$(1)), unknown-freebsd)
-  LIBUV_OSTYPE_$(1) := unix/freebsd
-  LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
+  LIBUV_OSTYPE_$(1)_$(2) := unix/freebsd
+  LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
 else ifeq ($(OSTYPE_$(1)), linux-androideabi)
-  LIBUV_OSTYPE_$(1) := unix/android
-  LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
+  LIBUV_OSTYPE_$(1)_$(2) := unix/android
+  LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
 else
-  LIBUV_OSTYPE_$(1) := unix/linux
-  LIBUV_LIB_$(1) := rt/$(1)/libuv/libuv.a
+  LIBUV_OSTYPE_$(1)_$(2) := unix/linux
+  LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
 endif
 
-RUNTIME_DEF_$(1) := rt/rustrt$(CFG_DEF_SUFFIX_$(1))
-RUNTIME_INCS_$(1) := -I $$(S)src/rt -I $$(S)src/rt/isaac -I $$(S)src/rt/uthash \
+RUNTIME_DEF_$(1)_$(2) := rt/rustrt$(CFG_DEF_SUFFIX_$(1))
+RUNTIME_INCS_$(1)_$(2) := -I $$(S)src/rt -I $$(S)src/rt/isaac -I $$(S)src/rt/uthash \
                      -I $$(S)src/rt/arch/$$(HOST_$(1)) \
                      -I $$(S)src/rt/linenoise \
                      -I $$(S)src/libuv/include
-RUNTIME_OBJS_$(1) := $$(RUNTIME_CXXS_$(1):rt/%.cpp=rt/$(1)/%.o) \
-                     $$(RUNTIME_CS_$(1):rt/%.c=rt/$(1)/%.o) \
-                     $$(RUNTIME_S_$(1):rt/%.S=rt/$(1)/%.o)
-ALL_OBJ_FILES += $$(RUNTIME_OBJS_$(1))
+RUNTIME_OBJS_$(1)_$(2) := $$(RUNTIME_CXXS_$(1)_$(2):rt/%.cpp=rt/$(1)/stage$(2)/%.o) \
+                     $$(RUNTIME_CS_$(1)_$(2):rt/%.c=rt/$(1)/stage$(2)/%.o) \
+                     $$(RUNTIME_S_$(1)_$(2):rt/%.S=rt/$(1)/stage$(2)/%.o)
+ALL_OBJ_FILES += $$(RUNTIME_OBJS_$(1)_$(2))
 
-MORESTACK_OBJ_$(1) := rt/$(1)/arch/$$(HOST_$(1))/morestack.o
-ALL_OBJ_FILES += $$(MORESTACK_OBJS_$(1))
+MORESTACK_OBJ_$(1)_$(2) := rt/$(1)/stage$(2)/arch/$$(HOST_$(1))/morestack.o
+ALL_OBJ_FILES += $$(MORESTACK_OBJS_$(1)_$(2))
 
-RUNTIME_LIBS_$(1) := $$(LIBUV_LIB_$(1))
+RUNTIME_LIBS_$(1)_$(2) := $$(LIBUV_LIB_$(1)_$(2))
 
-rt/$(1)/%.o: rt/%.cpp $$(MKFILE_DEPS)
+rt/$(1)/stage$(2)/%.o: rt/%.cpp $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
-	$$(Q)$$(call CFG_COMPILE_CXX_$(1), $$@, $$(RUNTIME_INCS_$(1)) \
-                 $$(SNAP_DEFINES)) $$<
+	$$(Q)$$(call CFG_COMPILE_CXX_$(1), $$@, $$(RUNTIME_INCS_$(1)_$(2)) \
+                 $$(SNAP_DEFINES) $$(RUNTIME_CXXFLAGS_$(1)_$(2))) $$<
 
-rt/$(1)/%.o: rt/%.c $$(MKFILE_DEPS)
+rt/$(1)/stage$(2)/%.o: rt/%.c $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
-	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(RUNTIME_INCS_$(1)) \
-                 $$(SNAP_DEFINES)) $$<
+	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(RUNTIME_INCS_$(1)_$(2)) \
+                 $$(SNAP_DEFINES) $$(RUNTIME_CFLAGS_$(1)_$(2))) $$<
 
-rt/$(1)/%.o: rt/%.S  $$(MKFILE_DEPS) \
+rt/$(1)/stage$(2)/%.o: rt/%.S  $$(MKFILE_DEPS) \
                      $$(LLVM_CONFIG_$$(CFG_BUILD_TRIPLE))
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_ASSEMBLE_$(1),$$@,$$<)
 
-rt/$(1)/arch/$$(HOST_$(1))/libmorestack.a: $$(MORESTACK_OBJ_$(1))
+rt/$(1)/stage$(2)/arch/$$(HOST_$(1))/libmorestack.a: $$(MORESTACK_OBJ_$(1)_$(2))
 	@$$(call E, link: $$@)
 	$$(Q)$(AR_$(1)) rcs $$@ $$<
 
-rt/$(1)/$(CFG_RUNTIME_$(1)): $$(RUNTIME_OBJS_$(1)) $$(MKFILE_DEPS) \
-                        $$(RUNTIME_DEF_$(1)) \
-                        $$(RUNTIME_LIBS_$(1))
+rt/$(1)/stage$(2)/$(CFG_RUNTIME_$(1)): $$(RUNTIME_OBJS_$(1)_$(2)) $$(MKFILE_DEPS) \
+                        $$(RUNTIME_DEF_$(1)_$(2)) \
+                        $$(RUNTIME_LIBS_$(1)_$(2))
 	@$$(call E, link: $$@)
-	$$(Q)$$(call CFG_LINK_CXX_$(1),$$@, $$(RUNTIME_OBJS_$(1)) \
-	  $$(CFG_GCCISH_POST_LIB_FLAGS_$(1)) $$(RUNTIME_LIBS_$(1)) \
-	  $$(CFG_LIBUV_LINK_FLAGS_$(1)),$$(RUNTIME_DEF_$(1)),$$(CFG_RUNTIME_$(1)))
+	$$(Q)$$(call CFG_LINK_CXX_$(1),$$@, $$(RUNTIME_OBJS_$(1)_$(2)) \
+	  $$(CFG_GCCISH_POST_LIB_FLAGS_$(1)) $$(RUNTIME_LIBS_$(1)_$(2)) \
+	  $$(CFG_LIBUV_LINK_FLAGS_$(1)),$$(RUNTIME_DEF_$(1)_$(2)),$$(CFG_RUNTIME_$(1)))
 
 # FIXME: For some reason libuv's makefiles can't figure out the
 # correct definition of CC on the mingw I'm using, so we are
@@ -165,13 +170,13 @@ endif
 
 # XXX: Shouldn't need platform-specific conditions here
 ifdef CFG_WINDOWSY_$(1)
-$$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
+$$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
-		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
+		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/libuv" \
 		OS=mingw \
 		V=$$(VERBOSE)
 else ifeq ($(OSTYPE_$(1)), linux-androideabi)
-$$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
+$$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
 		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
 		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
@@ -179,18 +184,18 @@ $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
 		BUILDTYPE=Release \
-		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
+		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/libuv" \
 		host=android OS=linux \
 		V=$$(VERBOSE)
 else
-$$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
+$$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv/ \
 		CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
 		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
 		CC="$$(CC_$(1))" \
 		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
-		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/libuv" \
+		builddir_name="$$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/libuv" \
 		V=$$(VERBOSE)
 endif
 
@@ -229,5 +234,6 @@ endif
 endef
 
 # Instantiate template for all stages
-$(foreach target,$(CFG_TARGET_TRIPLES), \
- $(eval $(call DEF_RUNTIME_TARGETS,$(target))))
+$(foreach stage,$(STAGES), \
+	$(foreach target,$(CFG_TARGET_TRIPLES), \
+	 $(eval $(call DEF_RUNTIME_TARGETS,$(target),$(stage)))))
