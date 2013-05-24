@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -18,11 +18,11 @@ fn main() {
     let arc_v = arc::ARC(v);
 
     do task::spawn() {
-        let v = *arc::get(&arc_v);
+        let v = arc_v.get();
         assert_eq!(v[3], 4);
     };
 
-    assert_eq!((*arc::get(&arc_v))[2], 3);
+    assert_eq!((arc_v.get())[2], 3);
 
     info!(arc_v);
 }
