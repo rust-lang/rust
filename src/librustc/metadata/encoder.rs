@@ -989,6 +989,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_family(ebml_w, 't');
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
         encode_name(ecx, ebml_w, item.ident);
+        encode_attributes(ebml_w, item.attrs);
         for v in (*enum_definition).variants.iter() {
             encode_variant_id(ebml_w, local_def(v.node.id));
         }
