@@ -63,6 +63,7 @@ pub struct MethodData {
     llself: ValueRef,
     self_ty: ty::t,
     self_mode: ty::SelfMode,
+    explicit_self: ast::explicit_self_
 }
 
 pub enum CalleeData {
@@ -565,7 +566,8 @@ pub fn trans_call_inner(in_cx: block,
         // Now that the arguments have finished evaluating, we need to revoke
         // the cleanup for the self argument, if it exists
         match callee.data {
-            Method(d) if d.self_mode == ty::ByCopy => {
+            Method(d) if d.self_mode == ty::ByCopy ||
+                         d.explicit_self == ast::sty_value => {
                 revoke_clean(bcx, d.llself);
             }
             _ => {}
@@ -687,6 +689,7 @@ pub fn trans_args(cx: block,
                 trans_arg_expr(bcx,
                                arg_tys[i],
                                ty::ByCopy,
+                               ast::sty_static,
                                *arg_expr,
                                &mut temp_cleanups,
                                if i == last { ret_flag } else { None },
@@ -720,6 +723,7 @@ pub enum AutorefArg {
 pub fn trans_arg_expr(bcx: block,
                       formal_arg_ty: ty::t,
                       self_mode: ty::SelfMode,
+                      ex_self: ast::explicit_self_,
                       arg_expr: @ast::expr,
                       temp_cleanups: &mut ~[ValueRef],
                       ret_flag: Option<ValueRef>,
@@ -727,9 +731,10 @@ pub fn trans_arg_expr(bcx: block,
     let _icx = push_ctxt("trans_arg_expr");
     let ccx = bcx.ccx();
 
-    debug!("trans_arg_expr(formal_arg_ty=(%s), self_mode=%?, arg_expr=%s, \
+    debug!("trans_arg_expr(formal_arg_ty=(%s), explicit_self=%? self_mode=%?, arg_expr=%s, \
             ret_flag=%?)",
            formal_arg_ty.repr(bcx.tcx()),
+           ex_self,
            self_mode,
            arg_expr.repr(bcx.tcx()),
            ret_flag.map(|v| bcx.val_to_str(*v)));
@@ -789,8 +794,26 @@ pub fn trans_arg_expr(bcx: block,
                 val = arg_datum.to_ref_llval(bcx);
             }
             DontAutorefArg => {
-                match self_mode {
-                    ty::ByRef => {
+                match (self_mode, ex_self) {
+                    (ty::ByRef, ast::sty_value) => {
+                        debug!("by value self with type %s, storing to scratch",
+                               bcx.ty_to_str(arg_datum.ty));
+                        let scratch = scratch_datum(bcx, arg_datum.ty, false);
+
+                        arg_datum.store_to_datum(bcx,
+                                                 arg_expr.id,
+                                                 INIT,
+                                                 scratch);
+
+                        // Technically, ownership of val passes to the callee.
+                        // However, we must cleanup should we fail before the
+                        // callee is actually invoked.
+                        scratch.add_clean(bcx);
+                        temp_cleanups.push(scratch.val);
+
+                        val = scratch.to_ref_llval(bcx);
+                    }
+                    (ty::ByRef, _) => {
                         // This assertion should really be valid, but because
                         // the explicit self code currently passes by-ref, it
                         // does not hold.
@@ -801,7 +824,7 @@ pub fn trans_arg_expr(bcx: block,
                                bcx.ty_to_str(arg_datum.ty));
                         val = arg_datum.to_ref_llval(bcx);
                     }
-                    ty::ByCopy => {
+                    (ty::ByCopy, _) => {
                         if ty::type_needs_drop(bcx.tcx(), arg_datum.ty) ||
                                 arg_datum.appropriate_mode().is_by_ref() {
                             debug!("by copy arg with type %s, storing to scratch",
