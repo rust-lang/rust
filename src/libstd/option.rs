@@ -54,19 +54,10 @@ use clone::DeepClone;
 #[cfg(test)] use str;
 
 /// The option type
-#[deriving(Clone, Eq)]
+#[deriving(Clone, DeepClone, Eq)]
 pub enum Option<T> {
     None,
     Some(T),
-}
-
-impl<T: DeepClone> DeepClone for Option<T> {
-    fn deep_clone(&self) -> Option<T> {
-        match *self {
-            Some(ref x) => Some(x.deep_clone()),
-            None => None
-        }
-    }
 }
 
 impl<T:Ord> Ord for Option<T> {
