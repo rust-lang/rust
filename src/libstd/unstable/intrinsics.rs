@@ -31,7 +31,6 @@ A quick refresher on memory ordering:
   with atomic types and is equivalent to Java's `volatile`.
 
 */
-
 #[abi = "rust-intrinsic"]
 pub extern "rust-intrinsic" {
 
@@ -127,6 +126,13 @@ pub extern "rust-intrinsic" {
 
     /// Get the address of the `__morestack` stack growth function.
     pub fn morestack_addr() -> *();
+
+    /// Equivalent to the `llvm.memcpy.p0i8.0i8.i32` intrinsic.
+    #[cfg(not(stage0))]
+    pub fn memcpy32(dst: *mut u8, src: *u8, size: u32);
+    /// Equivalent to the `llvm.memcpy.p0i8.0i8.i64` intrinsic.
+    #[cfg(not(stage0))]
+    pub fn memcpy64(dst: *mut u8, src: *u8, size: u64);
 
     /// Equivalent to the `llvm.memmove.p0i8.0i8.i32` intrinsic.
     pub fn memmove32(dst: *mut u8, src: *u8, size: u32);

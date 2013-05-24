@@ -51,7 +51,18 @@ pub fn with<T,R>(
 #[inline(always)]
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
-        swap_ptr(ptr::to_mut_unsafe_ptr(x), ptr::to_mut_unsafe_ptr(y));
+        // Give ourselves some scratch space to work with
+        let mut tmp: T = intrinsics::uninit();
+        let t: *mut T = &mut tmp;
+
+        // Perform the swap, `&mut` pointers never alias
+        ptr::copy_nonoverlapping_memory(t, x, 1);
+        ptr::copy_nonoverlapping_memory(x, y, 1);
+        ptr::copy_nonoverlapping_memory(y, t, 1);
+
+        // y and t now point to the same thing, but we need to completely forget `tmp`
+        // because it's no longer relevant.
+        cast::forget(tmp);
     }
 }
 
@@ -61,18 +72,16 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
  */
 #[inline]
 pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
-    if x == y { return }
-
     // Give ourselves some scratch space to work with
     let mut tmp: T = intrinsics::uninit();
-    let t = ptr::to_mut_unsafe_ptr(&mut tmp);
+    let t: *mut T = &mut tmp;
 
     // Perform the swap
     ptr::copy_memory(t, x, 1);
     ptr::copy_memory(x, y, 1);
     ptr::copy_memory(y, t, 1);
 
-    // y and t now point to the same thing, but we need to completely forget t
+    // y and t now point to the same thing, but we need to completely forget `tmp`
     // because it's no longer relevant.
     cast::forget(tmp);
 }
