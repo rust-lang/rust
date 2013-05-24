@@ -197,7 +197,7 @@ pub fn scratch_datum(bcx: block, ty: ty::t, zero: bool) -> Datum {
     Datum { val: scratch, ty: ty, mode: ByRef, source: RevokeClean }
 }
 
-pub fn appropriate_mode(ty: ty::t) -> DatumMode {
+pub fn appropriate_mode(tcx: ty::ctxt, ty: ty::t) -> DatumMode {
     /*!
     *
     * Indicates the "appropriate" mode for this value,
@@ -206,7 +206,7 @@ pub fn appropriate_mode(ty: ty::t) -> DatumMode {
 
     if ty::type_is_nil(ty) || ty::type_is_bot(ty) {
         ByValue
-    } else if ty::type_is_immediate(ty) {
+    } else if ty::type_is_immediate(tcx, ty) {
         ByValue
     } else {
         ByRef
@@ -476,10 +476,10 @@ pub impl Datum {
         }
     }
 
-    fn appropriate_mode(&self) -> DatumMode {
+    fn appropriate_mode(&self, tcx: ty::ctxt) -> DatumMode {
         /*! See the `appropriate_mode()` function */
 
-        appropriate_mode(self.ty)
+        appropriate_mode(tcx, self.ty)
     }
 
     fn to_appropriate_llval(&self, bcx: block) -> ValueRef {
@@ -487,7 +487,7 @@ pub impl Datum {
          *
          * Yields an llvalue with the `appropriate_mode()`. */
 
-        match self.appropriate_mode() {
+        match self.appropriate_mode(bcx.tcx()) {
             ByValue => self.to_value_llval(bcx),
             ByRef => self.to_ref_llval(bcx)
         }
@@ -498,7 +498,7 @@ pub impl Datum {
          *
          * Yields a datum with the `appropriate_mode()`. */
 
-        match self.appropriate_mode() {
+        match self.appropriate_mode(bcx.tcx()) {
             ByValue => self.to_value_datum(bcx),
             ByRef => self.to_ref_datum(bcx)
         }
@@ -622,13 +622,7 @@ pub impl Datum {
                     ByValue => {
                         // Actually, this case cannot happen right
                         // now, because enums are never immediate.
-                        // But in principle newtype'd immediate
-                        // values should be immediate, and in that
-                        // case the * would be a no-op except for
-                        // changing the type, so I am putting this
-                        // code in place here to do the right
-                        // thing if this change ever goes through.
-                        assert!(ty::type_is_immediate(ty));
+                        assert!(ty::type_is_immediate(bcx.tcx(), ty));
                         (Some(Datum {ty: ty, ..*self}), bcx)
                     }
                 };
@@ -661,14 +655,7 @@ pub impl Datum {
                         )
                     }
                     ByValue => {
-                        // Actually, this case cannot happen right now,
-                        // because structs are never immediate. But in
-                        // principle, newtype'd immediate values should be
-                        // immediate, and in that case the * would be a no-op
-                        // except for changing the type, so I am putting this
-                        // code in place here to do the right thing if this
-                        // change ever goes through.
-                        assert!(ty::type_is_immediate(ty));
+                        assert!(ty::type_is_immediate(bcx.tcx(), ty));
                         (Some(Datum {ty: ty, ..*self}), bcx)
                     }
                 }

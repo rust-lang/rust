@@ -379,7 +379,7 @@ pub fn make_mono_id(ccx: @CrateContext,
                             let llty = type_of::type_of(ccx, subst);
                             let size = machine::llbitsize_of_real(ccx, llty);
                             let align = machine::llalign_of_pref(ccx, llty);
-                            let mode = datum::appropriate_mode(subst);
+                            let mode = datum::appropriate_mode(ccx.tcx, subst);
                             let data_class = mono_data_classify(subst);
 
                             // Special value for nil to prevent problems
