@@ -18,13 +18,13 @@
 define TARGET_STAGE_N
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a: \
-		rt/$(2)/arch/$$(HOST_$(2))/libmorestack.a \
+		rt/$(2)/stage$(1)/arch/$$(HOST_$(2))/libmorestack.a \
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUNTIME_$(2)): \
-		rt/$(2)/$(CFG_RUNTIME_$(2)) \
+		rt/$(2)/stage$(1)/$(CFG_RUNTIME_$(2)) \
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
