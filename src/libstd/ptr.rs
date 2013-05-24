@@ -27,12 +27,6 @@ pub mod libc_ {
     #[abi = "cdecl"]
     pub extern {
         #[rust_stack]
-        unsafe fn memmove(dest: *mut c_void,
-                          src: *const c_void,
-                          n: libc::size_t)
-                       -> *c_void;
-
-        #[rust_stack]
         unsafe fn memset(dest: *mut c_void,
                          c: libc::c_int,
                          len: libc::size_t)
@@ -97,15 +91,28 @@ pub fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
  * and destination may overlap.
  */
 #[inline(always)]
-#[cfg(target_word_size = "32")]
+#[cfg(target_word_size = "32", stage0)]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     use unstable::intrinsics::memmove32;
     let n = count * sys::size_of::<T>();
     memmove32(dst as *mut u8, src as *u8, n as u32);
 }
 
+/**
+ * Copies data from one location to another
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may overlap.
+ */
 #[inline(always)]
-#[cfg(target_word_size = "64")]
+#[cfg(target_word_size = "32", not(stage0))]
+pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
+    use unstable::intrinsics::memmove32;
+    memmove32(dst, src, count as u32);
+}
+
+#[inline(always)]
+#[cfg(target_word_size = "64", stage0)]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     use unstable::intrinsics::memmove64;
     let n = count * sys::size_of::<T>();
@@ -113,25 +120,40 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
 }
 
 #[inline(always)]
-#[cfg(target_word_size = "32")]
-pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    #[cfg(stage0)]
-    use memcpy32 = unstable::intrinsics::memmove32;
-    #[cfg(not(stage0))]
-    use unstable::intrinsics::memcpy32;
-    let n = count * sys::size_of::<T>();
-    memcpy32(dst as *mut u8, src as *u8, n as u32);
+#[cfg(target_word_size = "64", not(stage0))]
+pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
+    use unstable::intrinsics::memmove64;
+    memmove64(dst, src as *T, count as u64);
 }
 
 #[inline(always)]
-#[cfg(target_word_size = "64")]
+#[cfg(target_word_size = "32", stage0)]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    #[cfg(stage0)]
-    use memcpy64 = unstable::intrinsics::memmove64;
-    #[cfg(not(stage0))]
-    use unstable::intrinsics::memcpy64;
+    use unstable::intrinsics::memmove32;
     let n = count * sys::size_of::<T>();
-    memcpy64(dst as *mut u8, src as *u8, n as u64);
+    memmove32(dst as *mut u8, src as *u8, n as u32);
+}
+
+#[inline(always)]
+#[cfg(target_word_size = "32", not(stage0))]
+pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
+    use unstable::intrinsics::memcpy32;
+    memcpy32(dst, src as *T, count as u32);
+}
+
+#[inline(always)]
+#[cfg(target_word_size = "64", stage0)]
+pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
+    use unstable::intrinsics::memmove64;
+    let n = count * sys::size_of::<T>();
+    memmove64(dst as *mut u8, src as *u8, n as u64);
+}
+
+#[inline(always)]
+#[cfg(target_word_size = "64", not(stage0))]
+pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
+    use unstable::intrinsics::memcpy64;
+    memcpy64(dst, src as *T, count as u64);
 }
 
 #[inline(always)]

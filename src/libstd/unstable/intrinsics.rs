@@ -127,17 +127,30 @@ pub extern "rust-intrinsic" {
     /// Get the address of the `__morestack` stack growth function.
     pub fn morestack_addr() -> *();
 
-    /// Equivalent to the `llvm.memcpy.p0i8.0i8.i32` intrinsic.
+    /// Equivalent to the `llvm.memcpy.p0i8.0i8.i32` intrinsic, with a size of
+    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
     #[cfg(not(stage0))]
-    pub fn memcpy32(dst: *mut u8, src: *u8, size: u32);
-    /// Equivalent to the `llvm.memcpy.p0i8.0i8.i64` intrinsic.
+    pub fn memcpy32<T>(dst: *mut T, src: *T, count: u32);
+    /// Equivalent to the `llvm.memcpy.p0i8.0i8.i64` intrinsic, with a size of
+    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
     #[cfg(not(stage0))]
-    pub fn memcpy64(dst: *mut u8, src: *u8, size: u64);
+    pub fn memcpy64<T>(dst: *mut T, src: *T, count: u64);
 
     /// Equivalent to the `llvm.memmove.p0i8.0i8.i32` intrinsic.
+    #[cfg(stage0)]
     pub fn memmove32(dst: *mut u8, src: *u8, size: u32);
     /// Equivalent to the `llvm.memmove.p0i8.0i8.i64` intrinsic.
+    #[cfg(stage0)]
     pub fn memmove64(dst: *mut u8, src: *u8, size: u64);
+
+    /// Equivalent to the `llvm.memmove.p0i8.0i8.i32` intrinsic, with a size of
+    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
+    #[cfg(not(stage0))]
+    pub fn memmove32<T>(dst: *mut T, src: *T, count: u32);
+    /// Equivalent to the `llvm.memmove.p0i8.0i8.i64` intrinsic, with a size of
+    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
+    #[cfg(not(stage0))]
+    pub fn memmove64<T>(dst: *mut T, src: *T, count: u64);
 
     pub fn sqrtf32(x: f32) -> f32;
     pub fn sqrtf64(x: f64) -> f64;
