@@ -39,11 +39,11 @@ struct AllocHeader { priv opaque: () }
 struct MemoryRegion { priv opaque: () }
 
 #[cfg(target_arch="x86")]
-#[cfg(target_arch="arm")]
 struct Registers {
     data: [u32, ..16]
 }
 
+#[cfg(target_arch="arm")]
 #[cfg(target_arch="mips")]
 struct Registers {
     data: [u32, ..32]
