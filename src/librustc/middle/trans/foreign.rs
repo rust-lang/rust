@@ -845,6 +845,26 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                                              T_ptr(T_nil()));
             Store(bcx, morestack_addr, fcx.llretptr.get());
         }
+        ~"memcpy32" => {
+            let dst_ptr = get_param(decl, first_real_arg);
+            let src_ptr = get_param(decl, first_real_arg + 1);
+            let size = get_param(decl, first_real_arg + 2);
+            let align = C_i32(1);
+            let volatile = C_i1(false);
+            let llfn = *bcx.ccx().intrinsics.get(
+                &~"llvm.memcpy.p0i8.p0i8.i32");
+            Call(bcx, llfn, [dst_ptr, src_ptr, size, align, volatile]);
+        }
+        ~"memcpy64" => {
+            let dst_ptr = get_param(decl, first_real_arg);
+            let src_ptr = get_param(decl, first_real_arg + 1);
+            let size = get_param(decl, first_real_arg + 2);
+            let align = C_i32(1);
+            let volatile = C_i1(false);
+            let llfn = *bcx.ccx().intrinsics.get(
+                &~"llvm.memcpy.p0i8.p0i8.i64");
+            Call(bcx, llfn, [dst_ptr, src_ptr, size, align, volatile]);
+        }
         ~"memmove32" => {
             let dst_ptr = get_param(decl, first_real_arg);
             let src_ptr = get_param(decl, first_real_arg + 1);

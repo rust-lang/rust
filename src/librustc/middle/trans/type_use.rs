@@ -135,7 +135,7 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                 ~"visit_tydesc"  | ~"forget" | ~"frame_address" |
                 ~"morestack_addr" => 0,
 
-                ~"memmove32" | ~"memmove64" => 0,
+                ~"memcpy32" | ~"memcpy64" | ~"memmove32" | ~"memmove64" => 0,
 
                 ~"sqrtf32" | ~"sqrtf64" | ~"powif32" | ~"powif64" |
                 ~"sinf32"  | ~"sinf64"  | ~"cosf32"  | ~"cosf64"  |
