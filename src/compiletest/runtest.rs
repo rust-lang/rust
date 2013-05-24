@@ -25,7 +25,7 @@ use util::logv;
 pub fn run(config: config, testfile: ~str) {
     if config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
-        io::stdout().write_str(~"\n\n");
+        io::stdout().write_str("\n\n");
     }
     let testfile = Path(testfile);
     debug!("running %s", testfile.to_str());
@@ -231,7 +231,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     // do not optimize debuginfo tests
     let mut config = match config.rustcflags {
         Some(ref flags) => config {
-            rustcflags: Some(str::replace(*flags, ~"-O", ~"")),
+            rustcflags: Some(str::replace(*flags, "-O", "")),
             .. copy *config
         },
         None => copy *config
@@ -249,19 +249,19 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     // write debugger script
     let script_str = str::append(cmds, "\nquit\n");
     debug!("script_str = %s", script_str);
-    dump_output_file(config, testfile, script_str, ~"debugger.script");
+    dump_output_file(config, testfile, script_str, "debugger.script");
 
     // run debugger script with gdb
     #[cfg(windows)]
     fn debugger() -> ~str { ~"gdb.exe" }
     #[cfg(unix)]
     fn debugger() -> ~str { ~"gdb" }
-    let debugger_script = make_out_name(config, testfile, ~"debugger.script");
+    let debugger_script = make_out_name(config, testfile, "debugger.script");
     let debugger_opts = ~[~"-quiet", ~"-batch", ~"-nx",
                           ~"-command=" + debugger_script.to_str(),
                           make_exe_name(config, testfile).to_str()];
     let ProcArgs = ProcArgs {prog: debugger(), args: debugger_opts};
-    ProcRes = compose_and_run(config, testfile, ProcArgs, ~[], ~"", None);
+    ProcRes = compose_and_run(config, testfile, ProcArgs, ~[], "", None);
     if ProcRes.status != 0 {
         fatal(~"gdb failed to execute");
     }
@@ -368,7 +368,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         }
 
         // ignore this msg which gets printed at the end
-        if str::contains(line, ~"aborting due to") {
+        if str::contains(line, "aborting due to") {
             was_expected = true;
         }
 
@@ -643,7 +643,7 @@ fn program_output(config: &config, testfile: &Path, lib_path: &str, prog: ~str,
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 fn make_cmdline(_libpath: &str, prog: &str, args: &[~str]) -> ~str {
-    fmt!("%s %s", prog, str::connect(args, ~" "))
+    fmt!("%s %s", prog, str::connect(args, " "))
 }
 
 #[cfg(target_os = "win32")]
@@ -668,7 +668,7 @@ fn dump_output_file(config: &config, testfile: &Path,
                     out: &str, extension: &str) {
     let outfile = make_out_name(config, testfile, extension);
     let writer =
-        io::file_writer(&outfile, ~[io::Create, io::Truncate]).get();
+        io::file_writer(&outfile, [io::Create, io::Truncate]).get();
     writer.write_str(out);
 }
 
@@ -692,8 +692,8 @@ fn output_base_name(config: &config, testfile: &Path) -> Path {
 
 fn maybe_dump_to_stdout(config: &config, out: &str, err: &str) {
     if config.verbose {
-        let sep1 = fmt!("------%s------------------------------", ~"stdout");
-        let sep2 = fmt!("------%s------------------------------", ~"stderr");
+        let sep1 = fmt!("------%s------------------------------", "stdout");
+        let sep2 = fmt!("------%s------------------------------", "stderr");
         let sep3 = ~"------------------------------------------";
         io::stdout().write_line(sep1);
         io::stdout().write_line(out);
@@ -781,10 +781,10 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     newargs_err.push(newcmd_err);
 
     let procsrv::Result{ out: out_out, err: _out_err, status: out_status } =
-            procsrv::run(~"", config.adb_path, newargs_out, ~[(~"",~"")],
+            procsrv::run("", config.adb_path, newargs_out, ~[(~"",~"")],
                          Some(~""));
     let procsrv::Result{ out: err_out, err: _err_err, status: _err_status } =
-            procsrv::run(~"", config.adb_path, newargs_err, ~[(~"",~"")],
+            procsrv::run("", config.adb_path, newargs_err, ~[(~"",~"")],
                          Some(~""));
 
     dump_output(config, testfile, out_out, err_out);
@@ -818,8 +818,8 @@ fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
 
         if (file.filetype() == Some(~".so")) {
 
-            let copy_result = procsrv::run(~"", config.adb_path,
-                ~[~"push", file.to_str(), copy config.adb_test_dir],
+            let copy_result = procsrv::run("", config.adb_path,
+                [~"push", file.to_str(), copy config.adb_test_dir],
                 ~[(~"",~"")], Some(~""));
 
             if config.verbose {

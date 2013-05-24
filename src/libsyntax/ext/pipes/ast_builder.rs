@@ -15,11 +15,9 @@
 
 use core::prelude::*;
 
-use abi::AbiSet;
 use ast::ident;
 use ast;
 use codemap::span;
-// use ext::quote::rt::*;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {

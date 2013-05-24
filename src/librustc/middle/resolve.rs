@@ -535,7 +535,7 @@ pub impl NameBindings {
                        parent_link: ParentLink,
                        def_id: Option<def_id>,
                        kind: ModuleKind,
-                       sp: span) {
+                       _sp: span) {
         match self.type_def {
             None => {
                 let module = @mut Module(parent_link, def_id, kind);
@@ -2586,8 +2586,8 @@ pub impl Resolver {
                                         (ImportSearch, ImplModuleKind) => {
                                             self.session.span_err(
                                                 span,
-                                                ~"cannot import from a trait \
-                                                  or type implementation");
+                                                "cannot import from a trait \
+                                                 or type implementation");
                                             return Failed;
                                         }
                                         (_, _) => search_module = module_def,

@@ -10,7 +10,6 @@
 
 use core::prelude::*;
 
-use driver::session::Session;
 use driver::session;
 use middle::ty;
 use middle::pat_util;

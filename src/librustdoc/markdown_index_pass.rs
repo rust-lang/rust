@@ -193,21 +193,21 @@ mod test {
 
     #[test]
     fn should_remove_punctuation_from_headers() {
-        assert!(pandoc_header_id(~"impl foo of bar<A>") ==
+        assert!(pandoc_header_id("impl foo of bar<A>") ==
                 ~"impl-foo-of-bara");
-        assert!(pandoc_header_id(~"impl of num::num for int")
+        assert!(pandoc_header_id("impl of num::num for int")
                 == ~"impl-of-numnum-for-int");
-        assert!(pandoc_header_id(~"impl of num::num for int/&")
+        assert!(pandoc_header_id("impl of num::num for int/&")
                 == ~"impl-of-numnum-for-int");
-        assert!(pandoc_header_id(~"impl of num::num for ^int")
+        assert!(pandoc_header_id("impl of num::num for ^int")
                 == ~"impl-of-numnum-for-int");
-        assert!(pandoc_header_id(~"impl for & condvar")
+        assert!(pandoc_header_id("impl for & condvar")
                 == ~"impl-for-condvar");
-        assert!(pandoc_header_id(~"impl of Select<T, U> for (Left, Right)")
+        assert!(pandoc_header_id("impl of Select<T, U> for (Left, Right)")
                 == ~"impl-of-selectt-u-for-left-right");
-        assert!(pandoc_header_id(~"impl of Condition<'self, T, U>")
+        assert!(pandoc_header_id("impl of Condition<'self, T, U>")
                 == ~"impl-of-conditionself-t-u");
-        assert!(pandoc_header_id(~"impl of Condition<T: Copy + Clone>")
+        assert!(pandoc_header_id("impl of Condition<T: Copy + Clone>")
                 == ~"impl-of-conditiont-copy-clone");
     }
 

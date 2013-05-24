@@ -20,7 +20,6 @@ use super::context::Context;
 use super::task::Task;
 use rt::local_ptr;
 use rt::local::Local;
-use rt::rtio::IoFactoryObject;
 
 /// The Scheduler is responsible for coordinating execution of Coroutines
 /// on a single thread. When the scheduler is running it is owned by

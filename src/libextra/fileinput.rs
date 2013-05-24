@@ -96,8 +96,6 @@ total line count).
 
 use core::prelude::*;
 
-use core::io::ReaderUtil;
-
 /**
 A summary of the internal state of a `FileInput` object. `line_num`
 and `line_num_file` represent the number of lines read in total and in
@@ -407,7 +405,6 @@ pub fn input_vec_state(files: ~[Option<Path>],
 mod test {
     use core::prelude::*;
 
-    use core::io::WriterUtil;
     use super::{FileInput, pathify, input_vec, input_vec_state};
 
     fn make_file(path : &Path, contents: &[~str]) {
@@ -441,7 +438,7 @@ mod test {
 
         // 3 files containing 0\n, 1\n, and 2\n respectively
         for filenames.eachi |i, &filename| {
-            make_file(filename.get_ref(), ~[fmt!("%u", i)]);
+            make_file(filename.get_ref(), [fmt!("%u", i)]);
         }
 
         let fi = FileInput::from_vec(copy filenames);
@@ -471,7 +468,7 @@ mod test {
 
         // 3 files containing 1\n, 2\n, and 3\n respectively
         for filenames.eachi |i, &filename| {
-            make_file(filename.get_ref(), ~[fmt!("%u", i)]);
+            make_file(filename.get_ref(), [fmt!("%u", i)]);
         }
 
         let fi = FileInput::from_vec(filenames);
@@ -533,9 +530,9 @@ mod test {
             3,
             |i| fmt!("tmp/lib-fileinput-test-empty-files-%u.tmp", i)),true);
 
-        make_file(filenames[0].get_ref(), ~[~"1", ~"2"]);
-        make_file(filenames[1].get_ref(), ~[]);
-        make_file(filenames[2].get_ref(), ~[~"3", ~"4"]);
+        make_file(filenames[0].get_ref(), [~"1", ~"2"]);
+        make_file(filenames[1].get_ref(), []);
+        make_file(filenames[2].get_ref(), [~"3", ~"4"]);
 
         let mut count = 0;
         for input_vec_state(copy filenames) |line, state| {
@@ -580,7 +577,7 @@ mod test {
             make_file(&filename.get(), contents);
         }
 
-        let mut in = FileInput::from_vec(filenames);
+        let in = FileInput::from_vec(filenames);
 
         // read once from 0
         assert_eq!(in.read_line(), ~"0 1");

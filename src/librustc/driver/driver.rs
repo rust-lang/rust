@@ -30,7 +30,7 @@ use core::io;
 use core::os;
 use core::str;
 use core::vec;
-use extra::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
+use extra::getopts::groups::{optopt, optmulti, optflag, optflagopt};
 use extra::getopts::{opt_present};
 use extra::getopts;
 use syntax::ast;
@@ -942,7 +942,7 @@ mod test {
             @~"rustc", matches, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
         let cfg = build_configuration(sess, @~"whatever", &str_input(~""));
-        assert!((attr::contains_name(cfg, ~"test")));
+        assert!((attr::contains_name(cfg, "test")));
     }
 
     // When the user supplies --test and --cfg test, don't implicitly add
@@ -950,7 +950,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
-            &match getopts(~[~"--test", ~"--cfg=test"], optgroups()) {
+            &match getopts([~"--test", ~"--cfg=test"], optgroups()) {
               Ok(copy m) => m,
               Err(copy f) => {
                 fail!("test_switch_implies_cfg_test_unless_cfg_test: %s", getopts::fail_str(f));
@@ -960,7 +960,7 @@ mod test {
             @~"rustc", matches, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
         let cfg = build_configuration(sess, @~"whatever", &str_input(~""));
-        let test_items = attr::find_meta_items_by_name(cfg, ~"test");
+        let test_items = attr::find_meta_items_by_name(cfg, "test");
         assert_eq!(test_items.len(), 1u);
     }
 }

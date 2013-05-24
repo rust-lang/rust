@@ -33,7 +33,7 @@ impl Local for Scheduler {
 }
 
 impl Local for Task {
-    fn put(value: ~Task) { abort!("unimpl") }
+    fn put(_value: ~Task) { abort!("unimpl") }
     fn take() -> ~Task { abort!("unimpl") }
     fn exists() -> bool { abort!("unimpl") }
     fn borrow(f: &fn(&mut Task)) {
@@ -71,10 +71,10 @@ impl Local for Task {
 
 // XXX: This formulation won't work once ~IoFactoryObject is a real trait pointer
 impl Local for IoFactoryObject {
-    fn put(value: ~IoFactoryObject) { abort!("unimpl") }
+    fn put(_value: ~IoFactoryObject) { abort!("unimpl") }
     fn take() -> ~IoFactoryObject { abort!("unimpl") }
     fn exists() -> bool { abort!("unimpl") }
-    fn borrow(f: &fn(&mut IoFactoryObject)) { abort!("unimpl") }
+    fn borrow(_f: &fn(&mut IoFactoryObject)) { abort!("unimpl") }
     unsafe fn unsafe_borrow() -> *mut IoFactoryObject {
         let sched = Local::unsafe_borrow::<Scheduler>();
         let io: *mut IoFactoryObject = (*sched).event_loop.io().unwrap();

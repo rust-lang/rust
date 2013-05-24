@@ -137,7 +137,9 @@ type creader_cache = @mut HashMap<creader_cache_key, t>;
 
 impl to_bytes::IterBytes for creader_cache_key {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        to_bytes::iter_bytes_3(&self.cnum, &self.pos, &self.len, lsb0, f)
+        self.cnum.iter_bytes(lsb0, f) &&
+        self.pos.iter_bytes(lsb0, f) &&
+        self.len.iter_bytes(lsb0, f)
     }
 }
 
@@ -392,14 +394,19 @@ pub struct FnSig {
 
 impl to_bytes::IterBytes for BareFnTy {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        to_bytes::iter_bytes_3(&self.purity, &self.abis, &self.sig, lsb0, f)
+        self.purity.iter_bytes(lsb0, f) &&
+        self.abis.iter_bytes(lsb0, f) &&
+        self.sig.iter_bytes(lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for ClosureTy {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        to_bytes::iter_bytes_5(&self.purity, &self.sigil, &self.onceness,
-                               &self.region, &self.sig, lsb0, f)
+        self.purity.iter_bytes(lsb0, f) &&
+        self.sigil.iter_bytes(lsb0, f) &&
+        self.onceness.iter_bytes(lsb0, f) &&
+        self.region.iter_bytes(lsb0, f) &&
+        self.sig.iter_bytes(lsb0, f)
     }
 }
 
@@ -717,9 +724,15 @@ pub enum InferTy {
 impl to_bytes::IterBytes for InferTy {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
-          TyVar(ref tv) => to_bytes::iter_bytes_2(&0u8, tv, lsb0, f),
-          IntVar(ref iv) => to_bytes::iter_bytes_2(&1u8, iv, lsb0, f),
-          FloatVar(ref fv) => to_bytes::iter_bytes_2(&2u8, fv, lsb0, f),
+            TyVar(ref tv) => {
+                0u8.iter_bytes(lsb0, f) && tv.iter_bytes(lsb0, f)
+            }
+            IntVar(ref iv) => {
+                1u8.iter_bytes(lsb0, f) && iv.iter_bytes(lsb0, f)
+            }
+            FloatVar(ref fv) => {
+                2u8.iter_bytes(lsb0, f) && fv.iter_bytes(lsb0, f)
+            }
         }
     }
 }
@@ -733,8 +746,12 @@ pub enum InferRegion {
 impl to_bytes::IterBytes for InferRegion {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
-            ReVar(ref rv) => to_bytes::iter_bytes_2(&0u8, rv, lsb0, f),
-            ReSkolemized(ref v, _) => to_bytes::iter_bytes_2(&1u8, v, lsb0, f)
+            ReVar(ref rv) => {
+                0u8.iter_bytes(lsb0, f) && rv.iter_bytes(lsb0, f)
+            }
+            ReSkolemized(ref v, _) => {
+                1u8.iter_bytes(lsb0, f) && v.iter_bytes(lsb0, f)
+            }
         }
     }
 }
@@ -2626,119 +2643,115 @@ impl cmp::TotalEq for bound_region {
 impl to_bytes::IterBytes for vstore {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
-          vstore_fixed(ref u) =>
-          to_bytes::iter_bytes_2(&0u8, u, lsb0, f),
+            vstore_fixed(ref u) => {
+                0u8.iter_bytes(lsb0, f) && u.iter_bytes(lsb0, f)
+            }
+            vstore_uniq => 1u8.iter_bytes(lsb0, f),
+            vstore_box => 2u8.iter_bytes(lsb0, f),
 
-          vstore_uniq => 1u8.iter_bytes(lsb0, f),
-          vstore_box => 2u8.iter_bytes(lsb0, f),
-
-          vstore_slice(ref r) =>
-          to_bytes::iter_bytes_2(&3u8, r, lsb0, f),
+            vstore_slice(ref r) => {
+                3u8.iter_bytes(lsb0, f) && r.iter_bytes(lsb0, f)
+            }
         }
     }
 }
 
 impl to_bytes::IterBytes for substs {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-          to_bytes::iter_bytes_3(&self.self_r,
-                                 &self.self_ty,
-                                 &self.tps, lsb0, f)
+        self.self_r.iter_bytes(lsb0, f) &&
+        self.self_ty.iter_bytes(lsb0, f) &&
+        self.tps.iter_bytes(lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for mt {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-          to_bytes::iter_bytes_2(&self.ty,
-                                 &self.mutbl, lsb0, f)
+        self.ty.iter_bytes(lsb0, f) && self.mutbl.iter_bytes(lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for field {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-          to_bytes::iter_bytes_2(&self.ident,
-                                 &self.mt, lsb0, f)
+        self.ident.iter_bytes(lsb0, f) && self.mt.iter_bytes(lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for FnSig {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        to_bytes::iter_bytes_2(&self.inputs,
-                               &self.output,
-                               lsb0, f)
+        self.inputs.iter_bytes(lsb0, f) && self.output.iter_bytes(lsb0, f)
     }
 }
 
 impl to_bytes::IterBytes for sty {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
-          ty_nil => 0u8.iter_bytes(lsb0, f),
-          ty_bool => 1u8.iter_bytes(lsb0, f),
+            ty_nil => 0u8.iter_bytes(lsb0, f),
+            ty_bool => 1u8.iter_bytes(lsb0, f),
 
-          ty_int(ref t) =>
-          to_bytes::iter_bytes_2(&2u8, t, lsb0, f),
+            ty_int(ref t) => 2u8.iter_bytes(lsb0, f) && t.iter_bytes(lsb0, f),
 
-          ty_uint(ref t) =>
-          to_bytes::iter_bytes_2(&3u8, t, lsb0, f),
+            ty_uint(ref t) => 3u8.iter_bytes(lsb0, f) && t.iter_bytes(lsb0, f),
 
-          ty_float(ref t) =>
-          to_bytes::iter_bytes_2(&4u8, t, lsb0, f),
+            ty_float(ref t) => 4u8.iter_bytes(lsb0, f) && t.iter_bytes(lsb0, f),
 
-          ty_estr(ref v) =>
-          to_bytes::iter_bytes_2(&5u8, v, lsb0, f),
+            ty_estr(ref v) => 5u8.iter_bytes(lsb0, f) && v.iter_bytes(lsb0, f),
 
-          ty_enum(ref did, ref substs) =>
-          to_bytes::iter_bytes_3(&6u8, did, substs, lsb0, f),
+            ty_enum(ref did, ref substs) => {
+                6u8.iter_bytes(lsb0, f) &&
+                did.iter_bytes(lsb0, f) &&
+                substs.iter_bytes(lsb0, f)
+            }
 
-          ty_box(ref mt) =>
-          to_bytes::iter_bytes_2(&7u8, mt, lsb0, f),
+            ty_box(ref mt) => 7u8.iter_bytes(lsb0, f) && mt.iter_bytes(lsb0, f),
 
-          ty_evec(ref mt, ref v) =>
-          to_bytes::iter_bytes_3(&8u8, mt, v, lsb0, f),
+            ty_evec(ref mt, ref v) => {
+                8u8.iter_bytes(lsb0, f) &&
+                mt.iter_bytes(lsb0, f) &&
+                v.iter_bytes(lsb0, f)
+            }
 
-          ty_unboxed_vec(ref mt) =>
-          to_bytes::iter_bytes_2(&9u8, mt, lsb0, f),
+            ty_unboxed_vec(ref mt) => 9u8.iter_bytes(lsb0, f) && mt.iter_bytes(lsb0, f),
 
-          ty_tup(ref ts) =>
-          to_bytes::iter_bytes_2(&10u8, ts, lsb0, f),
+            ty_tup(ref ts) => 10u8.iter_bytes(lsb0, f) && ts.iter_bytes(lsb0, f),
 
-          ty_bare_fn(ref ft) =>
-          to_bytes::iter_bytes_2(&12u8, ft, lsb0, f),
+            ty_bare_fn(ref ft) => 12u8.iter_bytes(lsb0, f) && ft.iter_bytes(lsb0, f),
 
-          ty_self(ref did) => to_bytes::iter_bytes_2(&13u8, did, lsb0, f),
+            ty_self(ref did) => 13u8.iter_bytes(lsb0, f) && did.iter_bytes(lsb0, f),
 
-          ty_infer(ref v) =>
-          to_bytes::iter_bytes_2(&14u8, v, lsb0, f),
+            ty_infer(ref v) => 14u8.iter_bytes(lsb0, f) && v.iter_bytes(lsb0, f),
 
-          ty_param(ref p) =>
-          to_bytes::iter_bytes_2(&15u8, p, lsb0, f),
+            ty_param(ref p) => 15u8.iter_bytes(lsb0, f) && p.iter_bytes(lsb0, f),
 
-          ty_type => 16u8.iter_bytes(lsb0, f),
-          ty_bot => 17u8.iter_bytes(lsb0, f),
+            ty_type => 16u8.iter_bytes(lsb0, f),
+            ty_bot => 17u8.iter_bytes(lsb0, f),
 
-          ty_ptr(ref mt) =>
-          to_bytes::iter_bytes_2(&18u8, mt, lsb0, f),
+            ty_ptr(ref mt) => 18u8.iter_bytes(lsb0, f) && mt.iter_bytes(lsb0, f),
 
-          ty_uniq(ref mt) =>
-          to_bytes::iter_bytes_2(&19u8, mt, lsb0, f),
+            ty_uniq(ref mt) => 19u8.iter_bytes(lsb0, f) && mt.iter_bytes(lsb0, f),
 
-          ty_trait(ref did, ref substs, ref v, ref mutbl) =>
-          to_bytes::iter_bytes_5(&20u8, did, substs, v, mutbl, lsb0, f),
+            ty_trait(ref did, ref substs, ref v, ref mutbl) => {
+                20u8.iter_bytes(lsb0, f) &&
+                did.iter_bytes(lsb0, f) &&
+                substs.iter_bytes(lsb0, f) &&
+                v.iter_bytes(lsb0, f) &&
+                mutbl.iter_bytes(lsb0, f)
+            }
 
-          ty_opaque_closure_ptr(ref ck) =>
-          to_bytes::iter_bytes_2(&21u8, ck, lsb0, f),
+            ty_opaque_closure_ptr(ref ck) => 21u8.iter_bytes(lsb0, f) && ck.iter_bytes(lsb0, f),
 
-          ty_opaque_box => 22u8.iter_bytes(lsb0, f),
+            ty_opaque_box => 22u8.iter_bytes(lsb0, f),
 
-          ty_struct(ref did, ref substs) =>
-          to_bytes::iter_bytes_3(&23u8, did, substs, lsb0, f),
+            ty_struct(ref did, ref substs) => {
+                23u8.iter_bytes(lsb0, f) && did.iter_bytes(lsb0, f) && substs.iter_bytes(lsb0, f)
+            }
 
-          ty_rptr(ref r, ref mt) =>
-          to_bytes::iter_bytes_3(&24u8, r, mt, lsb0, f),
+            ty_rptr(ref r, ref mt) => {
+                24u8.iter_bytes(lsb0, f) && r.iter_bytes(lsb0, f) && mt.iter_bytes(lsb0, f)
+            }
 
-          ty_err => 25u8.iter_bytes(lsb0, f),
+            ty_err => 25u8.iter_bytes(lsb0, f),
 
-          ty_closure(ref ct) =>
-          to_bytes::iter_bytes_2(&26u8, ct, lsb0, f),
+            ty_closure(ref ct) => 26u8.iter_bytes(lsb0, f) && ct.iter_bytes(lsb0, f),
         }
     }
 }

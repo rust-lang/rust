@@ -564,14 +564,23 @@ enum Constraint {
 impl to_bytes::IterBytes for Constraint {
    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
-          ConstrainVarSubVar(ref v0, ref v1) =>
-          to_bytes::iter_bytes_3(&0u8, v0, v1, lsb0, f),
+            ConstrainVarSubVar(ref v0, ref v1) => {
+                0u8.iter_bytes(lsb0, f) &&
+                v0.iter_bytes(lsb0, f) &&
+                v1.iter_bytes(lsb0, f)
+            }
 
-          ConstrainRegSubVar(ref ra, ref va) =>
-          to_bytes::iter_bytes_3(&1u8, ra, va, lsb0, f),
+            ConstrainRegSubVar(ref ra, ref va) => {
+                1u8.iter_bytes(lsb0, f) &&
+                ra.iter_bytes(lsb0, f) &&
+                va.iter_bytes(lsb0, f)
+            }
 
-          ConstrainVarSubReg(ref va, ref ra) =>
-          to_bytes::iter_bytes_3(&2u8, va, ra, lsb0, f)
+            ConstrainVarSubReg(ref va, ref ra) => {
+                2u8.iter_bytes(lsb0, f) &&
+                va.iter_bytes(lsb0, f) &&
+                ra.iter_bytes(lsb0, f)
+            }
         }
     }
 }
