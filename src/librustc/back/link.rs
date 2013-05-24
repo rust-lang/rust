@@ -727,6 +727,17 @@ pub fn mangle_internal_name_by_type_only(ccx: @CrateContext,
           path_name(ccx.sess.ident_of(hash))]);
 }
 
+pub fn mangle_internal_name_by_type_and_seq(ccx: @CrateContext,
+                                         t: ty::t,
+                                         name: &str) -> ~str {
+    let s = ppaux::ty_to_str(ccx.tcx, t);
+    let hash = get_symbol_hash(ccx, t);
+    return mangle(ccx.sess,
+        ~[path_name(ccx.sess.ident_of(s)),
+          path_name(ccx.sess.ident_of(hash)),
+          path_name((ccx.names)(name))]);
+}
+
 pub fn mangle_internal_name_by_path_and_seq(ccx: @CrateContext,
                                             path: path,
                                             flav: &str) -> ~str {
