@@ -109,6 +109,7 @@ pub mod middle {
     pub mod privacy;
     pub mod moves;
     pub mod entry;
+    pub mod effect;
 }
 
 pub mod front {

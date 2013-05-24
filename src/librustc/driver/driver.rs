@@ -262,6 +262,9 @@ pub fn compile_rest(sess: Session,
         time(time_passes, ~"privacy checking", ||
              middle::privacy::check_crate(ty_cx, &method_map, crate));
 
+        time(time_passes, ~"effect checking", ||
+             middle::effect::check_crate(ty_cx, method_map, crate));
+
         time(time_passes, ~"loop checking", ||
              middle::check_loop::check_crate(ty_cx, crate));
 
