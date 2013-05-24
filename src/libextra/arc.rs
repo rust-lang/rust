@@ -123,6 +123,7 @@ pub impl<T:Const+Owned> ARC<T> {
         unsafe { &*self.x.get_immut() }
     }
 }
+
 /**
  * Duplicate an atomically reference counted wrapper.
  *
@@ -130,13 +131,9 @@ pub impl<T:Const+Owned> ARC<T> {
  * object. However, one of the `arc` objects can be sent to another task,
  * allowing them to share the underlying data.
  */
-pub fn clone<T:Const + Owned>(rc: &ARC<T>) -> ARC<T> {
-    ARC { x: rc.x.clone() }
-}
-
 impl<T:Const + Owned> Clone for ARC<T> {
     fn clone(&self) -> ARC<T> {
-        clone(self)
+        ARC { x: self.x.clone() }
     }
 }
 
