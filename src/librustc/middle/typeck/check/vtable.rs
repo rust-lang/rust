@@ -101,18 +101,18 @@ fn lookup_vtables(vcx: &VtableContext,
 
             // Substitute the values of the type parameters that may
             // appear in the bound.
-            let trait_ref = (*trait_ref).subst(tcx, substs);
+            let trait_ref = trait_ref.subst(tcx, substs);
 
             debug!("after subst: %s", trait_ref.repr(tcx));
 
-            match lookup_vtable(vcx, location_info, *ty, &trait_ref, is_early) {
+            match lookup_vtable(vcx, location_info, *ty, trait_ref, is_early) {
                 Some(vtable) => param_result.push(vtable),
                 None => {
                     vcx.tcx().sess.span_fatal(
                         location_info.span,
                         fmt!("failed to find an implementation of \
                               trait %s for %s",
-                             vcx.infcx.trait_ref_to_str(&trait_ref),
+                             vcx.infcx.trait_ref_to_str(trait_ref),
                              vcx.infcx.ty_to_str(*ty)));
                 }
             }
@@ -152,8 +152,8 @@ fn fixup_substs(vcx: &VtableContext, location_info: &LocationInfo,
 
 fn relate_trait_refs(vcx: &VtableContext,
                      location_info: &LocationInfo,
-                     act_trait_ref: &ty::TraitRef,
-                     exp_trait_ref: &ty::TraitRef)
+                     act_trait_ref: @ty::TraitRef,
+                     exp_trait_ref: @ty::TraitRef)
 {
     /*!
      *
@@ -162,8 +162,11 @@ fn relate_trait_refs(vcx: &VtableContext,
      * error otherwise.
      */
 
-    match infer::mk_sub_trait_refs(vcx.infcx, false, location_info.span,
-                                   act_trait_ref, exp_trait_ref)
+    match infer::mk_sub_trait_refs(vcx.infcx,
+                                   false,
+                                   infer::RelateTraitRefs(location_info.span),
+                                   act_trait_ref,
+                                   exp_trait_ref)
     {
         result::Ok(()) => {} // Ok.
         result::Err(ref err) => {
@@ -191,7 +194,7 @@ fn relate_trait_refs(vcx: &VtableContext,
 fn lookup_vtable(vcx: &VtableContext,
                  location_info: &LocationInfo,
                  ty: ty::t,
-                 trait_ref: &ty::TraitRef,
+                 trait_ref: @ty::TraitRef,
                  is_early: bool)
     -> Option<vtable_origin>
 {
@@ -304,7 +307,8 @@ fn lookup_vtable(vcx: &VtableContext,
                             } = impl_self_ty(vcx, location_info, im.did);
                             match infer::mk_subty(vcx.infcx,
                                                   false,
-                                                  location_info.span,
+                                                  infer::RelateSelfType(
+                                                      location_info.span),
                                                   ty,
                                                   for_ty) {
                                 result::Err(_) => loop,
@@ -337,11 +341,10 @@ fn lookup_vtable(vcx: &VtableContext,
                                    vcx.infcx.trait_ref_to_str(trait_ref),
                                    vcx.infcx.trait_ref_to_str(of_trait_ref));
 
-                            let of_trait_ref =
-                                (*of_trait_ref).subst(tcx, &substs);
+                            let of_trait_ref = of_trait_ref.subst(tcx, &substs);
                             relate_trait_refs(
                                 vcx, location_info,
-                                &of_trait_ref, trait_ref);
+                                of_trait_ref, trait_ref);
 
                             // Recall that trait_ref -- the trait type
                             // we're casting to -- is the trait with
@@ -450,7 +453,7 @@ fn fixup_ty(vcx: &VtableContext,
 fn connect_trait_tps(vcx: &VtableContext,
                      location_info: &LocationInfo,
                      impl_substs: &ty::substs,
-                     trait_ref: &ty::TraitRef,
+                     trait_ref: @ty::TraitRef,
                      impl_did: ast::def_id)
 {
     let tcx = vcx.tcx();
@@ -461,8 +464,8 @@ fn connect_trait_tps(vcx: &VtableContext,
                                   "connect_trait_tps invoked on a type impl")
     };
 
-    let impl_trait_ref = (*impl_trait_ref).subst(tcx, impl_substs);
-    relate_trait_refs(vcx, location_info, &impl_trait_ref, trait_ref);
+    let impl_trait_ref = impl_trait_ref.subst(tcx, impl_substs);
+    relate_trait_refs(vcx, location_info, impl_trait_ref, trait_ref);
 }
 
 fn insert_vtables(fcx: @mut FnCtxt,
@@ -581,7 +584,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
                               ccx: fcx.ccx,
                               infcx: fcx.infcx()
                           };
-                          let target_trait_ref = ty::TraitRef {
+                          let target_trait_ref = @ty::TraitRef {
                               def_id: target_def_id,
                               substs: ty::substs {
                                   tps: copy target_substs.tps,
@@ -593,7 +596,7 @@ pub fn early_resolve_expr(ex: @ast::expr,
                               lookup_vtable(&vcx,
                                             location_info,
                                             mt.ty,
-                                            &target_trait_ref,
+                                            target_trait_ref,
                                             is_early);
                           match vtable_opt {
                               Some(vtable) => {
@@ -622,7 +625,8 @@ pub fn early_resolve_expr(ex: @ast::expr,
                                ty::RegionTraitStore(rb)) => {
                                   infer::mk_subr(fcx.infcx(),
                                                  false,
-                                                 ex.span,
+                                                 infer::RelateObjectBound(
+                                                     ex.span),
                                                  rb,
                                                  ra);
                               }

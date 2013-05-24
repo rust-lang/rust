@@ -21,6 +21,8 @@ fn with<R>(f: &fn(x: &int) -> R) -> R {
 
 fn return_it() -> &int {
     with(|o| o) //~ ERROR mismatched types
+        //~^ ERROR lifetime of return value does not outlive the function call
+        //~^^ ERROR cannot infer an appropriate lifetime
 }
 
 fn main() {

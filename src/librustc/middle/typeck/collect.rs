@@ -615,7 +615,8 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     };
     debug!("trait_fty (post-subst): %s", trait_fty.repr(tcx));
 
-    match infer::mk_subty(infcx, false, cm.span, impl_fty, trait_fty) {
+    match infer::mk_subty(infcx, false, infer::MethodCompatCheck(cm.span),
+                          impl_fty, trait_fty) {
         result::Ok(()) => {}
         result::Err(ref terr) => {
             tcx.sess.span_err(

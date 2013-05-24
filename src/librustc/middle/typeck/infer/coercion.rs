@@ -70,7 +70,7 @@ use middle::ty::{AutoDerefRef};
 use middle::ty::{vstore_slice, vstore_box, vstore_uniq};
 use middle::ty::{mt};
 use middle::ty;
-use middle::typeck::infer::{CoerceResult, resolve_type};
+use middle::typeck::infer::{CoerceResult, resolve_type, Coercion};
 use middle::typeck::infer::combine::CombineFields;
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
@@ -165,7 +165,7 @@ impl Coerce {
             }
             Err(e) => {
                 self.infcx.tcx.sess.span_bug(
-                    self.span,
+                    self.trace.origin.span(),
                     fmt!("Failed to resolve even without \
                           any force options: %?", e));
             }
@@ -189,7 +189,7 @@ impl Coerce {
         // yield.
 
         let sub = Sub(**self);
-        let r_borrow = self.infcx.next_region_var_nb(self.span);
+        let r_borrow = self.infcx.next_region_var(Coercion(self.trace));
 
         let inner_ty = match *sty_a {
             ty::ty_box(mt_a) => mt_a.ty,
@@ -227,7 +227,7 @@ impl Coerce {
             }
         };
 
-        let r_a = self.infcx.next_region_var_nb(self.span);
+        let r_a = self.infcx.next_region_var(Coercion(self.trace));
         let a_borrowed = ty::mk_estr(self.infcx.tcx, vstore_slice(r_a));
         if_ok!(self.subtype(a_borrowed, b));
         Ok(Some(@AutoDerefRef(AutoDerefRef {
@@ -247,7 +247,7 @@ impl Coerce {
                b.inf_str(self.infcx));
 
         let sub = Sub(**self);
-        let r_borrow = self.infcx.next_region_var_nb(self.span);
+        let r_borrow = self.infcx.next_region_var(Coercion(self.trace));
         let ty_inner = match *sty_a {
             ty::ty_evec(mt, _) => mt.ty,
             _ => {
@@ -285,7 +285,7 @@ impl Coerce {
             }
         };
 
-        let r_borrow = self.infcx.next_region_var_nb(self.span);
+        let r_borrow = self.infcx.next_region_var(Coercion(self.trace));
         let a_borrowed = ty::mk_closure(
             self.infcx.tcx,
             ty::ClosureTy {
