@@ -61,8 +61,6 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
  */
 #[inline]
 pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
-    if x == y { return }
-
     // Give ourselves some scratch space to work with
     let mut tmp: T = intrinsics::uninit();
     let t = ptr::to_mut_unsafe_ptr(&mut tmp);
@@ -72,7 +70,7 @@ pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
     ptr::copy_memory(x, y, 1);
     ptr::copy_memory(y, t, 1);
 
-    // y and t now point to the same thing, but we need to completely forget t
+    // y and t now point to the same thing, but we need to completely forget `tmp`
     // because it's no longer relevant.
     cast::forget(tmp);
 }

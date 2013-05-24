@@ -103,6 +103,7 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     let n = count * sys::size_of::<T>();
     memmove32(dst as *mut u8, src as *u8, n as u32);
 }
+
 #[inline(always)]
 #[cfg(target_word_size = "64")]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
