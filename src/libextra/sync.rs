@@ -100,30 +100,34 @@ fn new_sem_and_signal(count: int, num_condvars: uint)
 #[doc(hidden)]
 pub impl<Q:Owned> Sem<Q> {
     fn acquire(&self) {
-        let mut waiter_nobe = None;
-        do (**self).with |state| {
-            state.count -= 1;
-            if state.count < 0 {
-                // Create waiter nobe.
-                let (WaitEnd, SignalEnd) = comm::oneshot();
-                // Tell outer scope we need to block.
-                waiter_nobe = Some(WaitEnd);
-                // Enqueue ourself.
-                state.waiters.tail.send(SignalEnd);
+        unsafe {
+            let mut waiter_nobe = None;
+            do (**self).with |state| {
+                state.count -= 1;
+                if state.count < 0 {
+                    // Create waiter nobe.
+                    let (WaitEnd, SignalEnd) = comm::oneshot();
+                    // Tell outer scope we need to block.
+                    waiter_nobe = Some(WaitEnd);
+                    // Enqueue ourself.
+                    state.waiters.tail.send(SignalEnd);
+                }
             }
-        }
-        // Uncomment if you wish to test for sem races. Not valgrind-friendly.
-        /* for 1000.times { task::yield(); } */
-        // Need to wait outside the exclusive.
-        if waiter_nobe.is_some() {
-            let _ = comm::recv_one(waiter_nobe.unwrap());
+            // Uncomment if you wish to test for sem races. Not valgrind-friendly.
+            /* for 1000.times { task::yield(); } */
+            // Need to wait outside the exclusive.
+            if waiter_nobe.is_some() {
+                let _ = comm::recv_one(waiter_nobe.unwrap());
+            }
         }
     }
     fn release(&self) {
-        do (**self).with |state| {
-            state.count += 1;
-            if state.count <= 0 {
-                signal_waitqueue(&state.waiters);
+        unsafe {
+            do (**self).with |state| {
+                state.count += 1;
+                if state.count <= 0 {
+                    signal_waitqueue(&state.waiters);
+                }
             }
         }
     }
@@ -283,17 +287,19 @@ pub impl<'self> Condvar<'self> {
 
     /// As signal, but with a specified condvar_id. See wait_on.
     fn signal_on(&self, condvar_id: uint) -> bool {
-        let mut out_of_bounds = None;
-        let mut result = false;
-        do (**self.sem).with |state| {
-            if condvar_id < state.blocked.len() {
-                result = signal_waitqueue(&state.blocked[condvar_id]);
-            } else {
-                out_of_bounds = Some(state.blocked.len());
+        unsafe {
+            let mut out_of_bounds = None;
+            let mut result = false;
+            do (**self.sem).with |state| {
+                if condvar_id < state.blocked.len() {
+                    result = signal_waitqueue(&state.blocked[condvar_id]);
+                } else {
+                    out_of_bounds = Some(state.blocked.len());
+                }
             }
-        }
-        do check_cvar_bounds(out_of_bounds, condvar_id, "cond.signal_on()") {
-            result
+            do check_cvar_bounds(out_of_bounds, condvar_id, "cond.signal_on()") {
+                result
+            }
         }
     }
 
@@ -304,20 +310,22 @@ pub impl<'self> Condvar<'self> {
     fn broadcast_on(&self, condvar_id: uint) -> uint {
         let mut out_of_bounds = None;
         let mut queue = None;
-        do (**self.sem).with |state| {
-            if condvar_id < state.blocked.len() {
-                // To avoid :broadcast_heavy, we make a new waitqueue,
-                // swap it out with the old one, and broadcast on the
-                // old one outside of the little-lock.
-                queue = Some(util::replace(&mut state.blocked[condvar_id],
-                                           new_waitqueue()));
-            } else {
-                out_of_bounds = Some(state.blocked.len());
+        unsafe {
+            do (**self.sem).with |state| {
+                if condvar_id < state.blocked.len() {
+                    // To avoid :broadcast_heavy, we make a new waitqueue,
+                    // swap it out with the old one, and broadcast on the
+                    // old one outside of the little-lock.
+                    queue = Some(util::replace(&mut state.blocked[condvar_id],
+                                               new_waitqueue()));
+                } else {
+                    out_of_bounds = Some(state.blocked.len());
+                }
             }
-        }
-        do check_cvar_bounds(out_of_bounds, condvar_id, "cond.signal_on()") {
-            let queue = queue.swap_unwrap();
-            broadcast_waitqueue(&queue)
+            do check_cvar_bounds(out_of_bounds, condvar_id, "cond.signal_on()") {
+                let queue = queue.swap_unwrap();
+                broadcast_waitqueue(&queue)
+            }
         }
     }
 }

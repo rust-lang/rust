@@ -19,5 +19,5 @@ mod test {
 
 fn main() {
     let x = test::free;
-    //~^ ERROR access to unsafe function requires unsafe function or block
+    //~^ ERROR call to unsafe function requires unsafe function or block
 }

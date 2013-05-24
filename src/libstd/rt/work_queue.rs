@@ -29,32 +29,40 @@ pub impl<T: Owned> WorkQueue<T> {
     }
 
     fn push(&mut self, value: T) {
-        let value = Cell(value);
-        self.queue.with(|q| q.unshift(value.take()) );
+        unsafe {
+            let value = Cell(value);
+            self.queue.with(|q| q.unshift(value.take()) );
+        }
     }
 
     fn pop(&mut self) -> Option<T> {
-        do self.queue.with |q| {
-            if !q.is_empty() {
-                Some(q.shift())
-            } else {
-                None
+        unsafe {
+            do self.queue.with |q| {
+                if !q.is_empty() {
+                    Some(q.shift())
+                } else {
+                    None
+                }
             }
         }
     }
 
     fn steal(&mut self) -> Option<T> {
-        do self.queue.with |q| {
-            if !q.is_empty() {
-                Some(q.pop())
-            } else {
-                None
+        unsafe {
+            do self.queue.with |q| {
+                if !q.is_empty() {
+                    Some(q.pop())
+                } else {
+                    None
+                }
             }
         }
     }
 
     fn is_empty(&self) -> bool {
-        self.queue.with_imm(|q| q.is_empty() )
+        unsafe {
+            self.queue.with_imm(|q| q.is_empty() )
+        }
     }
 }
 
