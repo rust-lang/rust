@@ -993,7 +993,6 @@ impl num::FromStrRadix for f64 {
 mod tests {
     use f64::*;
     use num::*;
-    use super::*;
     use prelude::*;
 
     #[test]

@@ -184,9 +184,9 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        let empty : @list::List<int> = from_vec(~[]);
-        let full1 = from_vec(~[1]);
-        let full2 = from_vec(~['r', 'u']);
+        let empty : @list::List<int> = from_vec([]);
+        let full1 = from_vec([1]);
+        let full2 = from_vec(['r', 'u']);
 
         assert!(is_empty(empty));
         assert!(!is_empty(full1));
@@ -195,7 +195,7 @@ mod tests {
 
     #[test]
     fn test_from_vec() {
-        let l = from_vec(~[0, 1, 2]);
+        let l = from_vec([0, 1, 2]);
 
         assert_eq!(head(l), 0);
 
@@ -208,14 +208,14 @@ mod tests {
 
     #[test]
     fn test_from_vec_empty() {
-        let empty : @list::List<int> = from_vec(~[]);
+        let empty : @list::List<int> = from_vec([]);
         assert_eq!(empty, @list::Nil::<int>);
     }
 
     #[test]
     fn test_foldl() {
         fn add(a: &uint, b: &int) -> uint { return *a + (*b as uint); }
-        let l = from_vec(~[0, 1, 2, 3, 4]);
+        let l = from_vec([0, 1, 2, 3, 4]);
         let empty = @list::Nil::<int>;
         assert_eq!(list::foldl(0u, l, add), 10u);
         assert_eq!(list::foldl(0u, empty, add), 0u);
@@ -226,21 +226,21 @@ mod tests {
         fn sub(a: &int, b: &int) -> int {
             *a - *b
         }
-        let l = from_vec(~[1, 2, 3, 4]);
+        let l = from_vec([1, 2, 3, 4]);
         assert_eq!(list::foldl(0, l, sub), -10);
     }
 
     #[test]
     fn test_find_success() {
         fn match_(i: &int) -> bool { return *i == 2; }
-        let l = from_vec(~[0, 1, 2]);
+        let l = from_vec([0, 1, 2]);
         assert_eq!(list::find(l, match_), option::Some(2));
     }
 
     #[test]
     fn test_find_fail() {
         fn match_(_i: &int) -> bool { return false; }
-        let l = from_vec(~[0, 1, 2]);
+        let l = from_vec([0, 1, 2]);
         let empty = @list::Nil::<int>;
         assert_eq!(list::find(l, match_), option::None::<int>);
         assert_eq!(list::find(empty, match_), option::None::<int>);
@@ -248,7 +248,7 @@ mod tests {
 
     #[test]
     fn test_has() {
-        let l = from_vec(~[5, 8, 6]);
+        let l = from_vec([5, 8, 6]);
         let empty = @list::Nil::<int>;
         assert!((list::has(l, 5)));
         assert!((!list::has(l, 7)));
@@ -258,7 +258,7 @@ mod tests {
 
     #[test]
     fn test_len() {
-        let l = from_vec(~[0, 1, 2]);
+        let l = from_vec([0, 1, 2]);
         let empty = @list::Nil::<int>;
         assert_eq!(list::len(l), 3u);
         assert_eq!(list::len(empty), 0u);
@@ -266,7 +266,7 @@ mod tests {
 
     #[test]
     fn test_append() {
-        assert!(from_vec(~[1,2,3,4])
-            == list::append(list::from_vec(~[1,2]), list::from_vec(~[3,4])));
+        assert!(from_vec([1,2,3,4])
+            == list::append(list::from_vec([1,2]), list::from_vec([3,4])));
     }
 }

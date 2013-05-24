@@ -295,7 +295,7 @@ mod tests {
             let mut i = 0;
             let mut rs = ~"";
             while i < 100000 {
-                str::push_str(&mut rs, ~"aaaaaaaaaa");
+                rs.push_str("aaaaaaaaaa");
                 i += 1;
             }
             return rs;

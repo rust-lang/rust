@@ -1480,7 +1480,6 @@ This code creates a closure that adds a given string to its argument,
 returns it from a function, and then calls it:
 
 ~~~~
-# extern mod std;
 fn mk_appender(suffix: ~str) -> @fn(~str) -> ~str {
     // The compiler knows that we intend this closure to be of type @fn
     return |s| s + suffix;
@@ -2292,7 +2291,7 @@ let nonsense = mycircle.radius() * mycircle.area();
 
 ## Deriving implementations for traits
 
-A small number of traits in `std` and `std` can have implementations
+A small number of traits in `std` and `extra` can have implementations
 that can be automatically derived. These instances are specified by
 placing the `deriving` attribute on a data type declaration. For
 example, the following will mean that `Circle` has an implementation
@@ -2541,9 +2540,9 @@ as well as an inscrutable string of alphanumerics. These are both
 part of Rust's library versioning scheme. The alphanumerics are
 a hash representing the crate metadata.
 
-## The std library
+## The standard library
 
-The Rust std library provides runtime features required by the language,
+The Rust standard library provides runtime features required by the language,
 including the task scheduler and memory allocators, as well as library
 support for Rust built-in types, platform abstractions, and other commonly
 used features.
@@ -2559,7 +2558,7 @@ I/O abstractions ([`io`]), [containers] like [`hashmap`],
 common traits ([`kinds`], [`ops`], [`cmp`], [`num`],
 [`to_str`], [`clone`]), and complete bindings to the C standard library ([`libc`]).
 
-### Core injection and the Rust prelude
+### Standard Library injection and the Rust prelude
 
 `std` is imported at the topmost level of every crate by default, as
 if the first line of each crate was
@@ -2571,7 +2570,7 @@ with the `std::` path prefix, as in `use std::vec`, `use std::task::spawn`,
 etc.
 
 Additionally, `std` contains a `prelude` module that reexports many of the
-most common std modules, types and traits. The contents of the prelude are
+most common standard modules, types and traits. The contents of the prelude are
 imported into every *module* by default.  Implicitly, all modules behave as if
 they contained the following prologue:
 

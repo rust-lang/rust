@@ -1839,7 +1839,7 @@ mod tests {
         {
             let out: @io::Writer =
                 result::get(
-                    &io::file_writer(tmpfile, ~[io::Create, io::Truncate]));
+                    &io::file_writer(tmpfile, [io::Create, io::Truncate]));
             out.write_str(frood);
         }
         let inp: @io::Reader = result::get(&io::file_reader(tmpfile));
@@ -1850,7 +1850,7 @@ mod tests {
 
     #[test]
     fn test_readchars_empty() {
-        do io::with_str_reader(~"") |inp| {
+        do io::with_str_reader("") |inp| {
             let res : ~[char] = inp.read_chars(128);
             assert_eq!(res.len(), 0);
         }
@@ -1858,7 +1858,7 @@ mod tests {
 
     #[test]
     fn test_read_line_utf8() {
-        do io::with_str_reader(~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤") |inp| {
+        do io::with_str_reader("生锈的汤匙切肉汤hello生锈的汤匙切肉汤") |inp| {
             let line = inp.read_line();
             assert_eq!(line, ~"生锈的汤匙切肉汤hello生锈的汤匙切肉汤");
         }
@@ -1866,15 +1866,15 @@ mod tests {
 
     #[test]
     fn test_read_lines() {
-        do io::with_str_reader(~"a\nb\nc\n") |inp| {
+        do io::with_str_reader("a\nb\nc\n") |inp| {
             assert_eq!(inp.read_lines(), ~[~"a", ~"b", ~"c"]);
         }
 
-        do io::with_str_reader(~"a\nb\nc") |inp| {
+        do io::with_str_reader("a\nb\nc") |inp| {
             assert_eq!(inp.read_lines(), ~[~"a", ~"b", ~"c"]);
         }
 
-        do io::with_str_reader(~"") |inp| {
+        do io::with_str_reader("") |inp| {
             assert!(inp.read_lines().is_empty());
         }
     }
@@ -1909,7 +1909,7 @@ mod tests {
 
     #[test]
     fn test_readchar() {
-        do io::with_str_reader(~"生") |inp| {
+        do io::with_str_reader("生") |inp| {
             let res : char = inp.read_char();
             assert_eq!(res as int, 29983);
         }
@@ -1917,7 +1917,7 @@ mod tests {
 
     #[test]
     fn test_readchar_empty() {
-        do io::with_str_reader(~"") |inp| {
+        do io::with_str_reader("") |inp| {
             let res : char = inp.read_char();
             assert_eq!(res as int, -1);
         }
@@ -1966,7 +1966,7 @@ mod tests {
 
     #[test]
     fn file_writer_bad_name() {
-        match io::file_writer(&Path("?/?"), ~[]) {
+        match io::file_writer(&Path("?/?"), []) {
           result::Err(copy e) => {
             assert!(str::starts_with(e, "error opening"));
           }
@@ -1987,15 +1987,15 @@ mod tests {
     #[test]
     fn bytes_buffer_overwrite() {
         let wr = BytesWriter();
-        wr.write(~[0u8, 1u8, 2u8, 3u8]);
+        wr.write([0u8, 1u8, 2u8, 3u8]);
         assert!(*wr.bytes == ~[0u8, 1u8, 2u8, 3u8]);
         wr.seek(-2, SeekCur);
-        wr.write(~[4u8, 5u8, 6u8, 7u8]);
+        wr.write([4u8, 5u8, 6u8, 7u8]);
         assert!(*wr.bytes == ~[0u8, 1u8, 4u8, 5u8, 6u8, 7u8]);
         wr.seek(-2, SeekEnd);
-        wr.write(~[8u8]);
+        wr.write([8u8]);
         wr.seek(1, SeekSet);
-        wr.write(~[9u8]);
+        wr.write([9u8]);
         assert!(*wr.bytes == ~[0u8, 9u8, 4u8, 5u8, 8u8, 7u8]);
     }
 
@@ -2085,7 +2085,7 @@ mod tests {
         }
     }
 
-#[test]
+    #[test]
     fn test_read_write_f32() {
         let path = Path("tmp/lib-io-test-read-write-f32.tmp");
         let f:f32 = 8.1250;

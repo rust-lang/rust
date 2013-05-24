@@ -17,9 +17,8 @@ use abi::AbiSet;
 use opt_vec::OptVec;
 use parse::token::get_ident_interner;
 
-use core::cast;
 use core::hashmap::HashMap;
-use core::option::{Option};
+use core::option::Option;
 use core::to_bytes::IterBytes;
 use core::to_bytes;
 use core::to_str::ToStr;
@@ -112,7 +111,9 @@ pub struct Lifetime {
 
 impl to_bytes::IterBytes for Lifetime {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        to_bytes::iter_bytes_3(&self.id, &self.span, &self.ident, lsb0, f)
+        self.id.iter_bytes(lsb0, f) &&
+        self.span.iter_bytes(lsb0, f) &&
+        self.ident.iter_bytes(lsb0, f)
     }
 }
 
@@ -266,7 +267,9 @@ impl to_bytes::IterBytes for binding_mode {
         match *self {
           bind_by_copy => 0u8.iter_bytes(lsb0, f),
 
-          bind_by_ref(ref m) => to_bytes::iter_bytes_2(&1u8, m, lsb0, f),
+          bind_by_ref(ref m) => {
+              1u8.iter_bytes(lsb0, f) && m.iter_bytes(lsb0, f)
+          }
 
           bind_infer => 2u8.iter_bytes(lsb0, f),
         }
@@ -788,7 +791,7 @@ pub enum ty_ {
 
 impl to_bytes::IterBytes for Ty {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        to_bytes::iter_bytes_2(&self.span.lo, &self.span.hi, lsb0, f)
+        self.span.lo.iter_bytes(lsb0, f) && self.span.hi.iter_bytes(lsb0, f)
     }
 }
 
@@ -876,9 +879,15 @@ impl to_bytes::IterBytes for explicit_self_ {
         match *self {
             sty_static => 0u8.iter_bytes(lsb0, f),
             sty_value => 1u8.iter_bytes(lsb0, f),
-            sty_region(ref lft, ref mutbl) => to_bytes::iter_bytes_3(&2u8, &lft, mutbl, lsb0, f),
-            sty_box(ref mutbl) => to_bytes::iter_bytes_2(&3u8, mutbl, lsb0, f),
-            sty_uniq(ref mutbl) => to_bytes::iter_bytes_2(&4u8, mutbl, lsb0, f),
+            sty_region(ref lft, ref mutbl) => {
+                2u8.iter_bytes(lsb0, f) && lft.iter_bytes(lsb0, f) && mutbl.iter_bytes(lsb0, f)
+            }
+            sty_box(ref mutbl) => {
+                3u8.iter_bytes(lsb0, f) && mutbl.iter_bytes(lsb0, f)
+            }
+            sty_uniq(ref mutbl) => {
+                4u8.iter_bytes(lsb0, f) && mutbl.iter_bytes(lsb0, f)
+            }
         }
     }
 }

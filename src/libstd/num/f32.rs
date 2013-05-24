@@ -951,7 +951,6 @@ impl num::FromStrRadix for f32 {
 mod tests {
     use f32::*;
     use num::*;
-    use super::*;
     use prelude::*;
 
     #[test]

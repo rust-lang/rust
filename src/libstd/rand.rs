@@ -988,10 +988,10 @@ mod tests {
     #[test]
     fn test_choose_weighted() {
         let mut r = rng();
-        assert!(r.choose_weighted(~[
+        assert!(r.choose_weighted([
             Weighted { weight: 1u, item: 42 },
         ]) == 42);
-        assert!(r.choose_weighted(~[
+        assert!(r.choose_weighted([
             Weighted { weight: 0u, item: 42 },
             Weighted { weight: 1u, item: 43 },
         ]) == 43);
@@ -1000,10 +1000,10 @@ mod tests {
     #[test]
     fn test_choose_weighted_option() {
         let mut r = rng();
-        assert!(r.choose_weighted_option(~[
+        assert!(r.choose_weighted_option([
             Weighted { weight: 1u, item: 42 },
         ]) == Some(42));
-        assert!(r.choose_weighted_option(~[
+        assert!(r.choose_weighted_option([
             Weighted { weight: 0u, item: 42 },
             Weighted { weight: 1u, item: 43 },
         ]) == Some(43));
@@ -1015,8 +1015,8 @@ mod tests {
     fn test_weighted_vec() {
         let mut r = rng();
         let empty: ~[int] = ~[];
-        assert_eq!(r.weighted_vec(~[]), empty);
-        assert!(r.weighted_vec(~[
+        assert_eq!(r.weighted_vec([]), empty);
+        assert!(r.weighted_vec([
             Weighted { weight: 0u, item: 3u },
             Weighted { weight: 1u, item: 2u },
             Weighted { weight: 2u, item: 1u },
@@ -1027,15 +1027,15 @@ mod tests {
     fn test_shuffle() {
         let mut r = rng();
         let empty: ~[int] = ~[];
-        assert_eq!(r.shuffle(~[]), empty);
-        assert_eq!(r.shuffle(~[1, 1, 1]), ~[1, 1, 1]);
+        assert_eq!(r.shuffle([]), empty);
+        assert_eq!(r.shuffle([1, 1, 1]), ~[1, 1, 1]);
     }
 
     #[test]
     fn test_task_rng() {
         let mut r = task_rng();
         r.gen::<int>();
-        assert_eq!(r.shuffle(~[1, 1, 1]), ~[1, 1, 1]);
+        assert_eq!(r.shuffle([1, 1, 1]), ~[1, 1, 1]);
         assert_eq!(r.gen_uint_range(0u, 1u), 0u);
     }
 

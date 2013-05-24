@@ -540,13 +540,13 @@ mod tests {
 
     #[test]
     fn test_dlist_concat() {
-        let a = from_vec(~[1,2]);
-        let b = from_vec(~[3,4]);
-        let c = from_vec(~[5,6]);
-        let d = from_vec(~[7,8]);
-        let ab = from_vec(~[a,b]);
-        let cd = from_vec(~[c,d]);
-        let abcd = concat(concat(from_vec(~[ab,cd])));
+        let a = from_vec([1,2]);
+        let b = from_vec([3,4]);
+        let c = from_vec([5,6]);
+        let d = from_vec([7,8]);
+        let ab = from_vec([a,b]);
+        let cd = from_vec([c,d]);
+        let abcd = concat(concat(from_vec([ab,cd])));
         abcd.assert_consistent(); assert_eq!(abcd.len(), 8);
         abcd.assert_consistent(); assert_eq!(abcd.pop().get(), 1);
         abcd.assert_consistent(); assert_eq!(abcd.pop().get(), 2);
@@ -560,8 +560,8 @@ mod tests {
     }
     #[test]
     fn test_dlist_append() {
-        let a = from_vec(~[1,2,3]);
-        let b = from_vec(~[4,5,6]);
+        let a = from_vec([1,2,3]);
+        let b = from_vec([4,5,6]);
         a.append(b);
         assert_eq!(a.len(), 6);
         assert_eq!(b.len(), 0);
@@ -576,7 +576,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_append_empty() {
-        let a = from_vec(~[1,2,3]);
+        let a = from_vec([1,2,3]);
         let b = DList::<int>();
         a.append(b);
         assert_eq!(a.len(), 3);
@@ -590,7 +590,7 @@ mod tests {
     #[test]
     fn test_dlist_append_to_empty() {
         let a = DList::<int>();
-        let b = from_vec(~[4,5,6]);
+        let b = from_vec([4,5,6]);
         a.append(b);
         assert_eq!(a.len(), 3);
         assert_eq!(b.len(), 0);
@@ -626,8 +626,8 @@ mod tests {
     }
     #[test]
     fn test_dlist_prepend() {
-        let a = from_vec(~[1,2,3]);
-        let b = from_vec(~[4,5,6]);
+        let a = from_vec([1,2,3]);
+        let b = from_vec([4,5,6]);
         b.prepend(a);
         assert_eq!(a.len(), 0);
         assert_eq!(b.len(), 6);
@@ -642,7 +642,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_reverse() {
-        let a = from_vec(~[5,4,3,2,1]);
+        let a = from_vec([5,4,3,2,1]);
         a.reverse();
         assert_eq!(a.len(), 5);
         a.assert_consistent(); assert_eq!(a.pop().get(), 1);
@@ -661,7 +661,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_each_node() {
-        let a = from_vec(~[1,2,4,5]);
+        let a = from_vec([1,2,4,5]);
         for a.each_node |nobe| {
             if nobe.data > 3 {
                 a.insert_before(3, nobe);
@@ -678,7 +678,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_clear() {
-        let a = from_vec(~[5,4,3,2,1]);
+        let a = from_vec([5,4,3,2,1]);
         a.clear();
         assert_eq!(a.len(), 0);
         a.assert_consistent();
@@ -686,20 +686,20 @@ mod tests {
     #[test]
     fn test_dlist_is_empty() {
         let empty = DList::<int>();
-        let full1 = from_vec(~[1,2,3]);
+        let full1 = from_vec([1,2,3]);
         assert!(empty.is_empty());
         assert!(!full1.is_empty());
     }
     #[test]
     fn test_dlist_head_tail() {
-        let l = from_vec(~[1,2,3]);
+        let l = from_vec([1,2,3]);
         assert_eq!(l.head(), 1);
         assert_eq!(l.tail(), 3);
         assert_eq!(l.len(), 3);
     }
     #[test]
     fn test_dlist_pop() {
-        let l = from_vec(~[1,2,3]);
+        let l = from_vec([1,2,3]);
         assert_eq!(l.pop().get(), 1);
         assert_eq!(l.tail(), 3);
         assert_eq!(l.head(), 2);
@@ -712,7 +712,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_pop_tail() {
-        let l = from_vec(~[1,2,3]);
+        let l = from_vec([1,2,3]);
         assert_eq!(l.pop_tail().get(), 3);
         assert_eq!(l.tail(), 2);
         assert_eq!(l.head(), 1);
@@ -758,7 +758,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_break_early() {
-        let l = from_vec(~[1,2,3,4,5]);
+        let l = from_vec([1,2,3,4,5]);
         let mut x = 0;
         for l.each |i| {
             x += 1;

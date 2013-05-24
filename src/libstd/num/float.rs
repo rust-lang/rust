@@ -1251,101 +1251,101 @@ mod tests {
 
     #[test]
     pub fn test_from_str() {
-        assert_eq!(from_str(~"3"), Some(3.));
-        assert_eq!(from_str(~"3.14"), Some(3.14));
-        assert_eq!(from_str(~"+3.14"), Some(3.14));
-        assert_eq!(from_str(~"-3.14"), Some(-3.14));
-        assert_eq!(from_str(~"2.5E10"), Some(25000000000.));
-        assert_eq!(from_str(~"2.5e10"), Some(25000000000.));
-        assert_eq!(from_str(~"25000000000.E-10"), Some(2.5));
-        assert_eq!(from_str(~"."), Some(0.));
-        assert_eq!(from_str(~".e1"), Some(0.));
-        assert_eq!(from_str(~".e-1"), Some(0.));
-        assert_eq!(from_str(~"5."), Some(5.));
-        assert_eq!(from_str(~".5"), Some(0.5));
-        assert_eq!(from_str(~"0.5"), Some(0.5));
-        assert_eq!(from_str(~"-.5"), Some(-0.5));
-        assert_eq!(from_str(~"-5"), Some(-5.));
-        assert_eq!(from_str(~"inf"), Some(infinity));
-        assert_eq!(from_str(~"+inf"), Some(infinity));
-        assert_eq!(from_str(~"-inf"), Some(neg_infinity));
+        assert_eq!(from_str("3"), Some(3.));
+        assert_eq!(from_str("3.14"), Some(3.14));
+        assert_eq!(from_str("+3.14"), Some(3.14));
+        assert_eq!(from_str("-3.14"), Some(-3.14));
+        assert_eq!(from_str("2.5E10"), Some(25000000000.));
+        assert_eq!(from_str("2.5e10"), Some(25000000000.));
+        assert_eq!(from_str("25000000000.E-10"), Some(2.5));
+        assert_eq!(from_str("."), Some(0.));
+        assert_eq!(from_str(".e1"), Some(0.));
+        assert_eq!(from_str(".e-1"), Some(0.));
+        assert_eq!(from_str("5."), Some(5.));
+        assert_eq!(from_str(".5"), Some(0.5));
+        assert_eq!(from_str("0.5"), Some(0.5));
+        assert_eq!(from_str("-.5"), Some(-0.5));
+        assert_eq!(from_str("-5"), Some(-5.));
+        assert_eq!(from_str("inf"), Some(infinity));
+        assert_eq!(from_str("+inf"), Some(infinity));
+        assert_eq!(from_str("-inf"), Some(neg_infinity));
         // note: NaN != NaN, hence this slightly complex test
-        match from_str(~"NaN") {
+        match from_str("NaN") {
             Some(f) => assert!(f.is_NaN()),
             None => fail!()
         }
         // note: -0 == 0, hence these slightly more complex tests
-        match from_str(~"-0") {
+        match from_str("-0") {
             Some(v) if v.is_zero() => assert!(v.is_negative()),
             _ => fail!()
         }
-        match from_str(~"0") {
+        match from_str("0") {
             Some(v) if v.is_zero() => assert!(v.is_positive()),
             _ => fail!()
         }
 
-        assert!(from_str(~"").is_none());
-        assert!(from_str(~"x").is_none());
-        assert!(from_str(~" ").is_none());
-        assert!(from_str(~"   ").is_none());
-        assert!(from_str(~"e").is_none());
-        assert!(from_str(~"E").is_none());
-        assert!(from_str(~"E1").is_none());
-        assert!(from_str(~"1e1e1").is_none());
-        assert!(from_str(~"1e1.1").is_none());
-        assert!(from_str(~"1e1-1").is_none());
+        assert!(from_str("").is_none());
+        assert!(from_str("x").is_none());
+        assert!(from_str(" ").is_none());
+        assert!(from_str("   ").is_none());
+        assert!(from_str("e").is_none());
+        assert!(from_str("E").is_none());
+        assert!(from_str("E1").is_none());
+        assert!(from_str("1e1e1").is_none());
+        assert!(from_str("1e1.1").is_none());
+        assert!(from_str("1e1-1").is_none());
     }
 
     #[test]
     pub fn test_from_str_hex() {
-        assert_eq!(from_str_hex(~"a4"), Some(164.));
-        assert_eq!(from_str_hex(~"a4.fe"), Some(164.9921875));
-        assert_eq!(from_str_hex(~"-a4.fe"), Some(-164.9921875));
-        assert_eq!(from_str_hex(~"+a4.fe"), Some(164.9921875));
-        assert_eq!(from_str_hex(~"ff0P4"), Some(0xff00 as float));
-        assert_eq!(from_str_hex(~"ff0p4"), Some(0xff00 as float));
-        assert_eq!(from_str_hex(~"ff0p-4"), Some(0xff as float));
-        assert_eq!(from_str_hex(~"."), Some(0.));
-        assert_eq!(from_str_hex(~".p1"), Some(0.));
-        assert_eq!(from_str_hex(~".p-1"), Some(0.));
-        assert_eq!(from_str_hex(~"f."), Some(15.));
-        assert_eq!(from_str_hex(~".f"), Some(0.9375));
-        assert_eq!(from_str_hex(~"0.f"), Some(0.9375));
-        assert_eq!(from_str_hex(~"-.f"), Some(-0.9375));
-        assert_eq!(from_str_hex(~"-f"), Some(-15.));
-        assert_eq!(from_str_hex(~"inf"), Some(infinity));
-        assert_eq!(from_str_hex(~"+inf"), Some(infinity));
-        assert_eq!(from_str_hex(~"-inf"), Some(neg_infinity));
+        assert_eq!(from_str_hex("a4"), Some(164.));
+        assert_eq!(from_str_hex("a4.fe"), Some(164.9921875));
+        assert_eq!(from_str_hex("-a4.fe"), Some(-164.9921875));
+        assert_eq!(from_str_hex("+a4.fe"), Some(164.9921875));
+        assert_eq!(from_str_hex("ff0P4"), Some(0xff00 as float));
+        assert_eq!(from_str_hex("ff0p4"), Some(0xff00 as float));
+        assert_eq!(from_str_hex("ff0p-4"), Some(0xff as float));
+        assert_eq!(from_str_hex("."), Some(0.));
+        assert_eq!(from_str_hex(".p1"), Some(0.));
+        assert_eq!(from_str_hex(".p-1"), Some(0.));
+        assert_eq!(from_str_hex("f."), Some(15.));
+        assert_eq!(from_str_hex(".f"), Some(0.9375));
+        assert_eq!(from_str_hex("0.f"), Some(0.9375));
+        assert_eq!(from_str_hex("-.f"), Some(-0.9375));
+        assert_eq!(from_str_hex("-f"), Some(-15.));
+        assert_eq!(from_str_hex("inf"), Some(infinity));
+        assert_eq!(from_str_hex("+inf"), Some(infinity));
+        assert_eq!(from_str_hex("-inf"), Some(neg_infinity));
         // note: NaN != NaN, hence this slightly complex test
-        match from_str_hex(~"NaN") {
+        match from_str_hex("NaN") {
             Some(f) => assert!(f.is_NaN()),
             None => fail!()
         }
         // note: -0 == 0, hence these slightly more complex tests
-        match from_str_hex(~"-0") {
+        match from_str_hex("-0") {
             Some(v) if v.is_zero() => assert!(v.is_negative()),
             _ => fail!()
         }
-        match from_str_hex(~"0") {
+        match from_str_hex("0") {
             Some(v) if v.is_zero() => assert!(v.is_positive()),
             _ => fail!()
         }
-        assert_eq!(from_str_hex(~"e"), Some(14.));
-        assert_eq!(from_str_hex(~"E"), Some(14.));
-        assert_eq!(from_str_hex(~"E1"), Some(225.));
-        assert_eq!(from_str_hex(~"1e1e1"), Some(123361.));
-        assert_eq!(from_str_hex(~"1e1.1"), Some(481.0625));
+        assert_eq!(from_str_hex("e"), Some(14.));
+        assert_eq!(from_str_hex("E"), Some(14.));
+        assert_eq!(from_str_hex("E1"), Some(225.));
+        assert_eq!(from_str_hex("1e1e1"), Some(123361.));
+        assert_eq!(from_str_hex("1e1.1"), Some(481.0625));
 
-        assert!(from_str_hex(~"").is_none());
-        assert!(from_str_hex(~"x").is_none());
-        assert!(from_str_hex(~" ").is_none());
-        assert!(from_str_hex(~"   ").is_none());
-        assert!(from_str_hex(~"p").is_none());
-        assert!(from_str_hex(~"P").is_none());
-        assert!(from_str_hex(~"P1").is_none());
-        assert!(from_str_hex(~"1p1p1").is_none());
-        assert!(from_str_hex(~"1p1.1").is_none());
-        assert!(from_str_hex(~"1p1-1").is_none());
+        assert!(from_str_hex("").is_none());
+        assert!(from_str_hex("x").is_none());
+        assert!(from_str_hex(" ").is_none());
+        assert!(from_str_hex("   ").is_none());
+        assert!(from_str_hex("p").is_none());
+        assert!(from_str_hex("P").is_none());
+        assert!(from_str_hex("P1").is_none());
+        assert!(from_str_hex("1p1p1").is_none());
+        assert!(from_str_hex("1p1.1").is_none());
+        assert!(from_str_hex("1p1-1").is_none());
     }
 
     #[test]
@@ -1375,8 +1375,8 @@ mod tests {
 
     #[test]
     pub fn test_from_str_radix() {
-        assert_eq!(from_str_radix(~"10", 36u), Some(36.));
-        assert_eq!(from_str_radix(~"1000.001", 2u), Some(8.125));
+        assert_eq!(from_str_radix("10", 36u), Some(36.));
+        assert_eq!(from_str_radix("1000.001", 2u), Some(8.125));
     }
 
     #[test]

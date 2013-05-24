@@ -220,13 +220,13 @@ mod test {
 
     #[test]
     fn test_paragraphs_1() {
-        let paras = paragraphs(~"1\n\n2");
+        let paras = paragraphs("1\n\n2");
         assert_eq!(paras, ~[~"1", ~"2"]);
     }
 
     #[test]
     fn test_paragraphs_2() {
-        let paras = paragraphs(~"\n\n1\n1\n\n2\n\n");
+        let paras = paragraphs("\n\n1\n1\n\n2\n\n");
         assert_eq!(paras, ~[~"1\n1", ~"2"]);
     }
 
