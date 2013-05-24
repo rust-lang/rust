@@ -2435,10 +2435,11 @@ match x {
 }
 ~~~~
 
-Patterns that bind variables default to binding to a copy of the matched value. This can be made
-explicit using the ```copy``` keyword, changed to bind to a borrowed pointer by using the ```ref```
-keyword, or to a mutable borrowed pointer using ```ref mut```, or the value can be moved into
-the new binding using ```move```.
+Patterns that bind variables default to binding to a copy or move of the matched value
+(depending on the matched value's type).
+This can be made explicit using the ```copy``` keyword,
+changed to bind to a borrowed pointer by using the ```ref``` keyword,
+or to a mutable borrowed pointer using ```ref mut```.
 
 A pattern that's just an identifier,
 like `Nil` in the previous answer,
