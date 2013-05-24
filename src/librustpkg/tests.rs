@@ -12,7 +12,6 @@
 
 use context::Ctx;
 use core::hashmap::HashMap;
-use core::path::Path;
 use core::prelude::*;
 use std::tempfile::mkdtemp;
 use util::{PkgId, default_version};
