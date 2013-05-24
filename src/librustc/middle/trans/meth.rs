@@ -130,9 +130,6 @@ pub fn trans_method(ccx: @CrateContext,
                base_self_ty.repr(ccx.tcx),
                self_ty.repr(ccx.tcx));
         match method.explicit_self.node {
-          ast::sty_value => {
-            impl_owned_self(self_ty)
-          }
           _ => {
             impl_self(self_ty)
           }
