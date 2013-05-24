@@ -26,11 +26,12 @@ pub struct CrateAttrs {
 
 fn doc_metas(
     attrs: ~[ast::attribute]
-) -> ~[@ast::meta_item] {
+) -> ~[(@ast::meta_item, attr::doc_style)] {
 
     let doc_attrs = attr::find_attrs_by_name(attrs, "doc");
     let doc_metas = do doc_attrs.map |attr| {
-        attr::attr_meta(attr::desugar_doc_attr(attr))
+        let (attr, style) = attr::desugar_doc_attr(attr);
+        (attr::attr_meta(attr), style)
     };
 
     return doc_metas;
@@ -46,9 +47,27 @@ pub fn parse_crate(attrs: ~[ast::attribute]) -> CrateAttrs {
 }
 
 pub fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
-    let doc_strs = do doc_metas(attrs).filter_mapped |meta| {
-        attr::get_meta_item_value_str(*meta).map(|s| copy **s)
-    };
+    let mut doc_strs = ~[];
+    let mut last_doc_style: Option<attr::doc_style> = None;
+
+    for doc_metas(attrs).each |&(meta, style)| {
+        for attr::get_meta_item_value_str(meta).each |s| {
+            // consecutive line comments of the same (inner/outer) style must
+            // be emitted without spacing inbetween so that they can form
+            // multi-line markdown constructs (like long paragraphs), but
+            // for everything else we need a blank line to prevent multiple
+            // comments from merging into a single paragraph.
+            match (style, last_doc_style) {
+                (attr::doc_line_inner, Some(attr::doc_line_inner))
+                | (attr::doc_line_outer, Some(attr::doc_line_outer))
+                | (_, None) => {}
+                _ => { doc_strs.push(~"") }
+            }
+            last_doc_style = Some(style);
+
+            doc_strs.push(copy **s);
+        }
+    }
     if doc_strs.is_empty() {
         None
     } else {
@@ -57,8 +76,8 @@ pub fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
 }
 
 pub fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
-    do doc_metas(attrs).find |meta| {
-        match attr::get_meta_item_list(*meta) {
+    do doc_metas(attrs).find |&(meta, _style)| {
+        match attr::get_meta_item_list(meta) {
             Some(metas) => {
                 let hiddens = attr::find_meta_items_by_name(metas, "hidden");
                 !hiddens.is_empty()
@@ -154,5 +173,12 @@ mod test {
         let source = ~"/// foo\n/// bar";
         let desc = parse_desc(parse_attributes(source));
         assert!(desc == Some(~"foo\nbar"));
+    }
+    #[test]
+    fn should_space_out_doc_comments() {
+        let source = ~"/** c1*//// c2\n/** c3*/\n/// c4\n/// c5\n/** c6*/";
+        let desc = parse_desc(parse_attributes(source));
+        println(fmt!("%?", desc));
+        assert!(desc == Some(~"c1\n\nc2\n\nc3\n\nc4\nc5\n\nc6"));
     }
 }
