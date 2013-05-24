@@ -1163,11 +1163,13 @@ pub impl Parser {
     // parse ident COLON expr
     fn parse_field(&self) -> field {
         let lo = self.span.lo;
-        let m = self.parse_mutability();
         let i = self.parse_ident();
         self.expect(&token::COLON);
         let e = self.parse_expr();
-        spanned(lo, e.span.hi, ast::field_ { mutbl: m, ident: i, expr: e })
+        spanned(lo, e.span.hi, ast::field_ {
+            ident: i,
+            expr: e
+        })
     }
 
     fn mk_expr(&self, lo: BytePos, hi: BytePos, node: expr_) -> @expr {
@@ -2572,10 +2574,6 @@ pub impl Parser {
                          pr: visibility,
                          attrs: ~[attribute]) -> @struct_field {
         let lo = self.span.lo;
-        if self.eat_keyword("mut") {
-            // Do nothing, for backwards compatibility.
-            // XXX: Remove after snapshot.
-        }
         if !is_plain_ident(&*self.token) {
             self.fatal("expected ident");
         }
