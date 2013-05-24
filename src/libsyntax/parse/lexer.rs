@@ -247,7 +247,8 @@ fn consume_whitespace_and_comments(rdr: @mut StringReader)
 }
 
 pub fn is_line_non_doc_comment(s: &str) -> bool {
-    s.trim_right().all(|ch| ch == '/')
+    let s = s.trim_right();
+    s.len() > 3 && s.all(|ch| ch == '/')
 }
 
 // PRECONDITION: rdr.curr is not whitespace
@@ -268,7 +269,7 @@ fn consume_any_line_comment(rdr: @mut StringReader)
                     str::push_char(&mut acc, rdr.curr);
                     bump(rdr);
                 }
-                // but comments with only "/"s are not
+                // but comments with only more "/"s are not
                 if !is_line_non_doc_comment(acc) {
                     return Some(TokenAndSpan{
                         tok: token::DOC_COMMENT(rdr.interner.intern(acc)),
@@ -890,5 +891,11 @@ mod test {
             env.string_reader.next_token();
         let id = env.interner.intern("abc");
         assert_eq!(tok, token::LIFETIME(id));
+    }
+
+    #[test] fn line_doc_comments() {
+        assert!(!is_line_non_doc_comment("///"));
+        assert!(!is_line_non_doc_comment("/// blah"));
+        assert!(is_line_non_doc_comment("////"));
     }
 }
