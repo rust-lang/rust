@@ -15,6 +15,7 @@ use middle::typeck::check::demand;
 use middle::typeck::check::{check_block, check_expr_has_type, FnCtxt};
 use middle::typeck::check::{instantiate_path, lookup_def};
 use middle::typeck::check::{structure_of, valid_range_bounds};
+use middle::typeck::infer;
 use middle::typeck::require_same_types;
 
 use std::hashmap::{HashMap, HashSet};
@@ -38,8 +39,6 @@ pub fn check_match(fcx: @mut FnCtxt,
         let pcx = pat_ctxt {
             fcx: fcx,
             map: pat_id_map(tcx.def_map, arm.pats[0]),
-            match_region: ty::re_scope(expr.id),
-            block_region: ty::re_scope(arm.body.node.id)
         };
 
         for arm.pats.iter().advance |p| { check_pat(&pcx, *p, pattern_ty);}
@@ -93,8 +92,6 @@ pub fn check_match(fcx: @mut FnCtxt,
 pub struct pat_ctxt {
     fcx: @mut FnCtxt,
     map: PatIdMap,
-    match_region: ty::Region, // Region for the match as a whole
-    block_region: ty::Region, // Region for the block of the arm
 }
 
 pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
@@ -442,8 +439,8 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
             // then the type of x is &M T where M is the mutability
             // and T is the expected type
             let region_var =
-                fcx.infcx().next_region_var_with_lb(
-                    pat.span, pcx.block_region);
+                fcx.infcx().next_region_var(
+                    infer::PatternRegion(pat.span));
             let mt = ty::mt {ty: expected, mutbl: mutbl};
             let region_ty = ty::mk_rptr(tcx, region_var, mt);
             demand::eqtype(fcx, pat.span, region_ty, typ);
@@ -544,9 +541,8 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
       }
       ast::pat_vec(ref before, slice, ref after) => {
         let default_region_var =
-            fcx.infcx().next_region_var_with_lb(
-                pat.span, pcx.block_region
-            );
+            fcx.infcx().next_region_var(
+                infer::PatternRegion(pat.span));
 
         let (elt_type, region_var) = match structure_of(
           fcx, pat.span, expected

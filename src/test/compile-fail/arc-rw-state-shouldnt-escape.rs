@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: reference is not valid outside of its lifetime
 extern mod extra;
 use extra::arc;
 fn main() {
     let x = ~arc::RWARC(1);
-    let mut y = None;
+    let mut y = None; //~ ERROR lifetime of variable does not enclose its declaration
     do x.write |one| {
         y = Some(one);
     }
     *y.unwrap() = 2;
+    //~^ ERROR lifetime of return value does not outlive the function call
+    //~^^ ERROR dereference of reference outside its lifetime
 }

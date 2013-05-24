@@ -264,7 +264,8 @@ use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::{ValsAndBindings, Root};
 use middle::typeck::isr_alist;
 use util::common::indent;
-use util::ppaux::{bound_region_to_str, ty_to_str, trait_ref_to_str};
+use util::ppaux::{bound_region_to_str, ty_to_str, trait_ref_to_str, Repr,
+                  UserString};
 
 use std::result;
 use std::vec;
@@ -286,6 +287,7 @@ pub mod sub;
 pub mod to_str;
 pub mod unify;
 pub mod coercion;
+pub mod error_reporting;
 
 pub type Bound<T> = Option<T>;
 pub struct Bounds<T> {
@@ -317,6 +319,127 @@ pub struct InferCtxt {
 
     // For region variables.
     region_vars: RegionVarBindings,
+}
+
+/// Why did we require that the two types be related?
+///
+/// See `error_reporting.rs` for more details
+pub enum SubtypeOrigin {
+    // Not yet categorized in a better way
+    Misc(span),
+
+    // Checking that method of impl is compatible with trait
+    MethodCompatCheck(span),
+
+    // Checking that this expression can be assigned where it needs to be
+    ExprAssignable(@ast::expr),
+
+    // Relating trait refs when resolving vtables
+    RelateTraitRefs(span),
+
+    // Relating trait refs when resolving vtables
+    RelateSelfType(span),
+}
+
+/// See `error_reporting.rs` for more details
+pub enum ValuePairs {
+    Types(ty::expected_found<ty::t>),
+    TraitRefs(ty::expected_found<@ty::TraitRef>),
+}
+
+/// The trace designates the path through inference that we took to
+/// encounter an error or subtyping constraint.
+///
+/// See `error_reporting.rs` for more details.
+pub struct SubtypeTrace {
+    origin: SubtypeOrigin,
+    values: ValuePairs,
+}
+
+/// The origin of a `r1 <= r2` constraint.
+///
+/// See `error_reporting.rs` for more details
+pub enum SubregionOrigin {
+    // Arose from a subtyping relation
+    Subtype(SubtypeTrace),
+
+    // Invocation of closure must be within its lifetime
+    InvokeClosure(span),
+
+    // Dereference of borrowed pointer must be within its lifetime
+    DerefPointer(span),
+
+    // Closure bound must not outlive captured free variables
+    FreeVariable(span),
+
+    // Index into slice must be within its lifetime
+    IndexSlice(span),
+
+    // When casting `&'a T` to an `&'b Trait` object,
+    // relating `'a` to `'b`
+    RelateObjectBound(span),
+
+    // Creating a pointer `b` to contents of another borrowed pointer
+    Reborrow(span),
+
+    // (&'a &'b T) where a >= b
+    ReferenceOutlivesReferent(ty::t, span),
+
+    // A `ref b` whose region does not enclose the decl site
+    BindingTypeIsNotValidAtDecl(span),
+
+    // Regions appearing in a method receiver must outlive method call
+    CallRcvr(span),
+
+    // Regions appearing in a function argument must outlive func call
+    CallArg(span),
+
+    // Region in return type of invoked fn must enclose call
+    CallReturn(span),
+
+    // Region resulting from a `&` expr must enclose the `&` expr
+    AddrOf(span),
+
+    // An auto-borrow that does not enclose the expr where it occurs
+    AutoBorrow(span),
+}
+
+/// Reasons to create a region inference variable
+///
+/// See `error_reporting.rs` for more details
+pub enum RegionVariableOrigin {
+    // Region variables created for ill-categorized reasons,
+    // mostly indicates places in need of refactoring
+    MiscVariable(span),
+
+    // Regions created by a `&P` or `[...]` pattern
+    PatternRegion(span),
+
+    // Regions created by `&` operator
+    AddrOfRegion(span),
+
+    // Regions created by `&[...]` literal
+    AddrOfSlice(span),
+
+    // Regions created as part of an autoref of a method receiver
+    Autoref(span),
+
+    // Regions created as part of an automatic coercion
+    Coercion(SubtypeTrace),
+
+    // Region variables created for bound regions
+    // in a function or method that is called
+    BoundRegionInFnCall(span, ty::bound_region),
+
+    // Region variables created for bound regions
+    // when doing subtyping/lub/glb computations
+    BoundRegionInFnType(span, ty::bound_region),
+
+    BoundRegionInTypeOrImpl(span),
+
+    BoundRegionInCoherence,
+
+    BoundRegionError(span),
 }
 
 pub enum fixup_err {
@@ -366,14 +489,18 @@ pub fn new_infer_ctxt(tcx: ty::ctxt) -> @mut InferCtxt {
 
 pub fn mk_subty(cx: @mut InferCtxt,
                 a_is_expected: bool,
-                span: span,
+                origin: SubtypeOrigin,
                 a: ty::t,
                 b: ty::t)
              -> ures {
     debug!("mk_subty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
-            cx.sub(a_is_expected, span).tys(a, b)
+            let trace = SubtypeTrace {
+                origin: origin,
+                values: Types(expected_found(a_is_expected, a, b))
+            };
+            cx.sub(a_is_expected, trace).tys(a, b)
         }
     }.to_ures()
 }
@@ -382,35 +509,40 @@ pub fn can_mk_subty(cx: @mut InferCtxt, a: ty::t, b: ty::t) -> ures {
     debug!("can_mk_subty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.probe {
-            cx.sub(true, codemap::dummy_sp()).tys(a, b)
+            let trace = SubtypeTrace {
+                origin: Misc(codemap::dummy_sp()),
+                values: Types(expected_found(true, a, b))
+            };
+            cx.sub(true, trace).tys(a, b)
         }
     }.to_ures()
 }
 
 pub fn mk_subr(cx: @mut InferCtxt,
                a_is_expected: bool,
-               span: span,
+               origin: SubregionOrigin,
                a: ty::Region,
-               b: ty::Region)
-            -> ures {
+               b: ty::Region) {
     debug!("mk_subr(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
-    do indent {
-        do cx.commit {
-            cx.sub(a_is_expected, span).regions(a, b)
-        }
-    }.to_ures()
+    cx.region_vars.start_snapshot();
+    cx.region_vars.make_subregion(origin, a, b);
+    cx.region_vars.commit();
 }
 
 pub fn mk_eqty(cx: @mut InferCtxt,
                a_is_expected: bool,
-               span: span,
+               origin: SubtypeOrigin,
                a: ty::t,
                b: ty::t)
             -> ures {
     debug!("mk_eqty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
-            let suber = cx.sub(a_is_expected, span);
+            let trace = SubtypeTrace {
+                origin: origin,
+                values: Types(expected_found(a_is_expected, a, b))
+            };
+            let suber = cx.sub(a_is_expected, trace);
             eq_tys(&suber, a, b)
         }
     }.to_ures()
@@ -418,31 +550,49 @@ pub fn mk_eqty(cx: @mut InferCtxt,
 
 pub fn mk_sub_trait_refs(cx: @mut InferCtxt,
                          a_is_expected: bool,
-                         span: span,
-                         a: &ty::TraitRef,
-                         b: &ty::TraitRef)
+                         origin: SubtypeOrigin,
+                         a: @ty::TraitRef,
+                         b: @ty::TraitRef)
     -> ures
 {
     debug!("mk_sub_trait_refs(%s <: %s)",
            a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
-            let suber = cx.sub(a_is_expected, span);
+            let trace = SubtypeTrace {
+                origin: origin,
+                values: TraitRefs(expected_found(a_is_expected, a, b))
+            };
+            let suber = cx.sub(a_is_expected, trace);
             suber.trait_refs(a, b)
         }
     }.to_ures()
 }
 
+fn expected_found<T>(a_is_expected: bool,
+                     a: T,
+                     b: T) -> ty::expected_found<T> {
+    if a_is_expected {
+        ty::expected_found {expected: a, found: b}
+    } else {
+        ty::expected_found {expected: b, found: a}
+    }
+}
+
 pub fn mk_coercety(cx: @mut InferCtxt,
                    a_is_expected: bool,
-                   span: span,
+                   origin: SubtypeOrigin,
                    a: ty::t,
                    b: ty::t)
                 -> CoerceResult {
     debug!("mk_coercety(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
-            Coerce(cx.combine_fields(a_is_expected, span)).tys(a, b)
+            let trace = SubtypeTrace {
+                origin: origin,
+                values: Types(expected_found(a_is_expected, a, b))
+            };
+            Coerce(cx.combine_fields(a_is_expected, trace)).tys(a, b)
         }
     }
 }
@@ -451,8 +601,11 @@ pub fn can_mk_coercety(cx: @mut InferCtxt, a: ty::t, b: ty::t) -> ures {
     debug!("can_mk_coercety(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.probe {
-            let span = codemap::dummy_sp();
-            Coerce(cx.combine_fields(true, span)).tys(a, b)
+            let trace = SubtypeTrace {
+                origin: Misc(codemap::dummy_sp()),
+                values: Types(expected_found(true, a, b))
+            };
+            Coerce(cx.combine_fields(true, trace)).tys(a, b)
         }
     }.to_ures()
 }
@@ -535,15 +688,17 @@ struct Snapshot {
 }
 
 impl InferCtxt {
-    pub fn combine_fields(@mut self, a_is_expected: bool, span: span)
+    pub fn combine_fields(@mut self,
+                          a_is_expected: bool,
+                          trace: SubtypeTrace)
                           -> CombineFields {
         CombineFields {infcx: self,
                        a_is_expected: a_is_expected,
-                       span: span}
+                       trace: trace}
     }
 
-    pub fn sub(@mut self, a_is_expected: bool, span: span) -> Sub {
-        Sub(self.combine_fields(a_is_expected, span))
+    pub fn sub(@mut self, a_is_expected: bool, trace: SubtypeTrace) -> Sub {
+        Sub(self.combine_fields(a_is_expected, trace))
     }
 
     pub fn in_snapshot(&self) -> bool {
@@ -663,31 +818,13 @@ impl InferCtxt {
         ty::mk_float_var(self.tcx, self.next_float_var_id())
     }
 
-    pub fn next_region_var_nb(&mut self, span: span) -> ty::Region {
-        ty::re_infer(ty::ReVar(self.region_vars.new_region_var(span)))
+    pub fn next_region_var(&mut self, origin: RegionVariableOrigin) -> ty::Region {
+        ty::re_infer(ty::ReVar(self.region_vars.new_region_var(origin)))
     }
 
-    pub fn next_region_var_with_lb(&mut self,
-                                   span: span,
-                                   lb_region: ty::Region)
-                                   -> ty::Region {
-        let region_var = self.next_region_var_nb(span);
-
-        // add lb_region as a lower bound on the newly built variable
-        assert!(self.region_vars.make_subregion(span,
-                                                     lb_region,
-                                                     region_var).is_ok());
-
-        return region_var;
-    }
-
-    pub fn next_region_var(&mut self, span: span, scope_id: ast::node_id)
-                           -> ty::Region {
-        self.next_region_var_with_lb(span, ty::re_scope(scope_id))
-    }
-
-    pub fn resolve_regions(&mut self) {
-        self.region_vars.resolve_regions();
+    pub fn resolve_regions(@mut self) {
+        let errors = self.region_vars.resolve_regions();
+        self.report_region_errors(&errors); // see error_reporting.rs
     }
 
     pub fn ty_to_str(@mut self, t: ty::t) -> ~str {
@@ -809,17 +946,13 @@ impl InferCtxt {
     }
 
     pub fn replace_bound_regions_with_fresh_regions(&mut self,
-                                                    span: span,
+                                                    trace: SubtypeTrace,
                                                     fsig: &ty::FnSig)
-                                                    -> (ty::FnSig,
-                                                        isr_alist) {
+                                                    -> (ty::FnSig, isr_alist) {
         let(isr, _, fn_sig) =
             replace_bound_regions_in_fn_sig(self.tcx, @Nil, None, fsig, |br| {
-                // N.B.: The name of the bound region doesn't have anything to
-                // do with the region variable that's created for it.  The
-                // only thing we're doing with `br` here is using it in the
-                // debug message.
-                let rvar = self.next_region_var_nb(span);
+                let rvar = self.next_region_var(
+                    BoundRegionInFnType(trace.origin.span(), br));
                 debug!("Bound region %s maps to %?",
                        bound_region_to_str(self.tcx, "", false, br),
                        rvar);
@@ -838,3 +971,121 @@ pub fn fold_regions_in_sig(
         ty::fold_regions(tcx, t, |r, in_fn| fldr(r, in_fn))
     }
 }
+
+impl SubtypeTrace {
+    pub fn span(&self) -> span {
+        self.origin.span()
+    }
+}
+
+impl Repr for SubtypeTrace {
+    fn repr(&self, tcx: ty::ctxt) -> ~str {
+        fmt!("SubtypeTrace(%s)", self.origin.repr(tcx))
+    }
+}
+
+impl SubtypeOrigin {
+    pub fn span(&self) -> span {
+        match *self {
+            MethodCompatCheck(span) => span,
+            ExprAssignable(expr) => expr.span,
+            Misc(span) => span,
+            RelateTraitRefs(span) => span,
+            RelateSelfType(span) => span,
+        }
+    }
+}
+
+impl Repr for SubtypeOrigin {
+    fn repr(&self, tcx: ty::ctxt) -> ~str {
+        match *self {
+            MethodCompatCheck(a) => fmt!("MethodCompatCheck(%s)", a.repr(tcx)),
+            ExprAssignable(a) => fmt!("ExprAssignable(%s)", a.repr(tcx)),
+            Misc(a) => fmt!("Misc(%s)", a.repr(tcx)),
+            RelateTraitRefs(a) => fmt!("RelateTraitRefs(%s)", a.repr(tcx)),
+            RelateSelfType(a) => fmt!("RelateSelfType(%s)", a.repr(tcx)),
+        }
+    }
+}
+
+impl SubregionOrigin {
+    pub fn span(&self) -> span {
+        match *self {
+            Subtype(a) => a.span(),
+            InvokeClosure(a) => a,
+            DerefPointer(a) => a,
+            FreeVariable(a) => a,
+            IndexSlice(a) => a,
+            RelateObjectBound(a) => a,
+            Reborrow(a) => a,
+            ReferenceOutlivesReferent(_, a) => a,
+            BindingTypeIsNotValidAtDecl(a) => a,
+            CallRcvr(a) => a,
+            CallArg(a) => a,
+            CallReturn(a) => a,
+            AddrOf(a) => a,
+            AutoBorrow(a) => a,
+        }
+    }
+}
+
+impl Repr for SubregionOrigin {
+    fn repr(&self, tcx: ty::ctxt) -> ~str {
+        match *self {
+            Subtype(a) => fmt!("Subtype(%s)", a.repr(tcx)),
+            InvokeClosure(a) => fmt!("InvokeClosure(%s)", a.repr(tcx)),
+            DerefPointer(a) => fmt!("DerefPointer(%s)", a.repr(tcx)),
+            FreeVariable(a) => fmt!("FreeVariable(%s)", a.repr(tcx)),
+            IndexSlice(a) => fmt!("IndexSlice(%s)", a.repr(tcx)),
+            RelateObjectBound(a) => fmt!("RelateObjectBound(%s)", a.repr(tcx)),
+            Reborrow(a) => fmt!("Reborrow(%s)", a.repr(tcx)),
+            ReferenceOutlivesReferent(_, a) => fmt!("ReferenceOutlivesReferent(%s)", a.repr(tcx)),
+            BindingTypeIsNotValidAtDecl(a) => fmt!("BindingTypeIsNotValidAtDecl(%s)", a.repr(tcx)),
+            CallRcvr(a) => fmt!("CallRcvr(%s)", a.repr(tcx)),
+            CallArg(a) => fmt!("CallArg(%s)", a.repr(tcx)),
+            CallReturn(a) => fmt!("CallReturn(%s)", a.repr(tcx)),
+            AddrOf(a) => fmt!("AddrOf(%s)", a.repr(tcx)),
+            AutoBorrow(a) => fmt!("AutoBorrow(%s)", a.repr(tcx)),
+        }
+    }
+}
+
+impl RegionVariableOrigin {
+    pub fn span(&self) -> span {
+        match *self {
+            MiscVariable(a) => a,
+            PatternRegion(a) => a,
+            AddrOfRegion(a) => a,
+            AddrOfSlice(a) => a,
+            Autoref(a) => a,
+            Coercion(a) => a.span(),
+            BoundRegionInFnCall(a, _) => a,
+            BoundRegionInFnType(a, _) => a,
+            BoundRegionInTypeOrImpl(a) => a,
+            BoundRegionInCoherence => codemap::dummy_sp(),
+            BoundRegionError(a) => a,
+        }
+    }
+}
+
+impl Repr for RegionVariableOrigin {
+    fn repr(&self, tcx: ty::ctxt) -> ~str {
+        match *self {
+            MiscVariable(a) => fmt!("MiscVariable(%s)", a.repr(tcx)),
+            PatternRegion(a) => fmt!("PatternRegion(%s)", a.repr(tcx)),
+            AddrOfRegion(a) => fmt!("AddrOfRegion(%s)", a.repr(tcx)),
+            AddrOfSlice(a) => fmt!("AddrOfSlice(%s)", a.repr(tcx)),
+            Autoref(a) => fmt!("Autoref(%s)", a.repr(tcx)),
+            Coercion(a) => fmt!("Coercion(%s)", a.repr(tcx)),
+            BoundRegionInFnCall(a, b) => fmt!("BoundRegionInFnCall(%s,%s)",
+                                              a.repr(tcx), b.repr(tcx)),
+            BoundRegionInFnType(a, b) => fmt!("BoundRegionInFnType(%s,%s)",
+                                              a.repr(tcx), b.repr(tcx)),
+            BoundRegionInTypeOrImpl(a) => fmt!("BoundRegionInTypeOrImpl(%s)",
+                                               a.repr(tcx)),
+            BoundRegionInCoherence => fmt!("BoundRegionInCoherence"),
+            BoundRegionError(a) => fmt!("BoundRegionError(%s)", a.repr(tcx)),
+        }
+    }
+}
+

@@ -467,8 +467,6 @@ pub fn check_fn(ccx: @mut CrateCtxt,
             let pcx = pat_ctxt {
                 fcx: fcx,
                 map: pat_id_map(tcx.def_map, input.pat),
-                match_region: region,
-                block_region: region,
             };
             _match::check_pat(&pcx, input.pat, *arg_ty);
         }
@@ -686,9 +684,14 @@ impl FnCtxt {
                     result::Ok(self.block_region())
                 } else {
                     result::Err(RegionError {
-                        msg: fmt!("named region `%s` not in scope here",
-                                  bound_region_ptr_to_str(self.tcx(), br)),
-                        replacement: self.infcx().next_region_var_nb(span)
+                        msg: {
+                            fmt!("named region `%s` not in scope here",
+                                 bound_region_to_str(self.tcx(), br))
+                        },
+                        replacement: {
+                            self.infcx().next_region_var(
+                                infer::BoundRegionError(span))
+                        }
                     })
                 }
             }
@@ -698,7 +701,7 @@ impl FnCtxt {
 
 impl region_scope for FnCtxt {
     fn anon_region(&self, span: span) -> Result<ty::Region, RegionError> {
-        result::Ok(self.infcx().next_region_var_nb(span))
+        result::Ok(self.infcx().next_region_var(infer::MiscVariable(span)))
     }
     fn self_region(&self, span: span) -> Result<ty::Region, RegionError> {
         self.search_in_scope_regions(span, ty::br_self)
@@ -845,11 +848,11 @@ impl FnCtxt {
 
     pub fn mk_subty(&self,
                     a_is_expected: bool,
-                    span: span,
+                    origin: infer::SubtypeOrigin,
                     sub: ty::t,
                     sup: ty::t)
                     -> Result<(), ty::type_err> {
-        infer::mk_subty(self.infcx(), a_is_expected, span, sub, sup)
+        infer::mk_subty(self.infcx(), a_is_expected, origin, sub, sup)
     }
 
     pub fn can_mk_subty(&self, sub: ty::t, sup: ty::t)
@@ -857,9 +860,16 @@ impl FnCtxt {
         infer::can_mk_subty(self.infcx(), sub, sup)
     }
 
-    pub fn mk_assignty(&self, expr: @ast::expr, sub: ty::t, sup: ty::t)
+    pub fn mk_assignty(&self,
+                       expr: @ast::expr,
+                       sub: ty::t,
+                       sup: ty::t)
                        -> Result<(), ty::type_err> {
-        match infer::mk_coercety(self.infcx(), false, expr.span, sub, sup) {
+        match infer::mk_coercety(self.infcx(),
+                                 false,
+                                 infer::ExprAssignable(expr),
+                                 sub,
+                                 sup) {
             Ok(None) => result::Ok(()),
             Err(ref e) => result::Err((*e)),
             Ok(Some(adjustment)) => {
@@ -876,20 +886,19 @@ impl FnCtxt {
 
     pub fn mk_eqty(&self,
                    a_is_expected: bool,
-                   span: span,
+                   origin: infer::SubtypeOrigin,
                    sub: ty::t,
                    sup: ty::t)
                    -> Result<(), ty::type_err> {
-        infer::mk_eqty(self.infcx(), a_is_expected, span, sub, sup)
+        infer::mk_eqty(self.infcx(), a_is_expected, origin, sub, sup)
     }
 
     pub fn mk_subr(&self,
                    a_is_expected: bool,
-                   span: span,
+                   origin: infer::SubregionOrigin,
                    sub: ty::Region,
-                   sup: ty::Region)
-                   -> Result<(), ty::type_err> {
-        infer::mk_subr(self.infcx(), a_is_expected, span, sub, sup)
+                   sup: ty::Region) {
+        infer::mk_subr(self.infcx(), a_is_expected, origin, sub, sup)
     }
 
     pub fn with_region_lb<R>(@mut self, lb: ast::node_id, f: &fn() -> R)
@@ -905,7 +914,9 @@ impl FnCtxt {
                                        rp: Option<ty::region_variance>,
                                        span: span)
                                        -> Option<ty::Region> {
-        rp.map(|_rp| self.infcx().next_region_var_nb(span))
+        rp.map(
+            |_| self.infcx().next_region_var(
+                infer::BoundRegionInTypeOrImpl(span)))
     }
 
     pub fn type_error_message(&self,
@@ -1089,7 +1100,8 @@ pub fn impl_self_ty(vcx: &VtableContext,
     };
 
     let self_r = if region_param.is_some() {
-        Some(vcx.infcx.next_region_var_nb(location_info.span))
+        Some(vcx.infcx.next_region_var(
+            infer::BoundRegionInTypeOrImpl(location_info.span)))
     } else {
         None
     };
@@ -1352,7 +1364,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let (_, _, fn_sig) =
             replace_bound_regions_in_fn_sig(
                 fcx.tcx(), @Nil, None, &fn_sig,
-                |_br| fcx.infcx().next_region_var_nb(call_expr.span));
+                |br| fcx.infcx().next_region_var(
+                    infer::BoundRegionInFnCall(call_expr.span, br)));
 
         // Call the generic checker.
         check_argument_types(fcx, call_expr.span, fn_sig.inputs, f,
@@ -2085,7 +2098,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let expected_sty = unpack_expected(fcx, expected, |x| Some(copy *x));
         let inner_ty = match expected_sty {
             Some(ty::ty_closure(ref fty)) => {
-                match fcx.mk_subty(false, expr.span,
+                match fcx.mk_subty(false, infer::Misc(expr.span),
                                    fty.sig.output, ty::mk_bool()) {
                     result::Ok(_) => {
                         ty::mk_closure(tcx, ty::ClosureTy {
@@ -2395,7 +2408,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // Finally, borrowck is charged with guaranteeing that the
         // value whose address was taken can actually be made to live
         // as long as it needs to live.
-        let region = fcx.infcx().next_region_var_nb(expr.span);
+        let region = fcx.infcx().next_region_var(
+            infer::AddrOfRegion(expr.span));
 
         let tm = ty::mt { ty: fcx.expr_ty(oprnd), mutbl: mutbl };
         let oprnd_t = if ty::type_is_error(tm.ty) {
@@ -2437,7 +2451,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
           Some(t) =>  t, None => fcx.ret_ty
         };
         match expr_opt {
-          None => match fcx.mk_eqty(false, expr.span,
+          None => match fcx.mk_eqty(false, infer::Misc(expr.span),
                                     ret_ty, ty::mk_nil()) {
             result::Ok(_) => { /* fall through */ }
             result::Err(_) => {
@@ -2686,7 +2700,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                 let el = ty::sequence_element_type(fcx.tcx(),
                                                                    t1);
                                 infer::mk_eqty(fcx.infcx(), false,
-                                               sp, el, t2).is_ok()
+                                               infer::Misc(sp), el, t2).is_ok()
                             }
                         }
 
@@ -2907,8 +2921,6 @@ pub fn check_decl_local(fcx: @mut FnCtxt, local: @ast::local)  {
     let pcx = pat_ctxt {
         fcx: fcx,
         map: pat_id_map(tcx.def_map, local.node.pat),
-        match_region: region,
-        block_region: region,
     };
     _match::check_pat(&pcx, local.node.pat, t);
     let pat_ty = fcx.node_ty(local.node.pat.id);
@@ -3412,7 +3424,7 @@ pub fn ast_expr_vstore_to_vstore(fcx: @mut FnCtxt,
         ast::expr_vstore_uniq => ty::vstore_uniq,
         ast::expr_vstore_box | ast::expr_vstore_mut_box => ty::vstore_box,
         ast::expr_vstore_slice | ast::expr_vstore_mut_slice => {
-            let r = fcx.infcx().next_region_var_nb(e.span);
+            let r = fcx.infcx().next_region_var(infer::AddrOfSlice(e.span));
             ty::vstore_slice(r)
         }
     }

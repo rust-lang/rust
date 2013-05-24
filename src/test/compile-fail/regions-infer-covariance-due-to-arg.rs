@@ -22,6 +22,7 @@ fn to_same_lifetime<'r>(bi: covariant<'r>) {
 
 fn to_shorter_lifetime<'r>(bi: covariant<'r>) {
     let bj: covariant<'blk> = bi; //~ ERROR mismatched types
+    //~^ ERROR cannot infer an appropriate lifetime
 }
 
 fn to_longer_lifetime<'r>(bi: covariant<'r>) -> covariant<'static> {
