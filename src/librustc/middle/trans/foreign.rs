@@ -897,6 +897,32 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             let llfn = *bcx.ccx().intrinsics.get(&~"llvm.memmove.p0i8.p0i8.i64");
             Call(bcx, llfn, [dst_ptr, src_ptr, Mul(bcx, size, count), align, volatile]);
         }
+        ~"memset32" => {
+            let tp_ty = substs.tys[0];
+            let lltp_ty = type_of::type_of(ccx, tp_ty);
+            let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
+            let size = C_i32(machine::llsize_of_real(ccx, lltp_ty) as i32);
+
+            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), T_ptr(T_i8()));
+            let val = get_param(decl, first_real_arg + 1);
+            let count = get_param(decl, first_real_arg + 2);
+            let volatile = C_i1(false);
+            let llfn = *bcx.ccx().intrinsics.get(&~"llvm.memset.p0i8.i32");
+            Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align, volatile]);
+        }
+        ~"memset64" => {
+            let tp_ty = substs.tys[0];
+            let lltp_ty = type_of::type_of(ccx, tp_ty);
+            let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
+            let size = C_i64(machine::llsize_of_real(ccx, lltp_ty) as i64);
+
+            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), T_ptr(T_i8()));
+            let val = get_param(decl, first_real_arg + 1);
+            let count = get_param(decl, first_real_arg + 2);
+            let volatile = C_i1(false);
+            let llfn = *bcx.ccx().intrinsics.get(&~"llvm.memset.p0i8.i64");
+            Call(bcx, llfn, [dst_ptr, val, Mul(bcx, size, count), align, volatile]);
+        }
         ~"sqrtf32" => {
             let x = get_param(decl, first_real_arg);
             let sqrtf = *ccx.intrinsics.get(&~"llvm.sqrt.f32");

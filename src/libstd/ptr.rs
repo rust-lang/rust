@@ -19,6 +19,7 @@ use sys;
 #[cfg(not(test))] use cmp::{Eq, Ord};
 use uint;
 
+#[cfg(stage0)]
 pub mod libc_ {
     use libc::c_void;
     use libc;
@@ -157,9 +158,24 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
 }
 
 #[inline(always)]
+#[cfg(stage0)]
 pub unsafe fn set_memory<T>(dst: *mut T, c: int, count: uint) {
     let n = count * sys::size_of::<T>();
     libc_::memset(dst as *mut c_void, c as libc::c_int, n as size_t);
+}
+
+#[inline(always)]
+#[cfg(target_word_size = "32", not(stage0))]
+pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
+    use unstable::intrinsics::memset32;
+    memset32(dst, c, count as u32);
+}
+
+#[inline(always)]
+#[cfg(target_word_size = "64", not(stage0))]
+pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
+    use unstable::intrinsics::memset64;
+    memset64(dst, c, count as u64);
 }
 
 /**
@@ -602,5 +618,13 @@ pub mod ptr_tests {
                 str::raw::from_c_str(e);
             });
         }
+    }
+
+    #[test]
+    fn test_set_memory() {
+        let mut xs = [0u8, ..20];
+        let ptr = vec::raw::to_mut_ptr(xs);
+        unsafe { set_memory(ptr, 5u8, xs.len()); }
+        assert_eq!(xs, [5u8, ..20]);
     }
 }

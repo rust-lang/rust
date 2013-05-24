@@ -3597,6 +3597,30 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
            ],
            ty::mk_nil())
         }
+        ~"memset32" => {
+          (1,
+           ~[
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: param(ccx, 0),
+                  mutbl: ast::m_mutbl
+              }),
+              ty::mk_u8(),
+              ty::mk_u32()
+           ],
+           ty::mk_nil())
+        }
+        ~"memset64" => {
+          (1,
+           ~[
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: param(ccx, 0),
+                  mutbl: ast::m_mutbl
+              }),
+              ty::mk_u8(),
+              ty::mk_u64()
+           ],
+           ty::mk_nil())
+        }
         ~"sqrtf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
         ~"sqrtf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
         ~"powif32" => {
