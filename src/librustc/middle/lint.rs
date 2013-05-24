@@ -972,16 +972,23 @@ fn lint_unnecessary_allocations(cx: @mut Context) -> visit::vt<()> {
 fn lint_missing_struct_doc(cx: @mut Context) -> visit::vt<()> {
     visit::mk_simple_visitor(@visit::SimpleVisitor {
         visit_struct_field: |field| {
-            let mut has_doc = false;
-            for field.node.attrs.each |attr| {
-                if attr.node.is_sugared_doc {
-                    has_doc = true;
-                    break;
+            let relevant = match field.node.kind {
+                ast::named_field(_, vis) => vis != ast::private,
+                ast::unnamed_field => false,
+            };
+
+            if relevant {
+                let mut has_doc = false;
+                for field.node.attrs.each |attr| {
+                    if attr.node.is_sugared_doc {
+                        has_doc = true;
+                        break;
+                    }
                 }
-            }
-            if !has_doc {
-                cx.span_lint(missing_struct_doc, field.span, "missing documentation \
-                                                              for a field.");
+                if !has_doc {
+                    cx.span_lint(missing_struct_doc, field.span, "missing documentation \
+                                                                  for a field.");
+                }
             }
         },
         .. *visit::default_simple_visitor()
@@ -1003,10 +1010,14 @@ fn lint_missing_trait_doc(cx: @mut Context) -> visit::vt<()> {
                     m.span
                 },
                 ast::provided(m) => {
-                    for m.attrs.each |attr| {
-                        if attr.node.is_sugared_doc {
-                            has_doc = true;
-                            break;
+                    if m.vis == ast::private {
+                        has_doc = true;
+                    } else {
+                        for m.attrs.each |attr| {
+                            if attr.node.is_sugared_doc {
+                                has_doc = true;
+                                break;
+                            }
                         }
                     }
                     m.span
@@ -1014,7 +1025,7 @@ fn lint_missing_trait_doc(cx: @mut Context) -> visit::vt<()> {
             };
             if !has_doc {
                 cx.span_lint(missing_trait_doc, span, "missing documentation \
-                                                        for a method.");
+                                                       for a method.");
             }
         },
         .. *visit::default_simple_visitor()
