@@ -31,6 +31,7 @@ A quick refresher on memory ordering:
   with atomic types and is equivalent to Java's `volatile`.
 
 */
+
 #[abi = "rust-intrinsic"]
 pub extern "rust-intrinsic" {
 
@@ -151,6 +152,15 @@ pub extern "rust-intrinsic" {
     /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
     #[cfg(not(stage0))]
     pub fn memmove64<T>(dst: *mut T, src: *T, count: u64);
+
+    /// Equivalent to the `llvm.memset.p0i8.i32` intrinsic, with a size of
+    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
+    #[cfg(not(stage0))]
+    pub fn memset32<T>(dst: *mut T, val: u8, count: u32);
+    /// Equivalent to the `llvm.memset.p0i8.i64` intrinsic, with a size of
+    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
+    #[cfg(not(stage0))]
+    pub fn memset64<T>(dst: *mut T, val: u8, count: u64);
 
     pub fn sqrtf32(x: f32) -> f32;
     pub fn sqrtf64(x: f64) -> f64;
