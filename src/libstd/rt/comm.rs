@@ -474,7 +474,7 @@ mod test {
     #[test]
     fn oneshot_single_thread_peek_open() {
         do run_in_newsched_task {
-            let (port, chan) = oneshot::<int>();
+            let (port, _) = oneshot::<int>();
             assert!(!port.peek());
         }
     }

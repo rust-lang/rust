@@ -1367,13 +1367,21 @@ pub type mono_id = @mono_id_;
 impl to_bytes::IterBytes for mono_param_id {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
-            mono_precise(t, ref mids) =>
-                to_bytes::iter_bytes_3(&0u8, &ty::type_id(t), mids, lsb0, f),
+            mono_precise(t, ref mids) => {
+                0u8.iter_bytes(lsb0, f) &&
+                ty::type_id(t).iter_bytes(lsb0, f) &&
+                mids.iter_bytes(lsb0, f)
+            }
 
             mono_any => 1u8.iter_bytes(lsb0, f),
 
-            mono_repr(ref a, ref b, ref c, ref d) =>
-                to_bytes::iter_bytes_5(&2u8, a, b, c, d, lsb0, f)
+            mono_repr(ref a, ref b, ref c, ref d) => {
+                2u8.iter_bytes(lsb0, f) &&
+                a.iter_bytes(lsb0, f) &&
+                b.iter_bytes(lsb0, f) &&
+                c.iter_bytes(lsb0, f) &&
+                d.iter_bytes(lsb0, f)
+            }
         }
     }
 }
@@ -1386,7 +1394,7 @@ impl to_bytes::IterBytes for MonoDataClass {
 
 impl to_bytes::IterBytes for mono_id_ {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        to_bytes::iter_bytes_2(&self.def, &self.params, lsb0, f)
+        self.def.iter_bytes(lsb0, f) && self.params.iter_bytes(lsb0, f)
     }
 }
 

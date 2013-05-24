@@ -236,42 +236,6 @@ impl<A:IterBytes> IterBytes for @[A] {
     }
 }
 
-// NOTE: remove all of these after a snapshot, the new for-loop iteration
-//       protocol makes these unnecessary.
-
-#[inline(always)]
-pub fn iter_bytes_2<A:IterBytes,B:IterBytes>(a: &A, b: &B,
-                                             lsb0: bool, z: Cb) -> bool {
-    a.iter_bytes(lsb0, z) && b.iter_bytes(lsb0, z)
-}
-
-pub fn iter_bytes_3<A: IterBytes,
-                    B: IterBytes,
-                    C: IterBytes>(a: &A, b: &B, c: &C, lsb0: bool, z: Cb) -> bool {
-    a.iter_bytes(lsb0, z) && b.iter_bytes(lsb0, z) && c.iter_bytes(lsb0, z)
-}
-
-pub fn iter_bytes_4<A: IterBytes,
-                B: IterBytes,
-                C: IterBytes,
-                D: IterBytes>(a: &A, b: &B, c: &C,
-                              d: &D,
-                              lsb0: bool, z: Cb) -> bool {
-    a.iter_bytes(lsb0, z) && b.iter_bytes(lsb0, z) && c.iter_bytes(lsb0, z) &&
-        d.iter_bytes(lsb0, z)
-}
-
-pub fn iter_bytes_5<A: IterBytes,
-                B: IterBytes,
-                C: IterBytes,
-                D: IterBytes,
-                E: IterBytes>(a: &A, b: &B, c: &C,
-                              d: &D, e: &E,
-                              lsb0: bool, z: Cb) -> bool {
-    a.iter_bytes(lsb0, z) && b.iter_bytes(lsb0, z) && c.iter_bytes(lsb0, z) &&
-        d.iter_bytes(lsb0, z) && e.iter_bytes(lsb0, z)
-}
-
 impl<'self> IterBytes for &'self str {
     #[inline(always)]
     fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {

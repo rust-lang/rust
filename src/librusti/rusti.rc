@@ -80,7 +80,7 @@ fn record(mut repl: Repl, blk: &ast::blk, intr: @token::ident_interner) -> Repl 
         let new_view_items = do with_pp(intr) |pp, writer| {
             for blk.node.view_items.each |view_item| {
                 pprust::print_view_item(pp, *view_item);
-                writer.write_line(~"");
+                writer.write_line("");
             }
         };
 
@@ -94,7 +94,7 @@ fn record(mut repl: Repl, blk: &ast::blk, intr: @token::ident_interner) -> Repl 
                 match stmt.node {
                     ast::stmt_decl(*) | ast::stmt_mac(*) => {
                         pprust::print_stmt(pp, *stmt);
-                        writer.write_line(~"");
+                        writer.write_line("");
                     }
                     ast::stmt_expr(expr, _) | ast::stmt_semi(expr, _) => {
                         match expr.node {
@@ -415,7 +415,7 @@ pub fn main() {
             Some(line) => {
                 if line.is_empty() {
                     if istty {
-                        io::println(~"()");
+                        io::println("()");
                     }
                     loop;
                 }

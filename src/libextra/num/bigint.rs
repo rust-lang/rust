@@ -1156,12 +1156,12 @@ mod biguint_tests {
         fn check(slice: &[BigDigit], data: &[BigDigit]) {
             assert!(data == BigUint::from_slice(slice).data);
         }
-        check(~[1], ~[1]);
-        check(~[0, 0, 0], ~[]);
-        check(~[1, 2, 0, 0], ~[1, 2]);
-        check(~[0, 0, 1, 2], ~[0, 0, 1, 2]);
-        check(~[0, 0, 1, 2, 0, 0], ~[0, 0, 1, 2]);
-        check(~[-1], ~[-1]);
+        check([1], [1]);
+        check([0, 0, 0], []);
+        check([1, 2, 0, 0], [1, 2]);
+        check([0, 0, 1, 2], [0, 0, 1, 2]);
+        check([0, 0, 1, 2, 0, 0], [0, 0, 1, 2]);
+        check([-1], [-1]);
     }
 
     #[test]
@@ -1579,9 +1579,9 @@ mod biguint_tests {
             }
         }
 
-        assert_eq!(FromStrRadix::from_str_radix::<BigUint>(~"Z", 10), None);
-        assert_eq!(FromStrRadix::from_str_radix::<BigUint>(~"_", 2), None);
-        assert_eq!(FromStrRadix::from_str_radix::<BigUint>(~"-1", 10), None);
+        assert_eq!(FromStrRadix::from_str_radix::<BigUint>("Z", 10), None);
+        assert_eq!(FromStrRadix::from_str_radix::<BigUint>("_", 2), None);
+        assert_eq!(FromStrRadix::from_str_radix::<BigUint>("-1", 10), None);
     }
 
     #[test]

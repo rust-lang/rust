@@ -1444,14 +1444,14 @@ mod tests {
     #[test]
     fn test_setenv() {
         let n = make_rand_name();
-        setenv(n, ~"VALUE");
+        setenv(n, "VALUE");
         assert_eq!(getenv(n), option::Some(~"VALUE"));
     }
 
     #[test]
     fn test_unsetenv() {
         let n = make_rand_name();
-        setenv(n, ~"VALUE");
+        setenv(n, "VALUE");
         unsetenv(n);
         assert_eq!(getenv(n), option::None);
     }
@@ -1461,10 +1461,10 @@ mod tests {
     #[ignore]
     fn test_setenv_overwrite() {
         let n = make_rand_name();
-        setenv(n, ~"1");
-        setenv(n, ~"2");
+        setenv(n, "1");
+        setenv(n, "2");
         assert_eq!(getenv(n), option::Some(~"2"));
-        setenv(n, ~"");
+        setenv(n, "");
         assert_eq!(getenv(n), option::Some(~""));
     }
 
@@ -1515,7 +1515,7 @@ mod tests {
         let n = make_rand_name();
 
         let mut e = env();
-        setenv(n, ~"VALUE");
+        setenv(n, "VALUE");
         assert!(!vec::contains(e, &(copy n, ~"VALUE")));
 
         e = env();
@@ -1526,7 +1526,7 @@ mod tests {
     fn test() {
         assert!((!Path("test-path").is_absolute));
 
-        debug!(~"Current working directory: " + getcwd().to_str());
+        debug!("Current working directory: %s", getcwd().to_str());
 
         debug!(make_absolute(&Path("test-path")));
         debug!(make_absolute(&Path("/usr/bin")));
@@ -1535,43 +1535,43 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn homedir() {
-        let oldhome = getenv(~"HOME");
+        let oldhome = getenv("HOME");
 
-        setenv(~"HOME", ~"/home/MountainView");
+        setenv("HOME", "/home/MountainView");
         assert_eq!(os::homedir(), Some(Path("/home/MountainView")));
 
-        setenv(~"HOME", ~"");
+        setenv("HOME", "");
         assert!(os::homedir().is_none());
 
-        for oldhome.each |s| { setenv(~"HOME", *s) }
+        for oldhome.each |s| { setenv("HOME", *s) }
     }
 
     #[test]
     #[cfg(windows)]
     fn homedir() {
 
-        let oldhome = getenv(~"HOME");
-        let olduserprofile = getenv(~"USERPROFILE");
+        let oldhome = getenv("HOME");
+        let olduserprofile = getenv("USERPROFILE");
 
-        setenv(~"HOME", ~"");
-        setenv(~"USERPROFILE", ~"");
+        setenv("HOME", "");
+        setenv("USERPROFILE", "");
 
         assert!(os::homedir().is_none());
 
-        setenv(~"HOME", ~"/home/MountainView");
+        setenv("HOME", "/home/MountainView");
         assert_eq!(os::homedir(), Some(Path("/home/MountainView")));
 
-        setenv(~"HOME", ~"");
+        setenv("HOME", "");
 
-        setenv(~"USERPROFILE", ~"/home/MountainView");
+        setenv("USERPROFILE", "/home/MountainView");
         assert_eq!(os::homedir(), Some(Path("/home/MountainView")));
 
-        setenv(~"HOME", ~"/home/MountainView");
-        setenv(~"USERPROFILE", ~"/home/PaloAlto");
+        setenv("HOME", "/home/MountainView");
+        setenv("USERPROFILE", "/home/PaloAlto");
         assert_eq!(os::homedir(), Some(Path("/home/MountainView")));
 
-        oldhome.each(|s| {setenv(~"HOME", *s);true});
-        olduserprofile.each(|s| {setenv(~"USERPROFILE", *s);true});
+        oldhome.each(|s| { setenv("HOME", *s); true });
+        olduserprofile.each(|s| { setenv("USERPROFILE", *s); true });
     }
 
     #[test]
@@ -1646,7 +1646,7 @@ mod tests {
             fail!("%s doesn't exist", in.to_str());
           }
           assert!((rs));
-          let rslt = run::run_program(~"diff", ~[in.to_str(), out.to_str()]);
+          let rslt = run::run_program("diff", [in.to_str(), out.to_str()]);
           assert_eq!(rslt, 0);
           assert_eq!(out.get_mode(), in_mode);
           assert!((remove_file(&in)));

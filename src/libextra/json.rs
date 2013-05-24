@@ -1444,15 +1444,15 @@ mod tests {
 
     #[test]
     fn test_write_object() {
-        assert_eq!(to_str(&mk_object(~[])), ~"{}");
-        assert_eq!(to_pretty_str(&mk_object(~[])), ~"{}");
+        assert_eq!(to_str(&mk_object([])), ~"{}");
+        assert_eq!(to_pretty_str(&mk_object([])), ~"{}");
 
         assert_eq!(
-            to_str(&mk_object(~[(~"a", Boolean(true))])),
+            to_str(&mk_object([(~"a", Boolean(true))])),
             ~"{\"a\":true}"
         );
         assert_eq!(
-            to_pretty_str(&mk_object(~[(~"a", Boolean(true))])),
+            to_pretty_str(&mk_object([(~"a", Boolean(true))])),
             ~"\
             {\n  \
                 \"a\": true\n\
@@ -1460,10 +1460,10 @@ mod tests {
         );
 
         assert_eq!(
-            to_str(&mk_object(~[
+            to_str(&mk_object([
                 (~"b", List(~[
-                    mk_object(~[(~"c", String(~"\x0c\r"))]),
-                    mk_object(~[(~"d", String(~""))])
+                    mk_object([(~"c", String(~"\x0c\r"))]),
+                    mk_object([(~"d", String(~""))])
                 ]))
             ])),
             ~"{\
@@ -1474,10 +1474,10 @@ mod tests {
             }"
         );
         assert_eq!(
-            to_pretty_str(&mk_object(~[
+            to_pretty_str(&mk_object([
                 (~"b", List(~[
-                    mk_object(~[(~"c", String(~"\x0c\r"))]),
-                    mk_object(~[(~"d", String(~""))])
+                    mk_object([(~"c", String(~"\x0c\r"))]),
+                    mk_object([(~"d", String(~""))])
                 ]))
             ])),
             ~"\
@@ -1493,11 +1493,11 @@ mod tests {
             }"
         );
 
-        let a = mk_object(~[
+        let a = mk_object([
             (~"a", Boolean(true)),
             (~"b", List(~[
-                mk_object(~[(~"c", String(~"\x0c\r"))]),
-                mk_object(~[(~"d", String(~""))])
+                mk_object([(~"c", String(~"\x0c\r"))]),
+                mk_object([(~"d", String(~""))])
             ]))
         ]);
 
@@ -1582,299 +1582,299 @@ mod tests {
 
     #[test]
     fn test_trailing_characters() {
-        assert_eq!(from_str(~"nulla"),
+        assert_eq!(from_str("nulla"),
             Err(Error {line: 1u, col: 5u, msg: @~"trailing characters"}));
-        assert_eq!(from_str(~"truea"),
+        assert_eq!(from_str("truea"),
             Err(Error {line: 1u, col: 5u, msg: @~"trailing characters"}));
-        assert_eq!(from_str(~"falsea"),
+        assert_eq!(from_str("falsea"),
             Err(Error {line: 1u, col: 6u, msg: @~"trailing characters"}));
-        assert_eq!(from_str(~"1a"),
+        assert_eq!(from_str("1a"),
             Err(Error {line: 1u, col: 2u, msg: @~"trailing characters"}));
-        assert_eq!(from_str(~"[]a"),
+        assert_eq!(from_str("[]a"),
             Err(Error {line: 1u, col: 3u, msg: @~"trailing characters"}));
-        assert_eq!(from_str(~"{}a"),
+        assert_eq!(from_str("{}a"),
             Err(Error {line: 1u, col: 3u, msg: @~"trailing characters"}));
     }
 
     #[test]
     fn test_read_identifiers() {
-        assert_eq!(from_str(~"n"),
+        assert_eq!(from_str("n"),
             Err(Error {line: 1u, col: 2u, msg: @~"invalid syntax"}));
-        assert_eq!(from_str(~"nul"),
+        assert_eq!(from_str("nul"),
             Err(Error {line: 1u, col: 4u, msg: @~"invalid syntax"}));
 
-        assert_eq!(from_str(~"t"),
+        assert_eq!(from_str("t"),
             Err(Error {line: 1u, col: 2u, msg: @~"invalid syntax"}));
-        assert_eq!(from_str(~"truz"),
+        assert_eq!(from_str("truz"),
             Err(Error {line: 1u, col: 4u, msg: @~"invalid syntax"}));
 
-        assert_eq!(from_str(~"f"),
+        assert_eq!(from_str("f"),
             Err(Error {line: 1u, col: 2u, msg: @~"invalid syntax"}));
-        assert_eq!(from_str(~"faz"),
+        assert_eq!(from_str("faz"),
             Err(Error {line: 1u, col: 3u, msg: @~"invalid syntax"}));
 
-        assert_eq!(from_str(~"null"), Ok(Null));
-        assert_eq!(from_str(~"true"), Ok(Boolean(true)));
-        assert_eq!(from_str(~"false"), Ok(Boolean(false)));
-        assert_eq!(from_str(~" null "), Ok(Null));
-        assert_eq!(from_str(~" true "), Ok(Boolean(true)));
-        assert_eq!(from_str(~" false "), Ok(Boolean(false)));
+        assert_eq!(from_str("null"), Ok(Null));
+        assert_eq!(from_str("true"), Ok(Boolean(true)));
+        assert_eq!(from_str("false"), Ok(Boolean(false)));
+        assert_eq!(from_str(" null "), Ok(Null));
+        assert_eq!(from_str(" true "), Ok(Boolean(true)));
+        assert_eq!(from_str(" false "), Ok(Boolean(false)));
     }
 
     #[test]
     fn test_decode_identifiers() {
-        let mut decoder = Decoder(from_str(~"null").unwrap());
+        let mut decoder = Decoder(from_str("null").unwrap());
         let v: () = Decodable::decode(&mut decoder);
         assert_eq!(v, ());
 
-        let mut decoder = Decoder(from_str(~"true").unwrap());
+        let mut decoder = Decoder(from_str("true").unwrap());
         let v: bool = Decodable::decode(&mut decoder);
         assert_eq!(v, true);
 
-        let mut decoder = Decoder(from_str(~"false").unwrap());
+        let mut decoder = Decoder(from_str("false").unwrap());
         let v: bool = Decodable::decode(&mut decoder);
         assert_eq!(v, false);
     }
 
     #[test]
     fn test_read_number() {
-        assert_eq!(from_str(~"+"),
+        assert_eq!(from_str("+"),
             Err(Error {line: 1u, col: 1u, msg: @~"invalid syntax"}));
-        assert_eq!(from_str(~"."),
+        assert_eq!(from_str("."),
             Err(Error {line: 1u, col: 1u, msg: @~"invalid syntax"}));
 
-        assert_eq!(from_str(~"-"),
+        assert_eq!(from_str("-"),
             Err(Error {line: 1u, col: 2u, msg: @~"invalid number"}));
-        assert_eq!(from_str(~"00"),
+        assert_eq!(from_str("00"),
             Err(Error {line: 1u, col: 2u, msg: @~"invalid number"}));
-        assert_eq!(from_str(~"1."),
+        assert_eq!(from_str("1."),
             Err(Error {line: 1u, col: 3u, msg: @~"invalid number"}));
-        assert_eq!(from_str(~"1e"),
+        assert_eq!(from_str("1e"),
             Err(Error {line: 1u, col: 3u, msg: @~"invalid number"}));
-        assert_eq!(from_str(~"1e+"),
+        assert_eq!(from_str("1e+"),
             Err(Error {line: 1u, col: 4u, msg: @~"invalid number"}));
 
-        assert_eq!(from_str(~"3"), Ok(Number(3f)));
-        assert_eq!(from_str(~"3.1"), Ok(Number(3.1f)));
-        assert_eq!(from_str(~"-1.2"), Ok(Number(-1.2f)));
-        assert_eq!(from_str(~"0.4"), Ok(Number(0.4f)));
-        assert_eq!(from_str(~"0.4e5"), Ok(Number(0.4e5f)));
-        assert_eq!(from_str(~"0.4e+15"), Ok(Number(0.4e15f)));
-        assert_eq!(from_str(~"0.4e-01"), Ok(Number(0.4e-01f)));
-        assert_eq!(from_str(~" 3 "), Ok(Number(3f)));
+        assert_eq!(from_str("3"), Ok(Number(3f)));
+        assert_eq!(from_str("3.1"), Ok(Number(3.1f)));
+        assert_eq!(from_str("-1.2"), Ok(Number(-1.2f)));
+        assert_eq!(from_str("0.4"), Ok(Number(0.4f)));
+        assert_eq!(from_str("0.4e5"), Ok(Number(0.4e5f)));
+        assert_eq!(from_str("0.4e+15"), Ok(Number(0.4e15f)));
+        assert_eq!(from_str("0.4e-01"), Ok(Number(0.4e-01f)));
+        assert_eq!(from_str(" 3 "), Ok(Number(3f)));
     }
 
     #[test]
     fn test_decode_numbers() {
-        let mut decoder = Decoder(from_str(~"3").unwrap());
+        let mut decoder = Decoder(from_str("3").unwrap());
         let v: float = Decodable::decode(&mut decoder);
         assert_eq!(v, 3f);
 
-        let mut decoder = Decoder(from_str(~"3.1").unwrap());
+        let mut decoder = Decoder(from_str("3.1").unwrap());
         let v: float = Decodable::decode(&mut decoder);
         assert_eq!(v, 3.1f);
 
-        let mut decoder = Decoder(from_str(~"-1.2").unwrap());
+        let mut decoder = Decoder(from_str("-1.2").unwrap());
         let v: float = Decodable::decode(&mut decoder);
         assert_eq!(v, -1.2f);
 
-        let mut decoder = Decoder(from_str(~"0.4").unwrap());
+        let mut decoder = Decoder(from_str("0.4").unwrap());
         let v: float = Decodable::decode(&mut decoder);
         assert_eq!(v, 0.4f);
 
-        let mut decoder = Decoder(from_str(~"0.4e5").unwrap());
+        let mut decoder = Decoder(from_str("0.4e5").unwrap());
         let v: float = Decodable::decode(&mut decoder);
         assert_eq!(v, 0.4e5f);
 
-        let mut decoder = Decoder(from_str(~"0.4e15").unwrap());
+        let mut decoder = Decoder(from_str("0.4e15").unwrap());
         let v: float = Decodable::decode(&mut decoder);
         assert_eq!(v, 0.4e15f);
 
-        let mut decoder = Decoder(from_str(~"0.4e-01").unwrap());
+        let mut decoder = Decoder(from_str("0.4e-01").unwrap());
         let v: float = Decodable::decode(&mut decoder);
         assert_eq!(v, 0.4e-01f);
     }
 
     #[test]
     fn test_read_str() {
-        assert_eq!(from_str(~"\""),
+        assert_eq!(from_str("\""),
             Err(Error {line: 1u, col: 2u, msg: @~"EOF while parsing string"
         }));
-        assert_eq!(from_str(~"\"lol"),
+        assert_eq!(from_str("\"lol"),
             Err(Error {line: 1u, col: 5u, msg: @~"EOF while parsing string"
         }));
 
-        assert_eq!(from_str(~"\"\""), Ok(String(~"")));
-        assert_eq!(from_str(~"\"foo\""), Ok(String(~"foo")));
-        assert_eq!(from_str(~"\"\\\"\""), Ok(String(~"\"")));
-        assert_eq!(from_str(~"\"\\b\""), Ok(String(~"\x08")));
-        assert_eq!(from_str(~"\"\\n\""), Ok(String(~"\n")));
-        assert_eq!(from_str(~"\"\\r\""), Ok(String(~"\r")));
-        assert_eq!(from_str(~"\"\\t\""), Ok(String(~"\t")));
-        assert_eq!(from_str(~" \"foo\" "), Ok(String(~"foo")));
-        assert_eq!(from_str(~"\"\\u12ab\""), Ok(String(~"\u12ab")));
-        assert_eq!(from_str(~"\"\\uAB12\""), Ok(String(~"\uAB12")));
+        assert_eq!(from_str("\"\""), Ok(String(~"")));
+        assert_eq!(from_str("\"foo\""), Ok(String(~"foo")));
+        assert_eq!(from_str("\"\\\"\""), Ok(String(~"\"")));
+        assert_eq!(from_str("\"\\b\""), Ok(String(~"\x08")));
+        assert_eq!(from_str("\"\\n\""), Ok(String(~"\n")));
+        assert_eq!(from_str("\"\\r\""), Ok(String(~"\r")));
+        assert_eq!(from_str("\"\\t\""), Ok(String(~"\t")));
+        assert_eq!(from_str(" \"foo\" "), Ok(String(~"foo")));
+        assert_eq!(from_str("\"\\u12ab\""), Ok(String(~"\u12ab")));
+        assert_eq!(from_str("\"\\uAB12\""), Ok(String(~"\uAB12")));
     }
 
     #[test]
     fn test_decode_str() {
-        let mut decoder = Decoder(from_str(~"\"\"").unwrap());
+        let mut decoder = Decoder(from_str("\"\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"");
 
-        let mut decoder = Decoder(from_str(~"\"foo\"").unwrap());
+        let mut decoder = Decoder(from_str("\"foo\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"foo");
 
-        let mut decoder = Decoder(from_str(~"\"\\\"\"").unwrap());
+        let mut decoder = Decoder(from_str("\"\\\"\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\"");
 
-        let mut decoder = Decoder(from_str(~"\"\\b\"").unwrap());
+        let mut decoder = Decoder(from_str("\"\\b\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\x08");
 
-        let mut decoder = Decoder(from_str(~"\"\\n\"").unwrap());
+        let mut decoder = Decoder(from_str("\"\\n\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\n");
 
-        let mut decoder = Decoder(from_str(~"\"\\r\"").unwrap());
+        let mut decoder = Decoder(from_str("\"\\r\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\r");
 
-        let mut decoder = Decoder(from_str(~"\"\\t\"").unwrap());
+        let mut decoder = Decoder(from_str("\"\\t\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\t");
 
-        let mut decoder = Decoder(from_str(~"\"\\u12ab\"").unwrap());
+        let mut decoder = Decoder(from_str("\"\\u12ab\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\u12ab");
 
-        let mut decoder = Decoder(from_str(~"\"\\uAB12\"").unwrap());
+        let mut decoder = Decoder(from_str("\"\\uAB12\"").unwrap());
         let v: ~str = Decodable::decode(&mut decoder);
         assert_eq!(v, ~"\uAB12");
     }
 
     #[test]
     fn test_read_list() {
-        assert_eq!(from_str(~"["),
+        assert_eq!(from_str("["),
             Err(Error {line: 1u, col: 2u, msg: @~"EOF while parsing value"}));
-        assert_eq!(from_str(~"[1"),
+        assert_eq!(from_str("[1"),
             Err(Error {line: 1u, col: 3u, msg: @~"EOF while parsing list"}));
-        assert_eq!(from_str(~"[1,"),
+        assert_eq!(from_str("[1,"),
             Err(Error {line: 1u, col: 4u, msg: @~"EOF while parsing value"}));
-        assert_eq!(from_str(~"[1,]"),
+        assert_eq!(from_str("[1,]"),
             Err(Error {line: 1u, col: 4u, msg: @~"invalid syntax"}));
-        assert_eq!(from_str(~"[6 7]"),
+        assert_eq!(from_str("[6 7]"),
             Err(Error {line: 1u, col: 4u, msg: @~"expected `,` or `]`"}));
 
-        assert_eq!(from_str(~"[]"), Ok(List(~[])));
-        assert_eq!(from_str(~"[ ]"), Ok(List(~[])));
-        assert_eq!(from_str(~"[true]"), Ok(List(~[Boolean(true)])));
-        assert_eq!(from_str(~"[ false ]"), Ok(List(~[Boolean(false)])));
-        assert_eq!(from_str(~"[null]"), Ok(List(~[Null])));
-        assert_eq!(from_str(~"[3, 1]"),
+        assert_eq!(from_str("[]"), Ok(List(~[])));
+        assert_eq!(from_str("[ ]"), Ok(List(~[])));
+        assert_eq!(from_str("[true]"), Ok(List(~[Boolean(true)])));
+        assert_eq!(from_str("[ false ]"), Ok(List(~[Boolean(false)])));
+        assert_eq!(from_str("[null]"), Ok(List(~[Null])));
+        assert_eq!(from_str("[3, 1]"),
                      Ok(List(~[Number(3f), Number(1f)])));
-        assert_eq!(from_str(~"\n[3, 2]\n"),
+        assert_eq!(from_str("\n[3, 2]\n"),
                      Ok(List(~[Number(3f), Number(2f)])));
-        assert_eq!(from_str(~"[2, [4, 1]]"),
+        assert_eq!(from_str("[2, [4, 1]]"),
                Ok(List(~[Number(2f), List(~[Number(4f), Number(1f)])])));
     }
 
     #[test]
     fn test_decode_list() {
-        let mut decoder = Decoder(from_str(~"[]").unwrap());
+        let mut decoder = Decoder(from_str("[]").unwrap());
         let v: ~[()] = Decodable::decode(&mut decoder);
         assert_eq!(v, ~[]);
 
-        let mut decoder = Decoder(from_str(~"[null]").unwrap());
+        let mut decoder = Decoder(from_str("[null]").unwrap());
         let v: ~[()] = Decodable::decode(&mut decoder);
         assert_eq!(v, ~[()]);
 
-        let mut decoder = Decoder(from_str(~"[true]").unwrap());
+        let mut decoder = Decoder(from_str("[true]").unwrap());
         let v: ~[bool] = Decodable::decode(&mut decoder);
         assert_eq!(v, ~[true]);
 
-        let mut decoder = Decoder(from_str(~"[true]").unwrap());
+        let mut decoder = Decoder(from_str("[true]").unwrap());
         let v: ~[bool] = Decodable::decode(&mut decoder);
         assert_eq!(v, ~[true]);
 
-        let mut decoder = Decoder(from_str(~"[3, 1]").unwrap());
+        let mut decoder = Decoder(from_str("[3, 1]").unwrap());
         let v: ~[int] = Decodable::decode(&mut decoder);
         assert_eq!(v, ~[3, 1]);
 
-        let mut decoder = Decoder(from_str(~"[[3], [1, 2]]").unwrap());
+        let mut decoder = Decoder(from_str("[[3], [1, 2]]").unwrap());
         let v: ~[~[uint]] = Decodable::decode(&mut decoder);
         assert_eq!(v, ~[~[3], ~[1, 2]]);
     }
 
     #[test]
     fn test_read_object() {
-        assert_eq!(from_str(~"{"),
+        assert_eq!(from_str("{"),
             Err(Error {
                 line: 1u,
                 col: 2u,
                 msg: @~"EOF while parsing object"}));
-        assert_eq!(from_str(~"{ "),
+        assert_eq!(from_str("{ "),
             Err(Error {
                 line: 1u,
                 col: 3u,
                 msg: @~"EOF while parsing object"}));
-        assert_eq!(from_str(~"{1"),
+        assert_eq!(from_str("{1"),
             Err(Error {
                 line: 1u,
                 col: 2u,
                 msg: @~"key must be a string"}));
-        assert_eq!(from_str(~"{ \"a\""),
+        assert_eq!(from_str("{ \"a\""),
             Err(Error {
                 line: 1u,
                 col: 6u,
                 msg: @~"EOF while parsing object"}));
-        assert_eq!(from_str(~"{\"a\""),
+        assert_eq!(from_str("{\"a\""),
             Err(Error {
                 line: 1u,
                 col: 5u,
                 msg: @~"EOF while parsing object"}));
-        assert_eq!(from_str(~"{\"a\" "),
+        assert_eq!(from_str("{\"a\" "),
             Err(Error {
                 line: 1u,
                 col: 6u,
                 msg: @~"EOF while parsing object"}));
 
-        assert_eq!(from_str(~"{\"a\" 1"),
+        assert_eq!(from_str("{\"a\" 1"),
             Err(Error {line: 1u, col: 6u, msg: @~"expected `:`"}));
-        assert_eq!(from_str(~"{\"a\":"),
+        assert_eq!(from_str("{\"a\":"),
             Err(Error {line: 1u, col: 6u, msg: @~"EOF while parsing value"}));
-        assert_eq!(from_str(~"{\"a\":1"),
+        assert_eq!(from_str("{\"a\":1"),
             Err(Error {
                 line: 1u,
                 col: 7u,
                 msg: @~"EOF while parsing object"}));
-        assert_eq!(from_str(~"{\"a\":1 1"),
+        assert_eq!(from_str("{\"a\":1 1"),
             Err(Error {line: 1u, col: 8u, msg: @~"expected `,` or `}`"}));
-        assert_eq!(from_str(~"{\"a\":1,"),
+        assert_eq!(from_str("{\"a\":1,"),
             Err(Error {
                 line: 1u,
                 col: 8u,
                 msg: @~"EOF while parsing object"}));
 
-        assert_eq!(result::unwrap(from_str(~"{}")), mk_object(~[]));
-        assert_eq!(result::unwrap(from_str(~"{\"a\": 3}")),
-                  mk_object(~[(~"a", Number(3.0f))]));
+        assert_eq!(result::unwrap(from_str("{}")), mk_object([]));
+        assert_eq!(result::unwrap(from_str("{\"a\": 3}")),
+                  mk_object([(~"a", Number(3.0f))]));
 
         assert_eq!(result::unwrap(from_str(
-                ~"{ \"a\": null, \"b\" : true }")),
-                  mk_object(~[
+                      "{ \"a\": null, \"b\" : true }")),
+                  mk_object([
                       (~"a", Null),
                       (~"b", Boolean(true))]));
         assert_eq!(result::unwrap(
-                      from_str(~"\n{ \"a\": null, \"b\" : true }\n")),
-                  mk_object(~[
+                      from_str("\n{ \"a\": null, \"b\" : true }\n")),
+                  mk_object([
                       (~"a", Null),
                       (~"b", Boolean(true))]));
         assert_eq!(result::unwrap(from_str(
-                ~"{\"a\" : 1.0 ,\"b\": [ true ]}")),
-                  mk_object(~[
+                      "{\"a\" : 1.0 ,\"b\": [ true ]}")),
+                  mk_object([
                       (~"a", Number(1.0)),
                       (~"b", List(~[Boolean(true)]))
                   ]));
@@ -1887,13 +1887,13 @@ mod tests {
                               ~"{ \"c\": {\"d\": null} } " +
                           ~"]" +
                       ~"}")),
-                  mk_object(~[
+                  mk_object([
                       (~"a", Number(1.0f)),
                       (~"b", List(~[
                           Boolean(true),
                           String(~"foo\nbar"),
-                          mk_object(~[
-                              (~"c", mk_object(~[(~"d", Null)]))
+                          mk_object([
+                              (~"c", mk_object([(~"d", Null)]))
                           ])
                       ]))
                   ]));
@@ -1920,23 +1920,23 @@ mod tests {
 
     #[test]
     fn test_decode_option() {
-        let mut decoder = Decoder(from_str(~"null").unwrap());
+        let mut decoder = Decoder(from_str("null").unwrap());
         let value: Option<~str> = Decodable::decode(&mut decoder);
         assert_eq!(value, None);
 
-        let mut decoder = Decoder(from_str(~"\"jodhpurs\"").unwrap());
+        let mut decoder = Decoder(from_str("\"jodhpurs\"").unwrap());
         let value: Option<~str> = Decodable::decode(&mut decoder);
         assert_eq!(value, Some(~"jodhpurs"));
     }
 
     #[test]
     fn test_decode_enum() {
-        let mut decoder = Decoder(from_str(~"\"Dog\"").unwrap());
+        let mut decoder = Decoder(from_str("\"Dog\"").unwrap());
         let value: Animal = Decodable::decode(&mut decoder);
         assert_eq!(value, Dog);
 
         let mut decoder =
-            Decoder(from_str(~"[\"Frog\",\"Henry\",349]").unwrap());
+            Decoder(from_str("[\"Frog\",\"Henry\",349]").unwrap());
         let value: Animal = Decodable::decode(&mut decoder);
         assert_eq!(value, Frog(~"Henry", 349));
     }
@@ -1953,7 +1953,7 @@ mod tests {
 
     #[test]
     fn test_multiline_errors() {
-        assert_eq!(from_str(~"{\n  \"foo\":\n \"bar\""),
+        assert_eq!(from_str("{\n  \"foo\":\n \"bar\""),
             Err(Error {
                 line: 3u,
                 col: 8u,

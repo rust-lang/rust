@@ -10,8 +10,6 @@
 
 use core::prelude::*;
 
-use core;
-
 #[deriving(Eq, IterBytes)]
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set

@@ -587,12 +587,10 @@ fn extend_sign(val: u64, nbytes: uint) -> i64 {
 
 #[cfg(test)]
 mod test {
-    use super::{ReaderUtil, ReaderByteConversions, WriterByteConversions};
-    use u64;
-    use i32;
+    use super::ReaderUtil;
     use option::{Some, None};
     use cell::Cell;
-    use rt::io::mem::{MemReader, MemWriter};
+    use rt::io::mem::MemReader;
     use rt::io::mock::MockReader;
     use rt::io::{read_error, placeholder_error};
 

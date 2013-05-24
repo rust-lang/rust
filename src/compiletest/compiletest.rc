@@ -50,20 +50,20 @@ pub fn main() {
 
 pub fn parse_config(args: ~[~str]) -> config {
     let opts =
-        ~[getopts::reqopt(~"compile-lib-path"),
-          getopts::reqopt(~"run-lib-path"),
-          getopts::reqopt(~"rustc-path"), getopts::reqopt(~"src-base"),
-          getopts::reqopt(~"build-base"), getopts::reqopt(~"aux-base"),
-          getopts::reqopt(~"stage-id"),
-          getopts::reqopt(~"mode"), getopts::optflag(~"ignored"),
-          getopts::optopt(~"runtool"), getopts::optopt(~"rustcflags"),
-          getopts::optflag(~"verbose"),
-          getopts::optopt(~"logfile"),
-          getopts::optflag(~"jit"),
-          getopts::optflag(~"newrt"),
-          getopts::optopt(~"target"),
-          getopts::optopt(~"adb-path"),
-          getopts::optopt(~"adb-test-dir")
+        ~[getopts::reqopt("compile-lib-path"),
+          getopts::reqopt("run-lib-path"),
+          getopts::reqopt("rustc-path"), getopts::reqopt("src-base"),
+          getopts::reqopt("build-base"), getopts::reqopt("aux-base"),
+          getopts::reqopt("stage-id"),
+          getopts::reqopt("mode"), getopts::optflag("ignored"),
+          getopts::optopt("runtool"), getopts::optopt("rustcflags"),
+          getopts::optflag("verbose"),
+          getopts::optopt("logfile"),
+          getopts::optflag("jit"),
+          getopts::optflag("newrt"),
+          getopts::optopt("target"),
+          getopts::optopt("adb-path"),
+          getopts::optopt("adb-test-dir")
          ];
 
     assert!(!args.is_empty());
@@ -74,43 +74,43 @@ pub fn parse_config(args: ~[~str]) -> config {
           Err(f) => fail!(getopts::fail_str(f))
         };
 
-    fn opt_path(m: &getopts::Matches, nm: ~str) -> Path {
+    fn opt_path(m: &getopts::Matches, nm: &str) -> Path {
         Path(getopts::opt_str(m, nm))
     }
 
     config {
-        compile_lib_path: getopts::opt_str(matches, ~"compile-lib-path"),
-        run_lib_path: getopts::opt_str(matches, ~"run-lib-path"),
-        rustc_path: opt_path(matches, ~"rustc-path"),
-        src_base: opt_path(matches, ~"src-base"),
-        build_base: opt_path(matches, ~"build-base"),
-        aux_base: opt_path(matches, ~"aux-base"),
-        stage_id: getopts::opt_str(matches, ~"stage-id"),
-        mode: str_mode(getopts::opt_str(matches, ~"mode")),
-        run_ignored: getopts::opt_present(matches, ~"ignored"),
+        compile_lib_path: getopts::opt_str(matches, "compile-lib-path"),
+        run_lib_path: getopts::opt_str(matches, "run-lib-path"),
+        rustc_path: opt_path(matches, "rustc-path"),
+        src_base: opt_path(matches, "src-base"),
+        build_base: opt_path(matches, "build-base"),
+        aux_base: opt_path(matches, "aux-base"),
+        stage_id: getopts::opt_str(matches, "stage-id"),
+        mode: str_mode(getopts::opt_str(matches, "mode")),
+        run_ignored: getopts::opt_present(matches, "ignored"),
         filter:
              if vec::len(matches.free) > 0u {
                  option::Some(copy matches.free[0])
              } else { option::None },
-        logfile: getopts::opt_maybe_str(matches, ~"logfile").map(|s| Path(*s)),
-        runtool: getopts::opt_maybe_str(matches, ~"runtool"),
-        rustcflags: getopts::opt_maybe_str(matches, ~"rustcflags"),
-        jit: getopts::opt_present(matches, ~"jit"),
-        newrt: getopts::opt_present(matches, ~"newrt"),
-        target: opt_str2(getopts::opt_maybe_str(matches, ~"target")).to_str(),
-        adb_path: opt_str2(getopts::opt_maybe_str(matches, ~"adb-path")).to_str(),
+        logfile: getopts::opt_maybe_str(matches, "logfile").map(|s| Path(*s)),
+        runtool: getopts::opt_maybe_str(matches, "runtool"),
+        rustcflags: getopts::opt_maybe_str(matches, "rustcflags"),
+        jit: getopts::opt_present(matches, "jit"),
+        newrt: getopts::opt_present(matches, "newrt"),
+        target: opt_str2(getopts::opt_maybe_str(matches, "target")).to_str(),
+        adb_path: opt_str2(getopts::opt_maybe_str(matches, "adb-path")).to_str(),
         adb_test_dir:
-            opt_str2(getopts::opt_maybe_str(matches, ~"adb-test-dir")).to_str(),
+            opt_str2(getopts::opt_maybe_str(matches, "adb-test-dir")).to_str(),
         adb_device_status:
-            if (opt_str2(getopts::opt_maybe_str(matches, ~"target")) ==
+            if (opt_str2(getopts::opt_maybe_str(matches, "target")) ==
                 ~"arm-linux-androideabi") {
-                if (opt_str2(getopts::opt_maybe_str(matches, ~"adb-test-dir")) !=
+                if (opt_str2(getopts::opt_maybe_str(matches, "adb-test-dir")) !=
                     ~"(none)" &&
-                    opt_str2(getopts::opt_maybe_str(matches, ~"adb-test-dir")) !=
+                    opt_str2(getopts::opt_maybe_str(matches, "adb-test-dir")) !=
                     ~"") { true }
                 else { false }
             } else { false },
-        verbose: getopts::opt_present(matches, ~"verbose")
+        verbose: getopts::opt_present(matches, "verbose")
     }
 }
 

@@ -12,10 +12,6 @@
 
 use core::prelude::*;
 
-use core::old_iter;
-use core::str;
-use core::vec;
-
 pub trait ToBase64 {
     fn to_base64(&self) -> ~str;
 }
@@ -242,12 +238,12 @@ mod tests {
 
     #[test]
     fn test_from_base64() {
-        assert_eq!((~"").from_base64(), str::to_bytes(~""));
-        assert!((~"Zg==").from_base64() == str::to_bytes(~"f"));
-        assert_eq!((~"Zm8=").from_base64(), str::to_bytes(~"fo"));
-        assert_eq!((~"Zm9v").from_base64(), str::to_bytes(~"foo"));
-        assert!((~"Zm9vYg==").from_base64() == str::to_bytes(~"foob"));
-        assert_eq!((~"Zm9vYmE=").from_base64(), str::to_bytes(~"fooba"))
-        assert_eq!((~"Zm9vYmFy").from_base64(), str::to_bytes(~"foobar"));
+        assert_eq!((~"").from_base64(), str::to_bytes(""));
+        assert!((~"Zg==").from_base64() == str::to_bytes("f"));
+        assert_eq!((~"Zm8=").from_base64(), str::to_bytes("fo"));
+        assert_eq!((~"Zm9v").from_base64(), str::to_bytes("foo"));
+        assert!((~"Zm9vYg==").from_base64() == str::to_bytes("foob"));
+        assert_eq!((~"Zm9vYmE=").from_base64(), str::to_bytes("fooba"))
+        assert_eq!((~"Zm9vYmFy").from_base64(), str::to_bytes("foobar"));
     }
 }
