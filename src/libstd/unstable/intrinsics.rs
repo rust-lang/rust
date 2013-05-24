@@ -31,7 +31,6 @@ A quick refresher on memory ordering:
   with atomic types and is equivalent to Java's `volatile`.
 
 */
-
 #[abi = "rust-intrinsic"]
 pub extern "rust-intrinsic" {
 
