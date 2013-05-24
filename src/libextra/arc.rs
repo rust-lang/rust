@@ -107,7 +107,7 @@ pub impl<'self> Condvar<'self> {
  ****************************************************************************/
 
 /// An atomically reference counted wrapper for shared immutable state.
-struct ARC<T> { x: UnsafeAtomicRcBox<T> }
+pub struct ARC<T> { x: UnsafeAtomicRcBox<T> }
 
 /// Create an atomically reference counted wrapper.
 pub fn ARC<T:Const + Owned>(data: T) -> ARC<T> {
@@ -118,12 +118,8 @@ pub fn ARC<T:Const + Owned>(data: T) -> ARC<T> {
  * Access the underlying data in an atomically reference counted
  * wrapper.
  */
-pub fn get<'a, T:Const + Owned>(rc: &'a ARC<T>) -> &'a T {
-    rc.get()
-}
-
-impl<T:Const+Owned> ARC<T> {
-    pub fn get<'a>(&'a self) -> &'a T {
+pub impl<T:Const+Owned> ARC<T> {
+    fn get<'a>(&'a self) -> &'a T {
         unsafe { &*self.x.get_immut() }
     }
 }
@@ -512,17 +508,14 @@ pub impl<'self, T:Const + Owned> RWReadMode<'self, T> {
 #[cfg(test)]
 mod tests {
     use core::prelude::*;
-
+    use core::cell::Cell;
     use arc::*;
     use arc;
-
-    use core::cell::Cell;
-    use core::task;
 
     #[test]
     fn manually_share_arc() {
         let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let arc_v = arc::ARC(v);
+        let arc_v = ARC(v);
 
         let (p, c) = comm::stream();
 
@@ -530,16 +523,16 @@ mod tests {
             let p = comm::PortSet::new();
             c.send(p.chan());
 
-            let arc_v = p.recv();
+            let arc_v : ARC<~[int]> = p.recv();
 
-            let v = copy *arc::get::<~[int]>(&arc_v);
+            let v = copy (*arc_v.get());
             assert_eq!(v[3], 4);
         };
 
         let c = p.recv();
-        c.send(arc::clone(&arc_v));
+        c.send(arc_v.clone());
 
-        assert_eq!((*arc::get(&arc_v))[2], 3);
+        assert_eq!(arc_v.get()[2], 3);
         assert_eq!(arc_v.get()[4], 5);
 
         info!(arc_v);
