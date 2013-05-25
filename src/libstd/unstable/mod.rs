@@ -15,6 +15,7 @@ use comm::{GenericChan, GenericPort};
 use prelude::*;
 use task;
 
+pub mod dynamic_lib;
 pub mod at_exit;
 pub mod global;
 pub mod finally;
