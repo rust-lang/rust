@@ -395,7 +395,7 @@ static int countColorControlChars(const char* prompt, int plen)
         expect_inner,
         expect_trail
     } state = search_esc;
-    int len, found = 0;
+    int len = 0, found = 0;
     char ch;
 
     /* XXX: Strictly we should be checking utf8 chars rather than
@@ -698,7 +698,7 @@ static int fd_read(struct current *current)
     return -1;
 }
 
-static int countColorControlChars(char* prompt, int plen)
+static int countColorControlChars(const char* prompt, int plen)
 {
     /* For windows we assume that there are no embedded ansi color
      * control sequences.
