@@ -32,16 +32,17 @@ extern mod rustc;
 use core::prelude::*;
 
 use core::run;
+use core::libc::exit;
 
 enum ValidUsage {
-    Valid, Invalid
+    Valid(int), Invalid
 }
 
 impl ValidUsage {
     fn is_valid(&self) -> bool {
         match *self {
-            Valid   => true,
-            Invalid => false
+            Valid(_)   => true,
+            Invalid    => false
         }
     }
 }
@@ -144,7 +145,7 @@ fn cmd_help(args: &[~str]) -> ValidUsage {
                     UsgStr(msg) => io::println(fmt!("%s\n", msg)),
                     UsgCall(f)  => f(),
                 }
-                Valid
+                Valid(0)
             },
             None => Invalid
         }
@@ -162,8 +163,8 @@ fn cmd_test(args: &[~str]) -> ValidUsage {
             let test_exec = Path(filename).filestem().unwrap() + "test~";
             invoke("rustc", &[~"--test", filename.to_owned(),
                               ~"-o", test_exec.to_owned()], rustc::main);
-            run::run_program(~"./" + test_exec, []);
-            Valid
+            let exit_code = run::run_program(~"./" + test_exec, []);
+            Valid(exit_code)
         }
         _ => Invalid
     }
@@ -175,8 +176,8 @@ fn cmd_run(args: &[~str]) -> ValidUsage {
             let exec = Path(filename).filestem().unwrap() + "~";
             invoke("rustc", &[filename.to_owned(), ~"-o", exec.to_owned()],
                    rustc::main);
-            run::run_program(~"./"+exec, prog_args);
-            Valid
+            let exit_code = run::run_program(~"./"+exec, prog_args);
+            Valid(exit_code)
         }
         _ => Invalid
     }
@@ -194,7 +195,7 @@ fn do_command(command: &Command, args: &[~str]) -> ValidUsage {
         Call(f) => f(args),
         CallMain(prog, f) => {
             invoke(prog, args, f);
-            Valid
+            Valid(0)
         }
     }
 }
@@ -233,7 +234,10 @@ pub fn main() {
     if !args.is_empty() {
         for find_cmd(*args.head()).each |command| {
             let result = do_command(command, args.tail());
-            if result.is_valid() { return; }
+            match result {
+                Valid(exit_code) => unsafe { exit(exit_code.to_i32()) },
+                _                => loop
+            }
         }
     }
 
