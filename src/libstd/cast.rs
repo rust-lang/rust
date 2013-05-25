@@ -64,6 +64,7 @@ pub unsafe fn forget<T>(thing: T) { intrinsics::forget(thing); }
  * and/or reinterpret_cast when such calls would otherwise scramble a box's
  * reference count
  */
+#[inline(always)]
 pub unsafe fn bump_box_refcount<T>(t: @T) { forget(t); }
 
 /**
