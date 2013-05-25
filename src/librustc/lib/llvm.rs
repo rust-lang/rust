@@ -1547,7 +1547,8 @@ pub mod llvm {
                                          Op: AtomicBinOp,
                                          LHS: ValueRef,
                                          RHS: ValueRef,
-                                         Order: AtomicOrdering)
+                                         Order: AtomicOrdering,
+                                         SingleThreaded: Bool)
                                          -> ValueRef;
 
         /* Selected entries from the downcasts. */
