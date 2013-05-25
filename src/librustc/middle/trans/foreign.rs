@@ -787,7 +787,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                 let llsrcptr = PointerCast(bcx, llsrcptr, T_ptr(T_i8()));
 
                 let llsize = llsize_of(ccx, llintype);
-                call_memcpy(bcx, lldestptr, llsrcptr, llsize);
+                call_memcpy(bcx, lldestptr, llsrcptr, llsize, 1);
             }
         }
         ~"needs_drop" => {
