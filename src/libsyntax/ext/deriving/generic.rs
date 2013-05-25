@@ -173,6 +173,9 @@ use ext::deriving::*;
 use codemap::{span,respan};
 use opt_vec;
 
+use core::uint;
+use core::vec;
+
 pub use self::ty::*;
 mod ty;
 

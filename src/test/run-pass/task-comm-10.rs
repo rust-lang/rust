@@ -12,6 +12,9 @@
 
 extern mod extra;
 
+use std::comm;
+use std::task;
+
 fn start(c: &comm::Chan<comm::Chan<~str>>) {
     let (p, ch) = comm::stream();
     c.send(ch);

@@ -16,8 +16,14 @@
 
 use core::prelude::*;
 
-use core::io::{WriterUtil, ReaderUtil};
+use core::char;
+use core::float;
 use core::hashmap::HashMap;
+use core::io::{WriterUtil, ReaderUtil};
+use core::io;
+use core::str;
+use core::to_str;
+use core::vec;
 
 use serialize::Encodable;
 use serialize;
@@ -1332,6 +1338,8 @@ mod tests {
     use super::*;
 
     use core::hashmap::HashMap;
+    use core::io;
+    use core::result;
 
     use std::serialize::Decodable;
 

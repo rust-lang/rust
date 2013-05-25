@@ -9,6 +9,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::task;
+
 pub fn main() { task::spawn(|| child((10, 20, 30, 40, 50, 60, 70, 80, 90)) ); }
 
 fn child(args: (int, int, int, int, int, int, int, int, int)) {

@@ -12,6 +12,8 @@
 // error-pattern:explicit
 extern mod extra;
 
+use std::task;
+
 // We don't want to see any invalid reads
 fn main() {
     fn f() {

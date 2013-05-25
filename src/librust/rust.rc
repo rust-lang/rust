@@ -31,8 +31,17 @@ extern mod rustc;
 
 use core::prelude::*;
 
+use core::io;
+use core::os;
 use core::run;
 use core::libc::exit;
+use core::str;
+
+// For bootstrapping.
+mod std {
+    pub use core::str;
+    pub use core::unstable;
+}
 
 enum ValidUsage {
     Valid(int), Invalid

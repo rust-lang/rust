@@ -11,10 +11,11 @@
 //! Process spawning.
 
 use cast;
-use io;
-use libc;
-use libc::{pid_t, c_void, c_int};
 use comm::{stream, SharedChan, GenericChan, GenericPort};
+use int;
+use io;
+use libc::{pid_t, c_void, c_int};
+use libc;
 use option::{Some, None};
 use os;
 use prelude::*;
@@ -463,6 +464,9 @@ fn spawn_process_os(prog: &str, args: &[~str],
     };
     use libc::funcs::extra::msvcrt::get_osfhandle;
 
+    use sys;
+    use uint;
+
     unsafe {
 
         let mut si = zeroed_startupinfo();
@@ -573,6 +577,8 @@ fn zeroed_process_information() -> libc::types::os::arch::extra::PROCESS_INFORMA
 // FIXME: this is only pub so it can be tested (see issue #4536)
 #[cfg(windows)]
 pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
+
+    use uint;
 
     let mut cmd = ~"";
     append_arg(&mut cmd, prog);

@@ -18,7 +18,9 @@ use middle;
 use syntax::{ast, ast_map, ast_util, visit};
 use syntax::ast::*;
 
+use core::float;
 use core::hashmap::{HashMap, HashSet};
+use core::vec;
 
 //
 // This pass classifies expressions by their constant-ness.

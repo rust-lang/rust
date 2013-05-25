@@ -20,5 +20,5 @@ pub impl Foo {
 
 pub fn main() {
     let x = Foo::new();
-    io::println(x.x.to_str());
+    println(x.x.to_str());
 }

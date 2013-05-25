@@ -21,7 +21,7 @@
 #[no_std];
 
 extern mod core(name = "std");
-extern mod std(name = "extra");
+extern mod extra(name = "extra");
 
 extern mod rustc;
 extern mod syntax;
@@ -32,7 +32,7 @@ pub use core::path::Path;
 use core::hashmap::HashMap;
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
-use std::{getopts};
+use extra::{getopts};
 use syntax::{ast, diagnostic};
 use util::*;
 use path_util::{build_pkg_id_in_workspace, pkgid_src_in_workspace, u_rwx};
@@ -50,6 +50,15 @@ mod util;
 mod workspace;
 
 pub mod usage;
+
+mod std {
+    pub use core::cmp;
+    pub use core::condition;
+    pub use core::os;
+    pub use core::str;
+    pub use core::sys;
+    pub use core::unstable;
+}
 
 /// A PkgScript represents user-supplied custom logic for
 /// special build hooks. This only exists for packages with

@@ -40,11 +40,15 @@ use middle::borrowck::root_map_key;
 use util::ppaux::{Repr};
 
 use core::cast::transmute;
+use core::cast;
 use core::hash;
 use core::hashmap::{HashMap, HashSet};
 use core::libc::{c_uint, c_longlong, c_ulonglong};
+use core::ptr;
+use core::str;
 use core::to_bytes;
 use core::vec::raw::to_ptr;
+use core::vec;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt};
 use syntax::codemap::span;

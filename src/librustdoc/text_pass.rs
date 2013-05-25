@@ -149,6 +149,8 @@ mod test {
     use sectionalize_pass;
     use text_pass::mk_pass;
 
+    use core::str;
+
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv.clone(), ~"");

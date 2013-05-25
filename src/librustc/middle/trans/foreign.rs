@@ -34,6 +34,9 @@ use middle::ty;
 use middle::ty::FnSig;
 use util::ppaux::ty_to_str;
 
+use core::str;
+use core::uint;
+use core::vec;
 use syntax::codemap::span;
 use syntax::{ast, ast_util};
 use syntax::{attr, ast_map};

@@ -13,7 +13,7 @@ struct Point {
     y: int,
 }
 
-impl ops::Add<int,int> for Point {
+impl Add<int,int> for Point {
     fn add(&self, z: &int) -> int {
         self.x + self.y + (*z)
     }

@@ -1,5 +1,5 @@
 fn f(x: &int) {
-    io::println(x.to_str());
+    println(x.to_str());
 }
 
 pub fn main() {

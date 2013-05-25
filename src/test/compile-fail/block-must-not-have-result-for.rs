@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec;
+
 fn main() {
     for vec::each(~[0]) |_i| {  //~ ERROR A for-loop body must return (), but
         true

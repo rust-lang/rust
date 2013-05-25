@@ -10,8 +10,12 @@
 
 //! An ordered map and set for integer keys implemented as a radix trie
 
+use local_data;
+use os;
 use prelude::*;
+use uint;
 use util::{swap, replace};
+use vec;
 
 // FIXME: #5244: need to manually update the TrieNode constructor
 static SHIFT: uint = 4;

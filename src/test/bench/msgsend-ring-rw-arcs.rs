@@ -17,10 +17,14 @@
 
 extern mod extra;
 
-use std::cell::Cell;
-use extra::time;
 use extra::arc;
 use extra::future;
+use extra::time;
+use std::cell::Cell;
+use std::io;
+use std::os;
+use std::uint;
+use std::vec;
 
 // A poor man's pipe.
 type pipe = arc::RWARC<~[uint]>;

@@ -11,7 +11,10 @@
 // xfail-fast
 
 use std::bool;
+use std::int;
 use std::libc::c_void;
+use std::ptr;
+use std::sys;
 use std::vec::UnboxedVecRepr;
 use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Opaque};
 
@@ -654,7 +657,7 @@ pub fn main() {
         visit_tydesc(td, v);
 
         for (u.vals.clone()).each |s| {
-            io::println(fmt!("val: %s", *s));
+            println(fmt!("val: %s", *s));
         }
         error!("%?", u.vals.clone());
         assert!(u.vals == ~[

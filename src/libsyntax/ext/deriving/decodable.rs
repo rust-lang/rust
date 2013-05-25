@@ -15,14 +15,16 @@ encodable.rs for more.
 
 use core::prelude::*;
 
-use ast;
 use ast::*;
+use ast;
+use ast_util;
+use codemap::{span, spanned};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::*;
-use codemap::{span, spanned};
-use ast_util;
 use opt_vec;
+
+use core::uint;
 
 pub fn expand_deriving_decodable(
     cx: @ExtCtxt,

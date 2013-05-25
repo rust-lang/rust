@@ -387,6 +387,8 @@ mod tests {
     use super::*;
     use prelude::*;
 
+    use uint;
+
     #[test]
     fn test_siphash() {
         let vecs : [[u8, ..8], ..64] = [

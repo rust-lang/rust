@@ -35,6 +35,12 @@ extern mod std(name = "extra");
 #[cfg(not(stage0))]
 extern mod std(name = "std");
 
+// For bootstrapping purposes.
+#[cfg(stage0)]
+pub use core::str;
+#[cfg(stage0)]
+pub use core::unstable;
+
 use core::prelude::*;
 
 pub mod util {

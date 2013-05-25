@@ -10,6 +10,9 @@
 
 // xfail-fast
 
+use std::cmp;
+use std::ops;
+
 struct Point {
     x: int,
     y: int

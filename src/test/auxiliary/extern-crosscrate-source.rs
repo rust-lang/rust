@@ -13,7 +13,11 @@
 
 #[crate_type = "lib"];
 
+use std::libc;
+
 pub mod rustrt {
+    use std::libc;
+
     pub extern {
         pub fn rust_dbg_call(cb: *u8, data: libc::uintptr_t)
                              -> libc::uintptr_t;

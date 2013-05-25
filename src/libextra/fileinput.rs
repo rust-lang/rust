@@ -96,6 +96,11 @@ total line count).
 
 use core::prelude::*;
 
+use core::io::ReaderUtil;
+use core::io;
+use core::os;
+use core::vec;
+
 /**
 A summary of the internal state of a `FileInput` object. `line_num`
 and `line_num_file` represent the number of lines read in total and in
@@ -406,6 +411,11 @@ mod test {
     use core::prelude::*;
 
     use super::{FileInput, pathify, input_vec, input_vec_state};
+
+    use core::io;
+    use core::str;
+    use core::uint;
+    use core::vec;
 
     fn make_file(path : &Path, contents: &[~str]) {
         let file = io::file_writer(path, [io::Create, io::Truncate]).get();

@@ -20,6 +20,7 @@ use extra::uv;
 
 use std::cell::Cell;
 use std::pipes::{try_recv, recv};
+use std::task;
 
 proto! oneshot (
     waiting:send {

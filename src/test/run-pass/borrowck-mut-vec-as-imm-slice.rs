@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec;
+
 fn want_slice(v: &[int]) -> int {
     let mut sum = 0;
     for vec::each(v) |i| { sum += *i; }

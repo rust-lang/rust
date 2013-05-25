@@ -120,6 +120,7 @@ should interleave the output in vaguely random order.
 ~~~
 # use std::io::print;
 # use std::task::spawn;
+# use std::int;
 
 for int::range(0, 20) |child_task_number| {
     do spawn {
@@ -236,6 +237,7 @@ Instead we can use a `SharedChan`, a type that allows a single
 ~~~
 # use std::task::spawn;
 # use std::comm::{stream, SharedChan};
+# use std::uint;
 
 let (port, chan) = stream();
 let chan = SharedChan::new(chan);
@@ -269,6 +271,7 @@ might look like the example below.
 ~~~
 # use std::task::spawn;
 # use std::comm::stream;
+# use std::vec;
 
 // Create a vector of ports, one for each child task
 let ports = do vec::from_fn(3) |init_val| {
@@ -310,6 +313,8 @@ the future needs to be mutable so that it can save the result for next time `get
 Here is another example showing how futures allow you to background computations. The workload will
 be distributed on the available cores.
 ~~~
+# use std::vec;
+# use std::uint;
 fn partial_sum(start: uint) -> f64 {
     let mut local_sum = 0f64;
     for uint::range(start*100000, (start+1)*100000) |num| {
@@ -343,6 +348,9 @@ acts as a reference to the shared data and only this reference is shared and clo
 Here is a small example showing how to use ARCs. We wish to run concurrently several computations on
 a single large vector of floats. Each task needs the full vector to perform its duty.
 ~~~
+# use std::vec;
+# use std::uint;
+# use std::rand;
 use extra::arc::ARC;
 
 fn pnorm(nums: &~[float], p: uint) -> float {
@@ -350,7 +358,7 @@ fn pnorm(nums: &~[float], p: uint) -> float {
 }
 
 fn main() {
-    let numbers=vec::from_fn(1000000, |_| rand::random::<float>());
+    let numbers = vec::from_fn(1000000, |_| rand::random::<float>());
     println(fmt!("Inf-norm = %?",  numbers.max()));
 
     let numbers_arc = ARC(numbers);
@@ -373,12 +381,16 @@ at the power given as argument and takes the inverse power of this value). The A
 created by the line
 ~~~
 # use extra::arc::ARC;
-# let numbers=vec::from_fn(1000000, |_| rand::random::<float>());
+# use std::vec;
+# use std::rand;
+# let numbers = vec::from_fn(1000000, |_| rand::random::<float>());
 let numbers_arc=ARC(numbers);
 ~~~
 and a clone of it is sent to each task
 ~~~
 # use extra::arc::ARC;
+# use std::vec;
+# use std::rand;
 # let numbers=vec::from_fn(1000000, |_| rand::random::<float>());
 # let numbers_arc = ARC(numbers);
 # let (port, chan)  = stream();
@@ -389,6 +401,8 @@ copying only the wrapper and not its contents.
 Each task recovers the underlying data by
 ~~~
 # use extra::arc::ARC;
+# use std::vec;
+# use std::rand;
 # let numbers=vec::from_fn(1000000, |_| rand::random::<float>());
 # let numbers_arc=ARC(numbers);
 # let (port, chan)  = stream();
@@ -416,6 +430,7 @@ of all tasks are intertwined: if one fails, so do all the others.
 
 ~~~
 # use std::task::spawn;
+# use std::task;
 # fn do_some_work() { loop { task::yield() } }
 # do task::try {
 // Create a child task that fails
@@ -437,6 +452,7 @@ field (representing a successful result) or an `Err` result (representing
 termination with an error).
 
 ~~~
+# use std::task;
 # fn some_condition() -> bool { false }
 # fn calculate_result() -> int { 0 }
 let result: Result<int, ()> = do task::try {
@@ -479,6 +495,7 @@ By default, task failure is _bidirectionally linked_, which means that if
 either task fails, it kills the other one.
 
 ~~~
+# use std::task;
 # fn sleep_forever() { loop { task::yield() } }
 # do task::try {
 do spawn {
@@ -501,6 +518,7 @@ before returning. Hence:
 ~~~
 # use std::comm::{stream, Chan, Port};
 # use std::task::{spawn, try};
+# use std::task;
 # fn sleep_forever() { loop { task::yield() } }
 # do task::try {
 let (receiver, sender): (Port<int>, Chan<int>) = stream();
@@ -528,6 +546,7 @@ Supervised task failure propagates across multiple generations even if
 an intermediate generation has already exited:
 
 ~~~
+# use std::task;
 # fn sleep_forever() { loop { task::yield() } }
 # fn wait_for_a_while() { for 1000.times { task::yield() } }
 # do task::try::<int> {
@@ -546,6 +565,7 @@ Finally, tasks can be configured to not propagate failure to each
 other at all, using `task::spawn_unlinked` for _isolated failure_.
 
 ~~~
+# use std::task;
 # fn random() -> uint { 100 }
 # fn sleep_for(i: uint) { for i.times { task::yield() } }
 # do task::try::<()> {
@@ -574,6 +594,7 @@ Here is the function that implements the child task:
 
 ~~~~
 # use extra::comm::DuplexStream;
+# use std::uint;
 fn stringifier(channel: &DuplexStream<~str, uint>) {
     let mut value: uint;
     loop {
@@ -596,6 +617,7 @@ Here is the code for the parent task:
 
 ~~~~
 # use std::task::spawn;
+# use std::uint;
 # use extra::comm::DuplexStream;
 # fn stringifier(channel: &DuplexStream<~str, uint>) {
 #     let mut value: uint;

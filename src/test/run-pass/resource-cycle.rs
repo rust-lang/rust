@@ -10,6 +10,8 @@
 
 // Don't leak the unique pointers
 
+use std::cast;
+
 struct r {
   v: *int,
 }

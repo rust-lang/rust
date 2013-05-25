@@ -18,5 +18,5 @@ pub fn main() {
         buildings::Tower { height: h } => { h }
     };
 
-    io::println(h.to_str());
+    println(h.to_str());
 }

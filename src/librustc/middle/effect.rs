@@ -73,15 +73,17 @@ pub fn check_crate(tcx: ty::ctxt,
 
     let visitor = visit::mk_vt(@visit::Visitor {
         visit_fn: |fn_kind, fn_decl, block, span, node_id, _, visitor| {
-            let is_unsafe_fn = match *fn_kind {
-                fk_item_fn(_, _, purity, _) => purity == unsafe_fn,
-                fk_method(_, _, method) => method.purity == unsafe_fn,
-                _ => false,
+            let (is_item_fn, is_unsafe_fn) = match *fn_kind {
+                fk_item_fn(_, _, purity, _) => (true, purity == unsafe_fn),
+                fk_method(_, _, method) => (true, method.purity == unsafe_fn),
+                _ => (false, false),
             };
 
             let old_unsafe_context = context.unsafe_context;
             if is_unsafe_fn {
                 context.unsafe_context = UnsafeFn
+            } else if is_item_fn {
+                context.unsafe_context = SafeContext
             }
 
             visit::visit_fn(fn_kind,
@@ -97,7 +99,8 @@ pub fn check_crate(tcx: ty::ctxt,
 
         visit_block: |block, _, visitor| {
             let old_unsafe_context = context.unsafe_context;
-            if block.node.rules == unsafe_blk {
+            if block.node.rules == unsafe_blk &&
+                    context.unsafe_context == SafeContext {
                 context.unsafe_context = UnsafeBlock(block.node.id)
             }
 

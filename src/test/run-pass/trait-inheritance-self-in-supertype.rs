@@ -1,5 +1,8 @@
 // Test for issue #4183: use of Self in supertraits.
 
+use std::f32;
+use std::f64;
+
 pub static FUZZY_EPSILON: float = 0.1;
 
 pub trait FuzzyEq<Eps> {

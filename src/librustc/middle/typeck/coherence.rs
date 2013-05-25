@@ -54,9 +54,11 @@ use syntax::visit::{Visitor, SimpleVisitor};
 use syntax::visit::{visit_mod};
 use util::ppaux::ty_to_str;
 
-use core::result::Ok;
 use core::hashmap::{HashMap, HashSet};
+use core::old_iter;
+use core::result::Ok;
 use core::uint;
+use core::vec;
 
 pub struct UniversalQuantificationResult {
     monotype: t,

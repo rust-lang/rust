@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::old_iter;
+
 fn add(x: &float, y: &uint) -> float { *x + ((*y) as float) }
 
 pub fn main() {

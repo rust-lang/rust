@@ -12,6 +12,8 @@
 // calling pin_task and that's having wierd side-effects.
 
 mod rustrt1 {
+    use std::libc;
+
     #[abi = "cdecl"]
     #[link_name = "rustrt"]
     pub extern {
@@ -20,6 +22,8 @@ mod rustrt1 {
 }
 
 mod rustrt2 {
+    use std::libc;
+
     #[abi = "cdecl"]
     #[link_name = "rustrt"]
     pub extern {

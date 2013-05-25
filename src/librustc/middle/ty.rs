@@ -27,9 +27,17 @@ use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
 use util::enum_set::{EnumSet, CLike};
 
+use core::cast;
+use core::cmp;
+use core::hashmap::{HashMap, HashSet};
+use core::iter;
+use core::ops;
 use core::ptr::to_unsafe_ptr;
 use core::to_bytes;
-use core::hashmap::{HashMap, HashSet};
+use core::u32;
+use core::uint;
+use core::vec;
+use extra::smallintmap::SmallIntMap;
 use syntax::ast::*;
 use syntax::ast_util::is_local;
 use syntax::ast_util;

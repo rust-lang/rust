@@ -59,6 +59,7 @@ use util::ppaux::Repr;
 use util::ppaux;
 
 use core::hashmap::HashMap;
+use core::result;
 use extra::list::List;
 use extra::list;
 use syntax::codemap::span;

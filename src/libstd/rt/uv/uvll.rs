@@ -31,7 +31,11 @@
 
 use libc::{size_t, c_int, c_uint, c_void, c_char, uintptr_t};
 use libc::{malloc, free};
+use libc;
 use prelude::*;
+use ptr;
+use str;
+use vec;
 
 pub static UNKNOWN: c_int = -1;
 pub static OK: c_int = 0;

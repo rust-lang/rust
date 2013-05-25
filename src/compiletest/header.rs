@@ -10,8 +10,12 @@
 
 use core::prelude::*;
 
-use common;
 use common::config;
+use common;
+
+use core::io;
+use core::os;
+use core::str;
 
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out

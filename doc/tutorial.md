@@ -502,6 +502,7 @@ types.
 > items.
 
 ~~~~
+# use std::float;
 fn angle(vector: (float, float)) -> float {
     let pi = float::consts::pi;
     match vector {
@@ -556,6 +557,7 @@ while cake_amount > 0 {
 `loop` denotes an infinite loop, and is the preferred way of writing `while true`:
 
 ~~~~
+# use std::int;
 let mut x = 5;
 loop {
     x += x - 3;
@@ -699,6 +701,7 @@ get at their contents. All variant constructors can be used as
 patterns, as in this definition of `area`:
 
 ~~~~
+# use std::float;
 # struct Point {x: float, y: float}
 # enum Shape { Circle(Point, float), Rectangle(Point, Point) }
 fn area(sh: Shape) -> float {
@@ -1829,6 +1832,7 @@ vector consisting of the result of applying `function` to each element
 of `vector`:
 
 ~~~~
+# use std::vec;
 fn map<T, U>(vector: &[T], function: &fn(v: &T) -> U) -> ~[U] {
     let mut accumulator = ~[];
     for vec::each(vector) |element| {
@@ -2026,6 +2030,7 @@ themselves contain type parameters. A trait for generalized sequence
 types might look like the following:
 
 ~~~~
+# use std::vec;
 trait Seq<T> {
     fn len(&self) -> uint;
     fn iter(&self, b: &fn(v: &T));

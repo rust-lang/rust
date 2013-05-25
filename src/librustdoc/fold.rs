@@ -14,6 +14,8 @@ use doc;
 #[cfg(test)] use extract;
 #[cfg(test)] use parse;
 
+use core::vec;
+
 pub struct Fold<T> {
     ctxt: T,
     fold_doc: FoldDoc<T>,

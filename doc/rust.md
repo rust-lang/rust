@@ -1840,6 +1840,7 @@ is bounds-checked at run-time. When the check fails, it will put the
 task in a _failing state_.
 
 ~~~~
+# use std::task;
 # do task::spawn_unlinked {
 
 ([1, 2, 3, 4])[0];
@@ -2168,7 +2169,7 @@ fn ten_times(f: &fn(int)) {
     }
 }
 
-ten_times(|j| io::println(fmt!("hello, %d", j)));
+ten_times(|j| println(fmt!("hello, %d", j)));
 
 ~~~~
 
@@ -2189,7 +2190,7 @@ An example:
 let mut i = 0;
 
 while i < 10 {
-    io::println("hello\n");
+    println("hello\n");
     i = i + 1;
 }
 ~~~~
@@ -2335,6 +2336,7 @@ for v.each |e| {
 An example of a for loop over a series of integers:
 
 ~~~~
+# use std::uint;
 # fn bar(b:uint) { }
 for uint::range(0, 256) |i| {
     bar(i);
@@ -2798,6 +2800,7 @@ the vtable pointer for the `T` implementation of `R`, and the pointer value of `
 An example of an object type:
 
 ~~~~~~~~
+# use std::int;
 trait Printable {
   fn to_str(&self) -> ~str;
 }
@@ -2807,7 +2810,7 @@ impl Printable for int {
 }
 
 fn print(a: @Printable) {
-   io::println(a.to_str());
+   println(a.to_str());
 }
 
 fn main() {

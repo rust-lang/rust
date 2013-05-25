@@ -13,6 +13,8 @@
 // in that type gets resolved.
 extern mod extra;
 
+use std::cast;
+
 fn null<T>() -> *T {
     unsafe {
         cast::transmute(0)

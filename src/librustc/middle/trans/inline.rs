@@ -19,6 +19,7 @@ use middle::trans::common::*;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
+use core::vec;
 use syntax::ast;
 use syntax::ast_map::path_name;
 use syntax::ast_util::local_def;

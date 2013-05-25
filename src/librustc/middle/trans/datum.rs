@@ -104,6 +104,7 @@ use util::common::indenter;
 use util::ppaux::ty_to_str;
 
 use core::to_bytes;
+use core::uint;
 use syntax::ast;
 use syntax::codemap::span;
 use syntax::parse::token::special_idents;

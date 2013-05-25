@@ -10,6 +10,8 @@
 
 extern mod extra;
 
+use std::uint;
+
 struct Triple { x: int, y: int, z: int }
 
 fn test(x: bool, foo: ~Triple) -> int {

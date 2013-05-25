@@ -19,8 +19,11 @@ use middle::trans::common::*;
 use middle::trans::machine::llalign_of_min;
 use syntax::codemap::span;
 
+use core::cast;
 use core::hashmap::HashMap;
 use core::libc::{c_uint, c_ulonglong, c_char};
+use core::str;
+use core::vec;
 
 pub fn terminate(cx: block, _: &str) {
     cx.terminated = true;

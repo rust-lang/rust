@@ -23,7 +23,12 @@ use extra::deque::Deque;
 use extra::par;
 use std::hashmap::HashSet;
 use std::int::abs;
+use std::io;
+use std::os;
 use std::rand::RngUtil;
+use std::rand;
+use std::uint;
+use std::vec;
 
 type node_id = i64;
 type graph = ~[~[node_id]];

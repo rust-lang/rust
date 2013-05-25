@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec;
+
 pub fn main() {
     let  v = ~[1,2,3,4,5];
     let v2 = vec::slice(v, 1, 3);

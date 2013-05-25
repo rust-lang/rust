@@ -11,8 +11,10 @@
 // error-pattern:method `nap` is private
 
 mod kitties {
+    use std::uint;
+
     pub struct cat {
-        priv mut meows : uint,
+        priv meows : uint,
 
         how_hungry : int,
     }

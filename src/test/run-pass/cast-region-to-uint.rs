@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ptr;
+
 pub fn main() {
     let x = 3;
     debug!("&x=%x", ptr::to_uint(&x));

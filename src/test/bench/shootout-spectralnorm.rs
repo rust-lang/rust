@@ -1,5 +1,8 @@
+use std::f64;
 use std::from_str::FromStr;
 use std::iter::ExtendedMutableIter;
+use std::os;
+use std::vec;
 
 #[inline]
 fn A(i: i32, j: i32) -> i32 {

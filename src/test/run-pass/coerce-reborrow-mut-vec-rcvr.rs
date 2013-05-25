@@ -1,3 +1,5 @@
+use std::vec;
+
 trait Reverser {
     fn reverse(self);
 }

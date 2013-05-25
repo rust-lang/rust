@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use std::comm::*;
+use std::task;
+use std::uint;
 
 fn child(c: &SharedChan<~uint>, i: uint) {
     c.send(~i);

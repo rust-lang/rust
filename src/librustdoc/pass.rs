@@ -10,6 +10,8 @@
 
 use core::prelude::*;
 
+use core::vec;
+
 use astsrv;
 use doc;
 use time;

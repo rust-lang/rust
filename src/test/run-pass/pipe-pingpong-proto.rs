@@ -14,6 +14,7 @@
 
 use std::cell::Cell;
 use std::option;
+use std::task;
 
 proto! pingpong (
     ping:send {

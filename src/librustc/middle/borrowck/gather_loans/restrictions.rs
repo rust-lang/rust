@@ -12,6 +12,7 @@
 
 use core::prelude::*;
 
+use core::vec;
 use middle::borrowck::*;
 use mc = middle::mem_categorization;
 use middle::ty;

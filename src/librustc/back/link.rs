@@ -22,12 +22,17 @@ use middle::trans::common::CrateContext;
 use middle::ty;
 use util::ppaux;
 
+use core::char;
 use core::hash::Streaming;
 use core::hash;
 use core::libc::{c_int, c_uint};
 use core::os::consts::{macos, freebsd, linux, android, win32};
+use core::os;
+use core::ptr;
 use core::rt::io::Writer;
 use core::run;
+use core::str;
+use core::vec;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::attr;
@@ -100,7 +105,12 @@ pub mod jit {
     use lib::llvm::{ModuleRef, PassManagerRef};
     use metadata::cstore;
 
+    use core::cast;
+    use core::char;
     use core::libc::c_int;
+    use core::os;
+    use core::ptr;
+    use core::str;
 
     pub mod rusti {
         #[nolink]
@@ -188,6 +198,7 @@ pub mod write {
     use core::libc::{c_int, c_uint};
     use core::path::Path;
     use core::run;
+    use core::str;
 
     pub fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
         if ot == output_type_assembly || ot == output_type_object ||

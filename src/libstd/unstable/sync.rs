@@ -214,48 +214,52 @@ mod tests {
 
     #[test]
     fn exclusive_arc() {
-        let mut futures = ~[];
+        unsafe {
+            let mut futures = ~[];
 
-        let num_tasks = 10;
-        let count = 10;
+            let num_tasks = 10;
+            let count = 10;
 
-        let total = exclusive(~0);
+            let total = exclusive(~0);
 
-        for uint::range(0, num_tasks) |_i| {
-            let total = total.clone();
-            let (port, chan) = comm::stream();
-            futures.push(port);
+            for uint::range(0, num_tasks) |_i| {
+                let total = total.clone();
+                let (port, chan) = comm::stream();
+                futures.push(port);
 
-            do task::spawn || {
-                for uint::range(0, count) |_i| {
-                    do total.with |count| {
-                        **count += 1;
+                do task::spawn || {
+                    for uint::range(0, count) |_i| {
+                        do total.with |count| {
+                            **count += 1;
+                        }
                     }
+                    chan.send(());
                 }
-                chan.send(());
-            }
-        };
+            };
 
-        for futures.each |f| { f.recv() }
+            for futures.each |f| { f.recv() }
 
-        do total.with |total| {
-            assert!(**total == num_tasks * count)
-        };
+            do total.with |total| {
+                assert!(**total == num_tasks * count)
+            };
+        }
     }
 
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn exclusive_poison() {
-        // Tests that if one task fails inside of an exclusive, subsequent
-        // accesses will also fail.
-        let x = exclusive(1);
-        let x2 = x.clone();
-        do task::try || {
-            do x2.with |one| {
-                assert_eq!(*one, 2);
+        unsafe {
+            // Tests that if one task fails inside of an exclusive, subsequent
+            // accesses will also fail.
+            let x = exclusive(1);
+            let x2 = x.clone();
+            do task::try || {
+                do x2.with |one| {
+                    assert_eq!(*one, 2);
+                }
+            };
+            do x.with |one| {
+                assert_eq!(*one, 1);
             }
-        };
-        do x.with |one| {
-            assert_eq!(*one, 1);
         }
     }
 }

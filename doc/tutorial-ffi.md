@@ -149,7 +149,9 @@ A type with the same functionality as owned boxes can be implemented by
 wrapping `malloc` and `free`:
 
 ~~~~
+use std::cast;
 use std::libc::{c_void, size_t, malloc, free};
+use std::ptr;
 use std::unstable::intrinsics;
 use std::util;
 

@@ -14,6 +14,8 @@
 use core::prelude::*;
 
 use core::libc::{c_char, c_int};
+use core::local_data;
+use core::str;
 
 pub mod rustrt {
     use core::libc::{c_char, c_int};

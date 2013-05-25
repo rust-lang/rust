@@ -25,6 +25,9 @@ use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;
 
+use core::at_vec;
+use core::str;
+use core::uint;
 use extra::ebml::reader;
 use extra::ebml;
 use extra::serialize;

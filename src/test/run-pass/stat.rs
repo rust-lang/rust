@@ -11,8 +11,12 @@
 // xfail-fast
 
 extern mod extra;
-use std::io::WriterUtil;
+
 use extra::tempfile;
+use std::io::WriterUtil;
+use std::io;
+use std::os;
+use std::uint;
 
 pub fn main() {
     let dir = tempfile::mkdtemp(&Path("."), "").unwrap();

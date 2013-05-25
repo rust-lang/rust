@@ -31,6 +31,8 @@ use middle::typeck;
 use util::common::indenter;
 use util::ppaux::Repr;
 
+use core::str;
+use core::vec;
 use syntax::ast_map::{path, path_mod, path_name};
 use syntax::ast_util;
 use syntax::{ast, ast_map};

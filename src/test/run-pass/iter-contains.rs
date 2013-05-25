@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::old_iter;
+
 pub fn main() {
     assert_eq!([].contains(&22u), false);
     assert_eq!([1u, 3u].contains(&22u), false);

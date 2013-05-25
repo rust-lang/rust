@@ -17,8 +17,11 @@ implementing the `Iterator` trait.
 
 */
 
-use prelude::*;
+use cmp;
+use iter;
 use num::{Zero, One};
+use num;
+use prelude::*;
 
 pub trait Iterator<A> {
     /// Advance the iterator and return the next value. Return `None` when the end is reached.
@@ -505,6 +508,9 @@ impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
 mod tests {
     use super::*;
     use prelude::*;
+
+    use iter;
+    use uint;
 
     #[test]
     fn test_counter_to_vec() {

@@ -10,6 +10,8 @@
 
 // xfail-fast
 
+use std::uint;
+
 trait noisy {
   fn speak(&mut self);
 }

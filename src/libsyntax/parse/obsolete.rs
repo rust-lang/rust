@@ -26,6 +26,7 @@ use parse::parser::Parser;
 use parse::token::{keywords, Token};
 use parse::token;
 
+use core::str;
 use core::to_bytes;
 
 /// The specific types of unsupported syntax

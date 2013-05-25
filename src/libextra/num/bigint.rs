@@ -19,7 +19,11 @@ A BigInt is a combination of BigUint and Sign.
 use core::prelude::*;
 
 use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
+use core::int;
 use core::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable};
+use core::str;
+use core::uint;
+use core::vec;
 
 /**
 A BigDigit is a BigUint's composing element.
@@ -1148,8 +1152,13 @@ mod biguint_tests {
     use core::prelude::*;
 
     use super::*;
-    use core::num::{IntConvertible, Zero, One, FromStrRadix};
+
     use core::cmp::{Less, Equal, Greater};
+    use core::int;
+    use core::num::{IntConvertible, Zero, One, FromStrRadix};
+    use core::str;
+    use core::uint;
+    use core::vec;
 
     #[test]
     fn test_from_slice() {
@@ -1616,8 +1625,12 @@ mod bigint_tests {
     use core::prelude::*;
 
     use super::*;
+
     use core::cmp::{Less, Equal, Greater};
+    use core::int;
     use core::num::{IntConvertible, Zero, One, FromStrRadix};
+    use core::uint;
+    use core::vec;
 
     #[test]
     fn test_from_biguint() {

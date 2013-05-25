@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use core::vec;
 use driver::session::Session;
 use syntax::parse;
 use syntax::ast;

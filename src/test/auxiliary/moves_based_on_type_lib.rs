@@ -16,7 +16,7 @@ pub struct S {
 
 impl Drop for S {
     fn finalize(&self) {
-        io::println("goodbye");
+        println("goodbye");
     }
 }
 

@@ -29,6 +29,13 @@ use print::pp::{breaks, consistent, inconsistent, eof};
 use print::pp;
 use print::pprust;
 
+use core::char;
+use core::io;
+use core::str;
+use core::u64;
+use core::uint;
+use core::vec;
+
 // The @ps is stored here to prevent recursive type.
 pub enum ann_node<'self> {
     node_block(@ps, &'self ast::blk),

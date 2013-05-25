@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec;
 
 fn compute1() -> float {
     let v = ~[0f, 1f, 2f, 3f];

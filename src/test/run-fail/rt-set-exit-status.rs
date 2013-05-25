@@ -10,6 +10,8 @@
 
 // error-pattern:whatever
 
+use std::os;
+
 fn main() {
     error!(~"whatever");
     // 101 is the code the runtime uses on task failure and the value

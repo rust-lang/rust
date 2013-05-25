@@ -23,6 +23,8 @@ use parse;
 
 use core::cell::Cell;
 use core::comm::{stream, SharedChan, Port};
+use core::task;
+use core::vec;
 use rustc::driver::driver;
 use rustc::driver::session::Session;
 use rustc::driver::session::{basic_options, options};

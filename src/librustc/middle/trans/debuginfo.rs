@@ -20,8 +20,14 @@ use middle::trans;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
+use core::cast;
 use core::hashmap::HashMap;
 use core::libc;
+use core::option;
+use core::ptr;
+use core::str;
+use core::sys;
+use core::vec;
 use syntax::codemap::span;
 use syntax::parse::token::ident_interner;
 use syntax::{ast, codemap, ast_util, ast_map};

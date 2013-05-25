@@ -21,7 +21,9 @@ use core::comm::{PortOne, oneshot, send_one, recv_one};
 use core::either::{Either, Left, Right};
 use core::hashmap::HashMap;
 use core::io;
+use core::result;
 use core::run;
+use core::task;
 use core::to_bytes;
 use core::util::replace;
 
