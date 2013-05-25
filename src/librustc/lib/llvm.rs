@@ -1541,7 +1541,8 @@ pub mod llvm {
                                   Op: AtomicBinOp,
                                   LHS: ValueRef,
                                   RHS: ValueRef,
-                                  Order: AtomicOrdering)
+                                  Order: AtomicOrdering,
+                                  SingleThreaded: Bool)
                                   -> ValueRef;
 
         pub fn LLVMBuildAtomicFence(B: BuilderRef, Order: AtomicOrdering);
