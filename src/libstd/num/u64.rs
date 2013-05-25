@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test not a test. used by mod-merge-hack.rs
+//! Operations and constants for `u64`
 
-mod inst {
-    pub type T = i32;
-    pub static bits: uint = 32;
-}
+pub use self::generated::*;
+uint_module!(u64, i64, 64)

@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test not a test. used by mod-merge-hack.rs
+//! Operations and constants for `u16`
 
-use T = self::inst::T;
-
-pub static bits: uint = inst::bits;
-pub fn min(x: T, y: T) -> T { if x < y { x } else { y } }
+pub use self::generated::*;
+uint_module!(u16, i16, 16)

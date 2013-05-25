@@ -8,53 +8,54 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use T = self::inst::T;
-use T_SIGNED = self::inst::T_SIGNED;
+// FIXME(#4375): this shouldn't have to be a nested module named 'generated'
 
+#[macro_escape];
+
+macro_rules! uint_module (($T:ty, $T_SIGNED:ty, $bits:expr) => (mod generated {
+
+use num::BitCount;
 use num::{ToStrRadix, FromStrRadix};
 use num::{Zero, One, strconv};
 use prelude::*;
 
 pub use cmp::{min, max};
 
-pub static bits : uint = inst::bits;
-pub static bytes : uint = (inst::bits / 8);
+pub static bits : uint = $bits;
+pub static bytes : uint = ($bits / 8);
 
-pub static min_value: T = 0 as T;
-pub static max_value: T = 0 as T - 1 as T;
-
-#[inline(always)]
-pub fn add(x: T, y: T) -> T { x + y }
-#[inline(always)]
-pub fn sub(x: T, y: T) -> T { x - y }
-#[inline(always)]
-pub fn mul(x: T, y: T) -> T { x * y }
-#[inline(always)]
-pub fn div(x: T, y: T) -> T { x / y }
-#[inline(always)]
-pub fn rem(x: T, y: T) -> T { x % y }
+pub static min_value: $T = 0 as $T;
+pub static max_value: $T = 0 as $T - 1 as $T;
 
 #[inline(always)]
-pub fn lt(x: T, y: T) -> bool { x < y }
+pub fn add(x: $T, y: $T) -> $T { x + y }
 #[inline(always)]
-pub fn le(x: T, y: T) -> bool { x <= y }
+pub fn sub(x: $T, y: $T) -> $T { x - y }
 #[inline(always)]
-pub fn eq(x: T, y: T) -> bool { x == y }
+pub fn mul(x: $T, y: $T) -> $T { x * y }
 #[inline(always)]
-pub fn ne(x: T, y: T) -> bool { x != y }
+pub fn div(x: $T, y: $T) -> $T { x / y }
 #[inline(always)]
-pub fn ge(x: T, y: T) -> bool { x >= y }
+pub fn rem(x: $T, y: $T) -> $T { x % y }
+
 #[inline(always)]
-pub fn gt(x: T, y: T) -> bool { x > y }
+pub fn lt(x: $T, y: $T) -> bool { x < y }
+#[inline(always)]
+pub fn le(x: $T, y: $T) -> bool { x <= y }
+#[inline(always)]
+pub fn eq(x: $T, y: $T) -> bool { x == y }
+#[inline(always)]
+pub fn ne(x: $T, y: $T) -> bool { x != y }
+#[inline(always)]
+pub fn ge(x: $T, y: $T) -> bool { x >= y }
+#[inline(always)]
+pub fn gt(x: $T, y: $T) -> bool { x > y }
 
 #[inline(always)]
 ///
 /// Iterate over the range [`start`,`start`+`step`..`stop`)
 ///
-pub fn _range_step(start: T,
-                   stop: T,
-                   step: T_SIGNED,
-                   it: &fn(T) -> bool) -> bool {
+pub fn range_step(start: $T, stop: $T, step: $T_SIGNED, it: &fn($T) -> bool) -> bool {
     let mut i = start;
     if step == 0 {
         fail!("range_step called with step == 0");
@@ -63,78 +64,74 @@ pub fn _range_step(start: T,
         while i < stop {
             if !it(i) { return false; }
             // avoiding overflow. break if i + step > max_value
-            if i > max_value - (step as T) { return true; }
-            i += step as T;
+            if i > max_value - (step as $T) { return true; }
+            i += step as $T;
         }
     } else {
         while i > stop {
             if !it(i) { return false; }
             // avoiding underflow. break if i + step < min_value
-            if i < min_value + ((-step) as T) { return true; }
-            i -= -step as T;
+            if i < min_value + ((-step) as $T) { return true; }
+            i -= -step as $T;
         }
     }
     return true;
 }
 
-pub fn range_step(start: T, stop: T, step: T_SIGNED, it: &fn(T) -> bool) -> bool {
-    _range_step(start, stop, step, it)
-}
-
 #[inline(always)]
 /// Iterate over the range [`lo`..`hi`)
-pub fn range(lo: T, hi: T, it: &fn(T) -> bool) -> bool {
-    range_step(lo, hi, 1 as T_SIGNED, it)
+pub fn range(lo: $T, hi: $T, it: &fn($T) -> bool) -> bool {
+    range_step(lo, hi, 1 as $T_SIGNED, it)
 }
 
 #[inline(always)]
 /// Iterate over the range [`hi`..`lo`)
-pub fn range_rev(hi: T, lo: T, it: &fn(T) -> bool) -> bool {
-    range_step(hi, lo, -1 as T_SIGNED, it)
+pub fn range_rev(hi: $T, lo: $T, it: &fn($T) -> bool) -> bool {
+    range_step(hi, lo, -1 as $T_SIGNED, it)
 }
 
 /// Computes the bitwise complement
 #[inline(always)]
-pub fn compl(i: T) -> T {
+pub fn compl(i: $T) -> $T {
     max_value ^ i
 }
 
-impl Num for T {}
+impl Num for $T {}
 
 #[cfg(not(test))]
-impl Ord for T {
+impl Ord for $T {
     #[inline(always)]
-    fn lt(&self, other: &T) -> bool { (*self) < (*other) }
+    fn lt(&self, other: &$T) -> bool { (*self) < (*other) }
     #[inline(always)]
-    fn le(&self, other: &T) -> bool { (*self) <= (*other) }
+    fn le(&self, other: &$T) -> bool { (*self) <= (*other) }
     #[inline(always)]
-    fn ge(&self, other: &T) -> bool { (*self) >= (*other) }
+    fn ge(&self, other: &$T) -> bool { (*self) >= (*other) }
     #[inline(always)]
-    fn gt(&self, other: &T) -> bool { (*self) > (*other) }
+    fn gt(&self, other: &$T) -> bool { (*self) > (*other) }
 }
 
 #[cfg(not(test))]
-impl Eq for T {
+impl Eq for $T {
     #[inline(always)]
-    fn eq(&self, other: &T) -> bool { return (*self) == (*other); }
+    fn eq(&self, other: &$T) -> bool { return (*self) == (*other); }
     #[inline(always)]
-    fn ne(&self, other: &T) -> bool { return (*self) != (*other); }
+    fn ne(&self, other: &$T) -> bool { return (*self) != (*other); }
 }
 
-impl Orderable for T {
+impl Orderable for $T {
     #[inline(always)]
-    fn min(&self, other: &T) -> T {
+    fn min(&self, other: &$T) -> $T {
         if *self < *other { *self } else { *other }
     }
 
     #[inline(always)]
-    fn max(&self, other: &T) -> T {
+    fn max(&self, other: &$T) -> $T {
         if *self > *other { *self } else { *other }
     }
 
     /// Returns the number constrained within the range `mn <= self <= mx`.
     #[inline(always)]
-    fn clamp(&self, mn: &T, mx: &T) -> T {
+    fn clamp(&self, mn: &$T, mx: &$T) -> $T {
         cond!(
             (*self > *mx) { *mx   }
             (*self < *mn) { *mn   }
@@ -143,81 +140,81 @@ impl Orderable for T {
     }
 }
 
-impl Zero for T {
+impl Zero for $T {
     #[inline(always)]
-    fn zero() -> T { 0 }
+    fn zero() -> $T { 0 }
 
     #[inline(always)]
     fn is_zero(&self) -> bool { *self == 0 }
 }
 
-impl One for T {
+impl One for $T {
     #[inline(always)]
-    fn one() -> T { 1 }
+    fn one() -> $T { 1 }
 }
 
 #[cfg(not(test))]
-impl Add<T,T> for T {
+impl Add<$T,$T> for $T {
     #[inline(always)]
-    fn add(&self, other: &T) -> T { *self + *other }
+    fn add(&self, other: &$T) -> $T { *self + *other }
 }
 
 #[cfg(not(test))]
-impl Sub<T,T> for T {
+impl Sub<$T,$T> for $T {
     #[inline(always)]
-    fn sub(&self, other: &T) -> T { *self - *other }
+    fn sub(&self, other: &$T) -> $T { *self - *other }
 }
 
 #[cfg(not(test))]
-impl Mul<T,T> for T {
+impl Mul<$T,$T> for $T {
     #[inline(always)]
-    fn mul(&self, other: &T) -> T { *self * *other }
+    fn mul(&self, other: &$T) -> $T { *self * *other }
 }
 
 #[cfg(not(test))]
-impl Div<T,T> for T {
+impl Div<$T,$T> for $T {
     #[inline(always)]
-    fn div(&self, other: &T) -> T { *self / *other }
+    fn div(&self, other: &$T) -> $T { *self / *other }
 }
 
 #[cfg(not(test))]
-impl Rem<T,T> for T {
+impl Rem<$T,$T> for $T {
     #[inline(always)]
-    fn rem(&self, other: &T) -> T { *self % *other }
+    fn rem(&self, other: &$T) -> $T { *self % *other }
 }
 
 #[cfg(not(test))]
-impl Neg<T> for T {
+impl Neg<$T> for $T {
     #[inline(always)]
-    fn neg(&self) -> T { -*self }
+    fn neg(&self) -> $T { -*self }
 }
 
-impl Unsigned for T {}
+impl Unsigned for $T {}
 
-impl Integer for T {
+impl Integer for $T {
     /// Calculates `div` (`\`) and `rem` (`%`) simultaneously
     #[inline(always)]
-    fn div_rem(&self, other: &T) -> (T,T) {
+    fn div_rem(&self, other: &$T) -> ($T,$T) {
         (*self / *other, *self % *other)
     }
 
     /// Unsigned integer division. Returns the same result as `div` (`/`).
     #[inline(always)]
-    fn div_floor(&self, other: &T) -> T { *self / *other }
+    fn div_floor(&self, other: &$T) -> $T { *self / *other }
 
     /// Unsigned integer modulo operation. Returns the same result as `rem` (`%`).
     #[inline(always)]
-    fn mod_floor(&self, other: &T) -> T { *self / *other }
+    fn mod_floor(&self, other: &$T) -> $T { *self / *other }
 
     /// Calculates `div_floor` and `modulo_floor` simultaneously
     #[inline(always)]
-    fn div_mod_floor(&self, other: &T) -> (T,T) {
+    fn div_mod_floor(&self, other: &$T) -> ($T,$T) {
         (*self / *other, *self % *other)
     }
 
     /// Calculates the Greatest Common Divisor (GCD) of the number and `other`
     #[inline(always)]
-    fn gcd(&self, other: &T) -> T {
+    fn gcd(&self, other: &$T) -> $T {
         // Use Euclid's algorithm
         let mut m = *self, n = *other;
         while m != 0 {
@@ -230,13 +227,13 @@ impl Integer for T {
 
     /// Calculates the Lowest Common Multiple (LCM) of the number and `other`
     #[inline(always)]
-    fn lcm(&self, other: &T) -> T {
+    fn lcm(&self, other: &$T) -> $T {
         (*self * *other) / self.gcd(other)
     }
 
     /// Returns `true` if the number can be divided by `other` without leaving a remainder
     #[inline(always)]
-    fn is_multiple_of(&self, other: &T) -> bool { *self % *other == 0 }
+    fn is_multiple_of(&self, other: &$T) -> bool { *self % *other == 0 }
 
     /// Returns `true` if the number is divisible by `2`
     #[inline(always)]
@@ -247,87 +244,87 @@ impl Integer for T {
     fn is_odd(&self) -> bool { !self.is_even() }
 }
 
-impl Bitwise for T {}
+impl Bitwise for $T {}
 
 #[cfg(not(test))]
-impl BitOr<T,T> for T {
+impl BitOr<$T,$T> for $T {
     #[inline(always)]
-    fn bitor(&self, other: &T) -> T { *self | *other }
-}
-
-#[cfg(not(test))]
-impl BitAnd<T,T> for T {
-    #[inline(always)]
-    fn bitand(&self, other: &T) -> T { *self & *other }
+    fn bitor(&self, other: &$T) -> $T { *self | *other }
 }
 
 #[cfg(not(test))]
-impl BitXor<T,T> for T {
+impl BitAnd<$T,$T> for $T {
     #[inline(always)]
-    fn bitxor(&self, other: &T) -> T { *self ^ *other }
+    fn bitand(&self, other: &$T) -> $T { *self & *other }
 }
 
 #[cfg(not(test))]
-impl Shl<T,T> for T {
+impl BitXor<$T,$T> for $T {
     #[inline(always)]
-    fn shl(&self, other: &T) -> T { *self << *other }
+    fn bitxor(&self, other: &$T) -> $T { *self ^ *other }
 }
 
 #[cfg(not(test))]
-impl Shr<T,T> for T {
+impl Shl<$T,$T> for $T {
     #[inline(always)]
-    fn shr(&self, other: &T) -> T { *self >> *other }
+    fn shl(&self, other: &$T) -> $T { *self << *other }
 }
 
 #[cfg(not(test))]
-impl Not<T> for T {
+impl Shr<$T,$T> for $T {
     #[inline(always)]
-    fn not(&self) -> T { !*self }
+    fn shr(&self, other: &$T) -> $T { *self >> *other }
 }
 
-impl Bounded for T {
+#[cfg(not(test))]
+impl Not<$T> for $T {
     #[inline(always)]
-    fn min_value() -> T { min_value }
-
-    #[inline(always)]
-    fn max_value() -> T { max_value }
+    fn not(&self) -> $T { !*self }
 }
 
-impl Int for T {}
+impl Bounded for $T {
+    #[inline(always)]
+    fn min_value() -> $T { min_value }
+
+    #[inline(always)]
+    fn max_value() -> $T { max_value }
+}
+
+impl Int for $T {}
 
 // String conversion functions and impl str -> num
 
 /// Parse a string as a number in base 10.
 #[inline(always)]
-pub fn from_str(s: &str) -> Option<T> {
+pub fn from_str(s: &str) -> Option<$T> {
     strconv::from_str_common(s, 10u, false, false, false,
                              strconv::ExpNone, false, false)
 }
 
 /// Parse a string as a number in the given base.
 #[inline(always)]
-pub fn from_str_radix(s: &str, radix: uint) -> Option<T> {
+pub fn from_str_radix(s: &str, radix: uint) -> Option<$T> {
     strconv::from_str_common(s, radix, false, false, false,
                              strconv::ExpNone, false, false)
 }
 
 /// Parse a byte slice as a number in the given base.
 #[inline(always)]
-pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<T> {
+pub fn parse_bytes(buf: &[u8], radix: uint) -> Option<$T> {
     strconv::from_str_bytes_common(buf, radix, false, false, false,
                                    strconv::ExpNone, false, false)
 }
 
-impl FromStr for T {
+impl FromStr for $T {
     #[inline(always)]
-    fn from_str(s: &str) -> Option<T> {
+    fn from_str(s: &str) -> Option<$T> {
         from_str(s)
     }
 }
 
-impl FromStrRadix for T {
+impl FromStrRadix for $T {
     #[inline(always)]
-    fn from_str_radix(s: &str, radix: uint) -> Option<T> {
+    fn from_str_radix(s: &str, radix: uint) -> Option<$T> {
         from_str_radix(s, radix)
     }
 }
@@ -336,7 +333,7 @@ impl FromStrRadix for T {
 
 /// Convert to a string as a byte slice in a given base.
 #[inline(always)]
-pub fn to_str_bytes<U>(n: T, radix: uint, f: &fn(v: &[u8]) -> U) -> U {
+pub fn to_str_bytes<U>(n: $T, radix: uint, f: &fn(v: &[u8]) -> U) -> U {
     let (buf, _) = strconv::to_str_bytes_common(&n, radix, false,
                             strconv::SignNeg, strconv::DigAll);
     f(buf)
@@ -344,7 +341,7 @@ pub fn to_str_bytes<U>(n: T, radix: uint, f: &fn(v: &[u8]) -> U) -> U {
 
 /// Convert to a string in base 10.
 #[inline(always)]
-pub fn to_str(num: T) -> ~str {
+pub fn to_str(num: $T) -> ~str {
     let (buf, _) = strconv::to_str_common(&num, 10u, false,
                             strconv::SignNeg, strconv::DigAll);
     buf
@@ -352,149 +349,176 @@ pub fn to_str(num: T) -> ~str {
 
 /// Convert to a string in a given base.
 #[inline(always)]
-pub fn to_str_radix(num: T, radix: uint) -> ~str {
+pub fn to_str_radix(num: $T, radix: uint) -> ~str {
     let (buf, _) = strconv::to_str_common(&num, radix, false,
                             strconv::SignNeg, strconv::DigAll);
     buf
 }
 
-impl ToStr for T {
+impl ToStr for $T {
     #[inline(always)]
     fn to_str(&self) -> ~str {
         to_str(*self)
     }
 }
 
-impl ToStrRadix for T {
+impl ToStrRadix for $T {
     #[inline(always)]
     fn to_str_radix(&self, radix: uint) -> ~str {
         to_str_radix(*self, radix)
     }
 }
 
+impl Primitive for $T {
+    #[inline(always)]
+    fn bits() -> uint { bits }
+
+    #[inline(always)]
+    fn bytes() -> uint { bits / 8 }
+}
+
+impl BitCount for $T {
+    /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
+    #[inline(always)]
+    fn population_count(&self) -> $T {
+        (*self as $T_SIGNED).population_count() as $T
+    }
+
+    /// Counts the number of leading zeros. Wraps LLVM's `ctlz` intrinsic.
+    #[inline(always)]
+    fn leading_zeros(&self) -> $T {
+        (*self as $T_SIGNED).leading_zeros() as $T
+    }
+
+    /// Counts the number of trailing zeros. Wraps LLVM's `cttz` intrinsic.
+    #[inline(always)]
+    fn trailing_zeros(&self) -> $T {
+        (*self as $T_SIGNED).trailing_zeros() as $T
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::inst::T;
     use prelude::*;
 
     #[test]
     fn test_num() {
-        num::test_num(10 as T, 2 as T);
+        num::test_num(10 as $T, 2 as $T);
     }
 
     #[test]
     fn test_orderable() {
-        assert_eq!((1 as T).min(&(2 as T)), 1 as T);
-        assert_eq!((2 as T).min(&(1 as T)), 1 as T);
-        assert_eq!((1 as T).max(&(2 as T)), 2 as T);
-        assert_eq!((2 as T).max(&(1 as T)), 2 as T);
-        assert_eq!((1 as T).clamp(&(2 as T), &(4 as T)), 2 as T);
-        assert_eq!((8 as T).clamp(&(2 as T), &(4 as T)), 4 as T);
-        assert_eq!((3 as T).clamp(&(2 as T), &(4 as T)), 3 as T);
+        assert_eq!((1 as $T).min(&(2 as $T)), 1 as $T);
+        assert_eq!((2 as $T).min(&(1 as $T)), 1 as $T);
+        assert_eq!((1 as $T).max(&(2 as $T)), 2 as $T);
+        assert_eq!((2 as $T).max(&(1 as $T)), 2 as $T);
+        assert_eq!((1 as $T).clamp(&(2 as $T), &(4 as $T)), 2 as $T);
+        assert_eq!((8 as $T).clamp(&(2 as $T), &(4 as $T)), 4 as $T);
+        assert_eq!((3 as $T).clamp(&(2 as $T), &(4 as $T)), 3 as $T);
     }
 
     #[test]
     fn test_gcd() {
-        assert_eq!((10 as T).gcd(&2), 2 as T);
-        assert_eq!((10 as T).gcd(&3), 1 as T);
-        assert_eq!((0 as T).gcd(&3), 3 as T);
-        assert_eq!((3 as T).gcd(&3), 3 as T);
-        assert_eq!((56 as T).gcd(&42), 14 as T);
+        assert_eq!((10 as $T).gcd(&2), 2 as $T);
+        assert_eq!((10 as $T).gcd(&3), 1 as $T);
+        assert_eq!((0 as $T).gcd(&3), 3 as $T);
+        assert_eq!((3 as $T).gcd(&3), 3 as $T);
+        assert_eq!((56 as $T).gcd(&42), 14 as $T);
     }
 
     #[test]
     fn test_lcm() {
-        assert_eq!((1 as T).lcm(&0), 0 as T);
-        assert_eq!((0 as T).lcm(&1), 0 as T);
-        assert_eq!((1 as T).lcm(&1), 1 as T);
-        assert_eq!((8 as T).lcm(&9), 72 as T);
-        assert_eq!((11 as T).lcm(&5), 55 as T);
-        assert_eq!((99 as T).lcm(&17), 1683 as T);
+        assert_eq!((1 as $T).lcm(&0), 0 as $T);
+        assert_eq!((0 as $T).lcm(&1), 0 as $T);
+        assert_eq!((1 as $T).lcm(&1), 1 as $T);
+        assert_eq!((8 as $T).lcm(&9), 72 as $T);
+        assert_eq!((11 as $T).lcm(&5), 55 as $T);
+        assert_eq!((99 as $T).lcm(&17), 1683 as $T);
     }
 
     #[test]
     fn test_multiple_of() {
-        assert!((6 as T).is_multiple_of(&(6 as T)));
-        assert!((6 as T).is_multiple_of(&(3 as T)));
-        assert!((6 as T).is_multiple_of(&(1 as T)));
+        assert!((6 as $T).is_multiple_of(&(6 as $T)));
+        assert!((6 as $T).is_multiple_of(&(3 as $T)));
+        assert!((6 as $T).is_multiple_of(&(1 as $T)));
     }
 
     #[test]
     fn test_even() {
-        assert_eq!((0 as T).is_even(), true);
-        assert_eq!((1 as T).is_even(), false);
-        assert_eq!((2 as T).is_even(), true);
-        assert_eq!((3 as T).is_even(), false);
-        assert_eq!((4 as T).is_even(), true);
+        assert_eq!((0 as $T).is_even(), true);
+        assert_eq!((1 as $T).is_even(), false);
+        assert_eq!((2 as $T).is_even(), true);
+        assert_eq!((3 as $T).is_even(), false);
+        assert_eq!((4 as $T).is_even(), true);
     }
 
     #[test]
     fn test_odd() {
-        assert_eq!((0 as T).is_odd(), false);
-        assert_eq!((1 as T).is_odd(), true);
-        assert_eq!((2 as T).is_odd(), false);
-        assert_eq!((3 as T).is_odd(), true);
-        assert_eq!((4 as T).is_odd(), false);
+        assert_eq!((0 as $T).is_odd(), false);
+        assert_eq!((1 as $T).is_odd(), true);
+        assert_eq!((2 as $T).is_odd(), false);
+        assert_eq!((3 as $T).is_odd(), true);
+        assert_eq!((4 as $T).is_odd(), false);
     }
 
     #[test]
     fn test_bitwise() {
-        assert_eq!(0b1110 as T, (0b1100 as T).bitor(&(0b1010 as T)));
-        assert_eq!(0b1000 as T, (0b1100 as T).bitand(&(0b1010 as T)));
-        assert_eq!(0b0110 as T, (0b1100 as T).bitxor(&(0b1010 as T)));
-        assert_eq!(0b1110 as T, (0b0111 as T).shl(&(1 as T)));
-        assert_eq!(0b0111 as T, (0b1110 as T).shr(&(1 as T)));
-        assert_eq!(max_value - (0b1011 as T), (0b1011 as T).not());
+        assert_eq!(0b1110 as $T, (0b1100 as $T).bitor(&(0b1010 as $T)));
+        assert_eq!(0b1000 as $T, (0b1100 as $T).bitand(&(0b1010 as $T)));
+        assert_eq!(0b0110 as $T, (0b1100 as $T).bitxor(&(0b1010 as $T)));
+        assert_eq!(0b1110 as $T, (0b0111 as $T).shl(&(1 as $T)));
+        assert_eq!(0b0111 as $T, (0b1110 as $T).shr(&(1 as $T)));
+        assert_eq!(max_value - (0b1011 as $T), (0b1011 as $T).not());
     }
 
     #[test]
     fn test_bitcount() {
-        assert_eq!((0b010101 as T).population_count(), 3);
+        assert_eq!((0b010101 as $T).population_count(), 3);
     }
 
     #[test]
     fn test_primitive() {
-        assert_eq!(Primitive::bits::<T>(), sys::size_of::<T>() * 8);
-        assert_eq!(Primitive::bytes::<T>(), sys::size_of::<T>());
+        assert_eq!(Primitive::bits::<$T>(), sys::size_of::<$T>() * 8);
+        assert_eq!(Primitive::bytes::<$T>(), sys::size_of::<$T>());
     }
 
     #[test]
     pub fn test_to_str() {
-        assert_eq!(to_str_radix(0 as T, 10u), ~"0");
-        assert_eq!(to_str_radix(1 as T, 10u), ~"1");
-        assert_eq!(to_str_radix(2 as T, 10u), ~"2");
-        assert_eq!(to_str_radix(11 as T, 10u), ~"11");
-        assert_eq!(to_str_radix(11 as T, 16u), ~"b");
-        assert_eq!(to_str_radix(255 as T, 16u), ~"ff");
-        assert_eq!(to_str_radix(0xff as T, 10u), ~"255");
+        assert_eq!(to_str_radix(0 as $T, 10u), ~"0");
+        assert_eq!(to_str_radix(1 as $T, 10u), ~"1");
+        assert_eq!(to_str_radix(2 as $T, 10u), ~"2");
+        assert_eq!(to_str_radix(11 as $T, 10u), ~"11");
+        assert_eq!(to_str_radix(11 as $T, 16u), ~"b");
+        assert_eq!(to_str_radix(255 as $T, 16u), ~"ff");
+        assert_eq!(to_str_radix(0xff as $T, 10u), ~"255");
     }
 
     #[test]
     pub fn test_from_str() {
-        assert_eq!(from_str("0"), Some(0u as T));
-        assert_eq!(from_str("3"), Some(3u as T));
-        assert_eq!(from_str("10"), Some(10u as T));
-        assert_eq!(u32::from_str("123456789"), Some(123456789 as u32));
-        assert_eq!(from_str("00100"), Some(100u as T));
+        assert_eq!(from_str(~"0"), Some(0u as $T));
+        assert_eq!(from_str(~"3"), Some(3u as $T));
+        assert_eq!(from_str(~"10"), Some(10u as $T));
+        assert_eq!(u32::from_str(~"123456789"), Some(123456789 as u32));
+        assert_eq!(from_str(~"00100"), Some(100u as $T));
 
-        assert!(from_str("").is_none());
-        assert!(from_str(" ").is_none());
-        assert!(from_str("x").is_none());
+        assert!(from_str(~"").is_none());
+        assert!(from_str(~" ").is_none());
+        assert!(from_str(~"x").is_none());
     }
 
     #[test]
     pub fn test_parse_bytes() {
         use str::to_bytes;
-        assert_eq!(parse_bytes(to_bytes("123"), 10u), Some(123u as T));
-        assert_eq!(parse_bytes(to_bytes("1001"), 2u), Some(9u as T));
-        assert_eq!(parse_bytes(to_bytes("123"), 8u), Some(83u as T));
-        assert_eq!(u16::parse_bytes(to_bytes("123"), 16u), Some(291u as u16));
-        assert_eq!(u16::parse_bytes(to_bytes("ffff"), 16u), Some(65535u as u16));
-        assert_eq!(parse_bytes(to_bytes("z"), 36u), Some(35u as T));
+        assert_eq!(parse_bytes(to_bytes(~"123"), 10u), Some(123u as $T));
+        assert_eq!(parse_bytes(to_bytes(~"1001"), 2u), Some(9u as $T));
+        assert_eq!(parse_bytes(to_bytes(~"123"), 8u), Some(83u as $T));
+        assert_eq!(u16::parse_bytes(to_bytes(~"123"), 16u), Some(291u as u16));
+        assert_eq!(u16::parse_bytes(to_bytes(~"ffff"), 16u), Some(65535u as u16));
+        assert_eq!(parse_bytes(to_bytes(~"z"), 36u), Some(35u as $T));
 
-        assert!(parse_bytes(to_bytes("Z"), 10u).is_none());
-        assert!(parse_bytes(to_bytes("_"), 2u).is_none());
+        assert!(parse_bytes(to_bytes(~"Z"), 10u).is_none());
+        assert!(parse_bytes(to_bytes(~"_"), 2u).is_none());
     }
 
     #[test]
@@ -527,36 +551,36 @@ mod tests {
     #[test]
     fn test_uint_from_str_overflow() {
         let mut u8_val: u8 = 255_u8;
-        assert_eq!(u8::from_str("255"), Some(u8_val));
-        assert!(u8::from_str("256").is_none());
+        assert_eq!(u8::from_str(~"255"), Some(u8_val));
+        assert!(u8::from_str(~"256").is_none());
 
         u8_val += 1 as u8;
-        assert_eq!(u8::from_str("0"), Some(u8_val));
-        assert!(u8::from_str("-1").is_none());
+        assert_eq!(u8::from_str(~"0"), Some(u8_val));
+        assert!(u8::from_str(~"-1").is_none());
 
         let mut u16_val: u16 = 65_535_u16;
-        assert_eq!(u16::from_str("65535"), Some(u16_val));
-        assert!(u16::from_str("65536").is_none());
+        assert_eq!(u16::from_str(~"65535"), Some(u16_val));
+        assert!(u16::from_str(~"65536").is_none());
 
         u16_val += 1 as u16;
-        assert_eq!(u16::from_str("0"), Some(u16_val));
-        assert!(u16::from_str("-1").is_none());
+        assert_eq!(u16::from_str(~"0"), Some(u16_val));
+        assert!(u16::from_str(~"-1").is_none());
 
         let mut u32_val: u32 = 4_294_967_295_u32;
-        assert_eq!(u32::from_str("4294967295"), Some(u32_val));
-        assert!(u32::from_str("4294967296").is_none());
+        assert_eq!(u32::from_str(~"4294967295"), Some(u32_val));
+        assert!(u32::from_str(~"4294967296").is_none());
 
         u32_val += 1 as u32;
-        assert_eq!(u32::from_str("0"), Some(u32_val));
-        assert!(u32::from_str("-1").is_none());
+        assert_eq!(u32::from_str(~"0"), Some(u32_val));
+        assert!(u32::from_str(~"-1").is_none());
 
         let mut u64_val: u64 = 18_446_744_073_709_551_615_u64;
-        assert_eq!(u64::from_str("18446744073709551615"), Some(u64_val));
-        assert!(u64::from_str("18446744073709551616").is_none());
+        assert_eq!(u64::from_str(~"18446744073709551615"), Some(u64_val));
+        assert!(u64::from_str(~"18446744073709551616").is_none());
 
         u64_val += 1 as u64;
-        assert_eq!(u64::from_str("0"), Some(u64_val));
-        assert!(u64::from_str("-1").is_none());
+        assert_eq!(u64::from_str(~"0"), Some(u64_val));
+        assert!(u64::from_str(~"-1").is_none());
     }
 
     #[test]
@@ -639,3 +663,5 @@ mod tests {
         for range_step(0,-10,0) |_i| {}
     }
 }
+
+}))
