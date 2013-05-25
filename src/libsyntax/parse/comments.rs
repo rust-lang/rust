@@ -20,6 +20,10 @@ use parse::lexer;
 use parse::token;
 use parse;
 
+use core::io;
+use core::str;
+use core::uint;
+
 #[deriving(Eq)]
 pub enum cmnt_style {
     isolated, // No code on either side of each line of the comment

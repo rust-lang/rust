@@ -9,6 +9,10 @@
 // except according to those terms.
 
 // -*- rust -*-
+
+use std::io;
+use std::vec;
+
 fn main(){
     let mut t1 = ~[];
     t1.push('a');

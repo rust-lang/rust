@@ -13,12 +13,14 @@
 //! local storage, and logging. Even a 'freestanding' Rust would likely want
 //! to implement this.
 
-use prelude::*;
-use libc::{c_void, uintptr_t};
 use cast::transmute;
+use libc::{c_void, uintptr_t};
+use ptr;
+use prelude::*;
 use rt::local::Local;
-use super::local_heap::LocalHeap;
 use rt::logging::StdErrLogger;
+use super::local_heap::LocalHeap;
+use super::sched::Scheduler;
 
 pub struct Task {
     heap: LocalHeap,

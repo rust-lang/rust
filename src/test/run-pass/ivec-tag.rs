@@ -1,4 +1,5 @@
 use std::comm::*;
+use std::task;
 
 fn producer(c: &Chan<~[u8]>) {
     c.send(

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use std::comm::*;
+use std::ptr;
+use std::task;
 
 pub fn main() {
     let (p, ch) = stream::<uint>();

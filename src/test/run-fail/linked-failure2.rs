@@ -12,6 +12,9 @@
 
 // error-pattern:fail
 
+use std::comm;
+use std::task;
+
 fn child() { fail!(); }
 
 fn main() {

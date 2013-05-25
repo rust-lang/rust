@@ -12,7 +12,9 @@
 
 use core::prelude::*;
 
+use core::uint;
 use core::util::replace;
+use core::vec;
 
 static initial_capacity: uint = 32u; // 2^5
 

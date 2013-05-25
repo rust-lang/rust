@@ -14,8 +14,11 @@ use driver::session;
 use metadata::cstore;
 use metadata::filesearch;
 
-use core::util;
 use core::hashmap::HashSet;
+use core::os;
+use core::uint;
+use core::util;
+use core::vec;
 
 fn not_win32(os: session::os) -> bool {
   match os {
@@ -210,6 +213,13 @@ pub fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
 mod test {
     use core::prelude::*;
 
+    use core::os;
+    use core::str;
+
+    // FIXME(#2119): the outer attribute should be #[cfg(unix, test)], then
+    // these redundant #[cfg(test)] blocks can be removed
+    #[cfg(test)]
+    #[cfg(test)]
     use back::rpath::{get_absolute_rpath, get_install_prefix_rpath};
     use back::rpath::{get_relative_to, get_rpath_relative_to_output};
     use back::rpath::{minimize_rpaths, rpaths_to_flags};

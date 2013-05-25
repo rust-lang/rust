@@ -19,6 +19,8 @@ use middle::typeck::method_map;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
+use core::uint;
+use core::vec;
 use extra::sort;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};

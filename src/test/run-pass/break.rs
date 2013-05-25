@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec;
+
 pub fn main() {
     let mut i = 0;
     while i < 20 { i += 1; if i == 10 { break; } }

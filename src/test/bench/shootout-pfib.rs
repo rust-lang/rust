@@ -22,11 +22,17 @@
 extern mod extra;
 
 use extra::{time, getopts};
-use std::int::range;
 use std::comm::*;
+use std::int::range;
 use std::io::WriterUtil;
-
+use std::io;
+use std::os;
 use std::result::{Ok, Err};
+use std::str;
+use std::task;
+use std::u64;
+use std::uint;
+use std::vec;
 
 fn fib(n: int) -> int {
     fn pfib(c: &Chan<int>, n: int) {

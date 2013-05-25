@@ -15,8 +15,11 @@
 // memory, which makes for some *confusing* logs. That's why these are here
 // instead of in std.
 
-use std::run;
+use std::libc;
+use std::os;
 use std::run::*;
+use std::run;
+use std::str;
 
 #[test]
 fn test_destroy_once() {

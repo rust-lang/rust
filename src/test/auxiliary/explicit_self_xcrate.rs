@@ -20,6 +20,6 @@ pub struct Bar {
 impl Foo for Bar {
     #[inline(always)]
     fn f(&self) {
-        io::println((*self).x);
+        println((*self).x);
     }
 }

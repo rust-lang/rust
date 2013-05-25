@@ -16,5 +16,5 @@ use anon_trait_static_method_lib::Foo;
 
 pub fn main() {
     let x = Foo::new();
-    io::println(x.x.to_str());
+    println(x.x.to_str());
 }

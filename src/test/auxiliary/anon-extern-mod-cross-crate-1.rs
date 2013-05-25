@@ -14,6 +14,10 @@
        vers = "0.1")];
 
 #[crate_type = "lib"];
+
+use std::libc;
+
 extern {
-  fn rust_get_argc() -> libc::c_int;
+    pub fn rust_get_argc() -> libc::c_int;
 }
+

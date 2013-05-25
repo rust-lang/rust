@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::comm::*;
+use std::task;
 
 pub fn foo<T:Owned + Copy>(x: T) -> Port<T> {
     let (p, c) = stream();

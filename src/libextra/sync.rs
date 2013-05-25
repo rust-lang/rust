@@ -17,9 +17,10 @@
 
 use core::prelude::*;
 
-use core::unstable::sync::{Exclusive, exclusive};
+use core::comm;
 use core::ptr;
 use core::task;
+use core::unstable::sync::{Exclusive, exclusive};
 use core::util;
 
 /****************************************************************************
@@ -728,6 +729,8 @@ mod tests {
 
     use core::cast;
     use core::cell::Cell;
+    use core::comm;
+    use core::ptr;
     use core::result;
     use core::task;
     use core::vec;

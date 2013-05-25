@@ -11,6 +11,7 @@
 // except according to those terms.
 
 use std::hashmap::HashMap;
+use std::str;
 
 pub fn main() {
     let mut m = HashMap::new();

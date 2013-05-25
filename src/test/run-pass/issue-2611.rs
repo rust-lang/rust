@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::old_iter::BaseIter;
+use std::old_iter;
 
 trait FlatMapToVec<A> {
   fn flat_map_to_vec<B, IB:BaseIter<B>>(&self, op: &fn(&A) -> IB) -> ~[B];

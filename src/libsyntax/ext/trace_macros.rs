@@ -18,6 +18,8 @@ use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
 use parse::token::keywords;
 
+use core::vec;
+
 pub fn expand_trace_macros(cx: @ExtCtxt,
                            sp: span,
                            tt: &[ast::token_tree])

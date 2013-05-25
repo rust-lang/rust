@@ -10,6 +10,8 @@
 
 // exec-env:RUST_POISON_ON_FREE=1
 
+use std::ptr;
+
 fn borrow(x: &int, f: &fn(x: &int)) {
     let before = *x;
     f(x);

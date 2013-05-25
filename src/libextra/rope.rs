@@ -35,6 +35,10 @@
 
 use core::prelude::*;
 
+use core::str;
+use core::uint;
+use core::vec;
+
 /// The type of ropes.
 pub type Rope = node::Root;
 
@@ -555,6 +559,11 @@ pub mod node {
     use core::prelude::*;
 
     use rope::node;
+
+    use core::cast;
+    use core::str;
+    use core::uint;
+    use core::vec;
 
     /// Implementation of type `rope`
     pub enum Root {
@@ -1137,6 +1146,8 @@ pub mod node {
 
         use rope::node::{Concat, Leaf, Node, height};
 
+        use core::vec;
+
         pub struct T {
             stack: ~[@Node],
             stackpos: int,
@@ -1175,6 +1186,8 @@ pub mod node {
 
     pub mod char_iterator {
         use core::prelude::*;
+
+        use core::str;
 
         use rope::node::{Leaf, Node};
         use rope::node::leaf_iterator;
@@ -1258,8 +1271,13 @@ pub mod node {
 
 #[cfg(test)]
 mod tests {
-    use rope::*;
     use core::prelude::*;
+
+    use rope::*;
+
+    use core::str;
+    use core::uint;
+    use core::vec;
 
     //Utility function, used for sanity check
     fn rope_to_string(r: Rope) -> ~str {

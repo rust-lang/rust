@@ -13,6 +13,8 @@
 
 extern mod extra;
 
+use std::vec;
+
 #[test]
 #[ignore(cfg(ignorecfg))]
 fn shouldignore() {

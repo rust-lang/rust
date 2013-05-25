@@ -34,6 +34,12 @@ extern mod std(name = "extra", vers = "0.7-pre");
 #[cfg(not(stage0))]
 extern mod std(name = "std", vers = "0.7-pre");
 
+// For bootstrapping purposes.
+#[cfg(stage0)]
+pub use core::str;
+#[cfg(stage0)]
+pub use core::unstable;
+
 use core::prelude::*;
 
 use driver::driver::{host_triple, optgroups, early_error};
@@ -44,6 +50,13 @@ use driver::driver::{compile_input};
 use driver::session;
 use middle::lint;
 
+use core::io;
+use core::os;
+use core::result;
+use core::str;
+use core::task;
+use core::uint;
+use core::vec;
 use extra::getopts::{groups, opt_present};
 use extra::getopts;
 use syntax::codemap;
@@ -146,6 +159,18 @@ pub mod util {
 
 pub mod lib {
     pub mod llvm;
+}
+
+// A curious inner module that allows ::std::foo to be available in here for
+// macros.
+mod std {
+    pub use core::cmp;
+    pub use core::os;
+    pub use core::str;
+    pub use core::sys;
+    pub use core::to_bytes;
+    pub use core::unstable;
+    pub use extra::serialize;
 }
 
 pub fn version(argv0: &str) {

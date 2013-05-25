@@ -14,7 +14,12 @@ extern mod extra;
 
 use std::io::{ReaderUtil, WriterUtil};
 use std::io;
+use std::os;
+use std::str;
+use std::u8;
+use std::uint;
 use std::unstable::intrinsics::cttz16;
+use std::vec;
 
 // Computes a single solution to a given 9x9 sudoku
 //
@@ -167,10 +172,10 @@ impl Colors {
         let val = **self & heads;
         if (0u16 == val) {
             return 0u8;
-        }
-        else
-        {
-            return cttz16(val as i16) as u8;
+        } else {
+            unsafe {
+                return cttz16(val as i16) as u8;
+            }
         }
     }
 

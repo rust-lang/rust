@@ -36,7 +36,10 @@ use middle::ty;
 use util::ppaux;
 use util::ppaux::ty_to_short_str;
 
+use core::io;
 use core::libc::c_uint;
+use core::str;
+use core::vec;
 use extra::time;
 use syntax::ast;
 

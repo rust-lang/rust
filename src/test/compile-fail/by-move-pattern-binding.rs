@@ -17,6 +17,6 @@ fn main() {
     };
     match &s.x {
         &Foo => {}
-        &Bar(ref identifier) => io::println(*identifier)
+        &Bar(ref identifier) => println(*identifier)
     };
 }

@@ -16,7 +16,9 @@ use iotask = uv_iotask;
 use uv_iotask::{IoTask, spawn_iotask};
 
 use core::comm::Chan;
+use core::libc;
 use core::option::{Some, None};
+use core::str;
 use core::task::task;
 use core::unstable::global::{global_data_clone_create, global_data_clone};
 use core::unstable::weak_task::weaken_task;

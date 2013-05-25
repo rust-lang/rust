@@ -9,7 +9,9 @@
 // except according to those terms.
 
 extern mod extra;
+
 use std::io::WriterUtil;
+use std::io;
 
 enum Token {
         Text(@~str),

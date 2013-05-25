@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::io;
 
 struct Pair<'self> { a: int, b: &'self int }
 

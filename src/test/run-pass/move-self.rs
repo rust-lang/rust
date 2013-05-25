@@ -8,7 +8,7 @@ pub impl S {
     }
 
     fn bar(self) {
-        io::println(self.x);
+        println(self.x);
     }
 }
 

@@ -13,6 +13,10 @@ use core::prelude::*;
 use codemap::{Pos, span};
 use codemap;
 
+use core::io;
+use core::str;
+use core::uint;
+use core::vec;
 use extra::term;
 
 pub type Emitter = @fn(cmsp: Option<(@codemap::CodeMap, span)>,

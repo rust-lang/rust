@@ -10,6 +10,11 @@
 
 use core::prelude::*;
 
+use core::cast;
+use core::ptr;
+use core::sys;
+use core::uint;
+use core::vec;
 use future_spawn = future::spawn;
 
 /**

@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // error-pattern:get called on error result: ~"kitty"
+
+use std::result;
+
 fn main() {
   error!(result::get(&result::Err::<int,~str>(~"kitty")));
 }

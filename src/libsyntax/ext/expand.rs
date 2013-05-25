@@ -24,6 +24,8 @@ use fold::*;
 use parse;
 use parse::{parse_item_from_source_str};
 
+use core::vec;
+
 pub fn expand_expr(extsbox: @mut SyntaxEnv,
                    cx: @ExtCtxt,
                    e: &expr_,

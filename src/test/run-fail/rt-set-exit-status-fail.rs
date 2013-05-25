@@ -10,6 +10,8 @@
 
 // error-pattern:whatever
 
+use std::os;
+
 fn main() {
     error!(~"whatever");
     // Setting the exit status only works when the scheduler terminates

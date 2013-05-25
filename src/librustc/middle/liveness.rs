@@ -112,6 +112,11 @@ use middle::moves;
 
 use core::cast::transmute;
 use core::hashmap::HashMap;
+use core::io;
+use core::old_iter;
+use core::to_str;
+use core::uint;
+use core::vec;
 use syntax::ast::*;
 use syntax::codemap::span;
 use syntax::parse::token::special_idents;

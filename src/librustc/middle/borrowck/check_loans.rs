@@ -19,17 +19,18 @@
 
 use core::prelude::*;
 
-use middle::moves;
-use middle::borrowck::*;
-use mc = middle::mem_categorization;
-use middle::ty;
-use util::ppaux::Repr;
 use core::hashmap::HashSet;
+use core::uint;
+use mc = middle::mem_categorization;
+use middle::borrowck::*;
+use middle::moves;
+use middle::ty;
 use syntax::ast::{m_mutbl, m_imm, m_const};
 use syntax::ast;
 use syntax::ast_util;
-use syntax::visit;
 use syntax::codemap::span;
+use syntax::visit;
+use util::ppaux::Repr;
 
 struct CheckLoanCtxt<'self> {
     bccx: @BorrowckCtxt,

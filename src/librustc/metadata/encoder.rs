@@ -22,9 +22,14 @@ use middle::ty;
 use middle;
 use util::ppaux::ty_to_str;
 
-use extra::flate;
 use core::hash::HashUtil;
 use core::hashmap::HashMap;
+use core::int;
+use core::io;
+use core::str;
+use core::uint;
+use core::vec;
+use extra::flate;
 use extra::serialize::Encodable;
 use extra;
 use syntax::abi::AbiSet;
@@ -34,10 +39,10 @@ use syntax::ast_map;
 use syntax::ast_util::*;
 use syntax::attr;
 use syntax::diagnostic::span_handler;
-use syntax::parse::token::special_idents;
-use syntax::{ast_util, visit};
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
+use syntax::parse::token::special_idents;
+use syntax::{ast_util, visit};
 use syntax;
 use writer = extra::ebml::writer;
 

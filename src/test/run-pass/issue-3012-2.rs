@@ -11,7 +11,9 @@
 // xfail-fast
 // aux-build:issue-3012-1.rs
 extern mod socketlib;
+
 use socketlib::socket;
+use std::libc;
 
 pub fn main() {
     let fd: libc::c_int = 1 as libc::c_int;

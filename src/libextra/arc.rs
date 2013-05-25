@@ -510,8 +510,12 @@ pub impl<'self, T:Const + Owned> RWReadMode<'self, T> {
 #[cfg(test)]
 mod tests {
     use core::prelude::*;
-    use core::cell::Cell;
+
     use arc::*;
+
+    use core::cell::Cell;
+    use core::comm;
+    use core::task;
 
     #[test]
     fn manually_share_arc() {
@@ -541,59 +545,65 @@ mod tests {
 
     #[test]
     fn test_mutex_arc_condvar() {
-        let arc = ~MutexARC(false);
-        let arc2 = ~arc.clone();
-        let (p,c) = comm::oneshot();
-        let (c,p) = (Cell(c), Cell(p));
-        do task::spawn || {
-            // wait until parent gets in
-            comm::recv_one(p.take());
-            do arc2.access_cond |state, cond| {
-                *state = true;
-                cond.signal();
+        unsafe {
+            let arc = ~MutexARC(false);
+            let arc2 = ~arc.clone();
+            let (p,c) = comm::oneshot();
+            let (c,p) = (Cell(c), Cell(p));
+            do task::spawn || {
+                // wait until parent gets in
+                comm::recv_one(p.take());
+                do arc2.access_cond |state, cond| {
+                    *state = true;
+                    cond.signal();
+                }
             }
-        }
-        do arc.access_cond |state, cond| {
-            comm::send_one(c.take(), ());
-            assert!(!*state);
-            while !*state {
-                cond.wait();
+            do arc.access_cond |state, cond| {
+                comm::send_one(c.take(), ());
+                assert!(!*state);
+                while !*state {
+                    cond.wait();
+                }
             }
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_arc_condvar_poison() {
-        let arc = ~MutexARC(1);
-        let arc2 = ~arc.clone();
-        let (p, c) = comm::stream();
+        unsafe {
+            let arc = ~MutexARC(1);
+            let arc2 = ~arc.clone();
+            let (p, c) = comm::stream();
 
-        do task::spawn_unlinked || {
-            let _ = p.recv();
-            do arc2.access_cond |one, cond| {
-                cond.signal();
-                // Parent should fail when it wakes up.
-                assert_eq!(*one, 0);
+            do task::spawn_unlinked || {
+                let _ = p.recv();
+                do arc2.access_cond |one, cond| {
+                    cond.signal();
+                    // Parent should fail when it wakes up.
+                    assert_eq!(*one, 0);
+                }
             }
-        }
 
-        do arc.access_cond |one, cond| {
-            c.send(());
-            while *one == 1 {
-                cond.wait();
+            do arc.access_cond |one, cond| {
+                c.send(());
+                while *one == 1 {
+                    cond.wait();
+                }
             }
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_mutex_arc_poison() {
-        let arc = ~MutexARC(1);
-        let arc2 = ~arc.clone();
-        do task::try || {
-            do arc2.access |one| {
-                assert_eq!(*one, 2);
+        unsafe {
+            let arc = ~MutexARC(1);
+            let arc2 = ~arc.clone();
+            do task::try || {
+                do arc2.access |one| {
+                    assert_eq!(*one, 2);
+                }
+            };
+            do arc.access |one| {
+                assert_eq!(*one, 1);
             }
-        };
-        do arc.access |one| {
-            assert_eq!(*one, 1);
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]

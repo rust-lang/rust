@@ -40,10 +40,13 @@ fn main () {
 ~~~
 */
 
-
+use cast;
+use cmp;
 use int;
+use local_data;
 use prelude::*;
 use str;
+use sys;
 use u32;
 use uint;
 use util;

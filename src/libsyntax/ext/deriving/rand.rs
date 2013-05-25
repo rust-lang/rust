@@ -17,6 +17,8 @@ use ext::base::ExtCtxt;
 use ext::build::{AstBuilder, Duplicate};
 use ext::deriving::generic::*;
 
+use core::vec;
+
 pub fn expand_deriving_rand(cx: @ExtCtxt,
                             span: span,
                             mitem: @meta_item,

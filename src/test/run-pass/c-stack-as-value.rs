@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::libc;
+
 mod rustrt {
+    use std::libc;
+
     #[abi = "cdecl"]
     pub extern {
         pub fn get_task_id() -> libc::intptr_t;

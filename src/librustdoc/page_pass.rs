@@ -27,6 +27,7 @@ use pass::Pass;
 use util::NominalOp;
 
 use core::comm::*;
+use core::task;
 use syntax::ast;
 
 #[cfg(test)] use doc::PageUtils;

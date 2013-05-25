@@ -17,7 +17,12 @@
 
 extern mod extra;
 
+use std::libc;
+use std::task;
+
 mod rustrt {
+    use std::libc;
+
     pub extern {
         pub fn rust_get_argc() -> libc::c_int;
     }

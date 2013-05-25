@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use std::str;
 
 pub fn main() {
     let x = ~[1, 2, 3];

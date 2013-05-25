@@ -21,8 +21,18 @@ use getopts;
 use sort;
 use term;
 
-use core::to_str::ToStr;
 use core::comm::{stream, SharedChan};
+use core::either;
+use core::io;
+use core::num;
+use core::option;
+use core::result;
+use core::str;
+use core::task;
+use core::to_str::ToStr;
+use core::u64;
+use core::uint;
+use core::vec;
 
 pub mod rustrt {
     use core::libc::size_t;
@@ -601,10 +611,14 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
 pub mod bench {
     use core::prelude::*;
 
-    use time::precise_time_ns;
-    use test::{BenchHarness, BenchSamples};
-    use stats::Stats;
+    use core::num;
     use core::rand::RngUtil;
+    use core::rand;
+    use core::u64;
+    use core::vec;
+    use stats::Stats;
+    use test::{BenchHarness, BenchSamples};
+    use time::precise_time_ns;
 
     pub impl BenchHarness {
 

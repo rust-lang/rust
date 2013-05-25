@@ -26,6 +26,7 @@ use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt};
 use print;
 
 use core::io;
+use core::vec;
 
 pub fn add_new_extension(cx: @ExtCtxt,
                          sp: span,

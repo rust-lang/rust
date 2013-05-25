@@ -10,6 +10,12 @@
 
 use core::prelude::*;
 
+use core::cmp;
+use core::ops;
+use core::uint;
+use core::vec::from_elem;
+use core::vec;
+
 struct SmallBitv {
     /// only the lowest nbits of this value are used. the rest is undefined.
     bits: uint

@@ -28,6 +28,9 @@ use codemap::span;
 use parse::token::special_idents::clownshoes_extensions;
 use opt_vec;
 
+use core::uint;
+use core::vec;
+
 pub mod clone;
 pub mod iter_bytes;
 pub mod encodable;

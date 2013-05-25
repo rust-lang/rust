@@ -15,11 +15,13 @@
 
 use core::prelude::*;
 
+use core::cmp;
 use core::container::{Container, Mutable, Map, Set};
 use core::old_iter::BaseIter;
 use core::old_iter;
-use core::option::{Some, None};
+use core::uint;
 use core::util::replace;
+use core::vec;
 
 pub struct SmallIntMap<T> {
     priv v: ~[Option<T>],
@@ -285,6 +287,11 @@ mod tests {
 
     use super::SmallIntMap;
 
+    use core::local_data;
+    use core::rand;
+    use core::uint;
+    use core::vec;
+
     #[test]
     fn test_find_mut() {
         let mut m = SmallIntMap::new();
@@ -379,6 +386,8 @@ mod test_set {
     use core::prelude::*;
 
     use super::SmallIntSet;
+
+    use core::vec;
 
     #[test]
     fn test_disjoint() {

@@ -12,6 +12,9 @@
 
 extern mod extra;
 
+use std::comm;
+use std::task;
+
 fn start(c: &comm::Chan<int>, start: int, number_of_messages: int) {
     let mut i: int = 0;
     while i < number_of_messages { c.send(start + i); i += 1; }

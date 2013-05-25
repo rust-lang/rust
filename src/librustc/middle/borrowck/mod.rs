@@ -23,8 +23,9 @@ use util::ppaux::{note_and_explain_region, Repr, UserString};
 
 use core::hashmap::{HashSet, HashMap};
 use core::io;
-use core::result::{Result};
 use core::ops::{BitOr, BitAnd};
+use core::result::{Result};
+use core::str;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::visit;

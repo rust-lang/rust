@@ -15,6 +15,8 @@ use ast;
 use codemap::{span, spanned};
 use opt_vec::OptVec;
 
+use core::vec;
+
 pub trait ast_fold {
     fn fold_crate(@self, &crate) -> crate;
     fn fold_view_item(@self, @view_item) -> @view_item;

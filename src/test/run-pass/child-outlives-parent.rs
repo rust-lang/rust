@@ -10,7 +10,7 @@
 
 // Reported as issue #126, child leaks the string.
 
-extern mod extra;
+use std::task;
 
 fn child2(s: ~str) { }
 

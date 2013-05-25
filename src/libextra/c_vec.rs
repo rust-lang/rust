@@ -38,6 +38,9 @@
 
 use core::prelude::*;
 
+use core::option;
+use core::ptr;
+
 /**
  * The type representing a foreign chunk of memory
  *

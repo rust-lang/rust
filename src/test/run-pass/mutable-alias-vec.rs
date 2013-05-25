@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
 // -*- rust -*-
 extern mod extra;
+
+use std::vec;
 
 fn grow(v: &mut ~[int]) { *v += ~[1]; }
 

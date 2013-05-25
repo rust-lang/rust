@@ -15,10 +15,15 @@
 // I *think* it's the same, more or less.
 
 extern mod extra;
-use std::io::Writer;
-use std::io::WriterUtil;
 
 use std::comm::{Port, PortSet, Chan, stream};
+use std::io::{Writer, WriterUtil};
+use std::io;
+use std::os;
+use std::ptr;
+use std::task;
+use std::uint;
+use std::vec;
 
 macro_rules! move_out (
     { $x:expr } => { unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } }

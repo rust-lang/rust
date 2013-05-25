@@ -9,6 +9,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::comm;
+use std::cmp;
 
 // Tests of ports and channels on various types
 fn test_rec() {

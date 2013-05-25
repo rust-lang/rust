@@ -15,6 +15,7 @@
 use core::prelude::*;
 
 use core::iterator::*;
+use core::uint;
 use core::util::{swap, replace};
 
 // This is implemented as an AA tree, which is a simplified variation of
@@ -701,9 +702,13 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
 mod test_treemap {
     use core::prelude::*;
 
-    use core::iterator::*;
     use super::*;
+
+    use core::iterator::*;
     use core::rand::RngUtil;
+    use core::rand;
+    use core::str;
+    use core::vec;
 
     #[test]
     fn find_empty() {
@@ -1021,7 +1026,10 @@ mod test_treemap {
 mod test_set {
     use core::prelude::*;
     use core::iterator::*;
+
     use super::*;
+
+    use core::vec;
 
     #[test]
     fn test_clear() {

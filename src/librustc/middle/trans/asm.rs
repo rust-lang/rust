@@ -20,6 +20,7 @@ use middle::trans::callee;
 use middle::trans::common::*;
 use middle::ty;
 
+use core::str;
 use syntax::ast;
 
 // Take an inline assembly expression and splat it out via LLVM

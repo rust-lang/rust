@@ -39,8 +39,10 @@ use syntax::visit::{visit_foreign_item, visit_item};
 use syntax::visit::{visit_mod, visit_ty, vt};
 use syntax::opt_vec::OptVec;
 
-use core::option::Some;
 use core::str::each_split_str;
+use core::str;
+use core::uint;
+use core::vec;
 use core::hashmap::{HashMap, HashSet};
 use core::util;
 

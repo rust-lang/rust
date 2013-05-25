@@ -136,6 +136,7 @@ use util::ppaux;
 use util::ppaux::Repr;
 use util::common::indenter;
 
+use core::at_vec;
 use core::hashmap::{HashSet, HashMap};
 use syntax::ast::*;
 use syntax::ast_util;

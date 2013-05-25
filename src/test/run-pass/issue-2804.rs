@@ -11,8 +11,10 @@
 // except according to those terms.
 
 extern mod extra;
-use std::hashmap::HashMap;
+
 use extra::json;
+use std::hashmap::HashMap;
+use std::option;
 
 enum object {
     bool_value(bool),

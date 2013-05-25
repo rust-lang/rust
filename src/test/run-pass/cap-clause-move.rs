@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ptr;
+
 pub fn main() {
     let x = ~1;
     let y = ptr::to_unsafe_ptr(&(*x)) as uint;

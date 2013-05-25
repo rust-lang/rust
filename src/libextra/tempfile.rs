@@ -12,7 +12,9 @@
 
 use core::prelude::*;
 
+use core::os;
 use core::rand::RngUtil;
+use core::rand;
 
 pub fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
     let mut r = rand::rng();
@@ -30,7 +32,10 @@ mod tests {
     use core::prelude::*;
 
     use tempfile::mkdtemp;
+    use tempfile;
+
     use core::os;
+    use core::str;
 
     #[test]
     fn test_mkdtemp() {

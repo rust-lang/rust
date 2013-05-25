@@ -63,6 +63,8 @@ use middle::typeck::rscope::{region_scope, RegionError};
 use middle::typeck::rscope::RegionParamNames;
 use middle::typeck::lookup_def_tcx;
 
+use core::result;
+use core::vec;
 use syntax::abi::AbiSet;
 use syntax::{ast, ast_util};
 use syntax::codemap::span;

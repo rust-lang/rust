@@ -20,6 +20,6 @@ impl<T:ToStr> ToStr for PolymorphicThingy<T> {
 }
 
 pub fn main() {
-    io::println(Thingy { x: 1, y: 2 }.to_str());
-    io::println(PolymorphicThingy { x: Thingy { x: 1, y: 2 } }.to_str());
+    println(Thingy { x: 1, y: 2 }.to_str());
+    println(PolymorphicThingy { x: Thingy { x: 1, y: 2 } }.to_str());
 }

@@ -13,7 +13,9 @@
 use libc::c_int;
 use num::{Zero, One, strconv};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
+use num;
 use prelude::*;
+use to_str;
 
 pub use cmath::c_double_targ_consts::*;
 pub use cmp::{min, max};
@@ -999,8 +1001,11 @@ impl num::FromStrRadix for f64 {
 #[cfg(test)]
 mod tests {
     use f64::*;
-    use num::*;
     use prelude::*;
+
+    use num::*;
+    use num;
+    use sys;
 
     #[test]
     fn test_num() {

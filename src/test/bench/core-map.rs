@@ -10,12 +10,15 @@
 
 extern mod extra;
 
-use std::io;
 use extra::time;
 use extra::treemap::TreeMap;
 use std::hashmap::{HashMap, HashSet};
-use std::trie::TrieMap;
+use std::io;
+use std::os;
 use std::rand::Rng;
+use std::trie::TrieMap;
+use std::uint;
+use std::vec;
 
 fn timed(label: &str, f: &fn()) {
     let start = time::precise_time_s();

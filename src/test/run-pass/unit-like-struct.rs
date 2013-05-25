@@ -13,6 +13,6 @@ struct Foo;
 pub fn main() {
     let x: Foo = Foo;
     match x {
-        Foo => { io::println("hi"); }
+        Foo => { println("hi"); }
     }
 }

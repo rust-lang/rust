@@ -14,9 +14,12 @@
 
 extern mod extra;
 
-use std::cell::Cell;
-use std::pipes::*;
 use extra::time::precise_time_s;
+use std::cell::Cell;
+use std::io;
+use std::os;
+use std::pipes::*;
+use std::task;
 
 proto! pingpong (
     ping: send {

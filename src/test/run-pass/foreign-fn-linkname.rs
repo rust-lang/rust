@@ -10,6 +10,10 @@
 
 extern mod extra;
 
+use std::libc;
+use std::str;
+use std::vec;
+
 mod libc {
     #[nolink]
     #[abi = "cdecl"]
