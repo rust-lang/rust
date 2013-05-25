@@ -15,7 +15,7 @@ use unstable::intrinsics;
 
 /// Casts the value at `src` to U. The two types must have the same length.
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
-    let mut dest: U = intrinsics::init();
+    let mut dest: U = intrinsics::uninit();
     {
         let dest_ptr: *mut u8 = transmute(&mut dest);
         let src_ptr: *u8 = transmute(src);
