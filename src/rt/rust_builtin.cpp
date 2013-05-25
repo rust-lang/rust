@@ -754,7 +754,11 @@ public:
 
     virtual void run() {
         record_sp_limit(0);
+#ifdef _RUST_STAGE0
+        fn.f(NULL, fn.env, NULL);
+#else
         fn.f(fn.env, NULL);
+#endif
     }
 };
 
