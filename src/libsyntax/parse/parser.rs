@@ -3544,8 +3544,7 @@ pub impl Parser {
     fn parse_item_mod(&self, outer_attrs: ~[ast::attribute]) -> item_info {
         let id_span = *self.span;
         let id = self.parse_ident();
-        let merge = ::attr::first_attr_value_str_by_name(outer_attrs, "merge");
-        let info_ = if *self.token == token::SEMI {
+        if *self.token == token::SEMI {
             self.bump();
             // This mod is in an external file. Let's go get it!
             let (m, attrs) = self.eval_src_mod(id, outer_attrs, id_span);
@@ -3558,38 +3557,6 @@ pub impl Parser {
             self.expect(&token::RBRACE);
             self.pop_mod_path();
             (id, item_mod(m), Some(inner))
-        };
-
-        // XXX: Transitionary hack to do the template work inside core
-        // (int-template, iter-trait). If there's a 'merge' attribute
-        // on the mod, then we'll go and suck in another file and merge
-        // its contents
-        match merge {
-            Some(path) => {
-                let prefix = Path(
-                    self.sess.cm.span_to_filename(*self.span));
-                let prefix = prefix.dir_path();
-                let path = Path(copy *path);
-                let (new_mod_item, new_attrs) = self.eval_src_mod_from_path(
-                    prefix, path, ~[], id_span);
-
-                let (main_id, main_mod_item, main_attrs) = info_;
-                let main_attrs = main_attrs.get();
-
-                let (main_mod, new_mod) =
-                    match (main_mod_item, new_mod_item) {
-                    (item_mod(m), item_mod(n)) => (m, n),
-                    _ => self.bug("parsed mod item should be mod")
-                };
-                let merged_mod = ast::_mod {
-                    view_items: main_mod.view_items + new_mod.view_items,
-                    items: main_mod.items + new_mod.items
-                };
-
-                let merged_attrs = main_attrs + new_attrs;
-                (main_id, item_mod(merged_mod), Some(merged_attrs))
-            }
-            None => info_
         }
     }
 

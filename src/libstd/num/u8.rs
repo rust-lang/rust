@@ -8,12 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-pretty
-#[path = "mod-merge-hack-template.rs"]
-#[merge = "mod-merge-hack-inst.rs"]
-mod myint32;
+//! Operations and constants for `u8`
 
-pub fn main() {
-    assert_eq!(myint32::bits, 32);
-    assert_eq!(myint32::min(10, 20), 10);
-}
+pub use self::generated::*;
+uint_module!(u8, i8, 8)
