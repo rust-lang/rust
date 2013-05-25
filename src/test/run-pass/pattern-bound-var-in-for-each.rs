@@ -12,6 +12,8 @@
 // pattern-bound var is an upvar (when translating
 // the for-each body)
 
+use std::uint;
+
 fn foo(src: uint) {
 
     match Some(src) {

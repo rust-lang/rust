@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::cell::Cell;
+use std::task;
 
 struct Port<T>(@T);
 

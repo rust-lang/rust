@@ -10,6 +10,7 @@
 
 // Issue #5041 - avoid overlapping memcpy when src and dest of a swap are the same
 
+use std::ptr;
 use std::util;
 
 pub fn main() {

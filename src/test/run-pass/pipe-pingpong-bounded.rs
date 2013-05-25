@@ -15,6 +15,7 @@
 // protocols.
 
 use std::cell::Cell;
+use std::task;
 
 // This was generated initially by the pipe compiler, but it's been
 // modified in hopefully straightforward ways.

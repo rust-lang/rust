@@ -18,11 +18,15 @@
 
 extern mod extra;
 
-use std::cell::Cell;
-use std::pipes::recv;
-use std::util;
-use extra::time;
 use extra::future;
+use extra::time;
+use std::cell::Cell;
+use std::io;
+use std::os;
+use std::pipes::recv;
+use std::ptr;
+use std::uint;
+use std::util;
 
 proto! ring (
     num:send {

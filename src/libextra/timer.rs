@@ -19,6 +19,7 @@ use uv::iotask::IoTask;
 use core::cast::transmute;
 use core::cast;
 use core::comm::{stream, Chan, SharedChan, Port, select2i};
+use core::either;
 use core::libc::c_void;
 use core::libc;
 
@@ -179,9 +180,12 @@ mod test {
 
     use timer::*;
     use uv;
+
     use core::cell::Cell;
-    use core::rand::RngUtil;
     use core::pipes::{stream, SharedChan};
+    use core::rand::RngUtil;
+    use core::rand;
+    use core::task;
 
     #[test]
     fn test_gl_timer_simple_sleep_test() {

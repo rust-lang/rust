@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A standard linked list
+//! A standard, garbage-collected linked list.
 
 use core::prelude::*;
+
+use core::vec;
 
 #[deriving(Eq)]
 pub enum List<T> {

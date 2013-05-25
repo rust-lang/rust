@@ -14,8 +14,15 @@ use config;
 use doc::ItemUtils;
 use doc;
 
-use core::run;
 use core::comm::*;
+use core::comm;
+use core::io;
+use core::libc;
+use core::os;
+use core::result;
+use core::run;
+use core::str;
+use core::task;
 use extra::future;
 
 pub enum WriteInstr {

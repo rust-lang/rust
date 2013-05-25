@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec;
+
 fn main() {
     let needlesArr: ~[char] = ~['a', 'f'];
     do vec::foldr(needlesArr) |x, y| {

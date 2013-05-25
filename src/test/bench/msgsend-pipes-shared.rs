@@ -19,10 +19,16 @@
 // version.
 
 extern mod extra;
-use std::io::Writer;
-use std::io::WriterUtil;
 
 use std::comm::{Port, Chan, SharedChan};
+use std::comm;
+use std::io::{Writer, WriterUtil};
+use std::io;
+use std::os;
+use std::task;
+use std::ptr;
+use std::uint;
+use std::vec;
 
 macro_rules! move_out (
     { $x:expr } => { unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } }

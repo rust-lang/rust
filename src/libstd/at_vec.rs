@@ -282,6 +282,8 @@ mod test {
     use super::*;
     use prelude::*;
 
+    use uint;
+
     #[test]
     fn test() {
         // Some code that could use that, then:

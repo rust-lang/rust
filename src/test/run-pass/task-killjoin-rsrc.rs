@@ -15,6 +15,8 @@
 
 use std::cell::Cell;
 use std::comm::*;
+use std::ptr;
+use std::task;
 
 struct notify {
     ch: Chan<bool>, v: @mut bool,

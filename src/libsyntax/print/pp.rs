@@ -63,6 +63,9 @@
 
 use core::prelude::*;
 
+use core::io;
+use core::vec;
+
 #[deriving(Eq)]
 pub enum breaks { consistent, inconsistent, }
 

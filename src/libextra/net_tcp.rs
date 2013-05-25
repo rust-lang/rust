@@ -1451,6 +1451,10 @@ mod test {
 
     use core::cell::Cell;
     use core::comm::{stream, SharedChan};
+    use core::io;
+    use core::result;
+    use core::str;
+    use core::task;
 
     // FIXME don't run on fbsd or linux 32 bit (#2064)
     #[cfg(target_os="win32")]

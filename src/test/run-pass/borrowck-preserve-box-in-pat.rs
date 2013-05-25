@@ -10,6 +10,8 @@
 
 // exec-env:RUST_POISON_ON_FREE=1
 
+use std::ptr;
+
 struct F { f: ~int }
 
 pub fn main() {

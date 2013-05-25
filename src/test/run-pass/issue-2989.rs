@@ -10,6 +10,10 @@
 
 extern mod extra;
 
+use std::io;
+use std::uint;
+use std::vec;
+
 trait methods {
     fn to_bytes(&self) -> ~[u8];
 }

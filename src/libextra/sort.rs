@@ -13,9 +13,10 @@
 use core::prelude::*;
 
 use core::cmp::{Eq, Ord};
+use core::uint;
+use core::util::swap;
 use core::vec::len;
 use core::vec;
-use core::util::swap;
 
 type Le<'self, T> = &'self fn(v1: &T, v2: &T) -> bool;
 
@@ -926,7 +927,12 @@ mod test_tim_sort {
     use core::prelude::*;
 
     use sort::tim_sort;
+
+    use core::local_data;
     use core::rand::RngUtil;
+    use core::rand;
+    use core::uint;
+    use core::vec;
 
     struct CVal {
         val: float,
@@ -1019,7 +1025,12 @@ mod big_tests {
     use core::prelude::*;
 
     use sort::*;
+
+    use core::local_data;
     use core::rand::RngUtil;
+    use core::rand;
+    use core::uint;
+    use core::vec;
 
     #[test]
     fn test_unique() {

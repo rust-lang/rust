@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::task;
+
 pub fn main() { test00(); }
 
 fn start() { debug!("Started / Finished task."); }

@@ -1,5 +1,8 @@
+use std::f64;
 use std::from_str::FromStr;
+use std::os;
 use std::uint::range;
+use std::vec;
 
 static PI: f64 = 3.141592653589793;
 static SOLAR_MASS: f64 = 4.0 * PI * PI;

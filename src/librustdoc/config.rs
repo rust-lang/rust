@@ -11,9 +11,12 @@
 use core::prelude::*;
 
 use core::cell::Cell;
-use core::run;
-use core::run::ProcessOutput;
+use core::os;
 use core::result::Result;
+use core::result;
+use core::run::ProcessOutput;
+use core::run;
+use core::vec;
 use extra::getopts;
 
 /// The type of document to output
@@ -243,7 +246,9 @@ pub fn maybe_find_pandoc(
 #[cfg(test)]
 mod test {
     use core::prelude::*;
+
     use config::*;
+    use core::result;
     use core::run::ProcessOutput;
 
     fn parse_config(args: &[~str]) -> Result<Config, ~str> {

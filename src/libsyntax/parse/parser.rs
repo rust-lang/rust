@@ -92,9 +92,11 @@ use parse::{new_sub_parser_from_file, next_node_id, ParseSess};
 use opt_vec;
 use opt_vec::OptVec;
 
+use core::char;
 use core::either::Either;
 use core::either;
 use core::hashmap::HashSet;
+use core::str;
 use core::vec;
 
 #[deriving(Eq)]

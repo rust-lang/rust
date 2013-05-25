@@ -11,6 +11,8 @@
 // In this case, the code should compile and should
 // succeed at runtime
 
+use std::vec;
+
 fn enum_chars(start: u8, end: u8) -> ~[char] {
     assert!(start < end);
     let mut i = start;

@@ -13,6 +13,9 @@
 // error-pattern:1 == 2
 extern mod extra;
 
+use std::comm;
+use std::task;
+
 fn child() { assert!((1 == 2)); }
 
 fn main() {

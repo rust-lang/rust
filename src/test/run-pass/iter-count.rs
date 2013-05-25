@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::old_iter;
+
 pub fn main() {
     assert_eq!([].count(&22u), 0u);
     assert_eq!([1u, 3u].count(&22u), 0u);

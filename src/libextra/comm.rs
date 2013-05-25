@@ -18,6 +18,7 @@ use core::prelude::*;
 
 use core::comm::{GenericChan, GenericSmartChan, GenericPort};
 use core::comm::{Chan, Port, Selectable, Peekable};
+use core::comm;
 use core::pipes;
 
 /// An extension of `pipes::stream` that allows both sending and receiving.

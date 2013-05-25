@@ -16,7 +16,17 @@
  * http://shootout.alioth.debian.org/
  */
 extern mod extra;
+
+use std::int;
+use std::io;
+use std::option;
+use std::os;
 use std::rand::Rng;
+use std::rand;
+use std::result;
+use std::str;
+use std::uint;
+use std::vec;
 
 fn LINE_LENGTH() -> uint { return 60u; }
 

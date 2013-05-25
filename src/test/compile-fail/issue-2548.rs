@@ -20,7 +20,7 @@ struct foo {
 impl Drop for foo {
     fn finalize(&self) {
         unsafe {
-            io::println("Goodbye, World!");
+            println("Goodbye, World!");
             *self.x += 1;
         }
     }

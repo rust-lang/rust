@@ -16,6 +16,9 @@ use ext::base::*;
 use ext::base;
 use print;
 
+use core::io;
+use core::vec;
+
 pub fn expand_syntax_ext(cx: @ExtCtxt,
                          sp: codemap::span,
                          tt: &[ast::token_tree])

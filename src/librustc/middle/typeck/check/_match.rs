@@ -19,6 +19,7 @@ use middle::typeck::check::{structure_of, valid_range_bounds};
 use middle::typeck::require_same_types;
 
 use core::hashmap::{HashMap, HashSet};
+use core::vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;

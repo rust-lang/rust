@@ -20,10 +20,13 @@
 
 // PORT this must match in width according to architecture
 
+use f64;
 use libc::c_int;
 use num::{Zero, One, strconv};
 use num::FPCategory;
+use num;
 use prelude::*;
+use to_str;
 
 pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
 pub use f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
@@ -43,7 +46,7 @@ pub static neg_infinity: float = -1.0/0.0;
 pub mod consts {
     // FIXME (requires Issue #1433 to fix): replace with mathematical
     // staticants from cmath.
-    /// Archimedes' staticant
+    /// Archimedes' constant
     pub static pi: float = 3.14159265358979323846264338327950288;
 
     /// pi/2.0
@@ -945,9 +948,12 @@ impl Float for float {
 
 #[cfg(test)]
 mod tests {
-    use num::*;
     use super::*;
     use prelude::*;
+
+    use num::*;
+    use num;
+    use sys;
 
     #[test]
     fn test_num() {

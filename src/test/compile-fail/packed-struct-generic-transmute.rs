@@ -15,6 +15,8 @@
 
 // error-pattern: transmute called on types with different size
 
+use std::cast;
+
 #[packed]
 struct Foo<T,S> {
     bar: T,

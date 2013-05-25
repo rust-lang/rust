@@ -14,6 +14,8 @@ extern mod extra;
 
 use std::comm::Chan;
 use std::comm::Port;
+use std::comm;
+use std::task;
 
 pub fn main() { test05(); }
 

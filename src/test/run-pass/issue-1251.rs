@@ -11,6 +11,8 @@
 #[link(name = "get_task_id")];
 
 mod rustrt {
+    use std::libc;
+
     pub extern {
         pub fn get_task_id() -> libc::intptr_t;
     }

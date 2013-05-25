@@ -9,7 +9,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 pub fn main() {
-    io::println("hello, world");
+    println("hello, world");
 }

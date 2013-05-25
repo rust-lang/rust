@@ -19,7 +19,10 @@
 use core::prelude::*;
 
 use core::cast;
+use core::io;
+use core::str;
 use core::uint;
+use core::vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_util::id_range;

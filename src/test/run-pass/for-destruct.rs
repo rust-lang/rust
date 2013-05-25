@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec;
+
 struct Pair { x: int, y: int }
 
 pub fn main() {

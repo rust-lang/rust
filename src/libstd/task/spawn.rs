@@ -72,12 +72,14 @@
 
 #[doc(hidden)];
 
+use prelude::*;
+
 use cast::transmute;
 use cast;
 use cell::Cell;
 use container::Map;
 use comm::{Chan, GenericChan};
-use prelude::*;
+use comm;
 use ptr;
 use hashmap::HashSet;
 use task::local_data_priv::{local_get, local_set, OldHandle};
@@ -87,6 +89,7 @@ use task::{Failure, ManualThreads, PlatformThread, SchedOpts, SingleThreaded};
 use task::{Success, TaskOpts, TaskResult, ThreadPerCore, ThreadPerTask};
 use task::{ExistingScheduler, SchedulerHandle};
 use task::unkillable;
+use task;
 use uint;
 use util;
 use unstable::sync::{Exclusive, exclusive};

@@ -33,17 +33,22 @@
  * ~~~
  */
 
+use prelude::*;
+
+use cast;
 use cell::Cell;
 use cmp::Eq;
-use result::Result;
 use comm::{stream, Chan, GenericChan, GenericPort, Port};
-use prelude::*;
+use comm;
+use ptr;
+use result::Result;
 use result;
-use task::rt::{task_id, sched_id};
-use util;
-use util::replace;
-use unstable::finally::Finally;
 use rt::{context, OldTaskContext};
+use task::rt::{task_id, sched_id};
+use task;
+use unstable::finally::Finally;
+use util::replace;
+use util;
 
 #[cfg(test)] use comm::SharedChan;
 

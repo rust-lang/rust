@@ -11,7 +11,9 @@
 // error-pattern:explicit failure
 // Don't double free the string
 extern mod extra;
+
 use std::io::ReaderUtil;
+use std::io;
 
 fn main() {
     do io::with_str_reader(~"") |rdr| {

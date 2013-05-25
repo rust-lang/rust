@@ -223,7 +223,7 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
             None => { },
         }
         if (should_compile) {
-            io::println(fmt!("compiling %s...", src_filename));
+            println(fmt!("compiling %s...", src_filename));
             driver::compile_upto(sess, cfg, &input, driver::cu_everything,
                                  Some(outputs));
             true
@@ -271,7 +271,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             //rl::clear();
         }
         ~"help" => {
-            io::println(
+            println(
                 ~":{\\n ..lines.. \\n:}\\n - execute multiline command\n" +
                 ":load <crate> ... - \
                   loads given crates as dynamic libraries\n" +
@@ -305,9 +305,9 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 }
             }
             if loaded_crates.is_empty() {
-                io::println("no crates loaded");
+                println("no crates loaded");
             } else {
-                io::println(fmt!("crates loaded: %s",
+                println(fmt!("crates loaded: %s",
                                  str::connect(loaded_crates, ", ")));
             }
         }
@@ -328,7 +328,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             }
             action = action_run_line(multiline_cmd);
         }
-        _ => io::println(~"unknown cmd: " + cmd)
+        _ => println(~"unknown cmd: " + cmd)
     }
     return action;
 }
@@ -394,9 +394,9 @@ pub fn main() {
 
     // only print this stuff if the user is actually typing into rusti
     if istty {
-        io::println("WARNING: The Rust REPL is experimental and may be");
-        io::println("unstable. If you encounter problems, please use the");
-        io::println("compiler instead. Type :help for help.");
+        println("WARNING: The Rust REPL is experimental and may be");
+        println("unstable. If you encounter problems, please use the");
+        println("compiler instead. Type :help for help.");
 
         unsafe {
             do rl::complete |line, suggest| {
@@ -416,7 +416,7 @@ pub fn main() {
             Some(line) => {
                 if line.is_empty() {
                     if istty {
-                        io::println("()");
+                        println("()");
                     }
                     loop;
                 }

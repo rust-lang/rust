@@ -23,6 +23,9 @@ use ext::quote::rt::*;
 use opt_vec;
 use opt_vec::OptVec;
 
+use core::str;
+use core::vec;
+
 pub trait gen_send {
     fn gen_send(&mut self, cx: @ExtCtxt, try: bool) -> @ast::item;
     fn to_ty(&mut self, cx: @ExtCtxt) -> @ast::Ty;

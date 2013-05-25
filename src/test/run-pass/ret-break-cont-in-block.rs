@@ -11,6 +11,7 @@
 // xfail-fast
 
 use std::cmp::Eq;
+use std::vec;
 
 fn iter<T>(v: ~[T], it: &fn(&T) -> bool) -> bool {
     let mut i = 0u, l = v.len();

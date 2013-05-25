@@ -10,6 +10,9 @@
 
 // xfail-fast
 
+use std::comm;
+use std::task;
+
 pub fn main() {
     let po = comm::PortSet::new();
 

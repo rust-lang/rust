@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::str;
+
 pub fn main() {
     let thing = ~"{{ f }}";
     let f = str::find_str(thing, ~"{{");
 
     if f.is_none() {
-        io::println(~"None!");
+        println(~"None!");
     }
 }

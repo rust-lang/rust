@@ -267,6 +267,8 @@ use middle::typeck::isr_alist;
 use util::common::indent;
 use util::ppaux::{bound_region_to_str, ty_to_str, trait_ref_to_str};
 
+use core::result;
+use core::vec;
 use extra::list::Nil;
 use extra::smallintmap::SmallIntMap;
 use syntax::ast::{m_imm, m_mutbl};

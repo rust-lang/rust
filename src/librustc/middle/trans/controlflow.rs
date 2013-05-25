@@ -24,6 +24,8 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux;
 
+use core::str;
+use core::vec;
 use syntax::ast;
 use syntax::ast::ident;
 use syntax::ast_map::path_mod;

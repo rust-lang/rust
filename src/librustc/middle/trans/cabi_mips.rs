@@ -11,6 +11,9 @@
 use core::prelude::*;
 
 use core::libc::c_uint;
+use core::ptr;
+use core::uint;
+use core::vec;
 use lib::llvm::{llvm, TypeRef, Integer, Pointer, Float, Double};
 use lib::llvm::{Struct, Array, Attribute};
 use lib::llvm::{StructRetAttribute};

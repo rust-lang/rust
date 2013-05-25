@@ -14,6 +14,7 @@
 use core::prelude::*;
 
 use core::comm::Chan;
+use core::comm;
 use core::task::SchedMode;
 use core::task;
 use core::vec;
@@ -101,6 +102,6 @@ fn test_task_pool() {
     };
     let mut pool = TaskPool::new(4, Some(SingleThreaded), f);
     for 8.times {
-        pool.execute(|i| io::println(fmt!("Hello from thread %u!", *i)));
+        pool.execute(|i| println(fmt!("Hello from thread %u!", *i)));
     }
 }

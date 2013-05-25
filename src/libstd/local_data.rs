@@ -27,7 +27,9 @@ magic.
 */
 
 use prelude::*;
+
 use task::local_data_priv::{local_get, local_pop, local_modify, local_set, Handle};
+use task;
 
 /**
  * Indexes a task-local data slot. The function's code pointer is used for

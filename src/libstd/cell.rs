@@ -11,6 +11,7 @@
 //! A mutable, nullable memory location
 
 use cast::transmute_mut;
+use cmp;
 use prelude::*;
 use util::replace;
 

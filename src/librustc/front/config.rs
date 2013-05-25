@@ -10,6 +10,8 @@
 
 use core::prelude::*;
 
+use core::option;
+use core::vec;
 use syntax::{ast, fold, attr};
 
 type in_cfg_pred = @fn(attrs: ~[ast::attribute]) -> bool;

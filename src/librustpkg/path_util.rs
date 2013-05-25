@@ -11,10 +11,12 @@
 // rustpkg utilities having to do with paths and directories
 
 use core::prelude::*;
+
 pub use util::{PkgId, RemotePath, LocalPath};
+pub use util::{normalize, OutputType, Main, Lib, Bench, Test};
 use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use core::os::mkdir_recursive;
-pub use util::{normalize, OutputType, Main, Lib, Bench, Test};
+use core::os;
 
 /// Returns the value of RUST_PATH, as a list
 /// of Paths. In general this should be read from the

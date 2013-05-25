@@ -167,6 +167,8 @@ mod test_other_forms {
 
 mod test_foreign_items {
     pub mod rustrt {
+        use std::libc;
+
         #[abi = "cdecl"]
         pub extern {
             #[attr];

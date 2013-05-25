@@ -23,6 +23,9 @@ use parse::token::{Token, EOF, to_str, nonterminal};
 use parse::token;
 
 use core::hashmap::HashMap;
+use core::str;
+use core::uint;
+use core::vec;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it

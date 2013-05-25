@@ -430,6 +430,11 @@ pub mod ptr_tests {
     use super::*;
     use prelude::*;
 
+    use cast;
+    use libc;
+    use str;
+    use vec;
+
     #[test]
     fn test() {
         unsafe {
@@ -522,18 +527,19 @@ pub mod ptr_tests {
 
     #[test]
     fn test_to_option() {
-        let p: *int = null();
-        // FIXME (#6641): Usage of unsafe methods in safe code doesn't cause an error.
-        assert_eq!(p.to_option(), None);
+        unsafe {
+            let p: *int = null();
+            assert_eq!(p.to_option(), None);
 
-        let q: *int = &2;
-        assert_eq!(q.to_option().unwrap(), &2);     // FIXME (#6641)
+            let q: *int = &2;
+            assert_eq!(q.to_option().unwrap(), &2);
 
-        let p: *mut int = mut_null();
-        assert_eq!(p.to_option(), None);            // FIXME (#6641)
+            let p: *mut int = mut_null();
+            assert_eq!(p.to_option(), None);
 
-        let q: *mut int = &mut 2;
-        assert_eq!(q.to_option().unwrap(), &2);     // FIXME (#6641)
+            let q: *mut int = &mut 2;
+            assert_eq!(q.to_option().unwrap(), &2);
+        }
     }
 
     #[test]

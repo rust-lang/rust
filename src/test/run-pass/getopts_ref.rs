@@ -19,9 +19,9 @@ pub fn main() {
     let opts = ~[optopt(~"b")];
 
     match getopts(args, opts) {
-        result::Ok(ref m)  =>
+        Ok(ref m)  =>
             assert!(!opt_present(m, "b")),
-        result::Err(ref f) => fail!(fail_str(copy *f))
+        Err(ref f) => fail!(fail_str(copy *f))
     };
 
 }

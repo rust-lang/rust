@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::task;
+
 fn main() {
     for task::spawn { return true; } //~ ERROR A `for` loop iterator should expect a closure that
                                      //~^ ERROR expected `for` closure to return `bool`

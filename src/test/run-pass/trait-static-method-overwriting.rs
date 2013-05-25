@@ -11,6 +11,8 @@
 // except according to those terms.
 
 mod base {
+    use std::io;
+
     pub trait HasNew<T> {
         fn new() -> T;
     }
@@ -21,7 +23,7 @@ mod base {
 
     impl ::base::HasNew<Foo> for Foo {
         fn new() -> Foo {
-            unsafe { io::println("Foo"); }
+            unsafe { println("Foo"); }
             Foo { dummy: () }
         }
     }

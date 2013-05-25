@@ -11,9 +11,16 @@
 // chameneos
 
 extern mod extra;
+
 use extra::sort;
 use std::cell::Cell;
 use std::comm::*;
+use std::io;
+use std::option;
+use std::os;
+use std::task;
+use std::uint;
+use std::vec;
 
 fn print_complements() {
     let all = ~[Blue, Red, Yellow];

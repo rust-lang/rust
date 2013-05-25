@@ -16,7 +16,9 @@ comments in the section "Moves and initialization" and in `doc.rs`.
 */
 
 use core::prelude::*;
+
 use core::hashmap::{HashMap, HashSet};
+use core::uint;
 use middle::borrowck::*;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::DataFlowOperator;

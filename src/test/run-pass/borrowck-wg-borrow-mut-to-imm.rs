@@ -1,5 +1,5 @@
 fn g(x: &Option<int>) {
-    io::println(x.get().to_str());
+    println(x.get().to_str());
 }
 
 fn f(x: &mut Option<int>) {

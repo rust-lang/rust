@@ -10,6 +10,8 @@
 
 extern mod extra;
 
+use std::comm;
+
 pub fn main() { test00(); }
 
 fn test00() {

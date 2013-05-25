@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::unstable;
+
 fn main() {
-    let x = Some(unstable::sync::exclusive(false));
-    match x {
-        Some(copy z) => { //~ ERROR copying a value of non-copyable type
-            do z.with |b| { assert!(!*b); }
+    unsafe {
+        let x = Some(unstable::sync::exclusive(false));
+        match x {
+            Some(copy z) => { //~ ERROR copying a value of non-copyable type
+                do z.with |b| { assert!(!*b); }
+            }
+            None => fail!()
         }
-        None => fail!()
     }
 }

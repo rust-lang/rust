@@ -557,6 +557,13 @@ mod tests {
     use super::*;
     use prelude::*;
 
+    use i16;
+    use i32;
+    use i64;
+    use i8;
+    use num;
+    use sys;
+
     #[test]
     fn test_num() {
         num::test_num(10 as $T, 2 as $T);

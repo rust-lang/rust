@@ -16,13 +16,13 @@
 #[no_std];
 
 extern mod core(name = "std", vers = "0.7-pre");
-extern mod std(name = "extra", vers = "0.7-pre");
+extern mod extra(name = "extra", vers = "0.7-pre");
 
 use core::prelude::*;
 use core::*;
 
-use std::getopts;
-use std::test;
+use extra::getopts;
+use extra::test;
 
 use core::result::{Ok, Err};
 
@@ -41,6 +41,13 @@ pub mod header;
 pub mod runtest;
 pub mod common;
 pub mod errors;
+
+mod std {
+    pub use core::cmp;
+    pub use core::str;
+    pub use core::sys;
+    pub use core::unstable;
+}
 
 pub fn main() {
     let args = os::args();

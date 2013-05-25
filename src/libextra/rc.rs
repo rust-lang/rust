@@ -21,7 +21,10 @@ cycle cannot be created with `Rc<T>` because there is no way to modify it after 
 
 use core::prelude::*;
 
+use core::cast;
 use core::libc::{c_void, size_t, malloc, free};
+use core::ptr;
+use core::sys;
 use core::unstable::intrinsics;
 use core::util;
 

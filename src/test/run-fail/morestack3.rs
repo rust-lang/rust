@@ -14,6 +14,8 @@
 
 extern mod extra;
 
+use std::task;
+
 fn getbig_and_fail(i: int) {
     let _r = and_then_get_big_again(5);
     if i != 0 {

@@ -32,6 +32,7 @@ use middle::ty::{FnSig};
 use middle::typeck;
 use util::ppaux::Repr;
 
+use core::vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_map::path_name;

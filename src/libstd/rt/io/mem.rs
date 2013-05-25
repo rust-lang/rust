@@ -15,9 +15,10 @@
 //! * Should probably have something like this for strings.
 //! * Should they implement Closable? Would take extra state.
 
+use cmp::min;
 use prelude::*;
 use super::*;
-use cmp::min;
+use vec;
 
 /// Writes to an owned, growable byte vector
 pub struct MemWriter {

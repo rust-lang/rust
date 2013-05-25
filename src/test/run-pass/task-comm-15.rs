@@ -13,6 +13,9 @@
 
 extern mod extra;
 
+use std::comm;
+use std::task;
+
 fn start(c: &comm::Chan<int>, i0: int) {
     let mut i = i0;
     while i > 0 {

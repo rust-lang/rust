@@ -10,8 +10,7 @@
 
 //! The Rust prelude. Imported into every module by default.
 
-/* Reexported core operators */
-
+// Reexported core operators
 pub use either::{Either, Left, Right};
 pub use kinds::{Const, Copy, Owned};
 pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
@@ -21,12 +20,10 @@ pub use ops::{Shl, Shr, Index};
 pub use option::{Option, Some, None};
 pub use result::{Result, Ok, Err};
 
-/* Reexported functions */
-
+// Reexported functions
 pub use io::{print, println};
 
-/* Reexported types and traits */
-
+// Reexported types and traits
 pub use clone::{Clone, DeepClone};
 pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
 pub use char::Char;
@@ -64,48 +61,7 @@ pub use vec::{ImmutableEqVector, ImmutableCopyableVector};
 pub use vec::{OwnedVector, OwnedCopyableVector, MutableVector};
 pub use io::{Reader, ReaderUtil, Writer, WriterUtil};
 
-/* Reexported runtime types */
+// Reexported runtime types
 pub use comm::{stream, Port, Chan, GenericChan, GenericSmartChan, GenericPort, Peekable};
 pub use task::spawn;
 
-/* Reexported modules */
-
-pub use at_vec;
-pub use bool;
-pub use cast;
-pub use char;
-pub use cmp;
-pub use either;
-pub use f32;
-pub use f64;
-pub use float;
-pub use i16;
-pub use i32;
-pub use i64;
-pub use i8;
-pub use int;
-pub use io;
-pub use iter;
-pub use old_iter;
-pub use libc;
-pub use local_data;
-pub use num;
-pub use ops;
-pub use option;
-pub use os;
-pub use path;
-pub use comm;
-pub use unstable;
-pub use ptr;
-pub use rand;
-pub use result;
-pub use str;
-pub use sys;
-pub use task;
-pub use to_str;
-pub use u16;
-pub use u32;
-pub use u64;
-pub use u8;
-pub use uint;
-pub use vec;
