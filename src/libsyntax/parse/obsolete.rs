@@ -23,7 +23,7 @@ use ast::{expr, expr_lit, lit_nil, attribute};
 use ast;
 use codemap::{span, respan};
 use parse::parser::Parser;
-use parse::token::Token;
+use parse::token::{keywords, Token};
 use parse::token;
 
 use core::to_bytes;
@@ -295,9 +295,9 @@ pub impl Parser {
     }
 
     fn try_parse_obsolete_priv_section(&self, attrs: &[attribute]) -> bool {
-        if self.is_keyword("priv") && self.look_ahead(1) == token::LBRACE {
+        if self.is_keyword(keywords::Priv) && self.look_ahead(1) == token::LBRACE {
             self.obsolete(copy *self.span, ObsoletePrivSection);
-            self.eat_keyword("priv");
+            self.eat_keyword(keywords::Priv);
             self.bump();
             while *self.token != token::RBRACE {
                 self.parse_single_struct_field(ast::private, attrs.to_owned());
