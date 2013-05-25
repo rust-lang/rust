@@ -425,7 +425,6 @@ pub struct arm {
 
 #[deriving(Eq, Encodable, Decodable)]
 pub struct field_ {
-    mutbl: mutability,
     ident: ident,
     expr: @expr,
 }

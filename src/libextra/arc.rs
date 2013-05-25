@@ -198,13 +198,15 @@ pub impl<T:Owned> MutexARC<T> {
      */
     #[inline(always)]
     unsafe fn access<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
-        let state = self.x.get();
-        // Borrowck would complain about this if the function were
-        // not already unsafe. See borrow_rwlock, far below.
-        do (&(*state).lock).lock {
-            check_poison(true, (*state).failed);
-            let _z = PoisonOnFail(&mut (*state).failed);
-            blk(&mut (*state).data)
+        unsafe {
+            let state = self.x.get();
+            // Borrowck would complain about this if the function were
+            // not already unsafe. See borrow_rwlock, far below.
+            do (&(*state).lock).lock {
+                check_poison(true, (*state).failed);
+                let _z = PoisonOnFail(&mut (*state).failed);
+                blk(&mut (*state).data)
+            }
         }
     }
 
@@ -356,8 +358,8 @@ pub impl<T:Const + Owned> RWARC<T> {
      * access modes, this will not poison the ARC.
      */
     fn read<U>(&self, blk: &fn(x: &T) -> U) -> U {
-        let state = self.x.get();
         unsafe {
+            let state = self.x.get();
             do (*state).lock.read {
                 check_poison(false, (*state).failed);
                 blk(&(*state).data)

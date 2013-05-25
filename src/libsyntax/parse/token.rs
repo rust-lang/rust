@@ -523,7 +523,7 @@ pub fn strict_keyword_table() -> HashSet<~str> {
         ~"as",
         ~"break",
         ~"const", ~"copy",
-        ~"do", ~"drop",
+        ~"do",
         ~"else", ~"enum", ~"extern",
         ~"false", ~"fn", ~"for",
         ~"if", ~"impl",

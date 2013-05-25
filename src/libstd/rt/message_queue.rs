@@ -29,16 +29,20 @@ impl<T: Owned> MessageQueue<T> {
     }
 
     pub fn push(&mut self, value: T) {
-        let value = Cell(value);
-        self.queue.with(|q| q.push(value.take()) );
+        unsafe {
+            let value = Cell(value);
+            self.queue.with(|q| q.push(value.take()) );
+        }
     }
 
     pub fn pop(&mut self) -> Option<T> {
-        do self.queue.with |q| {
-            if !q.is_empty() {
-                Some(q.shift())
-            } else {
-                None
+        unsafe {
+            do self.queue.with |q| {
+                if !q.is_empty() {
+                    Some(q.shift())
+                } else {
+                    None
+                }
             }
         }
     }

@@ -118,11 +118,7 @@ pub fn classify(e: @expr,
 
               ast::expr_struct(_, ref fs, None) => {
                 let cs = do vec::map((*fs)) |f| {
-                    if f.node.mutbl == ast::m_imm {
-                        classify(f.node.expr, tcx)
-                    } else {
-                        non_const
-                    }
+                    classify(f.node.expr, tcx)
                 };
                 join_all(cs)
               }
