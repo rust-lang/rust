@@ -17,7 +17,6 @@ use util::interner::StrInterner;
 use util::interner;
 
 use core::cmp::Equiv;
-use core::hashmap::HashSet;
 use core::to_bytes;
 
 #[deriving(Encodable, Decodable, Eq)]
@@ -452,6 +451,45 @@ fn mk_fresh_ident_interner() -> @ident_interner {
         "__field__",          // 32
         "C",                  // 33
         "Self",               // 34
+
+        "as",                 // 35
+        "break",              // 36
+        "const",              // 37
+        "copy",               // 38
+        "do",                 // 39
+        "drop",               // 40
+        "else",               // 41
+        "enum",               // 42
+        "extern",             // 43
+        "false",              // 44
+        "fn",                 // 45
+        "for",                // 46
+        "if",                 // 47
+        "impl",               // 48
+        "let",                // 49
+        "__log",              // 50
+        "loop",               // 51
+        "match",              // 52
+        "mod",                // 53
+        "mut",                // 54
+        "once",               // 55
+        "priv",               // 56
+        "pub",                // 57
+        "pure",               // 58
+        "ref",                // 59
+        "return",             // 60
+        "static",             // 29 -- also a special ident
+        "self",               //  8 -- also a special ident
+        "struct",             // 61
+        "super",              // 62
+        "true",               // 63
+        "trait",              // 64
+        "type",               // 65
+        "unsafe",             // 66
+        "use",                // 67
+        "while",              // 68
+
+        "be",                 // 69
     ];
 
     @ident_interner {
@@ -495,61 +533,134 @@ pub fn intern(str : &str) -> ast::ident {
 /**
  * All the valid words that have meaning in the Rust language.
  *
- * Rust keywords are either 'temporary', 'strict' or 'reserved'.  Temporary
- * keywords are contextual and may be used as identifiers anywhere.  They are
- * expected to disappear from the grammar soon.  Strict keywords may not
+ * Rust keywords are either 'strict' or 'reserved'.  Strict keywords may not
  * appear as identifiers at all. Reserved keywords are not used anywhere in
  * the language and may not appear as identifiers.
  */
-pub fn keyword_table() -> HashSet<~str> {
-    let mut keywords = HashSet::new();
-    let mut strict = strict_keyword_table();
-    let mut reserved = reserved_keyword_table();
+pub mod keywords {
+    use ast::ident;
 
-    do strict.consume |word| {
-        keywords.insert(word);
-    }
-    do reserved.consume |word| {
-        keywords.insert(word);
+    pub enum Keyword {
+        // Strict keywords
+        As,
+        Break,
+        Const,
+        Copy,
+        Do,
+        Drop,
+        Else,
+        Enum,
+        Extern,
+        False,
+        Fn,
+        For,
+        If,
+        Impl,
+        Let,
+        __Log,
+        Loop,
+        Match,
+        Mod,
+        Mut,
+        Once,
+        Priv,
+        Pub,
+        Pure,
+        Ref,
+        Return,
+        Static,
+        Self,
+        Struct,
+        Super,
+        True,
+        Trait,
+        Type,
+        Unsafe,
+        Use,
+        While,
+
+        // Reserved keywords
+        Be,
     }
 
-    keywords
+    pub impl Keyword {
+        fn to_ident(&self) -> ident {
+            match *self {
+                As => ident { repr: 35, ctxt: 0 },
+                   Break => ident { repr: 36, ctxt: 0 },
+                   Const => ident { repr: 37, ctxt: 0 },
+                   Copy => ident { repr: 38, ctxt: 0 },
+                   Do => ident { repr: 39, ctxt: 0 },
+                   Drop => ident { repr: 40, ctxt: 0 },
+                   Else => ident { repr: 41, ctxt: 0 },
+                   Enum => ident { repr: 42, ctxt: 0 },
+                   Extern => ident { repr: 43, ctxt: 0 },
+                   False => ident { repr: 44, ctxt: 0 },
+                   Fn => ident { repr: 45, ctxt: 0 },
+                   For => ident { repr: 46, ctxt: 0 },
+                   If => ident { repr: 47, ctxt: 0 },
+                   Impl => ident { repr: 48, ctxt: 0 },
+                   Let => ident { repr: 49, ctxt: 0 },
+                   __Log => ident { repr: 50, ctxt: 0 },
+                   Loop => ident { repr: 51, ctxt: 0 },
+                   Match => ident { repr: 52, ctxt: 0 },
+                   Mod => ident { repr: 53, ctxt: 0 },
+                   Mut => ident { repr: 54, ctxt: 0 },
+                   Once => ident { repr: 55, ctxt: 0 },
+                   Priv => ident { repr: 56, ctxt: 0 },
+                   Pub => ident { repr: 57, ctxt: 0 },
+                   Pure => ident { repr: 58, ctxt: 0 },
+                   Ref => ident { repr: 59, ctxt: 0 },
+                   Return => ident { repr: 60, ctxt: 0 },
+                   Static => ident { repr: 29, ctxt: 0 },
+                   Self => ident { repr: 8, ctxt: 0 },
+                   Struct => ident { repr: 61, ctxt: 0 },
+                   Super => ident { repr: 62, ctxt: 0 },
+                   True => ident { repr: 63, ctxt: 0 },
+                   Trait => ident { repr: 64, ctxt: 0 },
+                   Type => ident { repr: 65, ctxt: 0 },
+                   Unsafe => ident { repr: 66, ctxt: 0 },
+                   Use => ident { repr: 67, ctxt: 0 },
+                   While => ident { repr: 68, ctxt: 0 },
+                   Be => ident { repr: 69, ctxt: 0 },
+            }
+        }
+    }
 }
 
-/// Full keywords. May not appear anywhere else.
-pub fn strict_keyword_table() -> HashSet<~str> {
-    let mut words = HashSet::new();
-    let keys = ~[
-        ~"as",
-        ~"break",
-        ~"const", ~"copy",
-        ~"do", ~"drop",
-        ~"else", ~"enum", ~"extern",
-        ~"false", ~"fn", ~"for",
-        ~"if", ~"impl",
-        ~"let", ~"__log", ~"loop",
-        ~"match", ~"mod", ~"mut",
-        ~"once",
-        ~"priv", ~"pub", ~"pure",
-        ~"ref", ~"return",
-        ~"static", ~"self", ~"struct", ~"super",
-        ~"true", ~"trait", ~"type",
-        ~"unsafe", ~"use",
-        ~"while"
-    ];
-    do vec::consume(keys) |_, w| {
-        words.insert(w);
+pub fn is_keyword(kw: keywords::Keyword, tok: &Token) -> bool {
+    match *tok {
+        token::IDENT(sid, false) => { kw.to_ident().repr == sid.repr }
+        _ => { false }
     }
-    return words;
 }
 
-pub fn reserved_keyword_table() -> HashSet<~str> {
-    let mut words = HashSet::new();
-    let keys = ~[
-        ~"be"
-    ];
-    do vec::consume(keys) |_, s| {
-        words.insert(s);
+pub fn is_any_keyword(tok: &Token) -> bool {
+    match *tok {
+        token::IDENT(sid, false) => match sid.repr {
+            8 | 29 | 35 .. 69 => true,
+            _ => false,
+        },
+        _ => false
     }
-    return words;
+}
+
+pub fn is_strict_keyword(tok: &Token) -> bool {
+    match *tok {
+        token::IDENT(sid, false) => match sid.repr {
+            8 | 29 | 35 .. 68 => true,
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
+pub fn is_reserved_keyword(tok: &Token) -> bool {
+    match *tok {
+        token::IDENT(sid, false) => match sid.repr {
+            69 => true,
+            _ => false,
+        },
+        _ => false,
+    }
 }
