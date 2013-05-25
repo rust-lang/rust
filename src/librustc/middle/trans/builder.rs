@@ -940,7 +940,7 @@ impl Builder {
                      dst: ValueRef, src: ValueRef,
                      order: AtomicOrdering) -> ValueRef {
         unsafe {
-            llvm::LLVMBuildAtomicRMW(self.llbuilder, op, dst, src, order)
+            llvm::LLVMBuildAtomicRMW(self.llbuilder, op, dst, src, order, False)
         }
     }
 

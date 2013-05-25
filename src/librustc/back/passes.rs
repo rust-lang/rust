@@ -97,7 +97,6 @@ pub fn create_standard_passes(level: OptLevel) -> ~[~str] {
         passes.push(~"sroa");
         passes.push(~"domtree");
         passes.push(~"early-cse");
-        passes.push(~"simplify-libcalls");
         passes.push(~"lazy-value-info");
         passes.push(~"jump-threading");
         passes.push(~"correlated-propagation");
