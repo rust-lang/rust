@@ -25,6 +25,7 @@ pub mod extfmt;
 #[cfg(not(test))]
 pub mod lang;
 pub mod sync;
+pub mod atomics;
 
 /**
 
