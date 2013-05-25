@@ -1,6 +1,6 @@
 // xfail-pretty
 
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -234,7 +234,7 @@ fn pbfs(graph: &arc::ARC<graph>, key: node_id) -> bfs_result {
         black(node_id)
     };
 
-    let graph_vec = arc::get(graph); // FIXME #3387 requires this temp
+    let graph_vec = graph.get(); // FIXME #3387 requires this temp
     let mut colors = do vec::from_fn(graph_vec.len()) |i| {
         if i as node_id == key {
             gray(key)
@@ -266,13 +266,13 @@ fn pbfs(graph: &arc::ARC<graph>, key: node_id) -> bfs_result {
 
         let color = arc::ARC(colors);
 
-        let color_vec = arc::get(&color); // FIXME #3387 requires this temp
+        let color_vec = color.get(); // FIXME #3387 requires this temp
         colors = do par::mapi(*color_vec) {
-            let colors = arc::clone(&color);
-            let graph = arc::clone(graph);
+            let colors = color.clone();
+            let graph = graph.clone();
             let result: ~fn(x: uint, y: &color) -> color = |i, c| {
-                let colors = arc::get(&colors);
-                let graph = arc::get(&graph);
+                let colors = colors.get();
+                let graph = graph.get();
                 match *c {
                   white => {
                     let i = i as node_id;
