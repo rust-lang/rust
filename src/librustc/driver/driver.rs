@@ -187,6 +187,7 @@ pub fn compile_rest(sess: Session,
 
     crate = time(time_passes, ~"expansion", ||
         syntax::ext::expand::expand_crate(sess.parse_sess, copy cfg,
+                                          sess.opts.dynamic_syntax_extensions,
                                           crate));
 
     crate = time(time_passes, ~"configuration", ||
@@ -652,6 +653,7 @@ pub fn build_session_options(binary: @~str,
     let debuginfo = debugging_opts & session::debug_info != 0 ||
         extra_debuginfo;
     let statik = debugging_opts & session::statik != 0;
+    let dynamic_syntax_extensions = debugging_opts & session::dynamic_syntax_extensions != 0;
     let target =
         match target_opt {
             None => host_triple(),
@@ -700,7 +702,8 @@ pub fn build_session_options(binary: @~str,
         parse_only: parse_only,
         no_trans: no_trans,
         debugging_opts: debugging_opts,
-        android_cross_path: android_cross_path
+        android_cross_path: android_cross_path,
+        dynamic_syntax_extensions: dynamic_syntax_extensions
     };
     return sopts;
 }

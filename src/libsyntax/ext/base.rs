@@ -113,17 +113,17 @@ pub enum Transformer {
     ScopeMacros(bool)
 }
 
+// utility function to simplify creating NormalTT syntax extensions
+pub fn builtin_normal_tt(f: SyntaxExpanderTTFun) -> @Transformer {
+    @SE(NormalTT(SyntaxExpanderTT{expander: f, span: None}))
+}
+// utility function to simplify creating IdentTT syntax extensions
+pub fn builtin_item_tt(f: SyntaxExpanderTTItemFun) -> @Transformer {
+    @SE(IdentTT(SyntaxExpanderTTItem{expander: f, span: None}))
+}
 // The base map of methods for expanding syntax extension
 // AST nodes into full ASTs
 pub fn syntax_expander_table() -> SyntaxEnv {
-    // utility function to simplify creating NormalTT syntax extensions
-    fn builtin_normal_tt(f: SyntaxExpanderTTFun) -> @Transformer {
-        @SE(NormalTT(SyntaxExpanderTT{expander: f, span: None}))
-    }
-    // utility function to simplify creating IdentTT syntax extensions
-    fn builtin_item_tt(f: SyntaxExpanderTTItemFun) -> @Transformer {
-        @SE(IdentTT(SyntaxExpanderTTItem{expander: f, span: None}))
-    }
     let mut syntax_expanders = HashMap::new();
     // NB identifier starts with space, and can't conflict with legal idents
     syntax_expanders.insert(@~" block",

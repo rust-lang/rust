@@ -19,7 +19,6 @@ Rust compiler that the program using this was compiled with.
 */
 
 use str;
-use io;
 use cast;
 use option::{None, Option};
 use result::{Ok, Err, Result};
@@ -122,17 +121,17 @@ impl DynamicLib {
     #[cfg(target_os = "freebsd")]
     pub fn get_symbol<'r, T>(&'r self, name: &str) -> Result<TaggedSymbol<'r, T>, ~str> {
         let sym = do str::as_c_str(name) |n| {
-            raw::dlsym(self.handle, n)
+            unsafe { raw::dlsym(self.handle, n) }
         };
         if sym.is_not_null() {
             Ok(TaggedSymbol {
-                sym: cast::transmute(sym),
+                sym: unsafe { cast::transmute(sym) },
                 lifetime: None::<&'r ()>
             })
         } else {
-            let error = raw::dlerror();
+            let error = unsafe { raw::dlerror() };
             if error.is_not_null() {
-                Err(str::raw::from_c_str(error))
+                Err(unsafe { str::raw::from_c_str(error) })
             } else {
                 Err(~"unknown error")
             }
@@ -144,12 +143,12 @@ impl DynamicLib {
     /// type `T`, and so using the returned value can crash the
     /// program, not just cause the task to fail.
     #[cfg(target_os = "win32")]
-    pub unsafe fn get_symbol<'r, T>(&'r self, name: &str) -> Result<TaggedSymbol<'r, T>, ~str> {
+    pub fn get_symbol<'r, T>(&'r self, name: &str) -> Result<TaggedSymbol<'r, T>, ~str> {
         let sym = do str::as_c_str(name) |n| {
-            raw::GetProcAddress(self.handle, n)
+            unsafe { raw::GetProcAddress(self.handle, n) }
         };
         if sym.is_not_null() {
-            Ok(TaggedSymbol { sym: cast::transmute(sym),
+            Ok(TaggedSymbol { sym: unsafe { cast::transmute(sym) },
                              lifetime: None::<&'r ()> })
         } else {
             let err = unsafe { intrinsics::GetLastError() } as uint;
@@ -165,7 +164,6 @@ impl Drop for DynamicLib {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
     fn finalize(&self) {
-        io::println("Dropping library");
         if self.handle.is_not_null() {
             unsafe { raw::dlclose(self.handle) }
         }
@@ -173,7 +171,6 @@ impl Drop for DynamicLib {
 
     #[cfg(target_os = "win32")]
     fn finalize(&self) {
-        io::println("Dropping library");
         if self.handle.is_not_null() {
             unsafe { raw::FreeLibrary(self.handle) }
         }

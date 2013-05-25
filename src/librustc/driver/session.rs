@@ -69,6 +69,7 @@ pub static extra_debug_info: uint = 1 << 21;
 pub static statik: uint = 1 << 22;
 pub static print_link_args: uint = 1 << 23;
 pub static no_debug_borrows: uint = 1 << 24;
+pub static dynamic_syntax_extensions: uint = 1 << 25;
 
 pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -107,6 +108,9 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
      (~"no-debug-borrows",
       ~"do not show where borrow checks fail",
       no_debug_borrows),
+     (~"dynamic-syntax-extensions",
+      ~"allow loading of syntax extensions via #[syntax_extension] (experimental)",
+      dynamic_syntax_extensions)
     ]
 }
 
@@ -148,6 +152,8 @@ pub struct options {
     no_trans: bool,
     debugging_opts: uint,
     android_cross_path: Option<~str>,
+    // whether syntax extensions can be loaded
+    dynamic_syntax_extensions: bool
 }
 
 pub struct crate_metadata {
@@ -318,6 +324,7 @@ pub fn basic_options() -> @options {
         no_trans: false,
         debugging_opts: 0u,
         android_cross_path: None,
+        dynamic_syntax_extensions: false
     }
 }
 

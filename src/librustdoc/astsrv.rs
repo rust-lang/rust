@@ -115,7 +115,9 @@ fn build_ctxt(sess: Session,
 
     let ast = config::strip_unconfigured_items(ast);
     let ast = syntax::ext::expand::expand_crate(sess.parse_sess,
-                                                copy sess.opts.cfg, ast);
+                                                copy sess.opts.cfg,
+                                                false, // no dynamic syntax extensions
+                                                ast);
     let ast = front::test::modify_for_testing(sess, ast);
     let ast_map = ast_map::map_crate(sess.diagnostic(), ast);
 
