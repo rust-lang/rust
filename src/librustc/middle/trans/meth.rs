@@ -864,7 +864,7 @@ pub fn make_impl_vtable(ccx: @CrateContext,
 
     // Generate a type descriptor for the vtable.
     let tydesc = get_tydesc(ccx, self_ty);
-    glue::lazily_emit_all_tydesc_glue(ccx, tydesc);
+    glue::lazily_emit_most_tydesc_glue(ccx, tydesc);
 
     make_vtable(ccx, tydesc, methods)
 }

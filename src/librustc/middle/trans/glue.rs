@@ -153,6 +153,15 @@ pub fn free_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
     }
 }
 
+/// Emits all tydesc glue except for visitor glue.
+pub fn lazily_emit_most_tydesc_glue(ccx: @CrateContext,
+                                    static_ti: @mut tydesc_info) {
+    lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, static_ti);
+    lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, static_ti);
+    lazily_emit_tydesc_glue(ccx, abi::tydesc_field_free_glue, static_ti);
+}
+
+/// Emits all tydesc glue, including visitor glue.
 pub fn lazily_emit_all_tydesc_glue(ccx: @CrateContext,
                                    static_ti: @mut tydesc_info) {
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, static_ti);

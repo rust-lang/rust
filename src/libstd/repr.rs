@@ -27,6 +27,7 @@ use reflect;
 use reflect::{MovePtr, align};
 use str::StrSlice;
 use to_str::ToStr;
+use unstable::intrinsics;
 use vec::raw::{VecRepr, SliceRepr};
 use vec;
 use vec::{OwnedVector, UnboxedVecRepr};
@@ -570,10 +571,23 @@ impl TyVisitor for ReprVisitor {
     fn visit_closure_ptr(&self, _ck: uint) -> bool { true }
 }
 
+#[cfg(stage0)]
 pub fn write_repr<T>(writer: @Writer, object: &T) {
     unsafe {
         let ptr = ptr::to_unsafe_ptr(object) as *c_void;
         let tydesc = intrinsic::get_tydesc::<T>();
+        let u = ReprVisitor(ptr, writer);
+        let v = reflect::MovePtrAdaptor(u);
+        visit_tydesc(tydesc, @v as @TyVisitor)
+    }
+}
+
+#[cfg(not(stage0))]
+pub fn write_repr<T>(writer: @Writer, object: &T) {
+    unsafe {
+        let ptr = ptr::to_unsafe_ptr(object) as *c_void;
+        let tydesc: *intrinsic::TyDesc =
+            transmute(intrinsics::get_tydesc_for_visiting::<T>());
         let u = ReprVisitor(ptr, writer);
         let v = reflect::MovePtrAdaptor(u);
         visit_tydesc(tydesc, @v as @TyVisitor)

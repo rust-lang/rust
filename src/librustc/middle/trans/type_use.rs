@@ -121,7 +121,8 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                 ~"uninit"   | ~"init" | ~"transmute" | ~"move_val" |
                 ~"move_val_init" => use_repr,
 
-                ~"get_tydesc" | ~"needs_drop" => use_tydesc,
+                ~"get_tydesc" | ~"get_tydesc_for_visiting" |
+                ~"needs_drop" => use_tydesc,
 
                 ~"atomic_cxchg"    | ~"atomic_cxchg_acq"|
                 ~"atomic_cxchg_rel"| ~"atomic_load"     |

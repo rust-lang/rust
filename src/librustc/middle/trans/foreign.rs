@@ -726,6 +726,16 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         ~"get_tydesc" => {
             let tp_ty = substs.tys[0];
             let static_ti = get_tydesc(ccx, tp_ty);
+            glue::lazily_emit_most_tydesc_glue(ccx, static_ti);
+
+            // FIXME (#3727): change this to T_ptr(ccx.tydesc_ty) when the
+            // core::sys copy of the get_tydesc interface dies off.
+            let td = PointerCast(bcx, static_ti.tydesc, T_ptr(T_nil()));
+            Store(bcx, td, fcx.llretptr.get());
+        }
+        ~"get_tydesc_for_visiting" => {
+            let tp_ty = substs.tys[0];
+            let static_ti = get_tydesc(ccx, tp_ty);
             glue::lazily_emit_all_tydesc_glue(ccx, static_ti);
 
             // FIXME (#3727): change this to T_ptr(ccx.tydesc_ty) when the

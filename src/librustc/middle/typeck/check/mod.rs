@@ -3508,6 +3508,10 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
           // FIXME (#3730): return *intrinsic::tydesc, not *()
           (1u, ~[], ty::mk_nil_ptr(ccx.tcx))
         }
+        ~"get_tydesc_for_visiting" => {
+          // FIXME (#3730): return *intrinsic::tydesc, not *()
+          (1u, ~[], ty::mk_nil_ptr(ccx.tcx))
+        }
         ~"visit_tydesc" => {
           let tydesc_name = special_idents::tydesc;
           assert!(tcx.intrinsic_defs.contains_key(&tydesc_name));

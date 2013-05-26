@@ -290,7 +290,7 @@ pub fn malloc_raw_dyn(bcx: block,
 
     // Get the tydesc for the body:
     let static_ti = get_tydesc(ccx, t);
-    glue::lazily_emit_all_tydesc_glue(ccx, static_ti);
+    glue::lazily_emit_most_tydesc_glue(ccx, static_ti);
 
     // Allocate space:
     let tydesc = PointerCast(bcx, static_ti.tydesc, T_ptr(T_i8()));
