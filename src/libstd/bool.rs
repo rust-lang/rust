@@ -8,45 +8,190 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Boolean logic
+/*!
+
+The `bool` module contains useful code to help work with boolean values.
+
+A quick summary:
+
+## Trait implementations for `bool`
+
+Implementations of the following traits:
+
+* `FromStr`
+* `Ord`
+* `TotalOrd`
+* `Eq`
+
+## Various functions to compare `bool`s
+
+All of the standard comparison functions one would expect: `and`, `eq`, `or`,
+and more.
+
+Also, a few conversion functions: `to_bit` and `to_str`.
+
+Finally, some inquries into the nature of truth: `is_true` and `is_false`.
+
+*/
 
 #[cfg(not(test))]
 use cmp::{Eq, Ord, TotalOrd, Ordering};
 use option::{None, Option, Some};
 use from_str::FromStr;
 
-/// Negation / inverse
+/**
+* Negation of a boolean value.
+*
+* # Examples
+* ~~~
+* rusti> core::bool::not(true)
+* false
+* ~~~
+* rusti> core::bool::not(false)
+* true
+* ~~~
+*/
 pub fn not(v: bool) -> bool { !v }
 
-/// Conjunction
+/**
+* Conjunction of two boolean values.
+*
+* # Examples
+* ~~~
+* rusti> core::bool::and(true, false)
+* false
+* ~~~
+* rusti> core::bool::and(true, true)
+* true
+* ~~~
+*/
 pub fn and(a: bool, b: bool) -> bool { a && b }
 
-/// Disjunction
+/**
+* Disjunction of two boolean values.
+*
+* # Examples
+* ~~~
+* rusti> core::bool::or(true, false)
+* true
+* ~~~
+* rusti> core::bool::or(false, false)
+* false
+* ~~~
+*/
 pub fn or(a: bool, b: bool) -> bool { a || b }
 
 /**
- * Exclusive or
- *
- * Identical to `or(and(a, not(b)), and(not(a), b))`
- */
+* An 'exclusive or' of two boolean values.
+*
+* 'exclusive or' is identical to `or(and(a, not(b)), and(not(a), b))`.
+*
+* # Examples
+* ~~~
+* rusti> core::bool::xor(true, false)
+* true
+* ~~~
+* rusti> core::bool::xor(true, true)
+* false
+* ~~~
+*/
 pub fn xor(a: bool, b: bool) -> bool { (a && !b) || (!a && b) }
 
-/// Implication in the logic, i.e. from `a` follows `b`
+/**
+* Implication between two boolean values.
+*
+* Implication is often phrased as 'if a then b.'
+*
+* 'if a then b' is equivalent to `!a || b`.
+*
+* # Examples
+* ~~~
+* rusti> core::bool::implies(true, true)
+* true
+* ~~~
+* rusti> core::bool::implies(true, false)
+* false
+* ~~~
+*/
 pub fn implies(a: bool, b: bool) -> bool { !a || b }
 
-/// true if truth values `a` and `b` are indistinguishable in the logic
+/**
+* Equality between two boolean values.
+*
+* Two booleans are equal if they have the same value.
+*
+* # Examples
+* ~~~
+* rusti> core::bool::eq(false, true)
+* false
+* ~~~
+* rusti> core::bool::eq(false, false)
+* true
+* ~~~
+*/
 pub fn eq(a: bool, b: bool) -> bool { a == b }
 
-/// true if truth values `a` and `b` are distinguishable in the logic
+/**
+* Non-equality between two boolean values.
+*
+* Two booleans are not equal if they have different values.
+*
+* # Examples
+* ~~~
+* rusti> core::bool::ne(false, true)
+* true
+* ~~~
+* rusti> core::bool::ne(false, false)
+* false
+* ~~~
+*/
 pub fn ne(a: bool, b: bool) -> bool { a != b }
 
-/// true if `v` represents truth in the logic
+/**
+* Is a given boolean value true?
+*
+* # Examples
+* ~~~
+* rusti> core::bool::is_true(true)
+* true
+* ~~~
+* rusti> core::bool::is_true(false)
+* false
+* ~~~
+*/
 pub fn is_true(v: bool) -> bool { v }
 
-/// true if `v` represents falsehood in the logic
+/**
+* Is a given boolean value false?
+*
+* # Examples
+* ~~~
+* rusti> core::bool::is_false(false)
+* true
+* ~~~
+* rusti> core::bool::is_false(true)
+* false
+* ~~~
+*/
 pub fn is_false(v: bool) -> bool { !v }
 
-/// Parse logic value from `s`
+/**
+* Parse a `bool` from a `str`.
+*
+* Yields an `Option<bool>`, because `str` may or may not actually be parseable.
+*
+* # Examples
+* ~~~
+* rusti> FromStr::from_str::<bool>("true")
+* Some(true)
+* ~~~
+* rusti> FromStr::from_str::<bool>("false")
+* Some(false)
+* ~~~
+* rusti> FromStr::from_str::<bool>("not even a boolean")
+* None
+* ~~~
+*/
 impl FromStr for bool {
     fn from_str(s: &str) -> Option<bool> {
         match s {
@@ -57,19 +202,49 @@ impl FromStr for bool {
     }
 }
 
-/// Convert `v` into a string
+/**
+* Convert a `bool` to a `str`.
+*
+* # Examples
+* ~~~
+* rusti> std::bool::to_str(true)
+* "true"
+* ~~~
+* rusti> std::bool::to_str(false)
+* "false"
+* ~~~
+*/
 pub fn to_str(v: bool) -> ~str { if v { ~"true" } else { ~"false" } }
 
 /**
- * Iterates over all truth values by passing them to `blk` in an unspecified
- * order
- */
+* Iterates over all truth values, passing them to the given block.
+*
+* There are no guarantees about the order values will be given.
+*
+* # Examples
+* ~~~
+* do core::bool::all_values |x: bool| {
+*     println(core::bool::to_str(x));
+* }
+* ~~~
+*/
 pub fn all_values(blk: &fn(v: bool)) {
     blk(true);
     blk(false);
 }
 
-/// converts truth value to an 8 bit byte
+/**
+* Convert a `bool` to a `u8`.
+*
+* # Examples
+* ~~~
+* rusti> std::bool::to_bit(true)
+* 1
+* ~~~
+* rusti> std::bool::to_bit(false)
+* 0
+* ~~~
+*/
 #[inline(always)]
 pub fn to_bit(v: bool) -> u8 { if v { 1u8 } else { 0u8 } }
 
