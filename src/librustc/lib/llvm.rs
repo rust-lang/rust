@@ -59,35 +59,35 @@ pub enum Linkage {
 
 #[deriving(Clone)]
 pub enum Attribute {
-    ZExtAttribute = 1,
-    SExtAttribute = 2,
-    NoReturnAttribute = 4,
-    InRegAttribute = 8,
-    StructRetAttribute = 16,
-    NoUnwindAttribute = 32,
-    NoAliasAttribute = 64,
-    ByValAttribute = 128,
-    NestAttribute = 256,
-    ReadNoneAttribute = 512,
-    ReadOnlyAttribute = 1024,
-    NoInlineAttribute = 2048,
-    AlwaysInlineAttribute = 4096,
-    OptimizeForSizeAttribute = 8192,
-    StackProtectAttribute = 16384,
-    StackProtectReqAttribute = 32768,
-    // 31 << 16
-    AlignmentAttribute = 2031616,
-    NoCaptureAttribute = 2097152,
-    NoRedZoneAttribute = 4194304,
-    NoImplicitFloatAttribute = 8388608,
-    NakedAttribute = 16777216,
-    InlineHintAttribute = 33554432,
-    // 7 << 26
-    StackAttribute = 469762048,
-    ReturnsTwiceAttribute = 536870912,
-    // 1 << 30
-    UWTableAttribute = 1073741824,
-    NonLazyBindAttribute = 2147483648,
+    ZExtAttribute = 1 << 0,
+    SExtAttribute = 1 << 1,
+    NoReturnAttribute = 1 << 2,
+    InRegAttribute = 1 << 3,
+    StructRetAttribute = 1 << 4,
+    NoUnwindAttribute = 1 << 5,
+    NoAliasAttribute = 1 << 6,
+    ByValAttribute = 1 << 7,
+    NestAttribute = 1 << 8,
+    ReadNoneAttribute = 1 << 9,
+    ReadOnlyAttribute = 1 << 10,
+    NoInlineAttribute = 1 << 11,
+    AlwaysInlineAttribute = 1 << 12,
+    OptimizeForSizeAttribute = 1 << 13,
+    StackProtectAttribute = 1 << 14,
+    StackProtectReqAttribute = 1 << 15,
+    AlignmentAttribute = 31 << 16,
+    NoCaptureAttribute = 1 << 21,
+    NoRedZoneAttribute = 1 << 22,
+    NoImplicitFloatAttribute = 1 << 23,
+    NakedAttribute = 1 << 24,
+    InlineHintAttribute = 1 << 25,
+    StackAttribute = 7 << 26,
+    ReturnsTwiceAttribute = 1 << 29,
+    UWTableAttribute = 1 << 30,
+    NonLazyBindAttribute = 1 << 31,
+
+    // Not added to LLVM yet, so may need to stay updated if LLVM changes.
+    FixedStackSegment = 1 << 41,
 }
 
 // enum for the LLVM IntPredicate type
@@ -2105,6 +2105,15 @@ pub fn ConstICmp(Pred: IntPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef {
 pub fn ConstFCmp(Pred: RealPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef {
     unsafe {
         llvm::LLVMConstFCmp(Pred as c_ushort, V1, V2)
+    }
+}
+
+pub fn SetFunctionAttribute(Fn: ValueRef, attr: Attribute) {
+    unsafe {
+        let attr = attr as u64;
+        let lower = attr & 0xffffffff;
+        let upper = (attr >> 32) & 0xffffffff;
+        llvm::LLVMAddFunctionAttr(Fn, lower as c_uint, upper as c_uint);
     }
 }
 /* Memory-managed object interface to type handles. */
