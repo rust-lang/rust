@@ -580,15 +580,27 @@ borrow, `LV` remains the *sole pointer with mutable access* to `*LV`.
 Restrictions against mutations and claims are necessary because if the
 pointer in `LV` were to be somehow copied or moved to a different
 location, then the restriction issued for `*LV` would not apply to the
-new location. Consider this example, where `*t0` is frozen, but then
-`t0` and `t1` are swapped, so by mutating `*t1` the user can mutate
-the frozen memory that was originally found at `*t0`:
+new location. Note that because `&mut` values are non-copyable, a
+simple attempt to move the base pointer will fail due to the
+(implicit) restriction against moves:
 
-    fn foo(t0: &mut T,
-           t1: &mut T) {
-        let p: &T = &*t0;     // Freezes `*t0`
-        t0 <-> t1;
-        *t1 = ...;            // Invalidates `p`
+    // src/test/compile-fail/borrowck-move-mut-base-ptr.rs
+    fn foo(t0: &mut int) {
+        let p: &int = &*t0; // Freezes `*t0`
+        let t1 = t0;        //~ ERROR cannot move out of `t0`
+        *t1 = 22;
+    }
+
+However, the additional restrictions against mutation mean that even a
+clever attempt to use a swap to circumvent the type system will
+encounter an error:
+
+    // src/test/compile-fail/borrowck-swap-mut-base-ptr.rs
+    fn foo<'a>(mut t0: &'a mut int,
+               mut t1: &'a mut int) {
+        let p: &int = &*t0;     // Freezes `*t0`
+        swap(&mut t0, &mut t1); //~ ERROR cannot borrow `t0`
+        *t1 = 22;
     }
 
 The restriction against *aliasing* (and, in turn, freezing) is
@@ -598,11 +610,31 @@ pointee. Since we are only issuing restrictions against `*LV`, these
 other aliases would be unrestricted, and the result would be
 unsound. For example:
 
-    fn foo(t0: &mut T) {
-        let p: &T = &*t0;     // Freezes *t0
-        let q: &&mut T = &t0;
-        **q = ...;            // Invalidates `p`
+    // src/test/compile-fail/borrowck-alias-mut-base-ptr.rs
+    fn foo(t0: &mut int) {
+        let p: &int = &*t0; // Freezes `*t0`
+        let q: &const &mut int = &const t0; //~ ERROR cannot borrow `t0`
+        **q = 22; // (*)
     }
+
+Note that the current rules also report an error at the assignment in
+`(*)`, because we only permit `&mut` poiners to be assigned if they
+are located in a non-aliasable location. However, I do not believe
+this restriction is strictly necessary. It was added, I believe, to
+discourage `&mut` from being placed in aliasable locations in the
+first place. One (desirable) side-effect of restricting aliasing on
+`LV` is that borrowing an `&mut` pointee found inside an aliasable
+pointee yields an error:
+
+    // src/test/compile-fail/borrowck-borrow-mut-base-ptr-in-aliasable-loc:
+    fn foo(t0: & &mut int) {
+        let t1 = t0;
+        let p: &int = &**t0; //~ ERROR cannot borrow an `&mut` in a `&` pointer
+        **t1 = 22; // (*)
+    }
+
+Here at the line `(*)` you will also see the error I referred to
+above, which I do not believe is strictly necessary.
 
 The second rule for `&mut` handles the case where we are not adding
 any restrictions (beyond the default of "no move"):
@@ -621,5 +653,23 @@ that way if we *can* find a simple static error, we will:
 
     RESTRICTIONS(*LV, ACTIONS) = [*LV, ACTIONS]   // R-Deref-Managed-Borrowed
       TYPE(LV) = @mut Ty
+
+# Some notes for future work
+
+While writing up these docs, I encountered some rules I believe to be
+stricter than necessary:
+
+- I think the restriction against mutating `&mut` pointers found in an
+  aliasable location is unnecessary. They cannot be reborrowed, to be sure,
+  so it should be safe to mutate them. Lifting this might cause some common
+  cases (`&mut int`) to work just fine, but might lead to further confusion
+  in other cases, so maybe it's best to leave it as is.
+- I think restricting the `&mut` LV against moves and `ALIAS` is sufficient,
+  `MUTATE` and `CLAIM` are overkill. `MUTATE` was necessary when swap was
+  a built-in operator, but as it is not, it is implied by `CLAIM`,
+  and `CLAIM` is implied by `ALIAS`. The only net effect of this is an
+  extra error message in some cases, though.
+- I have not described how closures interact. Current code is unsound.
+  I am working on describing and implementing the fix.
 
 */
