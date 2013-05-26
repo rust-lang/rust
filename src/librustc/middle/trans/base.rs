@@ -1694,7 +1694,20 @@ pub fn create_llargs_for_fn_args(cx: fn_ctxt,
     vec::from_fn(args.len(), |i| {
         unsafe {
             let arg_n = first_real_arg + i;
-            llvm::LLVMGetParam(cx.llfn, arg_n as c_uint)
+            let arg = &args[i];
+            let llarg = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
+
+            // Mark `&mut T` as no-alias, as the borrowck pass ensures it's true
+            match arg.ty.node {
+                ast::ty_rptr(_, mt) => {
+                    if mt.mutbl == ast::m_mutbl  {
+                        llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
+                    }
+                }
+                _ => {}
+            }
+
+            llarg
         }
     })
 }
