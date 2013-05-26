@@ -10,6 +10,12 @@
 
 /*!
  * Atomic types
+ *
+ * Basic atomic types supporting atomic operations. Each method takes an `Ordering` which
+ * represents the strength of the memory barrier for that operation. These orderings are the same
+ * as C++11 atomic orderings [http://gcc.gnu.org/wiki/Atomic/GCCMM/AtomicSync]
+ *
+ * All atomic types are a single word in size.
  */
 
 use unstable::intrinsics;
@@ -18,26 +24,44 @@ use option::{Option,Some,None};
 use libc::c_void;
 use ops::Drop;
 
+/**
+ * A simple atomic flag, that can be set and cleared. The most basic atomic type.
+ */
 pub struct AtomicFlag {
     priv v: int
 }
 
+/**
+ * An atomic boolean type.
+ */
 pub struct AtomicBool {
     priv v: uint
 }
 
+/**
+ * A signed atomic integer type, supporting basic atomic aritmetic operations
+ */
 pub struct AtomicInt {
     priv v: int
 }
 
+/**
+ * An unsigned atomic integer type, supporting basic atomic aritmetic operations
+ */
 pub struct AtomicUint {
     priv v: uint
 }
 
+/**
+ * An unsafe atomic pointer. Only supports basic atomic operations
+ */
 pub struct AtomicPtr<T> {
     priv p: *mut T
 }
 
+/**
+ * An owned atomic pointer. Ensures that only a single reference to the data is held at any time.
+ */
 pub struct AtomicOption<T> {
     priv p: *mut c_void
 }
@@ -63,11 +87,11 @@ impl AtomicFlag {
         unsafe {atomic_store(&mut self.v, 0, order)}
     }
 
-    #[inline(always)]
     /**
      * Sets the flag if it was previously unset, returns the previous value of the
      * flag.
      */
+    #[inline(always)]
     fn test_and_set(&mut self, order: Ordering) -> bool {
         unsafe {atomic_compare_and_swap(&mut self.v, 0, 1, order) > 0}
     }
