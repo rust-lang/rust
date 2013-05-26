@@ -65,7 +65,7 @@ pub fn check_loans(bccx: @BorrowckCtxt,
 
 enum MoveError {
     MoveOk,
-    MoveWhileBorrowed(/*loan*/@LoanPath, /*loan*/span)
+    MoveWhileBorrowed(/*move*/@LoanPath, /*loan*/@LoanPath, /*loan*/span)
 }
 
 pub impl<'self> CheckLoanCtxt<'self> {
@@ -200,9 +200,9 @@ pub impl<'self> CheckLoanCtxt<'self> {
                loan1.repr(self.tcx()),
                loan2.repr(self.tcx()));
 
-        // Restrictions that would cause the new loan to be immutable:
+        // Restrictions that would cause the new loan to be illegal:
         let illegal_if = match loan2.mutbl {
-            m_mutbl => RESTR_ALIAS | RESTR_FREEZE | RESTR_MUTATE,
+            m_mutbl => RESTR_ALIAS | RESTR_FREEZE | RESTR_CLAIM,
             m_imm =>   RESTR_ALIAS | RESTR_FREEZE,
             m_const => RESTR_ALIAS,
         };
@@ -557,12 +557,12 @@ pub impl<'self> CheckLoanCtxt<'self> {
                 let cmt = self.bccx.cat_expr(ex);
                 match self.analyze_move_out_from_cmt(cmt) {
                     MoveOk => {}
-                    MoveWhileBorrowed(loan_path, loan_span) => {
+                    MoveWhileBorrowed(move_path, loan_path, loan_span) => {
                         self.bccx.span_err(
                             cmt.span,
                             fmt!("cannot move out of `%s` \
                                   because it is borrowed",
-                                 self.bccx.loan_path_to_str(loan_path)));
+                                 self.bccx.loan_path_to_str(move_path)));
                         self.bccx.span_note(
                             loan_span,
                             fmt!("borrow of `%s` occurs here",
@@ -582,7 +582,7 @@ pub impl<'self> CheckLoanCtxt<'self> {
         for opt_loan_path(cmt).each |&lp| {
             for self.each_in_scope_restriction(cmt.id, lp) |loan, _| {
                 // Any restriction prevents moves.
-                return MoveWhileBorrowed(loan.loan_path, loan.span);
+                return MoveWhileBorrowed(lp, loan.loan_path, loan.span);
             }
         }
 

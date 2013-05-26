@@ -517,8 +517,8 @@ pub impl GatherLoanCtxt {
     fn restriction_set(&self, req_mutbl: ast::mutability) -> RestrictionSet {
         match req_mutbl {
             m_const => RESTR_EMPTY,
-            m_imm   => RESTR_EMPTY | RESTR_MUTATE,
-            m_mutbl => RESTR_EMPTY | RESTR_MUTATE | RESTR_FREEZE
+            m_imm   => RESTR_EMPTY | RESTR_MUTATE | RESTR_CLAIM,
+            m_mutbl => RESTR_EMPTY | RESTR_MUTATE | RESTR_CLAIM | RESTR_FREEZE
         }
     }
 

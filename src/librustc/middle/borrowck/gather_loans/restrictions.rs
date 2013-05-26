@@ -86,7 +86,7 @@ impl RestrictionsContext {
                 // When we borrow the interior of an enum, we have to
                 // ensure the enum itself is not mutated, because that
                 // could cause the type of the memory to change.
-                self.compute(cmt_base, restrictions | RESTR_MUTATE)
+                self.compute(cmt_base, restrictions | RESTR_MUTATE | RESTR_CLAIM)
             }
 
             mc::cat_interior(cmt_base, i) => {
@@ -105,7 +105,9 @@ impl RestrictionsContext {
                 // When we borrow the interior of an owned pointer, we
                 // cannot permit the base to be mutated, because that
                 // would cause the unique pointer to be freed.
-                let result = self.compute(cmt_base, restrictions | RESTR_MUTATE);
+                let result = self.compute(
+                    cmt_base,
+                    restrictions | RESTR_MUTATE | RESTR_CLAIM);
                 self.extend(result, cmt.mutbl, LpDeref, restrictions)
             }
 
@@ -178,7 +180,9 @@ impl RestrictionsContext {
                 // mutability, we can only prevent mutation or prevent
                 // freezing if it is not aliased. Therefore, in such
                 // cases we restrict aliasing on `cmt_base`.
-                if restrictions.intersects(RESTR_MUTATE | RESTR_FREEZE) {
+                if restrictions.intersects(RESTR_MUTATE |
+                                           RESTR_CLAIM |
+                                           RESTR_FREEZE) {
                     // R-Deref-Mut-Borrowed-1
                     let result = self.compute(cmt_base, restrictions | RESTR_ALIAS);
                     self.extend(result, cmt.mutbl, LpDeref, restrictions)
@@ -244,7 +248,7 @@ impl RestrictionsContext {
     fn check_no_mutability_control(&self,
                                    cmt: mc::cmt,
                                    restrictions: RestrictionSet) {
-        if restrictions.intersects(RESTR_MUTATE | RESTR_FREEZE) {
+        if restrictions.intersects(RESTR_MUTATE | RESTR_FREEZE | RESTR_CLAIM) {
             self.bccx.report(BckError {span: self.span,
                                        cmt: cmt,
                                        code: err_freeze_aliasable_const});

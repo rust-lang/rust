@@ -301,10 +301,10 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<@LoanPath> {
 // Borrowing an lvalue often results in *restrictions* that limit what
 // can be done with this lvalue during the scope of the loan:
 //
-// - `RESTR_MUTATE`: The lvalue may not be modified and mutable pointers to
-//                   the value cannot be created.
-// - `RESTR_FREEZE`: Immutable pointers to the value cannot be created.
-// - `RESTR_ALIAS`: The lvalue may not be aliased in any way.
+// - `RESTR_MUTATE`: The lvalue may not be modified.
+// - `RESTR_CLAIM`: `&mut` borrows of the lvalue are forbidden.
+// - `RESTR_FREEZE`: `&` borrows of the lvalue are forbidden.
+// - `RESTR_ALIAS`: All borrows of the lvalue are forbidden.
 //
 // In addition, no value which is restricted may be moved. Therefore,
 // restrictions are meaningful even if the RestrictionSet is empty,
@@ -319,10 +319,11 @@ pub struct RestrictionSet {
     bits: u32
 }
 
-pub static RESTR_EMPTY: RestrictionSet  = RestrictionSet {bits: 0b000};
-pub static RESTR_MUTATE: RestrictionSet = RestrictionSet {bits: 0b001};
-pub static RESTR_FREEZE: RestrictionSet = RestrictionSet {bits: 0b010};
-pub static RESTR_ALIAS: RestrictionSet  = RestrictionSet {bits: 0b100};
+pub static RESTR_EMPTY: RestrictionSet  = RestrictionSet {bits: 0b0000};
+pub static RESTR_MUTATE: RestrictionSet = RestrictionSet {bits: 0b0001};
+pub static RESTR_CLAIM: RestrictionSet  = RestrictionSet {bits: 0b0010};
+pub static RESTR_FREEZE: RestrictionSet = RestrictionSet {bits: 0b0100};
+pub static RESTR_ALIAS: RestrictionSet  = RestrictionSet {bits: 0b1000};
 
 pub impl RestrictionSet {
     fn intersects(&self, restr: RestrictionSet) -> bool {
