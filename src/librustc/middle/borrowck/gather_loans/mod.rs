@@ -481,6 +481,8 @@ pub impl GatherLoanCtxt {
                             borrow_span: span,
                             cmt: mc::cmt,
                             req_mutbl: ast::mutability) {
+            //! Implements the M-* rules in doc.rs.
+
             match req_mutbl {
                 m_const => {
                     // Data of any mutability can be lent as const.
