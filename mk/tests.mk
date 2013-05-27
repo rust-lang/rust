@@ -284,7 +284,7 @@ define TEST_RUNNER
 # If NO_REBUILD is set then break the dependencies on extra so we can
 # test crates without rebuilding std and extra first
 ifeq ($(NO_REBUILD),)
-STDTESTDEP_$(1)_$(2)_$(3) = $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB_$(2))
+STDTESTDEP_$(1)_$(2)_$(3) = $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_EXTRALIB_$(2))
 else
 STDTESTDEP_$(1)_$(2)_$(3) =
 endif
