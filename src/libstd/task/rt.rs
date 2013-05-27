@@ -14,7 +14,7 @@ The task interface to the runtime
 
 */
 
-#[doc(hidden)]; // FIXME #3538
+#[doc(hidden)];
 
 use libc;
 
