@@ -125,6 +125,31 @@ pub impl<T> Deque<T> {
         self.hi = (self.hi + 1u) % self.elts.len();
         self.nelts += 1u;
     }
+
+    /// Reserve capacity for exactly `n` elements in the given deque,
+    /// doing nothing if `self`'s capacity is already equal to or greater
+    /// than the requested capacity
+    ///
+    /// # Arguments
+    ///
+    /// * n - The number of elements to reserve space for
+    fn reserve(&mut self, n: uint) {
+        vec::reserve(&mut self.elts, n);
+    }
+
+    /// Reserve capacity for at least `n` elements in the given deque,
+    /// over-allocating in case the caller needs to reserve additional
+    /// space.
+    ///
+    /// Do nothing if `self`'s capacity is already equal to or greater
+    /// than the requested capacity.
+    ///
+    /// # Arguments
+    ///
+    /// * n - The number of elements to reserve space for
+    fn reserve_at_least(&mut self, n: uint) {
+        vec::reserve_at_least(&mut self.elts, n);
+    }
 }
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
@@ -149,6 +174,7 @@ mod tests {
     use super::*;
     use core::cmp::Eq;
     use core::kinds::Copy;
+    use core::vec::capacity;
 
     #[test]
     fn test_simple() {
@@ -328,4 +354,29 @@ mod tests {
         }
 
     }
+
+    #[test]
+    fn test_reserve() {
+        let mut d = Deque::new();
+        d.add_back(0u64);
+        d.reserve(50);
+        assert_eq!(capacity(&mut d.elts), 50);
+        let mut d = Deque::new();
+        d.add_back(0u32);
+        d.reserve(50);
+        assert_eq!(capacity(&mut d.elts), 50);
+    }
+
+    #[test]
+    fn test_reserve_at_least() {
+        let mut d = Deque::new();
+        d.add_back(0u64);
+        d.reserve_at_least(50);
+        assert_eq!(capacity(&mut d.elts), 64);
+        let mut d = Deque::new();
+        d.add_back(0u32);
+        d.reserve_at_least(50);
+        assert_eq!(capacity(&mut d.elts), 64);
+    }
+
 }
