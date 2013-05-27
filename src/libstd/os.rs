@@ -1671,7 +1671,7 @@ mod tests {
             fail!("%s doesn't exist", in.to_str());
           }
           assert!((rs));
-          let rslt = run::run_program("diff", [in.to_str(), out.to_str()]);
+          let rslt = run::process_status("diff", [in.to_str(), out.to_str()]);
           assert_eq!(rslt, 0);
           assert_eq!(out.get_mode(), in_mode);
           assert!((remove_file(&in)));

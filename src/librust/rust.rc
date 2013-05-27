@@ -163,7 +163,7 @@ fn cmd_test(args: &[~str]) -> ValidUsage {
             let test_exec = Path(filename).filestem().unwrap() + "test~";
             invoke("rustc", &[~"--test", filename.to_owned(),
                               ~"-o", test_exec.to_owned()], rustc::main);
-            let exit_code = run::run_program(~"./" + test_exec, []);
+            let exit_code = run::process_status(~"./" + test_exec, []);
             Valid(exit_code)
         }
         _ => Invalid
@@ -176,7 +176,7 @@ fn cmd_run(args: &[~str]) -> ValidUsage {
             let exec = Path(filename).filestem().unwrap() + "~";
             invoke("rustc", &[filename.to_owned(), ~"-o", exec.to_owned()],
                    rustc::main);
-            let exit_code = run::run_program(~"./"+exec, prog_args);
+            let exit_code = run::process_status(~"./"+exec, prog_args);
             Valid(exit_code)
         }
         _ => Invalid
