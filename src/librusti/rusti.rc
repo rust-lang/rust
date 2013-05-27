@@ -88,21 +88,31 @@ fn record(mut repl: Repl, blk: &ast::blk, intr: @token::ident_interner) -> Repl 
 
         repl.view_items = repl.view_items + "\n" + new_view_items
     }
+
+    fn keep(expr: @ast::expr) -> bool {
+        match expr.node {
+            ast::expr_assign(*) | ast::expr_assign_op(*) => true,
+            _ => false
+        }
+    }
+
     for blk.node.stmts.each |stmt| {
         match stmt.node {
-            ast::stmt_decl(*) | ast::stmt_mac(*) => {
-                let s = do with_pp(intr) |pp, _| {
-                    pprust::print_stmt(pp, *stmt);
-                };
-                repl.stmts.push(s);
-            }
-            ast::stmt_expr(expr, _) | ast::stmt_semi(expr, _) => {
-                match expr.node {
-                    ast::expr_assign(*) |
-                    ast::expr_assign_op(*) |
-                    _ => {}
-                }
-            }
+            ast::stmt_expr(expr, _) |
+            ast::stmt_semi(expr, _) if !keep(expr) => { loop }
+            _ => {}
+        }
+        let s = do with_pp(intr) |pp, _| {
+            pprust::print_stmt(pp, *stmt);
+        };
+        repl.stmts.push(s);
+    }
+    for blk.node.expr.each |&e| {
+        if keep(e) {
+            let s = do with_pp(intr) |pp, _| {
+                pprust::print_expr(pp, e);
+            };
+            repl.stmts.push(s + ";");
         }
     }
 
@@ -487,5 +497,9 @@ mod tests {
 
         debug!("regression test for #5675");
         run_cmds(["fn f() {}", "fn f() {}", "fn f() {}"]);
+
+        debug!("assignments are recorded");
+        run_cmds(["let mut a = 3;", "a = 4", "assert!(a == 4)"]);
+        run_cmds(["let mut a = 3;", "a = 4;", "assert!(a == 4)"]);
     }
 }
