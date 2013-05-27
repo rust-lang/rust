@@ -555,11 +555,11 @@ then
     CFG_CLANG_VERSION=$("$CFG_CLANG" \
                       --version \
                       | grep version \
-                      | sed 's/.*\(version .*\)/\1/' \
+                      | sed 's/.*\(version .*\)/\1/; s/.*based on \(LLVM .*\))/\1/' \
                       | cut -d ' ' -f 2)
 
     case $CFG_CLANG_VERSION in
-        (3.0svn | 3.0 | 3.1* | 3.2* | 3.3* | 4.0* | 4.1* | 4.2*)
+        (3.0svn | 3.0 | 3.1* | 3.2* | 3.3*)
         step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
         CFG_C_COMPILER="clang"
         ;;
