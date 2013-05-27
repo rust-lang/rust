@@ -412,20 +412,20 @@ pub fn check_whole_compiler(code: &str,
 pub fn removeIfExists(filename: &Path) {
     // So sketchy!
     assert!(!contains(filename.to_str(), " "));
-    run::program_output("bash", [~"-c", ~"rm " + filename.to_str()]);
+    run::process_status("bash", [~"-c", ~"rm " + filename.to_str()]);
 }
 
 pub fn removeDirIfExists(filename: &Path) {
     // So sketchy!
     assert!(!contains(filename.to_str(), " "));
-    run::program_output("bash", [~"-c", ~"rm -r " + filename.to_str()]);
+    run::process_status("bash", [~"-c", ~"rm -r " + filename.to_str()]);
 }
 
 pub fn check_running(exe_filename: &Path) -> happiness {
-    let p = run::program_output(
+    let p = run::process_output(
         "/Users/jruderman/scripts/timed_run_rust_program.py",
         [exe_filename.to_str()]);
-    let comb = p.out + ~"\n" + p.err;
+    let comb = str::from_bytes(p.output) + ~"\n" + str::from_bytes(p.error);
     if str::len(comb) > 1u {
         error!("comb comb comb: %?", comb);
     }
@@ -461,33 +461,35 @@ pub fn check_running(exe_filename: &Path) -> happiness {
 }
 
 pub fn check_compiling(filename: &Path) -> happiness {
-    let p = run::program_output(
-        "/Users/jruderman/code/rust/build/x86_64-apple-darwin/\
-         stage1/bin/rustc",
+    let p = run::process_output(
+        "/Users/jruderman/code/rust/build/x86_64-apple-darwin/stage1/bin/rustc",
         [filename.to_str()]);
+
+    let out = str::from_bytes(p.output);
+    let err = str::from_bytes(p.error);
 
     //error!("Status: %d", p.status);
     if p.status == 0 {
         passed
-    } else if p.err != ~"" {
-        if contains(p.err, "error:") {
+    } else if !err.is_empty() {
+        if err.contains("error:") {
             cleanly_rejected(~"rejected with span_error")
         } else {
-            error!("Stderr: %?", p.err);
+            error!("Stderr: %?", err);
             failed(~"Unfamiliar error message")
         }
-    } else if contains(p.out, "Assertion") && contains(p.out, "failed") {
-        error!("Stdout: %?", p.out);
+    } else if out.contains("Assertion") && out.contains("failed") {
+        error!("Stdout: %?", out);
         failed(~"Looks like an llvm assertion failure")
-    } else if contains(p.out, "internal compiler error unimplemented") {
+    } else if out.contains("internal compiler error unimplemented") {
         known_bug(~"Something unimplemented")
-    } else if contains(p.out, "internal compiler error") {
-        error!("Stdout: %?", p.out);
+    } else if out.contains("internal compiler error") {
+        error!("Stdout: %?", out);
         failed(~"internal compiler error")
 
     } else {
         error!("%?", p.status);
-        error!("!Stdout: %?", p.out);
+        error!("!Stdout: %?", out);
         failed(~"What happened?")
     }
 }
@@ -608,9 +610,7 @@ pub fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
         error!("Did not converge after %u iterations!", i);
         write_file(&Path("round-trip-a.rs"), *oldv);
         write_file(&Path("round-trip-b.rs"), *newv);
-        run::run_program("diff",
-                         [~"-w", ~"-u", ~"round-trip-a.rs",
-                          ~"round-trip-b.rs"]);
+        run::process_status("diff", [~"-w", ~"-u", ~"round-trip-a.rs", ~"round-trip-b.rs"]);
         fail!("Mismatch");
     }
 }

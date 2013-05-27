@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Process spawning
+//! Process spawning.
+
 use cast;
 use io;
 use libc;
@@ -22,80 +23,367 @@ use str;
 use task;
 use vec;
 
-/// A value representing a child process
-pub struct Program {
+/**
+ * A value representing a child process.
+ *
+ * The lifetime of this value is linked to the lifetime of the actual
+ * process - the Process destructor calls self.finish() which waits
+ * for the process to terminate.
+ */
+pub struct Process {
+
+    /// The unique id of the process (this should never be negative).
     priv pid: pid_t,
+
+    /**
+     * A handle to the process - on unix this will always be NULL, but on
+     * windows it will be a HANDLE to the process, which will prevent the
+     * pid being re-used until the handle is closed.
+     */
     priv handle: *(),
-    priv in_fd: c_int,
-    priv out_file: *libc::FILE,
-    priv err_file: *libc::FILE,
-    priv finished: bool,
+
+    /// Some(fd), or None when stdin is being redirected from a fd not created by Process::new.
+    priv input: Option<c_int>,
+
+    /// Some(file), or None when stdout is being redirected to a fd not created by Process::new.
+    priv output: Option<*libc::FILE>,
+
+    /// Some(file), or None when stderr is being redirected to a fd not created by Process::new.
+    priv error: Option<*libc::FILE>,
+
+    /// None until finish() is called.
+    priv exit_code: Option<int>,
 }
 
-impl Drop for Program {
-    fn finalize(&self) {
-        // FIXME #4943: transmute is bad.
-        let mut_self: &mut Program = unsafe { cast::transmute(self) };
+/// Options that can be given when starting a Process.
+pub struct ProcessOptions<'self> {
 
-        mut_self.finish();
-        mut_self.close_outputs();
-        free_handle(self.handle);
+    /**
+     * If this is None then the new process will have the same initial
+     * environment as the parent process.
+     *
+     * If this is Some(vec-of-names-and-values) then the new process will
+     * have an environment containing the given named values only.
+     */
+    env: Option<&'self [(~str, ~str)]>,
+
+    /**
+     * If this is None then the new process will use the same initial working
+     * directory as the parent process.
+     *
+     * If this is Some(path) then the new process will use the given path
+     * for its initial working directory.
+     */
+    dir: Option<&'self Path>,
+
+    /**
+     * If this is None then a new pipe will be created for the new process's
+     * input and Process.input() will provide a Writer to write to this pipe.
+     *
+     * If this is Some(file-descriptor) then the new process will read its input
+     * from the given file descriptor, Process.input_redirected() will return
+     * true, and Process.input() will fail.
+     */
+    in_fd: Option<c_int>,
+
+    /**
+     * If this is None then a new pipe will be created for the new progam's
+     * output and Process.output() will provide a Reader to read from this pipe.
+     *
+     * If this is Some(file-descriptor) then the new process will write its output
+     * to the given file descriptor, Process.output_redirected() will return
+     * true, and Process.output() will fail.
+     */
+    out_fd: Option<c_int>,
+
+    /**
+     * If this is None then a new pipe will be created for the new progam's
+     * error stream and Process.error() will provide a Reader to read from this pipe.
+     *
+     * If this is Some(file-descriptor) then the new process will write its error output
+     * to the given file descriptor, Process.error_redirected() will return true, and
+     * and Process.error() will fail.
+     */
+    err_fd: Option<c_int>,
+}
+
+impl <'self> ProcessOptions<'self> {
+    /// Return a ProcessOptions that has None in every field.
+    pub fn new<'a>() -> ProcessOptions<'a> {
+        ProcessOptions {
+            env: None,
+            dir: None,
+            in_fd: None,
+            out_fd: None,
+            err_fd: None,
+        }
     }
 }
 
-pub impl Program {
+/// The output of a finished process.
+pub struct ProcessOutput {
 
-    /// Returns the process id of the program
-    fn get_id(&mut self) -> pid_t { self.pid }
+    /// The status (exit code) of the process.
+    status: int,
 
-    /// Returns an io::Writer that can be used to write to stdin
-    fn input(&mut self) -> @io::Writer {
-        io::fd_writer(self.in_fd, false)
-    }
+    /// The data that the process wrote to stdout.
+    output: ~[u8],
 
-    /// Returns an io::Reader that can be used to read from stdout
-    fn output(&mut self) -> @io::Reader {
-        io::FILE_reader(self.out_file, false)
-    }
+    /// The data that the process wrote to stderr.
+    error: ~[u8],
+}
 
-    /// Returns an io::Reader that can be used to read from stderr
-    fn err(&mut self) -> @io::Reader {
-        io::FILE_reader(self.err_file, false)
-    }
+pub impl Process {
 
-    /// Closes the handle to the child processes standard input
-    fn close_input(&mut self) {
-        let invalid_fd = -1i32;
-        if self.in_fd != invalid_fd {
-            unsafe {
-                libc::close(self.in_fd);
-            }
-            self.in_fd = invalid_fd;
+    /**
+     * Spawns a new Process.
+     *
+     * # Arguments
+     *
+     * * prog - The path to an executable.
+     * * args - Vector of arguments to pass to the child process.
+     * * options - Options to configure the environment of the process,
+     *             the working directory and the standard IO streams.
+     */
+    pub fn new(prog: &str, args: &[~str], options: ProcessOptions) -> Process {
+
+        let (in_pipe, in_fd) = match options.in_fd {
+            None => {
+                let pipe = os::pipe();
+                (Some(pipe), pipe.in)
+            },
+            Some(fd) => (None, fd)
+        };
+        let (out_pipe, out_fd) = match options.out_fd {
+            None => {
+                let pipe = os::pipe();
+                (Some(pipe), pipe.out)
+            },
+            Some(fd) => (None, fd)
+        };
+        let (err_pipe, err_fd) = match options.err_fd {
+            None => {
+                let pipe = os::pipe();
+                (Some(pipe), pipe.out)
+            },
+            Some(fd) => (None, fd)
+        };
+
+        let res = spawn_process_os(prog, args, options.env, options.dir,
+                                   in_fd, out_fd, err_fd);
+
+        unsafe {
+            for in_pipe.each  |pipe| { libc::close(pipe.in); }
+            for out_pipe.each |pipe| { libc::close(pipe.out); }
+            for err_pipe.each |pipe| { libc::close(pipe.out); }
+        }
+
+        Process {
+            pid: res.pid,
+            handle: res.handle,
+            input: in_pipe.map(|pipe| pipe.out),
+            output: out_pipe.map(|pipe| os::fdopen(pipe.in)),
+            error: err_pipe.map(|pipe| os::fdopen(pipe.in)),
+            exit_code: None,
         }
     }
 
-    priv fn close_outputs(&mut self) {
-        unsafe {
-            fclose_and_null(&mut self.out_file);
-            fclose_and_null(&mut self.err_file);
+    /// Returns the unique id of the process
+    fn get_id(&self) -> pid_t { self.pid }
+
+    priv fn input_fd(&mut self) -> c_int {
+        match self.input {
+            Some(fd) => fd,
+            None => fail!("This Process's stdin was redirected to an \
+                           existing file descriptor.")
+        }
+    }
+
+    priv fn output_file(&mut self) -> *libc::FILE {
+        match self.output {
+            Some(file) => file,
+            None => fail!("This Process's stdout was redirected to an \
+                           existing file descriptor.")
+        }
+    }
+
+    priv fn error_file(&mut self) -> *libc::FILE {
+        match self.error {
+            Some(file) => file,
+            None => fail!("This Process's stderr was redirected to an \
+                           existing file descriptor.")
         }
     }
 
     /**
-     * Waits for the child process to terminate. Closes the handle
-     * to stdin if necessary.
+     * Returns whether this process is reading its stdin from an existing file
+     * descriptor rather than a pipe that was created specifically for this
+     * process.
+     *
+     * If this method returns true then self.input() will fail.
+     */
+    fn input_redirected(&self) -> bool {
+        self.input.is_none()
+    }
+
+    /**
+     * Returns whether this process is writing its stdout to an existing file
+     * descriptor rather than a pipe that was created specifically for this
+     * process.
+     *
+     * If this method returns true then self.output() will fail.
+     */
+    fn output_redirected(&self) -> bool {
+        self.output.is_none()
+    }
+
+    /**
+     * Returns whether this process is writing its stderr to an existing file
+     * descriptor rather than a pipe that was created specifically for this
+     * process.
+     *
+     * If this method returns true then self.error() will fail.
+     */
+    fn error_redirected(&self) -> bool {
+        self.error.is_none()
+    }
+
+    /**
+     * Returns an io::Writer that can be used to write to this Process's stdin.
+     *
+     * Fails if this Process's stdin was redirected to an existing file descriptor.
+     */
+    fn input(&mut self) -> @io::Writer {
+        // FIXME: the Writer can still be used after self is destroyed: #2625
+       io::fd_writer(self.input_fd(), false)
+    }
+
+    /**
+     * Returns an io::Reader that can be used to read from this Process's stdout.
+     *
+     * Fails if this Process's stdout was redirected to an existing file descriptor.
+     */
+    fn output(&mut self) -> @io::Reader {
+        // FIXME: the Reader can still be used after self is destroyed: #2625
+        io::FILE_reader(self.output_file(), false)
+    }
+
+    /**
+     * Returns an io::Reader that can be used to read from this Process's stderr.
+     *
+     * Fails if this Process's stderr was redirected to an existing file descriptor.
+     */
+    fn error(&mut self) -> @io::Reader {
+        // FIXME: the Reader can still be used after self is destroyed: #2625
+        io::FILE_reader(self.error_file(), false)
+    }
+
+    /**
+     * Closes the handle to the child process's stdin.
+     *
+     * If this process is reading its stdin from an existing file descriptor, then this
+     * method does nothing.
+     */
+    fn close_input(&mut self) {
+        match self.input {
+            Some(-1) | None => (),
+            Some(fd) => {
+                unsafe {
+                    libc::close(fd);
+                }
+                self.input = Some(-1);
+            }
+        }
+    }
+
+    priv fn close_outputs(&mut self) {
+        fclose_and_null(&mut self.output);
+        fclose_and_null(&mut self.error);
+
+        fn fclose_and_null(f_opt: &mut Option<*libc::FILE>) {
+            match *f_opt {
+                Some(f) if !f.is_null() => {
+                    unsafe {
+                        libc::fclose(f);
+                        *f_opt = Some(0 as *libc::FILE);
+                    }
+                },
+                _ => ()
+            }
+        }
+    }
+
+    /**
+     * Closes the handle to stdin, waits for the child process to terminate,
+     * and returns the exit code.
+     *
+     * If the child has already been finished then the exit code is returned.
      */
     fn finish(&mut self) -> int {
-        if self.finished { return 0; }
-        self.finished = true;
+        for self.exit_code.each |&code| {
+            return code;
+        }
         self.close_input();
-        return waitpid(self.pid);
+        let code = waitpid(self.pid);
+        self.exit_code = Some(code);
+        return code;
+    }
+
+    /**
+     * Closes the handle to stdin, waits for the child process to terminate, and reads
+     * and returns all remaining output of stdout and stderr, along with the exit code.
+     *
+     * If the child has already been finished then the exit code and any remaining
+     * unread output of stdout and stderr will be returned.
+     *
+     * This method will fail if the child process's stdout or stderr streams were
+     * redirected to existing file descriptors.
+     */
+    fn finish_with_output(&mut self) -> ProcessOutput {
+
+        let output_file = self.output_file();
+        let error_file = self.error_file();
+
+        // Spawn two entire schedulers to read both stdout and sterr
+        // in parallel so we don't deadlock while blocking on one
+        // or the other. FIXME (#2625): Surely there's a much more
+        // clever way to do this.
+        let (p, ch) = stream();
+        let ch = SharedChan::new(ch);
+        let ch_clone = ch.clone();
+        do task::spawn_sched(task::SingleThreaded) {
+            let errput = io::FILE_reader(error_file, false);
+            ch.send((2, errput.read_whole_stream()));
+        }
+        do task::spawn_sched(task::SingleThreaded) {
+            let output = io::FILE_reader(output_file, false);
+            ch_clone.send((1, output.read_whole_stream()));
+        }
+
+        let status = self.finish();
+
+        let (errs, outs) = match (p.recv(), p.recv()) {
+            ((1, o), (2, e)) => (e, o),
+            ((2, e), (1, o)) => (e, o),
+            ((x, _), (y, _)) => {
+                fail!("unexpected file numbers: %u, %u", x, y);
+            }
+        };
+
+        return ProcessOutput {status: status,
+                              output: outs,
+                              error: errs};
     }
 
     priv fn destroy_internal(&mut self, force: bool) {
-        killpid(self.pid, force);
-        self.finish();
-        self.close_outputs();
+
+        // if the process has finished, and therefore had waitpid called,
+        // and we kill it, then on unix we might ending up killing a
+        // newer process that happens to have the same (re-used) id
+        if self.exit_code.is_none() {
+            killpid(self.pid, force);
+            self.finish();
+        }
 
         #[cfg(windows)]
         fn killpid(pid: pid_t, _force: bool) {
@@ -120,7 +408,7 @@ pub impl Program {
     }
 
     /**
-     * Terminate the program, giving it a chance to clean itself up if
+     * Terminates the process, giving it a chance to clean itself up if
      * this is supported by the operating system.
      *
      * On Posix OSs SIGTERM will be sent to the process. On Win32
@@ -129,7 +417,7 @@ pub impl Program {
     fn destroy(&mut self) { self.destroy_internal(false); }
 
     /**
-     * Terminate the program as soon as possible without giving it a
+     * Terminates the process as soon as possible without giving it a
      * chance to clean itself up.
      *
      * On Posix OSs SIGKILL will be sent to the process. On Win32
@@ -138,47 +426,27 @@ pub impl Program {
     fn force_destroy(&mut self) { self.destroy_internal(true); }
 }
 
+impl Drop for Process {
+    fn finalize(&self) {
+        // FIXME #4943: transmute is bad.
+        let mut_self: &mut Process = unsafe { cast::transmute(self) };
 
-/**
- * Run a program, providing stdin, stdout and stderr handles
- *
- * # Arguments
- *
- * * prog - The path to an executable
- * * args - Vector of arguments to pass to the child process
- * * env - optional env-modification for child
- * * dir - optional dir to run child in (default current dir)
- * * in_fd - A file descriptor for the child to use as std input
- * * out_fd - A file descriptor for the child to use as std output
- * * err_fd - A file descriptor for the child to use as std error
- *
- * # Return value
- *
- * The process id of the spawned process
- */
-pub fn spawn_process(prog: &str, args: &[~str],
-                     env: &Option<~[(~str,~str)]>,
-                     dir: &Option<~str>,
-                     in_fd: c_int, out_fd: c_int, err_fd: c_int) -> pid_t {
-
-    let res = spawn_process_internal(prog, args, env, dir, in_fd, out_fd, err_fd);
-    free_handle(res.handle);
-    return res.pid;
+        mut_self.finish();
+        mut_self.close_outputs();
+        free_handle(self.handle);
+    }
 }
 
-struct RunProgramResult {
-    // the process id of the program (this should never be negative)
+struct SpawnProcessResult {
     pid: pid_t,
-    // a handle to the process - on unix this will always be NULL, but on windows it will be a
-    // HANDLE to the process, which will prevent the pid being re-used until the handle is closed.
     handle: *(),
 }
 
 #[cfg(windows)]
-fn spawn_process_internal(prog: &str, args: &[~str],
-                          env: &Option<~[(~str,~str)]>,
-                          dir: &Option<~str>,
-                          in_fd: c_int, out_fd: c_int, err_fd: c_int) -> RunProgramResult {
+fn spawn_process_os(prog: &str, args: &[~str],
+                    env: Option<&[(~str, ~str)]>,
+                    dir: Option<&Path>,
+                    in_fd: c_int, out_fd: c_int, err_fd: c_int) -> SpawnProcessResult {
 
     use libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
     use libc::consts::os::extra::{
@@ -203,7 +471,7 @@ fn spawn_process_internal(prog: &str, args: &[~str],
 
         let cur_proc = GetCurrentProcess();
 
-        let orig_std_in = get_osfhandle(if in_fd > 0 { in_fd } else { 0 }) as HANDLE;
+        let orig_std_in = get_osfhandle(in_fd) as HANDLE;
         if orig_std_in == INVALID_HANDLE_VALUE as HANDLE {
             fail!("failure in get_osfhandle: %s", os::last_os_error());
         }
@@ -212,7 +480,7 @@ fn spawn_process_internal(prog: &str, args: &[~str],
             fail!("failure in DuplicateHandle: %s", os::last_os_error());
         }
 
-        let orig_std_out = get_osfhandle(if out_fd > 0 { out_fd } else { 1 }) as HANDLE;
+        let orig_std_out = get_osfhandle(out_fd) as HANDLE;
         if orig_std_out == INVALID_HANDLE_VALUE as HANDLE {
             fail!("failure in get_osfhandle: %s", os::last_os_error());
         }
@@ -221,8 +489,8 @@ fn spawn_process_internal(prog: &str, args: &[~str],
             fail!("failure in DuplicateHandle: %s", os::last_os_error());
         }
 
-        let orig_std_err = get_osfhandle(if err_fd > 0 { err_fd } else { 2 }) as HANDLE;
-        if orig_std_err as HANDLE == INVALID_HANDLE_VALUE as HANDLE {
+        let orig_std_err = get_osfhandle(err_fd) as HANDLE;
+        if orig_std_err == INVALID_HANDLE_VALUE as HANDLE {
             fail!("failure in get_osfhandle: %s", os::last_os_error());
         }
         if DuplicateHandle(cur_proc, orig_std_err, cur_proc, &mut si.hStdError,
@@ -261,7 +529,7 @@ fn spawn_process_internal(prog: &str, args: &[~str],
         // until the calling code closes the process handle.
         CloseHandle(pi.hThread);
 
-        RunProgramResult {
+        SpawnProcessResult {
             pid: pi.dwProcessId as pid_t,
             handle: pi.hProcess as *()
         }
@@ -357,10 +625,10 @@ pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
 }
 
 #[cfg(unix)]
-fn spawn_process_internal(prog: &str, args: &[~str],
-                          env: &Option<~[(~str,~str)]>,
-                          dir: &Option<~str>,
-                          in_fd: c_int, out_fd: c_int, err_fd: c_int) -> RunProgramResult {
+fn spawn_process_os(prog: &str, args: &[~str],
+                    env: Option<&[(~str, ~str)]>,
+                    dir: Option<&Path>,
+                    in_fd: c_int, out_fd: c_int, err_fd: c_int) -> SpawnProcessResult {
 
     use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
     use libc::funcs::bsd44::getdtablesize;
@@ -381,18 +649,18 @@ fn spawn_process_internal(prog: &str, args: &[~str],
         if pid < 0 {
             fail!("failure in fork: %s", os::last_os_error());
         } else if pid > 0 {
-            return RunProgramResult {pid: pid, handle: ptr::null()};
+            return SpawnProcessResult {pid: pid, handle: ptr::null()};
         }
 
         rustrt::rust_unset_sigprocmask();
 
-        if in_fd > 0 && dup2(in_fd, 0) == -1 {
+        if dup2(in_fd, 0) == -1 {
             fail!("failure in dup2(in_fd, 0): %s", os::last_os_error());
         }
-        if out_fd > 0 && dup2(out_fd, 1) == -1 {
+        if dup2(out_fd, 1) == -1 {
             fail!("failure in dup2(out_fd, 1): %s", os::last_os_error());
         }
-        if err_fd > 0 && dup2(err_fd, 2) == -1 {
+        if dup2(err_fd, 2) == -1 {
             fail!("failure in dup3(err_fd, 2): %s", os::last_os_error());
         }
         // close all other fds
@@ -400,11 +668,9 @@ fn spawn_process_internal(prog: &str, args: &[~str],
             close(fd as c_int);
         }
 
-        for dir.each |dir| {
-            do str::as_c_str(*dir) |dirp| {
-                if chdir(dirp) == -1 {
-                    fail!("failure in chdir: %s", os::last_os_error());
-                }
+        do with_dirp(dir) |dirp| {
+            if !dirp.is_null() && chdir(dirp) == -1 {
+                fail!("failure in chdir: %s", os::last_os_error());
             }
         }
 
@@ -424,33 +690,32 @@ fn spawn_process_internal(prog: &str, args: &[~str],
 #[cfg(unix)]
 fn with_argv<T>(prog: &str, args: &[~str],
                 cb: &fn(**libc::c_char) -> T) -> T {
-    let mut argptrs = str::as_c_str(prog, |b| ~[b]);
+    let mut argptrs = ~[str::as_c_str(prog, |b| b)];
     let mut tmps = ~[];
     for args.each |arg| {
         let t = @copy *arg;
         tmps.push(t);
-        argptrs.push_all(str::as_c_str(*t, |b| ~[b]));
+        argptrs.push(str::as_c_str(*t, |b| b));
     }
     argptrs.push(ptr::null());
     vec::as_imm_buf(argptrs, |buf, _len| cb(buf))
 }
 
 #[cfg(unix)]
-fn with_envp<T>(env: &Option<~[(~str,~str)]>,
-                cb: &fn(*c_void) -> T) -> T {
+fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*c_void) -> T) -> T {
     // On posixy systems we can pass a char** for envp, which is
     // a null-terminated array of "k=v\n" strings.
-    match *env {
-      Some(ref es) if !vec::is_empty(*es) => {
+    match env {
+      Some(es) => {
         let mut tmps = ~[];
         let mut ptrs = ~[];
 
-        for (*es).each |e| {
-            let (k,v) = copy *e;
-            let t = @(fmt!("%s=%s", k, v));
-            tmps.push(t);
-            ptrs.push_all(str::as_c_str(*t, |b| ~[b]));
+        for es.each |&(k, v)| {
+            let kv = @fmt!("%s=%s", k, v);
+            tmps.push(kv);
+            ptrs.push(str::as_c_str(*kv, |b| b));
         }
+
         ptrs.push(ptr::null());
         vec::as_imm_buf(ptrs, |p, _len|
             unsafe { cb(::cast::transmute(p)) }
@@ -461,44 +726,32 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
 }
 
 #[cfg(windows)]
-fn with_envp<T>(env: &Option<~[(~str,~str)]>,
-                cb: &fn(*mut c_void) -> T) -> T {
+fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
     // On win32 we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
-    unsafe {
-        match *env {
-          Some(ref es) if !vec::is_empty(*es) => {
-            let mut blk : ~[u8] = ~[];
-            for (*es).each |e| {
-                let (k,v) = copy *e;
-                let t = fmt!("%s=%s", k, v);
-                let mut v : ~[u8] = ::cast::transmute(t);
-                blk += v;
-                ::cast::forget(v);
-            }
-            blk += ~[0_u8];
-            vec::as_imm_buf(blk, |p, _len| cb(::cast::transmute(p)))
-          }
-          _ => cb(ptr::mut_null())
+    match env {
+      Some(es) => {
+        let mut blk = ~[];
+        for es.each |&(k, v)| {
+            let kv = fmt!("%s=%s", k, v);
+            blk.push_all(str::as_bytes_slice(kv));
+            blk.push(0);
         }
+        blk.push(0);
+        vec::as_imm_buf(blk, |p, _len|
+            unsafe { cb(::cast::transmute(p)) }
+        )
+      }
+      _ => cb(ptr::mut_null())
     }
 }
 
-#[cfg(windows)]
-fn with_dirp<T>(d: &Option<~str>,
+fn with_dirp<T>(d: Option<&Path>,
                 cb: &fn(*libc::c_char) -> T) -> T {
-    match *d {
-      Some(ref dir) => str::as_c_str(*dir, cb),
+    match d {
+      Some(dir) => str::as_c_str(dir.to_str(), cb),
       None => cb(ptr::null())
-    }
-}
-
-/// helper function that closes non-NULL files and then makes them NULL
-priv unsafe fn fclose_and_null(f: &mut *libc::FILE) {
-    if *f != 0 as *libc::FILE {
-        libc::fclose(*f);
-        *f = 0 as *libc::FILE;
     }
 }
 
@@ -515,7 +768,8 @@ priv fn free_handle(_handle: *()) {
 }
 
 /**
- * Spawns a process and waits for it to terminate
+ * Spawns a process and waits for it to terminate. The process will
+ * inherit the current stdin/stdout/stderr file descriptors.
  *
  * # Arguments
  *
@@ -526,71 +780,19 @@ priv fn free_handle(_handle: *()) {
  *
  * The process's exit code
  */
-pub fn run_program(prog: &str, args: &[~str]) -> int {
-    let res = spawn_process_internal(prog, args, &None, &None,
-                                     0i32, 0i32, 0i32);
-    let code = waitpid(res.pid);
-    free_handle(res.handle);
-    return code;
-}
-
-/**
- * Spawns a process and returns a Program
- *
- * The returned value is a <Program> object that can be used for sending and
- * receiving data over the standard file descriptors.  The class will ensure
- * that file descriptors are closed properly.
- *
- * # Arguments
- *
- * * prog - The path to an executable
- * * args - Vector of arguments to pass to the child process
- *
- * # Return value
- *
- * A <Program> object
- */
-pub fn start_program(prog: &str, args: &[~str]) -> Program {
-    let pipe_input = os::pipe();
-    let pipe_output = os::pipe();
-    let pipe_err = os::pipe();
-    let res =
-        spawn_process_internal(prog, args, &None, &None,
-                               pipe_input.in, pipe_output.out,
-                               pipe_err.out);
-
-    unsafe {
-        libc::close(pipe_input.in);
-        libc::close(pipe_output.out);
-        libc::close(pipe_err.out);
-    }
-
-    Program {
-        pid: res.pid,
-        handle: res.handle,
-        in_fd: pipe_input.out,
-        out_file: os::fdopen(pipe_output.in),
-        err_file: os::fdopen(pipe_err.in),
-        finished: false,
-    }
-}
-
-fn read_all(rd: @io::Reader) -> ~str {
-    let buf = io::with_bytes_writer(|wr| {
-        let mut bytes = [0, ..4096];
-        while !rd.eof() {
-            let nread = rd.read(bytes, bytes.len());
-            wr.write(bytes.slice(0, nread));
-        }
+pub fn process_status(prog: &str, args: &[~str]) -> int {
+    let mut prog = Process::new(prog, args, ProcessOptions {
+        env: None,
+        dir: None,
+        in_fd: Some(0),
+        out_fd: Some(1),
+        err_fd: Some(2)
     });
-    str::from_bytes(buf)
+    prog.finish()
 }
 
-pub struct ProgramOutput {status: int, out: ~str, err: ~str}
-
 /**
- * Spawns a process, waits for it to exit, and returns the exit code, and
- * contents of stdout and stderr.
+ * Spawns a process, records all its output, and waits for it to terminate.
  *
  * # Arguments
  *
@@ -599,94 +801,24 @@ pub struct ProgramOutput {status: int, out: ~str, err: ~str}
  *
  * # Return value
  *
- * A record, {status: int, out: str, err: str} containing the exit code,
- * the contents of stdout and the contents of stderr.
+ * The process's stdout/stderr output and exit code.
  */
-pub fn program_output(prog: &str, args: &[~str]) -> ProgramOutput {
-    let pipe_in = os::pipe();
-    let pipe_out = os::pipe();
-    let pipe_err = os::pipe();
-    let res = spawn_process_internal(prog, args, &None, &None,
-                                     pipe_in.in, pipe_out.out, pipe_err.out);
-
-    os::close(pipe_in.in);
-    os::close(pipe_out.out);
-    os::close(pipe_err.out);
-    os::close(pipe_in.out);
-
-    // Spawn two entire schedulers to read both stdout and sterr
-    // in parallel so we don't deadlock while blocking on one
-    // or the other. FIXME (#2625): Surely there's a much more
-    // clever way to do this.
-    let (p, ch) = stream();
-    let ch = SharedChan::new(ch);
-    let ch_clone = ch.clone();
-    do task::spawn_sched(task::SingleThreaded) {
-        let errput = readclose(pipe_err.in);
-        ch.send((2, errput));
-    };
-    do task::spawn_sched(task::SingleThreaded) {
-        let output = readclose(pipe_out.in);
-        ch_clone.send((1, output));
-    };
-
-    let status = waitpid(res.pid);
-    free_handle(res.handle);
-
-    let mut errs = ~"";
-    let mut outs = ~"";
-    let mut count = 2;
-    while count > 0 {
-        let stream = p.recv();
-        match stream {
-            (1, copy s) => {
-                outs = s;
-            }
-            (2, copy s) => {
-                errs = s;
-            }
-            (n, _) => {
-                fail!("program_output received an unexpected file number: %u", n);
-            }
-        };
-        count -= 1;
-    };
-    return ProgramOutput {status: status,
-                          out: outs,
-                          err: errs};
-}
-
-pub fn writeclose(fd: c_int, s: ~str) {
-    use io::WriterUtil;
-
-    error!("writeclose %d, %s", fd as int, s);
-    let writer = io::fd_writer(fd, false);
-    writer.write_str(s);
-
-    os::close(fd);
-}
-
-pub fn readclose(fd: c_int) -> ~str {
-    unsafe {
-        let file = os::fdopen(fd);
-        let reader = io::FILE_reader(file, false);
-        let buf = io::with_bytes_writer(|writer| {
-            let mut bytes = [0, ..4096];
-            while !reader.eof() {
-                let nread = reader.read(bytes, bytes.len());
-                writer.write(bytes.slice(0, nread));
-            }
-        });
-        os::fclose(file);
-        str::from_bytes(buf)
-    }
+pub fn process_output(prog: &str, args: &[~str]) -> ProcessOutput {
+    let mut prog = Process::new(prog, args, ProcessOptions::new());
+    prog.finish_with_output()
 }
 
 /**
  * Waits for a process to exit and returns the exit code, failing
  * if there is no process with the specified id.
+ *
+ * Note that this is private to avoid race conditions on unix where if
+ * a user calls waitpid(some_process.get_id()) then some_process.finish()
+ * and some_process.destroy() and some_process.finalize() will then either
+ * operate on a none-existant process or, even worse, on a newer process
+ * with the same id.
  */
-pub fn waitpid(pid: pid_t) -> int {
+priv fn waitpid(pid: pid_t) -> int {
     return waitpid_os(pid);
 
     #[cfg(windows)]
@@ -777,10 +909,13 @@ pub fn waitpid(pid: pid_t) -> int {
 
 #[cfg(test)]
 mod tests {
-    use option::None;
+    use io;
+    use libc::{c_int};
+    use option::{Option, None, Some};
     use os;
-    use run::{readclose, writeclose};
+    use path::Path;
     use run;
+    use str;
 
     #[test]
     #[cfg(windows)]
@@ -803,54 +938,224 @@ mod tests {
         );
     }
 
-    // Regression test for memory leaks
     #[test]
-    fn test_leaks() {
-        run::run_program("echo", []);
-        run::start_program("echo", []);
-        run::program_output("echo", []);
+    fn test_process_status() {
+        assert_eq!(run::process_status("false", []), 1);
+        assert_eq!(run::process_status("true", []), 0);
     }
 
     #[test]
-    #[allow(non_implicitly_copyable_typarams)]
+    fn test_process_output_output() {
+
+        let run::ProcessOutput {status, output, error}
+             = run::process_output("echo", [~"hello"]);
+        let output_str = str::from_bytes(output);
+
+        assert_eq!(status, 0);
+        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        assert_eq!(error, ~[]);
+    }
+
+    #[test]
+    fn test_process_output_error() {
+
+        let run::ProcessOutput {status, output, error}
+             = run::process_output("mkdir", [~"."]);
+
+        assert_eq!(status, 1);
+        assert_eq!(output, ~[]);
+        assert!(!error.is_empty());
+    }
+
+    #[test]
     fn test_pipes() {
+
         let pipe_in = os::pipe();
         let pipe_out = os::pipe();
         let pipe_err = os::pipe();
 
-        let pid =
-            run::spawn_process(
-                "cat", [], &None, &None,
-                pipe_in.in, pipe_out.out, pipe_err.out);
+        let mut proc = run::Process::new("cat", [], run::ProcessOptions {
+            dir: None,
+            env: None,
+            in_fd: Some(pipe_in.in),
+            out_fd: Some(pipe_out.out),
+            err_fd: Some(pipe_err.out)
+        });
+
+        assert!(proc.input_redirected());
+        assert!(proc.output_redirected());
+        assert!(proc.error_redirected());
+
         os::close(pipe_in.in);
         os::close(pipe_out.out);
         os::close(pipe_err.out);
 
-        if pid == -1i32 { fail!(); }
         let expected = ~"test";
-        writeclose(pipe_in.out, copy expected);
+        writeclose(pipe_in.out, expected);
         let actual = readclose(pipe_out.in);
         readclose(pipe_err.in);
-        run::waitpid(pid);
+        proc.finish();
 
-        debug!(copy expected);
-        debug!(copy actual);
         assert_eq!(expected, actual);
     }
 
+    fn writeclose(fd: c_int, s: &str) {
+        let writer = io::fd_writer(fd, false);
+        writer.write_str(s);
+        os::close(fd);
+    }
+
+    fn readclose(fd: c_int) -> ~str {
+        unsafe {
+            let file = os::fdopen(fd);
+            let reader = io::FILE_reader(file, false);
+            let buf = reader.read_whole_stream();
+            os::fclose(file);
+            str::from_bytes(buf)
+        }
+    }
+
     #[test]
-    fn waitpid() {
-        let pid = run::spawn_process("false", [],
-                                     &None, &None,
-                                     0i32, 0i32, 0i32);
-        let status = run::waitpid(pid);
-        assert_eq!(status, 1);
+    fn test_finish_once() {
+        let mut prog = run::Process::new("false", [], run::ProcessOptions::new());
+        assert_eq!(prog.finish(), 1);
+    }
+
+    #[test]
+    fn test_finish_twice() {
+        let mut prog = run::Process::new("false", [], run::ProcessOptions::new());
+        assert_eq!(prog.finish(), 1);
+        assert_eq!(prog.finish(), 1);
+    }
+
+    #[test]
+    fn test_finish_with_output_once() {
+
+        let mut prog = run::Process::new("echo", [~"hello"], run::ProcessOptions::new());
+        let run::ProcessOutput {status, output, error}
+            = prog.finish_with_output();
+        let output_str = str::from_bytes(output);
+
+        assert_eq!(status, 0);
+        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        assert_eq!(error, ~[]);
+    }
+
+    #[test]
+    fn test_finish_with_output_twice() {
+
+        let mut prog = run::Process::new("echo", [~"hello"], run::ProcessOptions::new());
+        let run::ProcessOutput {status, output, error}
+            = prog.finish_with_output();
+
+        let output_str = str::from_bytes(output);
+
+        assert_eq!(status, 0);
+        assert_eq!(output_str.trim().to_owned(), ~"hello");
+        assert_eq!(error, ~[]);
+
+        let run::ProcessOutput {status, output, error}
+            = prog.finish_with_output();
+
+        assert_eq!(status, 0);
+        assert_eq!(output, ~[]);
+        assert_eq!(error, ~[]);
     }
 
     #[test]
     #[should_fail]
-    #[ignore(cfg(windows))]
-    fn waitpid_non_existant_pid() {
-        run::waitpid(123456789); // assume that this pid doesn't exist
+    #[cfg(not(windows))]
+    fn test_finish_with_output_redirected() {
+        let mut prog = run::Process::new("echo", [~"hello"], run::ProcessOptions {
+            env: None,
+            dir: None,
+            in_fd: Some(0),
+            out_fd: Some(1),
+            err_fd: Some(2)
+        });
+        // this should fail because it is not valid to read the output when it was redirected
+        prog.finish_with_output();
+    }
+
+    #[cfg(unix)]
+    fn run_pwd(dir: Option<&Path>) -> run::Process {
+        run::Process::new("pwd", [], run::ProcessOptions {
+            dir: dir,
+            .. run::ProcessOptions::new()
+        })
+    }
+
+    #[cfg(windows)]
+    fn run_pwd(dir: Option<&Path>) -> run::Process {
+        run::Process::new("cmd", [~"/c", ~"cd"], run::ProcessOptions {
+            dir: dir,
+            .. run::ProcessOptions::new()
+        })
+    }
+
+    #[test]
+    fn test_keep_current_working_dir() {
+
+        let mut prog = run_pwd(None);
+
+        let output = str::from_bytes(prog.finish_with_output().output);
+        let parent_dir = os::getcwd().normalize();
+        let child_dir = Path(output.trim()).normalize();
+
+        assert_eq!(child_dir.to_str(), parent_dir.to_str());
+    }
+
+    #[test]
+    fn test_change_working_directory() {
+
+        // test changing to the parent of os::getcwd() because we know
+        // the path exists (and os::getcwd() is not expected to be root)
+        let parent_path = os::getcwd().dir_path().normalize();
+        let mut prog = run_pwd(Some(&parent_path));
+
+        let output = str::from_bytes(prog.finish_with_output().output);
+        let child_dir = Path(output.trim()).normalize();
+
+        assert_eq!(child_dir.to_str(), parent_path.to_str());
+    }
+
+    #[cfg(unix)]
+    fn run_env(env: Option<&[(~str, ~str)]>) -> run::Process {
+        run::Process::new("env", [], run::ProcessOptions {
+            env: env,
+            .. run::ProcessOptions::new()
+        })
+    }
+
+    #[cfg(windows)]
+    fn run_env(env: Option<&[(~str, ~str)]>) -> run::Process {
+        run::Process::new("cmd", [~"/c", ~"set"], run::ProcessOptions {
+            env: env,
+            .. run::ProcessOptions::new()
+        })
+    }
+
+    #[test]
+    fn test_inherit_env() {
+
+        let mut prog = run_env(None);
+        let output = str::from_bytes(prog.finish_with_output().output);
+
+        for os::env().each |&(k, v)| {
+            // don't check windows magical empty-named variables
+            assert!(k.is_empty() || output.contains(fmt!("%s=%s", k, v)));
+        }
+    }
+
+    #[test]
+    fn test_add_to_env() {
+
+        let mut new_env = os::env();
+        new_env.push((~"RUN_TEST_NEW_ENV", ~"123"));
+
+        let mut prog = run_env(Some(new_env.slice(0, new_env.len())));
+        let output = str::from_bytes(prog.finish_with_output().output);
+
+        assert!(output.contains("RUN_TEST_NEW_ENV=123"));
     }
 }

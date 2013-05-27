@@ -23,6 +23,6 @@ pub fn main() {
     file.write_str("pub fn wheeeee() { for [1, 2, 3].each() |_| { assert!(true); } }");
 
     // now compile the crate itself
-    run::run_program("rustc", ~[~"src/fancy-lib/fancy-lib.rs", ~"--lib",
-                                ~"-o", out_path.push(~"fancy_lib").to_str()]);
+    run::process_status("rustc", [~"src/fancy-lib/fancy-lib.rs", ~"--lib", ~"-o",
+                        out_path.push(~"fancy_lib").to_str()]);
 }
