@@ -16,14 +16,14 @@ An internal iterator takes `fn(...) -> bool` as a parameter, with returning `fal
 breaking out of iteration. The adaptors in the module work with any such iterator, not just ones
 tied to specific traits. For example:
 
-~~~~
+~~~ {.rust}
 println(iter::to_vec(|f| uint::range(0, 20, f)).to_str());
-~~~~
+~~~
 
 An external iterator object implementing the interface in the `iterator` module can be used as an
 internal iterator by calling the `advance` method. For example:
 
-~~~~
+~~~ {.rust}
 use core::iterator::*;
 
 let xs = [0u, 1, 2, 3, 4, 5];
@@ -32,7 +32,7 @@ let mut it = xs.iter().chain(ys.iter());
 for it.advance |&x: &uint| {
     println(x.to_str());
 }
-~~~~
+~~~
 
 Internal iterators provide a subset of the functionality of an external iterator. It's not possible
 to interleave them to implement algorithms like `zip`, `union` and `merge`. However, they're often
@@ -55,7 +55,7 @@ pub trait Times {
  *
  * # Example:
  *
- * ~~~
+ * ~~~ {.rust}
  * let xs = ~[1, 2, 3];
  * let ys = do iter::to_vec |f| { xs.each(|x| f(*x)) };
  * assert_eq!(xs, ys);
@@ -73,11 +73,11 @@ pub fn to_vec<T>(iter: &fn(f: &fn(T) -> bool) -> bool) -> ~[T] {
  *
  * Example:
  *
- * ~~~~
+ * ~~~ {.rust}
  * let xs = ~[1u, 2, 3, 4, 5];
  * assert!(any(|&x: &uint| x > 2, |f| xs.each(f)));
  * assert!(!any(|&x: &uint| x > 5, |f| xs.each(f)));
- * ~~~~
+ * ~~~
  */
 #[inline(always)]
 pub fn any<T>(predicate: &fn(T) -> bool,
@@ -95,10 +95,10 @@ pub fn any<T>(predicate: &fn(T) -> bool,
  *
  * # Example:
  *
- * ~~~~
+ * ~~~ {.rust}
  * assert!(all(|&x: &uint| x < 6, |f| uint::range(1, 6, f)));
  * assert!(!all(|&x: &uint| x < 5, |f| uint::range(1, 6, f)));
- * ~~~~
+ * ~~~
  */
 #[inline(always)]
 pub fn all<T>(predicate: &fn(T) -> bool,
@@ -113,10 +113,10 @@ pub fn all<T>(predicate: &fn(T) -> bool,
  *
  * # Example:
  *
- * ~~~~
+ * ~~~ {.rust}
  * let xs = ~[1u, 2, 3, 4, 5, 6];
  * assert_eq!(*find(|& &x: & &uint| x > 3, |f| xs.each(f)).unwrap(), 4);
- * ~~~~
+ * ~~~
  */
 #[inline(always)]
 pub fn find<T>(predicate: &fn(&T) -> bool,
@@ -134,10 +134,10 @@ pub fn find<T>(predicate: &fn(&T) -> bool,
  *
  * # Example:
  *
- * ~~~~
+ * ~~~ {.rust}
  * let xs = ~[8, 2, 3, 1, -5, 9, 11, 15];
  * assert_eq!(max(|f| xs.each(f)).unwrap(), &15);
- * ~~~~
+ * ~~~
  */
 #[inline]
 pub fn max<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
@@ -160,10 +160,10 @@ pub fn max<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
  *
  * # Example:
  *
- * ~~~~
+ * ~~~ {.rust}
  * let xs = ~[8, 2, 3, 1, -5, 9, 11, 15];
  * assert_eq!(max(|f| xs.each(f)).unwrap(), &-5);
- * ~~~~
+ * ~~~
  */
 #[inline]
 pub fn min<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
@@ -186,9 +186,9 @@ pub fn min<T: Ord>(iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
  *
  * # Example:
  *
- * ~~~~
+ * ~~~ {.rust}
  * assert_eq!(fold(0i, |f| int::range(1, 5, f), |a, x| *a += x), 10);
- * ~~~~
+ * ~~~
  */
 #[inline]
 pub fn fold<T, U>(start: T, iter: &fn(f: &fn(U) -> bool) -> bool, f: &fn(&mut T, U)) -> T {
@@ -207,11 +207,11 @@ pub fn fold<T, U>(start: T, iter: &fn(f: &fn(U) -> bool) -> bool, f: &fn(&mut T,
  *
  * # Example:
  *
- * ~~~~
+ * ~~~ {.rust}
  * fn product<T: One + Mul<T, T>>(iter: &fn(f: &fn(&T) -> bool) -> bool) -> T {
  *     fold_ref(One::one::<T>(), iter, |a, x| *a = a.mul(x))
  * }
- * ~~~~
+ * ~~~
  */
 #[inline]
 pub fn fold_ref<T, U>(start: T, iter: &fn(f: &fn(&U) -> bool) -> bool, f: &fn(&mut T, &U)) -> T {
@@ -227,10 +227,10 @@ pub fn fold_ref<T, U>(start: T, iter: &fn(f: &fn(&U) -> bool) -> bool, f: &fn(&m
  *
  * # Example:
  *
- * ~~~~
+ * ~~~ {.rust}
  * let xs: ~[int] = ~[1, 2, 3, 4];
  * assert_eq!(do sum |f| { xs.each(f) }, 10);
- * ~~~~
+ * ~~~
  */
 #[inline(always)]
 pub fn sum<T: Zero + Add<T, T>>(iter: &fn(f: &fn(&T) -> bool) -> bool) -> T {
@@ -242,10 +242,10 @@ pub fn sum<T: Zero + Add<T, T>>(iter: &fn(f: &fn(&T) -> bool) -> bool) -> T {
  *
  * # Example:
  *
- * ~~~~
+ * ~~~ {.rust}
  * let xs: ~[int] = ~[1, 2, 3, 4];
  * assert_eq!(do product |f| { xs.each(f) }, 24);
- * ~~~~
+ * ~~~
  */
 #[inline(always)]
 pub fn product<T: One + Mul<T, T>>(iter: &fn(f: &fn(&T) -> bool) -> bool) -> T {

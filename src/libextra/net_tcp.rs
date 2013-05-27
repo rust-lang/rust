@@ -466,7 +466,7 @@ fn read_future(sock: &TcpSocket, timeout_msecs: uint)
  * Here, the `new_conn` is used in conjunction with `accept` from within
  * a task spawned by the `new_connect_cb` passed into `listen`
  *
- * ~~~~~~~~~~~
+ * ~~~ {.rust}
  * do net::tcp::listen(remote_ip, remote_port, backlog, iotask,
  *     // this callback is ran once after the connection is successfully
  *     // set up
@@ -497,7 +497,7 @@ fn read_future(sock: &TcpSocket, timeout_msecs: uint)
  *       None => ()
  *     }
  * };
- * ~~~~~~~~~~~
+ * ~~~
  *
  * # Arguments
  *
