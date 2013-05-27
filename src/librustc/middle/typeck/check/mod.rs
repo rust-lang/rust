@@ -3538,14 +3538,14 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
           (0u, ~[], ty::mk_nil_ptr(ccx.tcx))
         }
         ~"memcpy32" => {
-          (0,
+          (1,
            ~[
               ty::mk_ptr(tcx, ty::mt {
-                  ty: ty::mk_u8(),
+                  ty: param(ccx, 0),
                   mutbl: ast::m_mutbl
               }),
               ty::mk_ptr(tcx, ty::mt {
-                  ty: ty::mk_u8(),
+                  ty: param(ccx, 0),
                   mutbl: ast::m_imm
               }),
               ty::mk_u32()
@@ -3553,14 +3553,14 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
            ty::mk_nil())
         }
         ~"memcpy64" => {
-          (0,
+          (1,
            ~[
               ty::mk_ptr(tcx, ty::mt {
-                  ty: ty::mk_u8(),
+                  ty: param(ccx, 0),
                   mutbl: ast::m_mutbl
               }),
               ty::mk_ptr(tcx, ty::mt {
-                  ty: ty::mk_u8(),
+                  ty: param(ccx, 0),
                   mutbl: ast::m_imm
               }),
               ty::mk_u64()
@@ -3568,14 +3568,14 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
            ty::mk_nil())
         }
         ~"memmove32" => {
-          (0,
+          (1,
            ~[
               ty::mk_ptr(tcx, ty::mt {
-                  ty: ty::mk_u8(),
+                  ty: param(ccx, 0),
                   mutbl: ast::m_mutbl
               }),
               ty::mk_ptr(tcx, ty::mt {
-                  ty: ty::mk_u8(),
+                  ty: param(ccx, 0),
                   mutbl: ast::m_imm
               }),
               ty::mk_u32()
@@ -3583,16 +3583,40 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
            ty::mk_nil())
         }
         ~"memmove64" => {
-          (0,
+          (1,
            ~[
               ty::mk_ptr(tcx, ty::mt {
-                  ty: ty::mk_u8(),
+                  ty: param(ccx, 0),
                   mutbl: ast::m_mutbl
               }),
               ty::mk_ptr(tcx, ty::mt {
-                  ty: ty::mk_u8(),
+                  ty: param(ccx, 0),
                   mutbl: ast::m_imm
               }),
+              ty::mk_u64()
+           ],
+           ty::mk_nil())
+        }
+        ~"memset32" => {
+          (1,
+           ~[
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: param(ccx, 0),
+                  mutbl: ast::m_mutbl
+              }),
+              ty::mk_u8(),
+              ty::mk_u32()
+           ],
+           ty::mk_nil())
+        }
+        ~"memset64" => {
+          (1,
+           ~[
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: param(ccx, 0),
+                  mutbl: ast::m_mutbl
+              }),
+              ty::mk_u8(),
               ty::mk_u64()
            ],
            ty::mk_nil())
