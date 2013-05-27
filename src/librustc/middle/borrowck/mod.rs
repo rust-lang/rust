@@ -315,6 +315,7 @@ pub struct Restriction {
     set: RestrictionSet
 }
 
+#[deriving(Eq)]
 pub struct RestrictionSet {
     bits: u32
 }

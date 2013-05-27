@@ -657,12 +657,12 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
             let move_err = this.analyze_move_out_from_cmt(cmt);
             match move_err {
                 MoveOk => {}
-                MoveWhileBorrowed(loan_path, loan_span) => {
+                MoveWhileBorrowed(move_path, loan_path, loan_span) => {
                     this.bccx.span_err(
                         cap_var.span,
                         fmt!("cannot move `%s` into closure \
                               because it is borrowed",
-                             this.bccx.loan_path_to_str(loan_path)));
+                             this.bccx.loan_path_to_str(move_path)));
                     this.bccx.span_note(
                         loan_span,
                         fmt!("borrow of `%s` occurs here",
