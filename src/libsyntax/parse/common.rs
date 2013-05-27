@@ -194,9 +194,9 @@ pub impl Parser {
         } else {
             let mut s: ~str = ~"expected `";
             s += self.token_to_str(&token::GT);
-            s += ~"`, found `";
+            s += "`, found `";
             s += self.this_token_to_str();
-            s += ~"`";
+            s += "`";
             self.fatal(s);
         }
     }

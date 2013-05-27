@@ -1984,7 +1984,7 @@ pub fn trans_enum_variant(ccx: @CrateContext,
 
     debug!("trans_enum_variant: name=%s tps=%s repr=%? enum_ty=%s",
            unsafe { str::raw::from_c_str(llvm::LLVMGetValueName(llfndecl)) },
-           ~"[" + str::connect(ty_param_substs.map(|&t| ty_to_str(ccx.tcx, t)), ", ") + ~"]",
+           ~"[" + str::connect(ty_param_substs.map(|&t| ty_to_str(ccx.tcx, t)), ", ") + "]",
            repr, ty_to_str(ccx.tcx, enum_ty));
 
     adt::trans_start_init(bcx, repr, fcx.llretptr.get(), disr);
@@ -2901,7 +2901,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     let cstore = sess.cstore;
     while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
     let mapname = if *sess.building_library {
-        mapmeta.name.to_owned() + ~"_" + mapmeta.vers.to_owned() + ~"_"
+        mapmeta.name.to_owned() + "_" + mapmeta.vers.to_owned() + "_"
             + mapmeta.extras_hash.to_owned()
     } else {
         ~"toplevel"
@@ -2925,8 +2925,8 @@ pub fn fill_crate_map(ccx: @CrateContext, map: ValueRef) {
     while cstore::have_crate_data(cstore, i) {
         let cdata = cstore::get_crate_data(cstore, i);
         let nm = ~"_rust_crate_map_" + *cdata.name +
-            ~"_" + *cstore::get_crate_vers(cstore, i) +
-            ~"_" + *cstore::get_crate_hash(cstore, i);
+            "_" + *cstore::get_crate_vers(cstore, i) +
+            "_" + *cstore::get_crate_hash(cstore, i);
         let cr = str::as_c_str(nm, |buf| {
             unsafe {
                 llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
@@ -3035,7 +3035,7 @@ pub fn trans_crate(sess: session::Session,
     // crashes if the module identifer is same as other symbols
     // such as a function name in the module.
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-    let llmod_id = link_meta.name.to_owned() + ~".rc";
+    let llmod_id = link_meta.name.to_owned() + ".rc";
 
     unsafe {
         let llmod = str::as_c_str(llmod_id, |buf| {

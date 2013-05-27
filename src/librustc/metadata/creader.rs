@@ -170,8 +170,8 @@ fn visit_item(e: @mut Env, i: @ast::item) {
                             if *nn == ~"" {
                                 e.diag.span_fatal(
                                     i.span,
-                                    ~"empty #[link_name] not allowed; use " +
-                                    ~"#[nolink].");
+                                    "empty #[link_name] not allowed; use \
+                                     #[nolink].");
                             }
                             nn
                         }
@@ -183,7 +183,7 @@ fn visit_item(e: @mut Env, i: @ast::item) {
                 }
                 if !link_args.is_empty() && already_added {
                     e.diag.span_fatal(i.span, ~"library '" + *foreign_name +
-                               ~"' already added: can't specify link_args.");
+                               "' already added: can't specify link_args.");
                 }
             }
             ast::anonymous => { /* do nothing */ }

@@ -47,18 +47,18 @@ fn escape_str(s: &str) -> ~str {
     let mut escaped = ~"\"";
     for str::each_char(s) |c| {
         match c {
-          '"' => escaped += ~"\\\"",
-          '\\' => escaped += ~"\\\\",
-          '\x08' => escaped += ~"\\b",
-          '\x0c' => escaped += ~"\\f",
-          '\n' => escaped += ~"\\n",
-          '\r' => escaped += ~"\\r",
-          '\t' => escaped += ~"\\t",
+          '"' => escaped += "\\\"",
+          '\\' => escaped += "\\\\",
+          '\x08' => escaped += "\\b",
+          '\x0c' => escaped += "\\f",
+          '\n' => escaped += "\\n",
+          '\r' => escaped += "\\r",
+          '\t' => escaped += "\\t",
           _ => escaped += str::from_char(c)
         }
     };
 
-    escaped += ~"\"";
+    escaped += "\"";
 
     escaped
 }

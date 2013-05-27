@@ -138,7 +138,7 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
       OROR => ~"||",
       ANDAND => ~"&&",
       BINOP(op) => binop_to_str(op),
-      BINOPEQ(op) => binop_to_str(op) + ~"=",
+      BINOPEQ(op) => binop_to_str(op) + "=",
 
       /* Structural symbols */
       AT => ~"@",
@@ -163,7 +163,7 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
 
       /* Literals */
       LIT_INT(c, ast::ty_char) => {
-        ~"'" + char::escape_default(c as char) + ~"'"
+        ~"'" + char::escape_default(c as char) + "'"
       }
       LIT_INT(i, t) => {
           i.to_str() + ast_util::int_ty_to_str(t)
@@ -175,18 +175,18 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
       LIT_FLOAT(s, t) => {
         let mut body = copy *in.get(s);
         if body.ends_with(".") {
-            body = body + ~"0";  // `10.f` is not a float literal
+            body += "0";  // `10.f` is not a float literal
         }
         body + ast_util::float_ty_to_str(t)
       }
       LIT_FLOAT_UNSUFFIXED(s) => {
         let mut body = copy *in.get(s);
         if body.ends_with(".") {
-            body = body + ~"0";  // `10.f` is not a float literal
+            body += "0";  // `10.f` is not a float literal
         }
         body
       }
-      LIT_STR(s) => { ~"\"" + str::escape_default(*in.get(s)) + ~"\"" }
+      LIT_STR(s) => { ~"\"" + str::escape_default(*in.get(s)) + "\"" }
 
       /* Name components */
       IDENT(s, _) => copy *in.get(s),
