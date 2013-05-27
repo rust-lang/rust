@@ -66,7 +66,7 @@ impl gen_send for message {
 
             let mut body = ~"{\n";
             body += fmt!("use super::%s;\n", name);
-            body += ~"let mut pipe = pipe;\n";
+            body += "let mut pipe = pipe;\n";
 
             if this.proto.is_bounded() {
                 let (sp, rp) = match (this.dir, next.dir) {
@@ -76,7 +76,7 @@ impl gen_send for message {
                   (recv, recv) => (~"c", ~"s")
                 };
 
-                body += ~"let mut b = pipe.reuse_buffer();\n";
+                body += "let mut b = pipe.reuse_buffer();\n";
                 body += fmt!("let %s = ::std::pipes::SendPacketBuffered(\
                               &mut (b.buffer.data.%s));\n",
                              sp, next.name);
@@ -103,7 +103,7 @@ impl gen_send for message {
             if !try {
                 body += fmt!("::std::pipes::send(pipe, message);\n");
                 // return the new channel
-                body += ~"c }";
+                body += "c }";
             }
             else {
                 body += fmt!("if ::std::pipes::send(pipe, message) {\n \
@@ -152,7 +152,7 @@ impl gen_send for message {
                 }
                 else {
                     ~"(" + str::connect(arg_names.map(|x| copy *x),
-                                        ", ") + ~")"
+                                        ", ") + ")"
                 };
 
                 let mut body = ~"{ ";
@@ -161,7 +161,7 @@ impl gen_send for message {
 
                 if !try {
                     body += fmt!("::std::pipes::send(pipe, message);\n");
-                    body += ~" }";
+                    body += " }";
                 } else {
                     body += fmt!("if ::std::pipes::send(pipe, message) \
                                         { \

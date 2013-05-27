@@ -171,7 +171,7 @@ pub fn check_exhaustive(cx: @MatchCheckCtxt, sp: span, pats: ~[@pat]) {
         }
     };
     let msg = ~"non-exhaustive patterns" + match ext {
-        Some(ref s) => ~": " + **s + ~" not covered",
+        Some(ref s) => ~": " + **s + " not covered",
         None => ~""
     };
     cx.tcx.sess.span_err(sp, msg);

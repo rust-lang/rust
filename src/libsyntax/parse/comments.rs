@@ -235,7 +235,7 @@ fn read_block_comment(rdr: @mut StringReader,
             bump(rdr);
         }
         if !is_eof(rdr) {
-            curr_line += ~"*/";
+            curr_line += "*/";
             bump(rdr);
             bump(rdr);
         }
@@ -259,13 +259,13 @@ fn read_block_comment(rdr: @mut StringReader,
                 if rdr.curr == '/' && nextch(rdr) == '*' {
                     bump(rdr);
                     bump(rdr);
-                    curr_line += ~"*";
+                    curr_line += "*";
                     level += 1;
                 } else {
                     if rdr.curr == '*' && nextch(rdr) == '/' {
                         bump(rdr);
                         bump(rdr);
-                        curr_line += ~"/";
+                        curr_line += "/";
                         level -= 1;
                     } else { bump(rdr); }
                 }

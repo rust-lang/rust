@@ -256,7 +256,7 @@ pub fn require_same_types(
     match infer::mk_eqty(l_infcx, t1_is_expected, span, t1, t2) {
         result::Ok(()) => true,
         result::Err(ref terr) => {
-            l_tcx.sess.span_err(span, msg() + ~": " +
+            l_tcx.sess.span_err(span, msg() + ": " +
                                 ty::type_err_to_str(l_tcx, terr));
             ty::note_and_explain_type_err(l_tcx, terr);
             false
@@ -323,7 +323,7 @@ fn check_main_fn_ty(ccx: @mut CrateCtxt,
         _ => {
             tcx.sess.span_bug(main_span,
                               ~"main has a non-function type: found `" +
-                              ppaux::ty_to_str(tcx, main_t) + ~"`");
+                              ppaux::ty_to_str(tcx, main_t) + "`");
         }
     }
 }
@@ -372,7 +372,7 @@ fn check_start_fn_ty(ccx: @mut CrateCtxt,
         _ => {
             tcx.sess.span_bug(start_span,
                               ~"start has a non-function type: found `" +
-                              ppaux::ty_to_str(tcx, start_t) + ~"`");
+                              ppaux::ty_to_str(tcx, start_t) + "`");
         }
     }
 }

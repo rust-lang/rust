@@ -528,7 +528,7 @@ pub fn _each_path(intr: @ident_interner,
                     if path_is_empty {
                         reexport_path = reexport_name;
                     } else {
-                        reexport_path = path + ~"::" + reexport_name;
+                        reexport_path = path + "::" + reexport_name;
                     }
 
                     // This reexport may be in yet another crate

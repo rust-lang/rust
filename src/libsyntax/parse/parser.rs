@@ -3584,7 +3584,7 @@ pub impl Parser {
         let prefix = prefix.dir_path();
         let mod_path_stack = &*self.mod_path_stack;
         let mod_path = Path(".").push_many(*mod_path_stack);
-        let default_path = *self.sess.interner.get(id) + ~".rs";
+        let default_path = *self.sess.interner.get(id) + ".rs";
         let file_path = match ::attr::first_attr_value_str_by_name(
             outer_attrs, "path") {
             Some(d) => {
@@ -4213,8 +4213,8 @@ pub impl Parser {
         // FAILURE TO PARSE ITEM
         if visibility != inherited {
             let mut s = ~"unmatched visibility `";
-            s += if visibility == public { ~"pub" } else { ~"priv" };
-            s += ~"`";
+            s += if visibility == public { "pub" } else { "priv" };
+            s += "`";
             self.span_fatal(*self.last_span, s);
         }
         return iovi_none;

@@ -1711,9 +1711,9 @@ pub fn read_whole_file_str(file: &Path) -> Result<~str, ~str> {
     result::chain(read_whole_file(file), |bytes| {
         if str::is_utf8(bytes) {
             result::Ok(str::from_bytes(bytes))
-       } else {
-           result::Err(file.to_str() + ~" is not UTF-8")
-       }
+        } else {
+            result::Err(file.to_str() + " is not UTF-8")
+        }
     })
 }
 

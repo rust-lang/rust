@@ -90,7 +90,7 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     let mut clobbers = getClobbers();
     if *ia.clobbers != ~"" && clobbers != ~"" {
-        clobbers = *ia.clobbers + ~"," + clobbers;
+        clobbers = *ia.clobbers + "," + clobbers;
     } else {
         clobbers += *ia.clobbers;
     };

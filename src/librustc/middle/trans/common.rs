@@ -356,7 +356,7 @@ pub type fn_ctxt = @mut fn_ctxt_;
 pub fn warn_not_to_commit(ccx: @CrateContext, msg: &str) {
     if !*ccx.do_not_commit_warning_issued {
         *ccx.do_not_commit_warning_issued = true;
-        ccx.sess.warn(msg.to_str() + ~" -- do not commit like this!");
+        ccx.sess.warn(msg.to_str() + " -- do not commit like this!");
     }
 }
 
@@ -1420,7 +1420,7 @@ pub fn path_str(sess: session::Session, p: &[path_elt]) -> ~str {
         match *e {
             ast_map::path_name(s) | ast_map::path_mod(s) => {
                 if first { first = false; }
-                else { r += ~"::"; }
+                else { r += "::"; }
                 r += *sess.str_of(s);
             }
         }
