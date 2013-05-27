@@ -109,7 +109,7 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
 #[cfg(target_word_size = "32", not(stage0))]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     use unstable::intrinsics::memmove32;
-    memmove32(dst, src, count as u32);
+    memmove32(dst, src as *T, count as u32);
 }
 
 #[inline(always)]
