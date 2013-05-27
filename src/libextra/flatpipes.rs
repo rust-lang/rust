@@ -927,7 +927,7 @@ mod test {
         fn test_try_recv_none3<P:BytePort>(loader: PortLoader<P>) {
             static CONTINUE: [u8, ..4] = [0xAA, 0xBB, 0xCC, 0xDD];
             // The control word is followed by garbage
-            let bytes = CONTINUE.to_vec() + ~[0];
+            let bytes = CONTINUE.to_vec() + [0];
             let port = loader(bytes);
             let res: Option<int> = port.try_recv();
             assert!(res.is_none());
@@ -951,7 +951,7 @@ mod test {
                     1, sys::size_of::<u64>()) |len_bytes| {
                     len_bytes.to_vec()
                 };
-                let bytes = CONTINUE.to_vec() + len_bytes + ~[0, 0, 0, 0];
+                let bytes = CONTINUE.to_vec() + len_bytes + [0, 0, 0, 0];
 
                 let port = loader(bytes);
 

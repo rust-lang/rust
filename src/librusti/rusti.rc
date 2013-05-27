@@ -272,11 +272,11 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
         ~"help" => {
             io::println(
                 ~":{\\n ..lines.. \\n:}\\n - execute multiline command\n" +
-                ~":load <crate> ... - \
+                ":load <crate> ... - \
                   loads given crates as dynamic libraries\n" +
-                ~":clear - clear the bindings\n" +
-                ~":exit - exit from the repl\n" +
-                ~":help - show this message");
+                ":clear - clear the bindings\n" +
+                ":exit - exit from the repl\n" +
+                ":help - show this message");
         }
         ~"load" => {
             let mut loaded_crates: ~[~str] = ~[];
@@ -317,10 +317,10 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 match get_line(use_rl, "rusti| ") {
                     None => fail!("unterminated multiline command :{ .. :}"),
                     Some(line) => {
-                        if str::trim(line) == ~":}" {
+                        if str::trim(line) == ":}" {
                             end_multiline = true;
                         } else {
-                            multiline_cmd += line + ~"\n";
+                            multiline_cmd += line + "\n";
                         }
                     }
                 }

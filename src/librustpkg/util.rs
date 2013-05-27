@@ -536,15 +536,15 @@ mod test {
 
     #[test]
     fn test_is_cmd() {
-        assert!(is_cmd(~"build"));
-        assert!(is_cmd(~"clean"));
-        assert!(is_cmd(~"do"));
-        assert!(is_cmd(~"info"));
-        assert!(is_cmd(~"install"));
-        assert!(is_cmd(~"prefer"));
-        assert!(is_cmd(~"test"));
-        assert!(is_cmd(~"uninstall"));
-        assert!(is_cmd(~"unprefer"));
+        assert!(is_cmd("build"));
+        assert!(is_cmd("clean"));
+        assert!(is_cmd("do"));
+        assert!(is_cmd("info"));
+        assert!(is_cmd("install"));
+        assert!(is_cmd("prefer"));
+        assert!(is_cmd("test"));
+        assert!(is_cmd("uninstall"));
+        assert!(is_cmd("unprefer"));
     }
 
 }

@@ -720,7 +720,6 @@ mod tests {
 
     use core::cast;
     use core::cell::Cell;
-    use core::ptr;
     use core::result;
     use core::task;
     use core::vec;

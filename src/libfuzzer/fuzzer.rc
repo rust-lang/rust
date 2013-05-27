@@ -139,7 +139,7 @@ pub fn stash_expr_if(c: @fn(@ast::expr, test_mode)->bool,
                      e: @ast::expr,
                      tm: test_mode) {
     if c(e, tm) {
-        *es = *es + ~[e];
+        *es = *es + [e];
     } else {
         /* now my indices are wrong :( */
     }
@@ -425,7 +425,7 @@ pub fn check_running(exe_filename: &Path) -> happiness {
     let p = run::process_output(
         "/Users/jruderman/scripts/timed_run_rust_program.py",
         [exe_filename.to_str()]);
-    let comb = str::from_bytes(p.output) + ~"\n" + str::from_bytes(p.error);
+    let comb = str::from_bytes(p.output) + "\n" + str::from_bytes(p.error);
     if str::len(comb) > 1u {
         error!("comb comb comb: %?", comb);
     }
