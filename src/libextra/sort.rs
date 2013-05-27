@@ -746,8 +746,6 @@ fn shift_vec<T:Copy>(dest: &mut [T],
 
 #[cfg(test)]
 mod test_qsort3 {
-    use core::prelude::*;
-
     use sort::*;
 
     use core::vec;

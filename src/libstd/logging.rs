@@ -12,10 +12,7 @@
 
 use option::*;
 use either::*;
-use rt;
 use rt::logging::{Logger, StdErrLogger};
-use cast;
-use str;
 
 /// Turns on logging to stdout globally
 pub fn console_on() {
@@ -40,10 +37,13 @@ pub fn console_off() {
 #[cfg(not(test))]
 #[lang="log_type"]
 pub fn log_type<T>(level: u32, object: &T) {
+    use cast;
     use container::Container;
     use io;
     use libc;
     use repr;
+    use rt;
+    use str;
     use vec;
 
     let bytes = do io::with_bytes_writer |writer| {

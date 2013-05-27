@@ -48,7 +48,7 @@ fn test_run_passes() {
                 doc::CratePage(doc::CrateDoc{
                     topmod: doc::ModDoc{
                         item: doc::ItemDoc {
-                            name: doc.cratemod().name() + ~"two",
+                            name: doc.cratemod().name() + "two",
                             .. copy doc.cratemod().item
                         },
                         items: ~[],
@@ -67,7 +67,7 @@ fn test_run_passes() {
                 doc::CratePage(doc::CrateDoc{
                     topmod: doc::ModDoc{
                         item: doc::ItemDoc {
-                            name: doc.cratemod().name() + ~"three",
+                            name: doc.cratemod().name() + "three",
                             .. copy doc.cratemod().item
                         },
                         items: ~[],

@@ -113,7 +113,7 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
         match parse_header(copy *line) {
           Some(header) => {
             if current_section.is_some() {
-                sections += ~[(&current_section).get()];
+                sections += [(&current_section).get()];
             }
             current_section = Some(doc::Section {
                 header: header,
@@ -124,14 +124,14 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
             match copy current_section {
               Some(section) => {
                 current_section = Some(doc::Section {
-                    body: section.body + ~"\n" + *line,
+                    body: section.body + "\n" + *line,
                     .. section
                 });
               }
               None => {
                 new_desc = match copy new_desc {
                   Some(desc) => {
-                    Some(desc + ~"\n" + *line)
+                    Some(desc + "\n" + *line)
                   }
                   None => {
                     Some(copy *line)
@@ -144,7 +144,7 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
     }
 
     if current_section.is_some() {
-        sections += ~[current_section.get()];
+        sections += [current_section.get()];
     }
 
     (new_desc, sections)

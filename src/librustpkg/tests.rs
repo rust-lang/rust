@@ -40,7 +40,7 @@ fn fake_pkg() -> PkgId {
 }
 
 fn remote_pkg() -> PkgId {
-    let remote = RemotePath(Path(~"github.com/catamorphism/test-pkg"));
+    let remote = RemotePath(Path("github.com/catamorphism/test-pkg"));
     PkgId {
         local_path: normalize(copy remote),
         remote_path: remote,
@@ -52,23 +52,23 @@ fn remote_pkg() -> PkgId {
 fn writeFile(file_path: &Path, contents: ~str) {
     let out: @io::Writer =
         result::get(&io::file_writer(file_path,
-                                     ~[io::Create, io::Truncate]));
+                                     [io::Create, io::Truncate]));
     out.write_line(contents);
 }
 
 fn mk_temp_workspace(short_name: &LocalPath) -> Path {
     let workspace = mkdtemp(&os::tmpdir(), "test").expect("couldn't create temp dir");
     // include version number in directory name
-    let package_dir = workspace.push(~"src").push(fmt!("%s-0.1", short_name.to_str()));
+    let package_dir = workspace.push("src").push(fmt!("%s-0.1", short_name.to_str()));
     assert!(os::mkdir_recursive(&package_dir, u_rwx));
     // Create main, lib, test, and bench files
-    writeFile(&package_dir.push(~"main.rs"),
+    writeFile(&package_dir.push("main.rs"),
               ~"fn main() { let _x = (); }");
-    writeFile(&package_dir.push(~"lib.rs"),
+    writeFile(&package_dir.push("lib.rs"),
               ~"pub fn f() { let _x = (); }");
-    writeFile(&package_dir.push(~"test.rs"),
+    writeFile(&package_dir.push("test.rs"),
               ~"#[test] pub fn f() { (); }");
-    writeFile(&package_dir.push(~"bench.rs"),
+    writeFile(&package_dir.push("bench.rs"),
               ~"#[bench] pub fn f() { (); }");
     workspace
 }
@@ -98,7 +98,7 @@ fn test_sysroot() -> Path {
 #[ignore(cfg(target_arch = "x86"))]
 fn test_make_dir_rwx() {
     let temp = &os::tmpdir();
-    let dir = temp.push(~"quux");
+    let dir = temp.push("quux");
     assert!(!os::path_exists(&dir) ||
             os::remove_dir_recursive(&dir));
     debug!("Trying to make %s", dir.to_str());
@@ -176,10 +176,10 @@ fn test_install_url() {
     debug!("lib = %s", lib.to_str());
     assert!(os::path_exists(&lib));
     assert!(is_rwx(&lib));
-    let built_test = built_test_in_workspace(&temp_pkg_id, &workspace).expect(~"test_install_url");
+    let built_test = built_test_in_workspace(&temp_pkg_id, &workspace).expect("test_install_url");
     assert!(os::path_exists(&built_test));
     let built_bench = built_bench_in_workspace(&temp_pkg_id,
-                                               &workspace).expect(~"test_install_url");
+                                               &workspace).expect("test_install_url");
     assert!(os::path_exists(&built_bench));
     // And that the test and bench executables aren't installed
     let test = target_test_in_workspace(&temp_pkg_id, &workspace);

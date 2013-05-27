@@ -69,7 +69,7 @@ fn make_doc_from_pages(page_port: &PagePort) -> doc::Doc {
     loop {
         let val = page_port.recv();
         if val.is_some() {
-            pages += ~[val.unwrap()];
+            pages += [val.unwrap()];
         } else {
             break;
         }

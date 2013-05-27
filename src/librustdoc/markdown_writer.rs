@@ -38,7 +38,7 @@ impl WriterUtils for Writer {
     }
 
     fn put_line(&self, str: ~str) {
-        self.put_str(str + ~"\n");
+        self.put_str(str + "\n");
     }
 
     fn put_done(&self) {
@@ -159,7 +159,7 @@ pub fn make_filename(
             }
           }
           doc::ItemPage(doc) => {
-            str::connect(doc.path() + ~[doc.name()], "_")
+            str::connect(doc.path() + [doc.name()], "_")
           }
         }
     };

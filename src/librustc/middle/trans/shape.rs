@@ -66,7 +66,7 @@ Although these two functions are never called, they are here
 for a VERY GOOD REASON. See #3670
 */
 pub fn add_u16(dest: &mut ~[u8], val: u16) {
-    *dest += ~[(val & 0xffu16) as u8, (val >> 8u16) as u8];
+    *dest += [(val & 0xffu16) as u8, (val >> 8u16) as u8];
 }
 
 pub fn add_substr(dest: &mut ~[u8], src: ~[u8]) {
