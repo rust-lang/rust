@@ -28,9 +28,9 @@ impl<'self> ToBase64 for &'self [u8] {
     /**
      * Turn a vector of `u8` bytes into a base64 string.
      *
-     * *Example*:
+     * # Example
      *
-     * ~~~~
+     * ~~~ {.rust}
      * extern mod std;
      * use std::base64::ToBase64;
      *
@@ -38,7 +38,7 @@ impl<'self> ToBase64 for &'self [u8] {
      *     let str = [52,32].to_base64();
      *     println(fmt!("%s", str));
      * }
-     * ~~~~
+     * ~~~
      */
     fn to_base64(&self) -> ~str {
         let mut s = ~"";
@@ -91,9 +91,9 @@ impl<'self> ToBase64 for &'self str {
      * Convert any string (literal, `@`, `&`, or `~`) to base64 encoding.
      *
      *
-     * *Example*:
+     * # Example
      *
-     * ~~~~
+     * ~~~ {.rust}
      * extern mod std;
      * use std::base64::ToBase64;
      *
@@ -101,7 +101,7 @@ impl<'self> ToBase64 for &'self str {
      *     let str = "Hello, World".to_base64();
      *     println(fmt!("%s",str));
      * }
-     * ~~~~
+     * ~~~
      *
      */
     fn to_base64(&self) -> ~str {
@@ -118,9 +118,9 @@ impl FromBase64 for ~[u8] {
      * Convert base64 `u8` vector into u8 byte values.
      * Every 4 encoded characters is converted into 3 octets, modulo padding.
      *
-     * *Example*:
+     * # Example
      *
-     * ~~~~
+     * ~~~ {.rust}
      * extern mod std;
      * use std::base64::ToBase64;
      * use std::base64::FromBase64;
@@ -131,7 +131,7 @@ impl FromBase64 for ~[u8] {
      *     let bytes = str.from_base64();
      *     println(fmt!("%?",bytes));
      * }
-     * ~~~~
+     * ~~~
      */
     fn from_base64(&self) -> ~[u8] {
         if self.len() % 4u != 0u { fail!("invalid base64 length"); }
@@ -196,11 +196,11 @@ impl FromBase64 for ~str {
      * You can use the `from_bytes` function in `core::str`
      * to turn a `[u8]` into a string with characters corresponding to those values.
      *
-     * *Example*:
+     * # Example
      *
      * This converts a string literal to base64 and back.
      *
-     * ~~~~
+     * ~~~ {.rust}
      * extern mod std;
      * use std::base64::ToBase64;
      * use std::base64::FromBase64;
@@ -214,7 +214,7 @@ impl FromBase64 for ~str {
      *     let result_str = str::from_bytes(bytes);
      *     println(fmt!("%s",result_str));
      * }
-     * ~~~~
+     * ~~~
      */
     fn from_base64(&self) -> ~[u8] {
         str::to_bytes(*self).from_base64()

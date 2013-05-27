@@ -454,7 +454,7 @@ impl Round for float {
     ///
     /// The fractional part of the number, satisfying:
     ///
-    /// ~~~
+    /// ~~~ {.rust}
     /// assert!(x == trunc(x) + fract(x))
     /// ~~~
     ///
