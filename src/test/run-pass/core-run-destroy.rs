@@ -20,13 +20,13 @@ use std::run::*;
 
 #[test]
 fn test_destroy_once() {
-    let mut p = run::start_program("echo", []);
+    let mut p = run::Process::new("echo", [], run::ProcessOptions::new());
     p.destroy(); // this shouldn't crash (and nor should the destructor)
 }
 
 #[test]
 fn test_destroy_twice() {
-    let mut p = run::start_program("echo", []);
+    let mut p = run::Process::new("echo", [], run::ProcessOptions::new());
     p.destroy(); // this shouldnt crash...
     p.destroy(); // ...and nor should this (and nor should the destructor)
 }
@@ -41,7 +41,8 @@ fn test_destroy_actually_kills(force: bool) {
 
     #[cfg(unix)]
     fn process_exists(pid: libc::pid_t) -> bool {
-        run::program_output("ps", [~"-p", pid.to_str()]).out.contains(pid.to_str())
+        let run::ProcessOutput {output, _} = run::process_output("ps", [~"-p", pid.to_str()]);
+        str::from_bytes(output).contains(pid.to_str())
     }
 
     #[cfg(windows)]
@@ -64,8 +65,8 @@ fn test_destroy_actually_kills(force: bool) {
         }
     }
 
-    // this program will stay alive indefinitely trying to read from stdin
-    let mut p = run::start_program(BLOCK_COMMAND, []);
+    // this process will stay alive indefinitely trying to read from stdin
+    let mut p = run::Process::new(BLOCK_COMMAND, [], run::ProcessOptions::new());
 
     assert!(process_exists(p.get_id()));
 

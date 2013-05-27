@@ -131,17 +131,17 @@ impl<'self> PkgScript<'self> {
                                                &exe, @copy os::args()[0],
                                                driver::cu_everything);
                 debug!("Running program: %s %s %s", exe.to_str(), root.to_str(), what);
-                let status = run::run_program(exe.to_str(), [root.to_str(), what]);
+                let status = run::process_status(exe.to_str(), [root.to_str(), what]);
                 if status != 0 {
                     return (~[], status);
                 }
                 else {
                     debug!("Running program (configs): %s %s %s",
                            exe.to_str(), root.to_str(), "configs");
-                    let output = run::program_output(exe.to_str(), [root.to_str(), ~"configs"]);
+                    let output = run::process_output(exe.to_str(), [root.to_str(), ~"configs"]);
                     // Run the configs() function to get the configs
                     let mut cfgs = ~[];
-                    for str::each_word(output.out) |w| {
+                    for str::each_word(str::from_bytes(output.output)) |w| {
                         cfgs.push(w.to_owned());
                     }
                     (cfgs, output.status)
@@ -551,7 +551,7 @@ impl PkgSrc {
         let url = fmt!("https://%s", self.id.remote_path.to_str());
         util::note(fmt!("git clone %s %s", url, local.to_str()));
 
-        if run::program_output("git", [~"clone", copy url, local.to_str()]).status != 0 {
+        if run::process_output("git", [~"clone", copy url, local.to_str()]).status != 0 {
             util::note(fmt!("fetching %s failed: can't clone repository", url));
             return false;
         }
