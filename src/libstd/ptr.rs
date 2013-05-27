@@ -19,6 +19,7 @@ use sys;
 #[cfg(not(test))] use cmp::{Eq, Ord};
 use uint;
 
+#[cfg(stage0)]
 pub mod libc_ {
     use libc::c_void;
     use libc;
@@ -26,12 +27,6 @@ pub mod libc_ {
     #[nolink]
     #[abi = "cdecl"]
     pub extern {
-        #[rust_stack]
-        unsafe fn memmove(dest: *mut c_void,
-                          src: *const c_void,
-                          n: libc::size_t)
-                       -> *c_void;
-
         #[rust_stack]
         unsafe fn memset(dest: *mut c_void,
                          c: libc::c_int,
@@ -97,15 +92,28 @@ pub fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
  * and destination may overlap.
  */
 #[inline(always)]
-#[cfg(target_word_size = "32")]
+#[cfg(target_word_size = "32", stage0)]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     use unstable::intrinsics::memmove32;
     let n = count * sys::size_of::<T>();
     memmove32(dst as *mut u8, src as *u8, n as u32);
 }
 
+/**
+ * Copies data from one location to another
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may overlap.
+ */
 #[inline(always)]
-#[cfg(target_word_size = "64")]
+#[cfg(target_word_size = "32", not(stage0))]
+pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
+    use unstable::intrinsics::memmove32;
+    memmove32(dst, src as *T, count as u32);
+}
+
+#[inline(always)]
+#[cfg(target_word_size = "64", stage0)]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     use unstable::intrinsics::memmove64;
     let n = count * sys::size_of::<T>();
@@ -113,31 +121,61 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
 }
 
 #[inline(always)]
-#[cfg(target_word_size = "32")]
+#[cfg(target_word_size = "64", not(stage0))]
+pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
+    use unstable::intrinsics::memmove64;
+    memmove64(dst, src as *T, count as u64);
+}
+
+#[inline(always)]
+#[cfg(target_word_size = "32", stage0)]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    #[cfg(stage0)]
-    use memcpy32 = unstable::intrinsics::memmove32;
-    #[cfg(not(stage0))]
+    use unstable::intrinsics::memmove32;
+    let n = count * sys::size_of::<T>();
+    memmove32(dst as *mut u8, src as *u8, n as u32);
+}
+
+#[inline(always)]
+#[cfg(target_word_size = "32", not(stage0))]
+pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
     use unstable::intrinsics::memcpy32;
-    let n = count * sys::size_of::<T>();
-    memcpy32(dst as *mut u8, src as *u8, n as u32);
+    memcpy32(dst, src as *T, count as u32);
 }
 
 #[inline(always)]
-#[cfg(target_word_size = "64")]
+#[cfg(target_word_size = "64", stage0)]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
-    #[cfg(stage0)]
-    use memcpy64 = unstable::intrinsics::memmove64;
-    #[cfg(not(stage0))]
-    use unstable::intrinsics::memcpy64;
+    use unstable::intrinsics::memmove64;
     let n = count * sys::size_of::<T>();
-    memcpy64(dst as *mut u8, src as *u8, n as u64);
+    memmove64(dst as *mut u8, src as *u8, n as u64);
 }
 
 #[inline(always)]
+#[cfg(target_word_size = "64", not(stage0))]
+pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
+    use unstable::intrinsics::memcpy64;
+    memcpy64(dst, src as *T, count as u64);
+}
+
+#[inline(always)]
+#[cfg(stage0)]
 pub unsafe fn set_memory<T>(dst: *mut T, c: int, count: uint) {
     let n = count * sys::size_of::<T>();
     libc_::memset(dst as *mut c_void, c as libc::c_int, n as size_t);
+}
+
+#[inline(always)]
+#[cfg(target_word_size = "32", not(stage0))]
+pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
+    use unstable::intrinsics::memset32;
+    memset32(dst, c, count as u32);
+}
+
+#[inline(always)]
+#[cfg(target_word_size = "64", not(stage0))]
+pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
+    use unstable::intrinsics::memset64;
+    memset64(dst, c, count as u64);
 }
 
 /**
@@ -580,5 +618,13 @@ pub mod ptr_tests {
                 str::raw::from_c_str(e);
             });
         }
+    }
+
+    #[test]
+    fn test_set_memory() {
+        let mut xs = [0u8, ..20];
+        let ptr = vec::raw::to_mut_ptr(xs);
+        unsafe { set_memory(ptr, 5u8, xs.len()); }
+        assert_eq!(xs, [5u8, ..20]);
     }
 }
