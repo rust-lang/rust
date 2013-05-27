@@ -1470,19 +1470,10 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
     // remaining % 4 bytes.
     wr.write(&[0u8, 0u8, 0u8, 0u8]);
 
-    // FIXME #3396: weird bug here, for reasons unclear this emits random
-    // looking bytes (mostly 0x1) if we use the version byte-array constant
-    // above; so we use a string constant inline instead.
-    //
-    // Should be:
-    //
-    //   vec::to_owned(metadata_encoding_version) +
-
     let writer_bytes: &mut ~[u8] = wr.bytes;
 
-    (do str::as_bytes(&~"rust\x00\x00\x00\x01") |bytes| {
-        vec::slice(*bytes, 0, 8).to_vec()
-    }) + flate::deflate_bytes(*writer_bytes)
+    vec::to_owned(metadata_encoding_version) +
+        flate::deflate_bytes(*writer_bytes)
 }
 
 // Get the encoded string for a type
