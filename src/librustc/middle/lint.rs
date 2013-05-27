@@ -82,6 +82,9 @@ pub enum lint {
     dead_assignment,
     unused_mut,
     unnecessary_allocation,
+
+    missing_struct_doc,
+    missing_trait_doc,
 }
 
 pub fn level_to_str(lv: level) -> &'static str {
@@ -251,6 +254,20 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: unnecessary_allocation,
         desc: "detects unnecessary allocations that can be eliminated",
         default: warn
+    }),
+
+    ("missing_struct_doc",
+     LintSpec {
+        lint: missing_struct_doc,
+        desc: "detects missing documentation for structs",
+        default: allow
+    }),
+
+    ("missing_trait_doc",
+     LintSpec {
+        lint: missing_trait_doc,
+        desc: "detects missing documentation for traits",
+        default: allow
     }),
 ];
 
@@ -931,6 +948,69 @@ fn lint_unnecessary_allocations(cx: @mut Context) -> visit::vt<()> {
     })
 }
 
+fn lint_missing_struct_doc(cx: @mut Context) -> visit::vt<()> {
+    visit::mk_simple_visitor(@visit::SimpleVisitor {
+        visit_struct_field: |field| {
+            let relevant = match field.node.kind {
+                ast::named_field(_, vis) => vis != ast::private,
+                ast::unnamed_field => false,
+            };
+
+            if relevant {
+                let mut has_doc = false;
+                for field.node.attrs.each |attr| {
+                    if attr.node.is_sugared_doc {
+                        has_doc = true;
+                        break;
+                    }
+                }
+                if !has_doc {
+                    cx.span_lint(missing_struct_doc, field.span, "missing documentation \
+                                                                  for a field.");
+                }
+            }
+        },
+        .. *visit::default_simple_visitor()
+    })
+}
+
+fn lint_missing_trait_doc(cx: @mut Context) -> visit::vt<()> {
+    visit::mk_simple_visitor(@visit::SimpleVisitor {
+        visit_trait_method: |method| {
+            let mut has_doc = false;
+            let span = match copy *method {
+                ast::required(m) => {
+                    for m.attrs.each |attr| {
+                        if attr.node.is_sugared_doc {
+                            has_doc = true;
+                            break;
+                        }
+                    }
+                    m.span
+                },
+                ast::provided(m) => {
+                    if m.vis == ast::private {
+                        has_doc = true;
+                    } else {
+                        for m.attrs.each |attr| {
+                            if attr.node.is_sugared_doc {
+                                has_doc = true;
+                                break;
+                            }
+                        }
+                    }
+                    m.span
+                }
+            };
+            if !has_doc {
+                cx.span_lint(missing_trait_doc, span, "missing documentation \
+                                                       for a method.");
+            }
+        },
+        .. *visit::default_simple_visitor()
+    })
+}
+
 pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
     let cx = @mut Context {
         dict: @get_lint_dict(),
@@ -959,6 +1039,8 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
     cx.add_lint(lint_unused_mut(cx));
     cx.add_lint(lint_session(cx));
     cx.add_lint(lint_unnecessary_allocations(cx));
+    cx.add_lint(lint_missing_struct_doc(cx));
+    cx.add_lint(lint_missing_trait_doc(cx));
 
     // type inference doesn't like this being declared below, we need to tell it
     // what the type of this first function is...
