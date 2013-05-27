@@ -16,7 +16,7 @@ The corresponding definitions are in librustc/middle/trans/foreign.rs.
 
 The atomic intrinsics provide common atomic operations on machine
 words, with multiple possible memory orderings. They obey the same
-semantics as C++0x. See the LLVM documentation on [[atomics]].
+semantics as C++11. See the LLVM documentation on [[atomics]].
 
 [atomics]: http://llvm.org/docs/Atomics.html
 
@@ -31,6 +31,7 @@ A quick refresher on memory ordering:
   with atomic types and is equivalent to Java's `volatile`.
 
 */
+
 #[abi = "rust-intrinsic"]
 pub extern "rust-intrinsic" {
 
@@ -127,17 +128,39 @@ pub extern "rust-intrinsic" {
     /// Get the address of the `__morestack` stack growth function.
     pub fn morestack_addr() -> *();
 
-    /// Equivalent to the `llvm.memcpy.p0i8.0i8.i32` intrinsic.
+    /// Equivalent to the `llvm.memcpy.p0i8.0i8.i32` intrinsic, with a size of
+    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
     #[cfg(not(stage0))]
-    pub fn memcpy32(dst: *mut u8, src: *u8, size: u32);
-    /// Equivalent to the `llvm.memcpy.p0i8.0i8.i64` intrinsic.
+    pub fn memcpy32<T>(dst: *mut T, src: *T, count: u32);
+    /// Equivalent to the `llvm.memcpy.p0i8.0i8.i64` intrinsic, with a size of
+    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
     #[cfg(not(stage0))]
-    pub fn memcpy64(dst: *mut u8, src: *u8, size: u64);
+    pub fn memcpy64<T>(dst: *mut T, src: *T, count: u64);
 
     /// Equivalent to the `llvm.memmove.p0i8.0i8.i32` intrinsic.
+    #[cfg(stage0)]
     pub fn memmove32(dst: *mut u8, src: *u8, size: u32);
     /// Equivalent to the `llvm.memmove.p0i8.0i8.i64` intrinsic.
+    #[cfg(stage0)]
     pub fn memmove64(dst: *mut u8, src: *u8, size: u64);
+
+    /// Equivalent to the `llvm.memmove.p0i8.0i8.i32` intrinsic, with a size of
+    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
+    #[cfg(not(stage0))]
+    pub fn memmove32<T>(dst: *mut T, src: *T, count: u32);
+    /// Equivalent to the `llvm.memmove.p0i8.0i8.i64` intrinsic, with a size of
+    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
+    #[cfg(not(stage0))]
+    pub fn memmove64<T>(dst: *mut T, src: *T, count: u64);
+
+    /// Equivalent to the `llvm.memset.p0i8.i32` intrinsic, with a size of
+    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
+    #[cfg(not(stage0))]
+    pub fn memset32<T>(dst: *mut T, val: u8, count: u32);
+    /// Equivalent to the `llvm.memset.p0i8.i64` intrinsic, with a size of
+    /// `count` * `size_of::<T>()` and an alignment of `min_align_of::<T>()`
+    #[cfg(not(stage0))]
+    pub fn memset64<T>(dst: *mut T, val: u8, count: u64);
 
     pub fn sqrtf32(x: f32) -> f32;
     pub fn sqrtf64(x: f64) -> f64;

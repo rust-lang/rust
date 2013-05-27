@@ -52,7 +52,7 @@ use middle::trans::foreign;
 use middle::trans::glue;
 use middle::trans::inline;
 use middle::trans::machine;
-use middle::trans::machine::llsize_of;
+use middle::trans::machine::{llalign_of_min, llsize_of};
 use middle::trans::meth;
 use middle::trans::monomorphize;
 use middle::trans::reachable;
@@ -1442,12 +1442,7 @@ pub fn with_cond(bcx: block, val: ValueRef, f: &fn(block) -> block) -> block {
     next_cx
 }
 
-pub fn call_memcpy(cx: block, dst: ValueRef, src: ValueRef,
-                   n_bytes: ValueRef) {
-    // FIXME (Related to #1645, I think?): Provide LLVM with better
-    // alignment information when the alignment is statically known (it must
-    // be nothing more than a constant int, or LLVM complains -- not even a
-    // constant element of a tydesc works).
+pub fn call_memcpy(cx: block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
     let _icx = cx.insn_ctxt("call_memcpy");
     let ccx = cx.ccx();
     let key = match ccx.sess.targ_cfg.arch {
@@ -1462,7 +1457,7 @@ pub fn call_memcpy(cx: block, dst: ValueRef, src: ValueRef,
     let src_ptr = PointerCast(cx, src, T_ptr(T_i8()));
     let dst_ptr = PointerCast(cx, dst, T_ptr(T_i8()));
     let size = IntCast(cx, n_bytes, ccx.int_type);
-    let align = C_i32(1i32);
+    let align = C_i32(align as i32);
     let volatile = C_i1(false);
     Call(cx, memcpy, [dst_ptr, src_ptr, size, align, volatile]);
 }
@@ -1471,8 +1466,10 @@ pub fn memcpy_ty(bcx: block, dst: ValueRef, src: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("memcpy_ty");
     let ccx = bcx.ccx();
     if ty::type_is_structural(t) {
-        let llsz = llsize_of(ccx, type_of::type_of(ccx, t));
-        call_memcpy(bcx, dst, src, llsz);
+        let llty = type_of::type_of(ccx, t);
+        let llsz = llsize_of(ccx, llty);
+        let llalign = llalign_of_min(ccx, llty);
+        call_memcpy(bcx, dst, src, llsz, llalign as u32);
     } else {
         Store(bcx, Load(bcx, src), dst);
     }

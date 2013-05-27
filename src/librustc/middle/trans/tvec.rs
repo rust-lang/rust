@@ -125,7 +125,7 @@ pub fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> Result {
 
     let data_ptr = get_dataptr(bcx, get_bodyptr(bcx, vptr));
     let new_data_ptr = get_dataptr(bcx, get_bodyptr(bcx, newptr));
-    base::call_memcpy(bcx, new_data_ptr, data_ptr, fill);
+    base::call_memcpy(bcx, new_data_ptr, data_ptr, fill, 1);
 
     let bcx = if ty::type_needs_drop(bcx.tcx(), unit_ty) {
         iter_vec_raw(bcx, new_data_ptr, vec_ty, fill, glue::take_ty)
@@ -370,7 +370,7 @@ pub fn write_content(bcx: block,
                     let bytes = s.len() + 1; // copy null-terminator too
                     let llbytes = C_uint(bcx.ccx(), bytes);
                     let llcstr = C_cstr(bcx.ccx(), s);
-                    base::call_memcpy(bcx, lldest, llcstr, llbytes);
+                    base::call_memcpy(bcx, lldest, llcstr, llbytes, 1);
                     return bcx;
                 }
             }
