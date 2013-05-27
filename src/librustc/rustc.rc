@@ -128,6 +128,7 @@ pub mod back {
     pub mod x86_64;
     pub mod rpath;
     pub mod target_strs;
+    pub mod passes;
 }
 
 #[path = "metadata/mod.rs"]
