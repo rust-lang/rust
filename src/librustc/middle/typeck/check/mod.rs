@@ -1870,7 +1870,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     let (_, seen) = *class_field_map.get(&name);
                     if !seen {
                         missing_fields.push(
-                            ~"`" + *tcx.sess.str_of(name) + ~"`");
+                            ~"`" + *tcx.sess.str_of(name) + "`");
                     }
                 }
 
@@ -3669,7 +3669,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
         ref other => {
             tcx.sess.span_err(it.span,
                               ~"unrecognized intrinsic function: `" +
-                              (*other) + ~"`");
+                              (*other) + "`");
             return;
         }
     };

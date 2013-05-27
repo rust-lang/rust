@@ -3354,8 +3354,8 @@ pub fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
                 (sp, ~"type inference failed because I \
                      could not find a type\n that's both of the form "
                  + ::util::ppaux::ty_to_str(tcx, mk_var(tcx, vid)) +
-                 ~" and of the form " + ::util::ppaux::ty_to_str(tcx, rt) +
-                 ~" - such a type would have to be infinitely large.");
+                 " and of the form " + ::util::ppaux::ty_to_str(tcx, rt) +
+                 " - such a type would have to be infinitely large.");
     }
 }
 

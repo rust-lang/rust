@@ -892,14 +892,9 @@ fn lint_session(cx: @mut Context) -> visit::vt<()> {
 }
 
 fn lint_unnecessary_allocations(cx: @mut Context) -> visit::vt<()> {
-    // If the expression `e` has an allocated type, but `t` dictates that it's
-    // something like a slice (doesn't need allocation), emit a warning with the
-    // specified span.
-    //
-    // Currently, this only applies to string and vector literals with sigils in
-    // front. Those can have the sigil removed to get a borrowed pointer
-    // automatically.
-    fn check(cx: @mut Context, e: @ast::expr, t: ty::t) {
+    // Warn if string and vector literals with sigils are immediately borrowed.
+    // Those can have the sigil removed.
+    fn check(cx: @mut Context, e: @ast::expr) {
         match e.node {
             ast::expr_vstore(e2, ast::expr_vstore_uniq) |
             ast::expr_vstore(e2, ast::expr_vstore_box) => {
@@ -914,9 +909,9 @@ fn lint_unnecessary_allocations(cx: @mut Context) -> visit::vt<()> {
             _ => return
         }
 
-        match ty::get(t).sty {
-            ty::ty_estr(ty::vstore_slice(*)) |
-            ty::ty_evec(_, ty::vstore_slice(*)) => {
+        match cx.tcx.adjustments.find_copy(&e.id) {
+            Some(@ty::AutoDerefRef(ty::AutoDerefRef {
+                autoref: Some(ty::AutoBorrowVec(*)), _ })) => {
                 cx.span_lint(unnecessary_allocation,
                              e.span, "unnecessary allocation, the sigil can be \
                                       removed");
@@ -927,23 +922,7 @@ fn lint_unnecessary_allocations(cx: @mut Context) -> visit::vt<()> {
     }
 
     let visit_expr: @fn(@ast::expr) = |e| {
-        match e.node {
-            ast::expr_call(c, ref args, _) => {
-                let t = ty::node_id_to_type(cx.tcx, c.id);
-                let s = ty::ty_fn_sig(t);
-                for vec::each2(*args, s.inputs) |e, t| {
-                    check(cx, *e, *t);
-                }
-            }
-            ast::expr_method_call(_, _, _, ref args, _) => {
-                let t = ty::node_id_to_type(cx.tcx, e.callee_id);
-                let s = ty::ty_fn_sig(t);
-                for vec::each2(*args, s.inputs) |e, t| {
-                    check(cx, *e, *t);
-                }
-            }
-            _ => {}
-        }
+        check(cx, e);
     };
 
     visit::mk_simple_visitor(@visit::SimpleVisitor {

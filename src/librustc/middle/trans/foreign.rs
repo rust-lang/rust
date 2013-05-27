@@ -402,7 +402,7 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
         let lname = link_name(ccx, foreign_item);
         let llbasefn = base_fn(ccx, *lname, tys, cc);
         // Name the shim function
-        let shim_name = *lname + ~"__c_stack_shim";
+        let shim_name = *lname + "__c_stack_shim";
         build_shim_fn_(ccx,
                        shim_name,
                        llbasefn,

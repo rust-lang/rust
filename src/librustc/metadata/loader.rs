@@ -81,7 +81,7 @@ fn find_library_crate_aux(
     filesearch: @filesearch::FileSearch
 ) -> Option<(~str, @~[u8])> {
     let crate_name = crate_name_from_metas(cx.metas);
-    let prefix: ~str = prefix + *crate_name + ~"-";
+    let prefix: ~str = prefix + *crate_name + "-";
     let suffix: ~str = /*bad*/copy suffix;
 
     let mut matches = ~[];
@@ -262,7 +262,7 @@ pub fn list_file_metadata(intr: @ident_interner,
       option::Some(bytes) => decoder::list_crate_metadata(intr, bytes, out),
       option::None => {
         out.write_str(~"could not find metadata in "
-                      + path.to_str() + ~".\n");
+                      + path.to_str() + ".\n");
       }
     }
 }

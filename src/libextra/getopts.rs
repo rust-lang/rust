@@ -193,19 +193,19 @@ pub enum Fail_ {
 pub fn fail_str(f: Fail_) -> ~str {
     return match f {
         ArgumentMissing(ref nm) => {
-            ~"Argument to option '" + *nm + ~"' missing."
+            ~"Argument to option '" + *nm + "' missing."
         }
         UnrecognizedOption(ref nm) => {
-            ~"Unrecognized option: '" + *nm + ~"'."
+            ~"Unrecognized option: '" + *nm + "'."
         }
         OptionMissing(ref nm) => {
-            ~"Required option '" + *nm + ~"' missing."
+            ~"Required option '" + *nm + "' missing."
         }
         OptionDuplicated(ref nm) => {
-            ~"Option '" + *nm + ~"' given more than once."
+            ~"Option '" + *nm + "' given more than once."
         }
         UnexpectedArgument(ref nm) => {
-            ~"Option " + *nm + ~" does not take an argument."
+            ~"Option " + *nm + " does not take an argument."
         }
     };
 }
@@ -618,7 +618,7 @@ pub mod groups {
             row += match hasarg {
                 No    => ~"",
                 Yes   => hint,
-                Maybe => ~"[" + hint + ~"]",
+                Maybe => ~"[" + hint + "]",
             };
 
             // FIXME: #5516
@@ -650,10 +650,10 @@ pub mod groups {
             row
         });
 
-        return str::to_owned(brief)    +
-               ~"\n\nOptions:\n"         +
+        return str::to_owned(brief) +
+               "\n\nOptions:\n" +
                str::connect(rows, "\n") +
-               ~"\n\n";
+               "\n\n";
     }
 } // end groups module
 
