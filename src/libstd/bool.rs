@@ -44,10 +44,10 @@ use from_str::FromStr;
 *
 * # Examples
 * ~~~
-* rusti> core::bool::not(true)
+* rusti> std::bool::not(true)
 * false
 * ~~~
-* rusti> core::bool::not(false)
+* rusti> std::bool::not(false)
 * true
 * ~~~
 */
@@ -58,10 +58,10 @@ pub fn not(v: bool) -> bool { !v }
 *
 * # Examples
 * ~~~
-* rusti> core::bool::and(true, false)
+* rusti> std::bool::and(true, false)
 * false
 * ~~~
-* rusti> core::bool::and(true, true)
+* rusti> std::bool::and(true, true)
 * true
 * ~~~
 */
@@ -72,10 +72,10 @@ pub fn and(a: bool, b: bool) -> bool { a && b }
 *
 * # Examples
 * ~~~
-* rusti> core::bool::or(true, false)
+* rusti> std::bool::or(true, false)
 * true
 * ~~~
-* rusti> core::bool::or(false, false)
+* rusti> std::bool::or(false, false)
 * false
 * ~~~
 */
@@ -88,10 +88,10 @@ pub fn or(a: bool, b: bool) -> bool { a || b }
 *
 * # Examples
 * ~~~
-* rusti> core::bool::xor(true, false)
+* rusti> std::bool::xor(true, false)
 * true
 * ~~~
-* rusti> core::bool::xor(true, true)
+* rusti> std::bool::xor(true, true)
 * false
 * ~~~
 */
@@ -106,10 +106,10 @@ pub fn xor(a: bool, b: bool) -> bool { (a && !b) || (!a && b) }
 *
 * # Examples
 * ~~~
-* rusti> core::bool::implies(true, true)
+* rusti> std::bool::implies(true, true)
 * true
 * ~~~
-* rusti> core::bool::implies(true, false)
+* rusti> std::bool::implies(true, false)
 * false
 * ~~~
 */
@@ -122,10 +122,10 @@ pub fn implies(a: bool, b: bool) -> bool { !a || b }
 *
 * # Examples
 * ~~~
-* rusti> core::bool::eq(false, true)
+* rusti> std::bool::eq(false, true)
 * false
 * ~~~
-* rusti> core::bool::eq(false, false)
+* rusti> std::bool::eq(false, false)
 * true
 * ~~~
 */
@@ -138,10 +138,10 @@ pub fn eq(a: bool, b: bool) -> bool { a == b }
 *
 * # Examples
 * ~~~
-* rusti> core::bool::ne(false, true)
+* rusti> std::bool::ne(false, true)
 * true
 * ~~~
-* rusti> core::bool::ne(false, false)
+* rusti> std::bool::ne(false, false)
 * false
 * ~~~
 */
@@ -152,10 +152,10 @@ pub fn ne(a: bool, b: bool) -> bool { a != b }
 *
 * # Examples
 * ~~~
-* rusti> core::bool::is_true(true)
+* rusti> std::bool::is_true(true)
 * true
 * ~~~
-* rusti> core::bool::is_true(false)
+* rusti> std::bool::is_true(false)
 * false
 * ~~~
 */
@@ -166,10 +166,10 @@ pub fn is_true(v: bool) -> bool { v }
 *
 * # Examples
 * ~~~
-* rusti> core::bool::is_false(false)
+* rusti> std::bool::is_false(false)
 * true
 * ~~~
-* rusti> core::bool::is_false(true)
+* rusti> std::bool::is_false(true)
 * false
 * ~~~
 */
@@ -223,8 +223,8 @@ pub fn to_str(v: bool) -> ~str { if v { ~"true" } else { ~"false" } }
 *
 * # Examples
 * ~~~
-* do core::bool::all_values |x: bool| {
-*     println(core::bool::to_str(x));
+* do std::bool::all_values |x: bool| {
+*     println(std::bool::to_str(x));
 * }
 * ~~~
 */
