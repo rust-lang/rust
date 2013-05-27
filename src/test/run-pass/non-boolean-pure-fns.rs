@@ -10,9 +10,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
 
-use std::list::*;
+use extra::list::*;
 
 fn pure_length_go<T:Copy>(ls: @List<T>, acc: uint) -> uint {
     match *ls { Nil => { acc } Cons(_, tl) => { pure_length_go(tl, acc + 1u) } }
@@ -30,5 +30,5 @@ fn safe_head<T:Copy>(ls: @List<T>) -> T {
 pub fn main() {
     let mylist = @Cons(@1u, @Nil);
     assert!((nonempty_list(mylist)));
-    assert!((*safe_head(mylist) == 1u));
+    assert_eq!(*safe_head(mylist), 1u);
 }

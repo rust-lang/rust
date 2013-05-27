@@ -34,6 +34,6 @@ pub fn main() {
 
     let ps = vec::zip(chars, ints);
 
-    assert!((ps.head() == &('a', 1u)));
-    assert!((ps.last() == &(j as char, 10u)));
+    assert_eq!(ps.head(), &('a', 1u));
+    assert_eq!(ps.last(), &(j as char, 10u));
 }

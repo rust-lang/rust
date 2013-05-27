@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Finds crate binaries and loads their metadata
+
+use core::prelude::*;
 
 use lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
 use metadata::decoder;
@@ -22,7 +23,7 @@ use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::{ast, attr};
 
-use std::flate;
+use extra::flate;
 use core::os::consts::{macos, freebsd, linux, android, win32};
 
 pub enum os {
@@ -120,7 +121,7 @@ fn find_library_crate_aux(
     } else {
         cx.diag.span_err(
             cx.span, fmt!("multiple matching crates for `%s`", *crate_name));
-        cx.diag.handler().note(~"candidates:");
+        cx.diag.handler().note("candidates:");
         for matches.each |&(ident, data)| {
             cx.diag.handler().note(fmt!("path: %s", ident));
             let attrs = decoder::get_crate_attributes(data);
@@ -132,7 +133,7 @@ fn find_library_crate_aux(
 }
 
 pub fn crate_name_from_metas(metas: &[@ast::meta_item]) -> @~str {
-    let name_items = attr::find_meta_items_by_name(metas, ~"name");
+    let name_items = attr::find_meta_items_by_name(metas, "name");
     match name_items.last_opt() {
         Some(i) => {
             match attr::get_meta_item_value_str(*i) {

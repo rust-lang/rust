@@ -28,8 +28,8 @@ fn w_ret(v: ~[int]) -> int {
 }
 
 pub fn main() {
-    assert!(w_semi(~[0, 1, 2, 3]) == -10);
-    assert!(w_paren1(~[0, 1, 2, 3]) == -4);
-    assert!(w_paren2(~[0, 1, 2, 3]) == -4);
-    assert!(w_ret(~[0, 1, 2, 3]) == -4);
+    assert_eq!(w_semi(~[0, 1, 2, 3]), -10);
+    assert_eq!(w_paren1(~[0, 1, 2, 3]), -4);
+    assert_eq!(w_paren2(~[0, 1, 2, 3]), -4);
+    assert_eq!(w_ret(~[0, 1, 2, 3]), -4);
 }

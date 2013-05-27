@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // error-pattern: reference is not valid outside of its lifetime
-extern mod std;
-use std::arc;
+extern mod extra;
+use extra::arc;
 fn main() {
     let x = ~arc::RWARC(1);
     let mut y = None;

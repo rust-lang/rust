@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
 
 /**
  * A function that returns a hash of a value
@@ -38,5 +38,5 @@ pub impl<K,V> HashMap<K,V> {
 
 pub fn main() {
     let mut m = ~linear_map::<(),()>();
-    assert!(m.len() == 0);
+    assert_eq!(m.len(), 0);
 }

@@ -29,5 +29,5 @@ fn call_it<B:TraitB>(b: B)  -> int {
 
 fn main() {
     let x = 3i;
-    assert!(call_it(x) == 22);
+    assert_eq!(call_it(x), 22);
 }

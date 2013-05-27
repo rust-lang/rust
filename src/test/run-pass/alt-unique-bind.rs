@@ -12,7 +12,7 @@ pub fn main() {
     match ~100 {
       ~x => {
         debug!("%?", x);
-        assert!(x == 100);
+        assert_eq!(x, 100);
       }
     }
 }

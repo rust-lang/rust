@@ -51,8 +51,8 @@ pub fn main() {
     let w = do vec::foldl(0f, v) |x, y| { x + *y } + 10f;
     let y = do vec::foldl(0f, v) |x, y| { x + *y } + 10f;
     let z = 10f + do vec::foldl(0f, v) |x, y| { x + *y };
-    assert!(w == y);
-    assert!(y == z);
+    assert_eq!(w, y);
+    assert_eq!(y, z);
 
     // In the tail of a block
     let w =

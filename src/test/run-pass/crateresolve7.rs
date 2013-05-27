@@ -16,6 +16,6 @@
 extern mod crateresolve7x;
 
 pub fn main() {
-    assert!(crateresolve7x::a::f() == 100);
-    assert!(crateresolve7x::b::f() == 200);
+    assert_eq!(crateresolve7x::a::f(), 100);
+    assert_eq!(crateresolve7x::b::f(), 200);
 }

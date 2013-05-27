@@ -10,13 +10,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use std::arena;
+extern mod extra;
+use extra::arena;
 
 pub fn main() {
     let mut arena = arena::Arena();
     let p = &mut arena;
     let x = p.alloc(|| 4u);
     io::print(fmt!("%u", *x));
-    assert!(*x == 4u);
+    assert_eq!(*x, 4u);
 }

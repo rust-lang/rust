@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
 
-use core::io;
-use std::time;
-use std::treemap::TreeMap;
-use core::hashmap::{HashMap, HashSet};
-use core::trie::TrieMap;
-use core::rand::Rng;
+use std::io;
+use extra::time;
+use extra::treemap::TreeMap;
+use std::hashmap::{HashMap, HashSet};
+use std::trie::TrieMap;
+use std::rand::Rng;
 
 fn timed(label: &str, f: &fn()) {
     let start = time::precise_time_s();
@@ -35,7 +35,7 @@ fn ascending<M: Map<uint, uint>>(map: &mut M, n_keys: uint) {
 
     do timed("search") {
         for uint::range(0, n_keys) |i| {
-            assert!(map.find(&i).unwrap() == &(i + 1));
+            assert_eq!(map.find(&i).unwrap(), &(i + 1));
         }
     }
 
@@ -57,7 +57,7 @@ fn descending<M: Map<uint, uint>>(map: &mut M, n_keys: uint) {
 
     do timed("search") {
         for uint::range_rev(n_keys, 0) |i| {
-            assert!(map.find(&i).unwrap() == &(i + 1));
+            assert_eq!(map.find(&i).unwrap(), &(i + 1));
         }
     }
 
@@ -78,7 +78,7 @@ fn vector<M: Map<uint, uint>>(map: &mut M, n_keys: uint, dist: &[uint]) {
 
     do timed("search") {
         for uint::range(0, n_keys) |i| {
-            assert!(map.find(&dist[i]).unwrap() == &(i + 1));
+            assert_eq!(map.find(&dist[i]).unwrap(), &(i + 1));
         }
     }
 
@@ -103,7 +103,7 @@ fn main() {
     let mut rand = vec::with_capacity(n_keys);
 
     {
-        let mut rng = core::rand::IsaacRng::new_seeded([1, 1, 1, 1, 1, 1, 1]);
+        let mut rng = std::rand::IsaacRng::new_seeded([1, 1, 1, 1, 1, 1, 1]);
         let mut set = HashSet::new();
         while set.len() != n_keys {
             let next = rng.next() as uint;

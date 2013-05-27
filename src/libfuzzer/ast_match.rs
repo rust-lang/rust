@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std;
+use std::prelude::*;
+
 use vec;
 
 fn vec_equal<T>(v: ~[T],

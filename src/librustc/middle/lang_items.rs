@@ -19,6 +19,8 @@
 //
 // * Functions called by the compiler itself.
 
+use core::prelude::*;
+
 use driver::session::Session;
 use metadata::csearch::each_lang_item;
 use metadata::cstore::iter_crate_data;
@@ -86,15 +88,6 @@ pub impl LanguageItems {
         }
     }
 
-    #[cfg(stage0)]
-    fn each_item(&self, f: &fn(def_id: def_id, i: uint) -> bool) {
-        for self.items.eachi |i, &item| {
-            if !f(item.get(), i) {
-                break;
-            }
-        }
-    }
-    #[cfg(not(stage0))]
     fn each_item(&self, f: &fn(def_id: def_id, i: uint) -> bool) -> bool {
         self.items.eachi(|i, &item| f(item.get(), i))
     }

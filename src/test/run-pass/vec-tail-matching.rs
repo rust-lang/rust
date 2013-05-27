@@ -11,25 +11,25 @@ pub fn main() {
     match x {
         [first, ..tail] => {
             assert!(first.string == ~"foo");
-            assert!(tail.len() == 2);
+            assert_eq!(tail.len(), 2);
             assert!(tail[0].string == ~"bar");
             assert!(tail[1].string == ~"baz");
 
             match tail {
                 [Foo { _ }, _, Foo { _ }, ..tail] => {
-                    ::core::util::unreachable();
+                    ::std::util::unreachable();
                 }
                 [Foo { string: a }, Foo { string: b }] => {
-                    assert!(a == ~"bar");
-                    assert!(b == ~"baz");
+                    assert_eq!(a, ~"bar");
+                    assert_eq!(b, ~"baz");
                 }
                 _ => {
-                    ::core::util::unreachable();
+                    ::std::util::unreachable();
                 }
             }
         }
         _ => {
-            ::core::util::unreachable();
+            ::std::util::unreachable();
         }
     }
 }

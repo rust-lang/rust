@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast;
 use codemap;
 use ext::base::*;
 use ext::base;
 use print;
 
-pub fn expand_syntax_ext(cx: @ext_ctxt,
+pub fn expand_syntax_ext(cx: @ExtCtxt,
                          sp: codemap::span,
                          tt: &[ast::token_tree])
                       -> base::MacResult {

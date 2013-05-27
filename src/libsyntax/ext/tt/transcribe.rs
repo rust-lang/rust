@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast;
 use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
 use codemap::{span, dummy_sp};
@@ -118,10 +120,13 @@ fn lookup_cur_matched_by_matched(r: &mut TtReader,
 }
 
 fn lookup_cur_matched(r: &mut TtReader, name: ident) -> @named_match {
-    // FIXME (#3850): this looks a bit silly with an extra scope.
-    let start;
-    { start = *r.interpolations.get(&name); }
-    return lookup_cur_matched_by_matched(r, start);
+    match r.interpolations.find_copy(&name) {
+        Some(s) => lookup_cur_matched_by_matched(r, s),
+        None => {
+            r.sp_diag.span_fatal(r.cur_span, fmt!("unknown macro variable `%s`",
+                                                  *r.interner.get(name)));
+        }
+    }
 }
 enum lis {
     lis_unconstrained, lis_constraint(uint, ident), lis_contradiction(~str)
@@ -234,9 +239,9 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
               lis_unconstrained => {
                 r.sp_diag.span_fatal(
                     sp, /* blame macro writer */
-                      ~"attempted to repeat an expression \
-                        containing no syntax \
-                        variables matched as repeating at this depth");
+                      "attempted to repeat an expression \
+                       containing no syntax \
+                       variables matched as repeating at this depth");
                   }
                   lis_contradiction(ref msg) => {
                       /* FIXME #2887 blame macro invoker instead*/
@@ -247,8 +252,8 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                       if !zerok {
                         r.sp_diag.span_fatal(sp, /* FIXME #2887 blame invoker
                         */
-                                             ~"this must repeat at least \
-                                               once");
+                                             "this must repeat at least \
+                                              once");
                           }
 
                     r.stack.idx += 1u;

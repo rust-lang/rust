@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use config;
 use doc::ItemUtils;
 use doc;
 
-use core::libc;
 use core::run;
 use core::comm::*;
-use std::future;
+use extra::future;
 
 pub enum WriteInstr {
     Write(~str),
@@ -101,59 +102,19 @@ fn pandoc_writer(
         use core::io::WriterUtil;
 
         debug!("pandoc cmd: %s", pandoc_cmd);
-        debug!("pandoc args: %s", str::connect(pandoc_args, ~" "));
+        debug!("pandoc args: %s", str::connect(pandoc_args, " "));
 
-        let pipe_in = os::pipe();
-        let pipe_out = os::pipe();
-        let pipe_err = os::pipe();
-        let pid = run::spawn_process(
-            pandoc_cmd, pandoc_args, &None, &None,
-            pipe_in.in, pipe_out.out, pipe_err.out);
+        let mut proc = run::Process::new(pandoc_cmd, pandoc_args, run::ProcessOptions::new());
 
-        let writer = io::fd_writer(pipe_in.out, false);
-        writer.write_str(markdown);
+        proc.input().write_str(markdown);
+        let output = proc.finish_with_output();
 
-        os::close(pipe_in.in);
-        os::close(pipe_out.out);
-        os::close(pipe_err.out);
-        os::close(pipe_in.out);
-
-        let (stdout_po, stdout_ch) = comm::stream();
-        do task::spawn_sched(task::SingleThreaded) || {
-            stdout_ch.send(readclose(pipe_out.in));
-        }
-
-        let (stderr_po, stderr_ch) = comm::stream();
-        do task::spawn_sched(task::SingleThreaded) || {
-            stderr_ch.send(readclose(pipe_err.in));
-        }
-        let stdout = stdout_po.recv();
-        let stderr = stderr_po.recv();
-
-        let status = run::waitpid(pid);
-        debug!("pandoc result: %i", status);
-        if status != 0 {
-            error!("pandoc-out: %s", stdout);
-            error!("pandoc-err: %s", stderr);
+        debug!("pandoc result: %i", output.status);
+        if output.status != 0 {
+            error!("pandoc-out: %s", str::from_bytes(output.output));
+            error!("pandoc-err: %s", str::from_bytes(output.error));
             fail!("pandoc failed");
         }
-    }
-}
-
-fn readclose(fd: libc::c_int) -> ~str {
-    // Copied from run::program_output
-    unsafe {
-        let file = os::fdopen(fd);
-        let reader = io::FILE_reader(file, false);
-        let buf = io::with_bytes_writer(|writer| {
-            let mut bytes = [0, ..4096];
-            while !reader.eof() {
-                let nread = reader.read(bytes, bytes.len());
-                writer.write(bytes.slice(0, nread).to_owned());
-            }
-        });
-        os::fclose(file);
-        str::from_bytes(buf)
     }
 }
 
@@ -198,7 +159,7 @@ pub fn make_filename(
             }
           }
           doc::ItemPage(doc) => {
-            str::connect(doc.path() + ~[doc.name()], ~"_")
+            str::connect(doc.path() + ~[doc.name()], "_")
           }
         }
     };
@@ -213,7 +174,7 @@ pub fn make_filename(
 fn write_file(path: &Path, s: ~str) {
     use core::io::WriterUtil;
 
-    match io::file_writer(path, ~[io::Create, io::Truncate]) {
+    match io::file_writer(path, [io::Create, io::Truncate]) {
       result::Ok(writer) => {
         writer.write_str(s);
       }
@@ -259,6 +220,8 @@ fn future_writer() -> (Writer, future::Future<~str>) {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use astsrv;
     use doc;
     use extract;
@@ -285,7 +248,7 @@ mod test {
         let doc = mk_doc(~"test", ~"");
         let page = doc::CratePage(doc.CrateDoc());
         let filename = make_local_filename(config, page);
-        assert!(filename.to_str() == ~"output/dir/test.md");
+        assert_eq!(filename.to_str(), ~"output/dir/test.md");
     }
 
     #[test]
@@ -299,7 +262,7 @@ mod test {
         let doc = mk_doc(~"", ~"");
         let page = doc::CratePage(doc.CrateDoc());
         let filename = make_local_filename(config, page);
-        assert!(filename.to_str() == ~"output/dir/index.html");
+        assert_eq!(filename.to_str(), ~"output/dir/index.html");
     }
 
     #[test]
@@ -314,6 +277,6 @@ mod test {
         let modb = copy doc.cratemod().mods()[0].mods()[0];
         let page = doc::ItemPage(doc::ModTag(modb));
         let filename = make_local_filename(config, page);
-        assert!(filename == Path("output/dir/a_b.html"));
+        assert_eq!(filename, Path("output/dir/a_b.html"));
     }
 }

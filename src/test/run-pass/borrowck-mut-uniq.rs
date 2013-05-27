@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::util;
+use std::util;
 
 struct Ints {sum: ~int, values: ~[int]}
 

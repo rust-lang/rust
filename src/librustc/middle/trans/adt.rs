@@ -158,7 +158,7 @@ fn represent_type_uncached(cx: @CrateContext, t: ty::t) -> Repr {
 
             if cases.len() == 0 {
                 // Uninhabitable; represent as unit
-                return Univariant(mk_struct(cx, ~[], false), false);
+                return Univariant(mk_struct(cx, [], false), false);
             }
 
             if cases.all(|c| c.tys.len() == 0) {
@@ -169,7 +169,7 @@ fn represent_type_uncached(cx: @CrateContext, t: ty::t) -> Repr {
 
             if cases.len() == 1 {
                 // Equivalent to a struct/tuple/newtype.
-                assert!(cases[0].discr == 0);
+                assert_eq!(cases[0].discr, 0);
                 return Univariant(mk_struct(cx, cases[0].tys, false), false)
             }
 
@@ -206,7 +206,7 @@ fn represent_type_uncached(cx: @CrateContext, t: ty::t) -> Repr {
             let discr = ~[ty::mk_int()];
             return General(cases.map(|c| mk_struct(cx, discr + c.tys, false)))
         }
-        _ => cx.sess.bug(~"adt::represent_type called on non-ADT type")
+        _ => cx.sess.bug("adt::represent_type called on non-ADT type")
     }
 }
 
@@ -353,7 +353,7 @@ pub fn trans_case(bcx: block, r: &Repr, discr: int) -> _match::opt_result {
             _match::single_result(rslt(bcx, C_int(bcx.ccx(), discr)))
         }
         Univariant(*) => {
-            bcx.ccx().sess.bug(~"no cases for univariants or structs")
+            bcx.ccx().sess.bug("no cases for univariants or structs")
         }
         General(*) => {
             _match::single_result(rslt(bcx, C_int(bcx.ccx(), discr)))
@@ -377,12 +377,12 @@ pub fn trans_start_init(bcx: block, r: &Repr, val: ValueRef, discr: int) {
             Store(bcx, C_int(bcx.ccx(), discr), GEPi(bcx, val, [0, 0]))
         }
         Univariant(ref st, true) => {
-            assert!(discr == 0);
+            assert_eq!(discr, 0);
             Store(bcx, C_bool(true),
                   GEPi(bcx, val, [0, st.fields.len() - 1]))
         }
         Univariant(*) => {
-            assert!(discr == 0);
+            assert_eq!(discr, 0);
         }
         General(*) => {
             Store(bcx, C_int(bcx.ccx(), discr), GEPi(bcx, val, [0, 0]))
@@ -405,7 +405,7 @@ pub fn num_args(r: &Repr, discr: int) -> uint {
     match *r {
         CEnum(*) => 0,
         Univariant(ref st, dtor) => {
-            assert!(discr == 0);
+            assert_eq!(discr, 0);
             st.fields.len() - (if dtor { 1 } else { 0 })
         }
         General(ref cases) => cases[discr as uint].fields.len() - 1,
@@ -423,10 +423,10 @@ pub fn trans_field_ptr(bcx: block, r: &Repr, val: ValueRef, discr: int,
     // someday), it will need to return a possibly-new bcx as well.
     match *r {
         CEnum(*) => {
-            bcx.ccx().sess.bug(~"element access in C-like enum")
+            bcx.ccx().sess.bug("element access in C-like enum")
         }
         Univariant(ref st, _dtor) => {
-            assert!(discr == 0);
+            assert_eq!(discr, 0);
             struct_field_ptr(bcx, st, val, ix, false)
         }
         General(ref cases) => {
@@ -439,7 +439,7 @@ pub fn trans_field_ptr(bcx: block, r: &Repr, val: ValueRef, discr: int,
                 // The unit-like case might have a nonzero number of unit-like fields.
                 // (e.g., Result or Either with () as one side.)
                 let llty = type_of::type_of(bcx.ccx(), nullfields[ix]);
-                assert!(machine::llsize_of_alloc(bcx.ccx(), llty) == 0);
+                assert_eq!(machine::llsize_of_alloc(bcx.ccx(), llty), 0);
                 // The contents of memory at this pointer can't matter, but use
                 // the value that's "reasonable" in case of pointer comparison.
                 PointerCast(bcx, val, T_ptr(llty))
@@ -468,8 +468,7 @@ fn struct_field_ptr(bcx: block, st: &Struct, val: ValueRef, ix: uint,
 pub fn trans_drop_flag_ptr(bcx: block, r: &Repr, val: ValueRef) -> ValueRef {
     match *r {
         Univariant(ref st, true) => GEPi(bcx, val, [0, st.fields.len() - 1]),
-        _ => bcx.ccx().sess.bug(~"tried to get drop flag of non-droppable \
-                                  type")
+        _ => bcx.ccx().sess.bug("tried to get drop flag of non-droppable type")
     }
 }
 
@@ -498,12 +497,12 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
                    vals: &[ValueRef]) -> ValueRef {
     match *r {
         CEnum(min, max) => {
-            assert!(vals.len() == 0);
+            assert_eq!(vals.len(), 0);
             assert!(min <= discr && discr <= max);
             C_int(ccx, discr)
         }
         Univariant(ref st, _dro) => {
-            assert!(discr == 0);
+            assert_eq!(discr, 0);
             C_struct(build_const_struct(ccx, st, vals))
         }
         General(ref cases) => {
@@ -517,7 +516,7 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
             if discr == nndiscr {
                 C_struct(build_const_struct(ccx, nonnull, vals))
             } else {
-                assert!(vals.len() == 0);
+                assert_eq!(vals.len(), 0);
                 let vals = do nonnull.fields.mapi |i, &ty| {
                     let llty = type_of::sizing_type_of(ccx, ty);
                     if i == ptrfield { C_null(llty) } else { C_undef(llty) }
@@ -540,7 +539,7 @@ pub fn trans_const(ccx: @CrateContext, r: &Repr, discr: int,
  */
 fn build_const_struct(ccx: @CrateContext, st: &Struct, vals: &[ValueRef])
     -> ~[ValueRef] {
-    assert!(vals.len() == st.fields.len());
+    assert_eq!(vals.len(), st.fields.len());
 
     let mut offset = 0;
     let mut cfields = ~[];
@@ -600,7 +599,7 @@ pub fn const_get_discrim(ccx: @CrateContext, r: &Repr, val: ValueRef)
 pub fn const_get_field(ccx: @CrateContext, r: &Repr, val: ValueRef,
                        _discr: int, ix: uint) -> ValueRef {
     match *r {
-        CEnum(*) => ccx.sess.bug(~"element access in C-like enum const"),
+        CEnum(*) => ccx.sess.bug("element access in C-like enum const"),
         Univariant(*) => const_struct_field(ccx, val, ix),
         General(*) => const_struct_field(ccx, val, ix + 1),
         NullablePointer{ _ } => const_struct_field(ccx, val, ix)

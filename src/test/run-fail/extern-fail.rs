@@ -12,7 +12,7 @@
 // Testing that runtime failure doesn't cause callbacks to abort abnormally.
 // Instead the failure will be delivered after the callbacks return.
 
-use core::old_iter;
+use std::old_iter;
 
 mod rustrt {
     pub extern {
@@ -37,7 +37,7 @@ fn count(n: uint) -> uint {
 }
 
 fn main() {
-    for old_iter::repeat(10u) {
+    for 10u.times {
         do task::spawn {
             let result = count(5u);
             debug!("result = %?", result);

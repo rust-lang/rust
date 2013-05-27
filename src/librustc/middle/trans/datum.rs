@@ -85,6 +85,8 @@
  * methods themselves.  Most are only suitable for some types of
  * values. */
 
+use core::prelude::*;
+
 use lib;
 use lib::llvm::ValueRef;
 use middle::trans::adt;
@@ -154,13 +156,6 @@ pub impl DatumMode {
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for DatumMode {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        (*self as uint).iter_bytes(lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for DatumMode {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as uint).iter_bytes(lsb0, f)
@@ -375,7 +370,7 @@ pub impl Datum {
          * Schedules this datum for cleanup in `bcx`.  The datum
          * must be an rvalue. */
 
-        assert!(self.source == RevokeClean);
+        assert_eq!(self.source, RevokeClean);
         match self.mode {
             ByValue => {
                 add_clean_temp_immediate(bcx, self.val, self.ty);
@@ -652,7 +647,7 @@ pub impl Datum {
                     ByRef => {
                         // Recast lv.val as a pointer to the newtype rather
                         // than a pointer to the struct type.
-                        // XXX: This isn't correct for structs with
+                        // FIXME #6572: This isn't correct for structs with
                         // destructors.
                         (
                             Some(Datum {

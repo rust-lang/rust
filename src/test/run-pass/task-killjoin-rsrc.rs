@@ -13,8 +13,8 @@
 // A port of task-killjoin to use a class with a dtor to manage
 // the join.
 
-use core::cell::Cell;
-use core::comm::*;
+use std::cell::Cell;
+use std::comm::*;
 
 struct notify {
     ch: Chan<bool>, v: @mut bool,

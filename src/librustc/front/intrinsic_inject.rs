@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use driver::session::Session;
 use syntax::parse;
 use syntax::ast;
@@ -25,7 +27,7 @@ pub fn inject_intrinsic(sess: Session, crate: @ast::crate) -> @ast::crate {
         match item {
           Some(i) => i,
           None => {
-            sess.fatal(~"no item found in intrinsic module");
+            sess.fatal("no item found in intrinsic module");
           }
         };
 

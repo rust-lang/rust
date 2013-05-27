@@ -40,8 +40,8 @@ fn transform(x: Option<int>) -> Option<~str> {
 }
 
 pub fn main() {
-    assert!(transform(Some(10)) == Some(~"11"));
-    assert!(transform(None) == None);
+    assert_eq!(transform(Some(10)), Some(~"11"));
+    assert_eq!(transform(None), None);
     assert!((~[~"hi"])
         .bind(|x| ~[x.clone(), *x + ~"!"] )
         .bind(|x| ~[x.clone(), *x + ~"?"] ) ==

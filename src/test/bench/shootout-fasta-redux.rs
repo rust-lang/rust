@@ -1,8 +1,8 @@
-use core::cast::transmute;
-use core::from_str::FromStr;
-use core::libc::{FILE, STDOUT_FILENO, c_int, fdopen, fputc, fputs, fwrite, size_t};
-use core::uint::{min, range};
-use core::vec::bytes::copy_memory;
+use std::cast::transmute;
+use std::from_str::FromStr;
+use std::libc::{FILE, STDOUT_FILENO, c_int, fdopen, fputc, fputs, fwrite, size_t};
+use std::uint::{min, range};
+use std::vec::bytes::copy_memory;
 
 static LINE_LEN: uint = 60;
 static LOOKUP_SIZE: uint = 4 * 1024;

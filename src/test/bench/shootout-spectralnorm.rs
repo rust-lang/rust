@@ -1,5 +1,5 @@
-use core::from_str::FromStr;
-use core::iter::ExtendedMutableIter;
+use std::from_str::FromStr;
+use std::iter::ExtendedMutableIter;
 
 #[inline]
 fn A(i: i32, j: i32) -> i32 {

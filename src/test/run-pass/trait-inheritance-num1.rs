@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::cmp::Ord;
-use core::num::NumCast::from;
+use std::cmp::Ord;
+use std::num::NumCast;
 
 pub trait NumExt: Num + NumCast + Ord { }
 
 fn greater_than_one<T:NumExt>(n: &T) -> bool {
-    *n > from(1)
+    *n > NumCast::from(1)
 }
 
 pub fn main() {}

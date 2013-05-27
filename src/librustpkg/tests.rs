@@ -12,7 +12,7 @@
 
 use context::Ctx;
 use core::hashmap::HashMap;
-use core::path::Path;
+use core::prelude::*;
 use std::tempfile::mkdtemp;
 use util::{PkgId, default_version};
 use path_util::{target_executable_in_workspace, target_library_in_workspace,
@@ -212,7 +212,7 @@ fn test_package_ids_must_be_relative_path_like() {
 
     let whatever = PkgId::new("foo");
 
-    assert!(addversion("foo") == whatever.to_str());
+    assert_eq!(addversion("foo"), whatever.to_str());
     assert!(addversion("github.com/mozilla/rust") ==
             PkgId::new("github.com/mozilla/rust").to_str());
 
@@ -222,16 +222,16 @@ fn test_package_ids_must_be_relative_path_like() {
         copy whatever
     }).in {
         let x = PkgId::new("");
-        assert!(addversion("foo") == x.to_str());
+        assert_eq!(addversion("foo"), x.to_str());
     }
 
     do cond.trap(|(p, e)| {
-        assert!(p.to_str() == os::make_absolute(&Path("foo/bar/quux")).to_str());
+        assert_eq!(p.to_str(), os::make_absolute(&Path("foo/bar/quux")).to_str());
         assert!("absolute pkgid" == e);
         copy whatever
     }).in {
         let z = PkgId::new(os::make_absolute(&Path("foo/bar/quux")).to_str());
-        assert!(addversion("foo") == z.to_str());
+        assert_eq!(addversion("foo"), z.to_str());
     }
 
 }

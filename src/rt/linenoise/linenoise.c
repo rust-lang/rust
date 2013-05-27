@@ -150,6 +150,9 @@ enum {
     SPECIAL_DELETE = -24,
     SPECIAL_HOME = -25,
     SPECIAL_END = -26,
+    SPECIAL_INSERT = -27,
+    SPECIAL_PAGE_UP = -28,
+    SPECIAL_PAGE_DOWN = -29
 };
 
 static int history_max_len = LINENOISE_DEFAULT_HISTORY_MAX_LEN;
@@ -165,6 +168,7 @@ struct current {
     int pos;    /* Cursor position, measured in chars */
     int cols;   /* Size of the window, in chars */
     const char *prompt;
+    char *capture; /* Allocated capture buffer, or NULL for none. Always null terminated */
 #if defined(USE_TERMIOS)
     int fd;     /* Terminal fd */
 #elif defined(USE_WINCONSOLE)
@@ -187,6 +191,7 @@ void linenoiseHistoryFree(void) {
             free(history[j]);
         free(history);
         history = NULL;
+        history_len = 0;
     }
 }
 
@@ -268,7 +273,10 @@ static void linenoiseAtExit(void) {
     linenoiseHistoryFree();
 }
 
-/* gcc/glibc insists that we care about the return code of write! */
+/* gcc/glibc insists that we care about the return code of write!
+ * Clarification: This means that a void-cast like "(void) (EXPR)"
+ * does not work.
+ */
 #define IGNORE_RC(EXPR) if (EXPR) {}
 
 /* This is fdprintf() on some systems, but use a different
@@ -374,6 +382,70 @@ static int fd_read(struct current *current)
 #endif
 }
 
+static int countColorControlChars(const char* prompt, int plen)
+{
+    /* ANSI color control sequences have the form:
+     * "\x1b" "[" [0-9;]+ "m"
+     * We parse them with a simple state machine.
+     */
+
+    enum {
+        search_esc,
+        expect_bracket,
+        expect_inner,
+        expect_trail
+    } state = search_esc;
+    int len = 0, found = 0;
+    char ch;
+
+    /* XXX: Strictly we should be checking utf8 chars rather than
+     *      bytes in case of the extremely unlikely scenario where
+     *      an ANSI sequence is part of a utf8 sequence.
+     */
+    for (; plen ; plen--, prompt++) {
+        ch = *prompt;
+
+        switch (state) {
+        case search_esc:
+            len = 0;
+            if (ch == '\x1b') {
+                state = expect_bracket;
+                len++;
+            }
+            break;
+        case expect_bracket:
+            if (ch == '[') {
+                state = expect_inner;
+                len++;
+            } else {
+                state = search_esc;
+            }
+            break;
+        case expect_inner:
+            if (ch >= '0' && ch <= '9') {
+                len++;
+                state = expect_trail;
+            } else {
+                state = search_esc;
+            }
+            break;
+        case expect_trail:
+            if (ch == 'm') {
+                len++;
+                found += len;
+                state = search_esc;
+            } else if ((ch != ';') && ((ch < '0') || (ch > '9'))) {
+                state = search_esc;
+            }
+            /* 0-9, or semicolon */
+            len++;
+            break;
+        }
+    }
+
+    return found;
+}
+
 static int getWindowSize(struct current *current)
 {
     struct winsize ws;
@@ -467,8 +539,14 @@ static int check_special(int fd)
         c = fd_read_char(fd, 50);
         if (c == '~') {
             switch (c2) {
+                case '2':
+                    return SPECIAL_INSERT;
                 case '3':
                     return SPECIAL_DELETE;
+                case '5':
+                    return SPECIAL_PAGE_UP;
+                case '6':
+                    return SPECIAL_PAGE_DOWN;
                 case '7':
                     return SPECIAL_HOME;
                 case '8':
@@ -538,7 +616,7 @@ static int outputChars(struct current *current, const char *buf, int len)
 {
     COORD pos = { (SHORT)current->x, (SHORT)current->y };
     DWORD n;
-	
+
     WriteConsoleOutputCharacter(current->outh, buf, len, pos, &n);
     current->x += len;
     return 0;
@@ -593,12 +671,18 @@ static int fd_read(struct current *current)
                     return SPECIAL_UP;
                  case VK_DOWN:
                     return SPECIAL_DOWN;
+                 case VK_INSERT:
+                    return SPECIAL_INSERT;
                  case VK_DELETE:
                     return SPECIAL_DELETE;
                  case VK_HOME:
                     return SPECIAL_HOME;
                  case VK_END:
                     return SPECIAL_END;
+                 case VK_PRIOR:
+                    return SPECIAL_PAGE_UP;
+                 case VK_NEXT:
+                    return SPECIAL_PAGE_DOWN;
                 }
             }
             /* Note that control characters are already translated in AsciiChar */
@@ -612,6 +696,14 @@ static int fd_read(struct current *current)
         }
     }
     return -1;
+}
+
+static int countColorControlChars(const char* prompt, int plen)
+{
+    /* For windows we assume that there are no embedded ansi color
+     * control sequences.
+     */
+    return 0;
 }
 
 static int getWindowSize(struct current *current)
@@ -676,6 +768,11 @@ static void refreshLine(const char *prompt, struct current *current)
     plen = strlen(prompt);
     pchars = utf8_strlen(prompt, plen);
 
+    /* Scan the prompt for embedded ansi color control sequences and
+     * discount them as characters/columns.
+     */
+    pchars -= countColorControlChars(prompt, plen);
+
     /* Account for a line which is too long to fit in the window.
      * Note that control chars require an extra column
      */
@@ -692,7 +789,7 @@ static void refreshLine(const char *prompt, struct current *current)
         }
     }
 
-    /* If too many are need, strip chars off the front of 'buf'
+    /* If too many are needed, strip chars off the front of 'buf'
      * until it fits. Note that if the current char is a control character,
      * we need one extra col.
      */
@@ -843,15 +940,63 @@ static int insert_char(struct current *current, int pos, int ch)
 }
 
 /**
+ * Captures up to 'n' characters starting at 'pos' for the cut buffer.
+ *
+ * This replaces any existing characters in the cut buffer.
+ */
+static void capture_chars(struct current *current, int pos, int n)
+{
+    if (pos >= 0 && (pos + n - 1) < current->chars) {
+        int p1 = utf8_index(current->buf, pos);
+        int nbytes = utf8_index(current->buf + p1, n);
+
+        if (nbytes) {
+            free(current->capture);
+            /* Include space for the null terminator */
+            current->capture = (char *)malloc(nbytes + 1);
+            memcpy(current->capture, current->buf + p1, nbytes);
+            current->capture[nbytes] = '\0';
+        }
+    }
+}
+
+/**
+ * Removes up to 'n' characters at cursor position 'pos'.
+ *
  * Returns 0 if no chars were removed or non-zero otherwise.
  */
 static int remove_chars(struct current *current, int pos, int n)
 {
     int removed = 0;
+
+    /* First save any chars which will be removed */
+    capture_chars(current, pos, n);
+
     while (n-- && remove_char(current, pos)) {
         removed++;
     }
     return removed;
+}
+/**
+ * Inserts the characters (string) 'chars' at the cursor position 'pos'.
+ *
+ * Returns 0 if no chars were inserted or non-zero otherwise.
+ */
+static int insert_chars(struct current *current, int pos, const char *chars)
+{
+    int inserted = 0;
+
+    while (*chars) {
+        int ch;
+        int n = utf8_tounicode(chars, &ch);
+        if (insert_char(current, pos, ch) == 0) {
+            break;
+        }
+        inserted++;
+        pos++;
+        chars += n;
+    }
+    return inserted;
 }
 
 #ifndef NO_COMPLETION
@@ -937,7 +1082,7 @@ void linenoiseAddCompletion(linenoiseCompletions *lc, const char *str) {
 
 #endif
 
-static int linenoisePrompt(struct current *current) {
+static int linenoiseEdit(struct current *current) {
     int history_index = 0;
 
     /* The latest history entry is always our current buffer, that
@@ -998,7 +1143,12 @@ process_char:
                 refreshLine(current->prompt, current);
             }
             break;
-        case ctrl('W'):    /* ctrl-w */
+        case SPECIAL_INSERT:
+            /* Ignore. Expansion Hook.
+             * Future possibility: Toggle Insert/Overwrite Modes
+             */
+            break;
+        case ctrl('W'):    /* ctrl-w, delete word at left. save deleted chars */
             /* eat any spaces on the left */
             {
                 int pos = current->pos;
@@ -1118,9 +1268,11 @@ process_char:
             }
             break;
         case ctrl('T'):    /* ctrl-t */
-            if (current->pos > 0 && current->pos < current->chars) {
-                c = get_char(current, current->pos);
-                remove_char(current, current->pos);
+            if (current->pos > 0 && current->pos <= current->chars) {
+                /* If cursor is at end, transpose the previous two chars */
+                int fixer = (current->pos == current->chars);
+                c = get_char(current, current->pos - fixer);
+                remove_char(current, current->pos - fixer);
                 insert_char(current, current->pos - 1, c);
                 refreshLine(current->prompt, current);
             }
@@ -1157,26 +1309,34 @@ process_char:
                 refreshLine(current->prompt, current);
             }
             break;
+        case SPECIAL_PAGE_UP:
+          dir = history_len - history_index - 1; /* move to start of history */
+          goto history_navigation;
+        case SPECIAL_PAGE_DOWN:
+          dir = -history_index; /* move to 0 == end of history, i.e. current */
+          goto history_navigation;
         case ctrl('P'):
         case SPECIAL_UP:
             dir = 1;
+          goto history_navigation;
         case ctrl('N'):
         case SPECIAL_DOWN:
+history_navigation:
             if (history_len > 1) {
                 /* Update the current history entry before to
                  * overwrite it with tne next one. */
-                free(history[history_len-1-history_index]);
-                history[history_len-1-history_index] = strdup(current->buf);
+                free(history[history_len - 1 - history_index]);
+                history[history_len - 1 - history_index] = strdup(current->buf);
                 /* Show the new entry */
                 history_index += dir;
                 if (history_index < 0) {
                     history_index = 0;
                     break;
                 } else if (history_index >= history_len) {
-                    history_index = history_len-1;
+                    history_index = history_len - 1;
                     break;
                 }
-                set_current(current, history[history_len-1-history_index]);
+                set_current(current, history[history_len - 1 - history_index]);
                 refreshLine(current->prompt, current);
             }
             break;
@@ -1190,13 +1350,18 @@ process_char:
             current->pos = current->chars;
             refreshLine(current->prompt, current);
             break;
-        case ctrl('U'): /* Ctrl+u, delete to beginning of line. */
+        case ctrl('U'): /* Ctrl+u, delete to beginning of line, save deleted chars. */
             if (remove_chars(current, 0, current->pos)) {
                 refreshLine(current->prompt, current);
             }
             break;
-        case ctrl('K'): /* Ctrl+k, delete from current to end of line. */
+        case ctrl('K'): /* Ctrl+k, delete from current to end of line, save deleted chars. */
             if (remove_chars(current, current->pos, current->chars - current->pos)) {
+                refreshLine(current->prompt, current);
+            }
+            break;
+        case ctrl('Y'): /* Ctrl+y, insert saved chars at current position */
+            if (current->capture && insert_chars(current, current->pos, current->capture)) {
                 refreshLine(current->prompt, current);
             }
             break;
@@ -1219,6 +1384,15 @@ process_char:
     return current->len;
 }
 
+int linenoiseColumns(void)
+{
+    struct current current;
+    enableRawMode (&current);
+    getWindowSize (&current);
+    disableRawMode (&current);
+    return current.cols;
+}
+
 char *linenoise(const char *prompt)
 {
     int count;
@@ -1226,10 +1400,10 @@ char *linenoise(const char *prompt)
     char buf[LINENOISE_MAX_LINE];
 
     if (enableRawMode(&current) == -1) {
-	printf("%s", prompt);
+        printf("%s", prompt);
         fflush(stdout);
         if (fgets(buf, sizeof(buf), stdin) == NULL) {
-		return NULL;
+            return NULL;
         }
         count = strlen(buf);
         if (count && buf[count-1] == '\n') {
@@ -1245,10 +1419,14 @@ char *linenoise(const char *prompt)
         current.chars = 0;
         current.pos = 0;
         current.prompt = prompt;
+        current.capture = NULL;
 
-        count = linenoisePrompt(&current);
+        count = linenoiseEdit(&current);
+
         disableRawMode(&current);
         printf("\n");
+
+        free(current.capture);
         if (count == -1) {
             return NULL;
         }
@@ -1284,6 +1462,10 @@ int linenoiseHistoryAdd(const char *line) {
     return 1;
 }
 
+int linenoiseHistoryGetMaxLen(void) {
+    return history_max_len;
+}
+
 int linenoiseHistorySetMaxLen(int len) {
     char **newHistory;
 
@@ -1293,8 +1475,16 @@ int linenoiseHistorySetMaxLen(int len) {
 
         newHistory = (char **)malloc(sizeof(char*)*len);
         if (newHistory == NULL) return 0;
-        if (len < tocopy) tocopy = len;
-        memcpy(newHistory,history+(history_max_len-tocopy), sizeof(char*)*tocopy);
+
+        /* If we can't copy everything, free the elements we'll not use. */
+        if (len < tocopy) {
+            int j;
+
+            for (j = 0; j < tocopy-len; j++) free(history[j]);
+            tocopy = len;
+        }
+        memset(newHistory,0,sizeof(char*)*len);
+        memcpy(newHistory,history+(history_len-tocopy), sizeof(char*)*tocopy);
         free(history);
         history = newHistory;
     }

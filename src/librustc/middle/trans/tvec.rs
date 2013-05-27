@@ -45,8 +45,8 @@ pub fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
       ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) => {
         ty::mk_imm_box(tcx, unboxed_vec_ty)
       }
-      _ => tcx.sess.bug(~"non boxed-vec type \
-                          in tvec::expand_boxed_vec_ty")
+      _ => tcx.sess.bug("non boxed-vec type \
+                         in tvec::expand_boxed_vec_ty")
     }
 }
 
@@ -74,7 +74,7 @@ pub fn pointer_add(bcx: block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::pointer_add");
     let old_ty = val_ty(ptr);
     let bptr = PointerCast(bcx, ptr, T_ptr(T_i8()));
-    return PointerCast(bcx, InBoundsGEP(bcx, bptr, ~[bytes]), old_ty);
+    return PointerCast(bcx, InBoundsGEP(bcx, bptr, [bytes]), old_ty);
 }
 
 pub fn alloc_raw(bcx: block, unit_ty: ty::t,
@@ -313,7 +313,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block,
                     let bcx = callee::trans_lang_call(
                         bcx,
                         bcx.tcx().lang_items.strdup_uniq_fn(),
-                        ~[ llptrval, llsizeval ],
+                        [ llptrval, llsizeval ],
                         expr::SaveIn(lldestval.to_ref_llval(bcx)));
                     return DatumBlock {
                         bcx: bcx,
@@ -564,7 +564,7 @@ pub fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
     let header_bcx = base::sub_block(bcx, "iter_vec_loop_header");
     Br(bcx, header_bcx.llbb);
     let data_ptr =
-        Phi(header_bcx, val_ty(data_ptr), ~[data_ptr], ~[bcx.llbb]);
+        Phi(header_bcx, val_ty(data_ptr), [data_ptr], [bcx.llbb]);
     let not_yet_at_end =
         ICmp(header_bcx, lib::llvm::IntULT, data_ptr, data_end_ptr);
     let body_bcx = base::sub_block(header_bcx, "iter_vec_loop_body");
@@ -572,7 +572,7 @@ pub fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
     CondBr(header_bcx, not_yet_at_end, body_bcx.llbb, next_bcx.llbb);
     let body_bcx = f(body_bcx, data_ptr, unit_ty);
     AddIncomingToPhi(data_ptr, InBoundsGEP(body_bcx, data_ptr,
-                                           ~[C_int(bcx.ccx(), 1)]),
+                                           [C_int(bcx.ccx(), 1)]),
                      body_bcx.llbb);
     Br(body_bcx, header_bcx.llbb);
     return next_bcx;

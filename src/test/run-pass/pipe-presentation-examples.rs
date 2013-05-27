@@ -21,7 +21,7 @@
 
 use double_buffer::client::*;
 use double_buffer::give_buffer;
-use core::comm::Selectable;
+use std::comm::Selectable;
 
 macro_rules! select_if (
     {
@@ -37,7 +37,7 @@ macro_rules! select_if (
         ], )*
     } => {
         if $index == $count {
-            match core::pipes::try_recv($port) {
+            match std::pipes::try_recv($port) {
               $(Some($message($($($x,)+)* next)) => {
                 let $next = next;
                 $e
@@ -71,7 +71,7 @@ macro_rules! select (
               -> $next:ident $e:expr),+
         } )+
     } => ({
-        let index = core::comm::selecti([$(($port).header()),+]);
+        let index = std::comm::selecti([$(($port).header()),+]);
         select_if!(index, 0, $( $port => [
             $($message$(($($x),+))dont_type_this* -> $next $e),+
         ], )+)

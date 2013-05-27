@@ -18,6 +18,6 @@ struct S {
 }
 
 pub fn main() {
-    assert!(foopy == f);
-    assert!(f == s.f);
+    assert_eq!(foopy, f);
+    assert_eq!(f, s.f);
 }

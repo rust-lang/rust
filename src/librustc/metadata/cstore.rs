@@ -12,11 +12,13 @@
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
+use core::prelude::*;
+
 use metadata::cstore;
 use metadata::decoder;
 
 use core::hashmap::HashMap;
-use std;
+use extra;
 use syntax::ast;
 use syntax::parse::token::ident_interner;
 
@@ -150,7 +152,7 @@ pub fn get_dep_hashes(cstore: &CStore) -> ~[~str] {
         });
     }
 
-    let sorted = do std::sort::merge_sort(result) |a, b| {
+    let sorted = do extra::sort::merge_sort(result) |a, b| {
         (a.name, a.vers, a.hash) <= (b.name, b.vers, b.hash)
     };
 

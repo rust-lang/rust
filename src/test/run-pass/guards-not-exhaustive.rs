@@ -9,5 +9,5 @@ fn xyzzy(q: Q) -> uint {
 
 
 pub fn main() {
-    assert!(xyzzy(R(Some(5))) == 0);
+    assert_eq!(xyzzy(R(Some(5))), 0);
 }

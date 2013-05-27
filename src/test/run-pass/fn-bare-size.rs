@@ -10,7 +10,7 @@
 
 // xfail-test
 
-extern mod std;
+extern mod extra;
 
 pub fn main() {
     // Bare functions should just be a pointer

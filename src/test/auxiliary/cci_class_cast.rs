@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::to_str::*;
+use std::to_str::*;
 
 pub mod kitty {
     pub struct cat {

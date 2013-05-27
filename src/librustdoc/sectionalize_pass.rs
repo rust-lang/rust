@@ -10,6 +10,8 @@
 
 //! Breaks rustdocs into sections according to their headers
 
+use core::prelude::*;
+
 use astsrv;
 use doc::ItemUtils;
 use doc;
@@ -149,7 +151,7 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
 }
 
 fn parse_header(line: ~str) -> Option<~str> {
-    if str::starts_with(line, ~"# ") {
+    if str::starts_with(line, "# ") {
         Some(str::slice(line, 2u, str::len(line)).to_owned())
     } else {
         None
@@ -160,6 +162,8 @@ fn parse_header(line: ~str) -> Option<~str> {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use astsrv;
     use attr_pass;
     use doc;
@@ -184,7 +188,7 @@ mod test {
 }");
         assert!(str::contains(
             doc.cratemod().mods()[0].item.sections[0].header,
-            ~"Header"));
+            "Header"));
     }
 
     #[test]
@@ -197,7 +201,7 @@ mod test {
 }");
         assert!(str::contains(
             doc.cratemod().mods()[0].item.sections[0].body,
-            ~"Body"));
+            "Body"));
     }
 
     #[test]
@@ -222,10 +226,10 @@ mod test {
 }");
         assert!(!str::contains(
             doc.cratemod().mods()[0].desc().get(),
-            ~"Header"));
+            "Header"));
         assert!(!str::contains(
             doc.cratemod().mods()[0].desc().get(),
-            ~"Body"));
+            "Body"));
     }
 
     #[test]
@@ -236,7 +240,7 @@ mod test {
               Body\"]\
               mod a {
 }");
-        assert!(doc.cratemod().mods()[0].desc() == None);
+        assert_eq!(doc.cratemod().mods()[0].desc(), None);
     }
 
     #[test]
@@ -247,7 +251,7 @@ mod test {
               # Header\n\
               Body\"]\
               fn a(); }");
-        assert!(doc.cratemod().traits()[0].methods[0].sections.len() == 1u);
+        assert_eq!(doc.cratemod().traits()[0].methods[0].sections.len(), 1u);
     }
 
     #[test]
@@ -258,6 +262,6 @@ mod test {
               # Header\n\
               Body\"]\
               fn a() { } }");
-        assert!(doc.cratemod().impls()[0].methods[0].sections.len() == 1u);
+        assert_eq!(doc.cratemod().impls()[0].methods[0].sections.len(), 1u);
     }
 }

@@ -12,7 +12,7 @@ pub fn main() {
     let (port, chan) = comm::stream::<&'static str>();
 
     do task::spawn {
-        assert!(port.recv() == "hello, world");
+        assert_eq!(port.recv(), "hello, world");
     }
 
     chan.send("hello, world");

@@ -206,6 +206,8 @@ and so on.
 
 */
 
+use core::prelude::*;
+
 use middle::pat_util::{pat_bindings};
 use middle::freevars;
 use middle::ty;

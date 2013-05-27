@@ -16,5 +16,5 @@ fn destructure(x: Option<int>) -> int {
 }
 
 pub fn main() {
-    assert!(destructure(Some(22)) == 22);
+    assert_eq!(destructure(Some(22)), 22);
 }

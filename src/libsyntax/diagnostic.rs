@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use codemap::{Pos, span};
 use codemap;
 
-use std::term;
+use extra::term;
 
 pub type Emitter = @fn(cmsp: Option<(@codemap::CodeMap, span)>,
                        msg: &str,
@@ -218,7 +220,7 @@ pub fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {
         print_macro_backtrace(cm, sp);
       }
       None => {
-        print_diagnostic(~"", lvl, msg);
+        print_diagnostic("", lvl, msg);
       }
     }
 }
@@ -296,7 +298,7 @@ fn print_macro_backtrace(cm: @codemap::CodeMap, sp: span) {
         print_diagnostic(*ss, note,
                          fmt!("in expansion of %s!", ei.callee.name));
         let ss = cm.span_to_str(ei.call_site);
-        print_diagnostic(ss, note, ~"expansion site");
+        print_diagnostic(ss, note, "expansion site");
         print_macro_backtrace(cm, ei.call_site);
     }
 }

@@ -11,5 +11,5 @@
 pub fn main() {
     let mut i;
     i = ~100;
-    assert!(*i == 100);
+    assert_eq!(*i, 100);
 }

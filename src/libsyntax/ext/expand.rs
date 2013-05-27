@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast::{blk_, attribute_, attr_outer, meta_word};
 use ast::{crate, expr_, expr_mac, mac_invoc_tt};
 use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
+use ast::{SCTable, illegal_ctxt};
 use ast;
+use ast_util::{new_rename, new_mark, resolve};
 use attr;
 use codemap;
 use codemap::{span, CallInfo, ExpandedFrom, NameAndSpan, spanned};
@@ -21,7 +25,7 @@ use parse;
 use parse::{parse_item_from_source_str};
 
 pub fn expand_expr(extsbox: @mut SyntaxEnv,
-                   cx: @ext_ctxt,
+                   cx: @ExtCtxt,
                    e: &expr_,
                    s: span,
                    fld: @ast_fold,
@@ -107,7 +111,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
 // NB: there is some redundancy between this and expand_item, below, and
 // they might benefit from some amount of semantic and language-UI merger.
 pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
-                        cx: @ext_ctxt,
+                        cx: @ExtCtxt,
                         module_: &ast::_mod,
                         fld: @ast_fold,
                         orig: @fn(&ast::_mod, @ast_fold) -> ast::_mod)
@@ -159,7 +163,7 @@ macro_rules! with_exts_frame (
 
 // When we enter a module, record it, for the sake of `module!`
 pub fn expand_item(extsbox: @mut SyntaxEnv,
-                   cx: @ext_ctxt,
+                   cx: @ExtCtxt,
                    it: @ast::item,
                    fld: @ast_fold,
                    orig: @fn(@ast::item, @ast_fold) -> Option<@ast::item>)
@@ -225,14 +229,14 @@ macro_rules! without_macro_scoping(
 // Support for item-position macro invocations, exactly the same
 // logic as for expression-position macro invocations.
 pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
-                       cx: @ext_ctxt, it: @ast::item,
+                       cx: @ExtCtxt, it: @ast::item,
                        fld: @ast_fold)
                     -> Option<@ast::item> {
     let (pth, tts) = match it.node {
         item_mac(codemap::spanned { node: mac_invoc_tt(pth, ref tts), _}) => {
             (pth, copy *tts)
         }
-        _ => cx.span_bug(it.span, ~"invalid item macro invocation")
+        _ => cx.span_bug(it.span, "invalid item macro invocation")
     };
 
     let extname = cx.parse_sess().interner.get(pth.idents[0]);
@@ -292,7 +296,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
 
 // expand a stmt
 pub fn expand_stmt(extsbox: @mut SyntaxEnv,
-                   cx: @ext_ctxt,
+                   cx: @ExtCtxt,
                    s: &stmt_,
                    sp: span,
                    fld: @ast_fold,
@@ -358,7 +362,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
 
 
 pub fn expand_block(extsbox: @mut SyntaxEnv,
-                    cx: @ext_ctxt,
+                    cx: @ExtCtxt,
                     blk: &blk_,
                     sp: span,
                     fld: @ast_fold,
@@ -375,12 +379,11 @@ pub fn expand_block(extsbox: @mut SyntaxEnv,
             // see note below about treatment of exts table
             with_exts_frame!(extsbox,orig(blk,sp,fld))
         },
-        _ => cx.span_bug(sp,
-                         ~"expected ScopeMacros binding for \" block\"")
+        _ => cx.span_bug(sp, "expected ScopeMacros binding for \" block\"")
     }
 }
 
-pub fn new_span(cx: @ext_ctxt, sp: span) -> span {
+pub fn new_span(cx: @ExtCtxt, sp: span) -> span {
     /* this discards information in the case of macro-defining macros */
     return span {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
 }
@@ -435,28 +438,28 @@ pub fn core_macros() -> ~str {
             fail!(\"explicit failure\")
         );
         ($msg:expr) => (
-            ::core::sys::FailWithCause::fail_with($msg, file!(), line!())
+            ::std::sys::FailWithCause::fail_with($msg, file!(), line!())
         );
         ($( $arg:expr ),+) => (
-            ::core::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
+            ::std::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
         )
     )
 
     macro_rules! assert(
         ($cond:expr) => {
             if !$cond {
-                ::core::sys::FailWithCause::fail_with(
+                ::std::sys::FailWithCause::fail_with(
                     ~\"assertion failed: \" + stringify!($cond), file!(), line!())
             }
         };
         ($cond:expr, $msg:expr) => {
             if !$cond {
-                ::core::sys::FailWithCause::fail_with($msg, file!(), line!())
+                ::std::sys::FailWithCause::fail_with($msg, file!(), line!())
             }
         };
         ($cond:expr, $( $arg:expr ),+) => {
             if !$cond {
-                ::core::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
+                ::std::sys::FailWithCause::fail_with(fmt!( $($arg),+ ), file!(), line!())
             }
         }
     )
@@ -477,7 +480,7 @@ pub fn core_macros() -> ~str {
     macro_rules! assert_approx_eq (
         ($given:expr , $expected:expr) => (
             {
-                use core::cmp::ApproxEq;
+                use std::cmp::ApproxEq;
 
                 let given_val = $given;
                 let expected_val = $expected;
@@ -493,7 +496,7 @@ pub fn core_macros() -> ~str {
         );
         ($given:expr , $expected:expr , $epsilon:expr) => (
             {
-                use core::cmp::ApproxEq;
+                use std::cmp::ApproxEq;
 
                 let given_val = $given;
                 let expected_val = $expected;
@@ -515,11 +518,11 @@ pub fn core_macros() -> ~str {
         { pub $c:ident: $in:ty -> $out:ty; } => {
 
             pub mod $c {
-                fn key(_x: @::core::condition::Handler<$in,$out>) { }
+                fn key(_x: @::std::condition::Handler<$in,$out>) { }
 
                 pub static cond :
-                    ::core::condition::Condition<'static,$in,$out> =
-                    ::core::condition::Condition {
+                    ::std::condition::Condition<'static,$in,$out> =
+                    ::std::condition::Condition {
                         name: stringify!($c),
                         key: key
                     };
@@ -530,11 +533,11 @@ pub fn core_macros() -> ~str {
 
             // FIXME (#6009): remove mod's `pub` below once variant above lands.
             pub mod $c {
-                fn key(_x: @::core::condition::Handler<$in,$out>) { }
+                fn key(_x: @::std::condition::Handler<$in,$out>) { }
 
                 pub static cond :
-                    ::core::condition::Condition<'static,$in,$out> =
-                    ::core::condition::Condition {
+                    ::std::condition::Condition<'static,$in,$out> =
+                    ::std::condition::Condition {
                         name: stringify!($c),
                         key: key
                     };
@@ -589,7 +592,7 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     // every method/element of AstFoldFns in fold.rs.
     let extsbox = @mut syntax_expander_table();
     let afp = default_ast_fold();
-    let cx: @ext_ctxt = mk_ctxt(parse_sess, copy cfg);
+    let cx = ExtCtxt::new(parse_sess, copy cfg);
     let f_pre = @AstFoldFns {
         fold_expr: |expr,span,recur|
             expand_expr(extsbox, cx, expr, span, recur, afp.fold_expr),
@@ -626,7 +629,7 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
                                               attrs,
                                               parse_sess) {
         Some(item) => item,
-        None => cx.bug(~"expected core macros to parse correctly")
+        None => cx.bug("expected core macros to parse correctly")
     };
     // This is run for its side-effects on the expander env,
     // as it registers all the core macros as expanders.
@@ -635,62 +638,65 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     @f.fold_crate(&*c)
 }
 
-// given a function from paths to paths, produce
+// given a function from idents to idents, produce
 // an ast_fold that applies that function:
-fn fun_to_path_folder(f: @fn(&ast::Path)->ast::Path) -> @ast_fold{
+pub fn fun_to_ident_folder(f: @fn(ast::ident)->ast::ident) -> @ast_fold{
     let afp = default_ast_fold();
     let f_pre = @AstFoldFns{
-        fold_path : |p, _| f(p),
+        fold_ident : |id, _| f(id),
         .. *afp
     };
     make_fold(f_pre)
 }
-/* going to have to figure out whether the table is passed in or
-extracted from TLS...
+
 // update the ctxts in a path to get a rename node
-fn ctxt_update_rename(from: ast::Name,
-                       fromctx: ast::SyntaxContext, to: ast::Name) ->
-    @fn(&ast::Path,@ast_fold)->ast::Path {
-    return |p:&ast::Path,_|
-    ast::Path {span: p.span,
-               global: p.global,
-               idents: p.idents.map(|id|
-                                    ast::ident{
-                                        repr: id.repr,
-                                        // this needs to be cached....
-                                        ctxt: Some(@ast::Rename(from,fromctx,
-                                                           to,id.ctxt))
-                                    }),
-               rp: p.rp,
-               types: p.types};
+pub fn new_ident_renamer(from: ast::ident,
+                      to: ast::Name,
+                      table: @mut SCTable) ->
+    @fn(ast::ident)->ast::ident {
+    |id : ast::ident|
+    ast::ident{
+        repr: id.repr,
+        ctxt: new_rename(from,to,id.ctxt,table)
+    }
 }
 
+
 // update the ctxts in a path to get a mark node
-fn ctxt_update_mark(mark: uint) ->
-    @fn(&ast::Path,@ast_fold)->ast::Path {
-    return |p:&ast::Path,_|
-    ast::Path {span: p.span,
-               global: p.global,
-               idents: p.idents.map(|id|
-                                    ast::ident{
-                                        repr: id.repr,
-                                        // this needs to be cached....
-                                        ctxt: Some(@ast::Mark(mark,id.ctxt))
-                                    }),
-               rp: p.rp,
-               types: p.types};
+pub fn new_ident_marker(mark: uint,
+                        table: @mut SCTable) ->
+    @fn(ast::ident)->ast::ident {
+    |id : ast::ident|
+    ast::ident{
+        repr: id.repr,
+        ctxt: new_mark(mark,id.ctxt,table)
+    }
 }
-*/
+
+// perform resolution (in the MTWT sense) on all of the
+// idents in the tree. This is the final step in expansion.
+pub fn new_ident_resolver(table: @mut SCTable) ->
+    @fn(ast::ident)->ast::ident {
+    |id : ast::ident|
+    ast::ident {
+        repr : resolve(id,table),
+        ctxt : illegal_ctxt
+    }
+}
+
 
 #[cfg(test)]
 mod test {
     use super::*;
     use ast;
-    use ast::{attribute_, attr_outer, meta_word};
+    use ast::{attribute_, attr_outer, meta_word, empty_ctxt};
+    use ast_util::{new_sctable};
     use codemap;
     use codemap::spanned;
     use parse;
+    use core::io;
     use core::option::{None, Some};
+    use util::parser_testing::{string_to_item_and_sess};
 
     // make sure that fail! is present
     #[test] fn fail_exists_test () {
@@ -790,6 +796,24 @@ mod test {
                 is_sugared_doc: false,
             }
         }
+    }
+
+    #[test]
+    fn renaming () {
+        let (maybe_item_ast,sess) = string_to_item_and_sess(@~"fn a() -> int { let b = 13; b} ");
+        let item_ast = match maybe_item_ast {
+            Some(x) => x,
+            None => fail!("test case fail")
+        };
+        let table = @mut new_sctable();
+        let a_name = 100; // enforced by testing_interner
+        let a2_name = sess.interner.gensym("a2").repr;
+        let renamer = new_ident_renamer(ast::ident{repr:a_name,ctxt:empty_ctxt},
+                                        a2_name,table);
+        let renamed_ast = fun_to_ident_folder(renamer).fold_item(item_ast).get();
+        let resolver = new_ident_resolver(table);
+        let resolved_ast = fun_to_ident_folder(resolver).fold_item(renamed_ast).get();
+        io::print(fmt!("ast: %?\n",resolved_ast))
     }
 
 }

@@ -12,18 +12,18 @@
 
 #[forbid(deprecated_pattern)];
 
-extern mod std;
+extern mod extra;
 
 // These tests used to be separate files, but I wanted to refactor all
 // the common code.
 
-use EBReader = std::ebml::reader;
-use EBWriter = std::ebml::writer;
-use core::cmp::Eq;
-use core::io::Writer;
-use std::ebml;
-use std::serialize::{Decodable, Encodable};
-use std::time;
+use EBReader = extra::ebml::reader;
+use EBWriter = extra::ebml::writer;
+use std::cmp::Eq;
+use std::io::Writer;
+use extra::ebml;
+use extra::serialize::{Decodable, Encodable};
+use extra::time;
 
 fn test_ebml<A:
     Eq +

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::cmp::Eq;
+use std::cmp::Eq;
 
 trait MyNum : Eq { }
 
@@ -30,5 +30,5 @@ fn mi(v: int) -> MyInt { MyInt { val: v } }
 pub fn main() {
     let (x, y, z) = (mi(3), mi(5), mi(3));
     assert!(x != y);
-    assert!(x == z);
+    assert_eq!(x, z);
 }

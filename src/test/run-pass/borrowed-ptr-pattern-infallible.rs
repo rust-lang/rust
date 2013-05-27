@@ -10,7 +10,7 @@
 
 pub fn main() {
     let (&x, &y, &z) = (&3, &'a', &@"No pets!");
-    assert!(x == 3);
-    assert!(y == 'a');
-    assert!(z == @"No pets!");
+    assert_eq!(x, 3);
+    assert_eq!(y, 'a');
+    assert_eq!(z, @"No pets!");
 }

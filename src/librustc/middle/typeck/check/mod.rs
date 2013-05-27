@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -76,6 +76,8 @@ type parameter).
 
 */
 
+use core::prelude::*;
+
 use middle::const_eval;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
@@ -110,7 +112,7 @@ use util::ppaux;
 use core::cast::transmute;
 use core::hashmap::HashMap;
 use core::util::replace;
-use std::list::Nil;
+use extra::list::Nil;
 use syntax::abi::AbiSet;
 use syntax::ast::{provided, required};
 use syntax::ast;
@@ -828,15 +830,6 @@ pub impl FnCtxt {
         }
     }
 
-    #[cfg(stage0)]
-    fn opt_node_ty_substs(&self, id: ast::node_id,
-                          f: &fn(&ty::substs) -> bool) {
-        match self.inh.node_type_substs.find(&id) {
-            Some(s) => { f(s); }
-            None => ()
-        }
-    }
-    #[cfg(not(stage0))]
     fn opt_node_ty_substs(&self, id: ast::node_id,
                           f: &fn(&ty::substs) -> bool) -> bool {
         match self.inh.node_type_substs.find(&id) {
@@ -1053,8 +1046,11 @@ pub fn check_lit(fcx: @mut FnCtxt, lit: @ast::lit) -> ty::t {
 pub fn valid_range_bounds(ccx: @mut CrateCtxt,
                           from: @ast::expr,
                           to: @ast::expr)
-                       -> bool {
-    const_eval::compare_lit_exprs(ccx.tcx, from, to) <= 0
+                       -> Option<bool> {
+    match const_eval::compare_lit_exprs(ccx.tcx, from, to) {
+        Some(val) => Some(val <= 0),
+        None => None
+    }
 }
 
 pub fn check_expr_has_type(
@@ -1471,7 +1467,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                        )
                      -> ty::t {
         match method::lookup(fcx, op_ex, self_ex,
-                             op_ex.callee_id, opname, self_t, ~[],
+                             op_ex.callee_id, opname, self_t, [],
                              deref_args, CheckTraitsOnly, autoderef_receiver) {
             Some(ref origin) => {
                 let method_ty = fcx.node_ty(op_ex.callee_id);
@@ -1817,7 +1813,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let mut class_field_map = HashMap::new();
         let mut fields_found = 0;
         for field_types.each |field| {
-            // XXX: Check visibility here.
             class_field_map.insert(field.ident, (field.id, false));
         }
 
@@ -1886,7 +1881,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                        } else {
                                            "s"
                                        },
-                                       str::connect(missing_fields, ~", ")));
+                                       str::connect(missing_fields, ", ")));
              }
         }
 
@@ -2121,7 +2116,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     }
                     None => fcx.tcx().sess.impossible_case(
                         expr.span,
-                        ~"loop body must have an expected type")
+                        "loop body must have an expected type")
                 }
             }
         };
@@ -2407,7 +2402,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
           }
           fcx.write_nil(id);
       }
-      ast::expr_mac(_) => tcx.sess.bug(~"unexpanded macro"),
+      ast::expr_mac(_) => tcx.sess.bug("unexpanded macro"),
       ast::expr_break(_) => { fcx.write_bot(id); }
       ast::expr_again(_) => { fcx.write_bot(id); }
       ast::expr_ret(expr_opt) => {
@@ -2561,7 +2556,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 None => {
                     fcx.tcx().sess.impossible_case(
                         expr.span,
-                        ~"do body must have expected type")
+                        "do body must have expected type")
                 }
             }
         };
@@ -2921,7 +2916,7 @@ pub fn check_stmt(fcx: @mut FnCtxt, stmt: @ast::stmt)  {
         saw_bot |= ty::type_is_bot(expr_ty);
         saw_err |= ty::type_is_error(expr_ty);
       }
-      ast::stmt_mac(*) => fcx.ccx.tcx.sess.bug(~"unexpanded macro")
+      ast::stmt_mac(*) => fcx.ccx.tcx.sess.bug("unexpanded macro")
     }
     if saw_bot {
         fcx.write_bot(node_id);
@@ -3456,122 +3451,152 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
 
     let tcx = ccx.tcx;
     let (n_tps, inputs, output) = match *ccx.tcx.sess.str_of(it.ident) {
-      ~"size_of" |
-      ~"pref_align_of" | ~"min_align_of" => (1u, ~[], ty::mk_uint()),
-      ~"init" => (1u, ~[], param(ccx, 0u)),
-      ~"uninit" => (1u, ~[], param(ccx, 0u)),
-      ~"forget" => (1u, ~[ param(ccx, 0) ], ty::mk_nil()),
-      ~"transmute" => (2, ~[ param(ccx, 0) ], param(ccx, 1)),
-      ~"move_val" | ~"move_val_init" => {
-          (1u,
+        ~"size_of" |
+        ~"pref_align_of" | ~"min_align_of" => (1u, ~[], ty::mk_uint()),
+        ~"init" => (1u, ~[], param(ccx, 0u)),
+        ~"uninit" => (1u, ~[], param(ccx, 0u)),
+        ~"forget" => (1u, ~[ param(ccx, 0) ], ty::mk_nil()),
+        ~"transmute" => (2, ~[ param(ccx, 0) ], param(ccx, 1)),
+        ~"move_val" | ~"move_val_init" => {
+            (1u,
+             ~[
+                ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), param(ccx, 0)),
+                param(ccx, 0u)
+              ],
+           ty::mk_nil())
+        }
+        ~"needs_drop" => (1u, ~[], ty::mk_bool()),
+
+        ~"atomic_cxchg"    | ~"atomic_cxchg_acq"| ~"atomic_cxchg_rel" => {
+          (0,
            ~[
-              ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), param(ccx, 0)),
-              param(ccx, 0u)
-            ],
-         ty::mk_nil())
-      }
-      ~"needs_drop" => (1u, ~[], ty::mk_bool()),
+              ty::mk_mut_rptr(tcx,
+                              ty::re_bound(ty::br_anon(0)),
+                              ty::mk_int()),
+              ty::mk_int(),
+              ty::mk_int()
+           ],
+           ty::mk_int())
+        }
+        ~"atomic_load"     | ~"atomic_load_acq" => {
+          (0,
+           ~[
+              ty::mk_imm_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int())
+           ],
+          ty::mk_int())
+        }
+        ~"atomic_store"    | ~"atomic_store_rel" => {
+          (0,
+           ~[
+              ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int()),
+              ty::mk_int()
+           ],
+           ty::mk_nil())
+        }
+        ~"atomic_xchg"     | ~"atomic_xadd"     | ~"atomic_xsub"     |
+        ~"atomic_xchg_acq" | ~"atomic_xadd_acq" | ~"atomic_xsub_acq" |
+        ~"atomic_xchg_rel" | ~"atomic_xadd_rel" | ~"atomic_xsub_rel" => {
+          (0,
+           ~[
+              ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int()),
+              ty::mk_int()
+           ],
+           ty::mk_int())
+        }
 
-      ~"atomic_cxchg"    | ~"atomic_cxchg_acq"| ~"atomic_cxchg_rel" => {
-        (0,
-         ~[
-            ty::mk_mut_rptr(tcx,
-                            ty::re_bound(ty::br_anon(0)),
-                            ty::mk_int()),
-            ty::mk_int(),
-            ty::mk_int()
-         ],
-         ty::mk_int())
-      }
-      ~"atomic_load"     | ~"atomic_load_acq" => {
-        (0,
-         ~[
-            ty::mk_imm_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int())
-         ],
-        ty::mk_int())
-      }
-      ~"atomic_store"    | ~"atomic_store_rel" => {
-        (0,
-         ~[
-            ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int()),
-            ty::mk_int()
-         ],
-         ty::mk_nil())
-      }
-      ~"atomic_xchg"     | ~"atomic_xadd"     | ~"atomic_xsub"     |
-      ~"atomic_xchg_acq" | ~"atomic_xadd_acq" | ~"atomic_xsub_acq" |
-      ~"atomic_xchg_rel" | ~"atomic_xadd_rel" | ~"atomic_xsub_rel" => {
-        (0,
-         ~[
-            ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int()),
-            ty::mk_int()
-         ],
-         ty::mk_int())
-      }
-
-      ~"get_tydesc" => {
-        // FIXME (#3730): return *intrinsic::tydesc, not *()
-        (1u, ~[], ty::mk_nil_ptr(ccx.tcx))
-      }
-      ~"visit_tydesc" => {
-        let tydesc_name = special_idents::tydesc;
-        assert!(tcx.intrinsic_defs.contains_key(&tydesc_name));
-        let (_, tydesc_ty) = tcx.intrinsic_defs.get_copy(&tydesc_name);
-        let (_, visitor_object_ty) = ty::visitor_object_ty(tcx);
-        let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
-            ty: tydesc_ty,
-            mutbl: ast::m_imm
-        });
-        (0, ~[ td_ptr, visitor_object_ty ], ty::mk_nil())
-      }
-      ~"frame_address" => {
-        let fty = ty::mk_closure(ccx.tcx, ty::ClosureTy {
-            purity: ast::impure_fn,
-            sigil: ast::BorrowedSigil,
-            onceness: ast::Once,
-            region: ty::re_bound(ty::br_anon(0)),
-            bounds: ty::EmptyBuiltinBounds(),
-            sig: ty::FnSig {
-                bound_lifetime_names: opt_vec::Empty,
-                inputs: ~[ty::mk_imm_ptr(ccx.tcx, ty::mk_mach_uint(ast::ty_u8))],
-                output: ty::mk_nil()
-            }
-        });
-        (0u, ~[fty], ty::mk_nil())
-      }
-      ~"morestack_addr" => {
-        (0u, ~[], ty::mk_nil_ptr(ccx.tcx))
-      }
-      ~"memmove32" => {
-        (0,
-         ~[
-            ty::mk_ptr(tcx, ty::mt {
-                ty: ty::mk_u8(),
-                mutbl: ast::m_mutbl
-            }),
-            ty::mk_ptr(tcx, ty::mt {
-                ty: ty::mk_u8(),
-                mutbl: ast::m_imm
-            }),
-            ty::mk_u32()
-         ],
-         ty::mk_nil())
-      }
-      ~"memmove64" => {
-        (0,
-         ~[
-            ty::mk_ptr(tcx, ty::mt {
-                ty: ty::mk_u8(),
-                mutbl: ast::m_mutbl
-            }),
-            ty::mk_ptr(tcx, ty::mt {
-                ty: ty::mk_u8(),
-                mutbl: ast::m_imm
-            }),
-            ty::mk_u64()
-         ],
-         ty::mk_nil())
-      }
+        ~"get_tydesc" => {
+          // FIXME (#3730): return *intrinsic::tydesc, not *()
+          (1u, ~[], ty::mk_nil_ptr(ccx.tcx))
+        }
+        ~"visit_tydesc" => {
+          let tydesc_name = special_idents::tydesc;
+          assert!(tcx.intrinsic_defs.contains_key(&tydesc_name));
+          let (_, tydesc_ty) = tcx.intrinsic_defs.get_copy(&tydesc_name);
+          let (_, visitor_object_ty) = ty::visitor_object_ty(tcx);
+          let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
+              ty: tydesc_ty,
+              mutbl: ast::m_imm
+          });
+          (0, ~[ td_ptr, visitor_object_ty ], ty::mk_nil())
+        }
+        ~"frame_address" => {
+          let fty = ty::mk_closure(ccx.tcx, ty::ClosureTy {
+              purity: ast::impure_fn,
+              sigil: ast::BorrowedSigil,
+              onceness: ast::Once,
+              region: ty::re_bound(ty::br_anon(0)),
+              bounds: ty::EmptyBuiltinBounds(),
+              sig: ty::FnSig {
+                  bound_lifetime_names: opt_vec::Empty,
+                  inputs: ~[ty::mk_imm_ptr(ccx.tcx, ty::mk_mach_uint(ast::ty_u8))],
+                  output: ty::mk_nil()
+              }
+          });
+          (0u, ~[fty], ty::mk_nil())
+        }
+        ~"morestack_addr" => {
+          (0u, ~[], ty::mk_nil_ptr(ccx.tcx))
+        }
+        ~"memcpy32" => {
+          (0,
+           ~[
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: ty::mk_u8(),
+                  mutbl: ast::m_mutbl
+              }),
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: ty::mk_u8(),
+                  mutbl: ast::m_imm
+              }),
+              ty::mk_u32()
+           ],
+           ty::mk_nil())
+        }
+        ~"memcpy64" => {
+          (0,
+           ~[
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: ty::mk_u8(),
+                  mutbl: ast::m_mutbl
+              }),
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: ty::mk_u8(),
+                  mutbl: ast::m_imm
+              }),
+              ty::mk_u64()
+           ],
+           ty::mk_nil())
+        }
+        ~"memmove32" => {
+          (0,
+           ~[
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: ty::mk_u8(),
+                  mutbl: ast::m_mutbl
+              }),
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: ty::mk_u8(),
+                  mutbl: ast::m_imm
+              }),
+              ty::mk_u32()
+           ],
+           ty::mk_nil())
+        }
+        ~"memmove64" => {
+          (0,
+           ~[
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: ty::mk_u8(),
+                  mutbl: ast::m_mutbl
+              }),
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: ty::mk_u8(),
+                  mutbl: ast::m_imm
+              }),
+              ty::mk_u64()
+           ],
+           ty::mk_nil())
+        }
         ~"sqrtf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
         ~"sqrtf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
         ~"powif32" => {

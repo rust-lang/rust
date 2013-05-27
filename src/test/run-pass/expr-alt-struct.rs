@@ -18,7 +18,7 @@ struct R { i: int }
 
 fn test_rec() {
     let rs = match true { true => R {i: 100}, _ => fail!() };
-    assert!((rs.i == 100));
+    assert_eq!(rs.i, 100);
 }
 
 enum mood { happy, sad, }
@@ -32,7 +32,7 @@ impl cmp::Eq for mood {
 
 fn test_tag() {
     let rs = match true { true => { happy } false => { sad } };
-    assert!((rs == happy));
+    assert_eq!(rs, happy);
 }
 
 pub fn main() { test_rec(); test_tag(); }

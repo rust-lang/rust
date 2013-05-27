@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use astsrv;
 use doc;
 use time;
@@ -89,6 +91,6 @@ fn test_run_passes() {
         ];
         let doc = extract::from_srv(srv.clone(), ~"one");
         let doc = run_passes(srv, doc, passes);
-        assert!(doc.cratemod().name() == ~"onetwothree");
+        assert_eq!(doc.cratemod().name(), ~"onetwothree");
     }
 }

@@ -12,11 +12,11 @@
 
 // xfail-pretty
 
-extern mod std;
+extern mod extra;
 
-use core::cell::Cell;
-use core::pipes::*;
-use std::time::precise_time_s;
+use std::cell::Cell;
+use std::pipes::*;
+use extra::time::precise_time_s;
 
 proto! pingpong (
     ping: send {
@@ -117,10 +117,10 @@ pub fn spawn_service_recv<T:Owned,Tb:Owned>(
     client
 }
 
-fn switch<T:Owned,Tb:Owned,U>(endp: core::pipes::RecvPacketBuffered<T, Tb>,
+fn switch<T:Owned,Tb:Owned,U>(endp: std::pipes::RecvPacketBuffered<T, Tb>,
                               f: &fn(v: Option<T>) -> U)
                               -> U {
-    f(core::pipes::try_recv(endp))
+    f(std::pipes::try_recv(endp))
 }
 
 // Here's the benchmark

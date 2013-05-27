@@ -150,6 +150,6 @@ pub fn static_size_of_enum(cx: @CrateContext, t: ty::t) -> uint {
             cx.enum_sizes.insert(t, max_size);
             return max_size;
         }
-        _ => cx.sess.bug(~"static_size_of_enum called on non-enum")
+        _ => cx.sess.bug("static_size_of_enum called on non-enum")
     }
 }

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use driver::session;
 use metadata::cstore;
 use metadata::filesearch;
@@ -86,9 +88,9 @@ fn get_rpaths(os: session::os,
         }
     }
 
-    log_rpaths(~"relative", rel_rpaths);
-    log_rpaths(~"absolute", abs_rpaths);
-    log_rpaths(~"fallback", fallback_rpaths);
+    log_rpaths("relative", rel_rpaths);
+    log_rpaths("absolute", abs_rpaths);
+    log_rpaths("fallback", fallback_rpaths);
 
     let mut rpaths = rel_rpaths;
     rpaths.push_all(abs_rpaths);
@@ -193,6 +195,8 @@ pub fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
 
 #[cfg(unix)]
 mod test {
+    use core::prelude::*;
+
     // FIXME(#2119): the outer attribute should be #[cfg(unix, test)], then
     // these redundant #[cfg(test)] blocks can be removed
     #[cfg(test)]
@@ -207,9 +211,9 @@ mod test {
 
     #[test]
     fn test_rpaths_to_flags() {
-        let flags = rpaths_to_flags(~[Path("path1"),
-                                      Path("path2")]);
-        assert!(flags == ~[~"-Wl,-rpath,path1", ~"-Wl,-rpath,path2"]);
+        let flags = rpaths_to_flags([Path("path1"),
+                                     Path("path2")]);
+        assert_eq!(flags, ~[~"-Wl,-rpath,path1", ~"-Wl,-rpath,path2"]);
     }
 
     #[test]
@@ -234,16 +238,16 @@ mod test {
         let res = minimize_rpaths([Path("rpath1"),
                                    Path("rpath2"),
                                    Path("rpath1")]);
-        assert!(res == ~[Path("rpath1"), Path("rpath2")]);
+        assert_eq!(res, ~[Path("rpath1"), Path("rpath2")]);
     }
 
     #[test]
     fn test_minimize2() {
-        let res = minimize_rpaths(~[Path("1a"), Path("2"), Path("2"),
-                                    Path("1a"), Path("4a"),Path("1a"),
-                                    Path("2"), Path("3"), Path("4a"),
-                                    Path("3")]);
-        assert!(res == ~[Path("1a"), Path("2"), Path("4a"), Path("3")]);
+        let res = minimize_rpaths([Path("1a"), Path("2"), Path("2"),
+                                   Path("1a"), Path("4a"),Path("1a"),
+                                   Path("2"), Path("3"), Path("4a"),
+                                   Path("3")]);
+        assert_eq!(res, ~[Path("1a"), Path("2"), Path("4a"), Path("3")]);
     }
 
     #[test]
@@ -251,7 +255,7 @@ mod test {
         let p1 = Path("/usr/bin/rustc");
         let p2 = Path("/usr/lib/mylib");
         let res = get_relative_to(&p1, &p2);
-        assert!(res == Path("../lib"));
+        assert_eq!(res, Path("../lib"));
     }
 
     #[test]
@@ -259,7 +263,7 @@ mod test {
         let p1 = Path("/usr/bin/rustc");
         let p2 = Path("/usr/bin/../lib/mylib");
         let res = get_relative_to(&p1, &p2);
-        assert!(res == Path("../lib"));
+        assert_eq!(res, Path("../lib"));
     }
 
     #[test]
@@ -267,7 +271,7 @@ mod test {
         let p1 = Path("/usr/bin/whatever/rustc");
         let p2 = Path("/usr/lib/whatever/mylib");
         let res = get_relative_to(&p1, &p2);
-        assert!(res == Path("../../lib/whatever"));
+        assert_eq!(res, Path("../../lib/whatever"));
     }
 
     #[test]
@@ -275,7 +279,7 @@ mod test {
         let p1 = Path("/usr/bin/whatever/../rustc");
         let p2 = Path("/usr/lib/whatever/mylib");
         let res = get_relative_to(&p1, &p2);
-        assert!(res == Path("../lib/whatever"));
+        assert_eq!(res, Path("../lib/whatever"));
     }
 
     #[test]
@@ -283,7 +287,7 @@ mod test {
         let p1 = Path("/usr/bin/whatever/../rustc");
         let p2 = Path("/usr/lib/whatever/../mylib");
         let res = get_relative_to(&p1, &p2);
-        assert!(res == Path("../lib"));
+        assert_eq!(res, Path("../lib"));
     }
 
     #[test]
@@ -291,7 +295,7 @@ mod test {
         let p1 = Path("/1");
         let p2 = Path("/2/3");
         let res = get_relative_to(&p1, &p2);
-        assert!(res == Path("2"));
+        assert_eq!(res, Path("2"));
     }
 
     #[test]
@@ -299,7 +303,7 @@ mod test {
         let p1 = Path("/1/2");
         let p2 = Path("/3");
         let res = get_relative_to(&p1, &p2);
-        assert!(res == Path(".."));
+        assert_eq!(res, Path(".."));
     }
 
     #[test]
@@ -312,7 +316,7 @@ mod test {
         debug!("test_relative_tu8: %s vs. %s",
                res.to_str(),
                Path(".").to_str());
-        assert!(res == Path("."));
+        assert_eq!(res, Path("."));
     }
 
     #[test]
@@ -322,7 +326,7 @@ mod test {
       let o = session::os_linux;
       let res = get_rpath_relative_to_output(o,
             &Path("bin/rustc"), &Path("lib/libstd.so"));
-      assert!(res.to_str() == ~"$ORIGIN/../lib");
+      assert_eq!(res.to_str(), ~"$ORIGIN/../lib");
     }
 
     #[test]
@@ -331,7 +335,7 @@ mod test {
         let o = session::os_freebsd;
         let res = get_rpath_relative_to_output(o,
             &Path("bin/rustc"), &Path("lib/libstd.so"));
-        assert!(res.to_str() == ~"$ORIGIN/../lib");
+        assert_eq!(res.to_str(), ~"$ORIGIN/../lib");
     }
 
     #[test]
@@ -342,7 +346,7 @@ mod test {
         let res = get_rpath_relative_to_output(o,
                                                &Path("bin/rustc"),
                                                &Path("lib/libstd.so"));
-        assert!(res.to_str() == ~"@executable_path/../lib");
+        assert_eq!(res.to_str(), ~"@executable_path/../lib");
     }
 
     #[test]
@@ -352,6 +356,6 @@ mod test {
                res.to_str(),
                os::make_absolute(&Path("lib")).to_str());
 
-        assert!(res == os::make_absolute(&Path("lib")));
+        assert_eq!(res, os::make_absolute(&Path("lib")));
     }
 }

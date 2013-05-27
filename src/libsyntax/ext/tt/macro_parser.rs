@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // Earley-like parser for macros.
+
+use core::prelude::*;
+
 use ast;
 use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 use codemap::{BytePos, mk_sp};
@@ -371,7 +374,7 @@ pub fn parse(
                              *sess.interner.get(bind))
                       }
                       _ => fail!()
-                    } }), ~" or ");
+                    } }), " or ");
                 return error(sp, fmt!(
                     "Local ambiguity: multiple parsing options: \
                      built-in NTs %s or %u other options.",
@@ -413,7 +416,7 @@ pub fn parse_nt(p: &Parser, name: &str) -> nonterminal {
     match name {
       "item" => match p.parse_item(~[]) {
         Some(i) => token::nt_item(i),
-        None => p.fatal(~"expected an item keyword")
+        None => p.fatal("expected an item keyword")
       },
       "block" => token::nt_block(p.parse_block()),
       "stmt" => token::nt_stmt(p.parse_stmt(~[])),

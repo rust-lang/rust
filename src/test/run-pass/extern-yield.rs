@@ -11,7 +11,7 @@
 mod rustrt {
     pub extern {
         pub fn rust_dbg_call(cb: *u8, data: libc::uintptr_t)
-                          -> libc::uintptr_t;
+                             -> libc::uintptr_t;
     }
 }
 
@@ -31,11 +31,11 @@ fn count(n: uint) -> uint {
 }
 
 pub fn main() {
-    for old_iter::repeat(10u) {
+    for 10u.times {
         do task::spawn {
             let result = count(5u);
             debug!("result = %?", result);
-            assert!(result == 16u);
+            assert_eq!(result, 16u);
         };
     }
 }

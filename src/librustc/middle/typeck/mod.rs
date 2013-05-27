@@ -48,6 +48,8 @@ independently:
 
 */
 
+use core::prelude::*;
+
 use driver::session;
 
 use middle::resolve;
@@ -57,8 +59,8 @@ use util::ppaux::Repr;
 use util::ppaux;
 
 use core::hashmap::HashMap;
-use std::list::List;
-use std::list;
+use extra::list::List;
+use extra::list;
 use syntax::codemap::span;
 use syntax::print::pprust::*;
 use syntax::{ast, ast_map, abi};
@@ -382,9 +384,9 @@ fn check_for_entry_fn(ccx: @mut CrateCtxt) {
           Some((id, sp)) => match *tcx.sess.entry_type {
               Some(session::EntryMain) => check_main_fn_ty(ccx, id, sp),
               Some(session::EntryStart) => check_start_fn_ty(ccx, id, sp),
-              None => tcx.sess.bug(~"entry function without a type")
+              None => tcx.sess.bug("entry function without a type")
           },
-          None => tcx.sess.bug(~"type checking without entry function")
+          None => tcx.sess.bug("type checking without entry function")
         }
     }
 }

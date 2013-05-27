@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use metadata::encoder;
 use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
@@ -409,13 +411,13 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_uniq(ref tm) => ~"~" + mt_to_str(cx, tm),
       ty_ptr(ref tm) => ~"*" + mt_to_str(cx, tm),
       ty_rptr(r, ref tm) => {
-        region_to_str_space(cx, ~"&", r) + mt_to_str(cx, tm)
+        region_to_str_space(cx, "&", r) + mt_to_str(cx, tm)
       }
       ty_unboxed_vec(ref tm) => { ~"unboxed_vec<" + mt_to_str(cx, tm) + ~">" }
       ty_type => ~"type",
       ty_tup(ref elems) => {
         let strs = elems.map(|elem| ty_to_str(cx, *elem));
-        ~"(" + str::connect(strs, ~",") + ~")"
+        ~"(" + str::connect(strs, ",") + ~")"
       }
       ty_closure(ref f) => {
           closure_to_str(cx, f)
@@ -428,11 +430,11 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_param(param_ty {idx: id, def_id: did}) => {
           if cx.sess.verbose() {
               fmt!("'%s:%?",
-                   str::from_bytes(~[('a' as u8) + (id as u8)]),
+                   str::from_bytes([('a' as u8) + (id as u8)]),
                    did)
           } else {
               fmt!("'%s",
-                   str::from_bytes(~[('a' as u8) + (id as u8)]))
+                   str::from_bytes([('a' as u8) + (id as u8)]))
           }
       }
       ty_self(*) => ~"Self",
@@ -450,7 +452,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_evec(ref mt, vs) => {
         vstore_ty_to_str(cx, mt, vs)
       }
-      ty_estr(vs) => fmt!("%s%s", vstore_to_str(cx, vs), ~"str"),
+      ty_estr(vs) => fmt!("%s%s", vstore_to_str(cx, vs), "str"),
       ty_opaque_box => ~"@?",
       ty_opaque_closure_ptr(ast::BorrowedSigil) => ~"closure&",
       ty_opaque_closure_ptr(ast::ManagedSigil) => ~"closure@",

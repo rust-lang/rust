@@ -10,6 +10,6 @@
 
 // error-pattern: mismatched types
 
-extern mod std;
+extern mod extra;
 
 fn main() { task::spawn(|| -> int { 10 }); }

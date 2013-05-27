@@ -22,7 +22,7 @@
 // Creates in the background 'num_tasks' tasks, all blocked forever.
 // Doesn't return until all such tasks are ready, but doesn't block forever itself.
 
-use core::comm::*;
+use std::comm::*;
 
 fn grandchild_group(num_tasks: uint) {
     let (po, ch) = stream();
@@ -54,7 +54,7 @@ fn spawn_supervised_blocking(myname: &str, f: ~fn()) {
     builder.spawn(f);
     error!("%s group waiting", myname);
     let x = res.unwrap().recv();
-    assert!(x == task::Success);
+    assert_eq!(x, task::Success);
 }
 
 fn main() {

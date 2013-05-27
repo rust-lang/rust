@@ -30,6 +30,8 @@ are represented as `ty_param()` instances.
 
 */
 
+use core::prelude::*;
+
 use metadata::csearch;
 use middle::ty::{substs, ty_param_bounds_and_ty};
 use middle::ty;

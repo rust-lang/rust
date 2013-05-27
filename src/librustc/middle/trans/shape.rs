@@ -48,8 +48,8 @@ pub fn mk_global(ccx: @CrateContext,
 
 pub fn mk_ctxt(llmod: ModuleRef) -> Ctxt {
     unsafe {
-        let llshapetablesty = trans::common::T_named_struct(~"shapes");
-        let _llshapetables = str::as_c_str(~"shapes", |buf| {
+        let llshapetablesty = trans::common::T_named_struct("shapes");
+        let _llshapetables = str::as_c_str("shapes", |buf| {
             llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
         });
 

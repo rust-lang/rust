@@ -10,7 +10,7 @@
 
 // xfail-fast
 
-use core::comm::{Select2, Selectable};
+use std::comm::{Select2, Selectable};
 
 pub fn main() {
     let (p,c) = comm::stream();

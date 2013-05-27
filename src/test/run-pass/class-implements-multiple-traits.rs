@@ -10,8 +10,8 @@
 
 // xfail-test
 
-extern mod std;
-use std::oldmap::*;
+extern mod extra;
+use extra::oldmap::*;
 use vec::*;
 use dvec::{dvec, extensions};
 
@@ -123,7 +123,7 @@ fn scratched_something<T:scratchy>(critter: T) -> bool {
 pub fn main() {
   let nyan : cat  = cat(0u, 2, "nyan");
   annoy_neighbors(nyan as noisy);
-  assert!((nyan.meow_count() == 10u));
+  assert_eq!(nyan.meow_count(), 10u);
   assert!((bite_everything(nyan as bitey)));
   assert!((scratched_something(nyan as scratchy)));
 }

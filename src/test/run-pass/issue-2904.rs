@@ -12,9 +12,9 @@
 
 /// Map representation
 
-extern mod std;
+extern mod extra;
 
-use core::io::ReaderUtil;
+use std::io::ReaderUtil;
 
 enum square {
     bot,

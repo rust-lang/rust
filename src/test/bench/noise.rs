@@ -1,6 +1,6 @@
 // Perlin noise benchmark from https://gist.github.com/1170424
 
-use core::rand::{Rng, RngUtil};
+use std::rand::{Rng, RngUtil};
 
 struct Vec2 {
     x: f32,

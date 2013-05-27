@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
 
 mod libc {
     #[nolink]
@@ -29,5 +29,5 @@ fn strlen(str: ~str) -> uint {
 
 pub fn main() {
     let len = strlen(~"Rust");
-    assert!((len == 4u));
+    assert_eq!(len, 4u);
 }

@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::smallintmap::SmallIntMap;
+use core::prelude::*;
+
+use extra::smallintmap::SmallIntMap;
 
 use middle::ty::{Vid, expected_found, IntVarValue};
 use middle::ty;
@@ -129,7 +131,7 @@ pub impl InferCtxt {
         } else {
             // If equal, redirect one to the other and increment the
             // other's rank.
-            assert!(node_a.rank == node_b.rank);
+            assert_eq!(node_a.rank, node_b.rank);
             self.set(node_b.root, Redirect(node_a.root));
             (node_a.root, node_a.rank + 1)
         }

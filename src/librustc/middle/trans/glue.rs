@@ -12,6 +12,8 @@
 //
 // Code relating to taking, dropping, etc as well as type descriptors.
 
+use core::prelude::*;
+
 use back::abi;
 use back::link::*;
 use driver::session;
@@ -34,7 +36,7 @@ use util::ppaux;
 use util::ppaux::ty_to_short_str;
 
 use core::libc::c_uint;
-use std::time;
+use extra::time;
 use syntax::ast;
 
 pub fn trans_free(cx: block, v: ValueRef) -> block {
@@ -42,7 +44,7 @@ pub fn trans_free(cx: block, v: ValueRef) -> block {
     callee::trans_lang_call(
         cx,
         cx.tcx().lang_items.free_fn(),
-        ~[PointerCast(cx, v, T_ptr(T_i8()))],
+        [PointerCast(cx, v, T_ptr(T_i8()))],
         expr::Ignore)
 }
 
@@ -51,7 +53,7 @@ pub fn trans_exchange_free(cx: block, v: ValueRef) -> block {
     callee::trans_lang_call(
         cx,
         cx.tcx().lang_items.exchange_free_fn(),
-        ~[PointerCast(cx, v, T_ptr(T_i8()))],
+        [PointerCast(cx, v, T_ptr(T_i8()))],
         expr::Ignore)
 }
 
@@ -100,7 +102,7 @@ pub fn drop_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
       ty::ty_estr(ty::vstore_box) => {
         decr_refcnt_maybe_free(bcx, v, t)
       }
-      _ => bcx.tcx().sess.bug(~"drop_ty_immediate: non-box ty")
+      _ => bcx.tcx().sess.bug("drop_ty_immediate: non-box ty")
     }
 }
 
@@ -147,7 +149,7 @@ pub fn free_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
         Store(bcx, v, vp);
         free_ty(bcx, vp, t)
       }
-      _ => bcx.tcx().sess.bug(~"free_ty_immediate: non-box ty")
+      _ => bcx.tcx().sess.bug("free_ty_immediate: non-box ty")
     }
 }
 
@@ -269,7 +271,7 @@ pub fn lazily_emit_tydesc_glue(ccx: @CrateContext,
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, ~"take");
             ti.take_glue = Some(glue_fn);
-            make_generic_glue(ccx, ti.ty, glue_fn, make_take_glue, ~"take");
+            make_generic_glue(ccx, ti.ty, glue_fn, make_take_glue, "take");
             debug!("--- lazily_emit_tydesc_glue TAKE %s",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
           }
@@ -282,7 +284,7 @@ pub fn lazily_emit_tydesc_glue(ccx: @CrateContext,
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, ~"drop");
             ti.drop_glue = Some(glue_fn);
-            make_generic_glue(ccx, ti.ty, glue_fn, make_drop_glue, ~"drop");
+            make_generic_glue(ccx, ti.ty, glue_fn, make_drop_glue, "drop");
             debug!("--- lazily_emit_tydesc_glue DROP %s",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
           }
@@ -295,7 +297,7 @@ pub fn lazily_emit_tydesc_glue(ccx: @CrateContext,
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, ~"free");
             ti.free_glue = Some(glue_fn);
-            make_generic_glue(ccx, ti.ty, glue_fn, make_free_glue, ~"free");
+            make_generic_glue(ccx, ti.ty, glue_fn, make_free_glue, "free");
             debug!("--- lazily_emit_tydesc_glue FREE %s",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
           }
@@ -308,7 +310,7 @@ pub fn lazily_emit_tydesc_glue(ccx: @CrateContext,
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, ~"visit");
             ti.visit_glue = Some(glue_fn);
-            make_generic_glue(ccx, ti.ty, glue_fn, make_visit_glue, ~"visit");
+            make_generic_glue(ccx, ti.ty, glue_fn, make_visit_glue, "visit");
             debug!("--- lazily_emit_tydesc_glue VISIT %s",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
           }
@@ -379,8 +381,8 @@ pub fn call_tydesc_glue_full(bcx: block,
         }
     };
 
-    Call(bcx, llfn, ~[C_null(T_ptr(T_nil())), C_null(T_ptr(T_nil())),
-                      C_null(T_ptr(T_ptr(bcx.ccx().tydesc_type))), llrawptr]);
+    Call(bcx, llfn, [C_null(T_ptr(T_nil())), C_null(T_ptr(T_nil())),
+                     C_null(T_ptr(T_ptr(bcx.ccx().tydesc_type))), llrawptr]);
 }
 
 // See [Note-arg-mode]
@@ -394,7 +396,7 @@ pub fn call_tydesc_glue(cx: block, v: ValueRef, t: ty::t, field: uint)
 
 pub fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_visit_glue");
-    let bcx = do with_scope(bcx, None, ~"visitor cleanup") |bcx| {
+    let bcx = do with_scope(bcx, None, "visitor cleanup") |bcx| {
         let mut bcx = bcx;
         let (visitor_trait, object_ty) = ty::visitor_object_ty(bcx.tcx());
         let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), object_ty)));
@@ -483,7 +485,7 @@ pub fn trans_struct_drop(bcx: block,
         // Class dtors have no explicit args, so the params should
         // just consist of the output pointer and the environment
         // (self)
-        assert!((params.len() == 2));
+        assert_eq!(params.len(), 2);
 
         // Take a reference to the class (because it's using the Drop trait),
         // do so now.
@@ -544,11 +546,23 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
         decr_refcnt_maybe_free(bcx, llbox, ty::mk_opaque_box(ccx.tcx))
       }
       ty::ty_trait(_, _, ty::UniqTraitStore, _) => {
-        let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
-        let lltydesc = Load(bcx, GEPi(bcx, v0, [0, abi::trt_field_tydesc]));
-        call_tydesc_glue_full(bcx, lluniquevalue, lltydesc,
-                              abi::tydesc_field_free_glue, None);
-        bcx
+          let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
+          // Only drop the value when it is non-null
+          do with_cond(bcx, IsNotNull(bcx, Load(bcx, lluniquevalue))) |bcx| {
+              let llvtable = Load(bcx, GEPi(bcx, v0, [0, abi::trt_field_vtable]));
+
+              // Cast the vtable to a pointer to a pointer to a tydesc.
+              let llvtable = PointerCast(bcx,
+                                         llvtable,
+                                         T_ptr(T_ptr(ccx.tydesc_type)));
+              let lltydesc = Load(bcx, llvtable);
+              call_tydesc_glue_full(bcx,
+                                    lluniquevalue,
+                                    lltydesc,
+                                    abi::tydesc_field_free_glue,
+                                    None);
+              bcx
+          }
       }
       ty::ty_opaque_closure_ptr(ck) => {
         closure::make_opaque_cbox_drop_glue(bcx, ck, v0)
@@ -669,12 +683,7 @@ pub fn declare_tydesc(ccx: @CrateContext, t: ty::t) -> @mut tydesc_info {
     let llsize = llsize_of(ccx, llty);
     let llalign = llalign_of(ccx, llty);
     let addrspace = declare_tydesc_addrspace(ccx, t);
-    //XXX this triggers duplicate LLVM symbols
-    let name = @(if false /*ccx.sess.opts.debuginfo*/ {
-        mangle_internal_name_by_type_only(ccx, t, "tydesc")
-    } else {
-        mangle_internal_name_by_seq(ccx, "tydesc")
-    });
+    let name = @mangle_internal_name_by_type_and_seq(ccx, t, "tydesc");
     note_unique_llvm_symbol(ccx, name);
     debug!("+++ declare_tydesc %s %s", ppaux::ty_to_str(ccx.tcx, t), *name);
     let gvar = str::as_c_str(*name, |buf| {
@@ -703,14 +712,8 @@ pub fn declare_generic_glue(ccx: @CrateContext, t: ty::t, llfnty: TypeRef,
                             name: ~str) -> ValueRef {
     let _icx = ccx.insn_ctxt("declare_generic_glue");
     let name = name;
-    //XXX this triggers duplicate LLVM symbols
-    let fn_nm = @(if false /*ccx.sess.opts.debuginfo*/ {
-        mangle_internal_name_by_type_only(ccx, t, (~"glue_" + name))
-    } else {
-        mangle_internal_name_by_seq(ccx, (~"glue_" + name))
-    });
+    let fn_nm = @mangle_internal_name_by_type_and_seq(ccx, t, (~"glue_" + name));
     debug!("%s is for type %s", *fn_nm, ppaux::ty_to_str(ccx.tcx, t));
-    // XXX: Bad copy.
     note_unique_llvm_symbol(ccx, fn_nm);
     let llfn = decl_cdecl_fn(ccx.llmod, *fn_nm, llfnty);
     set_glue_inlining(llfn, t);
@@ -821,14 +824,14 @@ pub fn emit_tydescs(ccx: @CrateContext) {
 
         let tydesc =
             C_named_struct(ccx.tydesc_type,
-                           ~[ti.size, // size
-                             ti.align, // align
-                             take_glue, // take_glue
-                             drop_glue, // drop_glue
-                             free_glue, // free_glue
-                             visit_glue, // visit_glue
-                             shape, // shape
-                             shape_tables]); // shape_tables
+                           [ti.size, // size
+                            ti.align, // align
+                            take_glue, // take_glue
+                            drop_glue, // drop_glue
+                            free_glue, // free_glue
+                            visit_glue, // visit_glue
+                            shape, // shape
+                            shape_tables]); // shape_tables
 
         unsafe {
             let gvar = ti.tydesc;

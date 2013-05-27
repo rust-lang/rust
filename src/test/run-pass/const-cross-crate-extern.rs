@@ -16,5 +16,5 @@ use cci_const::bar;
 static foo: *u8 = bar;
 
 pub fn main() {
-    assert!(foo == cci_const::bar);
+    assert_eq!(foo, cci_const::bar);
 }

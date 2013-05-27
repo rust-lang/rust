@@ -15,6 +15,7 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
+use core::prelude::*;
 
 use middle::resolve;
 use middle::ty;
@@ -212,8 +213,8 @@ fn traverse_inline_body(cx: @mut ctx, body: &blk) {
               }
               Some(_) => {}
               None => {
-                cx.tcx.sess.span_bug(e.span, ~"expr_method_call not in \
-                                               method map");
+                cx.tcx.sess.span_bug(e.span, "expr_method_call not in \
+                                              method map");
               }
             }
           }

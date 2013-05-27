@@ -18,5 +18,5 @@ impl double for uint {
 
 pub fn main() {
     let x = @(@3u as @double);
-    assert!(x.double() == 6u);
+    assert_eq!(x.double(), 6u);
 }
