@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[doc(hidden)]; // FIXME #3538
-
 // function names are almost identical to C's libmath, a few have been
 // renamed, grep for "rename:"
 

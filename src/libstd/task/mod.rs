@@ -195,7 +195,6 @@ pub fn task() -> TaskBuilder {
     }
 }
 
-#[doc(hidden)] // FIXME #3538
 priv impl TaskBuilder {
     fn consume(&mut self) -> TaskBuilder {
         if self.consumed {
