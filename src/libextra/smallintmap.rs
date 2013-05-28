@@ -246,7 +246,14 @@ impl Set<uint> for SmallIntSet {
     fn symmetric_difference(&self,
                             other: &SmallIntSet,
                             f: &fn(&uint) -> bool) -> bool {
-        self.difference(other, f) && other.difference(self, f)
+        let len = cmp::max(self.map.v.len() ,other.map.v.len());
+
+        for uint::range(0, len) |i| {
+            if self.contains(&i) ^ other.contains(&i) {
+                if !f(&i) { return false; }
+            }
+        }
+        return true;
     }
 
     /// Visit the values representing the uintersection
@@ -256,7 +263,14 @@ impl Set<uint> for SmallIntSet {
 
     /// Visit the values representing the union
     fn union(&self, other: &SmallIntSet, f: &fn(&uint) -> bool) -> bool {
-        self.each(f) && other.each(|v| self.contains(v) || f(v))
+        let len = cmp::max(self.map.v.len() ,other.map.v.len());
+
+        for uint::range(0, len) |i| {
+            if self.contains(&i) || other.contains(&i) {
+                if !f(&i) { return false; }
+            }
+        }
+        return true;
     }
 }
 
