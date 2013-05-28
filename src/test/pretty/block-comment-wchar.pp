@@ -16,80 +16,80 @@
 fn f() {
     fn nested() {
         /*
-  Spaced2
+          Spaced2
         */
         /*
           Spaced10
         */
         /*
-								  Tabbed8+2
+          Tabbed8+2
         */
         /*
-  CR8+2
+          CR8+2
         */
     }
     /*
-  Spaced2:                       (prefixed so start of space aligns with comment)
+      Spaced2:                       (prefixed so start of space aligns with comment)
     */
     /*
-		Tabbed2: (more indented b/c *start* of space will align with comment)
+    		Tabbed2: (more indented b/c *start* of space will align with comment)
     */
     /*
       Spaced6:                       (Alignment removed and realigning spaces inserted)
     */
     /*
-				  Tabbed4+2:                     (Alignment removed and realigning spaces inserted)
+      Tabbed4+2:                     (Alignment removed and realigning spaces inserted)
     */
 
     /*
-  VT4+2:                         (should align)
+      VT4+2:                         (should align)
     */
     /*
-  FF4+2:                         (should align)
+      FF4+2:                         (should align)
     */
     /*
-  CR4+2:                         (should align)
+      CR4+2:                         (should align)
     */
     /*
     // (NEL deliberately omitted)
     */
     /*
-      Ogham Space Mark 4+2:          (should align)
+      Ogham Space Mark 4+2:          (should align)
     */
     /*
-᠎᠎᠎᠎  Mongolian Vowel Separator 4+2: (should align)
+      Mongolian Vowel Separator 4+2: (should align)
     */
     /*
-      Four-per-em space 4+2:         (should align)
+      Four-per-em space 4+2:         (should align)
     */
 
     /*
-   ᠎  Mongolian Vowel Sep   count 1: (should align)
-  ᠎   Mongolian Vowel Sep   count 2: (should align)
-  ᠎᠎  Mongolian Vowel Sep   count 3: (should align)
- ᠎    Mongolian Vowel Sep   count 4: (should align)
- ᠎ ᠎  Mongolian Vowel Sep   count 5: (should align)
- ᠎᠎   Mongolian Vowel Sep   count 6: (should align)
- ᠎᠎᠎  Mongolian Vowel Sep   count 7: (should align)
-᠎     Mongolian Vowel Sep   count 8: (should align)
-᠎  ᠎  Mongolian Vowel Sep   count 9: (should align)
-᠎ ᠎   Mongolian Vowel Sep   count A: (should align)
-᠎ ᠎᠎  Mongolian Vowel Sep   count B: (should align)
-᠎᠎    Mongolian Vowel Sep   count C: (should align)
-᠎᠎ ᠎  Mongolian Vowel Sep   count D: (should align)
-᠎᠎᠎   Mongolian Vowel Sep   count E: (should align)
-᠎᠎᠎᠎  Mongolian Vowel Sep   count F: (should align)
+      Mongolian Vowel Sep   count 1: (should align)
+      Mongolian Vowel Sep   count 2: (should align)
+      Mongolian Vowel Sep   count 3: (should align)
+      Mongolian Vowel Sep   count 4: (should align)
+      Mongolian Vowel Sep   count 5: (should align)
+      Mongolian Vowel Sep   count 6: (should align)
+      Mongolian Vowel Sep   count 7: (should align)
+      Mongolian Vowel Sep   count 8: (should align)
+      Mongolian Vowel Sep   count 9: (should align)
+      Mongolian Vowel Sep   count A: (should align)
+      Mongolian Vowel Sep   count B: (should align)
+      Mongolian Vowel Sep   count C: (should align)
+      Mongolian Vowel Sep   count D: (should align)
+      Mongolian Vowel Sep   count E: (should align)
+      Mongolian Vowel Sep   count F: (should align)
     */
 
 /* */ /*
         Hello from offset 6
         Space 6+2:                     compare A
-᠎᠎᠎᠎᠎᠎  Mongolian Vowel Separator 6+2: compare B
+        Mongolian Vowel Separator 6+2: compare B
       */
 /*᠎*/ /*
         Hello from another offset 6 with wchars establishing column offset
         Space 6+2:                     compare C
-᠎᠎᠎᠎᠎᠎  Mongolian Vowel Separator 6+2: compare D
+        Mongolian Vowel Separator 6+2: compare D
       */
 }
 
