@@ -1506,7 +1506,7 @@ pub fn memzero(cx: block, llptr: ValueRef, llty: TypeRef) {
     let llptr = PointerCast(cx, llptr, T_ptr(T_i8()));
     let llzeroval = C_u8(0);
     let size = IntCast(cx, machine::llsize_of(ccx, llty), ccx.int_type);
-    let align = C_i32(1i32);
+    let align = C_i32(llalign_of_min(ccx, llty) as i32);
     let volatile = C_i1(false);
     Call(cx, llintrinsicfn, [llptr, llzeroval, size, align, volatile]);
 }
