@@ -641,7 +641,7 @@ pub fn build_session_options(binary: @~str,
               ~"3" => Aggressive,
               _ => {
                 early_error(demitter, ~"optimization level needs " +
-                            ~"to be between 0-3")
+                            "to be between 0-3")
               }
             }
         } else { No }
@@ -934,7 +934,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let matches =
-            &match getopts(~[~"--test"], optgroups()) {
+            &match getopts([~"--test"], optgroups()) {
               Ok(copy m) => m,
               Err(copy f) => fail!("test_switch_implies_cfg_test: %s", getopts::fail_str(f))
             };

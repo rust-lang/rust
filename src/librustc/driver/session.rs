@@ -384,8 +384,8 @@ mod test {
 
     fn make_crate(with_bin: bool, with_lib: bool) -> @ast::crate {
         let mut attrs = ~[];
-        if with_bin { attrs += ~[make_crate_type_attr(~"bin")]; }
-        if with_lib { attrs += ~[make_crate_type_attr(~"lib")]; }
+        if with_bin { attrs += [make_crate_type_attr(~"bin")]; }
+        if with_lib { attrs += [make_crate_type_attr(~"lib")]; }
         @codemap::respan(codemap::dummy_sp(), ast::crate_ {
             module: ast::_mod { view_items: ~[], items: ~[] },
             attrs: attrs,

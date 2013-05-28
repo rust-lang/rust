@@ -171,10 +171,23 @@ pub fn get_absolute_rpath(lib: &Path) -> Path {
     os::make_absolute(lib).dir_path()
 }
 
+#[cfg(stage0)]
 pub fn get_install_prefix_rpath(target_triple: &str) -> Path {
     let install_prefix = env!("CFG_PREFIX");
 
     if install_prefix == ~"" {
+        fail!("rustc compiled without CFG_PREFIX environment variable");
+    }
+
+    let tlib = filesearch::relative_target_lib_path(target_triple);
+    os::make_absolute(&Path(install_prefix).push_rel(&tlib))
+}
+
+#[cfg(not(stage0))]
+pub fn get_install_prefix_rpath(target_triple: &str) -> Path {
+    let install_prefix = env!("CFG_PREFIX");
+
+    if install_prefix == "" {
         fail!("rustc compiled without CFG_PREFIX environment variable");
     }
 
@@ -193,20 +206,13 @@ pub fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
     minimized
 }
 
-#[cfg(unix)]
+#[cfg(unix, test)]
 mod test {
     use core::prelude::*;
 
-    // FIXME(#2119): the outer attribute should be #[cfg(unix, test)], then
-    // these redundant #[cfg(test)] blocks can be removed
-    #[cfg(test)]
-    #[cfg(test)]
     use back::rpath::{get_absolute_rpath, get_install_prefix_rpath};
-    #[cfg(test)]
     use back::rpath::{get_relative_to, get_rpath_relative_to_output};
-    #[cfg(test)]
     use back::rpath::{minimize_rpaths, rpaths_to_flags};
-    #[cfg(test)]
     use driver::session;
 
     #[test]

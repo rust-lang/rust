@@ -171,7 +171,7 @@ pub fn header_kind(doc: doc::ItemTag) -> ~str {
 }
 
 pub fn header_name(doc: doc::ItemTag) -> ~str {
-    let fullpath = str::connect(doc.path() + ~[doc.name()], "::");
+    let fullpath = str::connect(doc.path() + [doc.name()], "::");
     match &doc {
         &doc::ModTag(_) if doc.id() != syntax::ast::crate_node_id => {
             fullpath
@@ -190,9 +190,9 @@ pub fn header_name(doc: doc::ItemTag) -> ~str {
             let mut trait_part = ~"";
             for doc.trait_types.eachi |i, trait_type| {
                 if i == 0 {
-                    trait_part += ~" of ";
+                    trait_part += " of ";
                 } else {
-                    trait_part += ~", ";
+                    trait_part += ", ";
                 }
                 trait_part += *trait_type;
             }
@@ -668,7 +668,7 @@ mod test {
                     assert!(str::contains(markdown, "% Crate core"));
                 }
                 doc::ItemPage(_) => {
-                    assert!(str::contains(markdown, ~"% Module a"));
+                    assert!(str::contains(markdown, "% Module a"));
                 }
             }
         }

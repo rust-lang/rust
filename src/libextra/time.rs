@@ -1205,8 +1205,8 @@ mod tests {
         // abbreviation.
         let rfc822 = local.rfc822();
         let prefix = ~"Fri, 13 Feb 2009 15:31:30 ";
-        assert!(rfc822 == prefix + ~"PST" ||
-                     rfc822 == prefix + ~"Pacific Standard Time");
+        assert!(rfc822 == prefix + "PST" ||
+                     rfc822 == prefix + "Pacific Standard Time");
 
         assert_eq!(local.ctime(), ~"Fri Feb 13 15:31:30 2009");
         assert_eq!(local.rfc822z(), ~"Fri, 13 Feb 2009 15:31:30 -0800");
