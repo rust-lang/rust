@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -22,11 +22,11 @@ pub mod rustrt {
         pub unsafe fn precise_time_ns(ns: &mut u64);
 
         pub unsafe fn rust_tzset();
-        // FIXME: The i64 values can be passed by-val when #2064 is fixed.
+
         pub unsafe fn rust_gmtime(sec: i64, nsec: i32, result: &mut Tm);
         pub unsafe fn rust_localtime(sec: i64, nsec: i32, result: &mut Tm);
-        pub unsafe fn rust_timegm(tm: &Tm, sec: &mut i64);
-        pub unsafe fn rust_mktime(tm: &Tm, sec: &mut i64);
+        pub unsafe fn rust_timegm(tm: &Tm) -> i64;
+        pub unsafe fn rust_mktime(tm: &Tm) -> i64;
     }
 }
 
@@ -177,12 +177,11 @@ pub impl Tm {
     /// Convert time to the seconds from January 1, 1970
     fn to_timespec(&self) -> Timespec {
         unsafe {
-            let mut sec = 0i64;
-            if self.tm_gmtoff == 0_i32 {
-                rustrt::rust_timegm(self, &mut sec);
-            } else {
-                rustrt::rust_mktime(self, &mut sec);
-            }
+            let sec = match self.tm_gmtoff {
+                0_i32 => rustrt::rust_timegm(self),
+                _     => rustrt::rust_mktime(self)
+            };
+
             Timespec::new(sec, self.tm_nsec)
         }
     }
