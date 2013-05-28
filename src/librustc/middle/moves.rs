@@ -112,84 +112,8 @@ variables are captured and how (by ref, by copy, by move).
 
 ## Enforcement of Moves
 
-FIXME out of date
-
-The enforcement of moves is somewhat complicated because it is divided
-amongst the liveness and borrowck modules. In general, the borrow
-checker is responsible for guaranteeing that *only owned data is
-moved*.  The liveness checker, in contrast, is responsible for
-checking that *no variable is used after it is moved*.
-
-To see the difference, let's look at a few examples.  Here is a
-program fragment where the error would be caught by liveness:
-
-    struct Foo { a: int, b: ~int }
-    let x: Foo = ...;
-    let y = x.b; // (1)
-    let z = x;   // (2)            //~ ERROR use of moved value `x`
-
-Here the liveness checker will see the assignment to `y` moves
-invalidates the variable `x` because it moves the expression `x.b`.
-An error is resported because `x` is not dead at the point where it is
-invalidated.
-
-In more concrete terms, the `moves_map` generated from this example
-would contain both the expression `x.b` (1) and the expression `x`
-(2).  Note that it would not contain `x` (1), because `moves_map` only
-contains the outermost expressions that are moved.  However, the id of
-`x` would be present in the `moved_variables_set`.
-
-Now let's look at another illegal example, but one where liveness would
-not catch the error:
-
-    struct Foo { a: int, b: ~int }
-    let x: @Foo = ...;
-    let y = x.b;                   //~ ERROR move from managed (@) box
-
-This is an interesting example because the only change I've made is
-to make `x` have type `@Foo` and not `Foo`.  Thanks to auto-deref,
-the expression `x.b` still works, but now it is short for `{x).b`,
-and hence the move is actually moving out of the contents of a
-managed box, which is illegal.  However, liveness knows nothing of
-this.  It only tracks what variables are used where.  The moves
-pass (that is, this pass) is also ignorant of such details.  From
-the perspective of the moves pass, the `let y = x.b` line above
-will be categorized as follows:
-
-    let y = {(x{Move}) {Move}).b; {Move}
-
-Therefore, the reference to `x` will be present in
-`variable_moves_map`, but liveness will not report an error because
-there is no subsequent use.
-
-This is where the borrow checker comes in.  When the borrow checker
-runs, it will see that `x.b` is present in the `moves_map`.  It will
-use the `mem_categorization` module to determine where the result of
-this expression resides in memory and see that it is owned by managed
-data, and report an error.
-
-In principle, liveness could use the `mem_categorization` module
-itself and check that moves always originate from owned data
-(historically, of course, this was not the case; `mem_categorization`
-used to be private to the borrow checker).  However, there is another
-kind of error which liveness could not possibly detect. Sometimes a
-move is an error due to an outstanding loan, and it is borrow
-checker's job to compute those loans.  That is, consider *this*
-example:
-
-    struct Foo { a: int, b: ~int }
-    let x: Foo = ...;
-    let y = &x.b;                   //~ NOTE loan issued here
-    let z = x.b;                    //~ ERROR move with outstanding loan
-
-In this case, `y` is a pointer into `x`, so when `z` tries to move out
-of `x`, we get an error.  There is no way that liveness could compute
-this information without redoing the efforts of the borrow checker.
-
-### Closures
-
-Liveness is somewhat complicated by having to deal with stack
-closures.  More information to come!
+The enforcement of moves is done by the borrow checker.  Please see
+the section "Moves and initialization" in `middle/borrowck/doc.rs`.
 
 ## Distributive property
 

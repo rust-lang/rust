@@ -19,15 +19,27 @@ how it works, and then proceed to dive into the theoretical
 background. Finally, they go into detail on some of the more subtle
 aspects.
 
+# Table of contents
+
+These docs are long. Search for the section you are interested in.
+
+- Overview
+- Formal model
+- Borrowing and loans
+- Moves and initialization
+- Future work
+
 # Overview
 
 The borrow checker checks one function at a time. It operates in two
 passes. The first pass, called `gather_loans`, walks over the function
-and identifies all of the places where borrows occur (e.g., `&`
-expressions and `ref` bindings). For each borrow, we check various
-basic safety conditions at this time (for example, that the lifetime
-of the borrow doesn't exceed the lifetime of the value being
-borrowed).
+and identifies all of the places where borrows (e.g., `&` expressions
+and `ref` bindings) and moves (copies or captures of a linear value)
+occur. It also tracks initialization sites. For each borrow and move,
+it checks various basic safety conditions at this time (for example,
+that the lifetime of the borrow doesn't exceed the lifetime of the
+value being borrowed, or that there is no move out of an `&T`
+pointee).
 
 It then uses the dataflow module to propagate which of those borrows
 may be in scope at each point in the procedure. A loan is considered
@@ -41,8 +53,8 @@ it is safe with respect to the in-scope loans.
 
 # Formal model
 
-Let's consider a simple subset of Rust in which you can only borrow
-from lvalues like so:
+Throughout the docs we'll consider a simple subset of Rust in which
+you can only borrow from lvalues, defined like so:
 
     LV = x | LV.f | *LV
 
@@ -65,9 +77,11 @@ struct name and we assume structs are declared like so:
 
     SD = struct S<'LT...> { (f: TY)... }
 
-# An intuitive explanation
+# Borrowing and loans
 
-## Issuing loans
+## An intuitive explanation
+
+### Issuing loans
 
 Now, imagine we had a program like this:
 
@@ -83,7 +97,7 @@ This is of course dangerous because mutating `x` will free the old
 value and hence invalidate `y`. The borrow checker aims to prevent
 this sort of thing.
 
-### Loans and restrictions
+#### Loans and restrictions
 
 The way the borrow checker works is that it analyzes each borrow
 expression (in our simple model, that's stuff like `&LV`, though in
@@ -120,7 +134,7 @@ prevents moves from `LV`. I chose not to make `MOVE` a fourth kind of
 action because that would imply that sometimes moves are permitted
 from restrictived values, which is not the case.
 
-### Example
+#### Example
 
 To give you a better feeling for what kind of restrictions derived
 from a loan, let's look at the loan `L` that would be issued as a
@@ -159,7 +173,7 @@ because `x` is an owned pointer, the path `x` owns the path `*x`.
 Therefore, borrowing `(*x).f` yields restrictions on both
 `*x` and `x`.
 
-## Checking for illegal assignments, moves, and reborrows
+### Checking for illegal assignments, moves, and reborrows
 
 Once we have computed the loans introduced by each borrow, the borrow
 checker uses a data flow propagation to compute the full set of loans
@@ -181,7 +195,7 @@ The kinds of expressions which in-scope loans can render illegal are:
 - *read-only borrows* (`&const lv`): illegal there is an in-scope restriction
   against aliasing `lv`.
 
-# Formal rules
+## Formal rules
 
 Now that we hopefully have some kind of intuitive feeling for how the
 borrow checker works, let's look a bit more closely now at the precise
@@ -202,7 +216,7 @@ of this rule: there are comments in the borrowck source referencing
 these names, so that you can cross reference to find the actual code
 that corresponds to the formal rule.
 
-## The `gather_loans` pass
+### The `gather_loans` pass
 
 We start with the `gather_loans` pass, which walks the AST looking for
 borrows.  For each borrow, there are three bits of information: the
@@ -223,7 +237,7 @@ alive and for dynamically freezing `@mut` boxes.
 restrictions to maintain memory safety. These are the restrictions
 that will go into the final loan. We'll discuss in more detail below.
 
-# Checking mutability
+## Checking mutability
 
 Checking mutability is fairly straightforward. We just want to prevent
 immutable data from being borrowed as mutable. Note that it is ok to
@@ -233,7 +247,7 @@ defined, means that "borrowing `LV` with mutability `MQ` is ok. The
 Rust code corresponding to this predicate is the function
 `check_mutability` in `middle::borrowck::gather_loans`.
 
-## Checking mutability of variables
+### Checking mutability of variables
 
 *Code pointer:* Function `check_mutability()` in `gather_loans/mod.rs`,
 but also the code in `mem_categorization`.
@@ -249,7 +263,7 @@ otherwise the variable must be borrowed as immutable or const:
       DECL(X) = imm
       MQ = imm | const
 
-## Checking mutability of owned content
+### Checking mutability of owned content
 
 Fields and owned pointers inherit their mutability from
 their base expressions, so both of their rules basically
@@ -262,7 +276,7 @@ delegate the check to the base expression `LV`:
       TYPE(LV) = ~Ty
       MUTABILITY(LV, MQ)
 
-## Checking mutability of immutable pointer types
+### Checking mutability of immutable pointer types
 
 Immutable pointer types like `&T` and `@T` can only
 be borrowed if MQ is immutable or const:
@@ -275,7 +289,7 @@ be borrowed if MQ is immutable or const:
       TYPE(LV) = @Ty
       MQ == imm | const
 
-## Checking mutability of mutable pointer types
+### Checking mutability of mutable pointer types
 
 `&mut T` and `@mut T` can be frozen, so it is acceptable to borrow
 them as either imm or mut:
@@ -286,7 +300,7 @@ them as either imm or mut:
     MUTABILITY(*LV, MQ)                 // M-Deref-Managed-Mut
       TYPE(LV) = @mut Ty
 
-# Checking lifetime
+## Checking lifetime
 
 These rules aim to ensure that no data is borrowed for a scope that
 exceeds its lifetime. In addition, these rules manage the rooting and
@@ -297,7 +311,7 @@ safely borrowed for the lifetime `LT` with mutability `MQ`". The Rust
 code corresponding to this predicate is the module
 `middle::borrowck::gather_loans::lifetime`.
 
-## The Scope function
+### The Scope function
 
 Several of the rules refer to a helper function `SCOPE(LV)=LT`.  The
 `SCOPE(LV)` yields the lifetime `LT` for which the lvalue `LV` is
@@ -329,7 +343,7 @@ the pointer points at may actually live longer:
 
       SCOPE(*LV) = LT if LV has type &'LT T or &'LT mut T
 
-## Checking lifetime of variables
+### Checking lifetime of variables
 
 The rule for variables states that a variable can only be borrowed a
 lifetime `LT` that is a subregion of the variable's scope:
@@ -337,7 +351,7 @@ lifetime `LT` that is a subregion of the variable's scope:
     LIFETIME(X, LT, MQ)                 // L-Local
       LT <= SCOPE(X)
 
-## Checking lifetime for owned content
+### Checking lifetime for owned content
 
 The lifetime of a field or owned pointer is the same as the lifetime
 of its owner:
@@ -349,7 +363,7 @@ of its owner:
       TYPE(LV) = ~Ty
       LIFETIME(LV, LT, MQ)
 
-## Checking lifetime for derefs of borrowed pointers
+### Checking lifetime for derefs of borrowed pointers
 
 Borrowed pointers have a lifetime `LT'` associated with them.  The
 data they point at has been guaranteed to be valid for at least this
@@ -361,7 +375,7 @@ itself:
       TYPE(LV) = &LT' Ty OR &LT' mut Ty
       LT <= LT'
 
-## Checking lifetime for derefs of managed, immutable pointers
+### Checking lifetime for derefs of managed, immutable pointers
 
 Managed pointers are valid so long as the data within them is
 *rooted*. There are two ways that this can be achieved. The first is
@@ -410,7 +424,7 @@ makes a note in a side-table that the box `LV` must be rooted into the
 stack when `*LV` is evaluated, and that this root can be released when
 the scope `LT` exits.
 
-## Checking lifetime for derefs of managed, mutable pointers
+### Checking lifetime for derefs of managed, mutable pointers
 
 Loans of the contents of mutable managed pointers are simpler in some
 ways that loans of immutable managed pointers, because we can never
@@ -433,7 +447,7 @@ borrowed and either the old loan or the new loan is a mutable loan
 (multiple immutable loans are okay). The lock is released as we exit
 the scope `LT`.
 
-# Computing the restrictions
+## Computing the restrictions
 
 The final rules govern the computation of *restrictions*, meaning that
 we compute the set of actions that will be illegal for the life of the
@@ -456,7 +470,7 @@ permits other immutable borows but forbids writes and mutable borows.
 Finally, a const borrow just wants to be sure that the value is not
 moved out from under it, so no actions are forbidden.
 
-## Restrictions for loans of a local variable
+### Restrictions for loans of a local variable
 
 The simplest case is a borrow of a local variable `X`:
 
@@ -464,7 +478,7 @@ The simplest case is a borrow of a local variable `X`:
 
 In such cases we just record the actions that are not permitted.
 
-## Restrictions for loans of fields
+### Restrictions for loans of fields
 
 Restricting a field is the same as restricting the owner of that
 field:
@@ -479,7 +493,7 @@ frozen or aliased, we cannot allow the owner to be frozen or aliased,
 since doing so indirectly freezes/aliases the field. This is the
 origin of inherited mutability.
 
-## Restrictions for loans of owned pointees
+### Restrictions for loans of owned pointees
 
 Because the mutability of owned pointees is inherited, restricting an
 owned pointee is similar to restricting a field, in that it implies
@@ -494,7 +508,7 @@ on `LV`:
       TYPE(LV) = ~Ty
       RESTRICTIONS(LV, ACTIONS|MUTATE|CLAIM) = RS
 
-## Restrictions for loans of immutable managed/borrowed pointees
+### Restrictions for loans of immutable managed/borrowed pointees
 
 Immutable managed/borrowed pointees are freely aliasable, meaning that
 the compiler does not prevent you from copying the pointer.  This
@@ -523,7 +537,7 @@ report an error because we cannot enforce a lack of aliases on a `&Ty`
 or `@Ty` type. That case is described in more detail in the section on
 mutable borrowed pointers.
 
-## Restrictions for loans of const aliasable pointees
+### Restrictions for loans of const aliasable pointees
 
 Const pointers are read-only. There may be `&mut` or `&` aliases, and
 we can not prevent *anything* but moves in that case. So the
@@ -535,7 +549,7 @@ result.
     RESTRICTIONS(*LV, []) = []                         // R-Deref-Const-Borrowed
       TYPE(LV) = &const Ty or @const Ty
 
-## Restrictions for loans of mutable borrowed pointees
+### Restrictions for loans of mutable borrowed pointees
 
 Borrowing mutable borrowed pointees is a bit subtle because we permit
 users to freeze or claim `&mut` pointees. To see what I mean, consider this
@@ -645,7 +659,7 @@ any restrictions (beyond the default of "no move"):
 Moving from an `&mut` pointee is never legal, so no special
 restrictions are needed.
 
-## Restrictions for loans of mutable managed pointees
+### Restrictions for loans of mutable managed pointees
 
 With `@mut` pointees, we don't make any static guarantees.  But as a
 convenience, we still register a restriction against `*LV`, because
@@ -654,7 +668,159 @@ that way if we *can* find a simple static error, we will:
     RESTRICTIONS(*LV, ACTIONS) = [*LV, ACTIONS]   // R-Deref-Managed-Borrowed
       TYPE(LV) = @mut Ty
 
-# Some notes for future work
+# Moves and initialization
+
+The borrow checker is also in charge of ensuring that:
+
+- all memory which is accessed is initialized
+- immutable local variables are assigned at most once.
+
+These are two separate dataflow analyses built on the same
+framework. Let's look at checking that memory is initialized first;
+the checking of immutable local variabe assignments works in a very
+similar way.
+
+To track the initialization of memory, we actually track all the
+points in the program that *create uninitialized memory*, meaning
+moves and the declaration of uninitialized variables. For each of
+these points, we create a bit in the dataflow set. Assignments to a
+variable `x` or path `a.b.c` kill the move/uninitialization bits for
+those paths and any subpaths (e.g., `x`, `x.y`, `a.b.c`, `*a.b.c`).
+The bits are also killed when the root variables (`x`, `a`) go out of
+scope. Bits are unioned when two control-flow paths join. Thus, the
+presence of a bit indicates that the move may have occurred without an
+intervening assignment to the same memory. At each use of a variable,
+we examine the bits in scope, and check that none of them are
+moves/uninitializations of the variable that is being used.
+
+Let's look at a simple example:
+
+    fn foo(a: ~int) {
+        let b: ~int;       // Gen bit 0.
+
+        if cond {          // Bits: 0
+            use(&*a);
+            b = a;         // Gen bit 1, kill bit 0.
+            use(&*b);
+        } else {
+                           // Bits: 0
+        }
+                           // Bits: 0,1
+        use(&*a);          // Error.
+        use(&*b);          // Error.
+    }
+
+    fn use(a: &int) { }
+
+In this example, the variable `b` is created uninitialized. In one
+branch of an `if`, we then move the variable `a` into `b`. Once we
+exit the `if`, therefore, it is an error to use `a` or `b` since both
+are only conditionally initialized. I have annotated the dataflow
+state using comments. There are two dataflow bits, with bit 0
+corresponding to the creation of `b` without an initializer, and bit 1
+corresponding to the move of `a`. The assignment `b = a` both
+generates bit 1, because it is a move of `a`, and kills bit 0, because
+`b` is now initialized. On the else branch, though, `b` is never
+initialized, and so bit 0 remains untouched. When the two flows of
+control join, we union the bits from both sides, resulting in both
+bits 0 and 1 being set. Thus any attempt to use `a` uncovers the bit 1
+from the "then" branch, showing that `a` may be moved, and any attempt
+to use `b` uncovers bit 0, from the "else" branch, showing that `b`
+may not be initialized.
+
+## Initialization of immutable variables
+
+Initialization of immutable variables works in a very similar way,
+except that:
+
+1. we generate bits for each assignment to a variable;
+2. the bits are never killed except when the variable goes out of scope.
+
+Thus the presence of an assignment bit indicates that the assignment
+may have occurred. Note that assignments are only killed when the
+variable goes out of scope, as it is not relevant whether or not there
+has been a move in the meantime. Using these bits, we can declare that
+an assignment to an immutable variable is legal iff there is no other
+assignment bit to that same variable in scope.
+
+## Why is the design made this way?
+
+It may seem surprising that we assign dataflow bits to *each move*
+rather than *each path being moved*. This is somewhat less efficient,
+since on each use, we must iterate through all moves and check whether
+any of them correspond to the path in question. Similar concerns apply
+to the analysis for double assignments to immutable variables. The
+main reason to do it this way is that it allows us to print better
+error messages, because when a use occurs, we can print out the
+precise move that may be in scope, rather than simply having to say
+"the variable may not be initialized".
+
+## Data structures used in the move analysis
+
+The move analysis maintains several data structures that enable it to
+cross-reference moves and assignments to determine when they may be
+moving/assigning the same memory. These are all collected into the
+`MoveData` and `FlowedMoveData` structs. The former represents the set
+of move paths, moves, and assignments, and the latter adds in the
+results of a dataflow computation.
+
+### Move paths
+
+The `MovePath` tree tracks every path that is moved or assigned to.
+These paths have the same form as the `LoanPath` data structure, which
+in turn is the "real world version of the lvalues `LV` that we
+introduced earlier. The difference between a `MovePath` and a `LoanPath`
+is that move paths are:
+
+1. Canonicalized, so that we have exactly one copy of each, and
+   we can refer to move paths by index;
+2. Cross-referenced with other paths into a tree, so that given a move
+   path we can efficiently find all parent move paths and all
+   extensions (e.g., given the `a.b` move path, we can easily find the
+   move path `a` and also the move paths `a.b.c`)
+3. Cross-referenced with moves and assignments, so that we can
+   easily find all moves and assignments to a given path.
+
+The mechanism that we use is to create a `MovePath` record for each
+move path. These are arranged in an array and are referenced using
+`MovePathIndex` values, which are newtype'd indices. The `MovePath`
+structs are arranged into a tree, representing using the standard
+Knuth representation where each node has a child 'pointer' and a "next
+sibling" 'pointer'. In addition, each `MovePath` has a parent
+'pointer'.  In this case, the 'pointers' are just `MovePathIndex`
+values.
+
+In this way, if we want to find all base paths of a given move path,
+we can just iterate up the parent pointers (see `each_base_path()` in
+the `move_data` module). If we want to find all extensions, we can
+iterate through the subtree (see `each_extending_path()`).
+
+### Moves and assignments
+
+There are structs to represent moves (`Move`) and assignments
+(`Assignment`), and these are also placed into arrays and referenced
+by index. All moves of a particular path are arranged into a linked
+lists, beginning with `MovePath.first_move` and continuing through
+`Move.next_move`.
+
+We distinguish between "var" assignments, which are assignments to a
+variable like `x = foo`, and "path" assignments (`x.f = foo`).  This
+is because we need to assign dataflows to the former, but not the
+latter, so as to check for double initialization of immutable
+variables.
+
+### Gathering and checking moves
+
+Like loans, we distinguish two phases. The first, gathering, is where
+we uncover all the moves and assignments. As with loans, we do some
+basic sanity checking in this phase, so we'll report errors if you
+attempt to move out of a borrowed pointer etc. Then we do the dataflow
+(see `FlowedMoveData::new`). Finally, in the `check_loans.rs` code, we
+walk back over, identify all uses, assignments, and captures, and
+check that they are legal given the set of dataflow bits we have
+computed for that program point.
+
+# Future work
 
 While writing up these docs, I encountered some rules I believe to be
 stricter than necessary:
@@ -671,5 +837,26 @@ stricter than necessary:
   extra error message in some cases, though.
 - I have not described how closures interact. Current code is unsound.
   I am working on describing and implementing the fix.
+- If we wish, we can easily extend the move checking to allow finer-grained
+  tracking of what is initialized and what is not, enabling code like
+  this:
+
+      a = x.f.g; // x.f.g is now uninitialized
+      // here, x and x.f are not usable, but x.f.h *is*
+      x.f.g = b; // x.f.g is not initialized
+      // now x, x.f, x.f.g, x.f.h are all usable
+
+  What needs to change here, most likely, is that the `moves` module
+  should record not only what paths are moved, but what expressions
+  are actual *uses*. For example, the reference to `x` in `x.f.g = b`
+  is not a true *use* in the sense that it requires `x` to be fully
+  initialized. This is in fact why the above code produces an error
+  today: the reference to `x` in `x.f.g = b` is considered illegal
+  because `x` is not fully initialized.
+
+There are also some possible refactorings:
+
+- It might be nice to replace all loan paths with the MovePath mechanism,
+  since they allow lightweight comparison using an integer.
 
 */
