@@ -1035,7 +1035,9 @@ pub impl<'self> LookupContext<'self> {
         let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {sig: fn_sig, ..bare_fn_ty});
         debug!("after replacing bound regions, fty=%s", self.ty_to_str(fty));
 
-        let self_mode = get_mode_from_explicit_self(candidate.method_ty.explicit_self);
+        // XXX: We always pass self by-ref since we stuff it in the environment slot.
+        // Eventually that should not be the case
+        let self_mode = ty::ByRef;
 
         // before we only checked whether self_ty could be a subtype
         // of rcvr_ty; now we actually make it so (this may cause
@@ -1300,12 +1302,5 @@ pub impl<'self> LookupContext<'self> {
 
     fn bug(&self, s: ~str) -> ! {
         self.tcx().sess.bug(s)
-    }
-}
-
-pub fn get_mode_from_explicit_self(explicit_self: ast::explicit_self_) -> SelfMode {
-    match explicit_self {
-        sty_value => ty::ByCopy,
-        _ => ty::ByRef,
     }
 }

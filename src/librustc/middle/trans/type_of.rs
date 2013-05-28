@@ -21,8 +21,8 @@ use util::ppaux;
 
 use syntax::ast;
 
-pub fn arg_is_indirect(_: @CrateContext, arg_ty: &ty::t) -> bool {
-    !ty::type_is_immediate(*arg_ty)
+pub fn arg_is_indirect(ccx: @CrateContext, arg_ty: &ty::t) -> bool {
+    !ty::type_is_immediate(ccx.tcx, *arg_ty)
 }
 
 pub fn type_of_explicit_arg(ccx: @CrateContext, arg_ty: &ty::t) -> TypeRef {
@@ -42,7 +42,7 @@ pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::t], output: ty::t)
 
         // Arg 0: Output pointer.
         // (if the output type is non-immediate)
-        let output_is_immediate = ty::type_is_immediate(output);
+        let output_is_immediate = ty::type_is_immediate(cx.tcx, output);
         let lloutputtype = type_of(cx, output);
         if !output_is_immediate {
             atys.push(T_ptr(lloutputtype));

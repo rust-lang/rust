@@ -510,7 +510,7 @@ pub fn trans_call_inner(in_cx: block,
 
         let mut llargs = ~[];
 
-        if ty::type_is_immediate(ret_ty) {
+        if ty::type_is_immediate(bcx.tcx(), ret_ty) {
             unsafe {
                 llargs.push(llvm::LLVMGetUndef(T_ptr(T_i8())));
             }
@@ -559,7 +559,7 @@ pub fn trans_call_inner(in_cx: block,
                             // case to ignore instead of invoking the Store
                             // below into a scratch pointer of a mismatched
                             // type.
-                        } else if ty::type_is_immediate(ret_ty) {
+                        } else if ty::type_is_immediate(bcx.tcx(), ret_ty) {
                             let llscratchptr = alloc_ty(bcx, ret_ty);
                             Store(bcx, llresult, llscratchptr);
                             bcx = glue::drop_ty(bcx, llscratchptr, ret_ty);
@@ -573,7 +573,7 @@ pub fn trans_call_inner(in_cx: block,
                 // If this is an immediate, store into the result location.
                 // (If this was not an immediate, the result will already be
                 // directly written into the output slot.)
-                if ty::type_is_immediate(ret_ty) {
+                if ty::type_is_immediate(bcx.tcx(), ret_ty) {
                     Store(bcx, llresult, lldest);
                 }
             }
@@ -776,7 +776,7 @@ pub fn trans_arg_expr(bcx: block,
                         scratch.add_clean(bcx);
                         temp_cleanups.push(scratch.val);
 
-                        match arg_datum.appropriate_mode() {
+                        match arg_datum.appropriate_mode(bcx.tcx()) {
                             ByValue => val = Load(bcx, scratch.val),
                             ByRef => val = scratch.val,
                         }
