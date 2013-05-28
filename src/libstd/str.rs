@@ -3147,7 +3147,7 @@ mod tests {
         }
         t([~"you", ~"know", ~"I'm", ~"no", ~"good"],
           " ", "you know I'm no good");
-        let v: &[~str] = ~[];
+        let v: &[~str] = [];
         t(v, " ", "");
         t([~"hi"], " ", "hi");
     }

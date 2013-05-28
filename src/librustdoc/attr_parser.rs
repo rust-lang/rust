@@ -78,7 +78,6 @@ mod test {
     fn parse_attributes(source: ~str) -> ~[ast::attribute] {
         use syntax::parse;
         use syntax::parse::attr::parser_attr;
-        use syntax::codemap;
 
         let parse_sess = syntax::parse::new_parse_sess(None);
         let parser = parse::new_parser_from_source_str(

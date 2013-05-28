@@ -1880,13 +1880,13 @@ mod tests {
                   ]));
         assert_eq!(result::unwrap(from_str(
                       ~"{" +
-                          ~"\"a\": 1.0, " +
-                          ~"\"b\": [" +
-                              ~"true," +
-                              ~"\"foo\\nbar\", " +
-                              ~"{ \"c\": {\"d\": null} } " +
-                          ~"]" +
-                      ~"}")),
+                          "\"a\": 1.0, " +
+                          "\"b\": [" +
+                              "true," +
+                              "\"foo\\nbar\", " +
+                              "{ \"c\": {\"d\": null} } " +
+                          "]" +
+                      "}")),
                   mk_object([
                       (~"a", Number(1.0f)),
                       (~"b", List(~[

@@ -1481,7 +1481,7 @@ mod tests {
     fn test_getenv_big() {
         let mut s = ~"";
         let mut i = 0;
-        while i < 100 { s += ~"aaaaaaaaaa"; i += 1; }
+        while i < 100 { s += "aaaaaaaaaa"; i += 1; }
         let n = make_rand_name();
         setenv(n, s);
         debug!(copy s);
@@ -1658,7 +1658,7 @@ mod tests {
           };
           assert!((ostream as uint != 0u));
           let s = ~"hello";
-          let mut buf = str::to_bytes(s) + ~[0 as u8];
+          let mut buf = str::to_bytes(s) + [0 as u8];
           do vec::as_mut_buf(buf) |b, _len| {
               assert!((libc::fwrite(b as *c_void, 1u as size_t,
                                    (str::len(s) + 1u) as size_t, ostream)
