@@ -297,6 +297,10 @@ struct Context {
     // Just a simple flag if we're currently recursing into a trait
     // implementation. This is only used by the lint_missing_doc() pass
     in_trait_impl: bool,
+    // Another flag for doc lint emissions. Does some parent of the current node
+    // have the doc(hidden) attribute? Treating this as allow(missing_doc) would
+    // play badly with forbid(missing_doc) when it shouldn't.
+    doc_hidden: bool,
     // When recursing into an attributed node of the ast which modifies lint
     // levels, this stack keeps track of the previous lint levels of whatever
     // was modified.
@@ -422,9 +426,30 @@ impl Context {
             }
         }
 
+        // detect doc(hidden)
+        let mut doc_hidden = false;
+        for attr::find_attrs_by_name(attrs, "doc").each |attr| {
+            match attr::get_meta_item_list(attr.node.value) {
+                Some(s) => {
+                    if attr::find_meta_items_by_name(s, "hidden").len() > 0 {
+                        doc_hidden = true;
+                    }
+                }
+                None => {}
+            }
+        }
+        if doc_hidden && !self.doc_hidden {
+            self.doc_hidden = true;
+        } else {
+            doc_hidden = false;
+        }
+
         f();
 
         // rollback
+        if doc_hidden && self.doc_hidden {
+            self.doc_hidden = false;
+        }
         for pushed.times {
             let (lint, lvl, src) = self.lint_stack.pop();
             self.set_level(lint, lvl, src);
@@ -980,9 +1005,16 @@ fn lint_unnecessary_allocations() -> visit::vt<@mut Context> {
 fn lint_missing_doc() -> visit::vt<@mut Context> {
     fn check_attrs(cx: @mut Context, attrs: &[ast::attribute],
                    sp: span, msg: &str) {
-        if !attrs.any(|a| a.node.is_sugared_doc) {
-            cx.span_lint(missing_doc, sp, msg);
-        }
+        // If we're building a test harness, then warning about documentation is
+        // probably not really relevant right now
+        if cx.tcx.sess.opts.test { return }
+        // If we have doc(hidden), nothing to do
+        if cx.doc_hidden { return }
+        // If we're documented, nothing to do
+        if attrs.any(|a| a.node.is_sugared_doc) { return }
+
+        // otherwise, warn!
+        cx.span_lint(missing_doc, sp, msg);
     }
 
     visit::mk_vt(@visit::Visitor {
@@ -1067,6 +1099,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
         lint_stack: ~[],
         visitors: ~[],
         in_trait_impl: false,
+        doc_hidden: false,
     };
 
     // Install defaults.

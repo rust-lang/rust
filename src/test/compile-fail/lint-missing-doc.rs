@@ -69,4 +69,17 @@ impl F for Foo {
     fn b(&self) {}
 }
 
+// It sure is nice if doc(hidden) implies allow(missing_doc), and that it
+// applies recursively
+#[doc(hidden)]
+mod a {
+    pub fn baz() {}
+    pub mod b {
+        pub fn baz() {}
+    }
+}
+
+#[doc(hidden)]
+pub fn baz() {}
+
 fn main() {}
