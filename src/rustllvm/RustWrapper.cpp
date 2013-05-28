@@ -603,3 +603,8 @@ extern "C" LLVMValueRef LLVMInlineAsm(LLVMTypeRef Ty,
                                Constraints, HasSideEffects,
                                IsAlignStack, (InlineAsm::AsmDialect) Dialect));
 }
+
+extern "C" void LLVMSetUnnamedAddr(LLVMValueRef Global, LLVMBool value) {
+    GlobalValue *GV = unwrap<GlobalValue>(Global);
+    GV->setUnnamedAddr(value);
+}
