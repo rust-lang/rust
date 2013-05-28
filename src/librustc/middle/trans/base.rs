@@ -1694,16 +1694,13 @@ pub fn create_llargs_for_fn_args(cx: fn_ctxt,
             let arg = &args[i];
             let llarg = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
 
-            // Mark `&mut T` as no-alias, as the borrowck pass ensures it's true
             match arg.ty.node {
-                ast::ty_rptr(_, mt) => {
-                    if mt.mutbl == ast::m_mutbl  {
-                        llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
-                    }
-                }
+                // `~` pointers never alias other parameters, because ownership was transferred
                 ast::ty_uniq(_) => {
                     llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
                 }
+                // FIXME: #6785: `&mut` can only alias `&const` and `@mut`, we should check for
+                // those in the other parameters and then mark it as `noalias` if there aren't any
                 _ => {}
             }
 
