@@ -2339,9 +2339,7 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
 
             let start_def_id = ccx.tcx.lang_items.start_fn();
-            if start_def_id.crate == ast::local_crate {
-                ccx.sess.bug("start lang item is never in the local crate")
-            } else {
+            if start_def_id.crate != ast::local_crate {
                 let start_fn_type = csearch::get_type(ccx.tcx,
                                                       start_def_id).ty;
                 trans_external_path(ccx, start_def_id, start_fn_type);
@@ -2358,8 +2356,7 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
             let (start_fn, args) = if use_start_lang_item {
                 let start_def_id = ccx.tcx.lang_items.start_fn();
                 let start_fn = if start_def_id.crate == ast::local_crate {
-                    ccx.sess.bug("start lang item is never in the local \
-                                  crate")
+                    get_item_val(ccx, start_def_id.node)
                 } else {
                     let start_fn_type = csearch::get_type(ccx.tcx,
                             start_def_id).ty;
