@@ -32,7 +32,6 @@ macro_rules! constants {
 }
 
 
-fn test_X() {
+pub fn main() {
   constants!();
 }
-
