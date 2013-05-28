@@ -351,6 +351,30 @@ pub struct fn_ctxt_ {
     ccx: @@CrateContext
 }
 
+pub impl fn_ctxt_ {
+    pub fn arg_pos(&self, arg: uint) -> uint {
+        if self.has_immediate_return_value {
+            arg + 1u
+        } else {
+            arg + 2u
+        }
+    }
+
+    pub fn out_arg_pos(&self) -> uint {
+        assert!(self.has_immediate_return_value);
+        0u
+    }
+
+    pub fn env_arg_pos(&self) -> uint {
+        if !self.has_immediate_return_value {
+            1u
+        } else {
+            0u
+        }
+    }
+
+}
+
 pub type fn_ctxt = @mut fn_ctxt_;
 
 pub fn warn_not_to_commit(ccx: @CrateContext, msg: &str) {
@@ -658,27 +682,6 @@ pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>, kind: block_kind,
             is_lpad: bool, node_info: Option<NodeInfo>, fcx: fn_ctxt)
     -> block {
     @mut block_(llbb, parent, kind, is_lpad, node_info, fcx)
-}
-
-pub fn arg_pos(ret_imm: bool, arg: uint) -> uint {
-    if ret_imm {
-        arg + 1u
-    } else {
-        arg + 2u
-    }
-}
-
-pub fn arg_out(ret_imm: bool) -> uint {
-    assert!(ret_imm);
-    0u
-}
-
-pub fn arg_env(ret_imm: bool) -> uint {
-    if !ret_imm {
-        1u
-    } else {
-        0u
-    }
 }
 
 pub struct Result {

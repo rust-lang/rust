@@ -727,7 +727,7 @@ pub fn make_generic_glue_inner(ccx: @CrateContext,
                                helper: glue_helper)
                             -> ValueRef {
     let _icx = ccx.insn_ctxt("make_generic_glue_inner");
-    let (fcx, imm) = new_fn_ctxt(ccx, ~[], llfn, ty::mk_nil(), None);
+    let fcx = new_fn_ctxt(ccx, ~[], llfn, ty::mk_nil(), None);
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     ccx.stats.n_glues_created += 1u;
     // All glue functions take values passed *by alias*; this is a
@@ -740,7 +740,8 @@ pub fn make_generic_glue_inner(ccx: @CrateContext,
 
     let bcx = top_scope_block(fcx, None);
     let lltop = bcx.llbb;
-    let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, arg_pos(true, 1u) as c_uint) };
+    let rawptr0_arg = fcx.arg_pos(1u);
+    let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, rawptr0_arg as c_uint) };
     helper(bcx, llrawptr0, t);
     finish_fn(fcx, lltop);
     return llfn;
