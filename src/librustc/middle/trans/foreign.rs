@@ -153,6 +153,7 @@ fn build_shim_fn_(ccx: @CrateContext,
     let fcx = new_fn_ctxt(ccx, ~[], llshimfn, tys.fn_sig.output, None);
     let bcx = top_scope_block(fcx, None);
     let lltop = bcx.llbb;
+
     let llargbundle = get_param(llshimfn, 0u);
     let llargvals = arg_builder(bcx, tys, llargbundle);
 
@@ -437,11 +438,11 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
         let llbasefn = base_fn(ccx, *link_name(ccx, item), tys, cc);
         let ty = ty::lookup_item_type(ccx.tcx,
                                       ast_util::local_def(item.id)).ty;
+        let ret_ty = ty::ty_fn_ret(ty);
         let args = vec::from_fn(ty::ty_fn_args(ty).len(), |i| {
-            get_param(decl, i + first_real_arg)
+            get_param(decl, fcx.arg_pos(i))
         });
         let retval = Call(bcx, llbasefn, args);
-        let ret_ty = ty::ty_fn_ret(ty);
         if !ty::type_is_nil(ret_ty) && !ty::type_is_bot(ret_ty) {
             Store(bcx, retval, fcx.llretptr.get());
         }
@@ -465,11 +466,11 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
         set_fixed_stack_segment(fcx.llfn);
         let ty = ty::lookup_item_type(ccx.tcx,
                                       ast_util::local_def(item.id)).ty;
+        let ret_ty = ty::ty_fn_ret(ty);
         let args = vec::from_fn(ty::ty_fn_args(ty).len(), |i| {
-            get_param(decl, i + first_real_arg)
+            get_param(decl, fcx.arg_pos(i))
         });
         let retval = Call(bcx, llbasefn, args);
-        let ret_ty = ty::ty_fn_ret(ty);
         if !ty::type_is_nil(ret_ty) && !ty::type_is_bot(ret_ty) {
             Store(bcx, retval, fcx.llretptr.get());
         }
@@ -512,9 +513,9 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
             let _icx = bcx.insn_ctxt("foreign::wrap::build_args");
             let ccx = bcx.ccx();
             let n = tys.llsig.llarg_tys.len();
-            let implicit_args = first_real_arg; // return + env
             for uint::range(0, n) |i| {
-                let mut llargval = get_param(llwrapfn, i + implicit_args);
+                let arg_i = bcx.fcx.arg_pos(i);
+                let mut llargval = get_param(llwrapfn, arg_i);
 
                 // In some cases, Rust will pass a pointer which the
                 // native C type doesn't have.  In that case, just
@@ -568,6 +569,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
 
     let mut bcx = top_scope_block(fcx, None);
     let lltop = bcx.llbb;
+    let first_real_arg = fcx.arg_pos(0u);
     match *ccx.sess.str_of(item.ident) {
         ~"atomic_cxchg" => {
             let old = AtomicCmpXchg(bcx,
@@ -1269,8 +1271,6 @@ pub fn trans_foreign_fn(ccx: @CrateContext,
             if !ty::type_is_immediate(tys.fn_sig.output) {
                 let llretptr = load_inbounds(bcx, llargbundle, [0u, n]);
                 llargvals.push(llretptr);
-            } else {
-                llargvals.push(C_null(T_ptr(T_i8())));
             }
 
             let llenvptr = C_null(T_opaque_box_ptr(bcx.ccx()));

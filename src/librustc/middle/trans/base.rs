@@ -1612,10 +1612,11 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
         }
     };
     let is_immediate = ty::type_is_immediate(substd_output_type);
-
     let fcx = @mut fn_ctxt_ {
           llfn: llfndecl,
-          llenv: unsafe { llvm::LLVMGetParam(llfndecl, 1u as c_uint) },
+          llenv: unsafe {
+              llvm::LLVMGetUndef(T_ptr(T_i8()))
+          },
           llretptr: None,
           llstaticallocas: llbbs.sa,
           llloadenv: None,
@@ -1634,7 +1635,9 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           path: path,
           ccx: @ccx
     };
-
+    fcx.llenv = unsafe {
+          llvm::LLVMGetParam(llfndecl, fcx.env_arg_pos() as c_uint)
+    };
     fcx.llretptr = Some(make_return_pointer(fcx, substd_output_type));
     fcx
 }
@@ -1690,7 +1693,7 @@ pub fn create_llargs_for_fn_args(cx: fn_ctxt,
     // llvm::LLVMGetParam for each argument.
     vec::from_fn(args.len(), |i| {
         unsafe {
-            let arg_n = first_real_arg + i;
+            let arg_n = cx.arg_pos(i);
             let arg = &args[i];
             let llarg = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
 
@@ -2293,19 +2296,26 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
 
     fn create_main(ccx: @CrateContext, main_llfn: ValueRef) -> ValueRef {
         let nt = ty::mk_nil();
+
         let llfty = type_of_fn(ccx, [], nt);
         let llfdecl = decl_fn(ccx.llmod, "_rust_main",
                               lib::llvm::CCallConv, llfty);
 
         let fcx = new_fn_ctxt(ccx, ~[], llfdecl, nt, None);
 
+        // the args vector built in create_entry_fn will need
+        // be updated if this assertion starts to fail.
+        assert!(fcx.has_immediate_return_value);
+
         let bcx = top_scope_block(fcx, None);
         let lltop = bcx.llbb;
 
         // Call main.
-        let lloutputarg = C_null(T_ptr(T_i8()));
-        let llenvarg = unsafe { llvm::LLVMGetParam(llfdecl, 1 as c_uint) };
-        let args = ~[lloutputarg, llenvarg];
+        let llenvarg = unsafe {
+            let env_arg = fcx.env_arg_pos();
+            llvm::LLVMGetParam(llfdecl, env_arg as c_uint)
+        };
+        let args = ~[llenvarg];
         let llresult = Call(bcx, main_llfn, args);
         Store(bcx, llresult, fcx.llretptr.get());
 
@@ -2345,8 +2355,6 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
                 trans_external_path(ccx, start_def_id, start_fn_type);
             }
 
-            let retptr = llvm::LLVMBuildAlloca(bld, T_i8(), noname());
-
             let crate_map = ccx.crate_map;
             let opaque_crate_map = llvm::LLVMBuildPointerCast(bld,
                                                               crate_map,
@@ -2368,7 +2376,6 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
                             bld, rust_main, T_ptr(T_i8()), noname());
 
                     ~[
-                        retptr,
                         C_null(T_opaque_box_ptr(ccx)),
                         opaque_rust_main,
                         llvm::LLVMGetParam(llfn, 0),
@@ -2381,7 +2388,6 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
                 debug!("using user-defined start fn");
                 let args = {
                     ~[
-                        retptr,
                         C_null(T_opaque_box_ptr(ccx)),
                         llvm::LLVMGetParam(llfn, 0 as c_uint),
                         llvm::LLVMGetParam(llfn, 1 as c_uint),
