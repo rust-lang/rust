@@ -907,7 +907,7 @@ type type_cache = @mut HashMap<ast::def_id, ty_param_bounds_and_ty>;
 
 type constness_cache = @mut HashMap<ast::def_id, const_eval::constness>;
 
-pub type node_type_table = @mut SmallIntMap<t>;
+pub type node_type_table = @mut HashMap<uint,t>;
 
 fn mk_rcache() -> creader_cache {
     return @mut HashMap::new();
@@ -934,7 +934,7 @@ pub fn mk_ctxt(s: session::Session,
         def_map: dm,
         region_maps: region_maps,
         region_paramd_items: region_paramd_items,
-        node_types: @mut SmallIntMap::new(),
+        node_types: @mut HashMap::new(),
         node_type_substs: @mut HashMap::new(),
         trait_refs: @mut HashMap::new(),
         trait_defs: @mut HashMap::new(),
