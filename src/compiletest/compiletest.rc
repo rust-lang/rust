@@ -12,6 +12,7 @@
 
 #[allow(non_camel_case_types)];
 
+#[no_core]; // XXX: Remove after snapshot
 #[no_std];
 
 extern mod core(name = "std", vers = "0.7-pre");
