@@ -121,7 +121,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
     let options = @session::options {
         crate_type: session::unknown_crate,
         binary: binary,
-        addl_lib_search_paths: repl.lib_search_paths.map(|p| Path(*p)),
+        addl_lib_search_paths: @mut repl.lib_search_paths.map(|p| Path(*p)),
         jit: true,
         .. copy *session::basic_options()
     };
@@ -142,12 +142,13 @@ fn run(repl: Repl, input: ~str) -> Repl {
                                           binary,
                                           &wrapped);
 
-    let outputs = driver::build_output_filenames(&wrapped, &None, &None, sess);
+    let outputs = driver::build_output_filenames(&wrapped, &None, &None, [], sess);
     debug!("calling compile_upto");
 
     let crate = driver::parse_input(sess, copy cfg, &wrapped);
-    driver::compile_rest(sess, cfg, driver::cu_everything,
-                         Some(outputs), Some(crate));
+    driver::compile_rest(sess, cfg, driver::compile_upto { from: driver::cu_parse,
+                                                           to: driver::cu_everything },
+                          Some(outputs), Some(crate));
 
     let mut opt = None;
 
@@ -188,7 +189,7 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
         let binary = @copy binary;
         let options = @session::options {
             binary: binary,
-            addl_lib_search_paths: ~[os::getcwd()],
+            addl_lib_search_paths: @mut ~[os::getcwd()],
             .. copy *session::basic_options()
         };
         let input = driver::file_input(copy src_path);
@@ -196,7 +197,7 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
         *sess.building_library = true;
         let cfg = driver::build_configuration(sess, binary, &input);
         let outputs = driver::build_output_filenames(
-            &input, &None, &None, sess);
+            &input, &None, &None, [], sess);
         // If the library already exists and is newer than the source
         // file, skip compilation and return None.
         let mut should_compile = true;
