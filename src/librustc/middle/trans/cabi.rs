@@ -132,8 +132,7 @@ pub impl FnType {
                        bcx: block,
                        ret_ty: TypeRef,
                        llwrapfn: ValueRef,
-                       llargbundle: ValueRef,
-                       ret_imm: bool) {
+                       llargbundle: ValueRef) {
         let mut atys = /*bad*/copy self.arg_tys;
         let mut attrs = /*bad*/copy self.attrs;
         let mut j = 0u;
