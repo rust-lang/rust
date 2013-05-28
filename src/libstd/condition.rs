@@ -10,6 +10,8 @@
 
 /*! Condition handling */
 
+#[allow(missing_doc)];
+
 use local_data::{local_data_pop, local_data_set};
 use local_data;
 use prelude::*;

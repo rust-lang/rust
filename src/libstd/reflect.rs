@@ -14,6 +14,8 @@ Runtime type reflection
 
 */
 
+#[allow(missing_doc)];
+
 use intrinsic::{TyDesc, TyVisitor};
 use intrinsic::Opaque;
 use libc::c_void;

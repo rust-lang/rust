@@ -24,6 +24,7 @@ by convention implementing the `Clone` trait and calling the
 
 use core::kinds::Const;
 
+/// A common trait for cloning an object.
 pub trait Clone {
     /// Returns a copy of the value. The contents of owned pointers
     /// are copied to maintain uniqueness, while the contents of
@@ -85,6 +86,8 @@ clone_impl!(())
 clone_impl!(bool)
 clone_impl!(char)
 
+/// A trait distinct from `Clone` which represents "deep copies" of things like
+/// managed boxes which would otherwise not be copied.
 pub trait DeepClone {
     /// Return a deep copy of the value. Unlike `Clone`, the contents of shared pointer types
     /// *are* copied. Note that this is currently unimplemented for managed boxes, as
