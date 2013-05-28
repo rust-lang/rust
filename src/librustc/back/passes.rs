@@ -10,9 +10,8 @@
 
 use core::prelude::*;
 
-use driver::session::{Session, Session_, No, Less, Default};
 use driver::session;
-use lib::llvm::{PassRef, ModuleRef,PassManagerRef,ValueRef,TargetDataRef};
+use lib::llvm::{PassRef, ModuleRef,PassManagerRef,TargetDataRef};
 use lib::llvm::llvm;
 use lib;
 
@@ -56,12 +55,12 @@ impl PassManager {
 
 pub fn populatePassManager(pm: &mut PassManager, level:session::OptLevel) {
     unsafe {
-        // We add a lot of potentially-unused prototypes, so strip them right at the
-        // start. We do it again later when we know for certain which ones are used
-        pm.addPass(llvm::LLVMCreateStripDeadPrototypesPass());
-
         if level == session::No {
             pm.addPass(llvm::LLVMCreateAlwaysInlinerPass());
+
+            // We add a lot of unused prototypes, so strip them no matter
+            // what
+            pm.addPass(llvm::LLVMCreateStripDeadPrototypesPass());
             return;
         }
 
