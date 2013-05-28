@@ -717,7 +717,12 @@ pub fn declare_generic_glue(ccx: @CrateContext, t: ty::t, llfnty: TypeRef,
     note_unique_llvm_symbol(ccx, fn_nm);
     let llfn = decl_cdecl_fn(ccx.llmod, *fn_nm, llfnty);
     set_glue_inlining(llfn, t);
-    return llfn;
+
+    // glue functions aren't visible to user code, so function pointer addresses are never
+    // semantically relevant - we can inform LLVM and allow it to merge the functions
+    lib::llvm::set_unnamed_addr(llfn, true);
+
+    llfn
 }
 
 pub fn make_generic_glue_inner(ccx: @CrateContext,
