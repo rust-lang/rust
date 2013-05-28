@@ -144,9 +144,10 @@ fn run(repl: Repl, input: ~str) -> Repl {
 
     let outputs = driver::build_output_filenames(&wrapped, &None, &None, sess);
     debug!("calling compile_upto");
-    let (crate, _) = driver::compile_upto(sess, cfg, &wrapped,
-                                          driver::cu_everything,
-                                          Some(outputs));
+
+    let crate = driver::parse_input(sess, copy cfg, &wrapped);
+    driver::compile_rest(sess, cfg, driver::cu_everything,
+                         Some(outputs), Some(crate));
 
     let mut opt = None;
 
