@@ -375,7 +375,6 @@ mod test {
     use uv;
 
     use core::result;
-    use core::vec;
 
     #[test]
     fn test_ip_ipv4_parse_and_format_ip() {

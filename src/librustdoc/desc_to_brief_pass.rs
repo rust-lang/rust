@@ -166,7 +166,7 @@ pub fn paragraphs(s: &str) -> ~[~str] {
             accum = if str::is_empty(accum) {
                 copy *line
             } else {
-                accum + ~"\n" + *line
+                accum + "\n" + *line
             }
         }
 
@@ -174,7 +174,7 @@ pub fn paragraphs(s: &str) -> ~[~str] {
     };
 
     if !accum.is_empty() {
-        paras + ~[accum]
+        paras + [accum]
     } else {
         paras
     }

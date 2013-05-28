@@ -317,7 +317,7 @@ mod tests {
             Test {
                 input:
                      ~"abcdbcdecdefdefgefghfghighij" +
-                     ~"hijkijkljklmklmnlmnomnopnopq",
+                     "hijkijkljklmklmnlmnomnopnopq",
                 output: ~[
                     0x84u8, 0x98u8, 0x3Eu8, 0x44u8,
                     0x1Cu8, 0x3Bu8, 0xD2u8, 0x6Eu8,
