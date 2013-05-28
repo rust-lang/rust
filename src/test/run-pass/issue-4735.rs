@@ -9,8 +9,8 @@
 // except according to those terms.
 
 
-use core::cast::transmute;
-use core::libc::c_void;
+use std::cast::transmute;
+use std::libc::c_void;
 
 struct NonCopyable(*c_void);
 
