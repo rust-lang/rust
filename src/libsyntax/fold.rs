@@ -118,35 +118,37 @@ fn fold_mac_(m: &mac, fld: @ast_fold) -> mac {
         node: match m.node {
             mac_invoc_tt(ref p,ref tts) =>
             mac_invoc_tt(fld.fold_path(p),
-                         fold_tts(*tts,fld))
+                         fold_tts(*tts,|id|{fld.fold_ident(id)}))
         },
         span: fld.new_span(m.span)
     }
 }
 
-fn fold_tts(tts : &[token_tree], fld: @ast_fold) -> ~[token_tree] {
+// build a new vector of tts by appling the given function to
+// all of the identifiers in the token trees.
+pub fn fold_tts(tts : &[token_tree], f: @fn(ident)->ident) -> ~[token_tree] {
     do tts.map |tt| {
         match *tt {
             tt_tok(span, ref tok) =>
-            tt_tok(span,maybe_fold_ident(tok,fld)),
+            tt_tok(span,maybe_fold_ident(tok,f)),
             tt_delim(ref tts) =>
-            tt_delim(@mut fold_tts(**tts, fld)),
+            tt_delim(@mut fold_tts(**tts, f)),
             tt_seq(span, ref pattern, ref sep, is_optional) =>
             tt_seq(span,
-                   @mut fold_tts(**pattern, fld),
-                   sep.map(|tok|maybe_fold_ident(tok,fld)),
+                   @mut fold_tts(**pattern, f),
+                   sep.map(|tok|maybe_fold_ident(tok,f)),
                    is_optional),
             tt_nonterminal(sp,ref ident) =>
-            tt_nonterminal(sp,fld.fold_ident(*ident))
+            tt_nonterminal(sp,f(*ident))
         }
     }
 }
 
 // apply ident folder if it's an ident, otherwise leave it alone
-fn maybe_fold_ident(t: &token::Token, fld: @ast_fold) -> token::Token {
+fn maybe_fold_ident(t : &token::Token, f: @fn(ident)->ident) -> token::Token {
     match *t {
         token::IDENT(id,followed_by_colons) =>
-        token::IDENT(fld.fold_ident(id),followed_by_colons),
+        token::IDENT(f(id),followed_by_colons),
         _ => (*t).clone()
     }
 }
