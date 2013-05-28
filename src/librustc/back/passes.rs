@@ -118,7 +118,7 @@ pub fn populatePassManager(pm: &mut PassManager, level:session::OptLevel) {
         pm.addPass(llvm::LLVMCreateLoopDeletionPass());
 
         if level == session::Aggressive {
-            pm.addPass(llvm::LLVMCreateLoopUnrollPass());
+            pm.addPass(llvm::LLVMCreateLoopVectorizePass());
         }
         pm.addPass(llvm::LLVMCreateLoopUnrollPass());
 
