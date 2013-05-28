@@ -178,7 +178,7 @@ pub fn get_absolute_rpath(lib: &Path) -> Path {
 pub fn get_install_prefix_rpath(target_triple: &str) -> Path {
     let install_prefix = env!("CFG_PREFIX");
 
-    if install_prefix == ~"" {
+    if install_prefix.is_empty() {
         fail!("rustc compiled without CFG_PREFIX environment variable");
     }
 
