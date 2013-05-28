@@ -81,6 +81,7 @@ fn f() {
 ᠎᠎᠎᠎  Mongolian Vowel Sep   count F: (should align)
     */
 
+
 /* */ /*
         Hello from offset 6
         Space 6+2:                     compare A
@@ -95,16 +96,14 @@ fn f() {
 
 fn main() {
     // Taken from http://en.wikipedia.org/wiki/Whitespace_character
-    let chars = [ '\x0A', '\x0B', '\x0C', '\x0D', '\x20',
-                 // '\x85', // for some reason Rust thinks NEL isn't whitespace
-                 '\xA0', '\u1680', '\u180E',
-                 '\u2000', '\u2001', '\u2002', '\u2003',
-                 '\u2004', '\u2005', '\u2006', '\u2007',
-                 '\u2008', '\u2009', '\u200A',
-                 '\u2028', '\u2029', '\u202F', '\u205F',
-                 '\u3000'
-                ];
+    let chars =
+        ['\x0A', '\x0B', '\x0C', '\x0D', '\x20',
+         // '\x85', // for some reason Rust thinks NEL isn't whitespace
+         '\xA0', '\u1680', '\u180E', '\u2000', '\u2001', '\u2002', '\u2003',
+         '\u2004', '\u2005', '\u2006', '\u2007', '\u2008', '\u2009', '\u200A',
+         '\u2028', '\u2029', '\u202F', '\u205F', '\u3000'];
     for vec::each(chars) |c| {
-        io::println(fmt!("%? %?", c, c.is_whitespace()));
+        let ws = c.is_whitespace();
+        io::println(fmt!("%? %?", c , ws)); // <= bugs in pretty-printer?
     }
 }
