@@ -213,6 +213,7 @@ use middle::freevars;
 use middle::ty;
 use middle::typeck::{method_map};
 use util::ppaux;
+use util::ppaux::Repr;
 use util::common::indenter;
 
 use core::hashmap::{HashSet, HashMap};
@@ -241,10 +242,15 @@ pub type CaptureMap = @mut HashMap<node_id, @[CaptureVar]>;
 
 pub type MovesMap = @mut HashSet<node_id>;
 
+pub enum Reason {
+    MovedByExpr(@expr),
+    MovedByPat(@pat),
+}
+
 /**
  * For each variable which will be moved, links to the
  * expression */
-pub type VariableMovesMap = @mut HashMap<node_id, @expr>;
+pub type VariableMovesMap = @mut HashMap<node_id, Reason>;
 
 /**
  * Set of variable node-ids that are moved.
@@ -269,8 +275,8 @@ struct VisitContext {
 }
 
 enum UseMode {
-    MoveInWhole,         // Move the entire value.
-    MoveInPart(@expr),   // Some subcomponent will be moved
+    MoveInWhole(Reason), // Move the entire value.
+    MoveInPart(Reason),  // Some subcomponent will be moved
     Read                 // Read no matter what the type.
 }
 
@@ -318,16 +324,15 @@ fn compute_modes_for_expr(expr: @expr,
 }
 
 pub impl UseMode {
-    fn component_mode(&self, expr: @expr) -> UseMode {
+    fn component_mode(&self) -> UseMode {
         /*!
-         *
          * Assuming that `self` is the mode for an expression E,
          * returns the appropriate mode to use for a subexpression of E.
          */
 
         match *self {
             Read | MoveInPart(_) => *self,
-            MoveInWhole => MoveInPart(expr)
+            MoveInWhole(r) => MoveInPart(r)
         }
     }
 }
@@ -346,18 +351,29 @@ pub impl VisitContext {
                     expr: @expr,
                     visitor: vt<VisitContext>)
     {
+        self.consume_expr_with_reason(expr, MovedByExpr(expr), visitor);
+    }
+
+    fn consume_expr_with_reason(&self,
+                                expr: @expr,
+                                reason: Reason,
+                                visitor: vt<VisitContext>)
+    {
         /*!
-         *
          * Indicates that the value of `expr` will be consumed,
          * meaning either copied or moved depending on its type.
+         * `reason` indicates why the value should be moved.
          */
 
-        debug!("consume_expr(expr=%?/%s)",
-               expr.id,
-               pprust::expr_to_str(expr, self.tcx.sess.intr()));
+        debug!("consume_expr_with_reason(expr=%s)",
+               expr.repr(self.tcx));
 
         let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
-        let mode = self.consume_mode_for_ty(expr_ty);
+        let mode = if ty::type_moves_by_default(self.tcx, expr_ty) {
+            MoveInWhole(reason)
+        } else {
+            Read
+        };
         self.use_expr(expr, mode, visitor);
     }
 
@@ -366,7 +382,6 @@ pub impl VisitContext {
                      visitor: vt<VisitContext>)
     {
         /*!
-         *
          * Indicates that the value of `blk` will be consumed,
          * meaning either copied or moved depending on its type.
          */
@@ -382,43 +397,22 @@ pub impl VisitContext {
         }
     }
 
-    fn consume_mode_for_ty(&self, ty: ty::t) -> UseMode {
-        /*!
-         *
-         * Selects the appropriate `UseMode` to consume a value with
-         * the type `ty`.  This will be `MoveEntireMode` if `ty` is
-         * not implicitly copyable.
-         */
-
-        let result = if ty::type_moves_by_default(self.tcx, ty) {
-            MoveInWhole
-        } else {
-            Read
-        };
-
-        debug!("consume_mode_for_ty(ty=%s) = %?",
-               ppaux::ty_to_str(self.tcx, ty), result);
-
-        return result;
-    }
-
     fn use_expr(&self,
                 expr: @expr,
                 expr_mode: UseMode,
                 visitor: vt<VisitContext>)
     {
         /*!
-         *
          * Indicates that `expr` is used with a given mode.  This will
          * in turn trigger calls to the subcomponents of `expr`.
          */
 
-        debug!("use_expr(expr=%?/%s, mode=%?)",
-               expr.id, pprust::expr_to_str(expr, self.tcx.sess.intr()),
+        debug!("use_expr(expr=%s, mode=%?)",
+               expr.repr(self.tcx),
                expr_mode);
 
         match expr_mode {
-            MoveInWhole => { self.move_maps.moves_map.insert(expr.id); }
+            MoveInWhole(_) => { self.move_maps.moves_map.insert(expr.id); }
             MoveInPart(_) | Read => {}
         }
 
@@ -429,7 +423,7 @@ pub impl VisitContext {
             Some(&@ty::AutoDerefRef(
                 ty::AutoDerefRef {
                     autoref: Some(_), _})) => Read,
-            _ => expr_mode.component_mode(expr)
+            _ => expr_mode.component_mode()
         };
 
         debug!("comp_mode = %?", comp_mode);
@@ -437,17 +431,16 @@ pub impl VisitContext {
         match expr.node {
             expr_path(*) | expr_self => {
                 match comp_mode {
-                    MoveInPart(entire_expr) => {
+                    MoveInPart(reason) => {
                         self.move_maps.variable_moves_map.insert(
-                            expr.id, entire_expr);
-
+                            expr.id, reason);
                         let def = self.tcx.def_map.get_copy(&expr.id);
                         for moved_variable_node_id_from_def(def).each |&id| {
                             self.move_maps.moved_variables_set.insert(id);
                         }
                     }
                     Read => {}
-                    MoveInWhole => {
+                    MoveInWhole(_) => {
                         self.tcx.sess.span_bug(
                             expr.span,
                             "Component mode can never be MoveInWhole");
@@ -546,18 +539,24 @@ pub impl VisitContext {
                     self.consume_arm(arm, visitor);
                 }
 
-                let by_move_bindings_present =
+                let opt_by_move_binding =
                     self.arms_have_by_move_bindings(
                         self.move_maps.moves_map, *arms);
 
-                if by_move_bindings_present {
-                    // If one of the arms moves a value out of the
-                    // discriminant, then the discriminant itself is
-                    // moved.
-                    self.consume_expr(discr, visitor);
-                } else {
-                    // Otherwise, the discriminant is merely read.
-                    self.use_expr(discr, Read, visitor);
+                match opt_by_move_binding {
+                    Some(p) => {
+                        // If one of the arms moves a value out of the
+                        // discriminant, then the discriminant itself is
+                        // moved.
+                        self.consume_expr_with_reason(
+                            discr,
+                            MovedByPat(p),
+                            visitor);
+                    }
+                    None => {
+                        // Otherwise, the discriminant is merely read.
+                        self.use_expr(discr, Read, visitor);
+                    }
                 }
             }
 
@@ -719,18 +718,17 @@ pub impl VisitContext {
          */
 
         do pat_bindings(self.tcx.def_map, pat) |bm, id, _span, _path| {
-            let mode = match bm {
-                bind_by_copy => Read,
-                bind_by_ref(_) => Read,
+            let binding_moves = match bm {
+                bind_by_copy => false,
+                bind_by_ref(_) => false,
                 bind_infer => {
                     let pat_ty = ty::node_id_to_type(self.tcx, id);
-                    self.consume_mode_for_ty(pat_ty)
+                    ty::type_moves_by_default(self.tcx, pat_ty)
                 }
             };
 
-            match mode {
-                MoveInWhole => { self.move_maps.moves_map.insert(id); }
-                MoveInPart(_) | Read => {}
+            if binding_moves {
+                self.move_maps.moves_map.insert(id);
             }
         }
     }
@@ -759,20 +757,18 @@ pub impl VisitContext {
 
     fn arms_have_by_move_bindings(&self,
                                   moves_map: MovesMap,
-                                  arms: &[arm]) -> bool
+                                  arms: &[arm]) -> Option<@pat>
     {
         for arms.each |arm| {
-            for arm.pats.each |pat| {
-                let mut found = false;
-                do pat_bindings(self.tcx.def_map, *pat) |_, node_id, _, _| {
-                    if moves_map.contains(&node_id) {
-                        found = true;
+            for arm.pats.each |&pat| {
+                for ast_util::walk_pat(pat) |p| {
+                    if moves_map.contains(&p.id) {
+                        return Some(p);
                     }
                 }
-                if found { return true; }
             }
         }
-        return false;
+        return None;
     }
 
     fn compute_captures(&self, fn_expr_id: node_id) -> @[CaptureVar] {
@@ -803,6 +799,15 @@ pub impl VisitContext {
                 };
                 CaptureVar {def: fvar.def, span: fvar.span, mode:mode}
             })
+        }
+    }
+}
+
+impl Reason {
+    pub fn span(&self) -> span {
+        match *self {
+            MovedByPat(p) => p.span,
+            MovedByExpr(e) => e.span,
         }
     }
 }
