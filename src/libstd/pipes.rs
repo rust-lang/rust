@@ -16,7 +16,7 @@ the other can receive messages. The set of legal messages and which
 directions they can flow at any given point are determined by a
 protocol. Below is an example protocol.
 
-~~~
+~~~ {.rust}
 proto! pingpong (
     ping: send {
         ping -> pong
@@ -785,20 +785,20 @@ or `right` if the second endpoint receives something. In each case,
 the result includes the other endpoint as well so it can be used
 again. Below is an example of using `select2`.
 
-~~~
+~~~ {.rust}
 match select2(a, b) {
-  left((none, b)) {
-    // endpoint a was closed.
-  }
-  right((a, none)) {
-    // endpoint b was closed.
-  }
-  left((Some(_), b)) {
-    // endpoint a received a message
-  }
-  right(a, Some(_)) {
-    // endpoint b received a message.
-  }
+    left((none, b)) {
+        // endpoint a was closed.
+    }
+    right((a, none)) {
+        // endpoint b was closed.
+    }
+    left((Some(_), b)) {
+        // endpoint a received a message
+    }
+    right(a, Some(_)) {
+        // endpoint b received a message.
+    }
 }
 ~~~
 

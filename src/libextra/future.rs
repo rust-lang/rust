@@ -14,7 +14,7 @@
  *
  * # Example
  *
- * ~~~
+ * ~~~ {.rust}
  * # fn fib(n: uint) -> uint {42};
  * # fn make_a_sandwich() {};
  * let mut delayed_fib = std::future::spawn (|| fib(5000) );

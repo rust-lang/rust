@@ -977,7 +977,7 @@ pub fn connect<T:Copy>(v: &[~[T]], sep: &T) -> ~[T] {
  *
  * Sum all values in the vector [1, 2, 3]:
  *
- * ~~~
+ * ~~~ {.rust}
  * vec::foldl(0, [1, 2, 3], |a, b| a + *b);
  * ~~~
  *
@@ -1009,7 +1009,7 @@ pub fn foldl<'a, T, U>(z: T, v: &'a [U], p: &fn(t: T, u: &'a U) -> T) -> T {
  *
  * Sum all values in the vector [1, 2, 3]:
  *
- * ~~~
+ * ~~~ {.rust}
  * vec::foldr([1, 2, 3], 0, |a, b| a + *b);
  * ~~~
  *
@@ -1376,10 +1376,8 @@ pub fn reverse<T>(v: &mut [T]) {
  *
  * Assume a mutable vector `v` contains `[1,2,3,4,5]`. After the call:
  *
- * ~~~
- *
+ * ~~~ {.rust}
  * reverse_part(v, 1, 4);
- *
  * ~~~
  *
  * `v` now contains `[1,4,3,2,5]`.
@@ -1416,14 +1414,15 @@ pub fn reversed<T:Copy>(v: &const [T]) -> ~[T] {
  * * continue iterating, false to break.
  *
  * # Examples
- * ~~~
+ *
+ * ~~~ {.rust}
  * [1,2,3].each(|&i| {
  *     io::println(int::str(i));
  *     true
  * });
  * ~~~
  *
- * ~~~
+ * ~~~ {.rust}
  * [1,2,3,4,5].each(|&i| {
  *     if i < 4 {
  *         io::println(int::str(i));
@@ -1438,7 +1437,7 @@ pub fn reversed<T:Copy>(v: &const [T]) -> ~[T] {
  * You probably will want to use each with a `for`/`do` expression, depending
  * on your iteration needs:
  *
- * ~~~
+ * ~~~ {.rust}
  * for [1,2,3].each |&i| {
  *     io::println(int::str(i));
  * }
@@ -1700,7 +1699,7 @@ pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) -> 
  *
  * Print the adjacent pairs of a vector (i.e. `[1,2]`, `[2,3]`, `[3,4]`)
  *
- * ~~~
+ * ~~~ {.rust}
  * for windowed(2, &[1,2,3,4]) |v| {
  *     io::println(fmt!("%?", v));
  * }

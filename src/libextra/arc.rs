@@ -17,7 +17,7 @@
  * In this example, a large vector of floats is shared between several tasks.
  * With simple pipes, without ARC, a copy would have to be made for each task.
  *
- * ~~~
+ * ~~~ {.rust}
  * extern mod std;
  * use std::arc;
  * let numbers=vec::from_fn(100, |ind| (ind as float)*rand::random());
@@ -370,7 +370,10 @@ pub impl<T:Const + Owned> RWARC<T> {
      * See sync::rwlock.write_downgrade(). The RWWriteMode token must be used
      * to obtain the &mut T, and can be transformed into a RWReadMode token by
      * calling downgrade(), after which a &T can be obtained instead.
-     * ~~~
+     *
+     * # Example
+     *
+     * ~~~ {.rust}
      * do arc.write_downgrade |write_mode| {
      *     do (&write_mode).write_cond |state, condvar| {
      *         ... exclusive access with mutable state ...

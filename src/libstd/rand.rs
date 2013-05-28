@@ -20,7 +20,8 @@ See the `distributions` submodule for sampling random numbers from
 distributions like normal and exponential.
 
 # Examples
-~~~
+
+~~~ {.rust}
 use core::rand::RngUtil;
 
 fn main() {
@@ -31,7 +32,7 @@ fn main() {
 }
 ~~~
 
-~~~
+~~~ {.rust}
 fn main () {
     let tuple_ptr = rand::random::<~(f64, char)>();
     println(fmt!("%?", tuple_ptr))
@@ -276,9 +277,9 @@ pub trait RngUtil {
     /**
      * Return a bool with a 1 in n chance of true
      *
-     * *Example*
+     * # Example
      *
-     * ~~~
+     * ~~~ {.rust}
      *
      * use core::rand::RngUtil;
      *
@@ -292,9 +293,9 @@ pub trait RngUtil {
     /**
      * Return a random string of the specified length composed of A-Z,a-z,0-9
      *
-     * *Example*
+     * # Example
      *
-     * ~~~
+     * ~~~ {.rust}
      *
      * use core::rand::RngUtil;
      *
@@ -308,9 +309,9 @@ pub trait RngUtil {
     /**
      * Return a random byte string of the specified length
      *
-     * *Example*
+     * # Example
      *
-     * ~~~
+     * ~~~ {.rust}
      *
      * use core::rand::RngUtil;
      *
@@ -324,9 +325,9 @@ pub trait RngUtil {
     /**
      * Choose an item randomly, failing if values is empty
      *
-     * *Example*
+     * # Example
      *
-     * ~~~
+     * ~~~ {.rust}
      *
      * use core::rand::RngUtil;
      *
@@ -343,9 +344,9 @@ pub trait RngUtil {
      * Choose an item respecting the relative weights, failing if the sum of
      * the weights is 0
      *
-     * *Example*
+     * # Example
      *
-     * ~~~
+     * ~~~ {.rust}
      *
      * use core::rand::RngUtil;
      *
@@ -363,9 +364,9 @@ pub trait RngUtil {
      * Choose Some(item) respecting the relative weights, returning none if
      * the sum of the weights is 0
      *
-     * *Example*
+     * # Example
      *
-     * ~~~
+     * ~~~ {.rust}
      *
      * use core::rand::RngUtil;
      *
@@ -384,9 +385,9 @@ pub trait RngUtil {
      * Return a vec containing copies of the items, in order, where
      * the weight of the item determines how many copies there are
      *
-     * *Example*
+     * # Example
      *
-     * ~~~
+     * ~~~ {.rust}
      *
      * use core::rand::RngUtil;
      *
@@ -403,9 +404,9 @@ pub trait RngUtil {
     /**
      * Shuffle a vec
      *
-     * *Example*
+     * # Example
      *
-     * ~~~
+     * ~~~ {.rust}
      *
      * use core::rand::RngUtil;
      *
@@ -419,9 +420,9 @@ pub trait RngUtil {
     /**
      * Shuffle a mutable vec in place
      *
-     * *Example*
+     * # Example
      *
-     * ~~~
+     * ~~~ {.rust}
      *
      * use core::rand::RngUtil;
      *
