@@ -459,18 +459,18 @@ rust_localtime(int64_t sec, int32_t nsec, rust_tm *timeptr) {
     tm_to_rust_tm(&tm, timeptr, gmtoff, zone, nsec);
 }
 
-extern "C" CDECL void
-rust_timegm(rust_tm* timeptr, int64_t *out) {
+extern "C" CDECL int64_t
+rust_timegm(rust_tm* timeptr) {
     tm t;
     rust_tm_to_tm(timeptr, &t);
-    *out = TIMEGM(&t);
+    return TIMEGM(&t);
 }
 
-extern "C" CDECL void
-rust_mktime(rust_tm* timeptr, int64_t *out) {
+extern "C" CDECL int64_t
+rust_mktime(rust_tm* timeptr) {
     tm t;
     rust_tm_to_tm(timeptr, &t);
-    *out = mktime(&t);
+    return mktime(&t);
 }
 
 extern "C" CDECL rust_sched_id
