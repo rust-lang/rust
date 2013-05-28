@@ -56,19 +56,16 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                                 pth.span,
                                 fmt!("macro undefined: '%s'", extnamestr))
                         }
-                        Some(@SE(NormalTT(SyntaxExpanderTT{
-                            expander: exp,
-                            span: exp_sp
-                        }))) => {
+                        Some(@SE(NormalTT(expandfun, exp_span))) => {
                             cx.bt_push(ExpnInfo {
                                 call_site: s,
                                 callee: NameAndSpan {
                                     name: extnamestr,
-                                    span: exp_sp,
+                                    span: exp_span,
                                 },
                             });
 
-                            let expanded = match exp(cx, mac.span, *tts) {
+                            let expanded = match expandfun(cx, mac.span, *tts) {
                                 MRExpr(e) => e,
                                 MRAny(expr_maker,_,_) => expr_maker(),
                                 _ => {
@@ -220,7 +217,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
         None => cx.span_fatal(pth.span,
                               fmt!("macro undefined: '%s!'", extnamestr)),
 
-        Some(@SE(NormalTT(ref expand))) => {
+        Some(@SE(NormalTT(expander, span))) => {
             if it.ident != parse::token::special_idents::invalid {
                 cx.span_fatal(pth.span,
                               fmt!("macro %s! expects no ident argument, \
@@ -231,12 +228,12 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                 call_site: it.span,
                 callee: NameAndSpan {
                     name: extnamestr,
-                    span: expand.span
+                    span: span
                 }
             });
-            ((*expand).expander)(cx, it.span, tts)
+             expander(cx, it.span, tts)
         }
-        Some(@SE(IdentTT(ref expand))) => {
+        Some(@SE(IdentTT(expander, span))) => {
             if it.ident == parse::token::special_idents::invalid {
                 cx.span_fatal(pth.span,
                               fmt!("macro %s! expects an ident argument",
@@ -246,10 +243,10 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                 call_site: it.span,
                 callee: NameAndSpan {
                     name: extnamestr,
-                    span: expand.span
+                    span: span
                 }
             });
-            ((*expand).expander)(cx, it.span, it.ident, tts)
+            expander(cx, it.span, it.ident, tts)
         }
         _ => cx.span_fatal(
             it.span, fmt!("%s! is not legal in item position", extnamestr))
@@ -317,13 +314,12 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
         None =>
             cx.span_fatal(pth.span, fmt!("macro undefined: '%s'", extnamestr)),
 
-        Some(@SE(NormalTT(
-            SyntaxExpanderTT{expander: exp, span: exp_sp}))) => {
+        Some(@SE(NormalTT(expandfun, exp_span))) => {
             cx.bt_push(ExpnInfo {
                 call_site: sp,
-                callee: NameAndSpan { name: extnamestr, span: exp_sp }
+                callee: NameAndSpan { name: extnamestr, span: exp_span }
             });
-            let expanded = match exp(cx, mac.span, tts) {
+            let expanded = match expandfun(cx, mac.span, tts) {
                 MRExpr(e) =>
                     @codemap::spanned { node: stmt_expr(e, cx.next_id()),
                                     span: e.span},
