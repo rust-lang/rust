@@ -292,7 +292,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         assert_eq!(datum.appropriate_mode(), ByValue);
         Store(bcx, datum.to_appropriate_llval(bcx), llfn);
         let llenv = GEPi(bcx, scratch.val, [0u, abi::fn_field_box]);
-        Store(bcx, base::null_env_ptr(bcx), llenv);
+        Store(bcx, base::null_env_ptr(bcx.ccx()), llenv);
         DatumBlock {bcx: bcx, datum: scratch}
     }
 
@@ -326,7 +326,7 @@ pub fn trans_into(bcx: block, expr: @ast::expr, dest: Dest) -> block {
     debuginfo::update_source_pos(bcx, expr.span);
 
     let dest = {
-        if ty::type_is_nil(ty) || ty::type_is_bot(ty) {
+        if ty::type_is_voidish(ty) {
             Ignore
         } else {
             dest
@@ -416,7 +416,7 @@ fn trans_to_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
 
         ty::RvalueDpsExpr => {
             let ty = expr_ty(bcx, expr);
-            if ty::type_is_nil(ty) || ty::type_is_bot(ty) {
+            if ty::type_is_voidish(ty) {
                 bcx = trans_rvalue_dps_unadjusted(bcx, expr, Ignore);
                 return nil(bcx, ty);
             } else {

@@ -284,7 +284,7 @@ pub impl Reflector {
                                                                sub_path,
                                                                "get_disr");
 
-                let llfty = type_of_fn(ccx, [opaqueptrty], ty::mk_int());
+                let llfty = type_of_rust_fn(ccx, [opaqueptrty], ty::mk_int());
                 let llfdecl = decl_internal_cdecl_fn(ccx.llmod, sym, llfty);
                 let arg = unsafe {
                     llvm::LLVMGetParam(llfdecl, first_real_arg as c_uint)

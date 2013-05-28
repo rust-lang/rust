@@ -11,6 +11,8 @@
 // This test attempts to force the dynamic linker to resolve
 // external symbols as close to the red zone as possible.
 
+use std::libc;
+
 mod rustrt {
     pub extern {
         pub fn debug_get_stk_seg() -> *u8;
