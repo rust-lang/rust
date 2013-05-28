@@ -28,6 +28,7 @@ enum Child<T> {
     Nothing
 }
 
+#[allow(missing_doc)]
 pub struct TrieMap<T> {
     priv root: TrieNode<T>,
     priv length: uint
@@ -172,6 +173,7 @@ pub impl<T> TrieMap<T> {
     }
 }
 
+#[allow(missing_doc)]
 pub struct TrieSet {
     priv map: TrieMap<()>
 }

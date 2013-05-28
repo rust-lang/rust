@@ -44,6 +44,8 @@ implement `Reader` and `Writer`, where appropriate.
 
 */
 
+#[allow(missing_doc)];
+
 use result::Result;
 
 use container::Container;

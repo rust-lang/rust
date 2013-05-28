@@ -72,6 +72,16 @@ pub fn from_bytes_with_null<'a>(vv: &'a [u8]) -> &'a str {
     return unsafe { raw::from_bytes_with_null(vv) };
 }
 
+/**
+ * Converts a vector to a string slice without performing any allocations.
+ *
+ * Once the slice has been validated as utf-8, it is transmuted in-place and
+ * returned as a '&str' instead of a '&[u8]'
+ *
+ * # Failure
+ *
+ * Fails if invalid UTF-8
+ */
 pub fn from_bytes_slice<'a>(vector: &'a [u8]) -> &'a str {
     unsafe {
         assert!(is_utf8(vector));
@@ -741,6 +751,18 @@ pub fn each_split_str<'a,'b>(s: &'a str,
     return true;
 }
 
+/**
+ * Splits the string `s` based on `sep`, yielding all splits to the iterator
+ * function provide
+ *
+ * # Example
+ *
+ * ~~~ {.rust}
+ * let mut v = ~[];
+ * for each_split_str(".XXX.YYY.", ".") |subs| { v.push(subs); }
+ * assert!(v == ["XXX", "YYY"]);
+ * ~~~
+ */
 pub fn each_split_str_nonempty<'a,'b>(s: &'a str,
                                       sep: &'b str,
                                       it: &fn(&'a str) -> bool) -> bool {
@@ -823,7 +845,7 @@ pub fn each_word<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
  *  Fails during iteration if the string contains a non-whitespace
  *  sequence longer than the limit.
  */
-pub fn _each_split_within<'a>(ss: &'a str,
+pub fn each_split_within<'a>(ss: &'a str,
                               lim: uint,
                               it: &fn(&'a str) -> bool) -> bool {
     // Just for fun, let's write this as an state machine:
@@ -884,12 +906,6 @@ pub fn _each_split_within<'a>(ss: &'a str,
         fake_i += 1;
     }
     return cont;
-}
-
-pub fn each_split_within<'a>(ss: &'a str,
-                             lim: uint,
-                             it: &fn(&'a str) -> bool) -> bool {
-    _each_split_within(ss, lim, it)
 }
 
 /**
@@ -1236,7 +1252,7 @@ pub fn each_char_reverse(s: &str, it: &fn(char) -> bool) -> bool {
     each_chari_reverse(s, |_, c| it(c))
 }
 
-// Iterates over the chars in a string in reverse, with indices
+/// Iterates over the chars in a string in reverse, with indices
 #[inline(always)]
 pub fn each_chari_reverse(s: &str, it: &fn(uint, char) -> bool) -> bool {
     let mut pos = s.len();
@@ -1814,6 +1830,12 @@ pub fn to_utf16(s: &str) -> ~[u16] {
     u
 }
 
+/// Iterates over the utf-16 characters in the specified slice, yielding each
+/// decoded unicode character to the function provided.
+///
+/// # Failures
+///
+/// * Fails on invalid utf-16 data
 pub fn utf16_chars(v: &[u16], f: &fn(char)) {
     let len = v.len();
     let mut i = 0u;
@@ -1838,6 +1860,9 @@ pub fn utf16_chars(v: &[u16], f: &fn(char)) {
     }
 }
 
+/**
+ * Allocates a new string from the utf-16 slice provided
+ */
 pub fn from_utf16(v: &[u16]) -> ~str {
     let mut buf = ~"";
     reserve(&mut buf, v.len());
@@ -1845,6 +1870,10 @@ pub fn from_utf16(v: &[u16]) -> ~str {
     buf
 }
 
+/**
+ * Allocates a new string with the specified capacity. The string returned is
+ * the empty string, but has capacity for much more.
+ */
 pub fn with_capacity(capacity: uint) -> ~str {
     let mut buf = ~"";
     reserve(&mut buf, capacity);
@@ -1990,6 +2019,7 @@ pub fn char_at(s: &str, i: uint) -> char {
     return char_range_at(s, i).ch;
 }
 
+#[allow(missing_doc)]
 pub struct CharRange {
     ch: char,
     next: uint
@@ -2481,6 +2511,7 @@ pub mod traits {
 #[cfg(test)]
 pub mod traits {}
 
+#[allow(missing_doc)]
 pub trait StrSlice<'self> {
     fn all(&self, it: &fn(char) -> bool) -> bool;
     fn any(&self, it: &fn(char) -> bool) -> bool;
@@ -2715,6 +2746,7 @@ impl<'self> StrSlice<'self> for &'self str {
     fn to_bytes(&self) -> ~[u8] { to_bytes(*self) }
 }
 
+#[allow(missing_doc)]
 pub trait OwnedStr {
     fn push_str(&mut self, v: &str);
     fn push_char(&mut self, c: char);
@@ -2738,6 +2770,8 @@ impl Clone for ~str {
     }
 }
 
+/// External iterator for a string's characters. Use with the `std::iterator`
+/// module.
 pub struct StrCharIterator<'self> {
     priv index: uint,
     priv string: &'self str,
