@@ -138,7 +138,7 @@ terminate normally, but instead directly return from a function.
 
 # Example
 
-~~~
+~~~ {.rust}
 fn choose_weighted_item(v: &[Item]) -> Item {
     assert!(!v.is_empty());
     let mut so_far = 0u;

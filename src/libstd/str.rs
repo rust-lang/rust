@@ -726,7 +726,7 @@ fn iter_between_matches<'a,'b>(s: &'a str,
  *
  * # Example
  *
- * ~~~
+ * ~~~ {.rust}
  * let mut v = ~[];
  * for each_split_str(".XXX.YYY.", ".") |subs| { v.push(subs); }
  * assert!(v == ["", "XXX", "YYY", ""]);
@@ -1923,7 +1923,7 @@ pub fn is_char_boundary(s: &str, index: uint) -> bool {
  *
  * # Example
  *
- * ~~~
+ * ~~~ {.rust}
  * let s = "中华Việt Nam";
  * let i = 0u;
  * while i < str::len(s) {
@@ -2109,7 +2109,7 @@ static tag_six_b: uint = 252u;
  *
  * # Example
  *
- * ~~~
+ * ~~~ {.rust}
  * let i = str::as_bytes("Hello World") { |bytes| bytes.len() };
  * ~~~
  */
@@ -2145,7 +2145,7 @@ pub fn as_bytes_slice<'a>(s: &'a str) -> &'a [u8] {
  *
  * # Example
  *
- * ~~~
+ * ~~~ {.rust}
  * let s = str::as_c_str("PATH", { |path| libc::getenv(path) });
  * ~~~
  */
@@ -2184,7 +2184,7 @@ pub fn as_buf<T>(s: &str, f: &fn(*u8, uint) -> T) -> T {
  *
  * # Example
  *
- * ~~~
+ * ~~~ {.rust}
  * let string = "a\nb\nc";
  * let mut lines = ~[];
  * for each_line(string) |line| { lines.push(line) }

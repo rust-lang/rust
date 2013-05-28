@@ -25,7 +25,7 @@ ports and channels.
 
 This example sends boxed integers across tasks using serialization.
 
-~~~
+~~~ {.rust}
 let (port, chan) = serial::pipe_stream();
 
 do task::spawn || {
