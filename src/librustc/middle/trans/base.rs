@@ -1701,6 +1701,9 @@ pub fn create_llargs_for_fn_args(cx: fn_ctxt,
                         llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
                     }
                 }
+                ast::ty_uniq(_) => {
+                    llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
+                }
                 _ => {}
             }
 
