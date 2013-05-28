@@ -386,82 +386,103 @@ pub impl id_range {
     }
 }
 
-pub fn id_visitor(vfn: @fn(node_id)) -> visit::vt<()> {
-    let visit_generics: @fn(&Generics) = |generics| {
+pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
+    let visit_generics: @fn(&Generics, T) = |generics, t| {
         for generics.ty_params.each |p| {
-            vfn(p.id);
+            vfn(p.id, t);
         }
         for generics.lifetimes.each |p| {
-            vfn(p.id);
+            vfn(p.id, t);
         }
     };
-    visit::mk_simple_visitor(@visit::SimpleVisitor {
-        visit_mod: |_m, _sp, id| vfn(id),
+    visit::mk_vt(@visit::Visitor {
+        visit_mod: |m, sp, id, t, vt| {
+            vfn(id, t);
+            visit::visit_mod(m, sp, id, t, vt);
+        },
 
-        visit_view_item: |vi| {
+        visit_view_item: |vi, t, vt| {
             match vi.node {
-              view_item_extern_mod(_, _, id) => vfn(id),
+              view_item_extern_mod(_, _, id) => vfn(id, t),
               view_item_use(ref vps) => {
                   for vps.each |vp| {
                       match vp.node {
-                          view_path_simple(_, _, id) => vfn(id),
-                          view_path_glob(_, id) => vfn(id),
+                          view_path_simple(_, _, id) => vfn(id, t),
+                          view_path_glob(_, id) => vfn(id, t),
                           view_path_list(_, ref paths, id) => {
-                              vfn(id);
+                              vfn(id, t);
                               for paths.each |p| {
-                                  vfn(p.node.id);
+                                  vfn(p.node.id, t);
                               }
                           }
                       }
                   }
               }
             }
+            visit::visit_view_item(vi, t, vt);
         },
 
-        visit_foreign_item: |ni| vfn(ni.id),
+        visit_foreign_item: |ni, t, vt| {
+            vfn(ni.id, t);
+            visit::visit_foreign_item(ni, t, vt);
+        },
 
-        visit_item: |i| {
-            vfn(i.id);
+        visit_item: |i, t, vt| {
+            vfn(i.id, t);
             match i.node {
               item_enum(ref enum_definition, _) =>
-                for (*enum_definition).variants.each |v| { vfn(v.node.id); },
+                for (*enum_definition).variants.each |v| { vfn(v.node.id, t); },
               _ => ()
             }
+            visit::visit_item(i, t, vt);
         },
 
-        visit_local: |l| vfn(l.node.id),
-        visit_block: |b| vfn(b.node.id),
-        visit_stmt: |s| vfn(ast_util::stmt_id(s)),
-        visit_arm: |_| {},
-        visit_pat: |p| vfn(p.id),
-        visit_decl: |_| {},
-
-        visit_expr: |e| {
-            vfn(e.callee_id);
-            vfn(e.id);
+        visit_local: |l, t, vt| {
+            vfn(l.node.id, t);
+            visit::visit_local(l, t, vt);
+        },
+        visit_block: |b, t, vt| {
+            vfn(b.node.id, t);
+            visit::visit_block(b, t, vt);
+        },
+        visit_stmt: |s, t, vt| {
+            vfn(ast_util::stmt_id(s), t);
+            visit::visit_stmt(s, t, vt);
+        },
+        visit_pat: |p, t, vt| {
+            vfn(p.id, t);
+            visit::visit_pat(p, t, vt);
         },
 
-        visit_expr_post: |_| {},
+        visit_expr: |e, t, vt| {
+            vfn(e.callee_id, t);
+            vfn(e.id, t);
+            visit::visit_expr(e, t, vt);
+        },
 
-        visit_ty: |t| {
-            match t.node {
-              ty_path(_, id) => vfn(id),
+        visit_ty: |ty, t, vt| {
+            match ty.node {
+              ty_path(_, id) => vfn(id, t),
               _ => { /* fall through */ }
             }
+            visit::visit_ty(ty, t, vt);
         },
 
-        visit_generics: visit_generics,
+        visit_generics: |generics, t, vt| {
+            visit_generics(generics, t);
+            visit::visit_generics(generics, t, vt);
+        },
 
-        visit_fn: |fk, d, _, _, id| {
-            vfn(id);
+        visit_fn: |fk, d, a, b, id, t, vt| {
+            vfn(id, t);
 
             match *fk {
                 visit::fk_item_fn(_, generics, _, _) => {
-                    visit_generics(generics);
+                    visit_generics(generics, t);
                 }
                 visit::fk_method(_, generics, m) => {
-                    vfn(m.self_id);
-                    visit_generics(generics);
+                    vfn(m.self_id, t);
+                    visit_generics(generics, t);
                 }
                 visit::fk_anon(_) |
                 visit::fk_fn_block => {
@@ -469,20 +490,22 @@ pub fn id_visitor(vfn: @fn(node_id)) -> visit::vt<()> {
             }
 
             for d.inputs.each |arg| {
-                vfn(arg.id)
+                vfn(arg.id, t)
             }
+            visit::visit_fn(fk, d, a, b, id, t, vt);
         },
 
-        visit_ty_method: |_| {},
-        visit_trait_method: |_| {},
-        visit_struct_def: |_, _, _, _| {},
-        visit_struct_field: |f| vfn(f.node.id),
-        visit_struct_method: |_| {}
+        visit_struct_field: |f, t, vt| {
+            vfn(f.node.id, t);
+            visit::visit_struct_field(f, t, vt);
+        },
+
+        .. *visit::default_visitor()
     })
 }
 
 pub fn visit_ids_for_inlined_item(item: &inlined_item, vfn: @fn(node_id)) {
-    item.accept((), id_visitor(vfn));
+    item.accept((), id_visitor(|id, ()| vfn(id)));
 }
 
 pub fn compute_id_range(visit_ids_fn: &fn(@fn(node_id))) -> id_range {
