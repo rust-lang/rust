@@ -10,7 +10,8 @@
 
 /*!
 
-Data structures used for tracking moves.
+Data structures used for tracking moves. Please see the extensive
+comments in the section "Moves and initialization" and in `doc.rs`.
 
 */
 
@@ -29,11 +30,24 @@ use syntax::opt_vec;
 use util::ppaux::Repr;
 
 pub struct MoveData {
+    /// Move paths. See section "Move paths" in `doc.rs`.
     paths: ~[MovePath],
+
+    /// Cache of loan path to move path index, for easy lookup.
     path_map: HashMap<@LoanPath, MovePathIndex>,
+
+    /// Each move or uninitialized variable gets an entry here.
     moves: ~[Move],
-    path_assignments: ~[Assignment],
+
+    /// Assignments to a variable, like `x = foo`. These are assigned
+    /// bits for dataflow, since we must track them to ensure that
+    /// immutable variables are assigned at most once along each path.
     var_assignments: ~[Assignment],
+
+    /// Assignments to a path, like `x.f = foo`. These are not
+    /// assigned dataflow bits, but we track them because they still
+    /// kill move bits.
+    path_assignments: ~[Assignment],
     assignee_ids: HashSet<ast::node_id>,
 }
 
@@ -43,34 +57,45 @@ pub struct FlowedMoveData {
     // It makes me sad to use @mut here, except that due to
     // the visitor design, this is what gather_loans
     // must produce.
+
     dfcx_moves: MoveDataFlow,
+
+    // We could (and maybe should, for efficiency) combine both move
+    // and assign data flow into one, but this way it's easier to
+    // distinguish the bits that correspond to moves and assignments.
     dfcx_assign: AssignDataFlow
 }
 
+/// Index into `MoveData.paths`, used like a pointer
 #[deriving(Eq)]
 pub struct MovePathIndex(uint);
 
 static InvalidMovePathIndex: MovePathIndex =
     MovePathIndex(uint::max_value);
 
+/// Index into `MoveData.moves`, used like a pointer
 #[deriving(Eq)]
 pub struct MoveIndex(uint);
 
 static InvalidMoveIndex: MoveIndex =
     MoveIndex(uint::max_value);
 
-#[deriving(Eq)]
-pub struct VarAssignmentIndex(uint);
-
-static InvalidVarAssignmentIndex: VarAssignmentIndex =
-    VarAssignmentIndex(uint::max_value);
-
 pub struct MovePath {
-    index: MovePathIndex,
+    /// Loan path corresponding to this move path
     loan_path: @LoanPath,
+
+    /// Parent pointer, `InvalidMovePathIndex` if root
     parent: MovePathIndex,
+
+    /// Head of linked list of moves to this path,
+    /// `InvalidMoveIndex` if not moved
     first_move: MoveIndex,
+
+    /// First node in linked list of children, `InvalidMovePathIndex` if leaf
     first_child: MovePathIndex,
+
+    /// Next node in linked list of parent's children (siblings),
+    /// `InvalidMovePathIndex` if none.
     next_sibling: MovePathIndex,
 }
 
@@ -82,15 +107,27 @@ pub enum MoveKind {
 }
 
 pub struct Move {
+    /// Path being moved.
     path: MovePathIndex,
+
+    /// id of node that is doing the move.
     id: ast::node_id,
+
+    /// Kind of move, for error messages.
     kind: MoveKind,
+
+    /// Next node in linked list of moves from `path`, or `InvalidMoveIndex`
     next_move: MoveIndex,
 }
 
 pub struct Assignment {
+    /// Path being assigned.
     path: MovePathIndex,
+
+    /// id where assignment occurs
     id: ast::node_id,
+
+    /// span of node where assignment occurs
     span: span,
 }
 
@@ -153,7 +190,6 @@ impl MoveData {
                 let index = MovePathIndex(self.paths.len());
 
                 self.paths.push(MovePath {
-                    index: index,
                     loan_path: lp,
                     parent: InvalidMovePathIndex,
                     first_move: InvalidMoveIndex,
@@ -172,7 +208,6 @@ impl MoveData {
                 self.mut_path(parent_index).first_child = index;
 
                 self.paths.push(MovePath {
-                    index: index,
                     loan_path: lp,
                     parent: parent_index,
                     first_move: InvalidMoveIndex,
