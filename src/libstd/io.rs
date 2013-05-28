@@ -1009,8 +1009,9 @@ pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> @Reader {
 /**
 * Gives a `Reader` that allows you to read values from standard input.
 *
-* # Examples
-* ~~~
+* # Example
+*
+* ~~~ {.rust}
 * let stdin = core::io::stdin();
 * let line = stdin.read_line();
 * core::io::print(line);
@@ -1572,8 +1573,9 @@ pub fn buffered_file_writer(path: &Path) -> Result<@Writer, ~str> {
 /**
 * Gives a `Writer` which allows you to write to the standard output.
 *
-* # Examples
-* ~~~
+* # Example
+*
+* ~~~ {.rust}
 * let stdout = core::io::stdout();
 * stdout.write_str("hello\n");
 * ~~~
@@ -1583,8 +1585,9 @@ pub fn stdout() -> @Writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
 /**
 * Gives a `Writer` which allows you to write to standard error.
 *
-* # Examples
-* ~~~
+* # Example
+*
+* ~~~ {.rust}
 * let stderr = core::io::stderr();
 * stderr.write_str("hello\n");
 * ~~~
@@ -1597,8 +1600,9 @@ pub fn stderr() -> @Writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 * This string will not have an implicit newline at the end. If you want
 * an implicit newline, please see `println`.
 *
-* # Examples
-* ~~~
+* # Example
+*
+* ~~~ {.rust}
 * // print is imported into the prelude, and so is always available.
 * print("hello");
 * ~~~
@@ -1612,8 +1616,9 @@ pub fn print(s: &str) {
 *
 * If you do not want an implicit newline, please see `print`.
 *
-* # Examples
-* ~~~
+* # Example
+*
+* ~~~ {.rust}
 * // println is imported into the prelude, and so is always available.
 * println("hello");
 * ~~~

@@ -376,7 +376,7 @@ impl Round for f64 {
     ///
     /// The fractional part of the number, satisfying:
     ///
-    /// ~~~
+    /// ~~~ {.rust}
     /// assert!(x == trunc(x) + fract(x))
     /// ~~~
     ///

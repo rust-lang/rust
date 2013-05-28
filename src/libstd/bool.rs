@@ -43,10 +43,13 @@ use from_str::FromStr;
 * Negation of a boolean value.
 *
 * # Examples
-* ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::not(true)
 * false
 * ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::not(false)
 * true
 * ~~~
@@ -57,10 +60,13 @@ pub fn not(v: bool) -> bool { !v }
 * Conjunction of two boolean values.
 *
 * # Examples
-* ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::and(true, false)
 * false
 * ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::and(true, true)
 * true
 * ~~~
@@ -71,10 +77,13 @@ pub fn and(a: bool, b: bool) -> bool { a && b }
 * Disjunction of two boolean values.
 *
 * # Examples
-* ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::or(true, false)
 * true
 * ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::or(false, false)
 * false
 * ~~~
@@ -87,10 +96,13 @@ pub fn or(a: bool, b: bool) -> bool { a || b }
 * 'exclusive or' is identical to `or(and(a, not(b)), and(not(a), b))`.
 *
 * # Examples
-* ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::xor(true, false)
 * true
 * ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::xor(true, true)
 * false
 * ~~~
@@ -105,10 +117,12 @@ pub fn xor(a: bool, b: bool) -> bool { (a && !b) || (!a && b) }
 * 'if a then b' is equivalent to `!a || b`.
 *
 * # Examples
-* ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::implies(true, true)
 * true
-* ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::implies(true, false)
 * false
 * ~~~
@@ -121,10 +135,13 @@ pub fn implies(a: bool, b: bool) -> bool { !a || b }
 * Two booleans are equal if they have the same value.
 *
 * # Examples
-* ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::eq(false, true)
 * false
 * ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::eq(false, false)
 * true
 * ~~~
@@ -137,10 +154,13 @@ pub fn eq(a: bool, b: bool) -> bool { a == b }
 * Two booleans are not equal if they have different values.
 *
 * # Examples
-* ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::ne(false, true)
 * true
 * ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::ne(false, false)
 * false
 * ~~~
@@ -151,10 +171,13 @@ pub fn ne(a: bool, b: bool) -> bool { a != b }
 * Is a given boolean value true?
 *
 * # Examples
-* ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::is_true(true)
 * true
 * ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::is_true(false)
 * false
 * ~~~
@@ -165,10 +188,13 @@ pub fn is_true(v: bool) -> bool { v }
 * Is a given boolean value false?
 *
 * # Examples
-* ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::is_false(false)
 * true
 * ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::is_false(true)
 * false
 * ~~~
@@ -181,13 +207,18 @@ pub fn is_false(v: bool) -> bool { !v }
 * Yields an `Option<bool>`, because `str` may or may not actually be parseable.
 *
 * # Examples
-* ~~~
+*
+* ~~~ {.rust}
 * rusti> FromStr::from_str::<bool>("true")
 * Some(true)
 * ~~~
+*
+* ~~~ {.rust}
 * rusti> FromStr::from_str::<bool>("false")
 * Some(false)
 * ~~~
+*
+* ~~~ {.rust}
 * rusti> FromStr::from_str::<bool>("not even a boolean")
 * None
 * ~~~
@@ -206,10 +237,13 @@ impl FromStr for bool {
 * Convert a `bool` to a `str`.
 *
 * # Examples
-* ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::to_str(true)
 * "true"
 * ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::to_str(false)
 * "false"
 * ~~~
@@ -237,10 +271,13 @@ pub fn all_values(blk: &fn(v: bool)) {
 * Convert a `bool` to a `u8`.
 *
 * # Examples
-* ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::to_bit(true)
 * 1
 * ~~~
+*
+* ~~~ {.rust}
 * rusti> std::bool::to_bit(false)
 * 0
 * ~~~

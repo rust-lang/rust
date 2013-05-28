@@ -545,7 +545,10 @@ pub impl RWlock {
      * the meantime (such as unlocking and then re-locking as a reader would
      * do). The block takes a "write mode token" argument, which can be
      * transformed into a "read mode token" by calling downgrade(). Example:
-     * ~~~
+     *
+     * # Example
+     *
+     * ~~~ {.rust}
      * do lock.write_downgrade |write_mode| {
      *     do (&write_mode).write_cond |condvar| {
      *         ... exclusive access ...
