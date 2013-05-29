@@ -286,14 +286,19 @@ pub impl Reflector {
 
                 let llfty = type_of_fn(ccx, [opaqueptrty], ty::mk_int());
                 let llfdecl = decl_internal_cdecl_fn(ccx.llmod, sym, llfty);
-                let arg = unsafe {
-                    llvm::LLVMGetParam(llfdecl, first_real_arg as c_uint)
-                };
                 let fcx = new_fn_ctxt(ccx,
                                       ~[],
                                       llfdecl,
                                       ty::mk_uint(),
                                       None);
+                let arg = unsafe {
+                    //
+                    // we know the return type of llfdecl is an int here, so
+                    // no need for a special check to see if the return type
+                    // is immediate.
+                    //
+                    llvm::LLVMGetParam(llfdecl, fcx.arg_pos(0u) as c_uint)
+                };
                 let bcx = top_scope_block(fcx, None);
                 let arg = BitCast(bcx, arg, llptrty);
                 let ret = adt::trans_get_discr(bcx, repr, arg);
