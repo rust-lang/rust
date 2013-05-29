@@ -1057,25 +1057,22 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
     };
 
     fn take_local(bcx: block,
-                  table: &HashMap<ast::node_id, local_val>,
+                  table: &HashMap<ast::node_id, ValueRef>,
                   nid: ast::node_id) -> Datum {
-        let (v, mode) = match table.find(&nid) {
-            Some(&local_mem(v)) => (v, ByRef(ZeroMem)),
-            Some(&local_imm(v)) => (v, ByValue),
+        let v = match table.find(&nid) {
+            Some(&v) => v,
             None => {
                 bcx.sess().bug(fmt!(
                     "trans_local_var: no llval for local/arg %? found", nid));
             }
         };
         let ty = node_id_type(bcx, nid);
-
-        debug!("take_local(nid=%?, v=%s, mode=%?, ty=%s)",
-               nid, bcx.val_str(v), mode, bcx.ty_to_str(ty));
-
+        debug!("take_local(nid=%?, v=%s, ty=%s)",
+               nid, bcx.val_str(v), bcx.ty_to_str(ty));
         Datum {
             val: v,
             ty: ty,
-            mode: mode,
+            mode: ByRef(ZeroMem)
         }
     }
 }
