@@ -246,6 +246,11 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
         return;
     }
 
+    if getopts::opt_maybe_str(matches, "passes") == Some(~"list") {
+        back::passes::list_passes();
+        return;
+    }
+
     if opt_present(matches, "v") || opt_present(matches, "version") {
         version(*binary);
         return;
