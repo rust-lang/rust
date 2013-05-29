@@ -15,12 +15,12 @@ fn main() {
     let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     let arc_v = arc::ARC(v);
 
-    do task::spawn() { //~ NOTE `arc_v` moved into closure environment here
+    do task::spawn() {
         let v = arc_v.get();
         assert_eq!(v[3], 4);
     };
 
     assert_eq!((arc_v.get())[2], 3); //~ ERROR use of moved value: `arc_v`
 
-    info!(arc_v);
+    info!(arc_v); //~ ERROR use of moved value: `arc_v`
 }

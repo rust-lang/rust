@@ -7,8 +7,7 @@ fn main() {
     //~^ ERROR cannot move `foo`
 
     let bar = ~3;
-    let _g = || {
+    let _g = || { //~ ERROR capture of moved value
         let _h: @fn() -> int = || *bar;
-        //~^ ERROR illegal by-move capture
     };
 }

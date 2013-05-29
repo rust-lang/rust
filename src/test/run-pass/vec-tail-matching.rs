@@ -19,9 +19,9 @@ pub fn main() {
                 [Foo { _ }, _, Foo { _ }, ..tail] => {
                     ::std::util::unreachable();
                 }
-                [Foo { string: a }, Foo { string: b }] => {
-                    assert_eq!(a, ~"bar");
-                    assert_eq!(b, ~"baz");
+                [Foo { string: ref a }, Foo { string: ref b }] => {
+                    assert_eq!("bar", a.slice(0, a.len()));
+                    assert_eq!("baz", b.slice(0, b.len()));
                 }
                 _ => {
                     ::std::util::unreachable();

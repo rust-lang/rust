@@ -70,11 +70,11 @@ impl GuaranteeLifetimeContext {
         match cmt.cat {
             mc::cat_rvalue |
             mc::cat_implicit_self |
-            mc::cat_copied_upvar(*) |
-            mc::cat_local(*) |
-            mc::cat_arg(*) |
-            mc::cat_self(*) |
-            mc::cat_deref(_, _, mc::region_ptr(*)) |
+            mc::cat_copied_upvar(*) |                  // L-Local
+            mc::cat_local(*) |                         // L-Local
+            mc::cat_arg(*) |                           // L-Local
+            mc::cat_self(*) |                          // L-Local
+            mc::cat_deref(_, _, mc::region_ptr(*)) |   // L-Deref-Borrowed
             mc::cat_deref(_, _, mc::unsafe_ptr) => {
                 let scope = self.scope(cmt);
                 self.check_scope(scope)
@@ -90,7 +90,7 @@ impl GuaranteeLifetimeContext {
             mc::cat_deref(base, derefs, mc::gc_ptr(ptr_mutbl)) => {
                 let base_scope = self.scope(base);
 
-                // See rule Freeze-Imm-Managed-Ptr-2 in doc.rs
+                // L-Deref-Managed-Imm-User-Root
                 let omit_root = (
                     ptr_mutbl == m_imm &&
                     self.bccx.is_subregion_of(self.loan_region, base_scope) &&
@@ -99,6 +99,8 @@ impl GuaranteeLifetimeContext {
                 );
 
                 if !omit_root {
+                    // L-Deref-Managed-Imm-Compiler-Root
+                    // L-Deref-Managed-Mut-Compiler-Root
                     self.check_root(cmt, base, derefs, ptr_mutbl, discr_scope);
                 } else {
                     debug!("omitting root, base=%s, base_scope=%?",
@@ -107,8 +109,8 @@ impl GuaranteeLifetimeContext {
             }
 
             mc::cat_downcast(base) |
-            mc::cat_deref(base, _, mc::uniq_ptr(*)) |
-            mc::cat_interior(base, _) => {
+            mc::cat_deref(base, _, mc::uniq_ptr(*)) |  // L-Deref-Owned
+            mc::cat_interior(base, _) => {             // L-Field
                 self.check(base, discr_scope)
             }
 
@@ -320,6 +322,8 @@ impl GuaranteeLifetimeContext {
         //! Returns the maximal region scope for the which the
         //! lvalue `cmt` is guaranteed to be valid without any
         //! rooting etc, and presuming `cmt` is not mutated.
+
+        // See the SCOPE(LV) function in doc.rs
 
         match cmt.cat {
             mc::cat_rvalue => {

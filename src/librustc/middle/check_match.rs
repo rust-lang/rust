@@ -866,7 +866,7 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
 
     if !any_by_move { return; } // pointless micro-optimization
     for pats.each |pat| {
-        do walk_pat(*pat) |p| {
+        for walk_pat(*pat) |p| {
             if pat_is_binding(def_map, p) {
                 match p.node {
                     pat_ident(_, _, sub) => {
@@ -884,66 +884,5 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
                 }
             }
         }
-
-        // Now check to ensure that any move binding is not behind an
-        // @ or &, or within a struct with a destructor.  This is
-        // always illegal.
-        let vt = visit::mk_vt(@visit::Visitor {
-            visit_pat: |pat, (behind_bad_pointer, behind_dtor_struct): (bool, bool), v| {
-                match pat.node {
-                    pat_ident(_, _, sub) => {
-                        debug!("(check legality of move) checking pat \
-                                ident with behind_bad_pointer %? and behind_dtor_struct %?",
-                               behind_bad_pointer, behind_dtor_struct);
-
-                        if behind_bad_pointer || behind_dtor_struct &&
-                            cx.moves_map.contains(&pat.id)
-                        {
-                            let msg = if behind_bad_pointer {
-                                "by-move pattern bindings may not occur behind @ or & bindings"
-                            } else {
-                                "cannot bind by-move within struct (it has a destructor)"
-                            };
-                            cx.tcx.sess.span_err(pat.span, msg);
-                        }
-
-                        match sub {
-                            None => {}
-                            Some(subpat) => {
-                                (v.visit_pat)(subpat,
-                                              (behind_bad_pointer, behind_dtor_struct),
-                                              v);
-                            }
-                        }
-                    }
-
-                    pat_box(subpat) | pat_region(subpat) => {
-                        (v.visit_pat)(subpat, (true, behind_dtor_struct), v);
-                    }
-
-                    pat_struct(_, ref fields, _) => {
-                        let behind_dtor_struct = behind_dtor_struct ||
-                            (match cx.tcx.def_map.find(&pat.id) {
-                                Some(&def_struct(id)) => {
-                                    ty::has_dtor(cx.tcx, id)
-                                }
-                                _ => false
-                            });
-                        debug!("(check legality of move) checking pat \
-                                struct with behind_bad_pointer %? and behind_dtor_struct %?",
-                               behind_bad_pointer, behind_dtor_struct);
-
-                        for fields.each |fld| {
-                            (v.visit_pat)(fld.pat, (behind_bad_pointer,
-                                                    behind_dtor_struct), v)
-                        }
-                    }
-
-                    _ => visit::visit_pat(pat, (behind_bad_pointer, behind_dtor_struct), v)
-                }
-            },
-            .. *visit::default_visitor::<(bool, bool)>()
-        });
-        (vt.visit_pat)(*pat, (false, false), vt);
     }
 }

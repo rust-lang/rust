@@ -109,7 +109,6 @@ use middle::pat_util;
 use middle::ty;
 use middle::typeck;
 use middle::moves;
-use util::ppaux::ty_to_str;
 
 use core::cast::transmute;
 use core::hashmap::HashMap;
@@ -146,7 +145,6 @@ fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
 
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
-                   variable_moves_map: moves::VariableMovesMap,
                    capture_map: moves::CaptureMap,
                    crate: @crate) {
     let visitor = visit::mk_vt(@visit::Visitor {
@@ -159,7 +157,6 @@ pub fn check_crate(tcx: ty::ctxt,
 
     let initial_maps = @mut IrMaps(tcx,
                                    method_map,
-                                   variable_moves_map,
                                    capture_map);
     visit::visit_crate(crate, initial_maps, visitor);
     tcx.sess.abort_if_errors();
@@ -229,7 +226,6 @@ enum VarKind {
 struct IrMaps {
     tcx: ty::ctxt,
     method_map: typeck::method_map,
-    variable_moves_map: moves::VariableMovesMap,
     capture_map: moves::CaptureMap,
 
     num_live_nodes: uint,
@@ -243,13 +239,11 @@ struct IrMaps {
 
 fn IrMaps(tcx: ty::ctxt,
           method_map: typeck::method_map,
-          variable_moves_map: moves::VariableMovesMap,
           capture_map: moves::CaptureMap)
        -> IrMaps {
     IrMaps {
         tcx: tcx,
         method_map: method_map,
-        variable_moves_map: variable_moves_map,
         capture_map: capture_map,
         num_live_nodes: 0,
         num_vars: 0,
@@ -349,7 +343,6 @@ fn visit_fn(fk: &visit::fn_kind,
     // swap in a new set of IR maps for this function body:
     let fn_maps = @mut IrMaps(this.tcx,
                               this.method_map,
-                              this.variable_moves_map,
                               this.capture_map);
 
     unsafe {
@@ -1399,11 +1392,7 @@ pub impl Liveness {
 fn check_local(local: @local, this: @Liveness, vt: vt<@Liveness>) {
     match local.node.init {
       Some(_) => {
-
-        // Initializer:
         this.warn_about_unused_or_dead_vars_in_pat(local.node.pat);
-        this.check_for_reassignments_in_pat(local.node.pat,
-                                            local.node.is_mutbl);
       }
       None => {
 
@@ -1438,35 +1427,6 @@ fn check_arm(arm: &arm, this: @Liveness, vt: vt<@Liveness>) {
 
 fn check_expr(expr: @expr, this: @Liveness, vt: vt<@Liveness>) {
     match expr.node {
-      expr_path(_) | expr_self => {
-        for this.variable_from_def_map(expr.id, expr.span).each |var| {
-            let ln = this.live_node(expr.id, expr.span);
-
-            match this.ir.variable_moves_map.find(&expr.id) {
-                None => {}
-                Some(&entire_expr) => {
-                    debug!("(checking expr) is a move: `%s`",
-                           expr_to_str(expr, this.tcx.sess.intr()));
-                    this.check_move_from_var(ln, *var, entire_expr);
-                }
-            }
-        }
-
-        visit::visit_expr(expr, this, vt);
-      }
-
-      expr_fn_block(*) => {
-        let caps = this.ir.captures(expr);
-        for caps.each |cap| {
-            let var = this.variable(cap.var_nid, expr.span);
-            if cap.is_move {
-                this.check_move_from_var(cap.ln, var, expr);
-            }
-        }
-
-        visit::visit_expr(expr, this, vt);
-      }
-
       expr_assign(l, r) => {
         this.check_lvalue(l, vt);
         (vt.visit_expr)(r, this, vt);
@@ -1507,7 +1467,7 @@ fn check_expr(expr: @expr, this: @Liveness, vt: vt<@Liveness>) {
       expr_cast(*) | expr_unary(*) | expr_ret(*) | expr_break(*) |
       expr_again(*) | expr_lit(_) | expr_block(*) |
       expr_mac(*) | expr_addr_of(*) | expr_struct(*) | expr_repeat(*) |
-      expr_paren(*) => {
+      expr_paren(*) | expr_fn_block(*) | expr_path(*) | expr_self(*) => {
         visit::visit_expr(expr, this, vt);
       }
     }
@@ -1547,43 +1507,17 @@ pub impl Liveness {
         }
     }
 
-    fn check_move_from_var(&self,
-                           ln: LiveNode,
-                           var: Variable,
-                           move_expr: @expr) {
-        /*!
-         * Checks whether `var` is live on entry to any of the
-         * successors of `ln`.  If it is, report an error.
-         * `move_expr` is the expression which caused the variable
-         * to be moved.
-         *
-         * Note that `move_expr` is not necessarily a reference to the
-         * variable.  It might be an expression like `x.f` which could
-         * cause a move of the variable `x`, or a closure creation.
-         */
-
-        debug!("check_move_from_var(%s, %s)",
-               ln.to_str(), var.to_str());
-
-        match self.live_on_exit(ln, var) {
-          None => {}
-          Some(lnk) => self.report_illegal_move(lnk, var, move_expr)
-        }
-    }
-
     fn check_lvalue(@self, expr: @expr, vt: vt<@Liveness>) {
         match expr.node {
           expr_path(_) => {
             match self.tcx.def_map.get_copy(&expr.id) {
-              def_local(nid, mutbl) => {
+              def_local(nid, _) => {
                 // Assignment to an immutable variable or argument: only legal
                 // if there is no later assignment. If this local is actually
                 // mutable, then check for a reassignment to flag the mutability
                 // as being used.
                 let ln = self.live_node(expr.id, expr.span);
                 let var = self.variable(nid, expr.span);
-                self.check_for_reassignment(ln, var, expr.span,
-                                            if mutbl {Some(nid)} else {None});
                 self.warn_about_dead_assign(expr.span, expr.id, ln, var);
               }
               def => {
@@ -1605,118 +1539,6 @@ pub impl Liveness {
             visit::visit_expr(expr, self, vt);
           }
        }
-    }
-
-    fn check_for_reassignments_in_pat(&self, pat: @pat, mutbl: bool) {
-        do self.pat_bindings(pat) |ln, var, sp, id| {
-            self.check_for_reassignment(ln, var, sp,
-                                        if mutbl {Some(id)} else {None});
-        }
-    }
-
-    fn check_for_reassignment(&self, ln: LiveNode, var: Variable,
-                              orig_span: span, mutbl: Option<node_id>) {
-        match self.assigned_on_exit(ln, var) {
-          Some(ExprNode(span)) => {
-            match mutbl {
-              Some(id) => { self.tcx.used_mut_nodes.insert(id); }
-              None => {
-                self.tcx.sess.span_err(
-                    span,
-                    "re-assignment of immutable variable");
-                self.tcx.sess.span_note(
-                    orig_span,
-                    "prior assignment occurs here");
-              }
-            }
-          }
-          Some(lnk) => {
-            self.tcx.sess.span_bug(
-                orig_span,
-                fmt!("illegal writer: %?", lnk));
-          }
-          None => {}
-        }
-    }
-
-    fn report_illegal_move(&self, lnk: LiveNodeKind,
-                           var: Variable,
-                           move_expr: @expr) {
-        // the only time that it is possible to have a moved variable
-        // used by ExitNode would be arguments or fields in a ctor.
-        // we give a slightly different error message in those cases.
-        if lnk == ExitNode {
-            // FIXME #4715: this seems like it should be reported in the
-            // borrow checker
-            let vk = self.ir.var_kinds[*var];
-            match vk {
-              Arg(_, name) => {
-                self.tcx.sess.span_err(
-                    move_expr.span,
-                    fmt!("illegal move from argument `%s`, which is not \
-                          copy or move mode", *self.tcx.sess.str_of(name)));
-                return;
-              }
-              Local(*) | ImplicitRet => {
-                self.tcx.sess.span_bug(
-                    move_expr.span,
-                    fmt!("illegal reader (%?) for `%?`",
-                         lnk, vk));
-              }
-            }
-        }
-
-        match move_expr.node {
-            expr_fn_block(*) => {
-                self.report_illegal_read(
-                    move_expr.span, lnk, var, MovedValue);
-                let name = self.ir.variable_name(var);
-                self.tcx.sess.span_note(
-                    move_expr.span,
-                    fmt!("`%s` moved into closure environment here \
-                          because its type is moved by default",
-                         *name));
-            }
-            expr_path(*) => {
-                self.report_illegal_read(
-                    move_expr.span, lnk, var, MovedValue);
-                self.report_move_location(
-                    move_expr, var, "", "it");
-            }
-            expr_field(*) => {
-                self.report_illegal_read(
-                    move_expr.span, lnk, var, PartiallyMovedValue);
-                self.report_move_location(
-                    move_expr, var, "field of ", "the field");
-            }
-            expr_index(*) => {
-                self.report_illegal_read(
-                    move_expr.span, lnk, var, PartiallyMovedValue);
-                self.report_move_location(
-                    move_expr, var, "element of ", "the element");
-            }
-            _ => {
-                self.report_illegal_read(
-                    move_expr.span, lnk, var, PartiallyMovedValue);
-                self.report_move_location(
-                    move_expr, var, "subcomponent of ", "the subcomponent");
-            }
-        };
-    }
-
-    fn report_move_location(&self,
-                            move_expr: @expr,
-                            var: Variable,
-                            expr_descr: &str,
-                            pronoun: &str) {
-        let move_expr_ty = ty::expr_ty(self.tcx, move_expr);
-        let name = self.ir.variable_name(var);
-        self.tcx.sess.span_note(
-            move_expr.span,
-            fmt!("%s`%s` moved here because %s has type %s, \
-                  which is moved by default (use `copy` to override)",
-                 expr_descr, *name, pronoun,
-                 ty_to_str(self.tcx, move_expr_ty)));
     }
 
     fn report_illegal_read(&self,
