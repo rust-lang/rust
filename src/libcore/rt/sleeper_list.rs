@@ -17,6 +17,7 @@ use option::{Option, Some, None};
 use cell::Cell;
 use unstable::sync::{Exclusive, exclusive};
 use rt::sched::{Scheduler, SchedHandle};
+use clone::Clone;
 
 pub struct SleeperList {
     priv stack: ~Exclusive<~[SchedHandle]>
@@ -41,6 +42,14 @@ impl SleeperList {
             } else {
                 None
             }
+        }
+    }
+}
+
+impl Clone for SleeperList {
+    fn clone(&self) -> SleeperList {
+        SleeperList {
+            stack: self.stack.clone()
         }
     }
 }
