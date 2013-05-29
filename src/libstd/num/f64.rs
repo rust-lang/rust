@@ -172,18 +172,12 @@ pub fn gt(x: f64, y: f64) -> bool { return x > y; }
 
 #[inline(always)]
 pub fn fmax(x: f64, y: f64) -> f64 {
-    if x.is_NaN() { y }
-    else if y.is_NaN() { x }
-    else if x > y { x }
-    else { y }
+    if x >= y || y.is_NaN() { x } else { y }
 }
 
 #[inline(always)]
 pub fn fmin(x: f64, y: f64) -> f64 {
-    if x.is_NaN() { y }
-    else if y.is_NaN() { x }
-    else if x < y { x }
-    else { y }
+    if x <= y || y.is_NaN() { x } else { y }
 }
 
 // FIXME (#1999): add is_normal, is_subnormal, and fpclassify
