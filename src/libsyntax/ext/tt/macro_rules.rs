@@ -23,11 +23,15 @@ use parse::token::{get_ident_interner, special_idents, gensym_ident, ident_to_st
 use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt};
 use print;
 
+// this procedure performs the expansion of the
+// macro_rules! macro. It parses the RHS and adds
+// an extension to the current context.
 pub fn add_new_extension(cx: @ExtCtxt,
                          sp: span,
                          name: ident,
                          arg: ~[ast::token_tree])
                       -> base::MacResult {
+    // Wrap a matcher_ in a spanned to produce a matcher.
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
         spanned {
@@ -39,11 +43,13 @@ pub fn add_new_extension(cx: @ExtCtxt,
     let lhs_nm =  gensym_ident("lhs");
     let rhs_nm =  gensym_ident("rhs");
 
+    // The pattern that macro_rules matches.
     // The grammar for macro_rules! is:
     // $( $lhs:mtcs => $rhs:tt );+
     // ...quasiquoting this would be nice.
     let argument_gram = ~[
         ms(match_seq(~[
+            // NOTE : probably just use an enum for the NT_name ?
             ms(match_nonterminal(lhs_nm, special_idents::matchers, 0u)),
             ms(match_tok(FAT_ARROW)),
             ms(match_nonterminal(rhs_nm, special_idents::tt, 1u)),
