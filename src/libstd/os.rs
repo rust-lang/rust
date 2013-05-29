@@ -145,7 +145,7 @@ pub mod win32 {
     pub fn as_utf16_p<T>(s: &str, f: &fn(*u16) -> T) -> T {
         let mut t = str::to_utf16(s);
         // Null terminate before passing on.
-        t += ~[0u16];
+        t += [0u16];
         vec::as_imm_buf(t, |buf, _len| f(buf))
     }
 }
@@ -437,8 +437,7 @@ fn dup2(src: c_int, dst: c_int) -> c_int {
 
 /// Returns the proper dll filename for the given basename of a file.
 pub fn dll_filename(base: &str) -> ~str {
-    return str::to_owned(DLL_PREFIX) + str::to_owned(base) +
-           str::to_owned(DLL_SUFFIX)
+    fmt!("%s%s%s", DLL_PREFIX, base, DLL_SUFFIX)
 }
 
 /// Optionally returns the filesystem path to the current executable which is
