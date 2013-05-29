@@ -180,7 +180,7 @@ pub mod write {
     use driver::session::Session;
     use driver::session;
     use lib::llvm::llvm;
-    use lib::llvm::{False, ModuleRef, mk_pass_manager, mk_target_data};
+    use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data};
     use lib;
 
     use back::passes;
