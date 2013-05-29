@@ -13,6 +13,7 @@ use option::{Option, Some, None};
 use cell::Cell;
 use clone::Clone;
 use container::Container;
+use old_iter::MutableIter;
 use vec::OwnedVector;
 use result::{Result, Ok, Err};
 use unstable::run_in_bare_thread;
@@ -29,7 +30,10 @@ pub fn new_test_uv_sched() -> Scheduler {
     use rt::work_queue::WorkQueue;
     use rt::sleeper_list::SleeperList;
 
-    Scheduler::new(~UvEventLoop::new(), WorkQueue::new(), SleeperList::new())
+    let mut sched = Scheduler::new(~UvEventLoop::new(), WorkQueue::new(), SleeperList::new());
+    // Don't wait for the Shutdown message
+    sched.no_sleep = true;
+    return sched;
 }
 
 /// Creates a new scheduler in a new thread and runs a task in it,
@@ -57,6 +61,7 @@ pub fn run_in_newsched_task(f: ~fn()) {
 /// until the function `f` returns.
 pub fn run_in_mt_newsched_task(f: ~fn()) {
     use rt::uv::uvio::UvEventLoop;
+    use rt::sched::Shutdown;
 
     let f_cell = Cell(f);
 
@@ -78,11 +83,15 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         }
 
         let f_cell = Cell(f_cell.take());
-        let handles = handles; // Freeze
+        let handles = Cell(handles);
         let main_task = ~do Coroutine::new(&mut scheds[0].stack_pool) {
             f_cell.take()();
-            // Hold on to handles until the function exits. This keeps the schedulers alive.
-            let _captured_handles = &handles;
+
+            let mut handles = handles.take();
+            // Tell schedulers to exit
+            for handles.each_mut |handle| {
+                handle.send(Shutdown);
+            }
         };
 
         scheds[0].enqueue_task(main_task);
