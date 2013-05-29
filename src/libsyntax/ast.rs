@@ -618,6 +618,7 @@ pub enum matcher_ {
     // lo, hi position-in-match-array used:
     match_seq(~[matcher], Option<::parse::token::Token>, bool, uint, uint),
     // parse a Rust NT: name to bind, name of NT, position in match array:
+    // NOTE: 'name of NT' shouldnt really be represented as an ident, should it?
     match_nonterminal(ident, ident, uint)
 }
 

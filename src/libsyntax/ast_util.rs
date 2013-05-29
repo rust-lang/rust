@@ -27,6 +27,8 @@ pub fn path_name_i(idents: &[ident]) -> ~str {
     idents.map(|i| token::interner_get(i.name)).connect("::")
 }
 
+// totally scary function: ignores all but the last element, should have
+// a different name
 pub fn path_to_ident(p: &Path) -> ident {
     *p.idents.last()
 }
