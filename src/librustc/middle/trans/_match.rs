@@ -140,6 +140,11 @@
  * the various values we copied explicitly.  Note that guards and moves are
  * just plain incompatible.
  *
+ * Some relevant helper functions that manage bindings:
+ * - `create_bindings_map()`
+ * - `store_non_ref_bindings()`
+ * - `insert_lllocals()`
+ *
  */
 
 use core::prelude::*;
@@ -1201,7 +1206,7 @@ fn insert_lllocals(bcx: block,
         debug!("binding %? to %s",
                binding_info.id,
                val_str(bcx.ccx().tn, llval));
-        llmap.insert(binding_info.id, local_mem(llval));
+        llmap.insert(binding_info.id, llval);
     }
     return bcx;
 }
@@ -1673,7 +1678,7 @@ pub fn trans_match_inner(scope_cx: block,
 
     let mut arm_datas = ~[], matches = ~[];
     for vec::each(arms) |arm| {
-        let body = scope_block(bcx, arm.body.info(), ~"case_body");
+        let body = scope_block(bcx, arm.body.info(), "case_body");
         let bindings_map = create_bindings_map(bcx, arm.pats[0]);
         let arm_data = @ArmData {bodycx: body,
                                  arm: arm,
@@ -1765,22 +1770,20 @@ pub fn bind_irrefutable_pat(bcx: block,
                 datum.copy_to_datum(bcx, INIT, scratch);
                 match binding_mode {
                     BindLocal => {
-                        bcx.fcx.lllocals.insert(pat.id,
-                                                local_mem(scratch.val));
+                        bcx.fcx.lllocals.insert(pat.id, scratch.val);
                     }
                     BindArgument => {
-                        bcx.fcx.llargs.insert(pat.id,
-                                              local_mem(scratch.val));
+                        bcx.fcx.llargs.insert(pat.id, scratch.val);
                     }
                 }
                 add_clean(bcx, scratch.val, binding_ty);
             } else {
                 match binding_mode {
                     BindLocal => {
-                        bcx.fcx.lllocals.insert(pat.id, local_mem(val));
+                        bcx.fcx.lllocals.insert(pat.id, val);
                     }
                     BindArgument => {
-                        bcx.fcx.llargs.insert(pat.id, local_mem(val));
+                        bcx.fcx.llargs.insert(pat.id, val);
                     }
                 }
             }
