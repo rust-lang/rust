@@ -454,8 +454,9 @@ mod tests {
         }
     }
 
-    #[test] #[ignore]
+    #[test]
     fn run_all() {
+        // FIXME(#6511):
         // By default, unit tests are run in parallel. Rusti, on the other hand,
         // does not enjoy doing this. I suspect that it is because the LLVM
         // bindings are not thread-safe (when running parallel tests, some tests
@@ -468,7 +469,7 @@ mod tests {
         run_cmds([""]);
 
         debug!("regression test for #5937");
-        run_cmds(["use core;", ""]);
+        run_cmds(["use std;", ""]);
 
         debug!("regression test for #5784");
         run_cmds(["let a = 1;"]);
