@@ -20,6 +20,7 @@ use attr;
 use codemap;
 use codemap::{span, CallInfo, ExpandedFrom, NameAndSpan, spanned};
 use ext::base::*;
+use ext::dynamic;
 use fold::*;
 use parse;
 use parse::{parse_item_from_source_str};
@@ -584,15 +585,20 @@ pub fn core_macros() -> ~str {
 }
 
 pub fn expand_crate(parse_sess: @mut parse::ParseSess,
-                    cfg: ast::crate_cfg, c: @crate) -> @crate {
+                    cfg: ast::crate_cfg, enable_dynamic_syntax: bool,
+                    c: @crate) -> @crate {
     // adding *another* layer of indirection here so that the block
     // visitor can swap out one exts table for another for the duration
     // of the block.  The cleaner alternative would be to thread the
     // exts table through the fold, but that would require updating
     // every method/element of AstFoldFns in fold.rs.
-    let extsbox = @mut syntax_expander_table();
-    let afp = default_ast_fold();
     let cx = ExtCtxt::new(parse_sess, copy cfg);
+    let extsbox = @mut syntax_expander_table();
+
+    // keep this in scope to keep function pointers valid
+    let libraries = dynamic::load_dynamic_crate(cx, extsbox, c, enable_dynamic_syntax);
+
+    let afp = default_ast_fold();
     let f_pre = @AstFoldFns {
         fold_expr: |expr,span,recur|
             expand_expr(extsbox, cx, expr, span, recur, afp.fold_expr),
@@ -635,7 +641,9 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     // as it registers all the core macros as expanders.
     f.fold_item(cm);
 
-    @f.fold_crate(&*c)
+    let expanded = @f.fold_crate(&*c);
+    let _ = libraries;
+    expanded
 }
 
 // given a function from idents to idents, produce
@@ -706,7 +714,7 @@ mod test {
             ~"<test>",
             @src,
             ~[],sess);
-        expand_crate(sess,~[],crate_ast);
+        expand_crate(sess,~[],false,crate_ast);
     }
 
     // these following tests are quite fragile, in that they don't test what
@@ -723,7 +731,7 @@ mod test {
             @src,
             ~[],sess);
         // should fail:
-        expand_crate(sess,~[],crate_ast);
+        expand_crate(sess,~[],false,crate_ast);
     }
 
     // make sure that macros can leave scope for modules
@@ -737,7 +745,7 @@ mod test {
             @src,
             ~[],sess);
         // should fail:
-        expand_crate(sess,~[],crate_ast);
+        expand_crate(sess,~[],false,crate_ast);
     }
 
     // macro_escape modules shouldn't cause macros to leave scope
@@ -750,7 +758,7 @@ mod test {
             @src,
             ~[], sess);
         // should fail:
-        expand_crate(sess,~[],crate_ast);
+        expand_crate(sess,~[],false,crate_ast);
     }
 
     #[test] fn core_macros_must_parse () {
