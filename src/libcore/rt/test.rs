@@ -21,8 +21,9 @@ use rt::sched::Scheduler;
 pub fn new_test_uv_sched() -> Scheduler {
     use rt::uv::uvio::UvEventLoop;
     use rt::work_queue::WorkQueue;
+    use rt::sleeper_list::SleeperList;
 
-    Scheduler::new(~UvEventLoop::new(), WorkQueue::new())
+    Scheduler::new(~UvEventLoop::new(), WorkQueue::new(), SleeperList::new())
 }
 
 /// Creates a new scheduler in a new thread and runs a task in it,

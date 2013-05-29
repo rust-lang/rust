@@ -13,6 +13,7 @@ use sys;
 use cast::transmute;
 use cell::Cell;
 
+use super::sleeper_list::SleeperList;
 use super::work_queue::WorkQueue;
 use super::stack::{StackPool, StackSegment};
 use super::rtio::{EventLoop, EventLoopObject, RemoteCallbackObject};
@@ -27,7 +28,12 @@ use rt::rtio::IoFactoryObject;
 /// thread local storage and the running task is owned by the
 /// scheduler.
 pub struct Scheduler {
+    /// A queue of available work. Under a work-stealing policy there
+    /// is one per Scheduler.
     priv work_queue: WorkQueue<~Coroutine>,
+    /// A shared list of sleeping schedulers. We'll use this to wake
+    /// up schedulers when pushing work onto the work queue.
+    priv sleeper_list: SleeperList,
     stack_pool: StackPool,
     /// The event loop used to drive the scheduler and perform I/O
     event_loop: ~EventLoopObject,
@@ -65,12 +71,16 @@ pub impl Scheduler {
 
     fn in_task_context(&self) -> bool { self.current_task.is_some() }
 
-    fn new(event_loop: ~EventLoopObject, work_queue: WorkQueue<~Coroutine>) -> Scheduler {
+    fn new(event_loop: ~EventLoopObject,
+           work_queue: WorkQueue<~Coroutine>,
+           sleeper_list: SleeperList)
+        -> Scheduler {
 
         // Lazily initialize the runtime TLS key
         local_ptr::init_tls_key();
 
         Scheduler {
+            sleeper_list: sleeper_list,
             event_loop: event_loop,
             work_queue: work_queue,
             stack_pool: StackPool::new(),
@@ -618,19 +628,23 @@ mod test {
         use container::Container;
         use vec::OwnedVector;
         use rt::rtio::RemoteCallback;
+        use rt::sleeper_list::SleeperList;
 
         do run_in_bare_thread {
+            let sleepers1 = SleeperList::new();
             let work_queue1 = WorkQueue::new();
+
+            let sleepers2 = sleepers1.clone();
             let work_queue2 = work_queue1.clone();
 
             let loop1 = ~UvEventLoop::new();
-            let mut sched1 = ~Scheduler::new(loop1, work_queue1.clone());
+            let mut sched1 = ~Scheduler::new(loop1, work_queue1.clone(), sleepers1);
             let handle1 = sched1.make_handle();
             let sched1_cell = Cell(sched1);
             let handle1_cell = Cell(handle1);
 
             let loop2 = ~UvEventLoop::new();
-            let mut sched2 = ~Scheduler::new(loop2, work_queue2.clone());
+            let mut sched2 = ~Scheduler::new(loop2, work_queue2.clone(), sleepers2);
             let handle2 = sched2.make_handle();
             let sched2_cell = Cell(sched2);
             let handle2_cell = Cell(handle2);
