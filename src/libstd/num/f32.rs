@@ -147,18 +147,12 @@ pub fn gt(x: f32, y: f32) -> bool { return x > y; }
 
 #[inline(always)]
 pub fn fmax(x: f32, y: f32) -> f32 {
-    if x.is_NaN() { y }
-    else if y.is_NaN() { x }
-    else if x > y { x }
-    else { y }
+    if x >= y || y.is_NaN() { x } else { y }
 }
 
 #[inline(always)]
 pub fn fmin(x: f32, y: f32) -> f32 {
-    if x.is_NaN() { y }
-    else if y.is_NaN() { x }
-    else if x < y { x }
-    else { y }
+    if x <= y || y.is_NaN() { x } else { y }
 }
 
 
