@@ -1726,7 +1726,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
     let mut bcx = bcx;
 
     match fcx.llself {
-      Some(copy slf) => {
+      Some(slf) => {
         // We really should do this regardless of whether self is owned, but
         // it doesn't work right with default method impls yet. (FIXME: #2794)
         if slf.is_owned {
@@ -1801,7 +1801,7 @@ pub fn build_return_block(fcx: fn_ctxt) {
 pub fn tie_up_header_blocks(fcx: fn_ctxt, lltop: BasicBlockRef) {
     let _icx = fcx.insn_ctxt("tie_up_header_blocks");
     match fcx.llloadenv {
-        Some(copy ll) => {
+        Some(ll) => {
             Br(raw_block(fcx, false, fcx.llstaticallocas), ll);
             Br(raw_block(fcx, false, ll), lltop);
         }
