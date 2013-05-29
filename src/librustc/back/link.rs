@@ -202,6 +202,8 @@ pub mod write {
                       output_type: output_type,
                       output: &Path) {
         unsafe {
+            llvm::LLVMInitializePasses();
+
             let opts = sess.opts;
             if sess.time_llvm_passes() { llvm::LLVMRustEnableTimePasses(); }
             let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);
@@ -232,14 +234,21 @@ pub mod write {
             let mut mpm = passes::PassManager::new(td.lltd);
 
             if !sess.no_verify() {
-                mpm.addPass(llvm::LLVMCreateVerifierPass());
+                mpm.add_pass_from_name("verify");
             }
 
-            if sess.lint_llvm() {
-                mpm.addPass(llvm::LLVMCreateLintPass());
-            }
+            let passes = if sess.opts.custom_passes.len() > 0 {
+                copy sess.opts.custom_passes
+            } else {
+                if sess.lint_llvm() {
+                    mpm.add_pass_from_name("lint");
+                }
+                passes::create_standard_passes(opts.optimize)
+            };
 
-            passes::populatePassManager(&mut mpm, opts.optimize);
+
+            debug!("Passes: %?", passes);
+            passes::populate_pass_manager(sess, &mut mpm, passes);
 
             debug!("Running Module Optimization Pass");
             mpm.run(llmod);
