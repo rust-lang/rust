@@ -93,9 +93,7 @@ fn test_sysroot() -> Path {
     self_path.pop()
 }
 
-// Ignored on i686 -- see #6517
 #[test]
-#[ignore(cfg(target_arch = "x86"))]
 fn test_make_dir_rwx() {
     let temp = &os::tmpdir();
     let dir = temp.push("quux");
@@ -109,7 +107,6 @@ fn test_make_dir_rwx() {
 }
 
 #[test]
-#[ignore(cfg(target_arch = "x86"))]
 fn test_install_valid() {
     let sysroot = test_sysroot();
     debug!("sysroot = %s", sysroot.to_str());
@@ -135,7 +132,6 @@ fn test_install_valid() {
 }
 
 #[test]
-#[ignore(cfg(target_arch = "x86"))]
 fn test_install_invalid() {
     use conditions::nonexistent_package::cond;
     use cond1 = conditions::missing_pkg_files::cond;
@@ -158,7 +154,6 @@ fn test_install_invalid() {
 }
 
 #[test]
-#[ignore(cfg(target_arch = "x86"))]
 fn test_install_url() {
     let workspace = mkdtemp(&os::tmpdir(), "test").expect("couldn't create temp dir");
     let sysroot = test_sysroot();

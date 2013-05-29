@@ -518,15 +518,15 @@ pub fn host_triple() -> ~str {
     // idea of the host triple is the same as for the set of libraries we've
     // actually built.  We can't just take LLVM's host triple because they
     // normalize all ix86 architectures to i386.
-
-    // FIXME (#2400): Instead of grabbing the host triple we really should
-    // be grabbing (at compile time) the target triple that this rustc is
-    // built with and calling that (at runtime) the host triple.
-    let ht = env!("CFG_BUILD_TRIPLE");
+    //
+    // Instead of grabbing the host triple (for the current host), we grab (at
+    // compile time) the target triple that this rustc is built with and
+    // calling that (at runtime) the host triple.
+    let ht = env!("CFG_COMPILER_TRIPLE");
     return if ht != ~"" {
             ht
         } else {
-            fail!("rustc built without CFG_BUILD_TRIPLE")
+            fail!("rustc built without CFG_COMPILER_TRIPLE")
         };
 }
 
@@ -536,15 +536,15 @@ pub fn host_triple() -> ~str {
     // idea of the host triple is the same as for the set of libraries we've
     // actually built.  We can't just take LLVM's host triple because they
     // normalize all ix86 architectures to i386.
-
-    // FIXME (#2400): Instead of grabbing the host triple we really should
-    // be grabbing (at compile time) the target triple that this rustc is
-    // built with and calling that (at runtime) the host triple.
-    let ht = env!("CFG_BUILD_TRIPLE");
+    //
+    // Instead of grabbing the host triple (for the current host), we grab (at
+    // compile time) the target triple that this rustc is built with and
+    // calling that (at runtime) the host triple.
+    let ht = env!("CFG_COMPILER_TRIPLE");
     return if ht != "" {
             ht.to_owned()
         } else {
-            fail!("rustc built without CFG_BUILD_TRIPLE")
+            fail!("rustc built without CFG_COMPILER_TRIPLE")
         };
 }
 
