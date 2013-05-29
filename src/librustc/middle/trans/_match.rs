@@ -1123,10 +1123,10 @@ pub fn compare_values(cx: block,
     }
 }
 
-pub fn store_non_ref_bindings(bcx: block,
-                              data: &ArmData,
-                              opt_temp_cleanups: Option<&mut ~[ValueRef]>)
-    -> block
+fn store_non_ref_bindings(bcx: block,
+                          bindings_map: &BindingsMap,
+                          mut opt_temp_cleanups: Option<&mut ~[ValueRef]>)
+                          -> block
 {
     /*!
      *
@@ -1138,8 +1138,7 @@ pub fn store_non_ref_bindings(bcx: block,
      */
 
     let mut bcx = bcx;
-    let mut opt_temp_cleanups = opt_temp_cleanups;
-    for data.bindings_map.each_value |&binding_info| {
+    for bindings_map.each_value |&binding_info| {
         match binding_info.trmode {
             TrByValue(is_move, lldest) => {
                 let llval = Load(bcx, binding_info.llmatch); // get a T*
@@ -1165,16 +1164,22 @@ pub fn store_non_ref_bindings(bcx: block,
     return bcx;
 }
 
-pub fn insert_lllocals(bcx: block,
-                       data: &ArmData,
-                       add_cleans: bool) -> block {
+fn insert_lllocals(bcx: block,
+                   bindings_map: &BindingsMap,
+                   binding_mode: IrrefutablePatternBindingMode,
+                   add_cleans: bool) -> block {
     /*!
-     *
      * For each binding in `data.bindings_map`, adds an appropriate entry into
      * the `fcx.lllocals` map.  If add_cleans is true, then adds cleanups for
-     * the bindings. */
+     * the bindings.
+     */
 
-    for data.bindings_map.each_value |&binding_info| {
+    let llmap = match binding_mode {
+        BindLocal => bcx.fcx.lllocals,
+        BindArgument => bcx.fcx.llargs
+    };
+
+    for bindings_map.each_value |&binding_info| {
         let llval = match binding_info.trmode {
             // By value bindings: use the stack slot that we
             // copied/moved the value into
@@ -1192,8 +1197,10 @@ pub fn insert_lllocals(bcx: block,
             }
         };
 
-        bcx.fcx.lllocals.insert(binding_info.id,
-                                local_mem(llval));
+        debug!("binding %? to %s",
+               binding_info.id,
+               val_str(bcx.ccx().tn, llval));
+        llmap.insert(binding_info.id, local_mem(llval));
     }
     return bcx;
 }
@@ -1214,8 +1221,8 @@ pub fn compile_guard(bcx: block,
 
     let mut bcx = bcx;
     let mut temp_cleanups = ~[];
-    bcx = store_non_ref_bindings(bcx, data, Some(&mut temp_cleanups));
-    bcx = insert_lllocals(bcx, data, false);
+    bcx = store_non_ref_bindings(bcx, &data.bindings_map, Some(&mut temp_cleanups));
+    bcx = insert_lllocals(bcx, &data.bindings_map, BindLocal, false);
 
     let val = unpack_result!(bcx, {
         do with_scope_result(bcx, guard_expr.info(),
@@ -1612,6 +1619,42 @@ pub fn trans_match(bcx: block,
     }
 }
 
+fn create_bindings_map(bcx: block, pat: @ast::pat) -> BindingsMap {
+    // Create the bindings map, which is a mapping from each binding name
+    // to an alloca() that will be the value for that local variable.
+    // Note that we use the names because each binding will have many ids
+    // from the various alternatives.
+    let ccx = bcx.ccx();
+    let tcx = bcx.tcx();
+    let mut bindings_map = HashMap::new();
+    do pat_bindings(tcx.def_map, pat) |bm, p_id, _s, path| {
+        let ident = path_to_ident(path);
+        let variable_ty = node_id_type(bcx, p_id);
+        let llvariable_ty = type_of::type_of(ccx, variable_ty);
+
+        let llmatch, trmode;
+        match bm {
+            ast::bind_by_copy | ast::bind_infer => {
+                // in this case, the final type of the variable will be T,
+                // but during matching we need to store a *T as explained
+                // above
+                let is_move = ccx.maps.moves_map.contains(&p_id);
+                llmatch = alloca(bcx, T_ptr(llvariable_ty));
+                trmode = TrByValue(is_move, alloca(bcx, llvariable_ty));
+            }
+            ast::bind_by_ref(_) => {
+                llmatch = alloca(bcx, llvariable_ty);
+                trmode = TrByRef;
+            }
+        };
+        bindings_map.insert(ident, BindingInfo {
+            llmatch: llmatch, trmode: trmode,
+            id: p_id, ty: variable_ty
+        });
+    }
+    return bindings_map;
+}
+
 pub fn trans_match_inner(scope_cx: block,
                          discr_expr: @ast::expr,
                          arms: &[ast::arm],
@@ -1628,41 +1671,9 @@ pub fn trans_match_inner(scope_cx: block,
     }
 
     let mut arm_datas = ~[], matches = ~[];
-    for arms.each |arm| {
-        let body = scope_block(bcx, arm.body.info(), "case_body");
-
-        // Create the bindings map, which is a mapping from each binding name
-        // to an alloca() that will be the value for that local variable.
-        // Note that we use the names because each binding will have many ids
-        // from the various alternatives.
-        let mut bindings_map = HashMap::new();
-        do pat_bindings(tcx.def_map, arm.pats[0]) |bm, p_id, _s, path| {
-            let ident = path_to_ident(path);
-            let variable_ty = node_id_type(bcx, p_id);
-            let llvariable_ty = type_of::type_of(bcx.ccx(), variable_ty);
-
-            let llmatch, trmode;
-            match bm {
-                ast::bind_by_copy | ast::bind_infer => {
-                    // in this case, the final type of the variable will be T,
-                    // but during matching we need to store a *T as explained
-                    // above
-                    let is_move =
-                        scope_cx.ccx().maps.moves_map.contains(&p_id);
-                    llmatch = alloca(bcx, T_ptr(llvariable_ty));
-                    trmode = TrByValue(is_move, alloca(bcx, llvariable_ty));
-                }
-                ast::bind_by_ref(_) => {
-                    llmatch = alloca(bcx, llvariable_ty);
-                    trmode = TrByRef;
-                }
-            };
-            bindings_map.insert(ident, BindingInfo {
-                llmatch: llmatch, trmode: trmode,
-                id: p_id, ty: variable_ty
-            });
-        }
-
+    for vec::each(arms) |arm| {
+        let body = scope_block(bcx, arm.body.info(), ~"case_body");
+        let bindings_map = create_bindings_map(bcx, arm.pats[0]);
         let arm_data = @ArmData {bodycx: body,
                                  arm: arm,
                                  bindings_map: bindings_map};
@@ -1696,11 +1707,11 @@ pub fn trans_match_inner(scope_cx: block,
         // is just to reduce code space.  See extensive comment at the start
         // of the file for more details.
         if arm_data.arm.guard.is_none() {
-            bcx = store_non_ref_bindings(bcx, *arm_data, None);
+            bcx = store_non_ref_bindings(bcx, &arm_data.bindings_map, None);
         }
 
         // insert bindings into the lllocals map and add cleanups
-        bcx = insert_lllocals(bcx, *arm_data, true);
+        bcx = insert_lllocals(bcx, &arm_data.bindings_map, BindLocal, true);
 
         bcx = controlflow::trans_block(bcx, &arm_data.arm.body, dest);
         bcx = trans_block_cleanups(bcx, block_cleanups(arm_data.bodycx));
