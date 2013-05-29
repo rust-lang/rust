@@ -247,7 +247,7 @@ pub fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
         // must patchup the type.
         DatumBlock {bcx: bcx,
                     datum: Datum {val: datum.val, ty: adjusted_ty,
-                                  mode: datum.mode, source: datum.source}}
+                                  mode: datum.mode}}
     }
 
     fn auto_slice(bcx: block,
@@ -793,8 +793,7 @@ fn trans_def_datum_unadjusted(bcx: block,
             bcx: bcx,
             datum: Datum {val: llval,
                           ty: rust_ty,
-                          mode: ByValue,
-                          source: RevokeClean}
+                          mode: ByValue}
         };
     }
 }
@@ -920,8 +919,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
             bcx: bcx,
             datum: Datum {val: elt,
                           ty: vt.unit_ty,
-                          mode: ByRef,
-                          source: ZeroMem}
+                          mode: ByRef(ZeroMem)}
         };
     }
 
@@ -988,8 +986,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                     bcx: bcx,
                     datum: Datum {val: val,
                                   ty: const_ty,
-                                  mode: ByRef,
-                                  source: ZeroMem}
+                                  mode: ByRef(ZeroMem)}
                 }
             }
             _ => {
@@ -1014,8 +1011,7 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
                     Datum {
                         val: val,
                         ty: local_ty,
-                        mode: ByRef,
-                        source: ZeroMem
+                        mode: ByRef(ZeroMem)
                     }
                 }
                 None => {
@@ -1052,8 +1048,7 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
             Datum {
                 val: casted_val,
                 ty: self_info.t,
-                mode: ByRef,
-                source: ZeroMem
+                mode: ByRef(ZeroMem)
             }
         }
         _ => {
@@ -1066,7 +1061,7 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
                   table: &HashMap<ast::node_id, local_val>,
                   nid: ast::node_id) -> Datum {
         let (v, mode) = match table.find(&nid) {
-            Some(&local_mem(v)) => (v, ByRef),
+            Some(&local_mem(v)) => (v, ByRef(ZeroMem)),
             Some(&local_imm(v)) => (v, ByValue),
             None => {
                 bcx.sess().bug(fmt!(
@@ -1082,7 +1077,6 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
             val: v,
             ty: ty,
             mode: mode,
-            source: ZeroMem
         }
     }
 }
