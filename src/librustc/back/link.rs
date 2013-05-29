@@ -180,8 +180,10 @@ pub mod write {
     use driver::session::Session;
     use driver::session;
     use lib::llvm::llvm;
-    use lib::llvm::{False, ModuleRef, mk_pass_manager, mk_target_data};
+    use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data};
     use lib;
+
+    use back::passes;
 
     use core::libc::{c_int, c_uint};
     use core::path::Path;
@@ -202,16 +204,12 @@ pub mod write {
         unsafe {
             let opts = sess.opts;
             if sess.time_llvm_passes() { llvm::LLVMRustEnableTimePasses(); }
-            let mut pm = mk_pass_manager();
             let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);
+            let pm = mk_pass_manager();
             llvm::LLVMAddTargetData(td.lltd, pm.llpm);
-            // FIXME (#2812): run the linter here also, once there are llvm-c
-            // bindings for it.
 
             // Generate a pre-optimization intermediate file if -save-temps
             // was specified.
-
-
             if opts.save_temps {
                 match output_type {
                   output_type_bitcode => {
@@ -230,50 +228,22 @@ pub mod write {
                   }
                 }
             }
-            if !sess.no_verify() { llvm::LLVMAddVerifierPass(pm.llpm); }
-            // FIXME (#2396): This is mostly a copy of the bits of opt's -O2
-            // that are available in the C api.
-            // Also: We might want to add optimization levels like -O1, -O2,
-            // -Os, etc
-            // Also: Should we expose and use the pass lists used by the opt
-            // tool?
 
-            if opts.optimize != session::No {
-                let fpm = mk_pass_manager();
-                llvm::LLVMAddTargetData(td.lltd, fpm.llpm);
+            let mut mpm = passes::PassManager::new(td.lltd);
 
-                let FPMB = llvm::LLVMPassManagerBuilderCreate();
-                llvm::LLVMPassManagerBuilderSetOptLevel(FPMB, 2u as c_uint);
-                llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(
-                    FPMB, fpm.llpm);
-                llvm::LLVMPassManagerBuilderDispose(FPMB);
-
-                llvm::LLVMRunPassManager(fpm.llpm, llmod);
-                let mut threshold = 225;
-                if opts.optimize == session::Aggressive { threshold = 275; }
-
-                let MPMB = llvm::LLVMPassManagerBuilderCreate();
-                llvm::LLVMPassManagerBuilderSetOptLevel(MPMB,
-                                                        opts.optimize as
-                                                            c_uint);
-                llvm::LLVMPassManagerBuilderSetSizeLevel(MPMB, False);
-                llvm::LLVMPassManagerBuilderSetDisableUnitAtATime(MPMB,
-                                                                  False);
-                llvm::LLVMPassManagerBuilderSetDisableUnrollLoops(MPMB,
-                                                                  False);
-                llvm::LLVMPassManagerBuilderSetDisableSimplifyLibCalls(MPMB,
-                                                                       False);
-
-                if threshold != 0u {
-                    llvm::LLVMPassManagerBuilderUseInlinerWithThreshold
-                        (MPMB, threshold as c_uint);
-                }
-                llvm::LLVMPassManagerBuilderPopulateModulePassManager(
-                    MPMB, pm.llpm);
-
-                llvm::LLVMPassManagerBuilderDispose(MPMB);
+            if !sess.no_verify() {
+                mpm.addPass(llvm::LLVMCreateVerifierPass());
             }
-            if !sess.no_verify() { llvm::LLVMAddVerifierPass(pm.llpm); }
+
+            if sess.lint_llvm() {
+                mpm.addPass(llvm::LLVMCreateLintPass());
+            }
+
+            passes::populatePassManager(&mut mpm, opts.optimize);
+
+            debug!("Running Module Optimization Pass");
+            mpm.run(llmod);
+
             if is_object_or_assembly_or_exe(output_type) || opts.jit {
                 let LLVMOptNone       = 0 as c_int; // -O0
                 let LLVMOptLess       = 1 as c_int; // -O1
@@ -312,12 +282,9 @@ pub mod write {
                     // Always output the bitcode file with --save-temps
 
                     let filename = output.with_filetype("opt.bc");
-                    llvm::LLVMRunPassManager(pm.llpm, llmod);
                     str::as_c_str(filename.to_str(), |buf| {
                         llvm::LLVMWriteBitcodeToFile(llmod, buf)
                     });
-                    pm = mk_pass_manager();
-
                     // Save the assembly file if -S is used
                     if output_type == output_type_assembly {
                         WriteOutputFile(
@@ -377,7 +344,6 @@ pub mod write {
             } else {
                 // If only a bitcode file is asked for by using the
                 // '--emit-llvm' flag, then output it here
-                llvm::LLVMRunPassManager(pm.llpm, llmod);
                 str::as_c_str(output.to_str(),
                             |buf| llvm::LLVMWriteBitcodeToFile(llmod, buf) );
             }
