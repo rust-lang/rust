@@ -88,112 +88,32 @@ Similar reasoning can be applied to `let` expressions:
 
 ## Output
 
-The pass results in the struct `MoveMaps` which contains two sets,
-`moves_map` and `variable_moves_map`, and one map, `capture_map`.
+The pass results in the struct `MoveMaps` which contains several
+maps:
 
-`moves_map` is a set containing the id of every *outermost
-expression* or *binding* that is moved.  Note that `moves_map` only
-contains the *outermost expressions* that are moved.  Therefore, if
-you have a use of `x.b`, as in the example `y` above, the
-expression `x.b` would be in the `moves_map` but not `x`.  The
-reason for this is that, for most purposes, it's only the outermost
-expression that is needed.  The borrow checker and trans, for
-example, only care about the outermost expressions that are moved.
-It is more efficient therefore just to store those entries.
+`moves_map` is a set containing the id of every *outermost expression* or
+*binding* that causes a move.  Note that `moves_map` only contains the *outermost
+expressions* that are moved.  Therefore, if you have a use of `x.b`,
+as in the example `y` above, the expression `x.b` would be in the
+`moves_map` but not `x`.  The reason for this is that, for most
+purposes, it's only the outermost expression that is needed.  The
+borrow checker and trans, for example, only care about the outermost
+expressions that are moved.  It is more efficient therefore just to
+store those entries.
 
-In the case of the liveness pass, however, we need to know which
-*variable references* are moved (see the Enforcement of Moves
-section below for more details).  That is, for the `x.b`
-expression, liveness only cares about the `x`.  For this purpose,
-we have a second map, `variable_moves_map`, that contains the ids
-of all variable references which is moved.
+Sometimes though we want to know the variables that are moved (in
+particular in the borrow checker). For these cases, the set
+`moved_variables_set` just collects the ids of variables that are
+moved.
 
-The `capture_map` maps from the node_id of a closure expression to an
-array of `CaptureVar` structs detailing which variables are captured
-and how (by ref, by copy, by move).
+Finally, the `capture_map` maps from the node_id of a closure
+expression to an array of `CaptureVar` structs detailing which
+variables are captured and how (by ref, by copy, by move).
 
 ## Enforcement of Moves
 
-The enforcement of moves is somewhat complicated because it is divided
-amongst the liveness and borrowck modules. In general, the borrow
-checker is responsible for guaranteeing that *only owned data is
-moved*.  The liveness checker, in contrast, is responsible for
-checking that *no variable is used after it is moved*.
-
-To see the difference, let's look at a few examples.  Here is a
-program fragment where the error would be caught by liveness:
-
-    struct Foo { a: int, b: ~int }
-    let x: Foo = ...;
-    let y = x.b; // (1)
-    let z = x;   // (2)            //~ ERROR use of moved value `x`
-
-Here the liveness checker will see the assignment to `y` moves
-invalidates the variable `x` because it moves the expression `x.b`.
-An error is resported because `x` is not dead at the point where it is
-invalidated.
-
-In more concrete terms, the `moves_map` generated from this example
-would contain both the expression `x.b` (1) and the expression `x`
-(2).  Note that it would not contain `x` (1), because `moves_map` only
-contains the outermost expressions that are moved.  However,
-`moves_map` is not used by liveness.  It uses the
-`variable_moves_map`, which would contain both references to `x`: (1)
-and (2).  Therefore, after computing which variables are live where,
-liveness will see that the reference (1) to `x` is both present in
-`variable_moves_map` and that `x` is live and report an error.
-
-Now let's look at another illegal example, but one where liveness would
-not catch the error:
-
-    struct Foo { a: int, b: ~int }
-    let x: @Foo = ...;
-    let y = x.b;                   //~ ERROR move from managed (@) box
-
-This is an interesting example because the only change I've made is
-to make `x` have type `@Foo` and not `Foo`.  Thanks to auto-deref,
-the expression `x.b` still works, but now it is short for `{x).b`,
-and hence the move is actually moving out of the contents of a
-managed box, which is illegal.  However, liveness knows nothing of
-this.  It only tracks what variables are used where.  The moves
-pass (that is, this pass) is also ignorant of such details.  From
-the perspective of the moves pass, the `let y = x.b` line above
-will be categorized as follows:
-
-    let y = {(x{Move}) {Move}).b; {Move}
-
-Therefore, the reference to `x` will be present in
-`variable_moves_map`, but liveness will not report an error because
-there is no subsequent use.
-
-This is where the borrow checker comes in.  When the borrow checker
-runs, it will see that `x.b` is present in the `moves_map`.  It will
-use the `mem_categorization` module to determine where the result of
-this expression resides in memory and see that it is owned by managed
-data, and report an error.
-
-In principle, liveness could use the `mem_categorization` module
-itself and check that moves always originate from owned data
-(historically, of course, this was not the case; `mem_categorization`
-used to be private to the borrow checker).  However, there is another
-kind of error which liveness could not possibly detect. Sometimes a
-move is an error due to an outstanding loan, and it is borrow
-checker's job to compute those loans.  That is, consider *this*
-example:
-
-    struct Foo { a: int, b: ~int }
-    let x: Foo = ...;
-    let y = &x.b;                   //~ NOTE loan issued here
-    let z = x.b;                    //~ ERROR move with outstanding loan
-
-In this case, `y` is a pointer into `x`, so when `z` tries to move out
-of `x`, we get an error.  There is no way that liveness could compute
-this information without redoing the efforts of the borrow checker.
-
-### Closures
-
-Liveness is somewhat complicated by having to deal with stack
-closures.  More information to come!
+The enforcement of moves is done by the borrow checker.  Please see
+the section "Moves and initialization" in `middle/borrowck/doc.rs`.
 
 ## Distributive property
 
@@ -213,6 +133,7 @@ use middle::freevars;
 use middle::ty;
 use middle::typeck::{method_map};
 use util::ppaux;
+use util::ppaux::Repr;
 use util::common::indenter;
 
 use core::hashmap::{HashSet, HashMap};
@@ -220,7 +141,6 @@ use syntax::ast::*;
 use syntax::ast_util;
 use syntax::visit;
 use syntax::visit::vt;
-use syntax::print::pprust;
 use syntax::codemap::span;
 
 #[deriving(Encodable, Decodable)]
@@ -242,11 +162,6 @@ pub type CaptureMap = @mut HashMap<node_id, @[CaptureVar]>;
 pub type MovesMap = @mut HashSet<node_id>;
 
 /**
- * For each variable which will be moved, links to the
- * expression */
-pub type VariableMovesMap = @mut HashMap<node_id, @expr>;
-
-/**
  * Set of variable node-ids that are moved.
  *
  * Note: The `VariableMovesMap` stores expression ids that
@@ -257,7 +172,6 @@ pub type MovedVariablesSet = @mut HashSet<node_id>;
 /** See the section Output on the module comment for explanation. */
 pub struct MoveMaps {
     moves_map: MovesMap,
-    variable_moves_map: VariableMovesMap,
     moved_variables_set: MovedVariablesSet,
     capture_map: CaptureMap
 }
@@ -269,9 +183,8 @@ struct VisitContext {
 }
 
 enum UseMode {
-    MoveInWhole,         // Move the entire value.
-    MoveInPart(@expr),   // Some subcomponent will be moved
-    Read                 // Read no matter what the type.
+    Move,        // This value or something owned by it is moved.
+    Read         // Read no matter what the type.
 }
 
 pub fn compute_moves(tcx: ty::ctxt,
@@ -287,7 +200,6 @@ pub fn compute_moves(tcx: ty::ctxt,
         method_map: method_map,
         move_maps: MoveMaps {
             moves_map: @mut HashSet::new(),
-            variable_moves_map: @mut HashMap::new(),
             capture_map: @mut HashMap::new(),
             moved_variables_set: @mut HashSet::new()
         }
@@ -317,21 +229,6 @@ fn compute_modes_for_expr(expr: @expr,
     cx.consume_expr(expr, v);
 }
 
-pub impl UseMode {
-    fn component_mode(&self, expr: @expr) -> UseMode {
-        /*!
-         *
-         * Assuming that `self` is the mode for an expression E,
-         * returns the appropriate mode to use for a subexpression of E.
-         */
-
-        match *self {
-            Read | MoveInPart(_) => *self,
-            MoveInWhole => MoveInPart(expr)
-        }
-    }
-}
-
 pub impl VisitContext {
     fn consume_exprs(&self,
                      exprs: &[@expr],
@@ -347,18 +244,20 @@ pub impl VisitContext {
                     visitor: vt<VisitContext>)
     {
         /*!
-         *
          * Indicates that the value of `expr` will be consumed,
          * meaning either copied or moved depending on its type.
          */
 
-        debug!("consume_expr(expr=%?/%s)",
-               expr.id,
-               pprust::expr_to_str(expr, self.tcx.sess.intr()));
+        debug!("consume_expr(expr=%s)",
+               expr.repr(self.tcx));
 
         let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
-        let mode = self.consume_mode_for_ty(expr_ty);
-        self.use_expr(expr, mode, visitor);
+        if ty::type_moves_by_default(self.tcx, expr_ty) {
+            self.move_maps.moves_map.insert(expr.id);
+            self.use_expr(expr, Move, visitor);
+        } else {
+            self.use_expr(expr, Read, visitor);
+        };
     }
 
     fn consume_block(&self,
@@ -366,7 +265,6 @@ pub impl VisitContext {
                      visitor: vt<VisitContext>)
     {
         /*!
-         *
          * Indicates that the value of `blk` will be consumed,
          * meaning either copied or moved depending on its type.
          */
@@ -382,45 +280,19 @@ pub impl VisitContext {
         }
     }
 
-    fn consume_mode_for_ty(&self, ty: ty::t) -> UseMode {
-        /*!
-         *
-         * Selects the appropriate `UseMode` to consume a value with
-         * the type `ty`.  This will be `MoveEntireMode` if `ty` is
-         * not implicitly copyable.
-         */
-
-        let result = if ty::type_moves_by_default(self.tcx, ty) {
-            MoveInWhole
-        } else {
-            Read
-        };
-
-        debug!("consume_mode_for_ty(ty=%s) = %?",
-               ppaux::ty_to_str(self.tcx, ty), result);
-
-        return result;
-    }
-
     fn use_expr(&self,
                 expr: @expr,
                 expr_mode: UseMode,
                 visitor: vt<VisitContext>)
     {
         /*!
-         *
          * Indicates that `expr` is used with a given mode.  This will
          * in turn trigger calls to the subcomponents of `expr`.
          */
 
-        debug!("use_expr(expr=%?/%s, mode=%?)",
-               expr.id, pprust::expr_to_str(expr, self.tcx.sess.intr()),
+        debug!("use_expr(expr=%s, mode=%?)",
+               expr.repr(self.tcx),
                expr_mode);
-
-        match expr_mode {
-            MoveInWhole => { self.move_maps.moves_map.insert(expr.id); }
-            MoveInPart(_) | Read => {}
-        }
 
         // `expr_mode` refers to the post-adjustment value.  If one of
         // those adjustments is to take a reference, then it's only
@@ -429,7 +301,7 @@ pub impl VisitContext {
             Some(&@ty::AutoDerefRef(
                 ty::AutoDerefRef {
                     autoref: Some(_), _})) => Read,
-            _ => expr_mode.component_mode(expr)
+            _ => expr_mode
         };
 
         debug!("comp_mode = %?", comp_mode);
@@ -437,21 +309,13 @@ pub impl VisitContext {
         match expr.node {
             expr_path(*) | expr_self => {
                 match comp_mode {
-                    MoveInPart(entire_expr) => {
-                        self.move_maps.variable_moves_map.insert(
-                            expr.id, entire_expr);
-
+                    Move => {
                         let def = self.tcx.def_map.get_copy(&expr.id);
                         for moved_variable_node_id_from_def(def).each |&id| {
                             self.move_maps.moved_variables_set.insert(id);
                         }
                     }
                     Read => {}
-                    MoveInWhole => {
-                        self.tcx.sess.span_bug(
-                            expr.span,
-                            "Component mode can never be MoveInWhole");
-                    }
                 }
             }
 
@@ -546,19 +410,10 @@ pub impl VisitContext {
                     self.consume_arm(arm, visitor);
                 }
 
-                let by_move_bindings_present =
-                    self.arms_have_by_move_bindings(
-                        self.move_maps.moves_map, *arms);
-
-                if by_move_bindings_present {
-                    // If one of the arms moves a value out of the
-                    // discriminant, then the discriminant itself is
-                    // moved.
-                    self.consume_expr(discr, visitor);
-                } else {
-                    // Otherwise, the discriminant is merely read.
-                    self.use_expr(discr, Read, visitor);
-                }
+                // The discriminant may, in fact, be partially moved
+                // if there are by-move bindings, but borrowck deals
+                // with that itself.
+                self.use_expr(discr, Read, visitor);
             }
 
             expr_copy(base) => {
@@ -719,18 +574,17 @@ pub impl VisitContext {
          */
 
         do pat_bindings(self.tcx.def_map, pat) |bm, id, _span, _path| {
-            let mode = match bm {
-                bind_by_copy => Read,
-                bind_by_ref(_) => Read,
+            let binding_moves = match bm {
+                bind_by_copy => false,
+                bind_by_ref(_) => false,
                 bind_infer => {
                     let pat_ty = ty::node_id_to_type(self.tcx, id);
-                    self.consume_mode_for_ty(pat_ty)
+                    ty::type_moves_by_default(self.tcx, pat_ty)
                 }
             };
 
-            match mode {
-                MoveInWhole => { self.move_maps.moves_map.insert(id); }
-                MoveInPart(_) | Read => {}
+            if binding_moves {
+                self.move_maps.moves_map.insert(id);
             }
         }
     }
@@ -759,20 +613,18 @@ pub impl VisitContext {
 
     fn arms_have_by_move_bindings(&self,
                                   moves_map: MovesMap,
-                                  arms: &[arm]) -> bool
+                                  arms: &[arm]) -> Option<@pat>
     {
         for arms.each |arm| {
-            for arm.pats.each |pat| {
-                let mut found = false;
-                do pat_bindings(self.tcx.def_map, *pat) |_, node_id, _, _| {
-                    if moves_map.contains(&node_id) {
-                        found = true;
+            for arm.pats.each |&pat| {
+                for ast_util::walk_pat(pat) |p| {
+                    if moves_map.contains(&p.id) {
+                        return Some(p);
                     }
                 }
-                if found { return true; }
             }
         }
-        return false;
+        return None;
     }
 
     fn compute_captures(&self, fn_expr_id: node_id) -> @[CaptureVar] {

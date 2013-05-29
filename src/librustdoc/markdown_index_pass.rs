@@ -74,7 +74,7 @@ fn build_mod_index(
 ) -> doc::Index {
     doc::Index {
         entries: doc.items.map(|doc| {
-            item_to_entry(copy *doc, copy config)
+            item_to_entry(copy *doc, &config)
         })
     }
 }
@@ -85,14 +85,14 @@ fn build_nmod_index(
 ) -> doc::Index {
     doc::Index {
         entries: doc.fns.map(|doc| {
-            item_to_entry(doc::FnTag(copy *doc), copy config)
+            item_to_entry(doc::FnTag(copy *doc), &config)
         })
     }
 }
 
 fn item_to_entry(
     doc: doc::ItemTag,
-    config: config::Config
+    config: &config::Config
 ) -> doc::IndexEntry {
     let link = match doc {
       doc::ModTag(_) | doc::NmodTag(_)
@@ -222,13 +222,13 @@ mod test {
             config::DocPerCrate,
             ~"mod a { } fn b() { }"
         );
-        assert!((&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
+        assert!(doc.cratemod().index.get().entries[0] == doc::IndexEntry {
             kind: ~"Module",
             name: ~"a",
             brief: None,
             link: ~"#module-a"
         });
-        assert!((&doc.cratemod().index).get().entries[1] == doc::IndexEntry {
+        assert!(doc.cratemod().index.get().entries[1] == doc::IndexEntry {
             kind: ~"Function",
             name: ~"b",
             brief: None,
@@ -242,13 +242,13 @@ mod test {
             config::DocPerMod,
             ~"mod a { } fn b() { }"
         );
-        assert!((&doc.cratemod().index).get().entries[0] == doc::IndexEntry {
+        assert!(doc.cratemod().index.get().entries[0] == doc::IndexEntry {
             kind: ~"Module",
             name: ~"a",
             brief: None,
             link: ~"a.html"
         });
-        assert!((&doc.cratemod().index).get().entries[1] == doc::IndexEntry {
+        assert!(doc.cratemod().index.get().entries[1] == doc::IndexEntry {
             kind: ~"Function",
             name: ~"b",
             brief: None,
@@ -262,7 +262,7 @@ mod test {
             config::DocPerMod,
             ~"#[doc = \"test\"] mod a { }"
         );
-        assert!((&doc.cratemod().index).get().entries[0].brief
+        assert!(doc.cratemod().index.get().entries[0].brief
                 == Some(~"test"));
     }
 
@@ -272,7 +272,7 @@ mod test {
             config::DocPerCrate,
             ~"extern { fn b(); }"
         );
-        assert!((&doc.cratemod().nmods()[0].index).get().entries[0]
+        assert!(doc.cratemod().nmods()[0].index.get().entries[0]
                 == doc::IndexEntry {
                     kind: ~"Function",
                     name: ~"b",

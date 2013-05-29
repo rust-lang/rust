@@ -16,9 +16,9 @@ fn main() {
     let s = S { x: ~Bar(~42) };
     loop {
         do f(&s) |hellothere| {
-            match hellothere.x {    //~ ERROR cannot move out
+            match hellothere.x {
                 ~Foo(_) => {}
-                ~Bar(x) => io::println(x.to_str()),
+                ~Bar(x) => io::println(x.to_str()), //~ ERROR cannot move out
                 ~Baz => {}
             }
         }

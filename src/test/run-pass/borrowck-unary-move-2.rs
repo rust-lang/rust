@@ -28,5 +28,5 @@ struct wrapper(noncopyable);
 
 fn main() {
     let x1 = wrapper(noncopyable());
-    let _x2 = *x1; //~ ERROR cannot move out
+    let _x2 = *x1;
 }
