@@ -33,7 +33,7 @@ pub fn compute_restrictions(bccx: @BorrowckCtxt,
         cmt_original: cmt
     };
 
-    ctxt.compute(cmt, restr)
+    ctxt.restrict(cmt, restr)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -50,9 +50,9 @@ impl RestrictionsContext {
         self.bccx.tcx
     }
 
-    fn compute(&self,
-               cmt: mc::cmt,
-               restrictions: RestrictionSet) -> RestrictionResult {
+    fn restrict(&self,
+                cmt: mc::cmt,
+                restrictions: RestrictionSet) -> RestrictionResult {
 
         // Check for those cases where we cannot control the aliasing
         // and make sure that we are not being asked to.
@@ -76,6 +76,7 @@ impl RestrictionsContext {
             mc::cat_local(local_id) |
             mc::cat_arg(local_id) |
             mc::cat_self(local_id) => {
+                // R-Variable
                 let lp = @LpVar(local_id);
                 SafeIf(lp, ~[Restriction {loan_path: lp,
                                           set: restrictions}])
@@ -85,22 +86,30 @@ impl RestrictionsContext {
                 // When we borrow the interior of an enum, we have to
                 // ensure the enum itself is not mutated, because that
                 // could cause the type of the memory to change.
-                self.compute(cmt_base, restrictions | RESTR_MUTATE)
+                self.restrict(
+                    cmt_base,
+                    restrictions | RESTR_MUTATE | RESTR_CLAIM)
             }
 
             mc::cat_interior(cmt_base, i) => {
+                // R-Field
+                //
                 // Overwriting the base would not change the type of
                 // the memory, so no additional restrictions are
                 // needed.
-                let result = self.compute(cmt_base, restrictions);
+                let result = self.restrict(cmt_base, restrictions);
                 self.extend(result, cmt.mutbl, LpInterior(i), restrictions)
             }
 
             mc::cat_deref(cmt_base, _, mc::uniq_ptr(*)) => {
+                // R-Deref-Owned-Pointer
+                //
                 // When we borrow the interior of an owned pointer, we
                 // cannot permit the base to be mutated, because that
                 // would cause the unique pointer to be freed.
-                let result = self.compute(cmt_base, restrictions | RESTR_MUTATE);
+                let result = self.restrict(
+                    cmt_base,
+                    restrictions | RESTR_MUTATE | RESTR_CLAIM);
                 self.extend(result, cmt.mutbl, LpDeref, restrictions)
             }
 
@@ -109,16 +118,20 @@ impl RestrictionsContext {
             mc::cat_implicit_self(*) |
             mc::cat_deref(_, _, mc::region_ptr(m_imm, _)) |
             mc::cat_deref(_, _, mc::gc_ptr(m_imm)) => {
+                // R-Deref-Imm-Borrowed
                 Safe
             }
 
             mc::cat_deref(_, _, mc::region_ptr(m_const, _)) |
             mc::cat_deref(_, _, mc::gc_ptr(m_const)) => {
+                // R-Deref-Const-Borrowed
                 self.check_no_mutability_control(cmt, restrictions);
                 Safe
             }
 
             mc::cat_deref(cmt_base, _, mc::gc_ptr(m_mutbl)) => {
+                // R-Deref-Managed-Borrowed
+                //
                 // Technically, no restrictions are *necessary* here.
                 // The validity of the borrow is guaranteed
                 // dynamically.  However, nonetheless we add a
@@ -169,12 +182,15 @@ impl RestrictionsContext {
                 // mutability, we can only prevent mutation or prevent
                 // freezing if it is not aliased. Therefore, in such
                 // cases we restrict aliasing on `cmt_base`.
-                if restrictions.intersects(RESTR_MUTATE | RESTR_FREEZE) {
-                    let result = self.compute(cmt_base, restrictions | RESTR_ALIAS);
+                if restrictions != RESTR_EMPTY {
+                    // R-Deref-Mut-Borrowed-1
+                    let result = self.restrict(
+                        cmt_base,
+                        RESTR_ALIAS | RESTR_MUTATE | RESTR_CLAIM);
                     self.extend(result, cmt.mutbl, LpDeref, restrictions)
                 } else {
-                    let result = self.compute(cmt_base, restrictions);
-                    self.extend(result, cmt.mutbl, LpDeref, restrictions)
+                    // R-Deref-Mut-Borrowed-2
+                    Safe
                 }
             }
 
@@ -185,7 +201,7 @@ impl RestrictionsContext {
 
             mc::cat_stack_upvar(cmt_base) |
             mc::cat_discr(cmt_base, _) => {
-                self.compute(cmt_base, restrictions)
+                self.restrict(cmt_base, restrictions)
             }
         }
     }
@@ -233,7 +249,7 @@ impl RestrictionsContext {
     fn check_no_mutability_control(&self,
                                    cmt: mc::cmt,
                                    restrictions: RestrictionSet) {
-        if restrictions.intersects(RESTR_MUTATE | RESTR_FREEZE) {
+        if restrictions.intersects(RESTR_MUTATE | RESTR_FREEZE | RESTR_CLAIM) {
             self.bccx.report(BckError {span: self.span,
                                        cmt: cmt,
                                        code: err_freeze_aliasable_const});

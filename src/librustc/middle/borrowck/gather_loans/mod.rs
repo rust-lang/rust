@@ -19,6 +19,7 @@
 use core::prelude::*;
 
 use middle::borrowck::*;
+use middle::borrowck::move_data::MoveData;
 use mc = middle::mem_categorization;
 use middle::pat_util;
 use middle::ty::{ty_region};
@@ -35,6 +36,7 @@ use syntax::visit;
 
 mod lifetime;
 mod restrictions;
+mod gather_moves;
 
 /// Context used while gathering loans:
 ///
@@ -65,28 +67,32 @@ mod restrictions;
 struct GatherLoanCtxt {
     bccx: @BorrowckCtxt,
     id_range: id_range,
+    move_data: @mut move_data::MoveData,
     all_loans: @mut ~[Loan],
     item_ub: ast::node_id,
     repeating_ids: ~[ast::node_id]
 }
 
 pub fn gather_loans(bccx: @BorrowckCtxt,
-                    body: &ast::blk) -> (id_range, @mut ~[Loan]) {
+                    body: &ast::blk)
+                    -> (id_range, @mut ~[Loan], @mut move_data::MoveData) {
     let glcx = @mut GatherLoanCtxt {
         bccx: bccx,
         id_range: id_range::max(),
         all_loans: @mut ~[],
         item_ub: body.node.id,
-        repeating_ids: ~[body.node.id]
+        repeating_ids: ~[body.node.id],
+        move_data: @mut MoveData::new()
     };
     let v = visit::mk_vt(@visit::Visitor {visit_expr: gather_loans_in_expr,
                                           visit_block: gather_loans_in_block,
                                           visit_fn: gather_loans_in_fn,
                                           visit_stmt: add_stmt_to_map,
                                           visit_pat: add_pat_to_id_range,
+                                          visit_local: gather_loans_in_local,
                                           .. *visit::default_visitor()});
     (v.visit_block)(body, glcx, v);
-    return (glcx.id_range, glcx.all_loans);
+    return (glcx.id_range, glcx.all_loans, glcx.move_data);
 }
 
 fn add_pat_to_id_range(p: @ast::pat,
@@ -130,6 +136,35 @@ fn gather_loans_in_block(blk: &ast::blk,
     visit::visit_block(blk, this, vt);
 }
 
+fn gather_loans_in_local(local: @ast::local,
+                         this: @mut GatherLoanCtxt,
+                         vt: visit::vt<@mut GatherLoanCtxt>) {
+    if local.node.init.is_none() {
+        // Variable declarations without initializers are considered "moves":
+        let tcx = this.bccx.tcx;
+        do pat_util::pat_bindings(tcx.def_map, local.node.pat) |_, id, span, _| {
+            gather_moves::gather_decl(this.bccx,
+                                      this.move_data,
+                                      id,
+                                      span,
+                                      id);
+        }
+    } else {
+        // Variable declarations with initializers are considered "assigns":
+        let tcx = this.bccx.tcx;
+        do pat_util::pat_bindings(tcx.def_map, local.node.pat) |_, id, span, _| {
+            gather_moves::gather_assignment(this.bccx,
+                                            this.move_data,
+                                            id,
+                                            span,
+                                            @LpVar(id),
+                                            id);
+        }
+    }
+
+    visit::visit_local(local, this, vt);
+}
+
 fn gather_loans_in_expr(ex: @ast::expr,
                         this: @mut GatherLoanCtxt,
                         vt: visit::vt<@mut GatherLoanCtxt>) {
@@ -147,6 +182,13 @@ fn gather_loans_in_expr(ex: @ast::expr,
         this.guarantee_adjustments(ex, *adjustments);
     }
 
+    // If this expression is a move, gather it:
+    if this.bccx.is_move(ex.id) {
+        let cmt = this.bccx.cat_expr(ex);
+        gather_moves::gather_move_from_expr(
+            this.bccx, this.move_data, ex, cmt);
+    }
+
     // Special checks for various kinds of expressions:
     match ex.node {
       ast::expr_addr_of(mutbl, base) => {
@@ -157,6 +199,23 @@ fn gather_loans_in_expr(ex: @ast::expr,
         let scope_r = ty_region(tcx, ex.span, ty::expr_ty(tcx, ex));
         this.guarantee_valid(ex.id, ex.span, base_cmt, mutbl, scope_r);
         visit::visit_expr(ex, this, vt);
+      }
+
+      ast::expr_assign(l, _) | ast::expr_assign_op(_, l, _) => {
+          let l_cmt = this.bccx.cat_expr(l);
+          match opt_loan_path(l_cmt) {
+              Some(l_lp) => {
+                  gather_moves::gather_assignment(this.bccx, this.move_data,
+                                                  ex.id, ex.span,
+                                                  l_lp, l.id);
+              }
+              None => {
+                  // This can occur with e.g. `*foo() = 5`.  In such
+                  // cases, there is no need to check for conflicts
+                  // with moves etc, just ignore.
+              }
+          }
+          visit::visit_expr(ex, this, vt);
       }
 
       ast::expr_match(ex_v, ref arms) => {
@@ -201,6 +260,11 @@ fn gather_loans_in_expr(ex: @ast::expr,
           this.push_repeating_id(body.node.id);
           visit::visit_expr(ex, this, vt);
           this.pop_repeating_id(body.node.id);
+      }
+
+      ast::expr_fn_block(*) => {
+          gather_moves::gather_captures(this.bccx, this.move_data, ex);
+          visit::visit_expr(ex, this, vt);
       }
 
       _ => {
@@ -417,6 +481,8 @@ pub impl GatherLoanCtxt {
                             borrow_span: span,
                             cmt: mc::cmt,
                             req_mutbl: ast::mutability) {
+            //! Implements the M-* rules in doc.rs.
+
             match req_mutbl {
                 m_const => {
                     // Data of any mutability can be lent as const.
@@ -451,8 +517,8 @@ pub impl GatherLoanCtxt {
     fn restriction_set(&self, req_mutbl: ast::mutability) -> RestrictionSet {
         match req_mutbl {
             m_const => RESTR_EMPTY,
-            m_imm   => RESTR_EMPTY | RESTR_MUTATE,
-            m_mutbl => RESTR_EMPTY | RESTR_MUTATE | RESTR_FREEZE
+            m_imm   => RESTR_EMPTY | RESTR_MUTATE | RESTR_CLAIM,
+            m_mutbl => RESTR_EMPTY | RESTR_MUTATE | RESTR_CLAIM | RESTR_FREEZE
         }
     }
 
@@ -558,8 +624,11 @@ pub impl GatherLoanCtxt {
                     }
                   }
                   ast::bind_by_copy | ast::bind_infer => {
-                    // Nothing to do here; neither copies nor moves induce
-                    // borrows.
+                      // No borrows here, but there may be moves
+                      if self.bccx.is_move(pat.id) {
+                          gather_moves::gather_move_from_pat(
+                              self.bccx, self.move_data, pat, cmt);
+                      }
                   }
                 }
               }

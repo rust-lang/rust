@@ -4151,7 +4151,7 @@ pub impl Resolver {
                        bindings_list: Option<@mut HashMap<ident,node_id>>,
                        visitor: ResolveVisitor) {
         let pat_id = pattern.id;
-        do walk_pat(pattern) |pattern| {
+        for walk_pat(pattern) |pattern| {
             match pattern.node {
                 pat_ident(binding_mode, path, _)
                         if !path.global && path.idents.len() == 1 => {

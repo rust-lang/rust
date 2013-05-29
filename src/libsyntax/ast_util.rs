@@ -527,36 +527,31 @@ pub fn is_item_impl(item: @ast::item) -> bool {
     }
 }
 
-pub fn walk_pat(pat: @pat, it: &fn(@pat)) {
-    it(pat);
+pub fn walk_pat(pat: @pat, it: &fn(@pat) -> bool) -> bool {
+    if !it(pat) {
+        return false;
+    }
+
     match pat.node {
         pat_ident(_, _, Some(p)) => walk_pat(p, it),
         pat_struct(_, ref fields, _) => {
-            for fields.each |f| {
-                walk_pat(f.pat, it)
-            }
+            fields.each(|f| walk_pat(f.pat, it))
         }
         pat_enum(_, Some(ref s)) | pat_tup(ref s) => {
-            for s.each |p| {
-                walk_pat(*p, it)
-            }
+            s.each(|&p| walk_pat(p, it))
         }
         pat_box(s) | pat_uniq(s) | pat_region(s) => {
             walk_pat(s, it)
         }
         pat_vec(ref before, ref slice, ref after) => {
-            for before.each |p| {
-                walk_pat(*p, it)
-            }
-            for slice.each |p| {
-                walk_pat(*p, it)
-            }
-            for after.each |p| {
-                walk_pat(*p, it)
-            }
+            before.each(|&p| walk_pat(p, it)) &&
+                slice.each(|&p| walk_pat(p, it)) &&
+                after.each(|&p| walk_pat(p, it))
         }
         pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _) |
-        pat_enum(_, _) => { }
+        pat_enum(_, _) => {
+            true
+        }
     }
 }
 

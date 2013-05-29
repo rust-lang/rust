@@ -263,8 +263,8 @@ pub fn compile_rest(sess: Session,
         time(time_passes, ~"loop checking", ||
              middle::check_loop::check_crate(ty_cx, crate));
 
-        let middle::moves::MoveMaps {moves_map, variable_moves_map,
-                                     moved_variables_set, capture_map} =
+        let middle::moves::MoveMaps {moves_map, moved_variables_set,
+                                     capture_map} =
             time(time_passes, ~"compute moves", ||
                  middle::moves::compute_moves(ty_cx, method_map, crate));
 
@@ -274,7 +274,6 @@ pub fn compile_rest(sess: Session,
 
         time(time_passes, ~"liveness checking", ||
              middle::liveness::check_crate(ty_cx, method_map,
-                                           variable_moves_map,
                                            capture_map, crate));
 
         let (root_map, write_guard_map) =

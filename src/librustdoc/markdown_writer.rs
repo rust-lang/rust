@@ -59,20 +59,20 @@ pub fn make_writer_factory(config: config::Config) -> WriterFactory {
 
 fn markdown_writer_factory(config: config::Config) -> WriterFactory {
     let result: ~fn(page: doc::Page) -> Writer = |page| {
-        markdown_writer(copy config, page)
+        markdown_writer(&config, page)
     };
     result
 }
 
 fn pandoc_writer_factory(config: config::Config) -> WriterFactory {
     let result: ~fn(doc::Page) -> Writer = |page| {
-        pandoc_writer(copy config, page)
+        pandoc_writer(&config, page)
     };
     result
 }
 
 fn markdown_writer(
-    config: config::Config,
+    config: &config::Config,
     page: doc::Page
 ) -> Writer {
     let filename = make_local_filename(config, page);
@@ -82,11 +82,11 @@ fn markdown_writer(
 }
 
 fn pandoc_writer(
-    config: config::Config,
+    config: &config::Config,
     page: doc::Page
 ) -> Writer {
     assert!(config.pandoc_cmd.is_some());
-    let pandoc_cmd = (&config.pandoc_cmd).get();
+    let pandoc_cmd = copy *config.pandoc_cmd.get_ref();
     let filename = make_local_filename(config, page);
 
     let pandoc_args = ~[
@@ -136,15 +136,15 @@ fn generic_writer(process: ~fn(markdown: ~str)) -> Writer {
 }
 
 pub fn make_local_filename(
-    config: config::Config,
+    config: &config::Config,
     page: doc::Page
 ) -> Path {
-    let filename = make_filename(copy config, page);
+    let filename = make_filename(config, page);
     config.output_dir.push_rel(&filename)
 }
 
 pub fn make_filename(
-    config: config::Config,
+    config: &config::Config,
     page: doc::Page
 ) -> Path {
     let filename = {
@@ -247,7 +247,7 @@ mod test {
         };
         let doc = mk_doc(~"test", ~"");
         let page = doc::CratePage(doc.CrateDoc());
-        let filename = make_local_filename(config, page);
+        let filename = make_local_filename(&config, page);
         assert_eq!(filename.to_str(), ~"output/dir/test.md");
     }
 
@@ -261,7 +261,7 @@ mod test {
         };
         let doc = mk_doc(~"", ~"");
         let page = doc::CratePage(doc.CrateDoc());
-        let filename = make_local_filename(config, page);
+        let filename = make_local_filename(&config, page);
         assert_eq!(filename.to_str(), ~"output/dir/index.html");
     }
 
@@ -276,7 +276,7 @@ mod test {
         let doc = mk_doc(~"", ~"mod a { mod b { } }");
         let modb = copy doc.cratemod().mods()[0].mods()[0];
         let page = doc::ItemPage(doc::ModTag(modb));
-        let filename = make_local_filename(config, page);
+        let filename = make_local_filename(&config, page);
         assert_eq!(filename, Path("output/dir/a_b.html"));
     }
 }

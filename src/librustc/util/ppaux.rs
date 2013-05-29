@@ -801,3 +801,9 @@ impl UserString for ty::TraitRef {
         }
     }
 }
+
+impl UserString for ty::t {
+    fn user_string(&self, tcx: ctxt) -> ~str {
+        ty_to_str(tcx, *self)
+    }
+}
