@@ -10,6 +10,8 @@
 
 //! Simple ANSI color library
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use core::io;

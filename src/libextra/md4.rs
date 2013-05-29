@@ -21,6 +21,8 @@ struct Quad {
     d: u32
 }
 
+/// Calculates the md4 hash of the given slice of bytes, returning the 128-bit
+/// result as a quad of u32's
 pub fn md4(msg: &[u8]) -> Quad {
     // subtle: if orig_len is merely uint, then the code below
     // which performs shifts by 32 bits or more has undefined
@@ -105,6 +107,8 @@ pub fn md4(msg: &[u8]) -> Quad {
     return Quad {a: a, b: b, c: c, d: d};
 }
 
+/// Calculates the md4 hash of a slice of bytes, returning the hex-encoded
+/// version of the hash
 pub fn md4_str(msg: &[u8]) -> ~str {
     let Quad {a, b, c, d} = md4(msg);
     fn app(a: u32, b: u32, c: u32, d: u32, f: &fn(u32)) {
@@ -123,6 +127,8 @@ pub fn md4_str(msg: &[u8]) -> ~str {
     result
 }
 
+/// Calculates the md4 hash of a string, returning the hex-encoded version of
+/// the hash
 pub fn md4_text(msg: &str) -> ~str { md4_str(str::to_bytes(msg)) }
 
 #[test]

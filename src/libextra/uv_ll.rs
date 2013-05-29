@@ -31,6 +31,7 @@
  */
 
 #[allow(non_camel_case_types)]; // C types
+#[allow(missing_doc)];
 
 use core::prelude::*;
 
