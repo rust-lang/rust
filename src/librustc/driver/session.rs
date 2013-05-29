@@ -69,6 +69,7 @@ pub static extra_debug_info: uint = 1 << 21;
 pub static statik: uint = 1 << 22;
 pub static print_link_args: uint = 1 << 23;
 pub static no_debug_borrows: uint = 1 << 24;
+pub static lint_llvm : uint = 1 << 25;
 
 pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -107,6 +108,9 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
      (~"no-debug-borrows",
       ~"do not show where borrow checks fail",
       no_debug_borrows),
+     (~"lint-llvm",
+      ~"Run the LLVM lint pass on the pre-optimization IR",
+      lint_llvm),
     ]
 }
 
@@ -265,6 +269,7 @@ pub impl Session_ {
     fn meta_stats(@self) -> bool { self.debugging_opt(meta_stats) }
     fn asm_comments(@self) -> bool { self.debugging_opt(asm_comments) }
     fn no_verify(@self) -> bool { self.debugging_opt(no_verify) }
+    fn lint_llvm(@self) -> bool { self.debugging_opt(lint_llvm) }
     fn trace(@self) -> bool { self.debugging_opt(trace) }
     fn coherence(@self) -> bool { self.debugging_opt(coherence) }
     fn borrowck_stats(@self) -> bool { self.debugging_opt(borrowck_stats) }

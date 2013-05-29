@@ -275,7 +275,7 @@ DRIVER_CRATE := $(S)src/driver/driver.rs
 
 # FIXME: x86-ism
 LLVM_COMPONENTS=x86 arm mips ipo bitreader bitwriter linker asmparser jit mcjit \
-                interpreter
+                interpreter instrumentation
 
 define DEF_LLVM_VARS
 # The configure script defines these variables with the target triples
