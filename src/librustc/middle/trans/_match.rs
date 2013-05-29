@@ -1700,7 +1700,7 @@ pub fn trans_match_inner(scope_cx: block,
             None
         }
     };
-    let lldiscr = discr_datum.to_ref_llval(bcx);
+    let lldiscr = discr_datum.to_zeroable_ref_llval(bcx);
     compile_submatch(bcx, matches, [lldiscr], chk);
 
     let mut arm_cxs = ~[];

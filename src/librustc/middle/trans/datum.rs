@@ -105,6 +105,7 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
+use core::to_bytes;
 use syntax::ast;
 use syntax::codemap::span;
 use syntax::parse::token::special_idents;
@@ -466,6 +467,31 @@ pub impl Datum {
                     Store(bcx, self.val, slot);
                     slot
                 }
+            }
+        }
+    }
+
+    fn to_zeroable_ref_llval(&self, bcx: block) -> ValueRef {
+        /*!
+         * Returns a by-ref llvalue that can be zeroed in order to
+         * cancel cleanup. This is a kind of hokey bridge used
+         * to adapt to the match code. Please don't use it for new code.
+         */
+
+        match self.mode {
+            // All by-ref datums are zeroable, even if we *could* just
+            // cancel the cleanup.
+            ByRef(_) => self.val,
+
+            // By value datums can't be zeroed (where would you store
+            // the zero?) so we have to spill them. Add a temp cleanup
+            // for this spilled value and cancel the cleanup on this
+            // current value.
+            ByValue => {
+                let slot = self.to_ref_llval(bcx);
+                self.cancel_clean(bcx);
+                add_clean_temp_mem(bcx, slot, self.ty);
+                slot
             }
         }
     }
