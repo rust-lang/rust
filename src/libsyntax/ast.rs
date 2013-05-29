@@ -257,7 +257,6 @@ pub struct field_pat {
 
 #[deriving(Eq, Encodable, Decodable)]
 pub enum binding_mode {
-    bind_by_copy,
     bind_by_ref(mutability),
     bind_infer
 }
@@ -265,13 +264,13 @@ pub enum binding_mode {
 impl to_bytes::IterBytes for binding_mode {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
-          bind_by_copy => 0u8.iter_bytes(lsb0, f),
-
           bind_by_ref(ref m) => {
-              1u8.iter_bytes(lsb0, f) && m.iter_bytes(lsb0, f)
+              0u8.iter_bytes(lsb0, f) && m.iter_bytes(lsb0, f)
           }
 
-          bind_infer => 2u8.iter_bytes(lsb0, f),
+          bind_infer => {
+              1u8.iter_bytes(lsb0, f)
+          }
         }
     }
 }

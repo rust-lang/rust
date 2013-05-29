@@ -1640,7 +1640,7 @@ fn create_bindings_map(bcx: block, pat: @ast::pat) -> BindingsMap {
 
         let llmatch, trmode;
         match bm {
-            ast::bind_by_copy | ast::bind_infer => {
+            ast::bind_infer => {
                 // in this case, the final type of the variable will be T,
                 // but during matching we need to store a *T as explained
                 // above

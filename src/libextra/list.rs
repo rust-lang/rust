@@ -104,7 +104,7 @@ pub fn tail<T:Copy>(ls: @List<T>) -> @List<T> {
 /// Returns the first element of a list
 pub fn head<T:Copy>(ls: @List<T>) -> T {
     match *ls {
-      Cons(copy hd, _) => hd,
+      Cons(ref hd, _) => copy *hd,
       // makes me sad
       _ => fail!("head invoked on empty list")
     }
@@ -114,9 +114,9 @@ pub fn head<T:Copy>(ls: @List<T>) -> T {
 pub fn append<T:Copy>(l: @List<T>, m: @List<T>) -> @List<T> {
     match *l {
       Nil => return m,
-      Cons(copy x, xs) => {
+      Cons(ref x, xs) => {
         let rest = append(xs, m);
-        return @Cons(x, rest);
+        return @Cons(copy *x, rest);
       }
     }
 }
