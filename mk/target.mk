@@ -8,6 +8,11 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
+# This is the compile-time target-triple for the compiler. For the compiler at
+# runtime, this should be considered the host-triple. More explanation for why
+# this exists can be found on issue #2400
+export CFG_COMPILER_TRIPLE
+
 # TARGET_STAGE_N template: This defines how target artifacts are built
 # for all stage/target architecture combinations. The arguments:
 # $(1) is the stage
@@ -62,6 +67,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM_$(3)): \
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
+$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)): CFG_COMPILER_TRIPLE = $(2)
 $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)):		\
 		$$(COMPILER_CRATE) $$(COMPILER_INPUTS)		\
                 $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(3)) \
