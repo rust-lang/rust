@@ -1903,6 +1903,10 @@ pub mod llvm {
                                     Constraints: *c_char, SideEffects: Bool,
                                     AlignStack: Bool, Dialect: c_uint)
                                  -> ValueRef;
+
+        #[fast_ffi]
+        pub unsafe fn LLVMSetUnnamedAddr(Global: ValueRef, value: Bool);
+
     }
 }
 
@@ -1911,14 +1915,22 @@ pub fn SetInstructionCallConv(Instr: ValueRef, CC: CallConv) {
         llvm::LLVMSetInstructionCallConv(Instr, CC as c_uint);
     }
 }
+
 pub fn SetFunctionCallConv(Fn: ValueRef, CC: CallConv) {
     unsafe {
         llvm::LLVMSetFunctionCallConv(Fn, CC as c_uint);
     }
 }
+
 pub fn SetLinkage(Global: ValueRef, Link: Linkage) {
     unsafe {
         llvm::LLVMSetLinkage(Global, Link as c_uint);
+    }
+}
+
+pub fn set_unnamed_addr(global: ValueRef, value: bool) {
+    unsafe {
+        llvm::LLVMSetUnnamedAddr(global, value as Bool)
     }
 }
 
@@ -1927,11 +1939,13 @@ pub fn ConstICmp(Pred: IntPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef {
         llvm::LLVMConstICmp(Pred as c_ushort, V1, V2)
     }
 }
+
 pub fn ConstFCmp(Pred: RealPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef {
     unsafe {
         llvm::LLVMConstFCmp(Pred as c_ushort, V1, V2)
     }
 }
+
 /* Memory-managed object interface to type handles. */
 
 pub struct TypeNames {
