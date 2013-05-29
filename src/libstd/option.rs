@@ -341,7 +341,7 @@ pub impl<T:Copy> Option<T> {
     #[inline(always)]
     fn get(self) -> T {
         match self {
-          Some(copy x) => return x,
+          Some(x) => return x,
           None => fail!("option::get none")
         }
     }
@@ -349,7 +349,7 @@ pub impl<T:Copy> Option<T> {
     /// Returns the contained value or a default
     #[inline(always)]
     fn get_or_default(self, def: T) -> T {
-        match self { Some(copy x) => x, None => def }
+        match self { Some(x) => x, None => def }
     }
 
     /// Applies a function zero or more times until the result is none.
@@ -366,7 +366,7 @@ pub impl<T:Copy + Zero> Option<T> {
     /// Returns the contained value or zero (for this type)
     #[inline(always)]
     fn get_or_zero(self) -> T {
-        match self { Some(copy x) => x, None => Zero::zero() }
+        match self { Some(x) => x, None => Zero::zero() }
     }
 }
 

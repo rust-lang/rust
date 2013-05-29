@@ -308,7 +308,7 @@ pub impl CoherenceChecker {
                             implementation =
                                 self.create_impl_from_item(item);
                         }
-                        Some(copy existing_implementation) => {
+                        Some(existing_implementation) => {
                             implementation = existing_implementation;
                         }
                     }

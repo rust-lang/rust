@@ -774,9 +774,9 @@ impl GenericPath for WindowsPath {
 
         /* if rhs has a host set, then the whole thing wins */
         match other.host {
-            Some(copy host) => {
+            Some(ref host) => {
                 return WindowsPath {
-                    host: Some(host),
+                    host: Some(copy *host),
                     device: copy other.device,
                     is_absolute: true,
                     components: copy other.components,
@@ -787,10 +787,10 @@ impl GenericPath for WindowsPath {
 
         /* if rhs has a device set, then a part wins */
         match other.device {
-            Some(copy device) => {
+            Some(ref device) => {
                 return WindowsPath {
                     host: None,
-                    device: Some(device),
+                    device: Some(copy *device),
                     is_absolute: true,
                     components: copy other.components,
                 };

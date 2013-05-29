@@ -576,13 +576,17 @@ pub impl VisitContext {
 
         do pat_bindings(self.tcx.def_map, pat) |bm, id, _span, _path| {
             let binding_moves = match bm {
-                bind_by_copy => false,
                 bind_by_ref(_) => false,
                 bind_infer => {
                     let pat_ty = ty::node_id_to_type(self.tcx, id);
+                    debug!("pattern %? type is %s",
+                           id, pat_ty.repr(self.tcx));
                     ty::type_moves_by_default(self.tcx, pat_ty)
                 }
             };
+
+            debug!("pattern binding %?: bm=%?, binding_moves=%b",
+                   id, bm, binding_moves);
 
             if binding_moves {
                 self.move_maps.moves_map.insert(id);

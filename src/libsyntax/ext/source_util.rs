@@ -58,8 +58,8 @@ pub fn expand_file(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     base::check_zero_tts(cx, sp, tts, "file!");
 
     let topmost = topmost_expn_info(cx.backtrace().get());
-    let Loc { file: @FileMap { name: filename, _ }, _ } =
-        cx.codemap().lookup_char_pos(topmost.call_site.lo);
+    let loc = cx.codemap().lookup_char_pos(topmost.call_site.lo);
+    let filename = copy loc.file.name;
     base::MRExpr(cx.expr_str(topmost.call_site, filename))
 }
 

@@ -278,7 +278,7 @@ pub mod v6 {
     pub fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
           result::Ok(addr) => addr,
-          result::Err(copy err_data) => fail!(copy err_data.err_msg)
+          result::Err(err_data) => fail!(copy err_data.err_msg)
         }
     }
     pub fn try_parse_addr(ip: &str) -> result::Result<IpAddr,ParseAddrErr> {
