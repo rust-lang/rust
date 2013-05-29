@@ -46,9 +46,6 @@ pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::t], output: ty::t)
         let lloutputtype = type_of(cx, output);
         if !output_is_immediate {
             atys.push(T_ptr(lloutputtype));
-        } else {
-            // FIXME #6575: Eliminate this.
-            atys.push(T_ptr(T_i8()));
         }
 
         // Arg 1: Environment
@@ -334,9 +331,7 @@ pub fn llvm_type_name(cx: @CrateContext,
 }
 
 pub fn type_of_dtor(ccx: @CrateContext, self_ty: ty::t) -> TypeRef {
-    T_fn([T_ptr(T_i8()),                   // output pointer
-          T_ptr(type_of(ccx, self_ty))],   // self arg
-         T_nil())
+    T_fn([T_ptr(type_of(ccx, self_ty))] /* self */, T_nil())
 }
 
 pub fn type_of_rooted(ccx: @CrateContext, t: ty::t) -> TypeRef {
@@ -349,5 +344,5 @@ pub fn type_of_rooted(ccx: @CrateContext, t: ty::t) -> TypeRef {
 pub fn type_of_glue_fn(ccx: @CrateContext, t: ty::t) -> TypeRef {
     let tydescpp = T_ptr(T_ptr(ccx.tydesc_type));
     let llty = T_ptr(type_of(ccx, t));
-    return T_fn([T_ptr(T_nil()), T_ptr(T_nil()), tydescpp, llty], T_nil());
+    return T_fn([T_ptr(T_nil()), tydescpp, llty], T_nil());
 }
