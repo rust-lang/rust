@@ -55,12 +55,13 @@ impl PassManager {
 
 pub fn populatePassManager(pm: &mut PassManager, level:session::OptLevel) {
     unsafe {
+        // We add a lot of normally-unused prototypes, so always strip them
+        // straight away, later passes will get rid of any that are optimized
+        // away
+        pm.addPass(llvm::LLVMCreateStripDeadPrototypesPass());
         if level == session::No {
             pm.addPass(llvm::LLVMCreateAlwaysInlinerPass());
 
-            // We add a lot of unused prototypes, so strip them no matter
-            // what
-            pm.addPass(llvm::LLVMCreateStripDeadPrototypesPass());
             return;
         }
 
@@ -81,6 +82,13 @@ pub fn populatePassManager(pm: &mut PassManager, level:session::OptLevel) {
 
         pm.addPass(llvm::LLVMCreatePruneEHPass());
 
+        if level == session::Aggressive {
+            // Do this before inlining, since inlining might
+            // make minor changes to functions that mean they
+            // can't be merged, despite being almost identical
+            pm.addPass(llvm::LLVMCreateMergeFunctionsPass());
+        }
+
         match level {
             session::Less       => pm.addPass(llvm::LLVMCreateFunctionInliningPass(200)),
             session::Default    => pm.addPass(llvm::LLVMCreateFunctionInliningPass(225)),
@@ -94,8 +102,6 @@ pub fn populatePassManager(pm: &mut PassManager, level:session::OptLevel) {
             pm.addPass(llvm::LLVMCreateArgumentPromotionPass());
         }
 
-        pm.addPass(llvm::LLVMCreateSROAPass());
-
         pm.addPass(llvm::LLVMCreateEarlyCSEPass());
         pm.addPass(llvm::LLVMCreateSimplifyLibCallsPass());
         pm.addPass(llvm::LLVMCreateJumpThreadingPass());
@@ -108,8 +114,6 @@ pub fn populatePassManager(pm: &mut PassManager, level:session::OptLevel) {
         pm.addPass(llvm::LLVMCreateReassociatePass());
         pm.addPass(llvm::LLVMCreateLoopRotatePass());
         pm.addPass(llvm::LLVMCreateLICMPass());
-
-        pm.addPass(llvm::LLVMCreateLoopUnswitchPass());
 
         pm.addPass(llvm::LLVMCreateInstructionCombiningPass());
         pm.addPass(llvm::LLVMCreateIndVarSimplifyPass());
@@ -134,16 +138,17 @@ pub fn populatePassManager(pm: &mut PassManager, level:session::OptLevel) {
 
         pm.addPass(llvm::LLVMCreateBBVectorizePass());
         pm.addPass(llvm::LLVMCreateInstructionCombiningPass());
+        pm.addPass(llvm::LLVMCreateEarlyCSEPass());
+
+        pm.addPass(llvm::LLVMCreateLoopUnrollPass());
+
+        pm.addPass(llvm::LLVMCreateAggressiveDCEPass());
+        pm.addPass(llvm::LLVMCreateCFGSimplificationPass());
+        pm.addPass(llvm::LLVMCreateInstructionSimplifierPass());
+
         if level != session::Less {
             pm.addPass(llvm::LLVMCreateGlobalDCEPass());
             pm.addPass(llvm::LLVMCreateConstantMergePass());
         }
-
-        if level == session::Aggressive {
-            pm.addPass(llvm::LLVMCreateMergeFunctionsPass());
-        }
-
-        pm.addPass(llvm::LLVMCreateStripDeadPrototypesPass());
-
     }
 }
