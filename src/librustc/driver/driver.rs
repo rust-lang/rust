@@ -679,11 +679,24 @@ pub fn build_session_options(binary: @~str,
     let android_cross_path = getopts::opt_maybe_str(
         matches, "android-cross-path");
 
+    let custom_passes = match getopts::opt_maybe_str(matches, "passes") {
+        None => ~[],
+        Some(s) => {
+            let mut o = ~[];
+            for s.each_split(|c| c == ' ' || c == ',') |s| {
+                let s = s.trim().to_owned();
+                o.push(s);
+            }
+            o
+        }
+    };
+
     let sopts = @session::options {
         crate_type: crate_type,
         is_static: statik,
         gc: gc,
         optimize: opt_level,
+        custom_passes: custom_passes,
         debuginfo: debuginfo,
         extra_debuginfo: extra_debuginfo,
         lint_opts: lint_opts,
@@ -785,6 +798,9 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
   optopt("o", "",     "Write output to <filename>", "FILENAME"),
   optopt("", "opt-level",
                         "Optimize with possible levels 0-3", "LEVEL"),
+  optopt("", "passes", "Comma or space separated list of pass names to use. \
+                        Overrides the default passes for optimization levels,\n\
+                        a value of \"list\" will list the available passes.", "NAMES"),
   optopt( "",  "out-dir",
                         "Write output to compiler-chosen filename
                           in <dir>", "DIR"),
