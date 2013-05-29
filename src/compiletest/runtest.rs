@@ -378,7 +378,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
             was_expected = true;
         }
 
-        if !was_expected && is_compiler_error_or_warning(str::to_owned(line)) {
+        if !was_expected && is_compiler_error_or_warning(line) {
             fatal_ProcRes(fmt!("unexpected compiler error or warning: '%s'",
                                line),
                           ProcRes);
@@ -596,8 +596,7 @@ fn make_lib_name(config: &config, auxfile: &Path, testfile: &Path) -> Path {
 }
 
 fn make_exe_name(config: &config, testfile: &Path) -> Path {
-    Path(output_base_name(config, testfile).to_str() +
-            str::to_owned(os::EXE_SUFFIX))
+    Path(output_base_name(config, testfile).to_str() + os::EXE_SUFFIX)
 }
 
 fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
@@ -606,7 +605,7 @@ fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
     // then split apart its command
     let toolargs = split_maybe_args(&config.runtool);
 
-    let mut args = toolargs + ~[make_exe_name(config, testfile).to_str()];
+    let mut args = toolargs + [make_exe_name(config, testfile).to_str()];
     let prog = args.shift();
     return ProcArgs {prog: prog, args: args};
 }
@@ -655,7 +654,7 @@ fn make_cmdline(_libpath: &str, prog: &str, args: &[~str]) -> ~str {
 #[cfg(target_os = "win32")]
 fn make_cmdline(libpath: &str, prog: &str, args: &[~str]) -> ~str {
     fmt!("%s %s %s", lib_path_cmd_prefix(libpath), prog,
-         str::connect(args, ~" "))
+         str::connect(args, " "))
 }
 
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
@@ -776,8 +775,8 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     for args.args.each |tv| {
         newcmd_out.push_str(" ");
         newcmd_err.push_str(" ");
-        newcmd_out.push_str(tv.to_owned());
-        newcmd_err.push_str(tv.to_owned());
+        newcmd_out.push_str(*tv);
+        newcmd_err.push_str(*tv);
     }
 
     newcmd_out.push_str(" 2>/dev/null");

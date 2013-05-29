@@ -741,7 +741,6 @@ pub fn mangle_internal_name_by_seq(ccx: @CrateContext, flav: &str) -> ~str {
 
 
 pub fn output_dll_filename(os: session::os, lm: LinkMeta) -> ~str {
-    let libname = fmt!("%s-%s-%s", lm.name, lm.extras_hash, lm.vers);
     let (dll_prefix, dll_suffix) = match os {
         session::os_win32 => (win32::DLL_PREFIX, win32::DLL_SUFFIX),
         session::os_macos => (macos::DLL_PREFIX, macos::DLL_SUFFIX),
@@ -749,8 +748,7 @@ pub fn output_dll_filename(os: session::os, lm: LinkMeta) -> ~str {
         session::os_android => (android::DLL_PREFIX, android::DLL_SUFFIX),
         session::os_freebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
     };
-    return str::to_owned(dll_prefix) + libname +
-           str::to_owned(dll_suffix);
+    fmt!("%s%s-%s-%s%s", dll_prefix, lm.name, lm.extras_hash, lm.vers, dll_suffix)
 }
 
 // If the user wants an exe generated we need to invoke

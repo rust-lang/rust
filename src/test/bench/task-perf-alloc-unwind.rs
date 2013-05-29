@@ -96,7 +96,7 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
                 fn_box: || @Cons((), fn_box()),
                 tuple: (@Cons((), st.tuple.first()),
                         ~Cons((), @*st.tuple.second())),
-                vec: st.vec + ~[@Cons((), *st.vec.last())],
+                vec: st.vec + [@Cons((), *st.vec.last())],
                 res: r(@Cons((), st.res._l))
             }
           }
