@@ -86,8 +86,6 @@ delegate!(
     fn erfc(n: c_float) -> c_float = c_float_utils::erfc,
     fn exp_m1(n: c_float) -> c_float = c_float_utils::exp_m1,
     fn abs_sub(a: c_float, b: c_float) -> c_float = c_float_utils::abs_sub,
-    fn fmax(a: c_float, b: c_float) -> c_float = c_float_utils::fmax,
-    fn fmin(a: c_float, b: c_float) -> c_float = c_float_utils::fmin,
     fn next_after(x: c_float, y: c_float) -> c_float = c_float_utils::next_after,
     fn frexp(n: c_float, value: &mut c_int) -> c_float = c_float_utils::frexp,
     fn hypot(x: c_float, y: c_float) -> c_float = c_float_utils::hypot,
@@ -146,6 +144,16 @@ pub fn ge(x: f32, y: f32) -> bool { return x >= y; }
 
 #[inline(always)]
 pub fn gt(x: f32, y: f32) -> bool { return x > y; }
+
+#[inline(always)]
+pub fn fmax(x: f32, y: f32) -> f32 {
+    if x >= y || y.is_NaN() { x } else { y }
+}
+
+#[inline(always)]
+pub fn fmin(x: f32, y: f32) -> f32 {
+    if x <= y || y.is_NaN() { x } else { y }
+}
 
 
 // FIXME (#1999): replace the predicates below with llvm intrinsics or

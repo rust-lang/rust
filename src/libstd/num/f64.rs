@@ -87,8 +87,6 @@ delegate!(
     fn erfc(n: c_double) -> c_double = c_double_utils::erfc,
     fn exp_m1(n: c_double) -> c_double = c_double_utils::exp_m1,
     fn abs_sub(a: c_double, b: c_double) -> c_double = c_double_utils::abs_sub,
-    fn fmax(a: c_double, b: c_double) -> c_double = c_double_utils::fmax,
-    fn fmin(a: c_double, b: c_double) -> c_double = c_double_utils::fmin,
     fn next_after(x: c_double, y: c_double) -> c_double = c_double_utils::next_after,
     fn frexp(n: c_double, value: &mut c_int) -> c_double = c_double_utils::frexp,
     fn hypot(x: c_double, y: c_double) -> c_double = c_double_utils::hypot,
@@ -172,6 +170,15 @@ pub fn ge(x: f64, y: f64) -> bool { return x >= y; }
 #[inline(always)]
 pub fn gt(x: f64, y: f64) -> bool { return x > y; }
 
+#[inline(always)]
+pub fn fmax(x: f64, y: f64) -> f64 {
+    if x >= y || y.is_NaN() { x } else { y }
+}
+
+#[inline(always)]
+pub fn fmin(x: f64, y: f64) -> f64 {
+    if x <= y || y.is_NaN() { x } else { y }
+}
 
 // FIXME (#1999): add is_normal, is_subnormal, and fpclassify
 
