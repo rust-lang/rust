@@ -88,6 +88,9 @@ mod work_queue;
 /// A parallel queue.
 mod message_queue;
 
+/// A parallel data structure for tracking sleeping schedulers.
+mod sleeper_list;
+
 /// Stack segments and caching.
 mod stack;
 
