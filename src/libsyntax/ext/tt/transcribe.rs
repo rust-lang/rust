@@ -205,8 +205,8 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
         } else { /* repeat */
             r.stack.idx = 0u;
             r.repeat_idx[r.repeat_idx.len() - 1u] += 1u;
-            match r.stack.sep {
-              Some(copy tk) => {
+            match copy r.stack.sep {
+              Some(tk) => {
                 r.cur_tok = tk; /* repeat same span, I guess */
                 return ret_val;
               }
@@ -216,8 +216,8 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
     }
     loop { /* because it's easiest, this handles `tt_delim` not starting
     with a `tt_tok`, even though it won't happen */
-        match r.stack.forest[r.stack.idx] {
-          tt_delim(copy tts) => {
+        match copy r.stack.forest[r.stack.idx] {
+          tt_delim(tts) => {
             r.stack = @mut TtFrame {
                 forest: @mut tts,
                 idx: 0u,
@@ -227,13 +227,13 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             };
             // if this could be 0-length, we'd need to potentially recur here
           }
-          tt_tok(sp, copy tok) => {
+          tt_tok(sp, tok) => {
             r.cur_span = sp;
             r.cur_tok = tok;
             r.stack.idx += 1u;
             return ret_val;
           }
-          tt_seq(sp, copy tts, copy sep, zerok) => {
+          tt_seq(sp, tts, sep, zerok) => {
             let t = tt_seq(sp, copy tts, copy sep, zerok);
             match lockstep_iter_size(&t, r) {
               lis_unconstrained => {
