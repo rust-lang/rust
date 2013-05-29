@@ -376,6 +376,7 @@ opt fast-make 0 "use .gitmodules as timestamp for submodule deps"
 opt manage-submodules 1 "let the build manage the git submodules"
 opt mingw-cross 0 "cross-compile for win32 using mingw"
 opt clang 0 "prefer clang to gcc for building the runtime"
+opt ccache 0 "invoke gcc/clang via ccache to reuse object files between builds"
 opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
 opt pax-flags 0 "apply PaX flags to rustc binaries (required for GRSecurity/PaX-patched kernels)"
 valopt prefix "/usr/local" "set installation prefix"
@@ -421,6 +422,7 @@ else
 fi
 
 probe CFG_CLANG            clang++
+probe CFG_CCACHE           ccache
 probe CFG_GCC              gcc
 probe CFG_LD               ld
 probe CFG_VALGRIND         valgrind
@@ -569,6 +571,16 @@ then
     esac
 else
     CFG_C_COMPILER="gcc"
+fi
+
+if [ ! -z "$CFG_ENABLE_CCACHE" ]
+then
+    if [ -z "$CFG_CCACHE" ]
+    then
+        err "ccache requested but not found"
+    fi
+
+    CFG_C_COMPILER="ccache $CFG_C_COMPILER"
 fi
 
 # a little post-processing of various config values
@@ -825,20 +837,35 @@ do
                    --enable-bindings=none --disable-threads \
                    --disable-pthreads"
 
-        if [ "$CFG_C_COMPILER" = "clang" ]
-        then
+        case "$CFG_C_COMPILER" in
+            ("ccache clang")
+            LLVM_CXX_32="ccache clang++ -m32 -Qunused-arguments"
+            LLVM_CC_32="ccache clang -m32 -Qunused-arguments"
+
+            LLVM_CXX_64="ccache clang++ -Qunused-arguments"
+            LLVM_CC_64="ccache clang -Qunused-arguments"
+            ;;
+            ("clang")
             LLVM_CXX_32="clang++ -m32"
             LLVM_CC_32="clang -m32"
 
             LLVM_CXX_64="clang++"
             LLVM_CC_64="clang"
-        else
+            ;;
+            ("ccache gcc")
+            LLVM_CXX_32="ccache g++ -m32"
+            LLVM_CC_32="ccache gcc -m32"
+
+            LLVM_CXX_64="ccache g++"
+            LLVM_CC_64="ccache gcc"
+            ;;
+            ("gcc")
             LLVM_CXX_32="g++ -m32"
             LLVM_CC_32="gcc -m32"
 
             LLVM_CXX_64="g++"
             LLVM_CC_64="gcc"
-        fi
+        esac
 
         LLVM_CFLAGS_32="-m32"
         LLVM_CXXFLAGS_32="-m32"
@@ -933,6 +960,14 @@ if [ ! -z "$CFG_ENABLE_PAX_FLAGS" ]
 then
     putvar CFG_ENABLE_PAX_FLAGS
     putvar CFG_PAXCTL
+fi
+
+# Avoid spurious warnings from clang by feeding it original source on
+# ccache-miss rather than preprocessed input.
+if [ ! -z "$CFG_ENABLE_CCACHE" ] && [ ! -z "$CFG_ENABLE_CLANG" ]
+then
+    CFG_CCACHE_CPP2=1
+    putvar CFG_CCACHE_CPP2
 fi
 
 if [ ! -z $BAD_PANDOC ]
