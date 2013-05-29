@@ -158,6 +158,7 @@ pub fn start(_argc: int, _argv: **u8, crate_map: *u8, main: ~fn()) -> int {
     let work_queue = WorkQueue::new();
     let sleepers = SleeperList::new();
     let mut sched = ~Scheduler::new(loop_, work_queue, sleepers);
+    sched.no_sleep = true;
     let main_task = ~Coroutine::new(&mut sched.stack_pool, main);
 
     sched.enqueue_task(main_task);
