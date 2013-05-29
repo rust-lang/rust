@@ -753,6 +753,99 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
             copy_result.out, copy_result.err));
     }
 
+    logv(config, fmt!("executing (%s) %s", config.target, cmdline));
+
+   
+    let mut runargs = ~[];
+    let mut exitcode : int = 1;
+    let mut maxtry = 10;
+
+    // sometimes code generates exit code 1 which is "1 : General unknown error"
+    // in this case, force to retry
+//    while exitcode == 1 && maxtry > 0 {
+        // since adb shell doesnot forward internal result (exit code) and 
+        // distingush stderr and stdout, adb_run_wrapper is used
+
+        runargs.push(~"shell");
+        runargs.push(fmt!("%s/adb_run_wrapper.sh", config.adb_test_dir));
+        runargs.push(fmt!("%s", prog_short));
+
+        for args.args.each |tv| {
+            runargs.push(tv.to_owned());
+        }
+
+        procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""));
+
+        // get exitcode of result
+        runargs = ~[];
+
+        runargs.push(~"shell");
+        runargs.push(~"cat");
+        runargs.push(fmt!("%s/%s.exitcode", config.adb_test_dir, prog_short));
+
+        let procsrv::Result{ out: exitcode_out, err: exitcode_err, status: exitcode_status } =
+            procsrv::run("", config.adb_path, runargs, ~[(~"",~"")],
+                         Some(~""));
+
+        exitcode = 0;
+        for str::each_char(exitcode_out) |c| {
+            if !char::is_digit(c) { break; }
+            exitcode = exitcode * 10 + match c {
+                '0' .. '9' => c as int - ('0' as int),
+                _ => 0,
+            }
+        }
+        maxtry = maxtry - 1;
+//        unsafe { libc::sleep(1); }
+//    }
+
+    // get stdout of result
+    runargs = ~[]; 
+    runargs.push(~"shell");
+    runargs.push(~"cat");
+    runargs.push(fmt!("%s/%s.stdout", config.adb_test_dir, prog_short));
+
+    let procsrv::Result{ out: stdout_out, err: stdout_err, status: stdout_status } =
+            procsrv::run("", config.adb_path, runargs, ~[(~"",~"")],
+                         Some(~""));
+
+    // get stderr of result
+    runargs = ~[]; 
+    runargs.push(~"shell");
+    runargs.push(~"cat");
+    runargs.push(fmt!("%s/%s.stderr", config.adb_test_dir, prog_short));
+
+    let procsrv::Result{ out: stderr_out, err: stderr_err, status: stderr_status } =
+            procsrv::run("", config.adb_path, runargs, ~[(~"",~"")],
+                         Some(~""));
+
+    dump_output(config, testfile, stdout_out, stderr_out);
+
+    ProcRes {status: exitcode, stdout: stdout_out, stderr: stderr_out, cmdline: cmdline }
+}
+
+fn _arm_exec_compiled_test2(config: &config, props: &TestProps,
+                      testfile: &Path) -> ProcRes {
+
+    let args = make_run_args(config, props, testfile);
+    let cmdline = make_cmdline("", args.prog, args.args);
+
+    // get bare program string
+    let mut tvec = ~[];
+    for str::each_split_char(args.prog, '/') |ts| { tvec.push(ts.to_owned()) }
+    let prog_short = tvec.pop();
+
+    // copy to target
+    let copy_result = procsrv::run("", config.adb_path,
+        [~"push", copy args.prog, copy config.adb_test_dir],
+        ~[(~"",~"")], Some(~""));
+
+    if config.verbose {
+        io::stdout().write_str(fmt!("push (%s) %s %s %s",
+            config.target, args.prog,
+            copy_result.out, copy_result.err));
+    }
+
     // execute program
     logv(config, fmt!("executing (%s) %s", config.target, cmdline));
 
