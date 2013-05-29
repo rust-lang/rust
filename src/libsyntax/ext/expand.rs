@@ -1480,6 +1480,8 @@ mod test {
                 // other, so the result of the whole thing should be "let z_123 = 3; z_123"
                 @"macro_rules! g (($x:ident) => ({macro_rules! f(($y:ident)=>({let $y=3;$x}));f!($x)}))
                    fn a(){g!(z)}"
+                // create a really evil test case where a $x appears inside a binding of $x but *shouldnt*
+                // bind because it was inserted by a different macro....
             ];
         for s in teststrs.iter() {
             // we need regexps to test these!
