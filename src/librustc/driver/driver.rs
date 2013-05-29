@@ -172,73 +172,75 @@ pub enum compile_upto {
 
 // For continuing compilation after a parsed crate has been
 // modified
+
+
 #[fixed_stack_segment]
 pub fn compile_rest(sess: Session,
                     cfg: ast::crate_cfg,
                     upto: compile_upto,
                     outputs: Option<@OutputFilenames>,
                     curr: Option<@ast::crate>)
-                 -> (@ast::crate, Option<ty::ctxt>) {
+    -> (Option<@ast::crate>, Option<ty::ctxt>) {
+
     let time_passes = sess.time_passes();
-    let mut crate = curr.get();
-
-    *sess.building_library = session::building_library(
-        sess.opts.crate_type, crate, sess.opts.test);
-
-    crate = time(time_passes, ~"expansion", ||
-        syntax::ext::expand::expand_crate(sess.parse_sess, copy cfg,
-                                          crate));
-
-    crate = time(time_passes, ~"configuration", ||
-        front::config::strip_unconfigured_items(crate));
-
-    crate = time(time_passes, ~"maybe building test harness", ||
-        front::test::modify_for_testing(sess, crate));
-
-    if upto == cu_expand { return (crate, None); }
-
-    crate = time(time_passes, ~"intrinsic injection", ||
-        front::intrinsic_inject::inject_intrinsic(sess, crate));
-
-    crate = time(time_passes, ~"extra injection", ||
-        front::std_inject::maybe_inject_libstd_ref(sess, crate));
-
-    let ast_map = time(time_passes, ~"ast indexing", ||
-            syntax::ast_map::map_crate(sess.diagnostic(), crate));
-
-    time(time_passes, ~"external crate/lib resolution", ||
-        creader::read_crates(sess.diagnostic(), crate, sess.cstore,
-                             sess.filesearch,
-                             session::sess_os_to_meta_os(sess.targ_cfg.os),
-                             sess.opts.is_static,
-                             sess.parse_sess.interner));
-
-    let lang_items = time(time_passes, ~"language item collection", ||
-         middle::lang_items::collect_language_items(crate, sess));
-
-    let middle::resolve::CrateMap {
-        def_map: def_map,
-        exp_map2: exp_map2,
-        trait_map: trait_map
-    } =
-        time(time_passes, ~"resolution", ||
-             middle::resolve::resolve_crate(sess, lang_items, crate));
-
-    time(time_passes, ~"looking for entry point",
-         || middle::entry::find_entry_point(sess, crate, ast_map));
-
-    let freevars = time(time_passes, ~"freevar finding", ||
-        freevars::annotate_freevars(def_map, crate));
-
-    let region_map = time(time_passes, ~"region resolution", ||
-        middle::region::resolve_crate(sess, def_map, crate));
-
-    let rp_set = time(time_passes, ~"region parameterization inference", ||
-        middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
-
-    let outputs = outputs.get();
 
     let (llmod, link_meta) = {
+
+        let mut crate = curr.unwrap();
+
+        *sess.building_library = session::building_library(
+            sess.opts.crate_type, crate, sess.opts.test);
+
+        crate = time(time_passes, ~"expansion", ||
+                     syntax::ext::expand::expand_crate(sess.parse_sess, copy cfg,
+                                                       crate));
+
+        crate = time(time_passes, ~"configuration", ||
+                     front::config::strip_unconfigured_items(crate));
+
+        crate = time(time_passes, ~"maybe building test harness", ||
+                     front::test::modify_for_testing(sess, crate));
+
+        if upto == cu_expand { return (Some(crate), None); }
+
+        crate = time(time_passes, ~"intrinsic injection", ||
+                     front::intrinsic_inject::inject_intrinsic(sess, crate));
+
+        crate = time(time_passes, ~"extra injection", ||
+                     front::std_inject::maybe_inject_libstd_ref(sess, crate));
+
+        let ast_map = time(time_passes, ~"ast indexing", ||
+                           syntax::ast_map::map_crate(sess.diagnostic(), crate));
+
+        time(time_passes, ~"external crate/lib resolution", ||
+             creader::read_crates(sess.diagnostic(), crate, sess.cstore,
+                                  sess.filesearch,
+                                  session::sess_os_to_meta_os(sess.targ_cfg.os),
+                                  sess.opts.is_static,
+                                  sess.parse_sess.interner));
+
+        let lang_items = time(time_passes, ~"language item collection", ||
+                              middle::lang_items::collect_language_items(crate, sess));
+
+        let middle::resolve::CrateMap {
+            def_map: def_map,
+            exp_map2: exp_map2,
+            trait_map: trait_map
+        } =
+            time(time_passes, ~"resolution", ||
+                 middle::resolve::resolve_crate(sess, lang_items, crate));
+
+        time(time_passes, ~"looking for entry point",
+             || middle::entry::find_entry_point(sess, crate, ast_map));
+
+        let freevars = time(time_passes, ~"freevar finding", ||
+                            freevars::annotate_freevars(def_map, crate));
+
+        let region_map = time(time_passes, ~"region resolution", ||
+                              middle::region::resolve_crate(sess, def_map, crate));
+
+        let rp_set = time(time_passes, ~"region parameterization inference", ||
+                          middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
 
         let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
                                 region_map, rp_set, lang_items);
@@ -255,7 +257,7 @@ pub fn compile_rest(sess: Session,
              middle::check_const::check_crate(sess, crate, ast_map, def_map,
                                               method_map, ty_cx));
 
-        if upto == cu_typeck { return (crate, Some(ty_cx)); }
+        if upto == cu_typeck { return (Some(crate), Some(ty_cx)); }
 
         time(time_passes, ~"privacy checking", ||
              middle::privacy::check_crate(ty_cx, &method_map, crate));
@@ -288,7 +290,7 @@ pub fn compile_rest(sess: Session,
         time(time_passes, ~"lint checking", ||
              lint::check_crate(ty_cx, crate));
 
-        if upto == cu_no_trans { return (crate, Some(ty_cx)); }
+        if upto == cu_no_trans { return (Some(crate), Some(ty_cx)); }
 
         let maps = astencode::Maps {
             root_map: root_map,
@@ -299,13 +301,14 @@ pub fn compile_rest(sess: Session,
             capture_map: capture_map
         };
 
+        let outputs = outputs.get_ref();
         time(time_passes, ~"translation", ||
              trans::base::trans_crate(sess, crate, ty_cx,
                                       &outputs.obj_filename,
                                       exp_map2, maps))
-
     };
 
+    let outputs = outputs.get_ref();
     if (sess.opts.debugging_opts & session::print_link_args) != 0 {
         io::println(str::connect(link::link_args(sess,
             &outputs.obj_filename, &outputs.out_filename, link_meta), " "));
@@ -334,24 +337,24 @@ pub fn compile_rest(sess: Session,
         (sess.opts.is_static && *sess.building_library)   ||
         sess.opts.jit;
 
-    if stop_after_codegen { return (crate, None); }
+    if stop_after_codegen { return (None, None); }
 
     time(time_passes, ~"linking", ||
          link::link_binary(sess,
                            &outputs.obj_filename,
                            &outputs.out_filename, link_meta));
 
-    return (crate, None);
+    return (None, None);
 }
 
 pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
                 input: &input, upto: compile_upto,
                 outputs: Option<@OutputFilenames>)
-    -> (@ast::crate, Option<ty::ctxt>) {
+    -> (Option<@ast::crate>, Option<ty::ctxt>) {
     let time_passes = sess.time_passes();
     let crate = time(time_passes, ~"parsing",
                          || parse_input(sess, copy cfg, input) );
-    if upto == cu_parse { return (crate, None); }
+    if upto == cu_parse { return (Some(crate), None); }
 
     compile_rest(sess, cfg, upto, outputs, Some(crate))
 }
@@ -436,7 +439,7 @@ pub fn pretty_print_input(sess: Session, cfg: ast::crate_cfg, input: &input,
     let src = sess.codemap.get_filemap(source_name(input)).src;
     do io::with_str_reader(*src) |rdr| {
         pprust::print_crate(sess.codemap, sess.parse_sess.interner,
-                            sess.span_diagnostic, crate,
+                            sess.span_diagnostic, crate.unwrap(),
                             source_name(input),
                             rdr, io::stdout(), ann, is_expanded);
     }

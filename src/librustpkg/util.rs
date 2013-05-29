@@ -426,7 +426,7 @@ pub fn compile_crate_from_input(input: &driver::input,
             debug!("Calling compile_upto, outputs = %?", outputs);
             let (crate, _) = driver::compile_upto(sess, copy cfg, input,
                                                   driver::cu_parse, Some(outputs));
-            let mut crate = crate;
+            let mut crate = crate.unwrap();
 
             debug!("About to inject link_meta info...");
             // Inject the inferred link_meta info if it's not already there

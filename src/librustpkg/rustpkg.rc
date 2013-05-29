@@ -101,7 +101,7 @@ impl<'self> PkgScript<'self> {
             input: input,
             sess: sess,
             cfg: cfg,
-            crate: crate,
+            crate: crate.unwrap(),
             build_dir: work_dir
         }
     }
