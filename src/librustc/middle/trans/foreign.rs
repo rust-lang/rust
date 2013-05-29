@@ -692,19 +692,15 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                   fcx.llretptr.get());
         }
         ~"move_val" => {
-            // Create a datum reflecting the value being moved:
-            //
-            // - the datum will be by ref if the value is non-immediate;
-            //
-            // - the datum has a RevokeClean source because, that way,
-            //   the `move_to()` method does not feel compelled to
-            //   zero out the memory where the datum resides.  Zeroing
-            //   is not necessary since, for intrinsics, there is no
-            //   cleanup to concern ourselves with.
+            // Create a datum reflecting the value being moved.
+            // Use `appropriate_mode` so that the datum is by ref
+            // if the value is non-immediate. Note that, with
+            // intrinsics, there are no argument cleanups to
+            // concern ourselves with.
             let tp_ty = substs.tys[0];
             let mode = appropriate_mode(tp_ty);
             let src = Datum {val: get_param(decl, first_real_arg + 1u),
-                             ty: tp_ty, mode: mode, source: RevokeClean};
+                             ty: tp_ty, mode: mode};
             bcx = src.move_to(bcx, DROP_EXISTING,
                               get_param(decl, first_real_arg));
         }
@@ -713,7 +709,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             let tp_ty = substs.tys[0];
             let mode = appropriate_mode(tp_ty);
             let src = Datum {val: get_param(decl, first_real_arg + 1u),
-                             ty: tp_ty, mode: mode, source: RevokeClean};
+                             ty: tp_ty, mode: mode};
             bcx = src.move_to(bcx, INIT, get_param(decl, first_real_arg));
         }
         ~"min_align_of" => {
@@ -832,7 +828,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                 }
             });
             let datum = Datum {val: get_param(decl, first_real_arg),
-                               mode: ByRef, ty: fty, source: ZeroMem};
+                               mode: ByRef(ZeroMem), ty: fty};
             let arg_vals = ~[frameaddress_val];
             bcx = trans_call_inner(
                 bcx, None, fty, ty::mk_nil(),
