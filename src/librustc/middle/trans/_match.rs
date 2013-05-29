@@ -674,8 +674,8 @@ pub fn enter_tup<'r>(bcx: block,
     let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
         match p.node {
-            ast::pat_tup(/*bad*/copy elts) => {
-                Some(elts)
+            ast::pat_tup(ref elts) => {
+                Some(copy *elts)
             }
             _ => {
                 assert_is_binding_or_wild(bcx, p);
@@ -702,7 +702,7 @@ pub fn enter_tuple_struct<'r>(bcx: block,
     let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
         match p.node {
-            ast::pat_enum(_, Some(/*bad*/copy elts)) => Some(elts),
+            ast::pat_enum(_, Some(ref elts)) => Some(copy *elts),
             _ => {
                 assert_is_binding_or_wild(bcx, p);
                 Some(vec::from_elem(n_elts, dummy))
