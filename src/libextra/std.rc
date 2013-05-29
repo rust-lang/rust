@@ -27,8 +27,12 @@ not required in or otherwise suitable for the core library.
 #[crate_type = "lib"];
 
 #[deny(non_camel_case_types)];
+#[deny(missing_doc)];
 
-#[no_core];
+// NOTE: remove these two attributes after the next snapshot
+#[no_core]; // for stage0
+#[allow(unrecognized_lint)]; // otherwise stage0 is seriously ugly
+
 #[no_std];
 
 extern mod core(name = "std", vers = "0.7-pre");

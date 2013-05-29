@@ -11,12 +11,16 @@
 use core::io::{Reader, BytesReader};
 use core::io;
 
+/// An implementation of the io::Reader interface which reads a buffer of bytes
 pub struct BufReader {
+    /// The buffer of bytes to read
     buf: ~[u8],
+    /// The current position in the buffer of bytes
     pos: @mut uint
 }
 
-pub impl BufReader {
+impl BufReader {
+    /// Creates a new buffer reader for the specified buffer
     pub fn new(v: ~[u8]) -> BufReader {
         BufReader {
             buf: v,
@@ -24,7 +28,7 @@ pub impl BufReader {
         }
     }
 
-    priv fn as_bytes_reader<A>(&self, f: &fn(&BytesReader) -> A) -> A {
+    fn as_bytes_reader<A>(&self, f: &fn(&BytesReader) -> A) -> A {
         // Recreating the BytesReader state every call since
         // I can't get the borrowing to work correctly
         let bytes_reader = BytesReader {

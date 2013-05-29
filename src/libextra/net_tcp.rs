@@ -11,6 +11,8 @@
 //! High-level interface to libuv's TCP functionality
 // FIXME #4425: Need FFI fixes
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use future;

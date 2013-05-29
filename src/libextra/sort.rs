@@ -167,6 +167,7 @@ pub fn quick_sort3<T:Copy + Ord + Eq>(arr: &mut [T]) {
     qsort3(arr, 0, (len - 1) as int);
 }
 
+#[allow(missing_doc)]
 pub trait Sort {
     fn qsort(self);
 }
@@ -179,6 +180,7 @@ static MIN_MERGE: uint = 64;
 static MIN_GALLOP: uint = 7;
 static INITIAL_TMP_STORAGE: uint = 128;
 
+#[allow(missing_doc)]
 pub fn tim_sort<T:Copy + Ord>(array: &mut [T]) {
     let size = array.len();
     if size < 2 {

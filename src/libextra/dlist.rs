@@ -26,6 +26,7 @@ use core::vec;
 
 pub type DListLink<T> = Option<@mut DListNode<T>>;
 
+#[allow(missing_doc)]
 pub struct DListNode<T> {
     data: T,
     linked: bool, // for assertions
@@ -33,6 +34,7 @@ pub struct DListNode<T> {
     next: DListLink<T>,
 }
 
+#[allow(missing_doc)]
 pub struct DList<T> {
     size: uint,
     hd: DListLink<T>,
@@ -106,6 +108,7 @@ pub fn from_elem<T>(data: T) -> @mut DList<T> {
     list
 }
 
+/// Creates a new dlist from a vector of elements, maintaining the same order
 pub fn from_vec<T:Copy>(vec: &[T]) -> @mut DList<T> {
     do vec::foldl(DList(), vec) |list,data| {
         list.push(*data); // Iterating left-to-right -- add newly to the tail.

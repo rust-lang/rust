@@ -94,6 +94,8 @@ total line count).
     }
 */
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use core::io::ReaderUtil;

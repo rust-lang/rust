@@ -15,7 +15,10 @@ use core::prelude::*;
 use core::str;
 use core::vec;
 
+/// A trait for converting a value to base64 encoding.
 pub trait ToBase64 {
+    /// Converts the value of `self` to a base64 value, returning the owned
+    /// string
     fn to_base64(&self) -> ~str;
 }
 
@@ -112,6 +115,7 @@ impl<'self> ToBase64 for &'self str {
     }
 }
 
+#[allow(missing_doc)]
 pub trait FromBase64 {
     fn from_base64(&self) -> ~[u8];
 }

@@ -17,6 +17,7 @@ use core::unstable::intrinsics::{move_val_init, init};
 use core::util::{replace, swap};
 use core::vec;
 
+#[allow(missing_doc)]
 pub struct PriorityQueue<T> {
     priv data: ~[T],
 }

@@ -10,6 +10,8 @@
 
 //! Types/fns concerning Internet Protocol (IP), versions 4 & 6
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use core::libc;
