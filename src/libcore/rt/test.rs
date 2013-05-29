@@ -9,14 +9,20 @@
 // except according to those terms.
 
 use uint;
-use option::*;
+use option::{Option, Some, None};
 use cell::Cell;
+use clone::Clone;
+use container::Container;
+use vec::OwnedVector;
 use result::{Result, Ok, Err};
+use unstable::run_in_bare_thread;
 use super::io::net::ip::{IpAddr, Ipv4};
 use rt::task::Task;
 use rt::thread::Thread;
 use rt::local::Local;
-use rt::sched::Scheduler;
+use rt::sched::{Scheduler, Coroutine};
+use rt::sleeper_list::SleeperList;
+use rt::work_queue::WorkQueue;
 
 pub fn new_test_uv_sched() -> Scheduler {
     use rt::uv::uvio::UvEventLoop;
@@ -43,6 +49,59 @@ pub fn run_in_newsched_task(f: ~fn()) {
                                          f.take());
         sched.enqueue_task(task);
         sched.run();
+    }
+}
+
+/// Create more than one scheduler and run a function in a task
+/// in one of the schedulers. The schedulers will stay alive
+/// until the function `f` returns.
+pub fn run_in_mt_newsched_task(f: ~fn()) {
+    use rt::uv::uvio::UvEventLoop;
+
+    let f_cell = Cell(f);
+
+    do run_in_bare_thread {
+        static N: uint = 2;
+
+        let sleepers = SleeperList::new();
+        let work_queue = WorkQueue::new();
+
+        let mut handles = ~[];
+        let mut scheds = ~[];
+
+        for uint::range(0, N) |i| {
+            let loop_ = ~UvEventLoop::new();
+            let mut sched = ~Scheduler::new(loop_, work_queue.clone(), sleepers.clone());
+            let handle = sched.make_handle();
+            handles.push(handle);
+            scheds.push(sched);
+        }
+
+        let f_cell = Cell(f_cell.take());
+        let handles = handles; // Freeze
+        let main_task = ~do Coroutine::new(&mut scheds[0].stack_pool) {
+            f_cell.take()();
+            // Hold on to handles until the function exits. This keeps the schedulers alive.
+            let _captured_handles = &handles;
+        };
+
+        scheds[0].enqueue_task(main_task);
+
+        let mut threads = ~[];
+
+        while !scheds.is_empty() {
+            let sched = scheds.pop();
+            let sched_cell = Cell(sched);
+            let thread = do Thread::start {
+                let mut sched = sched_cell.take();
+                sched.run();
+            };
+
+            threads.push(thread);
+        }
+
+        // Wait for schedulers
+        let _threads = threads;
     }
 }
 
