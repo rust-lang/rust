@@ -2347,7 +2347,7 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
 }
 
 pub trait MutableVector<'self, T> {
-    fn mut_slice(&mut self, start: uint, end: uint) -> &'self mut [T];
+    fn mut_slice(self, start: uint, end: uint) -> &'self mut [T];
 
     unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T;
     unsafe fn unsafe_set(&self, index: uint, val: T);
@@ -2355,8 +2355,8 @@ pub trait MutableVector<'self, T> {
 
 impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     #[inline]
-    fn mut_slice(&mut self, start: uint, end: uint) -> &'self mut [T] {
-        mut_slice(*self, start, end)
+    fn mut_slice(self, start: uint, end: uint) -> &'self mut [T] {
+        mut_slice(self, start, end)
     }
 
     #[inline(always)]
