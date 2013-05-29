@@ -710,8 +710,7 @@ pub fn trans_arg_expr(bcx: block,
                     DatumBlock {bcx: bcx,
                                 datum: Datum {val: scratch,
                                               ty: scratch_ty,
-                                              mode: ByRef,
-                                              source: RevokeClean}}
+                                              mode: ByRef(RevokeClean)}}
                 }
                 _ => {
                     bcx.sess().impossible_case(
@@ -774,7 +773,7 @@ pub fn trans_arg_expr(bcx: block,
 
                         match arg_datum.appropriate_mode() {
                             ByValue => val = Load(bcx, scratch.val),
-                            ByRef => val = scratch.val,
+                            ByRef(_) => val = scratch.val,
                         }
                     }
                 }

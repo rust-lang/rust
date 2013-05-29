@@ -313,7 +313,6 @@ pub fn variant_opt(bcx: block, pat_id: ast::node_id)
 pub enum TransBindingMode {
     TrByValue(/*ismove:*/ bool, /*llbinding:*/ ValueRef),
     TrByRef,
-    TrByImplicitRef
 }
 
 /**
@@ -880,7 +879,7 @@ fn match_datum(bcx: block, val: ValueRef, pat_id: ast::node_id) -> Datum {
     //! we should just pass around a Datum and be done with it.
 
     let ty = node_id_type(bcx, pat_id);
-    Datum {val: val, ty: ty, mode: datum::ByRef, source: RevokeClean}
+    Datum {val: val, ty: ty, mode: datum::ByRef(RevokeClean)}
 }
 
 
@@ -987,7 +986,7 @@ pub fn root_pats_as_necessary(mut bcx: block,
         let pat_id = br.pats[col].id;
         if pat_id != 0 {
             let datum = Datum {val: val, ty: node_id_type(bcx, pat_id),
-                               mode: ByRef, source: ZeroMem};
+                               mode: ByRef(ZeroMem)};
             bcx = datum.root_and_write_guard(bcx, br.pats[col].span, pat_id, 0);
         }
     }
@@ -1145,7 +1144,7 @@ pub fn store_non_ref_bindings(bcx: block,
             TrByValue(is_move, lldest) => {
                 let llval = Load(bcx, binding_info.llmatch); // get a T*
                 let datum = Datum {val: llval, ty: binding_info.ty,
-                                   mode: ByRef, source: ZeroMem};
+                                   mode: ByRef(ZeroMem)};
                 bcx = {
                     if is_move {
                         datum.move_to(bcx, INIT, lldest)
@@ -1160,7 +1159,7 @@ pub fn store_non_ref_bindings(bcx: block,
                     temp_cleanups
                 }
             }
-            TrByRef | TrByImplicitRef => {}
+            TrByRef => {}
         }
     }
     return bcx;
@@ -1190,13 +1189,6 @@ pub fn insert_lllocals(bcx: block,
             // By ref binding: use the ptr into the matched value
             TrByRef => {
                 binding_info.llmatch
-            }
-
-            // Ugly: for implicit ref, we actually want a T*, but
-            // we have a T**, so we had to load.  This will go away
-            // once implicit refs go away.
-            TrByImplicitRef => {
-                Load(bcx, binding_info.llmatch)
             }
         };
 
@@ -1253,7 +1245,7 @@ pub fn compile_guard(bcx: block,
                 TrByValue(_, llval) => {
                     bcx = glue::drop_ty(bcx, llval, binding_info.ty);
                 }
-                TrByRef | TrByImplicitRef => {}
+                TrByRef => {}
             }
             bcx.fcx.lllocals.remove(&binding_info.id);
         }
@@ -1756,7 +1748,7 @@ pub fn bind_irrefutable_pat(bcx: block,
             if make_copy {
                 let binding_ty = node_id_type(bcx, pat.id);
                 let datum = Datum {val: val, ty: binding_ty,
-                                   mode: ByRef, source: RevokeClean};
+                                   mode: ByRef(RevokeClean)};
                 let scratch = scratch_datum(bcx, binding_ty, false);
                 datum.copy_to_datum(bcx, INIT, scratch);
                 match binding_mode {
