@@ -10,30 +10,60 @@
 
 /*!
  * Atomic types
+ *
+ * Basic atomic types supporting atomic operations. Each method takes an `Ordering` which
+ * represents the strength of the memory barrier for that operation. These orderings are the same
+ * as C++11 atomic orderings [http://gcc.gnu.org/wiki/Atomic/GCCMM/AtomicSync]
+ *
+ * All atomic types are a single word in size.
  */
 
 use unstable::intrinsics;
 use cast;
 use option::{Option,Some,None};
+use libc::c_void;
+use ops::Drop;
 
+/**
+ * A simple atomic flag, that can be set and cleared. The most basic atomic type.
+ */
 pub struct AtomicFlag {
-    priv v:int
+    priv v: int
 }
 
+/**
+ * An atomic boolean type.
+ */
 pub struct AtomicBool {
-    priv v:uint
+    priv v: uint
 }
 
+/**
+ * A signed atomic integer type, supporting basic atomic aritmetic operations
+ */
 pub struct AtomicInt {
-    priv v:int
+    priv v: int
 }
 
+/**
+ * An unsigned atomic integer type, supporting basic atomic aritmetic operations
+ */
 pub struct AtomicUint {
-    priv v:uint
+    priv v: uint
 }
 
+/**
+ * An unsafe atomic pointer. Only supports basic atomic operations
+ */
 pub struct AtomicPtr<T> {
-    priv p:~T
+    priv p: *mut T
+}
+
+/**
+ * An owned atomic pointer. Ensures that only a single reference to the data is held at any time.
+ */
+pub struct AtomicOption<T> {
+    priv p: *mut c_void
 }
 
 pub enum Ordering {
@@ -53,46 +83,46 @@ impl AtomicFlag {
      * Clears the atomic flag
      */
     #[inline(always)]
-    fn clear(&mut self, order:Ordering) {
+    fn clear(&mut self, order: Ordering) {
         unsafe {atomic_store(&mut self.v, 0, order)}
     }
 
-    #[inline(always)]
     /**
      * Sets the flag if it was previously unset, returns the previous value of the
      * flag.
      */
-    fn test_and_set(&mut self, order:Ordering) -> bool {
+    #[inline(always)]
+    fn test_and_set(&mut self, order: Ordering) -> bool {
         unsafe {atomic_compare_and_swap(&mut self.v, 0, 1, order) > 0}
     }
 }
 
 impl AtomicBool {
-    fn new(v:bool) -> AtomicBool {
+    fn new(v: bool) -> AtomicBool {
         AtomicBool { v: if v { 1 } else { 0 } }
     }
 
     #[inline(always)]
-    fn load(&self, order:Ordering) -> bool {
+    fn load(&self, order: Ordering) -> bool {
         unsafe { atomic_load(&self.v, order) > 0 }
     }
 
     #[inline(always)]
-    fn store(&mut self, val:bool, order:Ordering) {
+    fn store(&mut self, val: bool, order: Ordering) {
         let val = if val { 1 } else { 0 };
 
         unsafe { atomic_store(&mut self.v, val, order); }
     }
 
     #[inline(always)]
-    fn swap(&mut self, val:bool, order:Ordering) -> bool {
+    fn swap(&mut self, val: bool, order: Ordering) -> bool {
         let val = if val { 1 } else { 0 };
 
         unsafe { atomic_swap(&mut self.v, val, order) > 0}
     }
 
     #[inline(always)]
-    fn compare_and_swap(&mut self, old: bool, new: bool, order:Ordering) -> bool {
+    fn compare_and_swap(&mut self, old: bool, new: bool, order: Ordering) -> bool {
         let old = if old { 1 } else { 0 };
         let new = if new { 1 } else { 0 };
 
@@ -101,131 +131,152 @@ impl AtomicBool {
 }
 
 impl AtomicInt {
-    fn new(v:int) -> AtomicInt {
+    fn new(v: int) -> AtomicInt {
         AtomicInt { v:v }
     }
 
     #[inline(always)]
-    fn load(&self, order:Ordering) -> int {
+    fn load(&self, order: Ordering) -> int {
         unsafe { atomic_load(&self.v, order) }
     }
 
     #[inline(always)]
-    fn store(&mut self, val:int, order:Ordering) {
+    fn store(&mut self, val: int, order: Ordering) {
         unsafe { atomic_store(&mut self.v, val, order); }
     }
 
     #[inline(always)]
-    fn swap(&mut self, val:int, order:Ordering) -> int {
+    fn swap(&mut self, val: int, order: Ordering) -> int {
         unsafe { atomic_swap(&mut self.v, val, order) }
     }
 
     #[inline(always)]
-    fn compare_and_swap(&mut self, old: int, new: int, order:Ordering) -> int {
+    fn compare_and_swap(&mut self, old: int, new: int, order: Ordering) -> int {
         unsafe { atomic_compare_and_swap(&mut self.v, old, new, order) }
     }
 
     #[inline(always)]
-    fn fetch_add(&mut self, val:int, order:Ordering) -> int {
+    fn fetch_add(&mut self, val: int, order: Ordering) -> int {
         unsafe { atomic_add(&mut self.v, val, order) }
     }
 
     #[inline(always)]
-    fn fetch_sub(&mut self, val:int, order:Ordering) -> int {
+    fn fetch_sub(&mut self, val: int, order: Ordering) -> int {
         unsafe { atomic_sub(&mut self.v, val, order) }
     }
 }
 
 impl AtomicUint {
-    fn new(v:uint) -> AtomicUint {
+    fn new(v: uint) -> AtomicUint {
         AtomicUint { v:v }
     }
 
     #[inline(always)]
-    fn load(&self, order:Ordering) -> uint {
+    fn load(&self, order: Ordering) -> uint {
         unsafe { atomic_load(&self.v, order) }
     }
 
     #[inline(always)]
-    fn store(&mut self, val:uint, order:Ordering) {
+    fn store(&mut self, val: uint, order: Ordering) {
         unsafe { atomic_store(&mut self.v, val, order); }
     }
 
     #[inline(always)]
-    fn swap(&mut self, val:uint, order:Ordering) -> uint {
+    fn swap(&mut self, val: uint, order: Ordering) -> uint {
         unsafe { atomic_swap(&mut self.v, val, order) }
     }
 
     #[inline(always)]
-    fn compare_and_swap(&mut self, old: uint, new: uint, order:Ordering) -> uint {
+    fn compare_and_swap(&mut self, old: uint, new: uint, order: Ordering) -> uint {
         unsafe { atomic_compare_and_swap(&mut self.v, old, new, order) }
     }
 
     #[inline(always)]
-    fn fetch_add(&mut self, val:uint, order:Ordering) -> uint {
+    fn fetch_add(&mut self, val: uint, order: Ordering) -> uint {
         unsafe { atomic_add(&mut self.v, val, order) }
     }
 
     #[inline(always)]
-    fn fetch_sub(&mut self, val:uint, order:Ordering) -> uint {
+    fn fetch_sub(&mut self, val: uint, order: Ordering) -> uint {
         unsafe { atomic_sub(&mut self.v, val, order) }
     }
 }
 
 impl<T> AtomicPtr<T> {
-    fn new(p:~T) -> AtomicPtr<T> {
+    fn new(p: *mut T) -> AtomicPtr<T> {
         AtomicPtr { p:p }
     }
 
-    /**
-     * Atomically swaps the stored pointer with the one given.
-     *
-     * Returns None if the pointer stored has been taken
-     */
     #[inline(always)]
-    fn swap(&mut self, ptr:~T, order:Ordering) -> Option<~T> {
+    fn load(&self, order: Ordering) -> *mut T {
+        unsafe { atomic_load(&self.p, order) }
+    }
+
+    #[inline(always)]
+    fn store(&mut self, ptr: *mut T, order: Ordering) {
+        unsafe { atomic_store(&mut self.p, ptr, order); }
+    }
+
+    #[inline(always)]
+    fn swap(&mut self, ptr: *mut T, order: Ordering) -> *mut T {
+        unsafe { atomic_swap(&mut self.p, ptr, order) }
+    }
+
+    #[inline(always)]
+    fn compare_and_swap(&mut self, old: *mut T, new: *mut T, order: Ordering) -> *mut T {
+        unsafe { atomic_compare_and_swap(&mut self.p, old, new, order) }
+    }
+}
+
+impl<T> AtomicOption<T> {
+    fn new(p: ~T) -> AtomicOption<T> {
         unsafe {
-            let p = atomic_swap(&mut self.p, ptr, order);
+            AtomicOption {
+                p: cast::transmute(p)
+            }
+        }
+    }
+
+    fn empty() -> AtomicOption<T> {
+        unsafe {
+            AtomicOption {
+                p: cast::transmute(0)
+            }
+        }
+    }
+
+    #[inline(always)]
+    fn swap(&mut self, val: ~T, order: Ordering) -> Option<~T> {
+        unsafe {
+            let val = cast::transmute(val);
+
+            let p = atomic_swap(&mut self.p, val, order);
             let pv : &uint = cast::transmute(&p);
 
             if *pv == 0 {
                 None
             } else {
-                Some(p)
+                Some(cast::transmute(p))
             }
         }
     }
 
-    /**
-     * Atomically takes the stored pointer out.
-     *
-     * Returns None if it was already taken.
-     */
     #[inline(always)]
-    fn take(&mut self, order:Ordering) -> Option<~T> {
-        unsafe { self.swap(cast::transmute(0), order) }
-    }
-
-    /**
-     * Atomically stores the given pointer, this will overwrite
-     * and previous value stored.
-     */
-    #[inline(always)]
-    fn give(&mut self, ptr:~T, order:Ordering) {
-        let _ = self.swap(ptr, order);
-    }
-
-    /**
-     * Checks to see if the stored pointer has been taken.
-     */
-    fn taken(&self, order:Ordering) -> bool {
+    fn take(&mut self, order: Ordering) -> Option<~T> {
         unsafe {
-            let p : ~T = atomic_load(&self.p, order);
+            self.swap(cast::transmute(0), order)
+        }
+    }
+}
 
-            let pv : &uint = cast::transmute(&p);
-
-            cast::forget(p);
-            *pv == 0
+#[unsafe_destructor]
+impl<T> Drop for AtomicOption<T> {
+    fn finalize(&self) {
+        // This will ensure that the contained data is
+        // destroyed, unless it's null.
+        unsafe {
+            let this : &mut AtomicOption<T> = cast::transmute(self);
+            let _ = this.take(SeqCst);
         }
     }
 }
@@ -316,8 +367,8 @@ mod test {
     }
 
     #[test]
-    fn pointer_swap() {
-        let mut p = AtomicPtr::new(~1);
+    fn option_swap() {
+        let mut p = AtomicOption::new(~1);
         let a = ~2;
 
         let b = p.swap(a, SeqCst);
@@ -327,15 +378,14 @@ mod test {
     }
 
     #[test]
-    fn pointer_take() {
-        let mut p = AtomicPtr::new(~1);
+    fn option_take() {
+        let mut p = AtomicOption::new(~1);
 
         assert_eq!(p.take(SeqCst), Some(~1));
         assert_eq!(p.take(SeqCst), None);
-        assert!(p.taken(SeqCst));
 
         let p2 = ~2;
-        p.give(p2, SeqCst);
+        p.swap(p2, SeqCst);
 
         assert_eq!(p.take(SeqCst), Some(~2));
     }
