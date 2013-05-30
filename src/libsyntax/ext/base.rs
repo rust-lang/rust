@@ -20,6 +20,7 @@ use parse;
 use parse::token;
 
 use core::hashmap::HashMap;
+use core::vec;
 
 // new-style macro! tt code:
 //

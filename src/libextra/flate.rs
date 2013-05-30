@@ -16,8 +16,9 @@ Simple compression
 
 use core::prelude::*;
 
-use core::libc;
 use core::libc::{c_void, size_t, c_int};
+use core::libc;
+use core::vec;
 
 pub mod rustrt {
     use core::libc::{c_int, c_void, size_t};

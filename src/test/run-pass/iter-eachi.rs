@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::old_iter;
+
 pub fn main() {
     let mut c = 0u;
     for [1u, 2u, 3u, 4u, 5u].eachi |i, v| {

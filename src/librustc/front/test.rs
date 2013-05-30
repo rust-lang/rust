@@ -15,6 +15,7 @@ use core::prelude::*;
 use driver::session;
 use front::config;
 
+use core::vec;
 use syntax::ast_util::*;
 use syntax::attr;
 use syntax::codemap::{dummy_sp, span, ExpandedFrom, CallInfo, NameAndSpan};
@@ -309,7 +310,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
     let mainfn = (quote_item!(
         pub fn main() {
             #[main];
-            extra::test::test_main_static(::os::args(), tests);
+            extra::test::test_main_static(::std::os::args(), tests);
         }
     )).get();
 

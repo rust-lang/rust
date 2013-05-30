@@ -402,6 +402,14 @@ mod tests {
     use super::*;
     use prelude::*;
 
+    use num;
+    use sys;
+    use u16;
+    use u32;
+    use u64;
+    use u8;
+    use uint;
+
     #[test]
     fn test_num() {
         num::test_num(10 as $T, 2 as $T);

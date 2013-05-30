@@ -12,6 +12,9 @@
 
 use core::prelude::*;
 
+use core::str;
+use core::vec;
+
 pub trait ToBase64 {
     fn to_base64(&self) -> ~str;
 }

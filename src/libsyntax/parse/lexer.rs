@@ -18,6 +18,11 @@ use ext::tt::transcribe::{tt_next_token};
 use ext::tt::transcribe::{dup_tt_reader};
 use parse::token;
 
+use core::char;
+use core::either;
+use core::str;
+use core::u64;
+
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
 pub trait reader {

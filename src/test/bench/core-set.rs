@@ -9,9 +9,14 @@
 // except according to those terms.
 
 extern mod extra;
-use std::hashmap::HashSet;
+
 use extra::bitv::BitvSet;
 use extra::treemap::TreeSet;
+use std::hashmap::HashSet;
+use std::io;
+use std::os;
+use std::rand;
+use std::uint;
 
 struct Results {
     sequential_ints: float,

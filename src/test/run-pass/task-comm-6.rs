@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::comm::Chan;
+use std::comm;
 
 pub fn main() { test00(); }
 

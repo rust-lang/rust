@@ -133,6 +133,9 @@ pub mod std {
     pub use core::condition;
     pub use core::cmp;
     pub use core::sys;
+    pub use core::unstable;
+    pub use core::str;
+    pub use core::os;
 }
 #[doc(hidden)]
 pub mod extra {

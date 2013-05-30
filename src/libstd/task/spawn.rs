@@ -72,12 +72,14 @@
 
 #[doc(hidden)];
 
+use prelude::*;
+
 use cast::transmute;
 use cast;
 use cell::Cell;
 use container::Map;
 use comm::{Chan, GenericChan};
-use prelude::*;
+use comm;
 use ptr;
 use hashmap::HashSet;
 use task::local_data_priv::{local_get, local_set, OldHandle};
@@ -87,6 +89,7 @@ use task::{Failure, ManualThreads, PlatformThread, SchedOpts, SingleThreaded};
 use task::{Success, TaskOpts, TaskResult, ThreadPerCore, ThreadPerTask};
 use task::{ExistingScheduler, SchedulerHandle};
 use task::unkillable;
+use task;
 use uint;
 use util;
 use unstable::sync::{Exclusive, exclusive};
@@ -159,13 +162,17 @@ struct AncestorList(Option<Exclusive<AncestorNode>>);
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
 #[inline(always)]
 fn access_group<U>(x: &TaskGroupArc, blk: &fn(TaskGroupInner) -> U) -> U {
-    x.with(blk)
+    unsafe {
+        x.with(blk)
+    }
 }
 
 #[inline(always)]
 fn access_ancestors<U>(x: &Exclusive<AncestorNode>,
                        blk: &fn(x: &mut AncestorNode) -> U) -> U {
-    x.with(blk)
+    unsafe {
+        x.with(blk)
+    }
 }
 
 // Iterates over an ancestor list.

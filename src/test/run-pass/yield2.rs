@@ -9,6 +9,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::task;
+
 pub fn main() {
     let mut i: int = 0;
     while i < 100 { i = i + 1; error!(i); task::yield(); }

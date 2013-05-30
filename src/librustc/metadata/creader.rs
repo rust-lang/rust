@@ -18,6 +18,7 @@ use metadata::filesearch::FileSearch;
 use metadata::loader;
 
 use core::hashmap::HashMap;
+use core::vec;
 use syntax::attr;
 use syntax::codemap::{span, dummy_sp};
 use syntax::diagnostic::span_handler;

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::util;
+use std::vec;
 
 pub fn main() {
     let mut a: ~[int] = ~[0, 1, 2, 3, 4, 5, 6];

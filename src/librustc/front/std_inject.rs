@@ -12,10 +12,11 @@ use core::prelude::*;
 
 use driver::session::Session;
 
+use core::vec;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap;
 use syntax::codemap::dummy_sp;
+use syntax::codemap;
 use syntax::fold;
 
 static STD_VERSION: &'static str = "0.7-pre";

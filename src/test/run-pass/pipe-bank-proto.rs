@@ -17,6 +17,7 @@
 
 use std::pipes;
 use std::pipes::try_recv;
+use std::ptr;
 
 pub type username = ~str;
 pub type password = ~str;
@@ -81,7 +82,7 @@ fn client_follow(bank: bank::client::login) {
     let bank = client::withdrawal(bank, 50.00);
     switch(bank, follow! (
         money(m) -> _next {
-            io::println(~"Yay! I got money!");
+            println(~"Yay! I got money!");
         }
         insufficient_funds -> _next {
             fail!("someone stole my money")
@@ -105,7 +106,7 @@ fn bank_client(bank: bank::client::login) {
     let bank = client::withdrawal(bank, 50.00);
     match try_recv(bank) {
       Some(money(*)) => {
-        io::println(~"Yay! I got money!");
+        println(~"Yay! I got money!");
       }
       Some(insufficient_funds(_)) => {
         fail!("someone stole my money")

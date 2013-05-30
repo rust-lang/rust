@@ -10,6 +10,9 @@
 
 // xfail-fast
 
+use std::comm;
+use std::task;
+
 pub fn main() {
     let (p,c) = comm::stream();
     do task::try || {

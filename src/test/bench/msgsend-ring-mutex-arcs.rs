@@ -16,26 +16,35 @@
 // This also serves as a pipes test, because ARCs are implemented with pipes.
 
 extern mod extra;
-use extra::time;
+
 use extra::arc;
 use extra::future;
+use extra::time;
 use std::cell::Cell;
+use std::io;
+use std::os;
+use std::uint;
+use std::vec;
 
 // A poor man's pipe.
 type pipe = arc::MutexARC<~[uint]>;
 
 fn send(p: &pipe, msg: uint) {
-    do p.access_cond |state, cond| {
-        state.push(msg);
-        cond.signal();
+    unsafe {
+        do p.access_cond |state, cond| {
+            state.push(msg);
+            cond.signal();
+        }
     }
 }
 fn recv(p: &pipe) -> uint {
-    do p.access_cond |state, cond| {
-        while vec::is_empty(*state) {
-            cond.wait();
+    unsafe {
+        do p.access_cond |state, cond| {
+            while vec::is_empty(*state) {
+                cond.wait();
+            }
+            state.pop()
         }
-        state.pop()
     }
 }
 

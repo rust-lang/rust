@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::old_iter;
+
 pub fn main() {
     assert_eq!([1u, 3u].to_vec(), ~[1u, 3u]);
     let e: ~[uint] = ~[];

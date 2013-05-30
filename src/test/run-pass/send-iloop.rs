@@ -11,6 +11,10 @@
 // xfail-win32
 extern mod extra;
 
+use std::comm;
+use std::task;
+use std::uint;
+
 fn die() {
     fail!();
 }

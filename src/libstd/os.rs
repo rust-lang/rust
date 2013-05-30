@@ -31,8 +31,10 @@ use io;
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
 use libc::{mode_t, FILE};
+use local_data;
 use option;
 use option::{Some, None};
+use os;
 use prelude::*;
 use ptr;
 use str;
@@ -861,20 +863,18 @@ pub fn change_dir_locked(p: &Path, action: &fn()) -> bool {
 
     fn key(_: Exclusive<()>) { }
 
-    let result = unsafe {
-        global_data_clone_create(key, || {
-            ~exclusive(())
-        })
-    };
+    unsafe {
+        let result = global_data_clone_create(key, || { ~exclusive(()) });
 
-    do result.with_imm() |_| {
-        let old_dir = os::getcwd();
-        if change_dir(p) {
-            action();
-            change_dir(&old_dir)
-        }
-        else {
-            false
+        do result.with_imm() |_| {
+            let old_dir = os::getcwd();
+            if change_dir(p) {
+                action();
+                change_dir(&old_dir)
+            }
+            else {
+                false
+            }
         }
     }
 }

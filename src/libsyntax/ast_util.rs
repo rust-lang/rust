@@ -14,11 +14,14 @@ use ast::*;
 use ast;
 use ast_util;
 use codemap::{span, spanned};
+use opt_vec;
 use parse::token;
 use visit;
-use opt_vec;
-use core::hashmap::HashMap;
 
+use core::hashmap::HashMap;
+use core::int;
+use core::option;
+use core::str;
 use core::to_bytes;
 
 pub fn path_name_i(idents: &[ident], intr: @token::ident_interner) -> ~str {

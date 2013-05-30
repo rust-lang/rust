@@ -18,6 +18,7 @@ use metadata::cstore;
 use metadata::decoder;
 
 use core::hashmap::HashMap;
+use core::vec;
 use extra;
 use syntax::ast;
 use syntax::parse::token::ident_interner;

@@ -20,6 +20,11 @@ use ext::build::AstBuilder;
 use parse;
 use print::pprust;
 
+use core::io;
+use core::result;
+use core::str;
+use core::vec;
+
 // These macros all relate to the file system; they either return
 // the column/row/filename of the expression, or they include
 // a given file into the current one.

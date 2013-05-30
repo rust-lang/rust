@@ -18,6 +18,7 @@ use metadata::decoder;
 use metadata;
 use middle::{ty, resolve};
 
+use core::vec;
 use reader = extra::ebml::reader;
 use syntax::ast;
 use syntax::ast_map;

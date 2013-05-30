@@ -14,8 +14,10 @@ use std::util;
 
 // tjc: I don't know why
 pub mod pipes {
-    use std::util;
     use std::cast::{forget, transmute};
+    use std::cast;
+    use std::task;
+    use std::util;
 
     pub struct Stuff<T> {
         state: state,

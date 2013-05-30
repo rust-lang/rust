@@ -43,6 +43,7 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
 
+use core::vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::visit;

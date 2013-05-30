@@ -100,6 +100,8 @@ mod test {
     use super::super::mem::*;
     use super::super::Decorator;
 
+    use str;
+
     #[test]
     #[ignore]
     fn smoke_test() {

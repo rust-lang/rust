@@ -53,6 +53,7 @@ use middle::typeck;
 use util::ppaux::{ty_to_str, region_to_str, Repr};
 use util::common::indenter;
 
+use core::uint;
 use syntax::ast::{m_imm, m_const, m_mutbl};
 use syntax::ast;
 use syntax::codemap::span;

@@ -11,6 +11,9 @@
 // xfail-win32 leaks
 extern mod extra;
 
+use std::task;
+use std::uint;
+
 fn die() {
     fail!();
 }

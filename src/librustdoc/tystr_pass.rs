@@ -21,6 +21,7 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
+use core::vec;
 use syntax::ast;
 use syntax::print::pprust;
 use syntax::ast_map;

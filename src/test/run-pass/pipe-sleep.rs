@@ -11,11 +11,13 @@
 // except according to those terms.
 
 extern mod extra;
+
 use extra::timer::sleep;
 use extra::uv;
 use std::cell::Cell;
-use std::pipes;
 use std::pipes::*;
+use std::pipes;
+use std::task;
 
 proto! oneshot (
     waiting:send {

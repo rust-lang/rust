@@ -10,6 +10,8 @@
 
 extern mod extra;
 
+use std::io;
+
 trait Serializer {
 }
 

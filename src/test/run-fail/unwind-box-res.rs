@@ -10,6 +10,8 @@
 
 // error-pattern:fail
 
+use std::cast;
+
 fn failfn() {
     fail!();
 }

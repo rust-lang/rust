@@ -36,10 +36,11 @@ use middle::typeck::check::FnCtxt;
 use middle::typeck::check::regionmanip::relate_nested_regions;
 use middle::typeck::infer::resolve_and_force_all_but_regions;
 use middle::typeck::infer::resolve_type;
-use util::ppaux::{note_and_explain_region, ty_to_str,
-                  region_to_str};
+use util::ppaux::{note_and_explain_region, ty_to_str, region_to_str};
 use middle::pat_util;
 
+use core::result;
+use core::uint;
 use syntax::ast::{ManagedSigil, OwnedSigil, BorrowedSigil};
 use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
 use syntax::ast;
@@ -788,6 +789,8 @@ pub mod guarantor {
     use syntax::ast;
     use syntax::codemap::span;
     use util::ppaux::{ty_to_str};
+
+    use core::uint;
 
     pub fn for_addr_of(rcx: @mut Rcx, expr: @ast::expr, base: @ast::expr) {
         /*!

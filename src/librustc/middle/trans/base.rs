@@ -66,7 +66,12 @@ use util::ppaux::{Repr, ty_to_str};
 
 use core::hash;
 use core::hashmap::{HashMap, HashSet};
+use core::int;
+use core::io;
 use core::libc::c_uint;
+use core::str;
+use core::uint;
+use core::vec;
 use extra::time;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt_to_str, path_name};

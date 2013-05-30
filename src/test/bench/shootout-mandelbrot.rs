@@ -2,6 +2,7 @@ use std::cast::transmute;
 use std::from_str::FromStr;
 use std::i32::range;
 use std::libc::{STDOUT_FILENO, c_int, fdopen, fputc};
+use std::os;
 
 static ITER: uint = 50;
 static LIMIT: f64 = 2.0;

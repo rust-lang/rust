@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
+//! Miscellaneous helpers for common patterns.
 
-Miscellaneous helpers for common patterns.
-
-*/
-
+use cast;
+use local_data;
+use ptr;
 use prelude::*;
 use unstable::intrinsics;
 

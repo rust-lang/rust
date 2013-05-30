@@ -13,8 +13,11 @@
 
 use core::prelude::*;
 
-use core::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
+use core::cmp;
 use core::from_str::FromStr;
+use core::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
+use core::str;
+use core::vec;
 use super::bigint::BigInt;
 
 /// Represents the ratio between 2 numbers.

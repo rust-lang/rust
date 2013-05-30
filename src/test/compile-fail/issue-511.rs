@@ -12,10 +12,10 @@ extern mod extra;
 use std::cmp::Eq;
 
 fn f<T:Eq>(o: &mut Option<T>) {
-    assert!(*o == option::None);
+    assert!(*o == None);
 }
 
 fn main() {
-    f::<int>(&mut option::None);
+    f::<int>(&mut None);
     //~^ ERROR cannot borrow
 }

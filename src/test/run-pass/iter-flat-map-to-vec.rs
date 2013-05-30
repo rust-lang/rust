@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::old_iter;
+
 fn repeat(x: &uint) -> ~[uint] { ~[*x, *x] }
 
 fn incd_if_even(x: &uint) -> Option<uint> {

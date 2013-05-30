@@ -28,7 +28,16 @@ extern mod extra(name = "extra", vers = "0.7-pre");
 extern mod syntax(vers = "0.7-pre");
 
 use std::prelude::*;
+
+use std::int;
+use std::io;
+use std::option;
+use std::os;
+use std::result;
 use std::run;
+use std::str;
+use std::uint;
+use std::vec;
 
 use syntax::diagnostic;
 use syntax::parse::token::ident_interner;

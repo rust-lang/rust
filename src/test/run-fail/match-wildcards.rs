@@ -10,9 +10,9 @@
 
 // error-pattern:squirrelcupcake
 fn cmp() -> int {
-    match (option::Some('a'), option::None::<char>) {
-        (option::Some(_), _) => { fail!("squirrelcupcake"); }
-        (_, option::Some(_)) => { fail!(); }
+    match (Some('a'), None::<char>) {
+        (Some(_), _) => { fail!("squirrelcupcake"); }
+        (_, Some(_)) => { fail!(); }
         _                    => { fail!("wat"); }
     }
 }

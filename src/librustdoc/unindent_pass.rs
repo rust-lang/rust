@@ -21,6 +21,10 @@ middle of a line, and each of the following lines is indented.
 
 use core::prelude::*;
 
+use core::str;
+use core::task;
+use core::uint;
+use core::vec;
 use pass::Pass;
 use text_pass;
 

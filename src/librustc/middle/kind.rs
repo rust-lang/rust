@@ -18,6 +18,7 @@ use middle::typeck;
 use util::ppaux::{Repr, ty_to_str};
 use util::ppaux::UserString;
 
+use core::vec;
 use syntax::ast::*;
 use syntax::attr::attrs_contains_name;
 use syntax::codemap::span;

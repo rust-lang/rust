@@ -10,6 +10,8 @@
 
 // xfail-fast
 
+use std::task;
+
 pub fn main() { test05(); }
 
 struct Pair<A,B> { a: A, b: B }

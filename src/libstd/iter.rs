@@ -257,6 +257,9 @@ mod tests {
     use super::*;
     use prelude::*;
 
+    use int;
+    use uint;
+
     #[test]
     fn test_to_vec() {
         let xs = ~[1, 2, 3];

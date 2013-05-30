@@ -10,6 +10,10 @@
 
 // xfail-fast
 
+use std::at_vec;
+use std::uint;
+use std::vec;
+
 // A trait for objects that can be used to do an if-then-else
 // (No actual need for this to be static, but it is a simple test.)
 trait bool_like {

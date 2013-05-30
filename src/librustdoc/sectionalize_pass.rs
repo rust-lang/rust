@@ -19,6 +19,8 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
+use core::str;
+
 pub fn mk_pass() -> Pass {
     Pass {
         name: ~"sectionalize",
@@ -169,6 +171,9 @@ mod test {
     use doc;
     use extract;
     use sectionalize_pass::run;
+
+    use core::str;
+    use core::vec;
 
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {

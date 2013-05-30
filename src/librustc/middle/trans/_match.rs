@@ -168,6 +168,7 @@ use middle::ty;
 use util::common::indenter;
 
 use core::hashmap::HashMap;
+use core::vec;
 use syntax::ast;
 use syntax::ast::ident;
 use syntax::ast_util::path_to_ident;

@@ -18,8 +18,11 @@ Core encoding and decoding interfaces.
 
 use core::prelude::*;
 
+use core::at_vec;
 use core::hashmap::{HashMap, HashSet};
 use core::trie::{TrieMap, TrieSet};
+use core::uint;
+use core::vec;
 use deque::Deque;
 use dlist::DList;
 use treemap::{TreeMap, TreeSet};

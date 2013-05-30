@@ -12,8 +12,11 @@
 
 use context::Ctx;
 use core::hashmap::HashMap;
+use core::io;
+use core::os;
 use core::prelude::*;
-use std::tempfile::mkdtemp;
+use core::result;
+use extra::tempfile::mkdtemp;
 use util::{PkgId, default_version};
 use path_util::{target_executable_in_workspace, target_library_in_workspace,
                target_test_in_workspace, target_bench_in_workspace,

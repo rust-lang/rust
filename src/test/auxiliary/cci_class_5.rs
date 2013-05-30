@@ -9,6 +9,8 @@
 // except according to those terms.
 
 pub mod kitties {
+    use std::uint;
+
     pub struct cat {
         priv meows : uint,
         how_hungry : int,

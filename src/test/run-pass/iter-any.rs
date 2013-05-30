@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::old_iter;
+
 fn is_even(x: &uint) -> bool { (*x % 2) == 0 }
 
 pub fn main() {

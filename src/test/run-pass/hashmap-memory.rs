@@ -19,8 +19,10 @@
 pub fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
 
 mod map_reduce {
-    use std::hashmap::HashMap;
     use std::comm::*;
+    use std::hashmap::HashMap;
+    use std::str;
+    use std::task;
 
     pub type putter = @fn(~str, ~str);
 

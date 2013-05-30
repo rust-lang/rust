@@ -18,7 +18,7 @@ struct Foo {
 
 impl Drop for Foo {
     fn finalize(&self) {
-        io::println("Goodbye!");
+        println("Goodbye!");
     }
 }
 

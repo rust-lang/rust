@@ -11,7 +11,10 @@
 // xfail-fast
 
 extern mod extra;
+
 use std::comm::Chan;
+use std::comm;
+use std::task;
 
 pub fn main() { debug!("===== WITHOUT THREADS ====="); test00(); }
 

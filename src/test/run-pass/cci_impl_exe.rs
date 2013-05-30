@@ -19,7 +19,7 @@ pub fn main() {
     //debug!("%?", bt0);
 
     do 3u.to(10u) |i| {
-        io::print(fmt!("%u\n", i));
+        print(fmt!("%u\n", i));
 
         //let bt1 = sys::frame_address();
         //debug!("%?", bt1);

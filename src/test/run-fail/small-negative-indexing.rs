@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // error-pattern:index out of bounds: the len is 1024 but the index is -1
+
+use std::vec;
+
 fn main() {
     let v = vec::from_fn(1024u, {|n| n});
     // this should trip a bounds check

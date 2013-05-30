@@ -11,6 +11,8 @@
 // xfail-win32
 extern mod extra;
 
+use std::task;
+
 struct complainer {
   c: @int,
 }

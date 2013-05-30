@@ -22,7 +22,9 @@ use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
 
+use core::option;
 use core::unstable::extfmt::ct::*;
+use core::vec;
 
 pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
@@ -52,8 +54,11 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
    -> @ast::expr {
     fn make_path_vec(cx: @ExtCtxt, ident: &str) -> ~[ast::ident] {
         let intr = cx.parse_sess().interner;
-        return ~[intr.intern("unstable"), intr.intern("extfmt"),
-                 intr.intern("rt"), intr.intern(ident)];
+        return ~[intr.intern("std"),
+                 intr.intern("unstable"),
+                 intr.intern("extfmt"),
+                 intr.intern("rt"),
+                 intr.intern(ident)];
     }
     fn make_rt_path_expr(cx: @ExtCtxt, sp: span, nm: &str) -> @ast::expr {
         let path = make_path_vec(cx, nm);
@@ -252,6 +257,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
     /* 'ident' is the local buffer building up the result of fmt! */
     let ident = cx.parse_sess().interner.intern("__fmtbuf");
     let buf = || cx.expr_ident(fmt_sp, ident);
+    let core_ident = cx.parse_sess().interner.intern("std");
     let str_ident = cx.parse_sess().interner.intern("str");
     let push_ident = cx.parse_sess().interner.intern("push_str");
     let mut stms = ~[];
@@ -273,7 +279,9 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                 } else {
                     let args = ~[cx.expr_mut_addr_of(fmt_sp, buf()), cx.expr_str(fmt_sp, s)];
                     let call = cx.expr_call_global(fmt_sp,
-                                                   ~[str_ident, push_ident],
+                                                   ~[core_ident,
+                                                     str_ident,
+                                                     push_ident],
                                                    args);
                     stms.push(cx.stmt_expr(call));
                 }

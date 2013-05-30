@@ -23,8 +23,15 @@ use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::{ast, attr};
 
-use extra::flate;
+use core::cast;
+use core::io;
+use core::option;
 use core::os::consts::{macos, freebsd, linux, android, win32};
+use core::ptr;
+use core::str;
+use core::uint;
+use core::vec;
+use extra::flate;
 
 pub enum os {
     os_macos,

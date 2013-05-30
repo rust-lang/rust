@@ -10,6 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::f64;
+
 mod rusti {
     #[abi = "rust-intrinsic"]
     pub extern "rust-intrinsic" {
@@ -49,6 +51,9 @@ mod rusti {
 pub fn main() {
     unsafe {
         use rusti::*;
+
+        use std::f32;
+        use std::f64;
 
         assert!((sqrtf32(64f32).approx_eq(&8f32)));
         assert!((sqrtf64(64f64).approx_eq(&8f64)));

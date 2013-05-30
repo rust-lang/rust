@@ -21,5 +21,5 @@ static y : AnotherPair = AnotherPair{ x: (0xf0f0f0f0_f0f0f0f0,
 pub fn main() {
     let (p, _) = y.x;
     assert_eq!(p, - 1085102592571150096);
-    io::println(fmt!("0x%x", p as uint));
+    println(fmt!("0x%x", p as uint));
 }

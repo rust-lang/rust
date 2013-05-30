@@ -22,6 +22,12 @@ use procsrv;
 use util;
 use util::logv;
 
+use core::io;
+use core::os;
+use core::str;
+use core::uint;
+use core::vec;
+
 pub fn run(config: config, testfile: ~str) {
     if config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.

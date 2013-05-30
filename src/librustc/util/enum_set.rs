@@ -98,6 +98,7 @@ impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
 mod test {
     use core::prelude::*;
 
+    use core::cast;
     use core::iter;
 
     use util::enum_set::*;

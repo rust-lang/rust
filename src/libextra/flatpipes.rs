@@ -345,10 +345,10 @@ pub mod flatteners {
 
     use core::cast;
     use core::io::{Writer, Reader, ReaderUtil};
+    use core::io;
     use core::ptr;
     use core::sys::size_of;
     use core::vec;
-
 
     // FIXME #4074: Copy + Owned != POD
     pub struct PodUnflattener<T> {
@@ -511,8 +511,10 @@ pub mod bytepipes {
 
     use flatpipes::{ByteChan, BytePort};
 
-    use core::io::{Writer, Reader, ReaderUtil};
     use core::comm::{Port, Chan};
+    use core::comm;
+    use core::io::{Writer, Reader, ReaderUtil};
+    use core::vec;
 
     pub struct ReaderBytePort<R> {
         reader: R
@@ -646,7 +648,12 @@ mod test {
     use flatpipes::{BytePort, FlatChan, FlatPort};
     use net::tcp::TcpSocketBuf;
 
+    use core::comm;
+    use core::int;
     use core::io::BytesWriter;
+    use core::result;
+    use core::sys;
+    use core::task;
 
     #[test]
     #[ignore(reason = "ebml failure")]
@@ -872,6 +879,11 @@ mod test {
         use flatpipes::flatteners::PodUnflattener;
         use flatpipes::pod;
         use io_util::BufReader;
+
+        use core::comm;
+        use core::io;
+        use core::sys;
+        use core::task;
 
         type PortLoader<P> =
             ~fn(~[u8]) -> FlatPort<int, PodUnflattener<int>, P>;

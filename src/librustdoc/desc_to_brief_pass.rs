@@ -24,7 +24,9 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
+use core::str;
 use core::util;
+use core::vec;
 
 pub fn mk_pass() -> Pass {
     Pass {

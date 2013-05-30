@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::cell::Cell;
+use std::task;
 
 pub fn main() { test05(); }
 

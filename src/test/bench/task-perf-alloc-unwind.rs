@@ -14,6 +14,8 @@ extern mod extra;
 
 use extra::list::{List, Cons, Nil};
 use extra::time::precise_time_s;
+use std::os;
+use std::task;
 
 enum UniqueList {
     ULNil, ULCons(~UniqueList)

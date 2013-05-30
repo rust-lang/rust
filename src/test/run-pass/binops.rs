@@ -10,6 +10,8 @@
 
 // Binop corner cases
 
+use std::libc;
+
 fn test_nil() {
     assert_eq!((), ());
     assert!((!(() != ())));
@@ -80,6 +82,8 @@ fn test_ptr() {
 }
 
 mod test {
+    use std::libc;
+
     #[abi = "cdecl"]
     #[nolink]
     pub extern {

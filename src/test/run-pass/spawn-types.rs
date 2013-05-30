@@ -15,6 +15,7 @@
  */
 
 use std::comm::*;
+use std::task;
 
 type ctx = Chan<int>;
 

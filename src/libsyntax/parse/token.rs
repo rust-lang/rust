@@ -16,8 +16,14 @@ use parse::token;
 use util::interner::StrInterner;
 use util::interner;
 
+use core::cast;
+use core::char;
 use core::cmp::Equiv;
+use core::hashmap::HashSet;
+use core::local_data;
+use core::str;
 use core::to_bytes;
+use core::vec;
 
 #[deriving(Encodable, Decodable, Eq)]
 pub enum binop {
@@ -547,7 +553,6 @@ pub mod keywords {
         Const,
         Copy,
         Do,
-        Drop,
         Else,
         Enum,
         Extern,
@@ -591,7 +596,6 @@ pub mod keywords {
                    Const => ident { repr: 37, ctxt: 0 },
                    Copy => ident { repr: 38, ctxt: 0 },
                    Do => ident { repr: 39, ctxt: 0 },
-                   Drop => ident { repr: 40, ctxt: 0 },
                    Else => ident { repr: 41, ctxt: 0 },
                    Enum => ident { repr: 42, ctxt: 0 },
                    Extern => ident { repr: 43, ctxt: 0 },

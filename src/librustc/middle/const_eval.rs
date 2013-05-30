@@ -18,7 +18,9 @@ use middle;
 use syntax::{ast, ast_map, ast_util, visit};
 use syntax::ast::*;
 
+use core::float;
 use core::hashmap::{HashMap, HashSet};
+use core::vec;
 
 //
 // This pass classifies expressions by their constant-ness.
@@ -118,11 +120,7 @@ pub fn classify(e: @expr,
 
               ast::expr_struct(_, ref fs, None) => {
                 let cs = do vec::map((*fs)) |f| {
-                    if f.node.mutbl == ast::m_imm {
-                        classify(f.node.expr, tcx)
-                    } else {
-                        non_const
-                    }
+                    classify(f.node.expr, tcx)
                 };
                 join_all(cs)
               }

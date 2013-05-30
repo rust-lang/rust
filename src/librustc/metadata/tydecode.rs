@@ -18,6 +18,9 @@ use core::prelude::*;
 
 use middle::ty;
 
+use core::str;
+use core::uint;
+use core::vec;
 use syntax::abi::AbiSet;
 use syntax::abi;
 use syntax::ast;

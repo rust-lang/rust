@@ -154,6 +154,7 @@ use util::ppaux::Repr;
 
 use core::cast::transmute;
 use core::hashmap::HashMap;
+use core::vec;
 use syntax::print::pprust::{expr_to_str};
 use syntax::ast;
 use syntax::codemap;

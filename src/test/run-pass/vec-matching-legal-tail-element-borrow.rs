@@ -5,6 +5,6 @@ pub fn main() {
             [1, ..ref tail] => &tail[0],
             _ => ::std::util::unreachable()
         };
-        io::println(fmt!("%d", *el));
+        println(fmt!("%d", *el));
     }
 }

@@ -111,7 +111,10 @@ use util::ppaux;
 
 use core::cast::transmute;
 use core::hashmap::HashMap;
+use core::result;
+use core::str;
 use core::util::replace;
+use core::vec;
 use extra::list::Nil;
 use syntax::abi::AbiSet;
 use syntax::ast::{provided, required};
@@ -889,21 +892,6 @@ pub impl FnCtxt {
                sup: ty::Region)
             -> Result<(), ty::type_err> {
         infer::mk_subr(self.infcx(), a_is_expected, span, sub, sup)
-    }
-
-    fn require_unsafe(&self, sp: span, op: ~str) {
-        match self.ps.purity {
-          ast::unsafe_fn => {
-            // ok, but flag that we used the source of unsafeness
-            debug!("flagging %? as a used unsafe source", self.ps);
-            self.tcx().used_unsafe.insert(self.ps.def);
-          }
-          _ => {
-            self.ccx.tcx.sess.span_err(
-                sp,
-                fmt!("%s requires unsafe function or block", op));
-          }
-        }
     }
 
     fn with_region_lb<R>(@mut self, lb: ast::node_id, f: &fn() -> R) -> R {
@@ -2285,16 +2273,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 }
                 ast::deref => {
                     let sty = structure_of(fcx, expr.span, oprnd_t);
-                    match sty {
-                        // deref'ing an unsafe pointer requires that we be in
-                        // an unsafe context
-                        ty::ty_ptr(*) => {
-                            fcx.require_unsafe(
-                                expr.span,
-                                ~"dereference of unsafe pointer");
-                        }
-                        _ => { /*ok*/ }
-                    }
                     let operand_ty = ty::deref_sty(tcx, &sty, true);
                     match operand_ty {
                         Some(mt) => {
@@ -2392,8 +2370,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(id, ty_param_bounds_and_ty.ty);
       }
       ast::expr_inline_asm(ref ia) => {
-          fcx.require_unsafe(expr.span, ~"use of inline assembly");
-
           for ia.inputs.each |&(_, in)| {
               check_expr(fcx, in);
           }
@@ -3221,13 +3197,6 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
                     mutbl: ast::m_imm
                 })
         };
-      }
-
-      ast::def_fn(id, ast::unsafe_fn) |
-      ast::def_static_method(id, _, ast::unsafe_fn) => {
-        // Unsafe functions can only be touched in an unsafe context
-        fcx.require_unsafe(sp, ~"access to unsafe function");
-        return ty::lookup_item_type(fcx.ccx.tcx, id);
       }
 
       ast::def_fn(id, _) | ast::def_static_method(id, _, _) |

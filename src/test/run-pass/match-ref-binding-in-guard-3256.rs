@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::unstable;
+
 pub fn main() {
-    let x = Some(unstable::sync::exclusive(true));
-    match x {
-        Some(ref z) if z.with(|b| *b) => {
-            do z.with |b| { assert!(*b); }
-        },
-        _ => fail!()
+    unsafe {
+        let x = Some(unstable::sync::exclusive(true));
+        match x {
+            Some(ref z) if z.with(|b| *b) => {
+                do z.with |b| { assert!(*b); }
+            },
+            _ => fail!()
+        }
     }
 }

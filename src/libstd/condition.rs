@@ -10,8 +10,9 @@
 
 /*! Condition handling */
 
-use prelude::*;
 use local_data::{local_data_pop, local_data_set};
+use local_data;
+use prelude::*;
 
 // helper for transmutation, shown below.
 type RustClosure = (int, int);

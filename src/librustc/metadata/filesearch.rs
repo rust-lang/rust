@@ -10,6 +10,11 @@
 
 use core::prelude::*;
 
+use core::option;
+use core::os;
+use core::result;
+use core::str;
+
 // A module for searching for libraries
 // FIXME (#2658): I'm not happy how this module turned out. Should
 // probably just be folded into cstore.

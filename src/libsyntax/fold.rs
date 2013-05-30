@@ -15,6 +15,8 @@ use ast;
 use codemap::{span, spanned};
 use opt_vec::OptVec;
 
+use core::vec;
+
 pub trait ast_fold {
     fn fold_crate(@self, &crate) -> crate;
     fn fold_view_item(@self, @view_item) -> @view_item;
@@ -433,7 +435,6 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
     fn fold_field_(field: field, fld: @ast_fold) -> field {
         spanned {
             node: ast::field_ {
-                mutbl: field.node.mutbl,
                 ident: fld.fold_ident(field.node.ident),
                 expr: fld.fold_expr(field.node.expr),
             },

@@ -224,5 +224,8 @@ mod std {
     pub use kinds;
     pub use sys;
     pub use pipes;
+    pub use unstable;
+    pub use str;
+    pub use os;
 }
 

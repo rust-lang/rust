@@ -15,6 +15,7 @@ use core::prelude::*;
 use core::old_iter::BaseIter;
 use core::unstable::intrinsics::{move_val_init, init};
 use core::util::{replace, swap};
+use core::vec;
 
 pub struct PriorityQueue<T> {
     priv data: ~[T],

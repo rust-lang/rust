@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::sys;
+
 struct Struc { a: u8, b: [int, ..3], c: int }
 
 pub fn main() {

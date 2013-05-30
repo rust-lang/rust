@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use core::str;
 use core::to_bytes;
 
 #[deriving(Eq)]

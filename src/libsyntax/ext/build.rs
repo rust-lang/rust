@@ -486,7 +486,7 @@ impl AstBuilder for @ExtCtxt {
         self.expr(b.span, ast::expr_block(b))
     }
     fn field_imm(&self, span: span, name: ident, e: @ast::expr) -> ast::field {
-        respan(span, ast::field_ { mutbl: ast::m_imm, ident: name, expr: e })
+        respan(span, ast::field_ { ident: name, expr: e })
     }
     fn expr_struct(&self, span: span, path: @ast::Path, fields: ~[ast::field]) -> @ast::expr {
         self.expr(span, ast::expr_struct(path, fields, None))
