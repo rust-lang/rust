@@ -85,30 +85,31 @@ impl Local for IoFactoryObject {
 
 #[cfg(test)]
 mod test {
+    use rt::test::*;
     use rt::sched::Scheduler;
     use rt::uv::uvio::UvEventLoop;
     use super::*;
 
     #[test]
     fn thread_local_scheduler_smoke_test() {
-        let scheduler = ~UvEventLoop::new_scheduler();
+        let scheduler = ~new_test_uv_sched();
         Local::put(scheduler);
         let _scheduler: ~Scheduler = Local::take();
     }
 
     #[test]
     fn thread_local_scheduler_two_instances() {
-        let scheduler = ~UvEventLoop::new_scheduler();
+        let scheduler = ~new_test_uv_sched();
         Local::put(scheduler);
         let _scheduler: ~Scheduler = Local::take();
-        let scheduler = ~UvEventLoop::new_scheduler();
+        let scheduler = ~new_test_uv_sched();
         Local::put(scheduler);
         let _scheduler: ~Scheduler = Local::take();
     }
 
     #[test]
     fn borrow_smoke_test() {
-        let scheduler = ~UvEventLoop::new_scheduler();
+        let scheduler = ~new_test_uv_sched();
         Local::put(scheduler);
         unsafe {
             let _scheduler: *mut Scheduler = Local::unsafe_borrow();
