@@ -37,7 +37,6 @@ use core::to_bytes;
 use core::u32;
 use core::uint;
 use core::vec;
-use extra::smallintmap::SmallIntMap;
 use syntax::ast::*;
 use syntax::ast_util::is_local;
 use syntax::ast_util;

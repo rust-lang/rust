@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -79,7 +79,6 @@ use cast;
 use cell::Cell;
 use container::Map;
 use comm::{Chan, GenericChan};
-use comm;
 use ptr;
 use hashmap::HashSet;
 use task::local_data_priv::{local_get, local_set, OldHandle};
@@ -89,13 +88,14 @@ use task::{Failure, ManualThreads, PlatformThread, SchedOpts, SingleThreaded};
 use task::{Success, TaskOpts, TaskResult, ThreadPerCore, ThreadPerTask};
 use task::{ExistingScheduler, SchedulerHandle};
 use task::unkillable;
-use task;
 use uint;
 use util;
 use unstable::sync::{Exclusive, exclusive};
 use rt::local::Local;
 
 #[cfg(test)] use task::default_task_opts;
+#[cfg(test)] use comm;
+#[cfg(test)] use task;
 
 macro_rules! move_it (
     { $x:expr } => ( unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } )
