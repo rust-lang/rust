@@ -29,6 +29,9 @@ use rt::rtio::{IoFactoryObject, RemoteCallback};
 /// on a single thread. When the scheduler is running it is owned by
 /// thread local storage and the running task is owned by the
 /// scheduler.
+///
+/// XXX: This creates too many callbacks to run_sched_once, resulting
+/// in too much allocation and too many events.
 pub struct Scheduler {
     /// A queue of available work. Under a work-stealing policy there
     /// is one per Scheduler.
@@ -143,6 +146,10 @@ pub impl Scheduler {
 
     fn run_sched_once() {
 
+        // First, check the message queue for instructions.
+        // XXX: perf. Check for messages without atomics.
+        // It's ok if we miss messages occasionally, as long as
+        // we sync and check again before sleeping.
         let sched = Local::take::<Scheduler>();
         if sched.interpret_message_queue() {
             // We performed a scheduling action. There may be other work
@@ -153,6 +160,7 @@ pub impl Scheduler {
             return;
         }
 
+        // Now, look in the work queue for tasks to run
         let sched = Local::take::<Scheduler>();
         if sched.resume_task_from_queue() {
             // We performed a scheduling action. There may be other work
@@ -198,6 +206,12 @@ pub impl Scheduler {
         self.event_loop.callback(Scheduler::run_sched_once);
 
         // We've made work available. Notify a sleeping scheduler.
+        // XXX: perf. Check for a sleeper without synchronizing memory.
+        // It's not critical that we always find it.
+        // XXX: perf. If there's a sleeper then we might as well just send
+        // it the task directly instead of pushing it to the
+        // queue. That is essentially the intent here and it is less
+        // work.
         match self.sleeper_list.pop() {
             Some(handle) => {
                 let mut handle = handle;
