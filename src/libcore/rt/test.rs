@@ -122,11 +122,7 @@ pub fn spawntask(f: ~fn()) {
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
                                      ~Task::without_unwinding(),
                                      f);
-    do sched.switch_running_tasks_and_then(task) |task| {
-        let task = Cell(task);
-        let sched = Local::take::<Scheduler>();
-        sched.schedule_new_task(task.take());
-    }
+    sched.schedule_new_task(task);
 }
 
 /// Create a new task and run it right now. Aborts on failure
@@ -137,11 +133,8 @@ pub fn spawntask_immediately(f: ~fn()) {
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
                                      ~Task::without_unwinding(),
                                      f);
-    do sched.switch_running_tasks_and_then(task) |task| {
-        let task = Cell(task);
-        do Local::borrow::<Scheduler> |sched| {
-            sched.enqueue_task(task.take());
-        }
+    do sched.switch_running_tasks_and_then(task) |sched, task| {
+        sched.enqueue_task(task);
     }
 }
 
@@ -172,11 +165,8 @@ pub fn spawntask_random(f: ~fn()) {
                                      f);
 
     if run_now {
-        do sched.switch_running_tasks_and_then(task) |task| {
-            let task = Cell(task);
-            do Local::borrow::<Scheduler> |sched| {
-                sched.enqueue_task(task.take());
-            }
+        do sched.switch_running_tasks_and_then(task) |sched, task| {
+            sched.enqueue_task(task);
         }
     } else {
         sched.enqueue_task(task);
@@ -199,10 +189,9 @@ pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
     // Switch to the scheduler
     let f = Cell(Cell(f));
     let sched = Local::take::<Scheduler>();
-    do sched.deschedule_running_task_and_then() |old_task| {
+    do sched.deschedule_running_task_and_then() |sched, old_task| {
         let old_task = Cell(old_task);
         let f = f.take();
-        let mut sched = Local::take::<Scheduler>();
         let new_task = ~do Coroutine::new(&mut sched.stack_pool) {
             do (|| {
                 (f.take())()
@@ -210,16 +199,13 @@ pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
                 // Check for failure then resume the parent task
                 unsafe { *failed_ptr = task::failing(); }
                 let sched = Local::take::<Scheduler>();
-                do sched.switch_running_tasks_and_then(old_task.take()) |new_task| {
-                    let new_task = Cell(new_task);
-                    do Local::borrow::<Scheduler> |sched| {
-                        sched.enqueue_task(new_task.take());
-                    }
+                do sched.switch_running_tasks_and_then(old_task.take()) |sched, new_task| {
+                    sched.enqueue_task(new_task);
                 }
             }
         };
 
-        sched.resume_task_immediately(new_task);
+        sched.enqueue_task(new_task);
     }
 
     if !failed { Ok(()) } else { Err(()) }

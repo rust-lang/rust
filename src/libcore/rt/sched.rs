@@ -280,11 +280,9 @@ pub impl Scheduler {
 
         rtdebug!("ending running task");
 
-        do self.deschedule_running_task_and_then |dead_task| {
+        do self.deschedule_running_task_and_then |sched, dead_task| {
             let dead_task = Cell(dead_task);
-            do Local::borrow::<Scheduler> |sched| {
-                dead_task.take().recycle(&mut sched.stack_pool);
-            }
+            dead_task.take().recycle(&mut sched.stack_pool);
         }
 
         abort!("control reached end of task");
@@ -293,22 +291,18 @@ pub impl Scheduler {
     fn schedule_new_task(~self, task: ~Coroutine) {
         assert!(self.in_task_context());
 
-        do self.switch_running_tasks_and_then(task) |last_task| {
+        do self.switch_running_tasks_and_then(task) |sched, last_task| {
             let last_task = Cell(last_task);
-            do Local::borrow::<Scheduler> |sched| {
-                sched.enqueue_task(last_task.take());
-            }
+            sched.enqueue_task(last_task.take());
         }
     }
 
     fn schedule_task(~self, task: ~Coroutine) {
         assert!(self.in_task_context());
 
-        do self.switch_running_tasks_and_then(task) |last_task| {
+        do self.switch_running_tasks_and_then(task) |sched, last_task| {
             let last_task = Cell(last_task);
-            do Local::borrow::<Scheduler> |sched| {
-                sched.enqueue_task(last_task.take());
-            }
+            sched.enqueue_task(last_task.take());
         }
     }
 
@@ -352,7 +346,11 @@ pub impl Scheduler {
     /// The closure here is a *stack* closure that lives in the
     /// running task.  It gets transmuted to the scheduler's lifetime
     /// and called while the task is blocked.
-    fn deschedule_running_task_and_then(~self, f: &fn(~Coroutine)) {
+    ///
+    /// This passes a Scheduler pointer to the fn after the context switch
+    /// in order to prevent that fn from performing further scheduling operations.
+    /// Doing further scheduling could easily result in infinite recursion.
+    fn deschedule_running_task_and_then(~self, f: &fn(&mut Scheduler, ~Coroutine)) {
         let mut this = self;
         assert!(this.in_task_context());
 
@@ -360,7 +358,8 @@ pub impl Scheduler {
 
         unsafe {
             let blocked_task = this.current_task.swap_unwrap();
-            let f_fake_region = transmute::<&fn(~Coroutine), &fn(~Coroutine)>(f);
+            let f_fake_region = transmute::<&fn(&mut Scheduler, ~Coroutine),
+                                            &fn(&mut Scheduler, ~Coroutine)>(f);
             let f_opaque = ClosureConverter::from_fn(f_fake_region);
             this.enqueue_cleanup_job(GiveTask(blocked_task, f_opaque));
         }
@@ -382,14 +381,18 @@ pub impl Scheduler {
     /// Switch directly to another task, without going through the scheduler.
     /// You would want to think hard about doing this, e.g. if there are
     /// pending I/O events it would be a bad idea.
-    fn switch_running_tasks_and_then(~self, next_task: ~Coroutine, f: &fn(~Coroutine)) {
+    fn switch_running_tasks_and_then(~self, next_task: ~Coroutine,
+                                     f: &fn(&mut Scheduler, ~Coroutine)) {
         let mut this = self;
         assert!(this.in_task_context());
 
         rtdebug!("switching tasks");
 
         let old_running_task = this.current_task.swap_unwrap();
-        let f_fake_region = unsafe { transmute::<&fn(~Coroutine), &fn(~Coroutine)>(f) };
+        let f_fake_region = unsafe {
+            transmute::<&fn(&mut Scheduler, ~Coroutine),
+                        &fn(&mut Scheduler, ~Coroutine)>(f)
+        };
         let f_opaque = ClosureConverter::from_fn(f_fake_region);
         this.enqueue_cleanup_job(GiveTask(old_running_task, f_opaque));
         this.current_task = Some(next_task);
@@ -426,7 +429,7 @@ pub impl Scheduler {
         let cleanup_job = self.cleanup_job.swap_unwrap();
         match cleanup_job {
             DoNothing => { }
-            GiveTask(task, f) => (f.to_fn())(task)
+            GiveTask(task, f) => (f.to_fn())(self, task)
         }
     }
 
@@ -535,12 +538,12 @@ pub impl Coroutine {
 // complaining
 type UnsafeTaskReceiver = sys::Closure;
 trait ClosureConverter {
-    fn from_fn(&fn(~Coroutine)) -> Self;
-    fn to_fn(self) -> &fn(~Coroutine);
+    fn from_fn(&fn(&mut Scheduler, ~Coroutine)) -> Self;
+    fn to_fn(self) -> &fn(&mut Scheduler, ~Coroutine);
 }
 impl ClosureConverter for UnsafeTaskReceiver {
-    fn from_fn(f: &fn(~Coroutine)) -> UnsafeTaskReceiver { unsafe { transmute(f) } }
-    fn to_fn(self) -> &fn(~Coroutine) { unsafe { transmute(self) } }
+    fn from_fn(f: &fn(&mut Scheduler, ~Coroutine)) -> UnsafeTaskReceiver { unsafe { transmute(f) } }
+    fn to_fn(self) -> &fn(&mut Scheduler, ~Coroutine) { unsafe { transmute(self) } }
 }
 
 #[cfg(test)]
@@ -604,11 +607,9 @@ mod test {
                     unsafe { *count_ptr = *count_ptr + 1; }
                 };
                 // Context switch directly to the new task
-                do sched.switch_running_tasks_and_then(task2) |task1| {
+                do sched.switch_running_tasks_and_then(task2) |sched, task1| {
                     let task1 = Cell(task1);
-                    do Local::borrow::<Scheduler> |sched| {
-                        sched.enqueue_task(task1.take());
-                    }
+                    sched.enqueue_task(task1.take());
                 }
                 unsafe { *count_ptr = *count_ptr + 1; }
             };
@@ -658,12 +659,10 @@ mod test {
             let task = ~do Coroutine::new(&mut sched.stack_pool) {
                 let sched = Local::take::<Scheduler>();
                 assert!(sched.in_task_context());
-                do sched.deschedule_running_task_and_then() |task| {
+                do sched.deschedule_running_task_and_then() |sched, task| {
                     let task = Cell(task);
-                    do Local::borrow::<Scheduler> |sched| {
-                        assert!(!sched.in_task_context());
-                        sched.enqueue_task(task.take());
-                    }
+                    assert!(!sched.in_task_context());
+                    sched.enqueue_task(task.take());
                 }
             };
             sched.enqueue_task(task);
@@ -680,8 +679,7 @@ mod test {
         do run_in_newsched_task {
             do spawn {
                 let sched = Local::take::<Scheduler>();
-                do sched.deschedule_running_task_and_then |task| {
-                    let mut sched = Local::take::<Scheduler>();
+                do sched.deschedule_running_task_and_then |sched, task| {
                     let task = Cell(task);
                     do sched.event_loop.callback_ms(10) {
                         rtdebug!("in callback");
@@ -689,7 +687,6 @@ mod test {
                         sched.enqueue_task(task.take());
                         Local::put(sched);
                     }
-                    Local::put(sched);
                 }
             }
         }

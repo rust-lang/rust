@@ -205,12 +205,10 @@ impl IoFactory for UvIoFactory {
         assert!(scheduler.in_task_context());
 
         // Block this task and take ownership, switch to scheduler context
-        do scheduler.deschedule_running_task_and_then |task| {
+        do scheduler.deschedule_running_task_and_then |sched, task| {
 
             rtdebug!("connect: entered scheduler context");
-            do Local::borrow::<Scheduler> |scheduler| {
-                assert!(!scheduler.in_task_context());
-            }
+            assert!(!sched.in_task_context());
             let mut tcp_watcher = TcpWatcher::new(self.uv_loop());
             let task_cell = Cell(task);
 
@@ -250,7 +248,7 @@ impl IoFactory for UvIoFactory {
             Ok(_) => Ok(~UvTcpListener::new(watcher)),
             Err(uverr) => {
                 let scheduler = Local::take::<Scheduler>();
-                do scheduler.deschedule_running_task_and_then |task| {
+                do scheduler.deschedule_running_task_and_then |_, task| {
                     let task_cell = Cell(task);
                     do watcher.as_stream().close {
                         let scheduler = Local::take::<Scheduler>();
@@ -286,7 +284,7 @@ impl Drop for UvTcpListener {
     fn finalize(&self) {
         let watcher = self.watcher();
         let scheduler = Local::take::<Scheduler>();
-        do scheduler.deschedule_running_task_and_then |task| {
+        do scheduler.deschedule_running_task_and_then |_, task| {
             let task_cell = Cell(task);
             do watcher.as_stream().close {
                 let scheduler = Local::take::<Scheduler>();
@@ -348,7 +346,7 @@ impl Drop for UvTcpStream {
         rtdebug!("closing tcp stream");
         let watcher = self.watcher();
         let scheduler = Local::take::<Scheduler>();
-        do scheduler.deschedule_running_task_and_then |task| {
+        do scheduler.deschedule_running_task_and_then |_, task| {
             let task_cell = Cell(task);
             do watcher.close {
                 let scheduler = Local::take::<Scheduler>();
@@ -367,11 +365,9 @@ impl RtioTcpStream for UvTcpStream {
         assert!(scheduler.in_task_context());
         let watcher = self.watcher();
         let buf_ptr: *&mut [u8] = &buf;
-        do scheduler.deschedule_running_task_and_then |task| {
+        do scheduler.deschedule_running_task_and_then |sched, task| {
             rtdebug!("read: entered scheduler context");
-            do Local::borrow::<Scheduler> |scheduler| {
-                assert!(!scheduler.in_task_context());
-            }
+            assert!(!sched.in_task_context());
             let mut watcher = watcher;
             let task_cell = Cell(task);
             // XXX: We shouldn't reallocate these callbacks every
@@ -413,7 +409,7 @@ impl RtioTcpStream for UvTcpStream {
         assert!(scheduler.in_task_context());
         let watcher = self.watcher();
         let buf_ptr: *&[u8] = &buf;
-        do scheduler.deschedule_running_task_and_then |task| {
+        do scheduler.deschedule_running_task_and_then |_, task| {
             let mut watcher = watcher;
             let task_cell = Cell(task);
             let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
@@ -507,11 +503,9 @@ fn test_read_and_block() {
                 // Yield to the other task in hopes that it
                 // will trigger a read callback while we are
                 // not ready for it
-                do scheduler.deschedule_running_task_and_then |task| {
+                do scheduler.deschedule_running_task_and_then |sched, task| {
                     let task = Cell(task);
-                    do Local::borrow::<Scheduler> |scheduler| {
-                        scheduler.enqueue_task(task.take());
-                    }
+                    sched.enqueue_task(task.take());
                 }
             }
 
