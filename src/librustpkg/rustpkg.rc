@@ -18,6 +18,7 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
+#[no_core];
 #[no_std];
 
 extern mod core(name = "std");
@@ -53,6 +54,7 @@ mod target;
 #[cfg(test)]
 mod tests;
 mod util;
+mod version;
 mod workspace;
 
 pub mod usage;
