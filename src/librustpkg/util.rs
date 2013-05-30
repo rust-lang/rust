@@ -292,15 +292,15 @@ fn pretty_message<'a>(msg: &'a str, prefix: &'a str, color: u8, out: @io::Writer
     out.write_line(msg);
 }
 
-pub fn note(msg: ~str) {
+pub fn note(msg: &str) {
     pretty_message(msg, "note: ", term::color_green, io::stdout())
 }
 
-pub fn warn(msg: ~str) {
+pub fn warn(msg: &str) {
     pretty_message(msg, "warning: ", term::color_yellow, io::stdout())
 }
 
-pub fn error(msg: ~str) {
+pub fn error(msg: &str) {
     pretty_message(msg, "error: ", term::color_red, io::stdout())
 }
 
