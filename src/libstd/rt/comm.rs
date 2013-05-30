@@ -22,7 +22,6 @@ use ops::Drop;
 use kinds::Owned;
 use rt::sched::{Scheduler, Coroutine};
 use rt::local::Local;
-use rt::rtio::EventLoop;
 use unstable::intrinsics::{atomic_xchg, atomic_load};
 use util::Void;
 use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable};

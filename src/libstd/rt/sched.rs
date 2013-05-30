@@ -13,7 +13,6 @@ use sys;
 use cast::transmute;
 use cell::Cell;
 use clone::Clone;
-use to_str::ToStr;
 
 use super::sleeper_list::SleeperList;
 use super::work_queue::WorkQueue;
@@ -24,7 +23,7 @@ use super::task::Task;
 use super::message_queue::MessageQueue;
 use rt::local_ptr;
 use rt::local::Local;
-use rt::rtio::{IoFactoryObject, RemoteCallback};
+use rt::rtio::RemoteCallback;
 use rt::metrics::SchedMetrics;
 
 /// The Scheduler is responsible for coordinating execution of Coroutines
@@ -583,7 +582,6 @@ impl ClosureConverter for UnsafeTaskReceiver {
 mod test {
     use int;
     use cell::Cell;
-    use rt::uv::uvio::UvEventLoop;
     use unstable::run_in_bare_thread;
     use task::spawn;
     use rt::local::Local;
@@ -751,13 +749,13 @@ mod test {
 
             let sched1_cell = Cell(sched1);
             let _thread1 = do Thread::start {
-                let mut sched1 = sched1_cell.take();
+                let sched1 = sched1_cell.take();
                 sched1.run();
             };
 
             let sched2_cell = Cell(sched2);
             let _thread2 = do Thread::start {
-                let mut sched2 = sched2_cell.take();
+                let sched2 = sched2_cell.take();
                 sched2.run();
             };
         }
@@ -790,9 +788,6 @@ mod test {
     #[test]
     fn thread_ring() {
         use rt::comm::*;
-        use iter::Times;
-        use vec::OwnedVector;
-        use container::Container;
         use comm::{GenericPort, GenericChan};
 
         do run_in_mt_newsched_task {

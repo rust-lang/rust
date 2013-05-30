@@ -16,7 +16,7 @@ use vec::OwnedVector;
 use option::{Option, Some, None};
 use cell::Cell;
 use unstable::sync::{Exclusive, exclusive};
-use rt::sched::{Scheduler, SchedHandle};
+use rt::sched::SchedHandle;
 use clone::Clone;
 
 pub struct SleeperList {
