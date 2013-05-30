@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,8 +15,12 @@
 use core::prelude::*;
 
 use core::io;
-use core::option;
 use core::os;
+
+use terminfo::*;
+use terminfo::searcher::open;
+use terminfo::parser::compiled::parse;
+use terminfo::parm::{expand, Number};
 
 // FIXME (#2807): Windows support.
 
@@ -41,41 +45,42 @@ pub static color_bright_white: u8 = 15u8;
 
 pub fn esc(writer: @io::Writer) { writer.write([0x1bu8, '[' as u8]); }
 
-/// Reset the foreground and background colors to default
-pub fn reset(writer: @io::Writer) {
-    esc(writer);
-    writer.write(['0' as u8, 'm' as u8]);
+pub struct Terminal {
+    color_supported: bool,
+    priv out: @io::Writer,
+    priv ti: ~TermInfo
 }
 
-/// Returns true if the terminal supports color
-pub fn color_supported() -> bool {
-    let supported_terms = ~[~"xterm-color", ~"xterm",
-                           ~"screen-bce", ~"xterm-256color"];
-    return match os::getenv("TERM") {
-          option::Some(ref env) => {
-            for supported_terms.each |term| {
-                if *term == *env { return true; }
-            }
-            false
-          }
-          option::None => false
-        };
-}
+pub impl Terminal {
+    pub fn new(out: @io::Writer) -> Result<Terminal, ~str> {
+        let term = os::getenv("TERM");
+        if term.is_none() {
+            return Err(~"TERM environment variable undefined");
+        }
 
-pub fn set_color(writer: @io::Writer, first_char: u8, color: u8) {
-    assert!((color < 16u8));
-    esc(writer);
-    let mut color = color;
-    if color >= 8u8 { writer.write(['1' as u8, ';' as u8]); color -= 8u8; }
-    writer.write([first_char, ('0' as u8) + color, 'm' as u8]);
-}
+        let entry = open(term.unwrap());
+        if entry.is_err() {
+            return Err(entry.get_err());
+        }
 
-/// Set the foreground color
-pub fn fg(writer: @io::Writer, color: u8) {
-    return set_color(writer, '3' as u8, color);
-}
+        let ti = parse(entry.get(), false);
+        if ti.is_err() {
+            return Err(entry.get_err());
+        }
 
-/// Set the background color
-pub fn bg(writer: @io::Writer, color: u8) {
-    return set_color(writer, '4' as u8, color);
+        let mut inf = ti.get();
+        let cs = *inf.numbers.find_or_insert(~"colors", 0) >= 16 && inf.strings.find(&~"setaf").is_some()
+            && inf.strings.find(&~"setab").is_some();
+
+        return Ok(Terminal {out: out, ti: inf, color_supported: cs});
+    }
+    fn fg(&self, color: u8) {
+        self.out.write(expand(*self.ti.strings.find(&~"setaf").unwrap(), [Number(color as int)], [], []));
+    }
+    fn bg(&self, color: u8) {
+        self.out.write(expand(*self.ti.strings.find(&~"setab").unwrap(), [Number(color as int)], [], []));
+    }
+    fn reset(&self) {
+        self.out.write(expand(*self.ti.strings.find(&~"op").unwrap(), [], [], []));
+    }
 }
