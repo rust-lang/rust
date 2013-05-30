@@ -131,6 +131,11 @@ pub impl Scheduler {
 
         let mut self_sched = self;
 
+        // Always run through the scheduler loop at least once so that
+        // we enter the sleep state and can then be woken up by other
+        // schedulers.
+        self_sched.event_loop.callback(Scheduler::run_sched_once);
+
         unsafe {
             let event_loop: *mut ~EventLoopObject = {
                 let event_loop: *mut ~EventLoopObject = &mut self_sched.event_loop;
@@ -258,7 +263,7 @@ pub impl Scheduler {
                                 let mut handle = handle;
                                 handle.send(Wake);
                             }
-                            None => (/* pass */)
+                            None => break
                         }
                     }
                 }
@@ -781,4 +786,63 @@ mod test {
             }
         }
     }
+
+    #[test]
+    fn thread_ring() {
+        use rt::comm::*;
+        use iter::Times;
+        use vec::OwnedVector;
+        use container::Container;
+        use comm::{GenericPort, GenericChan};
+
+        do run_in_mt_newsched_task {
+            let (end_port, end_chan) = oneshot();
+
+            let n_tasks = 10;
+            let token = 2000;
+
+            let mut (p, ch1) = stream();
+            ch1.send((token, end_chan));
+            let mut i = 2;
+            while i <= n_tasks {
+                let (next_p, ch) = stream();
+                let imm_i = i;
+                let imm_p = p;
+                do spawntask_random {
+                    roundtrip(imm_i, n_tasks, &imm_p, &ch);
+                };
+                p = next_p;
+                i += 1;
+            }
+            let imm_p = p;
+            let imm_ch = ch1;
+            do spawntask_random {
+                roundtrip(1, n_tasks, &imm_p, &imm_ch);
+            }
+
+            end_port.recv();
+        }
+
+        fn roundtrip(id: int, n_tasks: int,
+                     p: &Port<(int, ChanOne<()>)>, ch: &Chan<(int, ChanOne<()>)>) {
+            while (true) {
+                match p.recv() {
+                    (1, end_chan) => {
+                        debug!("%d\n", id);
+                        end_chan.send(());
+                        return;
+                    }
+                    (token, end_chan) => {
+                        debug!("thread: %d   got token: %d", id, token);
+                        ch.send((token - 1, end_chan));
+                        if token <= n_tasks {
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+    }
+
 }

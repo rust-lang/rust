@@ -66,7 +66,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
     let f_cell = Cell(f);
 
     do run_in_bare_thread {
-        static N: uint = 2;
+        static N: uint = 4;
 
         let sleepers = SleeperList::new();
         let work_queue = WorkQueue::new();
