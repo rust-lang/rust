@@ -130,6 +130,8 @@ pub mod local_ptr;
 /// Bindings to pthread/windows thread-local storage.
 pub mod thread_local_storage;
 
+pub mod metrics;
+
 
 /// Set up a default runtime configuration, given compiler-supplied arguments.
 ///
