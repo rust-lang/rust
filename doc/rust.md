@@ -301,10 +301,10 @@ num_lit : nonzero_dec [ dec_digit | '_' ] * num_suffix ?
 num_suffix : int_suffix | float_suffix ;
 
 int_suffix : 'u' int_suffix_size ?
-           | 'i' int_suffix_size ;
+           | 'i' int_suffix_size ? ;
 int_suffix_size : [ '8' | '1' '6' | '3' '2' | '6' '4' ] ;
 
-float_suffix : [ exponent | '.' dec_lit exponent ? ] float_suffix_ty ? ;
+float_suffix : [ exponent | '.' dec_lit exponent ? ] ? float_suffix_ty ? ;
 float_suffix_ty : 'f' [ '3' '2' | '6' '4' ] ;
 exponent : ['E' | 'e'] ['-' | '+' ] ? dec_lit ;
 dec_lit : [ dec_digit | '_' ] + ;
