@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use core::prelude::*;
+use core::str;
+use core::io;
 
 use driver::session::{OptLevel, No, Less, Default, Aggressive};
 use driver::session::{Session};
