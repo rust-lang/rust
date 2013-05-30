@@ -70,17 +70,17 @@ pub impl Terminal {
 
         let mut inf = ti.get();
         let cs = *inf.numbers.find_or_insert(~"colors", 0) >= 16 && inf.strings.find(&~"setaf").is_some()
-            && inf.strings.find(&~"setab").is_some();
+            && inf.strings.find_equiv(&("setab")).is_some();
 
         return Ok(Terminal {out: out, ti: inf, color_supported: cs});
     }
     fn fg(&self, color: u8) {
-        self.out.write(expand(*self.ti.strings.find(&~"setaf").unwrap(), [Number(color as int)], [], []));
+        self.out.write(expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(), [Number(color as int)], [], []));
     }
     fn bg(&self, color: u8) {
-        self.out.write(expand(*self.ti.strings.find(&~"setab").unwrap(), [Number(color as int)], [], []));
+        self.out.write(expand(*self.ti.strings.find_equiv(&("setab")).unwrap(), [Number(color as int)], [], []));
     }
     fn reset(&self) {
-        self.out.write(expand(*self.ti.strings.find(&~"op").unwrap(), [], [], []));
+        self.out.write(expand(*self.ti.strings.find_equiv(&("op")).unwrap(), [], [], []));
     }
 }
