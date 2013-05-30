@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use uint;
-use option::{Option, Some, None};
+use option::{Some, None};
 use cell::Cell;
 use clone::Clone;
 use container::Container;
@@ -42,7 +42,6 @@ pub fn new_test_uv_sched() -> Scheduler {
 pub fn run_in_newsched_task(f: ~fn()) {
     use super::sched::*;
     use unstable::run_in_bare_thread;
-    use rt::uv::uvio::UvEventLoop;
 
     let f = Cell(f);
 
@@ -74,7 +73,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         let mut handles = ~[];
         let mut scheds = ~[];
 
-        for uint::range(0, N) |i| {
+        for uint::range(0, N) |_| {
             let loop_ = ~UvEventLoop::new();
             let mut sched = ~Scheduler::new(loop_, work_queue.clone(), sleepers.clone());
             let handle = sched.make_handle();
@@ -102,7 +101,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
             let sched = scheds.pop();
             let sched_cell = Cell(sched);
             let thread = do Thread::start {
-                let mut sched = sched_cell.take();
+                let sched = sched_cell.take();
                 sched.run();
             };
 
@@ -214,7 +213,6 @@ pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
 // Spawn a new task in a new scheduler and return a thread handle.
 pub fn spawntask_thread(f: ~fn()) -> Thread {
     use rt::sched::*;
-    use rt::uv::uvio::UvEventLoop;
 
     let f = Cell(f);
     let thread = do Thread::start {

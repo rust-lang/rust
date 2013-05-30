@@ -24,9 +24,7 @@ use rt::sched::Scheduler;
 use rt::io::{standard_error, OtherIoError};
 use rt::tube::Tube;
 use rt::local::Local;
-use rt::work_queue::WorkQueue;
 use unstable::sync::{UnsafeAtomicRcBox, AtomicInt};
-use unstable::intrinsics;
 
 #[cfg(test)] use container::Container;
 #[cfg(test)] use uint;
@@ -140,7 +138,7 @@ impl RemoteCallback for UvRemoteCallback {
 impl Drop for UvRemoteCallback {
     fn finalize(&self) {
         unsafe {
-            let mut this: &mut UvRemoteCallback = cast::transmute_mut(self);
+            let this: &mut UvRemoteCallback = cast::transmute_mut(self);
             let exit_flag_ptr = this.exit_flag.get();
             (*exit_flag_ptr).store(1);
             this.async.send();
@@ -150,7 +148,6 @@ impl Drop for UvRemoteCallback {
 
 #[cfg(test)]
 mod test_remote {
-    use super::*;
     use cell;
     use cell::Cell;
     use rt::test::*;

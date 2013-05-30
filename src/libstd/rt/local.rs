@@ -87,7 +87,6 @@ impl Local for IoFactoryObject {
 mod test {
     use rt::test::*;
     use rt::sched::Scheduler;
-    use rt::uv::uvio::UvEventLoop;
     use super::*;
 
     #[test]

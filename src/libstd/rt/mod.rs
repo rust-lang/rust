@@ -55,6 +55,9 @@ Several modules in `core` are clients of `rt`:
 */
 
 #[doc(hidden)];
+#[deny(unused_imports)];
+#[deny(unused_mut)];
+#[deny(unused_variable)];
 
 use ptr::Ptr;
 
@@ -228,8 +231,6 @@ pub fn context() -> RuntimeContext {
 fn test_context() {
     use unstable::run_in_bare_thread;
     use self::sched::{Scheduler, Coroutine};
-    use rt::uv::uvio::UvEventLoop;
-    use cell::Cell;
     use rt::local::Local;
     use rt::test::new_test_uv_sched;
 
