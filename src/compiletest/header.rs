@@ -99,7 +99,7 @@ pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
     return false;
 
     fn xfail_target() -> ~str {
-        ~"xfail-" + str::to_owned(os::SYSNAME)
+        ~"xfail-" + os::SYSNAME
     }
 }
 
@@ -173,7 +173,7 @@ fn parse_name_directive(line: &str, directive: &str) -> bool {
 
 fn parse_name_value_directive(line: &str,
                               directive: ~str) -> Option<~str> {
-    let keycolon = directive + ~":";
+    let keycolon = directive + ":";
     match str::find_str(line, keycolon) {
         Some(colon) => {
             let value = str::slice(line, colon + str::len(keycolon),

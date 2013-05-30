@@ -110,10 +110,11 @@ pub struct Opt {
 }
 
 fn mkname(nm: &str) -> Name {
-    let unm = str::to_owned(nm);
-    return if nm.len() == 1u {
-            Short(str::char_at(unm, 0u))
-        } else { Long(unm) };
+  if nm.len() == 1u {
+      Short(str::char_at(nm, 0u))
+  } else {
+      Long(nm.to_owned())
+  }
 }
 
 /// Create an option that is required and takes an argument
@@ -195,19 +196,19 @@ pub enum Fail_ {
 pub fn fail_str(f: Fail_) -> ~str {
     return match f {
         ArgumentMissing(ref nm) => {
-            ~"Argument to option '" + *nm + "' missing."
+            fmt!("Argument to option '%s' missing.", *nm)
         }
         UnrecognizedOption(ref nm) => {
-            ~"Unrecognized option: '" + *nm + "'."
+            fmt!("Unrecognized option: '%s'.", *nm)
         }
         OptionMissing(ref nm) => {
-            ~"Required option '" + *nm + "' missing."
+            fmt!("Required option '%s' missing.", *nm)
         }
         OptionDuplicated(ref nm) => {
-            ~"Option '" + *nm + "' given more than once."
+            fmt!("Option '%s' given more than once.", *nm)
         }
         UnexpectedArgument(ref nm) => {
-            ~"Option " + *nm + " does not take an argument."
+            fmt!("Option '%s' does not take an argument.", *nm)
         }
     };
 }
@@ -245,11 +246,11 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
             let mut names;
             let mut i_arg = None;
             if cur[1] == '-' as u8 {
-                let tail = str::slice(cur, 2, curlen).to_owned();
+                let tail = str::slice(cur, 2, curlen);
                 let mut tail_eq = ~[];
                 for str::each_splitn_char(tail, '=', 1) |s| { tail_eq.push(s.to_owned()) }
                 if tail_eq.len() <= 1 {
-                    names = ~[Long(tail)];
+                    names = ~[Long(tail.to_owned())];
                 } else {
                     names =
                         ~[Long(copy tail_eq[0])];

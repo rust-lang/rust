@@ -49,7 +49,7 @@ fn make_cumulative(aa: ~[AminoAcids]) -> ~[AminoAcids] {
     let mut ans: ~[AminoAcids] = ~[];
     for aa.each |a| {
         cp += a.prob;
-        ans += ~[AminoAcids {ch: a.ch, prob: cp}];
+        ans += [AminoAcids {ch: a.ch, prob: cp}];
     }
     return ans;
 }
@@ -72,7 +72,7 @@ fn make_random_fasta(wr: @io::Writer,
                      desc: ~str,
                      genelist: ~[AminoAcids],
                      n: int) {
-    wr.write_line(~">" + id + ~" " + desc);
+    wr.write_line(~">" + id + " " + desc);
     let mut rng = rand::rng();
     let rng = @mut MyRandom {
         last: rng.next()
@@ -91,7 +91,7 @@ fn make_random_fasta(wr: @io::Writer,
 
 fn make_repeat_fasta(wr: @io::Writer, id: ~str, desc: ~str, s: ~str, n: int) {
     unsafe {
-        wr.write_line(~">" + id + ~" " + desc);
+        wr.write_line(~">" + id + " " + desc);
         let mut op: ~str = ~"";
         let sl: uint = str::len(s);
         for uint::range(0u, n as uint) |i| {
@@ -139,13 +139,13 @@ fn main() {
         make_cumulative(~[acid('a', 30u32), acid('c', 20u32), acid('g', 20u32),
                          acid('t', 30u32)]);
     let alu: ~str =
-        ~"GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG" +
-            ~"GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA" +
-            ~"CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT" +
-            ~"ACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCA" +
-            ~"GCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGG" +
-            ~"AGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCC" +
-            ~"AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
+        ~"GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG\
+          GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA\
+          CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT\
+          ACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCA\
+          GCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGG\
+          AGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCC\
+          AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
     make_repeat_fasta(writer, ~"ONE", ~"Homo sapiens alu", alu, n * 2);
     make_random_fasta(writer, ~"TWO", ~"IUB ambiguity codes", iub, n * 3);
     make_random_fasta(writer, ~"THREE",
