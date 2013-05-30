@@ -43,8 +43,6 @@ pub static color_bright_magenta: u8 = 13u8;
 pub static color_bright_cyan: u8 = 14u8;
 pub static color_bright_white: u8 = 15u8;
 
-pub fn esc(writer: @io::Writer) { writer.write([0x1bu8, '[' as u8]); }
-
 pub struct Terminal {
     color_supported: bool,
     priv out: @io::Writer,
@@ -75,12 +73,20 @@ pub impl Terminal {
         return Ok(Terminal {out: out, ti: inf, color_supported: cs});
     }
     fn fg(&self, color: u8) {
-        self.out.write(expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(), [Number(color as int)], [], []));
+        if self.color_supported {
+            self.out.write(expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(), 
+                                  [Number(color as int)], [], []));
+        }
     }
     fn bg(&self, color: u8) {
-        self.out.write(expand(*self.ti.strings.find_equiv(&("setab")).unwrap(), [Number(color as int)], [], []));
+        if self.color_supported {
+            self.out.write(expand(*self.ti.strings.find_equiv(&("setab")).unwrap(),
+                                  [Number(color as int)], [], []));
+        }
     }
     fn reset(&self) {
-        self.out.write(expand(*self.ti.strings.find_equiv(&("op")).unwrap(), [], [], []));
+        if self.color_supported {
+            self.out.write(expand(*self.ti.strings.find_equiv(&("op")).unwrap(), [], [], []));
+        }
     }
 }
