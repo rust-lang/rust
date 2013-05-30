@@ -103,7 +103,7 @@ pub impl Sudoku {
         for u8::range(0u8, 9u8) |row| {
             for u8::range(0u8, 9u8) |col| {
                 let color = self.grid[row][col];
-                if color == 0u8 { work += ~[(row, col)]; }
+                if color == 0u8 { work += [(row, col)]; }
             }
         }
 

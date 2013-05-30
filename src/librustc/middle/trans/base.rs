@@ -2906,8 +2906,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     let cstore = sess.cstore;
     while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
     let mapname = if *sess.building_library {
-        mapmeta.name.to_owned() + "_" + mapmeta.vers.to_owned() + "_"
-            + mapmeta.extras_hash.to_owned()
+        fmt!("%s_%s_%s", mapmeta.name, mapmeta.vers, mapmeta.extras_hash)
     } else {
         ~"toplevel"
     };

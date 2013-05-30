@@ -293,7 +293,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
 
         let mut i = 0u;
         while i < digits {
-            let range = str::char_range_at(str::to_owned(ss), pos);
+            let range = str::char_range_at(ss, pos);
             pos = range.next;
 
             match range.ch {
@@ -632,7 +632,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         }
     }
 
-    do io::with_str_reader(str::to_owned(format)) |rdr| {
+    do io::with_str_reader(format) |rdr| {
         let mut tm = Tm {
             tm_sec: 0_i32,
             tm_min: 0_i32,
@@ -844,7 +844,7 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
 
     let mut buf = ~"";
 
-    do io::with_str_reader(str::to_owned(format)) |rdr| {
+    do io::with_str_reader(format) |rdr| {
         while !rdr.eof() {
             match rdr.read_char() {
                 '%' => buf += parse_type(rdr.read_char(), tm),

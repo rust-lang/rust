@@ -98,7 +98,8 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     // Add the clobbers to our constraints list
     if clobbers != ~"" && constraints != ~"" {
-        constraints += ~"," + clobbers;
+        constraints += ",";
+        constraints += clobbers;
     } else {
         constraints += clobbers;
     }

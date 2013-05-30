@@ -272,12 +272,11 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
         }
         ~"help" => {
             println(
-                ~":{\\n ..lines.. \\n:}\\n - execute multiline command\n" +
-                ":load <crate> ... - \
-                  loads given crates as dynamic libraries\n" +
-                ":clear - clear the bindings\n" +
-                ":exit - exit from the repl\n" +
-                ":help - show this message");
+                ":{\\n ..lines.. \\n:}\\n - execute multiline command\n\
+                 :load <crate> ... - loads given crates as dynamic libraries\n\
+                 :clear - clear the bindings\n\
+                 :exit - exit from the repl\n\
+                 :help - show this message");
         }
         ~"load" => {
             let mut loaded_crates: ~[~str] = ~[];

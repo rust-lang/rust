@@ -89,8 +89,7 @@ pub fn enc_ty(w: @io::Writer, cx: @ctxt, t: ty::t) {
           let abbrev_len = 3u + estimate_sz(pos) + estimate_sz(len);
           if abbrev_len < len {
               // I.e. it's actually an abbreviation.
-              let s = ~"#" + uint::to_str_radix(pos, 16u) + ":" +
-                  uint::to_str_radix(len, 16u) + "#";
+              let s = fmt!("#%x:%x#", pos, len);
               let a = ty_abbrev { pos: pos, len: len, s: @s };
               abbrevs.insert(t, a);
           }

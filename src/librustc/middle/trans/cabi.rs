@@ -60,8 +60,8 @@ pub impl FnType {
     fn build_shim_args(&self, bcx: block,
                        arg_tys: &[TypeRef],
                        llargbundle: ValueRef) -> ~[ValueRef] {
-        let mut atys = /*bad*/copy self.arg_tys;
-        let mut attrs = /*bad*/copy self.attrs;
+        let mut atys: &[LLVMType] = self.arg_tys;
+        let mut attrs: &[option::Option<Attribute>] = self.attrs;
 
         let mut llargvals = ~[];
         let mut i = 0u;
@@ -71,8 +71,8 @@ pub impl FnType {
             let llretptr = GEPi(bcx, llargbundle, [0u, n]);
             let llretloc = Load(bcx, llretptr);
                 llargvals = ~[llretloc];
-                atys = vec::to_owned(atys.tail());
-                attrs = vec::to_owned(attrs.tail());
+                atys = atys.tail();
+                attrs = attrs.tail();
         }
 
         while i < n {
@@ -133,12 +133,12 @@ pub impl FnType {
                        ret_ty: TypeRef,
                        llwrapfn: ValueRef,
                        llargbundle: ValueRef) {
-        let mut atys = /*bad*/copy self.arg_tys;
-        let mut attrs = /*bad*/copy self.attrs;
+        let mut atys: &[LLVMType] = self.arg_tys;
+        let mut attrs: &[option::Option<Attribute>] = self.attrs;
         let mut j = 0u;
         let llretptr = if self.sret {
-            atys = vec::to_owned(atys.tail());
-            attrs = vec::to_owned(attrs.tail());
+            atys = atys.tail();
+            attrs = attrs.tail();
             j = 1u;
             get_param(llwrapfn, 0u)
         } else if self.ret_ty.cast {

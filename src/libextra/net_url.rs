@@ -585,7 +585,7 @@ fn get_path(rawurl: &str, authority: bool) ->
         }
     }
 
-    return Ok((decode_component(str::slice(rawurl, 0, end).to_owned()),
+    return Ok((decode_component(str::slice(rawurl, 0, end)),
                     str::slice(rawurl, end, len).to_owned()));
 }
 
@@ -596,14 +596,13 @@ fn get_query_fragment(rawurl: &str) ->
         if str::starts_with(rawurl, "#") {
             let f = decode_component(str::slice(rawurl,
                                                 1,
-                                                str::len(rawurl)).to_owned());
+                                                str::len(rawurl)));
             return Ok((~[], Some(f)));
         } else {
             return Ok((~[], None));
         }
     }
-    let (q, r) = split_char_first(str::slice(rawurl, 1,
-                                             str::len(rawurl)).to_owned(), '#');
+    let (q, r) = split_char_first(str::slice(rawurl, 1, rawurl.len()), '#');
     let f = if str::len(r) != 0 {
         Some(decode_component(r)) } else { None };
     return Ok((query_from_str(q), f));
