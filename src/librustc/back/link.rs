@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -106,9 +106,7 @@ pub mod jit {
     use metadata::cstore;
 
     use core::cast;
-    use core::char;
     use core::libc::c_int;
-    use core::os;
     use core::ptr;
     use core::str;
 

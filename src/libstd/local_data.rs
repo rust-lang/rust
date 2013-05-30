@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -29,7 +29,8 @@ magic.
 use prelude::*;
 
 use task::local_data_priv::{local_get, local_pop, local_modify, local_set, Handle};
-use task;
+
+#[cfg(test)] use task;
 
 /**
  * Indexes a task-local data slot. The function's code pointer is used for

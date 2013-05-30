@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,7 +11,6 @@
 //! A mutable, nullable memory location
 
 use cast::transmute_mut;
-use cmp;
 use prelude::*;
 use util::replace;
 
