@@ -11,6 +11,8 @@
 // A pass that checks to make sure private fields and methods aren't used
 // outside their scopes.
 
+use core::prelude::*;
+
 use metadata::csearch;
 use middle::ty::{ty_struct, ty_enum};
 use middle::ty;
@@ -400,7 +402,7 @@ pub fn check_crate(tcx: ty::ctxt,
             // Do not check privacy inside items with the resolve_unexported
             // attribute. This is used for the test runner.
             if !attr::contains_name(attr::attr_metas(/*bad*/copy item.attrs),
-                                    ~"!resolve_unexported") {
+                                    "!resolve_unexported") {
                 visit::visit_item(item, method_map, visitor);
             }
         },

@@ -39,38 +39,40 @@ data through the global _exchange heap_.
 
 While Rust's type system provides the building blocks needed for safe
 and efficient tasks, all of the task functionality itself is implemented
-in the core and standard libraries, which are still under development
+in the standard and extra libraries, which are still under development
 and do not always present a consistent or complete interface.
 
 For your reference, these are the standard modules involved in Rust
-concurrency at this writing.
+concurrency at this writing:
 
-* [`core::task`] - All code relating to tasks and task scheduling
-* [`core::comm`] - The message passing interface
-* [`core::pipes`] - The underlying messaging infrastructure
-* [`std::comm`] - Additional messaging types based on `core::pipes`
-* [`std::sync`] - More exotic synchronization tools, including locks
-* [`std::arc`] - The ARC (atomically reference counted) type,
-  for safely sharing immutable data
+* [`std::task`] - All code relating to tasks and task scheduling,
+* [`std::comm`] - The message passing interface,
+* [`std::pipes`] - The underlying messaging infrastructure,
+* [`extra::comm`] - Additional messaging types based on `std::pipes`,
+* [`extra::sync`] - More exotic synchronization tools, including locks,
+* [`extra::arc`] - The ARC (atomically reference counted) type,
+  for safely sharing immutable data,
+* [`extra::future`] - A type representing values that may be computed concurrently and retrieved at a later time.
 
-[`core::task`]: core/task.html
-[`core::comm`]: core/comm.html
-[`core::pipes`]: core/pipes.html
+[`std::task`]: std/task.html
 [`std::comm`]: std/comm.html
-[`std::sync`]: std/sync.html
-[`std::arc`]: std/arc.html
+[`std::pipes`]: std/pipes.html
+[`extra::comm`]: extra/comm.html
+[`extra::sync`]: extra/sync.html
+[`extra::arc`]: extra/arc.html
+[`extra::future`]: extra/future.html
 
 # Basics
 
 The programming interface for creating and managing tasks lives
-in the `task` module of the `core` library, and is thus available to all
+in the `task` module of the `std` library, and is thus available to all
 Rust code by default. At its simplest, creating a task is a matter of
 calling the `spawn` function with a closure argument. `spawn` executes the
 closure in the new task.
 
 ~~~~
-# use core::io::println;
-use core::task::spawn;
+# use std::io::println;
+# use std::task::spawn;
 
 // Print something profound in a different task using a named function
 fn print_message() { println("I am running in a different task!"); }
@@ -88,7 +90,7 @@ do spawn {
 In Rust, there is nothing special about creating tasks: a task is not a
 concept that appears in the language semantics. Instead, Rust's type system
 provides all the tools necessary to implement safe concurrency: particularly,
-_owned types_. The language leaves the implementation details to the core
+_owned types_. The language leaves the implementation details to the standard
 library.
 
 The `spawn` function has a very simple type signature: `fn spawn(f:
@@ -99,8 +101,8 @@ execution. Like any closure, the function passed to `spawn` may capture
 an environment that it carries across tasks.
 
 ~~~
-# use core::io::println;
-# use core::task::spawn;
+# use std::io::println;
+# use std::task::spawn;
 # fn generate_task_number() -> int { 0 }
 // Generate some state locally
 let child_task_number = generate_task_number();
@@ -116,8 +118,8 @@ in parallel. Thus, on a multicore machine, running the following code
 should interleave the output in vaguely random order.
 
 ~~~
-# use core::io::print;
-# use core::task::spawn;
+# use std::io::print;
+# use std::task::spawn;
 
 for int::range(0, 20) |child_task_number| {
     do spawn {
@@ -145,8 +147,8 @@ endpoint. Consider the following example of calculating two results
 concurrently:
 
 ~~~~
-use core::task::spawn;
-use core::comm::{stream, Port, Chan};
+# use std::task::spawn;
+# use std::comm::{stream, Port, Chan};
 
 let (port, chan): (Port<int>, Chan<int>) = stream();
 
@@ -167,7 +169,7 @@ stream for sending and receiving integers (the left-hand side of the `let`,
 a tuple into its component parts).
 
 ~~~~
-# use core::comm::{stream, Chan, Port};
+# use std::comm::{stream, Chan, Port};
 let (port, chan): (Port<int>, Chan<int>) = stream();
 ~~~~
 
@@ -176,8 +178,8 @@ which will wait to receive the data on the port. The next statement
 spawns the child task.
 
 ~~~~
-# use core::task::spawn;
-# use core::comm::stream;
+# use std::task::spawn;
+# use std::comm::stream;
 # fn some_expensive_computation() -> int { 42 }
 # let (port, chan) = stream();
 do spawn || {
@@ -197,7 +199,7 @@ computation, then waits for the child's result to arrive on the
 port:
 
 ~~~~
-# use core::comm::{stream};
+# use std::comm::{stream};
 # fn some_other_expensive_computation() {}
 # let (port, chan) = stream::<int>();
 # chan.send(0);
@@ -212,8 +214,8 @@ example needed to compute multiple results across a number of tasks? The
 following program is ill-typed:
 
 ~~~ {.xfail-test}
-# use core::task::{spawn};
-# use core::comm::{stream, Port, Chan};
+# use std::task::{spawn};
+# use std::comm::{stream, Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
 let (port, chan) = stream();
 
@@ -232,8 +234,8 @@ Instead we can use a `SharedChan`, a type that allows a single
 `Chan` to be shared by multiple senders.
 
 ~~~
-# use core::task::spawn;
-use core::comm::{stream, SharedChan};
+# use std::task::spawn;
+# use std::comm::{stream, SharedChan};
 
 let (port, chan) = stream();
 let chan = SharedChan::new(chan);
@@ -265,8 +267,8 @@ illustrate the point. For reference, written with multiple streams, it
 might look like the example below.
 
 ~~~
-# use core::task::spawn;
-# use core::comm::stream;
+# use std::task::spawn;
+# use std::comm::stream;
 
 // Create a vector of ports, one for each child task
 let ports = do vec::from_fn(3) |init_val| {
@@ -281,6 +283,122 @@ let ports = do vec::from_fn(3) |init_val| {
 let result = ports.foldl(0, |accum, port| *accum + port.recv() );
 # fn some_expensive_computation(_i: uint) -> int { 42 }
 ~~~
+
+## Backgrounding computations: Futures
+With `extra::future`, rust has a mechanism for requesting a computation and getting the result
+later.
+
+The basic example below illustrates this.
+~~~
+# fn make_a_sandwich() {};
+fn fib(n: uint) -> uint {
+    // lengthy computation returning an uint
+    12586269025
+}
+
+let mut delayed_fib = extra::future::spawn (|| fib(50) );
+make_a_sandwich();
+println(fmt!("fib(50) = %?", delayed_fib.get()))
+~~~
+
+The call to `future::spawn` returns immediately a `future` object regardless of how long it
+takes to run `fib(50)`. You can then make yourself a sandwich while the computation of `fib` is
+running. The result of the execution of the method is obtained by calling `get` on the future.
+This call will block until the value is available (*i.e.* the computation is complete). Note that
+the future needs to be mutable so that it can save the result for next time `get` is called.
+
+Here is another example showing how futures allow you to background computations. The workload will
+be distributed on the available cores.
+~~~
+fn partial_sum(start: uint) -> f64 {
+    let mut local_sum = 0f64;
+    for uint::range(start*100000, (start+1)*100000) |num| {
+        local_sum += (num as f64 + 1.0).pow(-2.0);
+    }
+    local_sum
+}
+
+fn main() {
+    let mut futures = vec::from_fn(1000, |ind| do extra::future::spawn { partial_sum(ind) });
+
+    let mut final_res = 0f64;
+    for futures.each_mut |ft|  {
+        final_res += ft.get();
+    }
+    println(fmt!("π^2/6 is not far from : %?", final_res));
+}
+~~~
+
+## Sharing immutable data without copy: ARC
+
+To share immutable data between tasks, a first approach would be to only use pipes as we have seen
+previously. A copy of the data to share would then be made for each task. In some cases, this would
+add up to a significant amount of wasted memory and would require copying the same data more than
+necessary.
+
+To tackle this issue, one can use an Atomically Reference Counted wrapper (`ARC`) as implemented in
+the `extra` library of Rust. With an ARC, the data will no longer be copied for each task. The ARC
+acts as a reference to the shared data and only this reference is shared and cloned.
+
+Here is a small example showing how to use ARCs. We wish to run concurrently several computations on
+a single large vector of floats. Each task needs the full vector to perform its duty.
+~~~
+use extra::arc::ARC;
+
+fn pnorm(nums: &~[float], p: uint) -> float {
+    (vec::foldl(0.0, *nums, |a,b| a+(*b).pow(p as float) )).pow(1f / (p as float))
+}
+
+fn main() {
+    let numbers=vec::from_fn(1000000, |_| rand::random::<float>());
+    println(fmt!("Inf-norm = %?",  numbers.max()));
+
+    let numbers_arc = ARC(numbers);
+
+    for uint::range(1,10) |num| {
+        let (port, chan)  = stream();
+        chan.send(numbers_arc.clone());
+
+        do spawn {
+            let local_arc : ARC<~[float]> = port.recv();
+            let task_numbers = local_arc.get();
+            println(fmt!("%u-norm = %?", num, pnorm(task_numbers, num)));
+        }
+    }
+}
+~~~
+
+The function `pnorm` performs a simple computation on the vector (it computes the sum of its items
+at the power given as argument and takes the inverse power of this value). The ARC on the vector is
+created by the line
+~~~
+# use extra::arc::ARC;
+# let numbers=vec::from_fn(1000000, |_| rand::random::<float>());
+let numbers_arc=ARC(numbers);
+~~~
+and a clone of it is sent to each task
+~~~
+# use extra::arc::ARC;
+# let numbers=vec::from_fn(1000000, |_| rand::random::<float>());
+# let numbers_arc = ARC(numbers);
+# let (port, chan)  = stream();
+chan.send(numbers_arc.clone());
+~~~
+copying only the wrapper and not its contents.
+
+Each task recovers the underlying data by
+~~~
+# use extra::arc::ARC;
+# let numbers=vec::from_fn(1000000, |_| rand::random::<float>());
+# let numbers_arc=ARC(numbers);
+# let (port, chan)  = stream();
+# chan.send(numbers_arc.clone());
+# let local_arc : ARC<~[float]> = port.recv();
+let task_numbers = local_arc.get();
+~~~
+and can use it as if it were local.
+
+The `arc` module also implements ARCs around mutable data that are not covered here.
 
 # Handling task failure
 
@@ -297,7 +415,7 @@ All tasks are, by default, _linked_ to each other. That means that the fates
 of all tasks are intertwined: if one fails, so do all the others.
 
 ~~~
-# use core::task::spawn;
+# use std::task::spawn;
 # fn do_some_work() { loop { task::yield() } }
 # do task::try {
 // Create a child task that fails
@@ -337,7 +455,7 @@ enum. If the child task terminates successfully, `try` will
 return an `Ok` result; if the child task fails, `try` will return
 an `Error` result.
 
-[`Result`]: core/result.html
+[`Result`]: std/result.html
 
 > ***Note:*** A failed task does not currently produce a useful error
 > value (`try` always returns `Err(())`). In the
@@ -363,8 +481,8 @@ either task fails, it kills the other one.
 ~~~
 # fn sleep_forever() { loop { task::yield() } }
 # do task::try {
-do task::spawn {
-    do task::spawn {
+do spawn {
+    do spawn {
         fail!();  // All three tasks will fail.
     }
     sleep_forever();  // Will get woken up by force, then fail
@@ -381,8 +499,8 @@ internally, with additional logic to wait for the child task to finish
 before returning. Hence:
 
 ~~~
-# use core::comm::{stream, Chan, Port};
-# use core::task::{spawn, try};
+# use std::comm::{stream, Chan, Port};
+# use std::task::{spawn, try};
 # fn sleep_forever() { loop { task::yield() } }
 # do task::try {
 let (receiver, sender): (Port<int>, Chan<int>) = stream();
@@ -446,7 +564,7 @@ fail!();
 
 A very common thing to do is to spawn a child task where the parent
 and child both need to exchange messages with each other. The
-function `std::comm::DuplexStream()` supports this pattern.  We'll
+function `extra::comm::DuplexStream()` supports this pattern.  We'll
 look briefly at how to use it.
 
 To see how `DuplexStream()` works, we will create a child task
@@ -455,7 +573,7 @@ the string in response.  The child terminates when it receives `0`.
 Here is the function that implements the child task:
 
 ~~~~
-# use std::comm::DuplexStream;
+# use extra::comm::DuplexStream;
 fn stringifier(channel: &DuplexStream<~str, uint>) {
     let mut value: uint;
     loop {
@@ -477,8 +595,8 @@ response itself is simply the stringified version of the received value,
 Here is the code for the parent task:
 
 ~~~~
-# use core::task::spawn;
-# use std::comm::DuplexStream;
+# use std::task::spawn;
+# use extra::comm::DuplexStream;
 # fn stringifier(channel: &DuplexStream<~str, uint>) {
 #     let mut value: uint;
 #     loop {

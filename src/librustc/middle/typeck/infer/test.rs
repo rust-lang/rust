@@ -23,12 +23,12 @@ use middle::lang_items::{LanguageItems, language_items};
 use middle::ty::{FnTyBase, FnMeta, FnSig};
 use util::ppaux::ty_to_str;
 
-use std::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
-use std::getopts::groups;
-use std::getopts::{opt_present};
-use std::getopts;
-use std::getopts;
-use std::oldmap::HashMap;
+use extra::getopts::groups::{optopt, optmulti, optflag, optflagopt, getopts};
+use extra::getopts::groups;
+use extra::getopts::{opt_present};
+use extra::getopts;
+use extra::getopts;
+use extra::oldmap::HashMap;
 use syntax::codemap::dummy_sp;
 use syntax::parse::parse_crate_from_source_str;
 use syntax::{ast, attr, parse};
@@ -67,7 +67,7 @@ fn setup_env(test_name: &str, source_string: &str) -> Env {
         cfg, parse_sess);
 
     let tcx = ty::mk_ctxt(sess, dm, amap, freevars, region_map,
-                          region_paramd_items, lang_items, crate);
+                          region_paramd_items, lang_items);
 
     let infcx = infer::new_infer_ctxt(tcx);
 

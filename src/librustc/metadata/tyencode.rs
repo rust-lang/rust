@@ -10,6 +10,8 @@
 
 // Type encoding
 
+use core::prelude::*;
+
 use middle::ty::param_ty;
 use middle::ty;
 
@@ -87,8 +89,8 @@ pub fn enc_ty(w: @io::Writer, cx: @ctxt, t: ty::t) {
           let abbrev_len = 3u + estimate_sz(pos) + estimate_sz(len);
           if abbrev_len < len {
               // I.e. it's actually an abbreviation.
-              let s = ~"#" + uint::to_str_radix(pos, 16u) + ~":" +
-                  uint::to_str_radix(len, 16u) + ~"#";
+              let s = ~"#" + uint::to_str_radix(pos, 16u) + ":" +
+                  uint::to_str_radix(len, 16u) + "#";
               let a = ty_abbrev { pos: pos, len: len, s: @s };
               abbrevs.insert(t, a);
           }
@@ -155,7 +157,7 @@ fn enc_region(w: @io::Writer, cx: @ctxt, r: ty::Region) {
       }
       ty::re_infer(_) => {
         // these should not crop up after typeck
-        cx.diag.handler().bug(~"Cannot encode region variables");
+        cx.diag.handler().bug("Cannot encode region variables");
       }
     }
 }
@@ -301,7 +303,7 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, st: ty::sty) {
         enc_bare_fn_ty(w, cx, f);
       }
       ty::ty_infer(_) => {
-        cx.diag.handler().bug(~"Cannot encode inference variable types");
+        cx.diag.handler().bug("Cannot encode inference variable types");
       }
       ty::ty_param(param_ty {idx: id, def_id: did}) => {
         w.write_char('p');
@@ -321,15 +323,15 @@ fn enc_sty(w: @io::Writer, cx: @ctxt, st: ty::sty) {
       }
       ty::ty_opaque_box => w.write_char('B'),
       ty::ty_struct(def, ref substs) => {
-          debug!("~~~~ %s", ~"a[");
+          debug!("~~~~ %s", "a[");
           w.write_str(&"a[");
           let s = (cx.ds)(def);
           debug!("~~~~ %s", s);
           w.write_str(s);
-          debug!("~~~~ %s", ~"|");
+          debug!("~~~~ %s", "|");
           w.write_char('|');
           enc_substs(w, cx, substs);
-          debug!("~~~~ %s", ~"]");
+          debug!("~~~~ %s", "]");
           w.write_char(']');
       }
       ty::ty_err => fail!("Shouldn't encode error type")

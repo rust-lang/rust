@@ -11,9 +11,9 @@
 // except according to those terms.
 
 // rustc --test map_to_str.rs && ./map_to_str
-extern mod std;
+extern mod extra;
 
-use core::io::{WriterUtil};
+use std::io::{WriterUtil};
 
 fn check_strs(actual: &str, expected: &str) -> bool
 {
@@ -27,7 +27,7 @@ fn check_strs(actual: &str, expected: &str) -> bool
 
 fn tester()
 {
-    let mut table = core::hashmap::HashMap::new();
+    let mut table = std::hashmap::HashMap::new();
     table.insert(@~"one", 1);
     table.insert(@~"two", 2);
     assert!(check_strs(table.to_str(), ~"xxx"));   // not sure what expected should be

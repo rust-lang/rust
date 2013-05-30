@@ -14,5 +14,5 @@ pub fn main() {
     let i = ~J {
         j: 100
     };
-    assert!(i.j == 100);
+    assert_eq!(i.j, 100);
 }

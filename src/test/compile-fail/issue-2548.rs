@@ -38,8 +38,8 @@ fn main() {
 
         let mut v = ~[];
         v = ~[(res)] + v; //~ instantiating a type parameter with an incompatible type `foo`, which does not fulfill `Copy`
-        assert!((v.len() == 2));
+        assert_eq!(v.len(), 2);
     }
 
-    assert!(*x == 1);
+    assert_eq!(*x, 1);
 }

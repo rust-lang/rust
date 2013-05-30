@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast::*;
 use ast;
 use codemap::{span, spanned};
@@ -858,4 +860,3 @@ impl AstFoldExtensions for @ast_fold {
 pub fn make_fold(afp: ast_fold_fns) -> @ast_fold {
     afp as @ast_fold
 }
-

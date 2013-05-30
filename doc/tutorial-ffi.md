@@ -12,7 +12,7 @@ The following is a minimal example of calling a foreign function which will comp
 installed:
 
 ~~~~ {.xfail-test}
-use core::libc::size_t;
+use std::libc::size_t;
 
 #[link_args = "-lsnappy"]
 extern {
@@ -42,7 +42,7 @@ runtime.
 The `extern` block can be extended to cover the entire snappy API:
 
 ~~~~ {.xfail-test}
-use core::libc::{c_int, size_t};
+use std::libc::{c_int, size_t};
 
 #[link_args = "-lsnappy"]
 extern {
@@ -149,9 +149,9 @@ A type with the same functionality as owned boxes can be implemented by
 wrapping `malloc` and `free`:
 
 ~~~~
-use core::libc::{c_void, size_t, malloc, free};
-use core::unstable::intrinsics;
-use core::util;
+use std::libc::{c_void, size_t, malloc, free};
+use std::unstable::intrinsics;
+use std::util;
 
 // a wrapper around the handle returned by the foreign code
 pub struct Unique<T> {
@@ -161,7 +161,7 @@ pub struct Unique<T> {
 pub impl<T: Owned> Unique<T> {
     fn new(value: T) -> Unique<T> {
         unsafe {
-            let ptr = malloc(core::sys::size_of::<T>() as size_t) as *mut T;
+            let ptr = malloc(std::sys::size_of::<T>() as size_t) as *mut T;
             assert!(!ptr::is_null(ptr));
             // `*ptr` is uninitialized, and `*ptr = value` would attempt to destroy it
             intrinsics::move_val_init(&mut *ptr, value);

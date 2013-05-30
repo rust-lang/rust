@@ -35,6 +35,6 @@ pub fn main() {
     let a = &A { x: 3 };
     let afoo = a as &Foo;
     let abar = a as &Bar;
-    assert!(afoo.f() == 10);
-    assert!(abar.g() == 20);
+    assert_eq!(afoo.f(), 10);
+    assert_eq!(abar.g(), 20);
 }

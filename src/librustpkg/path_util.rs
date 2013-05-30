@@ -10,6 +10,7 @@
 
 // rustpkg utilities having to do with paths and directories
 
+use core::prelude::*;
 pub use util::{PkgId, RemotePath, LocalPath};
 use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use core::os::mkdir_recursive;

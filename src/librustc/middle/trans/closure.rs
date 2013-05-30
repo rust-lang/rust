@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use back::abi;
 use back::link::{mangle_internal_name_by_path_and_seq};
 use lib::llvm::{llvm, ValueRef};
@@ -137,7 +139,7 @@ pub fn mk_tuplified_uniq_cbox_ty(tcx: ty::ctxt, cdata_ty: ty::t) -> ty::t {
 
 // Given a closure ty, emits a corresponding tuple ty
 pub fn mk_closure_tys(tcx: ty::ctxt,
-                      bound_values: ~[EnvValue])
+                      bound_values: &[EnvValue])
                    -> ty::t {
     // determine the types of the values in the env.  Note that this
     // is the actual types that will be stored in the map, not the
@@ -203,8 +205,7 @@ pub fn store_environment(bcx: block,
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     // compute the shape of the closure
-    // XXX: Bad copy.
-    let cdata_ty = mk_closure_tys(tcx, copy bound_values);
+    let cdata_ty = mk_closure_tys(tcx, bound_values);
 
     // allocate closure in the heap
     let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, sigil, cdata_ty);
@@ -264,7 +265,7 @@ pub fn build_closure(bcx0: block,
         let datum = expr::trans_local_var(bcx, cap_var.def);
         match cap_var.mode {
             moves::CapRef => {
-                assert!(sigil == ast::BorrowedSigil);
+                assert_eq!(sigil, ast::BorrowedSigil);
                 env_vals.push(EnvValue {action: EnvRef,
                                         datum: datum});
             }
@@ -284,7 +285,7 @@ pub fn build_closure(bcx0: block,
     for include_ret_handle.each |flagptr| {
         // Flag indicating we have returned (a by-ref bool):
         let flag_datum = Datum {val: *flagptr, ty: ty::mk_bool(),
-                                mode: ByRef, source: ZeroMem};
+                                mode: ByRef(ZeroMem)};
         env_vals.push(EnvValue {action: EnvRef,
                                 datum: flag_datum});
 
@@ -296,7 +297,7 @@ pub fn build_closure(bcx0: block,
         };
         let ret_casted = PointerCast(bcx, ret_true, T_ptr(T_nil()));
         let ret_datum = Datum {val: ret_casted, ty: ty::mk_nil(),
-                               mode: ByRef, source: ZeroMem};
+                               mode: ByRef(ZeroMem)};
         env_vals.push(EnvValue {action: EnvRef,
                                 datum: ret_datum});
     }
@@ -318,7 +319,7 @@ pub fn load_environment(fcx: fn_ctxt,
         Some(ll) => ll,
         None => {
             let ll =
-                str::as_c_str(~"load_env",
+                str::as_c_str("load_env",
                               |buf|
                               unsafe {
                                 llvm::LLVMAppendBasicBlock(fcx.llfn, buf)
@@ -517,10 +518,10 @@ pub fn make_opaque_cbox_take_glue(
         let bcx = callee::trans_lang_call(
             bcx,
             bcx.tcx().lang_items.exchange_malloc_fn(),
-            ~[opaque_tydesc, sz],
+            [opaque_tydesc, sz],
             expr::SaveIn(rval));
         let cbox_out = PointerCast(bcx, Load(bcx, rval), llopaquecboxty);
-        call_memcpy(bcx, cbox_out, cbox_in, sz);
+        call_memcpy(bcx, cbox_out, cbox_in, sz, 1);
         Store(bcx, cbox_out, cboxptr);
 
         // Take the (deeply cloned) type descriptor
@@ -590,7 +591,7 @@ pub fn make_opaque_cbox_free_glue(
             ast::ManagedSigil => glue::trans_free(bcx, cbox),
             ast::OwnedSigil => glue::trans_exchange_free(bcx, cbox),
             ast::BorrowedSigil => {
-                bcx.sess().bug(~"impossible")
+                bcx.sess().bug("impossible")
             }
         }
     }

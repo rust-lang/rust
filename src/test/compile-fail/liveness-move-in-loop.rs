@@ -16,10 +16,7 @@ fn main() {
         loop {
             loop {
                 loop {
-// tjc: Not sure why it prints the same error twice
                     x = y; //~ ERROR use of moved value
-                    //~^ ERROR use of moved value
-
                     copy x;
                 }
             }

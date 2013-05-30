@@ -18,10 +18,15 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-extern mod std(vers = "0.7-pre");
-extern mod rustc(vers = "0.7-pre");
-extern mod syntax(vers = "0.7-pre");
+#[no_std];
 
+extern mod core(name = "std");
+extern mod std(name = "extra");
+
+extern mod rustc;
+extern mod syntax;
+
+use core::prelude::*;
 use core::*;
 pub use core::path::Path;
 use core::hashmap::HashMap;
@@ -96,7 +101,7 @@ impl<'self> PkgScript<'self> {
             input: input,
             sess: sess,
             cfg: cfg,
-            crate: crate,
+            crate: crate.unwrap(),
             build_dir: work_dir
         }
     }
@@ -126,17 +131,17 @@ impl<'self> PkgScript<'self> {
                                                &exe, @copy os::args()[0],
                                                driver::cu_everything);
                 debug!("Running program: %s %s %s", exe.to_str(), root.to_str(), what);
-                let status = run::run_program(exe.to_str(), ~[root.to_str(), what]);
+                let status = run::process_status(exe.to_str(), [root.to_str(), what]);
                 if status != 0 {
                     return (~[], status);
                 }
                 else {
                     debug!("Running program (configs): %s %s %s",
-                           exe.to_str(), root.to_str(), ~"configs");
-                    let output = run::program_output(exe.to_str(), ~[root.to_str(), ~"configs"]);
+                           exe.to_str(), root.to_str(), "configs");
+                    let output = run::process_output(exe.to_str(), [root.to_str(), ~"configs"]);
                     // Run the configs() function to get the configs
                     let mut cfgs = ~[];
-                    for str::each_word(output.out) |w| {
+                    for str::each_word(str::from_bytes(output.output)) |w| {
                         cfgs.push(w.to_owned());
                     }
                     (cfgs, output.status)
@@ -360,9 +365,9 @@ pub fn main() {
     io::println("WARNING: The Rust package manager is experimental and may be unstable");
 
     let args = os::args();
-    let opts = ~[getopts::optflag(~"h"), getopts::optflag(~"help"),
-                 getopts::optflag(~"j"), getopts::optflag(~"json"),
-                 getopts::optmulti(~"c"), getopts::optmulti(~"cfg")];
+    let opts = ~[getopts::optflag("h"), getopts::optflag("help"),
+                 getopts::optflag("j"), getopts::optflag("json"),
+                 getopts::optmulti("c"), getopts::optmulti("cfg")];
     let matches = &match getopts::getopts(args, opts) {
         result::Ok(m) => m,
         result::Err(f) => {
@@ -371,10 +376,10 @@ pub fn main() {
             return;
         }
     };
-    let help = getopts::opt_present(matches, ~"h") ||
-               getopts::opt_present(matches, ~"help");
-    let json = getopts::opt_present(matches, ~"j") ||
-               getopts::opt_present(matches, ~"json");
+    let help = getopts::opt_present(matches, "h") ||
+               getopts::opt_present(matches, "help");
+    let json = getopts::opt_present(matches, "j") ||
+               getopts::opt_present(matches, "json");
     let mut args = copy matches.free;
 
     args.shift();
@@ -428,7 +433,7 @@ pub impl Crate {
 
     fn flag(&self, flag: ~str) -> Crate {
         Crate {
-            flags: vec::append(copy self.flags, ~[flag]),
+            flags: vec::append(copy self.flags, [flag]),
             .. copy *self
         }
     }
@@ -442,7 +447,7 @@ pub impl Crate {
 
     fn cfg(&self, cfg: ~str) -> Crate {
         Crate {
-            cfgs: vec::append(copy self.cfgs, ~[cfg]),
+            cfgs: vec::append(copy self.cfgs, [cfg]),
             .. copy *self
         }
     }
@@ -546,7 +551,7 @@ impl PkgSrc {
         let url = fmt!("https://%s", self.id.remote_path.to_str());
         util::note(fmt!("git clone %s %s", url, local.to_str()));
 
-        if run::program_output(~"git", ~[~"clone", copy url, local.to_str()]).status != 0 {
+        if run::process_output("git", [~"clone", copy url, local.to_str()]).status != 0 {
             util::note(fmt!("fetching %s failed: can't clone repository", url));
             return false;
         }
@@ -602,7 +607,6 @@ impl PkgSrc {
     /// Infers crates to build. Called only in the case where there
     /// is no custom build logic
     fn find_crates(&mut self) {
-        use PkgSrc::push_crate;
         use conditions::missing_pkg_files::cond;
 
         let dir = self.check_dir();
@@ -610,14 +614,18 @@ impl PkgSrc {
         debug!("Matching against %?", self.id.local_path.filestem());
         for os::walk_dir(&dir) |pth| {
             match pth.filename() {
-                Some(~"lib.rs") => push_crate(&mut self.libs,
-                                              prefix, pth),
-                Some(~"main.rs") => push_crate(&mut self.mains,
-                                               prefix, pth),
-                Some(~"test.rs") => push_crate(&mut self.tests,
-                                               prefix, pth),
-                Some(~"bench.rs") => push_crate(&mut self.benchs,
-                                                prefix, pth),
+                Some(~"lib.rs") => PkgSrc::push_crate(&mut self.libs,
+                                                      prefix,
+                                                      pth),
+                Some(~"main.rs") => PkgSrc::push_crate(&mut self.mains,
+                                                       prefix,
+                                                       pth),
+                Some(~"test.rs") => PkgSrc::push_crate(&mut self.tests,
+                                                       prefix,
+                                                       pth),
+                Some(~"bench.rs") => PkgSrc::push_crate(&mut self.benchs,
+                                                        prefix,
+                                                        pth),
                 _ => ()
             }
         }
@@ -676,4 +684,3 @@ impl PkgSrc {
         self.build_crates(maybe_sysroot, dst_dir, &dir, self.benchs, cfgs, Bench);
     }
 }
-

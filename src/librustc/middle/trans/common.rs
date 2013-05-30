@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Code that is useful in various trans modules.
 
-/**
-   Code that is useful in various trans modules.
-
-*/
+use core::prelude::*;
 
 use back::{abi, upcall};
 use driver::session;
@@ -238,8 +236,6 @@ pub struct ValSelfData {
     is_owned: bool
 }
 
-pub enum local_val { local_mem(ValueRef), local_imm(ValueRef), }
-
 // Here `self_ty` is the real type of the self parameter to this method. It
 // will only be set in the case of default methods.
 pub struct param_substs {
@@ -326,10 +322,10 @@ pub struct fn_ctxt_ {
     has_immediate_return_value: bool,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: @mut HashMap<ast::node_id, local_val>,
+    llargs: @mut HashMap<ast::node_id, ValueRef>,
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: @mut HashMap<ast::node_id, local_val>,
+    lllocals: @mut HashMap<ast::node_id, ValueRef>,
     // Same as above, but for closure upvars
     llupvars: @mut HashMap<ast::node_id, ValueRef>,
 
@@ -353,12 +349,36 @@ pub struct fn_ctxt_ {
     ccx: @@CrateContext
 }
 
+pub impl fn_ctxt_ {
+    pub fn arg_pos(&self, arg: uint) -> uint {
+        if self.has_immediate_return_value {
+            arg + 1u
+        } else {
+            arg + 2u
+        }
+    }
+
+    pub fn out_arg_pos(&self) -> uint {
+        assert!(self.has_immediate_return_value);
+        0u
+    }
+
+    pub fn env_arg_pos(&self) -> uint {
+        if !self.has_immediate_return_value {
+            1u
+        } else {
+            0u
+        }
+    }
+
+}
+
 pub type fn_ctxt = @mut fn_ctxt_;
 
 pub fn warn_not_to_commit(ccx: @CrateContext, msg: &str) {
     if !*ccx.do_not_commit_warning_issued {
         *ccx.do_not_commit_warning_issued = true;
-        ccx.sess.warn(msg.to_str() + ~" -- do not commit like this!");
+        ccx.sess.warn(msg.to_str() + " -- do not commit like this!");
     }
 }
 
@@ -662,9 +682,6 @@ pub fn mk_block(llbb: BasicBlockRef, parent: Option<block>, kind: block_kind,
     @mut block_(llbb, parent, kind, is_lpad, node_info, fcx)
 }
 
-// First two args are retptr, env
-pub static first_real_arg: uint = 2u;
-
 pub struct Result {
     bcx: block,
     val: ValueRef
@@ -781,7 +798,7 @@ pub fn T_void() -> TypeRef {
 }
 
 pub fn T_nil() -> TypeRef {
-    return T_struct(~[], false)
+    return T_struct([], false)
 }
 
 pub fn T_metadata() -> TypeRef { unsafe { return llvm::LLVMMetadataType(); } }
@@ -864,7 +881,7 @@ pub fn T_fn(inputs: &[TypeRef], output: TypeRef) -> TypeRef {
 }
 
 pub fn T_fn_pair(cx: @CrateContext, tfn: TypeRef) -> TypeRef {
-    return T_struct(~[T_ptr(tfn), T_opaque_cbox_ptr(cx)], false);
+    return T_struct([T_ptr(tfn), T_opaque_cbox_ptr(cx)], false);
 }
 
 pub fn T_ptr(t: TypeRef) -> TypeRef {
@@ -903,7 +920,7 @@ pub fn set_struct_body(t: TypeRef, elts: &[TypeRef], packed: bool) {
     }
 }
 
-pub fn T_empty_struct() -> TypeRef { return T_struct(~[], false); }
+pub fn T_empty_struct() -> TypeRef { return T_struct([], false); }
 
 // A vtable is, in reality, a vtable pointer followed by zero or more pointers
 // to tydescs and other vtables that it closes over. But the types and number
@@ -912,7 +929,7 @@ pub fn T_empty_struct() -> TypeRef { return T_struct(~[], false); }
 pub fn T_vtable() -> TypeRef { T_array(T_ptr(T_i8()), 1u) }
 
 pub fn T_task(targ_cfg: @session::config) -> TypeRef {
-    let t = T_named_struct(~"task");
+    let t = T_named_struct("task");
 
     // Refcount
     // Delegate pointer
@@ -960,12 +977,11 @@ pub fn T_generic_glue_fn(cx: @CrateContext) -> TypeRef {
 }
 
 pub fn T_tydesc(targ_cfg: @session::config) -> TypeRef {
-    let tydesc = T_named_struct(~"tydesc");
+    let tydesc = T_named_struct("tydesc");
     let tydescpp = T_ptr(T_ptr(tydesc));
     let pvoid = T_ptr(T_i8());
     let glue_fn_ty =
-        T_ptr(T_fn(~[T_ptr(T_nil()), T_ptr(T_nil()), tydescpp,
-                    pvoid], T_void()));
+        T_ptr(T_fn([T_ptr(T_nil()), tydescpp, pvoid], T_void()));
 
     let int_type = T_int(targ_cfg);
     let elems =
@@ -990,9 +1006,9 @@ pub fn T_vector(t: TypeRef, n: uint) -> TypeRef {
 
 // Interior vector.
 pub fn T_vec2(targ_cfg: @session::config, t: TypeRef) -> TypeRef {
-    return T_struct(~[T_int(targ_cfg), // fill
-                      T_int(targ_cfg), // alloc
-                      T_array(t, 0u)], // elements
+    return T_struct([T_int(targ_cfg), // fill
+                     T_int(targ_cfg), // alloc
+                     T_array(t, 0u)], // elements
                     false);
 }
 
@@ -1028,7 +1044,7 @@ pub fn T_box_header(cx: @CrateContext) -> TypeRef {
 }
 
 pub fn T_box(cx: @CrateContext, t: TypeRef) -> TypeRef {
-    return T_struct(vec::append(T_box_header_fields(cx), ~[t]), false);
+    return T_struct(vec::append(T_box_header_fields(cx), [t]), false);
 }
 
 pub fn T_box_ptr(t: TypeRef) -> TypeRef {
@@ -1046,7 +1062,7 @@ pub fn T_opaque_box_ptr(cx: @CrateContext) -> TypeRef {
 }
 
 pub fn T_unique(cx: @CrateContext, t: TypeRef) -> TypeRef {
-    return T_struct(vec::append(T_box_header_fields(cx), ~[t]), false);
+    return T_struct(vec::append(T_box_header_fields(cx), [t]), false);
 }
 
 pub fn T_unique_ptr(t: TypeRef) -> TypeRef {
@@ -1056,12 +1072,12 @@ pub fn T_unique_ptr(t: TypeRef) -> TypeRef {
 }
 
 pub fn T_port(cx: @CrateContext, _t: TypeRef) -> TypeRef {
-    return T_struct(~[cx.int_type], false); // Refcount
+    return T_struct([cx.int_type], false); // Refcount
 
 }
 
 pub fn T_chan(cx: @CrateContext, _t: TypeRef) -> TypeRef {
-    return T_struct(~[cx.int_type], false); // Refcount
+    return T_struct([cx.int_type], false); // Refcount
 
 }
 
@@ -1085,16 +1101,15 @@ pub fn T_captured_tydescs(cx: @CrateContext, n: uint) -> TypeRef {
 pub fn T_opaque_trait(cx: @CrateContext, store: ty::TraitStore) -> TypeRef {
     match store {
         ty::BoxTraitStore => {
-            T_struct(~[T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)], false)
+            T_struct([T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)], false)
         }
         ty::UniqTraitStore => {
-            T_struct(~[T_ptr(cx.tydesc_type),
-                       T_unique_ptr(T_unique(cx, T_i8())),
-                       T_ptr(cx.tydesc_type)],
+            T_struct([T_ptr(cx.tydesc_type),
+                      T_unique_ptr(T_unique(cx, T_i8()))],
                      false)
         }
         ty::RegionTraitStore(_) => {
-            T_struct(~[T_ptr(cx.tydesc_type), T_ptr(T_i8())], false)
+            T_struct([T_ptr(cx.tydesc_type), T_ptr(T_i8())], false)
         }
     }
 }
@@ -1130,7 +1145,7 @@ pub fn C_floating(s: &str, t: TypeRef) -> ValueRef {
 }
 
 pub fn C_nil() -> ValueRef {
-    return C_struct(~[]);
+    return C_struct([]);
 }
 
 pub fn C_bool(b: bool) -> ValueRef {
@@ -1193,7 +1208,7 @@ pub fn C_estr_slice(cx: @CrateContext, s: @~str) -> ValueRef {
     unsafe {
         let len = s.len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), T_ptr(T_i8()));
-        C_struct(~[cs, C_uint(cx, len + 1u /* +1 for null */)])
+        C_struct([cs, C_uint(cx, len + 1u /* +1 for null */)])
     }
 }
 
@@ -1325,7 +1340,7 @@ pub fn is_null(val: ValueRef) -> bool {
 // Used to identify cached monomorphized functions and vtables
 #[deriving(Eq)]
 pub enum mono_param_id {
-    mono_precise(ty::t, Option<~[mono_id]>),
+    mono_precise(ty::t, Option<@~[mono_id]>),
     mono_any,
     mono_repr(uint /* size */,
               uint /* align */,
@@ -1367,58 +1382,37 @@ pub struct mono_id_ {
 
 pub type mono_id = @mono_id_;
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for mono_param_id {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        match *self {
-            mono_precise(t, ref mids) =>
-                to_bytes::iter_bytes_3(&0u8, &ty::type_id(t), mids, lsb0, f),
-
-            mono_any => 1u8.iter_bytes(lsb0, f),
-
-            mono_repr(ref a, ref b, ref c, ref d) =>
-                to_bytes::iter_bytes_5(&2u8, a, b, c, d, lsb0, f)
-        }
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for mono_param_id {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
-            mono_precise(t, ref mids) =>
-                to_bytes::iter_bytes_3(&0u8, &ty::type_id(t), mids, lsb0, f),
+            mono_precise(t, ref mids) => {
+                0u8.iter_bytes(lsb0, f) &&
+                ty::type_id(t).iter_bytes(lsb0, f) &&
+                mids.iter_bytes(lsb0, f)
+            }
 
             mono_any => 1u8.iter_bytes(lsb0, f),
 
-            mono_repr(ref a, ref b, ref c, ref d) =>
-                to_bytes::iter_bytes_5(&2u8, a, b, c, d, lsb0, f)
+            mono_repr(ref a, ref b, ref c, ref d) => {
+                2u8.iter_bytes(lsb0, f) &&
+                a.iter_bytes(lsb0, f) &&
+                b.iter_bytes(lsb0, f) &&
+                c.iter_bytes(lsb0, f) &&
+                d.iter_bytes(lsb0, f)
+            }
         }
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for MonoDataClass {
-    fn iter_bytes(&self, lsb0: bool, f:to_bytes::Cb) {
-        (*self as u8).iter_bytes(lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for MonoDataClass {
     fn iter_bytes(&self, lsb0: bool, f:to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for mono_id_ {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_2(&self.def, &self.params, lsb0, f);
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for mono_id_ {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        to_bytes::iter_bytes_2(&self.def, &self.params, lsb0, f)
+        self.def.iter_bytes(lsb0, f) && self.params.iter_bytes(lsb0, f)
     }
 }
 
@@ -1444,7 +1438,7 @@ pub fn path_str(sess: session::Session, p: &[path_elt]) -> ~str {
         match *e {
             ast_map::path_name(s) | ast_map::path_mod(s) => {
                 if first { first = false; }
-                else { r += ~"::"; }
+                else { r += "::"; }
                 r += *sess.str_of(s);
             }
         }

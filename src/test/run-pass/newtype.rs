@@ -17,5 +17,5 @@ fn compute(i: mytype) -> int { return i.val + 20; }
 pub fn main() {
     let myval = mytype(Mytype{compute: compute, val: 30});
     io::println(fmt!("%d", compute(myval)));
-    assert!(((myval.compute)(myval) == 50));
+    assert_eq!((myval.compute)(myval), 50);
 }

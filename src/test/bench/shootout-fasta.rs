@@ -15,8 +15,8 @@
  * Computer Language Benchmarks Game
  * http://shootout.alioth.debian.org/
  */
-extern mod std;
-use core::rand::Rng;
+extern mod extra;
+use std::rand::Rng;
 
 fn LINE_LENGTH() -> uint { return 60u; }
 

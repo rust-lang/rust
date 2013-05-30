@@ -19,14 +19,14 @@
 
 */
 
-extern mod std;
+extern mod extra;
 
-use std::{time, getopts};
-use core::int::range;
-use core::comm::*;
-use core::io::WriterUtil;
+use extra::{time, getopts};
+use std::int::range;
+use std::comm::*;
+use std::io::WriterUtil;
 
-use core::result::{Ok, Err};
+use std::result::{Ok, Err};
 
 fn fib(n: int) -> int {
     fn pfib(c: &Chan<int>, n: int) {
@@ -70,7 +70,7 @@ fn stress_task(id: int) {
     let mut i = 0;
     loop {
         let n = 15;
-        assert!((fib(n) == fib(n)));
+        assert_eq!(fib(n), fib(n));
         i += 1;
         error!("%d: Completed %d iterations", id, i);
     }

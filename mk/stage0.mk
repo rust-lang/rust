@@ -25,11 +25,11 @@ $(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_RUNTIME_$(CFG_BUILD_TRIPLE)): \
 		$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X_$(CFG_BUILD_TRIPLE))
 	$(Q)touch $@
 
-$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_CORELIB_$(CFG_BUILD_TRIPLE)): \
+$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_STDLIB_$(CFG_BUILD_TRIPLE)): \
 		$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X_$(CFG_BUILD_TRIPLE))
 	$(Q)touch $@
 
-$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_STDLIB_$(CFG_BUILD_TRIPLE)): \
+$(HLIB0_H_$(CFG_BUILD_TRIPLE))/$(CFG_EXTRALIB_$(CFG_BUILD_TRIPLE)): \
 		$(HBIN0_H_$(CFG_BUILD_TRIPLE))/rustc$(X_$(CFG_BUILD_TRIPLE))
 	$(Q)touch $@
 
@@ -58,15 +58,15 @@ $$(HLIB0_H_$(1))/$(CFG_RUNTIME_$(1)): \
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-$$(HLIB0_H_$(1))/$(CFG_CORELIB_$(1)): \
-		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_CORELIB_$(1))
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$(CORELIB_GLOB_$(1)) $$@
-
 $$(HLIB0_H_$(1))/$(CFG_STDLIB_$(1)): \
 		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_STDLIB_$(1))
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$(STDLIB_GLOB_$(1)) $$@
+
+$$(HLIB0_H_$(1))/$(CFG_EXTRALIB_$(1)): \
+		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_EXTRALIB_$(1))
+	@$$(call E, cp: $$@)
+	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$(EXTRALIB_GLOB_$(1)) $$@
 
 $$(HLIB0_H_$(1))/$(CFG_LIBRUSTC_$(1)): \
 		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_LIBRUSTC_$(1))

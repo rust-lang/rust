@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,6 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+use core::prelude::*;
 
 use middle::const_eval::{compare_const_vals, lookup_const_by_id};
 use middle::const_eval::{eval_const_expr, const_val, const_bool};
@@ -17,7 +19,7 @@ use middle::typeck::method_map;
 use middle::moves;
 use util::ppaux::ty_to_str;
 
-use std::sort;
+use extra::sort;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};
 use syntax::codemap::{span, dummy_sp, spanned};
@@ -129,7 +131,7 @@ pub fn raw_pat(p: @pat) -> @pat {
 
 pub fn check_exhaustive(cx: @MatchCheckCtxt, sp: span, pats: ~[@pat]) {
     assert!((!pats.is_empty()));
-    let ext = match is_useful(cx, &pats.map(|p| ~[*p]), ~[wild()]) {
+    let ext = match is_useful(cx, &pats.map(|p| ~[*p]), [wild()]) {
         not_useful => {
             // This is good, wildcard pattern isn't reachable
             return;
@@ -169,7 +171,7 @@ pub fn check_exhaustive(cx: @MatchCheckCtxt, sp: span, pats: ~[@pat]) {
         }
     };
     let msg = ~"non-exhaustive patterns" + match ext {
-        Some(ref s) => ~": " + **s + ~" not covered",
+        Some(ref s) => ~": " + **s + " not covered",
         None => ~""
     };
     cx.tcx.sess.span_err(sp, msg);
@@ -498,10 +500,27 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             lookup_const_by_id(cx.tcx, did).get();
                         let e_v = eval_const_expr(cx.tcx, const_expr);
                         let match_ = match *ctor_id {
-                            val(ref v) => compare_const_vals(&e_v, v) == 0,
+                            val(ref v) => {
+                                match compare_const_vals(&e_v, v) {
+                                    Some(val1) => (val1 == 0),
+                                    None => {
+                                        cx.tcx.sess.span_err(pat_span,
+                                            "mismatched types between arms");
+                                        false
+                                    }
+                                }
+                            },
                             range(ref c_lo, ref c_hi) => {
-                                compare_const_vals(c_lo, &e_v) >= 0 &&
-                                    compare_const_vals(c_hi, &e_v) <= 0
+                                let m1 = compare_const_vals(c_lo, &e_v),
+                                    m2 = compare_const_vals(c_hi, &e_v);
+                                match (m1, m2) {
+                                    (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
+                                    _ => {
+                                        cx.tcx.sess.span_err(pat_span,
+                                            "mismatched types between ranges");
+                                        false
+                                    }
+                                }
                             }
                             single => true,
                             _ => fail!("type error")
@@ -529,10 +548,26 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             lookup_const_by_id(cx.tcx, did).get();
                         let e_v = eval_const_expr(cx.tcx, const_expr);
                         let match_ = match *ctor_id {
-                            val(ref v) => compare_const_vals(&e_v, v) == 0,
+                            val(ref v) =>
+                                match compare_const_vals(&e_v, v) {
+                                    Some(val1) => (val1 == 0),
+                                    None => {
+                                        cx.tcx.sess.span_err(pat_span,
+                                            "mismatched types between arms");
+                                        false
+                                    }
+                                },
                             range(ref c_lo, ref c_hi) => {
-                                compare_const_vals(c_lo, &e_v) >= 0 &&
-                                    compare_const_vals(c_hi, &e_v) <= 0
+                                let m1 = compare_const_vals(c_lo, &e_v),
+                                    m2 = compare_const_vals(c_hi, &e_v);
+                                match (m1, m2) {
+                                    (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
+                                    _ => {
+                                        cx.tcx.sess.span_err(pat_span,
+                                            "mismatched types between ranges");
+                                        false
+                                    }
+                                }
                             }
                             single => true,
                             _ => fail!("type error")
@@ -619,10 +654,27 @@ pub fn specialize(cx: @MatchCheckCtxt,
             pat_lit(expr) => {
                 let e_v = eval_const_expr(cx.tcx, expr);
                 let match_ = match *ctor_id {
-                    val(ref v) => compare_const_vals(&e_v, v) == 0,
+                    val(ref v) => {
+                        match compare_const_vals(&e_v, v) {
+                            Some(val1) => val1 == 0,
+                            None => {
+                                cx.tcx.sess.span_err(pat_span,
+                                    "mismatched types between arms");
+                                false
+                            }
+                        }
+                    },
                     range(ref c_lo, ref c_hi) => {
-                        compare_const_vals(c_lo, &e_v) >= 0 &&
-                            compare_const_vals(c_hi, &e_v) <= 0
+                        let m1 = compare_const_vals(c_lo, &e_v),
+                            m2 = compare_const_vals(c_hi, &e_v);
+                        match (m1, m2) {
+                            (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
+                            _ => {
+                                cx.tcx.sess.span_err(pat_span,
+                                    "mismatched types between ranges");
+                                false
+                            }
+                        }
                     }
                     single => true,
                     _ => fail!("type error")
@@ -638,11 +690,22 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     _ => fail!("type error")
                 };
                 let v_lo = eval_const_expr(cx.tcx, lo),
-                v_hi = eval_const_expr(cx.tcx, hi);
-                let match_ = compare_const_vals(&c_lo, &v_lo) >= 0 &&
-                    compare_const_vals(&c_hi, &v_hi) <= 0;
-          if match_ { Some(vec::to_owned(r.tail())) } else { None }
-      }
+                    v_hi = eval_const_expr(cx.tcx, hi);
+
+                let m1 = compare_const_vals(&c_lo, &v_lo),
+                    m2 = compare_const_vals(&c_hi, &v_hi);
+                match (m1, m2) {
+                    (Some(val1), Some(val2)) if val1 >= 0 && val2 <= 0 => {
+                        Some(vec::to_owned(r.tail()))
+                    },
+                    (Some(_), Some(_)) => None,
+                    _ => {
+                        cx.tcx.sess.span_err(pat_span,
+                            "mismatched types between ranges");
+                        None
+                    }
+                }
+            }
             pat_vec(before, slice, after) => {
                 match *ctor_id {
                     vec(_) => {
@@ -762,7 +825,6 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
     for pats.each |pat| {
         do pat_bindings(def_map, *pat) |bm, id, span, _path| {
             match bm {
-                bind_by_copy => {}
                 bind_by_ref(_) => {
                     by_ref_span = Some(span);
                 }
@@ -803,7 +865,7 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
 
     if !any_by_move { return; } // pointless micro-optimization
     for pats.each |pat| {
-        do walk_pat(*pat) |p| {
+        for walk_pat(*pat) |p| {
             if pat_is_binding(def_map, p) {
                 match p.node {
                     pat_ident(_, _, sub) => {
@@ -821,66 +883,5 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
                 }
             }
         }
-
-        // Now check to ensure that any move binding is not behind an
-        // @ or &, or within a struct with a destructor.  This is
-        // always illegal.
-        let vt = visit::mk_vt(@visit::Visitor {
-            visit_pat: |pat, (behind_bad_pointer, behind_dtor_struct): (bool, bool), v| {
-                match pat.node {
-                    pat_ident(_, _, sub) => {
-                        debug!("(check legality of move) checking pat \
-                                ident with behind_bad_pointer %? and behind_dtor_struct %?",
-                               behind_bad_pointer, behind_dtor_struct);
-
-                        if behind_bad_pointer || behind_dtor_struct &&
-                            cx.moves_map.contains(&pat.id)
-                        {
-                            let msg = if behind_bad_pointer {
-                                "by-move pattern bindings may not occur behind @ or & bindings"
-                            } else {
-                                "cannot bind by-move within struct (it has a destructor)"
-                            };
-                            cx.tcx.sess.span_err(pat.span, msg);
-                        }
-
-                        match sub {
-                            None => {}
-                            Some(subpat) => {
-                                (v.visit_pat)(subpat,
-                                              (behind_bad_pointer, behind_dtor_struct),
-                                              v);
-                            }
-                        }
-                    }
-
-                    pat_box(subpat) | pat_region(subpat) => {
-                        (v.visit_pat)(subpat, (true, behind_dtor_struct), v);
-                    }
-
-                    pat_struct(_, ref fields, _) => {
-                        let behind_dtor_struct = behind_dtor_struct ||
-                            (match cx.tcx.def_map.find(&pat.id) {
-                                Some(&def_struct(id)) => {
-                                    ty::has_dtor(cx.tcx, id)
-                                }
-                                _ => false
-                            });
-                        debug!("(check legality of move) checking pat \
-                                struct with behind_bad_pointer %? and behind_dtor_struct %?",
-                               behind_bad_pointer, behind_dtor_struct);
-
-                        for fields.each |fld| {
-                            (v.visit_pat)(fld.pat, (behind_bad_pointer,
-                                                    behind_dtor_struct), v)
-                        }
-                    }
-
-                    _ => visit::visit_pat(pat, (behind_bad_pointer, behind_dtor_struct), v)
-                }
-            },
-            .. *visit::default_visitor::<(bool, bool)>()
-        });
-        (vt.visit_pat)(*pat, (false, false), vt);
     }
 }

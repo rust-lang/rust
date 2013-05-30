@@ -16,5 +16,5 @@ fn sum_slice(x: &[int]) -> int {
 
 pub fn main() {
     let x = @[1, 2, 3];
-    assert!(sum_slice(x) == 6);
+    assert_eq!(sum_slice(x), 6);
 }

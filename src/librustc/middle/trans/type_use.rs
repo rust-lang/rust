@@ -36,8 +36,8 @@ use middle::typeck;
 use core::option::{Some, None};
 use core::uint;
 use core::vec;
-use std::list::{List, Cons, Nil};
-use std::list;
+use extra::list::{List, Cons, Nil};
+use extra::list;
 use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_map;
@@ -85,8 +85,8 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
     }
 
     if fn_id_loc.crate != local_crate {
-        let Context { uses: @uses, _ } = cx;
-        let uses = @uses; // mutability
+        let Context { uses, _ } = cx;
+        let uses = @copy *uses; // freeze
         ccx.type_use_cache.insert(fn_id, uses);
         return uses;
     }
@@ -135,7 +135,8 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                 ~"visit_tydesc"  | ~"forget" | ~"frame_address" |
                 ~"morestack_addr" => 0,
 
-                ~"memmove32" | ~"memmove64" => 0,
+                ~"memcpy32" | ~"memcpy64" | ~"memmove32" | ~"memmove64" |
+                ~"memset32" | ~"memset64" => use_repr,
 
                 ~"sqrtf32" | ~"sqrtf64" | ~"powif32" | ~"powif64" |
                 ~"sinf32"  | ~"sinf64"  | ~"cosf32"  | ~"cosf64"  |
@@ -172,8 +173,8 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                                 ccx.tcx.sess.parse_sess.interner)));
       }
     }
-    let Context { uses: @uses, _ } = cx;
-    let uses = @uses; // mutability
+    let Context { uses, _ } = cx;
+    let uses = @copy *uses; // freeze
     ccx.type_use_cache.insert(fn_id, uses);
     uses
 }

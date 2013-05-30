@@ -10,7 +10,7 @@
 // except according to those terms.
 
 
-extern mod std;
+extern mod extra;
 
 enum bar { t1((), Option<~[int]>), t2, }
 

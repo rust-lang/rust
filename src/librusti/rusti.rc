@@ -18,11 +18,17 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-extern mod std(vers = "0.7-pre");
-extern mod rustc(vers = "0.7-pre");
-extern mod syntax(vers = "0.7-pre");
+#[no_std];
 
+extern mod core(name = "std");
+extern mod std(name = "extra");
+
+extern mod rustc;
+extern mod syntax;
+
+use core::prelude::*;
 use core::*;
+
 use core::cell::Cell;
 use rustc::driver::{driver, session};
 use syntax::{ast, diagnostic};
@@ -74,7 +80,7 @@ fn record(mut repl: Repl, blk: &ast::blk, intr: @token::ident_interner) -> Repl 
         let new_view_items = do with_pp(intr) |pp, writer| {
             for blk.node.view_items.each |view_item| {
                 pprust::print_view_item(pp, *view_item);
-                writer.write_line(~"");
+                writer.write_line("");
             }
         };
 
@@ -88,7 +94,7 @@ fn record(mut repl: Repl, blk: &ast::blk, intr: @token::ident_interner) -> Repl 
                 match stmt.node {
                     ast::stmt_decl(*) | ast::stmt_mac(*) => {
                         pprust::print_stmt(pp, *stmt);
-                        writer.write_line(~"");
+                        writer.write_line("");
                     }
                     ast::stmt_expr(expr, _) | ast::stmt_semi(expr, _) => {
                         match expr.node {
@@ -138,9 +144,10 @@ fn run(repl: Repl, input: ~str) -> Repl {
 
     let outputs = driver::build_output_filenames(&wrapped, &None, &None, sess);
     debug!("calling compile_upto");
-    let (crate, _) = driver::compile_upto(sess, cfg, &wrapped,
-                                          driver::cu_everything,
-                                          Some(outputs));
+
+    let crate = driver::parse_input(sess, copy cfg, &wrapped);
+    driver::compile_rest(sess, cfg, driver::cu_everything,
+                         Some(outputs), Some(crate));
 
     let mut opt = None;
 
@@ -266,11 +273,11 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
         ~"help" => {
             io::println(
                 ~":{\\n ..lines.. \\n:}\\n - execute multiline command\n" +
-                ~":load <crate> ... - \
+                ":load <crate> ... - \
                   loads given crates as dynamic libraries\n" +
-                ~":clear - clear the bindings\n" +
-                ~":exit - exit from the repl\n" +
-                ~":help - show this message");
+                ":clear - clear the bindings\n" +
+                ":exit - exit from the repl\n" +
+                ":help - show this message");
         }
         ~"load" => {
             let mut loaded_crates: ~[~str] = ~[];
@@ -311,10 +318,10 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 match get_line(use_rl, "rusti| ") {
                     None => fail!("unterminated multiline command :{ .. :}"),
                     Some(line) => {
-                        if str::trim(line) == ~":}" {
+                        if str::trim(line) == ":}" {
                             end_multiline = true;
                         } else {
-                            multiline_cmd += line + ~"\n";
+                            multiline_cmd += line + "\n";
                         }
                     }
                 }
@@ -389,7 +396,7 @@ pub fn main() {
     if istty {
         io::println("WARNING: The Rust REPL is experimental and may be");
         io::println("unstable. If you encounter problems, please use the");
-        io::println("compiler instead.");
+        io::println("compiler instead. Type :help for help.");
 
         unsafe {
             do rl::complete |line, suggest| {
@@ -409,7 +416,7 @@ pub fn main() {
             Some(line) => {
                 if line.is_empty() {
                     if istty {
-                        io::println(~"()");
+                        io::println("()");
                     }
                     loop;
                 }
@@ -425,6 +432,7 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::io;
 
     fn repl() -> Repl {
         Repl {
@@ -446,8 +454,9 @@ mod tests {
         }
     }
 
-    #[test] #[ignore]
+    #[test]
     fn run_all() {
+        // FIXME(#6511):
         // By default, unit tests are run in parallel. Rusti, on the other hand,
         // does not enjoy doing this. I suspect that it is because the LLVM
         // bindings are not thread-safe (when running parallel tests, some tests
@@ -460,7 +469,7 @@ mod tests {
         run_cmds([""]);
 
         debug!("regression test for #5937");
-        run_cmds(["use core;", ""]);
+        run_cmds(["use std;", ""]);
 
         debug!("regression test for #5784");
         run_cmds(["let a = 1;"]);

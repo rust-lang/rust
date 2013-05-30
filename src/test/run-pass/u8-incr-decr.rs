@@ -24,5 +24,5 @@ pub fn main() {
 
     y = y - 9u8; // 0x9
 
-    assert!((x == y));
+    assert_eq!(x, y);
 }

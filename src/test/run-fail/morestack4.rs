@@ -12,7 +12,7 @@
 
 // Just testing unwinding
 
-extern mod std;
+extern mod extra;
 
 fn getbig_and_fail(i: int) {
     let r = and_then_get_big_again(5);

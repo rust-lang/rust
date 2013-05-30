@@ -10,6 +10,6 @@
 
 // error-pattern:duplicate meta item `name`
 
-extern mod std(name = "std", name = "nonstd");
+extern mod extra(name = "extra", name = "nonstd");
 
 fn main() { }

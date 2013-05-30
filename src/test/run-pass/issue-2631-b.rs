@@ -14,7 +14,7 @@
 extern mod req;
 
 use req::*;
-use core::hashmap::HashMap;
+use std::hashmap::HashMap;
 
 pub fn main() {
   let v = ~[@~"hi"];

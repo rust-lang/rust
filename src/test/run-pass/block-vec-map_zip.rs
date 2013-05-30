@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
 
 pub fn main() {
     let v =
@@ -16,5 +16,5 @@ pub fn main() {
                   ~[true, false, false, true, true],
                   |i, b| if *b { -(*i) } else { *i } );
     error!(v.clone());
-    assert!((v == ~[-1, 2, 3, -4, -5]));
+    assert_eq!(v, ~[-1, 2, 3, -4, -5]);
 }

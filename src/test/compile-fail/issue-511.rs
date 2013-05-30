@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use core::cmp::Eq;
+extern mod extra;
+use std::cmp::Eq;
 
 fn f<T:Eq>(o: &mut Option<T>) {
     assert!(*o == option::None);

@@ -10,7 +10,7 @@
 
 // xfail-fast
 
-use core::cmp::Eq;
+use std::cmp::Eq;
 
 fn iter<T>(v: ~[T], it: &fn(&T) -> bool) -> bool {
     let mut i = 0u, l = v.len();
@@ -56,17 +56,17 @@ pub fn main() {
         last = *e;
         if *e == 5 { break; }
         if *e % 2 == 1 { loop; }
-        assert!(*e % 2 == 0);
+        assert_eq!(*e % 2, 0);
     };
-    assert!(last == 5);
+    assert_eq!(last, 5);
 
-    assert!(find_pos(1, ~[0, 1, 2, 3]) == Some(1u));
-    assert!(find_pos(1, ~[0, 4, 2, 3]) == None);
-    assert!(find_pos(~"hi", ~[~"foo", ~"bar", ~"baz", ~"hi"]) == Some(3u));
+    assert_eq!(find_pos(1, ~[0, 1, 2, 3]), Some(1u));
+    assert_eq!(find_pos(1, ~[0, 4, 2, 3]), None);
+    assert_eq!(find_pos(~"hi", ~[~"foo", ~"bar", ~"baz", ~"hi"]), Some(3u));
 
     bail_deep(~[~[false, false], ~[true, true], ~[false, true]]);
     bail_deep(~[~[true]]);
     bail_deep(~[~[false, false, false]]);
 
-    assert!(ret_deep() == ~"hi");
+    assert_eq!(ret_deep(), ~"hi");
 }

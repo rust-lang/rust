@@ -15,15 +15,15 @@ fn incd_if_even(x: &uint) -> Option<uint> {
 }
 
 pub fn main() {
-    assert!((~[1u, 3u]).flat_map_to_vec(repeat) == ~[1u, 1u, 3u, 3u]);
-    assert!((~[]).flat_map_to_vec(repeat) == ~[]);
-    assert!(old_iter::flat_map_to_vec(&None::<uint>, repeat) == ~[]);
-    assert!(old_iter::flat_map_to_vec(&Some(1u), repeat) == ~[1u, 1u]);
-    assert!(old_iter::flat_map_to_vec(&Some(2u), repeat) == ~[2u, 2u]);
+    assert_eq!((~[1u, 3u]).flat_map_to_vec(repeat), ~[1u, 1u, 3u, 3u]);
+    assert_eq!((~[]).flat_map_to_vec(repeat), ~[]);
+    assert_eq!(old_iter::flat_map_to_vec(&None::<uint>, repeat), ~[]);
+    assert_eq!(old_iter::flat_map_to_vec(&Some(1u), repeat), ~[1u, 1u]);
+    assert_eq!(old_iter::flat_map_to_vec(&Some(2u), repeat), ~[2u, 2u]);
 
-    assert!((~[1u, 2u, 5u]).flat_map_to_vec(incd_if_even) == ~[3u]);
-    assert!((~[]).flat_map_to_vec(incd_if_even) == ~[]);
-    assert!(old_iter::flat_map_to_vec(&None::<uint>, incd_if_even) == ~[]);
-    assert!(old_iter::flat_map_to_vec(&Some(1u), incd_if_even) == ~[]);
-    assert!(old_iter::flat_map_to_vec(&Some(2u), incd_if_even) == ~[3u]);
+    assert_eq!((~[1u, 2u, 5u]).flat_map_to_vec(incd_if_even), ~[3u]);
+    assert_eq!((~[]).flat_map_to_vec(incd_if_even), ~[]);
+    assert_eq!(old_iter::flat_map_to_vec(&None::<uint>, incd_if_even), ~[]);
+    assert_eq!(old_iter::flat_map_to_vec(&Some(1u), incd_if_even), ~[]);
+    assert_eq!(old_iter::flat_map_to_vec(&Some(2u), incd_if_even), ~[3u]);
 }

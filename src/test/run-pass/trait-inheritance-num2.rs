@@ -12,10 +12,9 @@
 
 // A more complex example of numeric extensions
 
-extern mod std;
+extern mod extra;
 
-use core::cmp::{Eq, Ord};
-use core::num::NumCast::from;
+use std::cmp::{Eq, Ord};
 
 pub trait TypeExt {}
 

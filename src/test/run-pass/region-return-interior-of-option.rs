@@ -20,13 +20,13 @@ pub fn main() {
 
     {
         let y = get(&x);
-        assert!(*y == 23);
+        assert_eq!(*y, 23);
     }
 
     x = Some(24);
 
     {
         let y = get(&x);
-        assert!(*y == 24);
+        assert_eq!(*y, 24);
     }
 }

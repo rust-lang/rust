@@ -10,7 +10,7 @@
 // except according to those terms.
 
 
-extern mod std;
+extern mod extra;
 
 
 pub fn main() {

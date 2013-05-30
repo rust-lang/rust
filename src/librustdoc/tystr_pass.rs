@@ -10,6 +10,8 @@
 
 //! Pulls type information out of the AST and attaches it to the document
 
+use core::prelude::*;
+
 use astsrv;
 use doc::ItemUtils;
 use doc;
@@ -345,6 +347,8 @@ fn strip_struct_extra_stuff(item: @ast::item) -> @ast::item {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use astsrv;
     use doc;
     use extract;
@@ -430,7 +434,7 @@ mod test {
     #[test]
     fn should_add_struct_defs() {
         let doc = mk_doc(~"struct S { field: () }");
-        assert!((&doc.cratemod().structs()[0].sig).get().contains(
+        assert!(doc.cratemod().structs()[0].sig.get().contains(
             "struct S {"));
     }
 
@@ -438,6 +442,6 @@ mod test {
     fn should_not_serialize_struct_attrs() {
         // All we care about are the fields
         let doc = mk_doc(~"#[wut] struct S { field: () }");
-        assert!(!(&doc.cratemod().structs()[0].sig).get().contains("wut"));
+        assert!(!doc.cratemod().structs()[0].sig.get().contains("wut"));
     }
 }

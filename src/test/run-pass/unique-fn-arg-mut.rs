@@ -15,5 +15,5 @@ fn f(i: &mut ~int) {
 pub fn main() {
     let mut i = ~100;
     f(&mut i);
-    assert!(*i == 200);
+    assert_eq!(*i, 200);
 }

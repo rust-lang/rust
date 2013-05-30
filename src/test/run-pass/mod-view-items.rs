@@ -17,7 +17,7 @@
 // begin failing.
 
 mod m {
-    use core::vec;
+    use std::vec;
     pub fn f() -> ~[int] { vec::from_elem(1u, 0) }
 }
 

@@ -10,8 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use std::bitv::*;
+extern mod extra;
+use extra::bitv::*;
 
 fn bitv_test() -> bool {
     let mut v1 = ~Bitv::new(31, false);
@@ -21,5 +21,5 @@ fn bitv_test() -> bool {
 }
 
 pub fn main() {
-    do old_iter::repeat(10000) || {bitv_test()};
+    do 10000.times || {bitv_test()};
 }

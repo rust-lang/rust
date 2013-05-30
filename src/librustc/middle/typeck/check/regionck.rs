@@ -27,6 +27,8 @@ this point a bit better.
 
 */
 
+use core::prelude::*;
+
 use middle::freevars::get_freevars;
 use middle::ty::{re_scope};
 use middle::ty;
@@ -118,26 +120,6 @@ pub impl Rcx {
     }
 
     /// Try to resolve the type for the given node.
-    #[config(stage0)]
-    fn resolve_expr_type_adjusted(@mut self, expr: @ast::expr) -> ty::t {
-        let ty_unadjusted = self.resolve_node_type(expr.id);
-        if ty::type_is_error(ty_unadjusted) || ty::type_is_bot(ty_unadjusted) {
-            ty_unadjusted
-        } else {
-            let tcx = self.fcx.tcx();
-            let adjustments = self.fcx.inh.adjustments;
-            match adjustments.find_copy(&expr.id) {
-                None => ty_unadjusted,
-                Some(adjustment) => {
-                    ty::adjust_ty(tcx, expr.span, ty_unadjusted,
-                                  Some(adjustment))
-                }
-            }
-        }
-    }
-
-    /// Try to resolve the type for the given node.
-    #[config(not(stage0))]
     fn resolve_expr_type_adjusted(@mut self, expr: @ast::expr) -> ty::t {
         let ty_unadjusted = self.resolve_node_type(expr.id);
         if ty::type_is_error(ty_unadjusted) || ty::type_is_bot(ty_unadjusted) {
@@ -797,6 +779,8 @@ pub mod guarantor {
      * So this is very similar logic to what you would find there,
      * but more special purpose.
      */
+
+    use core::prelude::*;
 
     use middle::typeck::check::regionck::{Rcx, infallibly_mk_subr};
     use middle::typeck::check::regionck::mk_subregion_due_to_derefence;

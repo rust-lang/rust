@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use core::hashmap::HashMap;
-use core::libc::c_uint;
+use core::libc::{c_uint, c_ushort};
 
 pub type Opcode = u32;
 pub type Bool = c_uint;
@@ -213,15 +215,17 @@ pub enum ObjectFile_opaque {}
 pub type ObjectFileRef = *ObjectFile_opaque;
 pub enum SectionIterator_opaque {}
 pub type SectionIteratorRef = *SectionIterator_opaque;
+pub enum Pass_opaque {}
+pub type PassRef = *Pass_opaque;
 
 pub mod llvm {
     use super::{AtomicBinOp, AtomicOrdering, BasicBlockRef};
     use super::{Bool, BuilderRef, ContextRef, MemoryBufferRef, ModuleRef};
     use super::{ObjectFileRef, Opcode, PassManagerRef, PassManagerBuilderRef};
     use super::{SectionIteratorRef, TargetDataRef, TypeKind, TypeRef, UseRef};
-    use super::{ValueRef};
+    use super::{ValueRef,PassRef};
 
-    use core::libc::{c_char, c_int, c_longlong, c_uint, c_ulonglong};
+    use core::libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong};
 
     #[link_args = "-Lrustllvm -lrustllvm"]
     #[link_name = "rustllvm"]
@@ -451,6 +455,10 @@ pub mod llvm {
         /* all zeroes */
         #[fast_ffi]
         pub unsafe fn LLVMConstAllOnes(Ty: TypeRef) -> ValueRef;
+        #[fast_ffi]
+        pub unsafe fn LLVMConstICmp(Pred: c_ushort, V1: ValueRef, V2: ValueRef) -> ValueRef;
+        #[fast_ffi]
+        pub unsafe fn LLVMConstFCmp(Pred: c_ushort, V1: ValueRef, V2: ValueRef) -> ValueRef;
         /* only for int/vector */
         #[fast_ffi]
         pub unsafe fn LLVMGetUndef(Ty: TypeRef) -> ValueRef;
@@ -1567,13 +1575,15 @@ pub mod llvm {
         pub unsafe fn LLVMBuildAtomicLoad(B: BuilderRef,
                                           PointerVal: ValueRef,
                                           Name: *c_char,
-                                          Order: AtomicOrdering)
+                                          Order: AtomicOrdering,
+                                          Alignment: c_uint)
                                        -> ValueRef;
 
         pub unsafe fn LLVMBuildAtomicStore(B: BuilderRef,
                                            Val: ValueRef,
                                            Ptr: ValueRef,
-                                           Order: AtomicOrdering)
+                                           Order: AtomicOrdering,
+                                           Alignment: c_uint)
                                         -> ValueRef;
 
         pub unsafe fn LLVMBuildAtomicCmpXchg(B: BuilderRef,
@@ -1646,13 +1656,33 @@ pub mod llvm {
         /** Creates a pass manager. */
         #[fast_ffi]
         pub unsafe fn LLVMCreatePassManager() -> PassManagerRef;
+        /** Creates a function-by-function pass manager */
+        #[fast_ffi]
+        pub unsafe fn LLVMCreateFunctionPassManagerForModule(M:ModuleRef) -> PassManagerRef;
+
         /** Disposes a pass manager. */
         #[fast_ffi]
         pub unsafe fn LLVMDisposePassManager(PM: PassManagerRef);
+
         /** Runs a pass manager on a module. */
         #[fast_ffi]
         pub unsafe fn LLVMRunPassManager(PM: PassManagerRef,
                                          M: ModuleRef) -> Bool;
+
+        /** Runs the function passes on the provided function. */
+        #[fast_ffi]
+        pub unsafe fn LLVMRunFunctionPassManager(FPM:PassManagerRef, F:ValueRef) -> Bool;
+
+        /** Initializes all the function passes scheduled in the manager */
+        #[fast_ffi]
+        pub unsafe fn LLVMInitializeFunctionPassManager(FPM:PassManagerRef) -> Bool;
+
+        /** Finalizes all the function passes scheduled in the manager */
+        #[fast_ffi]
+        pub unsafe fn LLVMFinalizeFunctionPassManager(FPM:PassManagerRef) -> Bool;
+
+        #[fast_ffi]
+        pub unsafe fn LLVMAddPass(PM:PassManagerRef,P:PassRef);
 
         /** Adds a verification pass. */
         #[fast_ffi]
@@ -1895,6 +1925,203 @@ pub mod llvm {
                                     Constraints: *c_char, SideEffects: Bool,
                                     AlignStack: Bool, Dialect: c_uint)
                                  -> ValueRef;
+
+        // LLVM Passes
+
+        #[fast_ffi]
+        pub fn LLVMCreateStripSymbolsPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateStripNonDebugSymbolsPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateStripDebugDeclarePass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateStripDeadDebugInfoPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateConstantMergePass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateGlobalOptimizerPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateGlobalDCEPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateAlwaysInlinerPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreatePruneEHPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateInternalizePass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateDeadArgEliminationPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateDeadArgHackingPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateArgumentPromotionPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateIPConstantPropagationPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateIPSCCPPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLoopExtractorPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateSingleLoopExtractorPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateBlockExtractorPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateStripDeadPrototypesPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateFunctionAttrsPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateMergeFunctionsPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreatePartialInliningPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateMetaRenamerPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateBarrierNoopPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateFunctionInliningPass(Threshold:c_int) -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateEdgeProfilerPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateOptimalEdgeProfilerPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreatePathProfilerPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateGCOVProfilerPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateBoundsCheckingPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateConstantPropagationPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateSCCPPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateDeadInstEliminationPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateDeadCodeEliminationPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateDeadStoreEliminationPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateAggressiveDCEPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateSROAPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateScalarReplAggregatesPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateIndVarSimplifyPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateInstructionCombiningPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLICMPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLoopStrengthReducePass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateGlobalMergePass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLoopUnswitchPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLoopInstSimplifyPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLoopUnrollPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLoopRotatePass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLoopIdiomPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreatePromoteMemoryToRegisterPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateDemoteRegisterToMemoryPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateReassociatePass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateJumpThreadingPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateCFGSimplificationPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateBreakCriticalEdgesPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLoopSimplifyPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateTailCallEliminationPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLowerSwitchPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLowerInvokePass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateBlockPlacementPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLCSSAPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateEarlyCSEPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateGVNPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateMemCpyOptPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLoopDeletionPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateSimplifyLibCallsPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateCodeGenPreparePass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateInstructionNamerPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateSinkingPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLowerAtomicPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateCorrelatedValuePropagationPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateInstructionSimplifierPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLowerExpectIntrinsicPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateBBVectorizePass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLoopVectorizePass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateGlobalsModRefPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateAliasAnalysisCounterPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateAAEvalPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateNoAAPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateBasicAliasAnalysisPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateScalarEvolutionAliasAnalysisPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateTypeBasedAliasAnalysisPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateProfileLoaderPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateProfileMetadataLoaderPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateNoProfileInfoPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateProfileEstimatorPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateProfileVerifierPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreatePathProfileLoaderPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateNoPathProfileInfoPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreatePathProfileVerifierPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLazyValueInfoPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateDependenceAnalysisPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateCostModelAnalysisPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateInstCountPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateRegionInfoPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateModuleDebugInfoPrinterPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateLintPass() -> PassRef;
+        #[fast_ffi]
+        pub fn LLVMCreateVerifierPass() -> PassRef;
     }
 }
 
@@ -1914,6 +2141,16 @@ pub fn SetLinkage(Global: ValueRef, Link: Linkage) {
     }
 }
 
+pub fn ConstICmp(Pred: IntPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef {
+    unsafe {
+        llvm::LLVMConstICmp(Pred as c_ushort, V1, V2)
+    }
+}
+pub fn ConstFCmp(Pred: RealPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef {
+    unsafe {
+        llvm::LLVMConstFCmp(Pred as c_ushort, V1, V2)
+    }
+}
 /* Memory-managed object interface to type handles. */
 
 pub struct TypeNames {
@@ -1962,7 +2199,7 @@ pub fn type_to_str_inner(names: @TypeNames, outer0: &[TypeRef], ty: TypeRef)
             let mut s = ~"";
             let mut first: bool = true;
             for tys.each |t| {
-                if first { first = false; } else { s += ~", "; }
+                if first { first = false; } else { s += ", "; }
                 s += type_to_str_inner(names, outer, *t).to_owned();
             }
             // [Note at-str] FIXME #2543: Could rewrite this without the copy,

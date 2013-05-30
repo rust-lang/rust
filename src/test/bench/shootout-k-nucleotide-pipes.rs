@@ -11,13 +11,13 @@
 // xfail-pretty (extra blank line is inserted in vec::mapi call)
 // multi tasking k-nucleotide
 
-extern mod std;
-use std::sort;
-use core::hashmap::HashMap;
-use core::io::ReaderUtil;
-use core::comm::{stream, Port, Chan};
-use core::cmp::Ord;
-use core::util;
+extern mod extra;
+use extra::sort;
+use std::hashmap::HashMap;
+use std::io::ReaderUtil;
+use std::comm::{stream, Port, Chan};
+use std::cmp::Ord;
+use std::util;
 
 // given a map, print a sorted version of it
 fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {

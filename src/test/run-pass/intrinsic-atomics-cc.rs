@@ -18,6 +18,6 @@ pub fn main() {
     unsafe {
         let mut x = 1;
         atomic_xchg(&mut x, 5);
-        assert!(x == 5);
+        assert_eq!(x, 5);
     }
 }

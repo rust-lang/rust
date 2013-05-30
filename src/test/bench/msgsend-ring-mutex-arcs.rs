@@ -15,11 +15,11 @@
 
 // This also serves as a pipes test, because ARCs are implemented with pipes.
 
-extern mod std;
-use std::time;
-use std::arc;
-use std::future;
-use core::cell::Cell;
+extern mod extra;
+use extra::time;
+use extra::arc;
+use extra::future;
+use std::cell::Cell;
 
 // A poor man's pipe.
 type pipe = arc::MutexARC<~[uint]>;

@@ -30,7 +30,7 @@ fn to_foo<T:Copy>(t: T) {
     let v = &3;
     struct F<T> { f: T }
     let x = @F {f:t} as @foo;
-    assert!(x.foo(v) == 3);
+    assert_eq!(x.foo(v), 3);
 }
 
 fn to_foo_2<T:Copy>(t: T) -> @foo {

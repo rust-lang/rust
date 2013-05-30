@@ -15,7 +15,7 @@ use codemap::span;
 use ext::base::*;
 
 pub fn expand_auto_encode(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     _mitem: @ast::meta_item,
     in_items: ~[@ast::item]
@@ -25,7 +25,7 @@ pub fn expand_auto_encode(
 }
 
 pub fn expand_auto_decode(
-    cx: @ext_ctxt,
+    cx: @ExtCtxt,
     span: span,
     _mitem: @ast::meta_item,
     in_items: ~[@ast::item]

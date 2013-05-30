@@ -10,7 +10,7 @@
 
 // xfail-fast
 
-extern mod std;
+extern mod extra;
 
 pub fn main() { test00(); }
 
@@ -55,5 +55,5 @@ fn test00() {
         i += 1;
     }
 
-    assert!((sum == number_of_messages * 4 * (number_of_messages * 4 - 1) / 2));
+    assert_eq!(sum, number_of_messages * 4 * (number_of_messages * 4 - 1) / 2);
 }

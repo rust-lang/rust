@@ -23,13 +23,24 @@
 #[allow(non_camel_case_types)];
 #[deny(deprecated_pattern)];
 
-extern mod std(vers = "0.7-pre");
+#[no_core];
+#[no_std];
 
-// allow the interner_key macro
-// to escape this module:
-#[macro_escape]
+extern mod core(name = "std");
+extern mod extra(name = "extra");
+
+// For deriving(Encodable) purposes...
+#[cfg(stage0)]
+extern mod std(name = "extra");
+#[cfg(not(stage0))]
+extern mod std(name = "std");
+
+use core::prelude::*;
+
 pub mod util {
     pub mod interner;
+    #[cfg(test)]
+    pub mod parser_testing;
 }
 
 pub mod syntax {

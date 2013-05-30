@@ -15,6 +15,8 @@
 // allow the interner_key macro to escape this module:
 #[macro_escape];
 
+use core::prelude::*;
+
 use core::cmp::Equiv;
 use core::hashmap::HashMap;
 use syntax::parse::token::StringRef;
@@ -78,6 +80,8 @@ pub impl<T:Eq + IterBytes + Hash + Const + Copy> Interner<T> {
     }
 }
 
+// A StrInterner differs from Interner<String> in that it accepts
+// borrowed pointers rather than @ ones, resulting in less allocation.
 pub struct StrInterner {
     priv map: @mut HashMap<@~str, uint>,
     priv vect: @mut ~[@~str],
@@ -132,17 +136,6 @@ pub impl StrInterner {
         }
     }
 }
-
-/* Key for thread-local data for sneaking interner information to the
-* encoder/decoder. It sounds like a hack because it is one.
-* Bonus ultra-hack: functions as keys don't work across crates,
-* so we have to use a unique number. See taskgroup_key! in task.rs
-* for another case of this. */
-macro_rules! interner_key (
-    () => (cast::transmute::<(uint, uint),
-           &fn(v: @@::parse::token::ident_interner)>(
-        (-3 as uint, 0u)))
-)
 
 #[cfg(test)]
 mod tests {

@@ -16,13 +16,13 @@
 
 // This version uses automatically compiled channel contracts.
 
-extern mod std;
+extern mod extra;
 
-use core::cell::Cell;
-use core::pipes::recv;
-use core::util;
-use std::time;
-use std::future;
+use std::cell::Cell;
+use std::pipes::recv;
+use std::util;
+use extra::time;
+use extra::future;
 
 proto! ring (
     num:send {

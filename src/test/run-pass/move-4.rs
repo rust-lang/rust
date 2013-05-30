@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-extern mod std;
+extern mod extra;
 
 struct Triple { a: int, b: int, c: int }
 
@@ -24,5 +24,5 @@ fn test(foo: @Triple) -> @Triple {
 pub fn main() {
     let x = @Triple{a: 1, b: 2, c: 3};
     let y = test(x);
-    assert!((y.c == 3));
+    assert_eq!(y.c, 3);
 }

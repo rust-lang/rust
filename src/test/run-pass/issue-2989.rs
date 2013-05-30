@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
 
 trait methods {
     fn to_bytes(&self) -> ~[u8];
@@ -41,5 +41,5 @@ pub fn main() {
         io::println(fmt!("%u => %u vs %u", i, bools[i] as uint, bools2[i] as uint));
     }
 
-    assert!(bools == bools2);
+    assert_eq!(bools, bools2);
 }

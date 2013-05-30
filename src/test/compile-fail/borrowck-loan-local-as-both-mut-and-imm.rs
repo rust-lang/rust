@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::either::{Either, Left, Right};
+use std::either::{Either, Left, Right};
 
     fn f(x: &mut Either<int,float>, y: &Either<int,float>) -> int {
         match *y {

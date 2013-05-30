@@ -177,7 +177,7 @@ pub impl FnType {
             }
         }
 
-        let llretval = load_inbounds(bcx, llargbundle, ~[ 0, arg_tys.len() ]);
+        let llretval = load_inbounds(bcx, llargbundle, [ 0, arg_tys.len() ]);
         let llretval = if self.ret_ty.cast {
             let retptr = BitCast(bcx, llretval, T_ptr(self.ret_ty.ty));
             Load(bcx, retptr)

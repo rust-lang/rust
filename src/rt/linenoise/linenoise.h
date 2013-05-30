@@ -51,9 +51,11 @@ void linenoiseAddCompletion(linenoiseCompletions *, const char *);
 char *linenoise(const char *prompt);
 int linenoiseHistoryAdd(const char *line);
 int linenoiseHistorySetMaxLen(int len);
+int linenoiseHistoryGetMaxLen(void);
 int linenoiseHistorySave(const char *filename);
 int linenoiseHistoryLoad(const char *filename);
 void linenoiseHistoryFree(void);
 char **linenoiseHistory(int *len);
+int linenoiseColumns(void);
 
 #endif /* __LINENOISE_H */

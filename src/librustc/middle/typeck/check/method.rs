@@ -79,6 +79,8 @@ obtained the type `Foo`, we would never match this method.
 
 */
 
+use core::prelude::*;
+
 use middle::resolve;
 use middle::ty::*;
 use middle::ty;
@@ -94,7 +96,7 @@ use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use util::common::indenter;
 
 use core::hashmap::HashSet;
-use std::list::Nil;
+use extra::list::Nil;
 use syntax::ast::{def_id, sty_value, sty_region, sty_box};
 use syntax::ast::{sty_uniq, sty_static, node_id};
 use syntax::ast::{m_const, m_mutbl, m_imm};
@@ -438,7 +440,7 @@ pub impl<'self> LookupContext<'self> {
                 return; // inapplicable
             }
             ast::sty_region(_) => vstore_slice(r)
-            ast::sty_box(_) => vstore_box, // XXX NDM mutability
+            ast::sty_box(_) => vstore_box, // NDM mutability, as per #5762
             ast::sty_uniq(_) => vstore_uniq
         }
         */
@@ -594,7 +596,7 @@ pub impl<'self> LookupContext<'self> {
             let method = ty::method(self.tcx(),
                                     provided_method_info.method_info.did);
 
-            // XXX: Needs to support generics.
+            // FIXME #4099 (?) Needs to support generics.
             let dummy_substs = substs {
                 self_r: None,
                 self_ty: None,

@@ -45,6 +45,6 @@ mod test {
         let doc = mk_doc(~"#[doc = \" desc \"] \
                                  mod m {
 }");
-        assert!(doc.cratemod().mods()[0].desc() == Some(~"desc"));
+        assert_eq!(doc.cratemod().mods()[0].desc(), Some(~"desc"));
     }
 }

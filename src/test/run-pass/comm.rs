@@ -9,7 +9,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::comm::*;
+use std::comm::*;
 
 pub fn main() {
     let (p, ch) = stream();
@@ -17,7 +17,7 @@ pub fn main() {
     let y = p.recv();
     error!("received");
     error!(y);
-    assert!((y == 10));
+    assert_eq!(y, 10);
 }
 
 fn child(c: &Chan<int>) {

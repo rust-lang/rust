@@ -13,5 +13,5 @@ pub fn main() {
     for vec::each(~[1, 2, 3, 4, 5]) |x| {
         sum += *x;
     }
-    assert!((sum == 15));
+    assert_eq!(sum, 15);
 }

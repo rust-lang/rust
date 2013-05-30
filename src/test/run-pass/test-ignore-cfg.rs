@@ -11,7 +11,7 @@
 // compile-flags: --test --cfg ignorecfg
 // xfail-fast
 
-extern mod std;
+extern mod extra;
 
 #[test]
 #[ignore(cfg(ignorecfg))]

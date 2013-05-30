@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,6 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+use core::prelude::*;
 
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
 use middle::ty;
@@ -155,8 +157,8 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
                              None);
                     fcx.write_error(pat.id);
                     kind_name = "[error]";
-                    arg_types = (copy subpats).get_or_default(~[]).map(|_|
-                                                                       ty::mk_err());
+                    arg_types = (copy *subpats).get_or_default(~[]).map(|_|
+                                                                        ty::mk_err());
                 }
             }
         }
@@ -197,8 +199,8 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
                     None);
             fcx.write_error(pat.id);
             kind_name = "[error]";
-            arg_types = (copy subpats).get_or_default(~[]).map(|_|
-                                                               ty::mk_err());
+            arg_types = (copy *subpats).get_or_default(~[]).map(|_|
+                                                                ty::mk_err());
         }
     }
 
@@ -408,8 +410,18 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
             // no-op
         } else if !ty::type_is_numeric(b_ty) {
             tcx.sess.span_err(pat.span, "non-numeric type used in range");
-        } else if !valid_range_bounds(fcx.ccx, begin, end) {
-            tcx.sess.span_err(begin.span, "lower range bound must be less than upper");
+        } else {
+            match valid_range_bounds(fcx.ccx, begin, end) {
+                Some(false) => {
+                    tcx.sess.span_err(begin.span,
+                        "lower range bound must be less than upper");
+                },
+                None => {
+                    tcx.sess.span_err(begin.span,
+                        "mismatched types in range");
+                },
+                _ => { },
+            }
         }
         fcx.write_ty(pat.id, b_ty);
       }
@@ -437,7 +449,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
             demand::eqtype(fcx, pat.span, region_ty, typ);
           }
           // otherwise the type of x is the expected type T
-          ast::bind_by_copy | ast::bind_infer => {
+          ast::bind_infer => {
             demand::eqtype(fcx, pat.span, expected, typ);
           }
         }

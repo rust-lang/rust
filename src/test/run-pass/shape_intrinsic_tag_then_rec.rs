@@ -14,9 +14,9 @@
 // on x86_64: when there is a enum embedded in an
 // interior record which is then itself interior to
 // something else, shape calculations were off.
-extern mod std;
-use std::list;
-use std::list::list;
+extern mod extra;
+use extra::list;
+use extra::list::list;
 
 enum opt_span {
 

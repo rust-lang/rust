@@ -10,6 +10,8 @@
 
 // Metadata encoding
 
+use core::prelude::*;
+
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
@@ -20,11 +22,11 @@ use middle::ty;
 use middle;
 use util::ppaux::ty_to_str;
 
-use std::flate;
+use extra::flate;
 use core::hash::HashUtil;
 use core::hashmap::HashMap;
-use std::serialize::Encodable;
-use std;
+use extra::serialize::Encodable;
+use extra;
 use syntax::abi::AbiSet;
 use syntax::ast::*;
 use syntax::ast;
@@ -37,7 +39,7 @@ use syntax::{ast_util, visit};
 use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
 use syntax;
-use writer = std::ebml::writer;
+use writer = extra::ebml::writer;
 
 // used by astencode:
 type abbrev_map = @mut HashMap<ty::t, tyencode::ty_abbrev>;
@@ -316,6 +318,7 @@ fn encode_enum_variant_info(ecx: @EncodeContext,
         encode_family(ebml_w, 'v');
         encode_name(ecx, ebml_w, variant.node.name);
         encode_parent_item(ebml_w, local_def(id));
+        encode_visibility(ebml_w, variant.node.vis);
         encode_type(ecx, ebml_w,
                     node_id_to_type(ecx.tcx, variant.node.id));
         match variant.node.kind {
@@ -386,8 +389,20 @@ fn encode_reexported_static_methods(ecx: @EncodeContext,
     match ecx.tcx.trait_methods_cache.find(&exp.def_id) {
         Some(methods) => {
             match ecx.tcx.items.find(&exp.def_id.node) {
-                Some(&ast_map::node_item(_, path)) => {
-                    if mod_path != *path {
+                Some(&ast_map::node_item(item, path)) => {
+                    let original_name = ecx.tcx.sess.str_of(item.ident);
+
+                    //
+                    // We don't need to reexport static methods on traits
+                    // declared in the same module as our `pub use ...` since
+                    // that's done when we encode the trait item.
+                    //
+                    // The only exception is when the reexport *changes* the
+                    // name e.g. `pub use Foo = self::Bar` -- we have
+                    // encoded metadata for static methods relative to Bar,
+                    // but not yet for Foo.
+                    //
+                    if mod_path != *path || *exp.name != *original_name {
                         for methods.each |&m| {
                             if m.explicit_self == ast::sty_static {
                                 encode_reexported_static_method(ecx,
@@ -834,7 +849,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
                 struct_def.fields[0].node.kind == ast::unnamed_field {
             let ctor_id = match struct_def.ctor_id {
                 Some(ctor_id) => ctor_id,
-                None => ecx.tcx.sess.bug(~"struct def didn't have ctor id"),
+                None => ecx.tcx.sess.bug("struct def didn't have ctor id"),
             };
 
             encode_info_for_struct_ctor(ecx,
@@ -907,7 +922,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
 
         // >:-<
         let mut impl_path = vec::append(~[], path);
-        impl_path += ~[ast_map::path_name(item.ident)];
+        impl_path += [ast_map::path_name(item.ident)];
 
         for methods.each |m| {
             index.push(entry {val: m.id, pos: ebml_w.writer.tell()});
@@ -946,7 +961,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
 
         // Now output the method info for each method.
         for ty::trait_method_def_ids(tcx, local_def(item.id)).eachi |i, &method_def_id| {
-            assert!(method_def_id.crate == ast::local_crate);
+            assert_eq!(method_def_id.crate, ast::local_crate);
 
             let method_ty = ty::method(tcx, method_def_id);
 
@@ -1055,7 +1070,7 @@ fn encode_info_for_items(ecx: @EncodeContext,
     ebml_w.start_tag(tag_items_data);
     index.push(entry { val: crate_node_id, pos: ebml_w.writer.tell() });
     encode_info_for_mod(ecx, ebml_w, &crate.node.module,
-                        crate_node_id, ~[],
+                        crate_node_id, [],
                         syntax::parse::token::special_idents::invalid);
     visit::visit_crate(crate, (), visit::mk_vt(@visit::Visitor {
         visit_expr: |_e, _cx, _v| { },
@@ -1223,8 +1238,8 @@ fn synthesize_crate_attrs(ecx: @EncodeContext,
 
         let other_items =
             {
-                let tmp = attr::remove_meta_items_by_name(items, ~"name");
-                attr::remove_meta_items_by_name(tmp, ~"vers")
+                let tmp = attr::remove_meta_items_by_name(items, "name");
+                attr::remove_meta_items_by_name(tmp, "vers")
             };
 
         let meta_items = vec::append(~[name_item, vers_item], other_items);
@@ -1273,12 +1288,12 @@ fn encode_crate_deps(ecx: @EncodeContext,
         };
 
         // Sort by cnum
-        std::sort::quick_sort(deps, |kv1, kv2| kv1.cnum <= kv2.cnum);
+        extra::sort::quick_sort(deps, |kv1, kv2| kv1.cnum <= kv2.cnum);
 
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;
         for deps.each |n| {
-            assert!((n.cnum == expected_cnum));
+            assert_eq!(n.cnum, expected_cnum);
             expected_cnum += 1;
         }
 
@@ -1455,19 +1470,10 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
     // remaining % 4 bytes.
     wr.write(&[0u8, 0u8, 0u8, 0u8]);
 
-    // FIXME #3396: weird bug here, for reasons unclear this emits random
-    // looking bytes (mostly 0x1) if we use the version byte-array constant
-    // above; so we use a string constant inline instead.
-    //
-    // Should be:
-    //
-    //   vec::to_owned(metadata_encoding_version) +
-
     let writer_bytes: &mut ~[u8] = wr.bytes;
 
-    (do str::as_bytes(&~"rust\x00\x00\x00\x01") |bytes| {
-        vec::slice(*bytes, 0, 8).to_vec()
-    }) + flate::deflate_bytes(*writer_bytes)
+    vec::to_owned(metadata_encoding_version) +
+        flate::deflate_bytes(*writer_bytes)
 }
 
 // Get the encoded string for a type
