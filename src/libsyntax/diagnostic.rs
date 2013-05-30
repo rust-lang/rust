@@ -191,7 +191,7 @@ fn diagnosticcolor(lvl: level) -> u8 {
 }
 
 fn print_diagnostic(topic: &str, lvl: level, msg: &str) {
-    let term = term::Terminal::new(io::stderr());
+    let t = term::Terminal::new(io::stderr());
 
     let stderr = io::stderr();
 
@@ -199,18 +199,18 @@ fn print_diagnostic(topic: &str, lvl: level, msg: &str) {
         stderr.write_str(fmt!("%s ", topic));
     }
 
-    match term {
-        Ok(t) => {
+    match t {
+        Ok(term) => {
             if stderr.get_type() == io::Screen {
-                t.fg(diagnosticcolor(lvl));
+                term.fg(diagnosticcolor(lvl));
                 stderr.write_str(fmt!("%s: ", diagnosticstr(lvl)));
-                t.reset();
+                term.reset();
                 stderr.write_str(fmt!("%s\n", msg));
+            } else {
+                stderr.write_str(fmt!("%s: %s\n", diagnosticstr(lvl), msg));
             }
-        }
-        Err(_) => {
-            stderr.write_str(fmt!("%s: %s\n", diagnosticstr(lvl), msg));
-        }
+        },
+        _ => stderr.write_str(fmt!("%s: %s\n", diagnosticstr(lvl), msg))
     }
 }
 

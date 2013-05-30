@@ -10,10 +10,15 @@
 
 use core::hashmap::HashMap;
 
+/// A parsed terminfo entry.
 pub struct TermInfo {
+    /// Names for the terminal
     names: ~[~str],
+    /// Map of capability name to boolean value
     bools: HashMap<~str, bool>,
+    /// Map of capability name to numeric value
     numbers: HashMap<~str, u16>,
+    /// Map of capability name to raw (unexpanded) string
     strings: HashMap<~str, ~[u8]>
 }
 
