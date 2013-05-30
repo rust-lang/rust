@@ -236,20 +236,24 @@ impl<T: Owned> SharedChan<T> {
 
 impl<T: Owned> GenericChan<T> for SharedChan<T> {
     fn send(&self, x: T) {
-        let mut xx = Some(x);
-        do self.ch.with_imm |chan| {
-            let x = replace(&mut xx, None);
-            chan.send(x.unwrap())
+        unsafe {
+            let mut xx = Some(x);
+            do self.ch.with_imm |chan| {
+                let x = replace(&mut xx, None);
+                chan.send(x.unwrap())
+            }
         }
     }
 }
 
 impl<T: Owned> GenericSmartChan<T> for SharedChan<T> {
     fn try_send(&self, x: T) -> bool {
-        let mut xx = Some(x);
-        do self.ch.with_imm |chan| {
-            let x = replace(&mut xx, None);
-            chan.try_send(x.unwrap())
+        unsafe {
+            let mut xx = Some(x);
+            do self.ch.with_imm |chan| {
+                let x = replace(&mut xx, None);
+                chan.try_send(x.unwrap())
+            }
         }
     }
 }
