@@ -3661,8 +3661,8 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
         ~"bswap64"  => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
         ref other => {
             tcx.sess.span_err(it.span,
-                              ~"unrecognized intrinsic function: `" +
-                              (*other) + "`");
+                              fmt!("unrecognized intrinsic function: `%s`",
+                                   *other));
             return;
         }
     };

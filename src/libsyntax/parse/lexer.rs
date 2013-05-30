@@ -448,7 +448,8 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
         is_float = true;
         bump(rdr);
         let dec_part = scan_digits(rdr, 10u);
-        num_str += ~"." + dec_part;
+        num_str += ".";
+        num_str += dec_part;
     }
     if is_float {
         match base {

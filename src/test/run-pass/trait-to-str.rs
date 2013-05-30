@@ -26,7 +26,7 @@ impl to_str for int {
 
 impl<T:to_str> to_str for ~[T] {
     fn to_str(&self) -> ~str {
-        ~"[" + str::connect(vec::map(*self, |e| e.to_str() ), ~", ") + ~"]"
+        ~"[" + str::connect(vec::map(*self, |e| e.to_str() ), ", ") + "]"
     }
 }
 

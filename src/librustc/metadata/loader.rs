@@ -268,8 +268,7 @@ pub fn list_file_metadata(intr: @ident_interner,
     match get_metadata_section(os, path) {
       option::Some(bytes) => decoder::list_crate_metadata(intr, bytes, out),
       option::None => {
-        out.write_str(~"could not find metadata in "
-                      + path.to_str() + ".\n");
+        out.write_str(fmt!("could not find metadata in %s.\n", path.to_str()))
       }
     }
 }
