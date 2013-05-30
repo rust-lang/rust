@@ -970,6 +970,13 @@ then
     putvar CFG_CCACHE_CPP2
 fi
 
+if [ ! -z "$CFG_ENABLE_CCACHE" ]
+then
+    CFG_CCACHE_BASEDIR=${CFG_SRC_DIR}
+    putvar CFG_CCACHE_BASEDIR
+fi
+
+
 if [ ! -z $BAD_PANDOC ]
 then
     CFG_PANDOC=
