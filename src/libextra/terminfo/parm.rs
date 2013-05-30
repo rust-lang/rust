@@ -27,13 +27,27 @@ enum States {
     IfBody
 }
 
+/// Types of parameters a capability can use
 pub enum Param {
     String(~str),
     Char(char),
     Number(int)
 }
 
-pub fn expand(cap: &[u8], params: &mut [Param], sta: &mut [Param], dyn: &mut [Param]) -> ~[u8] {
+/**
+  Expand a parameterized capability
+
+  # Arguments
+  * `cap`    - string to expand
+  * `params` - vector of params for %p1 etc
+  * `sta`    - vector of params corresponding to static variables
+  * `dyn`    - vector of params corresponding to stativ variables
+
+  To be compatible with ncurses, `sta` and `dyn` should be the same between calls to `expand` for
+  multiple capabilities for the same terminal.
+  */
+pub fn expand(cap: &[u8], params: &mut [Param], sta: &mut [Param], dyn: &mut [Param]) 
+    -> Result<~[u8], ~str> {
     assert!(cap.len() != 0, "expanding an empty capability makes no sense");
     assert!(params.len() <= 9, "only 9 parameters are supported by capability strings");
 
@@ -68,15 +82,15 @@ pub fn expand(cap: &[u8], params: &mut [Param], sta: &mut [Param], dyn: &mut [Pa
                     '%' => { output.push(cap[i]); state = Nothing },
                     'c' => match stack.pop() {
                         Char(c) => output.push(c as u8),
-                        _       => fail!("a non-char was used with %c")
+                        _       => return Err(~"a non-char was used with %c")
                     },
                     's' => match stack.pop() {
                         String(s) => output.push_all(s.to_bytes()),
-                        _         => fail!("a non-str was used with %s")
+                        _         => return Err(~"a non-str was used with %s")
                     },
                     'd' => match stack.pop() {
                         Number(x) => output.push_all(x.to_str().to_bytes()),
-                        _         => fail!("a non-number was used with %d")
+                        _         => return Err(~"a non-number was used with %d")
                     },
                     'p' => state = PushParam,
                     'P' => state = SetVar,
@@ -85,52 +99,52 @@ pub fn expand(cap: &[u8], params: &mut [Param], sta: &mut [Param], dyn: &mut [Pa
                     '{' => state = IntConstant,
                     'l' => match stack.pop() {
                         String(s) => stack.push(Number(s.len() as int)),
-                        _         => fail!("a non-str was used with %l")
+                        _         => return Err(~"a non-str was used with %l")
                     },
                     '+' => match (stack.pop(), stack.pop()) {
                         (Number(x), Number(y)) => stack.push(Number(x + y)),
-                        (_, _) => fail!("non-numbers on stack with +")
+                        (_, _) => return Err(~"non-numbers on stack with +")
                     },
                     '-' => match (stack.pop(), stack.pop()) {
                         (Number(x), Number(y)) => stack.push(Number(x - y)),
-                        (_, _) => fail!("non-numbers on stack with -")
+                        (_, _) => return Err(~"non-numbers on stack with -")
                     },
                     '*' => match (stack.pop(), stack.pop()) {
                         (Number(x), Number(y)) => stack.push(Number(x * y)),
-                        (_, _) => fail!("non-numbers on stack with *")
+                        (_, _) => return Err(~"non-numbers on stack with *")
                     },
                     '/' => match (stack.pop(), stack.pop()) {
                         (Number(x), Number(y)) => stack.push(Number(x / y)),
-                        (_, _) => fail!("non-numbers on stack with /")
+                        (_, _) => return Err(~"non-numbers on stack with /")
                     },
                     'm' => match (stack.pop(), stack.pop()) {
                         (Number(x), Number(y)) => stack.push(Number(x % y)),
-                        (_, _) => fail!("non-numbers on stack with %")
+                        (_, _) => return Err(~"non-numbers on stack with %")
                     },
                     '&' => match (stack.pop(), stack.pop()) {
                         (Number(x), Number(y)) => stack.push(Number(x & y)),
-                        (_, _) => fail!("non-numbers on stack with &")
+                        (_, _) => return Err(~"non-numbers on stack with &")
                     },
                     '|' => match (stack.pop(), stack.pop()) {
                         (Number(x), Number(y)) => stack.push(Number(x | y)),
-                        (_, _) => fail!("non-numbers on stack with |")
+                        (_, _) => return Err(~"non-numbers on stack with |")
                     },
-                    'A' => fail!("logical operations unimplemented"),
-                    'O' => fail!("logical operations unimplemented"),
-                    '!' => fail!("logical operations unimplemented"),
+                    'A' => return Err(~"logical operations unimplemented"),
+                    'O' => return Err(~"logical operations unimplemented"),
+                    '!' => return Err(~"logical operations unimplemented"),
                     '~' => match stack.pop() {
                         Number(x) => stack.push(Number(!x)),
-                        _         => fail!("non-number on stack with %~")
+                        _         => return Err(~"non-number on stack with %~")
                     },
                     'i' => match (copy params[0], copy params[1]) {
                         (Number(x), Number(y)) => {
                             params[0] = Number(x + 1);
                             params[1] = Number(y + 1);
                         },
-                        (_, _) => fail!("first two params not numbers with %i")
+                        (_, _) => return Err(~"first two params not numbers with %i")
                     },
-                    '?' => state = fail!("if expressions unimplemented"),
-                    _ => fail!("unrecognized format option %c", cur)
+                    '?' => state = return Err(fmt!("if expressions unimplemented (%?)", cap)),
+                    _ => return Err(fmt!("unrecognized format option %c", cur))
                 }
             },
             PushParam => {
@@ -145,7 +159,7 @@ pub fn expand(cap: &[u8], params: &mut [Param], sta: &mut [Param], dyn: &mut [Pa
                     let idx = (cur as u8) - ('a' as u8);
                     dyn[idx] = stack.pop();
                 } else {
-                    fail!("bad variable name in %P");
+                    return Err(~"bad variable name in %P");
                 }
             },
             GetVar => {
@@ -156,7 +170,7 @@ pub fn expand(cap: &[u8], params: &mut [Param], sta: &mut [Param], dyn: &mut [Pa
                     let idx = (cur as u8) - ('a' as u8);
                     stack.push(copy dyn[idx]);
                 } else {
-                    fail!("bad variable name in %g");
+                    return Err(~"bad variable name in %g");
                 }
             },
             CharConstant => {
@@ -174,14 +188,14 @@ pub fn expand(cap: &[u8], params: &mut [Param], sta: &mut [Param], dyn: &mut [Pa
                 intstate.push(cur as u8);
                 old_state = Nothing;
             }
-            _ => fail!("unimplemented state")
+            _ => return Err(~"unimplemented state")
         }
         if state == old_state {
             state = Nothing;
         }
         i += 1;
     }
-    output
+    Ok(output)
 }
 
 #[cfg(test)]

@@ -43,12 +43,20 @@ pub static color_bright_magenta: u8 = 13u8;
 pub static color_bright_cyan: u8 = 14u8;
 pub static color_bright_white: u8 = 15u8;
 
+#[cfg(not(target_os = "win32"))]
 pub struct Terminal {
     color_supported: bool,
     priv out: @io::Writer,
     priv ti: ~TermInfo
 }
 
+#[cfg(target_os = "win32")]
+pub struct Terminal {
+    color_supported: bool,
+    priv out: @io::Writer,
+}
+
+#[cfg(not(target_os = "win32"))]
 pub impl Terminal {
     pub fn new(out: @io::Writer) -> Result<Terminal, ~str> {
         let term = os::getenv("TERM");
@@ -74,19 +82,50 @@ pub impl Terminal {
     }
     fn fg(&self, color: u8) {
         if self.color_supported {
-            self.out.write(expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(), 
-                                  [Number(color as int)], [], []));
+            let s = expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(),
+                           [Number(color as int)], [], []);
+            if s.is_ok() {
+                self.out.write(s.get());
+            } else {
+                warn!(s.get_err());
+            }
         }
     }
     fn bg(&self, color: u8) {
         if self.color_supported {
-            self.out.write(expand(*self.ti.strings.find_equiv(&("setab")).unwrap(),
-                                  [Number(color as int)], [], []));
+            let s = expand(*self.ti.strings.find_equiv(&("setab")).unwrap(),
+                           [Number(color as int)], [], []);
+            if s.is_ok() {
+                self.out.write(s.get());
+            } else {
+                warn!(s.get_err());
+            }
         }
     }
     fn reset(&self) {
         if self.color_supported {
-            self.out.write(expand(*self.ti.strings.find_equiv(&("op")).unwrap(), [], [], []));
+            let s = expand(*self.ti.strings.find_equiv(&("op")).unwrap(), [], [], []);
+            if s.is_ok() {
+                self.out.write(s.get());
+            } else {
+                warn!(s.get_err());
+            }
         }
+    }
+}
+
+#[cfg(target_os = "win32")]
+pub impl Terminal {
+    pub fn new(out: @io::Writer) -> Result<Terminal, ~str> {
+        return Ok(Terminal {out: out, color_supported: false});
+    }
+
+    fn fg(&self, color: u8) {
+    }
+
+    fn bg(&self, color: u8) {
+    }
+
+    fn reset(&self) {
     }
 }

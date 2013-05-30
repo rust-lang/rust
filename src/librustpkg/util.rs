@@ -280,7 +280,7 @@ pub fn need_dir(s: &Path) {
 fn pretty_message<'a>(msg: &'a str, prefix: &'a str, color: u8, out: @io::Writer) {
     let term = term::Terminal::new(out);
     match term {
-        Ok(ref t) if t.color_supported => {
+        Ok(ref t) => {
             t.fg(color);
             out.write_str(prefix);
             t.reset();

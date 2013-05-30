@@ -1,6 +1,4 @@
 /// ncurses-compatible compiled terminfo format parsing (term(5))
-///
-/// does *not* handle obsolete termcap capabilities!
 
 use core::prelude::*;
 
@@ -150,6 +148,7 @@ pub static stringnames: &'static[&'static str] = &'static[ "cbt", "_", "cr", "cs
     "OTG3", "OTG1", "OTG4", "OTGR", "OTGL", "OTGU", "OTGD", "OTGH", "OTGV", "OTGC", "meml", "memu",
     "box1"];
 
+/// Parse a compiled terminfo entry, using long capability names if `longnames` is true
 pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
     let bnames, snames, nnames;
 
