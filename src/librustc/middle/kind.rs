@@ -421,7 +421,7 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
         match ty::get(ty).sty {
           ty::ty_param(*) => {
             tcx.sess.span_err(sp, "value may contain borrowed \
-                                   pointers; use `'static` bound");
+                                   pointers; add `'static` bound");
           }
           _ => {
             tcx.sess.span_err(sp, "value may contain borrowed \
