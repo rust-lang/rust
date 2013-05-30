@@ -864,7 +864,7 @@ pub fn create_local_var(bcx: block, local: @ast::local)
     };
     update_cache(cache, AutoVariableTag, local_var_metadata(mdval));
 
-    // NDM Should use `pat_util::pat_bindings` for pats like (a, b) etc
+    // FIXME(#6814) Should use `pat_util::pat_bindings` for pats like (a, b) etc
     let llptr = match bcx.fcx.lllocals.find_copy(&local.node.pat.id) {
         Some(v) => v,
         None => {
