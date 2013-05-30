@@ -53,6 +53,7 @@ d.write("extern mod extra;\n")
 d.write("extern mod run_pass_stage2;\n")
 d.write("use run_pass_stage2::*;\n")
 d.write("use std::io::WriterUtil;\n");
+d.write("use std::io;\n");
 d.write("fn main() {\n");
 d.write("    let out = io::stdout();\n");
 i = 0
