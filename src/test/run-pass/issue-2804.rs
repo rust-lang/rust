@@ -25,9 +25,9 @@ fn lookup(table: ~json::Object, key: ~str, default: ~str) -> ~str
 {
     match table.find(&key)
     {
-        option::Some(&extra::json::String(copy s)) =>
+        option::Some(&extra::json::String(ref s)) =>
         {
-            copy s
+            copy *s
         }
         option::Some(value) =>
         {
@@ -45,9 +45,9 @@ fn add_interface(store: int, managed_ip: ~str, data: extra::json::Json) -> (~str
 {
     match &data
     {
-        &extra::json::Object(copy interface) =>
+        &extra::json::Object(ref interface) =>
         {
-            let name = lookup(copy interface, ~"ifDescr", ~"");
+            let name = lookup(copy *interface, ~"ifDescr", ~"");
             let label = fmt!("%s-%s", managed_ip, name);
 
             (label, bool_value(false))
