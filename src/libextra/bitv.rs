@@ -13,7 +13,6 @@ use core::prelude::*;
 use core::cmp;
 use core::ops;
 use core::uint;
-use core::vec::from_elem;
 use core::vec;
 
 struct SmallBitv {

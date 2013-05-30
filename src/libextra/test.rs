@@ -24,13 +24,11 @@ use term;
 use core::comm::{stream, SharedChan};
 use core::either;
 use core::io;
-use core::num;
 use core::option;
 use core::result;
 use core::str;
 use core::task;
 use core::to_str::ToStr;
-use core::u64;
 use core::uint;
 use core::vec;
 

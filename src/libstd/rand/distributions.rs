@@ -21,7 +21,6 @@
 // could implement VIZIGNOR the ZIGNOR paper for more speed.
 
 use f64;
-use prelude::*;
 use rand::{Rng,Rand};
 
 mod ziggurat_tables;

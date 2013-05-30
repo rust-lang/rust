@@ -14,7 +14,6 @@ use comm::{GenericChan, GenericPort};
 use comm;
 use libc;
 use prelude::*;
-use ptr;
 use task;
 
 pub mod at_exit;
