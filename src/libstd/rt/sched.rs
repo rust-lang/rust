@@ -13,6 +13,7 @@ use sys;
 use cast::transmute;
 use cell::Cell;
 use clone::Clone;
+use to_str::ToStr;
 
 use super::sleeper_list::SleeperList;
 use super::work_queue::WorkQueue;
@@ -24,6 +25,7 @@ use super::message_queue::MessageQueue;
 use rt::local_ptr;
 use rt::local::Local;
 use rt::rtio::{IoFactoryObject, RemoteCallback};
+use rt::metrics::SchedMetrics;
 
 /// The Scheduler is responsible for coordinating execution of Coroutines
 /// on a single thread. When the scheduler is running it is owned by
@@ -63,7 +65,8 @@ pub struct Scheduler {
     current_task: Option<~Coroutine>,
     /// An action performed after a context switch on behalf of the
     /// code running before the context switch
-    priv cleanup_job: Option<CleanupJob>
+    priv cleanup_job: Option<CleanupJob>,
+    metrics: SchedMetrics
 }
 
 pub struct SchedHandle {
@@ -115,6 +118,7 @@ pub impl Scheduler {
             saved_context: Context::empty(),
             current_task: None,
             cleanup_job: None,
+            metrics: SchedMetrics::new()
         }
     }
 
@@ -141,20 +145,24 @@ pub impl Scheduler {
 
         let sched = Local::take::<Scheduler>();
         assert!(sched.work_queue.is_empty());
+        rtdebug!("scheduler metrics: %s\n", sched.metrics.to_str());
         return sched;
     }
 
     fn run_sched_once() {
 
+        let mut sched = Local::take::<Scheduler>();
+        sched.metrics.turns += 1;
+
         // First, check the message queue for instructions.
         // XXX: perf. Check for messages without atomics.
         // It's ok if we miss messages occasionally, as long as
         // we sync and check again before sleeping.
-        let sched = Local::take::<Scheduler>();
         if sched.interpret_message_queue() {
             // We performed a scheduling action. There may be other work
             // to do yet, so let's try again later.
             let mut sched = Local::take::<Scheduler>();
+            sched.metrics.messages_received += 1;
             sched.event_loop.callback(Scheduler::run_sched_once);
             Local::put(sched);
             return;
@@ -166,6 +174,7 @@ pub impl Scheduler {
             // We performed a scheduling action. There may be other work
             // to do yet, so let's try again later.
             let mut sched = Local::take::<Scheduler>();
+            sched.metrics.tasks_resumed_from_queue += 1;
             sched.event_loop.callback(Scheduler::run_sched_once);
             Local::put(sched);
             return;
@@ -176,8 +185,10 @@ pub impl Scheduler {
         // somebody can wake us up later.
         rtdebug!("no work to do");
         let mut sched = Local::take::<Scheduler>();
+        sched.metrics.wasted_turns += 1;
         if !sched.sleepy && !sched.no_sleep {
             rtdebug!("sleeping");
+            sched.metrics.sleepy_times += 1;
             sched.sleepy = true;
             let handle = sched.make_handle();
             sched.sleeper_list.push(handle);
@@ -327,6 +338,7 @@ pub impl Scheduler {
         assert!(!this.in_task_context());
 
         rtdebug!("scheduling a task");
+        this.metrics.context_switches_sched_to_task += 1;
 
         // Store the task in the scheduler so it can be grabbed later
         this.current_task = Some(task);
@@ -369,6 +381,7 @@ pub impl Scheduler {
         assert!(this.in_task_context());
 
         rtdebug!("blocking task");
+        this.metrics.context_switches_task_to_sched += 1;
 
         unsafe {
             let blocked_task = this.current_task.swap_unwrap();
@@ -401,6 +414,7 @@ pub impl Scheduler {
         assert!(this.in_task_context());
 
         rtdebug!("switching tasks");
+        this.metrics.context_switches_task_to_task += 1;
 
         let old_running_task = this.current_task.swap_unwrap();
         let f_fake_region = unsafe {
