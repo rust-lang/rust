@@ -37,7 +37,7 @@ fn to_foo_2<T:Copy>(t: T) -> @foo {
     // Not OK---T may contain borrowed ptrs and it is going to escape
     // as part of the returned foo value
     struct F<T> { f: T }
-    @F {f:t} as @foo //~ ERROR value may contain borrowed pointers; use `'static` bound
+    @F {f:t} as @foo //~ ERROR value may contain borrowed pointers; add `'static` bound
 }
 
 fn to_foo_3<T:Copy + 'static>(t: T) -> @foo {
