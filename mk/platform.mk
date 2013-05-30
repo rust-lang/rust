@@ -396,6 +396,11 @@ ifeq ($(CFG_CCACHE_CPP2),1)
   export CCACHE_CPP
 endif
 
+ifdef CFG_CCACHE_BASEDIR
+  CCACHE_BASEDIR=$(CFG_CCACHE_BASEDIR)
+  export CCACHE_BASEDIR
+endif
+
 define CFG_MAKE_TOOLCHAIN
   CFG_COMPILE_C_$(1) = $$(CC_$(1))  \
         $$(CFG_GCCISH_CFLAGS)      \
