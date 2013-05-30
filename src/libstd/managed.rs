@@ -21,6 +21,7 @@ pub mod raw {
     pub static RC_MANAGED_UNIQUE : uint = (-2) as uint;
     pub static RC_IMMORTAL : uint = 0x77777777;
 
+    #[allow(missing_doc)]
     pub struct BoxHeaderRepr {
         ref_count: uint,
         type_desc: *TyDesc,
@@ -28,6 +29,7 @@ pub mod raw {
         next: *BoxRepr,
     }
 
+    #[allow(missing_doc)]
     pub struct BoxRepr {
         header: BoxHeaderRepr,
         data: u8

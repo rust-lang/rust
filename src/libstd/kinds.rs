@@ -37,6 +37,8 @@ instead implement `Clone`.
 
 */
 
+#[allow(missing_doc)];
+
 #[lang="copy"]
 pub trait Copy {
     // Empty.

@@ -9,6 +9,9 @@
 // except according to those terms.
 
 //! An interface for numeric types
+
+#[allow(missing_doc)];
+
 use cmp::{Eq, ApproxEq, Ord};
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};

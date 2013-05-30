@@ -26,6 +26,8 @@
  * to write OS-ignorant code by default.
  */
 
+#[allow(missing_doc)];
+
 use cast;
 use io;
 use libc;
@@ -45,6 +47,7 @@ use vec;
 pub use libc::fclose;
 pub use os::consts::*;
 
+/// Delegates to the libc close() function, returning the same return value.
 pub fn close(fd: c_int) -> c_int {
     unsafe {
         libc::close(fd)
@@ -171,6 +174,8 @@ fn with_env_lock<T>(f: &fn() -> T) -> T {
     }
 }
 
+/// Returns a vector of (variable, value) pairs for all the environment
+/// variables of the current process.
 pub fn env() -> ~[(~str,~str)] {
     unsafe {
         #[cfg(windows)]
@@ -236,6 +241,8 @@ pub fn env() -> ~[(~str,~str)] {
 }
 
 #[cfg(unix)]
+/// Fetches the environment variable `n` from the current process, returning
+/// None if the variable isn't set.
 pub fn getenv(n: &str) -> Option<~str> {
     unsafe {
         do with_env_lock {
@@ -251,6 +258,8 @@ pub fn getenv(n: &str) -> Option<~str> {
 }
 
 #[cfg(windows)]
+/// Fetches the environment variable `n` from the current process, returning
+/// None if the variable isn't set.
 pub fn getenv(n: &str) -> Option<~str> {
     unsafe {
         do with_env_lock {
@@ -266,6 +275,8 @@ pub fn getenv(n: &str) -> Option<~str> {
 
 
 #[cfg(unix)]
+/// Sets the environment variable `n` to the value `v` for the currently running
+/// process
 pub fn setenv(n: &str, v: &str) {
     unsafe {
         do with_env_lock {
@@ -280,6 +291,8 @@ pub fn setenv(n: &str, v: &str) {
 
 
 #[cfg(windows)]
+/// Sets the environment variable `n` to the value `v` for the currently running
+/// process
 pub fn setenv(n: &str, v: &str) {
     unsafe {
         do with_env_lock {
@@ -422,13 +435,14 @@ fn dup2(src: c_int, dst: c_int) -> c_int {
     }
 }
 
-
+/// Returns the proper dll filename for the given basename of a file.
 pub fn dll_filename(base: &str) -> ~str {
     return str::to_owned(DLL_PREFIX) + str::to_owned(base) +
            str::to_owned(DLL_SUFFIX)
 }
 
-
+/// Optionally returns the filesystem path to the current executable which is
+/// running. If any failure occurs, None is returned.
 pub fn self_exe_path() -> Option<Path> {
 
     #[cfg(target_os = "freebsd")]
@@ -828,6 +842,8 @@ pub fn remove_dir(p: &Path) -> bool {
     }
 }
 
+/// Changes the current working directory to the specified path, returning
+/// whether the change was completed successfully or not.
 pub fn change_dir(p: &Path) -> bool {
     return chdir(p);
 
@@ -981,6 +997,7 @@ pub fn remove_file(p: &Path) -> bool {
 }
 
 #[cfg(unix)]
+/// Returns the platform-specific value of errno
 pub fn errno() -> int {
     #[cfg(target_os = "macos")]
     #[cfg(target_os = "freebsd")]
@@ -1012,6 +1029,7 @@ pub fn errno() -> int {
 }
 
 #[cfg(windows)]
+/// Returns the platform-specific value of errno
 pub fn errno() -> uint {
     use libc::types::os::arch::extra::DWORD;
 
@@ -1211,6 +1229,11 @@ struct OverriddenArgs {
 
 fn overridden_arg_key(_v: @OverriddenArgs) {}
 
+/// Returns the arguments which this program was started with (normally passed
+/// via the command line).
+///
+/// The return value of the function can be changed by invoking the
+/// `os::set_args` function.
 pub fn args() -> ~[~str] {
     unsafe {
         match local_data::local_data_get(overridden_arg_key) {
@@ -1220,6 +1243,9 @@ pub fn args() -> ~[~str] {
     }
 }
 
+/// For the current task, overrides the task-local cache of the arguments this
+/// program had when it started. These new arguments are only available to the
+/// current task via the `os::args` method.
 pub fn set_args(new_args: ~[~str]) {
     unsafe {
         let overridden_args = @OverriddenArgs { val: copy new_args };

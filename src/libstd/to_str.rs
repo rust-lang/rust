@@ -22,13 +22,15 @@ use hash::Hash;
 use cmp::Eq;
 use old_iter::BaseIter;
 
+/// A generic trait for converting a value to a string
 pub trait ToStr {
+    /// Converts the value of `self` to an owned string
     fn to_str(&self) -> ~str;
 }
 
 /// Trait for converting a type to a string, consuming it in the process.
 pub trait ToStrConsume {
-    // Cosume and convert to a string.
+    /// Cosume and convert to a string.
     fn to_str_consume(self) -> ~str;
 }
 

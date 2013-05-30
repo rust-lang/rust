@@ -34,6 +34,7 @@ use core::util::{swap, replace};
 //   * union: |
 // These would be convenient since the methods work like `each`
 
+#[allow(missing_doc)]
 pub struct TreeMap<K, V> {
     priv root: Option<~TreeNode<K, V>>,
     priv length: uint
@@ -242,6 +243,9 @@ impl<'self, T> Iterator<&'self T> for TreeSetIterator<'self, T> {
     }
 }
 
+/// A implementation of the `Set` trait on top of the `TreeMap` container. The
+/// only requirement is that the type of the elements contained ascribes to the
+/// `TotalOrd` trait.
 pub struct TreeSet<T> {
     priv map: TreeMap<T, ()>
 }

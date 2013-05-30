@@ -32,6 +32,8 @@
 // overhead when initializing plain-old-data and means we don't need
 // to waste time running the destructors of POD.
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use list::{MutList, MutCons, MutNil};

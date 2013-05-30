@@ -10,6 +10,8 @@
 
 //! Semver parsing and logic
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use core::char;

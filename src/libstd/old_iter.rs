@@ -14,6 +14,8 @@
 
 */
 
+#[allow(missing_doc)];
+
 use cmp::{Eq, Ord};
 use kinds::Copy;
 use option::{None, Option, Some};

@@ -78,6 +78,8 @@
  * ```
  */
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use core::cmp::Eq;

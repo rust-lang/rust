@@ -597,6 +597,8 @@ impl BigUint {
     }
 
 
+    /// Converts this big integer into a uint, returning the uint::max_value if
+    /// it's too large to fit in a uint.
     pub fn to_uint(&self) -> uint {
         match self.data.len() {
             0 => 0,

@@ -33,6 +33,8 @@
  * ~~~
  */
 
+#[allow(missing_doc)];
+
 use prelude::*;
 
 use cast;

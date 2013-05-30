@@ -14,6 +14,8 @@ Cross-platform file path handling
 
 */
 
+#[allow(missing_doc)];
+
 use container::Container;
 use cmp::Eq;
 use libc;

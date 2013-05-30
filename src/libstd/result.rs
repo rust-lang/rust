@@ -312,6 +312,7 @@ pub fn map_vec<T,U:Copy,V:Copy>(
 }
 
 #[inline(always)]
+#[allow(missing_doc)]
 pub fn map_opt<T,U:Copy,V:Copy>(
     o_t: &Option<T>, op: &fn(&T) -> Result<V,U>) -> Result<Option<V>,U> {
 

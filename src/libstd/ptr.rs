@@ -120,6 +120,12 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     memmove64(dst as *mut u8, src as *u8, n as u64);
 }
 
+/**
+ * Copies data from one location to another
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may overlap.
+ */
 #[inline(always)]
 #[cfg(target_word_size = "64", not(stage0))]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
@@ -135,6 +141,13 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
     memmove32(dst as *mut u8, src as *u8, n as u32);
 }
 
+/**
+ * Copies data from one location to another. This uses memcpy instead of memmove
+ * to take advantage of the knowledge that the memory does not overlap.
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may overlap.
+ */
 #[inline(always)]
 #[cfg(target_word_size = "32", not(stage0))]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
@@ -150,6 +163,13 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
     memmove64(dst as *mut u8, src as *u8, n as u64);
 }
 
+/**
+ * Copies data from one location to another. This uses memcpy instead of memmove
+ * to take advantage of the knowledge that the memory does not overlap.
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may overlap.
+ */
 #[inline(always)]
 #[cfg(target_word_size = "64", not(stage0))]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
@@ -164,6 +184,10 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: int, count: uint) {
     libc_::memset(dst as *mut c_void, c as libc::c_int, n as size_t);
 }
 
+/**
+ * Invokes memset on the specified pointer, setting `count` bytes of memory
+ * starting at `dst` to `c`.
+ */
 #[inline(always)]
 #[cfg(target_word_size = "32", not(stage0))]
 pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
@@ -171,6 +195,10 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
     memset32(dst, c, count as u32);
 }
 
+/**
+ * Invokes memset on the specified pointer, setting `count` bytes of memory
+ * starting at `dst` to `c`.
+ */
 #[inline(always)]
 #[cfg(target_word_size = "64", not(stage0))]
 pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
@@ -268,6 +296,7 @@ pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
     array_each_with_len(arr, len, cb);
 }
 
+#[allow(missing_doc)]
 pub trait Ptr<T> {
     fn is_null(&const self) -> bool;
     fn is_not_null(&const self) -> bool;
