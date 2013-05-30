@@ -768,6 +768,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
 
         runargs.push(~"shell");
         runargs.push(fmt!("%s/adb_run_wrapper.sh", config.adb_test_dir));
+        runargs.push(fmt!("%s", config.adb_test_dir));
         runargs.push(fmt!("%s", prog_short));
 
         for args.args.each |tv| {
@@ -795,7 +796,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
                 _ => 0,
             }
         }
-        maxtry = maxtry - 1;
+//        maxtry = maxtry - 1;
 //        unsafe { libc::sleep(1); }
 //    }
 
