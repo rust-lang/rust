@@ -2034,7 +2034,7 @@ as
 ~~~~
 
 Operators at the same precedence level are evaluated left-to-right. [Unary operators](#unary-operator-expressions)
-have the same precedence level and it is stronger than any of the binary operators.
+have the same precedence level and it is stronger than any of the binary operators'.
 
 ### Grouped expressions
 
