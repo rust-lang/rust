@@ -19,7 +19,7 @@ fn addr_of<T>(ptr: &T) -> uint {
 
 fn is_aligned<T>(ptr: &T) -> bool {
     unsafe {
-        let addr: uint = ::cast::transmute(ptr);
+        let addr: uint = cast::transmute(ptr);
         (addr % sys::min_align_of::<T>()) == 0
     }
 }
