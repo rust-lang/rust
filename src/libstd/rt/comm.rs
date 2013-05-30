@@ -22,6 +22,7 @@ use ops::Drop;
 use kinds::Owned;
 use rt::sched::{Scheduler, Coroutine};
 use rt::local::Local;
+use rt::rtio::EventLoop;
 use unstable::intrinsics::{atomic_xchg, atomic_load};
 use util::Void;
 use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable};
@@ -158,7 +159,7 @@ impl<T> PortOne<T> {
 
         // Switch to the scheduler to put the ~Task into the Packet state.
         let sched = Local::take::<Scheduler>();
-        do sched.deschedule_running_task_and_then |task| {
+        do sched.deschedule_running_task_and_then |sched, task| {
             unsafe {
                 // Atomically swap the task pointer into the Packet state, issuing
                 // an acquire barrier to prevent reordering of the subsequent read
@@ -172,9 +173,15 @@ impl<T> PortOne<T> {
                     }
                     STATE_ONE => {
                         // Channel is closed. Switch back and check the data.
+                        // NB: We have to drop back into the scheduler event loop here
+                        // instead of switching immediately back or we could end up
+                        // triggering infinite recursion on the scheduler's stack.
                         let task: ~Coroutine = cast::transmute(task_as_state);
-                        let sched = Local::take::<Scheduler>();
-                        sched.resume_task_immediately(task);
+                        let task = Cell(task);
+                        do sched.event_loop.callback {
+                            let sched = Local::take::<Scheduler>();
+                            sched.resume_task_immediately(task.take());
+                        }
                     }
                     _ => util::unreachable()
                 }
@@ -612,6 +619,16 @@ mod test {
                     };
                 }
             }
+        }
+    }
+
+    #[test]
+    fn recv_a_lot() {
+        // Regression test that we don't run out of stack in scheduler context
+        do run_in_newsched_task {
+            let (port, chan) = stream();
+            for 10000.times { chan.send(()) }
+            for 10000.times { port.recv() }
         }
     }
 }
