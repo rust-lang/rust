@@ -23,6 +23,7 @@ Similar to a mutable option type, but friendlier.
 
 #[mutable]
 #[deriving(Clone, DeepClone, Eq)]
+#[allow(missing_doc)]
 pub struct Cell<T> {
     priv value: Option<T>
 }
@@ -32,6 +33,7 @@ pub fn Cell<T>(value: T) -> Cell<T> {
     Cell { value: Some(value) }
 }
 
+/// Creates a new empty cell with no value inside.
 pub fn empty_cell<T>() -> Cell<T> {
     Cell { value: None }
 }

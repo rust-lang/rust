@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(missing_doc)];
+
 /** Task-local reference counted smart pointers
 
 Task-local reference counted smart pointers are an alternative to managed boxes with deterministic

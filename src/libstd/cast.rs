@@ -27,6 +27,7 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
     dest
 }
 
+/// Casts the value at `src` to U. The two types must have the same length.
 #[cfg(target_word_size = "32", not(stage0))]
 #[inline(always)]
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
@@ -37,6 +38,7 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
     dest
 }
 
+/// Casts the value at `src` to U. The two types must have the same length.
 #[cfg(target_word_size = "64", not(stage0))]
 #[inline(always)]
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {

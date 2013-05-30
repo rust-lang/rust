@@ -58,6 +58,8 @@ pub mod distributions;
 
 /// A type that can be randomly generated using an Rng
 pub trait Rand {
+    /// Generates a random instance of this type using the specified source of
+    /// randomness
     fn rand<R: Rng>(rng: &mut R) -> Self;
 }
 
@@ -256,10 +258,13 @@ pub trait Rng {
 
 /// A value with a particular weight compared to other values
 pub struct Weighted<T> {
+    /// The numerical weight of this item
     weight: uint,
+    /// The actual item which is being weighted
     item: T,
 }
 
+/// Helper functions attached to the Rng type
 pub trait RngUtil {
     /// Return a random value of a Rand type
     fn gen<T:Rand>(&mut self) -> T;

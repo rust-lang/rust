@@ -10,6 +10,8 @@
 
 //! Process spawning.
 
+#[allow(missing_doc)];
+
 use cast;
 use comm::{stream, SharedChan, GenericChan, GenericPort};
 use int;

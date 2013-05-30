@@ -10,6 +10,8 @@
 
 //! Misc low level stuff
 
+#[allow(missing_doc)];
+
 use option::{Some, None};
 use cast;
 use cmp::{Eq, Ord};

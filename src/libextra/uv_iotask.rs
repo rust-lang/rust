@@ -15,6 +15,8 @@
  * `interact` function you can execute code in a uv callback.
  */
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use ll = uv_ll;

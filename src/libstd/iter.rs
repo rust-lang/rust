@@ -46,6 +46,7 @@ use vec::OwnedVector;
 use num::{One, Zero};
 use ops::{Add, Mul};
 
+#[allow(missing_doc)]
 pub trait Times {
     fn times(&self, it: &fn() -> bool) -> bool;
 }

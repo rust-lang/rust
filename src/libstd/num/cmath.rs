@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(missing_doc)];
+
 // function names are almost identical to C's libmath, a few have been
 // renamed, grep for "rename:"
 

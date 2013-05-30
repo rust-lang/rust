@@ -26,12 +26,17 @@ pub static bytes : uint = ($bits / 8);
 pub static min_value: $T = (-1 as $T) << (bits - 1);
 pub static max_value: $T = min_value - 1 as $T;
 
+/// Calculates the sum of two numbers
 #[inline(always)]
 pub fn add(x: $T, y: $T) -> $T { x + y }
+/// Subtracts the second number from the first
 #[inline(always)]
 pub fn sub(x: $T, y: $T) -> $T { x - y }
+/// Multiplies two numbers together
 #[inline(always)]
 pub fn mul(x: $T, y: $T) -> $T { x * y }
+/// Divides the first argument by the second argument (using integer division)
+/// Divides the first argument by the second argument (using integer division)
 #[inline(always)]
 pub fn div(x: $T, y: $T) -> $T { x / y }
 
@@ -58,16 +63,22 @@ pub fn div(x: $T, y: $T) -> $T { x / y }
 #[inline(always)]
 pub fn rem(x: $T, y: $T) -> $T { x % y }
 
+/// Returns true iff `x < y`
 #[inline(always)]
 pub fn lt(x: $T, y: $T) -> bool { x < y }
+/// Returns true iff `x <= y`
 #[inline(always)]
 pub fn le(x: $T, y: $T) -> bool { x <= y }
+/// Returns true iff `x == y`
 #[inline(always)]
 pub fn eq(x: $T, y: $T) -> bool { x == y }
+/// Returns true iff `x != y`
 #[inline(always)]
 pub fn ne(x: $T, y: $T) -> bool { x != y }
+/// Returns true iff `x >= y`
 #[inline(always)]
 pub fn ge(x: $T, y: $T) -> bool { x >= y }
+/// Returns true iff `x > y`
 #[inline(always)]
 pub fn gt(x: $T, y: $T) -> bool { x > y }
 

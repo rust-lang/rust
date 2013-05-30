@@ -18,6 +18,7 @@ use core::vec;
 
 static initial_capacity: uint = 32u; // 2^5
 
+#[allow(missing_doc)]
 pub struct Deque<T> {
     priv nelts: uint,
     priv lo: uint,

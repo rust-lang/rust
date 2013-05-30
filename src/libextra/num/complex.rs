@@ -25,7 +25,9 @@ use core::num::{Zero,One,ToStrRadix};
 /// A complex number in Cartesian form.
 #[deriving(Eq,Clone)]
 pub struct Cmplx<T> {
+    /// Real portion of the complex number
     re: T,
+    /// Imaginary portion of the complex number
     im: T
 }
 

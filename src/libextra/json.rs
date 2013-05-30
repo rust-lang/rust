@@ -43,9 +43,14 @@ pub type List = ~[Json];
 pub type Object = HashMap<~str, Json>;
 
 #[deriving(Eq)]
+/// If an error occurs while parsing some JSON, this is the structure which is
+/// returned
 pub struct Error {
+    /// The line number at which the error occurred
     line: uint,
+    /// The column number at which the error occurred
     col: uint,
+    /// A message describing the type of the error
     msg: @~str,
 }
 
@@ -75,10 +80,13 @@ fn spaces(n: uint) -> ~str {
     return ss;
 }
 
+/// A structure for implementing serialization to JSON.
 pub struct Encoder {
     priv wr: @io::Writer,
 }
 
+/// Creates a new JSON encoder whose output will be written to the writer
+/// specified.
 pub fn Encoder(wr: @io::Writer) -> Encoder {
     Encoder {
         wr: wr
@@ -228,11 +236,14 @@ impl serialize::Encoder for Encoder {
     }
 }
 
+/// Another encoder for JSON, but prints out human-readable JSON instead of
+/// compact data
 pub struct PrettyEncoder {
     priv wr: @io::Writer,
     priv indent: uint,
 }
 
+/// Creates a new encoder whose output will be written to the specified writer
 pub fn PrettyEncoder(wr: @io::Writer) -> PrettyEncoder {
     PrettyEncoder {
         wr: wr,
@@ -468,6 +479,7 @@ pub fn to_pretty_str(json: &Json) -> ~str {
     io::with_str_writer(|wr| to_pretty_writer(wr, json))
 }
 
+#[allow(missing_doc)]
 pub struct Parser {
     priv rdr: @io::Reader,
     priv ch: char,
@@ -846,10 +858,12 @@ pub fn from_str(s: &str) -> Result<Json, Error> {
     }
 }
 
+/// A structure to decode JSON to values in rust.
 pub struct Decoder {
     priv stack: ~[Json],
 }
 
+/// Creates a new decoder instance for decoding the specified JSON value.
 pub fn Decoder(json: Json) -> Decoder {
     Decoder {
         stack: ~[json]
@@ -1200,7 +1214,11 @@ impl Ord for Json {
     fn gt(&self, other: &Json) -> bool { (*other).lt(&(*self))  }
 }
 
-trait ToJson { fn to_json(&self) -> Json; }
+/// A trait for converting values to JSON
+trait ToJson {
+    /// Converts the value of `self` to an instance of JSON
+    fn to_json(&self) -> Json;
+}
 
 impl ToJson for Json {
     fn to_json(&self) -> Json { copy *self }

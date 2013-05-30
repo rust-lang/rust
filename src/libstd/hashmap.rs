@@ -34,6 +34,14 @@ struct Bucket<K,V> {
     value: V,
 }
 
+/// A hash map implementation which uses linear probing along with the SipHash
+/// hash function for internal state. This means that the order of all hash maps
+/// is randomized by keying each hash map randomly on creation.
+///
+/// It is required that the keys implement the `Eq` and `Hash` traits, although
+/// this can frequently be achieved by just implementing the `Eq` and
+/// `IterBytes` traits as `Hash` is automatically implemented for types that
+/// implement `IterBytes`.
 pub struct HashMap<K,V> {
     priv k0: u64,
     priv k1: u64,
@@ -53,6 +61,7 @@ fn resize_at(capacity: uint) -> uint {
     ((capacity as float) * 3. / 4.) as uint
 }
 
+/// Creates a new hash map with the specified capacity.
 pub fn linear_map_with_capacity<K:Eq + Hash,V>(
     initial_capacity: uint) -> HashMap<K, V> {
     let mut r = rand::task_rng();
@@ -539,6 +548,9 @@ impl<K:Hash + Eq,V:Eq> Eq for HashMap<K, V> {
     fn ne(&self, other: &HashMap<K, V>) -> bool { !self.eq(other) }
 }
 
+/// An implementation of a hash set using the underlying representation of a
+/// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
+/// requires that the elements implement the `Eq` and `Hash` traits.
 pub struct HashSet<T> {
     priv map: HashMap<T, ()>
 }

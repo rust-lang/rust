@@ -19,6 +19,8 @@
  * CPRNG like rand::rng.
  */
 
+#[allow(missing_doc)];
+
 use container::Container;
 use old_iter::BaseIter;
 use rt::io::Writer;

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(missing_doc)];
+
 /// A task pool abstraction. Useful for achieving predictable CPU
 /// parallelism.
 

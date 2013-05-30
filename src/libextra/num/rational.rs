@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Rational numbers
 
 use core::prelude::*;
@@ -22,6 +21,7 @@ use super::bigint::BigInt;
 
 /// Represents the ratio between 2 numbers.
 #[deriving(Clone)]
+#[allow(missing_doc)]
 pub struct Ratio<T> {
     numer: T,
     denom: T
@@ -49,7 +49,7 @@ impl<T: Clone + Integer + Ord>
         Ratio { numer: numer, denom: denom }
     }
 
-    // Create a new Ratio. Fails if `denom == 0`.
+    /// Create a new Ratio. Fails if `denom == 0`.
     #[inline(always)]
     pub fn new(numer: T, denom: T) -> Ratio<T> {
         if denom == Zero::zero() {

@@ -303,7 +303,11 @@ impl<A> IterBytes for *const A {
     }
 }
 
+/// A trait for converting a value to a list of bytes.
 pub trait ToBytes {
+    /// Converts the current value to a list of bytes. This is equivalent to
+    /// invoking iter_bytes on a type and collecting all yielded values in an
+    /// array
     fn to_bytes(&self, lsb0: bool) -> ~[u8];
 }
 

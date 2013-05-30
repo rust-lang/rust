@@ -16,6 +16,8 @@ use core::os;
 use core::rand::RngUtil;
 use core::rand;
 
+/// Attempts to make a temporary directory inside of `tmpdir` whose name will
+/// have the suffix `suffix`. If no directory can be created, None is returned.
 pub fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
     let mut r = rand::rng();
     for 1000.times {
