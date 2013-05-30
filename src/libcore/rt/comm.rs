@@ -159,7 +159,7 @@ impl<T> PortOne<T> {
 
         // Switch to the scheduler to put the ~Task into the Packet state.
         let sched = Local::take::<Scheduler>();
-        do sched.deschedule_running_task_and_then |task| {
+        do sched.deschedule_running_task_and_then |sched, task| {
             unsafe {
                 // Atomically swap the task pointer into the Packet state, issuing
                 // an acquire barrier to prevent reordering of the subsequent read
@@ -178,12 +178,10 @@ impl<T> PortOne<T> {
                         // triggering infinite recursion on the scheduler's stack.
                         let task: ~Coroutine = cast::transmute(task_as_state);
                         let task = Cell(task);
-                        let mut sched = Local::take::<Scheduler>();
                         do sched.event_loop.callback {
                             let sched = Local::take::<Scheduler>();
                             sched.resume_task_immediately(task.take());
                         }
-                        Local::put(sched);
                     }
                     _ => util::unreachable()
                 }

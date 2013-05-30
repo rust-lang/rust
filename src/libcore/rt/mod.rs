@@ -238,12 +238,9 @@ fn test_context() {
         let task = ~do Coroutine::new(&mut sched.stack_pool) {
             assert_eq!(context(), TaskContext);
             let sched = Local::take::<Scheduler>();
-            do sched.deschedule_running_task_and_then() |task| {
+            do sched.deschedule_running_task_and_then() |sched, task| {
                 assert_eq!(context(), SchedulerContext);
-                let task = Cell(task);
-                do Local::borrow::<Scheduler> |sched| {
-                    sched.enqueue_task(task.take());
-                }
+                sched.enqueue_task(task);
             }
         };
         sched.enqueue_task(task);
