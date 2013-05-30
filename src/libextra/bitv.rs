@@ -211,9 +211,11 @@ enum BitvVariant { Big(~BigBitv), Small(~SmallBitv) }
 
 enum Op {Union, Intersect, Assign, Difference}
 
-// The bitvector type
+/// The bitvector type
 pub struct Bitv {
+    /// Internal representation of the bit vector (small or large)
     rep: BitvVariant,
+    /// The number of valid bits in the internal representation
     nbits: uint
 }
 

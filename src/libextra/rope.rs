@@ -33,6 +33,8 @@
  * * access to a character by index is logarithmic (linear in strings);
  */
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use core::str;

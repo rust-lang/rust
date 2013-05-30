@@ -107,13 +107,14 @@ pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
 
 /// A non-copyable dummy type.
 pub struct NonCopyable {
-    i: (),
+    priv i: (),
 }
 
 impl Drop for NonCopyable {
     fn finalize(&self) { }
 }
 
+/// Creates a dummy non-copyable structure and returns it for use.
 pub fn NonCopyable() -> NonCopyable { NonCopyable { i: () } }
 
 

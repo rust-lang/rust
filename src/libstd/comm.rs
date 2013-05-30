@@ -12,6 +12,8 @@
 Message passing
 */
 
+#[allow(missing_doc)];
+
 use cast::{transmute, transmute_mut};
 use container::Container;
 use either::{Either, Left, Right};

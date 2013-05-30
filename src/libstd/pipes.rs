@@ -82,6 +82,8 @@ bounded and unbounded protocols allows for less code duplication.
 
 */
 
+#[allow(missing_doc)];
+
 use container::Container;
 use cast::{forget, transmute, transmute_copy};
 use either::{Either, Left, Right};

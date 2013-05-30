@@ -9,6 +9,7 @@
 // except according to those terms.
 
 //! Operations and constants for `f32`
+#[allow(missing_doc)];
 
 use libc::c_int;
 use num::{Zero, One, strconv};

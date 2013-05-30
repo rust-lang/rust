@@ -47,6 +47,8 @@ block the scheduler thread, so will their pipes.
 
 */
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 // The basic send/recv interface FlatChan and PortChan will implement

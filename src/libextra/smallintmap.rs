@@ -23,6 +23,7 @@ use core::uint;
 use core::util::replace;
 use core::vec;
 
+#[allow(missing_doc)]
 pub struct SmallIntMap<T> {
     priv v: ~[Option<T>],
 }
@@ -186,6 +187,9 @@ pub impl<V:Copy> SmallIntMap<V> {
     }
 }
 
+/// A set implemented on top of the SmallIntMap type. This set is always a set
+/// of integers, and the space requirements are on the order of the highest
+/// valued integer in the set.
 pub struct SmallIntSet {
     priv map: SmallIntMap<()>
 }

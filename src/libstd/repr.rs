@@ -14,6 +14,8 @@ More runtime type reflection
 
 */
 
+#[allow(missing_doc)];
+
 use cast::transmute;
 use char;
 use intrinsic;

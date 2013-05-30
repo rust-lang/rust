@@ -10,6 +10,8 @@
 
 //! Unsafe debugging functions for inspecting values.
 
+#[allow(missing_doc)];
+
 use core::cast::transmute;
 use core::sys;
 

@@ -101,6 +101,9 @@ pub fn build_sized_opt<A>(size: Option<uint>,
 }
 
 // Appending
+
+/// Iterates over the `rhs` vector, copying each element and appending it to the
+/// `lhs`. Afterwards, the `lhs` is then returned for use again.
 #[inline(always)]
 pub fn append<T:Copy>(lhs: @[T], rhs: &const [T]) -> @[T] {
     do build_sized(lhs.len() + rhs.len()) |push| {
@@ -211,6 +214,9 @@ pub mod raw {
         (**repr).unboxed.fill = new_len * sys::size_of::<T>();
     }
 
+    /**
+     * Pushes a new value onto this vector.
+     */
     #[inline(always)]
     pub unsafe fn push<T>(v: &mut @[T], initval: T) {
         let repr: **VecRepr = transmute_copy(&v);
@@ -223,7 +229,7 @@ pub mod raw {
     }
 
     #[inline(always)] // really pretty please
-    pub unsafe fn push_fast<T>(v: &mut @[T], initval: T) {
+    unsafe fn push_fast<T>(v: &mut @[T], initval: T) {
         let repr: **mut VecRepr = ::cast::transmute(v);
         let fill = (**repr).unboxed.fill;
         (**repr).unboxed.fill += sys::size_of::<T>();
@@ -232,7 +238,7 @@ pub mod raw {
         move_val_init(&mut(*p), initval);
     }
 
-    pub unsafe fn push_slow<T>(v: &mut @[T], initval: T) {
+    unsafe fn push_slow<T>(v: &mut @[T], initval: T) {
         reserve_at_least(&mut *v, v.len() + 1u);
         push_fast(v, initval);
     }

@@ -14,6 +14,7 @@
 Core encoding and decoding interfaces.
 */
 
+#[allow(missing_doc)];
 #[forbid(non_camel_case_types)];
 
 use core::prelude::*;

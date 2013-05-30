@@ -10,6 +10,8 @@
 
 //! Types/fns concerning URLs (see RFC 3986)
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use core::cmp::Eq;

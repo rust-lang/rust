@@ -10,6 +10,8 @@
 
 //! Operations and constants for `f64`
 
+#[allow(missing_doc)];
+
 use libc::c_int;
 use num::{Zero, One, strconv};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};

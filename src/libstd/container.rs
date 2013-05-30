@@ -12,6 +12,8 @@
 
 use option::Option;
 
+/// A trait to represent the abstract idea of a container. The only concrete
+/// knowledge known is the number of elements contained within.
 pub trait Container {
     /// Return the number of elements in the container
     fn len(&const self) -> uint;
@@ -20,16 +22,19 @@ pub trait Container {
     fn is_empty(&const self) -> bool;
 }
 
+/// A trait to represent mutable containers
 pub trait Mutable: Container {
     /// Clear the container, removing all values.
     fn clear(&mut self);
 }
 
+/// A map is a key-value store where values may be looked up by their keys. This
+/// trait provides basic operations to operate on these stores.
 pub trait Map<K, V>: Mutable {
     /// Return true if the map contains a value for the specified key
     fn contains_key(&self, key: &K) -> bool;
 
-    // Visits all keys and values
+    /// Visits all keys and values
     fn each<'a>(&'a self, f: &fn(&K, &'a V) -> bool) -> bool;
 
     /// Visit all keys
@@ -65,6 +70,9 @@ pub trait Map<K, V>: Mutable {
     fn pop(&mut self, k: &K) -> Option<V>;
 }
 
+/// A set is a group of objects which are each distinct from one another. This
+/// trait represents actions which can be performed on sets to manipulate and
+/// iterate over them.
 pub trait Set<T>: Mutable {
     /// Return true if the set contains a value
     fn contains(&self, value: &T) -> bool;
