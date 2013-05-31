@@ -107,8 +107,8 @@ pub struct PkgId {
     version: Version
 }
 
-pub impl PkgId {
-    fn new(s: &str) -> PkgId {
+impl PkgId {
+    pub fn new(s: &str) -> PkgId {
         use conditions::bad_pkg_id::cond;
 
         let p = Path(s);
@@ -129,13 +129,13 @@ pub impl PkgId {
         }
     }
 
-    fn hash(&self) -> ~str {
+    pub fn hash(&self) -> ~str {
         fmt!("%s-%s-%s", self.remote_path.to_str(),
              hash(self.remote_path.to_str() + self.version.to_str()),
              self.version.to_str())
     }
 
-    fn short_name_with_version(&self) -> ~str {
+    pub fn short_name_with_version(&self) -> ~str {
         fmt!("%s-%s", self.short_name, self.version.to_str())
     }
 }

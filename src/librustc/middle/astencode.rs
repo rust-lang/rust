@@ -163,8 +163,8 @@ fn reserve_id_range(sess: Session,
     ast_util::id_range { min: to_id_min, max: to_id_min }
 }
 
-pub impl ExtendedDecodeContext {
-    fn tr_id(&self, id: ast::node_id) -> ast::node_id {
+impl ExtendedDecodeContext {
+    pub fn tr_id(&self, id: ast::node_id) -> ast::node_id {
         /*!
          * Translates an internal id, meaning a node id that is known
          * to refer to some part of the item currently being inlined,
@@ -179,7 +179,7 @@ pub impl ExtendedDecodeContext {
         assert!(!self.from_id_range.empty());
         (id - self.from_id_range.min + self.to_id_range.min)
     }
-    fn tr_def_id(&self, did: ast::def_id) -> ast::def_id {
+    pub fn tr_def_id(&self, did: ast::def_id) -> ast::def_id {
         /*!
          * Translates an EXTERNAL def-id, converting the crate number
          * from the one used in the encoded data to the current crate
@@ -203,7 +203,7 @@ pub impl ExtendedDecodeContext {
 
         decoder::translate_def_id(self.dcx.cdata, did)
     }
-    fn tr_intern_def_id(&self, did: ast::def_id) -> ast::def_id {
+    pub fn tr_intern_def_id(&self, did: ast::def_id) -> ast::def_id {
         /*!
          * Translates an INTERNAL def-id, meaning a def-id that is
          * known to refer to some part of the item currently being
@@ -214,7 +214,7 @@ pub impl ExtendedDecodeContext {
         assert_eq!(did.crate, ast::local_crate);
         ast::def_id { crate: ast::local_crate, node: self.tr_id(did.node) }
     }
-    fn tr_span(&self, _span: span) -> span {
+    pub fn tr_span(&self, _span: span) -> span {
         codemap::dummy_sp() // FIXME (#1972): handle span properly
     }
 }

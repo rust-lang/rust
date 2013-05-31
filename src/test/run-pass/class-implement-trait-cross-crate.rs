@@ -22,8 +22,8 @@ struct cat {
   name : ~str,
 }
 
-pub impl cat {
-    fn eat(&mut self) -> bool {
+impl cat {
+    pub fn eat(&mut self) -> bool {
         if self.how_hungry > 0 {
             error!("OM NOM NOM");
             self.how_hungry -= 2;
@@ -40,7 +40,7 @@ impl noisy for cat {
     fn speak(&mut self) { self.meow(); }
 }
 
-priv impl cat {
+impl cat {
     fn meow(&mut self) {
         error!("Meow");
         self.meows += 1u;

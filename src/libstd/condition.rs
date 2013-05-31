@@ -29,8 +29,8 @@ pub struct Condition<'self, T, U> {
     key: local_data::LocalDataKey<'self, Handler<T, U>>
 }
 
-pub impl<'self, T, U> Condition<'self, T, U> {
-    fn trap(&'self self, h: &'self fn(T) -> U) -> Trap<'self, T, U> {
+impl<'self, T, U> Condition<'self, T, U> {
+    pub fn trap(&'self self, h: &'self fn(T) -> U) -> Trap<'self, T, U> {
         unsafe {
             let p : *RustClosure = ::cast::transmute(&h);
             let prev = local_data::local_data_get(self.key);
@@ -39,12 +39,12 @@ pub impl<'self, T, U> Condition<'self, T, U> {
         }
     }
 
-    fn raise(&self, t: T) -> U {
+    pub fn raise(&self, t: T) -> U {
         let msg = fmt!("Unhandled condition: %s: %?", self.name, t);
         self.raise_default(t, || fail!(copy msg))
     }
 
-    fn raise_default(&self, t: T, default: &fn() -> U) -> U {
+    pub fn raise_default(&self, t: T, default: &fn() -> U) -> U {
         unsafe {
             match local_data_pop(self.key) {
                 None => {
@@ -73,8 +73,8 @@ struct Trap<'self, T, U> {
     handler: @Handler<T, U>
 }
 
-pub impl<'self, T, U> Trap<'self, T, U> {
-    fn in<V>(&self, inner: &'self fn() -> V) -> V {
+impl<'self, T, U> Trap<'self, T, U> {
+    pub fn in<V>(&self, inner: &'self fn() -> V) -> V {
         unsafe {
             let _g = Guard { cond: self.cond };
             debug!("Trap: pushing handler to TLS");

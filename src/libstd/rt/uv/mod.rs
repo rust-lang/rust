@@ -92,18 +92,18 @@ pub trait NativeHandle<T> {
     pub fn native_handle(&self) -> T;
 }
 
-pub impl Loop {
-    fn new() -> Loop {
+impl Loop {
+    pub fn new() -> Loop {
         let handle = unsafe { uvll::loop_new() };
         assert!(handle.is_not_null());
         NativeHandle::from_native_handle(handle)
     }
 
-    fn run(&mut self) {
+    pub fn run(&mut self) {
         unsafe { uvll::run(self.native_handle()) };
     }
 
-    fn close(&mut self) {
+    pub fn close(&mut self) {
         unsafe { uvll::loop_delete(self.native_handle()) };
     }
 }
@@ -193,9 +193,8 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
 
 pub struct UvError(uvll::uv_err_t);
 
-pub impl UvError {
-
-    fn name(&self) -> ~str {
+impl UvError {
+    pub fn name(&self) -> ~str {
         unsafe {
             let inner = match self { &UvError(ref a) => a };
             let name_str = uvll::err_name(inner);
@@ -204,7 +203,7 @@ pub impl UvError {
         }
     }
 
-    fn desc(&self) -> ~str {
+    pub fn desc(&self) -> ~str {
         unsafe {
             let inner = match self { &UvError(ref a) => a };
             let desc_str = uvll::strerror(inner);
@@ -213,7 +212,7 @@ pub impl UvError {
         }
     }
 
-    fn is_eof(&self) -> bool {
+    pub fn is_eof(&self) -> bool {
         self.code == uvll::EOF
     }
 }

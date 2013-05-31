@@ -10,6 +10,8 @@
 
 //! A type that represents one of two alternatives
 
+#[allow(missing_doc)];
+
 use container::Container;
 use cmp::Eq;
 use kinds::Copy;
@@ -137,29 +139,29 @@ pub fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
     }
 }
 
-pub impl<T, U> Either<T, U> {
+impl<T, U> Either<T, U> {
     #[inline(always)]
-    fn either<V>(&self, f_left: &fn(&T) -> V, f_right: &fn(&U) -> V) -> V {
+    pub fn either<V>(&self, f_left: &fn(&T) -> V, f_right: &fn(&U) -> V) -> V {
         either(f_left, f_right, self)
     }
 
     #[inline(always)]
-    fn flip(self) -> Either<U, T> { flip(self) }
+    pub fn flip(self) -> Either<U, T> { flip(self) }
 
     #[inline(always)]
-    fn to_result(self) -> Result<U, T> { to_result(self) }
+    pub fn to_result(self) -> Result<U, T> { to_result(self) }
 
     #[inline(always)]
-    fn is_left(&self) -> bool { is_left(self) }
+    pub fn is_left(&self) -> bool { is_left(self) }
 
     #[inline(always)]
-    fn is_right(&self) -> bool { is_right(self) }
+    pub fn is_right(&self) -> bool { is_right(self) }
 
     #[inline(always)]
-    fn unwrap_left(self) -> T { unwrap_left(self) }
+    pub fn unwrap_left(self) -> T { unwrap_left(self) }
 
     #[inline(always)]
-    fn unwrap_right(self) -> U { unwrap_right(self) }
+    pub fn unwrap_right(self) -> U { unwrap_right(self) }
 }
 
 #[test]

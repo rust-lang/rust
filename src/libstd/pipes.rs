@@ -152,16 +152,16 @@ pub fn PacketHeader() -> PacketHeader {
     }
 }
 
-pub impl PacketHeader {
+impl PacketHeader {
     // Returns the old state.
-    unsafe fn mark_blocked(&mut self, this: *rust_task) -> State {
+    pub unsafe fn mark_blocked(&mut self, this: *rust_task) -> State {
         rustrt::rust_task_ref(this);
         let old_task = swap_task(&mut self.blocked_task, this);
         assert!(old_task.is_null());
         swap_state_acq(&mut self.state, Blocked)
     }
 
-    unsafe fn unblock(&mut self) {
+    pub unsafe fn unblock(&mut self) {
         let old_task = swap_task(&mut self.blocked_task, ptr::null());
         if !old_task.is_null() {
             rustrt::rust_task_deref(old_task)
@@ -176,12 +176,12 @@ pub impl PacketHeader {
     // unsafe because this can do weird things to the space/time
     // continuum. It ends making multiple unique pointers to the same
     // thing. You'll probably want to forget them when you're done.
-    unsafe fn buf_header(&mut self) -> ~BufferHeader {
+    pub unsafe fn buf_header(&mut self) -> ~BufferHeader {
         assert!(self.buffer.is_not_null());
         transmute_copy(&self.buffer)
     }
 
-    fn set_buffer<T:Owned>(&mut self, b: ~Buffer<T>) {
+    pub fn set_buffer<T:Owned>(&mut self, b: ~Buffer<T>) {
         unsafe {
             self.buffer = transmute_copy(&b);
         }
@@ -694,12 +694,12 @@ pub fn SendPacketBuffered<T,Tbuffer>(p: *mut Packet<T>)
     }
 }
 
-pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
-    fn unwrap(&mut self) -> *mut Packet<T> {
+impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
+    pub fn unwrap(&mut self) -> *mut Packet<T> {
         replace(&mut self.p, None).unwrap()
     }
 
-    fn header(&mut self) -> *mut PacketHeader {
+    pub fn header(&mut self) -> *mut PacketHeader {
         match self.p {
             Some(packet) => unsafe {
                 let packet = &mut *packet;
@@ -710,7 +710,7 @@ pub impl<T,Tbuffer> SendPacketBuffered<T,Tbuffer> {
         }
     }
 
-    fn reuse_buffer(&mut self) -> BufferResource<Tbuffer> {
+    pub fn reuse_buffer(&mut self) -> BufferResource<Tbuffer> {
         //error!("send reuse_buffer");
         replace(&mut self.buffer, None).unwrap()
     }
@@ -742,12 +742,12 @@ impl<T:Owned,Tbuffer:Owned> Drop for RecvPacketBuffered<T,Tbuffer> {
     }
 }
 
-pub impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
-    fn unwrap(&mut self) -> *mut Packet<T> {
+impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
+    pub fn unwrap(&mut self) -> *mut Packet<T> {
         replace(&mut self.p, None).unwrap()
     }
 
-    fn reuse_buffer(&mut self) -> BufferResource<Tbuffer> {
+    pub fn reuse_buffer(&mut self) -> BufferResource<Tbuffer> {
         replace(&mut self.buffer, None).unwrap()
     }
 }

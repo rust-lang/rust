@@ -29,15 +29,15 @@ pub struct UvEventLoop {
     uvio: UvIoFactory
 }
 
-pub impl UvEventLoop {
-    fn new() -> UvEventLoop {
+impl UvEventLoop {
+    pub fn new() -> UvEventLoop {
         UvEventLoop {
             uvio: UvIoFactory(Loop::new())
         }
     }
 
     /// A convenience constructor
-    fn new_scheduler() -> Scheduler {
+    pub fn new_scheduler() -> Scheduler {
         Scheduler::new(~UvEventLoop::new())
     }
 }
@@ -90,8 +90,8 @@ fn test_callback_run_once() {
 
 pub struct UvIoFactory(Loop);
 
-pub impl UvIoFactory {
-    fn uv_loop<'a>(&'a mut self) -> &'a mut Loop {
+impl UvIoFactory {
+    pub fn uv_loop<'a>(&'a mut self) -> &'a mut Loop {
         match self { &UvIoFactory(ref mut ptr) => ptr }
     }
 }

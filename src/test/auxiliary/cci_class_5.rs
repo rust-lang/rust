@@ -16,8 +16,8 @@ pub mod kitties {
         how_hungry : int,
     }
 
-    pub impl cat {
-      priv fn nap(&self) { for uint::range(1, 10000u) |_i|{}}
+    impl cat {
+        priv fn nap(&self) { for uint::range(1, 10000u) |_i|{}}
     }
 
     pub fn cat(in_x : uint, in_y : int) -> cat {

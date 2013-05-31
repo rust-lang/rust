@@ -617,8 +617,7 @@ pub mod bench {
     use test::{BenchHarness, BenchSamples};
     use time::precise_time_ns;
 
-    pub impl BenchHarness {
-
+    impl BenchHarness {
         /// Callback for benchmark functions to run in their body.
         pub fn iter(&mut self, inner:&fn()) {
             self.ns_start = precise_time_ns();
@@ -629,7 +628,7 @@ pub mod bench {
             self.ns_end = precise_time_ns();
         }
 
-        fn ns_elapsed(&mut self) -> u64 {
+        pub fn ns_elapsed(&mut self) -> u64 {
             if self.ns_start == 0 || self.ns_end == 0 {
                 0
             } else {
@@ -637,7 +636,7 @@ pub mod bench {
             }
         }
 
-        fn ns_per_iter(&mut self) -> u64 {
+        pub fn ns_per_iter(&mut self) -> u64 {
             if self.iterations == 0 {
                 0
             } else {
@@ -645,7 +644,7 @@ pub mod bench {
             }
         }
 
-        fn bench_n(&mut self, n: u64, f: &fn(&mut BenchHarness)) {
+        pub fn bench_n(&mut self, n: u64, f: &fn(&mut BenchHarness)) {
             self.iterations = n;
             debug!("running benchmark for %u iterations",
                    n as uint);

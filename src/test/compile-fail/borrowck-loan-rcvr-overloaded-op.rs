@@ -19,8 +19,8 @@ impl Add<int,int> for Point {
     }
 }
 
-pub impl Point {
-    fn times(&self, z: int) -> int {
+impl Point {
+    pub fn times(&self, z: int) -> int {
         self.x * self.y * z
     }
 }

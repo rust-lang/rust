@@ -118,8 +118,8 @@ pub struct EnvValue {
     datum: Datum
 }
 
-pub impl EnvAction {
-    fn to_str(&self) -> ~str {
+impl EnvAction {
+    pub fn to_str(&self) -> ~str {
         match *self {
             EnvCopy => ~"EnvCopy",
             EnvMove => ~"EnvMove",
@@ -128,8 +128,8 @@ pub impl EnvAction {
     }
 }
 
-pub impl EnvValue {
-    fn to_str(&self, ccx: @CrateContext) -> ~str {
+impl EnvValue {
+    pub fn to_str(&self, ccx: @CrateContext) -> ~str {
         fmt!("%s(%s)", self.action.to_str(), self.datum.to_str(ccx))
     }
 }

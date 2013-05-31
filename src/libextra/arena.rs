@@ -166,9 +166,9 @@ unsafe fn un_bitpack_tydesc_ptr(p: uint) -> (*TypeDesc, bool) {
     (transmute(p & !1), p & 1 == 1)
 }
 
-pub impl Arena {
+impl Arena {
     // Functions for the POD part of the arena
-    priv fn alloc_pod_grow(&mut self, n_bytes: uint, align: uint) -> *u8 {
+    fn alloc_pod_grow(&mut self, n_bytes: uint, align: uint) -> *u8 {
         // Allocate a new chunk.
         let chunk_size = at_vec::capacity(self.pod_head.data);
         let new_min_chunk_size = uint::max(n_bytes, chunk_size);
@@ -180,7 +180,7 @@ pub impl Arena {
     }
 
     #[inline(always)]
-    priv fn alloc_pod_inner(&mut self, n_bytes: uint, align: uint) -> *u8 {
+    fn alloc_pod_inner(&mut self, n_bytes: uint, align: uint) -> *u8 {
         unsafe {
             // XXX: Borrow check
             let head = transmute_mut_region(&mut self.pod_head);
@@ -200,7 +200,7 @@ pub impl Arena {
     }
 
     #[inline(always)]
-    priv fn alloc_pod<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
+    fn alloc_pod<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
             let ptr = self.alloc_pod_inner((*tydesc).size, (*tydesc).align);
@@ -211,8 +211,8 @@ pub impl Arena {
     }
 
     // Functions for the non-POD part of the arena
-    priv fn alloc_nonpod_grow(&mut self, n_bytes: uint, align: uint)
-                             -> (*u8, *u8) {
+    fn alloc_nonpod_grow(&mut self, n_bytes: uint, align: uint)
+                         -> (*u8, *u8) {
         // Allocate a new chunk.
         let chunk_size = at_vec::capacity(self.head.data);
         let new_min_chunk_size = uint::max(n_bytes, chunk_size);
@@ -224,8 +224,8 @@ pub impl Arena {
     }
 
     #[inline(always)]
-    priv fn alloc_nonpod_inner(&mut self, n_bytes: uint, align: uint)
-                               -> (*u8, *u8) {
+    fn alloc_nonpod_inner(&mut self, n_bytes: uint, align: uint)
+                          -> (*u8, *u8) {
         unsafe {
             let head = transmute_mut_region(&mut self.head);
 
@@ -247,7 +247,7 @@ pub impl Arena {
     }
 
     #[inline(always)]
-    priv fn alloc_nonpod<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
+    fn alloc_nonpod<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
         unsafe {
             let tydesc = sys::get_type_desc::<T>();
             let (ty_ptr, ptr) =
@@ -269,7 +269,7 @@ pub impl Arena {
 
     // The external interface
     #[inline(always)]
-    fn alloc<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
+    pub fn alloc<'a, T>(&'a mut self, op: &fn() -> T) -> &'a T {
         unsafe {
             // XXX: Borrow check
             let this = transmute_mut_region(self);

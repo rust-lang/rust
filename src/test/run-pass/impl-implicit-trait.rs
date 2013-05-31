@@ -13,8 +13,8 @@ enum option_<T> {
     some_(T),
 }
 
-pub impl<T> option_<T> {
-    fn foo(&self) -> bool { true }
+impl<T> option_<T> {
+    pub fn foo(&self) -> bool { true }
 }
 
 enum option__ {
@@ -22,8 +22,8 @@ enum option__ {
     some__(int)
 }
 
-pub impl option__ {
-    fn foo(&self) -> bool { true }
+impl option__ {
+    pub fn foo(&self) -> bool { true }
 }
 
 pub fn main() {

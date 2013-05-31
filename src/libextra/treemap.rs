@@ -181,28 +181,28 @@ impl<K: TotalOrd, V> Map<K, V> for TreeMap<K, V> {
     }
 }
 
-pub impl<K: TotalOrd, V> TreeMap<K, V> {
+impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Create an empty TreeMap
-    fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
+    pub fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
     /// Visit all key-value pairs in reverse order
-    fn each_reverse<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) -> bool {
+    pub fn each_reverse<'a>(&'a self, f: &fn(&'a K, &'a V) -> bool) -> bool {
         each_reverse(&self.root, f)
     }
 
     /// Visit all keys in reverse order
-    fn each_key_reverse(&self, f: &fn(&K) -> bool) -> bool {
+    pub fn each_key_reverse(&self, f: &fn(&K) -> bool) -> bool {
         self.each_reverse(|k, _| f(k))
     }
 
     /// Visit all values in reverse order
-    fn each_value_reverse(&self, f: &fn(&V) -> bool) -> bool {
+    pub fn each_value_reverse(&self, f: &fn(&V) -> bool) -> bool {
         self.each_reverse(|_, v| f(v))
     }
 
     /// Get a lazy iterator over the key-value pairs in the map.
     /// Requires that it be frozen (immutable).
-    fn iter<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
+    pub fn iter<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
         TreeMapIterator{stack: ~[], node: &self.root}
     }
 }
@@ -489,15 +489,15 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
     }
 }
 
-pub impl <T: TotalOrd> TreeSet<T> {
+impl<T: TotalOrd> TreeSet<T> {
     /// Create an empty TreeSet
     #[inline(always)]
-    fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
+    pub fn new() -> TreeSet<T> { TreeSet{map: TreeMap::new()} }
 
     /// Get a lazy iterator over the values in the set.
     /// Requires that it be frozen (immutable).
     #[inline(always)]
-    fn iter<'a>(&'a self) -> TreeSetIterator<'a, T> {
+    pub fn iter<'a>(&'a self) -> TreeSetIterator<'a, T> {
         TreeSetIterator{iter: self.map.iter()}
     }
 }
@@ -517,9 +517,10 @@ struct TreeNode<K, V> {
     level: uint
 }
 
-pub impl<K: TotalOrd, V> TreeNode<K, V> {
+impl<K: TotalOrd, V> TreeNode<K, V> {
+    /// Creates a new tree node.
     #[inline(always)]
-    fn new(key: K, value: V) -> TreeNode<K, V> {
+    pub fn new(key: K, value: V) -> TreeNode<K, V> {
         TreeNode{key: key, value: value, left: None, right: None, level: 1}
     }
 }

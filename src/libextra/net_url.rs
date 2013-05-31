@@ -41,16 +41,15 @@ struct UserInfo {
 
 pub type Query = ~[(~str, ~str)];
 
-pub impl Url {
-    fn new(
-        scheme: ~str,
-        user: Option<UserInfo>,
-        host: ~str,
-        port: Option<~str>,
-        path: ~str,
-        query: Query,
-        fragment: Option<~str>
-    ) -> Url {
+impl Url {
+    pub fn new(scheme: ~str,
+               user: Option<UserInfo>,
+               host: ~str,
+               port: Option<~str>,
+               path: ~str,
+               query: Query,
+               fragment: Option<~str>)
+               -> Url {
         Url {
             scheme: scheme,
             user: user,
@@ -63,8 +62,8 @@ pub impl Url {
     }
 }
 
-pub impl UserInfo {
-    fn new(user: ~str, pass: Option<~str>) -> UserInfo {
+impl UserInfo {
+    pub fn new(user: ~str, pass: Option<~str>) -> UserInfo {
         UserInfo { user: user, pass: pass }
     }
 }
