@@ -11,6 +11,8 @@
 // This actually tests a lot more than just encodable/decodable, but it gets the
 // job done at least
 
+// xfail-fast
+
 extern mod extra;
 
 use std::io;
