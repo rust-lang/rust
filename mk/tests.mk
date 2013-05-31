@@ -666,7 +666,7 @@ TEST_GROUPS = \
 	perf \
 	debuginfo \
 	doc \
-	$(foreach docname,$(DOC_TEST_NAMES),$(docname)) \
+	$(foreach docname,$(DOC_TEST_NAMES),doc-$(docname)) \
 	pretty \
 	pretty-rpass \
 	pretty-rpass-full \
