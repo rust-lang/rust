@@ -275,10 +275,12 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         let mut i = 0u;
         let len = strs.len();
         while i < len {
-            let &(needle, value) = &strs[i];
-
-            if match_str(ss, pos, needle) {
-                return Some((value, pos + str::len(needle)));
+            match strs[i] { // can't use let due to stage0 bugs
+                (ref needle, value) => {
+                    if match_str(ss, pos, *needle) {
+                        return Some((value, pos + str::len(*needle)));
+                    }
+                }
             }
             i += 1u;
         }
@@ -1007,7 +1009,7 @@ mod tests {
             == Err(~"Invalid time"));
 
         match strptime("Fri Feb 13 15:31:30 2009", format) {
-          Err(copy e) => fail!(e),
+          Err(e) => fail!(e),
           Ok(ref tm) => {
             assert!(tm.tm_sec == 30_i32);
             assert!(tm.tm_min == 31_i32);
@@ -1027,7 +1029,7 @@ mod tests {
         fn test(s: &str, format: &str) -> bool {
             match strptime(s, format) {
               Ok(ref tm) => tm.strftime(format) == str::to_owned(s),
-              Err(copy e) => fail!(e)
+              Err(e) => fail!(e)
             }
         }
 

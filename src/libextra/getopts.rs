@@ -171,7 +171,7 @@ fn is_arg(arg: &str) -> bool {
 fn name_str(nm: &Name) -> ~str {
     return match *nm {
       Short(ch) => str::from_char(ch),
-      Long(copy s) => s
+      Long(ref s) => copy *s
     };
 }
 
@@ -390,7 +390,7 @@ pub fn opts_present(mm: &Matches, names: &[~str]) -> bool {
  * argument
  */
 pub fn opt_str(mm: &Matches, nm: &str) -> ~str {
-    return match opt_val(mm, nm) { Val(copy s) => s, _ => fail!() };
+    return match opt_val(mm, nm) { Val(s) => s, _ => fail!() };
 }
 
 /**
@@ -402,7 +402,7 @@ pub fn opt_str(mm: &Matches, nm: &str) -> ~str {
 pub fn opts_str(mm: &Matches, names: &[~str]) -> ~str {
     for names.each |nm| {
         match opt_val(mm, *nm) {
-          Val(copy s) => return s,
+          Val(ref s) => return copy *s,
           _ => ()
         }
     }
@@ -419,7 +419,7 @@ pub fn opts_str(mm: &Matches, names: &[~str]) -> ~str {
 pub fn opt_strs(mm: &Matches, nm: &str) -> ~[~str] {
     let mut acc: ~[~str] = ~[];
     for vec::each(opt_vals(mm, nm)) |v| {
-        match *v { Val(copy s) => acc.push(s), _ => () }
+        match *v { Val(ref s) => acc.push(copy *s), _ => () }
     }
     return acc;
 }
@@ -429,7 +429,7 @@ pub fn opt_maybe_str(mm: &Matches, nm: &str) -> Option<~str> {
     let vals = opt_vals(mm, nm);
     if vec::len::<Optval>(vals) == 0u { return None::<~str>; }
     return match vals[0] {
-        Val(copy s) => Some(s),
+        Val(ref s) => Some(copy *s),
         _ => None
     };
 }
@@ -445,7 +445,7 @@ pub fn opt_maybe_str(mm: &Matches, nm: &str) -> Option<~str> {
 pub fn opt_default(mm: &Matches, nm: &str, def: &str) -> Option<~str> {
     let vals = opt_vals(mm, nm);
     if vec::len::<Optval>(vals) == 0u { return None::<~str>; }
-    return match vals[0] { Val(copy s) => Some::<~str>(s),
+    return match vals[0] { Val(ref s) => Some::<~str>(copy *s),
                            _      => Some::<~str>(str::to_owned(def)) }
 }
 
@@ -701,7 +701,7 @@ mod tests {
         let opts = ~[reqopt("test")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => check_fail_type(f, OptionMissing_),
+          Err(f) => check_fail_type(f, OptionMissing_),
           _ => fail!()
         }
     }
@@ -712,7 +712,7 @@ mod tests {
         let opts = ~[reqopt("test")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => check_fail_type(f, ArgumentMissing_),
+          Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
         }
     }
@@ -723,7 +723,7 @@ mod tests {
         let opts = ~[reqopt("test")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => check_fail_type(f, OptionDuplicated_),
+          Err(f) => check_fail_type(f, OptionDuplicated_),
           _ => fail!()
         }
     }
@@ -748,7 +748,7 @@ mod tests {
         let opts = ~[reqopt("t")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => check_fail_type(f, OptionMissing_),
+          Err(f) => check_fail_type(f, OptionMissing_),
           _ => fail!()
         }
     }
@@ -759,7 +759,7 @@ mod tests {
         let opts = ~[reqopt("t")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => check_fail_type(f, ArgumentMissing_),
+          Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
         }
     }
@@ -770,7 +770,7 @@ mod tests {
         let opts = ~[reqopt("t")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => check_fail_type(f, OptionDuplicated_),
+          Err(f) => check_fail_type(f, OptionDuplicated_),
           _ => fail!()
         }
     }
@@ -808,7 +808,7 @@ mod tests {
         let opts = ~[optopt("test")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => check_fail_type(f, ArgumentMissing_),
+          Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
         }
     }
@@ -819,7 +819,7 @@ mod tests {
         let opts = ~[optopt("test")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => check_fail_type(f, OptionDuplicated_),
+          Err(f) => check_fail_type(f, OptionDuplicated_),
           _ => fail!()
         }
     }
@@ -855,7 +855,7 @@ mod tests {
         let opts = ~[optopt("t")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => check_fail_type(f, ArgumentMissing_),
+          Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
         }
     }
@@ -866,7 +866,7 @@ mod tests {
         let opts = ~[optopt("t")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => check_fail_type(f, OptionDuplicated_),
+          Err(f) => check_fail_type(f, OptionDuplicated_),
           _ => fail!()
         }
     }
@@ -901,7 +901,7 @@ mod tests {
         let opts = ~[optflag("test")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => {
+          Err(f) => {
             error!(fail_str(copy f));
             check_fail_type(f, UnexpectedArgument_);
           }
@@ -915,7 +915,7 @@ mod tests {
         let opts = ~[optflag("test")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => check_fail_type(f, OptionDuplicated_),
+          Err(f) => check_fail_type(f, OptionDuplicated_),
           _ => fail!()
         }
     }
@@ -963,7 +963,7 @@ mod tests {
         let opts = ~[optflag("t")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => check_fail_type(f, OptionDuplicated_),
+          Err(f) => check_fail_type(f, OptionDuplicated_),
           _ => fail!()
         }
     }
@@ -1066,7 +1066,7 @@ mod tests {
         let opts = ~[optmulti("test")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => check_fail_type(f, ArgumentMissing_),
+          Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
         }
     }
@@ -1119,7 +1119,7 @@ mod tests {
         let opts = ~[optmulti("t")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => check_fail_type(f, ArgumentMissing_),
+          Err(f) => check_fail_type(f, ArgumentMissing_),
           _ => fail!()
         }
     }
@@ -1147,7 +1147,7 @@ mod tests {
         let opts = ~[optmulti("t")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => check_fail_type(f, UnrecognizedOption_),
+          Err(f) => check_fail_type(f, UnrecognizedOption_),
           _ => fail!()
         }
     }
@@ -1158,7 +1158,7 @@ mod tests {
         let opts = ~[optmulti("test")];
         let rs = getopts(args, opts);
         match rs {
-          Err(copy f) => check_fail_type(f, UnrecognizedOption_),
+          Err(f) => check_fail_type(f, UnrecognizedOption_),
           _ => fail!()
         }
     }

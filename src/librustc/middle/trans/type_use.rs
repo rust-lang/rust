@@ -85,8 +85,8 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
     }
 
     if fn_id_loc.crate != local_crate {
-        let Context { uses: @uses, _ } = cx;
-        let uses = @uses; // mutability
+        let Context { uses, _ } = cx;
+        let uses = @copy *uses; // freeze
         ccx.type_use_cache.insert(fn_id, uses);
         return uses;
     }
@@ -173,8 +173,8 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                                 ccx.tcx.sess.parse_sess.interner)));
       }
     }
-    let Context { uses: @uses, _ } = cx;
-    let uses = @uses; // mutability
+    let Context { uses, _ } = cx;
+    let uses = @copy *uses; // freeze
     ccx.type_use_cache.insert(fn_id, uses);
     uses
 }

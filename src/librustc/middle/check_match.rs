@@ -827,7 +827,6 @@ pub fn check_legality_of_move_bindings(cx: @MatchCheckCtxt,
     for pats.each |pat| {
         do pat_bindings(def_map, *pat) |bm, id, span, _path| {
             match bm {
-                bind_by_copy => {}
                 bind_by_ref(_) => {
                     by_ref_span = Some(span);
                 }

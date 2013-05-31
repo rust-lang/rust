@@ -864,17 +864,14 @@ pub fn create_local_var(bcx: block, local: @ast::local)
     };
     update_cache(cache, AutoVariableTag, local_var_metadata(mdval));
 
-    let llptr = match bcx.fcx.lllocals.find(&local.node.id) {
-      option::Some(&local_mem(v)) => v,
-      option::Some(_) => {
-        bcx.tcx().sess.span_bug(local.span, "local is bound to something weird");
-      }
-      option::None => {
-        match bcx.fcx.lllocals.get_copy(&local.node.pat.id) {
-          local_imm(v) => v,
-          _ => bcx.tcx().sess.span_bug(local.span, "local is bound to something weird")
+    // FIXME(#6814) Should use `pat_util::pat_bindings` for pats like (a, b) etc
+    let llptr = match bcx.fcx.lllocals.find_copy(&local.node.pat.id) {
+        Some(v) => v,
+        None => {
+            bcx.tcx().sess.span_bug(
+                local.span,
+                fmt!("No entry in lllocals table for %?", local.node.id));
         }
-      }
     };
     let declargs = ~[llmdnode([llptr]), mdnode];
     trans::build::Call(bcx, *cx.intrinsics.get(&~"llvm.dbg.declare"),
@@ -922,9 +919,7 @@ pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
             };
             update_cache(cache, tg, argument_metadata(mdval));
 
-            let llptr = match fcx.llargs.get_copy(&arg.id) {
-              local_mem(v) | local_imm(v) => v,
-            };
+            let llptr = fcx.llargs.get_copy(&arg.id);
             let declargs = ~[llmdnode([llptr]), mdnode];
             trans::build::Call(bcx,
                                *cx.intrinsics.get(&~"llvm.dbg.declare"),

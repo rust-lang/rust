@@ -223,7 +223,7 @@ pub fn run_tests_console(opts: &TestOpts,
           }
           TeWait(ref test) => st.out.write_str(
               fmt!("test %s ... ", test.name.to_str())),
-          TeResult(copy test, result) => {
+          TeResult(test, result) => {
             match st.log_out {
                 Some(f) => write_log(f, copy result, &test),
                 None => ()
@@ -504,9 +504,8 @@ pub fn filter_tests(
     filtered = if opts.filter.is_none() {
         filtered
     } else {
-        let filter_str =
-            match opts.filter {
-          option::Some(copy f) => f,
+        let filter_str = match opts.filter {
+          option::Some(ref f) => copy *f,
           option::None => ~""
         };
 
@@ -866,7 +865,7 @@ mod tests {
     fn first_free_arg_should_be_a_filter() {
         let args = ~[~"progname", ~"filter"];
         let opts = match parse_opts(args) {
-          either::Left(copy o) => o,
+          either::Left(o) => o,
           _ => fail!("Malformed arg in first_free_arg_should_be_a_filter")
         };
         assert!("filter" == (copy opts.filter).get());
@@ -876,7 +875,7 @@ mod tests {
     fn parse_ignored_flag() {
         let args = ~[~"progname", ~"filter", ~"--ignored"];
         let opts = match parse_opts(args) {
-          either::Left(copy o) => o,
+          either::Left(o) => o,
           _ => fail!("Malformed arg in parse_ignored_flag")
         };
         assert!((opts.run_ignored));

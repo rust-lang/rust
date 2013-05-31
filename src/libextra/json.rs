@@ -1384,7 +1384,7 @@ mod tests {
 
         for items.each |item| {
             match *item {
-                (copy key, copy value) => { d.insert(key, value); },
+                (ref key, ref value) => { d.insert(copy *key, copy *value); },
             }
         };
 

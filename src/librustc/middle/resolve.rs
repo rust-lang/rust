@@ -520,12 +520,12 @@ pub impl NameBindings {
                     type_span: Some(sp)
                 });
             }
-            Some(copy type_def) => {
+            Some(type_def) => {
                 self.type_def = Some(TypeNsDef {
                     privacy: privacy,
                     module_def: Some(module_),
                     type_span: Some(sp),
-                    .. type_def
+                    type_def: type_def.type_def
                 });
             }
         }
@@ -577,12 +577,12 @@ pub impl NameBindings {
                     type_span: Some(sp)
                 });
             }
-            Some(copy type_def) => {
+            Some(type_def) => {
                 self.type_def = Some(TypeNsDef {
                     privacy: privacy,
                     type_def: Some(def),
                     type_span: Some(sp),
-                    .. type_def
+                    module_def: type_def.module_def
                 });
             }
         }
@@ -1566,7 +1566,7 @@ pub impl Resolver {
         match def {
           def_mod(def_id) | def_foreign_mod(def_id) => {
             match child_name_bindings.type_def {
-              Some(TypeNsDef { module_def: Some(copy module_def), _ }) => {
+              Some(TypeNsDef { module_def: Some(module_def), _ }) => {
                 debug!("(building reduced graph for external crate) \
                         already created module");
                 module_def.def_id = Some(def_id);
@@ -1745,7 +1745,7 @@ pub impl Resolver {
                                                           NormalModuleKind,
                                                           dummy_sp());
                     }
-                    Some(copy type_ns_def)
+                    Some(type_ns_def)
                             if type_ns_def.module_def.is_none() => {
                         debug!("(building reduced graph for external crate) \
                                 autovivifying missing module def %s",
@@ -1812,7 +1812,7 @@ pub impl Resolver {
                                     let type_module;
                                     match child_name_bindings.type_def {
                                         Some(TypeNsDef {
-                                            module_def: Some(copy module_def),
+                                            module_def: Some(module_def),
                                             _
                                         }) => {
                                             // We already have a module. This
@@ -2445,7 +2445,7 @@ pub impl Resolver {
                         None => {
                             // Continue.
                         }
-                        Some(copy value_target) => {
+                        Some(value_target) => {
                             dest_import_resolution.value_target =
                                 Some(value_target);
                         }
@@ -2454,7 +2454,7 @@ pub impl Resolver {
                         None => {
                             // Continue.
                         }
-                        Some(copy type_target) => {
+                        Some(type_target) => {
                             dest_import_resolution.type_target =
                                 Some(type_target);
                         }
@@ -2566,7 +2566,7 @@ pub impl Resolver {
                     // Check to see whether there are type bindings, and, if
                     // so, whether there is a module within.
                     match target.bindings.type_def {
-                        Some(copy type_def) => {
+                        Some(type_def) => {
                             match type_def.module_def {
                                 None => {
                                     // Not a module.
@@ -5170,12 +5170,6 @@ pub impl Resolver {
                                     descr: &str) {
         match pat_binding_mode {
             bind_infer => {}
-            bind_by_copy => {
-                self.session.span_err(
-                    pat.span,
-                    fmt!("cannot use `copy` binding mode with %s",
-                         descr));
-            }
             bind_by_ref(*) => {
                 self.session.span_err(
                     pat.span,
@@ -5316,7 +5310,7 @@ pub fn resolve_crate(session: Session,
                   -> CrateMap {
     let resolver = @mut Resolver(session, lang_items, crate);
     resolver.resolve();
-    let @Resolver{def_map, export_map2, trait_map, _} = resolver;
+    let Resolver{def_map, export_map2, trait_map, _} = copy *resolver;
     CrateMap {
         def_map: def_map,
         exp_map2: export_map2,

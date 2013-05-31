@@ -623,7 +623,7 @@ pub impl GatherLoanCtxt {
                                              cmt, mutbl, scope_r);
                     }
                   }
-                  ast::bind_by_copy | ast::bind_infer => {
+                  ast::bind_infer => {
                       // No borrows here, but there may be moves
                       if self.bccx.is_move(pat.id) {
                           gather_moves::gather_move_from_pat(

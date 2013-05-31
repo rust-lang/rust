@@ -18,7 +18,7 @@ use ast::{TyBareFn, TyClosure};
 use ast::{RegionTyParamBound, TraitTyParamBound};
 use ast::{provided, public, purity};
 use ast::{_mod, add, arg, arm, attribute, bind_by_ref, bind_infer};
-use ast::{bind_by_copy, bitand, bitor, bitxor, blk};
+use ast::{bitand, bitor, bitxor, blk};
 use ast::{blk_check_mode, box};
 use ast::{crate, crate_cfg, decl, decl_item};
 use ast::{decl_local, default_blk, deref, div, enum_def, explicit_self};
@@ -131,11 +131,11 @@ at INTERPOLATED tokens */
 macro_rules! maybe_whole_expr (
     ($p:expr) => (
         match *($p).token {
-            INTERPOLATED(token::nt_expr(copy e)) => {
+            INTERPOLATED(token::nt_expr(e)) => {
                 $p.bump();
                 return e;
             }
-            INTERPOLATED(token::nt_path(copy pt)) => {
+            INTERPOLATED(token::nt_path(pt)) => {
                 $p.bump();
                 return $p.mk_expr(
                     ($p).span.lo,
@@ -150,8 +150,8 @@ macro_rules! maybe_whole_expr (
 
 macro_rules! maybe_whole (
     ($p:expr, $constructor:ident) => (
-        match *($p).token {
-            INTERPOLATED(token::$constructor(copy x)) => {
+        match copy *($p).token {
+            INTERPOLATED(token::$constructor(x)) => {
                 $p.bump();
                 return x;
             }
@@ -159,8 +159,8 @@ macro_rules! maybe_whole (
        }
     );
     (deref $p:expr, $constructor:ident) => (
-        match *($p).token {
-            INTERPOLATED(token::$constructor(copy x)) => {
+        match copy *($p).token {
+            INTERPOLATED(token::$constructor(x)) => {
                 $p.bump();
                 return copy *x;
             }
@@ -168,8 +168,8 @@ macro_rules! maybe_whole (
         }
     );
     (Some $p:expr, $constructor:ident) => (
-        match *($p).token {
-            INTERPOLATED(token::$constructor(copy x)) => {
+        match copy *($p).token {
+            INTERPOLATED(token::$constructor(x)) => {
                 $p.bump();
                 return Some(x);
             }
@@ -177,8 +177,8 @@ macro_rules! maybe_whole (
         }
     );
     (iovi $p:expr, $constructor:ident) => (
-        match *($p).token {
-            INTERPOLATED(token::$constructor(copy x)) => {
+        match copy *($p).token {
+            INTERPOLATED(token::$constructor(x)) => {
                 $p.bump();
                 return iovi_item(x);
             }
@@ -186,8 +186,8 @@ macro_rules! maybe_whole (
         }
     );
     (pair_empty $p:expr, $constructor:ident) => (
-        match *($p).token {
-            INTERPOLATED(token::$constructor(copy x)) => {
+        match copy *($p).token {
+            INTERPOLATED(token::$constructor(x)) => {
                 $p.bump();
                 return (~[], x);
             }
@@ -825,7 +825,7 @@ pub impl Parser {
         let pat = if require_name || self.is_named_argument() {
             self.parse_arg_mode();
             is_mutbl = self.eat_keyword(keywords::Mut);
-            let pat = self.parse_pat(false);
+            let pat = self.parse_pat();
             self.expect(&token::COLON);
             pat
         } else {
@@ -853,7 +853,7 @@ pub impl Parser {
     fn parse_fn_block_arg(&self) -> arg_or_capture_item {
         self.parse_arg_mode();
         let is_mutbl = self.eat_keyword(keywords::Mut);
-        let pat = self.parse_pat(false);
+        let pat = self.parse_pat();
         let t = if self.eat(&token::COLON) {
             self.parse_ty(false)
         } else {
@@ -1992,28 +1992,29 @@ pub impl Parser {
         // them as the lambda arguments
         let e = self.parse_expr_res(RESTRICT_NO_BAR_OR_DOUBLEBAR_OP);
         match e.node {
-            expr_call(f, /*bad*/ copy args, NoSugar) => {
+            expr_call(f, ref args, NoSugar) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
-                let args = vec::append(args, [last_arg]);
+                let args = vec::append(copy *args, [last_arg]);
                 self.mk_expr(lo.lo, block.span.hi, expr_call(f, args, sugar))
             }
-            expr_method_call(f, i, /*bad*/ copy tps,
-                             /*bad*/ copy args, NoSugar) => {
+            expr_method_call(f, i, ref tps, ref args, NoSugar) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
-                let args = vec::append(args, [last_arg]);
+                let args = vec::append(copy *args, [last_arg]);
                 self.mk_expr(lo.lo, block.span.hi,
-                             expr_method_call(f, i, tps, args, sugar))
+                             expr_method_call(f, i, copy *tps,
+                                              args, sugar))
             }
-            expr_field(f, i, /*bad*/ copy tps) => {
+            expr_field(f, i, ref tps) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
                 self.mk_expr(lo.lo, block.span.hi,
-                             expr_method_call(f, i, tps, ~[last_arg], sugar))
+                             expr_method_call(f, i,
+                                              copy *tps, ~[last_arg], sugar))
             }
             expr_path(*) | expr_call(*) | expr_method_call(*) |
                 expr_paren(*) => {
@@ -2162,7 +2163,7 @@ pub impl Parser {
     fn parse_pats(&self) -> ~[@pat] {
         let mut pats = ~[];
         loop {
-            pats.push(self.parse_pat(true));
+            pats.push(self.parse_pat());
             if *self.token == token::BINOP(token::OR) { self.bump(); }
             else { return pats; }
         };
@@ -2170,7 +2171,6 @@ pub impl Parser {
 
     fn parse_pat_vec_elements(
         &self,
-        refutable: bool
     ) -> (~[@pat], Option<@pat>, ~[@pat]) {
         let mut before = ~[];
         let mut slice = None;
@@ -2191,7 +2191,7 @@ pub impl Parser {
                 }
             }
 
-            let subpat = self.parse_pat(refutable);
+            let subpat = self.parse_pat();
             if is_slice {
                 match subpat {
                     @ast::pat { node: pat_wild, _ } => (),
@@ -2214,7 +2214,7 @@ pub impl Parser {
     }
 
     // parse the fields of a struct-like pattern
-    fn parse_pat_fields(&self, refutable: bool) -> (~[ast::field_pat], bool) {
+    fn parse_pat_fields(&self) -> (~[ast::field_pat], bool) {
         let mut fields = ~[];
         let mut etc = false;
         let mut first = true;
@@ -2244,7 +2244,7 @@ pub impl Parser {
             let subpat;
             if *self.token == token::COLON {
                 self.bump();
-                subpat = self.parse_pat(refutable);
+                subpat = self.parse_pat();
             } else {
                 subpat = @ast::pat {
                     id: self.get_id(),
@@ -2257,10 +2257,8 @@ pub impl Parser {
         return (fields, etc);
     }
 
-    // parse a pattern. The 'refutable' argument
-    // appears to control whether the binding_mode
-    // 'bind_infer' or 'bind_by_copy' is used.
-    fn parse_pat(&self, refutable: bool) -> @pat {
+    // parse a pattern.
+    fn parse_pat(&self) -> @pat {
         maybe_whole!(self, nt_pat);
 
         let lo = self.span.lo;
@@ -2272,7 +2270,7 @@ pub impl Parser {
             // parse @pat
           token::AT => {
             self.bump();
-            let sub = self.parse_pat(refutable);
+            let sub = self.parse_pat();
             hi = sub.span.hi;
             // HACK: parse @"..." as a literal of a vstore @str
             pat = match sub.node {
@@ -2295,7 +2293,7 @@ pub impl Parser {
           token::TILDE => {
             // parse ~pat
             self.bump();
-            let sub = self.parse_pat(refutable);
+            let sub = self.parse_pat();
             hi = sub.span.hi;
             // HACK: parse ~"..." as a literal of a vstore ~str
             pat = match sub.node {
@@ -2319,7 +2317,7 @@ pub impl Parser {
               // parse &pat
               let lo = self.span.lo;
               self.bump();
-              let sub = self.parse_pat(refutable);
+              let sub = self.parse_pat();
               hi = sub.span.hi;
               // HACK: parse &"..." as a literal of a borrowed str
               pat = match sub.node {
@@ -2340,7 +2338,7 @@ pub impl Parser {
           }
           token::LBRACE => {
             self.bump();
-            let (_, _) = self.parse_pat_fields(refutable);
+            let (_, _) = self.parse_pat_fields();
             hi = self.span.hi;
             self.bump();
             self.obsolete(*self.span, ObsoleteRecordPattern);
@@ -2358,11 +2356,11 @@ pub impl Parser {
                 let expr = self.mk_expr(lo, hi, expr_lit(lit));
                 pat = pat_lit(expr);
             } else {
-                let mut fields = ~[self.parse_pat(refutable)];
+                let mut fields = ~[self.parse_pat()];
                 if self.look_ahead(1) != token::RPAREN {
                     while *self.token == token::COMMA {
                         self.bump();
-                        fields.push(self.parse_pat(refutable));
+                        fields.push(self.parse_pat());
                     }
                 }
                 if fields.len() == 1 { self.expect(&token::COMMA); }
@@ -2375,7 +2373,7 @@ pub impl Parser {
             // parse [pat,pat,...] as vector pattern
             self.bump();
             let (before, slice, after) =
-                self.parse_pat_vec_elements(refutable);
+                self.parse_pat_vec_elements();
             hi = self.span.hi;
             self.expect(&token::RBRACKET);
             pat = ast::pat_vec(before, slice, after);
@@ -2405,15 +2403,13 @@ pub impl Parser {
             } else if self.eat_keyword(keywords::Ref) {
                 // parse ref pat
                 let mutbl = self.parse_mutability();
-                pat = self.parse_pat_ident(refutable, bind_by_ref(mutbl));
+                pat = self.parse_pat_ident(bind_by_ref(mutbl));
             } else if self.eat_keyword(keywords::Copy) {
                 // parse copy pat
-                pat = self.parse_pat_ident(refutable, bind_by_copy);
+                self.warn("copy keyword in patterns no longer has any effect, \
+                           remove it");
+                pat = self.parse_pat_ident(bind_infer);
             } else {
-                // XXX---refutable match bindings should work same as let
-                let binding_mode =
-                    if refutable {bind_infer} else {bind_by_copy};
-
                 let can_be_enum_or_struct;
                 match self.look_ahead(1) {
                     token::LPAREN | token::LBRACKET | token::LT |
@@ -2434,12 +2430,12 @@ pub impl Parser {
                     let sub;
                     if self.eat(&token::AT) {
                         // parse foo @ pat
-                        sub = Some(self.parse_pat(refutable));
+                        sub = Some(self.parse_pat());
                     } else {
                         // or just foo
                         sub = None;
                     }
-                    pat = pat_ident(binding_mode, name, sub);
+                    pat = pat_ident(bind_infer, name, sub);
                 } else {
                     // parse an enum pat
                     let enum_path = self.parse_path_with_tps(true);
@@ -2447,7 +2443,7 @@ pub impl Parser {
                         token::LBRACE => {
                             self.bump();
                             let (fields, etc) =
-                                self.parse_pat_fields(refutable);
+                                self.parse_pat_fields();
                             self.bump();
                             pat = pat_struct(enum_path, fields, etc);
                         }
@@ -2468,7 +2464,7 @@ pub impl Parser {
                                         seq_sep_trailing_disallowed(
                                             token::COMMA
                                         ),
-                                        |p| p.parse_pat(refutable)
+                                        |p| p.parse_pat()
                                     );
                                     pat = pat_enum(enum_path, Some(args));
                                   }
@@ -2478,7 +2474,7 @@ pub impl Parser {
                                       // it could still be either an enum
                                       // or an identifier pattern, resolve
                                       // will sort it out:
-                                      pat = pat_ident(binding_mode,
+                                      pat = pat_ident(bind_infer,
                                                       enum_path,
                                                       None);
                                   } else {
@@ -2500,7 +2496,6 @@ pub impl Parser {
     // used by the copy foo and ref foo patterns to give a good
     // error message when parsing mistakes like ref foo(a,b)
     fn parse_pat_ident(&self,
-                       refutable: bool,
                        binding_mode: ast::binding_mode)
                        -> ast::pat_ {
         if !is_plain_ident(&*self.token) {
@@ -2510,7 +2505,7 @@ pub impl Parser {
         // why a path here, and not just an identifier?
         let name = self.parse_path_without_tps();
         let sub = if self.eat(&token::AT) {
-            Some(self.parse_pat(refutable))
+            Some(self.parse_pat())
         } else {
             None
         };
@@ -2533,7 +2528,7 @@ pub impl Parser {
     // parse a local variable declaration
     fn parse_local(&self, is_mutbl: bool) -> @local {
         let lo = self.span.lo;
-        let pat = self.parse_pat(false);
+        let pat = self.parse_pat();
         let mut ty = @Ty {
             id: self.get_id(),
             node: ty_infer,
@@ -2760,7 +2755,7 @@ pub impl Parser {
                     match stmt.node {
                         stmt_expr(e, stmt_id) => {
                             // expression without semicolon
-                            match *self.token {
+                            match copy *self.token {
                                 token::SEMI => {
                                     self.bump();
                                     stmts.push(@codemap::spanned {
@@ -2770,7 +2765,7 @@ pub impl Parser {
                                 token::RBRACE => {
                                     expr = Some(e);
                                 }
-                                copy t => {
+                                t => {
                                     if classify::stmt_ends_with_semi(stmt) {
                                         self.fatal(
                                             fmt!(
@@ -2880,7 +2875,7 @@ pub impl Parser {
                 token::MOD_SEP | token::IDENT(*) => {
                     let obsolete_bound = match *self.token {
                         token::MOD_SEP => false,
-                        token::IDENT(copy sid, _) => {
+                        token::IDENT(sid, _) => {
                             match *self.id_to_str(sid) {
                                 ~"send" |
                                 ~"copy" |

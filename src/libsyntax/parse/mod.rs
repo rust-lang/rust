@@ -485,9 +485,9 @@ mod test {
 
     #[test] fn parse_ident_pat () {
         let parser = string_to_parser(@~"b");
-        assert_eq!(parser.parse_pat(false),
+        assert_eq!(parser.parse_pat(),
                    @ast::pat{id:1, // fixme
-                             node: ast::pat_ident(ast::bind_by_copy,
+                             node: ast::pat_ident(ast::bind_infer,
                                                   @ast::Path{
                                                       span:sp(0,1),
                                                       global:false,
@@ -516,7 +516,7 @@ mod test {
                                                        2),
                                     span:sp(4,7)},
                        pat: @ast::pat{id:1,
-                                      node: ast::pat_ident(ast::bind_by_copy,
+                                      node: ast::pat_ident(ast::bind_infer,
                                                            @ast::Path{
                                                                span:sp(0,1),
                                                                global:false,
@@ -553,7 +553,7 @@ mod test {
                                                 span:sp(10,13)},
                                     pat: @ast::pat{id:1, // fixme
                                                    node: ast::pat_ident(
-                                                       ast::bind_by_copy,
+                                                       ast::bind_infer,
                                                        @ast::Path{
                                                            span:sp(6,7),
                                                            global:false,
