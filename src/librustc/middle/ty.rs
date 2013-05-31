@@ -682,6 +682,7 @@ pub enum BuiltinBound {
     BoundStatic,
     BoundOwned,
     BoundConst,
+    BoundSized,
 }
 
 pub fn EmptyBuiltinBounds() -> BuiltinBounds {
@@ -694,6 +695,7 @@ pub fn AllBuiltinBounds() -> BuiltinBounds {
     set.add(BoundStatic);
     set.add(BoundOwned);
     set.add(BoundConst);
+    set.add(BoundSized);
     set
 }
 
@@ -1825,7 +1827,8 @@ pub impl TypeContents {
             BoundCopy => self.is_copy(cx),
             BoundStatic => self.is_static(cx),
             BoundConst => self.is_const(cx),
-            BoundOwned => self.is_owned(cx)
+            BoundOwned => self.is_owned(cx),
+            BoundSized => self.is_sized(cx),
         }
     }
 
@@ -1868,6 +1871,14 @@ pub impl TypeContents {
 
     fn nonconst(_cx: ctxt) -> TypeContents {
         TC_MUTABLE
+    }
+
+    fn is_sized(&self, cx: ctxt) -> bool {
+        !self.intersects(TypeContents::dynamically_sized(cx))
+    }
+
+    fn dynamically_sized(_cx: ctxt) -> TypeContents {
+        TC_DYNAMIC_SIZE
     }
 
     fn moves_by_default(&self, cx: ctxt) -> bool {
@@ -1943,8 +1954,11 @@ static TC_EMPTY_ENUM: TypeContents =       TypeContents{bits: 0b0010_0000_0000};
 /// Contains a type marked with `#[non_owned]`
 static TC_NON_OWNED: TypeContents =        TypeContents{bits: 0b0100_0000_0000};
 
+/// Is a bare vector, str, function, trait, etc (only relevant at top level).
+static TC_DYNAMIC_SIZE: TypeContents =     TypeContents{bits: 0b1000_0000_0000};
+
 /// All possible contents.
-static TC_ALL: TypeContents =              TypeContents{bits: 0b0111_1111_1111};
+static TC_ALL: TypeContents =              TypeContents{bits: 0b1111_1111_1111};
 
 pub fn type_is_copyable(cx: ctxt, t: ty::t) -> bool {
     type_contents(cx, t).is_copy(cx)
@@ -2028,7 +2042,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_box(mt) => {
-                TC_MANAGED + nonowned(tc_mt(cx, mt, cache))
+                TC_MANAGED + statically_sized(nonowned(tc_mt(cx, mt, cache)))
             }
 
             ty_trait(_, _, UniqTraitStore, _) => {
@@ -2048,28 +2062,35 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
             ty_rptr(r, mt) => {
                 borrowed_contents(r, mt.mutbl) +
-                    nonowned(tc_mt(cx, mt, cache))
+                    statically_sized(nonowned(tc_mt(cx, mt, cache)))
             }
 
             ty_uniq(mt) => {
-                TC_OWNED_POINTER + tc_mt(cx, mt, cache)
+                TC_OWNED_POINTER + statically_sized(tc_mt(cx, mt, cache))
             }
 
             ty_evec(mt, vstore_uniq) => {
-                TC_OWNED_VEC + tc_mt(cx, mt, cache)
+                TC_OWNED_VEC + statically_sized(tc_mt(cx, mt, cache))
             }
 
             ty_evec(mt, vstore_box) => {
-                TC_MANAGED + nonowned(tc_mt(cx, mt, cache))
+                TC_MANAGED + statically_sized(nonowned(tc_mt(cx, mt, cache)))
             }
 
             ty_evec(mt, vstore_slice(r)) => {
                 borrowed_contents(r, mt.mutbl) +
-                    nonowned(tc_mt(cx, mt, cache))
+                    statically_sized(nonowned(tc_mt(cx, mt, cache)))
             }
 
             ty_evec(mt, vstore_fixed(_)) => {
-                tc_mt(cx, mt, cache)
+                let contents = tc_mt(cx, mt, cache);
+                // FIXME(#6308) Uncomment this when construction of such
+                // vectors is prevented earlier in compilation.
+                // if !contents.is_sized(cx) {
+                //     cx.sess.bug("Fixed-length vector of unsized type \
+                //                  should be impossible");
+                // }
+                contents
             }
 
             ty_estr(vstore_box) => {
@@ -2144,7 +2165,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_opaque_box => TC_MANAGED,
-            ty_unboxed_vec(mt) => tc_mt(cx, mt, cache),
+            ty_unboxed_vec(mt) => TC_DYNAMIC_SIZE + tc_mt(cx, mt, cache),
             ty_opaque_closure_ptr(sigil) => {
                 match sigil {
                     ast::BorrowedSigil => TC_BORROWED_POINTER,
@@ -2211,6 +2232,14 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         TypeContents {bits: pointee.bits & mask}
     }
 
+    fn statically_sized(pointee: TypeContents) -> TypeContents {
+        /*!
+         * If a dynamically-sized type is found behind a pointer, we should
+         * restore the 'Sized' kind to the pointer and things that contain it.
+         */
+        TypeContents {bits: pointee.bits & !TC_DYNAMIC_SIZE.bits}
+    }
+
     fn closure_contents(cty: &ClosureTy) -> TypeContents {
         let st = match cty.sigil {
             ast::BorrowedSigil => TC_BORROWED_POINTER,
@@ -2239,6 +2268,8 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 BoundStatic => TypeContents::nonstatic(cx),
                 BoundOwned => TypeContents::nonowned(cx),
                 BoundConst => TypeContents::nonconst(cx),
+                // The dynamic-size bit can be removed at pointer-level, etc.
+                BoundSized => TypeContents::dynamically_sized(cx),
             };
         }
 
@@ -2505,6 +2536,21 @@ pub fn type_is_enum(ty: t) -> bool {
     match get(ty).sty {
       ty_enum(_, _) => return true,
       _ => return false
+    }
+}
+
+// Is the type's representation size known at compile time?
+pub fn type_is_sized(cx: ctxt, ty: ty::t) -> bool {
+    match get(ty).sty {
+        // FIXME(#6308) add trait, vec, str, etc here.
+        ty_param(p) => {
+            let param_def = cx.ty_param_defs.get(&p.def_id.node);
+            if param_def.bounds.builtin_bounds.contains_elem(BoundSized) {
+                return true;
+            }
+            return false;
+        },
+        _ => return true,
     }
 }
 

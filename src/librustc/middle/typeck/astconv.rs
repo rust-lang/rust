@@ -782,6 +782,9 @@ pub fn try_add_builtin_trait(tcx: ty::ctxt,
     } else if trait_def_id == li.const_trait() {
         builtin_bounds.add(ty::BoundConst);
         true
+    } else if trait_def_id == li.sized_trait() {
+        builtin_bounds.add(ty::BoundSized);
+        true
     } else {
         false
     }
