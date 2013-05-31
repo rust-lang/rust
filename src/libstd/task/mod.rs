@@ -37,17 +37,13 @@
 
 use prelude::*;
 
-use cast;
 use cell::Cell;
 use cmp::Eq;
 use comm::{stream, Chan, GenericChan, GenericPort, Port};
-use comm;
-use ptr;
 use result::Result;
 use result;
 use rt::{context, OldTaskContext};
 use task::rt::{task_id, sched_id};
-use task;
 use unstable::finally::Finally;
 use util::replace;
 use util;

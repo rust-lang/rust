@@ -12,7 +12,7 @@ use core::prelude::*;
 use core::str;
 use core::io;
 
-use driver::session::{OptLevel, No, Less, Default, Aggressive};
+use driver::session::{OptLevel, No, Less, Aggressive};
 use driver::session::{Session};
 use lib::llvm::{PassRef, ModuleRef,PassManagerRef,TargetDataRef};
 use lib::llvm::llvm;

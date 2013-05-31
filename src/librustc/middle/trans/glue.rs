@@ -19,7 +19,6 @@ use back::link::*;
 use driver::session;
 use lib;
 use lib::llvm::{llvm, ValueRef, TypeRef, True};
-use lib::llvm::type_to_str;
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::callee;

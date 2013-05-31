@@ -53,6 +53,7 @@ use middle::lint;
 use core::io;
 use core::os;
 use core::result;
+#[cfg(not(stage0))]
 use core::str;
 use core::task;
 use core::uint;

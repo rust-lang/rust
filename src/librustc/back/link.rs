@@ -106,9 +106,7 @@ pub mod jit {
     use metadata::cstore;
 
     use core::cast;
-    use core::char;
     use core::libc::c_int;
-    use core::os;
     use core::ptr;
     use core::str;
 

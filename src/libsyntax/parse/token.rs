@@ -19,11 +19,9 @@ use util::interner;
 use core::cast;
 use core::char;
 use core::cmp::Equiv;
-use core::hashmap::HashSet;
 use core::local_data;
 use core::str;
 use core::to_bytes;
-use core::vec;
 
 #[deriving(Encodable, Decodable, Eq)]
 pub enum binop {

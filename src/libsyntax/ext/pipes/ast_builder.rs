@@ -19,7 +19,6 @@ use ast::ident;
 use ast;
 use codemap::span;
 
-use core::str;
 use core::vec;
 
 // Transitional reexports so qquote can find the paths it is looking for
