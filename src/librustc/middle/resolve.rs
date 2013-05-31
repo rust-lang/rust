@@ -3079,7 +3079,7 @@ pub impl Resolver {
                 self.session.span_err(imports[index].span, "unresolved import");
             } else {
                 let err = fmt!("unresolved import (maybe you meant `%s::*`?)",
-                               sn.slice(0, sn.len() - 1)); // -1 to adjust for semicolon
+                               sn.slice(0, sn.len()));
                 self.session.span_err(imports[index].span, err);
             }
         }
