@@ -14,8 +14,8 @@ struct cat {
   how_hungry : int,
 }
 
-pub impl cat {
-  fn eat(&self) {
+impl cat {
+  pub fn eat(&self) {
     self.how_hungry -= 5; //~ ERROR cannot assign
   }
 

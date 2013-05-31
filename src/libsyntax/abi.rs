@@ -109,18 +109,18 @@ pub fn all_names() -> ~[&'static str] {
     AbiDatas.map(|d| d.name)
 }
 
-pub impl Abi {
+impl Abi {
     #[inline]
-    fn index(&self) -> uint {
+    pub fn index(&self) -> uint {
         *self as uint
     }
 
     #[inline]
-    fn data(&self) -> &'static AbiData {
+    pub fn data(&self) -> &'static AbiData {
         &AbiDatas[self.index()]
     }
 
-    fn name(&self) -> &'static str {
+    pub fn name(&self) -> &'static str {
         self.data().name
     }
 }
@@ -131,70 +131,70 @@ impl Architecture {
     }
 }
 
-pub impl AbiSet {
-    fn from(abi: Abi) -> AbiSet {
+impl AbiSet {
+    pub fn from(abi: Abi) -> AbiSet {
         AbiSet { bits: (1 << abi.index()) }
     }
 
     #[inline]
-    fn Rust() -> AbiSet {
+    pub fn Rust() -> AbiSet {
         AbiSet::from(Rust)
     }
 
     #[inline]
-    fn C() -> AbiSet {
+    pub fn C() -> AbiSet {
         AbiSet::from(C)
     }
 
     #[inline]
-    fn Intrinsic() -> AbiSet {
+    pub fn Intrinsic() -> AbiSet {
         AbiSet::from(RustIntrinsic)
     }
 
-    fn default() -> AbiSet {
+    pub fn default() -> AbiSet {
         AbiSet::C()
     }
 
-    fn empty() -> AbiSet {
+    pub fn empty() -> AbiSet {
         AbiSet { bits: 0 }
     }
 
     #[inline]
-    fn is_rust(&self) -> bool {
+    pub fn is_rust(&self) -> bool {
         self.bits == 1 << Rust.index()
     }
 
     #[inline]
-    fn is_c(&self) -> bool {
+    pub fn is_c(&self) -> bool {
         self.bits == 1 << C.index()
     }
 
     #[inline]
-    fn is_intrinsic(&self) -> bool {
+    pub fn is_intrinsic(&self) -> bool {
         self.bits == 1 << RustIntrinsic.index()
     }
 
-    fn contains(&self, abi: Abi) -> bool {
+    pub fn contains(&self, abi: Abi) -> bool {
         (self.bits & (1 << abi.index())) != 0
     }
 
-    fn subset_of(&self, other_abi_set: AbiSet) -> bool {
+    pub fn subset_of(&self, other_abi_set: AbiSet) -> bool {
         (self.bits & other_abi_set.bits) == self.bits
     }
 
-    fn add(&mut self, abi: Abi) {
+    pub fn add(&mut self, abi: Abi) {
         self.bits |= (1 << abi.index());
     }
 
-    fn each(&self, op: &fn(abi: Abi) -> bool) -> bool {
+    pub fn each(&self, op: &fn(abi: Abi) -> bool) -> bool {
         each_abi(|abi| !self.contains(abi) || op(abi))
     }
 
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.bits == 0
     }
 
-    fn for_arch(&self, arch: Architecture) -> Option<Abi> {
+    pub fn for_arch(&self, arch: Architecture) -> Option<Abi> {
         // NB---Single platform ABIs come first
         for self.each |abi| {
             let data = abi.data();
@@ -208,7 +208,7 @@ pub impl AbiSet {
         None
     }
 
-    fn check_valid(&self) -> Option<(Abi, Abi)> {
+    pub fn check_valid(&self) -> Option<(Abi, Abi)> {
         let mut abis = ~[];
         for self.each |abi| { abis.push(abi); }
 

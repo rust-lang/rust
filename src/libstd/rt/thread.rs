@@ -19,8 +19,8 @@ pub struct Thread {
     raw_thread: *raw_thread
 }
 
-pub impl Thread {
-    fn start(main: ~fn()) -> Thread {
+impl Thread {
+    pub fn start(main: ~fn()) -> Thread {
         fn substart(main: &~fn()) -> *raw_thread {
             unsafe { rust_raw_thread_start(main) }
         }

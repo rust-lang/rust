@@ -150,14 +150,14 @@ pub struct PortSet<T> {
     ports: ~[pipesy::Port<T>],
 }
 
-pub impl<T: Owned> PortSet<T> {
-    fn new() -> PortSet<T> {
+impl<T: Owned> PortSet<T> {
+    pub fn new() -> PortSet<T> {
         PortSet {
             ports: ~[]
         }
     }
 
-    fn add(&self, port: Port<T>) {
+    pub fn add(&self, port: Port<T>) {
         let Port { inner } = port;
         let port = match inner {
             Left(p) => p,
@@ -169,7 +169,7 @@ pub impl<T: Owned> PortSet<T> {
         }
     }
 
-    fn chan(&self) -> Chan<T> {
+    pub fn chan(&self) -> Chan<T> {
         let (po, ch) = stream();
         self.add(po);
         ch
@@ -470,20 +470,20 @@ mod pipesy {
         (PortOne::new(port), ChanOne::new(chan))
     }
 
-    pub impl<T: Owned> PortOne<T> {
-        fn recv(self) -> T { recv_one(self) }
-        fn try_recv(self) -> Option<T> { try_recv_one(self) }
-        fn unwrap(self) -> oneshot::server::Oneshot<T> {
+    impl<T: Owned> PortOne<T> {
+        pub fn recv(self) -> T { recv_one(self) }
+        pub fn try_recv(self) -> Option<T> { try_recv_one(self) }
+        pub fn unwrap(self) -> oneshot::server::Oneshot<T> {
             match self {
                 PortOne { contents: s } => s
             }
         }
     }
 
-    pub impl<T: Owned> ChanOne<T> {
-        fn send(self, data: T) { send_one(self, data) }
-        fn try_send(self, data: T) -> bool { try_send_one(self, data) }
-        fn unwrap(self) -> oneshot::client::Oneshot<T> {
+    impl<T: Owned> ChanOne<T> {
+        pub fn send(self, data: T) { send_one(self, data) }
+        pub fn try_send(self, data: T) -> bool { try_send_one(self, data) }
+        pub fn unwrap(self) -> oneshot::client::Oneshot<T> {
             match self {
                 ChanOne { contents: s } => s
             }

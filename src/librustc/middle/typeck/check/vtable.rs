@@ -65,8 +65,8 @@ pub struct VtableContext {
     infcx: @mut infer::InferCtxt
 }
 
-pub impl VtableContext {
-    fn tcx(&const self) -> ty::ctxt { self.ccx.tcx }
+impl VtableContext {
+    pub fn tcx(&const self) -> ty::ctxt { self.ccx.tcx }
 }
 
 fn has_trait_bounds(type_param_defs: &[ty::TypeParameterDef]) -> bool {

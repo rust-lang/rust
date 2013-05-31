@@ -69,13 +69,13 @@ enum MoveError {
     MoveWhileBorrowed(/*move*/@LoanPath, /*loan*/@LoanPath, /*loan*/span)
 }
 
-pub impl<'self> CheckLoanCtxt<'self> {
-    fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
+impl<'self> CheckLoanCtxt<'self> {
+    pub fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
-    fn each_issued_loan(&self,
-                        scope_id: ast::node_id,
-                        op: &fn(&Loan) -> bool) -> bool
-    {
+    pub fn each_issued_loan(&self,
+                            scope_id: ast::node_id,
+                            op: &fn(&Loan) -> bool)
+                            -> bool {
         //! Iterates over each loan that that has been issued
         //! on entrance to `scope_id`, regardless of whether it is
         //! actually *in scope* at that point.  Sometimes loans
@@ -91,10 +91,10 @@ pub impl<'self> CheckLoanCtxt<'self> {
         return true;
     }
 
-    fn each_in_scope_loan(&self,
-                          scope_id: ast::node_id,
-                          op: &fn(&Loan) -> bool) -> bool
-    {
+    pub fn each_in_scope_loan(&self,
+                              scope_id: ast::node_id,
+                              op: &fn(&Loan) -> bool)
+                              -> bool {
         //! Like `each_issued_loan()`, but only considers loans that are
         //! currently in scope.
 
@@ -109,11 +109,11 @@ pub impl<'self> CheckLoanCtxt<'self> {
         return true;
     }
 
-    fn each_in_scope_restriction(&self,
-                                 scope_id: ast::node_id,
-                                 loan_path: @LoanPath,
-                                 op: &fn(&Loan, &Restriction) -> bool) -> bool
-    {
+    pub fn each_in_scope_restriction(&self,
+                                     scope_id: ast::node_id,
+                                     loan_path: @LoanPath,
+                                     op: &fn(&Loan, &Restriction) -> bool)
+                                     -> bool {
         //! Iterates through all the in-scope restrictions for the
         //! given `loan_path`
 
@@ -129,7 +129,7 @@ pub impl<'self> CheckLoanCtxt<'self> {
         return true;
     }
 
-    fn loans_generated_by(&self, scope_id: ast::node_id) -> ~[uint] {
+    pub fn loans_generated_by(&self, scope_id: ast::node_id) -> ~[uint] {
         //! Returns a vector of the loans that are generated as
         //! we encounter `scope_id`.
 
@@ -140,7 +140,7 @@ pub impl<'self> CheckLoanCtxt<'self> {
         return result;
     }
 
-    fn check_for_conflicting_loans(&mut self, scope_id: ast::node_id) {
+    pub fn check_for_conflicting_loans(&mut self, scope_id: ast::node_id) {
         //! Checks to see whether any of the loans that are issued
         //! by `scope_id` conflict with loans that have already been
         //! issued when we enter `scope_id` (for example, we do not
@@ -167,9 +167,9 @@ pub impl<'self> CheckLoanCtxt<'self> {
         }
     }
 
-    fn report_error_if_loans_conflict(&self,
-                                      old_loan: &Loan,
-                                      new_loan: &Loan) {
+    pub fn report_error_if_loans_conflict(&self,
+                                          old_loan: &Loan,
+                                          new_loan: &Loan) {
         //! Checks whether `old_loan` and `new_loan` can safely be issued
         //! simultaneously.
 
@@ -188,11 +188,12 @@ pub impl<'self> CheckLoanCtxt<'self> {
             new_loan, old_loan, old_loan, new_loan);
     }
 
-    fn report_error_if_loan_conflicts_with_restriction(&self,
-                                                       loan1: &Loan,
-                                                       loan2: &Loan,
-                                                       old_loan: &Loan,
-                                                       new_loan: &Loan) -> bool {
+    pub fn report_error_if_loan_conflicts_with_restriction(&self,
+                                                           loan1: &Loan,
+                                                           loan2: &Loan,
+                                                           old_loan: &Loan,
+                                                           new_loan: &Loan)
+                                                           -> bool {
         //! Checks whether the restrictions introduced by `loan1` would
         //! prohibit `loan2`. Returns false if an error is reported.
 
@@ -247,18 +248,18 @@ pub impl<'self> CheckLoanCtxt<'self> {
         true
     }
 
-    fn is_local_variable(&self, cmt: mc::cmt) -> bool {
+    pub fn is_local_variable(&self, cmt: mc::cmt) -> bool {
         match cmt.cat {
           mc::cat_local(_) => true,
           _ => false
         }
     }
 
-    fn check_if_path_is_moved(&self,
-                              id: ast::node_id,
-                              span: span,
-                              use_kind: MovedValueUseKind,
-                              lp: @LoanPath) {
+    pub fn check_if_path_is_moved(&self,
+                                  id: ast::node_id,
+                                  span: span,
+                                  use_kind: MovedValueUseKind,
+                                  lp: @LoanPath) {
         /*!
          * Reports an error if `expr` (which should be a path)
          * is using a moved/uninitialized value
@@ -277,7 +278,7 @@ pub impl<'self> CheckLoanCtxt<'self> {
         }
     }
 
-    fn check_assignment(&self, expr: @ast::expr) {
+    pub fn check_assignment(&self, expr: @ast::expr) {
         // We don't use cat_expr() here because we don't want to treat
         // auto-ref'd parameters in overloaded operators as rvalues.
         let cmt = match self.bccx.tcx.adjustments.find(&expr.id) {
@@ -533,10 +534,10 @@ pub impl<'self> CheckLoanCtxt<'self> {
         }
     }
 
-    fn report_illegal_mutation(&self,
-                               expr: @ast::expr,
-                               loan_path: &LoanPath,
-                               loan: &Loan) {
+    pub fn report_illegal_mutation(&self,
+                                   expr: @ast::expr,
+                                   loan_path: &LoanPath,
+                                   loan: &Loan) {
         self.bccx.span_err(
             expr.span,
             fmt!("cannot assign to `%s` because it is borrowed",
@@ -547,7 +548,7 @@ pub impl<'self> CheckLoanCtxt<'self> {
                  self.bccx.loan_path_to_str(loan_path)));
     }
 
-    fn check_move_out_from_expr(&self, ex: @ast::expr) {
+    pub fn check_move_out_from_expr(&self, ex: @ast::expr) {
         match ex.node {
             ast::expr_paren(*) => {
                 /* In the case of an expr_paren(), the expression inside
@@ -574,7 +575,7 @@ pub impl<'self> CheckLoanCtxt<'self> {
         }
     }
 
-    fn analyze_move_out_from_cmt(&self, cmt: mc::cmt) -> MoveError {
+    pub fn analyze_move_out_from_cmt(&self, cmt: mc::cmt) -> MoveError {
         debug!("analyze_move_out_from_cmt(cmt=%s)", cmt.repr(self.tcx()));
 
         // FIXME(#4384) inadequare if/when we permit `move a.b`
@@ -590,13 +591,12 @@ pub impl<'self> CheckLoanCtxt<'self> {
         return MoveOk;
     }
 
-    fn check_call(&mut self,
-                  _expr: @ast::expr,
-                  _callee: Option<@ast::expr>,
-                  _callee_id: ast::node_id,
-                  _callee_span: span,
-                  _args: &[@ast::expr])
-    {
+    pub fn check_call(&mut self,
+                      _expr: @ast::expr,
+                      _callee: Option<@ast::expr>,
+                      _callee_id: ast::node_id,
+                      _callee_span: span,
+                      _args: &[@ast::expr]) {
         // NB: This call to check for conflicting loans is not truly
         // necessary, because the callee_id never issues new loans.
         // However, I added it for consistency and lest the system

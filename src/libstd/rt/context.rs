@@ -27,8 +27,8 @@ pub struct Context {
     regs: ~Registers
 }
 
-pub impl Context {
-    fn empty() -> Context {
+impl Context {
+    pub fn empty() -> Context {
         Context {
             start: None,
             regs: new_regs()
@@ -36,7 +36,7 @@ pub impl Context {
     }
 
     /// Create a new context that will resume execution by running ~fn()
-    fn new(start: ~fn(), stack: &mut StackSegment) -> Context {
+    pub fn new(start: ~fn(), stack: &mut StackSegment) -> Context {
         // XXX: Putting main into a ~ so it's a thin pointer and can
         // be passed to the spawn function.  Another unfortunate
         // allocation
@@ -71,7 +71,7 @@ pub impl Context {
     saving the registers values of the executing thread to a Context
     then loading the registers from a previously saved Context.
     */
-    fn swap(out_context: &mut Context, in_context: &Context) {
+    pub fn swap(out_context: &mut Context, in_context: &Context) {
         let out_regs: &mut Registers = match out_context {
             &Context { regs: ~ref mut r, _ } => r
         };

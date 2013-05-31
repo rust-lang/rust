@@ -14,6 +14,8 @@ Higher level communication abstractions.
 
 */
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use core::comm::{GenericChan, GenericSmartChan, GenericPort};
@@ -28,20 +30,20 @@ pub struct DuplexStream<T, U> {
 }
 
 // Allow these methods to be used without import:
-pub impl<T:Owned,U:Owned> DuplexStream<T, U> {
-    fn send(&self, x: T) {
+impl<T:Owned,U:Owned> DuplexStream<T, U> {
+    pub fn send(&self, x: T) {
         self.chan.send(x)
     }
-    fn try_send(&self, x: T) -> bool {
+    pub fn try_send(&self, x: T) -> bool {
         self.chan.try_send(x)
     }
-    fn recv(&self, ) -> U {
+    pub fn recv(&self, ) -> U {
         self.port.recv()
     }
-    fn try_recv(&self) -> Option<U> {
+    pub fn try_recv(&self) -> Option<U> {
         self.port.try_recv()
     }
-    fn peek(&self) -> bool {
+    pub fn peek(&self) -> bool {
         self.port.peek()
     }
 }

@@ -19,7 +19,10 @@ fn thing() -> thing {
         x: 0
     }
 }
-pub impl thing { fn f(self) {} }
+
+impl thing {
+    pub fn f(self) {}
+}
 
 pub fn main() {
     let z = thing();

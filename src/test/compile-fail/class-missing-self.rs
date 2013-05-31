@@ -12,7 +12,7 @@ struct cat {
   priv meows : uint,
 }
 
-priv impl cat {
+impl cat {
     fn sleep(&self) { loop{} }
     fn meow(&self) {
       error!("Meow");

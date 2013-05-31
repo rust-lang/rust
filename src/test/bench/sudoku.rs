@@ -44,7 +44,7 @@ struct Sudoku {
     grid: grid
 }
 
-pub impl Sudoku {
+impl Sudoku {
     pub fn new(g: grid) -> Sudoku {
         return Sudoku { grid: g }
     }

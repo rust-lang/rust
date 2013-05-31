@@ -430,9 +430,8 @@ pub struct Crate {
     cfgs: ~[~str]
 }
 
-pub impl Crate {
-
-    fn new(p: &Path) -> Crate {
+impl Crate {
+    pub fn new(p: &Path) -> Crate {
         Crate {
             file: copy *p,
             flags: ~[],
@@ -440,28 +439,28 @@ pub impl Crate {
         }
     }
 
-    fn flag(&self, flag: ~str) -> Crate {
+    pub fn flag(&self, flag: ~str) -> Crate {
         Crate {
             flags: vec::append(copy self.flags, [flag]),
             .. copy *self
         }
     }
 
-    fn flags(&self, flags: ~[~str]) -> Crate {
+    pub fn flags(&self, flags: ~[~str]) -> Crate {
         Crate {
             flags: vec::append(copy self.flags, flags),
             .. copy *self
         }
     }
 
-    fn cfg(&self, cfg: ~str) -> Crate {
+    pub fn cfg(&self, cfg: ~str) -> Crate {
         Crate {
             cfgs: vec::append(copy self.cfgs, [cfg]),
             .. copy *self
         }
     }
 
-    fn cfgs(&self, cfgs: ~[~str]) -> Crate {
+    pub fn cfgs(&self, cfgs: ~[~str]) -> Crate {
         Crate {
             cfgs: vec::append(copy self.cfgs, cfgs),
             .. copy *self

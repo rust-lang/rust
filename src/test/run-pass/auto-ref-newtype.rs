@@ -13,8 +13,8 @@
 
 struct Foo(uint);
 
-pub impl Foo {
-    fn len(&self) -> uint { **self }
+impl Foo {
+    pub fn len(&self) -> uint { **self }
 }
 
 pub fn main() {

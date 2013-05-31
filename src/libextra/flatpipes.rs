@@ -317,8 +317,8 @@ impl<T,F:Flattener<T>,C:ByteChan> GenericChan<T> for FlatChan<T, F, C> {
     }
 }
 
-pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P> {
-    fn new(u: U, p: P) -> FlatPort<T, U, P> {
+impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P> {
+    pub fn new(u: U, p: P) -> FlatPort<T, U, P> {
         FlatPort {
             unflattener: u,
             byte_port: p
@@ -326,8 +326,8 @@ pub impl<T,U:Unflattener<T>,P:BytePort> FlatPort<T, U, P> {
     }
 }
 
-pub impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C> {
-    fn new(f: F, c: C) -> FlatChan<T, F, C> {
+impl<T,F:Flattener<T>,C:ByteChan> FlatChan<T, F, C> {
+    pub fn new(f: F, c: C) -> FlatChan<T, F, C> {
         FlatChan {
             flattener: f,
             byte_chan: c
@@ -380,16 +380,16 @@ pub mod flatteners {
         }
     }
 
-    pub impl<T:Copy + Owned> PodUnflattener<T> {
-        fn new() -> PodUnflattener<T> {
+    impl<T:Copy + Owned> PodUnflattener<T> {
+        pub fn new() -> PodUnflattener<T> {
             PodUnflattener {
                 bogus: ()
             }
         }
     }
 
-    pub impl<T:Copy + Owned> PodFlattener<T> {
-        fn new() -> PodFlattener<T> {
+    impl<T:Copy + Owned> PodFlattener<T> {
+        pub fn new() -> PodFlattener<T> {
             PodFlattener {
                 bogus: ()
             }
@@ -423,8 +423,8 @@ pub mod flatteners {
         }
     }
 
-    pub impl<D:Decoder,T:Decodable<D>> DeserializingUnflattener<D, T> {
-        fn new(deserialize_buffer: DeserializeBuffer<T>)
+    impl<D:Decoder,T:Decodable<D>> DeserializingUnflattener<D, T> {
+        pub fn new(deserialize_buffer: DeserializeBuffer<T>)
                    -> DeserializingUnflattener<D, T> {
             DeserializingUnflattener {
                 deserialize_buffer: deserialize_buffer
@@ -432,8 +432,8 @@ pub mod flatteners {
         }
     }
 
-    pub impl<S:Encoder,T:Encodable<S>> SerializingFlattener<S, T> {
-        fn new(serialize_value: SerializeValue<T>)
+    impl<S:Encoder,T:Encodable<S>> SerializingFlattener<S, T> {
+        pub fn new(serialize_value: SerializeValue<T>)
                    -> SerializingFlattener<S, T> {
             SerializingFlattener {
                 serialize_value: serialize_value
@@ -554,16 +554,16 @@ pub mod bytepipes {
         }
     }
 
-    pub impl<R:Reader> ReaderBytePort<R> {
-        fn new(r: R) -> ReaderBytePort<R> {
+    impl<R:Reader> ReaderBytePort<R> {
+        pub fn new(r: R) -> ReaderBytePort<R> {
             ReaderBytePort {
                 reader: r
             }
         }
     }
 
-    pub impl<W:Writer> WriterByteChan<W> {
-        fn new(w: W) -> WriterByteChan<W> {
+    impl<W:Writer> WriterByteChan<W> {
+        pub fn new(w: W) -> WriterByteChan<W> {
             WriterByteChan {
                 writer: w
             }
@@ -619,8 +619,8 @@ pub mod bytepipes {
         }
     }
 
-    pub impl PipeBytePort {
-        fn new(p: Port<~[u8]>) -> PipeBytePort {
+    impl PipeBytePort {
+        pub fn new(p: Port<~[u8]>) -> PipeBytePort {
             PipeBytePort {
                 port: p,
                 buf: @mut ~[]
@@ -628,8 +628,8 @@ pub mod bytepipes {
         }
     }
 
-    pub impl PipeByteChan {
-        fn new(c: Chan<~[u8]>) -> PipeByteChan {
+    impl PipeByteChan {
+        pub fn new(c: Chan<~[u8]>) -> PipeByteChan {
             PipeByteChan {
                 chan: c
             }

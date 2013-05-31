@@ -14,8 +14,8 @@ struct cat {
     how_hungry : int,
 }
 
-pub impl cat {
-  fn meow_count(&mut self) -> uint { self.meows }
+impl cat {
+  pub fn meow_count(&mut self) -> uint { self.meows }
 }
 
 fn cat(in_x : uint, in_y : int) -> cat {

@@ -21,21 +21,21 @@ pub struct WorkQueue<T> {
     priv queue: ~Exclusive<~[T]>
 }
 
-pub impl<T: Owned> WorkQueue<T> {
-    fn new() -> WorkQueue<T> {
+impl<T: Owned> WorkQueue<T> {
+    pub fn new() -> WorkQueue<T> {
         WorkQueue {
             queue: ~exclusive(~[])
         }
     }
 
-    fn push(&mut self, value: T) {
+    pub fn push(&mut self, value: T) {
         unsafe {
             let value = Cell(value);
             self.queue.with(|q| q.unshift(value.take()) );
         }
     }
 
-    fn pop(&mut self) -> Option<T> {
+    pub fn pop(&mut self) -> Option<T> {
         unsafe {
             do self.queue.with |q| {
                 if !q.is_empty() {
@@ -47,7 +47,7 @@ pub impl<T: Owned> WorkQueue<T> {
         }
     }
 
-    fn steal(&mut self) -> Option<T> {
+    pub fn steal(&mut self) -> Option<T> {
         unsafe {
             do self.queue.with |q| {
                 if !q.is_empty() {
@@ -59,7 +59,7 @@ pub impl<T: Owned> WorkQueue<T> {
         }
     }
 
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         unsafe {
             self.queue.with_imm(|q| q.is_empty() )
         }

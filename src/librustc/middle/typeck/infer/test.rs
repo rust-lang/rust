@@ -77,15 +77,15 @@ fn setup_env(test_name: &str, source_string: &str) -> Env {
                 err_messages: messages};
 }
 
-pub impl Env {
-    fn create_region_hierarchy(&self, rh: &RH) {
+impl Env {
+    pub fn create_region_hierarchy(&self, rh: &RH) {
         for rh.sub.each |child_rh| {
             self.create_region_hierarchy(child_rh);
             self.tcx.region_map.insert(child_rh.id, rh.id);
         }
     }
 
-    fn create_simple_region_hierarchy(&self) {
+    pub fn create_simple_region_hierarchy(&self) {
         // creates a region hierarchy where 1 is root, 10 and 11 are
         // children of 1, etc
         self.create_region_hierarchy(
@@ -96,7 +96,7 @@ pub impl Env {
                             sub: &[]}]});
     }
 
-    fn lookup_item(&self, names: &[~str]) -> ast::node_id {
+    pub fn lookup_item(&self, names: &[~str]) -> ast::node_id {
         return match search_mod(self, &self.crate.node.module, 0, names) {
             Some(id) => id,
             None => {
@@ -144,14 +144,14 @@ pub impl Env {
         }
     }
 
-    fn is_subtype(&self, a: ty::t, b: ty::t) -> bool {
+    pub fn is_subtype(&self, a: ty::t, b: ty::t) -> bool {
         match infer::can_mk_subty(self.infcx, a, b) {
             Ok(_) => true,
             Err(_) => false
         }
     }
 
-    fn assert_subtype(&self, a: ty::t, b: ty::t) {
+    pub fn assert_subtype(&self, a: ty::t, b: ty::t) {
         if !self.is_subtype(a, b) {
             fail!("%s is not a subtype of %s, but it should be",
                   self.ty_to_str(a),
@@ -159,7 +159,7 @@ pub impl Env {
         }
     }
 
-    fn assert_not_subtype(&self, a: ty::t, b: ty::t) {
+    pub fn assert_not_subtype(&self, a: ty::t, b: ty::t) {
         if self.is_subtype(a, b) {
             fail!("%s is a subtype of %s, but it shouldn't be",
                   self.ty_to_str(a),
@@ -167,21 +167,21 @@ pub impl Env {
         }
     }
 
-    fn assert_strict_subtype(&self, a: ty::t, b: ty::t) {
+    pub fn assert_strict_subtype(&self, a: ty::t, b: ty::t) {
         self.assert_subtype(a, b);
         self.assert_not_subtype(b, a);
     }
 
-    fn assert_eq(&self, a: ty::t, b: ty::t) {
+    pub fn assert_eq(&self, a: ty::t, b: ty::t) {
         self.assert_subtype(a, b);
         self.assert_subtype(b, a);
     }
 
-    fn ty_to_str(&self, a: ty::t) -> ~str {
+    pub fn ty_to_str(&self, a: ty::t) -> ~str {
         ty_to_str(self.tcx, a)
     }
 
-    fn t_fn(&self, input_tys: &[ty::t], output_ty: ty::t) -> ty::t {
+    pub fn t_fn(&self, input_tys: &[ty::t], output_ty: ty::t) -> ty::t {
         let inputs = input_tys.map(|t| {mode: ast::expl(ast::by_copy),
                                         ty: *t});
         ty::mk_fn(self.tcx, FnTyBase {
@@ -195,34 +195,34 @@ pub impl Env {
         })
     }
 
-    fn t_int(&self) -> ty::t {
+    pub fn t_int(&self) -> ty::t {
         ty::mk_int(self.tcx)
     }
 
-    fn t_rptr_bound(&self, id: uint) -> ty::t {
+    pub fn t_rptr_bound(&self, id: uint) -> ty::t {
         ty::mk_imm_rptr(self.tcx, ty::re_bound(ty::br_anon(id)), self.t_int())
     }
 
-    fn t_rptr_scope(&self, id: ast::node_id) -> ty::t {
+    pub fn t_rptr_scope(&self, id: ast::node_id) -> ty::t {
         ty::mk_imm_rptr(self.tcx, ty::re_scope(id), self.t_int())
     }
 
-    fn t_rptr_free(&self, nid: ast::node_id, id: uint) -> ty::t {
+    pub fn t_rptr_free(&self, nid: ast::node_id, id: uint) -> ty::t {
         ty::mk_imm_rptr(self.tcx,
                         ty::re_free(ty::FreeRegion {scope_id: nid,
                                                     bound_region: ty::br_anon(id)}),
                         self.t_int())
     }
 
-    fn t_rptr_static(&self) -> ty::t {
+    pub fn t_rptr_static(&self) -> ty::t {
         ty::mk_imm_rptr(self.tcx, ty::re_static, self.t_int())
     }
 
-    fn lub() -> Lub { Lub(self.infcx.combine_fields(true, dummy_sp())) }
+    pub fn lub() -> Lub { Lub(self.infcx.combine_fields(true, dummy_sp())) }
 
-    fn glb() -> Glb { Glb(self.infcx.combine_fields(true, dummy_sp())) }
+    pub fn glb() -> Glb { Glb(self.infcx.combine_fields(true, dummy_sp())) }
 
-    fn resolve_regions(exp_count: uint) {
+    pub fn resolve_regions(exp_count: uint) {
         debug!("resolve_regions(%u)", exp_count);
 
         self.infcx.resolve_regions();
@@ -237,7 +237,7 @@ pub impl Env {
     }
 
     /// Checks that `LUB(t1,t2) == t_lub`
-    fn check_lub(&self, t1: ty::t, t2: ty::t, t_lub: ty::t) {
+    pub fn check_lub(&self, t1: ty::t, t2: ty::t, t_lub: ty::t) {
         match self.lub().tys(t1, t2) {
             Err(e) => {
                 fail!("Unexpected error computing LUB: %?", e)
@@ -255,7 +255,7 @@ pub impl Env {
     }
 
     /// Checks that `GLB(t1,t2) == t_glb`
-    fn check_glb(&self, t1: ty::t, t2: ty::t, t_glb: ty::t) {
+    pub fn check_glb(&self, t1: ty::t, t2: ty::t, t_glb: ty::t) {
         debug!("check_glb(t1=%s, t2=%s, t_glb=%s)",
                self.ty_to_str(t1),
                self.ty_to_str(t2),
@@ -277,7 +277,7 @@ pub impl Env {
     }
 
     /// Checks that `LUB(t1,t2)` is undefined
-    fn check_no_lub(&self, t1: ty::t, t2: ty::t) {
+    pub fn check_no_lub(&self, t1: ty::t, t2: ty::t) {
         match self.lub().tys(t1, t2) {
             Err(_) => {}
             Ok(t) => {
@@ -287,7 +287,7 @@ pub impl Env {
     }
 
     /// Checks that `GLB(t1,t2)` is undefined
-    fn check_no_glb(&self, t1: ty::t, t2: ty::t) {
+    pub fn check_no_glb(&self, t1: ty::t, t2: ty::t) {
         match self.glb().tys(t1, t2) {
             Err(_) => {}
             Ok(t) => {

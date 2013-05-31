@@ -393,21 +393,22 @@ pub struct ident_interner {
     priv interner: StrInterner,
 }
 
-pub impl ident_interner {
-    fn intern(&self, val: &str) -> ast::ident {
+impl ident_interner {
+    pub fn intern(&self, val: &str) -> ast::ident {
         ast::ident { repr: self.interner.intern(val), ctxt: 0 }
     }
-    fn gensym(&self, val: &str) -> ast::ident {
+    pub fn gensym(&self, val: &str) -> ast::ident {
         ast::ident { repr: self.interner.gensym(val), ctxt: 0 }
     }
-    fn get(&self, idx: ast::ident) -> @~str {
+    pub fn get(&self, idx: ast::ident) -> @~str {
         self.interner.get(idx.repr)
     }
-    fn len(&self) -> uint {
+    pub fn len(&self) -> uint {
         self.interner.len()
     }
-    fn find_equiv<Q:Hash + IterBytes + Equiv<@~str>>(&self, val: &Q)
-                                                     -> Option<ast::ident> {
+    pub fn find_equiv<Q:Hash +
+                        IterBytes +
+                        Equiv<@~str>>(&self, val: &Q) -> Option<ast::ident> {
         match self.interner.find_equiv(val) {
             Some(v) => Some(ast::ident { repr: v, ctxt: 0 }),
             None => None,
@@ -586,8 +587,8 @@ pub mod keywords {
         Be,
     }
 
-    pub impl Keyword {
-        fn to_ident(&self) -> ident {
+    impl Keyword {
+        pub fn to_ident(&self) -> ident {
             match *self {
                 As => ident { repr: 35, ctxt: 0 },
                    Break => ident { repr: 36, ctxt: 0 },

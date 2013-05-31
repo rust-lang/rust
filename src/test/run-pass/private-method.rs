@@ -16,14 +16,14 @@ struct cat {
     how_hungry : int,
 }
 
-pub impl cat {
-    fn play(&mut self) {
+impl cat {
+    pub fn play(&mut self) {
         self.meows += 1u;
         self.nap();
     }
 }
 
-priv impl cat {
+impl cat {
     fn nap(&mut self) { for uint::range(1u, 10u) |_i| { }}
 }
 

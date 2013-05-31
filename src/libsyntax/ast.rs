@@ -166,14 +166,14 @@ pub struct Generics {
     ty_params: OptVec<TyParam>
 }
 
-pub impl Generics {
-    fn is_parameterized(&self) -> bool {
+impl Generics {
+    pub fn is_parameterized(&self) -> bool {
         self.lifetimes.len() + self.ty_params.len() > 0
     }
-    fn is_lt_parameterized(&self) -> bool {
+    pub fn is_lt_parameterized(&self) -> bool {
         self.lifetimes.len() > 0
     }
-    fn is_type_parameterized(&self) -> bool {
+    pub fn is_type_parameterized(&self) -> bool {
         self.ty_params.len() > 0
     }
 }

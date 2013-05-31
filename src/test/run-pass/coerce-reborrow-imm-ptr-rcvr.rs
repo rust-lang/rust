@@ -2,8 +2,8 @@ struct SpeechMaker {
     speeches: uint
 }
 
-pub impl SpeechMaker {
-    fn how_many(&const self) -> uint { self.speeches }
+impl SpeechMaker {
+    pub fn how_many(&const self) -> uint { self.speeches }
 }
 
 fn foo(speaker: &const SpeechMaker) -> uint {

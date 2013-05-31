@@ -149,8 +149,8 @@ pub struct VecTypes {
     llunit_size: ValueRef
 }
 
-pub impl VecTypes {
-    fn to_str(&self, ccx: @CrateContext) -> ~str {
+impl VecTypes {
+    pub fn to_str(&self, ccx: @CrateContext) -> ~str {
         fmt!("VecTypes {vec_ty=%s, unit_ty=%s, llunit_ty=%s, llunit_size=%s}",
              ty_to_str(ccx.tcx, self.vec_ty),
              ty_to_str(ccx.tcx, self.unit_ty),

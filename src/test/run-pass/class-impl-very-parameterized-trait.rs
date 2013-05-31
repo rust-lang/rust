@@ -37,10 +37,10 @@ struct cat<T> {
     name : T,
 }
 
-pub impl<T> cat<T> {
-    fn speak(&mut self) { self.meow(); }
+impl<T> cat<T> {
+    pub fn speak(&mut self) { self.meow(); }
 
-    fn eat(&mut self) -> bool {
+    pub fn eat(&mut self) -> bool {
         if self.how_hungry > 0 {
             error!("OM NOM NOM");
             self.how_hungry -= 2;
@@ -113,20 +113,20 @@ impl<T> Map<int, T> for cat<T> {
     fn swap(&mut self, _k: int, _v: T) -> Option<T> { fail!() }
 }
 
-pub impl<T> cat<T> {
-    fn get<'a>(&'a self, k: &int) -> &'a T {
+impl<T> cat<T> {
+    pub fn get<'a>(&'a self, k: &int) -> &'a T {
         match self.find(k) {
           Some(v) => { v }
           None    => { fail!("epic fail"); }
         }
     }
 
-    fn new(in_x: int, in_y: int, in_name: T) -> cat<T> {
+    pub fn new(in_x: int, in_y: int, in_name: T) -> cat<T> {
         cat{meows: in_x, how_hungry: in_y, name: in_name }
     }
 }
 
-priv impl<T> cat<T> {
+impl<T> cat<T> {
     fn meow(&mut self) {
         self.meows += 1;
         error!("Meow %d", self.meows);

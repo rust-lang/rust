@@ -33,29 +33,29 @@ fn align(size: uint, align: uint) -> uint {
 
 struct ptr_visit_adaptor<V>(Inner<V>);
 
-pub impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
+impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
 
     #[inline(always)]
-    fn bump(&self, sz: uint) {
+    pub fn bump(&self, sz: uint) {
       do self.inner.move_ptr() |p| {
             ((p as uint) + sz) as *c_void
       };
     }
 
     #[inline(always)]
-    fn align(&self, a: uint) {
+    pub fn align(&self, a: uint) {
       do self.inner.move_ptr() |p| {
             align(p as uint, a) as *c_void
       };
     }
 
     #[inline(always)]
-    fn align_to<T>(&self) {
+    pub fn align_to<T>(&self) {
         self.align(sys::min_align_of::<T>());
     }
 
     #[inline(always)]
-    fn bump_past<T>(&self) {
+    pub fn bump_past<T>(&self) {
         self.bump(sys::size_of::<T>());
     }
 
@@ -485,14 +485,14 @@ struct Stuff {
     vals: ~[~str]
 }
 
-pub impl my_visitor {
-    fn get<T>(&self, f: &fn(T)) {
+impl my_visitor {
+    pub fn get<T>(&self, f: &fn(T)) {
         unsafe {
             f(*(self.ptr1 as *T));
         }
     }
 
-    fn visit_inner(&self, inner: *TyDesc) -> bool {
+    pub fn visit_inner(&self, inner: *TyDesc) -> bool {
         unsafe {
             let u = my_visitor(**self);
             let v = ptr_visit_adaptor::<my_visitor>(Inner {inner: u});

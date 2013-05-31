@@ -82,14 +82,14 @@ pub struct LanguageItems {
     items: [Option<def_id>, ..38]
 }
 
-pub impl LanguageItems {
+impl LanguageItems {
     pub fn new() -> LanguageItems {
         LanguageItems {
             items: [ None, ..38 ]
         }
     }
 
-    fn each_item(&self, f: &fn(def_id: def_id, i: uint) -> bool) -> bool {
+    pub fn each_item(&self, f: &fn(def_id: def_id, i: uint) -> bool) -> bool {
         self.items.eachi(|i, &item| f(item.get(), i))
     }
 
@@ -331,9 +331,10 @@ struct LanguageItemCollector {
     item_refs: HashMap<@~str, uint>,
 }
 
-pub impl LanguageItemCollector {
-    fn match_and_collect_meta_item(&mut self, item_def_id: def_id,
-                                   meta_item: @meta_item) {
+impl LanguageItemCollector {
+    pub fn match_and_collect_meta_item(&mut self,
+                                       item_def_id: def_id,
+                                       meta_item: @meta_item) {
         match meta_item.node {
             meta_name_value(key, literal) => {
                 match literal.node {
@@ -347,7 +348,7 @@ pub impl LanguageItemCollector {
         }
     }
 
-    fn collect_item(&mut self, item_index: uint, item_def_id: def_id) {
+    pub fn collect_item(&mut self, item_index: uint, item_def_id: def_id) {
         // Check for duplicates.
         match self.items.items[item_index] {
             Some(original_def_id) if original_def_id != item_def_id => {
@@ -363,8 +364,10 @@ pub impl LanguageItemCollector {
         self.items.items[item_index] = Some(item_def_id);
     }
 
-    fn match_and_collect_item(&mut self,
-                              item_def_id: def_id, key: @~str, value: @~str) {
+    pub fn match_and_collect_item(&mut self,
+                                  item_def_id: def_id,
+                                  key: @~str,
+                                  value: @~str) {
         if *key != ~"lang" {
             return;    // Didn't match.
         }
@@ -384,7 +387,7 @@ pub impl LanguageItemCollector {
         }
     }
 
-    fn collect_local_language_items(&mut self) {
+    pub fn collect_local_language_items(&mut self) {
         let this: *mut LanguageItemCollector = &mut *self;
         visit_crate(self.crate, (), mk_simple_visitor(@SimpleVisitor {
             visit_item: |item| {
@@ -401,7 +404,7 @@ pub impl LanguageItemCollector {
         }));
     }
 
-    fn collect_external_language_items(&mut self) {
+    pub fn collect_external_language_items(&mut self) {
         let crate_store = self.session.cstore;
         do iter_crate_data(crate_store) |crate_number, _crate_metadata| {
             for each_lang_item(crate_store, crate_number)
@@ -412,7 +415,7 @@ pub impl LanguageItemCollector {
         }
     }
 
-    fn check_completeness(&self) {
+    pub fn check_completeness(&self) {
         for self.item_refs.each |&key, &item_ref| {
             match self.items.items[item_ref] {
                 None => {
@@ -425,7 +428,7 @@ pub impl LanguageItemCollector {
         }
     }
 
-    fn collect(&mut self) {
+    pub fn collect(&mut self) {
         self.collect_local_language_items();
         self.collect_external_language_items();
         self.check_completeness();

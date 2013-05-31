@@ -49,8 +49,8 @@ pub struct Timespec { sec: i64, nsec: i32 }
  * -1.2 seconds before the epoch is represented by `Timespec { sec: -2_i64,
  * nsec: 800_000_000_i32 }`.
  */
-pub impl Timespec {
-    fn new(sec: i64, nsec: i32) -> Timespec {
+impl Timespec {
+    pub fn new(sec: i64, nsec: i32) -> Timespec {
         assert!(nsec >= 0 && nsec < NSEC_PER_SEC);
         Timespec { sec: sec, nsec: nsec }
     }
@@ -180,9 +180,9 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
     do_strftime(format, tm)
 }
 
-pub impl Tm {
+impl Tm {
     /// Convert time to the seconds from January 1, 1970
-    fn to_timespec(&self) -> Timespec {
+    pub fn to_timespec(&self) -> Timespec {
         unsafe {
             let sec = match self.tm_gmtoff {
                 0_i32 => rustrt::rust_timegm(self),
@@ -194,12 +194,12 @@ pub impl Tm {
     }
 
     /// Convert time to the local timezone
-    fn to_local(&self) -> Tm {
+    pub fn to_local(&self) -> Tm {
         at(self.to_timespec())
     }
 
     /// Convert time to the UTC
-    fn to_utc(&self) -> Tm {
+    pub fn to_utc(&self) -> Tm {
         at_utc(self.to_timespec())
     }
 
@@ -207,10 +207,10 @@ pub impl Tm {
      * Return a string of the current time in the form
      * "Thu Jan  1 00:00:00 1970".
      */
-    fn ctime(&self) -> ~str { self.strftime("%c") }
+    pub fn ctime(&self) -> ~str { self.strftime("%c") }
 
     /// Formats the time according to the format string.
-    fn strftime(&self, format: &str) -> ~str {
+    pub fn strftime(&self, format: &str) -> ~str {
         strftime(format, self)
     }
 
@@ -220,7 +220,7 @@ pub impl Tm {
      * local: "Thu, 22 Mar 2012 07:53:18 PST"
      * utc:   "Thu, 22 Mar 2012 14:53:18 UTC"
      */
-    fn rfc822(&self) -> ~str {
+    pub fn rfc822(&self) -> ~str {
         if self.tm_gmtoff == 0_i32 {
             self.strftime("%a, %d %b %Y %T GMT")
         } else {
@@ -234,7 +234,7 @@ pub impl Tm {
      * local: "Thu, 22 Mar 2012 07:53:18 -0700"
      * utc:   "Thu, 22 Mar 2012 14:53:18 -0000"
      */
-    fn rfc822z(&self) -> ~str {
+    pub fn rfc822z(&self) -> ~str {
         self.strftime("%a, %d %b %Y %T %z")
     }
 
@@ -244,7 +244,7 @@ pub impl Tm {
      * local: "2012-02-22T07:53:18-07:00"
      * utc:   "2012-02-22T14:53:18Z"
      */
-    fn rfc3339(&self) -> ~str {
+    pub fn rfc3339(&self) -> ~str {
         if self.tm_gmtoff == 0_i32 {
             self.strftime("%Y-%m-%dT%H:%M:%SZ")
         } else {
