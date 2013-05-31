@@ -38,6 +38,7 @@ Finally, some inquries into the nature of truth: `is_true` and `is_false`.
 use cmp::{Eq, Ord, TotalOrd, Ordering};
 use option::{None, Option, Some};
 use from_str::FromStr;
+use to_str::ToStr;
 
 /**
 * Negation of a boolean value.
@@ -130,44 +131,6 @@ pub fn xor(a: bool, b: bool) -> bool { (a && !b) || (!a && b) }
 pub fn implies(a: bool, b: bool) -> bool { !a || b }
 
 /**
-* Equality between two boolean values.
-*
-* Two booleans are equal if they have the same value.
-*
-* # Examples
-*
-* ~~~ {.rust}
-* rusti> std::bool::eq(false, true)
-* false
-* ~~~
-*
-* ~~~ {.rust}
-* rusti> std::bool::eq(false, false)
-* true
-* ~~~
-*/
-pub fn eq(a: bool, b: bool) -> bool { a == b }
-
-/**
-* Non-equality between two boolean values.
-*
-* Two booleans are not equal if they have different values.
-*
-* # Examples
-*
-* ~~~ {.rust}
-* rusti> std::bool::ne(false, true)
-* true
-* ~~~
-*
-* ~~~ {.rust}
-* rusti> std::bool::ne(false, false)
-* false
-* ~~~
-*/
-pub fn ne(a: bool, b: bool) -> bool { a != b }
-
-/**
 * Is a given boolean value true?
 *
 * # Examples
@@ -239,16 +202,21 @@ impl FromStr for bool {
 * # Examples
 *
 * ~~~ {.rust}
-* rusti> std::bool::to_str(true)
+* rusti> true.to_str()
 * "true"
 * ~~~
 *
 * ~~~ {.rust}
-* rusti> std::bool::to_str(false)
+* rusti> false.to_str()
 * "false"
 * ~~~
 */
-pub fn to_str(v: bool) -> ~str { if v { ~"true" } else { ~"false" } }
+impl ToStr for bool {
+    #[inline(always)]
+    fn to_str(&self) -> ~str {
+        if *self { ~"true" } else { ~"false" }
+    }
+}
 
 /**
 * Iterates over all truth values, passing them to the given block.
@@ -258,7 +226,7 @@ pub fn to_str(v: bool) -> ~str { if v { ~"true" } else { ~"false" } }
 * # Examples
 * ~~~
 * do std::bool::all_values |x: bool| {
-*     println(std::bool::to_str(x));
+*     println(x.to_str())
 * }
 * ~~~
 */
@@ -303,6 +271,31 @@ impl TotalOrd for bool {
     fn cmp(&self, other: &bool) -> Ordering { to_bit(*self).cmp(&to_bit(*other)) }
 }
 
+/**
+* Equality between two boolean values.
+*
+* Two booleans are equal if they have the same value.
+*
+* ~~~ {.rust}
+* rusti> false.eq(&true)
+* false
+* ~~~
+*
+* ~~~ {.rust}
+* rusti> false == false
+* true
+* ~~~
+*
+* ~~~ {.rust}
+* rusti> false != true
+* true
+* ~~~
+*
+* ~~~ {.rust}
+* rusti> false.ne(&false)
+* false
+* ~~~
+*/
 #[cfg(not(test))]
 impl Eq for bool {
     #[inline(always)]
@@ -319,14 +312,14 @@ mod tests {
     #[test]
     fn test_bool_from_str() {
         do all_values |v| {
-            assert!(Some(v) == FromStr::from_str(to_str(v)))
+            assert!(Some(v) == FromStr::from_str(v.to_str()))
         }
     }
 
     #[test]
     fn test_bool_to_str() {
-        assert_eq!(to_str(false), ~"false");
-        assert_eq!(to_str(true), ~"true");
+        assert_eq!(false.to_str(), ~"false");
+        assert_eq!(true.to_str(), ~"true");
     }
 
     #[test]
