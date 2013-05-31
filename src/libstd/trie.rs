@@ -10,8 +10,6 @@
 
 //! An ordered map and set for integer keys implemented as a radix trie
 
-use local_data;
-use os;
 use prelude::*;
 use uint;
 use util::{swap, replace};
