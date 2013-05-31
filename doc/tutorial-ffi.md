@@ -188,7 +188,7 @@ impl<T: Owned> Drop for Unique<T> {
         unsafe {
             let mut x = intrinsics::init(); // dummy value to swap in
             // moving the object out is needed to call the destructor
-            util::replace_ptr(self.ptr, x);
+            ptr::replace_ptr(self.ptr, x);
             free(self.ptr as *c_void)
         }
     }
