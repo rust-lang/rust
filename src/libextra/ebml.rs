@@ -51,32 +51,34 @@ pub enum EbmlEncoderTag {
     EsI16,      // 8
     EsI8,       // 9
     EsBool,     // 10
-    EsStr,      // 11
-    EsF64,      // 12
-    EsF32,      // 13
-    EsFloat,    // 14
-    EsEnum,     // 15
-    EsEnumVid,  // 16
-    EsEnumBody, // 17
-    EsVec,      // 18
-    EsVecLen,   // 19
-    EsVecElt,   // 20
+    EsChar,     // 11
+    EsStr,      // 12
+    EsF64,      // 13
+    EsF32,      // 14
+    EsFloat,    // 15
+    EsEnum,     // 16
+    EsEnumVid,  // 17
+    EsEnumBody, // 18
+    EsVec,      // 19
+    EsVecLen,   // 20
+    EsVecElt,   // 21
+    EsMap,      // 22
+    EsMapLen,   // 23
+    EsMapKey,   // 24
+    EsMapVal,   // 25
 
     EsOpaque,
 
-    EsLabel // Used only when debugging
+    EsLabel, // Used only when debugging
 }
 // --------------------------------------
 
 pub mod reader {
-    use core::prelude::*;
+    use super::*;
 
-    use ebml::{Doc, EbmlEncoderTag, EsBool, EsEnum, EsEnumBody, EsEnumVid};
-    use ebml::{EsI16, EsI32, EsI64, EsI8, EsInt};
-    use ebml::{EsLabel, EsOpaque, EsStr, EsU16, EsU32, EsU64, EsU8, EsUint};
-    use ebml::{EsVec, EsVecElt, EsVecLen, TaggedDoc};
     use serialize;
 
+    use core::prelude::*;
     use core::cast::transmute;
     use core::int;
     use core::io;
@@ -321,12 +323,14 @@ pub mod reader {
             r_doc
         }
 
-        fn push_doc<T>(&mut self, d: Doc, f: &fn() -> T) -> T {
+        fn push_doc<T>(&mut self, exp_tag: EbmlEncoderTag,
+                       f: &fn(&mut Decoder) -> T) -> T {
+            let d = self.next_doc(exp_tag);
             let old_parent = self.parent;
             let old_pos = self.pos;
             self.parent = d;
             self.pos = d.start;
-            let r = f();
+            let r = f(self);
             self.parent = old_parent;
             self.pos = old_pos;
             r
@@ -395,10 +399,21 @@ pub mod reader {
             doc_as_u8(self.next_doc(EsBool)) as bool
         }
 
-        fn read_f64(&mut self) -> f64 { fail!("read_f64()"); }
-        fn read_f32(&mut self) -> f32 { fail!("read_f32()"); }
-        fn read_float(&mut self) -> float { fail!("read_float()"); }
-        fn read_char(&mut self) -> char { fail!("read_char()"); }
+        fn read_f64(&mut self) -> f64 {
+            let bits = doc_as_u64(self.next_doc(EsF64));
+            unsafe { transmute(bits) }
+        }
+        fn read_f32(&mut self) -> f32 {
+            let bits = doc_as_u32(self.next_doc(EsF32));
+            unsafe { transmute(bits) }
+        }
+        fn read_float(&mut self) -> float {
+            let bits = doc_as_u64(self.next_doc(EsFloat));
+            (unsafe { transmute::<u64, f64>(bits) }) as float
+        }
+        fn read_char(&mut self) -> char {
+            doc_as_u32(self.next_doc(EsChar)) as char
+        }
         fn read_str(&mut self) -> ~str { doc_as_str(self.next_doc(EsStr)) }
 
         // Compound types:
@@ -541,66 +556,50 @@ pub mod reader {
 
         fn read_seq<T>(&mut self, f: &fn(&mut Decoder, uint) -> T) -> T {
             debug!("read_seq()");
-            let doc = self.next_doc(EsVec);
-
-            let (old_parent, old_pos) = (self.parent, self.pos);
-            self.parent = doc;
-            self.pos = self.parent.start;
-
-            let len = self._next_uint(EsVecLen);
-            debug!("  len=%u", len);
-            let result = f(self, len);
-
-            self.parent = old_parent;
-            self.pos = old_pos;
-            result
+            do self.push_doc(EsVec) |d| {
+                let len = d._next_uint(EsVecLen);
+                debug!("  len=%u", len);
+                f(d, len)
+            }
         }
 
         fn read_seq_elt<T>(&mut self, idx: uint, f: &fn(&mut Decoder) -> T)
                            -> T {
             debug!("read_seq_elt(idx=%u)", idx);
-            let doc = self.next_doc(EsVecElt);
-
-            let (old_parent, old_pos) = (self.parent, self.pos);
-            self.parent = doc;
-            self.pos = self.parent.start;
-
-            let result = f(self);
-
-            self.parent = old_parent;
-            self.pos = old_pos;
-            result
+            self.push_doc(EsVecElt, f)
         }
 
-        fn read_map<T>(&mut self, _: &fn(&mut Decoder, uint) -> T) -> T {
+        fn read_map<T>(&mut self, f: &fn(&mut Decoder, uint) -> T) -> T {
             debug!("read_map()");
-            fail!("read_map is unimplemented");
+            do self.push_doc(EsMap) |d| {
+                let len = d._next_uint(EsMapLen);
+                debug!("  len=%u", len);
+                f(d, len)
+            }
         }
 
         fn read_map_elt_key<T>(&mut self,
                                idx: uint,
-                               _: &fn(&mut Decoder) -> T)
+                               f: &fn(&mut Decoder) -> T)
                                -> T {
             debug!("read_map_elt_key(idx=%u)", idx);
-            fail!("read_map_elt_val is unimplemented");
+            self.push_doc(EsMapKey, f)
         }
 
         fn read_map_elt_val<T>(&mut self,
                                idx: uint,
-                               _: &fn(&mut Decoder) -> T)
+                               f: &fn(&mut Decoder) -> T)
                                -> T {
             debug!("read_map_elt_val(idx=%u)", idx);
-            fail!("read_map_elt_val is unimplemented");
+            self.push_doc(EsMapVal, f)
         }
     }
 }
 
 pub mod writer {
-    use ebml::{EbmlEncoderTag, EsBool, EsEnum, EsEnumBody, EsEnumVid};
-    use ebml::{EsI16, EsI32, EsI64, EsI8, EsInt};
-    use ebml::{EsLabel, EsOpaque, EsStr, EsU16, EsU32, EsU64, EsU8, EsUint};
-    use ebml::{EsVec, EsVecElt, EsVecLen};
+    use super::*;
 
+    use core::cast;
     use core::io;
     use core::str;
 
@@ -806,19 +805,21 @@ pub mod writer {
             self.wr_tagged_u8(EsBool as uint, v as u8)
         }
 
-        // FIXME (#2742): implement these
-        fn emit_f64(&mut self, _v: f64) {
-            fail!("Unimplemented: serializing an f64");
+        fn emit_f64(&mut self, v: f64) {
+            let bits = unsafe { cast::transmute(v) };
+            self.wr_tagged_u64(EsF64 as uint, bits);
         }
-        fn emit_f32(&mut self, _v: f32) {
-            fail!("Unimplemented: serializing an f32");
+        fn emit_f32(&mut self, v: f32) {
+            let bits = unsafe { cast::transmute(v) };
+            self.wr_tagged_u32(EsF32 as uint, bits);
         }
-        fn emit_float(&mut self, _v: float) {
-            fail!("Unimplemented: serializing a float");
+        fn emit_float(&mut self, v: float) {
+            let bits = unsafe { cast::transmute(v as f64) };
+            self.wr_tagged_u64(EsFloat as uint, bits);
         }
 
-        fn emit_char(&mut self, _v: char) {
-            fail!("Unimplemented: serializing a char");
+        fn emit_char(&mut self, v: char) {
+            self.wr_tagged_u32(EsChar as uint, v as u32);
         }
 
         fn emit_str(&mut self, v: &str) {
@@ -914,16 +915,23 @@ pub mod writer {
             self.end_tag();
         }
 
-        fn emit_map(&mut self, _len: uint, _f: &fn(&mut Encoder)) {
-            fail!("emit_map is unimplemented");
+        fn emit_map(&mut self, len: uint, f: &fn(&mut Encoder)) {
+            self.start_tag(EsMap as uint);
+            self._emit_tagged_uint(EsMapLen, len);
+            f(self);
+            self.end_tag();
         }
 
-        fn emit_map_elt_key(&mut self, _idx: uint, _f: &fn(&mut Encoder)) {
-            fail!("emit_map_elt_key is unimplemented");
+        fn emit_map_elt_key(&mut self, _idx: uint, f: &fn(&mut Encoder)) {
+            self.start_tag(EsMapKey as uint);
+            f(self);
+            self.end_tag();
         }
 
-        fn emit_map_elt_val(&mut self, _idx: uint, _f: &fn(&mut Encoder)) {
-            fail!("emit_map_elt_val is unimplemented");
+        fn emit_map_elt_val(&mut self, _idx: uint, f: &fn(&mut Encoder)) {
+            self.start_tag(EsMapVal as uint);
+            f(self);
+            self.end_tag();
         }
     }
 }
