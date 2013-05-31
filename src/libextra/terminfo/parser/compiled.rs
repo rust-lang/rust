@@ -1,3 +1,13 @@
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 /// ncurses-compatible compiled terminfo format parsing (term(5))
 
 use core::prelude::*;
@@ -283,11 +293,12 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
 
 
             // Find the offset of the NUL we want to go to
-            let nulpos = vec::position_between(string_table, offset as uint, string_table_bytes as uint,
-                                               |&b| b == 0);
+            let nulpos = vec::position_between(string_table, offset as uint,
+                                               string_table_bytes as uint, |&b| b == 0);
             match nulpos {
                 Some(x) => {
-                    string_map.insert(name.to_owned(), string_table.slice(offset as uint, x).to_owned())
+                    string_map.insert(name.to_owned(),
+                                      string_table.slice(offset as uint, x).to_owned())
                 },
                 None => {
                     return Err(~"invalid file: missing NUL in string_table");
@@ -303,7 +314,7 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use p = std::path::PosixPath;
+    use p = std::path::Path;
 
     #[test]
     fn test_veclens() {
@@ -314,6 +325,7 @@ mod test {
 
     #[test]
     fn test_parse() {
-        parse(io::file_reader(&p("/usr/share/terminfo/r/rxvt-256color")).unwrap(), false);
+        // FIXME #6870: Distribute a compiled file in src/tests and test there
+        // parse(io::file_reader(&p("/usr/share/terminfo/r/rxvt-256color")).unwrap(), false);
     }
 }

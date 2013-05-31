@@ -46,7 +46,7 @@ pub enum Param {
   To be compatible with ncurses, `sta` and `dyn` should be the same between calls to `expand` for
   multiple capabilities for the same terminal.
   */
-pub fn expand(cap: &[u8], params: &mut [Param], sta: &mut [Param], dyn: &mut [Param]) 
+pub fn expand(cap: &[u8], params: &mut [Param], sta: &mut [Param], dyn: &mut [Param])
     -> Result<~[u8], ~str> {
     assert!(cap.len() != 0, "expanding an empty capability makes no sense");
     assert!(params.len() <= 9, "only 9 parameters are supported by capability strings");
