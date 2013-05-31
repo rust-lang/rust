@@ -563,6 +563,7 @@ impl Repr for ty::ParamBounds {
                 ty::BoundStatic => ~"'static",
                 ty::BoundOwned => ~"Owned",
                 ty::BoundConst => ~"Const",
+                ty::BoundSized => ~"Sized",
             });
         }
         for self.trait_bounds.each |t| {
@@ -767,7 +768,8 @@ impl UserString for ty::BuiltinBound {
             ty::BoundCopy => ~"Copy",
             ty::BoundStatic => ~"'static",
             ty::BoundOwned => ~"Owned",
-            ty::BoundConst => ~"Const"
+            ty::BoundConst => ~"Const",
+            ty::BoundSized => ~"Sized",
         }
     }
 }
