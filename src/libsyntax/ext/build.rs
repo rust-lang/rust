@@ -560,7 +560,7 @@ impl AstBuilder for @ExtCtxt {
         self.pat(span, ast::pat_lit(expr))
     }
     fn pat_ident(&self, span: span, ident: ast::ident) -> @ast::pat {
-        self.pat_ident_binding_mode(span, ident, ast::bind_by_copy)
+        self.pat_ident_binding_mode(span, ident, ast::bind_infer)
     }
 
     fn pat_ident_binding_mode(&self,

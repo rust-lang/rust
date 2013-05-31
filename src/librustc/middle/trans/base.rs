@@ -1105,8 +1105,8 @@ pub fn init_local(bcx: block, local: @ast::local) -> block {
         }
     }
 
-    let llptr = match bcx.fcx.lllocals.find(&local.node.id) {
-        Some(&local_mem(v)) => v,
+    let llptr = match bcx.fcx.lllocals.find_copy(&local.node.id) {
+        Some(v) => v,
         _ => {
             bcx.tcx().sess.span_bug(local.span,
                                     "init_local: Someone forgot to document why it's\
@@ -1432,7 +1432,7 @@ pub fn alloc_local(cx: block, local: @ast::local) -> block {
             });
         }
     }
-    cx.fcx.lllocals.insert(local.node.id, local_mem(val));
+    cx.fcx.lllocals.insert(local.node.id, val);
     cx
 }
 
@@ -1726,7 +1726,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
     let mut bcx = bcx;
 
     match fcx.llself {
-      Some(copy slf) => {
+      Some(slf) => {
         // We really should do this regardless of whether self is owned, but
         // it doesn't work right with default method impls yet. (FIXME: #2794)
         if slf.is_owned {
@@ -1768,7 +1768,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
                                           false,
                                           _match::BindArgument);
 
-        fcx.llargs.insert(arg_id, local_mem(llarg));
+        fcx.llargs.insert(arg_id, llarg);
 
         if fcx.ccx.sess.opts.extra_debuginfo && fcx_has_nonzero_span(fcx) {
             debuginfo::create_arg(bcx, args[arg_n], args[arg_n].ty.span);
@@ -1801,7 +1801,7 @@ pub fn build_return_block(fcx: fn_ctxt) {
 pub fn tie_up_header_blocks(fcx: fn_ctxt, lltop: BasicBlockRef) {
     let _icx = fcx.insn_ctxt("tie_up_header_blocks");
     match fcx.llloadenv {
-        Some(copy ll) => {
+        Some(ll) => {
             Br(raw_block(fcx, false, fcx.llstaticallocas), ll);
             Br(raw_block(fcx, false, ll), lltop);
         }
@@ -2004,7 +2004,7 @@ pub fn trans_enum_variant(ccx: @CrateContext,
         // this function as an opaque blob due to the way that type_of()
         // works. So we have to cast to the destination's view of the type.
         let llarg = match fcx.llargs.find(&va.id) {
-            Some(&local_mem(x)) => x,
+            Some(&x) => x,
             _ => fail!("trans_enum_variant: how do we know this works?"),
         };
         let arg_ty = arg_tys[i];
@@ -2074,12 +2074,7 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
                                              fcx.llretptr.get(),
                                              0,
                                              i);
-        let llarg = match fcx.llargs.get_copy(&field.node.id) {
-            local_mem(x) => x,
-            _ => {
-                ccx.tcx.sess.bug("trans_tuple_struct: llarg wasn't local_mem")
-            }
-        };
+        let llarg = fcx.llargs.get_copy(&field.node.id);
         let arg_ty = arg_tys[i];
         memcpy_ty(bcx, lldestptr, llarg, arg_ty);
     }

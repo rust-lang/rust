@@ -119,7 +119,7 @@ fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
                   summary: &Either<uint, ~[ident]>,
                   rand_call: &fn() -> @expr) -> @expr {
         match *summary {
-            Left(copy count) => {
+            Left(count) => {
                 if count == 0 {
                     cx.expr_ident(span, ctor_ident)
                 } else {

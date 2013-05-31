@@ -141,10 +141,10 @@ fn visit_crate(e: @mut Env, c: &ast::crate) {
 
 fn visit_view_item(e: @mut Env, i: @ast::view_item) {
     match i.node {
-      ast::view_item_extern_mod(ident, /*bad*/copy meta_items, id) => {
+      ast::view_item_extern_mod(ident, ref meta_items, id) => {
         debug!("resolving extern mod stmt. ident: %?, meta: %?",
-               ident, meta_items);
-        let cnum = resolve_crate(e, ident, meta_items, @~"", i.span);
+               ident, *meta_items);
+        let cnum = resolve_crate(e, ident, copy *meta_items, @~"", i.span);
         cstore::add_extern_mod_stmt_cnum(e.cstore, id, cnum);
       }
       _ => ()

@@ -375,8 +375,8 @@ pub mod write {
 
     pub fn run_ndk(sess: Session, assembly: &Path, object: &Path) {
         let cc_prog: ~str = match &sess.opts.android_cross_path {
-            &Some(copy path) => {
-                fmt!("%s/bin/arm-linux-androideabi-gcc", path)
+            &Some(ref path) => {
+                fmt!("%s/bin/arm-linux-androideabi-gcc", *path)
             }
             &None => {
                 sess.fatal("need Android NDK path for building \
@@ -763,12 +763,12 @@ pub fn link_binary(sess: Session,
     // For win32, there is no cc command,
     // so we add a condition to make it use gcc.
     let cc_prog: ~str = match sess.opts.linker {
-        Some(copy linker) => linker,
+        Some(ref linker) => copy *linker,
         None => {
             if sess.targ_cfg.os == session::os_android {
                 match &sess.opts.android_cross_path {
-                    &Some(copy path) => {
-                        fmt!("%s/bin/arm-linux-androideabi-gcc", path)
+                    &Some(ref path) => {
+                        fmt!("%s/bin/arm-linux-androideabi-gcc", *path)
                     }
                     &None => {
                         sess.fatal("need Android NDK path for linking \

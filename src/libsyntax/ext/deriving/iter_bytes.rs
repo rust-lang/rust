@@ -62,11 +62,11 @@ fn iter_bytes_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @
         Struct(ref fs) => {
             fields = fs
         }
-        EnumMatching(copy index, ref variant, ref fs) => {
+        EnumMatching(index, ref variant, ref fs) => {
             // Determine the discriminant. We will feed this value to the byte
             // iteration function.
             let discriminant = match variant.node.disr_expr {
-                Some(copy d)=> d,
+                Some(d)=> d,
                 None => cx.expr_uint(span, index)
             };
 
