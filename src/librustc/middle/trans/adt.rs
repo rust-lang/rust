@@ -563,6 +563,7 @@ fn build_const_struct(ccx: @CrateContext, st: &Struct, vals: &[ValueRef])
             vals[i]
         };
         cfields.push(val);
+        offset += machine::llsize_of_alloc(ccx, llty) as u64
     }
 
     return cfields;
