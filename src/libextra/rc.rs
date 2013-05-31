@@ -28,7 +28,6 @@ use core::libc::{c_void, size_t, malloc, free};
 use core::ptr;
 use core::sys;
 use core::unstable::intrinsics;
-use core::util;
 
 struct RcBox<T> {
     value: T,
@@ -73,7 +72,7 @@ impl<T> Drop for Rc<T> {
         unsafe {
             (*self.ptr).count -= 1;
             if (*self.ptr).count == 0 {
-                util::replace_ptr(self.ptr, intrinsics::uninit());
+                ptr::replace_ptr(self.ptr, intrinsics::uninit());
                 free(self.ptr as *c_void)
             }
         }
@@ -223,7 +222,7 @@ impl<T> Drop for RcMut<T> {
         unsafe {
             (*self.ptr).count -= 1;
             if (*self.ptr).count == 0 {
-                util::replace_ptr(self.ptr, uninit());
+                ptr::replace_ptr(self.ptr, uninit());
                 free(self.ptr as *c_void)
             }
         }
