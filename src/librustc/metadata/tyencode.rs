@@ -403,6 +403,7 @@ fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: &ty::ParamBounds) {
             ty::BoundCopy => w.write_char('C'),
             ty::BoundConst => w.write_char('K'),
             ty::BoundStatic => w.write_char('O'),
+            ty::BoundSized => w.write_char('Z'),
         }
     }
 

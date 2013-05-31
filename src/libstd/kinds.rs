@@ -53,3 +53,8 @@ pub trait Owned {
 pub trait Const {
     // Empty.
 }
+
+#[lang="sized"]
+pub trait Sized {
+    // Empty.
+}
