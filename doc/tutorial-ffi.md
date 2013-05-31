@@ -153,7 +153,6 @@ use std::cast;
 use std::libc::{c_void, size_t, malloc, free};
 use std::ptr;
 use std::unstable::intrinsics;
-use std::util;
 
 // a wrapper around the handle returned by the foreign code
 pub struct Unique<T> {
@@ -186,9 +185,9 @@ pub impl<T: Owned> Unique<T> {
 impl<T: Owned> Drop for Unique<T> {
     fn finalize(&self) {
         unsafe {
-            let mut x = intrinsics::init(); // dummy value to swap in
+            let x = intrinsics::init(); // dummy value to swap in
             // moving the object out is needed to call the destructor
-            util::replace_ptr(self.ptr, x);
+            ptr::replace_ptr(self.ptr, x);
             free(self.ptr as *c_void)
         }
     }
