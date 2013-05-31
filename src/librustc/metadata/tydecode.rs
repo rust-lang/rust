@@ -569,6 +569,9 @@ fn parse_bounds(st: @mut PState, conv: conv_did) -> ty::ParamBounds {
             'O' => {
                 param_bounds.builtin_bounds.add(ty::BoundStatic);
             }
+            'Z' => {
+                param_bounds.builtin_bounds.add(ty::BoundSized);
+            }
             'I' => {
                 param_bounds.trait_bounds.push(@parse_trait_ref(st, conv));
             }
