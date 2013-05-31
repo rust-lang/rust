@@ -4507,6 +4507,7 @@ impl Resolver {
         return unqualified_def;
     }
 
+    // resolve a single identifier (used as a varref)
     pub fn resolve_identifier(@mut self,
                               identifier: ident,
                               namespace: Namespace,
