@@ -423,7 +423,7 @@ pub fn parse_nt(p: &Parser, name: &str) -> nonterminal {
       },
       "block" => token::nt_block(p.parse_block()),
       "stmt" => token::nt_stmt(p.parse_stmt(~[])),
-      "pat" => token::nt_pat(p.parse_pat(true)),
+      "pat" => token::nt_pat(p.parse_pat()),
       "expr" => token::nt_expr(p.parse_expr()),
       "ty" => token::nt_ty(p.parse_ty(false /* no need to disambiguate*/)),
       // this could be handled like a token, since it is one

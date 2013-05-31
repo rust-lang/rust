@@ -595,7 +595,7 @@ pub fn accept(new_conn: TcpNewConnection)
                 }
                 // UNSAFE LIBUV INTERACTION END
                 match result_po.recv() {
-                    Some(copy err_data) => result::Err(err_data),
+                    Some(err_data) => result::Err(err_data),
                     None => result::Ok(TcpSocket(client_socket_data))
                 }
             }

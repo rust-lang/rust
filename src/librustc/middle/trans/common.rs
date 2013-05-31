@@ -240,8 +240,6 @@ pub struct ValSelfData {
     is_owned: bool
 }
 
-pub enum local_val { local_mem(ValueRef), local_imm(ValueRef), }
-
 // Here `self_ty` is the real type of the self parameter to this method. It
 // will only be set in the case of default methods.
 pub struct param_substs {
@@ -328,10 +326,10 @@ pub struct fn_ctxt_ {
     has_immediate_return_value: bool,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: @mut HashMap<ast::node_id, local_val>,
+    llargs: @mut HashMap<ast::node_id, ValueRef>,
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: @mut HashMap<ast::node_id, local_val>,
+    lllocals: @mut HashMap<ast::node_id, ValueRef>,
     // Same as above, but for closure upvars
     llupvars: @mut HashMap<ast::node_id, ValueRef>,
 

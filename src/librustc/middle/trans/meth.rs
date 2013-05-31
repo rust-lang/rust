@@ -197,7 +197,7 @@ pub fn trans_method_callee(bcx: block,
     // Replace method_self with method_static here.
     let mut origin = mentry.origin;
     match origin {
-        typeck::method_self(copy trait_id, copy method_index) => {
+        typeck::method_self(trait_id, method_index) => {
             // Get the ID of the impl we're inside.
             let impl_def_id = bcx.fcx.impl_id.get();
 
@@ -445,7 +445,7 @@ pub fn method_ty_param_count(ccx: @CrateContext, m_id: ast::def_id,
                                             _, _)) => {
                 m.generics.ty_params.len()
             }
-            copy e => fail!("method_ty_param_count %?", e)
+            ref e => fail!("method_ty_param_count %?", *e)
         }
     } else {
         csearch::get_type_param_count(ccx.sess.cstore, m_id) -

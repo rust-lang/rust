@@ -1537,9 +1537,6 @@ pub fn print_pat(s: @ps, pat: @ast::pat, refutable: bool) {
                       word_nbsp(s, "ref");
                       print_mutability(s, mutbl);
                   }
-                  ast::bind_by_copy => {
-                      word_nbsp(s, "copy");
-                  }
                   ast::bind_infer => {}
               }
           }

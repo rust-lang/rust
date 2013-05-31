@@ -44,15 +44,17 @@
  * # Datum cleanup styles
  *
  * Each datum carries with it an idea of how its value will be cleaned
- * up.  This is important after a move, because we need to know how to
- * cancel the cleanup (since the value has been moved and therefore does
- * not need to be freed).  There are two options:
- *
- * 1. `RevokeClean`: To cancel the cleanup, we invoke `revoke_clean()`.
- *    This is used for temporary rvalues.
- *
- * 2. `ZeroMem`: To cancel the cleanup, we zero out the memory where
- *    the value resides.  This is used for lvalues.
+ * up.  This is primarily determined by the mode: a `ByValue` datum
+ * will always be cleaned up by revoking cleanup using
+ * `revoke_clean()`, because there is no other option. By ref datums
+ * can sometimes be cleaned up via `revoke_clean` (in particular,
+ * by-ref datums that originated from rvalues), but sometimes they
+ * must be zeroed. This is indicated by the `DatumCleanup`
+ * parameter. Note that zeroing a by-ref datum *always works* to
+ * cancel the cleanup, but using `revoke_clean` is preferable since
+ * there is no runtime cost. Some older parts of the code (notably
+ * `match_`, at least at the time of this writing) rely on this and
+ * only use zeroing.
  *
  * # Copying, moving, and storing
  *
@@ -103,7 +105,6 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
-use core::to_bytes;
 use core::uint;
 use syntax::ast;
 use syntax::codemap::span;
@@ -125,12 +126,6 @@ pub struct Datum {
 
     /// Indicates whether this is by-ref or by-value.
     mode: DatumMode,
-
-    /// How did this value originate?  This is particularly important
-    /// if the value is MOVED or prematurely DROPPED, because it
-    /// describes how to cancel the cleanup that was scheduled before.
-    /// See the def'n of the `DatumCleanup` type.
-    source: DatumCleanup
 }
 
 pub struct DatumBlock {
@@ -138,10 +133,13 @@ pub struct DatumBlock {
     datum: Datum,
 }
 
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub enum DatumMode {
-    /// `val` is a pointer to the actual value (and thus has type *T)
-    ByRef,
+    /// `val` is a pointer to the actual value (and thus has type *T).
+    /// The argument indicates how to cancel cleanup of this datum if
+    /// the value is moved elsewhere, which can either be by zeroing
+    /// the memory or by canceling a registered cleanup.
+    ByRef(DatumCleanup),
 
     /// `val` is the actual value (*only used for immediates* like ints, ptrs)
     ByValue,
@@ -149,30 +147,23 @@ pub enum DatumMode {
 
 pub impl DatumMode {
     fn is_by_ref(&self) -> bool {
-        match *self { ByRef => true, ByValue => false }
+        match *self { ByRef(_) => true, ByValue => false }
     }
 
     fn is_by_value(&self) -> bool {
-        match *self { ByRef => false, ByValue => true }
-    }
-}
-
-impl to_bytes::IterBytes for DatumMode {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        (*self as uint).iter_bytes(lsb0, f)
+        match *self { ByRef(_) => false, ByValue => true }
     }
 }
 
 /// See `Datum cleanup styles` section at the head of this module.
-#[deriving(Eq)]
+#[deriving(Eq, IterBytes)]
 pub enum DatumCleanup {
     RevokeClean,
     ZeroMem
 }
 
 pub fn immediate_rvalue(val: ValueRef, ty: ty::t) -> Datum {
-    return Datum {val: val, ty: ty,
-                  mode: ByValue, source: RevokeClean};
+    return Datum {val: val, ty: ty, mode: ByValue};
 }
 
 pub fn immediate_rvalue_bcx(bcx: block,
@@ -195,7 +186,7 @@ pub fn scratch_datum(bcx: block, ty: ty::t, zero: bool) -> Datum {
 
     let llty = type_of::type_of(bcx.ccx(), ty);
     let scratch = alloca_maybe_zeroed(bcx, llty, zero);
-    Datum { val: scratch, ty: ty, mode: ByRef, source: RevokeClean }
+    Datum { val: scratch, ty: ty, mode: ByRef(RevokeClean) }
 }
 
 pub fn appropriate_mode(ty: ty::t) -> DatumMode {
@@ -210,7 +201,7 @@ pub fn appropriate_mode(ty: ty::t) -> DatumMode {
     } else if ty::type_is_immediate(ty) {
         ByValue
     } else {
-        ByRef
+        ByRef(RevokeClean)
     }
 }
 
@@ -289,7 +280,7 @@ pub impl Datum {
             ty::type_needs_drop(bcx.tcx(), self.ty)
         {
             match self.mode {
-                ByRef => {
+                ByRef(_) => {
                     let cast = PointerCast(bcx, dst, val_ty(self.val));
                     let cmp = ICmp(bcx, lib::llvm::IntNE, cast, self.val);
                     do with_cond(bcx, cmp) |bcx| {
@@ -324,7 +315,7 @@ pub impl Datum {
             ByValue => {
                 Store(bcx, self.val, dst);
             }
-            ByRef => {
+            ByRef(_) => {
                 memcpy_ty(bcx, dst, self.val, self.ty);
             }
         }
@@ -352,7 +343,7 @@ pub impl Datum {
         }
 
         match self.mode {
-            ByRef => {
+            ByRef(_) => {
                 memcpy_ty(bcx, dst, self.val, self.ty);
             }
             ByValue => {
@@ -367,28 +358,32 @@ pub impl Datum {
 
     fn add_clean(&self, bcx: block) {
         /*!
-         *
          * Schedules this datum for cleanup in `bcx`.  The datum
-         * must be an rvalue. */
+         * must be an rvalue.
+         */
 
-        assert_eq!(self.source, RevokeClean);
         match self.mode {
             ByValue => {
                 add_clean_temp_immediate(bcx, self.val, self.ty);
             }
-            ByRef => {
+            ByRef(RevokeClean) => {
                 add_clean_temp_mem(bcx, self.val, self.ty);
+            }
+            ByRef(ZeroMem) => {
+                bcx.tcx().sess.bug(
+                    fmt!("Cannot add clean to a 'zero-mem' datum"));
             }
         }
     }
 
     fn cancel_clean(&self, bcx: block) {
         if ty::type_needs_drop(bcx.tcx(), self.ty) {
-            match self.source {
-                RevokeClean => {
+            match self.mode {
+                ByValue |
+                ByRef(RevokeClean) => {
                     revoke_clean(bcx, self.val);
                 }
-                ZeroMem => {
+                ByRef(ZeroMem) => {
                     // Lvalues which potentially need to be dropped
                     // must be passed by ref, so that we can zero them
                     // out.
@@ -400,11 +395,10 @@ pub impl Datum {
     }
 
     fn to_str(&self, ccx: &CrateContext) -> ~str {
-        fmt!("Datum { val=%s, ty=%s, mode=%?, source=%? }",
+        fmt!("Datum { val=%s, ty=%s, mode=%? }",
              val_str(ccx.tn, self.val),
              ty_to_str(ccx.tcx, self.ty),
-             self.mode,
-             self.source)
+             self.mode)
     }
 
     fn to_value_datum(&self, bcx: block) -> Datum {
@@ -417,9 +411,9 @@ pub impl Datum {
 
         match self.mode {
             ByValue => *self,
-            ByRef => {
+            ByRef(_) => {
                 Datum {val: self.to_value_llval(bcx), mode: ByValue,
-                       ty: self.ty, source: RevokeClean}
+                       ty: self.ty}
             }
         }
     }
@@ -434,7 +428,7 @@ pub impl Datum {
         } else {
             match self.mode {
                 ByValue => self.val,
-                ByRef => {
+                ByRef(_) => {
                     if ty::type_is_bool(self.ty) {
                         LoadRangeAssert(bcx, self.val, 0, 2, lib::llvm::True)
                     } else {
@@ -447,24 +441,24 @@ pub impl Datum {
 
     fn to_ref_datum(&self, bcx: block) -> Datum {
         /*!
-         *
          * Yields a by-ref form of this datum.  This may involve
          * creation of a temporary stack slot.  The value returned by
          * this function is not separately rooted from this datum, so
-         * it will not live longer than the current datum. */
+         * it will not live longer than the current datum.
+         */
 
         match self.mode {
-            ByRef => *self,
+            ByRef(_) => *self,
             ByValue => {
-                Datum {val: self.to_ref_llval(bcx), mode: ByRef,
-                       ty: self.ty, source: RevokeClean}
+                Datum {val: self.to_ref_llval(bcx), mode: ByRef(RevokeClean),
+                       ty: self.ty}
             }
         }
     }
 
     fn to_ref_llval(&self, bcx: block) -> ValueRef {
         match self.mode {
-            ByRef => self.val,
+            ByRef(_) => self.val,
             ByValue => {
                 if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
                     C_null(T_ptr(type_of::type_of(bcx.ccx(), self.ty)))
@@ -473,6 +467,31 @@ pub impl Datum {
                     Store(bcx, self.val, slot);
                     slot
                 }
+            }
+        }
+    }
+
+    fn to_zeroable_ref_llval(&self, bcx: block) -> ValueRef {
+        /*!
+         * Returns a by-ref llvalue that can be zeroed in order to
+         * cancel cleanup. This is a kind of hokey bridge used
+         * to adapt to the match code. Please don't use it for new code.
+         */
+
+        match self.mode {
+            // All by-ref datums are zeroable, even if we *could* just
+            // cancel the cleanup.
+            ByRef(_) => self.val,
+
+            // By value datums can't be zeroed (where would you store
+            // the zero?) so we have to spill them. Add a temp cleanup
+            // for this spilled value and cancel the cleanup on this
+            // current value.
+            ByValue => {
+                let slot = self.to_ref_llval(bcx);
+                self.cancel_clean(bcx);
+                add_clean_temp_mem(bcx, slot, self.ty);
+                slot
             }
         }
     }
@@ -490,7 +509,7 @@ pub impl Datum {
 
         match self.appropriate_mode() {
             ByValue => self.to_value_llval(bcx),
-            ByRef => self.to_ref_llval(bcx)
+            ByRef(_) => self.to_ref_llval(bcx)
         }
     }
 
@@ -501,7 +520,7 @@ pub impl Datum {
 
         match self.appropriate_mode() {
             ByValue => self.to_value_datum(bcx),
-            ByRef => self.to_ref_datum(bcx)
+            ByRef(_) => self.to_ref_datum(bcx)
         }
     }
 
@@ -512,9 +531,8 @@ pub impl Datum {
         let base_val = self.to_ref_llval(bcx);
         Datum {
             val: gep(base_val),
-            mode: ByRef,
+            mode: ByRef(source),
             ty: ty,
-            source: source
         }
     }
 
@@ -524,7 +542,7 @@ pub impl Datum {
         }
 
         return match self.mode {
-            ByRef => glue::drop_ty(bcx, self.val, self.ty),
+            ByRef(_) => glue::drop_ty(bcx, self.val, self.ty),
             ByValue => glue::drop_ty_immediate(bcx, self.val, self.ty)
         };
     }
@@ -546,7 +564,7 @@ pub impl Datum {
 
         let ptr = self.to_value_llval(bcx);
         let body = opaque_box_body(bcx, content_ty, ptr);
-        Datum {val: body, ty: content_ty, mode: ByRef, source: ZeroMem}
+        Datum {val: body, ty: content_ty, mode: ByRef(ZeroMem)}
     }
 
     fn to_rptr(&self, bcx: block) -> Datum {
@@ -561,8 +579,7 @@ pub impl Datum {
         let llval = self.to_ref_llval(bcx);
         let rptr_ty = ty::mk_imm_rptr(bcx.tcx(), ty::re_static,
                                       self.ty);
-        Datum {val: llval, ty: rptr_ty,
-               mode: ByValue, source: RevokeClean}
+        Datum {val: llval, ty: rptr_ty, mode: ByValue}
     }
 
     fn try_deref(&self,
@@ -606,7 +623,7 @@ pub impl Datum {
                 let repr = adt::represent_type(ccx, self.ty);
                 let ty = ty::subst(ccx.tcx, substs, variants[0].args[0]);
                 return match self.mode {
-                    ByRef => {
+                    ByRef(_) => {
                         // Recast lv.val as a pointer to the newtype
                         // rather than a ptr to the enum type.
                         (
@@ -614,8 +631,7 @@ pub impl Datum {
                                 val: adt::trans_field_ptr(bcx, repr, self.val,
                                                     0, 0),
                                 ty: ty,
-                                mode: ByRef,
-                                source: ZeroMem
+                                mode: ByRef(ZeroMem)
                             }),
                             bcx
                         )
@@ -645,7 +661,7 @@ pub impl Datum {
                 let repr = adt::represent_type(ccx, self.ty);
                 let ty = fields[0].mt.ty;
                 return match self.mode {
-                    ByRef => {
+                    ByRef(_) => {
                         // Recast lv.val as a pointer to the newtype rather
                         // than a pointer to the struct type.
                         // FIXME #6572: This isn't correct for structs with
@@ -655,8 +671,7 @@ pub impl Datum {
                                 val: adt::trans_field_ptr(bcx, repr, self.val,
                                                     0, 0),
                                 ty: ty,
-                                mode: ByRef,
-                                source: ZeroMem
+                                mode: ByRef(ZeroMem)
                             }),
                             bcx
                         )
@@ -683,8 +698,7 @@ pub impl Datum {
             Datum {
                 val: lv.to_value_llval(bcx),
                 ty: ty,
-                mode: ByRef,
-                source: ZeroMem // *p is an lvalue
+                mode: ByRef(ZeroMem)
             }
         }
     }
