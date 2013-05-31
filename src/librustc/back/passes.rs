@@ -134,7 +134,6 @@ pub fn create_standard_passes(level:OptLevel) -> ~[~str] {
     passes.push(~"correlated-propagation");
     passes.push(~"dse");
 
-    passes.push(~"bb-vectorize");
     passes.push(~"instcombine");
     passes.push(~"early-cse");
 
