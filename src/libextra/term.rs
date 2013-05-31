@@ -75,7 +75,8 @@ pub impl Terminal {
         }
 
         let mut inf = ti.get();
-        let cs = *inf.numbers.find_or_insert(~"colors", 0) >= 16 && inf.strings.find(&~"setaf").is_some()
+        let cs = *inf.numbers.find_or_insert(~"colors", 0) >= 16
+            && inf.strings.find(&~"setaf").is_some()
             && inf.strings.find_equiv(&("setab")).is_some();
 
         return Ok(Terminal {out: out, ti: inf, color_supported: cs});
