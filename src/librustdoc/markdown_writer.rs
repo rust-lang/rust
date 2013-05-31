@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -17,8 +17,6 @@ use doc;
 use core::comm::*;
 use core::comm;
 use core::io;
-use core::libc;
-use core::os;
 use core::result;
 use core::run;
 use core::str;

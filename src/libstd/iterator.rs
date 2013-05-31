@@ -20,7 +20,6 @@ implementing the `Iterator` trait.
 use cmp;
 use iter;
 use num::{Zero, One};
-use num;
 use prelude::*;
 
 /// An interface for dealing with "external iterators". These types of iterators

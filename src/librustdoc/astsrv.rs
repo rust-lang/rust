@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -24,7 +24,6 @@ use parse;
 use core::cell::Cell;
 use core::comm::{stream, SharedChan, Port};
 use core::task;
-use core::vec;
 use rustc::driver::driver;
 use rustc::driver::session::Session;
 use rustc::driver::session::{basic_options, options};
@@ -32,6 +31,8 @@ use rustc::front;
 use syntax::ast;
 use syntax::ast_map;
 use syntax;
+
+#[cfg(test)] use core::vec;
 
 pub struct Ctxt {
     ast: @ast::crate,

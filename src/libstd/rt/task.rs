@@ -20,7 +20,6 @@ use prelude::*;
 use rt::local::Local;
 use rt::logging::StdErrLogger;
 use super::local_heap::LocalHeap;
-use super::sched::Scheduler;
 
 pub struct Task {
     heap: LocalHeap,

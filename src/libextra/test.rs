@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -24,13 +24,11 @@ use term;
 use core::comm::{stream, SharedChan};
 use core::either;
 use core::io;
-use core::num;
 use core::option;
 use core::result;
 use core::str;
 use core::task;
 use core::to_str::ToStr;
-use core::u64;
 use core::uint;
 use core::vec;
 

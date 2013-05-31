@@ -11,7 +11,6 @@
 //! Miscellaneous helpers for common patterns.
 
 use cast;
-use local_data;
 use ptr;
 use prelude::*;
 use unstable::intrinsics;
