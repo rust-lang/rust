@@ -200,7 +200,7 @@ pub fn check_crate(tcx: ty::ctxt,
         f = |item_id| {
             match tcx.items.find(&item_id) {
                 Some(&node_item(item, _)) => item.vis != public,
-                Some(&node_foreign_item(_, _, vis, _)) => vis != public,
+                Some(&node_foreign_item(*)) => false,
                 Some(&node_method(method, impl_did, _)) => {
                     match method.vis {
                         private => true,
