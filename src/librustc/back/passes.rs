@@ -71,9 +71,10 @@ pub fn create_standard_passes(level:OptLevel) -> ~[~str] {
     passes.push(~"targetlibinfo");
 
     passes.push(~"tbaa");
+    passes.push(~"scev-aa");
     passes.push(~"basicaa");
 
-    passes.push(~"early-cse");
+    passes.push(~"simplifycfg");
 
     passes.push(~"globalopt");
     passes.push(~"ipsccp");
@@ -83,10 +84,9 @@ pub fn create_standard_passes(level:OptLevel) -> ~[~str] {
 
     passes.push(~"prune-eh");
 
-    if level == Aggressive {
+    if level != Less {
         passes.push(~"mergefunc");
     }
-
     passes.push(~"inline");
 
     passes.push(~"functionattrs");
@@ -95,7 +95,11 @@ pub fn create_standard_passes(level:OptLevel) -> ~[~str] {
         passes.push(~"argpromotion");
     }
 
+    passes.push(~"sroa");
+
     passes.push(~"early-cse");
+    passes.push(~"constmerge");
+
     passes.push(~"simplify-libcalls");
     passes.push(~"jump-threading");
     passes.push(~"correlated-propagation");
@@ -133,12 +137,6 @@ pub fn create_standard_passes(level:OptLevel) -> ~[~str] {
     passes.push(~"jump-threading");
     passes.push(~"correlated-propagation");
     passes.push(~"dse");
-
-    passes.push(~"bb-vectorize");
-    passes.push(~"instcombine");
-    passes.push(~"early-cse");
-
-    passes.push(~"loop-unroll");
 
     passes.push(~"adce");
     passes.push(~"simplifycfg");
