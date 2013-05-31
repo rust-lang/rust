@@ -375,6 +375,18 @@ impl<D:Decoder> Decodable<D> for bool {
     }
 }
 
+impl<S:Encoder> Encodable<S> for char {
+    fn encode(&self, s: &mut S) {
+        s.emit_char(*self)
+    }
+}
+
+impl<D:Decoder> Decodable<D> for char {
+    fn decode(d: &mut D) -> char {
+        d.read_char()
+    }
+}
+
 impl<S:Encoder> Encodable<S> for () {
     fn encode(&self, s: &mut S) {
         s.emit_nil()

@@ -17,13 +17,13 @@ extern mod extra;
 // These tests used to be separate files, but I wanted to refactor all
 // the common code.
 
+use std::hashmap::{HashMap, HashSet};
+
 use EBReader = extra::ebml::reader;
 use EBWriter = extra::ebml::writer;
 use std::cmp::Eq;
 use std::cmp;
-use std::io::Writer;
 use std::io;
-use extra::ebml;
 use extra::serialize::{Decodable, Encodable};
 use extra::time;
 
@@ -158,4 +158,19 @@ pub fn main() {
 
     let a = &time::now();
     test_ebml(a);
+
+    test_ebml(&1.0f32);
+    test_ebml(&1.0f64);
+    test_ebml(&1.0f);
+    test_ebml(&'a');
+
+    let mut a = HashMap::new();
+    test_ebml(&a);
+    a.insert(1, 2);
+    test_ebml(&a);
+
+    let mut a = HashSet::new();
+    test_ebml(&a);
+    a.insert(1);
+    test_ebml(&a);
 }
