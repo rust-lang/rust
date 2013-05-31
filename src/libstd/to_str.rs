@@ -34,10 +34,6 @@ pub trait ToStrConsume {
     fn to_str_consume(self) -> ~str;
 }
 
-impl ToStr for bool {
-    #[inline(always)]
-    fn to_str(&self) -> ~str { ::bool::to_str(*self) }
-}
 impl ToStr for () {
     #[inline(always)]
     fn to_str(&self) -> ~str { ~"()" }
