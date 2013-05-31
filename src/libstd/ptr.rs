@@ -15,6 +15,7 @@ use cast;
 #[cfg(stage0)] use libc::{c_void, size_t};
 use option::{Option, Some, None};
 use sys;
+use unstable::intrinsics;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
 use uint;
@@ -71,11 +72,11 @@ pub unsafe fn position<T>(buf: *T, f: &fn(&T) -> bool) -> uint {
 
 /// Create an unsafe null pointer
 #[inline(always)]
-pub fn null<T>() -> *T { unsafe { cast::transmute(0u) } }
+pub fn null<T>() -> *T { 0 as *T }
 
 /// Create an unsafe mutable null pointer
 #[inline(always)]
-pub fn mut_null<T>() -> *mut T { unsafe { cast::transmute(0u) } }
+pub fn mut_null<T>() -> *mut T { 0 as *mut T }
 
 /// Returns true if the pointer is equal to the null pointer.
 #[inline(always)]
@@ -207,47 +208,57 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
 }
 
 /**
-  Transform a region pointer - &T - to an unsafe pointer - *T.
-  This is safe, but is implemented with an unsafe block due to
-  transmute.
-*/
+ * Swap the values at two mutable locations of the same type, without
+ * deinitialising or copying either one.
+ */
+#[inline]
+pub unsafe fn swap_ptr<T>(x: *mut T, y: *mut T) {
+    // Give ourselves some scratch space to work with
+    let mut tmp: T = intrinsics::uninit();
+    let t: *mut T = &mut tmp;
+
+    // Perform the swap
+    copy_memory(t, x, 1);
+    copy_memory(x, y, 1);
+    copy_memory(y, t, 1);
+
+    // y and t now point to the same thing, but we need to completely forget `tmp`
+    // because it's no longer relevant.
+    cast::forget(tmp);
+}
+
+/**
+ * Replace the value at a mutable location with a new one, returning the old
+ * value, without deinitialising or copying either one.
+ */
+#[inline(always)]
+pub unsafe fn replace_ptr<T>(dest: *mut T, mut src: T) -> T {
+    swap_ptr(dest, &mut src);
+    src
+}
+
+/// Transform a region pointer - &T - to an unsafe pointer - *T.
 #[inline(always)]
 pub fn to_unsafe_ptr<T>(thing: &T) -> *T {
-    unsafe { cast::transmute(thing) }
+    thing as *T
 }
 
-/**
-  Transform a const region pointer - &const T - to a const unsafe pointer -
-  *const T. This is safe, but is implemented with an unsafe block due to
-  transmute.
-*/
+/// Transform a const region pointer - &const T - to a const unsafe pointer - *const T.
 #[inline(always)]
 pub fn to_const_unsafe_ptr<T>(thing: &const T) -> *const T {
-    unsafe { cast::transmute(thing) }
+    thing as *const T
 }
 
-/**
-  Transform a mutable region pointer - &mut T - to a mutable unsafe pointer -
-  *mut T. This is safe, but is implemented with an unsafe block due to
-  transmute.
-*/
+/// Transform a mutable region pointer - &mut T - to a mutable unsafe pointer - *mut T.
 #[inline(always)]
 pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
-    unsafe { cast::transmute(thing) }
+    thing as *mut T
 }
 
-/**
-  Cast a region pointer - &T - to a uint.
-  This is safe, but is implemented with an unsafe block due to
-  transmute.
-
-  (I couldn't think of a cutesy name for this one.)
-*/
+/// Cast a region pointer - &T - to a uint.
 #[inline(always)]
 pub fn to_uint<T>(thing: &T) -> uint {
-    unsafe {
-        cast::transmute(thing)
-    }
+    thing as *T as uint
 }
 
 /// Determine if two borrowed pointers point to the same thing.
@@ -373,14 +384,10 @@ impl<T> Ptr<T> for *mut T {
 impl<T> Eq for *const T {
     #[inline(always)]
     fn eq(&self, other: &*const T) -> bool {
-        unsafe {
-            let a: uint = cast::transmute(*self);
-            let b: uint = cast::transmute(*other);
-            return a == b;
-        }
+        (*self as uint) == (*other as uint)
     }
     #[inline(always)]
-    fn ne(&self, other: &*const T) -> bool { !(*self).eq(other) }
+    fn ne(&self, other: &*const T) -> bool { !self.eq(other) }
 }
 
 // Comparison for pointers
@@ -388,35 +395,19 @@ impl<T> Eq for *const T {
 impl<T> Ord for *const T {
     #[inline(always)]
     fn lt(&self, other: &*const T) -> bool {
-        unsafe {
-            let a: uint = cast::transmute(*self);
-            let b: uint = cast::transmute(*other);
-            return a < b;
-        }
+        (*self as uint) < (*other as uint)
     }
     #[inline(always)]
     fn le(&self, other: &*const T) -> bool {
-        unsafe {
-            let a: uint = cast::transmute(*self);
-            let b: uint = cast::transmute(*other);
-            return a <= b;
-        }
+        (*self as uint) <= (*other as uint)
     }
     #[inline(always)]
     fn ge(&self, other: &*const T) -> bool {
-        unsafe {
-            let a: uint = cast::transmute(*self);
-            let b: uint = cast::transmute(*other);
-            return a >= b;
-        }
+        (*self as uint) >= (*other as uint)
     }
     #[inline(always)]
     fn gt(&self, other: &*const T) -> bool {
-        unsafe {
-            let a: uint = cast::transmute(*self);
-            let b: uint = cast::transmute(*other);
-            return a > b;
-        }
+        (*self as uint) > (*other as uint)
     }
 }
 
@@ -425,11 +416,11 @@ impl<T> Ord for *const T {
 impl<'self,T:Eq> Eq for &'self T {
     #[inline(always)]
     fn eq(&self, other: & &'self T) -> bool {
-        return *(*self) == *(*other);
+        *(*self) == *(*other)
     }
     #[inline(always)]
     fn ne(&self, other: & &'self T) -> bool {
-        return *(*self) != *(*other);
+        *(*self) != *(*other)
     }
 }
 

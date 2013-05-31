@@ -506,7 +506,7 @@ pub fn shift<T>(v: &mut ~[T]) -> T {
         let vp = raw::to_mut_ptr(*v);
         let vp = ptr::mut_offset(vp, next_ln - 1);
 
-        util::replace_ptr(vp, work_elt)
+        ptr::replace_ptr(vp, work_elt)
     }
 }
 
@@ -570,7 +570,7 @@ pub fn consume<T>(mut v: ~[T], f: &fn(uint, v: T)) {
                 // elements during unwinding
                 let x = intrinsics::init();
                 let p = ptr::mut_offset(p, i);
-                f(i, util::replace_ptr(p, x));
+                f(i, ptr::replace_ptr(p, x));
             }
         }
 
@@ -597,7 +597,7 @@ pub fn consume_reverse<T>(mut v: ~[T], f: &fn(uint, v: T)) {
                 // elements during unwinding
                 let x = intrinsics::init();
                 let p = ptr::mut_offset(p, i);
-                f(i, util::replace_ptr(p, x));
+                f(i, ptr::replace_ptr(p, x));
             }
         }
 
@@ -613,7 +613,7 @@ pub fn pop<T>(v: &mut ~[T]) -> T {
     }
     let valptr = ptr::to_mut_unsafe_ptr(&mut v[ln - 1u]);
     unsafe {
-        let val = util::replace_ptr(valptr, intrinsics::init());
+        let val = ptr::replace_ptr(valptr, intrinsics::init());
         raw::set_len(v, ln - 1u);
         val
     }
@@ -707,8 +707,8 @@ pub fn push_all_move<T>(v: &mut ~[T], mut rhs: ~[T]) {
     unsafe {
         do as_mut_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
-                let x = util::replace_ptr(ptr::mut_offset(p, i),
-                                          intrinsics::uninit());
+                let x = ptr::replace_ptr(ptr::mut_offset(p, i),
+                                         intrinsics::uninit());
                 push(&mut *v, x);
             }
         }
@@ -723,7 +723,7 @@ pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
         unsafe {
             // This loop is optimized out for non-drop types.
             for uint::range(newlen, oldlen) |i| {
-                util::replace_ptr(ptr::mut_offset(p, i), intrinsics::uninit());
+                ptr::replace_ptr(ptr::mut_offset(p, i), intrinsics::uninit());
             }
         }
     }
@@ -747,14 +747,14 @@ pub fn dedup<T:Eq>(v: &mut ~[T]) {
                 // last_written < next_to_read < ln
                 if *ptr::mut_offset(p, next_to_read) ==
                     *ptr::mut_offset(p, last_written) {
-                    util::replace_ptr(ptr::mut_offset(p, next_to_read),
-                                      intrinsics::uninit());
+                    ptr::replace_ptr(ptr::mut_offset(p, next_to_read),
+                                     intrinsics::uninit());
                 } else {
                     last_written += 1;
                     // last_written <= next_to_read < ln
                     if next_to_read != last_written {
-                        util::swap_ptr(ptr::mut_offset(p, last_written),
-                                       ptr::mut_offset(p, next_to_read));
+                        ptr::swap_ptr(ptr::mut_offset(p, last_written),
+                                      ptr::mut_offset(p, next_to_read));
                     }
                 }
                 // last_written <= next_to_read < ln
@@ -1398,7 +1398,7 @@ pub fn swap<T>(v: &mut [T], a: uint, b: uint) {
         // them to their raw pointers to do the swap
         let pa: *mut T = ptr::to_mut_unsafe_ptr(&mut v[a]);
         let pb: *mut T = ptr::to_mut_unsafe_ptr(&mut v[b]);
-        util::swap_ptr(pa, pb);
+        ptr::swap_ptr(pa, pb);
     }
 }
 
