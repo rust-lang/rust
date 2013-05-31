@@ -517,7 +517,7 @@ impl TyVisitor for my_visitor {
     fn visit_nil(&self) -> bool { true }
     fn visit_bool(&self) -> bool {
         do self.get::<bool>() |b| {
-            self.vals.push(bool::to_str(b));
+            self.vals.push(b.to_str());
         };
         true
     }
