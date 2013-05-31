@@ -17,6 +17,8 @@ region parameterized.
 
 */
 
+use core::prelude::*;
+
 use driver::session::Session;
 use metadata::csearch;
 use middle::resolve;
@@ -365,7 +367,7 @@ pub fn resolve_arm(arm: &ast::arm, cx: Context, visitor: visit::vt<Context>) {
 }
 
 pub fn resolve_pat(pat: @ast::pat, cx: Context, visitor: visit::vt<Context>) {
-    assert!(cx.var_parent == cx.parent);
+    assert_eq!(cx.var_parent, cx.parent);
     parent_to_expr(cx, pat.id);
     visit::visit_pat(pat, cx, visitor);
 }
@@ -381,7 +383,7 @@ pub fn resolve_stmt(stmt: @ast::stmt, cx: Context, visitor: visit::vt<Context>) 
             let expr_cx = Context {parent: Some(stmt_id), ..cx};
             visit::visit_stmt(stmt, expr_cx, visitor);
         }
-        ast::stmt_mac(*) => cx.sess.bug(~"unexpanded macro")
+        ast::stmt_mac(*) => cx.sess.bug("unexpanded macro")
     }
 }
 
@@ -427,7 +429,7 @@ pub fn resolve_expr(expr: @ast::expr, cx: Context, visitor: visit::vt<Context>) 
 pub fn resolve_local(local: @ast::local,
                      cx: Context,
                      visitor: visit::vt<Context>) {
-    assert!(cx.var_parent == cx.parent);
+    assert_eq!(cx.var_parent, cx.parent);
     parent_to_expr(cx, local.node.id);
     visit::visit_local(local, cx, visitor);
 }

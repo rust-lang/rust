@@ -10,6 +10,8 @@
 
 // Tests that auto-ref can't create mutable aliases to immutable memory.
 
+use std::io;
+
 struct Foo {
     x: int
 }

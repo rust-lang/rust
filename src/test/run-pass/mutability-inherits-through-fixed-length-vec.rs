@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec;
+
 fn test1() {
     let mut ints = [0, ..32];
     ints[0] += 1;
-    assert!(ints[0] == 1);
+    assert_eq!(ints[0], 1);
 }
 
 fn test2() {

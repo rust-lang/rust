@@ -15,7 +15,7 @@ fn spawn<T:Owned>(val: T, f: extern fn(T)) {
 }
 
 fn f(i: int) {
-    assert!(i == 100);
+    assert_eq!(i, 100);
 }
 
 pub fn main() {

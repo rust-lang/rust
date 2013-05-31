@@ -60,6 +60,12 @@
  * line (which it can't) and so naturally place the content on its own line to
  * avoid combining it with other lines and making matters even worse.
  */
+
+use core::prelude::*;
+
+use core::io;
+use core::vec;
+
 #[deriving(Eq)]
 pub enum breaks { consistent, inconsistent, }
 
@@ -111,18 +117,18 @@ pub fn tok_str(t: token) -> ~str {
 pub fn buf_str(toks: ~[token], szs: ~[int], left: uint, right: uint,
                lim: uint) -> ~str {
     let n = toks.len();
-    assert!(n == szs.len());
+    assert_eq!(n, szs.len());
     let mut i = left;
     let mut L = lim;
     let mut s = ~"[";
     while i != right && L != 0u {
         L -= 1u;
-        if i != left { s += ~", "; }
+        if i != left { s += ", "; }
         s += fmt!("%d=%s", szs[i], tok_str(toks[i]));
         i += 1u;
         i %= n;
     }
-    s += ~"]";
+    s += "]";
     return s;
 }
 
@@ -400,7 +406,7 @@ pub impl Printer {
             match x {
               BREAK(b) => self.left_total += b.blank_space,
               STRING(_, len) => {
-                assert!((len == L)); self.left_total += len;
+                assert_eq!(len, L); self.left_total += len;
               }
               _ => ()
             }
@@ -437,7 +443,7 @@ pub impl Printer {
     }
     fn print_newline(&mut self, amount: int) {
         debug!("NEWLINE %d", amount);
-        (*self.out).write_str(~"\n");
+        (*self.out).write_str("\n");
         self.pending_indentation = 0;
         self.indent(amount);
     }
@@ -526,7 +532,7 @@ pub impl Printer {
           }
           STRING(s, len) => {
             debug!("print STRING(%s)", *s);
-            assert!((L == len));
+            assert_eq!(L, len);
             // assert!(L <= space);
             self.space -= len;
             self.print_str(*s);

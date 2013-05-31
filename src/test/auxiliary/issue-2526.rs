@@ -13,7 +13,7 @@
        uuid = "54cc1bc9-02b8-447c-a227-75ebc923bc29")];
 #[crate_type = "lib"];
 
-extern mod std;
+extern mod extra;
 
 struct arc_destruct<T> {
   _data: int,

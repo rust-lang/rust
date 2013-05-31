@@ -9,9 +9,10 @@
 // except according to those terms.
 
 // xfail-win32
-extern mod std;
+extern mod extra;
 
-use core::comm::*;
+use std::comm::*;
+use std::task;
 
 struct complainer {
   c: SharedChan<bool>,

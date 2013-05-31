@@ -15,6 +15,8 @@ If the first paragraph of a long description is short enough then it
 is interpreted as the brief description.
 */
 
+use core::prelude::*;
+
 use astsrv;
 use doc::ItemUtils;
 use doc;
@@ -22,7 +24,9 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
+use core::str;
 use core::util;
+use core::vec;
 
 pub fn mk_pass() -> Pass {
     Pass {
@@ -104,7 +108,7 @@ fn first_sentence(s: ~str) -> Option<~str> {
     let paras = paragraphs(s);
     if !paras.is_empty() {
         let first_para = paras.head();
-        Some(str::replace(first_sentence_(*first_para), ~"\n", ~" "))
+        Some(str::replace(first_sentence_(*first_para), "\n", " "))
     } else {
         None
     }
@@ -132,7 +136,7 @@ fn first_sentence_(s: &str) -> ~str {
             str::to_owned(str::slice(s, 0, idx - 1))
         }
         _ => {
-            if str::ends_with(s, ~".") {
+            if str::ends_with(s, ".") {
                 str::to_owned(s)
             } else {
                 str::to_owned(s)
@@ -164,7 +168,7 @@ pub fn paragraphs(s: &str) -> ~[~str] {
             accum = if str::is_empty(accum) {
                 copy *line
             } else {
-                accum + ~"\n" + *line
+                accum + "\n" + *line
             }
         }
 
@@ -172,7 +176,7 @@ pub fn paragraphs(s: &str) -> ~[~str] {
     };
 
     if !accum.is_empty() {
-        paras + ~[accum]
+        paras + [accum]
     } else {
         paras
     }
@@ -180,6 +184,8 @@ pub fn paragraphs(s: &str) -> ~[~str] {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use astsrv;
     use attr_pass;
     use super::{extract, paragraphs, run};
@@ -197,7 +203,7 @@ mod test {
     #[test]
     fn should_promote_desc() {
         let doc = mk_doc(~"#[doc = \"desc\"] mod m { }");
-        assert!(doc.cratemod().mods()[0].brief() == Some(~"desc"));
+        assert_eq!(doc.cratemod().mods()[0].brief(), Some(~"desc"));
     }
 
     #[test]
@@ -216,21 +222,21 @@ mod test {
 
     #[test]
     fn test_paragraphs_1() {
-        let paras = paragraphs(~"1\n\n2");
-        assert!(paras == ~[~"1", ~"2"]);
+        let paras = paragraphs("1\n\n2");
+        assert_eq!(paras, ~[~"1", ~"2"]);
     }
 
     #[test]
     fn test_paragraphs_2() {
-        let paras = paragraphs(~"\n\n1\n1\n\n2\n\n");
-        assert!(paras == ~[~"1\n1", ~"2"]);
+        let paras = paragraphs("\n\n1\n1\n\n2\n\n");
+        assert_eq!(paras, ~[~"1\n1", ~"2"]);
     }
 
     #[test]
     fn should_promote_short_descs() {
         let desc = Some(~"desc");
         let brief = extract(copy desc);
-        assert!(brief == desc);
+        assert_eq!(brief, desc);
     }
 
     #[test]
@@ -244,7 +250,7 @@ Scotland in the mid 12th century, although it may have been built by
 King Henry II of England when he took control of England'snorthern
 counties.");
         let brief = extract(desc);
-        assert!(brief == None);
+        assert_eq!(brief, None);
     }
 
     #[test]

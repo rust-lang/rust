@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::comm::*;
+use std::comm::*;
+use std::ptr;
+use std::task;
 
 pub fn main() {
     let (p, ch) = stream::<uint>();
@@ -22,5 +24,5 @@ pub fn main() {
     });
 
     let x_in_child = p.recv();
-    assert!(x_in_parent == x_in_child);
+    assert_eq!(x_in_parent, x_in_child);
 }

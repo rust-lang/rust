@@ -12,8 +12,11 @@
 
 use context::Ctx;
 use core::hashmap::HashMap;
-use core::path::Path;
-use std::tempfile::mkdtemp;
+use core::io;
+use core::os;
+use core::prelude::*;
+use core::result;
+use extra::tempfile::mkdtemp;
 use util::{PkgId, default_version};
 use path_util::{target_executable_in_workspace, target_library_in_workspace,
                target_test_in_workspace, target_bench_in_workspace,
@@ -40,7 +43,7 @@ fn fake_pkg() -> PkgId {
 }
 
 fn remote_pkg() -> PkgId {
-    let remote = RemotePath(Path(~"github.com/catamorphism/test-pkg"));
+    let remote = RemotePath(Path("github.com/catamorphism/test-pkg"));
     PkgId {
         local_path: normalize(copy remote),
         remote_path: remote,
@@ -52,23 +55,23 @@ fn remote_pkg() -> PkgId {
 fn writeFile(file_path: &Path, contents: ~str) {
     let out: @io::Writer =
         result::get(&io::file_writer(file_path,
-                                     ~[io::Create, io::Truncate]));
+                                     [io::Create, io::Truncate]));
     out.write_line(contents);
 }
 
 fn mk_temp_workspace(short_name: &LocalPath) -> Path {
     let workspace = mkdtemp(&os::tmpdir(), "test").expect("couldn't create temp dir");
     // include version number in directory name
-    let package_dir = workspace.push(~"src").push(fmt!("%s-0.1", short_name.to_str()));
+    let package_dir = workspace.push("src").push(fmt!("%s-0.1", short_name.to_str()));
     assert!(os::mkdir_recursive(&package_dir, u_rwx));
     // Create main, lib, test, and bench files
-    writeFile(&package_dir.push(~"main.rs"),
+    writeFile(&package_dir.push("main.rs"),
               ~"fn main() { let _x = (); }");
-    writeFile(&package_dir.push(~"lib.rs"),
+    writeFile(&package_dir.push("lib.rs"),
               ~"pub fn f() { let _x = (); }");
-    writeFile(&package_dir.push(~"test.rs"),
+    writeFile(&package_dir.push("test.rs"),
               ~"#[test] pub fn f() { (); }");
-    writeFile(&package_dir.push(~"bench.rs"),
+    writeFile(&package_dir.push("bench.rs"),
               ~"#[bench] pub fn f() { (); }");
     workspace
 }
@@ -93,12 +96,10 @@ fn test_sysroot() -> Path {
     self_path.pop()
 }
 
-// Ignored on i686 -- see #6517
 #[test]
-#[ignore(cfg(target_arch = "x86"))]
 fn test_make_dir_rwx() {
     let temp = &os::tmpdir();
-    let dir = temp.push(~"quux");
+    let dir = temp.push("quux");
     assert!(!os::path_exists(&dir) ||
             os::remove_dir_recursive(&dir));
     debug!("Trying to make %s", dir.to_str());
@@ -109,7 +110,6 @@ fn test_make_dir_rwx() {
 }
 
 #[test]
-#[ignore(cfg(target_arch = "x86"))]
 fn test_install_valid() {
     let sysroot = test_sysroot();
     debug!("sysroot = %s", sysroot.to_str());
@@ -135,7 +135,6 @@ fn test_install_valid() {
 }
 
 #[test]
-#[ignore(cfg(target_arch = "x86"))]
 fn test_install_invalid() {
     use conditions::nonexistent_package::cond;
     use cond1 = conditions::missing_pkg_files::cond;
@@ -158,7 +157,6 @@ fn test_install_invalid() {
 }
 
 #[test]
-#[ignore(cfg(target_arch = "x86"))]
 fn test_install_url() {
     let workspace = mkdtemp(&os::tmpdir(), "test").expect("couldn't create temp dir");
     let sysroot = test_sysroot();
@@ -176,10 +174,10 @@ fn test_install_url() {
     debug!("lib = %s", lib.to_str());
     assert!(os::path_exists(&lib));
     assert!(is_rwx(&lib));
-    let built_test = built_test_in_workspace(&temp_pkg_id, &workspace).expect(~"test_install_url");
+    let built_test = built_test_in_workspace(&temp_pkg_id, &workspace).expect("test_install_url");
     assert!(os::path_exists(&built_test));
     let built_bench = built_bench_in_workspace(&temp_pkg_id,
-                                               &workspace).expect(~"test_install_url");
+                                               &workspace).expect("test_install_url");
     assert!(os::path_exists(&built_bench));
     // And that the test and bench executables aren't installed
     let test = target_test_in_workspace(&temp_pkg_id, &workspace);
@@ -212,7 +210,7 @@ fn test_package_ids_must_be_relative_path_like() {
 
     let whatever = PkgId::new("foo");
 
-    assert!(addversion("foo") == whatever.to_str());
+    assert_eq!(addversion("foo"), whatever.to_str());
     assert!(addversion("github.com/mozilla/rust") ==
             PkgId::new("github.com/mozilla/rust").to_str());
 
@@ -222,16 +220,16 @@ fn test_package_ids_must_be_relative_path_like() {
         copy whatever
     }).in {
         let x = PkgId::new("");
-        assert!(addversion("foo") == x.to_str());
+        assert_eq!(addversion("foo"), x.to_str());
     }
 
     do cond.trap(|(p, e)| {
-        assert!(p.to_str() == os::make_absolute(&Path("foo/bar/quux")).to_str());
+        assert_eq!(p.to_str(), os::make_absolute(&Path("foo/bar/quux")).to_str());
         assert!("absolute pkgid" == e);
         copy whatever
     }).in {
         let z = PkgId::new(os::make_absolute(&Path("foo/bar/quux")).to_str());
-        assert!(addversion("foo") == z.to_str());
+        assert_eq!(addversion("foo"), z.to_str());
     }
 
 }

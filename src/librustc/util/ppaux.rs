@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use metadata::encoder;
 use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
@@ -28,6 +30,9 @@ use syntax::ast_map;
 use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
+
+use core::str;
+use core::vec;
 
 /// Produces a string suitable for debugging output.
 pub trait Repr {
@@ -380,10 +385,10 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
                        m.fty.purity,
                        m.fty.abis,
                        Some(m.ident),
-                       &m.fty.sig) + ~";"
+                       &m.fty.sig) + ";"
     }
     fn field_to_str(cx: ctxt, f: field) -> ~str {
-        return *cx.sess.str_of(f.ident) + ~": " + mt_to_str(cx, &f.mt);
+        return *cx.sess.str_of(f.ident) + ": " + mt_to_str(cx, &f.mt);
     }
 
     // if there is an id, print that instead of the structural type:
@@ -409,13 +414,13 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_uniq(ref tm) => ~"~" + mt_to_str(cx, tm),
       ty_ptr(ref tm) => ~"*" + mt_to_str(cx, tm),
       ty_rptr(r, ref tm) => {
-        region_to_str_space(cx, ~"&", r) + mt_to_str(cx, tm)
+        region_to_str_space(cx, "&", r) + mt_to_str(cx, tm)
       }
-      ty_unboxed_vec(ref tm) => { ~"unboxed_vec<" + mt_to_str(cx, tm) + ~">" }
+      ty_unboxed_vec(ref tm) => { fmt!("unboxed_vec<%s>", mt_to_str(cx, tm)) }
       ty_type => ~"type",
       ty_tup(ref elems) => {
         let strs = elems.map(|elem| ty_to_str(cx, *elem));
-        ~"(" + str::connect(strs, ~",") + ~")"
+        ~"(" + str::connect(strs, ",") + ")"
       }
       ty_closure(ref f) => {
           closure_to_str(cx, f)
@@ -428,11 +433,11 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_param(param_ty {idx: id, def_id: did}) => {
           if cx.sess.verbose() {
               fmt!("'%s:%?",
-                   str::from_bytes(~[('a' as u8) + (id as u8)]),
+                   str::from_bytes([('a' as u8) + (id as u8)]),
                    did)
           } else {
               fmt!("'%s",
-                   str::from_bytes(~[('a' as u8) + (id as u8)]))
+                   str::from_bytes([('a' as u8) + (id as u8)]))
           }
       }
       ty_self(*) => ~"Self",
@@ -450,7 +455,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_evec(ref mt, vs) => {
         vstore_ty_to_str(cx, mt, vs)
       }
-      ty_estr(vs) => fmt!("%s%s", vstore_to_str(cx, vs), ~"str"),
+      ty_estr(vs) => fmt!("%s%s", vstore_to_str(cx, vs), "str"),
       ty_opaque_box => ~"@?",
       ty_opaque_closure_ptr(ast::BorrowedSigil) => ~"closure&",
       ty_opaque_closure_ptr(ast::ManagedSigil) => ~"closure@",
@@ -558,6 +563,7 @@ impl Repr for ty::ParamBounds {
                 ty::BoundStatic => ~"'static",
                 ty::BoundOwned => ~"Owned",
                 ty::BoundConst => ~"Const",
+                ty::BoundSized => ~"Sized",
             });
         }
         for self.trait_bounds.each |t| {
@@ -762,7 +768,8 @@ impl UserString for ty::BuiltinBound {
             ty::BoundCopy => ~"Copy",
             ty::BoundStatic => ~"'static",
             ty::BoundOwned => ~"Owned",
-            ty::BoundConst => ~"Const"
+            ty::BoundConst => ~"Const",
+            ty::BoundSized => ~"Sized",
         }
     }
 }
@@ -797,5 +804,11 @@ impl UserString for ty::TraitRef {
             parameterized(tcx, base, self.substs.self_r,
                           self.substs.tps)
         }
+    }
+}
+
+impl UserString for ty::t {
+    fn user_string(&self, tcx: ctxt) -> ~str {
+        ty_to_str(tcx, *self)
     }
 }

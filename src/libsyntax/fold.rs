@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast::*;
 use ast;
 use codemap::{span, spanned};
 use opt_vec::OptVec;
+
+use core::vec;
 
 pub trait ast_fold {
     fn fold_crate(@self, &crate) -> crate;
@@ -431,7 +435,6 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
     fn fold_field_(field: field, fld: @ast_fold) -> field {
         spanned {
             node: ast::field_ {
-                mutbl: field.node.mutbl,
                 ident: fld.fold_ident(field.node.ident),
                 expr: fld.fold_expr(field.node.expr),
             },
@@ -858,4 +861,3 @@ impl AstFoldExtensions for @ast_fold {
 pub fn make_fold(afp: ast_fold_fns) -> @ast_fold {
     afp as @ast_fold
 }
-

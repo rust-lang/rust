@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use doc;
 #[cfg(test)] use extract;
 #[cfg(test)] use parse;
+
+use core::vec;
 
 pub struct Fold<T> {
     ctxt: T,
@@ -369,7 +373,7 @@ fn default_fold_should_produce_same_doc() {
     let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
     let folded = (fld.fold_doc)(&fld, copy doc);
-    assert!(doc == folded);
+    assert_eq!(doc, folded);
 }
 
 #[test]
@@ -379,7 +383,7 @@ fn default_fold_should_produce_same_consts() {
     let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
     let folded = (fld.fold_doc)(&fld, copy doc);
-    assert!(doc == folded);
+    assert_eq!(doc, folded);
 }
 
 #[test]
@@ -389,7 +393,7 @@ fn default_fold_should_produce_same_enums() {
     let doc = extract::extract(ast, ~"");
     let fld = default_seq_fold(());
     let folded = (fld.fold_doc)(&fld, copy doc);
-    assert!(doc == folded);
+    assert_eq!(doc, folded);
 }
 
 #[test]
@@ -399,5 +403,5 @@ fn default_parallel_fold_should_produce_same_doc() {
     let doc = extract::extract(ast, ~"");
     let fld = default_par_fold(());
     let folded = (fld.fold_doc)(&fld, copy doc);
-    assert!(doc == folded);
+    assert_eq!(doc, folded);
 }

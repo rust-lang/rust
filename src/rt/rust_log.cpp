@@ -324,6 +324,10 @@ void update_log_settings(void* crate_map, char* settings) {
     free(buffer);
 }
 
+extern "C" CDECL void
+rust_update_log_settings(void* crate_map, char* settings) {
+    update_log_settings(crate_map, settings);
+}
 
 //
 // Local Variables:

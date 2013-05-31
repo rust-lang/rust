@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use std::arc;
+extern mod extra;
+use extra::arc;
 fn main() {
     let x = ~arc::RWARC(1);
     let mut y = None;

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::either::{Either, Left, Right};
+use std::either::{Either, Left, Right};
 
     fn f(x: &mut Either<int,float>, y: &Either<int,float>) -> int {
         match *y {
@@ -22,7 +22,7 @@ use core::either::{Either, Left, Right};
 
     fn g() {
         let mut x: Either<int,float> = Left(3);
-        io::println(f(&mut x, &x).to_str()); //~ ERROR cannot borrow
+        println(f(&mut x, &x).to_str()); //~ ERROR cannot borrow
     }
 
     fn h() {

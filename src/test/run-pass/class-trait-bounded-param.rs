@@ -10,8 +10,8 @@
 
 // xfail-test
 
-extern mod std;
-use std::oldmap::{map, hashmap, int_hash};
+extern mod extra;
+use extra::oldmap::{map, hashmap, int_hash};
 
 class keys<K:Copy,V:Copy,M:Copy + map<K,V>>
     : old_iter::base_iter<K> {
@@ -31,5 +31,5 @@ pub fn main() {
     let m = int_hash();
     m.insert(1, 2);
     m.insert(3, 4);
-    assert!(old_iter::to_vec(keys(m)) == ~[1, 3]);
+    assert_eq!(old_iter::to_vec(keys(m)), ~[1, 3]);
 }

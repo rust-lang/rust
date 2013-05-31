@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[cfg(stage0)]
-use core;
+use core::prelude::*;
 
 #[deriving(Eq, IterBytes)]
 pub struct EnumSet<E> {
@@ -60,22 +59,6 @@ pub impl<E:CLike> EnumSet<E> {
         (self.bits & bit(e)) != 0
     }
 
-    #[cfg(stage0)]
-    fn each(&self, f: &fn(E) -> bool) {
-        let mut bits = self.bits;
-        let mut index = 0;
-        while bits != 0 {
-            if (bits & 1) != 0 {
-                let e = CLike::from_uint(index);
-                if !f(e) {
-                    return;
-                }
-            }
-            index += 1;
-            bits >>= 1;
-        }
-    }
-    #[cfg(not(stage0))]
     fn each(&self, f: &fn(E) -> bool) -> bool {
         let mut bits = self.bits;
         let mut index = 0;
@@ -113,7 +96,11 @@ impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
+    use core::cast;
     use core::iter;
+
     use util::enum_set::*;
 
     #[deriving(Eq)]

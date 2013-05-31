@@ -1,5 +1,5 @@
-use core::libc::c_int;
-use core::libc;
+use std::libc::c_int;
+use std::libc;
 
 pub struct Fd(c_int);
 

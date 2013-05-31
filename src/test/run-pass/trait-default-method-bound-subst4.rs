@@ -21,6 +21,6 @@ fn f<T, V: A<T>>(i: V, j: uint) -> uint {
 }
 
 pub fn main () {
-    assert!(f::<float, int>(0, 2u) == 2u);
-    assert!(f::<uint, int>(0, 2u) == 2u);
+    assert_eq!(f::<float, int>(0, 2u), 2u);
+    assert_eq!(f::<uint, int>(0, 2u), 2u);
 }

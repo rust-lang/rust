@@ -11,8 +11,8 @@
 pub mod stream {
     pub enum Stream<T:Owned> { send(T, ::stream::server::Stream<T>), }
     pub mod server {
-        use core::option;
-        use core::pipes;
+        use std::option;
+        use std::pipes;
 
         pub impl<T:Owned> Stream<T> {
             pub fn recv() -> extern fn(v: Stream<T>) -> ::stream::Stream<T> {

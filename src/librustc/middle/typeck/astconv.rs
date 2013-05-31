@@ -52,6 +52,8 @@
  * an rptr (`&r.T`) use the region `r` that appears in the rptr.
  */
 
+use core::prelude::*;
+
 use middle::const_eval;
 use middle::ty::{substs};
 use middle::ty::{ty_param_substs_and_ty};
@@ -61,6 +63,8 @@ use middle::typeck::rscope::{region_scope, RegionError};
 use middle::typeck::rscope::RegionParamNames;
 use middle::typeck::lookup_def_tcx;
 
+use core::result;
+use core::vec;
 use syntax::abi::AbiSet;
 use syntax::{ast, ast_util};
 use syntax::codemap::span;
@@ -777,6 +781,9 @@ pub fn try_add_builtin_trait(tcx: ty::ctxt,
         true
     } else if trait_def_id == li.const_trait() {
         builtin_bounds.add(ty::BoundConst);
+        true
+    } else if trait_def_id == li.sized_trait() {
+        builtin_bounds.add(ty::BoundSized);
         true
     } else {
         false

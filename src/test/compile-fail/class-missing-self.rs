@@ -9,7 +9,7 @@
 // except according to those terms.
 
 struct cat {
-  priv mut meows : uint,
+  priv meows : uint,
 }
 
 priv impl cat {

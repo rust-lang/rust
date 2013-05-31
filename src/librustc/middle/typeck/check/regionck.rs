@@ -27,6 +27,8 @@ this point a bit better.
 
 */
 
+use core::prelude::*;
+
 use middle::freevars::get_freevars;
 use middle::ty::{re_scope};
 use middle::ty;
@@ -34,10 +36,11 @@ use middle::typeck::check::FnCtxt;
 use middle::typeck::check::regionmanip::relate_nested_regions;
 use middle::typeck::infer::resolve_and_force_all_but_regions;
 use middle::typeck::infer::resolve_type;
-use util::ppaux::{note_and_explain_region, ty_to_str,
-                  region_to_str};
+use util::ppaux::{note_and_explain_region, ty_to_str, region_to_str};
 use middle::pat_util;
 
+use core::result;
+use core::uint;
 use syntax::ast::{ManagedSigil, OwnedSigil, BorrowedSigil};
 use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
 use syntax::ast;
@@ -118,26 +121,6 @@ pub impl Rcx {
     }
 
     /// Try to resolve the type for the given node.
-    #[config(stage0)]
-    fn resolve_expr_type_adjusted(@mut self, expr: @ast::expr) -> ty::t {
-        let ty_unadjusted = self.resolve_node_type(expr.id);
-        if ty::type_is_error(ty_unadjusted) || ty::type_is_bot(ty_unadjusted) {
-            ty_unadjusted
-        } else {
-            let tcx = self.fcx.tcx();
-            let adjustments = self.fcx.inh.adjustments;
-            match adjustments.find_copy(&expr.id) {
-                None => ty_unadjusted,
-                Some(adjustment) => {
-                    ty::adjust_ty(tcx, expr.span, ty_unadjusted,
-                                  Some(adjustment))
-                }
-            }
-        }
-    }
-
-    /// Try to resolve the type for the given node.
-    #[config(not(stage0))]
     fn resolve_expr_type_adjusted(@mut self, expr: @ast::expr) -> ty::t {
         let ty_unadjusted = self.resolve_node_type(expr.id);
         if ty::type_is_error(ty_unadjusted) || ty::type_is_bot(ty_unadjusted) {
@@ -798,12 +781,16 @@ pub mod guarantor {
      * but more special purpose.
      */
 
+    use core::prelude::*;
+
     use middle::typeck::check::regionck::{Rcx, infallibly_mk_subr};
     use middle::typeck::check::regionck::mk_subregion_due_to_derefence;
     use middle::ty;
     use syntax::ast;
     use syntax::codemap::span;
     use util::ppaux::{ty_to_str};
+
+    use core::uint;
 
     pub fn for_addr_of(rcx: @mut Rcx, expr: @ast::expr, base: @ast::expr) {
         /*!

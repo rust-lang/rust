@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec;
+
 // Check usage and precedence of block arguments in expressions:
 pub fn main() {
     let v = ~[-1f, 0f, 1f, 2f, 3f];
@@ -51,8 +53,8 @@ pub fn main() {
     let w = do vec::foldl(0f, v) |x, y| { x + *y } + 10f;
     let y = do vec::foldl(0f, v) |x, y| { x + *y } + 10f;
     let z = 10f + do vec::foldl(0f, v) |x, y| { x + *y };
-    assert!(w == y);
-    assert!(y == z);
+    assert_eq!(w, y);
+    assert_eq!(y, z);
 
     // In the tail of a block
     let w =

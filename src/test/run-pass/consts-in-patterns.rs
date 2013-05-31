@@ -18,5 +18,5 @@ pub fn main() {
         BAR => 2,
         _ => 3
     };
-    assert!(y == 2);
+    assert_eq!(y, 2);
 }

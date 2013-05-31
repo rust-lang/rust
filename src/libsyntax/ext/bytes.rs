@@ -14,9 +14,9 @@ use ast;
 use codemap::span;
 use ext::base::*;
 use ext::base;
-use ext::build::{mk_u8, mk_slice_vec_e};
+use ext::build::AstBuilder;
 
-pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree]) -> base::MacResult {
+pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree]) -> base::MacResult {
     // Gather all argument expressions
     let exprs = get_exprs_from_tts(cx, tts);
     let mut bytes = ~[];
@@ -28,7 +28,7 @@ pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree]) -> ba
                 // string literal, push each byte to vector expression
                 ast::lit_str(s) => {
                     for s.each |byte| {
-                        bytes.push(mk_u8(cx, sp, byte));
+                        bytes.push(cx.expr_u8(sp, byte));
                     }
                 }
 
@@ -37,7 +37,7 @@ pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree]) -> ba
                     if v > 0xFF {
                         cx.span_err(sp, "Too large u8 literal in bytes!")
                     } else {
-                        bytes.push(mk_u8(cx, sp, v as u8));
+                        bytes.push(cx.expr_u8(sp, v as u8));
                     }
                 }
 
@@ -48,14 +48,14 @@ pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree]) -> ba
                     } else if v < 0 {
                         cx.span_err(sp, "Negative integer literal in bytes!")
                     } else {
-                        bytes.push(mk_u8(cx, sp, v as u8));
+                        bytes.push(cx.expr_u8(sp, v as u8));
                     }
                 }
 
                 // char literal, push to vector expression
                 ast::lit_int(v, ast::ty_char) => {
                     if (v as char).is_ascii() {
-                        bytes.push(mk_u8(cx, sp, v as u8));
+                        bytes.push(cx.expr_u8(sp, v as u8));
                     } else {
                         cx.span_err(sp, "Non-ascii char literal in bytes!")
                     }
@@ -68,6 +68,6 @@ pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree]) -> ba
         }
     }
 
-    let e = mk_slice_vec_e(cx, sp, bytes);
+    let e = cx.expr_vec_slice(sp, bytes);
     MRExpr(e)
 }

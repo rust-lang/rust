@@ -48,6 +48,8 @@ independently:
 
 */
 
+use core::prelude::*;
+
 use driver::session;
 
 use middle::resolve;
@@ -57,8 +59,9 @@ use util::ppaux::Repr;
 use util::ppaux;
 
 use core::hashmap::HashMap;
-use std::list::List;
-use std::list;
+use core::result;
+use extra::list::List;
+use extra::list;
 use syntax::codemap::span;
 use syntax::print::pprust::*;
 use syntax::{ast, ast_map, abi};
@@ -254,7 +257,7 @@ pub fn require_same_types(
     match infer::mk_eqty(l_infcx, t1_is_expected, span, t1, t2) {
         result::Ok(()) => true,
         result::Err(ref terr) => {
-            l_tcx.sess.span_err(span, msg() + ~": " +
+            l_tcx.sess.span_err(span, msg() + ": " +
                                 ty::type_err_to_str(l_tcx, terr));
             ty::note_and_explain_type_err(l_tcx, terr);
             false
@@ -320,8 +323,8 @@ fn check_main_fn_ty(ccx: @mut CrateCtxt,
         }
         _ => {
             tcx.sess.span_bug(main_span,
-                              ~"main has a non-function type: found `" +
-                              ppaux::ty_to_str(tcx, main_t) + ~"`");
+                              fmt!("main has a non-function type: found `%s`",
+                                   ppaux::ty_to_str(tcx, main_t)));
         }
     }
 }
@@ -369,8 +372,8 @@ fn check_start_fn_ty(ccx: @mut CrateCtxt,
         }
         _ => {
             tcx.sess.span_bug(start_span,
-                              ~"start has a non-function type: found `" +
-                              ppaux::ty_to_str(tcx, start_t) + ~"`");
+                              fmt!("start has a non-function type: found `%s`",
+                                   ppaux::ty_to_str(tcx, start_t)));
         }
     }
 }
@@ -382,9 +385,9 @@ fn check_for_entry_fn(ccx: @mut CrateCtxt) {
           Some((id, sp)) => match *tcx.sess.entry_type {
               Some(session::EntryMain) => check_main_fn_ty(ccx, id, sp),
               Some(session::EntryStart) => check_start_fn_ty(ccx, id, sp),
-              None => tcx.sess.bug(~"entry function without a type")
+              None => tcx.sess.bug("entry function without a type")
           },
-          None => tcx.sess.bug(~"type checking without entry function")
+          None => tcx.sess.bug("type checking without entry function")
         }
     }
 }

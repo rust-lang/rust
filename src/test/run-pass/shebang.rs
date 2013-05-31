@@ -11,4 +11,4 @@
 
 // pp-exact
 
-pub fn main() { io::println("Hello World"); }
+pub fn main() { println("Hello World"); }

@@ -10,6 +10,8 @@
 
 // Parsing pipes protocols from token trees.
 
+use core::prelude::*;
+
 use ast_util;
 use ext::pipes::proto::*;
 use parse::common::SeqSep;
@@ -114,7 +116,7 @@ impl proto_parser for parser::Parser {
             self.bump();
             None
           }
-          _ => self.fatal(~"invalid next state")
+          _ => self.fatal("invalid next state")
         };
 
         state.add_message(mname, *self.span, args, next);

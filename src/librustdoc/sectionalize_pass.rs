@@ -10,12 +10,16 @@
 
 //! Breaks rustdocs into sections according to their headers
 
+use core::prelude::*;
+
 use astsrv;
 use doc::ItemUtils;
 use doc;
 use fold::Fold;
 use fold;
 use pass::Pass;
+
+use core::str;
 
 pub fn mk_pass() -> Pass {
     Pass {
@@ -111,7 +115,7 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
         match parse_header(copy *line) {
           Some(header) => {
             if current_section.is_some() {
-                sections += ~[(&current_section).get()];
+                sections += [copy *current_section.get_ref()];
             }
             current_section = Some(doc::Section {
                 header: header,
@@ -122,14 +126,14 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
             match copy current_section {
               Some(section) => {
                 current_section = Some(doc::Section {
-                    body: section.body + ~"\n" + *line,
+                    body: section.body + "\n" + *line,
                     .. section
                 });
               }
               None => {
                 new_desc = match copy new_desc {
                   Some(desc) => {
-                    Some(desc + ~"\n" + *line)
+                    Some(desc + "\n" + *line)
                   }
                   None => {
                     Some(copy *line)
@@ -142,14 +146,14 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
     }
 
     if current_section.is_some() {
-        sections += ~[current_section.get()];
+        sections += [current_section.get()];
     }
 
     (new_desc, sections)
 }
 
 fn parse_header(line: ~str) -> Option<~str> {
-    if str::starts_with(line, ~"# ") {
+    if str::starts_with(line, "# ") {
         Some(str::slice(line, 2u, str::len(line)).to_owned())
     } else {
         None
@@ -160,11 +164,16 @@ fn parse_header(line: ~str) -> Option<~str> {
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use astsrv;
     use attr_pass;
     use doc;
     use extract;
     use sectionalize_pass::run;
+
+    use core::str;
+    use core::vec;
 
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
@@ -184,7 +193,7 @@ mod test {
 }");
         assert!(str::contains(
             doc.cratemod().mods()[0].item.sections[0].header,
-            ~"Header"));
+            "Header"));
     }
 
     #[test]
@@ -197,7 +206,7 @@ mod test {
 }");
         assert!(str::contains(
             doc.cratemod().mods()[0].item.sections[0].body,
-            ~"Body"));
+            "Body"));
     }
 
     #[test]
@@ -222,10 +231,10 @@ mod test {
 }");
         assert!(!str::contains(
             doc.cratemod().mods()[0].desc().get(),
-            ~"Header"));
+            "Header"));
         assert!(!str::contains(
             doc.cratemod().mods()[0].desc().get(),
-            ~"Body"));
+            "Body"));
     }
 
     #[test]
@@ -236,7 +245,7 @@ mod test {
               Body\"]\
               mod a {
 }");
-        assert!(doc.cratemod().mods()[0].desc() == None);
+        assert_eq!(doc.cratemod().mods()[0].desc(), None);
     }
 
     #[test]
@@ -247,7 +256,7 @@ mod test {
               # Header\n\
               Body\"]\
               fn a(); }");
-        assert!(doc.cratemod().traits()[0].methods[0].sections.len() == 1u);
+        assert_eq!(doc.cratemod().traits()[0].methods[0].sections.len(), 1u);
     }
 
     #[test]
@@ -258,6 +267,6 @@ mod test {
               # Header\n\
               Body\"]\
               fn a() { } }");
-        assert!(doc.cratemod().impls()[0].methods[0].sections.len() == 1u);
+        assert_eq!(doc.cratemod().impls()[0].methods[0].sections.len(), 1u);
     }
 }

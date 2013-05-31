@@ -34,5 +34,5 @@ fn get_v(gc: @get_ctxt) -> uint {
 fn main() {
     let ctxt = ctxt { v: 22u };
     let hc = has_ctxt { c: &ctxt };
-    assert!(get_v(@hc as @get_ctxt) == 22u);
+    assert_eq!(get_v(@hc as @get_ctxt), 22u);
 }

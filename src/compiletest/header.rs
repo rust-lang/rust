@@ -8,8 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use common;
+use core::prelude::*;
+
 use common::config;
+use common;
+
+use core::io;
+use core::os;
+use core::str;
 
 pub struct TestProps {
     // Lines that should be expected, in order, on standard out
@@ -85,15 +91,15 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
 pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
     for iter_header(testfile) |ln| {
-        if parse_name_directive(ln, ~"xfail-test") { return true; }
+        if parse_name_directive(ln, "xfail-test") { return true; }
         if parse_name_directive(ln, xfail_target()) { return true; }
         if config.mode == common::mode_pretty &&
-           parse_name_directive(ln, ~"xfail-pretty") { return true; }
+           parse_name_directive(ln, "xfail-pretty") { return true; }
     };
     return false;
 
     fn xfail_target() -> ~str {
-        ~"xfail-" + str::to_owned(os::SYSNAME)
+        ~"xfail-" + os::SYSNAME
     }
 }
 
@@ -105,8 +111,7 @@ fn iter_header(testfile: &Path, it: &fn(~str) -> bool) -> bool {
         // Assume that any directives will be found before the first
         // module or function. This doesn't seem to be an optimization
         // with a warm page cache. Maybe with a cold one.
-        if str::starts_with(ln, ~"fn")
-            || str::starts_with(ln, ~"mod") {
+        if str::starts_with(ln, "fn") || str::starts_with(ln, "mod") {
             return false;
         } else { if !(it(ln)) { return false; } }
     }
@@ -168,7 +173,7 @@ fn parse_name_directive(line: &str, directive: &str) -> bool {
 
 fn parse_name_value_directive(line: &str,
                               directive: ~str) -> Option<~str> {
-    let keycolon = directive + ~":";
+    let keycolon = directive + ":";
     match str::find_str(line, keycolon) {
         Some(colon) => {
             let value = str::slice(line, colon + str::len(keycolon),

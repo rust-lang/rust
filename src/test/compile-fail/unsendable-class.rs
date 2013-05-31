@@ -11,6 +11,8 @@
 // Test that a class with an unsendable field can't be
 // sent
 
+use std::comm;
+
 struct foo {
   i: int,
   j: @~str,

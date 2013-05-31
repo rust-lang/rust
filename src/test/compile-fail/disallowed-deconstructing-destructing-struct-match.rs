@@ -23,6 +23,6 @@ fn main() {
 
     match x {
         X { x: y } => error!("contents: %s", y)
-        //~^ ERROR cannot bind by-move within struct
+        //~^ ERROR cannot move out of type `X`, which defines the `Drop` trait
     }
 }

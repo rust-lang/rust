@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
 
 use ast::{ident, matcher_, matcher, match_tok, match_nonterminal, match_seq};
 use ast::{tt_delim};
 use ast;
 use codemap::{span, spanned, dummy_sp};
-use ext::base::{ext_ctxt, MacResult, MRAny, MRDef, MacroDef, NormalTT};
+use ext::base::{ExtCtxt, MacResult, MRAny, MRDef, MacroDef, NormalTT};
 use ext::base;
 use ext::tt::macro_parser::{error};
 use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
@@ -25,8 +26,9 @@ use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt};
 use print;
 
 use core::io;
+use core::vec;
 
-pub fn add_new_extension(cx: @ext_ctxt,
+pub fn add_new_extension(cx: @ExtCtxt,
                          sp: span,
                          name: ident,
                          arg: ~[ast::token_tree])
@@ -64,16 +66,16 @@ pub fn add_new_extension(cx: @ext_ctxt,
     // Extract the arguments:
     let lhses = match *argument_map.get(&lhs_nm) {
         @matched_seq(ref s, _) => /* FIXME (#2543) */ @copy *s,
-        _ => cx.span_bug(sp, ~"wrong-structured lhs")
+        _ => cx.span_bug(sp, "wrong-structured lhs")
     };
 
     let rhses = match *argument_map.get(&rhs_nm) {
       @matched_seq(ref s, _) => /* FIXME (#2543) */ @copy *s,
-      _ => cx.span_bug(sp, ~"wrong-structured rhs")
+      _ => cx.span_bug(sp, "wrong-structured rhs")
     };
 
     // Given `lhses` and `rhses`, this is the new macro we create
-    fn generic_extension(cx: @ext_ctxt, sp: span, name: ident,
+    fn generic_extension(cx: @ExtCtxt, sp: span, name: ident,
                          arg: &[ast::token_tree],
                          lhses: &[@named_match], rhses: &[@named_match])
     -> MacResult {
@@ -114,10 +116,10 @@ pub fn add_new_extension(cx: @ext_ctxt,
                                     (*tts).slice(1u,(*tts).len()-1u).to_owned()
                                 }
                                 _ => cx.span_fatal(
-                                    sp, ~"macro rhs must be delimited")
+                                    sp, "macro rhs must be delimited")
                             }
                         },
-                        _ => cx.span_bug(sp, ~"bad thing in rhs")
+                        _ => cx.span_bug(sp, "bad thing in rhs")
                     };
                     // rhs has holes ( `$id` and `$(...)` that need filled)
                     let trncbr = new_tt_reader(s_d, itr, Some(named_matches),
@@ -139,13 +141,13 @@ pub fn add_new_extension(cx: @ext_ctxt,
                   error(sp, ref msg) => cx.span_fatal(sp, (*msg))
                 }
               }
-              _ => cx.bug(~"non-matcher found in parsed lhses")
+              _ => cx.bug("non-matcher found in parsed lhses")
             }
         }
         cx.span_fatal(best_fail_spot, best_fail_msg);
     }
 
-    let exp: @fn(@ext_ctxt, span, &[ast::token_tree]) -> MacResult =
+    let exp: @fn(@ExtCtxt, span, &[ast::token_tree]) -> MacResult =
         |cx, sp, arg| generic_extension(cx, sp, name, arg, *lhses, *rhses);
 
     return MRDef(MacroDef{

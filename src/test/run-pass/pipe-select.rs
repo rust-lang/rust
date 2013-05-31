@@ -13,13 +13,14 @@
 // xfail-pretty
 // xfail-win32
 
-extern mod std;
-use std::timer::sleep;
-use std::uv;
+extern mod extra;
+use extra::timer::sleep;
+use extra::uv;
 
-use core::cell::Cell;
-use core::pipes;
-use core::pipes::*;
+use std::cell::Cell;
+use std::pipes::*;
+use std::pipes;
+use std::task;
 
 proto! oneshot (
     waiting:send {
@@ -66,7 +67,7 @@ pub fn main() {
         error!("selecting");
         let (i, _, _) = select(~[left, right]);
         error!("selected");
-        assert!(i == 0);
+        assert_eq!(i, 0);
 
         error!("waiting for pipes");
         let stream::send(x, _) = recv(p);
@@ -78,7 +79,7 @@ pub fn main() {
         let (i, m, _) = select(~[left, right]);
         error!("selected %?", i);
         if m.is_some() {
-            assert!(i == 1);
+            assert_eq!(i, 1);
         }
     });
 
@@ -110,8 +111,8 @@ fn test_select2() {
     stream::client::send(ac, 42);
 
     match pipes::select2(ap, bp) {
-      either::Left(*) => { }
-      either::Right(*) => { fail!() }
+      Left(*) => { }
+      Right(*) => { fail!() }
     }
 
     stream::client::send(bc, ~"abc");
@@ -124,8 +125,8 @@ fn test_select2() {
     stream::client::send(bc, ~"abc");
 
     match pipes::select2(ap, bp) {
-      either::Left(*) => { fail!() }
-      either::Right(*) => { }
+      Left(*) => { fail!() }
+      Right(*) => { }
     }
 
     stream::client::send(ac, 42);

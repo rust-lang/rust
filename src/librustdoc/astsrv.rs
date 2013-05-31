@@ -17,10 +17,14 @@ query AST-related information, shielding the rest of Rustdoc from its
 non-sendableness.
 */
 
+use core::prelude::*;
+
 use parse;
 
 use core::cell::Cell;
 use core::comm::{stream, SharedChan, Port};
+use core::task;
+use core::vec;
 use rustc::driver::driver;
 use rustc::driver::session::Session;
 use rustc::driver::session::{basic_options, options};
@@ -162,6 +166,6 @@ fn srv_should_return_request_result() {
     let source = ~"fn a() { }";
     do from_str(source) |srv| {
         let result = exec(srv, |_ctxt| 1000 );
-        assert!(result == 1000);
+        assert_eq!(result, 1000);
     }
 }

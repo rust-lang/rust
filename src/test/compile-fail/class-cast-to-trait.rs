@@ -13,9 +13,9 @@ trait noisy {
 }
 
 struct cat {
-  priv mut meows : uint,
+  priv meows : uint,
 
-  mut how_hungry : int,
+  how_hungry : int,
   name : ~str,
 }
 

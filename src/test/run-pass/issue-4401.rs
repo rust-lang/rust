@@ -3,6 +3,6 @@ pub fn main() {
     for 999_999.times() {
         count += 1;
     }
-    assert!(count == 999_999);
-    io::println(fmt!("%u", count));
+    assert_eq!(count, 999_999);
+    println(fmt!("%u", count));
 }

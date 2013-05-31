@@ -32,5 +32,5 @@ pub fn main() {
     {
         let j = ~r(i);
     }
-    assert!(*i == 1);
+    assert_eq!(*i, 1);
 }

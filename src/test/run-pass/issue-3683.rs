@@ -24,5 +24,5 @@ impl Foo for int {
 }
 
 pub fn main() {
-    assert!((3.b() == 5));
+    assert_eq!(3.b(), 5);
 }

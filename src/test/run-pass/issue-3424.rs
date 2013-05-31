@@ -11,8 +11,11 @@
 // except according to those terms.
 
 // rustc --test ignores2.rs && ./ignores2
-extern mod std;
-use core::path::{Path};
+extern mod extra;
+
+use std::path::{Path};
+use std::path;
+use std::result;
 
 type rsrc_loader = ~fn(path: &Path) -> result::Result<~str, ~str>;
 

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use middle::ty::{BuiltinBounds};
 use middle::ty::RegionVid;
 use middle::ty;
@@ -28,7 +30,7 @@ use syntax::codemap::span;
 use util::common::{indent, indenter};
 use util::ppaux::mt_to_str;
 
-use std::list;
+use extra::list;
 
 pub struct Glb(CombineFields);  // "greatest lower bound" (common subtype)
 

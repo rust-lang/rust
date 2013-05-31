@@ -10,10 +10,12 @@
 
 // xfail-fast
 
-extern mod std;
+extern mod extra;
 
-use core::comm::Chan;
-use core::comm::Port;
+use std::comm::Chan;
+use std::comm::Port;
+use std::comm;
+use std::task;
 
 pub fn main() { test05(); }
 
@@ -35,5 +37,5 @@ fn test05() {
     error!(value);
     value = po.recv();
     error!(value);
-    assert!((value == 30));
+    assert_eq!(value, 30);
 }

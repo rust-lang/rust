@@ -12,9 +12,13 @@
 // Testing that runtime failure doesn't cause callbacks to abort abnormally.
 // Instead the failure will be delivered after the callbacks return.
 
-use core::old_iter;
+use std::libc;
+use std::old_iter;
+use std::task;
 
 mod rustrt {
+    use std::libc;
+
     pub extern {
         pub fn rust_dbg_call(cb: *u8, data: libc::uintptr_t)
                           -> libc::uintptr_t;
@@ -37,7 +41,7 @@ fn count(n: uint) -> uint {
 }
 
 fn main() {
-    for old_iter::repeat(10u) {
+    for 10u.times {
         do task::spawn {
             let result = count(5u);
             debug!("result = %?", result);

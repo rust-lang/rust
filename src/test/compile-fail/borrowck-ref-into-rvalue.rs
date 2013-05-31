@@ -16,5 +16,5 @@ fn main() {
         },
         None => { fail!() }
     }
-    io::println(*msg);
+    println(*msg);
 }

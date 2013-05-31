@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use back::link;
 use back::target_strs;
 use back;
@@ -66,6 +68,8 @@ pub static debug_info: uint = 1 << 20;
 pub static extra_debug_info: uint = 1 << 21;
 pub static statik: uint = 1 << 22;
 pub static print_link_args: uint = 1 << 23;
+pub static no_debug_borrows: uint = 1 << 24;
+pub static lint_llvm : uint = 1 << 25;
 
 pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
@@ -100,7 +104,13 @@ pub fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
       extra_debug_info),
      (~"debug-info", ~"Produce debug info (experimental)", debug_info),
      (~"static", ~"Use or produce static libraries or binaries " +
-      "(experimental)", statik)
+      "(experimental)", statik),
+     (~"no-debug-borrows",
+      ~"do not show where borrow checks fail",
+      no_debug_borrows),
+     (~"lint-llvm",
+      ~"Run the LLVM lint pass on the pre-optimization IR",
+      lint_llvm),
     ]
 }
 
@@ -119,6 +129,7 @@ pub struct options {
     is_static: bool,
     gc: bool,
     optimize: OptLevel,
+    custom_passes: ~[~str],
     debuginfo: bool,
     extra_debuginfo: bool,
     lint_opts: ~[(lint::lint, lint::level)],
@@ -141,7 +152,7 @@ pub struct options {
     parse_only: bool,
     no_trans: bool,
     debugging_opts: uint,
-    android_cross_path: Option<~str>
+    android_cross_path: Option<~str>,
 }
 
 pub struct crate_metadata {
@@ -259,6 +270,7 @@ pub impl Session_ {
     fn meta_stats(@self) -> bool { self.debugging_opt(meta_stats) }
     fn asm_comments(@self) -> bool { self.debugging_opt(asm_comments) }
     fn no_verify(@self) -> bool { self.debugging_opt(no_verify) }
+    fn lint_llvm(@self) -> bool { self.debugging_opt(lint_llvm) }
     fn trace(@self) -> bool { self.debugging_opt(trace) }
     fn coherence(@self) -> bool { self.debugging_opt(coherence) }
     fn borrowck_stats(@self) -> bool { self.debugging_opt(borrowck_stats) }
@@ -270,6 +282,9 @@ pub impl Session_ {
     }
     fn no_monomorphic_collapse(@self) -> bool {
         self.debugging_opt(no_monomorphic_collapse)
+    }
+    fn debug_borrows(@self) -> bool {
+        self.opts.optimize == No && !self.debugging_opt(no_debug_borrows)
     }
 
     fn str_of(@self, id: ast::ident) -> @~str {
@@ -290,6 +305,7 @@ pub fn basic_options() -> @options {
         is_static: false,
         gc: false,
         optimize: No,
+        custom_passes: ~[],
         debuginfo: false,
         extra_debuginfo: false,
         lint_opts: ~[],
@@ -308,7 +324,7 @@ pub fn basic_options() -> @options {
         parse_only: false,
         no_trans: false,
         debugging_opts: 0u,
-        android_cross_path: None
+        android_cross_path: None,
     }
 }
 
@@ -332,7 +348,7 @@ pub fn building_library(req_crate_type: crate_type,
         } else {
             match syntax::attr::first_attr_value_str_by_name(
                 crate.node.attrs,
-                ~"crate_type") {
+                "crate_type") {
               Some(@~"lib") => true,
               _ => false
             }
@@ -375,8 +391,8 @@ mod test {
 
     fn make_crate(with_bin: bool, with_lib: bool) -> @ast::crate {
         let mut attrs = ~[];
-        if with_bin { attrs += ~[make_crate_type_attr(~"bin")]; }
-        if with_lib { attrs += ~[make_crate_type_attr(~"lib")]; }
+        if with_bin { attrs += [make_crate_type_attr(~"bin")]; }
+        if with_lib { attrs += [make_crate_type_attr(~"lib")]; }
         @codemap::respan(codemap::dummy_sp(), ast::crate_ {
             module: ast::_mod { view_items: ~[], items: ~[] },
             attrs: attrs,

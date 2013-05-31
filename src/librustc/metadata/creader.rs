@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Validates all used crates and extern libraries and loads their metadata
+
+use core::prelude::*;
 
 use metadata::cstore;
 use metadata::decoder;
@@ -17,6 +18,7 @@ use metadata::filesearch::FileSearch;
 use metadata::loader;
 
 use core::hashmap::HashMap;
+use core::vec;
 use syntax::attr;
 use syntax::codemap::{span, dummy_sp};
 use syntax::diagnostic::span_handler;
@@ -99,7 +101,7 @@ fn warn_if_multiple_versions(e: @mut Env,
             diag.handler().warn(
                 fmt!("using multiple versions of crate `%s`", *name));
             for matches.each |match_| {
-                diag.span_note(match_.span, ~"used here");
+                diag.span_note(match_.span, "used here");
                 let attrs = ~[
                     attr::mk_attr(attr::mk_list_item(
                         @~"link", /*bad*/copy *match_.metas))
@@ -164,25 +166,25 @@ fn visit_item(e: @mut Env, i: @ast::item) {
             ast::named => {
                 let foreign_name =
                     match attr::first_attr_value_str_by_name(i.attrs,
-                                                            ~"link_name") {
+                                                             "link_name") {
                         Some(nn) => {
                             if *nn == ~"" {
                                 e.diag.span_fatal(
                                     i.span,
-                                    ~"empty #[link_name] not allowed; use " +
-                                    ~"#[nolink].");
+                                    "empty #[link_name] not allowed; use \
+                                     #[nolink].");
                             }
                             nn
                         }
                         None => e.intr.get(i.ident)
                     };
-                if attr::find_attrs_by_name(i.attrs, ~"nolink").is_empty() {
+                if attr::find_attrs_by_name(i.attrs, "nolink").is_empty() {
                     already_added =
                         !cstore::add_used_library(cstore, foreign_name);
                 }
                 if !link_args.is_empty() && already_added {
                     e.diag.span_fatal(i.span, ~"library '" + *foreign_name +
-                               ~"' already added: can't specify link_args.");
+                               "' already added: can't specify link_args.");
                 }
             }
             ast::anonymous => { /* do nothing */ }
@@ -272,7 +274,7 @@ fn resolve_crate(e: @mut Env,
 
         let cname =
             match attr::last_meta_item_value_str_by_name(load_ctxt.metas,
-                                                         ~"name") {
+                                                         "name") {
                 Some(v) => v,
                 None => e.intr.get(ident),
             };

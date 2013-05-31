@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::io;
+
 trait Foo {
     fn f(&self);
 }

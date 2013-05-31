@@ -16,6 +16,8 @@
 // and methods are represented as just a fn ptr and not a full
 // closure.
 
+use core::prelude::*;
+
 use back::abi;
 use driver::session;
 use lib;
@@ -41,6 +43,7 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
 
+use core::vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::visit;
@@ -272,7 +275,7 @@ pub fn trans_fn_ref_with_vtables(
     // Create a monomorphic verison of generic functions
     if must_monomorphise {
         // Should be either intra-crate or inlined.
-        assert!(def_id.crate == ast::local_crate);
+        assert_eq!(def_id.crate, ast::local_crate);
 
         let mut (val, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, type_params,
@@ -379,7 +382,7 @@ pub fn trans_lang_call(bcx: block,
                                 trans_fn_ref_with_vtables_to_callee(bcx,
                                                                     did,
                                                                     0,
-                                                                    ~[],
+                                                                    [],
                                                                     None)
                              },
                              ArgVals(args),
@@ -508,11 +511,7 @@ pub fn trans_call_inner(in_cx: block,
 
         let mut llargs = ~[];
 
-        if ty::type_is_immediate(ret_ty) {
-            unsafe {
-                llargs.push(llvm::LLVMGetUndef(T_ptr(T_i8())));
-            }
-        } else {
+        if !ty::type_is_immediate(ret_ty) {
             llargs.push(llretslot);
         }
 
@@ -717,8 +716,7 @@ pub fn trans_arg_expr(bcx: block,
                 }
                 _ => {
                     bcx.sess().impossible_case(
-                        arg_expr.span, ~"ret_flag with non-loop-\
-                                         body expr");
+                        arg_expr.span, "ret_flag with non-loop-body expr");
                 }
             }
         }

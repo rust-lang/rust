@@ -10,18 +10,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
 
-use std::getopts::*;
+use extra::getopts::*;
 
 pub fn main() {
     let args = ~[];
     let opts = ~[optopt(~"b")];
 
     match getopts(args, opts) {
-        result::Ok(ref m)  =>
+        Ok(ref m)  =>
             assert!(!opt_present(m, "b")),
-        result::Err(ref f) => fail!(fail_str(copy *f))
+        Err(ref f) => fail!(fail_str(copy *f))
     };
 
 }

@@ -12,7 +12,9 @@
 // Issue #787
 // Don't try to clean up uninitialized locals
 
-extern mod std;
+extern mod extra;
+
+use std::task;
 
 fn test_break() { loop { let x: @int = break; } }
 

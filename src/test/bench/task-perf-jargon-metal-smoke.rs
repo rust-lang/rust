@@ -17,7 +17,11 @@
 //
 // The filename is a song reference; google it in quotes.
 
-use core::cell::Cell;
+use std::cell::Cell;
+use std::comm;
+use std::os;
+use std::task;
+use std::uint;
 
 fn child_generation(gens_left: uint, c: comm::Chan<()>) {
     // This used to be O(n^2) in the number of generations that ever existed.

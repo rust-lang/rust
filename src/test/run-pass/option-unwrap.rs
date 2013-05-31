@@ -38,5 +38,5 @@ pub fn main() {
         let c = unwrap(b);
     }
 
-    assert!(*x == 0);
+    assert_eq!(*x, 0);
 }

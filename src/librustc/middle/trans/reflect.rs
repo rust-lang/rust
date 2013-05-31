@@ -84,7 +84,7 @@ pub impl Reflector {
           self.c_tydesc(mt.ty)]
     }
 
-    fn visit(&mut self, ty_name: ~str, args: ~[ValueRef]) {
+    fn visit(&mut self, ty_name: ~str, args: &[ValueRef]) {
         let tcx = self.bcx.tcx();
         let mth_idx = ty::method_idx(
             tcx.sess.ident_of(~"visit_" + ty_name),
@@ -121,10 +121,9 @@ pub impl Reflector {
 
     fn bracketed(&mut self,
                  bracket_name: ~str,
-                 extra: ~[ValueRef],
+                 extra: &[ValueRef],
                  inner: &fn(&mut Reflector)) {
-        // XXX: Bad copy.
-        self.visit(~"enter_" + bracket_name, copy extra);
+        self.visit(~"enter_" + bracket_name, extra);
         inner(self);
         self.visit(~"leave_" + bracket_name, extra);
     }
@@ -146,7 +145,7 @@ pub impl Reflector {
     }
 
     fn leaf(&mut self, name: ~str) {
-        self.visit(name, ~[]);
+        self.visit(name, []);
     }
 
     // Entrypoint
@@ -226,7 +225,7 @@ pub impl Reflector {
                           self.c_uint(sigilval),
                           self.c_uint(fty.sig.inputs.len()),
                           self.c_uint(retval)];
-            self.visit(~"enter_fn", copy extra);    // XXX: Bad copy.
+            self.visit(~"enter_fn", extra);
             self.visit_sig(retval, &fty.sig);
             self.visit(~"leave_fn", extra);
           }
@@ -241,7 +240,7 @@ pub impl Reflector {
                           self.c_uint(sigilval),
                           self.c_uint(fty.sig.inputs.len()),
                           self.c_uint(retval)];
-            self.visit(~"enter_fn", copy extra);    // XXX: Bad copy.
+            self.visit(~"enter_fn", extra);
             self.visit_sig(retval, &fty.sig);
             self.visit(~"leave_fn", extra);
           }
@@ -280,21 +279,26 @@ pub impl Reflector {
             let opaqueptrty = ty::mk_ptr(ccx.tcx, ty::mt { ty: opaquety, mutbl: ast::m_imm });
 
             let make_get_disr = || {
-                let sub_path = bcx.fcx.path + ~[path_name(special_idents::anon)];
+                let sub_path = bcx.fcx.path + [path_name(special_idents::anon)];
                 let sym = mangle_internal_name_by_path_and_seq(ccx,
                                                                sub_path,
                                                                "get_disr");
 
                 let llfty = type_of_fn(ccx, [opaqueptrty], ty::mk_int());
                 let llfdecl = decl_internal_cdecl_fn(ccx.llmod, sym, llfty);
-                let arg = unsafe {
-                    llvm::LLVMGetParam(llfdecl, first_real_arg as c_uint)
-                };
                 let fcx = new_fn_ctxt(ccx,
                                       ~[],
                                       llfdecl,
                                       ty::mk_uint(),
                                       None);
+                let arg = unsafe {
+                    //
+                    // we know the return type of llfdecl is an int here, so
+                    // no need for a special check to see if the return type
+                    // is immediate.
+                    //
+                    llvm::LLVMGetParam(llfdecl, fcx.arg_pos(0u) as c_uint)
+                };
                 let bcx = top_scope_block(fcx, None);
                 let arg = BitCast(bcx, arg, llptrty);
                 let ret = adt::trans_get_discr(bcx, repr, arg);

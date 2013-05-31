@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
+
+use std::uint;
 
 struct Triple { x: int, y: int, z: int }
 
@@ -22,7 +24,7 @@ fn test(x: bool, foo: ~Triple) -> int {
 pub fn main() {
     let x = ~Triple{x: 1, y: 2, z: 3};
     for uint::range(0u, 10000u) |_i| {
-        assert!((test(true, copy x) == 2));
+        assert_eq!(test(true, copy x), 2);
     }
-    assert!((test(false, x) == 5));
+    assert_eq!(test(false, x), 5);
 }

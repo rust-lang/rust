@@ -9,6 +9,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::task;
 
 fn x(s: ~str, n: int) {
     debug!(s);

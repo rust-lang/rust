@@ -49,6 +49,7 @@
 		<item> Copy </item>
 		<item> Send </item>
 		<item> Owned </item>
+		<item> Sized </item>
 		<item> Eq </item>
 		<item> Ord </item>
 		<item> Num </item>

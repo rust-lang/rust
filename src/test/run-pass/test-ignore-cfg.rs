@@ -11,7 +11,9 @@
 // compile-flags: --test --cfg ignorecfg
 // xfail-fast
 
-extern mod std;
+extern mod extra;
+
+use std::vec;
 
 #[test]
 #[ignore(cfg(ignorecfg))]

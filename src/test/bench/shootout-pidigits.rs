@@ -1,10 +1,10 @@
 // xfail-test
 
-use core::cast::transmute;
-use core::from_str::FromStr;
-use core::libc::{STDOUT_FILENO, c_char, c_int, c_uint, c_void, fdopen, fputc};
-use core::libc::{fputs};
-use core::ptr::null;
+use std::cast::transmute;
+use std::from_str::FromStr;
+use std::libc::{STDOUT_FILENO, c_char, c_int, c_uint, c_void, fdopen, fputc};
+use std::libc::{fputs};
+use std::ptr::null;
 
 struct mpz_t {
     _mp_alloc: c_int,

@@ -12,7 +12,7 @@ fn test_stack_assign() {
     let s: ~str = ~"a";
     debug!(s.clone());
     let t: ~str = ~"a";
-    assert!((s == t));
+    assert!(s == t);
     let u: ~str = ~"b";
     assert!((s != u));
 }
@@ -22,7 +22,7 @@ fn test_heap_lit() { ~"a big string"; }
 fn test_heap_assign() {
     let s: ~str = ~"a big ol' string";
     let t: ~str = ~"a big ol' string";
-    assert!((s == t));
+    assert!(s == t);
     let u: ~str = ~"a bad ol' string";
     assert!((s != u));
 }
@@ -30,34 +30,34 @@ fn test_heap_assign() {
 fn test_heap_log() { let s = ~"a big ol' string"; debug!(s); }
 
 fn test_stack_add() {
-    assert!((~"a" + ~"b" == ~"ab"));
+    assert_eq!(~"a" + ~"b", ~"ab");
     let s: ~str = ~"a";
-    assert!((s + s == ~"aa"));
-    assert!((~"" + ~"" == ~""));
+    assert_eq!(s + s, ~"aa");
+    assert_eq!(~"" + ~"", ~"");
 }
 
 fn test_stack_heap_add() { assert!((~"a" + ~"bracadabra" == ~"abracadabra")); }
 
 fn test_heap_add() {
-    assert!((~"this should" + ~" totally work" == ~"this should totally work"));
+    assert_eq!(~"this should" + ~" totally work", ~"this should totally work");
 }
 
 fn test_append() {
     let mut s = ~"";
     s += ~"a";
-    assert!((s == ~"a"));
+    assert_eq!(s, ~"a");
 
     let mut s = ~"a";
     s += ~"b";
     debug!(s.clone());
-    assert!((s == ~"ab"));
+    assert_eq!(s, ~"ab");
 
     let mut s = ~"c";
     s += ~"offee";
-    assert!((s == ~"coffee"));
+    assert!(s == ~"coffee");
 
     s += ~"&tea";
-    assert!((s == ~"coffee&tea"));
+    assert!(s == ~"coffee&tea");
 }
 
 pub fn main() {

@@ -13,9 +13,9 @@ struct S<T> {
 }
 
 #[unsafe_destructor]
-impl<T> ::core::ops::Drop for S<T> {
+impl<T> ::std::ops::Drop for S<T> {
     fn finalize(&self) {
-        io::println("bye");
+        println("bye");
     }
 }
 

@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cast;
+use std::libc;
+use std::sys;
+
 struct arena(());
 
 struct Bcx<'self> {

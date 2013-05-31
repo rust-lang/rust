@@ -32,7 +32,7 @@ fn f(x: int) -> int {
 }
 
 pub fn main() {
-    assert!((f(5) == 120));
+    assert_eq!(f(5), 120);
     // debug!("all done");
 
 }

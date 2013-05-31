@@ -18,8 +18,8 @@ enum color {
 
 pub fn main() {
     let act = fmt!("%?", red);
-    io::println(act);
-    assert!(~"red" == act);
-    assert!(~"green" == fmt!("%?", green));
-    assert!(~"white" == fmt!("%?", white));
+    println(act);
+    assert_eq!(~"red", act);
+    assert_eq!(~"green", fmt!("%?", green));
+    assert_eq!(~"white", fmt!("%?", white));
 }

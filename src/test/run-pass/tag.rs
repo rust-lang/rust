@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 // -*- rust -*-
+
 enum colour { red(int, int), green, }
 
-impl cmp::Eq for colour {
+impl Eq for colour {
     fn eq(&self, other: &colour) -> bool {
         match *self {
             red(a0, b0) => {

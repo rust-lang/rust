@@ -19,6 +19,12 @@ instances where the string containing the doc comment is opened in the
 middle of a line, and each of the following lines is indented.
 */
 
+use core::prelude::*;
+
+use core::str;
+use core::task;
+use core::uint;
+use core::vec;
 use pass::Pass;
 use text_pass;
 
@@ -82,7 +88,7 @@ fn unindent(s: &str) -> ~str {
                 str::slice(*line, min_indent, str::len(*line)).to_owned()
             }
         };
-        str::connect(unindented, ~"\n")
+        str::connect(unindented, "\n")
     } else {
         s.to_str()
     }
@@ -92,14 +98,14 @@ fn unindent(s: &str) -> ~str {
 fn should_unindent() {
     let s = ~"    line1\n    line2";
     let r = unindent(s);
-    assert!(r == ~"line1\nline2");
+    assert_eq!(r, ~"line1\nline2");
 }
 
 #[test]
 fn should_unindent_multiple_paragraphs() {
     let s = ~"    line1\n\n    line2";
     let r = unindent(s);
-    assert!(r == ~"line1\n\nline2");
+    assert_eq!(r, ~"line1\n\nline2");
 }
 
 #[test]
@@ -108,7 +114,7 @@ fn should_leave_multiple_indent_levels() {
     // base indentation and should be preserved
     let s = ~"    line1\n\n        line2";
     let r = unindent(s);
-    assert!(r == ~"line1\n\n    line2");
+    assert_eq!(r, ~"line1\n\n    line2");
 }
 
 #[test]
@@ -120,12 +126,12 @@ fn should_ignore_first_line_indent() {
     //          and continue here"]
     let s = ~"line1\n    line2";
     let r = unindent(s);
-    assert!(r == ~"line1\nline2");
+    assert_eq!(r, ~"line1\nline2");
 }
 
 #[test]
 fn should_not_ignore_first_line_indent_in_a_single_line_para() {
     let s = ~"line1\n\n    line2";
     let r = unindent(s);
-    assert!(r == ~"line1\n\n    line2");
+    assert_eq!(r, ~"line1\n\n    line2");
 }

@@ -12,6 +12,8 @@
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
 
+use core::prelude::*;
+
 use middle::pat_util;
 use middle::ty;
 use middle::typeck::check::{FnCtxt, SelfInfo};

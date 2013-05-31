@@ -19,12 +19,12 @@ struct I { i: int }
 
 fn test_rec() {
     let rs = if true { I {i: 100} } else { I {i: 101} };
-    assert!((rs.i == 100));
+    assert_eq!(rs.i, 100);
 }
 
 enum mood { happy, sad, }
 
-impl cmp::Eq for mood {
+impl Eq for mood {
     fn eq(&self, other: &mood) -> bool {
         ((*self) as uint) == ((*other) as uint)
     }
@@ -33,7 +33,7 @@ impl cmp::Eq for mood {
 
 fn test_tag() {
     let rs = if true { happy } else { sad };
-    assert!((rs == happy));
+    assert_eq!(rs, happy);
 }
 
 pub fn main() { test_rec(); test_tag(); }

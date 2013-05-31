@@ -10,8 +10,10 @@
 
 // Binop corner cases
 
+use std::libc;
+
 fn test_nil() {
-    assert!((() == ()));
+    assert_eq!((), ());
     assert!((!(() != ())));
     assert!((!(() < ())));
     assert!((() <= ()));
@@ -31,44 +33,44 @@ fn test_bool() {
     assert!((!(false >= true)));
 
     // Bools support bitwise binops
-    assert!((false & false == false));
-    assert!((true & false == false));
-    assert!((true & true == true));
-    assert!((false | false == false));
-    assert!((true | false == true));
-    assert!((true | true == true));
-    assert!((false ^ false == false));
-    assert!((true ^ false == true));
-    assert!((true ^ true == false));
+    assert_eq!(false & false, false);
+    assert_eq!(true & false, false);
+    assert_eq!(true & true, true);
+    assert_eq!(false | false, false);
+    assert_eq!(true | false, true);
+    assert_eq!(true | true, true);
+    assert_eq!(false ^ false, false);
+    assert_eq!(true ^ false, true);
+    assert_eq!(true ^ true, false);
 }
 
 fn test_char() {
     let ch10 = 10 as char;
     let ch4 = 4 as char;
     let ch2 = 2 as char;
-    assert!((ch10 + ch4 == 14 as char));
-    assert!((ch10 - ch4 == 6 as char));
-    assert!((ch10 * ch4 == 40 as char));
-    assert!((ch10 / ch4 == ch2));
-    assert!((ch10 % ch4 == ch2));
-    assert!((ch10 >> ch2 == ch2));
-    assert!((ch10 << ch4 == 160 as char));
-    assert!((ch10 | ch4 == 14 as char));
-    assert!((ch10 & ch2 == ch2));
-    assert!((ch10 ^ ch2 == 8 as char));
+    assert_eq!(ch10 + ch4, 14 as char);
+    assert_eq!(ch10 - ch4, 6 as char);
+    assert_eq!(ch10 * ch4, 40 as char);
+    assert_eq!(ch10 / ch4, ch2);
+    assert_eq!(ch10 % ch4, ch2);
+    assert_eq!(ch10 >> ch2, ch2);
+    assert_eq!(ch10 << ch4, 160 as char);
+    assert_eq!(ch10 | ch4, 14 as char);
+    assert_eq!(ch10 & ch2, ch2);
+    assert_eq!(ch10 ^ ch2, 8 as char);
 }
 
 fn test_box() {
-    assert!((@10 == @10));
+    assert_eq!(@10, @10);
 }
 
 fn test_ptr() {
     unsafe {
-        let p1: *u8 = ::core::cast::transmute(0);
-        let p2: *u8 = ::core::cast::transmute(0);
-        let p3: *u8 = ::core::cast::transmute(1);
+        let p1: *u8 = ::std::cast::transmute(0);
+        let p2: *u8 = ::std::cast::transmute(0);
+        let p3: *u8 = ::std::cast::transmute(1);
 
-        assert!(p1 == p2);
+        assert_eq!(p1, p2);
         assert!(p1 != p3);
         assert!(p1 < p3);
         assert!(p1 <= p3);
@@ -80,6 +82,8 @@ fn test_ptr() {
 }
 
 mod test {
+    use std::libc;
+
     #[abi = "cdecl"]
     #[nolink]
     pub extern {
@@ -107,13 +111,13 @@ fn test_class() {
 
   unsafe {
   error!("q = %x, r = %x",
-         (::core::cast::transmute::<*p, uint>(&q)),
-         (::core::cast::transmute::<*p, uint>(&r)));
+         (::std::cast::transmute::<*p, uint>(&q)),
+         (::std::cast::transmute::<*p, uint>(&r)));
   }
-  assert!((q == r));
+  assert_eq!(q, r);
   r.y = 17;
   assert!((r.y != q.y));
-  assert!((r.y == 17));
+  assert_eq!(r.y, 17);
   assert!((q != r));
 }
 

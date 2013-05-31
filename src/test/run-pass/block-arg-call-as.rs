@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
 
 fn asSendfn( f : ~fn()->uint ) -> uint {
    return f();
@@ -24,9 +24,9 @@ fn asBlock( f : &fn()->uint ) -> uint {
 
 pub fn main() {
    let x = asSendfn(|| 22u);
-   assert!((x == 22u));
+   assert_eq!(x, 22u);
    let x = asLambda(|| 22u);
-   assert!((x == 22u));
+   assert_eq!(x, 22u);
    let x = asBlock(|| 22u);
-   assert!((x == 22u));
+   assert_eq!(x, 22u);
 }

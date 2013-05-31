@@ -14,12 +14,13 @@
 
 // xfail-win32
 
-extern mod std;
-use std::timer::sleep;
-use std::uv;
+extern mod extra;
+use extra::timer::sleep;
+use extra::uv;
 
-use core::cell::Cell;
-use core::pipes::{try_recv, recv};
+use std::cell::Cell;
+use std::pipes::{try_recv, recv};
+use std::task;
 
 proto! oneshot (
     waiting:send {

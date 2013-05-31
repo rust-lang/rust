@@ -9,7 +9,7 @@ impl Drop for S {
 pub impl S {
     fn foo(self) -> int {
         self.bar();
-        return self.x;  //~ ERROR use of partially moved value
+        return self.x;  //~ ERROR use of moved value: `self`
     }
 
     fn bar(self) {}
@@ -17,5 +17,5 @@ pub impl S {
 
 fn main() {
     let x = S { x: 1 };
-    io::println(x.foo().to_str());
+    println(x.foo().to_str());
 }
