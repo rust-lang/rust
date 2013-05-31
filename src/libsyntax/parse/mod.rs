@@ -485,7 +485,7 @@ mod test {
 
     #[test] fn parse_ident_pat () {
         let parser = string_to_parser(@~"b");
-        assert_eq!(parser.parse_pat(false),
+        assert_eq!(parser.parse_pat(),
                    @ast::pat{id:1, // fixme
                              node: ast::pat_ident(ast::bind_infer,
                                                   @ast::Path{
