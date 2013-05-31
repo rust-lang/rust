@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -37,22 +37,22 @@
 
 use prelude::*;
 
-use cast;
 use cell::Cell;
 use cmp::Eq;
 use comm::{stream, Chan, GenericChan, GenericPort, Port};
-use comm;
-use ptr;
 use result::Result;
 use result;
 use rt::{context, OldTaskContext};
 use task::rt::{task_id, sched_id};
-use task;
 use unstable::finally::Finally;
 use util::replace;
 use util;
 
+#[cfg(test)] use cast;
 #[cfg(test)] use comm::SharedChan;
+#[cfg(test)] use comm;
+#[cfg(test)] use ptr;
+#[cfg(test)] use task;
 
 mod local_data_priv;
 pub mod rt;
