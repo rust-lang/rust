@@ -22,10 +22,12 @@ use ops::Drop;
 use kinds::Owned;
 use rt::sched::{Scheduler, Coroutine};
 use rt::local::Local;
-use unstable::atomics::{AtomicUint, SeqCst};
+use unstable::atomics::{AtomicUint, AtomicOption, SeqCst};
+use unstable::sync::UnsafeAtomicRcBox;
 use util::Void;
 use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable};
 use cell::Cell;
+use clone::Clone;
 
 /// A combined refcount / ~Task pointer.
 ///
@@ -312,16 +314,19 @@ struct StreamPayload<T> {
     next: PortOne<StreamPayload<T>>
 }
 
+type StreamChanOne<T> = ChanOne<StreamPayload<T>>;
+type StreamPortOne<T> = PortOne<StreamPayload<T>>;
+
 /// A channel with unbounded size.
 pub struct Chan<T> {
     // FIXME #5372. Using Cell because we don't take &mut self
-    next: Cell<ChanOne<StreamPayload<T>>>
+    next: Cell<StreamChanOne<T>>
 }
 
 /// An port with unbounded size.
 pub struct Port<T> {
     // FIXME #5372. Using Cell because we don't take &mut self
-    next: Cell<PortOne<StreamPayload<T>>>
+    next: Cell<StreamPortOne<T>>
 }
 
 pub fn stream<T: Owned>() -> (Port<T>, Chan<T>) {
@@ -371,6 +376,43 @@ impl<T> GenericPort<T> for Port<T> {
 impl<T> Peekable<T> for Port<T> {
     fn peek(&self) -> bool {
         self.next.with_mut_ref(|p| p.peek())
+    }
+}
+
+pub struct SharedChan<T> {
+    // Just like Chan, but a shared AtomicOption instead of Cell
+    priv next: UnsafeAtomicRcBox<AtomicOption<StreamChanOne<T>>>
+}
+
+impl<T> SharedChan<T> {
+    pub fn new(chan: Chan<T>) -> SharedChan<T> {
+        let next = chan.next.take();
+        let next = AtomicOption::new(~next);
+        SharedChan { next: UnsafeAtomicRcBox::new(next) }
+    }
+}
+
+impl<T: Owned> GenericChan<T> for SharedChan<T> {
+    fn send(&self, val: T) {
+        self.try_send(val);
+    }
+}
+
+impl<T: Owned> GenericSmartChan<T> for SharedChan<T> {
+    fn try_send(&self, val: T) -> bool {
+        unsafe {
+            let (next_pone, next_cone) = oneshot();
+            let cone = (*self.next.get()).swap(~next_cone, SeqCst);
+            cone.unwrap().try_send(StreamPayload { val: val, next: next_pone })
+        }
+    }
+}
+
+impl<T> Clone for SharedChan<T> {
+    fn clone(&self) -> SharedChan<T> {
+        SharedChan {
+            next: self.next.clone()
+        }
     }
 }
 
@@ -639,6 +681,25 @@ mod test {
             let (port, chan) = stream();
             for 10000.times { chan.send(()) }
             for 10000.times { port.recv() }
+        }
+    }
+
+    #[test]
+    fn shared_chan_stress() {
+        do run_in_mt_newsched_task {
+            let (port, chan) = stream();
+            let chan = SharedChan::new(chan);
+            let total = stress_factor() + 100;
+            for total.times {
+                let chan_clone = chan.clone();
+                do spawntask_random {
+                    chan_clone.send(());
+                }
+            }
+
+            for total.times {
+                port.recv();
+            }
         }
     }
 }
