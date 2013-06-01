@@ -81,6 +81,7 @@ use core::prelude::*;
 use middle::const_eval;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
+use middle::lint::unreachable_code;
 use middle::ty::{FnSig, VariantInfo_};
 use middle::ty::{ty_param_bounds_and_ty, ty_param_substs_and_ty};
 use middle::ty::{substs, param_ty};
@@ -2937,7 +2938,8 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
         let mut any_err = false;
         for blk.node.stmts.each |s| {
             check_stmt(fcx, *s);
-            let s_ty = fcx.node_ty(ast_util::stmt_id(*s));
+            let s_id = ast_util::stmt_id(*s);
+            let s_ty = fcx.node_ty(s_id);
             if last_was_bot && !warned && match s.node {
                   ast::stmt_decl(@codemap::spanned { node: ast::decl_local(_),
                                                  _}, _) |
@@ -2946,7 +2948,8 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
                   }
                   _ => false
                 } {
-                fcx.ccx.tcx.sess.span_warn(s.span, "unreachable statement");
+                fcx.ccx.tcx.sess.add_lint(unreachable_code, s_id, s.span,
+                                          ~"unreachable statement");
                 warned = true;
             }
             if ty::type_is_bot(s_ty) {

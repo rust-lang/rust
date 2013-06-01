@@ -72,11 +72,12 @@ pub fn linear_map_with_capacity<K:Eq + Hash,V>(
 fn linear_map_with_capacity_and_keys<K:Eq + Hash,V>(
     k0: u64, k1: u64,
     initial_capacity: uint) -> HashMap<K, V> {
+    let cap = uint::max(INITIAL_CAPACITY, initial_capacity);
     HashMap {
         k0: k0, k1: k1,
-        resize_at: resize_at(initial_capacity),
+        resize_at: resize_at(cap),
         size: 0,
-        buckets: vec::from_fn(initial_capacity, |_| None)
+        buckets: vec::from_fn(cap, |_| None)
     }
 }
 
@@ -480,7 +481,8 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
     }
 
     fn consume(&mut self, f: &fn(K, V)) {
-        let buckets = replace(&mut self.buckets, ~[]);
+        let buckets = replace(&mut self.buckets,
+                              vec::from_fn(INITIAL_CAPACITY, |_| None));
         self.size = 0;
 
         do vec::consume(buckets) |_, bucket| {
@@ -665,6 +667,12 @@ mod test_map {
     use uint;
 
     #[test]
+    fn test_create_capacity_zero() {
+        let mut m = HashMap::with_capacity(0);
+        assert!(m.insert(1, 1));
+    }
+
+    #[test]
     fn test_insert() {
         let mut m = HashMap::new();
         assert!(m.insert(1, 2));
@@ -769,6 +777,14 @@ mod test_map {
         assert_eq!(m2.len(), 2);
         assert_eq!(m2.get(&1), &2);
         assert_eq!(m2.get(&2), &3);
+    }
+
+    #[test]
+    fn test_consume_still_usable() {
+        let mut m = HashMap::new();
+        assert!(m.insert(1, 2));
+        do m.consume |_, _| {}
+        assert!(m.insert(1, 2));
     }
 
     #[test]
