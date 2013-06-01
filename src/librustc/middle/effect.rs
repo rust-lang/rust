@@ -111,8 +111,8 @@ pub fn check_crate(tcx: ty::ctxt,
 
         visit_expr: |expr, _, visitor| {
             match expr.node {
-                expr_method_call(*) => {
-                    let base_type = ty::node_id_to_type(tcx, expr.callee_id);
+                expr_method_call(callee_id, _, _, _, _, _) => {
+                    let base_type = ty::node_id_to_type(tcx, callee_id);
                     debug!("effect: method call case, base type is %s",
                            ppaux::ty_to_str(tcx, base_type));
                     if type_is_unsafe_function(base_type) {
@@ -128,7 +128,7 @@ pub fn check_crate(tcx: ty::ctxt,
                         require_unsafe(expr.span, "call to unsafe function")
                     }
                 }
-                expr_unary(deref, base) => {
+                expr_unary(_, deref, base) => {
                     let base_type = ty::node_id_to_type(tcx, base.id);
                     debug!("effect: unary case, base type is %s",
                            ppaux::ty_to_str(tcx, base_type));

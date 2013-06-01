@@ -1164,7 +1164,7 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
         print_expr(s, func);
         print_call_post(s, sugar, &blk, &mut base_args);
       }
-      ast::expr_method_call(func, ident, ref tys, ref args, sugar) => {
+      ast::expr_method_call(_, func, ident, ref tys, ref args, sugar) => {
         let mut base_args = copy *args;
         let blk = print_call_pre(s, sugar, &mut base_args);
         print_expr(s, func);
@@ -1177,13 +1177,13 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
         }
         print_call_post(s, sugar, &blk, &mut base_args);
       }
-      ast::expr_binary(op, lhs, rhs) => {
+      ast::expr_binary(_, op, lhs, rhs) => {
         print_expr(s, lhs);
         space(s.s);
         word_space(s, ast_util::binop_to_str(op));
         print_expr(s, rhs);
       }
-      ast::expr_unary(op, expr) => {
+      ast::expr_unary(_, op, expr) => {
         word(s.s, ast_util::unop_to_str(op));
         print_expr(s, expr);
       }
@@ -1335,7 +1335,7 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
         word_space(s, "=");
         print_expr(s, rhs);
       }
-      ast::expr_assign_op(op, lhs, rhs) => {
+      ast::expr_assign_op(_, op, lhs, rhs) => {
         print_expr(s, lhs);
         space(s.s);
         word(s.s, ast_util::binop_to_str(op));
@@ -1352,7 +1352,7 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
             word(s.s, ">");
         }
       }
-      ast::expr_index(expr, index) => {
+      ast::expr_index(_, expr, index) => {
         print_expr(s, expr);
         word(s.s, "[");
         print_expr(s, index);

@@ -182,7 +182,6 @@ pub fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
                  cx.sess.codemap.span_to_str(expr.span))
           }
           ast::expr_assign_op(*) |
-          ast::expr_field(*) |
           ast::expr_unary(*) |
           ast::expr_binary(*) |
           ast::expr_index(*) => {

@@ -91,14 +91,14 @@ pub fn check_expr(sess: Session,
                   v: visit::vt<bool>) {
     if is_const {
         match e.node {
-          expr_unary(deref, _) => { }
-          expr_unary(box(_), _) | expr_unary(uniq(_), _) => {
+          expr_unary(_, deref, _) => { }
+          expr_unary(_, box(_), _) | expr_unary(_, uniq(_), _) => {
             sess.span_err(e.span,
                           "disallowed operator in constant expression");
             return;
           }
           expr_lit(@codemap::spanned {node: lit_str(_), _}) => { }
-          expr_binary(_, _, _) | expr_unary(_, _) => {
+          expr_binary(*) | expr_unary(*) => {
             if method_map.contains_key(&e.id) {
                 sess.span_err(e.span, "user-defined operators are not \
                                        allowed in constant expressions");

@@ -217,10 +217,16 @@ fn visit_expr(e: @ast::expr, wbcx: @mut WbCtxt, v: wb_vt) {
     }
 
     resolve_type_vars_for_node(wbcx, e.span, e.id);
+
     resolve_method_map_entry(wbcx.fcx, e.span, e.id);
-    resolve_method_map_entry(wbcx.fcx, e.span, e.callee_id);
+    for e.get_callee_id().each |callee_id| {
+        resolve_method_map_entry(wbcx.fcx, e.span, *callee_id);
+    }
+
     resolve_vtable_map_entry(wbcx.fcx, e.span, e.id);
-    resolve_vtable_map_entry(wbcx.fcx, e.span, e.callee_id);
+    for e.get_callee_id().each |callee_id| {
+        resolve_vtable_map_entry(wbcx.fcx, e.span, *callee_id);
+    }
 
     match e.node {
         ast::expr_fn_block(ref decl, _) => {
@@ -229,14 +235,16 @@ fn visit_expr(e: @ast::expr, wbcx: @mut WbCtxt, v: wb_vt) {
             }
         }
 
-        ast::expr_binary(*) | ast::expr_unary(*) | ast::expr_assign_op(*) |
-        ast::expr_index(*) => {
-            maybe_resolve_type_vars_for_node(wbcx, e.span, e.callee_id);
+        ast::expr_binary(callee_id, _, _, _) |
+        ast::expr_unary(callee_id, _, _) |
+        ast::expr_assign_op(callee_id, _, _, _) |
+        ast::expr_index(callee_id, _, _) => {
+            maybe_resolve_type_vars_for_node(wbcx, e.span, callee_id);
         }
 
-        ast::expr_method_call(*) => {
+        ast::expr_method_call(callee_id, _, _, _, _, _) => {
             // We must always have written in a callee ID type for these.
-            resolve_type_vars_for_node(wbcx, e.span, e.callee_id);
+            resolve_type_vars_for_node(wbcx, e.span, callee_id);
         }
 
         _ => ()

@@ -82,7 +82,6 @@ pub fn expand_asm(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
 
                     let out = @ast::expr {
                         id: cx.next_id(),
-                        callee_id: cx.next_id(),
                         span: out.span,
                         node: ast::expr_addr_of(ast::m_mutbl, out)
                     };
@@ -179,7 +178,6 @@ pub fn expand_asm(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
 
     MRExpr(@ast::expr {
         id: cx.next_id(),
-        callee_id: cx.next_id(),
         node: ast::expr_inline_asm(ast::inline_asm {
             asm: @asm,
             clobbers: @cons,
