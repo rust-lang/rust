@@ -467,6 +467,14 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
         self.mangle(k, (), |k,_a| f(k), |_k,_v,_a| ())
     }
 
+    /// Insert a key-value pair into the map if the key is not already present.
+    /// Otherwise, modify the existing value for the key.
+    /// Returns the new or modified value for the key.
+    pub fn insert_or_update_with<'a>(&'a mut self, k: K, v: V,
+                                     f: &fn(&K, &mut V)) -> &'a mut V {
+        self.mangle(k, v, |_k,a| a, |k,v,_a| f(k,v))
+    }
+
     /// Calls a function on each element of a hash map, destroying the hash
     /// map in the process.
     pub fn consume(&mut self, f: &fn(K, V)) {
@@ -756,6 +764,13 @@ mod test_map {
         let mut m = HashMap::new::<int, int>();
         assert_eq!(*m.find_or_insert_with(1, |_| 2), 2);
         assert_eq!(*m.find_or_insert_with(1, |_| 3), 2);
+    }
+
+    #[test]
+    fn test_insert_or_update_with() {
+        let mut m = HashMap::new::<int, int>();
+        assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 2);
+        assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 3);
     }
 
     #[test]
