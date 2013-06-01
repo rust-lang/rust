@@ -12,8 +12,8 @@ pub struct Foo {
     x: int
 }
 
-pub impl Foo {
-    fn new() -> Foo {
+impl Foo {
+    pub fn new() -> Foo {
         Foo { x: 3 }
     }
 }

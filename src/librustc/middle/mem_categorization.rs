@@ -290,8 +290,8 @@ impl ToStr for MutabilityCategory {
     }
 }
 
-pub impl MutabilityCategory {
-    fn from_mutbl(m: ast::mutability) -> MutabilityCategory {
+impl MutabilityCategory {
+    pub fn from_mutbl(m: ast::mutability) -> MutabilityCategory {
         match m {
             m_imm => McImmutable,
             m_const => McReadOnly,
@@ -299,7 +299,7 @@ pub impl MutabilityCategory {
         }
     }
 
-    fn inherit(&self) -> MutabilityCategory {
+    pub fn inherit(&self) -> MutabilityCategory {
         match *self {
             McImmutable => McImmutable,
             McReadOnly => McReadOnly,
@@ -308,21 +308,21 @@ pub impl MutabilityCategory {
         }
     }
 
-    fn is_mutable(&self) -> bool {
+    pub fn is_mutable(&self) -> bool {
         match *self {
             McImmutable | McReadOnly => false,
             McDeclared | McInherited => true
         }
     }
 
-    fn is_immutable(&self) -> bool {
+    pub fn is_immutable(&self) -> bool {
         match *self {
             McImmutable => true,
             McReadOnly | McDeclared | McInherited => false
         }
     }
 
-    fn to_user_str(&self) -> &'static str {
+    pub fn to_user_str(&self) -> &'static str {
         match *self {
             McDeclared | McInherited => "mutable",
             McImmutable => "immutable",
@@ -331,16 +331,16 @@ pub impl MutabilityCategory {
     }
 }
 
-pub impl mem_categorization_ctxt {
-    fn expr_ty(&self, expr: @ast::expr) -> ty::t {
+impl mem_categorization_ctxt {
+    pub fn expr_ty(&self, expr: @ast::expr) -> ty::t {
         ty::expr_ty(self.tcx, expr)
     }
 
-    fn pat_ty(&self, pat: @ast::pat) -> ty::t {
+    pub fn pat_ty(&self, pat: @ast::pat) -> ty::t {
         ty::node_id_to_type(self.tcx, pat.id)
     }
 
-    fn cat_expr(&self, expr: @ast::expr) -> cmt {
+    pub fn cat_expr(&self, expr: @ast::expr) -> cmt {
         match self.tcx.adjustments.find(&expr.id) {
             None => {
                 // No adjustments.
@@ -374,9 +374,8 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_expr_autoderefd(&self,
-                           expr: @ast::expr,
-                           autoderefs: uint) -> cmt {
+    pub fn cat_expr_autoderefd(&self, expr: @ast::expr, autoderefs: uint)
+                               -> cmt {
         let mut cmt = self.cat_expr_unadjusted(expr);
         for uint::range(1, autoderefs+1) |deref| {
             cmt = self.cat_deref(expr, cmt, deref);
@@ -384,7 +383,7 @@ pub impl mem_categorization_ctxt {
         return cmt;
     }
 
-    fn cat_expr_unadjusted(&self, expr: @ast::expr) -> cmt {
+    pub fn cat_expr_unadjusted(&self, expr: @ast::expr) -> cmt {
         debug!("cat_expr: id=%d expr=%s",
                expr.id, pprust::expr_to_str(expr, self.tcx.sess.intr()));
 
@@ -440,11 +439,12 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_def(&self,
-               id: ast::node_id,
-               span: span,
-               expr_ty: ty::t,
-               def: ast::def) -> cmt {
+    pub fn cat_def(&self,
+                   id: ast::node_id,
+                   span: span,
+                   expr_ty: ty::t,
+                   def: ast::def)
+                   -> cmt {
         match def {
           ast::def_fn(*) | ast::def_static_method(*) | ast::def_mod(_) |
           ast::def_foreign_mod(_) | ast::def_const(_) |
@@ -557,7 +557,7 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_rvalue<N:ast_node>(&self, elt: N, expr_ty: ty::t) -> cmt {
+    pub fn cat_rvalue<N:ast_node>(&self, elt: N, expr_ty: ty::t) -> cmt {
         @cmt_ {
             id:elt.id(),
             span:elt.span(),
@@ -571,10 +571,10 @@ pub impl mem_categorization_ctxt {
     /// component is inherited from the base it is a part of. For
     /// example, a record field is mutable if it is declared mutable
     /// or if the container is mutable.
-    fn inherited_mutability(&self,
-                            base_m: MutabilityCategory,
-                            interior_m: ast::mutability) -> MutabilityCategory
-    {
+    pub fn inherited_mutability(&self,
+                                base_m: MutabilityCategory,
+                                interior_m: ast::mutability)
+                                -> MutabilityCategory {
         match interior_m {
             m_imm => base_m.inherit(),
             m_const => McReadOnly,
@@ -582,11 +582,12 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_field<N:ast_node>(&self,
-                             node: N,
-                             base_cmt: cmt,
-                             f_name: ast::ident,
-                             f_ty: ty::t) -> cmt {
+    pub fn cat_field<N:ast_node>(&self,
+                                 node: N,
+                                 base_cmt: cmt,
+                                 f_name: ast::ident,
+                                 f_ty: ty::t)
+                                 -> cmt {
         @cmt_ {
             id: node.id(),
             span: node.span(),
@@ -596,11 +597,11 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_deref_fn<N:ast_node>(&self,
-                                node: N,
-                                base_cmt: cmt,
-                                deref_cnt: uint) -> cmt
-    {
+    pub fn cat_deref_fn<N:ast_node>(&self,
+                                    node: N,
+                                    base_cmt: cmt,
+                                    deref_cnt: uint)
+                                    -> cmt {
         // Bit of a hack: the "dereference" of a function pointer like
         // `@fn()` is a mere logical concept. We interpret it as
         // dereferencing the environment pointer; of course, we don't
@@ -612,11 +613,11 @@ pub impl mem_categorization_ctxt {
         return self.cat_deref_common(node, base_cmt, deref_cnt, mt);
     }
 
-    fn cat_deref<N:ast_node>(&self,
-                             node: N,
-                             base_cmt: cmt,
-                             deref_cnt: uint) -> cmt
-    {
+    pub fn cat_deref<N:ast_node>(&self,
+                                 node: N,
+                                 base_cmt: cmt,
+                                 deref_cnt: uint)
+                                 -> cmt {
         let mt = match ty::deref(self.tcx, base_cmt.ty, true) {
             Some(mt) => mt,
             None => {
@@ -630,12 +631,12 @@ pub impl mem_categorization_ctxt {
         return self.cat_deref_common(node, base_cmt, deref_cnt, mt);
     }
 
-    fn cat_deref_common<N:ast_node>(&self,
-                                    node: N,
-                                    base_cmt: cmt,
-                                    deref_cnt: uint,
-                                    mt: ty::mt) -> cmt
-    {
+    pub fn cat_deref_common<N:ast_node>(&self,
+                                        node: N,
+                                        base_cmt: cmt,
+                                        deref_cnt: uint,
+                                        mt: ty::mt)
+                                        -> cmt {
         match deref_kind(self.tcx, base_cmt.ty) {
             deref_ptr(ptr) => {
                 // for unique ptrs, we inherit mutability from the
@@ -671,10 +672,11 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_index<N:ast_node>(&self,
-                             elt: N,
-                             base_cmt: cmt,
-                             derefs: uint) -> cmt {
+    pub fn cat_index<N:ast_node>(&self,
+                                 elt: N,
+                                 base_cmt: cmt,
+                                 derefs: uint)
+                                 -> cmt {
         //! Creates a cmt for an indexing operation (`[]`); this
         //! indexing operation may occurs as part of an
         //! AutoBorrowVec, which when converting a `~[]` to an `&[]`
@@ -764,11 +766,12 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_imm_interior<N:ast_node>(&self,
-                                    node: N,
-                                    base_cmt: cmt,
-                                    interior_ty: ty::t,
-                                    interior: InteriorKind) -> cmt {
+    pub fn cat_imm_interior<N:ast_node>(&self,
+                                        node: N,
+                                        base_cmt: cmt,
+                                        interior_ty: ty::t,
+                                        interior: InteriorKind)
+                                        -> cmt {
         @cmt_ {
             id: node.id(),
             span: node.span(),
@@ -778,10 +781,11 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_downcast<N:ast_node>(&self,
-                                node: N,
-                                base_cmt: cmt,
-                                downcast_ty: ty::t) -> cmt {
+    pub fn cat_downcast<N:ast_node>(&self,
+                                    node: N,
+                                    base_cmt: cmt,
+                                    downcast_ty: ty::t)
+                                    -> cmt {
         @cmt_ {
             id: node.id(),
             span: node.span(),
@@ -791,11 +795,10 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cat_pattern(&self,
-                   cmt: cmt,
-                   pat: @ast::pat,
-                   op: &fn(cmt, @ast::pat))
-    {
+    pub fn cat_pattern(&self,
+                       cmt: cmt,
+                       pat: @ast::pat,
+                       op: &fn(cmt, @ast::pat)) {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.
         //
@@ -961,7 +964,7 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn mut_to_str(&self, mutbl: ast::mutability) -> ~str {
+    pub fn mut_to_str(&self, mutbl: ast::mutability) -> ~str {
         match mutbl {
           m_mutbl => ~"mutable",
           m_const => ~"const",
@@ -969,7 +972,7 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn cmt_to_str(&self, cmt: cmt) -> ~str {
+    pub fn cmt_to_str(&self, cmt: cmt) -> ~str {
         match cmt.cat {
           cat_static_item => {
               ~"static item"
@@ -1022,7 +1025,7 @@ pub impl mem_categorization_ctxt {
         }
     }
 
-    fn region_to_str(&self, r: ty::Region) -> ~str {
+    pub fn region_to_str(&self, r: ty::Region) -> ~str {
         region_to_str(self.tcx, r)
     }
 }
@@ -1068,8 +1071,8 @@ pub enum AliasableReason {
     AliasableOther
 }
 
-pub impl cmt_ {
-    fn guarantor(@self) -> cmt {
+impl cmt_ {
+    pub fn guarantor(@self) -> cmt {
         //! Returns `self` after stripping away any owned pointer derefs or
         //! interior content. The return value is basically the `cmt` which
         //! determines how long the value in `self` remains live.
@@ -1097,11 +1100,11 @@ pub impl cmt_ {
         }
     }
 
-    fn is_freely_aliasable(&self) -> bool {
+    pub fn is_freely_aliasable(&self) -> bool {
         self.freely_aliasable().is_some()
     }
 
-    fn freely_aliasable(&self) -> Option<AliasableReason> {
+    pub fn freely_aliasable(&self) -> Option<AliasableReason> {
         //! True if this lvalue resides in an area that is
         //! freely aliasable, meaning that rustc cannot track
         //! the alias//es with precision.

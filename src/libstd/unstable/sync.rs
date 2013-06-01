@@ -117,9 +117,9 @@ fn LittleLock() -> LittleLock {
     }
 }
 
-pub impl LittleLock {
+impl LittleLock {
     #[inline(always)]
-    unsafe fn lock<T>(&self, f: &fn() -> T) -> T {
+    pub unsafe fn lock<T>(&self, f: &fn() -> T) -> T {
         do atomically {
             rust_lock_little_lock(self.l);
             do (|| {
@@ -162,7 +162,7 @@ impl<T:Owned> Clone for Exclusive<T> {
     }
 }
 
-pub impl<T:Owned> Exclusive<T> {
+impl<T:Owned> Exclusive<T> {
     // Exactly like std::arc::mutex_arc,access(), but with the little_lock
     // instead of a proper mutex. Same reason for being unsafe.
     //
@@ -170,7 +170,7 @@ pub impl<T:Owned> Exclusive<T> {
     // accessing the provided condition variable) are prohibited while inside
     // the exclusive. Supporting that is a work in progress.
     #[inline(always)]
-    unsafe fn with<U>(&self, f: &fn(x: &mut T) -> U) -> U {
+    pub unsafe fn with<U>(&self, f: &fn(x: &mut T) -> U) -> U {
         let rec = self.x.get();
         do (*rec).lock.lock {
             if (*rec).failed {
@@ -184,7 +184,7 @@ pub impl<T:Owned> Exclusive<T> {
     }
 
     #[inline(always)]
-    unsafe fn with_imm<U>(&self, f: &fn(x: &T) -> U) -> U {
+    pub unsafe fn with_imm<U>(&self, f: &fn(x: &T) -> U) -> U {
         do self.with |x| {
             f(cast::transmute_immut(x))
         }

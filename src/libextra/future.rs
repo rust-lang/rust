@@ -54,15 +54,15 @@ priv enum FutureState<A> {
 }
 
 /// Methods on the `future` type
-pub impl<A:Copy> Future<A> {
-    fn get(&mut self) -> A {
+impl<A:Copy> Future<A> {
+    pub fn get(&mut self) -> A {
         //! Get the value of the future.
         *(self.get_ref())
     }
 }
 
-pub impl<A> Future<A> {
-    fn get_ref<'a>(&'a mut self) -> &'a A {
+impl<A> Future<A> {
+    pub fn get_ref<'a>(&'a mut self) -> &'a A {
         /*!
         * Executes the future's closure and then returns a borrowed
         * pointer to the result.  The borrowed pointer lasts as long as

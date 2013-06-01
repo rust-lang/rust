@@ -16,11 +16,12 @@ pub mod kitties {
         how_hungry : int,
     }
 
-    pub impl<U> cat<U> {
-        fn speak<T>(&mut self, stuff: ~[T]) {
+    impl<U> cat<U> {
+        pub fn speak<T>(&mut self, stuff: ~[T]) {
             self.meows += stuff.len();
         }
-        fn meow_count(&mut self) -> uint { self.meows }
+
+        pub fn meow_count(&mut self) -> uint { self.meows }
     }
 
     pub fn cat<U>(in_x : uint, in_y : int, in_info: ~[U]) -> cat<U> {

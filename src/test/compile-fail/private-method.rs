@@ -19,7 +19,7 @@ mod kitties {
         how_hungry : int,
     }
 
-    pub impl cat {
+    impl cat {
         priv fn nap(&self) { uint::range(1u, 10000u, |_i| false); }
     }
 

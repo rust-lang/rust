@@ -19,8 +19,8 @@ pub struct StackSegment {
     valgrind_id: c_uint
 }
 
-pub impl StackSegment {
-    fn new(size: uint) -> StackSegment {
+impl StackSegment {
+    pub fn new(size: uint) -> StackSegment {
         unsafe {
             // Crate a block of uninitialized values
             let mut stack = vec::with_capacity(size);
@@ -38,12 +38,12 @@ pub impl StackSegment {
     }
 
     /// Point to the low end of the allocated stack
-    fn start(&self) -> *uint {
-      vec::raw::to_ptr(self.buf) as *uint
+    pub fn start(&self) -> *uint {
+        vec::raw::to_ptr(self.buf) as *uint
     }
 
     /// Point one word beyond the high end of the allocated stack
-    fn end(&self) -> *uint {
+    pub fn end(&self) -> *uint {
         vec::raw::to_ptr(self.buf).offset(self.buf.len()) as *uint
     }
 }

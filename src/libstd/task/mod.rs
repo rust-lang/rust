@@ -202,7 +202,7 @@ pub fn task() -> TaskBuilder {
     }
 }
 
-priv impl TaskBuilder {
+impl TaskBuilder {
     fn consume(&mut self) -> TaskBuilder {
         if self.consumed {
             fail!("Cannot copy a task_builder"); // Fake move mode on self
@@ -224,24 +224,24 @@ priv impl TaskBuilder {
     }
 }
 
-pub impl TaskBuilder {
+impl TaskBuilder {
     /// Decouple the child task's failure from the parent's. If either fails,
     /// the other will not be killed.
-    fn unlinked(&mut self) {
+    pub fn unlinked(&mut self) {
         self.opts.linked = false;
     }
 
     /// Unidirectionally link the child task's failure with the parent's. The
     /// child's failure will not kill the parent, but the parent's will kill
     /// the child.
-    fn supervised(&mut self) {
+    pub fn supervised(&mut self) {
         self.opts.supervised = true;
         self.opts.linked = false;
     }
 
     /// Link the child task's and parent task's failures. If either fails, the
     /// other will be killed.
-    fn linked(&mut self) {
+    pub fn linked(&mut self) {
         self.opts.linked = true;
         self.opts.supervised = false;
     }
@@ -263,7 +263,7 @@ pub impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    fn future_result(&mut self, blk: &fn(v: Port<TaskResult>)) {
+    pub fn future_result(&mut self, blk: &fn(v: Port<TaskResult>)) {
         // FIXME (#3725): Once linked failure and notification are
         // handled in the library, I can imagine implementing this by just
         // registering an arbitrary number of task::on_exit handlers and
@@ -283,7 +283,7 @@ pub impl TaskBuilder {
     }
 
     /// Configure a custom scheduler mode for the task.
-    fn sched_mode(&mut self, mode: SchedMode) {
+    pub fn sched_mode(&mut self, mode: SchedMode) {
         self.opts.sched.mode = mode;
     }
 
@@ -299,7 +299,7 @@ pub impl TaskBuilder {
      * generator by applying the task body which results from the
      * existing body generator to the new body generator.
      */
-    fn add_wrapper(&mut self, wrapper: ~fn(v: ~fn()) -> ~fn()) {
+    pub fn add_wrapper(&mut self, wrapper: ~fn(v: ~fn()) -> ~fn()) {
         let prev_gen_body = replace(&mut self.gen_body, None);
         let prev_gen_body = match prev_gen_body {
             Some(gen) => gen,
@@ -331,7 +331,7 @@ pub impl TaskBuilder {
      * When spawning into a new scheduler, the number of threads requested
      * must be greater than zero.
      */
-    fn spawn(&mut self, f: ~fn()) {
+    pub fn spawn(&mut self, f: ~fn()) {
         let gen_body = replace(&mut self.gen_body, None);
         let notify_chan = replace(&mut self.opts.notify_chan, None);
         let x = self.consume();
@@ -353,7 +353,7 @@ pub impl TaskBuilder {
     }
 
     /// Runs a task, while transfering ownership of one argument to the child.
-    fn spawn_with<A:Owned>(&mut self, arg: A, f: ~fn(v: A)) {
+    pub fn spawn_with<A:Owned>(&mut self, arg: A, f: ~fn(v: A)) {
         let arg = Cell(arg);
         do self.spawn {
             f(arg.take());
@@ -373,7 +373,7 @@ pub impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    fn try<T:Owned>(&mut self, f: ~fn() -> T) -> Result<T,()> {
+    pub fn try<T:Owned>(&mut self, f: ~fn() -> T) -> Result<T,()> {
         let (po, ch) = stream::<T>();
         let mut result = None;
 

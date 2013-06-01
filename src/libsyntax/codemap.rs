@@ -271,13 +271,13 @@ pub struct FileMap {
     multibyte_chars: @mut ~[MultiByteChar],
 }
 
-pub impl FileMap {
+impl FileMap {
     // EFFECT: register a start-of-line offset in the
     // table of line-beginnings.
     // UNCHECKED INVARIANT: these offsets must be added in the right
     // order and must be in the right places; there is shared knowledge
     // about what ends a line between this file and parse.rs
-    fn next_line(&self, pos: BytePos) {
+    pub fn next_line(&self, pos: BytePos) {
         // the new charpos must be > the last one (or it's the first one).
         let lines = &mut *self.lines;
         assert!((lines.len() == 0) || (lines[lines.len() - 1] < pos))
@@ -309,7 +309,7 @@ pub struct CodeMap {
     files: @mut ~[@FileMap]
 }
 
-pub impl CodeMap {
+impl CodeMap {
     pub fn new() -> CodeMap {
         CodeMap {
             files: @mut ~[],
@@ -317,16 +317,15 @@ pub impl CodeMap {
     }
 
     /// Add a new FileMap to the CodeMap and return it
-    fn new_filemap(&self, filename: FileName, src: @~str) -> @FileMap {
+    pub fn new_filemap(&self, filename: FileName, src: @~str) -> @FileMap {
         return self.new_filemap_w_substr(filename, FssNone, src);
     }
 
-    fn new_filemap_w_substr(
-        &self,
-        filename: FileName,
-        substr: FileSubstr,
-        src: @~str
-    ) -> @FileMap {
+    pub fn new_filemap_w_substr(&self,
+                                filename: FileName,
+                                substr: FileSubstr,
+                                src: @~str)
+                                -> @FileMap {
         let files = &mut *self.files;
         let start_pos = if files.len() == 0 {
             0
@@ -359,8 +358,7 @@ pub impl CodeMap {
         return self.lookup_pos(pos);
     }
 
-    pub fn lookup_char_pos_adj(&self, pos: BytePos) -> LocWithOpt
-    {
+    pub fn lookup_char_pos_adj(&self, pos: BytePos) -> LocWithOpt {
         let loc = self.lookup_char_pos(pos);
         match (loc.file.substr) {
             FssNone =>
@@ -430,11 +428,9 @@ pub impl CodeMap {
         //      (or expected function, found _|_)
         fail!(); // ("asking for " + filename + " which we don't know about");
     }
-
 }
 
-priv impl CodeMap {
-
+impl CodeMap {
     fn lookup_filemap_idx(&self, pos: BytePos) -> uint {
         let files = &*self.files;
         let len = files.len();

@@ -172,8 +172,8 @@ pub mod pipes {
         }
     }
 
-    pub impl<T:Owned> send_packet<T> {
-        fn unwrap(&mut self) -> *packet<T> {
+    impl<T:Owned> send_packet<T> {
+        pub fn unwrap(&mut self) -> *packet<T> {
             util::replace(&mut self.p, None).unwrap()
         }
     }
@@ -202,8 +202,8 @@ pub mod pipes {
         }
     }
 
-    pub impl<T:Owned> recv_packet<T> {
-        fn unwrap(&mut self) -> *packet<T> {
+    impl<T:Owned> recv_packet<T> {
+        pub fn unwrap(&mut self) -> *packet<T> {
             util::replace(&mut self.p, None).unwrap()
         }
     }

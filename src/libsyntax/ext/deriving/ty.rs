@@ -38,15 +38,18 @@ pub struct Path<'self> {
     global: bool
 }
 
-pub impl<'self> Path<'self> {
-    fn new<'r>(path: ~[&'r str]) -> Path<'r> {
+impl<'self> Path<'self> {
+    pub fn new<'r>(path: ~[&'r str]) -> Path<'r> {
         Path::new_(path, None, ~[], true)
     }
-    fn new_local<'r>(path: &'r str) -> Path<'r> {
+    pub fn new_local<'r>(path: &'r str) -> Path<'r> {
         Path::new_(~[ path ], None, ~[], false)
     }
-    fn new_<'r>(path: ~[&'r str], lifetime: Option<&'r str>, params: ~[~Ty<'r>], global: bool)
-        -> Path<'r> {
+    pub fn new_<'r>(path: ~[&'r str],
+                    lifetime: Option<&'r str>,
+                    params: ~[~Ty<'r>],
+                    global: bool)
+                    -> Path<'r> {
         Path {
             path: path,
             lifetime: lifetime,
@@ -55,13 +58,21 @@ pub impl<'self> Path<'self> {
         }
     }
 
-    fn to_ty(&self, cx: @ExtCtxt, span: span,
-             self_ty: ident, self_generics: &Generics) -> @ast::Ty {
+    pub fn to_ty(&self,
+                 cx: @ExtCtxt,
+                 span: span,
+                 self_ty: ident,
+                 self_generics: &Generics)
+                 -> @ast::Ty {
         cx.ty_path(self.to_path(cx, span,
                                 self_ty, self_generics))
     }
-    fn to_path(&self, cx: @ExtCtxt, span: span,
-               self_ty: ident, self_generics: &Generics) -> @ast::Path {
+    pub fn to_path(&self,
+                   cx: @ExtCtxt,
+                   span: span,
+                   self_ty: ident,
+                   self_generics: &Generics)
+                   -> @ast::Path {
         let idents = self.path.map(|s| cx.ident_of(*s) );
         let lt = mk_lifetime(cx, span, &self.lifetime);
         let tys = self.params.map(|t| t.to_ty(cx, span, self_ty, self_generics));
@@ -108,9 +119,13 @@ fn mk_lifetime(cx: @ExtCtxt, span: span, lt: &Option<&str>) -> Option<@ast::Life
     }
 }
 
-pub impl<'self> Ty<'self> {
-    fn to_ty(&self, cx: @ExtCtxt, span: span,
-             self_ty: ident, self_generics: &Generics) -> @ast::Ty {
+impl<'self> Ty<'self> {
+    pub fn to_ty(&self,
+                 cx: @ExtCtxt,
+                 span: span,
+                 self_ty: ident,
+                 self_generics: &Generics)
+                 -> @ast::Ty {
         match *self {
             Ptr(ref ty, ref ptr) => {
                 let raw_ty = ty.to_ty(cx, span, self_ty, self_generics);
@@ -143,8 +158,12 @@ pub impl<'self> Ty<'self> {
         }
     }
 
-    fn to_path(&self, cx: @ExtCtxt, span: span,
-               self_ty: ident, self_generics: &Generics) -> @ast::Path {
+    pub fn to_path(&self,
+                   cx: @ExtCtxt,
+                   span: span,
+                   self_ty: ident,
+                   self_generics: &Generics)
+                   -> @ast::Path {
         match *self {
             Self => {
                 let self_params = do self_generics.ty_params.map |ty_param| {
@@ -192,14 +211,18 @@ pub struct LifetimeBounds<'self> {
     bounds: ~[(&'self str, ~[Path<'self>])]
 }
 
-pub impl<'self> LifetimeBounds<'self> {
-    fn empty() -> LifetimeBounds<'static> {
+impl<'self> LifetimeBounds<'self> {
+    pub fn empty() -> LifetimeBounds<'static> {
         LifetimeBounds {
             lifetimes: ~[], bounds: ~[]
         }
     }
-    fn to_generics(&self, cx: @ExtCtxt, span: span,
-                   self_ty: ident, self_generics: &Generics) -> Generics {
+    pub fn to_generics(&self,
+                       cx: @ExtCtxt,
+                       span: span,
+                       self_ty: ident,
+                       self_generics: &Generics)
+                       -> Generics {
         let lifetimes = do self.lifetimes.map |lt| {
             cx.lifetime(span, cx.ident_of(*lt))
         };

@@ -272,9 +272,9 @@ impl Drop for Parser {
     fn finalize(&self) {}
 }
 
-pub impl Parser {
+impl Parser {
     // advance the parser by one token
-    fn bump(&self) {
+    pub fn bump(&self) {
         *self.last_span = copy *self.span;
         let next = if *self.buffer_start == *self.buffer_end {
             self.reader.next_token()
@@ -288,17 +288,20 @@ pub impl Parser {
         *self.tokens_consumed += 1u;
     }
     // EFFECT: replace the current token and span with the given one
-    fn replace_token(&self, next: token::Token, lo: BytePos, hi: BytePos) {
+    pub fn replace_token(&self,
+                         next: token::Token,
+                         lo: BytePos,
+                         hi: BytePos) {
         *self.token = next;
         *self.span = mk_sp(lo, hi);
     }
-    fn buffer_length(&self) -> int {
+    pub fn buffer_length(&self) -> int {
         if *self.buffer_start <= *self.buffer_end {
             return *self.buffer_end - *self.buffer_start;
         }
         return (4 - *self.buffer_start) + *self.buffer_end;
     }
-    fn look_ahead(&self, distance: uint) -> token::Token {
+    pub fn look_ahead(&self, distance: uint) -> token::Token {
         let dist = distance as int;
         while self.buffer_length() < dist {
             self.buffer[*self.buffer_end] = self.reader.next_token();
@@ -306,49 +309,49 @@ pub impl Parser {
         }
         return copy self.buffer[(*self.buffer_start + dist - 1) & 3].tok;
     }
-    fn fatal(&self, m: &str) -> ! {
+    pub fn fatal(&self, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(*copy self.span, m)
     }
-    fn span_fatal(&self, sp: span, m: &str) -> ! {
+    pub fn span_fatal(&self, sp: span, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(sp, m)
     }
-    fn span_note(&self, sp: span, m: &str) {
+    pub fn span_note(&self, sp: span, m: &str) {
         self.sess.span_diagnostic.span_note(sp, m)
     }
-    fn bug(&self, m: &str) -> ! {
+    pub fn bug(&self, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(*copy self.span, m)
     }
-    fn warn(&self, m: &str) {
+    pub fn warn(&self, m: &str) {
         self.sess.span_diagnostic.span_warn(*copy self.span, m)
     }
-    fn span_err(&self, sp: span, m: &str) {
+    pub fn span_err(&self, sp: span, m: &str) {
         self.sess.span_diagnostic.span_err(sp, m)
     }
-    fn abort_if_errors(&self) {
+    pub fn abort_if_errors(&self) {
         self.sess.span_diagnostic.handler().abort_if_errors();
     }
-    fn get_id(&self) -> node_id { next_node_id(self.sess) }
+    pub fn get_id(&self) -> node_id { next_node_id(self.sess) }
 
-    fn id_to_str(&self, id: ident) -> @~str {
+    pub fn id_to_str(&self, id: ident) -> @~str {
         self.sess.interner.get(id)
     }
 
     // is this one of the keywords that signals a closure type?
-    fn token_is_closure_keyword(&self, tok: &token::Token) -> bool {
+    pub fn token_is_closure_keyword(&self, tok: &token::Token) -> bool {
         token::is_keyword(keywords::Pure, tok) ||
             token::is_keyword(keywords::Unsafe, tok) ||
             token::is_keyword(keywords::Once, tok) ||
             token::is_keyword(keywords::Fn, tok)
     }
 
-    fn token_is_lifetime(&self, tok: &token::Token) -> bool {
+    pub fn token_is_lifetime(&self, tok: &token::Token) -> bool {
         match *tok {
             token::LIFETIME(*) => true,
             _ => false,
         }
     }
 
-    fn get_lifetime(&self, tok: &token::Token) -> ast::ident {
+    pub fn get_lifetime(&self, tok: &token::Token) -> ast::ident {
         match *tok {
             token::LIFETIME(ref ident) => copy *ident,
             _ => self.bug("not a lifetime"),
@@ -356,8 +359,7 @@ pub impl Parser {
     }
 
     // parse a ty_bare_fun type:
-    fn parse_ty_bare_fn(&self) -> ty_
-    {
+    pub fn parse_ty_bare_fn(&self) -> ty_ {
         /*
 
         extern "ABI" [pure|unsafe] fn <'lt> (S) -> T
@@ -386,10 +388,10 @@ pub impl Parser {
     }
 
     // parse a ty_closure type
-    fn parse_ty_closure(&self,
-                        sigil: ast::Sigil,
-                        region: Option<@ast::Lifetime>)
-                        -> ty_ {
+    pub fn parse_ty_closure(&self,
+                            sigil: ast::Sigil,
+                            region: Option<@ast::Lifetime>)
+                            -> ty_ {
         /*
 
         (&|~|@) ['r] [pure|unsafe] [once] fn [:Bounds] <'lt> (S) -> T
@@ -440,7 +442,7 @@ pub impl Parser {
     }
 
     // looks like this should be called parse_unsafety
-    fn parse_unsafety(&self) -> purity {
+    pub fn parse_unsafety(&self) -> purity {
         if self.eat_keyword(keywords::Pure) {
             self.obsolete(*self.last_span, ObsoletePurity);
             return impure_fn;
@@ -452,7 +454,7 @@ pub impl Parser {
     }
 
     // parse a function type (following the 'fn')
-    fn parse_ty_fn_decl(&self) -> (fn_decl, OptVec<ast::Lifetime>) {
+    pub fn parse_ty_fn_decl(&self) -> (fn_decl, OptVec<ast::Lifetime>) {
         /*
 
         (fn) <'lt> (S) -> T
@@ -487,7 +489,7 @@ pub impl Parser {
     }
 
     // parse the methods in a trait declaration
-    fn parse_trait_methods(&self) -> ~[trait_method] {
+    pub fn parse_trait_methods(&self) -> ~[trait_method] {
         do self.parse_unspanned_seq(
             &token::LBRACE,
             &token::RBRACE,
@@ -563,9 +565,8 @@ pub impl Parser {
         }
     }
 
-
     // parse a possibly mutable type
-    fn parse_mt(&self) -> mt {
+    pub fn parse_mt(&self) -> mt {
         let mutbl = self.parse_mutability();
         let t = self.parse_ty(false);
         mt { ty: t, mutbl: mutbl }
@@ -573,7 +574,7 @@ pub impl Parser {
 
     // parse [mut/const/imm] ID : TY
     // now used only by obsolete record syntax parser...
-    fn parse_ty_field(&self) -> ty_field {
+    pub fn parse_ty_field(&self) -> ty_field {
         let lo = self.span.lo;
         let mutbl = self.parse_mutability();
         let id = self.parse_ident();
@@ -590,7 +591,7 @@ pub impl Parser {
     }
 
     // parse optional return type [ -> TY ] in function decl
-    fn parse_ret_ty(&self) -> (ret_style, @Ty) {
+    pub fn parse_ret_ty(&self) -> (ret_style, @Ty) {
         return if self.eat(&token::RARROW) {
             let lo = self.span.lo;
             if self.eat(&token::NOT) {
@@ -621,7 +622,7 @@ pub impl Parser {
     // parse a type.
     // Useless second parameter for compatibility with quasiquote macros.
     // Bleh!
-    fn parse_ty(&self, _: bool) -> @Ty {
+    pub fn parse_ty(&self, _: bool) -> @Ty {
         maybe_whole!(self, nt_ty);
 
         let lo = self.span.lo;
@@ -722,11 +723,9 @@ pub impl Parser {
     }
 
     // parse the type following a @ or a ~
-    fn parse_box_or_uniq_pointee(
-        &self,
-        sigil: ast::Sigil,
-        ctor: &fn(v: mt) -> ty_) -> ty_
-    {
+    pub fn parse_box_or_uniq_pointee(&self,
+                                     sigil: ast::Sigil,
+                                     ctor: &fn(v: mt) -> ty_) -> ty_ {
         // @'foo fn() or @foo/fn() or @fn() are parsed directly as fn types:
         match *self.token {
             token::LIFETIME(*) => {
@@ -765,7 +764,7 @@ pub impl Parser {
         ctor(mt)
     }
 
-    fn parse_borrowed_pointee(&self) -> ty_ {
+    pub fn parse_borrowed_pointee(&self) -> ty_ {
         // look for `&'lt` or `&'foo ` and interpret `foo` as the region name:
         let opt_lifetime = self.parse_opt_lifetime();
 
@@ -778,7 +777,7 @@ pub impl Parser {
     }
 
     // parse an optional, obsolete argument mode.
-    fn parse_arg_mode(&self) {
+    pub fn parse_arg_mode(&self) {
         if self.eat(&token::BINOP(token::MINUS)) {
             self.obsolete(*self.span, ObsoleteMode);
         } else if self.eat(&token::ANDAND) {
@@ -794,7 +793,7 @@ pub impl Parser {
         }
     }
 
-    fn is_named_argument(&self) -> bool {
+    pub fn is_named_argument(&self) -> bool {
         let offset = if *self.token == token::BINOP(token::AND) {
             1
         } else if *self.token == token::BINOP(token::MINUS) {
@@ -819,7 +818,7 @@ pub impl Parser {
 
     // This version of parse arg doesn't necessarily require
     // identifier names.
-    fn parse_arg_general(&self, require_name: bool) -> arg {
+    pub fn parse_arg_general(&self, require_name: bool) -> arg {
         let mut is_mutbl = false;
         let pat = if require_name || self.is_named_argument() {
             self.parse_arg_mode();
@@ -844,12 +843,12 @@ pub impl Parser {
     }
 
     // parse a single function argument
-    fn parse_arg(&self) -> arg_or_capture_item {
+    pub fn parse_arg(&self) -> arg_or_capture_item {
         either::Left(self.parse_arg_general(true))
     }
 
     // parse an argument in a lambda header e.g. |arg, arg|
-    fn parse_fn_block_arg(&self) -> arg_or_capture_item {
+    pub fn parse_fn_block_arg(&self) -> arg_or_capture_item {
         self.parse_arg_mode();
         let is_mutbl = self.eat_keyword(keywords::Mut);
         let pat = self.parse_pat();
@@ -870,7 +869,7 @@ pub impl Parser {
         })
     }
 
-    fn maybe_parse_fixed_vstore(&self) -> Option<@ast::expr> {
+    pub fn maybe_parse_fixed_vstore(&self) -> Option<@ast::expr> {
         if self.eat(&token::BINOP(token::STAR)) {
             self.obsolete(*self.last_span, ObsoleteFixedLengthVectorType);
             Some(self.parse_expr())
@@ -885,7 +884,7 @@ pub impl Parser {
     }
 
     // matches token_lit = LIT_INT | ...
-    fn lit_from_token(&self, tok: &token::Token) -> lit_ {
+    pub fn lit_from_token(&self, tok: &token::Token) -> lit_ {
         match *tok {
             token::LIT_INT(i, it) => lit_int(i, it),
             token::LIT_UINT(u, ut) => lit_uint(u, ut),
@@ -900,7 +899,7 @@ pub impl Parser {
     }
 
     // matches lit = true | false | token_lit
-    fn parse_lit(&self) -> lit {
+    pub fn parse_lit(&self) -> lit {
         let lo = self.span.lo;
         let lit = if self.eat_keyword(keywords::True) {
             lit_bool(true)
@@ -916,7 +915,7 @@ pub impl Parser {
     }
 
     // matches '-' lit | lit
-    fn parse_literal_maybe_minus(&self) -> @expr {
+    pub fn parse_literal_maybe_minus(&self) -> @expr {
         let minus_lo = self.span.lo;
         let minus_present = self.eat(&token::BINOP(token::MINUS));
 
@@ -935,7 +934,7 @@ pub impl Parser {
 
     // parse a path into a vector of idents, whether the path starts
     // with ::, and a span.
-    fn parse_path(&self) -> (~[ast::ident],bool,span) {
+    pub fn parse_path(&self) -> (~[ast::ident],bool,span) {
         let lo = self.span.lo;
         let is_global = self.eat(&token::MOD_SEP);
         let (ids,span{lo:_,hi,expn_info}) = self.parse_path_non_global();
@@ -943,7 +942,7 @@ pub impl Parser {
     }
 
     // parse a path beginning with an identifier into a vector of idents and a span
-    fn parse_path_non_global(&self) -> (~[ast::ident],span) {
+    pub fn parse_path_non_global(&self) -> (~[ast::ident],span) {
         let lo = self.span.lo;
         let mut ids = ~[];
         // must be at least one to begin:
@@ -966,8 +965,7 @@ pub impl Parser {
     }
 
     // parse a path that doesn't have type parameters attached
-    fn parse_path_without_tps(&self)
-        -> @ast::Path {
+    pub fn parse_path_without_tps(&self) -> @ast::Path {
         maybe_whole!(self, nt_path);
         let (ids,is_global,sp) = self.parse_path();
         @ast::Path { span: sp,
@@ -980,7 +978,7 @@ pub impl Parser {
     // parse a path optionally with type parameters. If 'colons'
     // is true, then type parameters must be preceded by colons,
     // as in a::t::<t1,t2>
-    fn parse_path_with_tps(&self, colons: bool) -> @ast::Path {
+    pub fn parse_path_with_tps(&self, colons: bool) -> @ast::Path {
         debug!("parse_path_with_tps(colons=%b)", colons);
 
         maybe_whole!(self, nt_path);
@@ -1042,7 +1040,7 @@ pub impl Parser {
     }
 
     /// parses 0 or 1 lifetime
-    fn parse_opt_lifetime(&self) -> Option<@ast::Lifetime> {
+    pub fn parse_opt_lifetime(&self) -> Option<@ast::Lifetime> {
         match *self.token {
             token::LIFETIME(*) => {
                 Some(@self.parse_lifetime())
@@ -1064,7 +1062,7 @@ pub impl Parser {
         }
     }
 
-    fn token_is_lifetime(&self, tok: &token::Token) -> bool {
+    pub fn token_is_lifetime(&self, tok: &token::Token) -> bool {
         match *tok {
             token::LIFETIME(_) => true,
             _ => false
@@ -1073,7 +1071,7 @@ pub impl Parser {
 
     /// Parses a single lifetime
     // matches lifetime = ( LIFETIME ) | ( IDENT / )
-    fn parse_lifetime(&self) -> ast::Lifetime {
+    pub fn parse_lifetime(&self) -> ast::Lifetime {
         match *self.token {
             token::LIFETIME(i) => {
                 let span = copy self.span;
@@ -1107,7 +1105,7 @@ pub impl Parser {
     // matches lifetimes = ( lifetime ) | ( lifetime , lifetimes )
     // actually, it matches the empty one too, but putting that in there
     // messes up the grammar....
-    fn parse_lifetimes(&self) -> OptVec<ast::Lifetime> {
+    pub fn parse_lifetimes(&self) -> OptVec<ast::Lifetime> {
         /*!
          *
          * Parses zero or more comma separated lifetimes.
@@ -1139,13 +1137,13 @@ pub impl Parser {
         }
     }
 
-    fn token_is_mutability(&self, tok: &token::Token) -> bool {
+    pub fn token_is_mutability(&self, tok: &token::Token) -> bool {
         token::is_keyword(keywords::Mut, tok) ||
         token::is_keyword(keywords::Const, tok)
     }
 
     // parse mutability declaration (mut/const/imm)
-    fn parse_mutability(&self) -> mutability {
+    pub fn parse_mutability(&self) -> mutability {
         if self.eat_keyword(keywords::Mut) {
             m_mutbl
         } else if self.eat_keyword(keywords::Const) {
@@ -1156,7 +1154,7 @@ pub impl Parser {
     }
 
     // parse ident COLON expr
-    fn parse_field(&self) -> field {
+    pub fn parse_field(&self) -> field {
         let lo = self.span.lo;
         let i = self.parse_ident();
         self.expect(&token::COLON);
@@ -1167,7 +1165,7 @@ pub impl Parser {
         })
     }
 
-    fn mk_expr(&self, lo: BytePos, hi: BytePos, node: expr_) -> @expr {
+    pub fn mk_expr(&self, lo: BytePos, hi: BytePos, node: expr_) -> @expr {
         @expr {
             id: self.get_id(),
             callee_id: self.get_id(),
@@ -1176,7 +1174,7 @@ pub impl Parser {
         }
     }
 
-    fn mk_mac_expr(&self, lo: BytePos, hi: BytePos, m: mac_) -> @expr {
+    pub fn mk_mac_expr(&self, lo: BytePos, hi: BytePos, m: mac_) -> @expr {
         @expr {
             id: self.get_id(),
             callee_id: self.get_id(),
@@ -1185,7 +1183,7 @@ pub impl Parser {
         }
     }
 
-    fn mk_lit_u32(&self, i: u32) -> @expr {
+    pub fn mk_lit_u32(&self, i: u32) -> @expr {
         let span = self.span;
         let lv_lit = @codemap::spanned {
             node: lit_uint(i as u64, ty_u32),
@@ -1203,7 +1201,7 @@ pub impl Parser {
     // at the bottom (top?) of the precedence hierarchy,
     // parse things like parenthesized exprs,
     // macros, return, etc.
-    fn parse_bottom_expr(&self) -> @expr {
+    pub fn parse_bottom_expr(&self) -> @expr {
         maybe_whole_expr!(self);
 
         let lo = self.span.lo;
@@ -1414,23 +1412,20 @@ pub impl Parser {
     }
 
     // parse a block or unsafe block
-    fn parse_block_expr(
-        &self,
-        lo: BytePos,
-        blk_mode: blk_check_mode
-    ) -> @expr {
+    pub fn parse_block_expr(&self, lo: BytePos, blk_mode: blk_check_mode)
+                            -> @expr {
         self.expect(&token::LBRACE);
         let blk = self.parse_block_tail(lo, blk_mode);
         return self.mk_expr(blk.span.lo, blk.span.hi, expr_block(blk));
     }
 
     // parse a.b or a(13) or a[4] or just a
-    fn parse_dot_or_call_expr(&self) -> @expr {
+    pub fn parse_dot_or_call_expr(&self) -> @expr {
         let b = self.parse_bottom_expr();
         self.parse_dot_or_call_expr_with(b)
     }
 
-    fn parse_dot_or_call_expr_with(&self, e0: @expr) -> @expr {
+    pub fn parse_dot_or_call_expr_with(&self, e0: @expr) -> @expr {
         let mut e = e0;
         let lo = e.span.lo;
         let mut hi;
@@ -1504,7 +1499,7 @@ pub impl Parser {
 
     // parse an optional separator followed by a kleene-style
     // repetition token (+ or *).
-    fn parse_sep_and_zerok(&self) -> (Option<token::Token>, bool) {
+    pub fn parse_sep_and_zerok(&self) -> (Option<token::Token>, bool) {
         if *self.token == token::BINOP(token::STAR)
             || *self.token == token::BINOP(token::PLUS) {
             let zerok = *self.token == token::BINOP(token::STAR);
@@ -1525,7 +1520,7 @@ pub impl Parser {
     }
 
     // parse a single token tree from the input.
-    fn parse_token_tree(&self) -> token_tree {
+    pub fn parse_token_tree(&self) -> token_tree {
         maybe_whole!(deref self, nt_tt);
 
         // this is the fall-through for the 'match' below.
@@ -1612,7 +1607,7 @@ pub impl Parser {
 
     // parse a stream of tokens into a list of token_trees,
     // up to EOF.
-    fn parse_all_token_trees(&self) -> ~[token_tree] {
+    pub fn parse_all_token_trees(&self) -> ~[token_tree] {
         let mut tts = ~[];
         while *self.token != token::EOF {
             tts.push(self.parse_token_tree());
@@ -1620,7 +1615,7 @@ pub impl Parser {
         tts
     }
 
-    fn parse_matchers(&self) -> ~[matcher] {
+    pub fn parse_matchers(&self) -> ~[matcher] {
         // unification of matchers and token_trees would vastly improve
         // the interpolation of matchers
         maybe_whole!(self, nt_matchers);
@@ -1642,12 +1637,11 @@ pub impl Parser {
     // This goofy function is necessary to correctly match parens in matchers.
     // Otherwise, `$( ( )` would be a valid matcher, and `$( () )` would be
     // invalid. It's similar to common::parse_seq.
-    fn parse_matcher_subseq(
-        &self,
-        name_idx: @mut uint,
-        bra: token::Token,
-        ket: token::Token
-    ) -> ~[matcher] {
+    pub fn parse_matcher_subseq(&self,
+                                name_idx: @mut uint,
+                                bra: token::Token,
+                                ket: token::Token)
+                                -> ~[matcher] {
         let mut ret_val = ~[];
         let mut lparens = 0u;
 
@@ -1664,7 +1658,7 @@ pub impl Parser {
         return ret_val;
     }
 
-    fn parse_matcher(&self, name_idx: @mut uint) -> matcher {
+    pub fn parse_matcher(&self, name_idx: @mut uint) -> matcher {
         let lo = self.span.lo;
 
         let m = if *self.token == token::DOLLAR {
@@ -1699,7 +1693,7 @@ pub impl Parser {
     }
 
     // parse a prefix-operator expr
-    fn parse_prefix_expr(&self) -> @expr {
+    pub fn parse_prefix_expr(&self) -> @expr {
         let lo = self.span.lo;
         let hi;
 
@@ -1791,13 +1785,12 @@ pub impl Parser {
     }
 
     // parse an expression of binops
-    fn parse_binops(&self) -> @expr {
+    pub fn parse_binops(&self) -> @expr {
         self.parse_more_binops(self.parse_prefix_expr(), 0)
     }
 
     // parse an expression of binops of at least min_prec precedence
-    fn parse_more_binops(&self, lhs: @expr, min_prec: uint) ->
-        @expr {
+    pub fn parse_more_binops(&self, lhs: @expr, min_prec: uint) -> @expr {
         if self.expr_is_complete(lhs) { return lhs; }
         let peeked = copy *self.token;
         if peeked == token::BINOP(token::OR) &&
@@ -1841,7 +1834,7 @@ pub impl Parser {
     // parse an assignment expression....
     // actually, this seems to be the main entry point for
     // parsing an arbitrary expression.
-    fn parse_assign_expr(&self) -> @expr {
+    pub fn parse_assign_expr(&self) -> @expr {
         let lo = self.span.lo;
         let lhs = self.parse_binops();
         match *self.token {
@@ -1892,7 +1885,7 @@ pub impl Parser {
     }
 
     // parse an 'if' expression ('if' token already eaten)
-    fn parse_if_expr(&self) -> @expr {
+    pub fn parse_if_expr(&self) -> @expr {
         let lo = self.last_span.lo;
         let cond = self.parse_expr();
         let thn = self.parse_block();
@@ -1907,7 +1900,7 @@ pub impl Parser {
     }
 
     // `|args| { ... }` or `{ ...}` like in `do` expressions
-    fn parse_lambda_block_expr(&self) -> @expr {
+    pub fn parse_lambda_block_expr(&self) -> @expr {
         self.parse_lambda_expr_(
             || {
                 match *self.token {
@@ -1935,7 +1928,7 @@ pub impl Parser {
     }
 
     // `|args| expr`
-    fn parse_lambda_expr(&self) -> @expr {
+    pub fn parse_lambda_expr(&self) -> @expr {
         self.parse_lambda_expr_(|| self.parse_fn_block_decl(),
                                 || self.parse_expr())
     }
@@ -1943,11 +1936,10 @@ pub impl Parser {
     // parse something of the form |args| expr
     // this is used both in parsing a lambda expr
     // and in parsing a block expr as e.g. in for...
-    fn parse_lambda_expr_(
-        &self,
-        parse_decl: &fn() -> fn_decl,
-        parse_body: &fn() -> @expr
-    ) -> @expr {
+    pub fn parse_lambda_expr_(&self,
+                              parse_decl: &fn() -> fn_decl,
+                              parse_body: &fn() -> @expr)
+                              -> @expr {
         let lo = self.last_span.lo;
         let decl = parse_decl();
         let body = parse_body();
@@ -1964,7 +1956,7 @@ pub impl Parser {
                             expr_fn_block(decl, fakeblock));
     }
 
-    fn parse_else_expr(&self) -> @expr {
+    pub fn parse_else_expr(&self) -> @expr {
         if self.eat_keyword(keywords::If) {
             return self.parse_if_expr();
         } else {
@@ -1976,9 +1968,11 @@ pub impl Parser {
     // parse a 'for' or 'do'.
     // the 'for' and 'do' expressions parse as calls, but look like
     // function calls followed by a closure expression.
-    fn parse_sugary_call_expr(&self, keyword: ~str,
-                              sugar: CallSugar,
-                              ctor: &fn(v: @expr) -> expr_) -> @expr {
+    pub fn parse_sugary_call_expr(&self,
+                                  keyword: ~str,
+                                  sugar: CallSugar,
+                                  ctor: &fn(v: @expr) -> expr_)
+                                  -> @expr {
         let lo = self.last_span;
         // Parse the callee `foo` in
         //    for foo || {
@@ -2035,7 +2029,7 @@ pub impl Parser {
         }
     }
 
-    fn parse_while_expr(&self) -> @expr {
+    pub fn parse_while_expr(&self) -> @expr {
         let lo = self.last_span.lo;
         let cond = self.parse_expr();
         let body = self.parse_block();
@@ -2043,7 +2037,7 @@ pub impl Parser {
         return self.mk_expr(lo, hi, expr_while(cond, body));
     }
 
-    fn parse_loop_expr(&self, opt_ident: Option<ast::ident>) -> @expr {
+    pub fn parse_loop_expr(&self, opt_ident: Option<ast::ident>) -> @expr {
         // loop headers look like 'loop {' or 'loop unsafe {'
         let is_loop_header =
             *self.token == token::LBRACE
@@ -2126,7 +2120,7 @@ pub impl Parser {
     }
 
     // parse an expression
-    fn parse_expr(&self) -> @expr {
+    pub fn parse_expr(&self) -> @expr {
         return self.parse_expr_res(UNRESTRICTED);
     }
 
@@ -2257,7 +2251,7 @@ pub impl Parser {
     }
 
     // parse a pattern.
-    fn parse_pat(&self) -> @pat {
+    pub fn parse_pat(&self) -> @pat {
         maybe_whole!(self, nt_pat);
 
         let lo = self.span.lo;
@@ -2580,7 +2574,7 @@ pub impl Parser {
 
     // parse a statement. may include decl.
     // precondition: any attributes are parsed already
-    fn parse_stmt(&self, item_attrs: ~[attribute]) -> @stmt {
+    pub fn parse_stmt(&self, item_attrs: ~[attribute]) -> @stmt {
         maybe_whole!(self, nt_stmt);
 
         fn check_expected_item(p: &Parser, current_attrs: &[attribute]) {
@@ -2674,7 +2668,7 @@ pub impl Parser {
     }
 
     // parse a block. No inner attrs are allowed.
-    fn parse_block(&self) -> blk {
+    pub fn parse_block(&self) -> blk {
         maybe_whole!(self, nt_block);
 
         let lo = self.span.lo;
@@ -2924,7 +2918,7 @@ pub impl Parser {
     // matches generics = ( ) | ( < > ) | ( < typaramseq ( , )? > ) | ( < lifetimes ( , )? > )
     //                  | ( < lifetimes , typaramseq ( , )? > )
     // where   typaramseq = ( typaram ) | ( typaram , typaramseq )
-    fn parse_generics(&self) -> ast::Generics {
+    pub fn parse_generics(&self) -> ast::Generics {
         if self.eat(&token::LT) {
             let lifetimes = self.parse_lifetimes();
             let ty_params = self.parse_seq_to_gt(
@@ -2958,9 +2952,7 @@ pub impl Parser {
     }
 
     // parse the argument list and result type of a function declaration
-    fn parse_fn_decl(&self)
-        -> fn_decl
-    {
+    pub fn parse_fn_decl(&self) -> fn_decl {
         let args_or_capture_items: ~[arg_or_capture_item] =
             self.parse_unspanned_seq(
                 &token::LPAREN,
@@ -3398,9 +3390,10 @@ pub impl Parser {
     }
 
     // parse a structure field declaration
-    fn parse_single_struct_field(&self,
-                                 vis: visibility,
-                                 attrs: ~[attribute]) -> @struct_field {
+    pub fn parse_single_struct_field(&self,
+                                     vis: visibility,
+                                     attrs: ~[attribute])
+                                     -> @struct_field {
         if self.eat_obsolete_ident("let") {
             self.obsolete(*self.last_span, ObsoleteLet);
         }
@@ -4214,7 +4207,7 @@ pub impl Parser {
         return iovi_none;
     }
 
-    fn parse_item(&self, attrs: ~[attribute]) -> Option<@ast::item> {
+    pub fn parse_item(&self, attrs: ~[attribute]) -> Option<@ast::item> {
         match self.parse_item_or_view_item(attrs, true) {
             iovi_none =>
                 None,
@@ -4493,7 +4486,7 @@ pub impl Parser {
 
     // Parses a source module as a crate. This is the main
     // entry point for the parser.
-    fn parse_crate_mod(&self) -> @crate {
+    pub fn parse_crate_mod(&self) -> @crate {
         let lo = self.span.lo;
         // parse the crate's inner attrs, maybe (oops) one
         // of the attrs of an item:
@@ -4507,7 +4500,7 @@ pub impl Parser {
                                config: copy self.cfg })
     }
 
-    fn parse_str(&self) -> @~str {
+    pub fn parse_str(&self) -> @~str {
         match *self.token {
             token::LIT_STR(s) => {
                 self.bump();

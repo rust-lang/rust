@@ -23,8 +23,8 @@ struct X {
     err: ErrPrinter
 }
 
-pub impl X {
-    fn boom() {
+impl X {
+    pub fn boom() {
         exit(self.err, "prog", "arg");
     }
 }

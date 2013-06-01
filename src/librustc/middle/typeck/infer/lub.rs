@@ -34,10 +34,11 @@ use syntax::codemap::span;
 
 pub struct Lub(CombineFields);  // least-upper-bound: common supertype
 
-pub impl Lub {
-    fn bot_ty(&self, b: ty::t) -> cres<ty::t> { Ok(b) }
-    fn ty_bot(&self, b: ty::t)
-             -> cres<ty::t> { self.bot_ty(b) } // commutative
+impl Lub {
+    pub fn bot_ty(&self, b: ty::t) -> cres<ty::t> { Ok(b) }
+    pub fn ty_bot(&self, b: ty::t) -> cres<ty::t> {
+        self.bot_ty(b) // commutative
+    }
 }
 
 impl Combine for Lub {
