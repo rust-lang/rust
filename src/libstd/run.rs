@@ -1100,28 +1100,34 @@ mod tests {
 
     #[test]
     fn test_keep_current_working_dir() {
-
         let mut prog = run_pwd(None);
 
         let output = str::from_bytes(prog.finish_with_output().output);
         let parent_dir = os::getcwd().normalize();
         let child_dir = Path(output.trim()).normalize();
 
-        assert_eq!(child_dir.to_str(), parent_dir.to_str());
+        let parent_stat = parent_dir.stat().unwrap();
+        let child_stat = child_dir.stat().unwrap();
+
+        assert_eq!(parent_stat.st_dev, child_stat.st_dev);
+        assert_eq!(parent_stat.st_ino, child_stat.st_ino);
     }
 
     #[test]
     fn test_change_working_directory() {
-
         // test changing to the parent of os::getcwd() because we know
         // the path exists (and os::getcwd() is not expected to be root)
-        let parent_path = os::getcwd().dir_path().normalize();
-        let mut prog = run_pwd(Some(&parent_path));
+        let parent_dir = os::getcwd().dir_path().normalize();
+        let mut prog = run_pwd(Some(&parent_dir));
 
         let output = str::from_bytes(prog.finish_with_output().output);
         let child_dir = Path(output.trim()).normalize();
 
-        assert_eq!(child_dir.to_str(), parent_path.to_str());
+        let parent_stat = parent_dir.stat().unwrap();
+        let child_stat = child_dir.stat().unwrap();
+
+        assert_eq!(parent_stat.st_dev, child_stat.st_dev);
+        assert_eq!(parent_stat.st_ino, child_stat.st_ino);
     }
 
     #[cfg(unix)]
