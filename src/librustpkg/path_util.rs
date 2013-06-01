@@ -12,7 +12,7 @@
 
 use core::prelude::*;
 pub use package_path::{RemotePath, LocalPath};
-pub use package_id::{PkgId, Version};
+pub use package_id::PkgId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
 use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use core::os::mkdir_recursive;
@@ -210,11 +210,17 @@ pub fn target_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
 }
 
 
-/// Returns the executable that would be installed for <pkgid>
-/// in <workspace>
+/// Returns the installed path for <built_library> in <workspace>
 /// As a side effect, creates the lib-dir if it doesn't exist
-pub fn target_library_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
-    target_file_in_workspace(pkgid, workspace, Lib, Install)
+pub fn target_library_in_workspace(workspace: &Path,
+                                   built_library: &Path) -> Path {
+    use conditions::bad_path::cond;
+    let result = workspace.push("lib");
+    if !os::path_exists(&result) && !mkdir_recursive(&result, u_rwx) {
+        cond.raise((copy result, ~"I couldn't create the library directory"));
+    }
+    result.push(built_library.filename().expect(fmt!("I don't know how to treat %s as a library",
+                                                   built_library.to_str())))
 }
 
 /// Returns the test executable that would be installed for <pkgid>

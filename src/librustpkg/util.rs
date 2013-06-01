@@ -26,7 +26,7 @@ use rustc::driver::driver::compile_upto;
 use rustc::driver::session::{lib_crate, bin_crate};
 use context::Ctx;
 use package_id::PkgId;
-use path_util::target_library_in_workspace;
+use path_util::{target_library_in_workspace, built_library_in_workspace};
 use search::find_library_in_search_path;
 pub use target::{OutputType, Main, Lib, Bench, Test};
 
@@ -274,7 +274,7 @@ pub fn compile_input(ctxt: &Ctx,
                  ~[@dummy_spanned(meta_name_value(@~"name",
                                       mk_string_lit(@short_name_to_use))),
                    @dummy_spanned(meta_name_value(@~"vers",
-                                      mk_string_lit(@(copy pkg_id.version.to_str()))))])))],
+                         mk_string_lit(@pkg_id.version.to_str_nonempty())))])))],
             ..copy crate.node});
     }
 
@@ -371,9 +371,14 @@ fn find_and_install_dependencies(ctxt: &Ctx,
                         // Try to install it
                         let pkg_id = PkgId::new(*lib_name);
                         my_ctxt.install(&my_workspace, &pkg_id);
+                        let built_lib =
+                            built_library_in_workspace(&pkg_id,
+                                &my_workspace).expect(fmt!("find_and_install_dependencies: \
+                                I thought I already built %s, but the library doesn't seem \
+                                to exist", *lib_name));
                         // Also, add an additional search path
-                        let installed_path = target_library_in_workspace(&pkg_id,
-                                                                         &my_workspace).pop();
+                        let installed_path = target_library_in_workspace(&my_workspace,
+                                                                         &built_lib).pop();
                         debug!("Great, I installed %s, and it's in %s",
                                *lib_name, installed_path.to_str());
                         save(installed_path);
