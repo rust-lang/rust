@@ -96,6 +96,7 @@ pub enum lint {
     unnecessary_allocation,
 
     missing_doc,
+    unreachable_code,
 }
 
 pub fn level_to_str(lv: level) -> &'static str {
@@ -272,6 +273,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: missing_doc,
         desc: "detects missing documentation for public members",
         default: allow
+    }),
+
+    ("unreachable_code",
+     LintSpec {
+        lint: unreachable_code,
+        desc: "detects unreachable code",
+        default: warn
     }),
 ];
 
