@@ -439,7 +439,7 @@ fn encode_reexported_static_methods(ecx: @EncodeContext,
             //
             // We don't need to reexport static methods on items
             // declared in the same module as our `pub use ...` since
-            // that's done when we encode the trait item.
+            // that's done when we encode the item itself.
             //
             // The only exception is when the reexport *changes* the
             // name e.g. `pub use Foo = self::Bar` -- we have
