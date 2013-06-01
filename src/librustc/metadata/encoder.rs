@@ -374,50 +374,90 @@ fn encode_path(ecx: @EncodeContext,
 fn encode_reexported_static_method(ecx: @EncodeContext,
                                    ebml_w: &mut writer::Encoder,
                                    exp: &middle::resolve::Export2,
-                                   m: @ty::Method) {
-    debug!("(encode static trait method) reexport '%s::%s'",
-            *exp.name, *ecx.tcx.sess.str_of(m.ident));
+                                   method_def_id: def_id,
+                                   method_ident: ident) {
+    debug!("(encode reexported static method) %s::%s",
+            *exp.name, *ecx.tcx.sess.str_of(method_ident));
     ebml_w.start_tag(tag_items_data_item_reexport);
     ebml_w.start_tag(tag_items_data_item_reexport_def_id);
-    ebml_w.wr_str(def_to_str(m.def_id));
+    ebml_w.wr_str(def_to_str(method_def_id));
     ebml_w.end_tag();
     ebml_w.start_tag(tag_items_data_item_reexport_name);
-    ebml_w.wr_str(*exp.name + "::" + *ecx.tcx.sess.str_of(m.ident));
+    ebml_w.wr_str(*exp.name + "::" + *ecx.tcx.sess.str_of(method_ident));
     ebml_w.end_tag();
     ebml_w.end_tag();
+}
+
+fn encode_reexported_static_base_methods(ecx: @EncodeContext,
+                                         ebml_w: &mut writer::Encoder,
+                                         exp: &middle::resolve::Export2)
+                                         -> bool {
+    match ecx.tcx.base_impls.find(&exp.def_id) {
+        Some(implementations) => {
+            for implementations.each |&base_impl| {
+                for base_impl.methods.each |&m| {
+                    if m.explicit_self == ast::sty_static {
+                        encode_reexported_static_method(ecx, ebml_w, exp,
+                                                        m.did, m.ident);
+                    }
+                }
+            }
+
+            true
+        }
+        None => { false }
+    }
+}
+
+fn encode_reexported_static_trait_methods(ecx: @EncodeContext,
+                                          ebml_w: &mut writer::Encoder,
+                                          exp: &middle::resolve::Export2)
+                                          -> bool {
+    match ecx.tcx.trait_methods_cache.find(&exp.def_id) {
+        Some(methods) => {
+            for methods.each |&m| {
+                if m.explicit_self == ast::sty_static {
+                    encode_reexported_static_method(ecx, ebml_w, exp,
+                                                    m.def_id, m.ident);
+                }
+            }
+
+            true
+        }
+        None => { false }
+    }
 }
 
 fn encode_reexported_static_methods(ecx: @EncodeContext,
                                     ebml_w: &mut writer::Encoder,
                                     mod_path: &[ast_map::path_elt],
                                     exp: &middle::resolve::Export2) {
-    match ecx.tcx.trait_methods_cache.find(&exp.def_id) {
-        Some(methods) => {
-            match ecx.tcx.items.find(&exp.def_id.node) {
-                Some(&ast_map::node_item(item, path)) => {
-                    let original_name = ecx.tcx.sess.str_of(item.ident);
+    match ecx.tcx.items.find(&exp.def_id.node) {
+        Some(&ast_map::node_item(item, path)) => {
+            let original_name = ecx.tcx.sess.str_of(item.ident);
 
-                    //
-                    // We don't need to reexport static methods on traits
-                    // declared in the same module as our `pub use ...` since
-                    // that's done when we encode the trait item.
-                    //
-                    // The only exception is when the reexport *changes* the
-                    // name e.g. `pub use Foo = self::Bar` -- we have
-                    // encoded metadata for static methods relative to Bar,
-                    // but not yet for Foo.
-                    //
-                    if mod_path != *path || *exp.name != *original_name {
-                        for methods.each |&m| {
-                            if m.explicit_self == ast::sty_static {
-                                encode_reexported_static_method(ecx,
-                                                                ebml_w,
-                                                                exp, m);
-                            }
-                        }
+            //
+            // We don't need to reexport static methods on items
+            // declared in the same module as our `pub use ...` since
+            // that's done when we encode the item itself.
+            //
+            // The only exception is when the reexport *changes* the
+            // name e.g. `pub use Foo = self::Bar` -- we have
+            // encoded metadata for static methods relative to Bar,
+            // but not yet for Foo.
+            //
+            if mod_path != *path || *exp.name != *original_name {
+                if !encode_reexported_static_base_methods(ecx, ebml_w, exp) {
+                    if encode_reexported_static_trait_methods(ecx, ebml_w, exp) {
+                        debug!(fmt!("(encode reexported static methods) %s \
+                                    [trait]",
+                                    *original_name));
                     }
                 }
-                _ => {}
+                else {
+                    debug!(fmt!("(encode reexported static methods) %s [base]",
+                                *original_name));
+                }
             }
         }
         _ => {}

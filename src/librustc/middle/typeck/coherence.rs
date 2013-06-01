@@ -146,7 +146,7 @@ pub fn get_base_type_def_id(inference_context: @mut InferCtxt,
                 }
                 _ => {
                     fail!("get_base_type() returned a type that wasn't an \
-                           enum, class, or trait");
+                           enum, struct, or trait");
                 }
             }
         }
@@ -313,6 +313,7 @@ impl CoherenceChecker {
                             implementation = existing_implementation;
                         }
                     }
+
                     self.add_inherent_method(base_type_def_id,
                                              implementation);
                 }
@@ -434,6 +435,8 @@ impl CoherenceChecker {
         }
 
         implementation_list.push(implementation);
+
+        ty::add_base_impl(self.crate_context.tcx, base_def_id, implementation);
     }
 
     pub fn add_trait_method(&self, trait_id: def_id, implementation: @Impl) {
