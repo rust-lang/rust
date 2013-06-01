@@ -149,8 +149,7 @@ pub fn from_fn<T>(n_elts: uint, op: old_iter::InitOp<T>) -> ~[T] {
         do as_mut_buf(v) |p, _len| {
             let mut i: uint = 0u;
             while i < n_elts {
-                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)),
-                                          op(i));
+                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), op(i));
                 i += 1u;
             }
         }
@@ -166,7 +165,20 @@ pub fn from_fn<T>(n_elts: uint, op: old_iter::InitOp<T>) -> ~[T] {
  * to the value `t`.
  */
 pub fn from_elem<T:Copy>(n_elts: uint, t: T) -> ~[T] {
-    from_fn(n_elts, |_i| copy t)
+    // hack: manually inline from_fn for 2x plus speedup (sadly very important, from_elem is a
+    // bottleneck in borrowck!)
+    unsafe {
+        let mut v = with_capacity(n_elts);
+        do as_mut_buf(v) |p, _len| {
+            let mut i = 0u;
+            while i < n_elts {
+                intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i)), copy t);
+                i += 1u;
+            }
+        }
+        raw::set_len(&mut v, n_elts);
+        v
+    }
 }
 
 /// Creates a new unique vector with the same contents as the slice
