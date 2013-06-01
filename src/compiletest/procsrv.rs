@@ -17,6 +17,7 @@ use core::os;
 use core::run;
 use core::str;
 use core::task;
+use core::vec;
 
 #[cfg(target_os = "win32")]
 fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
@@ -28,7 +29,7 @@ fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
     let aux_path = prog.slice(0u, prog.len() - 4u).to_owned() + ".libaux";
 
     env = do vec::map(env) |pair| {
-        let (k,v) = *pair;
+        let (k,v) = copy *pair;
         if k == ~"PATH" { (~"PATH", v + ";" + lib_path + ";" + aux_path) }
         else { (k,v) }
     };

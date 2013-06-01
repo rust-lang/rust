@@ -97,7 +97,7 @@ RUNTIME_S_$(1)_$(2) := rt/arch/$$(HOST_$(1))/_context.S \
 ifeq ($$(CFG_WINDOWSY_$(1)), 1)
   LIBUV_OSTYPE_$(1)_$(2) := win
   LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
-  JEMALLOC_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/jemalloc/lib/libjemalloc_pic.a
+  JEMALLOC_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/jemalloc/lib/jemalloc.lib
 else ifeq ($(OSTYPE_$(1)), apple-darwin)
   LIBUV_OSTYPE_$(1)_$(2) := mac
   LIBUV_LIB_$(1)_$(2) := rt/$(1)/stage$(2)/libuv/libuv.a
