@@ -727,8 +727,14 @@ fn trans_def_dps_unadjusted(bcx: block, ref_expr: @ast::expr,
             }
         }
         ast::def_struct(*) => {
-            // Nothing to do here.
-            // FIXME #6572: May not be true in the case of classes with destructors.
+            let ty = expr_ty(bcx, ref_expr);
+            match ty::get(ty).sty {
+                ty::ty_struct(did, _) if ty::has_dtor(ccx.tcx, did) => {
+                    let repr = adt::represent_type(ccx, ty);
+                    adt::trans_start_init(bcx, repr, lldest, 0);
+                }
+                _ => {}
+            }
             return bcx;
         }
         _ => {
