@@ -317,17 +317,9 @@ pub fn map_struct_def(
 
 pub fn map_expr(ex: @expr, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
     cx.map.insert(ex.id, node_expr(ex));
-    match ex.node {
-        // Expressions which are or might be calls:
-        ast::expr_call(*) |
-        ast::expr_method_call(*) |
-        ast::expr_index(*) |
-        ast::expr_binary(*) |
-        ast::expr_assign_op(*) |
-        ast::expr_unary(*) => {
-            cx.map.insert(ex.callee_id, node_callee_scope(ex));
-        }
-        _ => {}
+    // Expressions which are or might be calls:
+    for ex.get_callee_id().each |callee_id| {
+        cx.map.insert(*callee_id, node_callee_scope(ex));
     }
     visit::visit_expr(ex, cx, v);
 }

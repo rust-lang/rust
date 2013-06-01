@@ -512,19 +512,16 @@ pub fn early_resolve_expr(ex: @ast::expr,
       }
 
       // Must resolve bounds on methods with bounded params
-      ast::expr_binary(*) |
-      ast::expr_unary(*) | ast::expr_assign_op(*) |
-      ast::expr_index(*) | ast::expr_method_call(*) => {
+      ast::expr_binary(callee_id, _, _, _) |
+      ast::expr_unary(callee_id, _, _) |
+      ast::expr_assign_op(callee_id, _, _, _) |
+      ast::expr_index(callee_id, _, _) |
+      ast::expr_method_call(callee_id, _, _, _, _, _) => {
         match ty::method_call_type_param_defs(cx.tcx, fcx.inh.method_map, ex.id) {
           Some(type_param_defs) => {
             debug!("vtable resolution on parameter bounds for method call %s",
                    ex.repr(fcx.tcx()));
             if has_trait_bounds(*type_param_defs) {
-                let callee_id = match ex.node {
-                  ast::expr_field(_, _, _) => ex.id,
-                  _ => ex.callee_id
-                };
-
                 let substs = fcx.node_ty_substs(callee_id);
                 let vcx = VtableContext { ccx: fcx.ccx, infcx: fcx.infcx() };
                 let vtbls = lookup_vtables(&vcx, &location_info_for_expr(ex),

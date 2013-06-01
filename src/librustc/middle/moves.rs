@@ -310,7 +310,7 @@ impl VisitContext {
                 }
             }
 
-            expr_unary(deref, base) => {       // *base
+            expr_unary(_, deref, base) => {       // *base
                 if !self.use_overloaded_operator(
                     expr, base, [], visitor)
                 {
@@ -324,7 +324,7 @@ impl VisitContext {
                 self.use_expr(base, comp_mode, visitor);
             }
 
-            expr_index(lhs, rhs) => {          // lhs[rhs]
+            expr_index(_, lhs, rhs) => {          // lhs[rhs]
                 if !self.use_overloaded_operator(
                     expr, lhs, [rhs], visitor)
                 {
@@ -338,11 +338,11 @@ impl VisitContext {
                 self.use_fn_args(callee.id, *args, visitor);
             }
 
-            expr_method_call(callee, _, _, ref args, _) => { // callee.m(args)
+            expr_method_call(callee_id, rcvr, _, _, ref args, _) => { // callee.m(args)
                 // Implicit self is equivalent to & mode, but every
                 // other kind should be + mode.
-                self.use_receiver(callee, visitor);
-                self.use_fn_args(expr.callee_id, *args, visitor);
+                self.use_receiver(rcvr, visitor);
+                self.use_fn_args(callee_id, *args, visitor);
             }
 
             expr_struct(_, ref fields, opt_with) => {
@@ -444,7 +444,7 @@ impl VisitContext {
                 self.consume_block(blk, visitor);
             }
 
-            expr_unary(_, lhs) => {
+            expr_unary(_, _, lhs) => {
                 if !self.use_overloaded_operator(
                     expr, lhs, [], visitor)
                 {
@@ -452,7 +452,7 @@ impl VisitContext {
                 }
             }
 
-            expr_binary(_, lhs, rhs) => {
+            expr_binary(_, _, lhs, rhs) => {
                 if !self.use_overloaded_operator(
                     expr, lhs, [rhs], visitor)
                 {
@@ -480,7 +480,7 @@ impl VisitContext {
                 self.consume_expr(base, visitor);
             }
 
-            expr_assign_op(_, lhs, rhs) => {
+            expr_assign_op(_, _, lhs, rhs) => {
                 // FIXME(#4712) --- Overloaded operators?
                 //
                 // if !self.use_overloaded_operator(

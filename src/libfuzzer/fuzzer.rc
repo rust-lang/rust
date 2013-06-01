@@ -78,7 +78,6 @@ pub fn common_exprs() -> ~[@ast::expr] {
     fn dse(e: ast::expr_) -> @ast::expr {
         @ast::expr {
             id: 0,
-            callee_id: -1,
             node: e,
             span: codemap::dummy_sp(),
         }
@@ -94,9 +93,9 @@ pub fn common_exprs() -> ~[@ast::expr] {
      dse(ast::expr_lit(@dsl(ast::lit_nil))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(false)))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(true)))),
-     dse(ast::expr_unary(ast::box(ast::m_imm),
+     dse(ast::expr_unary(-1, ast::box(ast::m_imm),
                          dse(ast::expr_lit(@dsl(ast::lit_bool(true)))))),
-     dse(ast::expr_unary(ast::uniq(ast::m_imm),
+     dse(ast::expr_unary(-1, ast::uniq(ast::m_imm),
                          dse(ast::expr_lit(@dsl(ast::lit_bool(true))))))
     ]
 }
@@ -128,7 +127,7 @@ pub fn safe_to_use_expr(e: @ast::expr, tm: test_mode) -> bool {
           //ast::expr_cast(_, _) { false }
 
           // https://github.com/mozilla/rust/issues/1458
-          ast::expr_call(_, _, _) => { false }
+          ast::expr_call(*) => { false }
 
           _ => { true }
         }
