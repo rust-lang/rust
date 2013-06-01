@@ -57,11 +57,10 @@ enum CleanupJob {
     GiveTask(~Coroutine, UnsafeTaskReceiver)
 }
 
-pub impl Scheduler {
+impl Scheduler {
+    pub fn in_task_context(&self) -> bool { self.current_task.is_some() }
 
-    fn in_task_context(&self) -> bool { self.current_task.is_some() }
-
-    fn new(event_loop: ~EventLoopObject) -> Scheduler {
+    pub fn new(event_loop: ~EventLoopObject) -> Scheduler {
 
         // Lazily initialize the runtime TLS key
         local_ptr::init_tls_key();
@@ -80,7 +79,7 @@ pub impl Scheduler {
     // the scheduler itself doesn't have to call event_loop.run.
     // That will be important for embedding the runtime into external
     // event loops.
-    fn run(~self) -> ~Scheduler {
+    pub fn run(~self) -> ~Scheduler {
         assert!(!self.in_task_context());
 
         let mut self_sched = self;
@@ -107,7 +106,7 @@ pub impl Scheduler {
     /// Pushes the task onto the work stealing queue and tells the event loop
     /// to run it later. Always use this instead of pushing to the work queue
     /// directly.
-    fn enqueue_task(&mut self, task: ~Coroutine) {
+    pub fn enqueue_task(&mut self, task: ~Coroutine) {
         self.work_queue.push(task);
         self.event_loop.callback(resume_task_from_queue);
 
@@ -119,7 +118,7 @@ pub impl Scheduler {
 
     // * Scheduler-context operations
 
-    fn resume_task_from_queue(~self) {
+    pub fn resume_task_from_queue(~self) {
         assert!(!self.in_task_context());
 
         rtdebug!("looking in work queue for task to schedule");
@@ -141,7 +140,7 @@ pub impl Scheduler {
 
     /// Called by a running task to end execution, after which it will
     /// be recycled by the scheduler for reuse in a new task.
-    fn terminate_current_task(~self) {
+    pub fn terminate_current_task(~self) {
         assert!(self.in_task_context());
 
         rtdebug!("ending running task");
@@ -156,7 +155,7 @@ pub impl Scheduler {
         abort!("control reached end of task");
     }
 
-    fn schedule_new_task(~self, task: ~Coroutine) {
+    pub fn schedule_new_task(~self, task: ~Coroutine) {
         assert!(self.in_task_context());
 
         do self.switch_running_tasks_and_then(task) |last_task| {
@@ -167,7 +166,7 @@ pub impl Scheduler {
         }
     }
 
-    fn schedule_task(~self, task: ~Coroutine) {
+    pub fn schedule_task(~self, task: ~Coroutine) {
         assert!(self.in_task_context());
 
         do self.switch_running_tasks_and_then(task) |last_task| {
@@ -180,7 +179,7 @@ pub impl Scheduler {
 
     // Core scheduling ops
 
-    fn resume_task_immediately(~self, task: ~Coroutine) {
+    pub fn resume_task_immediately(~self, task: ~Coroutine) {
         let mut this = self;
         assert!(!this.in_task_context());
 
@@ -218,7 +217,7 @@ pub impl Scheduler {
     /// The closure here is a *stack* closure that lives in the
     /// running task.  It gets transmuted to the scheduler's lifetime
     /// and called while the task is blocked.
-    fn deschedule_running_task_and_then(~self, f: &fn(~Coroutine)) {
+    pub fn deschedule_running_task_and_then(~self, f: &fn(~Coroutine)) {
         let mut this = self;
         assert!(this.in_task_context());
 
@@ -248,7 +247,9 @@ pub impl Scheduler {
     /// Switch directly to another task, without going through the scheduler.
     /// You would want to think hard about doing this, e.g. if there are
     /// pending I/O events it would be a bad idea.
-    fn switch_running_tasks_and_then(~self, next_task: ~Coroutine, f: &fn(~Coroutine)) {
+    pub fn switch_running_tasks_and_then(~self,
+                                         next_task: ~Coroutine,
+                                         f: &fn(~Coroutine)) {
         let mut this = self;
         assert!(this.in_task_context());
 
@@ -279,12 +280,12 @@ pub impl Scheduler {
 
     // * Other stuff
 
-    fn enqueue_cleanup_job(&mut self, job: CleanupJob) {
+    pub fn enqueue_cleanup_job(&mut self, job: CleanupJob) {
         assert!(self.cleanup_job.is_none());
         self.cleanup_job = Some(job);
     }
 
-    fn run_cleanup_job(&mut self) {
+    pub fn run_cleanup_job(&mut self) {
         rtdebug!("running cleanup job");
 
         assert!(self.cleanup_job.is_some());
@@ -305,9 +306,9 @@ pub impl Scheduler {
     /// callers should first arrange for that task to be located in the
     /// Scheduler's current_task slot and set up the
     /// post-context-switch cleanup job.
-    fn get_contexts<'a>(&'a mut self) -> (&'a mut Context,
-                                          Option<&'a mut Context>,
-                                          Option<&'a mut Context>) {
+    pub fn get_contexts<'a>(&'a mut self) -> (&'a mut Context,
+                                              Option<&'a mut Context>,
+                                              Option<&'a mut Context>) {
         let last_task = match self.cleanup_job {
             Some(GiveTask(~ref task, _)) => {
                 Some(task)
@@ -349,14 +350,14 @@ pub struct Coroutine {
     task: ~Task
 }
 
-pub impl Coroutine {
-    fn new(stack_pool: &mut StackPool, start: ~fn()) -> Coroutine {
+impl Coroutine {
+    pub fn new(stack_pool: &mut StackPool, start: ~fn()) -> Coroutine {
         Coroutine::with_task(stack_pool, ~Task::new(), start)
     }
 
-    fn with_task(stack_pool: &mut StackPool,
-                  task: ~Task,
-                  start: ~fn()) -> Coroutine {
+    pub fn with_task(stack_pool: &mut StackPool,
+                     task: ~Task,
+                     start: ~fn()) -> Coroutine {
         let start = Coroutine::build_start_wrapper(start);
         let mut stack = stack_pool.take_segment(MIN_STACK_SIZE);
         // NB: Context holds a pointer to that ~fn
@@ -368,7 +369,7 @@ pub impl Coroutine {
         };
     }
 
-    priv fn build_start_wrapper(start: ~fn()) -> ~fn() {
+    fn build_start_wrapper(start: ~fn()) -> ~fn() {
         // XXX: The old code didn't have this extra allocation
         let wrapper: ~fn() = || {
             // This is the first code to execute after the initial
@@ -391,7 +392,7 @@ pub impl Coroutine {
     }
 
     /// Destroy the task and try to reuse its components
-    fn recycle(~self, stack_pool: &mut StackPool) {
+    pub fn recycle(~self, stack_pool: &mut StackPool) {
         match self {
             ~Coroutine {current_stack_segment, _} => {
                 stack_pool.give_segment(current_stack_segment);

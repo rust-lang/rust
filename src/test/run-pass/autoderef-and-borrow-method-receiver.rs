@@ -12,8 +12,8 @@ struct Foo {
     x: int,
 }
 
-pub impl Foo {
-    fn f(&const self) {}
+impl Foo {
+    pub fn f(&const self) {}
 }
 
 fn g(x: &mut Foo) {

@@ -308,8 +308,8 @@ mod stat {
 }
 
 
-pub impl Path {
-    fn stat(&self) -> Option<libc::stat> {
+impl Path {
+    pub fn stat(&self) -> Option<libc::stat> {
         unsafe {
              do str::as_c_str(self.to_str()) |buf| {
                 let mut st = stat::arch::default_stat();
@@ -322,7 +322,7 @@ pub impl Path {
     }
 
     #[cfg(unix)]
-    fn lstat(&self) -> Option<libc::stat> {
+    pub fn lstat(&self) -> Option<libc::stat> {
         unsafe {
             do str::as_c_str(self.to_str()) |buf| {
                 let mut st = stat::arch::default_stat();
@@ -334,21 +334,21 @@ pub impl Path {
         }
     }
 
-    fn exists(&self) -> bool {
+    pub fn exists(&self) -> bool {
         match self.stat() {
             None => false,
             Some(_) => true,
         }
     }
 
-    fn get_size(&self) -> Option<i64> {
+    pub fn get_size(&self) -> Option<i64> {
         match self.stat() {
             None => None,
             Some(ref st) => Some(st.st_size as i64),
         }
     }
 
-    fn get_mode(&self) -> Option<uint> {
+    pub fn get_mode(&self) -> Option<uint> {
         match self.stat() {
             None => None,
             Some(ref st) => Some(st.st_mode as uint),
@@ -359,8 +359,8 @@ pub impl Path {
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
-pub impl Path {
-    fn get_atime(&self) -> Option<(i64, int)> {
+impl Path {
+    pub fn get_atime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
             Some(ref st) => {
@@ -370,7 +370,7 @@ pub impl Path {
         }
     }
 
-    fn get_mtime(&self) -> Option<(i64, int)> {
+    pub fn get_mtime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
             Some(ref st) => {
@@ -380,7 +380,7 @@ pub impl Path {
         }
     }
 
-    fn get_ctime(&self) -> Option<(i64, int)> {
+    pub fn get_ctime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
             Some(ref st) => {
@@ -393,8 +393,8 @@ pub impl Path {
 
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "macos")]
-pub impl Path {
-    fn get_birthtime(&self) -> Option<(i64, int)> {
+impl Path {
+    pub fn get_birthtime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
             Some(ref st) => {
@@ -406,8 +406,8 @@ pub impl Path {
 }
 
 #[cfg(target_os = "win32")]
-pub impl Path {
-    fn get_atime(&self) -> Option<(i64, int)> {
+impl Path {
+    pub fn get_atime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
             Some(ref st) => {
@@ -416,7 +416,7 @@ pub impl Path {
         }
     }
 
-    fn get_mtime(&self) -> Option<(i64, int)> {
+    pub fn get_mtime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
             Some(ref st) => {
@@ -425,7 +425,7 @@ pub impl Path {
         }
     }
 
-    fn get_ctime(&self) -> Option<(i64, int)> {
+    pub fn get_ctime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
             Some(ref st) => {

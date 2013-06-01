@@ -24,7 +24,7 @@ pub enum Shape {
     Rectangle(Point, Point)
 }
 
-pub impl Shape {
+impl Shape {
     pub fn area(&self, sh: Shape) -> float {
         match sh {
             Circle(_, size) => float::consts::pi * size * size,

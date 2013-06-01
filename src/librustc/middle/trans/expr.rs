@@ -170,8 +170,8 @@ pub enum Dest {
     Ignore,
 }
 
-pub impl Dest {
-    fn to_str(&self, ccx: @CrateContext) -> ~str {
+impl Dest {
+    pub fn to_str(&self, ccx: @CrateContext) -> ~str {
         match *self {
             SaveIn(v) => fmt!("SaveIn(%s)", val_str(ccx.tn, v)),
             Ignore => ~"Ignore"

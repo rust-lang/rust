@@ -643,12 +643,12 @@ pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
     }
 }
 
-pub impl RegionVarBindings {
-    fn in_snapshot(&self) -> bool {
+impl RegionVarBindings {
+    pub fn in_snapshot(&self) -> bool {
         self.undo_log.len() > 0
     }
 
-    fn start_snapshot(&mut self) -> uint {
+    pub fn start_snapshot(&mut self) -> uint {
         debug!("RegionVarBindings: snapshot()=%u", self.undo_log.len());
         if self.in_snapshot() {
             self.undo_log.len()
@@ -658,14 +658,14 @@ pub impl RegionVarBindings {
         }
     }
 
-    fn commit(&mut self) {
+    pub fn commit(&mut self) {
         debug!("RegionVarBindings: commit()");
         while self.undo_log.len() > 0 {
             self.undo_log.pop();
         }
     }
 
-    fn rollback_to(&mut self, snapshot: uint) {
+    pub fn rollback_to(&mut self, snapshot: uint) {
         debug!("RegionVarBindings: rollback_to(%u)", snapshot);
         while self.undo_log.len() > snapshot {
             let undo_item = self.undo_log.pop();
@@ -689,11 +689,11 @@ pub impl RegionVarBindings {
         }
     }
 
-    fn num_vars(&mut self) -> uint {
+    pub fn num_vars(&mut self) -> uint {
         self.var_spans.len()
     }
 
-    fn new_region_var(&mut self, span: span) -> RegionVid {
+    pub fn new_region_var(&mut self, span: span) -> RegionVid {
         let id = self.num_vars();
         self.var_spans.push(span);
         let vid = RegionVid { id: id };
@@ -705,13 +705,13 @@ pub impl RegionVarBindings {
         return vid;
     }
 
-    fn new_skolemized(&mut self, br: ty::bound_region) -> Region {
+    pub fn new_skolemized(&mut self, br: ty::bound_region) -> Region {
         let sc = self.skolemization_count;
         self.skolemization_count += 1;
         re_infer(ReSkolemized(sc, br))
     }
 
-    fn new_bound(&mut self) -> Region {
+    pub fn new_bound(&mut self) -> Region {
         // Creates a fresh bound variable for use in GLB computations.
         // See discussion of GLB computation in the large comment at
         // the top of this file for more details.
@@ -731,7 +731,7 @@ pub impl RegionVarBindings {
         re_bound(br_fresh(sc))
     }
 
-    fn add_constraint(&mut self, constraint: Constraint, span: span) {
+    pub fn add_constraint(&mut self, constraint: Constraint, span: span) {
         // cannot add constraints once regions are resolved
         assert!(self.values.is_empty());
 
@@ -744,10 +744,8 @@ pub impl RegionVarBindings {
         }
     }
 
-    fn make_subregion(&mut self,
-                      span: span,
-                      sub: Region,
-                      sup: Region) -> cres<()> {
+    pub fn make_subregion(&mut self, span: span, sub: Region, sup: Region)
+                          -> cres<()> {
         // cannot add constraints once regions are resolved
         assert!(self.values.is_empty());
 
@@ -785,11 +783,8 @@ pub impl RegionVarBindings {
         }
     }
 
-    fn lub_regions(&mut self,
-                   span: span,
-                   a: Region,
-                   b: Region)
-                -> cres<Region> {
+    pub fn lub_regions(&mut self, span: span, a: Region, b: Region)
+                       -> cres<Region> {
         // cannot add constraints once regions are resolved
         assert!(self.values.is_empty());
 
@@ -811,11 +806,8 @@ pub impl RegionVarBindings {
         }
     }
 
-    fn glb_regions(&mut self,
-                   span: span,
-                   a: Region,
-                   b: Region)
-                -> cres<Region> {
+    pub fn glb_regions(&mut self, span: span, a: Region, b: Region)
+                       -> cres<Region> {
         // cannot add constraints once regions are resolved
         assert!(self.values.is_empty());
 
@@ -838,7 +830,7 @@ pub impl RegionVarBindings {
         }
     }
 
-    fn resolve_var(&mut self, rid: RegionVid) -> ty::Region {
+    pub fn resolve_var(&mut self, rid: RegionVid) -> ty::Region {
         if self.values.is_empty() {
             self.tcx.sess.span_bug(
                 self.var_spans[rid.to_uint()],
@@ -864,15 +856,15 @@ pub impl RegionVarBindings {
         }
     }
 
-    fn combine_vars(&mut self,
-                    t: CombineMapType,
-                    a: Region,
-                    b: Region,
-                    span: span,
-                    relate: &fn(this: &mut RegionVarBindings,
-                                old_r: Region,
-                                new_r: Region) -> cres<()>)
-                 -> cres<Region> {
+    pub fn combine_vars(&mut self,
+                        t: CombineMapType,
+                        a: Region,
+                        b: Region,
+                        span: span,
+                        relate: &fn(this: &mut RegionVarBindings,
+                                    old_r: Region,
+                                    new_r: Region) -> cres<()>)
+                        -> cres<Region> {
         let vars = TwoRegions { a: a, b: b };
         let c;
         {
@@ -906,9 +898,8 @@ pub impl RegionVarBindings {
         }
     }
 
-    fn vars_created_since_snapshot(&mut self,
-                                   snapshot: uint)
-                                -> ~[RegionVid] {
+    pub fn vars_created_since_snapshot(&mut self, snapshot: uint)
+                                       -> ~[RegionVid] {
         do vec::build |push| {
             for uint::range(snapshot, self.undo_log.len()) |i| {
                 match self.undo_log[i] {
@@ -919,7 +910,7 @@ pub impl RegionVarBindings {
         }
     }
 
-    fn tainted(&mut self, snapshot: uint, r0: Region) -> ~[Region] {
+    pub fn tainted(&mut self, snapshot: uint, r0: Region) -> ~[Region] {
         /*!
          *
          * Computes all regions that have been related to `r0` in any
@@ -1003,14 +994,14 @@ pub impl RegionVarBindings {
     constraints, assuming such values can be found; if they cannot,
     errors are reported.
     */
-    fn resolve_regions(&mut self) {
+    pub fn resolve_regions(&mut self) {
         debug!("RegionVarBindings: resolve_regions()");
         let v = self.infer_variable_values();
         self.values.put_back(v);
     }
 }
 
-priv impl RegionVarBindings {
+impl RegionVarBindings {
     fn is_subregion_of(&self, sub: Region, sup: Region) -> bool {
         let rm = self.tcx.region_maps;
         rm.is_subregion_of(sub, sup)
@@ -1266,15 +1257,15 @@ struct SpannedRegion {
     span: span,
 }
 
-pub impl RegionVarBindings {
-    fn infer_variable_values(&mut self) -> ~[GraphNodeValue] {
+impl RegionVarBindings {
+    pub fn infer_variable_values(&mut self) -> ~[GraphNodeValue] {
         let mut graph = self.construct_graph();
         self.expansion(&mut graph);
         self.contraction(&mut graph);
         self.extract_values_and_report_conflicts(&graph)
     }
 
-    fn construct_graph(&mut self) -> Graph {
+    pub fn construct_graph(&mut self) -> Graph {
         let num_vars = self.num_vars();
         let num_edges = self.constraints.len();
 
@@ -1339,7 +1330,7 @@ pub impl RegionVarBindings {
         }
     }
 
-    fn expansion(&mut self, graph: &mut Graph) {
+    pub fn expansion(&mut self, graph: &mut Graph) {
         do iterate_until_fixed_point(~"Expansion", graph) |nodes, edge| {
             match edge.constraint {
               ConstrainRegSubVar(a_region, b_vid) => {
@@ -1363,11 +1354,11 @@ pub impl RegionVarBindings {
         }
     }
 
-    fn expand_node(&mut self,
-                   a_region: Region,
-                   b_vid: RegionVid,
-                   b_node: &mut GraphNode)
-                -> bool {
+    pub fn expand_node(&mut self,
+                       a_region: Region,
+                       b_vid: RegionVid,
+                       b_node: &mut GraphNode)
+                       -> bool {
         debug!("expand_node(%?, %? == %?)",
                a_region, b_vid, b_node.value);
 
@@ -1399,7 +1390,7 @@ pub impl RegionVarBindings {
         }
     }
 
-    fn contraction(&mut self, graph: &mut Graph) {
+    pub fn contraction(&mut self, graph: &mut Graph) {
         do iterate_until_fixed_point(~"Contraction", graph) |nodes, edge| {
             match edge.constraint {
               ConstrainRegSubVar(*) => {
@@ -1423,11 +1414,11 @@ pub impl RegionVarBindings {
         }
     }
 
-    fn contract_node(&mut self,
-                     a_vid: RegionVid,
-                     a_node: &mut GraphNode,
-                     b_region: Region)
-                  -> bool {
+    pub fn contract_node(&mut self,
+                         a_vid: RegionVid,
+                         a_node: &mut GraphNode,
+                         b_region: Region)
+                         -> bool {
         debug!("contract_node(%? == %?/%?, %?)",
                a_vid, a_node.value, a_node.classification, b_region);
 
@@ -1495,10 +1486,8 @@ pub impl RegionVarBindings {
         }
     }
 
-    fn extract_values_and_report_conflicts(
-        &mut self,
-        graph: &Graph) -> ~[GraphNodeValue]
-    {
+    pub fn extract_values_and_report_conflicts(&mut self, graph: &Graph)
+                                               -> ~[GraphNodeValue] {
         debug!("extract_values_and_report_conflicts()");
 
         // This is the best way that I have found to suppress
@@ -1567,10 +1556,10 @@ pub impl RegionVarBindings {
         })
     }
 
-    fn report_error_for_expanding_node(&mut self,
-                                       graph: &Graph,
-                                       dup_vec: &mut [uint],
-                                       node_idx: RegionVid) {
+    pub fn report_error_for_expanding_node(&mut self,
+                                           graph: &Graph,
+                                           dup_vec: &mut [uint],
+                                           node_idx: RegionVid) {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
         let (lower_bounds, lower_dup) =
@@ -1626,10 +1615,10 @@ pub impl RegionVarBindings {
                  upper_bounds.map(|x| x.region).repr(self.tcx)));
     }
 
-    fn report_error_for_contracting_node(&mut self,
-                                         graph: &Graph,
-                                         dup_vec: &mut [uint],
-                                         node_idx: RegionVid) {
+    pub fn report_error_for_contracting_node(&mut self,
+                                             graph: &Graph,
+                                             dup_vec: &mut [uint],
+                                             node_idx: RegionVid) {
         // Errors in contracting nodes result from two upper-bounds
         // that have no intersection.
         let (upper_bounds, dup_found) =
@@ -1685,12 +1674,12 @@ pub impl RegionVarBindings {
                  upper_bounds.map(|x| x.region).repr(self.tcx)));
     }
 
-    fn collect_concrete_regions(&mut self,
-                                graph: &Graph,
-                                orig_node_idx: RegionVid,
-                                dir: Direction,
-                                dup_vec: &mut [uint])
-                             -> (~[SpannedRegion], bool) {
+    pub fn collect_concrete_regions(&mut self,
+                                    graph: &Graph,
+                                    orig_node_idx: RegionVid,
+                                    dir: Direction,
+                                    dup_vec: &mut [uint])
+                                    -> (~[SpannedRegion], bool) {
         struct WalkState {
             set: HashSet<RegionVid>,
             stack: ~[RegionVid],
@@ -1766,11 +1755,12 @@ pub impl RegionVarBindings {
         }
     }
 
-    fn each_edge(&mut self,
-                 graph: &Graph,
-                 node_idx: RegionVid,
-                 dir: Direction,
-                 op: &fn(edge: &GraphEdge) -> bool) -> bool {
+    pub fn each_edge(&mut self,
+                     graph: &Graph,
+                     node_idx: RegionVid,
+                     dir: Direction,
+                     op: &fn(edge: &GraphEdge) -> bool)
+                     -> bool {
         let mut edge_idx =
             graph.nodes[node_idx.to_uint()].head_edge[dir as uint];
         while edge_idx != uint::max_value {

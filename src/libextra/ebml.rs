@@ -89,8 +89,8 @@ pub mod reader {
 
     // ebml reading
 
-    pub impl Doc {
-        fn get(&self, tag: uint) -> Doc {
+    impl Doc {
+        pub fn get(&self, tag: uint) -> Doc {
             get_doc(*self, tag)
         }
     }
@@ -286,7 +286,7 @@ pub mod reader {
         }
     }
 
-    priv impl Decoder {
+    impl Decoder {
         fn _check_label(&mut self, lbl: &str) {
             if self.pos < self.parent.end {
                 let TaggedDoc { tag: r_tag, doc: r_doc } =
@@ -343,8 +343,9 @@ pub mod reader {
         }
     }
 
-    pub impl Decoder {
-        fn read_opaque<R>(&mut self, op: &fn(&mut Decoder, Doc) -> R) -> R {
+    impl Decoder {
+        pub fn read_opaque<R>(&mut self, op: &fn(&mut Decoder, Doc) -> R)
+                              -> R {
             let doc = self.next_doc(EsOpaque);
 
             let (old_parent, old_pos) = (self.parent, self.pos);
@@ -638,8 +639,8 @@ pub mod writer {
     }
 
     // FIXME (#2741): Provide a function to write the standard ebml header.
-    pub impl Encoder {
-        fn start_tag(&mut self, tag_id: uint) {
+    impl Encoder {
+        pub fn start_tag(&mut self, tag_id: uint) {
             debug!("Start tag %u", tag_id);
 
             // Write the enum ID:
@@ -651,7 +652,7 @@ pub mod writer {
             self.writer.write(zeroes);
         }
 
-        fn end_tag(&mut self) {
+        pub fn end_tag(&mut self) {
             let last_size_pos = self.size_positions.pop();
             let cur_pos = self.writer.tell();
             self.writer.seek(last_size_pos as int, io::SeekSet);
@@ -662,72 +663,72 @@ pub mod writer {
             debug!("End tag (size = %u)", size);
         }
 
-        fn wr_tag(&mut self, tag_id: uint, blk: &fn()) {
+        pub fn wr_tag(&mut self, tag_id: uint, blk: &fn()) {
             self.start_tag(tag_id);
             blk();
             self.end_tag();
         }
 
-        fn wr_tagged_bytes(&mut self, tag_id: uint, b: &[u8]) {
+        pub fn wr_tagged_bytes(&mut self, tag_id: uint, b: &[u8]) {
             write_vuint(self.writer, tag_id);
             write_vuint(self.writer, b.len());
             self.writer.write(b);
         }
 
-        fn wr_tagged_u64(&mut self, tag_id: uint, v: u64) {
+        pub fn wr_tagged_u64(&mut self, tag_id: uint, v: u64) {
             do io::u64_to_be_bytes(v, 8u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
-        fn wr_tagged_u32(&mut self, tag_id: uint, v: u32) {
+        pub fn wr_tagged_u32(&mut self, tag_id: uint, v: u32) {
             do io::u64_to_be_bytes(v as u64, 4u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
-        fn wr_tagged_u16(&mut self, tag_id: uint, v: u16) {
+        pub fn wr_tagged_u16(&mut self, tag_id: uint, v: u16) {
             do io::u64_to_be_bytes(v as u64, 2u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
-        fn wr_tagged_u8(&mut self, tag_id: uint, v: u8) {
+        pub fn wr_tagged_u8(&mut self, tag_id: uint, v: u8) {
             self.wr_tagged_bytes(tag_id, &[v]);
         }
 
-        fn wr_tagged_i64(&mut self, tag_id: uint, v: i64) {
+        pub fn wr_tagged_i64(&mut self, tag_id: uint, v: i64) {
             do io::u64_to_be_bytes(v as u64, 8u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
-        fn wr_tagged_i32(&mut self, tag_id: uint, v: i32) {
+        pub fn wr_tagged_i32(&mut self, tag_id: uint, v: i32) {
             do io::u64_to_be_bytes(v as u64, 4u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
-        fn wr_tagged_i16(&mut self, tag_id: uint, v: i16) {
+        pub fn wr_tagged_i16(&mut self, tag_id: uint, v: i16) {
             do io::u64_to_be_bytes(v as u64, 2u) |v| {
                 self.wr_tagged_bytes(tag_id, v);
             }
         }
 
-        fn wr_tagged_i8(&mut self, tag_id: uint, v: i8) {
+        pub fn wr_tagged_i8(&mut self, tag_id: uint, v: i8) {
             self.wr_tagged_bytes(tag_id, &[v as u8]);
         }
 
-        fn wr_tagged_str(&mut self, tag_id: uint, v: &str) {
+        pub fn wr_tagged_str(&mut self, tag_id: uint, v: &str) {
             str::byte_slice(v, |b| self.wr_tagged_bytes(tag_id, b));
         }
 
-        fn wr_bytes(&mut self, b: &[u8]) {
+        pub fn wr_bytes(&mut self, b: &[u8]) {
             debug!("Write %u bytes", b.len());
             self.writer.write(b);
         }
 
-        fn wr_str(&mut self, s: &str) {
+        pub fn wr_str(&mut self, s: &str) {
             debug!("Write str: %?", s);
             self.writer.write(str::to_bytes(s));
         }
@@ -740,7 +741,7 @@ pub mod writer {
     // Totally lame approach.
     static debug: bool = true;
 
-    priv impl Encoder {
+    impl Encoder {
         // used internally to emit things like the vector length and so on
         fn _emit_tagged_uint(&mut self, t: EbmlEncoderTag, v: uint) {
             assert!(v <= 0xFFFF_FFFF_u);
@@ -758,8 +759,8 @@ pub mod writer {
         }
     }
 
-    pub impl Encoder {
-        fn emit_opaque(&mut self, f: &fn(&mut Encoder)) {
+    impl Encoder {
+        pub fn emit_opaque(&mut self, f: &fn(&mut Encoder)) {
             self.start_tag(EsOpaque as uint);
             f(self);
             self.end_tag();

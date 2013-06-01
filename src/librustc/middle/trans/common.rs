@@ -249,8 +249,8 @@ pub struct param_substs {
     self_ty: Option<ty::t>
 }
 
-pub impl param_substs {
-    fn validate(&self) {
+impl param_substs {
+    pub fn validate(&self) {
         for self.tys.each |t| { assert!(!ty::type_needs_infer(*t)); }
         for self.self_ty.each |t| { assert!(!ty::type_needs_infer(*t)); }
     }
@@ -353,7 +353,7 @@ pub struct fn_ctxt_ {
     ccx: @@CrateContext
 }
 
-pub impl fn_ctxt_ {
+impl fn_ctxt_ {
     pub fn arg_pos(&self, arg: uint) -> uint {
         if self.has_immediate_return_value {
             arg + 1u
@@ -598,8 +598,8 @@ pub struct scope_info {
     landing_pad: Option<BasicBlockRef>,
 }
 
-pub impl scope_info {
-    fn empty_cleanups(&mut self) -> bool {
+impl scope_info {
+    pub fn empty_cleanups(&mut self) -> bool {
         self.cleanups.is_empty()
     }
 }
@@ -695,8 +695,8 @@ pub fn rslt(bcx: block, val: ValueRef) -> Result {
     Result {bcx: bcx, val: val}
 }
 
-pub impl Result {
-    fn unpack(&self, bcx: &mut block) -> ValueRef {
+impl Result {
+    pub fn unpack(&self, bcx: &mut block) -> ValueRef {
         *bcx = self.bcx;
         return self.val;
     }
@@ -742,28 +742,28 @@ pub fn block_parent(cx: block) -> block {
 
 // Accessors
 
-pub impl block_ {
-    fn ccx(@mut self) -> @CrateContext { *self.fcx.ccx }
-    fn tcx(@mut self) -> ty::ctxt { self.fcx.ccx.tcx }
-    fn sess(@mut self) -> Session { self.fcx.ccx.sess }
+impl block_ {
+    pub fn ccx(@mut self) -> @CrateContext { *self.fcx.ccx }
+    pub fn tcx(@mut self) -> ty::ctxt { self.fcx.ccx.tcx }
+    pub fn sess(@mut self) -> Session { self.fcx.ccx.sess }
 
-    fn node_id_to_str(@mut self, id: ast::node_id) -> ~str {
+    pub fn node_id_to_str(@mut self, id: ast::node_id) -> ~str {
         ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
     }
 
-    fn expr_to_str(@mut self, e: @ast::expr) -> ~str {
+    pub fn expr_to_str(@mut self, e: @ast::expr) -> ~str {
         e.repr(self.tcx())
     }
 
-    fn expr_is_lval(@mut self, e: @ast::expr) -> bool {
+    pub fn expr_is_lval(@mut self, e: @ast::expr) -> bool {
         ty::expr_is_lval(self.tcx(), self.ccx().maps.method_map, e)
     }
 
-    fn expr_kind(@mut self, e: @ast::expr) -> ty::ExprKind {
+    pub fn expr_kind(@mut self, e: @ast::expr) -> ty::ExprKind {
         ty::expr_kind(self.tcx(), self.ccx().maps.method_map, e)
     }
 
-    fn def(@mut self, nid: ast::node_id) -> ast::def {
+    pub fn def(@mut self, nid: ast::node_id) -> ast::def {
         match self.tcx().def_map.find(&nid) {
             Some(&v) => v,
             None => {
@@ -773,18 +773,19 @@ pub impl block_ {
         }
     }
 
-    fn val_str(@mut self, val: ValueRef) -> @str {
+    pub fn val_str(@mut self, val: ValueRef) -> @str {
         val_str(self.ccx().tn, val)
     }
 
-    fn llty_str(@mut self, llty: TypeRef) -> @str {
+    pub fn llty_str(@mut self, llty: TypeRef) -> @str {
         ty_str(self.ccx().tn, llty)
     }
 
-    fn ty_to_str(@mut self, t: ty::t) -> ~str {
+    pub fn ty_to_str(@mut self, t: ty::t) -> ~str {
         t.repr(self.tcx())
     }
-    fn to_str(@mut self) -> ~str {
+
+    pub fn to_str(@mut self) -> ~str {
         unsafe {
             match self.node_info {
                 Some(node_info) => fmt!("[block %d]", node_info.id),

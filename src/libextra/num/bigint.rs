@@ -16,6 +16,8 @@ A BigUint is represented as an array of BigDigits.
 A BigInt is a combination of BigUint and Sign.
 */
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
@@ -1095,9 +1097,8 @@ impl FromStrRadix for BigInt {
     }
 }
 
-pub impl BigInt {
+impl BigInt {
     /// Creates and initializes an BigInt.
-
     pub fn new(sign: Sign, v: ~[BigDigit]) -> BigInt {
         BigInt::from_biguint(sign, BigUint::new(v))
     }
@@ -1139,8 +1140,7 @@ pub impl BigInt {
             .map_consume(|bu| BigInt::from_biguint(sign, bu));
     }
 
-
-    fn to_uint(&self) -> uint {
+    pub fn to_uint(&self) -> uint {
         match self.sign {
             Plus  => self.data.to_uint(),
             Zero  => 0,

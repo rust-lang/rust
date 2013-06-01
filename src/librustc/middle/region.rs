@@ -73,11 +73,8 @@ pub struct Context {
     parent: parent,
 }
 
-pub impl RegionMaps {
-    fn relate_free_regions(&mut self,
-                           sub: FreeRegion,
-                           sup: FreeRegion)
-    {
+impl RegionMaps {
+    pub fn relate_free_regions(&mut self, sub: FreeRegion, sup: FreeRegion) {
         match self.free_region_map.find_mut(&sub) {
             Some(sups) => {
                 if !sups.contains(&sup) {
@@ -93,19 +90,14 @@ pub impl RegionMaps {
         self.free_region_map.insert(sub, ~[sup]);
     }
 
-    fn record_parent(&mut self,
-                     sub: ast::node_id,
-                     sup: ast::node_id)
-    {
+    pub fn record_parent(&mut self, sub: ast::node_id, sup: ast::node_id) {
         debug!("record_parent(sub=%?, sup=%?)", sub, sup);
         assert!(sub != sup);
 
         self.scope_map.insert(sub, sup);
     }
 
-    pub fn record_cleanup_scope(&mut self,
-                                scope_id: ast::node_id)
-    {
+    pub fn record_cleanup_scope(&mut self, scope_id: ast::node_id) {
         //! Records that a scope is a CLEANUP SCOPE.  This is invoked
         //! from within regionck.  We wait until regionck because we do
         //! not know which operators are overloaded until that point,
@@ -114,17 +106,13 @@ pub impl RegionMaps {
         self.cleanup_scopes.insert(scope_id);
     }
 
-    fn opt_encl_scope(&self,
-                      id: ast::node_id) -> Option<ast::node_id>
-    {
+    pub fn opt_encl_scope(&self, id: ast::node_id) -> Option<ast::node_id> {
         //! Returns the narrowest scope that encloses `id`, if any.
 
         self.scope_map.find(&id).map(|&x| *x)
     }
 
-    fn encl_scope(&self,
-                  id: ast::node_id) -> ast::node_id
-    {
+    pub fn encl_scope(&self, id: ast::node_id) -> ast::node_id {
         //! Returns the narrowest scope that encloses `id`, if any.
 
         match self.scope_map.find(&id) {
@@ -133,13 +121,11 @@ pub impl RegionMaps {
         }
     }
 
-    fn is_cleanup_scope(&self, scope_id: ast::node_id) -> bool {
+    pub fn is_cleanup_scope(&self, scope_id: ast::node_id) -> bool {
         self.cleanup_scopes.contains(&scope_id)
     }
 
-    fn cleanup_scope(&self,
-                     expr_id: ast::node_id) -> ast::node_id
-    {
+    pub fn cleanup_scope(&self, expr_id: ast::node_id) -> ast::node_id {
         //! Returns the scope when temps in expr will be cleaned up
 
         let mut id = self.encl_scope(expr_id);
@@ -149,25 +135,22 @@ pub impl RegionMaps {
         return id;
     }
 
-    fn encl_region(&self,
-                   id: ast::node_id) -> ty::Region
-    {
+    pub fn encl_region(&self, id: ast::node_id) -> ty::Region {
         //! Returns the narrowest scope region that encloses `id`, if any.
 
         ty::re_scope(self.encl_scope(id))
     }
 
-    pub fn scopes_intersect(&self,
-                            scope1: ast::node_id,
-                            scope2: ast::node_id) -> bool
-    {
-        self.is_subscope_of(scope1, scope2) || self.is_subscope_of(scope2, scope1)
+    pub fn scopes_intersect(&self, scope1: ast::node_id, scope2: ast::node_id)
+                            -> bool {
+        self.is_subscope_of(scope1, scope2) ||
+        self.is_subscope_of(scope2, scope1)
     }
 
-    fn is_subscope_of(&self,
-                      subscope: ast::node_id,
-                      superscope: ast::node_id) -> bool
-    {
+    pub fn is_subscope_of(&self,
+                          subscope: ast::node_id,
+                          superscope: ast::node_id)
+                          -> bool {
         /*!
          * Returns true if `subscope` is equal to or is lexically
          * nested inside `superscope` and false otherwise.
@@ -192,10 +175,7 @@ pub impl RegionMaps {
         return true;
     }
 
-    fn sub_free_region(&self,
-                       sub: FreeRegion,
-                       sup: FreeRegion) -> bool
-    {
+    pub fn sub_free_region(&self, sub: FreeRegion, sup: FreeRegion) -> bool {
         /*!
          * Determines whether two free regions have a subregion relationship
          * by walking the graph encoded in `free_region_map`.  Note that
@@ -233,10 +213,10 @@ pub impl RegionMaps {
         return false;
     }
 
-    fn is_subregion_of(&self,
-                       sub_region: ty::Region,
-                       super_region: ty::Region) -> bool
-    {
+    pub fn is_subregion_of(&self,
+                           sub_region: ty::Region,
+                           super_region: ty::Region)
+                           -> bool {
         /*!
          * Determines whether one region is a subregion of another.  This is
          * intended to run *after inference* and sadly the logic is somewhat
@@ -271,10 +251,10 @@ pub impl RegionMaps {
         }
     }
 
-    fn nearest_common_ancestor(&self,
-                               scope_a: ast::node_id,
-                               scope_b: ast::node_id) -> Option<ast::node_id>
-    {
+    pub fn nearest_common_ancestor(&self,
+                                   scope_a: ast::node_id,
+                                   scope_b: ast::node_id)
+                                   -> Option<ast::node_id> {
         /*!
          * Finds the nearest common ancestor (if any) of two scopes.  That
          * is, finds the smallest scope which is greater than or equal to
@@ -588,15 +568,15 @@ pub fn add_variance(ambient_variance: region_variance,
     }
 }
 
-pub impl DetermineRpCtxt {
-    fn add_variance(&self, variance: region_variance) -> region_variance {
+impl DetermineRpCtxt {
+    pub fn add_variance(&self, variance: region_variance) -> region_variance {
         add_variance(self.ambient_variance, variance)
     }
 
     /// Records that item `id` is region-parameterized with the
     /// variance `variance`.  If `id` was already parameterized, then
     /// the new variance is joined with the old variance.
-    fn add_rp(&mut self, id: ast::node_id, variance: region_variance) {
+    pub fn add_rp(&mut self, id: ast::node_id, variance: region_variance) {
         assert!(id != 0);
         let old_variance = self.region_paramd_items.find(&id).
                                 map_consume(|x| *x);
@@ -622,7 +602,7 @@ pub impl DetermineRpCtxt {
     /// `from`.  Put another way, it indicates that the current item
     /// contains a value of type `from`, so if `from` is
     /// region-parameterized, so is the current item.
-    fn add_dep(&mut self, from: ast::node_id) {
+    pub fn add_dep(&mut self, from: ast::node_id) {
         debug!("add dependency from %d -> %d (%s -> %s) with variance %?",
                from, self.item_id,
                ast_map::node_id_to_str(self.ast_map, from,
@@ -682,7 +662,7 @@ pub impl DetermineRpCtxt {
     // with &self type, &self is also bound.  We detect those last two
     // cases via flags (anon_implies_rp and self_implies_rp) that are
     // true when the anon or self region implies RP.
-    fn region_is_relevant(&self, r: Option<@ast::Lifetime>) -> bool {
+    pub fn region_is_relevant(&self, r: Option<@ast::Lifetime>) -> bool {
         match r {
             None => {
                 self.anon_implies_rp
@@ -699,10 +679,10 @@ pub impl DetermineRpCtxt {
         }
     }
 
-    fn with(@mut self,
-            item_id: ast::node_id,
-            anon_implies_rp: bool,
-            f: &fn()) {
+    pub fn with(@mut self,
+                item_id: ast::node_id,
+                anon_implies_rp: bool,
+                f: &fn()) {
         let old_item_id = self.item_id;
         let old_anon_implies_rp = self.anon_implies_rp;
         self.item_id = item_id;
@@ -716,7 +696,9 @@ pub impl DetermineRpCtxt {
         self.anon_implies_rp = old_anon_implies_rp;
     }
 
-    fn with_ambient_variance(@mut self, variance: region_variance, f: &fn()) {
+    pub fn with_ambient_variance(@mut self,
+                                 variance: region_variance,
+                                 f: &fn()) {
         let old_ambient_variance = self.ambient_variance;
         self.ambient_variance = self.add_variance(variance);
         f();

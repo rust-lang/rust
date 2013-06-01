@@ -10,7 +10,7 @@
 
 //! A type representing either success or failure
 
-// NB: transitionary, de-mode-ing.
+#[allow(missing_doc)];
 
 use cmp::Eq;
 use either;
@@ -227,55 +227,55 @@ pub fn map_err<T:Copy,E,F:Copy>(res: &Result<T, E>, op: &fn(&E) -> F)
     }
 }
 
-pub impl<T, E> Result<T, E> {
+impl<T, E> Result<T, E> {
     #[inline(always)]
-    fn get_ref<'a>(&'a self) -> &'a T { get_ref(self) }
+    pub fn get_ref<'a>(&'a self) -> &'a T { get_ref(self) }
 
     #[inline(always)]
-    fn is_ok(&self) -> bool { is_ok(self) }
+    pub fn is_ok(&self) -> bool { is_ok(self) }
 
     #[inline(always)]
-    fn is_err(&self) -> bool { is_err(self) }
+    pub fn is_err(&self) -> bool { is_err(self) }
 
     #[inline(always)]
-    fn iter(&self, f: &fn(&T)) { iter(self, f) }
+    pub fn iter(&self, f: &fn(&T)) { iter(self, f) }
 
     #[inline(always)]
-    fn iter_err(&self, f: &fn(&E)) { iter_err(self, f) }
+    pub fn iter_err(&self, f: &fn(&E)) { iter_err(self, f) }
 
     #[inline(always)]
-    fn unwrap(self) -> T { unwrap(self) }
+    pub fn unwrap(self) -> T { unwrap(self) }
 
     #[inline(always)]
-    fn unwrap_err(self) -> E { unwrap_err(self) }
+    pub fn unwrap_err(self) -> E { unwrap_err(self) }
 
     #[inline(always)]
-    fn chain<U>(self, op: &fn(T) -> Result<U,E>) -> Result<U,E> {
+    pub fn chain<U>(self, op: &fn(T) -> Result<U,E>) -> Result<U,E> {
         chain(self, op)
     }
 
     #[inline(always)]
-    fn chain_err<F>(self, op: &fn(E) -> Result<T,F>) -> Result<T,F> {
+    pub fn chain_err<F>(self, op: &fn(E) -> Result<T,F>) -> Result<T,F> {
         chain_err(self, op)
     }
 }
 
-pub impl<T:Copy,E> Result<T, E> {
+impl<T:Copy,E> Result<T, E> {
     #[inline(always)]
-    fn get(&self) -> T { get(self) }
+    pub fn get(&self) -> T { get(self) }
 
     #[inline(always)]
-    fn map_err<F:Copy>(&self, op: &fn(&E) -> F) -> Result<T,F> {
+    pub fn map_err<F:Copy>(&self, op: &fn(&E) -> F) -> Result<T,F> {
         map_err(self, op)
     }
 }
 
-pub impl<T, E: Copy> Result<T, E> {
+impl<T, E: Copy> Result<T, E> {
     #[inline(always)]
-    fn get_err(&self) -> E { get_err(self) }
+    pub fn get_err(&self) -> E { get_err(self) }
 
     #[inline(always)]
-    fn map<U:Copy>(&self, op: &fn(&T) -> U) -> Result<U,E> {
+    pub fn map<U:Copy>(&self, op: &fn(&T) -> U) -> Result<U,E> {
         map(self, op)
     }
 }

@@ -2,8 +2,8 @@ struct Wizard {
     spells: ~[&'static str]
 }
 
-pub impl Wizard {
-    fn cast(&mut self) {
+impl Wizard {
+    pub fn cast(&mut self) {
         for self.spells.each |&spell| {
             println(spell);
         }

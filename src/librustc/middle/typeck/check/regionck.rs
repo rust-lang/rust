@@ -74,12 +74,12 @@ fn encl_region_of_def(fcx: @mut FnCtxt, def: ast::def) -> ty::Region {
     }
 }
 
-pub impl Rcx {
-    fn tcx(&self) -> ty::ctxt {
+impl Rcx {
+    pub fn tcx(&self) -> ty::ctxt {
         self.fcx.ccx.tcx
     }
 
-    fn resolve_type(&mut self, unresolved_ty: ty::t) -> ty::t {
+    pub fn resolve_type(&mut self, unresolved_ty: ty::t) -> ty::t {
         /*!
          * Try to resolve the type for the given node, returning
          * t_err if an error results.  Note that we never care
@@ -116,12 +116,12 @@ pub impl Rcx {
     }
 
     /// Try to resolve the type for the given node.
-    fn resolve_node_type(@mut self, id: ast::node_id) -> ty::t {
+    pub fn resolve_node_type(@mut self, id: ast::node_id) -> ty::t {
         self.resolve_type(self.fcx.node_ty(id))
     }
 
     /// Try to resolve the type for the given node.
-    fn resolve_expr_type_adjusted(@mut self, expr: @ast::expr) -> ty::t {
+    pub fn resolve_expr_type_adjusted(@mut self, expr: @ast::expr) -> ty::t {
         let ty_unadjusted = self.resolve_node_type(expr.id);
         if ty::type_is_error(ty_unadjusted) || ty::type_is_bot(ty_unadjusted) {
             ty_unadjusted

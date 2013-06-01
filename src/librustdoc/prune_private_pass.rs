@@ -212,8 +212,8 @@ mod test {
     #[test]
     fn should_prune_priv_associated_methods_on_pub_impls() {
         let doc = mk_doc(
-            ~"pub impl Foo {\
-              fn bar() { }\
+            ~"impl Foo {\
+              pub fn bar() { }\
               priv fn baz() { }\
               }");
         assert_eq!(doc.cratemod().impls()[0].methods.len(), 1);
@@ -222,7 +222,7 @@ mod test {
     #[test]
     fn should_prune_associated_methods_without_vis_modifier_on_priv_impls() {
         let doc = mk_doc(
-            ~"priv impl Foo {\
+            ~"impl Foo {\
               pub fn bar() { }\
               fn baz() { }\
               }");
@@ -232,7 +232,7 @@ mod test {
     #[test]
     fn should_prune_priv_associated_methods_on_priv_impls() {
         let doc = mk_doc(
-            ~"priv impl Foo {\
+            ~"impl Foo {\
               pub fn bar() { }\
               priv fn baz() { }\
               }");
@@ -242,7 +242,7 @@ mod test {
     #[test]
     fn should_prune_associated_impls_with_no_pub_methods() {
         let doc = mk_doc(
-            ~"priv impl Foo {\
+            ~"impl Foo {\
               fn baz() { }\
               }");
         assert!(doc.cratemod().impls().is_empty());

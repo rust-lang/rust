@@ -44,9 +44,9 @@ impl<T> Mutable for Deque<T> {
     }
 }
 
-pub impl<T> Deque<T> {
+impl<T> Deque<T> {
     /// Create an empty Deque
-    fn new() -> Deque<T> {
+    pub fn new() -> Deque<T> {
         Deque{nelts: 0, lo: 0, hi: 0,
               elts: vec::from_fn(initial_capacity, |_| None)}
     }
@@ -54,35 +54,35 @@ pub impl<T> Deque<T> {
     /// Return a reference to the first element in the deque
     ///
     /// Fails if the deque is empty
-    fn peek_front<'a>(&'a self) -> &'a T { get(self.elts, self.lo) }
+    pub fn peek_front<'a>(&'a self) -> &'a T { get(self.elts, self.lo) }
 
     /// Return a reference to the last element in the deque
     ///
     /// Fails if the deque is empty
-    fn peek_back<'a>(&'a self) -> &'a T { get(self.elts, self.hi - 1u) }
+    pub fn peek_back<'a>(&'a self) -> &'a T { get(self.elts, self.hi - 1u) }
 
     /// Retrieve an element in the deque by index
     ///
     /// Fails if there is no element with the given index
-    fn get<'a>(&'a self, i: int) -> &'a T {
+    pub fn get<'a>(&'a self, i: int) -> &'a T {
         let idx = (self.lo + (i as uint)) % self.elts.len();
         get(self.elts, idx)
     }
 
     /// Iterate over the elements in the deque
-    fn each(&self, f: &fn(&T) -> bool) -> bool {
+    pub fn each(&self, f: &fn(&T) -> bool) -> bool {
         self.eachi(|_i, e| f(e))
     }
 
     /// Iterate over the elements in the deque by index
-    fn eachi(&self, f: &fn(uint, &T) -> bool) -> bool {
+    pub fn eachi(&self, f: &fn(uint, &T) -> bool) -> bool {
         uint::range(0, self.nelts, |i| f(i, self.get(i as int)))
     }
 
     /// Remove and return the first element in the deque
     ///
     /// Fails if the deque is empty
-    fn pop_front(&mut self) -> T {
+    pub fn pop_front(&mut self) -> T {
         let result = self.elts[self.lo].swap_unwrap();
         self.lo = (self.lo + 1u) % self.elts.len();
         self.nelts -= 1u;
@@ -92,7 +92,7 @@ pub impl<T> Deque<T> {
     /// Remove and return the last element in the deque
     ///
     /// Fails if the deque is empty
-    fn pop_back(&mut self) -> T {
+    pub fn pop_back(&mut self) -> T {
         if self.hi == 0u {
             self.hi = self.elts.len() - 1u;
         } else { self.hi -= 1u; }
@@ -103,7 +103,7 @@ pub impl<T> Deque<T> {
     }
 
     /// Prepend an element to the deque
-    fn add_front(&mut self, t: T) {
+    pub fn add_front(&mut self, t: T) {
         let oldlo = self.lo;
         if self.lo == 0u {
             self.lo = self.elts.len() - 1u;
@@ -118,7 +118,7 @@ pub impl<T> Deque<T> {
     }
 
     /// Append an element to the deque
-    fn add_back(&mut self, t: T) {
+    pub fn add_back(&mut self, t: T) {
         if self.lo == self.hi && self.nelts != 0u {
             self.elts = grow(self.nelts, self.lo, self.elts);
             self.lo = 0u;
@@ -136,7 +136,7 @@ pub impl<T> Deque<T> {
     /// # Arguments
     ///
     /// * n - The number of elements to reserve space for
-    fn reserve(&mut self, n: uint) {
+    pub fn reserve(&mut self, n: uint) {
         vec::reserve(&mut self.elts, n);
     }
 
@@ -150,7 +150,7 @@ pub impl<T> Deque<T> {
     /// # Arguments
     ///
     /// * n - The number of elements to reserve space for
-    fn reserve_at_least(&mut self, n: uint) {
+    pub fn reserve_at_least(&mut self, n: uint) {
         vec::reserve_at_least(&mut self.elts, n);
     }
 }

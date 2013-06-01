@@ -10,8 +10,8 @@
 
 struct Foo { x: int }
 
-pub impl Foo {
-    fn stuff<'a>(&'a mut self) -> &'a mut Foo {
+impl Foo {
+    pub fn stuff<'a>(&'a mut self) -> &'a mut Foo {
         return self;
     }
 }

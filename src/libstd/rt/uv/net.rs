@@ -43,9 +43,8 @@ fn ip4_as_uv_ip4<T>(addr: IpAddr, f: &fn(*sockaddr_in) -> T) -> T {
 pub struct StreamWatcher(*uvll::uv_stream_t);
 impl Watcher for StreamWatcher { }
 
-pub impl StreamWatcher {
-
-    fn read_start(&mut self, alloc: AllocCallback, cb: ReadCallback) {
+impl StreamWatcher {
+    pub fn read_start(&mut self, alloc: AllocCallback, cb: ReadCallback) {
         {
             let data = self.get_watcher_data();
             data.alloc_cb = Some(alloc);
@@ -73,7 +72,7 @@ pub impl StreamWatcher {
         }
     }
 
-    fn read_stop(&mut self) {
+    pub fn read_stop(&mut self) {
         // It would be nice to drop the alloc and read callbacks here,
         // but read_stop may be called from inside one of them and we
         // would end up freeing the in-use environment
@@ -81,7 +80,7 @@ pub impl StreamWatcher {
         unsafe { uvll::read_stop(handle); }
     }
 
-    fn write(&mut self, buf: Buf, cb: ConnectionCallback) {
+    pub fn write(&mut self, buf: Buf, cb: ConnectionCallback) {
         {
             let data = self.get_watcher_data();
             assert!(data.write_cb.is_none());
@@ -110,7 +109,7 @@ pub impl StreamWatcher {
         }
     }
 
-    fn accept(&mut self, stream: StreamWatcher) {
+    pub fn accept(&mut self, stream: StreamWatcher) {
         let self_handle = self.native_handle() as *c_void;
         let stream_handle = stream.native_handle() as *c_void;
         unsafe {
@@ -118,7 +117,7 @@ pub impl StreamWatcher {
         }
     }
 
-    fn close(self, cb: NullCallback) {
+    pub fn close(self, cb: NullCallback) {
         {
             let mut this = self;
             let data = this.get_watcher_data();
@@ -153,8 +152,8 @@ impl NativeHandle<*uvll::uv_stream_t> for StreamWatcher {
 pub struct TcpWatcher(*uvll::uv_tcp_t);
 impl Watcher for TcpWatcher { }
 
-pub impl TcpWatcher {
-    fn new(loop_: &mut Loop) -> TcpWatcher {
+impl TcpWatcher {
+    pub fn new(loop_: &mut Loop) -> TcpWatcher {
         unsafe {
             let handle = malloc_handle(UV_TCP);
             assert!(handle.is_not_null());
@@ -165,7 +164,7 @@ pub impl TcpWatcher {
         }
     }
 
-    fn bind(&mut self, address: IpAddr) -> Result<(), UvError> {
+    pub fn bind(&mut self, address: IpAddr) -> Result<(), UvError> {
         match address {
             Ipv4(*) => {
                 do ip4_as_uv_ip4(address) |addr| {
@@ -183,7 +182,7 @@ pub impl TcpWatcher {
         }
     }
 
-    fn connect(&mut self, address: IpAddr, cb: ConnectionCallback) {
+    pub fn connect(&mut self, address: IpAddr, cb: ConnectionCallback) {
         unsafe {
             assert!(self.get_watcher_data().connect_cb.is_none());
             self.get_watcher_data().connect_cb = Some(cb);
@@ -216,7 +215,7 @@ pub impl TcpWatcher {
         }
     }
 
-    fn listen(&mut self, cb: ConnectionCallback) {
+    pub fn listen(&mut self, cb: ConnectionCallback) {
         {
             let data = self.get_watcher_data();
             assert!(data.connect_cb.is_none());
@@ -240,7 +239,7 @@ pub impl TcpWatcher {
         }
     }
 
-    fn as_stream(&self) -> StreamWatcher {
+    pub fn as_stream(&self) -> StreamWatcher {
         NativeHandle::from_native_handle(self.native_handle() as *uvll::uv_stream_t)
     }
 }
@@ -295,9 +294,8 @@ pub struct WriteRequest(*uvll::uv_write_t);
 
 impl Request for WriteRequest { }
 
-pub impl WriteRequest {
-
-    fn new() -> WriteRequest {
+impl WriteRequest {
+    pub fn new() -> WriteRequest {
         let write_handle = unsafe {
             malloc_req(UV_WRITE)
         };
@@ -306,14 +304,14 @@ pub impl WriteRequest {
         WriteRequest(write_handle)
     }
 
-    fn stream(&self) -> StreamWatcher {
+    pub fn stream(&self) -> StreamWatcher {
         unsafe {
             let stream_handle = uvll::get_stream_handle_from_write_req(self.native_handle());
             NativeHandle::from_native_handle(stream_handle)
         }
     }
 
-    fn delete(self) {
+    pub fn delete(self) {
         unsafe { free_req(self.native_handle() as *c_void) }
     }
 }

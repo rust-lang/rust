@@ -10,6 +10,8 @@
 
 //! A mutable, nullable memory location
 
+#[missing_doc];
+
 use cast::transmute_mut;
 use prelude::*;
 use util::replace;
@@ -37,9 +39,9 @@ pub fn empty_cell<T>() -> Cell<T> {
     Cell { value: None }
 }
 
-pub impl<T> Cell<T> {
+impl<T> Cell<T> {
     /// Yields the value, failing if the cell is empty.
-    fn take(&self) -> T {
+    pub fn take(&self) -> T {
         let this = unsafe { transmute_mut(self) };
         if this.is_empty() {
             fail!("attempt to take an empty cell");
@@ -49,7 +51,7 @@ pub impl<T> Cell<T> {
     }
 
     /// Returns the value, failing if the cell is full.
-    fn put_back(&self, value: T) {
+    pub fn put_back(&self, value: T) {
         let this = unsafe { transmute_mut(self) };
         if !this.is_empty() {
             fail!("attempt to put a value back into a full cell");
@@ -58,20 +60,20 @@ pub impl<T> Cell<T> {
     }
 
     /// Returns true if the cell is empty and false if the cell is full.
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.value.is_none()
     }
 
-    // Calls a closure with a reference to the value.
-    fn with_ref<R>(&self, op: &fn(v: &T) -> R) -> R {
+    /// Calls a closure with a reference to the value.
+    pub fn with_ref<R>(&self, op: &fn(v: &T) -> R) -> R {
         let v = self.take();
         let r = op(&v);
         self.put_back(v);
         r
     }
 
-    // Calls a closure with a mutable reference to the value.
-    fn with_mut_ref<R>(&self, op: &fn(v: &mut T) -> R) -> R {
+    /// Calls a closure with a mutable reference to the value.
+    pub fn with_mut_ref<R>(&self, op: &fn(v: &mut T) -> R) -> R {
         let mut v = self.take();
         let r = op(&mut v);
         self.put_back(v);

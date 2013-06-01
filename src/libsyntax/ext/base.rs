@@ -219,8 +219,9 @@ pub struct ExtCtxt {
     trace_mac: @mut bool
 }
 
-pub impl ExtCtxt {
-    fn new(parse_sess: @mut parse::ParseSess, cfg: ast::crate_cfg) -> @ExtCtxt {
+impl ExtCtxt {
+    pub fn new(parse_sess: @mut parse::ParseSess, cfg: ast::crate_cfg)
+               -> @ExtCtxt {
         @ExtCtxt {
             parse_sess: parse_sess,
             cfg: cfg,
@@ -230,21 +231,21 @@ pub impl ExtCtxt {
         }
     }
 
-    fn codemap(&self) -> @CodeMap { self.parse_sess.cm }
-    fn parse_sess(&self) -> @mut parse::ParseSess { self.parse_sess }
-    fn cfg(&self) -> ast::crate_cfg { copy self.cfg }
-    fn call_site(&self) -> span {
+    pub fn codemap(&self) -> @CodeMap { self.parse_sess.cm }
+    pub fn parse_sess(&self) -> @mut parse::ParseSess { self.parse_sess }
+    pub fn cfg(&self) -> ast::crate_cfg { copy self.cfg }
+    pub fn call_site(&self) -> span {
         match *self.backtrace {
             Some(@ExpandedFrom(CallInfo {call_site: cs, _})) => cs,
             None => self.bug("missing top span")
         }
     }
-    fn print_backtrace(&self) { }
-    fn backtrace(&self) -> Option<@ExpnInfo> { *self.backtrace }
-    fn mod_push(&self, i: ast::ident) { self.mod_path.push(i); }
-    fn mod_pop(&self) { self.mod_path.pop(); }
-    fn mod_path(&self) -> ~[ast::ident] { copy *self.mod_path }
-    fn bt_push(&self, ei: codemap::ExpnInfo) {
+    pub fn print_backtrace(&self) { }
+    pub fn backtrace(&self) -> Option<@ExpnInfo> { *self.backtrace }
+    pub fn mod_push(&self, i: ast::ident) { self.mod_path.push(i); }
+    pub fn mod_pop(&self) { self.mod_path.pop(); }
+    pub fn mod_path(&self) -> ~[ast::ident] { copy *self.mod_path }
+    pub fn bt_push(&self, ei: codemap::ExpnInfo) {
         match ei {
             ExpandedFrom(CallInfo {call_site: cs, callee: ref callee}) => {
                 *self.backtrace =
@@ -255,7 +256,7 @@ pub impl ExtCtxt {
             }
         }
     }
-    fn bt_pop(&self) {
+    pub fn bt_pop(&self) {
         match *self.backtrace {
             Some(@ExpandedFrom(
                 CallInfo {
@@ -266,43 +267,43 @@ pub impl ExtCtxt {
             _ => self.bug("tried to pop without a push")
         }
     }
-    fn span_fatal(&self, sp: span, msg: &str) -> ! {
+    pub fn span_fatal(&self, sp: span, msg: &str) -> ! {
         self.print_backtrace();
         self.parse_sess.span_diagnostic.span_fatal(sp, msg);
     }
-    fn span_err(&self, sp: span, msg: &str) {
+    pub fn span_err(&self, sp: span, msg: &str) {
         self.print_backtrace();
         self.parse_sess.span_diagnostic.span_err(sp, msg);
     }
-    fn span_warn(&self, sp: span, msg: &str) {
+    pub fn span_warn(&self, sp: span, msg: &str) {
         self.print_backtrace();
         self.parse_sess.span_diagnostic.span_warn(sp, msg);
     }
-    fn span_unimpl(&self, sp: span, msg: &str) -> ! {
+    pub fn span_unimpl(&self, sp: span, msg: &str) -> ! {
         self.print_backtrace();
         self.parse_sess.span_diagnostic.span_unimpl(sp, msg);
     }
-    fn span_bug(&self, sp: span, msg: &str) -> ! {
+    pub fn span_bug(&self, sp: span, msg: &str) -> ! {
         self.print_backtrace();
         self.parse_sess.span_diagnostic.span_bug(sp, msg);
     }
-    fn bug(&self, msg: &str) -> ! {
+    pub fn bug(&self, msg: &str) -> ! {
         self.print_backtrace();
         self.parse_sess.span_diagnostic.handler().bug(msg);
     }
-    fn next_id(&self) -> ast::node_id {
+    pub fn next_id(&self) -> ast::node_id {
         parse::next_node_id(self.parse_sess)
     }
-    fn trace_macros(&self) -> bool {
+    pub fn trace_macros(&self) -> bool {
         *self.trace_mac
     }
-    fn set_trace_macros(&self, x: bool) {
+    pub fn set_trace_macros(&self, x: bool) {
         *self.trace_mac = x
     }
-    fn str_of(&self, id: ast::ident) -> ~str {
+    pub fn str_of(&self, id: ast::ident) -> ~str {
         copy *self.parse_sess.interner.get(id)
     }
-    fn ident_of(&self, st: &str) -> ast::ident {
+    pub fn ident_of(&self, st: &str) -> ast::ident {
         self.parse_sess.interner.intern(st)
     }
 }
@@ -436,7 +437,7 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
     }
 
 // traits just don't work anywhere...?
-//pub impl Map<Name,SyntaxExtension> for MapChain {
+//impl Map<Name,SyntaxExtension> for MapChain {
 
     fn contains_key (&self, key: &K) -> bool {
         match *self {

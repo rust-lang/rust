@@ -98,12 +98,12 @@ pub fn resolver(infcx: @mut InferCtxt, modes: uint) -> ResolveState {
     }
 }
 
-pub impl ResolveState {
-    fn should(&mut self, mode: uint) -> bool {
+impl ResolveState {
+    pub fn should(&mut self, mode: uint) -> bool {
         (self.modes & mode) == mode
     }
 
-    fn resolve_type_chk(&mut self, typ: ty::t) -> fres<ty::t> {
+    pub fn resolve_type_chk(&mut self, typ: ty::t) -> fres<ty::t> {
         self.err = None;
 
         debug!("Resolving %s (modes=%x)",
@@ -128,7 +128,8 @@ pub impl ResolveState {
         }
     }
 
-    fn resolve_region_chk(&mut self, orig: ty::Region) -> fres<ty::Region> {
+    pub fn resolve_region_chk(&mut self, orig: ty::Region)
+                              -> fres<ty::Region> {
         self.err = None;
         let resolved = indent(|| self.resolve_region(orig) );
         match self.err {
@@ -137,7 +138,7 @@ pub impl ResolveState {
         }
     }
 
-    fn resolve_type(&mut self, typ: ty::t) -> ty::t {
+    pub fn resolve_type(&mut self, typ: ty::t) -> ty::t {
         debug!("resolve_type(%s)", typ.inf_str(self.infcx));
         let _i = indenter();
 
@@ -179,7 +180,7 @@ pub impl ResolveState {
         }
     }
 
-    fn resolve_region(&mut self, orig: ty::Region) -> ty::Region {
+    pub fn resolve_region(&mut self, orig: ty::Region) -> ty::Region {
         debug!("Resolve_region(%s)", orig.inf_str(self.infcx));
         match orig {
           ty::re_infer(ty::ReVar(rid)) => self.resolve_region_var(rid),
@@ -187,14 +188,14 @@ pub impl ResolveState {
         }
     }
 
-    fn resolve_region_var(&mut self, rid: RegionVid) -> ty::Region {
+    pub fn resolve_region_var(&mut self, rid: RegionVid) -> ty::Region {
         if !self.should(resolve_rvar) {
             return ty::re_infer(ty::ReVar(rid));
         }
         self.infcx.region_vars.resolve_var(rid)
     }
 
-    fn assert_not_rvar(&mut self, rid: RegionVid, r: ty::Region) {
+    pub fn assert_not_rvar(&mut self, rid: RegionVid, r: ty::Region) {
         match r {
           ty::re_infer(ty::ReVar(rid2)) => {
             self.err = Some(region_var_bound_by_region_var(rid, rid2));
@@ -203,7 +204,7 @@ pub impl ResolveState {
         }
     }
 
-    fn resolve_ty_var(&mut self, vid: TyVid) -> ty::t {
+    pub fn resolve_ty_var(&mut self, vid: TyVid) -> ty::t {
         if vec::contains(self.v_seen, &vid) {
             self.err = Some(cyclic_ty(vid));
             return ty::mk_var(self.infcx.tcx, vid);
@@ -237,7 +238,7 @@ pub impl ResolveState {
         }
     }
 
-    fn resolve_int_var(&mut self, vid: IntVid) -> ty::t {
+    pub fn resolve_int_var(&mut self, vid: IntVid) -> ty::t {
         if !self.should(resolve_ivar) {
             return ty::mk_int_var(self.infcx.tcx, vid);
         }
@@ -260,7 +261,7 @@ pub impl ResolveState {
         }
     }
 
-    fn resolve_float_var(&mut self, vid: FloatVid) -> ty::t {
+    pub fn resolve_float_var(&mut self, vid: FloatVid) -> ty::t {
         if !self.should(resolve_fvar) {
             return ty::mk_float_var(self.infcx.tcx, vid);
         }

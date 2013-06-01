@@ -179,8 +179,8 @@ pub struct Candidate {
     origin: method_origin,
 }
 
-pub impl<'self> LookupContext<'self> {
-    fn do_lookup(&self, self_ty: ty::t) -> Option<method_map_entry> {
+impl<'self> LookupContext<'self> {
+    pub fn do_lookup(&self, self_ty: ty::t) -> Option<method_map_entry> {
         let self_ty = structurally_resolved_type(self.fcx,
                                                      self.self_expr.span,
                                                      self_ty);
@@ -248,8 +248,8 @@ pub impl<'self> LookupContext<'self> {
         self.search_for_autosliced_method(self_ty, autoderefs)
     }
 
-    fn deref(&self, ty: ty::t, enum_dids: &mut ~[ast::def_id])
-            -> Option<ty::t> {
+    pub fn deref(&self, ty: ty::t, enum_dids: &mut ~[ast::def_id])
+                 -> Option<ty::t> {
         match ty::get(ty).sty {
             ty_enum(did, _) => {
                 // Watch out for newtype'd enums like "enum t = @T".
@@ -275,7 +275,7 @@ pub impl<'self> LookupContext<'self> {
     // ______________________________________________________________________
     // Candidate collection (see comment at start of file)
 
-    fn push_inherent_candidates(&self, self_ty: ty::t) {
+    pub fn push_inherent_candidates(&self, self_ty: ty::t) {
         /*!
          * Collect all inherent candidates into
          * `self.inherent_candidates`.  See comment at the start of
@@ -326,7 +326,7 @@ pub impl<'self> LookupContext<'self> {
         }
     }
 
-    fn push_extension_candidates(&self, self_ty: ty::t) {
+    pub fn push_extension_candidates(&self, self_ty: ty::t) {
         // If the method being called is associated with a trait, then
         // find all the impls of that trait.  Each of those are
         // candidates.
@@ -359,9 +359,9 @@ pub impl<'self> LookupContext<'self> {
         }
     }
 
-    fn push_inherent_candidates_from_param(&self,
-                                           rcvr_ty: ty::t,
-                                           param_ty: param_ty) {
+    pub fn push_inherent_candidates_from_param(&self,
+                                               rcvr_ty: ty::t,
+                                               param_ty: param_ty) {
         debug!("push_inherent_candidates_from_param(param_ty=%?)",
                param_ty);
         let _indenter = indenter();
@@ -417,11 +417,11 @@ pub impl<'self> LookupContext<'self> {
         }
     }
 
-    fn push_inherent_candidates_from_trait(&self,
-                                           self_ty: ty::t,
-                                           did: def_id,
-                                           substs: &ty::substs,
-                                           store: ty::TraitStore) {
+    pub fn push_inherent_candidates_from_trait(&self,
+                                               self_ty: ty::t,
+                                               did: def_id,
+                                               substs: &ty::substs,
+                                               store: ty::TraitStore) {
         debug!("push_inherent_candidates_from_trait(did=%s, substs=%s)",
                self.did_to_str(did),
                substs_to_str(self.tcx(), substs));
@@ -469,10 +469,10 @@ pub impl<'self> LookupContext<'self> {
         });
     }
 
-    fn push_inherent_candidates_from_self(&self,
-                                          self_ty: ty::t,
-                                          did: def_id,
-                                          substs: &ty::substs) {
+    pub fn push_inherent_candidates_from_self(&self,
+                                              self_ty: ty::t,
+                                              did: def_id,
+                                              substs: &ty::substs) {
         struct MethodInfo {
             method_ty: @ty::Method,
             trait_def_id: ast::def_id,
@@ -533,7 +533,7 @@ pub impl<'self> LookupContext<'self> {
         }
     }
 
-    fn push_inherent_impl_candidates_for_type(&self, did: def_id) {
+    pub fn push_inherent_impl_candidates_for_type(&self, did: def_id) {
         let opt_impl_infos =
             self.fcx.ccx.coherence_info.inherent_methods.find(&did);
         for opt_impl_infos.each |impl_infos| {
@@ -544,8 +544,9 @@ pub impl<'self> LookupContext<'self> {
         }
     }
 
-    fn push_candidates_from_impl(&self, candidates: &mut ~[Candidate],
-                                 impl_info: &resolve::Impl) {
+    pub fn push_candidates_from_impl(&self,
+                                     candidates: &mut ~[Candidate],
+                                     impl_info: &resolve::Impl) {
         if !self.impl_dups.insert(impl_info.did) {
             return; // already visited
         }
@@ -579,12 +580,14 @@ pub impl<'self> LookupContext<'self> {
         });
     }
 
-    fn push_candidates_from_provided_methods(
-            &self,
-            candidates: &mut ~[Candidate],
-            self_ty: ty::t,
-            trait_def_id: def_id,
-            methods: &mut ~[@ProvidedMethodInfo]) {
+    pub fn push_candidates_from_provided_methods(&self,
+                                                 candidates:
+                                                 &mut ~[Candidate],
+                                                 self_ty: ty::t,
+                                                 trait_def_id: def_id,
+                                                 methods:
+                                                 &mut ~[@ProvidedMethodInfo])
+                                                 {
         debug!("(pushing candidates from provided methods) considering trait \
                 id %d:%d",
                trait_def_id.crate,
@@ -618,12 +621,10 @@ pub impl<'self> LookupContext<'self> {
     // ______________________________________________________________________
     // Candidate selection (see comment at start of file)
 
-    fn search_for_autoderefd_method(
-        &self,
-        self_ty: ty::t,
-        autoderefs: uint)
-        -> Option<method_map_entry>
-    {
+    pub fn search_for_autoderefd_method(&self,
+                                        self_ty: ty::t,
+                                        autoderefs: uint)
+                                        -> Option<method_map_entry> {
         let (self_ty, autoadjust) =
             self.consider_reborrow(self_ty, autoderefs);
         match self.search_for_method(self_ty) {
@@ -639,10 +640,10 @@ pub impl<'self> LookupContext<'self> {
         }
     }
 
-    fn consider_reborrow(&self,
-                         self_ty: ty::t,
-                         autoderefs: uint) -> (ty::t, ty::AutoAdjustment)
-    {
+    pub fn consider_reborrow(&self,
+                             self_ty: ty::t,
+                             autoderefs: uint)
+                             -> (ty::t, ty::AutoAdjustment) {
         /*!
          *
          * In the event that we are invoking a method with a receiver
@@ -702,12 +703,10 @@ pub impl<'self> LookupContext<'self> {
         }
     }
 
-    fn search_for_autosliced_method(
-        &self,
-        self_ty: ty::t,
-        autoderefs: uint)
-        -> Option<method_map_entry>
-    {
+    pub fn search_for_autosliced_method(&self,
+                                        self_ty: ty::t,
+                                        autoderefs: uint)
+                                        -> Option<method_map_entry> {
         /*!
          *
          * Searches for a candidate by converting things like
@@ -770,12 +769,8 @@ pub impl<'self> LookupContext<'self> {
         }
     }
 
-    fn search_for_autoptrd_method(
-        &self,
-        self_ty: ty::t,
-        autoderefs: uint)
-        -> Option<method_map_entry>
-    {
+    pub fn search_for_autoptrd_method(&self, self_ty: ty::t, autoderefs: uint)
+                                      -> Option<method_map_entry> {
         /*!
          *
          * Converts any type `T` to `&M T` where `M` is an
@@ -806,14 +801,13 @@ pub impl<'self> LookupContext<'self> {
         }
     }
 
-    fn search_for_some_kind_of_autorefd_method(
+    pub fn search_for_some_kind_of_autorefd_method(
         &self,
         kind: &fn(Region, ast::mutability) -> ty::AutoRef,
         autoderefs: uint,
         mutbls: &[ast::mutability],
         mk_autoref_ty: &fn(ast::mutability, ty::Region) -> ty::t)
-        -> Option<method_map_entry>
-    {
+        -> Option<method_map_entry> {
         // This is hokey. We should have mutability inference as a
         // variable.  But for now, try &const, then &, then &mut:
         let region = self.infcx().next_region_var_nb(self.expr.span);
@@ -834,10 +828,8 @@ pub impl<'self> LookupContext<'self> {
         return None;
     }
 
-    fn search_for_method(&self,
-                         rcvr_ty: ty::t)
-        -> Option<method_map_entry>
-    {
+    pub fn search_for_method(&self, rcvr_ty: ty::t)
+                             -> Option<method_map_entry> {
         debug!("search_for_method(rcvr_ty=%s)", self.ty_to_str(rcvr_ty));
         let _indenter = indenter();
 
@@ -864,11 +856,10 @@ pub impl<'self> LookupContext<'self> {
         }
     }
 
-    fn consider_candidates(&self,
-                           rcvr_ty: ty::t,
-                           candidates: &mut ~[Candidate])
-        -> Option<method_map_entry>
-    {
+    pub fn consider_candidates(&self,
+                               rcvr_ty: ty::t,
+                               candidates: &mut ~[Candidate])
+                               -> Option<method_map_entry> {
         let relevant_candidates =
             candidates.filter_to_vec(|c| self.is_relevant(rcvr_ty, c));
 
@@ -890,7 +881,7 @@ pub impl<'self> LookupContext<'self> {
         Some(self.confirm_candidate(rcvr_ty, &relevant_candidates[0]))
     }
 
-    fn merge_candidates(&self, candidates: &[Candidate]) -> ~[Candidate] {
+    pub fn merge_candidates(&self, candidates: &[Candidate]) -> ~[Candidate] {
         let mut merged = ~[];
         let mut i = 0;
         while i < candidates.len() {
@@ -936,11 +927,8 @@ pub impl<'self> LookupContext<'self> {
         return merged;
     }
 
-    fn confirm_candidate(&self,
-                         rcvr_ty: ty::t,
-                         candidate: &Candidate)
-        -> method_map_entry
-    {
+    pub fn confirm_candidate(&self, rcvr_ty: ty::t, candidate: &Candidate)
+                             -> method_map_entry {
         let tcx = self.tcx();
         let fty = self.fn_ty_from_origin(&candidate.origin);
 
@@ -1065,10 +1053,9 @@ pub impl<'self> LookupContext<'self> {
         }
     }
 
-    fn enforce_trait_instance_limitations(&self,
-                                          method_fty: ty::t,
-                                          candidate: &Candidate)
-    {
+    pub fn enforce_trait_instance_limitations(&self,
+                                              method_fty: ty::t,
+                                              candidate: &Candidate) {
         /*!
          *
          * There are some limitations to calling functions through a
@@ -1099,7 +1086,7 @@ pub impl<'self> LookupContext<'self> {
         }
     }
 
-    fn enforce_drop_trait_limitations(&self, candidate: &Candidate) {
+    pub fn enforce_drop_trait_limitations(&self, candidate: &Candidate) {
         // No code can call the finalize method explicitly.
         let bad;
         match candidate.origin {
@@ -1121,7 +1108,7 @@ pub impl<'self> LookupContext<'self> {
 
     // `rcvr_ty` is the type of the expression. It may be a subtype of a
     // candidate method's `self_ty`.
-    fn is_relevant(&self, rcvr_ty: ty::t, candidate: &Candidate) -> bool {
+    pub fn is_relevant(&self, rcvr_ty: ty::t, candidate: &Candidate) -> bool {
         debug!("is_relevant(rcvr_ty=%s, candidate=%s)",
                self.ty_to_str(rcvr_ty), self.cand_to_str(candidate));
 
@@ -1208,7 +1195,7 @@ pub impl<'self> LookupContext<'self> {
         }
     }
 
-    fn fn_ty_from_origin(&self, origin: &method_origin) -> ty::t {
+    pub fn fn_ty_from_origin(&self, origin: &method_origin) -> ty::t {
         return match *origin {
             method_static(did) => {
                 ty::lookup_item_type(self.tcx(), did).ty
@@ -1230,7 +1217,7 @@ pub impl<'self> LookupContext<'self> {
         }
     }
 
-    fn report_candidate(&self, idx: uint, origin: &method_origin) {
+    pub fn report_candidate(&self, idx: uint, origin: &method_origin) {
         match *origin {
             method_static(impl_did) => {
                 self.report_static_candidate(idx, impl_did)
@@ -1245,7 +1232,7 @@ pub impl<'self> LookupContext<'self> {
         }
     }
 
-    fn report_static_candidate(&self, idx: uint, did: def_id) {
+    pub fn report_static_candidate(&self, idx: uint, did: def_id) {
         let span = if did.crate == ast::local_crate {
             match self.tcx().items.find(&did.node) {
               Some(&ast_map::node_method(m, _, _)) => m.span,
@@ -1261,7 +1248,7 @@ pub impl<'self> LookupContext<'self> {
                  ty::item_path_str(self.tcx(), did)));
     }
 
-    fn report_param_candidate(&self, idx: uint, did: def_id) {
+    pub fn report_param_candidate(&self, idx: uint, did: def_id) {
         self.tcx().sess.span_note(
             self.expr.span,
             fmt!("candidate #%u derives from the bound `%s`",
@@ -1269,7 +1256,7 @@ pub impl<'self> LookupContext<'self> {
                  ty::item_path_str(self.tcx(), did)));
     }
 
-    fn report_trait_candidate(&self, idx: uint, did: def_id) {
+    pub fn report_trait_candidate(&self, idx: uint, did: def_id) {
         self.tcx().sess.span_note(
             self.expr.span,
             fmt!("candidate #%u derives from the type of the receiver, \
@@ -1278,30 +1265,30 @@ pub impl<'self> LookupContext<'self> {
                  ty::item_path_str(self.tcx(), did)));
     }
 
-    fn infcx(&self) -> @mut infer::InferCtxt {
+    pub fn infcx(&self) -> @mut infer::InferCtxt {
         self.fcx.inh.infcx
     }
 
-    fn tcx(&self) -> ty::ctxt {
+    pub fn tcx(&self) -> ty::ctxt {
         self.fcx.tcx()
     }
 
-    fn ty_to_str(&self, t: ty::t) -> ~str {
+    pub fn ty_to_str(&self, t: ty::t) -> ~str {
         self.fcx.infcx().ty_to_str(t)
     }
 
-    fn cand_to_str(&self, cand: &Candidate) -> ~str {
+    pub fn cand_to_str(&self, cand: &Candidate) -> ~str {
         fmt!("Candidate(rcvr_ty=%s, rcvr_substs=%s, origin=%?)",
              self.ty_to_str(cand.rcvr_ty),
              ty::substs_to_str(self.tcx(), &cand.rcvr_substs),
              cand.origin)
     }
 
-    fn did_to_str(&self, did: def_id) -> ~str {
+    pub fn did_to_str(&self, did: def_id) -> ~str {
         ty::item_path_str(self.tcx(), did)
     }
 
-    fn bug(&self, s: ~str) -> ! {
+    pub fn bug(&self, s: ~str) -> ! {
         self.tcx().sess.bug(s)
     }
 }

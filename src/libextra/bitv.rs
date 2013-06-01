@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use core::cmp;
@@ -26,14 +28,17 @@ fn small_mask(nbits: uint) -> uint {
     (1 << nbits) - 1
 }
 
-pub impl SmallBitv {
-    fn new(bits: uint) -> SmallBitv {
+impl SmallBitv {
+    pub fn new(bits: uint) -> SmallBitv {
         SmallBitv {bits: bits}
     }
 
     #[inline(always)]
-    fn bits_op(&mut self, right_bits: uint, nbits: uint,
-               f: &fn(uint, uint) -> uint) -> bool {
+    pub fn bits_op(&mut self,
+                   right_bits: uint,
+                   nbits: uint,
+                   f: &fn(uint, uint) -> uint)
+                   -> bool {
         let mask = small_mask(nbits);
         let old_b: uint = self.bits;
         let new_b = f(old_b, right_bits);
@@ -42,32 +47,32 @@ pub impl SmallBitv {
     }
 
     #[inline(always)]
-    fn union(&mut self, s: &SmallBitv, nbits: uint) -> bool {
+    pub fn union(&mut self, s: &SmallBitv, nbits: uint) -> bool {
         self.bits_op(s.bits, nbits, |u1, u2| u1 | u2)
     }
 
     #[inline(always)]
-    fn intersect(&mut self, s: &SmallBitv, nbits: uint) -> bool {
+    pub fn intersect(&mut self, s: &SmallBitv, nbits: uint) -> bool {
         self.bits_op(s.bits, nbits, |u1, u2| u1 & u2)
     }
 
     #[inline(always)]
-    fn become(&mut self, s: &SmallBitv, nbits: uint) -> bool {
+    pub fn become(&mut self, s: &SmallBitv, nbits: uint) -> bool {
         self.bits_op(s.bits, nbits, |_u1, u2| u2)
     }
 
     #[inline(always)]
-    fn difference(&mut self, s: &SmallBitv, nbits: uint) -> bool {
+    pub fn difference(&mut self, s: &SmallBitv, nbits: uint) -> bool {
         self.bits_op(s.bits, nbits, |u1, u2| u1 & !u2)
     }
 
     #[inline(always)]
-    fn get(&self, i: uint) -> bool {
+    pub fn get(&self, i: uint) -> bool {
         (self.bits & (1 << i)) != 0
     }
 
     #[inline(always)]
-    fn set(&mut self, i: uint, x: bool) {
+    pub fn set(&mut self, i: uint, x: bool) {
         if x {
             self.bits |= 1<<i;
         }
@@ -77,30 +82,29 @@ pub impl SmallBitv {
     }
 
     #[inline(always)]
-    fn equals(&self, b: &SmallBitv, nbits: uint) -> bool {
+    pub fn equals(&self, b: &SmallBitv, nbits: uint) -> bool {
         let mask = small_mask(nbits);
         mask & self.bits == mask & b.bits
     }
 
     #[inline(always)]
-    fn clear(&mut self) { self.bits = 0; }
+    pub fn clear(&mut self) { self.bits = 0; }
 
     #[inline(always)]
-    fn set_all(&mut self) { self.bits = !0; }
+    pub fn set_all(&mut self) { self.bits = !0; }
 
     #[inline(always)]
-    fn is_true(&self, nbits: uint) -> bool {
+    pub fn is_true(&self, nbits: uint) -> bool {
         small_mask(nbits) & !self.bits == 0
     }
 
     #[inline(always)]
-    fn is_false(&self, nbits: uint) -> bool {
+    pub fn is_false(&self, nbits: uint) -> bool {
         small_mask(nbits) & self.bits == 0
     }
 
     #[inline(always)]
-    fn invert(&mut self) { self.bits = !self.bits; }
-
+    pub fn invert(&mut self) { self.bits = !self.bits; }
 }
 
 struct BigBitv {
@@ -123,14 +127,17 @@ fn big_mask(nbits: uint, elem: uint) -> uint {
     }
 }
 
-pub impl BigBitv {
-    fn new(storage: ~[uint]) -> BigBitv {
+impl BigBitv {
+    pub fn new(storage: ~[uint]) -> BigBitv {
         BigBitv {storage: storage}
     }
 
     #[inline(always)]
-    fn process(&mut self, b: &BigBitv, nbits: uint,
-               op: &fn(uint, uint) -> uint) -> bool {
+    pub fn process(&mut self,
+                   b: &BigBitv,
+                   nbits: uint,
+                   op: &fn(uint, uint) -> uint)
+                   -> bool {
         let len = b.storage.len();
         assert_eq!(self.storage.len(), len);
         let mut changed = false;
@@ -148,35 +155,35 @@ pub impl BigBitv {
     }
 
     #[inline(always)]
-    fn each_storage(&mut self, op: &fn(v: &mut uint) -> bool) -> bool {
+    pub fn each_storage(&mut self, op: &fn(v: &mut uint) -> bool) -> bool {
         uint::range(0, self.storage.len(), |i| op(&mut self.storage[i]))
     }
 
     #[inline(always)]
-    fn invert(&mut self) { for self.each_storage |w| { *w = !*w } }
+    pub fn invert(&mut self) { for self.each_storage |w| { *w = !*w } }
 
     #[inline(always)]
-    fn union(&mut self, b: &BigBitv, nbits: uint) -> bool {
+    pub fn union(&mut self, b: &BigBitv, nbits: uint) -> bool {
         self.process(b, nbits, |w1, w2| w1 | w2)
     }
 
     #[inline(always)]
-    fn intersect(&mut self, b: &BigBitv, nbits: uint) -> bool {
+    pub fn intersect(&mut self, b: &BigBitv, nbits: uint) -> bool {
         self.process(b, nbits, |w1, w2| w1 & w2)
     }
 
     #[inline(always)]
-    fn become(&mut self, b: &BigBitv, nbits: uint) -> bool {
+    pub fn become(&mut self, b: &BigBitv, nbits: uint) -> bool {
         self.process(b, nbits, |_, w| w)
     }
 
     #[inline(always)]
-    fn difference(&mut self, b: &BigBitv, nbits: uint) -> bool {
+    pub fn difference(&mut self, b: &BigBitv, nbits: uint) -> bool {
         self.process(b, nbits, |w1, w2| w1 & !w2)
     }
 
     #[inline(always)]
-    fn get(&self, i: uint) -> bool {
+    pub fn get(&self, i: uint) -> bool {
         let w = i / uint::bits;
         let b = i % uint::bits;
         let x = 1 & self.storage[w] >> b;
@@ -184,7 +191,7 @@ pub impl BigBitv {
     }
 
     #[inline(always)]
-    fn set(&mut self, i: uint, x: bool) {
+    pub fn set(&mut self, i: uint, x: bool) {
         let w = i / uint::bits;
         let b = i % uint::bits;
         let flag = 1 << b;
@@ -193,7 +200,7 @@ pub impl BigBitv {
     }
 
     #[inline(always)]
-    fn equals(&self, b: &BigBitv, nbits: uint) -> bool {
+    pub fn equals(&self, b: &BigBitv, nbits: uint) -> bool {
         let len = b.storage.len();
         for uint::iterate(0, len) |i| {
             let mask = big_mask(nbits, i);
@@ -203,7 +210,6 @@ pub impl BigBitv {
         }
         return true;
     }
-
 }
 
 enum BitvVariant { Big(~BigBitv), Small(~SmallBitv) }
@@ -222,8 +228,7 @@ fn die() -> ! {
     fail!("Tried to do operation on bit vectors with different sizes");
 }
 
-priv impl Bitv {
-
+impl Bitv {
     #[inline(always)]
     fn do_op(&mut self, op: Op, other: &Bitv) -> bool {
         if self.nbits != other.nbits {
@@ -253,8 +258,8 @@ priv impl Bitv {
 
 }
 
-pub impl Bitv {
-    fn new(nbits: uint, init: bool) -> Bitv {
+impl Bitv {
+    pub fn new(nbits: uint, init: bool) -> Bitv {
         let rep = if nbits <= uint::bits {
             Small(~SmallBitv::new(if init {!0} else {0}))
         }
@@ -275,7 +280,7 @@ pub impl Bitv {
      * the same length. Returns 'true' if `self` changed.
     */
     #[inline(always)]
-    fn union(&mut self, v1: &Bitv) -> bool { self.do_op(Union, v1) }
+    pub fn union(&mut self, v1: &Bitv) -> bool { self.do_op(Union, v1) }
 
     /**
      * Calculates the intersection of two bitvectors
@@ -284,7 +289,9 @@ pub impl Bitv {
      * must be the same length. Returns 'true' if `self` changed.
     */
     #[inline(always)]
-    fn intersect(&mut self, v1: &Bitv) -> bool { self.do_op(Intersect, v1) }
+    pub fn intersect(&mut self, v1: &Bitv) -> bool {
+        self.do_op(Intersect, v1)
+    }
 
     /**
      * Assigns the value of `v1` to `self`
@@ -293,16 +300,16 @@ pub impl Bitv {
      * changed
      */
     #[inline(always)]
-    fn assign(&mut self, v: &Bitv) -> bool { self.do_op(Assign, v) }
+    pub fn assign(&mut self, v: &Bitv) -> bool { self.do_op(Assign, v) }
 
     /// Retrieve the value at index `i`
     #[inline(always)]
-    fn get(&self, i: uint) -> bool {
-       assert!((i < self.nbits));
-       match self.rep {
-         Big(ref b)   => b.get(i),
-         Small(ref s) => s.get(i)
-       }
+    pub fn get(&self, i: uint) -> bool {
+        assert!((i < self.nbits));
+        match self.rep {
+            Big(ref b)   => b.get(i),
+            Small(ref s) => s.get(i)
+        }
     }
 
     /**
@@ -311,7 +318,7 @@ pub impl Bitv {
      * `i` must be less than the length of the bitvector.
      */
     #[inline(always)]
-    fn set(&mut self, i: uint, x: bool) {
+    pub fn set(&mut self, i: uint, x: bool) {
       assert!((i < self.nbits));
       match self.rep {
         Big(ref mut b)   => b.set(i, x),
@@ -326,7 +333,7 @@ pub impl Bitv {
      * bitvectors contain identical elements.
      */
     #[inline(always)]
-    fn equal(&self, v1: &Bitv) -> bool {
+    pub fn equal(&self, v1: &Bitv) -> bool {
       if self.nbits != v1.nbits { return false; }
       match self.rep {
         Small(ref b) => match v1.rep {
@@ -342,7 +349,7 @@ pub impl Bitv {
 
     /// Set all bits to 0
     #[inline(always)]
-    fn clear(&mut self) {
+    pub fn clear(&mut self) {
         match self.rep {
           Small(ref mut b) => b.clear(),
           Big(ref mut s) => for s.each_storage() |w| { *w = 0u }
@@ -351,7 +358,7 @@ pub impl Bitv {
 
     /// Set all bits to 1
     #[inline(always)]
-    fn set_all(&mut self) {
+    pub fn set_all(&mut self) {
       match self.rep {
         Small(ref mut b) => b.set_all(),
         Big(ref mut s) => for s.each_storage() |w| { *w = !0u } }
@@ -359,7 +366,7 @@ pub impl Bitv {
 
     /// Invert all bits
     #[inline(always)]
-    fn invert(&mut self) {
+    pub fn invert(&mut self) {
       match self.rep {
         Small(ref mut b) => b.invert(),
         Big(ref mut s) => for s.each_storage() |w| { *w = !*w } }
@@ -375,11 +382,13 @@ pub impl Bitv {
      * Returns `true` if `v0` was changed.
      */
     #[inline(always)]
-    fn difference(&mut self, v: &Bitv) -> bool { self.do_op(Difference, v) }
+    pub fn difference(&mut self, v: &Bitv) -> bool {
+        self.do_op(Difference, v)
+    }
 
     /// Returns true if all bits are 1
     #[inline(always)]
-    fn is_true(&self) -> bool {
+    pub fn is_true(&self) -> bool {
       match self.rep {
         Small(ref b) => b.is_true(self.nbits),
         _ => {
@@ -390,7 +399,7 @@ pub impl Bitv {
     }
 
     #[inline(always)]
-    fn each(&self, f: &fn(bool) -> bool) -> bool {
+    pub fn each(&self, f: &fn(bool) -> bool) -> bool {
         let mut i = 0;
         while i < self.nbits {
             if !f(self.get(i)) { return false; }
@@ -400,7 +409,7 @@ pub impl Bitv {
     }
 
     /// Returns true if all bits are 0
-    fn is_false(&self) -> bool {
+    pub fn is_false(&self) -> bool {
       match self.rep {
         Small(ref b) => b.is_false(self.nbits),
         Big(_) => {
@@ -410,7 +419,7 @@ pub impl Bitv {
       }
     }
 
-    fn init_to_vec(&self, i: uint) -> uint {
+    pub fn init_to_vec(&self, i: uint) -> uint {
       return if self.get(i) { 1 } else { 0 };
     }
 
@@ -419,7 +428,7 @@ pub impl Bitv {
      *
      * Each uint in the resulting vector has either value 0u or 1u.
      */
-    fn to_vec(&self) -> ~[uint] {
+    pub fn to_vec(&self) -> ~[uint] {
         vec::from_fn(self.nbits, |x| self.init_to_vec(x))
     }
 
@@ -429,8 +438,7 @@ pub impl Bitv {
      * size of the bitv is not a multiple of 8 then trailing bits
      * will be filled-in with false/0
      */
-    fn to_bytes(&self) -> ~[u8] {
-
+    pub fn to_bytes(&self) -> ~[u8] {
         fn bit (bitv: &Bitv, byte: uint, bit: uint) -> u8 {
             let offset = byte * 8 + bit;
             if offset >= bitv.nbits {
@@ -457,7 +465,7 @@ pub impl Bitv {
     /**
      * Transform self into a [bool] by turning each bit into a bool
      */
-    fn to_bools(&self) -> ~[bool] {
+    pub fn to_bools(&self) -> ~[bool] {
         vec::from_fn(self.nbits, |i| self[i])
     }
 
@@ -467,7 +475,7 @@ pub impl Bitv {
      * The resulting string has the same length as `self`, and each
      * character is either '0' or '1'.
      */
-     fn to_str(&self) -> ~str {
+     pub fn to_str(&self) -> ~str {
        let mut rs = ~"";
        for self.each() |i| { if i { rs += "1"; } else { rs += "0"; } };
        rs
@@ -480,7 +488,7 @@ pub impl Bitv {
      * The uint vector is expected to only contain the values 0u and 1u. Both
      * the bitvector and vector must have the same length
      */
-    fn eq_vec(&self, v: ~[uint]) -> bool {
+    pub fn eq_vec(&self, v: ~[uint]) -> bool {
         assert_eq!(self.nbits, v.len());
         let mut i = 0;
         while i < self.nbits {
@@ -492,7 +500,7 @@ pub impl Bitv {
         true
     }
 
-    fn ones(&self, f: &fn(uint) -> bool) -> bool {
+    pub fn ones(&self, f: &fn(uint) -> bool) -> bool {
         uint::range(0, self.nbits, |i| !self.get(i) || f(i))
     }
 
@@ -514,7 +522,6 @@ impl Clone for Bitv {
           }
         }
     }
-
 }
 
 /**
@@ -585,14 +592,14 @@ pub struct BitvSet {
     priv bitv: BigBitv
 }
 
-pub impl BitvSet {
+impl BitvSet {
     /// Creates a new bit vector set with initially no contents
-    fn new() -> BitvSet {
+    pub fn new() -> BitvSet {
         BitvSet{ size: 0, bitv: BigBitv::new(~[0]) }
     }
 
     /// Creates a new bit vector set from the given bit vector
-    fn from_bitv(bitv: Bitv) -> BitvSet {
+    pub fn from_bitv(bitv: Bitv) -> BitvSet {
         let mut size = 0;
         for bitv.ones |_| {
             size += 1;
@@ -607,17 +614,17 @@ pub impl BitvSet {
 
     /// Returns the capacity in bits for this bit vector. Inserting any
     /// element less than this amount will not trigger a resizing.
-    fn capacity(&self) -> uint { self.bitv.storage.len() * uint::bits }
+    pub fn capacity(&self) -> uint { self.bitv.storage.len() * uint::bits }
 
     /// Consumes this set to return the underlying bit vector
-    fn unwrap(self) -> Bitv {
+    pub fn unwrap(self) -> Bitv {
         let cap = self.capacity();
         let BitvSet{bitv, _} = self;
         return Bitv{ nbits:cap, rep: Big(~bitv) };
     }
 
     #[inline(always)]
-    priv fn other_op(&mut self, other: &BitvSet, f: &fn(uint, uint) -> uint) {
+    fn other_op(&mut self, other: &BitvSet, f: &fn(uint, uint) -> uint) {
         fn nbits(mut w: uint) -> uint {
             let mut bits = 0;
             for uint::bits.times {
@@ -641,22 +648,22 @@ pub impl BitvSet {
     }
 
     /// Union in-place with the specified other bit vector
-    fn union_with(&mut self, other: &BitvSet) {
+    pub fn union_with(&mut self, other: &BitvSet) {
         self.other_op(other, |w1, w2| w1 | w2);
     }
 
     /// Intersect in-place with the specified other bit vector
-    fn intersect_with(&mut self, other: &BitvSet) {
+    pub fn intersect_with(&mut self, other: &BitvSet) {
         self.other_op(other, |w1, w2| w1 & w2);
     }
 
     /// Difference in-place with the specified other bit vector
-    fn difference_with(&mut self, other: &BitvSet) {
+    pub fn difference_with(&mut self, other: &BitvSet) {
         self.other_op(other, |w1, w2| w1 & !w2);
     }
 
     /// Symmetric difference in-place with the specified other bit vector
-    fn symmetric_difference_with(&mut self, other: &BitvSet) {
+    pub fn symmetric_difference_with(&mut self, other: &BitvSet) {
         self.other_op(other, |w1, w2| w1 ^ w2);
     }
 }
@@ -810,7 +817,7 @@ impl Set<uint> for BitvSet {
     }
 }
 
-priv impl BitvSet {
+impl BitvSet {
     /// Visits each of the words that the two bit vectors (self and other)
     /// both have in common. The three yielded arguments are (bit location,
     /// w1, w2) where the bit location is the number of bits offset so far,

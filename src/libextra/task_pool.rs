@@ -42,16 +42,16 @@ impl<T> Drop for TaskPool<T> {
     }
 }
 
-pub impl<T> TaskPool<T> {
+impl<T> TaskPool<T> {
     /// Spawns a new task pool with `n_tasks` tasks. If the `sched_mode`
     /// is None, the tasks run on this scheduler; otherwise, they run on a
     /// new scheduler with the given mode. The provided `init_fn_factory`
     /// returns a function which, given the index of the task, should return
     /// local data to be kept around in that task.
-    fn new(n_tasks: uint,
-           opt_sched_mode: Option<SchedMode>,
-           init_fn_factory: ~fn() -> ~fn(uint) -> T)
-        -> TaskPool<T> {
+    pub fn new(n_tasks: uint,
+               opt_sched_mode: Option<SchedMode>,
+               init_fn_factory: ~fn() -> ~fn(uint) -> T)
+               -> TaskPool<T> {
         assert!(n_tasks >= 1);
 
         let channels = do vec::from_fn(n_tasks) |i| {
@@ -89,7 +89,7 @@ pub impl<T> TaskPool<T> {
 
     /// Executes the function `f` on a task in the pool. The function
     /// receives a reference to the local data returned by the `init_fn`.
-    fn execute(&mut self, f: ~fn(&T)) {
+    pub fn execute(&mut self, f: ~fn(&T)) {
         self.channels[self.next_index].send(Execute(f));
         self.next_index += 1;
         if self.next_index == self.channels.len() { self.next_index = 0; }
