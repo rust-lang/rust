@@ -305,6 +305,9 @@ pub fn find_linkage_metas(attrs: &[ast::attribute]) -> ~[@ast::meta_item] {
 #[deriving(Eq)]
 pub enum inline_attr {
     ia_none,
+    // just write the inlining info to crate metadata, don't hint
+    // LLVM, because that can be too forceful
+    ia_maybe,
     ia_hint,
     ia_always,
     ia_never,
@@ -317,7 +320,9 @@ pub fn find_inline_attr(attrs: &[ast::attribute]) -> inline_attr {
         match attr.node.value.node {
           ast::meta_word(@~"inline") => ia_hint,
           ast::meta_list(@~"inline", ref items) => {
-            if !find_meta_items_by_name(*items, "always").is_empty() {
+            if !find_meta_items_by_name(*items, "maybe").is_empty() {
+                ia_maybe
+            } else if !find_meta_items_by_name(*items, "always").is_empty() {
                 ia_always
             } else if !find_meta_items_by_name(*items, "never").is_empty() {
                 ia_never

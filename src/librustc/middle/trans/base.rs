@@ -457,7 +457,7 @@ pub fn set_inline_hint_if_appr(attrs: &[ast::attribute],
       attr::ia_hint => set_inline_hint(llfn),
       attr::ia_always => set_always_inline(llfn),
       attr::ia_never => set_no_inline(llfn),
-      attr::ia_none => { /* fallthrough */ }
+      attr::ia_maybe | attr::ia_none => { /* fallthrough */ }
     }
 }
 
