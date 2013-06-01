@@ -10,6 +10,8 @@
 
 pub use sub_foo::Foo;
 pub use Baz = self::Bar;
+pub use sub_foo::Boz;
+pub use sub_foo::Bort;
 
 pub trait Bar {
     pub fn bar() -> Self;
@@ -28,4 +30,24 @@ pub mod sub_foo {
         pub fn foo() -> int { 42 }
     }
 
+    pub struct Boz {
+        unused_str: ~str
+    }
+
+    pub impl Boz {
+        pub fn boz(i: int) -> bool {
+            i > 0
+        }
+    }
+
+    pub enum Bort {
+        Bort1,
+        Bort2
+    }
+
+    pub impl Bort {
+        pub fn bort() -> ~str {
+            ~"bort()"
+        }
+    }
 }
