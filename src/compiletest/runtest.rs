@@ -781,7 +781,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
 
     let mut exitcode : int = 0;
     for str::each_char(exitcode_out) |c| {
-        if !char::is_digit(c) { break; }
+        if !c.is_digit() { break; }
         exitcode = exitcode * 10 + match c {
             '0' .. '9' => c as int - ('0' as int),
             _ => 101,
