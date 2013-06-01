@@ -205,8 +205,53 @@ extern {
     fn rust_unlock_little_lock(lock: rust_little_lock);
 }
 
+/* *********************************************************************/
+
+//FIXME: #5042 This should be replaced by proper atomic type
+pub struct AtomicUint {
+    priv inner: uint
+}
+
+impl AtomicUint {
+    pub fn new(val: uint) -> AtomicUint { AtomicUint { inner: val } }
+    pub fn load(&self) -> uint {
+        unsafe { intrinsics::atomic_load(cast::transmute(self)) as uint }
+    }
+    pub fn store(&mut self, val: uint) {
+        unsafe { intrinsics::atomic_store(cast::transmute(self), val as int); }
+    }
+    pub fn add(&mut self, val: int) -> uint {
+        unsafe { intrinsics::atomic_xadd(cast::transmute(self), val as int) as uint }
+    }
+    pub fn cas(&mut self, old:uint, new: uint) -> uint {
+        unsafe { intrinsics::atomic_cxchg(cast::transmute(self), old as int, new as int) as uint }
+    }
+}
+
+pub struct AtomicInt {
+    priv inner: int
+}
+
+impl AtomicInt {
+    pub fn new(val: int) -> AtomicInt { AtomicInt { inner: val } }
+    pub fn load(&self) -> int {
+        unsafe { intrinsics::atomic_load(&self.inner) }
+    }
+    pub fn store(&mut self, val: int) {
+        unsafe { intrinsics::atomic_store(&mut self.inner, val); }
+    }
+    pub fn add(&mut self, val: int) -> int {
+        unsafe { intrinsics::atomic_xadd(&mut self.inner, val) }
+    }
+    pub fn cas(&mut self, old: int, new: int) -> int {
+        unsafe { intrinsics::atomic_cxchg(&mut self.inner, old, new) }
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
+    use super::*;
     use comm;
     use super::exclusive;
     use task;
@@ -261,5 +306,29 @@ mod tests {
                 assert_eq!(*one, 1);
             }
         }
+    }
+
+    #[test]
+    fn atomic_int_smoke_test() {
+        let mut i = AtomicInt::new(0);
+        i.store(10);
+        assert!(i.load() == 10);
+        assert!(i.add(1) == 10);
+        assert!(i.load() == 11);
+        assert!(i.cas(11, 12) == 11);
+        assert!(i.cas(11, 13) == 12);
+        assert!(i.load() == 12);
+    }
+
+    #[test]
+    fn atomic_uint_smoke_test() {
+        let mut i = AtomicUint::new(0);
+        i.store(10);
+        assert!(i.load() == 10);
+        assert!(i.add(1) == 10);
+        assert!(i.load() == 11);
+        assert!(i.cas(11, 12) == 11);
+        assert!(i.cas(11, 13) == 12);
+        assert!(i.load() == 12);
     }
 }

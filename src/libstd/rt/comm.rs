@@ -118,8 +118,16 @@ impl<T> ChanOne<T> {
             match oldstate {
                 STATE_BOTH => {
                     // Port is not waiting yet. Nothing to do
+                    do Local::borrow::<Scheduler> |sched| {
+                        rtdebug!("non-rendezvous send");
+                        sched.metrics.non_rendezvous_sends += 1;
+                    }
                 }
                 STATE_ONE => {
+                    do Local::borrow::<Scheduler> |sched| {
+                        rtdebug!("rendezvous send");
+                        sched.metrics.rendezvous_sends += 1;
+                    }
                     // Port has closed. Need to clean up.
                     let _packet: ~Packet<T> = cast::transmute(this.inner.void_packet);
                     recvr_active = false;
@@ -127,7 +135,9 @@ impl<T> ChanOne<T> {
                 task_as_state => {
                     // Port is blocked. Wake it up.
                     let recvr: ~Coroutine = cast::transmute(task_as_state);
-                    let sched = Local::take::<Scheduler>();
+                    let mut sched = Local::take::<Scheduler>();
+                    rtdebug!("rendezvous send");
+                    sched.metrics.rendezvous_sends += 1;
                     sched.schedule_task(recvr);
                 }
             }
@@ -158,7 +168,7 @@ impl<T> PortOne<T> {
 
         // Switch to the scheduler to put the ~Task into the Packet state.
         let sched = Local::take::<Scheduler>();
-        do sched.deschedule_running_task_and_then |task| {
+        do sched.deschedule_running_task_and_then |sched, task| {
             unsafe {
                 // Atomically swap the task pointer into the Packet state, issuing
                 // an acquire barrier to prevent reordering of the subsequent read
@@ -169,12 +179,19 @@ impl<T> PortOne<T> {
                 match oldstate {
                     STATE_BOTH => {
                         // Data has not been sent. Now we're blocked.
+                        rtdebug!("non-rendezvous recv");
+                        sched.metrics.non_rendezvous_recvs += 1;
                     }
                     STATE_ONE => {
+                        rtdebug!("rendezvous recv");
+                        sched.metrics.rendezvous_recvs += 1;
+
                         // Channel is closed. Switch back and check the data.
+                        // NB: We have to drop back into the scheduler event loop here
+                        // instead of switching immediately back or we could end up
+                        // triggering infinite recursion on the scheduler's stack.
                         let task: ~Coroutine = cast::transmute(task_as_state);
-                        let sched = Local::take::<Scheduler>();
-                        sched.resume_task_immediately(task);
+                        sched.enqueue_task(task);
                     }
                     _ => util::unreachable()
                 }
@@ -612,6 +629,16 @@ mod test {
                     };
                 }
             }
+        }
+    }
+
+    #[test]
+    fn recv_a_lot() {
+        // Regression test that we don't run out of stack in scheduler context
+        do run_in_newsched_task {
+            let (port, chan) = stream();
+            for 10000.times { chan.send(()) }
+            for 10000.times { port.recv() }
         }
     }
 }

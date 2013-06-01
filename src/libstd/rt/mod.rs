@@ -55,6 +55,9 @@ Several modules in `core` are clients of `rt`:
 */
 
 #[doc(hidden)];
+#[deny(unused_imports)];
+#[deny(unused_mut)];
+#[deny(unused_variable)];
 
 use ptr::Ptr;
 
@@ -87,6 +90,9 @@ mod work_queue;
 
 /// A parallel queue.
 mod message_queue;
+
+/// A parallel data structure for tracking sleeping schedulers.
+mod sleeper_list;
 
 /// Stack segments and caching.
 mod stack;
@@ -127,6 +133,8 @@ pub mod local_ptr;
 /// Bindings to pthread/windows thread-local storage.
 pub mod thread_local_storage;
 
+pub mod metrics;
+
 
 /// Set up a default runtime configuration, given compiler-supplied arguments.
 ///
@@ -145,12 +153,17 @@ pub mod thread_local_storage;
 pub fn start(_argc: int, _argv: **u8, crate_map: *u8, main: ~fn()) -> int {
 
     use self::sched::{Scheduler, Coroutine};
+    use self::work_queue::WorkQueue;
     use self::uv::uvio::UvEventLoop;
+    use self::sleeper_list::SleeperList;
 
     init(crate_map);
 
     let loop_ = ~UvEventLoop::new();
-    let mut sched = ~Scheduler::new(loop_);
+    let work_queue = WorkQueue::new();
+    let sleepers = SleeperList::new();
+    let mut sched = ~Scheduler::new(loop_, work_queue, sleepers);
+    sched.no_sleep = true;
     let main_task = ~Coroutine::new(&mut sched.stack_pool, main);
 
     sched.enqueue_task(main_task);
@@ -218,23 +231,19 @@ pub fn context() -> RuntimeContext {
 fn test_context() {
     use unstable::run_in_bare_thread;
     use self::sched::{Scheduler, Coroutine};
-    use rt::uv::uvio::UvEventLoop;
-    use cell::Cell;
     use rt::local::Local;
+    use rt::test::new_test_uv_sched;
 
     assert_eq!(context(), OldTaskContext);
     do run_in_bare_thread {
         assert_eq!(context(), GlobalContext);
-        let mut sched = ~UvEventLoop::new_scheduler();
+        let mut sched = ~new_test_uv_sched();
         let task = ~do Coroutine::new(&mut sched.stack_pool) {
             assert_eq!(context(), TaskContext);
             let sched = Local::take::<Scheduler>();
-            do sched.deschedule_running_task_and_then() |task| {
+            do sched.deschedule_running_task_and_then() |sched, task| {
                 assert_eq!(context(), SchedulerContext);
-                let task = Cell(task);
-                do Local::borrow::<Scheduler> |sched| {
-                    sched.enqueue_task(task.take());
-                }
+                sched.enqueue_task(task);
             }
         };
         sched.enqueue_task(task);
