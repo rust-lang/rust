@@ -307,6 +307,9 @@ struct ctxt_ {
     // Maps a trait onto a mapping from self-ty to impl
     trait_impls: @mut HashMap<ast::def_id, @mut HashMap<t, @Impl>>,
 
+    // Maps a base type to its impl
+    base_impls: @mut HashMap<ast::def_id, @mut ~[@Impl]>,
+
     // Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     // present in this set can be warned about.
     used_unsafe: @mut HashSet<ast::node_id>,
@@ -972,6 +975,7 @@ pub fn mk_ctxt(s: session::Session,
         destructor_for_type: @mut HashMap::new(),
         destructors: @mut HashSet::new(),
         trait_impls: @mut HashMap::new(),
+        base_impls:  @mut HashMap::new(),
         used_unsafe: @mut HashSet::new(),
         used_mut_nodes: @mut HashSet::new(),
      }
@@ -3698,6 +3702,21 @@ fn lookup_locally_or_in_crate_store<V:Copy>(
 pub fn trait_method(cx: ctxt, trait_did: ast::def_id, idx: uint) -> @Method {
     let method_def_id = ty::trait_method_def_ids(cx, trait_did)[idx];
     ty::method(cx, method_def_id)
+}
+
+
+pub fn add_base_impl(cx: ctxt, base_def_id: def_id, implementation: @Impl) {
+    let implementations;
+    match cx.base_impls.find(&base_def_id) {
+        None => {
+            implementations = @mut ~[];
+            cx.base_impls.insert(base_def_id, implementations);
+        }
+        Some(&existing) => {
+            implementations = existing;
+        }
+    }
+    implementations.push(implementation);
 }
 
 pub fn trait_methods(cx: ctxt, trait_did: ast::def_id) -> @~[@Method] {
