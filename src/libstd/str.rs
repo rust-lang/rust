@@ -2165,31 +2165,48 @@ pub fn as_bytes_slice<'a>(s: &'a str) -> &'a [u8] {
 }
 
 /**
- * Work with the byte buffer of a string as a null-terminated C string.
- *
- * Allows for unsafe manipulation of strings, which is useful for foreign
- * interop. This is similar to `str::as_buf`, but guarantees null-termination.
- * If the given slice is not already null-terminated, this function will
- * allocate a temporary, copy the slice, null terminate it, and pass
- * that instead.
- *
- * # Example
- *
- * ~~~ {.rust}
- * let s = str::as_c_str("PATH", { |path| libc::getenv(path) });
- * ~~~
+ * A dummy trait to hold all the utility methods that we implement on strings.
  */
-#[inline]
-pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
-    do as_buf(s) |buf, len| {
-        // NB: len includes the trailing null.
-        assert!(len > 0);
-        if unsafe { *(ptr::offset(buf,len-1)) != 0 } {
-            as_c_str(to_owned(s), f)
-        } else {
-            f(buf as *libc::c_char)
+pub trait StrUtil {
+    /**
+     * Work with the byte buffer of a string as a null-terminated C string.
+     *
+     * Allows for unsafe manipulation of strings, which is useful for foreign
+     * interop. This is similar to `str::as_buf`, but guarantees null-termination.
+     * If the given slice is not already null-terminated, this function will
+     * allocate a temporary, copy the slice, null terminate it, and pass
+     * that instead.
+     *
+     * # Example
+     *
+     * ~~~ {.rust}
+     * let s = "PATH".as_c_str(|path| libc::getenv(path));
+     * ~~~
+     */
+    fn as_c_str<T>(self, f: &fn(*libc::c_char) -> T) -> T;
+}
+
+impl<'self> StrUtil for &'self str {
+    #[inline]
+    fn as_c_str<T>(self, f: &fn(*libc::c_char) -> T) -> T {
+        do as_buf(self) |buf, len| {
+            // NB: len includes the trailing null.
+            assert!(len > 0);
+            if unsafe { *(ptr::offset(buf,len-1)) != 0 } {
+                to_owned(self).as_c_str(f)
+            } else {
+                f(buf as *libc::c_char)
+            }
         }
     }
+}
+
+/**
+ * Deprecated. Use the `as_c_str` method on strings instead.
+ */
+#[inline(always)]
+pub fn as_c_str<T>(s: &str, f: &fn(*libc::c_char) -> T) -> T {
+    s.as_c_str(f)
 }
 
 /**
