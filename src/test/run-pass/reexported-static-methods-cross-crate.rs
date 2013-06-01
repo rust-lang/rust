@@ -9,13 +9,17 @@
 // except according to those terms.
 
 // xfail-fast
-// aux-build:mod_trait_with_static_methods_lib.rs
-extern mod mod_trait_with_static_methods_lib;
+// aux-build:reexported_static_methods.rs
+extern mod reexported_static_methods;
 
-use mod_trait_with_static_methods_lib::Foo;
-use mod_trait_with_static_methods_lib::Baz;
+use reexported_static_methods::Foo;
+use reexported_static_methods::Baz;
+use reexported_static_methods::Boz;
+use reexported_static_methods::Bort;
 
 pub fn main() {
     assert_eq!(42, Foo::foo());
     assert_eq!(84, Baz::bar());
+    assert!(Boz::boz(1));
+    assert_eq!(~"bort()", Bort::bort());
 }
