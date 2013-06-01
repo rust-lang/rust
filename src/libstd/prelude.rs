@@ -45,7 +45,7 @@ pub use path::PosixPath;
 pub use path::WindowsPath;
 pub use ptr::Ptr;
 pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr};
-pub use str::{StrSlice, OwnedStr};
+pub use str::{StrSlice, OwnedStr, StrUtil};
 pub use from_str::{FromStr};
 pub use to_bytes::IterBytes;
 pub use to_str::{ToStr, ToStrConsume};
