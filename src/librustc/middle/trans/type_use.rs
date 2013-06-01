@@ -273,8 +273,8 @@ pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
 pub fn mark_for_expr(cx: Context, e: @expr) {
     match e.node {
       expr_vstore(_, _) | expr_vec(_, _) | expr_struct(*) | expr_tup(_) |
-      expr_unary(box(_), _) | expr_unary(uniq(_), _) |
-      expr_binary(add, _, _) | expr_copy(_) | expr_repeat(*) => {
+      expr_unary(_, box(_), _) | expr_unary(_, uniq(_), _) |
+      expr_binary(_, add, _, _) | expr_copy(_) | expr_repeat(*) => {
         node_type_needs(cx, use_repr, e.id);
       }
       expr_cast(base, _) => {
@@ -288,7 +288,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
             _ => ()
         }
       }
-      expr_binary(op, lhs, _) => {
+      expr_binary(_, op, lhs, _) => {
         match op {
           eq | lt | le | ne | ge | gt => {
             node_type_needs(cx, use_tydesc, lhs.id)
@@ -317,16 +317,24 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
               }
           }
       }
-      expr_assign(val, _) | expr_assign_op(_, val, _) |
+      expr_assign(val, _) | expr_assign_op(_, _, val, _) |
       expr_ret(Some(val)) => {
         node_type_needs(cx, use_repr, val.id);
       }
-      expr_index(base, _) | expr_field(base, _, _) => {
+      expr_index(callee_id, base, _) => {
         // FIXME (#2537): could be more careful and not count fields after
         // the chosen field.
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, base.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
-        mark_for_method_call(cx, e.id, e.callee_id);
+        mark_for_method_call(cx, e.id, callee_id);
+      }
+      expr_field(base, _, _) => {
+        // Method calls are now a special syntactic form,
+        // so `a.b` should always be a field.
+        assert!(!cx.ccx.maps.method_map.contains_key(&e.id));
+
+        let base_ty = ty::node_id_to_type(cx.ccx.tcx, base.id);
+        type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
       }
       expr_log(_, val) => {
         node_type_needs(cx, use_tydesc, val.id);
@@ -336,14 +344,14 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
               type_needs(cx, use_repr, *a);
           }
       }
-      expr_method_call(rcvr, _, _, _, _) => {
+      expr_method_call(callee_id, rcvr, _, _, _, _) => {
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, rcvr.id);
         type_needs(cx, use_repr, ty::type_autoderef(cx.ccx.tcx, base_ty));
 
-        for ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, e.callee_id)).each |a| {
+        for ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, callee_id)).each |a| {
             type_needs(cx, use_repr, *a);
         }
-        mark_for_method_call(cx, e.id, e.callee_id);
+        mark_for_method_call(cx, e.id, callee_id);
       }
 
       expr_inline_asm(ref ia) => {
@@ -358,8 +366,8 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
       expr_paren(e) => mark_for_expr(cx, e),
 
       expr_match(*) | expr_block(_) | expr_if(*) | expr_while(*) |
-      expr_break(_) | expr_again(_) | expr_unary(_, _) | expr_lit(_) |
-      expr_mac(_) | expr_addr_of(_, _) | expr_ret(_) | expr_loop(_, _) |
+      expr_break(_) | expr_again(_) | expr_unary(*) | expr_lit(_) |
+      expr_mac(_) | expr_addr_of(*) | expr_ret(_) | expr_loop(*) |
       expr_loop_body(_) | expr_do_body(_) => ()
     }
 }

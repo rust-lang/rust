@@ -385,7 +385,6 @@ mod test {
     #[test] fn path_exprs_1 () {
         assert_eq!(string_to_expr(@~"a"),
                    @ast::expr{id:1,
-                              callee_id:2,
                               node:ast::expr_path(@ast::Path {span:sp(0,1),
                                                               global:false,
                                                               idents:~[intern("a")],
@@ -397,7 +396,6 @@ mod test {
     #[test] fn path_exprs_2 () {
         assert_eq!(string_to_expr(@~"::a::b"),
                    @ast::expr{id:1,
-                               callee_id:2,
                                node:ast::expr_path(
                                    @ast::Path {span:sp(0,6),
                                                global:true,
@@ -445,10 +443,9 @@ mod test {
 
     #[test] fn ret_expr() {
         assert_eq!(string_to_expr(@~"return d"),
-                   @ast::expr{id:3,
-                              callee_id:4,
+                   @ast::expr{id:2,
                               node:ast::expr_ret(
-                                  Some(@ast::expr{id:1,callee_id:2,
+                                  Some(@ast::expr{id:1,
                                                   node:ast::expr_path(
                                                       @ast::Path{span:sp(7,8),
                                                                  global:false,
@@ -465,7 +462,6 @@ mod test {
                    @spanned{
                        node: ast::stmt_expr(@ast::expr{
                            id: 1,
-                           callee_id: 2,
                            node: ast::expr_path(
                                @ast::Path{
                                    span:sp(0,1),
@@ -474,7 +470,7 @@ mod test {
                                    rp:None,
                                    types: ~[]}),
                            span: sp(0,1)},
-                                            3), // fixme
+                                            2), // fixme
                        span: sp(0,1)})
 
     }
@@ -538,7 +534,7 @@ mod test {
                   Some(
                       @ast::item{ident:intern("a"),
                             attrs:~[],
-                            id: 10, // fixme
+                            id: 9, // fixme
                             node: ast::item_fn(ast::fn_decl{
                                 inputs: ~[ast::arg{
                                     is_mutbl: false,
@@ -583,7 +579,6 @@ mod test {
                                             stmts: ~[@spanned{
                                                 node: ast::stmt_semi(@ast::expr{
                                                     id: 6,
-                                                    callee_id: 7,
                                                     node: ast::expr_path(
                                                         @ast::Path{
                                                             span:sp(17,18),
@@ -592,10 +587,10 @@ mod test {
                                                             rp:None,
                                                             types: ~[]}),
                                                     span: sp(17,18)},
-                                                                     8), // fixme
+                                                                     7), // fixme
                                                 span: sp(17,18)}],
                                             expr: None,
-                                            id: 9, // fixme
+                                            id: 8, // fixme
                                             rules: ast::default_blk // no idea
                                         }}),
                             vis: ast::inherited,

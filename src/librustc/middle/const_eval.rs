@@ -93,12 +93,12 @@ pub fn classify(e: @expr,
               }
 
               ast::expr_copy(inner) |
-              ast::expr_unary(_, inner) |
+              ast::expr_unary(_, _, inner) |
               ast::expr_paren(inner) => {
                 classify(inner, tcx)
               }
 
-              ast::expr_binary(_, a, b) => {
+              ast::expr_binary(_, _, a, b) => {
                 join(classify(a, tcx),
                      classify(b, tcx))
               }
@@ -141,7 +141,7 @@ pub fn classify(e: @expr,
                 classify(base, tcx)
               }
 
-              ast::expr_index(base, idx) => {
+              ast::expr_index(_, base, idx) => {
                 join(classify(base, tcx),
                      classify(idx, tcx))
               }
@@ -251,7 +251,7 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
     use middle::ty;
     fn fromb(b: bool) -> Result<const_val, ~str> { Ok(const_int(b as i64)) }
     match e.node {
-      expr_unary(neg, inner) => {
+      expr_unary(_, neg, inner) => {
         match eval_const_expr_partial(tcx, inner) {
           Ok(const_float(f)) => Ok(const_float(-f)),
           Ok(const_int(i)) => Ok(const_int(-i)),
@@ -261,7 +261,7 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
           ref err => (/*bad*/copy *err)
         }
       }
-      expr_unary(not, inner) => {
+      expr_unary(_, not, inner) => {
         match eval_const_expr_partial(tcx, inner) {
           Ok(const_int(i)) => Ok(const_int(!i)),
           Ok(const_uint(i)) => Ok(const_uint(!i)),
@@ -269,7 +269,7 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
           _ => Err(~"Not on float or string")
         }
       }
-      expr_binary(op, a, b) => {
+      expr_binary(_, op, a, b) => {
         match (eval_const_expr_partial(tcx, a),
                eval_const_expr_partial(tcx, b)) {
           (Ok(const_float(a)), Ok(const_float(b))) => {

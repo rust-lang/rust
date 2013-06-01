@@ -241,10 +241,9 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
     debug!("kind::check_expr(%s)", expr_to_str(e, cx.tcx.sess.intr()));
 
     // Handle any kind bounds on type parameters
-    let type_parameter_id = match e.node {
-        expr_index(*)|expr_assign_op(*)|
-        expr_unary(*)|expr_binary(*)|expr_method_call(*) => e.callee_id,
-        _ => e.id
+    let type_parameter_id = match e.get_callee_id() {
+        Some(callee_id) => callee_id,
+        None => e.id,
     };
     for cx.tcx.node_type_substs.find(&type_parameter_id).each |ts| {
         let type_param_defs = match e.node {

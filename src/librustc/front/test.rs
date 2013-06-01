@@ -394,14 +394,12 @@ fn mk_test_descs(cx: &TestCtxt) -> @ast::expr {
     let sess = cx.sess;
     let inner_expr = @ast::expr {
         id: sess.next_node_id(),
-        callee_id: sess.next_node_id(),
         node: ast::expr_vec(descs, ast::m_imm),
         span: dummy_sp(),
     };
 
     @ast::expr {
         id: sess.next_node_id(),
-        callee_id: sess.next_node_id(),
         node: ast::expr_vstore(inner_expr, ast::expr_vstore_slice),
         span: dummy_sp(),
     }
@@ -423,7 +421,6 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
 
     let name_expr = @ast::expr {
           id: cx.sess.next_node_id(),
-          callee_id: cx.sess.next_node_id(),
           node: ast::expr_lit(@name_lit),
           span: span
     };
@@ -432,7 +429,6 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
 
     let fn_expr = @ast::expr {
         id: cx.sess.next_node_id(),
-        callee_id: cx.sess.next_node_id(),
         node: ast::expr_path(fn_path),
         span: span,
     };
