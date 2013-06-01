@@ -14,8 +14,8 @@ struct Foo {
     f: uint
 }
 
-pub impl Foo {
-    fn foo<'a>(&'a self) {}
+impl Foo {
+    pub fn foo<'a>(&'a self) {}
 }
 
 pub fn main() {}

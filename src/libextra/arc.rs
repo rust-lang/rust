@@ -56,10 +56,10 @@ pub struct Condvar<'self> {
     cond: &'self sync::Condvar<'self>
 }
 
-pub impl<'self> Condvar<'self> {
+impl<'self> Condvar<'self> {
     /// Atomically exit the associated ARC and block until a signal is sent.
     #[inline(always)]
-    fn wait(&self) { self.wait_on(0) }
+    pub fn wait(&self) { self.wait_on(0) }
 
     /**
      * Atomically exit the associated ARC and block on a specified condvar
@@ -68,7 +68,7 @@ pub impl<'self> Condvar<'self> {
      * wait() is equivalent to wait_on(0).
      */
     #[inline(always)]
-    fn wait_on(&self, condvar_id: uint) {
+    pub fn wait_on(&self, condvar_id: uint) {
         assert!(!*self.failed);
         self.cond.wait_on(condvar_id);
         // This is why we need to wrap sync::condvar.
@@ -77,28 +77,28 @@ pub impl<'self> Condvar<'self> {
 
     /// Wake up a blocked task. Returns false if there was no blocked task.
     #[inline(always)]
-    fn signal(&self) -> bool { self.signal_on(0) }
+    pub fn signal(&self) -> bool { self.signal_on(0) }
 
     /**
      * Wake up a blocked task on a specified condvar (as
      * sync::cond.signal_on). Returns false if there was no blocked task.
      */
     #[inline(always)]
-    fn signal_on(&self, condvar_id: uint) -> bool {
+    pub fn signal_on(&self, condvar_id: uint) -> bool {
         assert!(!*self.failed);
         self.cond.signal_on(condvar_id)
     }
 
     /// Wake up all blocked tasks. Returns the number of tasks woken.
     #[inline(always)]
-    fn broadcast(&self) -> uint { self.broadcast_on(0) }
+    pub fn broadcast(&self) -> uint { self.broadcast_on(0) }
 
     /**
      * Wake up all blocked tasks on a specified condvar (as
      * sync::cond.broadcast_on). Returns Returns the number of tasks woken.
      */
     #[inline(always)]
-    fn broadcast_on(&self, condvar_id: uint) -> uint {
+    pub fn broadcast_on(&self, condvar_id: uint) -> uint {
         assert!(!*self.failed);
         self.cond.broadcast_on(condvar_id)
     }
@@ -120,8 +120,8 @@ pub fn ARC<T:Const + Owned>(data: T) -> ARC<T> {
  * Access the underlying data in an atomically reference counted
  * wrapper.
  */
-pub impl<T:Const+Owned> ARC<T> {
-    fn get<'a>(&'a self) -> &'a T {
+impl<T:Const+Owned> ARC<T> {
+    pub fn get<'a>(&'a self) -> &'a T {
         unsafe { &*self.x.get_immut() }
     }
 }
@@ -173,7 +173,7 @@ impl<T:Owned> Clone for MutexARC<T> {
     }
 }
 
-pub impl<T:Owned> MutexARC<T> {
+impl<T:Owned> MutexARC<T> {
 
     /**
      * Access the underlying mutable data with mutual exclusion from other
@@ -199,7 +199,7 @@ pub impl<T:Owned> MutexARC<T> {
      * blocked on the mutex) will also fail immediately.
      */
     #[inline(always)]
-    unsafe fn access<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
+    pub unsafe fn access<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
         unsafe {
             let state = self.x.get();
             // Borrowck would complain about this if the function were
@@ -214,10 +214,10 @@ pub impl<T:Owned> MutexARC<T> {
 
     /// As access(), but with a condvar, as sync::mutex.lock_cond().
     #[inline(always)]
-    unsafe fn access_cond<'x, 'c, U>(
-        &self,
-        blk: &fn(x: &'x mut T, c: &'c Condvar) -> U) -> U
-    {
+    pub unsafe fn access_cond<'x, 'c, U>(&self,
+                                         blk: &fn(x: &'x mut T,
+                                                  c: &'c Condvar) -> U)
+                                         -> U {
         let state = self.x.get();
         do (&(*state).lock).lock_cond |cond| {
             check_poison(true, (*state).failed);
@@ -302,16 +302,18 @@ pub fn rw_arc_with_condvars<T:Const + Owned>(
     RWARC { x: UnsafeAtomicRcBox::new(data), cant_nest: () }
 }
 
-pub impl<T:Const + Owned> RWARC<T> {
+impl<T:Const + Owned> RWARC<T> {
     /// Duplicate a rwlock-protected ARC, as arc::clone.
-    fn clone(&self) -> RWARC<T> {
-        RWARC { x: self.x.clone(),
-                cant_nest: () }
+    pub fn clone(&self) -> RWARC<T> {
+        RWARC {
+            x: self.x.clone(),
+            cant_nest: (),
+        }
     }
 
 }
 
-pub impl<T:Const + Owned> RWARC<T> {
+impl<T:Const + Owned> RWARC<T> {
     /**
      * Access the underlying data mutably. Locks the rwlock in write mode;
      * other readers and writers will block.
@@ -323,7 +325,7 @@ pub impl<T:Const + Owned> RWARC<T> {
      * poison the ARC, so subsequent readers and writers will both also fail.
      */
     #[inline(always)]
-    fn write<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
+    pub fn write<U>(&self, blk: &fn(x: &mut T) -> U) -> U {
         unsafe {
             let state = self.x.get();
             do (*borrow_rwlock(state)).write {
@@ -333,11 +335,12 @@ pub impl<T:Const + Owned> RWARC<T> {
             }
         }
     }
+
     /// As write(), but with a condvar, as sync::rwlock.write_cond().
     #[inline(always)]
-    fn write_cond<'x, 'c, U>(&self,
-                             blk: &fn(x: &'x mut T, c: &'c Condvar) -> U)
-                          -> U {
+    pub fn write_cond<'x, 'c, U>(&self,
+                                 blk: &fn(x: &'x mut T, c: &'c Condvar) -> U)
+                                 -> U {
         unsafe {
             let state = self.x.get();
             do (*borrow_rwlock(state)).write_cond |cond| {
@@ -350,6 +353,7 @@ pub impl<T:Const + Owned> RWARC<T> {
             }
         }
     }
+
     /**
      * Access the underlying data immutably. May run concurrently with other
      * reading tasks.
@@ -359,7 +363,7 @@ pub impl<T:Const + Owned> RWARC<T> {
      * Failing will unlock the ARC while unwinding. However, unlike all other
      * access modes, this will not poison the ARC.
      */
-    fn read<U>(&self, blk: &fn(x: &T) -> U) -> U {
+    pub fn read<U>(&self, blk: &fn(x: &T) -> U) -> U {
         unsafe {
             let state = self.x.get();
             do (*state).lock.read {
@@ -389,7 +393,7 @@ pub impl<T:Const + Owned> RWARC<T> {
      * }
      * ~~~
      */
-    fn write_downgrade<U>(&self, blk: &fn(v: RWWriteMode<T>) -> U) -> U {
+    pub fn write_downgrade<U>(&self, blk: &fn(v: RWWriteMode<T>) -> U) -> U {
         unsafe {
             let state = self.x.get();
             do (*borrow_rwlock(state)).write_downgrade |write_mode| {
@@ -404,7 +408,8 @@ pub impl<T:Const + Owned> RWARC<T> {
     }
 
     /// To be called inside of the write_downgrade block.
-    fn downgrade<'a>(&self, token: RWWriteMode<'a, T>) -> RWReadMode<'a, T> {
+    pub fn downgrade<'a>(&self, token: RWWriteMode<'a, T>)
+                         -> RWReadMode<'a, T> {
         unsafe {
             // The rwlock should assert that the token belongs to us for us.
             let state = self.x.get();
@@ -451,9 +456,9 @@ pub struct RWReadMode<'self, T> {
     token: sync::RWlockReadMode<'self>,
 }
 
-pub impl<'self, T:Const + Owned> RWWriteMode<'self, T> {
+impl<'self, T:Const + Owned> RWWriteMode<'self, T> {
     /// Access the pre-downgrade RWARC in write mode.
-    fn write<U>(&mut self, blk: &fn(x: &mut T) -> U) -> U {
+    pub fn write<U>(&mut self, blk: &fn(x: &mut T) -> U) -> U {
         match *self {
             RWWriteMode {
                 data: &ref mut data,
@@ -466,10 +471,11 @@ pub impl<'self, T:Const + Owned> RWWriteMode<'self, T> {
             }
         }
     }
+
     /// Access the pre-downgrade RWARC in write mode with a condvar.
-    fn write_cond<'x, 'c, U>(&mut self,
-                             blk: &fn(x: &'x mut T, c: &'c Condvar) -> U)
-                          -> U {
+    pub fn write_cond<'x, 'c, U>(&mut self,
+                                 blk: &fn(x: &'x mut T, c: &'c Condvar) -> U)
+                                 -> U {
         match *self {
             RWWriteMode {
                 data: &ref mut data,
@@ -491,9 +497,9 @@ pub impl<'self, T:Const + Owned> RWWriteMode<'self, T> {
     }
 }
 
-pub impl<'self, T:Const + Owned> RWReadMode<'self, T> {
+impl<'self, T:Const + Owned> RWReadMode<'self, T> {
     /// Access the post-downgrade rwlock in read mode.
-    fn read<U>(&self, blk: &fn(x: &T) -> U) -> U {
+    pub fn read<U>(&self, blk: &fn(x: &T) -> U) -> U {
         match *self {
             RWReadMode {
                 data: data,

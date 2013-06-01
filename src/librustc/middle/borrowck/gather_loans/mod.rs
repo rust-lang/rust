@@ -273,21 +273,21 @@ fn gather_loans_in_expr(ex: @ast::expr,
     }
 }
 
-pub impl GatherLoanCtxt {
-    fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
+impl GatherLoanCtxt {
+    pub fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
-    fn push_repeating_id(&mut self, id: ast::node_id) {
+    pub fn push_repeating_id(&mut self, id: ast::node_id) {
         self.repeating_ids.push(id);
     }
 
-    fn pop_repeating_id(&mut self, id: ast::node_id) {
+    pub fn pop_repeating_id(&mut self, id: ast::node_id) {
         let popped = self.repeating_ids.pop();
         assert_eq!(id, popped);
     }
 
-    fn guarantee_adjustments(&mut self,
-                             expr: @ast::expr,
-                             adjustment: &ty::AutoAdjustment) {
+    pub fn guarantee_adjustments(&mut self,
+                                 expr: @ast::expr,
+                                 adjustment: &ty::AutoAdjustment) {
         debug!("guarantee_adjustments(expr=%s, adjustment=%?)",
                expr.repr(self.tcx()), adjustment);
         let _i = indenter();
@@ -350,13 +350,12 @@ pub impl GatherLoanCtxt {
     // out loans, which will be added to the `req_loan_map`.  This can
     // also entail "rooting" GC'd pointers, which means ensuring
     // dynamically that they are not freed.
-    fn guarantee_valid(&mut self,
-                       borrow_id: ast::node_id,
-                       borrow_span: span,
-                       cmt: mc::cmt,
-                       req_mutbl: ast::mutability,
-                       loan_region: ty::Region)
-    {
+    pub fn guarantee_valid(&mut self,
+                           borrow_id: ast::node_id,
+                           borrow_span: span,
+                           cmt: mc::cmt,
+                           req_mutbl: ast::mutability,
+                           loan_region: ty::Region) {
         debug!("guarantee_valid(borrow_id=%?, cmt=%s, \
                 req_mutbl=%?, loan_region=%?)",
                borrow_id,
@@ -514,7 +513,8 @@ pub impl GatherLoanCtxt {
         }
     }
 
-    fn restriction_set(&self, req_mutbl: ast::mutability) -> RestrictionSet {
+    pub fn restriction_set(&self, req_mutbl: ast::mutability)
+                           -> RestrictionSet {
         match req_mutbl {
             m_const => RESTR_EMPTY,
             m_imm   => RESTR_EMPTY | RESTR_MUTATE | RESTR_CLAIM,
@@ -522,7 +522,7 @@ pub impl GatherLoanCtxt {
         }
     }
 
-    fn mark_loan_path_as_mutated(&self, loan_path: @LoanPath) {
+    pub fn mark_loan_path_as_mutated(&self, loan_path: @LoanPath) {
         //! For mutable loans of content whose mutability derives
         //! from a local variable, mark the mutability decl as necessary.
 
@@ -540,9 +540,10 @@ pub impl GatherLoanCtxt {
         }
     }
 
-    fn compute_gen_scope(&self,
-                         borrow_id: ast::node_id,
-                         loan_scope: ast::node_id) -> ast::node_id {
+    pub fn compute_gen_scope(&self,
+                             borrow_id: ast::node_id,
+                             loan_scope: ast::node_id)
+                             -> ast::node_id {
         //! Determine when to introduce the loan. Typically the loan
         //! is introduced at the point of the borrow, but in some cases,
         //! notably method arguments, the loan may be introduced only
@@ -556,9 +557,8 @@ pub impl GatherLoanCtxt {
         }
     }
 
-    fn compute_kill_scope(&self,
-                          loan_scope: ast::node_id,
-                          lp: @LoanPath) -> ast::node_id {
+    pub fn compute_kill_scope(&self, loan_scope: ast::node_id, lp: @LoanPath)
+                              -> ast::node_id {
         //! Determine when the loan restrictions go out of scope.
         //! This is either when the lifetime expires or when the
         //! local variable which roots the loan-path goes out of scope,
@@ -588,11 +588,11 @@ pub impl GatherLoanCtxt {
         }
     }
 
-    fn gather_pat(&mut self,
-                  discr_cmt: mc::cmt,
-                  root_pat: @ast::pat,
-                  arm_body_id: ast::node_id,
-                  match_id: ast::node_id) {
+    pub fn gather_pat(&mut self,
+                      discr_cmt: mc::cmt,
+                      root_pat: @ast::pat,
+                      arm_body_id: ast::node_id,
+                      match_id: ast::node_id) {
         do self.bccx.cat_pattern(discr_cmt, root_pat) |cmt, pat| {
             match pat.node {
               ast::pat_ident(bm, _, _) if self.pat_is_binding(pat) => {
@@ -653,9 +653,8 @@ pub impl GatherLoanCtxt {
         }
     }
 
-    fn vec_slice_info(&self,
-                      pat: @ast::pat,
-                      slice_ty: ty::t) -> (ast::mutability, ty::Region) {
+    pub fn vec_slice_info(&self, pat: @ast::pat, slice_ty: ty::t)
+                          -> (ast::mutability, ty::Region) {
         /*!
          *
          * In a pattern like [a, b, ..c], normally `c` has slice type,
@@ -681,11 +680,11 @@ pub impl GatherLoanCtxt {
         }
     }
 
-    fn pat_is_variant_or_struct(&self, pat: @ast::pat) -> bool {
+    pub fn pat_is_variant_or_struct(&self, pat: @ast::pat) -> bool {
         pat_util::pat_is_variant_or_struct(self.bccx.tcx.def_map, pat)
     }
 
-    fn pat_is_binding(&self, pat: @ast::pat) -> bool {
+    pub fn pat_is_binding(&self, pat: @ast::pat) -> bool {
         pat_util::pat_is_binding(self.bccx.tcx.def_map, pat)
     }
 }

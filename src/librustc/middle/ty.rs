@@ -68,14 +68,15 @@ pub struct Method {
     def_id: ast::def_id
 }
 
-pub impl Method {
-    fn new(ident: ast::ident,
-           generics: ty::Generics,
-           transformed_self_ty: Option<ty::t>,
-           fty: BareFnTy,
-           explicit_self: ast::explicit_self_,
-           vis: ast::visibility,
-           def_id: ast::def_id) -> Method {
+impl Method {
+    pub fn new(ident: ast::ident,
+               generics: ty::Generics,
+               transformed_self_ty: Option<ty::t>,
+               fty: BareFnTy,
+               explicit_self: ast::explicit_self_,
+               vis: ast::visibility,
+               def_id: ast::def_id)
+               -> Method {
         // Check the invariants.
         if explicit_self == ast::sty_static {
             assert!(transformed_self_ty.is_none());
@@ -460,8 +461,8 @@ pub enum Region {
     re_empty,
 }
 
-pub impl Region {
-    fn is_bound(&self) -> bool {
+impl Region {
+    pub fn is_bound(&self) -> bool {
         match self {
             &re_bound(*) => true,
             _ => false
@@ -879,8 +880,8 @@ pub struct Generics {
     region_param: Option<region_variance>,
 }
 
-pub impl Generics {
-    fn has_type_params(&self) -> bool {
+impl Generics {
+    pub fn has_type_params(&self) -> bool {
         !self.type_param_defs.is_empty()
     }
 }
@@ -1817,12 +1818,12 @@ pub struct TypeContents {
     bits: u32
 }
 
-pub impl TypeContents {
-    fn meets_bounds(&self, cx: ctxt, bbs: BuiltinBounds) -> bool {
+impl TypeContents {
+    pub fn meets_bounds(&self, cx: ctxt, bbs: BuiltinBounds) -> bool {
         iter::all(|bb| self.meets_bound(cx, bb), |f| bbs.each(f))
     }
 
-    fn meets_bound(&self, cx: ctxt, bb: BuiltinBound) -> bool {
+    pub fn meets_bound(&self, cx: ctxt, bb: BuiltinBound) -> bool {
         match bb {
             BoundCopy => self.is_copy(cx),
             BoundStatic => self.is_static(cx),
@@ -1832,69 +1833,69 @@ pub impl TypeContents {
         }
     }
 
-    fn intersects(&self, tc: TypeContents) -> bool {
+    pub fn intersects(&self, tc: TypeContents) -> bool {
         (self.bits & tc.bits) != 0
     }
 
-    fn is_copy(&self, cx: ctxt) -> bool {
+    pub fn is_copy(&self, cx: ctxt) -> bool {
         !self.intersects(TypeContents::noncopyable(cx))
     }
 
-    fn noncopyable(_cx: ctxt) -> TypeContents {
+    pub fn noncopyable(_cx: ctxt) -> TypeContents {
         TC_DTOR + TC_BORROWED_MUT + TC_ONCE_CLOSURE + TC_OWNED_CLOSURE +
             TC_EMPTY_ENUM
     }
 
-    fn is_static(&self, cx: ctxt) -> bool {
+    pub fn is_static(&self, cx: ctxt) -> bool {
         !self.intersects(TypeContents::nonstatic(cx))
     }
 
-    fn nonstatic(_cx: ctxt) -> TypeContents {
+    pub fn nonstatic(_cx: ctxt) -> TypeContents {
         TC_BORROWED_POINTER
     }
 
-    fn is_owned(&self, cx: ctxt) -> bool {
+    pub fn is_owned(&self, cx: ctxt) -> bool {
         !self.intersects(TypeContents::nonowned(cx))
     }
 
-    fn nonowned(_cx: ctxt) -> TypeContents {
+    pub fn nonowned(_cx: ctxt) -> TypeContents {
         TC_MANAGED + TC_BORROWED_POINTER + TC_NON_OWNED
     }
 
-    fn contains_managed(&self) -> bool {
+    pub fn contains_managed(&self) -> bool {
         self.intersects(TC_MANAGED)
     }
 
-    fn is_const(&self, cx: ctxt) -> bool {
+    pub fn is_const(&self, cx: ctxt) -> bool {
         !self.intersects(TypeContents::nonconst(cx))
     }
 
-    fn nonconst(_cx: ctxt) -> TypeContents {
+    pub fn nonconst(_cx: ctxt) -> TypeContents {
         TC_MUTABLE
     }
 
-    fn is_sized(&self, cx: ctxt) -> bool {
+    pub fn is_sized(&self, cx: ctxt) -> bool {
         !self.intersects(TypeContents::dynamically_sized(cx))
     }
 
-    fn dynamically_sized(_cx: ctxt) -> TypeContents {
+    pub fn dynamically_sized(_cx: ctxt) -> TypeContents {
         TC_DYNAMIC_SIZE
     }
 
-    fn moves_by_default(&self, cx: ctxt) -> bool {
+    pub fn moves_by_default(&self, cx: ctxt) -> bool {
         self.intersects(TypeContents::nonimplicitly_copyable(cx))
     }
 
-    fn nonimplicitly_copyable(cx: ctxt) -> TypeContents {
+    pub fn nonimplicitly_copyable(cx: ctxt) -> TypeContents {
         TypeContents::noncopyable(cx) + TC_OWNED_POINTER + TC_OWNED_VEC
     }
 
-    fn needs_drop(&self, cx: ctxt) -> bool {
+    pub fn needs_drop(&self, cx: ctxt) -> bool {
         let tc = TC_MANAGED + TC_DTOR + TypeContents::owned(cx);
         self.intersects(tc)
     }
 
-    fn owned(_cx: ctxt) -> TypeContents {
+    pub fn owned(_cx: ctxt) -> TypeContents {
         //! Any kind of owned contents.
         TC_OWNED_CLOSURE + TC_OWNED_POINTER + TC_OWNED_VEC
     }
@@ -3120,8 +3121,8 @@ pub fn adjust_ty(cx: ctxt,
     }
 }
 
-pub impl AutoRef {
-    fn map_region(&self, f: &fn(Region) -> Region) -> AutoRef {
+impl AutoRef {
+    pub fn map_region(&self, f: &fn(Region) -> Region) -> AutoRef {
         match *self {
             ty::AutoPtr(r, m) => ty::AutoPtr(f(r), m),
             ty::AutoBorrowVec(r, m) => ty::AutoBorrowVec(f(r), m),
@@ -3809,14 +3810,15 @@ pub enum DtorKind {
     TraitDtor(def_id)
 }
 
-pub impl DtorKind {
-    fn is_not_present(&const self) -> bool {
+impl DtorKind {
+    pub fn is_not_present(&const self) -> bool {
         match *self {
             NoDtor => true,
             _ => false
         }
     }
-    fn is_present(&const self) -> bool {
+
+    pub fn is_present(&const self) -> bool {
         !self.is_not_present()
     }
 }

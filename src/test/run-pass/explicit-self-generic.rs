@@ -30,8 +30,8 @@ fn linear_map<K,V>() -> HashMap<K,V> {
         size: 0})
 }
 
-pub impl<K,V> HashMap<K,V> {
-    fn len(&mut self) -> uint {
+impl<K,V> HashMap<K,V> {
+    pub fn len(&mut self) -> uint {
         self.size
     }
 }

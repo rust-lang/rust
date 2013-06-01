@@ -127,9 +127,12 @@ impl cmp::Ord for WorkKey {
     }
 }
 
-pub impl WorkKey {
-    fn new(kind: &str, name: &str) -> WorkKey {
-    WorkKey { kind: kind.to_owned(), name: name.to_owned() }
+impl WorkKey {
+    pub fn new(kind: &str, name: &str) -> WorkKey {
+        WorkKey {
+            kind: kind.to_owned(),
+            name: name.to_owned(),
+        }
     }
 }
 
@@ -167,11 +170,11 @@ struct Database {
     db_dirty: bool
 }
 
-pub impl Database {
-    fn prepare(&mut self,
-               fn_name: &str,
-               declared_inputs: &WorkMap)
-               -> Option<(WorkMap, WorkMap, ~str)> {
+impl Database {
+    pub fn prepare(&mut self,
+                   fn_name: &str,
+                   declared_inputs: &WorkMap)
+                   -> Option<(WorkMap, WorkMap, ~str)> {
         let k = json_encode(&(fn_name, declared_inputs));
         match self.db_cache.find(&k) {
             None => None,
@@ -179,12 +182,12 @@ pub impl Database {
         }
     }
 
-    fn cache(&mut self,
-             fn_name: &str,
-             declared_inputs: &WorkMap,
-             discovered_inputs: &WorkMap,
-             discovered_outputs: &WorkMap,
-             result: &str) {
+    pub fn cache(&mut self,
+                 fn_name: &str,
+                 declared_inputs: &WorkMap,
+                 discovered_inputs: &WorkMap,
+                 discovered_outputs: &WorkMap,
+                 result: &str) {
         let k = json_encode(&(fn_name, declared_inputs));
         let v = json_encode(&(discovered_inputs,
                               discovered_outputs,
@@ -199,8 +202,8 @@ struct Logger {
     a: ()
 }
 
-pub impl Logger {
-    fn info(&self, i: &str) {
+impl Logger {
+    pub fn info(&self, i: &str) {
         io::println(~"workcache: " + i);
     }
 }
@@ -257,11 +260,9 @@ fn digest_file(path: &Path) -> ~str {
     sha.result_str()
 }
 
-pub impl Context {
-
-    fn new(db: @mut Database,
-                  lg: @mut Logger,
-                  cfg: @json::Object) -> Context {
+impl Context {
+    pub fn new(db: @mut Database, lg: @mut Logger, cfg: @json::Object)
+               -> Context {
         Context {
             db: db,
             logger: lg,
@@ -270,12 +271,12 @@ pub impl Context {
         }
     }
 
-    fn prep<T:Owned +
-              Encodable<json::Encoder> +
-              Decodable<json::Decoder>>( // FIXME(#5121)
-                  @self,
-                  fn_name:&str,
-                  blk: &fn(@mut Prep)->Work<T>) -> Work<T> {
+    pub fn prep<T:Owned +
+                  Encodable<json::Encoder> +
+                  Decodable<json::Decoder>>(@self, // FIXME(#5121)
+                                            fn_name:&str,
+                                            blk: &fn(@mut Prep)->Work<T>)
+                                            -> Work<T> {
         let p = @mut Prep {
             ctxt: self,
             fn_name: fn_name.to_owned(),
@@ -363,10 +364,10 @@ impl TPrep for Prep {
     }
 }
 
-pub impl<T:Owned +
-         Encodable<json::Encoder> +
-         Decodable<json::Decoder>> Work<T> { // FIXME(#5121)
-    fn new(p: @mut Prep, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
+impl<T:Owned +
+       Encodable<json::Encoder> +
+       Decodable<json::Decoder>> Work<T> { // FIXME(#5121)
+    pub fn new(p: @mut Prep, e: Either<T,PortOne<(Exec,T)>>) -> Work<T> {
         Work { prep: p, res: Some(e) }
     }
 }

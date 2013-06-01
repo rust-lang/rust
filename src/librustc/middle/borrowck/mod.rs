@@ -248,8 +248,8 @@ pub enum LoanPathElem {
     LpInterior(mc::InteriorKind) // `LV.f` in doc.rs
 }
 
-pub impl LoanPath {
-    fn node_id(&self) -> ast::node_id {
+impl LoanPath {
+    pub fn node_id(&self) -> ast::node_id {
         match *self {
             LpVar(local_id) => local_id,
             LpExtend(base, _, _) => base.node_id()
@@ -327,12 +327,12 @@ pub static RESTR_CLAIM: RestrictionSet  = RestrictionSet {bits: 0b0010};
 pub static RESTR_FREEZE: RestrictionSet = RestrictionSet {bits: 0b0100};
 pub static RESTR_ALIAS: RestrictionSet  = RestrictionSet {bits: 0b1000};
 
-pub impl RestrictionSet {
-    fn intersects(&self, restr: RestrictionSet) -> bool {
+impl RestrictionSet {
+    pub fn intersects(&self, restr: RestrictionSet) -> bool {
         (self.bits & restr.bits) != 0
     }
 
-    fn contains_all(&self, restr: RestrictionSet) -> bool {
+    pub fn contains_all(&self, restr: RestrictionSet) -> bool {
         (self.bits & restr.bits) == restr.bits
     }
 }
@@ -427,29 +427,33 @@ pub enum MovedValueUseKind {
 ///////////////////////////////////////////////////////////////////////////
 // Misc
 
-pub impl BorrowckCtxt {
-    fn is_subregion_of(&self, r_sub: ty::Region, r_sup: ty::Region) -> bool {
+impl BorrowckCtxt {
+    pub fn is_subregion_of(&self, r_sub: ty::Region, r_sup: ty::Region)
+                           -> bool {
         self.tcx.region_maps.is_subregion_of(r_sub, r_sup)
     }
 
-    fn is_subscope_of(&self, r_sub: ast::node_id, r_sup: ast::node_id) -> bool {
+    pub fn is_subscope_of(&self, r_sub: ast::node_id, r_sup: ast::node_id)
+                          -> bool {
         self.tcx.region_maps.is_subscope_of(r_sub, r_sup)
     }
 
-    fn is_move(&self, id: ast::node_id) -> bool {
+    pub fn is_move(&self, id: ast::node_id) -> bool {
         self.moves_map.contains(&id)
     }
 
-    fn cat_expr(&self, expr: @ast::expr) -> mc::cmt {
+    pub fn cat_expr(&self, expr: @ast::expr) -> mc::cmt {
         mc::cat_expr(self.tcx, self.method_map, expr)
     }
 
-    fn cat_expr_unadjusted(&self, expr: @ast::expr) -> mc::cmt {
+    pub fn cat_expr_unadjusted(&self, expr: @ast::expr) -> mc::cmt {
         mc::cat_expr_unadjusted(self.tcx, self.method_map, expr)
     }
 
-    fn cat_expr_autoderefd(&self, expr: @ast::expr,
-                           adj: @ty::AutoAdjustment) -> mc::cmt {
+    pub fn cat_expr_autoderefd(&self,
+                               expr: @ast::expr,
+                               adj: @ty::AutoAdjustment)
+                               -> mc::cmt {
         match *adj {
             ty::AutoAddEnv(*) => {
                 // no autoderefs
@@ -465,46 +469,47 @@ pub impl BorrowckCtxt {
         }
     }
 
-    fn cat_def(&self,
-               id: ast::node_id,
-               span: span,
-               ty: ty::t,
-               def: ast::def) -> mc::cmt {
+    pub fn cat_def(&self,
+                   id: ast::node_id,
+                   span: span,
+                   ty: ty::t,
+                   def: ast::def)
+                   -> mc::cmt {
         mc::cat_def(self.tcx, self.method_map, id, span, ty, def)
     }
 
-    fn cat_discr(&self, cmt: mc::cmt, match_id: ast::node_id) -> mc::cmt {
+    pub fn cat_discr(&self, cmt: mc::cmt, match_id: ast::node_id) -> mc::cmt {
         @mc::cmt_ {cat:mc::cat_discr(cmt, match_id),
                    mutbl:cmt.mutbl.inherit(),
                    ..*cmt}
     }
 
-    fn mc_ctxt(&self) -> mc::mem_categorization_ctxt {
+    pub fn mc_ctxt(&self) -> mc::mem_categorization_ctxt {
         mc::mem_categorization_ctxt {tcx: self.tcx,
                                  method_map: self.method_map}
     }
 
-    fn cat_pattern(&self,
-                   cmt: mc::cmt,
-                   pat: @ast::pat,
-                   op: &fn(mc::cmt, @ast::pat)) {
+    pub fn cat_pattern(&self,
+                       cmt: mc::cmt,
+                       pat: @ast::pat,
+                       op: &fn(mc::cmt, @ast::pat)) {
         let mc = self.mc_ctxt();
         mc.cat_pattern(cmt, pat, op);
     }
 
-    fn report(&self, err: BckError) {
+    pub fn report(&self, err: BckError) {
         self.span_err(
             err.span,
             self.bckerr_to_str(err));
         self.note_and_explain_bckerr(err);
     }
 
-    fn report_use_of_moved_value(&self,
-                                 use_span: span,
-                                 use_kind: MovedValueUseKind,
-                                 lp: @LoanPath,
-                                 move: &move_data::Move,
-                                 moved_lp: @LoanPath) {
+    pub fn report_use_of_moved_value(&self,
+                                     use_span: span,
+                                     use_kind: MovedValueUseKind,
+                                     lp: @LoanPath,
+                                     move: &move_data::Move,
+                                     moved_lp: @LoanPath) {
         let verb = match use_kind {
             MovedInUse => "use",
             MovedInCapture => "capture",
@@ -563,10 +568,11 @@ pub impl BorrowckCtxt {
         }
     }
 
-    fn report_reassigned_immutable_variable(&self,
-                                            span: span,
-                                            lp: @LoanPath,
-                                            assign: &move_data::Assignment) {
+    pub fn report_reassigned_immutable_variable(&self,
+                                                span: span,
+                                                lp: @LoanPath,
+                                                assign:
+                                                &move_data::Assignment) {
         self.tcx.sess.span_err(
             span,
             fmt!("re-assignment of immutable variable `%s`",
@@ -576,15 +582,15 @@ pub impl BorrowckCtxt {
             fmt!("prior assignment occurs here"));
     }
 
-    fn span_err(&self, s: span, m: &str) {
+    pub fn span_err(&self, s: span, m: &str) {
         self.tcx.sess.span_err(s, m);
     }
 
-    fn span_note(&self, s: span, m: &str) {
+    pub fn span_note(&self, s: span, m: &str) {
         self.tcx.sess.span_note(s, m);
     }
 
-    fn bckerr_to_str(&self, err: BckError) -> ~str {
+    pub fn bckerr_to_str(&self, err: BckError) -> ~str {
         match err.code {
             err_mutbl(lk) => {
                 fmt!("cannot borrow %s %s as %s",
@@ -608,10 +614,10 @@ pub impl BorrowckCtxt {
         }
     }
 
-    fn report_aliasability_violation(&self,
-                                     span: span,
-                                     kind: AliasableViolationKind,
-                                     cause: mc::AliasableReason) {
+    pub fn report_aliasability_violation(&self,
+                                         span: span,
+                                         kind: AliasableViolationKind,
+                                         cause: mc::AliasableReason) {
         let prefix = match kind {
             MutabilityViolation => "cannot assign to an `&mut`",
             BorrowViolation => "cannot borrow an `&mut`"
@@ -649,7 +655,7 @@ pub impl BorrowckCtxt {
         }
     }
 
-    fn note_and_explain_bckerr(&self, err: BckError) {
+    pub fn note_and_explain_bckerr(&self, err: BckError) {
         let code = err.code;
         match code {
             err_mutbl(*) | err_freeze_aliasable_const(*) => {}
@@ -682,9 +688,9 @@ pub impl BorrowckCtxt {
         }
     }
 
-    fn append_loan_path_to_str_from_interior(&self,
-                                             loan_path: &LoanPath,
-                                             out: &mut ~str) {
+    pub fn append_loan_path_to_str_from_interior(&self,
+                                                 loan_path: &LoanPath,
+                                                 out: &mut ~str) {
         match *loan_path {
             LpExtend(_, _, LpDeref) => {
                 str::push_char(out, '(');
@@ -698,7 +704,9 @@ pub impl BorrowckCtxt {
         }
     }
 
-    fn append_loan_path_to_str(&self, loan_path: &LoanPath, out: &mut ~str) {
+    pub fn append_loan_path_to_str(&self,
+                                   loan_path: &LoanPath,
+                                   out: &mut ~str) {
         match *loan_path {
             LpVar(id) => {
                 match self.tcx.items.find(&id) {
@@ -739,25 +747,25 @@ pub impl BorrowckCtxt {
         }
     }
 
-    fn loan_path_to_str(&self, loan_path: &LoanPath) -> ~str {
+    pub fn loan_path_to_str(&self, loan_path: &LoanPath) -> ~str {
         let mut result = ~"";
         self.append_loan_path_to_str(loan_path, &mut result);
         result
     }
 
-    fn cmt_to_str(&self, cmt: mc::cmt) -> ~str {
+    pub fn cmt_to_str(&self, cmt: mc::cmt) -> ~str {
         let mc = &mc::mem_categorization_ctxt {tcx: self.tcx,
                                                method_map: self.method_map};
         mc.cmt_to_str(cmt)
     }
 
-    fn mut_to_str(&self, mutbl: ast::mutability) -> ~str {
+    pub fn mut_to_str(&self, mutbl: ast::mutability) -> ~str {
         let mc = &mc::mem_categorization_ctxt {tcx: self.tcx,
                                                method_map: self.method_map};
         mc.mut_to_str(mutbl)
     }
 
-    fn mut_to_keyword(&self, mutbl: ast::mutability) -> &'static str {
+    pub fn mut_to_keyword(&self, mutbl: ast::mutability) -> &'static str {
         match mutbl {
             ast::m_imm => "",
             ast::m_const => "const",

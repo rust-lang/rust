@@ -13,6 +13,8 @@
  * are O(highest integer key).
  */
 
+#[allow(missing_doc)];
+
 use core::prelude::*;
 
 use core::cmp;
@@ -152,12 +154,12 @@ impl<V> Map<uint, V> for SmallIntMap<V> {
     }
 }
 
-pub impl<V> SmallIntMap<V> {
+impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap
-    fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
+    pub fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
 
     /// Visit all key-value pairs in reverse order
-    fn each_reverse<'a>(&'a self, it: &fn(uint, &'a V) -> bool) -> bool {
+    pub fn each_reverse<'a>(&'a self, it: &fn(uint, &'a V) -> bool) -> bool {
         for uint::range_rev(self.v.len(), 0) |i| {
             match self.v[i - 1] {
               Some(ref elt) => if !it(i - 1, elt) { return false; },
@@ -167,14 +169,14 @@ pub impl<V> SmallIntMap<V> {
         return true;
     }
 
-    fn get<'a>(&'a self, key: &uint) -> &'a V {
+    pub fn get<'a>(&'a self, key: &uint) -> &'a V {
         self.find(key).expect("key not present")
     }
 }
 
-pub impl<V:Copy> SmallIntMap<V> {
-    fn update_with_key(&mut self, key: uint, val: V,
-                       ff: &fn(uint, V, V) -> V) -> bool {
+impl<V:Copy> SmallIntMap<V> {
+    pub fn update_with_key(&mut self, key: uint, val: V,
+                           ff: &fn(uint, V, V) -> V) -> bool {
         let new_val = match self.find(&key) {
             None => val,
             Some(orig) => ff(key, *orig, val)
@@ -182,7 +184,8 @@ pub impl<V:Copy> SmallIntMap<V> {
         self.insert(key, new_val)
     }
 
-    fn update(&mut self, key: uint, newval: V, ff: &fn(V, V) -> V) -> bool {
+    pub fn update(&mut self, key: uint, newval: V, ff: &fn(V, V) -> V)
+                  -> bool {
         self.update_with_key(key, newval, |_k, v, v1| ff(v,v1))
     }
 }
@@ -280,9 +283,9 @@ impl Set<uint> for SmallIntSet {
     }
 }
 
-pub impl SmallIntSet {
+impl SmallIntSet {
     /// Create an empty SmallIntSet
-    fn new() -> SmallIntSet { SmallIntSet{map: SmallIntMap::new()} }
+    pub fn new() -> SmallIntSet { SmallIntSet{map: SmallIntMap::new()} }
 }
 
 #[cfg(test)]

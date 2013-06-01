@@ -373,17 +373,19 @@ pub struct id_range {
     max: node_id,
 }
 
-pub impl id_range {
-    fn max() -> id_range {
-        id_range {min: int::max_value,
-                  max: int::min_value}
+impl id_range {
+    pub fn max() -> id_range {
+        id_range {
+            min: int::max_value,
+            max: int::min_value,
+        }
     }
 
-    fn empty(&self) -> bool {
+    pub fn empty(&self) -> bool {
         self.min >= self.max
     }
 
-    fn add(&mut self, id: node_id) {
+    pub fn add(&mut self, id: node_id) {
         self.min = int::min(self.min, id);
         self.max = int::max(self.max, id + 1);
     }

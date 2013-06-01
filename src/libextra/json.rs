@@ -10,7 +10,9 @@
 
 // Rust JSON serialization library
 // Copyright (c) 2011 Google Inc.
+
 #[forbid(non_camel_case_types)];
+#[allow(missing_doc)];
 
 //! json serialization
 
@@ -497,8 +499,8 @@ pub fn Parser(rdr: @io::Reader) -> Parser {
     }
 }
 
-pub impl Parser {
-    fn parse(&mut self) -> Result<Json, Error> {
+impl Parser {
+    pub fn parse(&mut self) -> Result<Json, Error> {
         match self.parse_value() {
           Ok(value) => {
             // Skip trailing whitespaces.
@@ -515,7 +517,7 @@ pub impl Parser {
     }
 }
 
-priv impl Parser {
+impl Parser {
     fn eof(&self) -> bool { self.ch == -1 as char }
 
     fn bump(&mut self) {

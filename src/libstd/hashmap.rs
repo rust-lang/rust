@@ -13,6 +13,8 @@
 //! The tables use a keyed hash with new random keys generated for each container, so the ordering
 //! of a set of keys in a hash table is randomized.
 
+#[mutable_doc];
+
 use container::{Container, Mutable, Map, Set};
 use cmp::{Eq, Equiv};
 use hash::Hash;
@@ -81,7 +83,7 @@ fn linear_map_with_capacity_and_keys<K:Eq + Hash,V>(
     }
 }
 
-priv impl<K:Hash + Eq,V> HashMap<K, V> {
+impl<K:Hash + Eq,V> HashMap<K, V> {
     #[inline(always)]
     fn to_bucket(&self, h: uint) -> uint {
         // A good hash function with entropy spread over all of the
@@ -403,20 +405,20 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     }
 }
 
-pub impl<K: Hash + Eq, V> HashMap<K, V> {
+impl<K: Hash + Eq, V> HashMap<K, V> {
     /// Create an empty HashMap
-    fn new() -> HashMap<K, V> {
+    pub fn new() -> HashMap<K, V> {
         HashMap::with_capacity(INITIAL_CAPACITY)
     }
 
     /// Create an empty HashMap with space for at least `n` elements in
     /// the hash table.
-    fn with_capacity(capacity: uint) -> HashMap<K, V> {
+    pub fn with_capacity(capacity: uint) -> HashMap<K, V> {
         linear_map_with_capacity(capacity)
     }
 
     /// Reserve space for at least `n` elements in the hash table.
-    fn reserve_at_least(&mut self, n: uint) {
+    pub fn reserve_at_least(&mut self, n: uint) {
         if n > self.buckets.len() {
             let buckets = n * 4 / 3 + 1;
             self.resize(uint::next_power_of_two(buckets));
@@ -425,7 +427,7 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return the value corresponding to the key in the map, or insert
     /// and return the value if it doesn't exist.
-    fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> &'a V {
+    pub fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> &'a V {
         if self.size >= self.resize_at {
             // n.b.: We could also do this after searching, so
             // that we do not resize if this call to insert is
@@ -453,7 +455,8 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return the value corresponding to the key in the map, or create,
     /// insert, and return a new value if it doesn't exist.
-    fn find_or_insert_with<'a>(&'a mut self, k: K, f: &fn(&K) -> V) -> &'a V {
+    pub fn find_or_insert_with<'a>(&'a mut self, k: K, f: &fn(&K) -> V)
+                                   -> &'a V {
         if self.size >= self.resize_at {
             // n.b.: We could also do this after searching, so
             // that we do not resize if this call to insert is
@@ -480,7 +483,9 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
         self.value_for_bucket(idx)
     }
 
-    fn consume(&mut self, f: &fn(K, V)) {
+    /// Calls a function on each element of a hash map, destroying the hash
+    /// map in the process.
+    pub fn consume(&mut self, f: &fn(K, V)) {
         let buckets = replace(&mut self.buckets,
                               vec::from_fn(INITIAL_CAPACITY, |_| None));
         self.size = 0;
@@ -495,7 +500,9 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
         }
     }
 
-    fn get<'a>(&'a self, k: &K) -> &'a V {
+    /// Retrieves a value for the given key, failing if the key is not
+    /// present.
+    pub fn get<'a>(&'a self, k: &K) -> &'a V {
         match self.find(k) {
             Some(v) => v,
             None => fail!("No entry found for key: %?", k),
@@ -504,7 +511,7 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return true if the map contains a value for the specified key,
     /// using equivalence
-    fn contains_key_equiv<Q:Hash + Equiv<K>>(&self, key: &Q) -> bool {
+    pub fn contains_key_equiv<Q:Hash + Equiv<K>>(&self, key: &Q) -> bool {
         match self.bucket_for_key_equiv(key) {
             FoundEntry(_) => {true}
             TableFull | FoundHole(_) => {false}
@@ -513,7 +520,8 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Return the value corresponding to the key in the map, using
     /// equivalence
-    fn find_equiv<'a, Q:Hash + Equiv<K>>(&'a self, k: &Q) -> Option<&'a V> {
+    pub fn find_equiv<'a, Q:Hash + Equiv<K>>(&'a self, k: &Q)
+                                             -> Option<&'a V> {
         match self.bucket_for_key_equiv(k) {
             FoundEntry(idx) => Some(self.value_for_bucket(idx)),
             TableFull | FoundHole(_) => None,
@@ -521,14 +529,14 @@ pub impl<K: Hash + Eq, V> HashMap<K, V> {
     }
 }
 
-pub impl<K: Hash + Eq, V: Copy> HashMap<K, V> {
+impl<K: Hash + Eq, V: Copy> HashMap<K, V> {
     /// Like `find`, but returns a copy of the value.
-    fn find_copy(&self, k: &K) -> Option<V> {
+    pub fn find_copy(&self, k: &K) -> Option<V> {
         self.find(k).map_consume(|v| copy *v)
     }
 
     /// Like `get`, but returns a copy of the value.
-    fn get_copy(&self, k: &K) -> V {
+    pub fn get_copy(&self, k: &K) -> V {
         copy *self.get(k)
     }
 }
@@ -632,29 +640,31 @@ impl<T:Hash + Eq> Set<T> for HashSet<T> {
     }
 }
 
-pub impl <T:Hash + Eq> HashSet<T> {
+impl<T:Hash + Eq> HashSet<T> {
     /// Create an empty HashSet
-    fn new() -> HashSet<T> {
+    pub fn new() -> HashSet<T> {
         HashSet::with_capacity(INITIAL_CAPACITY)
     }
 
     /// Create an empty HashSet with space for at least `n` elements in
     /// the hash table.
-    fn with_capacity(capacity: uint) -> HashSet<T> {
+    pub fn with_capacity(capacity: uint) -> HashSet<T> {
         HashSet { map: HashMap::with_capacity(capacity) }
     }
 
     /// Reserve space for at least `n` elements in the hash table.
-    fn reserve_at_least(&mut self, n: uint) {
+    pub fn reserve_at_least(&mut self, n: uint) {
         self.map.reserve_at_least(n)
     }
 
     /// Consumes all of the elements in the set, emptying it out
-    fn consume(&mut self, f: &fn(T)) {
+    pub fn consume(&mut self, f: &fn(T)) {
         self.map.consume(|k, _| f(k))
     }
 
-    fn contains_equiv<Q:Hash + Equiv<T>>(&self, value: &Q) -> bool {
+    /// Returns true if the hash set contains a value equivalent to the
+    /// given query value.
+    pub fn contains_equiv<Q:Hash + Equiv<T>>(&self, value: &Q) -> bool {
       self.map.contains_key_equiv(value)
     }
 }

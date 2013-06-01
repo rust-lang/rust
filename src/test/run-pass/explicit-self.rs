@@ -26,10 +26,10 @@ fn compute_area(shape: &shape) -> float {
     }
 }
 
-pub impl shape {
+impl shape {
     // self is in the implicit self region
-    fn select<'r, T>(&self, threshold: float,
-                     a: &'r T, b: &'r T) -> &'r T {
+    pub fn select<'r, T>(&self, threshold: float, a: &'r T, b: &'r T)
+                         -> &'r T {
         if compute_area(self) > threshold {a} else {b}
     }
 }
@@ -54,12 +54,12 @@ fn thing(x: A) -> thing {
     }
 }
 
-pub impl thing {
-    fn foo(@self) -> int { *self.x.a }
-    fn bar(~self) -> int { *self.x.a }
-    fn quux(&self) -> int { *self.x.a }
-    fn baz<'a>(&'a self) -> &'a A { &self.x }
-    fn spam(self) -> int { *self.x.a }
+impl thing {
+    pub fn foo(@self) -> int { *self.x.a }
+    pub fn bar(~self) -> int { *self.x.a }
+    pub fn quux(&self) -> int { *self.x.a }
+    pub fn baz<'a>(&'a self) -> &'a A { &self.x }
+    pub fn spam(self) -> int { *self.x.a }
 }
 
 trait Nus { fn f(&self); }

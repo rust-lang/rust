@@ -36,8 +36,8 @@ pub struct FnType {
     sret: bool
 }
 
-pub impl FnType {
-    fn decl_fn(&self, decl: &fn(fnty: TypeRef) -> ValueRef) -> ValueRef {
+impl FnType {
+    pub fn decl_fn(&self, decl: &fn(fnty: TypeRef) -> ValueRef) -> ValueRef {
         let atys = vec::map(self.arg_tys, |t| t.ty);
         let rty = self.ret_ty.ty;
         let fnty = T_fn(atys, rty);
@@ -57,9 +57,11 @@ pub impl FnType {
         return llfn;
     }
 
-    fn build_shim_args(&self, bcx: block,
-                       arg_tys: &[TypeRef],
-                       llargbundle: ValueRef) -> ~[ValueRef] {
+    pub fn build_shim_args(&self,
+                           bcx: block,
+                           arg_tys: &[TypeRef],
+                           llargbundle: ValueRef)
+                           -> ~[ValueRef] {
         let mut atys: &[LLVMType] = self.arg_tys;
         let mut attrs: &[option::Option<Attribute>] = self.attrs;
 
@@ -92,12 +94,12 @@ pub impl FnType {
         return llargvals;
     }
 
-    fn build_shim_ret(&self,
-                      bcx: block,
-                      arg_tys: &[TypeRef],
-                      ret_def: bool,
-                      llargbundle: ValueRef,
-                      llretval: ValueRef) {
+    pub fn build_shim_ret(&self,
+                          bcx: block,
+                          arg_tys: &[TypeRef],
+                          ret_def: bool,
+                          llargbundle: ValueRef,
+                          llretval: ValueRef) {
         for vec::eachi(self.attrs) |i, a| {
             match *a {
                 option::Some(attr) => {
@@ -128,11 +130,11 @@ pub impl FnType {
         };
     }
 
-    fn build_wrap_args(&self,
-                       bcx: block,
-                       ret_ty: TypeRef,
-                       llwrapfn: ValueRef,
-                       llargbundle: ValueRef) {
+    pub fn build_wrap_args(&self,
+                           bcx: block,
+                           ret_ty: TypeRef,
+                           llwrapfn: ValueRef,
+                           llargbundle: ValueRef) {
         let mut atys: &[LLVMType] = self.arg_tys;
         let mut attrs: &[option::Option<Attribute>] = self.attrs;
         let mut j = 0u;
@@ -167,10 +169,10 @@ pub impl FnType {
         store_inbounds(bcx, llretptr, llargbundle, [0u, n]);
     }
 
-    fn build_wrap_ret(&self,
-                      bcx: block,
-                      arg_tys: &[TypeRef],
-                      llargbundle: ValueRef) {
+    pub fn build_wrap_ret(&self,
+                          bcx: block,
+                          arg_tys: &[TypeRef],
+                          llargbundle: ValueRef) {
         unsafe {
             if llvm::LLVMGetTypeKind(self.ret_ty.ty) == Void {
                 return;

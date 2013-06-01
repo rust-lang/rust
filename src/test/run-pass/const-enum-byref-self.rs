@@ -11,8 +11,8 @@
 enum E { V, VV(int) }
 static C: E = V;
 
-pub impl E {
-    fn method(&self) {
+impl E {
+    pub fn method(&self) {
         match *self {
             V => {}
             VV(*) => fail!()

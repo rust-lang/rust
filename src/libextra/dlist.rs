@@ -41,7 +41,7 @@ pub struct DList<T> {
     tl: DListLink<T>,
 }
 
-priv impl<T> DListNode<T> {
+impl<T> DListNode<T> {
     fn assert_links(@mut self) {
         match self.next {
             Some(neighbour) => match neighbour.prev {
@@ -64,26 +64,26 @@ priv impl<T> DListNode<T> {
     }
 }
 
-pub impl<T> DListNode<T> {
+impl<T> DListNode<T> {
     /// Get the next node in the list, if there is one.
-    fn next_link(@mut self) -> DListLink<T> {
+    pub fn next_link(@mut self) -> DListLink<T> {
         self.assert_links();
         self.next
     }
     /// Get the next node in the list, failing if there isn't one.
-    fn next_node(@mut self) -> @mut DListNode<T> {
+    pub fn next_node(@mut self) -> @mut DListNode<T> {
         match self.next_link() {
             Some(nobe) => nobe,
             None       => fail!("This dlist node has no next neighbour.")
         }
     }
     /// Get the previous node in the list, if there is one.
-    fn prev_link(@mut self) -> DListLink<T> {
+    pub fn prev_link(@mut self) -> DListLink<T> {
         self.assert_links();
         self.prev
     }
     /// Get the previous node in the list, failing if there isn't one.
-    fn prev_node(@mut self) -> @mut DListNode<T> {
+    pub fn prev_node(@mut self) -> @mut DListNode<T> {
         match self.prev_link() {
             Some(nobe) => nobe,
             None       => fail!("This dlist node has no previous neighbour.")
@@ -126,7 +126,7 @@ pub fn concat<T>(lists: @mut DList<@mut DList<T>>) -> @mut DList<T> {
     result
 }
 
-priv impl<T> DList<T> {
+impl<T> DList<T> {
     fn new_link(data: T) -> DListLink<T> {
         Some(@mut DListNode {
             data: data,
@@ -211,34 +211,34 @@ priv impl<T> DList<T> {
     }
 }
 
-pub impl<T> DList<T> {
+impl<T> DList<T> {
     /// Get the size of the list. O(1).
-    fn len(@mut self) -> uint { self.size }
+    pub fn len(@mut self) -> uint { self.size }
     /// Returns true if the list is empty. O(1).
-    fn is_empty(@mut self) -> bool { self.len() == 0 }
+    pub fn is_empty(@mut self) -> bool { self.len() == 0 }
 
     /// Add data to the head of the list. O(1).
-    fn push_head(@mut self, data: T) {
+    pub fn push_head(@mut self, data: T) {
         self.add_head(DList::new_link(data));
     }
     /**
      * Add data to the head of the list, and get the new containing
      * node. O(1).
      */
-    fn push_head_n(@mut self, data: T) -> @mut DListNode<T> {
+    pub fn push_head_n(@mut self, data: T) -> @mut DListNode<T> {
         let nobe = DList::new_link(data);
         self.add_head(nobe);
         nobe.get()
     }
     /// Add data to the tail of the list. O(1).
-    fn push(@mut self, data: T) {
+    pub fn push(@mut self, data: T) {
         self.add_tail(DList::new_link(data));
     }
     /**
      * Add data to the tail of the list, and get the new containing
      * node. O(1).
      */
-    fn push_n(@mut self, data: T) -> @mut DListNode<T> {
+    pub fn push_n(@mut self, data: T) -> @mut DListNode<T> {
         let nobe = DList::new_link(data);
         self.add_tail(nobe);
         nobe.get()
@@ -247,16 +247,16 @@ pub impl<T> DList<T> {
      * Insert data into the middle of the list, left of the given node.
      * O(1).
      */
-    fn insert_before(@mut self, data: T, neighbour: @mut DListNode<T>) {
+    pub fn insert_before(@mut self, data: T, neighbour: @mut DListNode<T>) {
         self.insert_left(DList::new_link(data), neighbour);
     }
     /**
      * Insert an existing node in the middle of the list, left of the
      * given node. O(1).
      */
-    fn insert_n_before(@mut self,
-                       nobe: @mut DListNode<T>,
-                       neighbour: @mut DListNode<T>) {
+    pub fn insert_n_before(@mut self,
+                           nobe: @mut DListNode<T>,
+                           neighbour: @mut DListNode<T>) {
         self.make_mine(nobe);
         self.insert_left(Some(nobe), neighbour);
     }
@@ -264,11 +264,10 @@ pub impl<T> DList<T> {
      * Insert data in the middle of the list, left of the given node,
      * and get its containing node. O(1).
      */
-    fn insert_before_n(
-        @mut self,
-        data: T,
-        neighbour: @mut DListNode<T>
-    ) -> @mut DListNode<T> {
+    pub fn insert_before_n(@mut self,
+                           data: T,
+                           neighbour: @mut DListNode<T>)
+                           -> @mut DListNode<T> {
         let nobe = DList::new_link(data);
         self.insert_left(nobe, neighbour);
         nobe.get()
@@ -277,16 +276,16 @@ pub impl<T> DList<T> {
      * Insert data into the middle of the list, right of the given node.
      * O(1).
      */
-    fn insert_after(@mut self, data: T, neighbour: @mut DListNode<T>) {
+    pub fn insert_after(@mut self, data: T, neighbour: @mut DListNode<T>) {
         self.insert_right(neighbour, DList::new_link(data));
     }
     /**
      * Insert an existing node in the middle of the list, right of the
      * given node. O(1).
      */
-    fn insert_n_after(@mut self,
-                      nobe: @mut DListNode<T>,
-                      neighbour: @mut DListNode<T>) {
+    pub fn insert_n_after(@mut self,
+                          nobe: @mut DListNode<T>,
+                          neighbour: @mut DListNode<T>) {
         self.make_mine(nobe);
         self.insert_right(neighbour, Some(nobe));
     }
@@ -294,42 +293,41 @@ pub impl<T> DList<T> {
      * Insert data in the middle of the list, right of the given node,
      * and get its containing node. O(1).
      */
-    fn insert_after_n(
-        @mut self,
-        data: T,
-        neighbour: @mut DListNode<T>
-    ) -> @mut DListNode<T> {
+    pub fn insert_after_n(@mut self,
+                          data: T,
+                          neighbour: @mut DListNode<T>)
+                          -> @mut DListNode<T> {
         let nobe = DList::new_link(data);
         self.insert_right(neighbour, nobe);
         nobe.get()
     }
 
     /// Remove a node from the head of the list. O(1).
-    fn pop_n(@mut self) -> DListLink<T> {
+    pub fn pop_n(@mut self) -> DListLink<T> {
         let hd = self.peek_n();
         hd.map(|nobe| self.unlink(*nobe));
         hd
     }
     /// Remove a node from the tail of the list. O(1).
-    fn pop_tail_n(@mut self) -> DListLink<T> {
+    pub fn pop_tail_n(@mut self) -> DListLink<T> {
         let tl = self.peek_tail_n();
         tl.map(|nobe| self.unlink(*nobe));
         tl
     }
     /// Get the node at the list's head. O(1).
-    fn peek_n(@mut self) -> DListLink<T> { self.hd }
+    pub fn peek_n(@mut self) -> DListLink<T> { self.hd }
     /// Get the node at the list's tail. O(1).
-    fn peek_tail_n(@mut self) -> DListLink<T> { self.tl }
+    pub fn peek_tail_n(@mut self) -> DListLink<T> { self.tl }
 
     /// Get the node at the list's head, failing if empty. O(1).
-    fn head_n(@mut self) -> @mut DListNode<T> {
+    pub fn head_n(@mut self) -> @mut DListNode<T> {
         match self.hd {
             Some(nobe) => nobe,
             None       => fail!("Attempted to get the head of an empty dlist.")
         }
     }
     /// Get the node at the list's tail, failing if empty. O(1).
-    fn tail_n(@mut self) -> @mut DListNode<T> {
+    pub fn tail_n(@mut self) -> @mut DListNode<T> {
         match self.tl {
             Some(nobe) => nobe,
             None       => fail!("Attempted to get the tail of an empty dlist.")
@@ -337,13 +335,13 @@ pub impl<T> DList<T> {
     }
 
     /// Remove a node from anywhere in the list. O(1).
-    fn remove(@mut self, nobe: @mut DListNode<T>) { self.unlink(nobe); }
+    pub fn remove(@mut self, nobe: @mut DListNode<T>) { self.unlink(nobe); }
 
     /**
      * Empty another list onto the end of this list, joining this list's tail
      * to the other list's head. O(1).
      */
-    fn append(@mut self, them: @mut DList<T>) {
+    pub fn append(@mut self, them: @mut DList<T>) {
         if managed::mut_ptr_eq(self, them) {
             fail!("Cannot append a dlist to itself!")
         }
@@ -360,7 +358,7 @@ pub impl<T> DList<T> {
      * Empty another list onto the start of this list, joining the other
      * list's tail to this list's head. O(1).
      */
-    fn prepend(@mut self, them: @mut DList<T>) {
+    pub fn prepend(@mut self, them: @mut DList<T>) {
         if managed::mut_ptr_eq(self, them) {
             fail!("Cannot prepend a dlist to itself!")
         }
@@ -375,7 +373,7 @@ pub impl<T> DList<T> {
     }
 
     /// Reverse the list's elements in place. O(n).
-    fn reverse(@mut self) {
+    pub fn reverse(@mut self) {
         do self.hd.while_some |nobe| {
             let next_nobe = nobe.next;
             self.remove(nobe);
@@ -389,7 +387,7 @@ pub impl<T> DList<T> {
      * Remove everything from the list. This is important because the cyclic
      * links won't otherwise be automatically refcounted-collected. O(n).
      */
-    fn clear(@mut self) {
+    pub fn clear(@mut self) {
         // Cute as it would be to simply detach the list and proclaim "O(1)!",
         // the GC would still be a hidden O(n). Better to be honest about it.
         while !self.is_empty() {
@@ -398,7 +396,7 @@ pub impl<T> DList<T> {
     }
 
     /// Iterate over nodes.
-    fn each_node(@mut self, f: &fn(@mut DListNode<T>) -> bool) -> bool {
+    pub fn each_node(@mut self, f: &fn(@mut DListNode<T>) -> bool) -> bool {
         let mut link = self.peek_n();
         while link.is_some() {
             let nobe = link.get();
@@ -409,7 +407,7 @@ pub impl<T> DList<T> {
     }
 
     /// Check data structure integrity. O(n).
-    fn assert_consistent(@mut self) {
+    pub fn assert_consistent(@mut self) {
         if self.hd.is_none() || self.tl.is_none() {
             assert!(self.hd.is_none() && self.tl.is_none());
         }
@@ -459,35 +457,35 @@ pub impl<T> DList<T> {
     }
 }
 
-pub impl<T:Copy> DList<T> {
+impl<T:Copy> DList<T> {
     /// Remove data from the head of the list. O(1).
-    fn pop(@mut self) -> Option<T> {
+    pub fn pop(@mut self) -> Option<T> {
         self.pop_n().map(|nobe| nobe.data)
     }
 
     /// Remove data from the tail of the list. O(1).
-    fn pop_tail(@mut self) -> Option<T> {
+    pub fn pop_tail(@mut self) -> Option<T> {
         self.pop_tail_n().map(|nobe| nobe.data)
     }
 
     /// Get data at the list's head. O(1).
-    fn peek(@mut self) -> Option<T> {
+    pub fn peek(@mut self) -> Option<T> {
         self.peek_n().map(|nobe| nobe.data)
     }
 
     /// Get data at the list's tail. O(1).
-    fn peek_tail(@mut self) -> Option<T> {
+    pub fn peek_tail(@mut self) -> Option<T> {
         self.peek_tail_n().map (|nobe| nobe.data)
     }
 
     /// Get data at the list's head, failing if empty. O(1).
-    fn head(@mut self) -> T { self.head_n().data }
+    pub fn head(@mut self) -> T { self.head_n().data }
 
     /// Get data at the list's tail, failing if empty. O(1).
-    fn tail(@mut self) -> T { self.tail_n().data }
+    pub fn tail(@mut self) -> T { self.tail_n().data }
 
     /// Get the elements of the list as a vector. O(n).
-    fn to_vec(@mut self) -> ~[T] {
+    pub fn to_vec(@mut self) -> ~[T] {
         let mut v = vec::with_capacity(self.size);
         for old_iter::eachi(&self) |index,data| {
             v[index] = *data;

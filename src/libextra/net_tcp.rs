@@ -826,7 +826,7 @@ pub fn socket_buf(sock: TcpSocket) -> TcpSocketBuf {
 }
 
 /// Convenience methods extending `net::tcp::TcpSocket`
-pub impl TcpSocket {
+impl TcpSocket {
     pub fn read_start(&self) -> result::Result<@Port<
         result::Result<~[u8], TcpErrData>>, TcpErrData> {
         read_start(self)
@@ -835,11 +835,11 @@ pub impl TcpSocket {
         result::Result<(), TcpErrData> {
         read_stop(self)
     }
-    fn read(&self, timeout_msecs: uint) ->
+    pub fn read(&self, timeout_msecs: uint) ->
         result::Result<~[u8], TcpErrData> {
         read(self, timeout_msecs)
     }
-    fn read_future(&self, timeout_msecs: uint) ->
+    pub fn read_future(&self, timeout_msecs: uint) ->
         future::Future<result::Result<~[u8], TcpErrData>> {
         read_future(self, timeout_msecs)
     }

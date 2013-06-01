@@ -21,7 +21,7 @@ pub mod kitty {
        fn to_str(&self) -> ~str { copy self.name }
     }
 
-    priv impl cat {
+    impl cat {
         fn meow(&mut self) {
             error!("Meow");
             self.meows += 1u;
@@ -32,10 +32,10 @@ pub mod kitty {
 
     }
 
-    pub impl cat {
-        fn speak(&mut self) { self.meow(); }
+    impl cat {
+        pub fn speak(&mut self) { self.meow(); }
 
-        fn eat(&mut self) -> bool {
+        pub fn eat(&mut self) -> bool {
             if self.how_hungry > 0 {
                 error!("OM NOM NOM");
                 self.how_hungry -= 2;

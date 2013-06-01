@@ -28,8 +28,8 @@ impl ToStr for direction {
     }
 }
 
-pub impl direction {
-    fn reverse(&self) -> direction {
+impl direction {
+    pub fn reverse(&self) -> direction {
         match *self {
           send => recv,
           recv => send
@@ -45,21 +45,21 @@ pub struct next_state {
 // name, span, data, current state, next state
 pub struct message(~str, span, ~[@ast::Ty], state, Option<next_state>);
 
-pub impl message {
-    fn name(&mut self) -> ~str {
+impl message {
+    pub fn name(&mut self) -> ~str {
         match *self {
           message(ref id, _, _, _, _) => copy *id
         }
     }
 
-    fn span(&mut self) -> span {
+    pub fn span(&mut self) -> span {
         match *self {
           message(_, span, _, _, _) => span
         }
     }
 
     /// Return the type parameters actually used by this message
-    fn get_generics(&self) -> ast::Generics {
+    pub fn get_generics(&self) -> ast::Generics {
         match *self {
           message(_, _, _, this, _) => copy this.generics
         }
@@ -79,23 +79,26 @@ pub struct state_ {
     proto: protocol
 }
 
-pub impl state_ {
-    fn add_message(@self, name: ~str, span: span,
-                   data: ~[@ast::Ty], next: Option<next_state>) {
+impl state_ {
+    pub fn add_message(@self,
+                       name: ~str,
+                       span: span,
+                       data: ~[@ast::Ty],
+                       next: Option<next_state>) {
         self.messages.push(message(name, span, data, self,
                                    next));
     }
 
-    fn filename(&self) -> ~str {
+    pub fn filename(&self) -> ~str {
         self.proto.filename()
     }
 
-    fn data_name(&self) -> ast::ident {
+    pub fn data_name(&self) -> ast::ident {
         self.ident
     }
 
     /// Returns the type that is used for the messages.
-    fn to_ty(&self, cx: @ExtCtxt) -> @ast::Ty {
+    pub fn to_ty(&self, cx: @ExtCtxt) -> @ast::Ty {
         cx.ty_path
             (path(~[cx.ident_of(self.name)],self.span).add_tys(
                 cx.ty_vars(&self.generics.ty_params)))
@@ -103,7 +106,7 @@ pub impl state_ {
 
     /// Iterate over the states that can be reached in one message
     /// from this state.
-    fn reachable(&self, f: &fn(state) -> bool) -> bool {
+    pub fn reachable(&self, f: &fn(state) -> bool) -> bool {
         for self.messages.each |m| {
             match *m {
               message(_, _, _, _, Some(next_state { state: ref id, _ })) => {
@@ -140,28 +143,28 @@ pub struct protocol_ {
     bounded: Option<bool>,
 }
 
-pub impl protocol_ {
+impl protocol_ {
     /// Get a state.
-    fn get_state(&self, name: &str) -> state {
+    pub fn get_state(&self, name: &str) -> state {
         self.states.find(|i| name == i.name).get()
     }
 
-    fn get_state_by_id(&self, id: uint) -> state { self.states[id] }
+    pub fn get_state_by_id(&self, id: uint) -> state { self.states[id] }
 
-    fn has_state(&self, name: &str) -> bool {
+    pub fn has_state(&self, name: &str) -> bool {
         self.states.find(|i| name == i.name).is_some()
     }
 
-    fn filename(&self) -> ~str {
+    pub fn filename(&self) -> ~str {
         ~"proto://" + self.name
     }
 
-    fn num_states(&self) -> uint {
+    pub fn num_states(&self) -> uint {
         let states = &mut *self.states;
         states.len()
     }
 
-    fn has_ty_params(&self) -> bool {
+    pub fn has_ty_params(&self) -> bool {
         for self.states.each |s| {
             if s.generics.ty_params.len() > 0 {
                 return true;
@@ -169,19 +172,20 @@ pub impl protocol_ {
         }
         false
     }
-    fn is_bounded(&self) -> bool {
+
+    pub fn is_bounded(&self) -> bool {
         let bounded = self.bounded.get();
         bounded
     }
 }
 
-pub impl protocol_ {
-    fn add_state_poly(@mut self,
-                      name: ~str,
-                      ident: ast::ident,
-                      dir: direction,
-                      generics: ast::Generics)
-                   -> state {
+impl protocol_ {
+    pub fn add_state_poly(@mut self,
+                          name: ~str,
+                          ident: ast::ident,
+                          dir: direction,
+                          generics: ast::Generics)
+                          -> state {
         let messages = @mut ~[];
         let states = &mut *self.states;
 

@@ -13,8 +13,8 @@ pub fn main() {
         i: int,
     }
 
-    pub impl b {
-        fn do_stuff(&self) -> int { return 37; }
+    impl b {
+        pub fn do_stuff(&self) -> int { return 37; }
     }
 
     fn b(i:int) -> b {

@@ -12,11 +12,11 @@ struct Obj {
     member: uint
 }
 
-pub impl Obj {
-    fn boom() -> bool {
+impl Obj {
+    pub fn boom() -> bool {
         return 1+1 == 2
     }
-    fn chirp(&self) {
+    pub fn chirp(&self) {
         self.boom(); //~ ERROR `&Obj` does not implement any method in scope named `boom`
     }
 }

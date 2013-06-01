@@ -90,9 +90,9 @@ pub fn NonCopyable() -> NonCopyable { NonCopyable { i: () } }
 /// A type with no inhabitants
 pub enum Void { }
 
-pub impl Void {
+impl Void {
     /// A utility function for ignoring this uninhabited type
-    fn uninhabited(self) -> ! {
+    pub fn uninhabited(self) -> ! {
         match self {
             // Nothing to match on
         }

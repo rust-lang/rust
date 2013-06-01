@@ -40,7 +40,7 @@ pub struct Rc<T> {
     priv ptr: *mut RcBox<T>,
 }
 
-priv impl<T> Rc<T> {
+impl<T> Rc<T> {
     unsafe fn new(value: T) -> Rc<T> {
         let ptr = malloc(sys::size_of::<RcBox<T>>() as size_t) as *mut RcBox<T>;
         assert!(!ptr::is_null(ptr));
@@ -59,9 +59,9 @@ pub fn rc_from_const<T: Const>(value: T) -> Rc<T> {
     unsafe { Rc::new(value) }
 }
 
-pub impl<T> Rc<T> {
+impl<T> Rc<T> {
     #[inline(always)]
-    fn borrow<'r>(&'r self) -> &'r T {
+    pub fn borrow<'r>(&'r self) -> &'r T {
         unsafe { cast::copy_lifetime(self, &(*self.ptr).value) }
     }
 }
@@ -170,7 +170,7 @@ pub struct RcMut<T> {
     priv ptr: *mut RcMutBox<T>,
 }
 
-priv impl<T> RcMut<T> {
+impl<T> RcMut<T> {
     unsafe fn new(value: T) -> RcMut<T> {
         let ptr = malloc(sys::size_of::<RcMutBox<T>>() as size_t) as *mut RcMutBox<T>;
         assert!(!ptr::is_null(ptr));
@@ -189,10 +189,10 @@ pub fn rc_mut_from_const<T: Const>(value: T) -> RcMut<T> {
     unsafe { RcMut::new(value) }
 }
 
-pub impl<T> RcMut<T> {
+impl<T> RcMut<T> {
     /// Fails if there is already a mutable borrow of the box
     #[inline]
-    fn with_borrow<U>(&self, f: &fn(&T) -> U) -> U {
+    pub fn with_borrow<U>(&self, f: &fn(&T) -> U) -> U {
         unsafe {
             assert!((*self.ptr).borrow != Mutable);
             let previous = (*self.ptr).borrow;
@@ -205,7 +205,7 @@ pub impl<T> RcMut<T> {
 
     /// Fails if there is already a mutable or immutable borrow of the box
     #[inline]
-    fn with_mut_borrow<U>(&self, f: &fn(&mut T) -> U) -> U {
+    pub fn with_mut_borrow<U>(&self, f: &fn(&mut T) -> U) -> U {
         unsafe {
             assert_eq!((*self.ptr).borrow, Nothing);
             (*self.ptr).borrow = Mutable;
