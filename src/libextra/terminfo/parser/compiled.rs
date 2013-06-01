@@ -314,7 +314,7 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use p = std::path::Path;
+    use p = core::path::Path;
 
     #[test]
     fn test_veclens() {

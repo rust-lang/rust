@@ -204,6 +204,6 @@ mod test {
     #[test]
     fn test_basic_setabf() {
         let s = bytes!("\\E[48;5;%p1%dm");
-        assert_eq!(expand(s, [Number(1)], [], []), bytes!("\\E[48;5;1m").to_owned());
+        assert_eq!(expand(s, [Number(1)], [], []).unwrap(), bytes!("\\E[48;5;1m").to_owned());
     }
 }
