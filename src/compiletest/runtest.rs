@@ -789,7 +789,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     }
 
     // get stdout of result
-    runargs = ~[]; 
+    runargs = ~[];
     runargs.push(~"shell");
     runargs.push(~"cat");
     runargs.push(fmt!("%s/%s.stdout", config.adb_test_dir, prog_short));
@@ -798,7 +798,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
         procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""));
 
     // get stderr of result
-    runargs = ~[]; 
+    runargs = ~[];
     runargs.push(~"shell");
     runargs.push(~"cat");
     runargs.push(fmt!("%s/%s.stderr", config.adb_test_dir, prog_short));
