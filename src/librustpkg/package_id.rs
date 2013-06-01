@@ -9,11 +9,8 @@
 // except according to those terms.
 
 pub use package_path::{RemotePath, LocalPath, normalize, hash};
-use extra::semver;
 use core::prelude::*;
-use core::result;
-use core::prelude::*;
-use version::{default_version, try_getting_version, Version};
+use version::{try_getting_version, Version, NoVersion, split_version};
 
 /// Path-fragment identifier of a package such as
 /// 'github.com/graydon/test'; path must be a relative
@@ -38,6 +35,21 @@ impl PkgId {
     pub fn new(s: &str) -> PkgId {
         use conditions::bad_pkg_id::cond;
 
+        let mut given_version = None;
+
+        // Did the user request a specific version?
+        let s = match split_version(s) {
+            Some((path, v)) => {
+                debug!("s = %s, path = %s, v = %s", s, path, v.to_str());
+                given_version = Some(v);
+                path
+            }
+            None => {
+                debug!("%s has no explicit version", s);
+                s
+            }
+        };
+
         let p = Path(s);
         if p.is_absolute {
             return cond.raise((p, ~"absolute pkgid"));
@@ -49,9 +61,12 @@ impl PkgId {
         let local_path = normalize(copy remote_path);
         let short_name = (copy local_path).filestem().expect(fmt!("Strange path! %s", s));
 
-        let version = match try_getting_version(remote_path) {
+        let version = match given_version {
             Some(v) => v,
-            None => default_version()
+            None => match try_getting_version(&remote_path) {
+                Some(v) => v,
+                None => NoVersion
+            }
         };
 
         PkgId {
@@ -69,13 +84,17 @@ impl PkgId {
     }
 
     pub fn short_name_with_version(&self) -> ~str {
-        fmt!("%s-%s", self.short_name, self.version.to_str())
+        fmt!("%s%s", self.short_name, self.version.to_str())
     }
 }
 
 impl ToStr for PkgId {
     fn to_str(&self) -> ~str {
+        let maybe_dash = match self.version {
+            NoVersion => "",
+            _         => "-"
+        };
         // should probably use the filestem and not the whole path
-        fmt!("%s-%s", self.local_path.to_str(), self.version.to_str())
+        fmt!("%s%s%s", self.local_path.to_str(), maybe_dash, self.version.to_str())
     }
 }
