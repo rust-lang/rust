@@ -425,9 +425,10 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
         }
     }
 
-    /// Return the value corresponding to the key in the map, or insert
-    /// and return the value if it doesn't exist.
-    pub fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> &'a V {
+    /// Modify and return the value corresponding to the key in the map, or
+    /// insert and return a new value if it doesn't exist.
+    pub fn mangle<'a,A>(&'a mut self, k: K, a: A, not_found: &fn(&K, A) -> V,
+                        found: &fn(&K, &mut V, A)) -> &'a mut V {
         if self.size >= self.resize_at {
             // n.b.: We could also do this after searching, so
             // that we do not resize if this call to insert is
@@ -441,46 +442,37 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
         let hash = k.hash_keyed(self.k0, self.k1) as uint;
         let idx = match self.bucket_for_key_with_hash(hash, &k) {
             TableFull => fail!("Internal logic error"),
-            FoundEntry(idx) => idx,
+            FoundEntry(idx) => { found(&k, self.mut_value_for_bucket(idx), a); idx }
             FoundHole(idx) => {
-                self.buckets[idx] = Some(Bucket{hash: hash, key: k,
-                                     value: v});
+                let v = not_found(&k, a);
+                self.buckets[idx] = Some(Bucket{hash: hash, key: k, value: v});
                 self.size += 1;
                 idx
-            },
+            }
         };
 
-        self.value_for_bucket(idx)
+        self.mut_value_for_bucket(idx)
+    }
+
+    /// Return the value corresponding to the key in the map, or insert
+    /// and return the value if it doesn't exist.
+    pub fn find_or_insert<'a>(&'a mut self, k: K, v: V) -> &'a mut V {
+        self.mangle(k, v, |_k, a| a, |_k,_v,_a| ())
     }
 
     /// Return the value corresponding to the key in the map, or create,
     /// insert, and return a new value if it doesn't exist.
     pub fn find_or_insert_with<'a>(&'a mut self, k: K, f: &fn(&K) -> V)
-                                   -> &'a V {
-        if self.size >= self.resize_at {
-            // n.b.: We could also do this after searching, so
-            // that we do not resize if this call to insert is
-            // simply going to update a key in place.  My sense
-            // though is that it's worse to have to search through
-            // buckets to find the right spot twice than to just
-            // resize in this corner case.
-            self.expand();
-        }
+                               -> &'a mut V {
+        self.mangle(k, (), |k,_a| f(k), |_k,_v,_a| ())
+    }
 
-        let hash = k.hash_keyed(self.k0, self.k1) as uint;
-        let idx = match self.bucket_for_key_with_hash(hash, &k) {
-            TableFull => fail!("Internal logic error"),
-            FoundEntry(idx) => idx,
-            FoundHole(idx) => {
-                let v = f(&k);
-                self.buckets[idx] = Some(Bucket{hash: hash, key: k,
-                                     value: v});
-                self.size += 1;
-                idx
-            },
-        };
-
-        self.value_for_bucket(idx)
+    /// Insert a key-value pair into the map if the key is not already present.
+    /// Otherwise, modify the existing value for the key.
+    /// Returns the new or modified value for the key.
+    pub fn insert_or_update_with<'a>(&'a mut self, k: K, v: V,
+                                     f: &fn(&K, &mut V)) -> &'a mut V {
+        self.mangle(k, v, |_k,a| a, |k,v,_a| f(k,v))
     }
 
     /// Calls a function on each element of a hash map, destroying the hash
@@ -763,15 +755,22 @@ mod test_map {
     #[test]
     fn test_find_or_insert() {
         let mut m = HashMap::new::<int, int>();
-        assert_eq!(m.find_or_insert(1, 2), &2);
-        assert_eq!(m.find_or_insert(1, 3), &2);
+        assert_eq!(*m.find_or_insert(1, 2), 2);
+        assert_eq!(*m.find_or_insert(1, 3), 2);
     }
 
     #[test]
     fn test_find_or_insert_with() {
         let mut m = HashMap::new::<int, int>();
-        assert_eq!(m.find_or_insert_with(1, |_| 2), &2);
-        assert_eq!(m.find_or_insert_with(1, |_| 3), &2);
+        assert_eq!(*m.find_or_insert_with(1, |_| 2), 2);
+        assert_eq!(*m.find_or_insert_with(1, |_| 3), 2);
+    }
+
+    #[test]
+    fn test_insert_or_update_with() {
+        let mut m = HashMap::new::<int, int>();
+        assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 2);
+        assert_eq!(*m.insert_or_update_with(1, 2, |_,x| *x+=1), 3);
     }
 
     #[test]
