@@ -13,6 +13,7 @@
 //! local storage, and logging. Even a 'freestanding' Rust would likely want
 //! to implement this.
 
+use borrow;
 use cast::transmute;
 use libc::{c_void, uintptr_t};
 use ptr;
@@ -64,7 +65,7 @@ impl Task {
         // This is just an assertion that `run` was called unsafely
         // and this instance of Task is still accessible.
         do Local::borrow::<Task> |task| {
-            assert!(ptr::ref_eq(task, self));
+            assert!(borrow::ref_eq(task, self));
         }
 
         match self.unwinder {
@@ -89,7 +90,7 @@ impl Task {
         // This is just an assertion that `destroy` was called unsafely
         // and this instance of Task is still accessible.
         do Local::borrow::<Task> |task| {
-            assert!(ptr::ref_eq(task, self));
+            assert!(borrow::ref_eq(task, self));
         }
         match self.storage {
             LocalStorage(ptr, Some(ref dtor)) => {
