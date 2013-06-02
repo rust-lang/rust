@@ -22,7 +22,7 @@ use ops::Drop;
 use kinds::Owned;
 use rt::sched::{Scheduler, Coroutine};
 use rt::local::Local;
-use unstable::intrinsics::{atomic_xchg, atomic_load};
+use unstable::atomics::{AtomicUint, SeqCst};
 use util::Void;
 use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable};
 use cell::Cell;
@@ -34,14 +34,14 @@ use cell::Cell;
 /// * 2 - both endpoints are alive
 /// * 1 - either the sender or the receiver is dead, determined by context
 /// * <ptr> - A pointer to a blocked Task that can be transmuted to ~Task
-type State = int;
+type State = uint;
 
 static STATE_BOTH: State = 2;
 static STATE_ONE: State = 1;
 
 /// The heap-allocated structure shared between two endpoints.
 struct Packet<T> {
-    state: State,
+    state: AtomicUint,
     payload: Option<T>,
 }
 
@@ -70,7 +70,7 @@ pub struct PortOneHack<T> {
 
 pub fn oneshot<T: Owned>() -> (PortOne<T>, ChanOne<T>) {
     let packet: ~Packet<T> = ~Packet {
-        state: STATE_BOTH,
+        state: AtomicUint::new(STATE_BOTH),
         payload: None
     };
 
@@ -114,7 +114,7 @@ impl<T> ChanOne<T> {
             // reordering of the payload write. This also issues an
             // acquire barrier that keeps the subsequent access of the
             // ~Task pointer from being reordered.
-            let oldstate = atomic_xchg(&mut (*packet).state, STATE_ONE);
+            let oldstate = (*packet).state.swap(STATE_ONE, SeqCst);
             match oldstate {
                 STATE_BOTH => {
                     // Port is not waiting yet. Nothing to do
@@ -175,7 +175,7 @@ impl<T> PortOne<T> {
                 // of the payload. Also issues a release barrier to prevent reordering
                 // of any previous writes to the task structure.
                 let task_as_state: State = cast::transmute(task);
-                let oldstate = atomic_xchg(&mut (*packet).state, task_as_state);
+                let oldstate = (*packet).state.swap(task_as_state, SeqCst);
                 match oldstate {
                     STATE_BOTH => {
                         // Data has not been sent. Now we're blocked.
@@ -227,7 +227,7 @@ impl<T> Peekable<T> for PortOne<T> {
     fn peek(&self) -> bool {
         unsafe {
             let packet: *mut Packet<T> = self.inner.packet();
-            let oldstate = atomic_load(&mut (*packet).state);
+            let oldstate = (*packet).state.load(SeqCst);
             match oldstate {
                 STATE_BOTH => false,
                 STATE_ONE => (*packet).payload.is_some(),
@@ -244,7 +244,7 @@ impl<T> Drop for ChanOneHack<T> {
 
         unsafe {
             let this = cast::transmute_mut(self);
-            let oldstate = atomic_xchg(&mut (*this.packet()).state, STATE_ONE);
+            let oldstate = (*this.packet()).state.swap(STATE_ONE, SeqCst);
             match oldstate {
                 STATE_BOTH => {
                     // Port still active. It will destroy the Packet.
@@ -271,7 +271,7 @@ impl<T> Drop for PortOneHack<T> {
 
         unsafe {
             let this = cast::transmute_mut(self);
-            let oldstate = atomic_xchg(&mut (*this.packet()).state, STATE_ONE);
+            let oldstate = (*this.packet()).state.swap(STATE_ONE, SeqCst);
             match oldstate {
                 STATE_BOTH => {
                     // Chan still active. It will destroy the packet.
