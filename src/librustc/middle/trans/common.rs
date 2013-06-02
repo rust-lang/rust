@@ -611,7 +611,7 @@ pub trait get_node_info {
 impl get_node_info for @ast::expr {
     fn info(&self) -> Option<NodeInfo> {
         Some(NodeInfo {id: self.id,
-                       callee_id: Some(self.callee_id),
+                       callee_id: self.get_callee_id(),
                        span: self.span})
     }
 }

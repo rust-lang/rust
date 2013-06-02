@@ -256,8 +256,8 @@ fn visit_expr(expr: @ast::expr, rcx: @mut Rcx, v: rvt) {
         ast::expr_unary(*) if has_method_map => {
             tcx.region_maps.record_cleanup_scope(expr.id);
         }
-        ast::expr_binary(ast::and, lhs, rhs) |
-        ast::expr_binary(ast::or, lhs, rhs) => {
+        ast::expr_binary(_, ast::and, lhs, rhs) |
+        ast::expr_binary(_, ast::or, lhs, rhs) => {
             tcx.region_maps.record_cleanup_scope(lhs.id);
             tcx.region_maps.record_cleanup_scope(rhs.id);
         }
@@ -306,36 +306,36 @@ fn visit_expr(expr: @ast::expr, rcx: @mut Rcx, v: rvt) {
 
     match expr.node {
         ast::expr_call(callee, ref args, _) => {
-            constrain_callee(rcx, expr, callee);
-            constrain_call(rcx, expr, None, *args, false);
+            constrain_callee(rcx, callee.id, expr, callee);
+            constrain_call(rcx, callee.id, expr, None, *args, false);
         }
 
-        ast::expr_method_call(arg0, _, _, ref args, _) => {
-            constrain_call(rcx, expr, Some(arg0), *args, false);
+        ast::expr_method_call(callee_id, arg0, _, _, ref args, _) => {
+            constrain_call(rcx, callee_id, expr, Some(arg0), *args, false);
         }
 
-        ast::expr_index(lhs, rhs) |
-        ast::expr_assign_op(_, lhs, rhs) |
-        ast::expr_binary(_, lhs, rhs) if has_method_map => {
+        ast::expr_index(callee_id, lhs, rhs) |
+        ast::expr_assign_op(callee_id, _, lhs, rhs) |
+        ast::expr_binary(callee_id, _, lhs, rhs) if has_method_map => {
             // As `expr_method_call`, but the call is via an
             // overloaded op.  Note that we (sadly) currently use an
             // implicit "by ref" sort of passing style here.  This
             // should be converted to an adjustment!
-            constrain_call(rcx, expr, Some(lhs), [rhs], true);
+            constrain_call(rcx, callee_id, expr, Some(lhs), [rhs], true);
         }
 
-        ast::expr_unary(_, lhs) if has_method_map => {
+        ast::expr_unary(callee_id, _, lhs) if has_method_map => {
             // As above.
-            constrain_call(rcx, expr, Some(lhs), [], true);
+            constrain_call(rcx, callee_id, expr, Some(lhs), [], true);
         }
 
-        ast::expr_unary(ast::deref, base) => {
+        ast::expr_unary(_, ast::deref, base) => {
             // For *a, the lifetime of a must enclose the deref
             let base_ty = rcx.resolve_node_type(base.id);
             constrain_derefs(rcx, expr, 1, base_ty);
         }
 
-        ast::expr_index(vec_expr, _) => {
+        ast::expr_index(_, vec_expr, _) => {
             // For a[b], the lifetime of a must enclose the deref
             let vec_type = rcx.resolve_expr_type_adjusted(vec_expr);
             constrain_index(rcx, expr, vec_type);
@@ -404,6 +404,7 @@ fn visit_expr(expr: @ast::expr, rcx: @mut Rcx, v: rvt) {
 }
 
 fn constrain_callee(rcx: @mut Rcx,
+                    callee_id: ast::node_id,
                     call_expr: @ast::expr,
                     callee_expr: @ast::expr)
 {
@@ -411,7 +412,7 @@ fn constrain_callee(rcx: @mut Rcx,
 
     let call_region = ty::re_scope(call_expr.id);
 
-    let callee_ty = rcx.resolve_node_type(call_expr.callee_id);
+    let callee_ty = rcx.resolve_node_type(callee_id);
     match ty::get(callee_ty).sty {
         ty::ty_bare_fn(*) => { }
         ty::ty_closure(ref closure_ty) => {
@@ -444,6 +445,7 @@ fn constrain_callee(rcx: @mut Rcx,
 fn constrain_call(rcx: @mut Rcx,
                   // might be expr_call, expr_method_call, or an overloaded
                   // operator
+                  callee_id: ast::node_id,
                   call_expr: @ast::expr,
                   receiver: Option<@ast::expr>,
                   arg_exprs: &[@ast::expr],
@@ -457,7 +459,7 @@ fn constrain_call(rcx: @mut Rcx,
     let tcx = rcx.fcx.tcx();
     debug!("constrain_call(call_expr=%s, implicitly_ref_args=%?)",
            call_expr.repr(tcx), implicitly_ref_args);
-    let callee_ty = rcx.resolve_node_type(call_expr.callee_id);
+    let callee_ty = rcx.resolve_node_type(callee_id);
     let fn_sig = ty::ty_fn_sig(callee_ty);
 
     // `callee_region` is the scope representing the time in which the
@@ -964,14 +966,14 @@ pub mod guarantor {
 
         debug!("guarantor(expr=%s)", rcx.fcx.expr_to_str(expr));
         match expr.node {
-            ast::expr_unary(ast::deref, b) => {
+            ast::expr_unary(_, ast::deref, b) => {
                 let cat = categorize(rcx, b);
                 guarantor_of_deref(&cat)
             }
             ast::expr_field(b, _, _) => {
                 categorize(rcx, b).guarantor
             }
-            ast::expr_index(b, _) => {
+            ast::expr_index(_, b, _) => {
                 let cat = categorize(rcx, b);
                 guarantor_of_deref(&cat)
             }

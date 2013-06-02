@@ -499,7 +499,7 @@ fn visit_expr(expr: @expr, this: @mut IrMaps, vt: vt<@mut IrMaps>) {
         this.add_live_node_for_node(expr.id, ExprNode(expr.span));
         visit::visit_expr(expr, this, vt);
       }
-      expr_binary(op, _, _) if ast_util::lazy_binop(op) => {
+      expr_binary(_, op, _, _) if ast_util::lazy_binop(op) => {
         this.add_live_node_for_node(expr.id, ExprNode(expr.span));
         visit::visit_expr(expr, this, vt);
       }
@@ -1138,7 +1138,7 @@ impl Liveness {
             self.propagate_through_expr(r, succ)
           }
 
-          expr_assign_op(_, l, r) => {
+          expr_assign_op(_, _, l, r) => {
             // see comment on lvalues in
             // propagate_through_lvalue_components()
             let succ = self.write_lvalue(l, succ, ACC_WRITE|ACC_READ);
@@ -1178,11 +1178,10 @@ impl Liveness {
             self.propagate_through_expr(f, succ)
           }
 
-          expr_method_call(rcvr, _, _, ref args, _) => {
+          expr_method_call(callee_id, rcvr, _, _, ref args, _) => {
             // calling a method with bot return type means that the method
             // will fail, and hence the successors can be ignored
-            let t_ret = ty::ty_fn_ret(ty::node_id_to_type(self.tcx,
-                                                          expr.callee_id));
+            let t_ret = ty::ty_fn_ret(ty::node_id_to_type(self.tcx, callee_id));
             let succ = if ty::type_is_bot(t_ret) {self.s.exit_ln}
                        else {succ};
             let succ = self.propagate_through_exprs(*args, succ);
@@ -1193,7 +1192,7 @@ impl Liveness {
             self.propagate_through_exprs(*exprs, succ)
           }
 
-          expr_binary(op, l, r) if ast_util::lazy_binop(op) => {
+          expr_binary(_, op, l, r) if ast_util::lazy_binop(op) => {
             let r_succ = self.propagate_through_expr(r, succ);
 
             let ln = self.live_node(expr.id, expr.span);
@@ -1204,8 +1203,8 @@ impl Liveness {
           }
 
           expr_log(l, r) |
-          expr_index(l, r) |
-          expr_binary(_, l, r) => {
+          expr_index(_, l, r) |
+          expr_binary(_, _, l, r) => {
             self.propagate_through_exprs([l, r], succ)
           }
 
@@ -1214,7 +1213,7 @@ impl Liveness {
           expr_loop_body(e) |
           expr_do_body(e) |
           expr_cast(e, _) |
-          expr_unary(_, e) |
+          expr_unary(_, _, e) |
           expr_paren(e) => {
             self.propagate_through_expr(e, succ)
           }
@@ -1456,7 +1455,7 @@ fn check_expr(expr: @expr, this: @Liveness, vt: vt<@Liveness>) {
         visit::visit_expr(expr, this, vt);
       }
 
-      expr_assign_op(_, l, _) => {
+      expr_assign_op(_, _, l, _) => {
         this.check_lvalue(l, vt);
 
         visit::visit_expr(expr, this, vt);
