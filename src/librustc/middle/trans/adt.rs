@@ -145,22 +145,8 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
             return Univariant(mk_struct(cx, ftys, packed), dtor)
         }
         ty::ty_enum(def_id, ref substs) => {
-            struct Case { discr: Disr, tys: ~[ty::t] };
-            impl Case {
-                fn is_zerolen(&self, cx: &mut CrateContext) -> bool {
-                    mk_struct(cx, self.tys, false).size == 0
-                }
-                fn find_ptr(&self) -> Option<uint> {
-                    self.tys.iter().position(|&ty| mono_data_classify(ty) == MonoNonNull)
-                }
-            }
-
-            let cases = do ty::enum_variants(cx.tcx, def_id).map |vi| {
-                let arg_tys = do vi.args.map |&raw_ty| {
-                    ty::subst(cx.tcx, substs, raw_ty)
-                };
-                Case { discr: vi.disr_val, tys: arg_tys }
-            };
+            let cases = get_cases(cx.tcx, def_id, substs);
+            let hint = ty::lookup_repr_hint(cx.tcx, def_id);
 
             if cases.len() == 0 {
                 // Uninhabitable; represent as unit
@@ -170,7 +156,6 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
             if cases.iter().all(|c| c.tys.len() == 0) {
                 // All bodies empty -> intlike
                 let discrs = cases.map(|c| c.discr);
-                let hint = ty::lookup_repr_hint(cx.tcx, def_id);
                 let bounds = IntBounds {
                     ulo: *discrs.iter().min().unwrap(),
                     uhi: *discrs.iter().max().unwrap(),
@@ -231,6 +216,56 @@ fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
         _ => cx.sess.bug("adt::represent_type called on non-ADT type")
     }
 }
+
+/// Determine, without doing translation, whether an ADT must be FFI-safe.
+/// For use in lint or similar, where being sound but slightly incomplete is acceptable.
+pub fn is_ffi_safe(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
+    match ty::get(ty::lookup_item_type(tcx, def_id).ty).sty {
+        ty::ty_enum(def_id, ref substs) => {
+            let cases = get_cases(tcx, def_id, substs);
+            // Univariant => like struct/tuple.
+            if cases.len() <= 2 {
+                return true;
+            }
+            let hint = ty::lookup_repr_hint(tcx, def_id);
+            // Appropriate representation explicitly selected?
+            if hint.is_ffi_safe() {
+                return true;
+            }
+            // Conservative approximation of nullable pointers, for Option<~T> etc.
+            if cases.len() == 2 && hint == attr::ReprAny &&
+                (cases[0].tys.is_empty() && cases[1].find_ptr().is_some() ||
+                 cases[1].tys.is_empty() && cases[0].find_ptr().is_some()) {
+                return true;
+            }
+            false
+        }
+        // struct, tuple, etc.
+        // (is this right in the present of typedefs?)
+        _ => true
+    }
+}
+
+// NOTE this should probably all be in ty
+struct Case { discr: Disr, tys: ~[ty::t] }
+impl Case {
+    fn is_zerolen(&self, cx: &mut CrateContext) -> bool {
+        mk_struct(cx, self.tys, false).size == 0
+    }
+    fn find_ptr(&self) -> Option<uint> {
+        self.tys.iter().position(|&ty| mono_data_classify(ty) == MonoNonNull)
+    }
+}
+
+fn get_cases(tcx: ty::ctxt, def_id: ast::DefId, substs: &ty::substs) -> ~[Case] {
+    do ty::enum_variants(tcx, def_id).map |vi| {
+        let arg_tys = do vi.args.map |&raw_ty| {
+            ty::subst(tcx, substs, raw_ty)
+        };
+        Case { discr: vi.disr_val, tys: arg_tys }
+    }
+}
+
 
 fn mk_struct(cx: &mut CrateContext, tys: &[ty::t], packed: bool) -> Struct {
     let lltys = tys.map(|&ty| type_of::sizing_type_of(cx, ty));

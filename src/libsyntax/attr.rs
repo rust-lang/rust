@@ -442,6 +442,16 @@ pub enum ReprAttr {
     ReprExtern
 }
 
+impl ReprAttr {
+    pub fn is_ffi_safe(&self) -> bool {
+        match *self {
+            ReprAny => false,
+            ReprInt(_sp, ity) => ity.is_ffi_safe(),
+            ReprExtern => true
+        }
+    }
+}
+
 #[deriving(Eq)]
 pub enum IntType {
     SignedInt(ast::int_ty),
@@ -454,6 +464,15 @@ impl IntType {
         match self {
             SignedInt(*) => true,
             UnsignedInt(*) => false
+        }
+    }
+    fn is_ffi_safe(self) -> bool {
+        match self {
+            SignedInt(ast::ty_i8) | UnsignedInt(ast::ty_u8) |
+            SignedInt(ast::ty_i16) | UnsignedInt(ast::ty_u16) |
+            SignedInt(ast::ty_i32) | UnsignedInt(ast::ty_u32) |
+            SignedInt(ast::ty_i64) | UnsignedInt(ast::ty_u64) => true,
+            _ => false
         }
     }
 }
