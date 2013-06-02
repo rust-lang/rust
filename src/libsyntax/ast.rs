@@ -436,11 +436,21 @@ pub enum blk_check_mode { default_blk, unsafe_blk, }
 #[deriving(Eq, Encodable, Decodable)]
 pub struct expr {
     id: node_id,
-    // Extra node ID is only used for index, assign_op, unary, binary, method
-    // call
-    callee_id: node_id,
     node: expr_,
     span: span,
+}
+
+pub impl expr {
+    fn get_callee_id(&self) -> Option<node_id> {
+        match self.node {
+            expr_method_call(callee_id, _, _, _, _, _) |
+            expr_index(callee_id, _, _) |
+            expr_binary(callee_id, _, _, _) |
+            expr_assign_op(callee_id, _, _, _) |
+            expr_unary(callee_id, _, _) => Some(callee_id),
+            _ => None,
+        }
+    }
 }
 
 #[deriving(Eq, Encodable, Decodable)]
@@ -455,10 +465,10 @@ pub enum expr_ {
     expr_vstore(@expr, expr_vstore),
     expr_vec(~[@expr], mutability),
     expr_call(@expr, ~[@expr], CallSugar),
-    expr_method_call(@expr, ident, ~[@Ty], ~[@expr], CallSugar),
+    expr_method_call(node_id, @expr, ident, ~[@Ty], ~[@expr], CallSugar),
     expr_tup(~[@expr]),
-    expr_binary(binop, @expr, @expr),
-    expr_unary(unop, @expr),
+    expr_binary(node_id, binop, @expr, @expr),
+    expr_unary(node_id, unop, @expr),
     expr_lit(@lit),
     expr_cast(@expr, @Ty),
     expr_if(@expr, blk, Option<@expr>),
@@ -479,9 +489,9 @@ pub enum expr_ {
 
     expr_copy(@expr),
     expr_assign(@expr, @expr),
-    expr_assign_op(binop, @expr, @expr),
+    expr_assign_op(node_id, binop, @expr, @expr),
     expr_field(@expr, ident, ~[@Ty]),
-    expr_index(@expr, @expr),
+    expr_index(node_id, @expr, @expr),
     expr_path(@Path),
 
     /// The special identifier `self`.

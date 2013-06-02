@@ -471,16 +471,16 @@ pub fn visit_expr<E: Copy>(ex: @expr, e: E, v: vt<E>) {
             visit_exprs(*args, e, v);
             (v.visit_expr)(callee, e, v);
         }
-        expr_method_call(callee, _, ref tys, ref args, _) => {
+        expr_method_call(_, callee, _, ref tys, ref args, _) => {
             visit_exprs(*args, e, v);
             for tys.each |tp| { (v.visit_ty)(*tp, e, v); }
             (v.visit_expr)(callee, e, v);
         }
-        expr_binary(_, a, b) => {
+        expr_binary(_, _, a, b) => {
             (v.visit_expr)(a, e, v);
             (v.visit_expr)(b, e, v);
         }
-        expr_addr_of(_, x) | expr_unary(_, x) |
+        expr_addr_of(_, x) | expr_unary(_, _, x) |
         expr_loop_body(x) | expr_do_body(x) => (v.visit_expr)(x, e, v),
         expr_lit(_) => (),
         expr_cast(x, t) => {
@@ -518,7 +518,7 @@ pub fn visit_expr<E: Copy>(ex: @expr, e: E, v: vt<E>) {
             (v.visit_expr)(a, e, v);
         }
         expr_copy(a) => (v.visit_expr)(a, e, v),
-        expr_assign_op(_, a, b) => {
+        expr_assign_op(_, _, a, b) => {
             (v.visit_expr)(b, e, v);
             (v.visit_expr)(a, e, v);
         }
@@ -526,7 +526,7 @@ pub fn visit_expr<E: Copy>(ex: @expr, e: E, v: vt<E>) {
             (v.visit_expr)(x, e, v);
             for tys.each |tp| { (v.visit_ty)(*tp, e, v); }
         }
-        expr_index(a, b) => {
+        expr_index(_, a, b) => {
             (v.visit_expr)(a, e, v);
             (v.visit_expr)(b, e, v);
         }

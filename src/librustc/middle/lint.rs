@@ -675,7 +675,7 @@ fn lint_type_limits() -> visit::vt<@mut Context> {
     visit::mk_vt(@visit::Visitor {
         visit_expr: |e, cx: @mut Context, vt| {
             match e.node {
-                ast::expr_binary(ref binop, @ref l, @ref r) => {
+                ast::expr_binary(_, ref binop, @ref l, @ref r) => {
                     if is_comparison(*binop)
                         && !check_limits(cx, *binop, l, r) {
                         cx.span_lint(type_limits, e.span,

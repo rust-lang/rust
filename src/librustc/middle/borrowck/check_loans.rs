@@ -707,29 +707,29 @@ fn check_loans_in_expr<'a>(expr: @ast::expr,
           }
       }
       ast::expr_assign(dest, _) |
-      ast::expr_assign_op(_, dest, _) => {
+      ast::expr_assign_op(_, _, dest, _) => {
         this.check_assignment(dest);
       }
       ast::expr_call(f, ref args, _) => {
         this.check_call(expr, Some(f), f.id, f.span, *args);
       }
-      ast::expr_method_call(_, _, _, ref args, _) => {
-        this.check_call(expr, None, expr.callee_id, expr.span, *args);
+      ast::expr_method_call(callee_id, _, _, _, ref args, _) => {
+        this.check_call(expr, None, callee_id, expr.span, *args);
       }
-      ast::expr_index(_, rval) |
-      ast::expr_binary(_, _, rval)
+      ast::expr_index(callee_id, _, rval) |
+      ast::expr_binary(callee_id, _, _, rval)
       if this.bccx.method_map.contains_key(&expr.id) => {
         this.check_call(expr,
                         None,
-                        expr.callee_id,
+                        callee_id,
                         expr.span,
                         [rval]);
       }
-      ast::expr_unary(*) | ast::expr_index(*)
+      ast::expr_unary(callee_id, _, _) | ast::expr_index(callee_id, _, _)
       if this.bccx.method_map.contains_key(&expr.id) => {
         this.check_call(expr,
                         None,
-                        expr.callee_id,
+                        callee_id,
                         expr.span,
                         []);
       }

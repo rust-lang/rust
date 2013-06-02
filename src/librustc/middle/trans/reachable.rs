@@ -192,17 +192,6 @@ fn traverse_inline_body(cx: @mut ctx, body: &blk) {
                          expr_to_str(e, cx.tcx.sess.intr())))
             }
           }
-          expr_field(_, _, _) => {
-            match cx.method_map.find(&e.id) {
-              Some(&typeck::method_map_entry {
-                  origin: typeck::method_static(did),
-                  _
-                }) => {
-                traverse_def_id(cx, did);
-              }
-              _ => ()
-            }
-          }
           expr_method_call(*) => {
             match cx.method_map.find(&e.id) {
               Some(&typeck::method_map_entry {

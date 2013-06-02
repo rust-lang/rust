@@ -4969,67 +4969,71 @@ impl Resolver {
                                                          expr: @expr) {
         match expr.node {
             expr_field(_, ident, _) => {
+                // FIXME(#6890): Even though you can't treat a method like a
+                // field, we need to add any trait methods we find that match
+                // the field name so that we can do some nice error reporting
+                // later on in typeck.
                 let traits = self.search_for_traits_containing_method(ident);
                 self.trait_map.insert(expr.id, @mut traits);
             }
-            expr_method_call(_, ident, _, _, _) => {
+            expr_method_call(_, _, ident, _, _, _) => {
                 let traits = self.search_for_traits_containing_method(ident);
                 self.trait_map.insert(expr.id, @mut traits);
             }
-            expr_binary(add, _, _) | expr_assign_op(add, _, _) => {
+            expr_binary(_, add, _, _) | expr_assign_op(_, add, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.add_trait());
             }
-            expr_binary(subtract, _, _) | expr_assign_op(subtract, _, _) => {
+            expr_binary(_, subtract, _, _) | expr_assign_op(_, subtract, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.sub_trait());
             }
-            expr_binary(mul, _, _) | expr_assign_op(mul, _, _) => {
+            expr_binary(_, mul, _, _) | expr_assign_op(_, mul, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.mul_trait());
             }
-            expr_binary(div, _, _) | expr_assign_op(div, _, _) => {
+            expr_binary(_, div, _, _) | expr_assign_op(_, div, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.div_trait());
             }
-            expr_binary(rem, _, _) | expr_assign_op(rem, _, _) => {
+            expr_binary(_, rem, _, _) | expr_assign_op(_, rem, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.rem_trait());
             }
-            expr_binary(bitxor, _, _) | expr_assign_op(bitxor, _, _) => {
+            expr_binary(_, bitxor, _, _) | expr_assign_op(_, bitxor, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.bitxor_trait());
             }
-            expr_binary(bitand, _, _) | expr_assign_op(bitand, _, _) => {
+            expr_binary(_, bitand, _, _) | expr_assign_op(_, bitand, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.bitand_trait());
             }
-            expr_binary(bitor, _, _) | expr_assign_op(bitor, _, _) => {
+            expr_binary(_, bitor, _, _) | expr_assign_op(_, bitor, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.bitor_trait());
             }
-            expr_binary(shl, _, _) | expr_assign_op(shl, _, _) => {
+            expr_binary(_, shl, _, _) | expr_assign_op(_, shl, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.shl_trait());
             }
-            expr_binary(shr, _, _) | expr_assign_op(shr, _, _) => {
+            expr_binary(_, shr, _, _) | expr_assign_op(_, shr, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.shr_trait());
             }
-            expr_binary(lt, _, _) | expr_binary(le, _, _) |
-            expr_binary(ge, _, _) | expr_binary(gt, _, _) => {
+            expr_binary(_, lt, _, _) | expr_binary(_, le, _, _) |
+            expr_binary(_, ge, _, _) | expr_binary(_, gt, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.ord_trait());
             }
-            expr_binary(eq, _, _) | expr_binary(ne, _, _) => {
+            expr_binary(_, eq, _, _) | expr_binary(_, ne, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.eq_trait());
             }
-            expr_unary(neg, _) => {
+            expr_unary(_, neg, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.neg_trait());
             }
-            expr_unary(not, _) => {
+            expr_unary(_, not, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.not_trait());
             }

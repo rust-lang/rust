@@ -328,6 +328,7 @@ pub fn trans_call(in_cx: block,
 
 pub fn trans_method_call(in_cx: block,
                          call_ex: @ast::expr,
+                         callee_id: ast::node_id,
                          rcvr: @ast::expr,
                          args: CallArgs,
                          dest: expr::Dest)
@@ -339,7 +340,7 @@ pub fn trans_method_call(in_cx: block,
     trans_call_inner(
         in_cx,
         call_ex.info(),
-        node_id_type(in_cx, call_ex.callee_id),
+        node_id_type(in_cx, callee_id),
         expr_ty(in_cx, call_ex),
         |cx| {
             match cx.ccx().maps.method_map.find_copy(&call_ex.id) {
@@ -349,7 +350,7 @@ pub fn trans_method_call(in_cx: block,
                            origin.repr(in_cx.tcx()));
 
                     meth::trans_method_callee(cx,
-                                              call_ex.callee_id,
+                                              callee_id,
                                               rcvr,
                                               origin)
                 }

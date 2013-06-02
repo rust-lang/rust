@@ -463,8 +463,9 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 blk
             )
         }
-        expr_method_call(f, i, ref tps, ref args, blk) => {
+        expr_method_call(callee_id, f, i, ref tps, ref args, blk) => {
             expr_method_call(
+                fld.new_id(callee_id),
                 fld.fold_expr(f),
                 fld.fold_ident(i),
                 tps.map(|x| fld.fold_ty(*x)),
@@ -472,10 +473,21 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 blk
             )
         }
-        expr_binary(binop, lhs, rhs) => {
-            expr_binary(binop, fld.fold_expr(lhs), fld.fold_expr(rhs))
+        expr_binary(callee_id, binop, lhs, rhs) => {
+            expr_binary(
+                fld.new_id(callee_id),
+                binop,
+                fld.fold_expr(lhs),
+                fld.fold_expr(rhs)
+            )
         }
-        expr_unary(binop, ohs) => expr_unary(binop, fld.fold_expr(ohs)),
+        expr_unary(callee_id, binop, ohs) => {
+            expr_unary(
+                fld.new_id(callee_id),
+                binop,
+                fld.fold_expr(ohs)
+            )
+        }
         expr_loop_body(f) => expr_loop_body(fld.fold_expr(f)),
         expr_do_body(f) => expr_do_body(fld.fold_expr(f)),
         expr_lit(_) => copy *e,
@@ -514,8 +526,13 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
         expr_assign(el, er) => {
             expr_assign(fld.fold_expr(el), fld.fold_expr(er))
         }
-        expr_assign_op(op, el, er) => {
-            expr_assign_op(op, fld.fold_expr(el), fld.fold_expr(er))
+        expr_assign_op(callee_id, op, el, er) => {
+            expr_assign_op(
+                fld.new_id(callee_id),
+                op,
+                fld.fold_expr(el),
+                fld.fold_expr(er)
+            )
         }
         expr_field(el, id, ref tys) => {
             expr_field(
@@ -523,8 +540,12 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 tys.map(|x| fld.fold_ty(*x))
             )
         }
-        expr_index(el, er) => {
-            expr_index(fld.fold_expr(el), fld.fold_expr(er))
+        expr_index(callee_id, el, er) => {
+            expr_index(
+                fld.new_id(callee_id),
+                fld.fold_expr(el),
+                fld.fold_expr(er)
+            )
         }
         expr_path(pth) => expr_path(fld.fold_path(pth)),
         expr_self => expr_self,
@@ -801,7 +822,6 @@ impl ast_fold for AstFoldFns {
         let (n, s) = (self.fold_expr)(&x.node, x.span, self as @ast_fold);
         @expr {
             id: (self.new_id)(x.id),
-            callee_id: (self.new_id)(x.callee_id),
             node: n,
             span: (self.new_span)(s),
         }

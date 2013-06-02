@@ -470,13 +470,13 @@ fn trans_rvalue_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         ast::expr_lit(lit) => {
             return trans_immediate_lit(bcx, expr, *lit);
         }
-        ast::expr_binary(op, lhs, rhs) => {
+        ast::expr_binary(_, op, lhs, rhs) => {
             // if overloaded, would be RvalueDpsExpr
             assert!(!bcx.ccx().maps.method_map.contains_key(&expr.id));
 
             return trans_binary(bcx, expr, op, lhs, rhs);
         }
-        ast::expr_unary(op, x) => {
+        ast::expr_unary(_, op, x) => {
             return trans_unary_datum(bcx, expr, op, x);
         }
         ast::expr_addr_of(_, x) => {
@@ -535,8 +535,8 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
             return src_datum.store_to_datum(
                 bcx, src.id, DROP_EXISTING, dst_datum);
         }
-        ast::expr_assign_op(op, dst, src) => {
-            return trans_assign_op(bcx, expr, op, dst, src);
+        ast::expr_assign_op(callee_id, op, dst, src) => {
+            return trans_assign_op(bcx, expr, callee_id, op, dst, src);
         }
         ast::expr_paren(a) => {
             return trans_rvalue_stmt_unadjusted(bcx, a);
@@ -641,35 +641,39 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
             return callee::trans_call(
                 bcx, expr, f, callee::ArgExprs(*args), expr.id, dest);
         }
-        ast::expr_method_call(rcvr, _, _, ref args, _) => {
+        ast::expr_method_call(callee_id, rcvr, _, _, ref args, _) => {
             return callee::trans_method_call(bcx,
                                              expr,
+                                             callee_id,
                                              rcvr,
                                              callee::ArgExprs(*args),
                                              dest);
         }
-        ast::expr_binary(_, lhs, rhs) => {
+        ast::expr_binary(callee_id, _, lhs, rhs) => {
             // if not overloaded, would be RvalueDatumExpr
             return trans_overloaded_op(bcx,
                                        expr,
+                                       callee_id,
                                        lhs,
                                        ~[rhs],
                                        expr_ty(bcx, expr),
                                        dest);
         }
-        ast::expr_unary(_, subexpr) => {
+        ast::expr_unary(callee_id, _, subexpr) => {
             // if not overloaded, would be RvalueDatumExpr
             return trans_overloaded_op(bcx,
                                        expr,
+                                       callee_id,
                                        subexpr,
                                        ~[],
                                        expr_ty(bcx, expr),
                                        dest);
         }
-        ast::expr_index(base, idx) => {
+        ast::expr_index(callee_id, base, idx) => {
             // if not overloaded, would be RvalueDatumExpr
             return trans_overloaded_op(bcx,
                                        expr,
+                                       callee_id,
                                        base,
                                        ~[idx],
                                        expr_ty(bcx, expr),
@@ -687,8 +691,8 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
                 }
             }
         }
-        ast::expr_assign_op(op, dst, src) => {
-            return trans_assign_op(bcx, expr, op, dst, src);
+        ast::expr_assign_op(callee_id, op, dst, src) => {
+            return trans_assign_op(bcx, expr, callee_id, op, dst, src);
         }
         _ => {
             bcx.tcx().sess.span_bug(
@@ -828,10 +832,10 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
         ast::expr_field(base, ident, _) => {
             trans_rec_field(bcx, base, ident)
         }
-        ast::expr_index(base, idx) => {
+        ast::expr_index(_, base, idx) => {
             trans_index(bcx, expr, base, idx)
         }
-        ast::expr_unary(ast::deref, base) => {
+        ast::expr_unary(_, ast::deref, base) => {
             let basedatum = unpack_datum!(bcx, trans_to_datum(bcx, base));
             basedatum.deref(bcx, expr, 0)
         }
@@ -1520,20 +1524,21 @@ fn trans_binary(bcx: block,
 
 fn trans_overloaded_op(bcx: block,
                        expr: @ast::expr,
+                       callee_id: ast::node_id,
                        rcvr: @ast::expr,
                        args: ~[@ast::expr],
                        ret_ty: ty::t,
                        dest: Dest)
                        -> block {
     let origin = bcx.ccx().maps.method_map.get_copy(&expr.id);
-    let fty = node_id_type(bcx, expr.callee_id);
+    let fty = node_id_type(bcx, callee_id);
     callee::trans_call_inner(bcx,
                              expr.info(),
                              fty,
                              ret_ty,
                              |bcx| {
                                 meth::trans_method_callee(bcx,
-                                                          expr.callee_id,
+                                                          callee_id,
                                                           rcvr,
                                                           origin)
                              },
@@ -1658,6 +1663,7 @@ fn trans_imm_cast(bcx: block, expr: @ast::expr,
 
 fn trans_assign_op(bcx: block,
                    expr: @ast::expr,
+                   callee_id: ast::node_id,
                    op: ast::binop,
                    dst: @ast::expr,
                    src: @ast::expr) -> block
@@ -1676,6 +1682,7 @@ fn trans_assign_op(bcx: block,
         let scratch = scratch_datum(bcx, dst_datum.ty, false);
         let bcx = trans_overloaded_op(bcx,
                                       expr,
+                                      callee_id,
                                       dst,
                                       ~[src],
                                       dst_datum.ty,
