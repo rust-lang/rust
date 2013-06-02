@@ -190,6 +190,7 @@ ALL_CS := $(filter-out $(S)src/rt/bigint/bigint_ext.cpp \
                        $(S)src/rt/miniz.cpp \
                        $(S)src/rt/linenoise/linenoise.c \
                        $(S)src/rt/linenoise/utf8.c \
+                       $(wildcard $(S)src/rt/lz4/*.c) \
 	,$(ALL_CS))
 ALL_HS := $(wildcard $(S)src/rt/*.h \
                      $(S)src/rt/*/*.h \
@@ -205,6 +206,7 @@ ALL_HS := $(filter-out $(S)src/rt/vg/valgrind.h \
                        $(S)src/rt/bigint/bigint.h \
                        $(S)src/rt/linenoise/linenoise.h \
                        $(S)src/rt/linenoise/utf8.h \
+                       $(wildcard $(S)src/rt/lz4/*.h) \
 	,$(ALL_HS))
 
 # Run the tidy script in multiple parts to avoid huge 'echo' commands
