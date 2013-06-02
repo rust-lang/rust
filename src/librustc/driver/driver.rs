@@ -161,8 +161,15 @@ pub fn parse_input(sess: Session, cfg: ast::crate_cfg, input: &input)
     }
 }
 
+/// First phase to do, last phase to do
 #[deriving(Eq)]
-pub enum compile_upto {
+pub struct compile_upto {
+    from: compile_phase,
+    to: compile_phase
+}
+
+#[deriving(Eq)]
+pub enum compile_phase {
     cu_parse,
     cu_expand,
     cu_typeck,
@@ -177,138 +184,147 @@ pub enum compile_upto {
 #[fixed_stack_segment]
 pub fn compile_rest(sess: Session,
                     cfg: ast::crate_cfg,
-                    upto: compile_upto,
+                    phases: compile_upto,
                     outputs: Option<@OutputFilenames>,
                     curr: Option<@ast::crate>)
     -> (Option<@ast::crate>, Option<ty::ctxt>) {
 
     let time_passes = sess.time_passes();
 
-    let (llmod, link_meta) = {
+    let mut crate_opt = curr;
 
-        let mut crate = curr.unwrap();
+    if phases.from == cu_parse || phases.from == cu_everything {
 
         *sess.building_library = session::building_library(
-            sess.opts.crate_type, crate, sess.opts.test);
+            sess.opts.crate_type, crate_opt.unwrap(), sess.opts.test);
 
-        crate = time(time_passes, ~"expansion", ||
+        crate_opt = Some(time(time_passes, ~"expansion", ||
                      syntax::ext::expand::expand_crate(sess.parse_sess, copy cfg,
-                                                       crate));
+                                                       crate_opt.unwrap())));
 
-        crate = time(time_passes, ~"configuration", ||
-                     front::config::strip_unconfigured_items(crate));
+        crate_opt = Some(time(time_passes, ~"configuration", ||
+                     front::config::strip_unconfigured_items(crate_opt.unwrap())));
 
-        crate = time(time_passes, ~"maybe building test harness", ||
-                     front::test::modify_for_testing(sess, crate));
+        crate_opt = Some(time(time_passes, ~"maybe building test harness", ||
+                     front::test::modify_for_testing(sess, crate_opt.unwrap())));
+    }
 
-        if upto == cu_expand { return (Some(crate), None); }
+    if phases.to == cu_expand { return (crate_opt, None); }
 
-        crate = time(time_passes, ~"intrinsic injection", ||
-                     front::intrinsic_inject::inject_intrinsic(sess, crate));
+    assert!(phases.from != cu_no_trans);
 
-        crate = time(time_passes, ~"extra injection", ||
-                     front::std_inject::maybe_inject_libstd_ref(sess, crate));
+    let mut crate = crate_opt.unwrap();
 
-        let ast_map = time(time_passes, ~"ast indexing", ||
-                           syntax::ast_map::map_crate(sess.diagnostic(), crate));
+    let (llmod, link_meta) = {
+    crate = time(time_passes, ~"intrinsic injection", ||
+                 front::intrinsic_inject::inject_intrinsic(sess, crate));
 
-        time(time_passes, ~"external crate/lib resolution", ||
-             creader::read_crates(sess.diagnostic(), crate, sess.cstore,
-                                  sess.filesearch,
-                                  session::sess_os_to_meta_os(sess.targ_cfg.os),
-                                  sess.opts.is_static,
-                                  sess.parse_sess.interner));
+    crate = time(time_passes, ~"extra injection", ||
+                 front::std_inject::maybe_inject_libstd_ref(sess, crate));
 
-        let lang_items = time(time_passes, ~"language item collection", ||
-                              middle::lang_items::collect_language_items(crate, sess));
+    let ast_map = time(time_passes, ~"ast indexing", ||
+                       syntax::ast_map::map_crate(sess.diagnostic(), crate));
 
-        let middle::resolve::CrateMap {
-            def_map: def_map,
-            exp_map2: exp_map2,
-            trait_map: trait_map
-        } =
-            time(time_passes, ~"resolution", ||
-                 middle::resolve::resolve_crate(sess, lang_items, crate));
+    time(time_passes, ~"external crate/lib resolution", ||
+         creader::read_crates(sess.diagnostic(), crate, sess.cstore,
+                              sess.filesearch,
+                              session::sess_os_to_meta_os(sess.targ_cfg.os),
+                              sess.opts.is_static,
+                              sess.parse_sess.interner));
 
-        time(time_passes, ~"looking for entry point",
-             || middle::entry::find_entry_point(sess, crate, ast_map));
+    let lang_items = time(time_passes, ~"language item collection", ||
+                          middle::lang_items::collect_language_items(crate, sess));
 
-        let freevars = time(time_passes, ~"freevar finding", ||
-                            freevars::annotate_freevars(def_map, crate));
+    let middle::resolve::CrateMap {
+        def_map: def_map,
+        exp_map2: exp_map2,
+        trait_map: trait_map
+    } =
+        time(time_passes, ~"resolution", ||
+             middle::resolve::resolve_crate(sess, lang_items, crate));
 
-        let region_map = time(time_passes, ~"region resolution", ||
-                              middle::region::resolve_crate(sess, def_map, crate));
+    time(time_passes, ~"looking for entry point",
+         || middle::entry::find_entry_point(sess, crate, ast_map));
 
-        let rp_set = time(time_passes, ~"region parameterization inference", ||
-                          middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
+    let freevars = time(time_passes, ~"freevar finding", ||
+                        freevars::annotate_freevars(def_map, crate));
 
-        let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
-                                region_map, rp_set, lang_items);
+    let freevars = time(time_passes, ~"freevar finding", ||
+                        freevars::annotate_freevars(def_map, crate));
 
-        // passes are timed inside typeck
-        let (method_map, vtable_map) = typeck::check_crate(
-            ty_cx, trait_map, crate);
+    let region_map = time(time_passes, ~"region resolution", ||
+                          middle::region::resolve_crate(sess, def_map, crate));
 
-        // These next two const passes can probably be merged
-        time(time_passes, ~"const marking", ||
-             middle::const_eval::process_crate(crate, ty_cx));
+    let rp_set = time(time_passes, ~"region parameterization inference", ||
+                      middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
 
-        time(time_passes, ~"const checking", ||
-             middle::check_const::check_crate(sess, crate, ast_map, def_map,
-                                              method_map, ty_cx));
+    let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
+                            region_map, rp_set, lang_items);
 
-        if upto == cu_typeck { return (Some(crate), Some(ty_cx)); }
+    // passes are timed inside typeck
+    let (method_map, vtable_map) = typeck::check_crate(
+        ty_cx, trait_map, crate);
 
-        time(time_passes, ~"privacy checking", ||
-             middle::privacy::check_crate(ty_cx, &method_map, crate));
+    // These next two const passes can probably be merged
+    time(time_passes, ~"const marking", ||
+         middle::const_eval::process_crate(crate, ty_cx));
 
-        time(time_passes, ~"effect checking", ||
-             middle::effect::check_crate(ty_cx, method_map, crate));
+    time(time_passes, ~"const checking", ||
+         middle::check_const::check_crate(sess, crate, ast_map, def_map,
+                                          method_map, ty_cx));
 
-        time(time_passes, ~"loop checking", ||
-             middle::check_loop::check_crate(ty_cx, crate));
+    if phases.to == cu_typeck { return (Some(crate), Some(ty_cx)); }
 
-        let middle::moves::MoveMaps {moves_map, moved_variables_set,
-                                     capture_map} =
-            time(time_passes, ~"compute moves", ||
-                 middle::moves::compute_moves(ty_cx, method_map, crate));
+    time(time_passes, ~"privacy checking", ||
+         middle::privacy::check_crate(ty_cx, &method_map, crate));
 
-        time(time_passes, ~"match checking", ||
-             middle::check_match::check_crate(ty_cx, method_map,
-                                              moves_map, crate));
+    time(time_passes, ~"effect checking", ||
+         middle::effect::check_crate(ty_cx, method_map, crate));
 
-        time(time_passes, ~"liveness checking", ||
-             middle::liveness::check_crate(ty_cx, method_map,
+    time(time_passes, ~"loop checking", ||
+         middle::check_loop::check_crate(ty_cx, crate));
+
+    let middle::moves::MoveMaps {moves_map, moved_variables_set,
+                                 capture_map} =
+        time(time_passes, ~"compute moves", ||
+             middle::moves::compute_moves(ty_cx, method_map, crate));
+
+    time(time_passes, ~"match checking", ||
+         middle::check_match::check_crate(ty_cx, method_map,
+                                          moves_map, crate));
+
+    time(time_passes, ~"liveness checking", ||
+         middle::liveness::check_crate(ty_cx, method_map,
+                                       capture_map, crate));
+
+    let (root_map, write_guard_map) =
+        time(time_passes, ~"borrow checking", ||
+             middle::borrowck::check_crate(ty_cx, method_map,
+                                           moves_map, moved_variables_set,
                                            capture_map, crate));
 
-        let (root_map, write_guard_map) =
-            time(time_passes, ~"borrow checking", ||
-                 middle::borrowck::check_crate(ty_cx, method_map,
-                                               moves_map, moved_variables_set,
-                                               capture_map, crate));
+    time(time_passes, ~"kind checking", ||
+         kind::check_crate(ty_cx, method_map, crate));
 
-        time(time_passes, ~"kind checking", ||
-             kind::check_crate(ty_cx, method_map, crate));
+    time(time_passes, ~"lint checking", ||
+         lint::check_crate(ty_cx, crate));
 
-        time(time_passes, ~"lint checking", ||
-             lint::check_crate(ty_cx, crate));
+    if phases.to == cu_no_trans { return (Some(crate), Some(ty_cx)); }
 
-        if upto == cu_no_trans { return (Some(crate), Some(ty_cx)); }
+    let maps = astencode::Maps {
+        root_map: root_map,
+        method_map: method_map,
+        vtable_map: vtable_map,
+        write_guard_map: write_guard_map,
+        moves_map: moves_map,
+        capture_map: capture_map
+    };
 
-        let maps = astencode::Maps {
-            root_map: root_map,
-            method_map: method_map,
-            vtable_map: vtable_map,
-            write_guard_map: write_guard_map,
-            moves_map: moves_map,
-            capture_map: capture_map
-        };
-
-        let outputs = outputs.get_ref();
-        time(time_passes, ~"translation", ||
-             trans::base::trans_crate(sess, crate, ty_cx,
-                                      &outputs.obj_filename,
-                                      exp_map2, maps))
+    let outputs = outputs.get_ref();
+    time(time_passes, ~"translation", ||
+         trans::base::trans_crate(sess, crate, ty_cx,
+                                  &outputs.obj_filename,
+                                  exp_map2, maps))
     };
 
     let outputs = outputs.get_ref();
@@ -351,7 +367,7 @@ pub fn compile_rest(sess: Session,
 }
 
 pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
-                input: &input, upto: compile_upto,
+                input: &input, upto: compile_phase,
                 outputs: Option<@OutputFilenames>)
     -> (Option<@ast::crate>, Option<ty::ctxt>) {
     let time_passes = sess.time_passes();
@@ -359,7 +375,8 @@ pub fn compile_upto(sess: Session, cfg: ast::crate_cfg,
                          || parse_input(sess, copy cfg, input) );
     if upto == cu_parse { return (Some(crate), None); }
 
-    compile_rest(sess, cfg, upto, outputs, Some(crate))
+    compile_rest(sess, cfg, compile_upto { from: cu_parse, to: upto },
+                 outputs, Some(crate))
 }
 
 pub fn compile_input(sess: Session, cfg: ast::crate_cfg, input: &input,
@@ -367,7 +384,7 @@ pub fn compile_input(sess: Session, cfg: ast::crate_cfg, input: &input,
     let upto = if sess.opts.parse_only { cu_parse }
                else if sess.opts.no_trans { cu_no_trans }
                else { cu_everything };
-    let outputs = build_output_filenames(input, outdir, output, sess);
+    let outputs = build_output_filenames(input, outdir, output, [], sess); // ???
     compile_upto(sess, cfg, input, upto, Some(outputs));
 }
 
@@ -645,8 +662,7 @@ pub fn build_session_options(binary: @~str,
               ~"2" => Default,
               ~"3" => Aggressive,
               _ => {
-                early_error(demitter, ~"optimization level needs " +
-                            "to be between 0-3")
+                early_error(demitter, ~"optimization level needs to be between 0-3")
               }
             }
         } else { No }
@@ -706,7 +722,7 @@ pub fn build_session_options(binary: @~str,
         save_temps: save_temps,
         jit: jit,
         output_type: output_type,
-        addl_lib_search_paths: addl_lib_search_paths,
+        addl_lib_search_paths: @mut addl_lib_search_paths,
         linker: linker,
         linker_args: linker_args,
         maybe_sysroot: sysroot_opt,
@@ -745,7 +761,7 @@ pub fn build_session_(sopts: @session::options,
     let filesearch = filesearch::mk_filesearch(
         &sopts.maybe_sysroot,
         sopts.target_triple,
-        /*bad*/copy sopts.addl_lib_search_paths);
+        sopts.addl_lib_search_paths);
     @Session_ {
         targ_cfg: target_cfg,
         opts: sopts,
@@ -854,6 +870,7 @@ pub struct OutputFilenames {
 pub fn build_output_filenames(input: &input,
                               odir: &Option<Path>,
                               ofile: &Option<Path>,
+                              attrs: &[ast::attribute],
                               sess: Session)
                            -> @OutputFilenames {
     let obj_path;
@@ -862,7 +879,6 @@ pub fn build_output_filenames(input: &input,
     let stop_after_codegen =
         sopts.output_type != link::output_type_exe ||
             sopts.is_static && *sess.building_library;
-
 
     let obj_suffix =
         match sopts.output_type {
@@ -876,29 +892,44 @@ pub fn build_output_filenames(input: &input,
 
     match *ofile {
       None => {
-        // "-" as input file will cause the parser to read from stdin so we
-        // have to make up a name
-        // We want to toss everything after the final '.'
-        let dirpath = match *odir {
-          Some(ref d) => (/*bad*/copy *d),
-          None => match *input {
-            str_input(_) => os::getcwd(),
-            file_input(ref ifile) => (*ifile).dir_path()
+          // "-" as input file will cause the parser to read from stdin so we
+          // have to make up a name
+          // We want to toss everything after the final '.'
+          let dirpath = match *odir {
+              Some(ref d) => (/*bad*/copy *d),
+              None => match *input {
+                  str_input(_) => os::getcwd(),
+                  file_input(ref ifile) => (*ifile).dir_path()
+              }
+          };
+
+          let mut stem = match *input {
+              file_input(ref ifile) => (*ifile).filestem().get(),
+              str_input(_) => ~"rust_out"
+          };
+
+          // If a linkage name meta is present, we use it as the link name
+          let linkage_metas = attr::find_linkage_metas(attrs);
+          if !linkage_metas.is_empty() {
+              // But if a linkage meta is present, that overrides
+              let maybe_matches = attr::find_meta_items_by_name(linkage_metas, "name");
+              if !maybe_matches.is_empty() {
+                  match attr::get_meta_item_value_str(maybe_matches[0]) {
+                      Some(s) => stem = copy *s,
+                      _ => ()
+                  }
+              }
+              // If the name is missing, we just default to the filename
+              // version
           }
-        };
 
-        let stem = match *input {
-          file_input(ref ifile) => (*ifile).filestem().get(),
-          str_input(_) => ~"rust_out"
-        };
-
-        if *sess.building_library {
-            out_path = dirpath.push(os::dll_filename(stem));
-            obj_path = dirpath.push(stem).with_filetype(obj_suffix);
-        } else {
-            out_path = dirpath.push(stem);
-            obj_path = dirpath.push(stem).with_filetype(obj_suffix);
-        }
+          if *sess.building_library {
+              out_path = dirpath.push(os::dll_filename(stem));
+              obj_path = dirpath.push(stem).with_filetype(obj_suffix);
+          } else {
+              out_path = dirpath.push(stem);
+              obj_path = dirpath.push(stem).with_filetype(obj_suffix);
+          }
       }
 
       Some(ref out_file) => {

@@ -11,7 +11,7 @@
 // rustpkg utilities having to do with workspaces
 
 use path_util::{rust_path, workspace_contains_package_id};
-use util::PkgId;
+use package_id::PkgId;
 use core::path::Path;
 
 pub fn pkg_parent_workspaces(pkgid: &PkgId, action: &fn(&Path) -> bool) -> bool {

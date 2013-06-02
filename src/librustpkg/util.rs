@@ -9,23 +9,28 @@
 // except according to those terms.
 
 use core::prelude::*;
-use core::*;
-use core::cmp::Ord;
-use core::hash::Streaming;
-use core::rt::io::Writer;
+use core::{io, libc, os, result, str};
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use extra::getopts::groups::getopts;
-use extra::semver;
 use extra::term;
+#[cfg(not(test))]
+use extra::getopts;
 use syntax::ast_util::*;
-use syntax::codemap::{dummy_sp, spanned, dummy_spanned};
+use syntax::codemap::{dummy_sp, spanned};
+use syntax::codemap::dummy_spanned;
 use syntax::ext::base::ExtCtxt;
 use syntax::{ast, attr, codemap, diagnostic, fold};
 use syntax::ast::{meta_name_value, meta_list};
 use syntax::attr::{mk_attr};
 use rustc::back::link::output_type_exe;
+use rustc::driver::driver::compile_upto;
 use rustc::driver::session::{lib_crate, bin_crate};
+use context::Ctx;
+use package_id::PkgId;
+use path_util::target_library_in_workspace;
+use search::find_library_in_search_path;
+pub use target::{OutputType, Main, Lib, Bench, Test};
 
 static Commands: &'static [&'static str] =
     &["build", "clean", "do", "info", "install", "prefer", "test", "uninstall",
@@ -33,119 +38,6 @@ static Commands: &'static [&'static str] =
 
 
 pub type ExitCode = int; // For now
-
-/// A version is either an exact revision,
-/// or a semantic version
-pub enum Version {
-    ExactRevision(float),
-    SemVersion(semver::Version)
-}
-
-impl Ord for Version {
-    fn lt(&self, other: &Version) -> bool {
-        match (self, other) {
-            (&ExactRevision(f1), &ExactRevision(f2)) => f1 < f2,
-            (&SemVersion(ref v1), &SemVersion(ref v2)) => v1 < v2,
-            _ => false // incomparable, really
-        }
-    }
-    fn le(&self, other: &Version) -> bool {
-        match (self, other) {
-            (&ExactRevision(f1), &ExactRevision(f2)) => f1 <= f2,
-            (&SemVersion(ref v1), &SemVersion(ref v2)) => v1 <= v2,
-            _ => false // incomparable, really
-        }
-    }
-    fn ge(&self, other: &Version) -> bool {
-        match (self, other) {
-            (&ExactRevision(f1), &ExactRevision(f2)) => f1 > f2,
-            (&SemVersion(ref v1), &SemVersion(ref v2)) => v1 > v2,
-            _ => false // incomparable, really
-        }
-    }
-    fn gt(&self, other: &Version) -> bool {
-        match (self, other) {
-            (&ExactRevision(f1), &ExactRevision(f2)) => f1 >= f2,
-            (&SemVersion(ref v1), &SemVersion(ref v2)) => v1 >= v2,
-            _ => false // incomparable, really
-        }
-    }
-
-}
-
-impl ToStr for Version {
-    fn to_str(&self) -> ~str {
-        match *self {
-            ExactRevision(ref n) => n.to_str(),
-            SemVersion(ref v) => v.to_str()
-        }
-    }
-}
-
-#[deriving(Eq)]
-pub enum OutputType { Main, Lib, Bench, Test }
-
-/// Placeholder
-pub fn default_version() -> Version { ExactRevision(0.1) }
-
-/// Path-fragment identifier of a package such as
-/// 'github.com/graydon/test'; path must be a relative
-/// path with >=1 component.
-pub struct PkgId {
-    /// Remote path: for example, github.com/mozilla/quux-whatever
-    remote_path: RemotePath,
-    /// Local path: for example, /home/quux/github.com/mozilla/quux_whatever
-    /// Note that '-' normalizes to '_' when mapping a remote path
-    /// onto a local path
-    /// Also, this will change when we implement #6407, though we'll still
-    /// need to keep track of separate local and remote paths
-    local_path: LocalPath,
-    /// Short name. This is the local path's filestem, but we store it
-    /// redundantly so as to not call get() everywhere (filestem() returns an
-    /// option)
-    short_name: ~str,
-    version: Version
-}
-
-impl PkgId {
-    pub fn new(s: &str) -> PkgId {
-        use conditions::bad_pkg_id::cond;
-
-        let p = Path(s);
-        if p.is_absolute {
-            return cond.raise((p, ~"absolute pkgid"));
-        }
-        if p.components.len() < 1 {
-            return cond.raise((p, ~"0-length pkgid"));
-        }
-        let remote_path = RemotePath(p);
-        let local_path = normalize(copy remote_path);
-        let short_name = (copy local_path).filestem().expect(fmt!("Strange path! %s", s));
-        PkgId {
-            local_path: local_path,
-            remote_path: remote_path,
-            short_name: short_name,
-            version: default_version()
-        }
-    }
-
-    pub fn hash(&self) -> ~str {
-        fmt!("%s-%s-%s", self.remote_path.to_str(),
-             hash(self.remote_path.to_str() + self.version.to_str()),
-             self.version.to_str())
-    }
-
-    pub fn short_name_with_version(&self) -> ~str {
-        fmt!("%s-%s", self.short_name, self.version.to_str())
-    }
-}
-
-impl ToStr for PkgId {
-    fn to_str(&self) -> ~str {
-        // should probably use the filestem and not the whole path
-        fmt!("%s-%s", self.local_path.to_str(), self.version.to_str())
-    }
-}
 
 pub struct Pkg {
     id: PkgId,
@@ -264,13 +156,6 @@ pub fn ready_crate(sess: session::Session,
     @fold.fold_crate(crate)
 }
 
-pub fn parse_vers(vers: ~str) -> result::Result<semver::Version, ~str> {
-    match semver::parse(vers) {
-        Some(vers) => result::Ok(vers),
-        None => result::Err(~"could not parse version: invalid")
-    }
-}
-
 pub fn need_dir(s: &Path) {
     if !os::path_is_dir(s) && !os::make_dir(s, 493_i32) {
         fail!("can't create dir: %s", s.to_str());
@@ -316,15 +201,8 @@ pub fn error(msg: ~str) {
     }
 }
 
-pub fn hash(data: ~str) -> ~str {
-    let mut hasher = hash::default_state();
-    let buffer = str::as_bytes_slice(data);
-    hasher.write(buffer);
-    hasher.result_str()
-}
-
 // FIXME (#4432): Use workcache to only compile when needed
-pub fn compile_input(sysroot: Option<@Path>,
+pub fn compile_input(ctxt: &Ctx,
                      pkg_id: &PkgId,
                      in_file: &Path,
                      out_dir: &Path,
@@ -333,6 +211,8 @@ pub fn compile_input(sysroot: Option<@Path>,
                      opt: bool,
                      what: OutputType) -> bool {
 
+    let workspace = out_dir.pop().pop();
+
     assert!(in_file.components.len() > 1);
     let input = driver::file_input(copy *in_file);
     debug!("compile_input: %s / %?", in_file.to_str(), what);
@@ -340,23 +220,10 @@ pub fn compile_input(sysroot: Option<@Path>,
     // not sure if we should support anything else
 
     let binary = @(copy os::args()[0]);
-    let building_library = what == Lib;
 
-    let out_file = if building_library {
-        out_dir.push(os::dll_filename(pkg_id.short_name))
-    }
-    else {
-        out_dir.push(pkg_id.short_name + match what {
-            Test => ~"test", Bench => ~"bench", Main | Lib => ~""
-        } + os::EXE_SUFFIX)
-    };
-
-    debug!("compiling %s into %s",
-           in_file.to_str(),
-           out_file.to_str());
     debug!("flags: %s", str::connect(flags, " "));
     debug!("cfgs: %s", str::connect(cfgs, " "));
-    debug!("compile_input's sysroot = %?", sysroot);
+    debug!("compile_input's sysroot = %?", ctxt.sysroot_opt);
 
     let crate_type = match what {
         Lib => lib_crate,
@@ -372,28 +239,62 @@ pub fn compile_input(sysroot: Option<@Path>,
                           + flags
                           + cfgs.flat_map(|&c| { ~[~"--cfg", c] }),
                           driver::optgroups()).get();
-    let mut options = session::options {
+    let options = @session::options {
         crate_type: crate_type,
         optimize: if opt { session::Aggressive } else { session::No },
         test: what == Test || what == Bench,
-        maybe_sysroot: sysroot,
-        addl_lib_search_paths: ~[copy *out_dir],
+        maybe_sysroot: ctxt.sysroot_opt,
+        addl_lib_search_paths: @mut ~[copy *out_dir],
         // output_type should be conditional
         output_type: output_type_exe, // Use this to get a library? That's weird
         .. copy *driver::build_session_options(binary, &matches, diagnostic::emit)
     };
 
-    for cfgs.each |&cfg| {
-        options.cfg.push(attr::mk_word_item(@cfg));
-    }
+    let addl_lib_search_paths = @mut options.addl_lib_search_paths;
 
-    let sess = driver::build_session(@options, diagnostic::emit);
+    let sess = driver::build_session(options, diagnostic::emit);
+
+    // Infer dependencies that rustpkg needs to build, by scanning for
+    // `extern mod` directives.
+    let cfg = driver::build_configuration(sess, binary, &input);
+    let (crate_opt, _) = driver::compile_upto(sess, copy cfg, &input, driver::cu_expand, None);
+
+    let mut crate = match crate_opt {
+        Some(c) => c,
+        None => fail!("compile_input expected...")
+    };
+
+    // Not really right. Should search other workspaces too, and the installed
+    // database (which doesn't exist yet)
+    find_and_install_dependencies(ctxt, sess, &workspace, crate,
+                                  |p| {
+                                      debug!("a dependency: %s", p.to_str());
+                                      // Pass the directory containing a dependency
+                                      // as an additional lib search path
+                                      addl_lib_search_paths.push(p);
+                                  });
+
+    // Inject the link attributes so we get the right package name and version
+    if attr::find_linkage_metas(crate.node.attrs).is_empty() {
+        let short_name_to_use = match what {
+            Test  => fmt!("%stest", pkg_id.short_name),
+            Bench => fmt!("%sbench", pkg_id.short_name),
+            _     => copy pkg_id.short_name
+        };
+        debug!("Injecting link name: %s", short_name_to_use);
+        crate = @codemap::respan(crate.span, ast::crate_ {
+            attrs: ~[mk_attr(@dummy_spanned(
+                meta_list(@~"link",
+                 ~[@dummy_spanned(meta_name_value(@~"name",
+                                      mk_string_lit(@short_name_to_use))),
+                   @dummy_spanned(meta_name_value(@~"vers",
+                                      mk_string_lit(@(copy pkg_id.version.to_str()))))])))],
+            ..copy crate.node});
+    }
 
     debug!("calling compile_crate_from_input, out_dir = %s,
            building_library = %?", out_dir.to_str(), sess.building_library);
-    let _ = compile_crate_from_input(&input, pkg_id, Some(copy *out_dir), sess,
-                                     None, &out_file, binary,
-                                     driver::cu_everything);
+    compile_crate_from_input(&input, out_dir, sess, crate, copy cfg);
     true
 }
 
@@ -403,52 +304,31 @@ pub fn compile_input(sysroot: Option<@Path>,
 // call compile_upto and return the crate
 // also, too many arguments
 pub fn compile_crate_from_input(input: &driver::input,
-                                pkg_id: &PkgId,
-                                build_dir_opt: Option<Path>,
+                                build_dir: &Path,
                                 sess: session::Session,
-                                crate_opt: Option<@ast::crate>,
-                                out_file: &Path,
-                                binary: @~str,
-                                what: driver::compile_upto) -> @ast::crate {
-    debug!("Calling build_output_filenames with %? and %s", build_dir_opt, out_file.to_str());
-    let outputs = driver::build_output_filenames(input, &build_dir_opt,
-                                                 &Some(copy *out_file), sess);
+                                crate: @ast::crate,
+                                cfg: ast::crate_cfg) {
+    debug!("Calling build_output_filenames with %s, building library? %?",
+           build_dir.to_str(), sess.building_library);
+
+    // bad copy
+    let outputs = driver::build_output_filenames(input, &Some(copy *build_dir), &None,
+                                                 crate.node.attrs, sess);
+
     debug!("Outputs are %? and output type = %?", outputs, sess.opts.output_type);
-    let cfg = driver::build_configuration(sess, binary, input);
-    match crate_opt {
-        Some(c) => {
-            debug!("Calling compile_rest, outputs = %?", outputs);
-            assert_eq!(what, driver::cu_everything);
-            driver::compile_rest(sess, cfg, driver::cu_everything, Some(outputs), Some(c));
-            c
-        }
-        None => {
-            debug!("Calling compile_upto, outputs = %?", outputs);
-            let (crate, _) = driver::compile_upto(sess, copy cfg, input,
-                                                  driver::cu_parse, Some(outputs));
-            let mut crate = crate.unwrap();
-
-            debug!("About to inject link_meta info...");
-            // Inject the inferred link_meta info if it's not already there
-            // (assumes that name and vers are the only linkage metas)
-
-            debug!("How many attrs? %?", attr::find_linkage_metas(crate.node.attrs).len());
-
-            if attr::find_linkage_metas(crate.node.attrs).is_empty() {
-                crate = @codemap::respan(crate.span, ast::crate_ {
-                    attrs: ~[mk_attr(@dummy_spanned(
-                        meta_list(@~"link",
-                                  ~[@dummy_spanned(meta_name_value(@~"name",
-                                        mk_string_lit(@(copy pkg_id.short_name)))),
-                                    @dummy_spanned(meta_name_value(@~"vers",
-                                        mk_string_lit(@(copy pkg_id.version.to_str()))))])))],
-                    ..copy crate.node});
-            }
-
-            driver::compile_rest(sess, cfg, what, Some(outputs), Some(crate));
-            crate
-        }
+    debug!("additional libraries:");
+    for sess.opts.addl_lib_search_paths.each |lib| {
+        debug!("an additional library: %s", lib.to_str());
     }
+
+    driver::compile_rest(sess,
+                         cfg,
+                         compile_upto {
+                             from: driver::cu_expand,
+                             to: driver::cu_everything
+                         },
+                         Some(outputs),
+                         Some(crate));
 }
 
 #[cfg(windows)]
@@ -462,7 +342,7 @@ pub fn exe_suffix() -> ~str { ~"" }
 
 // Called by build_crates
 // FIXME (#4432): Use workcache to only compile when needed
-pub fn compile_crate(sysroot: Option<@Path>, pkg_id: &PkgId,
+pub fn compile_crate(ctxt: &Ctx, pkg_id: &PkgId,
                      crate: &Path, dir: &Path,
                      flags: &[~str], cfgs: &[~str], opt: bool,
                      what: OutputType) -> bool {
@@ -471,26 +351,51 @@ pub fn compile_crate(sysroot: Option<@Path>, pkg_id: &PkgId,
     for flags.each |&fl| {
         debug!("+++ %s", fl);
     }
-    compile_input(sysroot, pkg_id, crate, dir, flags, cfgs, opt, what)
+    compile_input(ctxt, pkg_id, crate, dir, flags, cfgs, opt, what)
 }
 
-// normalize should be the only way to construct a LocalPath
-// (though this isn't enforced)
-/// Replace all occurrences of '-' in the stem part of path with '_'
-/// This is because we treat rust-foo-bar-quux and rust_foo_bar_quux
-/// as the same name
-pub fn normalize(p_: RemotePath) -> LocalPath {
-    let RemotePath(p) = p_;
-    match p.filestem() {
-        None => LocalPath(p),
-        Some(st) => {
-            let replaced = str::replace(st, "-", "_");
-            if replaced != st {
-                LocalPath(p.with_filestem(replaced))
+/// Collect all `extern mod` directives in `c`, then
+/// try to install their targets, failing if any target
+/// can't be found.
+fn find_and_install_dependencies(ctxt: &Ctx,
+                                 sess: session::Session,
+                                 workspace: &Path,
+                                 c: &ast::crate,
+                                 save: @fn(Path)
+                                ) {
+    // :-(
+    debug!("In find_and_install_dependencies...");
+    let my_workspace = copy *workspace;
+    let my_ctxt      = copy *ctxt;
+    for c.each_view_item() |vi: @ast::view_item| {
+        debug!("A view item!");
+        match vi.node {
+            // ignore metadata, I guess
+            ast::view_item_extern_mod(lib_ident, _, _) => {
+                match my_ctxt.sysroot_opt {
+                    Some(ref x) => debug!("sysroot: %s", x.to_str()),
+                    None => ()
+                };
+                let lib_name = sess.str_of(lib_ident);
+                match find_library_in_search_path(my_ctxt.sysroot_opt, *lib_name) {
+                    Some(installed_path) => {
+                        debug!("It exists: %s", installed_path.to_str());
+                    }
+                    None => {
+                        // Try to install it
+                        let pkg_id = PkgId::new(*lib_name);
+                        my_ctxt.install(&my_workspace, &pkg_id);
+                        // Also, add an additional search path
+                        let installed_path = target_library_in_workspace(&pkg_id,
+                                                                         &my_workspace).pop();
+                        debug!("Great, I installed %s, and it's in %s",
+                               *lib_name, installed_path.to_str());
+                        save(installed_path);
+                    }
+                }
             }
-            else {
-                LocalPath(p)
-            }
+            // Ignore `use`s
+            _ => ()
         }
     }
 }
@@ -525,10 +430,6 @@ pub fn mk_string_lit(s: @~str) -> ast::lit {
         span: dummy_sp()
     }
 }
-
-/// Wrappers to prevent local and remote paths from getting confused
-pub struct RemotePath (Path);
-pub struct LocalPath (Path);
 
 #[cfg(test)]
 mod test {

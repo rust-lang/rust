@@ -35,17 +35,18 @@ pub trait FileSearch {
 
 pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
                      target_triple: &str,
-                     addl_lib_search_paths: ~[Path])
+                     addl_lib_search_paths: @mut ~[Path])
                   -> @FileSearch {
     struct FileSearchImpl {
         sysroot: @Path,
-        addl_lib_search_paths: ~[Path],
+        addl_lib_search_paths: @mut ~[Path],
         target_triple: ~str
     }
     impl FileSearch for FileSearchImpl {
         fn sysroot(&self) -> @Path { self.sysroot }
         fn for_each_lib_search_path(&self, f: &fn(&Path) -> bool) -> bool {
-            debug!("filesearch: searching additional lib search paths");
+            debug!("filesearch: searching additional lib search paths [%?]",
+                   self.addl_lib_search_paths.len());
             // a little weird
             self.addl_lib_search_paths.each(f);
 

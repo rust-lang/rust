@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*
-The test runner should check that, after `rustpkg install external crate`
-  with RUST_PATH undefined in the environment
-  and with `rustpkg install deeply/nested/path/foo` already
-     executed:
-   * ../bin/external_crate exists and is an executable
 
-  tjc: Also want a test like this where foo is an external URL,
-    which requires the `extern mod` changes
-*/
+// Data types that express build artifacts
 
-extern mod foo;
+#[deriving(Eq)]
+pub enum OutputType { Main, Lib, Bench, Test }
 
-fn main() {}
+#[deriving(Eq)]
+pub enum Target {
+    // In-place build
+    Build,
+    // Install to bin/ or lib/ dir
+    Install
+}
