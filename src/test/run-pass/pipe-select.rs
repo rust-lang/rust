@@ -35,11 +35,11 @@ proto! stream (
 )
 
 pub fn spawn_service<T:Owned,Tb:Owned>(
-            init: extern fn() -> (SendPacketBuffered<T, Tb>,
-                                  RecvPacketBuffered<T, Tb>),
+            init: extern fn() -> (RecvPacketBuffered<T, Tb>,
+                                  SendPacketBuffered<T, Tb>),
             service: ~fn(v: RecvPacketBuffered<T, Tb>))
         -> SendPacketBuffered<T, Tb> {
-    let (client, server) = init();
+    let (server, client) = init();
 
     // This is some nasty gymnastics required to safely move the pipe
     // into a new task.
@@ -83,8 +83,8 @@ pub fn main() {
         }
     });
 
-    let (c1, p1) = oneshot::init();
-    let (_c2, p2) = oneshot::init();
+    let (p1, c1) = oneshot::init();
+    let (p2, _c2) = oneshot::init();
 
     let c = send(c, (p1, p2));
 
@@ -92,8 +92,8 @@ pub fn main() {
 
     signal(c1);
 
-    let (_c1, p1) = oneshot::init();
-    let (c2, p2) = oneshot::init();
+    let (p1, _c1) = oneshot::init();
+    let (p2, c2) = oneshot::init();
 
     send(c, (p1, p2));
 
@@ -105,8 +105,8 @@ pub fn main() {
 }
 
 fn test_select2() {
-    let (ac, ap) = stream::init();
-    let (bc, bp) = stream::init();
+    let (ap, ac) = stream::init();
+    let (bp, bc) = stream::init();
 
     stream::client::send(ac, 42);
 
@@ -119,8 +119,8 @@ fn test_select2() {
 
     error!("done with first select2");
 
-    let (ac, ap) = stream::init();
-    let (bc, bp) = stream::init();
+    let (ap, ac) = stream::init();
+    let (bp, bc) = stream::init();
 
     stream::client::send(bc, ~"abc");
 
