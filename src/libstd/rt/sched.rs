@@ -151,7 +151,10 @@ pub impl Scheduler {
         // XXX: Reenable this once we're using a per-task queue. With a shared
         // queue this is not true
         //assert!(sched.work_queue.is_empty());
-        rtdebug!("scheduler metrics: %s\n", sched.metrics.to_str());
+        rtdebug!("scheduler metrics: %s\n", {
+            use to_str::ToStr;
+            sched.metrics.to_str()
+        });
         return sched;
     }
 
