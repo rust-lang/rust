@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::borrow;
 use std::ptr;
 
 fn borrow(x: &int, f: &fn(x: &int)) {
@@ -17,7 +18,7 @@ fn borrow(x: &int, f: &fn(x: &int)) {
 fn test1(x: @~int) {
     do borrow(&*(*x).clone()) |p| {
         let x_a = ptr::to_unsafe_ptr(&**x);
-        assert!((x_a as uint) != ptr::to_uint(p));
+        assert!((x_a as uint) != borrow::to_uint(p));
         assert_eq!(unsafe{*x_a}, *p);
     }
 }

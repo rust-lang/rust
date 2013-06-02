@@ -48,6 +48,7 @@ use core::cast;
 use core::unstable::sync::UnsafeAtomicRcBox;
 use core::ptr;
 use core::task;
+use core::borrow;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
 pub struct Condvar<'self> {
@@ -425,7 +426,7 @@ impl<T:Const + Owned> RWARC<T> {
             // of this cast is removing the mutability.)
             let new_data = cast::transmute_immut(data);
             // Downgrade ensured the token belonged to us. Just a sanity check.
-            assert!(ptr::ref_eq(&(*state).data, new_data));
+            assert!(borrow::ref_eq(&(*state).data, new_data));
             // Produce new token
             RWReadMode {
                 data: new_data,
