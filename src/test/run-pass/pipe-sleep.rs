@@ -34,11 +34,11 @@ endpoint is passed to the new task.
 
 */
 pub fn spawn_service<T:Owned,Tb:Owned>(
-            init: extern fn() -> (SendPacketBuffered<T, Tb>,
-                                  RecvPacketBuffered<T, Tb>),
+            init: extern fn() -> (RecvPacketBuffered<T, Tb>,
+                                  SendPacketBuffered<T, Tb>),
             service: ~fn(v: RecvPacketBuffered<T, Tb>))
         -> SendPacketBuffered<T, Tb> {
-    let (client, server) = init();
+    let (server, client) = init();
 
     // This is some nasty gymnastics required to safely move the pipe
     // into a new task.
