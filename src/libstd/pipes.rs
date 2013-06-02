@@ -237,11 +237,11 @@ pub fn packet<T>() -> *mut Packet<T> {
 pub fn entangle_buffer<T:Owned,Tstart:Owned>(
     mut buffer: ~Buffer<T>,
     init: &fn(*libc::c_void, x: &mut T) -> *mut Packet<Tstart>)
-    -> (SendPacketBuffered<Tstart, T>, RecvPacketBuffered<Tstart, T>) {
+    -> (RecvPacketBuffered<Tstart, T>, SendPacketBuffered<Tstart, T>) {
     unsafe {
         let p = init(transmute_copy(&buffer), &mut buffer.data);
         forget(buffer);
-        (SendPacketBuffered(p), RecvPacketBuffered(p))
+        (RecvPacketBuffered(p), SendPacketBuffered(p))
     }
 }
 
@@ -775,9 +775,9 @@ pub fn RecvPacketBuffered<T,Tbuffer>(p: *mut Packet<T>)
     }
 }
 
-pub fn entangle<T>() -> (SendPacket<T>, RecvPacket<T>) {
+pub fn entangle<T>() -> (RecvPacket<T>, SendPacket<T>) {
     let p = packet();
-    (SendPacket(p), RecvPacket(p))
+    (RecvPacket(p), SendPacket(p))
 }
 
 /** Receives a message from one of two endpoints.

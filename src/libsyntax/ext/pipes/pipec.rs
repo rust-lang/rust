@@ -89,10 +89,10 @@ impl gen_send for message {
             }
             else {
                 let pat = match (this.dir, next.dir) {
-                  (send, send) => "(c, s)",
-                  (send, recv) => "(s, c)",
-                  (recv, send) => "(s, c)",
-                  (recv, recv) => "(c, s)"
+                  (send, send) => "(s, c)",
+                  (send, recv) => "(c, s)",
+                  (recv, send) => "(c, s)",
+                  (recv, recv) => "(s, c)"
                 };
 
                 body += fmt!("let %s = ::std::pipes::entangle();\n", pat);
@@ -317,30 +317,13 @@ impl gen_init for protocol {
         let start_state = self.states[0];
 
         let body = if !self.is_bounded() {
-            match start_state.dir {
-              send => quote_expr!( ::std::pipes::entangle() ),
-              recv => {
-                quote_expr!({
-                    let (s, c) = ::std::pipes::entangle();
-                    (c, s)
-                })
-              }
-            }
+            quote_expr!( ::std::pipes::entangle() )
         }
         else {
-            let body = self.gen_init_bounded(ext_cx);
-            match start_state.dir {
-              send => body,
-              recv => {
-                  quote_expr!({
-                      let (s, c) = $body;
-                      (c, s)
-                  })
-              }
-            }
+            self.gen_init_bounded(ext_cx)
         };
 
-        cx.parse_item(fmt!("pub fn init%s() -> (client::%s, server::%s)\
+        cx.parse_item(fmt!("pub fn init%s() -> (server::%s, client::%s)\
                             { pub use std::pipes::HasBuffer; %s }",
                            start_state.generics.to_source(cx),
                            start_state.to_ty(cx).to_source(cx),

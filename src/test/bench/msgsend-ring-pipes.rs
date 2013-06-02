@@ -73,7 +73,7 @@ fn main() {
     let num_tasks = uint::from_str(args[1]).get();
     let msg_per_task = uint::from_str(args[2]).get();
 
-    let (num_chan, num_port) = ring::init();
+    let (num_port, num_chan) = ring::init();
     let mut num_chan = Cell(num_chan);
 
     let start = time::precise_time_s();
@@ -83,7 +83,7 @@ fn main() {
 
     for uint::range(1u, num_tasks) |i| {
         //error!("spawning %?", i);
-        let (new_chan, num_port) = ring::init();
+        let (num_port, new_chan) = ring::init();
         let num_chan2 = Cell(num_chan.take());
         let num_port = Cell(num_port);
         let new_future = do future::spawn || {

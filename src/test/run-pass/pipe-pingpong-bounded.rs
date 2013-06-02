@@ -30,7 +30,7 @@ mod pingpong {
         pong: Packet<pong>,
     }
 
-    pub fn init() -> (client::ping, server::ping) {
+    pub fn init() -> (server::ping, client::ping) {
         let buffer = ~Buffer {
             header: BufferHeader(),
             data: Packets {
@@ -112,7 +112,7 @@ mod test {
 }
 
 pub fn main() {
-    let (client_, server_) = ::pingpong::init();
+    let (server_, client_) = ::pingpong::init();
     let client_ = Cell(client_);
     let server_ = Cell(server_);
     do task::spawn {
