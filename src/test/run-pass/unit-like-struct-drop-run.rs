@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // Make sure the destructor is run for unit-like structs.
+// xfail-fast
 
 use std::task;
 
