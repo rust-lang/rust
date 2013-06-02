@@ -23,12 +23,13 @@ use core::vec;
 use core::vec::raw::to_mut_ptr;
 
 pub mod rustrt {
-    use core::libc::{c_int, c_void, size_t};
+    use core::libc::{c_int, c_void};
 
     #[link_name = "rustrt"]
     pub extern {
         unsafe fn LZ4_compress(source: *const c_void, dest: *mut c_void, inputSize: c_int) -> c_int;
-        unsafe fn LZ4_compressHC(source: *const c_void, dest: *mut c_void, inputSize: c_int) -> c_int;
+        unsafe fn LZ4_compressHC(source: *const c_void, dest: *mut c_void, inputSize: c_int)
+            -> c_int;
         unsafe fn LZ4_decompress_safe(source: *const c_void, dest: *mut c_void, inputSize: c_int,
                                       maxOutputSize: c_int) -> c_int;
     }
@@ -60,7 +61,7 @@ pub fn compress_bytes(bytes: &const [u8], high_compression: bool) -> LZ4Containe
             assert!(res as int != 0);
         }
     }
-    // FIXME #XXXX: realloc buffer to res bytes
+    // FIXME #4960: realloc buffer to res bytes
     return LZ4Container{ size: res, buf: out }
 }
 
