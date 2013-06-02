@@ -455,7 +455,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:region_scope + Copy + 'static>(
           }
           _ => {
             tcx.sess.span_fatal(ast_ty.span,
-                                "found type name used as a variable");
+                                fmt!("found value name used as a type: %?", a_def));
           }
         }
       }

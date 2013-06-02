@@ -35,15 +35,21 @@ use rustc::metadata::filesearch;
 use extra::{getopts};
 use syntax::{ast, diagnostic};
 use util::*;
-use path_util::{build_pkg_id_in_workspace, pkgid_src_in_workspace, u_rwx};
+use path_util::{build_pkg_id_in_workspace, pkgid_src_in_workspace, first_pkgid_src_in_workspace};
+use path_util::u_rwx;
 use path_util::{built_executable_in_workspace, built_library_in_workspace};
 use path_util::{target_executable_in_workspace, target_library_in_workspace};
 use workspace::pkg_parent_workspaces;
 use context::Ctx;
+use package_id::PkgId;
 
 mod conditions;
 mod context;
+mod package_id;
+mod package_path;
 mod path_util;
+mod search;
+mod target;
 #[cfg(test)]
 mod tests;
 mod util;
@@ -99,8 +105,7 @@ impl<'self> PkgScript<'self> {
         let input = driver::file_input(script);
         let sess = driver::build_session(options, diagnostic::emit);
         let cfg = driver::build_configuration(sess, binary, &input);
-        let (crate, _) = driver::compile_upto(sess, copy cfg, &input,
-                                              driver::cu_parse, None);
+        let (crate, _) = driver::compile_upto(sess, copy cfg, &input, driver::cu_parse, None);
         let work_dir = build_pkg_id_in_workspace(id, workspace);
 
         debug!("Returning package script with id %?", id);
@@ -134,11 +139,13 @@ impl<'self> PkgScript<'self> {
                 let root = r.pop().pop().pop().pop(); // :-\
                 debug!("Root is %s, calling compile_rest", root.to_str());
                 let exe = self.build_dir.push(~"pkg" + util::exe_suffix());
-                util::compile_crate_from_input(&self.input, self.id,
-                                               Some(copy self.build_dir),
-                                               sess, Some(crate),
-                                               &exe, @copy os::args()[0],
-                                               driver::cu_everything);
+                let binary = @copy os::args()[0];
+                util::compile_crate_from_input(&self.input,
+                                               &self.build_dir,
+                                               sess,
+                                               crate,
+                                               driver::build_configuration(sess,
+                                                                           binary, &self.input));
                 debug!("Running program: %s %s %s", exe.to_str(), root.to_str(), what);
                 let status = run::process_status(exe.to_str(), [root.to_str(), what]);
                 if status != 0 {
@@ -170,9 +177,9 @@ impl<'self> PkgScript<'self> {
 
 impl Ctx {
 
-    fn run(&self, cmd: ~str, args: ~[~str]) {
+    fn run(&self, cmd: &str, args: ~[~str]) {
         match cmd {
-            ~"build" => {
+            "build" => {
                 if args.len() < 1 {
                     return usage::build();
                 }
@@ -183,7 +190,7 @@ impl Ctx {
                     self.build(workspace, &pkgid);
                 }
             }
-            ~"clean" => {
+            "clean" => {
                 if args.len() < 1 {
                     return usage::build();
                 }
@@ -193,17 +200,17 @@ impl Ctx {
                 let cwd = os::getcwd();
                 self.clean(&cwd, &pkgid); // tjc: should use workspace, not cwd
             }
-            ~"do" => {
+            "do" => {
                 if args.len() < 2 {
                     return usage::do_cmd();
                 }
 
                 self.do_cmd(copy args[0], copy args[1]);
             }
-            ~"info" => {
+            "info" => {
                 self.info();
             }
-            ~"install" => {
+            "install" => {
                 if args.len() < 1 {
                     return usage::install();
                 }
@@ -215,24 +222,24 @@ impl Ctx {
                     self.install(workspace, &pkgid);
                 }
             }
-            ~"prefer" => {
+            "prefer" => {
                 if args.len() < 1 {
                     return usage::uninstall();
                 }
 
                 self.prefer(args[0], None);
             }
-            ~"test" => {
+            "test" => {
                 self.test();
             }
-            ~"uninstall" => {
+            "uninstall" => {
                 if args.len() < 1 {
                     return usage::uninstall();
                 }
 
                 self.uninstall(args[0], None);
             }
-            ~"unprefer" => {
+            "unprefer" => {
                 if args.len() < 1 {
                     return usage::uninstall();
                 }
@@ -249,7 +256,7 @@ impl Ctx {
     }
 
     fn build(&self, workspace: &Path, pkgid: &PkgId) {
-        let src_dir   = pkgid_src_in_workspace(pkgid, workspace);
+        let src_dir   = first_pkgid_src_in_workspace(pkgid, workspace);
         let build_dir = build_pkg_id_in_workspace(pkgid, workspace);
         debug!("Destination dir = %s", build_dir.to_str());
 
@@ -260,8 +267,8 @@ impl Ctx {
         // Is there custom build logic? If so, use it
         let pkg_src_dir = src_dir;
         let mut custom = false;
-        debug!("Package source directory = %s", pkg_src_dir.to_str());
-        let cfgs = match src.package_script_option(&pkg_src_dir) {
+        debug!("Package source directory = %?", pkg_src_dir);
+        let cfgs = match pkg_src_dir.chain_ref(|p| src.package_script_option(p)) {
             Some(package_script_path) => {
                 let pscript = PkgScript::parse(package_script_path,
                                                workspace,
@@ -290,7 +297,7 @@ impl Ctx {
             // Find crates inside the workspace
             src.find_crates();
             // Build it!
-            src.build(&build_dir, cfgs, self.sysroot_opt);
+            src.build(self, build_dir, cfgs);
         }
     }
 
@@ -352,7 +359,7 @@ impl Ctx {
     }
 
     fn prefer(&self, _id: &str, _vers: Option<~str>)  {
-        fail!(~"prefer not yet implemented");
+        fail!("prefer not yet implemented");
     }
 
     fn test(&self)  {
@@ -522,21 +529,20 @@ impl PkgSrc {
     fn check_dir(&self) -> Path {
         use conditions::nonexistent_package::cond;
 
-        debug!("Pushing onto root: %s | %s", self.id.to_str(),
+        debug!("Pushing onto root: %s | %s", self.id.remote_path.to_str(),
                self.root.to_str());
-
-        let mut dir = self.root.push("src");
-        dir = dir.push(self.id.to_str()); // ?? Should this use the version number?
-
-        debug!("Checking dir: %s", dir.to_str());
-
-        if !os::path_exists(&dir) {
-            if !self.fetch_git() {
-                cond.raise((copy self.id, ~"supplied path for package dir does not \
-                    exist, and couldn't interpret it as a URL fragment"));
+        let dir;
+        let dirs = pkgid_src_in_workspace(&self.id, &self.root);
+        debug!("Checking dirs: %?", dirs);
+        let path = dirs.find(|d| os::path_exists(d));
+        match path {
+            Some(d) => dir = d,
+            None => dir = match self.fetch_git() {
+                None => cond.raise((copy self.id, ~"supplied path for package dir does not \
+                                      exist, and couldn't interpret it as a URL fragment")),
+                Some(d) => d
             }
         }
-
         if !os::path_is_dir(&dir) {
             cond.raise((copy self.id, ~"supplied path for package dir is a \
                                         non-directory"));
@@ -546,10 +552,10 @@ impl PkgSrc {
     }
 
     /// Try interpreting self's package id as a remote package, and try
-    /// fetching it and caching it in a local directory. If that didn't
-    /// work, return false.
+    /// fetching it and caching it in a local directory. Return the cached directory
+    /// if this was successful, None otherwise
     /// (right now we only support git)
-    fn fetch_git(&self) -> bool {
+    fn fetch_git(&self) -> Option<Path> {
 
         let mut local = self.root.push("src");
         local = local.push(self.id.to_str());
@@ -561,9 +567,11 @@ impl PkgSrc {
 
         if run::process_output("git", [~"clone", copy url, local.to_str()]).status != 0 {
             util::note(fmt!("fetching %s failed: can't clone repository", url));
-            return false;
+            None
         }
-        true
+        else {
+            Some(local)
+        }
     }
 
 
@@ -655,7 +663,7 @@ impl PkgSrc {
     }
 
     fn build_crates(&self,
-                    maybe_sysroot: Option<@Path>,
+                    ctx: &Ctx,
                     dst_dir: &Path,
                     src_dir: &Path,
                     crates: &[Crate],
@@ -666,11 +674,14 @@ impl PkgSrc {
             util::note(fmt!("build_crates: compiling %s", path.to_str()));
             util::note(fmt!("build_crates: destination dir is %s", dst_dir.to_str()));
 
-            let result = util::compile_crate(maybe_sysroot, &self.id, path,
-                                     dst_dir,
-                                     crate.flags,
-                                     crate.cfgs + cfgs,
-                                     false, what);
+            let result = util::compile_crate(ctx,
+                                             &self.id,
+                                             path,
+                                             dst_dir,
+                                             crate.flags,
+                                             crate.cfgs + cfgs,
+                                             false,
+                                             what);
             if !result {
                 build_err::cond.raise(fmt!("build failure on %s",
                                            path.to_str()));
@@ -680,15 +691,15 @@ impl PkgSrc {
         }
     }
 
-    fn build(&self, dst_dir: &Path, cfgs: ~[~str], maybe_sysroot: Option<@Path>) {
+    fn build(&self, ctx: &Ctx, dst_dir: Path, cfgs: ~[~str]) {
         let dir = self.check_dir();
         debug!("Building libs");
-        self.build_crates(maybe_sysroot, dst_dir, &dir, self.libs, cfgs, Lib);
+        self.build_crates(ctx, &dst_dir, &dir, self.libs, cfgs, Lib);
         debug!("Building mains");
-        self.build_crates(maybe_sysroot, dst_dir, &dir, self.mains, cfgs, Main);
+        self.build_crates(ctx, &dst_dir, &dir, self.mains, cfgs, Main);
         debug!("Building tests");
-        self.build_crates(maybe_sysroot, dst_dir, &dir, self.tests, cfgs, Test);
+        self.build_crates(ctx, &dst_dir, &dir, self.tests, cfgs, Test);
         debug!("Building benches");
-        self.build_crates(maybe_sysroot, dst_dir, &dir, self.benchs, cfgs, Bench);
+        self.build_crates(ctx, &dst_dir, &dir, self.benchs, cfgs, Bench);
     }
 }
