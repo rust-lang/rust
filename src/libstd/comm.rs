@@ -376,7 +376,7 @@ mod pipesy {
         priv use core::kinds::Owned;
         use ptr::to_mut_unsafe_ptr;
 
-        pub fn init<T: Owned>() -> (client::Oneshot<T>, server::Oneshot<T>) {
+        pub fn init<T: Owned>() -> (server::Oneshot<T>, client::Oneshot<T>) {
             pub use core::pipes::HasBuffer;
 
             let buffer = ~::core::pipes::Buffer {
@@ -466,7 +466,7 @@ mod pipesy {
 
     /// Initialiase a (send-endpoint, recv-endpoint) oneshot pipe pair.
     pub fn oneshot<T: Owned>() -> (PortOne<T>, ChanOne<T>) {
-        let (chan, port) = oneshot::init();
+        let (port, chan) = oneshot::init();
         (PortOne::new(port), ChanOne::new(chan))
     }
 
@@ -550,7 +550,7 @@ mod pipesy {
     pub mod streamp {
         priv use core::kinds::Owned;
 
-        pub fn init<T: Owned>() -> (client::Open<T>, server::Open<T>) {
+        pub fn init<T: Owned>() -> (server::Open<T>, client::Open<T>) {
             pub use core::pipes::HasBuffer;
             ::core::pipes::entangle()
         }
@@ -567,7 +567,7 @@ mod pipesy {
                 ::core::option::Option<Open<T>> {
                 {
                     use super::data;
-                    let (c, s) = ::core::pipes::entangle();
+                    let (s, c) = ::core::pipes::entangle();
                     let message = data(x_0, s);
                     if ::core::pipes::send(pipe, message) {
                         ::core::pipes::rt::make_some(c)
@@ -579,7 +579,7 @@ mod pipesy {
             pub fn data<T: Owned>(pipe: Open<T>, x_0: T) -> Open<T> {
                 {
                     use super::data;
-                    let (c, s) = ::core::pipes::entangle();
+                    let (s, c) = ::core::pipes::entangle();
                     let message = data(x_0, s);
                     ::core::pipes::send(pipe, message);
                     c
@@ -615,7 +615,7 @@ mod pipesy {
 
     */
     pub fn stream<T:Owned>() -> (Port<T>, Chan<T>) {
-        let (c, s) = streamp::init();
+        let (s, c) = streamp::init();
 
         (Port {
             endp: Some(s)

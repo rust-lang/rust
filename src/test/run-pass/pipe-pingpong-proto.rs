@@ -50,7 +50,7 @@ mod test {
 }
 
 pub fn main() {
-    let (client_, server_) = pingpong::init();
+    let (server_, client_) = pingpong::init();
     let client_ = Cell(client_);
     let server_ = Cell(server_);
 
