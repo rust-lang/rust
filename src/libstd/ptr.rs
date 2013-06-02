@@ -255,18 +255,6 @@ pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
     thing as *mut T
 }
 
-/// Cast a region pointer - &T - to a uint.
-#[inline(always)]
-pub fn to_uint<T>(thing: &T) -> uint {
-    thing as *T as uint
-}
-
-/// Determine if two borrowed pointers point to the same thing.
-#[inline(always)]
-pub fn ref_eq<'a,'b,T>(thing: &'a T, other: &'b T) -> bool {
-    to_uint(thing) == to_uint(other)
-}
-
 /**
   Given a **T (pointer to an array of pointers),
   iterate through each *T, up to the provided `len`,
@@ -408,40 +396,6 @@ impl<T> Ord for *const T {
     #[inline(always)]
     fn gt(&self, other: &*const T) -> bool {
         (*self as uint) > (*other as uint)
-    }
-}
-
-// Equality for region pointers
-#[cfg(not(test))]
-impl<'self,T:Eq> Eq for &'self T {
-    #[inline(always)]
-    fn eq(&self, other: & &'self T) -> bool {
-        *(*self) == *(*other)
-    }
-    #[inline(always)]
-    fn ne(&self, other: & &'self T) -> bool {
-        *(*self) != *(*other)
-    }
-}
-
-// Comparison for region pointers
-#[cfg(not(test))]
-impl<'self,T:Ord> Ord for &'self T {
-    #[inline(always)]
-    fn lt(&self, other: & &'self T) -> bool {
-        *(*self) < *(*other)
-    }
-    #[inline(always)]
-    fn le(&self, other: & &'self T) -> bool {
-        *(*self) <= *(*other)
-    }
-    #[inline(always)]
-    fn ge(&self, other: & &'self T) -> bool {
-        *(*self) >= *(*other)
-    }
-    #[inline(always)]
-    fn gt(&self, other: & &'self T) -> bool {
-        *(*self) > *(*other)
     }
 }
 

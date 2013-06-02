@@ -125,6 +125,7 @@ pub mod ascii;
 pub mod ptr;
 pub mod owned;
 pub mod managed;
+pub mod borrow;
 
 
 /* Core language traits */

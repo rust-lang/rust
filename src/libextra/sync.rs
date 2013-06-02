@@ -17,6 +17,7 @@
 
 use core::prelude::*;
 
+use core::borrow;
 use core::comm;
 use core::ptr;
 use core::task;
@@ -589,7 +590,7 @@ impl RWlock {
     /// To be called inside of the write_downgrade block.
     pub fn downgrade<'a>(&self, token: RWlockWriteMode<'a>)
                          -> RWlockReadMode<'a> {
-        if !ptr::ref_eq(self, token.lock) {
+        if !borrow::ref_eq(self, token.lock) {
             fail!("Can't downgrade() with a different rwlock's write_mode!");
         }
         unsafe {
