@@ -122,8 +122,18 @@ CFG_ADB_TEST_DIR=/data/tmp
 $(info check: android device test dir $(CFG_ADB_TEST_DIR) ready \
  $(shell adb remount 1>/dev/null) \
  $(shell adb shell mkdir $(CFG_ADB_TEST_DIR) 1>/dev/null) \
+ $(shell adb shell rm $(CFG_ADB_TEST_DIR)/*.so 1>/dev/null) \
+ $(shell adb shell rm $(CFG_ADB_TEST_DIR)/*-arm-linux-androideabi 1>/dev/null) \
+ $(shell adb shell rm $(CFG_ADB_TEST_DIR)/*-arm-linux-androideabi.* 1>/dev/null) \
+ $(shell adb push $(S)src/etc/adb_run_wrapper.sh $(CFG_ADB_TEST_DIR) 1>/dev/null) \
  $(shell adb push $(CFG_ANDROID_CROSS_PATH)/arm-linux-androideabi/lib/armv7-a/libgnustl_shared.so \
                   $(CFG_ADB_TEST_DIR) 1>/dev/null) \
+ $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD_TRIPLE))/$(CFG_RUNTIME_arm-linux-androideabi) \
+                  $(CFG_ADB_TEST_DIR)) \
+ $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD_TRIPLE))/$(STDLIB_GLOB_arm-linux-androideabi) \
+                  $(CFG_ADB_TEST_DIR)) \
+ $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD_TRIPLE))/$(EXTRALIB_GLOB_arm-linux-androideabi) \
+                  $(CFG_ADB_TEST_DIR)) \
  )
 else
 CFG_ADB_TEST_DIR=

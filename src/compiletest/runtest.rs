@@ -753,53 +753,62 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
             copy_result.out, copy_result.err));
     }
 
-    // execute program
     logv(config, fmt!("executing (%s) %s", config.target, cmdline));
 
-    // adb shell dose not forward stdout and stderr of internal result
-    // to stdout and stderr separately but to stdout only
-    let mut newargs_out = ~[];
-    let mut newargs_err = ~[];
-    newargs_out.push(~"shell");
-    newargs_err.push(~"shell");
+    let mut runargs = ~[];
 
-    let mut newcmd_out = ~"";
-    let mut newcmd_err = ~"";
-
-    newcmd_out.push_str(fmt!("LD_LIBRARY_PATH=%s %s/%s",
-        config.adb_test_dir, config.adb_test_dir, prog_short));
-
-    newcmd_err.push_str(fmt!("LD_LIBRARY_PATH=%s %s/%s",
-        config.adb_test_dir, config.adb_test_dir, prog_short));
+    // run test via adb_run_wrapper
+    runargs.push(~"shell");
+    runargs.push(fmt!("%s/adb_run_wrapper.sh", config.adb_test_dir));
+    runargs.push(fmt!("%s", config.adb_test_dir));
+    runargs.push(fmt!("%s", prog_short));
 
     for args.args.each |tv| {
-        newcmd_out.push_str(" ");
-        newcmd_err.push_str(" ");
-        newcmd_out.push_str(*tv);
-        newcmd_err.push_str(*tv);
+        runargs.push(tv.to_owned());
     }
 
-    newcmd_out.push_str(" 2>/dev/null");
-    newcmd_err.push_str(" 1>/dev/null");
+    procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""));
 
-    newargs_out.push(newcmd_out);
-    newargs_err.push(newcmd_err);
+    // get exitcode of result
+    runargs = ~[];
+    runargs.push(~"shell");
+    runargs.push(~"cat");
+    runargs.push(fmt!("%s/%s.exitcode", config.adb_test_dir, prog_short));
 
-    let procsrv::Result{ out: out_out, err: _out_err, status: out_status } =
-            procsrv::run("", config.adb_path, newargs_out, ~[(~"",~"")],
-                         Some(~""));
-    let procsrv::Result{ out: err_out, err: _err_err, status: _err_status } =
-            procsrv::run("", config.adb_path, newargs_err, ~[(~"",~"")],
-                         Some(~""));
+    let procsrv::Result{ out: exitcode_out, err: _, status: _ } =
+        procsrv::run("", config.adb_path, runargs, ~[(~"",~"")],
+                     Some(~""));
 
-    dump_output(config, testfile, out_out, err_out);
-
-    match err_out {
-        ~"" => ProcRes {status: out_status, stdout: out_out,
-            stderr: err_out, cmdline: cmdline },
-        _   => ProcRes {status: 101, stdout: out_out,
-            stderr: err_out, cmdline: cmdline }
+    let mut exitcode : int = 0;
+    for str::each_char(exitcode_out) |c| {
+        if !c.is_digit() { break; }
+        exitcode = exitcode * 10 + match c {
+            '0' .. '9' => c as int - ('0' as int),
+            _ => 101,
+        }
     }
+
+    // get stdout of result
+    runargs = ~[];
+    runargs.push(~"shell");
+    runargs.push(~"cat");
+    runargs.push(fmt!("%s/%s.stdout", config.adb_test_dir, prog_short));
+
+    let procsrv::Result{ out: stdout_out, err: _, status: _ } =
+        procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""));
+
+    // get stderr of result
+    runargs = ~[];
+    runargs.push(~"shell");
+    runargs.push(~"cat");
+    runargs.push(fmt!("%s/%s.stderr", config.adb_test_dir, prog_short));
+
+    let procsrv::Result{ out: stderr_out, err: _, status: _ } =
+        procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""));
+
+    dump_output(config, testfile, stdout_out, stderr_out);
+
+    ProcRes {status: exitcode, stdout: stdout_out, stderr: stderr_out, cmdline: cmdline }
 }
 
 fn _dummy_exec_compiled_test(config: &config, props: &TestProps,
