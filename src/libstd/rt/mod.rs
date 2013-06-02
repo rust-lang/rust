@@ -133,6 +133,9 @@ pub mod local_ptr;
 /// Bindings to pthread/windows thread-local storage.
 pub mod thread_local_storage;
 
+/// A concurrent data structure with which parent tasks wait on child tasks.
+pub mod join_latch;
+
 pub mod metrics;
 
 
