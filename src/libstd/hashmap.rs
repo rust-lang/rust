@@ -501,6 +501,15 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
         }
     }
 
+    /// Retrieves a (mutable) value for the given key, failing if the key
+    /// is not present.
+    pub fn get_mut<'a>(&'a mut self, k: &K) -> &'a mut V {
+        match self.find_mut(k) {
+            Some(v) => v,
+            None => fail!("No entry found for key: %?", k),
+        }
+    }
+
     /// Return true if the map contains a value for the specified key,
     /// using equivalence
     pub fn contains_key_equiv<Q:Hash + Equiv<K>>(&self, key: &Q) -> bool {
