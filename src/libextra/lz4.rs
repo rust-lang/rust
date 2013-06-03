@@ -20,9 +20,10 @@ use core::prelude::*;
 
 use core::libc::{c_void, c_int};
 use core::vec;
+use core::num;
 use core::vec::raw::to_mut_ptr;
 
-pub mod rustrt {
+priv mod rustrt {
     use core::libc::{c_int, c_void};
 
     #[link_name = "rustrt"]
@@ -35,8 +36,9 @@ pub mod rustrt {
     }
 }
 
-// worst case compressed size
-fn LZ4_compressBound(size: uint) -> uint { size + size/255 + 16 }
+
+/// Worst case compressed size
+pub fn LZ4_compressBound(size: uint) -> uint { size + size/255 + 16 }
 
 /// Container for LZ4-compressed data, because LZ4 doesn't define its own container
 pub struct LZ4Container {
@@ -46,23 +48,25 @@ pub struct LZ4Container {
 
 /// Compress a buffer
 pub fn compress_bytes(bytes: &const [u8], high_compression: bool) -> LZ4Container {
-    let size = LZ4_compressBound(bytes.len());
-    let mut out: ~[u8] = vec::with_capacity(size);
+    let max_cint: c_int = num::Bounded::max_value();
+    assert!(bytes.len() <= max_cint as uint, "buffer too long");
+    let mut out: ~[u8] = vec::with_capacity(LZ4_compressBound(bytes.len()));
     let mut res = 0;
-    do vec::as_const_buf(bytes) |b, _len| {
+    do vec::as_const_buf(bytes) |b, len| {
         unsafe {
             if !high_compression {
                 res = rustrt::LZ4_compress(b as *c_void, to_mut_ptr(out) as *mut c_void,
-                                           size as c_int);
+                                           len as c_int);
             } else {
                 res = rustrt::LZ4_compressHC(b as *c_void, to_mut_ptr(out) as *mut c_void,
-                                             size as c_int);
+                                             len as c_int);
             }
+            vec::raw::set_len(&mut out, res as uint);
             assert!(res as int != 0);
         }
     }
     // FIXME #4960: realloc buffer to res bytes
-    return LZ4Container{ size: res, buf: out }
+    return LZ4Container{ size: bytes.len() as c_int, buf: out }
 }
 
 impl LZ4Container {
@@ -73,13 +77,15 @@ impl LZ4Container {
         do vec::as_const_buf(self.buf) |b, len| {
             let mut out: ~[u8] = vec::with_capacity(self.size as uint);
             unsafe {
-                let res = rustrt::LZ4_decompress_safe(b as *c_void,
-                                                          to_mut_ptr(out) as *mut c_void,
-                                                          len as c_int, self.size);
+                let res = rustrt::LZ4_decompress_safe(b as *c_void, to_mut_ptr(out) as *mut c_void,
+                                                      len as c_int, self.size);
                 if res != self.size {
+                    warn!("LZ4_decompress_safe returned %?", res);
                     ret = None
+                } else {
+                    vec::raw::set_len(&mut out, res as uint);
+                    ret = Some(out)
                 }
-                ret = Some(out)
             }
         }
         ret
@@ -94,7 +100,7 @@ mod tests {
 
     #[test]
     #[allow(non_implicitly_copyable_typarams)]
-    fn test_flate_round_trip() {
+    fn test_round_trip() {
         let mut r = rand::rng();
         let mut words = ~[];
         for 20.times {
@@ -108,11 +114,12 @@ mod tests {
             }
             debug!("de/inflate of %u bytes of random word-sequences",
                    in.len());
-            let cmp = compress_bytes(in);
-            let out = cmp.decompress();
-            debug!("%u bytes deflated to %u (%.1f%% size)",
-                   in.len(), cmp.len(),
-                   100.0 * ((cmp.len() as float) / (in.len() as float)));
+            let cmp = compress_bytes(in, true);
+            debug!("compressed size reported as %?", cmp.size);
+            let out = cmp.decompress().unwrap();
+            debug!("%u bytes compressed to %u (%.1f%% size) and was decompressed to %?",
+                   in.len(), cmp.buf.len(),
+                   100.0 * ((cmp.buf.len() as float) / (in.len() as float)), out.len());
             assert_eq!(in, out);
         }
     }
