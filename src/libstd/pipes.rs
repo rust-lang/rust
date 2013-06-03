@@ -94,7 +94,7 @@ use option::{None, Option, Some};
 use unstable::finally::Finally;
 use unstable::intrinsics;
 use ptr;
-use ptr::Ptr;
+use ptr::RawPtr;
 use task;
 use vec;
 use vec::OwnedVector;

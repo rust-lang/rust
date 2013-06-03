@@ -26,7 +26,7 @@ use old_iter::CopyableIter;
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
-use ptr::Ptr;
+use ptr::RawPtr;
 use sys;
 use uint;
 use unstable::intrinsics;
