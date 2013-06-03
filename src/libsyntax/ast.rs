@@ -440,8 +440,8 @@ pub struct expr {
     span: span,
 }
 
-pub impl expr {
-    fn get_callee_id(&self) -> Option<node_id> {
+impl expr {
+    pub fn get_callee_id(&self) -> Option<node_id> {
         match self.node {
             expr_method_call(callee_id, _, _, _, _, _) |
             expr_index(callee_id, _, _) |

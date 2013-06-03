@@ -49,7 +49,7 @@ pub enum ObsoleteSyntax {
     ObsoleteTraitBoundSeparator,
     ObsoleteMutOwnedPointer,
     ObsoleteMutVector,
-    ObsoleteTraitImplVisibility,
+    ObsoleteImplVisibility,
     ObsoleteRecordType,
     ObsoleteRecordPattern,
     ObsoletePostFnTySigil,
@@ -158,11 +158,10 @@ impl Parser {
                  in a mutable location, like a mutable local variable or an \
                  `@mut` box"
             ),
-            ObsoleteTraitImplVisibility => (
-                "visibility-qualified trait implementation",
-                "`pub` or `priv` is meaningless for trait implementations, \
-                 because the `impl...for...` form defines overloads for \
-                 methods that already exist; remove the `pub` or `priv`"
+            ObsoleteImplVisibility => (
+                "visibility-qualified implementation",
+                "`pub` or `priv` goes on individual functions; remove the \
+                 `pub` or `priv`"
             ),
             ObsoleteRecordType => (
                 "structural record type",
