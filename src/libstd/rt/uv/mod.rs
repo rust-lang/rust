@@ -38,7 +38,7 @@ use container::Container;
 use option::*;
 use str::raw::from_c_str;
 use to_str::ToStr;
-use ptr::Ptr;
+use ptr::RawPtr;
 use libc;
 use vec;
 use ptr;
