@@ -31,7 +31,7 @@ use core::ptr;
 use core::str;
 use core::uint;
 use core::vec;
-use extra::flate;
+use extra::lz4;
 
 pub enum os {
     os_macos,
@@ -226,8 +226,8 @@ fn get_metadata_section(os: os,
                     debug!("inflating %u bytes of compressed metadata",
                            csz - vlen);
                     do vec::raw::buf_as_slice(cvbuf1, csz-vlen) |bytes| {
-                        let inflated = flate::inflate_bytes(bytes);
-                        found = Some(@(inflated));
+                        let s = lz4::LZ4Container::from_bytes(bytes);
+                        found = Some(@(s.decompress().expect("metadata was corrupt!")));
                     }
                     if found != None {
                         return found;
