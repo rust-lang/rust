@@ -19,6 +19,7 @@ implementing the `Iterator` trait.
 
 use cmp;
 use iter;
+use iter::FromIter;
 use num::{Zero, One};
 use prelude::*;
 
@@ -255,6 +256,20 @@ pub trait IteratorUtil<A> {
     /// ~~~
     fn to_vec(&mut self) -> ~[A];
 
+    /// Loops through the entire iterator, collecting all of the elements into
+    /// a container implementing `FromIter`.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// use std::iterator::*;
+    ///
+    /// let a = [1, 2, 3, 4, 5];
+    /// let b: ~[int] = a.iter().transform(|&x| x).collect();
+    /// assert!(a == b);
+    /// ~~~
+    fn collect<B: FromIter<A>>(&mut self) -> B;
+
     /// Loops through `n` iterations, returning the `n`th element of the
     /// iterator.
     ///
@@ -417,6 +432,11 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline(always)]
     fn to_vec(&mut self) -> ~[A] {
         iter::to_vec::<A>(|f| self.advance(f))
+    }
+
+    #[inline(always)]
+    fn collect<B: FromIter<A>>(&mut self) -> B {
+        FromIter::from_iter::<A, B>(|f| self.advance(f))
     }
 
     /// Return the `n`th item yielded by an iterator.
@@ -1060,6 +1080,13 @@ mod tests {
         assert_eq!(v.slice(0, 4).iter().transform(|&x| x).min(), Some(0));
         assert_eq!(v.iter().transform(|&x| x).min(), Some(0));
         assert_eq!(v.slice(0, 0).iter().transform(|&x| x).min(), None);
+    }
+
+    #[test]
+    fn test_collect() {
+        let a = [1, 2, 3, 4, 5];
+        let b: ~[int] = a.iter().transform(|&x| x).collect();
+        assert_eq!(a, b);
     }
 
     #[test]
