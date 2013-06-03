@@ -241,110 +241,165 @@ pub fn append(lhs: ~str, rhs: &str) -> ~str {
 }
 
 /// Concatenate a vector of strings
-pub fn concat(v: &[~str]) -> ~str {
-    if v.is_empty() { return ~""; }
+pub fn concat(v: &[~str]) -> ~str { v.concat() }
 
-    let mut len = 0;
-    for v.each |ss| {
-        len += ss.len();
-    }
-    let mut s = ~"";
-
-    reserve(&mut s, len);
-
-    unsafe {
-        do as_buf(s) |buf, _len| {
-            let mut buf = ::cast::transmute_mut_unsafe(buf);
-            for v.each |ss| {
-                do as_buf(*ss) |ssbuf, sslen| {
-                    let sslen = sslen - 1;
-                    ptr::copy_memory(buf, ssbuf, sslen);
-                    buf = buf.offset(sslen);
-                }
-            }
-        }
-        raw::set_len(&mut s, len);
-    }
-    s
-}
+/// Concatenate a vector of strings
+pub fn concat_slices(v: &[&str]) -> ~str { v.concat() }
 
 /// Concatenate a vector of strings, placing a given separator between each
-pub fn connect(v: &[~str], sep: &str) -> ~str {
-    if v.is_empty() { return ~""; }
+pub fn connect(v: &[~str], sep: &str) -> ~str { v.connect(sep) }
 
-    // concat is faster
-    if sep.is_empty() { return concat(v); }
+/// Concatenate a vector of strings, placing a given separator between each
+pub fn connect_slices(v: &[&str], sep: &str) -> ~str { v.connect(sep) }
 
-    // this is wrong without the guarantee that v is non-empty
-    let mut len = sep.len() * (v.len() - 1);
-    for v.each |ss| {
-        len += ss.len();
-    }
-    let mut s = ~"", first = true;
+#[allow(missing_doc)]
+pub trait StrVector {
+    pub fn concat(&self) -> ~str;
+    pub fn connect(&self, sep: &str) -> ~str;
+}
 
-    reserve(&mut s, len);
+impl<'self> StrVector for &'self [~str] {
+    /// Concatenate a vector of strings.
+    pub fn concat(&self) -> ~str {
+        if self.is_empty() { return ~""; }
 
-    unsafe {
-        do as_buf(s) |buf, _len| {
-            do as_buf(sep) |sepbuf, seplen| {
-                let seplen = seplen - 1;
+        let mut len = 0;
+        for self.each |ss| {
+            len += ss.len();
+        }
+        let mut s = ~"";
+
+        reserve(&mut s, len);
+
+        unsafe {
+            do as_buf(s) |buf, _| {
                 let mut buf = ::cast::transmute_mut_unsafe(buf);
-                for v.each |ss| {
+                for self.each |ss| {
                     do as_buf(*ss) |ssbuf, sslen| {
                         let sslen = sslen - 1;
-                        if first {
-                            first = false;
-                        } else {
-                            ptr::copy_memory(buf, sepbuf, seplen);
-                            buf = buf.offset(seplen);
-                        }
                         ptr::copy_memory(buf, ssbuf, sslen);
                         buf = buf.offset(sslen);
                     }
                 }
             }
+            raw::set_len(&mut s, len);
         }
-        raw::set_len(&mut s, len);
+        s
     }
-    s
+
+    /// Concatenate a vector of strings, placing a given separator between each.
+    pub fn connect(&self, sep: &str) -> ~str {
+        if self.is_empty() { return ~""; }
+
+        // concat is faster
+        if sep.is_empty() { return self.concat(); }
+
+        // this is wrong without the guarantee that `self` is non-empty
+        let mut len = sep.len() * (self.len() - 1);
+        for self.each |ss| {
+            len += ss.len();
+        }
+        let mut s = ~"";
+        let mut first = true;
+
+        reserve(&mut s, len);
+
+        unsafe {
+            do as_buf(s) |buf, _| {
+                do as_buf(sep) |sepbuf, seplen| {
+                    let seplen = seplen - 1;
+                    let mut buf = ::cast::transmute_mut_unsafe(buf);
+                    for self.each |ss| {
+                        do as_buf(*ss) |ssbuf, sslen| {
+                            let sslen = sslen - 1;
+                            if first {
+                                first = false;
+                            } else {
+                                ptr::copy_memory(buf, sepbuf, seplen);
+                                buf = buf.offset(seplen);
+                            }
+                            ptr::copy_memory(buf, ssbuf, sslen);
+                            buf = buf.offset(sslen);
+                        }
+                    }
+                }
+            }
+            raw::set_len(&mut s, len);
+        }
+        s
+    }
 }
 
-/// Concatenate a vector of strings, placing a given separator between each
-pub fn connect_slices(v: &[&str], sep: &str) -> ~str {
-    if v.is_empty() { return ~""; }
+impl<'self> StrVector for &'self [&'self str] {
+    /// Concatenate a vector of strings.
+    pub fn concat(&self) -> ~str {
+        if self.is_empty() { return ~""; }
 
-    // this is wrong without the guarantee that v is non-empty
-    let mut len = sep.len() * (v.len() - 1);
-    for v.each |ss| {
-        len += ss.len();
-    }
-    let mut s = ~"", first = true;
+        let mut len = 0;
+        for self.each |ss| {
+            len += ss.len();
+        }
+        let mut s = ~"";
 
-    reserve(&mut s, len);
+        reserve(&mut s, len);
 
-    unsafe {
-        do as_buf(s) |buf, _len| {
-            do as_buf(sep) |sepbuf, seplen| {
-                let seplen = seplen - 1;
+        unsafe {
+            do as_buf(s) |buf, _| {
                 let mut buf = ::cast::transmute_mut_unsafe(buf);
-                for v.each |ss| {
+                for self.each |ss| {
                     do as_buf(*ss) |ssbuf, sslen| {
                         let sslen = sslen - 1;
-                        if first {
-                            first = false;
-                        } else if seplen > 0 {
-                            ptr::copy_memory(buf, sepbuf, seplen);
-                            buf = buf.offset(seplen);
-                        }
                         ptr::copy_memory(buf, ssbuf, sslen);
                         buf = buf.offset(sslen);
                     }
                 }
             }
+            raw::set_len(&mut s, len);
         }
-        raw::set_len(&mut s, len);
+        s
     }
-    s
+
+    /// Concatenate a vector of strings, placing a given separator between each.
+    pub fn connect(&self, sep: &str) -> ~str {
+        if self.is_empty() { return ~""; }
+
+        // concat is faster
+        if sep.is_empty() { return self.concat(); }
+
+        // this is wrong without the guarantee that `self` is non-empty
+        let mut len = sep.len() * (self.len() - 1);
+        for self.each |ss| {
+            len += ss.len();
+        }
+        let mut s = ~"";
+        let mut first = true;
+
+        reserve(&mut s, len);
+
+        unsafe {
+            do as_buf(s) |buf, _| {
+                do as_buf(sep) |sepbuf, seplen| {
+                    let seplen = seplen - 1;
+                    let mut buf = ::cast::transmute_mut_unsafe(buf);
+                    for self.each |ss| {
+                        do as_buf(*ss) |ssbuf, sslen| {
+                            let sslen = sslen - 1;
+                            if first {
+                                first = false;
+                            } else {
+                                ptr::copy_memory(buf, sepbuf, seplen);
+                                buf = buf.offset(seplen);
+                            }
+                            ptr::copy_memory(buf, ssbuf, sslen);
+                            buf = buf.offset(sslen);
+                        }
+                    }
+                }
+            }
+            raw::set_len(&mut s, len);
+        }
+        s
+    }
 }
 
 /// Given a string, make a new string with repeated copies of it
@@ -3184,6 +3239,7 @@ mod tests {
     fn test_concat() {
         fn t(v: &[~str], s: &str) {
             assert_eq!(concat(v), s.to_str());
+            assert_eq!(v.concat(), s.to_str());
         }
         t([~"you", ~"know", ~"I'm", ~"no", ~"good"], "youknowI'mnogood");
         let v: &[~str] = [];
@@ -3195,6 +3251,7 @@ mod tests {
     fn test_connect() {
         fn t(v: &[~str], sep: &str, s: &str) {
             assert_eq!(connect(v, sep), s.to_str());
+            assert_eq!(v.connect(sep), s.to_str());
         }
         t([~"you", ~"know", ~"I'm", ~"no", ~"good"],
           " ", "you know I'm no good");
@@ -3204,9 +3261,22 @@ mod tests {
     }
 
     #[test]
+    fn test_concat_slices() {
+        fn t(v: &[&str], s: &str) {
+            assert_eq!(concat_slices(v), s.to_str());
+            assert_eq!(v.concat(), s.to_str());
+        }
+        t(["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
+        let v: &[&str] = [];
+        t(v, "");
+        t(["hi"], "hi");
+    }
+
+    #[test]
     fn test_connect_slices() {
         fn t(v: &[&str], sep: &str, s: &str) {
             assert_eq!(connect_slices(v, sep), s.to_str());
+            assert_eq!(v.connect(sep), s.to_str());
         }
         t(["you", "know", "I'm", "no", "good"],
           " ", "you know I'm no good");
