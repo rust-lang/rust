@@ -76,7 +76,7 @@ use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove, ObsoleteSwap};
 use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
 use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
-use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
+use parse::obsolete::{ObsoleteMutVector, ObsoleteImplVisibility};
 use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
 use parse::obsolete::{ObsoletePostFnTySigil};
 use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
@@ -3305,10 +3305,9 @@ impl Parser {
             None
         };
 
-        // Do not allow visibility to be specified in `impl...for...`. It is
-        // meaningless.
-        if opt_trait.is_some() && visibility != ast::inherited {
-            self.obsolete(*self.span, ObsoleteTraitImplVisibility);
+        // Do not allow visibility to be specified.
+        if visibility != ast::inherited {
+            self.obsolete(*self.span, ObsoleteImplVisibility);
         }
 
         let mut meths = ~[];
