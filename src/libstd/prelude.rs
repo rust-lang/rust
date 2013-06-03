@@ -43,7 +43,7 @@ pub use path::GenericPath;
 pub use path::Path;
 pub use path::PosixPath;
 pub use path::WindowsPath;
-pub use ptr::Ptr;
+pub use ptr::RawPtr;
 pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr};
 pub use str::{StrVector, StrSlice, OwnedStr, StrUtil};
 pub use from_str::{FromStr};
