@@ -324,6 +324,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(reason = "no ncurses on buildbots, needs a bundled terminfo file to test against")]
     fn test_parse() {
         // FIXME #6870: Distribute a compiled file in src/tests and test there
         // parse(io::file_reader(&p("/usr/share/terminfo/r/rxvt-256color")).unwrap(), false);
