@@ -8,7 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The Rust prelude. Imported into every module by default.
+/*!
+
+Many programming languages have a 'prelude': a particular subset of the
+libraries that come with the language. Every program imports the prelude by
+default.
+
+For example, it would be annoying to add `use io::println;` to every single
+program, and the vast majority of Rust programs will wish to print to standard
+output. Therefore, it makes sense to import it into every program.
+
+Rust's prelude has three main parts:
+
+1. io::print and io::println.
+2. Core operators, such as `Add`, `Mul`, and `Not`.
+3. Various types and traits, such as `Clone`, `Eq`, and `comm::Chan`.
+
+*/
+
 
 // Reexported core operators
 pub use either::{Either, Left, Right};
