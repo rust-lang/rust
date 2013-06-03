@@ -68,6 +68,7 @@ pub fn open(term: &str) -> Result<@Reader, ~str> {
 }
 
 #[test]
+#[ignore(reason = "buildbots don't have ncurses installed and I can't mock everything I need")]
 fn test_get_dbpath_for_term() {
     // woefully inadequate test coverage
     use std::os::{setenv, unsetenv};
@@ -80,6 +81,7 @@ fn test_get_dbpath_for_term() {
 }
 
 #[test]
+#[ignore(reason = "see test_get_dbpath_for_term")]
 fn test_open() {
     open("screen");
     let t = open("nonexistent terminal that hopefully does not exist");
