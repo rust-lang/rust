@@ -40,6 +40,13 @@ use vec::{OwnedVector, OwnedCopyableVector};
 #[cfg(not(test))] use cmp::{Eq, Ord, Equiv, TotalEq};
 
 /*
+Section: Conditions
+*/
+condition! {
+    not_utf8: (~str) -> ~str;
+}
+
+/*
 Section: Creating a string
 */
 
@@ -48,11 +55,20 @@ Section: Creating a string
  *
  * # Failure
  *
- * Fails if invalid UTF-8
+ * Raises the `not_utf8` condition if invalid UTF-8
  */
-pub fn from_bytes(vv: &const [u8]) -> ~str {
-    assert!(is_utf8(vv));
-    return unsafe { raw::from_bytes(vv) };
+
+pub fn from_bytes(vv: &[u8]) -> ~str {
+    use str::not_utf8::cond;
+
+    if !is_utf8(vv) {
+        let first_bad_byte = vec::find(vv, |b| !is_utf8([*b])).get();
+        cond.raise(fmt!("from_bytes: input is not UTF-8; first bad byte is %u",
+                        first_bad_byte as uint))
+    }
+    else {
+        return unsafe { raw::from_bytes(vv) }
+    }
 }
 
 /**
@@ -3563,9 +3579,10 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
     #[ignore(cfg(windows))]
     fn test_from_bytes_fail() {
+        use str::not_utf8::cond;
+
         let bb = ~[0xff_u8, 0xb8_u8, 0xa8_u8,
                   0xe0_u8, 0xb9_u8, 0x84_u8,
                   0xe0_u8, 0xb8_u8, 0x97_u8,
@@ -3577,7 +3594,15 @@ mod tests {
                   0x20_u8, 0x4e_u8, 0x61_u8,
                   0x6d_u8];
 
-         let _x = from_bytes(bb);
+        let mut error_happened = false;
+        let _x = do cond.trap(|err| {
+            assert_eq!(err, ~"from_bytes: input is not UTF-8; first bad byte is 255");
+            error_happened = true;
+            ~""
+        }).in {
+            from_bytes(bb)
+        };
+        assert!(error_happened);
     }
 
     #[test]
