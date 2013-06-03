@@ -191,19 +191,27 @@ fn diagnosticcolor(lvl: level) -> u8 {
 }
 
 fn print_diagnostic(topic: &str, lvl: level, msg: &str) {
-    let use_color = term::color_supported() &&
-        io::stderr().get_type() == io::Screen;
+    let t = term::Terminal::new(io::stderr());
+
+    let stderr = io::stderr();
+
     if !topic.is_empty() {
-        io::stderr().write_str(fmt!("%s ", topic));
+        stderr.write_str(fmt!("%s ", topic));
     }
-    if use_color {
-        term::fg(io::stderr(), diagnosticcolor(lvl));
+
+    match t {
+        Ok(term) => {
+            if stderr.get_type() == io::Screen {
+                term.fg(diagnosticcolor(lvl));
+                stderr.write_str(fmt!("%s: ", diagnosticstr(lvl)));
+                term.reset();
+                stderr.write_str(fmt!("%s\n", msg));
+            } else {
+                stderr.write_str(fmt!("%s: %s\n", diagnosticstr(lvl), msg));
+            }
+        },
+        _ => stderr.write_str(fmt!("%s: %s\n", diagnosticstr(lvl), msg))
     }
-    io::stderr().write_str(fmt!("%s:", diagnosticstr(lvl)));
-    if use_color {
-        term::reset(io::stderr());
-    }
-    io::stderr().write_str(fmt!(" %s\n", msg));
 }
 
 pub fn collect(messages: @mut ~[~str])

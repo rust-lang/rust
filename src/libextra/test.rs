@@ -210,7 +210,6 @@ struct ConsoleTestState {
 // A simple console test runner
 pub fn run_tests_console(opts: &TestOpts,
                          tests: ~[TestDescAndFn]) -> bool {
-
     fn callback(event: &TestEvent, st: &mut ConsoleTestState) {
         debug!("callback(event=%?)", event);
         match copy *event {
@@ -347,12 +346,18 @@ pub fn run_tests_console(opts: &TestOpts,
                     word: &str,
                     color: u8,
                     use_color: bool) {
-        if use_color && term::color_supported() {
-            term::fg(out, color);
-        }
-        out.write_str(word);
-        if use_color && term::color_supported() {
-            term::reset(out);
+        let t = term::Terminal::new(out);
+        match t {
+            Ok(term)  => {
+                if use_color && term.color_supported {
+                    term.fg(color);
+                }
+                out.write_str(word);
+                if use_color && term.color_supported {
+                    term.reset();
+                }
+            },
+            Err(_) => out.write_str(word)
         }
     }
 }
