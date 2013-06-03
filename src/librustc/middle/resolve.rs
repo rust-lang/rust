@@ -4595,7 +4595,7 @@ impl Resolver {
         }
 
         let name = *path.idents.last();
-        match self.resolve_definition_of_name_in_module(containing_module,
+        let def = match self.resolve_definition_of_name_in_module(containing_module,
                                                         name,
                                                         namespace,
                                                         xray) {
@@ -4604,9 +4604,28 @@ impl Resolver {
                 return None;
             }
             ChildNameDefinition(def) | ImportNameDefinition(def) => {
-                return Some(def);
+                def
             }
-        }
+        };
+        match containing_module.kind {
+            TraitModuleKind | ImplModuleKind => {
+                match self.method_map.find(&name) {
+                    Some(s) => {
+                        match containing_module.def_id {
+                            Some(def_id) if s.contains(&def_id) => {
+                                debug!("containing module was a trait or impl \
+                                        and name was a method -> not resolved");
+                                return None;
+                            },
+                            _ => (),
+                        }
+                    },
+                    None => (),
+                }
+            },
+            _ => (),
+        };
+        return Some(def);
     }
 
     /// Invariant: This must be called only during main resolution, not during
