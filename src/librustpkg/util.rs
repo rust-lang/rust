@@ -162,43 +162,31 @@ pub fn need_dir(s: &Path) {
     }
 }
 
-pub fn note(msg: ~str) {
-    let out = io::stdout();
-
-    if term::color_supported() {
-        term::fg(out, term::color_green);
-        out.write_str("note: ");
-        term::reset(out);
-        out.write_line(msg);
-    } else {
-        out.write_line(~"note: " + msg);
+fn pretty_message<'a>(msg: &'a str, prefix: &'a str, color: u8, out: @io::Writer) {
+    let term = term::Terminal::new(out);
+    match term {
+        Ok(ref t) => {
+            t.fg(color);
+            out.write_str(prefix);
+            t.reset();
+        },
+        _ => {
+            out.write_str(prefix);
+        }
     }
+    out.write_line(msg);
 }
 
-pub fn warn(msg: ~str) {
-    let out = io::stdout();
-
-    if term::color_supported() {
-        term::fg(out, term::color_yellow);
-        out.write_str("warning: ");
-        term::reset(out);
-        out.write_line(msg);
-    } else {
-        out.write_line(~"warning: " + msg);
-    }
+pub fn note(msg: &str) {
+    pretty_message(msg, "note: ", term::color_green, io::stdout())
 }
 
-pub fn error(msg: ~str) {
-    let out = io::stdout();
+pub fn warn(msg: &str) {
+    pretty_message(msg, "warning: ", term::color_yellow, io::stdout())
+}
 
-    if term::color_supported() {
-        term::fg(out, term::color_red);
-        out.write_str("error: ");
-        term::reset(out);
-        out.write_line(msg);
-    } else {
-        out.write_line(~"error: " + msg);
-    }
+pub fn error(msg: &str) {
+    pretty_message(msg, "error: ", term::color_red, io::stdout())
 }
 
 // FIXME (#4432): Use workcache to only compile when needed
