@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use container::Container;
-use ptr::Ptr;
+use ptr::RawPtr;
 use vec;
 use ops::Drop;
 use libc::{c_uint, uintptr_t};

@@ -296,7 +296,7 @@ pub unsafe fn array_each<T>(arr: **T, cb: &fn(*T)) {
 }
 
 #[allow(missing_doc)]
-pub trait Ptr<T> {
+pub trait RawPtr<T> {
     fn is_null(&const self) -> bool;
     fn is_not_null(&const self) -> bool;
     unsafe fn to_option(&const self) -> Option<&T>;
@@ -304,7 +304,7 @@ pub trait Ptr<T> {
 }
 
 /// Extension methods for immutable pointers
-impl<T> Ptr<T> for *T {
+impl<T> RawPtr<T> for *T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline(always)]
     fn is_null(&const self) -> bool { is_null(*self) }
@@ -336,7 +336,7 @@ impl<T> Ptr<T> for *T {
 }
 
 /// Extension methods for mutable pointers
-impl<T> Ptr<T> for *mut T {
+impl<T> RawPtr<T> for *mut T {
     /// Returns true if the pointer is equal to the null pointer.
     #[inline(always)]
     fn is_null(&const self) -> bool { is_null(*self) }
