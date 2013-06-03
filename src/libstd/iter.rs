@@ -51,6 +51,29 @@ pub trait Times {
     fn times(&self, it: &fn() -> bool) -> bool;
 }
 
+pub trait FromIter<T> {
+    // Build a container with elements from an internal iterator.
+    //
+    // # Example:
+    //
+    // ~~~ {.rust}
+    // let xs = ~[1, 2, 3];
+    // let ys: ~[int] = do FromIter::from_iter |f| { xs.each(|x| f(*x)) };
+    // assert_eq!(xs, ys);
+    // ~~~
+    pub fn from_iter(iter: &fn(f: &fn(T) -> bool) -> bool) -> Self;
+}
+
+// NOTE: This should be in vec but can't because of coherence
+impl<T> FromIter<T> for ~[T]{
+    #[inline(always)]
+    pub fn from_iter(iter: &fn(f: &fn(T) -> bool) -> bool) -> ~[T] {
+        let mut v = ~[];
+        for iter |x| { v.push(x) }
+        v
+    }
+}
+
 /**
  * Transform an internal iterator into an owned vector.
  *
@@ -64,9 +87,7 @@ pub trait Times {
  */
 #[inline(always)]
 pub fn to_vec<T>(iter: &fn(f: &fn(T) -> bool) -> bool) -> ~[T] {
-    let mut v = ~[];
-    for iter |x| { v.push(x) }
-    v
+    FromIter::from_iter(iter)
 }
 
 /**
@@ -265,6 +286,13 @@ mod tests {
     fn test_to_vec() {
         let xs = ~[1, 2, 3];
         let ys = do to_vec |f| { xs.each(|x| f(*x)) };
+        assert_eq!(xs, ys);
+    }
+
+    #[test]
+    fn test_from_iter() {
+        let xs: ~[int] = ~[1, 2, 3];
+        let ys: ~[int] = do FromIter::from_iter |f| { xs.each(|x| f(*x)) };
         assert_eq!(xs, ys);
     }
 
