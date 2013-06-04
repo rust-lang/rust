@@ -725,7 +725,6 @@ pub struct PrimitiveTypeTable {
 
 impl PrimitiveTypeTable {
     pub fn intern(&mut self,
-                  intr: @ident_interner,
                   string: &str,
                   primitive_type: prim_ty) {
         let ident = token::str_to_ident(string);
@@ -733,27 +732,27 @@ impl PrimitiveTypeTable {
     }
 }
 
-pub fn PrimitiveTypeTable(intr: @ident_interner) -> PrimitiveTypeTable {
+pub fn PrimitiveTypeTable() -> PrimitiveTypeTable {
     let mut table = PrimitiveTypeTable {
         primitive_types: HashMap::new()
     };
 
-    table.intern(intr, "bool",    ty_bool);
-    table.intern(intr, "char",    ty_int(ty_char));
-    table.intern(intr, "float",   ty_float(ty_f));
-    table.intern(intr, "f32",     ty_float(ty_f32));
-    table.intern(intr, "f64",     ty_float(ty_f64));
-    table.intern(intr, "int",     ty_int(ty_i));
-    table.intern(intr, "i8",      ty_int(ty_i8));
-    table.intern(intr, "i16",     ty_int(ty_i16));
-    table.intern(intr, "i32",     ty_int(ty_i32));
-    table.intern(intr, "i64",     ty_int(ty_i64));
-    table.intern(intr, "str",     ty_str);
-    table.intern(intr, "uint",    ty_uint(ty_u));
-    table.intern(intr, "u8",      ty_uint(ty_u8));
-    table.intern(intr, "u16",     ty_uint(ty_u16));
-    table.intern(intr, "u32",     ty_uint(ty_u32));
-    table.intern(intr, "u64",     ty_uint(ty_u64));
+    table.intern("bool",    ty_bool);
+    table.intern("char",    ty_int(ty_char));
+    table.intern("float",   ty_float(ty_f));
+    table.intern("f32",     ty_float(ty_f32));
+    table.intern("f64",     ty_float(ty_f64));
+    table.intern("int",     ty_int(ty_i));
+    table.intern("i8",      ty_int(ty_i8));
+    table.intern("i16",     ty_int(ty_i16));
+    table.intern("i32",     ty_int(ty_i32));
+    table.intern("i64",     ty_int(ty_i64));
+    table.intern("str",     ty_str);
+    table.intern("uint",    ty_uint(ty_u));
+    table.intern("u8",      ty_uint(ty_u8));
+    table.intern("u16",     ty_uint(ty_u16));
+    table.intern("u32",     ty_uint(ty_u32));
+    table.intern("u64",     ty_uint(ty_u64));
 
     return table;
 }
@@ -806,7 +805,7 @@ pub fn Resolver(session: Session,
         self_ident: special_idents::self_,
         type_self_ident: special_idents::type_self,
 
-        primitive_type_table: @PrimitiveTypeTable(token::get_ident_interner()),
+        primitive_type_table: @PrimitiveTypeTable(),
 
         namespaces: ~[ TypeNS, ValueNS ],
 
@@ -2942,8 +2941,6 @@ impl Resolver {
                                  module_: @mut Module,
                                  module_path: &[ident])
                                  -> ResolveResult<ModulePrefixResult> {
-        let interner = token::get_ident_interner();
-
         // Start at the current module if we see `self` or `super`, or at the
         // top of the crate otherwise.
         let mut containing_module;

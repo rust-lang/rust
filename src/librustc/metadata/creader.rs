@@ -303,7 +303,7 @@ fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
     let mut cnum_map = HashMap::new();
-    for decoder::get_crate_deps(e.intr, cdata).each |dep| {
+    for decoder::get_crate_deps(cdata).each |dep| {
         let extrn_cnum = dep.cnum;
         let cname = dep.name;
         let cname_str = token::ident_to_str(&dep.name);

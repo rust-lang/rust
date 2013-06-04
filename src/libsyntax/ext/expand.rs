@@ -394,7 +394,7 @@ pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
 }
 
 pub fn expand_block(extsbox: @mut SyntaxEnv,
-                    cx: @ExtCtxt,
+                    _cx: @ExtCtxt,
                     blk: &blk_,
                     sp: span,
                     fld: @ast_fold,

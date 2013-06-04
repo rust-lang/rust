@@ -12,7 +12,6 @@ use core::prelude::*;
 
 use middle::freevars::freevar_entry;
 use middle::freevars;
-use middle::pat_util;
 use middle::ty;
 use middle::typeck;
 use util::ppaux::{Repr, ty_to_str};

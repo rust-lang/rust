@@ -19,7 +19,6 @@ use core::prelude::*;
 
 use core::borrow;
 use core::comm;
-use core::ptr;
 use core::task;
 use core::unstable::sync::{Exclusive, exclusive};
 use core::util;

@@ -12,7 +12,7 @@ use core::prelude::*;
 
 use ast;
 use codemap;
-use codemap::{FileMap, Loc, Pos, ExpandedFrom, span};
+use codemap::{Pos, ExpandedFrom, span};
 use codemap::{CallInfo, NameAndSpan};
 use ext::base::*;
 use ext::base;
