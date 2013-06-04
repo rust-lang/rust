@@ -19,7 +19,7 @@ use codemap;
 use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
 use parse::parser::Parser;
-use parse::token::{Token, EOF, to_str, nonterminal, get_ident_interner};
+use parse::token::{Token, EOF, to_str, nonterminal, get_ident_interner, ident_to_str};
 use parse::token;
 
 use core::hashmap::HashMap;
@@ -201,13 +201,13 @@ pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
             };
           }
           codemap::spanned {
-                node: match_nonterminal(bind_name, _, idx), span: sp
+                node: match_nonterminal(ref bind_name, _, idx), span: sp
           } => {
-            if ret_val.contains_key(&bind_name) {
+            if ret_val.contains_key(bind_name) {
                 p_s.span_diagnostic.span_fatal(sp, ~"Duplicated bind name: "+
-                                               *get_ident_interner().get(bind_name))
+                                               *ident_to_str(*bind_name))
             }
-            ret_val.insert(bind_name, res[idx]);
+            ret_val.insert(*bind_name, res[idx]);
           }
         }
     }
@@ -372,9 +372,9 @@ pub fn parse(
                 || bb_eis.len() > 1u {
                 let nts = str::connect(vec::map(bb_eis, |ei| {
                     match ei.elts[ei.idx].node {
-                      match_nonterminal(bind,name,_) => {
-                        fmt!("%s ('%s')", *get_ident_interner().get(name),
-                             *get_ident_interner().get(bind))
+                      match_nonterminal(ref bind,ref name,_) => {
+                        fmt!("%s ('%s')", *ident_to_str(*name),
+                             *ident_to_str(*bind))
                       }
                       _ => fail!()
                     } }), " or ");
@@ -396,9 +396,9 @@ pub fn parse(
 
                 let mut ei = bb_eis.pop();
                 match ei.elts[ei.idx].node {
-                  match_nonterminal(_, name, idx) => {
+                  match_nonterminal(_, ref name, idx) => {
                     ei.matches[idx].push(@matched_nonterminal(
-                        parse_nt(&rust_parser, *get_ident_interner().get(name))));
+                        parse_nt(&rust_parser, *ident_to_str(*name))));
                     ei.idx += 1u;
                   }
                   _ => fail!()

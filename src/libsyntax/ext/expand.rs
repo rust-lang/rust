@@ -25,7 +25,7 @@ use ext::base::*;
 use fold::*;
 use parse;
 use parse::{parse_item_from_source_str};
-use parse::token::{get_ident_interner,intern};
+use parse::token::{get_ident_interner, ident_to_str, intern};
 
 use core::vec;
 
@@ -50,7 +50,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                                   separators"));
                     }
                     let extname = pth.idents[0];
-                    let extnamestr = get_ident_interner().get(extname);
+                    let extnamestr = ident_to_str(extname);
                     // leaving explicit deref here to highlight unbox op:
                     match (*extsbox).find(&extname.name) {
                         None => {
@@ -218,7 +218,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
 
     let extname = pth.idents[0];
     let interner = get_ident_interner();
-    let extnamestr = interner.get(extname);
+    let extnamestr = ident_to_str(extname);
     let expanded = match (*extsbox).find(&extname.name) {
         None => cx.span_fatal(pth.span,
                               fmt!("macro undefined: '%s!'", *extnamestr)),
@@ -228,7 +228,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                 cx.span_fatal(pth.span,
                               fmt!("macro %s! expects no ident argument, \
                                     given '%s'", *extnamestr,
-                                   *interner.get(it.ident)));
+                                   *ident_to_str(it.ident)));
             }
             cx.bt_push(ExpandedFrom(CallInfo {
                 call_site: it.span,
@@ -316,7 +316,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                   separators"));
     }
     let extname = pth.idents[0];
-    let extnamestr = get_ident_interner().get(extname);
+    let extnamestr = ident_to_str(extname);
     let (fully_expanded, sp) = match (*extsbox).find(&extname.name) {
         None =>
             cx.span_fatal(pth.span, fmt!("macro undefined: '%s'", *extnamestr)),
@@ -735,7 +735,7 @@ mod test {
     use codemap;
     use codemap::spanned;
     use parse;
-    use parse::token::{get_ident_interner};
+    use parse::token::{gensym, get_ident_interner};
     use core::io;
     use core::option::{None, Some};
     use util::parser_testing::{string_to_item_and_sess};
@@ -849,7 +849,7 @@ mod test {
         };
         let table = @mut new_sctable();
         let a_name = 100; // enforced by testing_interner
-        let a2_name = get_ident_interner().gensym("a2").name;
+        let a2_name = gensym("a2");
         let renamer = new_ident_renamer(ast::ident{name:a_name,ctxt:empty_ctxt},
                                         a2_name,table);
         let renamed_ast = fun_to_ident_folder(renamer).fold_item(item_ast).get();

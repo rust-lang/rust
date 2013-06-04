@@ -348,8 +348,8 @@ mod test {
     use ast_util::new_ident;
     use abi;
     use parse::parser::Parser;
-    use parse::token::intern;
-    use util::parser_testing::{string_to_tts_and_sess,string_to_parser};
+    use parse::token::{intern, str_to_ident};
+    use util::parser_testing::{string_to_tts_and_sess, string_to_parser};
     use util::parser_testing::{string_to_expr, string_to_item};
     use util::parser_testing::{string_to_stmt};
 

@@ -728,7 +728,7 @@ impl PrimitiveTypeTable {
                   intr: @ident_interner,
                   string: &str,
                   primitive_type: prim_ty) {
-        let ident = intr.intern(string);
+        let ident = token::str_to_ident(string);
         self.primitive_types.insert(ident, primitive_type);
     }
 }
@@ -2948,11 +2948,11 @@ impl Resolver {
         // top of the crate otherwise.
         let mut containing_module;
         let mut i;
-        if *interner.get(module_path[0]) == ~"self" {
+        if *token::ident_to_str(module_path[0]) == ~"self" {
             containing_module =
                 self.get_nearest_normal_module_parent_or_self(module_);
             i = 1;
-        } else if *interner.get(module_path[0]) == ~"super" {
+        } else if *token::ident_to_str(module_path[0]) == ~"super" {
             containing_module =
                 self.get_nearest_normal_module_parent_or_self(module_);
             i = 0;  // We'll handle `super` below.
@@ -2962,7 +2962,7 @@ impl Resolver {
 
         // Now loop through all the `super`s we find.
         while i < module_path.len() &&
-                *interner.get(module_path[i]) == ~"super" {
+                *token::ident_to_str(module_path[i]) == ~"super" {
             debug!("(resolving module prefix) resolving `super` at %s",
                    self.module_to_str(containing_module));
             match self.get_nearest_normal_module_parent(containing_module) {

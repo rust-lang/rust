@@ -21,7 +21,7 @@ use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
 use ext::tt::macro_parser::{parse, parse_or_else, success, failure};
 use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
-use parse::token::{get_ident_interner, special_idents};
+use parse::token::{get_ident_interner, special_idents, gensym_ident, ident_to_str};
 use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt};
 use print;
 
@@ -38,8 +38,8 @@ pub fn add_new_extension(cx: @ExtCtxt,
         spanned { node: copy m, span: dummy_sp() }
     }
 
-    let lhs_nm =  get_ident_interner().gensym("lhs");
-    let rhs_nm =  get_ident_interner().gensym("rhs");
+    let lhs_nm =  gensym_ident("lhs");
+    let rhs_nm =  gensym_ident("rhs");
 
     // The grammar for macro_rules! is:
     // $( $lhs:mtcs => $rhs:tt );+
@@ -151,7 +151,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
         |cx, sp, arg| generic_extension(cx, sp, name, arg, *lhses, *rhses);
 
     return MRDef(MacroDef{
-        name: copy *get_ident_interner().get(name),
+        name: copy *ident_to_str(name),
         ext: NormalTT(base::SyntaxExpanderTT{expander: exp, span: Some(sp)})
     });
 }

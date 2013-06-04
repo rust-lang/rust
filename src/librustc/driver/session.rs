@@ -294,12 +294,17 @@ impl Session_ {
         self.opts.optimize == No && !self.debugging_opt(no_debug_borrows)
     }
 
+    // pointless function, now...
     pub fn str_of(@self, id: ast::ident) -> @~str {
-        token::get_ident_interner().get(id)
+        token::ident_to_str(id)
     }
+
+    // pointless function, now...
     pub fn ident_of(@self, st: &str) -> ast::ident {
-        token::get_ident_interner().intern(st)
+        token::str_to_ident(st)
     }
+
+    // pointless function, now...
     pub fn intr(@self) -> @syntax::parse::token::ident_interner {
         token::get_ident_interner()
     }

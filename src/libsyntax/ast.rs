@@ -15,7 +15,7 @@ use core::prelude::*;
 use codemap::{span, spanned};
 use abi::AbiSet;
 use opt_vec::OptVec;
-use parse::token::get_ident_interner;
+use parse::token::{get_ident_interner, ident_to_str, interner_get, str_to_ident};
 
 use core::hashmap::HashMap;
 use core::option::Option;
@@ -31,6 +31,9 @@ use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 // That Work Together"
 #[deriving(Eq)]
 pub struct ident { name: Name, ctxt: SyntaxContext }
+
+/// Construct an identifier with the given name and an empty context:
+pub fn new_ident(name: Name) -> ident { ident {name: name, ctxt: empty_ctxt}}
 
 // a SyntaxContext represents a chain of macro-expandings
 // and renamings. Each macro expansion corresponds to
@@ -81,13 +84,13 @@ pub type Mrk = uint;
 
 impl<S:Encoder> Encodable<S> for ident {
     fn encode(&self, s: &mut S) {
-        s.emit_str(*get_ident_interner().get(*self));
+        s.emit_str(*interner_get(self.name));
     }
 }
 
 impl<D:Decoder> Decodable<D> for ident {
     fn decode(d: &mut D) -> ident {
-        get_ident_interner().intern(d.read_str())
+        str_to_ident(d.read_str())
     }
 }
 

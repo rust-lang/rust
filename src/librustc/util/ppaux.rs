@@ -655,7 +655,7 @@ impl Repr for ty::Method {
 
 impl Repr for ast::ident {
     fn repr(&self, tcx: ctxt) -> ~str {
-        copy *tcx.sess.intr().get(*self)
+        copy *token::ident_to_str(*self)
     }
 }
 

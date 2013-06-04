@@ -18,14 +18,14 @@ use doc;
 
 use core::vec;
 use syntax::ast;
-use syntax::parse::token::{ident_interner};
+use syntax;
+use syntax::parse::token::{ident_interner, ident_to_str};
 use syntax::parse::token;
 
 // Hack; rather than thread an interner through everywhere, rely on
 // thread-local data
 pub fn to_str(id: ast::ident) -> ~str {
-    let intr = token::get_ident_interner();
-    return copy *(*intr).get(id);
+    return copy *ident_to_str(id);
 }
 
 pub fn interner() -> @ident_interner {

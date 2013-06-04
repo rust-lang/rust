@@ -80,7 +80,7 @@ pub mod rt {
 
     impl ToSource for ast::ident {
         fn to_source(&self, cx: @ExtCtxt) -> ~str {
-            copy *get_ident_interner().get(*self)
+            copy *interner_get(self.name)
         }
     }
 
@@ -418,11 +418,11 @@ pub fn expand_quote_stmt(cx: @ExtCtxt,
 }
 
 fn ids_ext(cx: @ExtCtxt, strs: ~[~str]) -> ~[ast::ident] {
-    strs.map(|str| get_ident_interner().intern(*str))
+    strs.map(|str| str_to_ident(*str))
 }
 
 fn id_ext(cx: @ExtCtxt, str: &str) -> ast::ident {
-    get_ident_interner().intern(str)
+    str_to_ident(str)
 }
 
 // Lift an ident to the expr that evaluates to that ident.

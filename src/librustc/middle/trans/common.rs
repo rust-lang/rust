@@ -52,16 +52,19 @@ use core::vec;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt};
 use syntax::codemap::span;
+use syntax::parse::token;
 use syntax::parse::token::ident_interner;
 use syntax::{ast, ast_map};
 use syntax::abi::{X86, X86_64, Arm, Mips};
 
+// NOTE: this thunk is totally pointless now that we're not passing
+// interners around...
 pub type namegen = @fn(s: &str) -> ident;
 pub fn new_namegen(intr: @ident_interner) -> namegen {
     let f: @fn(s: &str) -> ident = |prefix| {
-        intr.gensym(fmt!("%s_%u",
-                          prefix,
-                          intr.gensym(prefix).name))
+        token::str_to_ident(fmt!("%s_%u",
+                                 prefix,
+                                 token::gensym(prefix)))
     };
     f
 }

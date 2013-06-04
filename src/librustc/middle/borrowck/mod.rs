@@ -30,6 +30,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::visit;
 use syntax::codemap::span;
+use syntax::parse::token;
 
 macro_rules! if_ok(
     ($inp: expr) => (
@@ -711,7 +712,7 @@ impl BorrowckCtxt {
             LpVar(id) => {
                 match self.tcx.items.find(&id) {
                     Some(&ast_map::node_local(ident)) => {
-                        str::push_str(out, *self.tcx.sess.intr().get(ident));
+                        str::push_str(out, *token::ident_to_str(ident));
                     }
                     r => {
                         self.tcx.sess.bug(
@@ -726,7 +727,7 @@ impl BorrowckCtxt {
                 match fname {
                     mc::NamedField(fname) => {
                         str::push_char(out, '.');
-                        str::push_str(out, *self.tcx.sess.intr().get(fname));
+                        str::push_str(out, *token::ident_to_str(fname));
                     }
                     mc::PositionalField(idx) => {
                         str::push_char(out, '#'); // invent a notation here
