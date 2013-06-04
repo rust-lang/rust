@@ -108,10 +108,10 @@ pub struct DebugContext {
     crate_file: ~str
 }
 
-pub fn mk_ctxt(crate: ~str, intr: @ident_interner) -> DebugContext {
+pub fn mk_ctxt(crate: ~str) -> DebugContext {
     DebugContext {
         llmetadata: @mut HashMap::new(),
-        names: new_namegen(intr),
+        names: new_namegen(),
         crate_file: crate
     }
 }
