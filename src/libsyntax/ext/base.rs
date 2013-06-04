@@ -19,7 +19,7 @@ use diagnostic::span_handler;
 use ext;
 use parse;
 use parse::token;
-use parse::token::{ident_to_str, intern, get_ident_interner, str_to_ident};
+use parse::token::{ident_to_str, intern, str_to_ident};
 
 use core::hashmap::HashMap;
 use core::vec;

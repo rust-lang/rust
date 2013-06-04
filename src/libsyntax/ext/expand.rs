@@ -25,7 +25,7 @@ use ext::base::*;
 use fold::*;
 use parse;
 use parse::{parse_item_from_source_str};
-use parse::token::{get_ident_interner, ident_to_str, intern};
+use parse::token::{ident_to_str, intern};
 
 use core::vec;
 
@@ -217,7 +217,6 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
     };
 
     let extname = &pth.idents[0];
-    let interner = get_ident_interner();
     let extnamestr = ident_to_str(extname);
     let expanded = match (*extsbox).find(&extname.name) {
         None => cx.span_fatal(pth.span,
@@ -735,7 +734,7 @@ mod test {
     use codemap;
     use codemap::spanned;
     use parse;
-    use parse::token::{gensym, get_ident_interner};
+    use parse::token::{gensym};
     use core::io;
     use core::option::{None, Some};
     use util::parser_testing::{string_to_item, string_to_pat, strs_to_idents};
