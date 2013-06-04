@@ -194,7 +194,7 @@ pub fn context() -> RuntimeContext {
         return OldTaskContext;
     } else {
         if Local::exists::<Scheduler>() {
-            let context = ::cell::empty_cell();
+            let context = ::cell::Cell::new_empty();
             do Local::borrow::<Scheduler> |sched| {
                 if sched.in_task_context() {
                     context.put_back(TaskContext);
@@ -231,7 +231,7 @@ fn test_context() {
             let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then() |task| {
                 assert_eq!(context(), SchedulerContext);
-                let task = Cell(task);
+                let task = Cell::new(task);
                 do Local::borrow::<Scheduler> |sched| {
                     sched.enqueue_task(task.take());
                 }

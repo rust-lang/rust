@@ -25,7 +25,7 @@ pub fn run_in_newsched_task(f: ~fn()) {
     use unstable::run_in_bare_thread;
     use rt::uv::uvio::UvEventLoop;
 
-    let f = Cell(f);
+    let f = Cell::new(f);
 
     do run_in_bare_thread {
         let mut sched = ~UvEventLoop::new_scheduler();
@@ -46,7 +46,7 @@ pub fn spawntask(f: ~fn()) {
                                      ~Task::without_unwinding(),
                                      f);
     do sched.switch_running_tasks_and_then(task) |task| {
-        let task = Cell(task);
+        let task = Cell::new(task);
         let sched = Local::take::<Scheduler>();
         sched.schedule_new_task(task.take());
     }
@@ -61,7 +61,7 @@ pub fn spawntask_immediately(f: ~fn()) {
                                      ~Task::without_unwinding(),
                                      f);
     do sched.switch_running_tasks_and_then(task) |task| {
-        let task = Cell(task);
+        let task = Cell::new(task);
         do Local::borrow::<Scheduler> |sched| {
             sched.enqueue_task(task.take());
         }
@@ -96,7 +96,7 @@ pub fn spawntask_random(f: ~fn()) {
 
     if run_now {
         do sched.switch_running_tasks_and_then(task) |task| {
-            let task = Cell(task);
+            let task = Cell::new(task);
             do Local::borrow::<Scheduler> |sched| {
                 sched.enqueue_task(task.take());
             }
@@ -120,10 +120,10 @@ pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
     let failed_ptr: *mut bool = &mut failed;
 
     // Switch to the scheduler
-    let f = Cell(Cell(f));
+    let f = Cell::new(Cell::new(f));
     let sched = Local::take::<Scheduler>();
     do sched.deschedule_running_task_and_then() |old_task| {
-        let old_task = Cell(old_task);
+        let old_task = Cell::new(old_task);
         let f = f.take();
         let mut sched = Local::take::<Scheduler>();
         let new_task = ~do Coroutine::new(&mut sched.stack_pool) {
@@ -134,7 +134,7 @@ pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
                 unsafe { *failed_ptr = task::failing(); }
                 let sched = Local::take::<Scheduler>();
                 do sched.switch_running_tasks_and_then(old_task.take()) |new_task| {
-                    let new_task = Cell(new_task);
+                    let new_task = Cell::new(new_task);
                     do Local::borrow::<Scheduler> |sched| {
                         sched.enqueue_task(new_task.take());
                     }
@@ -153,7 +153,7 @@ pub fn spawntask_thread(f: ~fn()) -> Thread {
     use rt::sched::*;
     use rt::uv::uvio::UvEventLoop;
 
-    let f = Cell(f);
+    let f = Cell::new(f);
     let thread = do Thread::start {
         let mut sched = ~UvEventLoop::new_scheduler();
         let task = ~Coroutine::with_task(&mut sched.stack_pool,

@@ -791,8 +791,8 @@ mod test {
 
         let addr0 = ip::v4::parse_addr("127.0.0.1");
 
-        let begin_connect_chan = Cell(begin_connect_chan);
-        let accept_chan = Cell(accept_chan);
+        let begin_connect_chan = Cell::new(begin_connect_chan);
+        let accept_chan = Cell::new(accept_chan);
 
         // The server task
         let addr = copy addr0;
