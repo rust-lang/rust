@@ -142,8 +142,7 @@ fn add_to_index(ecx: @EncodeContext,
     full_path.push(name);
     index.push(
         entry {
-            val: ast_util::path_name_i(full_path,
-                                       token::get_ident_interner()),
+            val: ast_util::path_name_i(full_path),
             pos: ebml_w.writer.tell()
         });
 }

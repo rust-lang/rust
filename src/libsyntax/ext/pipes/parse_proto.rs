@@ -17,7 +17,7 @@ use ext::pipes::proto::*;
 use parse::common::SeqSep;
 use parse::parser;
 use parse::token;
-use parse::token::{get_ident_interner, interner_get};
+use parse::token::{interner_get};
 
 pub trait proto_parser {
     fn parse_proto(&self, id: ~str) -> protocol;

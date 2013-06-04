@@ -2236,7 +2236,6 @@ mod test {
     use codemap;
     use core::cmp::Eq;
     use core::option::None;
-    use parse;
     use parse::token;
 
     fn string_check<T:Eq> (given : &T, expected: &T) {
