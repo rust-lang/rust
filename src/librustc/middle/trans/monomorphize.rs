@@ -30,7 +30,7 @@ use middle::trans::type_use;
 use middle::ty;
 use middle::ty::{FnSig};
 use middle::typeck;
-use util::ppaux::Repr;
+use util::ppaux::{Repr,ty_to_str};
 
 use core::vec;
 use syntax::ast;
@@ -379,9 +379,13 @@ pub fn make_mono_id(ccx: @CrateContext,
                         {
                             let llty = type_of::type_of(ccx, subst);
                             let size = machine::llbitsize_of_real(ccx, llty);
-                            let align = machine::llalign_of_pref(ccx, llty);
+                            let align = machine::llalign_of_min(ccx, llty);
                             let mode = datum::appropriate_mode(subst);
                             let data_class = mono_data_classify(subst);
+
+                            debug!("make_mono_id: type %s -> size %u align %u mode %? class %?",
+                                  ty_to_str(ccx.tcx, subst),
+                                  size, align, mode, data_class);
 
                             // Special value for nil to prevent problems
                             // with undef return pointers.
