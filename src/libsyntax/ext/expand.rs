@@ -11,8 +11,8 @@
 use core::prelude::*;
 
 use ast::{blk_, attribute_, attr_outer, meta_word};
-use ast::{crate, expr_, expr_mac, mac_invoc_tt};
-use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
+use ast::{crate, decl_local, expr_, expr_mac, mac_invoc_tt};
+use ast::{item_mac, local_, stmt_, stmt_decl, stmt_mac, stmt_expr, stmt_semi};
 use ast::{SCTable, illegal_ctxt};
 use ast;
 use ast_util::{new_rename, new_mark, resolve, new_sctable};
@@ -26,6 +26,8 @@ use fold::*;
 use parse;
 use parse::{parse_item_from_source_str};
 use parse::token::{ident_to_str, intern};
+use visit;
+use visit::{Visitor,mk_vt};
 
 use core::vec;
 
@@ -276,13 +278,13 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
 // insert a macro into the innermost frame that doesn't have the
 // macro_escape tag.
 fn insert_macro(exts: SyntaxEnv, name: ast::Name, transformer: @Transformer) {
-    let block_err_msg = "special identifier ' block' was bound to a non-BlockInfo";
     let is_non_escaping_block =
         |t : &@Transformer| -> bool{
         match t {
             &@BlockInfo(BlockInfo {macros_escape:false,_}) => true,
             &@BlockInfo(BlockInfo {_}) => false,
-            _ => fail!(block_err_msg)
+            _ => fail!(fmt!("special identifier %? was bound to a non-BlockInfo",
+                            special_block_name))
         }
     };
     exts.insert_into_frame(name,transformer,intern(special_block_name),
@@ -365,6 +367,34 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
 
 }
 
+// return a visitor that extracts the pat_ident paths
+// from a given pattern and puts them in a mutable
+// array (passed in to the traversal
+pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
+    let default_visitor = visit::default_visitor();
+    @Visitor{
+        visit_pat : |p:@ast::pat,ident_accum:@mut ~[ast::ident],v:visit::vt<@mut ~[ast::ident]>| {
+            match *p {
+                // we found a pat_ident!
+                ast::pat{id:_, node: ast::pat_ident(_,path,ref inner), span:_} => {
+                    match path {
+                        // a path of length one:
+                        @ast::Path{global: false,idents: [id], span:_,rp:_,types:_} =>
+                        ident_accum.push(id),
+                        // I believe these must be enums...
+                        _ => ()
+                    }
+                    // visit optional subpattern of pat_ident:
+                    for inner.each |subpat: &@ast::pat| { (v.visit_pat)(*subpat, ident_accum, v) }
+                }
+                // use the default traversal for non-pat_idents
+                _ => visit::visit_pat(p,ident_accum,v)
+            }
+        },
+        .. *default_visitor
+    }
+}
+
 
 
 pub fn expand_block(extsbox: @mut SyntaxEnv,
@@ -377,6 +407,17 @@ pub fn expand_block(extsbox: @mut SyntaxEnv,
     // see note below about treatment of exts table
     with_exts_frame!(extsbox,false,orig(blk,sp,fld))
 }
+
+
+// get the (innermost) BlockInfo from an exts stack
+fn get_block_info(exts : SyntaxEnv) -> BlockInfo {
+    match exts.find_in_topmost_frame(&intern(special_block_name)) {
+        Some(@BlockInfo(bi)) => bi,
+        _ => fail!(fmt!("special identifier %? was bound to a non-BlockInfo",
+                       @~" block"))
+    }
+}
+
 
 // given a mutable list of renames, return a tree-folder that applies those
 // renames.
@@ -738,6 +779,7 @@ mod test {
     use core::io;
     use core::option::{None, Some};
     use util::parser_testing::{string_to_item, string_to_pat, strs_to_idents};
+    use visit::{mk_vt,Visitor};
 
     // make sure that fail! is present
     #[test] fn fail_exists_test () {
@@ -857,4 +899,12 @@ mod test {
         io::print(fmt!("ast: %?\n",resolved_ast))
     }
 
+    #[test]
+    fn pat_idents(){
+        let pat = string_to_pat(@~"(a,Foo{x:c @ (b,9),y:Bar(4,d)})");
+        let pat_idents = new_name_finder();
+        let idents = @mut ~[];
+        ((*pat_idents).visit_pat)(pat,idents, mk_vt(pat_idents));
+        assert_eq!(idents,@mut strs_to_idents(~["a","c","b","d"]));
+    }
 }

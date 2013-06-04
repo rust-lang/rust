@@ -54,7 +54,8 @@ pub fn string_to_item_and_sess (source_str : @~str) -> (Option<@ast::item>,@mut 
     (p.parse_item(~[]),ps)
 }
 
-pub fn string_to_stmt (source_str : @~str) -> @ast::stmt {
+// parse a string, return a stmt
+pub fn string_to_stmt(source_str : @~str) -> @ast::stmt {
     string_to_parser(source_str).parse_stmt(~[])
 }
 
