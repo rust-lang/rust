@@ -79,12 +79,14 @@ pub struct NonCopyable {
     priv i: (),
 }
 
+impl NonCopyable {
+    /// Creates a dummy non-copyable structure and returns it for use.
+    pub fn new() -> NonCopyable { NonCopyable { i: () } }
+}
+
 impl Drop for NonCopyable {
     fn finalize(&self) { }
 }
-
-/// Creates a dummy non-copyable structure and returns it for use.
-pub fn NonCopyable() -> NonCopyable { NonCopyable { i: () } }
 
 
 /// A type with no inhabitants
@@ -152,7 +154,7 @@ mod tests {
     }
     #[test]
     pub fn test_replace() {
-        let mut x = Some(NonCopyable());
+        let mut x = Some(NonCopyable::new());
         let y = replace(&mut x, None);
         assert!(x.is_none());
         assert!(y.is_some());

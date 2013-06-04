@@ -29,17 +29,17 @@ pub struct Cell<T> {
     priv value: Option<T>
 }
 
-/// Creates a new full cell with the given value.
-pub fn Cell<T>(value: T) -> Cell<T> {
-    Cell { value: Some(value) }
-}
-
-/// Creates a new empty cell with no value inside.
-pub fn empty_cell<T>() -> Cell<T> {
-    Cell { value: None }
-}
-
 impl<T> Cell<T> {
+    /// Creates a new full cell with the given value.
+    pub fn new(value: T) -> Cell<T> {
+        Cell { value: Some(value) }
+    }
+
+    /// Creates a new empty cell with no value inside.
+    pub fn new_empty() -> Cell<T> {
+        Cell { value: None }
+    }
+
     /// Yields the value, failing if the cell is empty.
     pub fn take(&self) -> T {
         let this = unsafe { transmute_mut(self) };
@@ -83,7 +83,7 @@ impl<T> Cell<T> {
 
 #[test]
 fn test_basic() {
-    let value_cell = Cell(~10);
+    let value_cell = Cell::new(~10);
     assert!(!value_cell.is_empty());
     let value = value_cell.take();
     assert!(value == ~10);
@@ -96,7 +96,7 @@ fn test_basic() {
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_take_empty() {
-    let value_cell = empty_cell::<~int>();
+    let value_cell = Cell::new_empty::<~int>();
     value_cell.take();
 }
 
@@ -104,14 +104,14 @@ fn test_take_empty() {
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_put_back_non_empty() {
-    let value_cell = Cell(~10);
+    let value_cell = Cell::new(~10);
     value_cell.put_back(~20);
 }
 
 #[test]
 fn test_with_ref() {
     let good = 6;
-    let c = Cell(~[1, 2, 3, 4, 5, 6]);
+    let c = Cell::new(~[1, 2, 3, 4, 5, 6]);
     let l = do c.with_ref() |v| { v.len() };
     assert_eq!(l, good);
 }
@@ -120,7 +120,7 @@ fn test_with_ref() {
 fn test_with_mut_ref() {
     let good = ~[1, 2, 3];
     let v = ~[1, 2];
-    let c = Cell(v);
+    let c = Cell::new(v);
     do c.with_mut_ref() |v| { v.push(3); }
     let v = c.take();
     assert_eq!(v, good);

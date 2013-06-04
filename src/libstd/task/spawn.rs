@@ -594,7 +594,7 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
         gen_child_taskgroup(opts.linked, opts.supervised);
 
     unsafe {
-        let child_data = Cell((child_tg, ancestors, f));
+        let child_data = Cell::new((child_tg, ancestors, f));
         // Being killed with the unsafe task/closure pointers would leak them.
         do unkillable {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
@@ -636,7 +636,7 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
                           notify_chan: Option<Chan<TaskResult>>,
                           f: ~fn())
                        -> ~fn() {
-        let child_data = Cell((child_arc, ancestors));
+        let child_data = Cell::new((child_arc, ancestors));
         let result: ~fn() = || {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
             let mut (child_arc, ancestors) = child_data.take();

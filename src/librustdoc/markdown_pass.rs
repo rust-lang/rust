@@ -28,7 +28,7 @@ use core::vec;
 use syntax;
 
 pub fn mk_pass(writer_factory: WriterFactory) -> Pass {
-    let writer_factory = Cell(writer_factory);
+    let writer_factory = Cell::new(writer_factory);
     Pass {
         name: ~"markdown",
         f: |srv, doc| run(srv, doc, writer_factory.take())

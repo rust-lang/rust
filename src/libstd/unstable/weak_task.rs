@@ -39,7 +39,7 @@ pub unsafe fn weaken_task(f: &fn(Port<ShutdownMsg>)) {
     let service = global_data_clone_create(global_data_key,
                                            create_global_service);
     let (shutdown_port, shutdown_chan) = stream::<ShutdownMsg>();
-    let shutdown_port = Cell(shutdown_port);
+    let shutdown_port = Cell::new(shutdown_port);
     let task = get_task_id();
     // Expect the weak task service to be alive
     assert!(service.try_send(RegisterWeakTask(task, shutdown_chan)));
@@ -68,7 +68,7 @@ fn create_global_service() -> ~WeakTaskService {
 
     debug!("creating global weak task service");
     let (port, chan) = stream::<ServiceMsg>();
-    let port = Cell(port);
+    let port = Cell::new(port);
     let chan = SharedChan::new(chan);
     let chan_clone = chan.clone();
 
@@ -76,7 +76,7 @@ fn create_global_service() -> ~WeakTaskService {
     task.unlinked();
     do task.spawn {
         debug!("running global weak task service");
-        let port = Cell(port.take());
+        let port = Cell::new(port.take());
         do (|| {
             let port = port.take();
             // The weak task service is itself a weak task
@@ -192,7 +192,7 @@ fn test_select_stream_and_oneshot() {
     use either::{Left, Right};
 
     let (port, chan) = stream();
-    let port = Cell(port);
+    let port = Cell::new(port);
     let (waitport, waitchan) = stream();
     do spawn {
         unsafe {

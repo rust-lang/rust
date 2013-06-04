@@ -27,7 +27,7 @@ fn child_generation(gens_left: uint, c: comm::Chan<()>) {
     // This used to be O(n^2) in the number of generations that ever existed.
     // With this code, only as many generations are alive at a time as tasks
     // alive at a time,
-    let c = Cell(c);
+    let c = Cell::new(c);
     do task::spawn_supervised {
         let c = c.take();
         if gens_left & 1 == 1 {

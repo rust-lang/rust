@@ -282,7 +282,7 @@ mod test {
 
         for (times as uint).times {
             let mut rng = rand::rng();
-            let expected = Cell(rng.gen_str(16u));
+            let expected = Cell::new(rng.gen_str(16u));
             let (test_po, test_ch) = stream::<~str>();
             let hl_loop_clone = hl_loop.clone();
             do task::spawn() {
