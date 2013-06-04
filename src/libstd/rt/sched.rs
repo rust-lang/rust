@@ -536,6 +536,7 @@ pub impl Coroutine {
 
     priv fn build_start_wrapper(start: ~fn()) -> ~fn() {
         // XXX: The old code didn't have this extra allocation
+        let start_cell = Cell(start);
         let wrapper: ~fn() = || {
             // This is the first code to execute after the initial
             // context switch to the task. The previous context may
@@ -547,7 +548,19 @@ pub impl Coroutine {
                 let sched = Local::unsafe_borrow::<Scheduler>();
                 let task = (*sched).current_task.get_mut_ref();
                 // FIXME #6141: shouldn't neet to put `start()` in another closure
-                task.task.run(||start());
+                let start_cell = Cell(start_cell.take());
+                do task.task.run {
+                    // N.B. Removing `start` from the start wrapper closure
+                    // by emptying a cell is critical for correctness. The ~Task
+                    // pointer, and in turn the closure used to initialize the first
+                    // call frame, is destroyed in scheduler context, not task context.
+                    // So any captured closures must not contain user-definable dtors
+                    // that expect to be in task context. By moving `start` out of
+                    // the closure, all the user code goes out of scope while
+                    // the task is still running.
+                    let start = start_cell.take();
+                    start();
+                };
             }
 
             let sched = Local::take::<Scheduler>();
@@ -840,4 +853,26 @@ mod test {
 
     }
 
+    #[test]
+    fn start_closure_dtor() {
+        use ops::Drop;
+
+        // Regression test that the `start` task entrypoint can contain dtors
+        // that use task resources
+        do run_in_newsched_task {
+            struct S { field: () }
+
+            impl Drop for S {
+                fn finalize(&self) {
+                    let _foo = @0;
+                }
+            }
+
+            let s = S { field: () };
+
+            do spawntask {
+                let _ss = &s;
+            }
+        }        
+    }
 }
