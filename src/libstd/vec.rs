@@ -1564,7 +1564,7 @@ pub fn each<'r,T>(v: &'r [T], f: &fn(&'r T) -> bool) -> bool {
         }
         broke = n > 0;
     }
-    return true;
+    return !broke;
 }
 
 /// Like `each()`, but for the case where you have
@@ -1586,7 +1586,7 @@ pub fn each_mut<'r,T>(v: &'r mut [T], f: &fn(elem: &'r mut T) -> bool) -> bool {
         }
         broke = n > 0;
     }
-    return broke;
+    return !broke;
 }
 
 /// Like `each()`, but for the case where you have a vector that *may or may
@@ -3597,6 +3597,23 @@ mod tests {
             fail!(); // should never execute
         }
     }
+
+    #[test]
+    fn test_each_ret_len0() {
+        let mut a0 : [int, .. 0] = [];
+        assert_eq!(each(a0, |_p| fail!()), true);
+        assert_eq!(each_mut(a0, |_p| fail!()), true);
+    }
+
+    #[test]
+    fn test_each_ret_len1() {
+        let mut a1 = [17];
+        assert_eq!(each(a1, |_p| true), true);
+        assert_eq!(each_mut(a1, |_p| true), true);
+        assert_eq!(each(a1, |_p| false), false);
+        assert_eq!(each_mut(a1, |_p| false), false);
+    }
+
 
     #[test]
     fn test_each_permutation() {
