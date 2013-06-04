@@ -2505,7 +2505,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                 }
                 ast::foreign_item_const(*) => {
                     let typ = ty::node_id_to_type(tcx, ni.id);
-                    let ident = token::ident_to_str(ni.ident);
+                    let ident = token::ident_to_str(&ni.ident);
                     let g = do str::as_c_str(*ident) |buf| {
                         unsafe {
                             llvm::LLVMAddGlobal(ccx.llmod,

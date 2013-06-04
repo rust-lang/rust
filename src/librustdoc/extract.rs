@@ -24,10 +24,12 @@ use syntax::parse::token;
 
 // Hack; rather than thread an interner through everywhere, rely on
 // thread-local data
+// Hack-Becomes-Feature: using thread-local-state everywhere...
 pub fn to_str(id: ast::ident) -> ~str {
-    return copy *ident_to_str(id);
+    return copy *ident_to_str(&id);
 }
 
+// get rid of this pointless function:
 pub fn interner() -> @ident_interner {
     return token::get_ident_interner();
 }

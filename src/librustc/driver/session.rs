@@ -296,7 +296,7 @@ impl Session_ {
 
     // pointless function, now...
     pub fn str_of(@self, id: ast::ident) -> @~str {
-        token::ident_to_str(id)
+        token::ident_to_str(&id)
     }
 
     // pointless function, now...

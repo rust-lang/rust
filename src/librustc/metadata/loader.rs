@@ -60,7 +60,7 @@ pub fn load_library_crate(cx: &Context) -> (~str, @~[u8]) {
       None => {
         cx.diag.span_fatal(
             cx.span, fmt!("can't find crate for `%s`",
-                          *token::ident_to_str(cx.ident)));
+                          *token::ident_to_str(&cx.ident)));
       }
     }
 }

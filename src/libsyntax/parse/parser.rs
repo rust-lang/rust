@@ -3980,7 +3980,7 @@ impl Parser {
         match *self.token {
             token::LIT_STR(s) => {
                 self.bump();
-                let the_string = ident_to_str(s);
+                let the_string = ident_to_str(&s);
                 let mut words = ~[];
                 for str::each_word(*the_string) |s| { words.push(s) }
                 let mut abis = AbiSet::empty();
@@ -4542,7 +4542,7 @@ impl Parser {
         match *self.token {
             token::LIT_STR(s) => {
                 self.bump();
-                ident_to_str(s)
+                ident_to_str(&s)
             }
             _ =>  self.fatal("expected string literal")
         }

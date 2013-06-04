@@ -177,7 +177,7 @@ fn visit_item(e: @mut Env, i: @ast::item) {
                             }
                             nn
                         }
-                        None => token::ident_to_str(i.ident)
+                        None => token::ident_to_str(&i.ident)
                     };
                 if attr::find_attrs_by_name(i.attrs, "nolink").is_empty() {
                     already_added =
@@ -236,7 +236,7 @@ fn resolve_crate(e: @mut Env,
                  hash: @~str,
                  span: span)
               -> ast::crate_num {
-    let metas = metas_with_ident(token::ident_to_str(ident), metas);
+    let metas = metas_with_ident(token::ident_to_str(&ident), metas);
 
     match existing_match(e, metas, hash) {
       None => {
@@ -277,7 +277,7 @@ fn resolve_crate(e: @mut Env,
             match attr::last_meta_item_value_str_by_name(load_ctxt.metas,
                                                          "name") {
                 Some(v) => v,
-                None => token::ident_to_str(ident),
+                None => token::ident_to_str(&ident),
             };
         let cmeta = @cstore::crate_metadata {
             name: cname,
@@ -306,7 +306,7 @@ fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
     for decoder::get_crate_deps(e.intr, cdata).each |dep| {
         let extrn_cnum = dep.cnum;
         let cname = dep.name;
-        let cname_str = token::ident_to_str(dep.name);
+        let cname_str = token::ident_to_str(&dep.name);
         let cmetas = metas_with(dep.vers, @~"vers", ~[]);
         debug!("resolving dep crate %s ver: %s hash: %s",
                *cname_str, *dep.vers, *dep.hash);

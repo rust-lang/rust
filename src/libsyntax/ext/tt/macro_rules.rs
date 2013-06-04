@@ -151,7 +151,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
         |cx, sp, arg| generic_extension(cx, sp, name, arg, *lhses, *rhses);
 
     return MRDef(MacroDef{
-        name: copy *ident_to_str(name),
+        name: copy *ident_to_str(&name),
         ext: NormalTT(base::SyntaxExpanderTT{expander: exp, span: Some(sp)})
     });
 }
