@@ -29,7 +29,7 @@ fn main() {
         }
     }
 
-    let x = Cell(foo(Port(@())));
+    let x = Cell::new(foo(Port(@())));
 
     do task::spawn {
         let y = x.take();   //~ ERROR value has non-owned type

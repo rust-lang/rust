@@ -1425,7 +1425,7 @@ pub static metadata_encoding_version : &'static [u8] =
       0, 0, 0, 1 ];
 
 pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
-    let wr = @io::BytesWriter();
+    let wr = @io::BytesWriter::new();
     let stats = Stats {
         inline_bytes: 0,
         attr_bytes: 0,

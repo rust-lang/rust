@@ -113,8 +113,8 @@ mod test {
 
 pub fn main() {
     let (server_, client_) = ::pingpong::init();
-    let client_ = Cell(client_);
-    let server_ = Cell(server_);
+    let client_ = Cell::new(client_);
+    let server_ = Cell::new(server_);
     do task::spawn {
         let client__ = client_.take();
         test::client(client__);

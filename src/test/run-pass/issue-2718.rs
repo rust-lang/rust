@@ -318,8 +318,8 @@ pub fn main() {
 //    Commented out because of option::get error
 
     let (client_, server_) = pingpong::init();
-    let client_ = Cell(client_);
-    let server_ = Cell(server_);
+    let client_ = Cell::new(client_);
+    let server_ = Cell::new(server_);
 
     task::spawn {|client_|
         let client__ = client_.take();

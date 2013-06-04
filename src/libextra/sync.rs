@@ -818,7 +818,7 @@ mod tests {
             let s = ~semaphore(1);
             let s2 = ~s.clone();
             let (p,c) = comm::stream();
-            let child_data = Cell((s2, c));
+            let child_data = Cell::new((s2, c));
             do s.access {
                 let (s2, c) = child_data.take();
                 do task::spawn || {
@@ -999,7 +999,7 @@ mod tests {
             let mut sibling_convos = ~[];
             for 2.times {
                 let (p,c) = comm::stream();
-                let c = Cell(c);
+                let c = Cell::new(c);
                 sibling_convos.push(p);
                 let mi = ~m2.clone();
                 // spawn sibling task

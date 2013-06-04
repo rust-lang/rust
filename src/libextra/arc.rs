@@ -558,7 +558,7 @@ mod tests {
             let arc = ~MutexARC(false);
             let arc2 = ~arc.clone();
             let (p,c) = comm::oneshot();
-            let (c,p) = (Cell(c), Cell(p));
+            let (c,p) = (Cell::new(c), Cell::new(p));
             do task::spawn || {
                 // wait until parent gets in
                 comm::recv_one(p.take());

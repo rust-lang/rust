@@ -604,7 +604,7 @@ mod test {
     #[test]
     fn read_byte_0_bytes() {
         let mut reader = MockReader::new();
-        let count = Cell(0);
+        let count = Cell::new(0);
         reader.read = |buf| {
             do count.with_mut_ref |count| {
                 if *count == 0 {
@@ -652,7 +652,7 @@ mod test {
     #[test]
     fn read_bytes_partial() {
         let mut reader = MockReader::new();
-        let count = Cell(0);
+        let count = Cell::new(0);
         reader.read = |buf| {
             do count.with_mut_ref |count| {
                 if *count == 0 {
@@ -691,7 +691,7 @@ mod test {
     #[test]
     fn push_bytes_partial() {
         let mut reader = MockReader::new();
-        let count = Cell(0);
+        let count = Cell::new(0);
         reader.read = |buf| {
             do count.with_mut_ref |count| {
                 if *count == 0 {
@@ -725,7 +725,7 @@ mod test {
     #[test]
     fn push_bytes_error() {
         let mut reader = MockReader::new();
-        let count = Cell(0);
+        let count = Cell::new(0);
         reader.read = |buf| {
             do count.with_mut_ref |count| {
                 if *count == 0 {
@@ -754,7 +754,7 @@ mod test {
         // push_bytes unsafely sets the vector length. This is testing that
         // upon failure the length is reset correctly.
         let mut reader = MockReader::new();
-        let count = Cell(0);
+        let count = Cell::new(0);
         reader.read = |buf| {
             do count.with_mut_ref |count| {
                 if *count == 0 {
@@ -779,7 +779,7 @@ mod test {
     #[test]
     fn read_to_end() {
         let mut reader = MockReader::new();
-        let count = Cell(0);
+        let count = Cell::new(0);
         reader.read = |buf| {
             do count.with_mut_ref |count| {
                 if *count == 0 {
@@ -806,7 +806,7 @@ mod test {
     #[ignore(cfg(windows))]
     fn read_to_end_error() {
         let mut reader = MockReader::new();
-        let count = Cell(0);
+        let count = Cell::new(0);
         reader.read = |buf| {
             do count.with_mut_ref |count| {
                 if *count == 0 {
