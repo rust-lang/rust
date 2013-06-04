@@ -1110,7 +1110,7 @@ fn list_crate_deps(intr: @ident_interner, data: @~[u8], out: @io::Writer) {
     for get_crate_deps(intr, data).each |dep| {
         out.write_str(
             fmt!("%d %s-%s-%s\n",
-                 dep.cnum, *token::ident_to_str(dep.name), *dep.hash, *dep.vers));
+                 dep.cnum, *token::ident_to_str(&dep.name), *dep.hash, *dep.vers));
     }
 
     out.write_str("\n");

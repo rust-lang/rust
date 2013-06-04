@@ -178,20 +178,20 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
       }
       LIT_INT_UNSUFFIXED(i) => { i.to_str() }
       LIT_FLOAT(ref s, t) => {
-        let mut body = copy *ident_to_str(*s);
+        let mut body = copy *ident_to_str(s);
         if body.ends_with(".") {
             body += "0";  // `10.f` is not a float literal
         }
         body + ast_util::float_ty_to_str(t)
       }
       LIT_FLOAT_UNSUFFIXED(ref s) => {
-        let mut body = copy *ident_to_str(*s);
+        let mut body = copy *ident_to_str(s);
         if body.ends_with(".") {
             body += "0";  // `10.f` is not a float literal
         }
         body
       }
-      LIT_STR(ref s) => { ~"\"" + str::escape_default(*ident_to_str(*s)) + "\"" }
+      LIT_STR(ref s) => { ~"\"" + str::escape_default(*ident_to_str(s)) + "\"" }
 
       /* Name components */
       IDENT(s, _) => copy *in.get(s.name),
@@ -199,7 +199,7 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
       UNDERSCORE => ~"_",
 
       /* Other */
-      DOC_COMMENT(ref s) => copy *ident_to_str(*s),
+      DOC_COMMENT(ref s) => copy *ident_to_str(s),
       EOF => ~"<eof>",
       INTERPOLATED(ref nt) => {
         match nt {
@@ -545,7 +545,7 @@ pub fn interner_get(name : Name) -> @~str {
 }
 
 // maps an identifier to the string that it corresponds to
-pub fn ident_to_str(id : ast::ident) -> @~str {
+pub fn ident_to_str(id : &ast::ident) -> @~str {
     interner_get(id.name)
 }
 

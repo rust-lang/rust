@@ -80,7 +80,7 @@ pub mod rt {
 
     impl ToSource for ast::ident {
         fn to_source(&self, cx: @ExtCtxt) -> ~str {
-            copy *interner_get(self.name)
+            copy *ident_to_str(self)
         }
     }
 

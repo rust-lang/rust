@@ -1475,7 +1475,7 @@ pub fn print_decl(s: @ps, decl: @ast::decl) {
 }
 
 pub fn print_ident(s: @ps, ident: ast::ident) {
-    word(s.s, *ident_to_str(ident));
+    word(s.s, *ident_to_str(&ident));
 }
 
 pub fn print_for_decl(s: @ps, loc: @ast::local, coll: @ast::expr) {

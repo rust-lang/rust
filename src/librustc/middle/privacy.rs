@@ -235,7 +235,7 @@ pub fn check_crate(tcx: ty::ctxt,
             if field.ident != ident { loop; }
             if field.vis == private {
                 tcx.sess.span_err(span, fmt!("field `%s` is private",
-                                             *token::ident_to_str(ident)));
+                                             *token::ident_to_str(&ident)));
             }
             break;
         }
@@ -244,7 +244,7 @@ pub fn check_crate(tcx: ty::ctxt,
     // Given the ID of a method, checks to ensure it's in scope.
     let check_method_common: @fn(span: span,
                                  method_id: def_id,
-                                 name: ident) =
+                                 name: &ident) =
             |span, method_id, name| {
         if method_id.crate == local_crate {
             let is_private = method_is_private(span, method_id.node);
@@ -275,7 +275,7 @@ pub fn check_crate(tcx: ty::ctxt,
         match def {
             def_static_method(method_id, _, _) => {
                 debug!("found static method def, checking it");
-                check_method_common(span, method_id, *path.idents.last())
+                check_method_common(span, method_id, path.idents.last())
             }
             def_fn(def_id, _) => {
                 if def_id.crate == local_crate {
@@ -283,13 +283,13 @@ pub fn check_crate(tcx: ty::ctxt,
                             !privileged_items.contains(&def_id.node) {
                         tcx.sess.span_err(span,
                                           fmt!("function `%s` is private",
-                                               *token::ident_to_str(*path.idents.last())));
+                                               *token::ident_to_str(path.idents.last())));
                     }
                 } else if csearch::get_item_visibility(tcx.sess.cstore,
                                                        def_id) != public {
                     tcx.sess.span_err(span,
                                       fmt!("function `%s` is private",
-                                           *token::ident_to_str(*path.idents.last())));
+                                           *token::ident_to_str(path.idents.last())));
                 }
             }
             _ => {}
@@ -303,7 +303,7 @@ pub fn check_crate(tcx: ty::ctxt,
             |span, origin, ident| {
         match *origin {
             method_static(method_id) => {
-                check_method_common(span, method_id, ident)
+                check_method_common(span, method_id, &ident)
             }
             method_param(method_param {
                 trait_id: trait_id,
@@ -328,7 +328,7 @@ pub fn check_crate(tcx: ty::ctxt,
                                              .contains(&(trait_id.node)) => {
                                             tcx.sess.span_err(span,
                                                               fmt!("method `%s` is private",
-                                                                   *token::ident_to_str(method
+                                                                   *token::ident_to_str(&method
                                                                                         .ident)));
                                         }
                                         provided(_) | required(_) => {

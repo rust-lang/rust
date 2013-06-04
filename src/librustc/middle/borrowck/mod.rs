@@ -711,7 +711,7 @@ impl BorrowckCtxt {
         match *loan_path {
             LpVar(id) => {
                 match self.tcx.items.find(&id) {
-                    Some(&ast_map::node_local(ident)) => {
+                    Some(&ast_map::node_local(ref ident)) => {
                         str::push_str(out, *token::ident_to_str(ident));
                     }
                     r => {
@@ -725,7 +725,7 @@ impl BorrowckCtxt {
             LpExtend(lp_base, _, LpInterior(mc::InteriorField(fname))) => {
                 self.append_loan_path_to_str_from_interior(lp_base, out);
                 match fname {
-                    mc::NamedField(fname) => {
+                    mc::NamedField(ref fname) => {
                         str::push_char(out, '.');
                         str::push_str(out, *token::ident_to_str(fname));
                     }

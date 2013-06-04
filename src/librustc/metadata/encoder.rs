@@ -1055,7 +1055,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
                         tcx.sess.span_unimpl(
                             item.span,
                             fmt!("Method %s is both provided and static",
-                                 *token::ident_to_str(method_ty.ident)));
+                                 *token::ident_to_str(&method_ty.ident)));
                     }
                     encode_type_param_bounds(ebml_w, ecx,
                                              &m.generics.ty_params);

@@ -310,7 +310,7 @@ impl ExtCtxt {
         *self.trace_mac = x
     }
     pub fn str_of(&self, id: ast::ident) -> ~str {
-        copy *ident_to_str(id)
+        copy *ident_to_str(&id)
     }
     pub fn ident_of(&self, st: &str) -> ast::ident {
         str_to_ident(st)
