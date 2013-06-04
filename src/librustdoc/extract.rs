@@ -18,7 +18,6 @@ use doc;
 
 use core::vec;
 use syntax::ast;
-use syntax;
 use syntax::parse::token::{ident_interner, ident_to_str};
 use syntax::parse::token;
 
