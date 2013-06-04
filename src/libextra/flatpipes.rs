@@ -660,7 +660,7 @@ mod test {
     #[test]
     #[ignore(reason = "ebml failure")]
     fn test_serializing_memory_stream() {
-        let writer = BytesWriter();
+        let writer = BytesWriter::new();
         let chan = serial::writer_chan(writer);
 
         chan.send(10);
@@ -708,7 +708,7 @@ mod test {
 
     #[test]
     fn test_pod_memory_stream() {
-        let writer = BytesWriter();
+        let writer = BytesWriter::new();
         let chan = pod::writer_chan(writer);
 
         chan.send(10);
