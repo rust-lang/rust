@@ -1168,7 +1168,7 @@ impl fake_ext_ctxt for fake_session {
         }
     }
     fn ident_of(&self, st: &str) -> ast::ident {
-        token::get_ident_interner().intern(st)
+        token::str_to_ident(st)
     }
 }
 

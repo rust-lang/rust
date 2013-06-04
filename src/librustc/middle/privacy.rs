@@ -235,8 +235,7 @@ pub fn check_crate(tcx: ty::ctxt,
             if field.ident != ident { loop; }
             if field.vis == private {
                 tcx.sess.span_err(span, fmt!("field `%s` is private",
-                                             *token::get_ident_interner()
-                                             .get(ident)));
+                                             *token::ident_to_str(ident)));
             }
             break;
         }
@@ -245,7 +244,7 @@ pub fn check_crate(tcx: ty::ctxt,
     // Given the ID of a method, checks to ensure it's in scope.
     let check_method_common: @fn(span: span,
                                  method_id: def_id,
-                                 name: &ident) =
+                                 name: ident) =
             |span, method_id, name| {
         if method_id.crate == local_crate {
             let is_private = method_is_private(span, method_id.node);
@@ -256,8 +255,7 @@ pub fn check_crate(tcx: ty::ctxt,
                      !privileged_items.contains(&(container_id.node))) {
                 tcx.sess.span_err(span,
                                   fmt!("method `%s` is private",
-                                       *token::get_ident_interner()
-                                           .get(*name)));
+                                       *token::ident_to_str(name)));
             }
         } else {
             let visibility =
@@ -265,8 +263,7 @@ pub fn check_crate(tcx: ty::ctxt,
             if visibility != public {
                 tcx.sess.span_err(span,
                                   fmt!("method `%s` is private",
-                                       *token::get_ident_interner()
-                                           .get(*name)));
+                                       *token::ident_to_str(name)));
             }
         }
     };
@@ -278,7 +275,7 @@ pub fn check_crate(tcx: ty::ctxt,
         match def {
             def_static_method(method_id, _, _) => {
                 debug!("found static method def, checking it");
-                check_method_common(span, method_id, path.idents.last())
+                check_method_common(span, method_id, *path.idents.last())
             }
             def_fn(def_id, _) => {
                 if def_id.crate == local_crate {
@@ -286,19 +283,13 @@ pub fn check_crate(tcx: ty::ctxt,
                             !privileged_items.contains(&def_id.node) {
                         tcx.sess.span_err(span,
                                           fmt!("function `%s` is private",
-                                               *token::get_ident_interner()
-                                                   .get(copy *path
-                                                             .idents
-                                                             .last())));
+                                               *token::ident_to_str(*path.idents.last())));
                     }
                 } else if csearch::get_item_visibility(tcx.sess.cstore,
                                                        def_id) != public {
                     tcx.sess.span_err(span,
                                       fmt!("function `%s` is private",
-                                           *token::get_ident_interner()
-                                               .get(copy *path
-                                                         .idents
-                                                         .last())));
+                                           *token::ident_to_str(*path.idents.last())));
                 }
             }
             _ => {}
@@ -312,7 +303,7 @@ pub fn check_crate(tcx: ty::ctxt,
             |span, origin, ident| {
         match *origin {
             method_static(method_id) => {
-                check_method_common(span, method_id, &ident)
+                check_method_common(span, method_id, ident)
             }
             method_param(method_param {
                 trait_id: trait_id,
@@ -328,10 +319,7 @@ pub fn check_crate(tcx: ty::ctxt,
                             match item.node {
                                 item_trait(_, _, ref methods) => {
                                     if method_num >= (*methods).len() {
-                                        tcx.sess.span_bug(span, "method \
-                                                                 number \
-                                                                 out of \
-                                                                 range?!");
+                                        tcx.sess.span_bug(span, "method number out of range?!");
                                     }
                                     match (*methods)[method_num] {
                                         provided(method)
@@ -339,14 +327,9 @@ pub fn check_crate(tcx: ty::ctxt,
                                              !privileged_items
                                              .contains(&(trait_id.node)) => {
                                             tcx.sess.span_err(span,
-                                                              fmt!("method
-                                                                    `%s` \
-                                                                    is \
-                                                                    private",
-                                                                   *token::get_ident_interner()
-                                                                   .get
-                                                                   (method
-                                                                    .ident)));
+                                                              fmt!("method `%s` is private",
+                                                                   *token::ident_to_str(method
+                                                                                        .ident)));
                                         }
                                         provided(_) | required(_) => {
                                             // Required methods can't be
@@ -355,20 +338,15 @@ pub fn check_crate(tcx: ty::ctxt,
                                     }
                                 }
                                 _ => {
-                                    tcx.sess.span_bug(span, "trait wasn't \
-                                                             actually a \
-                                                             trait?!");
+                                    tcx.sess.span_bug(span, "trait wasn't actually a trait?!");
                                 }
                             }
                         }
                         Some(_) => {
-                            tcx.sess.span_bug(span, "trait wasn't an \
-                                                     item?!");
+                            tcx.sess.span_bug(span, "trait wasn't an item?!");
                         }
                         None => {
-                            tcx.sess.span_bug(span, "trait item wasn't \
-                                                     found in the AST \
-                                                     map?!");
+                            tcx.sess.span_bug(span, "trait item wasn't found in the AST map?!");
                         }
                     }
                 } else {

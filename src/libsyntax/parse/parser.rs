@@ -85,7 +85,7 @@ use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
 use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
 use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
 use parse::obsolete::{ObsoleteNamedExternModule, ObsoleteMultipleLocalDecl};
-use parse::token::{can_begin_expr, get_ident_interner, is_ident, is_ident_or_path};
+use parse::token::{can_begin_expr, get_ident_interner, ident_to_str, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents, token_to_binop};
 use parse::token;
 use parse::{new_sub_parser_from_file, next_node_id, ParseSess};
@@ -333,7 +333,7 @@ impl Parser {
     pub fn get_id(&self) -> node_id { next_node_id(self.sess) }
 
     pub fn id_to_str(&self, id: ident) -> @~str {
-        get_ident_interner().get(id)
+        get_ident_interner().get(id.name)
     }
 
     // is this one of the keywords that signals a closure type?
@@ -3370,7 +3370,7 @@ impl Parser {
             }
             if fields.len() == 0 {
                 self.fatal(fmt!("Unit-like struct should be written as `struct %s;`",
-                                *get_ident_interner().get(class_name)));
+                                *get_ident_interner().get(class_name.name)));
             }
             self.bump();
         } else if *self.token == token::LPAREN {
@@ -3582,7 +3582,7 @@ impl Parser {
     }
 
     fn push_mod_path(&self, id: ident, attrs: ~[ast::attribute]) {
-        let default_path = get_ident_interner().get(id);
+        let default_path = token::interner_get(id.name);
         let file_path = match ::attr::first_attr_value_str_by_name(
             attrs, "path") {
 
@@ -3605,7 +3605,7 @@ impl Parser {
         let prefix = prefix.dir_path();
         let mod_path_stack = &*self.mod_path_stack;
         let mod_path = Path(".").push_many(*mod_path_stack);
-        let default_path = *get_ident_interner().get(id) + ".rs";
+        let default_path = *token::interner_get(id.name) + ".rs";
         let file_path = match ::attr::first_attr_value_str_by_name(
             outer_attrs, "path") {
             Some(d) => {
@@ -3980,7 +3980,7 @@ impl Parser {
         match *self.token {
             token::LIT_STR(s) => {
                 self.bump();
-                let the_string = self.id_to_str(s);
+                let the_string = ident_to_str(s);
                 let mut words = ~[];
                 for str::each_word(*the_string) |s| { words.push(s) }
                 let mut abis = AbiSet::empty();
@@ -4542,7 +4542,7 @@ impl Parser {
         match *self.token {
             token::LIT_STR(s) => {
                 self.bump();
-                self.id_to_str(s)
+                ident_to_str(s)
             }
             _ =>  self.fatal("expected string literal")
         }
