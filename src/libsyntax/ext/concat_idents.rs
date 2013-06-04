@@ -15,7 +15,7 @@ use codemap::span;
 use ext::base::*;
 use ext::base;
 use parse::token;
-use parse::token::{get_ident_interner, str_to_ident};
+use parse::token::{str_to_ident};
 
 pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {

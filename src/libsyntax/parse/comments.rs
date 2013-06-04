@@ -324,7 +324,6 @@ pub fn gather_comments_and_literals(span_diagnostic:
                                     srdr: @io::Reader)
                                  -> (~[cmnt], ~[lit]) {
     let src = @str::from_bytes(srdr.read_whole_stream());
-    let itr = parse::token::mk_fake_ident_interner();
     let cm = CodeMap::new();
     let filemap = cm.new_filemap(path, src);
     let rdr = lexer::new_low_level_string_reader(span_diagnostic, filemap);

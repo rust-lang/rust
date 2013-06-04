@@ -17,7 +17,7 @@ use diagnostic::span_handler;
 use ext::tt::transcribe::{tt_next_token};
 use ext::tt::transcribe::{dup_tt_reader};
 use parse::token;
-use parse::token::{get_ident_interner, str_to_ident};
+use parse::token::{str_to_ident};
 
 use core::char;
 use core::either;
@@ -779,7 +779,7 @@ mod test {
     use core::option::None;
     use diagnostic;
     use parse::token;
-    use parse::token::{get_ident_interner, str_to_ident};
+    use parse::token::{str_to_ident};
 
     // represents a testing reader (incl. both reader and interner)
     struct Env {

@@ -93,7 +93,6 @@ pub fn add_new_extension(cx: @ExtCtxt,
         let mut best_fail_msg = ~"internal error: ran no matchers";
 
         let s_d = cx.parse_sess().span_diagnostic;
-        let itr = get_ident_interner();
 
         for lhses.eachi |i, lhs| { // try each arm's matchers
             match *lhs {

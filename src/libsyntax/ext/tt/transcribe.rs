@@ -15,8 +15,8 @@ use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
 use codemap::{span, dummy_sp};
 use diagnostic::span_handler;
 use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
-use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident, ident_interner};
-use parse::token::{ident_to_str, get_ident_interner};
+use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident};
+use parse::token::{ident_to_str};
 use parse::lexer::TokenAndSpan;
 
 use core::hashmap::HashMap;

@@ -17,7 +17,6 @@ use ext::base;
 use parse::lexer::{new_tt_reader, reader};
 use parse::parser::Parser;
 use parse::token::keywords;
-use parse::token::{get_ident_interner};
 
 use core::vec;
 
