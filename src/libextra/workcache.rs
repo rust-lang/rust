@@ -347,7 +347,7 @@ impl TPrep for Prep {
             _ => {
                 let (port, chan) = oneshot();
                 let blk = replace(&mut bo, None).unwrap();
-                let chan = Cell(chan);
+                let chan = Cell::new(chan);
 
                 do task::spawn {
                     let exe = Exec {

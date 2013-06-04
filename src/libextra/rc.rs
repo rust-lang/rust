@@ -105,7 +105,7 @@ mod test_rc {
 
     #[test]
     fn test_clone() {
-        let x = rc_from_owned(Cell(5));
+        let x = rc_from_owned(Cell::new(5));
         let y = x.clone();
         do x.borrow().with_mut_ref |inner| {
             *inner = 20;
@@ -115,7 +115,7 @@ mod test_rc {
 
     #[test]
     fn test_deep_clone() {
-        let x = rc_from_owned(Cell(5));
+        let x = rc_from_owned(Cell::new(5));
         let y = x.deep_clone();
         do x.borrow().with_mut_ref |inner| {
             *inner = 20;
