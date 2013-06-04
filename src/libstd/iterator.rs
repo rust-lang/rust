@@ -242,20 +242,6 @@ pub trait IteratorUtil<A> {
     /// ~~~
     fn advance(&mut self, f: &fn(A) -> bool) -> bool;
 
-    /// Loops through the entire iterator, accumulating all of the elements into
-    /// a vector.
-    ///
-    /// # Example
-    ///
-    /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
-    /// let a = [1, 2, 3, 4, 5];
-    /// let b = a.iter().transform(|&x| x).to_vec();
-    /// assert!(a == b);
-    /// ~~~
-    fn to_vec(&mut self) -> ~[A];
-
     /// Loops through the entire iterator, collecting all of the elements into
     /// a container implementing `FromIter`.
     ///
@@ -427,11 +413,6 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
                 None => { return true; }
             }
         }
-    }
-
-    #[inline(always)]
-    fn to_vec(&mut self) -> ~[A] {
-        iter::to_vec::<A>(|f| self.advance(f))
     }
 
     #[inline(always)]
