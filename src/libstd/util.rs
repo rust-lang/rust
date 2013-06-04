@@ -154,7 +154,7 @@ mod tests {
     }
     #[test]
     pub fn test_replace() {
-        let mut x = Some(NonCopyable());
+        let mut x = Some(NonCopyable::new());
         let y = replace(&mut x, None);
         assert!(x.is_none());
         assert!(y.is_some());
