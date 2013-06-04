@@ -79,12 +79,14 @@ pub struct NonCopyable {
     priv i: (),
 }
 
+impl NonCopyable {
+    /// Creates a dummy non-copyable structure and returns it for use.
+    pub fn new() -> NonCopyable { NonCopyable { i: () } }
+}
+
 impl Drop for NonCopyable {
     fn finalize(&self) { }
 }
-
-/// Creates a dummy non-copyable structure and returns it for use.
-pub fn NonCopyable() -> NonCopyable { NonCopyable { i: () } }
 
 
 /// A type with no inhabitants
