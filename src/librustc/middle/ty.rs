@@ -2518,7 +2518,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_param(_) => result = false,
       ty_opaque_closure_ptr(_) => result = true,
       ty_struct(did, ref substs) => {
-        result = vec::any(lookup_struct_fields(cx, did), |f| {
+        result = vec::all(lookup_struct_fields(cx, did), |f| {
             let fty = ty::lookup_item_type(cx, f.id);
             let sty = subst(cx, substs, fty.ty);
             type_is_pod(cx, sty)
