@@ -1830,7 +1830,7 @@ mod test {
         let (server_po, server_ch) = stream::<~str>();
         let server_ch = SharedChan::new(server_ch);
         let server_ip_addr = ip::v4::parse_addr(server_ip);
-        let resp_cell = Cell(resp);
+        let resp_cell = Cell::new(resp);
         let listen_result = listen(server_ip_addr, server_port, 128,
                                    iotask,
             // on_establish_cb -- called when listener is set up
@@ -1842,7 +1842,7 @@ mod test {
             // risky to run this on the loop, but some users
             // will want the POWER
             |new_conn, kill_ch| {
-                let resp_cell2 = Cell(resp_cell.take());
+                let resp_cell2 = Cell::new(resp_cell.take());
                 debug!("SERVER: new connection!");
                 let (cont_po, cont_ch) = stream();
                 let server_ch = server_ch.clone();

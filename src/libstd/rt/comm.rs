@@ -309,8 +309,8 @@ pub struct Port<T> {
 
 pub fn stream<T: Owned>() -> (Port<T>, Chan<T>) {
     let (pone, cone) = oneshot();
-    let port = Port { next: Cell(pone) };
-    let chan = Chan { next: Cell(cone) };
+    let port = Port { next: Cell::new(pone) };
+    let chan = Chan { next: Cell::new(cone) };
     return (port, chan);
 }
 
@@ -483,7 +483,7 @@ mod test {
     fn oneshot_multi_task_recv_then_send() {
         do run_in_newsched_task {
             let (port, chan) = oneshot::<~int>();
-            let port_cell = Cell(port);
+            let port_cell = Cell::new(port);
             do spawntask_immediately {
                 assert!(port_cell.take().recv() == ~10);
             }
@@ -496,8 +496,8 @@ mod test {
     fn oneshot_multi_task_recv_then_close() {
         do run_in_newsched_task {
             let (port, chan) = oneshot::<~int>();
-            let port_cell = Cell(port);
-            let chan_cell = Cell(chan);
+            let port_cell = Cell::new(port);
+            let chan_cell = Cell::new(chan);
             do spawntask_later {
                 let _cell = chan_cell.take();
             }
@@ -513,7 +513,7 @@ mod test {
         for stress_factor().times {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<int>();
-                let port_cell = Cell(port);
+                let port_cell = Cell::new(port);
                 let _thread = do spawntask_thread {
                     let _p = port_cell.take();
                 };
@@ -527,8 +527,8 @@ mod test {
         for stress_factor().times {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<int>();
-                let chan_cell = Cell(chan);
-                let port_cell = Cell(port);
+                let chan_cell = Cell::new(chan);
+                let port_cell = Cell::new(port);
                 let _thread1 = do spawntask_thread {
                     let _p = port_cell.take();
                 };
@@ -545,17 +545,17 @@ mod test {
         for stress_factor().times {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<int>();
-                let chan_cell = Cell(chan);
-                let port_cell = Cell(port);
+                let chan_cell = Cell::new(chan);
+                let port_cell = Cell::new(port);
                 let _thread1 = do spawntask_thread {
-                    let port_cell = Cell(port_cell.take());
+                    let port_cell = Cell::new(port_cell.take());
                     let res = do spawntask_try {
                         port_cell.take().recv();
                     };
                     assert!(res.is_err());
                 };
                 let _thread2 = do spawntask_thread {
-                    let chan_cell = Cell(chan_cell.take());
+                    let chan_cell = Cell::new(chan_cell.take());
                     do spawntask {
                         chan_cell.take();
                     }
@@ -569,8 +569,8 @@ mod test {
         for stress_factor().times {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<~int>();
-                let chan_cell = Cell(chan);
-                let port_cell = Cell(port);
+                let chan_cell = Cell::new(chan);
+                let port_cell = Cell::new(port);
                 let _thread1 = do spawntask_thread {
                     chan_cell.take().send(~10);
                 };
@@ -593,7 +593,7 @@ mod test {
                 fn send(chan: Chan<~int>, i: int) {
                     if i == 10 { return }
 
-                    let chan_cell = Cell(chan);
+                    let chan_cell = Cell::new(chan);
                     let _thread = do spawntask_thread {
                         let chan = chan_cell.take();
                         chan.send(~i);
@@ -604,7 +604,7 @@ mod test {
                 fn recv(port: Port<~int>, i: int) {
                     if i == 10 { return }
 
-                    let port_cell = Cell(port);
+                    let port_cell = Cell::new(port);
                     let _thread = do spawntask_thread {
                         let port = port_cell.take();
                         assert!(port.recv() == ~i);

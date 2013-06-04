@@ -660,7 +660,7 @@ mod test {
     #[test]
     #[ignore(reason = "ebml failure")]
     fn test_serializing_memory_stream() {
-        let writer = BytesWriter();
+        let writer = BytesWriter::new();
         let chan = serial::writer_chan(writer);
 
         chan.send(10);
@@ -708,7 +708,7 @@ mod test {
 
     #[test]
     fn test_pod_memory_stream() {
-        let writer = BytesWriter();
+        let writer = BytesWriter::new();
         let chan = pod::writer_chan(writer);
 
         chan.send(10);
@@ -791,8 +791,8 @@ mod test {
 
         let addr0 = ip::v4::parse_addr("127.0.0.1");
 
-        let begin_connect_chan = Cell(begin_connect_chan);
-        let accept_chan = Cell(accept_chan);
+        let begin_connect_chan = Cell::new(begin_connect_chan);
+        let accept_chan = Cell::new(accept_chan);
 
         // The server task
         let addr = copy addr0;

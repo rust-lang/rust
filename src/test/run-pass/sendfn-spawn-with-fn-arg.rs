@@ -23,7 +23,7 @@ fn test05() {
         error!(*three + n); // will copy x into the closure
         assert_eq!(*three, 3);
     };
-    let fn_to_send = Cell(fn_to_send);
+    let fn_to_send = Cell::new(fn_to_send);
     task::spawn(|| {
         test05_start(fn_to_send.take());
     });

@@ -79,7 +79,7 @@ pub unsafe fn borrow<T>(f: &fn(&mut T)) {
 
     // XXX: Need a different abstraction from 'finally' here to avoid unsafety
     let unsafe_ptr = cast::transmute_mut_region(&mut *value);
-    let value_cell = Cell(value);
+    let value_cell = Cell::new(value);
 
     do (|| {
         f(unsafe_ptr);

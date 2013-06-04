@@ -32,7 +32,7 @@ pub fn main() {
     let iotask = &uv::global_loop::get();
 
     let (port, chan) = oneshot::init();
-    let port = Cell(port);
+    let port = Cell::new(port);
     do spawn {
         match try_recv(port.take()) {
           Some(*) => { fail!() }

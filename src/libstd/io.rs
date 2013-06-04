@@ -982,6 +982,12 @@ pub struct FILERes {
     f: *libc::FILE,
 }
 
+impl FILERes {
+    pub fn new(f: *libc::FILE) -> FILERes {
+        FILERes { f: f }
+    }
+}
+
 impl Drop for FILERes {
     fn finalize(&self) {
         unsafe {
@@ -990,15 +996,9 @@ impl Drop for FILERes {
     }
 }
 
-pub fn FILERes(f: *libc::FILE) -> FILERes {
-    FILERes {
-        f: f
-    }
-}
-
 pub fn FILE_reader(f: *libc::FILE, cleanup: bool) -> @Reader {
     if cleanup {
-        @Wrapper { base: f, cleanup: FILERes(f) } as @Reader
+        @Wrapper { base: f, cleanup: FILERes::new(f) } as @Reader
     } else {
         @f as @Reader
     }
@@ -1183,7 +1183,7 @@ impl Writer for *libc::FILE {
 
 pub fn FILE_writer(f: *libc::FILE, cleanup: bool) -> @Writer {
     if cleanup {
-        @Wrapper { base: f, cleanup: FILERes(f) } as @Writer
+        @Wrapper { base: f, cleanup: FILERes::new(f) } as @Writer
     } else {
         @f as @Writer
     }
@@ -1227,6 +1227,12 @@ pub struct FdRes {
     fd: fd_t,
 }
 
+impl FdRes {
+    pub fn new(fd: fd_t) -> FdRes {
+        FdRes { fd: fd }
+    }
+}
+
 impl Drop for FdRes {
     fn finalize(&self) {
         unsafe {
@@ -1235,15 +1241,9 @@ impl Drop for FdRes {
     }
 }
 
-pub fn FdRes(fd: fd_t) -> FdRes {
-    FdRes {
-        fd: fd
-    }
-}
-
 pub fn fd_writer(fd: fd_t, cleanup: bool) -> @Writer {
     if cleanup {
-        @Wrapper { base: fd, cleanup: FdRes(fd) } as @Writer
+        @Wrapper { base: fd, cleanup: FdRes::new(fd) } as @Writer
     } else {
         @fd as @Writer
     }
@@ -1634,6 +1634,15 @@ pub struct BytesWriter {
     pos: @mut uint,
 }
 
+impl BytesWriter {
+    pub fn new() -> BytesWriter {
+        BytesWriter {
+            bytes: @mut ~[],
+            pos: @mut 0
+        }
+    }
+}
+
 impl Writer for BytesWriter {
     fn write(&self, v: &[u8]) {
         let v_len = v.len();
@@ -1673,15 +1682,8 @@ impl Writer for BytesWriter {
     }
 }
 
-pub fn BytesWriter() -> BytesWriter {
-    BytesWriter {
-        bytes: @mut ~[],
-        pos: @mut 0
-    }
-}
-
 pub fn with_bytes_writer(f: &fn(@Writer)) -> ~[u8] {
-    let wr = @BytesWriter();
+    let wr = @BytesWriter::new();
     f(wr as @Writer);
     let @BytesWriter { bytes, _ } = wr;
     copy *bytes
@@ -1762,6 +1764,12 @@ pub mod fsync {
         arg: Arg<t>,
     }
 
+    impl <t: Copy> Res<t> {
+        pub fn new(arg: Arg<t>) -> Res<t> {
+            Res { arg: arg }
+        }
+    }
+
     #[unsafe_destructor]
     impl<T:Copy> Drop for Res<T> {
         fn finalize(&self) {
@@ -1776,12 +1784,6 @@ pub mod fsync {
         }
     }
 
-    pub fn Res<t: Copy>(arg: Arg<t>) -> Res<t>{
-        Res {
-            arg: arg
-        }
-    }
-
     pub struct Arg<t> {
         val: t,
         opt_level: Option<Level>,
@@ -1793,7 +1795,7 @@ pub mod fsync {
     // outer res
     pub fn FILE_res_sync(file: &FILERes, opt_level: Option<Level>,
                          blk: &fn(v: Res<*libc::FILE>)) {
-        blk(Res(Arg {
+        blk(Res::new(Arg {
             val: file.f, opt_level: opt_level,
             fsync_fn: |file, l| {
                 unsafe {
@@ -1806,7 +1808,7 @@ pub mod fsync {
     // fsync fd after executing blk
     pub fn fd_res_sync(fd: &FdRes, opt_level: Option<Level>,
                        blk: &fn(v: Res<fd_t>)) {
-        blk(Res(Arg {
+        blk(Res::new(Arg {
             val: fd.fd, opt_level: opt_level,
             fsync_fn: |fd, l| os::fsync_fd(fd, l) as int
         }));
@@ -1818,7 +1820,7 @@ pub mod fsync {
     // Call o.fsync after executing blk
     pub fn obj_sync(o: @FSyncable, opt_level: Option<Level>,
                     blk: &fn(v: Res<@FSyncable>)) {
-        blk(Res(Arg {
+        blk(Res::new(Arg {
             val: o, opt_level: opt_level,
             fsync_fn: |o, l| o.fsync(l)
         }));
@@ -1993,7 +1995,7 @@ mod tests {
 
     #[test]
     fn bytes_buffer_overwrite() {
-        let wr = BytesWriter();
+        let wr = BytesWriter::new();
         wr.write([0u8, 1u8, 2u8, 3u8]);
         assert!(*wr.bytes == ~[0u8, 1u8, 2u8, 3u8]);
         wr.seek(-2, SeekCur);
