@@ -90,8 +90,7 @@ clone_impl!(char)
 /// managed boxes which would otherwise not be copied.
 pub trait DeepClone {
     /// Return a deep copy of the value. Unlike `Clone`, the contents of shared pointer types
-    /// *are* copied. Note that this is currently unimplemented for managed boxes, as
-    /// it would need to handle cycles, but it is implemented for other smart-pointer types.
+    /// *are* copied.
     fn deep_clone(&self) -> Self;
 }
 
