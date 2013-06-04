@@ -546,7 +546,7 @@ use middle::typeck::infer::cres;
 use util::common::indenter;
 use util::ppaux::note_and_explain_region;
 
-use core::cell::{Cell, empty_cell};
+use core::cell::Cell;
 use core::hashmap::{HashMap, HashSet};
 use core::to_bytes;
 use core::uint;
@@ -633,7 +633,7 @@ pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
     RegionVarBindings {
         tcx: tcx,
         var_spans: ~[],
-        values: empty_cell(),
+        values: Cell::new_empty(),
         constraints: HashMap::new(),
         lubs: HashMap::new(),
         glbs: HashMap::new(),

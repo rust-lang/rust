@@ -23,7 +23,7 @@ use util::NominalOp;
 use core::cell::Cell;
 
 pub fn mk_pass(name: ~str, op: @fn(&str) -> ~str) -> Pass {
-    let op = Cell(op);
+    let op = Cell::new(op);
     Pass {
         name: copy name,
         f: |srv: astsrv::Srv, doc: doc::Doc| -> doc::Doc {

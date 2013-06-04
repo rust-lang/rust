@@ -42,7 +42,7 @@ pub fn spawn_service<T:Owned,Tb:Owned>(
 
     // This is some nasty gymnastics required to safely move the pipe
     // into a new task.
-    let server = Cell(server);
+    let server = Cell::new(server);
     do task::spawn {
         service(server.take());
     }

@@ -16,7 +16,7 @@ use super::uv::*;
 use super::rtio::*;
 use ops::Drop;
 use old_iter::CopyableIter;
-use cell::{Cell, empty_cell};
+use cell::Cell;
 use cast::transmute;
 use super::sched::{Scheduler, local_sched};
 
@@ -103,7 +103,7 @@ impl IoFactory for UvIoFactory {
     fn connect(&mut self, addr: IpAddr) -> Option<~StreamObject> {
         // Create a cell in the task to hold the result. We will fill
         // the cell before resuming the task.
-        let result_cell = empty_cell();
+        let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Option<~StreamObject>> = &result_cell;
 
         let scheduler = local_sched::take();
@@ -117,7 +117,7 @@ impl IoFactory for UvIoFactory {
                 assert!(!scheduler.in_task_context());
             }
             let mut tcp_watcher = TcpWatcher::new(self.uv_loop());
-            let task_cell = Cell(task);
+            let task_cell = Cell::new(task);
 
             // Wait for a connection
             do tcp_watcher.connect(addr) |stream_watcher, status| {
@@ -175,7 +175,7 @@ impl TcpListener for UvTcpListener {
 
     fn listen(&mut self) -> Option<~StreamObject> {
         rtdebug!("entering listen");
-        let result_cell = empty_cell();
+        let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Option<~StreamObject>> = &result_cell;
 
         let server_tcp_watcher = self.watcher();
@@ -184,7 +184,7 @@ impl TcpListener for UvTcpListener {
         assert!(scheduler.in_task_context());
 
         do scheduler.deschedule_running_task_and_then |task| {
-            let task_cell = Cell(task);
+            let task_cell = Cell::new(task);
             let mut server_tcp_watcher = server_tcp_watcher;
             do server_tcp_watcher.listen |server_stream_watcher, status| {
                 let maybe_stream = if status.is_none() {
@@ -239,7 +239,7 @@ impl Drop for UvStream {
 
 impl Stream for UvStream {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, ()> {
-        let result_cell = empty_cell();
+        let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<uint, ()>> = &result_cell;
 
         let scheduler = local_sched::take();
@@ -252,7 +252,7 @@ impl Stream for UvStream {
                 assert!(!scheduler.in_task_context());
             }
             let mut watcher = watcher;
-            let task_cell = Cell(task);
+            let task_cell = Cell::new(task);
             // XXX: We shouldn't reallocate these callbacks every
             // call to read
             let alloc: AllocCallback = |_| unsafe {
@@ -286,7 +286,7 @@ impl Stream for UvStream {
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<(), ()> {
-        let result_cell = empty_cell();
+        let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<(), ()>> = &result_cell;
         let scheduler = local_sched::take();
         assert!(scheduler.in_task_context());
@@ -294,7 +294,7 @@ impl Stream for UvStream {
         let buf_ptr: *&[u8] = &buf;
         do scheduler.deschedule_running_task_and_then |task| {
             let mut watcher = watcher;
-            let task_cell = Cell(task);
+            let task_cell = Cell::new(task);
             let buf = unsafe { &*buf_ptr };
             // XXX: OMGCOPIES
             let buf = buf.to_vec();
@@ -390,7 +390,7 @@ fn test_read_and_block() {
                 // will trigger a read callback while we are
                 // not ready for it
                 do scheduler.deschedule_running_task_and_then |task| {
-                    let task = Cell(task);
+                    let task = Cell::new(task);
                     do local_sched::borrow |scheduler| {
                         scheduler.task_queue.push_back(task.take());
                     }

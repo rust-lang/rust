@@ -11,7 +11,7 @@
 use option::*;
 use result::*;
 use ops::Drop;
-use cell::{Cell, empty_cell};
+use cell::Cell;
 use cast::transmute;
 use clone::Clone;
 use rt::io::IoError;
@@ -115,7 +115,7 @@ impl IoFactory for UvIoFactory {
     fn tcp_connect(&mut self, addr: IpAddr) -> Result<~RtioTcpStreamObject, IoError> {
         // Create a cell in the task to hold the result. We will fill
         // the cell before resuming the task.
-        let result_cell = empty_cell();
+        let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<~RtioTcpStreamObject, IoError>> = &result_cell;
 
         let scheduler = Local::take::<Scheduler>();
@@ -129,7 +129,7 @@ impl IoFactory for UvIoFactory {
                 assert!(!scheduler.in_task_context());
             }
             let mut tcp_watcher = TcpWatcher::new(self.uv_loop());
-            let task_cell = Cell(task);
+            let task_cell = Cell::new(task);
 
             // Wait for a connection
             do tcp_watcher.connect(addr) |stream_watcher, status| {
@@ -146,7 +146,7 @@ impl IoFactory for UvIoFactory {
                     scheduler.resume_task_immediately(task_cell.take());
                 } else {
                     rtdebug!("status is some");
-                    let task_cell = Cell(task_cell.take());
+                    let task_cell = Cell::new(task_cell.take());
                     do stream_watcher.close {
                         let res = Err(uv_error_to_io_error(status.get()));
                         unsafe { (*result_cell_ptr).put_back(res); }
@@ -168,7 +168,7 @@ impl IoFactory for UvIoFactory {
             Err(uverr) => {
                 let scheduler = Local::take::<Scheduler>();
                 do scheduler.deschedule_running_task_and_then |task| {
-                    let task_cell = Cell(task);
+                    let task_cell = Cell::new(task);
                     do watcher.as_stream().close {
                         let scheduler = Local::take::<Scheduler>();
                         scheduler.resume_task_immediately(task_cell.take());
@@ -204,7 +204,7 @@ impl Drop for UvTcpListener {
         let watcher = self.watcher();
         let scheduler = Local::take::<Scheduler>();
         do scheduler.deschedule_running_task_and_then |task| {
-            let task_cell = Cell(task);
+            let task_cell = Cell::new(task);
             do watcher.as_stream().close {
                 let scheduler = Local::take::<Scheduler>();
                 scheduler.resume_task_immediately(task_cell.take());
@@ -225,9 +225,9 @@ impl RtioTcpListener for UvTcpListener {
         self.listening = true;
 
         let server_tcp_watcher = self.watcher();
-        let incoming_streams_cell = Cell(self.incoming_streams.clone());
+        let incoming_streams_cell = Cell::new(self.incoming_streams.clone());
 
-        let incoming_streams_cell = Cell(incoming_streams_cell.take());
+        let incoming_streams_cell = Cell::new(incoming_streams_cell.take());
         let mut server_tcp_watcher = server_tcp_watcher;
         do server_tcp_watcher.listen |server_stream_watcher, status| {
             let maybe_stream = if status.is_none() {
@@ -266,7 +266,7 @@ impl Drop for UvTcpStream {
         let watcher = self.watcher();
         let scheduler = Local::take::<Scheduler>();
         do scheduler.deschedule_running_task_and_then |task| {
-            let task_cell = Cell(task);
+            let task_cell = Cell::new(task);
             do watcher.close {
                 let scheduler = Local::take::<Scheduler>();
                 scheduler.resume_task_immediately(task_cell.take());
@@ -277,7 +277,7 @@ impl Drop for UvTcpStream {
 
 impl RtioTcpStream for UvTcpStream {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
-        let result_cell = empty_cell();
+        let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<uint, IoError>> = &result_cell;
 
         let scheduler = Local::take::<Scheduler>();
@@ -290,7 +290,7 @@ impl RtioTcpStream for UvTcpStream {
                 assert!(!scheduler.in_task_context());
             }
             let mut watcher = watcher;
-            let task_cell = Cell(task);
+            let task_cell = Cell::new(task);
             // XXX: We shouldn't reallocate these callbacks every
             // call to read
             let alloc: AllocCallback = |_| unsafe {
@@ -324,7 +324,7 @@ impl RtioTcpStream for UvTcpStream {
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
-        let result_cell = empty_cell();
+        let result_cell = Cell::new_empty();
         let result_cell_ptr: *Cell<Result<(), IoError>> = &result_cell;
         let scheduler = Local::take::<Scheduler>();
         assert!(scheduler.in_task_context());
@@ -332,7 +332,7 @@ impl RtioTcpStream for UvTcpStream {
         let buf_ptr: *&[u8] = &buf;
         do scheduler.deschedule_running_task_and_then |task| {
             let mut watcher = watcher;
-            let task_cell = Cell(task);
+            let task_cell = Cell::new(task);
             let buf = unsafe { slice_to_uv_buf(*buf_ptr) };
             do watcher.write(buf) |_watcher, status| {
                 let result = if status.is_none() {
@@ -425,7 +425,7 @@ fn test_read_and_block() {
                 // will trigger a read callback while we are
                 // not ready for it
                 do scheduler.deschedule_running_task_and_then |task| {
-                    let task = Cell(task);
+                    let task = Cell::new(task);
                     do Local::borrow::<Scheduler> |scheduler| {
                         scheduler.enqueue_task(task.take());
                     }
