@@ -1031,20 +1031,24 @@ pub trait VectorVector<T> {
 }
 
 impl<'self, T:Copy> VectorVector<T> for &'self [~[T]] {
-    /// Flattens a vector of slices of T into a single vector of T.
+    /// Flattens a vector of vectors of T into a single vector of T.
     pub fn concat(&self) -> ~[T] {
         self.flat_map(|&inner| inner)
     }
 
     /// Concatenate a vector of vectors, placing a given separator between each.
     pub fn connect(&self, sep: &T) -> ~[T] {
-        let mut r = ~[];
-        let mut first = true;
-        for self.each |&inner| {
-            if first { first = false; } else { r.push(*sep); }
-            r.push_all(inner);
+        match *self {
+            [ref hd,..tl] => {
+                let mut r = hd.to_owned();
+                for tl.each |&inner| {
+                    r.push(*sep);
+                    r.push_all(inner);
+                }
+                r
+            }
+            [] => ~[],
         }
-        r
     }
 }
 
@@ -1056,13 +1060,17 @@ impl<'self, T:Copy> VectorVector<T> for &'self [&'self [T]] {
 
     /// Concatenate a vector of slices, placing a given separator between each.
     pub fn connect(&self, sep: &T) -> ~[T] {
-        let mut r = ~[];
-        let mut first = true;
-        for self.each |&inner| {
-            if first { first = false; } else { r.push(*sep); }
-            r.push_all(inner);
+        match *self {
+            [ref hd,..tl] => {
+                let mut r = hd.to_owned();
+                for tl.each |&inner| {
+                    r.push(*sep);
+                    r.push_all(inner);
+                }
+                r
+            }
+            [] => ~[],
         }
-        r
     }
 }
 
