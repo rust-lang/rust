@@ -148,7 +148,9 @@ pub impl Scheduler {
         }
 
         let sched = Local::take::<Scheduler>();
-        assert!(sched.work_queue.is_empty());
+        // XXX: Reenable this once we're using a per-task queue. With a shared
+        // queue this is not true
+        //assert!(sched.work_queue.is_empty());
         rtdebug!("scheduler metrics: %s\n", sched.metrics.to_str());
         return sched;
     }
