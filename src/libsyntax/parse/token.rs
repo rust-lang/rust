@@ -549,7 +549,7 @@ pub mod keywords {
         // Strict keywords
         As,
         Break,
-        Const,
+        Freeze,
         Copy,
         Do,
         Else,
@@ -592,7 +592,7 @@ pub mod keywords {
             match *self {
                 As => ident { repr: 35, ctxt: 0 },
                    Break => ident { repr: 36, ctxt: 0 },
-                   Const => ident { repr: 37, ctxt: 0 },
+                   Freeze => ident { repr: 37, ctxt: 0 },
                    Copy => ident { repr: 38, ctxt: 0 },
                    Do => ident { repr: 39, ctxt: 0 },
                    Else => ident { repr: 41, ctxt: 0 },

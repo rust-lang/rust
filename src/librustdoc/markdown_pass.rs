@@ -152,7 +152,7 @@ pub fn header_kind(doc: doc::ItemTag) -> ~str {
             ~"Function"
         }
         doc::ConstTag(_) => {
-            ~"Const"
+            ~"Freeze"
         }
         doc::EnumTag(_) => {
             ~"Enum"
@@ -795,7 +795,7 @@ mod test {
     #[test]
     fn should_write_const_header() {
         let markdown = render(~"static a: bool = true;");
-        assert!(str::contains(markdown, "## Const `a`\n\n"));
+        assert!(str::contains(markdown, "## Freeze `a`\n\n"));
     }
 
     #[test]

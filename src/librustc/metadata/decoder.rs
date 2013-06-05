@@ -96,7 +96,7 @@ fn lookup_item(item_id: int, data: @~[u8]) -> ebml::Doc {
 
 #[deriving(Eq)]
 enum Family {
-    Const,                 // c
+    Freeze,                 // c
     Fn,                    // f
     UnsafeFn,              // u
     PureFn,                // p
@@ -121,7 +121,7 @@ enum Family {
 fn item_family(item: ebml::Doc) -> Family {
     let fam = reader::get_doc(item, tag_items_data_item_family);
     match reader::doc_as_u8(fam) as char {
-      'c' => Const,
+      'c' => Freeze,
       'f' => Fn,
       'u' => UnsafeFn,
       'p' => PureFn,
@@ -324,7 +324,7 @@ fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
     -> def_like {
     let fam = item_family(item);
     match fam {
-        Const     => dl_def(ast::def_const(did)),
+        Freeze     => dl_def(ast::def_const(did)),
         Struct    => dl_def(ast::def_struct(did)),
         UnsafeFn  => dl_def(ast::def_fn(did, ast::unsafe_fn)),
         Fn        => dl_def(ast::def_fn(did, ast::impure_fn)),
@@ -951,7 +951,7 @@ pub fn get_item_visibility(cdata: cmd, id: ast::node_id)
 
 fn family_has_type_params(fam: Family) -> bool {
     match fam {
-      Const | ForeignType | Mod | ForeignMod | PublicField | PrivateField
+      Freeze | ForeignType | Mod | ForeignMod | PublicField | PrivateField
       | ForeignFn => false,
       _           => true
     }
@@ -981,7 +981,7 @@ fn describe_def(items: ebml::Doc, id: ast::def_id) -> ~str {
 
 fn item_family_to_str(fam: Family) -> ~str {
     match fam {
-      Const => ~"const",
+      Freeze => ~"const",
       Fn => ~"fn",
       UnsafeFn => ~"unsafe fn",
       PureFn => ~"pure fn",
