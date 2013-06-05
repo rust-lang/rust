@@ -52,20 +52,6 @@ pub mod rustrt {
     }
 }
 
-/// Compares contents of two pointers using the default method.
-/// Equivalent to `*x1 == *x2`.  Useful for hashtables.
-pub fn shape_eq<T:Eq>(x1: &T, x2: &T) -> bool {
-    *x1 == *x2
-}
-
-pub fn shape_lt<T:Ord>(x1: &T, x2: &T) -> bool {
-    *x1 < *x2
-}
-
-pub fn shape_le<T:Ord>(x1: &T, x2: &T) -> bool {
-    *x1 <= *x2
-}
-
 /**
  * Returns a pointer to a type descriptor.
  *
