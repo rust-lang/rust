@@ -422,7 +422,7 @@ pub fn lattice_vars<L:LatticeDir + Combine,
 
     // If both A and B have an UB type, then we can just compute the
     // LUB of those types:
-    let a_bnd = this.bnd(a_bounds), b_bnd = this.bnd(b_bounds);
+    let (a_bnd, b_bnd) = (this.bnd(a_bounds), this.bnd(b_bounds));
     match (a_bnd, b_bnd) {
         (Some(ref a_ty), Some(ref b_ty)) => {
             match this.infcx().try(|| lattice_dir_op(a_ty, b_ty) ) {

@@ -242,7 +242,7 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
     // XXX: Could go in str::raw
     unsafe fn c_str_to_static_slice(s: *libc::c_char) -> &'static str {
         let s = s as *u8;
-        let mut curr = s, len = 0u;
+        let mut (curr, len) = (s, 0u);
         while *curr != 0u8 {
             len += 1u;
             curr = ptr::offset(s, len);

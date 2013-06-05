@@ -2325,7 +2325,9 @@ An example of a for loop over the contents of a vector:
 ~~~~
 # type foo = int;
 # fn bar(f: foo) { }
-# let a = 0, b = 0, c = 0;
+# let a = 0;
+# let b = 0;
+# let c = 0;
 
 let v: &[foo] = &[a, b, c];
 
@@ -3000,7 +3002,7 @@ allocated within the stack's memory. The value is a part of the stack frame.
 
 Local variables are immutable unless declared with `let mut`.  The
 `mut` keyword applies to all local variables declared within that
-declaration (so `let mut x, y` declares two mutable variables, `x` and
+declaration (so `let mut (x, y) = ...` declares two mutable variables, `x` and
 `y`).
 
 Function parameters are immutable unless declared with `mut`. The

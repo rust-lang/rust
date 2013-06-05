@@ -385,7 +385,7 @@ impl AstBuilder for @ExtCtxt {
                                 init: Some(ex),
                                 id: self.next_id(),
                             });
-        let decl = respan(sp, ast::decl_local(~[local]));
+        let decl = respan(sp, ast::decl_local(local));
         @respan(sp, ast::stmt_decl(@decl, self.next_id()))
     }
 

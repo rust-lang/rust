@@ -325,7 +325,9 @@ pub fn parent_id(cx: Context, span: span) -> ast::node_id {
 }
 
 /// Records the current parent (if any) as the parent of `child_id`.
-pub fn parent_to_expr(cx: Context, child_id: ast::node_id) {
+pub fn parent_to_expr(cx: Context, child_id: ast::node_id, sp: span) {
+    debug!("region::parent_to_expr(span=%?)",
+           cx.sess.codemap.span_to_str(sp));
     for cx.parent.each |parent_id| {
         cx.region_maps.record_parent(child_id, *parent_id);
     }
@@ -333,7 +335,7 @@ pub fn parent_to_expr(cx: Context, child_id: ast::node_id) {
 
 pub fn resolve_block(blk: &ast::blk, cx: Context, visitor: visit::vt<Context>) {
     // Record the parent of this block.
-    parent_to_expr(cx, blk.node.id);
+    parent_to_expr(cx, blk.node.id, blk.span);
 
     // Descend.
     let new_cx = Context {var_parent: Some(blk.node.id),
@@ -348,7 +350,7 @@ pub fn resolve_arm(arm: &ast::arm, cx: Context, visitor: visit::vt<Context>) {
 
 pub fn resolve_pat(pat: @ast::pat, cx: Context, visitor: visit::vt<Context>) {
     assert_eq!(cx.var_parent, cx.parent);
-    parent_to_expr(cx, pat.id);
+    parent_to_expr(cx, pat.id, pat.span);
     visit::visit_pat(pat, cx, visitor);
 }
 
@@ -359,7 +361,7 @@ pub fn resolve_stmt(stmt: @ast::stmt, cx: Context, visitor: visit::vt<Context>) 
         }
         ast::stmt_expr(_, stmt_id) |
         ast::stmt_semi(_, stmt_id) => {
-            parent_to_expr(cx, stmt_id);
+            parent_to_expr(cx, stmt_id, stmt.span);
             let expr_cx = Context {parent: Some(stmt_id), ..cx};
             visit::visit_stmt(stmt, expr_cx, visitor);
         }
@@ -368,7 +370,7 @@ pub fn resolve_stmt(stmt: @ast::stmt, cx: Context, visitor: visit::vt<Context>) 
 }
 
 pub fn resolve_expr(expr: @ast::expr, cx: Context, visitor: visit::vt<Context>) {
-    parent_to_expr(cx, expr.id);
+    parent_to_expr(cx, expr.id, expr.span);
 
     let mut new_cx = cx;
     new_cx.parent = Some(expr.id);
@@ -410,7 +412,7 @@ pub fn resolve_local(local: @ast::local,
                      cx: Context,
                      visitor: visit::vt<Context>) {
     assert_eq!(cx.var_parent, cx.parent);
-    parent_to_expr(cx, local.node.id);
+    parent_to_expr(cx, local.node.id, local.span);
     visit::visit_local(local, cx, visitor);
 }
 
@@ -423,12 +425,18 @@ pub fn resolve_item(item: @ast::item, cx: Context, visitor: visit::vt<Context>) 
 pub fn resolve_fn(fk: &visit::fn_kind,
                   decl: &ast::fn_decl,
                   body: &ast::blk,
-                  _sp: span,
+                  sp: span,
                   id: ast::node_id,
                   cx: Context,
                   visitor: visit::vt<Context>) {
-    debug!("region::resolve_fn(id=%?, body.node.id=%?, cx.parent=%?)",
-           id, body.node.id, cx.parent);
+    debug!("region::resolve_fn(id=%?, \
+                               span=%?, \
+                               body.node.id=%?, \
+                               cx.parent=%?)",
+           id,
+           cx.sess.codemap.span_to_str(sp),
+           body.node.id,
+           cx.parent);
 
     // The arguments and `self` are parented to the body of the fn.
     let decl_cx = Context {parent: Some(body.node.id),

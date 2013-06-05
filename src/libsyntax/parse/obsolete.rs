@@ -64,6 +64,7 @@ pub enum ObsoleteSyntax {
     ObsoleteConstItem,
     ObsoleteFixedLengthVectorType,
     ObsoleteNamedExternModule,
+    ObsoleteMultipleLocalDecl,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -223,6 +224,11 @@ impl Parser {
                 "named external module",
                 "instead of `extern mod foo { ... }`, write `mod foo { \
                  extern { ... } }`"
+            ),
+            ObsoleteMultipleLocalDecl => (
+                "declaration of multiple locals at once",
+                "instead of e.g. `let a = 1, b = 2`, write \
+                 `let (a, b) = (1, 2)`."
             ),
         };
 

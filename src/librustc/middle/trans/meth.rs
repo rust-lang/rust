@@ -566,7 +566,8 @@ pub fn combine_impl_and_methods_origins(bcx: block,
     // Find the bounds for the method, which are the tail of the
     // bounds found in the item type, as the item type combines the
     // rcvr + method bounds.
-    let ccx = bcx.ccx(), tcx = bcx.tcx();
+    let ccx = bcx.ccx();
+    let tcx = bcx.tcx();
     let n_m_tps = method_ty_param_count(ccx, mth_did, impl_did);
     let ty::ty_param_bounds_and_ty {
         generics: r_m_generics,

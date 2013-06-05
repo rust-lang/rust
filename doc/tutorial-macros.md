@@ -13,7 +13,8 @@ doing nothing otherwise:
 ~~~~
 # enum t { special_a(uint), special_b(uint) };
 # fn f() -> uint {
-# let input_1 = special_a(0), input_2 = special_a(0);
+# let input_1 = special_a(0);
+# let input_2 = special_a(0);
 match input_1 {
     special_a(x) => { return x; }
     _ => {}
@@ -38,7 +39,8 @@ the pattern in the above code:
 ~~~~
 # enum t { special_a(uint), special_b(uint) };
 # fn f() -> uint {
-# let input_1 = special_a(0), input_2 = special_a(0);
+# let input_1 = special_a(0);
+# let input_2 = special_a(0);
 macro_rules! early_return(
     ($inp:expr $sp:ident) => ( // invoke it like `(input_5 special_e)`
         match $inp {
@@ -155,7 +157,8 @@ instead of `*` to mean "at least one".
 ~~~~
 # enum t { special_a(uint),special_b(uint),special_c(uint),special_d(uint)};
 # fn f() -> uint {
-# let input_1 = special_a(0), input_2 = special_a(0);
+# let input_1 = special_a(0);
+# let input_2 = special_a(0);
 macro_rules! early_return(
     ($inp:expr, [ $($sp:ident)|+ ]) => (
         match $inp {

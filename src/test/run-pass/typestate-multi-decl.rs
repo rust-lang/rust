@@ -8,4 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn main() { let x = 10, y = 20; let z = x + y; assert!((z == 30)); }
+pub fn main() {
+    let (x, y) = (10, 20);
+    let z = x + y;
+    assert!((z == 30));
+}

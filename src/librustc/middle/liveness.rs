@@ -948,14 +948,10 @@ impl Liveness {
     pub fn propagate_through_decl(&self, decl: @decl, succ: LiveNode)
                                   -> LiveNode {
         match decl.node {
-          decl_local(ref locals) => {
-            do locals.foldr(succ) |local, succ| {
+            decl_local(ref local) => {
                 self.propagate_through_local(*local, succ)
             }
-          }
-          decl_item(_) => {
-            succ
-          }
+            decl_item(_) => succ,
         }
     }
 

@@ -220,7 +220,9 @@ impl Combine for Glb {
 
             let tainted = this.infcx.region_vars.tainted(snapshot, r0);
 
-            let mut a_r = None, b_r = None, only_new_vars = true;
+            let mut a_r = None;
+            let mut b_r = None;
+            let mut only_new_vars = true;
             for tainted.each |r| {
                 if is_var_in_set(a_vars, *r) {
                     if a_r.is_some() {

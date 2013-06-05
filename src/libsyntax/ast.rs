@@ -413,7 +413,10 @@ pub type local = spanned<local_>;
 pub type decl = spanned<decl_>;
 
 #[deriving(Eq, Encodable, Decodable)]
-pub enum decl_ { decl_local(~[@local]), decl_item(@item), }
+pub enum decl_ {
+    decl_local(@local),
+    decl_item(@item),
+}
 
 #[deriving(Eq, Encodable, Decodable)]
 pub struct arm {

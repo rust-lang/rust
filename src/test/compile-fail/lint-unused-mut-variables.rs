@@ -17,8 +17,8 @@
 fn main() {
     // negative cases
     let mut a = 3; //~ ERROR: variable does not need to be mutable
-    let mut a = 2, b = 3; //~ ERROR: variable does not need to be mutable
-                          //~^ ERROR: variable does not need to be mutable
+    let mut a = 2; //~ ERROR: variable does not need to be mutable
+    let mut b = 3; //~ ERROR: variable does not need to be mutable
     let mut a = ~[3]; //~ ERROR: variable does not need to be mutable
 
     // positive cases

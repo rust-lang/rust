@@ -140,9 +140,18 @@ fn fold_block(
         b.stmts.filter_mapped(|a| filter_stmt(cx, *a));
     let filtered_view_items =
         b.view_items.filter_mapped(|a| filter_view_item(cx, *a));
+    let filtered_view_items =
+        filtered_view_items.map(|x| fld.fold_view_item(*x));
+    let mut resulting_stmts = ~[];
+    for filtered_stmts.each |stmt| {
+        match fld.fold_stmt(*stmt) {
+            None => {}
+            Some(stmt) => resulting_stmts.push(stmt),
+        }
+    }
     ast::blk_ {
-        view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(*x)),
-        stmts: vec::map(filtered_stmts, |x| fld.fold_stmt(*x)),
+        view_items: filtered_view_items,
+        stmts: resulting_stmts,
         expr: b.expr.map(|x| fld.fold_expr(*x)),
         id: b.id,
         rules: b.rules,

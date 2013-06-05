@@ -58,9 +58,9 @@ pub fn md4(msg: &[u8]) -> Quad {
     let e = msg.len();
     let mut x = vec::from_elem(16u, 0u32);
     while i < e {
-        let aa = a, bb = b, cc = c, dd = d;
+        let (aa, bb, cc, dd) = (a, b, c, d);
 
-        let mut j = 0u, base = i;
+        let mut (j, base) = (0u, i);
         while j < 16u {
             x[j] = (msg[base] as u32) + (msg[base + 1u] as u32 << 8u32) +
                 (msg[base + 2u] as u32 << 16u32) +

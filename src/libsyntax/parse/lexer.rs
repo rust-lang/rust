@@ -387,7 +387,10 @@ fn scan_digits(rdr: @mut StringReader, radix: uint) -> ~str {
 }
 
 fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
-    let mut num_str, base = 10u, c = c, n = nextch(rdr);
+    let mut num_str;
+    let mut base = 10u;
+    let mut c = c;
+    let mut n = nextch(rdr);
     if c == '0' && n == 'x' {
         bump(rdr);
         bump(rdr);
@@ -510,7 +513,8 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
 }
 
 fn scan_numeric_escape(rdr: @mut StringReader, n_hex_digits: uint) -> char {
-    let mut accum_int = 0, i = n_hex_digits;
+    let mut accum_int = 0;
+    let mut i = n_hex_digits;
     while i != 0u {
         let n = rdr.curr;
         bump(rdr);
