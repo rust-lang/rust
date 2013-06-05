@@ -10,8 +10,8 @@
 
 // xfail-test
 struct x(());
-pub impl x {
-    unsafe fn with() { } // This should fail
+impl x {
+    pub unsafe fn with() { } // This should fail
 }
 
 fn main() {

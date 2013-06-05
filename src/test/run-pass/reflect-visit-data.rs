@@ -10,9 +10,12 @@
 
 // xfail-fast
 
-use core::bool;
-use core::libc::c_void;
-use core::vec::UnboxedVecRepr;
+use std::bool;
+use std::int;
+use std::libc::c_void;
+use std::ptr;
+use std::sys;
+use std::vec::UnboxedVecRepr;
 use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor, Opaque};
 
 #[doc = "High-level interfaces to `intrinsic::visit_ty` reflection system."]
@@ -30,29 +33,29 @@ fn align(size: uint, align: uint) -> uint {
 
 struct ptr_visit_adaptor<V>(Inner<V>);
 
-pub impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
+impl<V:TyVisitor + movable_ptr> ptr_visit_adaptor<V> {
 
     #[inline(always)]
-    fn bump(&self, sz: uint) {
+    pub fn bump(&self, sz: uint) {
       do self.inner.move_ptr() |p| {
             ((p as uint) + sz) as *c_void
       };
     }
 
     #[inline(always)]
-    fn align(&self, a: uint) {
+    pub fn align(&self, a: uint) {
       do self.inner.move_ptr() |p| {
             align(p as uint, a) as *c_void
       };
     }
 
     #[inline(always)]
-    fn align_to<T>(&self) {
+    pub fn align_to<T>(&self) {
         self.align(sys::min_align_of::<T>());
     }
 
     #[inline(always)]
-    fn bump_past<T>(&self) {
+    pub fn bump_past<T>(&self) {
         self.bump(sys::size_of::<T>());
     }
 
@@ -482,14 +485,14 @@ struct Stuff {
     vals: ~[~str]
 }
 
-pub impl my_visitor {
-    fn get<T>(&self, f: &fn(T)) {
+impl my_visitor {
+    pub fn get<T>(&self, f: &fn(T)) {
         unsafe {
             f(*(self.ptr1 as *T));
         }
     }
 
-    fn visit_inner(&self, inner: *TyDesc) -> bool {
+    pub fn visit_inner(&self, inner: *TyDesc) -> bool {
         unsafe {
             let u = my_visitor(**self);
             let v = ptr_visit_adaptor::<my_visitor>(Inner {inner: u});
@@ -514,7 +517,7 @@ impl TyVisitor for my_visitor {
     fn visit_nil(&self) -> bool { true }
     fn visit_bool(&self) -> bool {
         do self.get::<bool>() |b| {
-            self.vals.push(bool::to_str(b));
+            self.vals.push(b.to_str());
         };
         true
     }
@@ -654,7 +657,7 @@ pub fn main() {
         visit_tydesc(td, v);
 
         for (u.vals.clone()).each |s| {
-            io::println(fmt!("val: %s", *s));
+            println(fmt!("val: %s", *s));
         }
         error!("%?", u.vals.clone());
         assert!(u.vals == ~[

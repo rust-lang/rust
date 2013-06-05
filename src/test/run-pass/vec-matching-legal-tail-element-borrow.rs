@@ -3,8 +3,8 @@ pub fn main() {
     if !x.is_empty() {
         let el = match x {
             [1, ..ref tail] => &tail[0],
-            _ => ::core::util::unreachable()
+            _ => ::std::util::unreachable()
         };
-        io::println(fmt!("%d", *el));
+        println(fmt!("%d", *el));
     }
 }

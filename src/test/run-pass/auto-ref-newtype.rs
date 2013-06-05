@@ -13,11 +13,11 @@
 
 struct Foo(uint);
 
-pub impl Foo {
-    fn len(&self) -> uint { **self }
+impl Foo {
+    pub fn len(&self) -> uint { **self }
 }
 
 pub fn main() {
     let m = Foo(3);
-    assert!(m.len() == 3);
+    assert_eq!(m.len(), 3);
 }

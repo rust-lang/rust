@@ -10,7 +10,11 @@
 
 // Test for concurrent tasks
 
-use core::comm::*;
+use std::comm::*;
+use std::os;
+use std::task;
+use std::uint;
+use std::vec;
 
 fn calc(children: uint, parent_wait_chan: &Chan<Chan<Chan<int>>>) {
 

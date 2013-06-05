@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::util;
+use std::util;
 
 // Just a grab bag of stuff that you wouldn't want to actually write.
 

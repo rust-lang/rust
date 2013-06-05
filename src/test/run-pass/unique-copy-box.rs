@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::sys;
+
 pub fn main() {
     unsafe {
         let i = ~@1;
@@ -16,6 +18,6 @@ pub fn main() {
         let j = copy i;
         let rc2 = sys::refcount(*i);
         error!("rc1: %u rc2: %u", rc1, rc2);
-        assert!(rc1 + 1u == rc2);
+        assert_eq!(rc1 + 1u, rc2);
     }
 }

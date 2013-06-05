@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
+
+use std::task;
+
 pub fn main() {
     task::spawn(|| child(~"Hello") );
 }

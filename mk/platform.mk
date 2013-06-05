@@ -29,7 +29,7 @@ $(foreach t,$(CFG_TARGET_TRIPLES),$(info cfg: os for $(t) is $(OSTYPE_$(t))))
 # FIXME: no-omit-frame-pointer is just so that task_start_wrapper
 # has a frame pointer and the stack walker can understand it. Turning off
 # frame pointers everywhere is overkill
-CFG_GCCISH_CFLAGS += -fno-omit-frame-pointer
+CFG_GCCISH_CFLAGS += -fno-omit-frame-pointer -DUSE_UTF8
 
 # On Darwin, we need to run dsymutil so the debugging information ends
 # up in the right place.  On other platforms, it automatically gets
@@ -106,7 +106,32 @@ ifeq ($(CFG_C_COMPILER),gcc)
     CPP=gcc
   endif
 else
+ifeq ($(CFG_C_COMPILER),ccache clang)
+  # The -Qunused-arguments sidesteps spurious warnings from clang
+  ifeq ($(origin CC),default)
+    CC=ccache clang -Qunused-arguments
+  endif
+  ifeq ($(origin CXX),default)
+    CXX=ccache clang++ -Qunused-arguments
+  endif
+  ifeq ($(origin CPP),default)
+    CPP=ccache clang -Qunused-arguments
+  endif
+else
+ifeq ($(CFG_C_COMPILER),ccache gcc)
+  ifeq ($(origin CC),default)
+    CC=ccache gcc
+  endif
+  ifeq ($(origin CXX),default)
+    CXX=ccache g++
+  endif
+  ifeq ($(origin CPP),default)
+    CPP=ccache gcc
+  endif
+else
   CFG_ERR := $(error please try on a system with gcc or clang)
+endif
+endif
 endif
 endif
 
@@ -239,6 +264,32 @@ CFG_RUN_arm-linux-androideabi=
 CFG_RUN_TARG_arm-linux-androideabi=
 RUSTC_FLAGS_arm-linux-androideabi :=--android-cross-path=$(CFG_ANDROID_CROSS_PATH)
 
+# arm-unknown-linux-gnueabihf configuration
+CC_arm-unknown-linux-gnueabihf=arm-linux-gnueabihf-gcc
+CXX_arm-unknown-linux-gnueabihf=arm-linux-gnueabihf-g++
+CPP_arm-unknown-linux-gnueabihf=arm-linux-gnueabihf-gcc -E
+AR_arm-unknown-linux-gnueabihf=arm-linux-gnueabihf-ar
+CFG_LIB_NAME_arm-unknown-linux-gnueabihf=lib$(1).so
+CFG_LIB_GLOB_arm-unknown-linux-gnueabihf=lib$(1)-*.so
+CFG_LIB_DSYM_GLOB_arm-unknown-linux-gnueabihf=lib$(1)-*.dylib.dSYM
+CFG_GCCISH_CFLAGS_arm-unknown-linux-gnueabihf := -Wall -g -fPIC
+CFG_GCCISH_CXXFLAGS_arm-unknown-linux-gnueabihf := -fno-rtti
+CFG_GCCISH_LINK_FLAGS_arm-unknown-linux-gnueabihf := -shared -fPIC -g
+CFG_GCCISH_DEF_FLAG_arm-unknown-linux-gnueabihf := -Wl,--export-dynamic,--dynamic-list=
+CFG_GCCISH_PRE_LIB_FLAGS_arm-unknown-linux-gnueabihf := -Wl,-whole-archive
+CFG_GCCISH_POST_LIB_FLAGS_arm-unknown-linux-gnueabihf := -Wl,-no-whole-archive
+CFG_DEF_SUFFIX_arm-unknown-linux-gnueabihf := .linux.def
+CFG_INSTALL_NAME_ar,-unknown-linux-gnueabihf =
+CFG_LIBUV_LINK_FLAGS_arm-unknown-linux-gnueabihf =
+CFG_EXE_SUFFIX_arm-unknown-linux-gnueabihf :=
+CFG_WINDOWSY_arm-unknown-linux-gnueabihf :=
+CFG_UNIXY_arm-unknown-linux-gnueabihf := 1
+CFG_PATH_MUNGE_arm-unknown-linux-gnueabihf := true
+CFG_LDPATH_arm-unknown-linux-gnueabihf :=
+CFG_RUN_arm-unknown-linux-gnueabihf=
+CFG_RUN_TARG_arm-unknown-linux-gnueabihf=
+RUSTC_FLAGS_arm-unknown-linux-gnueabihf := --linker=$(CC_arm-unknown-linux-gnueabihf)
+
 # mips-unknown-linux-gnu configuration
 CC_mips-unknown-linux-gnu=mips-linux-gnu-gcc
 CXX_mips-unknown-linux-gnu=mips-linux-gnu-g++
@@ -340,6 +391,15 @@ CFG_LDPATH_x86_64-unknown-freebsd :=
 CFG_RUN_x86_64-unknown-freebsd=$(2)
 CFG_RUN_TARG_x86_64-unknown-freebsd=$(call CFG_RUN_x86_64-unknown-freebsd,,$(2))
 
+ifeq ($(CFG_CCACHE_CPP2),1)
+  CCACHE_CPP2=1
+  export CCACHE_CPP
+endif
+
+ifdef CFG_CCACHE_BASEDIR
+  CCACHE_BASEDIR=$(CFG_CCACHE_BASEDIR)
+  export CCACHE_BASEDIR
+endif
 
 define CFG_MAKE_TOOLCHAIN
   CFG_COMPILE_C_$(1) = $$(CC_$(1))  \

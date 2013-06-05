@@ -10,10 +10,10 @@
 
 // xfail-pretty
 
-extern mod std;
+extern mod extra;
 extern mod syntax;
 
-use core::io::*;
+use std::io::*;
 
 use syntax::diagnostic;
 use syntax::ast;
@@ -82,6 +82,6 @@ fn check_pp<T>(cx: fake_ext_ctxt,
     stdout().write_line(s);
     if expect != ~"" {
         error!("expect: '%s', got: '%s'", expect, s);
-        assert!(s == expect);
+        assert_eq!(s, expect);
     }
 }

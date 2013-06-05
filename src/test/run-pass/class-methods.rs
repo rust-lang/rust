@@ -14,9 +14,9 @@ struct cat {
   how_hungry : int,
 }
 
-pub impl cat {
-    fn speak(&mut self) { self.meows += 1u; }
-    fn meow_count(&mut self) -> uint { self.meows }
+impl cat {
+    pub fn speak(&mut self) { self.meows += 1u; }
+    pub fn meow_count(&mut self) -> uint { self.meows }
 }
 
 fn cat(in_x: uint, in_y: int) -> cat {
@@ -29,8 +29,8 @@ fn cat(in_x: uint, in_y: int) -> cat {
 pub fn main() {
   let mut nyan: cat = cat(52u, 99);
   let mut kitty = cat(1000u, 2);
-  assert!((nyan.how_hungry == 99));
-  assert!((kitty.how_hungry == 2));
+  assert_eq!(nyan.how_hungry, 99);
+  assert_eq!(kitty.how_hungry, 2);
   nyan.speak();
-  assert!((nyan.meow_count() == 53u));
+  assert_eq!(nyan.meow_count(), 53u);
 }

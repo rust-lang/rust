@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std;
+use extra;
 
-struct Deserializer : std::serialization::deserializer{ //~ ERROR obsolete syntax: class traits
+struct Deserializer : extra::serialization::deserializer{ //~ ERROR obsolete syntax: class traits
     x: ()
 }
 
@@ -18,7 +18,7 @@ struct Foo {
     a: ()
 }
 
-fn deserialize_foo<__D: std::serialization::deserializer>(__d: __D) {
+fn deserialize_foo<__D: extra::serialization::deserializer>(__d: __D) {
 }
 
 fn main() { let des = Deserializer(); let foo = deserialize_foo(des); }

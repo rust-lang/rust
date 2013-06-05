@@ -16,10 +16,10 @@ struct cat {
     name : ~str,
 }
 
-pub impl cat {
-    fn speak(&mut self) { self.meow(); }
+impl cat {
+    pub fn speak(&mut self) { self.meow(); }
 
-    fn eat(&mut self) -> bool {
+    pub fn eat(&mut self) -> bool {
         if self.how_hungry > 0 {
             error!("OM NOM NOM");
             self.how_hungry -= 2;
@@ -32,7 +32,7 @@ pub impl cat {
     }
 }
 
-priv impl cat {
+impl cat {
     fn meow(&mut self) {
         error!("Meow");
         self.meows += 1u;
@@ -62,7 +62,7 @@ impl ToStr for cat {
 fn print_out(thing: @ToStr, expected: ~str) {
   let actual = thing.to_str();
   debug!("%s", actual);
-  assert!((actual == expected));
+  assert_eq!(actual, expected);
 }
 
 pub fn main() {

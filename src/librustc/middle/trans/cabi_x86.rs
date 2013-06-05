@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use driver::session::{os_win32, os_macos};
 use lib::llvm::*;
 use lib::llvm::llvm::*;

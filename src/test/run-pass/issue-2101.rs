@@ -9,9 +9,9 @@
 // except according to those terms.
 
 // xfail-test
-extern mod std;
-use std::arena;
-use std::arena::Arena;
+extern mod extra;
+use extra::arena;
+use extra::arena::Arena;
 
 enum hold { s(str) }
 

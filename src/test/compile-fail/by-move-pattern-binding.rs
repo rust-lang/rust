@@ -13,10 +13,10 @@ fn main() {
     let s = S { x: Bar(~"hello") };
     match &s.x {
         &Foo => {}
-        &Bar(identifier) => f(copy identifier)  //~ ERROR by-move pattern bindings may not occur
+        &Bar(identifier) => f(copy identifier)  //~ ERROR cannot move
     };
     match &s.x {
         &Foo => {}
-        &Bar(ref identifier) => io::println(*identifier)
+        &Bar(ref identifier) => println(*identifier)
     };
 }

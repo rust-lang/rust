@@ -13,13 +13,14 @@
 // xfail-pretty
 // xfail-win32
 
-extern mod std;
-use std::timer::sleep;
-use std::uv;
+extern mod extra;
+use extra::timer::sleep;
+use extra::uv;
 
-use core::cell::Cell;
-use core::pipes;
-use core::pipes::*;
+use std::cell::Cell;
+use std::pipes::*;
+use std::pipes;
+use std::task;
 
 proto! oneshot (
     waiting:send {
@@ -34,15 +35,15 @@ proto! stream (
 )
 
 pub fn spawn_service<T:Owned,Tb:Owned>(
-            init: extern fn() -> (SendPacketBuffered<T, Tb>,
-                                  RecvPacketBuffered<T, Tb>),
+            init: extern fn() -> (RecvPacketBuffered<T, Tb>,
+                                  SendPacketBuffered<T, Tb>),
             service: ~fn(v: RecvPacketBuffered<T, Tb>))
         -> SendPacketBuffered<T, Tb> {
-    let (client, server) = init();
+    let (server, client) = init();
 
     // This is some nasty gymnastics required to safely move the pipe
     // into a new task.
-    let server = Cell(server);
+    let server = Cell::new(server);
     do task::spawn {
         service(server.take());
     }
@@ -66,7 +67,7 @@ pub fn main() {
         error!("selecting");
         let (i, _, _) = select(~[left, right]);
         error!("selected");
-        assert!(i == 0);
+        assert_eq!(i, 0);
 
         error!("waiting for pipes");
         let stream::send(x, _) = recv(p);
@@ -78,12 +79,12 @@ pub fn main() {
         let (i, m, _) = select(~[left, right]);
         error!("selected %?", i);
         if m.is_some() {
-            assert!(i == 1);
+            assert_eq!(i, 1);
         }
     });
 
-    let (c1, p1) = oneshot::init();
-    let (_c2, p2) = oneshot::init();
+    let (p1, c1) = oneshot::init();
+    let (p2, _c2) = oneshot::init();
 
     let c = send(c, (p1, p2));
 
@@ -91,8 +92,8 @@ pub fn main() {
 
     signal(c1);
 
-    let (_c1, p1) = oneshot::init();
-    let (c2, p2) = oneshot::init();
+    let (p1, _c1) = oneshot::init();
+    let (p2, c2) = oneshot::init();
 
     send(c, (p1, p2));
 
@@ -104,28 +105,28 @@ pub fn main() {
 }
 
 fn test_select2() {
-    let (ac, ap) = stream::init();
-    let (bc, bp) = stream::init();
+    let (ap, ac) = stream::init();
+    let (bp, bc) = stream::init();
 
     stream::client::send(ac, 42);
 
     match pipes::select2(ap, bp) {
-      either::Left(*) => { }
-      either::Right(*) => { fail!() }
+      Left(*) => { }
+      Right(*) => { fail!() }
     }
 
     stream::client::send(bc, ~"abc");
 
     error!("done with first select2");
 
-    let (ac, ap) = stream::init();
-    let (bc, bp) = stream::init();
+    let (ap, ac) = stream::init();
+    let (bp, bc) = stream::init();
 
     stream::client::send(bc, ~"abc");
 
     match pipes::select2(ap, bp) {
-      either::Left(*) => { fail!() }
-      either::Right(*) => { }
+      Left(*) => { fail!() }
+      Right(*) => { }
     }
 
     stream::client::send(ac, 42);

@@ -12,10 +12,10 @@ struct Foo {
     x: int,
 }
 
-pub impl Foo {
-    fn f(&self) {}
-    fn g(&const self) {}
-    fn h(&mut self) {}
+impl Foo {
+    pub fn f(&self) {}
+    pub fn g(&const self) {}
+    pub fn h(&mut self) {}
 }
 
 fn a(x: &mut Foo) {

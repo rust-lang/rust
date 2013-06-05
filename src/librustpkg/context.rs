@@ -10,6 +10,8 @@
 
 // Context data structure used by rustpkg
 
+use core::prelude::*;
+
 use core::hashmap::HashMap;
 
 pub struct Ctx {

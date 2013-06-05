@@ -10,6 +10,9 @@
 
 // error-pattern:Ensure that the child task runs by failing
 
+use std::str;
+use std::task;
+
 fn main() {
     // the purpose of this test is to make sure that task::spawn()
     // works when provided with a bare function:

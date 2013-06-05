@@ -15,6 +15,8 @@ Each page corresponds is a logical section. There may be pages for
 individual modules, pages for the crate, indexes, etc.
 */
 
+use core::prelude::*;
+
 use astsrv;
 use config;
 use doc::ItemUtils;
@@ -25,6 +27,7 @@ use pass::Pass;
 use util::NominalOp;
 
 use core::comm::*;
+use core::task;
 use syntax::ast;
 
 #[cfg(test)] use doc::PageUtils;
@@ -67,7 +70,7 @@ fn make_doc_from_pages(page_port: &PagePort) -> doc::Doc {
     loop {
         let val = page_port.recv();
         if val.is_some() {
-            pages += ~[val.unwrap()];
+            pages += [val.unwrap()];
         } else {
             break;
         }
@@ -176,13 +179,13 @@ mod test {
             config::DocPerCrate,
             ~"mod a { } mod b { mod c { } }"
         );
-        assert!(doc.pages.len() == 1u);
+        assert_eq!(doc.pages.len(), 1u);
     }
 
     #[test]
     fn should_make_a_page_for_every_mod() {
         let doc = mk_doc(~"mod a { }");
-        assert!(doc.pages.mods()[0].name() == ~"a");
+        assert_eq!(doc.pages.mods()[0].name(), ~"a");
     }
 
     #[test]

@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::smallintmap::SmallIntMap;
+use core::prelude::*;
+
+use extra::smallintmap::SmallIntMap;
 
 use middle::ty::{Vid, expected_found, IntVarValue};
 use middle::ty;
@@ -38,11 +40,9 @@ pub trait UnifyVid<T> {
                                       -> &'v mut ValsAndBindings<Self, T>;
 }
 
-pub impl InferCtxt {
-    fn get<T:Copy, V:Copy+Eq+Vid+UnifyVid<T>>(
-        &mut self,
-        vid: V) -> Node<V, T>
-    {
+impl InferCtxt {
+    pub fn get<T:Copy, V:Copy+Eq+Vid+UnifyVid<T>>(&mut self, vid: V)
+                                                  -> Node<V, T> {
         /*!
          *
          * Find the root node for `vid`. This uses the standard
@@ -84,10 +84,10 @@ pub impl InferCtxt {
         }
     }
 
-    fn set<T:Copy + InferStr,V:Copy + Vid + ToStr + UnifyVid<T>>(
-            &mut self,
-            vid: V,
-            new_v: VarValue<V, T>) {
+    pub fn set<T:Copy + InferStr,
+               V:Copy + Vid + ToStr + UnifyVid<T>>(&mut self,
+                                                   vid: V,
+                                                   new_v: VarValue<V, T>) {
         /*!
          *
          * Sets the value for `vid` to `new_v`.  `vid` MUST be a root node!
@@ -104,11 +104,11 @@ pub impl InferCtxt {
         }
     }
 
-    fn unify<T:Copy + InferStr,V:Copy + Vid + ToStr + UnifyVid<T>>(
-        &mut self,
-        node_a: &Node<V, T>,
-        node_b: &Node<V, T>) -> (V, uint)
-    {
+    pub fn unify<T:Copy + InferStr,
+                 V:Copy + Vid + ToStr + UnifyVid<T>>(&mut self,
+                                                     node_a: &Node<V, T>,
+                                                     node_b: &Node<V, T>)
+                                                     -> (V, uint) {
         // Rank optimization: if you don't know what it is, check
         // out <http://en.wikipedia.org/wiki/Disjoint-set_data_structure>
 
@@ -129,7 +129,7 @@ pub impl InferCtxt {
         } else {
             // If equal, redirect one to the other and increment the
             // other's rank.
-            assert!(node_a.rank == node_b.rank);
+            assert_eq!(node_a.rank, node_b.rank);
             self.set(node_b.root, Redirect(node_a.root));
             (node_a.root, node_a.rank + 1)
         }
@@ -157,14 +157,14 @@ pub fn mk_err<T:SimplyUnifiable>(a_is_expected: bool,
     }
 }
 
-pub impl InferCtxt {
-    fn simple_vars<T:Copy + Eq + InferStr + SimplyUnifiable,
-                   V:Copy + Eq + Vid + ToStr + UnifyVid<Option<T>>>(
-            &mut self,
-            a_is_expected: bool,
-            a_id: V,
-            b_id: V)
-         -> ures {
+impl InferCtxt {
+    pub fn simple_vars<T:Copy+Eq+InferStr+SimplyUnifiable,
+                       V:Copy+Eq+Vid+ToStr+UnifyVid<Option<T>>>(&mut self,
+                                                                a_is_expected:
+                                                                bool,
+                                                                a_id: V,
+                                                                b_id: V)
+                                                                -> ures {
         /*!
          *
          * Unifies two simple variables.  Because simple variables do
@@ -196,13 +196,13 @@ pub impl InferCtxt {
         return uok();
     }
 
-    fn simple_var_t<T:Copy + Eq + InferStr + SimplyUnifiable,
-                    V:Copy + Eq + Vid + ToStr + UnifyVid<Option<T>>>(
-            &mut self,
-            a_is_expected: bool,
-            a_id: V,
-            b: T)
-         -> ures {
+    pub fn simple_var_t<T:Copy+Eq+InferStr+SimplyUnifiable,
+                        V:Copy+Eq+Vid+ToStr+UnifyVid<Option<T>>>(&mut self,
+                                                                 a_is_expected
+                                                                 : bool,
+                                                                 a_id: V,
+                                                                 b: T)
+                                                                 -> ures {
         /*!
          *
          * Sets the value of the variable `a_id` to `b`.  Because

@@ -44,7 +44,7 @@ syn keyword   rustType        size_t ptrdiff_t clock_t time_t
 syn keyword   rustType        c_longlong c_ulonglong intptr_t uintptr_t
 syn keyword   rustType        off_t dev_t ino_t pid_t mode_t ssize_t
 
-syn keyword   rustTrait       Const Copy Send Owned " inherent traits
+syn keyword   rustTrait       Const Copy Send Owned Sized " inherent traits
 syn keyword   rustTrait       Eq Ord Num Ptr
 syn keyword   rustTrait       Drop Add Sub Mul Quot Rem Neg BitAnd BitOr
 syn keyword   rustTrait       BitXor Shl Shr Index

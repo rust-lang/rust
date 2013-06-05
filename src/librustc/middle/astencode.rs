@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use c = metadata::common;
 use cstore = metadata::cstore;
 use driver::session::Session;
@@ -23,11 +25,14 @@ use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;
 
-use std::ebml::reader;
-use std::ebml;
-use std::serialize;
-use std::serialize::{Encoder, Encodable, EncoderHelpers, DecoderHelpers};
-use std::serialize::{Decoder, Decodable};
+use core::at_vec;
+use core::str;
+use core::uint;
+use extra::ebml::reader;
+use extra::ebml;
+use extra::serialize;
+use extra::serialize::{Encoder, Encodable, EncoderHelpers, DecoderHelpers};
+use extra::serialize::{Decoder, Decodable};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::inlined_item_utils;
@@ -37,7 +42,7 @@ use syntax::codemap;
 use syntax::fold::*;
 use syntax::fold;
 use syntax;
-use writer = std::ebml::writer;
+use writer = extra::ebml::writer;
 
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::print::pprust;
@@ -158,8 +163,8 @@ fn reserve_id_range(sess: Session,
     ast_util::id_range { min: to_id_min, max: to_id_min }
 }
 
-pub impl ExtendedDecodeContext {
-    fn tr_id(&self, id: ast::node_id) -> ast::node_id {
+impl ExtendedDecodeContext {
+    pub fn tr_id(&self, id: ast::node_id) -> ast::node_id {
         /*!
          * Translates an internal id, meaning a node id that is known
          * to refer to some part of the item currently being inlined,
@@ -174,7 +179,7 @@ pub impl ExtendedDecodeContext {
         assert!(!self.from_id_range.empty());
         (id - self.from_id_range.min + self.to_id_range.min)
     }
-    fn tr_def_id(&self, did: ast::def_id) -> ast::def_id {
+    pub fn tr_def_id(&self, did: ast::def_id) -> ast::def_id {
         /*!
          * Translates an EXTERNAL def-id, converting the crate number
          * from the one used in the encoded data to the current crate
@@ -198,7 +203,7 @@ pub impl ExtendedDecodeContext {
 
         decoder::translate_def_id(self.dcx.cdata, did)
     }
-    fn tr_intern_def_id(&self, did: ast::def_id) -> ast::def_id {
+    pub fn tr_intern_def_id(&self, did: ast::def_id) -> ast::def_id {
         /*!
          * Translates an INTERNAL def-id, meaning a def-id that is
          * known to refer to some part of the item currently being
@@ -206,10 +211,10 @@ pub impl ExtendedDecodeContext {
          * refer to the current crate and to the new, inlined node-id.
          */
 
-        assert!(did.crate == ast::local_crate);
+        assert_eq!(did.crate, ast::local_crate);
         ast::def_id { crate: ast::local_crate, node: self.tr_id(did.node) }
     }
-    fn tr_span(&self, _span: span) -> span {
+    pub fn tr_span(&self, _span: span) -> span {
         codemap::dummy_sp() // FIXME (#1972): handle span properly
     }
 }
@@ -614,10 +619,10 @@ fn encode_vtable_res(ecx: @e::EncodeContext,
 fn encode_vtable_origin(ecx: @e::EncodeContext,
                         ebml_w: &mut writer::Encoder,
                         vtable_origin: &typeck::vtable_origin) {
-    do ebml_w.emit_enum(~"vtable_origin") |ebml_w| {
+    do ebml_w.emit_enum("vtable_origin") |ebml_w| {
         match *vtable_origin {
           typeck::vtable_static(def_id, ref tys, vtable_res) => {
-            do ebml_w.emit_enum_variant(~"vtable_static", 0u, 3u) |ebml_w| {
+            do ebml_w.emit_enum_variant("vtable_static", 0u, 3u) |ebml_w| {
                 do ebml_w.emit_enum_variant_arg(0u) |ebml_w| {
                     ebml_w.emit_def_id(def_id)
                 }
@@ -630,7 +635,7 @@ fn encode_vtable_origin(ecx: @e::EncodeContext,
             }
           }
           typeck::vtable_param(pn, bn) => {
-            do ebml_w.emit_enum_variant(~"vtable_param", 1u, 2u) |ebml_w| {
+            do ebml_w.emit_enum_variant("vtable_param", 1u, 2u) |ebml_w| {
                 do ebml_w.emit_enum_variant_arg(0u) |ebml_w| {
                     ebml_w.emit_uint(pn);
                 }
@@ -756,20 +761,20 @@ impl ebml_writer_helpers for writer::Encoder {
                  ecx: @e::EncodeContext,
                  tpbt: ty::ty_param_bounds_and_ty) {
         do self.emit_struct("ty_param_bounds_and_ty", 2) |this| {
-            do this.emit_struct_field(~"generics", 0) |this| {
+            do this.emit_struct_field("generics", 0) |this| {
                 do this.emit_struct("Generics", 2) |this| {
-                    do this.emit_struct_field(~"type_param_defs", 0) |this| {
+                    do this.emit_struct_field("type_param_defs", 0) |this| {
                         do this.emit_from_vec(*tpbt.generics.type_param_defs)
                                 |this, type_param_def| {
                             this.emit_type_param_def(ecx, type_param_def);
                         }
                     }
-                    do this.emit_struct_field(~"region_param", 1) |this| {
+                    do this.emit_struct_field("region_param", 1) |this| {
                         tpbt.generics.region_param.encode(this);
                     }
                 }
             }
-            do this.emit_struct_field(~"ty", 1) |this| {
+            do this.emit_struct_field("ty", 1) |this| {
                 this.emit_ty(ecx, tpbt.ty);
             }
         }

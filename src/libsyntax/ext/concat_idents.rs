@@ -8,28 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast;
 use codemap::span;
 use ext::base::*;
 use ext::base;
 use parse::token;
 
-pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
+pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     let mut res_str = ~"";
     for tts.eachi |i, e| {
         if i & 1 == 1 {
             match *e {
                 ast::tt_tok(_, token::COMMA) => (),
-                _ => cx.span_fatal(sp, ~"concat_idents! \
-                                         expecting comma.")
+                _ => cx.span_fatal(sp, "concat_idents! expecting comma.")
             }
         } else {
             match *e {
                 ast::tt_tok(_, token::IDENT(ident,_)) =>
                 res_str += cx.str_of(ident),
-                _ => cx.span_fatal(sp, ~"concat_idents! \
-                                         requires ident args.")
+                _ => cx.span_fatal(sp, "concat_idents! requires ident args.")
             }
         }
     }
@@ -37,7 +37,6 @@ pub fn expand_syntax_ext(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
 
     let e = @ast::expr {
         id: cx.next_id(),
-        callee_id: cx.next_id(),
         node: ast::expr_path(
             @ast::Path {
                  span: sp,

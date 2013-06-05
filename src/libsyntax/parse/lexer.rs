@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos, span};
 use codemap;
@@ -16,9 +18,12 @@ use ext::tt::transcribe::{tt_next_token};
 use ext::tt::transcribe::{dup_tt_reader};
 use parse::token;
 
-pub use ext::tt::transcribe::{TtReader, new_tt_reader};
+use core::char;
+use core::either;
+use core::str;
+use core::u64;
 
-//use std;
+pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
 pub trait reader {
     fn is_eof(@mut self) -> bool;
@@ -247,7 +252,8 @@ fn consume_whitespace_and_comments(rdr: @mut StringReader)
 }
 
 pub fn is_line_non_doc_comment(s: &str) -> bool {
-    s.trim_right().all(|ch| ch == '/')
+    let s = s.trim_right();
+    s.len() > 3 && s.all(|ch| ch == '/')
 }
 
 // PRECONDITION: rdr.curr is not whitespace
@@ -268,7 +274,7 @@ fn consume_any_line_comment(rdr: @mut StringReader)
                     str::push_char(&mut acc, rdr.curr);
                     bump(rdr);
                 }
-                // but comments with only "/"s are not
+                // but comments with only more "/"s are not
                 if !is_line_non_doc_comment(acc) {
                     return Some(TokenAndSpan{
                         tok: token::DOC_COMMENT(rdr.interner.intern(acc)),
@@ -319,7 +325,7 @@ fn consume_block_comment(rdr: @mut StringReader)
         if is_eof(rdr) {
             rdr.fatal(~"unterminated block doc-comment");
         } else {
-            acc += ~"*/";
+            acc += "*/";
             bump(rdr);
             bump(rdr);
             // but comments with only "*"s between two "/"s are not
@@ -442,7 +448,8 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
         is_float = true;
         bump(rdr);
         let dec_part = scan_digits(rdr, 10u);
-        num_str += ~"." + dec_part;
+        num_str += ".";
+        num_str += dec_part;
     }
     if is_float {
         match base {
@@ -786,7 +793,7 @@ mod test {
     fn setup(teststr: ~str) -> Env {
         let cm = CodeMap::new();
         let fm = cm.new_filemap(~"zebra.rs", @teststr);
-        let ident_interner = token::mk_ident_interner(); // interner::mk();
+        let ident_interner = token::get_ident_interner();
         let span_handler =
             diagnostic::mk_span_handler(diagnostic::mk_handler(None),@cm);
         Env {
@@ -890,5 +897,11 @@ mod test {
             env.string_reader.next_token();
         let id = env.interner.intern("abc");
         assert_eq!(tok, token::LIFETIME(id));
+    }
+
+    #[test] fn line_doc_comments() {
+        assert!(!is_line_non_doc_comment("///"));
+        assert!(!is_line_non_doc_comment("/// blah"));
+        assert!(is_line_non_doc_comment("////"));
     }
 }

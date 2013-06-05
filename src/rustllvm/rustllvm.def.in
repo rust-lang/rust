@@ -584,3 +584,6 @@ LLVMConstNamedStruct
 LLVMStructCreateNamed
 LLVMStructSetBody
 LLVMInlineAsm
+LLVMInitializePasses
+LLVMAddPass
+LLVMCreatePass

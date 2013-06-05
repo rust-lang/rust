@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -76,9 +76,12 @@ type parameter).
 
 */
 
+use core::prelude::*;
+
 use middle::const_eval;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
+use middle::lint::unreachable_code;
 use middle::ty::{FnSig, VariantInfo_};
 use middle::ty::{ty_param_bounds_and_ty, ty_param_substs_and_ty};
 use middle::ty::{substs, param_ty};
@@ -109,8 +112,11 @@ use util::ppaux;
 
 use core::cast::transmute;
 use core::hashmap::HashMap;
+use core::result;
+use core::str;
 use core::util::replace;
-use std::list::Nil;
+use core::vec;
+use extra::list::Nil;
 use syntax::abi::AbiSet;
 use syntax::ast::{provided, required};
 use syntax::ast;
@@ -180,7 +186,7 @@ pub struct PurityState {
     priv from_fn: bool
 }
 
-pub impl PurityState {
+impl PurityState {
     pub fn function(purity: ast::purity, def: ast::node_id) -> PurityState {
         PurityState { def: def, purity: purity, from_fn: true }
     }
@@ -652,18 +658,17 @@ impl AstConv for FnCtxt {
     }
 }
 
-pub impl FnCtxt {
-    fn infcx(&self) -> @mut infer::InferCtxt {
+impl FnCtxt {
+    pub fn infcx(&self) -> @mut infer::InferCtxt {
         self.inh.infcx
     }
-    fn err_count_since_creation(&self) -> uint {
+    pub fn err_count_since_creation(&self) -> uint {
         self.ccx.tcx.sess.err_count() - self.err_count_on_creation
     }
-    fn search_in_scope_regions(
-        &self,
-        span: span,
-        br: ty::bound_region) -> Result<ty::Region, RegionError>
-    {
+    pub fn search_in_scope_regions(&self,
+                                   span: span,
+                                   br: ty::bound_region)
+                                   -> Result<ty::Region, RegionError> {
         let in_scope_regions = self.in_scope_regions;
         match in_scope_regions.find(br) {
             Some(r) => result::Ok(r),
@@ -697,14 +702,14 @@ impl region_scope for FnCtxt {
     }
 }
 
-pub impl FnCtxt {
-    fn tag(&self) -> ~str {
+impl FnCtxt {
+    pub fn tag(&self) -> ~str {
         unsafe {
             fmt!("%x", transmute(self))
         }
     }
 
-    fn local_ty(&self, span: span, nid: ast::node_id) -> ty::t {
+    pub fn local_ty(&self, span: span, nid: ast::node_id) -> ty::t {
         match self.inh.locals.find(&nid) {
             Some(&t) => t,
             None => {
@@ -715,23 +720,23 @@ pub impl FnCtxt {
         }
     }
 
-    fn expr_to_str(&self, expr: @ast::expr) -> ~str {
+    pub fn expr_to_str(&self, expr: @ast::expr) -> ~str {
         fmt!("expr(%?:%s)", expr.id,
              pprust::expr_to_str(expr, self.tcx().sess.intr()))
     }
 
-    fn block_region(&self) -> ty::Region {
+    pub fn block_region(&self) -> ty::Region {
         ty::re_scope(self.region_lb)
     }
 
     #[inline(always)]
-    fn write_ty(&self, node_id: ast::node_id, ty: ty::t) {
+    pub fn write_ty(&self, node_id: ast::node_id, ty: ty::t) {
         debug!("write_ty(%d, %s) in fcx %s",
                node_id, ppaux::ty_to_str(self.tcx(), ty), self.tag());
         self.inh.node_types.insert(node_id, ty);
     }
 
-    fn write_substs(&self, node_id: ast::node_id, substs: ty::substs) {
+    pub fn write_substs(&self, node_id: ast::node_id, substs: ty::substs) {
         if !ty::substs_is_noop(&substs) {
             debug!("write_substs(%d, %s) in fcx %s",
                    node_id,
@@ -741,18 +746,18 @@ pub impl FnCtxt {
         }
     }
 
-    fn write_ty_substs(&self,
-                       node_id: ast::node_id,
-                       ty: ty::t,
-                       substs: ty::substs) {
+    pub fn write_ty_substs(&self,
+                           node_id: ast::node_id,
+                           ty: ty::t,
+                           substs: ty::substs) {
         let ty = ty::subst(self.tcx(), &substs, ty);
         self.write_ty(node_id, ty);
         self.write_substs(node_id, substs);
     }
 
-    fn write_autoderef_adjustment(&self,
-                                  node_id: ast::node_id,
-                                  derefs: uint) {
+    pub fn write_autoderef_adjustment(&self,
+                                      node_id: ast::node_id,
+                                      derefs: uint) {
         if derefs == 0 { return; }
         self.write_adjustment(
             node_id,
@@ -762,36 +767,36 @@ pub impl FnCtxt {
         );
     }
 
-    fn write_adjustment(&self,
-                        node_id: ast::node_id,
-                        adj: @ty::AutoAdjustment) {
+    pub fn write_adjustment(&self,
+                            node_id: ast::node_id,
+                            adj: @ty::AutoAdjustment) {
         debug!("write_adjustment(node_id=%?, adj=%?)", node_id, adj);
         self.inh.adjustments.insert(node_id, adj);
     }
 
-    fn write_nil(&self, node_id: ast::node_id) {
+    pub fn write_nil(&self, node_id: ast::node_id) {
         self.write_ty(node_id, ty::mk_nil());
     }
-    fn write_bot(&self, node_id: ast::node_id) {
+    pub fn write_bot(&self, node_id: ast::node_id) {
         self.write_ty(node_id, ty::mk_bot());
     }
-    fn write_error(@mut self, node_id: ast::node_id) {
+    pub fn write_error(@mut self, node_id: ast::node_id) {
         self.write_ty(node_id, ty::mk_err());
     }
 
-    fn to_ty(&self, ast_t: @ast::Ty) -> ty::t {
+    pub fn to_ty(&self, ast_t: @ast::Ty) -> ty::t {
         ast_ty_to_ty(self, self, ast_t)
     }
 
-    fn expr_to_str(&self, expr: @ast::expr) -> ~str {
+    pub fn expr_to_str(&self, expr: @ast::expr) -> ~str {
         expr.repr(self.tcx())
     }
 
-    fn pat_to_str(&self, pat: @ast::pat) -> ~str {
+    pub fn pat_to_str(&self, pat: @ast::pat) -> ~str {
         pat.repr(self.tcx())
     }
 
-    fn expr_ty(&self, ex: @ast::expr) -> ty::t {
+    pub fn expr_ty(&self, ex: @ast::expr) -> ty::t {
         match self.inh.node_types.find(&ex.id) {
             Some(&t) => t,
             None => {
@@ -801,7 +806,8 @@ pub impl FnCtxt {
             }
         }
     }
-    fn node_ty(&self, id: ast::node_id) -> ty::t {
+
+    pub fn node_ty(&self, id: ast::node_id) -> ty::t {
         match self.inh.node_types.find(&id) {
             Some(&t) => t,
             None => {
@@ -814,7 +820,8 @@ pub impl FnCtxt {
             }
         }
     }
-    fn node_ty_substs(&self, id: ast::node_id) -> ty::substs {
+
+    pub fn node_ty_substs(&self, id: ast::node_id) -> ty::substs {
         match self.inh.node_type_substs.find(&id) {
             Some(ts) => (/*bad*/copy *ts),
             None => {
@@ -828,41 +835,32 @@ pub impl FnCtxt {
         }
     }
 
-    #[cfg(stage0)]
-    fn opt_node_ty_substs(&self, id: ast::node_id,
-                          f: &fn(&ty::substs) -> bool) {
-        match self.inh.node_type_substs.find(&id) {
-            Some(s) => { f(s); }
-            None => ()
-        }
-    }
-    #[cfg(not(stage0))]
-    fn opt_node_ty_substs(&self, id: ast::node_id,
-                          f: &fn(&ty::substs) -> bool) -> bool {
+    pub fn opt_node_ty_substs(&self,
+                              id: ast::node_id,
+                              f: &fn(&ty::substs) -> bool)
+                              -> bool {
         match self.inh.node_type_substs.find(&id) {
             Some(s) => f(s),
             None => true
         }
     }
 
-    fn mk_subty(&self,
-                a_is_expected: bool,
-                span: span,
-                sub: ty::t,
-                sup: ty::t)
-             -> Result<(), ty::type_err> {
+    pub fn mk_subty(&self,
+                    a_is_expected: bool,
+                    span: span,
+                    sub: ty::t,
+                    sup: ty::t)
+                    -> Result<(), ty::type_err> {
         infer::mk_subty(self.infcx(), a_is_expected, span, sub, sup)
     }
 
-    fn can_mk_subty(&self,
-                    sub: ty::t,
-                    sup: ty::t)
-                 -> Result<(), ty::type_err> {
+    pub fn can_mk_subty(&self, sub: ty::t, sup: ty::t)
+                        -> Result<(), ty::type_err> {
         infer::can_mk_subty(self.infcx(), sub, sup)
     }
 
-    fn mk_assignty(&self, expr: @ast::expr, sub: ty::t, sup: ty::t)
-                -> Result<(), ty::type_err> {
+    pub fn mk_assignty(&self, expr: @ast::expr, sub: ty::t, sup: ty::t)
+                       -> Result<(), ty::type_err> {
         match infer::mk_coercety(self.infcx(), false, expr.span, sub, sup) {
             Ok(None) => result::Ok(()),
             Err(ref e) => result::Err((*e)),
@@ -873,47 +871,31 @@ pub impl FnCtxt {
         }
     }
 
-    fn can_mk_assignty(&self,
-                       sub: ty::t,
-                       sup: ty::t)
-                    -> Result<(), ty::type_err> {
+    pub fn can_mk_assignty(&self, sub: ty::t, sup: ty::t)
+                           -> Result<(), ty::type_err> {
         infer::can_mk_coercety(self.infcx(), sub, sup)
     }
 
-    fn mk_eqty(&self,
-               a_is_expected: bool,
-               span: span,
-               sub: ty::t,
-               sup: ty::t)
-            -> Result<(), ty::type_err> {
+    pub fn mk_eqty(&self,
+                   a_is_expected: bool,
+                   span: span,
+                   sub: ty::t,
+                   sup: ty::t)
+                   -> Result<(), ty::type_err> {
         infer::mk_eqty(self.infcx(), a_is_expected, span, sub, sup)
     }
 
-    fn mk_subr(&self,
-               a_is_expected: bool,
-               span: span,
-               sub: ty::Region,
-               sup: ty::Region)
-            -> Result<(), ty::type_err> {
+    pub fn mk_subr(&self,
+                   a_is_expected: bool,
+                   span: span,
+                   sub: ty::Region,
+                   sup: ty::Region)
+                   -> Result<(), ty::type_err> {
         infer::mk_subr(self.infcx(), a_is_expected, span, sub, sup)
     }
 
-    fn require_unsafe(&self, sp: span, op: ~str) {
-        match self.ps.purity {
-          ast::unsafe_fn => {
-            // ok, but flag that we used the source of unsafeness
-            debug!("flagging %? as a used unsafe source", self.ps);
-            self.tcx().used_unsafe.insert(self.ps.def);
-          }
-          _ => {
-            self.ccx.tcx.sess.span_err(
-                sp,
-                fmt!("%s requires unsafe function or block", op));
-          }
-        }
-    }
-
-    fn with_region_lb<R>(@mut self, lb: ast::node_id, f: &fn() -> R) -> R {
+    pub fn with_region_lb<R>(@mut self, lb: ast::node_id, f: &fn() -> R)
+                             -> R {
         let old_region_lb = self.region_lb;
         self.region_lb = lb;
         let v = f();
@@ -921,26 +903,26 @@ pub impl FnCtxt {
         v
     }
 
-    fn region_var_if_parameterized(&self,
-                                   rp: Option<ty::region_variance>,
-                                   span: span)
-                                -> Option<ty::Region> {
+    pub fn region_var_if_parameterized(&self,
+                                       rp: Option<ty::region_variance>,
+                                       span: span)
+                                       -> Option<ty::Region> {
         rp.map(|_rp| self.infcx().next_region_var_nb(span))
     }
 
-    fn type_error_message(&self,
-                          sp: span,
-                          mk_msg: &fn(~str) -> ~str,
-                          actual_ty: ty::t,
-                          err: Option<&ty::type_err>) {
+    pub fn type_error_message(&self,
+                              sp: span,
+                              mk_msg: &fn(~str) -> ~str,
+                              actual_ty: ty::t,
+                              err: Option<&ty::type_err>) {
         self.infcx().type_error_message(sp, mk_msg, actual_ty, err);
     }
 
-    fn report_mismatched_return_types(&self,
-                                      sp: span,
-                                      e: ty::t,
-                                      a: ty::t,
-                                      err: &ty::type_err) {
+    pub fn report_mismatched_return_types(&self,
+                                          sp: span,
+                                          e: ty::t,
+                                          a: ty::t,
+                                          err: &ty::type_err) {
         // Derived error
         if ty::type_is_error(e) || ty::type_is_error(a) {
             return;
@@ -961,11 +943,11 @@ pub impl FnCtxt {
         }
     }
 
-    fn report_mismatched_types(&self,
-                               sp: span,
-                               e: ty::t,
-                               a: ty::t,
-                               err: &ty::type_err) {
+    pub fn report_mismatched_types(&self,
+                                   sp: span,
+                                   e: ty::t,
+                                   a: ty::t,
+                                   err: &ty::type_err) {
         self.infcx().report_mismatched_types(sp, e, a, err)
     }
 }
@@ -1053,8 +1035,11 @@ pub fn check_lit(fcx: @mut FnCtxt, lit: @ast::lit) -> ty::t {
 pub fn valid_range_bounds(ccx: @mut CrateCtxt,
                           from: @ast::expr,
                           to: @ast::expr)
-                       -> bool {
-    const_eval::compare_lit_exprs(ccx.tcx, from, to) <= 0
+                       -> Option<bool> {
+    match const_eval::compare_lit_exprs(ccx.tcx, from, to) {
+        Some(val) => Some(val <= 0),
+        None => None
+    }
 }
 
 pub fn check_expr_has_type(
@@ -1325,6 +1310,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
     // A generic function for doing all of the checking for call expressions
     fn check_call(fcx: @mut FnCtxt,
+                  callee_id: ast::node_id,
                   call_expr: @ast::expr,
                   f: @ast::expr,
                   args: &[@ast::expr],
@@ -1341,7 +1327,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         // now. Best thing would I think be to just have a separate
         // "callee table" that contains the FnSig and not a general
         // purpose ty::t
-        fcx.write_ty(call_expr.callee_id, fn_ty);
+        fcx.write_ty(callee_id, fn_ty);
 
         // Extract the function signature from `in_fty`.
         let fn_sty = structure_of(fcx, f.span, fn_ty);
@@ -1378,6 +1364,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
     // Checks a method call.
     fn check_method_call(fcx: @mut FnCtxt,
+                         callee_id: ast::node_id,
                          expr: @ast::expr,
                          rcvr: @ast::expr,
                          method_name: ast::ident,
@@ -1395,7 +1382,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         match method::lookup(fcx,
                              expr,
                              rcvr,
-                             expr.callee_id,
+                             callee_id,
                              method_name,
                              expr_t,
                              tps,
@@ -1419,12 +1406,12 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
                 // Add error type for the result
                 fcx.write_error(expr.id);
-                fcx.write_error(expr.callee_id);
+                fcx.write_error(callee_id);
             }
         }
 
         // Call the generic checker.
-        let fn_ty = fcx.node_ty(expr.callee_id);
+        let fn_ty = fcx.node_ty(callee_id);
         let ret_ty = check_method_argument_types(fcx, expr.span,
                                                  fn_ty, expr, args, sugar,
                                                  DontDerefArgs);
@@ -1459,6 +1446,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     }
 
     fn lookup_op_method(fcx: @mut FnCtxt,
+                        callee_id: ast::node_id,
                         op_ex: @ast::expr,
                         self_ex: @ast::expr,
                         self_t: ty::t,
@@ -1471,10 +1459,10 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                        )
                      -> ty::t {
         match method::lookup(fcx, op_ex, self_ex,
-                             op_ex.callee_id, opname, self_t, ~[],
+                             callee_id, opname, self_t, [],
                              deref_args, CheckTraitsOnly, autoderef_receiver) {
             Some(ref origin) => {
-                let method_ty = fcx.node_ty(op_ex.callee_id);
+                let method_ty = fcx.node_ty(callee_id);
                 let method_map = fcx.inh.method_map;
                 method_map.insert(op_ex.id, *origin);
                 check_method_argument_types(fcx, op_ex.span,
@@ -1496,6 +1484,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
     // could be either a expr_binop or an expr_assign_binop
     fn check_binop(fcx: @mut FnCtxt,
+                   callee_id: ast::node_id,
                    expr: @ast::expr,
                    op: ast::binop,
                    lhs: @ast::expr,
@@ -1551,7 +1540,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         }
 
-        let result_t = check_user_binop(fcx, expr, lhs, lhs_t, op, rhs,
+        let result_t = check_user_binop(fcx, callee_id, expr, lhs, lhs_t, op, rhs,
                                        expected_result);
         fcx.write_ty(expr.id, result_t);
         if ty::type_is_error(result_t) {
@@ -1560,6 +1549,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     }
 
     fn check_user_binop(fcx: @mut FnCtxt,
+                        callee_id: ast::node_id,
                         ex: @ast::expr,
                         lhs_expr: @ast::expr,
                         lhs_resolved_t: ty::t,
@@ -1576,7 +1566,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                              ast_util::binop_to_str(op), actual)},
                             lhs_resolved_t, None)
                 };
-                return lookup_op_method(fcx, ex, lhs_expr, lhs_resolved_t,
+                return lookup_op_method(fcx, callee_id, ex, lhs_expr, lhs_resolved_t,
                                        fcx.tcx().sess.ident_of(*name),
                                        ~[rhs], DoDerefArgs, DontAutoderefReceiver, if_op_unbound,
                                        expected_result);
@@ -1601,6 +1591,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
     }
 
     fn check_user_unop(fcx: @mut FnCtxt,
+                       callee_id: ast::node_id,
                        op_str: &str,
                        mname: &str,
                        ex: @ast::expr,
@@ -1609,7 +1600,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                        expected_t: Option<ty::t>)
                     -> ty::t {
        lookup_op_method(
-            fcx, ex, rhs_expr, rhs_t,
+            fcx, callee_id, ex, rhs_expr, rhs_t,
             fcx.tcx().sess.ident_of(mname), ~[],
             DoDerefArgs, DontAutoderefReceiver,
             || {
@@ -1817,7 +1808,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let mut class_field_map = HashMap::new();
         let mut fields_found = 0;
         for field_types.each |field| {
-            // XXX: Check visibility here.
             class_field_map.insert(field.ident, (field.id, false));
         }
 
@@ -1875,7 +1865,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     let (_, seen) = *class_field_map.get(&name);
                     if !seen {
                         missing_fields.push(
-                            ~"`" + *tcx.sess.str_of(name) + ~"`");
+                            ~"`" + *tcx.sess.str_of(name) + "`");
                     }
                 }
 
@@ -1886,7 +1876,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                        } else {
                                            "s"
                                        },
-                                       str::connect(missing_fields, ~", ")));
+                                       str::connect(missing_fields, ", ")));
              }
         }
 
@@ -2121,7 +2111,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     }
                     None => fcx.tcx().sess.impossible_case(
                         expr.span,
-                        ~"loop body must have an expected type")
+                        "loop body must have an expected type")
                 }
             }
         };
@@ -2237,8 +2227,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         let typ = check_lit(fcx, lit);
         fcx.write_ty(id, typ);
       }
-      ast::expr_binary(op, lhs, rhs) => {
-        check_binop(fcx, expr, op, lhs, rhs, expected);
+      ast::expr_binary(callee_id, op, lhs, rhs) => {
+        check_binop(fcx, callee_id, expr, op, lhs, rhs, expected);
         let lhs_ty = fcx.expr_ty(lhs);
         let rhs_ty = fcx.expr_ty(rhs);
         if ty::type_is_error(lhs_ty) ||
@@ -2250,8 +2240,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             fcx.write_bot(id);
         }
       }
-      ast::expr_assign_op(op, lhs, rhs) => {
-        check_binop(fcx, expr, op, lhs, rhs, expected);
+      ast::expr_assign_op(callee_id, op, lhs, rhs) => {
+        check_binop(fcx, callee_id, expr, op, lhs, rhs, expected);
         let lhs_t = fcx.expr_ty(lhs);
         let result_t = fcx.expr_ty(expr);
         demand::suptype(fcx, expr.span, result_t, lhs_t);
@@ -2264,7 +2254,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             fcx.write_nil(expr.id);
         }
       }
-      ast::expr_unary(unop, oprnd) => {
+      ast::expr_unary(callee_id, unop, oprnd) => {
         let exp_inner = do unpack_expected(fcx, expected) |sty| {
             match unop {
               ast::box(_) | ast::uniq(_) => match *sty {
@@ -2290,16 +2280,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 }
                 ast::deref => {
                     let sty = structure_of(fcx, expr.span, oprnd_t);
-                    match sty {
-                        // deref'ing an unsafe pointer requires that we be in
-                        // an unsafe context
-                        ty::ty_ptr(*) => {
-                            fcx.require_unsafe(
-                                expr.span,
-                                ~"dereference of unsafe pointer");
-                        }
-                        _ => { /*ok*/ }
-                    }
                     let operand_ty = ty::deref_sty(tcx, &sty, true);
                     match operand_ty {
                         Some(mt) => {
@@ -2333,7 +2313,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                                          oprnd_t);
                     if !(ty::type_is_integral(oprnd_t) ||
                          ty::get(oprnd_t).sty == ty::ty_bool) {
-                        oprnd_t = check_user_unop(fcx,
+                        oprnd_t = check_user_unop(fcx, callee_id,
                             "!", "not", expr, oprnd, oprnd_t,
                                                   expected);
                     }
@@ -2343,7 +2323,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                                          oprnd_t);
                     if !(ty::type_is_integral(oprnd_t) ||
                          ty::type_is_fp(oprnd_t)) {
-                        oprnd_t = check_user_unop(fcx,
+                        oprnd_t = check_user_unop(fcx, callee_id,
                             "-", "neg", expr, oprnd, oprnd_t, expected);
                     }
                 }
@@ -2397,8 +2377,6 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(id, ty_param_bounds_and_ty.ty);
       }
       ast::expr_inline_asm(ref ia) => {
-          fcx.require_unsafe(expr.span, ~"use of inline assembly");
-
           for ia.inputs.each |&(_, in)| {
               check_expr(fcx, in);
           }
@@ -2407,7 +2385,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
           }
           fcx.write_nil(id);
       }
-      ast::expr_mac(_) => tcx.sess.bug(~"unexpanded macro"),
+      ast::expr_mac(_) => tcx.sess.bug("unexpanded macro"),
       ast::expr_break(_) => { fcx.write_bot(id); }
       ast::expr_again(_) => { fcx.write_bot(id); }
       ast::expr_ret(expr_opt) => {
@@ -2561,7 +2539,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                 None => {
                     fcx.tcx().sess.impossible_case(
                         expr.span,
-                        ~"do body must have expected type")
+                        "do body must have expected type")
                 }
             }
         };
@@ -2581,7 +2559,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(id, fcx.node_ty(b.node.id));
       }
       ast::expr_call(f, ref args, sugar) => {
-          check_call(fcx, expr, f, *args, sugar);
+          check_call(fcx, expr.id, expr, f, *args, sugar);
           let f_ty = fcx.expr_ty(f);
           let (args_bot, args_err) = args.foldl((false, false),
              |&(rest_bot, rest_err), a| {
@@ -2596,8 +2574,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
               fcx.write_bot(id);
           }
       }
-      ast::expr_method_call(rcvr, ident, ref tps, ref args, sugar) => {
-        check_method_call(fcx, expr, rcvr, ident, *args, *tps, sugar);
+      ast::expr_method_call(callee_id, rcvr, ident, ref tps, ref args, sugar) => {
+        check_method_call(fcx, callee_id, expr, rcvr, ident, *args, *tps, sugar);
         let f_ty = fcx.expr_ty(rcvr);
         let arg_tys = args.map(|a| fcx.expr_ty(*a));
         let (args_bot, args_err) = arg_tys.foldl((false, false),
@@ -2779,7 +2757,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
       ast::expr_field(base, field, ref tys) => {
         check_field(fcx, expr, base, field, *tys);
       }
-      ast::expr_index(base, idx) => {
+      ast::expr_index(callee_id, base, idx) => {
           check_expr(fcx, base);
           check_expr(fcx, idx);
           let raw_base_t = fcx.expr_ty(base);
@@ -2813,6 +2791,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                                None);
                       };
                       let ret_ty = lookup_op_method(fcx,
+                                                    callee_id,
                                                     expr,
                                                     base,
                                                     resolved,
@@ -2921,7 +2900,7 @@ pub fn check_stmt(fcx: @mut FnCtxt, stmt: @ast::stmt)  {
         saw_bot |= ty::type_is_bot(expr_ty);
         saw_err |= ty::type_is_error(expr_ty);
       }
-      ast::stmt_mac(*) => fcx.ccx.tcx.sess.bug(~"unexpanded macro")
+      ast::stmt_mac(*) => fcx.ccx.tcx.sess.bug("unexpanded macro")
     }
     if saw_bot {
         fcx.write_bot(node_id);
@@ -2966,7 +2945,8 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
         let mut any_err = false;
         for blk.node.stmts.each |s| {
             check_stmt(fcx, *s);
-            let s_ty = fcx.node_ty(ast_util::stmt_id(*s));
+            let s_id = ast_util::stmt_id(*s);
+            let s_ty = fcx.node_ty(s_id);
             if last_was_bot && !warned && match s.node {
                   ast::stmt_decl(@codemap::spanned { node: ast::decl_local(_),
                                                  _}, _) |
@@ -2975,7 +2955,8 @@ pub fn check_block_with_expected(fcx: @mut FnCtxt,
                   }
                   _ => false
                 } {
-                fcx.ccx.tcx.sess.span_warn(s.span, "unreachable statement");
+                fcx.ccx.tcx.sess.add_lint(unreachable_code, s_id, s.span,
+                                          ~"unreachable statement");
                 warned = true;
             }
             if ty::type_is_bot(s_ty) {
@@ -3228,13 +3209,6 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
         };
       }
 
-      ast::def_fn(id, ast::unsafe_fn) |
-      ast::def_static_method(id, _, ast::unsafe_fn) => {
-        // Unsafe functions can only be touched in an unsafe context
-        fcx.require_unsafe(sp, ~"access to unsafe function");
-        return ty::lookup_item_type(fcx.ccx.tcx, id);
-      }
-
       ast::def_fn(id, _) | ast::def_static_method(id, _, _) |
       ast::def_const(id) | ast::def_variant(_, id) |
       ast::def_struct(id) => {
@@ -3456,122 +3430,176 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
 
     let tcx = ccx.tcx;
     let (n_tps, inputs, output) = match *ccx.tcx.sess.str_of(it.ident) {
-      ~"size_of" |
-      ~"pref_align_of" | ~"min_align_of" => (1u, ~[], ty::mk_uint()),
-      ~"init" => (1u, ~[], param(ccx, 0u)),
-      ~"uninit" => (1u, ~[], param(ccx, 0u)),
-      ~"forget" => (1u, ~[ param(ccx, 0) ], ty::mk_nil()),
-      ~"transmute" => (2, ~[ param(ccx, 0) ], param(ccx, 1)),
-      ~"move_val" | ~"move_val_init" => {
-          (1u,
+        ~"size_of" |
+        ~"pref_align_of" | ~"min_align_of" => (1u, ~[], ty::mk_uint()),
+        ~"init" => (1u, ~[], param(ccx, 0u)),
+        ~"uninit" => (1u, ~[], param(ccx, 0u)),
+        ~"forget" => (1u, ~[ param(ccx, 0) ], ty::mk_nil()),
+        ~"transmute" => (2, ~[ param(ccx, 0) ], param(ccx, 1)),
+        ~"move_val" | ~"move_val_init" => {
+            (1u,
+             ~[
+                ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), param(ccx, 0)),
+                param(ccx, 0u)
+              ],
+           ty::mk_nil())
+        }
+        ~"needs_drop" => (1u, ~[], ty::mk_bool()),
+
+        ~"atomic_cxchg"    | ~"atomic_cxchg_acq"| ~"atomic_cxchg_rel" => {
+          (0,
            ~[
-              ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), param(ccx, 0)),
-              param(ccx, 0u)
-            ],
-         ty::mk_nil())
-      }
-      ~"needs_drop" => (1u, ~[], ty::mk_bool()),
+              ty::mk_mut_rptr(tcx,
+                              ty::re_bound(ty::br_anon(0)),
+                              ty::mk_int()),
+              ty::mk_int(),
+              ty::mk_int()
+           ],
+           ty::mk_int())
+        }
+        ~"atomic_load"     | ~"atomic_load_acq" => {
+          (0,
+           ~[
+              ty::mk_imm_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int())
+           ],
+          ty::mk_int())
+        }
+        ~"atomic_store"    | ~"atomic_store_rel" => {
+          (0,
+           ~[
+              ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int()),
+              ty::mk_int()
+           ],
+           ty::mk_nil())
+        }
+        ~"atomic_xchg"     | ~"atomic_xadd"     | ~"atomic_xsub"     |
+        ~"atomic_xchg_acq" | ~"atomic_xadd_acq" | ~"atomic_xsub_acq" |
+        ~"atomic_xchg_rel" | ~"atomic_xadd_rel" | ~"atomic_xsub_rel" => {
+          (0,
+           ~[
+              ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int()),
+              ty::mk_int()
+           ],
+           ty::mk_int())
+        }
 
-      ~"atomic_cxchg"    | ~"atomic_cxchg_acq"| ~"atomic_cxchg_rel" => {
-        (0,
-         ~[
-            ty::mk_mut_rptr(tcx,
-                            ty::re_bound(ty::br_anon(0)),
-                            ty::mk_int()),
-            ty::mk_int(),
-            ty::mk_int()
-         ],
-         ty::mk_int())
-      }
-      ~"atomic_load"     | ~"atomic_load_acq" => {
-        (0,
-         ~[
-            ty::mk_imm_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int())
-         ],
-        ty::mk_int())
-      }
-      ~"atomic_store"    | ~"atomic_store_rel" => {
-        (0,
-         ~[
-            ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int()),
-            ty::mk_int()
-         ],
-         ty::mk_nil())
-      }
-      ~"atomic_xchg"     | ~"atomic_xadd"     | ~"atomic_xsub"     |
-      ~"atomic_xchg_acq" | ~"atomic_xadd_acq" | ~"atomic_xsub_acq" |
-      ~"atomic_xchg_rel" | ~"atomic_xadd_rel" | ~"atomic_xsub_rel" => {
-        (0,
-         ~[
-            ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int()),
-            ty::mk_int()
-         ],
-         ty::mk_int())
-      }
-
-      ~"get_tydesc" => {
-        // FIXME (#3730): return *intrinsic::tydesc, not *()
-        (1u, ~[], ty::mk_nil_ptr(ccx.tcx))
-      }
-      ~"visit_tydesc" => {
-        let tydesc_name = special_idents::tydesc;
-        assert!(tcx.intrinsic_defs.contains_key(&tydesc_name));
-        let (_, tydesc_ty) = tcx.intrinsic_defs.get_copy(&tydesc_name);
-        let (_, visitor_object_ty) = ty::visitor_object_ty(tcx);
-        let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
-            ty: tydesc_ty,
-            mutbl: ast::m_imm
-        });
-        (0, ~[ td_ptr, visitor_object_ty ], ty::mk_nil())
-      }
-      ~"frame_address" => {
-        let fty = ty::mk_closure(ccx.tcx, ty::ClosureTy {
-            purity: ast::impure_fn,
-            sigil: ast::BorrowedSigil,
-            onceness: ast::Once,
-            region: ty::re_bound(ty::br_anon(0)),
-            bounds: ty::EmptyBuiltinBounds(),
-            sig: ty::FnSig {
-                bound_lifetime_names: opt_vec::Empty,
-                inputs: ~[ty::mk_imm_ptr(ccx.tcx, ty::mk_mach_uint(ast::ty_u8))],
-                output: ty::mk_nil()
-            }
-        });
-        (0u, ~[fty], ty::mk_nil())
-      }
-      ~"morestack_addr" => {
-        (0u, ~[], ty::mk_nil_ptr(ccx.tcx))
-      }
-      ~"memmove32" => {
-        (0,
-         ~[
-            ty::mk_ptr(tcx, ty::mt {
-                ty: ty::mk_u8(),
-                mutbl: ast::m_mutbl
-            }),
-            ty::mk_ptr(tcx, ty::mt {
-                ty: ty::mk_u8(),
-                mutbl: ast::m_imm
-            }),
-            ty::mk_u32()
-         ],
-         ty::mk_nil())
-      }
-      ~"memmove64" => {
-        (0,
-         ~[
-            ty::mk_ptr(tcx, ty::mt {
-                ty: ty::mk_u8(),
-                mutbl: ast::m_mutbl
-            }),
-            ty::mk_ptr(tcx, ty::mt {
-                ty: ty::mk_u8(),
-                mutbl: ast::m_imm
-            }),
-            ty::mk_u64()
-         ],
-         ty::mk_nil())
-      }
+        ~"get_tydesc" => {
+          // FIXME (#3730): return *intrinsic::tydesc, not *()
+          (1u, ~[], ty::mk_nil_ptr(ccx.tcx))
+        }
+        ~"visit_tydesc" => {
+          let tydesc_name = special_idents::tydesc;
+          assert!(tcx.intrinsic_defs.contains_key(&tydesc_name));
+          let (_, tydesc_ty) = tcx.intrinsic_defs.get_copy(&tydesc_name);
+          let (_, visitor_object_ty) = ty::visitor_object_ty(tcx);
+          let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
+              ty: tydesc_ty,
+              mutbl: ast::m_imm
+          });
+          (0, ~[ td_ptr, visitor_object_ty ], ty::mk_nil())
+        }
+        ~"frame_address" => {
+          let fty = ty::mk_closure(ccx.tcx, ty::ClosureTy {
+              purity: ast::impure_fn,
+              sigil: ast::BorrowedSigil,
+              onceness: ast::Once,
+              region: ty::re_bound(ty::br_anon(0)),
+              bounds: ty::EmptyBuiltinBounds(),
+              sig: ty::FnSig {
+                  bound_lifetime_names: opt_vec::Empty,
+                  inputs: ~[ty::mk_imm_ptr(ccx.tcx, ty::mk_mach_uint(ast::ty_u8))],
+                  output: ty::mk_nil()
+              }
+          });
+          (0u, ~[fty], ty::mk_nil())
+        }
+        ~"morestack_addr" => {
+          (0u, ~[], ty::mk_nil_ptr(ccx.tcx))
+        }
+        ~"memcpy32" => {
+          (1,
+           ~[
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: param(ccx, 0),
+                  mutbl: ast::m_mutbl
+              }),
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: param(ccx, 0),
+                  mutbl: ast::m_imm
+              }),
+              ty::mk_u32()
+           ],
+           ty::mk_nil())
+        }
+        ~"memcpy64" => {
+          (1,
+           ~[
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: param(ccx, 0),
+                  mutbl: ast::m_mutbl
+              }),
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: param(ccx, 0),
+                  mutbl: ast::m_imm
+              }),
+              ty::mk_u64()
+           ],
+           ty::mk_nil())
+        }
+        ~"memmove32" => {
+          (1,
+           ~[
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: param(ccx, 0),
+                  mutbl: ast::m_mutbl
+              }),
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: param(ccx, 0),
+                  mutbl: ast::m_imm
+              }),
+              ty::mk_u32()
+           ],
+           ty::mk_nil())
+        }
+        ~"memmove64" => {
+          (1,
+           ~[
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: param(ccx, 0),
+                  mutbl: ast::m_mutbl
+              }),
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: param(ccx, 0),
+                  mutbl: ast::m_imm
+              }),
+              ty::mk_u64()
+           ],
+           ty::mk_nil())
+        }
+        ~"memset32" => {
+          (1,
+           ~[
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: param(ccx, 0),
+                  mutbl: ast::m_mutbl
+              }),
+              ty::mk_u8(),
+              ty::mk_u32()
+           ],
+           ty::mk_nil())
+        }
+        ~"memset64" => {
+          (1,
+           ~[
+              ty::mk_ptr(tcx, ty::mt {
+                  ty: param(ccx, 0),
+                  mutbl: ast::m_mutbl
+              }),
+              ty::mk_u8(),
+              ty::mk_u64()
+           ],
+           ty::mk_nil())
+        }
         ~"sqrtf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
         ~"sqrtf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
         ~"powif32" => {
@@ -3643,8 +3671,8 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
         ~"bswap64"  => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
         ref other => {
             tcx.sess.span_err(it.span,
-                              ~"unrecognized intrinsic function: `" +
-                              (*other) + ~"`");
+                              fmt!("unrecognized intrinsic function: `%s`",
+                                   *other));
             return;
         }
     };

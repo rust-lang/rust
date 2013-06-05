@@ -24,8 +24,8 @@ fn noise(a: animal) -> Option<~str> {
 }
 
 pub fn main() {
-    assert!(noise(cat(tabby)) == Some(~"meow"));
-    assert!(noise(dog(pug)) == Some(~"woof"));
-    assert!(noise(rabbit(~"Hilbert", upright)) == None);
-    assert!(noise(tiger) == Some(~"roar"));
+    assert_eq!(noise(cat(tabby)), Some(~"meow"));
+    assert_eq!(noise(dog(pug)), Some(~"woof"));
+    assert_eq!(noise(rabbit(~"Hilbert", upright)), None);
+    assert_eq!(noise(tiger), Some(~"roar"));
 }

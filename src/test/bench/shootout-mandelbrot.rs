@@ -1,7 +1,8 @@
-use core::cast::transmute;
-use core::from_str::FromStr;
-use core::i32::range;
-use core::libc::{STDOUT_FILENO, c_int, fdopen, fputc};
+use std::cast::transmute;
+use std::from_str::FromStr;
+use std::i32::range;
+use std::libc::{STDOUT_FILENO, c_int, fdopen, fputc};
+use std::os;
 
 static ITER: uint = 50;
 static LIMIT: f64 = 2.0;

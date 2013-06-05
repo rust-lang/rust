@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
+use core::option;
+use core::vec;
 use syntax::{ast, fold, attr};
 
 type in_cfg_pred = @fn(attrs: ~[ast::attribute]) -> bool;
@@ -134,8 +138,10 @@ fn fold_block(
 ) -> ast::blk_ {
     let filtered_stmts =
         b.stmts.filter_mapped(|a| filter_stmt(cx, *a));
+    let filtered_view_items =
+        b.view_items.filter_mapped(|a| filter_view_item(cx, *a));
     ast::blk_ {
-        view_items: /*bad*/copy b.view_items,
+        view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(*x)),
         stmts: vec::map(filtered_stmts, |x| fld.fold_stmt(*x)),
         expr: b.expr.map(|x| fld.fold_expr(*x)),
         id: b.id,
@@ -175,7 +181,7 @@ fn in_cfg(cfg: ast::crate_cfg, attrs: ~[ast::attribute]) -> bool {
 pub fn metas_in_cfg(cfg: ast::crate_cfg,
                     metas: ~[@ast::meta_item]) -> bool {
     // The "cfg" attributes on the item
-    let cfg_metas = attr::find_meta_items_by_name(metas, ~"cfg");
+    let cfg_metas = attr::find_meta_items_by_name(metas, "cfg");
 
     // Pull the inner meta_items from the #[cfg(meta_item, ...)]  attributes,
     // so we can match against them. This is the list of configurations for

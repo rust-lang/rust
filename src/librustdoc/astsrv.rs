@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -17,10 +17,13 @@ query AST-related information, shielding the rest of Rustdoc from its
 non-sendableness.
 */
 
+use core::prelude::*;
+
 use parse;
 
 use core::cell::Cell;
 use core::comm::{stream, SharedChan, Port};
+use core::task;
 use rustc::driver::driver;
 use rustc::driver::session::Session;
 use rustc::driver::session::{basic_options, options};
@@ -28,6 +31,8 @@ use rustc::front;
 use syntax::ast;
 use syntax::ast_map;
 use syntax;
+
+#[cfg(test)] use core::vec;
 
 pub struct Ctxt {
     ast: @ast::crate,
@@ -60,8 +65,8 @@ fn run<T>(owner: SrvOwner<T>, source: ~str, parse: Parser) -> T {
 
     let (po, ch) = stream();
 
-    let source = Cell(source);
-    let parse = Cell(parse);
+    let source = Cell::new(source);
+    let parse = Cell::new(parse);
     do task::spawn {
         act(&po, source.take(), parse.take());
     }
@@ -162,6 +167,6 @@ fn srv_should_return_request_result() {
     let source = ~"fn a() { }";
     do from_str(source) |srv| {
         let result = exec(srv, |_ctxt| 1000 );
-        assert!(result == 1000);
+        assert_eq!(result, 1000);
     }
 }

@@ -12,7 +12,9 @@
 
 // This test is specifically about spawning temporary closures.
 
-extern mod std;
+extern mod extra;
+
+use std::task;
 
 fn f() {
 }

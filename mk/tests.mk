@@ -14,7 +14,7 @@
 ######################################################################
 
 # The names of crates that must be tested
-TEST_TARGET_CRATES = core std
+TEST_TARGET_CRATES = std extra
 TEST_HOST_CRATES = syntax rustc rustdoc rusti rust rustpkg
 TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 
@@ -122,8 +122,18 @@ CFG_ADB_TEST_DIR=/data/tmp
 $(info check: android device test dir $(CFG_ADB_TEST_DIR) ready \
  $(shell adb remount 1>/dev/null) \
  $(shell adb shell mkdir $(CFG_ADB_TEST_DIR) 1>/dev/null) \
+ $(shell adb shell rm $(CFG_ADB_TEST_DIR)/*.so 1>/dev/null) \
+ $(shell adb shell rm $(CFG_ADB_TEST_DIR)/*-arm-linux-androideabi 1>/dev/null) \
+ $(shell adb shell rm $(CFG_ADB_TEST_DIR)/*-arm-linux-androideabi.* 1>/dev/null) \
+ $(shell adb push $(S)src/etc/adb_run_wrapper.sh $(CFG_ADB_TEST_DIR) 1>/dev/null) \
  $(shell adb push $(CFG_ANDROID_CROSS_PATH)/arm-linux-androideabi/lib/armv7-a/libgnustl_shared.so \
                   $(CFG_ADB_TEST_DIR) 1>/dev/null) \
+ $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD_TRIPLE))/$(CFG_RUNTIME_arm-linux-androideabi) \
+                  $(CFG_ADB_TEST_DIR)) \
+ $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD_TRIPLE))/$(STDLIB_GLOB_arm-linux-androideabi) \
+                  $(CFG_ADB_TEST_DIR)) \
+ $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD_TRIPLE))/$(EXTRALIB_GLOB_arm-linux-androideabi) \
+                  $(CFG_ADB_TEST_DIR)) \
  )
 else
 CFG_ADB_TEST_DIR=
@@ -148,7 +158,7 @@ check-test: cleantestlibs cleantmptestlogs all check-stage2-rfail
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 check-lite: cleantestlibs cleantmptestlogs \
-	check-stage2-core check-stage2-std check-stage2-rpass \
+	check-stage2-std check-stage2-extra check-stage2-rpass \
 	check-stage2-rfail check-stage2-cfail
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
@@ -281,22 +291,22 @@ $(foreach host,$(CFG_HOST_TRIPLES), \
 
 define TEST_RUNNER
 
-# If NO_REBUILD is set then break the dependencies on std so we can
-# test crates without rebuilding core and std first
+# If NO_REBUILD is set then break the dependencies on extra so we can
+# test crates without rebuilding std and extra first
 ifeq ($(NO_REBUILD),)
-STDTESTDEP_$(1)_$(2)_$(3) = $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_STDLIB_$(2))
+STDTESTDEP_$(1)_$(2)_$(3) = $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_EXTRALIB_$(2))
 else
 STDTESTDEP_$(1)_$(2)_$(3) =
 endif
 
-$(3)/stage$(1)/test/coretest-$(2)$$(X_$(2)):			\
-		$$(CORELIB_CRATE) $$(CORELIB_INPUTS)	\
+$(3)/stage$(1)/test/stdtest-$(2)$$(X_$(2)):			\
+		$$(STDLIB_CRATE) $$(STDLIB_INPUTS)	\
 		$$(STDTESTDEP_$(1)_$(2)_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
-$(3)/stage$(1)/test/stdtest-$(2)$$(X_$(2)):			\
-		$$(STDLIB_CRATE) $$(STDLIB_INPUTS)	\
+$(3)/stage$(1)/test/extratest-$(2)$$(X_$(2)):			\
+		$$(EXTRALIB_CRATE) $$(EXTRALIB_INPUTS)	\
 		$$(STDTESTDEP_$(1)_$(2)_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
@@ -307,6 +317,7 @@ $(3)/stage$(1)/test/syntaxtest-$(2)$$(X_$(2)):			\
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
+$(3)/stage$(1)/test/rustctest-$(2)$$(X_$(2)): CFG_COMPILER_TRIPLE = $(2)
 $(3)/stage$(1)/test/rustctest-$(2)$$(X_$(2)):					\
 		$$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM_$(2)) \
@@ -665,7 +676,7 @@ TEST_GROUPS = \
 	perf \
 	debuginfo \
 	doc \
-	$(foreach docname,$(DOC_TEST_NAMES),$(docname)) \
+	$(foreach docname,$(DOC_TEST_NAMES),doc-$(docname)) \
 	pretty \
 	pretty-rpass \
 	pretty-rpass-full \

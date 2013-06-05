@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use middle::freevars::freevar_entry;
 use middle::freevars;
 use middle::pat_util;
@@ -16,6 +18,7 @@ use middle::typeck;
 use util::ppaux::{Repr, ty_to_str};
 use util::ppaux::UserString;
 
+use core::vec;
 use syntax::ast::*;
 use syntax::attr::attrs_contains_name;
 use syntax::codemap::span;
@@ -68,7 +71,6 @@ pub fn check_crate(tcx: ty::ctxt,
         current_item: -1
     };
     let visit = visit::mk_vt(@visit::Visitor {
-        visit_arm: check_arm,
         visit_expr: check_expr,
         visit_fn: check_fn,
         visit_ty: check_ty,
@@ -122,7 +124,7 @@ fn check_item(item: @item, cx: Context, visitor: visit::vt<Context>) {
         match item.node {
             item_impl(_, Some(trait_ref), self_type, _) => {
                 match cx.tcx.def_map.find(&trait_ref.ref_id) {
-                    None => cx.tcx.sess.bug(~"trait ref not in def map!"),
+                    None => cx.tcx.sess.bug("trait ref not in def map!"),
                     Some(&trait_def) => {
                         let trait_def_id = ast_util::def_id_of_def(trait_def);
                         if cx.tcx.lang_items.drop_trait() == trait_def_id {
@@ -235,27 +237,13 @@ fn check_fn(
     visit::visit_fn(fk, decl, body, sp, fn_id, cx, v);
 }
 
-fn check_arm(a: &arm, cx: Context, v: visit::vt<Context>) {
-    for a.pats.each |p| {
-        do pat_util::pat_bindings(cx.tcx.def_map, *p) |mode, id, span, _pth| {
-            if mode == bind_by_copy {
-                let t = ty::node_id_to_type(cx.tcx, id);
-                let reason = "consider binding with `ref` or `move` instead";
-                check_copy(cx, t, span, reason);
-            }
-        }
-    }
-    visit::visit_arm(a, cx, v);
-}
-
 pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
     debug!("kind::check_expr(%s)", expr_to_str(e, cx.tcx.sess.intr()));
 
     // Handle any kind bounds on type parameters
-    let type_parameter_id = match e.node {
-        expr_index(*)|expr_assign_op(*)|
-        expr_unary(*)|expr_binary(*)|expr_method_call(*) => e.callee_id,
-        _ => e.id
+    let type_parameter_id = match e.get_callee_id() {
+        Some(callee_id) => callee_id,
+        None => e.id,
     };
     for cx.tcx.node_type_substs.find(&type_parameter_id).each |ts| {
         let type_param_defs = match e.node {
@@ -270,7 +258,7 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
             // Even though the callee_id may have been the id with
             // node_type_substs, e.id is correct here.
             ty::method_call_type_param_defs(cx.tcx, cx.method_map, e.id).expect(
-                ~"non path/method call expr has type substs??")
+                "non path/method call expr has type substs??")
           }
         };
         if ts.len() != type_param_defs.len() {
@@ -418,7 +406,7 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
         match ty::get(ty).sty {
           ty::ty_param(*) => {
             tcx.sess.span_err(sp, "value may contain borrowed \
-                                   pointers; use `'static` bound");
+                                   pointers; add `'static` bound");
           }
           _ => {
             tcx.sess.span_err(sp, "value may contain borrowed \

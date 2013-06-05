@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:can't find crate for `std`
+// error-pattern:can't find crate for `extra`
 
-extern mod std(complex(meta(item)));
+extern mod extra(complex(meta(item)));
 
 fn main() { }

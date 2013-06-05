@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // error-pattern: implement a trait or new type instead
-pub impl <T> Option<T> {
-    fn foo(&self) { }
+impl<T> Option<T> {
+    pub fn foo(&self) { }
 }
 
 fn main() { }

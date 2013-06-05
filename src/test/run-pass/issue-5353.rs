@@ -22,5 +22,3 @@ fn gl_err_str(err: u32) -> ~str
 }
 
 fn main() {}
-
-

@@ -25,9 +25,9 @@ impl Bar for A { fn g(&self) -> int { 20 } }
 impl Baz for A { fn h(&self) -> int { 30 } }
 
 fn f<T:Quux>(a: &T) {
-    assert!(a.f() == 10);
-    assert!(a.g() == 20);
-    assert!(a.h() == 30);
+    assert_eq!(a.f(), 10);
+    assert_eq!(a.g(), 20);
+    assert_eq!(a.h(), 30);
 }
 
 pub fn main() {

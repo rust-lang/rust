@@ -11,6 +11,9 @@
 
 // error-pattern:1 == 2
 
+use std::comm;
+use std::task;
+
 fn child() { assert!((1 == 2)); }
 
 fn parent() {

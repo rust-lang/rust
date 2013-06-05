@@ -10,11 +10,11 @@
 
 // xfail-fast
 
-#[no_core];
+#[no_std];
 
-extern mod core;
+extern mod std;
 
-use core::{str, int, vec};
+use std::{str, int, vec};
 
 trait to_str {
     fn to_str(&self) -> ~str;
@@ -26,7 +26,7 @@ impl to_str for int {
 
 impl<T:to_str> to_str for ~[T] {
     fn to_str(&self) -> ~str {
-        ~"[" + str::connect(vec::map(*self, |e| e.to_str() ), ~", ") + ~"]"
+        ~"[" + str::connect(vec::map(*self, |e| e.to_str() ), ", ") + "]"
     }
 }
 

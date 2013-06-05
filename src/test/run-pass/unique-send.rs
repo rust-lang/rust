@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::comm::*;
+use std::comm::*;
 
 pub fn main() {
     let (p, c) = stream();
     c.send(~100);
     let v = p.recv();
-    assert!(v == ~100);
+    assert_eq!(v, ~100);
 }

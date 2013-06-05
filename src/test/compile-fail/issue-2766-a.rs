@@ -11,10 +11,10 @@
 pub mod stream {
     pub enum Stream<T:Owned> { send(T, ::stream::server::Stream<T>), }
     pub mod server {
-        use core::option;
-        use core::pipes;
+        use std::option;
+        use std::pipes;
 
-        pub impl<T:Owned> Stream<T> {
+        impl<T:Owned> Stream<T> {
             pub fn recv() -> extern fn(v: Stream<T>) -> ::stream::Stream<T> {
               // resolve really should report just one error here.
               // Change the test case when it changes.

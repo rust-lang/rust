@@ -18,11 +18,17 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-extern mod std(vers = "0.7-pre");
-extern mod rustc(vers = "0.7-pre");
-extern mod syntax(vers = "0.7-pre");
+#[no_std];
 
+extern mod core(name = "std");
+extern mod std(name = "extra");
+
+extern mod rustc;
+extern mod syntax;
+
+use core::prelude::*;
 use core::*;
+
 use core::cell::Cell;
 use rustc::driver::{driver, session};
 use syntax::{ast, diagnostic};
@@ -74,7 +80,7 @@ fn record(mut repl: Repl, blk: &ast::blk, intr: @token::ident_interner) -> Repl 
         let new_view_items = do with_pp(intr) |pp, writer| {
             for blk.node.view_items.each |view_item| {
                 pprust::print_view_item(pp, *view_item);
-                writer.write_line(~"");
+                writer.write_line("");
             }
         };
 
@@ -88,7 +94,7 @@ fn record(mut repl: Repl, blk: &ast::blk, intr: @token::ident_interner) -> Repl 
                 match stmt.node {
                     ast::stmt_decl(*) | ast::stmt_mac(*) => {
                         pprust::print_stmt(pp, *stmt);
-                        writer.write_line(~"");
+                        writer.write_line("");
                     }
                     ast::stmt_expr(expr, _) | ast::stmt_semi(expr, _) => {
                         match expr.node {
@@ -115,7 +121,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
     let options = @session::options {
         crate_type: session::unknown_crate,
         binary: binary,
-        addl_lib_search_paths: repl.lib_search_paths.map(|p| Path(*p)),
+        addl_lib_search_paths: @mut repl.lib_search_paths.map(|p| Path(*p)),
         jit: true,
         .. copy *session::basic_options()
     };
@@ -136,11 +142,13 @@ fn run(repl: Repl, input: ~str) -> Repl {
                                           binary,
                                           &wrapped);
 
-    let outputs = driver::build_output_filenames(&wrapped, &None, &None, sess);
+    let outputs = driver::build_output_filenames(&wrapped, &None, &None, [], sess);
     debug!("calling compile_upto");
-    let (crate, _) = driver::compile_upto(sess, cfg, &wrapped,
-                                          driver::cu_everything,
-                                          Some(outputs));
+
+    let crate = driver::parse_input(sess, copy cfg, &wrapped);
+    driver::compile_rest(sess, cfg, driver::compile_upto { from: driver::cu_parse,
+                                                           to: driver::cu_everything },
+                          Some(outputs), Some(crate));
 
     let mut opt = None;
 
@@ -181,7 +189,7 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
         let binary = @copy binary;
         let options = @session::options {
             binary: binary,
-            addl_lib_search_paths: ~[os::getcwd()],
+            addl_lib_search_paths: @mut ~[os::getcwd()],
             .. copy *session::basic_options()
         };
         let input = driver::file_input(copy src_path);
@@ -189,7 +197,7 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
         *sess.building_library = true;
         let cfg = driver::build_configuration(sess, binary, &input);
         let outputs = driver::build_output_filenames(
-            &input, &None, &None, sess);
+            &input, &None, &None, [], sess);
         // If the library already exists and is newer than the source
         // file, skip compilation and return None.
         let mut should_compile = true;
@@ -216,7 +224,7 @@ fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
             None => { },
         }
         if (should_compile) {
-            io::println(fmt!("compiling %s...", src_filename));
+            println(fmt!("compiling %s...", src_filename));
             driver::compile_upto(sess, cfg, &input, driver::cu_everything,
                                  Some(outputs));
             true
@@ -264,13 +272,12 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             //rl::clear();
         }
         ~"help" => {
-            io::println(
-                ~":{\\n ..lines.. \\n:}\\n - execute multiline command\n" +
-                ~":load <crate> ... - \
-                  loads given crates as dynamic libraries\n" +
-                ~":clear - clear the bindings\n" +
-                ~":exit - exit from the repl\n" +
-                ~":help - show this message");
+            println(
+                ":{\\n ..lines.. \\n:}\\n - execute multiline command\n\
+                 :load <crate> ... - loads given crates as dynamic libraries\n\
+                 :clear - clear the bindings\n\
+                 :exit - exit from the repl\n\
+                 :help - show this message");
         }
         ~"load" => {
             let mut loaded_crates: ~[~str] = ~[];
@@ -298,9 +305,9 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 }
             }
             if loaded_crates.is_empty() {
-                io::println("no crates loaded");
+                println("no crates loaded");
             } else {
-                io::println(fmt!("crates loaded: %s",
+                println(fmt!("crates loaded: %s",
                                  str::connect(loaded_crates, ", ")));
             }
         }
@@ -311,17 +318,17 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 match get_line(use_rl, "rusti| ") {
                     None => fail!("unterminated multiline command :{ .. :}"),
                     Some(line) => {
-                        if str::trim(line) == ~":}" {
+                        if str::trim(line) == ":}" {
                             end_multiline = true;
                         } else {
-                            multiline_cmd += line + ~"\n";
+                            multiline_cmd += line + "\n";
                         }
                     }
                 }
             }
             action = action_run_line(multiline_cmd);
         }
-        _ => io::println(~"unknown cmd: " + cmd)
+        _ => println(~"unknown cmd: " + cmd)
     }
     return action;
 }
@@ -358,8 +365,8 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
         }
     }
 
-    let line = Cell(line);
-    let r = Cell(copy *repl);
+    let line = Cell::new(line);
+    let r = Cell::new(copy *repl);
     let result = do task::try {
         run(r.take(), line.take())
     };
@@ -387,9 +394,9 @@ pub fn main() {
 
     // only print this stuff if the user is actually typing into rusti
     if istty {
-        io::println("WARNING: The Rust REPL is experimental and may be");
-        io::println("unstable. If you encounter problems, please use the");
-        io::println("compiler instead.");
+        println("WARNING: The Rust REPL is experimental and may be");
+        println("unstable. If you encounter problems, please use the");
+        println("compiler instead. Type :help for help.");
 
         unsafe {
             do rl::complete |line, suggest| {
@@ -409,7 +416,7 @@ pub fn main() {
             Some(line) => {
                 if line.is_empty() {
                     if istty {
-                        io::println(~"()");
+                        println("()");
                     }
                     loop;
                 }
@@ -425,6 +432,7 @@ pub fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::io;
 
     fn repl() -> Repl {
         Repl {
@@ -446,8 +454,9 @@ mod tests {
         }
     }
 
-    #[test] #[ignore]
+    #[test]
     fn run_all() {
+        // FIXME(#6511):
         // By default, unit tests are run in parallel. Rusti, on the other hand,
         // does not enjoy doing this. I suspect that it is because the LLVM
         // bindings are not thread-safe (when running parallel tests, some tests
@@ -460,7 +469,7 @@ mod tests {
         run_cmds([""]);
 
         debug!("regression test for #5937");
-        run_cmds(["use core;", ""]);
+        run_cmds(["use std;", ""]);
 
         debug!("regression test for #5784");
         run_cmds(["let a = 1;"]);

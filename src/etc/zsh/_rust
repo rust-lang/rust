@@ -1,0 +1,102 @@
+#compdef rustc
+
+local -a _rustc_opts_switches _rustc_opts_lint _rustc_opts_debug
+
+typeset -A opt_args
+
+_rustc_opts_switches=(
+    --bin'[Compile an executable crate (default)]'
+    -c'[Compile and assemble, but do not link]'
+    --cfg'[Configure the compilation environment]'
+    --emit-llvm'[Produce an LLVM bitcode file]'
+    {-h,--help}'[Display this message]'
+    -L'[Add a directory to the library search path]'
+    --lib'[Compile a library crate]'
+    --linker'[Program to use for linking instead of the default.]'
+    --link-args'[FLAGS is a space-separated list of flags passed to the linker]'
+    --ls'[List the symbols defined by a library crate]'
+    --no-trans'[Run all passes except translation; no output]'
+    -O'[Equivalent to --opt-level=2]'
+    -o'[Write output to <filename>]'
+    --opt-level'[Optimize with possible levels 0-3]'
+    --out-dir'[Write output to compiler-chosen filename in <dir>]'
+    --parse-only'[Parse only; do not compile, assemble, or link]'
+    --pretty'[Pretty-print the input instead of compiling]'
+    -S'[Compile only; do not assemble or link]'
+    --save-temps'[Write intermediate files (.bc, .opt.bc, .o) in addition to normal output]'
+    --sysroot'[Override the system root]'
+    --test'[Build a test harness]'
+    --target'[Target triple cpu-manufacturer-kernel\[-os\] to compile]'
+    --target-feature'[Target specific attributes (llc -mattr=help for detail)]'
+    --android-cross-path'[The path to the Android NDK]'
+    {-W,--warn}'[Set lint warnings]'
+    {-A,--allow}'[Set lint allowed]'
+    {-D,--deny}'[Set lint denied]'
+    {-F,--forbid}'[Set lint forbidden]'
+    -Z'[Set internal debugging options]'
+    {-v,--version}'[Print version info and exit]'
+)
+
+_rustc_opts_lint=(
+    'path-statement:path statements with no effect'
+    'deprecated-pattern:warn about deprecated uses of pattern bindings'
+    'non-implicitly-copyable-typarams:passing non implicitly copyable types as copy type params'
+    'missing-trait-doc:detects missing documentation for traits'
+    'missing-struct-doc:detects missing documentation for structs'
+    'ctypes:proper use of core::libc types in foreign modules'
+    'implicit-copies:implicit copies of non implicitly copyable data'
+    "unused-mut:detect mut variables which don't need to be mutable"
+    'unused-imports:imports that are never used'
+    'heap-memory:use of any (~ type or @ type) heap memory'
+    'default-methods:allow default methods'
+    'unused-variable:detect variables which are not used in any way'
+    'dead-assignment:detect assignments that will never be read'
+    'unrecognized-lint:unrecognized lint attribute'
+    'type-limits:comparisons made useless by limits of the types involved'
+    'unused-unsafe:unnecessary use of an `unsafe` block'
+    'while-true:suggest using loop { } instead of while(true) { }'
+    'non-camel-case-types:types, variants and traits should have camel case names'
+    'managed-heap-memory:use of managed (@ type) heap memory'
+    'unnecessary-allocation:detects unnecessary allocations that can be eliminated'
+    'owned-heap-memory:use of owned (~ type) heap memory'
+)
+
+_rustc_opts_debug=(
+    'verbose:in general, enable more debug printouts'
+    'time-passes:measure time of each rustc pass'
+    'count-llvm-insns:count where LLVM instrs originate'
+    'time-llvm-passes:measure time of each LLVM pass'
+    'trans-stats:gather trans statistics'
+    'asm-comments:generate comments into the assembly (may change behavior)'
+    'no-verify:skip LLVM verification'
+    'trace:emit trace logs'
+    'coherence:perform coherence checking'
+    'borrowck-stats:gather borrowck statistics'
+    "borrowck-note-pure:note where purity is req'd"
+    "borrowck-note-loan:note where loans are req'd"
+    'no-landing-pads:omit landing pads for unwinding'
+    'debug-llvm:enable debug output from LLVM'
+    'count-type-sizes:count the sizes of aggregate types'
+    'meta-stats:gather metadata statistics'
+    'no-opt:do not optimize, even if -O is passed'
+    'no-monomorphic-collapse:do not collapse template instantiations'
+    'print-link-args:Print the arguments passed to the linker'
+    'gc:Garbage collect shared data (experimental)'
+    'jit:Execute using JIT (experimental)'
+    'extra-debug-info:Extra debugging info (experimental)'
+    'debug-info:Produce debug info (experimental)'
+    'static:Use or produce static libraries or binaries (experimental)'
+    'no-debug-borrows:do not show where borrow checks fail'
+    'lint-llvm:Run the LLVM lint pass on the pre-optimization IR'
+)
+
+_rustc() {
+    case $words[2] in
+        -[WADF]) _describe 'options' _rustc_opts_lint ;;
+        -Z) _describe 'options' _rustc_opts_debug ;;
+        -)  _arguments -s -w : "$_rustc_opts_switches[@]" ;;
+        *) _files -g "*.rs" ;;
+  esac
+}
+
+_rustc "$@"

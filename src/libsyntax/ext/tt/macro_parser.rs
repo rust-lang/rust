@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // Earley-like parser for macros.
+
+use core::prelude::*;
+
 use ast;
 use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 use codemap::{BytePos, mk_sp};
@@ -20,6 +23,9 @@ use parse::token::{Token, EOF, to_str, nonterminal};
 use parse::token;
 
 use core::hashmap::HashMap;
+use core::str;
+use core::uint;
+use core::vec;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it
@@ -371,7 +377,7 @@ pub fn parse(
                              *sess.interner.get(bind))
                       }
                       _ => fail!()
-                    } }), ~" or ");
+                    } }), " or ");
                 return error(sp, fmt!(
                     "Local ambiguity: multiple parsing options: \
                      built-in NTs %s or %u other options.",
@@ -413,11 +419,11 @@ pub fn parse_nt(p: &Parser, name: &str) -> nonterminal {
     match name {
       "item" => match p.parse_item(~[]) {
         Some(i) => token::nt_item(i),
-        None => p.fatal(~"expected an item keyword")
+        None => p.fatal("expected an item keyword")
       },
       "block" => token::nt_block(p.parse_block()),
       "stmt" => token::nt_stmt(p.parse_stmt(~[])),
-      "pat" => token::nt_pat(p.parse_pat(true)),
+      "pat" => token::nt_pat(p.parse_pat()),
       "expr" => token::nt_expr(p.parse_expr()),
       "ty" => token::nt_ty(p.parse_ty(false /* no need to disambiguate*/)),
       // this could be handled like a token, since it is one

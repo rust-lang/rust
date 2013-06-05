@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::cmp::Eq;
+use std::cmp::Eq;
 
 trait Hahaha: Eq + Eq + Eq + Eq + Eq + //~ ERROR Duplicate supertrait
               Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq + Eq +
@@ -31,8 +31,8 @@ impl Eq for Lol {
 
 fn main() {
     if Lol(2) == Lol(4) {
-        io::println("2 == 4");
+        println("2 == 4");
     } else {
-        io::println("2 != 4");
+        println("2 != 4");
     }
 }

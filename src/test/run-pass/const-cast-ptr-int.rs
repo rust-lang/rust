@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::ptr;
+
 static a: *u8 = 0 as *u8;
 
 pub fn main() {
-    assert!(a == ptr::null());
+    assert_eq!(a, ptr::null());
 }

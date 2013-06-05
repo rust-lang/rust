@@ -22,10 +22,10 @@ fn main() {
     let b: clam = clam{x: @10, y: @20};
     let z: int = a.x + b.y; //~ ERROR binary operation + cannot be applied to type `@int`
     debug!(z);
-    assert!((z == 21));
+    assert_eq!(z, 21);
     let forty: fish = fish{a: @40};
     let two: fish = fish{a: @2};
     let answer: int = forty.a + two.a;  //~ ERROR binary operation + cannot be applied to type `@int`
     debug!(answer);
-    assert!((answer == 42));
+    assert_eq!(answer, 42);
 }

@@ -10,6 +10,9 @@
 
 // error-pattern:goodfail
 
+use std::comm;
+use std::task;
+
 fn goodfail() {
     task::yield();
     fail!("goodfail");

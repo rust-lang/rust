@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::io;
 
 struct Pair<'self> { a: int, b: &'self int }
 
@@ -18,6 +19,6 @@ static y: &'static Pair<'static> = &Pair {a: 15, b: x};
 pub fn main() {
     io::println(fmt!("x = %?", *x));
     io::println(fmt!("y = {a: %?, b: %?}", y.a, *(y.b)));
-    assert!(*x == 10);
-    assert!(*(y.b) == 10);
+    assert_eq!(*x, 10);
+    assert_eq!(*(y.b), 10);
 }

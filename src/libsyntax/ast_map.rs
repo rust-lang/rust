@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use abi::AbiSet;
 use ast::*;
 use ast;
@@ -20,7 +22,10 @@ use print::pprust;
 use visit;
 use syntax::parse::token::special_idents;
 
+use core::cmp;
 use core::hashmap::HashMap;
+use core::str;
+use core::vec;
 
 pub enum path_elt {
     path_mod(ident),
@@ -107,7 +112,7 @@ pub struct Ctx {
 pub type vt = visit::vt<@mut Ctx>;
 
 pub fn extend(cx: @mut Ctx, elt: ident) -> @path {
-    @(vec::append(copy cx.path, ~[path_name(elt)]))
+    @(vec::append(copy cx.path, [path_name(elt)]))
 }
 
 pub fn mk_ast_map_visitor() -> vt {
@@ -312,17 +317,9 @@ pub fn map_struct_def(
 
 pub fn map_expr(ex: @expr, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
     cx.map.insert(ex.id, node_expr(ex));
-    match ex.node {
-        // Expressions which are or might be calls:
-        ast::expr_call(*) |
-        ast::expr_method_call(*) |
-        ast::expr_index(*) |
-        ast::expr_binary(*) |
-        ast::expr_assign_op(*) |
-        ast::expr_unary(*) => {
-            cx.map.insert(ex.callee_id, node_callee_scope(ex));
-        }
-        _ => {}
+    // Expressions which are or might be calls:
+    for ex.get_callee_id().each |callee_id| {
+        cx.map.insert(*callee_id, node_callee_scope(ex));
     }
     visit::visit_expr(ex, cx, v);
 }

@@ -64,6 +64,8 @@ we may want to adjust precisely when coercions occur.
 
 */
 
+use core::prelude::*;
+
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowFn};
 use middle::ty::{AutoDerefRef};
 use middle::ty::{vstore_slice, vstore_box, vstore_uniq};
@@ -84,8 +86,8 @@ use syntax::ast;
 // function.
 pub struct Coerce(CombineFields);
 
-pub impl Coerce {
-    fn tys(&self, a: ty::t, b: ty::t) -> CoerceResult {
+impl Coerce {
+    pub fn tys(&self, a: ty::t, b: ty::t) -> CoerceResult {
         debug!("Coerce.tys(%s => %s)",
                a.inf_str(self.infcx),
                b.inf_str(self.infcx));
@@ -147,17 +149,17 @@ pub impl Coerce {
         }
     }
 
-    fn subtype(&self, a: ty::t, b: ty::t) -> CoerceResult {
+    pub fn subtype(&self, a: ty::t, b: ty::t) -> CoerceResult {
         match Sub(**self).tys(a, b) {
             Ok(_) => Ok(None),         // No coercion required.
             Err(ref e) => Err(*e)
         }
     }
 
-    fn unpack_actual_value(&self,
-                           a: ty::t,
-                           f: &fn(&ty::sty) -> CoerceResult) -> CoerceResult
-    {
+    pub fn unpack_actual_value(&self,
+                               a: ty::t,
+                               f: &fn(&ty::sty) -> CoerceResult)
+                               -> CoerceResult {
         match resolve_type(self.infcx, a, try_resolve_tvar_shallow) {
             Ok(t) => {
                 f(&ty::get(t).sty)
@@ -171,12 +173,12 @@ pub impl Coerce {
         }
     }
 
-    fn coerce_borrowed_pointer(&self,
-                               a: ty::t,
-                               sty_a: &ty::sty,
-                               b: ty::t,
-                               mt_b: ty::mt) -> CoerceResult
-    {
+    pub fn coerce_borrowed_pointer(&self,
+                                   a: ty::t,
+                                   sty_a: &ty::sty,
+                                   b: ty::t,
+                                   mt_b: ty::mt)
+                                   -> CoerceResult {
         debug!("coerce_borrowed_pointer(a=%s, sty_a=%?, b=%s, mt_b=%?)",
                a.inf_str(self.infcx), sty_a,
                b.inf_str(self.infcx), mt_b);
@@ -209,11 +211,11 @@ pub impl Coerce {
         })))
     }
 
-    fn coerce_borrowed_string(&self,
-                              a: ty::t,
-                              sty_a: &ty::sty,
-                              b: ty::t) -> CoerceResult
-    {
+    pub fn coerce_borrowed_string(&self,
+                                  a: ty::t,
+                                  sty_a: &ty::sty,
+                                  b: ty::t)
+                                  -> CoerceResult {
         debug!("coerce_borrowed_string(a=%s, sty_a=%?, b=%s)",
                a.inf_str(self.infcx), sty_a,
                b.inf_str(self.infcx));
@@ -235,12 +237,12 @@ pub impl Coerce {
         })))
     }
 
-    fn coerce_borrowed_vector(&self,
-                              a: ty::t,
-                              sty_a: &ty::sty,
-                              b: ty::t,
-                              mt_b: ty::mt) -> CoerceResult
-    {
+    pub fn coerce_borrowed_vector(&self,
+                                  a: ty::t,
+                                  sty_a: &ty::sty,
+                                  b: ty::t,
+                                  mt_b: ty::mt)
+                                  -> CoerceResult {
         debug!("coerce_borrowed_vector(a=%s, sty_a=%?, b=%s)",
                a.inf_str(self.infcx), sty_a,
                b.inf_str(self.infcx));
@@ -264,11 +266,11 @@ pub impl Coerce {
         })))
     }
 
-    fn coerce_borrowed_fn(&self,
-                          a: ty::t,
-                          sty_a: &ty::sty,
-                          b: ty::t) -> CoerceResult
-    {
+    pub fn coerce_borrowed_fn(&self,
+                              a: ty::t,
+                              sty_a: &ty::sty,
+                              b: ty::t)
+                              -> CoerceResult {
         debug!("coerce_borrowed_fn(a=%s, sty_a=%?, b=%s)",
                a.inf_str(self.infcx), sty_a,
                b.inf_str(self.infcx));
@@ -300,22 +302,22 @@ pub impl Coerce {
         })))
     }
 
-    fn coerce_from_bare_fn(&self,
-                           a: ty::t,
-                           fn_ty_a: &ty::BareFnTy,
-                           b: ty::t) -> CoerceResult
-    {
+    pub fn coerce_from_bare_fn(&self,
+                               a: ty::t,
+                               fn_ty_a: &ty::BareFnTy,
+                               b: ty::t)
+                               -> CoerceResult {
         do self.unpack_actual_value(b) |sty_b| {
             self.coerce_from_bare_fn_post_unpack(a, fn_ty_a, b, sty_b)
         }
     }
 
-    fn coerce_from_bare_fn_post_unpack(&self,
-                                       a: ty::t,
-                                       fn_ty_a: &ty::BareFnTy,
-                                       b: ty::t,
-                                       sty_b: &ty::sty) -> CoerceResult
-    {
+    pub fn coerce_from_bare_fn_post_unpack(&self,
+                                           a: ty::t,
+                                           fn_ty_a: &ty::BareFnTy,
+                                           b: ty::t,
+                                           sty_b: &ty::sty)
+                                           -> CoerceResult {
         /*!
          *
          * Attempts to coerce from a bare Rust function (`extern
@@ -344,12 +346,12 @@ pub impl Coerce {
         Ok(Some(adj))
     }
 
-    fn coerce_unsafe_ptr(&self,
-                         a: ty::t,
-                         sty_a: &ty::sty,
-                         b: ty::t,
-                         mt_b: ty::mt) -> CoerceResult
-    {
+    pub fn coerce_unsafe_ptr(&self,
+                             a: ty::t,
+                             sty_a: &ty::sty,
+                             b: ty::t,
+                             mt_b: ty::mt)
+                             -> CoerceResult {
         debug!("coerce_unsafe_ptr(a=%s, sty_a=%?, b=%s)",
                a.inf_str(self.infcx), sty_a,
                b.inf_str(self.infcx));

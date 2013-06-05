@@ -34,5 +34,5 @@ fn cbar(x: int) -> cbar {
 
 pub fn main() {
     let x: int = foo::<int, cbar>(cbar(5));
-    assert!(x == 5);
+    assert_eq!(x, 5);
 }

@@ -15,5 +15,7 @@ extern mod anonexternmod;
 use anonexternmod::*;
 
 pub fn main() {
-  rust_get_argc();
+    unsafe {
+        rust_get_argc();
+    }
 }

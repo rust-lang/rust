@@ -10,12 +10,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::util;
+use std::util;
 
 // tjc: I don't know why
 pub mod pipes {
-    use core::util;
-    use core::cast::{forget, transmute};
+    use std::cast::{forget, transmute};
+    use std::cast;
+    use std::task;
+    use std::util;
 
     pub struct Stuff<T> {
         state: state,
@@ -54,7 +56,7 @@ pub mod pipes {
       pub fn atomic_xchg_rel(_dst: &mut int, _src: int) -> int { fail!(); }
     }
 
-    // We should consider moving this to ::core::unsafe, although I
+    // We should consider moving this to ::std::unsafe, although I
     // suspect graydon would want us to use void pointers instead.
     pub unsafe fn uniquify<T>(x: *T) -> ~T {
         unsafe { cast::transmute(x) }
@@ -111,7 +113,7 @@ pub mod pipes {
                 return Some(payload.unwrap())
               }
               terminated => {
-                assert!(old_state == terminated);
+                assert_eq!(old_state, terminated);
                 return None;
               }
             }
@@ -170,8 +172,8 @@ pub mod pipes {
         }
     }
 
-    pub impl<T:Owned> send_packet<T> {
-        fn unwrap(&mut self) -> *packet<T> {
+    impl<T:Owned> send_packet<T> {
+        pub fn unwrap(&mut self) -> *packet<T> {
             util::replace(&mut self.p, None).unwrap()
         }
     }
@@ -200,8 +202,8 @@ pub mod pipes {
         }
     }
 
-    pub impl<T:Owned> recv_packet<T> {
-        fn unwrap(&mut self) -> *packet<T> {
+    impl<T:Owned> recv_packet<T> {
+        pub fn unwrap(&mut self) -> *packet<T> {
             util::replace(&mut self.p, None).unwrap()
         }
     }
@@ -219,9 +221,9 @@ pub mod pipes {
 }
 
 pub mod pingpong {
-    use core::cast;
-    use core::ptr;
-    use core::util;
+    use std::cast;
+    use std::ptr;
+    use std::util;
 
     pub struct ping(::pipes::send_packet<pong>);
     pub struct pong(::pipes::send_packet<ping>);
@@ -253,7 +255,7 @@ pub mod pingpong {
     }
 
     pub mod client {
-        use core::option;
+        use std::option;
         use pingpong;
 
         pub type ping = ::pipes::send_packet<pingpong::ping>;
@@ -316,8 +318,8 @@ pub fn main() {
 //    Commented out because of option::get error
 
     let (client_, server_) = pingpong::init();
-    let client_ = Cell(client_);
-    let server_ = Cell(server_);
+    let client_ = Cell::new(client_);
+    let server_ = Cell::new(server_);
 
     task::spawn {|client_|
         let client__ = client_.take();

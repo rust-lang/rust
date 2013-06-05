@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::io;
+
 static x : [int, ..4] = [1,2,3,4];
 static p : int = x[2];
 static y : &'static [int] = &[1,2,3,4];
@@ -28,7 +30,7 @@ pub fn main() {
     io::println(fmt!("%?", p));
     io::println(fmt!("%?", q));
     io::println(fmt!("%?", t));
-    assert!(p == 3);
-    assert!(q == 3);
-    assert!(t == 20);
+    assert_eq!(p, 3);
+    assert_eq!(q, 3);
+    assert_eq!(t, 20);
 }

@@ -11,6 +11,8 @@
 // In this case, the code should compile and should
 // succeed at runtime
 
+use std::vec;
+
 fn enum_chars(start: u8, end: u8) -> ~[char] {
     assert!(start < end);
     let mut i = start;
@@ -34,6 +36,6 @@ pub fn main() {
 
     let ps = vec::zip(chars, ints);
 
-    assert!((ps.head() == &('a', 1u)));
-    assert!((ps.last() == &(j as char, 10u)));
+    assert_eq!(ps.head(), &('a', 1u));
+    assert_eq!(ps.last(), &(j as char, 10u));
 }

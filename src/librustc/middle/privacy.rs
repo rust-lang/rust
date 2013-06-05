@@ -11,6 +11,8 @@
 // A pass that checks to make sure private fields and methods aren't used
 // outside their scopes.
 
+use core::prelude::*;
+
 use metadata::csearch;
 use middle::ty::{ty_struct, ty_enum};
 use middle::ty;
@@ -198,7 +200,7 @@ pub fn check_crate(tcx: ty::ctxt,
         f = |item_id| {
             match tcx.items.find(&item_id) {
                 Some(&node_item(item, _)) => item.vis != public,
-                Some(&node_foreign_item(_, _, vis, _)) => vis != public,
+                Some(&node_foreign_item(*)) => false,
                 Some(&node_method(method, impl_did, _)) => {
                     match method.vis {
                         private => true,
@@ -400,7 +402,7 @@ pub fn check_crate(tcx: ty::ctxt,
             // Do not check privacy inside items with the resolve_unexported
             // attribute. This is used for the test runner.
             if !attr::contains_name(attr::attr_metas(/*bad*/copy item.attrs),
-                                    ~"!resolve_unexported") {
+                                    "!resolve_unexported") {
                 visit::visit_item(item, method_map, visitor);
             }
         },
@@ -430,32 +432,23 @@ pub fn check_crate(tcx: ty::ctxt,
         visit_expr: |expr, method_map: &method_map, visitor| {
             match expr.node {
                 expr_field(base, ident, _) => {
+                    // Method calls are now a special syntactic form,
+                    // so `a.b` should always be a field.
+                    assert!(!method_map.contains_key(&expr.id));
+
                     // With type_autoderef, make sure we don't
                     // allow pointers to violate privacy
                     match ty::get(ty::type_autoderef(tcx, ty::expr_ty(tcx,
                                                           base))).sty {
                         ty_struct(id, _)
-                        if id.crate != local_crate ||
-                           !privileged_items.contains(&(id.node)) => {
-                            match method_map.find(&expr.id) {
-                                None => {
-                                    debug!("(privacy checking) checking \
-                                            field access");
-                                    check_field(expr.span, id, ident);
-                                }
-                                Some(ref entry) => {
-                                    debug!("(privacy checking) checking \
-                                            impl method");
-                                    check_method(expr.span,
-                                                 &entry.origin,
-                                                 ident);
-                                }
-                            }
+                        if id.crate != local_crate || !privileged_items.contains(&(id.node)) => {
+                            debug!("(privacy checking) checking field access");
+                            check_field(expr.span, id, ident);
                         }
                         _ => {}
                     }
                 }
-                expr_method_call(base, ident, _, _, _) => {
+                expr_method_call(_, base, ident, _, _, _) => {
                     // Ditto
                     match ty::get(ty::type_autoderef(tcx, ty::expr_ty(tcx,
                                                           base))).sty {
@@ -527,7 +520,7 @@ pub fn check_crate(tcx: ty::ctxt,
                         }
                     }
                 }
-                expr_unary(ast::deref, operand) => {
+                expr_unary(_, ast::deref, operand) => {
                     // In *e, we need to check that if e's type is an
                     // enum type t, then t's first variant is public or
                     // privileged. (We can assume it has only one variant

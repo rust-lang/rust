@@ -14,5 +14,5 @@ fn box<T:Copy>(x: Triple<T>) -> ~Triple<T> { return ~x; }
 
 pub fn main() {
     let x: ~Triple<int> = box::<int>(Triple{x: 1, y: 2, z: 3});
-    assert!((x.y == 2));
+    assert_eq!(x.y, 2);
 }

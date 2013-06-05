@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::os;
+use std::uint;
+
 fn main() {
     let args = os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {

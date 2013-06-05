@@ -9,11 +9,11 @@
 // except according to those terms.
 
 // xfail-test
-extern mod std;
+extern mod extra;
 
-use std::net::tcp::TcpSocketBuf;
+use extra::net::tcp::TcpSocketBuf;
 
-use core::io::{ReaderUtil,WriterUtil};
+use std::io::{ReaderUtil,WriterUtil};
 
 enum Result {
   Nil,
@@ -28,13 +28,13 @@ priv fn parse_data(len: uint, io: @io::Reader) -> Result {
   let res =
       if (len > 0) {
       let bytes = io.read_bytes(len as uint);
-      assert!(bytes.len() == len);
+      assert_eq!(bytes.len(), len);
       Data(bytes)
   } else {
       Data(~[])
   };
-  assert!(io.read_char() == '\r');
-  assert!(io.read_char() == '\n');
+  assert_eq!(io.read_char(), '\r');
+  assert_eq!(io.read_char(), '\n');
   return res;
 }
 

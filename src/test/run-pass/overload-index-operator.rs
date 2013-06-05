@@ -11,7 +11,7 @@
 // Test overloading of the `[]` operator.  In particular test that it
 // takes its argument *by reference*.
 
-use core::ops::Index;
+use std::ops::Index;
 
 struct AssociationList<K,V> {
     pairs: ~[AssociationPair<K,V>]

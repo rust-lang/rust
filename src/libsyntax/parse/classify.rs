@@ -31,8 +31,8 @@ pub fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
       | ast::expr_loop(*)
       | ast::expr_call(_, _, ast::DoSugar)
       | ast::expr_call(_, _, ast::ForSugar)
-      | ast::expr_method_call(_, _, _, _, ast::DoSugar)
-      | ast::expr_method_call(_, _, _, _, ast::ForSugar) => false,
+      | ast::expr_method_call(_, _, _, _, _, ast::DoSugar)
+      | ast::expr_method_call(_, _, _, _, _, ast::ForSugar) => false,
       _ => true
     }
 }

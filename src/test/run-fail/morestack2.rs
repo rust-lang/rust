@@ -15,9 +15,14 @@
 // See the hack in upcall_call_shim_on_c_stack where it messes
 // with the stack limit.
 
-extern mod std;
+extern mod extra;
+
+use std::libc;
+use std::task;
 
 mod rustrt {
+    use std::libc;
+
     pub extern {
         pub fn rust_get_argc() -> libc::c_int;
     }

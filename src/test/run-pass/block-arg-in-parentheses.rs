@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec;
+
 fn w_semi(v: ~[int]) -> int {
     // the semicolon causes compiler not to
     // complain about the ignored return value:
@@ -28,8 +30,8 @@ fn w_ret(v: ~[int]) -> int {
 }
 
 pub fn main() {
-    assert!(w_semi(~[0, 1, 2, 3]) == -10);
-    assert!(w_paren1(~[0, 1, 2, 3]) == -4);
-    assert!(w_paren2(~[0, 1, 2, 3]) == -4);
-    assert!(w_ret(~[0, 1, 2, 3]) == -4);
+    assert_eq!(w_semi(~[0, 1, 2, 3]), -10);
+    assert_eq!(w_paren1(~[0, 1, 2, 3]), -4);
+    assert_eq!(w_paren2(~[0, 1, 2, 3]), -4);
+    assert_eq!(w_ret(~[0, 1, 2, 3]), -4);
 }

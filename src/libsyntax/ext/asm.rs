@@ -12,12 +12,17 @@
  * Inline assembly support.
  */
 
+use core::prelude::*;
+
 use ast;
 use codemap::span;
 use ext::base;
 use ext::base::*;
 use parse;
 use parse::token;
+
+use core::str;
+use core::vec;
 
 enum State {
     Asm,
@@ -37,7 +42,7 @@ fn next_state(s: State) -> Option<State> {
     }
 }
 
-pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
+pub fn expand_asm(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
                -> base::MacResult {
     let p = parse::new_parser_from_tts(cx.parse_sess(),
                                        cx.cfg(),
@@ -77,7 +82,6 @@ pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
 
                     let out = @ast::expr {
                         id: cx.next_id(),
-                        callee_id: cx.next_id(),
                         span: out.span,
                         node: ast::expr_addr_of(ast::m_mutbl, out)
                     };
@@ -112,7 +116,7 @@ pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
                         p.eat(&token::COMMA);
                     }
 
-                    let clob = ~"~{" + *p.parse_str() + ~"}";
+                    let clob = ~"~{" + *p.parse_str() + "}";
                     clobs.push(clob);
                 }
 
@@ -174,7 +178,6 @@ pub fn expand_asm(cx: @ext_ctxt, sp: span, tts: &[ast::token_tree])
 
     MRExpr(@ast::expr {
         id: cx.next_id(),
-        callee_id: cx.next_id(),
         node: ast::expr_inline_asm(ast::inline_asm {
             asm: @asm,
             clobbers: @cons,

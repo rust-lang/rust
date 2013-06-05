@@ -10,7 +10,7 @@
 
 // Testing that we can't store a borrowed pointer it task-local storage
 
-use core::local_data::*;
+use std::local_data::*;
 
 fn key(_x: @&int) { }
 

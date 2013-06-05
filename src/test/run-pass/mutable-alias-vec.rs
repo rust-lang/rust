@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
 // -*- rust -*-
-extern mod std;
+extern mod extra;
+
+use std::vec;
 
 fn grow(v: &mut ~[int]) { *v += ~[1]; }
 
@@ -22,5 +22,5 @@ pub fn main() {
     grow(&mut v);
     let len = vec::len::<int>(v);
     debug!(len);
-    assert!((len == 3 as uint));
+    assert_eq!(len, 3 as uint);
 }

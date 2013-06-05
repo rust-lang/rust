@@ -11,9 +11,9 @@
 // Issue #4036: Test for an issue that arose around fixing up type inference
 // byproducts in vtable records.
 
-extern mod std;
-use self::std::json;
-use self::std::serialize;
+extern mod extra;
+use self::extra::json;
+use self::extra::serialize;
 
 pub fn main() {
     let json = json::from_str("[1]").unwrap();

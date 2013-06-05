@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
 
 /**
  * A function that returns a hash of a value
@@ -30,13 +30,13 @@ fn linear_map<K,V>() -> HashMap<K,V> {
         size: 0})
 }
 
-pub impl<K,V> HashMap<K,V> {
-    fn len(&mut self) -> uint {
+impl<K,V> HashMap<K,V> {
+    pub fn len(&mut self) -> uint {
         self.size
     }
 }
 
 pub fn main() {
     let mut m = ~linear_map::<(),()>();
-    assert!(m.len() == 0);
+    assert_eq!(m.len(), 0);
 }

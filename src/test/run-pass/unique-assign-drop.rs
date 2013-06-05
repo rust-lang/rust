@@ -13,5 +13,5 @@ pub fn main() {
     let mut j = ~2;
     // Should drop the previous value of j
     j = i;
-    assert!(*j == 1);
+    assert_eq!(*j, 1);
 }

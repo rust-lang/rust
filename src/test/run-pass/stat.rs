@@ -10,9 +10,13 @@
 
 // xfail-fast
 
-extern mod std;
-use core::io::WriterUtil;
-use std::tempfile;
+extern mod extra;
+
+use extra::tempfile;
+use std::io::WriterUtil;
+use std::io;
+use std::os;
+use std::uint;
 
 pub fn main() {
     let dir = tempfile::mkdtemp(&Path("."), "").unwrap();
@@ -30,7 +34,7 @@ pub fn main() {
     }
 
     assert!(path.exists());
-    assert!(path.get_size() == Some(1000));
+    assert_eq!(path.get_size(), Some(1000));
 
     os::remove_dir(&dir);
 }

@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
+
+use std::int;
+use std::io;
+use std::os;
 
 fn fib(n: int) -> int {
     if n < 2 {
