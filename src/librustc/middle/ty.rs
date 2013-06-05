@@ -686,7 +686,7 @@ pub type BuiltinBounds = EnumSet<BuiltinBound>;
 pub enum BuiltinBound {
     BoundCopy,
     BoundStatic,
-    BoundOwned,
+    BoundSend,
     BoundConst,
     BoundSized,
 }
@@ -699,7 +699,7 @@ pub fn AllBuiltinBounds() -> BuiltinBounds {
     let mut set = EnumSet::empty();
     set.add(BoundCopy);
     set.add(BoundStatic);
-    set.add(BoundOwned);
+    set.add(BoundSend);
     set.add(BoundConst);
     set.add(BoundSized);
     set
@@ -1839,7 +1839,7 @@ impl TypeContents {
             BoundCopy => self.is_copy(cx),
             BoundStatic => self.is_static(cx),
             BoundConst => self.is_const(cx),
-            BoundOwned => self.is_owned(cx),
+            BoundSend => self.is_sendable(cx),
             BoundSized => self.is_sized(cx),
         }
     }
@@ -1865,12 +1865,12 @@ impl TypeContents {
         TC_BORROWED_POINTER
     }
 
-    pub fn is_owned(&self, cx: ctxt) -> bool {
-        !self.intersects(TypeContents::nonowned(cx))
+    pub fn is_sendable(&self, cx: ctxt) -> bool {
+        !self.intersects(TypeContents::nonsendable(cx))
     }
 
-    pub fn nonowned(_cx: ctxt) -> TypeContents {
-        TC_MANAGED + TC_BORROWED_POINTER + TC_NON_OWNED
+    pub fn nonsendable(_cx: ctxt) -> TypeContents {
+        TC_MANAGED + TC_BORROWED_POINTER + TC_NON_SENDABLE
     }
 
     pub fn contains_managed(&self) -> bool {
@@ -1912,8 +1912,8 @@ impl TypeContents {
         self.intersects(tc)
     }
 
-    pub fn owned(_cx: ctxt) -> TypeContents {
-        //! Any kind of owned contents.
+    pub fn sendable(_cx: ctxt) -> TypeContents {
+        //! Any kind of sendable contents.
         TC_OWNED_POINTER + TC_OWNED_VEC
     }
 }
@@ -1969,8 +1969,8 @@ static TC_ONCE_CLOSURE: TypeContents =     TypeContents{bits: 0b0001_0000_0000};
 /// An enum with no variants.
 static TC_EMPTY_ENUM: TypeContents =       TypeContents{bits: 0b0010_0000_0000};
 
-/// Contains a type marked with `#[non_owned]`
-static TC_NON_OWNED: TypeContents =        TypeContents{bits: 0b0100_0000_0000};
+/// Contains a type marked with `#[non_sendable]`
+static TC_NON_SENDABLE: TypeContents =     TypeContents{bits: 0b0100_0000_0000};
 
 /// Is a bare vector, str, function, trait, etc (only relevant at top level).
 static TC_DYNAMIC_SIZE: TypeContents =     TypeContents{bits: 0b1000_0000_0000};
@@ -1986,8 +1986,8 @@ pub fn type_is_static(cx: ctxt, t: ty::t) -> bool {
     type_contents(cx, t).is_static(cx)
 }
 
-pub fn type_is_owned(cx: ctxt, t: ty::t) -> bool {
-    type_contents(cx, t).is_owned(cx)
+pub fn type_is_sendable(cx: ctxt, t: ty::t) -> bool {
+    type_contents(cx, t).is_sendable(cx)
 }
 
 pub fn type_is_const(cx: ctxt, t: ty::t) -> bool {
@@ -2045,7 +2045,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         let _i = indenter();
 
         let result = match get(ty).sty {
-            // Scalar and unique types are sendable, constant, and owned
+            // Scalar and unique types are sendable, constant, and durable
             ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
             ty_bare_fn(_) | ty_ptr(_) => {
                 TC_NONE
@@ -2060,7 +2060,8 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_box(mt) => {
-                TC_MANAGED + statically_sized(nonowned(tc_mt(cx, mt, cache)))
+                TC_MANAGED +
+                    statically_sized(nonsendable(tc_mt(cx, mt, cache)))
             }
 
             ty_trait(_, _, store, mutbl, bounds) => {
@@ -2069,7 +2070,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
             ty_rptr(r, mt) => {
                 borrowed_contents(r, mt.mutbl) +
-                    statically_sized(nonowned(tc_mt(cx, mt, cache)))
+                    statically_sized(nonsendable(tc_mt(cx, mt, cache)))
             }
 
             ty_uniq(mt) => {
@@ -2081,12 +2082,13 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_evec(mt, vstore_box) => {
-                TC_MANAGED + statically_sized(nonowned(tc_mt(cx, mt, cache)))
+                TC_MANAGED +
+                    statically_sized(nonsendable(tc_mt(cx, mt, cache)))
             }
 
             ty_evec(mt, vstore_slice(r)) => {
                 borrowed_contents(r, mt.mutbl) +
-                    statically_sized(nonowned(tc_mt(cx, mt, cache)))
+                    statically_sized(nonsendable(tc_mt(cx, mt, cache)))
             }
 
             ty_evec(mt, vstore_fixed(_)) => {
@@ -2205,8 +2207,8 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         if has_attr(cx, did, "mutable") {
             tc += TC_MUTABLE;
         }
-        if has_attr(cx, did, "non_owned") {
-            tc += TC_NON_OWNED;
+        if has_attr(cx, did, "non_sendable") {
+            tc += TC_NON_SENDABLE;
         }
         tc
     }
@@ -2227,7 +2229,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         mc + rc
     }
 
-    fn nonowned(pointee: TypeContents) -> TypeContents {
+    fn nonsendable(pointee: TypeContents) -> TypeContents {
         /*!
          *
          * Given a non-owning pointer to some type `T` with
@@ -2314,7 +2316,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             tc = tc - match bound {
                 BoundCopy => TypeContents::noncopyable(cx),
                 BoundStatic => TypeContents::nonstatic(cx),
-                BoundOwned => TypeContents::nonowned(cx),
+                BoundSend => TypeContents::nonsendable(cx),
                 BoundConst => TypeContents::nonconst(cx),
                 // The dynamic-size bit can be removed at pointer-level, etc.
                 BoundSized => TypeContents::dynamically_sized(cx),
