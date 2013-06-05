@@ -226,8 +226,8 @@ fn get_metadata_section(os: os,
                     debug!("inflating %u bytes of compressed metadata",
                            csz - vlen);
                     do vec::raw::buf_as_slice(cvbuf1, csz-vlen) |bytes| {
-                        let s = lz4::LZ4Container::from_bytes(bytes);
-                        found = Some(@(s.decompress().expect("metadata was corrupt!")));
+                        let s = lz4::LZ4Container::decompress_bytes(bytes);
+                        found = Some(@(s.expect("metadata was corrupt!")));
                     }
                     if found != None {
                         return found;

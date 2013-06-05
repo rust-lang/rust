@@ -50,7 +50,7 @@ pub struct LZ4Container {
 }
 
 /// Compress a buffer
-pub fn compress_bytes(bytes: &const [u8], high_compression: bool) -> LZ4Container {
+pub fn compress(bytes: &const [u8], high_compression: bool) -> LZ4Container {
     let max_cint: c_int = num::Bounded::max_value();
     assert!(bytes.len() <= max_cint as uint, "buffer too long");
     let mut buf: ~[u8] = vec::with_capacity(LZ4_compressBound(bytes.len()));
@@ -72,26 +72,29 @@ pub fn compress_bytes(bytes: &const [u8], high_compression: bool) -> LZ4Containe
     return LZ4Container{ uncompressed_size: bytes.len(), buf_size: buf.len(), buf: buf }
 }
 
+/// Decompress LZ4 data. Returns None if the input buffer was malformed or didn't decompress
+/// to `size` bytes.
+pub fn decompress(bytes: &[u8], uncompressed_size: uint) -> Option<~[u8]> {
+    do vec::as_const_buf(bytes) |b, len| {
+        let mut out: ~[u8] = vec::with_capacity(uncompressed_size as uint);
+        unsafe {
+            let res = rustrt::LZ4_decompress_safe(b as *c_void, to_mut_ptr(out) as *mut c_void,
+                                                  len as c_int, uncompressed_size as c_int);
+            if res != uncompressed_size as c_int {
+                warn!("LZ4_decompress_safe returned %?", res);
+                None
+            } else {
+                vec::raw::set_len(&mut out, res as uint);
+                Some(out)
+            }
+        }
+    }
+}
 impl LZ4Container {
     /// Decompress LZ4 data. Returns None if the input buffer was malformed or didn't decompress
     /// to `size` bytes.
     pub fn decompress(&self) -> Option<~[u8]> {
-        let mut ret: Option<~[u8]> = None;
-        do vec::as_const_buf(self.buf) |b, len| {
-            let mut out: ~[u8] = vec::with_capacity(self.uncompressed_size as uint);
-            unsafe {
-                let res = rustrt::LZ4_decompress_safe(b as *c_void, to_mut_ptr(out) as *mut c_void,
-                                                      len as c_int, self.uncompressed_size as c_int);
-                if res != self.uncompressed_size as c_int {
-                    warn!("LZ4_decompress_safe returned %?", res);
-                    ret = None
-                } else {
-                    vec::raw::set_len(&mut out, res as uint);
-                    ret = Some(out)
-                }
-            }
-        }
-        ret
+        decompress(self.buf, self.uncompressed_size)
     }
     /// Create an LZ4Container out of bytes
     pub fn from_bytes(bytes: &[u8]) -> LZ4Container {
@@ -105,6 +108,22 @@ impl LZ4Container {
             let buf = bytes.slice(rdr.tell(), rdr.tell() + buf_size).to_owned();
             assert_eq!(buf_size, buf.len());
             LZ4Container { uncompressed_size: uncompressed_size, buf_size: buf_size, buf: buf }
+        }
+    }
+
+    /// Decompress the contents of an encoded LZ4Container. Like `from_bytes(bytes).decompress()`
+    /// without an extra copy.
+    pub fn decompress_bytes(bytes: &[u8]) -> Option<~[u8]> {
+        do io::with_bytes_reader(bytes) |rdr| {
+            let uncompressed_size = rdr.read_le_uint();
+            let buf_size = rdr.read_le_uint();
+            let remaining = bytes.len() - rdr.tell();
+            assert!(remaining >= buf_size,
+                    fmt!("header wants more bytes than present in buffer (wanted %?, found %?)",
+                         buf_size, remaining));
+            let buf = bytes.slice(rdr.tell(), rdr.tell() + buf_size);
+            assert_eq!(buf_size, buf.len());
+            decompress(buf, uncompressed_size)
         }
     }
 }

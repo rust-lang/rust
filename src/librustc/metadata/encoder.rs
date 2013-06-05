@@ -1517,7 +1517,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
     wr.write(&[0u8, 0u8, 0u8, 0u8]);
 
     let writer_bytes: &mut ~[u8] = wr.bytes;
-    let compressed = lz4::compress_bytes(*writer_bytes, true);
+    let compressed = lz4::compress(*writer_bytes, true);
     vec::to_owned(metadata_encoding_version) +
         compressed.uncompressed_size.to_bytes(true) +
         compressed.buf_size.to_bytes(true) +
