@@ -539,14 +539,14 @@ mutable borrowed pointers.
 
 ### Restrictions for loans of const aliasable pointees
 
-Const pointers are read-only. There may be `&mut` or `&` aliases, and
+Freeze pointers are read-only. There may be `&mut` or `&` aliases, and
 we can not prevent *anything* but moves in that case. So the
 `RESTRICTIONS` function is only defined if `ACTIONS` is the empty set.
 Because moves from a `&const` or `@const` lvalue are never legal, it
 is not necessary to add any restrictions at all to the final
 result.
 
-    RESTRICTIONS(*LV, []) = []                         // R-Deref-Const-Borrowed
+    RESTRICTIONS(*LV, []) = []                         // R-Deref-Freeze-Borrowed
       TYPE(LV) = &const Ty or @const Ty
 
 ### Restrictions for loans of mutable borrowed pointees
