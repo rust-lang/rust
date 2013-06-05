@@ -17,7 +17,6 @@ use managed::raw::BoxRepr;
 use str;
 use sys;
 use unstable::exchange_alloc;
-use cast::transmute;
 use rt::{context, OldTaskContext};
 use rt::local_services::borrow_local_services;
 use option::{Option, Some, None};
