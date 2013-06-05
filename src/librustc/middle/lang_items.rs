@@ -13,7 +13,7 @@
 // Language items are items that represent concepts intrinsic to the language
 // itself. Examples are:
 //
-// * Traits that specify "kinds"; e.g. "const", "copy", "owned".
+// * Traits that specify "kinds"; e.g. "const", "copy", "send".
 //
 // * Traits that represent operators; e.g. "add", "sub", "index".
 //
@@ -35,7 +35,7 @@ use core::hashmap::HashMap;
 pub enum LangItem {
     ConstTraitLangItem,         // 0
     CopyTraitLangItem,          // 1
-    OwnedTraitLangItem,         // 2
+    SendTraitLangItem,          // 2
     SizedTraitLangItem,         // 3
 
     DropTraitLangItem,          // 4
@@ -97,7 +97,7 @@ impl LanguageItems {
         match index {
             0  => "const",
             1  => "copy",
-            2  => "owned",
+            2  => "send",
             3  => "sized",
 
             4  => "drop",
@@ -150,8 +150,8 @@ impl LanguageItems {
     pub fn copy_trait(&const self) -> def_id {
         self.items[CopyTraitLangItem as uint].get()
     }
-    pub fn owned_trait(&const self) -> def_id {
-        self.items[OwnedTraitLangItem as uint].get()
+    pub fn send_trait(&const self) -> def_id {
+        self.items[SendTraitLangItem as uint].get()
     }
     pub fn sized_trait(&const self) -> def_id {
         self.items[SizedTraitLangItem as uint].get()
@@ -271,7 +271,7 @@ fn LanguageItemCollector(crate: @crate,
 
     item_refs.insert(@~"const", ConstTraitLangItem as uint);
     item_refs.insert(@~"copy", CopyTraitLangItem as uint);
-    item_refs.insert(@~"owned", OwnedTraitLangItem as uint);
+    item_refs.insert(@~"send", SendTraitLangItem as uint);
     item_refs.insert(@~"sized", SizedTraitLangItem as uint);
 
     item_refs.insert(@~"drop", DropTraitLangItem as uint);
