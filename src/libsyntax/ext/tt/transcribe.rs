@@ -15,7 +15,8 @@ use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
 use codemap::{span, dummy_sp};
 use diagnostic::span_handler;
 use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
-use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident, ident_interner};
+use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident};
+use parse::token::{ident_to_str};
 use parse::lexer::TokenAndSpan;
 
 use core::hashmap::HashMap;
@@ -33,7 +34,6 @@ struct TtFrame {
 
 pub struct TtReader {
     sp_diag: @span_handler,
-    interner: @ident_interner,
     // the unzipped tree:
     stack: @mut TtFrame,
     /* for MBE-style macro transcription */
@@ -49,13 +49,11 @@ pub struct TtReader {
  *  `src` contains no `tt_seq`s and `tt_nonterminal`s, `interp` can (and
  *  should) be none. */
 pub fn new_tt_reader(sp_diag: @span_handler,
-                     itr: @ident_interner,
                      interp: Option<HashMap<ident,@named_match>>,
                      src: ~[ast::token_tree])
                   -> @mut TtReader {
     let r = @mut TtReader {
         sp_diag: sp_diag,
-        interner: itr,
         stack: @mut TtFrame {
             forest: @mut src,
             idx: 0u,
@@ -93,7 +91,6 @@ fn dup_tt_frame(f: @mut TtFrame) -> @mut TtFrame {
 pub fn dup_tt_reader(r: @mut TtReader) -> @mut TtReader {
     @mut TtReader {
         sp_diag: r.sp_diag,
-        interner: r.interner,
         stack: dup_tt_frame(r.stack),
         repeat_idx: copy r.repeat_idx,
         repeat_len: copy r.repeat_len,
@@ -126,7 +123,7 @@ fn lookup_cur_matched(r: &mut TtReader, name: ident) -> @named_match {
         Some(s) => lookup_cur_matched_by_matched(r, s),
         None => {
             r.sp_diag.span_fatal(r.cur_span, fmt!("unknown macro variable `%s`",
-                                                  *r.interner.get(name)));
+                                                  *ident_to_str(&name)));
         }
     }
 }
@@ -139,13 +136,13 @@ fn lockstep_iter_size(t: &token_tree, r: &mut TtReader) -> lis {
         match lhs {
           lis_unconstrained => copy rhs,
           lis_contradiction(_) => copy lhs,
-          lis_constraint(l_len, l_id) => match rhs {
+          lis_constraint(l_len, ref l_id) => match rhs {
             lis_unconstrained => copy lhs,
             lis_contradiction(_) => copy rhs,
             lis_constraint(r_len, _) if l_len == r_len => copy lhs,
-            lis_constraint(r_len, r_id) => {
-                let l_n = copy *r.interner.get(l_id);
-                let r_n = copy *r.interner.get(r_id);
+            lis_constraint(r_len, ref r_id) => {
+                let l_n = copy *ident_to_str(l_id);
+                let r_n = copy *ident_to_str(r_id);
                 lis_contradiction(fmt!("Inconsistent lockstep iteration: \
                                        '%s' has %u items, but '%s' has %u",
                                         l_n, l_len, r_n, r_len))
@@ -295,7 +292,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 r.sp_diag.span_fatal(
                     copy r.cur_span, /* blame the macro writer */
                     fmt!("variable '%s' is still repeating at this depth",
-                         *r.interner.get(ident)));
+                         *ident_to_str(&ident)));
               }
             }
           }

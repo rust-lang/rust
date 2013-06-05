@@ -14,6 +14,8 @@ use ast::*;
 use ast;
 use ast_util;
 use codemap::{span, spanned};
+use core::cast;
+use core::local_data;
 use opt_vec;
 use parse::token;
 use visit;
@@ -24,11 +26,10 @@ use core::option;
 use core::str;
 use core::to_bytes;
 
-pub fn path_name_i(idents: &[ident], intr: @token::ident_interner) -> ~str {
+pub fn path_name_i(idents: &[ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
-    str::connect(idents.map(|i| copy *intr.get(*i)), "::")
+    str::connect(idents.map(|i| copy *token::interner_get(i.name)), "::")
 }
-
 
 pub fn path_to_ident(p: @Path) -> ident { copy *p.idents.last() }
 
@@ -620,16 +621,22 @@ pub enum Privacy {
 
 // HYGIENE FUNCTIONS
 
-/// Construct an identifier with the given repr and an empty context:
-pub fn new_ident(repr: uint) -> ident { ident {repr: repr, ctxt: 0}}
+/// Construct an identifier with the given name and an empty context:
+pub fn new_ident(name: Name) -> ident { ident {name: name, ctxt: 0}}
 
 /// Extend a syntax context with a given mark
-pub fn new_mark (m:Mrk, tail:SyntaxContext,table:&mut SCTable)
+pub fn new_mark(m:Mrk, tail:SyntaxContext) -> SyntaxContext {
+    new_mark_internal(m,tail,get_sctable())
+}
+
+// Extend a syntax context with a given mark and table
+// FIXME #4536 : currently pub to allow testing
+pub fn new_mark_internal(m:Mrk, tail:SyntaxContext,table:&mut SCTable)
     -> SyntaxContext {
     let key = (tail,m);
     // FIXME #5074 : can't use more natural style because we're missing
     // flow-sensitivity. Results in two lookups on a hash table hit.
-    // also applies to new_rename, below.
+    // also applies to new_rename_internal, below.
     // let try_lookup = table.mark_memo.find(&key);
     match table.mark_memo.contains_key(&key) {
         false => {
@@ -647,7 +654,13 @@ pub fn new_mark (m:Mrk, tail:SyntaxContext,table:&mut SCTable)
 }
 
 /// Extend a syntax context with a given rename
-pub fn new_rename (id:ident, to:Name, tail:SyntaxContext, table: &mut SCTable)
+pub fn new_rename(id:ident, to:Name, tail:SyntaxContext) -> SyntaxContext {
+    new_rename_internal(id, to, tail, get_sctable())
+}
+
+// Extend a syntax context with a given rename and sctable
+// FIXME #4536 : currently pub to allow testing
+pub fn new_rename_internal(id:ident, to:Name, tail:SyntaxContext, table: &mut SCTable)
     -> SyntaxContext {
     let key = (tail,id,to);
     // FIXME #5074
@@ -669,11 +682,29 @@ pub fn new_rename (id:ident, to:Name, tail:SyntaxContext, table: &mut SCTable)
 
 /// Make a fresh syntax context table with EmptyCtxt in slot zero
 /// and IllegalCtxt in slot one.
-pub fn new_sctable() -> SCTable {
+// FIXME #4536 : currently pub to allow testing
+pub fn new_sctable_internal() -> SCTable {
     SCTable {
         table: ~[EmptyCtxt,IllegalCtxt],
         mark_memo: HashMap::new(),
         rename_memo: HashMap::new()
+    }
+}
+
+// fetch the SCTable from TLS, create one if it doesn't yet exist.
+pub fn get_sctable() -> @mut SCTable {
+    unsafe {
+        let sctable_key = (cast::transmute::<(uint, uint),
+                           &fn(v: @@mut SCTable)>(
+                               (-4 as uint, 0u)));
+        match local_data::local_data_get(sctable_key) {
+            None => {
+                let new_table = @@mut new_sctable_internal();
+                local_data::local_data_set(sctable_key,new_table);
+                *new_table
+            },
+            Some(intr) => *intr
+        }
     }
 }
 
@@ -684,19 +715,25 @@ fn idx_push<T>(vec: &mut ~[T], val: T) -> uint {
 }
 
 /// Resolve a syntax object to a name, per MTWT.
-pub fn resolve (id : ident, table : &mut SCTable) -> Name {
+pub fn resolve(id : ident) -> Name {
+    resolve_internal(id, get_sctable())
+}
+
+// Resolve a syntax object to a name, per MTWT.
+// FIXME #4536 : currently pub to allow testing
+pub fn resolve_internal(id : ident, table : &mut SCTable) -> Name {
     match table.table[id.ctxt] {
-        EmptyCtxt => id.repr,
+        EmptyCtxt => id.name,
         // ignore marks here:
-        Mark(_,subctxt) => resolve (ident{repr:id.repr, ctxt: subctxt},table),
+        Mark(_,subctxt) => resolve_internal(ident{name:id.name, ctxt: subctxt},table),
         // do the rename if necessary:
-        Rename(ident{repr,ctxt},toname,subctxt) => {
+        Rename(ident{name,ctxt},toname,subctxt) => {
             // this could be cached or computed eagerly:
-            let resolvedfrom = resolve(ident{repr:repr,ctxt:ctxt},table);
-            let resolvedthis = resolve(ident{repr:id.repr,ctxt:subctxt},table);
+            let resolvedfrom = resolve_internal(ident{name:name,ctxt:ctxt},table);
+            let resolvedthis = resolve_internal(ident{name:id.name,ctxt:subctxt},table);
             if ((resolvedthis == resolvedfrom)
-                && (marksof (ctxt,resolvedthis,table)
-                    == marksof (subctxt,resolvedthis,table))) {
+                && (marksof(ctxt,resolvedthis,table)
+                    == marksof(subctxt,resolvedthis,table))) {
                 toname
             } else {
                 resolvedthis
@@ -777,11 +814,11 @@ mod test {
     // convert a list of uints to an @~[ident]
     // (ignores the interner completely)
     fn uints_to_idents (uints: &~[uint]) -> @~[ident] {
-        @uints.map(|u|{ ident {repr:*u, ctxt: empty_ctxt} })
+        @uints.map(|u|{ ident {name:*u, ctxt: empty_ctxt} })
     }
 
     fn id (u : uint, s: SyntaxContext) -> ident {
-        ident{repr:u, ctxt: s}
+        ident{name:u, ctxt: s}
     }
 
     // because of the SCTable, I now need a tidy way of
@@ -798,8 +835,8 @@ mod test {
         -> SyntaxContext {
         tscs.foldr(tail, |tsc : &TestSC,tail : SyntaxContext|
                   {match *tsc {
-                      M(mrk) => new_mark(mrk,tail,table),
-                      R(ident,name) => new_rename(ident,name,tail,table)}})
+                      M(mrk) => new_mark_internal(mrk,tail,table),
+                      R(ident,name) => new_rename_internal(ident,name,tail,table)}})
     }
 
     // gather a SyntaxContext back into a vector of TestSCs
@@ -824,7 +861,7 @@ mod test {
     }
 
     #[test] fn test_unfold_refold(){
-        let mut t = new_sctable();
+        let mut t = new_sctable_internal();
 
         let test_sc = ~[M(3),R(id(101,0),14),M(9)];
         assert_eq!(unfold_test_sc(copy test_sc,empty_ctxt,&mut t),4);
@@ -838,11 +875,11 @@ mod test {
     // in a vector. v[0] will be the outermost mark.
     fn unfold_marks(mrks:~[Mrk],tail:SyntaxContext,table: &mut SCTable) -> SyntaxContext {
         mrks.foldr(tail, |mrk:&Mrk,tail:SyntaxContext|
-                   {new_mark(*mrk,tail,table)})
+                   {new_mark_internal(*mrk,tail,table)})
     }
 
     #[test] fn unfold_marks_test() {
-        let mut t = new_sctable();
+        let mut t = new_sctable_internal();
 
         assert_eq!(unfold_marks(~[3,7],empty_ctxt,&mut t),3);
         assert_eq!(t.table[2],Mark(7,0));
@@ -852,7 +889,7 @@ mod test {
     #[test] fn test_marksof () {
         let stopname = 242;
         let name1 = 243;
-        let mut t = new_sctable();
+        let mut t = new_sctable_internal();
         assert_eq!(marksof (empty_ctxt,stopname,&t),~[]);
         // FIXME #5074: ANF'd to dodge nested calls
         { let ans = unfold_marks(~[4,98],empty_ctxt,&mut t);
@@ -866,13 +903,13 @@ mod test {
         // rename where stop doesn't match:
         { let chain = ~[M(9),
                         R(id(name1,
-                             new_mark (4, empty_ctxt,&mut t)),
+                             new_mark_internal (4, empty_ctxt,&mut t)),
                           100101102),
                         M(14)];
          let ans = unfold_test_sc(chain,empty_ctxt,&mut t);
          assert_eq! (marksof (ans, stopname, &t), ~[9,14]);}
         // rename where stop does match
-        { let name1sc = new_mark(4, empty_ctxt, &mut t);
+        { let name1sc = new_mark_internal(4, empty_ctxt, &mut t);
          let chain = ~[M(9),
                        R(id(name1, name1sc),
                          stopname),
@@ -884,30 +921,30 @@ mod test {
 
     #[test] fn resolve_tests () {
         let a = 40;
-        let mut t = new_sctable();
+        let mut t = new_sctable_internal();
         // - ctxt is MT
-        assert_eq!(resolve(id(a,empty_ctxt),&mut t),a);
+        assert_eq!(resolve_internal(id(a,empty_ctxt),&mut t),a);
         // - simple ignored marks
         { let sc = unfold_marks(~[1,2,3],empty_ctxt,&mut t);
-         assert_eq!(resolve(id(a,sc),&mut t),a);}
+         assert_eq!(resolve_internal(id(a,sc),&mut t),a);}
         // - orthogonal rename where names don't match
         { let sc = unfold_test_sc(~[R(id(50,empty_ctxt),51),M(12)],empty_ctxt,&mut t);
-         assert_eq!(resolve(id(a,sc),&mut t),a);}
+         assert_eq!(resolve_internal(id(a,sc),&mut t),a);}
         // - rename where names do match, but marks don't
-        { let sc1 = new_mark(1,empty_ctxt,&mut t);
+        { let sc1 = new_mark_internal(1,empty_ctxt,&mut t);
          let sc = unfold_test_sc(~[R(id(a,sc1),50),
                                    M(1),
                                    M(2)],
                                  empty_ctxt,&mut t);
-        assert_eq!(resolve(id(a,sc),&mut t), a);}
+        assert_eq!(resolve_internal(id(a,sc),&mut t), a);}
         // - rename where names and marks match
         { let sc1 = unfold_test_sc(~[M(1),M(2)],empty_ctxt,&mut t);
          let sc = unfold_test_sc(~[R(id(a,sc1),50),M(1),M(2)],empty_ctxt,&mut t);
-         assert_eq!(resolve(id(a,sc),&mut t), 50); }
+         assert_eq!(resolve_internal(id(a,sc),&mut t), 50); }
         // - rename where names and marks match by literal sharing
         { let sc1 = unfold_test_sc(~[M(1),M(2)],empty_ctxt,&mut t);
          let sc = unfold_test_sc(~[R(id(a,sc1),50)],sc1,&mut t);
-         assert_eq!(resolve(id(a,sc),&mut t), 50); }
+         assert_eq!(resolve_internal(id(a,sc),&mut t), 50); }
         // - two renames of the same var.. can only happen if you use
         // local-expand to prevent the inner binding from being renamed
         // during the rename-pass caused by the first:
@@ -915,28 +952,28 @@ mod test {
         { let sc = unfold_test_sc(~[R(id(a,empty_ctxt),50),
                                     R(id(a,empty_ctxt),51)],
                                   empty_ctxt,&mut t);
-         assert_eq!(resolve(id(a,sc),&mut t), 51); }
+         assert_eq!(resolve_internal(id(a,sc),&mut t), 51); }
         // the simplest double-rename:
-        { let a_to_a50 = new_rename(id(a,empty_ctxt),50,empty_ctxt,&mut t);
-         let a50_to_a51 = new_rename(id(a,a_to_a50),51,a_to_a50,&mut t);
-         assert_eq!(resolve(id(a,a50_to_a51),&mut t),51);
+        { let a_to_a50 = new_rename_internal(id(a,empty_ctxt),50,empty_ctxt,&mut t);
+         let a50_to_a51 = new_rename_internal(id(a,a_to_a50),51,a_to_a50,&mut t);
+         assert_eq!(resolve_internal(id(a,a50_to_a51),&mut t),51);
          // mark on the outside doesn't stop rename:
-         let sc = new_mark(9,a50_to_a51,&mut t);
-         assert_eq!(resolve(id(a,sc),&mut t),51);
+         let sc = new_mark_internal(9,a50_to_a51,&mut t);
+         assert_eq!(resolve_internal(id(a,sc),&mut t),51);
          // but mark on the inside does:
          let a50_to_a51_b = unfold_test_sc(~[R(id(a,a_to_a50),51),
                                               M(9)],
                                            a_to_a50,
                                            &mut t);
-         assert_eq!(resolve(id(a,a50_to_a51_b),&mut t),50);}
+         assert_eq!(resolve_internal(id(a,a50_to_a51_b),&mut t),50);}
     }
 
     #[test] fn hashing_tests () {
-        let mut t = new_sctable();
-        assert_eq!(new_mark(12,empty_ctxt,&mut t),2);
-        assert_eq!(new_mark(13,empty_ctxt,&mut t),3);
+        let mut t = new_sctable_internal();
+        assert_eq!(new_mark_internal(12,empty_ctxt,&mut t),2);
+        assert_eq!(new_mark_internal(13,empty_ctxt,&mut t),3);
         // using the same one again should result in the same index:
-        assert_eq!(new_mark(12,empty_ctxt,&mut t),2);
+        assert_eq!(new_mark_internal(12,empty_ctxt,&mut t),2);
         // I'm assuming that the rename table will behave the same....
     }
 

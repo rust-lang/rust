@@ -24,6 +24,7 @@ use pass::Pass;
 use core::vec;
 use syntax::ast;
 use syntax::print::pprust;
+use syntax::parse::token;
 use syntax::ast_map;
 
 pub fn mk_pass() -> Pass {
@@ -76,7 +77,7 @@ fn get_fn_sig(srv: astsrv::Srv, fn_id: doc::AstId) -> Option<~str> {
                 node: ast::foreign_item_fn(ref decl, purity, ref tys), _
             }, _, _, _) => {
                 Some(pprust::fun_to_str(decl, purity, ident, None, tys,
-                                        extract::interner()))
+                                       token::get_ident_interner()))
             }
             _ => fail!("get_fn_sig: fn_id not bound to a fn item")
         }

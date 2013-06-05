@@ -22,6 +22,7 @@ use syntax::codemap::{dummy_sp, span, ExpandedFrom, CallInfo, NameAndSpan};
 use syntax::codemap;
 use syntax::ext::base::ExtCtxt;
 use syntax::fold;
+use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 
@@ -143,7 +144,7 @@ fn fold_item(cx: @mut TestCtxt, i: @ast::item, fld: @fold::ast_fold)
           -> Option<@ast::item> {
     cx.path.push(i.ident);
     debug!("current path: %s",
-           ast_util::path_name_i(copy cx.path, cx.sess.parse_sess.interner));
+           ast_util::path_name_i(copy cx.path));
 
     if is_test_fn(cx, i) || is_bench_fn(i) {
         match i.node {
@@ -411,13 +412,10 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
 
     let ext_cx = cx.ext_cx;
 
-    debug!("encoding %s", ast_util::path_name_i(path,
-                                                cx.sess.parse_sess.interner));
+    debug!("encoding %s", ast_util::path_name_i(path));
 
     let name_lit: ast::lit =
-        nospan(ast::lit_str(@ast_util::path_name_i(
-            path,
-            cx.sess.parse_sess.interner)));
+        nospan(ast::lit_str(@ast_util::path_name_i(path)));
 
     let name_expr = @ast::expr {
           id: cx.sess.next_node_id(),

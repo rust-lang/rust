@@ -15,7 +15,7 @@ use core::prelude::*;
 use codemap::{span, spanned};
 use abi::AbiSet;
 use opt_vec::OptVec;
-use parse::token::get_ident_interner;
+use parse::token::{ident_to_str, interner_get, str_to_ident};
 
 use core::hashmap::HashMap;
 use core::option::Option;
@@ -25,12 +25,15 @@ use core::to_str::ToStr;
 use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 
-// an identifier contains an index into the interner
-// table and a SyntaxContext to track renaming and
+// an identifier contains a Name (index into the interner
+// table) and a SyntaxContext to track renaming and
 // macro expansion per Flatt et al., "Macros
 // That Work Together"
 #[deriving(Eq)]
-pub struct ident { repr: Name, ctxt: SyntaxContext }
+pub struct ident { name: Name, ctxt: SyntaxContext }
+
+/// Construct an identifier with the given name and an empty context:
+pub fn new_ident(name: Name) -> ident { ident {name: name, ctxt: empty_ctxt}}
 
 // a SyntaxContext represents a chain of macro-expandings
 // and renamings. Each macro expansion corresponds to
@@ -72,7 +75,8 @@ pub enum SyntaxContext_ {
     IllegalCtxt()
 }
 
-// a name represents an identifier
+// a name is a part of an identifier, representing a string
+// or gensym. It's the result of interning.
 pub type Name = uint;
 // a mark represents a unique id associated
 // with a macro expansion
@@ -80,22 +84,20 @@ pub type Mrk = uint;
 
 impl<S:Encoder> Encodable<S> for ident {
     fn encode(&self, s: &mut S) {
-        let intr = get_ident_interner();
-        s.emit_str(*(*intr).get(*self));
+        s.emit_str(*interner_get(self.name));
     }
 }
 
 impl<D:Decoder> Decodable<D> for ident {
     fn decode(d: &mut D) -> ident {
-        let intr = get_ident_interner();
-        (*intr).intern(d.read_str())
+        str_to_ident(d.read_str())
     }
 }
 
 impl to_bytes::IterBytes for ident {
     #[inline(always)]
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.repr.iter_bytes(lsb0, f)
+        self.name.iter_bytes(lsb0, f)
     }
 }
 
@@ -385,6 +387,7 @@ pub type stmt = spanned<stmt_>;
 
 #[deriving(Eq, Encodable, Decodable)]
 pub enum stmt_ {
+    // could be an item or a local (let) binding:
     stmt_decl(@decl, node_id),
 
     // expr without trailing semi-colon (must have unit type):
@@ -414,7 +417,9 @@ pub type decl = spanned<decl_>;
 
 #[deriving(Eq, Encodable, Decodable)]
 pub enum decl_ {
+    // a local (let) binding:
     decl_local(@local),
+    // an item binding:
     decl_item(@item),
 }
 

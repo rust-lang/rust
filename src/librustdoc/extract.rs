@@ -18,16 +18,17 @@ use doc;
 
 use core::vec;
 use syntax::ast;
-use syntax::parse::token::{ident_interner};
+use syntax::parse::token::{ident_interner, ident_to_str};
 use syntax::parse::token;
 
 // Hack; rather than thread an interner through everywhere, rely on
 // thread-local data
+// Hack-Becomes-Feature: using thread-local-state everywhere...
 pub fn to_str(id: ast::ident) -> ~str {
-    let intr = token::get_ident_interner();
-    return copy *(*intr).get(id);
+    return copy *ident_to_str(&id);
 }
 
+// get rid of this pointless function:
 pub fn interner() -> @ident_interner {
     return token::get_ident_interner();
 }
