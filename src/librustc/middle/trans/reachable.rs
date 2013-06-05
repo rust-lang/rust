@@ -49,24 +49,21 @@ pub fn find_reachable(crate_mod: &_mod, exp_map2: resolve::ExportMap2,
             method_map: method_map,
             rmap: &mut rmap
         };
-        traverse_public_mod(cx, ast::crate_node_id, crate_mod);
+        traverse_exports(cx, ast::crate_node_id);
         traverse_all_resources_and_impls(cx, crate_mod);
     }
     return @rmap;
 }
 
-fn traverse_exports(cx: @mut ctx, mod_id: node_id) -> bool {
-    let mut found_export = false;
+fn traverse_exports(cx: @mut ctx, mod_id: node_id) {
     match cx.exp_map2.find(&mod_id) {
       Some(ref exp2s) => {
         for (*exp2s).each |e2| {
-            found_export = true;
             traverse_def_id(cx, e2.def_id)
         };
       }
       None => ()
     }
-    return found_export;
 }
 
 fn traverse_def_id(cx: @mut ctx, did: def_id) {
@@ -87,15 +84,6 @@ fn traverse_def_id(cx: @mut ctx, did: def_id) {
     }
 }
 
-fn traverse_public_mod(cx: @mut ctx, mod_id: node_id, m: &_mod) {
-    if !traverse_exports(cx, mod_id) {
-        // No exports, so every local item is exported
-        for m.items.each |item| {
-            traverse_public_item(cx, *item);
-        }
-    }
-}
-
 fn traverse_public_item(cx: @mut ctx, item: @item) {
     {
         // FIXME #6021: naming rmap shouldn't be necessary
@@ -106,15 +94,7 @@ fn traverse_public_item(cx: @mut ctx, item: @item) {
     }
 
     match item.node {
-      item_mod(ref m) => traverse_public_mod(cx, item.id, m),
-      item_foreign_mod(ref nm) => {
-          if !traverse_exports(cx, item.id) {
-              for nm.items.each |item| {
-                  let cx = &mut *cx; // FIXME(#6269) reborrow @mut to &mut
-                  cx.rmap.insert(item.id);
-              }
-          }
-      }
+      item_mod(_) | item_foreign_mod(_) => traverse_exports(cx, item.id),
       item_fn(_, _, _, ref generics, ref blk) => {
         if generics.ty_params.len() > 0u ||
            attr::find_inline_attr(item.attrs) != attr::ia_none {
