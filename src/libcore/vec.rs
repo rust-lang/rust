@@ -17,7 +17,6 @@ use cast;
 use container::{Container, Mutable};
 use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
-use old_iter::BaseIter;
 use old_iter;
 use iterator::Iterator;
 use kinds::Copy;
