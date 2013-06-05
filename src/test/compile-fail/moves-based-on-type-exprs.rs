@@ -26,7 +26,8 @@ fn f21() {
 }
 
 fn f30(cond: bool) {
-    let x = ~"hi", y = ~"ho";
+    let x = ~"hi";
+    let y = ~"ho";
     let _y = if cond {
         x
     } else {
@@ -37,7 +38,8 @@ fn f30(cond: bool) {
 }
 
 fn f40(cond: bool) {
-    let x = ~"hi", y = ~"ho";
+    let x = ~"hi";
+    let y = ~"ho";
     let _y = match cond {
         true => x,
         false => y
@@ -47,7 +49,8 @@ fn f40(cond: bool) {
 }
 
 fn f50(cond: bool) {
-    let x = ~"hi", y = ~"ho";
+    let x = ~"hi";
+    let y = ~"ho";
     let _y = match cond {
         _ if guard(x) => 10,
         true => 10,

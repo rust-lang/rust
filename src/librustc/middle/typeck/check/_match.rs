@@ -106,7 +106,8 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    let arg_types, kind_name;
+    let arg_types;
+    let kind_name;
 
     // structure_of requires type variables to be resolved.
     // So when we pass in <expected>, it's an error if it

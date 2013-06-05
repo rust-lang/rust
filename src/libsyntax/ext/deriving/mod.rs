@@ -264,8 +264,8 @@ pub fn create_struct_pattern(cx: @ExtCtxt,
 
     let matching_path = cx.path(span, ~[ struct_ident ]);
 
-    let mut paths = ~[], ident_expr = ~[];
-
+    let mut paths = ~[];
+    let mut ident_expr = ~[];
     let mut struct_type = Unknown;
 
     for struct_def.fields.eachi |i, struct_field| {
@@ -326,7 +326,8 @@ pub fn create_enum_variant_pattern(cx: @ExtCtxt,
 
             let matching_path = cx.path_ident(span, variant_ident);
 
-            let mut paths = ~[], ident_expr = ~[];
+            let mut paths = ~[];
+            let mut ident_expr = ~[];
             for uint::range(0, variant_args.len()) |i| {
                 let path = cx.path_ident(span,
                                          cx.ident_of(fmt!("%s_%u", prefix, i)));

@@ -134,7 +134,7 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
     while idx < fill {
         let tydesc_data: *uint = transmute(ptr::offset(buf, idx));
         let (tydesc, is_done) = un_bitpack_tydesc_ptr(*tydesc_data);
-        let size = (*tydesc).size, align = (*tydesc).align;
+        let (size, align) = ((*tydesc).size, (*tydesc).align);
 
         let after_tydesc = idx + sys::size_of::<*TypeDesc>();
 

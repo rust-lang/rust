@@ -416,7 +416,9 @@ impl<'self> MethodDef<'self> {
                              type_ident: ident, generics: &Generics)
         -> (ast::explicit_self, ~[@expr], ~[@expr], ~[(ident, @ast::Ty)]) {
 
-        let mut self_args = ~[], nonself_args = ~[], arg_tys = ~[];
+        let mut self_args = ~[];
+        let mut nonself_args = ~[];
+        let mut arg_tys = ~[];
         let mut nonstatic = false;
 
         let ast_explicit_self = match self.explicit_self {
@@ -522,8 +524,9 @@ impl<'self> MethodDef<'self> {
                                  nonself_args: &[@expr])
         -> @expr {
 
-        let mut raw_fields = ~[], // ~[[fields of self], [fields of next Self arg], [etc]]
-                patterns = ~[];
+        let mut raw_fields = ~[]; // ~[[fields of self],
+                                 // [fields of next Self arg], [etc]]
+        let mut patterns = ~[];
         for uint::range(0, self_args.len()) |i| {
             let (pat, ident_expr) = create_struct_pattern(cx, span,
                                                           type_ident, struct_def,

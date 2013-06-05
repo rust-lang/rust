@@ -881,7 +881,8 @@ pub fn create_local_var(bcx: block, local: @ast::local)
 
 pub fn create_arg(bcx: block, arg: ast::arg, sp: span)
     -> Option<@Metadata<ArgumentMetadata>> {
-    let fcx = bcx.fcx, cx = *fcx.ccx;
+    let fcx = bcx.fcx;
+    let cx = *fcx.ccx;
     let cache = get_cache(cx);
     let tg = ArgVariableTag;
     match cached_metadata::<@Metadata<ArgumentMetadata>>(

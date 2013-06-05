@@ -34,7 +34,7 @@ pub mod sub_foo {
         unused_str: ~str
     }
 
-    pub impl Boz {
+    impl Boz {
         pub fn boz(i: int) -> bool {
             i > 0
         }
@@ -45,7 +45,7 @@ pub mod sub_foo {
         Bort2
     }
 
-    pub impl Bort {
+    impl Bort {
         pub fn bort() -> ~str {
             ~"bort()"
         }

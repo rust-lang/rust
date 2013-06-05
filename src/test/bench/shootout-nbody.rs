@@ -92,7 +92,8 @@ fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: i32) {
                 let d2 = d[0]*d[0] + d[1]*d[1] + d[2]*d[2];
                 let mag = dt / (d2 * f64::sqrt(d2));
 
-                let a_mass = bodies[i].mass, b_mass = bodies[j].mass;
+                let a_mass = bodies[i].mass;
+                let b_mass = bodies[j].mass;
                 bodies[i].v[0] -= d[0] * b_mass * mag;
                 bodies[i].v[1] -= d[1] * b_mass * mag;
                 bodies[i].v[2] -= d[2] * b_mass * mag;

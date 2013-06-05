@@ -76,7 +76,7 @@ use parse::obsolete::{ObsoleteMoveInit, ObsoleteBinaryMove, ObsoleteSwap};
 use parse::obsolete::{ObsoleteSyntax, ObsoleteLowerCaseKindBounds};
 use parse::obsolete::{ObsoleteUnsafeBlock, ObsoleteImplSyntax};
 use parse::obsolete::{ObsoleteTraitBoundSeparator, ObsoleteMutOwnedPointer};
-use parse::obsolete::{ObsoleteMutVector, ObsoleteTraitImplVisibility};
+use parse::obsolete::{ObsoleteMutVector, ObsoleteImplVisibility};
 use parse::obsolete::{ObsoleteRecordType, ObsoleteRecordPattern};
 use parse::obsolete::{ObsoletePostFnTySigil};
 use parse::obsolete::{ObsoleteBareFnType, ObsoleteNewtypeEnum};
@@ -84,7 +84,7 @@ use parse::obsolete::ObsoleteMode;
 use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
 use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
 use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
-use parse::obsolete::{ObsoleteNamedExternModule};
+use parse::obsolete::{ObsoleteNamedExternModule, ObsoleteMultipleLocalDecl};
 use parse::token::{can_begin_expr, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents, token_to_binop};
 use parse::token;
@@ -2573,11 +2573,12 @@ impl Parser {
     fn parse_let(&self) -> @decl {
         let is_mutbl = self.eat_keyword(keywords::Mut);
         let lo = self.span.lo;
-        let mut locals = ~[self.parse_local(is_mutbl)];
+        let mut local = self.parse_local(is_mutbl);
         while self.eat(&token::COMMA) {
-            locals.push(self.parse_local(is_mutbl));
+            let _ = self.parse_local(is_mutbl);
+            self.obsolete(*self.span, ObsoleteMultipleLocalDecl);
         }
-        return @spanned(lo, self.last_span.hi, decl_local(locals));
+        return @spanned(lo, self.last_span.hi, decl_local(local));
     }
 
     // parse a structure field
@@ -3305,10 +3306,9 @@ impl Parser {
             None
         };
 
-        // Do not allow visibility to be specified in `impl...for...`. It is
-        // meaningless.
-        if opt_trait.is_some() && visibility != ast::inherited {
-            self.obsolete(*self.span, ObsoleteTraitImplVisibility);
+        // Do not allow visibility to be specified.
+        if visibility != ast::inherited {
+            self.obsolete(*self.span, ObsoleteImplVisibility);
         }
 
         let mut meths = ~[];
@@ -3841,15 +3841,18 @@ impl Parser {
     // parse the part of an "enum" decl following the '{'
     fn parse_enum_def(&self, _generics: &ast::Generics) -> enum_def {
         let mut variants = ~[];
-        let mut all_nullary = true, have_disr = false;
+        let mut all_nullary = true;
+        let mut have_disr = false;
         while *self.token != token::RBRACE {
             let variant_attrs = self.parse_outer_attributes();
             let vlo = self.span.lo;
 
             let vis = self.parse_visibility();
 
-            let ident, kind;
-            let mut args = ~[], disr_expr = None;
+            let ident;
+            let kind;
+            let mut args = ~[];
+            let mut disr_expr = None;
             ident = self.parse_ident();
             if self.eat(&token::LBRACE) {
                 // Parse a struct variant.
@@ -4353,7 +4356,8 @@ impl Parser {
     }
 
     fn is_view_item(&self) -> bool {
-        let tok, next_tok;
+        let tok;
+        let next_tok;
         if !self.is_keyword(keywords::Pub) && !self.is_keyword(keywords::Priv) {
             tok = copy *self.token;
             next_tok = self.look_ahead(1);

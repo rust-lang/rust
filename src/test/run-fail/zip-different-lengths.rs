@@ -31,7 +31,10 @@ fn enum_uints(start: uint, end: uint) -> ~[uint] {
 }
 
 fn main() {
-    let a = 'a' as u8, j = 'j' as u8, k = 1, l = 9;
+    let a = 'a' as u8;
+    let j = 'j' as u8;
+    let k = 1;
+    let l = 9;
     let chars = enum_chars(a, j);
     let ints = enum_uints(k, l);
 
