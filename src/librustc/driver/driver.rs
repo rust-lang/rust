@@ -249,9 +249,6 @@ pub fn compile_rest(sess: Session,
     let freevars = time(time_passes, ~"freevar finding", ||
                         freevars::annotate_freevars(def_map, crate));
 
-    let freevars = time(time_passes, ~"freevar finding", ||
-                        freevars::annotate_freevars(def_map, crate));
-
     let region_map = time(time_passes, ~"region resolution", ||
                           middle::region::resolve_crate(sess, def_map, crate));
 
