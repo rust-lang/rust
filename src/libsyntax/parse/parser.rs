@@ -12,7 +12,6 @@ use abi;
 use abi::AbiSet;
 use ast::{Sigil, BorrowedSigil, ManagedSigil, OwnedSigil};
 use ast::{CallSugar, NoSugar, DoSugar, ForSugar};
-use ast::{TyBareFn, TyClosure};
 use ast::{RegionTyParamBound, TraitTyParamBound};
 use ast::{provided, public, purity};
 use ast::{_mod, add, arg, arm, attribute, bind_by_ref, bind_infer};
