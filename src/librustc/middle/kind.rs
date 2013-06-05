@@ -33,7 +33,7 @@ use syntax::{visit, ast_util};
 //
 //  send: Things that can be sent on channels or included in spawned closures.
 //  copy: Things that can be copied.
-//  const: Things thare are deeply immutable. They are guaranteed never to
+//  freeze: Things thare are deeply immutable. They are guaranteed never to
 //    change, and can be safely shared without copying between tasks.
 //  'static: Things that do not contain borrowed pointers.
 //
@@ -42,12 +42,12 @@ use syntax::{visit, ast_util};
 //
 // Copy includes boxes, closure and unique types containing copyable types.
 //
-// Const include scalar types, things without non-const fields, and pointers
-// to const things.
+// Freeze include scalar types, things without non-const fields, and pointers
+// to freezable things.
 //
 // This pass ensures that type parameters are only instantiated with types
 // whose kinds are equal or less general than the way the type parameter was
-// annotated (with the `send`, `copy` or `const` keyword).
+// annotated (with the `Send`, `Copy` or `Freeze` bound).
 //
 // It also verifies that noncopyable kinds are not copied. Sendability is not
 // applied, since none of our language primitives send. Instead, the sending

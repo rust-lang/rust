@@ -779,8 +779,8 @@ pub fn try_add_builtin_trait(tcx: ty::ctxt,
     } else if trait_def_id == li.copy_trait() {
         builtin_bounds.add(ty::BoundCopy);
         true
-    } else if trait_def_id == li.const_trait() {
-        builtin_bounds.add(ty::BoundConst);
+    } else if trait_def_id == li.freeze_trait() {
+        builtin_bounds.add(ty::BoundFreeze);
         true
     } else if trait_def_id == li.sized_trait() {
         builtin_bounds.add(ty::BoundSized);

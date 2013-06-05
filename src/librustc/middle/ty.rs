@@ -685,7 +685,7 @@ pub enum BuiltinBound {
     BoundCopy,
     BoundStatic,
     BoundSend,
-    BoundConst,
+    BoundFreeze,
     BoundSized,
 }
 
@@ -698,7 +698,7 @@ pub fn AllBuiltinBounds() -> BuiltinBounds {
     set.add(BoundCopy);
     set.add(BoundStatic);
     set.add(BoundSend);
-    set.add(BoundConst);
+    set.add(BoundFreeze);
     set.add(BoundSized);
     set
 }
@@ -1831,7 +1831,7 @@ impl TypeContents {
         match bb {
             BoundCopy => self.is_copy(cx),
             BoundStatic => self.is_static(cx),
-            BoundConst => self.is_const(cx),
+            BoundFreeze => self.is_freezable(cx),
             BoundSend => self.is_sendable(cx),
             BoundSized => self.is_sized(cx),
         }
@@ -1870,11 +1870,11 @@ impl TypeContents {
         self.intersects(TC_MANAGED)
     }
 
-    pub fn is_const(&self, cx: ctxt) -> bool {
-        !self.intersects(TypeContents::nonconst(cx))
+    pub fn is_freezable(&self, cx: ctxt) -> bool {
+        !self.intersects(TypeContents::nonfreezable(cx))
     }
 
-    pub fn nonconst(_cx: ctxt) -> TypeContents {
+    pub fn nonfreezable(_cx: ctxt) -> TypeContents {
         TC_MUTABLE
     }
 
@@ -1977,8 +1977,8 @@ pub fn type_is_sendable(cx: ctxt, t: ty::t) -> bool {
     type_contents(cx, t).is_sendable(cx)
 }
 
-pub fn type_is_const(cx: ctxt, t: ty::t) -> bool {
-    type_contents(cx, t).is_const(cx)
+pub fn type_is_freezable(cx: ctxt, t: ty::t) -> bool {
+    type_contents(cx, t).is_freezable(cx)
 }
 
 pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
@@ -2032,7 +2032,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         let _i = indenter();
 
         let result = match get(ty).sty {
-            // Scalar and unique types are sendable, constant, and durable
+            // Scalar and unique types are sendable, freezable, and durable
             ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
             ty_bare_fn(_) | ty_ptr(_) => {
                 TC_NONE
@@ -2274,7 +2274,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 BoundCopy => TypeContents::nonimplicitly_copyable(cx),
                 BoundStatic => TypeContents::nonstatic(cx),
                 BoundSend => TypeContents::nonsendable(cx),
-                BoundConst => TypeContents::nonconst(cx),
+                BoundFreeze => TypeContents::nonfreezable(cx),
                 // The dynamic-size bit can be removed at pointer-level, etc.
                 BoundSized => TypeContents::dynamically_sized(cx),
             };

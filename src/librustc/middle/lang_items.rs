@@ -13,9 +13,9 @@
 // Language items are items that represent concepts intrinsic to the language
 // itself. Examples are:
 //
-// * Traits that specify "kinds"; e.g. "const", "copy", "send".
+// * Traits that specify "kinds"; e.g. "Freeze", "Copy", "Send".
 //
-// * Traits that represent operators; e.g. "add", "sub", "index".
+// * Traits that represent operators; e.g. "Add", "Sub", "Index".
 //
 // * Functions called by the compiler itself.
 
@@ -33,7 +33,7 @@ use syntax::visit::visit_crate;
 use core::hashmap::HashMap;
 
 pub enum LangItem {
-    ConstTraitLangItem,         // 0
+    FreezeTraitLangItem,        // 0
     CopyTraitLangItem,          // 1
     SendTraitLangItem,          // 2
     SizedTraitLangItem,         // 3
@@ -95,7 +95,7 @@ impl LanguageItems {
 
     pub fn item_name(index: uint) -> &'static str {
         match index {
-            0  => "const",
+            0  => "freeze",
             1  => "copy",
             2  => "send",
             3  => "sized",
@@ -144,8 +144,8 @@ impl LanguageItems {
 
     // FIXME #4621: Method macros sure would be nice here.
 
-    pub fn const_trait(&const self) -> def_id {
-        self.items[ConstTraitLangItem as uint].get()
+    pub fn freeze_trait(&const self) -> def_id {
+        self.items[FreezeTraitLangItem as uint].get()
     }
     pub fn copy_trait(&const self) -> def_id {
         self.items[CopyTraitLangItem as uint].get()
@@ -269,7 +269,7 @@ fn LanguageItemCollector(crate: @crate,
                       -> LanguageItemCollector {
     let mut item_refs = HashMap::new();
 
-    item_refs.insert(@~"const", ConstTraitLangItem as uint);
+    item_refs.insert(@~"freeze", FreezeTraitLangItem as uint);
     item_refs.insert(@~"copy", CopyTraitLangItem as uint);
     item_refs.insert(@~"send", SendTraitLangItem as uint);
     item_refs.insert(@~"sized", SizedTraitLangItem as uint);
