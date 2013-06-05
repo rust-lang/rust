@@ -41,6 +41,7 @@ use syntax::codemap::span;
 use syntax::codemap;
 use syntax::fold::*;
 use syntax::fold;
+use syntax::parse::token;
 use syntax;
 use writer = extra::ebml::writer;
 
@@ -86,7 +87,7 @@ pub fn encode_inlined_item(ecx: @e::EncodeContext,
                            ii: ast::inlined_item,
                            maps: Maps) {
     debug!("> Encoding inlined item: %s::%s (%u)",
-           ast_map::path_to_str(path, ecx.tcx.sess.parse_sess.interner),
+           ast_map::path_to_str(path, token::get_ident_interner()),
            *ecx.tcx.sess.str_of(ii.ident()),
            ebml_w.writer.tell());
 
@@ -99,7 +100,7 @@ pub fn encode_inlined_item(ecx: @e::EncodeContext,
     ebml_w.end_tag();
 
     debug!("< Encoded inlined fn: %s::%s (%u)",
-           ast_map::path_to_str(path, ecx.tcx.sess.parse_sess.interner),
+           ast_map::path_to_str(path, token::get_ident_interner()),
            *ecx.tcx.sess.str_of(ii.ident()),
            ebml_w.writer.tell());
 }
@@ -119,7 +120,7 @@ pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
       None => None,
       Some(ast_doc) => {
         debug!("> Decoding inlined fn: %s::?",
-               ast_map::path_to_str(path, tcx.sess.parse_sess.interner));
+               ast_map::path_to_str(path, token::get_ident_interner()));
         let mut ast_dsr = reader::Decoder(ast_doc);
         let from_id_range = Decodable::decode(&mut ast_dsr);
         let to_id_range = reserve_id_range(dcx.tcx.sess, from_id_range);
@@ -132,7 +133,7 @@ pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
         let ii = renumber_ast(xcx, raw_ii);
         debug!("Fn named: %s", *tcx.sess.str_of(ii.ident()));
         debug!("< Decoded inlined fn: %s::%s",
-               ast_map::path_to_str(path, tcx.sess.parse_sess.interner),
+               ast_map::path_to_str(path, token::get_ident_interner()),
                *tcx.sess.str_of(ii.ident()));
         ast_map::map_decoded_item(tcx.sess.diagnostic(),
                                   dcx.tcx.items, path, &ii);
@@ -1167,7 +1168,7 @@ impl fake_ext_ctxt for fake_session {
         }
     }
     fn ident_of(&self, st: &str) -> ast::ident {
-        self.interner.intern(st)
+        token::str_to_ident(st)
     }
 }
 
@@ -1236,9 +1237,9 @@ fn test_simplification() {
     match (item_out, item_exp) {
       (ast::ii_item(item_out), ast::ii_item(item_exp)) => {
         assert!(pprust::item_to_str(item_out,
-                                         ext_cx.parse_sess().interner)
+                                    token::get_ident_interner())
                      == pprust::item_to_str(item_exp,
-                                            ext_cx.parse_sess().interner));
+                                            token::get_ident_interner()));
       }
       _ => fail!()
     }

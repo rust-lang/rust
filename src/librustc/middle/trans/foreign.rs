@@ -41,6 +41,7 @@ use syntax::{ast, ast_util};
 use syntax::{attr, ast_map};
 use syntax::opt_vec;
 use syntax::parse::token::special_idents;
+use syntax::parse::token;
 use syntax::abi::{X86, X86_64, Arm, Mips};
 use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall,
                   Cdecl, Aapcs, C};
@@ -343,8 +344,7 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
                 }
             }
             ast::foreign_item_const(*) => {
-                let ident = ccx.sess.parse_sess.interner.get(
-                    foreign_item.ident);
+                let ident = token::ident_to_str(&foreign_item.ident);
                 ccx.item_symbols.insert(foreign_item.id, copy *ident);
             }
         }

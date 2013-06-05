@@ -28,6 +28,7 @@ use middle::typeck;
 use syntax::abi::AbiSet;
 use syntax::ast_map;
 use syntax::codemap::span;
+use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 
@@ -200,7 +201,7 @@ pub fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
       _ => { cx.sess.bug(
           fmt!("re_scope refers to %s",
                ast_map::node_id_to_str(cx.items, node_id,
-                                       cx.sess.parse_sess.interner))) }
+                                       token::get_ident_interner()))) }
     }
 }
 
@@ -654,7 +655,7 @@ impl Repr for ty::Method {
 
 impl Repr for ast::ident {
     fn repr(&self, tcx: ctxt) -> ~str {
-        copy *tcx.sess.intr().get(*self)
+        copy *token::ident_to_str(self)
     }
 }
 

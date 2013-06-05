@@ -35,6 +35,7 @@ use syntax::ast_util::{Private, Public, is_local};
 use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
 use syntax::attr;
 use syntax::codemap::span;
+use syntax::parse::token;
 use syntax::visit;
 
 pub fn check_crate(tcx: ty::ctxt,
@@ -120,7 +121,7 @@ pub fn check_crate(tcx: ty::ctxt,
                                        ast_map::node_id_to_str(
                                             tcx.items,
                                             method_id,
-                                            tcx.sess.parse_sess.interner)));
+                                           token::get_ident_interner())));
             }
             None => {
                 tcx.sess.span_bug(span, "method not found in \
@@ -184,7 +185,7 @@ pub fn check_crate(tcx: ty::ctxt,
                                        ast_map::node_id_to_str(
                                             tcx.items,
                                             method_id,
-                                            tcx.sess.parse_sess.interner)));
+                                           token::get_ident_interner())));
             }
             None => {
                 tcx.sess.span_bug(span, "method not found in \
@@ -216,9 +217,7 @@ pub fn check_crate(tcx: ty::ctxt,
                                            ast_map::node_id_to_str(
                                                 tcx.items,
                                                 item_id,
-                                                tcx.sess
-                                                   .parse_sess
-                                                   .interner)));
+                                               token::get_ident_interner())));
                 }
                 None => {
                     tcx.sess.span_bug(span, "item not found in AST map?!");
@@ -236,8 +235,7 @@ pub fn check_crate(tcx: ty::ctxt,
             if field.ident != ident { loop; }
             if field.vis == private {
                 tcx.sess.span_err(span, fmt!("field `%s` is private",
-                                             *tcx.sess.parse_sess.interner
-                                                 .get(ident)));
+                                             *token::ident_to_str(&ident)));
             }
             break;
         }
@@ -257,10 +255,7 @@ pub fn check_crate(tcx: ty::ctxt,
                      !privileged_items.contains(&(container_id.node))) {
                 tcx.sess.span_err(span,
                                   fmt!("method `%s` is private",
-                                       *tcx.sess
-                                           .parse_sess
-                                           .interner
-                                           .get(*name)));
+                                       *token::ident_to_str(name)));
             }
         } else {
             let visibility =
@@ -268,8 +263,7 @@ pub fn check_crate(tcx: ty::ctxt,
             if visibility != public {
                 tcx.sess.span_err(span,
                                   fmt!("method `%s` is private",
-                                       *tcx.sess.parse_sess.interner
-                                           .get(*name)));
+                                       *token::ident_to_str(name)));
             }
         }
     };
@@ -289,23 +283,13 @@ pub fn check_crate(tcx: ty::ctxt,
                             !privileged_items.contains(&def_id.node) {
                         tcx.sess.span_err(span,
                                           fmt!("function `%s` is private",
-                                               *tcx.sess
-                                                   .parse_sess
-                                                   .interner
-                                                   .get(copy *path
-                                                             .idents
-                                                             .last())));
+                                               *token::ident_to_str(path.idents.last())));
                     }
                 } else if csearch::get_item_visibility(tcx.sess.cstore,
                                                        def_id) != public {
                     tcx.sess.span_err(span,
                                       fmt!("function `%s` is private",
-                                           *tcx.sess
-                                               .parse_sess
-                                               .interner
-                                               .get(copy *path
-                                                         .idents
-                                                         .last())));
+                                           *token::ident_to_str(path.idents.last())));
                 }
             }
             _ => {}
@@ -335,10 +319,7 @@ pub fn check_crate(tcx: ty::ctxt,
                             match item.node {
                                 item_trait(_, _, ref methods) => {
                                     if method_num >= (*methods).len() {
-                                        tcx.sess.span_bug(span, "method \
-                                                                 number \
-                                                                 out of \
-                                                                 range?!");
+                                        tcx.sess.span_bug(span, "method number out of range?!");
                                     }
                                     match (*methods)[method_num] {
                                         provided(method)
@@ -346,17 +327,9 @@ pub fn check_crate(tcx: ty::ctxt,
                                              !privileged_items
                                              .contains(&(trait_id.node)) => {
                                             tcx.sess.span_err(span,
-                                                              fmt!("method
-                                                                    `%s` \
-                                                                    is \
-                                                                    private",
-                                                                   *tcx
-                                                                   .sess
-                                                                   .parse_sess
-                                                                   .interner
-                                                                   .get
-                                                                   (method
-                                                                    .ident)));
+                                                              fmt!("method `%s` is private",
+                                                                   *token::ident_to_str(&method
+                                                                                        .ident)));
                                         }
                                         provided(_) | required(_) => {
                                             // Required methods can't be
@@ -365,20 +338,15 @@ pub fn check_crate(tcx: ty::ctxt,
                                     }
                                 }
                                 _ => {
-                                    tcx.sess.span_bug(span, "trait wasn't \
-                                                             actually a \
-                                                             trait?!");
+                                    tcx.sess.span_bug(span, "trait wasn't actually a trait?!");
                                 }
                             }
                         }
                         Some(_) => {
-                            tcx.sess.span_bug(span, "trait wasn't an \
-                                                     item?!");
+                            tcx.sess.span_bug(span, "trait wasn't an item?!");
                         }
                         None => {
-                            tcx.sess.span_bug(span, "trait item wasn't \
-                                                     found in the AST \
-                                                     map?!");
+                            tcx.sess.span_bug(span, "trait item wasn't found in the AST map?!");
                         }
                     }
                 } else {

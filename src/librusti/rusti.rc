@@ -174,7 +174,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
         _ => fail!()
     };
     debug!("recording input into repl history");
-    record(repl, blk, sess.parse_sess.interner)
+    record(repl, blk, token::get_ident_interner())
 }
 
 // Compiles a crate given by the filename as a library if the compiled

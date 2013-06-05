@@ -26,6 +26,7 @@ use syntax::diagnostic;
 use syntax::parse::ParseSess;
 use syntax::{ast, codemap};
 use syntax::abi;
+use syntax::parse::token;
 use syntax;
 
 use core::hashmap::HashMap;
@@ -293,14 +294,19 @@ impl Session_ {
         self.opts.optimize == No && !self.debugging_opt(no_debug_borrows)
     }
 
+    // pointless function, now...
     pub fn str_of(@self, id: ast::ident) -> @~str {
-        self.parse_sess.interner.get(id)
+        token::ident_to_str(&id)
     }
+
+    // pointless function, now...
     pub fn ident_of(@self, st: &str) -> ast::ident {
-        self.parse_sess.interner.intern(st)
+        token::str_to_ident(st)
     }
+
+    // pointless function, now...
     pub fn intr(@self) -> @syntax::parse::token::ident_interner {
-        self.parse_sess.interner
+        token::get_ident_interner()
     }
 }
 

@@ -18,6 +18,7 @@ use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
 use parse;
+use parse::token::{get_ident_interner};
 use print::pprust;
 
 use core::io;
@@ -65,7 +66,7 @@ pub fn expand_file(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
 
 pub fn expand_stringify(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
-    let s = pprust::tts_to_str(tts, cx.parse_sess().interner);
+    let s = pprust::tts_to_str(tts, get_ident_interner());
     base::MRExpr(cx.expr_str(sp, s))
 }
 

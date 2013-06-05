@@ -15,6 +15,7 @@ use codemap;
 use ext::base::*;
 use ext::base;
 use print;
+use parse::token::{get_ident_interner};
 
 use core::io;
 use core::vec;
@@ -28,7 +29,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt,
     io::stdout().write_line(
         print::pprust::tt_to_str(
             ast::tt_delim(vec::to_owned(tt)),
-            cx.parse_sess().interner));
+            get_ident_interner()));
 
     //trivial expression
     MRExpr(@ast::expr {

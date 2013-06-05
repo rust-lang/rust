@@ -40,6 +40,7 @@ use syntax::parse::token::{StringRef, ident_interner, special_idents};
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 use syntax::codemap;
+use syntax::parse::token;
 
 type cmd = @crate_metadata;
 
@@ -297,10 +298,10 @@ fn item_path(intr: @ident_interner, item_doc: ebml::Doc) -> ast_map::path {
     for reader::docs(path_doc) |tag, elt_doc| {
         if tag == tag_path_elt_mod {
             let str = reader::doc_as_str(elt_doc);
-            result.push(ast_map::path_mod(intr.intern(str)));
+            result.push(ast_map::path_mod(token::str_to_ident(str)));
         } else if tag == tag_path_elt_name {
             let str = reader::doc_as_str(elt_doc);
-            result.push(ast_map::path_name(intr.intern(str)));
+            result.push(ast_map::path_name(token::str_to_ident(str)));
         } else {
             // ignore tag_path_len element
         }
@@ -314,8 +315,8 @@ fn item_name(intr: @ident_interner, item: ebml::Doc) -> ast::ident {
     do reader::with_doc_data(name) |data| {
         let string = str::from_bytes_slice(data);
         match intr.find_equiv(&StringRef(string)) {
-            None => intr.intern(string),
-            Some(val) => val,
+            None => token::str_to_ident(string),
+            Some(val) => ast::new_ident(val),
         }
     }
 }
@@ -843,7 +844,7 @@ pub fn get_type_name_if_impl(intr: @ident_interner,
     }
 
     for reader::tagged_docs(item, tag_item_impl_type_basename) |doc| {
-        return Some(intr.intern(str::from_bytes(reader::doc_data(doc))));
+        return Some(token::str_to_ident(str::from_bytes(reader::doc_data(doc))));
     }
 
     return None;
@@ -1095,7 +1096,7 @@ pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
     }
     for reader::tagged_docs(depsdoc, tag_crate_dep) |depdoc| {
         deps.push(crate_dep {cnum: crate_num,
-                  name: intr.intern(docstr(depdoc, tag_crate_dep_name)),
+                  name: token::str_to_ident(docstr(depdoc, tag_crate_dep_name)),
                   vers: @docstr(depdoc, tag_crate_dep_vers),
                   hash: @docstr(depdoc, tag_crate_dep_hash)});
         crate_num += 1;
@@ -1109,7 +1110,7 @@ fn list_crate_deps(intr: @ident_interner, data: @~[u8], out: @io::Writer) {
     for get_crate_deps(intr, data).each |dep| {
         out.write_str(
             fmt!("%d %s-%s-%s\n",
-                 dep.cnum, *intr.get(dep.name), *dep.hash, *dep.vers));
+                 dep.cnum, *token::ident_to_str(&dep.name), *dep.hash, *dep.vers));
     }
 
     out.write_str("\n");

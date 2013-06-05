@@ -11,6 +11,7 @@
 use core::prelude::*;
 
 use ast;
+use ast::Name;
 use codemap;
 use codemap::{CodeMap, span, ExpnInfo, ExpandedFrom};
 use codemap::CallInfo;
@@ -18,6 +19,7 @@ use diagnostic::span_handler;
 use ext;
 use parse;
 use parse::token;
+use parse::token::{ident_to_str, intern, str_to_ident};
 
 use core::hashmap::HashMap;
 use core::vec;
@@ -91,28 +93,32 @@ pub enum SyntaxExtension {
     IdentTT(SyntaxExpanderTTItem),
 }
 
+// The SyntaxEnv is the environment that's threaded through the expansion
+// of macros. It contains bindings for macros, and also a special binding
+// for " block" (not a legal identifier) that maps to a BlockInfo
 pub type SyntaxEnv = @mut MapChain<Name, Transformer>;
 
-// Name : the domain of SyntaxEnvs
-// want to change these to uints....
-// note that we use certain strings that are not legal as identifiers
-// to indicate, for instance, how blocks are supposed to behave.
-type Name = @~str;
-
 // Transformer : the codomain of SyntaxEnvs
-
-// NB: it may seem crazy to lump both of these into one environment;
-// what would it mean to bind "foo" to BlockLimit(true)? The idea
-// is that this follows the lead of MTWT, and accommodates growth
-// toward a more uniform syntax syntax (sorry) where blocks are just
-// another kind of transformer.
 
 pub enum Transformer {
     // this identifier maps to a syntax extension or macro
     SE(SyntaxExtension),
-    // should blocks occurring here limit macro scopes?
-    ScopeMacros(bool)
+    // blockinfo : this is ... well, it's simpler than threading
+    // another whole data stack-structured data structure through
+    // expansion. Basically, there's an invariant that every
+    // map must contain a binding for " block".
+    BlockInfo(BlockInfo)
 }
+
+pub struct BlockInfo {
+    // should macros escape from this scope?
+    macros_escape : bool,
+    // what are the pending renames?
+    pending_renames : @mut RenameList
+}
+
+// a list of ident->name renamings
+type RenameList = ~[(ast::ident,Name)];
 
 // The base map of methods for expanding syntax extension
 // AST nodes into full ASTs
@@ -127,77 +133,80 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     }
     let mut syntax_expanders = HashMap::new();
     // NB identifier starts with space, and can't conflict with legal idents
-    syntax_expanders.insert(@~" block",
-                            @ScopeMacros(true));
-    syntax_expanders.insert(@~"macro_rules",
+    syntax_expanders.insert(intern(&" block"),
+                            @BlockInfo(BlockInfo{
+                                macros_escape : false,
+                                pending_renames : @mut ~[]
+                            }));
+    syntax_expanders.insert(intern(&"macro_rules"),
                             builtin_item_tt(
                                 ext::tt::macro_rules::add_new_extension));
-    syntax_expanders.insert(@~"fmt",
+    syntax_expanders.insert(intern(&"fmt"),
                             builtin_normal_tt(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(
-        @~"auto_encode",
+        intern(&"auto_encode"),
         @SE(ItemDecorator(ext::auto_encode::expand_auto_encode)));
     syntax_expanders.insert(
-        @~"auto_decode",
+        intern(&"auto_decode"),
         @SE(ItemDecorator(ext::auto_encode::expand_auto_decode)));
-    syntax_expanders.insert(@~"env",
+    syntax_expanders.insert(intern(&"env"),
                             builtin_normal_tt(ext::env::expand_syntax_ext));
-    syntax_expanders.insert(@~"bytes",
+    syntax_expanders.insert(intern("bytes"),
                             builtin_normal_tt(ext::bytes::expand_syntax_ext));
-    syntax_expanders.insert(@~"concat_idents",
+    syntax_expanders.insert(intern("concat_idents"),
                             builtin_normal_tt(
                                 ext::concat_idents::expand_syntax_ext));
-    syntax_expanders.insert(@~"log_syntax",
+    syntax_expanders.insert(intern(&"log_syntax"),
                             builtin_normal_tt(
                                 ext::log_syntax::expand_syntax_ext));
-    syntax_expanders.insert(@~"deriving",
+    syntax_expanders.insert(intern(&"deriving"),
                             @SE(ItemDecorator(
                                 ext::deriving::expand_meta_deriving)));
 
     // Quasi-quoting expanders
-    syntax_expanders.insert(@~"quote_tokens",
+    syntax_expanders.insert(intern(&"quote_tokens"),
                        builtin_normal_tt(ext::quote::expand_quote_tokens));
-    syntax_expanders.insert(@~"quote_expr",
+    syntax_expanders.insert(intern(&"quote_expr"),
                        builtin_normal_tt(ext::quote::expand_quote_expr));
-    syntax_expanders.insert(@~"quote_ty",
+    syntax_expanders.insert(intern(&"quote_ty"),
                        builtin_normal_tt(ext::quote::expand_quote_ty));
-    syntax_expanders.insert(@~"quote_item",
+    syntax_expanders.insert(intern(&"quote_item"),
                        builtin_normal_tt(ext::quote::expand_quote_item));
-    syntax_expanders.insert(@~"quote_pat",
+    syntax_expanders.insert(intern(&"quote_pat"),
                        builtin_normal_tt(ext::quote::expand_quote_pat));
-    syntax_expanders.insert(@~"quote_stmt",
+    syntax_expanders.insert(intern(&"quote_stmt"),
                        builtin_normal_tt(ext::quote::expand_quote_stmt));
 
-    syntax_expanders.insert(@~"line",
+    syntax_expanders.insert(intern(&"line"),
                             builtin_normal_tt(
                                 ext::source_util::expand_line));
-    syntax_expanders.insert(@~"col",
+    syntax_expanders.insert(intern(&"col"),
                             builtin_normal_tt(
                                 ext::source_util::expand_col));
-    syntax_expanders.insert(@~"file",
+    syntax_expanders.insert(intern(&"file"),
                             builtin_normal_tt(
                                 ext::source_util::expand_file));
-    syntax_expanders.insert(@~"stringify",
+    syntax_expanders.insert(intern(&"stringify"),
                             builtin_normal_tt(
                                 ext::source_util::expand_stringify));
-    syntax_expanders.insert(@~"include",
+    syntax_expanders.insert(intern(&"include"),
                             builtin_normal_tt(
                                 ext::source_util::expand_include));
-    syntax_expanders.insert(@~"include_str",
+    syntax_expanders.insert(intern(&"include_str"),
                             builtin_normal_tt(
                                 ext::source_util::expand_include_str));
-    syntax_expanders.insert(@~"include_bin",
+    syntax_expanders.insert(intern(&"include_bin"),
                             builtin_normal_tt(
                                 ext::source_util::expand_include_bin));
-    syntax_expanders.insert(@~"module_path",
+    syntax_expanders.insert(intern(&"module_path"),
                             builtin_normal_tt(
                                 ext::source_util::expand_mod));
-    syntax_expanders.insert(@~"proto",
+    syntax_expanders.insert(intern(&"proto"),
                             builtin_item_tt(ext::pipes::expand_proto));
-    syntax_expanders.insert(@~"asm",
+    syntax_expanders.insert(intern(&"asm"),
                             builtin_normal_tt(ext::asm::expand_asm));
     syntax_expanders.insert(
-        @~"trace_macros",
+        intern(&"trace_macros"),
         builtin_normal_tt(ext::trace_macros::expand_trace_macros));
     MapChain::new(~syntax_expanders)
 }
@@ -301,10 +310,10 @@ impl ExtCtxt {
         *self.trace_mac = x
     }
     pub fn str_of(&self, id: ast::ident) -> ~str {
-        copy *self.parse_sess.interner.get(id)
+        copy *ident_to_str(&id)
     }
     pub fn ident_of(&self, st: &str) -> ast::ident {
-        self.parse_sess.interner.intern(st)
+        str_to_ident(st)
     }
 }
 
@@ -470,6 +479,15 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
         }
     }
 
+    fn find_in_topmost_frame(&self, key: &K) -> Option<@V> {
+        let map = match *self {
+            BaseMapChain(ref map) => map,
+            ConsMapChain(ref map,_) => map
+        };
+        // strip one layer of indirection off the pointer.
+        map.find(key).map(|r| {**r})
+    }
+
     // insert the binding into the top-level map
     fn insert (&mut self, key: K, ext: @V) -> bool {
         // can't abstract over get_map because of flow sensitivity...
@@ -478,7 +496,40 @@ impl <K: Eq + Hash + IterBytes ,V: Copy> MapChain<K,V>{
             ConsMapChain (~ref mut map,_) => map.insert(key,ext)
         }
     }
+    // insert the binding into the topmost frame for which the binding
+    // associated with 'n' exists and satisfies pred
+    // ... there are definitely some opportunities for abstraction
+    // here that I'm ignoring. (e.g., manufacturing a predicate on
+    // the maps in the chain, and using an abstract "find".
+    fn insert_into_frame(&mut self, key: K, ext: @V, n: K, pred: &fn(&@V)->bool) {
+        match *self {
+            BaseMapChain (~ref mut map) => {
+                if satisfies_pred(map,&n,pred) {
+                    map.insert(key,ext);
+                } else {
+                    fail!(~"expected map chain containing satisfying frame")
+                }
+            },
+            ConsMapChain (~ref mut map, rest) => {
+                if satisfies_pred(map,&n,pred) {
+                    map.insert(key,ext);
+                } else {
+                    rest.insert_into_frame(key,ext,n,pred)
+                }
+            }
+        }
+    }
+}
 
+// returns true if the binding for 'n' satisfies 'pred' in 'map'
+fn satisfies_pred<K : Eq + Hash + IterBytes,V>(map : &mut HashMap<K,V>,
+                                               n: &K,
+                                               pred: &fn(&V)->bool)
+    -> bool {
+    match map.find(n) {
+        Some(ref v) => (pred(*v)),
+        None => false
+    }
 }
 
 #[cfg(test)]
