@@ -563,7 +563,7 @@ pub mod keywords {
         // Strict keywords
         As,
         Break,
-        Const,
+        Freeze,
         Copy,
         Do,
         Else,

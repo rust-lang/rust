@@ -147,7 +147,7 @@ pub static crate_node_id: node_id = 0;
 // The AST represents all type param bounds as types.
 // typeck::collect::compute_bounds matches these against
 // the "special" built-in traits (see middle::lang_items) and
-// detects Copy, Send, Owned, and Const.
+// detects Copy, Send, Owned, and Freeze.
 pub enum TyParamBound {
     TraitTyParamBound(@trait_ref),
     RegionTyParamBound
