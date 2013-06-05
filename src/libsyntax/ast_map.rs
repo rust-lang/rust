@@ -54,7 +54,7 @@ impl cmp::Eq for path_elt {
 
 pub type path = ~[path_elt];
 
-pub fn path_to_str_with_sep(p: &[path_elt], sep: ~str, itr: @ident_interner)
+pub fn path_to_str_with_sep(p: &[path_elt], sep: &str, itr: @ident_interner)
                          -> ~str {
     let strs = do p.map |e| {
         match *e {
@@ -75,7 +75,7 @@ pub fn path_ident_to_str(p: &path, i: ident, itr: @ident_interner) -> ~str {
 }
 
 pub fn path_to_str(p: &[path_elt], itr: @ident_interner) -> ~str {
-    path_to_str_with_sep(p, ~"::", itr)
+    path_to_str_with_sep(p, "::", itr)
 }
 
 pub fn path_elt_to_str(pe: path_elt, itr: @ident_interner) -> ~str {
