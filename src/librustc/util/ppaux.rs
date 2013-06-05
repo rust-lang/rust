@@ -562,7 +562,7 @@ impl Repr for ty::ParamBounds {
             res.push(match b {
                 ty::BoundCopy => ~"Copy",
                 ty::BoundStatic => ~"'static",
-                ty::BoundOwned => ~"Owned",
+                ty::BoundSend => ~"Send",
                 ty::BoundConst => ~"Const",
                 ty::BoundSized => ~"Sized",
             });
@@ -768,7 +768,7 @@ impl UserString for ty::BuiltinBound {
         match *self {
             ty::BoundCopy => ~"Copy",
             ty::BoundStatic => ~"'static",
-            ty::BoundOwned => ~"Owned",
+            ty::BoundSend => ~"Send",
             ty::BoundConst => ~"Const",
             ty::BoundSized => ~"Sized",
         }
