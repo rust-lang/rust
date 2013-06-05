@@ -1297,7 +1297,7 @@ with matching types and type parameter counts.
 
 An implementation can take type parameters,
 which can be different from the type parameters taken by the trait it implements.
-Implementation parameters are written after after the `impl` keyword.
+Implementation parameters are written after the `impl` keyword.
 
 ~~~~
 # trait Seq<T> { }
