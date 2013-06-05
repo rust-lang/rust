@@ -12,7 +12,7 @@
 // are const.
 
 
-fn foo<T:Copy + Const>(x: T) -> T { x }
+fn foo<T:Copy + Freeze>(x: T) -> T { x }
 
 struct F { field: int }
 
