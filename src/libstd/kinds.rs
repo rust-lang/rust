@@ -44,9 +44,16 @@ pub trait Copy {
     // Empty.
 }
 
+#[cfg(stage0)]
 #[lang="owned"]
 pub trait Owned {
-    // Empty.
+    // empty.
+}
+
+#[cfg(not(stage0))]
+#[lang="send"]
+pub trait Owned {
+    // empty.
 }
 
 #[lang="const"]
