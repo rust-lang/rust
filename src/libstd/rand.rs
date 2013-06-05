@@ -658,13 +658,14 @@ impl IsaacRng {
     /// of `rsl` as a seed, otherwise construct one algorithmically (not
     /// randomly).
     fn init(&mut self, use_rsl: bool) {
-        macro_rules! init_mut_many (
-            ($( $var:ident ),* = $val:expr ) => {
-                let mut $( $var = $val ),*;
-            }
-        );
-        init_mut_many!(a, b, c, d, e, f, g, h = 0x9e3779b9);
-
+        let mut a = 0x9e3779b9;
+        let mut b = a;
+        let mut c = a;
+        let mut d = a;
+        let mut e = a;
+        let mut f = a;
+        let mut g = a;
+        let mut h = a;
 
         macro_rules! mix(
             () => {{
@@ -718,9 +719,9 @@ impl IsaacRng {
     fn isaac(&mut self) {
         self.c += 1;
         // abbreviations
-        let mut a = self.a, b = self.b + self.c;
+        let mut (a, b) = (self.a, self.b + self.c);
 
-        static midpoint: uint =  RAND_SIZE as uint / 2;
+        static midpoint: uint = RAND_SIZE as uint / 2;
 
         macro_rules! ind (($x:expr) => {
             self.mem[($x >> 2) & (RAND_SIZE - 1)]

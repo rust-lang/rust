@@ -58,7 +58,8 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 
     /// remove whitespace-only lines from the start/end of lines
     fn vertical_trim(lines: ~[~str]) -> ~[~str] {
-        let mut i = 0u, j = lines.len();
+        let mut i = 0u;
+        let mut j = lines.len();
         while i < j && lines[i].trim().is_empty() {
             i += 1u;
         }

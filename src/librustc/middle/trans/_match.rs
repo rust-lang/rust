@@ -1282,7 +1282,8 @@ pub fn compile_submatch(bcx: block,
     assert!((m.len() > 0u || chk.is_some()));
     let _icx = bcx.insn_ctxt("match::compile_submatch");
     let mut bcx = bcx;
-    let tcx = bcx.tcx(), dm = tcx.def_map;
+    let tcx = bcx.tcx();
+    let dm = tcx.def_map;
     if m.len() == 0u {
         Br(bcx, chk.get()());
         return;
@@ -1638,7 +1639,8 @@ fn create_bindings_map(bcx: block, pat: @ast::pat) -> BindingsMap {
         let variable_ty = node_id_type(bcx, p_id);
         let llvariable_ty = type_of::type_of(ccx, variable_ty);
 
-        let llmatch, trmode;
+        let llmatch;
+        let trmode;
         match bm {
             ast::bind_infer => {
                 // in this case, the final type of the variable will be T,
@@ -1676,7 +1678,8 @@ pub fn trans_match_inner(scope_cx: block,
         return bcx;
     }
 
-    let mut arm_datas = ~[], matches = ~[];
+    let mut arm_datas = ~[];
+    let mut matches = ~[];
     for vec::each(arms) |arm| {
         let body = scope_block(bcx, arm.body.info(), "case_body");
         let bindings_map = create_bindings_map(bcx, arm.pats[0]);

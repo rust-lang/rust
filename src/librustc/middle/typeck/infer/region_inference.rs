@@ -928,7 +928,8 @@ impl RegionVarBindings {
         // `result_set` acts as a worklist: we explore all outgoing
         // edges and add any new regions we find to result_set.  This
         // is not a terribly efficient implementation.
-        let mut result_set = ~[r0], result_index = 0;
+        let mut result_set = ~[r0];
+        let mut result_index = 0;
         while result_index < result_set.len() {
             // nb: can't use uint::range() here because result_set grows
             let r = result_set[result_index];

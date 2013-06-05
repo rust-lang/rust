@@ -242,7 +242,8 @@ pub fn require_same_types(
     t2: ty::t,
     msg: &fn() -> ~str) -> bool {
 
-    let l_tcx, l_infcx;
+    let l_tcx;
+    let l_infcx;
     match maybe_infcx {
       None => {
         l_tcx = tcx;

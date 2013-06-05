@@ -950,7 +950,8 @@ pub fn in_lpad_scope_cx(bcx: block, f: &fn(si: &mut scope_info)) {
 pub fn get_landing_pad(bcx: block) -> BasicBlockRef {
     let _icx = bcx.insn_ctxt("get_landing_pad");
 
-    let mut cached = None, pad_bcx = bcx; // Guaranteed to be set below
+    let mut cached = None;
+    let mut pad_bcx = bcx; // Guaranteed to be set below
     do in_lpad_scope_cx(bcx) |inf| {
         // If there is a valid landing pad still around, use it
         match inf.landing_pad {
@@ -1154,13 +1155,11 @@ pub fn trans_stmt(cx: block, s: &ast::stmt) -> block {
         }
         ast::stmt_decl(d, _) => {
             match d.node {
-                ast::decl_local(ref locals) => {
-                    for locals.each |local| {
-                        bcx = init_local(bcx, *local);
-                        if cx.sess().opts.extra_debuginfo
-                            && fcx_has_nonzero_span(bcx.fcx) {
-                            debuginfo::create_local_var(bcx, *local);
-                        }
+                ast::decl_local(ref local) => {
+                    bcx = init_local(bcx, *local);
+                    if cx.sess().opts.extra_debuginfo
+                        && fcx_has_nonzero_span(bcx.fcx) {
+                        debuginfo::create_local_var(bcx, *local);
                     }
                 }
                 ast::decl_item(i) => trans_item(*cx.fcx.ccx, i)
@@ -1296,7 +1295,8 @@ pub fn cleanup_and_leave(bcx: block,
                          upto: Option<BasicBlockRef>,
                          leave: Option<BasicBlockRef>) {
     let _icx = bcx.insn_ctxt("cleanup_and_leave");
-    let mut cur = bcx, bcx = bcx;
+    let mut cur = bcx;
+    let mut bcx = bcx;
     let is_lpad = leave == None;
     loop {
         debug!("cleanup_and_leave: leaving %s", cur.to_str());
@@ -1402,15 +1402,11 @@ pub fn block_locals(b: &ast::blk, it: &fn(@ast::local)) {
         match s.node {
           ast::stmt_decl(d, _) => {
             match d.node {
-              ast::decl_local(ref locals) => {
-                for locals.each |local| {
-                    it(*local);
-                }
-              }
-              _ => {/* fall through */ }
+              ast::decl_local(ref local) => it(*local),
+              _ => {} /* fall through */
             }
           }
-          _ => {/* fall through */ }
+          _ => {} /* fall through */
         }
     }
 }
@@ -1987,7 +1983,8 @@ pub fn trans_enum_variant(ccx: @CrateContext,
                                None);
 
     let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
-    let bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
+    let bcx = top_scope_block(fcx, None);
+    let lltop = bcx.llbb;
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, variant.node.id));
     let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
 

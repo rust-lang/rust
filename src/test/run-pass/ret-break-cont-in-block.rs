@@ -14,7 +14,8 @@ use std::cmp::Eq;
 use std::vec;
 
 fn iter<T>(v: ~[T], it: &fn(&T) -> bool) -> bool {
-    let mut i = 0u, l = v.len();
+    let mut i = 0u;
+    let mut l = v.len();
     while i < l {
         if !it(&v[i]) { return false; }
         i += 1u;

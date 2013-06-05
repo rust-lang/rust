@@ -661,9 +661,9 @@ fn each_split_char_inner<'a>(s: &'a str,
                              allow_trailing_empty: bool,
                              it: &fn(&'a str) -> bool) -> bool {
     if sep < 128u as char {
-        let b = sep as u8, l = len(s);
+        let (b, l) = (sep as u8, len(s));
         let mut done = 0u;
-        let mut i = 0u, start = 0u;
+        let mut (i, start) = (0u, 0u);
         while i < l && done < count {
             if s[i] == b {
                 if allow_empty || start < i {
@@ -725,7 +725,7 @@ fn each_split_inner<'a>(s: &'a str,
                         allow_trailing_empty: bool,
                         it: &fn(&'a str) -> bool) -> bool {
     let l = len(s);
-    let mut i = 0u, start = 0u, done = 0u;
+    let mut (i, start, done) = (0u, 0u, 0u);
     while i < l && done < count {
         let CharRange {ch, next} = char_range_at(s, i);
         if sepfn(ch) {
@@ -748,9 +748,9 @@ fn each_split_inner<'a>(s: &'a str,
 // See Issue #1932 for why this is a naive search
 fn iter_matches<'a,'b>(s: &'a str, sep: &'b str,
                        f: &fn(uint, uint) -> bool) -> bool {
-    let sep_len = len(sep), l = len(s);
+    let (sep_len, l) = (len(sep), len(s));
     assert!(sep_len > 0u);
-    let mut i = 0u, match_start = 0u, match_i = 0u;
+    let mut (i, match_start, match_i) = (0u, 0u, 0u);
 
     while i < l {
         if s[i] == sep[match_i] {
@@ -977,7 +977,7 @@ pub fn each_split_within<'a>(ss: &'a str,
  * The original string with all occurances of `from` replaced with `to`
  */
 pub fn replace(s: &str, from: &str, to: &str) -> ~str {
-    let mut result = ~"", first = true;
+    let mut (result, first) = (~"", true);
     for iter_between_matches(s, from) |start, end| {
         if first {
             first = false;
@@ -1761,7 +1761,7 @@ pub fn contains_char(haystack: &str, needle: char) -> bool {
  * * needle - The string to look for
  */
 pub fn starts_with<'a,'b>(haystack: &'a str, needle: &'b str) -> bool {
-    let haystack_len = len(haystack), needle_len = len(needle);
+    let (haystack_len, needle_len) = (len(haystack), len(needle));
     if needle_len == 0u { true }
     else if needle_len > haystack_len { false }
     else { match_at(haystack, needle, 0u) }
@@ -1776,7 +1776,7 @@ pub fn starts_with<'a,'b>(haystack: &'a str, needle: &'b str) -> bool {
  * * needle - The string to look for
  */
 pub fn ends_with<'a,'b>(haystack: &'a str, needle: &'b str) -> bool {
-    let haystack_len = len(haystack), needle_len = len(needle);
+    let (haystack_len, needle_len) = (len(haystack), len(needle));
     if needle_len == 0u { true }
     else if needle_len > haystack_len { false }
     else { match_at(haystack, needle, haystack_len - needle_len) }
@@ -1951,7 +1951,7 @@ pub fn with_capacity(capacity: uint) -> ~str {
 pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
     assert!(is_char_boundary(s, start));
     assert!(is_char_boundary(s, end));
-    let mut i = start, len = 0u;
+    let mut (i, len) = (start, 0u);
     while i < end {
         let next = char_range_at(s, i).next;
         len += 1u;
@@ -1964,7 +1964,7 @@ pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
 /// starting from `start`.
 pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
     assert!(is_char_boundary(s, start));
-    let mut end = start, cnt = n;
+    let mut (end, cnt) = (start, n);
     let l = len(s);
     while cnt > 0u {
         assert!(end < l);
@@ -2300,7 +2300,10 @@ pub fn as_buf<T>(s: &str, f: &fn(*u8, uint) -> T) -> T {
 pub fn subslice_offset(outer: &str, inner: &str) -> uint {
     do as_buf(outer) |a, a_len| {
         do as_buf(inner) |b, b_len| {
-            let a_start: uint, a_end: uint, b_start: uint, b_end: uint;
+            let a_start: uint;
+            let a_end: uint;
+            let b_start: uint;
+            let b_end: uint;
             unsafe {
                 a_start = cast::transmute(a); a_end = a_len + cast::transmute(a);
                 b_start = cast::transmute(b); b_end = b_len + cast::transmute(b);
@@ -2404,7 +2407,7 @@ pub mod raw {
 
     /// Create a Rust string from a null-terminated *u8 buffer
     pub unsafe fn from_buf(buf: *u8) -> ~str {
-        let mut curr = buf, i = 0u;
+        let mut (curr, i) = (buf, 0u);
         while *curr != 0u8 {
             i += 1u;
             curr = ptr::offset(buf, i);

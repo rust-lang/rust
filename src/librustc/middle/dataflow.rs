@@ -372,11 +372,9 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                  in_out: &mut [uint],
                  loop_scopes: &mut ~[LoopScope]) {
         match decl.node {
-            ast::decl_local(ref locals) => {
-                for locals.each |local| {
-                    self.walk_pat(local.node.pat, in_out, loop_scopes);
-                    self.walk_opt_expr(local.node.init, in_out, loop_scopes);
-                }
+            ast::decl_local(local) => {
+                self.walk_pat(local.node.pat, in_out, loop_scopes);
+                self.walk_opt_expr(local.node.init, in_out, loop_scopes);
             }
 
             ast::decl_item(_) => {}

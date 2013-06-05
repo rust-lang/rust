@@ -302,8 +302,9 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                    s: &stmt_,
                    sp: span,
                    fld: @ast_fold,
-                   orig: @fn(&stmt_, span, @ast_fold) -> (stmt_, span))
-                -> (stmt_, span) {
+                   orig: @fn(&stmt_, span, @ast_fold)
+                             -> (Option<stmt_>, span))
+                -> (Option<stmt_>, span) {
     let (mac, pth, tts, semi) = match *s {
         stmt_mac(ref mac, semi) => {
             match mac.node {
@@ -342,8 +343,17 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
             };
 
             //keep going, outside-in
-            let fully_expanded = copy fld.fold_stmt(expanded).node;
-            cx.bt_pop();
+            let fully_expanded = match fld.fold_stmt(expanded) {
+                Some(stmt) => {
+                    let fully_expanded = &stmt.node;
+                    cx.bt_pop();
+                    copy *fully_expanded
+                }
+                None => {
+                    cx.span_fatal(pth.span,
+                                  "macro didn't expand to a statement")
+                }
+            };
 
             (fully_expanded, sp)
         }
@@ -355,8 +365,8 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
     };
 
     (match fully_expanded {
-        stmt_expr(e, stmt_id) if semi => stmt_semi(e, stmt_id),
-        _ => { fully_expanded } /* might already have a semi */
+        stmt_expr(e, stmt_id) if semi => Some(stmt_semi(e, stmt_id)),
+        _ => { Some(fully_expanded) } /* might already have a semi */
     }, sp)
 
 }

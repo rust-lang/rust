@@ -413,7 +413,10 @@ pub type local = spanned<local_>;
 pub type decl = spanned<decl_>;
 
 #[deriving(Eq, Encodable, Decodable)]
-pub enum decl_ { decl_local(~[@local]), decl_item(@item), }
+pub enum decl_ {
+    decl_local(@local),
+    decl_item(@item),
+}
 
 #[deriving(Eq, Encodable, Decodable)]
 pub struct arm {
@@ -440,8 +443,8 @@ pub struct expr {
     span: span,
 }
 
-pub impl expr {
-    fn get_callee_id(&self) -> Option<node_id> {
+impl expr {
+    pub fn get_callee_id(&self) -> Option<node_id> {
         match self.node {
             expr_method_call(callee_id, _, _, _, _, _) |
             expr_index(callee_id, _, _) |

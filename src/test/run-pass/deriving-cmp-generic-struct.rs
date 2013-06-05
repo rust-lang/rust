@@ -15,7 +15,8 @@ struct S<T> {
 }
 
 pub fn main() {
-    let s1 = S {x: 1, y: 1}, s2 = S {x: 1, y: 2};
+    let s1 = S {x: 1, y: 1};
+    let s2 = S {x: 1, y: 2};
 
     // in order for both Ord and TotalOrd
     let ss = [s1, s2];
@@ -25,8 +26,10 @@ pub fn main() {
             let ord = i.cmp(&j);
 
             let eq = i == j;
-            let lt = i < j, le = i <= j;
-            let gt = i > j, ge = i >= j;
+            let lt = i < j;
+            let le = i <= j;
+            let gt = i > j;
+            let ge = i >= j;
 
             // Eq
             assert_eq!(*s1 == *s2, eq);

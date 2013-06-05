@@ -430,11 +430,7 @@ pub fn visit_stmt<E>(s: @stmt, e: E, v: vt<E>) {
 
 pub fn visit_decl<E: Copy>(d: @decl, e: E, v: vt<E>) {
     match d.node {
-        decl_local(ref locs) => {
-            for locs.each |loc| {
-                (v.visit_local)(*loc, e, v)
-            }
-        },
+        decl_local(ref loc) => (v.visit_local)(*loc, e, v),
         decl_item(it) => (v.visit_item)(it, e, v)
     }
 }

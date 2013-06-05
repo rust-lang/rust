@@ -125,7 +125,7 @@ impl Ord for BigUint {
 impl TotalOrd for BigUint {
 
     fn cmp(&self, other: &BigUint) -> Ordering {
-        let s_len = self.data.len(), o_len = other.data.len();
+        let (s_len, o_len) = (self.data.len(), other.data.len());
         if s_len < o_len { return Less; }
         if s_len > o_len { return Greater;  }
 
@@ -255,7 +255,7 @@ impl Mul<BigUint, BigUint> for BigUint {
     fn mul(&self, other: &BigUint) -> BigUint {
         if self.is_zero() || other.is_zero() { return Zero::zero(); }
 
-        let s_len = self.data.len(), o_len = other.data.len();
+        let (s_len, o_len) = (self.data.len(), other.data.len());
         if s_len == 1 { return mul_digit(other, self.data[0]);  }
         if o_len == 1 { return mul_digit(self,  other.data[0]); }
 
@@ -447,7 +447,7 @@ impl Integer for BigUint {
 
     fn gcd(&self, other: &BigUint) -> BigUint {
         // Use Euclid's algorithm
-        let mut m = copy *self, n = copy *other;
+        let mut (m, n) = (copy *self, copy *other);
         while !m.is_zero() {
             let temp = m;
             m = n % temp;
@@ -1002,8 +1002,8 @@ impl Integer for BigInt {
     fn div_mod_floor(&self, other: &BigInt) -> (BigInt, BigInt) {
         // m.sign == other.sign
         let (d_ui, m_ui) = self.data.div_rem(&other.data);
-        let d = BigInt::from_biguint(Plus, d_ui),
-            m = BigInt::from_biguint(Plus, m_ui);
+        let d = BigInt::from_biguint(Plus, d_ui);
+        let m = BigInt::from_biguint(Plus, m_ui);
         match (self.sign, other.sign) {
             (_,    Zero)   => fail!(),
             (Plus, Plus)  | (Zero, Plus)  => (d, m),

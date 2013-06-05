@@ -107,7 +107,8 @@ fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
 
 fn resolve_type_vars_for_node(wbcx: @mut WbCtxt, sp: span, id: ast::node_id)
                            -> Option<ty::t> {
-    let fcx = wbcx.fcx, tcx = fcx.ccx.tcx;
+    let fcx = wbcx.fcx;
+    let tcx = fcx.ccx.tcx;
 
     // Resolve any borrowings for the node with id `id`
     match fcx.inh.adjustments.find(&id) {

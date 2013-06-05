@@ -194,8 +194,8 @@ impl FileInput {
     arguments. `"-"` represents `stdin`.
     */
     pub fn from_args() -> FileInput {
-        let args = os::args(),
-            pathed = pathify(args.tail(), true);
+        let args = os::args();
+        let pathed = pathify(args.tail(), true);
         FileInput::from_vec(pathed)
     }
 
@@ -222,11 +222,11 @@ impl FileInput {
             return false;
         }
 
-        let path_option = self.fi.files.shift(),
-            file = match path_option {
-                None => io::stdin(),
-                Some(ref path) => io::file_reader(path).get()
-            };
+        let path_option = self.fi.files.shift();
+        let file = match path_option {
+            None => io::stdin(),
+            Some(ref path) => io::file_reader(path).get()
+        };
 
         self.fi.current_reader = Some(file);
         self.fi.state.current_path = path_option;
@@ -431,8 +431,8 @@ mod test {
     #[test]
     fn test_pathify() {
         let strs = [~"some/path",
-                    ~"some/other/path"],
-            paths = ~[Some(Path("some/path")),
+                    ~"some/other/path"];
+        let paths = ~[Some(Path("some/path")),
                       Some(Path("some/other/path"))];
 
         assert_eq!(pathify(strs, true), copy paths);
@@ -561,8 +561,10 @@ mod test {
 
     #[test]
     fn test_no_trailing_newline() {
-        let f1 = Some(Path("tmp/lib-fileinput-test-no-trailing-newline-1.tmp")),
-            f2 = Some(Path("tmp/lib-fileinput-test-no-trailing-newline-2.tmp"));
+        let f1 =
+            Some(Path("tmp/lib-fileinput-test-no-trailing-newline-1.tmp"));
+        let f2 =
+            Some(Path("tmp/lib-fileinput-test-no-trailing-newline-2.tmp"));
 
         let wr = io::file_writer(f1.get_ref(), [io::Create, io::Truncate]).get();
         wr.write_str("1\n2");

@@ -380,7 +380,8 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
       }
       ty::ty_nil => None,
       ty::ty_bool => {
-        let mut true_found = false, false_found = false;
+        let mut true_found = false;
+        let mut false_found = false;
         for m.each |r| {
             match pat_ctor_id(cx, r[0]) {
               None => (),
@@ -513,10 +514,12 @@ pub fn specialize(cx: @MatchCheckCtxt,
                                 }
                             },
                             range(ref c_lo, ref c_hi) => {
-                                let m1 = compare_const_vals(c_lo, &e_v),
-                                    m2 = compare_const_vals(c_hi, &e_v);
+                                let m1 = compare_const_vals(c_lo, &e_v);
+                                let m2 = compare_const_vals(c_hi, &e_v);
                                 match (m1, m2) {
-                                    (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
+                                    (Some(val1), Some(val2)) => {
+                                        (val1 >= 0 && val2 <= 0)
+                                    }
                                     _ => {
                                         cx.tcx.sess.span_err(pat_span,
                                             "mismatched types between ranges");
@@ -560,8 +563,8 @@ pub fn specialize(cx: @MatchCheckCtxt,
                                     }
                                 },
                             range(ref c_lo, ref c_hi) => {
-                                let m1 = compare_const_vals(c_lo, &e_v),
-                                    m2 = compare_const_vals(c_hi, &e_v);
+                                let m1 = compare_const_vals(c_lo, &e_v);
+                                let m2 = compare_const_vals(c_hi, &e_v);
                                 match (m1, m2) {
                                     (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
                                     _ => {
@@ -622,7 +625,8 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     }
                     _ => {
                         // Grab the class data that we care about.
-                        let class_fields, class_id;
+                        let class_fields;
+                        let class_id;
                         match ty::get(left_ty).sty {
                             ty::ty_struct(cid, _) => {
                                 class_id = cid;
@@ -667,8 +671,8 @@ pub fn specialize(cx: @MatchCheckCtxt,
                         }
                     },
                     range(ref c_lo, ref c_hi) => {
-                        let m1 = compare_const_vals(c_lo, &e_v),
-                            m2 = compare_const_vals(c_hi, &e_v);
+                        let m1 = compare_const_vals(c_lo, &e_v);
+                        let m2 = compare_const_vals(c_hi, &e_v);
                         match (m1, m2) {
                             (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
                             _ => {
@@ -691,11 +695,11 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     single => return Some(vec::to_owned(r.tail())),
                     _ => fail!("type error")
                 };
-                let v_lo = eval_const_expr(cx.tcx, lo),
-                    v_hi = eval_const_expr(cx.tcx, hi);
+                let v_lo = eval_const_expr(cx.tcx, lo);
+                let v_hi = eval_const_expr(cx.tcx, hi);
 
-                let m1 = compare_const_vals(&c_lo, &v_lo),
-                    m2 = compare_const_vals(&c_hi, &v_hi);
+                let m1 = compare_const_vals(&c_lo, &v_lo);
+                let m2 = compare_const_vals(&c_hi, &v_hi);
                 match (m1, m2) {
                     (Some(val1), Some(val2)) if val1 >= 0 && val2 <= 0 => {
                         Some(vec::to_owned(r.tail()))
