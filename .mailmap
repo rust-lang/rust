@@ -1,0 +1,12 @@
+#
+# This list is used by git-shortlog to aggregate contributions.  It is
+# necessary when either the author's full name is not always written
+# the same way, and/or the same author contributes from different
+# email addresses.
+#
+
+Elly Jones <elly@leptoquark.net>
+ILyoan <ilyoan@gmail.com>
+Junyoung Cho <june0.cho@samsung.com>
+Matthijs Hofstra <thiezz@gmail.com>
+Rob Arnold <robarnold@cs.cmu.edu>
