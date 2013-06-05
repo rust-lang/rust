@@ -16,7 +16,11 @@ enum E<T> {
 }
 
 pub fn main() {
-    let e0 = E0, e11 = E1(1), e12 = E1(2), e21 = E2(1,1), e22 = E2(1, 2);
+    let e0 = E0;
+    let e11 = E1(1);
+    let e12 = E1(2);
+    let e21 = E2(1, 1);
+    let e22 = E2(1, 2);
 
     // in order for both Ord and TotalOrd
     let es = [e0, e11, e12, e21, e22];
@@ -26,8 +30,10 @@ pub fn main() {
             let ord = i.cmp(&j);
 
             let eq = i == j;
-            let lt = i < j, le = i <= j;
-            let gt = i > j, ge = i >= j;
+            let lt = i < j;
+            let le = i <= j;
+            let gt = i > j;
+            let ge = i >= j;
 
             // Eq
             assert_eq!(*e1 == *e2, eq);

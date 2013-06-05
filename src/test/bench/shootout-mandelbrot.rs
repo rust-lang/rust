@@ -10,7 +10,8 @@ static LIMIT: f64 = 2.0;
 #[fixed_stack_segment]
 fn main() {
     unsafe {
-        let w: i32 = FromStr::from_str(os::args()[1]).get(), h = w;
+        let w: i32 = FromStr::from_str(os::args()[1]).get();
+        let h = w;
         let mut byte_acc: i8 = 0;
         let mut bit_num: i32 = 0;
 

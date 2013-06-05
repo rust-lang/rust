@@ -279,7 +279,8 @@ pub fn trait_method_to_ty_method(method: &trait_method) -> ty_method {
 
 pub fn split_trait_methods(trait_methods: &[trait_method])
     -> (~[ty_method], ~[@method]) {
-    let mut reqd = ~[], provd = ~[];
+    let mut reqd = ~[];
+    let mut provd = ~[];
     for trait_methods.each |trt_method| {
         match *trt_method {
           required(ref tm) => reqd.push(copy *tm),

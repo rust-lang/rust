@@ -161,7 +161,8 @@ pub fn mk_closure_tys(tcx: ty::ctxt,
 pub fn allocate_cbox(bcx: block, sigil: ast::Sigil, cdata_ty: ty::t)
                   -> Result {
     let _icx = bcx.insn_ctxt("closure::allocate_cbox");
-    let ccx = bcx.ccx(), tcx = ccx.tcx;
+    let ccx = bcx.ccx();
+    let tcx = ccx.tcx;
 
     fn nuke_ref_count(bcx: block, llbox: ValueRef) {
         let _icx = bcx.insn_ctxt("closure::nuke_ref_count");
@@ -204,7 +205,8 @@ pub fn store_environment(bcx: block,
                          bound_values: ~[EnvValue],
                          sigil: ast::Sigil) -> ClosureResult {
     let _icx = bcx.insn_ctxt("closure::store_environment");
-    let ccx = bcx.ccx(), tcx = ccx.tcx;
+    let ccx = bcx.ccx();
+    let tcx = ccx.tcx;
 
     // compute the shape of the closure
     let cdata_ty = mk_closure_tys(tcx, bound_values);
@@ -500,7 +502,8 @@ pub fn make_opaque_cbox_take_glue(
     }
 
     // ~fn requires a deep copy.
-    let ccx = bcx.ccx(), tcx = ccx.tcx;
+    let ccx = bcx.ccx();
+    let tcx = ccx.tcx;
     let llopaquecboxty = T_opaque_box_ptr(ccx);
     let cbox_in = Load(bcx, cboxptr);
     do with_cond(bcx, IsNotNull(bcx, cbox_in)) |bcx| {

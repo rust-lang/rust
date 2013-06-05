@@ -436,7 +436,8 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
         debug!("build_direct_fn(%s)", *link_name(ccx, item));
 
         let fcx = new_fn_ctxt(ccx, ~[], decl, tys.fn_sig.output, None);
-        let bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
+        let bcx = top_scope_block(fcx, None);
+        let lltop = bcx.llbb;
         let llbasefn = base_fn(ccx, *link_name(ccx, item), tys, cc);
         let ty = ty::lookup_item_type(ccx.tcx,
                                       ast_util::local_def(item.id)).ty;
@@ -462,7 +463,8 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
         debug!("build_fast_ffi_fn(%s)", *link_name(ccx, item));
 
         let fcx = new_fn_ctxt(ccx, ~[], decl, tys.fn_sig.output, None);
-        let bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
+        let bcx = top_scope_block(fcx, None);
+        let lltop = bcx.llbb;
         let llbasefn = base_fn(ccx, *link_name(ccx, item), tys, cc);
         set_no_inline(fcx.llfn);
         set_fixed_stack_segment(fcx.llfn);

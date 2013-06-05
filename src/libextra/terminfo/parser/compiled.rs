@@ -160,7 +160,9 @@ pub static stringnames: &'static[&'static str] = &'static[ "cbt", "_", "cr", "cs
 
 /// Parse a compiled terminfo entry, using long capability names if `longnames` is true
 pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
-    let bnames, snames, nnames;
+    let bnames;
+    let snames;
+    let nnames;
 
     if longnames {
         bnames = boolfnames;
