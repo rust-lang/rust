@@ -143,7 +143,6 @@ use middle::trans::meth;
 use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::ty::struct_fields;
-use middle::ty::{AutoDerefRef, AutoAddEnv};
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn,
                  AutoDerefRef, AutoAddEnv, AutoUnsafe};
 use middle::ty;
