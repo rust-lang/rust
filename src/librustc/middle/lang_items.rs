@@ -13,9 +13,9 @@
 // Language items are items that represent concepts intrinsic to the language
 // itself. Examples are:
 //
-// * Traits that specify "kinds"; e.g. "const", "copy", "send".
+// * Traits that specify "kinds"; e.g. "Freeze", "Copy", "Send".
 //
-// * Traits that represent operators; e.g. "add", "sub", "index".
+// * Traits that represent operators; e.g. "Add", "Sub", "Index".
 //
 // * Functions called by the compiler itself.
 
@@ -99,7 +99,7 @@ impl LanguageItems {
 
     pub fn item_name(index: uint) -> &'static str {
         match index {
-            0  => "const",
+            0  => "freeze",
             1  => "copy",
             2  => "send",
             3  => "sized",

@@ -576,7 +576,7 @@ impl Repr for ty::ParamBounds {
                 ty::BoundCopy => ~"Copy",
                 ty::BoundStatic => ~"'static",
                 ty::BoundSend => ~"Send",
-                ty::BoundConst => ~"Const",
+                ty::BoundFreeze => ~"Freeze",
                 ty::BoundSized => ~"Sized",
             });
         }
@@ -782,7 +782,7 @@ impl UserString for ty::BuiltinBound {
             ty::BoundCopy => ~"Copy",
             ty::BoundStatic => ~"'static",
             ty::BoundSend => ~"Send",
-            ty::BoundConst => ~"Const",
+            ty::BoundFreeze => ~"Freeze",
             ty::BoundSized => ~"Sized",
         }
     }
