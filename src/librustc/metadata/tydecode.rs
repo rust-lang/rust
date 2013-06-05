@@ -558,7 +558,7 @@ fn parse_bounds(st: @mut PState, conv: conv_did) -> ty::ParamBounds {
     loop {
         match next(st) {
             'S' => {
-                param_bounds.builtin_bounds.add(ty::BoundOwned);
+                param_bounds.builtin_bounds.add(ty::BoundSend);
             }
             'C' => {
                 param_bounds.builtin_bounds.add(ty::BoundCopy);
