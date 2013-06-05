@@ -11,9 +11,9 @@
 #[mutable]
 struct Foo { a: int }
 
-fn bar<T: Const>(_: T) {}
+fn bar<T: Freeze>(_: T) {}
 
 fn main() {
     let x = Foo { a: 5 };
-    bar(x); //~ ERROR instantiating a type parameter with an incompatible type `Foo`, which does not fulfill `Const`
+    bar(x); //~ ERROR instantiating a type parameter with an incompatible type `Foo`, which does not fulfill `Freeze`
 }

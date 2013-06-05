@@ -57,13 +57,13 @@ pub trait Owned {
 
 #[cfg(stage0)]
 #[lang="const"]
-pub trait Const {
+pub trait Freeze {
     // empty.
 }
 
 #[cfg(not(stage0))]
 #[lang="freeze"]
-pub trait Const {
+pub trait Freeze {
     // empty.
 }
 
