@@ -27,8 +27,7 @@ The 4 kinds are
 * Owned - owned types and types containing owned types.  These types
   may be transferred across task boundaries.
 
-* Const - types that are deeply immutable. Const types are used for
-  freezable data structures.
+* Freeze - types that are deeply immutable.
 
 `Copy` types include both implicitly copyable types that the compiler
 will copy automatically and non-implicitly copyable types that require
@@ -56,9 +55,16 @@ pub trait Owned {
     // empty.
 }
 
+#[cfg(stage0)]
 #[lang="const"]
 pub trait Const {
-    // Empty.
+    // empty.
+}
+
+#[cfg(not(stage0))]
+#[lang="freeze"]
+pub trait Const {
+    // empty.
 }
 
 #[lang="sized"]
