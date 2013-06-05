@@ -125,7 +125,7 @@ impl RestrictionsContext {
 
             mc::cat_deref(_, _, mc::region_ptr(m_const, _)) |
             mc::cat_deref(_, _, mc::gc_ptr(m_const)) => {
-                // R-Deref-Const-Borrowed
+                // R-Deref-Freeze-Borrowed
                 self.check_no_mutability_control(cmt, restrictions);
                 Safe
             }
