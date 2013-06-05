@@ -25,6 +25,7 @@ use ext::build::AstBuilder;
 use core::option;
 use core::unstable::extfmt::ct::*;
 use core::vec;
+use parse::token::{str_to_ident};
 
 pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
@@ -53,12 +54,11 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                   pieces: ~[Piece], args: ~[@ast::expr])
    -> @ast::expr {
     fn make_path_vec(cx: @ExtCtxt, ident: &str) -> ~[ast::ident] {
-        let intr = cx.parse_sess().interner;
-        return ~[intr.intern("std"),
-                 intr.intern("unstable"),
-                 intr.intern("extfmt"),
-                 intr.intern("rt"),
-                 intr.intern(ident)];
+        return ~[str_to_ident("std"),
+                 str_to_ident("unstable"),
+                 str_to_ident("extfmt"),
+                 str_to_ident("rt"),
+                 str_to_ident(ident)];
     }
     fn make_rt_path_expr(cx: @ExtCtxt, sp: span, nm: &str) -> @ast::expr {
         let path = make_path_vec(cx, nm);
@@ -112,15 +112,14 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
         fn make_conv_struct(cx: @ExtCtxt, sp: span, flags_expr: @ast::expr,
                          width_expr: @ast::expr, precision_expr: @ast::expr,
                          ty_expr: @ast::expr) -> @ast::expr {
-            let intr = cx.parse_sess().interner;
             cx.expr_struct(
                 sp,
                 cx.path_global(sp, make_path_vec(cx, "Conv")),
                 ~[
-                    cx.field_imm(sp, intr.intern("flags"), flags_expr),
-                    cx.field_imm(sp, intr.intern("width"), width_expr),
-                    cx.field_imm(sp, intr.intern("precision"), precision_expr),
-                    cx.field_imm(sp, intr.intern("ty"), ty_expr)
+                    cx.field_imm(sp, str_to_ident("flags"), flags_expr),
+                    cx.field_imm(sp, str_to_ident("width"), width_expr),
+                    cx.field_imm(sp, str_to_ident("precision"), precision_expr),
+                    cx.field_imm(sp, str_to_ident("ty"), ty_expr)
                 ]
             )
         }
@@ -255,11 +254,11 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
     let nargs = args.len();
 
     /* 'ident' is the local buffer building up the result of fmt! */
-    let ident = cx.parse_sess().interner.intern("__fmtbuf");
+    let ident = str_to_ident("__fmtbuf");
     let buf = || cx.expr_ident(fmt_sp, ident);
-    let core_ident = cx.parse_sess().interner.intern("std");
-    let str_ident = cx.parse_sess().interner.intern("str");
-    let push_ident = cx.parse_sess().interner.intern("push_str");
+    let core_ident = str_to_ident("std");
+    let str_ident = str_to_ident("str");
+    let push_ident = str_to_ident("push_str");
     let mut stms = ~[];
 
     /* Translate each piece (portion of the fmt expression) by invoking the

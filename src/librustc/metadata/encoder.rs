@@ -43,6 +43,7 @@ use syntax::opt_vec::OptVec;
 use syntax::opt_vec;
 use syntax::parse::token::special_idents;
 use syntax::{ast_util, visit};
+use syntax::parse::token;
 use syntax;
 use writer = extra::ebml::writer;
 
@@ -141,8 +142,7 @@ fn add_to_index(ecx: @EncodeContext,
     full_path.push(name);
     index.push(
         entry {
-            val: ast_util::path_name_i(full_path,
-                                       ecx.tcx.sess.parse_sess.interner),
+            val: ast_util::path_name_i(full_path),
             pos: ebml_w.writer.tell()
         });
 }
@@ -485,8 +485,7 @@ fn encode_info_for_mod(ecx: @EncodeContext,
                         (%?/%?)",
                         *ecx.tcx.sess.str_of(ident),
                         did,
-                        ast_map::node_id_to_str(ecx.tcx.items, did, ecx.tcx
-                                                .sess.parse_sess.interner));
+                        ast_map::node_id_to_str(ecx.tcx.items, did, token::get_ident_interner()));
 
                 ebml_w.start_tag(tag_mod_impl);
                 ebml_w.wr_str(def_to_str(local_def(did)));
@@ -1055,7 +1054,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
                         tcx.sess.span_unimpl(
                             item.span,
                             fmt!("Method %s is both provided and static",
-                                 *tcx.sess.intr().get(method_ty.ident)));
+                                 *token::ident_to_str(&method_ty.ident)));
                     }
                     encode_type_param_bounds(ebml_w, ecx,
                                              &m.generics.ty_params);

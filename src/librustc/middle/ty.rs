@@ -43,6 +43,7 @@ use syntax::ast_util;
 use syntax::attr;
 use syntax::codemap::span;
 use syntax::codemap;
+use syntax::parse::token;
 use syntax::parse::token::special_idents;
 use syntax::{ast, ast_map};
 use syntax::opt_vec::OptVec;
@@ -2678,7 +2679,7 @@ impl cmp::TotalOrd for bound_region {
             (&ty::br_anon(ref a1), &ty::br_anon(ref a2)) => a1.cmp(a2),
             (&ty::br_anon(*), _) => cmp::Less,
 
-            (&ty::br_named(ref a1), &ty::br_named(ref a2)) => a1.repr.cmp(&a2.repr),
+            (&ty::br_named(ref a1), &ty::br_named(ref a2)) => a1.name.cmp(&a2.name),
             (&ty::br_named(*), _) => cmp::Less,
 
             (&ty::br_cap_avoid(ref a1, @ref b1),
@@ -2819,7 +2820,7 @@ pub fn node_id_to_trait_ref(cx: ctxt, id: ast::node_id) -> @ty::TraitRef {
        None => cx.sess.bug(
            fmt!("node_id_to_trait_ref: no trait ref for node `%s`",
                 ast_map::node_id_to_str(cx.items, id,
-                                        cx.sess.parse_sess.interner)))
+                                        token::get_ident_interner())))
     }
 }
 
@@ -2830,7 +2831,7 @@ pub fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
        None => cx.sess.bug(
            fmt!("node_id_to_type: no type for node `%s`",
                 ast_map::node_id_to_str(cx.items, id,
-                                        cx.sess.parse_sess.interner)))
+                                        token::get_ident_interner())))
     }
 }
 
@@ -3821,7 +3822,7 @@ pub fn substd_enum_variants(cx: ctxt,
 }
 
 pub fn item_path_str(cx: ctxt, id: ast::def_id) -> ~str {
-    ast_map::path_to_str(item_path(cx, id), cx.sess.parse_sess.interner)
+    ast_map::path_to_str(item_path(cx, id), token::get_ident_interner())
 }
 
 pub enum DtorKind {
@@ -4107,7 +4108,7 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
            cx.sess.bug(
                fmt!("struct ID not bound to an item: %s",
                     ast_map::node_id_to_str(cx.items, did.node,
-                                            cx.sess.parse_sess.interner)));
+                                            token::get_ident_interner())));
        }
     }
         }

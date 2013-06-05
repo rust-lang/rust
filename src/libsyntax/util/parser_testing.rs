@@ -10,11 +10,11 @@
 
 use core::option::{Option,None};
 use ast;
-use parse::parser::Parser;
 use parse::{new_parse_sess};
-
-use syntax::parse::{ParseSess,string_to_filemap,filemap_to_tts};
-use syntax::parse::{new_parser_from_source_str};
+use parse::{ParseSess,string_to_filemap,filemap_to_tts};
+use parse::{new_parser_from_source_str};
+use parse::parser::Parser;
+use parse::token;
 
 // map a string to tts, using a made-up filename: return both the token_trees
 // and the ParseSess
@@ -54,7 +54,18 @@ pub fn string_to_item_and_sess (source_str : @~str) -> (Option<@ast::item>,@mut 
     (p.parse_item(~[]),ps)
 }
 
-pub fn string_to_stmt (source_str : @~str) -> @ast::stmt {
+// parse a string, return a stmt
+pub fn string_to_stmt(source_str : @~str) -> @ast::stmt {
     string_to_parser(source_str).parse_stmt(~[])
 }
 
+// parse a string, return a pat. Uses "irrefutable"... which doesn't
+// (currently) affect parsing.
+pub fn string_to_pat(source_str : @~str) -> @ast::pat {
+    string_to_parser(source_str).parse_pat()
+}
+
+// convert a vector of strings to a vector of ast::idents
+pub fn strs_to_idents(ids: ~[&str]) -> ~[ast::ident] {
+    ids.map(|u| token::str_to_ident(*u))
+}

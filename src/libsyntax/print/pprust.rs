@@ -21,7 +21,7 @@ use codemap::{CodeMap, BytePos};
 use codemap;
 use diagnostic;
 use parse::classify::expr_is_simple_block;
-use parse::token::ident_interner;
+use parse::token::{ident_interner, ident_to_str};
 use parse::{comments, token};
 use parse;
 use print::pp::{break_offset, word, space, zerobreak, hardbreak};
@@ -1475,7 +1475,7 @@ pub fn print_decl(s: @ps, decl: @ast::decl) {
 }
 
 pub fn print_ident(s: @ps, ident: ast::ident) {
-    word(s.s, *s.intr.get(ident));
+    word(s.s, *ident_to_str(&ident));
 }
 
 pub fn print_for_decl(s: @ps, loc: @ast::local, coll: @ast::expr) {
@@ -2236,7 +2236,7 @@ mod test {
     use codemap;
     use core::cmp::Eq;
     use core::option::None;
-    use parse;
+    use parse::token;
 
     fn string_check<T:Eq> (given : &T, expected: &T) {
         if !(given == expected) {
@@ -2246,8 +2246,7 @@ mod test {
 
     #[test]
     fn test_fun_to_str() {
-        let mock_interner = parse::token::mk_fake_ident_interner();
-        let abba_ident = mock_interner.intern("abba");
+        let abba_ident = token::str_to_ident("abba");
 
         let decl = ast::fn_decl {
             inputs: ~[],
@@ -2258,14 +2257,13 @@ mod test {
         };
         let generics = ast_util::empty_generics();
         assert_eq!(&fun_to_str(&decl, ast::impure_fn, abba_ident,
-                               None, &generics, mock_interner),
+                               None, &generics, token::get_ident_interner()),
                    &~"fn abba()");
     }
 
     #[test]
     fn test_variant_to_str() {
-        let mock_interner = parse::token::mk_fake_ident_interner();
-        let ident = mock_interner.intern("principal_skinner");
+        let ident = token::str_to_ident("principal_skinner");
 
         let var = codemap::respan(codemap::dummy_sp(), ast::variant_ {
             name: ident,
@@ -2277,7 +2275,7 @@ mod test {
             vis: ast::public,
         });
 
-        let varstr = variant_to_str(&var,mock_interner);
+        let varstr = variant_to_str(&var,token::get_ident_interner());
         assert_eq!(&varstr,&~"pub principal_skinner");
     }
 }

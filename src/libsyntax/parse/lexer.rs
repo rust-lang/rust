@@ -17,6 +17,7 @@ use diagnostic::span_handler;
 use ext::tt::transcribe::{tt_next_token};
 use ext::tt::transcribe::{dup_tt_reader};
 use parse::token;
+use parse::token::{str_to_ident};
 
 use core::char;
 use core::either;
@@ -30,7 +31,6 @@ pub trait reader {
     fn next_token(@mut self) -> TokenAndSpan;
     fn fatal(@mut self, ~str) -> !;
     fn span_diag(@mut self) -> @span_handler;
-    fn interner(@mut self) -> @token::ident_interner;
     fn peek(@mut self) -> TokenAndSpan;
     fn dup(@mut self) -> @reader;
 }
@@ -50,25 +50,22 @@ pub struct StringReader {
     // The last character to be read
     curr: char,
     filemap: @codemap::FileMap,
-    interner: @token::ident_interner,
     /* cached: */
     peek_tok: token::Token,
     peek_span: span
 }
 
 pub fn new_string_reader(span_diagnostic: @span_handler,
-                         filemap: @codemap::FileMap,
-                         itr: @token::ident_interner)
+                         filemap: @codemap::FileMap)
                       -> @mut StringReader {
-    let r = new_low_level_string_reader(span_diagnostic, filemap, itr);
+    let r = new_low_level_string_reader(span_diagnostic, filemap);
     string_advance_token(r); /* fill in peek_* */
     return r;
 }
 
 /* For comments.rs, which hackily pokes into 'pos' and 'curr' */
 pub fn new_low_level_string_reader(span_diagnostic: @span_handler,
-                                   filemap: @codemap::FileMap,
-                                   itr: @token::ident_interner)
+                                   filemap: @codemap::FileMap)
                                 -> @mut StringReader {
     // Force the initial reader bump to start on a fresh line
     let initial_char = '\n';
@@ -79,7 +76,6 @@ pub fn new_low_level_string_reader(span_diagnostic: @span_handler,
         col: CharPos(0),
         curr: initial_char,
         filemap: filemap,
-        interner: itr,
         /* dummy values; not read */
         peek_tok: token::EOF,
         peek_span: codemap::dummy_sp()
@@ -100,7 +96,6 @@ fn dup_string_reader(r: @mut StringReader) -> @mut StringReader {
         col: r.col,
         curr: r.curr,
         filemap: r.filemap,
-        interner: r.interner,
         peek_tok: copy r.peek_tok,
         peek_span: copy r.peek_span
     }
@@ -121,7 +116,6 @@ impl reader for StringReader {
         self.span_diagnostic.span_fatal(copy self.peek_span, m)
     }
     fn span_diag(@mut self) -> @span_handler { self.span_diagnostic }
-    fn interner(@mut self) -> @token::ident_interner { self.interner }
     fn peek(@mut self) -> TokenAndSpan {
         TokenAndSpan {
             tok: copy self.peek_tok,
@@ -138,7 +132,6 @@ impl reader for TtReader {
         self.sp_diag.span_fatal(copy self.cur_span, m);
     }
     fn span_diag(@mut self) -> @span_handler { self.sp_diag }
-    fn interner(@mut self) -> @token::ident_interner { self.interner }
     fn peek(@mut self) -> TokenAndSpan {
         TokenAndSpan {
             tok: copy self.cur_tok,
@@ -277,7 +270,7 @@ fn consume_any_line_comment(rdr: @mut StringReader)
                 // but comments with only more "/"s are not
                 if !is_line_non_doc_comment(acc) {
                     return Some(TokenAndSpan{
-                        tok: token::DOC_COMMENT(rdr.interner.intern(acc)),
+                        tok: token::DOC_COMMENT(str_to_ident(acc)),
                         sp: codemap::mk_sp(start_bpos, rdr.pos)
                     });
                 }
@@ -331,7 +324,7 @@ fn consume_block_comment(rdr: @mut StringReader)
             // but comments with only "*"s between two "/"s are not
             if !is_block_non_doc_comment(acc) {
                 return Some(TokenAndSpan{
-                    tok: token::DOC_COMMENT(rdr.interner.intern(acc)),
+                    tok: token::DOC_COMMENT(str_to_ident(acc)),
                     sp: codemap::mk_sp(start_bpos, rdr.pos)
                 });
             }
@@ -477,12 +470,12 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
         if c == '3' && n == '2' {
             bump(rdr);
             bump(rdr);
-            return token::LIT_FLOAT(rdr.interner.intern(num_str),
+            return token::LIT_FLOAT(str_to_ident(num_str),
                                  ast::ty_f32);
         } else if c == '6' && n == '4' {
             bump(rdr);
             bump(rdr);
-            return token::LIT_FLOAT(rdr.interner.intern(num_str),
+            return token::LIT_FLOAT(str_to_ident(num_str),
                                  ast::ty_f64);
             /* FIXME (#2252): if this is out of range for either a
             32-bit or 64-bit float, it won't be noticed till the
@@ -494,9 +487,9 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
     }
     if is_float {
         if is_machine_float {
-            return token::LIT_FLOAT(rdr.interner.intern(num_str), ast::ty_f);
+            return token::LIT_FLOAT(str_to_ident(num_str), ast::ty_f);
         }
-        return token::LIT_FLOAT_UNSUFFIXED(rdr.interner.intern(num_str));
+        return token::LIT_FLOAT_UNSUFFIXED(str_to_ident(num_str));
     } else {
         if str::len(num_str) == 0u {
             rdr.fatal(~"no valid digits found for number");
@@ -559,7 +552,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
         let is_mod_name = c == ':' && nextch(rdr) == ':';
 
         // FIXME: perform NFKC normalization here. (Issue #2253)
-        return token::IDENT(rdr.interner.intern(accum_str), is_mod_name);
+        return token::IDENT(str_to_ident(accum_str), is_mod_name);
     }
     if is_dec_digit(c) {
         return scan_number(c, rdr);
@@ -669,7 +662,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
                 lifetime_name.push_char(rdr.curr);
                 bump(rdr);
             }
-            return token::LIFETIME(rdr.interner.intern(lifetime_name));
+            return token::LIFETIME(str_to_ident(lifetime_name));
         }
 
         // Otherwise it is a character constant:
@@ -742,7 +735,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
             }
         }
         bump(rdr);
-        return token::LIT_STR(rdr.interner.intern(accum_str));
+        return token::LIT_STR(str_to_ident(accum_str));
       }
       '-' => {
         if nextch(rdr) == '>' {
@@ -786,10 +779,10 @@ mod test {
     use core::option::None;
     use diagnostic;
     use parse::token;
+    use parse::token::{str_to_ident};
 
     // represents a testing reader (incl. both reader and interner)
     struct Env {
-        interner: @token::ident_interner,
         string_reader: @mut StringReader
     }
 
@@ -797,20 +790,18 @@ mod test {
     fn setup(teststr: ~str) -> Env {
         let cm = CodeMap::new();
         let fm = cm.new_filemap(~"zebra.rs", @teststr);
-        let ident_interner = token::get_ident_interner();
         let span_handler =
             diagnostic::mk_span_handler(diagnostic::mk_handler(None),@cm);
         Env {
-            interner: ident_interner,
-            string_reader: new_string_reader(span_handler,fm,ident_interner)
+            string_reader: new_string_reader(span_handler,fm)
         }
     }
 
     #[test] fn t1 () {
-        let Env {interner: ident_interner, string_reader} =
+        let Env {string_reader} =
             setup(~"/* my source file */ \
                     fn main() { io::println(~\"zebra\"); }\n");
-        let id = ident_interner.intern("fn");
+        let id = str_to_ident("fn");
         let tok1 = string_reader.next_token();
         let tok2 = TokenAndSpan{
             tok:token::IDENT(id, false),
@@ -821,7 +812,7 @@ mod test {
         // read another token:
         let tok3 = string_reader.next_token();
         let tok4 = TokenAndSpan{
-            tok:token::IDENT(ident_interner.intern("main"), false),
+            tok:token::IDENT(str_to_ident("main"), false),
             sp:span {lo:BytePos(24),hi:BytePos(28),expn_info: None}};
         assert_eq!(tok3,tok4);
         // the lparen is already read:
@@ -839,39 +830,39 @@ mod test {
     }
 
     // make the identifier by looking up the string in the interner
-    fn mk_ident (env: Env, id: &str, is_mod_name: bool) -> token::Token {
-        token::IDENT (env.interner.intern(id),is_mod_name)
+    fn mk_ident (id: &str, is_mod_name: bool) -> token::Token {
+        token::IDENT (str_to_ident(id),is_mod_name)
     }
 
     #[test] fn doublecolonparsing () {
         let env = setup (~"a b");
         check_tokenization (env,
-                           ~[mk_ident (env,"a",false),
-                             mk_ident (env,"b",false)]);
+                           ~[mk_ident("a",false),
+                             mk_ident("b",false)]);
     }
 
     #[test] fn dcparsing_2 () {
         let env = setup (~"a::b");
         check_tokenization (env,
-                           ~[mk_ident (env,"a",true),
+                           ~[mk_ident("a",true),
                              token::MOD_SEP,
-                             mk_ident (env,"b",false)]);
+                             mk_ident("b",false)]);
     }
 
     #[test] fn dcparsing_3 () {
         let env = setup (~"a ::b");
         check_tokenization (env,
-                           ~[mk_ident (env,"a",false),
+                           ~[mk_ident("a",false),
                              token::MOD_SEP,
-                             mk_ident (env,"b",false)]);
+                             mk_ident("b",false)]);
     }
 
     #[test] fn dcparsing_4 () {
         let env = setup (~"a:: b");
         check_tokenization (env,
-                           ~[mk_ident (env,"a",true),
+                           ~[mk_ident("a",true),
                              token::MOD_SEP,
-                             mk_ident (env,"b",false)]);
+                             mk_ident("b",false)]);
     }
 
     #[test] fn character_a() {
@@ -899,7 +890,7 @@ mod test {
         let env = setup(~"'abc");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
-        let id = env.interner.intern("abc");
+        let id = token::str_to_ident("abc");
         assert_eq!(tok, token::LIFETIME(id));
     }
 

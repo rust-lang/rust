@@ -28,6 +28,7 @@ use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::ast_util::{Privacy, Public, Private};
 use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
 use syntax::attr::{attr_metas, contains_name};
+use syntax::parse::token;
 use syntax::parse::token::ident_interner;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::path_to_str;
@@ -727,7 +728,7 @@ impl PrimitiveTypeTable {
                   intr: @ident_interner,
                   string: &str,
                   primitive_type: prim_ty) {
-        let ident = intr.intern(string);
+        let ident = token::str_to_ident(string);
         self.primitive_types.insert(ident, primitive_type);
     }
 }
@@ -805,8 +806,7 @@ pub fn Resolver(session: Session,
         self_ident: special_idents::self_,
         type_self_ident: special_idents::type_self,
 
-        primitive_type_table: @PrimitiveTypeTable(session.
-                                                  parse_sess.interner),
+        primitive_type_table: @PrimitiveTypeTable(token::get_ident_interner()),
 
         namespaces: ~[ TypeNS, ValueNS ],
 
@@ -2942,17 +2942,17 @@ impl Resolver {
                                  module_: @mut Module,
                                  module_path: &[ident])
                                  -> ResolveResult<ModulePrefixResult> {
-        let interner = self.session.parse_sess.interner;
+        let interner = token::get_ident_interner();
 
         // Start at the current module if we see `self` or `super`, or at the
         // top of the crate otherwise.
         let mut containing_module;
         let mut i;
-        if *interner.get(module_path[0]) == ~"self" {
+        if *token::ident_to_str(&module_path[0]) == ~"self" {
             containing_module =
                 self.get_nearest_normal_module_parent_or_self(module_);
             i = 1;
-        } else if *interner.get(module_path[0]) == ~"super" {
+        } else if *token::ident_to_str(&module_path[0]) == ~"super" {
             containing_module =
                 self.get_nearest_normal_module_parent_or_self(module_);
             i = 0;  // We'll handle `super` below.
@@ -2962,7 +2962,7 @@ impl Resolver {
 
         // Now loop through all the `super`s we find.
         while i < module_path.len() &&
-                *interner.get(module_path[i]) == ~"super" {
+                *token::ident_to_str(&module_path[i]) == ~"super" {
             debug!("(resolving module prefix) resolving `super` at %s",
                    self.module_to_str(containing_module));
             match self.get_nearest_normal_module_parent(containing_module) {

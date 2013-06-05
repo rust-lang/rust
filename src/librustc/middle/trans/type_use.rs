@@ -42,6 +42,7 @@ use syntax::ast;
 use syntax::ast::*;
 use syntax::ast_map;
 use syntax::ast_util;
+use syntax::parse::token;
 use syntax::visit;
 
 pub type type_uses = uint; // Bitmask
@@ -170,7 +171,7 @@ pub fn type_uses_for(ccx: @CrateContext, fn_id: def_id, n_tps: uint)
                               ast_map::node_id_to_str(
                                 ccx.tcx.items,
                                 fn_id_loc.node,
-                                ccx.tcx.sess.parse_sess.interner)));
+                                token::get_ident_interner())));
       }
     }
     let Context { uses, _ } = cx;

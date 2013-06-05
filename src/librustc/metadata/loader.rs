@@ -19,6 +19,7 @@ use metadata::filesearch::FileSearch;
 use metadata::filesearch;
 use syntax::codemap::span;
 use syntax::diagnostic::span_handler;
+use syntax::parse::token;
 use syntax::parse::token::ident_interner;
 use syntax::print::pprust;
 use syntax::{ast, attr};
@@ -59,7 +60,7 @@ pub fn load_library_crate(cx: &Context) -> (~str, @~[u8]) {
       None => {
         cx.diag.span_fatal(
             cx.span, fmt!("can't find crate for `%s`",
-                          *cx.intr.get(cx.ident)));
+                          *token::ident_to_str(&cx.ident)));
       }
     }
 }

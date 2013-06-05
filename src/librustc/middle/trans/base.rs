@@ -78,7 +78,8 @@ use syntax::ast_map::{path, path_elt_to_str, path_name};
 use syntax::ast_util::{local_def, path_to_ident};
 use syntax::attr;
 use syntax::codemap::span;
-use syntax::parse::token::special_idents;
+use syntax::parse::token;
+use syntax::parse::token::{special_idents};
 use syntax::print::pprust::stmt_to_str;
 use syntax::visit;
 use syntax::{ast, ast_util, codemap, ast_map};
@@ -2257,10 +2258,10 @@ pub fn register_fn_fuller(ccx: @CrateContext,
                           -> ValueRef {
     debug!("register_fn_fuller creating fn for item %d with path %s",
            node_id,
-           ast_map::path_to_str(path, ccx.sess.parse_sess.interner));
+           ast_map::path_to_str(path, token::get_ident_interner()));
 
     let ps = if attr::attrs_contains_name(attrs, "no_mangle") {
-        path_elt_to_str(*path.last(), ccx.sess.parse_sess.interner)
+        path_elt_to_str(*path.last(), token::get_ident_interner())
     } else {
         mangle_exported_name(ccx, /*bad*/copy path, node_type)
     };
@@ -2504,7 +2505,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                 }
                 ast::foreign_item_const(*) => {
                     let typ = ty::node_id_to_type(tcx, ni.id);
-                    let ident = ccx.sess.parse_sess.interner.get(ni.ident);
+                    let ident = token::ident_to_str(&ni.ident);
                     let g = do str::as_c_str(*ident) |buf| {
                         unsafe {
                             llvm::LLVMAddGlobal(ccx.llmod,
@@ -3069,7 +3070,7 @@ pub fn trans_crate(sess: session::Session,
         lib::llvm::associate_type(tn, @"tydesc", tydesc_type);
         let crate_map = decl_crate_map(sess, link_meta, llmod);
         let dbg_cx = if sess.opts.debuginfo {
-            Some(debuginfo::mk_ctxt(copy llmod_id, sess.parse_sess.interner))
+            Some(debuginfo::mk_ctxt(copy llmod_id, token::get_ident_interner()))
         } else {
             None
         };
@@ -3104,7 +3105,7 @@ pub fn trans_crate(sess: session::Session,
               lltypes: @mut HashMap::new(),
               llsizingtypes: @mut HashMap::new(),
               adt_reprs: @mut HashMap::new(),
-              names: new_namegen(sess.parse_sess.interner),
+              names: new_namegen(token::get_ident_interner()),
               next_addrspace: new_addrspace_gen(),
               symbol_hasher: symbol_hasher,
               type_hashcodes: @mut HashMap::new(),

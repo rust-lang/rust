@@ -734,7 +734,7 @@ pub fn mangle_internal_name_by_path(ccx: @CrateContext, path: path) -> ~str {
 }
 
 pub fn mangle_internal_name_by_seq(ccx: @CrateContext, flav: &str) -> ~str {
-    return fmt!("%s_%u", flav, (ccx.names)(flav).repr);
+    return fmt!("%s_%u", flav, (ccx.names)(flav).name);
 }
 
 
