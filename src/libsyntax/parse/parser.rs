@@ -1140,14 +1140,14 @@ impl Parser {
 
     pub fn token_is_mutability(&self, tok: &token::Token) -> bool {
         token::is_keyword(keywords::Mut, tok) ||
-        token::is_keyword(keywords::Const, tok)
+        token::is_keyword(keywords::Freeze, tok)
     }
 
     // parse mutability declaration (mut/const/imm)
     pub fn parse_mutability(&self) -> mutability {
         if self.eat_keyword(keywords::Mut) {
             m_mutbl
-        } else if self.eat_keyword(keywords::Const) {
+        } else if self.eat_keyword(keywords::Freeze) {
             m_const
         } else {
             m_imm
@@ -3040,7 +3040,7 @@ impl Parser {
         ) -> ast::explicit_self_ {
             // We need to make sure it isn't a mode or a type
             if token::is_keyword(keywords::Self, &p.look_ahead(1)) ||
-                ((token::is_keyword(keywords::Const, &p.look_ahead(1)) ||
+                ((token::is_keyword(keywords::Freeze, &p.look_ahead(1)) ||
                   token::is_keyword(keywords::Mut, &p.look_ahead(1))) &&
                  token::is_keyword(keywords::Self, &p.look_ahead(2))) {
 
@@ -3675,7 +3675,7 @@ impl Parser {
         let lo = self.span.lo;
 
         // XXX: Obsolete; remove after snap.
-        if self.eat_keyword(keywords::Const) {
+        if self.eat_keyword(keywords::Freeze) {
             self.obsolete(*self.last_span, ObsoleteConstItem);
         } else {
             self.expect_keyword(keywords::Static);
@@ -4062,11 +4062,11 @@ impl Parser {
             }
         }
         // the rest are all guaranteed to be items:
-        if (self.is_keyword(keywords::Const) ||
+        if (self.is_keyword(keywords::Freeze) ||
             (self.is_keyword(keywords::Static) &&
              !token::is_keyword(keywords::Fn, &self.look_ahead(1)))) {
             // CONST / STATIC ITEM
-            if self.is_keyword(keywords::Const) {
+            if self.is_keyword(keywords::Freeze) {
                 self.obsolete(*self.span, ObsoleteConstItem);
             }
             self.bump();
@@ -4164,7 +4164,7 @@ impl Parser {
 
         let visibility = self.parse_visibility();
 
-        if (self.is_keyword(keywords::Const) || self.is_keyword(keywords::Static)) {
+        if (self.is_keyword(keywords::Freeze) || self.is_keyword(keywords::Static)) {
             // FOREIGN CONST ITEM
             let item = self.parse_item_foreign_const(visibility, attrs);
             return iovi_foreign_item(item);
