@@ -633,26 +633,37 @@ pub fn get_symbol_hash(ccx: @CrateContext, t: ty::t) -> @str {
 
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
 // gas doesn't!
+// gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
 pub fn sanitize(s: &str) -> ~str {
     let mut result = ~"";
     for str::each_char(s) |c| {
         match c {
-          '@' => result += "_sbox_",
-          '~' => result += "_ubox_",
-          '*' => result += "_ptr_",
-          '&' => result += "_ref_",
-          ',' => result += "_",
+            // Escape these with $ sequences
+            '@' => result += "$SP$",
+            '~' => result += "$UP$",
+            '*' => result += "$RP$",
+            '&' => result += "$BP$",
+            '<' => result += "$LT$",
+            '>' => result += "$GT$",
+            '(' => result += "$LP$",
+            ')' => result += "$RP$",
+            ',' => result += "$C$",
 
-          '{' | '(' => result += "_of_",
-          'a' .. 'z'
-          | 'A' .. 'Z'
-          | '0' .. '9'
-          | '_' => result.push_char(c),
-          _ => {
-            if c > 'z' && char::is_XID_continue(c) {
-                result.push_char(c);
+            // '.' doesn't occur in types and functions, so reuse it
+            // for ':'
+            ':' => result.push_char('.'),
+
+            // These are legal symbols
+            'a' .. 'z'
+            | 'A' .. 'Z'
+            | '0' .. '9'
+            | '_' => result.push_char(c),
+
+            _ => {
+                if c > 'z' && char::is_XID_continue(c) {
+                    result.push_char(c);
+                }
             }
-          }
         }
     }
 
