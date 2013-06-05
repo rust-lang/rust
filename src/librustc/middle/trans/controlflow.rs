@@ -332,7 +332,8 @@ pub fn trans_fail_expr(bcx: block,
     let mut bcx = bcx;
     match fail_expr {
         Some(arg_expr) => {
-            let ccx = bcx.ccx(), tcx = ccx.tcx;
+            let ccx = bcx.ccx();
+            let tcx = ccx.tcx;
             let arg_datum = unpack_datum!(
                 bcx, expr::trans_to_datum(bcx, arg_expr));
 

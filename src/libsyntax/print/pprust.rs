@@ -1444,14 +1444,12 @@ pub fn print_local_decl(s: @ps, loc: @ast::local) {
 pub fn print_decl(s: @ps, decl: @ast::decl) {
     maybe_print_comment(s, decl.span.lo);
     match decl.node {
-      ast::decl_local(ref locs) => {
+      ast::decl_local(ref loc) => {
         space_if_not_bol(s);
         ibox(s, indent_unit);
         word_nbsp(s, "let");
 
-        // if any are mut, all are mut
-        if locs.any(|l| l.node.is_mutbl) {
-            assert!(locs.all(|l| l.node.is_mutbl));
+        if loc.node.is_mutbl {
             word_nbsp(s, "mut");
         }
 
@@ -1468,7 +1466,8 @@ pub fn print_decl(s: @ps, decl: @ast::decl) {
               _ => ()
             }
         }
-        commasep(s, consistent, *locs, print_local);
+
+        print_local(s, *loc);
         end(s);
       }
       ast::decl_item(item) => print_item(s, item)

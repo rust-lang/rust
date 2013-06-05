@@ -136,7 +136,8 @@ pub fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> Result {
 pub fn make_drop_glue_unboxed(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
    block {
     let _icx = bcx.insn_ctxt("tvec::make_drop_glue_unboxed");
-    let tcx = bcx.tcx(), unit_ty = ty::sequence_element_type(tcx, vec_ty);
+    let tcx = bcx.tcx();
+    let unit_ty = ty::sequence_element_type(tcx, vec_ty);
     if ty::type_needs_drop(tcx, unit_ty) {
         iter_vec_unboxed(bcx, vptr, vec_ty, glue::drop_ty)
     } else { bcx }

@@ -88,7 +88,8 @@ fn lookup_vtables(vcx: &VtableContext,
     let _i = indenter();
 
     let tcx = vcx.tcx();
-    let mut result = ~[], i = 0u;
+    let mut result = ~[];
+    let mut i = 0u;
     for substs.tps.each |ty| {
         // ty is the value supplied for the type parameter A...
 

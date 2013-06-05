@@ -53,7 +53,7 @@ impl<A:ToStr> ToStr for (A,) {
 impl<A:ToStr+Hash+Eq, B:ToStr+Hash+Eq> ToStr for HashMap<A, B> {
     #[inline(always)]
     fn to_str(&self) -> ~str {
-        let mut acc = ~"{", first = true;
+        let mut (acc, first) = (~"{", true);
         for self.each |key, value| {
             if first {
                 first = false;
@@ -73,18 +73,18 @@ impl<A:ToStr+Hash+Eq, B:ToStr+Hash+Eq> ToStr for HashMap<A, B> {
 impl<A:ToStr+Hash+Eq> ToStr for HashSet<A> {
     #[inline(always)]
     fn to_str(&self) -> ~str {
-    let mut acc = ~"{", first = true;
-    for self.each |element| {
-        if first {
-            first = false;
+        let mut (acc, first) = (~"{", true);
+        for self.each |element| {
+            if first {
+                first = false;
+            }
+            else {
+                acc.push_str(", ");
+            }
+            acc.push_str(element.to_str());
         }
-        else {
-            acc.push_str(", ");
-        }
-        acc.push_str(element.to_str());
-    }
-    acc.push_char('}');
-    acc
+        acc.push_char('}');
+        acc
     }
 }
 
@@ -121,7 +121,7 @@ impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
 impl<'self,A:ToStr> ToStr for &'self [A] {
     #[inline(always)]
     fn to_str(&self) -> ~str {
-        let mut acc = ~"[", first = true;
+        let mut (acc, first) = (~"[", true);
         for self.each |elt| {
             if first {
                 first = false;
@@ -139,7 +139,7 @@ impl<'self,A:ToStr> ToStr for &'self [A] {
 impl<A:ToStr> ToStr for ~[A] {
     #[inline(always)]
     fn to_str(&self) -> ~str {
-        let mut acc = ~"[", first = true;
+        let mut (acc, first) = (~"[", true);
         for self.each |elt| {
             if first {
                 first = false;
@@ -157,7 +157,7 @@ impl<A:ToStr> ToStr for ~[A] {
 impl<A:ToStr> ToStr for @[A] {
     #[inline(always)]
     fn to_str(&self) -> ~str {
-        let mut acc = ~"[", first = true;
+        let mut (acc, first) = (~"[", true);
         for self.each |elt| {
             if first {
                 first = false;

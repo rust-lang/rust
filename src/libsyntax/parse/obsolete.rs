@@ -49,7 +49,7 @@ pub enum ObsoleteSyntax {
     ObsoleteTraitBoundSeparator,
     ObsoleteMutOwnedPointer,
     ObsoleteMutVector,
-    ObsoleteTraitImplVisibility,
+    ObsoleteImplVisibility,
     ObsoleteRecordType,
     ObsoleteRecordPattern,
     ObsoletePostFnTySigil,
@@ -64,6 +64,7 @@ pub enum ObsoleteSyntax {
     ObsoleteConstItem,
     ObsoleteFixedLengthVectorType,
     ObsoleteNamedExternModule,
+    ObsoleteMultipleLocalDecl,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -158,11 +159,10 @@ impl Parser {
                  in a mutable location, like a mutable local variable or an \
                  `@mut` box"
             ),
-            ObsoleteTraitImplVisibility => (
-                "visibility-qualified trait implementation",
-                "`pub` or `priv` is meaningless for trait implementations, \
-                 because the `impl...for...` form defines overloads for \
-                 methods that already exist; remove the `pub` or `priv`"
+            ObsoleteImplVisibility => (
+                "visibility-qualified implementation",
+                "`pub` or `priv` goes on individual functions; remove the \
+                 `pub` or `priv`"
             ),
             ObsoleteRecordType => (
                 "structural record type",
@@ -224,6 +224,11 @@ impl Parser {
                 "named external module",
                 "instead of `extern mod foo { ... }`, write `mod foo { \
                  extern { ... } }`"
+            ),
+            ObsoleteMultipleLocalDecl => (
+                "declaration of multiple locals at once",
+                "instead of e.g. `let a = 1, b = 2`, write \
+                 `let (a, b) = (1, 2)`."
             ),
         };
 

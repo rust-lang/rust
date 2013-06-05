@@ -412,7 +412,7 @@ mod tests {
 
     #[test]
     fn test_tuple_cmp() {
-        let small = (1u, 2u, 3u), big = (3u, 2u, 1u);
+        let (small, big) = ((1u, 2u, 3u), (3u, 2u, 1u));
 
         // Eq
         assert_eq!(small, small);

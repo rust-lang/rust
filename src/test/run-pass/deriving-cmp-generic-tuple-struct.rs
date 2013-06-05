@@ -13,7 +13,8 @@ struct TS<T>(T,T);
 
 
 pub fn main() {
-    let ts1 = TS(1, 1), ts2 = TS(1,2);
+    let ts1 = TS(1, 1);
+    let ts2 = TS(1, 2);
 
     // in order for both Ord and TotalOrd
     let tss = [ts1, ts2];
@@ -23,8 +24,10 @@ pub fn main() {
             let ord = i.cmp(&j);
 
             let eq = i == j;
-            let lt = i < j, le = i <= j;
-            let gt = i > j, ge = i >= j;
+            let lt = i < j;
+            let le = i <= j;
+            let gt = i > j;
+            let ge = i >= j;
 
             // Eq
             assert_eq!(*ts1 == *ts2, eq);

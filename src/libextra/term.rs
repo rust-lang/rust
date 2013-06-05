@@ -57,7 +57,7 @@ pub struct Terminal {
 }
 
 #[cfg(not(target_os = "win32"))]
-pub impl Terminal {
+impl Terminal {
     pub fn new(out: @io::Writer) -> Result<Terminal, ~str> {
         let term = os::getenv("TERM");
         if term.is_none() {
@@ -81,7 +81,7 @@ pub impl Terminal {
 
         return Ok(Terminal {out: out, ti: inf, color_supported: cs});
     }
-    fn fg(&self, color: u8) {
+    pub fn fg(&self, color: u8) {
         if self.color_supported {
             let s = expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(),
                            [Number(color as int)], [], []);
@@ -92,7 +92,7 @@ pub impl Terminal {
             }
         }
     }
-    fn bg(&self, color: u8) {
+    pub fn bg(&self, color: u8) {
         if self.color_supported {
             let s = expand(*self.ti.strings.find_equiv(&("setab")).unwrap(),
                            [Number(color as int)], [], []);
@@ -103,7 +103,7 @@ pub impl Terminal {
             }
         }
     }
-    fn reset(&self) {
+    pub fn reset(&self) {
         if self.color_supported {
             let s = expand(*self.ti.strings.find_equiv(&("op")).unwrap(), [], [], []);
             if s.is_ok() {
@@ -116,17 +116,17 @@ pub impl Terminal {
 }
 
 #[cfg(target_os = "win32")]
-pub impl Terminal {
+impl Terminal {
     pub fn new(out: @io::Writer) -> Result<Terminal, ~str> {
         return Ok(Terminal {out: out, color_supported: false});
     }
 
-    fn fg(&self, color: u8) {
+    pub fn fg(&self, color: u8) {
     }
 
-    fn bg(&self, color: u8) {
+    pub fn bg(&self, color: u8) {
     }
 
-    fn reset(&self) {
+    pub fn reset(&self) {
     }
 }

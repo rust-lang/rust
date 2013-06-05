@@ -40,14 +40,14 @@ pub mod raw {
 /// Determine if two shared boxes point to the same object
 #[inline(always)]
 pub fn ptr_eq<T>(a: @T, b: @T) -> bool {
-    let a_ptr: *T = to_unsafe_ptr(&*a), b_ptr: *T = to_unsafe_ptr(&*b);
+    let (a_ptr, b_ptr): (*T, *T) = (to_unsafe_ptr(&*a), to_unsafe_ptr(&*b));
     a_ptr == b_ptr
 }
 
 /// Determine if two mutable shared boxes point to the same object
 #[inline(always)]
 pub fn mut_ptr_eq<T>(a: @mut T, b: @mut T) -> bool {
-    let a_ptr: *T = to_unsafe_ptr(&*a), b_ptr: *T = to_unsafe_ptr(&*b);
+    let (a_ptr, b_ptr): (*T, *T) = (to_unsafe_ptr(&*a), to_unsafe_ptr(&*b));
     a_ptr == b_ptr
 }
 

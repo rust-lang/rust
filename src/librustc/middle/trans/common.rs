@@ -1438,7 +1438,8 @@ pub fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
 }
 
 pub fn path_str(sess: session::Session, p: &[path_elt]) -> ~str {
-    let mut r = ~"", first = true;
+    let mut r = ~"";
+    let mut first = true;
     for p.each |e| {
         match *e {
             ast_map::path_name(s) | ast_map::path_mod(s) => {

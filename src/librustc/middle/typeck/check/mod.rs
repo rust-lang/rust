@@ -1896,7 +1896,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         // Look up the number of type parameters and the raw type, and
         // determine whether the class is region-parameterized.
-        let type_parameter_count, region_parameterized, raw_type;
+        let type_parameter_count;
+        let region_parameterized;
+        let raw_type;
         if class_id.crate == ast::local_crate {
             region_parameterized =
                 tcx.region_paramd_items.find(&class_id.node).
@@ -1983,7 +1985,9 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         // Look up the number of type parameters and the raw type, and
         // determine whether the enum is region-parameterized.
-        let type_parameter_count, region_parameterized, raw_type;
+        let type_parameter_count;
+        let region_parameterized;
+        let raw_type;
         if enum_id.crate == ast::local_crate {
             region_parameterized =
                 tcx.region_paramd_items.find(&enum_id.node).map_consume(|x| *x);
@@ -2876,12 +2880,12 @@ pub fn check_stmt(fcx: @mut FnCtxt, stmt: @ast::stmt)  {
       ast::stmt_decl(decl, id) => {
         node_id = id;
         match decl.node {
-          ast::decl_local(ref ls) => for ls.each |l| {
+          ast::decl_local(ref l) => {
               check_decl_local(fcx, *l);
               let l_t = fcx.node_ty(l.node.id);
               saw_bot = saw_bot || ty::type_is_bot(l_t);
               saw_err = saw_err || ty::type_is_error(l_t);
-          },
+          }
           ast::decl_item(_) => {/* ignore for now */ }
         }
       }
