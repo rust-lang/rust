@@ -103,7 +103,7 @@ impl RestrictionsContext {
             }
 
             mc::cat_deref(cmt_base, _, mc::uniq_ptr(*)) => {
-                // R-Deref-Owned-Pointer
+                // R-Deref-Send-Pointer
                 //
                 // When we borrow the interior of an owned pointer, we
                 // cannot permit the base to be mutated, because that
