@@ -186,7 +186,7 @@ pub trait IteratorUtil<A> {
     /// assert_eq!(it.next().get(), &5);
     /// assert!(it.next().is_none());
     /// ~~~
-    fn skip(self, n: uint) -> SkipIterator<Self>;
+    fn skip(self, n: uint) -> SkipIterator<A, Self>;
 
     /// Creates an iterator which yields the first `n` elements of this
     /// iterator, and then it will always return None.
@@ -203,7 +203,7 @@ pub trait IteratorUtil<A> {
     /// assert_eq!(it.next().get(), &3);
     /// assert!(it.next().is_none());
     /// ~~~
-    fn take(self, n: uint) -> TakeIterator<Self>;
+    fn take(self, n: uint) -> TakeIterator<A, Self>;
 
     /// Creates a new iterator which behaves in a similar fashion to foldl.
     /// There is a state which is passed between each iteration and can be
@@ -386,12 +386,12 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     }
 
     #[inline(always)]
-    fn skip(self, n: uint) -> SkipIterator<T> {
+    fn skip(self, n: uint) -> SkipIterator<A, T> {
         SkipIterator{iter: self, n: n}
     }
 
     #[inline(always)]
-    fn take(self, n: uint) -> TakeIterator<T> {
+    fn take(self, n: uint) -> TakeIterator<A, T> {
         TakeIterator{iter: self, n: n}
     }
 
@@ -739,13 +739,14 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for TakeWhileIterator<'self, A, T> {
     }
 }
 
-/// An iterator which skips over `n` elements of `iter`
-pub struct SkipIterator<T> {
+/// An iterator which skips over `n` elements of `iter`.
+// FIXME #6967: Dummy A parameter to get around type inference bug
+pub struct SkipIterator<A, T> {
     priv iter: T,
     priv n: uint
 }
 
-impl<A, T: Iterator<A>> Iterator<A> for SkipIterator<T> {
+impl<A, T: Iterator<A>> Iterator<A> for SkipIterator<A, T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         let mut next = self.iter.next();
@@ -772,12 +773,13 @@ impl<A, T: Iterator<A>> Iterator<A> for SkipIterator<T> {
 }
 
 /// An iterator which only iterates over the first `n` iterations of `iter`.
-pub struct TakeIterator<T> {
+// FIXME #6967: Dummy A parameter to get around type inference bug
+pub struct TakeIterator<A, T> {
     priv iter: T,
     priv n: uint
 }
 
-impl<A, T: Iterator<A>> Iterator<A> for TakeIterator<T> {
+impl<A, T: Iterator<A>> Iterator<A> for TakeIterator<A, T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         let next = self.iter.next();
@@ -945,7 +947,7 @@ mod tests {
         let ys = [13, 15, 16, 17, 19, 20, 30];
         let mut it = xs.iter().skip(5);
         let mut i = 0;
-        for it.advance |&x: &uint| {
+        for it.advance |&x| {
             assert_eq!(x, ys[i]);
             i += 1;
         }
@@ -958,7 +960,7 @@ mod tests {
         let ys = [0u, 1, 2, 3, 5];
         let mut it = xs.iter().take(5);
         let mut i = 0;
-        for it.advance |&x: &uint| {
+        for it.advance |&x| {
             assert_eq!(x, ys[i]);
             i += 1;
         }
