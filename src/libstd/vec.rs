@@ -2427,6 +2427,7 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
 #[allow(missing_doc)]
 pub trait MutableVector<'self, T> {
     fn mut_slice(self, start: uint, end: uint) -> &'self mut [T];
+    fn mut_iter(self) -> MutVecIterator<'self, T>;
 
     unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T;
     unsafe fn unsafe_set(&self, index: uint, val: T);
@@ -2436,6 +2437,15 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     #[inline]
     fn mut_slice(self, start: uint, end: uint) -> &'self mut [T] {
         mut_slice(self, start, end)
+    }
+
+    #[inline]
+    fn mut_iter(self) -> MutVecIterator<'self, T> {
+        unsafe {
+            let p = vec::raw::to_mut_ptr(self);
+            MutVecIterator{ptr: p, end: p.offset(self.len()),
+                           lifetime: cast::transmute(p)}
+        }
     }
 
     #[inline(always)]
@@ -2950,6 +2960,30 @@ pub struct VecIterator<'self, T> {
 impl<'self, T> Iterator<&'self T> for VecIterator<'self, T> {
     #[inline]
     fn next(&mut self) -> Option<&'self T> {
+        unsafe {
+            if self.ptr == self.end {
+                None
+            } else {
+                let old = self.ptr;
+                self.ptr = self.ptr.offset(1);
+                Some(cast::transmute(old))
+            }
+        }
+    }
+}
+
+/// An external iterator for vectors with the possibility of mutating
+/// elements. (use with the std::iterator module)
+pub struct MutVecIterator<'self, T> {
+    priv ptr: *mut T,
+    priv end: *mut T,
+    priv lifetime: &'self mut T // FIXME: #5922
+}
+
+// could be implemented with &[T] with .slice(), but this avoids bounds checks
+impl<'self, T> Iterator<&'self mut T> for MutVecIterator<'self, T> {
+    #[inline]
+    fn next(&mut self) -> Option<&'self mut T> {
         unsafe {
             if self.ptr == self.end {
                 None
@@ -4667,6 +4701,16 @@ mod tests {
             assert_eq!(x, ys[i]);
             i += 1;
         }
+    }
+
+    #[test]
+    fn test_mut_iterator() {
+        use iterator::*;
+        let mut xs = [1, 2, 3, 4, 5];
+        for xs.mut_iter().advance |x| {
+            *x += 1;
+        }
+        assert_eq!(xs, [2, 3, 4, 5, 6])
     }
 
     #[test]
