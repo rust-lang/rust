@@ -359,7 +359,7 @@ of its owner:
     LIFETIME(LV.f, LT, MQ)              // L-Field
       LIFETIME(LV, LT, MQ)
 
-    LIFETIME(*LV, LT, MQ)               // L-Deref-Owned
+    LIFETIME(*LV, LT, MQ)               // L-Deref-Send
       TYPE(LV) = ~Ty
       LIFETIME(LV, LT, MQ)
 
@@ -504,7 +504,7 @@ must prevent the owned pointer `LV` from being mutated, which means
 that we always add `MUTATE` and `CLAIM` to the restriction set imposed
 on `LV`:
 
-    RESTRICTIONS(*LV, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Owned-Pointer
+    RESTRICTIONS(*LV, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Send-Pointer
       TYPE(LV) = ~Ty
       RESTRICTIONS(LV, ACTIONS|MUTATE|CLAIM) = RS
 

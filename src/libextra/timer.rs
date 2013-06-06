@@ -39,7 +39,7 @@ use core::libc;
  * * ch - a channel of type T to send a `val` on
  * * val - a value of type T to send over the provided `ch`
  */
-pub fn delayed_send<T:Owned>(iotask: &IoTask,
+pub fn delayed_send<T:Send>(iotask: &IoTask,
                               msecs: uint,
                               ch: &Chan<T>,
                               val: T) {
@@ -119,7 +119,7 @@ pub fn sleep(iotask: &IoTask, msecs: uint) {
  * on the provided port in the allotted timeout period, then the result will
  * be a `Some(T)`. If not, then `None` will be returned.
  */
-pub fn recv_timeout<T:Copy + Owned>(iotask: &IoTask,
+pub fn recv_timeout<T:Copy + Send>(iotask: &IoTask,
                                    msecs: uint,
                                    wait_po: &Port<T>)
                                    -> Option<T> {
