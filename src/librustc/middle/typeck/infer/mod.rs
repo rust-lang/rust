@@ -260,6 +260,7 @@ use middle::typeck::infer::combine::{Combine, CombineFields, eq_tys};
 use middle::typeck::infer::region_inference::{RegionVarBindings};
 use middle::typeck::infer::resolve::{resolver};
 use middle::typeck::infer::sub::Sub;
+use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::{ValsAndBindings, Root};
 use middle::typeck::isr_alist;
@@ -324,7 +325,7 @@ pub struct InferCtxt {
 /// Why did we require that the two types be related?
 ///
 /// See `error_reporting.rs` for more details
-pub enum SubtypeOrigin {
+pub enum TypeOrigin {
     // Not yet categorized in a better way
     Misc(span),
 
@@ -339,6 +340,12 @@ pub enum SubtypeOrigin {
 
     // Relating trait refs when resolving vtables
     RelateSelfType(span),
+
+    // Computing common supertype in a match expression
+    MatchExpression(span),
+
+    // Computing common supertype in an if expression
+    IfExpression(span),
 }
 
 /// See `error_reporting.rs` for more details
@@ -351,8 +358,8 @@ pub enum ValuePairs {
 /// encounter an error or subtyping constraint.
 ///
 /// See `error_reporting.rs` for more details.
-pub struct SubtypeTrace {
-    origin: SubtypeOrigin,
+pub struct TypeTrace {
+    origin: TypeOrigin,
     values: ValuePairs,
 }
 
@@ -361,7 +368,7 @@ pub struct SubtypeTrace {
 /// See `error_reporting.rs` for more details
 pub enum SubregionOrigin {
     // Arose from a subtyping relation
-    Subtype(SubtypeTrace),
+    Subtype(TypeTrace),
 
     // Invocation of closure must be within its lifetime
     InvokeClosure(span),
@@ -425,7 +432,7 @@ pub enum RegionVariableOrigin {
     Autoref(span),
 
     // Regions created as part of an automatic coercion
-    Coercion(SubtypeTrace),
+    Coercion(TypeTrace),
 
     // Region variables created for bound regions
     // in a function or method that is called
@@ -487,16 +494,47 @@ pub fn new_infer_ctxt(tcx: ty::ctxt) -> @mut InferCtxt {
     }
 }
 
+pub fn common_supertype(cx: @mut InferCtxt,
+                        origin: TypeOrigin,
+                        a_is_expected: bool,
+                        a: ty::t,
+                        b: ty::t)
+                        -> ty::t {
+    /*!
+     * Computes the least upper-bound of `a` and `b`. If this is
+     * not possible, reports an error and returns ty::err.
+     */
+
+    debug!("common_supertype(%s, %s)", a.inf_str(cx), b.inf_str(cx));
+
+    let trace = TypeTrace {
+        origin: origin,
+        values: Types(expected_found(a_is_expected, a, b))
+    };
+
+    let result = do cx.commit {
+        cx.lub(a_is_expected, trace).tys(a, b)
+    };
+
+    match result {
+        Ok(t) => t,
+        Err(ref err) => {
+            cx.report_and_explain_type_error(trace, err);
+            ty::mk_err()
+        }
+    }
+}
+
 pub fn mk_subty(cx: @mut InferCtxt,
                 a_is_expected: bool,
-                origin: SubtypeOrigin,
+                origin: TypeOrigin,
                 a: ty::t,
                 b: ty::t)
              -> ures {
     debug!("mk_subty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
-            let trace = SubtypeTrace {
+            let trace = TypeTrace {
                 origin: origin,
                 values: Types(expected_found(a_is_expected, a, b))
             };
@@ -509,7 +547,7 @@ pub fn can_mk_subty(cx: @mut InferCtxt, a: ty::t, b: ty::t) -> ures {
     debug!("can_mk_subty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.probe {
-            let trace = SubtypeTrace {
+            let trace = TypeTrace {
                 origin: Misc(codemap::dummy_sp()),
                 values: Types(expected_found(true, a, b))
             };
@@ -531,14 +569,14 @@ pub fn mk_subr(cx: @mut InferCtxt,
 
 pub fn mk_eqty(cx: @mut InferCtxt,
                a_is_expected: bool,
-               origin: SubtypeOrigin,
+               origin: TypeOrigin,
                a: ty::t,
                b: ty::t)
             -> ures {
     debug!("mk_eqty(%s <: %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
-            let trace = SubtypeTrace {
+            let trace = TypeTrace {
                 origin: origin,
                 values: Types(expected_found(a_is_expected, a, b))
             };
@@ -550,7 +588,7 @@ pub fn mk_eqty(cx: @mut InferCtxt,
 
 pub fn mk_sub_trait_refs(cx: @mut InferCtxt,
                          a_is_expected: bool,
-                         origin: SubtypeOrigin,
+                         origin: TypeOrigin,
                          a: @ty::TraitRef,
                          b: @ty::TraitRef)
     -> ures
@@ -559,7 +597,7 @@ pub fn mk_sub_trait_refs(cx: @mut InferCtxt,
            a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
-            let trace = SubtypeTrace {
+            let trace = TypeTrace {
                 origin: origin,
                 values: TraitRefs(expected_found(a_is_expected, a, b))
             };
@@ -581,14 +619,14 @@ fn expected_found<T>(a_is_expected: bool,
 
 pub fn mk_coercety(cx: @mut InferCtxt,
                    a_is_expected: bool,
-                   origin: SubtypeOrigin,
+                   origin: TypeOrigin,
                    a: ty::t,
                    b: ty::t)
                 -> CoerceResult {
     debug!("mk_coercety(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.commit {
-            let trace = SubtypeTrace {
+            let trace = TypeTrace {
                 origin: origin,
                 values: Types(expected_found(a_is_expected, a, b))
             };
@@ -601,7 +639,7 @@ pub fn can_mk_coercety(cx: @mut InferCtxt, a: ty::t, b: ty::t) -> ures {
     debug!("can_mk_coercety(%s -> %s)", a.inf_str(cx), b.inf_str(cx));
     do indent {
         do cx.probe {
-            let trace = SubtypeTrace {
+            let trace = TypeTrace {
                 origin: Misc(codemap::dummy_sp()),
                 values: Types(expected_found(true, a, b))
             };
@@ -690,15 +728,19 @@ struct Snapshot {
 impl InferCtxt {
     pub fn combine_fields(@mut self,
                           a_is_expected: bool,
-                          trace: SubtypeTrace)
+                          trace: TypeTrace)
                           -> CombineFields {
         CombineFields {infcx: self,
                        a_is_expected: a_is_expected,
                        trace: trace}
     }
 
-    pub fn sub(@mut self, a_is_expected: bool, trace: SubtypeTrace) -> Sub {
+    pub fn sub(@mut self, a_is_expected: bool, trace: TypeTrace) -> Sub {
         Sub(self.combine_fields(a_is_expected, trace))
+    }
+
+    pub fn lub(@mut self, a_is_expected: bool, trace: TypeTrace) -> Lub {
+        Lub(self.combine_fields(a_is_expected, trace))
     }
 
     pub fn in_snapshot(&self) -> bool {
@@ -946,7 +988,7 @@ impl InferCtxt {
     }
 
     pub fn replace_bound_regions_with_fresh_regions(&mut self,
-                                                    trace: SubtypeTrace,
+                                                    trace: TypeTrace,
                                                     fsig: &ty::FnSig)
                                                     -> (ty::FnSig, isr_alist) {
         let(isr, _, fn_sig) =
@@ -972,19 +1014,19 @@ pub fn fold_regions_in_sig(
     }
 }
 
-impl SubtypeTrace {
+impl TypeTrace {
     pub fn span(&self) -> span {
         self.origin.span()
     }
 }
 
-impl Repr for SubtypeTrace {
+impl Repr for TypeTrace {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
-        fmt!("SubtypeTrace(%s)", self.origin.repr(tcx))
+        fmt!("TypeTrace(%s)", self.origin.repr(tcx))
     }
 }
 
-impl SubtypeOrigin {
+impl TypeOrigin {
     pub fn span(&self) -> span {
         match *self {
             MethodCompatCheck(span) => span,
@@ -992,11 +1034,13 @@ impl SubtypeOrigin {
             Misc(span) => span,
             RelateTraitRefs(span) => span,
             RelateSelfType(span) => span,
+            MatchExpression(span) => span,
+            IfExpression(span) => span,
         }
     }
 }
 
-impl Repr for SubtypeOrigin {
+impl Repr for TypeOrigin {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         match *self {
             MethodCompatCheck(a) => fmt!("MethodCompatCheck(%s)", a.repr(tcx)),
@@ -1004,6 +1048,8 @@ impl Repr for SubtypeOrigin {
             Misc(a) => fmt!("Misc(%s)", a.repr(tcx)),
             RelateTraitRefs(a) => fmt!("RelateTraitRefs(%s)", a.repr(tcx)),
             RelateSelfType(a) => fmt!("RelateSelfType(%s)", a.repr(tcx)),
+            MatchExpression(a) => fmt!("MatchExpression(%s)", a.repr(tcx)),
+            IfExpression(a) => fmt!("IfExpression(%s)", a.repr(tcx)),
         }
     }
 }
