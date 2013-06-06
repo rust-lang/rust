@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::sys;
+
 pub fn main() {
     let act = sys::log_str(&~[1, 2, 3]);
-    assert!(~"~[1, 2, 3]" == act);
+    assert_eq!(~"~[1, 2, 3]", act);
 
     let act = fmt!("%?/%6?", ~[1, 2, 3], ~"hi");
-    assert!(act == ~"~[1, 2, 3]/ ~\"hi\"");
+    assert_eq!(act, ~"~[1, 2, 3]/ ~\"hi\"");
 }

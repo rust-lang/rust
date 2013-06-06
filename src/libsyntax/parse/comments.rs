@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos};
 use diagnostic;
@@ -16,7 +18,12 @@ use parse::lexer::{StringReader, bump, is_eof, nextch, TokenAndSpan};
 use parse::lexer::{is_line_non_doc_comment, is_block_non_doc_comment};
 use parse::lexer;
 use parse::token;
+use parse::token::{get_ident_interner};
 use parse;
+
+use core::io;
+use core::str;
+use core::uint;
 
 #[deriving(Eq)]
 pub enum cmnt_style {
@@ -33,15 +40,15 @@ pub struct cmnt {
 }
 
 pub fn is_doc_comment(s: &str) -> bool {
-    (s.starts_with(~"///") && !is_line_non_doc_comment(s)) ||
-    s.starts_with(~"//!") ||
-    (s.starts_with(~"/**") && !is_block_non_doc_comment(s)) ||
-    s.starts_with(~"/*!")
+    (s.starts_with("///") && !is_line_non_doc_comment(s)) ||
+    s.starts_with("//!") ||
+    (s.starts_with("/**") && !is_block_non_doc_comment(s)) ||
+    s.starts_with("/*!")
 }
 
 pub fn doc_comment_style(comment: &str) -> ast::attr_style {
     assert!(is_doc_comment(comment));
-    if comment.starts_with(~"//!") || comment.starts_with(~"/*!") {
+    if comment.starts_with("//!") || comment.starts_with("/*!") {
         ast::attr_inner
     } else {
         ast::attr_outer
@@ -52,7 +59,8 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 
     /// remove whitespace-only lines from the start/end of lines
     fn vertical_trim(lines: ~[~str]) -> ~[~str] {
-        let mut i = 0u, j = lines.len();
+        let mut i = 0u;
+        let mut j = lines.len();
         while i < j && lines[i].trim().is_empty() {
             i += 1u;
         }
@@ -92,14 +100,14 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         };
     }
 
-    if comment.starts_with(~"//") {
+    if comment.starts_with("//") {
         // FIXME #5475:
         // return comment.slice(3u, comment.len()).trim().to_owned();
         let r = comment.slice(3u, comment.len()); return r.trim().to_owned();
 
     }
 
-    if comment.starts_with(~"/*") {
+    if comment.starts_with("/*") {
         let mut lines = ~[];
         for str::each_line_any(comment.slice(3u, comment.len() - 2u)) |line| {
             lines.push(line.to_owned())
@@ -108,7 +116,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         let lines = block_trim(lines, ~"\t ", None);
         let lines = block_trim(lines, ~"*", Some(1u));
         let lines = block_trim(lines, ~"\t ", None);
-        return str::connect(lines, ~"\n");
+        return str::connect(lines, "\n");
     }
 
     fail!("not a doc-comment: %s", comment);
@@ -233,7 +241,7 @@ fn read_block_comment(rdr: @mut StringReader,
             bump(rdr);
         }
         if !is_eof(rdr) {
-            curr_line += ~"*/";
+            curr_line += "*/";
             bump(rdr);
             bump(rdr);
         }
@@ -257,13 +265,13 @@ fn read_block_comment(rdr: @mut StringReader,
                 if rdr.curr == '/' && nextch(rdr) == '*' {
                     bump(rdr);
                     bump(rdr);
-                    curr_line += ~"*";
+                    curr_line += "*";
                     level += 1;
                 } else {
                     if rdr.curr == '*' && nextch(rdr) == '/' {
                         bump(rdr);
                         bump(rdr);
-                        curr_line += ~"/";
+                        curr_line += "/";
                         level -= 1;
                     } else { bump(rdr); }
                 }
@@ -316,12 +324,9 @@ pub fn gather_comments_and_literals(span_diagnostic:
                                     srdr: @io::Reader)
                                  -> (~[cmnt], ~[lit]) {
     let src = @str::from_bytes(srdr.read_whole_stream());
-    let itr = parse::token::mk_fake_ident_interner();
     let cm = CodeMap::new();
     let filemap = cm.new_filemap(path, src);
-    let rdr = lexer::new_low_level_string_reader(span_diagnostic,
-                                                 filemap,
-                                                 itr);
+    let rdr = lexer::new_low_level_string_reader(span_diagnostic, filemap);
 
     let mut comments: ~[cmnt] = ~[];
     let mut literals: ~[lit] = ~[];
@@ -351,7 +356,7 @@ pub fn gather_comments_and_literals(span_diagnostic:
             debug!("tok lit: %s", s);
             literals.push(lit {lit: s, pos: sp.lo});
         } else {
-            debug!("tok: %s", token::to_str(rdr.interner, &tok));
+            debug!("tok: %s", token::to_str(get_ident_interner(), &tok));
         }
         first_read = false;
     }

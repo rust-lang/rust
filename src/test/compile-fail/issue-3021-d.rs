@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+extern mod extra;
 
 trait siphash {
     fn result(&self) -> u64;
@@ -23,8 +23,8 @@ fn siphash(k0 : u64, k1 : u64) -> siphash {
 
     fn mk_result(st : SipState) -> u64 {
 
-        let v0 = st.v0,
-            v1 = st.v1;
+        let v0 = st.v0;
+        let v1 = st.v1;
         return v0 ^ v1;
     }
 

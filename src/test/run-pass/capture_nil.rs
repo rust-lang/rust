@@ -24,7 +24,8 @@
 // course preferable, as the value itself is
 // irrelevant).
 
-use core::comm::*;
+use std::comm::*;
+use std::task;
 
 fn foo(x: ()) -> Port<()> {
     let (p, c) = stream::<()>();

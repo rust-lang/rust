@@ -11,7 +11,10 @@
 // xfail-fast
 // xfail-win32
 
-extern mod std;
+extern mod extra;
+
+use std::comm;
+use std::task;
 
 fn start(c: &comm::Chan<int>, i0: int) {
     let mut i = i0;

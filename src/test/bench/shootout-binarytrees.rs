@@ -12,8 +12,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use std::arena;
+extern mod extra;
+use extra::arena;
 
 enum tree<'self> {
     nil,

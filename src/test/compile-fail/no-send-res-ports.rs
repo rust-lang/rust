@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::cell::Cell;
+use std::cell::Cell;
+use std::task;
 
 struct Port<T>(@T);
 
@@ -28,7 +29,7 @@ fn main() {
         }
     }
 
-    let x = Cell(foo(Port(@())));
+    let x = Cell::new(foo(Port(@())));
 
     do task::spawn {
         let y = x.take();   //~ ERROR value has non-owned type

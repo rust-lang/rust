@@ -9,7 +9,9 @@
 // except according to those terms.
 
 // xfail-win32
-extern mod std;
+extern mod extra;
+
+use std::task;
 
 fn f() {
     let a = ~0;

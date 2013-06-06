@@ -17,8 +17,12 @@
  */
 
 use core::prelude::*;
+
 use core::cast;
+use core::io;
+use core::str;
 use core::uint;
+use core::vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_util::id_range;
@@ -182,20 +186,6 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
     }
 
 
-    #[cfg(stage0)]
-    pub fn each_bit_on_entry(&self,
-                             id: ast::node_id,
-                             f: &fn(uint) -> bool) {
-        //! Iterates through each bit that is set on entry to `id`.
-        //! Only useful after `propagate()` has been called.
-
-        let (start, end) = self.compute_id_range(id);
-        let on_entry = vec::slice(self.on_entry, start, end);
-        debug!("each_bit_on_entry(id=%?, on_entry=%s)",
-               id, bits_to_str(on_entry));
-        self.each_bit(on_entry, f);
-    }
-    #[cfg(not(stage0))]
     pub fn each_bit_on_entry(&self,
                              id: ast::node_id,
                              f: &fn(uint) -> bool) -> bool {
@@ -209,19 +199,6 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         self.each_bit(on_entry, f)
     }
 
-    #[cfg(stage0)]
-    pub fn each_gen_bit(&self,
-                        id: ast::node_id,
-                        f: &fn(uint) -> bool) {
-        //! Iterates through each bit in the gen set for `id`.
-
-        let (start, end) = self.compute_id_range(id);
-        let gens = vec::slice(self.gens, start, end);
-        debug!("each_gen_bit(id=%?, gens=%s)",
-               id, bits_to_str(gens));
-        self.each_bit(gens, f)
-    }
-    #[cfg(not(stage0))]
     pub fn each_gen_bit(&self,
                         id: ast::node_id,
                         f: &fn(uint) -> bool) -> bool {
@@ -234,37 +211,6 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         self.each_bit(gens, f)
     }
 
-    #[cfg(stage0)]
-    fn each_bit(&self,
-                words: &[uint],
-                f: &fn(uint) -> bool) {
-        //! Helper for iterating over the bits in a bit set.
-
-        for words.eachi |word_index, &word| {
-            if word != 0 {
-                let base_index = word_index * uint::bits;
-                for uint::range(0, uint::bits) |offset| {
-                    let bit = 1 << offset;
-                    if (word & bit) != 0 {
-                        // NB: we round up the total number of bits
-                        // that we store in any given bit set so that
-                        // it is an even multiple of uint::bits.  This
-                        // means that there may be some stray bits at
-                        // the end that do not correspond to any
-                        // actual value.  So before we callback, check
-                        // whether the bit_index is greater than the
-                        // actual value the user specified and stop
-                        // iterating if so.
-                        let bit_index = base_index + offset;
-                        if bit_index >= self.bits_per_id || !f(bit_index) {
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    #[cfg(not(stage0))]
     fn each_bit(&self,
                 words: &[uint],
                 f: &fn(uint) -> bool) -> bool {
@@ -416,7 +362,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::stmt_mac(*) => {
-                self.tcx().sess.span_bug(stmt.span, ~"unexpanded macro");
+                self.tcx().sess.span_bug(stmt.span, "unexpanded macro");
             }
         }
     }
@@ -426,11 +372,9 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                  in_out: &mut [uint],
                  loop_scopes: &mut ~[LoopScope]) {
         match decl.node {
-            ast::decl_local(ref locals) => {
-                for locals.each |local| {
-                    self.walk_pat(local.node.pat, in_out, loop_scopes);
-                    self.walk_opt_expr(local.node.init, in_out, loop_scopes);
-                }
+            ast::decl_local(local) => {
+                self.walk_pat(local.node.pat, in_out, loop_scopes);
+                self.walk_opt_expr(local.node.init, in_out, loop_scopes);
             }
 
             ast::decl_item(_) => {}
@@ -693,7 +637,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_assign(l, r) |
-            ast::expr_assign_op(_, l, r) => {
+            ast::expr_assign_op(_, _, l, r) => {
                 self.walk_expr(r, in_out, loop_scopes);
                 self.walk_expr(l, in_out, loop_scopes);
             }
@@ -708,30 +652,30 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_struct(_, ref fields, with_expr) => {
-                self.walk_opt_expr(with_expr, in_out, loop_scopes);
                 for fields.each |field| {
                     self.walk_expr(field.node.expr, in_out, loop_scopes);
                 }
+                self.walk_opt_expr(with_expr, in_out, loop_scopes);
             }
 
             ast::expr_call(f, ref args, _) => {
-                self.walk_call(expr.callee_id, expr.id,
+                self.walk_call(f.id, expr.id,
                                f, *args, in_out, loop_scopes);
             }
 
-            ast::expr_method_call(rcvr, _, _, ref args, _) => {
-                self.walk_call(expr.callee_id, expr.id,
+            ast::expr_method_call(callee_id, rcvr, _, _, ref args, _) => {
+                self.walk_call(callee_id, expr.id,
                                rcvr, *args, in_out, loop_scopes);
             }
 
-            ast::expr_index(l, r) |
-            ast::expr_binary(_, l, r) if self.is_method_call(expr) => {
-                self.walk_call(expr.callee_id, expr.id,
+            ast::expr_index(callee_id, l, r) |
+            ast::expr_binary(callee_id, _, l, r) if self.is_method_call(expr) => {
+                self.walk_call(callee_id, expr.id,
                                l, [r], in_out, loop_scopes);
             }
 
-            ast::expr_unary(_, e) if self.is_method_call(expr) => {
-                self.walk_call(expr.callee_id, expr.id,
+            ast::expr_unary(callee_id, _, e) if self.is_method_call(expr) => {
+                self.walk_call(callee_id, expr.id,
                                e, [], in_out, loop_scopes);
             }
 
@@ -739,7 +683,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 self.walk_exprs(*exprs, in_out, loop_scopes);
             }
 
-            ast::expr_binary(op, l, r) if ast_util::lazy_binop(op) => {
+            ast::expr_binary(_, op, l, r) if ast_util::lazy_binop(op) => {
                 self.walk_expr(l, in_out, loop_scopes);
                 let temp = reslice(in_out).to_vec();
                 self.walk_expr(r, in_out, loop_scopes);
@@ -747,8 +691,8 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_log(l, r) |
-            ast::expr_index(l, r) |
-            ast::expr_binary(_, l, r) => {
+            ast::expr_index(_, l, r) |
+            ast::expr_binary(_, _, l, r) => {
                 self.walk_exprs([l, r], in_out, loop_scopes);
             }
 
@@ -762,7 +706,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             ast::expr_loop_body(e) |
             ast::expr_do_body(e) |
             ast::expr_cast(e, _) |
-            ast::expr_unary(_, e) |
+            ast::expr_unary(_, _, e) |
             ast::expr_paren(e) |
             ast::expr_vstore(e, _) |
             ast::expr_field(e, _, _) => {
@@ -783,7 +727,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             }
 
             ast::expr_mac(*) => {
-                self.tcx().sess.span_bug(expr.span, ~"unexpanded macro");
+                self.tcx().sess.span_bug(expr.span, "unexpanded macro");
             }
         }
 
@@ -883,7 +827,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         debug!("DataFlowContext::walk_pat(pat=%s, in_out=%s)",
                pat.repr(self.dfcx.tcx), bits_to_str(reslice(in_out)));
 
-        do ast_util::walk_pat(pat) |p| {
+        for ast_util::walk_pat(pat) |p| {
             debug!("  p.id=%? in_out=%s", p.id, bits_to_str(reslice(in_out)));
             self.merge_with_entry_set(p.id, in_out);
             self.dfcx.apply_gen_kill(p.id, in_out);
@@ -1062,4 +1006,3 @@ fn reslice<'a>(v: &'a mut [uint]) -> &'a [uint] {
         cast::transmute(v)
     }
 }
-

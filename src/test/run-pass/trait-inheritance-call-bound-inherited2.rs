@@ -26,5 +26,5 @@ fn gg<T:Baz>(a: &T) -> int {
 
 pub fn main() {
     let a = &A { x: 3 };
-    assert!(gg(a) == 10);
+    assert_eq!(gg(a), 10);
 }

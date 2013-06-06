@@ -10,6 +10,8 @@
 
 //! Generate markdown from a document tree
 
+use core::prelude::*;
+
 use astsrv;
 use doc::ItemUtils;
 use doc;
@@ -21,10 +23,12 @@ use pass::Pass;
 use sort_pass;
 
 use core::cell::Cell;
+use core::str;
+use core::vec;
 use syntax;
 
 pub fn mk_pass(writer_factory: WriterFactory) -> Pass {
-    let writer_factory = Cell(writer_factory);
+    let writer_factory = Cell::new(writer_factory);
     Pass {
         name: ~"markdown",
         f: |srv, doc| run(srv, doc, writer_factory.take())
@@ -110,7 +114,7 @@ fn make_title(page: doc::Page) -> ~str {
         }
     };
     let title = markdown_pass::header_text(item);
-    let title = str::replace(title, ~"`", ~"");
+    let title = str::replace(title, "`", "");
     return title;
 }
 
@@ -169,7 +173,7 @@ pub fn header_kind(doc: doc::ItemTag) -> ~str {
 }
 
 pub fn header_name(doc: doc::ItemTag) -> ~str {
-    let fullpath = str::connect(doc.path() + ~[doc.name()], ~"::");
+    let fullpath = str::connect(doc.path() + [doc.name()], "::");
     match &doc {
         &doc::ModTag(_) if doc.id() != syntax::ast::crate_node_id => {
             fullpath
@@ -179,22 +183,22 @@ pub fn header_name(doc: doc::ItemTag) -> ~str {
         }
         &doc::ImplTag(ref doc) => {
             assert!(doc.self_ty.is_some());
-            let bounds = if (&doc.bounds_str).is_some() {
-                fmt!(" where %s", (&doc.bounds_str).get())
+            let bounds = if doc.bounds_str.is_some() {
+                fmt!(" where %s", *doc.bounds_str.get_ref())
             } else {
                 ~""
             };
-            let self_ty = (&doc.self_ty).get();
+            let self_ty = doc.self_ty.get_ref();
             let mut trait_part = ~"";
             for doc.trait_types.eachi |i, trait_type| {
                 if i == 0 {
-                    trait_part += ~" of ";
+                    trait_part += " of ";
                 } else {
-                    trait_part += ~", ";
+                    trait_part += ", ";
                 }
                 trait_part += *trait_type;
             }
-            fmt!("%s for %s%s", trait_part, self_ty, bounds)
+            fmt!("%s for %s%s", trait_part, *self_ty, bounds)
         }
         _ => {
             doc.name()
@@ -206,17 +210,17 @@ pub fn header_text(doc: doc::ItemTag) -> ~str {
     match &doc {
         &doc::ImplTag(ref ImplDoc) => {
             let header_kind = header_kind(copy doc);
-            let bounds = if (&ImplDoc.bounds_str).is_some() {
-                fmt!(" where `%s`", (&ImplDoc.bounds_str).get())
+            let bounds = if ImplDoc.bounds_str.is_some() {
+                fmt!(" where `%s`", *ImplDoc.bounds_str.get_ref())
             } else {
                 ~""
             };
             let desc = if ImplDoc.trait_types.is_empty() {
-                fmt!("for `%s`%s", (&ImplDoc.self_ty).get(), bounds)
+                fmt!("for `%s`%s", *ImplDoc.self_ty.get_ref(), bounds)
             } else {
                 fmt!("of `%s` for `%s`%s",
                      ImplDoc.trait_types[0],
-                     (&ImplDoc.self_ty).get(),
+                     *ImplDoc.self_ty.get_ref(),
                      bounds)
             };
             return fmt!("%s %s", header_kind, desc);
@@ -293,7 +297,7 @@ fn write_mod_contents(
 ) {
     write_common(ctxt, doc.desc(), doc.sections());
     if doc.index.is_some() {
-        write_index(ctxt, (&doc.index).get());
+        write_index(ctxt, doc.index.get_ref());
     }
 
     for doc.items.each |itemTag| {
@@ -338,7 +342,7 @@ fn item_header_lvl(doc: &doc::ItemTag) -> Hlvl {
     }
 }
 
-fn write_index(ctxt: &Ctxt, index: doc::Index) {
+fn write_index(ctxt: &Ctxt, index: &doc::Index) {
     if vec::is_empty(index.entries) {
         return;
     }
@@ -351,7 +355,7 @@ fn write_index(ctxt: &Ctxt, index: doc::Index) {
         let id = copy entry.link;
         if entry.brief.is_some() {
             ctxt.w.put_line(fmt!("* [%s](%s) - %s",
-                                 header, id, (&entry.brief).get()));
+                                 header, id, *entry.brief.get_ref()));
         } else {
             ctxt.w.put_line(fmt!("* [%s](%s)", header, id));
         }
@@ -364,7 +368,7 @@ fn write_index(ctxt: &Ctxt, index: doc::Index) {
 fn write_nmod(ctxt: &Ctxt, doc: doc::NmodDoc) {
     write_common(ctxt, doc.desc(), doc.sections());
     if doc.index.is_some() {
-        write_index(ctxt, (&doc.index).get());
+        write_index(ctxt, doc.index.get_ref());
     }
 
     for doc.fns.each |FnDoc| {
@@ -448,15 +452,31 @@ fn write_variants(
 
 fn write_variant(ctxt: &Ctxt, doc: doc::VariantDoc) {
     assert!(doc.sig.is_some());
-    let sig = (&doc.sig).get();
+    let sig = doc.sig.get_ref();
+
+    // space out list items so they all end up within paragraph elements
+    ctxt.w.put_line(~"");
+
     match copy doc.desc {
         Some(desc) => {
-            ctxt.w.put_line(fmt!("* `%s` - %s", sig, desc));
+            ctxt.w.put_line(list_item_indent(fmt!("* `%s` - %s", *sig, desc)));
         }
         None => {
-            ctxt.w.put_line(fmt!("* `%s`", sig));
+            ctxt.w.put_line(fmt!("* `%s`", *sig));
         }
     }
+}
+
+fn list_item_indent(item: &str) -> ~str {
+    let mut indented = ~[];
+    for str::each_line_any(item) |line| {
+        indented.push(line);
+    }
+
+    // separate markdown elements within `*` lists must be indented by four
+    // spaces, or they will escape the list context. indenting everything
+    // seems fine though.
+    str::connect_slices(indented, "\n    ")
 }
 
 fn write_trait(ctxt: &Ctxt, doc: doc::TraitDoc) {
@@ -471,7 +491,7 @@ fn write_methods(ctxt: &Ctxt, docs: &[doc::MethodDoc]) {
 }
 
 fn write_method(ctxt: &Ctxt, doc: doc::MethodDoc) {
-    write_header_(ctxt, H3, header_text_(~"Method", doc.name));
+    write_header_(ctxt, H3, header_text_("Method", doc.name));
     write_fnlike(
         ctxt,
         copy doc.sig,
@@ -503,6 +523,8 @@ fn put_struct(
 
 #[cfg(test)]
 mod test {
+    use core::prelude::*;
+
     use astsrv;
     use attr_pass;
     use config;
@@ -518,6 +540,8 @@ mod test {
     use trim_pass;
     use tystr_pass;
     use unindent_pass;
+
+    use core::str;
 
     fn render(source: ~str) -> ~str {
         let (srv, doc) = create_doc_srv(source);
@@ -583,13 +607,13 @@ mod test {
     #[test]
     fn write_markdown_should_write_mod_headers() {
         let markdown = render(~"mod moo { }");
-        assert!(str::contains(markdown, ~"# Module `moo`"));
+        assert!(str::contains(markdown, "# Module `moo`"));
     }
 
     #[test]
     fn should_leave_blank_line_after_header() {
         let markdown = render(~"mod morp { }");
-        assert!(str::contains(markdown, ~"Module `morp`\n\n"));
+        assert!(str::contains(markdown, "Module `morp`\n\n"));
     }
 
     #[test]
@@ -609,10 +633,10 @@ mod test {
               fn d() { }"
         );
 
-        let idx_a = str::find_str(markdown, ~"# Module `a`").get();
-        let idx_b = str::find_str(markdown, ~"## Function `b`").get();
-        let idx_c = str::find_str(markdown, ~"# Module `c`").get();
-        let idx_d = str::find_str(markdown, ~"## Function `d`").get();
+        let idx_a = str::find_str(markdown, "# Module `a`").get();
+        let idx_b = str::find_str(markdown, "## Function `b`").get();
+        let idx_c = str::find_str(markdown, "# Module `c`").get();
+        let idx_d = str::find_str(markdown, "## Function `d`").get();
 
         assert!(idx_b < idx_d);
         assert!(idx_d < idx_a);
@@ -629,7 +653,7 @@ mod test {
         let doc = (page_pass::mk_pass(config::DocPerMod).f)(srv, doc);
         write_markdown(doc, writer_factory);
         // We expect two pages to have been written
-        for old_iter::repeat(2) {
+        for 2.times {
             po.recv();
         }
     }
@@ -641,14 +665,14 @@ mod test {
             ~"#[link(name = \"core\")]; mod a { }");
         let doc = (page_pass::mk_pass(config::DocPerMod).f)(srv, doc);
         write_markdown(doc, writer_factory);
-        for old_iter::repeat(2) {
+        for 2.times {
             let (page, markdown) = po.recv();
             match page {
                 doc::CratePage(_) => {
-                    assert!(str::contains(markdown, ~"% Crate core"));
+                    assert!(str::contains(markdown, "% Crate core"));
                 }
                 doc::ItemPage(_) => {
-                    assert!(str::contains(markdown, ~"% Module a"));
+                    assert!(str::contains(markdown, "% Module a"));
                 }
             }
         }
@@ -657,7 +681,7 @@ mod test {
     #[test]
     fn should_write_full_path_to_mod() {
         let markdown = render(~"mod a { mod b { mod c { } } }");
-        assert!(str::contains(markdown, ~"# Module `a::b::c`"));
+        assert!(str::contains(markdown, "# Module `a::b::c`"));
     }
 
     #[test]
@@ -668,13 +692,13 @@ mod test {
               Body\"]\
               mod a {
 }");
-        assert!(str::contains(markdown, ~"#### Header\n\nBody\n\n"));
+        assert!(str::contains(markdown, "#### Header\n\nBody\n\n"));
     }
 
     #[test]
     fn should_write_crate_description() {
         let markdown = render(~"#[doc = \"this is the crate\"];");
-        assert!(str::contains(markdown, ~"this is the crate"));
+        assert!(str::contains(markdown, "this is the crate"));
     }
 
 
@@ -683,21 +707,21 @@ mod test {
         let markdown = render(~"mod a { } mod b { }");
         assert!(str::contains(
             markdown,
-            ~"\n\n* [Module `a`](#module-a)\n\
-              * [Module `b`](#module-b)\n\n"
+            "\n\n* [Module `a`](#module-a)\n\
+             * [Module `b`](#module-b)\n\n"
         ));
     }
 
     #[test]
     fn should_write_index_brief() {
         let markdown = render(~"#[doc = \"test\"] mod a { }");
-        assert!(str::contains(markdown, ~"(#module-a) - test\n"));
+        assert!(str::contains(markdown, "(#module-a) - test\n"));
     }
 
     #[test]
     fn should_not_write_index_if_no_entries() {
         let markdown = render(~"");
-        assert!(!str::contains(markdown, ~"\n\n\n"));
+        assert!(!str::contains(markdown, "\n\n\n"));
     }
 
     #[test]
@@ -705,7 +729,7 @@ mod test {
         let markdown = render(~"extern { fn a(); }");
         assert!(str::contains(
             markdown,
-            ~"\n\n* [Function `a`](#function-a)\n\n"
+            "\n\n* [Function `a`](#function-a)\n\n"
         ));
     }
 
@@ -713,32 +737,32 @@ mod test {
     fn should_write_foreign_fns() {
         let markdown = render(
             ~"extern { #[doc = \"test\"] fn a(); }");
-        assert!(str::contains(markdown, ~"test"));
+        assert!(str::contains(markdown, "test"));
     }
 
     #[test]
     fn should_write_foreign_fn_headers() {
         let markdown = render(
             ~"extern { #[doc = \"test\"] fn a(); }");
-        assert!(str::contains(markdown, ~"## Function `a`"));
+        assert!(str::contains(markdown, "## Function `a`"));
     }
 
     #[test]
     fn write_markdown_should_write_function_header() {
         let markdown = render(~"fn func() { }");
-        assert!(str::contains(markdown, ~"## Function `func`"));
+        assert!(str::contains(markdown, "## Function `func`"));
     }
 
     #[test]
     fn should_write_the_function_signature() {
         let markdown = render(~"#[doc = \"f\"] fn a() { }");
-        assert!(str::contains(markdown, ~"\n    fn a()\n"));
+        assert!(str::contains(markdown, "\n    fn a()\n"));
     }
 
     #[test]
     fn should_insert_blank_line_after_fn_signature() {
         let markdown = render(~"#[doc = \"f\"] fn a() { }");
-        assert!(str::contains(markdown, ~"fn a()\n\n"));
+        assert!(str::contains(markdown, "fn a()\n\n"));
     }
 
     #[test]
@@ -759,19 +783,19 @@ mod test {
             ]
         };
         let markdown = write_markdown_str(doc);
-        assert!(str::contains(markdown, ~"    line 1\n    line 2"));
+        assert!(str::contains(markdown, "    line 1\n    line 2"));
     }
 
     #[test]
     fn should_leave_blank_line_between_fn_header_and_sig() {
         let markdown = render(~"fn a() { }");
-        assert!(str::contains(markdown, ~"Function `a`\n\n    fn a()"));
+        assert!(str::contains(markdown, "Function `a`\n\n    fn a()"));
     }
 
     #[test]
     fn should_write_const_header() {
         let markdown = render(~"static a: bool = true;");
-        assert!(str::contains(markdown, ~"## Const `a`\n\n"));
+        assert!(str::contains(markdown, "## Const `a`\n\n"));
     }
 
     #[test]
@@ -779,20 +803,19 @@ mod test {
         let markdown = render(
             ~"#[doc = \"b\"]\
               static a: bool = true;");
-        assert!(str::contains(markdown, ~"\n\nb\n\n"));
+        assert!(str::contains(markdown, "\n\nb\n\n"));
     }
 
     #[test]
     fn should_write_enum_header() {
         let markdown = render(~"enum a { b }");
-        assert!(str::contains(markdown, ~"## Enum `a`\n\n"));
+        assert!(str::contains(markdown, "## Enum `a`\n\n"));
     }
 
     #[test]
     fn should_write_enum_description() {
-        let markdown = render(
-            ~"#[doc = \"b\"] enum a { b }");
-        assert!(str::contains(markdown, ~"\n\nb\n\n"));
+        let markdown = render(~"#[doc = \"b\"] enum a { b }");
+        assert!(str::contains(markdown, "\n\nb\n\n"));
     }
 
     #[test]
@@ -803,9 +826,11 @@ mod test {
               #[doc = \"test\"] c }");
         assert!(str::contains(
             markdown,
-            ~"\n\n#### Variants\n\
-              \n* `b` - test\
-              \n* `c` - test\n\n"));
+            "\n\n#### Variants\n\
+             \n\
+             \n* `b` - test\
+             \n\
+             \n* `c` - test\n\n"));
     }
 
     #[test]
@@ -813,9 +838,26 @@ mod test {
         let markdown = render(~"enum a { b, c }");
         assert!(str::contains(
             markdown,
-            ~"\n\n#### Variants\n\
-              \n* `b`\
-              \n* `c`\n\n"));
+            "\n\n#### Variants\n\
+             \n\
+             \n* `b`\
+             \n\
+             \n* `c`\n\n"));
+    }
+
+    #[test]
+    fn should_write_variant_list_with_indent() {
+        let markdown = render(
+            ~"enum a { #[doc = \"line 1\\n\\nline 2\"] b, c }");
+        assert!(str::contains(
+            markdown,
+            "\n\n#### Variants\n\
+             \n\
+             \n* `b` - line 1\
+             \n    \
+             \n    line 2\
+             \n\
+             \n* `c`\n\n"));
     }
 
     #[test]
@@ -823,100 +865,99 @@ mod test {
         let markdown = render(~"enum a { b(int), #[doc = \"a\"] c(int) }");
         assert!(str::contains(
             markdown,
-            ~"\n\n#### Variants\n\
-              \n* `b(int)`\
-              \n* `c(int)` - a\n\n"));
+            "\n\n#### Variants\n\
+             \n\
+             \n* `b(int)`\
+             \n\
+             \n* `c(int)` - a\n\n"));
     }
 
     #[test]
     fn should_write_trait_header() {
         let markdown = render(~"trait i { fn a(); }");
-        assert!(str::contains(markdown, ~"## Trait `i`"));
+        assert!(str::contains(markdown, "## Trait `i`"));
     }
 
     #[test]
     fn should_write_trait_desc() {
-        let markdown = render(
-            ~"#[doc = \"desc\"] trait i { fn a(); }");
-        assert!(str::contains(markdown, ~"desc"));
+        let markdown = render(~"#[doc = \"desc\"] trait i { fn a(); }");
+        assert!(str::contains(markdown, "desc"));
     }
 
     #[test]
     fn should_write_trait_method_header() {
-        let markdown = render(
-            ~"trait i { fn a(); }");
-        assert!(str::contains(markdown, ~"### Method `a`"));
+        let markdown = render(~"trait i { fn a(); }");
+        assert!(str::contains(markdown, "### Method `a`"));
     }
 
     #[test]
     fn should_write_trait_method_signature() {
-        let markdown = render(
-            ~"trait i { fn a(&self); }");
-        assert!(str::contains(markdown, ~"\n    fn a(&self)"));
+        let markdown = render(~"trait i { fn a(&self); }");
+        assert!(str::contains(markdown, "\n    fn a(&self)"));
     }
 
     #[test]
     fn should_write_impl_header() {
         let markdown = render(~"impl int { fn a() { } }");
-        assert!(str::contains(markdown, ~"## Implementation for `int`"));
+        assert!(str::contains(markdown, "## Implementation for `int`"));
     }
 
     #[test]
     fn should_write_impl_header_with_bounds() {
         let markdown = render(~"impl <T> int<T> { }");
-        assert!(str::contains(markdown, ~"## Implementation for `int<T>` where `<T>`"));
+        assert!(str::contains(markdown, "## Implementation for `int<T>` where `<T>`"));
     }
 
     #[test]
     fn should_write_impl_header_with_trait() {
         let markdown = render(~"impl j for int { fn a() { } }");
         assert!(str::contains(markdown,
-                              ~"## Implementation of `j` for `int`"));
+                              "## Implementation of `j` for `int`"));
     }
 
     #[test]
     fn should_write_impl_desc() {
         let markdown = render(
             ~"#[doc = \"desc\"] impl int { fn a() { } }");
-        assert!(str::contains(markdown, ~"desc"));
+        assert!(str::contains(markdown, "desc"));
     }
 
     #[test]
     fn should_write_impl_method_header() {
         let markdown = render(
             ~"impl int { fn a() { } }");
-        assert!(str::contains(markdown, ~"### Method `a`"));
+        assert!(str::contains(markdown, "### Method `a`"));
     }
 
     #[test]
     fn should_write_impl_method_signature() {
         let markdown = render(
             ~"impl int { fn a(&mut self) { } }");
-        assert!(str::contains(markdown, ~"\n    fn a(&mut self)"));
+        assert!(str::contains(markdown, "\n    fn a(&mut self)"));
     }
 
     #[test]
     fn should_write_type_header() {
         let markdown = render(~"type t = int;");
-        assert!(str::contains(markdown, ~"## Type `t`"));
+        assert!(str::contains(markdown, "## Type `t`"));
     }
 
     #[test]
     fn should_write_type_desc() {
         let markdown = render(
             ~"#[doc = \"desc\"] type t = int;");
-        assert!(str::contains(markdown, ~"\n\ndesc\n\n"));
+        assert!(str::contains(markdown, "\n\ndesc\n\n"));
     }
 
     #[test]
     fn should_write_type_signature() {
         let markdown = render(~"type t = int;");
-        assert!(str::contains(markdown, ~"\n\n    type t = int\n\n"));
+        assert!(str::contains(markdown, "\n\n    type t = int\n\n"));
     }
 
     #[test]
     fn should_put_struct_header() {
         let markdown = render(~"struct S { field: () }");
-        assert!(str::contains(markdown, ~"## Struct `S`\n\n"));
+        assert!(str::contains(markdown, "## Struct `S`\n\n"));
     }
 }

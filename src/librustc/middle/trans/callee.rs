@@ -16,6 +16,8 @@
 // and methods are represented as just a fn ptr and not a full
 // closure.
 
+use core::prelude::*;
+
 use back::abi;
 use driver::session;
 use lib;
@@ -41,6 +43,7 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux::Repr;
 
+use core::vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::visit;
@@ -272,7 +275,7 @@ pub fn trans_fn_ref_with_vtables(
     // Create a monomorphic verison of generic functions
     if must_monomorphise {
         // Should be either intra-crate or inlined.
-        assert!(def_id.crate == ast::local_crate);
+        assert_eq!(def_id.crate, ast::local_crate);
 
         let mut (val, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, type_params,
@@ -325,6 +328,7 @@ pub fn trans_call(in_cx: block,
 
 pub fn trans_method_call(in_cx: block,
                          call_ex: @ast::expr,
+                         callee_id: ast::node_id,
                          rcvr: @ast::expr,
                          args: CallArgs,
                          dest: expr::Dest)
@@ -336,7 +340,7 @@ pub fn trans_method_call(in_cx: block,
     trans_call_inner(
         in_cx,
         call_ex.info(),
-        node_id_type(in_cx, call_ex.callee_id),
+        node_id_type(in_cx, callee_id),
         expr_ty(in_cx, call_ex),
         |cx| {
             match cx.ccx().maps.method_map.find_copy(&call_ex.id) {
@@ -346,7 +350,7 @@ pub fn trans_method_call(in_cx: block,
                            origin.repr(in_cx.tcx()));
 
                     meth::trans_method_callee(cx,
-                                              call_ex.callee_id,
+                                              callee_id,
                                               rcvr,
                                               origin)
                 }
@@ -379,7 +383,7 @@ pub fn trans_lang_call(bcx: block,
                                 trans_fn_ref_with_vtables_to_callee(bcx,
                                                                     did,
                                                                     0,
-                                                                    ~[],
+                                                                    [],
                                                                     None)
                              },
                              ArgVals(args),
@@ -508,11 +512,7 @@ pub fn trans_call_inner(in_cx: block,
 
         let mut llargs = ~[];
 
-        if ty::type_is_immediate(ret_ty) {
-            unsafe {
-                llargs.push(llvm::LLVMGetUndef(T_ptr(T_i8())));
-            }
-        } else {
+        if !ty::type_is_immediate(ret_ty) {
             llargs.push(llretslot);
         }
 
@@ -712,13 +712,11 @@ pub fn trans_arg_expr(bcx: block,
                     DatumBlock {bcx: bcx,
                                 datum: Datum {val: scratch,
                                               ty: scratch_ty,
-                                              mode: ByRef,
-                                              source: RevokeClean}}
+                                              mode: ByRef(RevokeClean)}}
                 }
                 _ => {
                     bcx.sess().impossible_case(
-                        arg_expr.span, ~"ret_flag with non-loop-\
-                                         body expr");
+                        arg_expr.span, "ret_flag with non-loop-body expr");
                 }
             }
         }
@@ -777,7 +775,7 @@ pub fn trans_arg_expr(bcx: block,
 
                         match arg_datum.appropriate_mode() {
                             ByValue => val = Load(bcx, scratch.val),
-                            ByRef => val = scratch.val,
+                            ByRef(_) => val = scratch.val,
                         }
                     }
                 }

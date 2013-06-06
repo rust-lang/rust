@@ -2,13 +2,13 @@ struct S {
     x: ~str
 }
 
-pub impl S {
-    fn foo(self) {
+impl S {
+    pub fn foo(self) {
         self.bar();
     }
 
-    fn bar(self) {
-        io::println(self.x);
+    pub fn bar(self) {
+        println(self.x);
     }
 }
 

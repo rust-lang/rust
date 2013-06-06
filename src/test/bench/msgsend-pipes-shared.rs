@@ -18,11 +18,17 @@
 // different scalability characteristics compared to the select
 // version.
 
-extern mod std;
-use core::io::Writer;
-use core::io::WriterUtil;
+extern mod extra;
 
-use core::comm::{Port, Chan, SharedChan};
+use std::comm::{Port, Chan, SharedChan};
+use std::comm;
+use std::io::{Writer, WriterUtil};
+use std::io;
+use std::os;
+use std::task;
+use std::ptr;
+use std::uint;
+use std::vec;
 
 macro_rules! move_out (
     { $x:expr } => { unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } }
@@ -61,7 +67,7 @@ fn run(args: &[~str]) {
     let size = uint::from_str(args[1]).get();
     let workers = uint::from_str(args[2]).get();
     let num_bytes = 100;
-    let start = std::time::precise_time_s();
+    let start = extra::time::precise_time_s();
     let mut worker_results = ~[];
     for uint::range(0, workers) |_i| {
         let to_child = to_child.clone();
@@ -87,13 +93,13 @@ fn run(args: &[~str]) {
     to_child.send(stop);
     move_out!(to_child);
     let result = from_child.recv();
-    let end = std::time::precise_time_s();
+    let end = extra::time::precise_time_s();
     let elapsed = end - start;
     io::stdout().write_str(fmt!("Count is %?\n", result));
     io::stdout().write_str(fmt!("Test took %? seconds\n", elapsed));
     let thruput = ((size / workers * workers) as float) / (elapsed as float);
     io::stdout().write_str(fmt!("Throughput=%f per sec\n", thruput));
-    assert!(result == num_bytes * size);
+    assert_eq!(result, num_bytes * size);
 }
 
 fn main() {

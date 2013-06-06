@@ -25,5 +25,5 @@ pub fn main() {
         *x * b
       }
     };
-    assert!(z == 18);
+    assert_eq!(z, 18);
 }

@@ -21,8 +21,8 @@ impl Drop for shrinky_pointer {
     }
 }
 
-pub impl shrinky_pointer {
-  fn look_at(&self) -> int { return **(self.i); }
+impl shrinky_pointer {
+    pub fn look_at(&self) -> int { return **(self.i); }
 }
 
 fn shrinky_pointer(i: @@mut int) -> shrinky_pointer {
@@ -35,5 +35,5 @@ pub fn main() {
     let my_total = @@mut 10;
     { let pt = shrinky_pointer(my_total); assert!((pt.look_at() == 10)); }
     error!("my_total = %d", **my_total);
-    assert!((**my_total == 9));
+    assert_eq!(**my_total, 9);
 }

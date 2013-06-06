@@ -17,10 +17,10 @@ pub fn main() {
   let b = Foo(5, 7, ~"def");
 
   assert!(a1 == a1);
-  assert!(a1 == a2);
+  assert!(a2 == a1);
   assert!(!(a1 == b));
 
   assert!(a1 != b);
   assert!(!(a1 != a1));
-  assert!(!(a1 != a2));
+  assert!(!(a2 != a1));
 }

@@ -45,8 +45,8 @@ pub fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
       ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) => {
         ty::mk_imm_box(tcx, unboxed_vec_ty)
       }
-      _ => tcx.sess.bug(~"non boxed-vec type \
-                          in tvec::expand_boxed_vec_ty")
+      _ => tcx.sess.bug("non boxed-vec type \
+                         in tvec::expand_boxed_vec_ty")
     }
 }
 
@@ -74,7 +74,7 @@ pub fn pointer_add(bcx: block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::pointer_add");
     let old_ty = val_ty(ptr);
     let bptr = PointerCast(bcx, ptr, T_ptr(T_i8()));
-    return PointerCast(bcx, InBoundsGEP(bcx, bptr, ~[bytes]), old_ty);
+    return PointerCast(bcx, InBoundsGEP(bcx, bptr, [bytes]), old_ty);
 }
 
 pub fn alloc_raw(bcx: block, unit_ty: ty::t,
@@ -125,7 +125,7 @@ pub fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> Result {
 
     let data_ptr = get_dataptr(bcx, get_bodyptr(bcx, vptr));
     let new_data_ptr = get_dataptr(bcx, get_bodyptr(bcx, newptr));
-    base::call_memcpy(bcx, new_data_ptr, data_ptr, fill);
+    base::call_memcpy(bcx, new_data_ptr, data_ptr, fill, 1);
 
     let bcx = if ty::type_needs_drop(bcx.tcx(), unit_ty) {
         iter_vec_raw(bcx, new_data_ptr, vec_ty, fill, glue::take_ty)
@@ -136,7 +136,8 @@ pub fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> Result {
 pub fn make_drop_glue_unboxed(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
    block {
     let _icx = bcx.insn_ctxt("tvec::make_drop_glue_unboxed");
-    let tcx = bcx.tcx(), unit_ty = ty::sequence_element_type(tcx, vec_ty);
+    let tcx = bcx.tcx();
+    let unit_ty = ty::sequence_element_type(tcx, vec_ty);
     if ty::type_needs_drop(tcx, unit_ty) {
         iter_vec_unboxed(bcx, vptr, vec_ty, glue::drop_ty)
     } else { bcx }
@@ -149,8 +150,8 @@ pub struct VecTypes {
     llunit_size: ValueRef
 }
 
-pub impl VecTypes {
-    fn to_str(&self, ccx: @CrateContext) -> ~str {
+impl VecTypes {
+    pub fn to_str(&self, ccx: @CrateContext) -> ~str {
         fmt!("VecTypes {vec_ty=%s, unit_ty=%s, llunit_ty=%s, llunit_size=%s}",
              ty_to_str(ccx.tcx, self.vec_ty),
              ty_to_str(ccx.tcx, self.unit_ty),
@@ -313,7 +314,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block,
                     let bcx = callee::trans_lang_call(
                         bcx,
                         bcx.tcx().lang_items.strdup_uniq_fn(),
-                        ~[ llptrval, llsizeval ],
+                        [ llptrval, llsizeval ],
                         expr::SaveIn(lldestval.to_ref_llval(bcx)));
                     return DatumBlock {
                         bcx: bcx,
@@ -370,7 +371,7 @@ pub fn write_content(bcx: block,
                     let bytes = s.len() + 1; // copy null-terminator too
                     let llbytes = C_uint(bcx.ccx(), bytes);
                     let llcstr = C_cstr(bcx.ccx(), s);
-                    base::call_memcpy(bcx, lldest, llcstr, llbytes);
+                    base::call_memcpy(bcx, lldest, llcstr, llbytes, 1);
                     return bcx;
                 }
             }
@@ -564,7 +565,7 @@ pub fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
     let header_bcx = base::sub_block(bcx, "iter_vec_loop_header");
     Br(bcx, header_bcx.llbb);
     let data_ptr =
-        Phi(header_bcx, val_ty(data_ptr), ~[data_ptr], ~[bcx.llbb]);
+        Phi(header_bcx, val_ty(data_ptr), [data_ptr], [bcx.llbb]);
     let not_yet_at_end =
         ICmp(header_bcx, lib::llvm::IntULT, data_ptr, data_end_ptr);
     let body_bcx = base::sub_block(header_bcx, "iter_vec_loop_body");
@@ -572,7 +573,7 @@ pub fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
     CondBr(header_bcx, not_yet_at_end, body_bcx.llbb, next_bcx.llbb);
     let body_bcx = f(body_bcx, data_ptr, unit_ty);
     AddIncomingToPhi(data_ptr, InBoundsGEP(body_bcx, data_ptr,
-                                           ~[C_int(bcx.ccx(), 1)]),
+                                           [C_int(bcx.ccx(), 1)]),
                      body_bcx.llbb);
     Br(body_bcx, header_bcx.llbb);
     return next_bcx;

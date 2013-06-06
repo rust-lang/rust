@@ -1,6 +1,8 @@
 // Tests that references to move-by-default values trigger moves when
 // they occur as part of various kinds of expressions.
 
+use std::vec;
+
 struct Foo<A> { f: A }
 fn guard(_s: ~str) -> bool {fail!()}
 fn touch<A>(_a: &A) {}
@@ -24,7 +26,8 @@ fn f21() {
 }
 
 fn f30(cond: bool) {
-    let x = ~"hi", y = ~"ho";
+    let x = ~"hi";
+    let y = ~"ho";
     let _y = if cond {
         x
     } else {
@@ -35,7 +38,8 @@ fn f30(cond: bool) {
 }
 
 fn f40(cond: bool) {
-    let x = ~"hi", y = ~"ho";
+    let x = ~"hi";
+    let y = ~"ho";
     let _y = match cond {
         true => x,
         false => y
@@ -45,7 +49,8 @@ fn f40(cond: bool) {
 }
 
 fn f50(cond: bool) {
-    let x = ~"hi", y = ~"ho";
+    let x = ~"hi";
+    let y = ~"ho";
     let _y = match cond {
         _ if guard(x) => 10,
         true => 10,
@@ -86,7 +91,7 @@ fn f110() {
 }
 
 fn f120() {
-    let x = ~[~"hi", ~"ho"];
+    let mut x = ~[~"hi", ~"ho"];
     vec::swap(x, 0, 1);
     touch(&x[0]);
     touch(&x[1]);

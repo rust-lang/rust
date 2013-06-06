@@ -9,13 +9,13 @@
 // except according to those terms.
 
 struct cat {
-  priv mut meows : uint,
+  priv meows : uint,
 
   how_hungry : int,
 }
 
-pub impl cat {
-  fn eat(&self) {
+impl cat {
+  pub fn eat(&self) {
     self.how_hungry -= 5; //~ ERROR cannot assign
   }
 

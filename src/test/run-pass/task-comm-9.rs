@@ -10,7 +10,10 @@
 
 // xfail-fast
 
-extern mod std;
+extern mod extra;
+
+use std::comm;
+use std::task;
 
 pub fn main() { test00(); }
 
@@ -42,5 +45,5 @@ fn test00() {
 
     result.unwrap().recv();
 
-    assert!((sum == number_of_messages * (number_of_messages - 1) / 2));
+    assert_eq!(sum, number_of_messages * (number_of_messages - 1) / 2);
 }

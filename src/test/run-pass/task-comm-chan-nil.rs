@@ -10,7 +10,9 @@
 // except according to those terms.
 
 
-extern mod std;
+extern mod extra;
+
+use std::comm;
 
 // rustboot can't transmit nils across channels because they don't have
 // any size, but rustc currently can because they do have size. Whether
@@ -19,5 +21,5 @@ pub fn main() {
     let (po, ch) = comm::stream();
     ch.send(());
     let n: () = po.recv();
-    assert!((n == ()));
+    assert_eq!(n, ());
 }

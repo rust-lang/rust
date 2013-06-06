@@ -459,18 +459,18 @@ rust_localtime(int64_t sec, int32_t nsec, rust_tm *timeptr) {
     tm_to_rust_tm(&tm, timeptr, gmtoff, zone, nsec);
 }
 
-extern "C" CDECL void
-rust_timegm(rust_tm* timeptr, int64_t *out) {
+extern "C" CDECL int64_t
+rust_timegm(rust_tm* timeptr) {
     tm t;
     rust_tm_to_tm(timeptr, &t);
-    *out = TIMEGM(&t);
+    return TIMEGM(&t);
 }
 
-extern "C" CDECL void
-rust_mktime(rust_tm* timeptr, int64_t *out) {
+extern "C" CDECL int64_t
+rust_mktime(rust_tm* timeptr) {
     tm t;
     rust_tm_to_tm(timeptr, &t);
-    *out = mktime(&t);
+    return mktime(&t);
 }
 
 extern "C" CDECL rust_sched_id
@@ -731,10 +731,17 @@ rust_task_deref(rust_task *task) {
 // Must call on rust stack.
 extern "C" CDECL void
 rust_call_tydesc_glue(void *root, size_t *tydesc, size_t glue_index) {
+#ifdef _RUST_STAGE0
     void (*glue_fn)(void *, void *, void *, void *) =
         (void (*)(void *, void *, void *, void *))tydesc[glue_index];
     if (glue_fn)
         glue_fn(0, 0, 0, root);
+#else
+    void (*glue_fn)(void *, void *, void *) =
+        (void (*)(void *, void *, void *))tydesc[glue_index];
+    if (glue_fn)
+        glue_fn(0, 0, root);
+#endif
 }
 
 // Don't run on the Rust stack!
@@ -754,7 +761,11 @@ public:
 
     virtual void run() {
         record_sp_limit(0);
+#ifdef _RUST_STAGE0
         fn.f(NULL, fn.env, NULL);
+#else
+        fn.f(fn.env, NULL);
+#endif
     }
 };
 
@@ -830,19 +841,19 @@ rust_get_rt_env() {
 }
 
 #ifndef _WIN32
-pthread_key_t sched_key;
+pthread_key_t rt_key = -1;
 #else
-DWORD sched_key;
+DWORD rt_key = -1;
 #endif
 
 extern "C" void*
-rust_get_sched_tls_key() {
-    return &sched_key;
+rust_get_rt_tls_key() {
+    return &rt_key;
 }
 
-// Initialize the global state required by the new scheduler
+// Initialize the TLS key used by the new scheduler
 extern "C" CDECL void
-rust_initialize_global_state() {
+rust_initialize_rt_tls_key() {
 
     static lock_and_signal init_lock;
     static bool initialized = false;
@@ -852,10 +863,10 @@ rust_initialize_global_state() {
     if (!initialized) {
 
 #ifndef _WIN32
-        assert(!pthread_key_create(&sched_key, NULL));
+        assert(!pthread_key_create(&rt_key, NULL));
 #else
-        sched_key = TlsAlloc();
-        assert(sched_key != TLS_OUT_OF_INDEXES);
+        rt_key = TlsAlloc();
+        assert(rt_key != TLS_OUT_OF_INDEXES);
 #endif
 
         initialized = true;

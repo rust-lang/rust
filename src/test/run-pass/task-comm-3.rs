@@ -10,8 +10,11 @@
 
 // xfail-fast
 
-extern mod std;
-use core::comm::Chan;
+extern mod extra;
+
+use std::comm::Chan;
+use std::comm;
+use std::task;
 
 pub fn main() { debug!("===== WITHOUT THREADS ====="); test00(); }
 
@@ -67,5 +70,5 @@ fn test00() {
     error!(sum);
     // assert (sum == (((number_of_tasks * (number_of_tasks - 1)) / 2) *
     //       number_of_messages));
-    assert!((sum == 480));
+    assert_eq!(sum, 480);
 }

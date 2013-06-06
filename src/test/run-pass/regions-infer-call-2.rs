@@ -19,5 +19,5 @@ fn has_one<'a>(x: &'a int) -> int {
 }
 
 pub fn main() {
-    assert!(has_one(&2) == 22);
+    assert_eq!(has_one(&2), 22);
 }

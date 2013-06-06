@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // Earley-like parser for macros.
+
+use core::prelude::*;
+
 use ast;
 use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 use codemap::{BytePos, mk_sp};
@@ -16,10 +19,13 @@ use codemap;
 use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
 use parse::parser::Parser;
-use parse::token::{Token, EOF, to_str, nonterminal};
+use parse::token::{Token, EOF, to_str, nonterminal, get_ident_interner, ident_to_str};
 use parse::token;
 
 use core::hashmap::HashMap;
+use core::str;
+use core::uint;
+use core::vec;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it
@@ -195,13 +201,13 @@ pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
             };
           }
           codemap::spanned {
-                node: match_nonterminal(bind_name, _, idx), span: sp
+                node: match_nonterminal(ref bind_name, _, idx), span: sp
           } => {
-            if ret_val.contains_key(&bind_name) {
+            if ret_val.contains_key(bind_name) {
                 p_s.span_diagnostic.span_fatal(sp, ~"Duplicated bind name: "+
-                                               *p_s.interner.get(bind_name))
+                                               *ident_to_str(bind_name))
             }
-            ret_val.insert(bind_name, res[idx]);
+            ret_val.insert(*bind_name, res[idx]);
           }
         }
     }
@@ -366,19 +372,19 @@ pub fn parse(
                 || bb_eis.len() > 1u {
                 let nts = str::connect(vec::map(bb_eis, |ei| {
                     match ei.elts[ei.idx].node {
-                      match_nonterminal(bind,name,_) => {
-                        fmt!("%s ('%s')", *sess.interner.get(name),
-                             *sess.interner.get(bind))
+                      match_nonterminal(ref bind,ref name,_) => {
+                        fmt!("%s ('%s')", *ident_to_str(name),
+                             *ident_to_str(bind))
                       }
                       _ => fail!()
-                    } }), ~" or ");
+                    } }), " or ");
                 return error(sp, fmt!(
                     "Local ambiguity: multiple parsing options: \
                      built-in NTs %s or %u other options.",
                     nts, next_eis.len()));
             } else if (bb_eis.len() == 0u && next_eis.len() == 0u) {
                 return failure(sp, ~"No rules expected the token: "
-                            + to_str(rdr.interner(), &tok));
+                            + to_str(get_ident_interner(), &tok));
             } else if (next_eis.len() > 0u) {
                 /* Now process the next token */
                 while(next_eis.len() > 0u) {
@@ -390,9 +396,9 @@ pub fn parse(
 
                 let mut ei = bb_eis.pop();
                 match ei.elts[ei.idx].node {
-                  match_nonterminal(_, name, idx) => {
+                  match_nonterminal(_, ref name, idx) => {
                     ei.matches[idx].push(@matched_nonterminal(
-                        parse_nt(&rust_parser, *sess.interner.get(name))));
+                        parse_nt(&rust_parser, *ident_to_str(name))));
                     ei.idx += 1u;
                   }
                   _ => fail!()
@@ -413,18 +419,18 @@ pub fn parse_nt(p: &Parser, name: &str) -> nonterminal {
     match name {
       "item" => match p.parse_item(~[]) {
         Some(i) => token::nt_item(i),
-        None => p.fatal(~"expected an item keyword")
+        None => p.fatal("expected an item keyword")
       },
       "block" => token::nt_block(p.parse_block()),
       "stmt" => token::nt_stmt(p.parse_stmt(~[])),
-      "pat" => token::nt_pat(p.parse_pat(true)),
+      "pat" => token::nt_pat(p.parse_pat()),
       "expr" => token::nt_expr(p.parse_expr()),
       "ty" => token::nt_ty(p.parse_ty(false /* no need to disambiguate*/)),
       // this could be handled like a token, since it is one
       "ident" => match *p.token {
         token::IDENT(sn,b) => { p.bump(); token::nt_ident(sn,b) }
         _ => p.fatal(~"expected ident, found "
-                     + token::to_str(p.reader.interner(), &copy *p.token))
+                     + token::to_str(get_ident_interner(), &copy *p.token))
       },
       "path" => token::nt_path(p.parse_path_with_tps(false)),
       "tt" => {

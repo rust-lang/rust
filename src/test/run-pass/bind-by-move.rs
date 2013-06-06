@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // xfail-fast
-extern mod std;
-use std::arc;
+extern mod extra;
+use extra::arc;
 fn dispose(_x: arc::ARC<bool>) { unsafe { } }
 
 pub fn main() {

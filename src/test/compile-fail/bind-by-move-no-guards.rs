@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::comm;
+
 fn main() {
     let (p,c) = comm::stream();
     let x = Some(p);

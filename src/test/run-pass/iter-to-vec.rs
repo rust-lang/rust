@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::old_iter;
+
 pub fn main() {
-    assert!([1u, 3u].to_vec() == ~[1u, 3u]);
+    assert_eq!([1u, 3u].to_vec(), ~[1u, 3u]);
     let e: ~[uint] = ~[];
-    assert!(e.to_vec() == ~[]);
-    assert!(old_iter::to_vec(&None::<uint>) == ~[]);
-    assert!(old_iter::to_vec(&Some(1u)) == ~[1u]);
-    assert!(old_iter::to_vec(&Some(2u)) == ~[2u]);
+    assert_eq!(e.to_vec(), ~[]);
+    assert_eq!(old_iter::to_vec(&None::<uint>), ~[]);
+    assert_eq!(old_iter::to_vec(&Some(1u)), ~[1u]);
+    assert_eq!(old_iter::to_vec(&Some(2u)), ~[2u]);
 }

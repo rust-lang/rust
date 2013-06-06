@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use std::str;
 
 pub fn main() {
     let x = ~[1, 2, 3];
     let mut y = 0;
     for x.each |i| { debug!(*i); y += *i; }
     debug!(y);
-    assert!((y == 6));
+    assert_eq!(y, 6);
     let s = ~"hello there";
     let mut i: int = 0;
     for str::each(s) |c| {
@@ -30,5 +30,5 @@ pub fn main() {
         debug!(i);
         debug!(c);
     }
-    assert!((i == 11));
+    assert_eq!(i, 11);
 }

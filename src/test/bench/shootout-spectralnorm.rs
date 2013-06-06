@@ -1,5 +1,8 @@
-use core::from_str::FromStr;
-use core::iter::ExtendedMutableIter;
+use std::f64;
+use std::from_str::FromStr;
+use std::iter::ExtendedMutableIter;
+use std::os;
+use std::vec;
 
 #[inline]
 fn A(i: i32, j: i32) -> i32 {
@@ -42,7 +45,9 @@ fn mult_AtAv(v: &mut [f64], out: &mut [f64], tmp: &mut [f64]) {
 #[fixed_stack_segment]
 fn main() {
     let n: uint = FromStr::from_str(os::args()[1]).get();
-    let mut u = vec::from_elem(n, 1f64), v = u.clone(), tmp = u.clone();
+    let mut u = vec::from_elem(n, 1f64);
+    let mut v = u.clone();
+    let mut tmp = u.clone();
     for 8.times {
         mult_AtAv(u, v, tmp);
         mult_AtAv(v, u, tmp);

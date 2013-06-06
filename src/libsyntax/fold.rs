@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast::*;
 use ast;
 use codemap::{span, spanned};
 use opt_vec::OptVec;
+
+use core::vec;
 
 pub trait ast_fold {
     fn fold_crate(@self, &crate) -> crate;
@@ -22,10 +26,10 @@ pub trait ast_fold {
     fn fold_item_underscore(@self, &item_) -> item_;
     fn fold_method(@self, @method) -> @method;
     fn fold_block(@self, &blk) -> blk;
-    fn fold_stmt(@self, &stmt) -> @stmt;
+    fn fold_stmt(@self, &stmt) -> Option<@stmt>;
     fn fold_arm(@self, &arm) -> arm;
     fn fold_pat(@self, @pat) -> @pat;
-    fn fold_decl(@self, @decl) -> @decl;
+    fn fold_decl(@self, @decl) -> Option<@decl>;
     fn fold_expr(@self, @expr) -> @expr;
     fn fold_ty(@self, @Ty) -> @Ty;
     fn fold_mod(@self, &_mod) -> _mod;
@@ -51,10 +55,10 @@ pub struct AstFoldFns {
     fold_item_underscore: @fn(&item_, @ast_fold) -> item_,
     fold_method: @fn(@method, @ast_fold) -> @method,
     fold_block: @fn(&blk_, span, @ast_fold) -> (blk_, span),
-    fold_stmt: @fn(&stmt_, span, @ast_fold) -> (stmt_, span),
+    fold_stmt: @fn(&stmt_, span, @ast_fold) -> (Option<stmt_>, span),
     fold_arm: @fn(&arm, @ast_fold) -> arm,
     fold_pat: @fn(&pat_, span, @ast_fold) -> (pat_, span),
-    fold_decl: @fn(&decl_, span, @ast_fold) -> (decl_, span),
+    fold_decl: @fn(&decl_, span, @ast_fold) -> (Option<decl_>, span),
     fold_expr: @fn(&expr_, span, @ast_fold) -> (expr_, span),
     fold_ty: @fn(&ty_, span, @ast_fold) -> (ty_, span),
     fold_mod: @fn(&_mod, @ast_fold) -> _mod,
@@ -336,22 +340,39 @@ fn noop_fold_method(m: @method, fld: @ast_fold) -> @method {
 
 
 pub fn noop_fold_block(b: &blk_, fld: @ast_fold) -> blk_ {
+    let view_items = b.view_items.map(|x| fld.fold_view_item(*x));
+    let mut stmts = ~[];
+    for b.stmts.each |stmt| {
+        match fld.fold_stmt(*stmt) {
+            None => {}
+            Some(stmt) => stmts.push(stmt)
+        }
+    }
     ast::blk_ {
-        view_items: b.view_items.map(|x| fld.fold_view_item(*x)),
-        stmts: b.stmts.map(|x| fld.fold_stmt(*x)),
+        view_items: view_items,
+        stmts: stmts,
         expr: b.expr.map(|x| fld.fold_expr(*x)),
         id: fld.new_id(b.id),
         rules: b.rules,
     }
 }
 
-fn noop_fold_stmt(s: &stmt_, fld: @ast_fold) -> stmt_ {
+fn noop_fold_stmt(s: &stmt_, fld: @ast_fold) -> Option<stmt_> {
     let fold_mac = |x| fold_mac_(x, fld);
     match *s {
-        stmt_decl(d, nid) => stmt_decl(fld.fold_decl(d), fld.new_id(nid)),
-        stmt_expr(e, nid) => stmt_expr(fld.fold_expr(e), fld.new_id(nid)),
-        stmt_semi(e, nid) => stmt_semi(fld.fold_expr(e), fld.new_id(nid)),
-        stmt_mac(ref mac, semi) => stmt_mac(fold_mac(mac), semi)
+        stmt_decl(d, nid) => {
+            match fld.fold_decl(d) {
+                Some(d) => Some(stmt_decl(d, fld.new_id(nid))),
+                None => None,
+            }
+        }
+        stmt_expr(e, nid) => {
+            Some(stmt_expr(fld.fold_expr(e), fld.new_id(nid)))
+        }
+        stmt_semi(e, nid) => {
+            Some(stmt_semi(fld.fold_expr(e), fld.new_id(nid)))
+        }
+        stmt_mac(ref mac, semi) => Some(stmt_mac(fold_mac(mac), semi))
     }
 }
 
@@ -407,13 +428,13 @@ pub fn noop_fold_pat(p: &pat_, fld: @ast_fold) -> pat_ {
     }
 }
 
-fn noop_fold_decl(d: &decl_, fld: @ast_fold) -> decl_ {
+fn noop_fold_decl(d: &decl_, fld: @ast_fold) -> Option<decl_> {
     match *d {
-        decl_local(ref ls) => decl_local(ls.map(|x| fld.fold_local(*x))),
+        decl_local(ref l) => Some(decl_local(fld.fold_local(*l))),
         decl_item(it) => {
             match fld.fold_item(it) {
-                Some(it_folded) => decl_item(it_folded),
-                None => decl_local(~[]),
+                Some(it_folded) => Some(decl_item(it_folded)),
+                None => None,
             }
         }
     }
@@ -431,7 +452,6 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
     fn fold_field_(field: field, fld: @ast_fold) -> field {
         spanned {
             node: ast::field_ {
-                mutbl: field.node.mutbl,
                 ident: fld.fold_ident(field.node.ident),
                 expr: fld.fold_expr(field.node.expr),
             },
@@ -460,8 +480,9 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 blk
             )
         }
-        expr_method_call(f, i, ref tps, ref args, blk) => {
+        expr_method_call(callee_id, f, i, ref tps, ref args, blk) => {
             expr_method_call(
+                fld.new_id(callee_id),
                 fld.fold_expr(f),
                 fld.fold_ident(i),
                 tps.map(|x| fld.fold_ty(*x)),
@@ -469,10 +490,21 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 blk
             )
         }
-        expr_binary(binop, lhs, rhs) => {
-            expr_binary(binop, fld.fold_expr(lhs), fld.fold_expr(rhs))
+        expr_binary(callee_id, binop, lhs, rhs) => {
+            expr_binary(
+                fld.new_id(callee_id),
+                binop,
+                fld.fold_expr(lhs),
+                fld.fold_expr(rhs)
+            )
         }
-        expr_unary(binop, ohs) => expr_unary(binop, fld.fold_expr(ohs)),
+        expr_unary(callee_id, binop, ohs) => {
+            expr_unary(
+                fld.new_id(callee_id),
+                binop,
+                fld.fold_expr(ohs)
+            )
+        }
         expr_loop_body(f) => expr_loop_body(fld.fold_expr(f)),
         expr_do_body(f) => expr_do_body(fld.fold_expr(f)),
         expr_lit(_) => copy *e,
@@ -511,8 +543,13 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
         expr_assign(el, er) => {
             expr_assign(fld.fold_expr(el), fld.fold_expr(er))
         }
-        expr_assign_op(op, el, er) => {
-            expr_assign_op(op, fld.fold_expr(el), fld.fold_expr(er))
+        expr_assign_op(callee_id, op, el, er) => {
+            expr_assign_op(
+                fld.new_id(callee_id),
+                op,
+                fld.fold_expr(el),
+                fld.fold_expr(er)
+            )
         }
         expr_field(el, id, ref tys) => {
             expr_field(
@@ -520,8 +557,12 @@ pub fn noop_fold_expr(e: &expr_, fld: @ast_fold) -> expr_ {
                 tys.map(|x| fld.fold_ty(*x))
             )
         }
-        expr_index(el, er) => {
-            expr_index(fld.fold_expr(el), fld.fold_expr(er))
+        expr_index(callee_id, el, er) => {
+            expr_index(
+                fld.new_id(callee_id),
+                fld.fold_expr(el),
+                fld.fold_expr(er)
+            )
         }
         expr_path(pth) => expr_path(fld.fold_path(pth)),
         expr_self => expr_self,
@@ -714,10 +755,10 @@ pub fn default_ast_fold() -> ast_fold_fns {
         fold_item_underscore: noop_fold_item_underscore,
         fold_method: noop_fold_method,
         fold_block: wrap(noop_fold_block),
-        fold_stmt: wrap(noop_fold_stmt),
+        fold_stmt: |x, s, fld| (noop_fold_stmt(x, fld), s),
         fold_arm: noop_fold_arm,
         fold_pat: wrap(noop_fold_pat),
-        fold_decl: wrap(noop_fold_decl),
+        fold_decl: |x, s, fld| (noop_fold_decl(x, fld), s),
         fold_expr: wrap(noop_fold_expr),
         fold_ty: wrap(noop_fold_ty),
         fold_mod: noop_fold_mod,
@@ -775,9 +816,12 @@ impl ast_fold for AstFoldFns {
         let (n, s) = (self.fold_block)(&x.node, x.span, self as @ast_fold);
         spanned { node: n, span: (self.new_span)(s) }
     }
-    fn fold_stmt(@self, x: &stmt) -> @stmt {
-        let (n, s) = (self.fold_stmt)(&x.node, x.span, self as @ast_fold);
-        @spanned { node: n, span: (self.new_span)(s) }
+    fn fold_stmt(@self, x: &stmt) -> Option<@stmt> {
+        let (n_opt, s) = (self.fold_stmt)(&x.node, x.span, self as @ast_fold);
+        match n_opt {
+            Some(n) => Some(@spanned { node: n, span: (self.new_span)(s) }),
+            None => None,
+        }
     }
     fn fold_arm(@self, x: &arm) -> arm {
         (self.fold_arm)(x, self as @ast_fold)
@@ -790,15 +834,17 @@ impl ast_fold for AstFoldFns {
             span: (self.new_span)(s),
         }
     }
-    fn fold_decl(@self, x: @decl) -> @decl {
-        let (n, s) = (self.fold_decl)(&x.node, x.span, self as @ast_fold);
-        @spanned { node: n, span: (self.new_span)(s) }
+    fn fold_decl(@self, x: @decl) -> Option<@decl> {
+        let (n_opt, s) = (self.fold_decl)(&x.node, x.span, self as @ast_fold);
+        match n_opt {
+            Some(n) => Some(@spanned { node: n, span: (self.new_span)(s) }),
+            None => None,
+        }
     }
     fn fold_expr(@self, x: @expr) -> @expr {
         let (n, s) = (self.fold_expr)(&x.node, x.span, self as @ast_fold);
         @expr {
             id: (self.new_id)(x.id),
-            callee_id: (self.new_id)(x.callee_id),
             node: n,
             span: (self.new_span)(s),
         }
@@ -858,4 +904,3 @@ impl AstFoldExtensions for @ast_fold {
 pub fn make_fold(afp: ast_fold_fns) -> @ast_fold {
     afp as @ast_fold
 }
-

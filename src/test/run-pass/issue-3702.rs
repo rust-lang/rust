@@ -14,7 +14,7 @@ pub fn main() {
   }
 
   fn to_string(t: @Text) {
-    io::println(t.to_str());
+    println(t.to_str());
   }
 
 }

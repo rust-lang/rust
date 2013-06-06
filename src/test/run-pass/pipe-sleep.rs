@@ -10,12 +10,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use std::timer::sleep;
-use std::uv;
-use core::cell::Cell;
-use core::pipes;
-use core::pipes::*;
+extern mod extra;
+
+use extra::timer::sleep;
+use extra::uv;
+use std::cell::Cell;
+use std::pipes::*;
+use std::pipes;
+use std::task;
 
 proto! oneshot (
     waiting:send {
@@ -32,15 +34,15 @@ endpoint is passed to the new task.
 
 */
 pub fn spawn_service<T:Owned,Tb:Owned>(
-            init: extern fn() -> (SendPacketBuffered<T, Tb>,
-                                  RecvPacketBuffered<T, Tb>),
+            init: extern fn() -> (RecvPacketBuffered<T, Tb>,
+                                  SendPacketBuffered<T, Tb>),
             service: ~fn(v: RecvPacketBuffered<T, Tb>))
         -> SendPacketBuffered<T, Tb> {
-    let (client, server) = init();
+    let (server, client) = init();
 
     // This is some nasty gymnastics required to safely move the pipe
     // into a new task.
-    let server = Cell(server);
+    let server = Cell::new(server);
     do task::spawn {
         service(server.take());
     }

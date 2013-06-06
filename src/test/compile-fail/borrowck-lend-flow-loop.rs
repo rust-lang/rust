@@ -49,7 +49,8 @@ fn block_overarching_alias_mut() {
 fn loop_aliased_mut() {
     // In this instance, the borrow is carried through the loop.
 
-    let mut v = ~3, w = ~4;
+    let mut v = ~3;
+    let mut w = ~4;
     let mut _x = &w;
     loop {
         borrow_mut(v); //~ ERROR cannot borrow
@@ -60,7 +61,8 @@ fn loop_aliased_mut() {
 fn while_aliased_mut() {
     // In this instance, the borrow is carried through the loop.
 
-    let mut v = ~3, w = ~4;
+    let mut v = ~3;
+    let mut w = ~4;
     let mut _x = &w;
     while cond() {
         borrow_mut(v); //~ ERROR cannot borrow
@@ -71,7 +73,8 @@ fn while_aliased_mut() {
 fn for_loop_aliased_mut() {
     // In this instance, the borrow is carried through the loop.
 
-    let mut v = ~3, w = ~4;
+    let mut v = ~3;
+    let mut w = ~4;
     let mut _x = &w;
     for for_func {
         borrow_mut(v); //~ ERROR cannot borrow
@@ -82,7 +85,8 @@ fn for_loop_aliased_mut() {
 fn loop_aliased_mut_break() {
     // In this instance, the borrow is carried through the loop.
 
-    let mut v = ~3, w = ~4;
+    let mut v = ~3;
+    let mut w = ~4;
     let mut _x = &w;
     loop {
         borrow_mut(v);
@@ -95,7 +99,8 @@ fn loop_aliased_mut_break() {
 fn while_aliased_mut_break() {
     // In this instance, the borrow is carried through the loop.
 
-    let mut v = ~3, w = ~4;
+    let mut v = ~3;
+    let mut w = ~4;
     let mut _x = &w;
     while cond() {
         borrow_mut(v);
@@ -108,7 +113,8 @@ fn while_aliased_mut_break() {
 fn for_aliased_mut_break() {
     // In this instance, the borrow is carried through the loop.
 
-    let mut v = ~3, w = ~4;
+    let mut v = ~3;
+    let mut w = ~4;
     let mut _x = &w;
     for for_func {
         // here we cannot be sure that `for_func` respects the break below
@@ -120,7 +126,8 @@ fn for_aliased_mut_break() {
 }
 
 fn while_aliased_mut_cond(cond: bool, cond2: bool) {
-    let mut v = ~3, w = ~4;
+    let mut v = ~3;
+    let mut w = ~4;
     let mut x = &mut w;
     while cond {
         **x += 1;

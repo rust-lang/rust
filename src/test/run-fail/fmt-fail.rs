@@ -9,6 +9,6 @@
 // except according to those terms.
 
 // error-pattern:meh
-extern mod std;
+extern mod extra;
 
 fn main() { let str_var: ~str = ~"meh"; fail!(fmt!("%s", str_var)); }

@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::uint;
+
 struct dog {
     food: uint,
 }
 
-pub impl dog {
-    fn chase_cat(&mut self) {
+impl dog {
+    pub fn chase_cat(&mut self) {
         for uint::range(0u, 10u) |_i| {
             let p: &'static mut uint = &mut self.food; //~ ERROR cannot infer an appropriate lifetime due to conflicting requirements
             *p = 3u;

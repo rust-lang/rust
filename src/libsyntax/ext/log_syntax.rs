@@ -8,13 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use ast;
 use codemap;
 use ext::base::*;
 use ext::base;
 use print;
+use parse::token::{get_ident_interner};
 
-pub fn expand_syntax_ext(cx: @ext_ctxt,
+use core::io;
+use core::vec;
+
+pub fn expand_syntax_ext(cx: @ExtCtxt,
                          sp: codemap::span,
                          tt: &[ast::token_tree])
                       -> base::MacResult {
@@ -23,12 +29,11 @@ pub fn expand_syntax_ext(cx: @ext_ctxt,
     io::stdout().write_line(
         print::pprust::tt_to_str(
             ast::tt_delim(vec::to_owned(tt)),
-            cx.parse_sess().interner));
+            get_ident_interner()));
 
     //trivial expression
     MRExpr(@ast::expr {
         id: cx.next_id(),
-        callee_id: cx.next_id(),
         node: ast::expr_lit(@codemap::spanned {
             node: ast::lit_nil,
             span: sp

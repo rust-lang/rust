@@ -14,12 +14,13 @@
   Arnold.
  */
 
-use core::comm::*;
+use std::comm::*;
+use std::task;
 
 type ctx = Chan<int>;
 
 fn iotask(cx: &ctx, ip: ~str) {
-    assert!((ip == ~"localhost"));
+    assert_eq!(ip, ~"localhost");
 }
 
 pub fn main() {

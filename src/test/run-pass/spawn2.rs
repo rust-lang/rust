@@ -9,6 +9,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::task;
+
 pub fn main() { task::spawn(|| child((10, 20, 30, 40, 50, 60, 70, 80, 90)) ); }
 
 fn child(args: (int, int, int, int, int, int, int, int, int)) {
@@ -22,13 +24,13 @@ fn child(args: (int, int, int, int, int, int, int, int, int)) {
     error!(i7);
     error!(i8);
     error!(i9);
-    assert!((i1 == 10));
-    assert!((i2 == 20));
-    assert!((i3 == 30));
-    assert!((i4 == 40));
-    assert!((i5 == 50));
-    assert!((i6 == 60));
-    assert!((i7 == 70));
-    assert!((i8 == 80));
-    assert!((i9 == 90));
+    assert_eq!(i1, 10);
+    assert_eq!(i2, 20);
+    assert_eq!(i3, 30);
+    assert_eq!(i4, 40);
+    assert_eq!(i5, 50);
+    assert_eq!(i6, 60);
+    assert_eq!(i7, 70);
+    assert_eq!(i8, 80);
+    assert_eq!(i9, 90);
 }

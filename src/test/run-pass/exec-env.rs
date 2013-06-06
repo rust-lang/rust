@@ -11,6 +11,8 @@
 // xfail-fast (exec-env not supported in fast mode)
 // exec-env:TEST_EXEC_ENV=22
 
+use std::os;
+
 pub fn main() {
-    assert!(os::getenv(~"TEST_EXEC_ENV") == Some(~"22"));
+    assert_eq!(os::getenv(~"TEST_EXEC_ENV"), Some(~"22"));
 }

@@ -22,5 +22,5 @@ pub fn main() {
     let mut v = ~[1];
     v.push_val(2);
     v.push_val(3);
-    assert!(v == ~[1, 2, 3]);
+    assert_eq!(v, ~[1, 2, 3]);
 }

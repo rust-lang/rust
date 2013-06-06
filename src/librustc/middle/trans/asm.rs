@@ -12,12 +12,15 @@
 # Translation of inline assembly.
 */
 
+use core::prelude::*;
+
 use lib;
 use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
 use middle::ty;
 
+use core::str;
 use syntax::ast;
 
 // Take an inline assembly expression and splat it out via LLVM
@@ -88,14 +91,15 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     let mut clobbers = getClobbers();
     if *ia.clobbers != ~"" && clobbers != ~"" {
-        clobbers = *ia.clobbers + ~"," + clobbers;
+        clobbers = *ia.clobbers + "," + clobbers;
     } else {
         clobbers += *ia.clobbers;
     };
 
     // Add the clobbers to our constraints list
     if clobbers != ~"" && constraints != ~"" {
-        constraints += ~"," + clobbers;
+        constraints += ",";
+        constraints += clobbers;
     } else {
         constraints += clobbers;
     }

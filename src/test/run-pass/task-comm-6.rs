@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::comm::Chan;
+use std::comm::Chan;
+use std::comm;
 
 pub fn main() { test00(); }
 
@@ -41,7 +42,7 @@ fn test00() {
         sum += r;
         i += 1;
     }
-    assert!((sum == 1998000));
+    assert_eq!(sum, 1998000);
     // assert (sum == 4 * ((number_of_messages *
     //                   (number_of_messages - 1)) / 2));
 

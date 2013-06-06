@@ -10,6 +10,9 @@
 
 // error-pattern:index out of bounds
 
+use std::sys;
+use std::vec;
+
 fn main() {
 
     // This should cause a bounds-check failure, but may not if we do our

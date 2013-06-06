@@ -12,8 +12,9 @@
 
 // An example to make sure the protocol parsing syntax extension works.
 
-use core::cell::Cell;
-use core::option;
+use std::cell::Cell;
+use std::option;
+use std::task;
 
 proto! pingpong (
     ping:send {
@@ -26,7 +27,7 @@ proto! pingpong (
 )
 
 mod test {
-    use core::pipes::recv;
+    use std::pipes::recv;
     use pingpong::{ping, pong};
 
     pub fn client(chan: ::pingpong::client::ping) {
@@ -49,9 +50,9 @@ mod test {
 }
 
 pub fn main() {
-    let (client_, server_) = pingpong::init();
-    let client_ = Cell(client_);
-    let server_ = Cell(server_);
+    let (server_, client_) = pingpong::init();
+    let client_ = Cell::new(client_);
+    let server_ = Cell::new(server_);
 
     do task::spawn {
         let client__ = client_.take();

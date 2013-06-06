@@ -13,7 +13,7 @@ struct Pair { x: int, y: int }
 pub fn main() {
     let a =
         match 10 { x if x < 7 => { 1 } x if x < 11 => { 2 } 10 => { 3 } _ => { 4 } };
-    assert!((a == 2));
+    assert_eq!(a, 2);
 
     let b =
         match Pair {x: 10, y: 20} {
@@ -21,5 +21,5 @@ pub fn main() {
           Pair {x: x, y: y} if x == 10 && y == 20 => { 2 }
           Pair {x: x, y: y} => { 3 }
         };
-    assert!((b == 2));
+    assert_eq!(b, 2);
 }

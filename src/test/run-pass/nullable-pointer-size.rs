@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::sys;
+
 enum E<T> { Thing(int, T), Nothing((), ((), ()), [i8, ..0]) }
 struct S<T>(int, T);
 
@@ -15,13 +17,13 @@ struct S<T>(int, T);
 
 macro_rules! check_option {
     ($T:ty) => {
-        assert!(sys::size_of::<Option<$T>>() == sys::size_of::<$T>());
+        assert_eq!(sys::size_of::<Option<$T>>(), sys::size_of::<$T>());
     }
 }
 
 macro_rules! check_fancy {
     ($T:ty) => {
-        assert!(sys::size_of::<E<$T>>() == sys::size_of::<S<$T>>());
+        assert_eq!(sys::size_of::<E<$T>>(), sys::size_of::<S<$T>>());
     }
 }
 

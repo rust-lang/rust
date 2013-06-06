@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use middle::ty::{BuiltinBounds};
 use middle::ty::RegionVid;
 use middle::ty;
@@ -28,7 +30,7 @@ use syntax::codemap::span;
 use util::common::{indent, indenter};
 use util::ppaux::mt_to_str;
 
-use std::list;
+use extra::list;
 
 pub struct Glb(CombineFields);  // "greatest lower bound" (common subtype)
 
@@ -218,7 +220,9 @@ impl Combine for Glb {
 
             let tainted = this.infcx.region_vars.tainted(snapshot, r0);
 
-            let mut a_r = None, b_r = None, only_new_vars = true;
+            let mut a_r = None;
+            let mut b_r = None;
+            let mut only_new_vars = true;
             for tainted.each |r| {
                 if is_var_in_set(a_vars, *r) {
                     if a_r.is_some() {

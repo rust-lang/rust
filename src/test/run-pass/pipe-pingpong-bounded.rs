@@ -14,22 +14,23 @@
 // experiment with what code the compiler should generate for bounded
 // protocols.
 
-use core::cell::Cell;
+use std::cell::Cell;
+use std::task;
 
 // This was generated initially by the pipe compiler, but it's been
 // modified in hopefully straightforward ways.
 
 mod pingpong {
-    use core::pipes;
-    use core::pipes::*;
-    use core::ptr;
+    use std::pipes;
+    use std::pipes::*;
+    use std::ptr;
 
     pub struct Packets {
         ping: Packet<ping>,
         pong: Packet<pong>,
     }
 
-    pub fn init() -> (client::ping, server::ping) {
+    pub fn init() -> (server::ping, client::ping) {
         let buffer = ~Buffer {
             header: BufferHeader(),
             data: Packets {
@@ -46,9 +47,9 @@ mod pingpong {
     pub struct ping(server::pong);
     pub struct pong(client::ping);
     pub mod client {
-        use core::pipes;
-        use core::pipes::*;
-        use core::ptr;
+        use std::pipes;
+        use std::pipes::*;
+        use std::ptr;
 
         pub fn ping(mut pipe: ping) -> pong {
             {
@@ -66,9 +67,9 @@ mod pingpong {
                                                   ::pingpong::Packets>;
     }
     pub mod server {
-        use core::pipes;
-        use core::pipes::*;
-        use core::ptr;
+        use std::pipes;
+        use std::pipes::*;
+        use std::ptr;
 
         pub type ping = pipes::RecvPacketBuffered<::pingpong::ping,
         ::pingpong::Packets>;
@@ -88,7 +89,7 @@ mod pingpong {
 }
 
 mod test {
-    use core::pipes::recv;
+    use std::pipes::recv;
     use pingpong::{ping, pong};
 
     pub fn client(chan: ::pingpong::client::ping) {
@@ -111,9 +112,9 @@ mod test {
 }
 
 pub fn main() {
-    let (client_, server_) = ::pingpong::init();
-    let client_ = Cell(client_);
-    let server_ = Cell(server_);
+    let (server_, client_) = ::pingpong::init();
+    let client_ = Cell::new(client_);
+    let server_ = Cell::new(server_);
     do task::spawn {
         let client__ = client_.take();
         test::client(client__);

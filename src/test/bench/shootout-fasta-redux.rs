@@ -1,8 +1,11 @@
-use core::cast::transmute;
-use core::from_str::FromStr;
-use core::libc::{FILE, STDOUT_FILENO, c_int, fdopen, fputc, fputs, fwrite, size_t};
-use core::uint::{min, range};
-use core::vec::bytes::copy_memory;
+use std::cast::transmute;
+use std::from_str::FromStr;
+use std::libc::{FILE, STDOUT_FILENO, c_int, fdopen, fputc, fputs, fwrite, size_t};
+use std::os;
+use std::str;
+use std::uint::{min, range};
+use std::vec::bytes::copy_memory;
+use std::vec;
 
 static LINE_LEN: uint = 60;
 static LOOKUP_SIZE: uint = 4 * 1024;
@@ -96,7 +99,9 @@ impl RepeatFasta {
                         alu,
                         LINE_LEN);
 
-            let mut pos = 0, bytes, n = n;
+            let mut pos = 0;
+            let mut bytes;
+            let mut n = n;
             while n > 0 {
                 bytes = min(LINE_LEN, n);
                 fwrite(transmute(&buf[pos]), bytes as size_t, 1, stdout);
@@ -155,7 +160,8 @@ impl RandomFasta {
 
     fn make(&mut self, n: uint) {
         unsafe {
-            let lines = n / LINE_LEN, chars_left = n % LINE_LEN;
+            let lines = n / LINE_LEN;
+            let chars_left = n % LINE_LEN;
             let mut buf = [0, ..LINE_LEN + 1];
 
             for lines.times {

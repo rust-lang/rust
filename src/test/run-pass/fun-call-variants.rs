@@ -17,5 +17,5 @@ pub fn main() {
     let a: int = direct(3); // direct
     let b: int = ho(direct); // indirect unbound
 
-    assert!((a == b));
+    assert_eq!(a, b);
 }

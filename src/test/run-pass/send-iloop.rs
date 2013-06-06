@@ -9,7 +9,11 @@
 // except according to those terms.
 
 // xfail-win32
-extern mod std;
+extern mod extra;
+
+use std::comm;
+use std::task;
+use std::uint;
 
 fn die() {
     fail!();

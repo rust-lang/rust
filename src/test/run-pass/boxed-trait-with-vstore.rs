@@ -14,7 +14,7 @@ trait Foo {
 
 impl Foo for int {
     fn foo(@self) {
-        io::println("Hello world!");
+        println("Hello world!");
     }
 }
 

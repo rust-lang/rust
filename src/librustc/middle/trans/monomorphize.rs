@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use back::link::mangle_exported_name;
 use driver::session;
 use lib::llvm::ValueRef;
@@ -28,8 +30,9 @@ use middle::trans::type_use;
 use middle::ty;
 use middle::ty::{FnSig};
 use middle::typeck;
-use util::ppaux::Repr;
+use util::ppaux::{Repr,ty_to_str};
 
+use core::vec;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_map::path_name;
@@ -70,8 +73,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     for real_substs.each() |s| { assert!(!ty::type_has_params(*s)); }
     for substs.each() |s| { assert!(!ty::type_has_params(*s)); }
     let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
-    // XXX: Bad copy.
-    let hash_id = make_mono_id(ccx, fn_id, copy substs, vtables, impl_did_opt,
+    let hash_id = make_mono_id(ccx, fn_id, substs, vtables, impl_did_opt,
                                Some(param_uses));
     if vec::any(hash_id.params,
                 |p| match *p { mono_precise(_, _) => false, _ => true }) {
@@ -121,23 +123,23 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         (pt, m.ident, m.span)
       }
       ast_map::node_trait_method(@ast::required(_), _, _) => {
-        ccx.tcx.sess.bug(~"Can't monomorphize a required trait method")
+        ccx.tcx.sess.bug("Can't monomorphize a required trait method")
       }
       ast_map::node_expr(*) => {
-        ccx.tcx.sess.bug(~"Can't monomorphize an expr")
+        ccx.tcx.sess.bug("Can't monomorphize an expr")
       }
       ast_map::node_stmt(*) => {
-        ccx.tcx.sess.bug(~"Can't monomorphize a stmt")
+        ccx.tcx.sess.bug("Can't monomorphize a stmt")
       }
-      ast_map::node_arg(*) => ccx.tcx.sess.bug(~"Can't monomorphize an arg"),
+      ast_map::node_arg(*) => ccx.tcx.sess.bug("Can't monomorphize an arg"),
       ast_map::node_block(*) => {
-          ccx.tcx.sess.bug(~"Can't monomorphize a block")
+          ccx.tcx.sess.bug("Can't monomorphize a block")
       }
       ast_map::node_local(*) => {
-          ccx.tcx.sess.bug(~"Can't monomorphize a local")
+          ccx.tcx.sess.bug("Can't monomorphize a local")
       }
       ast_map::node_callee_scope(*) => {
-          ccx.tcx.sess.bug(~"Can't monomorphize a callee-scope")
+          ccx.tcx.sess.bug("Can't monomorphize a callee-scope")
       }
       ast_map::node_struct_ctor(_, i, pt) => (pt, i.ident, i.span)
     };
@@ -170,8 +172,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     ccx.monomorphizing.insert(fn_id, depth + 1);
 
     let pt = vec::append(/*bad*/copy *pt,
-                         ~[path_name((ccx.names)(
-                             *ccx.sess.str_of(name)))]);
+                         [path_name((ccx.names)(*ccx.sess.str_of(name)))]);
     let s = mangle_exported_name(ccx, /*bad*/copy pt, mono_ty);
 
     let mk_lldecl = || {
@@ -207,7 +208,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         d
       }
       ast_map::node_item(*) => {
-          ccx.tcx.sess.bug(~"Can't monomorphize this kind of item")
+          ccx.tcx.sess.bug("Can't monomorphize this kind of item")
       }
       ast_map::node_foreign_item(i, _, _, _) => {
           let d = mk_lldecl();
@@ -226,7 +227,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                                    this_tv.disr_val, psubsts, d);
             }
             ast::struct_variant_kind(_) =>
-                ccx.tcx.sess.bug(~"can't monomorphize struct variants"),
+                ccx.tcx.sess.bug("can't monomorphize struct variants"),
         }
         d
       }
@@ -258,8 +259,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         set_inline_hint(d);
         base::trans_tuple_struct(ccx,
                                  /*bad*/copy struct_def.fields,
-                                 struct_def.ctor_id.expect(~"ast-mapped tuple struct \
-                                                             didn't have a ctor id"),
+                                 struct_def.ctor_id.expect("ast-mapped tuple struct \
+                                                            didn't have a ctor id"),
                                  psubsts,
                                  d);
         d
@@ -350,10 +351,10 @@ pub fn make_mono_id(ccx: @CrateContext,
         vec::map_zip(*item_ty.generics.type_param_defs, substs, |type_param_def, subst| {
             let mut v = ~[];
             for type_param_def.bounds.trait_bounds.each |_bound| {
-                v.push(meth::vtable_id(ccx, /*bad*/copy vts[i]));
+                v.push(meth::vtable_id(ccx, &vts[i]));
                 i += 1;
             }
-            (*subst, if !v.is_empty() { Some(v) } else { None })
+            (*subst, if !v.is_empty() { Some(@v) } else { None })
         })
       }
       None => {
@@ -369,8 +370,7 @@ pub fn make_mono_id(ccx: @CrateContext,
                 }
             } else {
                 match *id {
-                    // XXX: Bad copy.
-                    (a, copy b@Some(_)) => mono_precise(a, b),
+                    (a, b@Some(_)) => mono_precise(a, b),
                     (subst, None) => {
                         if *uses == 0 {
                             mono_any
@@ -379,9 +379,13 @@ pub fn make_mono_id(ccx: @CrateContext,
                         {
                             let llty = type_of::type_of(ccx, subst);
                             let size = machine::llbitsize_of_real(ccx, llty);
-                            let align = machine::llalign_of_pref(ccx, llty);
+                            let align = machine::llalign_of_min(ccx, llty);
                             let mode = datum::appropriate_mode(subst);
                             let data_class = mono_data_classify(subst);
+
+                            debug!("make_mono_id: type %s -> size %u align %u mode %? class %?",
+                                  ty_to_str(ccx.tcx, subst),
+                                  size, align, mode, data_class);
 
                             // Special value for nil to prevent problems
                             // with undef return pointers.

@@ -9,6 +9,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::task;
+
 pub fn main() {
     let mut result = None;
     let mut builder = task::task();

@@ -20,5 +20,5 @@ macro_rules! foo {
 }
 
 pub fn main() {
-    assert!(foo!(m::t) == 10);
+    assert_eq!(foo!(m::t), 10);
 }

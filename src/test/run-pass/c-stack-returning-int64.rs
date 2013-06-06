@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
+use std::str;
 
 mod libc {
     #[abi = "cdecl"]
@@ -29,7 +29,7 @@ fn atoll(s: ~str) -> i64 {
 
 pub fn main() {
     unsafe {
-        assert!(atol(~"1024") * 10 == atol(~"10240"));
+        assert_eq!(atol(~"1024") * 10, atol(~"10240"));
         assert!((atoll(~"11111111111111111") * 10i64)
             == atoll(~"111111111111111110"));
     }

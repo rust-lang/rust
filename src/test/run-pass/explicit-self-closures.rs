@@ -14,11 +14,11 @@ struct Box {
     x: uint
 }
 
-pub impl Box {
-    fn set_many(&mut self, xs: &[uint]) {
+impl Box {
+    pub fn set_many(&mut self, xs: &[uint]) {
         for xs.each |x| { self.x = *x; }
     }
-    fn set_many2(@mut self, xs: &[uint]) {
+    pub fn set_many2(@mut self, xs: &[uint]) {
         for xs.each |x| { self.x = *x; }
     }
 }

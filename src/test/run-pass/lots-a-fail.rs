@@ -9,7 +9,10 @@
 // except according to those terms.
 
 // xfail-win32 leaks
-extern mod std;
+extern mod extra;
+
+use std::task;
+use std::uint;
 
 fn die() {
     fail!();

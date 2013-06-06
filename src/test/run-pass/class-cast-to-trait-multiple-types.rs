@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::uint;
+
 trait noisy {
   fn speak(&self) -> int;
 }
@@ -18,7 +20,7 @@ struct dog {
   volume : @mut int,
 }
 
-pub impl dog {
+impl dog {
     priv fn bark(&self) -> int {
       debug!("Woof %u %d", *self.barks, *self.volume);
       *self.barks += 1u;
@@ -55,11 +57,11 @@ impl noisy for cat {
   fn speak(&self) -> int { self.meow() as int }
 }
 
-pub impl cat {
-  fn meow_count(&self) -> uint { *self.meows }
+impl cat {
+  pub fn meow_count(&self) -> uint { *self.meows }
 }
 
-priv impl cat {
+impl cat {
     fn meow(&self) -> uint {
       debug!("Meow");
       *self.meows += 1u;
@@ -88,6 +90,6 @@ pub fn main() {
   let whitefang : dog = dog();
   annoy_neighbors(@(copy nyan) as @noisy);
   annoy_neighbors(@(copy whitefang) as @noisy);
-  assert!((nyan.meow_count() == 10u));
-  assert!((*whitefang.volume == 1));
+  assert_eq!(nyan.meow_count(), 10u);
+  assert_eq!(*whitefang.volume, 1);
 }

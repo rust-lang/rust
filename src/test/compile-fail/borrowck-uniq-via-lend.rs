@@ -48,13 +48,15 @@ fn aliased_mut() {
 }
 
 fn aliased_other() {
-    let mut v = ~3, w = ~4;
+    let mut v = ~3;
+    let mut w = ~4;
     let _x = &mut w;
     borrow(v);
 }
 
 fn aliased_other_reassign() {
-    let mut v = ~3, w = ~4;
+    let mut v = ~3;
+    let mut w = ~4;
     let mut _x = &mut w;
     _x = &mut v;
     borrow(v); //~ ERROR cannot borrow `*v`

@@ -48,8 +48,8 @@ pub fn mk_global(ccx: @CrateContext,
 
 pub fn mk_ctxt(llmod: ModuleRef) -> Ctxt {
     unsafe {
-        let llshapetablesty = trans::common::T_named_struct(~"shapes");
-        let _llshapetables = str::as_c_str(~"shapes", |buf| {
+        let llshapetablesty = trans::common::T_named_struct("shapes");
+        let _llshapetables = str::as_c_str("shapes", |buf| {
             llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
         });
 
@@ -66,7 +66,7 @@ Although these two functions are never called, they are here
 for a VERY GOOD REASON. See #3670
 */
 pub fn add_u16(dest: &mut ~[u8], val: u16) {
-    *dest += ~[(val & 0xffu16) as u8, (val >> 8u16) as u8];
+    *dest += [(val & 0xffu16) as u8, (val >> 8u16) as u8];
 }
 
 pub fn add_substr(dest: &mut ~[u8], src: ~[u8]) {

@@ -8,10 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use codemap::{Pos, span};
 use codemap;
 
-use std::term;
+use core::io;
+use core::str;
+use core::uint;
+use core::vec;
+use extra::term;
 
 pub type Emitter = @fn(cmsp: Option<(@codemap::CodeMap, span)>,
                        msg: &str,
@@ -185,19 +191,27 @@ fn diagnosticcolor(lvl: level) -> u8 {
 }
 
 fn print_diagnostic(topic: &str, lvl: level, msg: &str) {
-    let use_color = term::color_supported() &&
-        io::stderr().get_type() == io::Screen;
+    let t = term::Terminal::new(io::stderr());
+
+    let stderr = io::stderr();
+
     if !topic.is_empty() {
-        io::stderr().write_str(fmt!("%s ", topic));
+        stderr.write_str(fmt!("%s ", topic));
     }
-    if use_color {
-        term::fg(io::stderr(), diagnosticcolor(lvl));
+
+    match t {
+        Ok(term) => {
+            if stderr.get_type() == io::Screen {
+                term.fg(diagnosticcolor(lvl));
+                stderr.write_str(fmt!("%s: ", diagnosticstr(lvl)));
+                term.reset();
+                stderr.write_str(fmt!("%s\n", msg));
+            } else {
+                stderr.write_str(fmt!("%s: %s\n", diagnosticstr(lvl), msg));
+            }
+        },
+        _ => stderr.write_str(fmt!("%s: %s\n", diagnosticstr(lvl), msg))
     }
-    io::stderr().write_str(fmt!("%s:", diagnosticstr(lvl)));
-    if use_color {
-        term::reset(io::stderr());
-    }
-    io::stderr().write_str(fmt!(" %s\n", msg));
 }
 
 pub fn collect(messages: @mut ~[~str])
@@ -218,7 +232,7 @@ pub fn emit(cmsp: Option<(@codemap::CodeMap, span)>, msg: &str, lvl: level) {
         print_macro_backtrace(cm, sp);
       }
       None => {
-        print_diagnostic(~"", lvl, msg);
+        print_diagnostic("", lvl, msg);
       }
     }
 }
@@ -239,7 +253,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
     // Print the offending lines
     for display_lines.each |line| {
         io::stderr().write_str(fmt!("%s:%u ", fm.name, *line + 1u));
-        let s = fm.get_line(*line as int) + ~"\n";
+        let s = fm.get_line(*line as int) + "\n";
         io::stderr().write_str(s);
     }
     if elided {
@@ -247,8 +261,8 @@ fn highlight_lines(cm: @codemap::CodeMap,
         let s = fmt!("%s:%u ", fm.name, last_line + 1u);
         let mut indent = str::len(s);
         let mut out = ~"";
-        while indent > 0u { out += ~" "; indent -= 1u; }
-        out += ~"...\n";
+        while indent > 0u { out += " "; indent -= 1u; }
+        out += "...\n";
         io::stderr().write_str(out);
     }
 
@@ -269,7 +283,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
         // part of the 'filename:line ' part of the previous line.
         let skip = str::len(fm.name) + digits + 3u;
         for skip.times() {
-            s += ~" ";
+            s += " ";
         }
         let orig = fm.get_line(lines.lines[0] as int);
         for uint::range(0u,left-skip) |pos| {
@@ -279,14 +293,14 @@ fn highlight_lines(cm: @codemap::CodeMap,
                 _ => " "         // -squigly-line as well (instead of a
             };                   // space). This way the squigly-line will
         }                        // usually appear in the correct position.
-        s += ~"^";
+        s += "^";
         let hi = cm.lookup_char_pos(sp.hi);
         if hi.col != lo.col {
             // the ^ already takes up one space
             let num_squiglies = hi.col.to_uint()-lo.col.to_uint()-1u;
-            for num_squiglies.times() { s += ~"~"; }
+            for num_squiglies.times() { s += "~"; }
         }
-        io::stderr().write_str(s + ~"\n");
+        io::stderr().write_str(s + "\n");
     }
 }
 
@@ -296,7 +310,7 @@ fn print_macro_backtrace(cm: @codemap::CodeMap, sp: span) {
         print_diagnostic(*ss, note,
                          fmt!("in expansion of %s!", ei.callee.name));
         let ss = cm.span_to_str(ei.call_site);
-        print_diagnostic(ss, note, ~"expansion site");
+        print_diagnostic(ss, note, "expansion site");
         print_macro_backtrace(cm, ei.call_site);
     }
 }

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec;
+
 fn want_slice(v: &[int]) -> int {
     let mut sum = 0;
     for vec::each(v) |i| { sum += *i; }
@@ -19,5 +21,5 @@ fn has_mut_vec(v: ~[int]) -> int {
 }
 
 pub fn main() {
-    assert!(has_mut_vec(~[1, 2, 3]) == 6);
+    assert_eq!(has_mut_vec(~[1, 2, 3]), 6);
 }

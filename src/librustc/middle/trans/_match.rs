@@ -140,7 +140,14 @@
  * the various values we copied explicitly.  Note that guards and moves are
  * just plain incompatible.
  *
+ * Some relevant helper functions that manage bindings:
+ * - `create_bindings_map()`
+ * - `store_non_ref_bindings()`
+ * - `insert_lllocals()`
+ *
  */
+
+use core::prelude::*;
 
 use back::abi;
 use lib::llvm::{llvm, ValueRef, BasicBlockRef};
@@ -166,6 +173,7 @@ use middle::ty;
 use util::common::indenter;
 
 use core::hashmap::HashMap;
+use core::vec;
 use syntax::ast;
 use syntax::ast::ident;
 use syntax::ast_util::path_to_ident;
@@ -193,48 +201,55 @@ pub enum Opt {
 
 pub fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
     match (a, b) {
-      (&lit(a), &lit(b)) => {
-        match (a, b) {
-            (UnitLikeStructLit(a), UnitLikeStructLit(b)) => a == b,
-            _ => {
-                let a_expr;
-                match a {
-                    ExprLit(existing_a_expr) => a_expr = existing_a_expr,
-                    ConstLit(a_const) => {
-                        let e = const_eval::lookup_const_by_id(tcx, a_const);
-                        a_expr = e.get();
+        (&lit(a), &lit(b)) => {
+            match (a, b) {
+                (UnitLikeStructLit(a), UnitLikeStructLit(b)) => a == b,
+                _ => {
+                    let a_expr;
+                    match a {
+                        ExprLit(existing_a_expr) => a_expr = existing_a_expr,
+                            ConstLit(a_const) => {
+                                let e = const_eval::lookup_const_by_id(tcx, a_const);
+                                a_expr = e.get();
+                            }
+                        UnitLikeStructLit(_) => {
+                            fail!("UnitLikeStructLit should have been handled \
+                                    above")
+                        }
                     }
-                    UnitLikeStructLit(_) => {
-                        fail!("UnitLikeStructLit should have been handled \
-                               above")
+
+                    let b_expr;
+                    match b {
+                        ExprLit(existing_b_expr) => b_expr = existing_b_expr,
+                            ConstLit(b_const) => {
+                                let e = const_eval::lookup_const_by_id(tcx, b_const);
+                                b_expr = e.get();
+                            }
+                        UnitLikeStructLit(_) => {
+                            fail!("UnitLikeStructLit should have been handled \
+                                    above")
+                        }
+                    }
+
+                    match const_eval::compare_lit_exprs(tcx, a_expr, b_expr) {
+                        Some(val1) => val1 == 0,
+                        None => fail!("compare_list_exprs: type mismatch"),
                     }
                 }
-
-                let b_expr;
-                match b {
-                    ExprLit(existing_b_expr) => b_expr = existing_b_expr,
-                    ConstLit(b_const) => {
-                        let e = const_eval::lookup_const_by_id(tcx, b_const);
-                        b_expr = e.get();
-                    }
-                    UnitLikeStructLit(_) => {
-                        fail!("UnitLikeStructLit should have been handled \
-                               above")
-                    }
-                }
-
-                const_eval::compare_lit_exprs(tcx, a_expr, b_expr) == 0
             }
         }
-      }
-      (&range(a1, a2), &range(b1, b2)) => {
-        const_eval::compare_lit_exprs(tcx, a1, b1) == 0 &&
-        const_eval::compare_lit_exprs(tcx, a2, b2) == 0
-      }
-      (&var(a, _), &var(b, _)) => a == b,
-      (&vec_len_eq(a), &vec_len_eq(b)) => a == b,
-      (&vec_len_ge(a, _), &vec_len_ge(b, _)) => a == b,
-      _ => false
+        (&range(a1, a2), &range(b1, b2)) => {
+            let m1 = const_eval::compare_lit_exprs(tcx, a1, b1);
+            let m2 = const_eval::compare_lit_exprs(tcx, a2, b2);
+            match (m1, m2) {
+                (Some(val1), Some(val2)) => (val1 == 0 && val2 == 0),
+                _ => fail!("compare_list_exprs: type mismatch"),
+            }
+        }
+        (&var(a, _), &var(b, _)) => a == b,
+            (&vec_len_eq(a), &vec_len_eq(b)) => a == b,
+            (&vec_len_ge(a, _), &vec_len_ge(b, _)) => a == b,
+            _ => false
     }
 }
 
@@ -296,7 +311,7 @@ pub fn variant_opt(bcx: block, pat_id: ast::node_id)
             return lit(UnitLikeStructLit(pat_id));
         }
         _ => {
-            ccx.sess.bug(~"non-variant or struct in variant_opt()");
+            ccx.sess.bug("non-variant or struct in variant_opt()");
         }
     }
 }
@@ -304,7 +319,6 @@ pub fn variant_opt(bcx: block, pat_id: ast::node_id)
 pub enum TransBindingMode {
     TrByValue(/*ismove:*/ bool, /*llbinding:*/ ValueRef),
     TrByRef,
-    TrByImplicitRef
 }
 
 /**
@@ -660,8 +674,8 @@ pub fn enter_tup<'r>(bcx: block,
     let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
         match p.node {
-            ast::pat_tup(/*bad*/copy elts) => {
-                Some(elts)
+            ast::pat_tup(ref elts) => {
+                Some(copy *elts)
             }
             _ => {
                 assert_is_binding_or_wild(bcx, p);
@@ -688,7 +702,7 @@ pub fn enter_tuple_struct<'r>(bcx: block,
     let dummy = @ast::pat {id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
         match p.node {
-            ast::pat_enum(_, Some(/*bad*/copy elts)) => Some(elts),
+            ast::pat_enum(_, Some(ref elts)) => Some(copy *elts),
             _ => {
                 assert_is_binding_or_wild(bcx, p);
                 Some(vec::from_elem(n_elts, dummy))
@@ -871,7 +885,7 @@ fn match_datum(bcx: block, val: ValueRef, pat_id: ast::node_id) -> Datum {
     //! we should just pass around a Datum and be done with it.
 
     let ty = node_id_type(bcx, pat_id);
-    Datum {val: val, ty: ty, mode: datum::ByRef, source: RevokeClean}
+    Datum {val: val, ty: ty, mode: datum::ByRef(RevokeClean)}
 }
 
 
@@ -891,10 +905,10 @@ pub fn extract_vec_elems(bcx: block,
 
     let mut elems = do vec::from_fn(elem_count) |i| {
         match slice {
-            None => GEPi(bcx, base, ~[i]),
-            Some(n) if i < n => GEPi(bcx, base, ~[i]),
+            None => GEPi(bcx, base, [i]),
+            Some(n) if i < n => GEPi(bcx, base, [i]),
             Some(n) if i > n => {
-                InBoundsGEP(bcx, base, ~[
+                InBoundsGEP(bcx, base, [
                     Sub(bcx, count,
                         C_int(bcx.ccx(), (elem_count - i) as int))])
             }
@@ -978,7 +992,7 @@ pub fn root_pats_as_necessary(mut bcx: block,
         let pat_id = br.pats[col].id;
         if pat_id != 0 {
             let datum = Datum {val: val, ty: node_id_type(bcx, pat_id),
-                               mode: ByRef, source: ZeroMem};
+                               mode: ByRef(ZeroMem)};
             bcx = datum.root_and_write_guard(bcx, br.pats[col].span, pat_id, 0);
         }
     }
@@ -1089,11 +1103,8 @@ pub fn compare_values(cx: block,
             let scratch_rhs = alloca(cx, val_ty(rhs));
             Store(cx, rhs, scratch_rhs);
             let did = cx.tcx().lang_items.uniq_str_eq_fn();
-            let bcx = callee::trans_lang_call(cx, did,
-                                                        ~[scratch_lhs,
-                                                          scratch_rhs],
-                                                        expr::SaveIn(
-                                                         scratch_result.val));
+            let bcx = callee::trans_lang_call(cx, did, [scratch_lhs, scratch_rhs],
+                                              expr::SaveIn(scratch_result.val));
             let result = scratch_result.to_result(bcx);
             Result {
                 bcx: result.bcx,
@@ -1103,10 +1114,8 @@ pub fn compare_values(cx: block,
         ty::ty_estr(_) => {
             let scratch_result = scratch_datum(cx, ty::mk_bool(), false);
             let did = cx.tcx().lang_items.str_eq_fn();
-            let bcx = callee::trans_lang_call(cx, did,
-                                                        ~[lhs, rhs],
-                                                        expr::SaveIn(
-                                                         scratch_result.val));
+            let bcx = callee::trans_lang_call(cx, did, [lhs, rhs],
+                                              expr::SaveIn(scratch_result.val));
             let result = scratch_result.to_result(bcx);
             Result {
                 bcx: result.bcx,
@@ -1114,16 +1123,16 @@ pub fn compare_values(cx: block,
             }
         }
         _ => {
-            cx.tcx().sess.bug(~"only scalars and strings supported in \
+            cx.tcx().sess.bug("only scalars and strings supported in \
                                 compare_values");
         }
     }
 }
 
-pub fn store_non_ref_bindings(bcx: block,
-                              data: &ArmData,
-                              opt_temp_cleanups: Option<&mut ~[ValueRef]>)
-    -> block
+fn store_non_ref_bindings(bcx: block,
+                          bindings_map: &BindingsMap,
+                          mut opt_temp_cleanups: Option<&mut ~[ValueRef]>)
+                          -> block
 {
     /*!
      *
@@ -1135,13 +1144,12 @@ pub fn store_non_ref_bindings(bcx: block,
      */
 
     let mut bcx = bcx;
-    let mut opt_temp_cleanups = opt_temp_cleanups;
-    for data.bindings_map.each_value |&binding_info| {
+    for bindings_map.each_value |&binding_info| {
         match binding_info.trmode {
             TrByValue(is_move, lldest) => {
                 let llval = Load(bcx, binding_info.llmatch); // get a T*
                 let datum = Datum {val: llval, ty: binding_info.ty,
-                                   mode: ByRef, source: ZeroMem};
+                                   mode: ByRef(ZeroMem)};
                 bcx = {
                     if is_move {
                         datum.move_to(bcx, INIT, lldest)
@@ -1156,22 +1164,28 @@ pub fn store_non_ref_bindings(bcx: block,
                     temp_cleanups
                 }
             }
-            TrByRef | TrByImplicitRef => {}
+            TrByRef => {}
         }
     }
     return bcx;
 }
 
-pub fn insert_lllocals(bcx: block,
-                       data: &ArmData,
-                       add_cleans: bool) -> block {
+fn insert_lllocals(bcx: block,
+                   bindings_map: &BindingsMap,
+                   binding_mode: IrrefutablePatternBindingMode,
+                   add_cleans: bool) -> block {
     /*!
-     *
      * For each binding in `data.bindings_map`, adds an appropriate entry into
      * the `fcx.lllocals` map.  If add_cleans is true, then adds cleanups for
-     * the bindings. */
+     * the bindings.
+     */
 
-    for data.bindings_map.each_value |&binding_info| {
+    let llmap = match binding_mode {
+        BindLocal => bcx.fcx.lllocals,
+        BindArgument => bcx.fcx.llargs
+    };
+
+    for bindings_map.each_value |&binding_info| {
         let llval = match binding_info.trmode {
             // By value bindings: use the stack slot that we
             // copied/moved the value into
@@ -1187,17 +1201,12 @@ pub fn insert_lllocals(bcx: block,
             TrByRef => {
                 binding_info.llmatch
             }
-
-            // Ugly: for implicit ref, we actually want a T*, but
-            // we have a T**, so we had to load.  This will go away
-            // once implicit refs go away.
-            TrByImplicitRef => {
-                Load(bcx, binding_info.llmatch)
-            }
         };
 
-        bcx.fcx.lllocals.insert(binding_info.id,
-                                local_mem(llval));
+        debug!("binding %? to %s",
+               binding_info.id,
+               val_str(bcx.ccx().tn, llval));
+        llmap.insert(binding_info.id, llval);
     }
     return bcx;
 }
@@ -1218,8 +1227,8 @@ pub fn compile_guard(bcx: block,
 
     let mut bcx = bcx;
     let mut temp_cleanups = ~[];
-    bcx = store_non_ref_bindings(bcx, data, Some(&mut temp_cleanups));
-    bcx = insert_lllocals(bcx, data, false);
+    bcx = store_non_ref_bindings(bcx, &data.bindings_map, Some(&mut temp_cleanups));
+    bcx = insert_lllocals(bcx, &data.bindings_map, BindLocal, false);
 
     let val = unpack_result!(bcx, {
         do with_scope_result(bcx, guard_expr.info(),
@@ -1249,7 +1258,7 @@ pub fn compile_guard(bcx: block,
                 TrByValue(_, llval) => {
                     bcx = glue::drop_ty(bcx, llval, binding_info.ty);
                 }
-                TrByRef | TrByImplicitRef => {}
+                TrByRef => {}
             }
             bcx.fcx.lllocals.remove(&binding_info.id);
         }
@@ -1273,7 +1282,8 @@ pub fn compile_submatch(bcx: block,
     assert!((m.len() > 0u || chk.is_some()));
     let _icx = bcx.insn_ctxt("match::compile_submatch");
     let mut bcx = bcx;
-    let tcx = bcx.tcx(), dm = tcx.def_map;
+    let tcx = bcx.tcx();
+    let dm = tcx.def_map;
     if m.len() == 0u {
         Br(bcx, chk.get()());
         return;
@@ -1343,7 +1353,7 @@ pub fn compile_submatch(bcx: block,
         let tup_repr = adt::represent_type(bcx.ccx(), tup_ty);
         let n_tup_elts = match ty::get(tup_ty).sty {
           ty::ty_tup(ref elts) => elts.len(),
-          _ => ccx.sess.bug(~"non-tuple type in tuple pattern")
+          _ => ccx.sess.bug("non-tuple type in tuple pattern")
         };
         let tup_vals = do vec::from_fn(n_tup_elts) |i| {
             adt::trans_field_ptr(bcx, tup_repr, val, 0, i)
@@ -1362,7 +1372,7 @@ pub fn compile_submatch(bcx: block,
                     ty::lookup_struct_fields(tcx, struct_id).len();
             }
             _ => {
-                ccx.sess.bug(~"non-struct type in tuple struct pattern");
+                ccx.sess.bug("non-struct type in tuple struct pattern");
             }
         }
 
@@ -1478,8 +1488,8 @@ pub fn compile_submatch(bcx: block,
                       }
                       _ => {
                           bcx.sess().bug(
-                              ~"in compile_submatch, expected \
-                                trans_opt to return a single_result")
+                              "in compile_submatch, expected \
+                               trans_opt to return a single_result")
                       }
                   }
               }
@@ -1616,6 +1626,43 @@ pub fn trans_match(bcx: block,
     }
 }
 
+fn create_bindings_map(bcx: block, pat: @ast::pat) -> BindingsMap {
+    // Create the bindings map, which is a mapping from each binding name
+    // to an alloca() that will be the value for that local variable.
+    // Note that we use the names because each binding will have many ids
+    // from the various alternatives.
+    let ccx = bcx.ccx();
+    let tcx = bcx.tcx();
+    let mut bindings_map = HashMap::new();
+    do pat_bindings(tcx.def_map, pat) |bm, p_id, _s, path| {
+        let ident = path_to_ident(path);
+        let variable_ty = node_id_type(bcx, p_id);
+        let llvariable_ty = type_of::type_of(ccx, variable_ty);
+
+        let llmatch;
+        let trmode;
+        match bm {
+            ast::bind_infer => {
+                // in this case, the final type of the variable will be T,
+                // but during matching we need to store a *T as explained
+                // above
+                let is_move = ccx.maps.moves_map.contains(&p_id);
+                llmatch = alloca(bcx, T_ptr(llvariable_ty));
+                trmode = TrByValue(is_move, alloca(bcx, llvariable_ty));
+            }
+            ast::bind_by_ref(_) => {
+                llmatch = alloca(bcx, llvariable_ty);
+                trmode = TrByRef;
+            }
+        };
+        bindings_map.insert(ident, BindingInfo {
+            llmatch: llmatch, trmode: trmode,
+            id: p_id, ty: variable_ty
+        });
+    }
+    return bindings_map;
+}
+
 pub fn trans_match_inner(scope_cx: block,
                          discr_expr: @ast::expr,
                          arms: &[ast::arm],
@@ -1631,42 +1678,11 @@ pub fn trans_match_inner(scope_cx: block,
         return bcx;
     }
 
-    let mut arm_datas = ~[], matches = ~[];
-    for arms.each |arm| {
+    let mut arm_datas = ~[];
+    let mut matches = ~[];
+    for vec::each(arms) |arm| {
         let body = scope_block(bcx, arm.body.info(), "case_body");
-
-        // Create the bindings map, which is a mapping from each binding name
-        // to an alloca() that will be the value for that local variable.
-        // Note that we use the names because each binding will have many ids
-        // from the various alternatives.
-        let mut bindings_map = HashMap::new();
-        do pat_bindings(tcx.def_map, arm.pats[0]) |bm, p_id, _s, path| {
-            let ident = path_to_ident(path);
-            let variable_ty = node_id_type(bcx, p_id);
-            let llvariable_ty = type_of::type_of(bcx.ccx(), variable_ty);
-
-            let llmatch, trmode;
-            match bm {
-                ast::bind_by_copy | ast::bind_infer => {
-                    // in this case, the final type of the variable will be T,
-                    // but during matching we need to store a *T as explained
-                    // above
-                    let is_move =
-                        scope_cx.ccx().maps.moves_map.contains(&p_id);
-                    llmatch = alloca(bcx, T_ptr(llvariable_ty));
-                    trmode = TrByValue(is_move, alloca(bcx, llvariable_ty));
-                }
-                ast::bind_by_ref(_) => {
-                    llmatch = alloca(bcx, llvariable_ty);
-                    trmode = TrByRef;
-                }
-            };
-            bindings_map.insert(ident, BindingInfo {
-                llmatch: llmatch, trmode: trmode,
-                id: p_id, ty: variable_ty
-            });
-        }
-
+        let bindings_map = create_bindings_map(bcx, arm.pats[0]);
         let arm_data = @ArmData {bodycx: body,
                                  arm: arm,
                                  bindings_map: bindings_map};
@@ -1688,8 +1704,8 @@ pub fn trans_match_inner(scope_cx: block,
             None
         }
     };
-    let lldiscr = discr_datum.to_ref_llval(bcx);
-    compile_submatch(bcx, matches, ~[lldiscr], chk);
+    let lldiscr = discr_datum.to_zeroable_ref_llval(bcx);
+    compile_submatch(bcx, matches, [lldiscr], chk);
 
     let mut arm_cxs = ~[];
     for arm_datas.each |arm_data| {
@@ -1700,11 +1716,11 @@ pub fn trans_match_inner(scope_cx: block,
         // is just to reduce code space.  See extensive comment at the start
         // of the file for more details.
         if arm_data.arm.guard.is_none() {
-            bcx = store_non_ref_bindings(bcx, *arm_data, None);
+            bcx = store_non_ref_bindings(bcx, &arm_data.bindings_map, None);
         }
 
         // insert bindings into the lllocals map and add cleanups
-        bcx = insert_lllocals(bcx, *arm_data, true);
+        bcx = insert_lllocals(bcx, &arm_data.bindings_map, BindLocal, true);
 
         bcx = controlflow::trans_block(bcx, &arm_data.arm.body, dest);
         bcx = trans_block_cleanups(bcx, block_cleanups(arm_data.bodycx));
@@ -1752,27 +1768,25 @@ pub fn bind_irrefutable_pat(bcx: block,
             if make_copy {
                 let binding_ty = node_id_type(bcx, pat.id);
                 let datum = Datum {val: val, ty: binding_ty,
-                                   mode: ByRef, source: RevokeClean};
+                                   mode: ByRef(RevokeClean)};
                 let scratch = scratch_datum(bcx, binding_ty, false);
                 datum.copy_to_datum(bcx, INIT, scratch);
                 match binding_mode {
                     BindLocal => {
-                        bcx.fcx.lllocals.insert(pat.id,
-                                                local_mem(scratch.val));
+                        bcx.fcx.lllocals.insert(pat.id, scratch.val);
                     }
                     BindArgument => {
-                        bcx.fcx.llargs.insert(pat.id,
-                                              local_mem(scratch.val));
+                        bcx.fcx.llargs.insert(pat.id, scratch.val);
                     }
                 }
                 add_clean(bcx, scratch.val, binding_ty);
             } else {
                 match binding_mode {
                     BindLocal => {
-                        bcx.fcx.lllocals.insert(pat.id, local_mem(val));
+                        bcx.fcx.lllocals.insert(pat.id, val);
                     }
                     BindArgument => {
-                        bcx.fcx.llargs.insert(pat.id, local_mem(val));
+                        bcx.fcx.llargs.insert(pat.id, val);
                     }
                 }
             }

@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
+use core::vec;
+
 use astsrv;
 use doc;
 use time;
@@ -46,7 +50,7 @@ fn test_run_passes() {
                 doc::CratePage(doc::CrateDoc{
                     topmod: doc::ModDoc{
                         item: doc::ItemDoc {
-                            name: doc.cratemod().name() + ~"two",
+                            name: doc.cratemod().name() + "two",
                             .. copy doc.cratemod().item
                         },
                         items: ~[],
@@ -65,7 +69,7 @@ fn test_run_passes() {
                 doc::CratePage(doc::CrateDoc{
                     topmod: doc::ModDoc{
                         item: doc::ItemDoc {
-                            name: doc.cratemod().name() + ~"three",
+                            name: doc.cratemod().name() + "three",
                             .. copy doc.cratemod().item
                         },
                         items: ~[],
@@ -89,6 +93,6 @@ fn test_run_passes() {
         ];
         let doc = extract::from_srv(srv.clone(), ~"one");
         let doc = run_passes(srv, doc, passes);
-        assert!(doc.cratemod().name() == ~"onetwothree");
+        assert_eq!(doc.cratemod().name(), ~"onetwothree");
     }
 }

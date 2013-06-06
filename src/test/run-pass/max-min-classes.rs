@@ -17,8 +17,8 @@ struct Foo {
     y: int,
 }
 
-pub impl Foo {
-    fn sum(&self) -> int {
+impl Foo {
+    pub fn sum(&self) -> int {
         self.x + self.y
     }
 }
@@ -35,5 +35,5 @@ fn Foo(x: int, y: int) -> Foo {
 
 pub fn main() {
     let foo = Foo(3, 20);
-    io::println(fmt!("%d %d", foo.sum(), foo.product()));
+    println(fmt!("%d %d", foo.sum(), foo.product()));
 }

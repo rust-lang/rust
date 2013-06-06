@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::comm;
+
 pub fn main() { test00(); }
 
 fn test00() {
@@ -46,5 +48,5 @@ fn test00() {
     r = p.recv();
     sum += r;
     debug!(r);
-    assert!((sum == 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8));
+    assert_eq!(sum, 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8);
 }

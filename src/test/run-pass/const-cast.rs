@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::libc;
+
 extern fn foo() {}
 
 static x: *u8 = foo;
@@ -16,6 +18,6 @@ static a: &'static int = &10;
 static b: *int = a as *int;
 
 pub fn main() {
-    assert!(x as *libc::c_void == y);
-    assert!(a as *int == b);
+    assert_eq!(x as *libc::c_void, y);
+    assert_eq!(a as *int, b);
 }

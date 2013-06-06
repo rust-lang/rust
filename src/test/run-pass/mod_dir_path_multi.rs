@@ -22,6 +22,6 @@ mod gravy {
 }
 
 pub fn main() {
-    assert!(biscuits::test::foo() == 10);
-    assert!(gravy::test::foo() == 10);
+    assert_eq!(biscuits::test::foo(), 10);
+    assert_eq!(gravy::test::foo(), 10);
 }

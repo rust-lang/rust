@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::uint;
+
 fn uuid() -> uint { fail!(); }
 
 fn from_str(s: ~str) -> uint { fail!(); }

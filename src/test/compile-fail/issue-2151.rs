@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::vec;
+
 fn main() {
     for vec::each(fail!()) |i| {
         let _ = i * 2; //~ ERROR the type of this value must be known

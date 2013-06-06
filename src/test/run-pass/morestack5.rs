@@ -10,7 +10,9 @@
 
 // This test will call __morestack with various minimum stack sizes
 
-extern mod std;
+extern mod extra;
+
+use std::task;
 
 fn getbig(i: int) {
     if i != 0 {

@@ -8,6 +8,11 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
+# This is the compile-time target-triple for the compiler. For the compiler at
+# runtime, this should be considered the host-triple. More explanation for why
+# this exists can be found on issue #2400
+export CFG_COMPILER_TRIPLE
+
 # TARGET_STAGE_N template: This defines how target artifacts are built
 # for all stage/target architecture combinations. The arguments:
 # $(1) is the stage
@@ -18,27 +23,27 @@
 define TARGET_STAGE_N
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a: \
-		rt/$(2)/arch/$$(HOST_$(2))/libmorestack.a \
+		rt/$(2)/stage$(1)/arch/$$(HOST_$(2))/libmorestack.a \
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUNTIME_$(2)): \
-		rt/$(2)/$(CFG_RUNTIME_$(2)) \
+		rt/$(2)/stage$(1)/$(CFG_RUNTIME_$(2)) \
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB_$(2)): \
-		$$(CORELIB_CRATE) $$(CORELIB_INPUTS) \
+$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2)): \
+		$$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
 		$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< && touch $$@
 
-$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2)): \
-		$$(STDLIB_CRATE) $$(STDLIB_INPUTS) \
-	        $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_CORELIB_$(2)) \
+$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_EXTRALIB_$(2)): \
+		$$(EXTRALIB_CRATE) $$(EXTRALIB_INPUTS) \
+	        $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2)) \
 		$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
@@ -47,8 +52,8 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2)): \
 $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(3)): \
                 $$(LIBSYNTAX_CRATE) $$(LIBSYNTAX_INPUTS) \
 		$$(TSREQ$(1)_T_$(2)_H_$(3))			\
-		$$(TCORELIB_DEFAULT$(1)_T_$(2)_H_$(3))      \
-		$$(TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3)) \
+		$$(TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3))      \
+		$$(TEXTRALIB_DEFAULT$(1)_T_$(2)_H_$(3)) \
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) $(BORROWCK) -o $$@ $$< && touch $$@
@@ -62,6 +67,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUSTLLVM_$(3)): \
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
+$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)): CFG_COMPILER_TRIPLE = $(2)
 $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)):		\
 		$$(COMPILER_CRATE) $$(COMPILER_INPUTS)		\
                 $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(3)) \

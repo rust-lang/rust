@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
+use core::io;
+use core::str;
+
 pub struct ExpectedError { line: uint, kind: ~str, msg: ~str }
 
 // Load any test directives embedded in the file

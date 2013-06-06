@@ -10,6 +10,9 @@
 
 // xfail-fast
 
+use std::uint;
+use std::vec;
+
 pub trait plus {
     fn plus(&self) -> int;
 }
@@ -54,13 +57,13 @@ impl<T> vec_utils<T> for ~[T] {
 }
 
 pub fn main() {
-    assert!(10u.plus() == 30);
-    assert!((~"hi").plus() == 200);
+    assert_eq!(10u.plus(), 30);
+    assert_eq!((~"hi").plus(), 200);
 
-    assert!((~[1]).length_().str() == ~"1");
-    assert!((~[3, 4]).map_(|a| *a + 4 )[0] == 7);
-    assert!((~[3, 4]).map_::<uint>(|a| *a as uint + 4u )[0] == 7u);
+    assert_eq!((~[1]).length_().str(), ~"1");
+    assert_eq!((~[3, 4]).map_(|a| *a + 4 )[0], 7);
+    assert_eq!((~[3, 4]).map_::<uint>(|a| *a as uint + 4u )[0], 7u);
     let mut x = 0u;
     10u.multi(|_n| x += 2u );
-    assert!(x == 20u);
+    assert_eq!(x, 20u);
 }

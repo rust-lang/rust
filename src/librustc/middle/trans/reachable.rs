@@ -15,6 +15,7 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
+use core::prelude::*;
 
 use middle::resolve;
 use middle::ty;
@@ -191,17 +192,6 @@ fn traverse_inline_body(cx: @mut ctx, body: &blk) {
                          expr_to_str(e, cx.tcx.sess.intr())))
             }
           }
-          expr_field(_, _, _) => {
-            match cx.method_map.find(&e.id) {
-              Some(&typeck::method_map_entry {
-                  origin: typeck::method_static(did),
-                  _
-                }) => {
-                traverse_def_id(cx, did);
-              }
-              _ => ()
-            }
-          }
           expr_method_call(*) => {
             match cx.method_map.find(&e.id) {
               Some(&typeck::method_map_entry {
@@ -212,8 +202,8 @@ fn traverse_inline_body(cx: @mut ctx, body: &blk) {
               }
               Some(_) => {}
               None => {
-                cx.tcx.sess.span_bug(e.span, ~"expr_method_call not in \
-                                               method map");
+                cx.tcx.sess.span_bug(e.span, "expr_method_call not in \
+                                              method map");
               }
             }
           }

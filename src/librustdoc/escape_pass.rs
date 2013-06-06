@@ -20,12 +20,12 @@ pub fn mk_pass() -> Pass {
 }
 
 fn escape(s: &str) -> ~str {
-    str::replace(s, ~"\\", ~"\\\\")
+    str::replace(s, "\\", "\\\\")
 }
 
 #[test]
 fn should_escape_backslashes() {
     let s = ~"\\n";
     let r = escape(s);
-    assert!(r == ~"\\\\n");
+    assert_eq!(r, ~"\\\\n");
 }

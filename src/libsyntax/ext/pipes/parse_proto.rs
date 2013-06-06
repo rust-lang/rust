@@ -10,11 +10,14 @@
 
 // Parsing pipes protocols from token trees.
 
+use core::prelude::*;
+
 use ast_util;
 use ext::pipes::proto::*;
 use parse::common::SeqSep;
 use parse::parser;
 use parse::token;
+use parse::token::{interner_get};
 
 pub trait proto_parser {
     fn parse_proto(&self, id: ~str) -> protocol;
@@ -40,11 +43,11 @@ impl proto_parser for parser::Parser {
 
     fn parse_state(&self, proto: protocol) {
         let id = self.parse_ident();
-        let name = copy *self.interner.get(id);
+        let name = copy *interner_get(id.name);
 
         self.expect(&token::COLON);
         let dir = match copy *self.token {
-            token::IDENT(n, _) => self.interner.get(n),
+            token::IDENT(n, _) => interner_get(n.name),
             _ => fail!()
         };
         self.bump();
@@ -75,7 +78,7 @@ impl proto_parser for parser::Parser {
     }
 
     fn parse_message(&self, state: state) {
-        let mname = copy *self.interner.get(self.parse_ident());
+        let mname = copy *interner_get(self.parse_ident().name);
 
         let args = if *self.token == token::LPAREN {
             self.parse_unspanned_seq(
@@ -94,7 +97,7 @@ impl proto_parser for parser::Parser {
 
         let next = match *self.token {
           token::IDENT(_, _) => {
-            let name = copy *self.interner.get(self.parse_ident());
+            let name = copy *interner_get(self.parse_ident().name);
             let ntys = if *self.token == token::LT {
                 self.parse_unspanned_seq(
                     &token::LT,
@@ -114,7 +117,7 @@ impl proto_parser for parser::Parser {
             self.bump();
             None
           }
-          _ => self.fatal(~"invalid next state")
+          _ => self.fatal("invalid next state")
         };
 
         state.add_message(mname, *self.span, args, next);

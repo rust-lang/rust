@@ -12,7 +12,7 @@ The following is a minimal example of calling a foreign function which will comp
 installed:
 
 ~~~~ {.xfail-test}
-use core::libc::size_t;
+use std::libc::size_t;
 
 #[link_args = "-lsnappy"]
 extern {
@@ -42,7 +42,7 @@ runtime.
 The `extern` block can be extended to cover the entire snappy API:
 
 ~~~~ {.xfail-test}
-use core::libc::{c_int, size_t};
+use std::libc::{c_int, size_t};
 
 #[link_args = "-lsnappy"]
 extern {
@@ -149,19 +149,20 @@ A type with the same functionality as owned boxes can be implemented by
 wrapping `malloc` and `free`:
 
 ~~~~
-use core::libc::{c_void, size_t, malloc, free};
-use core::unstable::intrinsics;
-use core::util;
+use std::cast;
+use std::libc::{c_void, size_t, malloc, free};
+use std::ptr;
+use std::unstable::intrinsics;
 
 // a wrapper around the handle returned by the foreign code
 pub struct Unique<T> {
     priv ptr: *mut T
 }
 
-pub impl<T: Owned> Unique<T> {
-    fn new(value: T) -> Unique<T> {
+impl<T: Owned> Unique<T> {
+    pub fn new(value: T) -> Unique<T> {
         unsafe {
-            let ptr = malloc(core::sys::size_of::<T>() as size_t) as *mut T;
+            let ptr = malloc(std::sys::size_of::<T>() as size_t) as *mut T;
             assert!(!ptr::is_null(ptr));
             // `*ptr` is uninitialized, and `*ptr = value` would attempt to destroy it
             intrinsics::move_val_init(&mut *ptr, value);
@@ -170,12 +171,12 @@ pub impl<T: Owned> Unique<T> {
     }
 
     // the 'r lifetime results in the same semantics as `&*x` with ~T
-    fn borrow<'r>(&'r self) -> &'r T {
+    pub fn borrow<'r>(&'r self) -> &'r T {
         unsafe { cast::copy_lifetime(self, &*self.ptr) }
     }
 
     // the 'r lifetime results in the same semantics as `&mut *x` with ~T
-    fn borrow_mut<'r>(&'r mut self) -> &'r mut T {
+    pub fn borrow_mut<'r>(&'r mut self) -> &'r mut T {
         unsafe { cast::copy_mut_lifetime(self, &mut *self.ptr) }
     }
 }
@@ -184,9 +185,9 @@ pub impl<T: Owned> Unique<T> {
 impl<T: Owned> Drop for Unique<T> {
     fn finalize(&self) {
         unsafe {
-            let mut x = intrinsics::init(); // dummy value to swap in
+            let x = intrinsics::init(); // dummy value to swap in
             // moving the object out is needed to call the destructor
-            util::replace_ptr(self.ptr, x);
+            ptr::replace_ptr(self.ptr, x);
             free(self.ptr as *c_void)
         }
     }

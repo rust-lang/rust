@@ -10,9 +10,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod std;
-use std::json::Object;
+extern mod extra;
+use extra::json::Object;
 
 pub fn main() {
-    io::println("Hello world!");
+    println("Hello world!");
 }

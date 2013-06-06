@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use driver::session::Session;
 use middle::resolve;
 use middle::ty;
@@ -89,14 +91,14 @@ pub fn check_expr(sess: Session,
                   v: visit::vt<bool>) {
     if is_const {
         match e.node {
-          expr_unary(deref, _) => { }
-          expr_unary(box(_), _) | expr_unary(uniq(_), _) => {
+          expr_unary(_, deref, _) => { }
+          expr_unary(_, box(_), _) | expr_unary(_, uniq(_), _) => {
             sess.span_err(e.span,
                           "disallowed operator in constant expression");
             return;
           }
           expr_lit(@codemap::spanned {node: lit_str(_), _}) => { }
-          expr_binary(_, _, _) | expr_unary(_, _) => {
+          expr_binary(*) | expr_unary(*) => {
             if method_map.contains_key(&e.id) {
                 sess.span_err(e.span, "user-defined operators are not \
                                        allowed in constant expressions");
@@ -108,7 +110,7 @@ pub fn check_expr(sess: Session,
             if !ty::type_is_numeric(ety) && !ty::type_is_unsafe_ptr(ety) {
                 sess.span_err(e.span, ~"can not cast to `" +
                               ppaux::ty_to_str(tcx, ety) +
-                              ~"` in a constant expression");
+                              "` in a constant expression");
             }
           }
           expr_path(pth) => {

@@ -10,10 +10,12 @@
 
 // xfail-win32
 
-extern mod std;
+extern mod extra;
 
-use std::list::{List, Cons, Nil};
-use std::time::precise_time_s;
+use extra::list::{List, Cons, Nil};
+use extra::time::precise_time_s;
+use std::os;
+use std::task;
 
 enum UniqueList {
     ULNil, ULCons(~UniqueList)
@@ -30,7 +32,7 @@ fn main() {
 }
 
 fn run(repeat: int, depth: int) {
-    for old_iter::repeat(repeat as uint) {
+    for (repeat as uint).times {
         debug!("starting %.4f", precise_time_s());
         do task::try {
             recurse_or_fail(depth, None)
@@ -94,7 +96,7 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
                 fn_box: || @Cons((), fn_box()),
                 tuple: (@Cons((), st.tuple.first()),
                         ~Cons((), @*st.tuple.second())),
-                vec: st.vec + ~[@Cons((), *st.vec.last())],
+                vec: st.vec + [@Cons((), *st.vec.last())],
                 res: r(@Cons((), st.res._l))
             }
           }

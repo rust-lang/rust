@@ -13,11 +13,11 @@ struct list<'self, T> {
     next: Option<@mut list<'self, T>>
 }
 
-pub impl<'self, T> list<'self, T>{
-    fn addEnd(&mut self, element: &'self T) {
+impl<'self, T> list<'self, T>{
+    pub fn addEnd(&mut self, element: &'self T) {
         let newList = list {
             element: element,
-            next: option::None
+            next: None
         };
 
         self.next = Some(@mut newList);
@@ -28,7 +28,7 @@ pub fn main() {
     let s = @"str";
     let ls = list {
         element: &s,
-        next: option::None
+        next: None
     };
-    io::println(*ls.element);
+    println(*ls.element);
 }

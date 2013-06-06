@@ -22,7 +22,7 @@ fn test_rec() { let rs = { RS {v1: 10, v2: 20} }; assert!((rs.v2 == 20)); }
 
 fn test_filled_with_stuff() {
     let rs = { let mut a = 0; while a < 10 { a += 1; } a };
-    assert!((rs == 10));
+    assert_eq!(rs, 10);
 }
 
 pub fn main() { test_basic(); test_rec(); test_filled_with_stuff(); }

@@ -10,24 +10,30 @@
 
 // The Rust abstract syntax tree.
 
+use core::prelude::*;
+
 use codemap::{span, spanned};
 use abi::AbiSet;
 use opt_vec::OptVec;
+use parse::token::{ident_to_str, interner_get, str_to_ident};
 
-use core::cast;
-use core::option::{None, Option, Some};
-use core::to_bytes;
+use core::hashmap::HashMap;
+use core::option::Option;
 use core::to_bytes::IterBytes;
+use core::to_bytes;
 use core::to_str::ToStr;
-use std::serialize::{Encodable, Decodable, Encoder, Decoder};
+use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 
 
-// an identifier contains an index into the interner
-// table and a SyntaxContext to track renaming and
+// an identifier contains a Name (index into the interner
+// table) and a SyntaxContext to track renaming and
 // macro expansion per Flatt et al., "Macros
 // That Work Together"
 #[deriving(Eq)]
-pub struct ident { repr: Name, ctxt: SyntaxContext }
+pub struct ident { name: Name, ctxt: SyntaxContext }
+
+/// Construct an identifier with the given name and an empty context:
+pub fn new_ident(name: Name) -> ident { ident {name: name, ctxt: empty_ctxt}}
 
 // a SyntaxContext represents a chain of macro-expandings
 // and renamings. Each macro expansion corresponds to
@@ -38,14 +44,20 @@ pub struct ident { repr: Name, ctxt: SyntaxContext }
 // that's causing unreleased memory to cause core dumps
 // and also perhaps to save some work in destructor checks.
 // the special uint '0' will be used to indicate an empty
-// syntax context
+// syntax context.
 
 // this uint is a reference to a table stored in thread-local
 // storage.
 pub type SyntaxContext = uint;
 
-pub type SCTable = ~[SyntaxContext_];
+pub struct SCTable {
+    table : ~[SyntaxContext_],
+    mark_memo : HashMap<(SyntaxContext,Mrk),SyntaxContext>,
+    rename_memo : HashMap<(SyntaxContext,ident,Name),SyntaxContext>
+}
+// NB: these must be placed in any SCTable...
 pub static empty_ctxt : uint = 0;
+pub static illegal_ctxt : uint = 1;
 
 #[deriving(Eq, Encodable, Decodable)]
 pub enum SyntaxContext_ {
@@ -59,10 +71,12 @@ pub enum SyntaxContext_ {
     // "to" slot must have the same name and context
     // in the "from" slot. In essence, they're all
     // pointers to a single "rename" event node.
-    Rename (ident,Name,SyntaxContext)
+    Rename (ident,Name,SyntaxContext),
+    IllegalCtxt()
 }
 
-// a name represents an identifier
+// a name is a part of an identifier, representing a string
+// or gensym. It's the result of interning.
 pub type Name = uint;
 // a mark represents a unique id associated
 // with a macro expansion
@@ -70,43 +84,20 @@ pub type Mrk = uint;
 
 impl<S:Encoder> Encodable<S> for ident {
     fn encode(&self, s: &mut S) {
-        unsafe {
-            let intr =
-                match local_data::local_data_get(interner_key!()) {
-                    None => fail!("encode: TLS interner not set up"),
-                    Some(intr) => intr
-                };
-
-            s.emit_str(*(*intr).get(*self));
-        }
+        s.emit_str(*interner_get(self.name));
     }
 }
 
 impl<D:Decoder> Decodable<D> for ident {
     fn decode(d: &mut D) -> ident {
-        let intr = match unsafe {
-            local_data::local_data_get(interner_key!())
-        } {
-            None => fail!("decode: TLS interner not set up"),
-            Some(intr) => intr
-        };
-
-        (*intr).intern(d.read_str())
+        str_to_ident(d.read_str())
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for ident {
-    #[inline(always)]
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        self.repr.iter_bytes(lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for ident {
     #[inline(always)]
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        self.repr.iter_bytes(lsb0, f)
+        self.name.iter_bytes(lsb0, f)
     }
 }
 
@@ -120,17 +111,11 @@ pub struct Lifetime {
     ident: ident
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for Lifetime {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_3(&self.id, &self.span, &self.ident, lsb0, f)
-    }
-}
-
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for Lifetime {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        to_bytes::iter_bytes_3(&self.id, &self.span, &self.ident, lsb0, f)
+        self.id.iter_bytes(lsb0, f) &&
+        self.span.iter_bytes(lsb0, f) &&
+        self.ident.iter_bytes(lsb0, f)
     }
 }
 
@@ -183,14 +168,14 @@ pub struct Generics {
     ty_params: OptVec<TyParam>
 }
 
-pub impl Generics {
-    fn is_parameterized(&self) -> bool {
+impl Generics {
+    pub fn is_parameterized(&self) -> bool {
         self.lifetimes.len() + self.ty_params.len() > 0
     }
-    fn is_lt_parameterized(&self) -> bool {
+    pub fn is_lt_parameterized(&self) -> bool {
         self.lifetimes.len() > 0
     }
-    fn is_type_parameterized(&self) -> bool {
+    pub fn is_type_parameterized(&self) -> bool {
         self.ty_params.len() > 0
     }
 }
@@ -274,34 +259,20 @@ pub struct field_pat {
 
 #[deriving(Eq, Encodable, Decodable)]
 pub enum binding_mode {
-    bind_by_copy,
     bind_by_ref(mutability),
     bind_infer
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for binding_mode {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        match *self {
-          bind_by_copy => 0u8.iter_bytes(lsb0, f),
-
-          bind_by_ref(ref m) =>
-          to_bytes::iter_bytes_2(&1u8, m, lsb0, f),
-
-          bind_infer =>
-          2u8.iter_bytes(lsb0, f),
-        }
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for binding_mode {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
-          bind_by_copy => 0u8.iter_bytes(lsb0, f),
+          bind_by_ref(ref m) => {
+              0u8.iter_bytes(lsb0, f) && m.iter_bytes(lsb0, f)
+          }
 
-          bind_by_ref(ref m) => to_bytes::iter_bytes_2(&1u8, m, lsb0, f),
-
-          bind_infer => 2u8.iter_bytes(lsb0, f),
+          bind_infer => {
+              1u8.iter_bytes(lsb0, f)
+          }
         }
     }
 }
@@ -334,13 +305,6 @@ pub enum pat_ {
 #[deriving(Eq, Encodable, Decodable)]
 pub enum mutability { m_mutbl, m_imm, m_const, }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for mutability {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        (*self as u8).iter_bytes(lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for mutability {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
@@ -354,13 +318,6 @@ pub enum Sigil {
     ManagedSigil
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for Sigil {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        (*self as uint).iter_bytes(lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for Sigil {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as uint).iter_bytes(lsb0, f)
@@ -430,6 +387,7 @@ pub type stmt = spanned<stmt_>;
 
 #[deriving(Eq, Encodable, Decodable)]
 pub enum stmt_ {
+    // could be an item or a local (let) binding:
     stmt_decl(@decl, node_id),
 
     // expr without trailing semi-colon (must have unit type):
@@ -458,7 +416,12 @@ pub type local = spanned<local_>;
 pub type decl = spanned<decl_>;
 
 #[deriving(Eq, Encodable, Decodable)]
-pub enum decl_ { decl_local(~[@local]), decl_item(@item), }
+pub enum decl_ {
+    // a local (let) binding:
+    decl_local(@local),
+    // an item binding:
+    decl_item(@item),
+}
 
 #[deriving(Eq, Encodable, Decodable)]
 pub struct arm {
@@ -469,7 +432,6 @@ pub struct arm {
 
 #[deriving(Eq, Encodable, Decodable)]
 pub struct field_ {
-    mutbl: mutability,
     ident: ident,
     expr: @expr,
 }
@@ -482,11 +444,21 @@ pub enum blk_check_mode { default_blk, unsafe_blk, }
 #[deriving(Eq, Encodable, Decodable)]
 pub struct expr {
     id: node_id,
-    // Extra node ID is only used for index, assign_op, unary, binary, method
-    // call
-    callee_id: node_id,
     node: expr_,
     span: span,
+}
+
+impl expr {
+    pub fn get_callee_id(&self) -> Option<node_id> {
+        match self.node {
+            expr_method_call(callee_id, _, _, _, _, _) |
+            expr_index(callee_id, _, _) |
+            expr_binary(callee_id, _, _, _) |
+            expr_assign_op(callee_id, _, _, _) |
+            expr_unary(callee_id, _, _) => Some(callee_id),
+            _ => None,
+        }
+    }
 }
 
 #[deriving(Eq, Encodable, Decodable)]
@@ -501,10 +473,10 @@ pub enum expr_ {
     expr_vstore(@expr, expr_vstore),
     expr_vec(~[@expr], mutability),
     expr_call(@expr, ~[@expr], CallSugar),
-    expr_method_call(@expr, ident, ~[@Ty], ~[@expr], CallSugar),
+    expr_method_call(node_id, @expr, ident, ~[@Ty], ~[@expr], CallSugar),
     expr_tup(~[@expr]),
-    expr_binary(binop, @expr, @expr),
-    expr_unary(unop, @expr),
+    expr_binary(node_id, binop, @expr, @expr),
+    expr_unary(node_id, unop, @expr),
     expr_lit(@lit),
     expr_cast(@expr, @Ty),
     expr_if(@expr, blk, Option<@expr>),
@@ -525,9 +497,9 @@ pub enum expr_ {
 
     expr_copy(@expr),
     expr_assign(@expr, @expr),
-    expr_assign_op(binop, @expr, @expr),
+    expr_assign_op(node_id, binop, @expr, @expr),
     expr_field(@expr, ident, ~[@Ty]),
-    expr_index(@expr, @expr),
+    expr_index(node_id, @expr, @expr),
     expr_path(@Path),
 
     /// The special identifier `self`.
@@ -718,13 +690,6 @@ impl ToStr for int_ty {
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for int_ty {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        (*self as u8).iter_bytes(lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for int_ty {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
@@ -740,13 +705,6 @@ impl ToStr for uint_ty {
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for uint_ty {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        (*self as u8).iter_bytes(lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for uint_ty {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
@@ -762,13 +720,6 @@ impl ToStr for float_ty {
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for float_ty {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        (*self as u8).iter_bytes(lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for float_ty {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
@@ -808,13 +759,6 @@ impl ToStr for Onceness {
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for Onceness {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        (*self as uint).iter_bytes(lsb0, f);
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for Onceness {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as uint).iter_bytes(lsb0, f)
@@ -861,16 +805,9 @@ pub enum ty_ {
     ty_infer,
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for Ty {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_2(&self.span.lo, &self.span.hi, lsb0, f);
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for Ty {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        to_bytes::iter_bytes_2(&self.span.lo, &self.span.hi, lsb0, f)
+        self.span.lo.iter_bytes(lsb0, f) && self.span.hi.iter_bytes(lsb0, f)
     }
 }
 
@@ -925,13 +862,6 @@ impl ToStr for purity {
     }
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for purity {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        (*self as u8).iter_bytes(lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for purity {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
@@ -945,13 +875,6 @@ pub enum ret_style {
     return_val, // everything else
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for ret_style {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        (*self as u8).iter_bytes(lsb0, f)
-    }
-}
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for ret_style {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (*self as u8).iter_bytes(lsb0, f)
@@ -967,28 +890,20 @@ pub enum explicit_self_ {
     sty_uniq(mutability)                       // `~self`
 }
 
-#[cfg(stage0)]
-impl to_bytes::IterBytes for explicit_self_ {
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) {
-        match *self {
-            sty_static => 0u8.iter_bytes(lsb0, f),
-            sty_value => 1u8.iter_bytes(lsb0, f),
-            sty_region(ref lft, ref mutbl) => to_bytes::iter_bytes_3(&2u8, &lft, mutbl, lsb0, f),
-            sty_box(ref mutbl) => to_bytes::iter_bytes_2(&3u8, mutbl, lsb0, f),
-            sty_uniq(ref mutbl) => to_bytes::iter_bytes_2(&4u8, mutbl, lsb0, f),
-        }
-    }
-}
-
-#[cfg(not(stage0))]
 impl to_bytes::IterBytes for explicit_self_ {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         match *self {
             sty_static => 0u8.iter_bytes(lsb0, f),
             sty_value => 1u8.iter_bytes(lsb0, f),
-            sty_region(ref lft, ref mutbl) => to_bytes::iter_bytes_3(&2u8, &lft, mutbl, lsb0, f),
-            sty_box(ref mutbl) => to_bytes::iter_bytes_2(&3u8, mutbl, lsb0, f),
-            sty_uniq(ref mutbl) => to_bytes::iter_bytes_2(&4u8, mutbl, lsb0, f),
+            sty_region(ref lft, ref mutbl) => {
+                2u8.iter_bytes(lsb0, f) && lft.iter_bytes(lsb0, f) && mutbl.iter_bytes(lsb0, f)
+            }
+            sty_box(ref mutbl) => {
+                3u8.iter_bytes(lsb0, f) && mutbl.iter_bytes(lsb0, f)
+            }
+            sty_uniq(ref mutbl) => {
+                4u8.iter_bytes(lsb0, f) && mutbl.iter_bytes(lsb0, f)
+            }
         }
     }
 }
@@ -1227,7 +1142,7 @@ pub enum inlined_item {
 mod test {
     use core::option::{None, Option, Some};
     use core::uint;
-    use std;
+    use extra;
     use codemap::*;
     use super::*;
 
@@ -1316,7 +1231,7 @@ mod test {
             },
             span: bogus_span};
         // doesn't matter which encoder we use....
-        let _f = (@e as @std::serialize::Encodable<std::json::Encoder>);
+        let _f = (@e as @extra::serialize::Encodable<extra::json::Encoder>);
     }
 
 

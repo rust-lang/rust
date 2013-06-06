@@ -1,6 +1,8 @@
-use core::from_str::FromStr;
-use core::i32::range;
-use core::vec::MutableVector;
+use std::from_str::FromStr;
+use std::i32::range;
+use std::os;
+use std::vec::MutableVector;
+use std::vec;
 
 fn max(a: i32, b: i32) -> i32 {
     if a > b {
@@ -15,7 +17,9 @@ fn fannkuch_redux(n: i32) -> i32 {
     let mut perm = vec::from_elem(n as uint, 0i32);
     let mut perm1 = vec::from_fn(n as uint, |i| i as i32);
     let mut count = vec::from_elem(n as uint, 0i32);
-    let mut max_flips_count = 0i32, perm_count = 0i32, checksum = 0i32;
+    let mut max_flips_count = 0i32;
+    let mut perm_count = 0i32;
+    let mut checksum = 0i32;
 
     let mut r = n;
     loop {

@@ -13,11 +13,11 @@
 pub fn main() {
     match ('c',) {
         (x,) => {
-            assert!(x == 'c');
+            assert_eq!(x, 'c');
         }
     }
     // test the 1-tuple type too
     let x: (char,) = ('d',);
     let (y,) = x;
-    assert!(y == 'd');
+    assert_eq!(y, 'd');
 }

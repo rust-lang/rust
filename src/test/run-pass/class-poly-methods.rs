@@ -15,11 +15,11 @@ struct cat<U> {
     how_hungry : int,
 }
 
-pub impl<U> cat<U> {
-    fn speak<T>(&mut self, stuff: ~[T]) {
+impl<U> cat<U> {
+    pub fn speak<T>(&mut self, stuff: ~[T]) {
         self.meows += stuff.len();
     }
-    fn meow_count(&mut self) -> uint { self.meows }
+    pub fn meow_count(&mut self) -> uint { self.meows }
 }
 
 fn cat<U>(in_x : uint, in_y : int, in_info: ~[U]) -> cat<U> {
@@ -33,10 +33,10 @@ fn cat<U>(in_x : uint, in_y : int, in_info: ~[U]) -> cat<U> {
 pub fn main() {
   let mut nyan : cat<int> = cat::<int>(52u, 99, ~[9]);
   let mut kitty = cat(1000u, 2, ~[~"tabby"]);
-  assert!((nyan.how_hungry == 99));
-  assert!((kitty.how_hungry == 2));
+  assert_eq!(nyan.how_hungry, 99);
+  assert_eq!(kitty.how_hungry, 2);
   nyan.speak(~[1,2,3]);
-  assert!((nyan.meow_count() == 55u));
+  assert_eq!(nyan.meow_count(), 55u);
   kitty.speak(~[~"meow", ~"mew", ~"purr", ~"chirp"]);
-  assert!((kitty.meow_count() == 1004u));
+  assert_eq!(kitty.meow_count(), 1004u);
 }

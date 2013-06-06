@@ -8,8 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use core::hashmap::HashMap;
-use core::libc::c_uint;
+use core::libc::{c_uint, c_ushort};
+use core::option;
+use core::ptr;
+use core::str;
+use core::vec;
 
 pub type Opcode = u32;
 pub type Bool = c_uint;
@@ -213,15 +219,17 @@ pub enum ObjectFile_opaque {}
 pub type ObjectFileRef = *ObjectFile_opaque;
 pub enum SectionIterator_opaque {}
 pub type SectionIteratorRef = *SectionIterator_opaque;
+pub enum Pass_opaque {}
+pub type PassRef = *Pass_opaque;
 
 pub mod llvm {
     use super::{AtomicBinOp, AtomicOrdering, BasicBlockRef};
     use super::{Bool, BuilderRef, ContextRef, MemoryBufferRef, ModuleRef};
     use super::{ObjectFileRef, Opcode, PassManagerRef, PassManagerBuilderRef};
     use super::{SectionIteratorRef, TargetDataRef, TypeKind, TypeRef, UseRef};
-    use super::{ValueRef};
+    use super::{ValueRef,PassRef};
 
-    use core::libc::{c_char, c_int, c_longlong, c_uint, c_ulonglong};
+    use core::libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong};
 
     #[link_args = "-Lrustllvm -lrustllvm"]
     #[link_name = "rustllvm"]
@@ -451,6 +459,10 @@ pub mod llvm {
         /* all zeroes */
         #[fast_ffi]
         pub unsafe fn LLVMConstAllOnes(Ty: TypeRef) -> ValueRef;
+        #[fast_ffi]
+        pub unsafe fn LLVMConstICmp(Pred: c_ushort, V1: ValueRef, V2: ValueRef) -> ValueRef;
+        #[fast_ffi]
+        pub unsafe fn LLVMConstFCmp(Pred: c_ushort, V1: ValueRef, V2: ValueRef) -> ValueRef;
         /* only for int/vector */
         #[fast_ffi]
         pub unsafe fn LLVMGetUndef(Ty: TypeRef) -> ValueRef;
@@ -1567,13 +1579,15 @@ pub mod llvm {
         pub unsafe fn LLVMBuildAtomicLoad(B: BuilderRef,
                                           PointerVal: ValueRef,
                                           Name: *c_char,
-                                          Order: AtomicOrdering)
+                                          Order: AtomicOrdering,
+                                          Alignment: c_uint)
                                        -> ValueRef;
 
         pub unsafe fn LLVMBuildAtomicStore(B: BuilderRef,
                                            Val: ValueRef,
                                            Ptr: ValueRef,
-                                           Order: AtomicOrdering)
+                                           Order: AtomicOrdering,
+                                           Alignment: c_uint)
                                         -> ValueRef;
 
         pub unsafe fn LLVMBuildAtomicCmpXchg(B: BuilderRef,
@@ -1646,13 +1660,39 @@ pub mod llvm {
         /** Creates a pass manager. */
         #[fast_ffi]
         pub unsafe fn LLVMCreatePassManager() -> PassManagerRef;
+        /** Creates a function-by-function pass manager */
+        #[fast_ffi]
+        pub unsafe fn LLVMCreateFunctionPassManagerForModule(M:ModuleRef) -> PassManagerRef;
+
         /** Disposes a pass manager. */
         #[fast_ffi]
         pub unsafe fn LLVMDisposePassManager(PM: PassManagerRef);
+
         /** Runs a pass manager on a module. */
         #[fast_ffi]
         pub unsafe fn LLVMRunPassManager(PM: PassManagerRef,
                                          M: ModuleRef) -> Bool;
+
+        /** Runs the function passes on the provided function. */
+        #[fast_ffi]
+        pub unsafe fn LLVMRunFunctionPassManager(FPM:PassManagerRef, F:ValueRef) -> Bool;
+
+        /** Initializes all the function passes scheduled in the manager */
+        #[fast_ffi]
+        pub unsafe fn LLVMInitializeFunctionPassManager(FPM:PassManagerRef) -> Bool;
+
+        /** Finalizes all the function passes scheduled in the manager */
+        #[fast_ffi]
+        pub unsafe fn LLVMFinalizeFunctionPassManager(FPM:PassManagerRef) -> Bool;
+
+        #[fast_ffi]
+        pub unsafe fn LLVMInitializePasses();
+
+        #[fast_ffi]
+        pub unsafe fn LLVMAddPass(PM:PassManagerRef,P:PassRef);
+
+        #[fast_ffi]
+        pub unsafe fn LLVMCreatePass(PassName:*c_char) -> PassRef;
 
         /** Adds a verification pass. */
         #[fast_ffi]
@@ -1895,6 +1935,7 @@ pub mod llvm {
                                     Constraints: *c_char, SideEffects: Bool,
                                     AlignStack: Bool, Dialect: c_uint)
                                  -> ValueRef;
+
     }
 }
 
@@ -1914,6 +1955,16 @@ pub fn SetLinkage(Global: ValueRef, Link: Linkage) {
     }
 }
 
+pub fn ConstICmp(Pred: IntPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef {
+    unsafe {
+        llvm::LLVMConstICmp(Pred as c_ushort, V1, V2)
+    }
+}
+pub fn ConstFCmp(Pred: RealPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef {
+    unsafe {
+        llvm::LLVMConstFCmp(Pred as c_ushort, V1, V2)
+    }
+}
 /* Memory-managed object interface to type handles. */
 
 pub struct TypeNames {
@@ -1962,8 +2013,8 @@ pub fn type_to_str_inner(names: @TypeNames, outer0: &[TypeRef], ty: TypeRef)
             let mut s = ~"";
             let mut first: bool = true;
             for tys.each |t| {
-                if first { first = false; } else { s += ~", "; }
-                s += type_to_str_inner(names, outer, *t).to_owned();
+                if first { first = false; } else { s += ", "; }
+                s += type_to_str_inner(names, outer, *t);
             }
             // [Note at-str] FIXME #2543: Could rewrite this without the copy,
             // but need better @str support.

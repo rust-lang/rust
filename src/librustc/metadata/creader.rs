@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Validates all used crates and extern libraries and loads their metadata
+
+use core::prelude::*;
 
 use metadata::cstore;
 use metadata::decoder;
@@ -17,9 +18,11 @@ use metadata::filesearch::FileSearch;
 use metadata::loader;
 
 use core::hashmap::HashMap;
+use core::vec;
 use syntax::attr;
 use syntax::codemap::{span, dummy_sp};
 use syntax::diagnostic::span_handler;
+use syntax::parse::token;
 use syntax::parse::token::ident_interner;
 use syntax::visit;
 use syntax::ast;
@@ -99,7 +102,7 @@ fn warn_if_multiple_versions(e: @mut Env,
             diag.handler().warn(
                 fmt!("using multiple versions of crate `%s`", *name));
             for matches.each |match_| {
-                diag.span_note(match_.span, ~"used here");
+                diag.span_note(match_.span, "used here");
                 let attrs = ~[
                     attr::mk_attr(attr::mk_list_item(
                         @~"link", /*bad*/copy *match_.metas))
@@ -139,10 +142,10 @@ fn visit_crate(e: @mut Env, c: &ast::crate) {
 
 fn visit_view_item(e: @mut Env, i: @ast::view_item) {
     match i.node {
-      ast::view_item_extern_mod(ident, /*bad*/copy meta_items, id) => {
+      ast::view_item_extern_mod(ident, ref meta_items, id) => {
         debug!("resolving extern mod stmt. ident: %?, meta: %?",
-               ident, meta_items);
-        let cnum = resolve_crate(e, ident, meta_items, @~"", i.span);
+               ident, *meta_items);
+        let cnum = resolve_crate(e, ident, copy *meta_items, @~"", i.span);
         cstore::add_extern_mod_stmt_cnum(e.cstore, id, cnum);
       }
       _ => ()
@@ -164,25 +167,25 @@ fn visit_item(e: @mut Env, i: @ast::item) {
             ast::named => {
                 let foreign_name =
                     match attr::first_attr_value_str_by_name(i.attrs,
-                                                            ~"link_name") {
+                                                             "link_name") {
                         Some(nn) => {
                             if *nn == ~"" {
                                 e.diag.span_fatal(
                                     i.span,
-                                    ~"empty #[link_name] not allowed; use " +
-                                    ~"#[nolink].");
+                                    "empty #[link_name] not allowed; use \
+                                     #[nolink].");
                             }
                             nn
                         }
-                        None => e.intr.get(i.ident)
+                        None => token::ident_to_str(&i.ident)
                     };
-                if attr::find_attrs_by_name(i.attrs, ~"nolink").is_empty() {
+                if attr::find_attrs_by_name(i.attrs, "nolink").is_empty() {
                     already_added =
                         !cstore::add_used_library(cstore, foreign_name);
                 }
                 if !link_args.is_empty() && already_added {
                     e.diag.span_fatal(i.span, ~"library '" + *foreign_name +
-                               ~"' already added: can't specify link_args.");
+                               "' already added: can't specify link_args.");
                 }
             }
             ast::anonymous => { /* do nothing */ }
@@ -233,7 +236,7 @@ fn resolve_crate(e: @mut Env,
                  hash: @~str,
                  span: span)
               -> ast::crate_num {
-    let metas = metas_with_ident(@/*bad*/copy *e.intr.get(ident), metas);
+    let metas = metas_with_ident(token::ident_to_str(&ident), metas);
 
     match existing_match(e, metas, hash) {
       None => {
@@ -272,9 +275,9 @@ fn resolve_crate(e: @mut Env,
 
         let cname =
             match attr::last_meta_item_value_str_by_name(load_ctxt.metas,
-                                                         ~"name") {
+                                                         "name") {
                 Some(v) => v,
-                None => e.intr.get(ident),
+                None => token::ident_to_str(&ident),
             };
         let cmeta = @cstore::crate_metadata {
             name: cname,
@@ -303,10 +306,11 @@ fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
     for decoder::get_crate_deps(e.intr, cdata).each |dep| {
         let extrn_cnum = dep.cnum;
         let cname = dep.name;
+        let cname_str = token::ident_to_str(&dep.name);
         let cmetas = metas_with(dep.vers, @~"vers", ~[]);
         debug!("resolving dep crate %s ver: %s hash: %s",
-               *e.intr.get(dep.name), *dep.vers, *dep.hash);
-        match existing_match(e, metas_with_ident(e.intr.get(cname),
+               *cname_str, *dep.vers, *dep.hash);
+        match existing_match(e, metas_with_ident(cname_str,
                                                  copy cmetas),
                              dep.hash) {
           Some(local_cnum) => {

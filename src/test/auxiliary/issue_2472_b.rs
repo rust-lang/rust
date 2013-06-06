@@ -11,8 +11,8 @@
 
 pub struct S(());
 
-pub impl S {
-    fn foo(&self) { }
+impl S {
+    pub fn foo(&self) { }
 }
 
 pub trait T {

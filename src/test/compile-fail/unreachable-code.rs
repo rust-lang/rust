@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:unreachable statement
+#[deny(unreachable_code)];
+#[allow(unused_variable)];
+
 fn main() {
   loop{}
-             // red herring to make sure compilation fails
-  error!(42 == 'c');
+
+  let a = 3; //~ ERROR: unreachable statement
 }

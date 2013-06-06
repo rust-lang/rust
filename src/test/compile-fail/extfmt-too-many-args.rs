@@ -10,6 +10,6 @@
 
 // error-pattern:too many arguments
 
-extern mod std;
+extern mod extra;
 
 fn main() { let s = fmt!("%s", "test", "test"); }

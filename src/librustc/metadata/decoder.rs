@@ -10,6 +10,8 @@
 
 // Decoding metadata from a single crate's metadata
 
+use core::prelude::*;
+
 use metadata::cstore::crate_metadata;
 use metadata::common::*;
 use metadata::csearch::{ProvidedTraitMethodInfo, StaticMethodInfo};
@@ -28,9 +30,9 @@ use core::io;
 use core::option;
 use core::str;
 use core::vec;
-use std::ebml::reader;
-use std::ebml;
-use std::serialize::Decodable;
+use extra::ebml::reader;
+use extra::ebml;
+use extra::serialize::Decodable;
 use syntax::ast_map;
 use syntax::attr;
 use syntax::diagnostic::span_handler;
@@ -38,6 +40,7 @@ use syntax::parse::token::{StringRef, ident_interner, special_idents};
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 use syntax::codemap;
+use syntax::parse::token;
 
 type cmd = @crate_metadata;
 
@@ -186,7 +189,7 @@ fn translated_parent_item_opt(cnum: ast::crate_num, d: ebml::Doc) ->
 
 fn item_reqd_and_translated_parent_item(cnum: ast::crate_num,
                                         d: ebml::Doc) -> ast::def_id {
-    let trait_did = item_parent_item(d).expect(~"item without parent");
+    let trait_did = item_parent_item(d).expect("item without parent");
     ast::def_id { crate: cnum, node: trait_did.node }
 }
 
@@ -196,15 +199,6 @@ fn item_def_id(d: ebml::Doc, cdata: cmd) -> ast::def_id {
                                                     |d| parse_def_id(d)));
 }
 
-#[cfg(stage0)]
-fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) {
-    for reader::tagged_docs(d, tag_items_data_item_reexport) |reexport_doc| {
-        if !f(reexport_doc) {
-            return;
-        }
-    }
-}
-#[cfg(not(stage0))]
 fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) -> bool {
     for reader::tagged_docs(d, tag_items_data_item_reexport) |reexport_doc| {
         if !f(reexport_doc) {
@@ -304,10 +298,10 @@ fn item_path(intr: @ident_interner, item_doc: ebml::Doc) -> ast_map::path {
     for reader::docs(path_doc) |tag, elt_doc| {
         if tag == tag_path_elt_mod {
             let str = reader::doc_as_str(elt_doc);
-            result.push(ast_map::path_mod(intr.intern(str)));
+            result.push(ast_map::path_mod(token::str_to_ident(str)));
         } else if tag == tag_path_elt_name {
             let str = reader::doc_as_str(elt_doc);
-            result.push(ast_map::path_name(intr.intern(str)));
+            result.push(ast_map::path_name(token::str_to_ident(str)));
         } else {
             // ignore tag_path_len element
         }
@@ -321,15 +315,14 @@ fn item_name(intr: @ident_interner, item: ebml::Doc) -> ast::ident {
     do reader::with_doc_data(name) |data| {
         let string = str::from_bytes_slice(data);
         match intr.find_equiv(&StringRef(string)) {
-            None => intr.intern(string),
-            Some(val) => val,
+            None => token::str_to_ident(string),
+            Some(val) => ast::new_ident(val),
         }
     }
 }
 
 fn item_to_def_like(item: ebml::Doc, did: ast::def_id, cnum: ast::crate_num)
-    -> def_like
-{
+    -> def_like {
     let fam = item_family(item);
     match fam {
         Const     => dl_def(ast::def_const(did)),
@@ -465,24 +458,6 @@ fn def_like_to_def(def_like: def_like) -> ast::def {
 }
 
 /// Iterates over the language items in the given crate.
-#[cfg(stage0)]
-pub fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) {
-    let root = reader::Doc(cdata.data);
-    let lang_items = reader::get_doc(root, tag_lang_items);
-    for reader::tagged_docs(lang_items, tag_lang_items_item) |item_doc| {
-        let id_doc = reader::get_doc(item_doc, tag_lang_items_item_id);
-        let id = reader::doc_as_u32(id_doc) as uint;
-        let node_id_doc = reader::get_doc(item_doc,
-                                          tag_lang_items_item_node_id);
-        let node_id = reader::doc_as_u32(node_id_doc) as ast::node_id;
-
-        if !f(node_id, id) {
-            break;
-        }
-    }
-}
-/// Iterates over the language items in the given crate.
-#[cfg(not(stage0))]
 pub fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) -> bool {
     let root = reader::Doc(cdata.data);
     let lang_items = reader::get_doc(root, tag_lang_items);
@@ -501,9 +476,11 @@ pub fn each_lang_item(cdata: cmd, f: &fn(ast::node_id, uint) -> bool) -> bool {
 }
 
 /// Iterates over all the paths in the given crate.
-pub fn _each_path(intr: @ident_interner, cdata: cmd,
+pub fn _each_path(intr: @ident_interner,
+                  cdata: cmd,
                   get_crate_data: GetCrateDataCb,
-                  f: &fn(&str, def_like) -> bool) -> bool {
+                  f: &fn(&str, def_like, ast::visibility) -> bool)
+                  -> bool {
     let root = reader::Doc(cdata.data);
     let items = reader::get_doc(root, tag_items);
     let items_data = reader::get_doc(items, tag_items_data);
@@ -524,8 +501,10 @@ pub fn _each_path(intr: @ident_interner, cdata: cmd,
                 debug!("(each_path) yielding explicit item: %s", path);
                 let def_like = item_to_def_like(item_doc, def_id, cdata.cnum);
 
+                let vis = item_visibility(item_doc);
+
                 // Hand the information off to the iteratee.
-                if !f(path, def_like) {
+                if !f(path, def_like, vis) {
                     broken = true;      // FIXME #4572: This is awful.
                 }
             }
@@ -550,7 +529,7 @@ pub fn _each_path(intr: @ident_interner, cdata: cmd,
                     if path_is_empty {
                         reexport_path = reexport_name;
                     } else {
-                        reexport_path = path + ~"::" + reexport_name;
+                        reexport_path = path + "::" + reexport_name;
                     }
 
                     // This reexport may be in yet another crate
@@ -575,7 +554,7 @@ pub fn _each_path(intr: @ident_interner, cdata: cmd,
                             debug!("(each_path) yielding reexported \
                                     item: %s", reexport_path);
 
-                            if (!f(reexport_path, def_like)) {
+                            if (!f(reexport_path, def_like, ast::public)) {
                                 broken = true;  // FIXME #4572: This is awful.
                             }
                         }
@@ -588,16 +567,11 @@ pub fn _each_path(intr: @ident_interner, cdata: cmd,
     return broken;
 }
 
-#[cfg(stage0)]
-pub fn each_path(intr: @ident_interner, cdata: cmd,
+pub fn each_path(intr: @ident_interner,
+                 cdata: cmd,
                  get_crate_data: GetCrateDataCb,
-                 f: &fn(&str, def_like) -> bool) {
-    _each_path(intr, cdata, get_crate_data, f);
-}
-#[cfg(not(stage0))]
-pub fn each_path(intr: @ident_interner, cdata: cmd,
-                 get_crate_data: GetCrateDataCb,
-                 f: &fn(&str, def_like) -> bool) -> bool {
+                 f: &fn(&str, def_like, ast::visibility) -> bool)
+                 -> bool {
     _each_path(intr, cdata, get_crate_data, f)
 }
 
@@ -819,8 +793,8 @@ pub fn get_provided_trait_methods(intr: @ident_interner, cdata: cmd,
         let fty = match ty::get(ty).sty {
             ty::ty_bare_fn(ref f) => copy *f,
             _ => {
-                tcx.diag.handler().bug(~"get_provided_trait_methods(): id \
-                                         has non-function type");
+                tcx.diag.handler().bug("get_provided_trait_methods(): id \
+                                        has non-function type");
             }
         };
 
@@ -870,7 +844,7 @@ pub fn get_type_name_if_impl(intr: @ident_interner,
     }
 
     for reader::tagged_docs(item, tag_item_impl_type_basename) |doc| {
-        return Some(intr.intern(str::from_bytes(reader::doc_data(doc))));
+        return Some(token::str_to_ident(str::from_bytes(reader::doc_data(doc))));
     }
 
     return None;
@@ -1064,7 +1038,7 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
             let meta_items = get_meta_items(attr_doc);
             // Currently it's only possible to have a single meta item on
             // an attribute
-            assert!(meta_items.len() == 1u);
+            assert_eq!(meta_items.len(), 1u);
             let meta_item = meta_items[0];
             attrs.push(
                 codemap::spanned {
@@ -1098,7 +1072,7 @@ fn list_crate_attributes(intr: @ident_interner, md: ebml::Doc, hash: &str,
         out.write_str(fmt!("%s\n", pprust::attribute_to_str(*attr, intr)));
     }
 
-    out.write_str(~"\n\n");
+    out.write_str("\n\n");
 }
 
 pub fn get_crate_attributes(data: @~[u8]) -> ~[ast::attribute] {
@@ -1122,7 +1096,7 @@ pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
     }
     for reader::tagged_docs(depsdoc, tag_crate_dep) |depdoc| {
         deps.push(crate_dep {cnum: crate_num,
-                  name: intr.intern(docstr(depdoc, tag_crate_dep_name)),
+                  name: token::str_to_ident(docstr(depdoc, tag_crate_dep_name)),
                   vers: @docstr(depdoc, tag_crate_dep_vers),
                   hash: @docstr(depdoc, tag_crate_dep_hash)});
         crate_num += 1;
@@ -1131,15 +1105,15 @@ pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
 }
 
 fn list_crate_deps(intr: @ident_interner, data: @~[u8], out: @io::Writer) {
-    out.write_str(~"=External Dependencies=\n");
+    out.write_str("=External Dependencies=\n");
 
     for get_crate_deps(intr, data).each |dep| {
         out.write_str(
             fmt!("%d %s-%s-%s\n",
-                 dep.cnum, *intr.get(dep.name), *dep.hash, *dep.vers));
+                 dep.cnum, *token::ident_to_str(&dep.name), *dep.hash, *dep.vers));
     }
 
-    out.write_str(~"\n");
+    out.write_str("\n");
 }
 
 pub fn get_crate_hash(data: @~[u8]) -> @~str {
@@ -1152,7 +1126,7 @@ pub fn get_crate_vers(data: @~[u8]) -> @~str {
     let attrs = decoder::get_crate_attributes(data);
     let linkage_attrs = attr::find_linkage_metas(attrs);
 
-    match attr::last_meta_item_value_str_by_name(linkage_attrs, ~"vers") {
+    match attr::last_meta_item_value_str_by_name(linkage_attrs, "vers") {
         Some(ver) => ver,
         None => @~"0.0"
     }
@@ -1161,7 +1135,7 @@ pub fn get_crate_vers(data: @~[u8]) -> @~str {
 fn iter_crate_items(intr: @ident_interner, cdata: cmd,
                     get_crate_data: GetCrateDataCb,
                     proc: &fn(path: &str, ast::def_id)) {
-    for each_path(intr, cdata, get_crate_data) |path_string, def_like| {
+    for each_path(intr, cdata, get_crate_data) |path_string, def_like, _| {
         match def_like {
             dl_impl(*) | dl_field => {}
             dl_def(def) => {

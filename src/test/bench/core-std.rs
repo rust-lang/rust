@@ -8,13 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Microbenchmarks for various functions in core and std
+// Microbenchmarks for various functions in std and extra
 
-extern mod std;
+extern mod extra;
 
-use std::time::precise_time_s;
-use core::rand::RngUtil;
-use core::util;
+use extra::time::precise_time_s;
+use std::int;
+use std::io;
+use std::os;
+use std::rand::RngUtil;
+use std::rand;
+use std::result;
+use std::uint;
+use std::util;
+use std::vec;
 
 macro_rules! bench (
     ($id:ident) => (maybe_run_test(argv, stringify!($id).to_owned(), $id))

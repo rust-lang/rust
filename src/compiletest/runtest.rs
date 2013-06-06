@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::prelude::*;
+
 use common::mode_run_pass;
 use common::mode_run_fail;
 use common::mode_compile_fail;
@@ -20,10 +22,16 @@ use procsrv;
 use util;
 use util::logv;
 
+use core::io;
+use core::os;
+use core::str;
+use core::uint;
+use core::vec;
+
 pub fn run(config: config, testfile: ~str) {
     if config.verbose {
         // We're going to be dumping a lot of info. Start on a new line.
-        io::stdout().write_str(~"\n\n");
+        io::stdout().write_str("\n\n");
     }
     let testfile = Path(testfile);
     debug!("running %s", testfile.to_str());
@@ -229,7 +237,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     // do not optimize debuginfo tests
     let mut config = match config.rustcflags {
         Some(ref flags) => config {
-            rustcflags: Some(str::replace(*flags, ~"-O", ~"")),
+            rustcflags: Some(str::replace(*flags, "-O", "")),
             .. copy *config
         },
         None => copy *config
@@ -247,19 +255,19 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     // write debugger script
     let script_str = str::append(cmds, "\nquit\n");
     debug!("script_str = %s", script_str);
-    dump_output_file(config, testfile, script_str, ~"debugger.script");
+    dump_output_file(config, testfile, script_str, "debugger.script");
 
     // run debugger script with gdb
     #[cfg(windows)]
     fn debugger() -> ~str { ~"gdb.exe" }
     #[cfg(unix)]
     fn debugger() -> ~str { ~"gdb" }
-    let debugger_script = make_out_name(config, testfile, ~"debugger.script");
+    let debugger_script = make_out_name(config, testfile, "debugger.script");
     let debugger_opts = ~[~"-quiet", ~"-batch", ~"-nx",
                           ~"-command=" + debugger_script.to_str(),
                           make_exe_name(config, testfile).to_str()];
     let ProcArgs = ProcArgs {prog: debugger(), args: debugger_opts};
-    ProcRes = compose_and_run(config, testfile, ProcArgs, ~[], ~"", None);
+    ProcRes = compose_and_run(config, testfile, ProcArgs, ~[], "", None);
     if ProcRes.status != 0 {
         fatal(~"gdb failed to execute");
     }
@@ -366,11 +374,11 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         }
 
         // ignore this msg which gets printed at the end
-        if str::contains(line, ~"aborting due to") {
+        if str::contains(line, "aborting due to") {
             was_expected = true;
         }
 
-        if !was_expected && is_compiler_error_or_warning(str::to_owned(line)) {
+        if !was_expected && is_compiler_error_or_warning(line) {
             fatal_ProcRes(fmt!("unexpected compiler error or warning: '%s'",
                                line),
                           ProcRes);
@@ -588,8 +596,7 @@ fn make_lib_name(config: &config, auxfile: &Path, testfile: &Path) -> Path {
 }
 
 fn make_exe_name(config: &config, testfile: &Path) -> Path {
-    Path(output_base_name(config, testfile).to_str() +
-            str::to_owned(os::EXE_SUFFIX))
+    Path(output_base_name(config, testfile).to_str() + os::EXE_SUFFIX)
 }
 
 fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
@@ -598,7 +605,7 @@ fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
     // then split apart its command
     let toolargs = split_maybe_args(&config.runtool);
 
-    let mut args = toolargs + ~[make_exe_name(config, testfile).to_str()];
+    let mut args = toolargs + [make_exe_name(config, testfile).to_str()];
     let prog = args.shift();
     return ProcArgs {prog: prog, args: args};
 }
@@ -641,13 +648,13 @@ fn program_output(config: &config, testfile: &Path, lib_path: &str, prog: ~str,
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 fn make_cmdline(_libpath: &str, prog: &str, args: &[~str]) -> ~str {
-    fmt!("%s %s", prog, str::connect(args, ~" "))
+    fmt!("%s %s", prog, str::connect(args, " "))
 }
 
 #[cfg(target_os = "win32")]
 fn make_cmdline(libpath: &str, prog: &str, args: &[~str]) -> ~str {
     fmt!("%s %s %s", lib_path_cmd_prefix(libpath), prog,
-         str::connect(args, ~" "))
+         str::connect(args, " "))
 }
 
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
@@ -666,7 +673,7 @@ fn dump_output_file(config: &config, testfile: &Path,
                     out: &str, extension: &str) {
     let outfile = make_out_name(config, testfile, extension);
     let writer =
-        io::file_writer(&outfile, ~[io::Create, io::Truncate]).get();
+        io::file_writer(&outfile, [io::Create, io::Truncate]).get();
     writer.write_str(out);
 }
 
@@ -690,8 +697,8 @@ fn output_base_name(config: &config, testfile: &Path) -> Path {
 
 fn maybe_dump_to_stdout(config: &config, out: &str, err: &str) {
     if config.verbose {
-        let sep1 = fmt!("------%s------------------------------", ~"stdout");
-        let sep2 = fmt!("------%s------------------------------", ~"stderr");
+        let sep1 = fmt!("------%s------------------------------", "stdout");
+        let sep2 = fmt!("------%s------------------------------", "stderr");
         let sep3 = ~"------------------------------------------";
         io::stdout().write_line(sep1);
         io::stdout().write_line(out);
@@ -746,53 +753,62 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
             copy_result.out, copy_result.err));
     }
 
-    // execute program
     logv(config, fmt!("executing (%s) %s", config.target, cmdline));
 
-    // adb shell dose not forward stdout and stderr of internal result
-    // to stdout and stderr separately but to stdout only
-    let mut newargs_out = ~[];
-    let mut newargs_err = ~[];
-    newargs_out.push(~"shell");
-    newargs_err.push(~"shell");
+    let mut runargs = ~[];
 
-    let mut newcmd_out = ~"";
-    let mut newcmd_err = ~"";
-
-    newcmd_out.push_str(fmt!("LD_LIBRARY_PATH=%s %s/%s",
-        config.adb_test_dir, config.adb_test_dir, prog_short));
-
-    newcmd_err.push_str(fmt!("LD_LIBRARY_PATH=%s %s/%s",
-        config.adb_test_dir, config.adb_test_dir, prog_short));
+    // run test via adb_run_wrapper
+    runargs.push(~"shell");
+    runargs.push(fmt!("%s/adb_run_wrapper.sh", config.adb_test_dir));
+    runargs.push(fmt!("%s", config.adb_test_dir));
+    runargs.push(fmt!("%s", prog_short));
 
     for args.args.each |tv| {
-        newcmd_out.push_str(" ");
-        newcmd_err.push_str(" ");
-        newcmd_out.push_str(tv.to_owned());
-        newcmd_err.push_str(tv.to_owned());
+        runargs.push(tv.to_owned());
     }
 
-    newcmd_out.push_str(" 2>/dev/null");
-    newcmd_err.push_str(" 1>/dev/null");
+    procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""));
 
-    newargs_out.push(newcmd_out);
-    newargs_err.push(newcmd_err);
+    // get exitcode of result
+    runargs = ~[];
+    runargs.push(~"shell");
+    runargs.push(~"cat");
+    runargs.push(fmt!("%s/%s.exitcode", config.adb_test_dir, prog_short));
 
-    let procsrv::Result{ out: out_out, err: _out_err, status: out_status } =
-            procsrv::run(~"", config.adb_path, newargs_out, ~[(~"",~"")],
-                         Some(~""));
-    let procsrv::Result{ out: err_out, err: _err_err, status: _err_status } =
-            procsrv::run(~"", config.adb_path, newargs_err, ~[(~"",~"")],
-                         Some(~""));
+    let procsrv::Result{ out: exitcode_out, err: _, status: _ } =
+        procsrv::run("", config.adb_path, runargs, ~[(~"",~"")],
+                     Some(~""));
 
-    dump_output(config, testfile, out_out, err_out);
-
-    match err_out {
-        ~"" => ProcRes {status: out_status, stdout: out_out,
-            stderr: err_out, cmdline: cmdline },
-        _   => ProcRes {status: 101, stdout: out_out,
-            stderr: err_out, cmdline: cmdline }
+    let mut exitcode : int = 0;
+    for str::each_char(exitcode_out) |c| {
+        if !c.is_digit() { break; }
+        exitcode = exitcode * 10 + match c {
+            '0' .. '9' => c as int - ('0' as int),
+            _ => 101,
+        }
     }
+
+    // get stdout of result
+    runargs = ~[];
+    runargs.push(~"shell");
+    runargs.push(~"cat");
+    runargs.push(fmt!("%s/%s.stdout", config.adb_test_dir, prog_short));
+
+    let procsrv::Result{ out: stdout_out, err: _, status: _ } =
+        procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""));
+
+    // get stderr of result
+    runargs = ~[];
+    runargs.push(~"shell");
+    runargs.push(~"cat");
+    runargs.push(fmt!("%s/%s.stderr", config.adb_test_dir, prog_short));
+
+    let procsrv::Result{ out: stderr_out, err: _, status: _ } =
+        procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""));
+
+    dump_output(config, testfile, stdout_out, stderr_out);
+
+    ProcRes {status: exitcode, stdout: stdout_out, stderr: stderr_out, cmdline: cmdline }
 }
 
 fn _dummy_exec_compiled_test(config: &config, props: &TestProps,
@@ -816,8 +832,8 @@ fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
 
         if (file.filetype() == Some(~".so")) {
 
-            let copy_result = procsrv::run(~"", config.adb_path,
-                ~[~"push", file.to_str(), copy config.adb_test_dir],
+            let copy_result = procsrv::run("", config.adb_path,
+                [~"push", file.to_str(), copy config.adb_test_dir],
                 ~[(~"",~"")], Some(~""));
 
             if config.verbose {
