@@ -29,7 +29,7 @@ use syntax::ast_util::{Privacy, Public, Private};
 use syntax::ast_util::{variant_visibility_to_privacy, visibility_to_privacy};
 use syntax::attr;
 use syntax::parse::token;
-use syntax::parse::token::ident_interner;
+use syntax::parse::token::{ident_interner, interner_get};
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::path_to_str;
 use syntax::codemap::{Span, dummy_sp, BytePos};
@@ -311,7 +311,7 @@ pub enum DuplicateCheckingMode {
 
 /// One local scope.
 pub struct Rib {
-    bindings: @mut HashMap<Ident, DefLike>,
+    bindings: @mut HashMap<Name, DefLike>,
     self_binding: @mut Option<DefLike>,
     kind: RibKind,
 }
@@ -3508,7 +3508,7 @@ impl Resolver {
         let mut i = ribs.len();
         while i != 0 {
             i -= 1;
-            match ribs[i].bindings.find(&name) {
+            match ribs[i].bindings.find(&name.name) {
                 Some(&def_like) => {
                     return self.upvarify(ribs, i, def_like, span,
                                          allow_capturing_self);
@@ -3591,7 +3591,7 @@ impl Resolver {
                 // Create a new rib for the self type.
                 let self_type_rib = @Rib::new(NormalRibKind);
                 self.type_ribs.push(self_type_rib);
-                self_type_rib.bindings.insert(self.type_self_ident,
+                self_type_rib.bindings.insert(self.type_self_ident.name,
                                               DlDef(DefSelfTy(item.id)));
 
                 // Create a new rib for the trait-wide type parameters.
@@ -3723,7 +3723,7 @@ impl Resolver {
                 self.type_ribs.push(function_type_rib);
 
                 for (index, type_parameter) in generics.ty_params.iter().enumerate() {
-                    let name = type_parameter.ident;
+                    let ident = type_parameter.ident;
                     debug!("with_type_parameter_rib: %d %d", node_id,
                            type_parameter.id);
                     let def_like = DlDef(DefTyParam
@@ -3733,7 +3733,7 @@ impl Resolver {
                     // the item that bound it
                     self.record_def(type_parameter.id,
                                     DefTyParamBinder(node_id));
-                    function_type_rib.bindings.insert(name, def_like);
+                    function_type_rib.bindings.insert(ident.name, def_like);
                 }
             }
 
@@ -4370,7 +4370,7 @@ impl Resolver {
                                     let this = &mut *self;
                                     let last_rib = this.value_ribs[
                                             this.value_ribs.len() - 1];
-                                    last_rib.bindings.insert(ident,
+                                    last_rib.bindings.insert(ident.name,
                                                              DlDef(def));
                                     bindings_list.insert(ident, pat_id);
                                 }
@@ -4391,7 +4391,7 @@ impl Resolver {
                                     let this = &mut *self;
                                     let last_rib = this.value_ribs[
                                             this.value_ribs.len() - 1];
-                                    last_rib.bindings.insert(ident,
+                                    last_rib.bindings.insert(ident.name,
                                                              DlDef(def));
                                 }
                             }
@@ -4957,7 +4957,7 @@ impl Resolver {
         while j != 0 {
             j -= 1;
             for (&k, _) in this.value_ribs[j].bindings.iter() {
-                maybes.push(this.session.str_of(k));
+                maybes.push(interner_get(k));
                 values.push(uint::max_value);
             }
         }
@@ -5146,7 +5146,7 @@ impl Resolver {
                         let this = &mut *self;
                         let def_like = DlDef(DefLabel(expr.id));
                         let rib = this.label_ribs[this.label_ribs.len() - 1];
-                        rib.bindings.insert(label, def_like);
+                        rib.bindings.insert(label.name, def_like);
                     }
 
                     visit::walk_expr(visitor, expr, ());
@@ -5554,3 +5554,4 @@ pub fn resolve_crate(session: Session,
         trait_map: resolver.trait_map.clone(),
     }
 }
+
