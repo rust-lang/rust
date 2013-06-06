@@ -19,7 +19,7 @@ use option::*;
 use cast;
 use util;
 use ops::Drop;
-use kinds::Owned;
+use kinds::Send;
 use rt::sched::{Scheduler, Coroutine};
 use rt::local::Local;
 use unstable::intrinsics::{atomic_xchg, atomic_load};
@@ -68,7 +68,7 @@ pub struct PortOneHack<T> {
     suppress_finalize: bool
 }
 
-pub fn oneshot<T: Owned>() -> (PortOne<T>, ChanOne<T>) {
+pub fn oneshot<T: Send>() -> (PortOne<T>, ChanOne<T>) {
     let packet: ~Packet<T> = ~Packet {
         state: STATE_BOTH,
         payload: None
@@ -307,20 +307,20 @@ pub struct Port<T> {
     next: Cell<PortOne<StreamPayload<T>>>
 }
 
-pub fn stream<T: Owned>() -> (Port<T>, Chan<T>) {
+pub fn stream<T: Send>() -> (Port<T>, Chan<T>) {
     let (pone, cone) = oneshot();
     let port = Port { next: Cell::new(pone) };
     let chan = Chan { next: Cell::new(cone) };
     return (port, chan);
 }
 
-impl<T: Owned> GenericChan<T> for Chan<T> {
+impl<T: Send> GenericChan<T> for Chan<T> {
     fn send(&self, val: T) {
         self.try_send(val);
     }
 }
 
-impl<T: Owned> GenericSmartChan<T> for Chan<T> {
+impl<T: Send> GenericSmartChan<T> for Chan<T> {
     fn try_send(&self, val: T) -> bool {
         let (next_pone, next_cone) = oneshot();
         let cone = self.next.take();

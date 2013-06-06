@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn send<T:Owned>(ch: _chan<T>, data: T) {
+fn send<T:Send>(ch: _chan<T>, data: T) {
     debug!(ch);
     debug!(data);
     fail!();

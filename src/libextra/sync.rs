@@ -86,7 +86,7 @@ struct SemInner<Q> {
 struct Sem<Q>(Exclusive<SemInner<Q>>);
 
 #[doc(hidden)]
-fn new_sem<Q:Owned>(count: int, q: Q) -> Sem<Q> {
+fn new_sem<Q:Send>(count: int, q: Q) -> Sem<Q> {
     Sem(exclusive(SemInner {
         count: count, waiters: new_waitqueue(), blocked: q }))
 }
@@ -101,7 +101,7 @@ fn new_sem_and_signal(count: int, num_condvars: uint)
 }
 
 #[doc(hidden)]
-impl<Q:Owned> Sem<Q> {
+impl<Q:Send> Sem<Q> {
     pub fn acquire(&self) {
         unsafe {
             let mut waiter_nobe = None;
@@ -175,7 +175,7 @@ struct SemReleaseGeneric<'self, Q> { sem: &'self Sem<Q> }
 
 #[doc(hidden)]
 #[unsafe_destructor]
-impl<'self, Q:Owned> Drop for SemReleaseGeneric<'self, Q> {
+impl<'self, Q:Send> Drop for SemReleaseGeneric<'self, Q> {
     fn drop(&self) {
         self.sem.release();
     }

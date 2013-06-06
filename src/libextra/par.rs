@@ -33,7 +33,7 @@ static min_granularity : uint = 1024u;
  * This is used to build most of the other parallel vector functions,
  * like map or alli.
  */
-fn map_slices<A:Copy + Owned,B:Copy + Owned>(
+fn map_slices<A:Copy + Send,B:Copy + Send>(
     xs: &[A],
     f: &fn() -> ~fn(uint, v: &[A]) -> B)
     -> ~[B] {
@@ -88,7 +88,7 @@ fn map_slices<A:Copy + Owned,B:Copy + Owned>(
 }
 
 /// A parallel version of map.
-pub fn map<A:Copy + Owned,B:Copy + Owned>(
+pub fn map<A:Copy + Send,B:Copy + Send>(
     xs: &[A], fn_factory: &fn() -> ~fn(&A) -> B) -> ~[B] {
     vec::concat(map_slices(xs, || {
         let f = fn_factory();
@@ -99,7 +99,7 @@ pub fn map<A:Copy + Owned,B:Copy + Owned>(
 }
 
 /// A parallel version of mapi.
-pub fn mapi<A:Copy + Owned,B:Copy + Owned>(
+pub fn mapi<A:Copy + Send,B:Copy + Send>(
         xs: &[A],
         fn_factory: &fn() -> ~fn(uint, &A) -> B) -> ~[B] {
     let slices = map_slices(xs, || {
@@ -118,7 +118,7 @@ pub fn mapi<A:Copy + Owned,B:Copy + Owned>(
 }
 
 /// Returns true if the function holds for all elements in the vector.
-pub fn alli<A:Copy + Owned>(
+pub fn alli<A:Copy + Send>(
     xs: &[A],
     fn_factory: &fn() -> ~fn(uint, &A) -> bool) -> bool
 {
@@ -133,7 +133,7 @@ pub fn alli<A:Copy + Owned>(
 }
 
 /// Returns true if the function holds for any elements in the vector.
-pub fn any<A:Copy + Owned>(
+pub fn any<A:Copy + Send>(
     xs: &[A],
     fn_factory: &fn() -> ~fn(&A) -> bool) -> bool {
     let mapped = map_slices(xs, || {

@@ -22,7 +22,7 @@ use opt_vec;
 
 /// The types of pointers
 pub enum PtrTy<'self> {
-    Owned, // ~
+    Send, // ~
     Managed(ast::mutability), // @[mut]
     Borrowed(Option<&'self str>, ast::mutability), // &['lifetime] [mut]
 }
@@ -128,7 +128,7 @@ impl<'self> Ty<'self> {
             Ptr(ref ty, ref ptr) => {
                 let raw_ty = ty.to_ty(cx, span, self_ty, self_generics);
                 match *ptr {
-                    Owned => {
+                    Send => {
                         cx.ty_uniq(span, raw_ty)
                     }
                     Managed(mutbl) => {
@@ -248,7 +248,7 @@ pub fn get_explicit_self(cx: @ExtCtxt, span: span, self_ptr: &Option<PtrTy>)
             let self_ty = respan(
                 span,
                 match *ptr {
-                    Owned => ast::sty_uniq(ast::m_imm),
+                    Send => ast::sty_uniq(ast::m_imm),
                     Managed(mutbl) => ast::sty_box(mutbl),
                     Borrowed(ref lt, mutbl) => {
                         let lt = lt.map(|s| @cx.lifetime(span,

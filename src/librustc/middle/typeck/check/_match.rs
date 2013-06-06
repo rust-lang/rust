@@ -538,7 +538,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
           check_pointer_pat(pcx, Managed, inner, pat.id, pat.span, expected);
       }
       ast::pat_uniq(inner) => {
-          check_pointer_pat(pcx, Owned, inner, pat.id, pat.span, expected);
+          check_pointer_pat(pcx, Send, inner, pat.id, pat.span, expected);
       }
       ast::pat_region(inner) => {
           check_pointer_pat(pcx, Borrowed, inner, pat.id, pat.span, expected);
@@ -624,7 +624,7 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
         ty::ty_box(e_inner) if pointer_kind == Managed => {
             check_inner(e_inner);
         }
-        ty::ty_uniq(e_inner) if pointer_kind == Owned => {
+        ty::ty_uniq(e_inner) if pointer_kind == Send => {
             check_inner(e_inner);
         }
         ty::ty_rptr(_, e_inner) if pointer_kind == Borrowed => {
@@ -641,7 +641,7 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
                 Some(expected),
                 fmt!("%s pattern", match pointer_kind {
                     Managed => "an @-box",
-                    Owned => "a ~-box",
+                    Send => "a ~-box",
                     Borrowed => "an &-pointer"
                 }),
                 None);
@@ -651,4 +651,4 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
 }
 
 #[deriving(Eq)]
-enum PointerKind { Managed, Owned, Borrowed }
+enum PointerKind { Managed, Send, Borrowed }
