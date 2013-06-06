@@ -69,3 +69,81 @@ pub fn string_to_pat(source_str : @~str) -> @ast::pat {
 pub fn strs_to_idents(ids: ~[&str]) -> ~[ast::ident] {
     ids.map(|u| token::str_to_ident(*u))
 }
+
+// does the given string match the pattern? whitespace in the first string
+// may be deleted or replaced with other whitespace to match the pattern.
+// this function is unicode-ignorant; fortunately, the careful design of
+// UTF-8 mitigates this ignorance.  In particular, this function only collapses
+// sequences of \n, \r, ' ', and \t, but it should otherwise tolerate unicode
+// chars. Unsurprisingly, it doesn't do NKF-normalization(?).
+pub fn matches_codepattern(a : &str, b : &str) -> bool {
+    let mut idx_a = 0;
+    let mut idx_b = 0;
+    loop {
+        if (idx_a == a.len() && idx_b == b.len()) {
+            return true;
+        }
+        else if (idx_a == a.len()) {return false;}
+        else if (idx_b == b.len()) {
+            // maybe the stuff left in a is all ws?
+            if (is_whitespace(a.char_at(idx_a))) {
+                return (scan_for_non_ws_or_end(a,idx_a) == a.len());
+            } else {
+                return false;
+            }
+        }
+        // ws in both given and pattern:
+        else if (is_whitespace(a.char_at(idx_a))
+           && is_whitespace(b.char_at(idx_b))) {
+            idx_a = scan_for_non_ws_or_end(a,idx_a);
+            idx_b = scan_for_non_ws_or_end(b,idx_b);
+        }
+        // ws in given only:
+        else if (is_whitespace(a.char_at(idx_a))) {
+            idx_a = scan_for_non_ws_or_end(a,idx_a);
+        }
+        // *don't* silently eat ws in expected only.
+        else if (a.char_at(idx_a) == b.char_at(idx_b)) {
+            idx_a += 1;
+            idx_b += 1;
+        }
+        else {
+            return false;
+        }
+    }
+}
+
+// given a string and an index, return the first uint >= idx
+// that is a non-ws-char or is outside of the legal range of
+// the string.
+fn scan_for_non_ws_or_end(a : &str, idx: uint) -> uint {
+    let mut i = idx;
+    let len = a.len();
+    while ((i < len) && (is_whitespace(a.char_at(i)))) {
+        i += 1;
+    }
+    i
+}
+
+// copied from lexer.
+pub fn is_whitespace(c: char) -> bool {
+    return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test] fn eqmodws() {
+        assert_eq!(matches_codepattern("",""),true);
+        assert_eq!(matches_codepattern("","a"),false);
+        assert_eq!(matches_codepattern("a",""),false);
+        assert_eq!(matches_codepattern("a","a"),true);
+        assert_eq!(matches_codepattern("a b","a   \n\t\r  b"),true);
+        assert_eq!(matches_codepattern("a b ","a   \n\t\r  b"),true);
+        assert_eq!(matches_codepattern("a b","a   \n\t\r  b "),false);
+        assert_eq!(matches_codepattern("a   b","a b"),true);
+        assert_eq!(matches_codepattern("ab","a b"),false);
+        assert_eq!(matches_codepattern("a   b","ab"),true);
+    }
+}
