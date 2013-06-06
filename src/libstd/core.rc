@@ -33,7 +33,7 @@ if the first line of each crate was
 
     extern mod core;
 
-This means that the contents of core can be accessed from from any context
+This means that the contents of core can be accessed from any context
 with the `core::` path prefix, as in `use core::vec`, `use core::task::spawn`,
 etc.
 

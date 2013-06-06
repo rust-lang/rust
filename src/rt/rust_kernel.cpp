@@ -162,7 +162,7 @@ rust_kernel::release_scheduler_id(rust_sched_id id) {
 }
 
 /*
-Called by rust_sched_reaper to join every every terminating scheduler thread,
+Called by rust_sched_reaper to join every terminating scheduler thread,
 so that we can be sure they have completely exited before the process exits.
 If we don't join them then we can see valgrind errors due to un-freed pthread
 memory.

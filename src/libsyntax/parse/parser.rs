@@ -3093,7 +3093,7 @@ impl Parser {
 
         self.expect(&token::LPAREN);
 
-        // A bit of complexity and lookahead is needed here in order to to be
+        // A bit of complexity and lookahead is needed here in order to be
         // backwards compatible.
         let lo = self.span.lo;
         let explicit_self = match *self.token {

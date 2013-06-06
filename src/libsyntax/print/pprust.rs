@@ -1672,7 +1672,7 @@ pub fn print_fn(s: @ps,
 
 pub fn print_fn_args(s: @ps, decl: &ast::fn_decl,
                  opt_explicit_self: Option<ast::explicit_self_>) {
-    // It is unfortunate to duplicate the commasep logic, but we we want the
+    // It is unfortunate to duplicate the commasep logic, but we want the
     // self type and the args all in the same box.
     box(s, 0u, inconsistent);
     let mut first = true;
@@ -1919,7 +1919,7 @@ pub fn print_ty_fn(s: @ps,
     zerobreak(s.s);
 
     popen(s);
-    // It is unfortunate to duplicate the commasep logic, but we we want the
+    // It is unfortunate to duplicate the commasep logic, but we want the
     // self type and the args all in the same box.
     box(s, 0u, inconsistent);
     let mut first = true;
