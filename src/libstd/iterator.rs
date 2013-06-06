@@ -19,8 +19,12 @@ implementing the `Iterator` trait.
 
 use cmp;
 use iter;
+use iter::{FromIter, Times};
 use num::{Zero, One};
-use prelude::*;
+use option::{Option, Some, None};
+use ops::{Add, Mul};
+use cmp::Ord;
+use clone::Clone;
 
 /// An interface for dealing with "external iterators". These types of iterators
 /// can be resumed at any time as all state is stored internally as opposed to
@@ -241,8 +245,8 @@ pub trait IteratorUtil<A> {
     /// ~~~
     fn advance(&mut self, f: &fn(A) -> bool) -> bool;
 
-    /// Loops through the entire iterator, accumulating all of the elements into
-    /// a vector.
+    /// Loops through the entire iterator, collecting all of the elements into
+    /// a container implementing `FromIter`.
     ///
     /// # Example
     ///
@@ -250,10 +254,10 @@ pub trait IteratorUtil<A> {
     /// use std::iterator::*;
     ///
     /// let a = [1, 2, 3, 4, 5];
-    /// let b = a.iter().transform(|&x| x).to_vec();
+    /// let b: ~[int] = a.iter().transform(|&x| x).collect();
     /// assert!(a == b);
     /// ~~~
-    fn to_vec(&mut self) -> ~[A];
+    fn collect<B: FromIter<A>>(&mut self) -> B;
 
     /// Loops through `n` iterations, returning the `n`th element of the
     /// iterator.
@@ -415,8 +419,8 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     }
 
     #[inline(always)]
-    fn to_vec(&mut self) -> ~[A] {
-        iter::to_vec::<A>(|f| self.advance(f))
+    fn collect<B: FromIter<A>>(&mut self) -> B {
+        FromIter::from_iter::<A, B>(|f| self.advance(f))
     }
 
     /// Return the `n`th item yielded by an iterator.
@@ -870,9 +874,9 @@ mod tests {
     use uint;
 
     #[test]
-    fn test_counter_to_vec() {
+    fn test_counter_from_iter() {
         let mut it = Counter::new(0, 5).take(10);
-        let xs = iter::to_vec(|f| it.advance(f));
+        let xs: ~[int] = iter::FromIter::from_iter::<int, ~[int]>(|f| it.advance(f));
         assert_eq!(xs, ~[0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
     }
 
@@ -903,7 +907,7 @@ mod tests {
     fn test_filter_map() {
         let mut it = Counter::new(0u, 1u).take(10)
             .filter_map(|x: uint| if x.is_even() { Some(x*x) } else { None });
-        assert_eq!(it.to_vec(), ~[0*0, 2*2, 4*4, 6*6, 8*8]);
+        assert_eq!(it.collect::<~[uint]>(), ~[0*0, 2*2, 4*4, 6*6, 8*8]);
     }
 
     #[test]
@@ -1060,6 +1064,13 @@ mod tests {
         assert_eq!(v.slice(0, 4).iter().transform(|&x| x).min(), Some(0));
         assert_eq!(v.iter().transform(|&x| x).min(), Some(0));
         assert_eq!(v.slice(0, 0).iter().transform(|&x| x).min(), None);
+    }
+
+    #[test]
+    fn test_collect() {
+        let a = ~[1, 2, 3, 4, 5];
+        let b: ~[int] = a.iter().transform(|&x| x).collect();
+        assert_eq!(a, b);
     }
 
     #[test]
