@@ -40,7 +40,7 @@ rust_drop_env_lock() {
 }
 
 #if defined(__WIN32__)
-static int
+int
 get_num_cpus() {
     SYSTEM_INFO sysinfo;
     GetSystemInfo(&sysinfo);
@@ -48,7 +48,7 @@ get_num_cpus() {
     return (int) sysinfo.dwNumberOfProcessors;
 }
 #elif defined(__BSD__)
-static int
+int
 get_num_cpus() {
     /* swiped from http://stackoverflow.com/questions/150355/
        programmatically-find-the-number-of-cores-on-a-machine */
@@ -75,7 +75,7 @@ get_num_cpus() {
     return numCPU;
 }
 #elif defined(__GNUC__)
-static int
+int
 get_num_cpus() {
     return sysconf(_SC_NPROCESSORS_ONLN);
 }
