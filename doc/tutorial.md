@@ -1613,18 +1613,19 @@ loop. Like `do`, `for` is a nice syntax for describing control flow
 with closures.  Additionally, within a `for` loop, `break`, `loop`,
 and `return` work just as they do with `while` and `loop`.
 
-Consider again our `each` function, this time improved to
-break early when the iteratee returns `false`:
+Consider again our `each` function, this time improved to return
+immediately when the iteratee returns `false`:
 
 ~~~~
-fn each(v: &[int], op: &fn(v: &int) -> bool) {
+fn each(v: &[int], op: &fn(v: &int) -> bool) -> bool {
    let mut n = 0;
    while n < v.len() {
        if !op(&v[n]) {
-           break;
+           return false;
        }
        n += 1;
    }
+   return true;
 }
 ~~~~
 
