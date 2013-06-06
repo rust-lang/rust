@@ -44,7 +44,7 @@ impl<A:ToStr> ToStr for (A,) {
     fn to_str(&self) -> ~str {
         match *self {
             (ref a,) => {
-                ~"(" + a.to_str() + ",)"
+                fmt!("(%s,)", (*a).to_str())
             }
         }
     }
@@ -91,11 +91,11 @@ impl<A:ToStr+Hash+Eq> ToStr for HashSet<A> {
 impl<A:ToStr,B:ToStr> ToStr for (A, B) {
     #[inline(always)]
     fn to_str(&self) -> ~str {
-        // FIXME(#4760): this causes an llvm assertion
+        // FIXME(#4653): this causes an llvm assertion
         //let &(ref a, ref b) = self;
         match *self {
             (ref a, ref b) => {
-                ~"(" + a.to_str() + ", " + b.to_str() + ")"
+                fmt!("(%s, %s)", (*a).to_str(), (*b).to_str())
             }
         }
     }
@@ -104,7 +104,7 @@ impl<A:ToStr,B:ToStr> ToStr for (A, B) {
 impl<A:ToStr,B:ToStr,C:ToStr> ToStr for (A, B, C) {
     #[inline(always)]
     fn to_str(&self) -> ~str {
-        // FIXME(#4760): this causes an llvm assertion
+        // FIXME(#4653): this causes an llvm assertion
         //let &(ref a, ref b, ref c) = self;
         match *self {
             (ref a, ref b, ref c) => {
