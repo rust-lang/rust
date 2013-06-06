@@ -748,7 +748,7 @@ mod test {
     #[test]
     fn stream_send_recv_stress() {
         for stress_factor().times {
-            do run_in_newsched_task {
+            do run_in_mt_newsched_task {
                 let (port, chan) = stream::<~int>();
 
                 send(chan, 0);
@@ -758,18 +758,18 @@ mod test {
                     if i == 10 { return }
 
                     let chan_cell = Cell(chan);
-                    let _thread = do spawntask_thread {
+                    do spawntask_random {
                         let chan = chan_cell.take();
                         chan.send(~i);
                         send(chan, i + 1);
-                    };
+                    }
                 }
 
                 fn recv(port: Port<~int>, i: int) {
                     if i == 10 { return }
 
                     let port_cell = Cell(port);
-                    let _thread = do spawntask_thread {
+                    do spawntask_random {
                         let port = port_cell.take();
                         assert!(port.recv() == ~i);
                         recv(port, i + 1);
