@@ -543,6 +543,7 @@ pub enum token_tree {
     // a delimited sequence (the delimiters appear as the first
     // and last elements of the vector)
     tt_delim(@mut ~[token_tree]),
+
     // These only make sense for right-hand-sides of MBE macros:
 
     // a kleene-style repetition sequence with a span, a tt_forest,
@@ -621,6 +622,10 @@ pub enum matcher_ {
 
 pub type mac = spanned<mac_>;
 
+// represents a macro invocation. The Path indicates which macro
+// is being invoked, and the vector of token-trees contains the source
+// of the macro invocation.
+// There's only one flavor, now, so this could presumably be simplified.
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum mac_ {
     mac_invoc_tt(Path,~[token_tree]),   // new macro-invocation
