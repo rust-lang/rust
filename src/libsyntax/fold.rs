@@ -13,6 +13,7 @@ use core::prelude::*;
 use ast::*;
 use ast;
 use codemap::{span, spanned};
+use parse::token;
 use opt_vec::OptVec;
 
 use core::vec;
@@ -903,4 +904,75 @@ impl AstFoldExtensions for @ast_fold {
 
 pub fn make_fold(afp: ast_fold_fns) -> @ast_fold {
     afp as @ast_fold
+}
+
+#[cfg(test)]
+mod test {
+    use ast;
+    use util::parser_testing::{string_to_crate, matches_codepattern};
+    use parse::token;
+    use print::pprust;
+    use super::*;
+
+    // taken from expand
+    // given a function from idents to idents, produce
+    // an ast_fold that applies that function:
+    pub fn fun_to_ident_folder(f: @fn(ast::ident)->ast::ident) -> @ast_fold{
+        let afp = default_ast_fold();
+        let f_pre = @AstFoldFns{
+            fold_ident : |id, _| f(id),
+            .. *afp
+        };
+        make_fold(f_pre)
+    }
+
+    // this version doesn't care about getting comments or docstrings in.
+    fn fake_print_crate(s: @pprust::ps, crate: ast::crate) {
+        pprust::print_mod(s, &crate.node.module, crate.node.attrs);
+    }
+
+    // change every identifier to "zz"
+    pub fn to_zz() -> @fn(ast::ident)->ast::ident {
+        let zz_id = token::str_to_ident("zz");
+        |id| {zz_id}
+    }
+
+    // maybe add to expand.rs...
+    macro_rules! assert_pred (
+        ($pred:expr, $predname:expr, $a:expr , $b:expr) => (
+            {
+                let pred_val = $pred;
+                let a_val = $a;
+                let b_val = $b;
+                if !(pred_val(a_val,b_val)) {
+                    fail!("expected args satisfying %s, got %? and %?",
+                          $predname, a_val, b_val);
+                }
+            }
+        )
+    )
+
+    // make sure idents get transformed everywhere
+    #[test] fn ident_transformation () {
+        let zz_fold = fun_to_ident_folder(to_zz());
+        let ast = string_to_crate(@~"#[a] mod b {fn c (d : e, f : g) {h!(i,j,k);l;m}}");
+        assert_pred!(matches_codepattern,
+                     "matches_codepattern",
+                     pprust::to_str(zz_fold.fold_crate(ast),fake_print_crate,
+                                    token::get_ident_interner()),
+                     ~"#[a]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}");
+    }
+
+    // even inside macro defs....
+    #[test] fn ident_transformation_in_defs () {
+        let zz_fold = fun_to_ident_folder(to_zz());
+        let ast = string_to_crate(@~"macro_rules! a {(b $c:expr $(d $e:token)f+
+=> (g $(d $d $e)+))} ");
+        assert_pred!(matches_codepattern,
+                     "matches_codepattern",
+                     pprust::to_str(zz_fold.fold_crate(ast),fake_print_crate,
+                                    token::get_ident_interner()),
+                     ~"zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))");
+    }
+
 }
