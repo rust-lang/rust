@@ -9,8 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    fn quux(_: &fn(&int) -> int) -> bool { true }
-    for quux |_| { } //~ ERROR A `for` loop iterator should expect a
-                     // closure that returns `bool`.  This iterator
-                     // expects a closure that returns `int`.
+    fn quux(_: &fn(&int) -> bool) -> () { }
+    for quux |_| { } //~ ERROR expected `for` closure to return
+                     // `bool`, but found `()`
 }
