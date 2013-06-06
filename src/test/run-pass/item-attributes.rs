@@ -22,7 +22,7 @@
        uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
        url = "http://rust-lang.org/src/extra")];
 
-// These are are attributes of the following mod
+// These are attributes of the following mod
 #[attr1 = "val"]
 #[attr2 = "val"]
 mod test_first_item_in_file_mod {}

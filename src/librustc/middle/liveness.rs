@@ -1113,7 +1113,7 @@ impl Liveness {
           }
 
           expr_again(opt_label) => {
-              // Find which label this expr continues to to
+              // Find which label this expr continues to
               let sc = self.find_loop_scope(opt_label, expr.id, expr.span);
 
               // Now that we know the label we're going to,
