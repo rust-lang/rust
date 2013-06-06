@@ -88,7 +88,7 @@ use container::Container;
 use cast::{forget, transmute, transmute_copy};
 use either::{Either, Left, Right};
 use iterator::IteratorUtil;
-use kinds::Owned;
+use kinds::Send;
 use libc;
 use ops::Drop;
 use option::{None, Option, Some};
@@ -181,7 +181,7 @@ impl PacketHeader {
         transmute_copy(&self.buffer)
     }
 
-    pub fn set_buffer<T:Owned>(&mut self, b: ~Buffer<T>) {
+    pub fn set_buffer<T:Send>(&mut self, b: ~Buffer<T>) {
         unsafe {
             self.buffer = transmute_copy(&b);
         }
@@ -197,13 +197,13 @@ pub trait HasBuffer {
     fn set_buffer(&mut self, b: *libc::c_void);
 }
 
-impl<T:Owned> HasBuffer for Packet<T> {
+impl<T:Send> HasBuffer for Packet<T> {
     fn set_buffer(&mut self, b: *libc::c_void) {
         self.header.buffer = b;
     }
 }
 
-pub fn mk_packet<T:Owned>() -> Packet<T> {
+pub fn mk_packet<T:Send>() -> Packet<T> {
     Packet {
         header: PacketHeader(),
         payload: None,
@@ -234,7 +234,7 @@ pub fn packet<T>() -> *mut Packet<T> {
     p
 }
 
-pub fn entangle_buffer<T:Owned,Tstart:Owned>(
+pub fn entangle_buffer<T:Send,Tstart:Send>(
     mut buffer: ~Buffer<T>,
     init: &fn(*libc::c_void, x: &mut T) -> *mut Packet<Tstart>)
     -> (RecvPacketBuffered<Tstart, T>, SendPacketBuffered<Tstart, T>) {
@@ -397,7 +397,7 @@ pub fn send<T,Tbuffer>(mut p: SendPacketBuffered<T,Tbuffer>,
 Fails if the sender closes the connection.
 
 */
-pub fn recv<T:Owned,Tbuffer:Owned>(
+pub fn recv<T:Send,Tbuffer:Send>(
     p: RecvPacketBuffered<T, Tbuffer>) -> T {
     try_recv(p).expect("connection closed")
 }
@@ -408,7 +408,7 @@ Returns `None` if the sender has closed the connection without sending
 a message, or `Some(T)` if a message was received.
 
 */
-pub fn try_recv<T:Owned,Tbuffer:Owned>(mut p: RecvPacketBuffered<T, Tbuffer>)
+pub fn try_recv<T:Send,Tbuffer:Send>(mut p: RecvPacketBuffered<T, Tbuffer>)
                                        -> Option<T> {
     let p_ = p.unwrap();
     let p = unsafe { &mut *p_ };
@@ -428,7 +428,7 @@ pub fn try_recv<T:Owned,Tbuffer:Owned>(mut p: RecvPacketBuffered<T, Tbuffer>)
     }
 }
 
-fn try_recv_<T:Owned>(p: &mut Packet<T>) -> Option<T> {
+fn try_recv_<T:Send>(p: &mut Packet<T>) -> Option<T> {
     // optimistic path
     match p.header.state {
       Full => {
@@ -512,7 +512,7 @@ fn try_recv_<T:Owned>(p: &mut Packet<T>) -> Option<T> {
 }
 
 /// Returns true if messages are available.
-pub fn peek<T:Owned,Tb:Owned>(p: &mut RecvPacketBuffered<T, Tb>) -> bool {
+pub fn peek<T:Send,Tb:Send>(p: &mut RecvPacketBuffered<T, Tb>) -> bool {
     unsafe {
         match (*p.header()).state {
             Empty | Terminated => false,
@@ -522,7 +522,7 @@ pub fn peek<T:Owned,Tb:Owned>(p: &mut RecvPacketBuffered<T, Tb>) -> bool {
     }
 }
 
-fn sender_terminate<T:Owned>(p: *mut Packet<T>) {
+fn sender_terminate<T:Send>(p: *mut Packet<T>) {
     let p = unsafe {
         &mut *p
     };
@@ -554,7 +554,7 @@ fn sender_terminate<T:Owned>(p: *mut Packet<T>) {
     }
 }
 
-fn receiver_terminate<T:Owned>(p: *mut Packet<T>) {
+fn receiver_terminate<T:Send>(p: *mut Packet<T>) {
     let p = unsafe {
         &mut *p
     };
@@ -672,7 +672,7 @@ pub struct SendPacketBuffered<T, Tbuffer> {
 }
 
 #[unsafe_destructor]
-impl<T:Owned,Tbuffer:Owned> Drop for SendPacketBuffered<T,Tbuffer> {
+impl<T:Send,Tbuffer:Send> Drop for SendPacketBuffered<T,Tbuffer> {
     fn finalize(&self) {
         unsafe {
             let this: &mut SendPacketBuffered<T,Tbuffer> = transmute(self);
@@ -730,7 +730,7 @@ pub struct RecvPacketBuffered<T, Tbuffer> {
 }
 
 #[unsafe_destructor]
-impl<T:Owned,Tbuffer:Owned> Drop for RecvPacketBuffered<T,Tbuffer> {
+impl<T:Send,Tbuffer:Send> Drop for RecvPacketBuffered<T,Tbuffer> {
     fn finalize(&self) {
         unsafe {
             let this: &mut RecvPacketBuffered<T,Tbuffer> = transmute(self);
@@ -742,7 +742,7 @@ impl<T:Owned,Tbuffer:Owned> Drop for RecvPacketBuffered<T,Tbuffer> {
     }
 }
 
-impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
+impl<T:Send,Tbuffer:Send> RecvPacketBuffered<T, Tbuffer> {
     pub fn unwrap(&mut self) -> *mut Packet<T> {
         replace(&mut self.p, None).unwrap()
     }
@@ -752,7 +752,7 @@ impl<T:Owned,Tbuffer:Owned> RecvPacketBuffered<T, Tbuffer> {
     }
 }
 
-impl<T:Owned,Tbuffer:Owned> Selectable for RecvPacketBuffered<T, Tbuffer> {
+impl<T:Send,Tbuffer:Send> Selectable for RecvPacketBuffered<T, Tbuffer> {
     fn header(&mut self) -> *mut PacketHeader {
         match self.p {
             Some(packet) => unsafe {
@@ -808,7 +808,7 @@ Sometimes messages will be available on both endpoints at once. In
 this case, `select2` may return either `left` or `right`.
 
 */
-pub fn select2<A:Owned,Ab:Owned,B:Owned,Bb:Owned>(
+pub fn select2<A:Send,Ab:Send,B:Send,Bb:Send>(
     mut a: RecvPacketBuffered<A, Ab>,
     mut b: RecvPacketBuffered<B, Bb>)
     -> Either<(Option<A>, RecvPacketBuffered<B, Bb>),
@@ -848,7 +848,7 @@ pub fn select2i<A:Selectable,B:Selectable>(a: &mut A, b: &mut B)
 
 /// Waits on a set of endpoints. Returns a message, its index, and a
 /// list of the remaining endpoints.
-pub fn select<T:Owned,Tb:Owned>(mut endpoints: ~[RecvPacketBuffered<T, Tb>])
+pub fn select<T:Send,Tb:Send>(mut endpoints: ~[RecvPacketBuffered<T, Tb>])
                                 -> (uint,
                                     Option<T>,
                                     ~[RecvPacketBuffered<T, Tb>]) {
