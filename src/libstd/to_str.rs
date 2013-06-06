@@ -44,7 +44,7 @@ impl<A:ToStr> ToStr for (A,) {
     fn to_str(&self) -> ~str {
         match *self {
             (ref a,) => {
-                ~"(" + a.to_str() + ",)"
+                fmt!("(%s,)", (*a).to_str())
             }
         }
     }
@@ -95,7 +95,7 @@ impl<A:ToStr,B:ToStr> ToStr for (A, B) {
         //let &(ref a, ref b) = self;
         match *self {
             (ref a, ref b) => {
-                ~"(" + a.to_str() + ", " + b.to_str() + ")"
+                fmt!("(%s, %s)", (*a).to_str(), (*b).to_str())
             }
         }
     }
