@@ -76,7 +76,7 @@ impl<'self> CheckLoanCtxt<'self> {
                             scope_id: ast::node_id,
                             op: &fn(&Loan) -> bool)
                             -> bool {
-        //! Iterates over each loan that that has been issued
+        //! Iterates over each loan that has been issued
         //! on entrance to `scope_id`, regardless of whether it is
         //! actually *in scope* at that point.  Sometimes loans
         //! are issued for future scopes and thus they may have been
@@ -219,7 +219,7 @@ impl<'self> CheckLoanCtxt<'self> {
                     self.bccx.span_err(
                         new_loan.span,
                         fmt!("cannot borrow `%s` as mutable \
-                              more than once at at a time",
+                              more than once at a time",
                              self.bccx.loan_path_to_str(new_loan.loan_path)));
                     self.bccx.span_note(
                         old_loan.span,

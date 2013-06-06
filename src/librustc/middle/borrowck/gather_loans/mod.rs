@@ -40,7 +40,7 @@ mod gather_moves;
 
 /// Context used while gathering loans:
 ///
-/// - `bccx`: the the borrow check context
+/// - `bccx`: the borrow check context
 /// - `item_ub`: the id of the block for the enclosing fn/method item
 /// - `root_ub`: the id of the outermost block for which we can root
 ///   an `@T`.  This is the id of the innermost enclosing
