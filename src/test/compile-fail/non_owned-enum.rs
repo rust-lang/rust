@@ -11,9 +11,9 @@
 #[non_owned]
 enum Foo { A }
 
-fn bar<T: Owned>(_: T) {}
+fn bar<T: Send>(_: T) {}
 
 fn main() {
     let x = A;
-    bar(x); //~ ERROR instantiating a type parameter with an incompatible type `Foo`, which does not fulfill `Owned`
+    bar(x); //~ ERROR instantiating a type parameter with an incompatible type `Foo`, which does not fulfill `Send`
 }

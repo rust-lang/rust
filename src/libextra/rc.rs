@@ -13,10 +13,10 @@
 /** Task-local reference counted smart pointers
 
 Task-local reference counted smart pointers are an alternative to managed boxes with deterministic
-destruction. They are restricted to containing types that are either `Owned` or `Freeze` (or both) to
+destruction. They are restricted to containing types that are either `Send` or `Freeze` (or both) to
 prevent cycles.
 
-Neither `Rc<T>` or `RcMut<T>` is ever `Owned` and `RcMut<T>` is never `Freeze`. If `T` is `Freeze`, a
+Neither `Rc<T>` or `RcMut<T>` is ever `Send` and `RcMut<T>` is never `Freeze`. If `T` is `Freeze`, a
 cycle cannot be created with `Rc<T>` because there is no way to modify it after creation.
 
 */
@@ -51,7 +51,7 @@ impl<T> Rc<T> {
 }
 
 // FIXME: #6516: should be a static method
-pub fn rc_from_owned<T: Owned>(value: T) -> Rc<T> {
+pub fn rc_from_owned<T: Send>(value: T) -> Rc<T> {
     unsafe { Rc::new(value) }
 }
 
@@ -182,7 +182,7 @@ impl<T> RcMut<T> {
 }
 
 // FIXME: #6516: should be a static method
-pub fn rc_mut_from_owned<T: Owned>(value: T) -> RcMut<T> {
+pub fn rc_mut_from_owned<T: Send>(value: T) -> RcMut<T> {
     unsafe { RcMut::new(value) }
 }
 
