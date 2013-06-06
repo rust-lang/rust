@@ -4503,9 +4503,9 @@ impl Parser {
                     self.span_err(view_item.span,
                                   "`use` and `extern mod` declarations must precede items");
                 }
-                iovi_item(_) => {
+                iovi_item(item) => {
                     // FIXME #5668: this will occur for a macro invocation:
-                    fail!();
+                    self.span_fatal(item.span, "macros cannot expand to foreign items");
                 }
                 iovi_foreign_item(foreign_item) => {
                     foreign_items.push(foreign_item);
