@@ -53,7 +53,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
 fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                   pieces: ~[Piece], args: ~[@ast::expr])
    -> @ast::expr {
-    fn make_path_vec(cx: @ExtCtxt, ident: &str) -> ~[ast::ident] {
+    fn make_path_vec(ident: &str) -> ~[ast::ident] {
         return ~[str_to_ident("std"),
                  str_to_ident("unstable"),
                  str_to_ident("extfmt"),
@@ -61,7 +61,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                  str_to_ident(ident)];
     }
     fn make_rt_path_expr(cx: @ExtCtxt, sp: span, nm: &str) -> @ast::expr {
-        let path = make_path_vec(cx, nm);
+        let path = make_path_vec(nm);
         cx.expr_path(cx.path_global(sp, path))
     }
     // Produces an AST expression that represents a RT::conv record,
@@ -90,7 +90,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
               }
               CountIs(c) => {
                 let count_lit = cx.expr_uint(sp, c as uint);
-                let count_is_path = make_path_vec(cx, "CountIs");
+                let count_is_path = make_path_vec("CountIs");
                 let count_is_args = ~[count_lit];
                 return cx.expr_call_global(sp, count_is_path, count_is_args);
               }
@@ -114,7 +114,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                          ty_expr: @ast::expr) -> @ast::expr {
             cx.expr_struct(
                 sp,
-                cx.path_global(sp, make_path_vec(cx, "Conv")),
+                cx.path_global(sp, make_path_vec("Conv")),
                 ~[
                     cx.field_imm(sp, str_to_ident("flags"), flags_expr),
                     cx.field_imm(sp, str_to_ident("width"), width_expr),
@@ -133,7 +133,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
     fn make_conv_call(cx: @ExtCtxt, sp: span, conv_type: &str, cnv: &Conv,
                       arg: @ast::expr, buf: @ast::expr) -> @ast::expr {
         let fname = ~"conv_" + conv_type;
-        let path = make_path_vec(cx, fname);
+        let path = make_path_vec(fname);
         let cnv_expr = make_rt_conv_expr(cx, sp, cnv);
         let args = ~[cnv_expr, arg, buf];
         cx.expr_call_global(arg.span, path, args)

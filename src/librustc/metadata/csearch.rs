@@ -69,7 +69,7 @@ pub fn each_path(cstore: @mut cstore::CStore,
 pub fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    let path = decoder::get_item_path(cstore.intr, cdata, def.node);
+    let path = decoder::get_item_path(cdata, def.node);
 
     // FIXME #1920: This path is not always correct if the crate is not linked
     // into the root namespace.
@@ -91,7 +91,7 @@ pub fn maybe_get_item_ast(tcx: ty::ctxt, def: ast::def_id,
                        -> found_ast {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::maybe_get_item_ast(cstore.intr, cdata, tcx, def.node,
+    decoder::maybe_get_item_ast(cdata, tcx, def.node,
                                 decode_inlined_item)
 }
 
@@ -149,7 +149,7 @@ pub fn get_supertraits(tcx: ty::ctxt, def: ast::def_id) -> ~[@ty::TraitRef] {
 pub fn get_type_name_if_impl(cstore: @mut cstore::CStore, def: ast::def_id)
                           -> Option<ast::ident> {
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_type_name_if_impl(cstore.intr, cdata, def.node)
+    decoder::get_type_name_if_impl(cdata, def.node)
 }
 
 pub fn get_static_methods_if_impl(cstore: @mut cstore::CStore,

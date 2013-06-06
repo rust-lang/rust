@@ -132,7 +132,7 @@ enum lis {
 }
 
 fn lockstep_iter_size(t: &token_tree, r: &mut TtReader) -> lis {
-    fn lis_merge(lhs: lis, rhs: lis, r: &mut TtReader) -> lis {
+    fn lis_merge(lhs: lis, rhs: lis) -> lis {
         match lhs {
           lis_unconstrained => copy rhs,
           lis_contradiction(_) => copy lhs,
@@ -154,7 +154,7 @@ fn lockstep_iter_size(t: &token_tree, r: &mut TtReader) -> lis {
       tt_delim(ref tts) | tt_seq(_, ref tts, _, _) => {
         vec::foldl(lis_unconstrained, *tts, |lis, tt| {
             let lis2 = lockstep_iter_size(tt, r);
-            lis_merge(lis, lis2, r)
+            lis_merge(lis, lis2)
         })
       }
       tt_tok(*) => lis_unconstrained,
