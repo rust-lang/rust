@@ -2573,7 +2573,7 @@ impl Parser {
     fn parse_let(&self) -> @decl {
         let is_mutbl = self.eat_keyword(keywords::Mut);
         let lo = self.span.lo;
-        let mut local = self.parse_local(is_mutbl);
+        let local = self.parse_local(is_mutbl);
         while self.eat(&token::COMMA) {
             let _ = self.parse_local(is_mutbl);
             self.obsolete(*self.span, ObsoleteMultipleLocalDecl);

@@ -288,7 +288,7 @@ fn enum_variant_ids(item: ebml::Doc, cdata: cmd) -> ~[ast::def_id] {
     return ids;
 }
 
-fn item_path(intr: @ident_interner, item_doc: ebml::Doc) -> ast_map::path {
+fn item_path(item_doc: ebml::Doc) -> ast_map::path {
     let path_doc = reader::get_doc(item_doc, tag_path);
 
     let len_doc = reader::get_doc(path_doc, tag_path_len);
@@ -491,7 +491,7 @@ pub fn _each_path(intr: @ident_interner,
     for reader::tagged_docs(items_data, tag_items_data_item) |item_doc| {
         if !broken {
             let path = ast_map::path_to_str_with_sep(
-                item_path(intr, item_doc), ~"::", intr);
+                item_path(item_doc), "::", intr);
             let path_is_empty = path.is_empty();
             if !path_is_empty {
                 // Extract the def ID.
@@ -575,9 +575,9 @@ pub fn each_path(intr: @ident_interner,
     _each_path(intr, cdata, get_crate_data, f)
 }
 
-pub fn get_item_path(intr: @ident_interner, cdata: cmd, id: ast::node_id)
+pub fn get_item_path(cdata: cmd, id: ast::node_id)
     -> ast_map::path {
-    item_path(intr, lookup_item(id, cdata.data))
+    item_path(lookup_item(id, cdata.data))
 }
 
 pub type decode_inlined_item<'self> = &'self fn(
@@ -586,14 +586,14 @@ pub type decode_inlined_item<'self> = &'self fn(
     path: ast_map::path,
     par_doc: ebml::Doc) -> Option<ast::inlined_item>;
 
-pub fn maybe_get_item_ast(intr: @ident_interner, cdata: cmd, tcx: ty::ctxt,
+pub fn maybe_get_item_ast(cdata: cmd, tcx: ty::ctxt,
                           id: ast::node_id,
                           decode_inlined_item: decode_inlined_item)
                        -> csearch::found_ast {
     debug!("Looking up item: %d", id);
     let item_doc = lookup_item(id, cdata.data);
     let path = {
-        let item_path = item_path(intr, item_doc);
+        let item_path = item_path(item_doc);
         vec::to_owned(item_path.init())
     };
     match decode_inlined_item(cdata, tcx, copy path, item_doc) {
@@ -835,8 +835,7 @@ pub fn get_supertraits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     return results;
 }
 
-pub fn get_type_name_if_impl(intr: @ident_interner,
-                             cdata: cmd,
+pub fn get_type_name_if_impl(cdata: cmd,
                              node_id: ast::node_id) -> Option<ast::ident> {
     let item = lookup_item(node_id, cdata.data);
     if item_family(item) != Impl {
@@ -1086,7 +1085,7 @@ pub struct crate_dep {
     hash: @~str
 }
 
-pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
+pub fn get_crate_deps(data: @~[u8]) -> ~[crate_dep] {
     let mut deps: ~[crate_dep] = ~[];
     let cratedoc = reader::Doc(data);
     let depsdoc = reader::get_doc(cratedoc, tag_crate_deps);
@@ -1104,10 +1103,10 @@ pub fn get_crate_deps(intr: @ident_interner, data: @~[u8]) -> ~[crate_dep] {
     return deps;
 }
 
-fn list_crate_deps(intr: @ident_interner, data: @~[u8], out: @io::Writer) {
+fn list_crate_deps(data: @~[u8], out: @io::Writer) {
     out.write_str("=External Dependencies=\n");
 
-    for get_crate_deps(intr, data).each |dep| {
+    for get_crate_deps(data).each |dep| {
         out.write_str(
             fmt!("%d %s-%s-%s\n",
                  dep.cnum, *token::ident_to_str(&dep.name), *dep.hash, *dep.vers));
@@ -1151,7 +1150,7 @@ pub fn list_crate_metadata(intr: @ident_interner, bytes: @~[u8],
     let hash = get_crate_hash(bytes);
     let md = reader::Doc(bytes);
     list_crate_attributes(intr, md, *hash, out);
-    list_crate_deps(intr, bytes, out);
+    list_crate_deps(bytes, out);
 }
 
 // Translates a def_id from an external crate to a def_id for the current

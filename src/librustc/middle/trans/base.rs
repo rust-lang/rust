@@ -3070,7 +3070,7 @@ pub fn trans_crate(sess: session::Session,
         lib::llvm::associate_type(tn, @"tydesc", tydesc_type);
         let crate_map = decl_crate_map(sess, link_meta, llmod);
         let dbg_cx = if sess.opts.debuginfo {
-            Some(debuginfo::mk_ctxt(copy llmod_id, token::get_ident_interner()))
+            Some(debuginfo::mk_ctxt(copy llmod_id))
         } else {
             None
         };
@@ -3105,7 +3105,7 @@ pub fn trans_crate(sess: session::Session,
               lltypes: @mut HashMap::new(),
               llsizingtypes: @mut HashMap::new(),
               adt_reprs: @mut HashMap::new(),
-              names: new_namegen(token::get_ident_interner()),
+              names: new_namegen(),
               next_addrspace: new_addrspace_gen(),
               symbol_hasher: symbol_hasher,
               type_hashcodes: @mut HashMap::new(),
