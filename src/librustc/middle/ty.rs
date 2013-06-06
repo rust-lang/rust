@@ -221,7 +221,7 @@ pub enum AutoRef {
 // implementations.
 //
 // This is a map from ID of each implementation to the method info and trait
-// method ID of each of the default methods belonging to the trait that that
+// method ID of each of the default methods belonging to the trait that
 // implementation implements.
 pub type ProvidedMethodsMap = @mut HashMap<def_id,@mut ~[@ProvidedMethodInfo]>;
 

@@ -96,7 +96,7 @@ impl<'self> Condvar<'self> {
 
     /**
      * Wake up all blocked tasks on a specified condvar (as
-     * sync::cond.broadcast_on). Returns Returns the number of tasks woken.
+     * sync::cond.broadcast_on). Returns the number of tasks woken.
      */
     #[inline(always)]
     pub fn broadcast_on(&self, condvar_id: uint) -> uint {
