@@ -1022,10 +1022,6 @@ mod test {
         pprust::print_mod(s, &crate.module, crate.attrs);
     }
 
-    // "fn a() -> int { let b = 13; let c = b; b+c }" --> b & c should get new names, in the expr too.
-    // "macro_rules! f (($x:ident) => ($x + b)) fn a() -> int { let b = 13; f!(b)}" --> one should
-    //     be renamed, one should not.
-
     fn expand_and_resolve_and_pretty_print (crate_str : @str) -> ~str {
         let resolver = new_ident_resolver();
         let resolver_fold = fun_to_ident_folder(resolver);
@@ -1039,10 +1035,20 @@ mod test {
 
     #[test]
     fn automatic_renaming () {
+        // "fn a() -> int { let b = 13; let c = b; b+c }"
+        //    --> b & c should get new names, in the expr too.
+        // "macro_rules! f (($x:ident) => ($x + b)) fn a() -> int { let b = 13; f!(b)}"
+        //    --> one should be renamed, one should not.
+
         let teststrs =
-            ~[@"fn a() -> int { let b = 13; let c = b; b+c }",
-              @"macro_rules! f (($x:ident) => ($x + b)) fn a() -> int { let b = 13; f!(b)}"];
+            ~[// b & c should get new names throughout, in the expr too:
+                @"fn a() -> int { let b = 13; let c = b; b+c }",
+                // the use of b before the + should be renamed, the other one not:
+                @"macro_rules! f (($x:ident) => ($x + b)) fn a() -> int { let b = 13; f!(b)}",
+                // the b before the plus should not be renamed (requires marks)
+                @"macro_rules! f (($x:ident) => ({let b=9; ($x + b)})) fn a() -> int { f!(b)}"];
         for teststrs.iter().advance |s| {
+            // we need regexps to test these!
             std::io::println(expand_and_resolve_and_pretty_print(*s));
         }
     }
