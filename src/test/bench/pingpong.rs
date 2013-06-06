@@ -82,7 +82,7 @@ endpoint. The send endpoint is returned to the caller and the receive
 endpoint is passed to the new task.
 
 */
-pub fn spawn_service<T:Owned,Tb:Owned>(
+pub fn spawn_service<T:Send,Tb:Send>(
             init: extern fn() -> (RecvPacketBuffered<T, Tb>,
                                   SendPacketBuffered<T, Tb>),
             service: ~fn(v: RecvPacketBuffered<T, Tb>))
@@ -103,7 +103,7 @@ pub fn spawn_service<T:Owned,Tb:Owned>(
 receive state.
 
 */
-pub fn spawn_service_recv<T:Owned,Tb:Owned>(
+pub fn spawn_service_recv<T:Send,Tb:Send>(
         init: extern fn() -> (SendPacketBuffered<T, Tb>,
                               RecvPacketBuffered<T, Tb>),
         service: ~fn(v: SendPacketBuffered<T, Tb>))
@@ -120,7 +120,7 @@ pub fn spawn_service_recv<T:Owned,Tb:Owned>(
     client
 }
 
-fn switch<T:Owned,Tb:Owned,U>(endp: std::pipes::RecvPacketBuffered<T, Tb>,
+fn switch<T:Send,Tb:Send,U>(endp: std::pipes::RecvPacketBuffered<T, Tb>,
                               f: &fn(v: Option<T>) -> U)
                               -> U {
     f(std::pipes::try_recv(endp))
