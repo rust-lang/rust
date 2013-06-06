@@ -462,7 +462,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                 }
             }
         }
-        _ => return orig(s, sp, fld)
+        _ => return expand_non_macro_stmt(*extsbox,s,sp,fld,orig)
     };
     if (pth.segments.len() > 1u) {
         cx.span_fatal(
