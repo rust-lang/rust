@@ -207,19 +207,19 @@ mod test {
     fn test_each() {
         let mut e1: EnumSet<Foo> = EnumSet::empty();
 
-        assert_eq!(~[], iter::to_vec(|f| e1.each(f)))
+        assert_eq!(~[], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e1.each(f)))
 
         e1.add(A);
-        assert_eq!(~[A], iter::to_vec(|f| e1.each(f)))
+        assert_eq!(~[A], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e1.each(f)))
 
         e1.add(C);
-        assert_eq!(~[A,C], iter::to_vec(|f| e1.each(f)))
+        assert_eq!(~[A,C], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e1.each(f)))
 
         e1.add(C);
-        assert_eq!(~[A,C], iter::to_vec(|f| e1.each(f)))
+        assert_eq!(~[A,C], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e1.each(f)))
 
         e1.add(B);
-        assert_eq!(~[A,B,C], iter::to_vec(|f| e1.each(f)))
+        assert_eq!(~[A,B,C], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e1.each(f)))
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -236,12 +236,12 @@ mod test {
         e2.add(C);
 
         let e_union = e1 | e2;
-        assert_eq!(~[A,B,C], iter::to_vec(|f| e_union.each(f)))
+        assert_eq!(~[A,B,C], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e_union.each(f)))
 
         let e_intersection = e1 & e2;
-        assert_eq!(~[C], iter::to_vec(|f| e_intersection.each(f)))
+        assert_eq!(~[C], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e_intersection.each(f)))
 
         let e_subtract = e1 - e2;
-        assert_eq!(~[A], iter::to_vec(|f| e_subtract.each(f)))
+        assert_eq!(~[A], iter::FromIter::from_iter::<Foo, ~[Foo]>(|f| e_subtract.each(f)))
     }
 }
