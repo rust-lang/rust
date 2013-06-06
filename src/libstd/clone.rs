@@ -112,7 +112,7 @@ impl<T: DeepClone> DeepClone for ~T {
     fn deep_clone(&self) -> ~T { ~(**self).deep_clone() }
 }
 
-// FIXME: #6525: should also be implemented for `T: Owned + DeepClone`
+// FIXME: #6525: should also be implemented for `T: Send + DeepClone`
 impl<T: Freeze + DeepClone> DeepClone for @T {
     /// Return a deep copy of the managed box. The `Freeze` trait is required to prevent performing
     /// a deep clone of a potentially cyclical type.
@@ -120,7 +120,7 @@ impl<T: Freeze + DeepClone> DeepClone for @T {
     fn deep_clone(&self) -> @T { @(**self).deep_clone() }
 }
 
-// FIXME: #6525: should also be implemented for `T: Owned + DeepClone`
+// FIXME: #6525: should also be implemented for `T: Send + DeepClone`
 impl<T: Freeze + DeepClone> DeepClone for @mut T {
     /// Return a deep copy of the managed box. The `Freeze` trait is required to prevent performing
     /// a deep clone of a potentially cyclical type.
