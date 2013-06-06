@@ -930,6 +930,13 @@ rust_begin_unwind(uintptr_t token) {
 #endif
 }
 
+extern int get_num_cpus();
+
+extern "C" CDECL uintptr_t
+rust_get_num_cpus() {
+    return get_num_cpus();
+}
+
 //
 // Local Variables:
 // mode: C++
