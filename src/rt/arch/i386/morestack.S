@@ -20,7 +20,7 @@
 
 	Each Rust function contains an LLVM-generated prologue that
 	compares the stack space required for the current function to
-	the space space remaining in the current stack segment,
+	the space remaining in the current stack segment,
 	maintained in a platform-specific TLS slot.  The stack limit
 	is strategically maintained by the Rust runtime so that it is
 	always in place whenever a Rust function is running.
@@ -55,7 +55,7 @@
 	tiny fraction of a frame (containing just a return pointer
 	and, on 32-bit, the arguments to __morestack).
 
-	We deal with this by claiming that that little bit of stack
+	We deal with this by claiming that little bit of stack
 	is actually part of the __morestack frame, encoded as
 	DWARF call frame instructions (CFI) by .cfi assembler
 	pseudo-ops.
@@ -119,7 +119,7 @@ MORESTACK:
 	// telling the unwinder to consider the Canonical Frame
 	// Address (CFA) for this frame to be the value of the stack
 	// pointer prior to entry to the original function, whereas
-	// the CFA would typically be the the value of the stack
+	// the CFA would typically be the value of the stack
 	// pointer prior to entry to this function. This will allow
 	// the unwinder to understand how to skip the tiny partial
 	// frame that the original function created by calling
@@ -167,7 +167,7 @@ MORESTACK:
 	// The arguments to upcall_new_stack
 
 	// The size of the stack arguments to copy to the new stack,
-	// ane of the the arguments to __morestack
+	// and of the arguments to __morestack
 	movl 40(%esp),%eax
 	movl %eax,8(%esp)
 	// The address of the stack arguments to the original function

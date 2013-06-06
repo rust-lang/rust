@@ -1411,7 +1411,7 @@ pub fn zip_slice<T:Copy,U:Copy>(v: &const [T], u: &const [U])
 /**
  * Convert two vectors to a vector of pairs.
  *
- * Returns a vector of tuples, where the i-th tuple contains contains the
+ * Returns a vector of tuples, where the i-th tuple contains the
  * i-th elements from each of the input vectors.
  */
 pub fn zip<T, U>(mut v: ~[T], mut u: ~[U]) -> ~[(T, U)] {

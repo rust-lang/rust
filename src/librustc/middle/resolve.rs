@@ -206,7 +206,7 @@ pub enum RibKind {
     FunctionRibKind(node_id /* func id */, node_id /* body id */),
 
     // We passed through an impl or trait and are now in one of its
-    // methods. Allow references to ty params that that impl or trait
+    // methods. Allow references to ty params that impl or trait
     // binds. Disallow any other upvars (including other ty params that are
     // upvars).
               // parent;   method itself

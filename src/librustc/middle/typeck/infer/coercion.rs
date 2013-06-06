@@ -369,8 +369,7 @@ impl Coerce {
 
         // although borrowed ptrs and unsafe ptrs have the same
         // representation, we still register an AutoDerefRef so that
-        // regionck knows that that the region for `a` must be valid
-        // here
+        // regionck knows that the region for `a` must be valid here
         Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 1,
             autoref: Some(ty::AutoUnsafe(mt_b.mutbl))

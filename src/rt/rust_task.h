@@ -614,7 +614,7 @@ rust_task::prev_stack() {
 // The LLVM-generated segmented-stack function prolog compares the amount of
 // stack needed for each frame to the end-of-stack pointer stored in the
 // TCB. As an optimization, when the frame size is less than 256 bytes, it
-// will simply compare %esp to to the stack limit instead of subtracting the
+// will simply compare %esp to the stack limit instead of subtracting the
 // frame size. As a result we need our stack limit to account for those 256
 // bytes.
 const unsigned LIMIT_OFFSET = 256;

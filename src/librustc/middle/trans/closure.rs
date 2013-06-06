@@ -374,7 +374,7 @@ pub fn trans_expr_fn(bcx: block,
      * - `decl`
      * - `body`
      * - `outer_id`: The id of the closure expression with the correct
-     *   type.  This is usually the same as as `user_id`, but in the
+     *   type.  This is usually the same as `user_id`, but in the
      *   case of a `for` loop, the `outer_id` will have the return
      *   type of boolean, and the `user_id` will have the return type
      *   of `nil`.
