@@ -24,7 +24,7 @@ The 4 kinds are
   scalar types and managed pointers, and exludes owned pointers. It
   also excludes types that implement `Drop`.
 
-* Owned - owned types and types containing owned types.  These types
+* Send - owned types and types containing owned types.  These types
   may be transferred across task boundaries.
 
 * Freeze - types that are deeply immutable.
@@ -45,13 +45,13 @@ pub trait Copy {
 
 #[cfg(stage0)]
 #[lang="owned"]
-pub trait Owned {
+pub trait Send {
     // empty.
 }
 
 #[cfg(not(stage0))]
 #[lang="send"]
-pub trait Owned {
+pub trait Send {
     // empty.
 }
 

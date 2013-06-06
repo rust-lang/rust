@@ -11,7 +11,7 @@
 use std::comm::*;
 use std::task;
 
-pub fn foo<T:Owned + Copy>(x: T) -> Port<T> {
+pub fn foo<T:Send + Copy>(x: T) -> Port<T> {
     let (p, c) = stream();
     do task::spawn() {
         c.send(copy x);
