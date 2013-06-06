@@ -20,6 +20,7 @@ use clone::Clone;
 use old_iter::BaseIter;
 use old_iter;
 use iterator::Iterator;
+use iter::FromIter;
 use kinds::Copy;
 use libc;
 use old_iter::CopyableIter;
@@ -2993,6 +2994,15 @@ impl<'self, T> Iterator<&'self mut T> for MutVecIterator<'self, T> {
                 Some(cast::transmute(old))
             }
         }
+    }
+}
+
+impl<T> FromIter<T> for ~[T]{
+    #[inline(always)]
+    pub fn from_iter(iter: &fn(f: &fn(T) -> bool) -> bool) -> ~[T] {
+        let mut v = ~[];
+        for iter |x| { v.push(x) }
+        v
     }
 }
 

@@ -14,7 +14,7 @@ Many programming languages have a 'prelude': a particular subset of the
 libraries that come with the language. Every program imports the prelude by
 default.
 
-For example, it would be annoying to add `use io::println;` to every single
+For example, it would be annoying to add `use std::io::println;` to every single
 program, and the vast majority of Rust programs will wish to print to standard
 output. Therefore, it makes sense to import it into every program.
 
@@ -49,7 +49,8 @@ pub use hash::Hash;
 pub use old_iter::{BaseIter, ReverseIter, MutableIter, ExtendedIter, EqIter};
 pub use old_iter::{CopyableIter, CopyableOrderedIter, CopyableNonstrictIter};
 pub use old_iter::{ExtendedMutableIter};
-pub use iter::Times;
+pub use iter::{Times, FromIter};
+// FIXME: #5898 pub use iterator::{Iterator, IteratorUtil};
 pub use num::{Num, NumCast};
 pub use num::{Orderable, Signed, Unsigned, Round};
 pub use num::{Algebraic, Trigonometric, Exponential, Hyperbolic};

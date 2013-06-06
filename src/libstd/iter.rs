@@ -65,16 +65,6 @@ pub trait FromIter<T> {
     pub fn from_iter(iter: &fn(f: &fn(T) -> bool) -> bool) -> Self;
 }
 
-// NOTE: This should be in vec but can't because of coherence
-impl<T> FromIter<T> for ~[T]{
-    #[inline(always)]
-    pub fn from_iter(iter: &fn(f: &fn(T) -> bool) -> bool) -> ~[T] {
-        let mut v = ~[];
-        for iter |x| { v.push(x) }
-        v
-    }
-}
-
 /**
  * Return true if `predicate` is true for any values yielded by an internal iterator.
  *
@@ -269,7 +259,7 @@ mod tests {
 
     #[test]
     fn test_from_iter() {
-        let xs: = ~[1, 2, 3];
+        let xs = ~[1, 2, 3];
         let ys: ~[int] = do FromIter::from_iter |f| { xs.each(|x| f(*x)) };
         assert_eq!(xs, ys);
     }
