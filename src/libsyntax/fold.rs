@@ -116,11 +116,43 @@ fn fold_arg_(a: arg, fld: @ast_fold) -> arg {
         id: fld.new_id(a.id),
     }
 }
+
 //used in noop_fold_expr, and possibly elsewhere in the future
 fn fold_mac_(m: &mac, fld: @ast_fold) -> mac {
     spanned {
-        node: match m.node { mac_invoc_tt(*) => copy m.node },
-        span: fld.new_span(m.span),
+        node: match m.node {
+            mac_invoc_tt(p,ref tts) =>
+            mac_invoc_tt(fld.fold_path(p),
+                         fold_tts(*tts,fld))
+        },
+        span: fld.new_span(m.span)
+    }
+}
+
+fn fold_tts(tts : &[token_tree], fld: @ast_fold) -> ~[token_tree] {
+    do tts.map |tt| {
+        match *tt {
+            tt_tok(span, ref tok) =>
+            tt_tok(span,maybe_fold_ident(tok,fld)),
+            tt_delim(ref tts) =>
+            tt_delim(fold_tts(*tts,fld)),
+            tt_seq(span, ref pattern, ref sep, is_optional) =>
+            tt_seq(span,
+                   fold_tts(*pattern,fld),
+                   sep.map(|tok|maybe_fold_ident(tok,fld)),
+                   is_optional),
+            tt_nonterminal(sp,ref ident) =>
+            tt_nonterminal(sp,fld.fold_ident(*ident))
+        }
+    }
+}
+
+// apply ident folder if it's an ident, otherwise leave it alone
+fn maybe_fold_ident(t : &token::Token, fld: @ast_fold) -> token::Token {
+    match *t {
+        token::IDENT(id,followed_by_colons) =>
+        token::IDENT(fld.fold_ident(id),followed_by_colons),
+        _ => copy *t
     }
 }
 
@@ -291,7 +323,10 @@ pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
         }
         item_mac(ref m) => {
             // FIXME #2888: we might actually want to do something here.
-            item_mac(copy *m)
+            // ... okay, we're doing something. It would probably be nicer
+            // to add something to the ast_fold trait, but I'll defer
+            // that work.
+            item_mac(fold_mac_(m,fld))
         }
     }
 }
