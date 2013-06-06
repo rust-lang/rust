@@ -59,13 +59,24 @@ pub fn run_in_newsched_task(f: ~fn()) {
 /// in one of the schedulers. The schedulers will stay alive
 /// until the function `f` returns.
 pub fn run_in_mt_newsched_task(f: ~fn()) {
+    use libc;
+    use os;
+    use from_str::FromStr;
     use rt::uv::uvio::UvEventLoop;
     use rt::sched::Shutdown;
 
     let f_cell = Cell(f);
 
     do run_in_bare_thread {
-        static N: uint = 4;
+        let nthreads = match os::getenv("RUST_TEST_THREADS") {
+            Some(nstr) => FromStr::from_str(nstr).get(),
+            None => unsafe {
+                // Using more threads than cores in test code
+                // to force the OS to preempt them frequently.
+                // Assuming that this help stress test concurrent types.
+                rust_get_num_cpus() * 2
+            }
+        };
 
         let sleepers = SleeperList::new();
         let work_queue = WorkQueue::new();
@@ -73,7 +84,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         let mut handles = ~[];
         let mut scheds = ~[];
 
-        for uint::range(0, N) |_| {
+        for uint::range(0, nthreads) |_| {
             let loop_ = ~UvEventLoop::new();
             let mut sched = ~Scheduler::new(loop_, work_queue.clone(), sleepers.clone());
             let handle = sched.make_handle();
@@ -110,6 +121,10 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
 
         // Wait for schedulers
         let _threads = threads;
+    }
+
+    extern {
+        fn rust_get_num_cpus() -> libc::uintptr_t;
     }
 }
 
