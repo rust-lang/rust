@@ -610,7 +610,7 @@ impl InferCtxt {
         debug!("probe()");
         do indent {
             let snapshot = self.start_snapshot();
-            let r = self.try(f);
+            let r = f();
             self.rollback_to(&snapshot);
             r
         }
