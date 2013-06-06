@@ -159,8 +159,8 @@ pub use libc::funcs::c95::stdlib::{free, getenv, labs, malloc, rand};
 pub use libc::funcs::c95::stdlib::{realloc, srand, strtod, strtol};
 pub use libc::funcs::c95::stdlib::{strtoul, system};
 
-pub use libc::funcs::c95::string::{memchr, memcmp, memcpy, memmove};
-pub use libc::funcs::c95::string::{memset, strcat, strchr, strcmp};
+pub use libc::funcs::c95::string::{memchr, memcmp};
+pub use libc::funcs::c95::string::{strcat, strchr, strcmp};
 pub use libc::funcs::c95::string::{strcoll, strcpy, strcspn, strerror};
 pub use libc::funcs::c95::string::{strlen, strncat, strncmp, strncpy};
 pub use libc::funcs::c95::string::{strpbrk, strrchr, strspn, strstr};
@@ -1452,16 +1452,10 @@ pub mod funcs {
                                -> size_t;
                 unsafe fn wcslen(buf: *wchar_t) -> size_t;
 
+                // Omitted: memcpy, memmove, memset (provided by LLVM)
+
                 // These are fine to execute on the Rust stack. They must be,
                 // in fact, because LLVM generates calls to them!
-                #[rust_stack]
-                #[inline(always)]
-                unsafe fn memcpy(s: *c_void, ct: *c_void, n: size_t)
-                              -> *c_void;
-                #[rust_stack]
-                #[inline(always)]
-                unsafe fn memmove(s: *c_void, ct: *c_void, n: size_t)
-                               -> *c_void;
                 #[rust_stack]
                 #[inline(always)]
                 unsafe fn memcmp(cx: *c_void, ct: *c_void, n: size_t)
@@ -1469,9 +1463,6 @@ pub mod funcs {
                 #[rust_stack]
                 #[inline(always)]
                 unsafe fn memchr(cx: *c_void, c: c_int, n: size_t) -> *c_void;
-                #[rust_stack]
-                #[inline(always)]
-                unsafe fn memset(s: *c_void, c: c_int, n: size_t) -> *c_void;
             }
         }
     }
