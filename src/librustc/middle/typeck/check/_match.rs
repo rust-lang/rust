@@ -30,8 +30,8 @@ pub fn check_match(fcx: @mut FnCtxt,
                    arms: &[ast::arm]) {
     let tcx = fcx.ccx.tcx;
 
-    let pattern_ty = fcx.infcx().next_ty_var();
-    check_expr_has_type(fcx, discrim, pattern_ty);
+    let discrim_ty = fcx.infcx().next_ty_var();
+    check_expr_has_type(fcx, discrim, discrim_ty);
 
     // Typecheck the patterns first, so that we get types for all the
     // bindings.
@@ -41,13 +41,20 @@ pub fn check_match(fcx: @mut FnCtxt,
             map: pat_id_map(tcx.def_map, arm.pats[0]),
         };
 
-        for arm.pats.iter().advance |p| { check_pat(&pcx, *p, pattern_ty);}
+        for arm.pats.iter().advance |p| { check_pat(&pcx, *p, discrim_ty);}
     }
 
+    // The result of the match is the common supertype of all the
+    // arms. Start out the value as bottom, since it's the, well,
+    // bottom the type lattice, and we'll be moving up the lattice as
+    // we process each arm. (Note that any match with 0 arms is matching
+    // on any empty type and is therefore unreachable; should the flow
+    // of execution reach it, we will fail, so bottom is an appropriate
+    // type in that case)
+    let mut result_ty = ty::mk_bot();
+
     // Now typecheck the blocks.
-    let mut result_ty = fcx.infcx().next_ty_var();
-    let mut arm_non_bot = false;
-    let mut saw_err = false;
+    let mut saw_err = ty::type_is_error(discrim_ty);
     for arms.iter().advance |arm| {
         let mut guard_err = false;
         let mut guard_bot = false;
@@ -74,18 +81,22 @@ pub fn check_match(fcx: @mut FnCtxt,
         else if guard_bot {
             fcx.write_bot(arm.body.node.id);
         }
-        else if !ty::type_is_bot(bty) {
-            arm_non_bot = true; // If the match *may* evaluate to a non-_|_
-                                // expr, the whole thing is non-_|_
-        }
-        demand::suptype(fcx, arm.body.span, result_ty, bty);
+
+        result_ty =
+            infer::common_supertype(
+                fcx.infcx(),
+                infer::MatchExpression(expr.span),
+                true, // result_ty is "expected" here
+                result_ty,
+                bty);
     }
+
     if saw_err {
         result_ty = ty::mk_err();
-    }
-    else if !arm_non_bot {
+    } else if ty::type_is_bot(discrim_ty) {
         result_ty = ty::mk_bot();
     }
+
     fcx.write_ty(expr.id, result_ty);
 }
 
@@ -647,3 +658,4 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
 
 #[deriving(Eq)]
 enum PointerKind { Managed, Send, Borrowed }
+

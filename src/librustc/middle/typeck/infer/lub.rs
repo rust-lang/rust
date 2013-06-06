@@ -19,7 +19,7 @@ use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::infer::fold_regions_in_sig;
-use middle::typeck::infer::{SubtypeTrace, Subtype};
+use middle::typeck::infer::{TypeTrace, Subtype};
 use middle::typeck::isr_alist;
 use util::common::indent;
 use util::ppaux::mt_to_str;
@@ -45,7 +45,7 @@ impl Combine for Lub {
     fn infcx(&self) -> @mut InferCtxt { self.infcx }
     fn tag(&self) -> ~str { ~"lub" }
     fn a_is_expected(&self) -> bool { self.a_is_expected }
-    fn trace(&self) -> SubtypeTrace { self.trace }
+    fn trace(&self) -> TypeTrace { self.trace }
 
     fn sub(&self) -> Sub { Sub(**self) }
     fn lub(&self) -> Lub { Lub(**self) }

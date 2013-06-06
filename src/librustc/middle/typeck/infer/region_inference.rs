@@ -1528,6 +1528,8 @@ impl RegionVarBindings {
                 loop;
             }
 
+            debug!("ConcreteFailure: !(sub <= sup): sub=%?, sup=%?",
+                   sub, sup);
             errors.push(ConcreteFailure(origin, sub, sup));
         }
     }

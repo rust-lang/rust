@@ -22,7 +22,7 @@ rise to a patricular error.
 The basis of the system are the "origin" types. An "origin" is the
 reason that a constraint or inference variable arose. There are
 different "origin" enums for different kinds of constraints/variables
-(e.g., `SubtypeOrigin`, `RegionVariableOrigin`). An origin always has
+(e.g., `TypeOrigin`, `RegionVariableOrigin`). An origin always has
 a span, but also more information so that we can generate a meaningful
 error message.
 
@@ -40,7 +40,7 @@ store and later report what gave rise to the conflicting constraints.
 # Subtype Trace
 
 Determing whether `T1 <: T2` often involves a number of subtypes and
-subconstraints along the way. A "SubtypeTrace" is an extended version
+subconstraints along the way. A "TypeTrace" is an extended version
 of an origin that traces the types and other values that were being
 compared. It is not necessarily comprehensive (in fact, at the time of
 this writing it only tracks the root values being compared) but I'd
@@ -64,8 +64,8 @@ use middle::ty;
 use middle::ty::Region;
 use middle::typeck::infer;
 use middle::typeck::infer::InferCtxt;
-use middle::typeck::infer::SubtypeTrace;
-use middle::typeck::infer::SubtypeOrigin;
+use middle::typeck::infer::TypeTrace;
+use middle::typeck::infer::TypeOrigin;
 use middle::typeck::infer::SubregionOrigin;
 use middle::typeck::infer::RegionVariableOrigin;
 use middle::typeck::infer::Types;
@@ -108,8 +108,8 @@ impl InferCtxt {
         }
     }
 
-    fn report_and_explain_type_error(@mut self,
-                                     trace: SubtypeTrace,
+    pub fn report_and_explain_type_error(@mut self,
+                                     trace: TypeTrace,
                                      terr: &ty::type_err) {
         let tcx = self.tcx;
 
@@ -125,7 +125,9 @@ impl InferCtxt {
             infer::MethodCompatCheck(_) => "method not compatible with trait",
             infer::ExprAssignable(_) => "mismatched types",
             infer::RelateTraitRefs(_) => "mismatched traits",
-            infer::RelateSelfType(_) => "mismatched types"
+            infer::RelateSelfType(_) => "mismatched types",
+            infer::MatchExpression(_) => "match arms have incompatible types",
+            infer::IfExpression(_) => "if and else have incompatible types",
         };
 
         self.tcx.sess.span_err(
@@ -179,7 +181,7 @@ impl InferCtxt {
                                sup: Region) {
         match origin {
             infer::Subtype(trace) => {
-                let terr = ty::terr_regions_does_not_outlive(sub, sup);
+                let terr = ty::terr_regions_does_not_outlive(sup, sub);
                 self.report_and_explain_type_error(trace, &terr);
             }
             infer::Reborrow(span) => {
