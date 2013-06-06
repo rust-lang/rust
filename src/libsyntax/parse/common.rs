@@ -49,7 +49,7 @@ pub fn seq_sep_none() -> SeqSep {
 
 // maps any token back to a string. not necessary if you know it's
 // an identifier....
-pub fn token_to_str(reader: @reader, token: &token::Token) -> ~str {
+pub fn token_to_str(token: &token::Token) -> ~str {
     token::to_str(get_ident_interner(), token)
 }
 

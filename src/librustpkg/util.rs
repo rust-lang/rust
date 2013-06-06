@@ -14,8 +14,6 @@ use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use extra::getopts::groups::getopts;
 use extra::term;
-#[cfg(not(test))]
-use extra::getopts;
 use syntax::ast_util::*;
 use syntax::codemap::{dummy_sp, spanned};
 use syntax::codemap::dummy_spanned;

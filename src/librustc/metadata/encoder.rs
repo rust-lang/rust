@@ -132,8 +132,7 @@ struct entry<T> {
     pos: uint
 }
 
-fn add_to_index(ecx: @EncodeContext,
-                ebml_w: &mut writer::Encoder,
+fn add_to_index(ebml_w: &mut writer::Encoder,
                 path: &[ident],
                 index: &mut ~[entry<~str>],
                 name: ident) {
