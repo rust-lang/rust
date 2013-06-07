@@ -20,6 +20,10 @@ use std::option::Option;
 use std::to_str::ToStr;
 use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
 
+
+// FIXME #6993: in librustc, uses of "ident" should be replaced
+// by just "Name".
+
 // an identifier contains a Name (index into the interner
 // table) and a SyntaxContext to track renaming and
 // macro expansion per Flatt et al., "Macros
