@@ -683,7 +683,8 @@ do
     for i in                                          \
       isaac linenoise sync test \
       arch/i386 arch/x86_64 arch/arm arch/mips  \
-      libuv libuv/src/ares libuv/src/eio libuv/src/ev
+      libuv libuv/src/ares libuv/src/eio libuv/src/ev \
+      jemalloc
     do
       make_dir rt/$t/stage$s/$i
     done
