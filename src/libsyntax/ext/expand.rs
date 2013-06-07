@@ -398,6 +398,8 @@ fn expand_non_macro_stmt (exts: SyntaxEnv,
             let expanded_pat = fld.fold_pat(pat);
             // find the pat_idents in the pattern:
             // oh dear heaven... this is going to include the enum names, as well....
+            // ... but that should be okay, as long as the new names are gensyms
+            // for the old ones.
             let idents = @mut ~[];
             ((*name_finder).visit_pat) (expanded_pat,
                                         (idents,
@@ -1037,6 +1039,7 @@ mod test {
 
     #[test]
     fn automatic_renaming () {
+        // need some other way to test these...
         let teststrs =
             ~[// b & c should get new names throughout, in the expr too:
                 @"fn a() -> int { let b = 13; let c = b; b+c }",
