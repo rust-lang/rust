@@ -76,7 +76,7 @@ pub trait FromIter<T> {
  * assert!(!any(|&x: &uint| x > 5, |f| xs.each(f)));
  * ~~~
  */
-#[inline(always)]
+#[inline(force)]
 pub fn any<T>(predicate: &fn(T) -> bool,
               iter: &fn(f: &fn(T) -> bool) -> bool) -> bool {
     for iter |x| {
@@ -97,7 +97,7 @@ pub fn any<T>(predicate: &fn(T) -> bool,
  * assert!(!all(|&x: &uint| x < 5, |f| uint::range(1, 6, f)));
  * ~~~
  */
-#[inline(always)]
+#[inline(force)]
 pub fn all<T>(predicate: &fn(T) -> bool,
               iter: &fn(f: &fn(T) -> bool) -> bool) -> bool {
     // If we ever break, iter will return false, so this will only return true
@@ -115,7 +115,7 @@ pub fn all<T>(predicate: &fn(T) -> bool,
  * assert_eq!(*find(|& &x: & &uint| x > 3, |f| xs.each(f)).unwrap(), 4);
  * ~~~
  */
-#[inline(always)]
+#[inline(force)]
 pub fn find<T>(predicate: &fn(&T) -> bool,
                iter: &fn(f: &fn(T) -> bool) -> bool) -> Option<T> {
     for iter |x| {
@@ -229,7 +229,7 @@ pub fn fold_ref<T, U>(start: T, iter: &fn(f: &fn(&U) -> bool) -> bool, f: &fn(&m
  * assert_eq!(do sum |f| { xs.each(f) }, 10);
  * ~~~
  */
-#[inline(always)]
+#[inline(force)]
 pub fn sum<T: Zero + Add<T, T>>(iter: &fn(f: &fn(&T) -> bool) -> bool) -> T {
     fold_ref(Zero::zero::<T>(), iter, |a, x| *a = a.add(x))
 }
@@ -244,7 +244,7 @@ pub fn sum<T: Zero + Add<T, T>>(iter: &fn(f: &fn(&T) -> bool) -> bool) -> T {
  * assert_eq!(do product |f| { xs.each(f) }, 24);
  * ~~~
  */
-#[inline(always)]
+#[inline(force)]
 pub fn product<T: One + Mul<T, T>>(iter: &fn(f: &fn(&T) -> bool) -> bool) -> T {
     fold_ref(One::one::<T>(), iter, |a, x| *a = a.mul(x))
 }

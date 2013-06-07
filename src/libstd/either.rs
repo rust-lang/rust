@@ -33,7 +33,7 @@ pub enum Either<T, U> {
 /// If `value` is left(T) then `f_left` is applied to its contents, if
 /// `value` is right(U) then `f_right` is applied to its contents, and the
 /// result is returned.
-#[inline(always)]
+#[inline]
 pub fn either<T, U, V>(f_left: &fn(&T) -> V,
                        f_right: &fn(&U) -> V, value: &Either<T, U>) -> V {
     match *value {
@@ -83,7 +83,7 @@ pub fn partition<T, U>(eithers: ~[Either<T, U>]) -> (~[T], ~[U]) {
 }
 
 /// Flips between left and right of a given either
-#[inline(always)]
+#[inline]
 pub fn flip<T, U>(eith: Either<T, U>) -> Either<U, T> {
     match eith {
         Right(r) => Left(r),
@@ -95,7 +95,7 @@ pub fn flip<T, U>(eith: Either<T, U>) -> Either<U, T> {
 ///
 /// Converts an `either` type to a `result` type, making the "right" choice
 /// an ok result, and the "left" choice a fail
-#[inline(always)]
+#[inline]
 pub fn to_result<T, U>(eith: Either<T, U>) -> Result<U, T> {
     match eith {
         Right(r) => result::Ok(r),
@@ -104,7 +104,7 @@ pub fn to_result<T, U>(eith: Either<T, U>) -> Result<U, T> {
 }
 
 /// Checks whether the given value is a left
-#[inline(always)]
+#[inline]
 pub fn is_left<T, U>(eith: &Either<T, U>) -> bool {
     match *eith {
         Left(_) => true,
@@ -113,7 +113,7 @@ pub fn is_left<T, U>(eith: &Either<T, U>) -> bool {
 }
 
 /// Checks whether the given value is a right
-#[inline(always)]
+#[inline]
 pub fn is_right<T, U>(eith: &Either<T, U>) -> bool {
     match *eith {
         Right(_) => true,
@@ -122,7 +122,7 @@ pub fn is_right<T, U>(eith: &Either<T, U>) -> bool {
 }
 
 /// Retrieves the value in the left branch. Fails if the either is Right.
-#[inline(always)]
+#[inline]
 pub fn unwrap_left<T,U>(eith: Either<T,U>) -> T {
     match eith {
         Left(x) => x,
@@ -131,7 +131,7 @@ pub fn unwrap_left<T,U>(eith: Either<T,U>) -> T {
 }
 
 /// Retrieves the value in the right branch. Fails if the either is Left.
-#[inline(always)]
+#[inline]
 pub fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
     match eith {
         Right(x) => x,
@@ -140,27 +140,27 @@ pub fn unwrap_right<T,U>(eith: Either<T,U>) -> U {
 }
 
 impl<T, U> Either<T, U> {
-    #[inline(always)]
+    #[inline]
     pub fn either<V>(&self, f_left: &fn(&T) -> V, f_right: &fn(&U) -> V) -> V {
         either(f_left, f_right, self)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn flip(self) -> Either<U, T> { flip(self) }
 
-    #[inline(always)]
+    #[inline]
     pub fn to_result(self) -> Result<U, T> { to_result(self) }
 
-    #[inline(always)]
+    #[inline]
     pub fn is_left(&self) -> bool { is_left(self) }
 
-    #[inline(always)]
+    #[inline]
     pub fn is_right(&self) -> bool { is_right(self) }
 
-    #[inline(always)]
+    #[inline]
     pub fn unwrap_left(self) -> T { unwrap_left(self) }
 
-    #[inline(always)]
+    #[inline]
     pub fn unwrap_right(self) -> U { unwrap_right(self) }
 }
 

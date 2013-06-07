@@ -450,7 +450,7 @@ pub trait RngUtil {
 /// Extension methods for random number generators
 impl<R: Rng> RngUtil for R {
     /// Return a random value for a Rand type
-    #[inline(always)]
+    #[inline]
     fn gen<T: Rand>(&mut self) -> T {
         Rand::rand(self)
     }
@@ -761,7 +761,7 @@ impl IsaacRng {
 }
 
 impl Rng for IsaacRng {
-    #[inline(always)]
+    #[inline]
     fn next(&mut self) -> u32 {
         if self.cnt == 0 {
             // make some more numbers
@@ -861,7 +861,7 @@ pub fn task_rng() -> @@mut IsaacRng {
 
 // Allow direct chaining with `task_rng`
 impl<R: Rng> Rng for @@mut R {
-    #[inline(always)]
+    #[inline]
     fn next(&mut self) -> u32 {
         match *self {
             @@ref mut r => r.next()

@@ -725,7 +725,7 @@ impl<T:Copy + Ord> MergeState<T> {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn copy_vec<T:Copy>(dest: &mut [T],
                     s1: uint,
                     from: &[T]) {
@@ -736,7 +736,7 @@ fn copy_vec<T:Copy>(dest: &mut [T],
     }
 }
 
-#[inline(always)]
+#[inline]
 fn shift_vec<T:Copy>(dest: &mut [T],
                      s1: uint,
                      s2: uint,

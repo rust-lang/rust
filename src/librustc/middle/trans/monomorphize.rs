@@ -194,7 +194,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                 _
             }, _) => {
         let d = mk_lldecl();
-        set_inline_hint_if_appr(/*bad*/copy i.attrs, d);
+        set_inline_hint_if_appr(ccx, i.attrs, d);
         trans_fn(ccx,
                  pt,
                  decl,
@@ -234,7 +234,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       ast_map::node_method(mth, supplied_impl_did, _) => {
         // XXX: What should the self type be here?
         let d = mk_lldecl();
-        set_inline_hint_if_appr(/*bad*/copy mth.attrs, d);
+        set_inline_hint_if_appr(ccx, mth.attrs, d);
 
         // Override the impl def ID if necessary.
         let impl_did;
@@ -248,7 +248,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       }
       ast_map::node_trait_method(@ast::provided(mth), _, pt) => {
         let d = mk_lldecl();
-        set_inline_hint_if_appr(/*bad*/copy mth.attrs, d);
+        set_inline_hint_if_appr(ccx, mth.attrs, d);
         debug!("monomorphic_fn impl_did_opt is %?", impl_did_opt);
         meth::trans_method(ccx, /*bad*/copy *pt, mth, psubsts, None, d,
                            impl_did_opt.get());

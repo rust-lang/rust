@@ -904,7 +904,7 @@ pub mod windows {
     use libc;
     use option::{None, Option, Some};
 
-    #[inline(always)]
+    #[inline]
     pub fn is_sep(u: u8) -> bool {
         u == '/' as u8 || u == '\\' as u8
     }

@@ -452,11 +452,27 @@ pub fn set_inline_hint(f: ValueRef) {
     }
 }
 
-pub fn set_inline_hint_if_appr(attrs: &[ast::attribute],
+pub fn set_inline_hint_if_appr(ccx: &CrateContext,
+                               attrs: &[ast::attribute],
                                llfn: ValueRef) {
     match attr::find_inline_attr(attrs) {
       attr::ia_hint => set_inline_hint(llfn),
-      attr::ia_always => set_always_inline(llfn),
+      attr::ia_always => {
+          for attrs.each |a| {
+              match a.node.value.node {
+                ast::meta_list(@~"inline", ref items) => {
+                  if !attr::find_meta_items_by_name(*items, "always").is_empty() {
+                    ccx.sess.span_warn(a.span,
+                                       "`#[inline(always)]` is deprecated, \
+                                       use `#[inline]` or `#[inline(force)]` instead");
+                      set_always_inline(llfn);
+                  }
+                }
+                _ => ()
+              }
+          }
+      }
+      attr::ia_force => set_always_inline(llfn),
       attr::ia_never => set_no_inline(llfn),
       attr::ia_none => { /* fallthrough */ }
     }
@@ -2470,7 +2486,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                                                  i.id,
                                                  i.attrs)
                 };
-                set_inline_hint_if_appr(i.attrs, llfn);
+                set_inline_hint_if_appr(ccx, i.attrs, llfn);
                 llfn
               }
               _ => fail!("get_item_val: weird result in table")
@@ -2582,7 +2598,7 @@ pub fn register_method(ccx: @CrateContext,
     let pth = vec::append(/*bad*/copy *pth, [path_name((ccx.names)("meth")),
                                   path_name(m.ident)]);
     let llfn = register_fn_full(ccx, m.span, pth, id, m.attrs, mty);
-    set_inline_hint_if_appr(m.attrs, llfn);
+    set_inline_hint_if_appr(ccx, m.attrs, llfn);
     llfn
 }
 
