@@ -242,7 +242,7 @@ pub enum const_val {
 pub fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
     match eval_const_expr_partial(tcx, e) {
         Ok(ref r) => (/*bad*/copy *r),
-        Err(ref s) => fail!(/*bad*/copy *s)
+        Err(ref s) => tcx.sess.span_fatal(e.span, *s)
     }
 }
 
