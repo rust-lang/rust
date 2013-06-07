@@ -29,7 +29,8 @@ use core::io;
 use core::str;
 use core::uint;
 use core::vec;
-use extra::flate;
+use core::to_bytes::ToBytes;
+use extra::lz4;
 use extra::serialize::Encodable;
 use extra;
 use syntax::abi::AbiSet;
@@ -1514,9 +1515,11 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
     wr.write(&[0u8, 0u8, 0u8, 0u8]);
 
     let writer_bytes: &mut ~[u8] = wr.bytes;
-
+    let compressed = lz4::compress(*writer_bytes, true);
     vec::to_owned(metadata_encoding_version) +
-        flate::deflate_bytes(*writer_bytes)
+        compressed.uncompressed_size.to_bytes(true) +
+        compressed.buf_size.to_bytes(true) +
+        compressed.buf
 }
 
 // Get the encoded string for a type

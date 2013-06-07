@@ -97,7 +97,7 @@ RUNTIME_CXXS_$(1)_$(2) := \
               rt/rust_android_dummy.cpp \
               rt/rust_test_helpers.cpp
 
-RUNTIME_CS_$(1)_$(2) := rt/linenoise/linenoise.c rt/linenoise/utf8.c
+RUNTIME_CS_$(1)_$(2) := rt/linenoise/linenoise.c rt/linenoise/utf8.c rt/lz4/lz4.c rt/lz4/lz4hc.c rt/lz4/xxhash.c
 
 RUNTIME_S_$(1)_$(2) := rt/arch/$$(HOST_$(1))/_context.S \
 			rt/arch/$$(HOST_$(1))/ccall.S \
