@@ -354,12 +354,12 @@ pub mod special_idents {
 pub struct StringRef<'self>(&'self str);
 
 impl<'self> Equiv<@~str> for StringRef<'self> {
-    #[inline(always)]
+    #[inline]
     fn equiv(&self, other: &@~str) -> bool { str::eq_slice(**self, **other) }
 }
 
 impl<'self> to_bytes::IterBytes for StringRef<'self> {
-    #[inline(always)]
+    #[inline(force)]
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
         (**self).iter_bytes(lsb0, f)
     }

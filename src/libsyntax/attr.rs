@@ -313,7 +313,7 @@ pub enum inline_attr {
 
 /// True if something like #[inline] is found in the list of attrs.
 pub fn find_inline_attr(attrs: &[ast::attribute]) -> inline_attr {
-    // FIXME (#2809)---validate the usage of #[inline] and #[inline(always)]
+    // FIXME (#2809)---validate the usage of #[inline] and #[inline(force)]
     do vec::foldl(ia_none, attrs) |ia,attr| {
         match attr.node.value.node {
           ast::meta_word(@~"inline") => ia_hint,
