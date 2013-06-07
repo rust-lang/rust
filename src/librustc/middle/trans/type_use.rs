@@ -33,6 +33,7 @@ use middle::trans::inline;
 use middle::ty;
 use middle::typeck;
 
+use core::iterator::IteratorUtil;
 use core::option::{Some, None};
 use core::uint;
 use core::vec;
@@ -264,7 +265,7 @@ pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
     for opt_static_did.each |&did| {
         for cx.ccx.tcx.node_type_substs.find_copy(&callee_id).each |ts| {
             let type_uses = type_uses_for(cx.ccx, did, ts.len());
-            for vec::each2(*type_uses, *ts) |uses, subst| {
+            for type_uses.iter().zip(ts.iter()).advance |(uses, subst)| {
                 type_needs(cx, *uses, *subst)
             }
         }
@@ -302,7 +303,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
         for opt_ts.each |ts| {
             let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get_copy(&e.id));
             let uses_for_ts = type_uses_for(cx.ccx, id, ts.len());
-            for vec::each2(*uses_for_ts, *ts) |uses, subst| {
+            for uses_for_ts.iter().zip(ts.iter()).advance |(uses, subst)| {
                 type_needs(cx, *uses, *subst)
             }
         }

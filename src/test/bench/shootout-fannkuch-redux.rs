@@ -1,3 +1,4 @@
+use std::iterator::*;
 use std::from_str::FromStr;
 use std::i32::range;
 use std::os;
@@ -29,9 +30,8 @@ fn fannkuch_redux(n: i32) -> i32 {
                 r -= 1;
             }
 
-            // XXX: Need each2_mut.
-            for vec::eachi_mut(perm) |i, perm_i| {
-                *perm_i = perm1.unsafe_get(i);
+            for perm.mut_iter().zip(perm1.iter()).advance |(perm_i, perm1_i)| {
+                *perm_i = *perm1_i;
             }
 
             let mut flips_count: i32 = 0;
