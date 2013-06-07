@@ -47,8 +47,7 @@ pub fn expand_deriving_rand(cx: @ExtCtxt,
             }
         ]
     };
-
-    expand_deriving_generic(cx, span, mitem, in_items, &trait_def)
+    trait_def.expand(cx, span, mitem, in_items)
 }
 
 fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {

@@ -42,7 +42,5 @@ pub fn expand_deriving_totaleq(cx: @ExtCtxt,
             }
         ]
     };
-
-    expand_deriving_generic(cx, span, mitem, in_items,
-                            &trait_def)
+    trait_def.expand(cx, span, mitem, in_items)
 }

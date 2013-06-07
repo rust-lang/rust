@@ -169,7 +169,6 @@ use ast::{enum_def, expr, ident, Generics, struct_def};
 
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
-use ext::deriving::*;
 use codemap::{span,respan};
 use opt_vec;
 
@@ -178,25 +177,6 @@ use core::vec;
 
 pub use self::ty::*;
 mod ty;
-
-pub fn expand_deriving_generic(cx: @ExtCtxt,
-                               span: span,
-                               _mitem: @ast::meta_item,
-                               in_items: ~[@ast::item],
-                               trait_def: &TraitDef) -> ~[@ast::item] {
-    let expand_enum: ExpandDerivingEnumDefFn =
-        |cx, span, enum_def, type_ident, generics| {
-        trait_def.expand_enum_def(cx, span, enum_def, type_ident, generics)
-    };
-    let expand_struct: ExpandDerivingStructDefFn =
-        |cx, span, struct_def, type_ident, generics| {
-        trait_def.expand_struct_def(cx, span, struct_def, type_ident, generics)
-    };
-
-    expand_deriving(cx, span, in_items,
-                    expand_struct,
-                    expand_enum)
-}
 
 pub struct TraitDef<'self> {
     /// Path of the trait, including any type parameters
@@ -301,23 +281,97 @@ pub type EnumNonMatchFunc<'self> =
 
 
 impl<'self> TraitDef<'self> {
+    pub fn expand(&self, cx: @ExtCtxt,
+                  span: span,
+                  _mitem: @ast::meta_item,
+                  in_items: ~[@ast::item]) -> ~[@ast::item] {
+        let mut result = ~[];
+        for in_items.each |item| {
+            result.push(*item);
+            match item.node {
+                ast::item_struct(struct_def, ref generics) => {
+                    result.push(self.expand_struct_def(cx, span,
+                                                       struct_def,
+                                                       item.ident,
+                                                       generics));
+                }
+                ast::item_enum(ref enum_def, ref generics) => {
+                    result.push(self.expand_enum_def(cx, span,
+                                                     enum_def,
+                                                     item.ident,
+                                                     generics));
+                }
+                _ => ()
+            }
+        }
+        result
+    }
+
+    /**
+     *
+     * Given that we are deriving a trait `Tr` for a type `T<'a, ...,
+     * 'z, A, ..., Z>`, creates an impl like:
+     *
+     *      impl<'a, ..., 'z, A:Tr B1 B2, ..., Z: Tr B1 B2> Tr for T<A, ..., Z> { ... }
+     *
+     * where B1, B2, ... are the bounds given by `bounds_paths`.'
+     *
+     */
     fn create_derived_impl(&self, cx: @ExtCtxt, span: span,
                            type_ident: ident, generics: &Generics,
                            methods: ~[@ast::method]) -> @ast::item {
         let trait_path = self.path.to_path(cx, span, type_ident, generics);
 
-        let trait_generics = self.generics.to_generics(cx, span, type_ident, generics);
+        let mut trait_generics = self.generics.to_generics(cx, span, type_ident, generics);
+        // Copy the lifetimes
+        for generics.lifetimes.each |l| {
+            trait_generics.lifetimes.push(copy *l)
+        };
+        // Create the type parameters.
+        for generics.ty_params.each |ty_param| {
+            // I don't think this can be moved out of the loop, since
+            // a TyParamBound requires an ast id
+            let mut bounds = opt_vec::from(
+                // extra restrictions on the generics parameters to the type being derived upon
+                do self.additional_bounds.map |p| {
+                    cx.typarambound(p.to_path(cx, span, type_ident, generics))
+                });
+            // require the current trait
+            bounds.push(cx.typarambound(trait_path));
 
-        let additional_bounds = opt_vec::from(
-            do self.additional_bounds.map |p| {
-                p.to_path(cx, span, type_ident, generics)
-            });
+            trait_generics.ty_params.push(cx.typaram(ty_param.ident, @bounds));
+        }
 
-        create_derived_impl(cx, span,
-                            type_ident, generics,
-                            methods, trait_path,
-                            trait_generics,
-                            additional_bounds)
+        // Create the reference to the trait.
+        let trait_ref = cx.trait_ref(trait_path);
+
+        // Create the type parameters on the `self` path.
+        let self_ty_params = do generics.ty_params.map |ty_param| {
+            cx.ty_ident(span, ty_param.ident)
+        };
+
+        let self_lifetime = if generics.lifetimes.is_empty() {
+            None
+        } else {
+            Some(@*generics.lifetimes.get(0))
+        };
+
+        // Create the type of `self`.
+        let self_type = cx.ty_path(cx.path_all(span, false, ~[ type_ident ], self_lifetime,
+                                               opt_vec::take_vec(self_ty_params)));
+
+        let doc_attr = cx.attribute(
+            span,
+            cx.meta_name_value(span,
+                               ~"doc", ast::lit_str(@~"Automatically derived.")));
+        cx.item(
+            span,
+            ::parse::token::special_idents::clownshoes_extensions,
+            ~[doc_attr],
+            ast::item_impl(trait_generics,
+                           Some(trait_ref),
+                           self_type,
+                           methods.map(|x| *x)))
     }
 
     fn expand_struct_def(&self, cx: @ExtCtxt,
@@ -833,6 +887,124 @@ fn summarise_struct(cx: @ExtCtxt, span: span,
         (_, _)     => Left(unnamed_count)
     }
 }
+
+pub fn create_subpatterns(cx: @ExtCtxt,
+                          span: span,
+                          field_paths: ~[@ast::Path],
+                          mutbl: ast::mutability)
+                   -> ~[@ast::pat] {
+    do field_paths.map |&path| {
+        cx.pat(span, ast::pat_ident(ast::bind_by_ref(mutbl), path, None))
+    }
+}
+
+#[deriving(Eq)] // dogfooding!
+enum StructType {
+    Unknown, Record, Tuple
+}
+
+fn create_struct_pattern(cx: @ExtCtxt,
+                             span: span,
+                             struct_ident: ident,
+                             struct_def: &struct_def,
+                             prefix: &str,
+                             mutbl: ast::mutability)
+    -> (@ast::pat, ~[(Option<ident>, @expr)]) {
+    if struct_def.fields.is_empty() {
+        return (
+            cx.pat_ident_binding_mode(
+                span, struct_ident, ast::bind_infer),
+            ~[]);
+    }
+
+    let matching_path = cx.path(span, ~[ struct_ident ]);
+
+    let mut paths = ~[];
+    let mut ident_expr = ~[];
+    let mut struct_type = Unknown;
+
+    for struct_def.fields.eachi |i, struct_field| {
+        let opt_id = match struct_field.node.kind {
+            ast::named_field(ident, _) if (struct_type == Unknown ||
+                                           struct_type == Record) => {
+                struct_type = Record;
+                Some(ident)
+            }
+            ast::unnamed_field if (struct_type == Unknown ||
+                                   struct_type == Tuple) => {
+                struct_type = Tuple;
+                None
+            }
+            _ => {
+                cx.span_bug(span, "A struct with named and unnamed fields in `deriving`");
+            }
+        };
+        let path = cx.path_ident(span,
+                                 cx.ident_of(fmt!("%s_%u", prefix, i)));
+        paths.push(path);
+        ident_expr.push((opt_id, cx.expr_path(path)));
+    }
+
+    let subpats = create_subpatterns(cx, span, paths, mutbl);
+
+    // struct_type is definitely not Unknown, since struct_def.fields
+    // must be nonempty to reach here
+    let pattern = if struct_type == Record {
+        let field_pats = do vec::build |push| {
+            for vec::each2(subpats, ident_expr) |&pat, &(id, _)| {
+                // id is guaranteed to be Some
+                push(ast::field_pat { ident: id.get(), pat: pat })
+            }
+        };
+        cx.pat_struct(span, matching_path, field_pats)
+    } else {
+        cx.pat_enum(span, matching_path, subpats)
+    };
+
+    (pattern, ident_expr)
+}
+
+fn create_enum_variant_pattern(cx: @ExtCtxt,
+                                   span: span,
+                                   variant: &ast::variant,
+                                   prefix: &str,
+                                   mutbl: ast::mutability)
+    -> (@ast::pat, ~[(Option<ident>, @expr)]) {
+
+    let variant_ident = variant.node.name;
+    match variant.node.kind {
+        ast::tuple_variant_kind(ref variant_args) => {
+            if variant_args.is_empty() {
+                return (cx.pat_ident_binding_mode(
+                    span, variant_ident, ast::bind_infer), ~[]);
+            }
+
+            let matching_path = cx.path_ident(span, variant_ident);
+
+            let mut paths = ~[];
+            let mut ident_expr = ~[];
+            for uint::range(0, variant_args.len()) |i| {
+                let path = cx.path_ident(span,
+                                         cx.ident_of(fmt!("%s_%u", prefix, i)));
+
+                paths.push(path);
+                ident_expr.push((None, cx.expr_path(path)));
+            }
+
+            let subpats = create_subpatterns(cx, span, paths, mutbl);
+
+            (cx.pat_enum(span, matching_path, subpats),
+             ident_expr)
+        }
+        ast::struct_variant_kind(struct_def) => {
+            create_struct_pattern(cx, span,
+                                  variant_ident, struct_def,
+                                  prefix,
+                                  mutbl)
+        }
+    }
+}
+
 
 
 /* helpful premade recipes */
