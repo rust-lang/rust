@@ -161,22 +161,20 @@ fn string_advance_token(r: @mut StringReader) {
     }
 }
 
-fn byte_offset(rdr: &StringReader) -> BytePos {
-    (rdr.pos - rdr.filemap.start_pos)
+fn byte_offset(rdr: &StringReader, pos: BytePos) -> BytePos {
+    (pos - rdr.filemap.start_pos)
 }
 
 pub fn get_str_from(rdr: @mut StringReader, start: BytePos) -> ~str {
-    // I'm pretty skeptical about this subtraction. What if there's a
-    // multi-byte character before the mark?
-    return str::slice(*rdr.src, start.to_uint() - 1u,
-                      byte_offset(rdr).to_uint() - 1u).to_owned();
+    return str::slice(*rdr.src, start.to_uint(),
+                      byte_offset(rdr, rdr.last_pos).to_uint()).to_owned();
 }
 
 // EFFECT: advance the StringReader by one character. If a newline is
 // discovered, add it to the FileMap's list of line start offsets.
 pub fn bump(rdr: &mut StringReader) {
     rdr.last_pos = rdr.pos;
-    let current_byte_offset = byte_offset(rdr).to_uint();;
+    let current_byte_offset = byte_offset(rdr, rdr.pos).to_uint();
     if current_byte_offset < (*rdr.src).len() {
         assert!(rdr.curr != -1 as char);
         let last_char = rdr.curr;
@@ -202,7 +200,7 @@ pub fn is_eof(rdr: @mut StringReader) -> bool {
     rdr.curr == -1 as char
 }
 pub fn nextch(rdr: @mut StringReader) -> char {
-    let offset = byte_offset(rdr).to_uint();
+    let offset = byte_offset(rdr, rdr.pos).to_uint();
     if offset < (*rdr.src).len() {
         return str::char_at(*rdr.src, offset);
     } else { return -1 as char; }
@@ -692,7 +690,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
         return token::LIT_INT(c2 as i64, ast::ty_char);
       }
       '"' => {
-        let n = byte_offset(rdr);
+        let n = byte_offset(rdr, rdr.last_pos);
         bump(rdr);
         while rdr.curr != '"' {
             if is_eof(rdr) {
