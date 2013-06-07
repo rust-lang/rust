@@ -17,6 +17,7 @@ use middle::typeck;
 use util::ppaux::{Repr, ty_to_str};
 use util::ppaux::UserString;
 
+use core::iterator::IteratorUtil;
 use core::vec;
 use syntax::ast::*;
 use syntax::attr::attrs_contains_name;
@@ -268,7 +269,7 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
                   ts.repr(cx.tcx),
                   type_param_defs.repr(cx.tcx));
         }
-        for vec::each2(**ts, *type_param_defs) |&ty, type_param_def| {
+        for ts.iter().zip(type_param_defs.iter()).advance |(&ty, type_param_def)| {
             check_bounds(cx, type_parameter_id, e.span, ty, type_param_def)
         }
     }
@@ -309,7 +310,7 @@ fn check_ty(aty: @Ty, cx: Context, v: visit::vt<Context>) {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&id));
             let type_param_defs =
                 ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
-            for vec::each2(**ts, *type_param_defs) |&ty, type_param_def| {
+            for ts.iter().zip(type_param_defs.iter()).advance |(&ty, type_param_def)| {
                 check_bounds(cx, aty.id, aty.span, ty, type_param_def)
             }
         }

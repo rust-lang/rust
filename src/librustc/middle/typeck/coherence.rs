@@ -54,6 +54,7 @@ use syntax::visit::{Visitor, SimpleVisitor};
 use syntax::visit::{visit_mod};
 use util::ppaux::ty_to_str;
 
+use core::iterator::IteratorUtil;
 use core::hashmap::{HashMap, HashSet};
 use core::old_iter;
 use core::result::Ok;
@@ -617,9 +618,9 @@ impl CoherenceChecker {
                 // Check to ensure that each parameter binding respected its
                 // kind bounds.
                 for [ a, b ].each |result| {
-                    for vec::each2(result.type_variables,
-                                   *result.type_param_defs)
-                        |ty_var, type_param_def|
+                    for result.type_variables.iter()
+                        .zip(result.type_param_defs.iter())
+                        .advance |(ty_var, type_param_def)|
                     {
                         if type_param_def.bounds.builtin_bounds.contains_elem(
                             ty::BoundCopy)

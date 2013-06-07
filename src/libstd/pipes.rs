@@ -87,6 +87,7 @@ bounded and unbounded protocols allows for less code duplication.
 use container::Container;
 use cast::{forget, transmute, transmute_copy};
 use either::{Either, Left, Right};
+use iterator::IteratorUtil;
 use kinds::Owned;
 use libc;
 use ops::Drop;
@@ -96,8 +97,7 @@ use unstable::intrinsics;
 use ptr;
 use ptr::RawPtr;
 use task;
-use vec;
-use vec::OwnedVector;
+use vec::{OwnedVector, MutableVector};
 use util::replace;
 
 static SPIN_COUNT: uint = 0;
@@ -600,7 +600,7 @@ pub fn wait_many<T: Selectable>(pkts: &mut [T]) -> uint {
 
     let mut data_avail = false;
     let mut ready_packet = pkts.len();
-    for vec::eachi_mut(pkts) |i, p| {
+    for pkts.mut_iter().enumerate().advance |(i, p)| {
         unsafe {
             let p = &mut *p.header();
             let old = p.mark_blocked(this);
@@ -622,7 +622,7 @@ pub fn wait_many<T: Selectable>(pkts: &mut [T]) -> uint {
         let event = wait_event(this) as *PacketHeader;
 
         let mut pos = None;
-        for vec::eachi_mut(pkts) |i, p| {
+        for pkts.mut_iter().enumerate().advance |(i, p)| {
             if p.header() == event {
                 pos = Some(i);
                 break;
@@ -640,7 +640,7 @@ pub fn wait_many<T: Selectable>(pkts: &mut [T]) -> uint {
 
     debug!("%?", &mut pkts[ready_packet]);
 
-    for vec::each_mut(pkts) |p| {
+    for pkts.mut_iter().advance |p| {
         unsafe {
             (*p.header()).unblock()
         }
@@ -853,7 +853,7 @@ pub fn select<T:Owned,Tb:Owned>(mut endpoints: ~[RecvPacketBuffered<T, Tb>])
                                     Option<T>,
                                     ~[RecvPacketBuffered<T, Tb>]) {
     let mut endpoint_headers = ~[];
-    for vec::each_mut(endpoints) |endpoint| {
+    for endpoints.mut_iter().advance |endpoint| {
         endpoint_headers.push(endpoint.header());
     }
 
