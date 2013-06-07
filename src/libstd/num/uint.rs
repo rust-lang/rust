@@ -29,6 +29,7 @@ uint_module!(uint, int, ::int::bits)
 ///
 /// The smallest integer `q` such that `x/y <= q`.
 ///
+#[inline]
 pub fn div_ceil(x: uint, y: uint) -> uint {
     let div = x / y;
     if x % y == 0u { div }
@@ -47,6 +48,7 @@ pub fn div_ceil(x: uint, y: uint) -> uint {
 ///
 /// The integer `q` closest to `x/y`.
 ///
+#[inline]
 pub fn div_round(x: uint, y: uint) -> uint {
     let div = x / y;
     if x % y * 2u  < y { div }
@@ -68,6 +70,7 @@ pub fn div_round(x: uint, y: uint) -> uint {
 /// The smallest integer `q` such that `x/y <= q`. This
 /// is either `x/y` or `x/y + 1`.
 ///
+#[inline]
 pub fn div_floor(x: uint, y: uint) -> uint { return x / y; }
 
 ///
@@ -85,6 +88,7 @@ pub fn div_floor(x: uint, y: uint) -> uint { return x / y; }
 /// `true` If execution proceeded correctly, `false` if it was interrupted,
 /// that is if `it` returned `false` at any point.
 ///
+#[inline]
 pub fn iterate(lo: uint, hi: uint, it: &fn(uint) -> bool) -> bool {
     let mut i = lo;
     while i < hi {
@@ -95,7 +99,6 @@ pub fn iterate(lo: uint, hi: uint, it: &fn(uint) -> bool) -> bool {
 }
 
 impl iter::Times for uint {
-    #[inline(always)]
     ///
     /// A convenience form for basic iteration. Given a uint `x`,
     /// `for x.times { ... }` executes the given block x times.
@@ -106,6 +109,7 @@ impl iter::Times for uint {
     /// use with integer literals of inferred integer-type as
     /// the self-value (eg. `for 100.times { ... }`).
     ///
+    #[inline(force)]
     fn times(&self, it: &fn() -> bool) -> bool {
         let mut i = *self;
         while i > 0 {
@@ -117,7 +121,7 @@ impl iter::Times for uint {
 }
 
 /// Returns the smallest power of 2 greater than or equal to `n`
-#[inline(always)]
+#[inline]
 pub fn next_power_of_two(n: uint) -> uint {
     let halfbits: uint = sys::size_of::<uint>() * 4u;
     let mut tmp: uint = n - 1u;

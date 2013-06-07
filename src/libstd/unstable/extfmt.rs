@@ -673,7 +673,7 @@ pub mod rt {
         }
         buf.push_str(s);
     }
-    #[inline(always)]
+    #[inline]
     pub fn have_flag(flags: u32, f: u32) -> bool {
         flags & f != 0
     }

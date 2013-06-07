@@ -151,7 +151,7 @@ unsafe fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
 
 // FIXME #4942: Make these signatures agree with exchange_alloc's signatures
 #[lang="exchange_malloc"]
-#[inline(always)]
+#[inline(force)]
 pub unsafe fn exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     transmute(global_heap::malloc(transmute(td), transmute(size)))
 }
@@ -231,7 +231,7 @@ impl DebugPrints for io::fd_t {
 // inside a landing pad may corrupt the state of the exception handler. If a
 // problem occurs, call exit instead.
 #[lang="exchange_free"]
-#[inline(always)]
+#[inline(force)]
 pub unsafe fn exchange_free(ptr: *c_char) {
     global_heap::free(transmute(ptr))
 }
@@ -270,7 +270,7 @@ pub unsafe fn local_free(ptr: *c_char) {
 }
 
 #[lang="borrow_as_imm"]
-#[inline(always)]
+#[inline(force)]
 pub unsafe fn borrow_as_imm(a: *u8, file: *c_char, line: size_t) -> uint {
     let a: *mut BoxRepr = transmute(a);
     let old_ref_count = (*a).header.ref_count;
@@ -288,7 +288,7 @@ pub unsafe fn borrow_as_imm(a: *u8, file: *c_char, line: size_t) -> uint {
 }
 
 #[lang="borrow_as_mut"]
-#[inline(always)]
+#[inline(force)]
 pub unsafe fn borrow_as_mut(a: *u8, file: *c_char, line: size_t) -> uint {
     let a: *mut BoxRepr = transmute(a);
     let old_ref_count = (*a).header.ref_count;
@@ -345,7 +345,7 @@ pub unsafe fn unrecord_borrow(a: *u8, old_ref_count: uint,
 }
 
 #[lang="return_to_mut"]
-#[inline(always)]
+#[inline(force)]
 pub unsafe fn return_to_mut(a: *u8, orig_ref_count: uint,
                             file: *c_char, line: size_t) {
     // Sometimes the box is null, if it is conditionally frozen.
@@ -364,7 +364,7 @@ pub unsafe fn return_to_mut(a: *u8, orig_ref_count: uint,
 }
 
 #[lang="check_not_borrowed"]
-#[inline(always)]
+#[inline(force)]
 pub unsafe fn check_not_borrowed(a: *u8,
                                  file: *c_char,
                                  line: size_t) {
@@ -377,7 +377,7 @@ pub unsafe fn check_not_borrowed(a: *u8,
 }
 
 #[lang="strdup_uniq"]
-#[inline(always)]
+#[inline(force)]
 pub unsafe fn strdup_uniq(ptr: *c_uchar, len: uint) -> ~str {
     str::raw::from_buf_len(ptr, len)
 }

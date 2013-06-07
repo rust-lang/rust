@@ -348,58 +348,58 @@ pub trait IteratorUtil<A> {
 ///
 /// In the future these will be default methods instead of a utility trait.
 impl<A, T: Iterator<A>> IteratorUtil<A> for T {
-    #[inline(always)]
+    #[inline(force)]
     fn chain<U: Iterator<A>>(self, other: U) -> ChainIterator<T, U> {
         ChainIterator{a: self, b: other, flag: false}
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<T, U> {
         ZipIterator{a: self, b: other}
     }
 
     // FIXME: #5898: should be called map
-    #[inline(always)]
+    #[inline(force)]
     fn transform<'r, B>(self, f: &'r fn(A) -> B) -> MapIterator<'r, A, B, T> {
         MapIterator{iter: self, f: f}
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> FilterIterator<'r, A, T> {
         FilterIterator{iter: self, predicate: predicate}
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn filter_map<'r, B>(self, f: &'r fn(A) -> Option<B>) -> FilterMapIterator<'r, A, B, T> {
         FilterMapIterator { iter: self, f: f }
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn enumerate(self) -> EnumerateIterator<T> {
         EnumerateIterator{iter: self, count: 0}
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn skip_while<'r>(self, predicate: &'r fn(&A) -> bool) -> SkipWhileIterator<'r, A, T> {
         SkipWhileIterator{iter: self, flag: false, predicate: predicate}
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn take_while<'r>(self, predicate: &'r fn(&A) -> bool) -> TakeWhileIterator<'r, A, T> {
         TakeWhileIterator{iter: self, flag: false, predicate: predicate}
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn skip(self, n: uint) -> SkipIterator<A, T> {
         SkipIterator{iter: self, n: n}
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn take(self, n: uint) -> TakeIterator<A, T> {
         TakeIterator{iter: self, n: n}
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn scan<'r, St, B>(self, initial_state: St, f: &'r fn(&mut St, A) -> Option<B>)
         -> ScanIterator<'r, A, B, T, St> {
         ScanIterator{iter: self, f: f, state: initial_state}
@@ -418,13 +418,13 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
         }
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn collect<B: FromIter<A>>(&mut self) -> B {
         FromIter::from_iter::<A, B>(|f| self.advance(f))
     }
 
     /// Return the `n`th item yielded by an iterator.
-    #[inline(always)]
+    #[inline(force)]
     fn nth(&mut self, mut n: uint) -> Option<A> {
         loop {
             match self.next() {
@@ -436,7 +436,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     }
 
     /// Return the last item yielded by an iterator.
-    #[inline(always)]
+    #[inline(force)]
     fn last(&mut self) -> Option<A> {
         let mut last = None;
         for self.advance |x| { last = Some(x); }
@@ -457,16 +457,16 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     }
 
     /// Count the number of items yielded by an iterator
-    #[inline(always)]
+    #[inline(force)]
     fn count(&mut self) -> uint { self.fold(0, |cnt, _x| cnt + 1) }
 
-    #[inline(always)]
+    #[inline(force)]
     fn all(&mut self, f: &fn(&A) -> bool) -> bool {
         for self.advance |x| { if !f(&x) { return false; } }
         return true;
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn any(&mut self, f: &fn(&A) -> bool) -> bool {
         for self.advance |x| { if f(&x) { return true; } }
         return false;
@@ -490,7 +490,7 @@ pub trait AdditiveIterator<A> {
 }
 
 impl<A: Add<A, A> + Zero, T: Iterator<A>> AdditiveIterator<A> for T {
-    #[inline(always)]
+    #[inline(force)]
     fn sum(&mut self) -> A { self.fold(Zero::zero::<A>(), |s, x| s + x) }
 }
 
@@ -515,7 +515,7 @@ pub trait MultiplicativeIterator<A> {
 }
 
 impl<A: Mul<A, A> + One, T: Iterator<A>> MultiplicativeIterator<A> for T {
-    #[inline(always)]
+    #[inline(force)]
     fn product(&mut self) -> A { self.fold(One::one::<A>(), |p, x| p * x) }
 }
 
@@ -548,7 +548,7 @@ pub trait OrdIterator<A> {
 }
 
 impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
-    #[inline(always)]
+    #[inline(force)]
     fn max(&mut self) -> Option<A> {
         self.fold(None, |max, x| {
             match max {
@@ -558,7 +558,7 @@ impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
         })
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn min(&mut self) -> Option<A> {
         self.fold(None, |min, x| {
             match min {
@@ -850,14 +850,14 @@ pub struct Counter<A> {
 
 impl<A> Counter<A> {
     /// Creates a new counter with the specified start/step
-    #[inline(always)]
+    #[inline(force)]
     pub fn new(start: A, step: A) -> Counter<A> {
         Counter{state: start, step: step}
     }
 }
 
 impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
-    #[inline(always)]
+    #[inline(force)]
     fn next(&mut self) -> Option<A> {
         let result = self.state.clone();
         self.state = self.state.add(&self.step); // FIXME: #6050

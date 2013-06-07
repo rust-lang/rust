@@ -1457,11 +1457,11 @@ pub mod funcs {
                 // These are fine to execute on the Rust stack. They must be,
                 // in fact, because LLVM generates calls to them!
                 #[rust_stack]
-                #[inline(always)]
+                #[inline(force)]
                 unsafe fn memcmp(cx: *c_void, ct: *c_void, n: size_t)
                               -> c_int;
                 #[rust_stack]
-                #[inline(always)]
+                #[inline(force)]
                 unsafe fn memchr(cx: *c_void, c: c_int, n: size_t) -> *c_void;
             }
         }

@@ -23,19 +23,19 @@ pub struct Ascii { priv chr: u8 }
 
 impl Ascii {
     /// Converts a ascii character into a `u8`.
-    #[inline(always)]
+    #[inline(force)]
     pub fn to_byte(self) -> u8 {
         self.chr
     }
 
     /// Converts a ascii character into a `char`.
-    #[inline(always)]
+    #[inline(force)]
     pub fn to_char(self) -> char {
         self.chr as char
     }
 
     /// Convert to lowercase.
-    #[inline(always)]
+    #[inline(force)]
     pub fn to_lower(self) -> Ascii {
         if self.chr >= 65 && self.chr <= 90 {
             Ascii{chr: self.chr | 0x20 }
@@ -45,7 +45,7 @@ impl Ascii {
     }
 
     /// Convert to uppercase.
-    #[inline(always)]
+    #[inline(force)]
     pub fn to_upper(self) -> Ascii {
         if self.chr >= 97 && self.chr <= 122 {
             Ascii{chr: self.chr & !0x20 }
@@ -55,14 +55,14 @@ impl Ascii {
     }
 
     /// Compares two ascii characters of equality, ignoring case.
-    #[inline(always)]
+    #[inline(force)]
     pub fn eq_ignore_case(self, other: Ascii) -> bool {
         self.to_lower().chr == other.to_lower().chr
     }
 }
 
 impl ToStr for Ascii {
-    #[inline(always)]
+    #[inline(force)]
     fn to_str(&self) -> ~str { str::from_bytes(['\'' as u8, self.chr, '\'' as u8]) }
 }
 
@@ -76,13 +76,13 @@ pub trait AsciiCast<T> {
 }
 
 impl<'self> AsciiCast<&'self[Ascii]> for &'self [u8] {
-    #[inline(always)]
+    #[inline(force)]
     fn to_ascii(&self) -> &'self[Ascii] {
         assert!(self.is_ascii());
         unsafe{ cast::transmute(*self) }
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn is_ascii(&self) -> bool {
         for self.each |b| {
             if !b.is_ascii() { return false; }
@@ -92,14 +92,14 @@ impl<'self> AsciiCast<&'self[Ascii]> for &'self [u8] {
 }
 
 impl<'self> AsciiCast<&'self[Ascii]> for &'self str {
-    #[inline(always)]
+    #[inline(force)]
     fn to_ascii(&self) -> &'self[Ascii] {
         assert!(self.is_ascii());
         let (p,len): (*u8, uint) = unsafe{ cast::transmute(*self) };
         unsafe{ cast::transmute((p, len - 1))}
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn is_ascii(&self) -> bool {
         for self.each |b| {
             if !b.is_ascii() { return false; }
@@ -109,26 +109,26 @@ impl<'self> AsciiCast<&'self[Ascii]> for &'self str {
 }
 
 impl AsciiCast<Ascii> for u8 {
-    #[inline(always)]
+    #[inline(force)]
     fn to_ascii(&self) -> Ascii {
         assert!(self.is_ascii());
         Ascii{ chr: *self }
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn is_ascii(&self) -> bool {
         *self & 128 == 0u8
     }
 }
 
 impl AsciiCast<Ascii> for char {
-    #[inline(always)]
+    #[inline(force)]
     fn to_ascii(&self) -> Ascii {
         assert!(self.is_ascii());
         Ascii{ chr: *self as u8 }
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn is_ascii(&self) -> bool {
         *self - ('\x7F' & *self) == '\x00'
     }
@@ -141,7 +141,7 @@ pub trait OwnedAsciiCast {
 }
 
 impl OwnedAsciiCast for ~[u8] {
-    #[inline(always)]
+    #[inline(force)]
     fn to_ascii_consume(self) -> ~[Ascii] {
         assert!(self.is_ascii());
         unsafe {cast::transmute(self)}
@@ -149,7 +149,7 @@ impl OwnedAsciiCast for ~[u8] {
 }
 
 impl OwnedAsciiCast for ~str {
-    #[inline(always)]
+    #[inline(force)]
     fn to_ascii_consume(self) -> ~[Ascii] {
         assert!(self.is_ascii());
         let mut s = self;
@@ -174,26 +174,26 @@ pub trait AsciiStr {
 }
 
 impl<'self> AsciiStr for &'self [Ascii] {
-    #[inline(always)]
+    #[inline]
     fn to_str_ascii(&self) -> ~str {
         let mut cpy = self.to_owned();
         cpy.push(0u8.to_ascii());
         unsafe {cast::transmute(cpy)}
     }
 
-    #[inline(always)]
+    #[inline]
     fn to_lower(&self) -> ~[Ascii] {
         self.map(|a| a.to_lower())
     }
 
-    #[inline(always)]
+    #[inline]
     fn to_upper(&self) -> ~[Ascii] {
         self.map(|a| a.to_upper())
     }
 }
 
 impl ToStrConsume for ~[Ascii] {
-    #[inline(always)]
+    #[inline]
     fn to_str_consume(self) -> ~str {
         let mut cpy = self;
         cpy.push(0u8.to_ascii());
