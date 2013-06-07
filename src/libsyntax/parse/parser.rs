@@ -83,7 +83,8 @@ use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
 use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
 use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
 use parse::obsolete::{ObsoleteNamedExternModule, ObsoleteMultipleLocalDecl};
-use parse::token::{can_begin_expr, get_ident_interner, ident_to_str, is_ident, is_ident_or_path};
+use parse::obsolete::{ObsoleteMutWithMultipleBindings};
+use parse::token::{can_begin_expr, get_ident_interner, is_ident, is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents, token_to_binop};
 use parse::token;
 use parse::{new_sub_parser_from_file, next_node_id, ParseSess};
@@ -821,6 +822,11 @@ impl Parser {
             self.parse_arg_mode();
             is_mutbl = self.eat_keyword(keywords::Mut);
             let pat = self.parse_pat();
+
+            if is_mutbl && !ast_util::pat_is_ident(pat) {
+                self.obsolete(*self.span, ObsoleteMutWithMultipleBindings)
+            }
+
             self.expect(&token::COLON);
             pat
         } else {
@@ -2560,6 +2566,11 @@ impl Parser {
     fn parse_local(&self, is_mutbl: bool) -> @local {
         let lo = self.span.lo;
         let pat = self.parse_pat();
+
+        if is_mutbl && !ast_util::pat_is_ident(pat) {
+            self.obsolete(*self.span, ObsoleteMutWithMultipleBindings)
+        }
+
         let mut ty = @Ty {
             id: self.get_id(),
             node: ty_infer,
@@ -4420,7 +4431,8 @@ impl Parser {
         let mut attrs = vec::append(first_item_attrs,
                                     self.parse_outer_attributes());
         // First, parse view items.
-        let mut (view_items, items) = (~[], ~[]);
+        let mut view_items = ~[];
+        let mut items = ~[];
         let mut done = false;
         // I think this code would probably read better as a single
         // loop with a mutable three-state-variable (for extern mods,
