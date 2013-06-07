@@ -55,7 +55,7 @@ pub trait IteratorUtil<A> {
     /// assert_eq!(it.next().get(), &1);
     /// assert!(it.next().is_none());
     /// ~~~
-    fn chain<U: Iterator<A>>(self, other: U) -> ChainIterator<Self, U>;
+    fn chain<U: Iterator<A>>(self, other: U) -> ChainIterator<A, Self, U>;
 
     /// Creates an iterator which iterates over both this and the specified
     /// iterators simultaneously, yielding the two elements as pairs. When
@@ -73,7 +73,7 @@ pub trait IteratorUtil<A> {
     /// assert_eq!(it.next().get(), (&0, &1));
     /// assert!(it.next().is_none());
     /// ~~~
-    fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<Self, U>;
+    fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<A, Self, B, U>;
 
     // FIXME: #5898: should be called map
     /// Creates a new iterator which will apply the specified function to each
@@ -139,7 +139,7 @@ pub trait IteratorUtil<A> {
     /// assert_eq!(it.next().get(), (1, &200));
     /// assert!(it.next().is_none());
     /// ~~~
-    fn enumerate(self) -> EnumerateIterator<Self>;
+    fn enumerate(self) -> EnumerateIterator<A, Self>;
 
     /// Creates an iterator which invokes the predicate on elements until it
     /// returns true. Once the predicate returns true, all further elements are
@@ -285,7 +285,8 @@ pub trait IteratorUtil<A> {
     /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().last().get() == &5);
     /// ~~~
-    fn last(&mut self) -> Option<A>;
+    // FIXME: #5898: should be called `last`
+    fn last_(&mut self) -> Option<A>;
 
     /// Performs a fold operation over the entire iterator, returning the
     /// eventual state at the end of the iteration.
@@ -349,12 +350,12 @@ pub trait IteratorUtil<A> {
 /// In the future these will be default methods instead of a utility trait.
 impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline(always)]
-    fn chain<U: Iterator<A>>(self, other: U) -> ChainIterator<T, U> {
+    fn chain<U: Iterator<A>>(self, other: U) -> ChainIterator<A, T, U> {
         ChainIterator{a: self, b: other, flag: false}
     }
 
     #[inline(always)]
-    fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<T, U> {
+    fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<A, T, B, U> {
         ZipIterator{a: self, b: other}
     }
 
@@ -375,7 +376,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     }
 
     #[inline(always)]
-    fn enumerate(self) -> EnumerateIterator<T> {
+    fn enumerate(self) -> EnumerateIterator<A, T> {
         EnumerateIterator{iter: self, count: 0}
     }
 
@@ -437,7 +438,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
 
     /// Return the last item yielded by an iterator.
     #[inline(always)]
-    fn last(&mut self) -> Option<A> {
+    fn last_(&mut self) -> Option<A> {
         let mut last = None;
         for self.advance |x| { last = Some(x); }
         last
@@ -570,13 +571,14 @@ impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
 }
 
 /// An iterator which strings two iterators together
-pub struct ChainIterator<T, U> {
+// FIXME #6967: Dummy A parameter to get around type inference bug
+pub struct ChainIterator<A, T, U> {
     priv a: T,
     priv b: U,
     priv flag: bool
 }
 
-impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for ChainIterator<T, U> {
+impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for ChainIterator<A, T, U> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.flag {
@@ -593,12 +595,13 @@ impl<A, T: Iterator<A>, U: Iterator<A>> Iterator<A> for ChainIterator<T, U> {
 }
 
 /// An iterator which iterates two other iterators simultaneously
-pub struct ZipIterator<T, U> {
+// FIXME #6967: Dummy A & B parameters to get around type inference bug
+pub struct ZipIterator<A, T, B, U> {
     priv a: T,
     priv b: U
 }
 
-impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(A, B)> for ZipIterator<T, U> {
+impl<A, B, T: Iterator<A>, U: Iterator<B>> Iterator<(A, B)> for ZipIterator<A, T, B, U> {
     #[inline]
     fn next(&mut self) -> Option<(A, B)> {
         match (self.a.next(), self.b.next()) {
@@ -664,12 +667,13 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for FilterMapIterator<'self, A, B,
 }
 
 /// An iterator which yields the current count and the element during iteration
-pub struct EnumerateIterator<T> {
+// FIXME #6967: Dummy A parameter to get around type inference bug
+pub struct EnumerateIterator<A, T> {
     priv iter: T,
     priv count: uint
 }
 
-impl<A, T: Iterator<A>> Iterator<(uint, A)> for EnumerateIterator<T> {
+impl<A, T: Iterator<A>> Iterator<(uint, A)> for EnumerateIterator<A, T> {
     #[inline]
     fn next(&mut self) -> Option<(uint, A)> {
         match self.iter.next() {
@@ -887,7 +891,7 @@ mod tests {
         let expected = [0, 1, 2, 3, 4, 5, 30, 40, 50, 60];
         let mut it = xs.iter().chain(ys.iter());
         let mut i = 0;
-        for it.advance |&x: &uint| {
+        for it.advance |&x| {
             assert_eq!(x, expected[i]);
             i += 1;
         }
@@ -896,7 +900,7 @@ mod tests {
         let ys = Counter::new(30u, 10).take(4);
         let mut it = xs.iter().transform(|&x| x).chain(ys);
         let mut i = 0;
-        for it.advance |x: uint| {
+        for it.advance |x| {
             assert_eq!(x, expected[i]);
             i += 1;
         }
@@ -906,7 +910,7 @@ mod tests {
     #[test]
     fn test_filter_map() {
         let mut it = Counter::new(0u, 1u).take(10)
-            .filter_map(|x: uint| if x.is_even() { Some(x*x) } else { None });
+            .filter_map(|x| if x.is_even() { Some(x*x) } else { None });
         assert_eq!(it.collect::<~[uint]>(), ~[0*0, 2*2, 4*4, 6*6, 8*8]);
     }
 
@@ -914,7 +918,7 @@ mod tests {
     fn test_iterator_enumerate() {
         let xs = [0u, 1, 2, 3, 4, 5];
         let mut it = xs.iter().enumerate();
-        for it.advance |(i, &x): (uint, &uint)| {
+        for it.advance |(i, &x)| {
             assert_eq!(i, x);
         }
     }
@@ -925,7 +929,7 @@ mod tests {
         let ys = [0u, 1, 2, 3, 5, 13];
         let mut it = xs.iter().take_while(|&x| *x < 15u);
         let mut i = 0;
-        for it.advance |&x: &uint| {
+        for it.advance |&x| {
             assert_eq!(x, ys[i]);
             i += 1;
         }
@@ -938,7 +942,7 @@ mod tests {
         let ys = [15, 16, 17, 19];
         let mut it = xs.iter().skip_while(|&x| *x < 15u);
         let mut i = 0;
-        for it.advance |&x: &uint| {
+        for it.advance |&x| {
             assert_eq!(x, ys[i]);
             i += 1;
         }
@@ -1022,8 +1026,8 @@ mod tests {
     #[test]
     fn test_iterator_last() {
         let v = &[0, 1, 2, 3, 4];
-        assert_eq!(v.iter().last().unwrap(), &4);
-        assert_eq!(v.slice(0, 1).iter().last().unwrap(), &0);
+        assert_eq!(v.iter().last_().unwrap(), &4);
+        assert_eq!(v.slice(0, 1).iter().last_().unwrap(), &0);
     }
 
     #[test]
