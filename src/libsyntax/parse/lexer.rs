@@ -538,19 +538,19 @@ fn ident_continue(c: char) -> bool {
 // EFFECT: advances the input past that token
 // EFFECT: updates the interner
 fn next_token_inner(rdr: @mut StringReader) -> token::Token {
-    let mut accum_str = ~"";
     let mut c = rdr.curr;
     if ident_start(c) {
-        while ident_continue(c) {
-            str::push_char(&mut accum_str, c);
+        let start = byte_offset(rdr, rdr.last_pos);
+        while ident_continue(rdr.curr) {
             bump(rdr);
-            c = rdr.curr;
         }
-        if accum_str == ~"_" { return token::UNDERSCORE; }
-        let is_mod_name = c == ':' && nextch(rdr) == ':';
+        let string = get_str_from(rdr, start);
+
+        if "_" == string { return token::UNDERSCORE; }
+        let is_mod_name = rdr.curr == ':' && nextch(rdr) == ':';
 
         // FIXME: perform NFKC normalization here. (Issue #2253)
-        return token::IDENT(str_to_ident(accum_str), is_mod_name);
+        return token::IDENT(str_to_ident(string), is_mod_name);
     }
     if is_dec_digit(c) {
         return scan_number(c, rdr);
@@ -690,6 +690,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
         return token::LIT_INT(c2 as i64, ast::ty_char);
       }
       '"' => {
+        let mut accum_str = ~"";
         let n = byte_offset(rdr, rdr.last_pos);
         bump(rdr);
         while rdr.curr != '"' {
