@@ -207,7 +207,9 @@ pub fn trans_method_callee(bcx: block,
             let method_name =
                 ty::trait_method(tcx, trait_id, method_index).ident;
             let method_id =
-                method_with_name(bcx.ccx(), impl_def_id, method_name);
+                method_with_name_or_default(bcx.ccx(),
+                                            impl_def_id,
+                                            method_name);
             origin = typeck::method_static(method_id);
         }
         typeck::method_super(trait_id, method_index) => {
@@ -229,9 +231,10 @@ pub fn trans_method_callee(bcx: block,
                 ty::method(tcx, supertrait_method_def_ids[method_index]).ident;
             // Now that we know the impl ID, we can look up the method
             // ID from its name
-            origin = typeck::method_static(method_with_name(bcx.ccx(),
-                                                            impl_id,
-                                                            method_name));
+            origin = typeck::method_static(
+                method_with_name_or_default(bcx.ccx(),
+                                            impl_id,
+                                            method_name));
         }
         typeck::method_static(*) | typeck::method_param(*) |
         typeck::method_trait(*) => {}
@@ -345,7 +348,9 @@ pub fn trans_static_method_callee(bcx: block,
         typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
             assert!(rcvr_substs.all(|t| !ty::type_needs_infer(*t)));
 
-            let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
+            let mth_id = method_with_name_or_default(bcx.ccx(),
+                                                     impl_did,
+                                                     mname);
             let callee_substs = combine_impl_and_methods_tps(
                 bcx, mth_id, impl_did, callee_id, *rcvr_substs);
             let callee_origins = combine_impl_and_methods_origins(
@@ -372,23 +377,6 @@ pub fn trans_static_method_callee(bcx: block,
 pub fn method_from_methods(ms: &[@ast::method], name: ast::ident)
     -> Option<ast::def_id> {
     ms.find(|m| m.ident == name).map(|m| ast_util::local_def(m.id))
-}
-
-pub fn method_with_name(ccx: @CrateContext, impl_id: ast::def_id,
-                        name: ast::ident) -> ast::def_id {
-    if impl_id.crate == ast::local_crate {
-        match ccx.tcx.items.get_copy(&impl_id.node) {
-          ast_map::node_item(@ast::item {
-                node: ast::item_impl(_, _, _, ref ms),
-                _
-            }, _) => {
-            method_from_methods(*ms, name).get()
-          }
-          _ => fail!("method_with_name")
-        }
-    } else {
-        csearch::get_impl_method(ccx.sess.cstore, impl_id, name)
-    }
 }
 
 pub fn method_with_name_or_default(ccx: @CrateContext,
@@ -770,17 +758,17 @@ pub fn vtable_id(ccx: @CrateContext,
 
 /// Creates a returns a dynamic vtable for the given type and vtable origin.
 /// This is used only for objects.
-pub fn get_vtable(ccx: @CrateContext,
+pub fn get_vtable(bcx: block,
                   self_ty: ty::t,
                   origin: typeck::vtable_origin)
                   -> ValueRef {
-    let hash_id = vtable_id(ccx, &origin);
-    match ccx.vtables.find(&hash_id) {
+    let hash_id = vtable_id(bcx.ccx(), &origin);
+    match bcx.ccx().vtables.find(&hash_id) {
         Some(&val) => val,
         None => {
             match origin {
                 typeck::vtable_static(id, substs, sub_vtables) => {
-                    make_impl_vtable(ccx, id, self_ty, substs, sub_vtables)
+                    make_impl_vtable(bcx, id, self_ty, substs, sub_vtables)
                 }
                 _ => fail!("get_vtable: expected a static origin"),
             }
@@ -814,12 +802,13 @@ pub fn make_vtable(ccx: @CrateContext,
 }
 
 /// Generates a dynamic vtable for objects.
-pub fn make_impl_vtable(ccx: @CrateContext,
+pub fn make_impl_vtable(bcx: block,
                         impl_id: ast::def_id,
                         self_ty: ty::t,
                         substs: ~[ty::t],
                         vtables: typeck::vtable_res)
                         -> ValueRef {
+    let ccx = bcx.ccx();
     let _icx = ccx.insn_ctxt("impl::make_impl_vtable");
     let tcx = ccx.tcx;
 
@@ -828,9 +817,6 @@ pub fn make_impl_vtable(ccx: @CrateContext,
         None       => ccx.sess.bug("make_impl_vtable: don't know how to \
                                     make a vtable for a type impl!")
     };
-
-    let has_tps =
-        !ty::lookup_item_type(ccx.tcx, impl_id).generics.type_param_defs.is_empty();
 
     let trait_method_def_ids = ty::trait_method_def_ids(tcx, trt_id);
     let methods = do trait_method_def_ids.map |method_def_id| {
@@ -846,22 +832,11 @@ pub fn make_impl_vtable(ccx: @CrateContext,
         } else {
             debug!("(making impl vtable) adding method to vtable: %s",
                    *tcx.sess.str_of(im.ident));
-            let mut m_id = method_with_name(ccx, impl_id, im.ident);
-            if has_tps {
-                // If the method is in another crate, need to make an inlined
-                // copy first
-                if m_id.crate != ast::local_crate {
-                    // XXX: Set impl ID here?
-                    m_id = inline::maybe_instantiate_inline(ccx, m_id, true);
-                }
-                let (val, _) = monomorphize::monomorphic_fn(ccx, m_id, substs,
-                                Some(vtables), None, None);
-                val
-            } else if m_id.crate == ast::local_crate {
-                get_item_val(ccx, m_id.node)
-            } else {
-                trans_external_path(ccx, m_id, fty)
-            }
+            let m_id = method_with_name_or_default(ccx, impl_id, im.ident);
+
+            trans_fn_ref_with_vtables(bcx, m_id, 0,
+                                      substs, Some(vtables)).llfn
+
         }
     };
 
@@ -903,7 +878,7 @@ pub fn trans_trait_cast(bcx: block,
     // Store the vtable into the pair or triple.
     let orig = /*bad*/copy ccx.maps.vtable_map.get(&id)[0];
     let orig = resolve_vtable_in_fn_ctxt(bcx.fcx, orig);
-    let vtable = get_vtable(bcx.ccx(), v_ty, orig);
+    let vtable = get_vtable(bcx, v_ty, orig);
     Store(bcx, vtable, PointerCast(bcx,
                                    GEPi(bcx, lldest, [0u, abi::trt_field_vtable]),
                                    T_ptr(val_ty(vtable))));
