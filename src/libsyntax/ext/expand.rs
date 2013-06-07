@@ -772,7 +772,8 @@ pub fn expand_block(extsbox: @mut SyntaxEnv,
                     orig: @fn(&Block, @ast_fold) -> Block)
                  -> Block {
     // see note below about treatment of exts table
-    with_exts_frame!(extsbox,false,orig(blk,fld))
+    with_exts_frame!(extsbox,false,
+                     expand_block_elts(*extsbox, blk, fld))
 }
 
 
