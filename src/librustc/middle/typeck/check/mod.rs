@@ -110,6 +110,8 @@ use util::common::{block_query, indenter, loop_query};
 use util::ppaux::{bound_region_to_str};
 use util::ppaux;
 
+
+use core::iterator::IteratorUtil;
 use core::cast::transmute;
 use core::hashmap::HashMap;
 use core::result;
@@ -412,7 +414,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
     for opt_self_info.each |self_info| {
         fcx.write_ty(self_info.self_id, self_info.self_ty);
     }
-    for vec::each2(decl.inputs, arg_tys) |input, arg| {
+    for decl.inputs.iter().zip(arg_tys.iter()).advance |(input, arg)| {
         fcx.write_ty(input.id, *arg);
     }
 
@@ -449,7 +451,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         }
 
         // Add formal parameters.
-        for vec::each2(arg_tys, decl.inputs) |arg_ty, input| {
+        for arg_tys.iter().zip(decl.inputs.iter()).advance |(arg_ty, input)| {
             // Create type variables for each argument.
             do pat_util::pat_bindings(tcx.def_map, input.pat)
                     |_bm, pat_id, _sp, _path| {

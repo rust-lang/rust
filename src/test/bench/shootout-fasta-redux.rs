@@ -1,3 +1,4 @@
+use std::iterator::IteratorUtil;
 use std::cast::transmute;
 use std::from_str::FromStr;
 use std::libc::{FILE, STDOUT_FILENO, c_int, fdopen, fputc, fputs, fwrite, size_t};
@@ -134,7 +135,7 @@ impl RandomFasta {
     fn make_lookup(a: &[AminoAcid]) -> [AminoAcid, ..LOOKUP_SIZE] {
         let mut lookup = [ NULL_AMINO_ACID, ..LOOKUP_SIZE ];
         let mut j = 0;
-        for vec::eachi_mut(lookup) |i, slot| {
+        for lookup.mut_iter().enumerate().advance |(i, slot)| {
             while a[j].p < (i as f32) {
                 j += 1;
             }
