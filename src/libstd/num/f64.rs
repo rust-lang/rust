@@ -536,10 +536,49 @@ impl Hyperbolic for f64 {
 }
 
 impl Interpolate for f64 {
-    /// Linearly intoperlate towards `other`
-    #[inline(always)]
-    fn lerp(&self, other: &f64, value: &f64) -> f64 {
-        value.mul_add(*other, value.mul_add(-*self, *self))
+    fn linear(x: f64, y: f64, t: f64) -> f64 { // TODO: Test
+        t.mul_add(y - x, x)
+    }
+
+    fn cosine(x: f64, y: f64, t: f64) -> f64 { // TODO: Test
+        (0.5 * (1.0 - (t * Real::pi()).cos())).mul_add(y - x, x)
+    }
+
+    fn smooth(x: f64, y: f64, t: f64) -> f64 { // TODO: Test
+        (t * t * t.mul_add(-2.0, 3.0)).mul_add(y - x, x)
+    }
+
+    fn barycentric(x: f64, y: f64, z: f64, t0: f64, t1: f64) -> f64 { // TODO: Test
+        let t2 = 1.0 - t0 - t1;
+
+        t0 * x + t1 * y + t2 * z
+    }
+
+    fn hermite(x: f64, xp: f64, y: f64, yp: f64, t: f64) -> f64 { // TODO: Test
+        let a0 = t.mul_add(t * t.mul_add(2.0, -3.0), 1.0);
+        let a1 = t * t * t.mul_add(-2.0, 3.0);
+        let a2 = t * t.mul_add(t * (t - 2.0), 1.0);
+        let a3 = t * t * (t - 1.0);
+
+        a0 * x + a1 * y + a2 * xp + a3 * yp
+    }
+
+    fn cubic(x: f64, y: f64, z: f64, u: f64, t: f64) -> f64 { // TODO: Test
+        let a0 = -x + y - z + u;
+        let a1 =  x - y - a0;
+        let a2 =  z - x;
+        let a3 =  y;
+
+        t.mul_add(t.mul_add(t.mul_add((t * a0), a1), a2), a3)
+    }
+
+    fn catmull_rom(x: f64, y: f64, z: f64, u: f64, t: f64) -> f64 { // TODO: Test
+        let a0 = -x + 3.0 * y - 3.0 * z + u;
+        let a1 = 2.0 * x - 5.0 * y + 4.0 * z - u;
+        let a2 = -x + z;
+        let a3 = 2.0 * y;
+
+        0.5 * t.mul_add(t.mul_add(t.mul_add((t * a0), a1), a2), a3)
     }
 }
 

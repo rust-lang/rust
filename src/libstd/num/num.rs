@@ -143,7 +143,16 @@ pub trait Hyperbolic: Exponential {
 }
 
 pub trait Interpolate {
-    fn lerp(&self, other: &Self, value: &Self) -> Self;
+    fn linear(x: Self, y: Self, t: Self) -> Self;
+    fn cosine(x: Self, y: Self, t: Self) -> Self;
+    fn smooth(x: Self, y: Self, t: Self) -> Self;
+
+    fn barycentric(x: Self, y: Self, z: Self, t0: Self, t1: Self) -> Self;
+
+    fn hermite(x: Self, xp: Self, y: Self, yp: Self, t: Self) -> Self;
+
+    fn cubic(x: Self, y: Self, z: Self, u: Self, t: Self) -> Self;
+    fn catmull_rom(x: Self, y: Self, z: Self, u: Self, t: Self) -> Self;
 }
 
 ///
