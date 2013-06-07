@@ -1108,6 +1108,12 @@ pub mod guarantor {
      -> ExprCategorizationType {
         let mut ct = ct;
         let tcx = rcx.fcx.ccx.tcx;
+
+        if (ty::type_is_error(ct.ty)) {
+            ct.cat.pointer = NotPointer;
+            return ct;
+        }
+
         for uint::range(0, autoderefs) |_| {
             ct.cat.guarantor = guarantor_of_deref(&ct.cat);
 
