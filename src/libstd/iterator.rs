@@ -285,7 +285,8 @@ pub trait IteratorUtil<A> {
     /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().last().get() == &5);
     /// ~~~
-    fn last(&mut self) -> Option<A>;
+    // FIXME: #5898: should be called `last`
+    fn last_(&mut self) -> Option<A>;
 
     /// Performs a fold operation over the entire iterator, returning the
     /// eventual state at the end of the iteration.
@@ -437,7 +438,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
 
     /// Return the last item yielded by an iterator.
     #[inline(always)]
-    fn last(&mut self) -> Option<A> {
+    fn last_(&mut self) -> Option<A> {
         let mut last = None;
         for self.advance |x| { last = Some(x); }
         last
@@ -1025,8 +1026,8 @@ mod tests {
     #[test]
     fn test_iterator_last() {
         let v = &[0, 1, 2, 3, 4];
-        assert_eq!(v.iter().last().unwrap(), &4);
-        assert_eq!(v.slice(0, 1).iter().last().unwrap(), &0);
+        assert_eq!(v.iter().last_().unwrap(), &4);
+        assert_eq!(v.slice(0, 1).iter().last_().unwrap(), &0);
     }
 
     #[test]
