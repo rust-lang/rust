@@ -20,22 +20,6 @@ use unstable::intrinsics;
 #[cfg(not(test))] use cmp::{Eq, Ord};
 use uint;
 
-#[cfg(stage0)]
-pub mod libc_ {
-    use libc::c_void;
-    use libc;
-
-    #[nolink]
-    #[abi = "cdecl"]
-    pub extern {
-        #[rust_stack]
-        unsafe fn memset(dest: *mut c_void,
-                         c: libc::c_int,
-                         len: libc::size_t)
-                      -> *c_void;
-    }
-}
-
 /// Calculate the offset from a pointer
 #[inline(always)]
 pub fn offset<T>(ptr: *T, count: uint) -> *T {
@@ -176,13 +160,6 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
     use unstable::intrinsics::memcpy64;
     memcpy64(dst, src as *T, count as u64);
-}
-
-#[inline(always)]
-#[cfg(stage0)]
-pub unsafe fn set_memory<T>(dst: *mut T, c: int, count: uint) {
-    let n = count * sys::size_of::<T>();
-    libc_::memset(dst as *mut c_void, c as libc::c_int, n as size_t);
 }
 
 /**
@@ -601,6 +578,7 @@ pub mod ptr_tests {
     }
 
     #[test]
+    #[cfg(not(stage0))]
     fn test_set_memory() {
         let mut xs = [0u8, ..20];
         let ptr = vec::raw::to_mut_ptr(xs);
