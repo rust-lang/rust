@@ -523,7 +523,7 @@ pub impl Coroutine {
                   task: ~Task,
                   start: ~fn()) -> Coroutine {
 
-        static MIN_STACK_SIZE: uint = 10000000; // XXX: Too much stack
+        static MIN_STACK_SIZE: uint = 1000000; // XXX: Too much stack
 
         let start = Coroutine::build_start_wrapper(start);
         let mut stack = stack_pool.take_segment(MIN_STACK_SIZE);
