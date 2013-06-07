@@ -159,7 +159,7 @@ pub struct Unique<T> {
     priv ptr: *mut T
 }
 
-impl<T: Owned> Unique<T> {
+impl<T: Send> Unique<T> {
     pub fn new(value: T) -> Unique<T> {
         unsafe {
             let ptr = malloc(std::sys::size_of::<T>() as size_t) as *mut T;
@@ -182,7 +182,7 @@ impl<T: Owned> Unique<T> {
 }
 
 #[unsafe_destructor]
-impl<T: Owned> Drop for Unique<T> {
+impl<T: Send> Drop for Unique<T> {
     fn drop(&self) {
         unsafe {
             let x = intrinsics::init(); // dummy value to swap in

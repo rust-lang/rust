@@ -178,11 +178,13 @@ impl ABIInfo for MIPS_ABIInfo {
                     atys: &[Type],
                     rty: Type,
                     ret_def: bool) -> FnType {
-        let mut (ret_ty, ret_attr) = if ret_def {
+        let (ret_ty, ret_attr) = if ret_def {
             classify_ret_ty(rty)
         } else {
             (LLVMType { cast: false, ty: Type::void() }, None)
         };
+
+        let mut ret_ty = ret_ty;
 
         let sret = ret_attr.is_some();
         let mut arg_tys = ~[];
