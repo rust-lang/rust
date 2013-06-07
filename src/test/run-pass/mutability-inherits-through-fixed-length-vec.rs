@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::vec;
+use std::iterator::IteratorUtil;
 
 fn test1() {
     let mut ints = [0, ..32];
@@ -18,7 +18,7 @@ fn test1() {
 
 fn test2() {
     let mut ints = [0, ..32];
-    for vec::each_mut(ints) |i| { *i += 22; }
+    for ints.mut_iter().advance |i| { *i += 22; }
     for ints.each |i| { assert!(*i == 22); }
 }
 

@@ -24,6 +24,7 @@
 
 use core::prelude::*;
 
+use core::iterator::IteratorUtil;
 use core::str;
 use core::uint;
 use core::vec;
@@ -173,7 +174,7 @@ pub fn sha1() -> @Sha1 {
     fn mk_result(st: &mut Sha1State) -> ~[u8] {
         if !(*st).computed { pad_msg(st); (*st).computed = true; }
         let mut rs: ~[u8] = ~[];
-        for vec::each_mut((*st).h) |ptr_hpart| {
+        for st.h.mut_iter().advance |ptr_hpart| {
             let hpart = *ptr_hpart;
             let a = (hpart >> 24u32 & 0xFFu32) as u8;
             let b = (hpart >> 16u32 & 0xFFu32) as u8;

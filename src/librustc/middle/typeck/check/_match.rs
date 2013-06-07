@@ -18,8 +18,8 @@ use middle::typeck::check::{instantiate_path, lookup_def};
 use middle::typeck::check::{structure_of, valid_range_bounds};
 use middle::typeck::require_same_types;
 
+use core::iterator::IteratorUtil;
 use core::hashmap::{HashMap, HashSet};
-use core::vec;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::span;
@@ -232,7 +232,7 @@ pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::pat, path: @ast::Path,
 
         if !error_happened {
             for subpats.each |pats| {
-                for vec::each2(*pats, arg_types) |subpat, arg_ty| {
+                for pats.iter().zip(arg_types.iter()).advance |(subpat, arg_ty)| {
                     check_pat(pcx, *subpat, *arg_ty);
                 }
             }
