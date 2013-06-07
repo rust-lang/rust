@@ -1461,12 +1461,15 @@ mod test {
         pprust::print_mod(s, &crate.module, crate.attrs);
     }
 
-    //fn expand_and_resolve_and_pretty_print (crate_str : @str) -> ~str {
+    //fn expand_and_resolve(crate_str: @str) -> ast::crate {
         //let (crate_ast,ps) = string_to_crate_and_sess(crate_str);
         // the cfg argument actually does matter, here...
         //let expanded_ast = expand_crate(ps,~[],crate_ast);
         // std::io::println(fmt!("expanded: %?\n",expanded_ast));
-        //let resolved_ast = mtwt_resolve_crate(expanded_ast);
+        //mtwt_resolve_crate(expanded_ast)
+    //}
+    //fn expand_and_resolve_and_pretty_print (crate_str : @str) -> ~str {
+        //let resolved_ast = expand_and_resolve(crate_str);
         //pprust::to_str(&resolved_ast,fake_print_crate,get_ident_interner())
     //}
 
@@ -1503,4 +1506,9 @@ mod test {
         pat_idents.visit_pat(pat, ());
         assert_eq!(idents, @mut strs_to_idents(~["a","c","b","d"]));
     }
+
+/*    #[test]
+    fn debugging(){
+        io::println(fmt!("%?",expand_and_resolve(@~"fn main () {    let x : int = 13;}")))
+    }*/
 }
