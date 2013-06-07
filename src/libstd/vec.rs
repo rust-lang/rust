@@ -739,7 +739,8 @@ pub fn truncate<T>(v: &mut ~[T], newlen: uint) {
 pub fn dedup<T:Eq>(v: &mut ~[T]) {
     unsafe {
         if v.len() < 1 { return; }
-        let mut (last_written, next_to_read) = (0, 1);
+        let mut last_written = 0;
+        let mut next_to_read = 1;
         do as_const_buf(*v) |p, ln| {
             // We have a mutable reference to v, so we can make arbitrary
             // changes. (cf. push and pop)
@@ -1229,7 +1230,8 @@ pub fn bsearch_elem<T:TotalOrd>(v: &[T], x: &T) -> Option<uint> {
  * Convert a vector of pairs into a pair of vectors, by reference. As unzip().
  */
 pub fn unzip_slice<T:Copy,U:Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
-    let mut (ts, us) = (~[], ~[]);
+    let mut ts = ~[];
+    let mut us = ~[];
     for each(v) |p| {
         let (t, u) = *p;
         ts.push(t);
@@ -1247,7 +1249,8 @@ pub fn unzip_slice<T:Copy,U:Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
  * of the i-th tuple of the input vector.
  */
 pub fn unzip<T,U>(v: ~[(T, U)]) -> (~[T], ~[U]) {
-    let mut (ts, us) = (~[], ~[]);
+    let mut ts = ~[];
+    let mut us = ~[];
     do consume(v) |_i, p| {
         let (t, u) = p;
         ts.push(t);

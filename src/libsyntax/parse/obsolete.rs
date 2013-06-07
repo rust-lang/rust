@@ -65,6 +65,7 @@ pub enum ObsoleteSyntax {
     ObsoleteFixedLengthVectorType,
     ObsoleteNamedExternModule,
     ObsoleteMultipleLocalDecl,
+    ObsoleteMutWithMultipleBindings,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -229,6 +230,11 @@ impl Parser {
                 "declaration of multiple locals at once",
                 "instead of e.g. `let a = 1, b = 2`, write \
                  `let (a, b) = (1, 2)`."
+            ),
+            ObsoleteMutWithMultipleBindings => (
+                "`mut` with multiple bindings",
+                "use multiple local declarations instead of e.g. `let mut \
+                 (x, y) = ...`."
             ),
         };
 

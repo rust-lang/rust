@@ -22,7 +22,9 @@ proto! oneshot (
 )
 
 pub fn main() {
-    let mut (p, c) = oneshot::init();
+    let (p, c) = oneshot::init();
+    let mut p = p;
+    let mut c = c;
 
     assert!(!pipes::peek(&mut p));
 

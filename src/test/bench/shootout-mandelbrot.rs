@@ -23,7 +23,10 @@ fn main() {
         for range(0, h) |y| {
             let y = y as f64;
             for range(0, w) |x| {
-                let mut (Zr, Zi, Tr, Ti) = (0f64, 0f64, 0f64, 0f64);
+                let mut Zr = 0f64;
+                let mut Zi = 0f64;
+                let mut Tr = 0f64;
+                let mut Ti = 0f64;
                 let Cr = 2.0 * (x as f64) / (w as f64) - 1.5;
                 let Ci = 2.0 * (y as f64) / (h as f64) - 1.0;
 

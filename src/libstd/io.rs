@@ -771,7 +771,9 @@ impl<T:Reader> ReaderUtil for T {
     fn read_le_uint_n(&self, nbytes: uint) -> u64 {
         assert!(nbytes > 0 && nbytes <= 8);
 
-        let mut (val, pos, i) = (0u64, 0, nbytes);
+        let mut val = 0u64;
+        let mut pos = 0;
+        let mut i = nbytes;
         while i > 0 {
             val += (self.read_u8() as u64) << pos;
             pos += 8;
@@ -787,7 +789,8 @@ impl<T:Reader> ReaderUtil for T {
     fn read_be_uint_n(&self, nbytes: uint) -> u64 {
         assert!(nbytes > 0 && nbytes <= 8);
 
-        let mut (val, i) = (0u64, nbytes);
+        let mut val = 0u64;
+        let mut i = nbytes;
         while i > 0 {
             i -= 1;
             val += (self.read_u8() as u64) << i * 8;
