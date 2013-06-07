@@ -19,6 +19,7 @@ use middle::trans::common::*;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
+use core::iterator::IteratorUtil;
 use core::vec;
 use syntax::ast;
 use syntax::ast_map::path_name;
@@ -75,7 +76,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::def_id,
             ast::item_enum(_, _) => {
               let vs_here = ty::enum_variants(ccx.tcx, local_def(item.id));
               let vs_there = ty::enum_variants(ccx.tcx, parent_id);
-              for vec::each2(*vs_here, *vs_there) |here, there| {
+              for vs_here.iter().zip(vs_there.iter()).advance |(here, there)| {
                   if there.id == fn_id { my_id = here.id.node; }
                   ccx.external.insert(there.id, Some(here.id.node));
               }

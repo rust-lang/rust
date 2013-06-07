@@ -82,4 +82,3 @@ pub use io::{Reader, ReaderUtil, Writer, WriterUtil};
 // Reexported runtime types
 pub use comm::{stream, Port, Chan, GenericChan, GenericSmartChan, GenericPort, Peekable};
 pub use task::spawn;
-
