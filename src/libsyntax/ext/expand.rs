@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Block, Crate, NodeId, DeclLocal, Expr_, ExprMac, Local, Ident, mac_invoc_tt};
+use ast::{Block, Crate, NodeId, DeclLocal, EMPTY_CTXT, Expr_, ExprMac};
+use ast::{Local, Ident, mac_invoc_tt};
 use ast::{item_mac, Mrk, Stmt_, StmtDecl, StmtMac, StmtExpr, StmtSemi};
 use ast::{ILLEGAL_CTXT, SCTable, token_tree};
 use ast;
@@ -1306,12 +1307,14 @@ pub fn new_ident_marker(mark: Mrk) ->
 
 // perform resolution (in the MTWT sense) on all of the
 // idents in the tree. This is the final step in expansion.
+// FIXME #6993: this function could go away, along with
+// the separate mtwt_resolution pass
 pub fn new_ident_resolver() ->
     @fn(ast::Ident)->ast::Ident {
     |id : ast::Ident|
     ast::Ident {
         name : mtwt_resolve(id),
-        ctxt : ILLEGAL_CTXT
+        ctxt : EMPTY_CTXT
     }
 }
 
