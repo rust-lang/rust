@@ -325,9 +325,8 @@ pub fn noop_fold_item_underscore(i: &item_, fld: @ast_fold) -> item_ {
             )
         }
         item_mac(ref m) => {
-            // FIXME #2888: we might actually want to do something here.
-            // ... okay, we're doing something. It would probably be nicer
-            // to add something to the ast_fold trait, but I'll defer
+            // It would probably be nicer
+            // to expose this in the ast_fold trait, but I'll defer
             // that work.
             item_mac(fold_mac_(m,fld))
         }
