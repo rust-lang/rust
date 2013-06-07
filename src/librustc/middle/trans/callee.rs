@@ -277,9 +277,10 @@ pub fn trans_fn_ref_with_vtables(
         // Should be either intra-crate or inlined.
         assert_eq!(def_id.crate, ast::local_crate);
 
-        let mut (val, must_cast) =
+        let (val, must_cast) =
             monomorphize::monomorphic_fn(ccx, def_id, type_params,
                                          vtables, opt_impl_did, Some(ref_id));
+        let mut val = val;
         if must_cast && ref_id != 0 {
             // Monotype of the REFERENCE to the function (type params
             // are subst'd)

@@ -538,6 +538,7 @@ pub struct StrStrSplitIterator<'self> {
     priv finished: bool
 }
 
+<<<<<<< HEAD
 impl<'self> Iterator<(uint, uint)> for StrMatchesIndexIterator<'self> {
     #[inline]
     fn next(&mut self) -> Option<(uint, uint)> {
@@ -560,6 +561,24 @@ impl<'self> Iterator<(uint, uint)> for StrMatchesIndexIterator<'self> {
                 if match_i > 0 {
                     match_i = 0;
                     self.position = match_start;
+=======
+fn each_split_inner<'a>(s: &'a str,
+                        sepfn: &fn(cc: char) -> bool,
+                        count: uint,
+                        allow_empty: bool,
+                        allow_trailing_empty: bool,
+                        it: &fn(&'a str) -> bool) -> bool {
+    let l = len(s);
+    let mut i = 0u;
+    let mut start = 0u;
+    let mut done = 0u;
+    while i < l && done < count {
+        let CharRange {ch, next} = char_range_at(s, i);
+        if sepfn(ch) {
+            if allow_empty || start < i {
+                if !it( unsafe{ raw::slice_bytes(s, start, i) } ) {
+                    return false;
+>>>>>>> librustc: Disallow "mut" from distributing over bindings.
                 }
                 self.position += 1;
             }
@@ -568,6 +587,7 @@ impl<'self> Iterator<(uint, uint)> for StrMatchesIndexIterator<'self> {
     }
 }
 
+<<<<<<< HEAD
 impl<'self> Iterator<&'self str> for StrStrSplitIterator<'self> {
     #[inline]
     fn next(&mut self) -> Option<&'self str> {
@@ -578,6 +598,25 @@ impl<'self> Iterator<&'self str> for StrStrSplitIterator<'self> {
                 let ret = Some(self.it.haystack.slice(self.last_end, from));
                 self.last_end = to;
                 ret
+=======
+// See Issue #1932 for why this is a naive search
+fn iter_matches<'a,'b>(s: &'a str, sep: &'b str,
+                       f: &fn(uint, uint) -> bool) -> bool {
+    let (sep_len, l) = (len(sep), len(s));
+    assert!(sep_len > 0u);
+    let mut i = 0u;
+    let mut match_start = 0u;
+    let mut match_i = 0u;
+
+    while i < l {
+        if s[i] == sep[match_i] {
+            if match_i == 0u { match_start = i; }
+            match_i += 1u;
+            // Found a match
+            if match_i == sep_len {
+                if !f(match_start, i + 1u) { return false; }
+                match_i = 0u;
+>>>>>>> librustc: Disallow "mut" from distributing over bindings.
             }
             None => {
                 self.finished = true;
@@ -723,11 +762,23 @@ pub fn each_split_within<'a>(ss: &'a str,
  * The original string with all occurances of `from` replaced with `to`
  */
 pub fn replace(s: &str, from: &str, to: &str) -> ~str {
+<<<<<<< HEAD
     let mut (result, last_end) = (~"", 0);
     for s.matches_index_iter(from).advance |(start, end)| {
         result.push_str(unsafe{raw::slice_bytes(s, last_end, start)});
         result.push_str(to);
         last_end = end;
+=======
+    let mut result = ~"";
+    let mut first = true;
+    for iter_between_matches(s, from) |start, end| {
+        if first {
+            first = false;
+        } else {
+            push_str(&mut result, to);
+        }
+        push_str(&mut result, unsafe{raw::slice_bytes(s, start, end)});
+>>>>>>> librustc: Disallow "mut" from distributing over bindings.
     }
     result.push_str(unsafe{raw::slice_bytes(s, last_end, s.len())});
     result
@@ -1116,9 +1167,16 @@ pub fn with_capacity(capacity: uint) -> ~str {
  * The number of Unicode characters in `s` between the given indices.
  */
 pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
+<<<<<<< HEAD
     assert!(s.is_char_boundary(start));
     assert!(s.is_char_boundary(end));
     let mut (i, len) = (start, 0u);
+=======
+    assert!(is_char_boundary(s, start));
+    assert!(is_char_boundary(s, end));
+    let mut i = start;
+    let mut len = 0u;
+>>>>>>> librustc: Disallow "mut" from distributing over bindings.
     while i < end {
         let next = s.char_range_at(i).next;
         len += 1u;
@@ -1130,9 +1188,16 @@ pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
 /// Counts the number of bytes taken by the first `n` chars in `s`
 /// starting from `start`.
 pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
+<<<<<<< HEAD
     assert!(s.is_char_boundary(start));
     let mut (end, cnt) = (start, n);
     let l = s.len();
+=======
+    assert!(is_char_boundary(s, start));
+    let mut end = start;
+    let mut cnt = n;
+    let l = len(s);
+>>>>>>> librustc: Disallow "mut" from distributing over bindings.
     while cnt > 0u {
         assert!(end < l);
         let next = s.char_range_at(end).next;
@@ -1348,7 +1413,8 @@ pub mod raw {
 
     /// Create a Rust string from a null-terminated *u8 buffer
     pub unsafe fn from_buf(buf: *u8) -> ~str {
-        let mut (curr, i) = (buf, 0u);
+        let mut curr = buf;
+        let mut i = 0u;
         while *curr != 0u8 {
             i += 1u;
             curr = ptr::offset(buf, i);
