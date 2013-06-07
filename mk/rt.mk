@@ -53,6 +53,15 @@ define DEF_RUNTIME_TARGETS
 RUNTIME_CFLAGS_$(1)_$(2) = -D_RUST_STAGE$(2)
 RUNTIME_CXXFLAGS_$(1)_$(2) = -D_RUST_STAGE$(2)
 
+# XXX: Like with --cfg stage0, pass the defines for stage1 to the stage0
+# build of non-build-triple host compilers
+ifeq ($(2),0)
+ifneq ($(strip $(CFG_BUILD_TRIPLE)),$(strip $(1)))
+RUNTIME_CFLAGS_$(1)_$(2) = -D_RUST_STAGE1
+RUNTIME_CXXFLAGS_$(1)_$(2) = -D_RUST_STAGE1
+endif
+endif
+
 RUNTIME_CXXS_$(1)_$(2) := \
               rt/sync/timer.cpp \
               rt/sync/lock_and_signal.cpp \
