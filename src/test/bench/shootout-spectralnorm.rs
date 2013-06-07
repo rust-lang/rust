@@ -1,3 +1,4 @@
+use std::iterator::IteratorUtil;
 use std::f64;
 use std::from_str::FromStr;
 use std::iter::ExtendedMutableIter;
@@ -18,9 +19,9 @@ fn dot(v: &[f64], u: &[f64]) -> f64 {
 }
 
 fn mult_Av(v: &mut [f64], out: &mut [f64]) {
-    for vec::eachi_mut(out) |i, out_i| {
+    for out.mut_iter().enumerate().advance |(i, out_i)| {
         let mut sum = 0.0;
-        for vec::eachi_mut(v) |j, &v_j| {
+        for v.mut_iter().enumerate().advance |(j, &v_j)| {
             sum += v_j / (A(i as i32, j as i32) as f64);
         }
         *out_i = sum;
@@ -28,9 +29,9 @@ fn mult_Av(v: &mut [f64], out: &mut [f64]) {
 }
 
 fn mult_Atv(v: &mut [f64], out: &mut [f64]) {
-    for vec::eachi_mut(out) |i, out_i| {
+    for out.mut_iter().enumerate().advance |(i, out_i)| {
         let mut sum = 0.0;
-        for vec::eachi_mut(v) |j, &v_j| {
+        for v.mut_iter().enumerate().advance |(j, &v_j)| {
             sum += v_j / (A(j as i32, i as i32) as f64);
         }
         *out_i = sum;

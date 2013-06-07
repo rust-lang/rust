@@ -19,7 +19,7 @@ use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use clone::Clone;
 use old_iter::BaseIter;
 use old_iter;
-use iterator::Iterator;
+use iterator::{Iterator, IteratorUtil};
 use iter::FromIter;
 use kinds::Copy;
 use libc;
@@ -1568,28 +1568,6 @@ pub fn each<'r,T>(v: &'r [T], f: &fn(&'r T) -> bool) -> bool {
     return !broke;
 }
 
-/// Like `each()`, but for the case where you have
-/// a vector with mutable contents and you would like
-/// to mutate the contents as you iterate.
-#[inline(always)]
-pub fn each_mut<'r,T>(v: &'r mut [T], f: &fn(elem: &'r mut T) -> bool) -> bool {
-    let mut broke = false;
-    do as_mut_buf(v) |p, n| {
-        let mut n = n;
-        let mut p = p;
-        while n > 0 {
-            unsafe {
-                let q: &'r mut T = cast::transmute_mut_region(&mut *p);
-                if !f(q) { break; }
-                p = p.offset(1);
-            }
-            n -= 1;
-        }
-        broke = n > 0;
-    }
-    return !broke;
-}
-
 /// Like `each()`, but for the case where you have a vector that *may or may
 /// not* have mutable contents.
 #[inline(always)]
@@ -1615,24 +1593,6 @@ pub fn eachi<'r,T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) -> bool {
     let mut i = 0;
     for each(v) |p| {
         if !f(i, p) { return false; }
-        i += 1;
-    }
-    return true;
-}
-
-/**
- * Iterates over a mutable vector's elements and indices
- *
- * Return true to continue, false to break.
- */
-#[inline(always)]
-pub fn eachi_mut<'r,T>(v: &'r mut [T],
-                       f: &fn(uint, v: &'r mut T) -> bool) -> bool {
-    let mut i = 0;
-    for each_mut(v) |p| {
-        if !f(i, p) {
-            return false;
-        }
         i += 1;
     }
     return true;
@@ -2700,7 +2660,7 @@ impl<A> old_iter::BaseIter<A> for @[A] {
 impl<'self,A> old_iter::MutableIter<A> for &'self mut [A] {
     #[inline(always)]
     fn each_mut<'a>(&'a mut self, blk: &fn(v: &'a mut A) -> bool) -> bool {
-        each_mut(*self, blk)
+        self.mut_iter().advance(blk)
     }
 }
 
@@ -2708,7 +2668,7 @@ impl<'self,A> old_iter::MutableIter<A> for &'self mut [A] {
 impl<A> old_iter::MutableIter<A> for ~[A] {
     #[inline(always)]
     fn each_mut<'a>(&'a mut self, blk: &fn(v: &'a mut A) -> bool) -> bool {
-        each_mut(*self, blk)
+        self.mut_iter().advance(blk)
     }
 }
 
@@ -2716,7 +2676,7 @@ impl<A> old_iter::MutableIter<A> for ~[A] {
 impl<A> old_iter::MutableIter<A> for @mut [A] {
     #[inline(always)]
     fn each_mut(&mut self, blk: &fn(v: &mut A) -> bool) -> bool {
-        each_mut(*self, blk)
+        self.mut_iter().advance(blk)
     }
 }
 
@@ -2748,7 +2708,7 @@ impl<'self,A> old_iter::ExtendedIter<A> for &'self [A] {
 impl<'self,A> old_iter::ExtendedMutableIter<A> for &'self mut [A] {
     #[inline(always)]
     pub fn eachi_mut(&mut self, blk: &fn(uint, v: &mut A) -> bool) -> bool {
-        eachi_mut(*self, blk)
+        self.mut_iter().enumerate().advance(|(i, v)| blk(i, v))
     }
 }
 
@@ -3608,16 +3568,13 @@ mod tests {
     fn test_each_ret_len0() {
         let mut a0 : [int, .. 0] = [];
         assert_eq!(each(a0, |_p| fail!()), true);
-        assert_eq!(each_mut(a0, |_p| fail!()), true);
     }
 
     #[test]
     fn test_each_ret_len1() {
         let mut a1 = [17];
         assert_eq!(each(a1, |_p| true), true);
-        assert_eq!(each_mut(a1, |_p| true), true);
         assert_eq!(each(a1, |_p| false), false);
-        assert_eq!(each_mut(a1, |_p| false), false);
     }
 
 

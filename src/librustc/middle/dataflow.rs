@@ -18,6 +18,7 @@
 
 use core::prelude::*;
 
+use core::iterator::IteratorUtil;
 use core::cast;
 use core::io;
 use core::str;
@@ -895,7 +896,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
     fn reset(&mut self, bits: &mut [uint]) {
         let e = if self.dfcx.oper.initial_value() {uint::max_value} else {0};
-        for vec::each_mut(bits) |b| { *b = e; }
+        for bits.mut_iter().advance |b| { *b = e; }
     }
 
     fn add_to_entry_set(&mut self, id: ast::node_id, pred_bits: &[uint]) {
