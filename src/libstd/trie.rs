@@ -11,6 +11,7 @@
 //! An ordered map and set for integer keys implemented as a radix trie
 
 use prelude::*;
+use iterator::IteratorUtil;
 use uint;
 use util::{swap, replace};
 use vec;
@@ -277,7 +278,7 @@ impl<T> TrieNode<T> {
     }
 
     fn mutate_values<'a>(&'a mut self, f: &fn(&uint, &mut T) -> bool) -> bool {
-        for vec::each_mut(self.children) |child| {
+        for self.children.mut_iter().advance |child| {
             match *child {
                 Internal(ref mut x) => if !x.mutate_values(f) {
                     return false

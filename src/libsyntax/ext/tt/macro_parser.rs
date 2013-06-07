@@ -22,6 +22,7 @@ use parse::parser::Parser;
 use parse::token::{Token, EOF, to_str, nonterminal, get_ident_interner, ident_to_str};
 use parse::token;
 
+use core::iterator::IteratorUtil;
 use core::hashmap::HashMap;
 use core::str;
 use core::uint;
@@ -358,7 +359,7 @@ pub fn parse(
         if tok == EOF {
             if eof_eis.len() == 1u {
                 let mut v = ~[];
-                for vec::each_mut(eof_eis[0u].matches) |dv| {
+                for eof_eis[0u].matches.mut_iter().advance |dv| {
                     v.push(dv.pop());
                 }
                 return success(nameize(sess, ms, v));

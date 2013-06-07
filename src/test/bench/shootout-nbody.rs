@@ -1,3 +1,4 @@
+use std::iterator::IteratorUtil;
 use std::f64;
 use std::from_str::FromStr;
 use std::os;
@@ -104,7 +105,7 @@ fn advance(bodies: &mut [Planet, ..N_BODIES], dt: f64, steps: i32) {
             }
         }
 
-        for vec::each_mut(*bodies) |a| {
+        for bodies.mut_iter().advance |a| {
             a.x[0] += dt * a.v[0];
             a.x[1] += dt * a.v[1];
             a.x[2] += dt * a.v[2];
