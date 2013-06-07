@@ -84,6 +84,7 @@ pub enum SyntaxContext_ {
     // in the "from" slot. In essence, they're all
     // pointers to a single "rename" event node.
     Rename (ident,Name,SyntaxContext),
+    // actually, IllegalCtxt may not be necessary.
     IllegalCtxt()
 }
 
