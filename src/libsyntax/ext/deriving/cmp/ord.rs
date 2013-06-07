@@ -49,9 +49,7 @@ pub fn expand_deriving_ord(cx: @ExtCtxt,
             md!("ge", false, true)
         ]
     };
-
-    expand_deriving_generic(cx, span, mitem, in_items,
-                            &trait_def)
+    trait_def.expand(cx, span, mitem, in_items)
 }
 
 /// `less`: is this `lt` or `le`? `equal`: is this `le` or `ge`?

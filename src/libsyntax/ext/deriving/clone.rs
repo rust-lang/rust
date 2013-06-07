@@ -38,9 +38,7 @@ pub fn expand_deriving_clone(cx: @ExtCtxt,
         ]
     };
 
-    expand_deriving_generic(cx, span,
-                            mitem, in_items,
-                            &trait_def)
+    trait_def.expand(cx, span, mitem, in_items)
 }
 
 pub fn expand_deriving_deep_clone(cx: @ExtCtxt,
@@ -67,9 +65,7 @@ pub fn expand_deriving_deep_clone(cx: @ExtCtxt,
         ]
     };
 
-    expand_deriving_generic(cx, span,
-                            mitem, in_items,
-                            &trait_def)
+    trait_def.expand(cx, span, mitem, in_items)
 }
 
 fn cs_clone(

@@ -54,7 +54,5 @@ pub fn expand_deriving_eq(cx: @ExtCtxt,
             md!("ne", cs_ne)
         ]
     };
-
-    expand_deriving_generic(cx, span, mitem, in_items,
-                            &trait_def)
+    trait_def.expand(cx, span, mitem, in_items)
 }
