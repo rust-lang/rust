@@ -307,6 +307,7 @@ pub enum inline_attr {
     ia_none,
     ia_hint,
     ia_always,
+    ia_force,
     ia_never,
 }
 
@@ -319,6 +320,8 @@ pub fn find_inline_attr(attrs: &[ast::attribute]) -> inline_attr {
           ast::meta_list(@~"inline", ref items) => {
             if !find_meta_items_by_name(*items, "always").is_empty() {
                 ia_always
+            } else if !find_meta_items_by_name(*items, "force").is_empty() {
+                ia_force
             } else if !find_meta_items_by_name(*items, "never").is_empty() {
                 ia_never
             } else {
