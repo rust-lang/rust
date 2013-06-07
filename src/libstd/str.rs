@@ -473,6 +473,31 @@ pub fn each_split_within<'a>(ss: &'a str,
     return cont;
 }
 
+/**
+ * Replace all occurrences of one string with another
+ *
+ * # Arguments
+ *
+ * * s - The string containing substrings to replace
+ * * from - The string to replace
+ * * to - The replacement string
+ *
+ * # Return value
+ *
+ * The original string with all occurances of `from` replaced with `to`
+ */
+pub fn replace(s: &str, from: &str, to: &str) -> ~str {
+    let mut result = ~"";
+    let mut last_end = 0;
+    for s.matches_index_iter(from).advance |(start, end)| {
+        result.push_str(unsafe{raw::slice_bytes(s, last_end, start)});
+        result.push_str(to);
+        last_end = end;
+    }
+    result.push_str(unsafe{raw::slice_bytes(s, last_end, s.len())});
+    result
+}
+
 /*
 Section: Comparing strings
 */
@@ -631,6 +656,48 @@ pub fn with_capacity(capacity: uint) -> ~str {
     buf
 }
 
+/**
+ * As char_len but for a slice of a string
+ *
+ * # Arguments
+ *
+ * * s - A valid string
+ * * start - The position inside `s` where to start counting in bytes
+ * * end - The position where to stop counting
+ *
+ * # Return value
+ *
+ * The number of Unicode characters in `s` between the given indices.
+ */
+pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
+    assert!(s.is_char_boundary(start));
+    assert!(s.is_char_boundary(end));
+    let mut i = start;
+    let mut len = 0u;
+    while i < end {
+        let next = s.char_range_at(i).next;
+        len += 1u;
+        i = next;
+    }
+    return len;
+}
+
+/// Counts the number of bytes taken by the first `n` chars in `s`
+/// starting from `start`.
+pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
+    assert!(is_char_boundary(s, start));
+    let mut end = start;
+    let mut cnt = n;
+    let l = s.len();
+    while cnt > 0u {
+        assert!(end < l);
+        let next = s.char_range_at(end).next;
+        cnt -= 1u;
+        end = next;
+    }
+    end - start
+}
+
 /// Given a first byte, determine how many bytes are in this UTF-8 character
 pub fn utf8_char_width(b: u8) -> uint {
     let byte: uint = b as uint;
@@ -737,7 +804,8 @@ pub mod raw {
 
     /// Create a Rust string from a null-terminated *u8 buffer
     pub unsafe fn from_buf(buf: *u8) -> ~str {
-        let mut (curr, i) = (buf, 0u);
+        let mut curr = buf;
+        let mut i = 0u;
         while *curr != 0u8 {
             i += 1u;
             curr = ptr::offset(buf, i);

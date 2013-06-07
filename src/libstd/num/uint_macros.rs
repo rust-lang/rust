@@ -237,7 +237,8 @@ impl Integer for $T {
     #[inline]
     fn gcd(&self, other: &$T) -> $T {
         // Use Euclid's algorithm
-        let mut (m, n) = (*self, *other);
+        let mut m = *self;
+        let mut n = *other;
         while m != 0 {
             let temp = m;
             m = n % temp;

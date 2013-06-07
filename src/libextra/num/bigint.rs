@@ -380,7 +380,10 @@ impl Integer for BigUint {
             let mut d = Zero::zero::<BigUint>();
             let mut n = 1;
             while m >= b {
-                let mut (d0, d_unit, b_unit) = div_estimate(&m, &b, n);
+                let (d0, d_unit, b_unit) = div_estimate(&m, &b, n);
+                let mut d0 = d0;
+                let mut d_unit = d_unit;
+                let mut b_unit = b_unit;
                 let mut prod = b * d0;
                 while prod > m {
                     // FIXME(#6050): overloaded operators force moves with generic types
@@ -442,7 +445,8 @@ impl Integer for BigUint {
 
     fn gcd(&self, other: &BigUint) -> BigUint {
         // Use Euclid's algorithm
-        let mut (m, n) = (copy *self, copy *other);
+        let mut m = copy *self;
+        let mut n = copy *other;
         while !m.is_zero() {
             let temp = m;
             m = n % temp;
