@@ -174,6 +174,7 @@ use opt_vec;
 
 use core::uint;
 use core::vec;
+use core::iterator::IteratorUtil;
 
 pub use self::ty::*;
 mod ty;
@@ -616,7 +617,7 @@ impl<'self> MethodDef<'self> {
         // make a series of nested matches, to destructure the
         // structs. This is actually right-to-left, but it shoudn't
         // matter.
-        for vec::each2(self_args, patterns) |&arg_expr, &pat| {
+        for self_args.iter().zip(patterns.iter()).advance |(&arg_expr, &pat)| {
             body = cx.expr_match(span, arg_expr,
                                  ~[ cx.arm(span, ~[pat], body) ])
         }
@@ -951,7 +952,7 @@ fn create_struct_pattern(cx: @ExtCtxt,
     // must be nonempty to reach here
     let pattern = if struct_type == Record {
         let field_pats = do vec::build |push| {
-            for vec::each2(subpats, ident_expr) |&pat, &(id, _)| {
+            for subpats.iter().zip(ident_expr.iter()).advance |(&pat, &(id, _))| {
                 // id is guaranteed to be Some
                 push(ast::field_pat { ident: id.get(), pat: pat })
             }

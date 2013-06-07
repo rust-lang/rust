@@ -23,6 +23,7 @@ use ext::quote::rt::*;
 use opt_vec;
 use opt_vec::OptVec;
 
+use core::iterator::IteratorUtil;
 use core::str;
 use core::vec;
 
@@ -258,8 +259,7 @@ impl to_type_decls for state {
         let mut items = ~[];
 
         {
-            let messages = &mut *self.messages;
-            for vec::each_mut(*messages) |m| {
+            for self.messages.mut_iter().advance |m| {
                 if dir == send {
                     items.push(m.gen_send(cx, true));
                     items.push(m.gen_send(cx, false));
