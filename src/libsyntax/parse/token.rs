@@ -546,6 +546,11 @@ pub fn gensym_ident(str : &str) -> ast::Ident {
 // create a fresh name that maps to the same string as the old one.
 pub fn fresh_name(src : &ast::Ident) -> Name {
     gensym(ident_to_str(src))
+    // following: debug version. Could work in final except that it's incompatible with
+    // good error messages and uses of struct names in ambiguous could-be-binding
+    // locations.
+    /*let num = rand::rng().gen_uint_range(0,0xffff);
+    gensym(fmt!("%s_%u",ident_to_str(src),num))*/
 }
 
 // create a fresh mark.
