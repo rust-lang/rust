@@ -2728,8 +2728,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         });
         let mut bot_field = false;
         let mut err_field = false;
+
         let elt_ts = do elts.mapi |i, e| {
-            check_expr_with_opt_hint(fcx, *e, flds.map(|fs| fs[i]));
+            let opt_hint = match flds {
+                Some(ref fs) if i < fs.len() => Some(fs[i]),
+                _ => None
+            };
+            check_expr_with_opt_hint(fcx, *e, opt_hint);
             let t = fcx.expr_ty(*e);
             err_field = err_field || ty::type_is_error(t);
             bot_field = bot_field || ty::type_is_bot(t);
