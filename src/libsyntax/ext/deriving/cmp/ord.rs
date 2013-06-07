@@ -22,7 +22,7 @@ pub fn expand_deriving_ord(cx: @ExtCtxt,
                            mitem: @meta_item,
                            in_items: ~[@item]) -> ~[@item] {
     macro_rules! md (
-        ($name:expr, $func:expr, $op:expr) => {
+        ($name:expr, $op:expr, $equal:expr) => {
             MethodDef {
                 name: $name,
                 generics: LifetimeBounds::empty(),
@@ -30,7 +30,7 @@ pub fn expand_deriving_ord(cx: @ExtCtxt,
                 args: ~[borrowed_self()],
                 ret_ty: Literal(Path::new(~["bool"])),
                 const_nonmatching: false,
-                combine_substructure: |cx, span, substr| $func($op, cx, span, substr)
+                combine_substructure: |cx, span, substr| cs_op($op, $equal, cx, span, substr)
             }
         }
     );
@@ -40,17 +40,17 @@ pub fn expand_deriving_ord(cx: @ExtCtxt,
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
         methods: ~[
-            md!("lt", cs_strict, true),
-            md!("le", cs_nonstrict, true), // inverse operation
-            md!("gt", cs_strict, false),
-            md!("ge", cs_nonstrict, false)
+            md!("lt", true, false),
+            md!("le", true, true),
+            md!("gt", false, false),
+            md!("ge", false, true)
         ]
     };
     trait_def.expand(cx, span, mitem, in_items)
 }
 
 /// Strict inequality.
-fn cs_strict(less: bool, cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
+fn cs_op(less: bool, equal: bool, cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
     let op = if less {ast::lt} else {ast::gt};
     cs_fold(
         false, // need foldr,
@@ -81,16 +81,15 @@ fn cs_strict(less: bool, cx: @ExtCtxt, span: span, substr: &Substructure) -> @ex
                                      cx.expr_deref(span, self_f),
                                      cx.expr_deref(span, other_f));
 
-            let not_cmp = cx.expr_binary(span, op,
-                                         cx.expr_deref(span, other_f),
-                                         cx.expr_deref(span, self_f));
-            let not_cmp = cx.expr_unary(span, ast::not, not_cmp);
+            let not_cmp = cx.expr_unary(span, ast::not,
+                                        cx.expr_binary(span, op,
+                                                       cx.expr_deref(span, other_f),
+                                                       cx.expr_deref(span, self_f)));
 
-            let and = cx.expr_binary(span, ast::and,
-                                     not_cmp, subexpr);
+            let and = cx.expr_binary(span, ast::and, not_cmp, subexpr);
             cx.expr_binary(span, ast::or, cmp, and)
         },
-        cx.expr_bool(span, false),
+        cx.expr_bool(span, equal),
         |cx, span, args, _| {
             // nonmatching enums, order by the order the variants are
             // written
@@ -107,20 +106,4 @@ fn cs_strict(less: bool, cx: @ExtCtxt, span: span, substr: &Substructure) -> @ex
             }
         },
         cx, span, substr)
-}
-
-fn cs_nonstrict(less: bool, cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
-    // Example: ge becomes !(*self < *other), le becomes !(*self > *other)
-
-    let inverse_op = if less {ast::gt} else {ast::lt};
-    match substr.self_args {
-        [self_, other] => {
-            let inverse_cmp = cx.expr_binary(span, inverse_op,
-                                             cx.expr_deref(span, self_),
-                                             cx.expr_deref(span, other));
-
-            cx.expr_unary(span, ast::not, inverse_cmp)
-        }
-        _ => cx.span_bug(span, "Not exactly 2 arguments in `deriving(Ord)`")
-    }
 }
