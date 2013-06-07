@@ -1203,6 +1203,8 @@ mod test {
         let teststrs =
             ~[// b & c should get new names throughout, in the expr too:
                 @"fn a() -> int { let b = 13; let c = b; b+c }",
+                // both x's should be renamed (how is this causing a bug?)
+                @"fn main () {let x : int = 13;x;}",
                 // the use of b before the + should be renamed, the other one not:
                 @"macro_rules! f (($x:ident) => ($x + b)) fn a() -> int { let b = 13; f!(b)}",
                 // the b before the plus should not be renamed (requires marks)
@@ -1231,8 +1233,4 @@ mod test {
         assert_eq!(idents,@mut strs_to_idents(~["a","c","b","d"]));
     }
 
-/*    #[test]
-    fn debugging(){
-        io::println(fmt!("%?",expand_and_resolve(@~"fn main () {    let x : int = 13;}")))
-    }*/
 }
