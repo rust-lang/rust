@@ -24,7 +24,7 @@ use rt::sched::Scheduler;
 use rt::io::{standard_error, OtherIoError};
 use rt::tube::Tube;
 use rt::local::Local;
-use unstable::sync::{UnsafeAtomicRcBox, AtomicInt};
+use unstable::sync::{Exclusive, exclusive};
 
 #[cfg(test)] use container::Container;
 #[cfg(test)] use uint;
@@ -105,21 +105,20 @@ fn test_callback_run_once() {
 pub struct UvRemoteCallback {
     // The uv async handle for triggering the callback
     async: AsyncWatcher,
-    // An atomic flag to tell the callback to exit,
-    // set from the dtor.
-    exit_flag: UnsafeAtomicRcBox<AtomicInt>
+    // A flag to tell the callback to exit, set from the dtor. This is
+    // almost never contested - only in rare races with the dtor.
+    exit_flag: Exclusive<bool>
 }
 
 impl UvRemoteCallback {
     pub fn new(loop_: &mut Loop, f: ~fn()) -> UvRemoteCallback {
-        let exit_flag = UnsafeAtomicRcBox::new(AtomicInt::new(0));
+        let exit_flag = exclusive(false);
         let exit_flag_clone = exit_flag.clone();
         let async = do AsyncWatcher::new(loop_) |watcher, status| {
             assert!(status.is_none());
             f();
-            let exit_flag_ptr = exit_flag_clone.get();
-            unsafe {
-                if (*exit_flag_ptr).load() == 1 {
+            do exit_flag_clone.with_imm |&should_exit| {
+                if should_exit {
                     watcher.close(||());
                 }
             }
@@ -139,9 +138,14 @@ impl Drop for UvRemoteCallback {
     fn finalize(&self) {
         unsafe {
             let this: &mut UvRemoteCallback = cast::transmute_mut(self);
-            let exit_flag_ptr = this.exit_flag.get();
-            (*exit_flag_ptr).store(1);
-            this.async.send();
+            do this.exit_flag.with |should_exit| {
+                // NB: These two things need to happen atomically. Otherwise
+                // the event handler could wake up due to a *previous*
+                // signal and see the exit flag, destroying the handle
+                // before the final send.
+                *should_exit = true;
+                this.async.send();
+            }
         }
     }
 }
