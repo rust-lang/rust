@@ -535,6 +535,14 @@ impl Hyperbolic for f64 {
     }
 }
 
+impl Interpolate for f64 {
+    /// Linearly intoperlate towards `other`
+    #[inline(always)]
+    fn lerp(&self, other: &f64, value: &f64) -> f64 {
+        value.mul_add(*other, value.mul_add(-*self, *self))
+    }
+}
+
 impl Real for f64 {
     /// Archimedes' constant
     #[inline(always)]
@@ -1145,6 +1153,13 @@ mod tests {
         assert!(Float::NaN::<f64>().atanh().is_NaN());
         assert_approx_eq!(0.5f64.atanh(), 0.54930614433405484569762261846126285f64);
         assert_approx_eq!((-0.5f64).atanh(), -0.54930614433405484569762261846126285f64);
+    }
+
+    #[test]
+    fn test_lerp() {
+        assert_eq!(0f64.lerp(&2f64, &0.25f64), 0.5f64);
+        assert_eq!(0f64.lerp(&2f64, &0.5f64), 1f64);
+        assert_eq!(0f64.lerp(&2f64, &0.75f64), 1.5f64);
     }
 
     #[test]

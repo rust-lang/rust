@@ -523,6 +523,14 @@ impl Hyperbolic for f32 {
     }
 }
 
+impl Interpolate for f32 {
+    /// Linearly intoperlate towards `other`
+    #[inline(always)]
+    fn lerp(&self, other: &f32, value: &f32) -> f32 {
+        value.mul_add(*other, value.mul_add(-*self, *self))
+    }
+}
+
 impl Real for f32 {
     /// Archimedes' constant
     #[inline(always)]
@@ -1099,6 +1107,13 @@ mod tests {
         assert!(Float::NaN::<f32>().atanh().is_NaN());
         assert_approx_eq!(0.5f32.atanh(), 0.54930614433405484569762261846126285f32);
         assert_approx_eq!((-0.5f32).atanh(), -0.54930614433405484569762261846126285f32);
+    }
+
+    #[test]
+    fn test_lerp() {
+        assert_eq!(0f32.lerp(&2f32, &0.25f32), 0.5f32);
+        assert_eq!(0f32.lerp(&2f32, &0.5f32), 1f32);
+        assert_eq!(0f32.lerp(&2f32, &0.75f32), 1.5f32);
     }
 
     #[test]

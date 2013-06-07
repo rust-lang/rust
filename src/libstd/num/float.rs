@@ -645,6 +645,14 @@ impl Hyperbolic for float {
     }
 }
 
+impl Interpolate for float {
+    /// Linearly intoperlate towards `other`
+    #[inline(always)]
+    fn lerp(&self, other: &float, value: &float) -> float {
+        (*self as f64).lerp(&(*other as f64), &(*value as f64)) as float
+    }
+}
+
 impl Real for float {
     /// Archimedes' constant
     #[inline(always)]
@@ -1089,6 +1097,13 @@ mod tests {
         assert!(Float::NaN::<float>().atanh().is_NaN());
         assert_approx_eq!(0.5f.atanh(), 0.54930614433405484569762261846126285f);
         assert_approx_eq!((-0.5f).atanh(), -0.54930614433405484569762261846126285f);
+    }
+
+    #[test]
+    fn test_lerp() {
+        assert_eq!(0f.lerp(&2f, &0.25f), 0.5f);
+        assert_eq!(0f.lerp(&2f, &0.5f), 1f);
+        assert_eq!(0f.lerp(&2f, &0.75f), 1.5f);
     }
 
     #[test]

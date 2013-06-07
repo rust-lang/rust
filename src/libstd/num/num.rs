@@ -142,6 +142,10 @@ pub trait Hyperbolic: Exponential {
     fn atanh(&self) -> Self;
 }
 
+pub trait Interpolate {
+    fn lerp(&self, other: &Self, value: &Self) -> Self;
+}
+
 ///
 /// Defines constants and methods common to real numbers
 ///
