@@ -30,7 +30,7 @@ pub enum Identifier {
 }
 
 impl cmp::Ord for Identifier {
-    #[inline(always)]
+    #[inline(force)]
     fn lt(&self, other: &Identifier) -> bool {
         match (self, other) {
             (&Numeric(a), &Numeric(b)) => a < b,
@@ -39,22 +39,22 @@ impl cmp::Ord for Identifier {
             (&AlphaNumeric(_), _) => false
         }
     }
-    #[inline(always)]
+    #[inline(force)]
     fn le(&self, other: &Identifier) -> bool {
         ! (other < self)
     }
-    #[inline(always)]
+    #[inline(force)]
     fn gt(&self, other: &Identifier) -> bool {
         other < self
     }
-    #[inline(always)]
+    #[inline(force)]
     fn ge(&self, other: &Identifier) -> bool {
         ! (self < other)
     }
 }
 
 impl ToStr for Identifier {
-    #[inline(always)]
+    #[inline(force)]
     fn to_str(&self) -> ~str {
         match self {
             &Numeric(n) => n.to_str(),
@@ -74,7 +74,7 @@ pub struct Version {
 }
 
 impl ToStr for Version {
-    #[inline(always)]
+    #[inline(force)]
     fn to_str(&self) -> ~str {
         let s = fmt!("%u.%u.%u", self.major, self.minor, self.patch);
         let s = if self.pre.is_empty() {
@@ -91,7 +91,7 @@ impl ToStr for Version {
 }
 
 impl cmp::Ord for Version {
-    #[inline(always)]
+    #[inline(force)]
     fn lt(&self, other: &Version) -> bool {
 
         self.major < other.major ||
@@ -124,15 +124,15 @@ impl cmp::Ord for Version {
              self.build < other.build)
     }
 
-    #[inline(always)]
+    #[inline(force)]
     fn le(&self, other: &Version) -> bool {
         ! (other < self)
     }
-    #[inline(always)]
+    #[inline(force)]
     fn gt(&self, other: &Version) -> bool {
         other < self
     }
-    #[inline(always)]
+    #[inline(force)]
     fn ge(&self, other: &Version) -> bool {
         ! (self < other)
     }
