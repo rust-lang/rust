@@ -178,35 +178,6 @@ use core::vec;
 pub use self::ty::*;
 mod ty;
 
-pub fn expand_deriving_generic(cx: @ExtCtxt,
-                               span: span,
-                               _mitem: @ast::meta_item,
-                               in_items: ~[@ast::item],
-                               trait_def: &TraitDef) -> ~[@ast::item] {
-    let mut result = ~[];
-    for in_items.each |item| {
-        result.push(*item);
-        match item.node {
-            ast::item_struct(struct_def, ref generics) => {
-                result.push(trait_def.expand_struct_def(cx,
-                                                        span,
-                                                        struct_def,
-                                                        item.ident,
-                                                        generics));
-            }
-            ast::item_enum(ref enum_definition, ref generics) => {
-                result.push(trait_def.expand_enum_def(cx,
-                                                      span,
-                                                      enum_definition,
-                                                      item.ident,
-                                                      generics));
-            }
-            _ => ()
-        }
-    }
-    result
-}
-
 pub struct TraitDef<'self> {
     /// Path of the trait, including any type parameters
     path: Path<'self>,
@@ -310,6 +281,32 @@ pub type EnumNonMatchFunc<'self> =
 
 
 impl<'self> TraitDef<'self> {
+    pub fn expand(&self, cx: @ExtCtxt,
+                  span: span,
+                  _mitem: @ast::meta_item,
+                  in_items: ~[@ast::item]) -> ~[@ast::item] {
+        let mut result = ~[];
+        for in_items.each |item| {
+            result.push(*item);
+            match item.node {
+                ast::item_struct(struct_def, ref generics) => {
+                    result.push(self.expand_struct_def(cx, span,
+                                                       struct_def,
+                                                       item.ident,
+                                                       generics));
+                }
+                ast::item_enum(ref enum_def, ref generics) => {
+                    result.push(self.expand_enum_def(cx, span,
+                                                     enum_def,
+                                                     item.ident,
+                                                     generics));
+                }
+                _ => ()
+            }
+        }
+        result
+    }
+
     /**
      *
      * Given that we are deriving a trait `Tr` for a type `T<'a, ...,

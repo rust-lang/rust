@@ -42,7 +42,7 @@ pub fn expand_deriving_iter_bytes(cx: @ExtCtxt,
         ]
     };
 
-    expand_deriving_generic(cx, span, mitem, in_items, &trait_def)
+    trait_def.expand(cx, span, mitem, in_items)
 }
 
 fn iter_bytes_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {

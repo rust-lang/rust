@@ -109,8 +109,7 @@ pub fn expand_deriving_encodable(cx: @ExtCtxt,
         ]
     };
 
-    expand_deriving_generic(cx, span, mitem, in_items,
-                            &trait_def)
+    trait_def.expand(cx, span, mitem, in_items)
 }
 
 fn encodable_substructure(cx: @ExtCtxt, span: span,
