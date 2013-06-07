@@ -534,18 +534,9 @@ pub fn gensym_ident(str : &str) -> ast::ident {
     ast::new_ident(gensym(str))
 }
 
-
-// create a fresh name. In principle, this is just a
-// gensym, but for debugging purposes, you'd like the
-// resulting name to have a suggestive stringify, without
-// paying the cost of guaranteeing that the name is
-// truly unique.  I'm going to try to strike a balance
-// by using a gensym with a name that has a random number
-// at the end. So, the gensym guarantees the uniqueness,
-// and the int helps to avoid confusion.
-pub fn fresh_name(src_name : &ast::ident) -> Name {
-    let num = rand::rng().gen_uint_range(0,0xffff);
-    gensym(fmt!("%s_%u",ident_to_str(src_name),num))
+// create a fresh name that maps to the same string as the old one.
+pub fn fresh_name(src : &ast::ident) -> Name {
+    gensym(ident_to_str(src))
 }
 
 // create a fresh mark.
