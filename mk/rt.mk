@@ -211,7 +211,8 @@ $$(LIBUV_LIB_$(1)_$(2)): $$(LIBUV_DEPS)
 endif
 
 $$(JEMALLOC_LIB_$(1)_$(2)):
-	cd $$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/jemalloc; $(S)src/rt/jemalloc/configure --disable-experimental
+	cd $$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/jemalloc; $(S)src/rt/jemalloc/configure \
+		--disable-experimental --build=$(CFG_BUILD_TRIPLE) --host=$(1)
 	$$(Q)$$(MAKE) -C $$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/jemalloc
 
 # These could go in rt.mk or rustllvm.mk, they're needed for both.
