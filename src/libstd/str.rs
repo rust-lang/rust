@@ -35,7 +35,7 @@ use str;
 use to_str::ToStr;
 use uint;
 use vec;
-use vec::{OwnedVector, OwnedCopyableVector};
+use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector};
 
 #[cfg(not(test))] use cmp::{Eq, Ord, Equiv, TotalEq};
 
@@ -1249,42 +1249,6 @@ pub fn map(ss: &str, ff: &fn(char) -> char) -> ~str {
     result
 }
 
-/// Iterate over the bytes in a string
-#[inline(always)]
-pub fn each(s: &str, it: &fn(u8) -> bool) -> bool {
-    eachi(s, |_i, b| it(b))
-}
-
-/// Iterate over the bytes in a string, with indices
-#[inline(always)]
-pub fn eachi(s: &str, it: &fn(uint, u8) -> bool) -> bool {
-    let mut pos = 0;
-    let len = s.len();
-
-    while pos < len {
-        if !it(pos, s[pos]) { return false; }
-        pos += 1;
-    }
-    return true;
-}
-
-/// Iterate over the bytes in a string in reverse
-#[inline(always)]
-pub fn each_reverse(s: &str, it: &fn(u8) -> bool) -> bool {
-    eachi_reverse(s, |_i, b| it(b) )
-}
-
-/// Iterate over the bytes in a string in reverse, with indices
-#[inline(always)]
-pub fn eachi_reverse(s: &str, it: &fn(uint, u8) -> bool) -> bool {
-    let mut pos = s.len();
-    while pos > 0 {
-        pos -= 1;
-        if !it(pos, s[pos]) { return false; }
-    }
-    return true;
-}
-
 /*
 Section: Searching
 */
@@ -1604,7 +1568,7 @@ pub fn rfind_between(s: &str, start: uint, end: uint, f: &fn(char) -> bool) -> O
 // Utility used by various searching functions
 fn match_at<'a,'b>(haystack: &'a str, needle: &'b str, at: uint) -> bool {
     let mut i = at;
-    for each(needle) |c| { if haystack[i] != c { return false; } i += 1u; }
+    for needle.bytes_iter().advance |c| { if haystack[i] != c { return false; } i += 1u; }
     return true;
 }
 
@@ -2557,10 +2521,8 @@ pub trait StrSlice<'self> {
     fn contains_char(&self, needle: char) -> bool;
     fn iter(&self) -> StrCharIterator<'self>;
     fn rev_iter(&self) -> StrCharRevIterator<'self>;
-    fn each(&self, it: &fn(u8) -> bool) -> bool;
-    fn eachi(&self, it: &fn(uint, u8) -> bool) -> bool;
-    fn each_reverse(&self, it: &fn(u8) -> bool) -> bool;
-    fn eachi_reverse(&self, it: &fn(uint, u8) -> bool) -> bool;
+    fn bytes_iter(&self) -> StrBytesIterator<'self>;
+    fn bytes_rev_iter(&self) -> StrBytesRevIterator<'self>;
     fn ends_with(&self, needle: &str) -> bool;
     fn is_empty(&self) -> bool;
     fn is_whitespace(&self) -> bool;
@@ -2628,20 +2590,14 @@ impl<'self> StrSlice<'self> for &'self str {
         }
     }
 
-    /// Iterate over the bytes in a string
-    #[inline]
-    fn each(&self, it: &fn(u8) -> bool) -> bool { each(*self, it) }
-    /// Iterate over the bytes in a string, with indices
-    #[inline]
-    fn eachi(&self, it: &fn(uint, u8) -> bool) -> bool { eachi(*self, it) }
-    /// Iterate over the bytes in a string
-    #[inline]
-    fn each_reverse(&self, it: &fn(u8) -> bool) -> bool { each_reverse(*self, it) }
-    /// Iterate over the bytes in a string, with indices
-    #[inline]
-    fn eachi_reverse(&self, it: &fn(uint, u8) -> bool) -> bool {
-        eachi_reverse(*self, it)
+    fn bytes_iter(&self) -> StrBytesIterator<'self> {
+        StrBytesIterator { it: as_bytes_slice(*self).iter() }
     }
+    fn bytes_rev_iter(&self) -> StrBytesRevIterator<'self> {
+        StrBytesRevIterator { it: as_bytes_slice(*self).rev_iter() }
+    }
+
+
     /// Returns true if one string ends with another
     #[inline]
     fn ends_with(&self, needle: &str) -> bool {
@@ -2829,6 +2785,32 @@ impl<'self> Iterator<char> for StrCharRevIterator<'self> {
         } else {
             None
         }
+    }
+}
+
+/// External iterator for a string's bytes. Use with the `std::iterator`
+/// module.
+pub struct StrBytesIterator<'self> {
+    priv it: vec::VecIterator<'self, u8>
+}
+
+impl<'self> Iterator<u8> for StrBytesIterator<'self> {
+    #[inline]
+    fn next(&mut self) -> Option<u8> {
+        self.it.next().map_consume(|&x| x)
+    }
+}
+
+/// External iterator for a string's bytes in reverse order. Use with
+/// the `std::iterator` module.
+pub struct StrBytesRevIterator<'self> {
+    priv it: vec::VecRevIterator<'self, u8>
+}
+
+impl<'self> Iterator<u8> for StrBytesRevIterator<'self> {
+    #[inline]
+    fn next(&mut self) -> Option<u8> {
+        self.it.next().map_consume(|&x| x)
     }
 }
 
@@ -3923,102 +3905,6 @@ mod tests {
     }
 
     #[test]
-    fn test_each() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = [
-            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
-            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
-            109
-        ];
-        let mut pos = 0;
-
-        for s.each |b| {
-            assert_eq!(b, v[pos]);
-            pos += 1;
-        }
-    }
-
-    #[test]
-    fn test_each_empty() {
-        for "".each |b| {
-            assert_eq!(b, 0u8);
-        }
-    }
-
-    #[test]
-    fn test_eachi() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = [
-            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
-            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
-            109
-        ];
-        let mut pos = 0;
-
-        for s.eachi |i, b| {
-            assert_eq!(pos, i);
-            assert_eq!(b, v[pos]);
-            pos += 1;
-        }
-    }
-
-    #[test]
-    fn test_eachi_empty() {
-        for "".eachi |i, b| {
-            assert_eq!(i, 0);
-            assert_eq!(b, 0);
-        }
-    }
-
-    #[test]
-    fn test_each_reverse() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = [
-            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
-            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
-            109
-        ];
-        let mut pos = v.len();
-
-        for s.each_reverse |b| {
-            pos -= 1;
-            assert_eq!(b, v[pos]);
-        }
-    }
-
-    #[test]
-    fn test_each_empty_reverse() {
-        for "".each_reverse |b| {
-            assert_eq!(b, 0u8);
-        }
-    }
-
-    #[test]
-    fn test_eachi_reverse() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = [
-            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
-            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
-            109
-        ];
-        let mut pos = v.len();
-
-        for s.eachi_reverse |i, b| {
-            pos -= 1;
-            assert_eq!(pos, i);
-            assert_eq!(b, v[pos]);
-        }
-    }
-
-    #[test]
-    fn test_eachi_reverse_empty() {
-        for "".eachi_reverse |i, b| {
-            assert_eq!(i, 0);
-            assert_eq!(b, 0);
-        }
-    }
-
-    #[test]
     fn test_escape_unicode() {
         assert_eq!(escape_unicode("abc"), ~"\\x61\\x62\\x63");
         assert_eq!(escape_unicode("a c"), ~"\\x61\\x20\\x63");
@@ -4096,5 +3982,37 @@ mod tests {
             pos += 1;
         }
         assert_eq!(pos, v.len());
+    }
+
+    #[test]
+    fn test_bytes_iterator() {
+        let s = ~"ศไทย中华Việt Nam";
+        let v = [
+            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
+            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
+            109
+        ];
+        let mut pos = 0;
+
+        for s.bytes_iter().advance |b| {
+            assert_eq!(b, v[pos]);
+            pos += 1;
+        }
+    }
+
+    #[test]
+    fn test_bytes_rev_iterator() {
+        let s = ~"ศไทย中华Việt Nam";
+        let v = [
+            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
+            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
+            109
+        ];
+        let mut pos = v.len();
+
+        for s.bytes_rev_iter().advance |b| {
+            pos -= 1;
+            assert_eq!(b, v[pos]);
+        }
     }
 }
