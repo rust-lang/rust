@@ -22,6 +22,7 @@ use procsrv;
 use util;
 use util::logv;
 
+use core::iterator::IteratorUtil;
 use core::io;
 use core::os;
 use core::str;
@@ -780,7 +781,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
                      Some(~""));
 
     let mut exitcode : int = 0;
-    for str::each_char(exitcode_out) |c| {
+    for exitcode_out.iter().advance |c| {
         if !c.is_digit() { break; }
         exitcode = exitcode * 10 + match c {
             '0' .. '9' => c as int - ('0' as int),

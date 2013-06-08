@@ -16,8 +16,6 @@ Simple compression
 
 #[allow(missing_doc)];
 
-use core::prelude::*;
-
 use core::libc::{c_void, size_t, c_int};
 use core::libc;
 use core::vec;
@@ -87,6 +85,7 @@ mod tests {
     use super::*;
     use core::rand;
     use core::rand::RngUtil;
+    use core::prelude::*;
 
     #[test]
     #[allow(non_implicitly_copyable_typarams)]

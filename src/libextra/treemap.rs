@@ -1034,8 +1034,6 @@ mod test_set {
 
     use super::*;
 
-    use core::vec;
-
     #[test]
     fn test_clear() {
         let mut s = TreeSet::new();

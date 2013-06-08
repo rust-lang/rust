@@ -13,7 +13,7 @@
 
 extern mod extra;
 
-use std::vec;
+use std::iterator::IteratorUtil;
 
 #[test]
 #[ignore(cfg(ignorecfg))]
@@ -30,11 +30,9 @@ fn checktests() {
     // Pull the tests out of the secreturn test module
     let tests = __test::tests;
 
-    assert!(vec::any(
-        tests,
-        |t| t.desc.name.to_str() == ~"shouldignore" && t.desc.ignore));
+    assert!(
+        tests.iter().any(|t| t.desc.name.to_str() == ~"shouldignore" && t.desc.ignore));
 
-    assert!(vec::any(
-        tests,
-        |t| t.desc.name.to_str() == ~"shouldnotignore" && !t.desc.ignore));
+    assert!(
+        tests.iter().any(|t| t.desc.name.to_str() == ~"shouldnotignore" && !t.desc.ignore));
 }

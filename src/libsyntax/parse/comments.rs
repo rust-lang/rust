@@ -19,8 +19,8 @@ use parse::lexer::{is_line_non_doc_comment, is_block_non_doc_comment};
 use parse::lexer;
 use parse::token;
 use parse::token::{get_ident_interner};
-use parse;
 
+use core::iterator::IteratorUtil;
 use core::io;
 use core::str;
 use core::uint;
@@ -78,7 +78,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
             if line.trim().is_empty() {
                 loop;
             }
-            for line.each_chari |j, c| {
+            for line.iter().enumerate().advance |(j, c)| {
                 if j >= i {
                     break;
                 }
@@ -91,7 +91,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 
         return do lines.map |line| {
             let mut chars = ~[];
-            for str::each_char(*line) |c| { chars.push(c) }
+            for line.iter().advance |c| { chars.push(c) }
             if i > chars.len() {
                 ~""
             } else {

@@ -19,6 +19,7 @@ library.
 */
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use ast::{enum_def, ident, item, Generics, meta_item, struct_def};
 use ext::base::ExtCtxt;
@@ -74,7 +75,7 @@ pub fn expand_meta_deriving(cx: @ExtCtxt,
             in_items
         }
         meta_list(_, ref titems) => {
-            do titems.foldr(in_items) |&titem, in_items| {
+            do titems.rev_iter().fold(in_items) |in_items, &titem| {
                 match titem.node {
                     meta_name_value(tname, _) |
                     meta_list(tname, _) |

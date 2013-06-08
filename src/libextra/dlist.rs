@@ -20,6 +20,7 @@ Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
 
 use core::prelude::*;
 
+use core::iterator::IteratorUtil;
 use core::managed;
 use core::old_iter;
 use core::vec;
@@ -110,7 +111,7 @@ pub fn from_elem<T>(data: T) -> @mut DList<T> {
 
 /// Creates a new dlist from a vector of elements, maintaining the same order
 pub fn from_vec<T:Copy>(vec: &[T]) -> @mut DList<T> {
-    do vec::foldl(DList(), vec) |list,data| {
+    do vec.iter().fold(DList()) |list,data| {
         list.push(*data); // Iterating left-to-right -- add newly to the tail.
         list
     }

@@ -42,7 +42,6 @@ much easier to implement.
 
 use cmp::Ord;
 use option::{Option, Some, None};
-use vec::OwnedVector;
 use num::{One, Zero};
 use ops::{Add, Mul};
 

@@ -414,6 +414,7 @@ mod test {
 
     use super::{FileInput, pathify, input_vec, input_vec_state};
 
+    use core::iterator::IteratorUtil;
     use core::io;
     use core::str;
     use core::uint;
@@ -455,7 +456,7 @@ mod test {
 
         let fi = FileInput::from_vec(copy filenames);
 
-        for "012".each_chari |line, c| {
+        for "012".iter().enumerate().advance |(line, c)| {
             assert_eq!(fi.read_byte(), c as int);
             assert_eq!(fi.state().line_num, line);
             assert_eq!(fi.state().line_num_file, 0);

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::str;
+use std::iterator::IteratorUtil;
 
 pub fn main() {
     let x = ~[1, 2, 3];
@@ -18,7 +18,7 @@ pub fn main() {
     assert_eq!(y, 6);
     let s = ~"hello there";
     let mut i: int = 0;
-    for str::each(s) |c| {
+    for s.bytes_iter().advance |c| {
         if i == 0 { assert!((c == 'h' as u8)); }
         if i == 1 { assert!((c == 'e' as u8)); }
         if i == 2 { assert!((c == 'l' as u8)); }

@@ -10,6 +10,7 @@
 
 //! Runtime calls emitted by the compiler.
 
+use iterator::IteratorUtil;
 use uint;
 use cast::transmute;
 use libc::{c_char, c_uchar, c_void, size_t, uintptr_t, c_int, STDERR_FILENO};
@@ -133,7 +134,7 @@ unsafe fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
         Some(borrow_list) => { // recording borrows
             let mut msg = ~"borrowed";
             let mut sep = " at ";
-            for borrow_list.each_reverse |entry| {
+            for borrow_list.rev_iter().advance |entry| {
                 if entry.box == box {
                     str::push_str(&mut msg, sep);
                     let filename = str::raw::from_c_str(entry.file);

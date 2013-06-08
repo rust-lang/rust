@@ -24,9 +24,9 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
+use core::iterator::IteratorUtil;
 use core::str;
 use core::util;
-use core::vec;
 
 pub fn mk_pass() -> Pass {
     Pass {
@@ -150,7 +150,7 @@ pub fn paragraphs(s: &str) -> ~[~str] {
     for str::each_line_any(s) |line| { lines.push(line.to_owned()); }
     let mut whitespace_lines = 0;
     let mut accum = ~"";
-    let paras = do vec::foldl(~[], lines) |paras, line| {
+    let paras = do lines.iter().fold(~[]) |paras, line| {
         let mut res = paras;
 
         if str::is_whitespace(*line) {

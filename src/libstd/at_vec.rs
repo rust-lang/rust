@@ -286,8 +286,6 @@ pub mod raw {
 #[cfg(test)]
 mod test {
     use super::*;
-    use prelude::*;
-
     use uint;
 
     #[test]
