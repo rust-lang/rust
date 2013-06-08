@@ -2404,13 +2404,13 @@ pub mod bytes {
     use vec;
 
     /// Bytewise string comparison
-    pub fn memcmp(a: &~[u8], b: &~[u8]) -> int {
+    pub fn memcmp(a: &[u8], b: &[u8]) -> int {
         let a_len = a.len();
         let b_len = b.len();
         let n = uint::min(a_len, b_len) as libc::size_t;
         let r = unsafe {
-            libc::memcmp(raw::to_ptr(*a) as *libc::c_void,
-                         raw::to_ptr(*b) as *libc::c_void, n) as int
+            libc::memcmp(raw::to_ptr(a) as *libc::c_void,
+                         raw::to_ptr(b) as *libc::c_void, n) as int
         };
 
         if r != 0 { r } else {
@@ -2425,22 +2425,22 @@ pub mod bytes {
     }
 
     /// Bytewise less than or equal
-    pub fn lt(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) < 0 }
+    pub fn lt(a: &[u8], b: &[u8]) -> bool { memcmp(a, b) < 0 }
 
     /// Bytewise less than or equal
-    pub fn le(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) <= 0 }
+    pub fn le(a: &[u8], b: &[u8]) -> bool { memcmp(a, b) <= 0 }
 
     /// Bytewise equality
-    pub fn eq(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) == 0 }
+    pub fn eq(a: &[u8], b: &[u8]) -> bool { memcmp(a, b) == 0 }
 
     /// Bytewise inequality
-    pub fn ne(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) != 0 }
+    pub fn ne(a: &[u8], b: &[u8]) -> bool { memcmp(a, b) != 0 }
 
     /// Bytewise greater than or equal
-    pub fn ge(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) >= 0 }
+    pub fn ge(a: &[u8], b: &[u8]) -> bool { memcmp(a, b) >= 0 }
 
     /// Bytewise greater than
-    pub fn gt(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) > 0 }
+    pub fn gt(a: &[u8], b: &[u8]) -> bool { memcmp(a, b) > 0 }
 
     /**
       * Copies data from one vector to another.
