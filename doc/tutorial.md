@@ -1442,10 +1442,15 @@ call_closure_with_ten(closure);
 ~~~~
 
 Closures begin with the argument list between vertical bars and are followed by
-a single expression. The types of the arguments are generally omitted,
-as is the return type, because the compiler can almost always infer
-them. In the rare case where the compiler needs assistance, though, the
-arguments and return types may be annotated.
+a single expression. Remember that a block, `{ <expr1>; <expr2>; ... }`, is
+considered a single expression: it evaluates to the result of the last
+expression it contains if that expression is not followed by a semicolon,
+otherwise the block evaluates to `()`.
+
+The types of the arguments are generally omitted, as is the return type,
+because the compiler can almost always infer them. In the rare case where the
+compiler needs assistance, though, the arguments and return types may be
+annotated.
 
 ~~~~
 let square = |x: int| -> uint { x * x as uint };
