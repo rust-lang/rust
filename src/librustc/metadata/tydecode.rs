@@ -55,24 +55,24 @@ pub enum DefIdSource {
 type conv_did<'self> =
     &'self fn(source: DefIdSource, ast::def_id) -> ast::def_id;
 
-pub struct PState {
-    data: @~[u8],
+pub struct PState<'self> {
+    data: &'self [u8],
     crate: int,
     pos: uint,
     tcx: ty::ctxt
 }
 
-fn peek(st: @mut PState) -> char {
+fn peek(st: &PState) -> char {
     st.data[st.pos] as char
 }
 
-fn next(st: @mut PState) -> char {
+fn next(st: &mut PState) -> char {
     let ch = st.data[st.pos] as char;
     st.pos = st.pos + 1u;
     return ch;
 }
 
-fn next_byte(st: @mut PState) -> u8 {
+fn next_byte(st: &mut PState) -> u8 {
     let b = st.data[st.pos];
     st.pos = st.pos + 1u;
     return b;
@@ -92,20 +92,20 @@ fn scan<R>(st: &mut PState, is_last: &fn(char) -> bool,
     return op(st.data.slice(start_pos, end_pos));
 }
 
-pub fn parse_ident(st: @mut PState, last: char) -> ast::ident {
+pub fn parse_ident(st: &mut PState, last: char) -> ast::ident {
     fn is_last(b: char, c: char) -> bool { return c == b; }
     return parse_ident_(st, |a| is_last(last, a) );
 }
 
-fn parse_ident_(st: @mut PState, is_last: @fn(char) -> bool) ->
+fn parse_ident_(st: &mut PState, is_last: @fn(char) -> bool) ->
    ast::ident {
     let rslt = scan(st, is_last, str::from_bytes);
     return st.tcx.sess.ident_of(rslt);
 }
 
-pub fn parse_state_from_data(data: @~[u8], crate_num: int,
-                             pos: uint, tcx: ty::ctxt) -> @mut PState {
-    @mut PState {
+pub fn parse_state_from_data<'a>(data: &'a [u8], crate_num: int,
+                             pos: uint, tcx: ty::ctxt) -> PState<'a> {
+    PState {
         data: data,
         crate: crate_num,
         pos: pos,
@@ -113,25 +113,25 @@ pub fn parse_state_from_data(data: @~[u8], crate_num: int,
     }
 }
 
-pub fn parse_ty_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
+pub fn parse_ty_data(data: &[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
                      conv: conv_did) -> ty::t {
-    let st = parse_state_from_data(data, crate_num, pos, tcx);
-    parse_ty(st, conv)
+    let mut st = parse_state_from_data(data, crate_num, pos, tcx);
+    parse_ty(&mut st, conv)
 }
 
-pub fn parse_bare_fn_ty_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
+pub fn parse_bare_fn_ty_data(data: &[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
                              conv: conv_did) -> ty::BareFnTy {
-    let st = parse_state_from_data(data, crate_num, pos, tcx);
-    parse_bare_fn_ty(st, conv)
+    let mut st = parse_state_from_data(data, crate_num, pos, tcx);
+    parse_bare_fn_ty(&mut st, conv)
 }
 
-pub fn parse_trait_ref_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
+pub fn parse_trait_ref_data(data: &[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
                             conv: conv_did) -> ty::TraitRef {
-    let st = parse_state_from_data(data, crate_num, pos, tcx);
-    parse_trait_ref(st, conv)
+    let mut st = parse_state_from_data(data, crate_num, pos, tcx);
+    parse_trait_ref(&mut st, conv)
 }
 
-fn parse_path(st: @mut PState) -> @ast::Path {
+fn parse_path(st: &mut PState) -> @ast::Path {
     let mut idents: ~[ast::ident] = ~[];
     fn is_last(c: char) -> bool { return c == '(' || c == ':'; }
     idents.push(parse_ident_(st, is_last));
@@ -151,7 +151,7 @@ fn parse_path(st: @mut PState) -> @ast::Path {
     };
 }
 
-fn parse_sigil(st: @mut PState) -> ast::Sigil {
+fn parse_sigil(st: &mut PState) -> ast::Sigil {
     match next(st) {
         '@' => ast::ManagedSigil,
         '~' => ast::OwnedSigil,
@@ -160,7 +160,7 @@ fn parse_sigil(st: @mut PState) -> ast::Sigil {
     }
 }
 
-fn parse_vstore(st: @mut PState) -> ty::vstore {
+fn parse_vstore(st: &mut PState) -> ty::vstore {
     assert_eq!(next(st), '/');
 
     let c = peek(st);
@@ -178,7 +178,7 @@ fn parse_vstore(st: @mut PState) -> ty::vstore {
     }
 }
 
-fn parse_trait_store(st: @mut PState) -> ty::TraitStore {
+fn parse_trait_store(st: &mut PState) -> ty::TraitStore {
     match next(st) {
         '~' => ty::UniqTraitStore,
         '@' => ty::BoxTraitStore,
@@ -187,10 +187,10 @@ fn parse_trait_store(st: @mut PState) -> ty::TraitStore {
     }
 }
 
-fn parse_substs(st: @mut PState, conv: conv_did) -> ty::substs {
-    let self_r = parse_opt(st, || parse_region(st) );
+fn parse_substs(st: &mut PState, conv: conv_did) -> ty::substs {
+    let self_r = parse_opt(st, |st| parse_region(st) );
 
-    let self_ty = parse_opt(st, || parse_ty(st, conv) );
+    let self_ty = parse_opt(st, |st| parse_ty(st, conv) );
 
     assert_eq!(next(st), '[');
     let mut params: ~[ty::t] = ~[];
@@ -204,7 +204,7 @@ fn parse_substs(st: @mut PState, conv: conv_did) -> ty::substs {
     };
 }
 
-fn parse_bound_region(st: @mut PState) -> ty::bound_region {
+fn parse_bound_region(st: &mut PState) -> ty::bound_region {
     match next(st) {
       's' => ty::br_self,
       'a' => {
@@ -222,7 +222,7 @@ fn parse_bound_region(st: @mut PState) -> ty::bound_region {
     }
 }
 
-fn parse_region(st: @mut PState) -> ty::Region {
+fn parse_region(st: &mut PState) -> ty::Region {
     match next(st) {
       'b' => {
         ty::re_bound(parse_bound_region(st))
@@ -251,15 +251,15 @@ fn parse_region(st: @mut PState) -> ty::Region {
     }
 }
 
-fn parse_opt<T>(st: @mut PState, f: &fn() -> T) -> Option<T> {
+fn parse_opt<T>(st: &mut PState, f: &fn(&mut PState) -> T) -> Option<T> {
     match next(st) {
       'n' => None,
-      's' => Some(f()),
+      's' => Some(f(st)),
       _ => fail!("parse_opt: bad input")
     }
 }
 
-fn parse_str(st: @mut PState, term: char) -> ~str {
+fn parse_str(st: &mut PState, term: char) -> ~str {
     let mut result = ~"";
     while peek(st) != term {
         result += str::from_byte(next_byte(st));
@@ -268,13 +268,13 @@ fn parse_str(st: @mut PState, term: char) -> ~str {
     return result;
 }
 
-fn parse_trait_ref(st: @mut PState, conv: conv_did) -> ty::TraitRef {
+fn parse_trait_ref(st: &mut PState, conv: conv_did) -> ty::TraitRef {
     let def = parse_def(st, NominalType, conv);
     let substs = parse_substs(st, conv);
     ty::TraitRef {def_id: def, substs: substs}
 }
 
-fn parse_ty(st: @mut PState, conv: conv_did) -> ty::t {
+fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
     match next(st) {
       'n' => return ty::mk_nil(),
       'z' => return ty::mk_bot(),
@@ -370,8 +370,8 @@ fn parse_ty(st: @mut PState, conv: conv_did) -> ty::t {
         match st.tcx.rcache.find(&key) {
           Some(&tt) => return tt,
           None => {
-            let ps = @mut PState {pos: pos ,.. copy *st};
-            let tt = parse_ty(ps, conv);
+            let mut ps = PState {pos: pos ,.. copy *st};
+            let tt = parse_ty(&mut ps, conv);
             st.tcx.rcache.insert(key, tt);
             return tt;
           }
@@ -394,7 +394,7 @@ fn parse_ty(st: @mut PState, conv: conv_did) -> ty::t {
     }
 }
 
-fn parse_mutability(st: @mut PState) -> ast::mutability {
+fn parse_mutability(st: &mut PState) -> ast::mutability {
     match peek(st) {
       'm' => { next(st); ast::m_mutbl }
       '?' => { next(st); ast::m_const }
@@ -402,20 +402,17 @@ fn parse_mutability(st: @mut PState) -> ast::mutability {
     }
 }
 
-fn parse_mt(st: @mut PState, conv: conv_did) -> ty::mt {
+fn parse_mt(st: &mut PState, conv: conv_did) -> ty::mt {
     let m = parse_mutability(st);
     ty::mt { ty: parse_ty(st, conv), mutbl: m }
 }
 
-fn parse_def(st: @mut PState, source: DefIdSource,
+fn parse_def(st: &mut PState, source: DefIdSource,
              conv: conv_did) -> ast::def_id {
-    let mut def = ~[];
-    while peek(st) != '|' { def.push(next_byte(st)); }
-    st.pos = st.pos + 1u;
-    return conv(source, parse_def_id(def));
+    return conv(source, scan(st, |c| { c == '|' }, parse_def_id));
 }
 
-fn parse_uint(st: @mut PState) -> uint {
+fn parse_uint(st: &mut PState) -> uint {
     let mut n = 0;
     loop {
         let cur = peek(st);
@@ -426,7 +423,7 @@ fn parse_uint(st: @mut PState) -> uint {
     };
 }
 
-fn parse_hex(st: @mut PState) -> uint {
+fn parse_hex(st: &mut PState) -> uint {
     let mut n = 0u;
     loop {
         let cur = peek(st);
@@ -449,7 +446,7 @@ fn parse_purity(c: char) -> purity {
     }
 }
 
-fn parse_abi_set(st: @mut PState) -> AbiSet {
+fn parse_abi_set(st: &mut PState) -> AbiSet {
     assert_eq!(next(st), '[');
     let mut abis = AbiSet::empty();
     while peek(st) != ']' {
@@ -470,7 +467,7 @@ fn parse_onceness(c: char) -> ast::Onceness {
     }
 }
 
-fn parse_closure_ty(st: @mut PState, conv: conv_did) -> ty::ClosureTy {
+fn parse_closure_ty(st: &mut PState, conv: conv_did) -> ty::ClosureTy {
     let sigil = parse_sigil(st);
     let purity = parse_purity(next(st));
     let onceness = parse_onceness(next(st));
@@ -487,7 +484,7 @@ fn parse_closure_ty(st: @mut PState, conv: conv_did) -> ty::ClosureTy {
     }
 }
 
-fn parse_bare_fn_ty(st: @mut PState, conv: conv_did) -> ty::BareFnTy {
+fn parse_bare_fn_ty(st: &mut PState, conv: conv_did) -> ty::BareFnTy {
     let purity = parse_purity(next(st));
     let abi = parse_abi_set(st);
     let sig = parse_sig(st, conv);
@@ -498,7 +495,7 @@ fn parse_bare_fn_ty(st: @mut PState, conv: conv_did) -> ty::BareFnTy {
     }
 }
 
-fn parse_sig(st: @mut PState, conv: conv_did) -> ty::FnSig {
+fn parse_sig(st: &mut PState, conv: conv_did) -> ty::FnSig {
     assert_eq!(next(st), '[');
     let mut inputs = ~[];
     while peek(st) != ']' {
@@ -537,20 +534,20 @@ pub fn parse_def_id(buf: &[u8]) -> ast::def_id {
     ast::def_id { crate: crate_num, node: def_num }
 }
 
-pub fn parse_type_param_def_data(data: @~[u8], start: uint,
+pub fn parse_type_param_def_data(data: &[u8], start: uint,
                                  crate_num: int, tcx: ty::ctxt,
                                  conv: conv_did) -> ty::TypeParameterDef
 {
-    let st = parse_state_from_data(data, crate_num, start, tcx);
-    parse_type_param_def(st, conv)
+    let mut st = parse_state_from_data(data, crate_num, start, tcx);
+    parse_type_param_def(&mut st, conv)
 }
 
-fn parse_type_param_def(st: @mut PState, conv: conv_did) -> ty::TypeParameterDef {
+fn parse_type_param_def(st: &mut PState, conv: conv_did) -> ty::TypeParameterDef {
     ty::TypeParameterDef {def_id: parse_def(st, NominalType, conv),
                           bounds: @parse_bounds(st, conv)}
 }
 
-fn parse_bounds(st: @mut PState, conv: conv_did) -> ty::ParamBounds {
+fn parse_bounds(st: &mut PState, conv: conv_did) -> ty::ParamBounds {
     let mut param_bounds = ty::ParamBounds {
         builtin_bounds: ty::EmptyBuiltinBounds(),
         trait_bounds: ~[]
