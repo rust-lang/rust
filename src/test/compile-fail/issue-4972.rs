@@ -1,4 +1,3 @@
-// xfail-fast
 // Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -9,19 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod extra;
+trait MyTrait { }
 
-use std::result;
-use extra::json;
-use extra::serialize::Decodable;
+pub enum TraitWrapper {
+    A(~MyTrait),
+}
 
-trait JD : Decodable<json::Decoder> { }
-
-fn exec<T: JD>() {
-    let doc = result::unwrap(json::from_str(""));
-    let mut decoder = json::Decoder(doc);
-    let _v: T = Decodable::decode(&mut decoder);
-    fail!()
+fn get_tw_map<'lt>(tw: &'lt TraitWrapper) -> &'lt MyTrait {
+    match *tw {
+        A(~ref map) => map, //~ ERROR mismatched types: expected `~MyTrait` but found a ~-box pattern
+    }
 }
 
 pub fn main() {}
