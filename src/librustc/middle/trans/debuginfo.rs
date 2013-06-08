@@ -29,7 +29,6 @@ use core::str;
 use core::sys;
 use core::vec;
 use syntax::codemap::span;
-use syntax::parse::token::ident_interner;
 use syntax::{ast, codemap, ast_util, ast_map};
 
 static LLVMDebugVersion: int = (9 << 16);

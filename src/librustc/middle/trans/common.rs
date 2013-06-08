@@ -53,7 +53,6 @@ use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt};
 use syntax::codemap::span;
 use syntax::parse::token;
-use syntax::parse::token::ident_interner;
 use syntax::{ast, ast_map};
 use syntax::abi::{X86, X86_64, Arm, Mips};
 

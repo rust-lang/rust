@@ -24,7 +24,6 @@ use core::prelude::*;
 use core::iterator::IteratorUtil;
 use core::str;
 use core::uint;
-use core::vec;
 use pass::Pass;
 use text_pass;
 

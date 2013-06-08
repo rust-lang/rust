@@ -929,11 +929,8 @@ mod test_tim_sort {
     use core::prelude::*;
 
     use sort::tim_sort;
-
-    use core::local_data;
     use core::rand::RngUtil;
     use core::rand;
-    use core::uint;
     use core::vec;
 
     struct CVal {

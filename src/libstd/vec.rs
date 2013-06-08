@@ -3349,13 +3349,13 @@ mod tests {
 
     #[test]
     fn test_each_ret_len0() {
-        let mut a0 : [int, .. 0] = [];
+        let a0 : [int, .. 0] = [];
         assert_eq!(each(a0, |_p| fail!()), true);
     }
 
     #[test]
     fn test_each_ret_len1() {
-        let mut a1 = [17];
+        let a1 = [17];
         assert_eq!(each(a1, |_p| true), true);
         assert_eq!(each(a1, |_p| false), false);
     }

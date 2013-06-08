@@ -20,7 +20,6 @@ use opt_vec;
 use parse::token;
 use visit;
 
-use core::iterator::IteratorUtil;
 use core::hashmap::HashMap;
 use core::int;
 use core::option;
@@ -793,6 +792,7 @@ mod test {
     use ast::*;
     use super::*;
     use core::io;
+    use core::iterator::IteratorUtil;
 
     #[test] fn xorpush_test () {
         let mut s = ~[];
