@@ -263,7 +263,7 @@ impl Drop for PoisonOnFail {
 
 fn PoisonOnFail<'r>(failed: &'r mut bool) -> PoisonOnFail {
     PoisonOnFail {
-        failed: ptr::to_mut_unsafe_ptr(failed)
+        failed: failed
     }
 }
 
