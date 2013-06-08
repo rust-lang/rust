@@ -569,8 +569,10 @@ loop {
 This code prints out a weird sequence of numbers and stops as soon as
 it finds one that can be divided by five.
 
-For more involved iteration, such as enumerating the elements of a
-collection, Rust uses [higher-order functions](#closures).
+Rust also has a `for` construct. It's different from C's `for` and it works
+best when iterating over collections. See the section on [closures](#closures)
+to find out how to use `for` and higher-order functions for enumerating
+elements of a collection.
 
 # Data structures
 
@@ -1393,6 +1395,7 @@ assert!(crayons.len() == 3);
 assert!(!crayons.is_empty());
 
 // Iterate over a vector, obtaining a pointer to each element
+// (`for` is explained in the next section)
 for crayons.each |crayon| {
     let delicious_crayon_wax = unwrap_crayon(*crayon);
     eat_crayon_wax(delicious_crayon_wax);
