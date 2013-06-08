@@ -38,8 +38,7 @@ fn struct_tys(ty: TypeRef) -> ~[TypeRef] {
         return ~[];
     }
         let mut elts = vec::from_elem(n as uint, ptr::null());
-        llvm::LLVMGetStructElementTypes(ty,
-            ptr::to_mut_unsafe_ptr(&mut elts[0]));
+        llvm::LLVMGetStructElementTypes(ty, &mut elts[0]);
         return elts;
     }
 }

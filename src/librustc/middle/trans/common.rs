@@ -964,9 +964,7 @@ pub fn T_tydesc_field(cx: @CrateContext, field: uint) -> TypeRef {
         let mut tydesc_elts: ~[TypeRef] =
             vec::from_elem::<TypeRef>(abi::n_tydesc_fields,
                                      T_nil());
-        llvm::LLVMGetStructElementTypes(
-            cx.tydesc_type,
-            ptr::to_mut_unsafe_ptr(&mut tydesc_elts[0]));
+        llvm::LLVMGetStructElementTypes(cx.tydesc_type, &mut tydesc_elts[0]);
         let t = llvm::LLVMGetElementType(tydesc_elts[field]);
         return t;
     }

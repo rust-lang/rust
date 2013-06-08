@@ -2117,8 +2117,7 @@ pub fn struct_tys(struct_ty: TypeRef) -> ~[TypeRef] {
             return ~[];
         }
         let mut elts = vec::from_elem(n_elts, ptr::null());
-        llvm::LLVMGetStructElementTypes(
-            struct_ty, ptr::to_mut_unsafe_ptr(&mut elts[0]));
+        llvm::LLVMGetStructElementTypes(struct_ty, &mut elts[0]);
         return elts;
     }
 }
