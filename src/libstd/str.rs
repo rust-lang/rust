@@ -3964,7 +3964,7 @@ mod tests {
         let s = ~"ศไทย中华Việt Nam";
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = s.len();
-        for v.each_reverse |ch| {
+        for v.rev_iter().advance |ch| {
             assert!(s.char_at_reverse(pos) == *ch);
             pos -= from_char(*ch).len();
         }

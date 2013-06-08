@@ -1599,34 +1599,6 @@ pub fn eachi<'r,T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) -> bool {
 }
 
 /**
- * Iterates over a vector's elements in reverse
- *
- * Return true to continue, false to break.
- */
-#[inline(always)]
-pub fn each_reverse<'r,T>(v: &'r [T], blk: &fn(v: &'r T) -> bool) -> bool {
-    eachi_reverse(v, |_i, v| blk(v))
-}
-
-/**
- * Iterates over a vector's elements and indices in reverse
- *
- * Return true to continue, false to break.
- */
-#[inline(always)]
-pub fn eachi_reverse<'r,T>(v: &'r [T],
-                            blk: &fn(i: uint, v: &'r T) -> bool) -> bool {
-    let mut i = v.len();
-    while i > 0 {
-        i -= 1;
-        if !blk(i, &v[i]) {
-            return false;
-        }
-    }
-    return true;
-}
-
-/**
  * Iterate over all permutations of vector `v`.
  *
  * Permutations are produced in lexicographic order with respect to the order
@@ -1964,6 +1936,7 @@ impl<'self,T:Copy> CopyableVector<T> for &'self [T] {
 pub trait ImmutableVector<'self, T> {
     fn slice(&self, start: uint, end: uint) -> &'self [T];
     fn iter(self) -> VecIterator<'self, T>;
+    fn rev_iter(self) -> VecRevIterator<'self, T>;
     fn head(&self) -> &'self T;
     fn head_opt(&self) -> Option<&'self T>;
     fn tail(&self) -> &'self [T];
@@ -1974,8 +1947,6 @@ pub trait ImmutableVector<'self, T> {
     fn last_opt(&self) -> Option<&'self T>;
     fn position(&self, f: &fn(t: &T) -> bool) -> Option<uint>;
     fn rposition(&self, f: &fn(t: &T) -> bool) -> Option<uint>;
-    fn each_reverse(&self, blk: &fn(&T) -> bool) -> bool;
-    fn eachi_reverse(&self, blk: &fn(uint, &T) -> bool) -> bool;
     fn foldr<'a, U>(&'a self, z: U, p: &fn(t: &'a T, u: U) -> U) -> U;
     fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U];
     fn mapi<U>(&self, f: &fn(uint, t: &T) -> U) -> ~[U];
@@ -2000,6 +1971,15 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
             let p = vec::raw::to_ptr(self);
             VecIterator{ptr: p, end: p.offset(self.len()),
                         lifetime: cast::transmute(p)}
+        }
+    }
+    #[inline]
+    fn rev_iter(self) -> VecRevIterator<'self, T> {
+        unsafe {
+            let p = vec::raw::to_ptr(self);
+            VecRevIterator{ptr: p.offset(self.len() - 1),
+                           end: p.offset(-1),
+                           lifetime: cast::transmute(p)}
         }
     }
 
@@ -2057,18 +2037,6 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     #[inline]
     fn rposition(&self, f: &fn(t: &T) -> bool) -> Option<uint> {
         rposition(*self, f)
-    }
-
-    /// Iterates over a vector's elements in reverse.
-    #[inline]
-    fn each_reverse(&self, blk: &fn(&T) -> bool) -> bool {
-        each_reverse(*self, blk)
-    }
-
-    /// Iterates over a vector's elements and indices in reverse.
-    #[inline]
-    fn eachi_reverse(&self, blk: &fn(uint, &T) -> bool) -> bool {
-        eachi_reverse(*self, blk)
     }
 
     /// Reduce a vector from right to left
@@ -2350,7 +2318,8 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
 #[allow(missing_doc)]
 pub trait MutableVector<'self, T> {
     fn mut_slice(self, start: uint, end: uint) -> &'self mut [T];
-    fn mut_iter(self) -> MutVecIterator<'self, T>;
+    fn mut_iter(self) -> VecMutIterator<'self, T>;
+    fn mut_rev_iter(self) -> VecMutRevIterator<'self, T>;
 
     unsafe fn unsafe_mut_ref(&self, index: uint) -> *mut T;
     unsafe fn unsafe_set(&self, index: uint, val: T);
@@ -2363,11 +2332,20 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
-    fn mut_iter(self) -> MutVecIterator<'self, T> {
+    fn mut_iter(self) -> VecMutIterator<'self, T> {
         unsafe {
             let p = vec::raw::to_mut_ptr(self);
-            MutVecIterator{ptr: p, end: p.offset(self.len()),
+            VecMutIterator{ptr: p, end: p.offset(self.len()),
                            lifetime: cast::transmute(p)}
+        }
+    }
+
+    fn mut_rev_iter(self) -> VecMutRevIterator<'self, T> {
+        unsafe {
+            let p = vec::raw::to_mut_ptr(self);
+            VecMutRevIterator{ptr: p.offset(self.len() - 1),
+                              end: p.offset(-1),
+                              lifetime: cast::transmute(p)}
         }
     }
 
@@ -2872,52 +2850,69 @@ impl<A:Clone> Clone for ~[A] {
     }
 }
 
-/// An external iterator for vectors (use with the std::iterator module)
+macro_rules! iterator {
+    /* FIXME: #4375 Cannot attach documentation/attributes to a macro generated struct.
+    (struct $name:ident -> $ptr:ty, $elem:ty) => {
+        pub struct $name<'self, T> {
+            priv ptr: $ptr,
+            priv end: $ptr,
+            priv lifetime: $elem // FIXME: #5922
+        }
+    };*/
+    (impl $name:ident -> $elem:ty, $step:expr) => {
+        // could be implemented with &[T] with .slice(), but this avoids bounds checks
+        impl<'self, T> Iterator<$elem> for $name<'self, T> {
+            #[inline]
+            fn next(&mut self) -> Option<$elem> {
+                unsafe {
+                    if self.ptr == self.end {
+                        None
+                    } else {
+                        let old = self.ptr;
+                        self.ptr = self.ptr.offset($step);
+                        Some(cast::transmute(old))
+                    }
+                }
+            }
+        }
+    }
+}
+
+//iterator!{struct VecIterator -> *T, &'self T}
+/// An iterator for iterating over a vector
 pub struct VecIterator<'self, T> {
     priv ptr: *T,
     priv end: *T,
     priv lifetime: &'self T // FIXME: #5922
 }
+iterator!{impl VecIterator -> &'self T, 1}
 
-// could be implemented with &[T] with .slice(), but this avoids bounds checks
-impl<'self, T> Iterator<&'self T> for VecIterator<'self, T> {
-    #[inline]
-    fn next(&mut self) -> Option<&'self T> {
-        unsafe {
-            if self.ptr == self.end {
-                None
-            } else {
-                let old = self.ptr;
-                self.ptr = self.ptr.offset(1);
-                Some(cast::transmute(old))
-            }
-        }
-    }
+//iterator!{struct VecRevIterator -> *T, &'self T}
+/// An iterator for iterating over a vector in reverse
+pub struct VecRevIterator<'self, T> {
+    priv ptr: *T,
+    priv end: *T,
+    priv lifetime: &'self T // FIXME: #5922
 }
+iterator!{impl VecRevIterator -> &'self T, -1}
 
-/// An external iterator for vectors with the possibility of mutating
-/// elements. (use with the std::iterator module)
-pub struct MutVecIterator<'self, T> {
+//iterator!{struct VecMutIterator -> *mut T, &'self mut T}
+/// An iterator for mutating the elements of a vector
+pub struct VecMutIterator<'self, T> {
     priv ptr: *mut T,
     priv end: *mut T,
     priv lifetime: &'self mut T // FIXME: #5922
 }
+iterator!{impl VecMutIterator -> &'self mut T, 1}
 
-// could be implemented with &[T] with .slice(), but this avoids bounds checks
-impl<'self, T> Iterator<&'self mut T> for MutVecIterator<'self, T> {
-    #[inline]
-    fn next(&mut self) -> Option<&'self mut T> {
-        unsafe {
-            if self.ptr == self.end {
-                None
-            } else {
-                let old = self.ptr;
-                self.ptr = self.ptr.offset(1);
-                Some(cast::transmute(old))
-            }
-        }
-    }
+//iterator!{struct VecMutRevIterator -> *mut T, &'self mut T}
+/// An iterator for mutating the elements of a vector in reverse
+pub struct VecMutRevIterator<'self, T> {
+    priv ptr: *mut T,
+    priv end: *mut T,
+    priv lifetime: &'self mut T // FIXME: #5922
 }
+iterator!{impl VecMutRevIterator -> &'self mut T, -1}
 
 impl<T> FromIter<T> for ~[T]{
     #[inline(always)]
@@ -3525,43 +3520,6 @@ mod tests {
             i += *v;
         }
         assert_eq!(i, 6);
-    }
-
-    #[test]
-    fn test_each_reverse_empty() {
-        let v: ~[int] = ~[];
-        for v.each_reverse |_v| {
-            fail!(); // should never execute
-        }
-    }
-
-    #[test]
-    fn test_each_reverse_nonempty() {
-        let mut i = 0;
-        for each_reverse([1, 2, 3]) |v| {
-            if i == 0 { assert!(*v == 3); }
-            i += *v
-        }
-        assert_eq!(i, 6);
-    }
-
-    #[test]
-    fn test_eachi_reverse() {
-        let mut i = 0;
-        for eachi_reverse([0, 1, 2]) |j, v| {
-            if i == 0 { assert!(*v == 2); }
-            assert_eq!(j, *v as uint);
-            i += *v;
-        }
-        assert_eq!(i, 3);
-    }
-
-    #[test]
-    fn test_eachi_reverse_empty() {
-        let v: ~[int] = ~[];
-        for v.eachi_reverse |_i, _v| {
-            fail!(); // should never execute
-        }
     }
 
     #[test]
@@ -4640,6 +4598,30 @@ mod tests {
             *x += 1;
         }
         assert_eq!(xs, [2, 3, 4, 5, 6])
+    }
+
+    #[test]
+    fn test_rev_iterator() {
+        use iterator::*;
+
+        let xs = [1, 2, 5, 10, 11];
+        let ys = [11, 10, 5, 2, 1];
+        let mut i = 0;
+        for xs.rev_iter().advance |&x| {
+            assert_eq!(x, ys[i]);
+            i += 1;
+        }
+        assert_eq!(i, 5);
+    }
+
+    #[test]
+    fn test_mut_rev_iterator() {
+        use iterator::*;
+        let mut xs = [1, 2, 3, 4, 5];
+        for xs.mut_rev_iter().enumerate().advance |(i,x)| {
+            *x += i;
+        }
+        assert_eq!(xs, [5, 5, 5, 5, 5])
     }
 
     #[test]
