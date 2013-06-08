@@ -18,6 +18,7 @@
 
 use core::prelude::*;
 
+use core::iterator::IteratorUtil;
 use core::char;
 use core::float;
 use core::hashmap::HashMap;
@@ -58,7 +59,7 @@ pub struct Error {
 
 fn escape_str(s: &str) -> ~str {
     let mut escaped = ~"\"";
-    for str::each_char(s) |c| {
+    for s.iter().advance |c| {
         match c {
           '"' => escaped += "\\\"",
           '\\' => escaped += "\\\\",
@@ -913,7 +914,8 @@ impl serialize::Decoder for Decoder {
 
     fn read_char(&mut self) -> char {
         let mut v = ~[];
-        for str::each_char(self.read_str()) |c| { v.push(c) }
+        let s = self.read_str();
+        for s.iter().advance |c| { v.push(c) }
         if v.len() != 1 { fail!("string must have one character") }
         v[0]
     }

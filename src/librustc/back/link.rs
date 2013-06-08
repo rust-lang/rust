@@ -22,6 +22,7 @@ use middle::trans::common::CrateContext;
 use middle::ty;
 use util::ppaux;
 
+use core::iterator::IteratorUtil;
 use core::char;
 use core::hash::Streaming;
 use core::hash;
@@ -636,7 +637,7 @@ pub fn get_symbol_hash(ccx: @CrateContext, t: ty::t) -> @str {
 // gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
 pub fn sanitize(s: &str) -> ~str {
     let mut result = ~"";
-    for str::each_char(s) |c| {
+    for s.iter().advance |c| {
         match c {
             // Escape these with $ sequences
             '@' => result += "$SP$",

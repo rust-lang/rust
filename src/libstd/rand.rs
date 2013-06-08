@@ -43,6 +43,7 @@ fn main () {
 use cast;
 use cmp;
 use int;
+use iterator::IteratorUtil;
 use local_data;
 use prelude::*;
 use str;
@@ -479,7 +480,7 @@ impl<R: Rng> RngUtil for R {
     fn gen_char_from(&mut self, chars: &str) -> char {
         assert!(!chars.is_empty());
         let mut cs = ~[];
-        for str::each_char(chars) |c| { cs.push(c) }
+        for chars.iter().advance |c| { cs.push(c) }
         self.choose(cs)
     }
 

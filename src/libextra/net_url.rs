@@ -14,6 +14,7 @@
 
 use core::prelude::*;
 
+use core::iterator::IteratorUtil;
 use core::cmp::Eq;
 use core::io::{Reader, ReaderUtil};
 use core::io;
@@ -358,7 +359,7 @@ pub fn query_to_str(query: &Query) -> ~str {
 
 // returns the scheme and the rest of the url, or a parsing error
 pub fn get_scheme(rawurl: &str) -> Result<(~str, ~str), ~str> {
-    for str::each_chari(rawurl) |i,c| {
+    for rawurl.iter().enumerate().advance |(i,c)| {
         match c {
           'A' .. 'Z' | 'a' .. 'z' => loop,
           '0' .. '9' | '+' | '-' | '.' => {
@@ -418,7 +419,7 @@ fn get_authority(rawurl: &str) ->
     let mut colon_count = 0;
     let mut (pos, begin, end) = (0, 2, len);
 
-    for str::each_chari(rawurl) |i,c| {
+    for rawurl.iter().enumerate().advance |(i,c)| {
         if i < 2 { loop; } // ignore the leading //
 
         // deal with input class first
@@ -562,7 +563,7 @@ fn get_path(rawurl: &str, authority: bool) ->
     Result<(~str, ~str), ~str> {
     let len = str::len(rawurl);
     let mut end = len;
-    for str::each_chari(rawurl) |i,c| {
+    for rawurl.iter().enumerate().advance |(i,c)| {
         match c {
           'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '&' |'\'' | '(' | ')' | '.'
           | '@' | ':' | '%' | '/' | '+' | '!' | '*' | ',' | ';' | '='
