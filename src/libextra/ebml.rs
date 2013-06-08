@@ -725,7 +725,7 @@ pub mod writer {
         }
 
         pub fn wr_tagged_str(&mut self, tag_id: uint, v: &str) {
-            str::byte_slice(v, |b| self.wr_tagged_bytes(tag_id, b));
+            self.wr_tagged_bytes(tag_id, str::as_bytes_slice(v));
         }
 
         pub fn wr_bytes(&mut self, b: &[u8]) {

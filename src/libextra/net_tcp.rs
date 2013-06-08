@@ -1810,11 +1810,9 @@ mod test {
 
     fn buf_write<W:io::Writer>(w: &W, val: &str) {
         debug!("BUF_WRITE: val len %?", str::len(val));
-        do str::byte_slice(val) |b_slice| {
-            debug!("BUF_WRITE: b_slice len %?",
-                            b_slice.len());
-            w.write(b_slice)
-        }
+        let b_slice = str::as_bytes_slice(val);
+        debug!("BUF_WRITE: b_slice len %?", b_slice.len());
+        w.write(b_slice)
     }
 
     fn buf_read<R:io::Reader>(r: &R, len: uint) -> ~str {

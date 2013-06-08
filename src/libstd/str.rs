@@ -634,23 +634,6 @@ pub fn to_bytes(s: &str) -> ~[u8] {
     }
 }
 
-/// Work with the string as a byte slice, not including trailing null.
-#[inline(always)]
-pub fn byte_slice<T>(s: &str, f: &fn(v: &[u8]) -> T) -> T {
-    do as_buf(s) |p,n| {
-        unsafe { vec::raw::buf_as_slice(p, n-1u, f) }
-    }
-}
-
-/// Work with the string as a byte slice, not including trailing null, without
-/// a callback.
-#[inline(always)]
-pub fn byte_slice_no_callback<'a>(s: &'a str) -> &'a [u8] {
-    unsafe {
-        cast::transmute(s)
-    }
-}
-
 /// Convert a string to a unique vector of characters
 pub fn to_chars(s: &str) -> ~[char] {
     s.iter().collect()
@@ -2167,7 +2150,9 @@ static tag_six_b: uint = 252u;
  * # Example
  *
  * ~~~ {.rust}
- * let i = str::as_bytes("Hello World") { |bytes| bytes.len() };
+ * let i = str::as_bytes(&~"Hello World") { |bytes| bytes.len() };
+ *
+ * assert_eq!(i, 12);
  * ~~~
  */
 #[inline]
@@ -2182,6 +2167,14 @@ pub fn as_bytes<T>(s: &const ~str, f: &fn(&~[u8]) -> T) -> T {
  * Work with the byte buffer of a string as a byte slice.
  *
  * The byte slice does not include the null terminator.
+ *
+ * # Example
+ *
+ * ~~~ {.rust}
+ * let v = str::as_bytes_slice("Hello World");
+ *
+ * assert_eq!(v, &[72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100])
+ * ~~~
  */
 pub fn as_bytes_slice<'a>(s: &'a str) -> &'a [u8] {
     unsafe {

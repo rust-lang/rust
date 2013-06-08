@@ -90,10 +90,9 @@ impl RepeatFasta {
 
     fn make(&mut self, n: uint) {
         unsafe {
-            let stdout = self.stdout;
             let alu_len = self.alu.len();
             let mut buf = vec::from_elem(alu_len + LINE_LEN, 0u8);
-            let alu: &[u8] = str::byte_slice_no_callback(self.alu);
+            let alu = str::as_bytes_slice(self.alu);
 
             copy_memory(buf, alu, alu_len);
             copy_memory(vec::mut_slice(buf, alu_len, buf.len()),
@@ -105,8 +104,8 @@ impl RepeatFasta {
             let mut n = n;
             while n > 0 {
                 bytes = min(LINE_LEN, n);
-                fwrite(transmute(&buf[pos]), bytes as size_t, 1, stdout);
-                fputc('\n' as c_int, stdout);
+                fwrite(transmute(&buf[pos]), bytes as size_t, 1, self.stdout);
+                fputc('\n' as c_int, self.stdout);
                 pos += bytes;
                 if pos > alu_len {
                     pos -= alu_len;
