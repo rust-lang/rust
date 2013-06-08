@@ -248,9 +248,10 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
             curr = ptr::offset(s, len);
         }
 
-        str::raw::buf_as_slice(s, len, |d| cast::transmute(d))
+        do vec::raw::buf_as_slice(s, len) |v| {
+            cast::transmute(str::from_bytes_slice_with_null(v))
+        }
     }
-
 
     unsafe {
         // Importing error constants

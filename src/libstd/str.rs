@@ -2432,14 +2432,6 @@ pub mod raw {
     /// Converts a byte to a string.
     pub unsafe fn from_byte(u: u8) -> ~str { raw::from_bytes_with_null(~[u, 0]) }
 
-    /// Form a slice from a *u8 buffer of the given length without copying.
-    pub unsafe fn buf_as_slice<T>(buf: *u8, len: uint,
-                              f: &fn(v: &str) -> T) -> T {
-        let v = (buf, len + 1);
-        assert!(is_utf8(::cast::transmute(v)));
-        f(::cast::transmute(v))
-    }
-
     /**
      * Takes a bytewise (not UTF-8) slice from a string.
      *
