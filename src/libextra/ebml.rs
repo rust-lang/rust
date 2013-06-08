@@ -93,6 +93,14 @@ pub mod reader {
         pub fn get(&self, tag: uint) -> Doc {
             get_doc(*self, tag)
         }
+
+        pub fn as_str_slice<'a>(&'a self) -> &'a str {
+            str::from_bytes_slice(self.data.slice(self.start, self.end))
+        }
+
+        pub fn as_str(&self) -> ~str {
+            self.as_str_slice().to_owned()
+        }
     }
 
     struct Res {
@@ -239,15 +247,10 @@ pub mod reader {
         return true;
     }
 
-    pub fn doc_data(d: Doc) -> ~[u8] {
-        vec::slice::<u8>(*d.data, d.start, d.end).to_vec()
-    }
-
     pub fn with_doc_data<T>(d: Doc, f: &fn(x: &[u8]) -> T) -> T {
         f(vec::slice(*d.data, d.start, d.end))
     }
 
-    pub fn doc_as_str(d: Doc) -> ~str { str::from_bytes(doc_data(d)) }
 
     pub fn doc_as_u8(d: Doc) -> u8 {
         assert_eq!(d.end, d.start + 1u);
@@ -294,7 +297,7 @@ pub mod reader {
 
                 if r_tag == (EsLabel as uint) {
                     self.pos = r_doc.end;
-                    let str = doc_as_str(r_doc);
+                    let str = r_doc.as_str_slice();
                     if lbl != str {
                         fail!("Expected label %s but found %s", lbl, str);
                     }
@@ -415,7 +418,9 @@ pub mod reader {
         fn read_char(&mut self) -> char {
             doc_as_u32(self.next_doc(EsChar)) as char
         }
-        fn read_str(&mut self) -> ~str { doc_as_str(self.next_doc(EsStr)) }
+        fn read_str(&mut self) -> ~str {
+            self.next_doc(EsStr).as_str()
+        }
 
         // Compound types:
         fn read_enum<T>(&mut self,
