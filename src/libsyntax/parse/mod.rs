@@ -341,10 +341,9 @@ mod test {
     use codemap::{span, BytePos, spanned};
     use opt_vec;
     use ast;
-    use ast::{new_ident};
     use abi;
     use parse::parser::Parser;
-    use parse::token::{intern, str_to_ident};
+    use parse::token::{str_to_ident};
     use util::parser_testing::{string_to_tts_and_sess, string_to_parser};
     use util::parser_testing::{string_to_expr, string_to_item};
     use util::parser_testing::{string_to_stmt, strs_to_idents};

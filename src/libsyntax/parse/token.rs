@@ -22,7 +22,6 @@ use core::char;
 use core::cmp::Equiv;
 use core::local_data;
 use core::str;
-use core::hashmap::HashSet;
 use core::rand;
 use core::rand::RngUtil;
 use core::to_bytes;

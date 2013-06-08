@@ -1234,7 +1234,6 @@ mod test {
 
     use core::comm::{SharedChan, stream, GenericChan, GenericPort};
     use core::libc;
-    use core::result;
     use core::str;
     use core::sys;
     use core::task;

@@ -14,7 +14,6 @@
 
 use option::{Some, None};
 use cast;
-use cmp::{Eq, Ord};
 use gc;
 use io;
 use libc;

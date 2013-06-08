@@ -27,7 +27,6 @@ use pass::Pass;
 use core::iterator::IteratorUtil;
 use core::str;
 use core::util;
-use core::vec;
 
 pub fn mk_pass() -> Pass {
     Pass {

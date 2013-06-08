@@ -15,7 +15,7 @@ use core::prelude::*;
 use codemap::{span, spanned};
 use abi::AbiSet;
 use opt_vec::OptVec;
-use parse::token::{ident_to_str, interner_get, str_to_ident};
+use parse::token::{interner_get, str_to_ident};
 
 use core::hashmap::HashMap;
 use core::option::Option;

@@ -18,7 +18,6 @@ implementing the `Iterator` trait.
 */
 
 use cmp;
-use iter;
 use iter::{FromIter, Times};
 use num::{Zero, One};
 use option::{Option, Some, None};

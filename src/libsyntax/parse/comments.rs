@@ -19,7 +19,6 @@ use parse::lexer::{is_line_non_doc_comment, is_block_non_doc_comment};
 use parse::lexer;
 use parse::token;
 use parse::token::{get_ident_interner};
-use parse;
 
 use core::iterator::IteratorUtil;
 use core::io;
