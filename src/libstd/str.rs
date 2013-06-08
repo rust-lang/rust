@@ -25,7 +25,7 @@ use clone::Clone;
 use cmp::{TotalOrd, Ordering, Less, Equal, Greater};
 use container::Container;
 use iter::Times;
-use iterator::Iterator;
+use iterator::{Iterator, IteratorUtil};
 use libc;
 use option::{None, Option, Some};
 use old_iter::{BaseIter, EqIter};
@@ -35,7 +35,7 @@ use str;
 use to_str::ToStr;
 use uint;
 use vec;
-use vec::{OwnedVector, OwnedCopyableVector};
+use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector};
 
 #[cfg(not(test))] use cmp::{Eq, Ord, Equiv, TotalEq};
 
@@ -608,11 +608,7 @@ pub fn byte_slice_no_callback<'a>(s: &'a str) -> &'a [u8] {
 
 /// Convert a string to a unique vector of characters
 pub fn to_chars(s: &str) -> ~[char] {
-    let mut buf = ~[];
-    for each_char(s) |c| {
-        buf.push(c);
-    }
-    buf
+    s.iter().collect()
 }
 
 /**
@@ -856,12 +852,12 @@ pub fn levdistance(s: &str, t: &str) -> uint {
 
     let mut dcol = vec::from_fn(tlen + 1, |x| x);
 
-    for s.each_chari |i, sc| {
+    for s.iter().enumerate().advance |(i, sc)| {
 
         let mut current = i;
         dcol[0] = current + 1;
 
-        for t.each_chari |j, tc| {
+        for t.iter().enumerate().advance |(j, tc)| {
 
             let next = dcol[j + 1];
 
@@ -943,7 +939,7 @@ pub fn each_split_within<'a>(ss: &'a str,
     let mut cont = true;
     let slice: &fn() = || { cont = it(slice(ss, slice_start, last_end)) };
 
-    let machine: &fn(uint, char) -> bool = |i, c| {
+    let machine: &fn((uint, char)) -> bool = |(i, c)| {
         let whitespace = if char::is_whitespace(c)       { Ws }       else { Cr };
         let limit      = if (i - slice_start + 1) <= lim { UnderLim } else { OverLim };
 
@@ -968,12 +964,12 @@ pub fn each_split_within<'a>(ss: &'a str,
         cont
     };
 
-    str::each_chari(ss, machine);
+    ss.iter().enumerate().advance(machine);
 
     // Let the automaton 'run out' by supplying trailing whitespace
     let mut fake_i = ss.len();
     while cont && match state { B | C => true, A => false } {
-        machine(fake_i, ' ');
+        machine((fake_i, ' '));
         fake_i += 1;
     }
     return cont;
@@ -1247,95 +1243,10 @@ pub fn any(ss: &str, pred: &fn(char) -> bool) -> bool {
 pub fn map(ss: &str, ff: &fn(char) -> char) -> ~str {
     let mut result = ~"";
     reserve(&mut result, len(ss));
-    for ss.each_char |cc| {
+    for ss.iter().advance |cc| {
         str::push_char(&mut result, ff(cc));
     }
     result
-}
-
-/// Iterate over the bytes in a string
-#[inline(always)]
-pub fn each(s: &str, it: &fn(u8) -> bool) -> bool {
-    eachi(s, |_i, b| it(b))
-}
-
-/// Iterate over the bytes in a string, with indices
-#[inline(always)]
-pub fn eachi(s: &str, it: &fn(uint, u8) -> bool) -> bool {
-    let mut pos = 0;
-    let len = s.len();
-
-    while pos < len {
-        if !it(pos, s[pos]) { return false; }
-        pos += 1;
-    }
-    return true;
-}
-
-/// Iterate over the bytes in a string in reverse
-#[inline(always)]
-pub fn each_reverse(s: &str, it: &fn(u8) -> bool) -> bool {
-    eachi_reverse(s, |_i, b| it(b) )
-}
-
-/// Iterate over the bytes in a string in reverse, with indices
-#[inline(always)]
-pub fn eachi_reverse(s: &str, it: &fn(uint, u8) -> bool) -> bool {
-    let mut pos = s.len();
-    while pos > 0 {
-        pos -= 1;
-        if !it(pos, s[pos]) { return false; }
-    }
-    return true;
-}
-
-/// Iterate over each char of a string, without allocating
-#[inline(always)]
-pub fn each_char(s: &str, it: &fn(char) -> bool) -> bool {
-    let mut i = 0;
-    let len = len(s);
-    while i < len {
-        let CharRange {ch, next} = char_range_at(s, i);
-        if !it(ch) { return false; }
-        i = next;
-    }
-    return true;
-}
-
-/// Iterates over the chars in a string, with indices
-#[inline(always)]
-pub fn each_chari(s: &str, it: &fn(uint, char) -> bool) -> bool {
-    let mut pos = 0;
-    let mut ch_pos = 0u;
-    let len = s.len();
-    while pos < len {
-        let CharRange {ch, next} = char_range_at(s, pos);
-        pos = next;
-        if !it(ch_pos, ch) { return false; }
-        ch_pos += 1u;
-    }
-    return true;
-}
-
-/// Iterates over the chars in a string in reverse
-#[inline(always)]
-pub fn each_char_reverse(s: &str, it: &fn(char) -> bool) -> bool {
-    each_chari_reverse(s, |_, c| it(c))
-}
-
-/// Iterates over the chars in a string in reverse, with indices
-#[inline(always)]
-pub fn each_chari_reverse(s: &str, it: &fn(uint, char) -> bool) -> bool {
-    let mut pos = s.len();
-    let mut ch_pos = s.char_len();
-    while pos > 0 {
-        let CharRange {ch, next} = char_range_at_reverse(s, pos);
-        pos = next;
-        ch_pos -= 1;
-
-        if !it(ch_pos, ch) { return false; }
-    }
-    return true;
 }
 
 /*
@@ -1657,7 +1568,7 @@ pub fn rfind_between(s: &str, start: uint, end: uint, f: &fn(char) -> bool) -> O
 // Utility used by various searching functions
 fn match_at<'a,'b>(haystack: &'a str, needle: &'b str, at: uint) -> bool {
     let mut i = at;
-    for each(needle) |c| { if haystack[i] != c { return false; } i += 1u; }
+    for needle.bytes_iter().advance |c| { if haystack[i] != c { return false; } i += 1u; }
     return true;
 }
 
@@ -1880,7 +1791,7 @@ pub fn is_utf16(v: &[u16]) -> bool {
 /// Converts to a vector of `u16` encoded as UTF-16
 pub fn to_utf16(s: &str) -> ~[u16] {
     let mut u = ~[];
-    for s.each_char |ch| {
+    for s.iter().advance |ch| {
         // Arithmetic with u32 literals is easier on the eyes than chars.
         let mut ch = ch as u32;
 
@@ -2396,7 +2307,7 @@ pub fn capacity(s: &const ~str) -> uint {
 pub fn escape_default(s: &str) -> ~str {
     let mut out: ~str = ~"";
     reserve_at_least(&mut out, str::len(s));
-    for s.each_char |c| {
+    for s.iter().advance |c| {
         push_str(&mut out, char::escape_default(c));
     }
     out
@@ -2406,7 +2317,7 @@ pub fn escape_default(s: &str) -> ~str {
 pub fn escape_unicode(s: &str) -> ~str {
     let mut out: ~str = ~"";
     reserve_at_least(&mut out, str::len(s));
-    for s.each_char |c| {
+    for s.iter().advance |c| {
         push_str(&mut out, char::escape_unicode(c));
     }
     out
@@ -2608,15 +2519,10 @@ pub trait StrSlice<'self> {
     fn any(&self, it: &fn(char) -> bool) -> bool;
     fn contains<'a>(&self, needle: &'a str) -> bool;
     fn contains_char(&self, needle: char) -> bool;
-    fn char_iter(&self) -> StrCharIterator<'self>;
-    fn each(&self, it: &fn(u8) -> bool) -> bool;
-    fn eachi(&self, it: &fn(uint, u8) -> bool) -> bool;
-    fn each_reverse(&self, it: &fn(u8) -> bool) -> bool;
-    fn eachi_reverse(&self, it: &fn(uint, u8) -> bool) -> bool;
-    fn each_char(&self, it: &fn(char) -> bool) -> bool;
-    fn each_chari(&self, it: &fn(uint, char) -> bool) -> bool;
-    fn each_char_reverse(&self, it: &fn(char) -> bool) -> bool;
-    fn each_chari_reverse(&self, it: &fn(uint, char) -> bool) -> bool;
+    fn iter(&self) -> StrCharIterator<'self>;
+    fn rev_iter(&self) -> StrCharRevIterator<'self>;
+    fn bytes_iter(&self) -> StrBytesIterator<'self>;
+    fn bytes_rev_iter(&self) -> StrBytesRevIterator<'self>;
     fn ends_with(&self, needle: &str) -> bool;
     fn is_empty(&self) -> bool;
     fn is_whitespace(&self) -> bool;
@@ -2670,46 +2576,28 @@ impl<'self> StrSlice<'self> for &'self str {
     }
 
     #[inline]
-    fn char_iter(&self) -> StrCharIterator<'self> {
+    fn iter(&self) -> StrCharIterator<'self> {
         StrCharIterator {
             index: 0,
             string: *self
         }
     }
+    #[inline]
+    fn rev_iter(&self) -> StrCharRevIterator<'self> {
+        StrCharRevIterator {
+            index: self.len(),
+            string: *self
+        }
+    }
 
-    /// Iterate over the bytes in a string
-    #[inline]
-    fn each(&self, it: &fn(u8) -> bool) -> bool { each(*self, it) }
-    /// Iterate over the bytes in a string, with indices
-    #[inline]
-    fn eachi(&self, it: &fn(uint, u8) -> bool) -> bool { eachi(*self, it) }
-    /// Iterate over the bytes in a string
-    #[inline]
-    fn each_reverse(&self, it: &fn(u8) -> bool) -> bool { each_reverse(*self, it) }
-    /// Iterate over the bytes in a string, with indices
-    #[inline]
-    fn eachi_reverse(&self, it: &fn(uint, u8) -> bool) -> bool {
-        eachi_reverse(*self, it)
+    fn bytes_iter(&self) -> StrBytesIterator<'self> {
+        StrBytesIterator { it: as_bytes_slice(*self).iter() }
     }
-    /// Iterate over the chars in a string
-    #[inline]
-    fn each_char(&self, it: &fn(char) -> bool) -> bool { each_char(*self, it) }
-    /// Iterate over the chars in a string, with indices
-    #[inline]
-    fn each_chari(&self, it: &fn(uint, char) -> bool) -> bool {
-        each_chari(*self, it)
+    fn bytes_rev_iter(&self) -> StrBytesRevIterator<'self> {
+        StrBytesRevIterator { it: as_bytes_slice(*self).rev_iter() }
     }
-    /// Iterate over the chars in a string in reverse
-    #[inline]
-    fn each_char_reverse(&self, it: &fn(char) -> bool) -> bool {
-        each_char_reverse(*self, it)
-    }
-    /// Iterate over the chars in a string in reverse, with indices from the
-    /// end
-    #[inline]
-    fn each_chari_reverse(&self, it: &fn(uint, char) -> bool) -> bool {
-        each_chari_reverse(*self, it)
-    }
+
+
     /// Returns true if one string ends with another
     #[inline]
     fn ends_with(&self, needle: &str) -> bool {
@@ -2880,9 +2768,55 @@ impl<'self> Iterator<char> for StrCharIterator<'self> {
         }
     }
 }
+/// External iterator for a string's characters in reverse order. Use
+/// with the `std::iterator` module.
+pub struct StrCharRevIterator<'self> {
+    priv index: uint,
+    priv string: &'self str,
+}
+
+impl<'self> Iterator<char> for StrCharRevIterator<'self> {
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        if self.index > 0 {
+            let CharRange {ch, next} = char_range_at_reverse(self.string, self.index);
+            self.index = next;
+            Some(ch)
+        } else {
+            None
+        }
+    }
+}
+
+/// External iterator for a string's bytes. Use with the `std::iterator`
+/// module.
+pub struct StrBytesIterator<'self> {
+    priv it: vec::VecIterator<'self, u8>
+}
+
+impl<'self> Iterator<u8> for StrBytesIterator<'self> {
+    #[inline]
+    fn next(&mut self) -> Option<u8> {
+        self.it.next().map_consume(|&x| x)
+    }
+}
+
+/// External iterator for a string's bytes in reverse order. Use with
+/// the `std::iterator` module.
+pub struct StrBytesRevIterator<'self> {
+    priv it: vec::VecRevIterator<'self, u8>
+}
+
+impl<'self> Iterator<u8> for StrBytesRevIterator<'self> {
+    #[inline]
+    fn next(&mut self) -> Option<u8> {
+        self.it.next().map_consume(|&x| x)
+    }
+}
 
 #[cfg(test)]
 mod tests {
+    use iterator::IteratorUtil;
     use container::Container;
     use char;
     use option::Some;
@@ -2977,7 +2911,7 @@ mod tests {
             let mut v = ~[];
             for each_split_char(s, c) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         t("abc.hello.there", '.', [~"abc", ~"hello", ~"there"]);
         t(".hello.there", '.', [~"", ~"hello", ~"there"]);
@@ -2995,7 +2929,7 @@ mod tests {
             let mut v = ~[];
             for each_split_char(s, c) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         let data = "ประเทศไทย中华Việt Nam";
         t(data, 'V', [~"ประเทศไทย中华", ~"iệt Nam"]);
@@ -3010,7 +2944,7 @@ mod tests {
             for each_splitn_char(s, c, n) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
             debug!("comparing vs. %?", u);
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         t("abc.hello.there", '.', 0u, [~"abc.hello.there"]);
         t("abc.hello.there", '.', 1u, [~"abc", ~"hello.there"]);
@@ -3037,7 +2971,7 @@ mod tests {
             for each_splitn_char(s, c, n) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
             debug!("comparing vs. %?", u);
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
 
         t("ประเทศไทย中华Việt Nam", '华', 1u, [~"ประเทศไทย中", ~"Việt Nam"]);
@@ -3055,7 +2989,7 @@ mod tests {
             for each_splitn_char(s, c, n) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
             debug!("comparing vs. %?", u);
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         let data = "ประเทศไทย中华Việt Nam";
         t(data, 'V', 1u, [~"ประเทศไทย中华", ~"iệt Nam"]);
@@ -3069,7 +3003,7 @@ mod tests {
             let mut v = ~[];
             for each_split_char_no_trailing(s, c) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         t("abc.hello.there", '.', [~"abc", ~"hello", ~"there"]);
         t(".hello.there", '.', [~"", ~"hello", ~"there"]);
@@ -3088,7 +3022,7 @@ mod tests {
             let mut v = ~[];
             for each_split_char_no_trailing(s, c) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         let data = "ประเทศไทย中华Việt Nam";
         t(data, 'V', [~"ประเทศไทย中华", ~"iệt Nam"]);
@@ -3100,7 +3034,7 @@ mod tests {
         fn t<'a>(s: &str, sep: &'a str, u: &[~str]) {
             let mut v = ~[];
             for each_split_str(s, sep) |s| { v.push(s.to_owned()) }
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         t("--1233345--", "12345", [~"--1233345--"]);
         t("abc::hello::there", "::", [~"abc", ~"hello", ~"there"]);
@@ -3124,7 +3058,7 @@ mod tests {
         fn t(s: &str, sepf: &fn(char) -> bool, u: &[~str]) {
             let mut v = ~[];
             for each_split(s, sepf) |s| { v.push(s.to_owned()) }
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
 
         t("ประเทศไทย中华Việt Nam", |cc| cc == '华', [~"ประเทศไทย中", ~"Việt Nam"]);
@@ -3140,7 +3074,7 @@ mod tests {
         fn t(s: &str, sepf: &fn(char) -> bool, u: &[~str]) {
             let mut v = ~[];
             for each_split_no_trailing(s, sepf) |s| { v.push(s.to_owned()) }
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
 
         t("ประเทศไทย中华Việt Nam", |cc| cc == '华', [~"ประเทศไทย中", ~"Việt Nam"]);
@@ -3159,7 +3093,7 @@ mod tests {
         fn t(s: &str, f: &fn(&str, &fn(&str) -> bool) -> bool, u: &[~str]) {
             let mut v = ~[];
             for f(s) |s| { v.push(s.to_owned()) }
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
 
         t(lf, each_line, [~"", ~"Mary had a little lamb", ~"Little lamb"]);
@@ -3179,7 +3113,7 @@ mod tests {
         fn t(s: &str, f: &fn(&str, &fn(&str) -> bool) -> bool, u: &[~str]) {
             let mut v = ~[];
             for f(s) |s| { v.push(s.to_owned()) }
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         let data = "\nMary had a little lamb\nLittle lamb\n";
 
@@ -3193,7 +3127,7 @@ mod tests {
         fn t(s: &str, i: uint, u: &[~str]) {
             let mut v = ~[];
             for each_split_within(s, i) |s| { v.push(s.to_owned()) }
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         t("", 0, []);
         t("", 15, []);
@@ -3964,151 +3898,9 @@ mod tests {
         let s = ~"ศไทย中华Việt Nam";
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = s.len();
-        for v.each_reverse |ch| {
+        for v.rev_iter().advance |ch| {
             assert!(s.char_at_reverse(pos) == *ch);
             pos -= from_char(*ch).len();
-        }
-    }
-
-    #[test]
-    fn test_each() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = [
-            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
-            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
-            109
-        ];
-        let mut pos = 0;
-
-        for s.each |b| {
-            assert_eq!(b, v[pos]);
-            pos += 1;
-        }
-    }
-
-    #[test]
-    fn test_each_empty() {
-        for "".each |b| {
-            assert_eq!(b, 0u8);
-        }
-    }
-
-    #[test]
-    fn test_eachi() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = [
-            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
-            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
-            109
-        ];
-        let mut pos = 0;
-
-        for s.eachi |i, b| {
-            assert_eq!(pos, i);
-            assert_eq!(b, v[pos]);
-            pos += 1;
-        }
-    }
-
-    #[test]
-    fn test_eachi_empty() {
-        for "".eachi |i, b| {
-            assert_eq!(i, 0);
-            assert_eq!(b, 0);
-        }
-    }
-
-    #[test]
-    fn test_each_reverse() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = [
-            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
-            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
-            109
-        ];
-        let mut pos = v.len();
-
-        for s.each_reverse |b| {
-            pos -= 1;
-            assert_eq!(b, v[pos]);
-        }
-    }
-
-    #[test]
-    fn test_each_empty_reverse() {
-        for "".each_reverse |b| {
-            assert_eq!(b, 0u8);
-        }
-    }
-
-    #[test]
-    fn test_eachi_reverse() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = [
-            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
-            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
-            109
-        ];
-        let mut pos = v.len();
-
-        for s.eachi_reverse |i, b| {
-            pos -= 1;
-            assert_eq!(pos, i);
-            assert_eq!(b, v[pos]);
-        }
-    }
-
-    #[test]
-    fn test_eachi_reverse_empty() {
-        for "".eachi_reverse |i, b| {
-            assert_eq!(i, 0);
-            assert_eq!(b, 0);
-        }
-    }
-
-    #[test]
-    fn test_each_char() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
-        let mut pos = 0;
-        for s.each_char |ch| {
-            assert_eq!(ch, v[pos]);
-            pos += 1;
-        }
-    }
-
-    #[test]
-    fn test_each_chari() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
-        let mut pos = 0;
-        for s.each_chari |i, ch| {
-            assert_eq!(pos, i);
-            assert_eq!(ch, v[pos]);
-            pos += 1;
-        }
-    }
-
-    #[test]
-    fn test_each_char_reverse() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
-        let mut pos = v.len();
-        for s.each_char_reverse |ch| {
-            pos -= 1;
-            assert_eq!(ch, v[pos]);
-        }
-    }
-
-    #[test]
-    fn test_each_chari_reverse() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
-        let mut pos = v.len();
-        for s.each_chari_reverse |i, ch| {
-            pos -= 1;
-            assert_eq!(pos, i);
-            assert_eq!(ch, v[pos]);
         }
     }
 
@@ -4167,12 +3959,60 @@ mod tests {
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
 
         let mut pos = 0;
-        let mut it = s.char_iter();
+        let mut it = s.iter();
 
         for it.advance |c| {
             assert_eq!(c, v[pos]);
             pos += 1;
         }
         assert_eq!(pos, v.len());
+    }
+
+    #[test]
+    fn test_rev_iterator() {
+        use iterator::*;
+        let s = ~"ศไทย中华Việt Nam";
+        let v = ~['m', 'a', 'N', ' ', 't', 'ệ','i','V','华','中','ย','ท','ไ','ศ'];
+
+        let mut pos = 0;
+        let mut it = s.rev_iter();
+
+        for it.advance |c| {
+            assert_eq!(c, v[pos]);
+            pos += 1;
+        }
+        assert_eq!(pos, v.len());
+    }
+
+    #[test]
+    fn test_bytes_iterator() {
+        let s = ~"ศไทย中华Việt Nam";
+        let v = [
+            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
+            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
+            109
+        ];
+        let mut pos = 0;
+
+        for s.bytes_iter().advance |b| {
+            assert_eq!(b, v[pos]);
+            pos += 1;
+        }
+    }
+
+    #[test]
+    fn test_bytes_rev_iterator() {
+        let s = ~"ศไทย中华Việt Nam";
+        let v = [
+            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
+            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
+            109
+        ];
+        let mut pos = v.len();
+
+        for s.bytes_rev_iter().advance |b| {
+            pos -= 1;
+            assert_eq!(b, v[pos]);
+        }
     }
 }

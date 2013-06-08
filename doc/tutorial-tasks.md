@@ -351,10 +351,11 @@ a single large vector of floats. Each task needs the full vector to perform its 
 # use std::vec;
 # use std::uint;
 # use std::rand;
+# use std::iterator::IteratorUtil;
 use extra::arc::ARC;
 
 fn pnorm(nums: &~[float], p: uint) -> float {
-    (vec::foldl(0.0, *nums, |a,b| a+(*b).pow(p as float) )).pow(1f / (p as float))
+    nums.iter().fold(0.0, |a,b| a+(*b).pow(p as float) ).pow(1f / (p as float))
 }
 
 fn main() {

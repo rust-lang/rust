@@ -110,6 +110,7 @@ use middle::ty;
 use middle::typeck;
 use middle::moves;
 
+use core::iterator::IteratorUtil;
 use core::cast::transmute;
 use core::hashmap::HashMap;
 use core::io;
@@ -923,7 +924,7 @@ impl Liveness {
     pub fn propagate_through_block(&self, blk: &blk, succ: LiveNode)
                                    -> LiveNode {
         let succ = self.propagate_through_opt_expr(blk.node.expr, succ);
-        do blk.node.stmts.foldr(succ) |stmt, succ| {
+        do blk.node.stmts.rev_iter().fold(succ) |succ, stmt| {
             self.propagate_through_stmt(*stmt, succ)
         }
     }
@@ -977,7 +978,7 @@ impl Liveness {
 
     pub fn propagate_through_exprs(&self, exprs: &[@expr], succ: LiveNode)
                                    -> LiveNode {
-        do exprs.foldr(succ) |expr, succ| {
+        do exprs.rev_iter().fold(succ) |succ, expr| {
             self.propagate_through_expr(*expr, succ)
         }
     }
@@ -1021,7 +1022,7 @@ impl Liveness {
                  // the construction of a closure itself is not important,
                  // but we have to consider the closed over variables.
                  let caps = self.ir.captures(expr);
-                 do caps.foldr(succ) |cap, succ| {
+                 do caps.rev_iter().fold(succ) |succ, cap| {
                      self.init_from_succ(cap.ln, succ);
                      let var = self.variable(cap.var_nid, expr.span);
                      self.acc(cap.ln, var, ACC_READ | ACC_USE);
@@ -1159,7 +1160,7 @@ impl Liveness {
 
           expr_struct(_, ref fields, with_expr) => {
             let succ = self.propagate_through_opt_expr(with_expr, succ);
-            do (*fields).foldr(succ) |field, succ| {
+            do fields.rev_iter().fold(succ) |succ, field| {
                 self.propagate_through_expr(field.node.expr, succ)
             }
           }
@@ -1215,10 +1216,10 @@ impl Liveness {
           }
 
           expr_inline_asm(ref ia) =>{
-            let succ = do ia.inputs.foldr(succ) |&(_, expr), succ| {
+            let succ = do ia.inputs.rev_iter().fold(succ) |succ, &(_, expr)| {
                 self.propagate_through_expr(expr, succ)
             };
-            do ia.outputs.foldr(succ) |&(_, expr), succ| {
+            do ia.outputs.rev_iter().fold(succ) |succ, &(_, expr)| {
                 self.propagate_through_expr(expr, succ)
             }
           }

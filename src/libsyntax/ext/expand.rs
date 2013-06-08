@@ -11,11 +11,11 @@
 use core::prelude::*;
 
 use ast::{blk_, attribute_, attr_outer, meta_word};
-use ast::{crate, decl_local, expr_, expr_mac, mac_invoc_tt};
-use ast::{item_mac, local_, stmt_, stmt_decl, stmt_mac, stmt_expr, stmt_semi};
-use ast::{SCTable, illegal_ctxt};
+use ast::{crate, expr_, expr_mac, mac_invoc_tt};
+use ast::{item_mac, stmt_, stmt_mac, stmt_expr, stmt_semi};
+use ast::{illegal_ctxt};
 use ast;
-use ast_util::{new_rename, new_mark, resolve, get_sctable};
+use ast_util::{new_rename, new_mark, resolve};
 use attr;
 use codemap;
 use codemap::{span, CallInfo, ExpandedFrom, NameAndSpan, spanned};
@@ -23,10 +23,11 @@ use ext::base::*;
 use fold::*;
 use parse;
 use parse::{parse_item_from_source_str};
-use parse::token::{ident_to_str, intern, fresh_name};
+use parse::token::{ident_to_str, intern};
 use visit;
-use visit::{Visitor,mk_vt};
+use visit::Visitor;
 
+use core::iterator::IteratorUtil;
 use core::vec;
 
 pub fn expand_expr(extsbox: @mut SyntaxEnv,
@@ -128,7 +129,7 @@ pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
     // decorated with "item decorators", then use that function to transform
     // the item into a new set of items.
     let new_items = do vec::flat_map(module_.items) |item| {
-        do vec::foldr(item.attrs, ~[*item]) |attr, items| {
+        do item.attrs.rev_iter().fold(~[*item]) |items, attr| {
             let mname = attr::get_attr_name(attr);
 
             match (*extsbox).find(&intern(*mname)) {
@@ -748,16 +749,14 @@ mod test {
     use super::*;
     use ast;
     use ast::{attribute_, attr_outer, meta_word, empty_ctxt};
-    use ast_util::{get_sctable};
     use codemap;
     use codemap::spanned;
     use parse;
-    use parse::token::{gensym, intern, get_ident_interner};
+    use parse::token::{intern, get_ident_interner};
     use print::pprust;
     use util::parser_testing::{string_to_item, string_to_pat, strs_to_idents};
-    use visit::{mk_vt,Visitor};
+    use visit::{mk_vt};
 
-    use core::io;
     use core::option::{None, Some};
 
     // make sure that fail! is present

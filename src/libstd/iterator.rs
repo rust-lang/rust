@@ -18,7 +18,6 @@ implementing the `Iterator` trait.
 */
 
 use cmp;
-use iter;
 use iter::{FromIter, Times};
 use num::{Zero, One};
 use option::{Option, Some, None};
@@ -326,7 +325,7 @@ pub trait IteratorUtil<A> {
     /// assert!(a.iter().all(|&x| *x > 0));
     /// assert!(!a.iter().all(|&x| *x > 2));
     /// ~~~
-    fn all(&mut self, f: &fn(&A) -> bool) -> bool;
+    fn all(&mut self, f: &fn(A) -> bool) -> bool;
 
     /// Tests whether any element of an iterator satisfies the specified
     /// predicate.
@@ -341,7 +340,7 @@ pub trait IteratorUtil<A> {
     /// assert!(it.any(|&x| *x == 3));
     /// assert!(!it.any(|&x| *x == 3));
     /// ~~~
-    fn any(&mut self, f: &fn(&A) -> bool) -> bool;
+    fn any(&mut self, f: &fn(A) -> bool) -> bool;
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -462,14 +461,14 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     fn count(&mut self) -> uint { self.fold(0, |cnt, _x| cnt + 1) }
 
     #[inline(always)]
-    fn all(&mut self, f: &fn(&A) -> bool) -> bool {
-        for self.advance |x| { if !f(&x) { return false; } }
+    fn all(&mut self, f: &fn(A) -> bool) -> bool {
+        for self.advance |x| { if !f(x) { return false; } }
         return true;
     }
 
     #[inline(always)]
-    fn any(&mut self, f: &fn(&A) -> bool) -> bool {
-        for self.advance |x| { if f(&x) { return true; } }
+    fn any(&mut self, f: &fn(A) -> bool) -> bool {
+        for self.advance |x| { if f(x) { return true; } }
         return false;
     }
 }
@@ -1080,18 +1079,18 @@ mod tests {
     #[test]
     fn test_all() {
         let v = ~&[1, 2, 3, 4, 5];
-        assert!(v.iter().all(|&x| *x < 10));
+        assert!(v.iter().all(|&x| x < 10));
         assert!(!v.iter().all(|&x| x.is_even()));
-        assert!(!v.iter().all(|&x| *x > 100));
+        assert!(!v.iter().all(|&x| x > 100));
         assert!(v.slice(0, 0).iter().all(|_| fail!()));
     }
 
     #[test]
     fn test_any() {
         let v = ~&[1, 2, 3, 4, 5];
-        assert!(v.iter().any(|&x| *x < 10));
+        assert!(v.iter().any(|&x| x < 10));
         assert!(v.iter().any(|&x| x.is_even()));
-        assert!(!v.iter().any(|&x| *x > 100));
+        assert!(!v.iter().any(|&x| x > 100));
         assert!(!v.slice(0, 0).iter().any(|_| fail!()));
     }
 }

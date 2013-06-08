@@ -15,6 +15,7 @@ use str;
 use str::StrSlice;
 use cast;
 use old_iter::BaseIter;
+use iterator::IteratorUtil;
 use vec::{CopyableVector, ImmutableVector, OwnedVector};
 
 /// Datatype to hold one ascii character. It is 8 bit long.
@@ -101,10 +102,7 @@ impl<'self> AsciiCast<&'self[Ascii]> for &'self str {
 
     #[inline(always)]
     fn is_ascii(&self) -> bool {
-        for self.each |b| {
-            if !b.is_ascii() { return false; }
-        }
-        true
+        self.bytes_iter().all(|b| b.is_ascii())
     }
 }
 

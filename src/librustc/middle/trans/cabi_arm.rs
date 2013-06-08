@@ -17,9 +17,9 @@ use middle::trans::cabi::{ABIInfo, FnType, LLVMType};
 use middle::trans::common::{T_i8, T_i16, T_i32, T_i64};
 use middle::trans::common::{T_array, T_ptr, T_void};
 
+use core::iterator::IteratorUtil;
 use core::option::{Option, None, Some};
 use core::uint;
-use core::vec;
 
 fn align_up_to(off: uint, a: uint) -> uint {
     return (off + a - 1u) / a * a;
@@ -43,9 +43,8 @@ fn ty_align(ty: TypeRef) -> uint {
                 if llvm::LLVMIsPackedStruct(ty) == True {
                     1
                 } else {
-                    do vec::foldl(1, struct_tys(ty)) |a, t| {
-                        uint::max(a, ty_align(*t))
-                    }
+                    let str_tys = struct_tys(ty);
+                    str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
                 }
             }
             Array => {
@@ -68,13 +67,11 @@ fn ty_size(ty: TypeRef) -> uint {
             Double => 8,
             Struct => {
                 if llvm::LLVMIsPackedStruct(ty) == True {
-                    do vec::foldl(0, struct_tys(ty)) |s, t| {
-                        s + ty_size(*t)
-                    }
+                    let str_tys = struct_tys(ty);
+                    str_tys.iter().fold(0, |s, t| s + ty_size(*t))
                 } else {
-                    let size = do vec::foldl(0, struct_tys(ty)) |s, t| {
-                        align(s, *t) + ty_size(*t)
-                    };
+                    let str_tys = struct_tys(ty);
+                    let size = str_tys.iter().fold(0, |s, t| align(s, *t) + ty_size(*t));
                     align(size, ty)
                 }
             }

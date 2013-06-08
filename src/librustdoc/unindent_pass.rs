@@ -21,9 +21,9 @@ middle of a line, and each of the following lines is indented.
 
 use core::prelude::*;
 
+use core::iterator::IteratorUtil;
 use core::str;
 use core::uint;
-use core::vec;
 use pass::Pass;
 use text_pass;
 
@@ -36,7 +36,7 @@ fn unindent(s: &str) -> ~str {
     for str::each_line_any(s) |line| { lines.push(line.to_owned()); }
     let mut saw_first_line = false;
     let mut saw_second_line = false;
-    let min_indent = do vec::foldl(uint::max_value, lines)
+    let min_indent = do lines.iter().fold(uint::max_value)
         |min_indent, line| {
 
         // After we see the first non-whitespace line, look at

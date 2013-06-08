@@ -34,7 +34,6 @@ mod tests {
     use core::prelude::*;
 
     use tempfile::mkdtemp;
-    use tempfile;
 
     use core::os;
     use core::str;
