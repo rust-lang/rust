@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::vec;
+use std::iterator::IteratorUtil;
 
 pub fn main() {
     fn f(i: &fn() -> uint) -> uint { i() }

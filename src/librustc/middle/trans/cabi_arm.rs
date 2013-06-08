@@ -20,7 +20,6 @@ use middle::trans::common::{T_array, T_ptr, T_void};
 use core::iterator::IteratorUtil;
 use core::option::{Option, None, Some};
 use core::uint;
-use core::vec;
 
 fn align_up_to(off: uint, a: uint) -> uint {
     return (off + a - 1u) / a * a;
