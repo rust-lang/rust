@@ -1940,7 +1940,7 @@ pub impl TypeContents {
     }
 
     fn nonconst(_cx: ctxt) -> TypeContents {
-        TC_MUTABLE
+        TC_MUTABLE + TC_OWNED_CLOSURE
     }
 
     fn moves_by_default(&self, cx: ctxt) -> bool {
