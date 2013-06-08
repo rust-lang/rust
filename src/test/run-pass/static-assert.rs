@@ -10,5 +10,5 @@ static d: bool = 1 != 2;
 #[static_assert]
 static f: bool = (4/2) == 2;
 
-fn main() {
+pub fn main() {
 }

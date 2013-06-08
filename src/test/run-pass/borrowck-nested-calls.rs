@@ -24,7 +24,7 @@ impl Foo {
     }
 }
 
-fn main() {
+pub fn main() {
     let mut f = Foo {a: 22, b: 23};
     f.inc_a(f.next_b());
     assert_eq!(f.a, 22+23);

@@ -30,7 +30,7 @@ enum D {
     D2 { x: (), y: () }
 }
 
-fn main() {
+pub fn main() {
     // check there's no segfaults
     for 20.times {
         rand::random::<A>();

@@ -56,7 +56,7 @@ static am: bool = 2 > 1;
 static an: bool = 2 > -2;
 static ao: bool = 1.0 > -2.0;
 
-fn main() {
+pub fn main() {
     assert_eq!(a, -1);
     assert_eq!(a2, 6);
     assert_approx_eq!(b, 5.7);

@@ -123,5 +123,5 @@ fn query2(cmd: ~[~str]) -> Result {
 }
 
 
-fn main() {
+pub fn main() {
 }

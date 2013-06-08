@@ -25,7 +25,7 @@ fn foo2() -> int { 2 }
 fn foo2() -> int { 3 }
 
 
-fn main() {
+pub fn main() {
     assert_eq!(1, foo1());
     assert_eq!(3, foo2());
 }
