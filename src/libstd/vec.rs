@@ -1315,8 +1315,8 @@ pub fn swap<T>(v: &mut [T], a: uint, b: uint) {
     unsafe {
         // Can't take two mutable loans from one vector, so instead just cast
         // them to their raw pointers to do the swap
-        let pa: *mut T = ptr::to_mut_unsafe_ptr(&mut v[a]);
-        let pb: *mut T = ptr::to_mut_unsafe_ptr(&mut v[b]);
+        let pa: *mut T = &mut v[a];
+        let pb: *mut T = &mut v[b];
         ptr::swap_ptr(pa, pb);
     }
 }
