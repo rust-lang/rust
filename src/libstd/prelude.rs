@@ -51,6 +51,7 @@ pub use old_iter::{CopyableIter, CopyableOrderedIter, CopyableNonstrictIter};
 pub use old_iter::{ExtendedMutableIter};
 pub use iter::{Times, FromIter};
 // FIXME: #5898 pub use iterator::{Iterator, IteratorUtil};
+pub use iterator::Iterator;
 pub use num::{Num, NumCast};
 pub use num::{Orderable, Signed, Unsigned, Round};
 pub use num::{Algebraic, Trigonometric, Exponential, Hyperbolic};
