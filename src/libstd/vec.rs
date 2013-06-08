@@ -1821,11 +1821,9 @@ pub trait ImmutableVector<'self, T> {
     fn last_opt(&self) -> Option<&'self T>;
     fn position(&self, f: &fn(t: &T) -> bool) -> Option<uint>;
     fn rposition(&self, f: &fn(t: &T) -> bool) -> Option<uint>;
-    fn foldr<'a, U>(&'a self, z: U, p: &fn(t: &'a T, u: U) -> U) -> U;
     fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U];
     fn mapi<U>(&self, f: &fn(uint, t: &T) -> U) -> ~[U];
     fn map_r<U>(&self, f: &fn(x: &T) -> U) -> ~[U];
-    fn alli(&self, f: &fn(uint, t: &T) -> bool) -> bool;
     fn flat_map<U>(&self, f: &fn(t: &T) -> ~[U]) -> ~[U];
     fn filter_mapped<U:Copy>(&self, f: &fn(t: &T) -> Option<U>) -> ~[U];
     unsafe fn unsafe_ref(&self, index: uint) -> *T;
@@ -1913,12 +1911,6 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
         rposition(*self, f)
     }
 
-    /// Reduce a vector from right to left
-    #[inline]
-    fn foldr<'a, U>(&'a self, z: U, p: &fn(t: &'a T, u: U) -> U) -> U {
-        self.rev_iter().fold(z, |u, t| p(t, u))
-    }
-
     /// Apply a function to each element of a vector and return the results
     #[inline]
     fn map<U>(&self, f: &fn(t: &T) -> U) -> ~[U] { map(*self, f) }
@@ -1942,14 +1934,6 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
         r
     }
 
-    /**
-     * Returns true if the function returns true for all elements.
-     *
-     *     If the vector is empty, true is returned.
-     */
-    fn alli(&self, f: &fn(uint, t: &T) -> bool) -> bool {
-        self.iter().enumerate().all(|(i, t)| f(i,t))
-    }
     /**
      * Apply a function to each element of a vector and return a concatenation
      * of each result vector

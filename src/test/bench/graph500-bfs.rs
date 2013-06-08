@@ -363,7 +363,7 @@ fn validate(edges: ~[(node_id, node_id)],
 
     info!(~"Verifying tree edges...");
 
-    let status = do tree.alli() |k, parent| {
+    let status = do tree.iter().enumerate().all |(k, parent)| {
         if *parent != root && *parent != -1i64 {
             level[*parent] == level[k] - 1
         }
