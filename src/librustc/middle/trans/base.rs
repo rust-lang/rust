@@ -64,6 +64,7 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
 
+use core::iterator::IteratorUtil;
 use core::hash;
 use core::hashmap::{HashMap, HashSet};
 use core::int;
@@ -1275,7 +1276,7 @@ pub fn trans_block_cleanups_(bcx: block,
         bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0;
     if bcx.unreachable && !no_lpads { return bcx; }
     let mut bcx = bcx;
-    for cleanups.each_reverse |cu| {
+    for cleanups.rev_iter().advance |cu| {
         match *cu {
             clean(cfn, cleanup_type) | clean_temp(_, cfn, cleanup_type) => {
                 // Some types don't need to be cleaned up during
