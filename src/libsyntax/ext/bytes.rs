@@ -10,6 +10,7 @@
 
 /* The compiler code necessary to support the bytes! extension. */
 
+use core::iterator::IteratorUtil;
 use ast;
 use codemap::span;
 use ext::base::*;
@@ -27,7 +28,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree]) -> bas
             ast::expr_lit(lit) => match lit.node {
                 // string literal, push each byte to vector expression
                 ast::lit_str(s) => {
-                    for s.each |byte| {
+                    for s.bytes_iter().advance |byte| {
                         bytes.push(cx.expr_u8(sp, byte));
                     }
                 }
