@@ -14,6 +14,7 @@ use core::prelude::*;
 
 use doc;
 
+use core::iterator::IteratorUtil;
 use core::vec;
 
 pub type AstId = int;
@@ -174,7 +175,7 @@ pub struct IndexEntry {
 
 impl Doc {
     pub fn CrateDoc(&self) -> CrateDoc {
-        vec::foldl(None, self.pages, |_m, page| {
+        self.pages.iter().fold(None, |_m, page| {
             match copy *page {
               doc::CratePage(doc) => Some(doc),
               _ => None

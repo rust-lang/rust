@@ -13,6 +13,6 @@ use std::vec;
 pub fn main() {
     fn f(i: &fn() -> uint) -> uint { i() }
     let v = ~[-1f, 0f, 1f, 2f, 3f];
-    let z = do do vec::foldl(f, v) |x, _y| { x } { 22u };
+    let z = do do v.iter().fold(f) |x, _y| { x } { 22u };
     assert_eq!(z, 22u);
 }

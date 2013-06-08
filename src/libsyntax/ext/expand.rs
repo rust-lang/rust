@@ -27,6 +27,7 @@ use parse::token::{ident_to_str, intern, fresh_name};
 use visit;
 use visit::{Visitor,mk_vt};
 
+use core::iterator::IteratorUtil;
 use core::vec;
 
 pub fn expand_expr(extsbox: @mut SyntaxEnv,
@@ -128,7 +129,7 @@ pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
     // decorated with "item decorators", then use that function to transform
     // the item into a new set of items.
     let new_items = do vec::flat_map(module_.items) |item| {
-        do vec::foldr(item.attrs, ~[*item]) |attr, items| {
+        do item.attrs.rev_iter().fold(~[*item]) |items, attr| {
             let mname = attr::get_attr_name(attr);
 
             match (*extsbox).find(&intern(*mname)) {
