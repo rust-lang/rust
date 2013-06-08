@@ -22,6 +22,7 @@ use intrinsic;
 use intrinsic::{TyDesc, TyVisitor, visit_tydesc};
 use intrinsic::Opaque;
 use io::{Writer, WriterUtil};
+use iterator::IteratorUtil;
 use libc::c_void;
 use managed;
 use ptr;
@@ -209,7 +210,7 @@ impl ReprVisitor {
 
     pub fn write_escaped_slice(&self, slice: &str) {
         self.writer.write_char('"');
-        for slice.each_char |ch| {
+        for slice.iter().advance |ch| {
             self.writer.write_escaped_char(ch);
         }
         self.writer.write_char('"');

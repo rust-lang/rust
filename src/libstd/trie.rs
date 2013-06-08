@@ -14,7 +14,6 @@ use prelude::*;
 use iterator::IteratorUtil;
 use uint;
 use util::{swap, replace};
-use vec;
 
 // FIXME: #5244: need to manually update the TrieNode constructor
 static SHIFT: uint = 4;

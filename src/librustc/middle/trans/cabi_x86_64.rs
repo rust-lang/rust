@@ -19,6 +19,7 @@ use lib::llvm::True;
 use middle::trans::common::*;
 use middle::trans::cabi::*;
 
+use core::iterator::IteratorUtil;
 use core::libc::c_uint;
 use core::option;
 use core::option::Option;
@@ -80,9 +81,8 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                   if llvm::LLVMIsPackedStruct(ty) == True {
                     1
                   } else {
-                    do vec::foldl(1, struct_tys(ty)) |a, t| {
-                      uint::max(a, ty_align(*t))
-                    }
+                    let str_tys = struct_tys(ty);
+                    str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
                   }
                 }
                 Array => {
@@ -104,16 +104,14 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                 Float => 4,
                 Double => 8,
                 Struct => {
-                  if llvm::LLVMIsPackedStruct(ty) == True {
-                    do vec::foldl(0, struct_tys(ty)) |s, t| {
-                      s + ty_size(*t)
+                    if llvm::LLVMIsPackedStruct(ty) == True {
+                        let str_tys = struct_tys(ty);
+                        str_tys.iter().fold(0, |s, t| s + ty_size(*t))
+                    } else {
+                        let str_tys = struct_tys(ty);
+                        let size = str_tys.iter().fold(0, |s, t| align(s, *t) + ty_size(*t));
+                        align(size, ty)
                     }
-                  } else {
-                    let size = do vec::foldl(0, struct_tys(ty)) |s, t| {
-                      align(s, *t) + ty_size(*t)
-                    };
-                    align(size, ty)
-                  }
                 }
                 Array => {
                   let len = llvm::LLVMGetArrayLength(ty) as uint;

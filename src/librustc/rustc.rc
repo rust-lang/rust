@@ -36,8 +36,6 @@ extern mod std(name = "std", vers = "0.7-pre");
 
 // For bootstrapping purposes.
 #[cfg(stage0)]
-pub use core::str;
-#[cfg(stage0)]
 pub use core::unstable;
 
 use core::prelude::*;

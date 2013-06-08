@@ -1025,11 +1025,11 @@ pub fn cs_fold(use_foldl: bool,
     match *substructure.fields {
         EnumMatching(_, _, ref all_fields) | Struct(ref all_fields) => {
             if use_foldl {
-                do all_fields.foldl(base) |&old, &(_, self_f, other_fs)| {
+                do all_fields.iter().fold(base) |old, &(_, self_f, other_fs)| {
                     f(cx, span, old, self_f, other_fs)
                 }
             } else {
-                do all_fields.foldr(base) |&(_, self_f, other_fs), old| {
+                do all_fields.rev_iter().fold(base) |old, &(_, self_f, other_fs)| {
                     f(cx, span, old, self_f, other_fs)
                 }
             }
@@ -1094,11 +1094,11 @@ pub fn cs_same_method_fold(use_foldl: bool,
     cs_same_method(
         |cx, span, vals| {
             if use_foldl {
-                do vals.foldl(base) |&old, &new| {
+                do vals.iter().fold(base) |old, &new| {
                     f(cx, span, old, new)
                 }
             } else {
-                do vals.foldr(base) |&new, old| {
+                do vals.rev_iter().fold(base) |old, &new| {
                     f(cx, span, old, new)
                 }
             }

@@ -16,6 +16,7 @@ use core::i32;
 use core::int;
 use core::io;
 use core::str;
+use core::iterator::IteratorUtil;
 
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
 
@@ -261,7 +262,7 @@ impl Tm {
 priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     fn match_str(s: &str, pos: uint, needle: &str) -> bool {
         let mut i = pos;
-        for str::each(needle) |ch| {
+        for needle.bytes_iter().advance |ch| {
             if s[i] != ch {
                 return false;
             }

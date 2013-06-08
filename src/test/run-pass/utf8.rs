@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::str;
+use std::iterator::IteratorUtil;
 
 pub fn main() {
     let yen: char = '¥'; // 0xa5
@@ -43,7 +43,7 @@ pub fn main() {
 
     fn check_str_eq(a: ~str, b: ~str) {
         let mut i: int = 0;
-        for str::each(a) |ab| {
+        for a.bytes_iter().advance |ab| {
             debug!(i);
             debug!(ab);
             let bb: u8 = b[i];

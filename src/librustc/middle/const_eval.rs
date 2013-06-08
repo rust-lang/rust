@@ -18,6 +18,7 @@ use middle;
 use syntax::{ast, ast_map, ast_util, visit};
 use syntax::ast::*;
 
+use core::iterator::IteratorUtil;
 use core::float;
 use core::hashmap::{HashMap, HashSet};
 use core::vec;
@@ -72,7 +73,7 @@ pub fn join(a: constness, b: constness) -> constness {
 }
 
 pub fn join_all(cs: &[constness]) -> constness {
-    vec::foldl(integral_const, cs, |a, b| join(a, *b))
+    cs.iter().fold(integral_const, |a, b| join(a, *b))
 }
 
 pub fn classify(e: @expr,

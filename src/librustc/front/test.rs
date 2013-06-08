@@ -22,7 +22,6 @@ use syntax::codemap::{dummy_sp, span, ExpandedFrom, CallInfo, NameAndSpan};
 use syntax::codemap;
 use syntax::ext::base::ExtCtxt;
 use syntax::fold;
-use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 
