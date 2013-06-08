@@ -1015,4 +1015,15 @@ mod test {
                                     token::get_ident_interner()),
                      ~"zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)))");
     }
+
+    // and in cast expressions... this appears to be an existing bug.
+    #[test] fn ident_transformation_in_types () {
+        let zz_fold = fun_to_ident_folder(to_zz());
+        let ast = string_to_crate(@"fn a() {let z = 13 as int;}");
+        assert_pred!(matches_codepattern,
+                     "matches_codepattern",
+                     pprust::to_str(&zz_fold.fold_crate(ast),fake_print_crate,
+                                    token::get_ident_interner()),
+                     ~"fn zz(){let zz=13 as zz;}");
+    }
 }
