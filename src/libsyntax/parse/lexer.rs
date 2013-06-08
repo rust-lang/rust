@@ -165,9 +165,10 @@ fn byte_offset(rdr: &StringReader, pos: BytePos) -> BytePos {
     (pos - rdr.filemap.start_pos)
 }
 
-pub fn get_str_from(rdr: @mut StringReader, start: BytePos) -> ~str {
-    return str::slice(*rdr.src, start.to_uint(),
-                      byte_offset(rdr, rdr.last_pos).to_uint()).to_owned();
+pub fn with_str_from<T>(rdr: @mut StringReader, start: BytePos, f: &fn(s: &str) -> T) -> T {
+    f(rdr.src.slice(
+            byte_offset(rdr, start).to_uint(),
+            byte_offset(rdr, rdr.last_pos).to_uint()))
 }
 
 // EFFECT: advance the StringReader by one character. If a newline is
@@ -259,18 +260,24 @@ fn consume_any_line_comment(rdr: @mut StringReader)
             bump(rdr);
             // line comments starting with "///" or "//!" are doc-comments
             if rdr.curr == '/' || rdr.curr == '!' {
-                let start_bpos = rdr.pos - BytePos(2u);
-                let mut acc = ~"//";
+                let start_bpos = rdr.pos - BytePos(3u);
                 while rdr.curr != '\n' && !is_eof(rdr) {
-                    str::push_char(&mut acc, rdr.curr);
                     bump(rdr);
                 }
-                // but comments with only more "/"s are not
-                if !is_line_non_doc_comment(acc) {
-                    return Some(TokenAndSpan{
-                        tok: token::DOC_COMMENT(str_to_ident(acc)),
-                        sp: codemap::mk_sp(start_bpos, rdr.pos)
-                    });
+                let ret = do with_str_from(rdr, start_bpos) |string| {
+                    // but comments with only more "/"s are not
+                    if !is_line_non_doc_comment(string) {
+                        Some(TokenAndSpan{
+                            tok: token::DOC_COMMENT(str_to_ident(string)),
+                            sp: codemap::mk_sp(start_bpos, rdr.pos)
+                        })
+                    } else {
+                        None
+                    }
+                };
+
+                if ret.is_some() {
+                    return ret;
                 }
             } else {
                 while rdr.curr != '\n' && !is_eof(rdr) { bump(rdr); }
@@ -306,25 +313,26 @@ pub fn is_block_non_doc_comment(s: &str) -> bool {
 fn consume_block_comment(rdr: @mut StringReader)
                       -> Option<TokenAndSpan> {
     // block comments starting with "/**" or "/*!" are doc-comments
-    if rdr.curr == '*' || rdr.curr == '!' {
-        let start_bpos = rdr.pos - BytePos(2u);
-        let mut acc = ~"/*";
+    let res = if rdr.curr == '*' || rdr.curr == '!' {
+        let start_bpos = rdr.pos - BytePos(3u);
         while !(rdr.curr == '*' && nextch(rdr) == '/') && !is_eof(rdr) {
-            str::push_char(&mut acc, rdr.curr);
             bump(rdr);
         }
         if is_eof(rdr) {
             rdr.fatal(~"unterminated block doc-comment");
         } else {
-            acc += "*/";
             bump(rdr);
             bump(rdr);
-            // but comments with only "*"s between two "/"s are not
-            if !is_block_non_doc_comment(acc) {
-                return Some(TokenAndSpan{
-                    tok: token::DOC_COMMENT(str_to_ident(acc)),
-                    sp: codemap::mk_sp(start_bpos, rdr.pos)
-                });
+            do with_str_from(rdr, start_bpos) |string| {
+                // but comments with only "*"s between two "/"s are not
+                if !is_block_non_doc_comment(string) {
+                    Some(TokenAndSpan{
+                         tok: token::DOC_COMMENT(str_to_ident(string)),
+                         sp: codemap::mk_sp(start_bpos, rdr.pos)
+                         })
+                } else {
+                    None
+                }
             }
         }
     } else {
@@ -338,10 +346,11 @@ fn consume_block_comment(rdr: @mut StringReader)
                 bump(rdr);
             }
         }
-    }
+        None
+    };
     // restart whitespace munch.
 
-    return consume_whitespace_and_comments(rdr);
+   if res.is_some() { res } else { consume_whitespace_and_comments(rdr) }
 }
 
 fn scan_exponent(rdr: @mut StringReader) -> Option<~str> {
@@ -538,19 +547,23 @@ fn ident_continue(c: char) -> bool {
 // EFFECT: advances the input past that token
 // EFFECT: updates the interner
 fn next_token_inner(rdr: @mut StringReader) -> token::Token {
-    let mut accum_str = ~"";
     let mut c = rdr.curr;
     if ident_start(c) {
-        while ident_continue(c) {
-            str::push_char(&mut accum_str, c);
+        let start = rdr.last_pos;
+        while ident_continue(rdr.curr) {
             bump(rdr);
-            c = rdr.curr;
         }
-        if accum_str == ~"_" { return token::UNDERSCORE; }
-        let is_mod_name = c == ':' && nextch(rdr) == ':';
 
-        // FIXME: perform NFKC normalization here. (Issue #2253)
-        return token::IDENT(str_to_ident(accum_str), is_mod_name);
+        return do with_str_from(rdr, start) |string| {
+            if string == "_" {
+                token::UNDERSCORE
+            } else {
+                let is_mod_name = rdr.curr == ':' && nextch(rdr) == ':';
+
+                // FIXME: perform NFKC normalization here. (Issue #2253)
+                token::IDENT(str_to_ident(string), is_mod_name)
+            }
+        }
     }
     if is_dec_digit(c) {
         return scan_number(c, rdr);
@@ -648,19 +661,19 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
       '\'' => {
         // Either a character constant 'a' OR a lifetime name 'abc
         bump(rdr);
+        let start = rdr.last_pos;
         let mut c2 = rdr.curr;
         bump(rdr);
 
         // If the character is an ident start not followed by another single
         // quote, then this is a lifetime name:
         if ident_start(c2) && rdr.curr != '\'' {
-            let mut lifetime_name = ~"";
-            lifetime_name.push_char(c2);
             while ident_continue(rdr.curr) {
-                lifetime_name.push_char(rdr.curr);
                 bump(rdr);
             }
-            return token::LIFETIME(str_to_ident(lifetime_name));
+            return do with_str_from(rdr, start) |lifetime_name| {
+                token::LIFETIME(str_to_ident(lifetime_name))
+            }
         }
 
         // Otherwise it is a character constant:
@@ -690,12 +703,14 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
         return token::LIT_INT(c2 as i64, ast::ty_char);
       }
       '"' => {
-        let n = byte_offset(rdr, rdr.last_pos);
+        let mut accum_str = ~"";
+        let n = rdr.last_pos;
         bump(rdr);
         while rdr.curr != '"' {
             if is_eof(rdr) {
-                rdr.fatal(fmt!("unterminated double quote string: %s",
-                               get_str_from(rdr, n)));
+                do with_str_from(rdr, n) |s| {
+                    rdr.fatal(fmt!("unterminated double quote string: %s", s));
+                }
             }
 
             let ch = rdr.curr;
