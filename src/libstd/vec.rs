@@ -1066,64 +1066,6 @@ impl<'self, T:Copy> VectorVector<T> for &'self [&'self [T]] {
     }
 }
 
-/**
- * Reduces a vector from left to right.
- *
- * # Arguments
- * * `z` - initial accumulator value
- * * `v` - vector to iterate over
- * * `p` - a closure to operate on vector elements
- *
- * # Examples
- *
- * Sum all values in the vector [1, 2, 3]:
- *
- * ~~~ {.rust}
- * vec::foldl(0, [1, 2, 3], |a, b| a + *b);
- * ~~~
- *
- */
-pub fn foldl<'a, T, U>(z: T, v: &'a [U], p: &fn(t: T, u: &'a U) -> T) -> T {
-    let mut accum = z;
-    let mut i = 0;
-    let l = v.len();
-    while i < l {
-        // Use a while loop so that liveness analysis can handle moving
-        // the accumulator.
-        accum = p(accum, &v[i]);
-        i += 1;
-    }
-    accum
-}
-
-/**
- * Reduces a vector from right to left. Note that the argument order is
- * reversed compared to `foldl` to reflect the order they are provided to
- * the closure.
- *
- * # Arguments
- * * `v` - vector to iterate over
- * * `z` - initial accumulator value
- * * `p` - a closure to do operate on vector elements
- *
- * # Examples
- *
- * Sum all values in the vector [1, 2, 3]:
- *
- * ~~~ {.rust}
- * vec::foldr([1, 2, 3], 0, |a, b| a + *b);
- * ~~~
- *
- */
-pub fn foldr<'a, T, U>(v: &'a [T], mut z: U, p: &fn(t: &'a T, u: U) -> U) -> U {
-    let mut i = v.len();
-    while i > 0 {
-        i -= 1;
-        z = p(&v[i], z);
-    }
-    return z;
-}
-
 /// Return true if a vector contains an element with the given value
 pub fn contains<T:Eq>(v: &[T], x: &T) -> bool {
     for each(v) |elt| { if *x == *elt { return true; } }
@@ -1974,7 +1916,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     /// Reduce a vector from right to left
     #[inline]
     fn foldr<'a, U>(&'a self, z: U, p: &fn(t: &'a T, u: U) -> U) -> U {
-        foldr(*self, z, p)
+        self.rev_iter().fold(z, |u, t| p(t, u))
     }
 
     /// Apply a function to each element of a vector and return the results
@@ -3395,39 +3337,6 @@ mod tests {
     }
 
     #[test]
-    fn test_foldl() {
-        // Test on-stack fold.
-        let mut v = ~[1u, 2u, 3u];
-        let mut sum = foldl(0u, v, add);
-        assert_eq!(sum, 6u);
-
-        // Test on-heap fold.
-        v = ~[1u, 2u, 3u, 4u, 5u];
-        sum = foldl(0u, v, add);
-        assert_eq!(sum, 15u);
-    }
-
-    #[test]
-    fn test_foldl2() {
-        fn sub(a: int, b: &int) -> int {
-            a - *b
-        }
-        let v = ~[1, 2, 3, 4];
-        let sum = foldl(0, v, sub);
-        assert_eq!(sum, -10);
-    }
-
-    #[test]
-    fn test_foldr() {
-        fn sub(a: &int, b: int) -> int {
-            *a - b
-        }
-        let v = ~[1, 2, 3, 4];
-        let sum = foldr(v, 0, sub);
-        assert_eq!(sum, -2);
-    }
-
-    #[test]
     fn test_each_empty() {
         for each::<int>([]) |_v| {
             fail!(); // should never be executed
@@ -4231,38 +4140,6 @@ mod tests {
             }
             i += 0;
             true
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    #[allow(non_implicitly_copyable_typarams)]
-    fn test_foldl_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do foldl((~0, @0), v) |_a, _b| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            (~0, @0)
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    #[allow(non_implicitly_copyable_typarams)]
-    fn test_foldr_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do foldr(v, (~0, @0)) |_a, _b| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            (~0, @0)
         };
     }
 

@@ -51,9 +51,9 @@ pub fn main() {
 
 
     // Lower precedence than binary operations:
-    let w = do vec::foldl(0f, v) |x, y| { x + *y } + 10f;
-    let y = do vec::foldl(0f, v) |x, y| { x + *y } + 10f;
-    let z = 10f + do vec::foldl(0f, v) |x, y| { x + *y };
+    let w = do v.iter().fold(0f) |x, y| { x + *y } + 10f;
+    let y = do v.iter().fold(0f) |x, y| { x + *y } + 10f;
+    let z = 10f + do v.iter().fold(0f) |x, y| { x + *y };
     assert_eq!(w, y);
     assert_eq!(y, z);
 

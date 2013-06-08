@@ -12,7 +12,7 @@
 
 use core::prelude::*;
 
-use core::vec;
+use core::iterator::IteratorUtil;
 
 #[deriving(Eq)]
 pub enum List<T> {
@@ -28,7 +28,7 @@ pub enum MutList<T> {
 
 /// Create a list from a vector
 pub fn from_vec<T:Copy>(v: &[T]) -> @List<T> {
-    vec::foldr(v, @Nil::<T>, |h, t| @Cons(*h, t))
+    v.rev_iter().fold(@Nil::<T>, |t, h| @Cons(*h, t))
 }
 
 /**
