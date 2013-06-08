@@ -174,7 +174,7 @@ fn item_symbol(item: ebml::Doc) -> ~str {
 
 fn item_parent_item(d: ebml::Doc) -> Option<ast::def_id> {
     for reader::tagged_docs(d, tag_items_data_parent_item) |did| {
-        return Some(reader::with_doc_data(did, |d| parse_def_id(d)));
+        return Some(reader::with_doc_data(did, parse_def_id));
     }
     None
 }
@@ -195,8 +195,7 @@ fn item_reqd_and_translated_parent_item(cnum: ast::crate_num,
 
 fn item_def_id(d: ebml::Doc, cdata: cmd) -> ast::def_id {
     let tagdoc = reader::get_doc(d, tag_def_id);
-    return translate_def_id(cdata, reader::with_doc_data(tagdoc,
-                                                    |d| parse_def_id(d)));
+    return translate_def_id(cdata, reader::with_doc_data(tagdoc, parse_def_id));
 }
 
 fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) -> bool {
@@ -282,7 +281,7 @@ fn enum_variant_ids(item: ebml::Doc, cdata: cmd) -> ~[ast::def_id] {
     let mut ids: ~[ast::def_id] = ~[];
     let v = tag_items_data_item_variant;
     for reader::tagged_docs(item, v) |p| {
-        let ext = reader::with_doc_data(p, |d| parse_def_id(d));
+        let ext = reader::with_doc_data(p, parse_def_id);
         ids.push(ast::def_id { crate: cdata.cnum, node: ext.node });
     };
     return ids;
@@ -424,7 +423,7 @@ pub fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     let mut found = None;
     for reader::tagged_docs(find_item(id, items), tag_item_impl_method)
         |mid| {
-            let m_did = reader::with_doc_data(mid, |d| parse_def_id(d));
+            let m_did = reader::with_doc_data(mid, parse_def_id);
             if item_name(intr, find_item(m_did.node, items)) == name {
                 found = Some(translate_def_id(cdata, m_did));
             }
@@ -662,7 +661,7 @@ fn item_impl_methods(intr: @ident_interner, cdata: cmd, item: ebml::Doc,
                      base_tps: uint) -> ~[@resolve::MethodInfo] {
     let mut rslt = ~[];
     for reader::tagged_docs(item, tag_item_impl_method) |doc| {
-        let m_did = reader::with_doc_data(doc, |d| parse_def_id(d));
+        let m_did = reader::with_doc_data(doc, parse_def_id);
         let mth_item = lookup_item(m_did.node, cdata.data);
         let explicit_self = get_explicit_self(mth_item);
         rslt.push(@resolve::MethodInfo {
@@ -684,7 +683,7 @@ pub fn get_impls_for_mod(intr: @ident_interner,
     let mod_item = lookup_item(m_id, data);
     let mut result = ~[];
     for reader::tagged_docs(mod_item, tag_mod_impl) |doc| {
-        let did = reader::with_doc_data(doc, |d| parse_def_id(d));
+        let did = reader::with_doc_data(doc, parse_def_id);
         let local_did = translate_def_id(cdata, did);
         debug!("(get impls for mod) getting did %? for '%?'",
                local_did, name);
