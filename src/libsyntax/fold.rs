@@ -545,7 +545,7 @@ pub fn noop_fold_expr(e: &Expr_, fld: @ast_fold) -> Expr_ {
         ExprDoBody(f) => ExprDoBody(fld.fold_expr(f)),
         ExprLit(_) => (*e).clone(),
         ExprCast(expr, ref ty) => {
-            ExprCast(fld.fold_expr(expr), (*ty).clone())
+            ExprCast(fld.fold_expr(expr), fld.fold_ty(ty))
         }
         ExprAddrOf(m, ohs) => ExprAddrOf(m, fld.fold_expr(ohs)),
         ExprIf(cond, ref tr, fl) => {
