@@ -3044,15 +3044,17 @@ pub fn adjust_ty(cx: ctxt,
         Some(@AutoDerefRef(ref adj)) => {
             let mut adjusted_ty = unadjusted_ty;
 
-            for uint::range(0, adj.autoderefs) |i| {
-                match ty::deref(cx, adjusted_ty, true) {
-                    Some(mt) => { adjusted_ty = mt.ty; }
-                    None => {
-                        cx.sess.span_bug(
-                            span,
-                            fmt!("The %uth autoderef failed: %s",
-                                 i, ty_to_str(cx,
-                                              adjusted_ty)));
+            if (!ty::type_is_error(adjusted_ty)) {
+                for uint::range(0, adj.autoderefs) |i| {
+                    match ty::deref(cx, adjusted_ty, true) {
+                        Some(mt) => { adjusted_ty = mt.ty; }
+                        None => {
+                            cx.sess.span_bug(
+                                span,
+                                fmt!("The %uth autoderef failed: %s",
+                                     i, ty_to_str(cx,
+                                                  adjusted_ty)));
+                        }
                     }
                 }
             }
