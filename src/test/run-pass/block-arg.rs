@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::iterator::IteratorUtil;
 use std::vec;
 
 // Check usage and precedence of block arguments in expressions:
@@ -20,28 +21,28 @@ pub fn main() {
     }
 
     // Usable at all:
-    let mut any_negative = do vec::any(v) |e| { e.is_negative() };
+    let mut any_negative = do v.iter().any |e| { e.is_negative() };
     assert!(any_negative);
 
     // Higher precedence than assignments:
-    any_negative = do vec::any(v) |e| { e.is_negative() };
+    any_negative = do v.iter().any |e| { e.is_negative() };
     assert!(any_negative);
 
     // Higher precedence than unary operations:
     let abs_v = do vec::map(v) |e| { e.abs() };
-    assert!(do vec::all(abs_v) |e| { e.is_positive() });
-    assert!(!do vec::any(abs_v) |e| { e.is_negative() });
+    assert!(do abs_v.iter().all |e| { e.is_positive() });
+    assert!(!do abs_v.iter().any |e| { e.is_negative() });
 
     // Usable in funny statement-like forms:
-    if !do vec::any(v) |e| { e.is_positive() } {
+    if !do v.iter().any |e| { e.is_positive() } {
         assert!(false);
     }
-    match do vec::all(v) |e| { e.is_negative() } {
+    match do v.iter().all |e| { e.is_negative() } {
         true => { fail!("incorrect answer."); }
         false => { }
     }
     match 3 {
-      _ if do vec::any(v) |e| { e.is_negative() } => {
+      _ if do v.iter().any |e| { e.is_negative() } => {
       }
       _ => {
         fail!("wrong answer.");
@@ -58,7 +59,7 @@ pub fn main() {
 
     // In the tail of a block
     let w =
-        if true { do vec::any(abs_v) |e| { e.is_positive() } }
+        if true { do abs_v.iter().any |e| { e.is_positive() } }
       else { false };
     assert!(w);
 }
