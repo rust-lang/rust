@@ -964,7 +964,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
 
         return do self.read_opaque |this, doc| {
             let ty = tydecode::parse_ty_data(
-                doc.data,
+                *doc.data,
                 xcx.dcx.cdata.cnum,
                 doc.start,
                 xcx.dcx.tcx,
@@ -994,7 +994,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
                            -> ty::TypeParameterDef {
         do self.read_opaque |this, doc| {
             tydecode::parse_type_param_def_data(
-                doc.data,
+                *doc.data,
                 doc.start,
                 xcx.dcx.cdata.cnum,
                 xcx.dcx.tcx,
