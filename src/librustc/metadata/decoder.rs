@@ -162,19 +162,18 @@ fn item_visibility(item: ebml::Doc) -> ast::visibility {
 
 fn item_method_sort(item: ebml::Doc) -> char {
     for reader::tagged_docs(item, tag_item_trait_method_sort) |doc| {
-        return str::from_bytes(reader::doc_data(doc))[0] as char;
+        return doc.as_str_slice()[0] as char;
     }
     return 'r';
 }
 
 fn item_symbol(item: ebml::Doc) -> ~str {
-    let sym = reader::get_doc(item, tag_items_data_item_symbol);
-    return str::from_bytes(reader::doc_data(sym));
+    reader::get_doc(item, tag_items_data_item_symbol).as_str()
 }
 
 fn item_parent_item(d: ebml::Doc) -> Option<ast::def_id> {
     for reader::tagged_docs(d, tag_items_data_parent_item) |did| {
-        return Some(reader::with_doc_data(did, |d| parse_def_id(d)));
+        return Some(reader::with_doc_data(did, parse_def_id));
     }
     None
 }
@@ -195,8 +194,7 @@ fn item_reqd_and_translated_parent_item(cnum: ast::crate_num,
 
 fn item_def_id(d: ebml::Doc, cdata: cmd) -> ast::def_id {
     let tagdoc = reader::get_doc(d, tag_def_id);
-    return translate_def_id(cdata, reader::with_doc_data(tagdoc,
-                                                    |d| parse_def_id(d)));
+    return translate_def_id(cdata, reader::with_doc_data(tagdoc, parse_def_id));
 }
 
 fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) -> bool {
@@ -210,19 +208,19 @@ fn each_reexport(d: ebml::Doc, f: &fn(ebml::Doc) -> bool) -> bool {
 
 fn variant_disr_val(d: ebml::Doc) -> Option<int> {
     do reader::maybe_get_doc(d, tag_disr_val).chain |val_doc| {
-        int::parse_bytes(reader::doc_data(val_doc), 10u)
+        do reader::with_doc_data(val_doc) |data| { int::parse_bytes(data, 10u) }
     }
 }
 
 fn doc_type(doc: ebml::Doc, tcx: ty::ctxt, cdata: cmd) -> ty::t {
     let tp = reader::get_doc(doc, tag_items_data_item_type);
-    parse_ty_data(tp.data, cdata.cnum, tp.start, tcx,
+    parse_ty_data(*tp.data, cdata.cnum, tp.start, tcx,
                   |_, did| translate_def_id(cdata, did))
 }
 
 fn doc_method_fty(doc: ebml::Doc, tcx: ty::ctxt, cdata: cmd) -> ty::BareFnTy {
     let tp = reader::get_doc(doc, tag_item_method_fty);
-    parse_bare_fn_ty_data(tp.data, cdata.cnum, tp.start, tcx,
+    parse_bare_fn_ty_data(*tp.data, cdata.cnum, tp.start, tcx,
                           |_, did| translate_def_id(cdata, did))
 }
 
@@ -231,7 +229,7 @@ fn doc_transformed_self_ty(doc: ebml::Doc,
                            cdata: cmd) -> Option<ty::t>
 {
     do reader::maybe_get_doc(doc, tag_item_method_transformed_self_ty).map |tp| {
-        parse_ty_data(tp.data, cdata.cnum, tp.start, tcx,
+        parse_ty_data(*tp.data, cdata.cnum, tp.start, tcx,
                       |_, did| translate_def_id(cdata, did))
     }
 }
@@ -242,7 +240,7 @@ pub fn item_type(_item_id: ast::def_id, item: ebml::Doc,
 }
 
 fn doc_trait_ref(doc: ebml::Doc, tcx: ty::ctxt, cdata: cmd) -> ty::TraitRef {
-    parse_trait_ref_data(doc.data, cdata.cnum, doc.start, tcx,
+    parse_trait_ref_data(*doc.data, cdata.cnum, doc.start, tcx,
                          |_, did| translate_def_id(cdata, did))
 }
 
@@ -257,7 +255,7 @@ fn item_ty_param_defs(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd,
     let mut bounds = ~[];
     for reader::tagged_docs(item, tag) |p| {
         let bd = parse_type_param_def_data(
-            p.data, p.start, cdata.cnum, tcx,
+            *p.data, p.start, cdata.cnum, tcx,
             |_, did| translate_def_id(cdata, did));
         bounds.push(bd);
     }
@@ -282,7 +280,7 @@ fn enum_variant_ids(item: ebml::Doc, cdata: cmd) -> ~[ast::def_id] {
     let mut ids: ~[ast::def_id] = ~[];
     let v = tag_items_data_item_variant;
     for reader::tagged_docs(item, v) |p| {
-        let ext = reader::with_doc_data(p, |d| parse_def_id(d));
+        let ext = reader::with_doc_data(p, parse_def_id);
         ids.push(ast::def_id { crate: cdata.cnum, node: ext.node });
     };
     return ids;
@@ -297,10 +295,10 @@ fn item_path(item_doc: ebml::Doc) -> ast_map::path {
     let mut result = vec::with_capacity(len);
     for reader::docs(path_doc) |tag, elt_doc| {
         if tag == tag_path_elt_mod {
-            let str = reader::doc_as_str(elt_doc);
+            let str = elt_doc.as_str_slice();
             result.push(ast_map::path_mod(token::str_to_ident(str)));
         } else if tag == tag_path_elt_name {
-            let str = reader::doc_as_str(elt_doc);
+            let str = elt_doc.as_str_slice();
             result.push(ast_map::path_name(token::str_to_ident(str)));
         } else {
             // ignore tag_path_len element
@@ -312,12 +310,10 @@ fn item_path(item_doc: ebml::Doc) -> ast_map::path {
 
 fn item_name(intr: @ident_interner, item: ebml::Doc) -> ast::ident {
     let name = reader::get_doc(item, tag_paths_data_name);
-    do reader::with_doc_data(name) |data| {
-        let string = str::from_bytes_slice(data);
-        match intr.find_equiv(&StringRef(string)) {
-            None => token::str_to_ident(string),
-            Some(val) => ast::new_ident(val),
-        }
+    let string = name.as_str_slice();
+    match intr.find_equiv(&StringRef(string)) {
+        None => token::str_to_ident(string),
+        Some(val) => ast::new_ident(val),
     }
 }
 
@@ -413,15 +409,9 @@ pub fn get_impl_trait(cdata: cmd,
                        tcx: ty::ctxt) -> Option<@ty::TraitRef>
 {
     let item_doc = lookup_item(id, cdata.data);
-    let mut result = None;
-    for reader::tagged_docs(item_doc, tag_item_trait_ref) |tp| {
-        let trait_ref =
-            @parse_trait_ref_data(tp.data, cdata.cnum, tp.start, tcx,
-                                  |_, did| translate_def_id(cdata, did));
-        result = Some(trait_ref);
-        break;
-    };
-    result
+    do reader::maybe_get_doc(item_doc, tag_item_trait_ref).map |&tp| {
+        @doc_trait_ref(tp, tcx, cdata)
+    }
 }
 
 pub fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
@@ -430,7 +420,7 @@ pub fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
     let mut found = None;
     for reader::tagged_docs(find_item(id, items), tag_item_impl_method)
         |mid| {
-            let m_did = reader::with_doc_data(mid, |d| parse_def_id(d));
+            let m_did = reader::with_doc_data(mid, parse_def_id);
             if item_name(intr, find_item(m_did.node, items)) == name {
                 found = Some(translate_def_id(cdata, m_did));
             }
@@ -513,19 +503,17 @@ pub fn each_path(intr: @ident_interner,
             let def_id_doc =
                 reader::get_doc(reexport_doc,
                                 tag_items_data_item_reexport_def_id);
-            let def_id =
-                reader::with_doc_data(def_id_doc,
-                                      |d| parse_def_id(d));
+            let def_id = reader::with_doc_data(def_id_doc, parse_def_id);
             let def_id = translate_def_id(cdata, def_id);
 
             let reexport_name_doc =
                 reader::get_doc(reexport_doc,
                                 tag_items_data_item_reexport_name);
-            let reexport_name = reader::doc_as_str(reexport_name_doc);
+            let reexport_name = reexport_name_doc.as_str_slice();
 
             let reexport_path;
             if path_is_empty {
-                reexport_path = reexport_name;
+                reexport_path = reexport_name.to_owned();
             } else {
                 reexport_path = path + "::" + reexport_name;
             }
@@ -646,7 +634,7 @@ fn get_explicit_self(item: ebml::Doc) -> ast::explicit_self_ {
     }
 
     let explicit_self_doc = reader::get_doc(item, tag_item_trait_method_explicit_self);
-    let string = reader::doc_as_str(explicit_self_doc);
+    let string = explicit_self_doc.as_str_slice();
 
     let explicit_self_kind = string[0];
     match explicit_self_kind as char {
@@ -668,7 +656,7 @@ fn item_impl_methods(intr: @ident_interner, cdata: cmd, item: ebml::Doc,
                      base_tps: uint) -> ~[@resolve::MethodInfo] {
     let mut rslt = ~[];
     for reader::tagged_docs(item, tag_item_impl_method) |doc| {
-        let m_did = reader::with_doc_data(doc, |d| parse_def_id(d));
+        let m_did = reader::with_doc_data(doc, parse_def_id);
         let mth_item = lookup_item(m_did.node, cdata.data);
         let explicit_self = get_explicit_self(mth_item);
         rslt.push(@resolve::MethodInfo {
@@ -690,7 +678,7 @@ pub fn get_impls_for_mod(intr: @ident_interner,
     let mod_item = lookup_item(m_id, data);
     let mut result = ~[];
     for reader::tagged_docs(mod_item, tag_mod_impl) |doc| {
-        let did = reader::with_doc_data(doc, |d| parse_def_id(d));
+        let did = reader::with_doc_data(doc, parse_def_id);
         let local_did = translate_def_id(cdata, did);
         debug!("(get impls for mod) getting did %? for '%?'",
                local_did, name);
@@ -831,7 +819,7 @@ pub fn get_type_name_if_impl(cdata: cmd,
     }
 
     for reader::tagged_docs(item, tag_item_impl_type_basename) |doc| {
-        return Some(token::str_to_ident(str::from_bytes(reader::doc_data(doc))));
+        return Some(token::str_to_ident(doc.as_str_slice()));
     }
 
     return None;
@@ -853,7 +841,7 @@ pub fn get_static_methods_if_impl(intr: @ident_interner,
 
     let mut impl_method_ids = ~[];
     for reader::tagged_docs(item, tag_item_impl_method) |impl_method_doc| {
-        impl_method_ids.push(parse_def_id(reader::doc_data(impl_method_doc)));
+        impl_method_ids.push(reader::with_doc_data(impl_method_doc, parse_def_id));
     }
 
     let mut static_impl_methods = ~[];
@@ -950,12 +938,13 @@ fn family_names_type(fam: Family) -> bool {
 }
 
 fn read_path(d: ebml::Doc) -> (~str, uint) {
-    let desc = reader::doc_data(d);
-    let pos = io::u64_from_be_bytes(desc, 0u, 4u) as uint;
-    let pathbytes = vec::slice::<u8>(desc, 4u, vec::len::<u8>(desc));
-    let path = str::from_bytes(pathbytes);
+    do reader::with_doc_data(d) |desc| {
+        let pos = io::u64_from_be_bytes(desc, 0u, 4u) as uint;
+        let pathbytes = desc.slice(4u, desc.len());
+        let path = str::from_bytes(pathbytes);
 
-    (path, pos)
+        (path, pos)
+    }
 }
 
 fn describe_def(items: ebml::Doc, id: ast::def_id) -> ~str {
@@ -996,21 +985,21 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::meta_item] {
     let mut items: ~[@ast::meta_item] = ~[];
     for reader::tagged_docs(md, tag_meta_item_word) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = str::from_bytes(reader::doc_data(nd));
+        let n = nd.as_str();
         items.push(attr::mk_word_item(@n));
     };
     for reader::tagged_docs(md, tag_meta_item_name_value) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let vd = reader::get_doc(meta_item_doc, tag_meta_item_value);
-        let n = str::from_bytes(reader::doc_data(nd));
-        let v = str::from_bytes(reader::doc_data(vd));
+        let n = nd.as_str();
+        let v = vd.as_str();
         // FIXME (#623): Should be able to decode meta_name_value variants,
         // but currently the encoder just drops them
         items.push(attr::mk_name_value_item_str(@n, @v));
     };
     for reader::tagged_docs(md, tag_meta_item_list) |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = str::from_bytes(reader::doc_data(nd));
+        let n = nd.as_str();
         let subitems = get_meta_items(meta_item_doc);
         items.push(attr::mk_list_item(@n, subitems));
     };
@@ -1079,7 +1068,7 @@ pub fn get_crate_deps(data: @~[u8]) -> ~[crate_dep] {
     let depsdoc = reader::get_doc(cratedoc, tag_crate_deps);
     let mut crate_num = 1;
     fn docstr(doc: ebml::Doc, tag_: uint) -> ~str {
-        str::from_bytes(reader::doc_data(reader::get_doc(doc, tag_)))
+        reader::get_doc(doc, tag_).as_str()
     }
     for reader::tagged_docs(depsdoc, tag_crate_dep) |depdoc| {
         deps.push(crate_dep {cnum: crate_num,
@@ -1106,7 +1095,7 @@ fn list_crate_deps(data: @~[u8], out: @io::Writer) {
 pub fn get_crate_hash(data: @~[u8]) -> @~str {
     let cratedoc = reader::Doc(data);
     let hashdoc = reader::get_doc(cratedoc, tag_crate_hash);
-    @str::from_bytes(reader::doc_data(hashdoc))
+    @hashdoc.as_str()
 }
 
 pub fn get_crate_vers(data: @~[u8]) -> @~str {
@@ -1161,7 +1150,7 @@ pub fn get_link_args_for_crate(cdata: cmd) -> ~[~str] {
     let link_args = reader::get_doc(reader::Doc(cdata.data), tag_link_args);
     let mut result = ~[];
     for reader::tagged_docs(link_args, tag_link_args_arg) |arg_doc| {
-        result.push(reader::doc_as_str(arg_doc));
+        result.push(arg_doc.as_str());
     }
     result
 }

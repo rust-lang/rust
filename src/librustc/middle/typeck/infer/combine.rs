@@ -434,12 +434,12 @@ pub fn super_fn_sigs<C:Combine>(
 pub fn super_tys<C:Combine>(
     this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
     let tcx = this.infcx().tcx;
-    return match (/*bad*/copy ty::get(a).sty, /*bad*/copy ty::get(b).sty) {
+    return match (&ty::get(a).sty, &ty::get(b).sty) {
       // The "subtype" ought to be handling cases involving bot or var:
-      (ty::ty_bot, _) |
-      (_, ty::ty_bot) |
-      (ty::ty_infer(TyVar(_)), _) |
-      (_, ty::ty_infer(TyVar(_))) => {
+      (&ty::ty_bot, _) |
+      (_, &ty::ty_bot) |
+      (&ty::ty_infer(TyVar(_)), _) |
+      (_, &ty::ty_infer(TyVar(_))) => {
         tcx.sess.bug(
             fmt!("%s: bot and var types should have been handled (%s,%s)",
                  this.tag(),
@@ -448,46 +448,46 @@ pub fn super_tys<C:Combine>(
       }
 
         // Relate integral variables to other types
-        (ty::ty_infer(IntVar(a_id)), ty::ty_infer(IntVar(b_id))) => {
+        (&ty::ty_infer(IntVar(a_id)), &ty::ty_infer(IntVar(b_id))) => {
             if_ok!(this.infcx().simple_vars(this.a_is_expected(),
                                             a_id, b_id));
             Ok(a)
         }
-        (ty::ty_infer(IntVar(v_id)), ty::ty_int(v)) => {
+        (&ty::ty_infer(IntVar(v_id)), &ty::ty_int(v)) => {
             unify_integral_variable(this, this.a_is_expected(),
                                     v_id, IntType(v))
         }
-        (ty::ty_int(v), ty::ty_infer(IntVar(v_id))) => {
+        (&ty::ty_int(v), &ty::ty_infer(IntVar(v_id))) => {
             unify_integral_variable(this, !this.a_is_expected(),
                                     v_id, IntType(v))
         }
-        (ty::ty_infer(IntVar(v_id)), ty::ty_uint(v)) => {
+        (&ty::ty_infer(IntVar(v_id)), &ty::ty_uint(v)) => {
             unify_integral_variable(this, this.a_is_expected(),
                                     v_id, UintType(v))
         }
-        (ty::ty_uint(v), ty::ty_infer(IntVar(v_id))) => {
+        (&ty::ty_uint(v), &ty::ty_infer(IntVar(v_id))) => {
             unify_integral_variable(this, !this.a_is_expected(),
                                     v_id, UintType(v))
         }
 
         // Relate floating-point variables to other types
-        (ty::ty_infer(FloatVar(a_id)), ty::ty_infer(FloatVar(b_id))) => {
+        (&ty::ty_infer(FloatVar(a_id)), &ty::ty_infer(FloatVar(b_id))) => {
             if_ok!(this.infcx().simple_vars(this.a_is_expected(),
                                             a_id, b_id));
             Ok(a)
         }
-        (ty::ty_infer(FloatVar(v_id)), ty::ty_float(v)) => {
+        (&ty::ty_infer(FloatVar(v_id)), &ty::ty_float(v)) => {
             unify_float_variable(this, this.a_is_expected(), v_id, v)
         }
-        (ty::ty_float(v), ty::ty_infer(FloatVar(v_id))) => {
+        (&ty::ty_float(v), &ty::ty_infer(FloatVar(v_id))) => {
             unify_float_variable(this, !this.a_is_expected(), v_id, v)
         }
 
-      (ty::ty_nil, _) |
-      (ty::ty_bool, _) |
-      (ty::ty_int(_), _) |
-      (ty::ty_uint(_), _) |
-      (ty::ty_float(_), _) => {
+      (&ty::ty_nil, _) |
+      (&ty::ty_bool, _) |
+      (&ty::ty_int(_), _) |
+      (&ty::ty_uint(_), _) |
+      (&ty::ty_float(_), _) => {
         if ty::get(a).sty == ty::get(b).sty {
             Ok(a)
         } else {
@@ -495,12 +495,12 @@ pub fn super_tys<C:Combine>(
         }
       }
 
-      (ty::ty_param(ref a_p), ty::ty_param(ref b_p)) if a_p.idx == b_p.idx => {
+      (&ty::ty_param(ref a_p), &ty::ty_param(ref b_p)) if a_p.idx == b_p.idx => {
         Ok(a)
       }
 
-      (ty::ty_enum(a_id, ref a_substs),
-       ty::ty_enum(b_id, ref b_substs))
+      (&ty::ty_enum(a_id, ref a_substs),
+       &ty::ty_enum(b_id, ref b_substs))
       if a_id == b_id => {
           let type_def = ty::lookup_item_type(tcx, a_id);
           do this.substs(&type_def.generics, a_substs, b_substs).chain |substs| {
@@ -508,8 +508,8 @@ pub fn super_tys<C:Combine>(
           }
       }
 
-      (ty::ty_trait(a_id, ref a_substs, a_store, a_mutbl),
-       ty::ty_trait(b_id, ref b_substs, b_store, b_mutbl))
+      (&ty::ty_trait(a_id, ref a_substs, a_store, a_mutbl),
+       &ty::ty_trait(b_id, ref b_substs, b_store, b_mutbl))
       if a_id == b_id && a_mutbl == b_mutbl => {
           let trait_def = ty::lookup_trait_def(tcx, a_id);
           do this.substs(&trait_def.generics, a_substs, b_substs).chain |substs| {
@@ -519,7 +519,7 @@ pub fn super_tys<C:Combine>(
           }
       }
 
-      (ty::ty_struct(a_id, ref a_substs), ty::ty_struct(b_id, ref b_substs))
+      (&ty::ty_struct(a_id, ref a_substs), &ty::ty_struct(b_id, ref b_substs))
       if a_id == b_id => {
           let type_def = ty::lookup_item_type(tcx, a_id);
           do this.substs(&type_def.generics, a_substs, b_substs).chain |substs| {
@@ -527,31 +527,31 @@ pub fn super_tys<C:Combine>(
           }
       }
 
-      (ty::ty_box(ref a_mt), ty::ty_box(ref b_mt)) => {
+      (&ty::ty_box(ref a_mt), &ty::ty_box(ref b_mt)) => {
         do this.mts(a_mt, b_mt).chain |mt| {
             Ok(ty::mk_box(tcx, mt))
         }
       }
 
-      (ty::ty_uniq(ref a_mt), ty::ty_uniq(ref b_mt)) => {
+      (&ty::ty_uniq(ref a_mt), &ty::ty_uniq(ref b_mt)) => {
         do this.mts(a_mt, b_mt).chain |mt| {
             Ok(ty::mk_uniq(tcx, mt))
         }
       }
 
-      (ty::ty_ptr(ref a_mt), ty::ty_ptr(ref b_mt)) => {
+      (&ty::ty_ptr(ref a_mt), &ty::ty_ptr(ref b_mt)) => {
         do this.mts(a_mt, b_mt).chain |mt| {
             Ok(ty::mk_ptr(tcx, mt))
         }
       }
 
-      (ty::ty_rptr(a_r, ref a_mt), ty::ty_rptr(b_r, ref b_mt)) => {
+      (&ty::ty_rptr(a_r, ref a_mt), &ty::ty_rptr(b_r, ref b_mt)) => {
           let r = if_ok!(this.contraregions(a_r, b_r));
           let mt = if_ok!(this.mts(a_mt, b_mt));
           Ok(ty::mk_rptr(tcx, r, mt))
       }
 
-      (ty::ty_evec(ref a_mt, vs_a), ty::ty_evec(ref b_mt, vs_b)) => {
+      (&ty::ty_evec(ref a_mt, vs_a), &ty::ty_evec(ref b_mt, vs_b)) => {
         do this.mts(a_mt, b_mt).chain |mt| {
             do this.vstores(ty::terr_vec, vs_a, vs_b).chain |vs| {
                 Ok(ty::mk_evec(tcx, mt, vs))
@@ -559,13 +559,13 @@ pub fn super_tys<C:Combine>(
         }
       }
 
-      (ty::ty_estr(vs_a), ty::ty_estr(vs_b)) => {
+      (&ty::ty_estr(vs_a), &ty::ty_estr(vs_b)) => {
         do this.vstores(ty::terr_str, vs_a, vs_b).chain |vs| {
             Ok(ty::mk_estr(tcx,vs))
         }
       }
 
-      (ty::ty_tup(ref as_), ty::ty_tup(ref bs)) => {
+      (&ty::ty_tup(ref as_), &ty::ty_tup(ref bs)) => {
         if as_.len() == bs.len() {
             map_vec2(*as_, *bs, |a, b| this.tys(*a, *b) )
                 .chain(|ts| Ok(ty::mk_tup(tcx, ts)) )
@@ -575,13 +575,13 @@ pub fn super_tys<C:Combine>(
         }
       }
 
-      (ty::ty_bare_fn(ref a_fty), ty::ty_bare_fn(ref b_fty)) => {
+      (&ty::ty_bare_fn(ref a_fty), &ty::ty_bare_fn(ref b_fty)) => {
         do this.bare_fn_tys(a_fty, b_fty).chain |fty| {
             Ok(ty::mk_bare_fn(tcx, fty))
         }
       }
 
-      (ty::ty_closure(ref a_fty), ty::ty_closure(ref b_fty)) => {
+      (&ty::ty_closure(ref a_fty), &ty::ty_closure(ref b_fty)) => {
         do this.closure_tys(a_fty, b_fty).chain |fty| {
             Ok(ty::mk_closure(tcx, fty))
         }

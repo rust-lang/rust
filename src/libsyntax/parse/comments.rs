@@ -13,7 +13,7 @@ use core::prelude::*;
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos};
 use diagnostic;
-use parse::lexer::{is_whitespace, get_str_from, reader};
+use parse::lexer::{is_whitespace, with_str_from, reader};
 use parse::lexer::{StringReader, bump, is_eof, nextch, TokenAndSpan};
 use parse::lexer::{is_line_non_doc_comment, is_block_non_doc_comment};
 use parse::lexer;
@@ -352,9 +352,10 @@ pub fn gather_comments_and_literals(span_diagnostic:
         //discard, and look ahead; we're working with internal state
         let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
         if token::is_lit(&tok) {
-            let s = get_str_from(rdr, bstart);
-            debug!("tok lit: %s", s);
-            literals.push(lit {lit: s, pos: sp.lo});
+            do with_str_from(rdr, bstart) |s| {
+                debug!("tok lit: %s", s);
+                literals.push(lit {lit: s.to_owned(), pos: sp.lo});
+            }
         } else {
             debug!("tok: %s", token::to_str(get_ident_interner(), &tok));
         }
