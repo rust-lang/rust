@@ -21,7 +21,7 @@ impl Drop for Foo {
     }
 }
 
-fn main() {
+pub fn main() {
     let x = do task::try {
         let _b = Foo;
     };

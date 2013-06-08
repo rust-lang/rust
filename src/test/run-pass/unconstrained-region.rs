@@ -17,6 +17,6 @@ fn foo(blk: &fn(p: &'a fn() -> &'a fn())) {
         || { *statep = 1; }
     }
 }
-fn main() {
+pub fn main() {
     do foo |p| { p()() }
 }

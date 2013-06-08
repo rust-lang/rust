@@ -18,7 +18,7 @@ struct Foo {
     baz: u64
 }
 
-fn main() {
+pub fn main() {
     let foos = [Foo { bar: 1, baz: 2 }, .. 10];
 
     assert_eq!(sys::size_of::<[Foo, .. 10]>(), 90);

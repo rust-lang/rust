@@ -13,4 +13,4 @@
 // xfail-test
 extern mod test = "github.com/catamorphism/test-pkg";
 
-fn main() {}
+pub fn main() {}

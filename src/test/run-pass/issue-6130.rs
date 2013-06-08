@@ -10,7 +10,7 @@
 
 #[deny(type_limits)];
 
-fn main() {
+pub fn main() {
     let i: uint = 0;
     assert!(i <= 0xFFFF_FFFF_u);
 
