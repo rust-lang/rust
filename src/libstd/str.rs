@@ -25,7 +25,7 @@ use clone::Clone;
 use cmp::{TotalOrd, Ordering, Less, Equal, Greater};
 use container::Container;
 use iter::Times;
-use iterator::Iterator;
+use iterator::{Iterator, IteratorUtil};
 use libc;
 use option::{None, Option, Some};
 use old_iter::{BaseIter, EqIter};
@@ -608,11 +608,7 @@ pub fn byte_slice_no_callback<'a>(s: &'a str) -> &'a [u8] {
 
 /// Convert a string to a unique vector of characters
 pub fn to_chars(s: &str) -> ~[char] {
-    let mut buf = ~[];
-    for each_char(s) |c| {
-        buf.push(c);
-    }
-    buf
+    s.iter().collect()
 }
 
 /**
@@ -856,12 +852,12 @@ pub fn levdistance(s: &str, t: &str) -> uint {
 
     let mut dcol = vec::from_fn(tlen + 1, |x| x);
 
-    for s.each_chari |i, sc| {
+    for s.iter().enumerate().advance |(i, sc)| {
 
         let mut current = i;
         dcol[0] = current + 1;
 
-        for t.each_chari |j, tc| {
+        for t.iter().enumerate().advance |(j, tc)| {
 
             let next = dcol[j + 1];
 
@@ -943,7 +939,7 @@ pub fn each_split_within<'a>(ss: &'a str,
     let mut cont = true;
     let slice: &fn() = || { cont = it(slice(ss, slice_start, last_end)) };
 
-    let machine: &fn(uint, char) -> bool = |i, c| {
+    let machine: &fn((uint, char)) -> bool = |(i, c)| {
         let whitespace = if char::is_whitespace(c)       { Ws }       else { Cr };
         let limit      = if (i - slice_start + 1) <= lim { UnderLim } else { OverLim };
 
@@ -968,12 +964,12 @@ pub fn each_split_within<'a>(ss: &'a str,
         cont
     };
 
-    str::each_chari(ss, machine);
+    ss.iter().enumerate().advance(machine);
 
     // Let the automaton 'run out' by supplying trailing whitespace
     let mut fake_i = ss.len();
     while cont && match state { B | C => true, A => false } {
-        machine(fake_i, ' ');
+        machine((fake_i, ' '));
         fake_i += 1;
     }
     return cont;
@@ -1247,7 +1243,7 @@ pub fn any(ss: &str, pred: &fn(char) -> bool) -> bool {
 pub fn map(ss: &str, ff: &fn(char) -> char) -> ~str {
     let mut result = ~"";
     reserve(&mut result, len(ss));
-    for ss.each_char |cc| {
+    for ss.iter().advance |cc| {
         str::push_char(&mut result, ff(cc));
     }
     result
@@ -1285,55 +1281,6 @@ pub fn eachi_reverse(s: &str, it: &fn(uint, u8) -> bool) -> bool {
     while pos > 0 {
         pos -= 1;
         if !it(pos, s[pos]) { return false; }
-    }
-    return true;
-}
-
-/// Iterate over each char of a string, without allocating
-#[inline(always)]
-pub fn each_char(s: &str, it: &fn(char) -> bool) -> bool {
-    let mut i = 0;
-    let len = len(s);
-    while i < len {
-        let CharRange {ch, next} = char_range_at(s, i);
-        if !it(ch) { return false; }
-        i = next;
-    }
-    return true;
-}
-
-/// Iterates over the chars in a string, with indices
-#[inline(always)]
-pub fn each_chari(s: &str, it: &fn(uint, char) -> bool) -> bool {
-    let mut pos = 0;
-    let mut ch_pos = 0u;
-    let len = s.len();
-    while pos < len {
-        let CharRange {ch, next} = char_range_at(s, pos);
-        pos = next;
-        if !it(ch_pos, ch) { return false; }
-        ch_pos += 1u;
-    }
-    return true;
-}
-
-/// Iterates over the chars in a string in reverse
-#[inline(always)]
-pub fn each_char_reverse(s: &str, it: &fn(char) -> bool) -> bool {
-    each_chari_reverse(s, |_, c| it(c))
-}
-
-/// Iterates over the chars in a string in reverse, with indices
-#[inline(always)]
-pub fn each_chari_reverse(s: &str, it: &fn(uint, char) -> bool) -> bool {
-    let mut pos = s.len();
-    let mut ch_pos = s.char_len();
-    while pos > 0 {
-        let CharRange {ch, next} = char_range_at_reverse(s, pos);
-        pos = next;
-        ch_pos -= 1;
-
-        if !it(ch_pos, ch) { return false; }
     }
     return true;
 }
@@ -1880,7 +1827,7 @@ pub fn is_utf16(v: &[u16]) -> bool {
 /// Converts to a vector of `u16` encoded as UTF-16
 pub fn to_utf16(s: &str) -> ~[u16] {
     let mut u = ~[];
-    for s.each_char |ch| {
+    for s.iter().advance |ch| {
         // Arithmetic with u32 literals is easier on the eyes than chars.
         let mut ch = ch as u32;
 
@@ -2396,7 +2343,7 @@ pub fn capacity(s: &const ~str) -> uint {
 pub fn escape_default(s: &str) -> ~str {
     let mut out: ~str = ~"";
     reserve_at_least(&mut out, str::len(s));
-    for s.each_char |c| {
+    for s.iter().advance |c| {
         push_str(&mut out, char::escape_default(c));
     }
     out
@@ -2406,7 +2353,7 @@ pub fn escape_default(s: &str) -> ~str {
 pub fn escape_unicode(s: &str) -> ~str {
     let mut out: ~str = ~"";
     reserve_at_least(&mut out, str::len(s));
-    for s.each_char |c| {
+    for s.iter().advance |c| {
         push_str(&mut out, char::escape_unicode(c));
     }
     out
@@ -2608,15 +2555,12 @@ pub trait StrSlice<'self> {
     fn any(&self, it: &fn(char) -> bool) -> bool;
     fn contains<'a>(&self, needle: &'a str) -> bool;
     fn contains_char(&self, needle: char) -> bool;
-    fn char_iter(&self) -> StrCharIterator<'self>;
+    fn iter(&self) -> StrCharIterator<'self>;
+    fn rev_iter(&self) -> StrCharRevIterator<'self>;
     fn each(&self, it: &fn(u8) -> bool) -> bool;
     fn eachi(&self, it: &fn(uint, u8) -> bool) -> bool;
     fn each_reverse(&self, it: &fn(u8) -> bool) -> bool;
     fn eachi_reverse(&self, it: &fn(uint, u8) -> bool) -> bool;
-    fn each_char(&self, it: &fn(char) -> bool) -> bool;
-    fn each_chari(&self, it: &fn(uint, char) -> bool) -> bool;
-    fn each_char_reverse(&self, it: &fn(char) -> bool) -> bool;
-    fn each_chari_reverse(&self, it: &fn(uint, char) -> bool) -> bool;
     fn ends_with(&self, needle: &str) -> bool;
     fn is_empty(&self) -> bool;
     fn is_whitespace(&self) -> bool;
@@ -2670,9 +2614,16 @@ impl<'self> StrSlice<'self> for &'self str {
     }
 
     #[inline]
-    fn char_iter(&self) -> StrCharIterator<'self> {
+    fn iter(&self) -> StrCharIterator<'self> {
         StrCharIterator {
             index: 0,
+            string: *self
+        }
+    }
+    #[inline]
+    fn rev_iter(&self) -> StrCharRevIterator<'self> {
+        StrCharRevIterator {
+            index: self.len(),
             string: *self
         }
     }
@@ -2690,25 +2641,6 @@ impl<'self> StrSlice<'self> for &'self str {
     #[inline]
     fn eachi_reverse(&self, it: &fn(uint, u8) -> bool) -> bool {
         eachi_reverse(*self, it)
-    }
-    /// Iterate over the chars in a string
-    #[inline]
-    fn each_char(&self, it: &fn(char) -> bool) -> bool { each_char(*self, it) }
-    /// Iterate over the chars in a string, with indices
-    #[inline]
-    fn each_chari(&self, it: &fn(uint, char) -> bool) -> bool {
-        each_chari(*self, it)
-    }
-    /// Iterate over the chars in a string in reverse
-    #[inline]
-    fn each_char_reverse(&self, it: &fn(char) -> bool) -> bool {
-        each_char_reverse(*self, it)
-    }
-    /// Iterate over the chars in a string in reverse, with indices from the
-    /// end
-    #[inline]
-    fn each_chari_reverse(&self, it: &fn(uint, char) -> bool) -> bool {
-        each_chari_reverse(*self, it)
     }
     /// Returns true if one string ends with another
     #[inline]
@@ -2873,6 +2805,25 @@ impl<'self> Iterator<char> for StrCharIterator<'self> {
     fn next(&mut self) -> Option<char> {
         if self.index < self.string.len() {
             let CharRange {ch, next} = char_range_at(self.string, self.index);
+            self.index = next;
+            Some(ch)
+        } else {
+            None
+        }
+    }
+}
+/// External iterator for a string's characters in reverse order. Use
+/// with the `std::iterator` module.
+pub struct StrCharRevIterator<'self> {
+    priv index: uint,
+    priv string: &'self str,
+}
+
+impl<'self> Iterator<char> for StrCharRevIterator<'self> {
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        if self.index > 0 {
+            let CharRange {ch, next} = char_range_at_reverse(self.string, self.index);
             self.index = next;
             Some(ch)
         } else {
@@ -4068,52 +4019,6 @@ mod tests {
     }
 
     #[test]
-    fn test_each_char() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
-        let mut pos = 0;
-        for s.each_char |ch| {
-            assert_eq!(ch, v[pos]);
-            pos += 1;
-        }
-    }
-
-    #[test]
-    fn test_each_chari() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
-        let mut pos = 0;
-        for s.each_chari |i, ch| {
-            assert_eq!(pos, i);
-            assert_eq!(ch, v[pos]);
-            pos += 1;
-        }
-    }
-
-    #[test]
-    fn test_each_char_reverse() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
-        let mut pos = v.len();
-        for s.each_char_reverse |ch| {
-            pos -= 1;
-            assert_eq!(ch, v[pos]);
-        }
-    }
-
-    #[test]
-    fn test_each_chari_reverse() {
-        let s = ~"ศไทย中华Việt Nam";
-        let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
-        let mut pos = v.len();
-        for s.each_chari_reverse |i, ch| {
-            pos -= 1;
-            assert_eq!(pos, i);
-            assert_eq!(ch, v[pos]);
-        }
-    }
-
-    #[test]
     fn test_escape_unicode() {
         assert_eq!(escape_unicode("abc"), ~"\\x61\\x62\\x63");
         assert_eq!(escape_unicode("a c"), ~"\\x61\\x20\\x63");
@@ -4168,7 +4073,23 @@ mod tests {
         let v = ~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
 
         let mut pos = 0;
-        let mut it = s.char_iter();
+        let mut it = s.iter();
+
+        for it.advance |c| {
+            assert_eq!(c, v[pos]);
+            pos += 1;
+        }
+        assert_eq!(pos, v.len());
+    }
+
+    #[test]
+    fn test_rev_iterator() {
+        use iterator::*;
+        let s = ~"ศไทย中华Việt Nam";
+        let v = ~['m', 'a', 'N', ' ', 't', 'ệ','i','V','华','中','ย','ท','ไ','ศ'];
+
+        let mut pos = 0;
+        let mut it = s.rev_iter();
 
         for it.advance |c| {
             assert_eq!(c, v[pos]);
