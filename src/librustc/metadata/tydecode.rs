@@ -55,8 +55,8 @@ pub enum DefIdSource {
 type conv_did<'self> =
     &'self fn(source: DefIdSource, ast::def_id) -> ast::def_id;
 
-pub struct PState {
-    data: @~[u8],
+pub struct PState<'self> {
+    data: &'self [u8],
     crate: int,
     pos: uint,
     tcx: ty::ctxt
@@ -103,8 +103,8 @@ fn parse_ident_(st: &mut PState, is_last: @fn(char) -> bool) ->
     return st.tcx.sess.ident_of(rslt);
 }
 
-pub fn parse_state_from_data(data: @~[u8], crate_num: int,
-                             pos: uint, tcx: ty::ctxt) -> PState {
+pub fn parse_state_from_data<'a>(data: &'a [u8], crate_num: int,
+                             pos: uint, tcx: ty::ctxt) -> PState<'a> {
     PState {
         data: data,
         crate: crate_num,
@@ -113,19 +113,19 @@ pub fn parse_state_from_data(data: @~[u8], crate_num: int,
     }
 }
 
-pub fn parse_ty_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
+pub fn parse_ty_data(data: &[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
                      conv: conv_did) -> ty::t {
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_ty(&mut st, conv)
 }
 
-pub fn parse_bare_fn_ty_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
+pub fn parse_bare_fn_ty_data(data: &[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
                              conv: conv_did) -> ty::BareFnTy {
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_bare_fn_ty(&mut st, conv)
 }
 
-pub fn parse_trait_ref_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
+pub fn parse_trait_ref_data(data: &[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
                             conv: conv_did) -> ty::TraitRef {
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_trait_ref(&mut st, conv)
@@ -534,7 +534,7 @@ pub fn parse_def_id(buf: &[u8]) -> ast::def_id {
     ast::def_id { crate: crate_num, node: def_num }
 }
 
-pub fn parse_type_param_def_data(data: @~[u8], start: uint,
+pub fn parse_type_param_def_data(data: &[u8], start: uint,
                                  crate_num: int, tcx: ty::ctxt,
                                  conv: conv_did) -> ty::TypeParameterDef
 {

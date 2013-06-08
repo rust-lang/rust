@@ -216,13 +216,13 @@ fn variant_disr_val(d: ebml::Doc) -> Option<int> {
 
 fn doc_type(doc: ebml::Doc, tcx: ty::ctxt, cdata: cmd) -> ty::t {
     let tp = reader::get_doc(doc, tag_items_data_item_type);
-    parse_ty_data(tp.data, cdata.cnum, tp.start, tcx,
+    parse_ty_data(*tp.data, cdata.cnum, tp.start, tcx,
                   |_, did| translate_def_id(cdata, did))
 }
 
 fn doc_method_fty(doc: ebml::Doc, tcx: ty::ctxt, cdata: cmd) -> ty::BareFnTy {
     let tp = reader::get_doc(doc, tag_item_method_fty);
-    parse_bare_fn_ty_data(tp.data, cdata.cnum, tp.start, tcx,
+    parse_bare_fn_ty_data(*tp.data, cdata.cnum, tp.start, tcx,
                           |_, did| translate_def_id(cdata, did))
 }
 
@@ -231,7 +231,7 @@ fn doc_transformed_self_ty(doc: ebml::Doc,
                            cdata: cmd) -> Option<ty::t>
 {
     do reader::maybe_get_doc(doc, tag_item_method_transformed_self_ty).map |tp| {
-        parse_ty_data(tp.data, cdata.cnum, tp.start, tcx,
+        parse_ty_data(*tp.data, cdata.cnum, tp.start, tcx,
                       |_, did| translate_def_id(cdata, did))
     }
 }
@@ -242,7 +242,7 @@ pub fn item_type(_item_id: ast::def_id, item: ebml::Doc,
 }
 
 fn doc_trait_ref(doc: ebml::Doc, tcx: ty::ctxt, cdata: cmd) -> ty::TraitRef {
-    parse_trait_ref_data(doc.data, cdata.cnum, doc.start, tcx,
+    parse_trait_ref_data(*doc.data, cdata.cnum, doc.start, tcx,
                          |_, did| translate_def_id(cdata, did))
 }
 
@@ -257,7 +257,7 @@ fn item_ty_param_defs(item: ebml::Doc, tcx: ty::ctxt, cdata: cmd,
     let mut bounds = ~[];
     for reader::tagged_docs(item, tag) |p| {
         let bd = parse_type_param_def_data(
-            p.data, p.start, cdata.cnum, tcx,
+            *p.data, p.start, cdata.cnum, tcx,
             |_, did| translate_def_id(cdata, did));
         bounds.push(bd);
     }
@@ -413,15 +413,9 @@ pub fn get_impl_trait(cdata: cmd,
                        tcx: ty::ctxt) -> Option<@ty::TraitRef>
 {
     let item_doc = lookup_item(id, cdata.data);
-    let mut result = None;
-    for reader::tagged_docs(item_doc, tag_item_trait_ref) |tp| {
-        let trait_ref =
-            @parse_trait_ref_data(tp.data, cdata.cnum, tp.start, tcx,
-                                  |_, did| translate_def_id(cdata, did));
-        result = Some(trait_ref);
-        break;
-    };
-    result
+    do reader::maybe_get_doc(item_doc, tag_item_trait_ref).map |&tp| {
+        @doc_trait_ref(tp, tcx, cdata)
+    }
 }
 
 pub fn get_impl_method(intr: @ident_interner, cdata: cmd, id: ast::node_id,
