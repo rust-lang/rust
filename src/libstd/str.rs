@@ -2883,6 +2883,7 @@ impl<'self> Iterator<char> for StrCharIterator<'self> {
 
 #[cfg(test)]
 mod tests {
+    use iterator::IteratorUtil;
     use container::Container;
     use char;
     use option::Some;
@@ -2977,7 +2978,7 @@ mod tests {
             let mut v = ~[];
             for each_split_char(s, c) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         t("abc.hello.there", '.', [~"abc", ~"hello", ~"there"]);
         t(".hello.there", '.', [~"", ~"hello", ~"there"]);
@@ -2995,7 +2996,7 @@ mod tests {
             let mut v = ~[];
             for each_split_char(s, c) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         let data = "ประเทศไทย中华Việt Nam";
         t(data, 'V', [~"ประเทศไทย中华", ~"iệt Nam"]);
@@ -3010,7 +3011,7 @@ mod tests {
             for each_splitn_char(s, c, n) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
             debug!("comparing vs. %?", u);
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         t("abc.hello.there", '.', 0u, [~"abc.hello.there"]);
         t("abc.hello.there", '.', 1u, [~"abc", ~"hello.there"]);
@@ -3037,7 +3038,7 @@ mod tests {
             for each_splitn_char(s, c, n) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
             debug!("comparing vs. %?", u);
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
 
         t("ประเทศไทย中华Việt Nam", '华', 1u, [~"ประเทศไทย中", ~"Việt Nam"]);
@@ -3055,7 +3056,7 @@ mod tests {
             for each_splitn_char(s, c, n) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
             debug!("comparing vs. %?", u);
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         let data = "ประเทศไทย中华Việt Nam";
         t(data, 'V', 1u, [~"ประเทศไทย中华", ~"iệt Nam"]);
@@ -3069,7 +3070,7 @@ mod tests {
             let mut v = ~[];
             for each_split_char_no_trailing(s, c) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         t("abc.hello.there", '.', [~"abc", ~"hello", ~"there"]);
         t(".hello.there", '.', [~"", ~"hello", ~"there"]);
@@ -3088,7 +3089,7 @@ mod tests {
             let mut v = ~[];
             for each_split_char_no_trailing(s, c) |s| { v.push(s.to_owned()) }
             debug!("split_byte to: %?", v);
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         let data = "ประเทศไทย中华Việt Nam";
         t(data, 'V', [~"ประเทศไทย中华", ~"iệt Nam"]);
@@ -3100,7 +3101,7 @@ mod tests {
         fn t<'a>(s: &str, sep: &'a str, u: &[~str]) {
             let mut v = ~[];
             for each_split_str(s, sep) |s| { v.push(s.to_owned()) }
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         t("--1233345--", "12345", [~"--1233345--"]);
         t("abc::hello::there", "::", [~"abc", ~"hello", ~"there"]);
@@ -3124,7 +3125,7 @@ mod tests {
         fn t(s: &str, sepf: &fn(char) -> bool, u: &[~str]) {
             let mut v = ~[];
             for each_split(s, sepf) |s| { v.push(s.to_owned()) }
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
 
         t("ประเทศไทย中华Việt Nam", |cc| cc == '华', [~"ประเทศไทย中", ~"Việt Nam"]);
@@ -3140,7 +3141,7 @@ mod tests {
         fn t(s: &str, sepf: &fn(char) -> bool, u: &[~str]) {
             let mut v = ~[];
             for each_split_no_trailing(s, sepf) |s| { v.push(s.to_owned()) }
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
 
         t("ประเทศไทย中华Việt Nam", |cc| cc == '华', [~"ประเทศไทย中", ~"Việt Nam"]);
@@ -3159,7 +3160,7 @@ mod tests {
         fn t(s: &str, f: &fn(&str, &fn(&str) -> bool) -> bool, u: &[~str]) {
             let mut v = ~[];
             for f(s) |s| { v.push(s.to_owned()) }
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
 
         t(lf, each_line, [~"", ~"Mary had a little lamb", ~"Little lamb"]);
@@ -3179,7 +3180,7 @@ mod tests {
         fn t(s: &str, f: &fn(&str, &fn(&str) -> bool) -> bool, u: &[~str]) {
             let mut v = ~[];
             for f(s) |s| { v.push(s.to_owned()) }
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         let data = "\nMary had a little lamb\nLittle lamb\n";
 
@@ -3193,7 +3194,7 @@ mod tests {
         fn t(s: &str, i: uint, u: &[~str]) {
             let mut v = ~[];
             for each_split_within(s, i) |s| { v.push(s.to_owned()) }
-            assert!(vec::all2(v, u, |a,b| a == b));
+            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
         }
         t("", 0, []);
         t("", 15, []);

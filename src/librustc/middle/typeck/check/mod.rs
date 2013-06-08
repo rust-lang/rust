@@ -3065,7 +3065,7 @@ pub fn check_simd(tcx: ty::ctxt, sp: span, id: ast::node_id) {
                 return;
             }
             let e = ty::lookup_field_type(tcx, did, fields[0].id, substs);
-            if !vec::all(fields,
+            if !fields.iter().all(
                          |f| ty::lookup_field_type(tcx, did, f.id, substs) == e) {
                 tcx.sess.span_err(sp, "SIMD vector should be homogeneous");
                 return;

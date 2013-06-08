@@ -1124,78 +1124,10 @@ pub fn foldr<'a, T, U>(v: &'a [T], mut z: U, p: &fn(t: &'a T, u: U) -> U) -> U {
     return z;
 }
 
-/**
- * Return true if a predicate matches any elements
- *
- * If the vector contains no elements then false is returned.
- */
-pub fn any<T>(v: &[T], f: &fn(t: &T) -> bool) -> bool {
-    for each(v) |elem| { if f(elem) { return true; } }
-    false
-}
-
-/**
- * Return true if a predicate matches any elements in both vectors.
- *
- * If the vectors contains no elements then false is returned.
- */
-pub fn any2<T, U>(v0: &[T], v1: &[U],
-                   f: &fn(a: &T, b: &U) -> bool) -> bool {
-    let v0_len = len(v0);
-    let v1_len = len(v1);
-    let mut i = 0u;
-    while i < v0_len && i < v1_len {
-        if f(&v0[i], &v1[i]) { return true; };
-        i += 1u;
-    }
-    false
-}
-
-/**
- * Return true if a predicate matches all elements
- *
- * If the vector contains no elements then true is returned.
- */
-pub fn all<T>(v: &[T], f: &fn(t: &T) -> bool) -> bool {
-    for each(v) |elem| { if !f(elem) { return false; } }
-    true
-}
-
-/**
- * Return true if a predicate matches all elements
- *
- * If the vector contains no elements then true is returned.
- */
-pub fn alli<T>(v: &[T], f: &fn(uint, t: &T) -> bool) -> bool {
-    for eachi(v) |i, elem| { if !f(i, elem) { return false; } }
-    true
-}
-
-/**
- * Return true if a predicate matches all elements in both vectors.
- *
- * If the vectors are not the same size then false is returned.
- */
-pub fn all2<T, U>(v0: &[T], v1: &[U],
-                   f: &fn(t: &T, u: &U) -> bool) -> bool {
-    let v0_len = len(v0);
-    if v0_len != len(v1) { return false; }
-    let mut i = 0u;
-    while i < v0_len { if !f(&v0[i], &v1[i]) { return false; }; i += 1u; }
-    true
-}
-
 /// Return true if a vector contains an element with the given value
 pub fn contains<T:Eq>(v: &[T], x: &T) -> bool {
     for each(v) |elt| { if *x == *elt { return true; } }
     false
-}
-
-/// Returns the number of elements that are equal to a given value
-pub fn count<T:Eq>(v: &[T], x: &T) -> uint {
-    let mut cnt = 0u;
-    for each(v) |elt| { if *x == *elt { cnt += 1u; } }
-    cnt
 }
 
 /**
@@ -2074,7 +2006,7 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
      *     If the vector is empty, true is returned.
      */
     fn alli(&self, f: &fn(uint, t: &T) -> bool) -> bool {
-        alli(*self, f)
+        self.iter().enumerate().all(|(i, t)| f(i,t))
     }
     /**
      * Apply a function to each element of a vector and return a concatenation
@@ -3559,33 +3491,6 @@ mod tests {
     }
 
     #[test]
-    fn test_any_and_all() {
-        assert!(any([1u, 2u, 3u], is_three));
-        assert!(!any([0u, 1u, 2u], is_three));
-        assert!(any([1u, 2u, 3u, 4u, 5u], is_three));
-        assert!(!any([1u, 2u, 4u, 5u, 6u], is_three));
-
-        assert!(all([3u, 3u, 3u], is_three));
-        assert!(!all([3u, 3u, 2u], is_three));
-        assert!(all([3u, 3u, 3u, 3u, 3u], is_three));
-        assert!(!all([3u, 3u, 0u, 1u, 2u], is_three));
-    }
-
-    #[test]
-    fn test_any2_and_all2() {
-
-        assert!(any2([2u, 4u, 6u], [2u, 4u, 6u], is_equal));
-        assert!(any2([1u, 2u, 3u], [4u, 5u, 3u], is_equal));
-        assert!(!any2([1u, 2u, 3u], [4u, 5u, 6u], is_equal));
-        assert!(any2([2u, 4u, 6u], [2u, 4u], is_equal));
-
-        assert!(all2([2u, 4u, 6u], [2u, 4u, 6u], is_equal));
-        assert!(!all2([1u, 2u, 3u], [4u, 5u, 3u], is_equal));
-        assert!(!all2([1u, 2u, 3u], [4u, 5u, 6u], is_equal));
-        assert!(!all2([2u, 4u, 6u], [2u, 4u], is_equal));
-    }
-
-    #[test]
     fn test_zip_unzip() {
         let v1 = ~[1, 2, 3];
         let v2 = ~[4, 5, 6];
@@ -4364,81 +4269,6 @@ mod tests {
     #[test]
     #[ignore(windows)]
     #[should_fail]
-    fn test_any_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do any(v) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            false
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    fn test_any2_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do any(v) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            false
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    fn test_all_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do all(v) |_elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            true
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    fn test_alli_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do alli(v) |_i, _elt| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            true
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
-    fn test_all2_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        let mut i = 0;
-        do all2(v, v) |_elt1, _elt2| {
-            if i == 2 {
-                fail!()
-            }
-            i += 0;
-            true
-        };
-    }
-
-    #[test]
-    #[ignore(windows)]
-    #[should_fail]
     #[allow(non_implicitly_copyable_typarams)]
     fn test_find_fail() {
         let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
@@ -4617,7 +4447,7 @@ mod tests {
     #[test]
     fn test_mut_rev_iterator() {
         use iterator::*;
-        let mut xs = [1, 2, 3, 4, 5];
+        let mut xs = [1u, 2, 3, 4, 5];
         for xs.mut_rev_iter().enumerate().advance |(i,x)| {
             *x += i;
         }

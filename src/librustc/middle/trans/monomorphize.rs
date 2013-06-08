@@ -32,6 +32,7 @@ use middle::ty::{FnSig};
 use middle::typeck;
 use util::ppaux::{Repr,ty_to_str};
 
+use core::iterator::IteratorUtil;
 use core::vec;
 use syntax::ast;
 use syntax::ast_map;
@@ -75,7 +76,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
     let hash_id = make_mono_id(ccx, fn_id, substs, vtables, impl_did_opt,
                                Some(param_uses));
-    if vec::any(hash_id.params,
+    if hash_id.params.iter().any(
                 |p| match *p { mono_precise(_, _) => false, _ => true }) {
         must_cast = true;
     }
