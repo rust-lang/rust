@@ -460,6 +460,10 @@ fn constrain_call(rcx: @mut Rcx,
     debug!("constrain_call(call_expr=%s, implicitly_ref_args=%?)",
            call_expr.repr(tcx), implicitly_ref_args);
     let callee_ty = rcx.resolve_node_type(callee_id);
+    if ty::type_is_error(callee_ty) {
+        // Bail, as function type is unknown
+        return;
+    }
     let fn_sig = ty::ty_fn_sig(callee_ty);
 
     // `callee_region` is the scope representing the time in which the
@@ -1108,6 +1112,12 @@ pub mod guarantor {
      -> ExprCategorizationType {
         let mut ct = ct;
         let tcx = rcx.fcx.ccx.tcx;
+
+        if (ty::type_is_error(ct.ty)) {
+            ct.cat.pointer = NotPointer;
+            return ct;
+        }
+
         for uint::range(0, autoderefs) |_| {
             ct.cat.guarantor = guarantor_of_deref(&ct.cat);
 
