@@ -646,23 +646,23 @@ impl Hyperbolic for float {
 }
 
 impl Interpolate for float {
-    fn linear(x: float, y: float, t: float) -> float { // TODO: Test
+    fn linear(x: float, y: float, t: float) -> float {
         t.mul_add(y - x, x)
     }
 
-    fn cosine(x: float, y: float, t: float) -> float { // TODO: Test
+    fn cosine(x: float, y: float, t: float) -> float {
         (0.5 * (1.0 - (t * Real::pi()).cos())).mul_add(y - x, x)
     }
 
-    fn smooth(x: float, y: float, t: float) -> float { // TODO: Test
+    fn smooth(x: float, y: float, t: float) -> float {
         (t * t * t.mul_add(-2.0, 3.0)).mul_add(y - x, x)
     }
 
-    fn barycentric(x: float, y: float, z: float, t0: float, t1: float) -> float { // TODO: Test
+    fn barycentric(x: float, y: float, z: float, t0: float, t1: float) -> float {
         (1.0 - t0 - t1) * x + t0 * y + t1 * z
     }
 
-    fn hermite(x: float, xp: float, y: float, yp: float, t: float) -> float { // TODO: Test
+    fn hermite(x: float, xp: float, y: float, yp: float, t: float) -> float {
         let a0 = t.mul_add(t * t.mul_add(2.0, -3.0), 1.0);
         let a1 = t * t * t.mul_add(-2.0, 3.0);
         let a2 = t * t.mul_add(t * (t - 2.0), 1.0);
@@ -671,7 +671,7 @@ impl Interpolate for float {
         a0 * x + a1 * y + a2 * xp + a3 * yp
     }
 
-    fn cubic(x: float, y: float, z: float, u: float, t: float) -> float { // TODO: Test
+    fn cubic(x: float, y: float, z: float, u: float, t: float) -> float {
         let a0 = -x + y - z + u;
         let a1 =  x - y - a0;
         let a2 =  z - x;
@@ -680,7 +680,7 @@ impl Interpolate for float {
         t.mul_add(t.mul_add(t.mul_add((t * a0), a1), a2), a3)
     }
 
-    fn catmull_rom(x: float, y: float, z: float, u: float, t: float) -> float { // TODO: Test
+    fn catmull_rom(x: float, y: float, z: float, u: float, t: float) -> float {
         let a0 = -x + 3.0 * y - 3.0 * z + u;
         let a1 = 2.0 * x - 5.0 * y + 4.0 * z - u;
         let a2 = -x + z;
@@ -1137,10 +1137,185 @@ mod tests {
     }
 
     #[test]
-    fn test_lerp() {
-        assert_eq!(0f.lerp(&2f, &0.25f), 0.5f);
-        assert_eq!(0f.lerp(&2f, &0.5f), 1f);
-        assert_eq!(0f.lerp(&2f, &0.75f), 1.5f);
+    fn test_linear() {
+        assert_eq!(Interpolate::linear(3.0, 5.0, 0.0), 3.0);
+        assert_eq!(Interpolate::linear(3.0, 5.0, 0.5), 4.0);
+        assert_eq!(Interpolate::linear(3.0, 5.0, 1.0), 5.0);
+
+        assert_eq!(Interpolate::linear(3.0, 5.0,  infinity),  infinity);
+        assert_eq!(Interpolate::linear(3.0, 5.0, -infinity), -infinity);
+
+        assert_eq!(Interpolate::linear(3.0,  infinity, 0.5),  infinity);
+        assert_eq!(Interpolate::linear(3.0, -infinity, 0.5), -infinity);
+
+        assert!(Interpolate::linear( infinity, 5.0, 0.5).is_NaN());
+        assert!(Interpolate::linear(-infinity, 5.0, 0.5).is_NaN());
+
+        assert!(Interpolate::linear( infinity, 5.0, 1.0).is_NaN());
+        assert!(Interpolate::linear(-infinity, 5.0, 1.0).is_NaN());
+
+        assert!(Interpolate::linear(NaN, 5.0, 1.0).is_NaN());
+        assert!(Interpolate::linear(3.0, NaN, 1.0).is_NaN());
+        assert!(Interpolate::linear(3.0, 5.0, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_cosine() {
+        assert_eq!(Interpolate::cosine(3.0, 5.0, 0.0), 3.0);
+        assert_eq!(Interpolate::cosine(3.0, 5.0, 0.5), 4.0);
+        assert_eq!(Interpolate::cosine(3.0, 5.0, 1.0), 5.0);
+
+        assert!(Interpolate::cosine(3.0, 5.0,  infinity).is_NaN());
+        assert!(Interpolate::cosine(3.0, 5.0, -infinity).is_NaN());
+
+        assert_eq!(Interpolate::cosine(3.0,  infinity, 0.5),  infinity);
+        assert_eq!(Interpolate::cosine(3.0, -infinity, 0.5), -infinity);
+
+        assert!(Interpolate::cosine( infinity, 5.0, 0.5).is_NaN());
+        assert!(Interpolate::cosine(-infinity, 5.0, 0.5).is_NaN());
+
+        assert!(Interpolate::cosine( infinity, 5.0, 1.0).is_NaN());
+        assert!(Interpolate::cosine(-infinity, 5.0, 1.0).is_NaN());
+
+        assert!(Interpolate::cosine(NaN, 5.0, 1.0).is_NaN());
+        assert!(Interpolate::cosine(3.0, NaN, 1.0).is_NaN());
+        assert!(Interpolate::cosine(3.0, 5.0, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_smooth() {
+        assert_eq!(Interpolate::smooth(3.0, 5.0, 0.0), 3.0);
+        assert_eq!(Interpolate::smooth(3.0, 5.0, 0.5), 4.0);
+        assert_eq!(Interpolate::smooth(3.0, 5.0, 1.0), 5.0);
+
+        assert_eq!(Interpolate::smooth(3.0, 5.0,  infinity), -infinity);
+        assert_eq!(Interpolate::smooth(3.0, 5.0, -infinity),  infinity);
+
+        assert_eq!(Interpolate::smooth(3.0,  infinity, 0.5),  infinity);
+        assert_eq!(Interpolate::smooth(3.0, -infinity, 0.5), -infinity);
+
+        assert!(Interpolate::smooth( infinity, 5.0, 0.5).is_NaN());
+        assert!(Interpolate::smooth(-infinity, 5.0, 0.5).is_NaN());
+
+        assert!(Interpolate::smooth( infinity, 5.0, 1.0).is_NaN());
+        assert!(Interpolate::smooth(-infinity, 5.0, 1.0).is_NaN());
+
+        assert!(Interpolate::smooth(NaN, 5.0, 1.0).is_NaN());
+        assert!(Interpolate::smooth(3.0, NaN, 1.0).is_NaN());
+        assert!(Interpolate::smooth(3.0, 5.0, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_barycentric() {
+        assert_eq!(Interpolate::barycentric(1.0, 4.0, 6.0, 0.0, 0.0), 6.0);
+        assert_eq!(Interpolate::barycentric(1.0, 4.0, 6.0, 0.2, 0.0), 5.0);
+        assert_eq!(Interpolate::barycentric(1.0, 4.0, 6.0, 0.4, 0.0), 4.0);
+
+        assert_eq!(Interpolate::barycentric(infinity, 4.0, 6.0, 0.2, 0.1), infinity);
+        assert_eq!(Interpolate::barycentric(1.0, infinity, 6.0, 0.2, 0.1), infinity);
+        assert_eq!(Interpolate::barycentric(1.0, 4.0, infinity, 0.2, 0.1), infinity);
+        assert!(Interpolate::barycentric(1.0, 4.0, 6.0, infinity, 0.1).is_NaN());
+        assert!(Interpolate::barycentric(1.0, 4.0, 6.0, 0.2, infinity).is_NaN());
+
+        assert_eq!(Interpolate::barycentric(-infinity, 4.0, 6.0, 0.2, 0.1), -infinity);
+        assert_eq!(Interpolate::barycentric(1.0, -infinity, 6.0, 0.2, 0.1), -infinity);
+        assert_eq!(Interpolate::barycentric(1.0, 4.0, -infinity, 0.2, 0.1), -infinity);
+        assert!(Interpolate::barycentric(1.0, 4.0, 6.0, -infinity, 0.1).is_NaN());
+        assert!(Interpolate::barycentric(1.0, 4.0, 6.0, 0.2, -infinity).is_NaN());
+
+        assert!(Interpolate::barycentric(NaN, 4.0, 6.0, 0.0, 0.0).is_NaN());
+        assert!(Interpolate::barycentric(1.0, NaN, 6.0, 0.2, 0.0).is_NaN());
+        assert!(Interpolate::barycentric(1.0, 4.0, NaN, 0.4, 0.0).is_NaN());
+        assert!(Interpolate::barycentric(1.0, 4.0, 6.0, NaN, 0.0).is_NaN());
+        assert!(Interpolate::barycentric(1.0, 4.0, 6.0, 0.4, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_hermite() {
+        assert_eq!(Interpolate::hermite(3.0, 0.0, 5.0, 0.0, 0.0), 3.0);
+        assert_eq!(Interpolate::hermite(3.0, 0.0, 5.0, 0.0, 0.5), 4.0);
+        assert_eq!(Interpolate::hermite(3.0, 0.0, 5.0, 0.0, 1.0), 5.0);
+
+        assert_eq!(Interpolate::hermite(3.0,  1.0, -5.0, 2.0,  infinity),  infinity);
+        assert_eq!(Interpolate::hermite(3.0, -1.0, -5.0, 2.0, -infinity), -infinity);
+
+        assert!(Interpolate::hermite(3.0, 0.0, 5.0, 0.0,  infinity).is_NaN());
+        assert!(Interpolate::hermite(3.0, 0.0, 5.0, 0.0, -infinity).is_NaN());
+
+        assert!(Interpolate::hermite(3.0, -1.0, 5.0, 2.0,  infinity).is_NaN());
+        assert!(Interpolate::hermite(3.0, -1.0, 5.0, 2.0, -infinity).is_NaN());
+
+        assert_eq!(Interpolate::hermite(3.0, 0.0,  infinity, 0.0, 0.5),  infinity);
+        assert_eq!(Interpolate::hermite(3.0, 0.0, -infinity, 0.0, 0.5), -infinity);
+
+        assert!(Interpolate::hermite(3.0, 0.0,  infinity, 0.0, 0.0).is_NaN());
+        assert!(Interpolate::hermite(3.0, 0.0, -infinity, 0.0, 0.0).is_NaN());
+
+        assert_eq!(Interpolate::hermite( infinity, 0.0, 5.0, 0.0, 0.5),  infinity);
+        assert_eq!(Interpolate::hermite(-infinity, 0.0, 5.0, 0.0, 0.5), -infinity);
+
+        assert!(Interpolate::hermite( infinity, 0.0, 5.0, 0.0, 1.0).is_NaN());
+        assert!(Interpolate::hermite(-infinity, 0.0, 5.0, 0.0, 1.0).is_NaN());
+
+        assert!(Interpolate::hermite(NaN, 0.0, 5.0, 0.0, 1.0).is_NaN());
+        assert!(Interpolate::hermite(3.0, NaN, 5.0, 0.0, 1.0).is_NaN());
+        assert!(Interpolate::hermite(3.0, 0.0, NaN, 0.0, 1.0).is_NaN());
+        assert!(Interpolate::hermite(3.0, 0.0, 5.0, NaN, 1.0).is_NaN());
+        assert!(Interpolate::hermite(3.0, 0.0, 5.0, 0.0, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_cubic() {
+        assert_eq!(Interpolate::cubic(1.0, 3.0, 5.0, 6.0, 0.0), 3.0);
+        assert_eq!(Interpolate::cubic(1.0, 3.0, 5.0, 6.0, 1.0), 5.0);
+
+        assert_eq!(Interpolate::cubic(1.0, 3.0, 5.0, 6.0,  infinity), infinity);
+        assert_eq!(Interpolate::cubic(1.0, 3.0, 5.0, 6.0, -infinity), infinity);
+
+        assert!(Interpolate::cubic( infinity, 3.0, 5.0, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::cubic(-infinity, 3.0, 5.0, 6.0, 0.5).is_NaN());
+
+        assert!(Interpolate::cubic(1.0,  infinity, 5.0, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::cubic(1.0, -infinity, 5.0, 6.0, 0.5).is_NaN());
+
+        assert!(Interpolate::cubic(1.0, 3.0,  infinity, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::cubic(1.0, 3.0, -infinity, 6.0, 0.5).is_NaN());
+
+        assert!(Interpolate::cubic(1.0, 3.0, 5.0,  infinity, 0.5).is_NaN());
+        assert!(Interpolate::cubic(1.0, 3.0, 5.0, -infinity, 0.5).is_NaN());
+
+        assert!(Interpolate::cubic( NaN, 3.0, 5.0, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::cubic(1.0,  NaN, 5.0, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::cubic(1.0, 3.0,  NaN, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::cubic(1.0, 3.0, 5.0,  NaN, 0.5).is_NaN());
+        assert!(Interpolate::cubic(1.0, 3.0, 5.0, 6.0, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_catmull_rom() {
+        assert_eq!(Interpolate::catmull_rom(1.0, 3.0, 5.0, 6.0, 0.0), 3.0);
+        assert_eq!(Interpolate::catmull_rom(1.0, 3.0, 5.0, 6.0, 1.0), 5.0);
+
+        assert_eq!(Interpolate::catmull_rom(1.0, 3.0, 5.0, 6.0,  infinity), -infinity);
+        assert_eq!(Interpolate::catmull_rom(1.0, 3.0, 5.0, 6.0, -infinity), -infinity);
+
+        assert!(Interpolate::catmull_rom( infinity, 3.0, 5.0, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::catmull_rom(-infinity, 3.0, 5.0, 6.0, 0.5).is_NaN());
+
+        assert!(Interpolate::catmull_rom(1.0,  infinity, 5.0, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0, -infinity, 5.0, 6.0, 0.5).is_NaN());
+
+        assert!(Interpolate::catmull_rom(1.0, 3.0,  infinity, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0, 3.0, -infinity, 6.0, 0.5).is_NaN());
+
+        assert!(Interpolate::catmull_rom(1.0, 3.0, 5.0,  infinity, 0.5).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0, 3.0, 5.0, -infinity, 0.5).is_NaN());
+
+        assert!(Interpolate::catmull_rom(NaN, 3.0, 5.0, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0, NaN, 5.0, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0, 3.0, NaN, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0, 3.0, 5.0, NaN, 0.5).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0, 3.0, 5.0, 6.0, NaN).is_NaN());
     }
 
     #[test]
