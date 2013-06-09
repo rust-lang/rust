@@ -20,7 +20,7 @@ pub fn main() {
 
     assert!(str::len(s) == 10u);
     assert!(str::char_len(s) == 4u);
-    assert!(vec::len(str::to_chars(s)) == 4u);
+    assert!(str::to_chars(s).len() == 4u);
     assert!(str::from_chars(str::to_chars(s)) == s);
     assert!(str::char_at(s, 0u) == 'e');
     assert!(str::char_at(s, 1u) == 'é');

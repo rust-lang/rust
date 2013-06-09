@@ -40,7 +40,7 @@ fn send(p: &pipe, msg: uint) {
 fn recv(p: &pipe) -> uint {
     unsafe {
         do p.access_cond |state, cond| {
-            while vec::is_empty(*state) {
+            while state.is_empty() {
                 cond.wait();
             }
             state.pop()

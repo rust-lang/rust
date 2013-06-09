@@ -624,7 +624,7 @@ pub fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
 }
 
 pub fn check_convergence(files: &[Path]) {
-    error!("pp convergence tests: %u files", vec::len(files));
+    error!("pp convergence tests: %u files", files.len());
     for files.each |file| {
         if !file_might_not_converge(file) {
             let s = @result::get(&io::read_whole_file_str(file));
@@ -689,7 +689,7 @@ pub fn check_variants(files: &[Path], cx: Context) {
 
 pub fn main() {
     let args = os::args();
-    if vec::len(args) != 2u {
+    if args.len() != 2u {
         error!("usage: %s <testdir>", args[0]);
         return;
     }

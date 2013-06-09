@@ -2768,7 +2768,7 @@ impl Parser {
             attributes_box.push_all(self.parse_outer_attributes());
             match *self.token {
                 token::SEMI => {
-                    if !vec::is_empty(attributes_box) {
+                    if !attributes_box.is_empty() {
                         self.span_err(*self.last_span, "expected item after attributes");
                         attributes_box = ~[];
                     }
@@ -2839,7 +2839,7 @@ impl Parser {
             }
         }
 
-        if !vec::is_empty(attributes_box) {
+        if !attributes_box.is_empty() {
             self.span_err(*self.last_span, "expected item after attributes");
         }
 

@@ -80,6 +80,6 @@ mod test {
         use core::vec;
 
         let doc = mk_doc(~"#[doc(hidden)] mod a { }");
-        assert!(vec::is_empty(doc.cratemod().mods()))
+        assert!(doc.cratemod().mods().is_empty())
     }
 }

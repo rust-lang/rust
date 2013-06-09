@@ -343,7 +343,7 @@ fn item_header_lvl(doc: &doc::ItemTag) -> Hlvl {
 }
 
 fn write_index(ctxt: &Ctxt, index: &doc::Index) {
-    if vec::is_empty(index.entries) {
+    if index.entries.is_empty() {
         return;
     }
 
@@ -437,7 +437,7 @@ fn write_variants(
     ctxt: &Ctxt,
     docs: &[doc::VariantDoc]
 ) {
-    if vec::is_empty(docs) {
+    if docs.is_empty() {
         return;
     }
 
