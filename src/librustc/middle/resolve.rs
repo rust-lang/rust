@@ -409,6 +409,7 @@ pub enum ParentLink {
 }
 
 /// The type of module this is.
+#[deriving(Eq)]
 pub enum ModuleKind {
     NormalModuleKind,
     ExternModuleKind,
@@ -1228,25 +1229,34 @@ impl Resolver {
                 match (trait_ref_opt, ty) {
                     (None, @Ty { node: ty_path(path, _), _ }) if
                             has_static_methods && path.idents.len() == 1 => {
-                        // Create the module.
                         let name = path_to_ident(path);
-                        let (name_bindings, new_parent) =
-                            self.add_child(name,
-                                           parent,
-                                           ForbidDuplicateModules,
-                                           sp);
 
-                        let parent_link = self.get_parent_link(new_parent,
-                                                               ident);
-                        let def_id = local_def(item.id);
-                        name_bindings.define_module(Public,
-                                                    parent_link,
-                                                    Some(def_id),
-                                                    ImplModuleKind,
-                                                    sp);
+                        let new_parent = match parent.children.find(&name) {
+                            // It already exists
+                            Some(&child) if child.get_module_if_available().is_some() &&
+                                            child.get_module().kind == ImplModuleKind => {
+                                ModuleReducedGraphParent(child.get_module())
+                            }
+                            // Create the module
+                            _ => {
+                                let (name_bindings, new_parent) =
+                                    self.add_child(name,
+                                                   parent,
+                                                   ForbidDuplicateModules,
+                                                   sp);
 
-                        let new_parent = ModuleReducedGraphParent(
-                            name_bindings.get_module());
+                                let parent_link = self.get_parent_link(new_parent,
+                                                                       ident);
+                                let def_id = local_def(item.id);
+                                name_bindings.define_module(Public,
+                                                            parent_link,
+                                                            Some(def_id),
+                                                            ImplModuleKind,
+                                                            sp);
+
+                                ModuleReducedGraphParent(name_bindings.get_module())
+                            }
+                        };
 
                         // For each static method...
                         for methods.each |method| {
