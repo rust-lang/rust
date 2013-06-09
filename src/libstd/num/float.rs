@@ -759,6 +759,14 @@ impl Real for float {
     #[inline(always)]
     pub fn ln_10() -> float { 2.30258509299404568401799145468436421 }
 
+    /// Returns the error function of the number
+    #[inline(always)]
+    pub fn erf(&self) -> float { (*self as f64).erf() as float }
+
+    /// Returns the complementary error function of the number
+    #[inline(always)]
+    pub fn erfc(&self) -> float { (*self as f64).erfc() as float }
+
     /// Converts to degrees, assuming the number is in radians
     #[inline(always)]
     pub fn to_degrees(&self) -> float { (*self as f64).to_degrees() as float }

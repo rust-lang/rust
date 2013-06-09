@@ -183,6 +183,10 @@ pub trait Real: Signed
     pub fn ln_2() -> Self;
     pub fn ln_10() -> Self;
 
+    // Error functions
+    pub fn erf(&self) -> Self;
+    pub fn erfc(&self) -> Self;
+
     // Angular conversions
     pub fn to_degrees(&self) -> Self;
     pub fn to_radians(&self) -> Self;

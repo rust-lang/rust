@@ -651,6 +651,14 @@ impl Real for f64 {
     #[inline(always)]
     pub fn ln_10() -> f64 { 2.30258509299404568401799145468436421 }
 
+    /// Returns the error function of the number
+    #[inline(always)]
+    pub fn erf(&self) -> f64 { erf(*self) }
+
+    /// Returns the complementary error function of the number
+    #[inline(always)]
+    pub fn erfc(&self) -> f64 { erfc(*self) }
+
     /// Converts to degrees, assuming the number is in radians
     #[inline(always)]
     pub fn to_degrees(&self) -> f64 { *self * (180.0 / Real::pi::<f64>()) }
