@@ -624,7 +624,9 @@ impl Interpolate for float {
     }
 
     pub fn barycentric(x: float, y: float, z: float, t0: float, t1: float) -> float {
-        (1.0 - t0 - t1) * x + t0 * y + t1 * z
+        let t2 = 1.0 - t0 - t1;
+
+        t0 * x + t1 * y + t2 * z
     }
 
     pub fn hermite(x: float, xp: float, y: float, yp: float, t: float) -> float {
