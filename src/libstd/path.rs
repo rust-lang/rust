@@ -508,7 +508,7 @@ impl GenericPath for PosixPath {
     }
 
     fn with_filename(&self, f: &str) -> PosixPath {
-        assert!(! str::any(f, |c| windows::is_sep(c)));
+        assert!(! f.iter().all(windows::is_sep));
         self.dir_path().push(f)
     }
 
@@ -722,7 +722,7 @@ impl GenericPath for WindowsPath {
     }
 
     fn with_filename(&self, f: &str) -> WindowsPath {
-        assert!(! str::any(f, |c| windows::is_sep(c)));
+        assert!(! f.iter().all(windows::is_sep));
         self.dir_path().push(f)
     }
 

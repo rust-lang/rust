@@ -1175,22 +1175,6 @@ impl<'self> Equiv<~str> for &'self str {
 Section: Iterating through strings
 */
 
-/**
- * Return true if a predicate matches all characters or if the string
- * contains no characters
- */
-pub fn all(s: &str, it: &fn(char) -> bool) -> bool {
-    all_between(s, 0u, len(s), it)
-}
-
-/**
- * Return true if a predicate matches any character (and false if it
- * matches none or there are no characters)
- */
-pub fn any(ss: &str, pred: &fn(char) -> bool) -> bool {
-    !all(ss, |cc| !pred(cc))
-}
-
 /// Apply a function to each character
 pub fn map(ss: &str, ff: &fn(char) -> char) -> ~str {
     let mut result = ~"";
@@ -1675,7 +1659,7 @@ pub fn is_empty(s: &str) -> bool { len(s) == 0u }
  * Whitespace characters are determined by `char::is_whitespace`
  */
 pub fn is_whitespace(s: &str) -> bool {
-    return all(s, char::is_whitespace);
+    s.iter().all(char::is_whitespace)
 }
 
 /**
@@ -1684,7 +1668,7 @@ pub fn is_whitespace(s: &str) -> bool {
  * Alphanumeric characters are determined by `char::is_alphanumeric`
  */
 fn is_alphanumeric(s: &str) -> bool {
-    return all(s, char::is_alphanumeric);
+    s.iter().all(char::is_alphanumeric)
 }
 
 /// Returns the string length/size in bytes not counting the null terminator
@@ -2467,8 +2451,6 @@ pub mod traits {}
 
 #[allow(missing_doc)]
 pub trait StrSlice<'self> {
-    fn all(&self, it: &fn(char) -> bool) -> bool;
-    fn any(&self, it: &fn(char) -> bool) -> bool;
     fn contains<'a>(&self, needle: &'a str) -> bool;
     fn contains_char(&self, needle: char) -> bool;
     fn iter(&self) -> StrCharIterator<'self>;
@@ -2514,18 +2496,6 @@ pub trait StrSlice<'self> {
 
 /// Extension methods for strings
 impl<'self> StrSlice<'self> for &'self str {
-    /**
-     * Return true if a predicate matches all characters or if the string
-     * contains no characters
-     */
-    #[inline]
-    fn all(&self, it: &fn(char) -> bool) -> bool { all(*self, it) }
-    /**
-     * Return true if a predicate matches any character (and false if it
-     * matches none or there are no characters)
-     */
-    #[inline]
-    fn any(&self, it: &fn(char) -> bool) -> bool { any(*self, it) }
     /// Returns true if one string contains another
     #[inline]
     fn contains<'a>(&self, needle: &'a str) -> bool {
@@ -3520,24 +3490,6 @@ mod tests {
     fn test_map() {
         assert_eq!(~"", map("", |c| unsafe {libc::toupper(c as c_char)} as char));
         assert_eq!(~"YMCA", map("ymca", |c| unsafe {libc::toupper(c as c_char)} as char));
-    }
-
-    #[test]
-    fn test_all() {
-        assert_eq!(true, all("", char::is_uppercase));
-        assert_eq!(false, all("ymca", char::is_uppercase));
-        assert_eq!(true, all("YMCA", char::is_uppercase));
-        assert_eq!(false, all("yMCA", char::is_uppercase));
-        assert_eq!(false, all("YMCy", char::is_uppercase));
-    }
-
-    #[test]
-    fn test_any() {
-        assert_eq!(false, any("", char::is_uppercase));
-        assert_eq!(false, any("ymca", char::is_uppercase));
-        assert_eq!(true, any("YMCA", char::is_uppercase));
-        assert_eq!(true, any("yMCA", char::is_uppercase));
-        assert_eq!(true, any("Ymcy", char::is_uppercase));
     }
 
     #[test]

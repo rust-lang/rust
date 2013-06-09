@@ -735,7 +735,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     let cmdline = make_cmdline("", args.prog, args.args);
 
     // get bare program string
-    let tvec: ~[~str] = args.prog.split_iter('/').transform(|ts| ts.to_owned()).collect();
+    let mut tvec: ~[~str] = args.prog.split_iter('/').transform(|ts| ts.to_owned()).collect();
     let prog_short = tvec.pop();
 
     // copy to target

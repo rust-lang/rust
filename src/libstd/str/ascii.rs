@@ -226,8 +226,8 @@ mod tests {
         assert_eq!('`'.to_ascii().to_upper().to_char(), '`');
         assert_eq!('{'.to_ascii().to_upper().to_char(), '{');
 
-        assert!(str::all("banana", |c| c.is_ascii()));
-        assert!(! str::all("ประเทศไทย中华Việt Nam", |c| c.is_ascii()));
+        assert!("banana".iter().all(|c| c.is_ascii()));
+        assert!(!"ประเทศไทย中华Việt Nam".iter().all(|c| c.is_ascii()));
     }
 
     #[test]
