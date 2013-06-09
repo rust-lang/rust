@@ -25,7 +25,7 @@ use clone::Clone;
 use cmp::{TotalOrd, Ordering, Less, Equal, Greater};
 use container::Container;
 use iter::Times;
-use iterator::{Iterator, IteratorUtil};
+use iterator::{Iterator, IteratorUtil, FilterIterator};
 use libc;
 use option::{None, Option, Some};
 use old_iter::{BaseIter, EqIter};
@@ -633,128 +633,92 @@ pub fn slice<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
     unsafe { raw::slice_bytes(s, begin, end) }
 }
 
-/// Splits a string into substrings at each occurrence of a given character
-pub fn each_split_char<'a>(s: &'a str, sep: char,
-                           it: &fn(&'a str) -> bool) -> bool {
-    each_split_char_inner(s, sep, len(s), true, true, it)
+/// An iterator over the substrings of a string, separated by `sep`.
+pub struct StrCharSplitIterator<'self,Sep> {
+    priv string: &'self str,
+    priv position: uint,
+    priv sep: Sep,
+    /// The number of splits remaining
+    priv count: uint,
+    /// Whether an empty string at the end is allowed
+    priv allow_trailing_empty: bool,
+    priv finished: bool,
+    priv only_ascii: bool
 }
 
-/// Like `each_split_char`, but a trailing empty string is omitted
-pub fn each_split_char_no_trailing<'a>(s: &'a str,
-                                       sep: char,
-                                       it: &fn(&'a str) -> bool) -> bool {
-    each_split_char_inner(s, sep, len(s), true, false, it)
+/// An iterator over the words of a string, separated by an sequence of whitespace
+pub type WordIterator<'self> =
+    FilterIterator<'self, &'self str,
+             StrCharSplitIterator<'self, extern "Rust" fn(char) -> bool>>;
+
+/// A separator for splitting a string character-wise
+pub trait StrCharSplitSeparator {
+    /// Determine if the splitter should split at the given character
+    fn should_split(&self, char) -> bool;
+    /// Indicate if the splitter only uses ASCII characters, which
+    /// allows for a faster implementation.
+    fn only_ascii(&self) -> bool;
+}
+impl StrCharSplitSeparator for char {
+    #[inline(always)]
+    fn should_split(&self, c: char) -> bool { *self == c }
+
+    fn only_ascii(&self) -> bool { (*self as uint) < 128 }
+}
+impl<'self> StrCharSplitSeparator for &'self fn(char) -> bool {
+    #[inline(always)]
+    fn should_split(&self, c: char) -> bool { (*self)(c) }
+
+    fn only_ascii(&self) -> bool { false }
+}
+impl<'self> StrCharSplitSeparator for extern "Rust" fn(char) -> bool {
+    #[inline(always)]
+    fn should_split(&self, c: char) -> bool { (*self)(c) }
+
+    fn only_ascii(&self) -> bool { false }
 }
 
-/**
- * Splits a string into substrings at each occurrence of a given
- * character up to 'count' times.
- *
- * The character must be a valid UTF-8/ASCII character
- */
-pub fn each_splitn_char<'a>(s: &'a str,
-                            sep: char,
-                            count: uint,
-                            it: &fn(&'a str) -> bool) -> bool {
-    each_split_char_inner(s, sep, count, true, true, it)
-}
+impl<'self, Sep: StrCharSplitSeparator> Iterator<&'self str> for StrCharSplitIterator<'self, Sep> {
+    fn next(&mut self) -> Option<&'self str> {
+        if self.finished { return None }
 
-/// Like `each_split_char`, but omits empty strings
-pub fn each_split_char_nonempty<'a>(s: &'a str,
-                                    sep: char,
-                                    it: &fn(&'a str) -> bool) -> bool {
-    each_split_char_inner(s, sep, len(s), false, false, it)
-}
+        let l = self.string.len();
+        let start = self.position;
 
-fn each_split_char_inner<'a>(s: &'a str,
-                             sep: char,
-                             count: uint,
-                             allow_empty: bool,
-                             allow_trailing_empty: bool,
-                             it: &fn(&'a str) -> bool) -> bool {
-    if sep < 128u as char {
-        let (b, l) = (sep as u8, len(s));
-        let mut done = 0u;
-        let mut (i, start) = (0u, 0u);
-        while i < l && done < count {
-            if s[i] == b {
-                if allow_empty || start < i {
-                    if !it( unsafe{ raw::slice_bytes(s, start, i) } ) {
-                        return false;
-                    }
+        if self.only_ascii {
+            // this gives a *huge* speed up for splitting on ASCII
+            // characters (e.g. '\n' or ' ')
+            while self.position < l && self.count > 0 {
+                let byte = self.string[self.position];
+
+                if self.sep.should_split(byte as char) {
+                    let slice = unsafe { raw::slice_bytes(self.string, start, self.position) };
+                    self.position += 1;
+                    self.count -= 1;
+                    return Some(slice);
                 }
-                start = i + 1u;
-                done += 1u;
+                self.position += 1;
             }
-            i += 1u;
-        }
-        // only slice a non-empty trailing substring
-        if allow_trailing_empty || start < l {
-            if !it( unsafe{ raw::slice_bytes(s, start, l) } ) { return false; }
-        }
-        return true;
-    }
-    return each_split_inner(s, |cur| cur == sep, count,
-                            allow_empty, allow_trailing_empty, it)
-}
+        } else {
+            while self.position < l && self.count > 0 {
+                let CharRange {ch, next} = char_range_at(self.string, self.position);
 
-/// Splits a string into substrings using a character function
-pub fn each_split<'a>(s: &'a str,
-                      sepfn: &fn(char) -> bool,
-                      it: &fn(&'a str) -> bool) -> bool {
-    each_split_inner(s, sepfn, len(s), true, true, it)
-}
-
-/// Like `each_split`, but a trailing empty string is omitted
-pub fn each_split_no_trailing<'a>(s: &'a str,
-                                  sepfn: &fn(char) -> bool,
-                                  it: &fn(&'a str) -> bool) -> bool {
-    each_split_inner(s, sepfn, len(s), true, false, it)
-}
-
-/**
- * Splits a string into substrings using a character function, cutting at
- * most `count` times.
- */
-pub fn each_splitn<'a>(s: &'a str,
-                       sepfn: &fn(char) -> bool,
-                       count: uint,
-                       it: &fn(&'a str) -> bool) -> bool {
-    each_split_inner(s, sepfn, count, true, true, it)
-}
-
-/// Like `each_split`, but omits empty strings
-pub fn each_split_nonempty<'a>(s: &'a str,
-                               sepfn: &fn(char) -> bool,
-                               it: &fn(&'a str) -> bool) -> bool {
-    each_split_inner(s, sepfn, len(s), false, false, it)
-}
-
-fn each_split_inner<'a>(s: &'a str,
-                        sepfn: &fn(cc: char) -> bool,
-                        count: uint,
-                        allow_empty: bool,
-                        allow_trailing_empty: bool,
-                        it: &fn(&'a str) -> bool) -> bool {
-    let l = len(s);
-    let mut (i, start, done) = (0u, 0u, 0u);
-    while i < l && done < count {
-        let CharRange {ch, next} = char_range_at(s, i);
-        if sepfn(ch) {
-            if allow_empty || start < i {
-                if !it( unsafe{ raw::slice_bytes(s, start, i) } ) {
-                    return false;
+                if self.sep.should_split(ch) {
+                    let slice = unsafe { raw::slice_bytes(self.string, start, self.position) };
+                    self.position = next;
+                    self.count -= 1;
+                    return Some(slice);
                 }
+                self.position = next;
             }
-            start = next;
-            done += 1u;
         }
-        i = next;
+        self.finished = true;
+        if self.allow_trailing_empty || start < l {
+            Some(unsafe { raw::slice_bytes(self.string, start, l) })
+        } else {
+            None
+        }
     }
-    if allow_trailing_empty || start < l {
-        if !it( unsafe{ raw::slice_bytes(s, start, l) } ) { return false; }
-    }
-    return true;
 }
 
 // See Issue #1932 for why this is a naive search
@@ -876,18 +840,11 @@ pub fn levdistance(s: &str, t: &str) -> uint {
 }
 
 /**
- * Splits a string into substrings separated by LF ('\n').
- */
-pub fn each_line<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
-    each_split_char_no_trailing(s, '\n', it)
-}
-
-/**
  * Splits a string into substrings separated by LF ('\n')
  * and/or CR LF ("\r\n")
  */
 pub fn each_line_any<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
-    for each_line(s) |s| {
+    for s.line_iter().advance |s| {
         let l = s.len();
         if l > 0u && s[l - 1u] == '\r' as u8 {
             if !it( unsafe { raw::slice_bytes(s, 0, l - 1) } ) { return false; }
@@ -896,11 +853,6 @@ pub fn each_line_any<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
         }
     }
     return true;
-}
-
-/// Splits a string into substrings separated by whitespace
-pub fn each_word<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
-    each_split_nonempty(s, char::is_whitespace, it)
 }
 
 /** Splits a string into substrings with possibly internal whitespace,
@@ -2216,7 +2168,7 @@ pub fn as_buf<T>(s: &str, f: &fn(*u8, uint) -> T) -> T {
  * ~~~ {.rust}
  * let string = "a\nb\nc";
  * let mut lines = ~[];
- * for each_line(string) |line| { lines.push(line) }
+ * for string.line_iter().advance |line| { lines.push(line) }
  *
  * assert!(subslice_offset(string, lines[0]) == 0); // &"a"
  * assert!(subslice_offset(string, lines[1]) == 2); // &"b"
@@ -2523,6 +2475,18 @@ pub trait StrSlice<'self> {
     fn rev_iter(&self) -> StrCharRevIterator<'self>;
     fn bytes_iter(&self) -> StrBytesIterator<'self>;
     fn bytes_rev_iter(&self) -> StrBytesRevIterator<'self>;
+    fn split_iter<Sep: StrCharSplitSeparator>(&self, sep: Sep) -> StrCharSplitIterator<'self, Sep>;
+    fn splitn_iter<Sep: StrCharSplitSeparator>(&self, sep: Sep, count: uint)
+        -> StrCharSplitIterator<'self, Sep>;
+    fn split_options_iter<Sep: StrCharSplitSeparator>(&self, sep: Sep,
+                                                      count: uint, allow_trailing_empty: bool)
+        -> StrCharSplitIterator<'self, Sep>;
+    /// An iterator over the lines of a string (subsequences separated
+    /// by `\n`).
+    fn line_iter(&self) -> StrCharSplitIterator<'self, char>;
+    /// An iterator over the words of a string (subsequences separated
+    /// by any sequence of whitespace).
+    fn word_iter(&self) -> WordIterator<'self>;
     fn ends_with(&self, needle: &str) -> bool;
     fn is_empty(&self) -> bool;
     fn is_whitespace(&self) -> bool;
@@ -2530,8 +2494,6 @@ pub trait StrSlice<'self> {
     fn len(&self) -> uint;
     fn char_len(&self) -> uint;
     fn slice(&self, begin: uint, end: uint) -> &'self str;
-    fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&'self str) -> bool) -> bool;
-    fn each_split_char(&self, sep: char, it: &fn(&'self str) -> bool) -> bool;
     fn each_split_str<'a>(&self, sep: &'a str, it: &fn(&'self str) -> bool) -> bool;
     fn starts_with<'a>(&self, needle: &'a str) -> bool;
     fn substr(&self, begin: uint, n: uint) -> &'self str;
@@ -2597,6 +2559,36 @@ impl<'self> StrSlice<'self> for &'self str {
         StrBytesRevIterator { it: as_bytes_slice(*self).rev_iter() }
     }
 
+    fn split_iter<Sep: StrCharSplitSeparator>(&self, sep: Sep) -> StrCharSplitIterator<'self, Sep> {
+        self.split_options_iter(sep, self.len(), true)
+    }
+
+    fn splitn_iter<Sep: StrCharSplitSeparator>(&self, sep: Sep, count: uint)
+        -> StrCharSplitIterator<'self, Sep> {
+        self.split_options_iter(sep, count, true)
+    }
+    fn split_options_iter<Sep: StrCharSplitSeparator>(&self, sep: Sep,
+                                                      count: uint, allow_trailing_empty: bool)
+        -> StrCharSplitIterator<'self, Sep> {
+        let only_ascii = sep.only_ascii();
+        StrCharSplitIterator {
+            string: *self,
+            position: 0,
+            sep: sep,
+            count: count,
+            allow_trailing_empty: allow_trailing_empty,
+            finished: false,
+            only_ascii: only_ascii
+        }
+    }
+
+    fn line_iter(&self) -> StrCharSplitIterator<'self, char> {
+        self.split_options_iter('\n', self.len(), false)
+    }
+    fn word_iter(&self) -> WordIterator<'self> {
+        self.split_iter(char::is_whitespace).filter(|s| !s.is_empty())
+    }
+
 
     /// Returns true if one string ends with another
     #[inline]
@@ -2636,18 +2628,6 @@ impl<'self> StrSlice<'self> for &'self str {
     #[inline]
     fn slice(&self, begin: uint, end: uint) -> &'self str {
         slice(*self, begin, end)
-    }
-    /// Splits a string into substrings using a character function
-    #[inline]
-    fn each_split(&self, sepfn: &fn(char) -> bool, it: &fn(&'self str) -> bool) -> bool {
-        each_split(*self, sepfn, it)
-    }
-    /**
-     * Splits a string into substrings at each occurrence of a given character
-     */
-    #[inline]
-    fn each_split_char(&self, sep: char, it: &fn(&'self str) -> bool) -> bool {
-        each_split_char(*self, sep, it)
     }
     /**
      * Splits a string into a vector of the substrings separated by a given
@@ -2905,131 +2885,6 @@ mod tests {
     }
 
     #[test]
-    fn test_split_char() {
-        fn t(s: &str, c: char, u: &[~str]) {
-            debug!("split_byte: %?", s);
-            let mut v = ~[];
-            for each_split_char(s, c) |s| { v.push(s.to_owned()) }
-            debug!("split_byte to: %?", v);
-            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
-        }
-        t("abc.hello.there", '.', [~"abc", ~"hello", ~"there"]);
-        t(".hello.there", '.', [~"", ~"hello", ~"there"]);
-        t("...hello.there.", '.', [~"", ~"", ~"", ~"hello", ~"there", ~""]);
-
-        t("", 'z', [~""]);
-        t("z", 'z', [~"",~""]);
-        t("ok", 'z', [~"ok"]);
-    }
-
-    #[test]
-    fn test_split_char_2() {
-        fn t(s: &str, c: char, u: &[~str]) {
-            debug!("split_byte: %?", s);
-            let mut v = ~[];
-            for each_split_char(s, c) |s| { v.push(s.to_owned()) }
-            debug!("split_byte to: %?", v);
-            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
-        }
-        let data = "ประเทศไทย中华Việt Nam";
-        t(data, 'V', [~"ประเทศไทย中华", ~"iệt Nam"]);
-        t(data, 'ท', [~"ประเ", ~"ศไ", ~"ย中华Việt Nam"]);
-    }
-
-    #[test]
-    fn test_splitn_char() {
-        fn t(s: &str, c: char, n: uint, u: &[~str]) {
-            debug!("splitn_byte: %?", s);
-            let mut v = ~[];
-            for each_splitn_char(s, c, n) |s| { v.push(s.to_owned()) }
-            debug!("split_byte to: %?", v);
-            debug!("comparing vs. %?", u);
-            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
-        }
-        t("abc.hello.there", '.', 0u, [~"abc.hello.there"]);
-        t("abc.hello.there", '.', 1u, [~"abc", ~"hello.there"]);
-        t("abc.hello.there", '.', 2u, [~"abc", ~"hello", ~"there"]);
-        t("abc.hello.there", '.', 3u, [~"abc", ~"hello", ~"there"]);
-        t(".hello.there", '.', 0u, [~".hello.there"]);
-        t(".hello.there", '.', 1u, [~"", ~"hello.there"]);
-        t("...hello.there.", '.', 3u, [~"", ~"", ~"", ~"hello.there."]);
-        t("...hello.there.", '.', 5u, [~"", ~"", ~"", ~"hello", ~"there", ~""]);
-
-        t("", 'z', 5u, [~""]);
-        t("z", 'z', 5u, [~"",~""]);
-        t("ok", 'z', 5u, [~"ok"]);
-        t("z", 'z', 0u, [~"z"]);
-        t("w.x.y", '.', 0u, [~"w.x.y"]);
-        t("w.x.y", '.', 1u, [~"w",~"x.y"]);
-    }
-
-    #[test]
-    fn test_splitn_char_2() {
-        fn t(s: &str, c: char, n: uint, u: &[~str]) {
-            debug!("splitn_byte: %?", s);
-            let mut v = ~[];
-            for each_splitn_char(s, c, n) |s| { v.push(s.to_owned()) }
-            debug!("split_byte to: %?", v);
-            debug!("comparing vs. %?", u);
-            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
-        }
-
-        t("ประเทศไทย中华Việt Nam", '华', 1u, [~"ประเทศไทย中", ~"Việt Nam"]);
-        t("zzXXXzYYYzWWWz", 'z', 3u, [~"", ~"", ~"XXX", ~"YYYzWWWz"]);
-        t("z", 'z', 5u, [~"",~""]);
-        t("", 'z', 5u, [~""]);
-        t("ok", 'z', 5u, [~"ok"]);
-    }
-
-    #[test]
-    fn test_splitn_char_3() {
-        fn t(s: &str, c: char, n: uint, u: &[~str]) {
-            debug!("splitn_byte: %?", s);
-            let mut v = ~[];
-            for each_splitn_char(s, c, n) |s| { v.push(s.to_owned()) }
-            debug!("split_byte to: %?", v);
-            debug!("comparing vs. %?", u);
-            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
-        }
-        let data = "ประเทศไทย中华Việt Nam";
-        t(data, 'V', 1u, [~"ประเทศไทย中华", ~"iệt Nam"]);
-        t(data, 'ท', 1u, [~"ประเ", ~"ศไทย中华Việt Nam"]);
-    }
-
-    #[test]
-    fn test_split_char_no_trailing() {
-        fn t(s: &str, c: char, u: &[~str]) {
-            debug!("split_byte: %?", s);
-            let mut v = ~[];
-            for each_split_char_no_trailing(s, c) |s| { v.push(s.to_owned()) }
-            debug!("split_byte to: %?", v);
-            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
-        }
-        t("abc.hello.there", '.', [~"abc", ~"hello", ~"there"]);
-        t(".hello.there", '.', [~"", ~"hello", ~"there"]);
-        t("...hello.there.", '.', [~"", ~"", ~"", ~"hello", ~"there"]);
-
-        t("...hello.there.", '.', [~"", ~"", ~"", ~"hello", ~"there"]);
-        t("", 'z', []);
-        t("z", 'z', [~""]);
-        t("ok", 'z', [~"ok"]);
-    }
-
-    #[test]
-    fn test_split_char_no_trailing_2() {
-        fn t(s: &str, c: char, u: &[~str]) {
-            debug!("split_byte: %?", s);
-            let mut v = ~[];
-            for each_split_char_no_trailing(s, c) |s| { v.push(s.to_owned()) }
-            debug!("split_byte to: %?", v);
-            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
-        }
-        let data = "ประเทศไทย中华Việt Nam";
-        t(data, 'V', [~"ประเทศไทย中华", ~"iệt Nam"]);
-        t(data, 'ท', [~"ประเ", ~"ศไ", ~"ย中华Việt Nam"]);
-    }
-
-    #[test]
     fn test_split_str() {
         fn t<'a>(s: &str, sep: &'a str, u: &[~str]) {
             let mut v = ~[];
@@ -3052,75 +2907,6 @@ mod tests {
         t("zzzzz", "zz", [~"",~"",~"z"]);
     }
 
-
-    #[test]
-    fn test_split() {
-        fn t(s: &str, sepf: &fn(char) -> bool, u: &[~str]) {
-            let mut v = ~[];
-            for each_split(s, sepf) |s| { v.push(s.to_owned()) }
-            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
-        }
-
-        t("ประเทศไทย中华Việt Nam", |cc| cc == '华', [~"ประเทศไทย中", ~"Việt Nam"]);
-        t("zzXXXzYYYz", char::is_lowercase, [~"", ~"", ~"XXX", ~"YYY", ~""]);
-        t("zzXXXzYYYz", char::is_uppercase, [~"zz", ~"", ~"", ~"z", ~"", ~"", ~"z"]);
-        t("z", |cc| cc == 'z', [~"",~""]);
-        t("", |cc| cc == 'z', [~""]);
-        t("ok", |cc| cc == 'z', [~"ok"]);
-    }
-
-    #[test]
-    fn test_split_no_trailing() {
-        fn t(s: &str, sepf: &fn(char) -> bool, u: &[~str]) {
-            let mut v = ~[];
-            for each_split_no_trailing(s, sepf) |s| { v.push(s.to_owned()) }
-            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
-        }
-
-        t("ประเทศไทย中华Việt Nam", |cc| cc == '华', [~"ประเทศไทย中", ~"Việt Nam"]);
-        t("zzXXXzYYYz", char::is_lowercase, [~"", ~"", ~"XXX", ~"YYY"]);
-        t("zzXXXzYYYz", char::is_uppercase, [~"zz", ~"", ~"", ~"z", ~"", ~"", ~"z"]);
-        t("z", |cc| cc == 'z', [~""]);
-        t("", |cc| cc == 'z', []);
-        t("ok", |cc| cc == 'z', [~"ok"]);
-    }
-
-    #[test]
-    fn test_lines() {
-        let lf = "\nMary had a little lamb\nLittle lamb\n";
-        let crlf = "\r\nMary had a little lamb\r\nLittle lamb\r\n";
-
-        fn t(s: &str, f: &fn(&str, &fn(&str) -> bool) -> bool, u: &[~str]) {
-            let mut v = ~[];
-            for f(s) |s| { v.push(s.to_owned()) }
-            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
-        }
-
-        t(lf, each_line, [~"", ~"Mary had a little lamb", ~"Little lamb"]);
-        t(lf, each_line_any, [~"", ~"Mary had a little lamb", ~"Little lamb"]);
-        t(crlf, each_line, [~"\r", ~"Mary had a little lamb\r", ~"Little lamb\r"]);
-        t(crlf, each_line_any, [~"", ~"Mary had a little lamb", ~"Little lamb"]);
-        t("", each_line, []);
-        t("", each_line_any, []);
-        t("\n", each_line, [~""]);
-        t("\n", each_line_any, [~""]);
-        t("banana", each_line, [~"banana"]);
-        t("banana", each_line_any, [~"banana"]);
-    }
-
-    #[test]
-    fn test_words() {
-        fn t(s: &str, f: &fn(&str, &fn(&str) -> bool) -> bool, u: &[~str]) {
-            let mut v = ~[];
-            for f(s) |s| { v.push(s.to_owned()) }
-            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
-        }
-        let data = "\nMary had a little lamb\nLittle lamb\n";
-
-        t(data, each_word, [~"Mary",~"had",~"a",~"little",~"lamb",~"Little",~"lamb"]);
-        t("ok", each_word, [~"ok"]);
-        t("", each_word, []);
-    }
 
     #[test]
     fn test_split_within() {
@@ -3671,7 +3457,7 @@ mod tests {
 
         let string = "a\nb\nc";
         let mut lines = ~[];
-        for each_line(string) |line| { lines.push(line) }
+        for string.line_iter().advance |line| { lines.push(line) }
         assert_eq!(subslice_offset(string, lines[0]), 0);
         assert_eq!(subslice_offset(string, lines[1]), 2);
         assert_eq!(subslice_offset(string, lines[2]), 4);
@@ -3728,78 +3514,6 @@ mod tests {
         assert!(contains_char("a", 'a'));
         assert!(!contains_char("abc", 'd'));
         assert!(!contains_char("", 'a'));
-    }
-
-    #[test]
-    fn test_split_char_each() {
-        let data = "\nMary had a little lamb\nLittle lamb\n";
-
-        let mut ii = 0;
-
-        for each_split_char(data, ' ') |xx| {
-            match ii {
-              0 => assert!("\nMary" == xx),
-              1 => assert!("had"    == xx),
-              2 => assert!("a"      == xx),
-              3 => assert!("little" == xx),
-              _ => ()
-            }
-            ii += 1;
-        }
-    }
-
-    #[test]
-    fn test_splitn_char_each() {
-        let data = "\nMary had a little lamb\nLittle lamb\n";
-
-        let mut ii = 0;
-
-        for each_splitn_char(data, ' ', 2u) |xx| {
-            match ii {
-              0 => assert!("\nMary" == xx),
-              1 => assert!("had"    == xx),
-              2 => assert!("a little lamb\nLittle lamb\n" == xx),
-              _ => ()
-            }
-            ii += 1;
-        }
-    }
-
-    #[test]
-    fn test_words_each() {
-        let data = "\nMary had a little lamb\nLittle lamb\n";
-
-        let mut ii = 0;
-
-        for each_word(data) |ww| {
-            match ii {
-              0 => assert!("Mary"   == ww),
-              1 => assert!("had"    == ww),
-              2 => assert!("a"      == ww),
-              3 => assert!("little" == ww),
-              _ => ()
-            }
-            ii += 1;
-        }
-
-        each_word("", |_x| fail!()); // should not fail
-    }
-
-    #[test]
-    fn test_lines_each () {
-        let lf = "\nMary had a little lamb\nLittle lamb\n";
-
-        let mut ii = 0;
-
-        for each_line(lf) |x| {
-            match ii {
-                0 => assert!("" == x),
-                1 => assert!("Mary had a little lamb" == x),
-                2 => assert!("Little lamb" == x),
-                _ => ()
-            }
-            ii += 1;
-        }
     }
 
     #[test]
@@ -4014,5 +3728,69 @@ mod tests {
             pos -= 1;
             assert_eq!(b, v[pos]);
         }
+    }
+
+    #[test]
+    fn test_split_char_iterator() {
+        let data = "\nMäry häd ä little lämb\nLittle lämb\n";
+
+        let split: ~[&str] = data.split_iter(' ').collect();
+        assert_eq!(split, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+
+        let split: ~[&str] = data.split_iter(|c: char| c == ' ').collect();
+        assert_eq!(split, ~["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+
+        // Unicode
+        let split: ~[&str] = data.split_iter('ä').collect();
+        assert_eq!(split, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+
+        let split: ~[&str] = data.split_iter(|c: char| c == 'ä').collect();
+        assert_eq!(split, ~["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+    }
+    #[test]
+    fn test_splitn_char_iterator() {
+        let data = "\nMäry häd ä little lämb\nLittle lämb\n";
+
+        let split: ~[&str] = data.splitn_iter(' ', 3).collect();
+        assert_eq!(split, ~["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
+
+        let split: ~[&str] = data.splitn_iter(|c: char| c == ' ', 3).collect();
+        assert_eq!(split, ~["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
+
+        // Unicode
+        let split: ~[&str] = data.splitn_iter('ä', 3).collect();
+        assert_eq!(split, ~["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
+
+        let split: ~[&str] = data.splitn_iter(|c: char| c == 'ä', 3).collect();
+        assert_eq!(split, ~["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
+    }
+
+    #[test]
+    fn test_split_char_iterator_no_trailing() {
+        let data = "\nMäry häd ä little lämb\nLittle lämb\n";
+
+        let split: ~[&str] = data.split_options_iter('\n', 1000, true).collect();
+        assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb", ""]);
+
+        let split: ~[&str] = data.split_options_iter('\n', 1000, false).collect();
+        assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb"]);
+    }
+
+    #[test]
+    fn test_word_iter() {
+        let data = "\n \tMäry   häd\tä  little lämb\nLittle lämb\n";
+        let words: ~[&str] = data.word_iter().collect();
+        assert_eq!(words, ~["Märy", "häd", "ä", "little", "lämb", "Little", "lämb"])
+    }
+
+    #[test]
+    fn test_line_iter() {
+        let data = "\nMäry häd ä little lämb\n\nLittle lämb\n";
+        let lines: ~[&str] = data.line_iter().collect();
+        assert_eq!(lines, ~["", "Märy häd ä little lämb", "", "Little lämb"]);
+
+        let data = "\nMäry häd ä little lämb\n\nLittle lämb"; // no trailing \n
+        let lines: ~[&str] = data.line_iter().collect();
+        assert_eq!(lines, ~["", "Märy häd ä little lämb", "", "Little lämb"]);
     }
 }

@@ -30,6 +30,7 @@
 
 use cast;
 use io;
+use iterator::IteratorUtil;
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
 use libc::{mode_t, FILE};
@@ -224,12 +225,11 @@ pub fn env() -> ~[(~str,~str)] {
         fn env_convert(input: ~[~str]) -> ~[(~str, ~str)] {
             let mut pairs = ~[];
             for input.each |p| {
-                let mut vs = ~[];
-                for str::each_splitn_char(*p, '=', 1) |s| { vs.push(s.to_owned()) }
+                let vs: ~[&str] = p.splitn_iter('=', 1).collect();
                 debug!("splitting: len: %u",
                     vs.len());
                 assert_eq!(vs.len(), 2);
-                pairs.push((copy vs[0], copy vs[1]));
+                pairs.push((vs[0].to_owned(), vs[1].to_owned()));
             }
             pairs
         }

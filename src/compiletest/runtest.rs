@@ -278,7 +278,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
         // check if each line in props.check_lines appears in the
         // output (in order)
         let mut i = 0u;
-        for str::each_line(ProcRes.stdout) |line| {
+        for ProcRes.stdout.line_iter().advance |line| {
             if check_lines[i].trim() == line.trim() {
                 i += 1u;
             }
@@ -308,7 +308,7 @@ fn check_error_patterns(props: &TestProps,
     let mut next_err_idx = 0u;
     let mut next_err_pat = &props.error_patterns[next_err_idx];
     let mut done = false;
-    for str::each_line(ProcRes.stderr) |line| {
+    for ProcRes.stderr.line_iter().advance |line| {
         if str::contains(line, *next_err_pat) {
             debug!("found error pattern %s", *next_err_pat);
             next_err_idx += 1u;
@@ -358,7 +358,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
-    for str::each_line(ProcRes.stderr) |line| {
+    for ProcRes.stderr.line_iter().advance |line| {
         let mut was_expected = false;
         for vec::eachi(expected_errors) |i, ee| {
             if !found_flags[i] {
@@ -612,15 +612,11 @@ fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
 }
 
 fn split_maybe_args(argstr: &Option<~str>) -> ~[~str] {
-    fn rm_whitespace(v: ~[~str]) -> ~[~str] {
-        v.filtered(|s| !str::is_whitespace(*s))
-    }
-
     match *argstr {
         Some(ref s) => {
-            let mut ss = ~[];
-            for str::each_split_char(*s, ' ') |s| { ss.push(s.to_owned()) }
-            rm_whitespace(ss)
+            s.split_iter(' ')
+                .filter_map(|s| if s.is_whitespace() {None} else {Some(s.to_owned())})
+                .collect()
         }
         None => ~[]
     }
@@ -739,8 +735,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     let cmdline = make_cmdline("", args.prog, args.args);
 
     // get bare program string
-    let mut tvec = ~[];
-    for str::each_split_char(args.prog, '/') |ts| { tvec.push(ts.to_owned()) }
+    let tvec: ~[~str] = args.prog.split_iter('/').transform(|ts| ts.to_owned()).collect();
     let prog_short = tvec.pop();
 
     // copy to target

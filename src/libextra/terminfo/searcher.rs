@@ -12,9 +12,10 @@
 /// Does not support hashed database, only filesystem!
 
 use core::prelude::*;
-use core::{os, str};
+use core::{os};
 use core::os::getenv;
 use core::io::{file_reader, Reader};
+use core::iterator::IteratorUtil;
 use path = core::path::Path;
 
 /// Return path to database entry for `term`
@@ -36,7 +37,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~path> {
                 dirs_to_search.push(homedir.unwrap().push(".terminfo")); // ncurses compatability
             }
             match getenv("TERMINFO_DIRS") {
-                Some(dirs) => for str::each_split_char(dirs, ':') |i| {
+                Some(dirs) => for dirs.split_iter(':').advance |i| {
                     if i == "" {
                         dirs_to_search.push(path("/usr/share/terminfo"));
                     } else {

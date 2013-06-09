@@ -24,6 +24,7 @@ use middle;
 use util::common::time;
 use util::ppaux;
 
+use core::iterator::IteratorUtil;
 use core::hashmap::HashMap;
 use core::int;
 use core::io;
@@ -684,11 +685,7 @@ pub fn build_session_options(binary: @~str,
     let addl_lib_search_paths = getopts::opt_strs(matches, "L").map(|s| Path(*s));
     let linker = getopts::opt_maybe_str(matches, "linker");
     let linker_args = getopts::opt_strs(matches, "link-args").flat_map( |a| {
-        let mut args = ~[];
-        for str::each_split_char(*a, ' ') |arg| {
-            args.push(str::to_owned(arg));
-        }
-        args
+        a.split_iter(' ').transform(|arg| arg.to_owned()).collect()
     });
 
     let cfg = parse_cfgspecs(getopts::opt_strs(matches, "cfg"), demitter);
@@ -699,12 +696,9 @@ pub fn build_session_options(binary: @~str,
     let custom_passes = match getopts::opt_maybe_str(matches, "passes") {
         None => ~[],
         Some(s) => {
-            let mut o = ~[];
-            for s.each_split(|c| c == ' ' || c == ',') |s| {
-                let s = s.trim().to_owned();
-                o.push(s);
-            }
-            o
+            s.split_iter(|c: char| c == ' ' || c == ',').transform(|s| {
+                s.trim().to_owned()
+            }).collect()
         }
     };
 
