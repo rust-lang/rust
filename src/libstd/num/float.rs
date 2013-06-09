@@ -1184,9 +1184,13 @@ mod tests {
 
     #[test]
     fn test_barycentric() {
-        assert_eq!(Interpolate::barycentric(1.0, 4.0, 6.0, 0.0, 0.0), 6.0);
-        assert_eq!(Interpolate::barycentric(1.0, 4.0, 6.0, 0.2, 0.0), 5.0);
-        assert_eq!(Interpolate::barycentric(1.0, 4.0, 6.0, 0.4, 0.0), 4.0);
+        assert_eq!(Interpolate::barycentric(3.00, 0.50, 1.00, 0.00, 0.00), 1.00);
+        assert_eq!(Interpolate::barycentric(3.00, 0.50, 1.00, 1.00, 0.00), 3.00);
+        assert_eq!(Interpolate::barycentric(3.00, 0.50, 1.00, 0.00, 1.00), 0.50);
+        assert_eq!(Interpolate::barycentric(3.00, 0.50, 1.00, 0.50, 0.50), 1.75);
+        assert_eq!(Interpolate::barycentric(3.00, 0.50, 1.00, 0.00, 0.50), 0.75);
+        assert_eq!(Interpolate::barycentric(3.00, 0.50, 1.00, 0.50, 0.00), 2.00);
+        assert_eq!(Interpolate::barycentric(1.25, 2.50, 5.00, 0.40, 0.40), 2.50);
 
         assert_eq!(Interpolate::barycentric(infinity, 4.0, 6.0, 0.2, 0.1), infinity);
         assert_eq!(Interpolate::barycentric(1.0, infinity, 6.0, 0.2, 0.1), infinity);

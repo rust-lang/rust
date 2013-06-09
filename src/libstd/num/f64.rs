@@ -1237,9 +1237,13 @@ mod tests {
 
     #[test]
     fn test_barycentric() {
-        assert_eq!(Interpolate::barycentric(1.0f64, 4.0f64, 6.0f64, 0.0f64, 0.0f64), 6.0f64);
-        assert_eq!(Interpolate::barycentric(1.0f64, 4.0f64, 6.0f64, 0.2f64, 0.0f64), 5.0f64);
-        assert_eq!(Interpolate::barycentric(1.0f64, 4.0f64, 6.0f64, 0.4f64, 0.0f64), 4.0f64);
+        assert_eq!(Interpolate::barycentric(3.00f64, 0.50f64, 1.00f64, 0.00f64, 0.00f64), 1.00f64);
+        assert_eq!(Interpolate::barycentric(3.00f64, 0.50f64, 1.00f64, 1.00f64, 0.00f64), 3.00f64);
+        assert_eq!(Interpolate::barycentric(3.00f64, 0.50f64, 1.00f64, 0.00f64, 1.00f64), 0.50f64);
+        assert_eq!(Interpolate::barycentric(3.00f64, 0.50f64, 1.00f64, 0.50f64, 0.50f64), 1.75f64);
+        assert_eq!(Interpolate::barycentric(3.00f64, 0.50f64, 1.00f64, 0.00f64, 0.50f64), 0.75f64);
+        assert_eq!(Interpolate::barycentric(3.00f64, 0.50f64, 1.00f64, 0.50f64, 0.00f64), 2.00f64);
+        assert_eq!(Interpolate::barycentric(1.25f64, 2.50f64, 5.00f64, 0.40f64, 0.40f64), 2.50f64);
 
         assert_eq!(Interpolate::barycentric(infinity, 4.0f64, 6.0f64, 0.2f64, 0.1f64), infinity);
         assert_eq!(Interpolate::barycentric(1.0f64, infinity, 6.0f64, 0.2f64, 0.1f64), infinity);
