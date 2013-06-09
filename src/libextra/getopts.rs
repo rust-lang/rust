@@ -82,6 +82,7 @@
 
 use core::prelude::*;
 
+use core::iterator::IteratorUtil;
 use core::cmp::Eq;
 use core::result::{Err, Ok};
 use core::result;
@@ -247,14 +248,13 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
             let mut i_arg = None;
             if cur[1] == '-' as u8 {
                 let tail = str::slice(cur, 2, curlen);
-                let mut tail_eq = ~[];
-                for str::each_splitn_char(tail, '=', 1) |s| { tail_eq.push(s.to_owned()) }
+                let tail_eq: ~[&str] = tail.split_iter('=').collect();
                 if tail_eq.len() <= 1 {
                     names = ~[Long(tail.to_owned())];
                 } else {
                     names =
-                        ~[Long(copy tail_eq[0])];
-                    i_arg = Some(copy tail_eq[1]);
+                        ~[Long(tail_eq[0].to_owned())];
+                    i_arg = Some(tail_eq[1].to_owned());
                 }
             } else {
                 let mut j = 1;
@@ -635,7 +635,7 @@ pub mod groups {
 
             // Normalize desc to contain words separated by one space character
             let mut desc_normalized_whitespace = ~"";
-            for str::each_word(desc) |word| {
+            for desc.word_iter().advance |word| {
                 desc_normalized_whitespace.push_str(word);
                 desc_normalized_whitespace.push_char(' ');
             }

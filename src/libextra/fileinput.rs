@@ -416,7 +416,6 @@ mod test {
 
     use core::iterator::IteratorUtil;
     use core::io;
-    use core::str;
     use core::uint;
     use core::vec;
 
@@ -527,9 +526,7 @@ mod test {
         }
 
         for input_vec_state(filenames) |line, state| {
-            let nums = do vec::build |p| {
-                for str::each_split_char(line, ' ') |s| { p(s.to_owned()); }
-            };
+            let nums: ~[&str] = line.split_iter(' ').collect();
             let file_num = uint::from_str(nums[0]).get();
             let line_num = uint::from_str(nums[1]).get();
             assert_eq!(line_num, state.line_num_file);
