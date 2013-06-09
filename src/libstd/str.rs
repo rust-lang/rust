@@ -46,7 +46,7 @@ Section: Conditions
 // Raised by `from_bytes` on non-UTF-8 input
 condition! {
     // FIXME (#6009): uncomment `pub` after expansion support lands.
-    /*pub*/ not_utf8: (~str) -> ~str;
+    /*pub*/ not_utf8: (&'static str, uint) -> ~str;
 }
 
 // Raised by `from_bytes_with_null` on input that is not NULL terminated.
@@ -61,8 +61,8 @@ fn check_utf8(v: &[u8]) -> Result<(), ~str> {
     if is_utf8(v) {
         Ok(())
     } else {
-        let first_bad_byte = vec::find(v, |b| !is_utf8([*b])).unwrap() as uint;
-        Err(cond.raise(fmt!("input is not UTF-8; first bad byte is %u", first_bad_byte)))
+        let first_bad_byte = v.position(|b| !is_utf8([*b])).unwrap();
+        Err(cond.raise(("input is not UTF-8", first_bad_byte)))
     }
 }
 
@@ -3569,8 +3569,9 @@ mod tests {
         use str::not_utf8::cond;
 
         let mut error_happened = false;
-        let _x = do cond.trap(|err| {
-            assert_eq!(err, ~"input is not UTF-8; first bad byte is 255");
+        let _x = do cond.trap(|(err, pos)| {
+            assert_eq!(err, "input is not UTF-8");
+            assert_eq!(pos, 0);
             error_happened = true;
             ~""
         }).in {
@@ -3620,8 +3621,9 @@ mod tests {
         use str::not_utf8::cond;
 
         let mut error_happened = false;
-        let _x = do cond.trap(|err| {
-            assert_eq!(err, ~"input is not UTF-8; first bad byte is 255");
+        let _x = do cond.trap(|(err, pos)| {
+            assert_eq!(err, "input is not UTF-8");
+            assert_eq!(pos, 0);
             error_happened = true;
             ~""
         }).in {
@@ -3648,7 +3650,7 @@ mod tests {
 
         let mut error_happened = false;
         let _x = do cond.trap(|err| {
-            assert_eq!(err, ~"input is not NULL terminated");
+            assert_eq!(err, "input is not NULL terminated");
             error_happened = true;
             ~""
         }).in {
