@@ -31,6 +31,7 @@ use option::{None, Option, Some};
 use old_iter::{BaseIter, EqIter};
 use ptr;
 use ptr::RawPtr;
+use result::{Result, Ok, Err};
 use str;
 use to_str::ToStr;
 use uint;
@@ -42,8 +43,37 @@ use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector};
 /*
 Section: Conditions
 */
+// Raised by `from_bytes` on non-UTF-8 input
 condition! {
-    not_utf8: (~str) -> ~str;
+    // FIXME (#6009): uncomment `pub` after expansion support lands.
+    /*pub*/ not_utf8: (~str) -> ~str;
+}
+
+// Raised by `from_bytes_with_null` on input that is not NULL terminated.
+condition! {
+    // FIXME (#6009): uncomment `pub` after expansion support lands.
+    /*pub*/ not_null_terminated: &'static str -> ~str;
+}
+
+fn check_utf8(v: &[u8]) -> Result<(), ~str> {
+    use str::not_utf8::cond;
+
+    if is_utf8(v) {
+        Ok(())
+    } else {
+        let first_bad_byte = vec::find(v, |b| !is_utf8([*b])).unwrap() as uint;
+        Err(cond.raise(fmt!("input is not UTF-8; first bad byte is %u", first_bad_byte)))
+    }
+}
+
+fn check_null_terminated(v: &[u8]) -> Result<(), ~str> {
+    use str::not_null_terminated::cond;
+
+    if v[v.len() - 1] == 0 {
+        Ok(())
+    } else {
+        Err(cond.raise("input is not NULL terminated"))
+    }
 }
 
 /*
@@ -58,15 +88,9 @@ Section: Creating a string
  * Raises the `not_utf8` condition if invalid UTF-8
  */
 pub fn from_bytes(v: ~[u8]) -> ~str {
-    use str::not_utf8::cond;
-
-    if !is_utf8(v) {
-        let first_bad_byte = vec::find(v, |b| !is_utf8([*b])).get();
-        cond.raise(fmt!("from_bytes: input is not UTF-8; first bad byte is %u",
-                        first_bad_byte as uint))
-    }
-    else {
-        return unsafe { raw::from_bytes(v) }
+    match check_utf8(v) {
+        Ok(()) => unsafe { raw::from_bytes(v) },
+        Err(s) => s,
     }
 }
 
@@ -77,13 +101,19 @@ pub fn from_bytes(v: ~[u8]) -> ~str {
  *
  * # Failure
  *
- * Fails if invalid UTF-8
- * Fails if not null terminated
+ * Raises the `not_utf8` condition if invalid UTF-8
+ * Raises the `not_null_terminated` condition if not NULL terminated
  */
 pub fn from_bytes_with_null(v: ~[u8]) -> ~str {
-    assert_eq!(v[v.len() - 1], 0);
-    assert!(is_utf8(v));
-    unsafe { raw::from_bytes_with_null(v) }
+    match check_null_terminated(v) {
+        Ok(()) => {
+            match check_utf8(v) {
+                Ok(()) => unsafe { raw::from_bytes_with_null(v) },
+                Err(s) => s,
+            }
+        }
+        Err(s) => s,
+    }
 }
 
 /**
@@ -3547,7 +3577,7 @@ mod tests {
 
         let mut error_happened = false;
         let _x = do cond.trap(|err| {
-            assert_eq!(err, ~"from_bytes: input is not UTF-8; first bad byte is 255");
+            assert_eq!(err, ~"input is not UTF-8; first bad byte is 255");
             error_happened = true;
             ~""
         }).in {
@@ -3592,39 +3622,57 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
     #[ignore(cfg(windows))]
     fn test_from_bytes_with_null_fail() {
-        let bb = ~[0xff_u8, 0xb8_u8, 0xa8_u8,
-                   0xe0_u8, 0xb9_u8, 0x84_u8,
-                   0xe0_u8, 0xb8_u8, 0x97_u8,
-                   0xe0_u8, 0xb8_u8, 0xa2_u8,
-                   0xe4_u8, 0xb8_u8, 0xad_u8,
-                   0xe5_u8, 0x8d_u8, 0x8e_u8,
-                   0x56_u8, 0x69_u8, 0xe1_u8,
-                   0xbb_u8, 0x87_u8, 0x74_u8,
-                   0x20_u8, 0x4e_u8, 0x61_u8,
-                   0x6d_u8, 0x0_u8];
+        use str::not_utf8::cond;
 
-         let _x = from_bytes_with_null(bb);
+        let mut error_happened = false;
+        let _x = do cond.trap(|err| {
+            assert_eq!(err, ~"input is not UTF-8; first bad byte is 255");
+            error_happened = true;
+            ~""
+        }).in {
+            let bb = ~[0xff_u8, 0xb8_u8, 0xa8_u8,
+                       0xe0_u8, 0xb9_u8, 0x84_u8,
+                       0xe0_u8, 0xb8_u8, 0x97_u8,
+                       0xe0_u8, 0xb8_u8, 0xa2_u8,
+                       0xe4_u8, 0xb8_u8, 0xad_u8,
+                       0xe5_u8, 0x8d_u8, 0x8e_u8,
+                       0x56_u8, 0x69_u8, 0xe1_u8,
+                       0xbb_u8, 0x87_u8, 0x74_u8,
+                       0x20_u8, 0x4e_u8, 0x61_u8,
+                       0x6d_u8, 0x0_u8];
+
+             from_bytes_with_null(bb)
+        };
+        assert!(error_happened);
     }
 
     #[test]
-    #[should_fail]
     #[ignore(cfg(windows))]
     fn test_from_bytes_with_null_fail_2() {
-        let bb = ~[0xff_u8, 0xb8_u8, 0xa8_u8,
-                   0xe0_u8, 0xb9_u8, 0x84_u8,
-                   0xe0_u8, 0xb8_u8, 0x97_u8,
-                   0xe0_u8, 0xb8_u8, 0xa2_u8,
-                   0xe4_u8, 0xb8_u8, 0xad_u8,
-                   0xe5_u8, 0x8d_u8, 0x8e_u8,
-                   0x56_u8, 0x69_u8, 0xe1_u8,
-                   0xbb_u8, 0x87_u8, 0x74_u8,
-                   0x20_u8, 0x4e_u8, 0x61_u8,
-                   0x6d_u8, 0x60_u8];
+        use str::not_null_terminated::cond;
 
-         let _x = from_bytes_with_null(bb);
+        let mut error_happened = false;
+        let _x = do cond.trap(|err| {
+            assert_eq!(err, ~"input is not NULL terminated");
+            error_happened = true;
+            ~""
+        }).in {
+            let bb = ~[0xe0_u8, 0xb8_u8, 0xa8_u8,
+                       0xe0_u8, 0xb9_u8, 0x84_u8,
+                       0xe0_u8, 0xb8_u8, 0x97_u8,
+                       0xe0_u8, 0xb8_u8, 0xa2_u8,
+                       0xe4_u8, 0xb8_u8, 0xad_u8,
+                       0xe5_u8, 0x8d_u8, 0x8e_u8,
+                       0x56_u8, 0x69_u8, 0xe1_u8,
+                       0xbb_u8, 0x87_u8, 0x74_u8,
+                       0x20_u8, 0x4e_u8, 0x61_u8,
+                       0x6d_u8, 0x60_u8];
+
+            from_bytes_with_null(bb)
+        };
+        assert!(error_happened);
     }
 
     #[test]
