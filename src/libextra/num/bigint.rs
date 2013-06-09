@@ -153,17 +153,17 @@ impl Num for BigUint {}
 
 impl Orderable for BigUint {
 
-    fn min(&self, other: &BigUint) -> BigUint {
+    pub fn min(&self, other: &BigUint) -> BigUint {
         if self < other { self.clone() } else { other.clone() }
     }
 
 
-    fn max(&self, other: &BigUint) -> BigUint {
+    pub fn max(&self, other: &BigUint) -> BigUint {
         if self > other { self.clone() } else { other.clone() }
     }
 
 
-    fn clamp(&self, mn: &BigUint, mx: &BigUint) -> BigUint {
+    pub fn clamp(&self, mn: &BigUint, mx: &BigUint) -> BigUint {
         if self > mx { mx.clone() } else
         if self < mn { mn.clone() } else { self.clone() }
     }
@@ -189,15 +189,15 @@ impl Shr<uint, BigUint> for BigUint {
 
 impl Zero for BigUint {
 
-    fn zero() -> BigUint { BigUint::new(~[]) }
+    pub fn zero() -> BigUint { BigUint::new(~[]) }
 
 
-    fn is_zero(&self) -> bool { self.data.is_empty() }
+    pub fn is_zero(&self) -> bool { self.data.is_empty() }
 }
 
 impl One for BigUint {
 
-    fn one() -> BigUint { BigUint::new(~[1]) }
+    pub fn one() -> BigUint { BigUint::new(~[1]) }
 }
 
 impl Unsigned for BigUint {}
@@ -338,24 +338,24 @@ impl Neg<BigUint> for BigUint {
 
 impl Integer for BigUint {
 
-    fn div_rem(&self, other: &BigUint) -> (BigUint, BigUint) {
+    pub fn div_rem(&self, other: &BigUint) -> (BigUint, BigUint) {
         self.div_mod_floor(other)
     }
 
 
-    fn div_floor(&self, other: &BigUint) -> BigUint {
+    pub fn div_floor(&self, other: &BigUint) -> BigUint {
         let (d, _) = self.div_mod_floor(other);
         return d;
     }
 
 
-    fn mod_floor(&self, other: &BigUint) -> BigUint {
+    pub fn mod_floor(&self, other: &BigUint) -> BigUint {
         let (_, m) = self.div_mod_floor(other);
         return m;
     }
 
 
-    fn div_mod_floor(&self, other: &BigUint) -> (BigUint, BigUint) {
+    pub fn div_mod_floor(&self, other: &BigUint) -> (BigUint, BigUint) {
         if other.is_zero() { fail!() }
         if self.is_zero() { return (Zero::zero(), Zero::zero()); }
         if *other == One::one() { return (copy *self, Zero::zero()); }
@@ -442,7 +442,7 @@ impl Integer for BigUint {
      * The result is always positive
      */
 
-    fn gcd(&self, other: &BigUint) -> BigUint {
+    pub fn gcd(&self, other: &BigUint) -> BigUint {
         // Use Euclid's algorithm
         let mut (m, n) = (copy *self, copy *other);
         while !m.is_zero() {
@@ -457,15 +457,15 @@ impl Integer for BigUint {
      * Calculates the Lowest Common Multiple (LCM) of the number and `other`
      */
 
-    fn lcm(&self, other: &BigUint) -> BigUint { ((*self * *other) / self.gcd(other)) }
+    pub fn lcm(&self, other: &BigUint) -> BigUint { ((*self * *other) / self.gcd(other)) }
 
     /// Returns `true` if the number can be divided by `other` without leaving a remainder
 
-    fn is_multiple_of(&self, other: &BigUint) -> bool { (*self % *other).is_zero() }
+    pub fn is_multiple_of(&self, other: &BigUint) -> bool { (*self % *other).is_zero() }
 
     /// Returns `true` if the number is divisible by `2`
 
-    fn is_even(&self) -> bool {
+    pub fn is_even(&self) -> bool {
         // Considering only the last digit.
         if self.data.is_empty() {
             true
@@ -476,24 +476,24 @@ impl Integer for BigUint {
 
     /// Returns `true` if the number is not divisible by `2`
 
-    fn is_odd(&self) -> bool { !self.is_even() }
+    pub fn is_odd(&self) -> bool { !self.is_even() }
 }
 
 impl IntConvertible for BigUint {
 
-    fn to_int(&self) -> int {
+    pub fn to_int(&self) -> int {
         uint::min(self.to_uint(), int::max_value as uint) as int
     }
 
 
-    fn from_int(n: int) -> BigUint {
+    pub fn from_int(n: int) -> BigUint {
         if (n < 0) { Zero::zero() } else { BigUint::from_uint(n as uint) }
     }
 }
 
 impl ToStrRadix for BigUint {
 
-    fn to_str_radix(&self, radix: uint) -> ~str {
+    pub fn to_str_radix(&self, radix: uint) -> ~str {
         assert!(1 < radix && radix <= 16);
         let (base, max_len) = get_radix_base(radix);
         if base == BigDigit::base {
@@ -819,17 +819,17 @@ impl Num for BigInt {}
 
 impl Orderable for BigInt {
 
-    fn min(&self, other: &BigInt) -> BigInt {
+    pub fn min(&self, other: &BigInt) -> BigInt {
         if self < other { self.clone() } else { other.clone() }
     }
 
 
-    fn max(&self, other: &BigInt) -> BigInt {
+    pub fn max(&self, other: &BigInt) -> BigInt {
         if self > other { self.clone() } else { other.clone() }
     }
 
 
-    fn clamp(&self, mn: &BigInt, mx: &BigInt) -> BigInt {
+    pub fn clamp(&self, mn: &BigInt, mx: &BigInt) -> BigInt {
         if self > mx { mx.clone() } else
         if self < mn { mn.clone() } else { self.clone() }
     }
@@ -851,24 +851,24 @@ impl Shr<uint, BigInt> for BigInt {
 
 impl Zero for BigInt {
 
-    fn zero() -> BigInt {
+    pub fn zero() -> BigInt {
         BigInt::from_biguint(Zero, Zero::zero())
     }
 
 
-    fn is_zero(&self) -> bool { self.sign == Zero }
+    pub fn is_zero(&self) -> bool { self.sign == Zero }
 }
 
 impl One for BigInt {
 
-    fn one() -> BigInt {
+    pub fn one() -> BigInt {
         BigInt::from_biguint(Plus, One::one())
     }
 }
 
 impl Signed for BigInt {
 
-    fn abs(&self) -> BigInt {
+    pub fn abs(&self) -> BigInt {
         match self.sign {
             Plus | Zero => self.clone(),
             Minus => BigInt::from_biguint(Plus, self.data.clone())
@@ -876,12 +876,12 @@ impl Signed for BigInt {
     }
 
 
-    fn abs_sub(&self, other: &BigInt) -> BigInt {
+    pub fn abs_sub(&self, other: &BigInt) -> BigInt {
         if *self <= *other { Zero::zero() } else { *self - *other }
     }
 
 
-    fn signum(&self) -> BigInt {
+    pub fn signum(&self) -> BigInt {
         match self.sign {
             Plus  => BigInt::from_biguint(Plus, One::one()),
             Minus => BigInt::from_biguint(Minus, One::one()),
@@ -890,10 +890,10 @@ impl Signed for BigInt {
     }
 
 
-    fn is_positive(&self) -> bool { self.sign == Plus }
+    pub fn is_positive(&self) -> bool { self.sign == Plus }
 
 
-    fn is_negative(&self) -> bool { self.sign == Minus }
+    pub fn is_negative(&self) -> bool { self.sign == Minus }
 }
 
 impl Add<BigInt, BigInt> for BigInt {
@@ -969,7 +969,7 @@ impl Neg<BigInt> for BigInt {
 
 impl Integer for BigInt {
 
-    fn div_rem(&self, other: &BigInt) -> (BigInt, BigInt) {
+    pub fn div_rem(&self, other: &BigInt) -> (BigInt, BigInt) {
         // r.sign == self.sign
         let (d_ui, r_ui) = self.data.div_mod_floor(&other.data);
         let d = BigInt::from_biguint(Plus, d_ui);
@@ -984,19 +984,19 @@ impl Integer for BigInt {
     }
 
 
-    fn div_floor(&self, other: &BigInt) -> BigInt {
+    pub fn div_floor(&self, other: &BigInt) -> BigInt {
         let (d, _) = self.div_mod_floor(other);
         return d;
     }
 
 
-    fn mod_floor(&self, other: &BigInt) -> BigInt {
+    pub fn mod_floor(&self, other: &BigInt) -> BigInt {
         let (_, m) = self.div_mod_floor(other);
         return m;
     }
 
 
-    fn div_mod_floor(&self, other: &BigInt) -> (BigInt, BigInt) {
+    pub fn div_mod_floor(&self, other: &BigInt) -> (BigInt, BigInt) {
         // m.sign == other.sign
         let (d_ui, m_ui) = self.data.div_rem(&other.data);
         let d = BigInt::from_biguint(Plus, d_ui);
@@ -1024,7 +1024,7 @@ impl Integer for BigInt {
      * The result is always positive
      */
 
-    fn gcd(&self, other: &BigInt) -> BigInt {
+    pub fn gcd(&self, other: &BigInt) -> BigInt {
         BigInt::from_biguint(Plus, self.data.gcd(&other.data))
     }
 
@@ -1032,26 +1032,26 @@ impl Integer for BigInt {
      * Calculates the Lowest Common Multiple (LCM) of the number and `other`
      */
 
-    fn lcm(&self, other: &BigInt) -> BigInt {
+    pub fn lcm(&self, other: &BigInt) -> BigInt {
         BigInt::from_biguint(Plus, self.data.lcm(&other.data))
     }
 
     /// Returns `true` if the number can be divided by `other` without leaving a remainder
 
-    fn is_multiple_of(&self, other: &BigInt) -> bool { self.data.is_multiple_of(&other.data) }
+    pub fn is_multiple_of(&self, other: &BigInt) -> bool { self.data.is_multiple_of(&other.data) }
 
     /// Returns `true` if the number is divisible by `2`
 
-    fn is_even(&self) -> bool { self.data.is_even() }
+    pub fn is_even(&self) -> bool { self.data.is_even() }
 
     /// Returns `true` if the number is not divisible by `2`
 
-    fn is_odd(&self) -> bool { self.data.is_odd() }
+    pub fn is_odd(&self) -> bool { self.data.is_odd() }
 }
 
 impl IntConvertible for BigInt {
 
-    fn to_int(&self) -> int {
+    pub fn to_int(&self) -> int {
         match self.sign {
             Plus  => uint::min(self.to_uint(), int::max_value as uint) as int,
             Zero  => 0,
@@ -1061,7 +1061,7 @@ impl IntConvertible for BigInt {
     }
 
 
-    fn from_int(n: int) -> BigInt {
+    pub fn from_int(n: int) -> BigInt {
         if n > 0 {
            return BigInt::from_biguint(Plus,  BigUint::from_uint(n as uint));
         }
@@ -1076,7 +1076,7 @@ impl IntConvertible for BigInt {
 
 impl ToStrRadix for BigInt {
 
-    fn to_str_radix(&self, radix: uint) -> ~str {
+    pub fn to_str_radix(&self, radix: uint) -> ~str {
         match self.sign {
             Plus  => self.data.to_str_radix(radix),
             Zero  => ~"0",
@@ -1088,7 +1088,7 @@ impl ToStrRadix for BigInt {
 impl FromStrRadix for BigInt {
     /// Creates and initializes an BigInt.
 
-    fn from_str_radix(s: &str, radix: uint)
+    pub fn from_str_radix(s: &str, radix: uint)
         -> Option<BigInt> {
         BigInt::parse_bytes(str::to_bytes(s), radix)
     }

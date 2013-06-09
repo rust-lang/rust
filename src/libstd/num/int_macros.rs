@@ -168,17 +168,17 @@ impl Eq for $T {
 
 impl Orderable for $T {
     #[inline(always)]
-    fn min(&self, other: &$T) -> $T {
+    pub fn min(&self, other: &$T) -> $T {
         if *self < *other { *self } else { *other }
     }
 
     #[inline(always)]
-    fn max(&self, other: &$T) -> $T {
+    pub fn max(&self, other: &$T) -> $T {
         if *self > *other { *self } else { *other }
     }
 
     #[inline(always)]
-    fn clamp(&self, mn: &$T, mx: &$T) -> $T {
+    pub fn clamp(&self, mn: &$T, mx: &$T) -> $T {
         if *self > *mx { *mx } else
         if *self < *mn { *mn } else { *self }
     }
@@ -186,15 +186,15 @@ impl Orderable for $T {
 
 impl Zero for $T {
     #[inline(always)]
-    fn zero() -> $T { 0 }
+    pub fn zero() -> $T { 0 }
 
     #[inline(always)]
-    fn is_zero(&self) -> bool { *self == 0 }
+    pub fn is_zero(&self) -> bool { *self == 0 }
 }
 
 impl One for $T {
     #[inline(always)]
-    fn one() -> $T { 1 }
+    pub fn one() -> $T { 1 }
 }
 
 #[cfg(not(test))]
@@ -275,7 +275,7 @@ impl Neg<$T> for $T {
 impl Signed for $T {
     /// Computes the absolute value
     #[inline(always)]
-    fn abs(&self) -> $T {
+    pub fn abs(&self) -> $T {
         if self.is_negative() { -*self } else { *self }
     }
 
@@ -284,7 +284,7 @@ impl Signed for $T {
     /// equal to `other`, otherwise the difference between`self` and `other` is returned.
     ///
     #[inline(always)]
-    fn abs_sub(&self, other: &$T) -> $T {
+    pub fn abs_sub(&self, other: &$T) -> $T {
         if *self <= *other { 0 } else { *self - *other }
     }
 
@@ -296,7 +296,7 @@ impl Signed for $T {
     /// - `-1` if the number is negative
     ///
     #[inline(always)]
-    fn signum(&self) -> $T {
+    pub fn signum(&self) -> $T {
         match *self {
             n if n > 0 =>  1,
             0          =>  0,
@@ -306,11 +306,11 @@ impl Signed for $T {
 
     /// Returns true if the number is positive
     #[inline(always)]
-    fn is_positive(&self) -> bool { *self > 0 }
+    pub fn is_positive(&self) -> bool { *self > 0 }
 
     /// Returns true if the number is negative
     #[inline(always)]
-    fn is_negative(&self) -> bool { *self < 0 }
+    pub fn is_negative(&self) -> bool { *self < 0 }
 }
 
 impl Integer for $T {
@@ -332,7 +332,7 @@ impl Integer for $T {
     /// ~~~
     ///
     #[inline(always)]
-    fn div_floor(&self, other: &$T) -> $T {
+    pub fn div_floor(&self, other: &$T) -> $T {
         // Algorithm from [Daan Leijen. _Division and Modulus for Computer Scientists_,
         // December 2001](http://research.microsoft.com/pubs/151917/divmodnote-letter.pdf)
         match self.div_rem(other) {
@@ -364,7 +364,7 @@ impl Integer for $T {
     /// ~~~
     ///
     #[inline(always)]
-    fn mod_floor(&self, other: &$T) -> $T {
+    pub fn mod_floor(&self, other: &$T) -> $T {
         // Algorithm from [Daan Leijen. _Division and Modulus for Computer Scientists_,
         // December 2001](http://research.microsoft.com/pubs/151917/divmodnote-letter.pdf)
         match *self % *other {
@@ -376,7 +376,7 @@ impl Integer for $T {
 
     /// Calculates `div_floor` and `mod_floor` simultaneously
     #[inline(always)]
-    fn div_mod_floor(&self, other: &$T) -> ($T,$T) {
+    pub fn div_mod_floor(&self, other: &$T) -> ($T,$T) {
         // Algorithm from [Daan Leijen. _Division and Modulus for Computer Scientists_,
         // December 2001](http://research.microsoft.com/pubs/151917/divmodnote-letter.pdf)
         match self.div_rem(other) {
@@ -388,7 +388,7 @@ impl Integer for $T {
 
     /// Calculates `div` (`\`) and `rem` (`%`) simultaneously
     #[inline(always)]
-    fn div_rem(&self, other: &$T) -> ($T,$T) {
+    pub fn div_rem(&self, other: &$T) -> ($T,$T) {
         (*self / *other, *self % *other)
     }
 
@@ -398,7 +398,7 @@ impl Integer for $T {
     /// The result is always positive
     ///
     #[inline(always)]
-    fn gcd(&self, other: &$T) -> $T {
+    pub fn gcd(&self, other: &$T) -> $T {
         // Use Euclid's algorithm
         let mut (m, n) = (*self, *other);
         while m != 0 {
@@ -413,21 +413,21 @@ impl Integer for $T {
     /// Calculates the Lowest Common Multiple (LCM) of the number and `other`
     ///
     #[inline(always)]
-    fn lcm(&self, other: &$T) -> $T {
+    pub fn lcm(&self, other: &$T) -> $T {
         ((*self * *other) / self.gcd(other)).abs() // should not have to recaluculate abs
     }
 
     /// Returns `true` if the number can be divided by `other` without leaving a remainder
     #[inline(always)]
-    fn is_multiple_of(&self, other: &$T) -> bool { *self % *other == 0 }
+    pub fn is_multiple_of(&self, other: &$T) -> bool { *self % *other == 0 }
 
     /// Returns `true` if the number is divisible by `2`
     #[inline(always)]
-    fn is_even(&self) -> bool { self.is_multiple_of(&2) }
+    pub fn is_even(&self) -> bool { self.is_multiple_of(&2) }
 
     /// Returns `true` if the number is not divisible by `2`
     #[inline(always)]
-    fn is_odd(&self) -> bool { !self.is_even() }
+    pub fn is_odd(&self) -> bool { !self.is_even() }
 }
 
 impl Bitwise for $T {}
@@ -470,20 +470,20 @@ impl Not<$T> for $T {
 
 impl Bounded for $T {
     #[inline(always)]
-    fn min_value() -> $T { min_value }
+    pub fn min_value() -> $T { min_value }
 
     #[inline(always)]
-    fn max_value() -> $T { max_value }
+    pub fn max_value() -> $T { max_value }
 }
 
 impl Int for $T {}
 
 impl Primitive for $T {
     #[inline(always)]
-    fn bits() -> uint { bits }
+    pub fn bits() -> uint { bits }
 
     #[inline(always)]
-    fn bytes() -> uint { bits / 8 }
+    pub fn bytes() -> uint { bits / 8 }
 }
 
 // String conversion functions and impl str -> num
@@ -518,7 +518,7 @@ impl FromStr for $T {
 
 impl FromStrRadix for $T {
     #[inline(always)]
-    fn from_str_radix(s: &str, radix: uint) -> Option<$T> {
+    pub fn from_str_radix(s: &str, radix: uint) -> Option<$T> {
         from_str_radix(s, radix)
     }
 }
@@ -558,7 +558,7 @@ impl ToStr for $T {
 
 impl ToStrRadix for $T {
     #[inline(always)]
-    fn to_str_radix(&self, radix: uint) -> ~str {
+    pub fn to_str_radix(&self, radix: uint) -> ~str {
         to_str_radix(*self, radix)
     }
 }

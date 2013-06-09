@@ -32,8 +32,8 @@ pub trait Num: Eq + Zero + One
              + Rem<Self,Self> {}
 
 pub trait IntConvertible {
-    fn to_int(&self) -> int;
-    fn from_int(n: int) -> Self;
+    pub fn to_int(&self) -> int;
+    pub fn from_int(n: int) -> Self;
 }
 
 pub trait Orderable: Ord {
@@ -41,28 +41,28 @@ pub trait Orderable: Ord {
     // to encumber all implementors of Ord by requiring them to implement these functions, but at
     // the same time we want to be able to take advantage of the speed of the specific numeric
     // functions (like the `fmin` and `fmax` intrinsics).
-    fn min(&self, other: &Self) -> Self;
-    fn max(&self, other: &Self) -> Self;
-    fn clamp(&self, mn: &Self, mx: &Self) -> Self;
+    pub fn min(&self, other: &Self) -> Self;
+    pub fn max(&self, other: &Self) -> Self;
+    pub fn clamp(&self, mn: &Self, mx: &Self) -> Self;
 }
 
 pub trait Zero {
-    fn zero() -> Self;      // FIXME (#5527): This should be an associated constant
-    fn is_zero(&self) -> bool;
+    pub fn zero() -> Self;      // FIXME (#5527): This should be an associated constant
+    pub fn is_zero(&self) -> bool;
 }
 
 pub trait One {
-    fn one() -> Self;       // FIXME (#5527): This should be an associated constant
+    pub fn one() -> Self;       // FIXME (#5527): This should be an associated constant
 }
 
 pub trait Signed: Num
                 + Neg<Self> {
-    fn abs(&self) -> Self;
-    fn abs_sub(&self, other: &Self) -> Self;
-    fn signum(&self) -> Self;
+    pub fn abs(&self) -> Self;
+    pub fn abs_sub(&self, other: &Self) -> Self;
+    pub fn signum(&self) -> Self;
 
-    fn is_positive(&self) -> bool;
-    fn is_negative(&self) -> bool;
+    pub fn is_positive(&self) -> bool;
+    pub fn is_negative(&self) -> bool;
 }
 
 pub trait Unsigned: Num {}
@@ -76,83 +76,83 @@ pub trait Integer: Num
                  + Orderable
                  + Div<Self,Self>
                  + Rem<Self,Self> {
-    fn div_rem(&self, other: &Self) -> (Self,Self);
+    pub fn div_rem(&self, other: &Self) -> (Self,Self);
 
-    fn div_floor(&self, other: &Self) -> Self;
-    fn mod_floor(&self, other: &Self) -> Self;
-    fn div_mod_floor(&self, other: &Self) -> (Self,Self);
+    pub fn div_floor(&self, other: &Self) -> Self;
+    pub fn mod_floor(&self, other: &Self) -> Self;
+    pub fn div_mod_floor(&self, other: &Self) -> (Self,Self);
 
-    fn gcd(&self, other: &Self) -> Self;
-    fn lcm(&self, other: &Self) -> Self;
+    pub fn gcd(&self, other: &Self) -> Self;
+    pub fn lcm(&self, other: &Self) -> Self;
 
-    fn is_multiple_of(&self, other: &Self) -> bool;
-    fn is_even(&self) -> bool;
-    fn is_odd(&self) -> bool;
+    pub fn is_multiple_of(&self, other: &Self) -> bool;
+    pub fn is_even(&self) -> bool;
+    pub fn is_odd(&self) -> bool;
 }
 
 pub trait Round {
-    fn floor(&self) -> Self;
-    fn ceil(&self) -> Self;
-    fn round(&self) -> Self;
-    fn trunc(&self) -> Self;
-    fn fract(&self) -> Self;
+    pub fn floor(&self) -> Self;
+    pub fn ceil(&self) -> Self;
+    pub fn round(&self) -> Self;
+    pub fn trunc(&self) -> Self;
+    pub fn fract(&self) -> Self;
 }
 
 pub trait Fractional: Num
                     + Orderable
                     + Round
                     + Div<Self,Self> {
-    fn recip(&self) -> Self;
+    pub fn recip(&self) -> Self;
 }
 
 pub trait Algebraic {
-    fn pow(&self, n: Self) -> Self;
-    fn sqrt(&self) -> Self;
-    fn rsqrt(&self) -> Self;
-    fn cbrt(&self) -> Self;
-    fn hypot(&self, other: Self) -> Self;
+    pub fn pow(&self, n: Self) -> Self;
+    pub fn sqrt(&self) -> Self;
+    pub fn rsqrt(&self) -> Self;
+    pub fn cbrt(&self) -> Self;
+    pub fn hypot(&self, other: Self) -> Self;
 }
 
 pub trait Trigonometric {
-    fn sin(&self) -> Self;
-    fn cos(&self) -> Self;
-    fn tan(&self) -> Self;
-    fn asin(&self) -> Self;
-    fn acos(&self) -> Self;
-    fn atan(&self) -> Self;
-    fn atan2(&self, other: Self) -> Self;
-    fn sin_cos(&self) -> (Self, Self);
+    pub fn sin(&self) -> Self;
+    pub fn cos(&self) -> Self;
+    pub fn tan(&self) -> Self;
+    pub fn asin(&self) -> Self;
+    pub fn acos(&self) -> Self;
+    pub fn atan(&self) -> Self;
+    pub fn atan2(&self, other: Self) -> Self;
+    pub fn sin_cos(&self) -> (Self, Self);
 }
 
 pub trait Exponential {
-    fn exp(&self) -> Self;
-    fn exp2(&self) -> Self;
-    fn ln(&self) -> Self;
-    fn log(&self, base: Self) -> Self;
-    fn log2(&self) -> Self;
-    fn log10(&self) -> Self;
+    pub fn exp(&self) -> Self;
+    pub fn exp2(&self) -> Self;
+    pub fn ln(&self) -> Self;
+    pub fn log(&self, base: Self) -> Self;
+    pub fn log2(&self) -> Self;
+    pub fn log10(&self) -> Self;
 }
 
 pub trait Hyperbolic: Exponential {
-    fn sinh(&self) -> Self;
-    fn cosh(&self) -> Self;
-    fn tanh(&self) -> Self;
-    fn asinh(&self) -> Self;
-    fn acosh(&self) -> Self;
-    fn atanh(&self) -> Self;
+    pub fn sinh(&self) -> Self;
+    pub fn cosh(&self) -> Self;
+    pub fn tanh(&self) -> Self;
+    pub fn asinh(&self) -> Self;
+    pub fn acosh(&self) -> Self;
+    pub fn atanh(&self) -> Self;
 }
 
 pub trait Interpolate {
-    fn linear(x: Self, y: Self, t: Self) -> Self;
-    fn cosine(x: Self, y: Self, t: Self) -> Self;
-    fn smooth(x: Self, y: Self, t: Self) -> Self;
+    pub fn linear(x: Self, y: Self, t: Self) -> Self;
+    pub fn cosine(x: Self, y: Self, t: Self) -> Self;
+    pub fn smooth(x: Self, y: Self, t: Self) -> Self;
 
-    fn barycentric(x: Self, y: Self, z: Self, t0: Self, t1: Self) -> Self;
+    pub fn barycentric(x: Self, y: Self, z: Self, t0: Self, t1: Self) -> Self;
 
-    fn hermite(x: Self, xp: Self, y: Self, yp: Self, t: Self) -> Self;
+    pub fn hermite(x: Self, xp: Self, y: Self, yp: Self, t: Self) -> Self;
 
-    fn cubic(x: Self, y: Self, z: Self, u: Self, t: Self) -> Self;
-    fn catmull_rom(x: Self, y: Self, z: Self, u: Self, t: Self) -> Self;
+    pub fn cubic(x: Self, y: Self, z: Self, u: Self, t: Self) -> Self;
+    pub fn catmull_rom(x: Self, y: Self, z: Self, u: Self, t: Self) -> Self;
 }
 
 ///
@@ -165,27 +165,27 @@ pub trait Real: Signed
               + Hyperbolic {
     // Common Constants
     // FIXME (#5527): These should be associated constants
-    fn pi() -> Self;
-    fn two_pi() -> Self;
-    fn frac_pi_2() -> Self;
-    fn frac_pi_3() -> Self;
-    fn frac_pi_4() -> Self;
-    fn frac_pi_6() -> Self;
-    fn frac_pi_8() -> Self;
-    fn frac_1_pi() -> Self;
-    fn frac_2_pi() -> Self;
-    fn frac_2_sqrtpi() -> Self;
-    fn sqrt2() -> Self;
-    fn frac_1_sqrt2() -> Self;
-    fn e() -> Self;
-    fn log2_e() -> Self;
-    fn log10_e() -> Self;
-    fn ln_2() -> Self;
-    fn ln_10() -> Self;
+    pub fn pi() -> Self;
+    pub fn two_pi() -> Self;
+    pub fn frac_pi_2() -> Self;
+    pub fn frac_pi_3() -> Self;
+    pub fn frac_pi_4() -> Self;
+    pub fn frac_pi_6() -> Self;
+    pub fn frac_pi_8() -> Self;
+    pub fn frac_1_pi() -> Self;
+    pub fn frac_2_pi() -> Self;
+    pub fn frac_2_sqrtpi() -> Self;
+    pub fn sqrt2() -> Self;
+    pub fn frac_1_sqrt2() -> Self;
+    pub fn e() -> Self;
+    pub fn log2_e() -> Self;
+    pub fn log10_e() -> Self;
+    pub fn ln_2() -> Self;
+    pub fn ln_10() -> Self;
 
     // Angular conversions
-    fn to_degrees(&self) -> Self;
-    fn to_radians(&self) -> Self;
+    pub fn to_degrees(&self) -> Self;
+    pub fn to_radians(&self) -> Self;
 }
 
 ///
@@ -196,16 +196,16 @@ pub trait RealExt: Real {
     // integer type once these are implemented
 
     // Gamma functions
-    fn lgamma(&self) -> (int, Self);
-    fn tgamma(&self) -> Self;
+    pub fn lgamma(&self) -> (int, Self);
+    pub fn tgamma(&self) -> Self;
 
     // Bessel functions
-    fn j0(&self) -> Self;
-    fn j1(&self) -> Self;
-    fn jn(&self, n: int) -> Self;
-    fn y0(&self) -> Self;
-    fn y1(&self) -> Self;
-    fn yn(&self, n: int) -> Self;
+    pub fn j0(&self) -> Self;
+    pub fn j1(&self) -> Self;
+    pub fn jn(&self, n: int) -> Self;
+    pub fn y0(&self) -> Self;
+    pub fn y1(&self) -> Self;
+    pub fn yn(&self, n: int) -> Self;
 }
 
 ///
@@ -219,15 +219,15 @@ pub trait Bitwise: Not<Self>
                  + Shr<Self,Self> {}
 
 pub trait BitCount {
-    fn population_count(&self) -> Self;
-    fn leading_zeros(&self) -> Self;
-    fn trailing_zeros(&self) -> Self;
+    pub fn population_count(&self) -> Self;
+    pub fn leading_zeros(&self) -> Self;
+    pub fn trailing_zeros(&self) -> Self;
 }
 
 pub trait Bounded {
     // FIXME (#5527): These should be associated constants
-    fn min_value() -> Self;
-    fn max_value() -> Self;
+    pub fn min_value() -> Self;
+    pub fn max_value() -> Self;
 }
 
 ///
@@ -245,8 +245,8 @@ pub trait Primitive: Num
                    + Div<Self,Self>
                    + Rem<Self,Self> {
     // FIXME (#5527): These should be associated constants
-    fn bits() -> uint;
-    fn bytes() -> uint;
+    pub fn bits() -> uint;
+    pub fn bytes() -> uint;
 }
 
 ///
@@ -282,32 +282,32 @@ pub trait Float: Real
                + Primitive
                + ApproxEq<Self> {
     // FIXME (#5527): These should be associated constants
-    fn NaN() -> Self;
-    fn infinity() -> Self;
-    fn neg_infinity() -> Self;
-    fn neg_zero() -> Self;
+    pub fn NaN() -> Self;
+    pub fn infinity() -> Self;
+    pub fn neg_infinity() -> Self;
+    pub fn neg_zero() -> Self;
 
-    fn is_NaN(&self) -> bool;
-    fn is_infinite(&self) -> bool;
-    fn is_finite(&self) -> bool;
-    fn is_normal(&self) -> bool;
-    fn classify(&self) -> FPCategory;
+    pub fn is_NaN(&self) -> bool;
+    pub fn is_infinite(&self) -> bool;
+    pub fn is_finite(&self) -> bool;
+    pub fn is_normal(&self) -> bool;
+    pub fn classify(&self) -> FPCategory;
 
-    fn mantissa_digits() -> uint;
-    fn digits() -> uint;
-    fn epsilon() -> Self;
-    fn min_exp() -> int;
-    fn max_exp() -> int;
-    fn min_10_exp() -> int;
-    fn max_10_exp() -> int;
+    pub fn mantissa_digits() -> uint;
+    pub fn digits() -> uint;
+    pub fn epsilon() -> Self;
+    pub fn min_exp() -> int;
+    pub fn max_exp() -> int;
+    pub fn min_10_exp() -> int;
+    pub fn max_10_exp() -> int;
 
-    fn ldexp(x: Self, exp: int) -> Self;
-    fn frexp(&self) -> (Self, int);
+    pub fn ldexp(x: Self, exp: int) -> Self;
+    pub fn frexp(&self) -> (Self, int);
 
-    fn exp_m1(&self) -> Self;
-    fn ln_1p(&self) -> Self;
-    fn mul_add(&self, a: Self, b: Self) -> Self;
-    fn next_after(&self, other: Self) -> Self;
+    pub fn exp_m1(&self) -> Self;
+    pub fn ln_1p(&self) -> Self;
+    pub fn mul_add(&self, a: Self, b: Self) -> Self;
+    pub fn next_after(&self, other: Self) -> Self;
 }
 
 ///
@@ -329,50 +329,50 @@ pub fn cast<T:NumCast,U:NumCast>(n: T) -> U {
 /// An interface for casting between machine scalars
 ///
 pub trait NumCast {
-    fn from<T:NumCast>(n: T) -> Self;
+    pub fn from<T:NumCast>(n: T) -> Self;
 
-    fn to_u8(&self) -> u8;
-    fn to_u16(&self) -> u16;
-    fn to_u32(&self) -> u32;
-    fn to_u64(&self) -> u64;
-    fn to_uint(&self) -> uint;
+    pub fn to_u8(&self) -> u8;
+    pub fn to_u16(&self) -> u16;
+    pub fn to_u32(&self) -> u32;
+    pub fn to_u64(&self) -> u64;
+    pub fn to_uint(&self) -> uint;
 
-    fn to_i8(&self) -> i8;
-    fn to_i16(&self) -> i16;
-    fn to_i32(&self) -> i32;
-    fn to_i64(&self) -> i64;
-    fn to_int(&self) -> int;
+    pub fn to_i8(&self) -> i8;
+    pub fn to_i16(&self) -> i16;
+    pub fn to_i32(&self) -> i32;
+    pub fn to_i64(&self) -> i64;
+    pub fn to_int(&self) -> int;
 
-    fn to_f32(&self) -> f32;
-    fn to_f64(&self) -> f64;
-    fn to_float(&self) -> float;
+    pub fn to_f32(&self) -> f32;
+    pub fn to_f64(&self) -> f64;
+    pub fn to_float(&self) -> float;
 }
 
 macro_rules! impl_num_cast(
     ($T:ty, $conv:ident) => (
         impl NumCast for $T {
             #[inline(always)]
-            fn from<N:NumCast>(n: N) -> $T {
+            pub fn from<N:NumCast>(n: N) -> $T {
                 // `$conv` could be generated using `concat_idents!`, but that
                 // macro seems to be broken at the moment
                 n.$conv()
             }
 
-            #[inline(always)] fn to_u8(&self)    -> u8    { *self as u8    }
-            #[inline(always)] fn to_u16(&self)   -> u16   { *self as u16   }
-            #[inline(always)] fn to_u32(&self)   -> u32   { *self as u32   }
-            #[inline(always)] fn to_u64(&self)   -> u64   { *self as u64   }
-            #[inline(always)] fn to_uint(&self)  -> uint  { *self as uint  }
+            #[inline(always)] pub fn to_u8(&self)    -> u8    { *self as u8    }
+            #[inline(always)] pub fn to_u16(&self)   -> u16   { *self as u16   }
+            #[inline(always)] pub fn to_u32(&self)   -> u32   { *self as u32   }
+            #[inline(always)] pub fn to_u64(&self)   -> u64   { *self as u64   }
+            #[inline(always)] pub fn to_uint(&self)  -> uint  { *self as uint  }
 
-            #[inline(always)] fn to_i8(&self)    -> i8    { *self as i8    }
-            #[inline(always)] fn to_i16(&self)   -> i16   { *self as i16   }
-            #[inline(always)] fn to_i32(&self)   -> i32   { *self as i32   }
-            #[inline(always)] fn to_i64(&self)   -> i64   { *self as i64   }
-            #[inline(always)] fn to_int(&self)   -> int   { *self as int   }
+            #[inline(always)] pub fn to_i8(&self)    -> i8    { *self as i8    }
+            #[inline(always)] pub fn to_i16(&self)   -> i16   { *self as i16   }
+            #[inline(always)] pub fn to_i32(&self)   -> i32   { *self as i32   }
+            #[inline(always)] pub fn to_i64(&self)   -> i64   { *self as i64   }
+            #[inline(always)] pub fn to_int(&self)   -> int   { *self as int   }
 
-            #[inline(always)] fn to_f32(&self)   -> f32   { *self as f32   }
-            #[inline(always)] fn to_f64(&self)   -> f64   { *self as f64   }
-            #[inline(always)] fn to_float(&self) -> float { *self as float }
+            #[inline(always)] pub fn to_f32(&self)   -> f32   { *self as f32   }
+            #[inline(always)] pub fn to_f64(&self)   -> f64   { *self as f64   }
+            #[inline(always)] pub fn to_float(&self) -> float { *self as float }
         }
     )
 )

@@ -70,9 +70,9 @@ totaleq_impl!(char)
 
 /// Trait for testing approximate equality
 pub trait ApproxEq<Eps> {
-    fn approx_epsilon() -> Eps;
-    fn approx_eq(&self, other: &Self) -> bool;
-    fn approx_eq_eps(&self, other: &Self, approx_epsilon: &Eps) -> bool;
+    pub fn approx_epsilon() -> Eps;
+    pub fn approx_eq(&self, other: &Self) -> bool;
+    pub fn approx_eq_eps(&self, other: &Self, approx_epsilon: &Eps) -> bool;
 }
 
 #[deriving(Clone, Eq)]

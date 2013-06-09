@@ -163,15 +163,15 @@ impl Orderable for $T {
 
 impl Zero for $T {
     #[inline(always)]
-    fn zero() -> $T { 0 }
+    pub fn zero() -> $T { 0 }
 
     #[inline(always)]
-    fn is_zero(&self) -> bool { *self == 0 }
+    pub fn is_zero(&self) -> bool { *self == 0 }
 }
 
 impl One for $T {
     #[inline(always)]
-    fn one() -> $T { 1 }
+    pub fn one() -> $T { 1 }
 }
 
 #[cfg(not(test))]
@@ -215,27 +215,27 @@ impl Unsigned for $T {}
 impl Integer for $T {
     /// Calculates `div` (`\`) and `rem` (`%`) simultaneously
     #[inline(always)]
-    fn div_rem(&self, other: &$T) -> ($T,$T) {
+    pub fn div_rem(&self, other: &$T) -> ($T,$T) {
         (*self / *other, *self % *other)
     }
 
     /// Unsigned integer division. Returns the same result as `div` (`/`).
     #[inline(always)]
-    fn div_floor(&self, other: &$T) -> $T { *self / *other }
+    pub fn div_floor(&self, other: &$T) -> $T { *self / *other }
 
     /// Unsigned integer modulo operation. Returns the same result as `rem` (`%`).
     #[inline(always)]
-    fn mod_floor(&self, other: &$T) -> $T { *self / *other }
+    pub fn mod_floor(&self, other: &$T) -> $T { *self / *other }
 
     /// Calculates `div_floor` and `modulo_floor` simultaneously
     #[inline(always)]
-    fn div_mod_floor(&self, other: &$T) -> ($T,$T) {
+    pub fn div_mod_floor(&self, other: &$T) -> ($T,$T) {
         (*self / *other, *self % *other)
     }
 
     /// Calculates the Greatest Common Divisor (GCD) of the number and `other`
     #[inline(always)]
-    fn gcd(&self, other: &$T) -> $T {
+    pub fn gcd(&self, other: &$T) -> $T {
         // Use Euclid's algorithm
         let mut (m, n) = (*self, *other);
         while m != 0 {
@@ -248,21 +248,21 @@ impl Integer for $T {
 
     /// Calculates the Lowest Common Multiple (LCM) of the number and `other`
     #[inline(always)]
-    fn lcm(&self, other: &$T) -> $T {
+    pub fn lcm(&self, other: &$T) -> $T {
         (*self * *other) / self.gcd(other)
     }
 
     /// Returns `true` if the number can be divided by `other` without leaving a remainder
     #[inline(always)]
-    fn is_multiple_of(&self, other: &$T) -> bool { *self % *other == 0 }
+    pub fn is_multiple_of(&self, other: &$T) -> bool { *self % *other == 0 }
 
     /// Returns `true` if the number is divisible by `2`
     #[inline(always)]
-    fn is_even(&self) -> bool { self.is_multiple_of(&2) }
+    pub fn is_even(&self) -> bool { self.is_multiple_of(&2) }
 
     /// Returns `true` if the number is not divisible by `2`
     #[inline(always)]
-    fn is_odd(&self) -> bool { !self.is_even() }
+    pub fn is_odd(&self) -> bool { !self.is_even() }
 }
 
 impl Bitwise for $T {}
@@ -305,10 +305,10 @@ impl Not<$T> for $T {
 
 impl Bounded for $T {
     #[inline(always)]
-    fn min_value() -> $T { min_value }
+    pub fn min_value() -> $T { min_value }
 
     #[inline(always)]
-    fn max_value() -> $T { max_value }
+    pub fn max_value() -> $T { max_value }
 }
 
 impl Int for $T {}
@@ -345,7 +345,7 @@ impl FromStr for $T {
 
 impl FromStrRadix for $T {
     #[inline(always)]
-    fn from_str_radix(s: &str, radix: uint) -> Option<$T> {
+    pub fn from_str_radix(s: &str, radix: uint) -> Option<$T> {
         from_str_radix(s, radix)
     }
 }
@@ -385,35 +385,35 @@ impl ToStr for $T {
 
 impl ToStrRadix for $T {
     #[inline(always)]
-    fn to_str_radix(&self, radix: uint) -> ~str {
+    pub fn to_str_radix(&self, radix: uint) -> ~str {
         to_str_radix(*self, radix)
     }
 }
 
 impl Primitive for $T {
     #[inline(always)]
-    fn bits() -> uint { bits }
+    pub fn bits() -> uint { bits }
 
     #[inline(always)]
-    fn bytes() -> uint { bits / 8 }
+    pub fn bytes() -> uint { bits / 8 }
 }
 
 impl BitCount for $T {
     /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
     #[inline(always)]
-    fn population_count(&self) -> $T {
+    pub fn population_count(&self) -> $T {
         (*self as $T_SIGNED).population_count() as $T
     }
 
     /// Counts the number of leading zeros. Wraps LLVM's `ctlz` intrinsic.
     #[inline(always)]
-    fn leading_zeros(&self) -> $T {
+    pub fn leading_zeros(&self) -> $T {
         (*self as $T_SIGNED).leading_zeros() as $T
     }
 
     /// Counts the number of trailing zeros. Wraps LLVM's `cttz` intrinsic.
     #[inline(always)]
-    fn trailing_zeros(&self) -> $T {
+    pub fn trailing_zeros(&self) -> $T {
         (*self as $T_SIGNED).trailing_zeros() as $T
     }
 }
