@@ -57,35 +57,33 @@ Section: Creating a string
  *
  * Raises the `not_utf8` condition if invalid UTF-8
  */
-
-pub fn from_bytes(vv: &[u8]) -> ~str {
+pub fn from_bytes(v: ~[u8]) -> ~str {
     use str::not_utf8::cond;
 
-    if !is_utf8(vv) {
-        let first_bad_byte = vec::find(vv, |b| !is_utf8([*b])).get();
+    if !is_utf8(v) {
+        let first_bad_byte = vec::find(v, |b| !is_utf8([*b])).get();
         cond.raise(fmt!("from_bytes: input is not UTF-8; first bad byte is %u",
                         first_bad_byte as uint))
     }
     else {
-        return unsafe { raw::from_bytes(vv) }
+        return unsafe { raw::from_bytes(v) }
     }
 }
 
 /**
- * Convert a vector of bytes to a UTF-8 string.
- * The vector needs to be one byte longer than the string, and end with a 0 byte.
- *
- * Compared to `from_bytes()`, this fn doesn't need to allocate a new owned str.
+ * Convert a vector of bytes to a UTF-8 string without performing any
+ * allocations. The vector needs to be one byte longer than the string, and end
+ * with a 0 byte.
  *
  * # Failure
  *
  * Fails if invalid UTF-8
  * Fails if not null terminated
  */
-pub fn from_bytes_with_null<'a>(vv: &'a [u8]) -> &'a str {
-    assert_eq!(vv[vv.len() - 1], 0);
-    assert!(is_utf8(vv));
-    return unsafe { raw::from_bytes_with_null(vv) };
+pub fn from_bytes_with_null(v: ~[u8]) -> ~str {
+    assert_eq!(v[v.len() - 1], 0);
+    assert!(is_utf8(v));
+    unsafe { raw::from_bytes_with_null(v) }
 }
 
 /**
@@ -2383,16 +2381,14 @@ pub mod raw {
     }
 
     /// Converts a vector of bytes to a new owned string.
-    pub unsafe fn from_bytes(v: &const [u8]) -> ~str {
-        do vec::as_const_buf(v) |buf, len| {
-            from_buf_len(buf, len)
-        }
+    pub unsafe fn from_bytes(mut v: ~[u8]) -> ~str {
+        // Make sure the string is NULL terminated.
+        v.push(0);
+        from_bytes_with_null(v)
     }
 
-    /// Converts a vector of bytes to a string.
-    /// The byte slice needs to contain valid utf8 and needs to be one byte longer than
-    /// the string, if possible ending in a 0 byte.
-    pub unsafe fn from_bytes_with_null<'a>(v: &'a [u8]) -> &'a str {
+    /// Converts a vector of bytes to a new owned string.
+    pub unsafe fn from_bytes_with_null(v: ~[u8]) -> ~str {
         cast::transmute(v)
     }
 
@@ -2411,7 +2407,7 @@ pub mod raw {
     }
 
     /// Converts a byte to a string.
-    pub unsafe fn from_byte(u: u8) -> ~str { raw::from_bytes([u]) }
+    pub unsafe fn from_byte(u: u8) -> ~str { raw::from_bytes_with_null(~[u, 0]) }
 
     /// Form a slice from a *u8 buffer of the given length without copying.
     pub unsafe fn buf_as_slice<T>(buf: *u8, len: uint,
@@ -2847,18 +2843,19 @@ impl<'self> Iterator<u8> for StrBytesRevIterator<'self> {
 
 #[cfg(test)]
 mod tests {
-    use iterator::IteratorUtil;
-    use container::Container;
+    use super::*;
     use char;
-    use option::Some;
+    use cmp::{TotalOrd, Less, Equal, Greater};
+    use container::Container;
+    use iterator::IteratorUtil;
     use libc::c_char;
     use libc;
     use old_iter::BaseIter;
+    use option::Some;
     use ptr;
-    use str::*;
-    use vec;
+    use uint;
     use vec::ImmutableVector;
-    use cmp::{TotalOrd, Less, Equal, Greater};
+    use vec;
 
     #[test]
     fn test_eq() {
@@ -3530,15 +3527,15 @@ mod tests {
     fn test_from_bytes() {
         let ss = ~"ศไทย中华Việt Nam";
         let bb = ~[0xe0_u8, 0xb8_u8, 0xa8_u8,
-                  0xe0_u8, 0xb9_u8, 0x84_u8,
-                  0xe0_u8, 0xb8_u8, 0x97_u8,
-                  0xe0_u8, 0xb8_u8, 0xa2_u8,
-                  0xe4_u8, 0xb8_u8, 0xad_u8,
-                  0xe5_u8, 0x8d_u8, 0x8e_u8,
-                  0x56_u8, 0x69_u8, 0xe1_u8,
-                  0xbb_u8, 0x87_u8, 0x74_u8,
-                  0x20_u8, 0x4e_u8, 0x61_u8,
-                  0x6d_u8];
+                   0xe0_u8, 0xb9_u8, 0x84_u8,
+                   0xe0_u8, 0xb8_u8, 0x97_u8,
+                   0xe0_u8, 0xb8_u8, 0xa2_u8,
+                   0xe4_u8, 0xb8_u8, 0xad_u8,
+                   0xe5_u8, 0x8d_u8, 0x8e_u8,
+                   0x56_u8, 0x69_u8, 0xe1_u8,
+                   0xbb_u8, 0x87_u8, 0x74_u8,
+                   0x20_u8, 0x4e_u8, 0x61_u8,
+                   0x6d_u8];
 
         assert_eq!(ss, from_bytes(bb));
     }
@@ -3548,23 +3545,23 @@ mod tests {
     fn test_from_bytes_fail() {
         use str::not_utf8::cond;
 
-        let bb = ~[0xff_u8, 0xb8_u8, 0xa8_u8,
-                  0xe0_u8, 0xb9_u8, 0x84_u8,
-                  0xe0_u8, 0xb8_u8, 0x97_u8,
-                  0xe0_u8, 0xb8_u8, 0xa2_u8,
-                  0xe4_u8, 0xb8_u8, 0xad_u8,
-                  0xe5_u8, 0x8d_u8, 0x8e_u8,
-                  0x56_u8, 0x69_u8, 0xe1_u8,
-                  0xbb_u8, 0x87_u8, 0x74_u8,
-                  0x20_u8, 0x4e_u8, 0x61_u8,
-                  0x6d_u8];
-
         let mut error_happened = false;
         let _x = do cond.trap(|err| {
             assert_eq!(err, ~"from_bytes: input is not UTF-8; first bad byte is 255");
             error_happened = true;
             ~""
         }).in {
+            let bb = ~[0xff_u8, 0xb8_u8, 0xa8_u8,
+                       0xe0_u8, 0xb9_u8, 0x84_u8,
+                       0xe0_u8, 0xb8_u8, 0x97_u8,
+                       0xe0_u8, 0xb8_u8, 0xa2_u8,
+                       0xe4_u8, 0xb8_u8, 0xad_u8,
+                       0xe5_u8, 0x8d_u8, 0x8e_u8,
+                       0x56_u8, 0x69_u8, 0xe1_u8,
+                       0xbb_u8, 0x87_u8, 0x74_u8,
+                       0x20_u8, 0x4e_u8, 0x61_u8,
+                       0x6d_u8];
+
             from_bytes(bb)
         };
         assert!(error_happened);
@@ -3572,24 +3569,24 @@ mod tests {
 
     #[test]
     fn test_unsafe_from_bytes_with_null() {
-        let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
+        let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
         let b = unsafe { raw::from_bytes_with_null(a) };
-        assert_eq!(b, "AAAAAAA");
+        assert_eq!(b, ~"AAAAAAA");
     }
 
     #[test]
     fn test_from_bytes_with_null() {
-        let ss = "ศไทย中华Việt Nam";
-        let bb = [0xe0_u8, 0xb8_u8, 0xa8_u8,
-                  0xe0_u8, 0xb9_u8, 0x84_u8,
-                  0xe0_u8, 0xb8_u8, 0x97_u8,
-                  0xe0_u8, 0xb8_u8, 0xa2_u8,
-                  0xe4_u8, 0xb8_u8, 0xad_u8,
-                  0xe5_u8, 0x8d_u8, 0x8e_u8,
-                  0x56_u8, 0x69_u8, 0xe1_u8,
-                  0xbb_u8, 0x87_u8, 0x74_u8,
-                  0x20_u8, 0x4e_u8, 0x61_u8,
-                  0x6d_u8, 0x0_u8];
+        let ss = ~"ศไทย中华Việt Nam";
+        let bb = ~[0xe0_u8, 0xb8_u8, 0xa8_u8,
+                   0xe0_u8, 0xb9_u8, 0x84_u8,
+                   0xe0_u8, 0xb8_u8, 0x97_u8,
+                   0xe0_u8, 0xb8_u8, 0xa2_u8,
+                   0xe4_u8, 0xb8_u8, 0xad_u8,
+                   0xe5_u8, 0x8d_u8, 0x8e_u8,
+                   0x56_u8, 0x69_u8, 0xe1_u8,
+                   0xbb_u8, 0x87_u8, 0x74_u8,
+                   0x20_u8, 0x4e_u8, 0x61_u8,
+                   0x6d_u8, 0x0_u8];
 
         assert_eq!(ss, from_bytes_with_null(bb));
     }
@@ -3598,16 +3595,16 @@ mod tests {
     #[should_fail]
     #[ignore(cfg(windows))]
     fn test_from_bytes_with_null_fail() {
-        let bb = [0xff_u8, 0xb8_u8, 0xa8_u8,
-                  0xe0_u8, 0xb9_u8, 0x84_u8,
-                  0xe0_u8, 0xb8_u8, 0x97_u8,
-                  0xe0_u8, 0xb8_u8, 0xa2_u8,
-                  0xe4_u8, 0xb8_u8, 0xad_u8,
-                  0xe5_u8, 0x8d_u8, 0x8e_u8,
-                  0x56_u8, 0x69_u8, 0xe1_u8,
-                  0xbb_u8, 0x87_u8, 0x74_u8,
-                  0x20_u8, 0x4e_u8, 0x61_u8,
-                  0x6d_u8, 0x0_u8];
+        let bb = ~[0xff_u8, 0xb8_u8, 0xa8_u8,
+                   0xe0_u8, 0xb9_u8, 0x84_u8,
+                   0xe0_u8, 0xb8_u8, 0x97_u8,
+                   0xe0_u8, 0xb8_u8, 0xa2_u8,
+                   0xe4_u8, 0xb8_u8, 0xad_u8,
+                   0xe5_u8, 0x8d_u8, 0x8e_u8,
+                   0x56_u8, 0x69_u8, 0xe1_u8,
+                   0xbb_u8, 0x87_u8, 0x74_u8,
+                   0x20_u8, 0x4e_u8, 0x61_u8,
+                   0x6d_u8, 0x0_u8];
 
          let _x = from_bytes_with_null(bb);
     }
@@ -3616,16 +3613,16 @@ mod tests {
     #[should_fail]
     #[ignore(cfg(windows))]
     fn test_from_bytes_with_null_fail_2() {
-        let bb = [0xff_u8, 0xb8_u8, 0xa8_u8,
-                  0xe0_u8, 0xb9_u8, 0x84_u8,
-                  0xe0_u8, 0xb8_u8, 0x97_u8,
-                  0xe0_u8, 0xb8_u8, 0xa2_u8,
-                  0xe4_u8, 0xb8_u8, 0xad_u8,
-                  0xe5_u8, 0x8d_u8, 0x8e_u8,
-                  0x56_u8, 0x69_u8, 0xe1_u8,
-                  0xbb_u8, 0x87_u8, 0x74_u8,
-                  0x20_u8, 0x4e_u8, 0x61_u8,
-                  0x6d_u8, 0x60_u8];
+        let bb = ~[0xff_u8, 0xb8_u8, 0xa8_u8,
+                   0xe0_u8, 0xb9_u8, 0x84_u8,
+                   0xe0_u8, 0xb8_u8, 0x97_u8,
+                   0xe0_u8, 0xb8_u8, 0xa2_u8,
+                   0xe4_u8, 0xb8_u8, 0xad_u8,
+                   0xe5_u8, 0x8d_u8, 0x8e_u8,
+                   0x56_u8, 0x69_u8, 0xe1_u8,
+                   0xbb_u8, 0x87_u8, 0x74_u8,
+                   0x20_u8, 0x4e_u8, 0x61_u8,
+                   0x6d_u8, 0x60_u8];
 
          let _x = from_bytes_with_null(bb);
     }
@@ -3820,21 +3817,22 @@ mod tests {
 
     #[test]
     fn vec_str_conversions() {
-        let s1: ~str = ~"All mimsy were the borogoves";
+        let s1 = ~"All mimsy were the borogoves";
+        let n1 = s1.len();
 
-        let v: ~[u8] = to_bytes(s1);
-        let s2: ~str = from_bytes(v);
-        let mut i: uint = 0u;
-        let n1: uint = len(s1);
-        let n2: uint = v.len();
+        let v = to_bytes(s1);
+        let n2 = v.len();
+
         assert_eq!(n1, n2);
-        while i < n1 {
-            let a: u8 = s1[i];
-            let b: u8 = s2[i];
+
+        let s2 = from_bytes(v);
+
+        for uint::range(0, n1) |i| {
+            let a = s1[i];
+            let b = s2[i];
             debug!(a);
             debug!(b);
             assert_eq!(a, b);
-            i += 1u;
         }
     }
 
