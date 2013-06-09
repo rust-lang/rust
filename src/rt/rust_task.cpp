@@ -612,7 +612,7 @@ rust_task::new_big_stack() {
     }
 
     big_stack->task = this;
-    big_stack->next = stk->next;
+    big_stack->next = stk ? stk->next : NULL;
     if (big_stack->next)
         big_stack->next->prev = big_stack;
     big_stack->prev = stk;
