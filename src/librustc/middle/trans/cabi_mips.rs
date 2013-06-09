@@ -13,7 +13,6 @@ use core::prelude::*;
 use core::iterator::IteratorUtil;
 use core::libc::c_uint;
 use core::ptr;
-use core::uint;
 use core::vec;
 use lib::llvm::{llvm, TypeRef, Integer, Pointer, Float, Double};
 use lib::llvm::{Struct, Array, Attribute};
@@ -58,7 +57,7 @@ fn ty_align(ty: TypeRef) -> uint {
                 1
               } else {
                 let str_tys = struct_tys(ty);
-                str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
+                str_tys.iter().fold(1u, |a, t| a.max(&ty_align(*t)))
               }
             }
             Array => {
@@ -114,7 +113,7 @@ fn classify_arg_ty(ty: TypeRef,
     let size = ty_size(ty) * 8;
     let mut align = ty_align(ty);
 
-    align = uint::min(uint::max(align, 4), 8);
+    align = align.max(&4).min(&8);
     *offset = align_up_to(*offset, align);
     *offset += align_up_to(size, align * 8) / 8;
 

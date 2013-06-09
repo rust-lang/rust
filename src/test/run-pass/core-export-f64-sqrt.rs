@@ -17,5 +17,5 @@ pub fn main() {
 
     let digits: uint = 10 as uint;
 
-    println(float::to_str_digits(f64::sqrt(42.0f64) as float, digits));
+    println(float::to_str_digits(42.0f64.sqrt() as float, digits));
 }

@@ -82,7 +82,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                     1
                   } else {
                     let str_tys = struct_tys(ty);
-                    str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
+                    str_tys.iter().fold(1u, |a, t| a.max(&ty_align(*t)))
                   }
                 }
                 Array => {

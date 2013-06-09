@@ -14,9 +14,6 @@ use core::prelude::*;
 
 use core::iterator::*;
 use core::vec;
-use core::f64;
-use core::cmp;
-use core::num;
 use sort;
 
 // NB: this can probably be rewritten in terms of num::Num
@@ -42,12 +39,12 @@ impl<'self> Stats for &'self [f64] {
 
     fn min(self) -> f64 {
         assert!(self.len() != 0);
-        self.iter().fold(self[0], |p,q| cmp::min(p, *q))
+        self.iter().fold(self[0], |p,q| p.min(q))
     }
 
     fn max(self) -> f64 {
         assert!(self.len() != 0);
-        self.iter().fold(self[0], |p,q| cmp::max(p, *q))
+        self.iter().fold(self[0], |p,q| p.max(q))
     }
 
     fn mean(self) -> f64 {
@@ -82,7 +79,7 @@ impl<'self> Stats for &'self [f64] {
     }
 
     fn std_dev(self) -> f64 {
-        f64::sqrt(self.var())
+        self.var().sqrt()
     }
 
     fn std_dev_pct(self) -> f64 {
@@ -91,7 +88,7 @@ impl<'self> Stats for &'self [f64] {
 
     fn median_abs_dev(self) -> f64 {
         let med = self.median();
-        let abs_devs = self.map(|v| num::abs(med - *v));
+        let abs_devs = self.map(|v| (med - *v).abs());
         abs_devs.median()
     }
 

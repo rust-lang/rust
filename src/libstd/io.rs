@@ -55,9 +55,10 @@ use libc::{c_int, c_long, c_void, size_t, ssize_t};
 use libc::consts::os::posix88::*;
 use os;
 use cast;
-use path::Path;
+use num::Orderable;
 use ops::Drop;
 use old_iter::{BaseIter, CopyableIter};
+use path::Path;
 use ptr;
 use result;
 use str;
@@ -748,7 +749,7 @@ impl<T:Reader> ReaderUtil for T {
             if self.eof() && line.is_empty() { break; }
 
             // trim the \n, so that each_line is consistent with read_line
-            let n = str::len(line);
+            let n = line.len();
             if line[n-1] == '\n' as u8 {
                 unsafe { str::raw::set_len(&mut line, n-1); }
             }
@@ -1049,7 +1050,7 @@ pub struct BytesReader<'self> {
 
 impl<'self> Reader for BytesReader<'self> {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
-        let count = uint::min(len, self.bytes.len() - *self.pos);
+        let count = len.min(&(self.bytes.len() - *self.pos));
 
         let view = vec::slice(self.bytes, *self.pos, self.bytes.len());
         vec::bytes::copy_memory(bytes, view, count);
@@ -1650,7 +1651,7 @@ impl Writer for BytesWriter {
         let v_len = v.len();
 
         let bytes = &mut *self.bytes;
-        let count = uint::max(bytes.len(), *self.pos + v_len);
+        let count = bytes.len().max(&(*self.pos + v_len));
         vec::reserve(bytes, count);
 
         unsafe {

@@ -23,7 +23,6 @@ use extra::deque::Deque;
 use extra::par;
 use std::iterator::IteratorUtil;
 use std::hashmap::HashSet;
-use std::int::abs;
 use std::io;
 use std::os;
 use std::rand::RngUtil;
@@ -382,7 +381,7 @@ fn validate(edges: ~[(node_id, node_id)],
     let status = do edges.all() |e| {
         let (u, v) = *e;
 
-        abs(level[u] - level[v]) <= 1
+        (level[u] - level[v]).abs() <= 1
     };
 
     if !status { return status }

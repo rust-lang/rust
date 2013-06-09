@@ -20,10 +20,6 @@ use to_str;
 
 pub use cmath::c_float_targ_consts::*;
 
-// An inner module is required to get the #[inline(always)] attribute on the
-// functions.
-pub use self::delegated::*;
-
 macro_rules! delegate(
     (
         $(
@@ -34,6 +30,8 @@ macro_rules! delegate(
             ) -> $rv:ty = $bound_name:path
         ),*
     ) => (
+        // An inner module is required to get the #[inline(always)] attribute on the
+        // functions.
         mod delegated {
             use cmath::c_float_utils;
             use libc::{c_float, c_int};
@@ -114,50 +112,6 @@ pub static NaN: f32 = 0.0_f32/0.0_f32;
 pub static infinity: f32 = 1.0_f32/0.0_f32;
 
 pub static neg_infinity: f32 = -1.0_f32/0.0_f32;
-
-#[inline(always)]
-pub fn add(x: f32, y: f32) -> f32 { return x + y; }
-
-#[inline(always)]
-pub fn sub(x: f32, y: f32) -> f32 { return x - y; }
-
-#[inline(always)]
-pub fn mul(x: f32, y: f32) -> f32 { return x * y; }
-
-#[inline(always)]
-pub fn div(x: f32, y: f32) -> f32 { return x / y; }
-
-#[inline(always)]
-pub fn rem(x: f32, y: f32) -> f32 { return x % y; }
-
-#[inline(always)]
-pub fn lt(x: f32, y: f32) -> bool { return x < y; }
-
-#[inline(always)]
-pub fn le(x: f32, y: f32) -> bool { return x <= y; }
-
-#[inline(always)]
-pub fn eq(x: f32, y: f32) -> bool { return x == y; }
-
-#[inline(always)]
-pub fn ne(x: f32, y: f32) -> bool { return x != y; }
-
-#[inline(always)]
-pub fn ge(x: f32, y: f32) -> bool { return x >= y; }
-
-#[inline(always)]
-pub fn gt(x: f32, y: f32) -> bool { return x > y; }
-
-#[inline(always)]
-pub fn fmax(x: f32, y: f32) -> f32 {
-    if x >= y || y.is_NaN() { x } else { y }
-}
-
-#[inline(always)]
-pub fn fmin(x: f32, y: f32) -> f32 {
-    if x <= y || y.is_NaN() { x } else { y }
-}
-
 
 // FIXME (#1999): replace the predicates below with llvm intrinsics or
 // calls to the libmath macros in the rust runtime for performance.
@@ -250,13 +204,23 @@ impl Orderable for f32 {
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
     pub fn min(&self, other: &f32) -> f32 {
-        if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmin(*self, *other) }
+        cond!(
+            (self.is_NaN())  { *self  }
+            (other.is_NaN()) { *other }
+            (*self < *other) { *self  }
+            _                { *other }
+        )
     }
 
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
     pub fn max(&self, other: &f32) -> f32 {
-        if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmax(*self, *other) }
+        cond!(
+            (self.is_NaN())  { *self  }
+            (other.is_NaN()) { *other }
+            (*self > *other) { *self  }
+            _                { *other }
+        )
     }
 
     /// Returns the number constrained within the range `mn <= self <= mx`.
@@ -325,14 +289,14 @@ impl Neg<f32> for f32 {
 impl Signed for f32 {
     /// Computes the absolute value. Returns `NaN` if the number is `NaN`.
     #[inline(always)]
-    pub fn abs(&self) -> f32 { abs(*self) }
+    pub fn abs(&self) -> f32 { delegated::abs(*self) }
 
     ///
     /// The positive difference of two numbers. Returns `0.0` if the number is less than or
     /// equal to `other`, otherwise the difference between`self` and `other` is returned.
     ///
     #[inline(always)]
-    pub fn abs_sub(&self, other: &f32) -> f32 { abs_sub(*self, *other) }
+    pub fn abs_sub(&self, other: &f32) -> f32 { delegated::abs_sub(*self, *other) }
 
     ///
     /// # Returns
@@ -343,7 +307,7 @@ impl Signed for f32 {
     ///
     #[inline(always)]
     pub fn signum(&self) -> f32 {
-        if self.is_NaN() { NaN } else { copysign(1.0, *self) }
+        if self.is_NaN() { NaN } else { delegated::copysign(1.0, *self) }
     }
 
     /// Returns `true` if the number is positive, including `+0.0` and `infinity`
@@ -358,19 +322,19 @@ impl Signed for f32 {
 impl Round for f32 {
     /// Round half-way cases toward `neg_infinity`
     #[inline(always)]
-    pub fn floor(&self) -> f32 { floor(*self) }
+    pub fn floor(&self) -> f32 { delegated::floor(*self) }
 
     /// Round half-way cases toward `infinity`
     #[inline(always)]
-    pub fn ceil(&self) -> f32 { ceil(*self) }
+    pub fn ceil(&self) -> f32 { delegated::ceil(*self) }
 
     /// Round half-way cases away from `0.0`
     #[inline(always)]
-    pub fn round(&self) -> f32 { round(*self) }
+    pub fn round(&self) -> f32 { delegated::round(*self) }
 
     /// The integer part of the number (rounds towards `0.0`)
     #[inline(always)]
-    pub fn trunc(&self) -> f32 { trunc(*self) }
+    pub fn trunc(&self) -> f32 { delegated::trunc(*self) }
 
     ///
     /// The fractional part of the number, satisfying:
@@ -391,62 +355,60 @@ impl Fractional for f32 {
 
 impl Algebraic for f32 {
     #[inline(always)]
-    pub fn pow(&self, n: f32) -> f32 { pow(*self, n) }
+    pub fn pow(&self, n: f32) -> f32 { delegated::pow(*self, n) }
 
     #[inline(always)]
-    pub fn sqrt(&self) -> f32 { sqrt(*self) }
+    pub fn sqrt(&self) -> f32 { delegated::sqrt(*self) }
 
     #[inline(always)]
     pub fn rsqrt(&self) -> f32 { self.sqrt().recip() }
 
     #[inline(always)]
-    pub fn cbrt(&self) -> f32 { cbrt(*self) }
+    pub fn cbrt(&self) -> f32 { delegated::cbrt(*self) }
 
     #[inline(always)]
-    pub fn hypot(&self, other: f32) -> f32 { hypot(*self, other) }
+    pub fn hypot(&self, other: f32) -> f32 { delegated::hypot(*self, other) }
 }
 
 impl Trigonometric for f32 {
     #[inline(always)]
-    pub fn sin(&self) -> f32 { sin(*self) }
+    pub fn sin(&self) -> f32 { delegated::sin(*self) }
 
     #[inline(always)]
-    pub fn cos(&self) -> f32 { cos(*self) }
+    pub fn cos(&self) -> f32 { delegated::cos(*self) }
 
     #[inline(always)]
-    pub fn tan(&self) -> f32 { tan(*self) }
+    pub fn tan(&self) -> f32 { delegated::tan(*self) }
 
     #[inline(always)]
-    pub fn asin(&self) -> f32 { asin(*self) }
+    pub fn asin(&self) -> f32 { delegated::asin(*self) }
 
     #[inline(always)]
-    pub fn acos(&self) -> f32 { acos(*self) }
+    pub fn acos(&self) -> f32 { delegated::acos(*self) }
 
     #[inline(always)]
-    pub fn atan(&self) -> f32 { atan(*self) }
+    pub fn atan(&self) -> f32 { delegated::atan(*self) }
 
     #[inline(always)]
-    pub fn atan2(&self, other: f32) -> f32 { atan2(*self, other) }
+    pub fn atan2(&self, other: f32) -> f32 { delegated::atan2(*self, other) }
 
     /// Simultaneously computes the sine and cosine of the number
     #[inline(always)]
-    pub fn sin_cos(&self) -> (f32, f32) {
-        (self.sin(), self.cos())
-    }
+    pub fn sin_cos(&self) -> (f32, f32) { (self.sin(), self.cos()) }
 }
 
 impl Exponential for f32 {
     /// Returns the exponential of the number
     #[inline(always)]
-    pub fn exp(&self) -> f32 { exp(*self) }
+    pub fn exp(&self) -> f32 { delegated::exp(*self) }
 
     /// Returns 2 raised to the power of the number
     #[inline(always)]
-    pub fn exp2(&self) -> f32 { exp2(*self) }
+    pub fn exp2(&self) -> f32 { delegated::exp2(*self) }
 
     /// Returns the natural logarithm of the number
     #[inline(always)]
-    pub fn ln(&self) -> f32 { ln(*self) }
+    pub fn ln(&self) -> f32 { delegated::ln(*self) }
 
     /// Returns the logarithm of the number with respect to an arbitrary base
     #[inline(always)]
@@ -454,22 +416,22 @@ impl Exponential for f32 {
 
     /// Returns the base 2 logarithm of the number
     #[inline(always)]
-    pub fn log2(&self) -> f32 { log2(*self) }
+    pub fn log2(&self) -> f32 { delegated::log2(*self) }
 
     /// Returns the base 10 logarithm of the number
     #[inline(always)]
-    pub fn log10(&self) -> f32 { log10(*self) }
+    pub fn log10(&self) -> f32 { delegated::log10(*self) }
 }
 
 impl Hyperbolic for f32 {
     #[inline(always)]
-    pub fn sinh(&self) -> f32 { sinh(*self) }
+    pub fn sinh(&self) -> f32 { delegated::sinh(*self) }
 
     #[inline(always)]
-    pub fn cosh(&self) -> f32 { cosh(*self) }
+    pub fn cosh(&self) -> f32 { delegated::cosh(*self) }
 
     #[inline(always)]
-    pub fn tanh(&self) -> f32 { tanh(*self) }
+    pub fn tanh(&self) -> f32 { delegated::tanh(*self) }
 
     ///
     /// Inverse hyperbolic sine
@@ -749,7 +711,7 @@ impl Float for f32 {
     /// Constructs a floating point number by multiplying `x` by 2 raised to the power of `exp`
     #[inline(always)]
     pub fn ldexp(x: f32, exp: int) -> f32 {
-        ldexp(x, exp as c_int)
+        delegated::ldexp(x, exp as c_int)
     }
 
     ///
@@ -761,7 +723,7 @@ impl Float for f32 {
     #[inline(always)]
     pub fn frexp(&self) -> (f32, int) {
         let mut exp = 0;
-        let x = frexp(*self, &mut exp);
+        let x = delegated::frexp(*self, &mut exp);
         (x, exp as int)
     }
 
@@ -770,14 +732,14 @@ impl Float for f32 {
     /// even if the number is close to zero
     ///
     #[inline(always)]
-    pub fn exp_m1(&self) -> f32 { exp_m1(*self) }
+    pub fn exp_m1(&self) -> f32 { delegated::exp_m1(*self) }
 
     ///
     /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more accurately
     /// than if the operations were performed separately
     ///
     #[inline(always)]
-    pub fn ln_1p(&self) -> f32 { ln_1p(*self) }
+    pub fn ln_1p(&self) -> f32 { delegated::ln_1p(*self) }
 
     ///
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
@@ -786,13 +748,13 @@ impl Float for f32 {
     ///
     #[inline(always)]
     pub fn mul_add(&self, a: f32, b: f32) -> f32 {
-        mul_add(*self, a, b)
+        delegated::mul_add(*self, a, b)
     }
 
     /// Returns the next representable floating-point value in the direction of `other`
     #[inline(always)]
     pub fn next_after(&self, other: f32) -> f32 {
-        next_after(*self, other)
+        delegated::next_after(*self, other)
     }
 }
 
@@ -1031,12 +993,16 @@ mod tests {
     fn test_min() {
         assert_eq!(1f32.min(&2f32), 1f32);
         assert_eq!(2f32.min(&1f32), 1f32);
+        assert!(1f32.min(&Float::NaN::<f32>()).is_NaN());
+        assert!(Float::NaN::<f32>().min(&1f32).is_NaN());
     }
 
     #[test]
     fn test_max() {
         assert_eq!(1f32.max(&2f32), 2f32);
         assert_eq!(2f32.max(&1f32), 2f32);
+        assert!(1f32.max(&Float::NaN::<f32>()).is_NaN());
+        assert!(Float::NaN::<f32>().max(&1f32).is_NaN());
     }
 
     #[test]

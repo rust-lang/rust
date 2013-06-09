@@ -67,11 +67,6 @@ pub trait Signed: Num
 
 pub trait Unsigned: Num {}
 
-// This should be moved into the default implementation for Signed::abs
-pub fn abs<T:Ord + Zero + Neg<T>>(v: T) -> T {
-    if v < Zero::zero() { v.neg() } else { v }
-}
-
 pub trait Integer: Num
                  + Orderable
                  + Div<Self,Self>

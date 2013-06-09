@@ -27,6 +27,7 @@ use container::Container;
 use iter::Times;
 use iterator::{Iterator, IteratorUtil};
 use libc;
+use num::Orderable;
 use option::{None, Option, Some};
 use old_iter::{BaseIter, EqIter};
 use ptr;
@@ -1057,7 +1058,7 @@ pub fn eq(a: &~str, b: &~str) -> bool {
 
 #[inline]
 fn cmp(a: &str, b: &str) -> Ordering {
-    let low = uint::min(a.len(), b.len());
+    let low = a.len().min(&b.len());
 
     for uint::range(0, low) |idx| {
         match a[idx].cmp(&b[idx]) {
@@ -1092,7 +1093,7 @@ impl TotalOrd for @str {
 #[inline]
 fn lt(a: &str, b: &str) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
-    let end = uint::min(a_len, b_len);
+    let end = a_len.min(&b_len);
 
     let mut i = 0;
     while i < end {

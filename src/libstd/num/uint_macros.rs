@@ -19,49 +19,11 @@ use num::{ToStrRadix, FromStrRadix};
 use num::{Zero, One, strconv};
 use prelude::*;
 
-pub use cmp::{min, max};
-
 pub static bits : uint = $bits;
 pub static bytes : uint = ($bits / 8);
 
 pub static min_value: $T = 0 as $T;
 pub static max_value: $T = 0 as $T - 1 as $T;
-
-/// Calculates the sum of two numbers
-#[inline(always)]
-pub fn add(x: $T, y: $T) -> $T { x + y }
-/// Subtracts the second number from the first
-#[inline(always)]
-pub fn sub(x: $T, y: $T) -> $T { x - y }
-/// Multiplies two numbers together
-#[inline(always)]
-pub fn mul(x: $T, y: $T) -> $T { x * y }
-/// Divides the first argument by the second argument (using integer division)
-#[inline(always)]
-pub fn div(x: $T, y: $T) -> $T { x / y }
-/// Calculates the integer remainder when x is divided by y (equivalent to the
-/// '%' operator)
-#[inline(always)]
-pub fn rem(x: $T, y: $T) -> $T { x % y }
-
-/// Returns true iff `x < y`
-#[inline(always)]
-pub fn lt(x: $T, y: $T) -> bool { x < y }
-/// Returns true iff `x <= y`
-#[inline(always)]
-pub fn le(x: $T, y: $T) -> bool { x <= y }
-/// Returns true iff `x == y`
-#[inline(always)]
-pub fn eq(x: $T, y: $T) -> bool { x == y }
-/// Returns true iff `x != y`
-#[inline(always)]
-pub fn ne(x: $T, y: $T) -> bool { x != y }
-/// Returns true iff `x >= y`
-#[inline(always)]
-pub fn ge(x: $T, y: $T) -> bool { x >= y }
-/// Returns true iff `x > y`
-#[inline(always)]
-pub fn gt(x: $T, y: $T) -> bool { x > y }
 
 #[inline(always)]
 /**
@@ -109,12 +71,6 @@ pub fn range(lo: $T, hi: $T, it: &fn($T) -> bool) -> bool {
 /// Iterate over the range [`hi`..`lo`)
 pub fn range_rev(hi: $T, lo: $T, it: &fn($T) -> bool) -> bool {
     range_step(hi, lo, -1 as $T_SIGNED, it)
-}
-
-/// Computes the bitwise complement
-#[inline(always)]
-pub fn compl(i: $T) -> $T {
-    max_value ^ i
 }
 
 impl Num for $T {}

@@ -73,7 +73,7 @@ fn unindent(s: &str) -> ~str {
                     false
                 }
             };
-            uint::min(min_indent, spaces)
+            min_indent.min(&spaces)
         }
     };
 

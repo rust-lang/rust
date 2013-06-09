@@ -15,7 +15,6 @@
 use core::prelude::*;
 
 use core::iterator::*;
-use core::uint;
 use core::util::{swap, replace};
 
 // This is implemented as an AA tree, which is a simplified variation of
@@ -59,13 +58,12 @@ impl<K: Eq + TotalOrd, V: Eq> Eq for TreeMap<K, V> {
 }
 
 // Lexicographical comparison
-fn lt<K: Ord + TotalOrd, V>(a: &TreeMap<K, V>,
-                                 b: &TreeMap<K, V>) -> bool {
+fn lt<K: Ord + TotalOrd, V>(a: &TreeMap<K, V>, b: &TreeMap<K, V>) -> bool {
     let mut x = a.iter();
     let mut y = b.iter();
 
     let (a_len, b_len) = (a.len(), b.len());
-    for uint::min(a_len, b_len).times {
+    for a_len.min(&b_len).times {
         let (key_a,_) = x.next().unwrap();
         let (key_b,_) = y.next().unwrap();
         if *key_a < *key_b { return true; }

@@ -22,21 +22,11 @@
 
 #[allow(missing_doc)];
 
-use f64;
-use libc::c_int;
 use num::{Zero, One, strconv};
 use num::FPCategory;
 use num;
 use prelude::*;
 use to_str;
-
-pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
-pub use f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
-pub use f64::{erf, erfc, exp, exp_m1, exp2, abs_sub};
-pub use f64::{mul_add, fmax, fmin, next_after, frexp, hypot, ldexp};
-pub use f64::{lgamma, ln, log_radix, ln_1p, log10, log2, ilog_radix};
-pub use f64::{modf, pow, powi, round, sinh, tanh, tgamma, trunc};
-pub use f64::{j0, j1, jn, y0, y1, yn};
 
 pub static NaN: float = 0.0/0.0;
 
@@ -341,31 +331,6 @@ pub fn pow_with_uint(base: uint, pow: uint) -> float {
     return total;
 }
 
-#[inline(always)]
-pub fn abs(x: float) -> float {
-    f64::abs(x as f64) as float
-}
-#[inline(always)]
-pub fn sqrt(x: float) -> float {
-    f64::sqrt(x as f64) as float
-}
-#[inline(always)]
-pub fn atan(x: float) -> float {
-    f64::atan(x as f64) as float
-}
-#[inline(always)]
-pub fn sin(x: float) -> float {
-    f64::sin(x as f64) as float
-}
-#[inline(always)]
-pub fn cos(x: float) -> float {
-    f64::cos(x as f64) as float
-}
-#[inline(always)]
-pub fn tan(x: float) -> float {
-    f64::tan(x as f64) as float
-}
-
 impl Num for float {}
 
 #[cfg(not(test))]
@@ -442,19 +407,19 @@ impl One for float {
 impl Round for float {
     /// Round half-way cases toward `neg_infinity`
     #[inline(always)]
-    pub fn floor(&self) -> float { floor(*self as f64) as float }
+    pub fn floor(&self) -> float { (*self as f64).floor() as float }
 
     /// Round half-way cases toward `infinity`
     #[inline(always)]
-    pub fn ceil(&self) -> float { ceil(*self as f64) as float }
+    pub fn ceil(&self) -> float { (*self as f64).ceil() as float }
 
     /// Round half-way cases away from `0.0`
     #[inline(always)]
-    pub fn round(&self) -> float { round(*self as f64) as float }
+    pub fn round(&self) -> float { (*self as f64).round() as float }
 
     /// The integer part of the number (rounds towards `0.0`)
     #[inline(always)]
-    pub fn trunc(&self) -> float { trunc(*self as f64) as float }
+    pub fn trunc(&self) -> float { (*self as f64).trunc() as float }
 
     ///
     /// The fractional part of the number, satisfying:
@@ -779,31 +744,29 @@ impl Real for float {
 impl RealExt for float {
     #[inline(always)]
     pub fn lgamma(&self) -> (int, float) {
-        let mut sign = 0;
-        let result = lgamma(*self as f64, &mut sign);
-        (sign as int, result as float)
+        match (*self as f64).lgamma() { (i, f) => (i, f as float) }
     }
 
     #[inline(always)]
-    pub fn tgamma(&self) -> float { tgamma(*self as f64) as float }
+    pub fn tgamma(&self) -> float { (*self as f64).tgamma() as float }
 
     #[inline(always)]
-    pub fn j0(&self) -> float { j0(*self as f64) as float }
+    pub fn j0(&self) -> float { (*self as f64).j0() as float }
 
     #[inline(always)]
-    pub fn j1(&self) -> float { j1(*self as f64) as float }
+    pub fn j1(&self) -> float { (*self as f64).j1() as float }
 
     #[inline(always)]
-    pub fn jn(&self, n: int) -> float { jn(n as c_int, *self as f64) as float }
+    pub fn jn(&self, n: int) -> float { (*self as f64).jn(n) as float }
 
     #[inline(always)]
-    pub fn y0(&self) -> float { y0(*self as f64) as float }
+    pub fn y0(&self) -> float { (*self as f64).y0() as float }
 
     #[inline(always)]
-    pub fn y1(&self) -> float { y1(*self as f64) as float }
+    pub fn y1(&self) -> float { (*self as f64).y1() as float }
 
     #[inline(always)]
-    pub fn yn(&self, n: int) -> float { yn(n as c_int, *self as f64) as float }
+    pub fn yn(&self, n: int) -> float { (*self as f64).yn(n) as float }
 }
 
 #[cfg(not(test))]
@@ -844,7 +807,7 @@ impl Neg<float> for float {
 impl Signed for float {
     /// Computes the absolute value. Returns `NaN` if the number is `NaN`.
     #[inline(always)]
-    pub fn abs(&self) -> float { abs(*self) }
+    pub fn abs(&self) -> float { (*self as f64).abs() as float }
 
     ///
     /// The positive difference of two numbers. Returns `0.0` if the number is less than or
@@ -864,7 +827,7 @@ impl Signed for float {
     ///
     #[inline(always)]
     pub fn signum(&self) -> float {
-        if self.is_NaN() { NaN } else { f64::copysign(1.0, *self as f64) as float }
+        if self.is_NaN() { NaN } else { (*self as f64).signum() as float }
     }
 
     /// Returns `true` if the number is positive, including `+0.0` and `infinity`
@@ -991,13 +954,13 @@ impl Float for float {
     ///
     #[inline(always)]
     pub fn mul_add(&self, a: float, b: float) -> float {
-        mul_add(*self as f64, a as f64, b as f64) as float
+        (*self as f64).mul_add(a as f64, b as f64) as float
     }
 
     /// Returns the next representable floating-point value in the direction of `other`
     #[inline(always)]
     pub fn next_after(&self, other: float) -> float {
-        next_after(*self as f64, other as f64) as float
+        (*self as f64).next_after(other as f64) as float
     }
 }
 
@@ -1019,12 +982,16 @@ mod tests {
     fn test_min() {
         assert_eq!(1f.min(&2f), 1f);
         assert_eq!(2f.min(&1f), 1f);
+        assert!(1f.min(&Float::NaN::<float>()).is_NaN());
+        assert!(Float::NaN::<float>().min(&1f).is_NaN());
     }
 
     #[test]
     fn test_max() {
         assert_eq!(1f.max(&2f), 2f);
         assert_eq!(2f.max(&1f), 2f);
+        assert!(1f.max(&Float::NaN::<float>()).is_NaN());
+        assert!(Float::NaN::<float>().max(&1f).is_NaN());
     }
 
     #[test]

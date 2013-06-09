@@ -20,11 +20,6 @@ use prelude::*;
 use to_str;
 
 pub use cmath::c_double_targ_consts::*;
-pub use cmp::{min, max};
-
-// An inner module is required to get the #[inline(always)] attribute on the
-// functions.
-pub use self::delegated::*;
 
 macro_rules! delegate(
     (
@@ -36,6 +31,8 @@ macro_rules! delegate(
             ) -> $rv:ty = $bound_name:path
         ),*
     ) => (
+        // An inner module is required to get the #[inline(always)] attribute on the
+        // functions.
         mod delegated {
             use cmath::c_double_utils;
             use libc::{c_double, c_int};
@@ -141,49 +138,6 @@ pub static infinity: f64 = 1.0_f64/0.0_f64;
 
 pub static neg_infinity: f64 = -1.0_f64/0.0_f64;
 
-#[inline(always)]
-pub fn add(x: f64, y: f64) -> f64 { return x + y; }
-
-#[inline(always)]
-pub fn sub(x: f64, y: f64) -> f64 { return x - y; }
-
-#[inline(always)]
-pub fn mul(x: f64, y: f64) -> f64 { return x * y; }
-
-#[inline(always)]
-pub fn div(x: f64, y: f64) -> f64 { return x / y; }
-
-#[inline(always)]
-pub fn rem(x: f64, y: f64) -> f64 { return x % y; }
-
-#[inline(always)]
-pub fn lt(x: f64, y: f64) -> bool { return x < y; }
-
-#[inline(always)]
-pub fn le(x: f64, y: f64) -> bool { return x <= y; }
-
-#[inline(always)]
-pub fn eq(x: f64, y: f64) -> bool { return x == y; }
-
-#[inline(always)]
-pub fn ne(x: f64, y: f64) -> bool { return x != y; }
-
-#[inline(always)]
-pub fn ge(x: f64, y: f64) -> bool { return x >= y; }
-
-#[inline(always)]
-pub fn gt(x: f64, y: f64) -> bool { return x > y; }
-
-#[inline(always)]
-pub fn fmax(x: f64, y: f64) -> f64 {
-    if x >= y || y.is_NaN() { x } else { y }
-}
-
-#[inline(always)]
-pub fn fmin(x: f64, y: f64) -> f64 {
-    if x <= y || y.is_NaN() { x } else { y }
-}
-
 // FIXME (#1999): add is_normal, is_subnormal, and fpclassify
 
 /* Module: consts */
@@ -272,13 +226,23 @@ impl Orderable for f64 {
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
     pub fn min(&self, other: &f64) -> f64 {
-        if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmin(*self, *other) }
+        cond!(
+            (self.is_NaN())  { *self  }
+            (other.is_NaN()) { *other }
+            (*self < *other) { *self  }
+            _                { *other }
+        )
     }
 
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
     pub fn max(&self, other: &f64) -> f64 {
-        if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmax(*self, *other) }
+        cond!(
+            (self.is_NaN())  { *self  }
+            (other.is_NaN()) { *other }
+            (*self > *other) { *self  }
+            _                { *other }
+        )
     }
 
     /// Returns the number constrained within the range `mn <= self <= mx`.
@@ -337,14 +301,14 @@ impl Neg<f64> for f64 {
 impl Signed for f64 {
     /// Computes the absolute value. Returns `NaN` if the number is `NaN`.
     #[inline(always)]
-    pub fn abs(&self) -> f64 { abs(*self) }
+    pub fn abs(&self) -> f64 { delegated::abs(*self) }
 
     ///
     /// The positive difference of two numbers. Returns `0.0` if the number is less than or
     /// equal to `other`, otherwise the difference between`self` and `other` is returned.
     ///
     #[inline(always)]
-    pub fn abs_sub(&self, other: &f64) -> f64 { abs_sub(*self, *other) }
+    pub fn abs_sub(&self, other: &f64) -> f64 { delegated::abs_sub(*self, *other) }
 
     ///
     /// # Returns
@@ -355,7 +319,7 @@ impl Signed for f64 {
     ///
     #[inline(always)]
     pub fn signum(&self) -> f64 {
-        if self.is_NaN() { NaN } else { copysign(1.0, *self) }
+        if self.is_NaN() { NaN } else { delegated::copysign(1.0, *self) }
     }
 
     /// Returns `true` if the number is positive, including `+0.0` and `infinity`
@@ -370,19 +334,19 @@ impl Signed for f64 {
 impl Round for f64 {
     /// Round half-way cases toward `neg_infinity`
     #[inline(always)]
-    pub fn floor(&self) -> f64 { floor(*self) }
+    pub fn floor(&self) -> f64 { delegated::floor(*self) }
 
     /// Round half-way cases toward `infinity`
     #[inline(always)]
-    pub fn ceil(&self) -> f64 { ceil(*self) }
+    pub fn ceil(&self) -> f64 { delegated::ceil(*self) }
 
     /// Round half-way cases away from `0.0`
     #[inline(always)]
-    pub fn round(&self) -> f64 { round(*self) }
+    pub fn round(&self) -> f64 { delegated::round(*self) }
 
     /// The integer part of the number (rounds towards `0.0`)
     #[inline(always)]
-    pub fn trunc(&self) -> f64 { trunc(*self) }
+    pub fn trunc(&self) -> f64 { delegated::trunc(*self) }
 
     ///
     /// The fractional part of the number, satisfying:
@@ -403,42 +367,42 @@ impl Fractional for f64 {
 
 impl Algebraic for f64 {
     #[inline(always)]
-    pub fn pow(&self, n: f64) -> f64 { pow(*self, n) }
+    pub fn pow(&self, n: f64) -> f64 { delegated::pow(*self, n) }
 
     #[inline(always)]
-    pub fn sqrt(&self) -> f64 { sqrt(*self) }
+    pub fn sqrt(&self) -> f64 { delegated::sqrt(*self) }
 
     #[inline(always)]
     pub fn rsqrt(&self) -> f64 { self.sqrt().recip() }
 
     #[inline(always)]
-    pub fn cbrt(&self) -> f64 { cbrt(*self) }
+    pub fn cbrt(&self) -> f64 { delegated::cbrt(*self) }
 
     #[inline(always)]
-    pub fn hypot(&self, other: f64) -> f64 { hypot(*self, other) }
+    pub fn hypot(&self, other: f64) -> f64 { delegated::hypot(*self, other) }
 }
 
 impl Trigonometric for f64 {
     #[inline(always)]
-    pub fn sin(&self) -> f64 { sin(*self) }
+    pub fn sin(&self) -> f64 { delegated::sin(*self) }
 
     #[inline(always)]
-    pub fn cos(&self) -> f64 { cos(*self) }
+    pub fn cos(&self) -> f64 { delegated::cos(*self) }
 
     #[inline(always)]
-    pub fn tan(&self) -> f64 { tan(*self) }
+    pub fn tan(&self) -> f64 { delegated::tan(*self) }
 
     #[inline(always)]
-    pub fn asin(&self) -> f64 { asin(*self) }
+    pub fn asin(&self) -> f64 { delegated::asin(*self) }
 
     #[inline(always)]
-    pub fn acos(&self) -> f64 { acos(*self) }
+    pub fn acos(&self) -> f64 { delegated::acos(*self) }
 
     #[inline(always)]
-    pub fn atan(&self) -> f64 { atan(*self) }
+    pub fn atan(&self) -> f64 { delegated::atan(*self) }
 
     #[inline(always)]
-    pub fn atan2(&self, other: f64) -> f64 { atan2(*self, other) }
+    pub fn atan2(&self, other: f64) -> f64 { delegated::atan2(*self, other) }
 
     /// Simultaneously computes the sine and cosine of the number
     #[inline(always)]
@@ -450,15 +414,15 @@ impl Trigonometric for f64 {
 impl Exponential for f64 {
     /// Returns the exponential of the number
     #[inline(always)]
-    pub fn exp(&self) -> f64 { exp(*self) }
+    pub fn exp(&self) -> f64 { delegated::exp(*self) }
 
     /// Returns 2 raised to the power of the number
     #[inline(always)]
-    pub fn exp2(&self) -> f64 { exp2(*self) }
+    pub fn exp2(&self) -> f64 { delegated::exp2(*self) }
 
     /// Returns the natural logarithm of the number
     #[inline(always)]
-    pub fn ln(&self) -> f64 { ln(*self) }
+    pub fn ln(&self) -> f64 { delegated::ln(*self) }
 
     /// Returns the logarithm of the number with respect to an arbitrary base
     #[inline(always)]
@@ -466,22 +430,22 @@ impl Exponential for f64 {
 
     /// Returns the base 2 logarithm of the number
     #[inline(always)]
-    pub fn log2(&self) -> f64 { log2(*self) }
+    pub fn log2(&self) -> f64 { delegated::log2(*self) }
 
     /// Returns the base 10 logarithm of the number
     #[inline(always)]
-    pub fn log10(&self) -> f64 { log10(*self) }
+    pub fn log10(&self) -> f64 { delegated::log10(*self) }
 }
 
 impl Hyperbolic for f64 {
     #[inline(always)]
-    pub fn sinh(&self) -> f64 { sinh(*self) }
+    pub fn sinh(&self) -> f64 { delegated::sinh(*self) }
 
     #[inline(always)]
-    pub fn cosh(&self) -> f64 { cosh(*self) }
+    pub fn cosh(&self) -> f64 { delegated::cosh(*self) }
 
     #[inline(always)]
-    pub fn tanh(&self) -> f64 { tanh(*self) }
+    pub fn tanh(&self) -> f64 { delegated::tanh(*self) }
 
     ///
     /// Inverse hyperbolic sine
@@ -653,11 +617,11 @@ impl Real for f64 {
 
     /// Returns the error function of the number
     #[inline(always)]
-    pub fn erf(&self) -> f64 { erf(*self) }
+    pub fn erf(&self) -> f64 { delegated::erf(*self) }
 
     /// Returns the complementary error function of the number
     #[inline(always)]
-    pub fn erfc(&self) -> f64 { erfc(*self) }
+    pub fn erfc(&self) -> f64 { delegated::erfc(*self) }
 
     /// Converts to degrees, assuming the number is in radians
     #[inline(always)]
@@ -672,30 +636,30 @@ impl RealExt for f64 {
     #[inline(always)]
     pub fn lgamma(&self) -> (int, f64) {
         let mut sign = 0;
-        let result = lgamma(*self, &mut sign);
+        let result = delegated::lgamma(*self, &mut sign);
         (sign as int, result)
     }
 
     #[inline(always)]
-    pub fn tgamma(&self) -> f64 { tgamma(*self) }
+    pub fn tgamma(&self) -> f64 { delegated::tgamma(*self) }
 
     #[inline(always)]
-    pub fn j0(&self) -> f64 { j0(*self) }
+    pub fn j0(&self) -> f64 { delegated::j0(*self) }
 
     #[inline(always)]
-    pub fn j1(&self) -> f64 { j1(*self) }
+    pub fn j1(&self) -> f64 { delegated::j1(*self) }
 
     #[inline(always)]
-    pub fn jn(&self, n: int) -> f64 { jn(n as c_int, *self) }
+    pub fn jn(&self, n: int) -> f64 { delegated::jn(n as c_int, *self) }
 
     #[inline(always)]
-    pub fn y0(&self) -> f64 { y0(*self) }
+    pub fn y0(&self) -> f64 { delegated::y0(*self) }
 
     #[inline(always)]
-    pub fn y1(&self) -> f64 { y1(*self) }
+    pub fn y1(&self) -> f64 { delegated::y1(*self) }
 
     #[inline(always)]
-    pub fn yn(&self, n: int) -> f64 { yn(n as c_int, *self) }
+    pub fn yn(&self, n: int) -> f64 { delegated::yn(n as c_int, *self) }
 }
 
 impl Bounded for f64 {
@@ -791,7 +755,7 @@ impl Float for f64 {
     /// Constructs a floating point number by multiplying `x` by 2 raised to the power of `exp`
     #[inline(always)]
     pub fn ldexp(x: f64, exp: int) -> f64 {
-        ldexp(x, exp as c_int)
+        delegated::ldexp(x, exp as c_int)
     }
 
     ///
@@ -803,7 +767,7 @@ impl Float for f64 {
     #[inline(always)]
     pub fn frexp(&self) -> (f64, int) {
         let mut exp = 0;
-        let x = frexp(*self, &mut exp);
+        let x = delegated::frexp(*self, &mut exp);
         (x, exp as int)
     }
 
@@ -812,14 +776,14 @@ impl Float for f64 {
     /// even if the number is close to zero
     ///
     #[inline(always)]
-    pub fn exp_m1(&self) -> f64 { exp_m1(*self) }
+    pub fn exp_m1(&self) -> f64 { delegated::exp_m1(*self) }
 
     ///
     /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more accurately
     /// than if the operations were performed separately
     ///
     #[inline(always)]
-    pub fn ln_1p(&self) -> f64 { ln_1p(*self) }
+    pub fn ln_1p(&self) -> f64 { delegated::ln_1p(*self) }
 
     ///
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
@@ -828,13 +792,13 @@ impl Float for f64 {
     ///
     #[inline(always)]
     pub fn mul_add(&self, a: f64, b: f64) -> f64 {
-        mul_add(*self, a, b)
+        delegated::mul_add(*self, a, b)
     }
 
     /// Returns the next representable floating-point value in the direction of `other`
     #[inline(always)]
     pub fn next_after(&self, other: f64) -> f64 {
-        next_after(*self, other)
+        delegated::next_after(*self, other)
     }
 }
 

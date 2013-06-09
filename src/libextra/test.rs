@@ -613,7 +613,6 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
 pub mod bench {
     use core::prelude::*;
 
-    use core::num;
     use core::rand::RngUtil;
     use core::rand;
     use core::u64;
@@ -699,7 +698,7 @@ pub mod bench {
                     n = 1_000_000_000 / self.ns_per_iter();
                 }
 
-                n = u64::max(u64::min(n+n/2, 100*last), last+1);
+                n = (n + n / 2).min(&(100 * last)).max(&(last + 1));
                 n = round_up(n);
                 self.bench_n(n, f);
             }
@@ -729,7 +728,7 @@ pub mod bench {
                 let med = samples.median();
                 let mad = samples.median_abs_dev();
                 let samples = do vec::filter(samples) |f| {
-                    num::abs(*f - med) <= 3.0 * mad
+                    (*f - med).abs() <= 3.0 * mad
                 };
 
                 debug!("%u samples, median %f, MAD=%f, %u survived filter",
@@ -741,7 +740,7 @@ pub mod bench {
                     let curr_madp = samples.median_abs_dev_pct();
                     if self.ns_elapsed() > 1_000_000 &&
                         (curr_madp < 1.0 ||
-                         num::abs(curr_madp - prev_madp) < 0.1) {
+                            (curr_madp - prev_madp).abs() < 0.1) {
                         return samples;
                     }
                     prev_madp = curr_madp;

@@ -388,8 +388,8 @@ impl id_range {
     }
 
     pub fn add(&mut self, id: node_id) {
-        self.min = int::min(self.min, id);
-        self.max = int::max(self.max, id + 1);
+        self.min = self.min.min(&id);
+        self.max = self.max.max(&(id + 1));
     }
 }
 

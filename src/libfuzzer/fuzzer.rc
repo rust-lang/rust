@@ -327,10 +327,10 @@ pub fn check_variants_T<T:Copy>(crate: @ast::crate,
     let L = things.len();
 
     if L < 100 {
-        do under(uint::min(L, 20)) |i| {
+        do under(L.min(&20)) |i| {
             error!("Replacing... #%?", uint::to_str(i));
             let fname = str::to_owned(filename.to_str());
-            do under(uint::min(L, 30)) |j| {
+            do under(L.min(&30)) |j| {
                 let fname = fname.to_str();
                 error!("With... %?", stringifier(things[j], intr));
                 let crate2 = replacer(crate, i, things[j], cx.mode);
