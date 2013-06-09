@@ -2373,7 +2373,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             ty_enum(did, ref substs) => {
                 seen.push(did);
                 let vs = enum_variants(cx, did);
-                let r = vec::len(*vs) > 0u && do vs.iter().all |variant| {
+                let r = !vs.is_empty() && do vs.iter().all |variant| {
                     do variant.args.iter().any |aty| {
                         let sty = subst(cx, substs, *aty);
                         type_requires(cx, seen, r_ty, sty)

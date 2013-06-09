@@ -212,7 +212,7 @@ fn get_metadata_section(os: os,
                 let mut found = None;
                 unsafe {
                     let cvbuf: *u8 = cast::transmute(cbuf);
-                    let vlen = vec::len(encoder::metadata_encoding_version);
+                    let vlen = encoder::metadata_encoding_version.len();
                     debug!("checking %u bytes of metadata-version stamp",
                            vlen);
                     let minsz = uint::min(vlen, csz);

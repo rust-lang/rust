@@ -66,7 +66,7 @@ pub fn path_to_str_with_sep(p: &[path_elt], sep: &str, itr: @ident_interner)
 }
 
 pub fn path_ident_to_str(p: &path, i: ident, itr: @ident_interner) -> ~str {
-    if vec::is_empty(*p) {
+    if p.is_empty() {
         //FIXME /* FIXME (#2543) */ copy *i
         copy *itr.get(i.name)
     } else {

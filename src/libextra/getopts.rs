@@ -427,7 +427,7 @@ pub fn opt_strs(mm: &Matches, nm: &str) -> ~[~str] {
 /// Returns the string argument supplied to a matching option or none
 pub fn opt_maybe_str(mm: &Matches, nm: &str) -> Option<~str> {
     let vals = opt_vals(mm, nm);
-    if vec::len::<Optval>(vals) == 0u { return None::<~str>; }
+    if vals.is_empty() { return None::<~str>; }
     return match vals[0] {
         Val(ref s) => Some(copy *s),
         _ => None
@@ -444,7 +444,7 @@ pub fn opt_maybe_str(mm: &Matches, nm: &str) -> Option<~str> {
  */
 pub fn opt_default(mm: &Matches, nm: &str, def: &str) -> Option<~str> {
     let vals = opt_vals(mm, nm);
-    if vec::len::<Optval>(vals) == 0u { return None::<~str>; }
+    if vals.is_empty() { return None::<~str>; }
     return match vals[0] { Val(ref s) => Some::<~str>(copy *s),
                            _      => Some::<~str>(str::to_owned(def)) }
 }

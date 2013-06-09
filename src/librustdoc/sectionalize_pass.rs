@@ -217,7 +217,7 @@ mod test {
               Body\"]\
               mod a {
 }");
-        assert!(vec::is_empty(doc.cratemod().mods()[0].item.sections));
+        assert!(doc.cratemod().mods()[0].item.sections.is_empty());
     }
 
     #[test]

@@ -179,7 +179,7 @@ pub mod reader {
     }
 
     pub fn Doc(data: @~[u8]) -> Doc {
-        Doc { data: data, start: 0u, end: vec::len::<u8>(*data) }
+        Doc { data: data, start: 0u, end: data.len() }
     }
 
     pub fn doc_at(data: @~[u8], start: uint) -> TaggedDoc {
