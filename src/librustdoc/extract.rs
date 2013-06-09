@@ -295,8 +295,8 @@ mod test {
     #[test]
     fn extract_empty_crate() {
         let doc = mk_doc(~"");
-        assert!(vec::is_empty(doc.cratemod().mods()));
-        assert!(vec::is_empty(doc.cratemod().fns()));
+        assert!(doc.cratemod().mods().is_empty());
+        assert!(doc.cratemod().fns().is_empty());
     }
 
     #[test]

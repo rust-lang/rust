@@ -20,7 +20,7 @@ pub fn main() {
     grow(&mut v);
     grow(&mut v);
     grow(&mut v);
-    let len = vec::len::<int>(v);
+    let len = v.len();
     debug!(len);
     assert_eq!(len, 3 as uint);
 }

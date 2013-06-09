@@ -297,7 +297,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
 fn check_error_patterns(props: &TestProps,
                         testfile: &Path,
                         ProcRes: &ProcRes) {
-    if vec::is_empty(props.error_patterns) {
+    if props.error_patterns.is_empty() {
         fatal(~"no error pattern specified in " + testfile.to_str());
     }
 

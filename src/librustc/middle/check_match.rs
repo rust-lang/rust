@@ -786,7 +786,7 @@ pub fn check_fn(cx: @MatchCheckCtxt,
 pub fn is_refutable(cx: @MatchCheckCtxt, pat: &pat) -> bool {
     match cx.tcx.def_map.find(&pat.id) {
       Some(&def_variant(enum_id, _)) => {
-        if vec::len(*ty::enum_variants(cx.tcx, enum_id)) != 1u {
+        if ty::enum_variants(cx.tcx, enum_id).len() != 1u {
             return true;
         }
       }

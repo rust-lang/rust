@@ -20,6 +20,7 @@ use option::{None, Option, Some};
 use old_iter::BaseIter;
 use vec;
 use vec::OwnedVector;
+use container::Container;
 
 /// The result type
 #[deriving(Clone, Eq)]
@@ -301,7 +302,7 @@ impl<T, E: Copy> Result<T, E> {
 pub fn map_vec<T,U:Copy,V:Copy>(
     ts: &[T], op: &fn(&T) -> Result<V,U>) -> Result<~[V],U> {
 
-    let mut vs: ~[V] = vec::with_capacity(vec::len(ts));
+    let mut vs: ~[V] = vec::with_capacity(ts.len());
     for ts.each |t| {
         match op(t) {
           Ok(v) => vs.push(v),
@@ -339,7 +340,7 @@ pub fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
                 op: &fn(&S,&T) -> Result<V,U>) -> Result<~[V],U> {
 
     assert!(vec::same_length(ss, ts));
-    let n = vec::len(ts);
+    let n = ts.len();
     let mut vs = vec::with_capacity(n);
     let mut i = 0u;
     while i < n {
@@ -362,7 +363,7 @@ pub fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
                          op: &fn(&S,&T) -> Result<(),U>) -> Result<(),U> {
 
     assert!(vec::same_length(ss, ts));
-    let n = vec::len(ts);
+    let n = ts.len();
     let mut i = 0u;
     while i < n {
         match op(&ss[i],&ts[i]) {

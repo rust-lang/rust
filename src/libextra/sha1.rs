@@ -195,7 +195,7 @@ pub fn sha1() -> @Sha1 {
      * can be assumed that the message digest has been computed.
      */
     fn pad_msg(st: &mut Sha1State) {
-        assert_eq!(vec::len((*st).msg_block), msg_block_len);
+        assert_eq!((*st).msg_block.len(), msg_block_len);
 
         /*
          * Check to see if the current message block is too small to hold
@@ -368,8 +368,8 @@ mod tests {
         ];
         let tests = fips_180_1_tests + wikipedia_tests;
         fn check_vec_eq(v0: ~[u8], v1: ~[u8]) {
-            assert_eq!(vec::len::<u8>(v0), vec::len::<u8>(v1));
-            let len = vec::len::<u8>(v0);
+            assert_eq!(v0.len(), v1.len());
+            let len = v0.len();
             let mut i = 0u;
             while i < len {
                 let a = v0[i];
