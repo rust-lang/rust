@@ -47,7 +47,7 @@ pub static neg_infinity: float = -1.0/0.0;
 /* Module: consts */
 pub mod consts {
     // FIXME (requires Issue #1433 to fix): replace with mathematical
-    // staticants from cmath.
+    // constants from cmath.
     /// Archimedes' constant
     pub static pi: float = 3.14159265358979323846264338327950288;
 
