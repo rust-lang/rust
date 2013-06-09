@@ -4045,7 +4045,7 @@ pub fn has_attr(tcx: ctxt, did: def_id, attr: &str) -> bool {
     } else {
         let mut ret = false;
         do csearch::get_item_attrs(tcx.cstore, did) |meta_items| {
-            ret = attr::contains_name(meta_items, attr);
+            ret = ret || attr::contains_name(meta_items, attr);
         }
         ret
     }
