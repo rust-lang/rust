@@ -14,6 +14,7 @@
 
 use core::prelude::*;
 
+use core::iterator::IteratorUtil;
 use core::char;
 use core::cmp;
 use core::io::{ReaderUtil};
@@ -168,7 +169,7 @@ fn take_num(rdr: @io::Reader, ch: char) -> (uint, char) {
 
 fn take_ident(rdr: @io::Reader, ch: char) -> (Identifier, char) {
     let (s,ch) = take_nonempty_prefix(rdr, ch, char::is_alphanumeric);
-    if s.all(char::is_digit) {
+    if s.iter().all(char::is_digit) {
         match uint::from_str(s) {
             None => { bad_parse::cond.raise(()); (Numeric(0), ch) },
             Some(i) => (Numeric(i), ch)

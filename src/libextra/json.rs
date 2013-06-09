@@ -567,7 +567,7 @@ impl Parser {
     }
 
     fn parse_ident(&mut self, ident: &str, value: Json) -> Result<Json, Error> {
-        if str::all(ident, |c| c == self.next_char()) {
+        if ident.iter().all(|c| c == self.next_char()) {
             self.bump();
             Ok(value)
         } else {

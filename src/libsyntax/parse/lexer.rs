@@ -19,6 +19,7 @@ use ext::tt::transcribe::{dup_tt_reader};
 use parse::token;
 use parse::token::{str_to_ident};
 
+use core::iterator::IteratorUtil;
 use core::char;
 use core::either;
 use core::str;
@@ -245,7 +246,7 @@ fn consume_whitespace_and_comments(rdr: @mut StringReader)
 
 pub fn is_line_non_doc_comment(s: &str) -> bool {
     let s = s.trim_right();
-    s.len() > 3 && s.all(|ch| ch == '/')
+    s.len() > 3 && s.iter().all(|ch| ch == '/')
 }
 
 // PRECONDITION: rdr.curr is not whitespace

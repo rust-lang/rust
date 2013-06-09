@@ -63,7 +63,7 @@ fn unindent(s: &str) -> ~str {
         } else {
             saw_first_line = true;
             let mut spaces = 0;
-            do str::all(*line) |char| {
+            do line.iter().all |char| {
                 // Only comparing against space because I wouldn't
                 // know what to do with mixed whitespace chars
                 if char == ' ' {
