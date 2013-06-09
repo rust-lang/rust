@@ -97,7 +97,7 @@ pub fn parse_config(args: ~[~str]) -> config {
         mode: str_mode(getopts::opt_str(matches, "mode")),
         run_ignored: getopts::opt_present(matches, "ignored"),
         filter:
-             if vec::len(matches.free) > 0u {
+             if !matches.free.is_empty() {
                  option::Some(copy matches.free[0])
              } else { option::None },
         logfile: getopts::opt_maybe_str(matches, "logfile").map(|s| Path(*s)),

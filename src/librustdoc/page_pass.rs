@@ -191,6 +191,6 @@ mod test {
     #[test]
     fn should_remove_mods_from_containing_mods() {
         let doc = mk_doc(~"mod a { }");
-        assert!(vec::is_empty(doc.cratemod().mods()));
+        assert!(doc.cratemod().mods().is_empty());
     }
 }

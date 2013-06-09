@@ -988,7 +988,7 @@ pub unsafe fn accept(server: *libc::c_void, client: *libc::c_void)
 pub unsafe fn write<T>(req: *uv_write_t, stream: *T,
          buf_in: *~[uv_buf_t], cb: *u8) -> libc::c_int {
     let buf_ptr = vec::raw::to_ptr(*buf_in);
-    let buf_cnt = vec::len(*buf_in) as i32;
+    let buf_cnt = (*buf_in).len() as i32;
     return rust_uv_write(req as *libc::c_void,
                               stream as *libc::c_void,
                               buf_ptr, buf_cnt, cb);
