@@ -18,6 +18,7 @@
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
+#[no_core];
 #[no_std];
 
 extern mod core(name = "std");
@@ -35,24 +36,28 @@ use rustc::metadata::filesearch;
 use extra::{getopts};
 use syntax::{ast, diagnostic};
 use util::*;
-use path_util::{build_pkg_id_in_workspace, pkgid_src_in_workspace, first_pkgid_src_in_workspace};
+use path_util::{build_pkg_id_in_workspace, first_pkgid_src_in_workspace};
 use path_util::u_rwx;
 use path_util::{built_executable_in_workspace, built_library_in_workspace};
 use path_util::{target_executable_in_workspace, target_library_in_workspace};
 use workspace::pkg_parent_workspaces;
 use context::Ctx;
 use package_id::PkgId;
+use package_source::PkgSrc;
 
 mod conditions;
 mod context;
+mod crate;
 mod package_id;
 mod package_path;
+mod package_source;
 mod path_util;
 mod search;
 mod target;
 #[cfg(test)]
 mod tests;
 mod util;
+mod version;
 mod workspace;
 
 pub mod usage;
@@ -335,11 +340,11 @@ impl Ctx {
         let maybe_executable = built_executable_in_workspace(id, workspace);
         let maybe_library = built_library_in_workspace(id, workspace);
         let target_exec = target_executable_in_workspace(id, workspace);
-        let target_lib = target_library_in_workspace(id, workspace);
+        let target_lib = maybe_library.map(|p| target_library_in_workspace(workspace, p));
 
-        debug!("target_exec = %s target_lib = %s \
+        debug!("target_exec = %s target_lib = %? \
                 maybe_executable = %? maybe_library = %?",
-               target_exec.to_str(), target_lib.to_str(),
+               target_exec.to_str(), target_lib,
                maybe_executable, maybe_library);
 
         for maybe_executable.each |exec| {
@@ -350,6 +355,8 @@ impl Ctx {
             }
         }
         for maybe_library.each |lib| {
+            let target_lib = (copy target_lib).expect(fmt!("I built %s but apparently \
+                                                didn't install it!", lib.to_str()));
             debug!("Copying: %s -> %s", lib.to_str(), target_lib.to_str());
             if !(os::mkdir_recursive(&target_lib.dir_path(), u_rwx) &&
                  os::copy_file(lib, &target_lib)) {
@@ -430,51 +437,6 @@ pub fn main() {
     }.run(cmd, args);
 }
 
-/// A crate is a unit of Rust code to be compiled into a binary or library
-pub struct Crate {
-    file: Path,
-    flags: ~[~str],
-    cfgs: ~[~str]
-}
-
-impl Crate {
-    pub fn new(p: &Path) -> Crate {
-        Crate {
-            file: copy *p,
-            flags: ~[],
-            cfgs: ~[]
-        }
-    }
-
-    pub fn flag(&self, flag: ~str) -> Crate {
-        Crate {
-            flags: vec::append(copy self.flags, [flag]),
-            .. copy *self
-        }
-    }
-
-    pub fn flags(&self, flags: ~[~str]) -> Crate {
-        Crate {
-            flags: vec::append(copy self.flags, flags),
-            .. copy *self
-        }
-    }
-
-    pub fn cfg(&self, cfg: ~str) -> Crate {
-        Crate {
-            cfgs: vec::append(copy self.cfgs, [cfg]),
-            .. copy *self
-        }
-    }
-
-    pub fn cfgs(&self, cfgs: ~[~str]) -> Crate {
-        Crate {
-            cfgs: vec::append(copy self.cfgs, cfgs),
-            .. copy *self
-        }
-    }
-}
-
 /**
  * Get the working directory of the package script.
  * Assumes that the package script has been compiled
@@ -492,214 +454,4 @@ pub fn work_dir() -> Path {
  */
 pub fn src_dir() -> Path {
     os::getcwd()
-}
-
-// An enumeration of the unpacked source of a package workspace.
-// This contains a list of files found in the source workspace.
-pub struct PkgSrc {
-    root: Path, // root of where the package source code lives
-    dst_dir: Path, // directory where we will put the compiled output
-    id: PkgId,
-    libs: ~[Crate],
-    mains: ~[Crate],
-    tests: ~[Crate],
-    benchs: ~[Crate],
-}
-
-condition! {
-    build_err: (~str) -> ();
-}
-
-impl PkgSrc {
-
-    fn new(src_dir: &Path, dst_dir: &Path,
-                  id: &PkgId) -> PkgSrc {
-        PkgSrc {
-            root: copy *src_dir,
-            dst_dir: copy *dst_dir,
-            id: copy *id,
-            libs: ~[],
-            mains: ~[],
-            tests: ~[],
-            benchs: ~[]
-        }
-    }
-
-
-    fn check_dir(&self) -> Path {
-        use conditions::nonexistent_package::cond;
-
-        debug!("Pushing onto root: %s | %s", self.id.remote_path.to_str(),
-               self.root.to_str());
-        let dir;
-        let dirs = pkgid_src_in_workspace(&self.id, &self.root);
-        debug!("Checking dirs: %?", dirs);
-        let path = dirs.find(|d| os::path_exists(d));
-        match path {
-            Some(d) => dir = d,
-            None => dir = match self.fetch_git() {
-                None => cond.raise((copy self.id, ~"supplied path for package dir does not \
-                                      exist, and couldn't interpret it as a URL fragment")),
-                Some(d) => d
-            }
-        }
-        if !os::path_is_dir(&dir) {
-            cond.raise((copy self.id, ~"supplied path for package dir is a \
-                                        non-directory"));
-        }
-
-        dir
-    }
-
-    /// Try interpreting self's package id as a remote package, and try
-    /// fetching it and caching it in a local directory. Return the cached directory
-    /// if this was successful, None otherwise
-    /// (right now we only support git)
-    fn fetch_git(&self) -> Option<Path> {
-
-        let mut local = self.root.push("src");
-        local = local.push(self.id.to_str());
-        // Git can't clone into a non-empty directory
-        os::remove_dir_recursive(&local);
-
-        let url = fmt!("https://%s", self.id.remote_path.to_str());
-        util::note(fmt!("git clone %s %s", url, local.to_str()));
-
-        if run::process_output("git", [~"clone", copy url, local.to_str()]).status != 0 {
-            util::note(fmt!("fetching %s failed: can't clone repository", url));
-            None
-        }
-        else {
-            Some(local)
-        }
-    }
-
-
-    // If a file named "pkg.rs" in the current directory exists,
-    // return the path for it. Otherwise, None
-    fn package_script_option(&self, cwd: &Path) -> Option<Path> {
-        let maybe_path = cwd.push("pkg.rs");
-        if os::path_exists(&maybe_path) {
-            Some(maybe_path)
-        }
-        else {
-            None
-        }
-    }
-
-    /// True if the given path's stem is self's pkg ID's stem
-    /// or if the pkg ID's stem is <rust-foo> and the given path's
-    /// stem is foo
-    /// Requires that dashes in p have already been normalized to
-    /// underscores
-    fn stem_matches(&self, p: &Path) -> bool {
-        let self_id = self.id.local_path.filestem();
-        if self_id == p.filestem() {
-            return true;
-        }
-        else {
-            for self_id.each |pth| {
-                if pth.starts_with("rust_") // because p is already normalized
-                    && match p.filestem() {
-                           Some(s) => str::eq_slice(s, pth.slice(5, pth.len())),
-                           None => false
-                       } { return true; }
-            }
-        }
-        false
-    }
-
-    fn push_crate(cs: &mut ~[Crate], prefix: uint, p: &Path) {
-        assert!(p.components.len() > prefix);
-        let mut sub = Path("");
-        for vec::slice(p.components, prefix,
-                       p.components.len()).each |c| {
-            sub = sub.push(*c);
-        }
-        debug!("found crate %s", sub.to_str());
-        cs.push(Crate::new(&sub));
-    }
-
-    /// Infers crates to build. Called only in the case where there
-    /// is no custom build logic
-    fn find_crates(&mut self) {
-        use conditions::missing_pkg_files::cond;
-
-        let dir = self.check_dir();
-        let prefix = dir.components.len();
-        debug!("Matching against %?", self.id.local_path.filestem());
-        for os::walk_dir(&dir) |pth| {
-            match pth.filename() {
-                Some(~"lib.rs") => PkgSrc::push_crate(&mut self.libs,
-                                                      prefix,
-                                                      pth),
-                Some(~"main.rs") => PkgSrc::push_crate(&mut self.mains,
-                                                       prefix,
-                                                       pth),
-                Some(~"test.rs") => PkgSrc::push_crate(&mut self.tests,
-                                                       prefix,
-                                                       pth),
-                Some(~"bench.rs") => PkgSrc::push_crate(&mut self.benchs,
-                                                        prefix,
-                                                        pth),
-                _ => ()
-            }
-        }
-
-        if self.libs.is_empty() && self.mains.is_empty()
-            && self.tests.is_empty() && self.benchs.is_empty() {
-
-            util::note("Couldn't infer any crates to build.\n\
-                        Try naming a crate `main.rs`, `lib.rs`, \
-                        `test.rs`, or `bench.rs`.");
-            cond.raise(copy self.id);
-        }
-
-        debug!("found %u libs, %u mains, %u tests, %u benchs",
-               self.libs.len(),
-               self.mains.len(),
-               self.tests.len(),
-               self.benchs.len())
-    }
-
-    fn build_crates(&self,
-                    ctx: &Ctx,
-                    dst_dir: &Path,
-                    src_dir: &Path,
-                    crates: &[Crate],
-                    cfgs: &[~str],
-                    what: OutputType) {
-        for crates.each |&crate| {
-            let path = &src_dir.push_rel(&crate.file).normalize();
-            util::note(fmt!("build_crates: compiling %s", path.to_str()));
-            util::note(fmt!("build_crates: destination dir is %s", dst_dir.to_str()));
-
-            let result = util::compile_crate(ctx,
-                                             &self.id,
-                                             path,
-                                             dst_dir,
-                                             crate.flags,
-                                             crate.cfgs + cfgs,
-                                             false,
-                                             what);
-            if !result {
-                build_err::cond.raise(fmt!("build failure on %s",
-                                           path.to_str()));
-            }
-            debug!("Result of compiling %s was %?",
-                   path.to_str(), result);
-        }
-    }
-
-    fn build(&self, ctx: &Ctx, dst_dir: Path, cfgs: ~[~str]) {
-        let dir = self.check_dir();
-        debug!("Building libs");
-        self.build_crates(ctx, &dst_dir, &dir, self.libs, cfgs, Lib);
-        debug!("Building mains");
-        self.build_crates(ctx, &dst_dir, &dir, self.mains, cfgs, Main);
-        debug!("Building tests");
-        self.build_crates(ctx, &dst_dir, &dir, self.tests, cfgs, Test);
-        debug!("Building benches");
-        self.build_crates(ctx, &dst_dir, &dir, self.benchs, cfgs, Bench);
-    }
 }
