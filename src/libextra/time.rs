@@ -1229,36 +1229,34 @@ mod tests {
     }
 
     fn test_timespec_eq_ord() {
-        use core::cmp::{eq, ge, gt, le, lt, ne};
-
         let a = &Timespec::new(-2, 1);
         let b = &Timespec::new(-1, 2);
         let c = &Timespec::new(1, 2);
         let d = &Timespec::new(2, 1);
         let e = &Timespec::new(2, 1);
 
-        assert!(eq(d, e));
-        assert!(ne(c, e));
+        assert!(d.eq(e));
+        assert!(c.ne(e));
 
-        assert!(lt(a, b));
-        assert!(lt(b, c));
-        assert!(lt(c, d));
+        assert!(a.lt(b));
+        assert!(b.lt(c));
+        assert!(c.lt(d));
 
-        assert!(le(a, b));
-        assert!(le(b, c));
-        assert!(le(c, d));
-        assert!(le(d, e));
-        assert!(le(e, d));
+        assert!(a.le(b));
+        assert!(b.le(c));
+        assert!(c.le(d));
+        assert!(d.le(e));
+        assert!(e.le(d));
 
-        assert!(ge(b, a));
-        assert!(ge(c, b));
-        assert!(ge(d, c));
-        assert!(ge(e, d));
-        assert!(ge(d, e));
+        assert!(b.ge(a));
+        assert!(c.ge(b));
+        assert!(d.ge(c));
+        assert!(e.ge(d));
+        assert!(d.ge(e));
 
-        assert!(gt(b, a));
-        assert!(gt(c, b));
-        assert!(gt(d, c));
+        assert!(b.gt(a));
+        assert!(c.gt(b));
+        assert!(d.gt(c));
     }
 
     #[test]
