@@ -103,7 +103,7 @@ use util::replace;
 static SPIN_COUNT: uint = 0;
 
 macro_rules! move_it (
-    { $x:expr } => ( unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } )
+    { $x:expr } => ( *ptr::to_unsafe_ptr(&($x)) )
 )
 
 #[deriving(Eq)]

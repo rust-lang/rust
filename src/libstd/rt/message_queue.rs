@@ -28,6 +28,12 @@ impl<T: Owned> MessageQueue<T> {
         }
     }
 
+    #[cfg(stage0)]
+    pub fn push(&mut self, value: T) {
+        let value = Cell::new(value);
+        self.queue.with(|q| q.push(value.take()) );
+    }
+    #[cfg(not(stage0))]
     pub fn push(&mut self, value: T) {
         unsafe {
             let value = Cell::new(value);
@@ -35,6 +41,17 @@ impl<T: Owned> MessageQueue<T> {
         }
     }
 
+    #[cfg(stage0)]
+    pub fn pop(&mut self) -> Option<T> {
+        do self.queue.with |q| {
+            if !q.is_empty() {
+                Some(q.shift())
+            } else {
+                None
+            }
+        }
+    }
+    #[cfg(not(stage0))]
     pub fn pop(&mut self) -> Option<T> {
         unsafe {
             do self.queue.with |q| {

@@ -63,9 +63,6 @@ they contained the following prologue:
 // Don't link to std. We are std.
 #[no_std];
 
-#[deny(non_camel_case_types)];
-#[deny(missing_doc)];
-
 // Make core testable by not duplicating lang items. See #2912
 #[cfg(test)] extern mod realstd(name = "std");
 #[cfg(test)] pub use kinds = realstd::kinds;

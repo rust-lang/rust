@@ -127,6 +127,16 @@ ifndef DEBUG_BORROWS
   RUSTFLAGS_STAGE2 += -Z no-debug-borrows
 endif
 
+# The standard libraries should be held up to a higher standard than any old
+# code, make sure that these common warnings are denied by default. These can
+# be overridden during development temporarily.
+RUSTDENYFLAGS := -D dead-assignment -D unnecessary-allocation \
+		 -D unreachable-code -D unused-imports -D unused-mut \
+		 -D unused-unsafe -D unused-variable -D missing-doc \
+		 -D non-camel-case-types
+DENYFLAGS_STAGE1 := $(RUSTDENYFLAGS)
+DENYFLAGS_STAGE2 := $(RUSTDENYFLAGS)
+
 # platform-specific auto-configuration
 include $(CFG_SRC_DIR)mk/platform.mk
 

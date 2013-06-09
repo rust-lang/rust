@@ -384,6 +384,7 @@ pub unsafe fn strdup_uniq(ptr: *c_uchar, len: uint) -> ~str {
 }
 
 #[lang="start"]
+#[cfg(stage0)]
 pub fn start(main: *u8, argc: int, argv: **c_char,
              crate_map: *u8) -> int {
     use rt;
@@ -410,6 +411,41 @@ pub fn start(main: *u8, argc: int, argv: **c_char,
 
                     mainfn();
                 }
+            };
+        }
+    }
+
+    extern {
+        fn rust_start(main: *c_void, argc: c_int, argv: **c_char,
+                      crate_map: *c_void) -> c_int;
+    }
+}
+#[lang="start"]
+#[cfg(not(stage0))]
+pub fn start(main: *u8, argc: int, argv: **c_char,
+             crate_map: *u8) -> int {
+    use rt;
+    use sys::Closure;
+    use ptr;
+    use cast;
+    use os;
+
+    unsafe {
+        let use_old_rt = os::getenv("RUST_NEWRT").is_none();
+        if use_old_rt {
+            return rust_start(main as *c_void, argc as c_int, argv,
+                              crate_map as *c_void) as int;
+        } else {
+            return do rt::start(argc, argv as **u8, crate_map) {
+                // `main` is an `fn() -> ()` that doesn't take an environment
+                // XXX: Could also call this as an `extern "Rust" fn` once they work
+                let main = Closure {
+                    code: main as *(),
+                    env: ptr::null(),
+                };
+                let mainfn: &fn() = cast::transmute(main);
+
+                mainfn();
             };
         }
     }

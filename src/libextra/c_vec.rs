@@ -160,7 +160,7 @@ mod tests {
             assert!(mem as int != 0);
 
             return c_vec_with_dtor(mem as *mut u8, n as uint,
-                                   || unsafe { free(mem) });
+                                   || { free(mem) });
         }
     }
 

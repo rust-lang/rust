@@ -26,9 +26,6 @@ not required in or otherwise suitable for the core library.
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
-#[deny(non_camel_case_types)];
-#[deny(missing_doc)];
-
 // NOTE: remove these two attributes after the next snapshot
 #[no_core]; // for stage0
 #[allow(unrecognized_lint)]; // otherwise stage0 is seriously ugly
@@ -37,6 +34,7 @@ not required in or otherwise suitable for the core library.
 
 extern mod core(name = "std", vers = "0.7-pre");
 
+#[cfg(stage0)]
 use core::{str, unstable};
 use core::str::{StrSlice, OwnedStr};
 

@@ -85,6 +85,7 @@ unsafe fn global_data_modify<T:Owned>(
     global_data_modify_(key_ptr(key), op)
 }
 
+#[cfg(stage0)]
 unsafe fn global_data_modify_<T:Owned>(
     key: uint, op: &fn(Option<~T>) -> Option<~T>) {
 
@@ -106,6 +107,45 @@ unsafe fn global_data_modify_<T:Owned>(
                     Some(dtor) => dtor,
                     None => {
                         let dtor: ~fn() = || unsafe {
+                            let _destroy_value: ~T = transmute(data);
+                        };
+                        dtor
+                    }
+                };
+                let value = (data, dtor);
+                gs.map.insert(key, value);
+            }
+            None => {
+                match maybe_dtor {
+                    Some(dtor) => old_dtor = Some(dtor),
+                    None => ()
+                }
+            }
+        }
+    }
+}
+#[cfg(not(stage0))]
+unsafe fn global_data_modify_<T:Owned>(
+    key: uint, op: &fn(Option<~T>) -> Option<~T>) {
+
+    let mut old_dtor = None;
+    do get_global_state().with |gs| {
+        let (maybe_new_value, maybe_dtor) = match gs.map.pop(&key) {
+            Some((ptr, dtor)) => {
+                let value: ~T = transmute(ptr);
+                (op(Some(value)), Some(dtor))
+            }
+            None => {
+                (op(None), None)
+            }
+        };
+        match maybe_new_value {
+            Some(value) => {
+                let data: *c_void = transmute(value);
+                let dtor: ~fn() = match maybe_dtor {
+                    Some(dtor) => dtor,
+                    None => {
+                        let dtor: ~fn() = || {
                             let _destroy_value: ~T = transmute(data);
                         };
                         dtor

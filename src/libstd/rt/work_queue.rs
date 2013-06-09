@@ -28,6 +28,12 @@ impl<T: Owned> WorkQueue<T> {
         }
     }
 
+    #[cfg(stage0)]
+    pub fn push(&mut self, value: T) {
+        let value = Cell::new(value);
+        self.queue.with(|q| q.unshift(value.take()) );
+    }
+    #[cfg(not(stage0))]
     pub fn push(&mut self, value: T) {
         unsafe {
             let value = Cell::new(value);
@@ -35,6 +41,17 @@ impl<T: Owned> WorkQueue<T> {
         }
     }
 
+    #[cfg(stage0)]
+    pub fn pop(&mut self) -> Option<T> {
+        do self.queue.with |q| {
+            if !q.is_empty() {
+                Some(q.shift())
+            } else {
+                None
+            }
+        }
+    }
+    #[cfg(not(stage0))]
     pub fn pop(&mut self) -> Option<T> {
         unsafe {
             do self.queue.with |q| {
@@ -47,6 +64,17 @@ impl<T: Owned> WorkQueue<T> {
         }
     }
 
+    #[cfg(stage0)]
+    pub fn steal(&mut self) -> Option<T> {
+        do self.queue.with |q| {
+            if !q.is_empty() {
+                Some(q.pop())
+            } else {
+                None
+            }
+        }
+    }
+    #[cfg(not(stage0))]
     pub fn steal(&mut self) -> Option<T> {
         unsafe {
             do self.queue.with |q| {
@@ -59,6 +87,11 @@ impl<T: Owned> WorkQueue<T> {
         }
     }
 
+    #[cfg(stage0)]
+    pub fn is_empty(&self) -> bool {
+        self.queue.with_imm(|q| q.is_empty() )
+    }
+    #[cfg(not(stage0))]
     pub fn is_empty(&self) -> bool {
         unsafe {
             self.queue.with_imm(|q| q.is_empty() )
