@@ -9,10 +9,12 @@
 // except according to those terms.
 
 pub fn main() {
-    use std::vec::from_fn;
-    debug!(::std::vec::len(from_fn(2, |i| i)));
+    use std::util::replace;
+    let mut x = 5;
+    replace(&mut x, 6);
     {
-        use std::vec::*;
-        debug!(len(~[2]));
+        use std::util::*;
+        let mut y = 6;
+        swap(&mut x, &mut y);
     }
 }

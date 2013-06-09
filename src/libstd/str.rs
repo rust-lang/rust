@@ -1752,7 +1752,7 @@ Section: Misc
 /// Determines if a vector of bytes contains valid UTF-8
 pub fn is_utf8(v: &const [u8]) -> bool {
     let mut i = 0u;
-    let total = vec::len::<u8>(v);
+    let total = v.len();
     while i < total {
         let mut chsize = utf8_char_width(v[i]);
         if chsize == 0u { return false; }
@@ -3693,7 +3693,7 @@ mod tests {
         let s2: ~str = from_bytes(v);
         let mut i: uint = 0u;
         let n1: uint = len(s1);
-        let n2: uint = vec::len::<u8>(v);
+        let n2: uint = v.len();
         assert_eq!(n1, n2);
         while i < n1 {
             let a: u8 = s1[i];

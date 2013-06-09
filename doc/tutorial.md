@@ -2046,7 +2046,7 @@ trait Seq<T> {
 }
 
 impl<T> Seq<T> for ~[T] {
-    fn len(&self) -> uint { vec::len(*self) }
+    fn len(&self) -> uint { self.len() }
     fn iter(&self, b: &fn(v: &T)) {
         for vec::each(*self) |elt| { b(elt); }
     }

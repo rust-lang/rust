@@ -56,11 +56,6 @@ pub mod rustrt {
     }
 }
 
-/// Returns true if a vector contains no elements
-pub fn is_empty<T>(v: &const [T]) -> bool {
-    as_const_buf(v, |_p, len| len == 0u)
-}
-
 /// Returns true if two vectors have the same length
 pub fn same_length<T, U>(xs: &const [T], ys: &const [U]) -> bool {
     xs.len() == ys.len()
@@ -121,12 +116,6 @@ pub fn capacity<T>(v: &const ~[T]) -> uint {
         let repr: **raw::VecRepr = transmute(v);
         (**repr).unboxed.alloc / sys::nonzero_size_of::<T>()
     }
-}
-
-/// Returns the length of a vector
-#[inline(always)]
-pub fn len<T>(v: &const [T]) -> uint {
-    as_const_buf(v, |_p, len| len)
 }
 
 // A botch to tide us over until core and std are fully demuted.
@@ -291,7 +280,7 @@ pub fn last_opt<'r,T>(v: &'r [T]) -> Option<&'r T> {
 #[inline(always)]
 pub fn slice<'r,T>(v: &'r [T], start: uint, end: uint) -> &'r [T] {
     assert!(start <= end);
-    assert!(end <= len(v));
+    assert!(end <= v.len());
     do as_imm_buf(v) |p, _len| {
         unsafe {
             transmute((ptr::offset(p, start),
@@ -319,7 +308,7 @@ pub fn mut_slice<'r,T>(v: &'r mut [T], start: uint, end: uint)
 pub fn const_slice<'r,T>(v: &'r const [T], start: uint, end: uint)
                       -> &'r const [T] {
     assert!(start <= end);
-    assert!(end <= len(v));
+    assert!(end <= v.len());
     do as_const_buf(v) |p, _len| {
         unsafe {
             transmute((ptr::const_offset(p, start),
@@ -332,7 +321,7 @@ pub fn const_slice<'r,T>(v: &'r const [T], start: uint, end: uint)
 
 /// Split the vector `v` by applying each element against the predicate `f`.
 pub fn split<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
-    let ln = len(v);
+    let ln = v.len();
     if (ln == 0u) { return ~[] }
 
     let mut start = 0u;
@@ -355,7 +344,7 @@ pub fn split<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
  * to `n` times.
  */
 pub fn splitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
-    let ln = len(v);
+    let ln = v.len();
     if (ln == 0u) { return ~[] }
 
     let mut start = 0u;
@@ -381,7 +370,7 @@ pub fn splitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
  * `f`.
  */
 pub fn rsplit<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
-    let ln = len(v);
+    let ln = v.len();
     if (ln == 0) { return ~[] }
 
     let mut end = ln;
@@ -405,7 +394,7 @@ pub fn rsplit<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[~[T]] {
  * `f` up to `n times.
  */
 pub fn rsplitn<T:Copy>(v: &[T], n: uint, f: &fn(t: &T) -> bool) -> ~[~[T]] {
-    let ln = len(v);
+    let ln = v.len();
     if (ln == 0u) { return ~[] }
 
     let mut end = ln;
@@ -861,7 +850,7 @@ pub fn grow_set<T:Copy>(v: &mut ~[T], index: uint, initval: &T, val: T) {
 
 /// Apply a function to each element of a vector and return the results
 pub fn map<T, U>(v: &[T], f: &fn(t: &T) -> U) -> ~[U] {
-    let mut result = with_capacity(len(v));
+    let mut result = with_capacity(v.len());
     for each(v) |elem| {
         result.push(f(elem));
     }
@@ -908,8 +897,8 @@ pub fn flat_map<T, U>(v: &[T], f: &fn(t: &T) -> ~[U]) -> ~[U] {
  */
 pub fn map_zip<T:Copy,U:Copy,V>(v0: &[T], v1: &[U],
                                   f: &fn(t: &T, v: &U) -> V) -> ~[V] {
-    let v0_len = len(v0);
-    if v0_len != len(v1) { fail!(); }
+    let v0_len = v0.len();
+    if v0_len != v1.len() { fail!(); }
     let mut u: ~[V] = ~[];
     let mut i = 0u;
     while i < v0_len {
@@ -1080,7 +1069,7 @@ pub fn contains<T:Eq>(v: &[T], x: &T) -> bool {
  * is returned. If `f` matches no elements then none is returned.
  */
 pub fn find<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> Option<T> {
-    find_between(v, 0u, len(v), f)
+    find_between(v, 0u, v.len(), f)
 }
 
 /**
@@ -1103,7 +1092,7 @@ pub fn find_between<T:Copy>(v: &[T], start: uint, end: uint,
  * matches no elements then none is returned.
  */
 pub fn rfind<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> Option<T> {
-    rfind_between(v, 0u, len(v), f)
+    rfind_between(v, 0u, v.len(), f)
 }
 
 /**
@@ -1134,7 +1123,7 @@ pub fn position_elem<T:Eq>(v: &[T], x: &T) -> Option<uint> {
  * then none is returned.
  */
 pub fn position<T>(v: &[T], f: &fn(t: &T) -> bool) -> Option<uint> {
-    position_between(v, 0u, len(v), f)
+    position_between(v, 0u, v.len(), f)
 }
 
 /**
@@ -1150,7 +1139,7 @@ pub fn position_between<T>(v: &[T],
                            f: &fn(t: &T) -> bool)
                         -> Option<uint> {
     assert!(start <= end);
-    assert!(end <= len(v));
+    assert!(end <= v.len());
     let mut i = start;
     while i < end { if f(&v[i]) { return Some::<uint>(i); } i += 1u; }
     None
@@ -1169,7 +1158,7 @@ pub fn rposition_elem<T:Eq>(v: &[T], x: &T) -> Option<uint> {
  * matches no elements then none is returned.
  */
 pub fn rposition<T>(v: &[T], f: &fn(t: &T) -> bool) -> Option<uint> {
-    rposition_between(v, 0u, len(v), f)
+    rposition_between(v, 0u, v.len(), f)
 }
 
 /**
@@ -1183,7 +1172,7 @@ pub fn rposition<T>(v: &[T], f: &fn(t: &T) -> bool) -> Option<uint> {
 pub fn rposition_between<T>(v: &[T], start: uint, end: uint,
                              f: &fn(t: &T) -> bool) -> Option<uint> {
     assert!(start <= end);
-    assert!(end <= len(v));
+    assert!(end <= v.len());
     let mut i = end;
     while i > start {
         if f(&v[i - 1u]) { return Some::<uint>(i - 1u); }
@@ -1273,9 +1262,9 @@ pub fn unzip<T,U>(v: ~[(T, U)]) -> (~[T], ~[U]) {
 pub fn zip_slice<T:Copy,U:Copy>(v: &const [T], u: &const [U])
         -> ~[(T, U)] {
     let mut zipped = ~[];
-    let sz = len(v);
+    let sz = v.len();
     let mut i = 0u;
-    assert_eq!(sz, len(u));
+    assert_eq!(sz, u.len());
     while i < sz {
         zipped.push((v[i], u[i]));
         i += 1u;
@@ -1290,8 +1279,8 @@ pub fn zip_slice<T:Copy,U:Copy>(v: &const [T], u: &const [U])
  * i-th elements from each of the input vectors.
  */
 pub fn zip<T, U>(mut v: ~[T], mut u: ~[U]) -> ~[(T, U)] {
-    let mut i = len(v);
-    assert_eq!(i, len(u));
+    let mut i = v.len();
+    assert_eq!(i, u.len());
     let mut w = with_capacity(i);
     while i > 0 {
         w.push((v.pop(),u.pop()));
@@ -1324,7 +1313,7 @@ pub fn swap<T>(v: &mut [T], a: uint, b: uint) {
 /// Reverse the order of elements in a vector, in place
 pub fn reverse<T>(v: &mut [T]) {
     let mut i: uint = 0;
-    let ln = len::<T>(v);
+    let ln = v.len();
     while i < ln / 2 {
         swap(v, i, ln - i - 1);
         i += 1;
@@ -1372,7 +1361,7 @@ pub fn reverse_part<T>(v: &mut [T], start: uint, end : uint) {
 /// Returns a vector with the order of elements reversed
 pub fn reversed<T:Copy>(v: &const [T]) -> ~[T] {
     let mut rs: ~[T] = ~[];
-    let mut i = len::<T>(v);
+    let mut i = v.len();
     if i == 0 { return (rs); } else { i -= 1; }
     while i != 0 { rs.push(v[i]); i -= 1; }
     rs.push(v[0]);
@@ -1479,7 +1468,7 @@ pub fn eachi<'r,T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) -> bool {
  * of elements in `v` (so if `v` is sorted then the permutations are
  * lexicographically sorted).
  *
- * The total number of permutations produced is `len(v)!`.  If `v` contains
+ * The total number of permutations produced is `v.len()!`.  If `v` contains
  * repeated elements, then some permutations are repeated.
  *
  * See [Algorithms to generate
@@ -1779,11 +1768,16 @@ pub mod traits {
 impl<'self,T> Container for &'self const [T] {
     /// Returns true if a vector contains no elements
     #[inline]
-    fn is_empty(&const self) -> bool { is_empty(*self) }
+    fn is_empty(&const self) -> bool {
+        as_const_buf(*self, |_p, len| len == 0u)
+    }
 
     /// Returns the length of a vector
     #[inline]
-    fn len(&const self) -> uint { len(*self) }
+    fn len(&const self) -> uint {
+        as_const_buf(*self, |_p, len| len)
+    }
+
 }
 
 #[allow(missing_doc)]
@@ -2250,7 +2244,7 @@ pub mod raw {
     use ptr;
     use sys;
     use unstable::intrinsics;
-    use vec::{UnboxedVecRepr, as_const_buf, as_mut_buf, len, with_capacity};
+    use vec::{UnboxedVecRepr, as_const_buf, as_mut_buf, with_capacity};
     use util;
 
     /// The internal representation of a (boxed) vector
@@ -2872,8 +2866,9 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        assert!(is_empty::<int>([]));
-        assert!(!is_empty([0]));
+        let xs: [int, ..0] = [];
+        assert!(xs.is_empty());
+        assert!(![0].is_empty());
     }
 
     #[test]

@@ -203,8 +203,7 @@ fn is_test_fn(cx: @mut TestCtxt, i: @ast::item) -> bool {
 }
 
 fn is_bench_fn(i: @ast::item) -> bool {
-    let has_bench_attr =
-        vec::len(attr::find_attrs_by_name(i.attrs, "bench")) > 0u;
+    let has_bench_attr = !attr::find_attrs_by_name(i.attrs, "bench").is_empty();
 
     fn has_test_signature(i: @ast::item) -> bool {
         match i.node {
@@ -242,7 +241,7 @@ fn is_ignored(cx: @mut TestCtxt, i: @ast::item) -> bool {
 }
 
 fn should_fail(i: @ast::item) -> bool {
-    vec::len(attr::find_attrs_by_name(i.attrs, "should_fail")) > 0u
+    !attr::find_attrs_by_name(i.attrs, "should_fail").is_empty()
 }
 
 fn add_test_module(cx: &TestCtxt, m: &ast::_mod) -> ast::_mod {
