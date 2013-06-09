@@ -849,14 +849,14 @@ fn check_item_non_camel_case_types(cx: &Context, it: @ast::item) {
 
     fn ident_without_trailing_underscores<'r>(ident: &'r str) -> &'r str {
         match str::rfind(ident, |c| c != '_') {
-            Some(idx) => str::slice(ident, 0, idx + 1),
+            Some(idx) => ident.slice(0, idx + 1),
             None => ident, // all underscores
         }
     }
 
     fn ident_without_leading_underscores<'r>(ident: &'r str) -> &'r str {
         match str::find(ident, |c| c != '_') {
-            Some(idx) => str::slice(ident, idx, ident.len()),
+            Some(idx) => ident.slice(idx, ident.len()),
             None => ident // all underscores
         }
     }

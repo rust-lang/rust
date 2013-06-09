@@ -247,7 +247,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
             let mut names;
             let mut i_arg = None;
             if cur[1] == '-' as u8 {
-                let tail = str::slice(cur, 2, curlen);
+                let tail = cur.slice(2, curlen);
                 let tail_eq: ~[&str] = tail.split_iter('=').collect();
                 if tail_eq.len() <= 1 {
                     names = ~[Long(tail.to_owned())];

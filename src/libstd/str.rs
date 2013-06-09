@@ -110,7 +110,7 @@ pub fn from_bytes_slice<'a>(vector: &'a [u8]) -> &'a str {
 /// Copy a slice into a new unique str
 #[inline(always)]
 pub fn to_owned(s: &str) -> ~str {
-    unsafe { raw::slice_bytes_owned(s, 0, len(s)) }
+    unsafe { raw::slice_bytes_owned(s, 0, s.len()) }
 }
 
 impl ToStr for ~str {
@@ -148,7 +148,7 @@ pub fn push_char(s: &mut ~str, ch: char) {
         else if code < max_four_b { 4u }
         else if code < max_five_b { 5u }
         else { 6u };
-        let len = len(*s);
+        let len = s.len();
         let new_len = len + nb;
         reserve_at_least(&mut *s, new_len);
         let off = len;
@@ -453,7 +453,7 @@ Section: Adding to and removing from a string
  * If the string does not contain any characters
  */
 pub fn pop_char(s: &mut ~str) -> char {
-    let end = len(*s);
+    let end = s.len();
     assert!(end > 0u);
     let CharRange {ch, next} = char_range_at_reverse(*s, end);
     unsafe { raw::set_len(s, next); }
@@ -469,7 +469,7 @@ pub fn pop_char(s: &mut ~str) -> char {
  */
 pub fn shift_char(s: &mut ~str) -> char {
     let CharRange {ch, next} = char_range_at(*s, 0u);
-    *s = unsafe { raw::slice_bytes_owned(*s, next, len(*s)) };
+    *s = unsafe { raw::slice_bytes_owned(*s, next, s.len()) };
     return ch;
 }
 
@@ -485,7 +485,7 @@ pub fn shift_char(s: &mut ~str) -> char {
 #[inline]
 pub fn slice_shift_char<'a>(s: &'a str) -> (char, &'a str) {
     let CharRange {ch, next} = char_range_at(s, 0u);
-    let next_s = unsafe { raw::slice_bytes(s, next, len(s)) };
+    let next_s = unsafe { raw::slice_bytes(s, next, s.len()) };
     return (ch, next_s);
 }
 
@@ -554,7 +554,7 @@ pub fn trim_chars<'a>(s: &'a str, chars_to_trim: &[char]) -> &'a str {
 pub fn trim_left<'a>(s: &'a str) -> &'a str {
     match find(s, |c| !char::is_whitespace(c)) {
       None => "",
-      Some(first) => unsafe { raw::slice_bytes(s, first, len(s)) }
+      Some(first) => unsafe { raw::slice_bytes(s, first, s.len()) }
     }
 }
 
@@ -584,7 +584,7 @@ Section: Transforming strings
 pub fn to_bytes(s: &str) -> ~[u8] {
     unsafe {
         let mut v: ~[u8] = ::cast::transmute(to_owned(s));
-        vec::raw::set_len(&mut v, len(s));
+        vec::raw::set_len(&mut v, s.len());
         v
     }
 }
@@ -618,19 +618,7 @@ pub fn to_chars(s: &str) -> ~[char] {
  * `begin`.
  */
 pub fn substr<'a>(s: &'a str, begin: uint, n: uint) -> &'a str {
-    slice(s, begin, begin + count_bytes(s, begin, n))
-}
-
-/**
- * Returns a slice of the given string from the byte range [`begin`..`end`)
- *
- * Fails when `begin` and `end` do not point to valid characters or beyond
- * the last character of the string
- */
-pub fn slice<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
-    assert!(is_char_boundary(s, begin));
-    assert!(is_char_boundary(s, end));
-    unsafe { raw::slice_bytes(s, begin, end) }
+    s.slice(begin, begin + count_bytes(s, begin, n))
 }
 
 /// An iterator over the substrings of a string, separated by `sep`.
@@ -724,7 +712,7 @@ impl<'self, Sep: StrCharSplitSeparator> Iterator<&'self str> for StrCharSplitIte
 // See Issue #1932 for why this is a naive search
 fn iter_matches<'a,'b>(s: &'a str, sep: &'b str,
                        f: &fn(uint, uint) -> bool) -> bool {
-    let (sep_len, l) = (len(sep), len(s));
+    let (sep_len, l) = (sep.len(), s.len());
     assert!(sep_len > 0u);
     let mut (i, match_start, match_i) = (0u, 0u, 0u);
 
@@ -759,7 +747,7 @@ fn iter_between_matches<'a,'b>(s: &'a str,
         if !f(last_end, from) { return false; }
         last_end = to;
     }
-    return f(last_end, len(s));
+    return f(last_end, s.len());
 }
 
 /**
@@ -889,7 +877,7 @@ pub fn each_split_within<'a>(ss: &'a str,
     let mut state = A;
 
     let mut cont = true;
-    let slice: &fn() = || { cont = it(slice(ss, slice_start, last_end)) };
+    let slice: &fn() = || { cont = it(ss.slice(slice_start, last_end)) };
 
     let machine: &fn((uint, char)) -> bool = |(i, c)| {
         let whitespace = if char::is_whitespace(c)       { Ws }       else { Cr };
@@ -902,7 +890,7 @@ pub fn each_split_within<'a>(ss: &'a str,
             (B, Cr, UnderLim) => { B }
             (B, Cr, OverLim)  if (i - last_start + 1) > lim
                               => fail!("word starting with %? longer than limit!",
-                                       self::slice(ss, last_start, i + 1)),
+                                       ss.slice(last_start, i + 1)),
             (B, Cr, OverLim)  => { slice(); slice_start = last_start; B }
             (B, Ws, UnderLim) => { last_end = i; C }
             (B, Ws, OverLim)  => { last_end = i; slice(); A }
@@ -1178,7 +1166,7 @@ Section: Iterating through strings
 /// Apply a function to each character
 pub fn map(ss: &str, ff: &fn(char) -> char) -> ~str {
     let mut result = ~"";
-    reserve(&mut result, len(ss));
+    reserve(&mut result, ss.len());
     for ss.iter().advance |cc| {
         str::push_char(&mut result, ff(cc));
     }
@@ -1203,7 +1191,7 @@ Section: Searching
  * or `none` if there is no match
  */
 pub fn find_char(s: &str, c: char) -> Option<uint> {
-    find_char_between(s, c, 0u, len(s))
+    find_char_between(s, c, 0u, s.len())
 }
 
 /**
@@ -1223,11 +1211,11 @@ pub fn find_char(s: &str, c: char) -> Option<uint> {
  *
  * # Failure
  *
- * `start` must be less than or equal to `len(s)`. `start` must be the
+ * `start` must be less than or equal to `s.len()`. `start` must be the
  * index of a character boundary, as defined by `is_char_boundary`.
  */
 pub fn find_char_from(s: &str, c: char, start: uint) -> Option<uint> {
-    find_char_between(s, c, start, len(s))
+    find_char_between(s, c, start, s.len())
 }
 
 /**
@@ -1248,14 +1236,14 @@ pub fn find_char_from(s: &str, c: char, start: uint) -> Option<uint> {
  * # Failure
  *
  * `start` must be less than or equal to `end` and `end` must be less than
- * or equal to `len(s)`. `start` must be the index of a character boundary,
+ * or equal to `s.len()`. `start` must be the index of a character boundary,
  * as defined by `is_char_boundary`.
  */
 pub fn find_char_between(s: &str, c: char, start: uint, end: uint)
     -> Option<uint> {
     if c < 128u as char {
         assert!(start <= end);
-        assert!(end <= len(s));
+        assert!(end <= s.len());
         let mut i = start;
         let b = c as u8;
         while i < end {
@@ -1282,7 +1270,7 @@ pub fn find_char_between(s: &str, c: char, start: uint, end: uint)
  * or `none` if there is no match
  */
 pub fn rfind_char(s: &str, c: char) -> Option<uint> {
-    rfind_char_between(s, c, len(s), 0u)
+    rfind_char_between(s, c, s.len(), 0u)
 }
 
 /**
@@ -1302,7 +1290,7 @@ pub fn rfind_char(s: &str, c: char) -> Option<uint> {
  *
  * # Failure
  *
- * `start` must be less than or equal to `len(s)`. `start` must be
+ * `start` must be less than or equal to `s.len()`. `start` must be
  * the index of a character boundary, as defined by `is_char_boundary`.
  */
 pub fn rfind_char_from(s: &str, c: char, start: uint) -> Option<uint> {
@@ -1327,13 +1315,13 @@ pub fn rfind_char_from(s: &str, c: char, start: uint) -> Option<uint> {
  * # Failure
  *
  * `end` must be less than or equal to `start` and `start` must be less than
- * or equal to `len(s)`. `start` must be the index of a character boundary,
+ * or equal to `s.len()`. `start` must be the index of a character boundary,
  * as defined by `is_char_boundary`.
  */
 pub fn rfind_char_between(s: &str, c: char, start: uint, end: uint) -> Option<uint> {
     if c < 128u as char {
         assert!(start >= end);
-        assert!(start <= len(s));
+        assert!(start <= s.len());
         let mut i = start;
         let b = c as u8;
         while i > end {
@@ -1361,7 +1349,7 @@ pub fn rfind_char_between(s: &str, c: char, start: uint, end: uint) -> Option<ui
  * or `none` if there is no match
  */
 pub fn find(s: &str, f: &fn(char) -> bool) -> Option<uint> {
-    find_between(s, 0u, len(s), f)
+    find_between(s, 0u, s.len(), f)
 }
 
 /**
@@ -1381,12 +1369,12 @@ pub fn find(s: &str, f: &fn(char) -> bool) -> Option<uint> {
  *
  * # Failure
  *
- * `start` must be less than or equal to `len(s)`. `start` must be the
+ * `start` must be less than or equal to `s.len()`. `start` must be the
  * index of a character boundary, as defined by `is_char_boundary`.
  */
 pub fn find_from(s: &str, start: uint, f: &fn(char)
     -> bool) -> Option<uint> {
-    find_between(s, start, len(s), f)
+    find_between(s, start, s.len(), f)
 }
 
 /**
@@ -1408,12 +1396,12 @@ pub fn find_from(s: &str, start: uint, f: &fn(char)
  * # Failure
  *
  * `start` must be less than or equal to `end` and `end` must be less than
- * or equal to `len(s)`. `start` must be the index of a character
+ * or equal to `s.len()`. `start` must be the index of a character
  * boundary, as defined by `is_char_boundary`.
  */
 pub fn find_between(s: &str, start: uint, end: uint, f: &fn(char) -> bool) -> Option<uint> {
     assert!(start <= end);
-    assert!(end <= len(s));
+    assert!(end <= s.len());
     assert!(is_char_boundary(s, start));
     let mut i = start;
     while i < end {
@@ -1439,7 +1427,7 @@ pub fn find_between(s: &str, start: uint, end: uint, f: &fn(char) -> bool) -> Op
  * or `none` if there is no match
  */
 pub fn rfind(s: &str, f: &fn(char) -> bool) -> Option<uint> {
-    rfind_between(s, len(s), 0u, f)
+    rfind_between(s, s.len(), 0u, f)
 }
 
 /**
@@ -1459,7 +1447,7 @@ pub fn rfind(s: &str, f: &fn(char) -> bool) -> Option<uint> {
  *
  * # Failure
  *
- * `start` must be less than or equal to `len(s)', `start` must be the
+ * `start` must be less than or equal to `s.len()', `start` must be the
  * index of a character boundary, as defined by `is_char_boundary`
  */
 pub fn rfind_from(s: &str, start: uint, f: &fn(char) -> bool) -> Option<uint> {
@@ -1485,12 +1473,12 @@ pub fn rfind_from(s: &str, start: uint, f: &fn(char) -> bool) -> Option<uint> {
  * # Failure
  *
  * `end` must be less than or equal to `start` and `start` must be less
- * than or equal to `len(s)`. `start` must be the index of a character
+ * than or equal to `s.len()`. `start` must be the index of a character
  * boundary, as defined by `is_char_boundary`
  */
 pub fn rfind_between(s: &str, start: uint, end: uint, f: &fn(char) -> bool) -> Option<uint> {
     assert!(start >= end);
-    assert!(start <= len(s));
+    assert!(start <= s.len());
     assert!(is_char_boundary(s, start));
     let mut i = start;
     while i > end {
@@ -1522,7 +1510,7 @@ fn match_at<'a,'b>(haystack: &'a str, needle: &'b str, at: uint) -> bool {
  * or `none` if there is no match
  */
 pub fn find_str<'a,'b>(haystack: &'a str, needle: &'b str) -> Option<uint> {
-    find_str_between(haystack, needle, 0u, len(haystack))
+    find_str_between(haystack, needle, 0u, haystack.len())
 }
 
 /**
@@ -1542,13 +1530,13 @@ pub fn find_str<'a,'b>(haystack: &'a str, needle: &'b str) -> Option<uint> {
  *
  * # Failure
  *
- * `start` must be less than or equal to `len(s)`
+ * `start` must be less than or equal to `s.len()`
  */
 pub fn find_str_from<'a,'b>(haystack: &'a str,
                             needle: &'b str,
                             start: uint)
                          -> Option<uint> {
-    find_str_between(haystack, needle, start, len(haystack))
+    find_str_between(haystack, needle, start, haystack.len())
 }
 
 /**
@@ -1569,7 +1557,7 @@ pub fn find_str_from<'a,'b>(haystack: &'a str,
  * # Failure
  *
  * `start` must be less than or equal to `end` and `end` must be less than
- * or equal to `len(s)`.
+ * or equal to `s.len()`.
  */
 pub fn find_str_between<'a,'b>(haystack: &'a str,
                                needle: &'b str,
@@ -1577,8 +1565,8 @@ pub fn find_str_between<'a,'b>(haystack: &'a str,
                                end:uint)
                             -> Option<uint> {
     // See Issue #1932 for why this is a naive search
-    assert!(end <= len(haystack));
-    let needle_len = len(needle);
+    assert!(end <= haystack.len());
+    let needle_len = needle.len();
     if needle_len == 0u { return Some(start); }
     if needle_len > end { return None; }
 
@@ -1624,7 +1612,7 @@ pub fn contains_char(haystack: &str, needle: char) -> bool {
  * * needle - The string to look for
  */
 pub fn starts_with<'a,'b>(haystack: &'a str, needle: &'b str) -> bool {
-    let (haystack_len, needle_len) = (len(haystack), len(needle));
+    let (haystack_len, needle_len) = (haystack.len(), needle.len());
     if needle_len == 0u { true }
     else if needle_len > haystack_len { false }
     else { match_at(haystack, needle, 0u) }
@@ -1639,7 +1627,7 @@ pub fn starts_with<'a,'b>(haystack: &'a str, needle: &'b str) -> bool {
  * * needle - The string to look for
  */
 pub fn ends_with<'a,'b>(haystack: &'a str, needle: &'b str) -> bool {
-    let (haystack_len, needle_len) = (len(haystack), len(needle));
+    let (haystack_len, needle_len) = (haystack.len(), needle.len());
     if needle_len == 0u { true }
     else if needle_len > haystack_len { false }
     else { match_at(haystack, needle, haystack_len - needle_len) }
@@ -1648,10 +1636,6 @@ pub fn ends_with<'a,'b>(haystack: &'a str, needle: &'b str) -> bool {
 /*
 Section: String properties
 */
-
-/// Returns true if the string has length 0
-#[inline(always)]
-pub fn is_empty(s: &str) -> bool { len(s) == 0u }
 
 /**
  * Returns true if the string contains only whitespace
@@ -1671,15 +1655,9 @@ fn is_alphanumeric(s: &str) -> bool {
     s.iter().all(char::is_alphanumeric)
 }
 
-/// Returns the string length/size in bytes not counting the null terminator
-#[inline(always)]
-pub fn len(s: &str) -> uint {
-    do as_buf(s) |_p, n| { n - 1u }
-}
-
 /// Returns the number of characters that a string holds
 #[inline(always)]
-pub fn char_len(s: &str) -> uint { count_chars(s, 0u, len(s)) }
+pub fn char_len(s: &str) -> uint { count_chars(s, 0u, s.len()) }
 
 /*
 Section: Misc
@@ -1828,7 +1806,7 @@ pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
 pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
     assert!(is_char_boundary(s, start));
     let mut (end, cnt) = (start, n);
-    let l = len(s);
+    let l = s.len();
     while cnt > 0u {
         assert!(end < l);
         let next = char_range_at(s, end).next;
@@ -1856,7 +1834,7 @@ pub fn utf8_char_width(b: u8) -> uint {
  * character sequence.
  */
 pub fn is_char_boundary(s: &str, index: uint) -> bool {
-    if index == len(s) { return true; }
+    if index == s.len() { return true; }
     let b = s[index];
     return b < 128u8 || b >= 192u8;
 }
@@ -1873,7 +1851,7 @@ pub fn is_char_boundary(s: &str, index: uint) -> bool {
  * ~~~ {.rust}
  * let s = "中华Việt Nam";
  * let i = 0u;
- * while i < str::len(s) {
+ * while i < s.len() {
  *     let CharRange {ch, next} = str::char_range_at(s, i);
  *     std::io::println(fmt!("%u: %c",i,ch));
  *     i = next;
@@ -2242,7 +2220,7 @@ pub fn capacity(s: &const ~str) -> uint {
 /// Escape each char in `s` with char::escape_default.
 pub fn escape_default(s: &str) -> ~str {
     let mut out: ~str = ~"";
-    reserve_at_least(&mut out, str::len(s));
+    reserve_at_least(&mut out, s.len());
     for s.iter().advance |c| {
         push_str(&mut out, char::escape_default(c));
     }
@@ -2252,7 +2230,7 @@ pub fn escape_default(s: &str) -> ~str {
 /// Escape each char in `s` with char::escape_unicode.
 pub fn escape_unicode(s: &str) -> ~str {
     let mut out: ~str = ~"";
-    reserve_at_least(&mut out, str::len(s));
+    reserve_at_least(&mut out, s.len());
     for s.iter().advance |c| {
         push_str(&mut out, char::escape_unicode(c));
     }
@@ -2265,7 +2243,7 @@ pub mod raw {
     use libc;
     use ptr;
     use str::raw;
-    use str::{as_buf, is_utf8, len, reserve_at_least};
+    use str::{as_buf, is_utf8, reserve_at_least};
     use vec;
 
     /// Create a Rust string from a null-terminated *u8 buffer
@@ -2394,7 +2372,7 @@ pub mod raw {
 
     /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
     pub unsafe fn pop_byte(s: &mut ~str) -> u8 {
-        let len = len(*s);
+        let len = s.len();
         assert!((len > 0u));
         let b = s[len - 1u];
         set_len(s, len - 1u);
@@ -2403,7 +2381,7 @@ pub mod raw {
 
     /// Removes the first byte from a string and returns it. (Not UTF-8 safe).
     pub unsafe fn shift_byte(s: &mut ~str) -> u8 {
-        let len = len(*s);
+        let len = s.len();
         assert!((len > 0u));
         let b = s[0];
         *s = raw::slice_bytes_owned(*s, 1u, len);
@@ -2567,7 +2545,7 @@ impl<'self> StrSlice<'self> for &'self str {
     }
     /// Returns true if the string has length 0
     #[inline]
-    fn is_empty(&self) -> bool { is_empty(*self) }
+    fn is_empty(&self) -> bool { self.len() == 0 }
     /**
      * Returns true if the string contains only whitespace
      *
@@ -2584,7 +2562,9 @@ impl<'self> StrSlice<'self> for &'self str {
     fn is_alphanumeric(&self) -> bool { is_alphanumeric(*self) }
     /// Returns the size in bytes not counting the null terminator
     #[inline(always)]
-    fn len(&self) -> uint { len(*self) }
+    fn len(&self) -> uint {
+        do as_buf(*self) |_p, n| { n - 1u }
+    }
     /// Returns the number of characters that a string holds
     #[inline]
     fn char_len(&self) -> uint { char_len(*self) }
@@ -2597,7 +2577,9 @@ impl<'self> StrSlice<'self> for &'self str {
      */
     #[inline]
     fn slice(&self, begin: uint, end: uint) -> &'self str {
-        slice(*self, begin, end)
+        assert!(is_char_boundary(*self, begin));
+        assert!(is_char_boundary(*self, end));
+        unsafe { raw::slice_bytes(*self, begin, end) }
     }
     /**
      * Splits a string into a vector of the substrings separated by a given
@@ -2788,8 +2770,8 @@ mod tests {
 
     #[test]
     fn test_eq_slice() {
-        assert!((eq_slice(slice("foobar", 0, 3), "foo")));
-        assert!((eq_slice(slice("barfoo", 3, 6), "foo")));
+        assert!((eq_slice("foobar".slice(0, 3), "foo")));
+        assert!((eq_slice("barfoo".slice(3, 6), "foo")));
         assert!((!eq_slice("foo1", "foo2")));
     }
 
@@ -2803,13 +2785,13 @@ mod tests {
 
     #[test]
     fn test_len() {
-        assert_eq!(len(""), 0u);
-        assert_eq!(len("hello world"), 11u);
-        assert_eq!(len("\x63"), 1u);
-        assert_eq!(len("\xa2"), 2u);
-        assert_eq!(len("\u03c0"), 2u);
-        assert_eq!(len("\u2620"), 3u);
-        assert_eq!(len("\U0001d11e"), 4u);
+        assert_eq!("".len(), 0u);
+        assert_eq!("hello world".len(), 11u);
+        assert_eq!("\x63".len(), 1u);
+        assert_eq!("\xa2".len(), 2u);
+        assert_eq!("\u03c0".len(), 2u);
+        assert_eq!("\u2620".len(), 3u);
+        assert_eq!("\U0001d11e".len(), 4u);
 
         assert_eq!(char_len(""), 0u);
         assert_eq!(char_len("hello world"), 11u);
@@ -2937,7 +2919,7 @@ mod tests {
     #[test]
     fn test_substr() {
         fn t(a: &str, b: &str, start: int) {
-            assert_eq!(substr(a, start as uint, len(b)), b);
+            assert_eq!(substr(a, start as uint, b.len()), b);
         }
         t("hello", "llo", 2);
         t("hello", "el", 1);
@@ -3044,8 +3026,8 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        assert!((is_empty("")));
-        assert!((!is_empty("a")));
+        assert!("".is_empty());
+        assert!(!"a".is_empty());
     }
 
     #[test]
@@ -3101,16 +3083,16 @@ mod tests {
 
     #[test]
     fn test_slice() {
-        assert_eq!("ab", slice("abc", 0, 2));
-        assert_eq!("bc", slice("abc", 1, 3));
-        assert_eq!("", slice("abc", 1, 1));
-        assert_eq!("\u65e5", slice("\u65e5\u672c", 0, 3));
+        assert_eq!("ab", "abc".slice(0, 2));
+        assert_eq!("bc", "abc".slice(1, 3));
+        assert_eq!("", "abc".slice(1, 1));
+        assert_eq!("\u65e5", "\u65e5\u672c".slice(0, 3));
 
         let data = "ประเทศไทย中华";
-        assert_eq!("ป", slice(data, 0, 3));
-        assert_eq!("ร", slice(data, 3, 6));
-        assert_eq!("", slice(data, 3, 3));
-        assert_eq!("华", slice(data, 30, 33));
+        assert_eq!("ป", data.slice(0, 3));
+        assert_eq!("ร", data.slice(3, 6));
+        assert_eq!("", data.slice(3, 3));
+        assert_eq!("华", data.slice(30, 33));
 
         fn a_million_letter_X() -> ~str {
             let mut i = 0;
@@ -3129,23 +3111,23 @@ mod tests {
         }
         let letters = a_million_letter_X();
         assert!(half_a_million_letter_X() ==
-            slice(letters, 0u, 3u * 500000u).to_owned());
+            letters.slice(0u, 3u * 500000u).to_owned());
     }
 
     #[test]
     fn test_slice_2() {
         let ss = "中华Việt Nam";
 
-        assert_eq!("华", slice(ss, 3u, 6u));
-        assert_eq!("Việt Nam", slice(ss, 6u, 16u));
+        assert_eq!("华", ss.slice(3u, 6u));
+        assert_eq!("Việt Nam", ss.slice(6u, 16u));
 
-        assert_eq!("ab", slice("abc", 0u, 2u));
-        assert_eq!("bc", slice("abc", 1u, 3u));
-        assert_eq!("", slice("abc", 1u, 1u));
+        assert_eq!("ab", "abc".slice(0u, 2u));
+        assert_eq!("bc", "abc".slice(1u, 3u));
+        assert_eq!("", "abc".slice(1u, 1u));
 
-        assert_eq!("中", slice(ss, 0u, 3u));
-        assert_eq!("华V", slice(ss, 3u, 7u));
-        assert_eq!("", slice(ss, 3u, 3u));
+        assert_eq!("中", ss.slice(0u, 3u));
+        assert_eq!("华V", ss.slice(3u, 7u));
+        assert_eq!("", ss.slice(3u, 3u));
         /*0: 中
           3: 华
           6: V
@@ -3162,7 +3144,7 @@ mod tests {
     #[should_fail]
     #[ignore(cfg(windows))]
     fn test_slice_fail() {
-        slice("中华Việt Nam", 0u, 2u);
+        "中华Việt Nam".slice(0u, 2u);
     }
 
     #[test]
@@ -3420,8 +3402,8 @@ mod tests {
     #[test]
     fn test_subslice_offset() {
         let a = "kernelsprite";
-        let b = slice(a, 7, len(a));
-        let c = slice(a, 0, len(a) - 6);
+        let b = a.slice(7, a.len());
+        let c = a.slice(0, a.len() - 6);
         assert_eq!(subslice_offset(a, b), 7);
         assert_eq!(subslice_offset(a, c), 0);
 
@@ -3448,7 +3430,7 @@ mod tests {
         let v: ~[u8] = to_bytes(s1);
         let s2: ~str = from_bytes(v);
         let mut i: uint = 0u;
-        let n1: uint = len(s1);
+        let n1: uint = s1.len();
         let n2: uint = v.len();
         assert_eq!(n1, n2);
         while i < n1 {
@@ -3601,7 +3583,7 @@ mod tests {
     #[test]
     fn test_to_managed() {
         assert_eq!("abc".to_managed(), @"abc");
-        assert_eq!(slice("abcdef", 1, 5).to_managed(), @"bcde");
+        assert_eq!("abcdef".slice(1, 5).to_managed(), @"bcde");
     }
 
     #[test]

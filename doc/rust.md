@@ -803,7 +803,7 @@ An example of `use` declarations:
 
 ~~~~
 use std::float::sin;
-use std::str::{slice, contains};
+use std::str::{from_chars, contains};
 use std::option::Some;
 
 fn main() {
@@ -814,8 +814,8 @@ fn main() {
     info!(Some(1.0));
 
     // Equivalent to
-    // 'info!(std::str::contains(std::str::slice("foo", 0, 1), "oo"));'
-    info!(contains(slice("foo", 0, 1), "oo"));
+    // 'info!(std::str::contains(std::str::from_chars(&['f','o','o']), "oo"));'
+    info!(contains(from_chars(&['f','o','o']), "oo"));
 }
 ~~~~
 

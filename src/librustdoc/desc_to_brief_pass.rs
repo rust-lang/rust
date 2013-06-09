@@ -94,7 +94,7 @@ fn parse_desc(desc: ~str) -> Option<~str> {
 
     match first_sentence(copy desc) {
       Some(first_sentence) => {
-        if str::len(first_sentence) <= max_brief_len {
+        if first_sentence.len() <= max_brief_len {
             Some(first_sentence)
         } else {
             None
@@ -133,7 +133,7 @@ fn first_sentence_(s: &str) -> ~str {
     };
     match idx {
         Some(idx) if idx > 2u => {
-            str::to_owned(str::slice(s, 0, idx - 1))
+            str::to_owned(s.slice(0, idx - 1))
         }
         _ => {
             if str::ends_with(s, ".") {
@@ -165,7 +165,7 @@ pub fn paragraphs(s: &str) -> ~[~str] {
 
             whitespace_lines = 0;
 
-            accum = if str::is_empty(accum) {
+            accum = if accum.is_empty() {
                 copy *line
             } else {
                 accum + "\n" + *line

@@ -1221,7 +1221,7 @@ pub fn C_estr_slice(cx: @CrateContext, s: @~str) -> ValueRef {
 pub fn C_postr(s: &str) -> ValueRef {
     unsafe {
         return do str::as_c_str(s) |buf| {
-            llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
+            llvm::LLVMConstString(buf, s.len() as c_uint, False)
         };
     }
 }

@@ -71,7 +71,7 @@ pub fn empty() -> Rope {
  * * the function runs in linear time.
  */
 pub fn of_str(str: @~str) -> Rope {
-    return of_substr(str, 0u, str::len(*str));
+    return of_substr(str, 0u, str.len());
 }
 
 /**
@@ -98,7 +98,7 @@ pub fn of_str(str: @~str) -> Rope {
  */
 pub fn of_substr(str: @~str, byte_offset: uint, byte_len: uint) -> Rope {
     if byte_len == 0u { return node::Empty; }
-    if byte_offset + byte_len  > str::len(*str) { fail!(); }
+    if byte_offset + byte_len  > str.len() { fail!(); }
     return node::Content(node::of_substr(str, byte_offset, byte_len));
 }
 
@@ -657,7 +657,7 @@ pub mod node {
      * the length of `str`.
      */
     pub fn of_str(str: @~str) -> @Node {
-        return of_substr(str, 0u, str::len(*str));
+        return of_substr(str, 0u, str.len());
     }
 
     /**
@@ -705,7 +705,7 @@ pub mod node {
      */
     pub fn of_substr_unsafer(str: @~str, byte_start: uint, byte_len: uint,
                              char_len: uint) -> @Node {
-        assert!((byte_start + byte_len <= str::len(*str)));
+        assert!((byte_start + byte_len <= str.len()));
         let candidate = @Leaf(Leaf {
             byte_offset: byte_start,
             byte_len: byte_len,
@@ -1292,9 +1292,7 @@ mod tests {
                     node::Leaf(x) => {
                         str::push_str(
                             str,
-                            str::slice(
-                                *x.content, x.byte_offset,
-                                x.byte_offset + x.byte_len));
+                            x.content.slice(x.byte_offset, x.byte_offset + x.byte_len));
                     }
                     node::Concat(ref x) => {
                         aux(str, x.left);
@@ -1340,7 +1338,7 @@ mod tests {
         assert!(rope_to_string(r) == *sample);
 
         let mut string_iter = 0u;
-        let string_len = str::len(*sample);
+        let string_len = sample.len();
         let mut rope_iter = iterator::char::start(r);
         let mut equal = true;
         while equal {

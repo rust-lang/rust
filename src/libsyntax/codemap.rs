@@ -290,9 +290,9 @@ impl FileMap {
         let begin = begin.to_uint();
         let end = match str::find_char_from(*self.src, '\n', begin) {
             Some(e) => e,
-            None => str::len(*self.src)
+            None => self.src.len()
         };
-        str::slice(*self.src, begin, end).to_owned()
+        self.src.slice(begin, end).to_owned()
     }
 
     pub fn record_multibyte_char(&self, pos: BytePos, bytes: uint) {
@@ -418,7 +418,7 @@ impl CodeMap {
         let begin = self.lookup_byte_offset(sp.lo);
         let end = self.lookup_byte_offset(sp.hi);
         assert_eq!(begin.fm.start_pos, end.fm.start_pos);
-        return str::slice(*begin.fm.src,
+        return begin.fm.src.slice(
                           begin.pos.to_uint(), end.pos.to_uint()).to_owned();
     }
 

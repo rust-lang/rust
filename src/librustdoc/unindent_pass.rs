@@ -83,8 +83,8 @@ fn unindent(s: &str) -> ~str {
             if str::is_whitespace(*line) {
                 copy *line
             } else {
-                assert!(str::len(*line) >= min_indent);
-                str::slice(*line, min_indent, str::len(*line)).to_owned()
+                assert!(line.len() >= min_indent);
+                line.slice(min_indent, line.len()).to_owned()
             }
         };
         str::connect(unindented, "\n")
