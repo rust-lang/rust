@@ -215,7 +215,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
     let col = col.to_uint();
     let s1 = if all_whitespace(s, 0, uint::min(len, col)) {
         if col < len {
-            str::slice(s, col, len).to_owned()
+            s.slice(col, len).to_owned()
         } else {  ~"" }
     } else { s };
     debug!("pushing line: %s", s1);
@@ -277,7 +277,7 @@ fn read_block_comment(rdr: @mut StringReader,
                 }
             }
         }
-        if str::len(curr_line) != 0 {
+        if curr_line.len() != 0 {
             trim_whitespace_prefix_and_push_line(&mut lines, curr_line, col);
         }
     }

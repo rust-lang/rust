@@ -18,7 +18,7 @@ pub fn main() {
     let chs: ~[char] = ~['e', 'é', '€', 0x10000 as char];
     let s: ~str = str::from_chars(chs);
 
-    assert!(str::len(s) == 10u);
+    assert!(s.len() == 10u);
     assert!(str::char_len(s) == 4u);
     assert!(str::to_chars(s).len() == 4u);
     assert!(str::from_chars(str::to_chars(s)) == s);

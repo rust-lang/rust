@@ -1809,7 +1809,7 @@ mod test {
     }
 
     fn buf_write<W:io::Writer>(w: &W, val: &str) {
-        debug!("BUF_WRITE: val len %?", str::len(val));
+        debug!("BUF_WRITE: val len %?", val.len());
         do str::byte_slice(val) |b_slice| {
             debug!("BUF_WRITE: b_slice len %?",
                             b_slice.len());

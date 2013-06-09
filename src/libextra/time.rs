@@ -279,7 +279,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             match strs[i] { // can't use let due to stage0 bugs
                 (ref needle, value) => {
                     if match_str(ss, pos, *needle) {
-                        return Some((value, pos + str::len(*needle)));
+                        return Some((value, pos + needle.len()));
                     }
                 }
             }
@@ -598,7 +598,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 // It's odd, but to maintain compatibility with c's
                 // strptime we ignore the timezone.
                 let mut pos = pos;
-                let len = str::len(s);
+                let len = s.len();
                 while pos < len {
                     let range = str::char_range_at(s, pos);
                     pos = range.next;
@@ -651,7 +651,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             tm_nsec: 0_i32,
         };
         let mut pos = 0u;
-        let len = str::len(s);
+        let len = s.len();
         let mut result = Err(~"Invalid time");
 
         while !rdr.eof() && pos < len {

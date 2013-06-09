@@ -177,8 +177,8 @@ fn parse_name_value_directive(line: &str,
     let keycolon = directive + ":";
     match str::find_str(line, keycolon) {
         Some(colon) => {
-            let value = str::slice(line, colon + str::len(keycolon),
-                                   str::len(line)).to_owned();
+            let value = line.slice(colon + keycolon.len(),
+                                   line.len()).to_owned();
             debug!("%s: %s", directive,  value);
             Some(value)
         }

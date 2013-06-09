@@ -547,7 +547,7 @@ pub mod rt {
         let unpadded = match cv.precision {
           CountImplied => s,
           CountIs(max) => if (max as uint) < str::char_len(s) {
-            str::slice(s, 0, max as uint)
+            s.slice(0, max as uint)
           } else {
             s
           }

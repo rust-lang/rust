@@ -2575,7 +2575,7 @@ impl Resolver {
                     if "???" == module_name {
                         let span = span {
                             lo: span.lo,
-                            hi: span.lo + BytePos(str::len(*segment_name)),
+                            hi: span.lo + BytePos(segment_name.len()),
                             expn_info: span.expn_info,
                         };
                         self.session.span_err(span,
@@ -4830,7 +4830,7 @@ impl Resolver {
 
         if values.len() > 0 &&
             values[smallest] != uint::max_value &&
-            values[smallest] < str::len(name) + 2 &&
+            values[smallest] < name.len() + 2 &&
             values[smallest] <= max_distance &&
             maybes[smallest] != name.to_owned() {
 

@@ -748,7 +748,7 @@ impl<T:Reader> ReaderUtil for T {
             if self.eof() && line.is_empty() { break; }
 
             // trim the \n, so that each_line is consistent with read_line
-            let n = str::len(line);
+            let n = line.len();
             if line[n-1] == '\n' as u8 {
                 unsafe { str::raw::set_len(&mut line, n-1); }
             }

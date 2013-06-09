@@ -366,7 +366,7 @@ fn scan_exponent(rdr: @mut StringReader) -> Option<~str> {
             bump(rdr);
         }
         let exponent = scan_digits(rdr, 10u);
-        if str::len(exponent) > 0u {
+        if exponent.len() > 0u {
             return Some(rslt + exponent);
         } else { rdr.fatal(~"scan_exponent: bad fp literal"); }
     } else { return None::<~str>; }
@@ -434,7 +434,7 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
             tp = if signed { either::Left(ast::ty_i64) }
                       else { either::Right(ast::ty_u64) };
         }
-        if str::len(num_str) == 0u {
+        if num_str.len() == 0u {
             rdr.fatal(~"no valid digits found for number");
         }
         let parsed = match u64::from_str_radix(num_str, base as uint) {
@@ -499,7 +499,7 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
         }
         return token::LIT_FLOAT_UNSUFFIXED(str_to_ident(num_str));
     } else {
-        if str::len(num_str) == 0u {
+        if num_str.len() == 0u {
             rdr.fatal(~"no valid digits found for number");
         }
         let parsed = match u64::from_str_radix(num_str, base as uint) {
