@@ -31,8 +31,8 @@
  * file name following -o, and accepts both -h and --help as optional flags.
  *
  * ```
- *    extern mod std;
- *    use std::getopts::*;
+ *    extern mod extra;
+ *    use extra::getopts::*;
  *
  *    fn do_work(in: &str, out: Option<~str>) {
  *      io::println(in);
@@ -42,7 +42,7 @@
  *      });
  *    }
  *
- *    fn print_usage(program: &str, _opts: &[std::getopts::Opt]) {
+ *    fn print_usage(program: &str, _opts: &[extra::getopts::Opt]) {
  *      io::println(fmt!("Usage: %s [options]", program));
  *      io::println("-o\t\tOutput");
  *      io::println("-h --help\tUsage");
