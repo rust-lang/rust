@@ -103,14 +103,14 @@ pub fn try_getting_version(remote_path: &RemotePath) -> Option<Version> {
                                                 tmp_dir.to_str()]);
         if outp.status == 0 {
             debug!("Cloned it... ( %s, %s )",
-                   str::from_bytes(outp.output),
-                   str::from_bytes(outp.error));
+                   str::from_bytes_slice(outp.output),
+                   str::from_bytes_slice(outp.error));
             let mut output = None;
             debug!("executing {git --git-dir=%s tag -l}", tmp_dir.push(".git").to_str());
             let outp = run::process_output("git",
                                            [fmt!("--git-dir=%s", tmp_dir.push(".git").to_str()),
                                             ~"tag", ~"-l"]);
-            let output_text = str::from_bytes(outp.output);
+            let output_text = str::from_bytes_slice(outp.output);
             debug!("Full output: ( %s ) [%?]", output_text, outp.status);
             for output_text.each_split_char('\n') |l| {
                 debug!("A line of output: %s", l);

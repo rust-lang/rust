@@ -433,8 +433,12 @@ pub fn check_running(exe_filename: &Path) -> happiness {
     let p = run::process_output(
         "/Users/jruderman/scripts/timed_run_rust_program.py",
         [exe_filename.to_str()]);
-    let comb = str::from_bytes(p.output) + "\n" + str::from_bytes(p.error);
-    if str::len(comb) > 1u {
+
+    let out = str::from_bytes_slice(p.output);
+    let err = str::from_bytes_slice(p.error);
+
+    let comb = fmt!("%s\n%s", out, err);
+    if comb.len() > 1u {
         error!("comb comb comb: %?", comb);
     }
 
@@ -473,8 +477,8 @@ pub fn check_compiling(filename: &Path) -> happiness {
         "/Users/jruderman/code/rust/build/x86_64-apple-darwin/stage1/bin/rustc",
         [filename.to_str()]);
 
-    let out = str::from_bytes(p.output);
-    let err = str::from_bytes(p.error);
+    let out = str::from_bytes_slice(p.output);
+    let err = str::from_bytes_slice(p.error);
 
     //error!("Status: %d", p.status);
     if p.status == 0 {

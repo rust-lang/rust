@@ -162,7 +162,7 @@ impl<'self> PkgScript<'self> {
                     let output = run::process_output(exe.to_str(), [root.to_str(), ~"configs"]);
                     // Run the configs() function to get the configs
                     let mut cfgs = ~[];
-                    for str::each_word(str::from_bytes(output.output)) |w| {
+                    for str::each_word(str::from_bytes_slice(output.output)) |w| {
                         cfgs.push(w.to_owned());
                     }
                     (cfgs, output.status)

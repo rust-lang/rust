@@ -116,8 +116,8 @@ fn pandoc_writer(
 
         debug!("pandoc result: %i", output.status);
         if output.status != 0 {
-            error!("pandoc-out: %s", str::from_bytes(output.output));
-            error!("pandoc-err: %s", str::from_bytes(output.error));
+            error!("pandoc-out: %s", str::from_bytes_slice(output.output));
+            error!("pandoc-err: %s", str::from_bytes_slice(output.error));
             fail!("pandoc failed");
         }
     }
