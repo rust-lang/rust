@@ -62,7 +62,7 @@ impl Task {
     pub fn run(&mut self, f: &fn()) {
         // This is just an assertion that `run` was called unsafely
         // and this instance of Task is still accessible.
-        do Local::borrow::<Task> |task| {
+        do Local::borrow::<Task, ()> |task| {
             assert!(ptr::ref_eq(task, self));
         }
 
@@ -87,7 +87,7 @@ impl Task {
     fn destroy(&mut self) {
         // This is just an assertion that `destroy` was called unsafely
         // and this instance of Task is still accessible.
-        do Local::borrow::<Task> |task| {
+        do Local::borrow::<Task, ()> |task| {
             assert!(ptr::ref_eq(task, self));
         }
         match self.storage {

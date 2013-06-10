@@ -244,7 +244,7 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
         }
         _ => {
             let mut alloc = ::ptr::null();
-            do Local::borrow::<Task> |task| {
+            do Local::borrow::<Task,()> |task| {
                 alloc = task.heap.alloc(td as *c_void, size as uint) as *c_char;
             }
             return alloc;
@@ -262,7 +262,7 @@ pub unsafe fn local_free(ptr: *c_char) {
             rustrt::rust_upcall_free_noswitch(ptr);
         }
         _ => {
-            do Local::borrow::<Task> |task| {
+            do Local::borrow::<Task,()> |task| {
                 task.heap.free(ptr as *c_void);
             }
         }
