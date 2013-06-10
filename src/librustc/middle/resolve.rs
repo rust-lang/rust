@@ -2684,11 +2684,11 @@ impl Resolver {
                 match self.idents_to_str(module_path).rfind(':') {
                     Some(idx) => {
                         self.session.span_err(span, fmt!("unresolved import: could not find `%s` \
-                                                         in `%s`", str::substr(mpath, idx,
-                                                                               mpath.len() - idx),
+                                                         in `%s`", mpath.substr(idx,
+                                                                                mpath.len() - idx),
                                                          // idx - 1 to account for the extra
                                                          // colon
-                                                         str::substr(mpath, 0, idx - 1)));
+                                                         mpath.substr(0, idx - 1)));
                     },
                     None => (),
                 };

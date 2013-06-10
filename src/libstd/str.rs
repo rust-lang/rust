@@ -432,16 +432,6 @@ pub fn byte_slice_no_callback<'a>(s: &'a str) -> &'a [u8] {
     }
 }
 
-/**
- * Take a substring of another.
- *
- * Returns a slice pointing at `n` characters starting from byte offset
- * `begin`.
- */
-pub fn substr<'a>(s: &'a str, begin: uint, n: uint) -> &'a str {
-    s.slice(begin, begin + count_bytes(s, begin, n))
-}
-
 /// Something that can be used to compare against a character
 pub trait CharEq {
     /// Determine if the splitter should split at the given character
@@ -1854,7 +1844,7 @@ impl<'self> StrSlice<'self> for &'self str {
      */
     #[inline]
     fn substr(&self, begin: uint, n: uint) -> &'self str {
-        substr(*self, begin, n)
+        s.slice(begin, begin + count_bytes(s, begin, n))
     }
     /// Escape each char in `s` with char::escape_default.
     #[inline]
@@ -2516,11 +2506,11 @@ mod tests {
     #[test]
     fn test_substr() {
         fn t(a: &str, b: &str, start: int) {
-            assert_eq!(substr(a, start as uint, b.len()), b);
+            assert_eq!(a.substr(start as uint, b.len()), b);
         }
         t("hello", "llo", 2);
         t("hello", "el", 1);
-        assert_eq!("ะเทศไท", substr("ประเทศไทย中华Việt Nam", 6u, 6u));
+        assert_eq!("ะเทศไท", "ประเทศไทย中华Việt Nam".substr(6u, 6u));
     }
 
     #[test]
