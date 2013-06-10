@@ -134,7 +134,7 @@ fn first_sentence_(s: &str) -> ~str {
             str::to_owned(s.slice(0, idx - 1))
         }
         _ => {
-            if str::ends_with(s, ".") {
+            if s.ends_with(".") {
                 str::to_owned(s)
             } else {
                 str::to_owned(s)

@@ -977,36 +977,6 @@ fn match_at<'a,'b>(haystack: &'a str, needle: &'b str, at: uint) -> bool {
 }
 
 
-/**
- * Returns true if one string starts with another
- *
- * # Arguments
- *
- * * haystack - The string to look in
- * * needle - The string to look for
- */
-pub fn starts_with<'a,'b>(haystack: &'a str, needle: &'b str) -> bool {
-    let (haystack_len, needle_len) = (haystack.len(), needle.len());
-    if needle_len == 0u { true }
-    else if needle_len > haystack_len { false }
-    else { match_at(haystack, needle, 0u) }
-}
-
-/**
- * Returns true if one string ends with another
- *
- * # Arguments
- *
- * * haystack - The string to look in
- * * needle - The string to look for
- */
-pub fn ends_with<'a,'b>(haystack: &'a str, needle: &'b str) -> bool {
-    let (haystack_len, needle_len) = (haystack.len(), needle.len());
-    if needle_len == 0u { true }
-    else if needle_len > haystack_len { false }
-    else { match_at(haystack, needle, haystack_len - needle_len) }
-}
-
 /*
 Section: String properties
 */
@@ -1600,7 +1570,7 @@ pub trait StrSlice<'self> {
     fn slice(&self, begin: uint, end: uint) -> &'self str;
     fn slice_from(&self, begin: uint) -> &'self str;
     fn slice_to(&self, end: uint) -> &'self str;
-    fn starts_with<'a>(&self, needle: &'a str) -> bool;
+    fn starts_with(&self, needle: &str) -> bool;
     fn substr(&self, begin: uint, n: uint) -> &'self str;
     fn escape_default(&self) -> ~str;
     fn escape_unicode(&self) -> ~str;
@@ -1770,12 +1740,6 @@ impl<'self> StrSlice<'self> for &'self str {
         self.split_iter(char::is_whitespace).filter(|s| !s.is_empty())
     }
 
-
-    /// Returns true if one string ends with another
-    #[inline]
-    fn ends_with(&self, needle: &str) -> bool {
-        ends_with(*self, needle)
-    }
     /// Returns true if the string has length 0
     #[inline]
     fn is_empty(&self) -> bool { self.len() == 0 }
@@ -1831,11 +1795,21 @@ impl<'self> StrSlice<'self> for &'self str {
     fn slice_to(&self, end: uint) -> &'self str {
         self.slice(0, end)
     }
-    /// Checks if `needle` is a prefix of the string.
-    #[inline]
+    /// Returns true if `needle` is a prefix of the string.
     fn starts_with<'a>(&self, needle: &'a str) -> bool {
-        starts_with(*self, needle)
+        let (self_len, needle_len) = (self.len(), needle.len());
+        if needle_len == 0u { true }
+        else if needle_len > self_len { false }
+        else { match_at(*self, needle, 0u) }
     }
+    /// Returns true if `needle` is a suffix of the string.
+    pub fn ends_with(&self, needle: &str) -> bool {
+        let (self_len, needle_len) = (self.len(), needle.len());
+        if needle_len == 0u { true }
+        else if needle_len > self_len { false }
+        else { match_at(*self, needle, self_len - needle_len) }
+    }
+
     /**
      * Take a substring of another.
      *
@@ -2591,20 +2565,20 @@ mod tests {
 
     #[test]
     fn test_starts_with() {
-        assert!((starts_with("", "")));
-        assert!((starts_with("abc", "")));
-        assert!((starts_with("abc", "a")));
-        assert!((!starts_with("a", "abc")));
-        assert!((!starts_with("", "abc")));
+        assert!(("".starts_with("")));
+        assert!(("abc".starts_with("")));
+        assert!(("abc".starts_with("a")));
+        assert!((!"a".starts_with("abc")));
+        assert!((!"".starts_with("abc")));
     }
 
     #[test]
     fn test_ends_with() {
-        assert!((ends_with("", "")));
-        assert!((ends_with("abc", "")));
-        assert!((ends_with("abc", "c")));
-        assert!((!ends_with("a", "abc")));
-        assert!((!ends_with("", "abc")));
+        assert!(("".ends_with("")));
+        assert!(("abc".ends_with("")));
+        assert!(("abc".ends_with("c")));
+        assert!((!"a".ends_with("abc")));
+        assert!((!"".ends_with("abc")));
     }
 
     #[test]

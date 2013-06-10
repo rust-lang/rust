@@ -394,7 +394,7 @@ enum Input {
 // returns userinfo, host, port, and unparsed part, or an error
 fn get_authority(rawurl: &str) ->
     Result<(Option<UserInfo>, ~str, Option<~str>, ~str), ~str> {
-    if !str::starts_with(rawurl, "//") {
+    if !raw_url.starts_with("//") {
         // there is no authority.
         return Ok((None, ~"", None, rawurl.to_str()));
     }
@@ -579,7 +579,7 @@ fn get_path(rawurl: &str, authority: bool) ->
     }
 
     if authority {
-        if end != 0 && !str::starts_with(rawurl, "/") {
+        if end != 0 && !rawurl.starts_with("/") {
             return Err(~"Non-empty path must begin with\
                                '/' in presence of authority.");
         }
@@ -592,8 +592,8 @@ fn get_path(rawurl: &str, authority: bool) ->
 // returns the parsed query and the fragment, if present
 fn get_query_fragment(rawurl: &str) ->
     Result<(Query, Option<~str>), ~str> {
-    if !str::starts_with(rawurl, "?") {
-        if str::starts_with(rawurl, "#") {
+    if !rawurl.starts_with("?") {
+        if rawurl.starts_with("#") {
             let f = decode_component(rawurl.slice(
                                                 1,
                                                 rawurl.len()));

@@ -364,7 +364,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
             if !found_flags[i] {
                 debug!("prefix=%s ee.kind=%s ee.msg=%s line=%s",
                        prefixes[i], ee.kind, ee.msg, line);
-                if (str::starts_with(line, prefixes[i]) &&
+                if (line.starts_with(prefixes[i]) &&
                     line.contains(ee.kind) &&
                     line.contains(ee.msg)) {
                     found_flags[i] = true;

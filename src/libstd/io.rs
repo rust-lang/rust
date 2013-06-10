@@ -1979,7 +1979,7 @@ mod tests {
     fn file_writer_bad_name() {
         match io::file_writer(&Path("?/?"), []) {
           result::Err(e) => {
-            assert!(str::starts_with(e, "error opening"));
+            assert!(e.starts_with("error opening"));
           }
           result::Ok(_) => fail!()
         }
@@ -1989,7 +1989,7 @@ mod tests {
     fn buffered_file_writer_bad_name() {
         match io::buffered_file_writer(&Path("?/?")) {
           result::Err(e) => {
-            assert!(str::starts_with(e, "error opening"));
+            assert!(e.starts_with("error opening"));
           }
           result::Ok(_) => fail!()
         }
