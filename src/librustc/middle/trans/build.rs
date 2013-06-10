@@ -192,7 +192,7 @@ pub fn Invoke(cx: block,
     terminate(cx, "Invoke");
     debug!("Invoke(%s with arguments (%s))",
            val_str(cx.ccx().tn, Fn),
-           str::connect(vec::map(Args, |a| val_str(cx.ccx().tn,
+           vec::map(Args.connect(|a| val_str(cx.ccx().tn,
                                                    *a).to_owned()),
                         ", "));
     unsafe {

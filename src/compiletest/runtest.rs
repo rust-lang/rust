@@ -244,7 +244,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
         None => copy *config
     };
     let config = &mut config;
-    let cmds = str::connect(props.debugger_cmds, "\n");
+    let cmds = props.debugger_cmds.connect("\n");
     let check_lines = copy props.check_lines;
 
     // compile test file (it shoud have 'compile-flags:-g' in the header)
@@ -645,13 +645,13 @@ fn program_output(config: &config, testfile: &Path, lib_path: &str, prog: ~str,
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 fn make_cmdline(_libpath: &str, prog: &str, args: &[~str]) -> ~str {
-    fmt!("%s %s", prog, str::connect(args, " "))
+    fmt!("%s %s", prog, args.connect(" "))
 }
 
 #[cfg(target_os = "win32")]
 fn make_cmdline(libpath: &str, prog: &str, args: &[~str]) -> ~str {
     fmt!("%s %s %s", lib_path_cmd_prefix(libpath), prog,
-         str::connect(args, " "))
+         args.connect(" "))
 }
 
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line

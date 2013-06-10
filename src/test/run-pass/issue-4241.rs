@@ -98,8 +98,8 @@ priv fn cmd_to_str(cmd: ~[~str]) -> ~str {
   res.push_str(cmd.len().to_str());
   res.push_str("\r\n");
     for cmd.each |s| {
-    res.push_str(str::concat(~[~"$", s.len().to_str(), ~"\r\n",
-                                          copy *s, ~"\r\n"]));
+    res.push_str([~"$", s.len().to_str(), ~"\r\n",
+                  copy *s, ~"\r\n"].concat()));
     }
   res
 }

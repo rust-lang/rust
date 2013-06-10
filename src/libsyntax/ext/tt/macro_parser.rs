@@ -371,7 +371,7 @@ pub fn parse(
         } else {
             if (bb_eis.len() > 0u && next_eis.len() > 0u)
                 || bb_eis.len() > 1u {
-                let nts = str::connect(vec::map(bb_eis, |ei| {
+                let nts = vec::map(bb_eis.connect(|ei| {
                     match ei.elts[ei.idx].node {
                       match_nonterminal(ref bind,ref name,_) => {
                         fmt!("%s ('%s')", *ident_to_str(name),

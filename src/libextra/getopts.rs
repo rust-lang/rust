@@ -648,14 +648,14 @@ pub mod groups {
 
             // FIXME: #5516
             // wrapped description
-            row += str::connect(desc_rows, desc_sep);
+            row += desc_rows.connect(desc_sep);
 
             row
         });
 
         return str::to_owned(brief) +
                "\n\nOptions:\n" +
-               str::connect(rows, "\n") +
+               rows.connect("\n") +
                "\n\n";
     }
 } // end groups module

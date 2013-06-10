@@ -354,7 +354,7 @@ pub fn query_to_str(query: &Query) -> ~str {
             }
         }
     }
-    return str::connect(strvec, "&");
+    return strvec.connect("&");
 }
 
 // returns the scheme and the rest of the url, or a parsing error

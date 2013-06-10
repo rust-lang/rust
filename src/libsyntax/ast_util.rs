@@ -28,7 +28,7 @@ use core::to_bytes;
 
 pub fn path_name_i(idents: &[ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
-    str::connect(idents.map(|i| copy *token::interner_get(i.name)), "::")
+    idents.map(|i| copy *token::interner_get(i.name)).connect("::")
 }
 
 pub fn path_to_ident(p: @Path) -> ident { copy *p.idents.last() }

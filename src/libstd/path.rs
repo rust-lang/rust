@@ -22,7 +22,7 @@ use iterator::IteratorUtil;
 use libc;
 use option::{None, Option, Some};
 use str;
-use str::StrSlice;
+use str::{StrSlice, StrVector};
 use to_str::ToStr;
 use ascii::{AsciiCast, AsciiStr};
 use old_iter::BaseIter;
@@ -442,7 +442,7 @@ impl ToStr for PosixPath {
         if self.is_absolute {
             s += "/";
         }
-        s + str::connect(self.components, "/")
+        s + self.components.connect("/")
     }
 }
 
@@ -629,7 +629,7 @@ impl ToStr for WindowsPath {
         if self.is_absolute {
             s += "\\";
         }
-        s + str::connect(self.components, "\\")
+        s + self.components.connect("\\")
     }
 }
 

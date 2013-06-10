@@ -170,18 +170,6 @@ pub fn append(lhs: ~str, rhs: &str) -> ~str {
     v
 }
 
-/// Concatenate a vector of strings
-pub fn concat(v: &[~str]) -> ~str { v.concat() }
-
-/// Concatenate a vector of strings
-pub fn concat_slices(v: &[&str]) -> ~str { v.concat() }
-
-/// Concatenate a vector of strings, placing a given separator between each
-pub fn connect(v: &[~str], sep: &str) -> ~str { v.connect(sep) }
-
-/// Concatenate a vector of strings, placing a given separator between each
-pub fn connect_slices(v: &[&str], sep: &str) -> ~str { v.connect(sep) }
-
 #[allow(missing_doc)]
 pub trait StrVector {
     pub fn concat(&self) -> ~str;
@@ -2495,7 +2483,6 @@ mod tests {
     #[test]
     fn test_concat() {
         fn t(v: &[~str], s: &str) {
-            assert_eq!(concat(v), s.to_str());
             assert_eq!(v.concat(), s.to_str());
         }
         t([~"you", ~"know", ~"I'm", ~"no", ~"good"], "youknowI'mnogood");
@@ -2507,7 +2494,6 @@ mod tests {
     #[test]
     fn test_connect() {
         fn t(v: &[~str], sep: &str, s: &str) {
-            assert_eq!(connect(v, sep), s.to_str());
             assert_eq!(v.connect(sep), s.to_str());
         }
         t([~"you", ~"know", ~"I'm", ~"no", ~"good"],
@@ -2520,7 +2506,6 @@ mod tests {
     #[test]
     fn test_concat_slices() {
         fn t(v: &[&str], s: &str) {
-            assert_eq!(concat_slices(v), s.to_str());
             assert_eq!(v.concat(), s.to_str());
         }
         t(["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
@@ -2532,7 +2517,6 @@ mod tests {
     #[test]
     fn test_connect_slices() {
         fn t(v: &[&str], sep: &str, s: &str) {
-            assert_eq!(connect_slices(v, sep), s.to_str());
             assert_eq!(v.connect(sep), s.to_str());
         }
         t(["you", "know", "I'm", "no", "good"],
@@ -3306,7 +3290,6 @@ mod tests {
         let lines: ~[&str] = data.line_iter().collect();
         assert_eq!(lines, ~["", "Märy häd ä little lämb", "", "Little lämb"]);
     }
-
 
     #[test]
     fn test_split_str_iterator() {
