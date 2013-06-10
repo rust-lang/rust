@@ -981,24 +981,6 @@ fn match_at<'a,'b>(haystack: &'a str, needle: &'b str, at: uint) -> bool {
 Section: String properties
 */
 
-/**
- * Returns true if the string contains only whitespace
- *
- * Whitespace characters are determined by `char::is_whitespace`
- */
-pub fn is_whitespace(s: &str) -> bool {
-    s.iter().all(char::is_whitespace)
-}
-
-/**
- * Returns true if the string contains only alphanumerics
- *
- * Alphanumeric characters are determined by `char::is_alphanumeric`
- */
-fn is_alphanumeric(s: &str) -> bool {
-    s.iter().all(char::is_alphanumeric)
-}
-
 /// Returns the number of characters that a string holds
 #[inline(always)]
 pub fn char_len(s: &str) -> uint { count_chars(s, 0u, s.len()) }
@@ -1749,14 +1731,14 @@ impl<'self> StrSlice<'self> for &'self str {
      * Whitespace characters are determined by `char::is_whitespace`
      */
     #[inline]
-    fn is_whitespace(&self) -> bool { is_whitespace(*self) }
+    fn is_whitespace(&self) -> bool { self.iter().all(char::is_whitespace) }
     /**
      * Returns true if the string contains only alphanumerics
      *
      * Alphanumeric characters are determined by `char::is_alphanumeric`
      */
     #[inline]
-    fn is_alphanumeric(&self) -> bool { is_alphanumeric(*self) }
+    fn is_alphanumeric(&self) -> bool { self.iter().all(char::is_alphanumeric) }
     /// Returns the size in bytes not counting the null terminator
     #[inline(always)]
     fn len(&self) -> uint {
@@ -2773,11 +2755,11 @@ mod tests {
 
     #[test]
     fn test_is_whitespace() {
-        assert!(is_whitespace(""));
-        assert!(is_whitespace(" "));
-        assert!(is_whitespace("\u2009")); // Thin space
-        assert!(is_whitespace("  \n\t   "));
-        assert!(!is_whitespace("   _   "));
+        assert!("".is_whitespace());
+        assert!(" ".is_whitespace());
+        assert!("\u2009".is_whitespace()); // Thin space
+        assert!("  \n\t   ".is_whitespace());
+        assert!(!"   _   ".is_whitespace());
     }
 
     #[test]
