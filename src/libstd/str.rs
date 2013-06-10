@@ -370,7 +370,7 @@ Section: Adding to and removing from a string
 pub fn pop_char(s: &mut ~str) -> char {
     let end = s.len();
     assert!(end > 0u);
-    let CharRange {ch, next} = char_range_at_reverse(*s, end);
+    let CharRange {ch, next} = s.char_range_at_reverse(end);
     unsafe { raw::set_len(s, next); }
     return ch;
 }
@@ -383,7 +383,7 @@ pub fn pop_char(s: &mut ~str) -> char {
  * If the string does not contain any characters
  */
 pub fn shift_char(s: &mut ~str) -> char {
-    let CharRange {ch, next} = char_range_at(*s, 0u);
+    let CharRange {ch, next} = s.char_range_at(0u);
     *s = unsafe { raw::slice_bytes_owned(*s, next, s.len()) };
     return ch;
 }
@@ -399,7 +399,7 @@ pub fn shift_char(s: &mut ~str) -> char {
  */
 #[inline]
 pub fn slice_shift_char<'a>(s: &'a str) -> (char, &'a str) {
-    let CharRange {ch, next} = char_range_at(s, 0u);
+    let CharRange {ch, next} = s.char_range_at(0u);
     let next_s = unsafe { raw::slice_bytes(s, next, s.len()) };
     return (ch, next_s);
 }
@@ -532,7 +532,7 @@ impl<'self, Sep: CharEq> Iterator<&'self str> for StrCharSplitIterator<'self, Se
             }
         } else {
             while self.position < l && self.count > 0 {
-                let CharRange {ch, next} = char_range_at(self.string, self.position);
+                let CharRange {ch, next} = self.string.char_range_at(self.position);
 
                 if self.sep.matches(ch) {
                     let slice = unsafe { raw::slice_bytes(self.string, start, self.position) };
@@ -1198,7 +1198,7 @@ pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
     assert!(is_char_boundary(s, end));
     let mut (i, len) = (start, 0u);
     while i < end {
-        let next = char_range_at(s, i).next;
+        let next = s.char_range_at(i).next;
         len += 1u;
         i = next;
     }
@@ -1213,7 +1213,7 @@ pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
     let l = s.len();
     while cnt > 0u {
         assert!(end < l);
-        let next = char_range_at(s, end).next;
+        let next = s.char_range_at(end).next;
         cnt -= 1u;
         end = next;
     }
@@ -1233,128 +1233,10 @@ pub fn utf8_char_width(b: u8) -> uint {
     return 6u;
 }
 
-/**
- * Returns false if the index points into the middle of a multi-byte
- * character sequence.
- */
-pub fn is_char_boundary(s: &str, index: uint) -> bool {
-    if index == s.len() { return true; }
-    let b = s[index];
-    return b < 128u8 || b >= 192u8;
-}
-
-/**
- * Pluck a character out of a string and return the index of the next
- * character.
- *
- * This function can be used to iterate over the unicode characters of a
- * string.
- *
- * # Example
- *
- * ~~~ {.rust}
- * let s = "中华Việt Nam";
- * let i = 0u;
- * while i < s.len() {
- *     let CharRange {ch, next} = str::char_range_at(s, i);
- *     std::io::println(fmt!("%u: %c",i,ch));
- *     i = next;
- * }
- * ~~~
- *
- * # Example output
- *
- * ~~~
- * 0: 中
- * 3: 华
- * 6: V
- * 7: i
- * 8: ệ
- * 11: t
- * 12:
- * 13: N
- * 14: a
- * 15: m
- * ~~~
- *
- * # Arguments
- *
- * * s - The string
- * * i - The byte offset of the char to extract
- *
- * # Return value
- *
- * A record {ch: char, next: uint} containing the char value and the byte
- * index of the next unicode character.
- *
- * # Failure
- *
- * If `i` is greater than or equal to the length of the string.
- * If `i` is not the index of the beginning of a valid UTF-8 character.
- */
-pub fn char_range_at(s: &str, i: uint) -> CharRange {
-    let b0 = s[i];
-    let w = utf8_char_width(b0);
-    assert!((w != 0u));
-    if w == 1u { return CharRange {ch: b0 as char, next: i + 1u}; }
-    let mut val = 0u;
-    let end = i + w;
-    let mut i = i + 1u;
-    while i < end {
-        let byte = s[i];
-        assert_eq!(byte & 192u8, tag_cont_u8);
-        val <<= 6u;
-        val += (byte & 63u8) as uint;
-        i += 1u;
-    }
-    // Clunky way to get the right bits from the first byte. Uses two shifts,
-    // the first to clip off the marker bits at the left of the byte, and then
-    // a second (as uint) to get it to the right position.
-    val += ((b0 << ((w + 1u) as u8)) as uint) << ((w - 1u) * 6u - w - 1u);
-    return CharRange {ch: val as char, next: i};
-}
-
-/// Plucks the character starting at the `i`th byte of a string
-pub fn char_at(s: &str, i: uint) -> char {
-    return char_range_at(s, i).ch;
-}
-
 #[allow(missing_doc)]
 pub struct CharRange {
     ch: char,
     next: uint
-}
-
-/**
- * Given a byte position and a str, return the previous char and its position.
- *
- * This function can be used to iterate over a unicode string in reverse.
- *
- * Returns 0 for next index if called on start index 0.
- */
-pub fn char_range_at_reverse(ss: &str, start: uint) -> CharRange {
-    let mut prev = start;
-
-    // while there is a previous byte == 10......
-    while prev > 0u && ss[prev - 1u] & 192u8 == tag_cont_u8 {
-        prev -= 1u;
-    }
-
-    // now refer to the initial byte of previous char
-    if prev > 0u {
-        prev -= 1u;
-    } else {
-        prev = 0u;
-    }
-
-
-    let ch = char_at(ss, prev);
-    return CharRange {ch:ch, next:prev};
-}
-
-/// Plucks the character ending at the `i`th byte of a string
-pub fn char_at_reverse(s: &str, i: uint) -> char {
-    char_range_at_reverse(s, i).ch
 }
 
 // UTF-8 tags and ranges
@@ -1776,7 +1658,10 @@ pub trait StrSlice<'self> {
     fn trim_right_chars(&self, chars_to_trim: &[char]) -> &'self str;
     fn to_owned(&self) -> ~str;
     fn to_managed(&self) -> @str;
+    fn is_char_boundary(s: &str, index: uint) -> bool;
+    fn char_range_at(&self, start: uint) -> CharRange;
     fn char_at(&self, i: uint) -> char;
+    fn char_range_at_reverse(&self, start: uint) -> CharRange;
     fn char_at_reverse(&self, i: uint) -> char;
     fn to_bytes(&self) -> ~[u8];
 
@@ -1967,7 +1852,7 @@ impl<'self> StrSlice<'self> for &'self str {
         match self.rfind(|c| !char::is_whitespace(c)) {
             None => "",
             Some(last) => {
-                let next = char_range_at(*self, last).next;
+                let next = self.char_range_at(last).next;
                 unsafe { raw::slice_bytes(*self, 0u, next) }
             }
         }
@@ -2019,8 +1904,8 @@ impl<'self> StrSlice<'self> for &'self str {
         match self.rfind(|c| !chars_to_trim.contains(&c)) {
             None => "",
             Some(last) => {
-                let next = char_range_at(self, last).next;
-                unsafe { raw::slice_bytes(self, 0u, next) }
+                let next = self.char_range_at(last).next;
+                unsafe { raw::slice_bytes(*self, 0u, next) }
             }
         }
     }
@@ -2037,12 +1922,122 @@ impl<'self> StrSlice<'self> for &'self str {
         unsafe { ::cast::transmute(v) }
     }
 
-    #[inline]
-    fn char_at(&self, i: uint) -> char { char_at(*self, i) }
+    /**
+     * Returns false if the index points into the middle of a multi-byte
+     * character sequence.
+     */
+    fn is_char_boundary(&self, index: uint) -> bool {
+        if index == self.len() { return true; }
+        let b = self[index];
+        return b < 128u8 || b >= 192u8;
+    }
 
+    /**
+     * Pluck a character out of a string and return the index of the next
+     * character.
+     *
+     * This function can be used to iterate over the unicode characters of a
+     * string.
+     *
+     * # Example
+     *
+     * ~~~ {.rust}
+     * let s = "中华Việt Nam";
+     * let i = 0u;
+     * while i < s.len() {
+     *     let CharRange {ch, next} = s.char_range_at(i);
+     *     std::io::println(fmt!("%u: %c",i,ch));
+     *     i = next;
+     * }
+     * ~~~
+     *
+     * # Example output
+     *
+     * ~~~
+     * 0: 中
+     * 3: 华
+     * 6: V
+     * 7: i
+     * 8: ệ
+     * 11: t
+     * 12:
+     * 13: N
+     * 14: a
+     * 15: m
+     * ~~~
+     *
+     * # Arguments
+     *
+     * * s - The string
+     * * i - The byte offset of the char to extract
+     *
+     * # Return value
+     *
+     * A record {ch: char, next: uint} containing the char value and the byte
+     * index of the next unicode character.
+     *
+     * # Failure
+     *
+     * If `i` is greater than or equal to the length of the string.
+     * If `i` is not the index of the beginning of a valid UTF-8 character.
+     */
+    fn char_range_at(&self, i: uint) -> CharRange {
+        let b0 = self[i];
+        let w = utf8_char_width(b0);
+        assert!((w != 0u));
+        if w == 1u { return CharRange {ch: b0 as char, next: i + 1u}; }
+        let mut val = 0u;
+        let end = i + w;
+        let mut i = i + 1u;
+        while i < end {
+            let byte = self[i];
+            assert_eq!(byte & 192u8, tag_cont_u8);
+            val <<= 6u;
+            val += (byte & 63u8) as uint;
+            i += 1u;
+        }
+        // Clunky way to get the right bits from the first byte. Uses two shifts,
+        // the first to clip off the marker bits at the left of the byte, and then
+        // a second (as uint) to get it to the right position.
+        val += ((b0 << ((w + 1u) as u8)) as uint) << ((w - 1u) * 6u - w - 1u);
+        return CharRange {ch: val as char, next: i};
+    }
+
+    /// Plucks the character starting at the `i`th byte of a string
+    #[inline]
+    fn char_at(&self, i: uint) -> char { self.char_range_at(i).ch }
+
+    /**
+     * Given a byte position and a str, return the previous char and its position.
+     *
+     * This function can be used to iterate over a unicode string in reverse.
+     *
+     * Returns 0 for next index if called on start index 0.
+     */
+    fn char_range_at_reverse(&self, start: uint) -> CharRange {
+        let mut prev = start;
+
+        // while there is a previous byte == 10......
+        while prev > 0u && self[prev - 1u] & 192u8 == tag_cont_u8 {
+            prev -= 1u;
+        }
+
+        // now refer to the initial byte of previous char
+        if prev > 0u {
+            prev -= 1u;
+        } else {
+            prev = 0u;
+        }
+
+
+        let ch = self.char_at(prev);
+        return CharRange {ch:ch, next:prev};
+    }
+
+    /// Plucks the character ending at the `i`th byte of a string
     #[inline]
     fn char_at_reverse(&self, i: uint) -> char {
-        char_at_reverse(*self, i)
+        self.char_range_at_reverse(i).ch
     }
 
     fn to_bytes(&self) -> ~[u8] { to_bytes(*self) }
@@ -3182,7 +3177,7 @@ mod tests {
 
     #[test]
     fn test_char_range_at_reverse_underflow() {
-        assert_eq!(char_range_at_reverse("abc", 0).next, 0);
+        assert_eq!("abc".char_range_at_reverse(0).next, 0);
     }
 
     #[test]

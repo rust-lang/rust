@@ -112,7 +112,7 @@ pub struct Opt {
 
 fn mkname(nm: &str) -> Name {
   if nm.len() == 1u {
-      Short(str::char_at(nm, 0u))
+      Short(nm.char_at(0u))
   } else {
       Long(nm.to_owned())
   }
@@ -261,7 +261,7 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
                 let mut last_valid_opt_id = None;
                 names = ~[];
                 while j < curlen {
-                    let range = str::char_range_at(cur, j);
+                    let range = cur.char_range_at(j);
                     let opt = Short(range.ch);
 
                     /* In a series of potential options (eg. -aheJ), if we
@@ -565,11 +565,11 @@ pub mod groups {
                            hasarg: hasarg,
                            occur: occur}],
 
-           (1,0) => ~[Opt {name: Short(str::char_at(short_name, 0)),
+           (1,0) => ~[Opt {name: Short(short_name.char_at(0)),
                            hasarg: hasarg,
                            occur: occur}],
 
-           (1,_) => ~[Opt {name: Short(str::char_at(short_name, 0)),
+           (1,_) => ~[Opt {name: Short(short_name.char_at(0)),
                            hasarg: hasarg,
                            occur:  occur},
                       Opt {name:   Long((long_name)),

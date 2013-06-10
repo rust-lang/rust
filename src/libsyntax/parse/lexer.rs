@@ -180,7 +180,7 @@ pub fn bump(rdr: &mut StringReader) {
     if current_byte_offset < (*rdr.src).len() {
         assert!(rdr.curr != -1 as char);
         let last_char = rdr.curr;
-        let next = str::char_range_at(*rdr.src, current_byte_offset);
+        let next = rdr.src.char_range_at(current_byte_offset);
         let byte_offset_diff = next.next - current_byte_offset;
         rdr.pos = rdr.pos + BytePos(byte_offset_diff);
         rdr.curr = next.ch;
@@ -204,7 +204,7 @@ pub fn is_eof(rdr: @mut StringReader) -> bool {
 pub fn nextch(rdr: @mut StringReader) -> char {
     let offset = byte_offset(rdr, rdr.pos).to_uint();
     if offset < (*rdr.src).len() {
-        return str::char_at(*rdr.src, offset);
+        return rdr.src.char_at(offset);
     } else { return -1 as char; }
 }
 

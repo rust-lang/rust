@@ -22,8 +22,8 @@ pub fn main() {
     assert!(str::char_len(s) == 4u);
     assert!(str::to_chars(s).len() == 4u);
     assert!(str::from_chars(str::to_chars(s)) == s);
-    assert!(str::char_at(s, 0u) == 'e');
-    assert!(str::char_at(s, 1u) == 'é');
+    assert!(s.char_at(0u) == 'e');
+    assert!(s.char_at(1u) == 'é');
 
     assert!((str::is_utf8(str::to_bytes(s))));
     assert!((!str::is_utf8(~[0x80_u8])));

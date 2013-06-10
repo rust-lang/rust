@@ -296,7 +296,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
 
         let mut i = 0u;
         while i < digits {
-            let range = str::char_range_at(ss, pos);
+            let range = ss.char_range_at(pos);
             pos = range.next;
 
             match range.ch {
@@ -323,7 +323,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     }
 
     fn parse_char(s: &str, pos: uint, c: char) -> Result<uint, ~str> {
-        let range = str::char_range_at(s, pos);
+        let range = s.char_range_at(pos);
 
         if c == range.ch {
             Ok(range.next)
@@ -600,7 +600,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 let mut pos = pos;
                 let len = s.len();
                 while pos < len {
-                    let range = str::char_range_at(s, pos);
+                    let range = s.char_range_at(pos);
                     pos = range.next;
                     if range.ch == ' ' { break; }
                 }
@@ -609,7 +609,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             }
           }
           'z' => {
-            let range = str::char_range_at(s, pos);
+            let range = s.char_range_at(pos);
 
             if range.ch == '+' || range.ch == '-' {
                 match match_digits(s, range.next, 4u, false) {
@@ -655,7 +655,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         let mut result = Err(~"Invalid time");
 
         while !rdr.eof() && pos < len {
-            let range = str::char_range_at(s, pos);
+            let range = s.char_range_at(pos);
             let ch = range.ch;
             let next = range.next;
 
