@@ -175,7 +175,7 @@ pub fn split_version<'a>(s: &'a str) -> Option<(&'a str, Version)> {
     if { let mut i: uint = 0; for str::to_chars(s).each |&c| { if c == '#' { i += 1; } }; i > 1 } {
         return None;
     }
-    match str::rfind_char(s, '#') {
+    match s.rfind('#') {
         Some(i) => {
             debug!("in %s, i = %?", s, i);
             let path = s.slice(0, i);

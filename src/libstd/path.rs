@@ -479,8 +479,8 @@ impl GenericPath for PosixPath {
         match self.filename() {
             None => None,
             Some(ref f) => {
-                match str::rfind_char(*f, '.') {
-                    Some(p) => Some(f.slice(0, p).to_owned()),
+                match f.rfind('.') {
+                    Some(p) => Some(f.slice_to(p).to_owned()),
                     None => Some(copy *f),
                 }
             }
@@ -491,8 +491,8 @@ impl GenericPath for PosixPath {
         match self.filename() {
             None => None,
             Some(ref f) => {
-                match str::rfind_char(*f, '.') {
-                    Some(p) if p < f.len() => Some(f.slice(p, f.len()).to_owned()),
+                match f.rfind('.') {
+                    Some(p) if p < f.len() => Some(f.slice_from(p).to_owned()),
                     _ => None,
                 }
             }
@@ -693,8 +693,8 @@ impl GenericPath for WindowsPath {
         match self.filename() {
             None => None,
             Some(ref f) => {
-                match str::rfind_char(*f, '.') {
-                    Some(p) => Some(f.slice(0, p).to_owned()),
+                match f.rfind('.') {
+                    Some(p) => Some(f.slice_to(p).to_owned()),
                     None => Some(copy *f),
                 }
             }
@@ -705,8 +705,8 @@ impl GenericPath for WindowsPath {
         match self.filename() {
           None => None,
           Some(ref f) => {
-            match str::rfind_char(*f, '.') {
-                Some(p) if p < f.len() => Some(f.slice(p, f.len()).to_owned()),
+            match f.rfind('.') {
+                Some(p) if p < f.len() => Some(f.slice_from(p).to_owned()),
                 _ => None,
             }
           }

@@ -375,7 +375,7 @@ pub fn check_variants_T<T:Copy>(crate: @ast::crate,
 }
 
 pub fn last_part(filename: ~str) -> ~str {
-    let ix = str::rfind_char(filename, '/').get();
+    let ix = filename.rfind('/').get();
     filename.slice(ix + 1u, filename.len() - 3u).to_owned()
 }
 

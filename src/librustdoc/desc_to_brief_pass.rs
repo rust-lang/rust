@@ -118,19 +118,17 @@ fn first_sentence_(s: &str) -> ~str {
     let mut dotcount = 0;
     // The index of the character following a single dot. This allows
     // Things like [0..1) to appear in the brief description
-    let idx = do str::find(s) |ch| {
+    let idx = s.find(|ch: char| {
         if ch == '.' {
             dotcount += 1;
             false
+        } else if dotcount == 1 {
+            true
         } else {
-            if dotcount == 1 {
-                true
-            } else {
-                dotcount = 0;
-                false
-            }
+            dotcount = 0;
+            false
         }
-    };
+    });
     match idx {
         Some(idx) if idx > 2u => {
             str::to_owned(s.slice(0, idx - 1))
