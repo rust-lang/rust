@@ -24,7 +24,6 @@ use syntax::parse::token::special_idents;
 
 use core::cmp;
 use core::hashmap::HashMap;
-use core::str;
 use core::vec;
 
 pub enum path_elt {

@@ -11,7 +11,6 @@
 use core::prelude::*;
 
 use core::io;
-use core::str;
 
 pub struct ExpectedError { line: uint, kind: ~str, msg: ~str }
 

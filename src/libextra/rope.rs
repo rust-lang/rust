@@ -40,6 +40,7 @@ use core::prelude::*;
 use core::iterator::IteratorUtil;
 use core::uint;
 use core::vec;
+use core::str;
 
 /// The type of ropes.
 pub type Rope = node::Root;
@@ -1186,8 +1187,6 @@ pub mod node {
 
     pub mod char_iterator {
         use core::prelude::*;
-
-        use core::str;
 
         use rope::node::{Leaf, Node};
         use rope::node::leaf_iterator;

@@ -37,7 +37,6 @@ use std::result;
 use std::run;
 use std::str;
 use std::uint;
-use std::vec;
 
 use syntax::diagnostic;
 use syntax::parse::token::ident_interner;

@@ -19,7 +19,6 @@ use core::cmp::Eq;
 use core::io::{Reader, ReaderUtil};
 use core::io;
 use core::hashmap::HashMap;
-use core::str;
 use core::to_bytes;
 use core::uint;
 
@@ -394,7 +393,7 @@ enum Input {
 // returns userinfo, host, port, and unparsed part, or an error
 fn get_authority(rawurl: &str) ->
     Result<(Option<UserInfo>, ~str, Option<~str>, ~str), ~str> {
-    if !raw_url.starts_with("//") {
+    if !rawurl.starts_with("//") {
         // there is no authority.
         return Ok((None, ~"", None, rawurl.to_str()));
     }
