@@ -125,7 +125,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 fn read_to_eol(rdr: @mut StringReader) -> ~str {
     let mut val = ~"";
     while rdr.curr != '\n' && !is_eof(rdr) {
-        str::push_char(&mut val, rdr.curr);
+        val.push_char(rdr.curr);
         bump(rdr);
     }
     if rdr.curr == '\n' { bump(rdr); }
@@ -237,7 +237,7 @@ fn read_block_comment(rdr: @mut StringReader,
     // doc-comments are not really comments, they are attributes
     if rdr.curr == '*' || rdr.curr == '!' {
         while !(rdr.curr == '*' && nextch(rdr) == '/') && !is_eof(rdr) {
-            str::push_char(&mut curr_line, rdr.curr);
+            curr_line.push_char(rdr.curr);
             bump(rdr);
         }
         if !is_eof(rdr) {
@@ -261,7 +261,7 @@ fn read_block_comment(rdr: @mut StringReader,
                 curr_line = ~"";
                 bump(rdr);
             } else {
-                str::push_char(&mut curr_line, rdr.curr);
+                curr_line.push_char(rdr.curr);
                 if rdr.curr == '/' && nextch(rdr) == '*' {
                     bump(rdr);
                     bump(rdr);

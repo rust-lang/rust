@@ -947,13 +947,13 @@ fn bits_to_str(words: &[uint]) -> ~str {
     for words.each |&word| {
         let mut v = word;
         for uint::range(0, uint::bytes) |_| {
-            str::push_char(&mut result, sep);
-            str::push_str(&mut result, fmt!("%02x", v & 0xFF));
+            result.push_char(sep);
+            result.push_str(fmt!("%02x", v & 0xFF));
             v >>= 8;
             sep = '-';
         }
     }
-    str::push_char(&mut result, ']');
+    result.push_char(']');
     return result;
 }
 

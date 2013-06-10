@@ -33,7 +33,7 @@ pub fn main() {
     let mut stack = ~"a×c€";
     assert_eq!(str::pop_char(&mut stack), '€');
     assert_eq!(str::pop_char(&mut stack), 'c');
-    str::push_char(&mut stack, 'u');
+    stack.push_char('u');
     assert!(stack == ~"a×u");
     assert_eq!(str::shift_char(&mut stack), 'a');
     assert_eq!(str::shift_char(&mut stack), '×');

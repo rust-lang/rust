@@ -1289,9 +1289,7 @@ mod tests {
             fn aux(str: &mut ~str, node: @node::Node) {
                 match (*node) {
                     node::Leaf(x) => {
-                        str::push_str(
-                            str,
-                            x.content.slice(x.byte_offset, x.byte_offset + x.byte_len));
+                        str.push_str(x.content.slice(x.byte_offset, x.byte_offset + x.byte_len));
                     }
                     node::Concat(ref x) => {
                         aux(str, x.left);

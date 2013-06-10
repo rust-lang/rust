@@ -79,7 +79,7 @@ fn escape_str(s: &str) -> ~str {
 
 fn spaces(n: uint) -> ~str {
     let mut ss = ~"";
-    for n.times { str::push_str(&mut ss, " "); }
+    for n.times { ss.push_str(" "); }
     return ss;
 }
 
@@ -712,14 +712,14 @@ impl Parser {
 
             if (escape) {
                 match self.ch {
-                  '"' => str::push_char(&mut res, '"'),
-                  '\\' => str::push_char(&mut res, '\\'),
-                  '/' => str::push_char(&mut res, '/'),
-                  'b' => str::push_char(&mut res, '\x08'),
-                  'f' => str::push_char(&mut res, '\x0c'),
-                  'n' => str::push_char(&mut res, '\n'),
-                  'r' => str::push_char(&mut res, '\r'),
-                  't' => str::push_char(&mut res, '\t'),
+                  '"' => res.push_char('"'),
+                  '\\' => res.push_char('\\'),
+                  '/' => res.push_char('/'),
+                  'b' => res.push_char('\x08'),
+                  'f' => res.push_char('\x0c'),
+                  'n' => res.push_char('\n'),
+                  'r' => res.push_char('\r'),
+                  't' => res.push_char('\t'),
                   'u' => {
                       // Parse \u1234.
                       let mut i = 0u;
@@ -748,7 +748,7 @@ impl Parser {
                             ~"invalid \\u escape (not four digits)");
                       }
 
-                      str::push_char(&mut res, n as char);
+                      res.push_char(n as char);
                   }
                   _ => return self.error(~"invalid escape")
                 }
@@ -760,7 +760,7 @@ impl Parser {
                     self.bump();
                     return Ok(res);
                 }
-                str::push_char(&mut res, self.ch);
+                res.push_char(self.ch);
             }
         }
 
