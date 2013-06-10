@@ -1195,22 +1195,22 @@ impl Resolver {
 
             // These items live in both the type and value namespaces.
             item_struct(struct_def, _) => {
-                let (name_bindings, new_parent) =
-                    self.add_child(ident, parent, ForbidDuplicateTypes, sp);
+                // Adding to both Type and Value namespaces or just Type?
+                let (forbid, ctor_id) = match struct_def.ctor_id {
+                    Some(ctor_id)   => (ForbidDuplicateTypesAndValues, Some(ctor_id)),
+                    None            => (ForbidDuplicateTypes, None)
+                };
 
-                name_bindings.define_type(
-                    privacy, def_ty(local_def(item.id)), sp);
+                let (name_bindings, new_parent) = self.add_child(ident, parent, forbid, sp);
 
-                // If this struct is tuple-like or enum-like, define a name
-                // in the value namespace.
-                match struct_def.ctor_id {
-                    None => {}
-                    Some(ctor_id) => {
-                        name_bindings.define_value(
-                            privacy,
-                            def_struct(local_def(ctor_id)),
-                            sp);
-                    }
+                // Define a name in the type namespace.
+                name_bindings.define_type(privacy, def_ty(local_def(item.id)), sp);
+
+                // If this is a newtype or unit-like struct, define a name
+                // in the value namespace as well
+                do ctor_id.while_some |cid| {
+                    name_bindings.define_value(privacy, def_struct(local_def(cid)), sp);
+                    None
                 }
 
                 // Record the def ID of this struct.
