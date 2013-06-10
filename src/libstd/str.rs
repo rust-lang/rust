@@ -1623,66 +1623,6 @@ pub fn char_at_reverse(s: &str, i: uint) -> char {
     char_range_at_reverse(s, i).ch
 }
 
-/**
- * Loop through a substring, char by char
- *
- * # Safety note
- *
- * * This function does not check whether the substring is valid.
- * * This function fails if `start` or `end` do not
- *   represent valid positions inside `s`
- *
- * # Arguments
- *
- * * s - A string to traverse. It may be empty.
- * * start - The byte offset at which to start in the string.
- * * end - The end of the range to traverse
- * * it - A block to execute with each consecutive character of `s`.
- *        Return `true` to continue, `false` to stop.
- *
- * # Return value
- *
- * `true` If execution proceeded correctly, `false` if it was interrupted,
- * that is if `it` returned `false` at any point.
- */
-pub fn all_between(s: &str, start: uint, end: uint,
-                    it: &fn(char) -> bool) -> bool {
-    assert!(is_char_boundary(s, start));
-    let mut i = start;
-    while i < end {
-        let CharRange {ch, next} = char_range_at(s, i);
-        if !it(ch) { return false; }
-        i = next;
-    }
-    return true;
-}
-
-/**
- * Loop through a substring, char by char
- *
- * # Safety note
- *
- * * This function does not check whether the substring is valid.
- * * This function fails if `start` or `end` do not
- *   represent valid positions inside `s`
- *
- * # Arguments
- *
- * * s - A string to traverse. It may be empty.
- * * start - The byte offset at which to start in the string.
- * * end - The end of the range to traverse
- * * it - A block to execute with each consecutive character of `s`.
- *        Return `true` to continue, `false` to stop.
- *
- * # Return value
- *
- * `true` if `it` returns `true` for any character
- */
-pub fn any_between(s: &str, start: uint, end: uint,
-                    it: &fn(char) -> bool) -> bool {
-    !all_between(s, start, end, |c| !it(c))
-}
-
 // UTF-8 tags and ranges
 static tag_cont_u8: u8 = 128u8;
 static tag_cont: uint = 128u;
