@@ -357,7 +357,8 @@ impl<'self> Iterator<(uint, uint)> for StrMatchesIndexIterator<'self> {
     fn next(&mut self) -> Option<(uint, uint)> {
         // See Issue #1932 for why this is a naive search
         let (h_len, n_len) = (self.haystack.len(), self.needle.len());
-        let mut (match_start, match_i) = (0, 0);
+        let mut match_start = 0;
+        let mut match_i = 0;
 
         while self.position < h_len {
             if self.haystack[self.position] == self.needle[match_i] {
@@ -685,7 +686,7 @@ pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
 /// Counts the number of bytes taken by the first `n` chars in `s`
 /// starting from `start`.
 pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
-    assert!(is_char_boundary(s, start));
+    assert!(s.is_char_boundary(start));
     let mut end = start;
     let mut cnt = n;
     let l = s.len();
