@@ -326,7 +326,9 @@ pub fn load_environment(fcx: fn_ctxt,
                 str::as_c_str("load_env",
                               |buf|
                               unsafe {
-                                llvm::LLVMAppendBasicBlock(fcx.llfn, buf)
+                                llvm::LLVMAppendBasicBlockInContext(fcx.ccx.llcx,
+                                                                    fcx.llfn,
+                                                                    buf)
                               });
             fcx.llloadenv = Some(ll);
             ll
