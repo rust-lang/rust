@@ -114,7 +114,6 @@ use core::iterator::IteratorUtil;
 use core::cast::transmute;
 use core::hashmap::HashMap;
 use core::io;
-use core::old_iter;
 use core::to_str;
 use core::uint;
 use core::vec;
@@ -987,8 +986,8 @@ impl Liveness {
                                       opt_expr: Option<@expr>,
                                       succ: LiveNode)
                                       -> LiveNode {
-        do old_iter::foldl(&opt_expr, succ) |succ, expr| {
-            self.propagate_through_expr(*expr, *succ)
+        do opt_expr.iter().fold(succ) |succ, expr| {
+            self.propagate_through_expr(*expr, succ)
         }
     }
 
@@ -1624,7 +1623,8 @@ impl Liveness {
                              var: Variable)
                              -> bool {
         if !self.used_on_entry(ln, var) {
-            for self.should_warn(var).each |name| {
+            let r = self.should_warn(var);
+            for r.iter().advance |name| {
 
                 // annoying: for parameters in funcs like `fn(x: int)
                 // {ret}`, there is only one node, so asking about
@@ -1644,9 +1644,10 @@ impl Liveness {
                         fmt!("unused variable: `%s`", **name));
                 }
             }
-            return true;
+            true
+        } else {
+            false
         }
-        return false;
     }
 
     pub fn warn_about_dead_assign(&self,
@@ -1655,7 +1656,8 @@ impl Liveness {
                                   ln: LiveNode,
                                   var: Variable) {
         if self.live_on_exit(ln, var).is_none() {
-            for self.should_warn(var).each |name| {
+            let r = self.should_warn(var);
+            for r.iter().advance |name| {
                 self.tcx.sess.add_lint(dead_assignment, id, sp,
                     fmt!("value assigned to `%s` is never read", **name));
             }

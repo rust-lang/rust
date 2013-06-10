@@ -794,7 +794,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                      opt_expr: Option<@ast::expr>,
                      in_out: &mut [uint],
                      loop_scopes: &mut ~[LoopScope]) {
-        for opt_expr.each |&expr| {
+        for opt_expr.iter().advance |&expr| {
             self.walk_expr(expr, in_out, loop_scopes);
         }
     }

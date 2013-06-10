@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use middle::resolve::Impl;
 use middle::ty::param_ty;
@@ -273,8 +274,8 @@ fn lookup_vtable(vcx: &VtableContext,
                         // same trait as trait_ref, we need to
                         // unify it with trait_ref in order to get all
                         // the ty vars sorted out.
-                        for ty::impl_trait_ref(tcx, im.did).each |&of_trait_ref|
-                        {
+                        let r = ty::impl_trait_ref(tcx, im.did);
+                        for r.iter().advance |&of_trait_ref| {
                             if of_trait_ref.def_id != trait_ref.def_id { loop; }
 
                             // At this point, we know that of_trait_ref is

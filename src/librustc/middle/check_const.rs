@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::iterator::IteratorUtil;
 use core::prelude::*;
 
 use driver::session::Session;
@@ -49,7 +50,7 @@ pub fn check_item(sess: Session,
       }
       item_enum(ref enum_definition, _) => {
         for (*enum_definition).variants.each |var| {
-            for var.node.disr_expr.each |ex| {
+            for var.node.disr_expr.iter().advance |ex| {
                 (v.visit_expr)(*ex, true, v);
             }
         }

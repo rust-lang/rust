@@ -127,6 +127,7 @@ and so on.
 */
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use middle::pat_util::{pat_bindings};
 use middle::freevars;
@@ -267,7 +268,7 @@ impl VisitContext {
             (visitor.visit_stmt)(*stmt, *self, visitor);
         }
 
-        for blk.node.expr.each |tail_expr| {
+        for blk.node.expr.iter().advance |tail_expr| {
             self.consume_expr(*tail_expr, visitor);
         }
     }
@@ -302,7 +303,8 @@ impl VisitContext {
                 match comp_mode {
                     Move => {
                         let def = self.tcx.def_map.get_copy(&expr.id);
-                        for moved_variable_node_id_from_def(def).each |&id| {
+                        let r = moved_variable_node_id_from_def(def);
+                        for r.iter().advance |&id| {
                             self.move_maps.moved_variables_set.insert(id);
                         }
                     }
@@ -350,7 +352,7 @@ impl VisitContext {
                     self.consume_expr(field.node.expr, visitor);
                 }
 
-                for opt_with.each |with_expr| {
+                for opt_with.iter().advance |with_expr| {
                     // If there are any fields whose type is move-by-default,
                     // then `with` is consumed, otherwise it is only read
                     let with_ty = ty::expr_ty(self.tcx, *with_expr);
@@ -389,7 +391,7 @@ impl VisitContext {
             expr_if(cond_expr, ref then_blk, opt_else_expr) => {
                 self.consume_expr(cond_expr, visitor);
                 self.consume_block(then_blk, visitor);
-                for opt_else_expr.each |else_expr| {
+                for opt_else_expr.iter().advance |else_expr| {
                     self.consume_expr(*else_expr, visitor);
                 }
             }
@@ -466,7 +468,7 @@ impl VisitContext {
             }
 
             expr_ret(ref opt_expr) => {
-                for opt_expr.each |expr| {
+                for opt_expr.iter().advance |expr| {
                     self.consume_expr(*expr, visitor);
                 }
             }
@@ -541,11 +543,11 @@ impl VisitContext {
     }
 
     pub fn consume_arm(&self, arm: &arm, visitor: vt<VisitContext>) {
-        for arm.pats.each |pat| {
+        for arm.pats.iter().advance |pat| {
             self.use_pat(*pat);
         }
 
-        for arm.guard.each |guard| {
+        for arm.guard.iter().advance |guard| {
             self.consume_expr(*guard, visitor);
         }
 

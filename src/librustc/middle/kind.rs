@@ -245,32 +245,35 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
         Some(callee_id) => callee_id,
         None => e.id,
     };
-    for cx.tcx.node_type_substs.find(&type_parameter_id).each |ts| {
-        let type_param_defs = match e.node {
-          expr_path(_) => {
-            let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&e.id));
-            ty::lookup_item_type(cx.tcx, did).generics.type_param_defs
-          }
-          _ => {
-            // Type substitutions should only occur on paths and
-            // method calls, so this needs to be a method call.
+    {
+        let r = cx.tcx.node_type_substs.find(&type_parameter_id);
+        for r.iter().advance |ts| {
+            let type_param_defs = match e.node {
+              expr_path(_) => {
+                let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&e.id));
+                ty::lookup_item_type(cx.tcx, did).generics.type_param_defs
+              }
+              _ => {
+                // Type substitutions should only occur on paths and
+                // method calls, so this needs to be a method call.
 
-            // Even though the callee_id may have been the id with
-            // node_type_substs, e.id is correct here.
-            ty::method_call_type_param_defs(cx.tcx, cx.method_map, e.id).expect(
-                "non path/method call expr has type substs??")
-          }
-        };
-        if ts.len() != type_param_defs.len() {
-            // Fail earlier to make debugging easier
-            fail!("internal error: in kind::check_expr, length \
-                  mismatch between actual and declared bounds: actual = \
-                  %s, declared = %s",
-                  ts.repr(cx.tcx),
-                  type_param_defs.repr(cx.tcx));
-        }
-        for ts.iter().zip(type_param_defs.iter()).advance |(&ty, type_param_def)| {
-            check_bounds(cx, type_parameter_id, e.span, ty, type_param_def)
+                // Even though the callee_id may have been the id with
+                // node_type_substs, e.id is correct here.
+                ty::method_call_type_param_defs(cx.tcx, cx.method_map, e.id).expect(
+                    "non path/method call expr has type substs??")
+              }
+            };
+            if ts.len() != type_param_defs.len() {
+                // Fail earlier to make debugging easier
+                fail!("internal error: in kind::check_expr, length \
+                      mismatch between actual and declared bounds: actual = \
+                      %s, declared = %s",
+                      ts.repr(cx.tcx),
+                      type_param_defs.repr(cx.tcx));
+            }
+            for ts.iter().zip(type_param_defs.iter()).advance |(&ty, type_param_def)| {
+                check_bounds(cx, type_parameter_id, e.span, ty, type_param_def)
+            }
         }
     }
 
@@ -306,14 +309,15 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
 fn check_ty(aty: @Ty, cx: Context, v: visit::vt<Context>) {
     match aty.node {
       ty_path(_, id) => {
-        for cx.tcx.node_type_substs.find(&id).each |ts| {
-            let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&id));
-            let type_param_defs =
-                ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
-            for ts.iter().zip(type_param_defs.iter()).advance |(&ty, type_param_def)| {
-                check_bounds(cx, aty.id, aty.span, ty, type_param_def)
-            }
-        }
+          let r = cx.tcx.node_type_substs.find(&id);
+          for r.iter().advance |ts| {
+              let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&id));
+              let type_param_defs =
+                  ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
+              for ts.iter().zip(type_param_defs.iter()).advance |(&ty, type_param_def)| {
+                  check_bounds(cx, aty.id, aty.span, ty, type_param_def)
+              }
+          }
       }
       _ => {}
     }

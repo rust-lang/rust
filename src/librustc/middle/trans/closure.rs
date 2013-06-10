@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use back::abi;
 use back::link::{mangle_internal_name_by_path_and_seq};
@@ -286,7 +287,7 @@ pub fn build_closure(bcx0: block,
 
     // If this is a `for` loop body, add two special environment
     // variables:
-    for include_ret_handle.each |flagptr| {
+    for include_ret_handle.iter().advance |flagptr| {
         // Flag indicating we have returned (a by-ref bool):
         let flag_datum = Datum {val: *flagptr, ty: ty::mk_bool(),
                                 mode: ByRef(ZeroMem)};

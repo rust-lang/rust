@@ -15,6 +15,7 @@ use middle::ty;
 use middle::pat_util;
 use util::ppaux::{ty_to_str};
 
+use core::iterator::IteratorUtil;
 use core::char;
 use core::cmp;
 use core::hashmap::HashMap;
@@ -388,7 +389,7 @@ impl Context {
             allow => fail!(),
         }
 
-        for note.each |&span| {
+        for note.iter().advance |&span| {
             self.tcx.sess.span_note(span, "lint level defined here");
         }
     }

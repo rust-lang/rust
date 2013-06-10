@@ -22,6 +22,7 @@ use print::pprust;
 use visit;
 use syntax::parse::token::special_idents;
 
+use core::iterator::IteratorUtil;
 use core::cmp;
 use core::hashmap::HashMap;
 use core::vec;
@@ -317,8 +318,11 @@ pub fn map_struct_def(
 pub fn map_expr(ex: @expr, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
     cx.map.insert(ex.id, node_expr(ex));
     // Expressions which are or might be calls:
-    for ex.get_callee_id().each |callee_id| {
-        cx.map.insert(*callee_id, node_callee_scope(ex));
+    {
+        let r = ex.get_callee_id();
+        for r.iter().advance |callee_id| {
+            cx.map.insert(*callee_id, node_callee_scope(ex));
+        }
     }
     visit::visit_expr(ex, cx, v);
 }

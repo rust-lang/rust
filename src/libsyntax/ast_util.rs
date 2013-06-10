@@ -24,6 +24,7 @@ use core::hashmap::HashMap;
 use core::int;
 use core::option;
 use core::to_bytes;
+use core::iterator::IteratorUtil;
 
 pub fn path_name_i(idents: &[ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
@@ -461,8 +462,11 @@ pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
         },
 
         visit_expr: |e, t, vt| {
-            for e.get_callee_id().each |callee_id| {
-                vfn(*callee_id, t);
+            {
+                let r = e.get_callee_id();
+                for r.iter().advance |callee_id| {
+                    vfn(*callee_id, t);
+                }
             }
             vfn(e.id, t);
             visit::visit_expr(e, t, vt);
@@ -553,8 +557,8 @@ pub fn walk_pat(pat: @pat, it: &fn(@pat) -> bool) -> bool {
         }
         pat_vec(ref before, ref slice, ref after) => {
             before.each(|&p| walk_pat(p, it)) &&
-                slice.each(|&p| walk_pat(p, it)) &&
-                after.each(|&p| walk_pat(p, it))
+                slice.iter().advance(|&p| walk_pat(p, it)) &&
+                after.iter().advance(|&p| walk_pat(p, it))
         }
         pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _) |
         pat_enum(_, _) => {

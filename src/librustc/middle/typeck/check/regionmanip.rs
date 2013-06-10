@@ -33,11 +33,11 @@ pub fn replace_bound_regions_in_fn_sig(
 {
     let mut all_tys = ty::tys_in_fn_sig(fn_sig);
 
-    for opt_self_ty.each |&self_ty| {
+    for opt_self_ty.iter().advance |&self_ty| {
         all_tys.push(self_ty);
     }
 
-    for opt_self_ty.each |&t| { all_tys.push(t) }
+    for opt_self_ty.iter().advance |&t| { all_tys.push(t) }
 
     debug!("replace_bound_regions_in_fn_sig(self_ty=%?, fn_sig=%s, \
             all_tys=%?)",
@@ -200,7 +200,7 @@ pub fn relate_nested_regions(
      */
 
     let mut the_stack = ~[];
-    for opt_region.each |&r| { the_stack.push(r); }
+    for opt_region.iter().advance |&r| { the_stack.push(r); }
     walk_ty(tcx, &mut the_stack, ty, relate_op);
 
     fn walk_ty(tcx: ty::ctxt,
@@ -262,7 +262,7 @@ pub fn relate_free_regions(
     for fn_sig.inputs.each |arg| {
         all_tys.push(*arg);
     }
-    for self_ty.each |&t| {
+    for self_ty.iter().advance |&t| {
         all_tys.push(t);
     }
 
