@@ -239,27 +239,21 @@ impl<A:IterBytes> IterBytes for @[A] {
 impl<'self> IterBytes for &'self str {
     #[inline(always)]
     fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {
-        do str::byte_slice(*self) |bytes| {
-            f(bytes)
-        }
+        f(str::as_bytes_slice(*self))
     }
 }
 
 impl IterBytes for ~str {
     #[inline(always)]
     fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {
-        do str::byte_slice(*self) |bytes| {
-            f(bytes)
-        }
+        f(str::as_bytes_slice(*self))
     }
 }
 
 impl IterBytes for @str {
     #[inline(always)]
     fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {
-        do str::byte_slice(*self) |bytes| {
-            f(bytes)
-        }
+        f(str::as_bytes_slice(*self))
     }
 }
 

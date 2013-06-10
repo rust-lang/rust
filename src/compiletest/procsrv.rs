@@ -61,11 +61,11 @@ pub fn run(lib_path: &str,
     for input.each |input| {
         proc.input().write_str(*input);
     }
-    let output = proc.finish_with_output();
+    let run::ProcessOutput { status, output, error, _ } = proc.finish_with_output();
 
     Result {
-        status: output.status,
-        out: str::from_bytes(output.output),
-        err: str::from_bytes(output.error)
+        status: status,
+        out: str::from_bytes(output),
+        err: str::from_bytes(error)
     }
 }

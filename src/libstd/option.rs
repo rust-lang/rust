@@ -376,90 +376,98 @@ impl<T:Copy + Zero> Option<T> {
     }
 }
 
-#[test]
-fn test_unwrap_ptr() {
-    unsafe {
-        let x = ~0;
-        let addr_x: *int = ::cast::transmute(&*x);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str;
+    use std::util;
+
+    #[test]
+    fn test_unwrap_ptr() {
+        unsafe {
+            let x = ~0;
+            let addr_x: *int = ::cast::transmute(&*x);
+            let opt = Some(x);
+            let y = opt.unwrap();
+            let addr_y: *int = ::cast::transmute(&*y);
+            assert_eq!(addr_x, addr_y);
+        }
+    }
+
+    #[test]
+    fn test_unwrap_str() {
+        let x = ~"test";
+        let addr_x = str::as_buf(x, |buf, _len| buf);
         let opt = Some(x);
         let y = opt.unwrap();
-        let addr_y: *int = ::cast::transmute(&*y);
+        let addr_y = str::as_buf(y, |buf, _len| buf);
         assert_eq!(addr_x, addr_y);
     }
-}
 
-#[test]
-fn test_unwrap_str() {
-    let x = ~"test";
-    let addr_x = str::as_buf(x, |buf, _len| buf);
-    let opt = Some(x);
-    let y = opt.unwrap();
-    let addr_y = str::as_buf(y, |buf, _len| buf);
-    assert_eq!(addr_x, addr_y);
-}
-
-#[test]
-fn test_unwrap_resource() {
-    struct R {
-       i: @mut int,
-    }
-
-    #[unsafe_destructor]
-    impl ::ops::Drop for R {
-       fn finalize(&self) { *(self.i) += 1; }
-    }
-
-    fn R(i: @mut int) -> R {
-        R {
-            i: i
+    #[test]
+    fn test_unwrap_resource() {
+        struct R {
+           i: @mut int,
         }
-    }
 
-    let i = @mut 0;
-    {
-        let x = R(i);
-        let opt = Some(x);
-        let _y = opt.unwrap();
-    }
-    assert_eq!(*i, 1);
-}
-
-#[test]
-fn test_option_dance() {
-    let x = Some(());
-    let mut y = Some(5);
-    let mut y2 = 0;
-    for x.each |_x| {
-        y2 = y.swap_unwrap();
-    }
-    assert_eq!(y2, 5);
-    assert!(y.is_none());
-}
-#[test] #[should_fail] #[ignore(cfg(windows))]
-fn test_option_too_much_dance() {
-    let mut y = Some(util::NonCopyable::new());
-    let _y2 = y.swap_unwrap();
-    let _y3 = y.swap_unwrap();
-}
-
-#[test]
-fn test_option_while_some() {
-    let mut i = 0;
-    do Some(10).while_some |j| {
-        i += 1;
-        if (j > 0) {
-            Some(j-1)
-        } else {
-            None
+        #[unsafe_destructor]
+        impl ::ops::Drop for R {
+           fn finalize(&self) { *(self.i) += 1; }
         }
-    }
-    assert_eq!(i, 11);
-}
 
-#[test]
-fn test_get_or_zero() {
-    let some_stuff = Some(42);
-    assert_eq!(some_stuff.get_or_zero(), 42);
-    let no_stuff: Option<int> = None;
-    assert_eq!(no_stuff.get_or_zero(), 0);
+        fn R(i: @mut int) -> R {
+            R {
+                i: i
+            }
+        }
+
+        let i = @mut 0;
+        {
+            let x = R(i);
+            let opt = Some(x);
+            let _y = opt.unwrap();
+        }
+        assert_eq!(*i, 1);
+    }
+
+    #[test]
+    fn test_option_dance() {
+        let x = Some(());
+        let mut y = Some(5);
+        let mut y2 = 0;
+        for x.each |_x| {
+            y2 = y.swap_unwrap();
+        }
+        assert_eq!(y2, 5);
+        assert!(y.is_none());
+    }
+
+    #[test] #[should_fail] #[ignore(cfg(windows))]
+    fn test_option_too_much_dance() {
+        let mut y = Some(util::NonCopyable::new());
+        let _y2 = y.swap_unwrap();
+        let _y3 = y.swap_unwrap();
+    }
+
+    #[test]
+    fn test_option_while_some() {
+        let mut i = 0;
+        do Some(10).while_some |j| {
+            i += 1;
+            if (j > 0) {
+                Some(j-1)
+            } else {
+                None
+            }
+        }
+        assert_eq!(i, 11);
+    }
+
+    #[test]
+    fn test_get_or_zero() {
+        let some_stuff = Some(42);
+        assert_eq!(some_stuff.get_or_zero(), 42);
+        let no_stuff: Option<int> = None;
+        assert_eq!(no_stuff.get_or_zero(), 0);
+    }
 }
