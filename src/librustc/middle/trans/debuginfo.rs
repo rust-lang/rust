@@ -67,7 +67,7 @@ struct _DebugContext {
     names: namegen,
     crate_file: ~str,
     builder: DIBuilderRef,
-    curr_loc: (int, int),
+    curr_loc: (uint, uint),
     created_files: HashMap<~str, DIFile>,
     created_functions: HashMap<ast::node_id, DISubprogram>,
     created_blocks: HashMap<ast::node_id, DILexicalBlock>,
@@ -82,7 +82,7 @@ pub fn mk_ctxt(llmod: ModuleRef, crate: ~str, intr: @ident_interner) -> DebugCon
         names: new_namegen(intr),
         crate_file: crate,
         builder: builder,
-        curr_loc: (-1, -1),
+        curr_loc: (0, 0),
         created_files: HashMap::new(),
         created_functions: HashMap::new(),
         created_blocks: HashMap::new(),
@@ -619,9 +619,13 @@ pub fn create_local_var(bcx: block, local: @ast::local) -> DIVariable {
                 fmt!("No entry in lllocals table for %?", local.node.id));
         }
     };
+    
+    set_debug_location(bcx, loc.line, loc.col.to_uint());
     unsafe {
-        llvm::LLVMDIBuilderInsertDeclareAtEnd(dcx.builder, llptr, var_md, bcx.llbb);
+        let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(dcx.builder, llptr, var_md, bcx.llbb);
+        llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
     }
+    
     return var_md;
 }
 
@@ -668,10 +672,12 @@ pub fn create_arg(bcx: block, arg: ast::arg, sp: span) -> Option<DIVariable> {
     }
 }
 
-fn create_debug_loc(line: int, col: int, scope: DIScope) -> DILocation {
-    let elems = ~[C_i32(line as i32), C_i32(col as i32), scope, ptr::null()];
+fn set_debug_location(bcx: block, line: uint, col: uint) {
+    let blockmd = create_block(bcx);
+    let elems = ~[C_i32(line as i32), C_i32(col as i32), blockmd, ptr::null()];
     unsafe {
-        return llvm::LLVMMDNode(vec::raw::to_ptr(elems), elems.len() as libc::c_uint);
+        let dbg_loc = llvm::LLVMMDNode(vec::raw::to_ptr(elems), elems.len() as libc::c_uint);
+        llvm::LLVMSetCurrentDebugLocation(trans::build::B(bcx), dbg_loc);        
     }
 }
 
@@ -686,16 +692,14 @@ pub fn update_source_pos(bcx: block, sp: span) {
     let loc = cm.lookup_char_pos(sp.lo);
     let cx = bcx.ccx();
     let mut dcx = dbg_cx(cx);
-    if (loc.line.to_int(), loc.col.to_int()) == dcx.curr_loc {
+    
+    let loc = (loc.line, loc.col.to_uint());
+    if  loc == dcx.curr_loc {
         return;
     }
-    
-    dcx.curr_loc = (loc.line.to_int(), loc.col.to_int());
-    let blockmd = create_block(bcx);
-    let dbgscope = create_debug_loc(loc.line.to_int(), loc.col.to_int(), blockmd);
-    unsafe {
-        llvm::LLVMSetCurrentDebugLocation(trans::build::B(bcx), dbgscope);
-    }
+    debug!("setting_location to %u %u", loc.first(), loc.second());
+    dcx.curr_loc = loc;
+    set_debug_location(bcx, loc.first(), loc.second());
 }
 
 pub fn create_function(fcx: fn_ctxt) -> DISubprogram {
