@@ -394,7 +394,7 @@ pub mod write {
             sess.err(fmt!("building with `%s` failed with code %d",
                         cc_prog, prog.status));
             sess.note(fmt!("%s arguments: %s",
-                        cc_prog, str::connect(cc_args, " ")));
+                        cc_prog, cc_args.connect(" ")));
             sess.note(str::from_bytes(prog.error + prog.output));
             sess.abort_if_errors();
         }
@@ -686,7 +686,7 @@ pub fn mangle(sess: Session, ss: path) -> ~str {
     for ss.each |s| {
         match *s { path_name(s) | path_mod(s) => {
           let sani = sanitize(*sess.str_of(s));
-          n += fmt!("%u%s", str::len(sani), sani);
+          n += fmt!("%u%s", sani.len(), sani);
         } }
     }
     n += "E"; // End name-sequence.
@@ -809,14 +809,14 @@ pub fn link_binary(sess: Session,
 
     debug!("output: %s", output.to_str());
     let cc_args = link_args(sess, obj_filename, out_filename, lm);
-    debug!("%s link args: %s", cc_prog, str::connect(cc_args, " "));
+    debug!("%s link args: %s", cc_prog, cc_args.connect(" "));
     // We run 'cc' here
     let prog = run::process_output(cc_prog, cc_args);
     if 0 != prog.status {
         sess.err(fmt!("linking with `%s` failed with code %d",
                       cc_prog, prog.status));
         sess.note(fmt!("%s arguments: %s",
-                       cc_prog, str::connect(cc_args, " ")));
+                       cc_prog, cc_args.connect(" ")));
         sess.note(str::from_bytes(prog.error + prog.output));
         sess.abort_if_errors();
     }

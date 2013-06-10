@@ -24,7 +24,6 @@ use syntax::parse::token::special_idents;
 
 use core::cmp;
 use core::hashmap::HashMap;
-use core::str;
 use core::vec;
 
 pub enum path_elt {
@@ -62,7 +61,7 @@ pub fn path_to_str_with_sep(p: &[path_elt], sep: &str, itr: @ident_interner)
           path_name(s) => copy *itr.get(s.name)
         }
     };
-    str::connect(strs, sep)
+    strs.connect(sep)
 }
 
 pub fn path_ident_to_str(p: &path, i: ident, itr: @ident_interner) -> ~str {

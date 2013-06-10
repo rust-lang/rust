@@ -24,7 +24,6 @@ source code snippets, etc.
 use core::prelude::*;
 
 use core::cmp;
-use core::str;
 use core::to_bytes;
 use core::uint;
 use extra::serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -288,11 +287,11 @@ impl FileMap {
     pub fn get_line(&self, line: int) -> ~str {
         let begin: BytePos = self.lines[line] - self.start_pos;
         let begin = begin.to_uint();
-        let end = match str::find_char_from(*self.src, '\n', begin) {
-            Some(e) => e,
-            None => str::len(*self.src)
-        };
-        str::slice(*self.src, begin, end).to_owned()
+        let slice = self.src.slice_from(begin);
+        match slice.find('\n') {
+            Some(e) => slice.slice_to(e).to_owned(),
+            None => slice.to_owned()
+        }
     }
 
     pub fn record_multibyte_char(&self, pos: BytePos, bytes: uint) {
@@ -418,7 +417,7 @@ impl CodeMap {
         let begin = self.lookup_byte_offset(sp.lo);
         let end = self.lookup_byte_offset(sp.hi);
         assert_eq!(begin.fm.start_pos, end.fm.start_pos);
-        return str::slice(*begin.fm.src,
+        return begin.fm.src.slice(
                           begin.pos.to_uint(), end.pos.to_uint()).to_owned();
     }
 

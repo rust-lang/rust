@@ -115,7 +115,6 @@ use core::iterator::IteratorUtil;
 use core::cast::transmute;
 use core::hashmap::HashMap;
 use core::result;
-use core::str;
 use core::util::replace;
 use core::vec;
 use extra::list::Nil;
@@ -1879,7 +1878,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                        } else {
                                            "s"
                                        },
-                                       str::connect(missing_fields, ", ")));
+                                       missing_fields.connect(", ")));
              }
         }
 

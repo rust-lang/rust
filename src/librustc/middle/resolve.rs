@@ -40,7 +40,7 @@ use syntax::visit::{visit_foreign_item, visit_item};
 use syntax::visit::{visit_mod, visit_ty, vt};
 use syntax::opt_vec::OptVec;
 
-use core::str::each_split_str;
+use core::iterator::IteratorUtil;
 use core::str;
 use core::uint;
 use core::vec;
@@ -1737,8 +1737,7 @@ impl Resolver {
                         entry: %s (%?)",
                     path_string, def_like);
 
-            let mut pieces = ~[];
-            for each_split_str(path_string, "::") |s| { pieces.push(s.to_owned()) }
+            let mut pieces: ~[&str] = path_string.split_str_iter("::").collect();
             let final_ident_str = pieces.pop();
             let final_ident = self.session.ident_of(final_ident_str);
 
@@ -2575,7 +2574,7 @@ impl Resolver {
                     if "???" == module_name {
                         let span = span {
                             lo: span.lo,
-                            hi: span.lo + BytePos(str::len(*segment_name)),
+                            hi: span.lo + BytePos(segment_name.len()),
                             expn_info: span.expn_info,
                         };
                         self.session.span_err(span,
@@ -2682,14 +2681,14 @@ impl Resolver {
         match module_prefix_result {
             Failed => {
                 let mpath = self.idents_to_str(module_path);
-                match str::rfind(self.idents_to_str(module_path), |c| { c == ':' }) {
+                match self.idents_to_str(module_path).rfind(':') {
                     Some(idx) => {
                         self.session.span_err(span, fmt!("unresolved import: could not find `%s` \
-                                                         in `%s`", str::substr(mpath, idx,
-                                                                               mpath.len() - idx),
+                                                         in `%s`", mpath.substr(idx,
+                                                                                mpath.len() - idx),
                                                          // idx - 1 to account for the extra
                                                          // colon
-                                                         str::substr(mpath, 0, idx - 1)));
+                                                         mpath.substr(0, idx - 1)));
                     },
                     None => (),
                 };
@@ -3100,7 +3099,7 @@ impl Resolver {
         let import_count = imports.len();
         if index != import_count {
             let sn = self.session.codemap.span_to_snippet(imports[index].span);
-            if str::contains(sn, "::") {
+            if sn.contains("::") {
                 self.session.span_err(imports[index].span, "unresolved import");
             } else {
                 let err = fmt!("unresolved import (maybe you meant `%s::*`?)",
@@ -4830,7 +4829,7 @@ impl Resolver {
 
         if values.len() > 0 &&
             values[smallest] != uint::max_value &&
-            values[smallest] < str::len(name) + 2 &&
+            values[smallest] < name.len() + 2 &&
             values[smallest] <= max_distance &&
             maybes[smallest] != name.to_owned() {
 

@@ -14,7 +14,8 @@
 
 extern mod std;
 
-use std::{str, int, vec};
+use std::str::StrVector;
+use std::{int, vec};
 
 trait to_str {
     fn to_str(&self) -> ~str;
@@ -26,7 +27,7 @@ impl to_str for int {
 
 impl<T:to_str> to_str for ~[T] {
     fn to_str(&self) -> ~str {
-        ~"[" + str::connect(vec::map(*self, |e| e.to_str() ), ", ") + "]"
+        ~"[" + vec::map(*self, |e| e.to_str()).connect(", ") + "]"
     }
 }
 

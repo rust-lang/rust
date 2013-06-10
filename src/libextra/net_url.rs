@@ -19,7 +19,6 @@ use core::cmp::Eq;
 use core::io::{Reader, ReaderUtil};
 use core::io;
 use core::hashmap::HashMap;
-use core::str;
 use core::to_bytes;
 use core::uint;
 
@@ -81,7 +80,7 @@ fn encode_inner(s: &str, full_url: bool) -> ~str {
               'a' .. 'z' |
               '0' .. '9' |
               '-' | '.' | '_' | '~' => {
-                str::push_char(&mut out, ch);
+                out.push_char(ch);
               }
               _ => {
                   if full_url {
@@ -92,7 +91,7 @@ fn encode_inner(s: &str, full_url: bool) -> ~str {
                       // sub-delims:
                       '!' | '$' | '&' | '"' | '(' | ')' | '*' |
                       '+' | ',' | ';' | '=' => {
-                        str::push_char(&mut out, ch);
+                        out.push_char(ch);
                       }
 
                       _ => out += fmt!("%%%X", ch as uint)
@@ -148,18 +147,18 @@ fn decode_inner(s: &str, full_url: bool) -> ~str {
                       // sub-delims:
                       '!' | '$' | '&' | '"' | '(' | ')' | '*' |
                       '+' | ',' | ';' | '=' => {
-                        str::push_char(&mut out, '%');
-                        str::push_char(&mut out, bytes[0u] as char);
-                        str::push_char(&mut out, bytes[1u] as char);
+                        out.push_char('%');
+                        out.push_char(bytes[0u] as char);
+                        out.push_char(bytes[1u] as char);
                       }
 
-                      ch => str::push_char(&mut out, ch)
+                      ch => out.push_char(ch)
                     }
                 } else {
-                      str::push_char(&mut out, ch);
+                      out.push_char(ch);
                 }
               }
-              ch => str::push_char(&mut out, ch)
+              ch => out.push_char(ch)
             }
         }
 
@@ -191,9 +190,9 @@ fn encode_plus(s: &str) -> ~str {
             let ch = rdr.read_byte() as char;
             match ch {
               'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '_' | '.' | '-' => {
-                str::push_char(&mut out, ch);
+                out.push_char(ch);
               }
-              ' ' => str::push_char(&mut out, '+'),
+              ' ' => out.push_char('+'),
               _ => out += fmt!("%%%X", ch as uint)
             }
         }
@@ -216,7 +215,7 @@ pub fn encode_form_urlencoded(m: &HashMap<~str, ~[~str]>) -> ~str {
             if first {
                 first = false;
             } else {
-                str::push_char(&mut out, '&');
+                out.push_char('&');
                 first = false;
             }
 
@@ -267,9 +266,9 @@ pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, ~[~str]> {
                     };
 
                     if parsing_key {
-                        str::push_char(&mut key, ch)
+                        key.push_char(ch)
                     } else {
-                        str::push_char(&mut value, ch)
+                        value.push_char(ch)
                     }
                 }
             }
@@ -291,7 +290,7 @@ pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, ~[~str]> {
 
 
 fn split_char_first(s: &str, c: char) -> (~str, ~str) {
-    let len = str::len(s);
+    let len = s.len();
     let mut index = len;
     let mut mat = 0;
     do io::with_str_reader(s) |rdr| {
@@ -307,16 +306,16 @@ fn split_char_first(s: &str, c: char) -> (~str, ~str) {
         }
     }
     if index+mat == len {
-        return (str::slice(s, 0, index).to_owned(), ~"");
+        return (s.slice(0, index).to_owned(), ~"");
     } else {
-        return (str::slice(s, 0, index).to_owned(),
-             str::slice(s, index + mat, str::len(s)).to_owned());
+        return (s.slice(0, index).to_owned(),
+             s.slice(index + mat, s.len()).to_owned());
     }
 }
 
 fn userinfo_from_str(uinfo: &str) -> UserInfo {
     let (user, p) = split_char_first(uinfo, ':');
-    let pass = if str::len(p) == 0 {
+    let pass = if p.is_empty() {
         None
     } else {
         Some(p)
@@ -333,8 +332,8 @@ fn userinfo_to_str(userinfo: &UserInfo) -> ~str {
 
 fn query_from_str(rawquery: &str) -> Query {
     let mut query: Query = ~[];
-    if str::len(rawquery) != 0 {
-        for str::each_split_char(rawquery, '&') |p| {
+    if !rawquery.is_empty() {
+        for rawquery.split_iter('&').advance |p| {
             let (k, v) = split_char_first(p, '=');
             query.push((decode_component(k), decode_component(v)));
         };
@@ -354,7 +353,7 @@ pub fn query_to_str(query: &Query) -> ~str {
             }
         }
     }
-    return str::connect(strvec, "&");
+    return strvec.connect("&");
 }
 
 // returns the scheme and the rest of the url, or a parsing error
@@ -373,7 +372,7 @@ pub fn get_scheme(rawurl: &str) -> Result<(~str, ~str), ~str> {
                 return Err(~"url: Scheme cannot be empty.");
             } else {
                 return Ok((rawurl.slice(0,i).to_owned(),
-                                rawurl.slice(i+1,str::len(rawurl)).to_owned()));
+                                rawurl.slice(i+1,rawurl.len()).to_owned()));
             }
           }
           _ => {
@@ -394,7 +393,7 @@ enum Input {
 // returns userinfo, host, port, and unparsed part, or an error
 fn get_authority(rawurl: &str) ->
     Result<(Option<UserInfo>, ~str, Option<~str>, ~str), ~str> {
-    if !str::starts_with(rawurl, "//") {
+    if !rawurl.starts_with("//") {
         // there is no authority.
         return Ok((None, ~"", None, rawurl.to_str()));
     }
@@ -475,7 +474,7 @@ fn get_authority(rawurl: &str) ->
               }
               Ip6Host => {
                 if colon_count > 7 {
-                    host = str::slice(rawurl, begin, i).to_owned();
+                    host = rawurl.slice(begin, i).to_owned();
                     pos = i;
                     st = InPort;
                 }
@@ -492,13 +491,13 @@ fn get_authority(rawurl: &str) ->
             colon_count = 0; // reset count
             match st {
               Start => {
-                let user = str::slice(rawurl, begin, i).to_owned();
+                let user = rawurl.slice(begin, i).to_owned();
                 userinfo = Some(UserInfo::new(user, None));
                 st = InHost;
               }
               PassHostPort => {
-                let user = str::slice(rawurl, begin, pos).to_owned();
-                let pass = str::slice(rawurl, pos+1, i).to_owned();
+                let user = rawurl.slice(begin, pos).to_owned();
+                let pass = rawurl.slice(pos+1, i).to_owned();
                 userinfo = Some(UserInfo::new(user, Some(pass)));
                 st = InHost;
               }
@@ -529,31 +528,31 @@ fn get_authority(rawurl: &str) ->
     match st {
       Start => {
         if host_is_end_plus_one() {
-            host = str::slice(rawurl, begin, end+1).to_owned();
+            host = rawurl.slice(begin, end+1).to_owned();
         } else {
-            host = str::slice(rawurl, begin, end).to_owned();
+            host = rawurl.slice(begin, end).to_owned();
         }
       }
       PassHostPort | Ip6Port => {
         if in != Digit {
             return Err(~"Non-digit characters in port.");
         }
-        host = str::slice(rawurl, begin, pos).to_owned();
-        port = Some(str::slice(rawurl, pos+1, end).to_owned());
+        host = rawurl.slice(begin, pos).to_owned();
+        port = Some(rawurl.slice(pos+1, end).to_owned());
       }
       Ip6Host | InHost => {
-        host = str::slice(rawurl, begin, end).to_owned();
+        host = rawurl.slice(begin, end).to_owned();
       }
       InPort => {
         if in != Digit {
             return Err(~"Non-digit characters in port.");
         }
-        port = Some(str::slice(rawurl, pos+1, end).to_owned());
+        port = Some(rawurl.slice(pos+1, end).to_owned());
       }
     }
 
     let rest = if host_is_end_plus_one() { ~"" }
-    else { str::slice(rawurl, end, len).to_owned() };
+    else { rawurl.slice(end, len).to_owned() };
     return Ok((userinfo, host, port, rest));
 }
 
@@ -561,7 +560,7 @@ fn get_authority(rawurl: &str) ->
 // returns the path and unparsed part of url, or an error
 fn get_path(rawurl: &str, authority: bool) ->
     Result<(~str, ~str), ~str> {
-    let len = str::len(rawurl);
+    let len = rawurl.len();
     let mut end = len;
     for rawurl.iter().enumerate().advance |(i,c)| {
         match c {
@@ -579,31 +578,31 @@ fn get_path(rawurl: &str, authority: bool) ->
     }
 
     if authority {
-        if end != 0 && !str::starts_with(rawurl, "/") {
+        if end != 0 && !rawurl.starts_with("/") {
             return Err(~"Non-empty path must begin with\
                                '/' in presence of authority.");
         }
     }
 
-    return Ok((decode_component(str::slice(rawurl, 0, end)),
-                    str::slice(rawurl, end, len).to_owned()));
+    return Ok((decode_component(rawurl.slice(0, end)),
+                    rawurl.slice(end, len).to_owned()));
 }
 
 // returns the parsed query and the fragment, if present
 fn get_query_fragment(rawurl: &str) ->
     Result<(Query, Option<~str>), ~str> {
-    if !str::starts_with(rawurl, "?") {
-        if str::starts_with(rawurl, "#") {
-            let f = decode_component(str::slice(rawurl,
+    if !rawurl.starts_with("?") {
+        if rawurl.starts_with("#") {
+            let f = decode_component(rawurl.slice(
                                                 1,
-                                                str::len(rawurl)));
+                                                rawurl.len()));
             return Ok((~[], Some(f)));
         } else {
             return Ok((~[], None));
         }
     }
-    let (q, r) = split_char_first(str::slice(rawurl, 1, rawurl.len()), '#');
-    let f = if str::len(r) != 0 {
+    let (q, r) = split_char_first(rawurl.slice(1, rawurl.len()), '#');
+    let f = if r.len() != 0 {
         Some(decode_component(r)) } else { None };
     return Ok((query_from_str(q), f));
 }

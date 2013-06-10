@@ -120,7 +120,7 @@ impl ToStr for AsciiArt {
         let lines = do self.lines.map |line| {str::from_chars(*line)};
 
         // Concatenate the lines together using a new-line.
-        str::connect(lines, "\n")
+        lines.connect("\n")
     }
 }
 

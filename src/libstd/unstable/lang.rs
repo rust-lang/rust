@@ -136,10 +136,10 @@ unsafe fn fail_borrowed(box: *mut BoxRepr, file: *c_char, line: size_t) {
             let mut sep = " at ";
             for borrow_list.rev_iter().advance |entry| {
                 if entry.box == box {
-                    str::push_str(&mut msg, sep);
+                    msg.push_str(sep);
                     let filename = str::raw::from_c_str(entry.file);
-                    str::push_str(&mut msg, filename);
-                    str::push_str(&mut msg, fmt!(":%u", entry.line as uint));
+                    msg.push_str(filename);
+                    msg.push_str(fmt!(":%u", entry.line as uint));
                     sep = " and at ";
                 }
             }

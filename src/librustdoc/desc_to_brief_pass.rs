@@ -94,7 +94,7 @@ fn parse_desc(desc: ~str) -> Option<~str> {
 
     match first_sentence(copy desc) {
       Some(first_sentence) => {
-        if str::len(first_sentence) <= max_brief_len {
+        if first_sentence.len() <= max_brief_len {
             Some(first_sentence)
         } else {
             None
@@ -118,25 +118,23 @@ fn first_sentence_(s: &str) -> ~str {
     let mut dotcount = 0;
     // The index of the character following a single dot. This allows
     // Things like [0..1) to appear in the brief description
-    let idx = do str::find(s) |ch| {
+    let idx = s.find(|ch: char| {
         if ch == '.' {
             dotcount += 1;
             false
+        } else if dotcount == 1 {
+            true
         } else {
-            if dotcount == 1 {
-                true
-            } else {
-                dotcount = 0;
-                false
-            }
+            dotcount = 0;
+            false
         }
-    };
+    });
     match idx {
         Some(idx) if idx > 2u => {
-            str::to_owned(str::slice(s, 0, idx - 1))
+            str::to_owned(s.slice(0, idx - 1))
         }
         _ => {
-            if str::ends_with(s, ".") {
+            if s.ends_with(".") {
                 str::to_owned(s)
             } else {
                 str::to_owned(s)
@@ -153,7 +151,7 @@ pub fn paragraphs(s: &str) -> ~[~str] {
     let paras = do lines.iter().fold(~[]) |paras, line| {
         let mut res = paras;
 
-        if str::is_whitespace(*line) {
+        if line.is_whitespace() {
             whitespace_lines += 1;
         } else {
             if whitespace_lines > 0 {
@@ -165,7 +163,7 @@ pub fn paragraphs(s: &str) -> ~[~str] {
 
             whitespace_lines = 0;
 
-            accum = if str::is_empty(accum) {
+            accum = if accum.is_empty() {
                 copy *line
             } else {
                 accum + "\n" + *line

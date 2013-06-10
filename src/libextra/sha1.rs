@@ -281,7 +281,6 @@ pub fn sha1() -> @Sha1 {
 mod tests {
     use sha1;
 
-    use core::str;
     use core::vec;
 
     #[test]
@@ -396,7 +395,7 @@ mod tests {
 
         // Test that it works when accepting the message in pieces
         for tests.each |t| {
-            let len = str::len(t.input);
+            let len = t.input.len();
             let mut left = len;
             while left > 0u {
                 let take = (left + 1u) / 2u;

@@ -803,19 +803,14 @@ An example of `use` declarations:
 
 ~~~~
 use std::float::sin;
-use std::str::{slice, contains};
-use std::option::Some;
+use std::option::{Some, None};
 
 fn main() {
     // Equivalent to 'info!(std::float::sin(1.0));'
     info!(sin(1.0));
 
-    // Equivalent to 'info!(std::option::Some(1.0));'
-    info!(Some(1.0));
-
-    // Equivalent to
-    // 'info!(std::str::contains(std::str::slice("foo", 0, 1), "oo"));'
-    info!(contains(slice("foo", 0, 1), "oo"));
+    // Equivalent to 'info!(~[std::option::Some(1.0), std::option::None]);'
+    info!(~[Some(1.0), None]);
 }
 ~~~~
 

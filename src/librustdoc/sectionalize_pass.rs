@@ -153,8 +153,8 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
 }
 
 fn parse_header(line: ~str) -> Option<~str> {
-    if str::starts_with(line, "# ") {
-        Some(str::slice(line, 2u, str::len(line)).to_owned())
+    if line.starts_with("# ") {
+        Some(line.slice(2u, line.len()).to_owned())
     } else {
         None
     }
@@ -191,9 +191,7 @@ mod test {
               Body\"]\
               mod a {
 }");
-        assert!(str::contains(
-            doc.cratemod().mods()[0].item.sections[0].header,
-            "Header"));
+        assert!(doc.cratemod().mods()[0].item.sections[0].header.contains("Header"));
     }
 
     #[test]
@@ -204,9 +202,7 @@ mod test {
               Body\"]\
               mod a {
 }");
-        assert!(str::contains(
-            doc.cratemod().mods()[0].item.sections[0].body,
-            "Body"));
+        assert!(doc.cratemod().mods()[0].item.sections[0].body.contains("Body"));
     }
 
     #[test]
@@ -229,12 +225,8 @@ mod test {
               Body\"]\
               mod a {
 }");
-        assert!(!str::contains(
-            doc.cratemod().mods()[0].desc().get(),
-            "Header"));
-        assert!(!str::contains(
-            doc.cratemod().mods()[0].desc().get(),
-            "Body"));
+        assert!(!doc.cratemod().mods()[0].desc().get().contains("Header"));
+        assert!(!doc.cratemod().mods()[0].desc().get().contains("Body"));
     }
 
     #[test]

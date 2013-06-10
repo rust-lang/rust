@@ -18,7 +18,6 @@ use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::unify::{Redirect, Root, VarValue};
 use util::ppaux::{mt_to_str, ty_to_str, trait_ref_to_str};
 
-use core::str;
 use core::uint;
 use syntax::ast;
 
@@ -35,7 +34,7 @@ impl InferStr for ty::t {
 impl InferStr for FnSig {
     fn inf_str(&self, cx: &InferCtxt) -> ~str {
         fmt!("(%s) -> %s",
-             str::connect(self.inputs.map(|a| a.inf_str(cx)), ", "),
+             self.inputs.map(|a| a.inf_str(cx)).connect(", "),
              self.output.inf_str(cx))
     }
 }

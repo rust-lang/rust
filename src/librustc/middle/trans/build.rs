@@ -192,9 +192,7 @@ pub fn Invoke(cx: block,
     terminate(cx, "Invoke");
     debug!("Invoke(%s with arguments (%s))",
            val_str(cx.ccx().tn, Fn),
-           str::connect(vec::map(Args, |a| val_str(cx.ccx().tn,
-                                                   *a).to_owned()),
-                        ", "));
+           Args.map(|a| val_str(cx.ccx().tn, *a).to_owned()).connect(", "));
     unsafe {
         count_insn(cx, "invoke");
         llvm::LLVMBuildInvoke(B(cx),
