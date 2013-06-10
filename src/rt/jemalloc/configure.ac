@@ -954,7 +954,8 @@ AC_CACHE_CHECK([STATIC_PAGE_SHIFT],
     return 0;
 ]])],
                              [je_cv_static_page_shift=`cat conftest.out`],
-                             [je_cv_static_page_shift=undefined]))
+                             [je_cv_static_page_shift=undefined],
+                             [je_cv_static_page_shift=12]))
 
 if test "x$je_cv_static_page_shift" != "xundefined"; then
    AC_DEFINE_UNQUOTED([STATIC_PAGE_SHIFT], [$je_cv_static_page_shift])
