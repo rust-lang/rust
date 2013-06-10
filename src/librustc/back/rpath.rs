@@ -240,7 +240,7 @@ mod test {
         debug!("test_prefix_path: %s vs. %s",
                res.to_str(),
                d.to_str());
-        assert!(str::ends_with(res.to_str(), d.to_str()));
+        assert!(res.to_str().ends_with(d.to_str()));
     }
 
     #[test]

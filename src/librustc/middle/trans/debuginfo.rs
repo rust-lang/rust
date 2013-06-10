@@ -244,7 +244,7 @@ fn get_cache(cx: @CrateContext) -> metadata_cache {
 }
 
 fn get_file_path_and_dir(work_dir: &str, full_path: &str) -> (~str, ~str) {
-    (if str::starts_with(full_path, work_dir) {
+    (if full_path.starts_with(work_dir) {
         full_path.slice(work_dir.len() + 1u,
                    full_path.len()).to_owned()
     } else {
