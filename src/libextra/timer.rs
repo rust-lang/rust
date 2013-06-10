@@ -131,7 +131,6 @@ pub fn recv_timeout<T:Copy + Owned>(iotask: &IoTask,
     unsafe {
         let wait_po = cast::transmute_mut(wait_po);
 
-        // FIXME: This could be written clearer (#2618)
         either::either(
             |_| {
                 None
