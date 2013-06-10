@@ -366,25 +366,31 @@ pub struct ImportResolution {
     /// The privacy of this `use` directive (whether it's `use` or
     /// `pub use`.
     privacy: Privacy,
-    id: node_id,
 
     // The number of outstanding references to this name. When this reaches
     // zero, outside modules can count on the targets being correct. Before
     // then, all bets are off; future imports could override this name.
-
     outstanding_references: uint,
 
     /// The value that this `use` directive names, if there is one.
     value_target: Option<Target>,
+    /// The source node of the `use` directive leading to the value target
+    /// being non-none
+    value_id: node_id,
+
     /// The type that this `use` directive names, if there is one.
     type_target: Option<Target>,
+    /// The source node of the `use` directive leading to the type target
+    /// being non-none
+    type_id: node_id,
 }
 
 pub fn ImportResolution(privacy: Privacy,
                         id: node_id) -> ImportResolution {
     ImportResolution {
         privacy: privacy,
-        id: id,
+        type_id: id,
+        value_id: id,
         outstanding_references: 0,
         value_target: None,
         type_target: None,
@@ -397,6 +403,13 @@ impl ImportResolution {
         match namespace {
             TypeNS      => return copy self.type_target,
             ValueNS     => return copy self.value_target
+        }
+    }
+
+    fn id(&self, namespace: Namespace) -> node_id {
+        match namespace {
+            TypeNS  => self.type_id,
+            ValueNS => self.value_id,
         }
     }
 }
@@ -1920,7 +1933,8 @@ impl Resolver {
 
                         // the source of this name is different now
                         resolution.privacy = privacy;
-                        resolution.id = id;
+                        resolution.type_id = id;
+                        resolution.value_id = id;
                     }
                     None => {
                         debug!("(building import directive) creating new");
@@ -2118,7 +2132,7 @@ impl Resolver {
                                                        containing_module,
                                                        target,
                                                        source,
-                                                       import_directive.span);
+                                                       import_directive);
                     }
                     GlobImport => {
                         let privacy = import_directive.privacy;
@@ -2181,7 +2195,7 @@ impl Resolver {
                                  containing_module: @mut Module,
                                  target: ident,
                                  source: ident,
-                                 span: span)
+                                 directive: &ImportDirective)
                                  -> ResolveResult<()> {
         debug!("(resolving single import) resolving `%s` = `%s::%s` from \
                 `%s`",
@@ -2270,9 +2284,10 @@ impl Resolver {
                                     return UnboundResult;
                                 }
                                 Some(target) => {
-                                    this.used_imports.insert(import_resolution.id);
+                                    let id = import_resolution.id(namespace);
+                                    this.used_imports.insert(id);
                                     return BoundResult(target.target_module,
-                                                    target.bindings);
+                                                       target.bindings);
                                 }
                             }
                         }
@@ -2323,8 +2338,10 @@ impl Resolver {
 
         match value_result {
             BoundResult(target_module, name_bindings) => {
+                debug!("(resolving single import) found value target");
                 import_resolution.value_target =
                     Some(Target(target_module, name_bindings));
+                import_resolution.value_id = directive.id;
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
@@ -2333,8 +2350,10 @@ impl Resolver {
         }
         match type_result {
             BoundResult(target_module, name_bindings) => {
+                debug!("(resolving single import) found type target");
                 import_resolution.type_target =
                     Some(Target(target_module, name_bindings));
+                import_resolution.type_id = directive.id;
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
@@ -2383,6 +2402,7 @@ impl Resolver {
             }
         }
 
+        let span = directive.span;
         if resolve_fail {
             self.session.span_err(span, fmt!("unresolved import: there is no `%s` in `%s`",
                                              *self.session.str_of(source),
@@ -2774,7 +2794,7 @@ impl Resolver {
                     Some(target) => {
                         debug!("(resolving item in lexical scope) using \
                                 import resolution");
-                        self.used_imports.insert(import_resolution.id);
+                        self.used_imports.insert(import_resolution.id(namespace));
                         return Success(copy target);
                     }
                 }
@@ -3043,7 +3063,7 @@ impl Resolver {
                             import_resolution.privacy == Public => {
                         debug!("(resolving name in module) resolved to \
                                 import");
-                        self.used_imports.insert(import_resolution.id);
+                        self.used_imports.insert(import_resolution.id(namespace));
                         return Success(copy target);
                     }
                     Some(_) => {
@@ -4525,7 +4545,8 @@ impl Resolver {
                                     namespace)) {
                             (Some(def), Some(Public)) => {
                                 // Found it.
-                                self.used_imports.insert(import_resolution.id);
+                                let id = import_resolution.id(namespace);
+                                self.used_imports.insert(id);
                                 return ImportNameDefinition(def);
                             }
                             (Some(_), _) | (None, _) => {
@@ -5140,7 +5161,7 @@ impl Resolver {
                                                     &mut found_traits,
                                                     trait_def_id, name);
                                                 self.used_imports.insert(
-                                                    import_resolution.id);
+                                                    import_resolution.type_id);
                                             }
                                         }
                                         _ => {

@@ -11,19 +11,37 @@
 #[deny(unused_imports)];
 
 // Regression test for issue #6633
+mod issue6633 {
+    use self::foo::name::name; //~ ERROR: unused import
+    use self::foo::name;
 
-use foo::name::name; //~ ERROR: unused import
-use foo::name;
-
-pub mod foo {
-    pub mod name {
-        pub type a = int;
+    pub mod foo {
         pub mod name {
-            pub type a = float;
+            pub type a = int;
+            pub mod name {
+                pub type a = float;
+            }
         }
     }
+
+    fn bar() -> name::a { 1 }
 }
 
-fn bar() -> name::a { 1 }
+// Regression test for issue #6935
+mod issue6935 {
+    use self::a::foo::a::foo;
+    use self::a::foo; //~ ERROR: unused import
+
+    pub mod a {
+        pub mod foo {
+            pub mod a {
+                pub fn foo() {}
+            }
+        }
+    }
+
+    fn bar() { foo(); }
+}
 
 fn main(){}
+
