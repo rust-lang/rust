@@ -23,7 +23,6 @@ use print::pprust;
 
 use core::io;
 use core::result;
-use core::str;
 use core::vec;
 
 // These macros all relate to the file system; they either return
@@ -74,8 +73,7 @@ pub fn expand_mod(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "module_path!");
     base::MRExpr(cx.expr_str(sp,
-                              str::connect(cx.mod_path().map(
-                                  |x| cx.str_of(*x)), "::")))
+                             cx.mod_path().map(|x| cx.str_of(*x)).connect("::")))
 }
 
 // include! : parse the given file as an expr

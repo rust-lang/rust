@@ -12,6 +12,7 @@
 
 #[allow(missing_doc)];
 
+use iterator::IteratorUtil;
 use cast;
 use comm::{stream, SharedChan, GenericChan, GenericPort};
 use int;
@@ -588,7 +589,7 @@ pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
     return cmd;
 
     fn append_arg(cmd: &mut ~str, arg: &str) {
-        let quote = arg.any(|c| c == ' ' || c == '\t');
+        let quote = arg.iter().any(|c| c == ' ' || c == '\t');
         if quote {
             cmd.push_char('"');
         }

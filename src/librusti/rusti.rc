@@ -308,7 +308,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 println("no crates loaded");
             } else {
                 println(fmt!("crates loaded: %s",
-                                 str::connect(loaded_crates, ", ")));
+                                 loaded_crates.connect(", ")));
             }
         }
         ~"{" => {
@@ -318,7 +318,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 match get_line(use_rl, "rusti| ") {
                     None => fail!("unterminated multiline command :{ .. :}"),
                     Some(line) => {
-                        if str::trim(line) == ":}" {
+                        if line.trim() == ":}" {
                             end_multiline = true;
                         } else {
                             multiline_cmd += line + "\n";
@@ -339,9 +339,11 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
                 use_rl: bool)
     -> Option<Repl> {
     if line.starts_with(":") {
+        // FIXME #5898: conflicts with Cell.take(), so can't be at the top level
+        use core::iterator::IteratorUtil;
+
         let full = line.substr(1, line.len() - 1);
-        let mut split = ~[];
-        for str::each_word(full) |word| { split.push(word.to_owned()) }
+        let split: ~[~str] = full.word_iter().transform(|s| s.to_owned()).collect();
         let len = split.len();
 
         if len > 0 {

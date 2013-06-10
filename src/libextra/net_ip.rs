@@ -14,6 +14,7 @@
 
 use core::prelude::*;
 
+use core::iterator::IteratorUtil;
 use core::libc;
 use core::comm::{stream, SharedChan};
 use core::ptr;
@@ -158,9 +159,7 @@ pub mod v4 {
 
     use core::cast::transmute;
     use core::result;
-    use core::str;
     use core::uint;
-    use core::vec;
 
     /**
      * Convert a str to `ip_addr`
@@ -199,14 +198,12 @@ pub mod v4 {
         }
     }
     pub fn parse_to_ipv4_rep(ip: &str) -> result::Result<Ipv4Rep, ~str> {
-        let mut parts = ~[];
-        for str::each_split_char(ip, '.') |s| { parts.push(s.to_owned()) }
-        let parts = vec::map(parts, |s| {
-            match uint::from_str(*s) {
-              Some(n) if n <= 255 => n,
-              _ => 256
+        let parts: ~[uint] = ip.split_iter('.').transform(|s| {
+            match uint::from_str(s) {
+                Some(n) if n <= 255 => n,
+                _ => 256
             }
-        });
+        }).collect();
         if parts.len() != 4 {
             Err(fmt!("'%s' doesn't have 4 parts", ip))
         } else if parts.contains(&256) {

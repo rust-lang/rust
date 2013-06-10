@@ -37,7 +37,6 @@ use std::result;
 use std::run;
 use std::str;
 use std::uint;
-use std::vec;
 
 use syntax::diagnostic;
 use syntax::parse::token::ident_interner;
@@ -57,7 +56,7 @@ pub fn write_file(filename: &Path, content: &str) {
 }
 
 pub fn contains(haystack: &str, needle: &str) -> bool {
-    str::contains(haystack, needle)
+    haystack.contains(needle)
 }
 
 pub fn find_rust_files(files: &mut ~[Path], path: &Path) {
@@ -375,8 +374,8 @@ pub fn check_variants_T<T:Copy>(crate: @ast::crate,
 }
 
 pub fn last_part(filename: ~str) -> ~str {
-    let ix = str::rfind_char(filename, '/').get();
-    str::slice(filename, ix + 1u, str::len(filename) - 3u).to_owned()
+    let ix = filename.rfind('/').get();
+    filename.slice(ix + 1u, filename.len() - 3u).to_owned()
 }
 
 pub enum happiness {
@@ -434,7 +433,7 @@ pub fn check_running(exe_filename: &Path) -> happiness {
         "/Users/jruderman/scripts/timed_run_rust_program.py",
         [exe_filename.to_str()]);
     let comb = str::from_bytes(p.output) + "\n" + str::from_bytes(p.error);
-    if str::len(comb) > 1u {
+    if comb.len() > 1u {
         error!("comb comb comb: %?", comb);
     }
 
@@ -712,4 +711,3 @@ pub mod core {
     pub use std::cmp;
     pub use std::sys;
 }
-

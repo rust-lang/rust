@@ -281,7 +281,7 @@ pub fn vstore_ty_to_str(cx: ctxt, mt: &mt, vs: ty::vstore) -> ~str {
 
 pub fn tys_to_str(cx: ctxt, ts: &[t]) -> ~str {
     let tstrs = ts.map(|t| ty_to_str(cx, *t));
-    fmt!("(%s)", str::connect(tstrs, ", "))
+    fmt!("(%s)", tstrs.connect(", "))
 }
 
 pub fn fn_sig_to_str(cx: ctxt, typ: &ty::FnSig) -> ~str {
@@ -369,7 +369,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     fn push_sig_to_str(cx: ctxt, s: &mut ~str, sig: &ty::FnSig) {
         s.push_char('(');
         let strs = sig.inputs.map(|a| fn_input_to_str(cx, *a));
-        s.push_str(str::connect(strs, ", "));
+        s.push_str(strs.connect(", "));
         s.push_char(')');
         if ty::get(sig.output).sty != ty_nil {
             s.push_str(" -> ");
@@ -420,7 +420,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_type => ~"type",
       ty_tup(ref elems) => {
         let strs = elems.map(|elem| ty_to_str(cx, *elem));
-        ~"(" + str::connect(strs, ",") + ")"
+        ~"(" + strs.connect(",") + ")"
       }
       ty_closure(ref f) => {
           closure_to_str(cx, f)
@@ -477,7 +477,7 @@ pub fn parameterized(cx: ctxt,
 
     if tps.len() > 0u {
         let strs = vec::map(tps, |t| ty_to_str(cx, *t));
-        fmt!("%s%s<%s>", base, r_str, str::connect(strs, ","))
+        fmt!("%s%s<%s>", base, r_str, strs.connect(","))
     } else {
         fmt!("%s%s", base, r_str)
     }
@@ -485,7 +485,7 @@ pub fn parameterized(cx: ctxt,
 
 pub fn ty_to_short_str(cx: ctxt, typ: t) -> ~str {
     let mut s = encoder::encoded_ty(cx, typ);
-    if str::len(s) >= 32u { s = str::slice(s, 0u, 32u).to_owned(); }
+    if s.len() >= 32u { s = s.slice(0u, 32u).to_owned(); }
     return s;
 }
 
@@ -515,7 +515,7 @@ impl<T:Repr> Repr for ~T {
 */
 
 fn repr_vec<T:Repr>(tcx: ctxt, v: &[T]) -> ~str {
-    fmt!("[%s]", str::connect(v.map(|t| t.repr(tcx)), ","))
+    fmt!("[%s]", v.map(|t| t.repr(tcx)).connect(","))
 }
 
 impl<'self, T:Repr> Repr for &'self [T] {
@@ -569,7 +569,7 @@ impl Repr for ty::ParamBounds {
         for self.trait_bounds.each |t| {
             res.push(t.repr(tcx));
         }
-        str::connect(res, "+")
+        res.connect("+")
     }
 }
 
@@ -787,7 +787,7 @@ impl UserString for ty::BuiltinBounds {
             for self.each |bb| {
                 result.push(bb.user_string(tcx));
             }
-            str::connect(result, "+")
+            result.connect("+")
         }
     }
 }

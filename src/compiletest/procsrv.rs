@@ -28,7 +28,7 @@ fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
         if k == ~"PATH" { (~"PATH", v + ";" + lib_path + ";" + aux_path) }
         else { (k,v) }
     };
-    if str::ends_with(prog, "rustc.exe") {
+    if prog.ends_with("rustc.exe") {
         env.push((~"RUST_THREADS", ~"1"));
     }
     return env;

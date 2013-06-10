@@ -18,10 +18,11 @@ Cross-platform file path handling
 
 use container::Container;
 use cmp::Eq;
+use iterator::IteratorUtil;
 use libc;
 use option::{None, Option, Some};
 use str;
-use str::StrSlice;
+use str::{StrSlice, StrVector};
 use to_str::ToStr;
 use ascii::{AsciiCast, AsciiStr};
 use old_iter::BaseIter;
@@ -441,7 +442,7 @@ impl ToStr for PosixPath {
         if self.is_absolute {
             s += "/";
         }
-        s + str::connect(self.components, "/")
+        s + self.components.connect("/")
     }
 }
 
@@ -449,10 +450,9 @@ impl ToStr for PosixPath {
 // PosixPath and WindowsPath, most of their methods are common.
 impl GenericPath for PosixPath {
     fn from_str(s: &str) -> PosixPath {
-        let mut components = ~[];
-        for str::each_split_nonempty(s, |c| c == '/') |s| {
-            components.push(s.to_owned())
-        }
+        let components = s.split_iter('/')
+            .filter_map(|s| if s.is_empty() {None} else {Some(s.to_owned())})
+            .collect();
         let is_absolute = (s.len() != 0 && s[0] == '/' as u8);
         PosixPath {
             is_absolute: is_absolute,
@@ -479,8 +479,8 @@ impl GenericPath for PosixPath {
         match self.filename() {
             None => None,
             Some(ref f) => {
-                match str::rfind_char(*f, '.') {
-                    Some(p) => Some(f.slice(0, p).to_owned()),
+                match f.rfind('.') {
+                    Some(p) => Some(f.slice_to(p).to_owned()),
                     None => Some(copy *f),
                 }
             }
@@ -491,8 +491,8 @@ impl GenericPath for PosixPath {
         match self.filename() {
             None => None,
             Some(ref f) => {
-                match str::rfind_char(*f, '.') {
-                    Some(p) if p < f.len() => Some(f.slice(p, f.len()).to_owned()),
+                match f.rfind('.') {
+                    Some(p) if p < f.len() => Some(f.slice_from(p).to_owned()),
                     _ => None,
                 }
             }
@@ -508,7 +508,7 @@ impl GenericPath for PosixPath {
     }
 
     fn with_filename(&self, f: &str) -> PosixPath {
-        assert!(! str::any(f, |c| windows::is_sep(c as u8)));
+        assert!(! f.iter().all(windows::is_sep));
         self.dir_path().push(f)
     }
 
@@ -569,11 +569,11 @@ impl GenericPath for PosixPath {
     fn push_many(&self, cs: &[~str]) -> PosixPath {
         let mut v = copy self.components;
         for cs.each |e| {
-            let mut ss = ~[];
-            for str::each_split_nonempty(*e, |c| windows::is_sep(c as u8)) |s| {
-                ss.push(s.to_owned())
+            for e.split_iter(windows::is_sep).advance |s| {
+                if !s.is_empty() {
+                    v.push(s.to_owned())
+                }
             }
-            v.push_all_move(ss);
         }
         PosixPath {
             is_absolute: self.is_absolute,
@@ -583,11 +583,11 @@ impl GenericPath for PosixPath {
 
     fn push(&self, s: &str) -> PosixPath {
         let mut v = copy self.components;
-        let mut ss = ~[];
-        for str::each_split_nonempty(s, |c| windows::is_sep(c as u8)) |s| {
-            ss.push(s.to_owned())
+        for s.split_iter(windows::is_sep).advance |s| {
+            if !s.is_empty() {
+                v.push(s.to_owned())
+            }
         }
-        v.push_all_move(ss);
         PosixPath { components: v, ..copy *self }
     }
 
@@ -629,7 +629,7 @@ impl ToStr for WindowsPath {
         if self.is_absolute {
             s += "\\";
         }
-        s + str::connect(self.components, "\\")
+        s + self.components.connect("\\")
     }
 }
 
@@ -661,11 +661,11 @@ impl GenericPath for WindowsPath {
             }
         }
 
-        let mut components = ~[];
-        for str::each_split_nonempty(rest, |c| windows::is_sep(c as u8)) |s| {
-            components.push(s.to_owned())
-        }
-        let is_absolute = (rest.len() != 0 && windows::is_sep(rest[0]));
+        let components = rest.split_iter(windows::is_sep)
+            .filter_map(|s| if s.is_empty() {None} else {Some(s.to_owned())})
+            .collect();
+
+        let is_absolute = (rest.len() != 0 && windows::is_sep(rest[0] as char));
         WindowsPath {
             host: host,
             device: device,
@@ -693,8 +693,8 @@ impl GenericPath for WindowsPath {
         match self.filename() {
             None => None,
             Some(ref f) => {
-                match str::rfind_char(*f, '.') {
-                    Some(p) => Some(f.slice(0, p).to_owned()),
+                match f.rfind('.') {
+                    Some(p) => Some(f.slice_to(p).to_owned()),
                     None => Some(copy *f),
                 }
             }
@@ -705,8 +705,8 @@ impl GenericPath for WindowsPath {
         match self.filename() {
           None => None,
           Some(ref f) => {
-            match str::rfind_char(*f, '.') {
-                Some(p) if p < f.len() => Some(f.slice(p, f.len()).to_owned()),
+            match f.rfind('.') {
+                Some(p) if p < f.len() => Some(f.slice_from(p).to_owned()),
                 _ => None,
             }
           }
@@ -722,7 +722,7 @@ impl GenericPath for WindowsPath {
     }
 
     fn with_filename(&self, f: &str) -> WindowsPath {
-        assert!(! str::any(f, |c| windows::is_sep(c as u8)));
+        assert!(! f.iter().all(windows::is_sep));
         self.dir_path().push(f)
     }
 
@@ -826,11 +826,11 @@ impl GenericPath for WindowsPath {
     fn push_many(&self, cs: &[~str]) -> WindowsPath {
         let mut v = copy self.components;
         for cs.each |e| {
-            let mut ss = ~[];
-            for str::each_split_nonempty(*e, |c| windows::is_sep(c as u8)) |s| {
-                ss.push(s.to_owned())
+            for e.split_iter(windows::is_sep).advance |s| {
+                if !s.is_empty() {
+                    v.push(s.to_owned())
+                }
             }
-            v.push_all_move(ss);
         }
         // tedious, but as-is, we can't use ..self
         WindowsPath {
@@ -843,11 +843,11 @@ impl GenericPath for WindowsPath {
 
     fn push(&self, s: &str) -> WindowsPath {
         let mut v = copy self.components;
-        let mut ss = ~[];
-        for str::each_split_nonempty(s, |c| windows::is_sep(c as u8)) |s| {
-            ss.push(s.to_owned())
+        for s.split_iter(windows::is_sep).advance |s| {
+            if !s.is_empty() {
+                v.push(s.to_owned())
+            }
         }
-        v.push_all_move(ss);
         WindowsPath { components: v, ..copy *self }
     }
 
@@ -905,8 +905,8 @@ pub mod windows {
     use option::{None, Option, Some};
 
     #[inline(always)]
-    pub fn is_sep(u: u8) -> bool {
-        u == '/' as u8 || u == '\\' as u8
+    pub fn is_sep(u: char) -> bool {
+        u == '/' || u == '\\'
     }
 
     pub fn extract_unc_prefix(s: &str) -> Option<(~str,~str)> {
@@ -915,7 +915,7 @@ pub mod windows {
             s[0] == s[1]) {
             let mut i = 2;
             while i < s.len() {
-                if is_sep(s[i]) {
+                if is_sep(s[i] as char) {
                     let pre = s.slice(2, i).to_owned();
                     let rest = s.slice(i, s.len()).to_owned();
                     return Some((pre, rest));

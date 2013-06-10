@@ -191,13 +191,13 @@ fn main() {
    while !rdr.eof() {
       let line: ~str = rdr.read_line();
 
-      if str::len(line) == 0u { loop; }
+      if line.len() == 0u { loop; }
 
       match (line[0] as char, proc_mode) {
 
          // start processing if this is the one
          ('>', false) => {
-            match str::find_str_from(line, ~"THREE", 1u) {
+            match line.slice_from(1).find_str(~"THREE") {
                option::Some(_) => { proc_mode = true; }
                option::None    => { }
             }

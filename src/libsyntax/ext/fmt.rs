@@ -276,6 +276,9 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                     stms.push(cx.stmt_let(fmt_sp, npieces > 1,
                                           ident, cx.expr_str_uniq(fmt_sp, s)));
                 } else {
+                    // we call the push_str function because the
+                    // bootstrap doesnt't seem to work if we call the
+                    // method.
                     let args = ~[cx.expr_mut_addr_of(fmt_sp, buf()), cx.expr_str(fmt_sp, s)];
                     let call = cx.expr_call_global(fmt_sp,
                                                    ~[core_ident,

@@ -107,7 +107,7 @@ fn pandoc_writer(
         use core::io::WriterUtil;
 
         debug!("pandoc cmd: %s", pandoc_cmd);
-        debug!("pandoc args: %s", str::connect(pandoc_args, " "));
+        debug!("pandoc args: %s", pandoc_args.connect(" "));
 
         let mut proc = run::Process::new(pandoc_cmd, pandoc_args, run::ProcessOptions::new());
 
@@ -164,7 +164,7 @@ pub fn make_filename(
             }
           }
           doc::ItemPage(doc) => {
-            str::connect(doc.path() + [doc.name()], "_")
+            (doc.path() + [doc.name()]).connect("_")
           }
         }
     };

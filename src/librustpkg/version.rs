@@ -15,6 +15,7 @@ extern mod std;
 
 use extra::semver;
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 use core::{char, os, result, run, str};
 use package_path::RemotePath;
 use extra::tempfile::mkdtemp;
@@ -112,7 +113,7 @@ pub fn try_getting_version(remote_path: &RemotePath) -> Option<Version> {
                                             ~"tag", ~"-l"]);
             let output_text = str::from_bytes(outp.output);
             debug!("Full output: ( %s ) [%?]", output_text, outp.status);
-            for output_text.each_split_char('\n') |l| {
+            for output_text.line_iter().advance |l| {
                 debug!("A line of output: %s", l);
                 if !l.is_whitespace() {
                     output = Some(l);
@@ -142,8 +143,7 @@ fn try_parsing_version(s: &str) -> Option<Version> {
     let s = s.trim();
     debug!("Attempting to parse: %s", s);
     let mut parse_state = Start;
-    // I gave up on using external iterators (tjc)
-    for str::to_chars(s).each() |&c| {
+    for s.iter().advance |c| {
         if char::is_digit(c) {
             parse_state = SawDigit;
         }
@@ -162,11 +162,8 @@ fn try_parsing_version(s: &str) -> Option<Version> {
 
 /// Just an approximation
 fn is_url_like(p: &RemotePath) -> bool {
-    let mut n = 0;
-    for p.to_str().each_split_char('/') |_| {
-        n += 1;
-    }
-    n > 2
+    let str = p.to_str();
+    str.split_iter('/').count() > 2
 }
 
 /// If s is of the form foo#bar, where bar is a valid version
@@ -174,10 +171,10 @@ fn is_url_like(p: &RemotePath) -> bool {
 /// Otherwise, return None.
 pub fn split_version<'a>(s: &'a str) -> Option<(&'a str, Version)> {
     // reject strings with multiple '#'s
-    if { let mut i: uint = 0; for str::to_chars(s).each |&c| { if c == '#' { i += 1; } }; i > 1 } {
+    if s.splitn_iter('#', 2).count() > 2 {
         return None;
     }
-    match str::rfind_char(s, '#') {
+    match s.rfind('#') {
         Some(i) => {
             debug!("in %s, i = %?", s, i);
             let path = s.slice(0, i);

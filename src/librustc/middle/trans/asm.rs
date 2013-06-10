@@ -87,7 +87,7 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
         revoke_clean(bcx, *c);
     }
 
-    let mut constraints = str::connect(constraints, ",");
+    let mut constraints = constraints.connect(",");
 
     let mut clobbers = getClobbers();
     if *ia.clobbers != ~"" && clobbers != ~"" {

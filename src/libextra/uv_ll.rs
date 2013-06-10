@@ -1480,7 +1480,7 @@ mod test {
 
                 let server_kill_msg = copy (*client_data).server_kill_msg;
                 let write_req = (*client_data).server_write_req;
-                if str::contains(request_str, server_kill_msg) {
+                if request_str.contains(server_kill_msg) {
                     debug!(~"SERVER: client req contains kill_msg!");
                     debug!(~"SERVER: sending response to client");
                     read_stop(client_stream_ptr);
@@ -1753,8 +1753,8 @@ mod test {
         let msg_from_client = server_port.recv();
         let msg_from_server = client_port.recv();
 
-        assert!(str::contains(msg_from_client, kill_server_msg));
-        assert!(str::contains(msg_from_server, server_resp_msg));
+        assert!(msg_from_client.contains(kill_server_msg));
+        assert!(msg_from_server.contains(server_resp_msg));
     }
 
     // FIXME don't run on fbsd or linux 32 bit(#2064)

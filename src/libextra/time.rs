@@ -279,7 +279,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             match strs[i] { // can't use let due to stage0 bugs
                 (ref needle, value) => {
                     if match_str(ss, pos, *needle) {
-                        return Some((value, pos + str::len(*needle)));
+                        return Some((value, pos + needle.len()));
                     }
                 }
             }
@@ -296,7 +296,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
 
         let mut i = 0u;
         while i < digits {
-            let range = str::char_range_at(ss, pos);
+            let range = ss.char_range_at(pos);
             pos = range.next;
 
             match range.ch {
@@ -323,7 +323,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     }
 
     fn parse_char(s: &str, pos: uint, c: char) -> Result<uint, ~str> {
-        let range = str::char_range_at(s, pos);
+        let range = s.char_range_at(pos);
 
         if c == range.ch {
             Ok(range.next)
@@ -598,9 +598,9 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 // It's odd, but to maintain compatibility with c's
                 // strptime we ignore the timezone.
                 let mut pos = pos;
-                let len = str::len(s);
+                let len = s.len();
                 while pos < len {
-                    let range = str::char_range_at(s, pos);
+                    let range = s.char_range_at(pos);
                     pos = range.next;
                     if range.ch == ' ' { break; }
                 }
@@ -609,7 +609,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             }
           }
           'z' => {
-            let range = str::char_range_at(s, pos);
+            let range = s.char_range_at(pos);
 
             if range.ch == '+' || range.ch == '-' {
                 match match_digits(s, range.next, 4u, false) {
@@ -651,11 +651,11 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             tm_nsec: 0_i32,
         };
         let mut pos = 0u;
-        let len = str::len(s);
+        let len = s.len();
         let mut result = Err(~"Invalid time");
 
         while !rdr.eof() && pos < len {
-            let range = str::char_range_at(s, pos);
+            let range = s.char_range_at(pos);
             let ch = range.ch;
             let next = range.next;
 
@@ -851,7 +851,7 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
         while !rdr.eof() {
             match rdr.read_char() {
                 '%' => buf += parse_type(rdr.read_char(), tm),
-                ch => str::push_char(&mut buf, ch)
+                ch => buf.push_char(ch)
             }
         }
     }

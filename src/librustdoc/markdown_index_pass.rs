@@ -152,7 +152,7 @@ pub fn pandoc_header_id(header: &str) -> ~str {
         // Collapse sequences of whitespace to a single dash
         // XXX: Hacky implementation here that only covers
         // one or two spaces.
-        let s = str::trim(s);
+        let s = s.trim();
         let s = str::replace(s, "  ", "-");
         let s = str::replace(s, " ", "-");
         return s;
