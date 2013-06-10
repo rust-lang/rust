@@ -25,7 +25,6 @@ use core::hashmap::{HashSet, HashMap};
 use core::io;
 use core::ops::{BitOr, BitAnd};
 use core::result::{Result};
-use core::str;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::visit;

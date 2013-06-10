@@ -22,7 +22,6 @@ use parse::token::{str_to_ident};
 use core::iterator::IteratorUtil;
 use core::char;
 use core::either;
-use core::str;
 use core::u64;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
@@ -548,7 +547,7 @@ fn ident_continue(c: char) -> bool {
 // EFFECT: advances the input past that token
 // EFFECT: updates the interner
 fn next_token_inner(rdr: @mut StringReader) -> token::Token {
-    let mut c = rdr.curr;
+    let c = rdr.curr;
     if ident_start(c) {
         let start = rdr.last_pos;
         while ident_continue(rdr.curr) {

@@ -46,7 +46,6 @@ use sync::{Mutex, mutex_with_condvars, RWlock, rwlock_with_condvars};
 
 use core::cast;
 use core::unstable::sync::UnsafeAtomicRcBox;
-use core::ptr;
 use core::task;
 use core::borrow;
 
