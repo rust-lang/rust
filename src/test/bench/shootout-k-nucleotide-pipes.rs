@@ -197,7 +197,7 @@ fn main() {
 
          // start processing if this is the one
          ('>', false) => {
-            match str::find_str_from(line, ~"THREE", 1u) {
+            match line.slice_from(1).find_str(~"THREE") {
                option::Some(_) => { proc_mode = true; }
                option::None    => { }
             }

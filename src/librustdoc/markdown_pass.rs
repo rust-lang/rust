@@ -633,10 +633,10 @@ mod test {
               fn d() { }"
         );
 
-        let idx_a = str::find_str(markdown, "# Module `a`").get();
-        let idx_b = str::find_str(markdown, "## Function `b`").get();
-        let idx_c = str::find_str(markdown, "# Module `c`").get();
-        let idx_d = str::find_str(markdown, "## Function `d`").get();
+        let idx_a = markdown.find_str("# Module `a`").get();
+        let idx_b = markdown.find_str("## Function `b`").get();
+        let idx_c = markdown.find_str("# Module `c`").get();
+        let idx_d = markdown.find_str("## Function `d`").get();
 
         assert!(idx_b < idx_d);
         assert!(idx_d < idx_a);
