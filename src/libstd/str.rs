@@ -1194,8 +1194,8 @@ pub fn with_capacity(capacity: uint) -> ~str {
  * The number of Unicode characters in `s` between the given indices.
  */
 pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
-    assert!(is_char_boundary(s, start));
-    assert!(is_char_boundary(s, end));
+    assert!(s.is_char_boundary(start));
+    assert!(s.is_char_boundary(end));
     let mut (i, len) = (start, 0u);
     while i < end {
         let next = s.char_range_at(i).next;
@@ -1208,7 +1208,7 @@ pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
 /// Counts the number of bytes taken by the first `n` chars in `s`
 /// starting from `start`.
 pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
-    assert!(is_char_boundary(s, start));
+    assert!(s.is_char_boundary(start));
     let mut (end, cnt) = (start, n);
     let l = s.len();
     while cnt > 0u {
@@ -1658,7 +1658,7 @@ pub trait StrSlice<'self> {
     fn trim_right_chars(&self, chars_to_trim: &[char]) -> &'self str;
     fn to_owned(&self) -> ~str;
     fn to_managed(&self) -> @str;
-    fn is_char_boundary(s: &str, index: uint) -> bool;
+    fn is_char_boundary(&self, index: uint) -> bool;
     fn char_range_at(&self, start: uint) -> CharRange;
     fn char_at(&self, i: uint) -> char;
     fn char_range_at_reverse(&self, start: uint) -> CharRange;
@@ -1800,8 +1800,8 @@ impl<'self> StrSlice<'self> for &'self str {
      */
     #[inline]
     fn slice(&self, begin: uint, end: uint) -> &'self str {
-        assert!(is_char_boundary(*self, begin));
-        assert!(is_char_boundary(*self, end));
+        assert!(self.is_char_boundary(begin));
+        assert!(self.is_char_boundary(end));
         unsafe { raw::slice_bytes(*self, begin, end) }
     }
     #[inline]
@@ -2284,7 +2284,7 @@ impl<'self> Iterator<char> for StrCharIterator<'self> {
     #[inline]
     fn next(&mut self) -> Option<char> {
         if self.index < self.string.len() {
-            let CharRange {ch, next} = char_range_at(self.string, self.index);
+            let CharRange {ch, next} = self.string.char_range_at(self.index);
             self.index = next;
             Some(ch)
         } else {
@@ -2303,7 +2303,7 @@ impl<'self> Iterator<char> for StrCharRevIterator<'self> {
     #[inline]
     fn next(&mut self) -> Option<char> {
         if self.index > 0 {
-            let CharRange {ch, next} = char_range_at_reverse(self.string, self.index);
+            let CharRange {ch, next} = self.string.char_range_at_reverse(self.index);
             self.index = next;
             Some(ch)
         } else {
@@ -2461,7 +2461,7 @@ mod tests {
 
         let data = "abcabc";
         assert_eq!(data.slice(0u, 6u).find_str("ab"), Some(0u));
-        assert_eq!(data.slice(2u, 6u).find_str("ab"), Some(3u));
+        assert_eq!(data.slice(2u, 6u).find_str("ab"), Some(3u - 2u));
         assert!(data.slice(2u, 4u).find_str("ab").is_none());
 
         let mut data = ~"ประเทศไทย中华Việt Nam";
@@ -3042,10 +3042,10 @@ mod tests {
 
     #[test]
     fn test_contains_char() {
-        assert!(contains_char("abc", 'b'));
-        assert!(contains_char("a", 'a'));
-        assert!(!contains_char("abc", 'd'));
-        assert!(!contains_char("", 'a'));
+        assert!("abc".contains_char('b'));
+        assert!("a".contains_char('a'));
+        assert!(!"abc".contains_char('d'));
+        assert!(!"".contains_char('a'));
     }
 
     #[test]
