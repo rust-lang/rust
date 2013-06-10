@@ -186,13 +186,12 @@ impl<T:Ord> PriorityQueue<T> {
 #[cfg(test)]
 mod tests {
     use sort::merge_sort;
-    use core::cmp::le;
     use priority_queue::PriorityQueue;
 
     #[test]
     fn test_top_and_pop() {
-        let data = ~[2, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1];
-        let mut sorted = merge_sort(data, le);
+        let data = ~[2u, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1];
+        let mut sorted = merge_sort(data, |x, y| x.le(y));
         let mut heap = PriorityQueue::from_vec(data);
         while !heap.is_empty() {
             assert_eq!(heap.top(), sorted.last());
@@ -274,8 +273,9 @@ mod tests {
 
     fn check_to_vec(data: ~[int]) {
         let heap = PriorityQueue::from_vec(copy data);
-        assert_eq!(merge_sort((copy heap).to_vec(), le), merge_sort(data, le));
-        assert_eq!(heap.to_sorted_vec(), merge_sort(data, le));
+        assert_eq!(merge_sort((copy heap).to_vec(), |x, y| x.le(y)),
+                   merge_sort(data, |x, y| x.le(y)));
+        assert_eq!(heap.to_sorted_vec(), merge_sort(data, |x, y| x.le(y)));
     }
 
     #[test]
