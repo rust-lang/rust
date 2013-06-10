@@ -667,6 +667,7 @@ impl<'self> StrCharSplitSeparator for extern "Rust" fn(char) -> bool {
 }
 
 impl<'self, Sep: StrCharSplitSeparator> Iterator<&'self str> for StrCharSplitIterator<'self, Sep> {
+    #[inline]
     fn next(&mut self) -> Option<&'self str> {
         if self.finished { return None }
 
@@ -709,88 +710,69 @@ impl<'self, Sep: StrCharSplitSeparator> Iterator<&'self str> for StrCharSplitIte
     }
 }
 
-// See Issue #1932 for why this is a naive search
-fn iter_matches<'a,'b>(s: &'a str, sep: &'b str,
-                       f: &fn(uint, uint) -> bool) -> bool {
-    let (sep_len, l) = (sep.len(), s.len());
-    assert!(sep_len > 0u);
-    let mut (i, match_start, match_i) = (0u, 0u, 0u);
+/// An iterator over the start and end indicies of the matches of a
+/// substring within a larger string
+pub struct StrMatchesIndexIterator<'self> {
+    priv haystack: &'self str,
+    priv needle: &'self str,
+    priv position: uint,
+}
 
-    while i < l {
-        if s[i] == sep[match_i] {
-            if match_i == 0u { match_start = i; }
-            match_i += 1u;
-            // Found a match
-            if match_i == sep_len {
-                if !f(match_start, i + 1u) { return false; }
-                match_i = 0u;
-            }
-            i += 1u;
-        } else {
-            // Failed match, backtrack
-            if match_i > 0u {
-                match_i = 0u;
-                i = match_start + 1u;
+/// An iterator over the substrings of a string separated by a given
+/// search string
+pub struct StrStrSplitIterator<'self> {
+    priv it: StrMatchesIndexIterator<'self>,
+    priv last_end: uint,
+    priv finished: bool
+}
+
+impl<'self> Iterator<(uint, uint)> for StrMatchesIndexIterator<'self> {
+    #[inline]
+    fn next(&mut self) -> Option<(uint, uint)> {
+        // See Issue #1932 for why this is a naive search
+        let (h_len, n_len) = (self.haystack.len(), self.needle.len());
+        let mut (match_start, match_i) = (0, 0);
+
+        while self.position < h_len {
+            if self.haystack[self.position] == self.needle[match_i] {
+                if match_i == 0 { match_start = self.position; }
+                match_i += 1;
+                self.position += 1;
+
+                if match_i == n_len {
+                    // found a match!
+                    return Some((match_start, self.position));
+                }
             } else {
-                i += 1u;
+                // failed match, backtrack
+                if match_i > 0 {
+                    match_i = 0;
+                    self.position = match_start;
+                }
+                self.position += 1;
+            }
+        }
+        None
+    }
+}
+
+impl<'self> Iterator<&'self str> for StrStrSplitIterator<'self> {
+    #[inline]
+    fn next(&mut self) -> Option<&'self str> {
+        if self.finished { return None; }
+
+        match self.it.next() {
+            Some((from, to)) => {
+                let ret = Some(self.it.haystack.slice(self.last_end, from));
+                self.last_end = to;
+                ret
+            }
+            None => {
+                self.finished = true;
+                Some(self.it.haystack.slice(self.last_end, self.it.haystack.len()))
             }
         }
     }
-    return true;
-}
-
-fn iter_between_matches<'a,'b>(s: &'a str,
-                               sep: &'b str,
-                               f: &fn(uint, uint) -> bool) -> bool {
-    let mut last_end = 0u;
-    for iter_matches(s, sep) |from, to| {
-        if !f(last_end, from) { return false; }
-        last_end = to;
-    }
-    return f(last_end, s.len());
-}
-
-/**
- * Splits a string into a vector of the substrings separated by a given string
- *
- * # Example
- *
- * ~~~ {.rust}
- * let mut v = ~[];
- * for each_split_str(".XXX.YYY.", ".") |subs| { v.push(subs); }
- * assert!(v == ["", "XXX", "YYY", ""]);
- * ~~~
- */
-pub fn each_split_str<'a,'b>(s: &'a str,
-                             sep: &'b str,
-                             it: &fn(&'a str) -> bool) -> bool {
-    for iter_between_matches(s, sep) |from, to| {
-        if !it( unsafe { raw::slice_bytes(s, from, to) } ) { return false; }
-    }
-    return true;
-}
-
-/**
- * Splits the string `s` based on `sep`, yielding all splits to the iterator
- * function provide
- *
- * # Example
- *
- * ~~~ {.rust}
- * let mut v = ~[];
- * for each_split_str(".XXX.YYY.", ".") |subs| { v.push(subs); }
- * assert!(v == ["XXX", "YYY"]);
- * ~~~
- */
-pub fn each_split_str_nonempty<'a,'b>(s: &'a str,
-                                      sep: &'b str,
-                                      it: &fn(&'a str) -> bool) -> bool {
-    for iter_between_matches(s, sep) |from, to| {
-        if to > from {
-            if !it( unsafe { raw::slice_bytes(s, from, to) } ) { return false; }
-        }
-    }
-    return true;
 }
 
 /// Levenshtein Distance between two strings
@@ -929,15 +911,13 @@ pub fn each_split_within<'a>(ss: &'a str,
  * The original string with all occurances of `from` replaced with `to`
  */
 pub fn replace(s: &str, from: &str, to: &str) -> ~str {
-    let mut (result, first) = (~"", true);
-    for iter_between_matches(s, from) |start, end| {
-        if first {
-            first = false;
-        } else {
-            push_str(&mut result, to);
-        }
-        push_str(&mut result, unsafe{raw::slice_bytes(s, start, end)});
+    let mut (result, last_end) = (~"", 0);
+    for s.matches_index_iter(from).advance |(start, end)| {
+        result.push_str(unsafe{raw::slice_bytes(s, last_end, start)});
+        result.push_str(to);
+        last_end = end;
     }
+    result.push_str(unsafe{raw::slice_bytes(s, last_end, s.len())});
     result
 }
 
@@ -2441,6 +2421,20 @@ pub trait StrSlice<'self> {
     fn split_options_iter<Sep: StrCharSplitSeparator>(&self, sep: Sep,
                                                       count: uint, allow_trailing_empty: bool)
         -> StrCharSplitIterator<'self, Sep>;
+    /// An iterator over the start and end indices of each match of
+    /// `sep` within `self`.
+    fn matches_index_iter(&self, sep: &'self str) -> StrMatchesIndexIterator<'self>;
+    /**
+     * An iterator over the substrings of `self` separated by `sep`.
+     *
+     * # Example
+     *
+     * ~~~ {.rust}
+     * let v: ~[&str] = ".XXX.YYY.".split_str_iter(".").collect()
+     * assert_eq!(v, ["", "XXX", "YYY", ""]);
+     * ~~~
+     */
+    fn split_str_iter(&self, &'self str) -> StrStrSplitIterator<'self>;
     /// An iterator over the lines of a string (subsequences separated
     /// by `\n`).
     fn line_iter(&self) -> StrCharSplitIterator<'self, char>;
@@ -2454,7 +2448,6 @@ pub trait StrSlice<'self> {
     fn len(&self) -> uint;
     fn char_len(&self) -> uint;
     fn slice(&self, begin: uint, end: uint) -> &'self str;
-    fn each_split_str<'a>(&self, sep: &'a str, it: &fn(&'self str) -> bool) -> bool;
     fn starts_with<'a>(&self, needle: &'a str) -> bool;
     fn substr(&self, begin: uint, n: uint) -> &'self str;
     fn escape_default(&self) -> ~str;
@@ -2529,6 +2522,21 @@ impl<'self> StrSlice<'self> for &'self str {
             only_ascii: only_ascii
         }
     }
+    fn matches_index_iter(&self, sep: &'self str) -> StrMatchesIndexIterator<'self> {
+        assert!(!sep.is_empty())
+        StrMatchesIndexIterator {
+            haystack: *self,
+            needle: sep,
+            position: 0
+        }
+    }
+    fn split_str_iter(&self, sep: &'self str) -> StrStrSplitIterator<'self> {
+        StrStrSplitIterator {
+            it: self.matches_index_iter(sep),
+            last_end: 0,
+            finished: false
+        }
+    }
 
     fn line_iter(&self) -> StrCharSplitIterator<'self, char> {
         self.split_options_iter('\n', self.len(), false)
@@ -2581,15 +2589,6 @@ impl<'self> StrSlice<'self> for &'self str {
         assert!(is_char_boundary(*self, end));
         unsafe { raw::slice_bytes(*self, begin, end) }
     }
-    /**
-     * Splits a string into a vector of the substrings separated by a given
-     * string
-     */
-    #[inline]
-    fn each_split_str<'a>(&self, sep: &'a str, it: &fn(&'self str) -> bool) -> bool {
-        each_split_str(*self, sep, it)
-    }
-    /// Returns true if one string starts with another
     #[inline]
     fn starts_with<'a>(&self, needle: &'a str) -> bool {
         starts_with(*self, needle)
@@ -2835,30 +2834,6 @@ mod tests {
         let mut data = ~"";
         let _cc3 = pop_char(&mut data);
     }
-
-    #[test]
-    fn test_split_str() {
-        fn t<'a>(s: &str, sep: &'a str, u: &[~str]) {
-            let mut v = ~[];
-            for each_split_str(s, sep) |s| { v.push(s.to_owned()) }
-            assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));
-        }
-        t("--1233345--", "12345", [~"--1233345--"]);
-        t("abc::hello::there", "::", [~"abc", ~"hello", ~"there"]);
-        t("::hello::there", "::", [~"", ~"hello", ~"there"]);
-        t("hello::there::", "::", [~"hello", ~"there", ~""]);
-        t("::hello::there::", "::", [~"", ~"hello", ~"there", ~""]);
-        t("ประเทศไทย中华Việt Nam", "中华", [~"ประเทศไทย", ~"Việt Nam"]);
-        t("zzXXXzzYYYzz", "zz", [~"", ~"XXX", ~"YYY", ~""]);
-        t("zzXXXzYYYz", "XXX", [~"zz", ~"zYYYz"]);
-        t(".XXX.YYY.", ".", [~"", ~"XXX", ~"YYY", ~""]);
-        t("", ".", [~""]);
-        t("zz", "zz", [~"",~""]);
-        t("ok", "z", [~"ok"]);
-        t("zzz", "zz", [~"",~"z"]);
-        t("zzzzz", "zz", [~"",~"",~"z"]);
-    }
-
 
     #[test]
     fn test_split_within() {
@@ -3726,5 +3701,28 @@ mod tests {
         let data = "\nMäry häd ä little lämb\n\nLittle lämb"; // no trailing \n
         let lines: ~[&str] = data.line_iter().collect();
         assert_eq!(lines, ~["", "Märy häd ä little lämb", "", "Little lämb"]);
+    }
+
+
+    #[test]
+    fn test_split_str_iterator() {
+        fn t<'a>(s: &str, sep: &'a str, u: ~[&str]) {
+            let v: ~[&str] = s.split_str_iter(sep).collect();
+            assert_eq!(v, u);
+        }
+        t("--1233345--", "12345", ~["--1233345--"]);
+        t("abc::hello::there", "::", ~["abc", "hello", "there"]);
+        t("::hello::there", "::", ~["", "hello", "there"]);
+        t("hello::there::", "::", ~["hello", "there", ""]);
+        t("::hello::there::", "::", ~["", "hello", "there", ""]);
+        t("ประเทศไทย中华Việt Nam", "中华", ~["ประเทศไทย", "Việt Nam"]);
+        t("zzXXXzzYYYzz", "zz", ~["", "XXX", "YYY", ""]);
+        t("zzXXXzYYYz", "XXX", ~["zz", "zYYYz"]);
+        t(".XXX.YYY.", ".", ~["", "XXX", "YYY", ""]);
+        t("", ".", ~[""]);
+        t("zz", "zz", ~["",""]);
+        t("ok", "z", ~["ok"]);
+        t("zzz", "zz", ~["","z"]);
+        t("zzzzz", "zz", ~["","","z"]);
     }
 }
