@@ -141,7 +141,7 @@ fn should_prune_unconfigured_items() {
     let source = ~"#[cfg(shut_up_and_leave_me_alone)]fn a() { }";
     do from_str(source) |srv| {
         do exec(srv) |ctxt| {
-            assert!(vec::is_empty(ctxt.ast.node.module.items));
+            assert!(ctxt.ast.node.module.items.is_empty());
         }
     }
 }

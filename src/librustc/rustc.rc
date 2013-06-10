@@ -36,8 +36,6 @@ extern mod std(name = "std", vers = "0.7-pre");
 
 // For bootstrapping purposes.
 #[cfg(stage0)]
-pub use core::str;
-#[cfg(stage0)]
 pub use core::unstable;
 
 use core::prelude::*;
@@ -281,7 +279,7 @@ pub fn run_compiler(args: &~[~str], demitter: diagnostic::Emitter) {
         version(*binary);
         return;
     }
-    let input = match vec::len(matches.free) {
+    let input = match matches.free.len() {
       0u => early_error(demitter, ~"no input filename given"),
       1u => {
         let ifile = /*bad*/copy matches.free[0];

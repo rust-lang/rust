@@ -115,7 +115,6 @@ use core::iterator::IteratorUtil;
 use core::cast::transmute;
 use core::hashmap::HashMap;
 use core::result;
-use core::str;
 use core::util::replace;
 use core::vec;
 use extra::list::Nil;
@@ -1879,7 +1878,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                        } else {
                                            "s"
                                        },
-                                       str::connect(missing_fields, ", ")));
+                                       missing_fields.connect(", ")));
              }
         }
 
@@ -2728,8 +2727,13 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         });
         let mut bot_field = false;
         let mut err_field = false;
+
         let elt_ts = do elts.mapi |i, e| {
-            check_expr_with_opt_hint(fcx, *e, flds.map(|fs| fs[i]));
+            let opt_hint = match flds {
+                Some(ref fs) if i < fs.len() => Some(fs[i]),
+                _ => None
+            };
+            check_expr_with_opt_hint(fcx, *e, opt_hint);
             let t = fcx.expr_ty(*e);
             err_field = err_field || ty::type_is_error(t);
             bot_field = bot_field || ty::type_is_bot(t);
@@ -3060,7 +3064,7 @@ pub fn check_simd(tcx: ty::ctxt, sp: span, id: ast::node_id) {
                 return;
             }
             let e = ty::lookup_field_type(tcx, did, fields[0].id, substs);
-            if !vec::all(fields,
+            if !fields.iter().all(
                          |f| ty::lookup_field_type(tcx, did, f.id, substs) == e) {
                 tcx.sess.span_err(sp, "SIMD vector should be homogeneous");
                 return;

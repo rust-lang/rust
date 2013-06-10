@@ -13,14 +13,14 @@ use core::prelude::*;
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos};
 use diagnostic;
-use parse::lexer::{is_whitespace, get_str_from, reader};
+use parse::lexer::{is_whitespace, with_str_from, reader};
 use parse::lexer::{StringReader, bump, is_eof, nextch, TokenAndSpan};
 use parse::lexer::{is_line_non_doc_comment, is_block_non_doc_comment};
 use parse::lexer;
 use parse::token;
 use parse::token::{get_ident_interner};
-use parse;
 
+use core::iterator::IteratorUtil;
 use core::io;
 use core::str;
 use core::uint;
@@ -78,7 +78,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
             if line.trim().is_empty() {
                 loop;
             }
-            for line.each_chari |j, c| {
+            for line.iter().enumerate().advance |(j, c)| {
                 if j >= i {
                     break;
                 }
@@ -91,7 +91,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 
         return do lines.map |line| {
             let mut chars = ~[];
-            for str::each_char(*line) |c| { chars.push(c) }
+            for line.iter().advance |c| { chars.push(c) }
             if i > chars.len() {
                 ~""
             } else {
@@ -116,7 +116,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         let lines = block_trim(lines, ~"\t ", None);
         let lines = block_trim(lines, ~"*", Some(1u));
         let lines = block_trim(lines, ~"\t ", None);
-        return str::connect(lines, "\n");
+        return lines.connect("\n");
     }
 
     fail!("not a doc-comment: %s", comment);
@@ -125,7 +125,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 fn read_to_eol(rdr: @mut StringReader) -> ~str {
     let mut val = ~"";
     while rdr.curr != '\n' && !is_eof(rdr) {
-        str::push_char(&mut val, rdr.curr);
+        val.push_char(rdr.curr);
         bump(rdr);
     }
     if rdr.curr == '\n' { bump(rdr); }
@@ -215,7 +215,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
     let col = col.to_uint();
     let s1 = if all_whitespace(s, 0, uint::min(len, col)) {
         if col < len {
-            str::slice(s, col, len).to_owned()
+            s.slice(col, len).to_owned()
         } else {  ~"" }
     } else { s };
     debug!("pushing line: %s", s1);
@@ -237,7 +237,7 @@ fn read_block_comment(rdr: @mut StringReader,
     // doc-comments are not really comments, they are attributes
     if rdr.curr == '*' || rdr.curr == '!' {
         while !(rdr.curr == '*' && nextch(rdr) == '/') && !is_eof(rdr) {
-            str::push_char(&mut curr_line, rdr.curr);
+            curr_line.push_char(rdr.curr);
             bump(rdr);
         }
         if !is_eof(rdr) {
@@ -261,7 +261,7 @@ fn read_block_comment(rdr: @mut StringReader,
                 curr_line = ~"";
                 bump(rdr);
             } else {
-                str::push_char(&mut curr_line, rdr.curr);
+                curr_line.push_char(rdr.curr);
                 if rdr.curr == '/' && nextch(rdr) == '*' {
                     bump(rdr);
                     bump(rdr);
@@ -277,7 +277,7 @@ fn read_block_comment(rdr: @mut StringReader,
                 }
             }
         }
-        if str::len(curr_line) != 0 {
+        if curr_line.len() != 0 {
             trim_whitespace_prefix_and_push_line(&mut lines, curr_line, col);
         }
     }
@@ -347,14 +347,15 @@ pub fn gather_comments_and_literals(span_diagnostic:
         }
 
 
-        let bstart = rdr.pos;
+        let bstart = rdr.last_pos;
         rdr.next_token();
         //discard, and look ahead; we're working with internal state
         let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
         if token::is_lit(&tok) {
-            let s = get_str_from(rdr, bstart);
-            debug!("tok lit: %s", s);
-            literals.push(lit {lit: s, pos: sp.lo});
+            do with_str_from(rdr, bstart) |s| {
+                debug!("tok lit: %s", s);
+                literals.push(lit {lit: s.to_owned(), pos: sp.lo});
+            }
         } else {
             debug!("tok: %s", token::to_str(get_ident_interner(), &tok));
         }

@@ -21,9 +21,9 @@ middle of a line, and each of the following lines is indented.
 
 use core::prelude::*;
 
+use core::iterator::IteratorUtil;
 use core::str;
 use core::uint;
-use core::vec;
 use pass::Pass;
 use text_pass;
 
@@ -36,7 +36,7 @@ fn unindent(s: &str) -> ~str {
     for str::each_line_any(s) |line| { lines.push(line.to_owned()); }
     let mut saw_first_line = false;
     let mut saw_second_line = false;
-    let min_indent = do vec::foldl(uint::max_value, lines)
+    let min_indent = do lines.iter().fold(uint::max_value)
         |min_indent, line| {
 
         // After we see the first non-whitespace line, look at
@@ -46,7 +46,7 @@ fn unindent(s: &str) -> ~str {
         let ignore_previous_indents =
             saw_first_line &&
             !saw_second_line &&
-            !str::is_whitespace(*line);
+            !line.is_whitespace();
 
         let min_indent = if ignore_previous_indents {
             uint::max_value
@@ -58,12 +58,12 @@ fn unindent(s: &str) -> ~str {
             saw_second_line = true;
         }
 
-        if str::is_whitespace(*line) {
+        if line.is_whitespace() {
             min_indent
         } else {
             saw_first_line = true;
             let mut spaces = 0;
-            do str::all(*line) |char| {
+            do line.iter().all |char| {
                 // Only comparing against space because I wouldn't
                 // know what to do with mixed whitespace chars
                 if char == ' ' {
@@ -80,14 +80,14 @@ fn unindent(s: &str) -> ~str {
     if !lines.is_empty() {
         let unindented = ~[lines.head().trim().to_owned()]
             + do lines.tail().map |line| {
-            if str::is_whitespace(*line) {
+            if line.is_whitespace() {
                 copy *line
             } else {
-                assert!(str::len(*line) >= min_indent);
-                str::slice(*line, min_indent, str::len(*line)).to_owned()
+                assert!(line.len() >= min_indent);
+                line.slice(min_indent, line.len()).to_owned()
             }
         };
-        str::connect(unindented, "\n")
+        unindented.connect("\n")
     } else {
         s.to_str()
     }

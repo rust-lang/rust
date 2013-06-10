@@ -42,7 +42,6 @@ use core::prelude::*;
 use ext::base::ExtCtxt;
 use ext::pipes::proto::{protocol_};
 
-use core::str;
 use extra::bitv::Bitv;
 
 pub fn analyze(proto: @mut protocol_, _cx: @ExtCtxt) {
@@ -88,7 +87,7 @@ pub fn analyze(proto: @mut protocol_, _cx: @ExtCtxt) {
     }
 
     if self_live.len() > 0 {
-        let states = str::connect(self_live.map(|s| copy s.name), " ");
+        let states = self_live.map(|s| copy s.name).connect(" ");
 
         debug!("protocol %s is unbounded due to loops involving: %s",
                copy proto.name, states);

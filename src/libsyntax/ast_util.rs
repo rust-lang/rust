@@ -23,12 +23,11 @@ use visit;
 use core::hashmap::HashMap;
 use core::int;
 use core::option;
-use core::str;
 use core::to_bytes;
 
 pub fn path_name_i(idents: &[ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
-    str::connect(idents.map(|i| copy *token::interner_get(i.name)), "::")
+    idents.map(|i| copy *token::interner_get(i.name)).connect("::")
 }
 
 pub fn path_to_ident(p: @Path) -> ident { copy *p.idents.last() }
@@ -792,6 +791,7 @@ mod test {
     use ast::*;
     use super::*;
     use core::io;
+    use core::iterator::IteratorUtil;
 
     #[test] fn xorpush_test () {
         let mut s = ~[];
@@ -833,7 +833,7 @@ mod test {
     // returning the resulting index
     fn unfold_test_sc(tscs : ~[TestSC], tail: SyntaxContext, table : &mut SCTable)
         -> SyntaxContext {
-        tscs.foldr(tail, |tsc : &TestSC,tail : SyntaxContext|
+        tscs.rev_iter().fold(tail, |tail : SyntaxContext, tsc : &TestSC|
                   {match *tsc {
                       M(mrk) => new_mark_internal(mrk,tail,table),
                       R(ident,name) => new_rename_internal(ident,name,tail,table)}})
@@ -874,7 +874,7 @@ mod test {
     // extend a syntax context with a sequence of marks given
     // in a vector. v[0] will be the outermost mark.
     fn unfold_marks(mrks:~[Mrk],tail:SyntaxContext,table: &mut SCTable) -> SyntaxContext {
-        mrks.foldr(tail, |mrk:&Mrk,tail:SyntaxContext|
+        mrks.rev_iter().fold(tail, |tail:SyntaxContext, mrk:&Mrk|
                    {new_mark_internal(*mrk,tail,table)})
     }
 

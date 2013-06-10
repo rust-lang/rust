@@ -44,7 +44,6 @@ use core::cast;
 use core::hash;
 use core::hashmap::{HashMap, HashSet};
 use core::libc::{c_uint, c_longlong, c_ulonglong};
-use core::ptr;
 use core::str;
 use core::to_bytes;
 use core::vec::raw::to_ptr;
@@ -53,7 +52,6 @@ use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt};
 use syntax::codemap::span;
 use syntax::parse::token;
-use syntax::parse::token::ident_interner;
 use syntax::{ast, ast_map};
 use syntax::abi::{X86, X86_64, Arm, Mips};
 
@@ -965,9 +963,7 @@ pub fn T_tydesc_field(cx: @CrateContext, field: uint) -> TypeRef {
         let mut tydesc_elts: ~[TypeRef] =
             vec::from_elem::<TypeRef>(abi::n_tydesc_fields,
                                      T_nil());
-        llvm::LLVMGetStructElementTypes(
-            cx.tydesc_type,
-            ptr::to_mut_unsafe_ptr(&mut tydesc_elts[0]));
+        llvm::LLVMGetStructElementTypes(cx.tydesc_type, &mut tydesc_elts[0]);
         let t = llvm::LLVMGetElementType(tydesc_elts[field]);
         return t;
     }
@@ -1224,7 +1220,7 @@ pub fn C_estr_slice(cx: @CrateContext, s: @~str) -> ValueRef {
 pub fn C_postr(s: &str) -> ValueRef {
     unsafe {
         return do str::as_c_str(s) |buf| {
-            llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
+            llvm::LLVMConstString(buf, s.len() as c_uint, False)
         };
     }
 }
@@ -1487,7 +1483,7 @@ pub fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
     if !params.all(|t| !ty::type_needs_infer(*t)) {
         bcx.sess().bug(
             fmt!("Type parameters for node %d include inference types: %s",
-                 id, str::connect(params.map(|t| bcx.ty_to_str(*t)), ",")));
+                 id, params.map(|t| bcx.ty_to_str(*t)).connect(",")));
     }
 
     match bcx.fcx.param_substs {

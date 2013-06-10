@@ -414,8 +414,8 @@ mod test {
 
     use super::{FileInput, pathify, input_vec, input_vec_state};
 
+    use core::iterator::IteratorUtil;
     use core::io;
-    use core::str;
     use core::uint;
     use core::vec;
 
@@ -455,7 +455,7 @@ mod test {
 
         let fi = FileInput::from_vec(copy filenames);
 
-        for "012".each_chari |line, c| {
+        for "012".iter().enumerate().advance |(line, c)| {
             assert_eq!(fi.read_byte(), c as int);
             assert_eq!(fi.state().line_num, line);
             assert_eq!(fi.state().line_num_file, 0);
@@ -526,9 +526,7 @@ mod test {
         }
 
         for input_vec_state(filenames) |line, state| {
-            let nums = do vec::build |p| {
-                for str::each_split_char(line, ' ') |s| { p(s.to_owned()); }
-            };
+            let nums: ~[&str] = line.split_iter(' ').collect();
             let file_num = uint::from_str(nums[0]).get();
             let line_num = uint::from_str(nums[1]).get();
             assert_eq!(line_num, state.line_num_file);

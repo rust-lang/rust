@@ -138,7 +138,7 @@ validate_opt () {
         done
         if [ "$arg" = "--help" ]
         then
-            echo ""
+            echo
             echo "No more help available for Configure options,"
             echo "check the Wiki or join our IRC channel"
             break
@@ -349,11 +349,11 @@ if [ "$1" = "--help" ]
 then
     HELP=1
     shift
-    echo ""
+    echo
     echo "Usage: $CFG_SELF [options]"
-    echo ""
+    echo
     echo "Options:"
-    echo ""
+    echo
 else
     msg "recreating config.tmp"
     echo '' >config.tmp
@@ -394,7 +394,7 @@ validate_opt
 
 if [ $HELP -eq 1 ]
 then
-    echo ""
+    echo
     exit 0
 fi
 

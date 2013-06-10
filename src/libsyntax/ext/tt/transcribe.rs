@@ -19,9 +19,9 @@ use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident};
 use parse::token::{ident_to_str};
 use parse::lexer::TokenAndSpan;
 
+use core::iterator::IteratorUtil;
 use core::hashmap::HashMap;
 use core::option;
-use core::vec;
 
 ///an unzipping of `token_tree`s
 struct TtFrame {
@@ -113,9 +113,7 @@ fn lookup_cur_matched_by_matched(r: &mut TtReader,
           matched_seq(ref ads, _) => ads[*idx]
         }
     }
-    let r = &mut *r;
-    let repeat_idx = &r.repeat_idx;
-    vec::foldl(start, *repeat_idx, red)
+    r.repeat_idx.iter().fold(start, red)
 }
 
 fn lookup_cur_matched(r: &mut TtReader, name: ident) -> @named_match {
@@ -152,10 +150,10 @@ fn lockstep_iter_size(t: &token_tree, r: &mut TtReader) -> lis {
     }
     match *t {
       tt_delim(ref tts) | tt_seq(_, ref tts, _, _) => {
-        vec::foldl(lis_unconstrained, *tts, |lis, tt| {
+        do tts.iter().fold(lis_unconstrained) |lis, tt| {
             let lis2 = lockstep_iter_size(tt, r);
             lis_merge(lis, lis2)
-        })
+        }
       }
       tt_tok(*) => lis_unconstrained,
       tt_nonterminal(_, name) => match *lookup_cur_matched(r, name) {

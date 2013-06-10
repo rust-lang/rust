@@ -34,7 +34,6 @@ use core::io;
 use core::str;
 use core::u64;
 use core::uint;
-use core::vec;
 
 // The @ps is stored here to prevent recursive type.
 pub enum ann_node<'self> {
@@ -249,7 +248,7 @@ pub fn head(s: @ps, w: &str) {
     // outer-box is consistent
     cbox(s, indent_unit);
     // head-box is inconsistent
-    ibox(s, str::len(w) + 1);
+    ibox(s, w.len() + 1);
     // keyword that starts the head
     if !w.is_empty() {
         word_nbsp(s, w);
@@ -2041,7 +2040,7 @@ pub fn lit_to_str(l: @ast::lit) -> ~str {
 pub fn next_lit(s: @ps, pos: BytePos) -> Option<comments::lit> {
     match s.literals {
       Some(ref lits) => {
-        while s.cur_cmnt_and_lit.cur_lit < vec::len((*lits)) {
+        while s.cur_cmnt_and_lit.cur_lit < lits.len() {
             let ltrl = /*bad*/ copy (*lits)[s.cur_cmnt_and_lit.cur_lit];
             if ltrl.pos > pos { return None; }
             s.cur_cmnt_and_lit.cur_lit += 1u;
@@ -2128,7 +2127,7 @@ pub fn to_str<T: Copy>(t: T, f: @fn(@ps, T), intr: @ident_interner) -> ~str {
 pub fn next_comment(s: @ps) -> Option<comments::cmnt> {
     match s.comments {
       Some(ref cmnts) => {
-        if s.cur_cmnt_and_lit.cur_cmnt < vec::len((*cmnts)) {
+        if s.cur_cmnt_and_lit.cur_cmnt < cmnts.len() {
             return Some(copy cmnts[s.cur_cmnt_and_lit.cur_cmnt]);
         } else { return None::<comments::cmnt>; }
       }

@@ -654,7 +654,6 @@ mod test {
     use core::int;
     use core::io::BytesWriter;
     use core::result;
-    use core::sys;
     use core::task;
 
     #[test]

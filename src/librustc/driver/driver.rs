@@ -24,6 +24,7 @@ use middle;
 use util::common::time;
 use util::ppaux;
 
+use core::iterator::IteratorUtil;
 use core::hashmap::HashMap;
 use core::int;
 use core::io;
@@ -327,8 +328,8 @@ pub fn compile_rest(sess: Session,
 
     let outputs = outputs.get_ref();
     if (sess.opts.debugging_opts & session::print_link_args) != 0 {
-        io::println(str::connect(link::link_args(sess,
-            &outputs.obj_filename, &outputs.out_filename, link_meta), " "));
+        io::println(link::link_args(sess, &outputs.obj_filename,
+                                    &outputs.out_filename, link_meta).connect(" "));
     }
 
     // NB: Android hack
@@ -464,33 +465,33 @@ pub fn pretty_print_input(sess: Session, cfg: ast::crate_cfg, input: &input,
 }
 
 pub fn get_os(triple: &str) -> Option<session::os> {
-    if str::contains(triple, "win32") ||
-               str::contains(triple, "mingw32") {
+    if triple.contains("win32") ||
+               triple.contains("mingw32") {
             Some(session::os_win32)
-        } else if str::contains(triple, "darwin") {
+        } else if triple.contains("darwin") {
             Some(session::os_macos)
-        } else if str::contains(triple, "android") {
+        } else if triple.contains("android") {
             Some(session::os_android)
-        } else if str::contains(triple, "linux") {
+        } else if triple.contains("linux") {
             Some(session::os_linux)
-        } else if str::contains(triple, "freebsd") {
+        } else if triple.contains("freebsd") {
             Some(session::os_freebsd)
         } else { None }
 }
 
 pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
-    if str::contains(triple, "i386") ||
-        str::contains(triple, "i486") ||
-               str::contains(triple, "i586") ||
-               str::contains(triple, "i686") ||
-               str::contains(triple, "i786") {
+    if triple.contains("i386") ||
+        triple.contains("i486") ||
+               triple.contains("i586") ||
+               triple.contains("i686") ||
+               triple.contains("i786") {
             Some(abi::X86)
-        } else if str::contains(triple, "x86_64") {
+        } else if triple.contains("x86_64") {
             Some(abi::X86_64)
-        } else if str::contains(triple, "arm") ||
-                      str::contains(triple, "xscale") {
+        } else if triple.contains("arm") ||
+                      triple.contains("xscale") {
             Some(abi::Arm)
-        } else if str::contains(triple, "mips") {
+        } else if triple.contains("mips") {
             Some(abi::Mips)
         } else { None }
 }
@@ -684,11 +685,7 @@ pub fn build_session_options(binary: @~str,
     let addl_lib_search_paths = getopts::opt_strs(matches, "L").map(|s| Path(*s));
     let linker = getopts::opt_maybe_str(matches, "linker");
     let linker_args = getopts::opt_strs(matches, "link-args").flat_map( |a| {
-        let mut args = ~[];
-        for str::each_split_char(*a, ' ') |arg| {
-            args.push(str::to_owned(arg));
-        }
-        args
+        a.split_iter(' ').transform(|arg| arg.to_owned()).collect()
     });
 
     let cfg = parse_cfgspecs(getopts::opt_strs(matches, "cfg"), demitter);
@@ -699,12 +696,9 @@ pub fn build_session_options(binary: @~str,
     let custom_passes = match getopts::opt_maybe_str(matches, "passes") {
         None => ~[],
         Some(s) => {
-            let mut o = ~[];
-            for s.each_split(|c| c == ' ' || c == ',') |s| {
-                let s = s.trim().to_owned();
-                o.push(s);
-            }
-            o
+            s.split_iter(|c: char| c == ' ' || c == ',').transform(|s| {
+                s.trim().to_owned()
+            }).collect()
         }
     };
 

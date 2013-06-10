@@ -53,13 +53,12 @@ pub fn count_insn(cx: block, category: &str) {
 
         // Pass 1: scan table mapping str -> rightmost pos.
         let mut mm = HashMap::new();
-        let len = vec::len(*v);
+        let len = v.len();
         let mut i = 0u;
         while i < len {
             mm.insert(copy v[i], i);
             i += 1u;
         }
-
 
         // Pass 2: concat strings for each elt, skipping
         // forwards over any cycles by advancing to rightmost
@@ -193,9 +192,7 @@ pub fn Invoke(cx: block,
     terminate(cx, "Invoke");
     debug!("Invoke(%s with arguments (%s))",
            val_str(cx.ccx().tn, Fn),
-           str::connect(vec::map(Args, |a| val_str(cx.ccx().tn,
-                                                   *a).to_owned()),
-                        ", "));
+           Args.map(|a| val_str(cx.ccx().tn, *a).to_owned()).connect(", "));
     unsafe {
         count_insn(cx, "invoke");
         llvm::LLVMBuildInvoke(B(cx),

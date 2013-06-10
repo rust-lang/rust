@@ -20,6 +20,7 @@ extern mod extra;
 use extra::arc;
 use extra::time;
 use extra::deque::Deque;
+use std::iterator::IteratorUtil;
 use std::hashmap::HashSet;
 use std::int::abs;
 use std::io;
@@ -248,7 +249,7 @@ fn gen_search_keys(graph: &[~[node_id]], n: uint) -> ~[node_id] {
     while keys.len() < n {
         let k = r.gen_uint_range(0u, graph.len());
 
-        if graph[k].len() > 0u && vec::any(graph[k], |i| {
+        if graph[k].len() > 0u && graph[k].iter().any(|i| {
             *i != k as node_id
         }) {
             keys.insert(k as node_id);
@@ -324,7 +325,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
     }
 
     let mut i = 0;
-    while vec::any(colors, is_gray) {
+    while colors.iter().any(is_gray) {
         // Do the BFS.
         info!("PBFS iteration %?", i);
         i += 1;
@@ -499,7 +500,7 @@ fn validate(edges: ~[(node_id, node_id)],
 
     info!(~"Verifying tree edges...");
 
-    let status = do tree.alli() |k, parent| {
+    let status = do tree.iter().enumerate().all |(k, parent)| {
         if *parent != root && *parent != -1i64 {
             level[*parent] == level[k] - 1
         }

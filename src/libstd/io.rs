@@ -672,7 +672,7 @@ impl<T:Reader> ReaderUtil for T {
                     val <<= 6;
                     val += (next & 63) as uint;
                 }
-                // See str::char_at
+                // See str::StrSlice::char_at
                 val += ((b0 << ((w + 1) as u8)) as uint)
                     << (w - 1) * 6 - w - 1u;
                 chars.push(val as char);
@@ -748,7 +748,7 @@ impl<T:Reader> ReaderUtil for T {
             if self.eof() && line.is_empty() { break; }
 
             // trim the \n, so that each_line is consistent with read_line
-            let n = str::len(line);
+            let n = line.len();
             if line[n-1] == '\n' as u8 {
                 unsafe { str::raw::set_len(&mut line, n-1); }
             }
@@ -1836,7 +1836,6 @@ mod tests {
     use io;
     use path::Path;
     use result;
-    use str;
     use u64;
     use vec;
 
@@ -1979,7 +1978,7 @@ mod tests {
     fn file_writer_bad_name() {
         match io::file_writer(&Path("?/?"), []) {
           result::Err(e) => {
-            assert!(str::starts_with(e, "error opening"));
+            assert!(e.starts_with("error opening"));
           }
           result::Ok(_) => fail!()
         }
@@ -1989,7 +1988,7 @@ mod tests {
     fn buffered_file_writer_bad_name() {
         match io::buffered_file_writer(&Path("?/?")) {
           result::Err(e) => {
-            assert!(str::starts_with(e, "error opening"));
+            assert!(e.starts_with("error opening"));
           }
           result::Ok(_) => fail!()
         }

@@ -100,7 +100,7 @@ impl Env {
         return match search_mod(self, &self.crate.node.module, 0, names) {
             Some(id) => id,
             None => {
-                fail!("No item found: `%s`", str::connect(names, "::"));
+                fail!("No item found: `%s`", names.connect("::"));
             }
         };
 

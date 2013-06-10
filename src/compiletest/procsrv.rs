@@ -10,14 +10,9 @@
 
 use core::prelude::*;
 
-use core::comm;
-use core::io;
-use core::libc::c_int;
 use core::os;
 use core::run;
 use core::str;
-use core::task;
-use core::vec;
 
 #[cfg(target_os = "win32")]
 fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
@@ -33,7 +28,7 @@ fn target_env(lib_path: &str, prog: &str) -> ~[(~str,~str)] {
         if k == ~"PATH" { (~"PATH", v + ";" + lib_path + ";" + aux_path) }
         else { (k,v) }
     };
-    if str::ends_with(prog, "rustc.exe") {
+    if prog.ends_with("rustc.exe") {
         env.push((~"RUST_THREADS", ~"1"));
     }
     return env;
@@ -74,4 +69,3 @@ pub fn run(lib_path: &str,
         err: str::from_bytes(output.error)
     }
 }
-

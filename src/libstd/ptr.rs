@@ -11,8 +11,6 @@
 //! Unsafe pointer utility functions
 
 use cast;
-#[cfg(stage0)] use libc;
-#[cfg(stage0)] use libc::{c_void, size_t};
 use option::{Option, Some, None};
 use sys;
 use unstable::intrinsics;

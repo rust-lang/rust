@@ -569,8 +569,10 @@ loop {
 This code prints out a weird sequence of numbers and stops as soon as
 it finds one that can be divided by five.
 
-For more involved iteration, such as enumerating the elements of a
-collection, Rust uses [higher-order functions](#closures).
+Rust also has a `for` construct. It's different from C's `for` and it works
+best when iterating over collections. See the section on [closures](#closures)
+to find out how to use `for` and higher-order functions for enumerating
+elements of a collection.
 
 # Data structures
 
@@ -1393,6 +1395,7 @@ assert!(crayons.len() == 3);
 assert!(!crayons.is_empty());
 
 // Iterate over a vector, obtaining a pointer to each element
+// (`for` is explained in the next section)
 for crayons.each |crayon| {
     let delicious_crayon_wax = unwrap_crayon(*crayon);
     eat_crayon_wax(delicious_crayon_wax);
@@ -1439,10 +1442,15 @@ call_closure_with_ten(closure);
 ~~~~
 
 Closures begin with the argument list between vertical bars and are followed by
-a single expression. The types of the arguments are generally omitted,
-as is the return type, because the compiler can almost always infer
-them. In the rare case where the compiler needs assistance, though, the
-arguments and return types may be annotated.
+a single expression. Remember that a block, `{ <expr1>; <expr2>; ... }`, is
+considered a single expression: it evaluates to the result of the last
+expression it contains if that expression is not followed by a semicolon,
+otherwise the block evaluates to `()`.
+
+The types of the arguments are generally omitted, as is the return type,
+because the compiler can almost always infer them. In the rare case where the
+compiler needs assistance, though, the arguments and return types may be
+annotated.
 
 ~~~~
 let square = |x: int| -> uint { x * x as uint };
@@ -2038,7 +2046,7 @@ trait Seq<T> {
 }
 
 impl<T> Seq<T> for ~[T] {
-    fn len(&self) -> uint { vec::len(*self) }
+    fn len(&self) -> uint { self.len() }
     fn iter(&self, b: &fn(v: &T)) {
         for vec::each(*self) |elt| { b(elt); }
     }

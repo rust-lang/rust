@@ -44,6 +44,7 @@
  *   taken to it, implementing them for Rust seems difficult.
  */
 
+use core::iterator::IteratorUtil;
 use core::container::Map;
 use core::libc::c_ulonglong;
 use core::option::{Option, Some, None};
@@ -176,7 +177,7 @@ fn represent_type_uncached(cx: @CrateContext, t: ty::t) -> Repr {
             // Since there's at least one
             // non-empty body, explicit discriminants should have
             // been rejected by a checker before this point.
-            if !cases.alli(|i,c| c.discr == (i as int)) {
+            if !cases.iter().enumerate().all(|(i,c)| c.discr == (i as int)) {
                 cx.sess.bug(fmt!("non-C-like enum %s with specified \
                                   discriminants",
                                  ty::item_path_str(cx.tcx, def_id)))

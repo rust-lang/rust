@@ -186,7 +186,7 @@ fn get_rustpkg_lib_path_nearest() -> Result<Path, ~str> {
 // On Unix should be "lib", on windows "bin"
 pub fn libdir() -> ~str {
    let libdir = env!("CFG_LIBDIR");
-   if str::is_empty(libdir) {
+   if libdir.is_empty() {
       fail!("rustc compiled without CFG_LIBDIR environment variable");
    }
    libdir.to_owned()

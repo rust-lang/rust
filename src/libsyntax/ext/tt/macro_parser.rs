@@ -24,7 +24,6 @@ use parse::token;
 
 use core::iterator::IteratorUtil;
 use core::hashmap::HashMap;
-use core::str;
 use core::uint;
 use core::vec;
 
@@ -129,12 +128,12 @@ pub fn copy_up(mpu: &matcher_pos_up) -> ~MatcherPos {
 }
 
 pub fn count_names(ms: &[matcher]) -> uint {
-    vec::foldl(0u, ms, |ct, m| {
+    do ms.iter().fold(0) |ct, m| {
         ct + match m.node {
           match_tok(_) => 0u,
           match_seq(ref more_ms, _, _, _, _) => count_names((*more_ms)),
           match_nonterminal(_,_,_) => 1u
-        }})
+        }}
 }
 
 pub fn initial_matcher_pos(ms: ~[matcher], sep: Option<Token>, lo: BytePos)
@@ -371,14 +370,14 @@ pub fn parse(
         } else {
             if (bb_eis.len() > 0u && next_eis.len() > 0u)
                 || bb_eis.len() > 1u {
-                let nts = str::connect(vec::map(bb_eis, |ei| {
+                let nts = bb_eis.map(|ei| {
                     match ei.elts[ei.idx].node {
                       match_nonterminal(ref bind,ref name,_) => {
                         fmt!("%s ('%s')", *ident_to_str(name),
                              *ident_to_str(bind))
                       }
                       _ => fail!()
-                    } }), " or ");
+                    } }).connect(" or ");
                 return error(sp, fmt!(
                     "Local ambiguity: multiple parsing options: \
                      built-in NTs %s or %u other options.",

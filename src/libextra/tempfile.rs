@@ -34,7 +34,6 @@ mod tests {
     use core::prelude::*;
 
     use tempfile::mkdtemp;
-    use tempfile;
 
     use core::os;
     use core::str;
@@ -43,7 +42,7 @@ mod tests {
     fn test_mkdtemp() {
         let p = mkdtemp(&Path("."), "foobar").unwrap();
         os::remove_dir(&p);
-        assert!(str::ends_with(p.to_str(), "foobar"));
+        assert!(p.to_str().ends_with("foobar"));
     }
 
     // Ideally these would be in core::os but then core would need

@@ -988,7 +988,7 @@ pub unsafe fn accept(server: *libc::c_void, client: *libc::c_void)
 pub unsafe fn write<T>(req: *uv_write_t, stream: *T,
          buf_in: *~[uv_buf_t], cb: *u8) -> libc::c_int {
     let buf_ptr = vec::raw::to_ptr(*buf_in);
-    let buf_cnt = vec::len(*buf_in) as i32;
+    let buf_cnt = (*buf_in).len() as i32;
     return rust_uv_write(req as *libc::c_void,
                               stream as *libc::c_void,
                               buf_ptr, buf_cnt, cb);
@@ -1234,7 +1234,6 @@ mod test {
 
     use core::comm::{SharedChan, stream, GenericChan, GenericPort};
     use core::libc;
-    use core::result;
     use core::str;
     use core::sys;
     use core::task;
@@ -1481,7 +1480,7 @@ mod test {
 
                 let server_kill_msg = copy (*client_data).server_kill_msg;
                 let write_req = (*client_data).server_write_req;
-                if str::contains(request_str, server_kill_msg) {
+                if request_str.contains(server_kill_msg) {
                     debug!(~"SERVER: client req contains kill_msg!");
                     debug!(~"SERVER: sending response to client");
                     read_stop(client_stream_ptr);
@@ -1754,8 +1753,8 @@ mod test {
         let msg_from_client = server_port.recv();
         let msg_from_server = client_port.recv();
 
-        assert!(str::contains(msg_from_client, kill_server_msg));
-        assert!(str::contains(msg_from_server, server_resp_msg));
+        assert!(msg_from_client.contains(kill_server_msg));
+        assert!(msg_from_server.contains(server_resp_msg));
     }
 
     // FIXME don't run on fbsd or linux 32 bit(#2064)

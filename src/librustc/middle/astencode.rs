@@ -26,7 +26,6 @@ use middle;
 use util::ppaux::ty_to_str;
 
 use core::at_vec;
-use core::str;
 use core::uint;
 use extra::ebml::reader;
 use extra::ebml;
@@ -964,7 +963,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
 
         return do self.read_opaque |this, doc| {
             let ty = tydecode::parse_ty_data(
-                doc.data,
+                *doc.data,
                 xcx.dcx.cdata.cnum,
                 doc.start,
                 xcx.dcx.tcx,
@@ -980,7 +979,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
         fn type_string(doc: ebml::Doc) -> ~str {
             let mut str = ~"";
             for uint::range(doc.start, doc.end) |i| {
-                str::push_char(&mut str, doc.data[i] as char);
+                str.push_char(doc.data[i] as char);
             }
             str
         }
@@ -994,7 +993,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
                            -> ty::TypeParameterDef {
         do self.read_opaque |this, doc| {
             tydecode::parse_type_param_def_data(
-                doc.data,
+                *doc.data,
                 doc.start,
                 xcx.dcx.cdata.cnum,
                 xcx.dcx.tcx,

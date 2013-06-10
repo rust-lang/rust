@@ -14,6 +14,7 @@ extern mod extra;
 
 use std::io::{ReaderUtil, WriterUtil};
 use std::io;
+use std::iterator::IteratorUtil;
 use std::os;
 use std::str;
 use std::u8;
@@ -73,8 +74,8 @@ impl Sudoku {
         let mut g = vec::from_fn(10u, { |_i| ~[0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] });
         while !reader.eof() {
             let line = reader.read_line();
-            let mut comps = ~[];
-            for str::each_split_char(line.trim(), ',') |s| { comps.push(s.to_owned()) }
+            let comps: ~[&str] = line.trim().split_iter(',').collect();
+
             if comps.len() == 3u {
                 let row     = uint::from_str(comps[0]).get() as u8;
                 let col     = uint::from_str(comps[1]).get() as u8;

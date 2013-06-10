@@ -82,6 +82,7 @@
 
 use core::prelude::*;
 
+use core::iterator::IteratorUtil;
 use core::cmp::Eq;
 use core::result::{Err, Ok};
 use core::result;
@@ -111,7 +112,7 @@ pub struct Opt {
 
 fn mkname(nm: &str) -> Name {
   if nm.len() == 1u {
-      Short(str::char_at(nm, 0u))
+      Short(nm.char_at(0u))
   } else {
       Long(nm.to_owned())
   }
@@ -246,22 +247,21 @@ pub fn getopts(args: &[~str], opts: &[Opt]) -> Result {
             let mut names;
             let mut i_arg = None;
             if cur[1] == '-' as u8 {
-                let tail = str::slice(cur, 2, curlen);
-                let mut tail_eq = ~[];
-                for str::each_splitn_char(tail, '=', 1) |s| { tail_eq.push(s.to_owned()) }
+                let tail = cur.slice(2, curlen);
+                let tail_eq: ~[&str] = tail.split_iter('=').collect();
                 if tail_eq.len() <= 1 {
                     names = ~[Long(tail.to_owned())];
                 } else {
                     names =
-                        ~[Long(copy tail_eq[0])];
-                    i_arg = Some(copy tail_eq[1]);
+                        ~[Long(tail_eq[0].to_owned())];
+                    i_arg = Some(tail_eq[1].to_owned());
                 }
             } else {
                 let mut j = 1;
                 let mut last_valid_opt_id = None;
                 names = ~[];
                 while j < curlen {
-                    let range = str::char_range_at(cur, j);
+                    let range = cur.char_range_at(j);
                     let opt = Short(range.ch);
 
                     /* In a series of potential options (eg. -aheJ), if we
@@ -427,7 +427,7 @@ pub fn opt_strs(mm: &Matches, nm: &str) -> ~[~str] {
 /// Returns the string argument supplied to a matching option or none
 pub fn opt_maybe_str(mm: &Matches, nm: &str) -> Option<~str> {
     let vals = opt_vals(mm, nm);
-    if vec::len::<Optval>(vals) == 0u { return None::<~str>; }
+    if vals.is_empty() { return None::<~str>; }
     return match vals[0] {
         Val(ref s) => Some(copy *s),
         _ => None
@@ -444,7 +444,7 @@ pub fn opt_maybe_str(mm: &Matches, nm: &str) -> Option<~str> {
  */
 pub fn opt_default(mm: &Matches, nm: &str, def: &str) -> Option<~str> {
     let vals = opt_vals(mm, nm);
-    if vec::len::<Optval>(vals) == 0u { return None::<~str>; }
+    if vals.is_empty() { return None::<~str>; }
     return match vals[0] { Val(ref s) => Some::<~str>(copy *s),
                            _      => Some::<~str>(str::to_owned(def)) }
 }
@@ -565,11 +565,11 @@ pub mod groups {
                            hasarg: hasarg,
                            occur: occur}],
 
-           (1,0) => ~[Opt {name: Short(str::char_at(short_name, 0)),
+           (1,0) => ~[Opt {name: Short(short_name.char_at(0)),
                            hasarg: hasarg,
                            occur: occur}],
 
-           (1,_) => ~[Opt {name: Short(str::char_at(short_name, 0)),
+           (1,_) => ~[Opt {name: Short(short_name.char_at(0)),
                            hasarg: hasarg,
                            occur:  occur},
                       Opt {name:   Long((long_name)),
@@ -635,7 +635,7 @@ pub mod groups {
 
             // Normalize desc to contain words separated by one space character
             let mut desc_normalized_whitespace = ~"";
-            for str::each_word(desc) |word| {
+            for desc.word_iter().advance |word| {
                 desc_normalized_whitespace.push_str(word);
                 desc_normalized_whitespace.push_char(' ');
             }
@@ -648,14 +648,14 @@ pub mod groups {
 
             // FIXME: #5516
             // wrapped description
-            row += str::connect(desc_rows, desc_sep);
+            row += desc_rows.connect(desc_sep);
 
             row
         });
 
         return str::to_owned(brief) +
                "\n\nOptions:\n" +
-               str::connect(rows, "\n") +
+               rows.connect("\n") +
                "\n\n";
     }
 } // end groups module

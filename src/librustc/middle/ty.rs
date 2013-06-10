@@ -27,6 +27,7 @@ use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
 use util::enum_set::{EnumSet, CLike};
 
+use core::iterator::IteratorUtil;
 use core::cast;
 use core::cmp;
 use core::hashmap::{HashMap, HashSet};
@@ -2355,8 +2356,8 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
 
           ty_struct(did, ref substs) => {
               seen.push(did);
-              let r = vec::any(struct_fields(cx, did, substs),
-                               |f| type_requires(cx, seen, r_ty, f.mt.ty));
+              let fields = struct_fields(cx, did, substs);
+              let r = fields.iter().any(|f| type_requires(cx, seen, r_ty, f.mt.ty));
               seen.pop();
             r
           }
@@ -2372,12 +2373,12 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             ty_enum(did, ref substs) => {
                 seen.push(did);
                 let vs = enum_variants(cx, did);
-                let r = vec::len(*vs) > 0u && vec::all(*vs, |variant| {
-                    vec::any(variant.args, |aty| {
+                let r = !vs.is_empty() && do vs.iter().all |variant| {
+                    do variant.args.iter().any |aty| {
                         let sty = subst(cx, substs, *aty);
                         type_requires(cx, seen, r_ty, sty)
-                    })
-                });
+                    }
+                };
                 seen.pop();
                 r
             }
@@ -2519,11 +2520,12 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_param(_) => result = false,
       ty_opaque_closure_ptr(_) => result = true,
       ty_struct(did, ref substs) => {
-        result = vec::all(lookup_struct_fields(cx, did), |f| {
+        let fields = lookup_struct_fields(cx, did);
+        result = do fields.iter().all |f| {
             let fty = ty::lookup_item_type(cx, f.id);
             let sty = subst(cx, substs, fty.ty);
             type_is_pod(cx, sty)
-        });
+        };
       }
 
       ty_estr(vstore_slice(*)) | ty_evec(_, vstore_slice(*)) => {
@@ -2569,7 +2571,7 @@ pub fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
             if variants.len() == 0 {
                 false
             } else {
-                variants.all(|v| v.args.len() == 0)
+                variants.iter().all(|v| v.args.len() == 0)
             }
         }
         _ => false
@@ -3042,15 +3044,17 @@ pub fn adjust_ty(cx: ctxt,
         Some(@AutoDerefRef(ref adj)) => {
             let mut adjusted_ty = unadjusted_ty;
 
-            for uint::range(0, adj.autoderefs) |i| {
-                match ty::deref(cx, adjusted_ty, true) {
-                    Some(mt) => { adjusted_ty = mt.ty; }
-                    None => {
-                        cx.sess.span_bug(
-                            span,
-                            fmt!("The %uth autoderef failed: %s",
-                                 i, ty_to_str(cx,
-                                              adjusted_ty)));
+            if (!ty::type_is_error(adjusted_ty)) {
+                for uint::range(0, adj.autoderefs) |i| {
+                    match ty::deref(cx, adjusted_ty, true) {
+                        Some(mt) => { adjusted_ty = mt.ty; }
+                        None => {
+                            cx.sess.span_bug(
+                                span,
+                                fmt!("The %uth autoderef failed: %s",
+                                     i, ty_to_str(cx,
+                                                  adjusted_ty)));
+                        }
                     }
                 }
             }
@@ -4041,7 +4045,7 @@ pub fn has_attr(tcx: ctxt, did: def_id, attr: &str) -> bool {
     } else {
         let mut ret = false;
         do csearch::get_item_attrs(tcx.cstore, did) |meta_items| {
-            ret = attr::contains_name(meta_items, attr);
+            ret = ret || attr::contains_name(meta_items, attr);
         }
         ret
     }

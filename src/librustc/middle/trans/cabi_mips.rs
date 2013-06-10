@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use core::iterator::IteratorUtil;
 use core::libc::c_uint;
 use core::ptr;
 use core::uint;
@@ -37,8 +38,7 @@ fn struct_tys(ty: TypeRef) -> ~[TypeRef] {
         return ~[];
     }
         let mut elts = vec::from_elem(n as uint, ptr::null());
-        llvm::LLVMGetStructElementTypes(ty,
-            ptr::to_mut_unsafe_ptr(&mut elts[0]));
+        llvm::LLVMGetStructElementTypes(ty, &mut elts[0]);
         return elts;
     }
 }
@@ -56,9 +56,8 @@ fn ty_align(ty: TypeRef) -> uint {
               if llvm::LLVMIsPackedStruct(ty) == True {
                 1
               } else {
-                do vec::foldl(1, struct_tys(ty)) |a, t| {
-                    uint::max(a, ty_align(*t))
-                }
+                let str_tys = struct_tys(ty);
+                str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
               }
             }
             Array => {
@@ -81,13 +80,11 @@ fn ty_size(ty: TypeRef) -> uint {
             Double => 8,
             Struct => {
                 if llvm::LLVMIsPackedStruct(ty) == True {
-                    do vec::foldl(0, struct_tys(ty)) |s, t| {
-                        s + ty_size(*t)
-                    }
+                    let str_tys = struct_tys(ty);
+                    str_tys.iter().fold(0, |s, t| s + ty_size(*t))
                 } else {
-                    let size = do vec::foldl(0, struct_tys(ty)) |s, t| {
-                        align(s, *t) + ty_size(*t)
-                    };
+                    let str_tys = struct_tys(ty);
+                    let size = str_tys.iter().fold(0, |s, t| align(s, *t) + ty_size(*t));
                     align(size, ty)
                 }
             }

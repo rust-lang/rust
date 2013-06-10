@@ -17,6 +17,7 @@ use core::prelude::*;
 use metadata::cstore;
 use metadata::decoder;
 
+use core::iterator::IteratorUtil;
 use core::hashmap::HashMap;
 use core::vec;
 use extra;
@@ -114,7 +115,7 @@ pub fn get_used_libraries(cstore: &CStore) -> ~[~str] {
 }
 
 pub fn add_used_link_args(cstore: &mut CStore, args: &str) {
-    for args.each_split_char(' ') |s| {
+    for args.split_iter(' ').advance |s| {
         cstore.used_link_args.push(s.to_owned());
     }
 }

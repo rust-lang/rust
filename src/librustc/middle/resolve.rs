@@ -40,7 +40,7 @@ use syntax::visit::{visit_foreign_item, visit_item};
 use syntax::visit::{visit_mod, visit_ty, vt};
 use syntax::opt_vec::OptVec;
 
-use core::str::each_split_str;
+use core::iterator::IteratorUtil;
 use core::str;
 use core::uint;
 use core::vec;
@@ -366,25 +366,31 @@ pub struct ImportResolution {
     /// The privacy of this `use` directive (whether it's `use` or
     /// `pub use`.
     privacy: Privacy,
-    id: node_id,
 
     // The number of outstanding references to this name. When this reaches
     // zero, outside modules can count on the targets being correct. Before
     // then, all bets are off; future imports could override this name.
-
     outstanding_references: uint,
 
     /// The value that this `use` directive names, if there is one.
     value_target: Option<Target>,
+    /// The source node of the `use` directive leading to the value target
+    /// being non-none
+    value_id: node_id,
+
     /// The type that this `use` directive names, if there is one.
     type_target: Option<Target>,
+    /// The source node of the `use` directive leading to the type target
+    /// being non-none
+    type_id: node_id,
 }
 
 pub fn ImportResolution(privacy: Privacy,
                         id: node_id) -> ImportResolution {
     ImportResolution {
         privacy: privacy,
-        id: id,
+        type_id: id,
+        value_id: id,
         outstanding_references: 0,
         value_target: None,
         type_target: None,
@@ -399,6 +405,13 @@ impl ImportResolution {
             ValueNS     => return copy self.value_target
         }
     }
+
+    fn id(&self, namespace: Namespace) -> node_id {
+        match namespace {
+            TypeNS  => self.type_id,
+            ValueNS => self.value_id,
+        }
+    }
 }
 
 /// The link from a module up to its nearest parent node.
@@ -409,6 +422,7 @@ pub enum ParentLink {
 }
 
 /// The type of module this is.
+#[deriving(Eq)]
 pub enum ModuleKind {
     NormalModuleKind,
     ExternModuleKind,
@@ -1228,25 +1242,34 @@ impl Resolver {
                 match (trait_ref_opt, ty) {
                     (None, @Ty { node: ty_path(path, _), _ }) if
                             has_static_methods && path.idents.len() == 1 => {
-                        // Create the module.
                         let name = path_to_ident(path);
-                        let (name_bindings, new_parent) =
-                            self.add_child(name,
-                                           parent,
-                                           ForbidDuplicateModules,
-                                           sp);
 
-                        let parent_link = self.get_parent_link(new_parent,
-                                                               ident);
-                        let def_id = local_def(item.id);
-                        name_bindings.define_module(Public,
-                                                    parent_link,
-                                                    Some(def_id),
-                                                    ImplModuleKind,
-                                                    sp);
+                        let new_parent = match parent.children.find(&name) {
+                            // It already exists
+                            Some(&child) if child.get_module_if_available().is_some() &&
+                                            child.get_module().kind == ImplModuleKind => {
+                                ModuleReducedGraphParent(child.get_module())
+                            }
+                            // Create the module
+                            _ => {
+                                let (name_bindings, new_parent) =
+                                    self.add_child(name,
+                                                   parent,
+                                                   ForbidDuplicateModules,
+                                                   sp);
 
-                        let new_parent = ModuleReducedGraphParent(
-                            name_bindings.get_module());
+                                let parent_link = self.get_parent_link(new_parent,
+                                                                       ident);
+                                let def_id = local_def(item.id);
+                                name_bindings.define_module(Public,
+                                                            parent_link,
+                                                            Some(def_id),
+                                                            ImplModuleKind,
+                                                            sp);
+
+                                ModuleReducedGraphParent(name_bindings.get_module())
+                            }
+                        };
 
                         // For each static method...
                         for methods.each |method| {
@@ -1714,8 +1737,7 @@ impl Resolver {
                         entry: %s (%?)",
                     path_string, def_like);
 
-            let mut pieces = ~[];
-            for each_split_str(path_string, "::") |s| { pieces.push(s.to_owned()) }
+            let mut pieces: ~[&str] = path_string.split_str_iter("::").collect();
             let final_ident_str = pieces.pop();
             let final_ident = self.session.ident_of(final_ident_str);
 
@@ -1910,7 +1932,8 @@ impl Resolver {
 
                         // the source of this name is different now
                         resolution.privacy = privacy;
-                        resolution.id = id;
+                        resolution.type_id = id;
+                        resolution.value_id = id;
                     }
                     None => {
                         debug!("(building import directive) creating new");
@@ -2108,7 +2131,7 @@ impl Resolver {
                                                        containing_module,
                                                        target,
                                                        source,
-                                                       import_directive.span);
+                                                       import_directive);
                     }
                     GlobImport => {
                         let privacy = import_directive.privacy;
@@ -2171,7 +2194,7 @@ impl Resolver {
                                  containing_module: @mut Module,
                                  target: ident,
                                  source: ident,
-                                 span: span)
+                                 directive: &ImportDirective)
                                  -> ResolveResult<()> {
         debug!("(resolving single import) resolving `%s` = `%s::%s` from \
                 `%s`",
@@ -2260,9 +2283,10 @@ impl Resolver {
                                     return UnboundResult;
                                 }
                                 Some(target) => {
-                                    this.used_imports.insert(import_resolution.id);
+                                    let id = import_resolution.id(namespace);
+                                    this.used_imports.insert(id);
                                     return BoundResult(target.target_module,
-                                                    target.bindings);
+                                                       target.bindings);
                                 }
                             }
                         }
@@ -2313,8 +2337,10 @@ impl Resolver {
 
         match value_result {
             BoundResult(target_module, name_bindings) => {
+                debug!("(resolving single import) found value target");
                 import_resolution.value_target =
                     Some(Target(target_module, name_bindings));
+                import_resolution.value_id = directive.id;
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
@@ -2323,8 +2349,10 @@ impl Resolver {
         }
         match type_result {
             BoundResult(target_module, name_bindings) => {
+                debug!("(resolving single import) found type target");
                 import_resolution.type_target =
                     Some(Target(target_module, name_bindings));
+                import_resolution.type_id = directive.id;
             }
             UnboundResult => { /* Continue. */ }
             UnknownResult => {
@@ -2373,6 +2401,7 @@ impl Resolver {
             }
         }
 
+        let span = directive.span;
         if resolve_fail {
             self.session.span_err(span, fmt!("unresolved import: there is no `%s` in `%s`",
                                              *self.session.str_of(source),
@@ -2545,7 +2574,7 @@ impl Resolver {
                     if "???" == module_name {
                         let span = span {
                             lo: span.lo,
-                            hi: span.lo + BytePos(str::len(*segment_name)),
+                            hi: span.lo + BytePos(segment_name.len()),
                             expn_info: span.expn_info,
                         };
                         self.session.span_err(span,
@@ -2652,14 +2681,14 @@ impl Resolver {
         match module_prefix_result {
             Failed => {
                 let mpath = self.idents_to_str(module_path);
-                match str::rfind(self.idents_to_str(module_path), |c| { c == ':' }) {
+                match self.idents_to_str(module_path).rfind(':') {
                     Some(idx) => {
                         self.session.span_err(span, fmt!("unresolved import: could not find `%s` \
-                                                         in `%s`", str::substr(mpath, idx,
-                                                                               mpath.len() - idx),
+                                                         in `%s`", mpath.substr(idx,
+                                                                                mpath.len() - idx),
                                                          // idx - 1 to account for the extra
                                                          // colon
-                                                         str::substr(mpath, 0, idx - 1)));
+                                                         mpath.substr(0, idx - 1)));
                     },
                     None => (),
                 };
@@ -2764,7 +2793,7 @@ impl Resolver {
                     Some(target) => {
                         debug!("(resolving item in lexical scope) using \
                                 import resolution");
-                        self.used_imports.insert(import_resolution.id);
+                        self.used_imports.insert(import_resolution.id(namespace));
                         return Success(copy target);
                     }
                 }
@@ -3033,7 +3062,7 @@ impl Resolver {
                             import_resolution.privacy == Public => {
                         debug!("(resolving name in module) resolved to \
                                 import");
-                        self.used_imports.insert(import_resolution.id);
+                        self.used_imports.insert(import_resolution.id(namespace));
                         return Success(copy target);
                     }
                     Some(_) => {
@@ -3070,7 +3099,7 @@ impl Resolver {
         let import_count = imports.len();
         if index != import_count {
             let sn = self.session.codemap.span_to_snippet(imports[index].span);
-            if str::contains(sn, "::") {
+            if sn.contains("::") {
                 self.session.span_err(imports[index].span, "unresolved import");
             } else {
                 let err = fmt!("unresolved import (maybe you meant `%s::*`?)",
@@ -4515,7 +4544,8 @@ impl Resolver {
                                     namespace)) {
                             (Some(def), Some(Public)) => {
                                 // Found it.
-                                self.used_imports.insert(import_resolution.id);
+                                let id = import_resolution.id(namespace);
+                                self.used_imports.insert(id);
                                 return ImportNameDefinition(def);
                             }
                             (Some(_), _) | (None, _) => {
@@ -4799,7 +4829,7 @@ impl Resolver {
 
         if values.len() > 0 &&
             values[smallest] != uint::max_value &&
-            values[smallest] < str::len(name) + 2 &&
+            values[smallest] < name.len() + 2 &&
             values[smallest] <= max_distance &&
             maybes[smallest] != name.to_owned() {
 
@@ -5130,7 +5160,7 @@ impl Resolver {
                                                     &mut found_traits,
                                                     trait_def_id, name);
                                                 self.used_imports.insert(
-                                                    import_resolution.id);
+                                                    import_resolution.type_id);
                                             }
                                         }
                                         _ => {

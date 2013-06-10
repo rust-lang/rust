@@ -16,7 +16,7 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
-use core::vec;
+use core::iterator::IteratorUtil;
 
 pub fn expand_deriving_iter_bytes(cx: @ExtCtxt,
                                   span: span,
@@ -85,7 +85,7 @@ fn iter_bytes_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @
         cx.span_bug(span, "#[deriving(IterBytes)] needs at least one field");
     }
 
-    do vec::foldl(exprs[0], exprs.slice(1, exprs.len())) |prev, me| {
+    do exprs.slice(1, exprs.len()).iter().fold(exprs[0]) |prev, me| {
         cx.expr_binary(span, and, prev, *me)
     }
 }

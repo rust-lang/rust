@@ -18,11 +18,15 @@ use core::prelude::*;
 use core::result;
 use extra::tempfile::mkdtemp;
 use package_path::*;
-use package_id::{PkgId, default_version};
+use package_id::PkgId;
+use package_source::*;
+use version::{ExactRevision, NoVersion, Version};
 use path_util::{target_executable_in_workspace, target_library_in_workspace,
                target_test_in_workspace, target_bench_in_workspace,
                make_dir_rwx, u_rwx,
-               built_bench_in_workspace, built_test_in_workspace};
+               built_bench_in_workspace, built_test_in_workspace,
+               built_library_in_workspace, built_executable_in_workspace,
+                installed_library_in_workspace};
 
 fn fake_ctxt(sysroot_opt: Option<@Path>) -> Ctx {
     Ctx {
@@ -39,7 +43,7 @@ fn fake_pkg() -> PkgId {
         local_path: normalize(copy remote),
         remote_path: remote,
         short_name: sn,
-        version: default_version()
+        version: NoVersion
     }
 }
 
@@ -49,7 +53,7 @@ fn remote_pkg() -> PkgId {
         local_path: normalize(copy remote),
         remote_path: remote,
         short_name: ~"test_pkg",
-        version: default_version()
+        version: NoVersion
     }
 }
 
@@ -60,11 +64,21 @@ fn writeFile(file_path: &Path, contents: &str) {
     out.write_line(contents);
 }
 
-fn mk_temp_workspace(short_name: &LocalPath) -> Path {
+fn mk_empty_workspace(short_name: &LocalPath, version: &Version) -> Path {
     let workspace = mkdtemp(&os::tmpdir(), "test").expect("couldn't create temp dir");
     // include version number in directory name
-    let package_dir = workspace.push("src").push(fmt!("%s-0.1", short_name.to_str()));
+    let package_dir = workspace.push("src").push(fmt!("%s%s",
+                                                      short_name.to_str(), version.to_str()));
     assert!(os::mkdir_recursive(&package_dir, u_rwx));
+    package_dir.pop().pop()
+}
+
+fn mk_temp_workspace(short_name: &LocalPath, version: &Version) -> Path {
+    let package_dir = mk_empty_workspace(short_name,
+                                         version).push("src").push(fmt!("%s%s",
+                                                            short_name.to_str(),
+                                                            version.to_str()));
+
     debug!("Created %s and does it exist? %?", package_dir.to_str(),
           os::path_is_dir(&package_dir));
     // Create main, lib, test, and bench files
@@ -76,7 +90,7 @@ fn mk_temp_workspace(short_name: &LocalPath) -> Path {
               "#[test] pub fn f() { (); }");
     writeFile(&package_dir.push("bench.rs"),
               "#[bench] pub fn f() { (); }");
-    workspace
+    package_dir.pop().pop()
 }
 
 fn is_rwx(p: &Path) -> bool {
@@ -120,7 +134,7 @@ fn test_install_valid() {
     debug!("sysroot = %s", sysroot.to_str());
     let ctxt = fake_ctxt(Some(@sysroot));
     let temp_pkg_id = fake_pkg();
-    let temp_workspace = mk_temp_workspace(&temp_pkg_id.local_path);
+    let temp_workspace = mk_temp_workspace(&temp_pkg_id.local_path, &NoVersion);
     // should have test, bench, lib, and main
     ctxt.install(&temp_workspace, &temp_pkg_id);
     // Check that all files exist
@@ -178,7 +192,10 @@ fn test_install_url() {
     debug!("exec = %s", exec.to_str());
     assert!(os::path_exists(&exec));
     assert!(is_rwx(&exec));
-    let lib = target_library_in_workspace(&temp_pkg_id, &workspace);
+    let built_lib =
+        built_library_in_workspace(&temp_pkg_id,
+                                   &workspace).expect("test_install_url: built lib should exist");
+    let lib = target_library_in_workspace(&workspace, &built_lib);
     debug!("lib = %s", lib.to_str());
     assert!(os::path_exists(&lib));
     assert!(is_rwx(&lib));
@@ -212,16 +229,11 @@ fn test_package_ids_must_be_relative_path_like() {
 
     */
 
-    let default_version_str = "0.1";
-    let addversion = |s| {
-        fmt!("%s-%s", s, default_version_str)
-    };
-
     let whatever = PkgId::new("foo");
 
-    assert_eq!(addversion("foo"), whatever.to_str());
-    assert!(addversion("github.com/mozilla/rust") ==
-            PkgId::new("github.com/mozilla/rust").to_str());
+    assert_eq!(~"foo", whatever.to_str());
+    assert!("github.com/catamorphism/test_pkg" ==
+            PkgId::new("github.com/catamorphism/test-pkg").to_str());
 
     do cond.trap(|(p, e)| {
         assert!("" == p.to_str());
@@ -229,7 +241,7 @@ fn test_package_ids_must_be_relative_path_like() {
         copy whatever
     }).in {
         let x = PkgId::new("");
-        assert_eq!(addversion("foo"), x.to_str());
+        assert_eq!(~"foo", x.to_str());
     }
 
     do cond.trap(|(p, e)| {
@@ -238,7 +250,70 @@ fn test_package_ids_must_be_relative_path_like() {
         copy whatever
     }).in {
         let z = PkgId::new(os::make_absolute(&Path("foo/bar/quux")).to_str());
-        assert_eq!(addversion("foo"), z.to_str());
+        assert_eq!(~"foo", z.to_str());
     }
+
+}
+
+#[test]
+fn test_package_version() {
+    let temp_pkg_id = PkgId::new("github.com/catamorphism/test_pkg_version");
+    match temp_pkg_id.version {
+        ExactRevision(~"0.4") => (),
+        _ => fail!(fmt!("test_package_version: package version was %?, expected Some(0.4)",
+                        temp_pkg_id.version))
+    }
+    let temp = mk_empty_workspace(&LocalPath(Path("test_pkg_version")), &temp_pkg_id.version);
+    let ctx = fake_ctxt(Some(@test_sysroot()));
+    ctx.build(&temp, &temp_pkg_id);
+    assert!(match built_library_in_workspace(&temp_pkg_id, &temp) {
+        Some(p) => p.to_str().ends_with(fmt!("0.4%s", os::consts::DLL_SUFFIX)),
+        None    => false
+    });
+    assert!(built_executable_in_workspace(&temp_pkg_id, &temp)
+            == Some(temp.push("build").
+                    push("github.com").
+                    push("catamorphism").
+                    push("test_pkg_version").
+                    push("test_pkg_version")));
+}
+
+// FIXME #7006: Fails on linux for some reason
+#[test]
+#[ignore(cfg(target_os = "linux"))]
+fn test_package_request_version() {
+    let temp_pkg_id = PkgId::new("github.com/catamorphism/test_pkg_version#0.3");
+    let temp = mk_empty_workspace(&LocalPath(Path("test_pkg_version")), &ExactRevision(~"0.3"));
+    let pkg_src = PkgSrc::new(&temp, &temp, &temp_pkg_id);
+    match temp_pkg_id.version {
+        ExactRevision(~"0.3") => {
+            match pkg_src.fetch_git() {
+                Some(p) => {
+                    assert!(os::path_exists(&p.push("version-0.3-file.txt")));
+                    assert!(!os::path_exists(&p.push("version-0.4-file.txt")));
+
+                }
+                None => fail!("test_package_request_version: fetch_git failed")
+            }
+        }
+        ExactRevision(n) => {
+            fail!("n is %? and %? %s %?", n, n, if n == ~"0.3" { "==" } else { "!=" }, "0.3");
+        }
+        _ => fail!(fmt!("test_package_version: package version was %?, expected ExactRevision(0.3)",
+                        temp_pkg_id.version))
+    }
+    let c = fake_ctxt(Some(@test_sysroot()));
+    c.install(&temp, &temp_pkg_id);
+    debug!("installed_library_in_workspace(%s, %s) = %?", temp_pkg_id.short_name, temp.to_str(),
+           installed_library_in_workspace(temp_pkg_id.short_name, &temp));
+    assert!(match installed_library_in_workspace(temp_pkg_id.short_name, &temp) {
+        Some(p) => {
+            debug!("installed: %s", p.to_str());
+            p.to_str().ends_with(fmt!("0.3%s", os::consts::DLL_SUFFIX))
+        }
+        None    => false
+    });
+    assert!(target_executable_in_workspace(&temp_pkg_id, &temp)
+            == temp.push("bin").push("test_pkg_version"));
 
 }

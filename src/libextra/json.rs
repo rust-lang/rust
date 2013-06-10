@@ -18,6 +18,7 @@
 
 use core::prelude::*;
 
+use core::iterator::IteratorUtil;
 use core::char;
 use core::float;
 use core::hashmap::HashMap;
@@ -58,7 +59,7 @@ pub struct Error {
 
 fn escape_str(s: &str) -> ~str {
     let mut escaped = ~"\"";
-    for str::each_char(s) |c| {
+    for s.iter().advance |c| {
         match c {
           '"' => escaped += "\\\"",
           '\\' => escaped += "\\\\",
@@ -78,7 +79,7 @@ fn escape_str(s: &str) -> ~str {
 
 fn spaces(n: uint) -> ~str {
     let mut ss = ~"";
-    for n.times { str::push_str(&mut ss, " "); }
+    for n.times { ss.push_str(" "); }
     return ss;
 }
 
@@ -566,7 +567,7 @@ impl Parser {
     }
 
     fn parse_ident(&mut self, ident: &str, value: Json) -> Result<Json, Error> {
-        if str::all(ident, |c| c == self.next_char()) {
+        if ident.iter().all(|c| c == self.next_char()) {
             self.bump();
             Ok(value)
         } else {
@@ -711,14 +712,14 @@ impl Parser {
 
             if (escape) {
                 match self.ch {
-                  '"' => str::push_char(&mut res, '"'),
-                  '\\' => str::push_char(&mut res, '\\'),
-                  '/' => str::push_char(&mut res, '/'),
-                  'b' => str::push_char(&mut res, '\x08'),
-                  'f' => str::push_char(&mut res, '\x0c'),
-                  'n' => str::push_char(&mut res, '\n'),
-                  'r' => str::push_char(&mut res, '\r'),
-                  't' => str::push_char(&mut res, '\t'),
+                  '"' => res.push_char('"'),
+                  '\\' => res.push_char('\\'),
+                  '/' => res.push_char('/'),
+                  'b' => res.push_char('\x08'),
+                  'f' => res.push_char('\x0c'),
+                  'n' => res.push_char('\n'),
+                  'r' => res.push_char('\r'),
+                  't' => res.push_char('\t'),
                   'u' => {
                       // Parse \u1234.
                       let mut i = 0u;
@@ -747,7 +748,7 @@ impl Parser {
                             ~"invalid \\u escape (not four digits)");
                       }
 
-                      str::push_char(&mut res, n as char);
+                      res.push_char(n as char);
                   }
                   _ => return self.error(~"invalid escape")
                 }
@@ -759,7 +760,7 @@ impl Parser {
                     self.bump();
                     return Ok(res);
                 }
-                str::push_char(&mut res, self.ch);
+                res.push_char(self.ch);
             }
         }
 
@@ -913,7 +914,8 @@ impl serialize::Decoder for Decoder {
 
     fn read_char(&mut self) -> char {
         let mut v = ~[];
-        for str::each_char(self.read_str()) |c| { v.push(c) }
+        let s = self.read_str();
+        for s.iter().advance |c| { v.push(c) }
         if v.len() != 1 { fail!("string must have one character") }
         v[0]
     }

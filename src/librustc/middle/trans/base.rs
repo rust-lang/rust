@@ -64,6 +64,7 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
 
+use core::iterator::IteratorUtil;
 use core::hash;
 use core::hashmap::{HashMap, HashSet};
 use core::int;
@@ -1275,7 +1276,7 @@ pub fn trans_block_cleanups_(bcx: block,
         bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0;
     if bcx.unreachable && !no_lpads { return bcx; }
     let mut bcx = bcx;
-    for cleanups.each_reverse |cu| {
+    for cleanups.rev_iter().advance |cu| {
         match *cu {
             clean(cfn, cleanup_type) | clean_temp(_, cfn, cleanup_type) => {
                 // Some types don't need to be cleaned up during
@@ -1994,7 +1995,7 @@ pub fn trans_enum_variant(ccx: @CrateContext,
 
     debug!("trans_enum_variant: name=%s tps=%s repr=%? enum_ty=%s",
            unsafe { str::raw::from_c_str(llvm::LLVMGetValueName(llfndecl)) },
-           ~"[" + str::connect(ty_param_substs.map(|&t| ty_to_str(ccx.tcx, t)), ", ") + "]",
+           ~"[" + ty_param_substs.map(|&t| ty_to_str(ccx.tcx, t)).connect(", ") + "]",
            repr, ty_to_str(ccx.tcx, enum_ty));
 
     adt::trans_start_init(bcx, repr, fcx.llretptr.get(), disr);

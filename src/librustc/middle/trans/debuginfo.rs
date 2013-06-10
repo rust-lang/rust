@@ -29,7 +29,6 @@ use core::str;
 use core::sys;
 use core::vec;
 use syntax::codemap::span;
-use syntax::parse::token::ident_interner;
 use syntax::{ast, codemap, ast_util, ast_map};
 
 static LLVMDebugVersion: int = (9 << 16);
@@ -245,9 +244,9 @@ fn get_cache(cx: @CrateContext) -> metadata_cache {
 }
 
 fn get_file_path_and_dir(work_dir: &str, full_path: &str) -> (~str, ~str) {
-    (if str::starts_with(full_path, work_dir) {
-        str::slice(full_path, str::len(work_dir) + 1u,
-                   str::len(full_path)).to_owned()
+    (if full_path.starts_with(work_dir) {
+        full_path.slice(work_dir.len() + 1u,
+                   full_path.len()).to_owned()
     } else {
         full_path.to_owned()
     }, work_dir.to_owned())

@@ -16,6 +16,7 @@ use core::i32;
 use core::int;
 use core::io;
 use core::str;
+use core::iterator::IteratorUtil;
 
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
 
@@ -261,7 +262,7 @@ impl Tm {
 priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     fn match_str(s: &str, pos: uint, needle: &str) -> bool {
         let mut i = pos;
-        for str::each(needle) |ch| {
+        for needle.bytes_iter().advance |ch| {
             if s[i] != ch {
                 return false;
             }
@@ -278,7 +279,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             match strs[i] { // can't use let due to stage0 bugs
                 (ref needle, value) => {
                     if match_str(ss, pos, *needle) {
-                        return Some((value, pos + str::len(*needle)));
+                        return Some((value, pos + needle.len()));
                     }
                 }
             }
@@ -295,7 +296,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
 
         let mut i = 0u;
         while i < digits {
-            let range = str::char_range_at(ss, pos);
+            let range = ss.char_range_at(pos);
             pos = range.next;
 
             match range.ch {
@@ -322,7 +323,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
     }
 
     fn parse_char(s: &str, pos: uint, c: char) -> Result<uint, ~str> {
-        let range = str::char_range_at(s, pos);
+        let range = s.char_range_at(pos);
 
         if c == range.ch {
             Ok(range.next)
@@ -597,9 +598,9 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
                 // It's odd, but to maintain compatibility with c's
                 // strptime we ignore the timezone.
                 let mut pos = pos;
-                let len = str::len(s);
+                let len = s.len();
                 while pos < len {
-                    let range = str::char_range_at(s, pos);
+                    let range = s.char_range_at(pos);
                     pos = range.next;
                     if range.ch == ' ' { break; }
                 }
@@ -608,7 +609,7 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             }
           }
           'z' => {
-            let range = str::char_range_at(s, pos);
+            let range = s.char_range_at(pos);
 
             if range.ch == '+' || range.ch == '-' {
                 match match_digits(s, range.next, 4u, false) {
@@ -650,11 +651,11 @@ priv fn do_strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             tm_nsec: 0_i32,
         };
         let mut pos = 0u;
-        let len = str::len(s);
+        let len = s.len();
         let mut result = Err(~"Invalid time");
 
         while !rdr.eof() && pos < len {
-            let range = str::char_range_at(s, pos);
+            let range = s.char_range_at(pos);
             let ch = range.ch;
             let next = range.next;
 
@@ -850,7 +851,7 @@ priv fn do_strftime(format: &str, tm: &Tm) -> ~str {
         while !rdr.eof() {
             match rdr.read_char() {
                 '%' => buf += parse_type(rdr.read_char(), tm),
-                ch => str::push_char(&mut buf, ch)
+                ch => buf.push_char(ch)
             }
         }
     }
@@ -1228,36 +1229,34 @@ mod tests {
     }
 
     fn test_timespec_eq_ord() {
-        use core::cmp::{eq, ge, gt, le, lt, ne};
-
         let a = &Timespec::new(-2, 1);
         let b = &Timespec::new(-1, 2);
         let c = &Timespec::new(1, 2);
         let d = &Timespec::new(2, 1);
         let e = &Timespec::new(2, 1);
 
-        assert!(eq(d, e));
-        assert!(ne(c, e));
+        assert!(d.eq(e));
+        assert!(c.ne(e));
 
-        assert!(lt(a, b));
-        assert!(lt(b, c));
-        assert!(lt(c, d));
+        assert!(a.lt(b));
+        assert!(b.lt(c));
+        assert!(c.lt(d));
 
-        assert!(le(a, b));
-        assert!(le(b, c));
-        assert!(le(c, d));
-        assert!(le(d, e));
-        assert!(le(e, d));
+        assert!(a.le(b));
+        assert!(b.le(c));
+        assert!(c.le(d));
+        assert!(d.le(e));
+        assert!(e.le(d));
 
-        assert!(ge(b, a));
-        assert!(ge(c, b));
-        assert!(ge(d, c));
-        assert!(ge(e, d));
-        assert!(ge(d, e));
+        assert!(b.ge(a));
+        assert!(c.ge(b));
+        assert!(d.ge(c));
+        assert!(e.ge(d));
+        assert!(d.ge(e));
 
-        assert!(gt(b, a));
-        assert!(gt(c, b));
-        assert!(gt(d, c));
+        assert!(b.gt(a));
+        assert!(c.gt(b));
+        assert!(d.gt(c));
     }
 
     #[test]

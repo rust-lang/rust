@@ -21,7 +21,6 @@ use ext::base::*;
 use parse;
 use parse::token;
 
-use core::str;
 use core::vec;
 
 enum State {
@@ -120,7 +119,7 @@ pub fn expand_asm(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree])
                     clobs.push(clob);
                 }
 
-                cons = str::connect(clobs, ",");
+                cons = clobs.connect(",");
             }
             Options => {
                 let option = p.parse_str();

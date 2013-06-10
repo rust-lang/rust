@@ -172,36 +172,6 @@ pub trait Ord {
     fn gt(&self, other: &Self) -> bool;
 }
 
-#[inline(always)]
-pub fn lt<T:Ord>(v1: &T, v2: &T) -> bool {
-    (*v1).lt(v2)
-}
-
-#[inline(always)]
-pub fn le<T:Ord>(v1: &T, v2: &T) -> bool {
-    (*v1).le(v2)
-}
-
-#[inline(always)]
-pub fn eq<T:Eq>(v1: &T, v2: &T) -> bool {
-    (*v1).eq(v2)
-}
-
-#[inline(always)]
-pub fn ne<T:Eq>(v1: &T, v2: &T) -> bool {
-    (*v1).ne(v2)
-}
-
-#[inline(always)]
-pub fn ge<T:Ord>(v1: &T, v2: &T) -> bool {
-    (*v1).ge(v2)
-}
-
-#[inline(always)]
-pub fn gt<T:Ord>(v1: &T, v2: &T) -> bool {
-    (*v1).gt(v2)
-}
-
 /// The equivalence relation. Two values may be equivalent even if they are
 /// of different types. The most common use case for this relation is
 /// container types; e.g. it is often desirable to be able to use `&str`

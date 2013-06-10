@@ -407,8 +407,8 @@ fn should_sort_failures_before_printing_them() {
         print_failures(st);
     };
 
-    let apos = str::find_str(s, "a").get();
-    let bpos = str::find_str(s, "b").get();
+    let apos = s.find_str("a").get();
+    let bpos = s.find_str("b").get();
     assert!(apos < bpos);
 }
 
@@ -514,7 +514,7 @@ pub fn filter_tests(
 
         fn filter_fn(test: TestDescAndFn, filter_str: &str) ->
             Option<TestDescAndFn> {
-            if str::contains(test.desc.name.to_str(), filter_str) {
+            if test.desc.name.to_str().contains(filter_str) {
                 return option::Some(test);
             } else { return option::None; }
         }

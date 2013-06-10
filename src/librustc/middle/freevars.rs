@@ -17,7 +17,6 @@ use middle::resolve;
 use middle::ty;
 
 use core::hashmap::HashMap;
-use core::vec;
 use syntax::codemap::span;
 use syntax::{ast, ast_util, visit};
 
@@ -119,5 +118,5 @@ pub fn get_freevars(tcx: ty::ctxt, fid: ast::node_id) -> freevar_info {
 }
 
 pub fn has_freevars(tcx: ty::ctxt, fid: ast::node_id) -> bool {
-    return vec::len(*get_freevars(tcx, fid)) != 0u;
+    !get_freevars(tcx, fid).is_empty()
 }

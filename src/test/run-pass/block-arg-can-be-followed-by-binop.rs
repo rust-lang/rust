@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::vec;
+use std::iterator::IteratorUtil;
 
 pub fn main() {
     let v = ~[-1f, 0f, 1f, 2f, 3f];
 
     // Trailing expressions don't require parentheses:
-    let y = do vec::foldl(0f, v) |x, y| { x + *y } + 10f;
+    let y = do v.iter().fold(0f) |x, y| { x + *y } + 10f;
 
     assert_eq!(y, 15f);
 }

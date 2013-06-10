@@ -19,7 +19,7 @@ A BigInt is a combination of BigUint and Sign.
 #[allow(missing_doc)];
 
 use core::prelude::*;
-
+use core::iterator::IteratorUtil;
 use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use core::int;
 use core::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable};
@@ -129,12 +129,9 @@ impl TotalOrd for BigUint {
         if s_len < o_len { return Less; }
         if s_len > o_len { return Greater;  }
 
-        for self.data.eachi_reverse |i, elm| {
-            match (*elm, other.data[i]) {
-                (l, r) if l < r => return Less,
-                (l, r) if l > r => return Greater,
-                _               => loop
-            };
+        for self.data.rev_iter().zip(other.data.rev_iter()).advance |(&self_i, &other_i)| {
+            cond!((self_i < other_i) { return Less; }
+                  (self_i > other_i) { return Greater; })
         }
         return Equal;
     }
@@ -421,7 +418,7 @@ impl Integer for BigUint {
             let bn = *b.data.last();
             let mut d = ~[];
             let mut carry = 0;
-            for an.each_reverse |elt| {
+            for an.rev_iter().advance |elt| {
                 let ai = BigDigit::to_uint(carry, *elt);
                 let di = ai / (bn as uint);
                 assert!(di < BigDigit::base);
@@ -523,11 +520,11 @@ impl ToStrRadix for BigUint {
 
         fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> ~str {
             if v.is_empty() { return ~"0" }
-            let s = str::concat(vec::reversed(v).map(|n| {
+            let s = vec::reversed(v).map(|n| {
                 let s = uint::to_str_radix(*n as uint, radix);
                 str::from_chars(vec::from_elem(l - s.len(), '0')) + s
-            }));
-            str::trim_left_chars(s, ['0']).to_owned()
+            }).concat();
+            s.trim_left_chars(['0']).to_owned()
         }
     }
 }
@@ -648,7 +645,7 @@ impl BigUint {
 
         let mut borrow = 0;
         let mut shifted = ~[];
-        for self.data.each_reverse |elem| {
+        for self.data.rev_iter().advance |elem| {
             shifted = ~[(*elem >> n_bits) | borrow] + shifted;
             borrow = *elem << (BigDigit::bits - n_bits);
         }
