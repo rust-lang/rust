@@ -212,8 +212,14 @@ endif
 
 $$(JEMALLOC_LIB_$(1)_$(2)):
 	cd $$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/jemalloc; $(S)src/rt/jemalloc/configure \
-		--disable-experimental --build=$(CFG_BUILD_TRIPLE) --host=$(1)
+		--disable-experimental --build=$(CFG_BUILD_TRIPLE) --host=$(1) \
+		EXTRA_CFLAGS="$$(CFG_GCCISH_CFLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1))) $$(SNAP_DEFINES)" \
+		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS) $$(LIBUV_FLAGS_$$(HOST_$(1)))" \
+		CC="$$(CC_$(1))" \
+		CXX="$$(CXX_$(1))" \
+		AR="$$(AR_$(1))"
 	$$(Q)$$(MAKE) -C $$(CFG_BUILD_DIR)/rt/$(1)/stage$(2)/jemalloc
+
 
 # These could go in rt.mk or rustllvm.mk, they're needed for both.
 
