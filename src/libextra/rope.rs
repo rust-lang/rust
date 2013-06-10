@@ -83,9 +83,9 @@ pub fn of_str(str: @~str) -> Rope {
  *
  * # Return value
  *
- * A rope representing the same string as `str::substr(str, byte_offset,
- * byte_len)`.  Depending on `byte_len`, this rope may be empty, flat or
- * complex.
+ * A rope representing the same string as `str.substr(byte_offset,
+ * byte_len)`.  Depending on `byte_len`, this rope may be empty, flat
+ * or complex.
  *
  * # Performance note
  *
