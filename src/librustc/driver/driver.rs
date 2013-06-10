@@ -465,33 +465,33 @@ pub fn pretty_print_input(sess: Session, cfg: ast::crate_cfg, input: &input,
 }
 
 pub fn get_os(triple: &str) -> Option<session::os> {
-    if str::contains(triple, "win32") ||
-               str::contains(triple, "mingw32") {
+    if triple.contains("win32") ||
+               triple.contains("mingw32") {
             Some(session::os_win32)
-        } else if str::contains(triple, "darwin") {
+        } else if triple.contains("darwin") {
             Some(session::os_macos)
-        } else if str::contains(triple, "android") {
+        } else if triple.contains("android") {
             Some(session::os_android)
-        } else if str::contains(triple, "linux") {
+        } else if triple.contains("linux") {
             Some(session::os_linux)
-        } else if str::contains(triple, "freebsd") {
+        } else if triple.contains("freebsd") {
             Some(session::os_freebsd)
         } else { None }
 }
 
 pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
-    if str::contains(triple, "i386") ||
-        str::contains(triple, "i486") ||
-               str::contains(triple, "i586") ||
-               str::contains(triple, "i686") ||
-               str::contains(triple, "i786") {
+    if triple.contains("i386") ||
+        triple.contains("i486") ||
+               triple.contains("i586") ||
+               triple.contains("i686") ||
+               triple.contains("i786") {
             Some(abi::X86)
-        } else if str::contains(triple, "x86_64") {
+        } else if triple.contains("x86_64") {
             Some(abi::X86_64)
-        } else if str::contains(triple, "arm") ||
-                      str::contains(triple, "xscale") {
+        } else if triple.contains("arm") ||
+                      triple.contains("xscale") {
             Some(abi::Arm)
-        } else if str::contains(triple, "mips") {
+        } else if triple.contains("mips") {
             Some(abi::Mips)
         } else { None }
 }

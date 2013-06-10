@@ -1168,30 +1168,6 @@ fn match_at<'a,'b>(haystack: &'a str, needle: &'b str, at: uint) -> bool {
 
 
 /**
- * Returns true if one string contains another
- *
- * # Arguments
- *
- * * haystack - The string to look in
- * * needle - The string to look for
- */
-pub fn contains<'a,'b>(haystack: &'a str, needle: &'b str) -> bool {
-    haystack.find_str(needle).is_some()
-}
-
-/**
- * Returns true if a string contains a char.
- *
- * # Arguments
- *
- * * haystack - The string to look in
- * * needle - The char to look for
- */
-pub fn contains_char(haystack: &str, needle: char) -> bool {
-    haystack.find(needle).is_some()
-}
-
-/**
  * Returns true if one string starts with another
  *
  * # Arguments
@@ -2019,15 +1995,27 @@ pub trait StrSlice<'self> {
 
 /// Extension methods for strings
 impl<'self> StrSlice<'self> for &'self str {
-    /// Returns true if one string contains another
+    /**
+     * Returns true if one string contains another
+     *
+     * # Arguments
+     *
+     * * needle - The string to look for
+     */
     #[inline]
     fn contains<'a>(&self, needle: &'a str) -> bool {
-        contains(*self, needle)
+        self.find_str(needle).is_some()
     }
-    /// Returns true if a string contains a char
+    /**
+     * Returns true if a string contains a char.
+     *
+     * # Arguments
+     *
+     * * needle - The char to look for
+     */
     #[inline]
     fn contains_char(&self, needle: char) -> bool {
-        contains_char(*self, needle)
+        self.find(needle).is_some()
     }
 
     #[inline]
@@ -3060,19 +3048,19 @@ mod tests {
 
     #[test]
     fn test_contains() {
-        assert!(contains("abcde", "bcd"));
-        assert!(contains("abcde", "abcd"));
-        assert!(contains("abcde", "bcde"));
-        assert!(contains("abcde", ""));
-        assert!(contains("", ""));
-        assert!(!contains("abcde", "def"));
-        assert!(!contains("", "a"));
+        assert!("abcde".contains("bcd"));
+        assert!("abcde".contains("abcd"));
+        assert!("abcde".contains("bcde"));
+        assert!("abcde".contains(""));
+        assert!("".contains(""));
+        assert!(!"abcde".contains("def"));
+        assert!(!"".contains("a"));
 
         let data = ~"ประเทศไทย中华Việt Nam";
-        assert!(contains(data, "ประเ"));
-        assert!(contains(data, "ะเ"));
-        assert!(contains(data, "中华"));
-        assert!(!contains(data, "ไท华"));
+        assert!(data.contains("ประเ"));
+        assert!(data.contains("ะเ"));
+        assert!(data.contains("中华"));
+        assert!(!data.contains("ไท华"));
     }
 
     #[test]

@@ -169,7 +169,7 @@ fn parse_pp_exact(line: &str, testfile: &Path) -> Option<Path> {
 }
 
 fn parse_name_directive(line: &str, directive: &str) -> bool {
-    str::contains(line, directive)
+    line.contains(directive)
 }
 
 fn parse_name_value_directive(line: &str,
