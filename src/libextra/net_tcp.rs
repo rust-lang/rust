@@ -1597,8 +1597,8 @@ mod test {
                        expected_req, actual_req);
         debug!("RESP: expected: '%s' actual: '%s'",
                        expected_resp, actual_resp);
-        assert!(str::contains(actual_req, expected_req));
-        assert!(str::contains(actual_resp, expected_resp));
+        assert!(actual_req.contains(expected_req));
+        assert!(actual_resp.contains(expected_resp));
     }
     pub fn impl_gl_tcp_ipv4_get_peer_addr() {
         let hl_loop = &uv::global_loop::get();
@@ -1765,8 +1765,8 @@ mod test {
                        expected_req, actual_req);
         debug!("RESP: expected: '%s' actual: '%s'",
                        expected_resp, actual_resp);
-        assert!(str::contains(actual_req, expected_req));
-        assert!(str::contains(actual_resp, expected_resp));
+        assert!(actual_req.contains(expected_req));
+        assert!(actual_resp.contains(expected_resp));
     }
 
     pub fn impl_tcp_socket_impl_reader_handles_eof() {
@@ -1809,7 +1809,7 @@ mod test {
     }
 
     fn buf_write<W:io::Writer>(w: &W, val: &str) {
-        debug!("BUF_WRITE: val len %?", str::len(val));
+        debug!("BUF_WRITE: val len %?", val.len());
         do str::byte_slice(val) |b_slice| {
             debug!("BUF_WRITE: b_slice len %?",
                             b_slice.len());

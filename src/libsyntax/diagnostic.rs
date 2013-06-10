@@ -14,7 +14,6 @@ use codemap::{Pos, span};
 use codemap;
 
 use core::io;
-use core::str;
 use core::uint;
 use core::vec;
 use extra::term;
@@ -259,7 +258,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
     if elided {
         let last_line = display_lines[display_lines.len() - 1u];
         let s = fmt!("%s:%u ", fm.name, last_line + 1u);
-        let mut indent = str::len(s);
+        let mut indent = s.len();
         let mut out = ~"";
         while indent > 0u { out += " "; indent -= 1u; }
         out += "...\n";
@@ -277,11 +276,11 @@ fn highlight_lines(cm: @codemap::CodeMap,
         while num > 0u { num /= 10u; digits += 1u; }
 
         // indent past |name:## | and the 0-offset column location
-        let left = str::len(fm.name) + digits + lo.col.to_uint() + 3u;
+        let left = fm.name.len() + digits + lo.col.to_uint() + 3u;
         let mut s = ~"";
         // Skip is the number of characters we need to skip because they are
         // part of the 'filename:line ' part of the previous line.
-        let skip = str::len(fm.name) + digits + 3u;
+        let skip = fm.name.len() + digits + 3u;
         for skip.times() {
             s += " ";
         }

@@ -17,7 +17,6 @@ use middle::resolve;
 use middle::ty;
 
 use core::hashmap::HashMap;
-use core::vec;
 use syntax::codemap::span;
 use syntax::{ast, ast_util, visit};
 

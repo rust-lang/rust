@@ -520,11 +520,11 @@ impl ToStrRadix for BigUint {
 
         fn fill_concat(v: &[BigDigit], radix: uint, l: uint) -> ~str {
             if v.is_empty() { return ~"0" }
-            let s = str::concat(vec::reversed(v).map(|n| {
+            let s = vec::reversed(v).map(|n| {
                 let s = uint::to_str_radix(*n as uint, radix);
                 str::from_chars(vec::from_elem(l - s.len(), '0')) + s
-            }));
-            str::trim_left_chars(s, ['0']).to_owned()
+            }).concat();
+            s.trim_left_chars(['0']).to_owned()
         }
     }
 }

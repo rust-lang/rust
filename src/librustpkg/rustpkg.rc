@@ -29,6 +29,7 @@ extern mod syntax;
 
 use core::prelude::*;
 use core::*;
+use core::iterator::IteratorUtil;
 pub use core::path::Path;
 use core::hashmap::HashMap;
 use rustc::driver::{driver, session};
@@ -161,10 +162,8 @@ impl<'self> PkgScript<'self> {
                            exe.to_str(), root.to_str(), "configs");
                     let output = run::process_output(exe.to_str(), [root.to_str(), ~"configs"]);
                     // Run the configs() function to get the configs
-                    let mut cfgs = ~[];
-                    for str::each_word(str::from_bytes(output.output)) |w| {
-                        cfgs.push(w.to_owned());
-                    }
+                    let cfgs = str::from_bytes_slice(output.output).word_iter()
+                        .transform(|w| w.to_owned()).collect();
                     (cfgs, output.status)
                 }
             }

@@ -44,7 +44,6 @@ use core::cast;
 use core::hash;
 use core::hashmap::{HashMap, HashSet};
 use core::libc::{c_uint, c_longlong, c_ulonglong};
-use core::ptr;
 use core::str;
 use core::to_bytes;
 use core::vec::raw::to_ptr;
@@ -1221,7 +1220,7 @@ pub fn C_estr_slice(cx: @CrateContext, s: @~str) -> ValueRef {
 pub fn C_postr(s: &str) -> ValueRef {
     unsafe {
         return do str::as_c_str(s) |buf| {
-            llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
+            llvm::LLVMConstString(buf, s.len() as c_uint, False)
         };
     }
 }
@@ -1484,7 +1483,7 @@ pub fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
     if !params.all(|t| !ty::type_needs_infer(*t)) {
         bcx.sess().bug(
             fmt!("Type parameters for node %d include inference types: %s",
-                 id, str::connect(params.map(|t| bcx.ty_to_str(*t)), ",")));
+                 id, params.map(|t| bcx.ty_to_str(*t)).connect(",")));
     }
 
     match bcx.fcx.param_substs {

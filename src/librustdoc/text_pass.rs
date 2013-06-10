@@ -157,7 +157,7 @@ mod test {
             let doc = (attr_pass::mk_pass().f)(srv.clone(), doc);
             let doc = (desc_to_brief_pass::mk_pass().f)(srv.clone(), doc);
             let doc = (sectionalize_pass::mk_pass().f)(srv.clone(), doc);
-            (mk_pass(~"", |s| str::trim(s).to_owned() ).f)(srv.clone(), doc)
+            (mk_pass(~"", |s| s.trim().to_owned() ).f)(srv.clone(), doc)
         }
     }
 

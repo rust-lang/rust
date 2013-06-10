@@ -30,6 +30,7 @@
 
 use cast;
 use io;
+use iterator::IteratorUtil;
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
 use libc::{mode_t, FILE};
@@ -224,12 +225,11 @@ pub fn env() -> ~[(~str,~str)] {
         fn env_convert(input: ~[~str]) -> ~[(~str, ~str)] {
             let mut pairs = ~[];
             for input.each |p| {
-                let mut vs = ~[];
-                for str::each_splitn_char(*p, '=', 1) |s| { vs.push(s.to_owned()) }
+                let vs: ~[&str] = p.splitn_iter('=', 1).collect();
                 debug!("splitting: len: %u",
                     vs.len());
                 assert_eq!(vs.len(), 2);
-                pairs.push((copy vs[0], copy vs[1]));
+                pairs.push((vs[0].to_owned(), vs[1].to_owned()));
             }
             pairs
         }
@@ -525,7 +525,7 @@ pub fn self_exe_path() -> Option<Path> {
  */
 pub fn homedir() -> Option<Path> {
     return match getenv("HOME") {
-        Some(ref p) => if !str::is_empty(*p) {
+        Some(ref p) => if !p.is_empty() {
           Some(Path(*p))
         } else {
           secondary()
@@ -541,7 +541,7 @@ pub fn homedir() -> Option<Path> {
     #[cfg(windows)]
     fn secondary() -> Option<Path> {
         do getenv(~"USERPROFILE").chain |p| {
-            if !str::is_empty(p) {
+            if !p.is_empty() {
                 Some(Path(p))
             } else {
                 None
@@ -566,7 +566,7 @@ pub fn tmpdir() -> Path {
     fn getenv_nonempty(v: &str) -> Option<Path> {
         match getenv(v) {
             Some(x) =>
-                if str::is_empty(x) {
+                if x.is_empty() {
                     None
                 } else {
                     Some(Path(x))
@@ -1449,6 +1449,7 @@ mod tests {
     use rand;
     use run;
     use str;
+    use str::StrSlice;
     use vec;
     use libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 
@@ -1606,7 +1607,7 @@ mod tests {
 
     #[test]
     fn tmpdir() {
-        assert!(!str::is_empty(os::tmpdir().to_str()));
+        assert!(!os::tmpdir().to_str().is_empty());
     }
 
     // Issue #712
@@ -1671,7 +1672,7 @@ mod tests {
         unsafe {
           let tempdir = getcwd(); // would like to use $TMPDIR,
                                   // doesn't seem to work on Linux
-          assert!((str::len(tempdir.to_str()) > 0u));
+          assert!((tempdir.to_str().len() > 0u));
           let in = tempdir.push("in.txt");
           let out = tempdir.push("out.txt");
 
@@ -1686,7 +1687,7 @@ mod tests {
           let mut buf = str::to_bytes(s) + [0 as u8];
           do vec::as_mut_buf(buf) |b, _len| {
               assert!((libc::fwrite(b as *c_void, 1u as size_t,
-                                   (str::len(s) + 1u) as size_t, ostream)
+                                   (s.len() + 1u) as size_t, ostream)
                       == buf.len() as size_t))
           }
           assert_eq!(libc::fclose(ostream), (0u as c_int));

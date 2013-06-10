@@ -17,6 +17,7 @@ pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
 use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use core::os::mkdir_recursive;
 use core::os;
+use core::iterator::IteratorUtil;
 
 /// Returns the value of RUST_PATH, as a list
 /// of Paths. In general this should be read from the
@@ -166,7 +167,7 @@ fn library_in_workspace(full_name: &str, short_name: &str, where: Target,
         let f_name = match p_path.filename() {
             Some(s) => s, None => loop
         };
-        for f_name.each_split_char('-') |piece| {
+        for f_name.split_iter('-').advance |piece| {
             debug!("a piece = %s", piece);
             if which == 0 && piece != lib_prefix {
                 break;

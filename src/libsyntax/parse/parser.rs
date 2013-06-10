@@ -92,6 +92,7 @@ use parse::{new_sub_parser_from_file, next_node_id, ParseSess};
 use opt_vec;
 use opt_vec::OptVec;
 
+use core::iterator::IteratorUtil;
 use core::either::Either;
 use core::either;
 use core::hashmap::HashSet;
@@ -3981,17 +3982,15 @@ impl Parser {
             token::LIT_STR(s) => {
                 self.bump();
                 let the_string = ident_to_str(&s);
-                let mut words = ~[];
-                for str::each_word(*the_string) |s| { words.push(s) }
                 let mut abis = AbiSet::empty();
-                for words.each |word| {
-                    match abi::lookup(*word) {
+                for the_string.word_iter().advance |word| {
+                    match abi::lookup(word) {
                         Some(abi) => {
                             if abis.contains(abi) {
                                 self.span_err(
                                     *self.span,
                                     fmt!("ABI `%s` appears twice",
-                                         *word));
+                                         word));
                             } else {
                                 abis.add(abi);
                             }
@@ -4003,10 +4002,8 @@ impl Parser {
                                 fmt!("illegal ABI: \
                                       expected one of [%s], \
                                       found `%s`",
-                                     str::connect_slices(
-                                         abi::all_names(),
-                                         ", "),
-                                     *word));
+                                     abi::all_names().connect(", "),
+                                     word));
                         }
                     }
                 }

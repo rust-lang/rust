@@ -244,7 +244,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
         None => copy *config
     };
     let config = &mut config;
-    let cmds = str::connect(props.debugger_cmds, "\n");
+    let cmds = props.debugger_cmds.connect("\n");
     let check_lines = copy props.check_lines;
 
     // compile test file (it shoud have 'compile-flags:-g' in the header)
@@ -278,7 +278,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
         // check if each line in props.check_lines appears in the
         // output (in order)
         let mut i = 0u;
-        for str::each_line(ProcRes.stdout) |line| {
+        for ProcRes.stdout.line_iter().advance |line| {
             if check_lines[i].trim() == line.trim() {
                 i += 1u;
             }
@@ -308,8 +308,8 @@ fn check_error_patterns(props: &TestProps,
     let mut next_err_idx = 0u;
     let mut next_err_pat = &props.error_patterns[next_err_idx];
     let mut done = false;
-    for str::each_line(ProcRes.stderr) |line| {
-        if str::contains(line, *next_err_pat) {
+    for ProcRes.stderr.line_iter().advance |line| {
+        if line.contains(*next_err_pat) {
             debug!("found error pattern %s", *next_err_pat);
             next_err_idx += 1u;
             if next_err_idx == props.error_patterns.len() {
@@ -358,15 +358,15 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
-    for str::each_line(ProcRes.stderr) |line| {
+    for ProcRes.stderr.line_iter().advance |line| {
         let mut was_expected = false;
         for vec::eachi(expected_errors) |i, ee| {
             if !found_flags[i] {
                 debug!("prefix=%s ee.kind=%s ee.msg=%s line=%s",
                        prefixes[i], ee.kind, ee.msg, line);
-                if (str::starts_with(line, prefixes[i]) &&
-                    str::contains(line, ee.kind) &&
-                    str::contains(line, ee.msg)) {
+                if (line.starts_with(prefixes[i]) &&
+                    line.contains(ee.kind) &&
+                    line.contains(ee.msg)) {
                     found_flags[i] = true;
                     was_expected = true;
                     break;
@@ -375,7 +375,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         }
 
         // ignore this msg which gets printed at the end
-        if str::contains(line, "aborting due to") {
+        if line.contains("aborting due to") {
             was_expected = true;
         }
 
@@ -417,7 +417,7 @@ fn scan_until_char(haystack: &str, needle: char, idx: &mut uint) -> bool {
     if *idx >= haystack.len() {
         return false;
     }
-    let opt = str::find_char_from(haystack, needle, *idx);
+    let opt = haystack.slice_from(*idx).find(needle);
     if opt.is_none() {
         return false;
     }
@@ -429,7 +429,7 @@ fn scan_char(haystack: &str, needle: char, idx: &mut uint) -> bool {
     if *idx >= haystack.len() {
         return false;
     }
-    let range = str::char_range_at(haystack, *idx);
+    let range = haystack.char_range_at(*idx);
     if range.ch != needle {
         return false;
     }
@@ -440,7 +440,7 @@ fn scan_char(haystack: &str, needle: char, idx: &mut uint) -> bool {
 fn scan_integer(haystack: &str, idx: &mut uint) -> bool {
     let mut i = *idx;
     while i < haystack.len() {
-        let range = str::char_range_at(haystack, i);
+        let range = haystack.char_range_at(i);
         if range.ch < '0' || '9' < range.ch {
             break;
         }
@@ -460,7 +460,7 @@ fn scan_string(haystack: &str, needle: &str, idx: &mut uint) -> bool {
         if haystack_i >= haystack.len() {
             return false;
         }
-        let range = str::char_range_at(haystack, haystack_i);
+        let range = haystack.char_range_at(haystack_i);
         haystack_i = range.next;
         if !scan_char(needle, range.ch, &mut needle_i) {
             return false;
@@ -612,15 +612,11 @@ fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
 }
 
 fn split_maybe_args(argstr: &Option<~str>) -> ~[~str] {
-    fn rm_whitespace(v: ~[~str]) -> ~[~str] {
-        v.filtered(|s| !str::is_whitespace(*s))
-    }
-
     match *argstr {
         Some(ref s) => {
-            let mut ss = ~[];
-            for str::each_split_char(*s, ' ') |s| { ss.push(s.to_owned()) }
-            rm_whitespace(ss)
+            s.split_iter(' ')
+                .filter_map(|s| if s.is_whitespace() {None} else {Some(s.to_owned())})
+                .collect()
         }
         None => ~[]
     }
@@ -649,13 +645,13 @@ fn program_output(config: &config, testfile: &Path, lib_path: &str, prog: ~str,
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 fn make_cmdline(_libpath: &str, prog: &str, args: &[~str]) -> ~str {
-    fmt!("%s %s", prog, str::connect(args, " "))
+    fmt!("%s %s", prog, args.connect(" "))
 }
 
 #[cfg(target_os = "win32")]
 fn make_cmdline(libpath: &str, prog: &str, args: &[~str]) -> ~str {
     fmt!("%s %s %s", lib_path_cmd_prefix(libpath), prog,
-         str::connect(args, " "))
+         args.connect(" "))
 }
 
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
@@ -739,8 +735,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     let cmdline = make_cmdline("", args.prog, args.args);
 
     // get bare program string
-    let mut tvec = ~[];
-    for str::each_split_char(args.prog, '/') |ts| { tvec.push(ts.to_owned()) }
+    let mut tvec: ~[~str] = args.prog.split_iter('/').transform(|ts| ts.to_owned()).collect();
     let prog_short = tvec.pop();
 
     // copy to target

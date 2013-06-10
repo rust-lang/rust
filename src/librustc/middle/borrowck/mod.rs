@@ -25,7 +25,6 @@ use core::hashmap::{HashSet, HashMap};
 use core::io;
 use core::ops::{BitOr, BitAnd};
 use core::result::{Result};
-use core::str;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::visit;
@@ -694,9 +693,9 @@ impl BorrowckCtxt {
                                                  out: &mut ~str) {
         match *loan_path {
             LpExtend(_, _, LpDeref) => {
-                str::push_char(out, '(');
+                out.push_char('(');
                 self.append_loan_path_to_str(loan_path, out);
-                str::push_char(out, ')');
+                out.push_char(')');
             }
             LpExtend(_, _, LpInterior(_)) |
             LpVar(_) => {
@@ -712,7 +711,7 @@ impl BorrowckCtxt {
             LpVar(id) => {
                 match self.tcx.items.find(&id) {
                     Some(&ast_map::node_local(ref ident)) => {
-                        str::push_str(out, *token::ident_to_str(ident));
+                        out.push_str(*token::ident_to_str(ident));
                     }
                     r => {
                         self.tcx.sess.bug(
@@ -726,23 +725,23 @@ impl BorrowckCtxt {
                 self.append_loan_path_to_str_from_interior(lp_base, out);
                 match fname {
                     mc::NamedField(ref fname) => {
-                        str::push_char(out, '.');
-                        str::push_str(out, *token::ident_to_str(fname));
+                        out.push_char('.');
+                        out.push_str(*token::ident_to_str(fname));
                     }
                     mc::PositionalField(idx) => {
-                        str::push_char(out, '#'); // invent a notation here
-                        str::push_str(out, idx.to_str());
+                        out.push_char('#'); // invent a notation here
+                        out.push_str(idx.to_str());
                     }
                 }
             }
 
             LpExtend(lp_base, _, LpInterior(mc::InteriorElement(_))) => {
                 self.append_loan_path_to_str_from_interior(lp_base, out);
-                str::push_str(out, "[]");
+                out.push_str("[]");
             }
 
             LpExtend(lp_base, _, LpDeref) => {
-                str::push_char(out, '*');
+                out.push_char('*');
                 self.append_loan_path_to_str(lp_base, out);
             }
         }

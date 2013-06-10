@@ -53,7 +53,7 @@ pub fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
     if doc_strs.is_empty() {
         None
     } else {
-        Some(str::connect(doc_strs, "\n"))
+        Some(doc_strs.connect("\n"))
     }
 }
 

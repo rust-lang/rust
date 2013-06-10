@@ -207,8 +207,8 @@ pub fn compile_input(ctxt: &Ctx,
 
     let binary = @(copy os::args()[0]);
 
-    debug!("flags: %s", str::connect(flags, " "));
-    debug!("cfgs: %s", str::connect(cfgs, " "));
+    debug!("flags: %s", flags.connect(" "));
+    debug!("cfgs: %s", cfgs.connect(" "));
     debug!("compile_input's sysroot = %?", ctxt.sysroot_opt);
 
     let crate_type = match what {

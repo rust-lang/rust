@@ -12,7 +12,7 @@ use std::str;
 
 pub fn main() {
     let thing = ~"{{ f }}";
-    let f = str::find_str(thing, ~"{{");
+    let f = thing.find_str(~"{{");
 
     if f.is_none() {
         println(~"None!");

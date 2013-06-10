@@ -14,6 +14,7 @@ use core::prelude::*;
 
 use core::{vec, int, str};
 use core::io::Reader;
+use core::iterator::IteratorUtil;
 use core::hashmap::HashMap;
 use super::super::TermInfo;
 
@@ -212,11 +213,8 @@ pub fn parse(file: @Reader, longnames: bool) -> Result<~TermInfo, ~str> {
         return Err(~"incompatible file: more string offsets than expected");
     }
 
-    let mut term_names: ~[~str] = vec::with_capacity(2);
     let names_str = str::from_bytes(file.read_bytes(names_bytes as uint - 1)); // don't read NUL
-    for names_str.each_split_char('|') |s| {
-        term_names.push(s.to_owned());
-    }
+    let term_names: ~[~str] = names_str.split_iter('|').transform(|s| s.to_owned()).collect();
 
     file.read_byte(); // consume NUL
 

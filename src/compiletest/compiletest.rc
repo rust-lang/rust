@@ -231,11 +231,11 @@ pub fn is_test(config: &config, testfile: &Path) -> bool {
     let mut valid = false;
 
     for valid_extensions.each |ext| {
-        if str::ends_with(name, *ext) { valid = true; }
+        if name.ends_with(*ext) { valid = true; }
     }
 
     for invalid_prefixes.each |pre| {
-        if str::starts_with(name, *pre) { valid = false; }
+        if name.starts_with(*pre) { valid = false; }
     }
 
     return valid;
