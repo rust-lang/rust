@@ -81,7 +81,7 @@ fn encode_inner(s: &str, full_url: bool) -> ~str {
               'a' .. 'z' |
               '0' .. '9' |
               '-' | '.' | '_' | '~' => {
-                str::push_char(&mut out, ch);
+                out.push_char(ch);
               }
               _ => {
                   if full_url {
@@ -92,7 +92,7 @@ fn encode_inner(s: &str, full_url: bool) -> ~str {
                       // sub-delims:
                       '!' | '$' | '&' | '"' | '(' | ')' | '*' |
                       '+' | ',' | ';' | '=' => {
-                        str::push_char(&mut out, ch);
+                        out.push_char(ch);
                       }
 
                       _ => out += fmt!("%%%X", ch as uint)
@@ -148,18 +148,18 @@ fn decode_inner(s: &str, full_url: bool) -> ~str {
                       // sub-delims:
                       '!' | '$' | '&' | '"' | '(' | ')' | '*' |
                       '+' | ',' | ';' | '=' => {
-                        str::push_char(&mut out, '%');
-                        str::push_char(&mut out, bytes[0u] as char);
-                        str::push_char(&mut out, bytes[1u] as char);
+                        out.push_char('%');
+                        out.push_char(bytes[0u] as char);
+                        out.push_char(bytes[1u] as char);
                       }
 
-                      ch => str::push_char(&mut out, ch)
+                      ch => out.push_char(ch)
                     }
                 } else {
-                      str::push_char(&mut out, ch);
+                      out.push_char(ch);
                 }
               }
-              ch => str::push_char(&mut out, ch)
+              ch => out.push_char(ch)
             }
         }
 
@@ -191,9 +191,9 @@ fn encode_plus(s: &str) -> ~str {
             let ch = rdr.read_byte() as char;
             match ch {
               'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '_' | '.' | '-' => {
-                str::push_char(&mut out, ch);
+                out.push_char(ch);
               }
-              ' ' => str::push_char(&mut out, '+'),
+              ' ' => out.push_char('+'),
               _ => out += fmt!("%%%X", ch as uint)
             }
         }
@@ -216,7 +216,7 @@ pub fn encode_form_urlencoded(m: &HashMap<~str, ~[~str]>) -> ~str {
             if first {
                 first = false;
             } else {
-                str::push_char(&mut out, '&');
+                out.push_char('&');
                 first = false;
             }
 
@@ -267,9 +267,9 @@ pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, ~[~str]> {
                     };
 
                     if parsing_key {
-                        str::push_char(&mut key, ch)
+                        key.push_char(ch)
                     } else {
-                        str::push_char(&mut value, ch)
+                        value.push_char(ch)
                     }
                 }
             }

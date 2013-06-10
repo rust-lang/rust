@@ -149,7 +149,7 @@ fn take_nonempty_prefix(rdr: @io::Reader,
     let mut buf = ~"";
     let mut ch = ch;
     while pred(ch) {
-        str::push_char(&mut buf, ch);
+        buf.push_char(ch);
         ch = rdr.read_char();
     }
     if buf.is_empty() {

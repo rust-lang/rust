@@ -6,7 +6,7 @@ struct StringBuffer {
 
 impl StringBuffer {
     pub fn append(&mut self, v: &str) {
-        str::push_str(&mut self.s, v);
+        self.s.push_str(v);
     }
 }
 

@@ -358,11 +358,11 @@ fn scan_exponent(rdr: @mut StringReader) -> Option<~str> {
     let mut c = rdr.curr;
     let mut rslt = ~"";
     if c == 'e' || c == 'E' {
-        str::push_char(&mut rslt, c);
+        rslt.push_char(c);
         bump(rdr);
         c = rdr.curr;
         if c == '-' || c == '+' {
-            str::push_char(&mut rslt, c);
+            rslt.push_char(c);
             bump(rdr);
         }
         let exponent = scan_digits(rdr, 10u);
@@ -379,7 +379,7 @@ fn scan_digits(rdr: @mut StringReader, radix: uint) -> ~str {
         if c == '_' { bump(rdr); loop; }
         match char::to_digit(c, radix) {
           Some(_) => {
-            str::push_char(&mut rslt, c);
+            rslt.push_char(c);
             bump(rdr);
           }
           _ => return rslt
@@ -721,31 +721,28 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
                 let escaped = rdr.curr;
                 bump(rdr);
                 match escaped {
-                  'n' => str::push_char(&mut accum_str, '\n'),
-                  'r' => str::push_char(&mut accum_str, '\r'),
-                  't' => str::push_char(&mut accum_str, '\t'),
-                  '\\' => str::push_char(&mut accum_str, '\\'),
-                  '\'' => str::push_char(&mut accum_str, '\''),
-                  '"' => str::push_char(&mut accum_str, '"'),
+                  'n' => accum_str.push_char('\n'),
+                  'r' => accum_str.push_char('\r'),
+                  't' => accum_str.push_char('\t'),
+                  '\\' => accum_str.push_char('\\'),
+                  '\'' => accum_str.push_char('\''),
+                  '"' => accum_str.push_char('"'),
                   '\n' => consume_whitespace(rdr),
                   'x' => {
-                    str::push_char(&mut accum_str,
-                                   scan_numeric_escape(rdr, 2u));
+                    accum_str.push_char(scan_numeric_escape(rdr, 2u));
                   }
                   'u' => {
-                    str::push_char(&mut accum_str,
-                                   scan_numeric_escape(rdr, 4u));
+                    accum_str.push_char(scan_numeric_escape(rdr, 4u));
                   }
                   'U' => {
-                    str::push_char(&mut accum_str,
-                                   scan_numeric_escape(rdr, 8u));
+                    accum_str.push_char(scan_numeric_escape(rdr, 8u));
                   }
                   c2 => {
                     rdr.fatal(fmt!("unknown string escape: %d", c2 as int));
                   }
                 }
               }
-              _ => str::push_char(&mut accum_str, ch)
+              _ => accum_str.push_char(ch)
             }
         }
         bump(rdr);

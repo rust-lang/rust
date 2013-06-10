@@ -139,121 +139,35 @@ pub fn from_byte(b: u8) -> ~str {
     unsafe { ::cast::transmute(~[b, 0u8]) }
 }
 
-/// Appends a character at the end of a string
-pub fn push_char(s: &mut ~str, ch: char) {
-    unsafe {
-        let code = ch as uint;
-        let nb = if code < max_one_b { 1u }
-        else if code < max_two_b { 2u }
-        else if code < max_three_b { 3u }
-        else if code < max_four_b { 4u }
-        else if code < max_five_b { 5u }
-        else { 6u };
-        let len = s.len();
-        let new_len = len + nb;
-        reserve_at_least(&mut *s, new_len);
-        let off = len;
-        do as_buf(*s) |buf, _len| {
-            let buf: *mut u8 = ::cast::transmute(buf);
-            match nb {
-                1u => {
-                    *ptr::mut_offset(buf, off) = code as u8;
-                }
-                2u => {
-                    *ptr::mut_offset(buf, off) = (code >> 6u & 31u | tag_two_b) as u8;
-                    *ptr::mut_offset(buf, off + 1u) = (code & 63u | tag_cont) as u8;
-                }
-                3u => {
-                    *ptr::mut_offset(buf, off) = (code >> 12u & 15u | tag_three_b) as u8;
-                    *ptr::mut_offset(buf, off + 1u) = (code >> 6u & 63u | tag_cont) as u8;
-                    *ptr::mut_offset(buf, off + 2u) = (code & 63u | tag_cont) as u8;
-                }
-                4u => {
-                    *ptr::mut_offset(buf, off) = (code >> 18u & 7u | tag_four_b) as u8;
-                    *ptr::mut_offset(buf, off + 1u) = (code >> 12u & 63u | tag_cont) as u8;
-                    *ptr::mut_offset(buf, off + 2u) = (code >> 6u & 63u | tag_cont) as u8;
-                    *ptr::mut_offset(buf, off + 3u) = (code & 63u | tag_cont) as u8;
-                }
-                5u => {
-                    *ptr::mut_offset(buf, off) = (code >> 24u & 3u | tag_five_b) as u8;
-                    *ptr::mut_offset(buf, off + 1u) = (code >> 18u & 63u | tag_cont) as u8;
-                    *ptr::mut_offset(buf, off + 2u) = (code >> 12u & 63u | tag_cont) as u8;
-                    *ptr::mut_offset(buf, off + 3u) = (code >> 6u & 63u | tag_cont) as u8;
-                    *ptr::mut_offset(buf, off + 4u) = (code & 63u | tag_cont) as u8;
-                }
-                6u => {
-                    *ptr::mut_offset(buf, off) = (code >> 30u & 1u | tag_six_b) as u8;
-                    *ptr::mut_offset(buf, off + 1u) = (code >> 24u & 63u | tag_cont) as u8;
-                    *ptr::mut_offset(buf, off + 2u) = (code >> 18u & 63u | tag_cont) as u8;
-                    *ptr::mut_offset(buf, off + 3u) = (code >> 12u & 63u | tag_cont) as u8;
-                    *ptr::mut_offset(buf, off + 4u) = (code >> 6u & 63u | tag_cont) as u8;
-                    *ptr::mut_offset(buf, off + 5u) = (code & 63u | tag_cont) as u8;
-                }
-                _ => {}
-            }
-        }
-        raw::set_len(s, new_len);
-    }
-}
-
 /// Convert a char to a string
 pub fn from_char(ch: char) -> ~str {
     let mut buf = ~"";
-    push_char(&mut buf, ch);
+    buf.push_char(ch);
     buf
 }
 
 /// Convert a vector of chars to a string
 pub fn from_chars(chs: &[char]) -> ~str {
     let mut buf = ~"";
-    reserve(&mut buf, chs.len());
+    buf.reserve(chs.len());
     for chs.each |ch| {
-        push_char(&mut buf, *ch);
+        buf.push_char(*ch)
     }
     buf
 }
 
-/// Appends a string slice to the back of a string, without overallocating
-#[inline(always)]
-pub fn push_str_no_overallocate(lhs: &mut ~str, rhs: &str) {
-    unsafe {
-        let llen = lhs.len();
-        let rlen = rhs.len();
-        reserve(&mut *lhs, llen + rlen);
-        do as_buf(*lhs) |lbuf, _llen| {
-            do as_buf(rhs) |rbuf, _rlen| {
-                let dst = ptr::offset(lbuf, llen);
-                let dst = ::cast::transmute_mut_unsafe(dst);
-                ptr::copy_memory(dst, rbuf, rlen);
-            }
-        }
-        raw::set_len(lhs, llen + rlen);
-    }
-}
-
-/// Appends a string slice to the back of a string
-#[inline(always)]
+/// A function version of the `.push_str`, required for `fmt!` during
+/// the bootstrap. Use `lhs.push_str(rhs)` instead of this.
+#[doc="hidden"]
 pub fn push_str(lhs: &mut ~str, rhs: &str) {
-    unsafe {
-        let llen = lhs.len();
-        let rlen = rhs.len();
-        reserve_at_least(&mut *lhs, llen + rlen);
-        do as_buf(*lhs) |lbuf, _llen| {
-            do as_buf(rhs) |rbuf, _rlen| {
-                let dst = ptr::offset(lbuf, llen);
-                let dst = ::cast::transmute_mut_unsafe(dst);
-                ptr::copy_memory(dst, rbuf, rlen);
-            }
-        }
-        raw::set_len(lhs, llen + rlen);
-    }
+    lhs.push_str(rhs)
 }
 
 /// Concatenate two strings together
 #[inline(always)]
 pub fn append(lhs: ~str, rhs: &str) -> ~str {
     let mut v = lhs;
-    push_str_no_overallocate(&mut v, rhs);
+    v.push_str_no_overallocate(rhs);
     v
 }
 
@@ -286,7 +200,7 @@ impl<'self> StrVector for &'self [~str] {
         }
         let mut s = ~"";
 
-        reserve(&mut s, len);
+        s.reserve(len);
 
         unsafe {
             do as_buf(s) |buf, _| {
@@ -319,7 +233,7 @@ impl<'self> StrVector for &'self [~str] {
         let mut s = ~"";
         let mut first = true;
 
-        reserve(&mut s, len);
+        s.reserve(len);
 
         unsafe {
             do as_buf(s) |buf, _| {
@@ -358,7 +272,7 @@ impl<'self> StrVector for &'self [&'self str] {
         }
         let mut s = ~"";
 
-        reserve(&mut s, len);
+        s.reserve(len);
 
         unsafe {
             do as_buf(s) |buf, _| {
@@ -391,7 +305,7 @@ impl<'self> StrVector for &'self [&'self str] {
         let mut s = ~"";
         let mut first = true;
 
-        reserve(&mut s, len);
+        s.reserve(len);
 
         unsafe {
             do as_buf(s) |buf, _| {
@@ -425,7 +339,7 @@ pub fn repeat(ss: &str, nn: uint) -> ~str {
         let mut ret = ~"";
         // ignore the NULL terminator
         let len = len - 1;
-        reserve(&mut ret, nn * len);
+        ret.reserve(nn * len);
 
         unsafe {
             do as_buf(ret) |rbuf, _len| {
@@ -1148,9 +1062,9 @@ Section: Iterating through strings
 /// Apply a function to each character
 pub fn map(ss: &str, ff: &fn(char) -> char) -> ~str {
     let mut result = ~"";
-    reserve(&mut result, ss.len());
+    result.reserve(ss.len());
     for ss.iter().advance |cc| {
-        str::push_char(&mut result, ff(cc));
+        result.push_char(ff(cc));
     }
     result
 }
@@ -1325,8 +1239,8 @@ pub fn utf16_chars(v: &[u16], f: &fn(char)) {
  */
 pub fn from_utf16(v: &[u16]) -> ~str {
     let mut buf = ~"";
-    reserve(&mut buf, v.len());
-    utf16_chars(v, |ch| push_char(&mut buf, ch));
+    buf.reserve(v.len());
+    utf16_chars(v, |ch| buf.push_char(ch));
     buf
 }
 
@@ -1336,7 +1250,7 @@ pub fn from_utf16(v: &[u16]) -> ~str {
  */
 pub fn with_capacity(capacity: uint) -> ~str {
     let mut buf = ~"";
-    reserve(&mut buf, capacity);
+    buf.reserve(capacity);
     buf
 }
 
@@ -1660,54 +1574,6 @@ pub fn subslice_offset(outer: &str, inner: &str) -> uint {
     }
 }
 
-/**
- * Reserves capacity for exactly `n` bytes in the given string, not including
- * the null terminator.
- *
- * Assuming single-byte characters, the resulting string will be large
- * enough to hold a string of length `n`. To account for the null terminator,
- * the underlying buffer will have the size `n` + 1.
- *
- * If the capacity for `s` is already equal to or greater than the requested
- * capacity, then no action is taken.
- *
- * # Arguments
- *
- * * s - A string
- * * n - The number of bytes to reserve space for
- */
-#[inline(always)]
-pub fn reserve(s: &mut ~str, n: uint) {
-    unsafe {
-        let v: *mut ~[u8] = cast::transmute(s);
-        vec::reserve(&mut *v, n + 1);
-    }
-}
-
-/**
- * Reserves capacity for at least `n` bytes in the given string, not including
- * the null terminator.
- *
- * Assuming single-byte characters, the resulting string will be large
- * enough to hold a string of length `n`. To account for the null terminator,
- * the underlying buffer will have the size `n` + 1.
- *
- * This function will over-allocate in order to amortize the allocation costs
- * in scenarios where the caller may need to repeatedly reserve additional
- * space.
- *
- * If the capacity for `s` is already equal to or greater than the requested
- * capacity, then no action is taken.
- *
- * # Arguments
- *
- * * s - A string
- * * n - The number of bytes to reserve space for
- */
-#[inline(always)]
-pub fn reserve_at_least(s: &mut ~str, n: uint) {
-    reserve(s, uint::next_power_of_two(n + 1u) - 1u)
-}
 
 /**
  * Returns the number of single-byte characters the string can hold without
@@ -1724,9 +1590,9 @@ pub fn capacity(s: &const ~str) -> uint {
 /// Escape each char in `s` with char::escape_default.
 pub fn escape_default(s: &str) -> ~str {
     let mut out: ~str = ~"";
-    reserve_at_least(&mut out, s.len());
+    out.reserve_at_least(s.len());
     for s.iter().advance |c| {
-        push_str(&mut out, char::escape_default(c));
+        out.push_str(char::escape_default(c));
     }
     out
 }
@@ -1734,9 +1600,9 @@ pub fn escape_default(s: &str) -> ~str {
 /// Escape each char in `s` with char::escape_unicode.
 pub fn escape_unicode(s: &str) -> ~str {
     let mut out: ~str = ~"";
-    reserve_at_least(&mut out, s.len());
+    out.reserve_at_least(s.len());
     for s.iter().advance |c| {
-        push_str(&mut out, char::escape_unicode(c));
+        out.push_str(char::escape_unicode(c));
     }
     out
 }
@@ -1747,7 +1613,7 @@ pub mod raw {
     use libc;
     use ptr;
     use str::raw;
-    use str::{as_buf, is_utf8, reserve_at_least};
+    use str::{as_buf, is_utf8};
     use vec;
 
     /// Create a Rust string from a null-terminated *u8 buffer
@@ -1859,7 +1725,7 @@ pub mod raw {
     /// Appends a byte to a string. (Not UTF-8 safe).
     pub unsafe fn push_byte(s: &mut ~str, b: u8) {
         let new_len = s.len() + 1;
-        reserve_at_least(&mut *s, new_len);
+        s.reserve_at_least(new_len);
         do as_buf(*s) |buf, len| {
             let buf: *mut u8 = ::cast::transmute(buf);
             *ptr::mut_offset(buf, len) = b;
@@ -1870,7 +1736,7 @@ pub mod raw {
     /// Appends a vector of bytes to a string. (Not UTF-8 safe).
     unsafe fn push_bytes(s: &mut ~str, bytes: &[u8]) {
         let new_len = s.len() + bytes.len();
-        reserve_at_least(&mut *s, new_len);
+        s.reserve_at_least(new_len);
         for bytes.each |byte| { push_byte(&mut *s, *byte); }
     }
 
@@ -2274,18 +2140,154 @@ impl<'self> StrSlice<'self> for &'self str {
 
 #[allow(missing_doc)]
 pub trait OwnedStr {
-    fn push_str(&mut self, v: &str);
+    fn push_str_no_overallocate(&mut self, rhs: &str);
+    fn push_str(&mut self, rhs: &str);
     fn push_char(&mut self, c: char);
+    fn reserve(&mut self, n: uint);
+    fn reserve_at_least(&mut self, n: uint);
 }
 
 impl OwnedStr for ~str {
-    #[inline]
-    fn push_str(&mut self, v: &str) {
-        push_str(self, v);
+    /// Appends a string slice to the back of a string, without overallocating
+    #[inline(always)]
+    fn push_str_no_overallocate(&mut self, rhs: &str) {
+        unsafe {
+            let llen = self.len();
+            let rlen = rhs.len();
+            self.reserve(llen + rlen);
+            do as_buf(*self) |lbuf, _llen| {
+                do as_buf(rhs) |rbuf, _rlen| {
+                    let dst = ptr::offset(lbuf, llen);
+                    let dst = ::cast::transmute_mut_unsafe(dst);
+                    ptr::copy_memory(dst, rbuf, rlen);
+                }
+            }
+            raw::set_len(self, llen + rlen);
+        }
     }
+
+    /// Appends a string slice to the back of a string
+    #[inline]
+    fn push_str(&mut self, rhs: &str) {
+        unsafe {
+            let llen = self.len();
+            let rlen = rhs.len();
+            self.reserve_at_least(llen + rlen);
+            do as_buf(*self) |lbuf, _llen| {
+                do as_buf(rhs) |rbuf, _rlen| {
+                    let dst = ptr::offset(lbuf, llen);
+                    let dst = ::cast::transmute_mut_unsafe(dst);
+                    ptr::copy_memory(dst, rbuf, rlen);
+                }
+            }
+            raw::set_len(self, llen + rlen);
+        }
+    }
+    /// Appends a character to the back of a string
     #[inline]
     fn push_char(&mut self, c: char) {
-        push_char(self, c);
+        unsafe {
+            let code = c as uint;
+            let nb = if code < max_one_b { 1u }
+            else if code < max_two_b { 2u }
+            else if code < max_three_b { 3u }
+            else if code < max_four_b { 4u }
+            else if code < max_five_b { 5u }
+            else { 6u };
+            let len = self.len();
+            let new_len = len + nb;
+            self.reserve_at_least(new_len);
+            let off = len;
+            do as_buf(*self) |buf, _len| {
+                let buf: *mut u8 = ::cast::transmute(buf);
+                match nb {
+                    1u => {
+                        *ptr::mut_offset(buf, off) = code as u8;
+                    }
+                    2u => {
+                        *ptr::mut_offset(buf, off) = (code >> 6u & 31u | tag_two_b) as u8;
+                        *ptr::mut_offset(buf, off + 1u) = (code & 63u | tag_cont) as u8;
+                    }
+                    3u => {
+                        *ptr::mut_offset(buf, off) = (code >> 12u & 15u | tag_three_b) as u8;
+                        *ptr::mut_offset(buf, off + 1u) = (code >> 6u & 63u | tag_cont) as u8;
+                        *ptr::mut_offset(buf, off + 2u) = (code & 63u | tag_cont) as u8;
+                    }
+                    4u => {
+                        *ptr::mut_offset(buf, off) = (code >> 18u & 7u | tag_four_b) as u8;
+                        *ptr::mut_offset(buf, off + 1u) = (code >> 12u & 63u | tag_cont) as u8;
+                        *ptr::mut_offset(buf, off + 2u) = (code >> 6u & 63u | tag_cont) as u8;
+                        *ptr::mut_offset(buf, off + 3u) = (code & 63u | tag_cont) as u8;
+                    }
+                    5u => {
+                        *ptr::mut_offset(buf, off) = (code >> 24u & 3u | tag_five_b) as u8;
+                        *ptr::mut_offset(buf, off + 1u) = (code >> 18u & 63u | tag_cont) as u8;
+                        *ptr::mut_offset(buf, off + 2u) = (code >> 12u & 63u | tag_cont) as u8;
+                        *ptr::mut_offset(buf, off + 3u) = (code >> 6u & 63u | tag_cont) as u8;
+                        *ptr::mut_offset(buf, off + 4u) = (code & 63u | tag_cont) as u8;
+                    }
+                    6u => {
+                        *ptr::mut_offset(buf, off) = (code >> 30u & 1u | tag_six_b) as u8;
+                        *ptr::mut_offset(buf, off + 1u) = (code >> 24u & 63u | tag_cont) as u8;
+                        *ptr::mut_offset(buf, off + 2u) = (code >> 18u & 63u | tag_cont) as u8;
+                        *ptr::mut_offset(buf, off + 3u) = (code >> 12u & 63u | tag_cont) as u8;
+                        *ptr::mut_offset(buf, off + 4u) = (code >> 6u & 63u | tag_cont) as u8;
+                        *ptr::mut_offset(buf, off + 5u) = (code & 63u | tag_cont) as u8;
+                    }
+                    _ => {}
+                }
+            }
+            raw::set_len(self, new_len);
+        }
+    }
+
+    /**
+     * Reserves capacity for exactly `n` bytes in the given string, not including
+     * the null terminator.
+     *
+     * Assuming single-byte characters, the resulting string will be large
+     * enough to hold a string of length `n`. To account for the null terminator,
+     * the underlying buffer will have the size `n` + 1.
+     *
+     * If the capacity for `s` is already equal to or greater than the requested
+     * capacity, then no action is taken.
+     *
+     * # Arguments
+     *
+     * * s - A string
+     * * n - The number of bytes to reserve space for
+     */
+    #[inline(always)]
+    pub fn reserve(&mut self, n: uint) {
+        unsafe {
+            let v: *mut ~[u8] = cast::transmute(self);
+            vec::reserve(&mut *v, n + 1);
+        }
+    }
+
+    /**
+     * Reserves capacity for at least `n` bytes in the given string, not including
+     * the null terminator.
+     *
+     * Assuming single-byte characters, the resulting string will be large
+     * enough to hold a string of length `n`. To account for the null terminator,
+     * the underlying buffer will have the size `n` + 1.
+     *
+     * This function will over-allocate in order to amortize the allocation costs
+     * in scenarios where the caller may need to repeatedly reserve additional
+     * space.
+     *
+     * If the capacity for `s` is already equal to or greater than the requested
+     * capacity, then no action is taken.
+     *
+     * # Arguments
+     *
+     * * s - A string
+     * * n - The number of bytes to reserve space for
+     */
+    #[inline(always)]
+    fn reserve_at_least(&mut self, n: uint) {
+        self.reserve(uint::next_power_of_two(n + 1u) - 1u)
     }
 }
 
@@ -2582,13 +2584,13 @@ mod tests {
         fn a_million_letter_a() -> ~str {
             let mut i = 0;
             let mut rs = ~"";
-            while i < 100000 { push_str(&mut rs, "aaaaaaaaaa"); i += 1; }
+            while i < 100000 { rs.push_str("aaaaaaaaaa"); i += 1; }
             rs
         }
         fn half_a_million_letter_a() -> ~str {
             let mut i = 0;
             let mut rs = ~"";
-            while i < 100000 { push_str(&mut rs, "aaaaa"); i += 1; }
+            while i < 100000 { rs.push_str("aaaaa"); i += 1; }
             rs
         }
         let letters = a_million_letter_a();

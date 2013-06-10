@@ -980,7 +980,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
         fn type_string(doc: ebml::Doc) -> ~str {
             let mut str = ~"";
             for uint::range(doc.start, doc.end) |i| {
-                str::push_char(&mut str, doc.data[i] as char);
+                str.push_char(doc.data[i] as char);
             }
             str
         }
