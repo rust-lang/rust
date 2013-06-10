@@ -44,8 +44,13 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~path> {
                         dirs_to_search.push(path(i.to_owned()));
                     }
                 },
-                // Found nothing, use the default path
-                None => dirs_to_search.push(path("/usr/share/terminfo"))
+                // Found nothing, use the default paths
+                // /usr/share/terminfo is the de facto location, but it seems
+                // Ubuntu puts it in /lib/terminfo
+                None => {
+                    dirs_to_search.push(path("/usr/share/terminfo"));
+                    dirs_to_search.push(path("/lib/terminfo"));
+                }
             }
         }
     };
@@ -53,6 +58,11 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~path> {
     // Look for the terminal in all of the search directories
     for dirs_to_search.each |p| {
         let newp = ~p.push_many(&[first_char.to_owned(), term.to_owned()]);
+        if os::path_exists(p) && os::path_exists(newp) {
+            return Some(newp);
+        }
+        // on some installations the dir is named after the hex of the char (e.g. OS X)
+        let newp = ~p.push_many(&[fmt!("%x", first_char[0] as uint), term.to_owned()]);
         if os::path_exists(p) && os::path_exists(newp) {
             return Some(newp);
         }
@@ -72,6 +82,7 @@ pub fn open(term: &str) -> Result<@Reader, ~str> {
 #[ignore(reason = "buildbots don't have ncurses installed and I can't mock everything I need")]
 fn test_get_dbpath_for_term() {
     // woefully inadequate test coverage
+    // note: current tests won't work with non-standard terminfo hierarchies (e.g. OS X's)
     use std::os::{setenv, unsetenv};
     fn x(t: &str) -> ~str { get_dbpath_for_term(t).expect("no terminfo entry found").to_str() };
     assert!(x("screen") == ~"/usr/share/terminfo/s/screen");
