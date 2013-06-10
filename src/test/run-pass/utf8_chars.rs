@@ -10,6 +10,7 @@
 
 extern mod extra;
 
+use std::iterator::IteratorUtil;
 use std::str;
 use std::vec;
 
@@ -17,11 +18,12 @@ pub fn main() {
     // Chars of 1, 2, 3, and 4 bytes
     let chs: ~[char] = ~['e', 'é', '€', 0x10000 as char];
     let s: ~str = str::from_chars(chs);
+    let schs: ~[char] = s.iter().collect();
 
     assert!(s.len() == 10u);
     assert!(str::char_len(s) == 4u);
-    assert!(str::to_chars(s).len() == 4u);
-    assert!(str::from_chars(str::to_chars(s)) == s);
+    assert!(schs.len() == 4u);
+    assert!(str::from_chars(schs) == s);
     assert!(s.char_at(0u) == 'e');
     assert!(s.char_at(1u) == 'é');
 
