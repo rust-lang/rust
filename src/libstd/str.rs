@@ -21,6 +21,7 @@ use at_vec;
 use cast::transmute;
 use cast;
 use char;
+use char::Char;
 use clone::Clone;
 use cmp::{TotalOrd, Ordering, Less, Equal, Greater};
 use container::Container;
@@ -510,7 +511,7 @@ pub fn unshift_char(s: &mut ~str, ch: char) {
 pub fn trim_left_chars<'a>(s: &'a str, chars_to_trim: &[char]) -> &'a str {
     if chars_to_trim.is_empty() { return s; }
 
-    match find(s, |c| !chars_to_trim.contains(&c)) {
+    match s.find(|c| !chars_to_trim.contains(&c)) {
       None => "",
       Some(first) => unsafe { raw::slice_bytes(s, first, s.len()) }
     }
@@ -528,7 +529,7 @@ pub fn trim_left_chars<'a>(s: &'a str, chars_to_trim: &[char]) -> &'a str {
 pub fn trim_right_chars<'a>(s: &'a str, chars_to_trim: &[char]) -> &'a str {
     if chars_to_trim.is_empty() { return s; }
 
-    match rfind(s, |c| !chars_to_trim.contains(&c)) {
+    match s.rfind(|c| !chars_to_trim.contains(&c)) {
       None => "",
       Some(last) => {
         let next = char_range_at(s, last).next;
@@ -552,7 +553,7 @@ pub fn trim_chars<'a>(s: &'a str, chars_to_trim: &[char]) -> &'a str {
 
 /// Returns a string with leading whitespace removed
 pub fn trim_left<'a>(s: &'a str) -> &'a str {
-    match find(s, |c| !char::is_whitespace(c)) {
+    match s.find(|c| !char::is_whitespace(c)) {
       None => "",
       Some(first) => unsafe { raw::slice_bytes(s, first, s.len()) }
     }
@@ -560,7 +561,7 @@ pub fn trim_left<'a>(s: &'a str) -> &'a str {
 
 /// Returns a string with trailing whitespace removed
 pub fn trim_right<'a>(s: &'a str) -> &'a str {
-    match rfind(s, |c| !char::is_whitespace(c)) {
+    match s.rfind(|c| !char::is_whitespace(c)) {
       None => "",
       Some(last) => {
         let next = char_range_at(s, last).next;
@@ -621,6 +622,34 @@ pub fn substr<'a>(s: &'a str, begin: uint, n: uint) -> &'a str {
     s.slice(begin, begin + count_bytes(s, begin, n))
 }
 
+/// Something that can be used to compare against a character
+pub trait CharEq {
+    /// Determine if the splitter should split at the given character
+    fn matches(&self, char) -> bool;
+    /// Indicate if this is only concerned about ASCII characters,
+    /// which can allow for a faster implementation.
+    fn only_ascii(&self) -> bool;
+}
+impl CharEq for char {
+    #[inline(always)]
+    fn matches(&self, c: char) -> bool { *self == c }
+
+    fn only_ascii(&self) -> bool { (*self as uint) < 128 }
+}
+impl<'self> CharEq for &'self fn(char) -> bool {
+    #[inline(always)]
+    fn matches(&self, c: char) -> bool { (*self)(c) }
+
+    fn only_ascii(&self) -> bool { false }
+}
+impl CharEq for extern "Rust" fn(char) -> bool {
+    #[inline(always)]
+    fn matches(&self, c: char) -> bool { (*self)(c) }
+
+    fn only_ascii(&self) -> bool { false }
+}
+
+
 /// An iterator over the substrings of a string, separated by `sep`.
 pub struct StrCharSplitIterator<'self,Sep> {
     priv string: &'self str,
@@ -639,34 +668,7 @@ pub type WordIterator<'self> =
     FilterIterator<'self, &'self str,
              StrCharSplitIterator<'self, extern "Rust" fn(char) -> bool>>;
 
-/// A separator for splitting a string character-wise
-pub trait StrCharSplitSeparator {
-    /// Determine if the splitter should split at the given character
-    fn should_split(&self, char) -> bool;
-    /// Indicate if the splitter only uses ASCII characters, which
-    /// allows for a faster implementation.
-    fn only_ascii(&self) -> bool;
-}
-impl StrCharSplitSeparator for char {
-    #[inline(always)]
-    fn should_split(&self, c: char) -> bool { *self == c }
-
-    fn only_ascii(&self) -> bool { (*self as uint) < 128 }
-}
-impl<'self> StrCharSplitSeparator for &'self fn(char) -> bool {
-    #[inline(always)]
-    fn should_split(&self, c: char) -> bool { (*self)(c) }
-
-    fn only_ascii(&self) -> bool { false }
-}
-impl<'self> StrCharSplitSeparator for extern "Rust" fn(char) -> bool {
-    #[inline(always)]
-    fn should_split(&self, c: char) -> bool { (*self)(c) }
-
-    fn only_ascii(&self) -> bool { false }
-}
-
-impl<'self, Sep: StrCharSplitSeparator> Iterator<&'self str> for StrCharSplitIterator<'self, Sep> {
+impl<'self, Sep: CharEq> Iterator<&'self str> for StrCharSplitIterator<'self, Sep> {
     #[inline]
     fn next(&mut self) -> Option<&'self str> {
         if self.finished { return None }
@@ -680,7 +682,7 @@ impl<'self, Sep: StrCharSplitSeparator> Iterator<&'self str> for StrCharSplitIte
             while self.position < l && self.count > 0 {
                 let byte = self.string[self.position];
 
-                if self.sep.should_split(byte as char) {
+                if self.sep.matches(byte as char) {
                     let slice = unsafe { raw::slice_bytes(self.string, start, self.position) };
                     self.position += 1;
                     self.count -= 1;
@@ -692,7 +694,7 @@ impl<'self, Sep: StrCharSplitSeparator> Iterator<&'self str> for StrCharSplitIte
             while self.position < l && self.count > 0 {
                 let CharRange {ch, next} = char_range_at(self.string, self.position);
 
-                if self.sep.should_split(ch) {
+                if self.sep.matches(ch) {
                     let slice = unsafe { raw::slice_bytes(self.string, start, self.position) };
                     self.position = next;
                     self.count -= 1;
@@ -1157,318 +1159,6 @@ pub fn map(ss: &str, ff: &fn(char) -> char) -> ~str {
 Section: Searching
 */
 
-/**
- * Returns the byte index of the first matching character
- *
- * # Arguments
- *
- * * `s` - The string to search
- * * `c` - The character to search for
- *
- * # Return value
- *
- * An `option` containing the byte index of the first matching character
- * or `none` if there is no match
- */
-pub fn find_char(s: &str, c: char) -> Option<uint> {
-    find_char_between(s, c, 0u, s.len())
-}
-
-/**
- * Returns the byte index of the first matching character beginning
- * from a given byte offset
- *
- * # Arguments
- *
- * * `s` - The string to search
- * * `c` - The character to search for
- * * `start` - The byte index to begin searching at, inclusive
- *
- * # Return value
- *
- * An `option` containing the byte index of the first matching character
- * or `none` if there is no match
- *
- * # Failure
- *
- * `start` must be less than or equal to `s.len()`. `start` must be the
- * index of a character boundary, as defined by `is_char_boundary`.
- */
-pub fn find_char_from(s: &str, c: char, start: uint) -> Option<uint> {
-    find_char_between(s, c, start, s.len())
-}
-
-/**
- * Returns the byte index of the first matching character within a given range
- *
- * # Arguments
- *
- * * `s` - The string to search
- * * `c` - The character to search for
- * * `start` - The byte index to begin searching at, inclusive
- * * `end` - The byte index to end searching at, exclusive
- *
- * # Return value
- *
- * An `option` containing the byte index of the first matching character
- * or `none` if there is no match
- *
- * # Failure
- *
- * `start` must be less than or equal to `end` and `end` must be less than
- * or equal to `s.len()`. `start` must be the index of a character boundary,
- * as defined by `is_char_boundary`.
- */
-pub fn find_char_between(s: &str, c: char, start: uint, end: uint)
-    -> Option<uint> {
-    if c < 128u as char {
-        assert!(start <= end);
-        assert!(end <= s.len());
-        let mut i = start;
-        let b = c as u8;
-        while i < end {
-            if s[i] == b { return Some(i); }
-            i += 1u;
-        }
-        return None;
-    } else {
-        find_between(s, start, end, |x| x == c)
-    }
-}
-
-/**
- * Returns the byte index of the last matching character
- *
- * # Arguments
- *
- * * `s` - The string to search
- * * `c` - The character to search for
- *
- * # Return value
- *
- * An `option` containing the byte index of the last matching character
- * or `none` if there is no match
- */
-pub fn rfind_char(s: &str, c: char) -> Option<uint> {
-    rfind_char_between(s, c, s.len(), 0u)
-}
-
-/**
- * Returns the byte index of the last matching character beginning
- * from a given byte offset
- *
- * # Arguments
- *
- * * `s` - The string to search
- * * `c` - The character to search for
- * * `start` - The byte index to begin searching at, exclusive
- *
- * # Return value
- *
- * An `option` containing the byte index of the last matching character
- * or `none` if there is no match
- *
- * # Failure
- *
- * `start` must be less than or equal to `s.len()`. `start` must be
- * the index of a character boundary, as defined by `is_char_boundary`.
- */
-pub fn rfind_char_from(s: &str, c: char, start: uint) -> Option<uint> {
-    rfind_char_between(s, c, start, 0u)
-}
-
-/**
- * Returns the byte index of the last matching character within a given range
- *
- * # Arguments
- *
- * * `s` - The string to search
- * * `c` - The character to search for
- * * `start` - The byte index to begin searching at, exclusive
- * * `end` - The byte index to end searching at, inclusive
- *
- * # Return value
- *
- * An `option` containing the byte index of the last matching character
- * or `none` if there is no match
- *
- * # Failure
- *
- * `end` must be less than or equal to `start` and `start` must be less than
- * or equal to `s.len()`. `start` must be the index of a character boundary,
- * as defined by `is_char_boundary`.
- */
-pub fn rfind_char_between(s: &str, c: char, start: uint, end: uint) -> Option<uint> {
-    if c < 128u as char {
-        assert!(start >= end);
-        assert!(start <= s.len());
-        let mut i = start;
-        let b = c as u8;
-        while i > end {
-            i -= 1u;
-            if s[i] == b { return Some(i); }
-        }
-        return None;
-    } else {
-        rfind_between(s, start, end, |x| x == c)
-    }
-}
-
-/**
- * Returns the byte index of the first character that satisfies
- * the given predicate
- *
- * # Arguments
- *
- * * `s` - The string to search
- * * `f` - The predicate to satisfy
- *
- * # Return value
- *
- * An `option` containing the byte index of the first matching character
- * or `none` if there is no match
- */
-pub fn find(s: &str, f: &fn(char) -> bool) -> Option<uint> {
-    find_between(s, 0u, s.len(), f)
-}
-
-/**
- * Returns the byte index of the first character that satisfies
- * the given predicate, beginning from a given byte offset
- *
- * # Arguments
- *
- * * `s` - The string to search
- * * `start` - The byte index to begin searching at, inclusive
- * * `f` - The predicate to satisfy
- *
- * # Return value
- *
- * An `option` containing the byte index of the first matching charactor
- * or `none` if there is no match
- *
- * # Failure
- *
- * `start` must be less than or equal to `s.len()`. `start` must be the
- * index of a character boundary, as defined by `is_char_boundary`.
- */
-pub fn find_from(s: &str, start: uint, f: &fn(char)
-    -> bool) -> Option<uint> {
-    find_between(s, start, s.len(), f)
-}
-
-/**
- * Returns the byte index of the first character that satisfies
- * the given predicate, within a given range
- *
- * # Arguments
- *
- * * `s` - The string to search
- * * `start` - The byte index to begin searching at, inclusive
- * * `end` - The byte index to end searching at, exclusive
- * * `f` - The predicate to satisfy
- *
- * # Return value
- *
- * An `option` containing the byte index of the first matching character
- * or `none` if there is no match
- *
- * # Failure
- *
- * `start` must be less than or equal to `end` and `end` must be less than
- * or equal to `s.len()`. `start` must be the index of a character
- * boundary, as defined by `is_char_boundary`.
- */
-pub fn find_between(s: &str, start: uint, end: uint, f: &fn(char) -> bool) -> Option<uint> {
-    assert!(start <= end);
-    assert!(end <= s.len());
-    assert!(is_char_boundary(s, start));
-    let mut i = start;
-    while i < end {
-        let CharRange {ch, next} = char_range_at(s, i);
-        if f(ch) { return Some(i); }
-        i = next;
-    }
-    return None;
-}
-
-/**
- * Returns the byte index of the last character that satisfies
- * the given predicate
- *
- * # Arguments
- *
- * * `s` - The string to search
- * * `f` - The predicate to satisfy
- *
- * # Return value
- *
- * An option containing the byte index of the last matching character
- * or `none` if there is no match
- */
-pub fn rfind(s: &str, f: &fn(char) -> bool) -> Option<uint> {
-    rfind_between(s, s.len(), 0u, f)
-}
-
-/**
- * Returns the byte index of the last character that satisfies
- * the given predicate, beginning from a given byte offset
- *
- * # Arguments
- *
- * * `s` - The string to search
- * * `start` - The byte index to begin searching at, exclusive
- * * `f` - The predicate to satisfy
- *
- * # Return value
- *
- * An `option` containing the byte index of the last matching character
- * or `none` if there is no match
- *
- * # Failure
- *
- * `start` must be less than or equal to `s.len()', `start` must be the
- * index of a character boundary, as defined by `is_char_boundary`
- */
-pub fn rfind_from(s: &str, start: uint, f: &fn(char) -> bool) -> Option<uint> {
-    rfind_between(s, start, 0u, f)
-}
-
-/**
- * Returns the byte index of the last character that satisfies
- * the given predicate, within a given range
- *
- * # Arguments
- *
- * * `s` - The string to search
- * * `start` - The byte index to begin searching at, exclusive
- * * `end` - The byte index to end searching at, inclusive
- * * `f` - The predicate to satisfy
- *
- * # Return value
- *
- * An `option` containing the byte index of the last matching character
- * or `none` if there is no match
- *
- * # Failure
- *
- * `end` must be less than or equal to `start` and `start` must be less
- * than or equal to `s.len()`. `start` must be the index of a character
- * boundary, as defined by `is_char_boundary`
- */
-pub fn rfind_between(s: &str, start: uint, end: uint, f: &fn(char) -> bool) -> Option<uint> {
-    assert!(start >= end);
-    assert!(start <= s.len());
-    assert!(is_char_boundary(s, start));
-    let mut i = start;
-    while i > end {
-        let CharRange {ch, next: prev} = char_range_at_reverse(s, i);
-        if f(ch) { return Some(prev); }
-        i = prev;
-    }
-    return None;
-}
-
 // Utility used by various searching functions
 fn match_at<'a,'b>(haystack: &'a str, needle: &'b str, at: uint) -> bool {
     let mut i = at;
@@ -1580,7 +1270,7 @@ pub fn contains<'a,'b>(haystack: &'a str, needle: &'b str) -> bool {
  * * needle - The char to look for
  */
 pub fn contains_char(haystack: &str, needle: char) -> bool {
-    find_char(haystack, needle).is_some()
+    haystack.find(needle).is_some()
 }
 
 /**
@@ -2415,11 +2105,9 @@ pub trait StrSlice<'self> {
     fn rev_iter(&self) -> StrCharRevIterator<'self>;
     fn bytes_iter(&self) -> StrBytesIterator<'self>;
     fn bytes_rev_iter(&self) -> StrBytesRevIterator<'self>;
-    fn split_iter<Sep: StrCharSplitSeparator>(&self, sep: Sep) -> StrCharSplitIterator<'self, Sep>;
-    fn splitn_iter<Sep: StrCharSplitSeparator>(&self, sep: Sep, count: uint)
-        -> StrCharSplitIterator<'self, Sep>;
-    fn split_options_iter<Sep: StrCharSplitSeparator>(&self, sep: Sep,
-                                                      count: uint, allow_trailing_empty: bool)
+    fn split_iter<Sep: CharEq>(&self, sep: Sep) -> StrCharSplitIterator<'self, Sep>;
+    fn splitn_iter<Sep: CharEq>(&self, sep: Sep, count: uint) -> StrCharSplitIterator<'self, Sep>;
+    fn split_options_iter<Sep: CharEq>(&self, sep: Sep, count: uint, allow_trailing_empty: bool)
         -> StrCharSplitIterator<'self, Sep>;
     /// An iterator over the start and end indices of each match of
     /// `sep` within `self`.
@@ -2448,6 +2136,8 @@ pub trait StrSlice<'self> {
     fn len(&self) -> uint;
     fn char_len(&self) -> uint;
     fn slice(&self, begin: uint, end: uint) -> &'self str;
+    fn slice_from(&self, begin: uint) -> &'self str;
+    fn slice_to(&self, end: uint) -> &'self str;
     fn starts_with<'a>(&self, needle: &'a str) -> bool;
     fn substr(&self, begin: uint, n: uint) -> &'self str;
     fn escape_default(&self) -> ~str;
@@ -2463,6 +2153,9 @@ pub trait StrSlice<'self> {
     fn char_at(&self, i: uint) -> char;
     fn char_at_reverse(&self, i: uint) -> char;
     fn to_bytes(&self) -> ~[u8];
+
+    fn find<C: CharEq>(&self, search: C) -> Option<uint>;
+    fn rfind<C: CharEq>(&self, search: C) -> Option<uint>;
 }
 
 /// Extension methods for strings
@@ -2500,16 +2193,14 @@ impl<'self> StrSlice<'self> for &'self str {
         StrBytesRevIterator { it: as_bytes_slice(*self).rev_iter() }
     }
 
-    fn split_iter<Sep: StrCharSplitSeparator>(&self, sep: Sep) -> StrCharSplitIterator<'self, Sep> {
+    fn split_iter<Sep: CharEq>(&self, sep: Sep) -> StrCharSplitIterator<'self, Sep> {
         self.split_options_iter(sep, self.len(), true)
     }
 
-    fn splitn_iter<Sep: StrCharSplitSeparator>(&self, sep: Sep, count: uint)
-        -> StrCharSplitIterator<'self, Sep> {
+    fn splitn_iter<Sep: CharEq>(&self, sep: Sep, count: uint) -> StrCharSplitIterator<'self, Sep> {
         self.split_options_iter(sep, count, true)
     }
-    fn split_options_iter<Sep: StrCharSplitSeparator>(&self, sep: Sep,
-                                                      count: uint, allow_trailing_empty: bool)
+    fn split_options_iter<Sep: CharEq>(&self, sep: Sep, count: uint, allow_trailing_empty: bool)
         -> StrCharSplitIterator<'self, Sep> {
         let only_ascii = sep.only_ascii();
         StrCharSplitIterator {
@@ -2590,6 +2281,14 @@ impl<'self> StrSlice<'self> for &'self str {
         unsafe { raw::slice_bytes(*self, begin, end) }
     }
     #[inline]
+    fn slice_from(&self, begin: uint) -> &'self str {
+        self.slice(begin, self.len())
+    }
+    #[inline]
+    fn slice_to(&self, end: uint) -> &'self str {
+        self.slice(0, end)
+    }
+    #[inline]
     fn starts_with<'a>(&self, needle: &'a str) -> bool {
         starts_with(*self, needle)
     }
@@ -2654,6 +2353,54 @@ impl<'self> StrSlice<'self> for &'self str {
     }
 
     fn to_bytes(&self) -> ~[u8] { to_bytes(*self) }
+
+    /**
+     * Returns the byte index of the first character of `self` that matches `search`
+     *
+     * # Return value
+     *
+     * `Some` containing the byte index of the last matching character
+     * or `None` if there is no match
+     */
+    fn find<C: CharEq>(&self, search: C) -> Option<uint> {
+        if search.only_ascii() {
+            for self.bytes_iter().enumerate().advance |(i, b)| {
+                if search.matches(b as char) { return Some(i) }
+            }
+        } else {
+            let mut index = 0;
+            for self.iter().advance |c| {
+                if search.matches(c) { return Some(index); }
+                index += c.len_utf8_bytes();
+            }
+        }
+
+        None
+    }
+    /**
+     * Returns the byte index of the last character of `self` that matches `search`
+     *
+     * # Return value
+     *
+     * `Some` containing the byte index of the last matching character
+     * or `None` if there is no match
+     */
+    fn rfind<C: CharEq>(&self, search: C) -> Option<uint> {
+        let mut index = self.len();
+        if search.only_ascii() {
+            for self.bytes_rev_iter().advance |b| {
+                index -= 1;
+                if search.matches(b as char) { return Some(index); }
+            }
+        } else {
+            for self.rev_iter().advance |c| {
+                index -= c.len_utf8_bytes();
+                if search.matches(c) { return Some(index); }
+            }
+        }
+
+        None
+    }
 }
 
 #[allow(missing_doc)]
@@ -2803,12 +2550,23 @@ mod tests {
     }
 
     #[test]
-    fn test_rfind_char() {
-        assert_eq!(rfind_char("hello", 'l'), Some(3u));
-        assert_eq!(rfind_char("hello", 'o'), Some(4u));
-        assert_eq!(rfind_char("hello", 'h'), Some(0u));
-        assert!(rfind_char("hello", 'z').is_none());
-        assert_eq!(rfind_char("ประเทศไทย中华Việt Nam", '华'), Some(30u));
+    fn test_find() {
+        assert_eq!("hello".find('l'), Some(2u));
+        assert_eq!("hello".find(|c:char| c == 'o'), Some(4u));
+        assert!("hello".find('x').is_none());
+        assert!("hello".find(|c:char| c == 'x').is_none());
+        assert_eq!("ประเทศไทย中华Việt Nam".find('华'), Some(30u));
+        assert_eq!("ประเทศไทย中华Việt Nam".find(|c: char| c == '华'), Some(30u));
+    }
+
+    #[test]
+    fn test_rfind() {
+        assert_eq!("hello".rfind('l'), Some(3u));
+        assert_eq!("hello".rfind(|c:char| c == 'o'), Some(4u));
+        assert!("hello".rfind('x').is_none());
+        assert!("hello".rfind(|c:char| c == 'x').is_none());
+        assert_eq!("ประเทศไทย中华Việt Nam".rfind('华'), Some(30u));
+        assert_eq!("ประเทศไทย中华Việt Nam".rfind(|c: char| c == '华'), Some(30u));
     }
 
     #[test]
@@ -3120,6 +2878,19 @@ mod tests {
     #[ignore(cfg(windows))]
     fn test_slice_fail() {
         "中华Việt Nam".slice(0u, 2u);
+    }
+
+    #[test]
+    fn test_slice_from() {
+        assert_eq!("abcd".slice_from(0), "abcd");
+        assert_eq!("abcd".slice_from(2), "cd");
+        assert_eq!("abcd".slice_from(4), "");
+    }
+    #[test]
+    fn test_slice_to() {
+        assert_eq!("abcd".slice_to(0), "");
+        assert_eq!("abcd".slice_to(2), "ab");
+        assert_eq!("abcd".slice_to(4), "abcd");
     }
 
     #[test]

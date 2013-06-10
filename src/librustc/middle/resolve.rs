@@ -2681,7 +2681,7 @@ impl Resolver {
         match module_prefix_result {
             Failed => {
                 let mpath = self.idents_to_str(module_path);
-                match str::rfind(self.idents_to_str(module_path), |c| { c == ':' }) {
+                match self.idents_to_str(module_path).rfind(':') {
                     Some(idx) => {
                         self.session.span_err(span, fmt!("unresolved import: could not find `%s` \
                                                          in `%s`", str::substr(mpath, idx,
