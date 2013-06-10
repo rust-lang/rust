@@ -1132,7 +1132,7 @@ pub mod node {
     pub fn char_at(mut node: @Node, mut pos: uint) -> char {
         loop {
             match *node {
-              Leaf(x) => return str::char_at(*x.content, pos),
+              Leaf(x) => return x.content.char_at(pos),
               Concat(Concat {left, right, _}) => {
                 let left_len = char_len(left);
                 node = if left_len > pos { left }
@@ -1257,8 +1257,7 @@ pub mod node {
                     return None
                 } else {
                     let range =
-                        str::char_range_at(*aleaf.content,
-                                     (*it).leaf_byte_pos + aleaf.byte_offset);
+                        aleaf.content.char_range_at((*it).leaf_byte_pos + aleaf.byte_offset);
                     let ch = range.ch;
                     let next = range.next;
                     (*it).leaf_byte_pos = next - aleaf.byte_offset;
@@ -1345,7 +1344,7 @@ mod tests {
                     equal = false;
                 } break; }
               Some(c) => {
-                let range = str::char_range_at(*sample, string_iter);
+                let range = sample.char_range_at(string_iter);
                 string_iter = range.next;
                 if range.ch != c { equal = false; break; }
               }

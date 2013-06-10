@@ -672,7 +672,7 @@ impl<T:Reader> ReaderUtil for T {
                     val <<= 6;
                     val += (next & 63) as uint;
                 }
-                // See str::char_at
+                // See str::StrSlice::char_at
                 val += ((b0 << ((w + 1) as u8)) as uint)
                     << (w - 1) * 6 - w - 1u;
                 chars.push(val as char);
