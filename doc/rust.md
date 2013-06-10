@@ -802,20 +802,15 @@ Use declarations support a number of convenient shortcuts:
 An example of `use` declarations:
 
 ~~~~
-use std::float::sin;
-use std::str::{from_chars, contains};
+use std::float::{sin, pow};
 use std::option::Some;
 
 fn main() {
-    // Equivalent to 'info!(std::float::sin(1.0));'
-    info!(sin(1.0));
+    // Equivalent to 'info!(std::float::pow(std::float::sin(1.0), 2.0));'
+    info!(pow(sin(1.0), 2.0));
 
     // Equivalent to 'info!(std::option::Some(1.0));'
     info!(Some(1.0));
-
-    // Equivalent to
-    // 'info!(std::str::contains(std::str::from_chars(&['f','o','o']), "oo"));'
-    info!(contains(from_chars(&['f','o','o']), "oo"));
 }
 ~~~~
 

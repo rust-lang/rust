@@ -514,7 +514,7 @@ pub fn filter_tests(
 
         fn filter_fn(test: TestDescAndFn, filter_str: &str) ->
             Option<TestDescAndFn> {
-            if str::contains(test.desc.name.to_str(), filter_str) {
+            if test.desc.name.to_str().contains(filter_str) {
                 return option::Some(test);
             } else { return option::None; }
         }

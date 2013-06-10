@@ -309,7 +309,7 @@ fn check_error_patterns(props: &TestProps,
     let mut next_err_pat = &props.error_patterns[next_err_idx];
     let mut done = false;
     for ProcRes.stderr.line_iter().advance |line| {
-        if str::contains(line, *next_err_pat) {
+        if line.contains(*next_err_pat) {
             debug!("found error pattern %s", *next_err_pat);
             next_err_idx += 1u;
             if next_err_idx == props.error_patterns.len() {
@@ -365,8 +365,8 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
                 debug!("prefix=%s ee.kind=%s ee.msg=%s line=%s",
                        prefixes[i], ee.kind, ee.msg, line);
                 if (str::starts_with(line, prefixes[i]) &&
-                    str::contains(line, ee.kind) &&
-                    str::contains(line, ee.msg)) {
+                    line.contains(ee.kind) &&
+                    line.contains(ee.msg)) {
                     found_flags[i] = true;
                     was_expected = true;
                     break;
@@ -375,7 +375,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         }
 
         // ignore this msg which gets printed at the end
-        if str::contains(line, "aborting due to") {
+        if line.contains("aborting due to") {
             was_expected = true;
         }
 

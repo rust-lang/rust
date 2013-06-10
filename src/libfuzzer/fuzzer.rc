@@ -57,7 +57,7 @@ pub fn write_file(filename: &Path, content: &str) {
 }
 
 pub fn contains(haystack: &str, needle: &str) -> bool {
-    str::contains(haystack, needle)
+    haystack.contains(needle)
 }
 
 pub fn find_rust_files(files: &mut ~[Path], path: &Path) {

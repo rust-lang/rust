@@ -3099,7 +3099,7 @@ impl Resolver {
         let import_count = imports.len();
         if index != import_count {
             let sn = self.session.codemap.span_to_snippet(imports[index].span);
-            if str::contains(sn, "::") {
+            if sn.contains("::") {
                 self.session.span_err(imports[index].span, "unresolved import");
             } else {
                 let err = fmt!("unresolved import (maybe you meant `%s::*`?)",
