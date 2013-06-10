@@ -966,6 +966,12 @@ pub mod llvm {
                                                  -> BasicBlockRef;
         #[fast_ffi]
         pub unsafe fn LLVMDeleteBasicBlock(BB: BasicBlockRef);
+        
+        #[fast_ffi]
+        pub unsafe fn LLVMMoveBasicBlockAfter(BB: BasicBlockRef, MoveAfter: BasicBlockRef);
+        
+        #[fast_ffi]
+        pub unsafe fn LLVMMoveBasicBlockBefore(BB: BasicBlockRef, MoveBefore: BasicBlockRef);
 
         /* Operations on instructions */
         #[fast_ffi]
