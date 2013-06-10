@@ -239,29 +239,29 @@ $(foreach target,$(CFG_TARGET_TRIPLES),\
 # Standard library variables
 ######################################################################
 
-STDLIB_CRATE := $(S)src/libstd/core.rc
+STDLIB_CRATE := $(S)src/libstd/std.rs
 STDLIB_INPUTS := $(wildcard $(addprefix $(S)src/libstd/,        \
-                                           core.rc *.rs */*.rs */*/*rs */*/*/*rs))
+                                           *.rs */*.rs */*/*rs */*/*/*rs))
 
 ######################################################################
 # Extra library variables
 ######################################################################
 
-EXTRALIB_CRATE := $(S)src/libextra/std.rc
+EXTRALIB_CRATE := $(S)src/libextra/extra.rs
 EXTRALIB_INPUTS := $(wildcard $(addprefix $(S)src/libextra/,          \
-                                          std.rc *.rs */*.rs))
+                                          *.rs */*.rs))
 
 ######################################################################
 # rustc crate variables
 ######################################################################
 
-COMPILER_CRATE := $(S)src/librustc/rustc.rc
+COMPILER_CRATE := $(S)src/librustc/rustc.rs
 COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/librustc/,      \
-                           rustc.rc *.rs */*.rs */*/*.rs */*/*/*.rs))
+                           *.rs */*.rs */*/*.rs */*/*/*.rs))
 
-LIBSYNTAX_CRATE := $(S)src/libsyntax/syntax.rc
+LIBSYNTAX_CRATE := $(S)src/libsyntax/syntax.rs
 LIBSYNTAX_INPUTS := $(wildcard $(addprefix $(S)src/libsyntax/, \
-                            syntax.rc *.rs */*.rs */*/*.rs))
+                           *.rs */*.rs */*/*.rs))
 
 DRIVER_CRATE := $(S)src/driver/driver.rs
 
