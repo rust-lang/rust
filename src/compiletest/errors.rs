@@ -31,7 +31,7 @@ pub fn load_errors(testfile: &Path) -> ~[ExpectedError] {
 fn parse_expected(line_num: uint, line: ~str) -> ~[ExpectedError] {
     let error_tag = ~"//~";
     let mut idx;
-    match str::find_str(line, error_tag) {
+    match line.find_str(error_tag) {
       None => return ~[],
       Some(nn) => { idx = (nn as uint) + error_tag.len(); }
     }

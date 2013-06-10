@@ -1166,88 +1166,6 @@ fn match_at<'a,'b>(haystack: &'a str, needle: &'b str, at: uint) -> bool {
     return true;
 }
 
-/**
- * Returns the byte index of the first matching substring
- *
- * # Arguments
- *
- * * `haystack` - The string to search
- * * `needle` - The string to search for
- *
- * # Return value
- *
- * An `option` containing the byte index of the first matching substring
- * or `none` if there is no match
- */
-pub fn find_str<'a,'b>(haystack: &'a str, needle: &'b str) -> Option<uint> {
-    find_str_between(haystack, needle, 0u, haystack.len())
-}
-
-/**
- * Returns the byte index of the first matching substring beginning
- * from a given byte offset
- *
- * # Arguments
- *
- * * `haystack` - The string to search
- * * `needle` - The string to search for
- * * `start` - The byte index to begin searching at, inclusive
- *
- * # Return value
- *
- * An `option` containing the byte index of the last matching character
- * or `none` if there is no match
- *
- * # Failure
- *
- * `start` must be less than or equal to `s.len()`
- */
-pub fn find_str_from<'a,'b>(haystack: &'a str,
-                            needle: &'b str,
-                            start: uint)
-                         -> Option<uint> {
-    find_str_between(haystack, needle, start, haystack.len())
-}
-
-/**
- * Returns the byte index of the first matching substring within a given range
- *
- * # Arguments
- *
- * * `haystack` - The string to search
- * * `needle` - The string to search for
- * * `start` - The byte index to begin searching at, inclusive
- * * `end` - The byte index to end searching at, exclusive
- *
- * # Return value
- *
- * An `option` containing the byte index of the first matching character
- * or `none` if there is no match
- *
- * # Failure
- *
- * `start` must be less than or equal to `end` and `end` must be less than
- * or equal to `s.len()`.
- */
-pub fn find_str_between<'a,'b>(haystack: &'a str,
-                               needle: &'b str,
-                               start: uint,
-                               end:uint)
-                            -> Option<uint> {
-    // See Issue #1932 for why this is a naive search
-    assert!(end <= haystack.len());
-    let needle_len = needle.len();
-    if needle_len == 0u { return Some(start); }
-    if needle_len > end { return None; }
-
-    let mut i = start;
-    let e = end - needle_len;
-    while i <= e {
-        if match_at(haystack, needle, i) { return Some(i); }
-        i += 1u;
-    }
-    return None;
-}
 
 /**
  * Returns true if one string contains another
@@ -1258,7 +1176,7 @@ pub fn find_str_between<'a,'b>(haystack: &'a str,
  * * needle - The string to look for
  */
 pub fn contains<'a,'b>(haystack: &'a str, needle: &'b str) -> bool {
-    find_str(haystack, needle).is_some()
+    haystack.find_str(needle).is_some()
 }
 
 /**
@@ -2096,6 +2014,7 @@ pub trait StrSlice<'self> {
 
     fn find<C: CharEq>(&self, search: C) -> Option<uint>;
     fn rfind<C: CharEq>(&self, search: C) -> Option<uint>;
+    fn find_str(&self, &str) -> Option<uint>;
 }
 
 /// Extension methods for strings
@@ -2341,6 +2260,28 @@ impl<'self> StrSlice<'self> for &'self str {
 
         None
     }
+
+    /**
+     * Returns the byte index of the first matching substring
+     *
+     * # Arguments
+     *
+     * * `needle` - The string to search for
+     *
+     * # Return value
+     *
+     * `Some` containing the byte index of the first matching substring
+     * or `None` if there is no match
+     */
+    fn find_str(&self, needle: &str) -> Option<uint> {
+        if needle.is_empty() {
+            Some(0)
+        } else {
+            self.matches_index_iter(needle)
+                .next()
+                .map_consume(|(start, _end)| start)
+        }
+    }
 }
 
 #[allow(missing_doc)]
@@ -2550,43 +2491,31 @@ mod tests {
     #[test]
     fn test_find_str() {
         // byte positions
-        assert!(find_str("banana", "apple pie").is_none());
-        assert_eq!(find_str("", ""), Some(0u));
-
-        let data = "ประเทศไทย中华Việt Nam";
-        assert_eq!(find_str(data, ""), Some(0u));
-        assert_eq!(find_str(data, "ประเ"), Some( 0u));
-        assert_eq!(find_str(data, "ะเ"), Some( 6u));
-        assert_eq!(find_str(data, "中华"), Some(27u));
-        assert!(find_str(data, "ไท华").is_none());
-    }
-
-    #[test]
-    fn test_find_str_between() {
-        // byte positions
-        assert_eq!(find_str_between("", "", 0u, 0u), Some(0u));
+        assert_eq!("".find_str(""), Some(0u));
+        assert!("banana".find_str("apple pie").is_none());
 
         let data = "abcabc";
-        assert_eq!(find_str_between(data, "ab", 0u, 6u), Some(0u));
-        assert_eq!(find_str_between(data, "ab", 2u, 6u), Some(3u));
-        assert!(find_str_between(data, "ab", 2u, 4u).is_none());
+        assert_eq!(data.slice(0u, 6u).find_str("ab"), Some(0u));
+        assert_eq!(data.slice(2u, 6u).find_str("ab"), Some(3u));
+        assert!(data.slice(2u, 4u).find_str("ab").is_none());
 
         let mut data = ~"ประเทศไทย中华Việt Nam";
         data = data + data;
-        assert_eq!(find_str_between(data, "", 0u, 43u), Some(0u));
-        assert_eq!(find_str_between(data, "", 6u, 43u), Some(6u));
+        assert!(data.find_str("ไท华").is_none());
+        assert_eq!(data.slice(0u, 43u).find_str(""), Some(0u));
+        assert_eq!(data.slice(6u, 43u).find_str(""), Some(6u - 6u));
 
-        assert_eq!(find_str_between(data, "ประ", 0u, 43u), Some( 0u));
-        assert_eq!(find_str_between(data, "ทศไ", 0u, 43u), Some(12u));
-        assert_eq!(find_str_between(data, "ย中", 0u, 43u), Some(24u));
-        assert_eq!(find_str_between(data, "iệt", 0u, 43u), Some(34u));
-        assert_eq!(find_str_between(data, "Nam", 0u, 43u), Some(40u));
+        assert_eq!(data.slice(0u, 43u).find_str("ประ"), Some( 0u));
+        assert_eq!(data.slice(0u, 43u).find_str("ทศไ"), Some(12u));
+        assert_eq!(data.slice(0u, 43u).find_str("ย中"), Some(24u));
+        assert_eq!(data.slice(0u, 43u).find_str("iệt"), Some(34u));
+        assert_eq!(data.slice(0u, 43u).find_str("Nam"), Some(40u));
 
-        assert_eq!(find_str_between(data, "ประ", 43u, 86u), Some(43u));
-        assert_eq!(find_str_between(data, "ทศไ", 43u, 86u), Some(55u));
-        assert_eq!(find_str_between(data, "ย中", 43u, 86u), Some(67u));
-        assert_eq!(find_str_between(data, "iệt", 43u, 86u), Some(77u));
-        assert_eq!(find_str_between(data, "Nam", 43u, 86u), Some(83u));
+        assert_eq!(data.slice(43u, 86u).find_str("ประ"), Some(43u - 43u));
+        assert_eq!(data.slice(43u, 86u).find_str("ทศไ"), Some(55u - 43u));
+        assert_eq!(data.slice(43u, 86u).find_str("ย中"), Some(67u - 43u));
+        assert_eq!(data.slice(43u, 86u).find_str("iệt"), Some(77u - 43u));
+        assert_eq!(data.slice(43u, 86u).find_str("Nam"), Some(83u - 43u));
     }
 
     #[test]
