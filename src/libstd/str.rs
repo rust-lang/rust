@@ -432,11 +432,6 @@ pub fn byte_slice_no_callback<'a>(s: &'a str) -> &'a [u8] {
     }
 }
 
-/// Convert a string to a unique vector of characters
-pub fn to_chars(s: &str) -> ~[char] {
-    s.iter().collect()
-}
-
 /**
  * Take a substring of another.
  *
