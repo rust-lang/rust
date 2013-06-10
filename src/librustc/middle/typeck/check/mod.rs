@@ -115,7 +115,6 @@ use core::iterator::IteratorUtil;
 use core::cast::transmute;
 use core::hashmap::HashMap;
 use core::result;
-use core::str;
 use core::util::replace;
 use core::vec;
 use extra::list::Nil;

@@ -1836,7 +1836,6 @@ mod tests {
     use io;
     use path::Path;
     use result;
-    use str;
     use u64;
     use vec;
 

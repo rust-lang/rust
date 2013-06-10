@@ -20,7 +20,6 @@ use core::cmp;
 use core::io::{ReaderUtil};
 use core::io;
 use core::option::{Option, Some, None};
-use core::str;
 use core::to_str::ToStr;
 use core::uint;
 

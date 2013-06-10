@@ -16,7 +16,6 @@ use syntax::visit;
 
 use core::hashmap::HashSet;
 use core::io;
-use core::str;
 use extra;
 
 pub fn time<T>(do_it: bool, what: ~str, thunk: &fn() -> T) -> T {

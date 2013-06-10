@@ -143,7 +143,7 @@ fn try_parsing_version(s: &str) -> Option<Version> {
     let s = s.trim();
     debug!("Attempting to parse: %s", s);
     let mut parse_state = Start;
-    for s.iter().advance |&c| {
+    for s.iter().advance |c| {
         if char::is_digit(c) {
             parse_state = SawDigit;
         }
@@ -171,7 +171,7 @@ fn is_url_like(p: &RemotePath) -> bool {
 /// Otherwise, return None.
 pub fn split_version<'a>(s: &'a str) -> Option<(&'a str, Version)> {
     // reject strings with multiple '#'s
-    if s.splitn_iter('#', 2).count() > 1 {
+    if s.splitn_iter('#', 2).count() > 2 {
         return None;
     }
     match s.rfind('#') {

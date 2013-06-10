@@ -1800,7 +1800,7 @@ impl<'self> StrSlice<'self> for &'self str {
      */
     #[inline]
     fn substr(&self, begin: uint, n: uint) -> &'self str {
-        s.slice(begin, begin + count_bytes(s, begin, n))
+        self.slice(begin, begin + count_bytes(*self, begin, n))
     }
     /// Escape each char in `s` with char::escape_default.
     #[inline]
@@ -2318,7 +2318,6 @@ impl<'self> Iterator<u8> for StrBytesRevIterator<'self> {
 mod tests {
     use iterator::IteratorUtil;
     use container::Container;
-    use char;
     use option::Some;
     use libc::c_char;
     use libc;
@@ -3024,14 +3023,6 @@ mod tests {
     fn test_map() {
         assert_eq!(~"", map("", |c| unsafe {libc::toupper(c as c_char)} as char));
         assert_eq!(~"YMCA", map("ymca", |c| unsafe {libc::toupper(c as c_char)} as char));
-    }
-
-    #[test]
-    fn test_chars() {
-        let ss = ~"ศไทย中华Việt Nam";
-        assert!(~['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a',
-                       'm']
-            == to_chars(ss));
     }
 
     #[test]
