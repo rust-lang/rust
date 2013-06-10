@@ -155,9 +155,7 @@ pub fn from_chars(chs: &[char]) -> ~str {
     buf
 }
 
-/// A function version of the `.push_str`, required for `fmt!` during
-/// the bootstrap. Use `lhs.push_str(rhs)` instead of this.
-#[doc="hidden"]
+#[doc(hidden)]
 pub fn push_str(lhs: &mut ~str, rhs: &str) {
     lhs.push_str(rhs)
 }
@@ -1604,25 +1602,9 @@ pub trait StrSlice<'self> {
     fn splitn_iter<Sep: CharEq>(&self, sep: Sep, count: uint) -> StrCharSplitIterator<'self, Sep>;
     fn split_options_iter<Sep: CharEq>(&self, sep: Sep, count: uint, allow_trailing_empty: bool)
         -> StrCharSplitIterator<'self, Sep>;
-    /// An iterator over the start and end indices of each match of
-    /// `sep` within `self`.
     fn matches_index_iter(&self, sep: &'self str) -> StrMatchesIndexIterator<'self>;
-    /**
-     * An iterator over the substrings of `self` separated by `sep`.
-     *
-     * # Example
-     *
-     * ~~~ {.rust}
-     * let v: ~[&str] = ".XXX.YYY.".split_str_iter(".").collect()
-     * assert_eq!(v, ["", "XXX", "YYY", ""]);
-     * ~~~
-     */
     fn split_str_iter(&self, &'self str) -> StrStrSplitIterator<'self>;
-    /// An iterator over the lines of a string (subsequences separated
-    /// by `\n`).
     fn line_iter(&self) -> StrCharSplitIterator<'self, char>;
-    /// An iterator over the words of a string (subsequences separated
-    /// by any sequence of whitespace).
     fn word_iter(&self) -> WordIterator<'self>;
     fn ends_with(&self, needle: &str) -> bool;
     fn is_empty(&self) -> bool;
@@ -1681,7 +1663,15 @@ impl<'self> StrSlice<'self> for &'self str {
     fn contains_char(&self, needle: char) -> bool {
         self.find(needle).is_some()
     }
-
+    /// An iterator over the characters of `self`. Note, this iterates
+    /// over unicode code-points, not unicode graphemes.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let v: ~[char] = "abc åäö".iter().collect();
+    /// assert_eq!(v, ~['a', 'b', 'c', ' ', 'å', 'ä', 'ö']);
+    /// ~~~
     #[inline]
     fn iter(&self) -> StrCharIterator<'self> {
         StrCharIterator {
@@ -1689,6 +1679,7 @@ impl<'self> StrSlice<'self> for &'self str {
             string: *self
         }
     }
+    /// An iterator over the characters of `self`, in reverse order.
     #[inline]
     fn rev_iter(&self) -> StrCharRevIterator<'self> {
         StrCharRevIterator {
@@ -1697,20 +1688,47 @@ impl<'self> StrSlice<'self> for &'self str {
         }
     }
 
+    /// An iterator over the bytes of `self`
+    #[inline]
     fn bytes_iter(&self) -> StrBytesIterator<'self> {
         StrBytesIterator { it: as_bytes_slice(*self).iter() }
     }
+    /// An iterator over the bytes of `self`, in reverse order
+    #[inline]
     fn bytes_rev_iter(&self) -> StrBytesRevIterator<'self> {
         StrBytesRevIterator { it: as_bytes_slice(*self).rev_iter() }
     }
 
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by `sep`.
+    ///
+    /// # Example
+    ///
+    /// ~~~ {.rust}
+    /// let v: ~[&str] = "Mary had a little lamb".split_iter(' ').collect();
+    /// assert_eq!(v, ~["Mary", "had", "a", "little", "lamb"]);
+    ///
+    /// let v: ~[&str] = "abc1def2ghi".split_iter(|c: char| c.is_digit()).collect();
+    /// assert_eq!(v, ~["abc", "def", "ghi"]);
+    /// ~~~
+    #[inline]
     fn split_iter<Sep: CharEq>(&self, sep: Sep) -> StrCharSplitIterator<'self, Sep> {
         self.split_options_iter(sep, self.len(), true)
     }
 
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by `sep`, restricted to splitting at most `count`
+    /// times.
+    #[inline]
     fn splitn_iter<Sep: CharEq>(&self, sep: Sep, count: uint) -> StrCharSplitIterator<'self, Sep> {
         self.split_options_iter(sep, count, true)
     }
+
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by `sep`, splitting at most `count` times, and
+    /// possibly not including the trailing empty substring, if it
+    /// exists.
+    #[inline]
     fn split_options_iter<Sep: CharEq>(&self, sep: Sep, count: uint, allow_trailing_empty: bool)
         -> StrCharSplitIterator<'self, Sep> {
         let only_ascii = sep.only_ascii();
@@ -1724,6 +1742,9 @@ impl<'self> StrSlice<'self> for &'self str {
             only_ascii: only_ascii
         }
     }
+    /// An iterator over the start and end indices of each match of
+    /// `sep` within `self`.
+    #[inline]
     fn matches_index_iter(&self, sep: &'self str) -> StrMatchesIndexIterator<'self> {
         assert!(!sep.is_empty())
         StrMatchesIndexIterator {
@@ -1732,6 +1753,17 @@ impl<'self> StrSlice<'self> for &'self str {
             position: 0
         }
     }
+    /**
+     * An iterator over the substrings of `self` separated by `sep`.
+     *
+     * # Example
+     *
+     * ~~~ {.rust}
+     * let v: ~[&str] = "abcXXXabcYYYabc".split_str_iter("abc").collect()
+     * assert_eq!(v, ["", "XXX", "YYY", ""]);
+     * ~~~
+     */
+    #[inline]
     fn split_str_iter(&self, sep: &'self str) -> StrStrSplitIterator<'self> {
         StrStrSplitIterator {
             it: self.matches_index_iter(sep),
@@ -1740,9 +1772,15 @@ impl<'self> StrSlice<'self> for &'self str {
         }
     }
 
+    /// An iterator over the lines of a string (subsequences separated
+    /// by `\n`).
+    #[inline]
     fn line_iter(&self) -> StrCharSplitIterator<'self, char> {
         self.split_options_iter('\n', self.len(), false)
     }
+    /// An iterator over the words of a string (subsequences separated
+    /// by any sequence of whitespace).
+    #[inline]
     fn word_iter(&self) -> WordIterator<'self> {
         self.split_iter(char::is_whitespace).filter(|s| !s.is_empty())
     }
@@ -1791,14 +1829,24 @@ impl<'self> StrSlice<'self> for &'self str {
         assert!(self.is_char_boundary(end));
         unsafe { raw::slice_bytes(*self, begin, end) }
     }
+    /// Returns a slice of the string from `begin` to its end.
+    ///
+    /// Fails when `begin` does not point to a valid character, or is
+    /// out of bounds.
     #[inline]
     fn slice_from(&self, begin: uint) -> &'self str {
         self.slice(begin, self.len())
     }
+    /// Returns a slice of the string from the beginning to byte
+    /// `end`.
+    ///
+    /// Fails when `end` does not point to a valid character, or is
+    /// out of bounds.
     #[inline]
     fn slice_to(&self, end: uint) -> &'self str {
         self.slice(0, end)
     }
+    /// Checks if `needle` is a prefix of the string.
     #[inline]
     fn starts_with<'a>(&self, needle: &'a str) -> bool {
         starts_with(*self, needle)
