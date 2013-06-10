@@ -524,7 +524,7 @@ impl ToStrRadix for BigUint {
                 let s = uint::to_str_radix(*n as uint, radix);
                 str::from_chars(vec::from_elem(l - s.len(), '0')) + s
             }));
-            str::trim_left_chars(s, ['0']).to_owned()
+            s.trim_left_chars(['0']).to_owned()
         }
     }
 }

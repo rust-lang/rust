@@ -318,7 +318,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 match get_line(use_rl, "rusti| ") {
                     None => fail!("unterminated multiline command :{ .. :}"),
                     Some(line) => {
-                        if str::trim(line) == ":}" {
+                        if line.trim() == ":}" {
                             end_multiline = true;
                         } else {
                             multiline_cmd += line + "\n";

@@ -413,80 +413,6 @@ pub fn unshift_char(s: &mut ~str, ch: char) {
     *s = new_str;
 }
 
-/**
- * Returns a string with leading `chars_to_trim` removed.
- *
- * # Arguments
- *
- * * s - A string
- * * chars_to_trim - A vector of chars
- *
- */
-pub fn trim_left_chars<'a>(s: &'a str, chars_to_trim: &[char]) -> &'a str {
-    if chars_to_trim.is_empty() { return s; }
-
-    match s.find(|c| !chars_to_trim.contains(&c)) {
-      None => "",
-      Some(first) => unsafe { raw::slice_bytes(s, first, s.len()) }
-    }
-}
-
-/**
- * Returns a string with trailing `chars_to_trim` removed.
- *
- * # Arguments
- *
- * * s - A string
- * * chars_to_trim - A vector of chars
- *
- */
-pub fn trim_right_chars<'a>(s: &'a str, chars_to_trim: &[char]) -> &'a str {
-    if chars_to_trim.is_empty() { return s; }
-
-    match s.rfind(|c| !chars_to_trim.contains(&c)) {
-      None => "",
-      Some(last) => {
-        let next = char_range_at(s, last).next;
-        unsafe { raw::slice_bytes(s, 0u, next) }
-      }
-    }
-}
-
-/**
- * Returns a string with leading and trailing `chars_to_trim` removed.
- *
- * # Arguments
- *
- * * s - A string
- * * chars_to_trim - A vector of chars
- *
- */
-pub fn trim_chars<'a>(s: &'a str, chars_to_trim: &[char]) -> &'a str {
-    trim_left_chars(trim_right_chars(s, chars_to_trim), chars_to_trim)
-}
-
-/// Returns a string with leading whitespace removed
-pub fn trim_left<'a>(s: &'a str) -> &'a str {
-    match s.find(|c| !char::is_whitespace(c)) {
-      None => "",
-      Some(first) => unsafe { raw::slice_bytes(s, first, s.len()) }
-    }
-}
-
-/// Returns a string with trailing whitespace removed
-pub fn trim_right<'a>(s: &'a str) -> &'a str {
-    match s.rfind(|c| !char::is_whitespace(c)) {
-      None => "",
-      Some(last) => {
-        let next = char_range_at(s, last).next;
-        unsafe { raw::slice_bytes(s, 0u, next) }
-      }
-    }
-}
-
-/// Returns a string with leading and trailing whitespace removed
-pub fn trim<'a>(s: &'a str) -> &'a str { trim_left(trim_right(s)) }
-
 /*
 Section: Transforming strings
 */
@@ -2024,25 +1950,79 @@ impl<'self> StrSlice<'self> for &'self str {
 
     /// Returns a string with leading and trailing whitespace removed
     #[inline]
-    fn trim(&self) -> &'self str { trim(*self) }
+    fn trim(&self) -> &'self str {
+        self.trim_left().trim_right()
+    }
     /// Returns a string with leading whitespace removed
     #[inline]
-    fn trim_left(&self) -> &'self str { trim_left(*self) }
+    fn trim_left(&self) -> &'self str {
+        match self.find(|c| !char::is_whitespace(c)) {
+            None => "",
+            Some(first) => unsafe { raw::slice_bytes(*self, first, self.len()) }
+        }
+    }
     /// Returns a string with trailing whitespace removed
     #[inline]
-    fn trim_right(&self) -> &'self str { trim_right(*self) }
+    fn trim_right(&self) -> &'self str {
+        match self.rfind(|c| !char::is_whitespace(c)) {
+            None => "",
+            Some(last) => {
+                let next = char_range_at(*self, last).next;
+                unsafe { raw::slice_bytes(*self, 0u, next) }
+            }
+        }
+    }
 
+    /**
+     * Returns a string with leading and trailing `chars_to_trim` removed.
+     *
+     * # Arguments
+     *
+     * * chars_to_trim - A vector of chars
+     *
+     */
     #[inline]
     fn trim_chars(&self, chars_to_trim: &[char]) -> &'self str {
-        trim_chars(*self, chars_to_trim)
+        self.trim_left_chars(chars_to_trim).trim_right_chars(chars_to_trim)
     }
+    /**
+     * Returns a string with leading `chars_to_trim` removed.
+     *
+     * # Arguments
+     *
+     * * s - A string
+     * * chars_to_trim - A vector of chars
+     *
+     */
     #[inline]
     fn trim_left_chars(&self, chars_to_trim: &[char]) -> &'self str {
-        trim_left_chars(*self, chars_to_trim)
+        if chars_to_trim.is_empty() { return *self; }
+
+        match self.find(|c| !chars_to_trim.contains(&c)) {
+            None => "",
+            Some(first) => unsafe { raw::slice_bytes(*self, first, self.len()) }
+        }
     }
+    /**
+     * Returns a string with trailing `chars_to_trim` removed.
+     *
+     * # Arguments
+     *
+     * * s - A string
+     * * chars_to_trim - A vector of chars
+     *
+     */
     #[inline]
     fn trim_right_chars(&self, chars_to_trim: &[char]) -> &'self str {
-        trim_right_chars(*self, chars_to_trim)
+        if chars_to_trim.is_empty() { return *self; }
+
+        match self.rfind(|c| !chars_to_trim.contains(&c)) {
+            None => "",
+            Some(last) => {
+                let next = char_range_at(self, last).next;
+                unsafe { raw::slice_bytes(self, 0u, next) }
+            }
+        }
     }
 
 
@@ -2754,56 +2734,56 @@ mod tests {
 
     #[test]
     fn test_trim_left_chars() {
-        assert!(trim_left_chars(" *** foo *** ", []) == " *** foo *** ");
-        assert!(trim_left_chars(" *** foo *** ", ['*', ' ']) == "foo *** ");
-        assert_eq!(trim_left_chars(" ***  *** ", ['*', ' ']), "");
-        assert!(trim_left_chars("foo *** ", ['*', ' ']) == "foo *** ");
+        assert_eq!(" *** foo *** ".trim_left_chars([]), " *** foo *** ");
+        assert_eq!(" *** foo *** ".trim_left_chars(['*', ' ']), "foo *** ");
+        assert_eq!(" ***  *** ".trim_left_chars(['*', ' ']), "");
+        assert_eq!("foo *** ".trim_left_chars(['*', ' ']), "foo *** ");
     }
 
     #[test]
     fn test_trim_right_chars() {
-        assert!(trim_right_chars(" *** foo *** ", []) == " *** foo *** ");
-        assert!(trim_right_chars(" *** foo *** ", ['*', ' ']) == " *** foo");
-        assert_eq!(trim_right_chars(" ***  *** ", ['*', ' ']), "");
-        assert!(trim_right_chars(" *** foo", ['*', ' ']) == " *** foo");
+        assert_eq!(" *** foo *** ".trim_right_chars([]), " *** foo *** ");
+        assert_eq!(" *** foo *** ".trim_right_chars(['*', ' ']), " *** foo");
+        assert_eq!(" ***  *** ".trim_right_chars(['*', ' ']), "");
+        assert_eq!(" *** foo".trim_right_chars(['*', ' ']), " *** foo");
     }
 
     #[test]
     fn test_trim_chars() {
-        assert_eq!(trim_chars(" *** foo *** ", []), " *** foo *** ");
-        assert_eq!(trim_chars(" *** foo *** ", ['*', ' ']), "foo");
-        assert_eq!(trim_chars(" ***  *** ", ['*', ' ']), "");
-        assert_eq!(trim_chars("foo", ['*', ' ']), "foo");
+        assert_eq!(" *** foo *** ".trim_chars([]), " *** foo *** ");
+        assert_eq!(" *** foo *** ".trim_chars(['*', ' ']), "foo");
+        assert_eq!(" ***  *** ".trim_chars(['*', ' ']), "");
+        assert_eq!("foo".trim_chars(['*', ' ']), "foo");
     }
 
     #[test]
     fn test_trim_left() {
-        assert_eq!(trim_left(""), "");
-        assert_eq!(trim_left("a"), "a");
-        assert_eq!(trim_left("    "), "");
-        assert_eq!(trim_left("     blah"), "blah");
-        assert_eq!(trim_left("   \u3000  wut"), "wut");
-        assert_eq!(trim_left("hey "), "hey ");
+        assert_eq!("".trim_left(), "");
+        assert_eq!("a".trim_left(), "a");
+        assert_eq!("    ".trim_left(), "");
+        assert_eq!("     blah".trim_left(), "blah");
+        assert_eq!("   \u3000  wut".trim_left(), "wut");
+        assert_eq!("hey ".trim_left(), "hey ");
     }
 
     #[test]
     fn test_trim_right() {
-        assert_eq!(trim_right(""), "");
-        assert_eq!(trim_right("a"), "a");
-        assert_eq!(trim_right("    "), "");
-        assert_eq!(trim_right("blah     "), "blah");
-        assert_eq!(trim_right("wut   \u3000  "), "wut");
-        assert_eq!(trim_right(" hey"), " hey");
+        assert_eq!("".trim_right(), "");
+        assert_eq!("a".trim_right(), "a");
+        assert_eq!("    ".trim_right(), "");
+        assert_eq!("blah     ".trim_right(), "blah");
+        assert_eq!("wut   \u3000  ".trim_right(), "wut");
+        assert_eq!(" hey".trim_right(), " hey");
     }
 
     #[test]
     fn test_trim() {
-        assert_eq!(trim(""), "");
-        assert_eq!(trim("a"), "a");
-        assert_eq!(trim("    "), "");
-        assert_eq!(trim("    blah     "), "blah");
-        assert_eq!(trim("\nwut   \u3000  "), "wut");
-        assert_eq!(trim(" hey dude "), "hey dude");
+        assert_eq!("".trim(), "");
+        assert_eq!("a".trim(), "a");
+        assert_eq!("    ".trim(), "");
+        assert_eq!("    blah     ".trim(), "blah");
+        assert_eq!("\nwut   \u3000  ".trim(), "wut");
+        assert_eq!(" hey dude ".trim(), "hey dude");
     }
 
     #[test]
