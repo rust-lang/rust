@@ -11,6 +11,7 @@
 use core::prelude::*;
 
 use ast;
+use attr;
 use codemap::{BytePos, CharPos, CodeMap, Pos};
 use diagnostic;
 use parse::lexer::{is_whitespace, with_str_from, reader};
@@ -55,7 +56,7 @@ pub fn doc_comment_style(comment: &str) -> ast::attr_style {
     }
 }
 
-pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
+pub fn strip_doc_comment_decoration(comment: &str) -> (~str, attr::doc_style) {
 
     /// remove whitespace-only lines from the start/end of lines
     fn vertical_trim(lines: ~[~str]) -> ~[~str] {
@@ -100,10 +101,18 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         };
     }
 
+    assert!(comment.len() >= 3);
+
     if comment.starts_with("//") {
+        let style = if comment.char_at(2) == '!' {
+            attr::doc_line_inner
+        } else {
+            attr::doc_line_outer
+        };
         // FIXME #5475:
-        // return comment.slice(3u, comment.len()).trim().to_owned();
-        let r = comment.slice(3u, comment.len()); return r.trim().to_owned();
+        // return (comment.slice(3u, comment.len()).trim().to_owned(), style);
+        let r = comment.slice(3u, comment.len());
+        return (r.trim().to_owned(), style);
 
     }
 
@@ -116,7 +125,12 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         let lines = block_trim(lines, ~"\t ", None);
         let lines = block_trim(lines, ~"*", Some(1u));
         let lines = block_trim(lines, ~"\t ", None);
-        return str::connect(lines, "\n");
+        let style = if comment.char_at(2) == '!' {
+            attr::doc_block_inner
+        } else {
+            attr::doc_block_outer
+        };
+        return (str::connect(lines, "\n"), style);
     }
 
     fail!("not a doc-comment: %s", comment);

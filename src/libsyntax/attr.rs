@@ -24,6 +24,15 @@ use core::hashmap::HashSet;
 use core::vec;
 use extra;
 
+pub enum doc_style {
+    doc_block_outer,
+    doc_block_inner,
+    doc_line_outer,
+    doc_line_inner,
+    doc_attr_outer,
+    doc_attr_inner,
+}
+
 /* Constructors */
 
 pub fn mk_name_value_item_str(name: @~str, value: @~str)
@@ -75,14 +84,18 @@ pub fn attr_metas(attrs: &[ast::attribute]) -> ~[@ast::meta_item] {
     do attrs.map |a| { attr_meta(*a) }
 }
 
-pub fn desugar_doc_attr(attr: &ast::attribute) -> ast::attribute {
+pub fn desugar_doc_attr(attr: &ast::attribute) -> (ast::attribute, doc_style) {
     if attr.node.is_sugared_doc {
         let comment = get_meta_item_value_str(attr.node.value).get();
-        let meta = mk_name_value_item_str(@~"doc",
-                                     @strip_doc_comment_decoration(*comment));
-        mk_attr(meta)
+        let (content, style) = strip_doc_comment_decoration(*comment);
+        let meta = mk_name_value_item_str(@~"doc", @content);
+        (mk_attr(meta), style)
     } else {
-        *attr
+        let style = match attr.node.style {
+            ast::attr_inner => doc_attr_inner,
+            ast::attr_outer => doc_attr_outer,
+        };
+        (*attr, style)
     }
 }
 
