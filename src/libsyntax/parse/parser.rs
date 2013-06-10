@@ -4002,9 +4002,7 @@ impl Parser {
                                 fmt!("illegal ABI: \
                                       expected one of [%s], \
                                       found `%s`",
-                                     str::connect_slices(
-                                         abi::all_names(),
-                                         ", "),
+                                     abi::all_names().connect(", "),
                                      word));
                         }
                     }

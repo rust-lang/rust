@@ -1483,7 +1483,7 @@ pub fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
     if !params.all(|t| !ty::type_needs_infer(*t)) {
         bcx.sess().bug(
             fmt!("Type parameters for node %d include inference types: %s",
-                 id, str::connect(params.map(|t| bcx.ty_to_str(*t)), ",")));
+                 id, params.map(|t| bcx.ty_to_str(*t)).connect(",")));
     }
 
     match bcx.fcx.param_substs {

@@ -116,7 +116,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         let lines = block_trim(lines, ~"\t ", None);
         let lines = block_trim(lines, ~"*", Some(1u));
         let lines = block_trim(lines, ~"\t ", None);
-        return str::connect(lines, "\n");
+        return lines.connect("\n");
     }
 
     fail!("not a doc-comment: %s", comment);

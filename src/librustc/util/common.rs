@@ -111,7 +111,7 @@ pub fn local_rhs_span(l: @ast::local, def: span) -> span {
 
 pub fn pluralize(n: uint, s: ~str) -> ~str {
     if n == 1 { s }
-    else { str::concat([s, ~"s"]) }
+    else { fmt!("%ss", s) }
 }
 
 // A set of node IDs (used to keep track of which node IDs are for statements)

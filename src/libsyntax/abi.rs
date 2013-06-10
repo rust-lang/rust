@@ -10,7 +10,6 @@
 
 use core::prelude::*;
 
-use core::str;
 use core::to_bytes;
 
 #[deriving(Eq)]
@@ -267,7 +266,7 @@ impl ToStr for AbiSet {
         for self.each |abi| {
             strs.push(abi.data().name);
         }
-        fmt!("\"%s\"", str::connect_slices(strs, " "))
+        fmt!("\"%s\"", strs.connect(" "))
     }
 }
 

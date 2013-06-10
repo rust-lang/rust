@@ -24,7 +24,6 @@ use opt_vec;
 use opt_vec::OptVec;
 
 use core::iterator::IteratorUtil;
-use core::str;
 use core::vec;
 
 pub trait gen_send {
@@ -100,9 +99,9 @@ impl gen_send for message {
             }
             body += fmt!("let message = %s(%s);\n",
                          name,
-                         str::connect(vec::append_one(
-                           arg_names.map(|x| cx.str_of(*x)),
-                             ~"s"), ", "));
+                         vec::append_one(
+                             arg_names.map(|x| cx.str_of(*x)),
+                             ~"s").connect(", "));
 
             if !try {
                 body += fmt!("::std::pipes::send(pipe, message);\n");
@@ -155,8 +154,7 @@ impl gen_send for message {
                     ~""
                 }
                 else {
-                    ~"(" + str::connect(arg_names.map(|x| copy *x),
-                                        ", ") + ")"
+                    ~"(" + arg_names.map(|x| copy *x).connect(", ") + ")"
                 };
 
                 let mut body = ~"{ ";

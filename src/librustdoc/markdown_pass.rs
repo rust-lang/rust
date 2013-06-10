@@ -173,7 +173,7 @@ pub fn header_kind(doc: doc::ItemTag) -> ~str {
 }
 
 pub fn header_name(doc: doc::ItemTag) -> ~str {
-    let fullpath = str::connect(doc.path() + [doc.name()], "::");
+    let fullpath = (doc.path() + [doc.name()]).connect("::");
     match &doc {
         &doc::ModTag(_) if doc.id() != syntax::ast::crate_node_id => {
             fullpath
@@ -414,7 +414,7 @@ fn code_block_indent(s: ~str) -> ~str {
     for str::each_line_any(s) |line| {
         indented.push(fmt!("    %s", line));
     }
-    str::connect(indented, "\n")
+    indented.connect("\n")
 }
 
 fn write_const(
@@ -476,7 +476,7 @@ fn list_item_indent(item: &str) -> ~str {
     // separate markdown elements within `*` lists must be indented by four
     // spaces, or they will escape the list context. indenting everything
     // seems fine though.
-    str::connect_slices(indented, "\n    ")
+    indented.connect("\n    ")
 }
 
 fn write_trait(ctxt: &Ctxt, doc: doc::TraitDoc) {

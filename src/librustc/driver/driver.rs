@@ -328,8 +328,8 @@ pub fn compile_rest(sess: Session,
 
     let outputs = outputs.get_ref();
     if (sess.opts.debugging_opts & session::print_link_args) != 0 {
-        io::println(str::connect(link::link_args(sess,
-            &outputs.obj_filename, &outputs.out_filename, link_meta), " "));
+        io::println(link::link_args(sess, &outputs.obj_filename,
+                                    &outputs.out_filename, link_meta).connect(" "));
     }
 
     // NB: Android hack

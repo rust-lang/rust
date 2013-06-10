@@ -1879,7 +1879,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                        } else {
                                            "s"
                                        },
-                                       str::connect(missing_fields, ", ")));
+                                       missing_fields.connect(", ")));
              }
         }
 

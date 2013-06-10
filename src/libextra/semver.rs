@@ -81,12 +81,12 @@ impl ToStr for Version {
         let s = if self.pre.is_empty() {
             s
         } else {
-            s + "-" + str::connect(self.pre.map(|i| i.to_str()), ".")
+            s + "-" + self.pre.map(|i| i.to_str()).connect(".")
         };
         if self.build.is_empty() {
             s
         } else {
-            s + "+" + str::connect(self.build.map(|i| i.to_str()), ".")
+            s + "+" + self.build.map(|i| i.to_str()).connect(".")
         }
     }
 }
