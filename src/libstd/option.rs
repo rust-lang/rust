@@ -48,6 +48,7 @@ use util;
 use num::Zero;
 use old_iter::{BaseIter, MutableIter, ExtendedIter};
 use old_iter;
+use iterator::Iterator;
 use str::StrSlice;
 use clone::DeepClone;
 
@@ -146,7 +147,24 @@ impl<A> ExtendedIter<A> for Option<A> {
 }
 
 impl<T> Option<T> {
+    #[inline]
+    pub fn iter<'r>(&'r self) -> OptionIterator<'r, T> {
+        match *self {
+            Some(ref x) => OptionIterator{opt: Some(x)},
+            None => OptionIterator{opt: None}
+        }
+    }
+
+    #[inline]
+    pub fn mut_iter<'r>(&'r mut self) -> OptionMutIterator<'r, T> {
+        match *self {
+            Some(ref mut x) => OptionMutIterator{opt: Some(x)},
+            None => OptionMutIterator{opt: None}
+        }
+    }
+
     /// Returns true if the option equals `none`
+    #[inline]
     pub fn is_none(&const self) -> bool {
         match *self { None => true, Some(_) => false }
     }
@@ -373,6 +391,26 @@ impl<T:Copy + Zero> Option<T> {
             Some(x) => x,
             None => Zero::zero()
         }
+    }
+}
+
+pub struct OptionIterator<'self, A> {
+    priv opt: Option<&'self A>
+}
+
+impl<'self, A> Iterator<&'self A> for OptionIterator<'self, A> {
+    fn next(&mut self) -> Option<&'self A> {
+        util::replace(&mut self.opt, None)
+    }
+}
+
+pub struct OptionMutIterator<'self, A> {
+    priv opt: Option<&'self mut A>
+}
+
+impl<'self, A> Iterator<&'self mut A> for OptionMutIterator<'self, A> {
+    fn next(&mut self) -> Option<&'self mut A> {
+        util::replace(&mut self.opt, None)
     }
 }
 
