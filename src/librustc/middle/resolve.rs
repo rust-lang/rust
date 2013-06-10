@@ -40,7 +40,7 @@ use syntax::visit::{visit_foreign_item, visit_item};
 use syntax::visit::{visit_mod, visit_ty, vt};
 use syntax::opt_vec::OptVec;
 
-use core::str::each_split_str;
+use core::iterator::IteratorUtil;
 use core::str;
 use core::uint;
 use core::vec;
@@ -1737,8 +1737,7 @@ impl Resolver {
                         entry: %s (%?)",
                     path_string, def_like);
 
-            let mut pieces = ~[];
-            for each_split_str(path_string, "::") |s| { pieces.push(s.to_owned()) }
+            let mut pieces: ~[&str] = path_string.split_str_iter("::").collect();
             let final_ident_str = pieces.pop();
             let final_ident = self.session.ident_of(final_ident_str);
 
