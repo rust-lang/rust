@@ -26,6 +26,7 @@ use middle::ty::{region_variance, rv_covariant, rv_invariant};
 use middle::ty::{rv_contravariant, FreeRegion};
 use middle::ty;
 
+use core::iterator::IteratorUtil;
 use core::hashmap::{HashMap, HashSet};
 use syntax::ast_map;
 use syntax::codemap::span;
@@ -329,7 +330,7 @@ pub fn parent_id(cx: Context, span: span) -> ast::node_id {
 pub fn parent_to_expr(cx: Context, child_id: ast::node_id, sp: span) {
     debug!("region::parent_to_expr(span=%?)",
            cx.sess.codemap.span_to_str(sp));
-    for cx.parent.each |parent_id| {
+    for cx.parent.iter().advance |parent_id| {
         cx.region_maps.record_parent(child_id, *parent_id);
     }
 }

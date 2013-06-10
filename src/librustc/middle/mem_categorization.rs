@@ -47,6 +47,7 @@
  */
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use middle::ty;
 use middle::typeck;
@@ -948,7 +949,7 @@ impl mem_categorization_ctxt {
               for before.each |&before_pat| {
                   self.cat_pattern(elt_cmt, before_pat, op);
               }
-              for slice.each |&slice_pat| {
+              for slice.iter().advance |&slice_pat| {
                   let slice_ty = self.pat_ty(slice_pat);
                   let slice_cmt = self.cat_rvalue(pat, slice_ty);
                   self.cat_pattern(slice_cmt, slice_pat, op);

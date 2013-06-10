@@ -22,6 +22,7 @@ use middle::ty;
 use middle;
 use util::ppaux::ty_to_str;
 
+use core::iterator::IteratorUtil;
 use core::hash::HashUtil;
 use core::hashmap::HashMap;
 use core::int;
@@ -120,7 +121,7 @@ fn encode_region_param(ecx: @EncodeContext,
                        ebml_w: &mut writer::Encoder,
                        it: @ast::item) {
     let opt_rp = ecx.tcx.region_paramd_items.find(&it.id);
-    for opt_rp.each |rp| {
+    for opt_rp.iter().advance |rp| {
         ebml_w.start_tag(tag_region_param);
         rp.encode(ebml_w);
         ebml_w.end_tag();
@@ -240,7 +241,7 @@ fn encode_type(ecx: @EncodeContext,
 fn encode_transformed_self_ty(ecx: @EncodeContext,
                               ebml_w: &mut writer::Encoder,
                               opt_typ: Option<ty::t>) {
-    for opt_typ.each |&typ| {
+    for opt_typ.iter().advance |&typ| {
         ebml_w.start_tag(tag_item_method_transformed_self_ty);
         write_type(ecx, ebml_w, typ);
         ebml_w.end_tag();
@@ -956,7 +957,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
             ebml_w.writer.write(str::to_bytes(def_to_str(method_def_id)));
             ebml_w.end_tag();
         }
-        for opt_trait.each |ast_trait_ref| {
+        for opt_trait.iter().advance |ast_trait_ref| {
             let trait_ref = ty::node_id_to_trait_ref(ecx.tcx, ast_trait_ref.ref_id);
             encode_trait_ref(ebml_w, ecx, trait_ref, tag_item_trait_ref);
         }

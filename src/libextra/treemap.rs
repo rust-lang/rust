@@ -427,7 +427,7 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
                 b = y.next();
             }
         }
-        return b.each(|&x| f(x)) && y.advance(f);
+        b.iter().advance(|&x| f(x)) && y.advance(f)
     }
 
     /// Visit the values (in-order) representing the intersection
@@ -485,7 +485,7 @@ impl<T: TotalOrd> Set<T> for TreeSet<T> {
                 a = x.next();
             }
         }
-        return b.each(|&x| f(x)) && y.advance(f);
+        b.iter().advance(|&x| f(x)) && y.advance(f)
     }
 }
 
@@ -527,14 +527,14 @@ impl<K: TotalOrd, V> TreeNode<K, V> {
 
 fn each<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
                             f: &fn(&'r K, &'r V) -> bool) -> bool {
-    node.each(|x| each(&x.left, f) && f(&x.key, &x.value) &&
-                  each(&x.right, f))
+    node.iter().advance(|x| each(&x.left, f) && f(&x.key, &x.value) &&
+                            each(&x.right, f))
 }
 
 fn each_reverse<'r, K: TotalOrd, V>(node: &'r Option<~TreeNode<K, V>>,
                                     f: &fn(&'r K, &'r V) -> bool) -> bool {
-    node.each(|x| each_reverse(&x.right, f) && f(&x.key, &x.value) &&
-                  each_reverse(&x.left, f))
+    node.iter().advance(|x| each_reverse(&x.right, f) && f(&x.key, &x.value) &&
+                            each_reverse(&x.left, f))
 }
 
 fn mutate_values<'r, K: TotalOrd, V>(node: &'r mut Option<~TreeNode<K, V>>,
@@ -625,7 +625,7 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
     fn heir_swap<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>,
                                  child: &mut Option<~TreeNode<K, V>>) {
         // *could* be done without recursion, but it won't borrow check
-        for child.each_mut |x| {
+        for child.mut_iter().advance |x| {
             if x.right.is_some() {
                 heir_swap(node, &mut x.right);
             } else {
@@ -680,18 +680,18 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
                 save.level -= 1;
 
                 if right_level > save.level {
-                    for save.right.each_mut |x| { x.level = save.level }
+                    for save.right.mut_iter().advance |x| { x.level = save.level }
                 }
 
                 skew(save);
 
-                for save.right.each_mut |right| {
+                for save.right.mut_iter().advance |right| {
                     skew(right);
-                    for right.right.each_mut |x| { skew(x) }
+                    for right.right.mut_iter().advance |x| { skew(x) }
                 }
 
                 split(save);
-                for save.right.each_mut |x| { split(x) }
+                for save.right.mut_iter().advance |x| { split(x) }
             }
 
             return ret;
@@ -1111,6 +1111,7 @@ mod test_set {
 
         let mut n = 0;
         for m.each |x| {
+            println(fmt!("%?", x));
             assert_eq!(*x, n);
             n += 1
         }

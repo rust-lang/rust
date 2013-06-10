@@ -49,12 +49,12 @@ pub trait IteratorUtil<A> {
     ///
     /// let a = [0];
     /// let b = [1];
-    /// let mut it = a.iter().chain(b.iter());
+    /// let mut it = a.iter().chain_(b.iter());
     /// assert_eq!(it.next().get(), &0);
     /// assert_eq!(it.next().get(), &1);
     /// assert!(it.next().is_none());
     /// ~~~
-    fn chain<U: Iterator<A>>(self, other: U) -> ChainIterator<A, Self, U>;
+    fn chain_<U: Iterator<A>>(self, other: U) -> ChainIterator<A, Self, U>;
 
     /// Creates an iterator which iterates over both this and the specified
     /// iterators simultaneously, yielding the two elements as pairs. When
@@ -191,6 +191,7 @@ pub trait IteratorUtil<A> {
     /// ~~~
     fn skip(self, n: uint) -> SkipIterator<A, Self>;
 
+    // FIXME: #5898: should be called take
     /// Creates an iterator which yields the first `n` elements of this
     /// iterator, and then it will always return None.
     ///
@@ -200,13 +201,13 @@ pub trait IteratorUtil<A> {
     /// use std::iterator::*;
     ///
     /// let a = [1, 2, 3, 4, 5];
-    /// let mut it = a.iter().take(3);
+    /// let mut it = a.iter().take_(3);
     /// assert_eq!(it.next().get(), &1);
     /// assert_eq!(it.next().get(), &2);
     /// assert_eq!(it.next().get(), &3);
     /// assert!(it.next().is_none());
     /// ~~~
-    fn take(self, n: uint) -> TakeIterator<A, Self>;
+    fn take_(self, n: uint) -> TakeIterator<A, Self>;
 
     /// Creates a new iterator which behaves in a similar fashion to foldl.
     /// There is a state which is passed between each iteration and can be
@@ -337,10 +338,10 @@ pub trait IteratorUtil<A> {
     ///
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
-    /// assert!(it.any(|&x| *x == 3));
-    /// assert!(!it.any(|&x| *x == 3));
+    /// assert!(it.any_(|&x| *x == 3));
+    /// assert!(!it.any_(|&x| *x == 3));
     /// ~~~
-    fn any(&mut self, f: &fn(A) -> bool) -> bool;
+    fn any_(&mut self, f: &fn(A) -> bool) -> bool;
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -349,7 +350,7 @@ pub trait IteratorUtil<A> {
 /// In the future these will be default methods instead of a utility trait.
 impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     #[inline(always)]
-    fn chain<U: Iterator<A>>(self, other: U) -> ChainIterator<A, T, U> {
+    fn chain_<U: Iterator<A>>(self, other: U) -> ChainIterator<A, T, U> {
         ChainIterator{a: self, b: other, flag: false}
     }
 
@@ -394,8 +395,9 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
         SkipIterator{iter: self, n: n}
     }
 
+    // FIXME: #5898: should be called take
     #[inline(always)]
-    fn take(self, n: uint) -> TakeIterator<A, T> {
+    fn take_(self, n: uint) -> TakeIterator<A, T> {
         TakeIterator{iter: self, n: n}
     }
 
@@ -467,7 +469,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     }
 
     #[inline(always)]
-    fn any(&mut self, f: &fn(A) -> bool) -> bool {
+    fn any_(&mut self, f: &fn(A) -> bool) -> bool {
         for self.advance |x| { if f(x) { return true; } }
         return false;
     }
@@ -878,7 +880,7 @@ mod tests {
 
     #[test]
     fn test_counter_from_iter() {
-        let mut it = Counter::new(0, 5).take(10);
+        let mut it = Counter::new(0, 5).take_(10);
         let xs: ~[int] = iter::FromIter::from_iter::<int, ~[int]>(|f| it.advance(f));
         assert_eq!(xs, ~[0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
     }
@@ -888,7 +890,7 @@ mod tests {
         let xs = [0u, 1, 2, 3, 4, 5];
         let ys = [30u, 40, 50, 60];
         let expected = [0, 1, 2, 3, 4, 5, 30, 40, 50, 60];
-        let mut it = xs.iter().chain(ys.iter());
+        let mut it = xs.iter().chain_(ys.iter());
         let mut i = 0;
         for it.advance |&x| {
             assert_eq!(x, expected[i]);
@@ -896,8 +898,8 @@ mod tests {
         }
         assert_eq!(i, expected.len());
 
-        let ys = Counter::new(30u, 10).take(4);
-        let mut it = xs.iter().transform(|&x| x).chain(ys);
+        let ys = Counter::new(30u, 10).take_(4);
+        let mut it = xs.iter().transform(|&x| x).chain_(ys);
         let mut i = 0;
         for it.advance |x| {
             assert_eq!(x, expected[i]);
@@ -908,7 +910,7 @@ mod tests {
 
     #[test]
     fn test_filter_map() {
-        let mut it = Counter::new(0u, 1u).take(10)
+        let mut it = Counter::new(0u, 1u).take_(10)
             .filter_map(|x| if x.is_even() { Some(x*x) } else { None });
         assert_eq!(it.collect::<~[uint]>(), ~[0*0, 2*2, 4*4, 6*6, 8*8]);
     }
@@ -965,7 +967,7 @@ mod tests {
     fn test_iterator_take() {
         let xs = [0u, 1, 2, 3, 5, 13, 15, 16, 17, 19];
         let ys = [0u, 1, 2, 3, 5];
-        let mut it = xs.iter().take(5);
+        let mut it = xs.iter().take_(5);
         let mut i = 0;
         for it.advance |&x| {
             assert_eq!(x, ys[i]);
@@ -1088,9 +1090,9 @@ mod tests {
     #[test]
     fn test_any() {
         let v = ~&[1, 2, 3, 4, 5];
-        assert!(v.iter().any(|&x| x < 10));
-        assert!(v.iter().any(|&x| x.is_even()));
-        assert!(!v.iter().any(|&x| x > 100));
-        assert!(!v.slice(0, 0).iter().any(|_| fail!()));
+        assert!(v.iter().any_(|&x| x < 10));
+        assert!(v.iter().any_(|&x| x.is_even()));
+        assert!(!v.iter().any_(|&x| x > 100));
+        assert!(!v.slice(0, 0).iter().any_(|_| fail!()));
     }
 }

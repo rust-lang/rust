@@ -34,6 +34,7 @@ use core::io;
 use core::str;
 use core::u64;
 use core::uint;
+use core::iterator::IteratorUtil;
 
 // The @ps is stored here to prevent recursive type.
 pub enum ann_node<'self> {
@@ -371,7 +372,7 @@ pub fn print_foreign_mod(s: @ps, nmod: &ast::foreign_mod,
 }
 
 pub fn print_opt_lifetime(s: @ps, lifetime: Option<@ast::Lifetime>) {
-    for lifetime.each |l| {
+    for lifetime.iter().advance |l| {
         print_lifetime(s, *l);
         nbsp(s);
     }
@@ -1213,7 +1214,7 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
         print_block(s, blk);
       }
       ast::expr_loop(ref blk, opt_ident) => {
-        for opt_ident.each |ident| {
+        for opt_ident.iter().advance |ident| {
             word(s.s, "'");
             print_ident(s, *ident);
             word_space(s, ":");
@@ -1362,7 +1363,7 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
       ast::expr_break(opt_ident) => {
         word(s.s, "break");
         space(s.s);
-        for opt_ident.each |ident| {
+        for opt_ident.iter().advance |ident| {
             word(s.s, "'");
             print_ident(s, *ident);
             space(s.s);
@@ -1371,7 +1372,7 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
       ast::expr_again(opt_ident) => {
         word(s.s, "loop");
         space(s.s);
-        for opt_ident.each |ident| {
+        for opt_ident.iter().advance |ident| {
             word(s.s, "'");
             print_ident(s, *ident);
             space(s.s)
@@ -1498,7 +1499,7 @@ pub fn print_path(s: @ps, path: @ast::Path, colons_before_params: bool) {
         if path.rp.is_some() || !path.types.is_empty() {
             word(s.s, "<");
 
-            for path.rp.each |r| {
+            for path.rp.iter().advance |r| {
                 print_lifetime(s, *r);
                 if !path.types.is_empty() {
                     word_space(s, ",");
@@ -1613,7 +1614,7 @@ pub fn print_pat(s: @ps, pat: @ast::pat, refutable: bool) {
         do commasep(s, inconsistent, *before) |s, p| {
             print_pat(s, p, refutable);
         }
-        for slice.each |&p| {
+        for slice.iter().advance |&p| {
             if !before.is_empty() { word_space(s, ","); }
             word(s.s, "..");
             print_pat(s, p, refutable);
@@ -1675,7 +1676,7 @@ pub fn print_fn_args(s: @ps, decl: &ast::fn_decl,
     // self type and the args all in the same box.
     box(s, 0u, inconsistent);
     let mut first = true;
-    for opt_explicit_self.each |explicit_self| {
+    for opt_explicit_self.iter().advance |explicit_self| {
         first = !print_explicit_self(s, *explicit_self);
     }
 
@@ -1922,7 +1923,7 @@ pub fn print_ty_fn(s: @ps,
     // self type and the args all in the same box.
     box(s, 0u, inconsistent);
     let mut first = true;
-    for opt_explicit_self.each |explicit_self| {
+    for opt_explicit_self.iter().advance |explicit_self| {
         first = !print_explicit_self(s, *explicit_self);
     }
     for decl.inputs.each |arg| {
