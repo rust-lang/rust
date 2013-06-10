@@ -151,7 +151,7 @@ pub fn paragraphs(s: &str) -> ~[~str] {
     let paras = do lines.iter().fold(~[]) |paras, line| {
         let mut res = paras;
 
-        if str::is_whitespace(*line) {
+        if line.is_whitespace() {
             whitespace_lines += 1;
         } else {
             if whitespace_lines > 0 {

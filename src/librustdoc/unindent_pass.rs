@@ -46,7 +46,7 @@ fn unindent(s: &str) -> ~str {
         let ignore_previous_indents =
             saw_first_line &&
             !saw_second_line &&
-            !str::is_whitespace(*line);
+            !line.is_whitespace();
 
         let min_indent = if ignore_previous_indents {
             uint::max_value
@@ -58,7 +58,7 @@ fn unindent(s: &str) -> ~str {
             saw_second_line = true;
         }
 
-        if str::is_whitespace(*line) {
+        if line.is_whitespace() {
             min_indent
         } else {
             saw_first_line = true;
@@ -80,7 +80,7 @@ fn unindent(s: &str) -> ~str {
     if !lines.is_empty() {
         let unindented = ~[lines.head().trim().to_owned()]
             + do lines.tail().map |line| {
-            if str::is_whitespace(*line) {
+            if line.is_whitespace() {
                 copy *line
             } else {
                 assert!(line.len() >= min_indent);
