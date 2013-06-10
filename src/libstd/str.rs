@@ -32,7 +32,6 @@ use option::{None, Option, Some};
 use old_iter::{BaseIter, EqIter};
 use ptr;
 use ptr::RawPtr;
-use str;
 use to_str::ToStr;
 use uint;
 use vec;

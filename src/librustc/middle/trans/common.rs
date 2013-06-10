@@ -44,7 +44,6 @@ use core::cast;
 use core::hash;
 use core::hashmap::{HashMap, HashSet};
 use core::libc::{c_uint, c_longlong, c_ulonglong};
-use core::ptr;
 use core::str;
 use core::to_bytes;
 use core::vec::raw::to_ptr;

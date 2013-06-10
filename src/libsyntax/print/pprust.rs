@@ -34,7 +34,6 @@ use core::io;
 use core::str;
 use core::u64;
 use core::uint;
-use core::vec;
 
 // The @ps is stored here to prevent recursive type.
 pub enum ann_node<'self> {
