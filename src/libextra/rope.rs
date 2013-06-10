@@ -37,6 +37,7 @@
 
 use core::prelude::*;
 
+use core::iterator::IteratorUtil;
 use core::str;
 use core::uint;
 use core::vec;
@@ -1079,9 +1080,7 @@ pub mod node {
 
     pub fn loop_chars(node: @Node, it: &fn(c: char) -> bool) -> bool {
         return loop_leaves(node,|leaf| {
-            str::all_between(*leaf.content,
-                             leaf.byte_offset,
-                             leaf.byte_len, it)
+            leaf.content.slice(leaf.byte_offset, leaf.byte_len).iter().all(it)
         });
     }
 
