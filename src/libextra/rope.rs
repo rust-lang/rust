@@ -1044,7 +1044,7 @@ pub mod node {
             right: right,
             char_len: char_len(left) + char_len(right),
             byte_len: byte_len(left) + byte_len(right),
-            height: uint::max(height(left), height(right)) + 1u,
+            height: height(left).max(&height(right)) + 1u,
         })
     }
 

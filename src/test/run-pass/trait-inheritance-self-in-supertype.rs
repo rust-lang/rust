@@ -20,7 +20,7 @@ impl FuzzyEq<f32> for f32 {
     }
 
     fn fuzzy_eq_eps(&self, other: &f32, epsilon: &f32) -> bool {
-        f32::abs(*self - *other) < *epsilon
+        (*self - *other).abs() < *epsilon
     }
 }
 
@@ -34,7 +34,7 @@ impl FuzzyEq<f64> for f64 {
     }
 
     fn fuzzy_eq_eps(&self, other: &f64, epsilon: &f64) -> bool {
-        f64::abs(*self - *other) < *epsilon
+        (*self - *other).abs() < *epsilon
     }
 }
 

@@ -462,7 +462,7 @@ impl<R: Rng> RngUtil for R {
      */
     fn gen_int_range(&mut self, start: int, end: int) -> int {
         assert!(start < end);
-        start + int::abs(self.gen::<int>() % (end - start))
+        start + (self.gen::<int>() % (end - start)).abs()
     }
 
     /**

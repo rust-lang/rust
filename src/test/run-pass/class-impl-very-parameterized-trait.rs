@@ -63,7 +63,7 @@ impl<T> Mutable for cat<T> {
 
 impl<T> Map<int, T> for cat<T> {
     fn each<'a>(&'a self, f: &fn(&int, &'a T) -> bool) -> bool {
-        let mut n = int::abs(self.meows);
+        let mut n = self.meows.abs();
         while n > 0 {
             if !f(&n, &self.name) { return false; }
             n -= 1;

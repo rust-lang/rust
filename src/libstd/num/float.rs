@@ -22,21 +22,11 @@
 
 #[allow(missing_doc)];
 
-use f64;
-use libc::c_int;
 use num::{Zero, One, strconv};
 use num::FPCategory;
 use num;
 use prelude::*;
 use to_str;
-
-pub use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
-pub use f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
-pub use f64::{erf, erfc, exp, exp_m1, exp2, abs_sub};
-pub use f64::{mul_add, fmax, fmin, next_after, frexp, hypot, ldexp};
-pub use f64::{lgamma, ln, log_radix, ln_1p, log10, log2, ilog_radix};
-pub use f64::{modf, pow, powi, round, sinh, tanh, tgamma, trunc};
-pub use f64::{j0, j1, jn, y0, y1, yn};
 
 pub static NaN: float = 0.0/0.0;
 
@@ -197,7 +187,7 @@ impl to_str::ToStr for float {
 
 impl num::ToStrRadix for float {
     #[inline(always)]
-    fn to_str_radix(&self, radix: uint) -> ~str {
+    pub fn to_str_radix(&self, radix: uint) -> ~str {
         to_str_radix(*self, radix)
     }
 }
@@ -300,7 +290,7 @@ impl FromStr for float {
 
 impl num::FromStrRadix for float {
     #[inline(always)]
-    fn from_str_radix(val: &str, radix: uint) -> Option<float> {
+    pub fn from_str_radix(val: &str, radix: uint) -> Option<float> {
         from_str_radix(val, radix)
     }
 }
@@ -341,31 +331,6 @@ pub fn pow_with_uint(base: uint, pow: uint) -> float {
     return total;
 }
 
-#[inline(always)]
-pub fn abs(x: float) -> float {
-    f64::abs(x as f64) as float
-}
-#[inline(always)]
-pub fn sqrt(x: float) -> float {
-    f64::sqrt(x as f64) as float
-}
-#[inline(always)]
-pub fn atan(x: float) -> float {
-    f64::atan(x as f64) as float
-}
-#[inline(always)]
-pub fn sin(x: float) -> float {
-    f64::sin(x as f64) as float
-}
-#[inline(always)]
-pub fn cos(x: float) -> float {
-    f64::cos(x as f64) as float
-}
-#[inline(always)]
-pub fn tan(x: float) -> float {
-    f64::tan(x as f64) as float
-}
-
 impl Num for float {}
 
 #[cfg(not(test))]
@@ -379,15 +344,15 @@ impl Eq for float {
 #[cfg(not(test))]
 impl ApproxEq<float> for float {
     #[inline(always)]
-    fn approx_epsilon() -> float { 1.0e-6 }
+    pub fn approx_epsilon() -> float { 1.0e-6 }
 
     #[inline(always)]
-    fn approx_eq(&self, other: &float) -> bool {
+    pub fn approx_eq(&self, other: &float) -> bool {
         self.approx_eq_eps(other, &ApproxEq::approx_epsilon::<float, float>())
     }
 
     #[inline(always)]
-    fn approx_eq_eps(&self, other: &float, approx_epsilon: &float) -> bool {
+    pub fn approx_eq_eps(&self, other: &float, approx_epsilon: &float) -> bool {
         (*self - *other).abs() < *approx_epsilon
     }
 }
@@ -407,54 +372,54 @@ impl Ord for float {
 impl Orderable for float {
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
-    fn min(&self, other: &float) -> float {
+    pub fn min(&self, other: &float) -> float {
         (*self as f64).min(&(*other as f64)) as float
     }
 
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
-    fn max(&self, other: &float) -> float {
+    pub fn max(&self, other: &float) -> float {
         (*self as f64).max(&(*other as f64)) as float
     }
 
     /// Returns the number constrained within the range `mn <= self <= mx`.
     /// If any of the numbers are `NaN` then `NaN` is returned.
     #[inline(always)]
-    fn clamp(&self, mn: &float, mx: &float) -> float {
+    pub fn clamp(&self, mn: &float, mx: &float) -> float {
         (*self as f64).clamp(&(*mn as f64), &(*mx as f64)) as float
     }
 }
 
 impl Zero for float {
     #[inline(always)]
-    fn zero() -> float { 0.0 }
+    pub fn zero() -> float { 0.0 }
 
     /// Returns true if the number is equal to either `0.0` or `-0.0`
     #[inline(always)]
-    fn is_zero(&self) -> bool { *self == 0.0 || *self == -0.0 }
+    pub fn is_zero(&self) -> bool { *self == 0.0 || *self == -0.0 }
 }
 
 impl One for float {
     #[inline(always)]
-    fn one() -> float { 1.0 }
+    pub fn one() -> float { 1.0 }
 }
 
 impl Round for float {
     /// Round half-way cases toward `neg_infinity`
     #[inline(always)]
-    fn floor(&self) -> float { floor(*self as f64) as float }
+    pub fn floor(&self) -> float { (*self as f64).floor() as float }
 
     /// Round half-way cases toward `infinity`
     #[inline(always)]
-    fn ceil(&self) -> float { ceil(*self as f64) as float }
+    pub fn ceil(&self) -> float { (*self as f64).ceil() as float }
 
     /// Round half-way cases away from `0.0`
     #[inline(always)]
-    fn round(&self) -> float { round(*self as f64) as float }
+    pub fn round(&self) -> float { (*self as f64).round() as float }
 
     /// The integer part of the number (rounds towards `0.0`)
     #[inline(always)]
-    fn trunc(&self) -> float { trunc(*self as f64) as float }
+    pub fn trunc(&self) -> float { (*self as f64).trunc() as float }
 
     ///
     /// The fractional part of the number, satisfying:
@@ -464,81 +429,81 @@ impl Round for float {
     /// ~~~
     ///
     #[inline(always)]
-    fn fract(&self) -> float { *self - self.trunc() }
+    pub fn fract(&self) -> float { *self - self.trunc() }
 }
 
 impl Fractional for float {
     /// The reciprocal (multiplicative inverse) of the number
     #[inline(always)]
-    fn recip(&self) -> float { 1.0 / *self }
+    pub fn recip(&self) -> float { 1.0 / *self }
 }
 
 impl Algebraic for float {
     #[inline(always)]
-    fn pow(&self, n: float) -> float {
+    pub fn pow(&self, n: float) -> float {
         (*self as f64).pow(n as f64) as float
     }
 
     #[inline(always)]
-    fn sqrt(&self) -> float {
+    pub fn sqrt(&self) -> float {
         (*self as f64).sqrt() as float
     }
 
     #[inline(always)]
-    fn rsqrt(&self) -> float {
+    pub fn rsqrt(&self) -> float {
         (*self as f64).rsqrt() as float
     }
 
     #[inline(always)]
-    fn cbrt(&self) -> float {
+    pub fn cbrt(&self) -> float {
         (*self as f64).cbrt() as float
     }
 
     #[inline(always)]
-    fn hypot(&self, other: float) -> float {
+    pub fn hypot(&self, other: float) -> float {
         (*self as f64).hypot(other as f64) as float
     }
 }
 
 impl Trigonometric for float {
     #[inline(always)]
-    fn sin(&self) -> float {
+    pub fn sin(&self) -> float {
         (*self as f64).sin() as float
     }
 
     #[inline(always)]
-    fn cos(&self) -> float {
+    pub fn cos(&self) -> float {
         (*self as f64).cos() as float
     }
 
     #[inline(always)]
-    fn tan(&self) -> float {
+    pub fn tan(&self) -> float {
         (*self as f64).tan() as float
     }
 
     #[inline(always)]
-    fn asin(&self) -> float {
+    pub fn asin(&self) -> float {
         (*self as f64).asin() as float
     }
 
     #[inline(always)]
-    fn acos(&self) -> float {
+    pub fn acos(&self) -> float {
         (*self as f64).acos() as float
     }
 
     #[inline(always)]
-    fn atan(&self) -> float {
+    pub fn atan(&self) -> float {
         (*self as f64).atan() as float
     }
 
     #[inline(always)]
-    fn atan2(&self, other: float) -> float {
+    pub fn atan2(&self, other: float) -> float {
         (*self as f64).atan2(other as f64) as float
     }
 
     /// Simultaneously computes the sine and cosine of the number
     #[inline(always)]
-    fn sin_cos(&self) -> (float, float) {
+    pub fn sin_cos(&self) -> (float, float) {
         match (*self as f64).sin_cos() {
             (s, c) => (s as float, c as float)
         }
@@ -548,54 +513,54 @@ impl Trigonometric for float {
 impl Exponential for float {
     /// Returns the exponential of the number
     #[inline(always)]
-    fn exp(&self) -> float {
+    pub fn exp(&self) -> float {
         (*self as f64).exp() as float
     }
 
     /// Returns 2 raised to the power of the number
     #[inline(always)]
-    fn exp2(&self) -> float {
+    pub fn exp2(&self) -> float {
         (*self as f64).exp2() as float
     }
 
     /// Returns the natural logarithm of the number
     #[inline(always)]
-    fn ln(&self) -> float {
+    pub fn ln(&self) -> float {
         (*self as f64).ln() as float
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base
     #[inline(always)]
-    fn log(&self, base: float) -> float {
+    pub fn log(&self, base: float) -> float {
         (*self as f64).log(base as f64) as float
     }
 
     /// Returns the base 2 logarithm of the number
     #[inline(always)]
-    fn log2(&self) -> float {
+    pub fn log2(&self) -> float {
         (*self as f64).log2() as float
     }
 
     /// Returns the base 10 logarithm of the number
     #[inline(always)]
-    fn log10(&self) -> float {
+    pub fn log10(&self) -> float {
         (*self as f64).log10() as float
     }
 }
 
 impl Hyperbolic for float {
     #[inline(always)]
-    fn sinh(&self) -> float {
+    pub fn sinh(&self) -> float {
         (*self as f64).sinh() as float
     }
 
     #[inline(always)]
-    fn cosh(&self) -> float {
+    pub fn cosh(&self) -> float {
         (*self as f64).cosh() as float
     }
 
     #[inline(always)]
-    fn tanh(&self) -> float {
+    pub fn tanh(&self) -> float {
         (*self as f64).tanh() as float
     }
 
@@ -609,7 +574,7 @@ impl Hyperbolic for float {
     /// - `NaN` if `self` is `NaN`
     ///
     #[inline(always)]
-    fn asinh(&self) -> float {
+    pub fn asinh(&self) -> float {
         (*self as f64).asinh() as float
     }
 
@@ -623,7 +588,7 @@ impl Hyperbolic for float {
     /// - `NaN` if `self` is `NaN` or `self < 1.0` (including `neg_infinity`)
     ///
     #[inline(always)]
-    fn acosh(&self) -> float {
+    pub fn acosh(&self) -> float {
         (*self as f64).acosh() as float
     }
 
@@ -640,117 +605,170 @@ impl Hyperbolic for float {
     ///   (including `infinity` and `neg_infinity`)
     ///
     #[inline(always)]
-    fn atanh(&self) -> float {
+    pub fn atanh(&self) -> float {
         (*self as f64).atanh() as float
+    }
+}
+
+impl Interpolate for float {
+    pub fn linear(x: float, y: float, t: float) -> float {
+        t.mul_add(y - x, x)
+    }
+
+    pub fn cosine(x: float, y: float, t: float) -> float {
+        (0.5 * (1.0 - (t * Real::pi()).cos())).mul_add(y - x, x)
+    }
+
+    pub fn smooth(x: float, y: float, t: float) -> float {
+        (t * t * t.mul_add(-2.0, 3.0)).mul_add(y - x, x)
+    }
+
+    pub fn barycentric(x: float, y: float, z: float, t0: float, t1: float) -> float {
+        let t2 = 1.0 - t0 - t1;
+
+        t0 * x + t1 * y + t2 * z
+    }
+
+    pub fn hermite(x: float, xp: float, y: float, yp: float, t: float) -> float {
+        let a0 = t.mul_add(t * t.mul_add(2.0, -3.0), 1.0);
+        let a1 = t * t * t.mul_add(-2.0, 3.0);
+        let a2 = t * t.mul_add(t * (t - 2.0), 1.0);
+        let a3 = t * t * (t - 1.0);
+
+        a0 * x + a1 * y + a2 * xp + a3 * yp
+    }
+
+    pub fn cubic(x: float, y: float, z: float, u: float, t: float) -> float {
+        let a0 = -x + y - z + u;
+        let a1 =  x - y - a0;
+        let a2 =  z - x;
+        let a3 =  y;
+
+        t.mul_add(t.mul_add(t.mul_add((t * a0), a1), a2), a3)
+    }
+
+    pub fn catmull_rom(x: float, y: float, z: float, u: float, t: float) -> float {
+        let a0 = -x + 3.0 * y - 3.0 * z + u;
+        let a1 = 2.0 * x - 5.0 * y + 4.0 * z - u;
+        let a2 = -x + z;
+        let a3 = 2.0 * y;
+
+        0.5 * t.mul_add(t.mul_add(t.mul_add((t * a0), a1), a2), a3)
     }
 }
 
 impl Real for float {
     /// Archimedes' constant
     #[inline(always)]
-    fn pi() -> float { 3.14159265358979323846264338327950288 }
+    pub fn pi() -> float { 3.14159265358979323846264338327950288 }
 
     /// 2.0 * pi
     #[inline(always)]
-    fn two_pi() -> float { 6.28318530717958647692528676655900576 }
+    pub fn two_pi() -> float { 6.28318530717958647692528676655900576 }
 
     /// pi / 2.0
     #[inline(always)]
-    fn frac_pi_2() -> float { 1.57079632679489661923132169163975144 }
+    pub fn frac_pi_2() -> float { 1.57079632679489661923132169163975144 }
 
     /// pi / 3.0
     #[inline(always)]
-    fn frac_pi_3() -> float { 1.04719755119659774615421446109316763 }
+    pub fn frac_pi_3() -> float { 1.04719755119659774615421446109316763 }
 
     /// pi / 4.0
     #[inline(always)]
-    fn frac_pi_4() -> float { 0.785398163397448309615660845819875721 }
+    pub fn frac_pi_4() -> float { 0.785398163397448309615660845819875721 }
 
     /// pi / 6.0
     #[inline(always)]
-    fn frac_pi_6() -> float { 0.52359877559829887307710723054658381 }
+    pub fn frac_pi_6() -> float { 0.52359877559829887307710723054658381 }
 
     /// pi / 8.0
     #[inline(always)]
-    fn frac_pi_8() -> float { 0.39269908169872415480783042290993786 }
+    pub fn frac_pi_8() -> float { 0.39269908169872415480783042290993786 }
 
     /// 1.0 / pi
     #[inline(always)]
-    fn frac_1_pi() -> float { 0.318309886183790671537767526745028724 }
+    pub fn frac_1_pi() -> float { 0.318309886183790671537767526745028724 }
 
     /// 2.0 / pi
     #[inline(always)]
-    fn frac_2_pi() -> float { 0.636619772367581343075535053490057448 }
+    pub fn frac_2_pi() -> float { 0.636619772367581343075535053490057448 }
 
     /// 2 .0/ sqrt(pi)
     #[inline(always)]
-    fn frac_2_sqrtpi() -> float { 1.12837916709551257389615890312154517 }
+    pub fn frac_2_sqrtpi() -> float { 1.12837916709551257389615890312154517 }
 
     /// sqrt(2.0)
     #[inline(always)]
-    fn sqrt2() -> float { 1.41421356237309504880168872420969808 }
+    pub fn sqrt2() -> float { 1.41421356237309504880168872420969808 }
 
     /// 1.0 / sqrt(2.0)
     #[inline(always)]
-    fn frac_1_sqrt2() -> float { 0.707106781186547524400844362104849039 }
+    pub fn frac_1_sqrt2() -> float { 0.707106781186547524400844362104849039 }
 
     /// Euler's number
     #[inline(always)]
-    fn e() -> float { 2.71828182845904523536028747135266250 }
+    pub fn e() -> float { 2.71828182845904523536028747135266250 }
 
     /// log2(e)
     #[inline(always)]
-    fn log2_e() -> float { 1.44269504088896340735992468100189214 }
+    pub fn log2_e() -> float { 1.44269504088896340735992468100189214 }
 
     /// log10(e)
     #[inline(always)]
-    fn log10_e() -> float { 0.434294481903251827651128918916605082 }
+    pub fn log10_e() -> float { 0.434294481903251827651128918916605082 }
 
     /// ln(2.0)
     #[inline(always)]
-    fn ln_2() -> float { 0.693147180559945309417232121458176568 }
+    pub fn ln_2() -> float { 0.693147180559945309417232121458176568 }
 
     /// ln(10.0)
     #[inline(always)]
-    fn ln_10() -> float { 2.30258509299404568401799145468436421 }
+    pub fn ln_10() -> float { 2.30258509299404568401799145468436421 }
+
+    /// Returns the error function of the number
+    #[inline(always)]
+    pub fn erf(&self) -> float { (*self as f64).erf() as float }
+
+    /// Returns the complementary error function of the number
+    #[inline(always)]
+    pub fn erfc(&self) -> float { (*self as f64).erfc() as float }
 
     /// Converts to degrees, assuming the number is in radians
     #[inline(always)]
-    fn to_degrees(&self) -> float { (*self as f64).to_degrees() as float }
+    pub fn to_degrees(&self) -> float { (*self as f64).to_degrees() as float }
 
     /// Converts to radians, assuming the number is in degrees
     #[inline(always)]
-    fn to_radians(&self) -> float { (*self as f64).to_radians() as float }
+    pub fn to_radians(&self) -> float { (*self as f64).to_radians() as float }
 }
 
 impl RealExt for float {
     #[inline(always)]
-    fn lgamma(&self) -> (int, float) {
-        let mut sign = 0;
-        let result = lgamma(*self as f64, &mut sign);
-        (sign as int, result as float)
+    pub fn lgamma(&self) -> (int, float) {
+        match (*self as f64).lgamma() { (i, f) => (i, f as float) }
     }
 
     #[inline(always)]
-    fn tgamma(&self) -> float { tgamma(*self as f64) as float }
+    pub fn tgamma(&self) -> float { (*self as f64).tgamma() as float }
 
     #[inline(always)]
-    fn j0(&self) -> float { j0(*self as f64) as float }
+    pub fn j0(&self) -> float { (*self as f64).j0() as float }
 
     #[inline(always)]
-    fn j1(&self) -> float { j1(*self as f64) as float }
+    pub fn j1(&self) -> float { (*self as f64).j1() as float }
 
     #[inline(always)]
-    fn jn(&self, n: int) -> float { jn(n as c_int, *self as f64) as float }
+    pub fn jn(&self, n: int) -> float { (*self as f64).jn(n) as float }
 
     #[inline(always)]
-    fn y0(&self) -> float { y0(*self as f64) as float }
+    pub fn y0(&self) -> float { (*self as f64).y0() as float }
 
     #[inline(always)]
-    fn y1(&self) -> float { y1(*self as f64) as float }
+    pub fn y1(&self) -> float { (*self as f64).y1() as float }
 
     #[inline(always)]
-    fn yn(&self, n: int) -> float { yn(n as c_int, *self as f64) as float }
+    pub fn yn(&self, n: int) -> float { (*self as f64).yn(n) as float }
 }
 
 #[cfg(not(test))]
@@ -791,14 +809,14 @@ impl Neg<float> for float {
 impl Signed for float {
     /// Computes the absolute value. Returns `NaN` if the number is `NaN`.
     #[inline(always)]
-    fn abs(&self) -> float { abs(*self) }
+    pub fn abs(&self) -> float { (*self as f64).abs() as float }
 
     ///
     /// The positive difference of two numbers. Returns `0.0` if the number is less than or
     /// equal to `other`, otherwise the difference between`self` and `other` is returned.
     ///
     #[inline(always)]
-    fn abs_sub(&self, other: &float) -> float {
+    pub fn abs_sub(&self, other: &float) -> float {
         (*self as f64).abs_sub(&(*other as f64)) as float
     }
 
@@ -810,93 +828,93 @@ impl Signed for float {
     /// - `NaN` if the number is NaN
     ///
     #[inline(always)]
-    fn signum(&self) -> float {
-        if self.is_NaN() { NaN } else { f64::copysign(1.0, *self as f64) as float }
+    pub fn signum(&self) -> float {
+        if self.is_NaN() { NaN } else { (*self as f64).signum() as float }
     }
 
     /// Returns `true` if the number is positive, including `+0.0` and `infinity`
     #[inline(always)]
-    fn is_positive(&self) -> bool { *self > 0.0 || (1.0 / *self) == infinity }
+    pub fn is_positive(&self) -> bool { *self > 0.0 || (1.0 / *self) == infinity }
 
     /// Returns `true` if the number is negative, including `-0.0` and `neg_infinity`
     #[inline(always)]
-    fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == neg_infinity }
+    pub fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == neg_infinity }
 }
 
 impl Bounded for float {
     #[inline(always)]
-    fn min_value() -> float { Bounded::min_value::<f64>() as float }
+    pub fn min_value() -> float { Bounded::min_value::<f64>() as float }
 
     #[inline(always)]
-    fn max_value() -> float { Bounded::max_value::<f64>() as float }
+    pub fn max_value() -> float { Bounded::max_value::<f64>() as float }
 }
 
 impl Primitive for float {
     #[inline(always)]
-    fn bits() -> uint { Primitive::bits::<f64>() }
+    pub fn bits() -> uint { Primitive::bits::<f64>() }
 
     #[inline(always)]
-    fn bytes() -> uint { Primitive::bytes::<f64>() }
+    pub fn bytes() -> uint { Primitive::bytes::<f64>() }
 }
 
 impl Float for float {
     #[inline(always)]
-    fn NaN() -> float { Float::NaN::<f64>() as float }
+    pub fn NaN() -> float { Float::NaN::<f64>() as float }
 
     #[inline(always)]
-    fn infinity() -> float { Float::infinity::<f64>() as float }
+    pub fn infinity() -> float { Float::infinity::<f64>() as float }
 
     #[inline(always)]
-    fn neg_infinity() -> float { Float::neg_infinity::<f64>() as float }
+    pub fn neg_infinity() -> float { Float::neg_infinity::<f64>() as float }
 
     #[inline(always)]
-    fn neg_zero() -> float { Float::neg_zero::<f64>() as float }
+    pub fn neg_zero() -> float { Float::neg_zero::<f64>() as float }
 
     /// Returns `true` if the number is NaN
     #[inline(always)]
-    fn is_NaN(&self) -> bool { (*self as f64).is_NaN() }
+    pub fn is_NaN(&self) -> bool { (*self as f64).is_NaN() }
 
     /// Returns `true` if the number is infinite
     #[inline(always)]
-    fn is_infinite(&self) -> bool { (*self as f64).is_infinite() }
+    pub fn is_infinite(&self) -> bool { (*self as f64).is_infinite() }
 
     /// Returns `true` if the number is neither infinite or NaN
     #[inline(always)]
-    fn is_finite(&self) -> bool { (*self as f64).is_finite() }
+    pub fn is_finite(&self) -> bool { (*self as f64).is_finite() }
 
     /// Returns `true` if the number is neither zero, infinite, subnormal or NaN
     #[inline(always)]
-    fn is_normal(&self) -> bool { (*self as f64).is_normal() }
+    pub fn is_normal(&self) -> bool { (*self as f64).is_normal() }
 
     /// Returns the floating point category of the number. If only one property is going to
     /// be tested, it is generally faster to use the specific predicate instead.
     #[inline(always)]
-    fn classify(&self) -> FPCategory { (*self as f64).classify() }
+    pub fn classify(&self) -> FPCategory { (*self as f64).classify() }
 
     #[inline(always)]
-    fn mantissa_digits() -> uint { Float::mantissa_digits::<f64>() }
+    pub fn mantissa_digits() -> uint { Float::mantissa_digits::<f64>() }
 
     #[inline(always)]
-    fn digits() -> uint { Float::digits::<f64>() }
+    pub fn digits() -> uint { Float::digits::<f64>() }
 
     #[inline(always)]
-    fn epsilon() -> float { Float::epsilon::<f64>() as float }
+    pub fn epsilon() -> float { Float::epsilon::<f64>() as float }
 
     #[inline(always)]
-    fn min_exp() -> int { Float::min_exp::<f64>() }
+    pub fn min_exp() -> int { Float::min_exp::<f64>() }
 
     #[inline(always)]
-    fn max_exp() -> int { Float::max_exp::<f64>() }
+    pub fn max_exp() -> int { Float::max_exp::<f64>() }
 
     #[inline(always)]
-    fn min_10_exp() -> int { Float::min_10_exp::<f64>() }
+    pub fn min_10_exp() -> int { Float::min_10_exp::<f64>() }
 
     #[inline(always)]
-    fn max_10_exp() -> int { Float::max_10_exp::<f64>() }
+    pub fn max_10_exp() -> int { Float::max_10_exp::<f64>() }
 
     /// Constructs a floating point number by multiplying `x` by 2 raised to the power of `exp`
     #[inline(always)]
-    fn ldexp(x: float, exp: int) -> float {
+    pub fn ldexp(x: float, exp: int) -> float {
         Float::ldexp(x as f64, exp) as float
     }
 
@@ -907,7 +925,7 @@ impl Float for float {
     /// - `0.5 <= abs(x) < 1.0`
     ///
     #[inline(always)]
-    fn frexp(&self) -> (float, int) {
+    pub fn frexp(&self) -> (float, int) {
         match (*self as f64).frexp() {
             (x, exp) => (x as float, exp)
         }
@@ -918,7 +936,7 @@ impl Float for float {
     /// even if the number is close to zero
     ///
     #[inline(always)]
-    fn exp_m1(&self) -> float {
+    pub fn exp_m1(&self) -> float {
         (*self as f64).exp_m1() as float
     }
 
@@ -927,7 +945,7 @@ impl Float for float {
     /// than if the operations were performed separately
     ///
     #[inline(always)]
-    fn ln_1p(&self) -> float {
+    pub fn ln_1p(&self) -> float {
         (*self as f64).ln_1p() as float
     }
 
@@ -937,14 +955,14 @@ impl Float for float {
     /// operation followed by an add.
     ///
     #[inline(always)]
-    fn mul_add(&self, a: float, b: float) -> float {
-        mul_add(*self as f64, a as f64, b as f64) as float
+    pub fn mul_add(&self, a: float, b: float) -> float {
+        (*self as f64).mul_add(a as f64, b as f64) as float
     }
 
     /// Returns the next representable floating-point value in the direction of `other`
     #[inline(always)]
-    fn next_after(&self, other: float) -> float {
-        next_after(*self as f64, other as f64) as float
+    pub fn next_after(&self, other: float) -> float {
+        (*self as f64).next_after(other as f64) as float
     }
 }
 
@@ -966,12 +984,16 @@ mod tests {
     fn test_min() {
         assert_eq!(1f.min(&2f), 1f);
         assert_eq!(2f.min(&1f), 1f);
+        assert!(1f.min(&Float::NaN::<float>()).is_NaN());
+        assert!(Float::NaN::<float>().min(&1f).is_NaN());
     }
 
     #[test]
     fn test_max() {
         assert_eq!(1f.max(&2f), 2f);
         assert_eq!(2f.max(&1f), 2f);
+        assert!(1f.max(&Float::NaN::<float>()).is_NaN());
+        assert!(Float::NaN::<float>().max(&1f).is_NaN());
     }
 
     #[test]
@@ -1089,6 +1111,192 @@ mod tests {
         assert!(Float::NaN::<float>().atanh().is_NaN());
         assert_approx_eq!(0.5f.atanh(), 0.54930614433405484569762261846126285f);
         assert_approx_eq!((-0.5f).atanh(), -0.54930614433405484569762261846126285f);
+    }
+
+    #[test]
+    fn test_linear() {
+        assert_eq!(Interpolate::linear(3.0, 5.0, 0.0), 3.0);
+        assert_eq!(Interpolate::linear(3.0, 5.0, 0.5), 4.0);
+        assert_eq!(Interpolate::linear(3.0, 5.0, 1.0), 5.0);
+
+        assert_eq!(Interpolate::linear(3.0, 5.0,  infinity),  infinity);
+        assert_eq!(Interpolate::linear(3.0, 5.0, -infinity), -infinity);
+
+        assert_eq!(Interpolate::linear(3.0,  infinity, 0.5),  infinity);
+        assert_eq!(Interpolate::linear(3.0, -infinity, 0.5), -infinity);
+
+        assert!(Interpolate::linear( infinity, 5.0, 0.5).is_NaN());
+        assert!(Interpolate::linear(-infinity, 5.0, 0.5).is_NaN());
+
+        assert!(Interpolate::linear( infinity, 5.0, 1.0).is_NaN());
+        assert!(Interpolate::linear(-infinity, 5.0, 1.0).is_NaN());
+
+        assert!(Interpolate::linear(NaN, 5.0, 1.0).is_NaN());
+        assert!(Interpolate::linear(3.0, NaN, 1.0).is_NaN());
+        assert!(Interpolate::linear(3.0, 5.0, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_cosine() {
+        assert_eq!(Interpolate::cosine(3.0, 5.0, 0.0), 3.0);
+        assert_eq!(Interpolate::cosine(3.0, 5.0, 0.5), 4.0);
+        assert_eq!(Interpolate::cosine(3.0, 5.0, 1.0), 5.0);
+
+        assert!(Interpolate::cosine(3.0, 5.0,  infinity).is_NaN());
+        assert!(Interpolate::cosine(3.0, 5.0, -infinity).is_NaN());
+
+        assert_eq!(Interpolate::cosine(3.0,  infinity, 0.5),  infinity);
+        assert_eq!(Interpolate::cosine(3.0, -infinity, 0.5), -infinity);
+
+        assert!(Interpolate::cosine( infinity, 5.0, 0.5).is_NaN());
+        assert!(Interpolate::cosine(-infinity, 5.0, 0.5).is_NaN());
+
+        assert!(Interpolate::cosine( infinity, 5.0, 1.0).is_NaN());
+        assert!(Interpolate::cosine(-infinity, 5.0, 1.0).is_NaN());
+
+        assert!(Interpolate::cosine(NaN, 5.0, 1.0).is_NaN());
+        assert!(Interpolate::cosine(3.0, NaN, 1.0).is_NaN());
+        assert!(Interpolate::cosine(3.0, 5.0, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_smooth() {
+        assert_eq!(Interpolate::smooth(3.0, 5.0, 0.0), 3.0);
+        assert_eq!(Interpolate::smooth(3.0, 5.0, 0.5), 4.0);
+        assert_eq!(Interpolate::smooth(3.0, 5.0, 1.0), 5.0);
+
+        assert_eq!(Interpolate::smooth(3.0, 5.0,  infinity), -infinity);
+        assert_eq!(Interpolate::smooth(3.0, 5.0, -infinity),  infinity);
+
+        assert_eq!(Interpolate::smooth(3.0,  infinity, 0.5),  infinity);
+        assert_eq!(Interpolate::smooth(3.0, -infinity, 0.5), -infinity);
+
+        assert!(Interpolate::smooth( infinity, 5.0, 0.5).is_NaN());
+        assert!(Interpolate::smooth(-infinity, 5.0, 0.5).is_NaN());
+
+        assert!(Interpolate::smooth( infinity, 5.0, 1.0).is_NaN());
+        assert!(Interpolate::smooth(-infinity, 5.0, 1.0).is_NaN());
+
+        assert!(Interpolate::smooth(NaN, 5.0, 1.0).is_NaN());
+        assert!(Interpolate::smooth(3.0, NaN, 1.0).is_NaN());
+        assert!(Interpolate::smooth(3.0, 5.0, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_barycentric() {
+        assert_eq!(Interpolate::barycentric(3.00, 0.50, 1.00, 0.00, 0.00), 1.00);
+        assert_eq!(Interpolate::barycentric(3.00, 0.50, 1.00, 1.00, 0.00), 3.00);
+        assert_eq!(Interpolate::barycentric(3.00, 0.50, 1.00, 0.00, 1.00), 0.50);
+        assert_eq!(Interpolate::barycentric(3.00, 0.50, 1.00, 0.50, 0.50), 1.75);
+        assert_eq!(Interpolate::barycentric(3.00, 0.50, 1.00, 0.00, 0.50), 0.75);
+        assert_eq!(Interpolate::barycentric(3.00, 0.50, 1.00, 0.50, 0.00), 2.00);
+        assert_eq!(Interpolate::barycentric(1.25, 2.50, 5.00, 0.40, 0.40), 2.50);
+
+        assert_eq!(Interpolate::barycentric(infinity, 4.0, 6.0, 0.2, 0.1), infinity);
+        assert_eq!(Interpolate::barycentric(1.0, infinity, 6.0, 0.2, 0.1), infinity);
+        assert_eq!(Interpolate::barycentric(1.0, 4.0, infinity, 0.2, 0.1), infinity);
+        assert!(Interpolate::barycentric(1.0, 4.0, 6.0, infinity, 0.1).is_NaN());
+        assert!(Interpolate::barycentric(1.0, 4.0, 6.0, 0.2, infinity).is_NaN());
+
+        assert_eq!(Interpolate::barycentric(-infinity, 4.0, 6.0, 0.2, 0.1), -infinity);
+        assert_eq!(Interpolate::barycentric(1.0, -infinity, 6.0, 0.2, 0.1), -infinity);
+        assert_eq!(Interpolate::barycentric(1.0, 4.0, -infinity, 0.2, 0.1), -infinity);
+        assert!(Interpolate::barycentric(1.0, 4.0, 6.0, -infinity, 0.1).is_NaN());
+        assert!(Interpolate::barycentric(1.0, 4.0, 6.0, 0.2, -infinity).is_NaN());
+
+        assert!(Interpolate::barycentric(NaN, 4.0, 6.0, 0.0, 0.0).is_NaN());
+        assert!(Interpolate::barycentric(1.0, NaN, 6.0, 0.2, 0.0).is_NaN());
+        assert!(Interpolate::barycentric(1.0, 4.0, NaN, 0.4, 0.0).is_NaN());
+        assert!(Interpolate::barycentric(1.0, 4.0, 6.0, NaN, 0.0).is_NaN());
+        assert!(Interpolate::barycentric(1.0, 4.0, 6.0, 0.4, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_hermite() {
+        assert_eq!(Interpolate::hermite(3.0, 0.0, 5.0, 0.0, 0.0), 3.0);
+        assert_eq!(Interpolate::hermite(3.0, 0.0, 5.0, 0.0, 0.5), 4.0);
+        assert_eq!(Interpolate::hermite(3.0, 0.0, 5.0, 0.0, 1.0), 5.0);
+
+        assert_eq!(Interpolate::hermite(3.0,  1.0, -5.0, 2.0,  infinity),  infinity);
+        assert_eq!(Interpolate::hermite(3.0, -1.0, -5.0, 2.0, -infinity), -infinity);
+
+        assert!(Interpolate::hermite(3.0, 0.0, 5.0, 0.0,  infinity).is_NaN());
+        assert!(Interpolate::hermite(3.0, 0.0, 5.0, 0.0, -infinity).is_NaN());
+
+        assert!(Interpolate::hermite(3.0, -1.0, 5.0, 2.0,  infinity).is_NaN());
+        assert!(Interpolate::hermite(3.0, -1.0, 5.0, 2.0, -infinity).is_NaN());
+
+        assert_eq!(Interpolate::hermite(3.0, 0.0,  infinity, 0.0, 0.5),  infinity);
+        assert_eq!(Interpolate::hermite(3.0, 0.0, -infinity, 0.0, 0.5), -infinity);
+
+        assert!(Interpolate::hermite(3.0, 0.0,  infinity, 0.0, 0.0).is_NaN());
+        assert!(Interpolate::hermite(3.0, 0.0, -infinity, 0.0, 0.0).is_NaN());
+
+        assert_eq!(Interpolate::hermite( infinity, 0.0, 5.0, 0.0, 0.5),  infinity);
+        assert_eq!(Interpolate::hermite(-infinity, 0.0, 5.0, 0.0, 0.5), -infinity);
+
+        assert!(Interpolate::hermite( infinity, 0.0, 5.0, 0.0, 1.0).is_NaN());
+        assert!(Interpolate::hermite(-infinity, 0.0, 5.0, 0.0, 1.0).is_NaN());
+
+        assert!(Interpolate::hermite(NaN, 0.0, 5.0, 0.0, 1.0).is_NaN());
+        assert!(Interpolate::hermite(3.0, NaN, 5.0, 0.0, 1.0).is_NaN());
+        assert!(Interpolate::hermite(3.0, 0.0, NaN, 0.0, 1.0).is_NaN());
+        assert!(Interpolate::hermite(3.0, 0.0, 5.0, NaN, 1.0).is_NaN());
+        assert!(Interpolate::hermite(3.0, 0.0, 5.0, 0.0, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_cubic() {
+        assert_eq!(Interpolate::cubic(1.0, 3.0, 5.0, 6.0, 0.0), 3.0);
+        assert_eq!(Interpolate::cubic(1.0, 3.0, 5.0, 6.0, 1.0), 5.0);
+
+        assert_eq!(Interpolate::cubic(1.0, 3.0, 5.0, 6.0,  infinity), infinity);
+        assert_eq!(Interpolate::cubic(1.0, 3.0, 5.0, 6.0, -infinity), infinity);
+
+        assert!(Interpolate::cubic( infinity, 3.0, 5.0, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::cubic(-infinity, 3.0, 5.0, 6.0, 0.5).is_NaN());
+
+        assert!(Interpolate::cubic(1.0,  infinity, 5.0, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::cubic(1.0, -infinity, 5.0, 6.0, 0.5).is_NaN());
+
+        assert!(Interpolate::cubic(1.0, 3.0,  infinity, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::cubic(1.0, 3.0, -infinity, 6.0, 0.5).is_NaN());
+
+        assert!(Interpolate::cubic(1.0, 3.0, 5.0,  infinity, 0.5).is_NaN());
+        assert!(Interpolate::cubic(1.0, 3.0, 5.0, -infinity, 0.5).is_NaN());
+
+        assert!(Interpolate::cubic( NaN, 3.0, 5.0, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::cubic(1.0,  NaN, 5.0, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::cubic(1.0, 3.0,  NaN, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::cubic(1.0, 3.0, 5.0,  NaN, 0.5).is_NaN());
+        assert!(Interpolate::cubic(1.0, 3.0, 5.0, 6.0, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_catmull_rom() {
+        assert_eq!(Interpolate::catmull_rom(1.0, 3.0, 5.0, 6.0, 0.0), 3.0);
+        assert_eq!(Interpolate::catmull_rom(1.0, 3.0, 5.0, 6.0, 1.0), 5.0);
+
+        assert_eq!(Interpolate::catmull_rom(1.0, 3.0, 5.0, 6.0,  infinity), -infinity);
+        assert_eq!(Interpolate::catmull_rom(1.0, 3.0, 5.0, 6.0, -infinity), -infinity);
+
+        assert!(Interpolate::catmull_rom( infinity, 3.0, 5.0, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::catmull_rom(-infinity, 3.0, 5.0, 6.0, 0.5).is_NaN());
+
+        assert!(Interpolate::catmull_rom(1.0,  infinity, 5.0, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0, -infinity, 5.0, 6.0, 0.5).is_NaN());
+
+        assert!(Interpolate::catmull_rom(1.0, 3.0,  infinity, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0, 3.0, -infinity, 6.0, 0.5).is_NaN());
+
+        assert!(Interpolate::catmull_rom(1.0, 3.0, 5.0,  infinity, 0.5).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0, 3.0, 5.0, -infinity, 0.5).is_NaN());
+
+        assert!(Interpolate::catmull_rom(NaN, 3.0, 5.0, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0, NaN, 5.0, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0, 3.0, NaN, 6.0, 0.5).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0, 3.0, 5.0, NaN, 0.5).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0, 3.0, 5.0, 6.0, NaN).is_NaN());
     }
 
     #[test]

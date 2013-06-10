@@ -167,12 +167,12 @@ impl<T: Clone + Integer + Ord>
 impl<T: Clone + Integer + Ord>
     Zero for Ratio<T> {
     #[inline]
-    fn zero() -> Ratio<T> {
+    pub fn zero() -> Ratio<T> {
         Ratio::new_raw(Zero::zero(), One::one())
     }
 
     #[inline]
-    fn is_zero(&self) -> bool {
+    pub fn is_zero(&self) -> bool {
         *self == Zero::zero()
     }
 }
@@ -180,7 +180,7 @@ impl<T: Clone + Integer + Ord>
 impl<T: Clone + Integer + Ord>
     One for Ratio<T> {
     #[inline]
-    fn one() -> Ratio<T> {
+    pub fn one() -> Ratio<T> {
         Ratio::new_raw(One::one(), One::one())
     }
 }
@@ -192,7 +192,7 @@ impl<T: Clone + Integer + Ord>
 impl<T: Clone + Integer + Ord>
     Round for Ratio<T> {
 
-    fn floor(&self) -> Ratio<T> {
+    pub fn floor(&self) -> Ratio<T> {
         if *self < Zero::zero() {
             Ratio::from_integer((self.numer - self.denom + One::one()) / self.denom)
         } else {
@@ -200,7 +200,7 @@ impl<T: Clone + Integer + Ord>
         }
     }
 
-    fn ceil(&self) -> Ratio<T> {
+    pub fn ceil(&self) -> Ratio<T> {
         if *self < Zero::zero() {
             Ratio::from_integer(self.numer / self.denom)
         } else {
@@ -209,7 +209,7 @@ impl<T: Clone + Integer + Ord>
     }
 
     #[inline(always)]
-    fn round(&self) -> Ratio<T> {
+    pub fn round(&self) -> Ratio<T> {
         if *self < Zero::zero() {
             Ratio::from_integer((self.numer - self.denom + One::one()) / self.denom)
         } else {
@@ -218,18 +218,18 @@ impl<T: Clone + Integer + Ord>
     }
 
     #[inline(always)]
-    fn trunc(&self) -> Ratio<T> {
+    pub fn trunc(&self) -> Ratio<T> {
         Ratio::from_integer(self.numer / self.denom)
     }
 
-    fn fract(&self) -> Ratio<T> {
+    pub fn fract(&self) -> Ratio<T> {
         Ratio::new_raw(self.numer % self.denom, self.denom.clone())
     }
 }
 
 impl<T: Clone + Integer + Ord> Fractional for Ratio<T> {
     #[inline]
-    fn recip(&self) -> Ratio<T> {
+    pub fn recip(&self) -> Ratio<T> {
         Ratio::new_raw(self.denom.clone(), self.numer.clone())
     }
 }
@@ -243,7 +243,7 @@ impl<T: ToStr> ToStr for Ratio<T> {
 }
 impl<T: ToStrRadix> ToStrRadix for Ratio<T> {
     /// Renders as `numer/denom` where the numbers are in base `radix`.
-    fn to_str_radix(&self, radix: uint) -> ~str {
+    pub fn to_str_radix(&self, radix: uint) -> ~str {
         fmt!("%s/%s", self.numer.to_str_radix(radix), self.denom.to_str_radix(radix))
     }
 }
@@ -268,7 +268,7 @@ impl<T: FromStr + Clone + Integer + Ord>
 impl<T: FromStrRadix + Clone + Integer + Ord>
     FromStrRadix for Ratio<T> {
     /// Parses `numer/denom` where the numbers are in base `radix`.
-    fn from_str_radix(s: &str, radix: uint) -> Option<Ratio<T>> {
+    pub fn from_str_radix(s: &str, radix: uint) -> Option<Ratio<T>> {
         let split = vec::build(|push| {
             for str::each_splitn_char(s, '/', 1) |s| {
                 push(s.to_owned());

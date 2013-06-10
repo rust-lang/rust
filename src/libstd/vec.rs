@@ -23,6 +23,7 @@ use iterator::{Iterator, IteratorUtil};
 use iter::FromIter;
 use kinds::Copy;
 use libc;
+use num::Orderable;
 use old_iter::CopyableIter;
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
@@ -1020,20 +1021,24 @@ pub trait VectorVector<T> {
 }
 
 impl<'self, T:Copy> VectorVector<T> for &'self [~[T]] {
-    /// Flattens a vector of slices of T into a single vector of T.
+    /// Flattens a vector of vectors of T into a single vector of T.
     pub fn concat(&self) -> ~[T] {
         self.flat_map(|&inner| inner)
     }
 
     /// Concatenate a vector of vectors, placing a given separator between each.
     pub fn connect(&self, sep: &T) -> ~[T] {
-        let mut r = ~[];
-        let mut first = true;
-        for self.each |&inner| {
-            if first { first = false; } else { r.push(*sep); }
-            r.push_all(inner);
+        match *self {
+            [ref hd,..tl] => {
+                let mut r = hd.to_owned();
+                for tl.each |&inner| {
+                    r.push(*sep);
+                    r.push_all(inner);
+                }
+                r
+            }
+            [] => ~[],
         }
-        r
     }
 }
 
@@ -1045,13 +1050,17 @@ impl<'self, T:Copy> VectorVector<T> for &'self [&'self [T]] {
 
     /// Concatenate a vector of slices, placing a given separator between each.
     pub fn connect(&self, sep: &T) -> ~[T] {
-        let mut r = ~[];
-        let mut first = true;
-        for self.each |&inner| {
-            if first { first = false; } else { r.push(*sep); }
-            r.push_all(inner);
+        match *self {
+            [ref hd,..tl] => {
+                let mut r = hd.to_owned();
+                for tl.each |&inner| {
+                    r.push(*sep);
+                    r.push_all(inner);
+                }
+                r
+            }
+            [] => ~[],
         }
-        r
     }
 }
 
@@ -1665,7 +1674,7 @@ impl<'self,T:Eq> Equiv<~[T]> for &'self [T] {
 // Lexicographical comparison
 
 fn cmp<T: TotalOrd>(a: &[T], b: &[T]) -> Ordering {
-    let low = uint::min(a.len(), b.len());
+    let low = a.len().min(&b.len());
 
     for uint::range(0, low) |idx| {
         match a[idx].cmp(&b[idx]) {
@@ -1698,7 +1707,7 @@ impl<T: TotalOrd> TotalOrd for @[T] {
 
 fn lt<T:Ord>(a: &[T], b: &[T]) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
-    let end = uint::min(a_len, b_len);
+    let end = a_len.min(&b_len);
 
     let mut i = 0;
     while i < end {
@@ -2399,7 +2408,6 @@ pub mod raw {
 /// Operations on `[u8]`
 pub mod bytes {
     use libc;
-    use uint;
     use vec::raw;
     use vec;
 
@@ -2407,7 +2415,7 @@ pub mod bytes {
     pub fn memcmp(a: &~[u8], b: &~[u8]) -> int {
         let a_len = a.len();
         let b_len = b.len();
-        let n = uint::min(a_len, b_len) as libc::size_t;
+        let n = a_len.min(&b_len) as libc::size_t;
         let r = unsafe {
             libc::memcmp(raw::to_ptr(*a) as *libc::c_void,
                          raw::to_ptr(*b) as *libc::c_void, n) as int

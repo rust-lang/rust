@@ -20,7 +20,6 @@
 // Generating Random Variables"], but more robust. If one wanted, one
 // could implement VIZIGNOR the ZIGNOR paper for more speed.
 
-use f64;
 use rand::{Rng,Rand};
 
 mod ziggurat_tables;
@@ -39,7 +38,7 @@ fn ziggurat<R:Rng>(rng: &mut R,
         let i: uint = rng.gen::<uint>() & 0xff;
         let x = u * X[i];
 
-        let test_x = if center_u {f64::abs(x)} else {x};
+        let test_x = if center_u { x.abs() } else { x };
 
         // algebraically equivalent to |u| < X[i+1]/X[i] (or u < X[i+1]/X[i])
         if test_x < X[i + 1] {
@@ -79,7 +78,7 @@ impl Rand for StandardNormal {
     fn rand<R:Rng>(rng: &mut R) -> StandardNormal {
         #[inline(always)]
         fn pdf(x: f64) -> f64 {
-            f64::exp((-x*x/2.0) as f64) as f64
+            (-x * x / 2.0).exp()
         }
         #[inline(always)]
         fn zero_case<R:Rng>(rng: &mut R, u: f64) -> f64 {
@@ -93,8 +92,8 @@ impl Rand for StandardNormal {
 
             // XXX infinities?
             while -2.0*y < x * x {
-                x = f64::ln(rng.gen()) / ziggurat_tables::ZIG_NORM_R;
-                y = f64::ln(rng.gen());
+                x = rng.gen::<f64>().ln() / ziggurat_tables::ZIG_NORM_R;
+                y = rng.gen::<f64>().ln();
             }
             if u < 0.0 {x-ziggurat_tables::ZIG_NORM_R} else {ziggurat_tables::ZIG_NORM_R-x}
         }
@@ -127,17 +126,17 @@ impl Rand for StandardNormal {
 /// ~~~
 pub struct Exp1(f64);
 
-// This could be done via `-f64::ln(rng.gen::<f64>())` but that is slower.
+// This could be done via `-rng.gen::<f64>().ln()` but that is slower.
 impl Rand for Exp1 {
     #[inline]
     fn rand<R:Rng>(rng: &mut R) -> Exp1 {
         #[inline(always)]
         fn pdf(x: f64) -> f64 {
-            f64::exp(-x)
+            (-x).exp()
         }
         #[inline(always)]
         fn zero_case<R:Rng>(rng: &mut R, _u: f64) -> f64 {
-            ziggurat_tables::ZIG_EXP_R - f64::ln(rng.gen())
+            ziggurat_tables::ZIG_EXP_R - rng.gen::<f64>().ln()
         }
 
         Exp1(ziggurat(rng, false,

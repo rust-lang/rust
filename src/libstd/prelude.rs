@@ -54,7 +54,7 @@ pub use iter::{Times, FromIter};
 pub use iterator::Iterator;
 pub use num::{Num, NumCast};
 pub use num::{Orderable, Signed, Unsigned, Round};
-pub use num::{Algebraic, Trigonometric, Exponential, Hyperbolic};
+pub use num::{Algebraic, Trigonometric, Exponential, Hyperbolic, Interpolate};
 pub use num::{Integer, Fractional, Real, RealExt};
 pub use num::{Bitwise, BitCount, Bounded};
 pub use num::{Primitive, Int, Float};

@@ -246,7 +246,7 @@ pub fn is_useful(cx: @MatchCheckCtxt, m: &matrix, v: &[@pat]) -> useful {
                 let max_len = do m.rev_iter().fold(0) |max_len, r| {
                   match r[0].node {
                     pat_vec(ref before, _, ref after) => {
-                      uint::max(before.len() + after.len(), max_len)
+                      (before.len() + after.len()).max(&max_len)
                     }
                     _ => max_len
                   }

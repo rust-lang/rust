@@ -20,10 +20,6 @@ use to_str;
 
 pub use cmath::c_float_targ_consts::*;
 
-// An inner module is required to get the #[inline(always)] attribute on the
-// functions.
-pub use self::delegated::*;
-
 macro_rules! delegate(
     (
         $(
@@ -34,6 +30,8 @@ macro_rules! delegate(
             ) -> $rv:ty = $bound_name:path
         ),*
     ) => (
+        // An inner module is required to get the #[inline(always)] attribute on the
+        // functions.
         mod delegated {
             use cmath::c_float_utils;
             use libc::{c_float, c_int};
@@ -115,50 +113,6 @@ pub static infinity: f32 = 1.0_f32/0.0_f32;
 
 pub static neg_infinity: f32 = -1.0_f32/0.0_f32;
 
-#[inline(always)]
-pub fn add(x: f32, y: f32) -> f32 { return x + y; }
-
-#[inline(always)]
-pub fn sub(x: f32, y: f32) -> f32 { return x - y; }
-
-#[inline(always)]
-pub fn mul(x: f32, y: f32) -> f32 { return x * y; }
-
-#[inline(always)]
-pub fn div(x: f32, y: f32) -> f32 { return x / y; }
-
-#[inline(always)]
-pub fn rem(x: f32, y: f32) -> f32 { return x % y; }
-
-#[inline(always)]
-pub fn lt(x: f32, y: f32) -> bool { return x < y; }
-
-#[inline(always)]
-pub fn le(x: f32, y: f32) -> bool { return x <= y; }
-
-#[inline(always)]
-pub fn eq(x: f32, y: f32) -> bool { return x == y; }
-
-#[inline(always)]
-pub fn ne(x: f32, y: f32) -> bool { return x != y; }
-
-#[inline(always)]
-pub fn ge(x: f32, y: f32) -> bool { return x >= y; }
-
-#[inline(always)]
-pub fn gt(x: f32, y: f32) -> bool { return x > y; }
-
-#[inline(always)]
-pub fn fmax(x: f32, y: f32) -> f32 {
-    if x >= y || y.is_NaN() { x } else { y }
-}
-
-#[inline(always)]
-pub fn fmin(x: f32, y: f32) -> f32 {
-    if x <= y || y.is_NaN() { x } else { y }
-}
-
-
 // FIXME (#1999): replace the predicates below with llvm intrinsics or
 // calls to the libmath macros in the rust runtime for performance.
 
@@ -221,15 +175,15 @@ impl Eq for f32 {
 #[cfg(not(test))]
 impl ApproxEq<f32> for f32 {
     #[inline(always)]
-    fn approx_epsilon() -> f32 { 1.0e-6 }
+    pub fn approx_epsilon() -> f32 { 1.0e-6 }
 
     #[inline(always)]
-    fn approx_eq(&self, other: &f32) -> bool {
+    pub fn approx_eq(&self, other: &f32) -> bool {
         self.approx_eq_eps(other, &ApproxEq::approx_epsilon::<f32, f32>())
     }
 
     #[inline(always)]
-    fn approx_eq_eps(&self, other: &f32, approx_epsilon: &f32) -> bool {
+    pub fn approx_eq_eps(&self, other: &f32, approx_epsilon: &f32) -> bool {
         (*self - *other).abs() < *approx_epsilon
     }
 }
@@ -249,20 +203,30 @@ impl Ord for f32 {
 impl Orderable for f32 {
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
-    fn min(&self, other: &f32) -> f32 {
-        if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmin(*self, *other) }
+    pub fn min(&self, other: &f32) -> f32 {
+        cond!(
+            (self.is_NaN())  { *self  }
+            (other.is_NaN()) { *other }
+            (*self < *other) { *self  }
+            _                { *other }
+        )
     }
 
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
-    fn max(&self, other: &f32) -> f32 {
-        if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmax(*self, *other) }
+    pub fn max(&self, other: &f32) -> f32 {
+        cond!(
+            (self.is_NaN())  { *self  }
+            (other.is_NaN()) { *other }
+            (*self > *other) { *self  }
+            _                { *other }
+        )
     }
 
     /// Returns the number constrained within the range `mn <= self <= mx`.
     /// If any of the numbers are `NaN` then `NaN` is returned.
     #[inline(always)]
-    fn clamp(&self, mn: &f32, mx: &f32) -> f32 {
+    pub fn clamp(&self, mn: &f32, mx: &f32) -> f32 {
         cond!(
             (self.is_NaN())   { *self }
             (!(*self <= *mx)) { *mx   }
@@ -274,16 +238,16 @@ impl Orderable for f32 {
 
 impl Zero for f32 {
     #[inline(always)]
-    fn zero() -> f32 { 0.0 }
+    pub fn zero() -> f32 { 0.0 }
 
     /// Returns true if the number is equal to either `0.0` or `-0.0`
     #[inline(always)]
-    fn is_zero(&self) -> bool { *self == 0.0 || *self == -0.0 }
+    pub fn is_zero(&self) -> bool { *self == 0.0 || *self == -0.0 }
 }
 
 impl One for f32 {
     #[inline(always)]
-    fn one() -> f32 { 1.0 }
+    pub fn one() -> f32 { 1.0 }
 }
 
 #[cfg(not(test))]
@@ -325,14 +289,14 @@ impl Neg<f32> for f32 {
 impl Signed for f32 {
     /// Computes the absolute value. Returns `NaN` if the number is `NaN`.
     #[inline(always)]
-    fn abs(&self) -> f32 { abs(*self) }
+    pub fn abs(&self) -> f32 { delegated::abs(*self) }
 
     ///
     /// The positive difference of two numbers. Returns `0.0` if the number is less than or
     /// equal to `other`, otherwise the difference between`self` and `other` is returned.
     ///
     #[inline(always)]
-    fn abs_sub(&self, other: &f32) -> f32 { abs_sub(*self, *other) }
+    pub fn abs_sub(&self, other: &f32) -> f32 { delegated::abs_sub(*self, *other) }
 
     ///
     /// # Returns
@@ -342,35 +306,35 @@ impl Signed for f32 {
     /// - `NaN` if the number is NaN
     ///
     #[inline(always)]
-    fn signum(&self) -> f32 {
-        if self.is_NaN() { NaN } else { copysign(1.0, *self) }
+    pub fn signum(&self) -> f32 {
+        if self.is_NaN() { NaN } else { delegated::copysign(1.0, *self) }
     }
 
     /// Returns `true` if the number is positive, including `+0.0` and `infinity`
     #[inline(always)]
-    fn is_positive(&self) -> bool { *self > 0.0 || (1.0 / *self) == infinity }
+    pub fn is_positive(&self) -> bool { *self > 0.0 || (1.0 / *self) == infinity }
 
     /// Returns `true` if the number is negative, including `-0.0` and `neg_infinity`
     #[inline(always)]
-    fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == neg_infinity }
+    pub fn is_negative(&self) -> bool { *self < 0.0 || (1.0 / *self) == neg_infinity }
 }
 
 impl Round for f32 {
     /// Round half-way cases toward `neg_infinity`
     #[inline(always)]
-    fn floor(&self) -> f32 { floor(*self) }
+    pub fn floor(&self) -> f32 { delegated::floor(*self) }
 
     /// Round half-way cases toward `infinity`
     #[inline(always)]
-    fn ceil(&self) -> f32 { ceil(*self) }
+    pub fn ceil(&self) -> f32 { delegated::ceil(*self) }
 
     /// Round half-way cases away from `0.0`
     #[inline(always)]
-    fn round(&self) -> f32 { round(*self) }
+    pub fn round(&self) -> f32 { delegated::round(*self) }
 
     /// The integer part of the number (rounds towards `0.0`)
     #[inline(always)]
-    fn trunc(&self) -> f32 { trunc(*self) }
+    pub fn trunc(&self) -> f32 { delegated::trunc(*self) }
 
     ///
     /// The fractional part of the number, satisfying:
@@ -380,96 +344,94 @@ impl Round for f32 {
     /// ~~~
     ///
     #[inline(always)]
-    fn fract(&self) -> f32 { *self - self.trunc() }
+    pub fn fract(&self) -> f32 { *self - self.trunc() }
 }
 
 impl Fractional for f32 {
     /// The reciprocal (multiplicative inverse) of the number
     #[inline(always)]
-    fn recip(&self) -> f32 { 1.0 / *self }
+    pub fn recip(&self) -> f32 { 1.0 / *self }
 }
 
 impl Algebraic for f32 {
     #[inline(always)]
-    fn pow(&self, n: f32) -> f32 { pow(*self, n) }
+    pub fn pow(&self, n: f32) -> f32 { delegated::pow(*self, n) }
 
     #[inline(always)]
-    fn sqrt(&self) -> f32 { sqrt(*self) }
+    pub fn sqrt(&self) -> f32 { delegated::sqrt(*self) }
 
     #[inline(always)]
-    fn rsqrt(&self) -> f32 { self.sqrt().recip() }
+    pub fn rsqrt(&self) -> f32 { self.sqrt().recip() }
 
     #[inline(always)]
-    fn cbrt(&self) -> f32 { cbrt(*self) }
+    pub fn cbrt(&self) -> f32 { delegated::cbrt(*self) }
 
     #[inline(always)]
-    fn hypot(&self, other: f32) -> f32 { hypot(*self, other) }
+    pub fn hypot(&self, other: f32) -> f32 { delegated::hypot(*self, other) }
 }
 
 impl Trigonometric for f32 {
     #[inline(always)]
-    fn sin(&self) -> f32 { sin(*self) }
+    pub fn sin(&self) -> f32 { delegated::sin(*self) }
 
     #[inline(always)]
-    fn cos(&self) -> f32 { cos(*self) }
+    pub fn cos(&self) -> f32 { delegated::cos(*self) }
 
     #[inline(always)]
-    fn tan(&self) -> f32 { tan(*self) }
+    pub fn tan(&self) -> f32 { delegated::tan(*self) }
 
     #[inline(always)]
-    fn asin(&self) -> f32 { asin(*self) }
+    pub fn asin(&self) -> f32 { delegated::asin(*self) }
 
     #[inline(always)]
-    fn acos(&self) -> f32 { acos(*self) }
+    pub fn acos(&self) -> f32 { delegated::acos(*self) }
 
     #[inline(always)]
-    fn atan(&self) -> f32 { atan(*self) }
+    pub fn atan(&self) -> f32 { delegated::atan(*self) }
 
     #[inline(always)]
-    fn atan2(&self, other: f32) -> f32 { atan2(*self, other) }
+    pub fn atan2(&self, other: f32) -> f32 { delegated::atan2(*self, other) }
 
     /// Simultaneously computes the sine and cosine of the number
     #[inline(always)]
-    fn sin_cos(&self) -> (f32, f32) {
-        (self.sin(), self.cos())
-    }
+    pub fn sin_cos(&self) -> (f32, f32) { (self.sin(), self.cos()) }
 }
 
 impl Exponential for f32 {
     /// Returns the exponential of the number
     #[inline(always)]
-    fn exp(&self) -> f32 { exp(*self) }
+    pub fn exp(&self) -> f32 { delegated::exp(*self) }
 
     /// Returns 2 raised to the power of the number
     #[inline(always)]
-    fn exp2(&self) -> f32 { exp2(*self) }
+    pub fn exp2(&self) -> f32 { delegated::exp2(*self) }
 
     /// Returns the natural logarithm of the number
     #[inline(always)]
-    fn ln(&self) -> f32 { ln(*self) }
+    pub fn ln(&self) -> f32 { delegated::ln(*self) }
 
     /// Returns the logarithm of the number with respect to an arbitrary base
     #[inline(always)]
-    fn log(&self, base: f32) -> f32 { self.ln() / base.ln() }
+    pub fn log(&self, base: f32) -> f32 { self.ln() / base.ln() }
 
     /// Returns the base 2 logarithm of the number
     #[inline(always)]
-    fn log2(&self) -> f32 { log2(*self) }
+    pub fn log2(&self) -> f32 { delegated::log2(*self) }
 
     /// Returns the base 10 logarithm of the number
     #[inline(always)]
-    fn log10(&self) -> f32 { log10(*self) }
+    pub fn log10(&self) -> f32 { delegated::log10(*self) }
 }
 
 impl Hyperbolic for f32 {
     #[inline(always)]
-    fn sinh(&self) -> f32 { sinh(*self) }
+    pub fn sinh(&self) -> f32 { delegated::sinh(*self) }
 
     #[inline(always)]
-    fn cosh(&self) -> f32 { cosh(*self) }
+    pub fn cosh(&self) -> f32 { delegated::cosh(*self) }
 
     #[inline(always)]
-    fn tanh(&self) -> f32 { tanh(*self) }
+    pub fn tanh(&self) -> f32 { delegated::tanh(*self) }
 
     ///
     /// Inverse hyperbolic sine
@@ -481,7 +443,7 @@ impl Hyperbolic for f32 {
     /// - `NaN` if `self` is `NaN`
     ///
     #[inline(always)]
-    fn asinh(&self) -> f32 {
+    pub fn asinh(&self) -> f32 {
         match *self {
             neg_infinity => neg_infinity,
             x => (x + ((x * x) + 1.0).sqrt()).ln(),
@@ -498,7 +460,7 @@ impl Hyperbolic for f32 {
     /// - `NaN` if `self` is `NaN` or `self < 1.0` (including `neg_infinity`)
     ///
     #[inline(always)]
-    fn acosh(&self) -> f32 {
+    pub fn acosh(&self) -> f32 {
         match *self {
             x if x < 1.0 => Float::NaN(),
             x => (x + ((x * x) - 1.0).sqrt()).ln(),
@@ -518,143 +480,198 @@ impl Hyperbolic for f32 {
     ///   (including `infinity` and `neg_infinity`)
     ///
     #[inline(always)]
-    fn atanh(&self) -> f32 {
+    pub fn atanh(&self) -> f32 {
         0.5 * ((2.0 * *self) / (1.0 - *self)).ln_1p()
+    }
+}
+
+impl Interpolate for f32 {
+    pub fn linear(x: f32, y: f32, t: f32) -> f32 {
+        t.mul_add(y - x, x)
+    }
+
+    pub fn cosine(x: f32, y: f32, t: f32) -> f32 {
+        (0.5 * (1.0 - (t * Real::pi()).cos())).mul_add(y - x, x)
+    }
+
+    pub fn smooth(x: f32, y: f32, t: f32) -> f32 {
+        (t * t * t.mul_add(-2.0, 3.0)).mul_add(y - x, x)
+    }
+
+    pub fn barycentric(x: f32, y: f32, z: f32, t0: f32, t1: f32) -> f32 {
+        let t2 = 1.0 - t0 - t1;
+
+        t0 * x + t1 * y + t2 * z
+    }
+
+    pub fn hermite(x: f32, xp: f32, y: f32, yp: f32, t: f32) -> f32 {
+        let a0 = t.mul_add(t * t.mul_add(2.0, -3.0), 1.0);
+        let a1 = t * t * t.mul_add(-2.0, 3.0);
+        let a2 = t * t.mul_add(t * (t - 2.0), 1.0);
+        let a3 = t * t * (t - 1.0);
+
+        a0 * x + a1 * y + a2 * xp + a3 * yp
+    }
+
+    pub fn cubic(x: f32, y: f32, z: f32, u: f32, t: f32) -> f32 {
+        let a0 = -x + y - z + u;
+        let a1 =  x - y - a0;
+        let a2 =  z - x;
+        let a3 =  y;
+
+        t.mul_add(t.mul_add(t.mul_add((t * a0), a1), a2), a3)
+    }
+
+    pub fn catmull_rom(x: f32, y: f32, z: f32, u: f32, t: f32) -> f32 {
+        let a0 = -x + 3.0 * y - 3.0 * z + u;
+        let a1 = 2.0 * x - 5.0 * y + 4.0 * z - u;
+        let a2 = -x + z;
+        let a3 = 2.0 * y;
+
+        0.5 * t.mul_add(t.mul_add(t.mul_add((t * a0), a1), a2), a3)
     }
 }
 
 impl Real for f32 {
     /// Archimedes' constant
     #[inline(always)]
-    fn pi() -> f32 { 3.14159265358979323846264338327950288 }
+    pub fn pi() -> f32 { 3.14159265358979323846264338327950288 }
 
     /// 2.0 * pi
     #[inline(always)]
-    fn two_pi() -> f32 { 6.28318530717958647692528676655900576 }
+    pub fn two_pi() -> f32 { 6.28318530717958647692528676655900576 }
 
     /// pi / 2.0
     #[inline(always)]
-    fn frac_pi_2() -> f32 { 1.57079632679489661923132169163975144 }
+    pub fn frac_pi_2() -> f32 { 1.57079632679489661923132169163975144 }
 
     /// pi / 3.0
     #[inline(always)]
-    fn frac_pi_3() -> f32 { 1.04719755119659774615421446109316763 }
+    pub fn frac_pi_3() -> f32 { 1.04719755119659774615421446109316763 }
 
     /// pi / 4.0
     #[inline(always)]
-    fn frac_pi_4() -> f32 { 0.785398163397448309615660845819875721 }
+    pub fn frac_pi_4() -> f32 { 0.785398163397448309615660845819875721 }
 
     /// pi / 6.0
     #[inline(always)]
-    fn frac_pi_6() -> f32 { 0.52359877559829887307710723054658381 }
+    pub fn frac_pi_6() -> f32 { 0.52359877559829887307710723054658381 }
 
     /// pi / 8.0
     #[inline(always)]
-    fn frac_pi_8() -> f32 { 0.39269908169872415480783042290993786 }
+    pub fn frac_pi_8() -> f32 { 0.39269908169872415480783042290993786 }
 
     /// 1 .0/ pi
     #[inline(always)]
-    fn frac_1_pi() -> f32 { 0.318309886183790671537767526745028724 }
+    pub fn frac_1_pi() -> f32 { 0.318309886183790671537767526745028724 }
 
     /// 2.0 / pi
     #[inline(always)]
-    fn frac_2_pi() -> f32 { 0.636619772367581343075535053490057448 }
+    pub fn frac_2_pi() -> f32 { 0.636619772367581343075535053490057448 }
 
     /// 2.0 / sqrt(pi)
     #[inline(always)]
-    fn frac_2_sqrtpi() -> f32 { 1.12837916709551257389615890312154517 }
+    pub fn frac_2_sqrtpi() -> f32 { 1.12837916709551257389615890312154517 }
 
     /// sqrt(2.0)
     #[inline(always)]
-    fn sqrt2() -> f32 { 1.41421356237309504880168872420969808 }
+    pub fn sqrt2() -> f32 { 1.41421356237309504880168872420969808 }
 
     /// 1.0 / sqrt(2.0)
     #[inline(always)]
-    fn frac_1_sqrt2() -> f32 { 0.707106781186547524400844362104849039 }
+    pub fn frac_1_sqrt2() -> f32 { 0.707106781186547524400844362104849039 }
 
     /// Euler's number
     #[inline(always)]
-    fn e() -> f32 { 2.71828182845904523536028747135266250 }
+    pub fn e() -> f32 { 2.71828182845904523536028747135266250 }
 
     /// log2(e)
     #[inline(always)]
-    fn log2_e() -> f32 { 1.44269504088896340735992468100189214 }
+    pub fn log2_e() -> f32 { 1.44269504088896340735992468100189214 }
 
     /// log10(e)
     #[inline(always)]
-    fn log10_e() -> f32 { 0.434294481903251827651128918916605082 }
+    pub fn log10_e() -> f32 { 0.434294481903251827651128918916605082 }
 
     /// ln(2.0)
     #[inline(always)]
-    fn ln_2() -> f32 { 0.693147180559945309417232121458176568 }
+    pub fn ln_2() -> f32 { 0.693147180559945309417232121458176568 }
 
     /// ln(10.0)
     #[inline(always)]
-    fn ln_10() -> f32 { 2.30258509299404568401799145468436421 }
+    pub fn ln_10() -> f32 { 2.30258509299404568401799145468436421 }
+
+    /// Returns the error function of the number
+    #[inline(always)]
+    pub fn erf(&self) -> f32 { delegated::erf(*self) }
+
+    /// Returns the complementary error function of the number
+    #[inline(always)]
+    pub fn erfc(&self) -> f32 { delegated::erfc(*self) }
 
     /// Converts to degrees, assuming the number is in radians
     #[inline(always)]
-    fn to_degrees(&self) -> f32 { *self * (180.0 / Real::pi::<f32>()) }
+    pub fn to_degrees(&self) -> f32 { *self * (180.0 / Real::pi::<f32>()) }
 
     /// Converts to radians, assuming the number is in degrees
     #[inline(always)]
-    fn to_radians(&self) -> f32 { *self * (Real::pi::<f32>() / 180.0) }
+    pub fn to_radians(&self) -> f32 { *self * (Real::pi::<f32>() / 180.0) }
 }
 
 impl Bounded for f32 {
     #[inline(always)]
-    fn min_value() -> f32 { 1.17549435e-38 }
+    pub fn min_value() -> f32 { 1.17549435e-38 }
 
     #[inline(always)]
-    fn max_value() -> f32 { 3.40282347e+38 }
+    pub fn max_value() -> f32 { 3.40282347e+38 }
 }
 
 impl Primitive for f32 {
     #[inline(always)]
-    fn bits() -> uint { 32 }
+    pub fn bits() -> uint { 32 }
 
     #[inline(always)]
-    fn bytes() -> uint { Primitive::bits::<f32>() / 8 }
+    pub fn bytes() -> uint { Primitive::bits::<f32>() / 8 }
 }
 
 impl Float for f32 {
     #[inline(always)]
-    fn NaN() -> f32 { 0.0 / 0.0 }
+    pub fn NaN() -> f32 { 0.0 / 0.0 }
 
     #[inline(always)]
-    fn infinity() -> f32 { 1.0 / 0.0 }
+    pub fn infinity() -> f32 { 1.0 / 0.0 }
 
     #[inline(always)]
-    fn neg_infinity() -> f32 { -1.0 / 0.0 }
+    pub fn neg_infinity() -> f32 { -1.0 / 0.0 }
 
     #[inline(always)]
-    fn neg_zero() -> f32 { -0.0 }
+    pub fn neg_zero() -> f32 { -0.0 }
 
     /// Returns `true` if the number is NaN
     #[inline(always)]
-    fn is_NaN(&self) -> bool { *self != *self }
+    pub fn is_NaN(&self) -> bool { *self != *self }
 
     /// Returns `true` if the number is infinite
     #[inline(always)]
-    fn is_infinite(&self) -> bool {
+    pub fn is_infinite(&self) -> bool {
         *self == Float::infinity() || *self == Float::neg_infinity()
     }
 
     /// Returns `true` if the number is neither infinite or NaN
     #[inline(always)]
-    fn is_finite(&self) -> bool {
+    pub fn is_finite(&self) -> bool {
         !(self.is_NaN() || self.is_infinite())
     }
 
     /// Returns `true` if the number is neither zero, infinite, subnormal or NaN
     #[inline(always)]
-    fn is_normal(&self) -> bool {
+    pub fn is_normal(&self) -> bool {
         self.classify() == FPNormal
     }
 
     /// Returns the floating point category of the number. If only one property is going to
     /// be tested, it is generally faster to use the specific predicate instead.
-    fn classify(&self) -> FPCategory {
+    pub fn classify(&self) -> FPCategory {
         static EXP_MASK: u32 = 0x7f800000;
         static MAN_MASK: u32 = 0x007fffff;
 
@@ -671,30 +688,30 @@ impl Float for f32 {
     }
 
     #[inline(always)]
-    fn mantissa_digits() -> uint { 24 }
+    pub fn mantissa_digits() -> uint { 24 }
 
     #[inline(always)]
-    fn digits() -> uint { 6 }
+    pub fn digits() -> uint { 6 }
 
     #[inline(always)]
-    fn epsilon() -> f32 { 1.19209290e-07 }
+    pub fn epsilon() -> f32 { 1.19209290e-07 }
 
     #[inline(always)]
-    fn min_exp() -> int { -125 }
+    pub fn min_exp() -> int { -125 }
 
     #[inline(always)]
-    fn max_exp() -> int { 128 }
+    pub fn max_exp() -> int { 128 }
 
     #[inline(always)]
-    fn min_10_exp() -> int { -37 }
+    pub fn min_10_exp() -> int { -37 }
 
     #[inline(always)]
-    fn max_10_exp() -> int { 38 }
+    pub fn max_10_exp() -> int { 38 }
 
     /// Constructs a floating point number by multiplying `x` by 2 raised to the power of `exp`
     #[inline(always)]
-    fn ldexp(x: f32, exp: int) -> f32 {
-        ldexp(x, exp as c_int)
+    pub fn ldexp(x: f32, exp: int) -> f32 {
+        delegated::ldexp(x, exp as c_int)
     }
 
     ///
@@ -704,9 +721,9 @@ impl Float for f32 {
     /// - `0.5 <= abs(x) < 1.0`
     ///
     #[inline(always)]
-    fn frexp(&self) -> (f32, int) {
+    pub fn frexp(&self) -> (f32, int) {
         let mut exp = 0;
-        let x = frexp(*self, &mut exp);
+        let x = delegated::frexp(*self, &mut exp);
         (x, exp as int)
     }
 
@@ -715,14 +732,14 @@ impl Float for f32 {
     /// even if the number is close to zero
     ///
     #[inline(always)]
-    fn exp_m1(&self) -> f32 { exp_m1(*self) }
+    pub fn exp_m1(&self) -> f32 { delegated::exp_m1(*self) }
 
     ///
     /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more accurately
     /// than if the operations were performed separately
     ///
     #[inline(always)]
-    fn ln_1p(&self) -> f32 { ln_1p(*self) }
+    pub fn ln_1p(&self) -> f32 { delegated::ln_1p(*self) }
 
     ///
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
@@ -730,14 +747,14 @@ impl Float for f32 {
     /// operation followed by an add.
     ///
     #[inline(always)]
-    fn mul_add(&self, a: f32, b: f32) -> f32 {
-        mul_add(*self, a, b)
+    pub fn mul_add(&self, a: f32, b: f32) -> f32 {
+        delegated::mul_add(*self, a, b)
     }
 
     /// Returns the next representable floating-point value in the direction of `other`
     #[inline(always)]
-    fn next_after(&self, other: f32) -> f32 {
-        next_after(*self, other)
+    pub fn next_after(&self, other: f32) -> f32 {
+        delegated::next_after(*self, other)
     }
 }
 
@@ -850,7 +867,7 @@ impl to_str::ToStr for f32 {
 
 impl num::ToStrRadix for f32 {
     #[inline(always)]
-    fn to_str_radix(&self, rdx: uint) -> ~str {
+    pub fn to_str_radix(&self, rdx: uint) -> ~str {
         to_str_radix(*self, rdx)
     }
 }
@@ -953,7 +970,7 @@ impl FromStr for f32 {
 
 impl num::FromStrRadix for f32 {
     #[inline(always)]
-    fn from_str_radix(val: &str, rdx: uint) -> Option<f32> {
+    pub fn from_str_radix(val: &str, rdx: uint) -> Option<f32> {
         from_str_radix(val, rdx)
     }
 }
@@ -976,12 +993,16 @@ mod tests {
     fn test_min() {
         assert_eq!(1f32.min(&2f32), 1f32);
         assert_eq!(2f32.min(&1f32), 1f32);
+        assert!(1f32.min(&Float::NaN::<f32>()).is_NaN());
+        assert!(Float::NaN::<f32>().min(&1f32).is_NaN());
     }
 
     #[test]
     fn test_max() {
         assert_eq!(1f32.max(&2f32), 2f32);
         assert_eq!(2f32.max(&1f32), 2f32);
+        assert!(1f32.max(&Float::NaN::<f32>()).is_NaN());
+        assert!(Float::NaN::<f32>().max(&1f32).is_NaN());
     }
 
     #[test]
@@ -1099,6 +1120,192 @@ mod tests {
         assert!(Float::NaN::<f32>().atanh().is_NaN());
         assert_approx_eq!(0.5f32.atanh(), 0.54930614433405484569762261846126285f32);
         assert_approx_eq!((-0.5f32).atanh(), -0.54930614433405484569762261846126285f32);
+    }
+
+    #[test]
+    fn test_linear() {
+        assert_eq!(Interpolate::linear(3.0f32, 5.0f32, 0.0f32), 3.0f32);
+        assert_eq!(Interpolate::linear(3.0f32, 5.0f32, 0.5f32), 4.0f32);
+        assert_eq!(Interpolate::linear(3.0f32, 5.0f32, 1.0f32), 5.0f32);
+
+        assert_eq!(Interpolate::linear(3.0f32, 5.0f32,  infinity),  infinity);
+        assert_eq!(Interpolate::linear(3.0f32, 5.0f32, -infinity), -infinity);
+
+        assert_eq!(Interpolate::linear(3.0f32,  infinity, 0.5f32),  infinity);
+        assert_eq!(Interpolate::linear(3.0f32, -infinity, 0.5f32), -infinity);
+
+        assert!(Interpolate::linear( infinity, 5.0f32, 0.5f32).is_NaN());
+        assert!(Interpolate::linear(-infinity, 5.0f32, 0.5f32).is_NaN());
+
+        assert!(Interpolate::linear( infinity, 5.0f32, 1.0f32).is_NaN());
+        assert!(Interpolate::linear(-infinity, 5.0f32, 1.0f32).is_NaN());
+
+        assert!(Interpolate::linear(NaN, 5.0f32, 1.0f32).is_NaN());
+        assert!(Interpolate::linear(3.0f32, NaN, 1.0f32).is_NaN());
+        assert!(Interpolate::linear(3.0f32, 5.0f32, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_cosine() {
+        assert_eq!(Interpolate::cosine(3.0f32, 5.0f32, 0.0f32), 3.0f32);
+        assert_eq!(Interpolate::cosine(3.0f32, 5.0f32, 0.5f32), 4.0f32);
+        assert_eq!(Interpolate::cosine(3.0f32, 5.0f32, 1.0f32), 5.0f32);
+
+        assert!(Interpolate::cosine(3.0f32, 5.0f32,  infinity).is_NaN());
+        assert!(Interpolate::cosine(3.0f32, 5.0f32, -infinity).is_NaN());
+
+        assert_eq!(Interpolate::cosine(3.0f32,  infinity, 0.5f32),  infinity);
+        assert_eq!(Interpolate::cosine(3.0f32, -infinity, 0.5f32), -infinity);
+
+        assert!(Interpolate::cosine( infinity, 5.0f32, 0.5f32).is_NaN());
+        assert!(Interpolate::cosine(-infinity, 5.0f32, 0.5f32).is_NaN());
+
+        assert!(Interpolate::cosine( infinity, 5.0f32, 1.0f32).is_NaN());
+        assert!(Interpolate::cosine(-infinity, 5.0f32, 1.0f32).is_NaN());
+
+        assert!(Interpolate::cosine(NaN, 5.0f32, 1.0f32).is_NaN());
+        assert!(Interpolate::cosine(3.0f32, NaN, 1.0f32).is_NaN());
+        assert!(Interpolate::cosine(3.0f32, 5.0f32, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_smooth() {
+        assert_eq!(Interpolate::smooth(3.0f32, 5.0f32, 0.0f32), 3.0f32);
+        assert_eq!(Interpolate::smooth(3.0f32, 5.0f32, 0.5f32), 4.0f32);
+        assert_eq!(Interpolate::smooth(3.0f32, 5.0f32, 1.0f32), 5.0f32);
+
+        assert_eq!(Interpolate::smooth(3.0f32, 5.0f32,  infinity), -infinity);
+        assert_eq!(Interpolate::smooth(3.0f32, 5.0f32, -infinity),  infinity);
+
+        assert_eq!(Interpolate::smooth(3.0f32,  infinity, 0.5f32),  infinity);
+        assert_eq!(Interpolate::smooth(3.0f32, -infinity, 0.5f32), -infinity);
+
+        assert!(Interpolate::smooth( infinity, 5.0f32, 0.5f32).is_NaN());
+        assert!(Interpolate::smooth(-infinity, 5.0f32, 0.5f32).is_NaN());
+
+        assert!(Interpolate::smooth( infinity, 5.0f32, 1.0f32).is_NaN());
+        assert!(Interpolate::smooth(-infinity, 5.0f32, 1.0f32).is_NaN());
+
+        assert!(Interpolate::smooth(NaN, 5.0f32, 1.0f32).is_NaN());
+        assert!(Interpolate::smooth(3.0f32, NaN, 1.0f32).is_NaN());
+        assert!(Interpolate::smooth(3.0f32, 5.0f32, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_barycentric() {
+        assert_eq!(Interpolate::barycentric(3.00f32, 0.50f32, 1.00f32, 0.00f32, 0.00f32), 1.00f32);
+        assert_eq!(Interpolate::barycentric(3.00f32, 0.50f32, 1.00f32, 1.00f32, 0.00f32), 3.00f32);
+        assert_eq!(Interpolate::barycentric(3.00f32, 0.50f32, 1.00f32, 0.00f32, 1.00f32), 0.50f32);
+        assert_eq!(Interpolate::barycentric(3.00f32, 0.50f32, 1.00f32, 0.50f32, 0.50f32), 1.75f32);
+        assert_eq!(Interpolate::barycentric(3.00f32, 0.50f32, 1.00f32, 0.00f32, 0.50f32), 0.75f32);
+        assert_eq!(Interpolate::barycentric(3.00f32, 0.50f32, 1.00f32, 0.50f32, 0.00f32), 2.00f32);
+        assert_eq!(Interpolate::barycentric(1.25f32, 2.50f32, 5.00f32, 0.40f32, 0.40f32), 2.50f32);
+
+        assert_eq!(Interpolate::barycentric(infinity, 4.0f32, 6.0f32, 0.2f32, 0.1f32), infinity);
+        assert_eq!(Interpolate::barycentric(1.0f32, infinity, 6.0f32, 0.2f32, 0.1f32), infinity);
+        assert_eq!(Interpolate::barycentric(1.0f32, 4.0f32, infinity, 0.2f32, 0.1f32), infinity);
+        assert!(Interpolate::barycentric(1.0f32, 4.0f32, 6.0f32, infinity, 0.1f32).is_NaN());
+        assert!(Interpolate::barycentric(1.0f32, 4.0f32, 6.0f32, 0.2f32, infinity).is_NaN());
+
+        assert_eq!(Interpolate::barycentric(-infinity, 4.0f32, 6.0f32, 0.2f32, 0.1f32), -infinity);
+        assert_eq!(Interpolate::barycentric(1.0f32, -infinity, 6.0f32, 0.2f32, 0.1f32), -infinity);
+        assert_eq!(Interpolate::barycentric(1.0f32, 4.0f32, -infinity, 0.2f32, 0.1f32), -infinity);
+        assert!(Interpolate::barycentric(1.0f32, 4.0f32, 6.0f32, -infinity, 0.1f32).is_NaN());
+        assert!(Interpolate::barycentric(1.0f32, 4.0f32, 6.0f32, 0.2f32, -infinity).is_NaN());
+
+        assert!(Interpolate::barycentric(NaN, 4.0f32, 6.0f32, 0.0f32, 0.0f32).is_NaN());
+        assert!(Interpolate::barycentric(1.0f32, NaN, 6.0f32, 0.2f32, 0.0f32).is_NaN());
+        assert!(Interpolate::barycentric(1.0f32, 4.0f32, NaN, 0.4f32, 0.0f32).is_NaN());
+        assert!(Interpolate::barycentric(1.0f32, 4.0f32, 6.0f32, NaN, 0.0f32).is_NaN());
+        assert!(Interpolate::barycentric(1.0f32, 4.0f32, 6.0f32, 0.4f32, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_hermite() {
+        assert_eq!(Interpolate::hermite(3.0f32, 0.0f32, 5.0f32, 0.0f32, 0.0f32), 3.0f32);
+        assert_eq!(Interpolate::hermite(3.0f32, 0.0f32, 5.0f32, 0.0f32, 0.5f32), 4.0f32);
+        assert_eq!(Interpolate::hermite(3.0f32, 0.0f32, 5.0f32, 0.0f32, 1.0f32), 5.0f32);
+
+        assert_eq!(Interpolate::hermite(3.0f32,  1.0f32, -5.0f32, 2.0f32,  infinity),  infinity);
+        assert_eq!(Interpolate::hermite(3.0f32, -1.0f32, -5.0f32, 2.0f32, -infinity), -infinity);
+
+        assert!(Interpolate::hermite(3.0f32, 0.0f32, 5.0f32, 0.0f32,  infinity).is_NaN());
+        assert!(Interpolate::hermite(3.0f32, 0.0f32, 5.0f32, 0.0f32, -infinity).is_NaN());
+
+        assert!(Interpolate::hermite(3.0f32, -1.0f32, 5.0f32, 2.0f32,  infinity).is_NaN());
+        assert!(Interpolate::hermite(3.0f32, -1.0f32, 5.0f32, 2.0f32, -infinity).is_NaN());
+
+        assert_eq!(Interpolate::hermite(3.0f32, 0.0f32,  infinity, 0.0f32, 0.5f32),  infinity);
+        assert_eq!(Interpolate::hermite(3.0f32, 0.0f32, -infinity, 0.0f32, 0.5f32), -infinity);
+
+        assert!(Interpolate::hermite(3.0f32, 0.0f32,  infinity, 0.0f32, 0.0f32).is_NaN());
+        assert!(Interpolate::hermite(3.0f32, 0.0f32, -infinity, 0.0f32, 0.0f32).is_NaN());
+
+        assert_eq!(Interpolate::hermite( infinity, 0.0f32, 5.0f32, 0.0f32, 0.5f32),  infinity);
+        assert_eq!(Interpolate::hermite(-infinity, 0.0f32, 5.0f32, 0.0f32, 0.5f32), -infinity);
+
+        assert!(Interpolate::hermite( infinity, 0.0f32, 5.0f32, 0.0f32, 1.0f32).is_NaN());
+        assert!(Interpolate::hermite(-infinity, 0.0f32, 5.0f32, 0.0f32, 1.0f32).is_NaN());
+
+        assert!(Interpolate::hermite(NaN, 0.0f32, 5.0f32, 0.0f32, 1.0f32).is_NaN());
+        assert!(Interpolate::hermite(3.0f32, NaN, 5.0f32, 0.0f32, 1.0f32).is_NaN());
+        assert!(Interpolate::hermite(3.0f32, 0.0f32, NaN, 0.0f32, 1.0f32).is_NaN());
+        assert!(Interpolate::hermite(3.0f32, 0.0f32, 5.0f32, NaN, 1.0f32).is_NaN());
+        assert!(Interpolate::hermite(3.0f32, 0.0f32, 5.0f32, 0.0f32, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_cubic() {
+        assert_eq!(Interpolate::cubic(1.0f32, 3.0f32, 5.0f32, 6.0f32, 0.0f32), 3.0f32);
+        assert_eq!(Interpolate::cubic(1.0f32, 3.0f32, 5.0f32, 6.0f32, 1.0f32), 5.0f32);
+
+        assert_eq!(Interpolate::cubic(1.0f32, 3.0f32, 5.0f32, 6.0f32,  infinity), infinity);
+        assert_eq!(Interpolate::cubic(1.0f32, 3.0f32, 5.0f32, 6.0f32, -infinity), infinity);
+
+        assert!(Interpolate::cubic( infinity, 3.0f32, 5.0f32, 6.0f32, 0.5f32).is_NaN());
+        assert!(Interpolate::cubic(-infinity, 3.0f32, 5.0f32, 6.0f32, 0.5f32).is_NaN());
+
+        assert!(Interpolate::cubic(1.0f32,  infinity, 5.0f32, 6.0f32, 0.5f32).is_NaN());
+        assert!(Interpolate::cubic(1.0f32, -infinity, 5.0f32, 6.0f32, 0.5f32).is_NaN());
+
+        assert!(Interpolate::cubic(1.0f32, 3.0f32,  infinity, 6.0f32, 0.5f32).is_NaN());
+        assert!(Interpolate::cubic(1.0f32, 3.0f32, -infinity, 6.0f32, 0.5f32).is_NaN());
+
+        assert!(Interpolate::cubic(1.0f32, 3.0f32, 5.0f32,  infinity, 0.5f32).is_NaN());
+        assert!(Interpolate::cubic(1.0f32, 3.0f32, 5.0f32, -infinity, 0.5f32).is_NaN());
+
+        assert!(Interpolate::cubic( NaN, 3.0f32, 5.0f32, 6.0f32, 0.5f32).is_NaN());
+        assert!(Interpolate::cubic(1.0f32,  NaN, 5.0f32, 6.0f32, 0.5f32).is_NaN());
+        assert!(Interpolate::cubic(1.0f32, 3.0f32,  NaN, 6.0f32, 0.5f32).is_NaN());
+        assert!(Interpolate::cubic(1.0f32, 3.0f32, 5.0f32,  NaN, 0.5f32).is_NaN());
+        assert!(Interpolate::cubic(1.0f32, 3.0f32, 5.0f32, 6.0f32, NaN).is_NaN());
+    }
+
+    #[test]
+    fn test_catmull_rom() {
+        assert_eq!(Interpolate::catmull_rom(1.0f32, 3.0f32, 5.0f32, 6.0f32, 0.0f32), 3.0f32);
+        assert_eq!(Interpolate::catmull_rom(1.0f32, 3.0f32, 5.0f32, 6.0f32, 1.0f32), 5.0f32);
+
+        assert_eq!(Interpolate::catmull_rom(1.0f32, 3.0f32, 5.0f32, 6.0f32,  infinity), -infinity);
+        assert_eq!(Interpolate::catmull_rom(1.0f32, 3.0f32, 5.0f32, 6.0f32, -infinity), -infinity);
+
+        assert!(Interpolate::catmull_rom( infinity, 3.0f32, 5.0f32, 6.0f32, 0.5f32).is_NaN());
+        assert!(Interpolate::catmull_rom(-infinity, 3.0f32, 5.0f32, 6.0f32, 0.5f32).is_NaN());
+
+        assert!(Interpolate::catmull_rom(1.0f32,  infinity, 5.0f32, 6.0f32, 0.5f32).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0f32, -infinity, 5.0f32, 6.0f32, 0.5f32).is_NaN());
+
+        assert!(Interpolate::catmull_rom(1.0f32, 3.0f32,  infinity, 6.0f32, 0.5f32).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0f32, 3.0f32, -infinity, 6.0f32, 0.5f32).is_NaN());
+
+        assert!(Interpolate::catmull_rom(1.0f32, 3.0f32, 5.0f32,  infinity, 0.5f32).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0f32, 3.0f32, 5.0f32, -infinity, 0.5f32).is_NaN());
+
+        assert!(Interpolate::catmull_rom(NaN, 3.0f32, 5.0f32, 6.0f32, 0.5f32).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0f32, NaN, 5.0f32, 6.0f32, 0.5f32).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0f32, 3.0f32, NaN, 6.0f32, 0.5f32).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0f32, 3.0f32, 5.0f32, NaN, 0.5f32).is_NaN());
+        assert!(Interpolate::catmull_rom(1.0f32, 3.0f32, 5.0f32, 6.0f32, NaN).is_NaN());
     }
 
     #[test]

@@ -29,7 +29,6 @@ use core::comm::{stream, Port, SharedChan};
 use core::ptr;
 use core::result::{Result};
 use core::result;
-use core::uint;
 use core::vec;
 
 pub mod rustrt {
@@ -884,7 +883,7 @@ impl io::Reader for TcpSocketBuf {
           let needed = len - count;
             if nbuffered > 0 {
                 unsafe {
-                    let ncopy = uint::min(nbuffered, needed);
+                    let ncopy = nbuffered.min(&needed);
                     let dst = ptr::mut_offset(
                         vec::raw::to_mut_ptr(buf), count);
                     let src = ptr::offset(

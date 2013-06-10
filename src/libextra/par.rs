@@ -14,7 +14,6 @@ use core::iterator::IteratorUtil;
 use core::cast;
 use core::ptr;
 use core::sys;
-use core::uint;
 use core::vec;
 use future_spawn = future::spawn;
 
@@ -46,7 +45,7 @@ fn map_slices<A:Copy + Owned,B:Copy + Owned>(
         ~[f()(0u, xs)]
     }
     else {
-        let num_tasks = uint::min(max_tasks, len / min_granularity);
+        let num_tasks = max_tasks.min(&(len / min_granularity));
 
         let items_per_task = len / num_tasks;
 
@@ -54,7 +53,7 @@ fn map_slices<A:Copy + Owned,B:Copy + Owned>(
         let mut base = 0u;
         info!("spawning tasks");
         while base < len {
-            let end = uint::min(len, base + items_per_task);
+            let end = len.min(&(base + items_per_task));
             do vec::as_imm_buf(xs) |p, _len| {
                 let f = f();
                 let base = base;

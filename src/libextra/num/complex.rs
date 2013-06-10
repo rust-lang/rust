@@ -125,19 +125,19 @@ impl<T: Copy + Num> Neg<Cmplx<T>> for Cmplx<T> {
 /* constants */
 impl<T: Copy + Num> Zero for Cmplx<T> {
     #[inline]
-    fn zero() -> Cmplx<T> {
+    pub fn zero() -> Cmplx<T> {
         Cmplx::new(Zero::zero(), Zero::zero())
     }
 
     #[inline]
-    fn is_zero(&self) -> bool {
+    pub fn is_zero(&self) -> bool {
         *self == Zero::zero()
     }
 }
 
 impl<T: Copy + Num> One for Cmplx<T> {
     #[inline]
-    fn one() -> Cmplx<T> {
+    pub fn one() -> Cmplx<T> {
         Cmplx::new(One::one(), Zero::zero())
     }
 }
@@ -154,7 +154,7 @@ impl<T: ToStr + Num + Ord> ToStr for Cmplx<T> {
 }
 
 impl<T: ToStrRadix + Num + Ord> ToStrRadix for Cmplx<T> {
-    fn to_str_radix(&self, radix: uint) -> ~str {
+    pub fn to_str_radix(&self, radix: uint) -> ~str {
         if self.im < Zero::zero() {
             fmt!("%s-%si", self.re.to_str_radix(radix), (-self.im).to_str_radix(radix))
         } else {
