@@ -514,7 +514,7 @@ pub fn failing() -> bool {
         }
         _ => {
             let mut unwinding = false;
-            do Local::borrow::<Task> |local| {
+            do Local::borrow::<Task, ()> |local| {
                 unwinding = match local.unwinder {
                     Some(unwinder) => {
                         unwinder.unwinding

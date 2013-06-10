@@ -208,7 +208,7 @@ pub fn context() -> RuntimeContext {
     } else {
         if Local::exists::<Scheduler>() {
             let context = ::cell::empty_cell();
-            do Local::borrow::<Scheduler> |sched| {
+            do Local::borrow::<Scheduler, ()> |sched| {
                 if sched.in_task_context() {
                     context.put_back(TaskContext);
                 } else {

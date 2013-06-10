@@ -167,7 +167,7 @@ mod test_remote {
             let mut tube = Tube::new();
             let tube_clone = tube.clone();
             let remote_cell = cell::empty_cell();
-            do Local::borrow::<Scheduler>() |sched| {
+            do Local::borrow::<Scheduler, ()>() |sched| {
                 let tube_clone = tube_clone.clone();
                 let tube_clone_cell = Cell(tube_clone);
                 let remote = do sched.event_loop.remote_callback {

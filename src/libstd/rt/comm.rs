@@ -120,13 +120,13 @@ impl<T> ChanOne<T> {
             match oldstate {
                 STATE_BOTH => {
                     // Port is not waiting yet. Nothing to do
-                    do Local::borrow::<Scheduler> |sched| {
+                    do Local::borrow::<Scheduler, ()> |sched| {
                         rtdebug!("non-rendezvous send");
                         sched.metrics.non_rendezvous_sends += 1;
                     }
                 }
                 STATE_ONE => {
-                    do Local::borrow::<Scheduler> |sched| {
+                    do Local::borrow::<Scheduler, ()> |sched| {
                         rtdebug!("rendezvous send");
                         sched.metrics.rendezvous_sends += 1;
                     }

@@ -683,7 +683,7 @@ mod test {
             assert_eq!(count, MAX);
 
             fn run_task(count_ptr: *mut int) {
-                do Local::borrow::<Scheduler> |sched| {
+                do Local::borrow::<Scheduler, ()> |sched| {
                     let task = ~do Coroutine::new(&mut sched.stack_pool) {
                         unsafe {
                             *count_ptr = *count_ptr + 1;
