@@ -1238,10 +1238,10 @@ impl Resolver {
                             let old_sp = methods_seen.find_or_insert(ident, span);
                             if *old_sp != span {
                                 self.session.span_err(span,
-                                                      fmt!("duplicate definition of method %s",
+                                                      fmt!("duplicate definition of method `%s`",
                                                            *self.session.str_of(ident)));
                                 self.session.span_note(*old_sp,
-                                                       fmt!("first definition of method %s here",
+                                                       fmt!("first definition of method `%s` here",
                                                             *self.session.str_of(ident)));
                             }
                         }
@@ -1375,10 +1375,10 @@ impl Resolver {
                             let old_sp = method_names.find_or_insert(ident, ty_m.span);
                             if *old_sp != ty_m.span {
                                 self.session.span_err(ty_m.span,
-                                                      fmt!("duplicate definition of method %s",
+                                                      fmt!("duplicate definition of method `%s`",
                                                            *self.session.str_of(ident)));
                                 self.session.span_note(*old_sp,
-                                                       fmt!("first definition of method %s here",
+                                                       fmt!("first definition of method `%s` here",
                                                             *self.session.str_of(ident)));
                             }
                         }
