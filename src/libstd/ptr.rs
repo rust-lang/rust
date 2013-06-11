@@ -161,8 +161,8 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
 }
 
 /**
- * Invokes memset on the specified pointer, setting `count` bytes of memory
- * starting at `dst` to `c`.
+ * Invokes memset on the specified pointer, setting `count * size_of::<T>()`
+ * bytes of memory starting at `dst` to `c`.
  */
 #[inline(always)]
 #[cfg(target_word_size = "32", not(stage0))]
@@ -172,8 +172,8 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
 }
 
 /**
- * Invokes memset on the specified pointer, setting `count` bytes of memory
- * starting at `dst` to `c`.
+ * Invokes memset on the specified pointer, setting `count * size_of::<T>()`
+ * bytes of memory starting at `dst` to `c`.
  */
 #[inline(always)]
 #[cfg(target_word_size = "64", not(stage0))]
