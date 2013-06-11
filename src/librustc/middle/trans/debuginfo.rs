@@ -24,7 +24,11 @@ use util::ppaux::ty_to_str;
 use core::hashmap::HashMap;
 use core::libc;
 use core::libc::c_uint;
+use core::ptr;
+use core::str;
 use core::str::as_c_str;
+use core::sys;
+use core::vec;
 use syntax::codemap::span;
 use syntax::parse::token::ident_interner;
 use syntax::{ast, codemap, ast_util, ast_map};
@@ -57,43 +61,45 @@ static DW_ATE_unsigned_char: int = 0x08;
 
 ////////////////
 
-pub struct DebugContext {
-    //llmetadata: metadata_cache,
+pub type DebugContext = @mut _DebugContext;
+
+struct _DebugContext {
     names: namegen,
     crate_file: ~str,
     builder: DIBuilderRef,
-    
-    created_files: @mut HashMap<~str, DIFile>,
-    created_functions: @mut HashMap<ast::node_id, DISubprogram>,
-    created_blocks: @mut HashMap<ast::node_id, DILexicalBlock>,
-    created_types: @mut HashMap<uint, DIType>
+    curr_loc: (int, int),
+    created_files: HashMap<~str, DIFile>,
+    created_functions: HashMap<ast::node_id, DISubprogram>,
+    created_blocks: HashMap<ast::node_id, DILexicalBlock>,
+    created_types: HashMap<uint, DIType>
 }
 
 /** Create new DebugContext */
 pub fn mk_ctxt(llmod: ModuleRef, crate: ~str, intr: @ident_interner) -> DebugContext {
     debug!("mk_ctxt");
-    let builder = unsafe { llvm::DIBuilder_new(llmod) };
-    DebugContext {
-        //llmetadata: @mut HashMap::new(),
+    let builder = unsafe { llvm::LLVMDIBuilderCreate(llmod) };
+    let dcx = @mut _DebugContext {
         names: new_namegen(intr),
         crate_file: crate,
         builder: builder,
-        created_files: @mut HashMap::new(),
-        created_functions: @mut HashMap::new(),
-        created_blocks: @mut HashMap::new(),
-        created_types: @mut HashMap::new(),
-}
+        curr_loc: (-1, -1),
+        created_files: HashMap::new(),
+        created_functions: HashMap::new(),
+        created_blocks: HashMap::new(),
+        created_types: HashMap::new(),
+    };
+    return dcx;
 }
 
 #[inline(always)]
-fn get_builder(cx: @CrateContext) -> DIBuilderRef {
-    let dbg_cx = cx.dbg_cx.get_ref();
-    return dbg_cx.builder;
+fn dbg_cx(cx: &CrateContext) -> DebugContext
+{
+    return cx.dbg_cx.get();
 }
 
 fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
     return unsafe { 
-        llvm::DIBuilder_getOrCreateArray(builder, vec::raw::to_ptr(arr), arr.len() as u32) 
+        llvm::LLVMDIBuilderGetOrCreateArray(builder, vec::raw::to_ptr(arr), arr.len() as u32) 
     };
 }
 
@@ -101,9 +107,10 @@ fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
 pub fn finalize(cx: @CrateContext) {
     debug!("finalize");
     create_compile_unit(cx);
-    unsafe {
-        llvm::DIBuilder_finalize(get_builder(cx));
-        llvm::DIBuilder_delete(get_builder(cx));
+    let dcx = dbg_cx(cx);
+    unsafe { 
+        llvm::LLVMDIBuilderFinalize(dcx.builder);
+        llvm::LLVMDIBuilderDispose(dcx.builder);
     };
 }
 
@@ -123,52 +130,52 @@ fn get_file_path_and_dir(work_dir: &str, full_path: &str) -> (~str, ~str) {
                        str::len(full_path)).to_owned()
         } else {
             full_path.to_owned()
-    };
+        };
     
     return (full_path, work_dir.to_owned());
 }
 
 fn create_compile_unit(cx: @CrateContext) {
-    let crate_name: &str = cx.dbg_cx.get_ref().crate_file;
+    let crate_name: &str = dbg_cx(cx).crate_file;
 
     let (_, work_dir) = get_file_path_and_dir(
         cx.sess.working_dir.to_str(), crate_name);
         
     let producer = fmt!("rustc version %s", env!("CFG_VERSION"));
-
+    
     do as_c_str(crate_name) |crate_name| {
     do as_c_str(work_dir) |work_dir| {
     do as_c_str(producer) |producer| {
     do as_c_str("") |flags| {
     do as_c_str("") |split_name| { unsafe {
-        llvm::DIBuilder_createCompileUnit(get_builder(cx),
-            DW_LANG_RUST as c_uint, crate_name, work_dir, producer,
+        llvm::LLVMDIBuilderCreateCompileUnit(dbg_cx(cx).builder,
+            DW_LANG_RUST as c_uint, crate_name, work_dir, producer, 
             cx.sess.opts.optimize != session::No,
             flags, 0, split_name);
     }}}}}};
 }
 
 fn create_file(cx: @CrateContext, full_path: &str) -> DIFile {
-    let mut dbg_cx = cx.dbg_cx.get_ref();
-
-    match dbg_cx.created_files.find(&full_path.to_owned()) {
+    let dcx = dbg_cx(cx);
+    
+    match dcx.created_files.find(&full_path.to_owned()) {
         Some(file_md) => return *file_md,
         None => ()
     }
 
     debug!("create_file: %s", full_path);
-
+    
     let (file_path, work_dir) =
         get_file_path_and_dir(cx.sess.working_dir.to_str(),
                               full_path);
 
-    let file_md =
+    let file_md = 
         do as_c_str(file_path) |file_path| {
         do as_c_str(work_dir) |work_dir| { unsafe {
-            llvm::DIBuilder_createFile(get_builder(cx), file_path, work_dir)
+            llvm::LLVMDIBuilderCreateFile(dcx.builder, file_path, work_dir)
         }}};
-
-    dbg_cx.created_files.insert(full_path.to_owned(), file_md);
+        
+    dcx.created_files.insert(full_path.to_owned(), file_md);
     return file_md;
 }
 
@@ -178,8 +185,9 @@ fn line_from_span(cm: @codemap::CodeMap, sp: span) -> uint {
 
 fn create_block(bcx: block) -> DILexicalBlock {
     let mut bcx = bcx;
-    let mut dbg_cx = bcx.ccx().dbg_cx.get_ref();    
-
+    let cx = bcx.ccx();
+    let mut dcx = dbg_cx(cx);
+    
     while bcx.node_info.is_none() {
         match bcx.parent {
           Some(b) => bcx = b,
@@ -188,33 +196,33 @@ fn create_block(bcx: block) -> DILexicalBlock {
     }
     let sp = bcx.node_info.get().span;
     let id = bcx.node_info.get().id;
-
-    match dbg_cx.created_blocks.find(&id) {
+    
+    match dcx.created_blocks.find(&id) {
         Some(block) => return *block,
         None => ()
     }
-
+    
     debug!("create_block: %s", bcx.sess().codemap.span_to_str(sp));
-
+    
     let start = bcx.sess().codemap.lookup_char_pos(sp.lo);
-    let end = bcx.sess().codemap.lookup_char_pos(sp.hi);
+    //let end = bcx.sess().codemap.lookup_char_pos(sp.hi);
     
     let parent = match bcx.parent {
         None => create_function(bcx.fcx),
         Some(b) => create_block(b)
     };
-
+    
     let file_md = create_file(bcx.ccx(), start.file.name);
     
-    let block_md = unsafe {
+    let block_md = unsafe { 
         llvm::LLVMDIBuilderCreateLexicalBlock(
-            dcx.builder,
-            parent, file_md,
+            dcx.builder, 
+            parent, file_md, 
             start.line.to_int() as c_uint, start.col.to_int() as c_uint) 
     };
-
-    dbg_cx.created_blocks.insert(id, block_md);
-
+    
+    dcx.created_blocks.insert(id, block_md);
+    
     return block_md;
 }
 
@@ -225,14 +233,14 @@ fn size_and_align_of(cx: @CrateContext, t: ty::t) -> (uint, uint) {
 }
 
 fn create_basic_type(cx: @CrateContext, t: ty::t, span: span) -> DIType{
-    let mut dbg_cx = cx.dbg_cx.get_ref();
+    let mut dcx = dbg_cx(cx);
     let ty_id = ty::type_id(t);
-    match dbg_cx.created_types.find(&ty_id) {
+    match dcx.created_types.find(&ty_id) {
         Some(ty_md) => return *ty_md,
         None => ()
     }
-
-    debug!("create_basic_type: %?", ty::get(t));
+    
+    debug!("create_basic_type: %?", ty::get(t));    
 
     let (name, encoding) = match ty::get(t).sty {
         ty::ty_nil | ty::ty_bot => (~"uint", DW_ATE_unsigned),
@@ -263,11 +271,11 @@ fn create_basic_type(cx: @CrateContext, t: ty::t, span: span) -> DIType{
     let (size, align) = size_and_align_of(cx, t);
     let ty_md = do as_c_str(name) |name| { unsafe {
             llvm::LLVMDIBuilderCreateBasicType(
-                dcx.builder, name,
+                dcx.builder, name, 
                 size * 8 as u64, align * 8 as u64, encoding as c_uint)
         }};
-
-    dbg_cx.created_types.insert(ty_id, ty_md);
+        
+    dcx.created_types.insert(ty_id, ty_md);
     return ty_md;
 }
 
@@ -275,7 +283,7 @@ fn create_pointer_type(cx: @CrateContext, t: ty::t, span: span, pointee: DIType)
     let (size, align) = size_and_align_of(cx, t);
     let name = ty_to_str(cx.tcx, t);
     let ptr_md = do as_c_str(name) |name| { unsafe {
-        llvm::DIBuilder_createPointerType(get_builder(cx), 
+        llvm::LLVMDIBuilderCreatePointerType(dbg_cx(cx).builder, 
                 pointee, size * 8 as u64, align * 8 as u64, name)
     }};
     return ptr_md;
@@ -304,11 +312,11 @@ impl StructContext {
         };
         return scx;
     }
-
+    
     fn add_member(&mut self, name: &str, line: uint, size: uint, align: uint, ty: DIType) {
         let mem_t = do as_c_str(name) |name| { unsafe {
-            llvm::DIBuilder_createMemberType(get_builder(self.cx), 
-                ptr::null(), name, self.file, line as c_uint,
+            llvm::LLVMDIBuilderCreateMemberType(dbg_cx(self.cx).builder, 
+                ptr::null(), name, self.file, line as c_uint, 
                 size * 8 as u64, align * 8 as u64, self.total_size as u64, 
                 0, ty)
             }};
@@ -316,11 +324,12 @@ impl StructContext {
         self.members.push(mem_t);
         self.total_size += size * 8;
     }
-
+    
     fn finalize(&self) -> DICompositeType {
-        let members_md = create_DIArray(get_builder(self.cx), self.members);
-
-        let struct_md =
+        let dcx = dbg_cx(self.cx);
+        let members_md = create_DIArray(dcx.builder, self.members);
+        
+        let struct_md = 
             do as_c_str(self.name) |name| { unsafe {
                 llvm::LLVMDIBuilderCreateStructType(
                     dcx.builder, ptr::null(), name, 
@@ -336,7 +345,7 @@ fn create_struct(cx: @CrateContext, t: ty::t, fields: ~[ty::field], span: span) 
     let fname = filename_from_span(cx, span);
     let file_md = create_file(cx, fname);
     let line = line_from_span(cx.sess.codemap, span);
-
+    
     let mut scx = StructContext::create(cx, file_md, ty_to_str(cx.tcx, t), line);
     for fields.each |field| {
         let field_t = field.mt.ty;
@@ -350,24 +359,24 @@ fn create_struct(cx: @CrateContext, t: ty::t, fields: ~[ty::field], span: span) 
 }
 
 // returns (void* type as a ValueRef, size in bytes, align in bytes)
-fn voidptr() -> (DIDerivedType, uint, uint) {
+fn voidptr(cx: @CrateContext) -> (DIDerivedType, uint, uint) {
     let size = sys::size_of::<ValueRef>();
     let align = sys::min_align_of::<ValueRef>();
-    let vp = ptr::null();
-    /*
-    let vp = create_derived_type(PointerTypeTag, null, ~"", 0,
-                                 size, align, 0, null);
-    */
+    let vp = do as_c_str("*void") |name| { unsafe {
+            llvm::LLVMDIBuilderCreatePointerType(dbg_cx(cx).builder, ptr::null(), 
+                size*8 as u64, align*8 as u64, name)
+        }};
     return (vp, size, align);
 }
 
 fn create_tuple(cx: @CrateContext, t: ty::t, elements: &[ty::t], span: span) -> DICompositeType {
+    let dcx = dbg_cx(cx);
     let fname = filename_from_span(cx, span);
     let file_md = create_file(cx, fname);
 
     let name = (cx.sess.str_of((dcx.names)("tuple"))).to_owned();
     let mut scx = StructContext::create(cx, file_md, name, loc.line);
-
+           
     for elements.each |element| {
         let ty_md = create_ty(cx, *element, span);
         let (size, align) = size_and_align_of(cx, *element);
@@ -384,13 +393,13 @@ fn create_boxed_type(cx: @CrateContext, contents: ty::t,
     let int_t = ty::mk_int();
     let refcount_type = create_basic_type(cx, int_t, span);
     let name = ty_to_str(cx.tcx, contents);
-
+    
     let mut scx = StructContext::create(cx, file_md, fmt!("box<%s>", name), 0);
     scx.add_member("refcnt", 0, sys::size_of::<uint>(),
                sys::min_align_of::<uint>(), refcount_type);
     // the tydesc and other pointers should be irrelevant to the
     // debugger, so treat them as void* types
-    let (vp, vpsize, vpalign) = voidptr();
+    let (vp, vpsize, vpalign) = voidptr(cx);
     scx.add_member("tydesc", 0, vpsize, vpalign, vp);
     scx.add_member("prev", 0, vpsize, vpalign, vp);
     scx.add_member("next", 0, vpsize, vpalign, vp);
@@ -401,40 +410,42 @@ fn create_boxed_type(cx: @CrateContext, contents: ty::t,
 
 fn create_fixed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
                     len: uint, span: span) -> DIType {
+    let dcx = dbg_cx(cx);
     let elem_ty_md = create_ty(cx, elem_t, span);
     let fname = filename_from_span(cx, span);
     let file_md = create_file(cx, fname);
     let (size, align) = size_and_align_of(cx, elem_t);
 
-    let subrange = unsafe {
-        llvm::DIBuilder_getOrCreateSubrange(get_builder(cx), 0_i64, (len-1) as i64) };
+    let subrange = unsafe { 
+        llvm::LLVMDIBuilderGetOrCreateSubrange(dcx.builder, 0_i64, (len-1) as i64) };
 
-    let subscripts = create_DIArray(get_builder(cx), [subrange]);
-    return unsafe {
-        llvm::DIBuilder_createVectorType(get_builder(cx), 
+    let subscripts = create_DIArray(dcx.builder, [subrange]);
+    return unsafe { 
+        llvm::LLVMDIBuilderCreateVectorType(dcx.builder, 
             size * len as u64, align as u64, elem_ty_md, subscripts) 
     };
 }
 
 fn create_boxed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
                     vec_ty_span: codemap::span) -> DICompositeType {
+    let dcx = dbg_cx(cx);
     let fname = filename_from_span(cx, vec_ty_span);
     let file_md = create_file(cx, fname);
     let elem_ty_md = create_ty(cx, elem_t, vec_ty_span);
-
+    
     let mut vec_scx = StructContext::create(cx, file_md, ty_to_str(cx.tcx, vec_t), 0);
-
+    
     let size_t_type = create_basic_type(cx, ty::mk_uint(), vec_ty_span);
     vec_scx.add_member("fill", 0, sys::size_of::<libc::size_t>(),
                sys::min_align_of::<libc::size_t>(), size_t_type);
     vec_scx.add_member("alloc", 0, sys::size_of::<libc::size_t>(),
                sys::min_align_of::<libc::size_t>(), size_t_type);
-    let subrange = unsafe { llvm::DIBuilder_getOrCreateSubrange(get_builder(cx), 0_i64, 0_i64) };
+    let subrange = unsafe { llvm::LLVMDIBuilderGetOrCreateSubrange(dcx.builder, 0_i64, 0_i64) };
     let (arr_size, arr_align) = size_and_align_of(cx, elem_t);
     let name = fmt!("[%s]", ty_to_str(cx.tcx, elem_t));
-
-    let subscripts = create_DIArray(get_builder(cx), [subrange]);
-    let data_ptr = unsafe { llvm::DIBuilder_createVectorType(get_builder(cx), 
+    
+    let subscripts = create_DIArray(dcx.builder, [subrange]);
+    let data_ptr = unsafe { llvm::LLVMDIBuilderCreateVectorType(dcx.builder, 
                 arr_size as u64, arr_align as u64, elem_ty_md, subscripts) };
     vec_scx.add_member("data", 0, 0, // clang says the size should be 0
                sys::min_align_of::<u8>(), data_ptr);
@@ -445,7 +456,7 @@ fn create_boxed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
     let refcount_type = create_basic_type(cx, int_t, vec_ty_span);
     box_scx.add_member("refcnt", 0, sys::size_of::<uint>(),
                sys::min_align_of::<uint>(), refcount_type);
-    let (vp, vpsize, vpalign) = voidptr();
+    let (vp, vpsize, vpalign) = voidptr(cx);
     box_scx.add_member("tydesc", 0, vpsize, vpalign, vp);
     box_scx.add_member("prev", 0, vpsize, vpalign, vp);
     box_scx.add_member("next", 0, vpsize, vpalign, vp);
@@ -462,9 +473,9 @@ fn create_vec_slice(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t, span: span) 
     let elem_ty_md = create_ty(cx, elem_t, span);
     let uint_type = create_basic_type(cx, ty::mk_uint(), span);
     let elem_ptr = create_pointer_type(cx, elem_t, span, elem_ty_md);
-
+    
     let mut scx = StructContext::create(cx, file_md, ty_to_str(cx.tcx, vec_t), 0);
-    let (_, ptr_size, ptr_align) = voidptr();
+    let (_, ptr_size, ptr_align) = voidptr(cx);
     scx.add_member("vec", 0, ptr_size, ptr_align, elem_ptr);
     scx.add_member("length", 0, sys::size_of::<uint>(),
                sys::min_align_of::<uint>(), uint_type);
@@ -473,24 +484,25 @@ fn create_vec_slice(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t, span: span) 
 
 fn create_fn_ty(cx: @CrateContext, fn_ty: ty::t, inputs: ~[ty::t], output: ty::t,
                 span: span) -> DICompositeType {
+    let dcx = dbg_cx(cx);
     let fname = filename_from_span(cx, span);
     let file_md = create_file(cx, fname);
-    let (vp, _, _) = voidptr();
+    let (vp, _, _) = voidptr(cx);
     let output_md = create_ty(cx, output, span);
     let output_ptr_md = create_pointer_type(cx, output, span, output_md);
     let inputs_vals = do inputs.map |arg| { create_ty(cx, *arg, span) };
     let members = ~[output_ptr_md, vp] + inputs_vals;
-
-    return unsafe {
-        llvm::DIBuilder_createSubroutineType(get_builder(cx), file_md, 
-            create_DIArray(get_builder(cx), members)) 
+    
+    return unsafe { 
+        llvm::LLVMDIBuilderCreateSubroutineType(dcx.builder, file_md, 
+            create_DIArray(dcx.builder, members)) 
     };
 }
 
 fn create_ty(cx: @CrateContext, t: ty::t, span: span) -> DIType {
-    let mut dbg_cx = cx.dbg_cx.get_ref();
+    let mut dcx = dbg_cx(cx);
     let ty_id = ty::type_id(t);
-    match dbg_cx.created_types.find(&ty_id) {
+    match dcx.created_types.find(&ty_id) {
         Some(ty_md) => return *ty_md,
         None => ()
     }
@@ -565,25 +577,16 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span) -> DIType {
         },
         _ => cx.sess.bug(~"debuginfo: unexpected type in create_ty")
     };
-
-    dbg_cx.created_types.insert(ty_id, ty_md);
+    
+    dcx.created_types.insert(ty_id, ty_md);
     return ty_md;
 }
 
 pub fn create_local_var(bcx: block, local: @ast::local) -> DIVariable {
-    debug!("create_local_var");
     let cx = bcx.ccx();
-    /*
-    let cache = get_cache(cx);
-    let tg = AutoVariableTag;
-    match cached_metadata::<@Metadata<LocalVarMetadata>>(
-        cache, tg, |md| md.data.id == local.node.id) {
-      option::Some(md) => return md,
-      option::None => ()
-    }
-    */
+    let dcx = dbg_cx(cx);
 
-    let name = match local.node.pat.node {
+    let ident = match local.node.pat.node {
       ast::pat_ident(_, pth, _) => ast_util::path_to_ident(pth),
       // FIXME this should be handled (#2533)
       _ => fail!("no single variable name for local")
@@ -594,59 +597,51 @@ pub fn create_local_var(bcx: block, local: @ast::local) -> DIVariable {
     let loc = span_start(cx, local.span);
     let ty = node_id_type(bcx, local.node.id);
     let tymd = create_ty(cx, ty, local.node.ty.span);
-    let filemd = create_file(cx, /*bad*/copy loc.file.name);
+    let filemd = create_file(cx, loc.file.name);
     let context = match bcx.parent {
         None => create_function(bcx.fcx),
         Some(_) => create_block(bcx)
     };
-
-    let mdval = do as_c_str(*cx.sess.str_of(name)) |name| { unsafe {
-        llvm::DIBuilder_createLocalVariable(get_builder(cx), AutoVariableTag as u32,
-                 ptr::null(), name, filemd, loc.line as c_uint, tymd, false, 0, 0)
+    
+    let var_md = do as_c_str(name) |name| { unsafe {
+        llvm::LLVMDIBuilderCreateLocalVariable(
+            dcx.builder, AutoVariableTag as u32,
+            context, name, filemd, 
+            loc.line as c_uint, tymd, false, 0, 0)
         }};
-
-    let llptr = match bcx.fcx.lllocals.find(&local.node.id) {
-      option::Some(&local_mem(v)) => v,
-      option::Some(_) => {
-        bcx.tcx().sess.span_bug(local.span, "local is bound to something weird");
+    
+    // FIXME(#6814) Should use `pat_util::pat_bindings` for pats like (a, b) etc
+    let llptr = match bcx.fcx.lllocals.find_copy(&local.node.pat.id) {
+        Some(v) => v,
+        None => {
+            bcx.tcx().sess.span_bug(
+                local.span,
+                fmt!("No entry in lllocals table for %?", local.node.id));
         }
-      option::None => {
-        match bcx.fcx.lllocals.get_copy(&local.node.pat.id) {
-          local_imm(v) => v,
-          _ => bcx.tcx().sess.span_bug(local.span, "local is bound to something weird")
-    }
-      }
     };
-    /*
-    llvm::DIBuilder_insertDeclare(get_builder(cx), llptr, mdval, 
-
-    let declargs = ~[llmdnode(~[llptr]), mdnode];
-    trans::build::Call(bcx, *cx.intrinsics.get(&~"llvm.dbg.declare"),
-                       declargs);
-    */
-    return mdval;
+    unsafe {
+        llvm::LLVMDIBuilderInsertDeclareAtEnd(dcx.builder, llptr, var_md, bcx.llbb);
     }
+    return var_md;
+}
 
 pub fn create_arg(bcx: block, arg: ast::arg, sp: span) -> Option<DIVariable> {
     debug!("create_arg");
     let fcx = bcx.fcx, cx = *fcx.ccx;
-    /*
-    let cache = get_cache(cx);
-    let tg = ArgVariableTag;
-    match cached_metadata::<@Metadata<ArgumentMetadata>>(
-        cache, ArgVariableTag, |md| md.data.id == arg.id) {
-      option::Some(md) => return Some(md),
-      option::None => ()
-    }
-    */
+    let dcx = dbg_cx(cx);
 
     let loc = cx.sess.codemap.lookup_char_pos(sp.lo);
     if "<intrinsic>" == loc.file.name {
         return None;
     }
+    // FIXME: Disabled for now because "node_id_type(bcx, arg.id)" below blows up:
+    // "error: internal compiler error: node_id_to_type: no type for node `arg (id=10)`"
+    // (same as https://github.com/mozilla/rust/issues/5848)
+    return None;
+    
     let ty = node_id_type(bcx, arg.id);
     let tymd = create_ty(cx, ty, arg.ty.span);
-    let filemd = create_file(cx, /*bad*/copy loc.file.name);
+    let filemd = create_file(cx, loc.file.name);
     let context = create_function(bcx.fcx);
 
     match arg.pat.node {
@@ -656,19 +651,15 @@ pub fn create_arg(bcx: block, arg: ast::arg, sp: span) -> Option<DIVariable> {
             let name: &str = cx.sess.str_of(*ident);
             let mdnode = do as_c_str(name) |name| { unsafe {
                 llvm::LLVMDIBuilderCreateLocalVariable(dcx.builder,
-                    ArgVariableTag as u32, context, name,
+                    ArgVariableTag as u32, context, name, 
                     filemd, loc.line as c_uint, tymd, false, 0, 0)
-                    // XXX need to pass a real argument number
+                    // FIXME need to pass a real argument number
             }};
-
-            let llptr = match fcx.llargs.get_copy(&arg.id) {
-              local_mem(v) | local_imm(v) => v,
-            };
-            
-            /*
-            llvm::DIBuilder_insertDeclare(get_builder(cx), mdnode, llptr, mdnode
-            */
-            
+                
+            let llptr = fcx.llargs.get_copy(&arg.id);
+            unsafe {
+                llvm::LLVMDIBuilderInsertDeclareAtEnd(dcx.builder, llptr, mdnode, bcx.llbb);
+            }
             return Some(mdnode);
         }
         _ => {
@@ -684,9 +675,23 @@ fn create_debug_loc(line: int, col: int, scope: DIScope) -> DILocation {
     }
 }
 
+pub fn update_source_pos(bcx: block, sp: span) {
+    if !bcx.sess().opts.debuginfo || (*sp.lo == 0 && *sp.hi == 0) {
+        return;
+    }
+    
+    debug!("update_source_pos: %s", bcx.sess().codemap.span_to_str(sp));
+
     let cm = bcx.sess().codemap;
-    let blockmd = create_block(bcx);
     let loc = cm.lookup_char_pos(sp.lo);
+    let cx = bcx.ccx();
+    let mut dcx = dbg_cx(cx);
+    if (loc.line.to_int(), loc.col.to_int()) == dcx.curr_loc {
+        return;
+    }
+    
+    dcx.curr_loc = (loc.line.to_int(), loc.col.to_int());
+    let blockmd = create_block(bcx);
     let dbgscope = create_debug_loc(loc.line.to_int(), loc.col.to_int(), blockmd);
     unsafe {
         llvm::LLVMSetCurrentDebugLocation(trans::build::B(bcx), dbgscope);
@@ -695,7 +700,7 @@ fn create_debug_loc(line: int, col: int, scope: DIScope) -> DILocation {
 
 pub fn create_function(fcx: fn_ctxt) -> DISubprogram {
     let cx = *fcx.ccx;
-    let mut dbg_cx = cx.dbg_cx.get_ref();
+    let mut dcx = dbg_cx(cx);
     let fcx = &mut *fcx;
     let sp = fcx.span.get();
 
@@ -714,7 +719,7 @@ pub fn create_function(fcx: fn_ctxt) -> DISubprogram {
       ast_map::node_expr(expr) => {
         match expr.node {
           ast::expr_fn_block(ref decl, _) => {
-            ((dbg_cx.names)("fn"), decl.output, expr.id)
+            ((dcx.names)("fn"), decl.output, expr.id)
           }
           _ => fcx.ccx.sess.span_bug(expr.span,
                   "create_function: expected an expr_fn_block here")
@@ -722,8 +727,8 @@ pub fn create_function(fcx: fn_ctxt) -> DISubprogram {
       }
       _ => fcx.ccx.sess.bug("create_function: unexpected sort of node")
     };
-
-    match dbg_cx.created_functions.find(&id) {
+    
+    match dcx.created_functions.find(&id) {
         Some(fn_md) => return *fn_md,
         None => ()
     }
@@ -742,27 +747,27 @@ pub fn create_function(fcx: fn_ctxt) -> DISubprogram {
     } else {
         ptr::null()
     };
-
+    
     let fn_ty = unsafe {
-        llvm::DIBuilder_createSubroutineType(get_builder(cx),
-            file_md, create_DIArray(get_builder(cx), [ret_ty_md]))
+        llvm::LLVMDIBuilderCreateSubroutineType(dcx.builder,
+            file_md, create_DIArray(dcx.builder, [ret_ty_md]))
         };
-
-    let fn_md =
+    
+    let fn_md = 
         do as_c_str(cx.sess.str_of(ident)) |name| {
         do as_c_str(cx.sess.str_of(ident)) |linkage| { unsafe {
             llvm::LLVMDIBuilderCreateFunction(
-                dcx.builder,
-                file_md,
-                name, linkage,
-                file_md, loc.line as c_uint,
-                fn_ty, false, true,
-                loc.line as c_uint,
+                dcx.builder, 
+                file_md, 
+                name, linkage, 
+                file_md, loc.line as c_uint, 
+                fn_ty, false, true, 
+                loc.line as c_uint, 
                 FlagPrototyped as c_uint,
-                cx.sess.opts.optimize != session::No,
+                cx.sess.opts.optimize != session::No, 
                 fcx.llfn, ptr::null(), ptr::null())
             }}};
-
-    dbg_cx.created_functions.insert(id, fn_md);
+            
+    dcx.created_functions.insert(id, fn_md);
     return fn_md;
 }
