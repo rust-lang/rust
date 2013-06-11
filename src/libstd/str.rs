@@ -848,15 +848,6 @@ fn match_at<'a,'b>(haystack: &'a str, needle: &'b str, at: uint) -> bool {
     return true;
 }
 
-
-/*
-Section: String properties
-*/
-
-/// Returns the number of characters that a string holds
-#[inline(always)]
-pub fn char_len(s: &str) -> uint { count_chars(s, 0u, s.len()) }
-
 /*
 Section: Misc
 */
@@ -972,46 +963,6 @@ pub fn with_capacity(capacity: uint) -> ~str {
     let mut buf = ~"";
     buf.reserve(capacity);
     buf
-}
-
-/**
- * As char_len but for a slice of a string
- *
- * # Arguments
- *
- * * s - A valid string
- * * start - The position inside `s` where to start counting in bytes
- * * end - The position where to stop counting
- *
- * # Return value
- *
- * The number of Unicode characters in `s` between the given indices.
- */
-pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
-    assert!(s.is_char_boundary(start));
-    assert!(s.is_char_boundary(end));
-    let mut (i, len) = (start, 0u);
-    while i < end {
-        let next = s.char_range_at(i).next;
-        len += 1u;
-        i = next;
-    }
-    return len;
-}
-
-/// Counts the number of bytes taken by the first `n` chars in `s`
-/// starting from `start`.
-pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
-    assert!(s.is_char_boundary(start));
-    let mut (end, cnt) = (start, n);
-    let l = s.len();
-    while cnt > 0u {
-        assert!(end < l);
-        let next = s.char_range_at(end).next;
-        cnt -= 1u;
-        end = next;
-    }
-    end - start
 }
 
 /// Given a first byte, determine how many bytes are in this UTF-8 character
@@ -1394,11 +1345,14 @@ pub trait StrSlice<'self> {
     fn is_alphanumeric(&self) -> bool;
     fn len(&self) -> uint;
     fn char_len(&self) -> uint;
+
     fn slice(&self, begin: uint, end: uint) -> &'self str;
     fn slice_from(&self, begin: uint) -> &'self str;
     fn slice_to(&self, end: uint) -> &'self str;
+
+    fn slice_chars(&self, begin: uint, end: uint) -> &'self str;
+
     fn starts_with(&self, needle: &str) -> bool;
-    fn substr(&self, begin: uint, n: uint) -> &'self str;
     fn escape_default(&self) -> ~str;
     fn escape_unicode(&self) -> ~str;
     fn trim(&self) -> &'self str;
@@ -1595,7 +1549,8 @@ impl<'self> StrSlice<'self> for &'self str {
     }
     /// Returns the number of characters that a string holds
     #[inline]
-    fn char_len(&self) -> uint { char_len(*self) }
+    fn char_len(&self) -> uint { self.iter().count() }
+
     /**
      * Returns a slice of the given string from the byte range
      * [`begin`..`end`)
@@ -1626,6 +1581,32 @@ impl<'self> StrSlice<'self> for &'self str {
     fn slice_to(&self, end: uint) -> &'self str {
         self.slice(0, end)
     }
+
+    /// Returns a slice of the string from the char range
+    /// [`begin`..`end`).
+    ///
+    /// Fails if `begin` > `end` or the either `begin` or `end` are
+    /// beyond the last character of the string.
+    fn slice_chars(&self, begin: uint, end: uint) -> &'self str {
+        assert!(begin <= end);
+        // not sure how to use the iterators for this nicely.
+        let mut (position, count) = (0, 0);
+        let l = self.len();
+        while count < begin && position < l {
+            position = self.char_range_at(position).next;
+            count += 1;
+        }
+        if count < begin { fail!("Attempted to begin slice_chars beyond end of string") }
+        let start_byte = position;
+        while count < end && position < l {
+            position = self.char_range_at(position).next;
+            count += 1;
+        }
+        if count < end { fail!("Attempted to end slice_chars beyond end of string") }
+
+        self.slice(start_byte, position)
+    }
+
     /// Returns true if `needle` is a prefix of the string.
     fn starts_with<'a>(&self, needle: &'a str) -> bool {
         let (self_len, needle_len) = (self.len(), needle.len());
@@ -1641,16 +1622,6 @@ impl<'self> StrSlice<'self> for &'self str {
         else { match_at(*self, needle, self_len - needle_len) }
     }
 
-    /**
-     * Take a substring of another.
-     *
-     * Returns a string containing `n` characters starting at byte offset
-     * `begin`.
-     */
-    #[inline]
-    fn substr(&self, begin: uint, n: uint) -> &'self str {
-        self.slice(begin, begin + count_bytes(*self, begin, n))
-    }
     /// Escape each char in `s` with char::escape_default.
     #[inline]
     fn escape_default(&self) -> ~str { escape_default(*self) }
@@ -2367,14 +2338,14 @@ mod tests {
         assert_eq!("\u2620".len(), 3u);
         assert_eq!("\U0001d11e".len(), 4u);
 
-        assert_eq!(char_len(""), 0u);
-        assert_eq!(char_len("hello world"), 11u);
-        assert_eq!(char_len("\x63"), 1u);
-        assert_eq!(char_len("\xa2"), 1u);
-        assert_eq!(char_len("\u03c0"), 1u);
-        assert_eq!(char_len("\u2620"), 1u);
-        assert_eq!(char_len("\U0001d11e"), 1u);
-        assert_eq!(char_len("ประเทศไทย中华Việt Nam"), 19u);
+        assert_eq!("".char_len(), 0u);
+        assert_eq!("hello world".char_len(), 11u);
+        assert_eq!("\x63".char_len(), 1u);
+        assert_eq!("\xa2".char_len(), 1u);
+        assert_eq!("\u03c0".char_len(), 1u);
+        assert_eq!("\u2620".char_len(), 1u);
+        assert_eq!("\U0001d11e".char_len(), 1u);
+        assert_eq!("ประเทศไทย中华Việt Nam".char_len(), 19u);
     }
 
     #[test]
@@ -2509,13 +2480,13 @@ mod tests {
     }
 
     #[test]
-    fn test_substr() {
-        fn t(a: &str, b: &str, start: int) {
-            assert_eq!(a.substr(start as uint, b.len()), b);
+    fn test_slice_chars() {
+        fn t(a: &str, b: &str, start: uint) {
+            assert_eq!(a.slice_chars(start, start + b.char_len()), b);
         }
         t("hello", "llo", 2);
         t("hello", "el", 1);
-        assert_eq!("ะเทศไท", "ประเทศไทย中华Việt Nam".substr(6u, 6u));
+        assert_eq!("ะเทศไท", "ประเทศไทย中华Việt Nam".slice_chars(2, 8));
     }
 
     #[test]

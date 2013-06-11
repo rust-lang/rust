@@ -21,7 +21,7 @@ pub fn main() {
     let schs: ~[char] = s.iter().collect();
 
     assert!(s.len() == 10u);
-    assert!(str::char_len(s) == 4u);
+    assert!(s.char_len() == 4u);
     assert!(schs.len() == 4u);
     assert!(str::from_chars(schs) == s);
     assert!(s.char_at(0u) == 'e');

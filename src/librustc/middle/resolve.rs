@@ -2678,14 +2678,14 @@ impl Resolver {
         match module_prefix_result {
             Failed => {
                 let mpath = self.idents_to_str(module_path);
-                match self.idents_to_str(module_path).rfind(':') {
+                match mpath.rfind(':') {
                     Some(idx) => {
                         self.session.span_err(span, fmt!("unresolved import: could not find `%s` \
-                                                         in `%s`", mpath.substr(idx,
-                                                                                mpath.len() - idx),
-                                                         // idx - 1 to account for the extra
-                                                         // colon
-                                                         mpath.substr(0, idx - 1)));
+                                                         in `%s`",
+                                                         // idx +- 1 to account for the colons
+                                                         // on either side
+                                                         mpath.slice_from(idx + 1),
+                                                         mpath.slice_to(idx - 1)));
                     },
                     None => (),
                 };
