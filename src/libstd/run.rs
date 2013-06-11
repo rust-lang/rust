@@ -523,7 +523,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
         CloseHandle(si.hStdOutput);
         CloseHandle(si.hStdError);
 
-        for create_err.each |msg| {
+        for create_err.iter().advance |msg| {
             fail!("failure in CreateProcess: %s", *msg);
         }
 
@@ -589,7 +589,7 @@ pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
     return cmd;
 
     fn append_arg(cmd: &mut ~str, arg: &str) {
-        let quote = arg.iter().any(|c| c == ' ' || c == '\t');
+        let quote = arg.iter().any_(|c| c == ' ' || c == '\t');
         if quote {
             cmd.push_char('"');
         }
