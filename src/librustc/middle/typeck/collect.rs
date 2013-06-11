@@ -31,6 +31,7 @@ are represented as `ty_param()` instances.
 */
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use metadata::csearch;
 use middle::ty::{substs, ty_param_bounds_and_ty};
@@ -579,10 +580,10 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     // For both the trait and the impl, create an argument to
     // represent the self argument (unless this is a static method).
     // This argument will have the *transformed* self type.
-    for trait_m.transformed_self_ty.each |&t| {
+    for trait_m.transformed_self_ty.iter().advance |&t| {
         trait_fn_args.push(t);
     }
-    for impl_m.transformed_self_ty.each |&t| {
+    for impl_m.transformed_self_ty.iter().advance |&t| {
         impl_fn_args.push(t);
     }
 
@@ -867,7 +868,7 @@ pub fn convert(ccx: &CrateCtxt, it: @ast::item) {
         let cms = convert_methods(ccx, *ms, selfty,
                                   &i_ty_generics, generics,
                                   parent_visibility);
-        for opt_trait_ref.each |t| {
+        for opt_trait_ref.iter().advance |t| {
             check_methods_against_trait(ccx, generics, rp, selfty, *t, cms);
         }
       }

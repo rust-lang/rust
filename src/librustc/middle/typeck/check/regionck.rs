@@ -28,6 +28,7 @@ this point a bit better.
 */
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use middle::freevars::get_freevars;
 use middle::ty::{re_scope};
@@ -268,7 +269,7 @@ fn visit_expr(expr: @ast::expr, rcx: @mut Rcx, v: rvt) {
         ast::expr_match(_, ref arms) => {
             tcx.region_maps.record_cleanup_scope(expr.id);
             for arms.each |arm| {
-                for arm.guard.each |guard| {
+                for arm.guard.iter().advance |guard| {
                     tcx.region_maps.record_cleanup_scope(guard.id);
                 }
             }
@@ -281,26 +282,29 @@ fn visit_expr(expr: @ast::expr, rcx: @mut Rcx, v: rvt) {
     }
 
     // Check any autoderefs or autorefs that appear.
-    for rcx.fcx.inh.adjustments.find(&expr.id).each |&adjustment| {
-        debug!("adjustment=%?", adjustment);
-        match *adjustment {
-            @ty::AutoDerefRef(
-                ty::AutoDerefRef {autoderefs: autoderefs, autoref: opt_autoref}) =>
-            {
-                let expr_ty = rcx.resolve_node_type(expr.id);
-                constrain_derefs(rcx, expr, autoderefs, expr_ty);
-                for opt_autoref.each |autoref| {
-                    guarantor::for_autoref(rcx, expr, autoderefs, autoref);
+    {
+        let r = rcx.fcx.inh.adjustments.find(&expr.id);
+        for r.iter().advance |&adjustment| {
+            debug!("adjustment=%?", adjustment);
+            match *adjustment {
+                @ty::AutoDerefRef(
+                    ty::AutoDerefRef {autoderefs: autoderefs, autoref: opt_autoref}) =>
+                {
+                    let expr_ty = rcx.resolve_node_type(expr.id);
+                    constrain_derefs(rcx, expr, autoderefs, expr_ty);
+                    for opt_autoref.iter().advance |autoref| {
+                        guarantor::for_autoref(rcx, expr, autoderefs, autoref);
 
-                    // Require that the resulting region encompasses
-                    // the current node.
-                    //
-                    // FIXME(#6268) remove to support nested method calls
-                    constrain_regions_in_type_of_node(
-                        rcx, expr.id, ty::re_scope(expr.id), expr.span);
+                        // Require that the resulting region encompasses
+                        // the current node.
+                        //
+                        // FIXME(#6268) remove to support nested method calls
+                        constrain_regions_in_type_of_node(
+                            rcx, expr.id, ty::re_scope(expr.id), expr.span);
+                    }
                 }
+                _ => {}
             }
-            _ => {}
         }
     }
 
@@ -489,7 +493,7 @@ fn constrain_call(rcx: @mut Rcx,
     }
 
     // as loop above, but for receiver
-    for receiver.each |&r| {
+    for receiver.iter().advance |&r| {
         constrain_regions_in_type_of_node(
             rcx, r.id, callee_region, r.span);
         if implicitly_ref_args {
@@ -871,9 +875,8 @@ pub mod guarantor {
             rcx: @mut Rcx,
             expr: @ast::expr,
             sub_region: ty::Region,
-            sup_region: Option<ty::Region>)
-        {
-            for sup_region.each |r| {
+            sup_region: Option<ty::Region>) {
+            for sup_region.iter().advance |r| {
                 infallibly_mk_subr(rcx, true, expr.span, sub_region, *r);
             }
         }
@@ -895,7 +898,7 @@ pub mod guarantor {
         debug!("guarantor::for_by_ref(expr=%?, callee_scope=%?) category=%?",
                expr.id, callee_scope, expr_cat);
         let minimum_lifetime = ty::re_scope(callee_scope);
-        for expr_cat.guarantor.each |guarantor| {
+        for expr_cat.guarantor.iter().advance |guarantor| {
             mk_subregion_due_to_derefence(rcx, expr.span,
                                           minimum_lifetime, *guarantor);
         }
@@ -1201,12 +1204,12 @@ pub mod guarantor {
             ast::pat_ident(ast::bind_by_ref(_), _, opt_p) => {
                 link(rcx, pat.span, pat.id, guarantor);
 
-                for opt_p.each |p| {
+                for opt_p.iter().advance |p| {
                     link_ref_bindings_in_pat(rcx, *p, guarantor);
                 }
             }
             ast::pat_ident(_, _, opt_p) => {
-                for opt_p.each |p| {
+                for opt_p.iter().advance |p| {
                     link_ref_bindings_in_pat(rcx, *p, guarantor);
                 }
             }
@@ -1245,7 +1248,7 @@ pub mod guarantor {
                 };
 
                 link_ref_bindings_in_pats(rcx, before, guarantor1);
-                for slice.each |&p| {
+                for slice.iter().advance |&p| {
                     link_ref_bindings_in_pat(rcx, p, guarantor);
                 }
                 link_ref_bindings_in_pats(rcx, after, guarantor1);

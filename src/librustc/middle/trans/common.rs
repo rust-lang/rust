@@ -11,6 +11,7 @@
 //! Code that is useful in various trans modules.
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use back::{abi, upcall};
 use driver::session;
@@ -254,7 +255,7 @@ pub struct param_substs {
 impl param_substs {
     pub fn validate(&self) {
         for self.tys.each |t| { assert!(!ty::type_needs_infer(*t)); }
-        for self.self_ty.each |t| { assert!(!ty::type_needs_infer(*t)); }
+        for self.self_ty.iter().advance |t| { assert!(!ty::type_needs_infer(*t)); }
     }
 }
 
@@ -554,7 +555,7 @@ pub fn revoke_clean(cx: block, val: ValueRef) {
                 clean_temp(v, _, _) if v == val => true,
                 _ => false
             });
-        for cleanup_pos.each |i| {
+        for cleanup_pos.iter().advance |i| {
             scope_info.cleanups =
                 vec::append(vec::slice(scope_info.cleanups, 0u, *i).to_vec(),
                             vec::slice(scope_info.cleanups,

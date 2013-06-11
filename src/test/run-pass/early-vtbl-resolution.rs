@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::old_iter;
-
 trait thing<A> {
     fn foo(&self) -> Option<A>;
 }
@@ -21,10 +19,5 @@ fn foo_func<A, B: thing<A>>(x: B) -> Option<A> { x.foo() }
 struct A { a: int }
 
 pub fn main() {
-
-    for old_iter::eachi(&(Some(A {a: 0}))) |i, a| {
-        debug!("%u %d", i, a.a);
-    }
-
     let _x: Option<float> = foo_func(0);
 }

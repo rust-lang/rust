@@ -131,7 +131,7 @@ impl PkgSrc {
             return true;
         }
         else {
-            for self_id.each |pth| {
+            for self_id.iter().advance |pth| {
                 if pth.starts_with("rust_") // because p is already normalized
                     && match p.filestem() {
                            Some(s) => str::eq_slice(s, pth.slice(5, pth.len())),

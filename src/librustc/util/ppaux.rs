@@ -32,6 +32,7 @@ use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 
+use core::iterator::IteratorUtil;
 use core::str;
 use core::vec;
 
@@ -798,7 +799,7 @@ impl UserString for ty::TraitRef {
         let base = ast_map::path_to_str(path, tcx.sess.intr());
         if tcx.sess.verbose() && self.substs.self_ty.is_some() {
             let mut all_tps = copy self.substs.tps;
-            for self.substs.self_ty.each |&t| { all_tps.push(t); }
+            for self.substs.self_ty.iter().advance |&t| { all_tps.push(t); }
             parameterized(tcx, base, self.substs.self_r, all_tps)
         } else {
             parameterized(tcx, base, self.substs.self_r,

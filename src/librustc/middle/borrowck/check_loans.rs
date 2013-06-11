@@ -18,6 +18,7 @@
 // 4. moves do not affect things loaned out in any way
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use core::hashmap::HashSet;
 use core::uint;
@@ -581,14 +582,15 @@ impl<'self> CheckLoanCtxt<'self> {
         // FIXME(#4384) inadequare if/when we permit `move a.b`
 
         // check for a conflicting loan:
-        for opt_loan_path(cmt).each |&lp| {
+        let r = opt_loan_path(cmt);
+        for r.iter().advance |&lp| {
             for self.each_in_scope_restriction(cmt.id, lp) |loan, _| {
                 // Any restriction prevents moves.
                 return MoveWhileBorrowed(lp, loan.loan_path, loan.span);
             }
         }
 
-        return MoveOk;
+        MoveOk
     }
 
     pub fn check_call(&mut self,
@@ -700,9 +702,9 @@ fn check_loans_in_expr<'a>(expr: @ast::expr,
           if !this.move_data.is_assignee(expr.id) {
               let cmt = this.bccx.cat_expr_unadjusted(expr);
               debug!("path cmt=%s", cmt.repr(this.tcx()));
-              for opt_loan_path(cmt).each |&lp| {
-                  this.check_if_path_is_moved(expr.id, expr.span,
-                                              MovedInUse, lp);
+              let r = opt_loan_path(cmt);
+              for r.iter().advance |&lp| {
+                  this.check_if_path_is_moved(expr.id, expr.span, MovedInUse, lp);
               }
           }
       }

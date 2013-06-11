@@ -139,8 +139,8 @@ pub fn any<A:Copy + Owned>(
     fn_factory: &fn() -> ~fn(&A) -> bool) -> bool {
     let mapped = map_slices(xs, || {
         let f = fn_factory();
-        let result: ~fn(uint, &[A]) -> bool = |_, slice| slice.iter().any(f);
+        let result: ~fn(uint, &[A]) -> bool = |_, slice| slice.iter().any_(f);
         result
     });
-    mapped.iter().any(|&x| x)
+    mapped.iter().any_(|&x| x)
 }

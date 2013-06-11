@@ -56,7 +56,6 @@ use util::ppaux::ty_to_str;
 
 use core::iterator::IteratorUtil;
 use core::hashmap::{HashMap, HashSet};
-use core::old_iter;
 use core::result::Ok;
 use core::uint;
 use core::vec;
@@ -213,7 +212,7 @@ impl CoherenceChecker {
                 match item.node {
                     item_impl(_, opt_trait, _, _) => {
                         self.check_implementation(item,
-                                                  old_iter::to_vec(&opt_trait));
+                                                  opt_trait.iter().transform(|&x| x).collect());
                     }
                     _ => {
                         // Nothing to do.
@@ -808,7 +807,7 @@ impl CoherenceChecker {
                 }
 
                 // Check that we have implementations of every trait method
-                for trait_refs.each |trait_ref| {
+                for trait_refs.iter().advance |trait_ref| {
                     let trait_did =
                         self.trait_ref_to_trait_def_id(*trait_ref);
                     self.please_check_that_trait_methods_are_implemented(
@@ -821,7 +820,7 @@ impl CoherenceChecker {
                 // methods are provided.  For each of those methods,
                 // if a method of that name is not inherent to the
                 // impl, use the provided definition in the trait.
-                for trait_refs.each |trait_ref| {
+                for trait_refs.iter().advance |trait_ref| {
                     let trait_did =
                         self.trait_ref_to_trait_def_id(*trait_ref);
 
@@ -920,7 +919,7 @@ impl CoherenceChecker {
             }
 
             // Record all the trait methods.
-            for associated_traits.each |trait_ref| {
+            for associated_traits.iter().advance |trait_ref| {
                 self.add_trait_method(trait_ref.def_id, *implementation);
             }
 
