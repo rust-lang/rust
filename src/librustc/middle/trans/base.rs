@@ -1907,7 +1907,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
 
     finish(bcx);
     cleanup_and_Br(bcx, bcx_top, fcx.llreturn);
-    
+
     unsafe { llvm::LLVMMoveBasicBlockAfter(fcx.llreturn, bcx.llbb); }
 
     // Insert the mandatory first few basic blocks before lltop.
