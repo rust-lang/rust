@@ -841,7 +841,7 @@ fn check_item_non_camel_case_types(cx: &Context, it: @ast::item) {
     fn is_camel_case(cx: ty::ctxt, ident: ast::ident) -> bool {
         let ident = cx.sess.str_of(ident);
         assert!(!ident.is_empty());
-        let ident = ident.trim_chars(&['_']);
+        let ident = ident.trim_chars(&'_');
         char::is_uppercase(ident.char_at(0)) &&
             !ident.contains_char('_')
     }
