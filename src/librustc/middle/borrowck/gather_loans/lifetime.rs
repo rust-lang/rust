@@ -109,7 +109,7 @@ impl GuaranteeLifetimeContext {
             }
 
             mc::cat_downcast(base) |
-            mc::cat_deref(base, _, mc::uniq_ptr(*)) |  // L-Deref-Owned
+            mc::cat_deref(base, _, mc::uniq_ptr(*)) |  // L-Deref-Send
             mc::cat_interior(base, _) => {             // L-Field
                 self.check(base, discr_scope)
             }

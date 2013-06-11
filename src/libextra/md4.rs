@@ -60,7 +60,8 @@ pub fn md4(msg: &[u8]) -> Quad {
     while i < e {
         let (aa, bb, cc, dd) = (a, b, c, d);
 
-        let mut (j, base) = (0u, i);
+        let mut j = 0u;
+        let mut base = i;
         while j < 16u {
             x[j] = (msg[base] as u32) + (msg[base + 1u] as u32 << 8u32) +
                 (msg[base + 2u] as u32 << 16u32) +
