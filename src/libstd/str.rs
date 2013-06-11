@@ -26,7 +26,7 @@ use clone::Clone;
 use cmp::{TotalOrd, Ordering, Less, Equal, Greater};
 use container::Container;
 use iter::Times;
-use iterator::{Iterator, IteratorUtil, FilterIterator};
+use iterator::{Iterator, IteratorUtil, FilterIterator, AdditiveIterator};
 use libc;
 use option::{None, Option, Some};
 use old_iter::{BaseIter, EqIter};
@@ -160,15 +160,13 @@ pub trait StrVector {
     pub fn connect(&self, sep: &str) -> ~str;
 }
 
-impl<'self> StrVector for &'self [~str] {
+impl<'self, S: Str> StrVector for &'self [S] {
     /// Concatenate a vector of strings.
     pub fn concat(&self) -> ~str {
         if self.is_empty() { return ~""; }
 
-        let mut len = 0;
-        for self.each |ss| {
-            len += ss.len();
-        }
+        let len = self.iter().transform(|s| s.as_slice().len()).sum();
+
         let mut s = ~"";
 
         s.reserve(len);
@@ -176,8 +174,8 @@ impl<'self> StrVector for &'self [~str] {
         unsafe {
             do as_buf(s) |buf, _| {
                 let mut buf = ::cast::transmute_mut_unsafe(buf);
-                for self.each |ss| {
-                    do as_buf(*ss) |ssbuf, sslen| {
+                for self.iter().advance |ss| {
+                    do as_buf(ss.as_slice()) |ssbuf, sslen| {
                         let sslen = sslen - 1;
                         ptr::copy_memory(buf, ssbuf, sslen);
                         buf = buf.offset(sslen);
@@ -197,10 +195,8 @@ impl<'self> StrVector for &'self [~str] {
         if sep.is_empty() { return self.concat(); }
 
         // this is wrong without the guarantee that `self` is non-empty
-        let mut len = sep.len() * (self.len() - 1);
-        for self.each |ss| {
-            len += ss.len();
-        }
+        let len = sep.len() * (self.len() - 1)
+            + self.iter().transform(|s| s.as_slice().len()).sum();
         let mut s = ~"";
         let mut first = true;
 
@@ -211,80 +207,8 @@ impl<'self> StrVector for &'self [~str] {
                 do as_buf(sep) |sepbuf, seplen| {
                     let seplen = seplen - 1;
                     let mut buf = ::cast::transmute_mut_unsafe(buf);
-                    for self.each |ss| {
-                        do as_buf(*ss) |ssbuf, sslen| {
-                            let sslen = sslen - 1;
-                            if first {
-                                first = false;
-                            } else {
-                                ptr::copy_memory(buf, sepbuf, seplen);
-                                buf = buf.offset(seplen);
-                            }
-                            ptr::copy_memory(buf, ssbuf, sslen);
-                            buf = buf.offset(sslen);
-                        }
-                    }
-                }
-            }
-            raw::set_len(&mut s, len);
-        }
-        s
-    }
-}
-
-impl<'self> StrVector for &'self [&'self str] {
-    /// Concatenate a vector of strings.
-    pub fn concat(&self) -> ~str {
-        if self.is_empty() { return ~""; }
-
-        let mut len = 0;
-        for self.each |ss| {
-            len += ss.len();
-        }
-        let mut s = ~"";
-
-        s.reserve(len);
-
-        unsafe {
-            do as_buf(s) |buf, _| {
-                let mut buf = ::cast::transmute_mut_unsafe(buf);
-                for self.each |ss| {
-                    do as_buf(*ss) |ssbuf, sslen| {
-                        let sslen = sslen - 1;
-                        ptr::copy_memory(buf, ssbuf, sslen);
-                        buf = buf.offset(sslen);
-                    }
-                }
-            }
-            raw::set_len(&mut s, len);
-        }
-        s
-    }
-
-    /// Concatenate a vector of strings, placing a given separator between each.
-    pub fn connect(&self, sep: &str) -> ~str {
-        if self.is_empty() { return ~""; }
-
-        // concat is faster
-        if sep.is_empty() { return self.concat(); }
-
-        // this is wrong without the guarantee that `self` is non-empty
-        let mut len = sep.len() * (self.len() - 1);
-        for self.each |ss| {
-            len += ss.len();
-        }
-        let mut s = ~"";
-        let mut first = true;
-
-        s.reserve(len);
-
-        unsafe {
-            do as_buf(s) |buf, _| {
-                do as_buf(sep) |sepbuf, seplen| {
-                    let seplen = seplen - 1;
-                    let mut buf = ::cast::transmute_mut_unsafe(buf);
-                    for self.each |ss| {
-                        do as_buf(*ss) |ssbuf, sslen| {
+                    for self.iter().advance |ss| {
+                        do as_buf(ss.as_slice()) |ssbuf, sslen| {
                             let sslen = sslen - 1;
                             if first {
                                 first = false;
@@ -1266,6 +1190,29 @@ pub mod traits {
 
 #[cfg(test)]
 pub mod traits {}
+
+/// Any string that can be represented as a slice
+pub trait Str {
+    /// Work with `self` as a slice.
+    fn as_slice<'a>(&'a self) -> &'a str;
+}
+
+impl<'self> Str for &'self str {
+    #[inline(always)]
+    fn as_slice<'a>(&'a self) -> &'a str { *self }
+}
+impl<'self> Str for ~str {
+    #[inline(always)]
+    fn as_slice<'a>(&'a self) -> &'a str {
+        let s: &'a str = *self; s
+    }
+}
+impl<'self> Str for @str {
+    #[inline(always)]
+    fn as_slice<'a>(&'a self) -> &'a str {
+        let s: &'a str = *self; s
+    }
+}
 
 #[allow(missing_doc)]
 pub trait StrSlice<'self> {
