@@ -31,21 +31,22 @@
  * file name following -o, and accepts both -h and --help as optional flags.
  *
  * ```
- *    extern mod std;
- *    use std::getopts::*;
+ *    extern mod extra;
+ *    use extra::getopts::*;
+ *    use std::os;
  *
  *    fn do_work(in: &str, out: Option<~str>) {
- *      io::println(in);
- *      io::println(match out {
- *        Some(x) => x,
- *        None => ~"No Output"
- *      });
+ *        println(in);
+ *        println(match out {
+ *            Some(x) => x,
+ *            None => ~"No Output"
+ *        });
  *    }
  *
- *    fn print_usage(program: &str, _opts: &[std::getopts::Opt]) {
- *      io::println(fmt!("Usage: %s [options]", program));
- *      io::println("-o\t\tOutput");
- *      io::println("-h --help\tUsage");
+ *    fn print_usage(program: &str, _opts: &[Opt]) {
+ *        println(fmt!("Usage: %s [options]", program));
+ *        println("-o\t\tOutput");
+ *        println("-h --help\tUsage");
  *    }
  *
  *    fn main() {
@@ -58,9 +59,9 @@
  *            optflag("h"),
  *            optflag("help")
  *        ];
- *        let matches = match getopts(vec::tail(args), opts) {
- *            result::Ok(m) => { m }
- *            result::Err(f) => { fail!(fail_str(f)) }
+ *        let matches = match getopts(args.tail(), opts) {
+ *            Ok(m) => { m }
+ *            Err(f) => { fail!(fail_str(f)) }
  *        };
  *        if opt_present(&matches, "h") || opt_present(&matches, "help") {
  *            print_usage(program, opts);
