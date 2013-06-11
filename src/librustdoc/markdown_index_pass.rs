@@ -22,8 +22,6 @@ use markdown_pass;
 use markdown_writer;
 use pass::Pass;
 
-use core::str;
-
 pub fn mk_pass(config: config::Config) -> Pass {
     Pass {
         name: ~"markdown_index",

@@ -12,7 +12,7 @@
 
 use core::path::Path;
 use core::option::Some;
-use core::{hash, str};
+use core::hash;
 use core::rt::io::Writer;
 use core::hash::Streaming;
 
