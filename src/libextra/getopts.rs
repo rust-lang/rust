@@ -593,7 +593,7 @@ pub mod groups {
      */
     pub fn usage(brief: &str, opts: &[OptGroup]) -> ~str {
 
-        let desc_sep = ~"\n" + str::repeat(" ", 24);
+        let desc_sep = ~"\n" + " ".repeat(24);
 
         let rows = vec::map(opts, |optref| {
             let OptGroup{short_name: short_name,
@@ -603,7 +603,7 @@ pub mod groups {
                          hasarg: hasarg,
                          _} = copy *optref;
 
-            let mut row = str::repeat(" ", 4);
+            let mut row = " ".repeat(4);
 
             // short option
             row += match short_name.len() {
@@ -629,7 +629,7 @@ pub mod groups {
             // here we just need to indent the start of the description
             let rowlen = row.len();
             row += if rowlen < 24 {
-                str::repeat(" ", 24 - rowlen)
+                " ".repeat(24 - rowlen)
             } else {
                 copy desc_sep
             };
