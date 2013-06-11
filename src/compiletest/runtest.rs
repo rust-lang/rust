@@ -254,7 +254,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     }
 
     // write debugger script
-    let script_str = str::append(cmds, "\nquit\n");
+    let script_str = cmds.append("\nquit\n");
     debug!("script_str = %s", script_str);
     dump_output_file(config, testfile, script_str, "debugger.script");
 
