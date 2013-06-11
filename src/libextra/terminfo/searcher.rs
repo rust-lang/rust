@@ -12,7 +12,7 @@
 /// Does not support hashed database, only filesystem!
 
 use core::prelude::*;
-use core::{os};
+use core::{os, str};
 use core::os::getenv;
 use core::io::{file_reader, Reader};
 use core::iterator::IteratorUtil;

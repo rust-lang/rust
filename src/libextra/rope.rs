@@ -564,7 +564,6 @@ pub mod node {
     use rope::node;
 
     use core::cast;
-    use core::str;
     use core::uint;
     use core::vec;
 

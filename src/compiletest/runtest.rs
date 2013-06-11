@@ -171,8 +171,8 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     if props.pp_exact.is_some() {
         // Now we have to care about line endings
         let cr = ~"\r";
-        actual = str::replace(actual, cr, "");
-        expected = str::replace(expected, cr, "");
+        actual = actual.replace(cr, "");
+        expected = expected.replace(cr, "");
     }
 
     compare_source(expected, actual);
@@ -238,7 +238,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     // do not optimize debuginfo tests
     let mut config = match config.rustcflags {
         Some(ref flags) => config {
-            rustcflags: Some(str::replace(*flags, "-O", "")),
+            rustcflags: Some(flags.replace("-O", "")),
             .. copy *config
         },
         None => copy *config

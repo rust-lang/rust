@@ -23,7 +23,6 @@ use core::i16;
 use core::i32;
 use core::i64;
 use core::i8;
-use core::str;
 use core::u16;
 use core::u32;
 use core::u64;
@@ -375,7 +374,7 @@ impl Context {
                 fmt!("%s [-%c %s%s]", msg, match level {
                         warn => 'W', deny => 'D', forbid => 'F',
                         allow => fail!()
-                    }, str::replace(self.lint_to_str(lint), "_", "-"),
+                    }, self.lint_to_str(lint).replace("_", "-"),
                     if src == Default { " (default)" } else { "" })
             },
             Node(src) => {

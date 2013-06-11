@@ -581,30 +581,6 @@ pub fn each_split_within<'a>(ss: &'a str,
     return cont;
 }
 
-/**
- * Replace all occurrences of one string with another
- *
- * # Arguments
- *
- * * s - The string containing substrings to replace
- * * from - The string to replace
- * * to - The replacement string
- *
- * # Return value
- *
- * The original string with all occurances of `from` replaced with `to`
- */
-pub fn replace(s: &str, from: &str, to: &str) -> ~str {
-    let mut (result, last_end) = (~"", 0);
-    for s.matches_index_iter(from).advance |(start, end)| {
-        result.push_str(unsafe{raw::slice_bytes(s, last_end, start)});
-        result.push_str(to);
-        last_end = end;
-    }
-    result.push_str(unsafe{raw::slice_bytes(s, last_end, s.len())});
-    result
-}
-
 /*
 Section: Comparing strings
 */
@@ -1349,6 +1325,7 @@ pub trait StrSlice<'self> {
     fn trim_chars(&self, chars_to_trim: &[char]) -> &'self str;
     fn trim_left_chars(&self, chars_to_trim: &[char]) -> &'self str;
     fn trim_right_chars(&self, chars_to_trim: &[char]) -> &'self str;
+    fn replace(&self, from: &str, to: &str) -> ~str;
     fn to_owned(&self) -> ~str;
     fn to_managed(&self) -> @str;
     fn is_char_boundary(&self, index: uint) -> bool;
@@ -1692,6 +1669,29 @@ impl<'self> StrSlice<'self> for &'self str {
                 unsafe { raw::slice_bytes(*self, 0u, next) }
             }
         }
+    }
+
+    /**
+     * Replace all occurrences of one string with another
+     *
+     * # Arguments
+     *
+     * * from - The string to replace
+     * * to - The replacement string
+     *
+     * # Return value
+     *
+     * The original string with all occurances of `from` replaced with `to`
+     */
+    pub fn replace(&self, from: &str, to: &str) -> ~str {
+        let mut (result, last_end) = (~"", 0);
+        for self.matches_index_iter(from).advance |(start, end)| {
+            result.push_str(unsafe{raw::slice_bytes(*self, last_end, start)});
+            result.push_str(to);
+            last_end = end;
+        }
+        result.push_str(unsafe{raw::slice_bytes(*self, last_end, self.len())});
+        result
     }
 
     /// Copy a slice into a new unique str
@@ -2592,13 +2592,13 @@ mod tests {
     #[test]
     fn test_replace() {
         let a = "a";
-        assert_eq!(replace("", a, "b"), ~"");
-        assert_eq!(replace("a", a, "b"), ~"b");
-        assert_eq!(replace("ab", a, "b"), ~"bb");
+        assert_eq!("".replace(a, "b"), ~"");
+        assert_eq!("a".replace(a, "b"), ~"b");
+        assert_eq!("ab".replace(a, "b"), ~"bb");
         let test = "test";
-        assert!(replace(" test test ", test, "toast") ==
+        assert!(" test test ".replace(test, "toast") ==
             ~" toast toast ");
-        assert_eq!(replace(" test test ", test, ""), ~"   ");
+        assert_eq!(" test test ".replace(test, ""), ~"   ");
     }
 
     #[test]
@@ -2608,7 +2608,7 @@ mod tests {
 
         let a = ~"ประเ";
         let A = ~"دولة الكويتทศไทย中华";
-        assert_eq!(replace(data, a, repl), A);
+        assert_eq!(data.replace(a, repl), A);
     }
 
     #[test]
@@ -2618,7 +2618,7 @@ mod tests {
 
         let b = ~"ะเ";
         let B = ~"ปรدولة الكويتทศไทย中华";
-        assert_eq!(replace(data, b,   repl), B);
+        assert_eq!(data.replace(b,   repl), B);
     }
 
     #[test]
@@ -2628,7 +2628,7 @@ mod tests {
 
         let c = ~"中华";
         let C = ~"ประเทศไทยدولة الكويت";
-        assert_eq!(replace(data, c, repl), C);
+        assert_eq!(data.replace(c, repl), C);
     }
 
     #[test]
@@ -2637,7 +2637,7 @@ mod tests {
         let repl = ~"دولة الكويت";
 
         let d = ~"ไท华";
-        assert_eq!(replace(data, d, repl), data);
+        assert_eq!(data.replace(d, repl), data);
     }
 
     #[test]

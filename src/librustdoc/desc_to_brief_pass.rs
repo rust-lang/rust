@@ -108,7 +108,7 @@ fn first_sentence(s: ~str) -> Option<~str> {
     let paras = paragraphs(s);
     if !paras.is_empty() {
         let first_para = paras.head();
-        Some(str::replace(first_sentence_(*first_para), "\n", " "))
+        Some(first_sentence_(*first_para).replace("\n", " "))
     } else {
         None
     }
