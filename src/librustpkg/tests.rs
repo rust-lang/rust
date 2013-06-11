@@ -280,7 +280,7 @@ fn test_package_version() {
 
 // FIXME #7006: Fails on linux for some reason
 #[test]
-#[ignore(cfg(target_os = "linux"))]
+#[ignore]
 fn test_package_request_version() {
     let temp_pkg_id = PkgId::new("github.com/catamorphism/test_pkg_version#0.3");
     let temp = mk_empty_workspace(&LocalPath(Path("test_pkg_version")), &ExactRevision(~"0.3"));
