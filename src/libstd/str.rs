@@ -1396,12 +1396,19 @@ pub mod raw {
     /// Converts a byte to a string.
     pub unsafe fn from_byte(u: u8) -> ~str { raw::from_bytes([u]) }
 
-    /// Form a slice from a *u8 buffer of the given length without copying.
-    pub unsafe fn buf_as_slice<T>(buf: *u8, len: uint,
-                              f: &fn(v: &str) -> T) -> T {
-        let v = (buf, len + 1);
+    /// Form a slice from a C string. Unsafe because the caller must ensure the
+    /// C string has the static lifetime, or else the return value may be
+    /// invalidated later.
+    pub unsafe fn c_str_to_static_slice(s: *libc::c_char) -> &'static str {
+        let s = s as *u8;
+        let mut (curr, len) = (s, 0u);
+        while *curr != 0u8 {
+            len += 1u;
+            curr = ptr::offset(s, len);
+        }
+        let v = (s, len + 1);
         assert!(is_utf8(::cast::transmute(v)));
-        f(::cast::transmute(v))
+        ::cast::transmute(v)
     }
 
     /**
