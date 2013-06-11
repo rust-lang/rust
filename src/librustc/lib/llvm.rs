@@ -1925,16 +1925,16 @@ pub mod llvm {
 
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_new(M: ModuleRef) -> DIBuilderRef;
+        pub unsafe fn LLVMDIBuilderCreate(M: ModuleRef) -> DIBuilderRef;
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_delete(Builder: DIBuilderRef);
+        pub unsafe fn LLVMDIBuilderDispose(Builder: DIBuilderRef);
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_finalize(Builder: DIBuilderRef);
+        pub unsafe fn LLVMDIBuilderFinalize(Builder: DIBuilderRef);
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_createCompileUnit(
+        pub unsafe fn LLVMDIBuilderCreateCompileUnit(
             Builder: DIBuilderRef,
             Lang: c_uint,
             File: *c_char,
@@ -1946,19 +1946,19 @@ pub mod llvm {
             SplitName: *c_char);
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_createFile(
+        pub unsafe fn LLVMDIBuilderCreateFile(
             Builder: DIBuilderRef,
             Filename: *c_char,
             Directory: *c_char) -> DIFile;
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_createSubroutineType(
+        pub unsafe fn LLVMDIBuilderCreateSubroutineType(
             Builder: DIBuilderRef,
             File: DIFile,
             ParameterTypes: DIArray) -> DICompositeType;
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_createFunction(
+        pub unsafe fn LLVMDIBuilderCreateFunction(
             Builder: DIBuilderRef,
             Scope: DIDescriptor,
             Name: *c_char,
@@ -1976,7 +1976,7 @@ pub mod llvm {
             Decl: ValueRef) -> DISubprogram;
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_createBasicType(
+        pub unsafe fn LLVMDIBuilderCreateBasicType(
             Builder: DIBuilderRef,
             Name: *c_char,
             SizeInBits: c_ulonglong,
@@ -1984,7 +1984,7 @@ pub mod llvm {
             Encoding: c_uint) -> DIBasicType;
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_createPointerType(
+        pub unsafe fn LLVMDIBuilderCreatePointerType(
             Builder: DIBuilderRef,
             PointeeTy: DIType,
             SizeInBits: c_ulonglong,
@@ -1992,7 +1992,7 @@ pub mod llvm {
             Name: *c_char) -> DIDerivedType;
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_createStructType(
+        pub unsafe fn LLVMDIBuilderCreateStructType(
             Builder: DIBuilderRef,
             Scope: DIDescriptor,
             Name: *c_char,
@@ -2007,7 +2007,7 @@ pub mod llvm {
             VTableHolder: ValueRef) -> DICompositeType;
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_createMemberType(
+        pub unsafe fn LLVMDIBuilderCreateMemberType(
             Builder: DIBuilderRef,
             Scope: DIDescriptor,
             Name: *c_char,
@@ -2020,7 +2020,7 @@ pub mod llvm {
             Ty: DIType) -> DIDerivedType;
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_createLexicalBlock(
+        pub unsafe fn LLVMDIBuilderCreateLexicalBlock(
             Builder: DIBuilderRef,
             Scope: DIDescriptor,
             File: DIFile,
@@ -2028,7 +2028,7 @@ pub mod llvm {
             Col: c_uint) -> DILexicalBlock;
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_createLocalVariable(
+        pub unsafe fn LLVMDIBuilderCreateLocalVariable(
             Builder: DIBuilderRef,
             Tag: c_uint,
             Scope: DIDescriptor,
@@ -2041,7 +2041,7 @@ pub mod llvm {
             ArgNo: c_uint) -> DIVariable;
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_createVectorType(
+        pub unsafe fn LLVMDIBuilderCreateVectorType(
             Builder: DIBuilderRef,
             Size: c_ulonglong,
             AlignInBits: c_ulonglong,
@@ -2049,23 +2049,30 @@ pub mod llvm {
             Subscripts: DIArray) -> DIType;
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_getOrCreateSubrange(
+        pub unsafe fn LLVMDIBuilderGetOrCreateSubrange(
             Builder: DIBuilderRef,
             Lo: c_longlong,
             Count: c_longlong) -> DISubrange;
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_getOrCreateArray(
+        pub unsafe fn LLVMDIBuilderGetOrCreateArray(
             Builder: DIBuilderRef,
             Ptr: *DIDescriptor,
             Count: c_uint) -> DIArray;
 
         #[fast_ffi]
-        pub unsafe fn DIBuilder_insertDeclare(
+        pub unsafe fn LLVMDIBuilderInsertDeclareAtEnd(
             Builder: DIBuilderRef,
             Val: ValueRef,
             VarInfo: DIVariable,
-            InsertBefore: *c_void) -> *c_void;
+            InsertAtEnd: BasicBlockRef) -> ValueRef;
+            
+        #[fast_ffi]
+        pub unsafe fn LLVMDIBuilderInsertDeclareBefore(
+            Builder: DIBuilderRef,
+            Val: ValueRef,
+            VarInfo: DIVariable,
+            InsertBefore: ValueRef) -> ValueRef;            
     }
 }
 

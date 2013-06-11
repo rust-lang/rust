@@ -567,19 +567,19 @@ typedef DIBuilder* DIBuilderRef;
 template<typename DIT>
 DIT unwrapDI(LLVMValueRef ref) { return DIT(ref ? unwrap<MDNode>(ref) : NULL); }
 
-extern "C" DIBuilderRef DIBuilder_new(LLVMModuleRef M) {
+extern "C" DIBuilderRef LLVMDIBuilderCreate(LLVMModuleRef M) {
     return new DIBuilder(*unwrap(M));
 }
 
-extern "C" void DIBuilder_delete(DIBuilderRef Builder) {
+extern "C" void LLVMDIBuilderDispose(DIBuilderRef Builder) {
     delete Builder;
 }
 
-extern "C" void DIBuilder_finalize(DIBuilderRef Builder) {
+extern "C" void LLVMDIBuilderFinalize(DIBuilderRef Builder) {
     Builder->finalize();
 }
 
-extern "C" void DIBuilder_createCompileUnit(
+extern "C" void LLVMDIBuilderCreateCompileUnit(
     DIBuilderRef Builder,
     unsigned Lang,
     const char* File,
@@ -593,14 +593,14 @@ extern "C" void DIBuilder_createCompileUnit(
         Flags, RuntimeVer, SplitName);
 }
 
-extern "C" LLVMValueRef DIBuilder_createFile(
+extern "C" LLVMValueRef LLVMDIBuilderCreateFile(
     DIBuilderRef Builder,
     const char* Filename,
     const char* Directory) {
     return wrap(Builder->createFile(Filename, Directory));
 }
 
-extern "C" LLVMValueRef DIBuilder_createSubroutineType(
+extern "C" LLVMValueRef LLVMDIBuilderCreateSubroutineType(
     DIBuilderRef Builder,
     LLVMValueRef File, 
     LLVMValueRef ParameterTypes) {
@@ -609,7 +609,7 @@ extern "C" LLVMValueRef DIBuilder_createSubroutineType(
         unwrapDI<DIArray>(ParameterTypes)));
 }
 
-extern "C" LLVMValueRef DIBuilder_createFunction(
+extern "C" LLVMValueRef LLVMDIBuilderCreateFunction(
     DIBuilderRef Builder,
     LLVMValueRef Scope, 
     const char* Name,
@@ -635,7 +635,7 @@ extern "C" LLVMValueRef DIBuilder_createFunction(
         unwrapDI<MDNode*>(Decl)));
 }
 
-extern "C" LLVMValueRef DIBuilder_createBasicType(
+extern "C" LLVMValueRef LLVMDIBuilderCreateBasicType(
     DIBuilderRef Builder,
     const char* Name,
     uint64_t SizeInBits,
@@ -646,7 +646,7 @@ extern "C" LLVMValueRef DIBuilder_createBasicType(
         AlignInBits, Encoding));
 }
     
-extern "C" LLVMValueRef DIBuilder_createPointerType(
+extern "C" LLVMValueRef LLVMDIBuilderCreatePointerType(
     DIBuilderRef Builder,
     LLVMValueRef PointeeTy,
     uint64_t SizeInBits,
@@ -656,7 +656,7 @@ extern "C" LLVMValueRef DIBuilder_createPointerType(
         unwrapDI<DIType>(PointeeTy), SizeInBits, AlignInBits, Name));
 }
 
-extern "C" LLVMValueRef DIBuilder_createStructType(
+extern "C" LLVMValueRef LLVMDIBuilderCreateStructType(
     DIBuilderRef Builder,
     LLVMValueRef Scope,
     const char* Name,
@@ -678,7 +678,7 @@ extern "C" LLVMValueRef DIBuilder_createStructType(
         unwrapDI<MDNode*>(VTableHolder)));
 }
 
-extern "C" LLVMValueRef DIBuilder_createMemberType(
+extern "C" LLVMValueRef LLVMDIBuilderCreateMemberType(
     DIBuilderRef Builder,
     LLVMValueRef Scope,
     const char* Name,
@@ -696,7 +696,7 @@ extern "C" LLVMValueRef DIBuilder_createMemberType(
         unwrapDI<DIType>(Ty)));
 }
     
-extern "C" LLVMValueRef DIBuilder_createLexicalBlock(
+extern "C" LLVMValueRef LLVMDIBuilderCreateLexicalBlock(
     DIBuilderRef Builder,
     LLVMValueRef Scope,
     LLVMValueRef File,
@@ -707,7 +707,7 @@ extern "C" LLVMValueRef DIBuilder_createLexicalBlock(
         unwrapDI<DIFile>(File), Line, Col));
 }
     
-extern "C" LLVMValueRef DIBuilder_createLocalVariable(
+extern "C" LLVMValueRef LLVMDIBuilderCreateLocalVariable(
     DIBuilderRef Builder,
     unsigned Tag,
     LLVMValueRef Scope,
@@ -725,7 +725,7 @@ extern "C" LLVMValueRef DIBuilder_createLocalVariable(
         unwrapDI<DIType>(Ty), AlwaysPreserve, Flags, ArgNo));
 }
 
-extern "C" LLVMValueRef DIBuilder_createVectorType(
+extern "C" LLVMValueRef LLVMDIBuilderCreateVectorType(
     DIBuilderRef Builder,
     uint64_t Size,  
     uint64_t AlignInBits,  
@@ -736,14 +736,14 @@ extern "C" LLVMValueRef DIBuilder_createVectorType(
         unwrapDI<DIArray>(Subscripts)));
 }
 
-extern "C" LLVMValueRef DIBuilder_getOrCreateSubrange(
+extern "C" LLVMValueRef LLVMDIBuilderGetOrCreateSubrange(
     DIBuilderRef Builder, 
     int64_t Lo, 
     int64_t Count) {
     return wrap(Builder->getOrCreateSubrange(Lo, Count));
 }
 
-extern "C" LLVMValueRef DIBuilder_getOrCreateArray(
+extern "C" LLVMValueRef LLVMDIBuilderGetOrCreateArray(
     DIBuilderRef Builder,
     LLVMValueRef* Ptr, 
     unsigned Count) {
@@ -751,7 +751,18 @@ extern "C" LLVMValueRef DIBuilder_getOrCreateArray(
         ArrayRef<Value*>(reinterpret_cast<Value**>(Ptr), Count)));
 }
 
-extern "C" LLVMValueRef DIBuilder_insertDeclare(
+extern "C" LLVMValueRef LLVMDIBuilderInsertDeclareAtEnd(
+    DIBuilderRef Builder,
+    LLVMValueRef Val,
+    LLVMValueRef VarInfo,
+    LLVMBasicBlockRef InsertAtEnd) {
+    return wrap(Builder->insertDeclare(
+        unwrap(Val), 
+        unwrapDI<DIVariable>(VarInfo), 
+        unwrap(InsertAtEnd)));
+}
+
+extern "C" LLVMValueRef LLVMDIBuilderInsertDeclareBefore(
     DIBuilderRef Builder,
     LLVMValueRef Val,
     LLVMValueRef VarInfo,
