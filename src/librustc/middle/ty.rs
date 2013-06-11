@@ -1017,7 +1017,7 @@ fn mk_t(cx: ctxt, st: sty) -> t {
     fn sflags(substs: &substs) -> uint {
         let mut f = 0u;
         for substs.tps.each |tt| { f |= get(*tt).flags; }
-        for substs.self_r.each |r| { f |= rflags(*r) }
+        for substs.self_r.iter().advance |r| { f |= rflags(*r) }
         return f;
     }
     match &st {
@@ -1560,8 +1560,8 @@ pub fn type_needs_subst(ty: t) -> bool {
 }
 
 pub fn trait_ref_contains_error(tref: &ty::TraitRef) -> bool {
-    tref.substs.self_ty.any(|&t| type_is_error(t)) ||
-        tref.substs.tps.any(|&t| type_is_error(t))
+    tref.substs.self_ty.iter().any_(|&t| type_is_error(t)) ||
+        tref.substs.tps.iter().any_(|&t| type_is_error(t))
 }
 
 pub fn type_is_ty_var(ty: t) -> bool {
@@ -2357,7 +2357,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             ty_struct(did, ref substs) => {
                 seen.push(did);
                 let fields = struct_fields(cx, did, substs);
-                let r = fields.iter().any(|f| type_requires(cx, seen, r_ty, f.mt.ty));
+                let r = fields.iter().any_(|f| type_requires(cx, seen, r_ty, f.mt.ty));
                 seen.pop();
                 r
             }
@@ -2374,7 +2374,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                 seen.push(did);
                 let vs = enum_variants(cx, did);
                 let r = !vs.is_empty() && do vs.iter().all |variant| {
-                    do variant.args.iter().any |aty| {
+                    do variant.args.iter().any_ |aty| {
                         let sty = subst(cx, substs, *aty);
                         type_requires(cx, seen, r_ty, sty)
                     }

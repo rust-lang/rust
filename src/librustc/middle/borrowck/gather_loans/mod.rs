@@ -17,6 +17,7 @@
 // sure that all of these loans are honored.
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use middle::borrowck::*;
 use middle::borrowck::move_data::MoveData;
@@ -176,13 +177,19 @@ fn gather_loans_in_expr(ex: @ast::expr,
 
     this.id_range.add(ex.id);
 
-    for ex.get_callee_id().each |callee_id| {
-        this.id_range.add(*callee_id);
+    {
+        let r = ex.get_callee_id();
+        for r.iter().advance |callee_id| {
+            this.id_range.add(*callee_id);
+        }
     }
 
     // If this expression is borrowed, have to ensure it remains valid:
-    for tcx.adjustments.find(&ex.id).each |&adjustments| {
-        this.guarantee_adjustments(ex, *adjustments);
+    {
+        let r = tcx.adjustments.find(&ex.id);
+        for r.iter().advance |&adjustments| {
+            this.guarantee_adjustments(ex, *adjustments);
+        }
     }
 
     // If this expression is a move, gather it:

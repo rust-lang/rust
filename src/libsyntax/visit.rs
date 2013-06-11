@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use abi::AbiSet;
 use ast::*;
@@ -189,7 +190,7 @@ pub fn visit_item<E: Copy>(i: @item, e: E, v: vt<E>) {
         }
         item_impl(ref tps, ref traits, ty, ref methods) => {
             (v.visit_generics)(tps, e, v);
-            for traits.each |&p| {
+            for traits.iter().advance |&p| {
                 visit_trait_ref(p, e, v);
             }
             (v.visit_ty)(ty, e, v);
@@ -227,7 +228,7 @@ pub fn visit_enum_def<E: Copy>(enum_definition: &ast::enum_def,
             }
         }
         // Visit the disr expr if it exists
-        for vr.node.disr_expr.each |ex| { (v.visit_expr)(*ex, e, v) }
+        for vr.node.disr_expr.iter().advance |ex| { (v.visit_expr)(*ex, e, v) }
     }
 }
 
@@ -269,8 +270,8 @@ pub fn visit_pat<E: Copy>(p: @pat, e: E, v: vt<E>) {
     match p.node {
         pat_enum(path, ref children) => {
             visit_path(path, e, v);
-            for children.each |children| {
-                for children.each |child| { (v.visit_pat)(*child, e, v); }
+            for children.iter().advance |children| {
+                for children.iter().advance |child| { (v.visit_pat)(*child, e, v); }
             }
         }
         pat_struct(path, ref fields, _) => {
@@ -289,7 +290,7 @@ pub fn visit_pat<E: Copy>(p: @pat, e: E, v: vt<E>) {
         },
         pat_ident(_, path, ref inner) => {
             visit_path(path, e, v);
-            for inner.each |subpat| { (v.visit_pat)(*subpat, e, v) }
+            for inner.iter().advance |subpat| { (v.visit_pat)(*subpat, e, v) }
         }
         pat_lit(ex) => (v.visit_expr)(ex, e, v),
         pat_range(e1, e2) => {
@@ -301,7 +302,7 @@ pub fn visit_pat<E: Copy>(p: @pat, e: E, v: vt<E>) {
             for before.each |elt| {
                 (v.visit_pat)(*elt, e, v);
             }
-            for slice.each |elt| {
+            for slice.iter().advance |elt| {
                 (v.visit_pat)(*elt, e, v);
             }
             for after.each |tail| {
@@ -550,7 +551,7 @@ pub fn visit_expr<E: Copy>(ex: @expr, e: E, v: vt<E>) {
 }
 
 pub fn visit_arm<E: Copy>(a: &arm, e: E, v: vt<E>) {
-    for a.pats.each |p| { (v.visit_pat)(*p, e, v); }
+    for a.pats.iter().advance |p| { (v.visit_pat)(*p, e, v); }
     visit_expr_opt(a.guard, e, v);
     (v.visit_block)(&a.body, e, v);
 }

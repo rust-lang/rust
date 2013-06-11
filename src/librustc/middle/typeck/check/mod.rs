@@ -410,7 +410,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
       None => ()
     }
 
-    for opt_self_info.each |self_info| {
+    for opt_self_info.iter().advance |self_info| {
         fcx.write_ty(self_info.self_id, self_info.self_ty);
     }
     for decl.inputs.iter().zip(arg_tys.iter()).advance |(input, arg)| {
@@ -442,7 +442,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         };
 
         // Add the self parameter
-        for opt_self_info.each |self_info| {
+        for opt_self_info.iter().advance |self_info| {
             assign(self_info.self_id, Some(self_info.self_ty));
             debug!("self is assigned to %s",
                    fcx.infcx().ty_to_str(
@@ -3092,7 +3092,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                 variants: &mut ~[ty::VariantInfo]) {
         let rty = ty::node_id_to_type(ccx.tcx, id);
         for vs.each |v| {
-            for v.node.disr_expr.each |e_ref| {
+            for v.node.disr_expr.iter().advance |e_ref| {
                 let e = *e_ref;
                 debug!("disr expr, checking %s",
                        pprust::expr_to_str(e, ccx.tcx.sess.intr()));

@@ -269,6 +269,7 @@ use util::ppaux::{bound_region_to_str, ty_to_str, trait_ref_to_str};
 
 use core::result;
 use core::vec;
+use core::iterator::IteratorUtil;
 use extra::list::Nil;
 use extra::smallintmap::SmallIntMap;
 use syntax::ast::{m_imm, m_mutbl};
@@ -766,7 +767,7 @@ impl InferCtxt {
                         fmt!("%s%s", mk_msg(Some(self.ty_to_str(e)), actual_ty), error_str));
                 }
             }
-            for err.each |err| {
+            for err.iter().advance |err| {
                 ty::note_and_explain_type_err(self.tcx, *err)
             }
         }

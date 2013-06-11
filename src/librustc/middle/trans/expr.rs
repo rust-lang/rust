@@ -152,6 +152,7 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::Repr;
 
+use core::iterator::IteratorUtil;
 use core::cast::transmute;
 use core::hashmap::HashMap;
 use core::vec;
@@ -1223,7 +1224,7 @@ fn trans_adt(bcx: block, repr: &adt::Repr, discr: int,
             for fields.each |&(_i, e)| {
                 bcx = trans_into(bcx, e, Ignore);
             }
-            for optbase.each |sbi| {
+            for optbase.iter().advance |sbi| {
                 bcx = trans_into(bcx, sbi.expr, Ignore);
             }
             return bcx;
@@ -1239,11 +1240,11 @@ fn trans_adt(bcx: block, repr: &adt::Repr, discr: int,
         add_clean_temp_mem(bcx, dest, e_ty);
         temp_cleanups.push(dest);
     }
-    for optbase.each |base| {
+    for optbase.iter().advance |base| {
         // FIXME #6573: is it sound to use the destination's repr on the base?
         // And, would it ever be reasonable to be here with discr != 0?
         let base_datum = unpack_datum!(bcx, trans_to_datum(bcx, base.expr));
-        for base.fields.each |&(i, t)| {
+        for base.fields.iter().advance |&(i, t)| {
             let datum = do base_datum.get_element(bcx, t, ZeroMem) |srcval| {
                 adt::trans_field_ptr(bcx, repr, srcval, discr, i)
             };

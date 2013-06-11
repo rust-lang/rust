@@ -92,6 +92,7 @@ use uint;
 use util;
 use unstable::sync::{Exclusive, exclusive};
 use rt::local::Local;
+use iterator::{Iterator, IteratorUtil};
 
 #[cfg(test)] use task::default_task_opts;
 #[cfg(test)] use comm;
@@ -276,7 +277,7 @@ fn each_ancestor(list:        &mut AncestorList,
                  * Step 3: Maybe unwind; compute return info for our caller.
                  *##########################################################*/
                 if need_unwind && !nobe_is_dead {
-                    for bail_opt.each |bail_blk| {
+                    for bail_opt.iter().advance |bail_blk| {
                         do with_parent_tg(&mut nobe.parent_group) |tg_opt| {
                             (*bail_blk)(tg_opt)
                         }
@@ -328,7 +329,7 @@ impl Drop for TCB {
 
             // If we are failing, the whole taskgroup needs to die.
             if rt::rust_task_is_unwinding(self.me) {
-                for this.notifier.each_mut |x| {
+                for this.notifier.mut_iter().advance |x| {
                     x.failed = true;
                 }
                 // Take everybody down with us.
@@ -357,7 +358,7 @@ fn TCB(me: *rust_task,
        ancestors: AncestorList,
        is_main: bool,
        mut notifier: Option<AutoNotify>) -> TCB {
-    for notifier.each_mut |x| {
+    for notifier.mut_iter().advance |x| {
         x.failed = false;
     }
 

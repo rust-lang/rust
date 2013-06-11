@@ -332,14 +332,14 @@ impl<'self> LookupContext<'self> {
         // candidates.
         let trait_map: &mut resolve::TraitMap = &mut self.fcx.ccx.trait_map;
         let opt_applicable_traits = trait_map.find(&self.expr.id);
-        for opt_applicable_traits.each |applicable_traits| {
+        for opt_applicable_traits.iter().advance |applicable_traits| {
             for applicable_traits.each |trait_did| {
                 let coherence_info = self.fcx.ccx.coherence_info;
 
                 // Look for explicit implementations.
                 let opt_impl_infos =
                     coherence_info.extension_methods.find(trait_did);
-                for opt_impl_infos.each |impl_infos| {
+                for opt_impl_infos.iter().advance |impl_infos| {
                     for impl_infos.each |impl_info| {
                         self.push_candidates_from_impl(
                             self.extension_candidates, *impl_info);
@@ -536,7 +536,7 @@ impl<'self> LookupContext<'self> {
     pub fn push_inherent_impl_candidates_for_type(&self, did: def_id) {
         let opt_impl_infos =
             self.fcx.ccx.coherence_info.inherent_methods.find(&did);
-        for opt_impl_infos.each |impl_infos| {
+        for opt_impl_infos.iter().advance |impl_infos| {
             for impl_infos.each |impl_info| {
                 self.push_candidates_from_impl(
                     self.inherent_candidates, *impl_info);
