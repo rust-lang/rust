@@ -36,7 +36,6 @@ use core::io;
 use core::os;
 use core::run;
 use core::libc::exit;
-use core::str;
 
 // For bootstrapping.
 mod std {

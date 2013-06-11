@@ -17,7 +17,6 @@ an AST's attributes.
 
 use core::prelude::*;
 
-use core::str;
 use syntax::ast;
 use syntax::attr;
 
