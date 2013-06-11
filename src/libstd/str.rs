@@ -255,6 +255,17 @@ impl CharEq for extern "Rust" fn(char) -> bool {
     fn only_ascii(&self) -> bool { false }
 }
 
+impl<'self, C: CharEq> CharEq for &'self [C] {
+    #[inline(always)]
+    fn matches(&self, c: char) -> bool {
+        self.iter().any(|m| m.matches(c))
+    }
+
+    fn only_ascii(&self) -> bool {
+        self.iter().all(|m| m.only_ascii())
+    }
+}
+
 
 /// An iterator over the substrings of a string, separated by `sep`.
 pub struct StrCharSplitIterator<'self,Sep> {
@@ -1249,9 +1260,9 @@ pub trait StrSlice<'self> {
     fn trim(&self) -> &'self str;
     fn trim_left(&self) -> &'self str;
     fn trim_right(&self) -> &'self str;
-    fn trim_chars(&self, chars_to_trim: &[char]) -> &'self str;
-    fn trim_left_chars(&self, chars_to_trim: &[char]) -> &'self str;
-    fn trim_right_chars(&self, chars_to_trim: &[char]) -> &'self str;
+    fn trim_chars<C: CharEq>(&self, to_trim: &C) -> &'self str;
+    fn trim_left_chars<C: CharEq>(&self, to_trim: &C) -> &'self str;
+    fn trim_right_chars<C: CharEq>(&self, to_trim: &C) -> &'self str;
     fn replace(&self, from: &str, to: &str) -> ~str;
     fn to_owned(&self) -> ~str;
     fn to_managed(&self) -> @str;
@@ -1542,49 +1553,51 @@ impl<'self> StrSlice<'self> for &'self str {
     /// Returns a string with leading whitespace removed
     #[inline]
     fn trim_left(&self) -> &'self str {
-        match self.find(|c| !char::is_whitespace(c)) {
-            None => "",
-            Some(first) => unsafe { raw::slice_bytes(*self, first, self.len()) }
-        }
+        self.trim_left_chars(&char::is_whitespace)
     }
     /// Returns a string with trailing whitespace removed
     #[inline]
     fn trim_right(&self) -> &'self str {
-        match self.rfind(|c| !char::is_whitespace(c)) {
-            None => "",
-            Some(last) => {
-                let next = self.char_range_at(last).next;
-                unsafe { raw::slice_bytes(*self, 0u, next) }
-            }
-        }
+        self.trim_right_chars(&char::is_whitespace)
     }
 
     /**
-     * Returns a string with leading and trailing `chars_to_trim` removed.
+     * Returns a string with characters that match `to_trim` removed.
      *
      * # Arguments
      *
-     * * chars_to_trim - A vector of chars
+     * * to_trim - a character matcher
      *
+     * # Example
+     *
+     * ~~~
+     * assert_eq!("11foo1bar11".trim_chars(&'1'), "foo1bar")
+     * assert_eq!("12foo1bar12".trim_chars(& &['1', '2']), "foo1bar")
+     * assert_eq!("123foo1bar123".trim_chars(&|c: char| c.is_digit()), "foo1bar")
+     * ~~~
      */
     #[inline]
-    fn trim_chars(&self, chars_to_trim: &[char]) -> &'self str {
-        self.trim_left_chars(chars_to_trim).trim_right_chars(chars_to_trim)
+    fn trim_chars<C: CharEq>(&self, to_trim: &C) -> &'self str {
+        self.trim_left_chars(to_trim).trim_right_chars(to_trim)
     }
     /**
      * Returns a string with leading `chars_to_trim` removed.
      *
      * # Arguments
      *
-     * * s - A string
-     * * chars_to_trim - A vector of chars
+     * * to_trim - a character matcher
      *
+     * # Example
+     *
+     * ~~~
+     * assert_eq!("11foo1bar11".trim_left_chars(&'1'), "foo1bar11")
+     * assert_eq!("12foo1bar12".trim_left_chars(& &['1', '2']), "foo1bar12")
+     * assert_eq!("123foo1bar123".trim_left_chars(&|c: char| c.is_digit()), "foo1bar123")
+     * ~~~
      */
     #[inline]
-    fn trim_left_chars(&self, chars_to_trim: &[char]) -> &'self str {
-        if chars_to_trim.is_empty() { return *self; }
-
-        match self.find(|c| !chars_to_trim.contains(&c)) {
+    fn trim_left_chars<C: CharEq>(&self, to_trim: &C) -> &'self str {
+        match self.find(|c: char| !to_trim.matches(c)) {
             None => "",
             Some(first) => unsafe { raw::slice_bytes(*self, first, self.len()) }
         }
@@ -1594,15 +1607,19 @@ impl<'self> StrSlice<'self> for &'self str {
      *
      * # Arguments
      *
-     * * s - A string
-     * * chars_to_trim - A vector of chars
+     * * to_trim - a character matcher
      *
+     * # Example
+     *
+     * ~~~
+     * assert_eq!("11foo1bar11".trim_right_chars(&'1'), "11foo1bar")
+     * assert_eq!("12foo1bar12".trim_right_chars(& &['1', '2']), "12foo1bar")
+     * assert_eq!("123foo1bar123".trim_right_chars(&|c: char| c.is_digit()), "123foo1bar")
+     * ~~~
      */
     #[inline]
-    fn trim_right_chars(&self, chars_to_trim: &[char]) -> &'self str {
-        if chars_to_trim.is_empty() { return *self; }
-
-        match self.rfind(|c| !chars_to_trim.contains(&c)) {
+    fn trim_right_chars<C: CharEq>(&self, to_trim: &C) -> &'self str {
+        match self.rfind(|c: char| !to_trim.matches(c)) {
             None => "",
             Some(last) => {
                 let next = self.char_range_at(last).next;
@@ -2661,26 +2678,41 @@ mod tests {
 
     #[test]
     fn test_trim_left_chars() {
-        assert_eq!(" *** foo *** ".trim_left_chars([]), " *** foo *** ");
-        assert_eq!(" *** foo *** ".trim_left_chars(['*', ' ']), "foo *** ");
-        assert_eq!(" ***  *** ".trim_left_chars(['*', ' ']), "");
-        assert_eq!("foo *** ".trim_left_chars(['*', ' ']), "foo *** ");
+        let v: &[char] = &[];
+        assert_eq!(" *** foo *** ".trim_left_chars(&v), " *** foo *** ");
+        assert_eq!(" *** foo *** ".trim_left_chars(& &['*', ' ']), "foo *** ");
+        assert_eq!(" ***  *** ".trim_left_chars(& &['*', ' ']), "");
+        assert_eq!("foo *** ".trim_left_chars(& &['*', ' ']), "foo *** ");
+
+        assert_eq!("11foo1bar11".trim_left_chars(&'1'), "foo1bar11");
+        assert_eq!("12foo1bar12".trim_left_chars(& &['1', '2']), "foo1bar12");
+        assert_eq!("123foo1bar123".trim_left_chars(&|c: char| c.is_digit()), "foo1bar123");
     }
 
     #[test]
     fn test_trim_right_chars() {
-        assert_eq!(" *** foo *** ".trim_right_chars([]), " *** foo *** ");
-        assert_eq!(" *** foo *** ".trim_right_chars(['*', ' ']), " *** foo");
-        assert_eq!(" ***  *** ".trim_right_chars(['*', ' ']), "");
-        assert_eq!(" *** foo".trim_right_chars(['*', ' ']), " *** foo");
+        let v: &[char] = &[];
+        assert_eq!(" *** foo *** ".trim_right_chars(&v), " *** foo *** ");
+        assert_eq!(" *** foo *** ".trim_right_chars(& &['*', ' ']), " *** foo");
+        assert_eq!(" ***  *** ".trim_right_chars(& &['*', ' ']), "");
+        assert_eq!(" *** foo".trim_right_chars(& &['*', ' ']), " *** foo");
+
+        assert_eq!("11foo1bar11".trim_right_chars(&'1'), "11foo1bar");
+        assert_eq!("12foo1bar12".trim_right_chars(& &['1', '2']), "12foo1bar");
+        assert_eq!("123foo1bar123".trim_right_chars(&|c: char| c.is_digit()), "123foo1bar");
     }
 
     #[test]
     fn test_trim_chars() {
-        assert_eq!(" *** foo *** ".trim_chars([]), " *** foo *** ");
-        assert_eq!(" *** foo *** ".trim_chars(['*', ' ']), "foo");
-        assert_eq!(" ***  *** ".trim_chars(['*', ' ']), "");
-        assert_eq!("foo".trim_chars(['*', ' ']), "foo");
+        let v: &[char] = &[];
+        assert_eq!(" *** foo *** ".trim_chars(&v), " *** foo *** ");
+        assert_eq!(" *** foo *** ".trim_chars(& &['*', ' ']), "foo");
+        assert_eq!(" ***  *** ".trim_chars(& &['*', ' ']), "");
+        assert_eq!("foo".trim_chars(& &['*', ' ']), "foo");
+
+        assert_eq!("11foo1bar11".trim_chars(&'1'), "foo1bar");
+        assert_eq!("12foo1bar12".trim_chars(& &['1', '2']), "foo1bar");
+        assert_eq!("123foo1bar123".trim_chars(&|c: char| c.is_digit()), "foo1bar");
     }
 
     #[test]
