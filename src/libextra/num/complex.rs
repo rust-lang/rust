@@ -35,7 +35,7 @@ pub type Complex = Cmplx<float>;
 pub type Complex32 = Cmplx<f32>;
 pub type Complex64 = Cmplx<f64>;
 
-impl<T: Copy + Num> Cmplx<T> {
+impl<T: Clone + Num> Cmplx<T> {
     /// Create a new Cmplx
     #[inline]
     pub fn new(re: T, im: T) -> Cmplx<T> {
@@ -55,7 +55,7 @@ impl<T: Copy + Num> Cmplx<T> {
     /// Returns the complex conjugate. i.e. `re - i im`
     #[inline]
     pub fn conj(&self) -> Cmplx<T> {
-        Cmplx::new(self.re, -self.im)
+        Cmplx::new(self.re.clone(), -self.im)
     }
 
 
@@ -80,42 +80,71 @@ impl<T: Copy + Num> Cmplx<T> {
     }
 }
 
+#[cfg(not(stage0))] // Fixed by #4228
+impl<T: Clone + Algebraic + Num> Cmplx<T> {
+    /// Calculate |self|
+    #[inline(always)]
+    pub fn norm(&self) -> T {
+        self.re.hypot(&self.im)
+    }
+}
+
+#[cfg(not(stage0))] // Fixed by #4228
+impl<T: Clone + Trigonometric + Algebraic + Num> Cmplx<T> {
+    /// Calculate the principal Arg of self.
+    #[inline(always)]
+    pub fn arg(&self) -> T {
+        self.im.atan2(&self.re)
+    }
+    /// Convert to polar form (r, theta), such that `self = r * exp(i
+    /// * theta)`
+    #[inline]
+    pub fn to_polar(&self) -> (T, T) {
+        (self.norm(), self.arg())
+    }
+    /// Convert a polar representation into a complex number.
+    #[inline]
+    pub fn from_polar(r: &T, theta: &T) -> Cmplx<T> {
+        Cmplx::new(r * theta.cos(), r * theta.sin())
+    }
+}
+
 /* arithmetic */
 // (a + i b) + (c + i d) == (a + c) + i (b + d)
-impl<T: Copy + Num> Add<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
+impl<T: Clone + Num> Add<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
     #[inline]
     fn add(&self, other: &Cmplx<T>) -> Cmplx<T> {
         Cmplx::new(self.re + other.re, self.im + other.im)
     }
 }
 // (a + i b) - (c + i d) == (a - c) + i (b - d)
-impl<T: Copy + Num> Sub<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
+impl<T: Clone + Num> Sub<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
     #[inline]
     fn sub(&self, other: &Cmplx<T>) -> Cmplx<T> {
         Cmplx::new(self.re - other.re, self.im - other.im)
     }
 }
 // (a + i b) * (c + i d) == (a*c - b*d) + i (a*d + b*c)
-impl<T: Copy + Num> Mul<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
+impl<T: Clone + Num> Mul<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
     #[inline]
     fn mul(&self, other: &Cmplx<T>) -> Cmplx<T> {
         Cmplx::new(self.re*other.re - self.im*other.im,
-                     self.re*other.im + self.im*other.re)
+                   self.re*other.im + self.im*other.re)
     }
 }
 
 // (a + i b) / (c + i d) == [(a + i b) * (c - i d)] / (c*c + d*d)
 //   == [(a*c + b*d) / (c*c + d*d)] + i [(b*c - a*d) / (c*c + d*d)]
-impl<T: Copy + Num> Div<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
+impl<T: Clone + Num> Div<Cmplx<T>, Cmplx<T>> for Cmplx<T> {
     #[inline]
     fn div(&self, other: &Cmplx<T>) -> Cmplx<T> {
         let norm_sqr = other.norm_sqr();
         Cmplx::new((self.re*other.re + self.im*other.im) / norm_sqr,
-                     (self.im*other.re - self.re*other.im) / norm_sqr)
+                   (self.im*other.re - self.re*other.im) / norm_sqr)
     }
 }
 
-impl<T: Copy + Num> Neg<Cmplx<T>> for Cmplx<T> {
+impl<T: Clone + Num> Neg<Cmplx<T>> for Cmplx<T> {
     #[inline]
     fn neg(&self) -> Cmplx<T> {
         Cmplx::new(-self.re, -self.im)
@@ -123,7 +152,7 @@ impl<T: Copy + Num> Neg<Cmplx<T>> for Cmplx<T> {
 }
 
 /* constants */
-impl<T: Copy + Num> Zero for Cmplx<T> {
+impl<T: Clone + Num> Zero for Cmplx<T> {
     #[inline]
     fn zero() -> Cmplx<T> {
         Cmplx::new(Zero::zero(), Zero::zero())
@@ -131,11 +160,11 @@ impl<T: Copy + Num> Zero for Cmplx<T> {
 
     #[inline]
     fn is_zero(&self) -> bool {
-        *self == Zero::zero()
+        self.re.is_zero() && self.im.is_zero()
     }
 }
 
-impl<T: Copy + Num> One for Cmplx<T> {
+impl<T: Clone + Num> One for Cmplx<T> {
     #[inline]
     fn one() -> Cmplx<T> {
         Cmplx::new(One::one(), Zero::zero())
@@ -166,7 +195,7 @@ impl<T: ToStrRadix + Num + Ord> ToStrRadix for Cmplx<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use core::num::{Zero,One};
+    use core::num::{Zero,One,Real};
 
     pub static _0_0i : Complex = Cmplx { re: 0f, im: 0f };
     pub static _1_0i : Complex = Cmplx { re: 1f, im: 0f };
@@ -193,9 +222,10 @@ mod test {
     }
 
     #[test]
-    fn test_norm_sqr() {
+    fn test_norm() {
         fn test(c: Complex, ns: float) {
             assert_eq!(c.norm_sqr(), ns);
+            assert_eq!(c.norm(), ns.sqrt())
         }
         test(_0_0i, 0f);
         test(_1_0i, 1f);
@@ -235,6 +265,25 @@ mod test {
         _0_0i.inv();
     }
 
+    #[test]
+    fn test_arg() {
+        fn test(c: Complex, arg: float) {
+            assert!(c.arg().approx_eq(&arg))
+        }
+        test(_1_0i, 0f);
+        test(_1_1i, 0.25f * Real::pi());
+        test(_neg1_1i, 0.75f * Real::pi());
+        test(_05_05i, 0.25f * Real::pi());
+    }
+
+    #[test]
+    fn test_polar_conv() {
+        fn test(c: Complex) {
+            let (r, theta) = c.to_polar();
+            assert!((c - Cmplx::from_polar(&r, &theta)).norm() < 1e-6);
+        }
+        for all_consts.each |&c| { test(c); }
+    }
 
     mod arith {
         use super::*;
