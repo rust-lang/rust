@@ -84,6 +84,7 @@ use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
 use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
 use parse::obsolete::{ObsoleteNamedExternModule, ObsoleteMultipleLocalDecl};
 use parse::obsolete::{ObsoleteMutWithMultipleBindings};
+use parse::obsolete::{ObsoletePatternCopyKeyword};
 use parse::token::{can_begin_expr, get_ident_interner, ident_to_str, is_ident};
 use parse::token::{is_ident_or_path};
 use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents};
@@ -2445,8 +2446,7 @@ impl Parser {
                 pat = self.parse_pat_ident(bind_by_ref(mutbl));
             } else if self.eat_keyword(keywords::Copy) {
                 // parse copy pat
-                self.warn("copy keyword in patterns no longer has any effect, \
-                           remove it");
+                self.obsolete(*self.span, ObsoletePatternCopyKeyword);
                 pat = self.parse_pat_ident(bind_infer);
             } else {
                 let can_be_enum_or_struct;
