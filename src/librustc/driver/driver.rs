@@ -29,7 +29,6 @@ use core::hashmap::HashMap;
 use core::int;
 use core::io;
 use core::os;
-use core::str;
 use core::vec;
 use extra::getopts::groups::{optopt, optmulti, optflag, optflagopt};
 use extra::getopts::{opt_present};
@@ -595,7 +594,7 @@ pub fn build_session_options(binary: @~str,
         let flags = vec::append(getopts::opt_strs(matches, level_short),
                                 getopts::opt_strs(matches, level_name));
         for flags.each |lint_name| {
-            let lint_name = str::replace(*lint_name, "-", "_");
+            let lint_name = lint_name.replace("-", "_");
             match lint_dict.find(&lint_name) {
               None => {
                 early_error(demitter, fmt!("unknown %s flag: %s",

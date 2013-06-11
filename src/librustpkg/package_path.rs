@@ -32,7 +32,7 @@ pub fn normalize(p_: RemotePath) -> LocalPath {
     match p.filestem() {
         None => LocalPath(p),
         Some(st) => {
-            let replaced = str::replace(st, "-", "_");
+            let replaced = st.replace("-", "_");
             if replaced != st {
                 LocalPath(p.with_filestem(replaced))
             }

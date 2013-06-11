@@ -128,24 +128,24 @@ pub fn pandoc_header_id(header: &str) -> ~str {
     return header;
 
     fn remove_formatting(s: &str) -> ~str {
-        str::replace(s, "`", "")
+        s.replace("`", "")
     }
     fn remove_punctuation(s: &str) -> ~str {
-        let s = str::replace(s, "<", "");
-        let s = str::replace(s, ">", "");
-        let s = str::replace(s, "[", "");
-        let s = str::replace(s, "]", "");
-        let s = str::replace(s, "(", "");
-        let s = str::replace(s, ")", "");
-        let s = str::replace(s, "@~", "");
-        let s = str::replace(s, "~", "");
-        let s = str::replace(s, "/", "");
-        let s = str::replace(s, ":", "");
-        let s = str::replace(s, "&", "");
-        let s = str::replace(s, "^", "");
-        let s = str::replace(s, ",", "");
-        let s = str::replace(s, "'", "");
-        let s = str::replace(s, "+", "");
+        let s = s.replace("<", "");
+        let s = s.replace(">", "");
+        let s = s.replace("[", "");
+        let s = s.replace("]", "");
+        let s = s.replace("(", "");
+        let s = s.replace(")", "");
+        let s = s.replace("@~", "");
+        let s = s.replace("~", "");
+        let s = s.replace("/", "");
+        let s = s.replace(":", "");
+        let s = s.replace("&", "");
+        let s = s.replace("^", "");
+        let s = s.replace(",", "");
+        let s = s.replace("'", "");
+        let s = s.replace("+", "");
         return s;
     }
     fn replace_with_hyphens(s: &str) -> ~str {
@@ -153,8 +153,8 @@ pub fn pandoc_header_id(header: &str) -> ~str {
         // XXX: Hacky implementation here that only covers
         // one or two spaces.
         let s = s.trim();
-        let s = str::replace(s, "  ", "-");
-        let s = str::replace(s, " ", "-");
+        let s = s.replace("  ", "-");
+        let s = s.replace(" ", "-");
         return s;
     }
     // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
