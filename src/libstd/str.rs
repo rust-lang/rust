@@ -304,29 +304,6 @@ impl<'self> StrVector for &'self [&'self str] {
     }
 }
 
-/// Given a string, make a new string with repeated copies of it
-pub fn repeat(ss: &str, nn: uint) -> ~str {
-    do as_buf(ss) |buf, len| {
-        let mut ret = ~"";
-        // ignore the NULL terminator
-        let len = len - 1;
-        ret.reserve(nn * len);
-
-        unsafe {
-            do as_buf(ret) |rbuf, _len| {
-                let mut rbuf = ::cast::transmute_mut_unsafe(rbuf);
-
-                for nn.times {
-                    ptr::copy_memory(rbuf, buf, len);
-                    rbuf = rbuf.offset(len);
-                }
-            }
-            raw::set_len(&mut ret, nn * len);
-        }
-        ret
-    }
-}
-
 /*
 Section: Adding to and removing from a string
 */
@@ -1567,6 +1544,8 @@ pub trait StrSlice<'self> {
     fn find<C: CharEq>(&self, search: C) -> Option<uint>;
     fn rfind<C: CharEq>(&self, search: C) -> Option<uint>;
     fn find_str(&self, &str) -> Option<uint>;
+
+    fn repeat(&self, nn: uint) -> ~str;
 }
 
 /// Extension methods for strings
@@ -2083,6 +2062,29 @@ impl<'self> StrSlice<'self> for &'self str {
                 .map_consume(|(start, _end)| start)
         }
     }
+
+    /// Given a string, make a new string with repeated copies of it.
+    fn repeat(&self, nn: uint) -> ~str {
+        do as_buf(*self) |buf, len| {
+            let mut ret = ~"";
+            // ignore the NULL terminator
+            let len = len - 1;
+            ret.reserve(nn * len);
+
+            unsafe {
+                do as_buf(ret) |rbuf, _len| {
+                    let mut rbuf = ::cast::transmute_mut_unsafe(rbuf);
+
+                    for nn.times {
+                        ptr::copy_memory(rbuf, buf, len);
+                        rbuf = rbuf.offset(len);
+                    }
+                }
+                raw::set_len(&mut ret, nn * len);
+            }
+            ret
+        }
+    }
 }
 
 #[allow(missing_doc)]
@@ -2541,11 +2543,11 @@ mod tests {
 
     #[test]
     fn test_repeat() {
-        assert_eq!(repeat("x", 4), ~"xxxx");
-        assert_eq!(repeat("hi", 4), ~"hihihihi");
-        assert_eq!(repeat("ไท华", 3), ~"ไท华ไท华ไท华");
-        assert_eq!(repeat("", 4), ~"");
-        assert_eq!(repeat("hi", 0), ~"");
+        assert_eq!("x".repeat(4), ~"xxxx");
+        assert_eq!("hi".repeat(4), ~"hihihihi");
+        assert_eq!("ไท华".repeat(3), ~"ไท华ไท华ไท华");
+        assert_eq!("".repeat(4), ~"");
+        assert_eq!("hi".repeat(0), ~"");
     }
 
     #[test]
