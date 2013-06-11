@@ -475,8 +475,8 @@ impl Fractional for float {
 
 impl Algebraic for float {
     #[inline(always)]
-    fn pow(&self, n: float) -> float {
-        (*self as f64).pow(n as f64) as float
+    fn pow(&self, n: &float) -> float {
+        (*self as f64).pow(&(*n as f64)) as float
     }
 
     #[inline(always)]
@@ -495,8 +495,8 @@ impl Algebraic for float {
     }
 
     #[inline(always)]
-    fn hypot(&self, other: float) -> float {
-        (*self as f64).hypot(other as f64) as float
+    fn hypot(&self, other: &float) -> float {
+        (*self as f64).hypot(&(*other as f64)) as float
     }
 }
 
@@ -532,8 +532,8 @@ impl Trigonometric for float {
     }
 
     #[inline(always)]
-    fn atan2(&self, other: float) -> float {
-        (*self as f64).atan2(other as f64) as float
+    fn atan2(&self, other: &float) -> float {
+        (*self as f64).atan2(&(*other as f64)) as float
     }
 
     /// Simultaneously computes the sine and cosine of the number
@@ -566,8 +566,8 @@ impl Exponential for float {
 
     /// Returns the logarithm of the number with respect to an arbitrary base
     #[inline(always)]
-    fn log(&self, base: float) -> float {
-        (*self as f64).log(base as f64) as float
+    fn log(&self, base: &float) -> float {
+        (*self as f64).log(&(*base as f64)) as float
     }
 
     /// Returns the base 2 logarithm of the number
