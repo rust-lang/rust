@@ -639,7 +639,9 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
         let child_data = Cell::new((child_arc, ancestors));
         let result: ~fn() = || {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
-            let mut (child_arc, ancestors) = child_data.take();
+            let (child_arc, ancestors) = child_data.take();
+            let mut child_arc = child_arc;
+            let mut ancestors = ancestors;
             // Child task runs this code.
 
             // Even if the below code fails to kick the child off, we must

@@ -33,7 +33,7 @@ endpoint. The send endpoint is returned to the caller and the receive
 endpoint is passed to the new task.
 
 */
-pub fn spawn_service<T:Owned,Tb:Owned>(
+pub fn spawn_service<T:Send,Tb:Send>(
             init: extern fn() -> (RecvPacketBuffered<T, Tb>,
                                   SendPacketBuffered<T, Tb>),
             service: ~fn(v: RecvPacketBuffered<T, Tb>))

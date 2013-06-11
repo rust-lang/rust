@@ -10,7 +10,7 @@
 
 // xfail-test
 // error-pattern: instantiating a type parameter with an incompatible type
-struct S<T:Const> {
+struct S<T:Freeze> {
     s: T,
     cant_nest: ()
 }

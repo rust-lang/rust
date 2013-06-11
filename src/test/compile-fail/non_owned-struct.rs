@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[non_owned]
+#[non_sendable]
 struct Foo { a: int }
 
-fn bar<T: Owned>(_: T) {}
+fn bar<T: Send>(_: T) {}
 
 fn main() {
     let x = Foo { a: 5 };
-    bar(x); //~ ERROR instantiating a type parameter with an incompatible type `Foo`, which does not fulfill `Owned`
+    bar(x); //~ ERROR instantiating a type parameter with an incompatible type `Foo`, which does not fulfill `Send`
 }
