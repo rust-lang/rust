@@ -281,7 +281,6 @@ struct RWARCInner<T> { lock: RWlock, failed: bool, data: T }
 #[mutable]
 struct RWARC<T> {
     x: UnsafeAtomicRcBox<RWARCInner<T>>,
-    cant_nest: ()
 }
 
 /// Create a reader/writer ARC with the supplied data.
@@ -299,7 +298,7 @@ pub fn rw_arc_with_condvars<T:Const + Owned>(
     let data =
         RWARCInner { lock: rwlock_with_condvars(num_condvars),
                      failed: false, data: user_data };
-    RWARC { x: UnsafeAtomicRcBox::new(data), cant_nest: () }
+    RWARC { x: UnsafeAtomicRcBox::new(data), }
 }
 
 impl<T:Const + Owned> RWARC<T> {
@@ -307,7 +306,6 @@ impl<T:Const + Owned> RWARC<T> {
     pub fn clone(&self) -> RWARC<T> {
         RWARC {
             x: self.x.clone(),
-            cant_nest: (),
         }
     }
 
