@@ -772,7 +772,11 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
       '/' => { return binop(rdr, token::SLASH); }
       '^' => { return binop(rdr, token::CARET); }
       '%' => { return binop(rdr, token::PERCENT); }
-      c => { rdr.fatal(fmt!("unknown start of token: %d", c as int)); }
+      c => {
+          // So the error span points to the unrecognized character
+          rdr.peek_span = codemap::mk_sp(rdr.last_pos, rdr.pos);
+          rdr.fatal(fmt!("unknown start of token: %d", c as int));
+      }
     }
 }
 
