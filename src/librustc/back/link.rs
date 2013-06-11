@@ -637,7 +637,7 @@ pub fn symbol_hash(tcx: ty::ctxt,
     write_string(symbol_hasher, encoder::encoded_ty(tcx, t));
     let mut hash = truncated_hash_result(symbol_hasher);
     // Prefix with _ so that it never blends into adjacent digits
-    str::unshift_char(&mut hash, '_');
+    hash.unshift_char('_');
     // tjc: allocation is unfortunate; need to change core::hash
     hash.to_managed()
 }

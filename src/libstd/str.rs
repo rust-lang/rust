@@ -305,63 +305,6 @@ impl<'self> StrVector for &'self [&'self str] {
 }
 
 /*
-Section: Adding to and removing from a string
-*/
-
-/**
- * Remove the final character from a string and return it
- *
- * # Failure
- *
- * If the string does not contain any characters
- */
-pub fn pop_char(s: &mut ~str) -> char {
-    let end = s.len();
-    assert!(end > 0u);
-    let CharRange {ch, next} = s.char_range_at_reverse(end);
-    unsafe { raw::set_len(s, next); }
-    return ch;
-}
-
-/**
- * Remove the first character from a string and return it
- *
- * # Failure
- *
- * If the string does not contain any characters
- */
-pub fn shift_char(s: &mut ~str) -> char {
-    let CharRange {ch, next} = s.char_range_at(0u);
-    *s = unsafe { raw::slice_bytes_owned(*s, next, s.len()) };
-    return ch;
-}
-
-/**
- * Removes the first character from a string slice and returns it. This does
- * not allocate a new string; instead, it mutates a slice to point one
- * character beyond the character that was shifted.
- *
- * # Failure
- *
- * If the string does not contain any characters
- */
-#[inline]
-pub fn slice_shift_char<'a>(s: &'a str) -> (char, &'a str) {
-    let CharRange {ch, next} = s.char_range_at(0u);
-    let next_s = unsafe { raw::slice_bytes(s, next, s.len()) };
-    return (ch, next_s);
-}
-
-/// Prepend a char to a string
-pub fn unshift_char(s: &mut ~str, ch: char) {
-    // This could be more efficient.
-    let mut new_str = ~"";
-    new_str.push_char(ch);
-    new_str.push_str(*s);
-    *s = new_str;
-}
-
-/*
 Section: Transforming strings
 */
 
@@ -1546,6 +1489,8 @@ pub trait StrSlice<'self> {
     fn find_str(&self, &str) -> Option<uint>;
 
     fn repeat(&self, nn: uint) -> ~str;
+
+    fn slice_shift_char(&self) -> (char, &'self str);
 }
 
 /// Extension methods for strings
@@ -1757,7 +1702,7 @@ impl<'self> StrSlice<'self> for &'self str {
         else { match_at(*self, needle, 0u) }
     }
     /// Returns true if `needle` is a suffix of the string.
-    pub fn ends_with(&self, needle: &str) -> bool {
+    fn ends_with(&self, needle: &str) -> bool {
         let (self_len, needle_len) = (self.len(), needle.len());
         if needle_len == 0u { true }
         else if needle_len > self_len { false }
@@ -2085,6 +2030,25 @@ impl<'self> StrSlice<'self> for &'self str {
             ret
         }
     }
+
+    /**
+     * Retrieves the first character from a string slice and returns
+     * it. This does not allocate a new string; instead, it returns a
+     * slice that point one character beyond the character that was
+     * shifted.
+     *
+     * # Failure
+     *
+     * If the string does not contain any characters
+     */
+    #[inline]
+    fn slice_shift_char(&self) -> (char, &'self str) {
+        let CharRange {ch, next} = self.char_range_at(0u);
+        let next_s = unsafe { raw::slice_bytes(*self, next, self.len()) };
+        return (ch, next_s);
+    }
+
+
 }
 
 #[allow(missing_doc)]
@@ -2092,6 +2056,9 @@ pub trait OwnedStr {
     fn push_str_no_overallocate(&mut self, rhs: &str);
     fn push_str(&mut self, rhs: &str);
     fn push_char(&mut self, c: char);
+    fn pop_char(&mut self) -> char;
+    fn shift_char(&mut self) -> char;
+    fn unshift_char(&mut self, ch: char);
     fn append(&self, rhs: &str) -> ~str; // FIXME #4850: this should consume self.
     fn reserve(&mut self, n: uint);
     fn reserve_at_least(&mut self, n: uint);
@@ -2190,6 +2157,43 @@ impl OwnedStr for ~str {
             raw::set_len(self, new_len);
         }
     }
+    /**
+     * Remove the final character from a string and return it
+     *
+     * # Failure
+     *
+     * If the string does not contain any characters
+     */
+    fn pop_char(&mut self) -> char {
+        let end = self.len();
+        assert!(end > 0u);
+        let CharRange {ch, next} = self.char_range_at_reverse(end);
+        unsafe { raw::set_len(self, next); }
+        return ch;
+    }
+
+    /**
+     * Remove the first character from a string and return it
+     *
+     * # Failure
+     *
+     * If the string does not contain any characters
+     */
+    fn shift_char(&mut self) -> char {
+        let CharRange {ch, next} = self.char_range_at(0u);
+        *self = unsafe { raw::slice_bytes_owned(*self, next, self.len()) };
+        return ch;
+    }
+
+    /// Prepend a char to a string
+    fn unshift_char(&mut self, ch: char) {
+        // This could be more efficient.
+        let mut new_str = ~"";
+        new_str.push_char(ch);
+        new_str.push_str(*self);
+        *self = new_str;
+    }
+
     /// Concatenate two strings together.
     #[inline]
     fn append(&self, rhs: &str) -> ~str {
@@ -2421,7 +2425,7 @@ mod tests {
     #[test]
     fn test_pop_char() {
         let mut data = ~"ประเทศไทย中华";
-        let cc = pop_char(&mut data);
+        let cc = data.pop_char();
         assert_eq!(~"ประเทศไทย中", data);
         assert_eq!('华', cc);
     }
@@ -2429,7 +2433,7 @@ mod tests {
     #[test]
     fn test_pop_char_2() {
         let mut data2 = ~"华";
-        let cc2 = pop_char(&mut data2);
+        let cc2 = data2.pop_char();
         assert_eq!(~"", data2);
         assert_eq!('华', cc2);
     }
@@ -2439,7 +2443,29 @@ mod tests {
     #[ignore(cfg(windows))]
     fn test_pop_char_fail() {
         let mut data = ~"";
-        let _cc3 = pop_char(&mut data);
+        let _cc3 = data.pop_char();
+    }
+
+    #[test]
+    fn test_push_char() {
+        let mut data = ~"ประเทศไทย中";
+        data.push_char('华');
+        assert_eq!(~"ประเทศไทย中华", data);
+    }
+
+    #[test]
+    fn test_shift_char() {
+        let mut data = ~"ประเทศไทย中";
+        let cc = data.shift_char();
+        assert_eq!(~"ระเทศไทย中", data);
+        assert_eq!('ป', cc);
+    }
+
+    #[test]
+    fn test_unshift_char() {
+        let mut data = ~"ประเทศไทย中";
+        data.unshift_char('华');
+        assert_eq!(~"华ประเทศไทย中", data);
     }
 
     #[test]
