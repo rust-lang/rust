@@ -294,18 +294,6 @@ pub enum DuplicateCheckingMode {
     OverwriteDuplicates
 }
 
-// Returns the namespace associated with the given duplicate checking mode,
-// or fails for OverwriteDuplicates. This is used for error messages.
-pub fn namespace_for_duplicate_checking_mode(mode: DuplicateCheckingMode)
-                                          -> Namespace {
-    match mode {
-        ForbidDuplicateModules | ForbidDuplicateTypes |
-        ForbidDuplicateTypesAndValues => TypeNS,
-        ForbidDuplicateValues => ValueNS,
-        OverwriteDuplicates => fail!("OverwriteDuplicates has no namespace")
-    }
-}
-
 /// One local scope.
 pub struct Rib {
     bindings: @mut HashMap<ident,def_like>,
@@ -1007,37 +995,43 @@ impl Resolver {
                 //   nothing.
 
                 let mut is_duplicate = false;
-                match duplicate_checking_mode {
+                let ns = match duplicate_checking_mode {
                     ForbidDuplicateModules => {
-                        is_duplicate =
-                            child.get_module_if_available().is_some();
+                        is_duplicate = child.get_module_if_available().is_some();
+                        Some(TypeNS)
                     }
                     ForbidDuplicateTypes => {
                         match child.def_for_namespace(TypeNS) {
                             Some(def_mod(_)) | None => {}
                             Some(_) => is_duplicate = true
                         }
+                        Some(TypeNS)
                     }
                     ForbidDuplicateValues => {
                         is_duplicate = child.defined_in_namespace(ValueNS);
+                        Some(ValueNS)
                     }
                     ForbidDuplicateTypesAndValues => {
+                        let mut n = None;
                         match child.def_for_namespace(TypeNS) {
                             Some(def_mod(_)) | None => {}
-                            Some(_) => is_duplicate = true
+                            Some(_) => {
+                                n = Some(TypeNS);
+                                is_duplicate = true;
+                            }
                         };
                         if child.defined_in_namespace(ValueNS) {
                             is_duplicate = true;
+                            n = Some(ValueNS);
                         }
+                        n
                     }
-                    OverwriteDuplicates => {}
-                }
-                if duplicate_checking_mode != OverwriteDuplicates &&
-                        is_duplicate {
+                    OverwriteDuplicates => None
+                };
+                if is_duplicate {
                     // Return an error here by looking up the namespace that
                     // had the duplicate.
-                    let ns = namespace_for_duplicate_checking_mode(
-                        duplicate_checking_mode);
+                    let ns = ns.unwrap();
                     self.session.span_err(sp,
                         fmt!("duplicate definition of %s `%s`",
                              namespace_to_str(ns),
@@ -1195,22 +1189,22 @@ impl Resolver {
 
             // These items live in both the type and value namespaces.
             item_struct(struct_def, _) => {
-                let (name_bindings, new_parent) =
-                    self.add_child(ident, parent, ForbidDuplicateTypes, sp);
+                // Adding to both Type and Value namespaces or just Type?
+                let (forbid, ctor_id) = match struct_def.ctor_id {
+                    Some(ctor_id)   => (ForbidDuplicateTypesAndValues, Some(ctor_id)),
+                    None            => (ForbidDuplicateTypes, None)
+                };
 
-                name_bindings.define_type(
-                    privacy, def_ty(local_def(item.id)), sp);
+                let (name_bindings, new_parent) = self.add_child(ident, parent, forbid, sp);
 
-                // If this struct is tuple-like or enum-like, define a name
-                // in the value namespace.
-                match struct_def.ctor_id {
-                    None => {}
-                    Some(ctor_id) => {
-                        name_bindings.define_value(
-                            privacy,
-                            def_struct(local_def(ctor_id)),
-                            sp);
-                    }
+                // Define a name in the type namespace.
+                name_bindings.define_type(privacy, def_ty(local_def(item.id)), sp);
+
+                // If this is a newtype or unit-like struct, define a name
+                // in the value namespace as well
+                do ctor_id.while_some |cid| {
+                    name_bindings.define_value(privacy, def_struct(local_def(cid)), sp);
+                    None
                 }
 
                 // Record the def ID of this struct.
