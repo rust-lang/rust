@@ -966,10 +966,10 @@ pub mod llvm {
                                                  -> BasicBlockRef;
         #[fast_ffi]
         pub unsafe fn LLVMDeleteBasicBlock(BB: BasicBlockRef);
-        
+
         #[fast_ffi]
         pub unsafe fn LLVMMoveBasicBlockAfter(BB: BasicBlockRef, MoveAfter: BasicBlockRef);
-        
+
         #[fast_ffi]
         pub unsafe fn LLVMMoveBasicBlockBefore(BB: BasicBlockRef, MoveBefore: BasicBlockRef);
 
@@ -2072,13 +2072,13 @@ pub mod llvm {
             Val: ValueRef,
             VarInfo: DIVariable,
             InsertAtEnd: BasicBlockRef) -> ValueRef;
-            
+
         #[fast_ffi]
         pub unsafe fn LLVMDIBuilderInsertDeclareBefore(
             Builder: DIBuilderRef,
             Val: ValueRef,
             VarInfo: DIVariable,
-            InsertBefore: ValueRef) -> ValueRef;            
+            InsertBefore: ValueRef) -> ValueRef;
     }
 }
 
