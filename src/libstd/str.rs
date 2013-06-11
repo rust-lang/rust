@@ -154,14 +154,6 @@ pub fn push_str(lhs: &mut ~str, rhs: &str) {
     lhs.push_str(rhs)
 }
 
-/// Concatenate two strings together
-#[inline(always)]
-pub fn append(lhs: ~str, rhs: &str) -> ~str {
-    let mut v = lhs;
-    v.push_str_no_overallocate(rhs);
-    v
-}
-
 #[allow(missing_doc)]
 pub trait StrVector {
     pub fn concat(&self) -> ~str;
@@ -1515,8 +1507,6 @@ pub mod raw {
 #[cfg(not(test))]
 pub mod traits {
     use ops::Add;
-    use str::append;
-
     impl<'self> Add<&'self str,~str> for ~str {
         #[inline(always)]
         fn add(&self, rhs: & &'self str) -> ~str {
@@ -2100,6 +2090,7 @@ pub trait OwnedStr {
     fn push_str_no_overallocate(&mut self, rhs: &str);
     fn push_str(&mut self, rhs: &str);
     fn push_char(&mut self, c: char);
+    fn append(&self, rhs: &str) -> ~str; // FIXME #4850: this should consume self.
     fn reserve(&mut self, n: uint);
     fn reserve_at_least(&mut self, n: uint);
 }
@@ -2196,6 +2187,14 @@ impl OwnedStr for ~str {
             }
             raw::set_len(self, new_len);
         }
+    }
+    /// Concatenate two strings together.
+    #[inline]
+    fn append(&self, rhs: &str) -> ~str {
+        // FIXME #4850: this should consume self, but that causes segfaults
+        let mut v = self.clone();
+        v.push_str_no_overallocate(rhs);
+        v
     }
 
     /**
@@ -2394,6 +2393,27 @@ mod tests {
         assert!("hello".rfind(|c:char| c == 'x').is_none());
         assert_eq!("ประเทศไทย中华Việt Nam".rfind('华'), Some(30u));
         assert_eq!("ประเทศไทย中华Việt Nam".rfind(|c: char| c == '华'), Some(30u));
+    }
+
+    #[test]
+    fn test_push_str() {
+        let mut s = ~"";
+        s.push_str("");
+        assert_eq!(s.slice_from(0), "");
+        s.push_str("abc");
+        assert_eq!(s.slice_from(0), "abc");
+        s.push_str("ประเทศไทย中华Việt Nam");
+        assert_eq!(s.slice_from(0), "abcประเทศไทย中华Việt Nam");
+    }
+    #[test]
+    fn test_append() {
+        let mut s = ~"";
+        s = s.append("");
+        assert_eq!(s.slice_from(0), "");
+        s = s.append("abc");
+        assert_eq!(s.slice_from(0), "abc");
+        s = s.append("ประเทศไทย中华Việt Nam");
+        assert_eq!(s.slice_from(0), "abcประเทศไทย中华Việt Nam");
     }
 
     #[test]
