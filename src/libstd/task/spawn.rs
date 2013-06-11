@@ -323,6 +323,7 @@ impl Drop for TCB {
     // Runs on task exit.
     fn finalize(&self) {
         unsafe {
+            // FIXME(#4330) Need self by value to get mutability.
             let this: &mut TCB = transmute(self);
 
             // If we are failing, the whole taskgroup needs to die.

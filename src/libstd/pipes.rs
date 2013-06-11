@@ -315,6 +315,7 @@ struct BufferResource<T> {
 impl<T> Drop for BufferResource<T> {
     fn finalize(&self) {
         unsafe {
+            // FIXME(#4330) Need self by value to get mutability.
             let this: &mut BufferResource<T> = transmute(self);
 
             let mut b = move_it!(this.buffer);

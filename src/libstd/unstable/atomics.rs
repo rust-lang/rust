@@ -275,6 +275,7 @@ impl<T> Drop for AtomicOption<T> {
         // This will ensure that the contained data is
         // destroyed, unless it's null.
         unsafe {
+            // FIXME(#4330) Need self by value to get mutability.
             let this : &mut AtomicOption<T> = cast::transmute(self);
             let _ = this.take(SeqCst);
         }
