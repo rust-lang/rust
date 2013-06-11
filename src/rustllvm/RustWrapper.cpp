@@ -329,12 +329,12 @@ LLVMRustLoadCrate(void* mem, const char* crate) {
   return true;
 }
 
-extern "C" void*
-LLVMRustExecuteJIT(void* mem,
-                   LLVMPassManagerRef PMR,
-                   LLVMModuleRef M,
-                   CodeGenOpt::Level OptLevel,
-                   bool EnableSegmentedStacks) {
+extern "C" LLVMExecutionEngineRef
+LLVMRustBuildJIT(void* mem,
+                 LLVMPassManagerRef PMR,
+                 LLVMModuleRef M,
+                 CodeGenOpt::Level OptLevel,
+                 bool EnableSegmentedStacks) {
 
   InitializeNativeTarget();
   InitializeNativeTargetAsmPrinter();
@@ -371,21 +371,15 @@ LLVMRustExecuteJIT(void* mem,
 
   if(!EE || Err != "") {
     LLVMRustError = Err.c_str();
-    return 0;
+    // The EngineBuilder only takes ownership of these two structures if the
+    // create() call is successful, but here it wasn't successful.
+    LLVMDisposeModule(M);
+    delete MM;
+    return NULL;
   }
 
   MM->invalidateInstructionCache();
-  Function* func = EE->FindFunctionNamed("_rust_main");
-
-  if(!func || Err != "") {
-    LLVMRustError = Err.c_str();
-    return 0;
-  }
-
-  void* entry = EE->getPointerToFunction(func);
-  assert(entry);
-
-  return entry;
+  return wrap(EE);
 }
 
 extern "C" bool
@@ -447,9 +441,10 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   return true;
 }
 
-extern "C" LLVMModuleRef LLVMRustParseAssemblyFile(const char *Filename) {
+extern "C" LLVMModuleRef LLVMRustParseAssemblyFile(LLVMContextRef C,
+                                                   const char *Filename) {
   SMDiagnostic d;
-  Module *m = ParseAssemblyFile(Filename, d, getGlobalContext());
+  Module *m = ParseAssemblyFile(Filename, d, *unwrap(C));
   if (m) {
     return wrap(m);
   } else {
@@ -498,9 +493,6 @@ extern "C" LLVMValueRef LLVMGetOrInsertFunction(LLVMModuleRef M,
 
 extern "C" LLVMTypeRef LLVMMetadataTypeInContext(LLVMContextRef C) {
   return wrap(Type::getMetadataTy(*unwrap(C)));
-}
-extern "C" LLVMTypeRef LLVMMetadataType(void) {
-  return LLVMMetadataTypeInContext(LLVMGetGlobalContext());
 }
 
 extern "C" LLVMValueRef LLVMBuildAtomicLoad(LLVMBuilderRef B,
@@ -560,4 +552,25 @@ extern "C" LLVMValueRef LLVMInlineAsm(LLVMTypeRef Ty,
     return wrap(InlineAsm::get(unwrap<FunctionType>(Ty), AsmString,
                                Constraints, HasSideEffects,
                                IsAlignStack, (InlineAsm::AsmDialect) Dialect));
+}
+
+/**
+ * This function is intended to be a threadsafe interface into enabling a
+ * multithreaded LLVM. This is invoked at the start of the translation phase of
+ * compilation to ensure that LLVM is ready.
+ *
+ * All of trans properly isolates LLVM with the use of a different
+ * LLVMContextRef per task, thus allowing parallel compilation of different
+ * crates in the same process. At the time of this writing, the use case for
+ * this is unit tests for rusti, but there are possible other applications.
+ */
+extern "C" bool LLVMRustStartMultithreading() {
+    static Mutex lock;
+    bool ret = true;
+    assert(lock.acquire());
+    if (!LLVMIsMultithreaded()) {
+        ret = LLVMStartMultithreaded();
+    }
+    assert(lock.release());
+    return ret;
 }

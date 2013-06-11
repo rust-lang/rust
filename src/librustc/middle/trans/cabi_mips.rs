@@ -19,6 +19,7 @@ use lib::llvm::{llvm, TypeRef, Integer, Pointer, Float, Double};
 use lib::llvm::{Struct, Array, Attribute};
 use lib::llvm::{StructRetAttribute};
 use lib::llvm::True;
+use middle::trans::base::task_llcx;
 use middle::trans::common::*;
 use middle::trans::cabi::*;
 
@@ -166,7 +167,7 @@ fn coerce_to_int(size: uint) -> ~[TypeRef] {
     let r = size % 32;
     if r > 0 {
         unsafe {
-            args.push(llvm::LLVMIntType(r as c_uint))
+            args.push(llvm::LLVMIntTypeInContext(task_llcx(), r as c_uint))
         }
     }
 

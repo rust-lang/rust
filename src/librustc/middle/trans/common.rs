@@ -16,7 +16,7 @@ use back::{abi, upcall};
 use driver::session;
 use driver::session::Session;
 use lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
-use lib::llvm::{True, False, Bool};
+use lib::llvm::{ContextRef, True, False, Bool};
 use lib::llvm::{llvm, TargetData, TypeNames, associate_type, name_has_type};
 use lib;
 use metadata::common::LinkMeta;
@@ -160,6 +160,7 @@ pub type ExternMap = @mut HashMap<@str, ValueRef>;
 pub struct CrateContext {
      sess: session::Session,
      llmod: ModuleRef,
+     llcx: ContextRef,
      td: TargetData,
      tn: @TypeNames,
      externs: ExternMap,
@@ -798,30 +799,44 @@ impl block_ {
 
 // LLVM type constructors.
 pub fn T_void() -> TypeRef {
-    unsafe {
-        return llvm::LLVMVoidType();
-    }
+    unsafe { return llvm::LLVMVoidTypeInContext(base::task_llcx()); }
 }
 
 pub fn T_nil() -> TypeRef {
     return T_struct([], false)
 }
 
-pub fn T_metadata() -> TypeRef { unsafe { return llvm::LLVMMetadataType(); } }
+pub fn T_metadata() -> TypeRef {
+    unsafe { return llvm::LLVMMetadataTypeInContext(base::task_llcx()); }
+}
 
-pub fn T_i1() -> TypeRef { unsafe { return llvm::LLVMInt1Type(); } }
+pub fn T_i1() -> TypeRef {
+    unsafe { return llvm::LLVMInt1TypeInContext(base::task_llcx()); }
+}
 
-pub fn T_i8() -> TypeRef { unsafe { return llvm::LLVMInt8Type(); } }
+pub fn T_i8() -> TypeRef {
+    unsafe { return llvm::LLVMInt8TypeInContext(base::task_llcx()); }
+}
 
-pub fn T_i16() -> TypeRef { unsafe { return llvm::LLVMInt16Type(); } }
+pub fn T_i16() -> TypeRef {
+    unsafe { return llvm::LLVMInt16TypeInContext(base::task_llcx()); }
+}
 
-pub fn T_i32() -> TypeRef { unsafe { return llvm::LLVMInt32Type(); } }
+pub fn T_i32() -> TypeRef {
+    unsafe { return llvm::LLVMInt32TypeInContext(base::task_llcx()); }
+}
 
-pub fn T_i64() -> TypeRef { unsafe { return llvm::LLVMInt64Type(); } }
+pub fn T_i64() -> TypeRef {
+    unsafe { return llvm::LLVMInt64TypeInContext(base::task_llcx()); }
+}
 
-pub fn T_f32() -> TypeRef { unsafe { return llvm::LLVMFloatType(); } }
+pub fn T_f32() -> TypeRef {
+    unsafe { return llvm::LLVMFloatTypeInContext(base::task_llcx()); }
+}
 
-pub fn T_f64() -> TypeRef { unsafe { return llvm::LLVMDoubleType(); } }
+pub fn T_f64() -> TypeRef {
+    unsafe { return llvm::LLVMDoubleTypeInContext(base::task_llcx()); }
+}
 
 pub fn T_bool() -> TypeRef { return T_i8(); }
 
@@ -881,8 +896,8 @@ pub fn T_size_t(targ_cfg: @session::config) -> TypeRef {
 pub fn T_fn(inputs: &[TypeRef], output: TypeRef) -> TypeRef {
     unsafe {
         return llvm::LLVMFunctionType(output, to_ptr(inputs),
-                                   inputs.len() as c_uint,
-                                   False);
+                                      inputs.len() as c_uint,
+                                      False);
     }
 }
 
@@ -904,16 +919,18 @@ pub fn T_root(t: TypeRef, addrspace: addrspace) -> TypeRef {
 
 pub fn T_struct(elts: &[TypeRef], packed: bool) -> TypeRef {
     unsafe {
-        return llvm::LLVMStructType(to_ptr(elts),
-                                    elts.len() as c_uint,
-                                    packed as Bool);
+        return llvm::LLVMStructTypeInContext(base::task_llcx(),
+                                             to_ptr(elts),
+                                             elts.len() as c_uint,
+                                             packed as Bool);
     }
 }
 
 pub fn T_named_struct(name: &str) -> TypeRef {
     unsafe {
-        let c = llvm::LLVMGetGlobalContext();
-        return str::as_c_str(name, |buf| llvm::LLVMStructCreateNamed(c, buf));
+        return str::as_c_str(name, |buf| {
+            llvm::LLVMStructCreateNamed(base::task_llcx(), buf)
+        });
     }
 }
 
@@ -1191,7 +1208,8 @@ pub fn C_cstr(cx: @CrateContext, s: @~str) -> ValueRef {
         }
 
         let sc = do str::as_c_str(*s) |buf| {
-            llvm::LLVMConstString(buf, s.len() as c_uint, False)
+            llvm::LLVMConstStringInContext(cx.llcx, buf, s.len() as c_uint,
+                                           False)
         };
         let g =
             str::as_c_str(fmt!("str%u", (cx.names)("str").name),
@@ -1220,7 +1238,8 @@ pub fn C_estr_slice(cx: @CrateContext, s: @~str) -> ValueRef {
 pub fn C_postr(s: &str) -> ValueRef {
     unsafe {
         return do str::as_c_str(s) |buf| {
-            llvm::LLVMConstString(buf, s.len() as c_uint, False)
+            llvm::LLVMConstStringInContext(base::task_llcx(),
+                                           buf, s.len() as c_uint, False)
         };
     }
 }
@@ -1239,7 +1258,8 @@ pub fn C_zero_byte_arr(size: uint) -> ValueRef {
 pub fn C_struct(elts: &[ValueRef]) -> ValueRef {
     unsafe {
         do vec::as_imm_buf(elts) |ptr, len| {
-            llvm::LLVMConstStruct(ptr, len as c_uint, False)
+            llvm::LLVMConstStructInContext(base::task_llcx(),
+                                           ptr, len as c_uint, False)
         }
     }
 }
@@ -1247,7 +1267,8 @@ pub fn C_struct(elts: &[ValueRef]) -> ValueRef {
 pub fn C_packed_struct(elts: &[ValueRef]) -> ValueRef {
     unsafe {
         do vec::as_imm_buf(elts) |ptr, len| {
-            llvm::LLVMConstStruct(ptr, len as c_uint, True)
+            llvm::LLVMConstStructInContext(base::task_llcx(),
+                                           ptr, len as c_uint, True)
         }
     }
 }
@@ -1263,13 +1284,13 @@ pub fn C_named_struct(T: TypeRef, elts: &[ValueRef]) -> ValueRef {
 pub fn C_array(ty: TypeRef, elts: &[ValueRef]) -> ValueRef {
     unsafe {
         return llvm::LLVMConstArray(ty, vec::raw::to_ptr(elts),
-                                 elts.len() as c_uint);
+                                    elts.len() as c_uint);
     }
 }
 
 pub fn C_bytes(bytes: &[u8]) -> ValueRef {
     unsafe {
-        return llvm::LLVMConstString(
+        return llvm::LLVMConstStringInContext(base::task_llcx(),
             cast::transmute(vec::raw::to_ptr(bytes)),
             bytes.len() as c_uint, True);
     }
@@ -1277,7 +1298,7 @@ pub fn C_bytes(bytes: &[u8]) -> ValueRef {
 
 pub fn C_bytes_plus_null(bytes: &[u8]) -> ValueRef {
     unsafe {
-        return llvm::LLVMConstString(
+        return llvm::LLVMConstStringInContext(base::task_llcx(),
             cast::transmute(vec::raw::to_ptr(bytes)),
             bytes.len() as c_uint, False);
     }
