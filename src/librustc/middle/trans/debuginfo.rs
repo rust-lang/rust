@@ -75,11 +75,11 @@ struct _DebugContext {
 }
 
 /** Create new DebugContext */
-pub fn mk_ctxt(llmod: ModuleRef, crate: ~str, intr: @ident_interner) -> DebugContext {
+pub fn mk_ctxt(llmod: ModuleRef, crate: ~str) -> DebugContext {
     debug!("mk_ctxt");
     let builder = unsafe { llvm::LLVMDIBuilderCreate(llmod) };
     let dcx = @mut _DebugContext {
-        names: new_namegen(intr),
+        names: new_namegen(),
         crate_file: crate,
         builder: builder,
         curr_loc: (0, 0),
@@ -114,33 +114,9 @@ pub fn finalize(cx: @CrateContext) {
     };
 }
 
-fn filename_from_span(cx: @CrateContext, sp: codemap::span) -> ~str {
-    /*bad*/copy cx.sess.codemap.lookup_char_pos(sp.lo).file.name
-}
-
-//fn filename_from_span<'cx>(cx: &'cx CrateContext, sp: codemap::span) -> &'cx str {
-//    let fname: &str = cx.sess.codemap.lookup_char_pos(sp.lo).file.name;
-//  return fname;
-//}
-
-fn get_file_path_and_dir(work_dir: &str, full_path: &str) -> (~str, ~str) {
-    let full_path = 
-        if str::starts_with(full_path, work_dir) {
-            str::slice(full_path, str::len(work_dir) + 1u,
-                       str::len(full_path)).to_owned()
-        } else {
-            full_path.to_owned()
-        };
-    
-    return (full_path, work_dir.to_owned());
-}
-
 fn create_compile_unit(cx: @CrateContext) {
     let crate_name: &str = dbg_cx(cx).crate_file;
-
-    let (_, work_dir) = get_file_path_and_dir(
-        cx.sess.working_dir.to_str(), crate_name);
-        
+    let work_dir = cx.sess.working_dir.to_str();
     let producer = fmt!("rustc version %s", env!("CFG_VERSION"));
     
     do as_c_str(crate_name) |crate_name| {
@@ -158,29 +134,33 @@ fn create_compile_unit(cx: @CrateContext) {
 fn create_file(cx: @CrateContext, full_path: &str) -> DIFile {
     let dcx = dbg_cx(cx);
     
-    match dcx.created_files.find(&full_path.to_owned()) {
+    match dcx.created_files.find_equiv(&full_path) {
         Some(file_md) => return *file_md,
         None => ()
     }
 
     debug!("create_file: %s", full_path);
     
-    let (file_path, work_dir) =
-        get_file_path_and_dir(cx.sess.working_dir.to_str(),
-                              full_path);
-
+    let work_dir = cx.sess.working_dir.to_str();
+    let file_name = 
+        if full_path.starts_with(work_dir) {
+            full_path.slice(work_dir.len() + 1u, full_path.len())
+        } else {
+            full_path
+        };
+        
     let file_md = 
-        do as_c_str(file_path) |file_path| {
+        do as_c_str(file_name) |file_name| {
         do as_c_str(work_dir) |work_dir| { unsafe {
-            llvm::LLVMDIBuilderCreateFile(dcx.builder, file_path, work_dir)
+            llvm::LLVMDIBuilderCreateFile(dcx.builder, file_name, work_dir)
         }}};
         
     dcx.created_files.insert(full_path.to_owned(), file_md);
     return file_md;
 }
 
-fn line_from_span(cm: @codemap::CodeMap, sp: span) -> uint {
-    cm.lookup_char_pos(sp.lo).line
+fn span_start(cx: @CrateContext, span: span) -> codemap::Loc {
+    return cx.sess.codemap.lookup_char_pos(span.lo);
 }
 
 fn create_block(bcx: block) -> DILexicalBlock {
@@ -194,7 +174,7 @@ fn create_block(bcx: block) -> DILexicalBlock {
           None => fail!()
         }
     }
-    let sp = bcx.node_info.get().span;
+    let span = bcx.node_info.get().span;
     let id = bcx.node_info.get().id;
     
     match dcx.created_blocks.find(&id) {
@@ -202,23 +182,21 @@ fn create_block(bcx: block) -> DILexicalBlock {
         None => ()
     }
     
-    debug!("create_block: %s", bcx.sess().codemap.span_to_str(sp));
-    
-    let start = bcx.sess().codemap.lookup_char_pos(sp.lo);
-    //let end = bcx.sess().codemap.lookup_char_pos(sp.hi);
+    debug!("create_block: %s", bcx.sess().codemap.span_to_str(span));
     
     let parent = match bcx.parent {
         None => create_function(bcx.fcx),
         Some(b) => create_block(b)
     };
-    
-    let file_md = create_file(bcx.ccx(), start.file.name);
+    let cx = bcx.ccx();
+    let loc = span_start(cx, span);
+    let file_md = create_file(cx, loc.file.name);
     
     let block_md = unsafe { 
         llvm::LLVMDIBuilderCreateLexicalBlock(
             dcx.builder, 
             parent, file_md, 
-            start.line.to_int() as c_uint, start.col.to_int() as c_uint) 
+            loc.line as c_uint, loc.col.to_uint() as c_uint) 
     };
     
     dcx.created_blocks.insert(id, block_md);
@@ -342,18 +320,16 @@ impl StructContext {
 }
 
 fn create_struct(cx: @CrateContext, t: ty::t, fields: ~[ty::field], span: span) -> DICompositeType {
-    let fname = filename_from_span(cx, span);
-    let file_md = create_file(cx, fname);
-    let line = line_from_span(cx.sess.codemap, span);
+    let loc = span_start(cx, span);
+    let file_md = create_file(cx, loc.file.name);
     
-    let mut scx = StructContext::create(cx, file_md, ty_to_str(cx.tcx, t), line);
+    let mut scx = StructContext::create(cx, file_md, ty_to_str(cx.tcx, t), loc.line);
     for fields.each |field| {
         let field_t = field.mt.ty;
         let ty_md = create_ty(cx, field_t, span);
         let (size, align) = size_and_align_of(cx, field_t);
         scx.add_member(cx.sess.str_of(field.ident),
-                   line_from_span(cx.sess.codemap, span),
-                   size, align, ty_md);
+                   loc.line, size, align, ty_md);
     }
     return scx.finalize();
 }
@@ -371,8 +347,8 @@ fn voidptr(cx: @CrateContext) -> (DIDerivedType, uint, uint) {
 
 fn create_tuple(cx: @CrateContext, t: ty::t, elements: &[ty::t], span: span) -> DICompositeType {
     let dcx = dbg_cx(cx);
-    let fname = filename_from_span(cx, span);
-    let file_md = create_file(cx, fname);
+    let loc = span_start(cx, span);
+    let file_md = create_file(cx, loc.file.name);
 
     let name = (cx.sess.str_of((dcx.names)("tuple"))).to_owned();
     let mut scx = StructContext::create(cx, file_md, name, loc.line);
@@ -380,16 +356,15 @@ fn create_tuple(cx: @CrateContext, t: ty::t, elements: &[ty::t], span: span) -> 
     for elements.each |element| {
         let ty_md = create_ty(cx, *element, span);
         let (size, align) = size_and_align_of(cx, *element);
-        scx.add_member("", line_from_span(cx.sess.codemap, span),
-                   size, align, ty_md);
+        scx.add_member("", loc.line, size, align, ty_md);
     }
     return scx.finalize();
 }
 
 fn create_boxed_type(cx: @CrateContext, contents: ty::t,
                      span: span, boxed: DIType) -> DICompositeType {
-    let fname = filename_from_span(cx, span);
-    let file_md = create_file(cx, fname);
+    let loc = span_start(cx, span);
+    let file_md = create_file(cx, loc.file.name);
     let int_t = ty::mk_int();
     let refcount_type = create_basic_type(cx, int_t, span);
     let name = ty_to_str(cx.tcx, contents);
@@ -412,8 +387,8 @@ fn create_fixed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
                     len: uint, span: span) -> DIType {
     let dcx = dbg_cx(cx);
     let elem_ty_md = create_ty(cx, elem_t, span);
-    let fname = filename_from_span(cx, span);
-    let file_md = create_file(cx, fname);
+    let loc = span_start(cx, span);
+    let file_md = create_file(cx, loc.file.name);
     let (size, align) = size_and_align_of(cx, elem_t);
 
     let subrange = unsafe { 
@@ -427,10 +402,10 @@ fn create_fixed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
 }
 
 fn create_boxed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
-                    vec_ty_span: codemap::span) -> DICompositeType {
+                    vec_ty_span: span) -> DICompositeType {
     let dcx = dbg_cx(cx);
-    let fname = filename_from_span(cx, vec_ty_span);
-    let file_md = create_file(cx, fname);
+    let loc = span_start(cx, vec_ty_span);
+    let file_md = create_file(cx, loc.file.name);
     let elem_ty_md = create_ty(cx, elem_t, vec_ty_span);
     
     let mut vec_scx = StructContext::create(cx, file_md, ty_to_str(cx.tcx, vec_t), 0);
@@ -468,8 +443,8 @@ fn create_boxed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
 }
 
 fn create_vec_slice(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t, span: span) -> DICompositeType {
-    let fname = filename_from_span(cx, span);
-    let file_md = create_file(cx, fname);
+    let loc = span_start(cx, span);
+    let file_md = create_file(cx, loc.file.name);
     let elem_ty_md = create_ty(cx, elem_t, span);
     let uint_type = create_basic_type(cx, ty::mk_uint(), span);
     let elem_ptr = create_pointer_type(cx, elem_t, span, elem_ty_md);
@@ -485,8 +460,8 @@ fn create_vec_slice(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t, span: span) 
 fn create_fn_ty(cx: @CrateContext, fn_ty: ty::t, inputs: ~[ty::t], output: ty::t,
                 span: span) -> DICompositeType {
     let dcx = dbg_cx(cx);
-    let fname = filename_from_span(cx, span);
-    let file_md = create_file(cx, fname);
+    let loc = span_start(cx, span);
+    let file_md = create_file(cx, loc.file.name);
     let (vp, _, _) = voidptr(cx);
     let output_md = create_ty(cx, output, span);
     let output_ptr_md = create_pointer_type(cx, output, span, output_md);
@@ -593,7 +568,7 @@ pub fn create_local_var(bcx: block, local: @ast::local) -> DIVariable {
     };
     let name: &str = cx.sess.str_of(ident);
     debug!("create_local_var: %s", name);
-
+    
     let loc = span_start(cx, local.span);
     let ty = node_id_type(bcx, local.node.id);
     let tymd = create_ty(cx, ty, local.node.ty.span);
@@ -629,12 +604,12 @@ pub fn create_local_var(bcx: block, local: @ast::local) -> DIVariable {
     return var_md;
 }
 
-pub fn create_arg(bcx: block, arg: ast::arg, sp: span) -> Option<DIVariable> {
+pub fn create_arg(bcx: block, arg: ast::arg, span: span) -> Option<DIVariable> {
     debug!("create_arg");
     let fcx = bcx.fcx, cx = *fcx.ccx;
     let dcx = dbg_cx(cx);
 
-    let loc = cx.sess.codemap.lookup_char_pos(sp.lo);
+    let loc = span_start(cx, span);
     if "<intrinsic>" == loc.file.name {
         return None;
     }
@@ -654,7 +629,7 @@ pub fn create_arg(bcx: block, arg: ast::arg, sp: span) -> Option<DIVariable> {
             let ident = path.idents.last();
             let name: &str = cx.sess.str_of(*ident);
             let mdnode = do as_c_str(name) |name| { unsafe {
-                llvm::LLVMDIBuilderCreateLocalVariable(dcx.builder,
+                llvm::LLVMDIBuilderCreateLocalVariable(dcx.builder, 
                     ArgVariableTag as u32, context, name, 
                     filemd, loc.line as c_uint, tymd, false, 0, 0)
                     // FIXME need to pass a real argument number
@@ -681,16 +656,15 @@ fn set_debug_location(bcx: block, line: uint, col: uint) {
     }
 }
 
-pub fn update_source_pos(bcx: block, sp: span) {
-    if !bcx.sess().opts.debuginfo || (*sp.lo == 0 && *sp.hi == 0) {
+pub fn update_source_pos(bcx: block, span: span) {
+    if !bcx.sess().opts.debuginfo || (*span.lo == 0 && *span.hi == 0) {
         return;
     }
     
-    debug!("update_source_pos: %s", bcx.sess().codemap.span_to_str(sp));
+    debug!("update_source_pos: %s", bcx.sess().codemap.span_to_str(span));
 
-    let cm = bcx.sess().codemap;
-    let loc = cm.lookup_char_pos(sp.lo);
     let cx = bcx.ccx();
+    let loc = span_start(cx, span);
     let mut dcx = dbg_cx(cx);
     
     let loc = (loc.line, loc.col.to_uint());
@@ -706,7 +680,7 @@ pub fn create_function(fcx: fn_ctxt) -> DISubprogram {
     let cx = *fcx.ccx;
     let mut dcx = dbg_cx(cx);
     let fcx = &mut *fcx;
-    let sp = fcx.span.get();
+    let span = fcx.span.get();
 
     let (ident, ret_ty, id) = match cx.tcx.items.get_copy(&fcx.id) {
       ast_map::node_item(item, _) => {
@@ -739,7 +713,7 @@ pub fn create_function(fcx: fn_ctxt) -> DISubprogram {
 
     debug!("create_function: %s, %s", cx.sess.str_of(ident), cx.sess.codemap.span_to_str(span));
 
-    let loc = cx.sess.codemap.lookup_char_pos(sp.lo);
+    let loc = span_start(cx, span);
     let file_md = create_file(cx, loc.file.name);
 
     let ret_ty_md = if cx.sess.opts.extra_debuginfo {
