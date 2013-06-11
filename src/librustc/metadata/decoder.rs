@@ -82,17 +82,17 @@ pub fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
 }
 
 fn find_item(item_id: int, items: ebml::Doc) -> ebml::Doc {
-    return maybe_find_item(item_id, items).get();
+    match maybe_find_item(item_id, items) {
+       None => fail!("lookup_item: id not found: %d", item_id),
+       Some(d) => d
+    }
 }
 
 // Looks up an item in the given metadata and returns an ebml doc pointing
 // to the item data.
 fn lookup_item(item_id: int, data: @~[u8]) -> ebml::Doc {
     let items = reader::get_doc(reader::Doc(data), tag_items);
-    match maybe_find_item(item_id, items) {
-       None => fail!("lookup_item: id not found: %d", item_id),
-       Some(d) => d
-    }
+    find_item(item_id, items)
 }
 
 #[deriving(Eq)]
