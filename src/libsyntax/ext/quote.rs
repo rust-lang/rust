@@ -19,8 +19,6 @@ use parse::token::*;
 use parse::token;
 use parse;
 
-use core::vec;
-
 /**
 *
 * Quasiquoting works via token trees.

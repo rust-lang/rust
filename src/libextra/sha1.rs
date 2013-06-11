@@ -25,7 +25,6 @@
 use core::prelude::*;
 
 use core::iterator::IteratorUtil;
-use core::str;
 use core::uint;
 use core::vec;
 
@@ -246,8 +245,7 @@ pub fn sha1() -> @Sha1 {
         }
         fn input(&mut self, msg: &const [u8]) { add_input(self, msg); }
         fn input_str(&mut self, msg: &str) {
-            let bs = str::to_bytes(msg);
-            add_input(self, bs);
+            add_input(self, msg.as_bytes());
         }
         fn result(&mut self) -> ~[u8] { return mk_result(self); }
         fn result_str(&mut self) -> ~str {

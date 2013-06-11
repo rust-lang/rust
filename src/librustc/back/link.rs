@@ -50,8 +50,7 @@ pub enum output_type {
 }
 
 fn write_string<W:Writer>(writer: &mut W, string: &str) {
-    let buffer = str::as_bytes_slice(string);
-    writer.write(buffer);
+    writer.write(string.as_bytes());
 }
 
 pub fn llvm_err(sess: Session, msg: ~str) -> ! {

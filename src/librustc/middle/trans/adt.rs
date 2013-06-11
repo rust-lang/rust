@@ -48,7 +48,6 @@ use core::iterator::IteratorUtil;
 use core::container::Map;
 use core::libc::c_ulonglong;
 use core::option::{Option, Some, None};
-use core::vec;
 
 use lib::llvm::{ValueRef, TypeRef, True, IntEQ, IntNE};
 use middle::trans::_match;

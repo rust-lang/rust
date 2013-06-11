@@ -81,7 +81,8 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
 fn find(mm: &HashMap<~[u8], uint>, key: ~str) -> uint {
    // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
    // to_ascii_consume and to_str_consume to not do a unnecessary copy.
-   match mm.find(&str::to_bytes(key.to_ascii().to_lower().to_str_ascii())) {
+   let key = key.to_ascii().to_lower().to_str_ascii();
+   match mm.find_equiv(&key.as_bytes()) {
       option::None      => { return 0u; }
       option::Some(&num) => { return num; }
    }
@@ -208,10 +209,10 @@ fn main() {
 
          // process the sequence for k-mers
          (_, true) => {
-            let line_bytes = str::to_bytes(line);
+            let line_bytes = line.as_bytes();
 
            for sizes.eachi |ii, _sz| {
-               let mut lb = copy line_bytes;
+               let mut lb = line_bytes.to_owned();
                to_child[ii].send(lb);
             }
          }

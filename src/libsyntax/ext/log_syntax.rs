@@ -18,7 +18,6 @@ use print;
 use parse::token::{get_ident_interner};
 
 use core::io;
-use core::vec;
 
 pub fn expand_syntax_ext(cx: @ExtCtxt,
                          sp: codemap::span,

@@ -27,7 +27,7 @@ pub fn main() {
     assert!(s.char_at(0u) == 'e');
     assert!(s.char_at(1u) == 'é');
 
-    assert!((str::is_utf8(str::to_bytes(s))));
+    assert!((str::is_utf8(s.as_bytes())));
     assert!((!str::is_utf8(~[0x80_u8])));
     assert!((!str::is_utf8(~[0xc0_u8])));
     assert!((!str::is_utf8(~[0xc0_u8, 0x10_u8])));

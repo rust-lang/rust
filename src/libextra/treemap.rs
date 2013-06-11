@@ -769,10 +769,10 @@ mod test_treemap {
     fn u8_map() {
         let mut m = TreeMap::new();
 
-        let k1 = str::to_bytes("foo");
-        let k2 = str::to_bytes("bar");
-        let v1 = str::to_bytes("baz");
-        let v2 = str::to_bytes("foobar");
+        let k1 = "foo".as_bytes();
+        let k2 = "bar".as_bytes();
+        let v1 = "baz".as_bytes();
+        let v2 = "foobar".as_bytes();
 
         m.insert(copy k1, copy v1);
         m.insert(copy k2, copy v2);

@@ -15,6 +15,6 @@ use std::str;
 
 pub fn main() {
     let mut m = HashMap::new();
-    m.insert(str::to_bytes(~"foo"), str::to_bytes(~"bar"));
+    m.insert("foo".as_bytes().to_owned(), "bar".as_bytes().to_owned());
     error!(m);
 }

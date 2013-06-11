@@ -487,7 +487,7 @@ mod test {
         let mut buf : ~[u8] = vec::from_elem(6, 0u8);
         let count = fi.read(buf, 10);
         assert_eq!(count, 6);
-        assert_eq!(buf, "0\n1\n2\n".to_bytes());
+        assert_eq!(buf, "0\n1\n2\n".as_bytes().to_owned());
         assert!(fi.eof())
         assert_eq!(fi.state().line_num, 3);
     }

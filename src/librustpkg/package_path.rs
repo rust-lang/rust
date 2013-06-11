@@ -44,8 +44,7 @@ pub fn normalize(p_: RemotePath) -> LocalPath {
 }
 
 pub fn write<W: Writer>(writer: &mut W, string: &str) {
-    let buffer = str::as_bytes_slice(string);
-    writer.write(buffer);
+    writer.write(string.as_bytes());
 }
 
 pub fn hash(data: ~str) -> ~str {
