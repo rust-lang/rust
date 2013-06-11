@@ -1410,7 +1410,7 @@ let new_favorite_crayon_name = favorite_crayon_name.trim();
 
 if favorite_crayon_name.len() > 5 {
    // Create a substring
-   println(favorite_crayon_name.substr(0, 5));
+   println(favorite_crayon_name.slice_chars(0, 5));
 }
 ~~~
 
