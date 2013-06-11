@@ -1094,18 +1094,6 @@ pub fn subslice_offset(outer: &str, inner: &str) -> uint {
     }
 }
 
-
-/**
- * Returns the number of single-byte characters the string can hold without
- * reallocating
- */
-pub fn capacity(s: &const ~str) -> uint {
-    let buf: &const ~[u8] = unsafe { cast::transmute(s) };
-    let vcap = vec::capacity(buf);
-    assert!(vcap > 0u);
-    vcap - 1u
-}
-
 /// Escape each char in `s` with char::escape_default.
 pub fn escape_default(s: &str) -> ~str {
     let mut out: ~str = ~"";
@@ -2020,6 +2008,7 @@ pub trait OwnedStr {
     fn append(&self, rhs: &str) -> ~str; // FIXME #4850: this should consume self.
     fn reserve(&mut self, n: uint);
     fn reserve_at_least(&mut self, n: uint);
+    fn capacity(&self) -> uint;
 
     fn as_bytes_with_null_consume(self) -> ~[u8];
 }
@@ -2210,6 +2199,17 @@ impl OwnedStr for ~str {
     #[inline(always)]
     fn reserve_at_least(&mut self, n: uint) {
         self.reserve(uint::next_power_of_two(n + 1u) - 1u)
+    }
+
+    /**
+     * Returns the number of single-byte characters the string can hold without
+     * reallocating
+     */
+    fn capacity(&self) -> uint {
+        let buf: &const ~[u8] = unsafe { cast::transmute(self) };
+        let vcap = vec::capacity(buf);
+        assert!(vcap > 0u);
+        vcap - 1u
     }
 
     /// Convert to a vector of bytes. This does not allocate a new
