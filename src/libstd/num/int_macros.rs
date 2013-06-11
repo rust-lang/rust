@@ -793,27 +793,27 @@ mod tests {
 
     #[test]
     fn test_parse_bytes() {
-        use str::to_bytes;
-        assert_eq!(parse_bytes(to_bytes("123"), 10u), Some(123 as $T));
-        assert_eq!(parse_bytes(to_bytes("1001"), 2u), Some(9 as $T));
-        assert_eq!(parse_bytes(to_bytes("123"), 8u), Some(83 as $T));
-        assert_eq!(i32::parse_bytes(to_bytes("123"), 16u), Some(291 as i32));
-        assert_eq!(i32::parse_bytes(to_bytes("ffff"), 16u), Some(65535 as i32));
-        assert_eq!(i32::parse_bytes(to_bytes("FFFF"), 16u), Some(65535 as i32));
-        assert_eq!(parse_bytes(to_bytes("z"), 36u), Some(35 as $T));
-        assert_eq!(parse_bytes(to_bytes("Z"), 36u), Some(35 as $T));
+        use str::StrSlice;
+        assert_eq!(parse_bytes("123".as_bytes(), 10u), Some(123 as $T));
+        assert_eq!(parse_bytes("1001".as_bytes(), 2u), Some(9 as $T));
+        assert_eq!(parse_bytes("123".as_bytes(), 8u), Some(83 as $T));
+        assert_eq!(i32::parse_bytes("123".as_bytes(), 16u), Some(291 as i32));
+        assert_eq!(i32::parse_bytes("ffff".as_bytes(), 16u), Some(65535 as i32));
+        assert_eq!(i32::parse_bytes("FFFF".as_bytes(), 16u), Some(65535 as i32));
+        assert_eq!(parse_bytes("z".as_bytes(), 36u), Some(35 as $T));
+        assert_eq!(parse_bytes("Z".as_bytes(), 36u), Some(35 as $T));
 
-        assert_eq!(parse_bytes(to_bytes("-123"), 10u), Some(-123 as $T));
-        assert_eq!(parse_bytes(to_bytes("-1001"), 2u), Some(-9 as $T));
-        assert_eq!(parse_bytes(to_bytes("-123"), 8u), Some(-83 as $T));
-        assert_eq!(i32::parse_bytes(to_bytes("-123"), 16u), Some(-291 as i32));
-        assert_eq!(i32::parse_bytes(to_bytes("-ffff"), 16u), Some(-65535 as i32));
-        assert_eq!(i32::parse_bytes(to_bytes("-FFFF"), 16u), Some(-65535 as i32));
-        assert_eq!(parse_bytes(to_bytes("-z"), 36u), Some(-35 as $T));
-        assert_eq!(parse_bytes(to_bytes("-Z"), 36u), Some(-35 as $T));
+        assert_eq!(parse_bytes("-123".as_bytes(), 10u), Some(-123 as $T));
+        assert_eq!(parse_bytes("-1001".as_bytes(), 2u), Some(-9 as $T));
+        assert_eq!(parse_bytes("-123".as_bytes(), 8u), Some(-83 as $T));
+        assert_eq!(i32::parse_bytes("-123".as_bytes(), 16u), Some(-291 as i32));
+        assert_eq!(i32::parse_bytes("-ffff".as_bytes(), 16u), Some(-65535 as i32));
+        assert_eq!(i32::parse_bytes("-FFFF".as_bytes(), 16u), Some(-65535 as i32));
+        assert_eq!(parse_bytes("-z".as_bytes(), 36u), Some(-35 as $T));
+        assert_eq!(parse_bytes("-Z".as_bytes(), 36u), Some(-35 as $T));
 
-        assert!(parse_bytes(to_bytes("Z"), 35u).is_none());
-        assert!(parse_bytes(to_bytes("-9"), 2u).is_none());
+        assert!(parse_bytes("Z".as_bytes(), 35u).is_none());
+        assert!(parse_bytes("-9".as_bytes(), 2u).is_none());
     }
 
     #[test]

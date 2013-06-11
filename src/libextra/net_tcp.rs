@@ -1636,7 +1636,7 @@ mod test {
         assert_eq!(net::ip::get_port(&sock.get_peer_addr()), 8887);
 
         // Fulfill the protocol the test server expects
-        let resp_bytes = str::to_bytes("ping");
+        let resp_bytes = "ping".as_bytes().to_owned();
         tcp_write_single(&sock, resp_bytes);
         debug!("message sent");
         sock.read(0u);
@@ -1756,9 +1756,7 @@ mod test {
         buf_write(sock_buf, expected_req);
 
         // so contrived!
-        let actual_resp = do str::as_bytes(&expected_resp.to_str()) |resp_buf| {
-            buf_read(sock_buf, resp_buf.len())
-        };
+        let actual_resp = buf_read(sock_buf, expected_resp.as_bytes().len());
 
         let actual_req = server_result_po.recv();
         debug!("REQ: expected: '%s' actual: '%s'",
@@ -1810,11 +1808,10 @@ mod test {
 
     fn buf_write<W:io::Writer>(w: &W, val: &str) {
         debug!("BUF_WRITE: val len %?", val.len());
-        do str::byte_slice(val) |b_slice| {
-            debug!("BUF_WRITE: b_slice len %?",
-                            b_slice.len());
-            w.write(b_slice)
-        }
+        let b_slice = val.as_bytes();
+        debug!("BUF_WRITE: b_slice len %?",
+               b_slice.len());
+        w.write(b_slice)
     }
 
     fn buf_read<R:io::Reader>(r: &R, len: uint) -> ~str {
@@ -1877,7 +1874,8 @@ mod test {
                             server_ch.send(
                                 str::from_bytes(data));
                             debug!("SERVER: before write");
-                            tcp_write_single(&sock, str::to_bytes(resp_cell2.take()));
+                            let s = resp_cell2.take();
+                            tcp_write_single(&sock, s.as_bytes().to_owned());
                             debug!("SERVER: after write.. die");
                             kill_ch.send(None);
                           }
@@ -1949,7 +1947,7 @@ mod test {
         }
         else {
             let sock = result::unwrap(connect_result);
-            let resp_bytes = str::to_bytes(resp);
+            let resp_bytes = resp.as_bytes().to_owned();
             tcp_write_single(&sock, resp_bytes);
             let read_result = sock.read(0u);
             if read_result.is_err() {

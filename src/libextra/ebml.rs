@@ -607,7 +607,6 @@ pub mod writer {
 
     use core::cast;
     use core::io;
-    use core::str;
 
     // ebml writing
     pub struct Encoder {
@@ -725,7 +724,7 @@ pub mod writer {
         }
 
         pub fn wr_tagged_str(&mut self, tag_id: uint, v: &str) {
-            str::byte_slice(v, |b| self.wr_tagged_bytes(tag_id, b));
+            self.wr_tagged_bytes(tag_id, v.as_bytes());
         }
 
         pub fn wr_bytes(&mut self, b: &[u8]) {
@@ -735,7 +734,7 @@ pub mod writer {
 
         pub fn wr_str(&mut self, s: &str) {
             debug!("Write str: %?", s);
-            self.writer.write(str::to_bytes(s));
+            self.writer.write(s.as_bytes());
         }
     }
 

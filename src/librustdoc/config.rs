@@ -262,7 +262,7 @@ mod test {
             .. default_config(&Path("test"))
         };
         let mock_process_output: ~fn(&str, &[~str]) -> ProcessOutput = |_, _| {
-            ProcessOutput { status: 0, output: "pandoc 1.8.2.1".to_bytes(), error: ~[] }
+            ProcessOutput { status: 0, output: "pandoc 1.8.2.1".as_bytes().to_owned(), error: ~[] }
         };
         let result = maybe_find_pandoc(&config, None, mock_process_output);
         assert!(result == result::Ok(Some(~"pandoc")));

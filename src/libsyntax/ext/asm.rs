@@ -21,8 +21,6 @@ use ext::base::*;
 use parse;
 use parse::token;
 
-use core::vec;
-
 enum State {
     Asm,
     Outputs,

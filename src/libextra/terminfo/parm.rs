@@ -85,11 +85,14 @@ pub fn expand(cap: &[u8], params: &mut [Param], sta: &mut [Param], dyn: &mut [Pa
                         _       => return Err(~"a non-char was used with %c")
                     },
                     's' => match stack.pop() {
-                        String(s) => output.push_all(s.to_bytes()),
+                        String(s) => output.push_all(s.as_bytes()),
                         _         => return Err(~"a non-str was used with %s")
                     },
                     'd' => match stack.pop() {
-                        Number(x) => output.push_all(x.to_str().to_bytes()),
+                        Number(x) => {
+                            let s = x.to_str();
+                            output.push_all(s.as_bytes())
+                        }
                         _         => return Err(~"a non-number was used with %d")
                     },
                     'p' => state = PushParam,

@@ -22,7 +22,6 @@ use parse::token;
 use parse::token::{ident_to_str, intern, str_to_ident};
 
 use core::hashmap::HashMap;
-use core::vec;
 
 // new-style macro! tt code:
 //

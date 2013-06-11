@@ -10,7 +10,6 @@
 
 use core::prelude::*;
 
-use core::str;
 use core::uint;
 use core::vec;
 
@@ -129,7 +128,7 @@ pub fn md4_str(msg: &[u8]) -> ~str {
 
 /// Calculates the md4 hash of a string, returning the hex-encoded version of
 /// the hash
-pub fn md4_text(msg: &str) -> ~str { md4_str(str::to_bytes(msg)) }
+pub fn md4_text(msg: &str) -> ~str { md4_str(msg.as_bytes()) }
 
 #[test]
 fn test_md4() {

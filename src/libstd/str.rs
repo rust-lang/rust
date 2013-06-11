@@ -304,40 +304,6 @@ impl<'self> StrVector for &'self [&'self str] {
     }
 }
 
-/*
-Section: Transforming strings
-*/
-
-/**
- * Converts a string to a unique vector of bytes
- *
- * The result vector is not null-terminated.
- */
-pub fn to_bytes(s: &str) -> ~[u8] {
-    unsafe {
-        let mut v: ~[u8] = ::cast::transmute(s.to_owned());
-        vec::raw::set_len(&mut v, s.len());
-        v
-    }
-}
-
-/// Work with the string as a byte slice, not including trailing null.
-#[inline(always)]
-pub fn byte_slice<T>(s: &str, f: &fn(v: &[u8]) -> T) -> T {
-    do as_buf(s) |p,n| {
-        unsafe { vec::raw::buf_as_slice(p, n-1u, f) }
-    }
-}
-
-/// Work with the string as a byte slice, not including trailing null, without
-/// a callback.
-#[inline(always)]
-pub fn byte_slice_no_callback<'a>(s: &'a str) -> &'a [u8] {
-    unsafe {
-        cast::transmute(s)
-    }
-}
-
 /// Something that can be used to compare against a character
 pub trait CharEq {
     /// Determine if the splitter should split at the given character
@@ -1082,39 +1048,6 @@ static max_five_b: uint = 67108864u;
 static tag_six_b: uint = 252u;
 
 /**
- * Work with the byte buffer of a string.
- *
- * Allows for unsafe manipulation of strings, which is useful for foreign
- * interop.
- *
- * # Example
- *
- * ~~~ {.rust}
- * let i = str::as_bytes("Hello World") { |bytes| bytes.len() };
- * ~~~
- */
-#[inline]
-pub fn as_bytes<T>(s: &const ~str, f: &fn(&~[u8]) -> T) -> T {
-    unsafe {
-        let v: *~[u8] = cast::transmute(copy s);
-        f(&*v)
-    }
-}
-
-/**
- * Work with the byte buffer of a string as a byte slice.
- *
- * The byte slice does not include the null terminator.
- */
-pub fn as_bytes_slice<'a>(s: &'a str) -> &'a [u8] {
-    unsafe {
-        let (ptr, len): (*u8, uint) = ::cast::transmute(s);
-        let outgoing_tuple: (*u8, uint) = (ptr, len - 1);
-        return ::cast::transmute(outgoing_tuple);
-    }
-}
-
-/**
  * A dummy trait to hold all the utility methods that we implement on strings.
  */
 pub trait StrUtil {
@@ -1216,11 +1149,10 @@ pub fn subslice_offset(outer: &str, inner: &str) -> uint {
  * reallocating
  */
 pub fn capacity(s: &const ~str) -> uint {
-    do as_bytes(s) |buf| {
-        let vcap = vec::capacity(buf);
-        assert!(vcap > 0u);
-        vcap - 1u
-    }
+    let buf: &const ~[u8] = unsafe { cast::transmute(s) };
+    let vcap = vec::capacity(buf);
+    assert!(vcap > 0u);
+    vcap - 1u
 }
 
 /// Escape each char in `s` with char::escape_default.
@@ -1482,7 +1414,7 @@ pub trait StrSlice<'self> {
     fn char_at(&self, i: uint) -> char;
     fn char_range_at_reverse(&self, start: uint) -> CharRange;
     fn char_at_reverse(&self, i: uint) -> char;
-    fn to_bytes(&self) -> ~[u8];
+    fn as_bytes(&self) -> &'self [u8];
 
     fn find<C: CharEq>(&self, search: C) -> Option<uint>;
     fn rfind<C: CharEq>(&self, search: C) -> Option<uint>;
@@ -1545,12 +1477,12 @@ impl<'self> StrSlice<'self> for &'self str {
     /// An iterator over the bytes of `self`
     #[inline]
     fn bytes_iter(&self) -> StrBytesIterator<'self> {
-        StrBytesIterator { it: as_bytes_slice(*self).iter() }
+        StrBytesIterator { it: self.as_bytes().iter() }
     }
     /// An iterator over the bytes of `self`, in reverse order
     #[inline]
     fn bytes_rev_iter(&self) -> StrBytesRevIterator<'self> {
-        StrBytesRevIterator { it: as_bytes_slice(*self).rev_iter() }
+        StrBytesRevIterator { it: self.as_bytes().rev_iter() }
     }
 
     /// An iterator over substrings of `self`, separated by characters
@@ -1936,7 +1868,18 @@ impl<'self> StrSlice<'self> for &'self str {
         self.char_range_at_reverse(i).ch
     }
 
-    fn to_bytes(&self) -> ~[u8] { to_bytes(*self) }
+    /**
+     * Work with the byte buffer of a string as a byte slice.
+     *
+     * The byte slice does not include the null terminator.
+     */
+    fn as_bytes(&self) -> &'self [u8] {
+        unsafe {
+            let (ptr, len): (*u8, uint) = ::cast::transmute(*self);
+            let outgoing_tuple: (*u8, uint) = (ptr, len - 1);
+            ::cast::transmute(outgoing_tuple)
+        }
+    }
 
     /**
      * Returns the byte index of the first character of `self` that matches `search`
@@ -2052,6 +1995,50 @@ impl<'self> StrSlice<'self> for &'self str {
 }
 
 #[allow(missing_doc)]
+pub trait NullTerminatedStr {
+    fn as_bytes_with_null<'a>(&'a self) -> &'a [u8];
+}
+
+impl NullTerminatedStr for ~str {
+    /**
+     * Work with the byte buffer of a string as a byte slice.
+     *
+     * The byte slice does include the null terminator.
+     */
+    #[inline]
+    fn as_bytes_with_null<'a>(&'a self) -> &'a [u8] {
+        let ptr: &'a ~[u8] = unsafe { ::cast::transmute(self) };
+        let slice: &'a [u8] = *ptr;
+        slice
+    }
+}
+impl NullTerminatedStr for @str {
+    /**
+     * Work with the byte buffer of a string as a byte slice.
+     *
+     * The byte slice does include the null terminator.
+     */
+    #[inline]
+    fn as_bytes_with_null<'a>(&'a self) -> &'a [u8] {
+        let ptr: &'a ~[u8] = unsafe { ::cast::transmute(self) };
+        let slice: &'a [u8] = *ptr;
+        slice
+    }
+}
+// static strings are the only slices guaranteed to a nul-terminator
+impl NullTerminatedStr for &'static str {
+    /**
+     * Work with the byte buffer of a string as a byte slice.
+     *
+     * The byte slice does include the null terminator.
+     */
+    #[inline]
+    fn as_bytes_with_null(&self) -> &'static [u8] {
+        unsafe { ::cast::transmute(*self) }
+    }
+}
+
+#[allow(missing_doc)]
 pub trait OwnedStr {
     fn push_str_no_overallocate(&mut self, rhs: &str);
     fn push_str(&mut self, rhs: &str);
@@ -2062,6 +2049,8 @@ pub trait OwnedStr {
     fn append(&self, rhs: &str) -> ~str; // FIXME #4850: this should consume self.
     fn reserve(&mut self, n: uint);
     fn reserve_at_least(&mut self, n: uint);
+
+    fn as_bytes_with_null_consume(self) -> ~[u8];
 }
 
 impl OwnedStr for ~str {
@@ -2251,6 +2240,13 @@ impl OwnedStr for ~str {
     fn reserve_at_least(&mut self, n: uint) {
         self.reserve(uint::next_power_of_two(n + 1u) - 1u)
     }
+
+    /// Convert to a vector of bytes. This does not allocate a new
+    /// string, and includes the null terminator.
+    #[inline]
+    fn as_bytes_with_null_consume(self) -> ~[u8] {
+        unsafe { ::cast::transmute(self) }
+    }
 }
 
 impl Clone for ~str {
@@ -2336,7 +2332,7 @@ mod tests {
     use ptr;
     use str::*;
     use vec;
-    use vec::ImmutableVector;
+    use vec::{ImmutableVector, CopyableVector};
     use cmp::{TotalOrd, Less, Equal, Greater};
 
     #[test]
@@ -2953,11 +2949,69 @@ mod tests {
     }
 
     #[test]
+    fn test_as_bytes() {
+        // no null
+        let v = [
+            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
+            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
+            109
+        ];
+        assert_eq!("".as_bytes(), &[]);
+        assert_eq!("abc".as_bytes(), &['a' as u8, 'b' as u8, 'c' as u8]);
+        assert_eq!("ศไทย中华Việt Nam".as_bytes(), v);
+    }
+
+    #[test]
+    fn test_as_bytes_with_null() {
+        // has null
+        let v = [
+            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
+            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
+            109, 0
+        ];
+
+        assert_eq!("".as_bytes_with_null(), &[0]);
+        assert_eq!("abc".as_bytes_with_null(), &['a' as u8, 'b' as u8, 'c' as u8, 0]);
+        assert_eq!("ศไทย中华Việt Nam".as_bytes_with_null(), v);
+
+        let s1 = @"";
+        let s2 = @"abc";
+        let s3 = @"ศไทย中华Việt Nam";
+        assert_eq!(s1.as_bytes_with_null(), &[0]);
+        assert_eq!(s2.as_bytes_with_null(), &['a' as u8, 'b' as u8, 'c' as u8, 0]);
+        assert_eq!(s3.as_bytes_with_null(), v);
+
+        let s1 = ~"";
+        let s2 = ~"abc";
+        let s3 = ~"ศไทย中华Việt Nam";
+        assert_eq!(s1.as_bytes_with_null(), &[0]);
+        assert_eq!(s2.as_bytes_with_null(), &['a' as u8, 'b' as u8, 'c' as u8, 0]);
+        assert_eq!(s3.as_bytes_with_null(), v);
+    }
+
+    #[test]
+    fn test_as_bytes_with_null_consume() {
+        let s = ~"ศไทย中华Việt Nam";
+        let v = ~[
+            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
+            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
+            109, 0
+        ];
+        assert_eq!((~"").as_bytes_with_null_consume(), ~[0]);
+        assert_eq!((~"abc").as_bytes_with_null_consume(),
+                   ~['a' as u8, 'b' as u8, 'c' as u8, 0]);
+        assert_eq!(s.as_bytes_with_null_consume(), v);
+    }
+
+    #[test]
     #[ignore(cfg(windows))]
     #[should_fail]
     fn test_as_bytes_fail() {
-        // Don't double free
-        as_bytes::<()>(&~"", |_bytes| fail!() );
+        // Don't double free. (I'm not sure if this exercises the
+        // original problem code path anymore.)
+        let s = ~"";
+        let _bytes = s.as_bytes_with_null();
+        fail!();
     }
 
     #[test]
@@ -3032,7 +3086,7 @@ mod tests {
     fn vec_str_conversions() {
         let s1: ~str = ~"All mimsy were the borogoves";
 
-        let v: ~[u8] = to_bytes(s1);
+        let v: ~[u8] = s1.as_bytes().to_owned();
         let s2: ~str = from_bytes(v);
         let mut i: uint = 0u;
         let n1: uint = s1.len();

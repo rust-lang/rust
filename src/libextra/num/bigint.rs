@@ -534,7 +534,7 @@ impl FromStrRadix for BigUint {
 
     pub fn from_str_radix(s: &str, radix: uint)
         -> Option<BigUint> {
-        BigUint::parse_bytes(str::to_bytes(s), radix)
+        BigUint::parse_bytes(s.as_bytes(), radix)
     }
 }
 
@@ -1090,7 +1090,7 @@ impl FromStrRadix for BigInt {
 
     fn from_str_radix(s: &str, radix: uint)
         -> Option<BigInt> {
-        BigInt::parse_bytes(str::to_bytes(s), radix)
+        BigInt::parse_bytes(s.as_bytes(), radix)
     }
 }
 

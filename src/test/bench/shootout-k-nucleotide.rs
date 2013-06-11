@@ -218,8 +218,7 @@ fn read_stdin() -> ~[u8] {
         fstat(fileno(stdin), &mut st);
         let mut buf = vec::from_elem(st.st_size as uint, 0);
 
-        let header = str::byte_slice_no_callback(">THREE");
-        let header = vec::slice(header, 0, 6);
+        let header = ">THREE".as_bytes();
 
         {
             let mut window: &mut [u8] = buf;
