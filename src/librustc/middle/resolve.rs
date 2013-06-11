@@ -1226,11 +1226,25 @@ impl Resolver {
                 // the same module that declared the type.
 
                 // Bail out early if there are no static methods.
+                let mut methods_seen = HashMap::new();
                 let mut has_static_methods = false;
                 for methods.each |method| {
                     match method.explicit_self.node {
                         sty_static => has_static_methods = true,
-                        _ => {}
+                        _ => {
+                            // Make sure you can't define duplicate methods
+                            let ident = method.ident;
+                            let span = method.span;
+                            let old_sp = methods_seen.find_or_insert(ident, span);
+                            if *old_sp != span {
+                                self.session.span_err(span,
+                                                      fmt!("duplicate definition of method %s",
+                                                           *self.session.str_of(ident)));
+                                self.session.span_note(*old_sp,
+                                                       fmt!("first definition of method %s here",
+                                                            *self.session.str_of(ident)));
+                            }
+                        }
                     }
                 }
 
