@@ -2316,59 +2316,59 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                ::util::ppaux::ty_to_str(cx, ty));
 
         let r = match get(ty).sty {
-          ty_nil |
-          ty_bot |
-          ty_bool |
-          ty_int(_) |
-          ty_uint(_) |
-          ty_float(_) |
-          ty_estr(_) |
-          ty_bare_fn(_) |
-          ty_closure(_) |
-          ty_infer(_) |
-          ty_err |
-          ty_param(_) |
-          ty_self(_) |
-          ty_type |
-          ty_opaque_box |
-          ty_opaque_closure_ptr(_) |
-          ty_evec(_, _) |
-          ty_unboxed_vec(_) => {
-            false
-          }
-          ty_box(ref mt) |
-          ty_uniq(ref mt) |
-          ty_rptr(_, ref mt) => {
-            return type_requires(cx, seen, r_ty, mt.ty);
-          }
+            ty_nil |
+            ty_bot |
+            ty_bool |
+            ty_int(_) |
+            ty_uint(_) |
+            ty_float(_) |
+            ty_estr(_) |
+            ty_bare_fn(_) |
+            ty_closure(_) |
+            ty_infer(_) |
+            ty_err |
+            ty_param(_) |
+            ty_self(_) |
+            ty_type |
+            ty_opaque_box |
+            ty_opaque_closure_ptr(_) |
+            ty_evec(_, _) |
+            ty_unboxed_vec(_) => {
+                false
+            }
+            ty_box(ref mt) |
+            ty_uniq(ref mt) |
+            ty_rptr(_, ref mt) => {
+                type_requires(cx, seen, r_ty, mt.ty)
+            }
 
-          ty_ptr(*) => {
-            false           // unsafe ptrs can always be NULL
-          }
+            ty_ptr(*) => {
+                false           // unsafe ptrs can always be NULL
+            }
 
-          ty_trait(_, _, _, _) => {
-            false
-          }
+            ty_trait(_, _, _, _) => {
+                false
+            }
 
-          ty_struct(ref did, _) if vec::contains(*seen, did) => {
-            false
-          }
+            ty_struct(ref did, _) if vec::contains(*seen, did) => {
+                false
+            }
 
-          ty_struct(did, ref substs) => {
-              seen.push(did);
-              let fields = struct_fields(cx, did, substs);
-              let r = fields.iter().any(|f| type_requires(cx, seen, r_ty, f.mt.ty));
-              seen.pop();
-            r
-          }
+            ty_struct(did, ref substs) => {
+                seen.push(did);
+                let fields = struct_fields(cx, did, substs);
+                let r = fields.iter().any(|f| type_requires(cx, seen, r_ty, f.mt.ty));
+                seen.pop();
+                r
+            }
 
-          ty_tup(ref ts) => {
-            ts.any(|t| type_requires(cx, seen, r_ty, *t))
-          }
+            ty_tup(ref ts) => {
+                ts.any(|t| type_requires(cx, seen, r_ty, *t))
+            }
 
-          ty_enum(ref did, _) if vec::contains(*seen, did) => {
-            false
-          }
+            ty_enum(ref did, _) if vec::contains(*seen, did) => {
+                false
+            }
 
             ty_enum(did, ref substs) => {
                 seen.push(did);
@@ -2392,8 +2392,8 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
         return r;
     }
 
-    let seen = @mut ~[];
-    !subtypes_require(cx, seen, r_ty, r_ty)
+    let mut seen = ~[];
+    !subtypes_require(cx, &mut seen, r_ty, r_ty)
 }
 
 pub fn type_structurally_contains(cx: ctxt,
