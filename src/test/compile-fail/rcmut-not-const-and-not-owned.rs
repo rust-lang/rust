@@ -10,11 +10,11 @@
 
 extern mod extra;
 
-fn o<T: Owned>(_: &T) {}
-fn c<T: Const>(_: &T) {}
+fn o<T: Send>(_: &T) {}
+fn c<T: Freeze>(_: &T) {}
 
 fn main() {
     let x = extra::rc::rc_mut_from_owned(0);
-    o(&x); //~ ERROR instantiating a type parameter with an incompatible type `extra::rc::RcMut<int>`, which does not fulfill `Owned`
-    c(&x); //~ ERROR instantiating a type parameter with an incompatible type `extra::rc::RcMut<int>`, which does not fulfill `Const`
+    o(&x); //~ ERROR instantiating a type parameter with an incompatible type `extra::rc::RcMut<int>`, which does not fulfill `Send`
+    c(&x); //~ ERROR instantiating a type parameter with an incompatible type `extra::rc::RcMut<int>`, which does not fulfill `Freeze`
 }
