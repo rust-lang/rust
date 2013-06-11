@@ -76,4 +76,11 @@ extern "C" void globfree(glob_t *pglob)
 {
 }
 
+extern "C" int pthread_atfork(void (*prefork)(void),
+                              void (*postfork_parent)(void),
+                              void (*postfork_child)(void))
+{
+    return 0;
+}
+
 #endif
