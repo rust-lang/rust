@@ -107,23 +107,17 @@ pub fn from_bytes_slice<'a>(vector: &'a [u8]) -> &'a str {
     }
 }
 
-/// Copy a slice into a new unique str
-#[inline(always)]
-pub fn to_owned(s: &str) -> ~str {
-    unsafe { raw::slice_bytes_owned(s, 0, s.len()) }
-}
-
 impl ToStr for ~str {
     #[inline(always)]
-    fn to_str(&self) -> ~str { to_owned(*self) }
+    fn to_str(&self) -> ~str { self.to_owned() }
 }
 impl<'self> ToStr for &'self str {
     #[inline(always)]
-    fn to_str(&self) -> ~str { to_owned(*self) }
+    fn to_str(&self) -> ~str { self.to_owned() }
 }
 impl ToStr for @str {
     #[inline(always)]
-    fn to_str(&self) -> ~str { to_owned(*self) }
+    fn to_str(&self) -> ~str { self.to_owned() }
 }
 
 /**
@@ -409,7 +403,7 @@ Section: Transforming strings
  */
 pub fn to_bytes(s: &str) -> ~[u8] {
     unsafe {
-        let mut v: ~[u8] = ::cast::transmute(to_owned(s));
+        let mut v: ~[u8] = ::cast::transmute(s.to_owned());
         vec::raw::set_len(&mut v, s.len());
         v
     }
@@ -1237,7 +1231,7 @@ impl<'self> StrUtil for &'self str {
             // NB: len includes the trailing null.
             assert!(len > 0);
             if unsafe { *(ptr::offset(buf,len-1)) != 0 } {
-                to_owned(self).as_c_str(f)
+                self.to_owned().as_c_str(f)
             } else {
                 f(buf as *libc::c_char)
             }
@@ -1526,7 +1520,9 @@ pub mod traits {
     impl<'self> Add<&'self str,~str> for ~str {
         #[inline(always)]
         fn add(&self, rhs: & &'self str) -> ~str {
-            append(copy *self, (*rhs))
+            let mut s = self.to_owned();
+            s.push_str(*rhs);
+            s
         }
     }
 }
@@ -1893,10 +1889,13 @@ impl<'self> StrSlice<'self> for &'self str {
         }
     }
 
-
+    /// Copy a slice into a new unique str
     #[inline]
-    fn to_owned(&self) -> ~str { to_owned(*self) }
+    fn to_owned(&self) -> ~str {
+        unsafe { raw::slice_bytes_owned(*self, 0, self.len()) }
+    }
 
+    /// Copy a slice into a new @str
     #[inline]
     fn to_managed(&self) -> @str {
         let v = at_vec::from_fn(self.len() + 1, |i| {
@@ -2252,7 +2251,7 @@ impl OwnedStr for ~str {
 impl Clone for ~str {
     #[inline(always)]
     fn clone(&self) -> ~str {
-        to_owned(*self)
+        self.to_owned()
     }
 }
 
@@ -3134,6 +3133,11 @@ mod tests {
     fn test_to_managed() {
         assert_eq!("abc".to_managed(), @"abc");
         assert_eq!("abcdef".slice(1, 5).to_managed(), @"bcde");
+    }
+    #[test]
+    fn test_to_owned() {
+        assert_eq!("abc".to_owned(), ~"abc");
+        assert_eq!("abcdef".slice(1, 5).to_owned(), ~"bcde");
     }
 
     #[test]
