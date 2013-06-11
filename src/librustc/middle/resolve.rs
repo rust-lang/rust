@@ -1036,11 +1036,14 @@ impl Resolver {
                         fmt!("duplicate definition of %s `%s`",
                              namespace_to_str(ns),
                              *self.session.str_of(name)));
-                    for child.span_for_namespace(ns).each |sp| {
-                        self.session.span_note(*sp,
-                             fmt!("first definition of %s %s here:",
-                                  namespace_to_str(ns),
-                                  *self.session.str_of(name)));
+                    {
+                        let r = child.span_for_namespace(ns);
+                        for r.iter().advance |sp| {
+                            self.session.span_note(*sp,
+                                 fmt!("first definition of %s %s here:",
+                                      namespace_to_str(ns),
+                                      *self.session.str_of(name)));
+                        }
                     }
                 }
                 return (child, new_parent);
@@ -3490,7 +3493,7 @@ impl Resolver {
             // then resolve the ty params
             item_enum(ref enum_def, ref generics) => {
                 for (*enum_def).variants.each() |variant| {
-                    for variant.node.disr_expr.each |dis_expr| {
+                    for variant.node.disr_expr.iter().advance |dis_expr| {
                         // resolve the discriminator expr
                         // as a constant
                         self.with_constant_rib(|| {
@@ -3907,8 +3910,11 @@ impl Resolver {
 
                     // Record the current set of trait references.
                     let mut new_trait_refs = ~[];
-                    for self.def_map.find(&trait_reference.ref_id).each |&def| {
-                        new_trait_refs.push(def_id_of_def(*def));
+                    {
+                        let r = self.def_map.find(&trait_reference.ref_id);
+                        for r.iter().advance |&def| {
+                            new_trait_refs.push(def_id_of_def(*def));
+                        }
                     }
                     original_trait_refs = Some(util::replace(
                         &mut self.current_trait_refs,

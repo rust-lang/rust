@@ -176,9 +176,9 @@ impl Process {
                                    in_fd, out_fd, err_fd);
 
         unsafe {
-            for in_pipe.each  |pipe| { libc::close(pipe.in); }
-            for out_pipe.each |pipe| { libc::close(pipe.out); }
-            for err_pipe.each |pipe| { libc::close(pipe.out); }
+            for in_pipe.iter().advance  |pipe| { libc::close(pipe.in); }
+            for out_pipe.iter().advance |pipe| { libc::close(pipe.out); }
+            for err_pipe.iter().advance |pipe| { libc::close(pipe.out); }
         }
 
         Process {
@@ -323,7 +323,7 @@ impl Process {
      * If the child has already been finished then the exit code is returned.
      */
     pub fn finish(&mut self) -> int {
-        for self.exit_code.each |&code| {
+        for self.exit_code.iter().advance |&code| {
             return code;
         }
         self.close_input();
@@ -523,7 +523,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
         CloseHandle(si.hStdOutput);
         CloseHandle(si.hStdError);
 
-        for create_err.each |msg| {
+        for create_err.iter().advance |msg| {
             fail!("failure in CreateProcess: %s", *msg);
         }
 
@@ -589,7 +589,7 @@ pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
     return cmd;
 
     fn append_arg(cmd: &mut ~str, arg: &str) {
-        let quote = arg.iter().any(|c| c == ' ' || c == '\t');
+        let quote = arg.iter().any_(|c| c == ' ' || c == '\t');
         if quote {
             cmd.push_char('"');
         }

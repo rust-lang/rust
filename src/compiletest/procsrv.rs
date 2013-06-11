@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use core::os;
 use core::run;
@@ -58,7 +59,7 @@ pub fn run(lib_path: &str,
         err_fd: None
     });
 
-    for input.each |input| {
+    for input.iter().advance |input| {
         proc.input().write_str(*input);
     }
     let output = proc.finish_with_output();

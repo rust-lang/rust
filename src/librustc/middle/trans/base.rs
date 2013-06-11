@@ -1195,7 +1195,7 @@ pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
                            is_lpad,
                            opt_node_info,
                            cx);
-        for parent.each |cx| {
+        for parent.iter().advance |cx| {
             if cx.unreachable { Unreachable(bcx); }
         };
         bcx
@@ -1314,10 +1314,12 @@ pub fn cleanup_and_leave(bcx: block,
             block_scope(inf) if !inf.empty_cleanups() => {
                 let (sub_cx, inf_cleanups) = {
                     let inf = &mut *inf; // FIXME(#5074) workaround stage0
-                    for vec::find((*inf).cleanup_paths,
-                                  |cp| cp.target == leave).each |cp| {
-                        Br(bcx, cp.dest);
-                        return;
+                    {
+                        let r = vec::find((*inf).cleanup_paths, |cp| cp.target == leave);
+                        for r.iter().advance |cp| {
+                            Br(bcx, cp.dest);
+                            return;
+                        }
                     }
                     let sub_cx = sub_block(bcx, "cleanup");
                     Br(bcx, sub_cx.llbb);
@@ -1423,7 +1425,7 @@ pub fn alloc_local(cx: block, local: @ast::local) -> block {
     };
     let val = alloc_ty(cx, t);
     if cx.sess().opts.debuginfo {
-        for simple_name.each |name| {
+        for simple_name.iter().advance |name| {
             str::as_c_str(*cx.ccx().sess.str_of(*name), |buf| {
                 unsafe {
                     llvm::LLVMSetValueName(val, buf)
@@ -1599,7 +1601,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
                         param_substs: Option<@param_substs>,
                         sp: Option<span>)
                      -> fn_ctxt {
-    for param_substs.each |p| { p.validate(); }
+    for param_substs.iter().advance |p| { p.validate(); }
 
     debug!("new_fn_ctxt_w_id(path=%s, id=%?, impl_id=%?, \
             param_substs=%s)",

@@ -76,7 +76,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
     let hash_id = make_mono_id(ccx, fn_id, substs, vtables, impl_did_opt,
                                Some(param_uses));
-    if hash_id.params.iter().any(
+    if hash_id.params.iter().any_(
                 |p| match *p { mono_precise(_, _) => false, _ => true }) {
         must_cast = true;
     }

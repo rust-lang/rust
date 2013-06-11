@@ -16,6 +16,7 @@
 // reachable as well.
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use middle::resolve;
 use middle::ty;
@@ -136,7 +137,7 @@ fn traverse_public_item(cx: @mut ctx, item: @item) {
         }
       }
       item_struct(ref struct_def, _) => {
-        for struct_def.ctor_id.each |&ctor_id| {
+        for struct_def.ctor_id.iter().advance |&ctor_id| {
             let cx = &mut *cx; // FIXME(#6269) reborrow @mut to &mut
             cx.rmap.insert(ctor_id);
         }

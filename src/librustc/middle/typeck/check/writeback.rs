@@ -13,6 +13,7 @@
 // substitutions.
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use middle::pat_util;
 use middle::ty;
@@ -64,13 +65,16 @@ fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: span, id: ast::node_id) {
     match fcx.inh.method_map.find(&id) {
         None => {}
         Some(mme) => {
-            for resolve_type_vars_in_type(fcx, sp, mme.self_ty).each |t| {
-                let method_map = fcx.ccx.method_map;
-                let new_entry = method_map_entry { self_ty: *t, ..*mme };
-                debug!("writeback::resolve_method_map_entry(id=%?, \
-                        new_entry=%?)",
-                       id, new_entry);
-                method_map.insert(id, new_entry);
+            {
+                let r = resolve_type_vars_in_type(fcx, sp, mme.self_ty);
+                for r.iter().advance |t| {
+                    let method_map = fcx.ccx.method_map;
+                    let new_entry = method_map_entry { self_ty: *t, ..*mme };
+                    debug!("writeback::resolve_method_map_entry(id=%?, \
+                            new_entry=%?)",
+                           id, new_entry);
+                    method_map.insert(id, new_entry);
+                }
             }
         }
     }
@@ -220,13 +224,19 @@ fn visit_expr(e: @ast::expr, wbcx: @mut WbCtxt, v: wb_vt) {
     resolve_type_vars_for_node(wbcx, e.span, e.id);
 
     resolve_method_map_entry(wbcx.fcx, e.span, e.id);
-    for e.get_callee_id().each |callee_id| {
-        resolve_method_map_entry(wbcx.fcx, e.span, *callee_id);
+    {
+        let r = e.get_callee_id();
+        for r.iter().advance |callee_id| {
+            resolve_method_map_entry(wbcx.fcx, e.span, *callee_id);
+        }
     }
 
     resolve_vtable_map_entry(wbcx.fcx, e.span, e.id);
-    for e.get_callee_id().each |callee_id| {
-        resolve_vtable_map_entry(wbcx.fcx, e.span, *callee_id);
+    {
+        let r = e.get_callee_id();
+        for r.iter().advance |callee_id| {
+            resolve_vtable_map_entry(wbcx.fcx, e.span, *callee_id);
+        }
     }
 
     match e.node {
@@ -327,7 +337,7 @@ pub fn resolve_type_vars_in_fn(fcx: @mut FnCtxt,
     let wbcx = @mut WbCtxt { fcx: fcx, success: true };
     let visit = mk_visitor();
     (visit.visit_block)(blk, wbcx, visit);
-    for self_info.each |self_info| {
+    for self_info.iter().advance |self_info| {
         resolve_type_vars_for_node(wbcx,
                                    self_info.span,
                                    self_info.self_id);

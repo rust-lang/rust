@@ -1574,7 +1574,7 @@ mod tests {
         setenv("HOME", "");
         assert!(os::homedir().is_none());
 
-        for oldhome.each |s| { setenv("HOME", *s) }
+        for oldhome.iter().advance |s| { setenv("HOME", *s) }
     }
 
     #[test]

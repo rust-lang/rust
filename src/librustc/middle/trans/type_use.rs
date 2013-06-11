@@ -242,19 +242,22 @@ pub fn node_type_needs(cx: Context, use_: uint, id: node_id) {
 
 pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
     let mut opt_static_did = None;
-    for cx.ccx.maps.method_map.find(&e_id).each |mth| {
-        match mth.origin {
-          typeck::method_static(did) => {
-              opt_static_did = Some(did);
-          }
-          typeck::method_param(typeck::method_param {
-              param_num: param,
-              _
-          }) => {
-            cx.uses[param] |= use_tydesc;
-          }
-          typeck::method_trait(*) | typeck::method_self(*)
-              | typeck::method_super(*) => (),
+    {
+        let r = cx.ccx.maps.method_map.find(&e_id);
+        for r.iter().advance |mth| {
+            match mth.origin {
+              typeck::method_static(did) => {
+                  opt_static_did = Some(did);
+              }
+              typeck::method_param(typeck::method_param {
+                  param_num: param,
+                  _
+              }) => {
+                cx.uses[param] |= use_tydesc;
+              }
+              typeck::method_trait(*) | typeck::method_self(*)
+                  | typeck::method_super(*) => (),
+            }
         }
     }
 
@@ -262,11 +265,14 @@ pub fn mark_for_method_call(cx: Context, e_id: node_id, callee_id: node_id) {
     // above because the recursive call to `type_needs` can trigger
     // inlining and hence can cause `method_map` and
     // `node_type_substs` to be modified.
-    for opt_static_did.each |&did| {
-        for cx.ccx.tcx.node_type_substs.find_copy(&callee_id).each |ts| {
-            let type_uses = type_uses_for(cx.ccx, did, ts.len());
-            for type_uses.iter().zip(ts.iter()).advance |(uses, subst)| {
-                type_needs(cx, *uses, *subst)
+    for opt_static_did.iter().advance |&did| {
+        {
+            let r = cx.ccx.tcx.node_type_substs.find_copy(&callee_id);
+            for r.iter().advance |ts| {
+                let type_uses = type_uses_for(cx.ccx, did, ts.len());
+                for type_uses.iter().zip(ts.iter()).advance |(uses, subst)| {
+                    type_needs(cx, *uses, *subst)
+                }
             }
         }
     }
@@ -300,7 +306,7 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
       }
       expr_path(_) | expr_self => {
         let opt_ts = cx.ccx.tcx.node_type_substs.find_copy(&e.id);
-        for opt_ts.each |ts| {
+        for opt_ts.iter().advance |ts| {
             let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get_copy(&e.id));
             let uses_for_ts = type_uses_for(cx.ccx, id, ts.len());
             for uses_for_ts.iter().zip(ts.iter()).advance |(uses, subst)| {
@@ -390,7 +396,7 @@ pub fn handle_body(cx: Context, body: &blk) {
         },
         visit_block: |b, cx, v| {
             visit::visit_block(b, cx, v);
-            for b.node.expr.each |e| {
+            for b.node.expr.iter().advance |e| {
                 node_type_needs(cx, use_repr, e.id);
             }
         },
