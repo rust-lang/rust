@@ -564,7 +564,8 @@ pub fn LoadRangeAssert(cx: block, PointerVal: ValueRef, lo: c_ulonglong,
 
         do vec::as_imm_buf([min, max]) |ptr, len| {
             llvm::LLVMSetMetadata(value, lib::llvm::MD_range as c_uint,
-                                  llvm::LLVMMDNode(ptr, len as c_uint));
+                                  llvm::LLVMMDNodeInContext(cx.fcx.ccx.llcx,
+                                                            ptr, len as c_uint));
         }
     }
 

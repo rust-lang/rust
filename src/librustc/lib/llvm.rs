@@ -205,6 +205,8 @@ pub enum BasicBlock_opaque {}
 pub type BasicBlockRef = *BasicBlock_opaque;
 pub enum Builder_opaque {}
 pub type BuilderRef = *Builder_opaque;
+pub enum ExecutionEngine_opaque {}
+pub type ExecutionEngineRef = *ExecutionEngine_opaque;
 pub enum MemoryBuffer_opaque {}
 pub type MemoryBufferRef = *MemoryBuffer_opaque;
 pub enum PassManager_opaque {}
@@ -223,7 +225,7 @@ pub enum Pass_opaque {}
 pub type PassRef = *Pass_opaque;
 
 pub mod llvm {
-    use super::{AtomicBinOp, AtomicOrdering, BasicBlockRef};
+    use super::{AtomicBinOp, AtomicOrdering, BasicBlockRef, ExecutionEngineRef};
     use super::{Bool, BuilderRef, ContextRef, MemoryBufferRef, ModuleRef};
     use super::{ObjectFileRef, Opcode, PassManagerRef, PassManagerBuilderRef};
     use super::{SectionIteratorRef, TargetDataRef, TypeKind, TypeRef, UseRef};
@@ -239,22 +241,20 @@ pub mod llvm {
         #[fast_ffi]
         pub unsafe fn LLVMContextCreate() -> ContextRef;
         #[fast_ffi]
-        pub unsafe fn LLVMGetGlobalContext() -> ContextRef;
-        #[fast_ffi]
         pub unsafe fn LLVMContextDispose(C: ContextRef);
         #[fast_ffi]
         pub unsafe fn LLVMGetMDKindIDInContext(C: ContextRef,
                                            Name: *c_char,
                                            SLen: c_uint)
                                         -> c_uint;
-        #[fast_ffi]
-        pub unsafe fn LLVMGetMDKindID(Name: *c_char, SLen: c_uint) -> c_uint;
 
         /* Create and destroy modules. */
         #[fast_ffi]
         pub unsafe fn LLVMModuleCreateWithNameInContext(ModuleID: *c_char,
                                                     C: ContextRef)
                                                  -> ModuleRef;
+        #[fast_ffi]
+        pub unsafe fn LLVMGetModuleContext(M: ModuleRef) -> ContextRef;
         #[fast_ffi]
         pub unsafe fn LLVMDisposeModule(M: ModuleRef);
 
@@ -301,18 +301,6 @@ pub mod llvm {
                                            NumBits: c_uint) -> TypeRef;
 
         #[fast_ffi]
-        pub unsafe fn LLVMInt1Type() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMInt8Type() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMInt16Type() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMInt32Type() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMInt64Type() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMIntType(NumBits: c_uint) -> TypeRef;
-        #[fast_ffi]
         pub unsafe fn LLVMGetIntTypeWidth(IntegerTy: TypeRef) -> c_uint;
 
         /* Operations on real types */
@@ -326,17 +314,6 @@ pub mod llvm {
         pub unsafe fn LLVMFP128TypeInContext(C: ContextRef) -> TypeRef;
         #[fast_ffi]
         pub unsafe fn LLVMPPCFP128TypeInContext(C: ContextRef) -> TypeRef;
-
-        #[fast_ffi]
-        pub unsafe fn LLVMFloatType() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMDoubleType() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMX86FP80Type() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMFP128Type() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMPPCFP128Type() -> TypeRef;
 
         /* Operations on function types */
         #[fast_ffi]
@@ -360,11 +337,6 @@ pub mod llvm {
                                               ElementTypes: *TypeRef,
                                               ElementCount: c_uint,
                                               Packed: Bool) -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMStructType(ElementTypes: *TypeRef,
-                                     ElementCount: c_uint,
-                                     Packed: Bool)
-                                  -> TypeRef;
         #[fast_ffi]
         pub unsafe fn LLVMCountStructElementTypes(StructTy: TypeRef)
                                                -> c_uint;
@@ -393,6 +365,10 @@ pub mod llvm {
         pub unsafe fn LLVMGetPointerAddressSpace(PointerTy: TypeRef)
                                               -> c_uint;
         #[fast_ffi]
+        pub unsafe fn LLVMGetPointerToGlobal(EE: ExecutionEngineRef,
+                                             V: ValueRef)
+                                              -> *();
+        #[fast_ffi]
         pub unsafe fn LLVMGetVectorSize(VectorTy: TypeRef) -> c_uint;
 
         /* Operations on other types */
@@ -402,13 +378,6 @@ pub mod llvm {
         pub unsafe fn LLVMLabelTypeInContext(C: ContextRef) -> TypeRef;
         #[fast_ffi]
         pub unsafe fn LLVMMetadataTypeInContext(C: ContextRef) -> TypeRef;
-
-        #[fast_ffi]
-        pub unsafe fn LLVMVoidType() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMLabelType() -> TypeRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMMetadataType() -> TypeRef;
 
         /* Operations on all values */
         #[fast_ffi]
@@ -482,14 +451,10 @@ pub mod llvm {
                                         SLen: c_uint)
                                      -> ValueRef;
         #[fast_ffi]
-        pub unsafe fn LLVMMDString(Str: *c_char, SLen: c_uint) -> ValueRef;
-        #[fast_ffi]
         pub unsafe fn LLVMMDNodeInContext(C: ContextRef,
                                       Vals: *ValueRef,
                                       Count: c_uint)
                                    -> ValueRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMMDNode(Vals: *ValueRef, Count: c_uint) -> ValueRef;
         #[fast_ffi]
         pub unsafe fn LLVMAddNamedMetadataOperand(M: ModuleRef, Str: *c_char,
                                        Val: ValueRef);
@@ -544,19 +509,10 @@ pub mod llvm {
                                                Packed: Bool) -> ValueRef;
 
         #[fast_ffi]
-        pub unsafe fn LLVMConstString(Str: *c_char,
-                                      Length: c_uint,
-                                      DontNullTerminate: Bool)
-                                   -> ValueRef;
-        #[fast_ffi]
         pub unsafe fn LLVMConstArray(ElementTy: TypeRef,
                                      ConstantVals: *ValueRef,
                                      Length: c_uint)
                                   -> ValueRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMConstStruct(ConstantVals: *ValueRef,
-                                      Count: c_uint,
-                                      Packed: Bool) -> ValueRef;
         #[fast_ffi]
         pub unsafe fn LLVMConstVector(ScalarConstantVals: *ValueRef,
                                       Size: c_uint) -> ValueRef;
@@ -970,15 +926,6 @@ pub mod llvm {
                                                     BB: BasicBlockRef,
                                                     Name: *c_char)
                                                  -> BasicBlockRef;
-
-        #[fast_ffi]
-        pub unsafe fn LLVMAppendBasicBlock(Fn: ValueRef,
-                                       Name: *c_char)
-                                    -> BasicBlockRef;
-        #[fast_ffi]
-        pub unsafe fn LLVMInsertBasicBlock(InsertBeforeBB: BasicBlockRef,
-                                       Name: *c_char)
-                                    -> BasicBlockRef;
         #[fast_ffi]
         pub unsafe fn LLVMDeleteBasicBlock(BB: BasicBlockRef);
 
@@ -1039,8 +986,6 @@ pub mod llvm {
         #[fast_ffi]
         pub unsafe fn LLVMCreateBuilderInContext(C: ContextRef) -> BuilderRef;
         #[fast_ffi]
-        pub unsafe fn LLVMCreateBuilder() -> BuilderRef;
-        #[fast_ffi]
         pub unsafe fn LLVMPositionBuilder(Builder: BuilderRef,
                                           Block: BasicBlockRef,
                                           Instr: ValueRef);
@@ -1064,6 +1009,8 @@ pub mod llvm {
                                                 Name: *c_char);
         #[fast_ffi]
         pub unsafe fn LLVMDisposeBuilder(Builder: BuilderRef);
+        #[fast_ffi]
+        pub unsafe fn LLVMDisposeExecutionEngine(EE: ExecutionEngineRef);
 
         /* Metadata */
         #[fast_ffi]
@@ -1880,11 +1827,11 @@ pub mod llvm {
 
         /** Execute the JIT engine. */
         #[fast_ffi]
-        pub unsafe fn LLVMRustExecuteJIT(MM: *(),
+        pub unsafe fn LLVMRustBuildJIT(MM: *(),
                               PM: PassManagerRef,
                               M: ModuleRef,
                               OptLevel: c_int,
-                              EnableSegmentedStacks: bool) -> *();
+                              EnableSegmentedStacks: bool) -> ExecutionEngineRef;
 
         /** Parses the bitcode in the given memory buffer. */
         #[fast_ffi]
@@ -1893,7 +1840,8 @@ pub mod llvm {
 
         /** Parses LLVM asm in the given file */
         #[fast_ffi]
-        pub unsafe fn LLVMRustParseAssemblyFile(Filename: *c_char)
+        pub unsafe fn LLVMRustParseAssemblyFile(Filename: *c_char,
+                                                C: ContextRef)
                                              -> ModuleRef;
 
         #[fast_ffi]
@@ -1908,6 +1856,9 @@ pub mod llvm {
         /// Print the pass timings since static dtors aren't picking them up.
         #[fast_ffi]
         pub unsafe fn LLVMRustPrintPassTimings();
+
+        #[fast_ffi]
+        pub unsafe fn LLVMRustStartMultithreading() -> bool;
 
         #[fast_ffi]
         pub unsafe fn LLVMStructCreateNamed(C: ContextRef, Name: *c_char)

@@ -587,6 +587,7 @@ rust_task::cleanup_after_turn() {
 // stack and false otherwise.
 bool
 rust_task::new_big_stack() {
+    assert(stk);
     // If we have a cached big stack segment, use it.
     if (big_stack) {
         // Check to see if we're already on the big stack.
@@ -616,8 +617,7 @@ rust_task::new_big_stack() {
     if (big_stack->next)
         big_stack->next->prev = big_stack;
     big_stack->prev = stk;
-    if (stk)
-        stk->next = big_stack;
+    stk->next = big_stack;
 
     stk = big_stack;
 
