@@ -1070,26 +1070,6 @@ pub fn subslice_offset(outer: &str, inner: &str) -> uint {
     }
 }
 
-/// Escape each char in `s` with char::escape_default.
-pub fn escape_default(s: &str) -> ~str {
-    let mut out: ~str = ~"";
-    out.reserve_at_least(s.len());
-    for s.iter().advance |c| {
-        out.push_str(char::escape_default(c));
-    }
-    out
-}
-
-/// Escape each char in `s` with char::escape_unicode.
-pub fn escape_unicode(s: &str) -> ~str {
-    let mut out: ~str = ~"";
-    out.reserve_at_least(s.len());
-    for s.iter().advance |c| {
-        out.push_str(char::escape_unicode(c));
-    }
-    out
-}
-
 /// Unsafe operations
 pub mod raw {
     use cast;
@@ -1588,11 +1568,24 @@ impl<'self> StrSlice<'self> for &'self str {
     }
 
     /// Escape each char in `s` with char::escape_default.
-    #[inline]
-    fn escape_default(&self) -> ~str { escape_default(*self) }
+    fn escape_default(&self) -> ~str {
+        let mut out: ~str = ~"";
+        out.reserve_at_least(self.len());
+        for self.iter().advance |c| {
+            out.push_str(char::escape_default(c));
+        }
+        out
+    }
+
     /// Escape each char in `s` with char::escape_unicode.
-    #[inline]
-    fn escape_unicode(&self) -> ~str { escape_unicode(*self) }
+    fn escape_unicode(&self) -> ~str {
+        let mut out: ~str = ~"";
+        out.reserve_at_least(self.len());
+        for self.iter().advance |c| {
+            out.push_str(char::escape_unicode(c));
+        }
+        out
+    }
 
     /// Returns a string with leading and trailing whitespace removed
     #[inline]
@@ -3176,30 +3169,27 @@ mod tests {
 
     #[test]
     fn test_escape_unicode() {
-        assert_eq!(escape_unicode("abc"), ~"\\x61\\x62\\x63");
-        assert_eq!(escape_unicode("a c"), ~"\\x61\\x20\\x63");
-        assert_eq!(escape_unicode("\r\n\t"), ~"\\x0d\\x0a\\x09");
-        assert_eq!(escape_unicode("'\"\\"), ~"\\x27\\x22\\x5c");
-        assert!(escape_unicode("\x00\x01\xfe\xff") ==
-                     ~"\\x00\\x01\\xfe\\xff");
-        assert_eq!(escape_unicode("\u0100\uffff"), ~"\\u0100\\uffff");
-        assert!(escape_unicode("\U00010000\U0010ffff") ==
-            ~"\\U00010000\\U0010ffff");
-        assert_eq!(escape_unicode("ab\ufb00"), ~"\\x61\\x62\\ufb00");
-        assert_eq!(escape_unicode("\U0001d4ea\r"), ~"\\U0001d4ea\\x0d");
+        assert_eq!("abc".escape_unicode(), ~"\\x61\\x62\\x63");
+        assert_eq!("a c".escape_unicode(), ~"\\x61\\x20\\x63");
+        assert_eq!("\r\n\t".escape_unicode(), ~"\\x0d\\x0a\\x09");
+        assert_eq!("'\"\\".escape_unicode(), ~"\\x27\\x22\\x5c");
+        assert_eq!("\x00\x01\xfe\xff".escape_unicode(), ~"\\x00\\x01\\xfe\\xff");
+        assert_eq!("\u0100\uffff".escape_unicode(), ~"\\u0100\\uffff");
+        assert_eq!("\U00010000\U0010ffff".escape_unicode(), ~"\\U00010000\\U0010ffff");
+        assert_eq!("ab\ufb00".escape_unicode(), ~"\\x61\\x62\\ufb00");
+        assert_eq!("\U0001d4ea\r".escape_unicode(), ~"\\U0001d4ea\\x0d");
     }
 
     #[test]
     fn test_escape_default() {
-        assert_eq!(escape_default("abc"), ~"abc");
-        assert_eq!(escape_default("a c"), ~"a c");
-        assert_eq!(escape_default("\r\n\t"), ~"\\r\\n\\t");
-        assert_eq!(escape_default("'\"\\"), ~"\\'\\\"\\\\");
-        assert_eq!(escape_default("\u0100\uffff"), ~"\\u0100\\uffff");
-        assert!(escape_default("\U00010000\U0010ffff") ==
-            ~"\\U00010000\\U0010ffff");
-        assert_eq!(escape_default("ab\ufb00"), ~"ab\\ufb00");
-        assert_eq!(escape_default("\U0001d4ea\r"), ~"\\U0001d4ea\\r");
+        assert_eq!("abc".escape_default(), ~"abc");
+        assert_eq!("a c".escape_default(), ~"a c");
+        assert_eq!("\r\n\t".escape_default(), ~"\\r\\n\\t");
+        assert_eq!("'\"\\".escape_default(), ~"\\'\\\"\\\\");
+        assert_eq!("\u0100\uffff".escape_default(), ~"\\u0100\\uffff");
+        assert_eq!("\U00010000\U0010ffff".escape_default(), ~"\\U00010000\\U0010ffff");
+        assert_eq!("ab\ufb00".escape_default(), ~"ab\\ufb00");
+        assert_eq!("\U0001d4ea\r".escape_default(), ~"\\U0001d4ea\\r");
     }
 
     #[test]
