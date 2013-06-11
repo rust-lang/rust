@@ -75,13 +75,11 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 }
 
 /// A non-copyable dummy type.
-pub struct NonCopyable {
-    priv i: (),
-}
+pub struct NonCopyable;
 
 impl NonCopyable {
     /// Creates a dummy non-copyable structure and returns it for use.
-    pub fn new() -> NonCopyable { NonCopyable { i: () } }
+    pub fn new() -> NonCopyable { NonCopyable }
 }
 
 impl Drop for NonCopyable {
