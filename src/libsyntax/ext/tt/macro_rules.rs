@@ -84,7 +84,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
             io::println(fmt!("%s! { %s }",
                              cx.str_of(name),
                              print::pprust::tt_to_str(
-                                 ast::tt_delim(vec::to_owned(arg)),
+                                 ast::tt_delim(arg.to_owned()),
                                  get_ident_interner())));
         }
 
@@ -101,7 +101,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
                 let arg_rdr = new_tt_reader(
                     s_d,
                     None,
-                    vec::to_owned(arg)
+                    arg.to_owned()
                 ) as @reader;
                 match parse(cx.parse_sess(), cx.cfg(), arg_rdr, *mtcs) {
                   success(named_matches) => {

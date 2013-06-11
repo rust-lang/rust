@@ -96,9 +96,9 @@ pub fn default_configuration(sess: Session, argv0: @~str, input: &input) ->
     };
 
     return ~[ // Target bindings.
-         attr::mk_word_item(@str::to_owned(os::FAMILY)),
+         attr::mk_word_item(@os::FAMILY.to_owned()),
          mk(@~"target_os", @tos),
-         mk(@~"target_family", @str::to_owned(os::FAMILY)),
+         mk(@~"target_family", @os::FAMILY.to_owned()),
          mk(@~"target_arch", @arch),
          mk(@~"target_endian", @end),
          mk(@~"target_word_size", @wordsz),
