@@ -15,6 +15,7 @@ trait A<T> {
 }
 
 impl A<int> for int { }
+impl<T> A<T> for uint { }
 
 fn f<T, U, V: A<T>>(i: V, j: T, k: U) -> (T, U) {
     i.g(j, k)
@@ -22,4 +23,5 @@ fn f<T, U, V: A<T>>(i: V, j: T, k: U) -> (T, U) {
 
 pub fn main () {
     assert_eq!(f(0, 1, 2), (1, 2));
+    assert_eq!(f(0u, 1, 2), (1, 2));
 }
