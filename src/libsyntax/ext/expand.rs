@@ -890,7 +890,7 @@ mod test {
         let pat = string_to_pat(@~"(a,Foo{x:c @ (b,9),y:Bar(4,d)})");
         let pat_idents = new_name_finder();
         let idents = @mut ~[];
-        ((*pat_idents).visit_pat)(pat,idents, mk_vt(pat_idents));
+        ((*pat_idents).visit_pat)(pat, (idents, mk_vt(pat_idents)));
         assert_eq!(idents,@mut strs_to_idents(~["a","c","b","d"]));
     }
 }
