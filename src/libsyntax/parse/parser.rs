@@ -1063,13 +1063,6 @@ impl Parser {
         }
     }
 
-    pub fn token_is_lifetime(&self, tok: &token::Token) -> bool {
-        match *tok {
-            token::LIFETIME(_) => true,
-            _ => false
-        }
-    }
-
     /// Parses a single lifetime
     // matches lifetime = ( LIFETIME ) | ( IDENT / )
     pub fn parse_lifetime(&self) -> ast::Lifetime {
