@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+#[allow(default_methods)];
 
 trait A<T> {
-    fn g<U>(x: T, y: U) -> (T, U) { (x, y) }
+    fn g<U>(&self, x: T, y: U) -> (T, U) { (x, y) }
 }
 
 impl A<int> for int { }
