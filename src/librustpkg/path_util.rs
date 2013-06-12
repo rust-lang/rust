@@ -17,7 +17,6 @@ pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
 use core::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use core::os::mkdir_recursive;
 use core::os;
-use core::iterator::IteratorUtil;
 
 /// Returns the value of RUST_PATH, as a list
 /// of Paths. In general this should be read from the

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::iterator::*;
-
 fn main() {
     let mut xs = ~[1, 2, 3, 4];
 

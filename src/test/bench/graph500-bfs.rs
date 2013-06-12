@@ -21,7 +21,6 @@ use extra::arc;
 use extra::time;
 use extra::deque::Deque;
 use extra::par;
-use std::iterator::IteratorUtil;
 use std::hashmap::HashSet;
 use std::int::abs;
 use std::io;

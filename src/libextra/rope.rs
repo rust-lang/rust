@@ -37,7 +37,6 @@
 
 use core::prelude::*;
 
-use core::iterator::IteratorUtil;
 use core::uint;
 use core::vec;
 use core::str;

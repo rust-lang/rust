@@ -92,7 +92,6 @@ use parse::{new_sub_parser_from_file, next_node_id, ParseSess};
 use opt_vec;
 use opt_vec::OptVec;
 
-use core::iterator::IteratorUtil;
 use core::either::Either;
 use core::either;
 use core::hashmap::HashSet;

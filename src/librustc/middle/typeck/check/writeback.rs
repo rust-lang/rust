@@ -13,7 +13,6 @@
 // substitutions.
 
 use core::prelude::*;
-use core::iterator::IteratorUtil;
 
 use middle::pat_util;
 use middle::ty;

@@ -20,7 +20,6 @@ use parse::lexer;
 use parse::token;
 use parse::token::{get_ident_interner};
 
-use core::iterator::IteratorUtil;
 use core::io;
 use core::str;
 use core::uint;

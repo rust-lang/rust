@@ -19,7 +19,6 @@ library.
 */
 
 use core::prelude::*;
-use core::iterator::IteratorUtil;
 
 use ast::{enum_def, ident, item, Generics, meta_item, struct_def};
 use ext::base::ExtCtxt;

@@ -10,7 +10,6 @@
 
 // xfail-fast
 
-use std::iterator::IteratorUtil;
 use std::cmp::Eq;
 use std::vec;
 

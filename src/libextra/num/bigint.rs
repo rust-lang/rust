@@ -19,7 +19,6 @@ A BigInt is a combination of BigUint and Sign.
 #[allow(missing_doc)];
 
 use core::prelude::*;
-use core::iterator::IteratorUtil;
 use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use core::int;
 use core::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable};

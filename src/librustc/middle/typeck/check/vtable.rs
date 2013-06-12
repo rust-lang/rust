@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use core::prelude::*;
-use core::iterator::IteratorUtil;
 
 use middle::resolve::Impl;
 use middle::ty::param_ty;

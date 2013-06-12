@@ -24,8 +24,6 @@ An external iterator object implementing the interface in the `iterator` module 
 internal iterator by calling the `advance` method. For example:
 
 ~~~ {.rust}
-use core::iterator::*;
-
 let xs = [0u, 1, 2, 3, 4, 5];
 let ys = [30, 40, 50, 60];
 let mut it = xs.iter().chain(ys.iter());

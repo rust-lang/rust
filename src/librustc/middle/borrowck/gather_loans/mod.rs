@@ -17,7 +17,6 @@
 // sure that all of these loans are honored.
 
 use core::prelude::*;
-use core::iterator::IteratorUtil;
 
 use middle::borrowck::*;
 use middle::borrowck::move_data::MoveData;
