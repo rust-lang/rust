@@ -269,9 +269,8 @@ pub fn opaque_box_body(bcx: block,
                        boxptr: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("opaque_box_body");
     let ccx = bcx.ccx();
-    let boxptr = PointerCast(bcx, boxptr, T_ptr(T_box_header(ccx)));
-    let bodyptr = GEPi(bcx, boxptr, [1u]);
-    PointerCast(bcx, bodyptr, T_ptr(type_of(ccx, body_t)))
+    let boxptr = PointerCast(bcx, boxptr, T_ptr(T_box(ccx, type_of(ccx, body_t))));
+    GEPi(bcx, boxptr, [0u, abi::box_field_body])
 }
 
 // malloc_raw_dyn: allocates a box to contain a given type, but with a
