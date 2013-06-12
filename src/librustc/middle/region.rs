@@ -495,7 +495,7 @@ pub fn resolve_crate(sess: Session,
     visit::visit_crate(crate, (cx, visitor));
     return region_maps;
 }
-                  
+
 // ___________________________________________________________________________
 // Determining region parameterization
 //
@@ -544,7 +544,7 @@ pub struct DetermineRpCtxt {
     // mutable, covariant otherwise
     ambient_variance: region_variance,
 }
-                  
+
 pub fn join_variance(variance1: region_variance,
                      variance2: region_variance)
                   -> region_variance {
@@ -890,7 +890,7 @@ pub fn determine_rp_in_struct_field(
                         visit::vt<@mut DetermineRpCtxt>)) {
     visit::visit_struct_field(cm, (cx, visitor));
 }
-                  
+
 pub fn determine_rp_in_crate(sess: Session,
                              ast_map: ast_map::map,
                              def_map: resolve::DefMap,
