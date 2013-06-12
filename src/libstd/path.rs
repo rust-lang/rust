@@ -22,7 +22,7 @@ use iterator::IteratorUtil;
 use libc;
 use option::{None, Option, Some};
 use str;
-use str::{StrSlice, StrVector};
+use str::{Str, StrSlice, StrVector};
 use to_str::ToStr;
 use ascii::{AsciiCast, AsciiStr};
 use old_iter::BaseIter;
@@ -102,7 +102,7 @@ pub trait GenericPath {
     fn push_rel(&self, (&Self)) -> Self;
     /// Returns a new Path consisting of the path given by the given vector
     /// of strings, relative to `self`.
-    fn push_many(&self, (&[~str])) -> Self;
+    fn push_many<S: Str>(&self, (&[S])) -> Self;
     /// Identical to `dir_path` except in the case where `self` has only one
     /// component. In this case, `pop` returns the empty path.
     fn pop(&self) -> Self;
@@ -566,10 +566,10 @@ impl GenericPath for PosixPath {
         false
     }
 
-    fn push_many(&self, cs: &[~str]) -> PosixPath {
+    fn push_many<S: Str>(&self, cs: &[S]) -> PosixPath {
         let mut v = copy self.components;
         for cs.each |e| {
-            for e.split_iter(windows::is_sep).advance |s| {
+            for e.as_slice().split_iter(windows::is_sep).advance |s| {
                 if !s.is_empty() {
                     v.push(s.to_owned())
                 }
@@ -823,10 +823,10 @@ impl GenericPath for WindowsPath {
         }
     }
 
-    fn push_many(&self, cs: &[~str]) -> WindowsPath {
+    fn push_many<S: Str>(&self, cs: &[S]) -> WindowsPath {
         let mut v = copy self.components;
         for cs.each |e| {
-            for e.split_iter(windows::is_sep).advance |s| {
+            for e.as_slice().split_iter(windows::is_sep).advance |s| {
                 if !s.is_empty() {
                     v.push(s.to_owned())
                 }

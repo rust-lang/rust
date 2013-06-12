@@ -729,10 +729,22 @@ impl Ord for @str {
 }
 
 #[cfg(not(test))]
-impl<'self> Equiv<~str> for &'self str {
+impl<'self, S: Str> Equiv<S> for &'self str {
     #[inline(always)]
-    fn equiv(&self, other: &~str) -> bool { eq_slice(*self, *other) }
+    fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
 }
+#[cfg(not(test))]
+impl<'self, S: Str> Equiv<S> for @str {
+    #[inline(always)]
+    fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
+}
+
+#[cfg(not(test))]
+impl<'self, S: Str> Equiv<S> for ~str {
+    #[inline(always)]
+    fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
+}
+
 
 /*
 Section: Iterating through strings
