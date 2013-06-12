@@ -399,9 +399,9 @@ fn enc_fn_sig(w: @io::Writer, cx: @ctxt, fsig: &ty::FnSig) {
 fn enc_bounds(w: @io::Writer, cx: @ctxt, bs: &ty::ParamBounds) {
     for bs.builtin_bounds.each |bound| {
         match bound {
-            ty::BoundOwned => w.write_char('S'),
+            ty::BoundSend => w.write_char('S'),
             ty::BoundCopy => w.write_char('C'),
-            ty::BoundConst => w.write_char('K'),
+            ty::BoundFreeze => w.write_char('K'),
             ty::BoundStatic => w.write_char('O'),
             ty::BoundSized => w.write_char('Z'),
         }

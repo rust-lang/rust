@@ -543,7 +543,8 @@ impl<'self> Iterator<(uint, uint)> for StrMatchesIndexIterator<'self> {
     fn next(&mut self) -> Option<(uint, uint)> {
         // See Issue #1932 for why this is a naive search
         let (h_len, n_len) = (self.haystack.len(), self.needle.len());
-        let mut (match_start, match_i) = (0, 0);
+        let mut match_start = 0;
+        let mut match_i = 0;
 
         while self.position < h_len {
             if self.haystack[self.position] == self.needle[match_i] {
@@ -723,7 +724,8 @@ pub fn each_split_within<'a>(ss: &'a str,
  * The original string with all occurances of `from` replaced with `to`
  */
 pub fn replace(s: &str, from: &str, to: &str) -> ~str {
-    let mut (result, last_end) = (~"", 0);
+    let mut result = ~"";
+    let mut last_end = 0;
     for s.matches_index_iter(from).advance |(start, end)| {
         result.push_str(unsafe{raw::slice_bytes(s, last_end, start)});
         result.push_str(to);
@@ -1118,7 +1120,8 @@ pub fn with_capacity(capacity: uint) -> ~str {
 pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
     assert!(s.is_char_boundary(start));
     assert!(s.is_char_boundary(end));
-    let mut (i, len) = (start, 0u);
+    let mut i = start;
+    let mut len = 0u;
     while i < end {
         let next = s.char_range_at(i).next;
         len += 1u;
@@ -1131,7 +1134,8 @@ pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
 /// starting from `start`.
 pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
     assert!(s.is_char_boundary(start));
-    let mut (end, cnt) = (start, n);
+    let mut end = start;
+    let mut cnt = n;
     let l = s.len();
     while cnt > 0u {
         assert!(end < l);
@@ -1348,7 +1352,8 @@ pub mod raw {
 
     /// Create a Rust string from a null-terminated *u8 buffer
     pub unsafe fn from_buf(buf: *u8) -> ~str {
-        let mut (curr, i) = (buf, 0u);
+        let mut curr = buf;
+        let mut i = 0u;
         while *curr != 0u8 {
             i += 1u;
             curr = ptr::offset(buf, i);

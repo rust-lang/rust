@@ -85,8 +85,12 @@ use parse::obsolete::{ObsoleteLifetimeNotation, ObsoleteConstManagedPointer};
 use parse::obsolete::{ObsoletePurity, ObsoleteStaticMethod};
 use parse::obsolete::{ObsoleteConstItem, ObsoleteFixedLengthVectorType};
 use parse::obsolete::{ObsoleteNamedExternModule, ObsoleteMultipleLocalDecl};
-use parse::token::{can_begin_expr, get_ident_interner, ident_to_str, is_ident, is_ident_or_path};
-use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents, token_to_binop};
+use parse::obsolete::{ObsoleteMutWithMultipleBindings};
+use parse::obsolete::{ObsoletePatternCopyKeyword};
+use parse::token::{can_begin_expr, get_ident_interner, ident_to_str, is_ident};
+use parse::token::{is_ident_or_path};
+use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents};
+use parse::token::{token_to_binop};
 use parse::token;
 use parse::{new_sub_parser_from_file, next_node_id, ParseSess};
 use opt_vec;
@@ -825,6 +829,11 @@ impl Parser {
             self.parse_arg_mode();
             is_mutbl = self.eat_keyword(keywords::Mut);
             let pat = self.parse_pat();
+
+            if is_mutbl && !ast_util::pat_is_ident(pat) {
+                self.obsolete(*self.span, ObsoleteMutWithMultipleBindings)
+            }
+
             self.expect(&token::COLON);
             pat
         } else {
@@ -1140,14 +1149,14 @@ impl Parser {
 
     pub fn token_is_mutability(&self, tok: &token::Token) -> bool {
         token::is_keyword(keywords::Mut, tok) ||
-        token::is_keyword(keywords::Const, tok)
+        token::is_keyword(keywords::Freeze, tok)
     }
 
     // parse mutability declaration (mut/const/imm)
     pub fn parse_mutability(&self) -> mutability {
         if self.eat_keyword(keywords::Mut) {
             m_mutbl
-        } else if self.eat_keyword(keywords::Const) {
+        } else if self.eat_keyword(keywords::Freeze) {
             m_const
         } else {
             m_imm
@@ -2427,8 +2436,7 @@ impl Parser {
                 pat = self.parse_pat_ident(bind_by_ref(mutbl));
             } else if self.eat_keyword(keywords::Copy) {
                 // parse copy pat
-                self.warn("copy keyword in patterns no longer has any effect, \
-                           remove it");
+                self.obsolete(*self.span, ObsoletePatternCopyKeyword);
                 pat = self.parse_pat_ident(bind_infer);
             } else {
                 let can_be_enum_or_struct;
@@ -2550,6 +2558,11 @@ impl Parser {
     fn parse_local(&self, is_mutbl: bool) -> @local {
         let lo = self.span.lo;
         let pat = self.parse_pat();
+
+        if is_mutbl && !ast_util::pat_is_ident(pat) {
+            self.obsolete(*self.span, ObsoleteMutWithMultipleBindings)
+        }
+
         let mut ty = @Ty {
             id: self.get_id(),
             node: ty_infer,
@@ -3040,7 +3053,7 @@ impl Parser {
         ) -> ast::explicit_self_ {
             // We need to make sure it isn't a mode or a type
             if token::is_keyword(keywords::Self, &p.look_ahead(1)) ||
-                ((token::is_keyword(keywords::Const, &p.look_ahead(1)) ||
+                ((token::is_keyword(keywords::Freeze, &p.look_ahead(1)) ||
                   token::is_keyword(keywords::Mut, &p.look_ahead(1))) &&
                  token::is_keyword(keywords::Self, &p.look_ahead(2))) {
 
@@ -3675,7 +3688,7 @@ impl Parser {
         let lo = self.span.lo;
 
         // XXX: Obsolete; remove after snap.
-        if self.eat_keyword(keywords::Const) {
+        if self.eat_keyword(keywords::Freeze) {
             self.obsolete(*self.last_span, ObsoleteConstItem);
         } else {
             self.expect_keyword(keywords::Static);
@@ -4062,11 +4075,11 @@ impl Parser {
             }
         }
         // the rest are all guaranteed to be items:
-        if (self.is_keyword(keywords::Const) ||
+        if (self.is_keyword(keywords::Freeze) ||
             (self.is_keyword(keywords::Static) &&
              !token::is_keyword(keywords::Fn, &self.look_ahead(1)))) {
             // CONST / STATIC ITEM
-            if self.is_keyword(keywords::Const) {
+            if self.is_keyword(keywords::Freeze) {
                 self.obsolete(*self.span, ObsoleteConstItem);
             }
             self.bump();
@@ -4164,7 +4177,7 @@ impl Parser {
 
         let visibility = self.parse_visibility();
 
-        if (self.is_keyword(keywords::Const) || self.is_keyword(keywords::Static)) {
+        if (self.is_keyword(keywords::Freeze) || self.is_keyword(keywords::Static)) {
             // FOREIGN CONST ITEM
             let item = self.parse_item_foreign_const(visibility, attrs);
             return iovi_foreign_item(item);
@@ -4234,8 +4247,12 @@ impl Parser {
         // FAILURE TO PARSE ITEM
         if visibility != inherited {
             let mut s = ~"unmatched visibility `";
-            s += if visibility == public { "pub" } else { "priv" };
-            s += "`";
+            if visibility == public {
+                s.push_str("pub")
+            } else {
+                s.push_str("priv")
+            }
+            s.push_char('`');
             self.span_fatal(*self.last_span, s);
         }
         return iovi_none;
@@ -4410,7 +4427,8 @@ impl Parser {
         let mut attrs = vec::append(first_item_attrs,
                                     self.parse_outer_attributes());
         // First, parse view items.
-        let mut (view_items, items) = (~[], ~[]);
+        let mut view_items = ~[];
+        let mut items = ~[];
         let mut done = false;
         // I think this code would probably read better as a single
         // loop with a mutable three-state-variable (for extern mods,

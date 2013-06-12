@@ -373,8 +373,10 @@ fn x86_64_tys(atys: &[TypeRef],
         arg_tys.push(ty);
         attrs.push(attr);
     }
-    let mut (ret_ty, ret_attr) = x86_64_ty(rty, is_ret_bysret,
+    let (ret_ty, ret_attr) = x86_64_ty(rty,
+                                       is_ret_bysret,
                                        StructRetAttribute);
+    let mut ret_ty = ret_ty;
     let sret = ret_attr.is_some();
     if sret {
         arg_tys = vec::append(~[ret_ty], arg_tys);

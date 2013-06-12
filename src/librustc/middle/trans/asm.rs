@@ -93,15 +93,15 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
     if *ia.clobbers != ~"" && clobbers != ~"" {
         clobbers = *ia.clobbers + "," + clobbers;
     } else {
-        clobbers += *ia.clobbers;
+        clobbers.push_str(*ia.clobbers);
     };
 
     // Add the clobbers to our constraints list
-    if clobbers != ~"" && constraints != ~"" {
-        constraints += ",";
-        constraints += clobbers;
+    if clobbers.len() != 0 && constraints.len() != 0 {
+        constraints.push_char(',');
+        constraints.push_str(clobbers);
     } else {
-        constraints += clobbers;
+        constraints.push_str(clobbers);
     }
 
     debug!("Asm Constraints: %?", constraints);

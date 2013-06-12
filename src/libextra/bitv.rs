@@ -476,9 +476,15 @@ impl Bitv {
      * character is either '0' or '1'.
      */
      pub fn to_str(&self) -> ~str {
-       let mut rs = ~"";
-       for self.each() |i| { if i { rs += "1"; } else { rs += "0"; } };
-       rs
+        let mut rs = ~"";
+        for self.each() |i| {
+            if i {
+                rs.push_char('1');
+            } else {
+                rs.push_char('0');
+            }
+        };
+        rs
      }
 
 

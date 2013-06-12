@@ -298,7 +298,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                 let crate_dir = crate_path.dirname();
                 let crate_name = crate_path.filename().get();
                 if !repl.view_items.contains(*crate) {
-                    repl.view_items += fmt!("extern mod %s;\n", crate_name);
+                    repl.view_items.push_str(fmt!("extern mod %s;\n", crate_name));
                     if !repl.lib_search_paths.contains(&crate_dir) {
                         repl.lib_search_paths.push(crate_dir);
                     }
@@ -321,7 +321,8 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                         if line.trim() == ":}" {
                             end_multiline = true;
                         } else {
-                            multiline_cmd += line + "\n";
+                            multiline_cmd.push_str(line);
+                            multiline_cmd.push_char('\n');
                         }
                     }
                 }

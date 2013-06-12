@@ -24,11 +24,10 @@ The 4 kinds are
   scalar types and managed pointers, and exludes owned pointers. It
   also excludes types that implement `Drop`.
 
-* Owned - owned types and types containing owned types.  These types
+* Send - owned types and types containing owned types.  These types
   may be transferred across task boundaries.
 
-* Const - types that are deeply immutable. Const types are used for
-  freezable data structures.
+* Freeze - types that are deeply immutable.
 
 `Copy` types include both implicitly copyable types that the compiler
 will copy automatically and non-implicitly copyable types that require
@@ -44,14 +43,28 @@ pub trait Copy {
     // Empty.
 }
 
+#[cfg(stage0)]
 #[lang="owned"]
-pub trait Owned {
-    // Empty.
+pub trait Send {
+    // empty.
 }
 
+#[cfg(not(stage0))]
+#[lang="send"]
+pub trait Send {
+    // empty.
+}
+
+#[cfg(stage0)]
 #[lang="const"]
-pub trait Const {
-    // Empty.
+pub trait Freeze {
+    // empty.
+}
+
+#[cfg(not(stage0))]
+#[lang="freeze"]
+pub trait Freeze {
+    // empty.
 }
 
 #[lang="sized"]

@@ -256,9 +256,9 @@ pub fn sha1() -> @Sha1 {
             for rr.each |b| {
                 let hex = uint::to_str_radix(*b as uint, 16u);
                 if hex.len() == 1 {
-                    s += "0";
+                    s.push_char('0')
                 }
-                s += hex;
+                s.push_str(hex)
             }
             return s;
         }

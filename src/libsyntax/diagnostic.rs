@@ -261,8 +261,11 @@ fn highlight_lines(cm: @codemap::CodeMap,
         let s = fmt!("%s:%u ", fm.name, last_line + 1u);
         let mut indent = s.len();
         let mut out = ~"";
-        while indent > 0u { out += " "; indent -= 1u; }
-        out += "...\n";
+        while indent > 0u {
+            out.push_char(' ');
+            indent -= 1u;
+        }
+        out.push_str("...\n");
         io::stderr().write_str(out);
     }
 
@@ -283,22 +286,24 @@ fn highlight_lines(cm: @codemap::CodeMap,
         // part of the 'filename:line ' part of the previous line.
         let skip = fm.name.len() + digits + 3u;
         for skip.times() {
-            s += " ";
+            s.push_char(' ');
         }
         let orig = fm.get_line(lines.lines[0] as int);
         for uint::range(0u,left-skip) |pos| {
             let curChar = (orig[pos] as char);
-            s += match curChar { // Whenever a tab occurs on the previous
-                '\t' => "\t",    // line, we insert one on the error-point-
-                _ => " "         // -squigly-line as well (instead of a
-            };                   // space). This way the squigly-line will
-        }                        // usually appear in the correct position.
-        s += "^";
+            match curChar {                 // Whenever a tab occurs on the previous
+                '\t' => s.push_char('\t'),  // line, we insert one on the error-point-
+                _ => s.push_char(' '),      // -squigly-line as well (instead of a
+            }                               // space). This way the squigly-line will
+        }                                   // usually appear in the correct position.
+        s.push_char('^');
         let hi = cm.lookup_char_pos(sp.hi);
         if hi.col != lo.col {
             // the ^ already takes up one space
             let num_squiglies = hi.col.to_uint()-lo.col.to_uint()-1u;
-            for num_squiglies.times() { s += "~"; }
+            for num_squiglies.times() {
+                s.push_char('~')
+            }
         }
         io::stderr().write_str(s + "\n");
     }
