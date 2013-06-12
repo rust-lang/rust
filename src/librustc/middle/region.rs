@@ -335,7 +335,7 @@ pub fn parent_to_expr(cx: Context, child_id: ast::node_id, sp: span) {
     }
 }
 
-pub fn resolve_block(blk: &ast::blk, cx: Context, visitor: visit::vt<Context>) {
+pub fn resolve_block(blk: &ast::blk, (cx, visitor): (Context, visit::vt<Context>)) {
     // Record the parent of this block.
     parent_to_expr(cx, blk.node.id, blk.span);
 
@@ -343,35 +343,35 @@ pub fn resolve_block(blk: &ast::blk, cx: Context, visitor: visit::vt<Context>) {
     let new_cx = Context {var_parent: Some(blk.node.id),
                           parent: Some(blk.node.id),
                           ..cx};
-    visit::visit_block(blk, new_cx, visitor);
+    visit::visit_block(blk, (new_cx, visitor));
 }
 
-pub fn resolve_arm(arm: &ast::arm, cx: Context, visitor: visit::vt<Context>) {
-    visit::visit_arm(arm, cx, visitor);
+pub fn resolve_arm(arm: &ast::arm, (cx, visitor): (Context, visit::vt<Context>)) {
+    visit::visit_arm(arm, (cx, visitor));
 }
 
-pub fn resolve_pat(pat: @ast::pat, cx: Context, visitor: visit::vt<Context>) {
+pub fn resolve_pat(pat: @ast::pat, (cx, visitor): (Context, visit::vt<Context>)) {
     assert_eq!(cx.var_parent, cx.parent);
     parent_to_expr(cx, pat.id, pat.span);
-    visit::visit_pat(pat, cx, visitor);
+    visit::visit_pat(pat, (cx, visitor));
 }
 
-pub fn resolve_stmt(stmt: @ast::stmt, cx: Context, visitor: visit::vt<Context>) {
+pub fn resolve_stmt(stmt: @ast::stmt, (cx, visitor): (Context, visit::vt<Context>)) {
     match stmt.node {
         ast::stmt_decl(*) => {
-            visit::visit_stmt(stmt, cx, visitor);
+            visit::visit_stmt(stmt, (cx, visitor));
         }
         ast::stmt_expr(_, stmt_id) |
         ast::stmt_semi(_, stmt_id) => {
             parent_to_expr(cx, stmt_id, stmt.span);
             let expr_cx = Context {parent: Some(stmt_id), ..cx};
-            visit::visit_stmt(stmt, expr_cx, visitor);
+            visit::visit_stmt(stmt, (expr_cx, visitor));
         }
         ast::stmt_mac(*) => cx.sess.bug("unexpanded macro")
     }
 }
 
-pub fn resolve_expr(expr: @ast::expr, cx: Context, visitor: visit::vt<Context>) {
+pub fn resolve_expr(expr: @ast::expr, (cx, visitor): (Context, visit::vt<Context>)) {
     parent_to_expr(cx, expr.id, expr.span);
 
     let mut new_cx = cx;
@@ -407,21 +407,21 @@ pub fn resolve_expr(expr: @ast::expr, cx: Context, visitor: visit::vt<Context>) 
     };
 
 
-    visit::visit_expr(expr, new_cx, visitor);
+    visit::visit_expr(expr, (new_cx, visitor));
 }
 
 pub fn resolve_local(local: @ast::local,
-                     cx: Context,
-                     visitor: visit::vt<Context>) {
+                     (cx, visitor) : (Context,
+                                      visit::vt<Context>)) {
     assert_eq!(cx.var_parent, cx.parent);
     parent_to_expr(cx, local.node.id, local.span);
-    visit::visit_local(local, cx, visitor);
+    visit::visit_local(local, (cx, visitor));
 }
 
-pub fn resolve_item(item: @ast::item, cx: Context, visitor: visit::vt<Context>) {
+pub fn resolve_item(item: @ast::item, (cx, visitor): (Context, visit::vt<Context>)) {
     // Items create a new outer block scope as far as we're concerned.
     let new_cx = Context {var_parent: None, parent: None, ..cx};
-    visit::visit_item(item, new_cx, visitor);
+    visit::visit_item(item, (new_cx, visitor));
 }
 
 pub fn resolve_fn(fk: &visit::fn_kind,
@@ -429,8 +429,8 @@ pub fn resolve_fn(fk: &visit::fn_kind,
                   body: &ast::blk,
                   sp: span,
                   id: ast::node_id,
-                  cx: Context,
-                  visitor: visit::vt<Context>) {
+                  (cx, visitor): (Context,
+                                  visit::vt<Context>)) {
     debug!("region::resolve_fn(id=%?, \
                                span=%?, \
                                body.node.id=%?, \
@@ -450,7 +450,7 @@ pub fn resolve_fn(fk: &visit::fn_kind,
         }
         _ => {}
     }
-    visit::visit_fn_decl(decl, decl_cx, visitor);
+    visit::visit_fn_decl(decl, (decl_cx, visitor));
 
     // The body of the fn itself is either a root scope (top-level fn)
     // or it continues with the inherited scope (closures).
@@ -464,7 +464,7 @@ pub fn resolve_fn(fk: &visit::fn_kind,
             cx
         }
     };
-    (visitor.visit_block)(body, body_cx, visitor);
+    (visitor.visit_block)(body, (body_cx, visitor));
 }
 
 pub fn resolve_crate(sess: Session,
@@ -492,7 +492,7 @@ pub fn resolve_crate(sess: Session,
         visit_local: resolve_local,
         .. *visit::default_visitor()
     });
-    visit::visit_crate(crate, cx, visitor);
+    visit::visit_crate(crate, (cx, visitor));
     return region_maps;
 }
 
@@ -717,10 +717,10 @@ impl DetermineRpCtxt {
 }
 
 pub fn determine_rp_in_item(item: @ast::item,
-                            cx: @mut DetermineRpCtxt,
-                            visitor: visit::vt<@mut DetermineRpCtxt>) {
+                            (cx, visitor): (@mut DetermineRpCtxt,
+                                            visit::vt<@mut DetermineRpCtxt>)) {
     do cx.with(item.id, true) {
-        visit::visit_item(item, cx, visitor);
+        visit::visit_item(item, (cx, visitor));
     }
 }
 
@@ -729,32 +729,32 @@ pub fn determine_rp_in_fn(fk: &visit::fn_kind,
                           body: &ast::blk,
                           _: span,
                           _: ast::node_id,
-                          cx: @mut DetermineRpCtxt,
-                          visitor: visit::vt<@mut DetermineRpCtxt>) {
+                          (cx, visitor): (@mut DetermineRpCtxt,
+                                          visit::vt<@mut DetermineRpCtxt>)) {
     do cx.with(cx.item_id, false) {
         do cx.with_ambient_variance(rv_contravariant) {
             for decl.inputs.each |a| {
-                (visitor.visit_ty)(a.ty, cx, visitor);
+                (visitor.visit_ty)(a.ty, (cx, visitor));
             }
         }
-        (visitor.visit_ty)(decl.output, cx, visitor);
+        (visitor.visit_ty)(decl.output, (cx, visitor));
         let generics = visit::generics_of_fn(fk);
-        (visitor.visit_generics)(&generics, cx, visitor);
-        (visitor.visit_block)(body, cx, visitor);
+        (visitor.visit_generics)(&generics, (cx, visitor));
+        (visitor.visit_block)(body, (cx, visitor));
     }
 }
 
 pub fn determine_rp_in_ty_method(ty_m: &ast::ty_method,
-                                 cx: @mut DetermineRpCtxt,
-                                 visitor: visit::vt<@mut DetermineRpCtxt>) {
+                                 (cx, visitor): (@mut DetermineRpCtxt,
+                                                 visit::vt<@mut DetermineRpCtxt>)) {
     do cx.with(cx.item_id, false) {
-        visit::visit_ty_method(ty_m, cx, visitor);
+        visit::visit_ty_method(ty_m, (cx, visitor));
     }
 }
 
 pub fn determine_rp_in_ty(ty: @ast::Ty,
-                          cx: @mut DetermineRpCtxt,
-                          visitor: visit::vt<@mut DetermineRpCtxt>) {
+                          (cx, visitor): (@mut DetermineRpCtxt,
+                                          visit::vt<@mut DetermineRpCtxt>)) {
     // we are only interested in types that will require an item to
     // be region-parameterized.  if cx.item_id is zero, then this type
     // is not a member of a type defn nor is it a constitutent of an
@@ -838,14 +838,14 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
     match ty.node {
       ast::ty_box(mt) | ast::ty_uniq(mt) | ast::ty_vec(mt) |
       ast::ty_rptr(_, mt) | ast::ty_ptr(mt) => {
-        visit_mt(mt, cx, visitor);
+        visit_mt(mt, (cx, visitor));
       }
 
       ast::ty_path(path, _) => {
         // type parameters are---for now, anyway---always invariant
         do cx.with_ambient_variance(rv_invariant) {
             for path.types.each |tp| {
-                (visitor.visit_ty)(*tp, cx, visitor);
+                (visitor.visit_ty)(*tp, (cx, visitor));
             }
         }
       }
@@ -858,37 +858,37 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
             // parameters are contravariant
             do cx.with_ambient_variance(rv_contravariant) {
                 for decl.inputs.each |a| {
-                    (visitor.visit_ty)(a.ty, cx, visitor);
+                    (visitor.visit_ty)(a.ty, (cx, visitor));
                 }
             }
-            (visitor.visit_ty)(decl.output, cx, visitor);
+            (visitor.visit_ty)(decl.output, (cx, visitor));
         }
       }
 
       _ => {
-        visit::visit_ty(ty, cx, visitor);
+        visit::visit_ty(ty, (cx, visitor));
       }
     }
 
     fn visit_mt(mt: ast::mt,
-                cx: @mut DetermineRpCtxt,
-                visitor: visit::vt<@mut DetermineRpCtxt>) {
+                (cx, visitor): (@mut DetermineRpCtxt,
+                                visit::vt<@mut DetermineRpCtxt>)) {
         // mutability is invariant
         if mt.mutbl == ast::m_mutbl {
             do cx.with_ambient_variance(rv_invariant) {
-                (visitor.visit_ty)(mt.ty, cx, visitor);
+                (visitor.visit_ty)(mt.ty, (cx, visitor));
             }
         } else {
-            (visitor.visit_ty)(mt.ty, cx, visitor);
+            (visitor.visit_ty)(mt.ty, (cx, visitor));
         }
     }
 }
 
 pub fn determine_rp_in_struct_field(
         cm: @ast::struct_field,
-        cx: @mut DetermineRpCtxt,
-        visitor: visit::vt<@mut DetermineRpCtxt>) {
-    visit::visit_struct_field(cm, cx, visitor);
+        (cx, visitor): (@mut DetermineRpCtxt,
+                        visit::vt<@mut DetermineRpCtxt>)) {
+    visit::visit_struct_field(cm, (cx, visitor));
 }
 
 pub fn determine_rp_in_crate(sess: Session,
@@ -917,7 +917,7 @@ pub fn determine_rp_in_crate(sess: Session,
         visit_struct_field: determine_rp_in_struct_field,
         .. *visit::default_visitor()
     });
-    visit::visit_crate(crate, cx, visitor);
+    visit::visit_crate(crate, (cx, visitor));
 
     // Propagate indirect dependencies
     //

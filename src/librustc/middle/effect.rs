@@ -72,7 +72,7 @@ pub fn check_crate(tcx: ty::ctxt,
     };
 
     let visitor = visit::mk_vt(@visit::Visitor {
-        visit_fn: |fn_kind, fn_decl, block, span, node_id, _, visitor| {
+        visit_fn: |fn_kind, fn_decl, block, span, node_id, (_, visitor)| {
             let (is_item_fn, is_unsafe_fn) = match *fn_kind {
                 fk_item_fn(_, _, purity, _) => (true, purity == unsafe_fn),
                 fk_method(_, _, method) => (true, method.purity == unsafe_fn),
@@ -91,25 +91,25 @@ pub fn check_crate(tcx: ty::ctxt,
                             block,
                             span,
                             node_id,
-                            (),
-                            visitor);
+                            ((),
+                             visitor));
 
             context.unsafe_context = old_unsafe_context
         },
 
-        visit_block: |block, _, visitor| {
+        visit_block: |block, (_, visitor)| {
             let old_unsafe_context = context.unsafe_context;
             if block.node.rules == unsafe_blk &&
                     context.unsafe_context == SafeContext {
                 context.unsafe_context = UnsafeBlock(block.node.id)
             }
 
-            visit::visit_block(block, (), visitor);
+            visit::visit_block(block, ((), visitor));
 
             context.unsafe_context = old_unsafe_context
         },
 
-        visit_expr: |expr, _, visitor| {
+        visit_expr: |expr, (_, visitor)| {
             match expr.node {
                 expr_method_call(callee_id, _, _, _, _, _) => {
                     let base_type = ty::node_id_to_type(tcx, callee_id);
@@ -146,12 +146,12 @@ pub fn check_crate(tcx: ty::ctxt,
                 _ => {}
             }
 
-            visit::visit_expr(expr, (), visitor)
+            visit::visit_expr(expr, ((), visitor))
         },
 
         .. *visit::default_visitor()
     });
 
-    visit::visit_crate(crate, (), visitor)
+    visit::visit_crate(crate, ((), visitor))
 }
 

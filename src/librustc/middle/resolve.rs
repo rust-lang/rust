@@ -905,27 +905,27 @@ impl Resolver {
     pub fn build_reduced_graph(@mut self) {
         let initial_parent =
             ModuleReducedGraphParent(self.graph_root.get_module());
-        visit_crate(self.crate, initial_parent, mk_vt(@Visitor {
-            visit_item: |item, context, visitor|
-                self.build_reduced_graph_for_item(item, context, visitor),
+        visit_crate(self.crate, (initial_parent, mk_vt(@Visitor {
+            visit_item: |item, (context, visitor)|
+                self.build_reduced_graph_for_item(item, (context, visitor)),
 
-            visit_foreign_item: |foreign_item, context, visitor|
+            visit_foreign_item: |foreign_item, (context, visitor)|
                 self.build_reduced_graph_for_foreign_item(foreign_item,
-                                                             context,
-                                                             visitor),
+                                                             (context,
+                                                              visitor)),
 
-            visit_view_item: |view_item, context, visitor|
+            visit_view_item: |view_item, (context, visitor)|
                 self.build_reduced_graph_for_view_item(view_item,
-                                                          context,
-                                                          visitor),
+                                                          (context,
+                                                           visitor)),
 
-            visit_block: |block, context, visitor|
+            visit_block: |block, (context, visitor)|
                 self.build_reduced_graph_for_block(block,
-                                                      context,
-                                                      visitor),
+                                                      (context,
+                                                       visitor)),
 
             .. *default_visitor()
-        }));
+        })));
     }
 
     /// Returns the current module tracked by the reduced graph parent.
@@ -1094,8 +1094,8 @@ impl Resolver {
     /// Constructs the reduced graph for one item.
     pub fn build_reduced_graph_for_item(@mut self,
                                         item: @item,
-                                        parent: ReducedGraphParent,
-                                        visitor: vt<ReducedGraphParent>) {
+                                        (parent, visitor): (ReducedGraphParent,
+                                                            vt<ReducedGraphParent>)) {
         let ident = item.ident;
         let sp = item.span;
         let privacy = visibility_to_privacy(item.vis);
@@ -1116,7 +1116,7 @@ impl Resolver {
                 let new_parent =
                     ModuleReducedGraphParent(name_bindings.get_module());
 
-                visit_mod(module_, sp, item.id, new_parent, visitor);
+                visit_mod(module_, sp, item.id, (new_parent, visitor));
             }
 
             item_foreign_mod(ref fm) => {
@@ -1143,7 +1143,7 @@ impl Resolver {
                     anonymous => parent
                 };
 
-                visit_item(item, new_parent, visitor);
+                visit_item(item, (new_parent, visitor));
             }
 
             // These items live in the value namespace.
@@ -1160,7 +1160,7 @@ impl Resolver {
 
                 let def = def_fn(local_def(item.id), purity);
                 name_bindings.define_value(privacy, def, sp);
-                visit_item(item, new_parent, visitor);
+                visit_item(item, (new_parent, visitor));
             }
 
             // These items live in the type namespace.
@@ -1180,13 +1180,13 @@ impl Resolver {
                     (privacy, def_ty(local_def(item.id)), sp);
 
                 for (*enum_definition).variants.each |variant| {
-                    self.build_reduced_graph_for_variant(variant,
+                    self.build_reduced_graph_for_variant(
+                        variant,
                         local_def(item.id),
                         // inherited => privacy of the enum item
                         variant_visibility_to_privacy(variant.node.vis,
                                                       privacy == Public),
-                        new_parent,
-                        visitor);
+                        (new_parent, visitor));
                 }
             }
 
@@ -1213,7 +1213,7 @@ impl Resolver {
                 // Record the def ID of this struct.
                 self.structs.insert(local_def(item.id));
 
-                visit_item(item, new_parent, visitor);
+                visit_item(item, (new_parent, visitor));
             }
 
             item_impl(_, trait_ref_opt, ty, ref methods) => {
@@ -1307,7 +1307,7 @@ impl Resolver {
                     _ => {}
                 }
 
-                visit_item(item, parent, visitor);
+                visit_item(item, (parent, visitor));
             }
 
             item_trait(_, _, ref methods) => {
@@ -1397,7 +1397,7 @@ impl Resolver {
                 }
 
                 name_bindings.define_type(privacy, def_trait(def_id), sp);
-                visit_item(item, new_parent, visitor);
+                visit_item(item, (new_parent, visitor));
             }
 
             item_mac(*) => {
@@ -1412,8 +1412,9 @@ impl Resolver {
                                            variant: &variant,
                                            item_id: def_id,
                                            parent_privacy: Privacy,
-                                           parent: ReducedGraphParent,
-                                           _visitor: vt<ReducedGraphParent>) {
+                                           (parent, _visitor):
+                                           (ReducedGraphParent,
+                                            vt<ReducedGraphParent>)) {
         let ident = variant.node.name;
         let (child, _) = self.add_child(ident, parent, ForbidDuplicateValues,
                                         variant.span);
@@ -1446,8 +1447,9 @@ impl Resolver {
     /// of imports and use directives.
     pub fn build_reduced_graph_for_view_item(@mut self,
                                              view_item: @view_item,
-                                             parent: ReducedGraphParent,
-                                             _: vt<ReducedGraphParent>) {
+                                             (parent, _):
+                                             (ReducedGraphParent,
+                                              vt<ReducedGraphParent>)) {
         let privacy = visibility_to_privacy(view_item.vis);
         match view_item.node {
             view_item_use(ref view_paths) => {
@@ -1542,9 +1544,9 @@ impl Resolver {
     /// Constructs the reduced graph for one foreign item.
     pub fn build_reduced_graph_for_foreign_item(@mut self,
                                                 foreign_item: @foreign_item,
-                                                parent: ReducedGraphParent,
-                                                visitor:
-                                                vt<ReducedGraphParent>) {
+                                                (parent, visitor):
+                                                (ReducedGraphParent,
+                                                 vt<ReducedGraphParent>)) {
         let name = foreign_item.ident;
         let (name_bindings, new_parent) =
             self.add_child(name, parent, ForbidDuplicateValues,
@@ -1559,22 +1561,23 @@ impl Resolver {
                     HasTypeParameters(
                         generics, foreign_item.id, 0, NormalRibKind))
                 {
-                    visit_foreign_item(foreign_item, new_parent, visitor);
+                    visit_foreign_item(foreign_item, (new_parent, visitor));
                 }
             }
             foreign_item_const(*) => {
                 let def = def_const(local_def(foreign_item.id));
                 name_bindings.define_value(Public, def, foreign_item.span);
 
-                visit_foreign_item(foreign_item, new_parent, visitor);
+                visit_foreign_item(foreign_item, (new_parent, visitor));
             }
         }
     }
 
     pub fn build_reduced_graph_for_block(@mut self,
                                          block: &blk,
-                                         parent: ReducedGraphParent,
-                                         visitor: vt<ReducedGraphParent>) {
+                                         (parent, visitor):
+                                         (ReducedGraphParent,
+                                          vt<ReducedGraphParent>)) {
         let new_parent;
         if self.block_needs_anonymous_module(block) {
             let block_id = block.node.id;
@@ -1594,7 +1597,7 @@ impl Resolver {
             new_parent = parent;
         }
 
-        visit_block(block, new_parent, visitor);
+        visit_block(block, (new_parent, visitor));
     }
 
     pub fn handle_external_def(@mut self,
@@ -3481,21 +3484,21 @@ impl Resolver {
     pub fn resolve_crate(@mut self) {
         debug!("(resolving crate) starting");
 
-        visit_crate(self.crate, (), mk_vt(@Visitor {
-            visit_item: |item, _context, visitor|
+        visit_crate(self.crate, ((), mk_vt(@Visitor {
+            visit_item: |item, (_context, visitor)|
                 self.resolve_item(item, visitor),
-            visit_arm: |arm, _context, visitor|
+            visit_arm: |arm, (_context, visitor)|
                 self.resolve_arm(arm, visitor),
-            visit_block: |block, _context, visitor|
+            visit_block: |block, (_context, visitor)|
                 self.resolve_block(block, visitor),
-            visit_expr: |expr, _context, visitor|
+            visit_expr: |expr, (_context, visitor)|
                 self.resolve_expr(expr, visitor),
-            visit_local: |local, _context, visitor|
+            visit_local: |local, (_context, visitor)|
                 self.resolve_local(local, visitor),
-            visit_ty: |ty, _context, visitor|
+            visit_ty: |ty, (_context, visitor)|
                 self.resolve_type(ty, visitor),
             .. *default_visitor()
-        }));
+        })));
     }
 
     pub fn resolve_item(@mut self, item: @item, visitor: ResolveVisitor) {
@@ -3531,7 +3534,7 @@ impl Resolver {
                 do self.with_type_parameter_rib(
                     HasTypeParameters(
                         generics, item.id, 0, NormalRibKind)) {
-                    visit_item(item, (), visitor);
+                    visit_item(item, ((), visitor));
                 }
             }
 
@@ -3541,7 +3544,7 @@ impl Resolver {
                                            NormalRibKind))
                         || {
 
-                    visit_item(item, (), visitor);
+                    visit_item(item, ((), visitor));
                 }
             }
 
@@ -3657,12 +3660,12 @@ impl Resolver {
                                     HasTypeParameters(
                                         generics, foreign_item.id, 0,
                                         NormalRibKind),
-                                    || visit_foreign_item(*foreign_item, (),
-                                                          visitor));
+                                    || visit_foreign_item(*foreign_item,
+                                                          ((), visitor)));
                             }
                             foreign_item_const(_) => {
-                                visit_foreign_item(*foreign_item, (),
-                                                   visitor);
+                                visit_foreign_item(*foreign_item,
+                                                   ((), visitor));
                             }
                         }
                     }
@@ -3684,7 +3687,7 @@ impl Resolver {
 
             item_const(*) => {
                 self.with_constant_rib(|| {
-                    visit_item(item, (), visitor);
+                    visit_item(item, ((), visitor));
                 });
             }
 
@@ -3993,7 +3996,7 @@ impl Resolver {
                           visitor: ResolveVisitor) {
         // Write the implementations in scope into the module metadata.
         debug!("(resolving module) resolving module ID %d", id);
-        visit_mod(module_, span, id, (), visitor);
+        visit_mod(module_, span, id, ((), visitor));
     }
 
     pub fn resolve_local(@mut self, local: @local, visitor: ResolveVisitor) {
@@ -4080,7 +4083,7 @@ impl Resolver {
         // pat_idents are variants
         self.check_consistent_bindings(arm);
 
-        visit_expr_opt(arm.guard, (), visitor);
+        visit_expr_opt(arm.guard, ((), visitor));
         self.resolve_block(&arm.body, visitor);
 
         self.value_ribs.pop();
@@ -4102,7 +4105,7 @@ impl Resolver {
         }
 
         // Descend into the block.
-        visit_block(block, (), visitor);
+        visit_block(block, ((), visitor));
 
         // Move back up.
         self.current_module = orig_module;
@@ -4181,12 +4184,12 @@ impl Resolver {
                 for c.bounds.each |bound| {
                     self.resolve_type_parameter_bound(bound, visitor);
                 }
-                visit_ty(ty, (), visitor);
+                visit_ty(ty, ((), visitor));
             }
 
             _ => {
                 // Just resolve embedded types.
-                visit_ty(ty, (), visitor);
+                visit_ty(ty, ((), visitor));
             }
         }
     }
@@ -4949,7 +4952,7 @@ impl Resolver {
                     }
                 }
 
-                visit_expr(expr, (), visitor);
+                visit_expr(expr, ((), visitor));
             }
 
             expr_fn_block(ref fn_decl, ref block) => {
@@ -4981,7 +4984,7 @@ impl Resolver {
                     }
                 }
 
-                visit_expr(expr, (), visitor);
+                visit_expr(expr, ((), visitor));
             }
 
             expr_loop(_, Some(label)) => {
@@ -4993,7 +4996,7 @@ impl Resolver {
                         rib.bindings.insert(label, def_like);
                     }
 
-                    visit_expr(expr, (), visitor);
+                    visit_expr(expr, ((), visitor));
                 }
             }
 
@@ -5029,7 +5032,7 @@ impl Resolver {
             }
 
             _ => {
-                visit_expr(expr, (), visitor);
+                visit_expr(expr, ((), visitor));
             }
         }
     }
@@ -5266,7 +5269,7 @@ impl Resolver {
             visit_view_item: |vi| self.check_for_item_unused_imports(vi),
             .. *default_simple_visitor()
         });
-        visit_crate(self.crate, (), vt);
+        visit_crate(self.crate, ((), vt));
     }
 
     pub fn check_for_item_unused_imports(&mut self, vi: @view_item) {
