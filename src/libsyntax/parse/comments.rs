@@ -320,10 +320,10 @@ pub struct lit {
 // probably not a good thing.
 pub fn gather_comments_and_literals(span_diagnostic:
                                     @diagnostic::span_handler,
-                                    path: ~str,
+                                    path: @str,
                                     srdr: @io::Reader)
                                  -> (~[cmnt], ~[lit]) {
-    let src = @str::from_bytes(srdr.read_whole_stream());
+    let src = str::from_bytes(srdr.read_whole_stream()).to_managed();
     let cm = CodeMap::new();
     let filemap = cm.new_filemap(path, src);
     let rdr = lexer::new_low_level_string_reader(span_diagnostic, filemap);

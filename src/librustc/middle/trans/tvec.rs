@@ -250,7 +250,7 @@ pub fn trans_slice_vstore(bcx: block,
 
 pub fn trans_lit_str(bcx: block,
                      lit_expr: @ast::expr,
-                     str_lit: @~str,
+                     str_lit: @str,
                      dest: Dest)
                   -> block {
     //!

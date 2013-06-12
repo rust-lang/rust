@@ -339,7 +339,7 @@ pub fn trans_static_method_callee(bcx: block,
         }
     };
     debug!("trans_static_method_callee: method_id=%?, callee_id=%?, \
-            name=%s", method_id, callee_id, *ccx.sess.str_of(mname));
+            name=%s", method_id, callee_id, ccx.sess.str_of(mname));
 
     let vtbls = resolve_vtables_in_fn_ctxt(
         bcx.fcx, ccx.maps.vtable_map.get_copy(&callee_id));
@@ -791,7 +791,7 @@ pub fn make_vtable(ccx: @CrateContext,
 
         let tbl = C_struct(components);
         let vtable = ccx.sess.str_of((ccx.names)("vtable"));
-        let vt_gvar = do str::as_c_str(*vtable) |buf| {
+        let vt_gvar = do str::as_c_str(vtable) |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
         };
         llvm::LLVMSetInitializer(vt_gvar, tbl);
@@ -827,16 +827,15 @@ pub fn make_impl_vtable(bcx: block,
                                 ty::mk_bare_fn(tcx, copy im.fty));
         if im.generics.has_type_params() || ty::type_has_self(fty) {
             debug!("(making impl vtable) method has self or type params: %s",
-                   *tcx.sess.str_of(im.ident));
+                   tcx.sess.str_of(im.ident));
             C_null(T_ptr(T_nil()))
         } else {
             debug!("(making impl vtable) adding method to vtable: %s",
-                   *tcx.sess.str_of(im.ident));
+                   tcx.sess.str_of(im.ident));
             let m_id = method_with_name_or_default(ccx, impl_id, im.ident);
 
             trans_fn_ref_with_vtables(bcx, m_id, 0,
                                       substs, Some(vtables)).llfn
-
         }
     };
 

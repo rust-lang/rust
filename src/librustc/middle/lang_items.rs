@@ -269,50 +269,50 @@ fn LanguageItemCollector(crate: @crate,
                       -> LanguageItemCollector {
     let mut item_refs = HashMap::new();
 
-    item_refs.insert(@~"const", ConstTraitLangItem as uint);
-    item_refs.insert(@~"copy", CopyTraitLangItem as uint);
-    item_refs.insert(@~"owned", OwnedTraitLangItem as uint);
-    item_refs.insert(@~"sized", SizedTraitLangItem as uint);
+    item_refs.insert(@"const", ConstTraitLangItem as uint);
+    item_refs.insert(@"copy", CopyTraitLangItem as uint);
+    item_refs.insert(@"owned", OwnedTraitLangItem as uint);
+    item_refs.insert(@"sized", SizedTraitLangItem as uint);
 
-    item_refs.insert(@~"drop", DropTraitLangItem as uint);
+    item_refs.insert(@"drop", DropTraitLangItem as uint);
 
-    item_refs.insert(@~"add", AddTraitLangItem as uint);
-    item_refs.insert(@~"sub", SubTraitLangItem as uint);
-    item_refs.insert(@~"mul", MulTraitLangItem as uint);
-    item_refs.insert(@~"div", DivTraitLangItem as uint);
-    item_refs.insert(@~"rem", RemTraitLangItem as uint);
-    item_refs.insert(@~"neg", NegTraitLangItem as uint);
-    item_refs.insert(@~"not", NotTraitLangItem as uint);
-    item_refs.insert(@~"bitxor", BitXorTraitLangItem as uint);
-    item_refs.insert(@~"bitand", BitAndTraitLangItem as uint);
-    item_refs.insert(@~"bitor", BitOrTraitLangItem as uint);
-    item_refs.insert(@~"shl", ShlTraitLangItem as uint);
-    item_refs.insert(@~"shr", ShrTraitLangItem as uint);
-    item_refs.insert(@~"index", IndexTraitLangItem as uint);
+    item_refs.insert(@"add", AddTraitLangItem as uint);
+    item_refs.insert(@"sub", SubTraitLangItem as uint);
+    item_refs.insert(@"mul", MulTraitLangItem as uint);
+    item_refs.insert(@"div", DivTraitLangItem as uint);
+    item_refs.insert(@"rem", RemTraitLangItem as uint);
+    item_refs.insert(@"neg", NegTraitLangItem as uint);
+    item_refs.insert(@"not", NotTraitLangItem as uint);
+    item_refs.insert(@"bitxor", BitXorTraitLangItem as uint);
+    item_refs.insert(@"bitand", BitAndTraitLangItem as uint);
+    item_refs.insert(@"bitor", BitOrTraitLangItem as uint);
+    item_refs.insert(@"shl", ShlTraitLangItem as uint);
+    item_refs.insert(@"shr", ShrTraitLangItem as uint);
+    item_refs.insert(@"index", IndexTraitLangItem as uint);
 
-    item_refs.insert(@~"eq", EqTraitLangItem as uint);
-    item_refs.insert(@~"ord", OrdTraitLangItem as uint);
+    item_refs.insert(@"eq", EqTraitLangItem as uint);
+    item_refs.insert(@"ord", OrdTraitLangItem as uint);
 
-    item_refs.insert(@~"str_eq", StrEqFnLangItem as uint);
-    item_refs.insert(@~"uniq_str_eq", UniqStrEqFnLangItem as uint);
-    item_refs.insert(@~"annihilate", AnnihilateFnLangItem as uint);
-    item_refs.insert(@~"log_type", LogTypeFnLangItem as uint);
-    item_refs.insert(@~"fail_", FailFnLangItem as uint);
-    item_refs.insert(@~"fail_bounds_check",
+    item_refs.insert(@"str_eq", StrEqFnLangItem as uint);
+    item_refs.insert(@"uniq_str_eq", UniqStrEqFnLangItem as uint);
+    item_refs.insert(@"annihilate", AnnihilateFnLangItem as uint);
+    item_refs.insert(@"log_type", LogTypeFnLangItem as uint);
+    item_refs.insert(@"fail_", FailFnLangItem as uint);
+    item_refs.insert(@"fail_bounds_check",
                      FailBoundsCheckFnLangItem as uint);
-    item_refs.insert(@~"exchange_malloc", ExchangeMallocFnLangItem as uint);
-    item_refs.insert(@~"exchange_free", ExchangeFreeFnLangItem as uint);
-    item_refs.insert(@~"malloc", MallocFnLangItem as uint);
-    item_refs.insert(@~"free", FreeFnLangItem as uint);
-    item_refs.insert(@~"borrow_as_imm", BorrowAsImmFnLangItem as uint);
-    item_refs.insert(@~"borrow_as_mut", BorrowAsMutFnLangItem as uint);
-    item_refs.insert(@~"return_to_mut", ReturnToMutFnLangItem as uint);
-    item_refs.insert(@~"check_not_borrowed",
+    item_refs.insert(@"exchange_malloc", ExchangeMallocFnLangItem as uint);
+    item_refs.insert(@"exchange_free", ExchangeFreeFnLangItem as uint);
+    item_refs.insert(@"malloc", MallocFnLangItem as uint);
+    item_refs.insert(@"free", FreeFnLangItem as uint);
+    item_refs.insert(@"borrow_as_imm", BorrowAsImmFnLangItem as uint);
+    item_refs.insert(@"borrow_as_mut", BorrowAsMutFnLangItem as uint);
+    item_refs.insert(@"return_to_mut", ReturnToMutFnLangItem as uint);
+    item_refs.insert(@"check_not_borrowed",
                      CheckNotBorrowedFnLangItem as uint);
-    item_refs.insert(@~"strdup_uniq", StrDupUniqFnLangItem as uint);
-    item_refs.insert(@~"record_borrow", RecordBorrowFnLangItem as uint);
-    item_refs.insert(@~"unrecord_borrow", UnrecordBorrowFnLangItem as uint);
-    item_refs.insert(@~"start", StartFnLangItem as uint);
+    item_refs.insert(@"strdup_uniq", StrDupUniqFnLangItem as uint);
+    item_refs.insert(@"record_borrow", RecordBorrowFnLangItem as uint);
+    item_refs.insert(@"unrecord_borrow", UnrecordBorrowFnLangItem as uint);
+    item_refs.insert(@"start", StartFnLangItem as uint);
 
     LanguageItemCollector {
         crate: crate,
@@ -328,7 +328,7 @@ struct LanguageItemCollector {
     crate: @crate,
     session: Session,
 
-    item_refs: HashMap<@~str, uint>,
+    item_refs: HashMap<@str, uint>,
 }
 
 impl LanguageItemCollector {
@@ -366,9 +366,9 @@ impl LanguageItemCollector {
 
     pub fn match_and_collect_item(&mut self,
                                   item_def_id: def_id,
-                                  key: @~str,
-                                  value: @~str) {
-        if *key != ~"lang" {
+                                  key: @str,
+                                  value: @str) {
+        if "lang" != key {
             return;    // Didn't match.
         }
 
@@ -419,7 +419,7 @@ impl LanguageItemCollector {
         for self.item_refs.each |&key, &item_ref| {
             match self.items.items[item_ref] {
                 None => {
-                    self.session.err(fmt!("no item found for `%s`", *key));
+                    self.session.err(fmt!("no item found for `%s`", key));
                 }
                 Some(_) => {
                     // OK.

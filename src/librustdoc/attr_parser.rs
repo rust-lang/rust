@@ -41,13 +41,13 @@ pub fn parse_crate(attrs: ~[ast::attribute]) -> CrateAttrs {
     let name = attr::last_meta_item_value_str_by_name(link_metas, "name");
 
     CrateAttrs {
-        name: name.map(|s| copy **s)
+        name: name.map(|s| s.to_owned())
     }
 }
 
 pub fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
     let doc_strs = do doc_metas(attrs).filter_mapped |meta| {
-        attr::get_meta_item_value_str(*meta).map(|s| copy **s)
+        attr::get_meta_item_value_str(*meta).map(|s| s.to_owned())
     };
     if doc_strs.is_empty() {
         None

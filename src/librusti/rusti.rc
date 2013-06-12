@@ -117,7 +117,7 @@ fn record(mut repl: Repl, blk: &ast::blk, intr: @token::ident_interner) -> Repl 
 
 /// Run an input string in a Repl, returning the new Repl.
 fn run(repl: Repl, input: ~str) -> Repl {
-    let binary = @copy repl.binary;
+    let binary = repl.binary.to_managed();
     let options = @session::options {
         crate_type: session::unknown_crate,
         binary: binary,
@@ -130,7 +130,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
     let head = include_str!("wrapper.rs").to_owned();
     let foot = fmt!("fn main() {\n%s\n%s\n\nprint({\n%s\n})\n}",
                     repl.view_items, repl.stmts, input);
-    let wrapped = driver::str_input(head + foot);
+    let wrapped = driver::str_input((head + foot).to_managed());
 
     debug!("inputting %s", head + foot);
 
@@ -186,7 +186,7 @@ fn run(repl: Repl, input: ~str) -> Repl {
 fn compile_crate(src_filename: ~str, binary: ~str) -> Option<bool> {
     match do task::try {
         let src_path = Path(src_filename);
-        let binary = @copy binary;
+        let binary = binary.to_managed();
         let options = @session::options {
             binary: binary,
             addl_lib_search_paths: @mut ~[os::getcwd()],

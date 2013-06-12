@@ -82,23 +82,23 @@ pub fn expand_meta_deriving(cx: @ExtCtxt,
                     meta_word(tname) => {
                         macro_rules! expand(($func:path) => ($func(cx, titem.span,
                                                                    titem, in_items)));
-                        match *tname {
-                            ~"Clone" => expand!(clone::expand_deriving_clone),
-                            ~"DeepClone" => expand!(clone::expand_deriving_deep_clone),
+                        match tname.as_slice() {
+                            "Clone" => expand!(clone::expand_deriving_clone),
+                            "DeepClone" => expand!(clone::expand_deriving_deep_clone),
 
-                            ~"IterBytes" => expand!(iter_bytes::expand_deriving_iter_bytes),
+                            "IterBytes" => expand!(iter_bytes::expand_deriving_iter_bytes),
 
-                            ~"Encodable" => expand!(encodable::expand_deriving_encodable),
-                            ~"Decodable" => expand!(decodable::expand_deriving_decodable),
+                            "Encodable" => expand!(encodable::expand_deriving_encodable),
+                            "Decodable" => expand!(decodable::expand_deriving_decodable),
 
-                            ~"Eq" => expand!(eq::expand_deriving_eq),
-                            ~"TotalEq" => expand!(totaleq::expand_deriving_totaleq),
-                            ~"Ord" => expand!(ord::expand_deriving_ord),
-                            ~"TotalOrd" => expand!(totalord::expand_deriving_totalord),
+                            "Eq" => expand!(eq::expand_deriving_eq),
+                            "TotalEq" => expand!(totaleq::expand_deriving_totaleq),
+                            "Ord" => expand!(ord::expand_deriving_ord),
+                            "TotalOrd" => expand!(totalord::expand_deriving_totalord),
 
-                            ~"Rand" => expand!(rand::expand_deriving_rand),
+                            "Rand" => expand!(rand::expand_deriving_rand),
 
-                            ~"ToStr" => expand!(to_str::expand_deriving_to_str),
+                            "ToStr" => expand!(to_str::expand_deriving_to_str),
 
                             ref tname => {
                                 cx.span_err(titem.span, fmt!("unknown \

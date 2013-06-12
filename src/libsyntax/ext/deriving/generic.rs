@@ -364,7 +364,7 @@ impl<'self> TraitDef<'self> {
         let doc_attr = cx.attribute(
             span,
             cx.meta_name_value(span,
-                               ~"doc", ast::lit_str(@~"Automatically derived.")));
+                               @"doc", ast::lit_str(@"Automatically derived.")));
         cx.item(
             span,
             ::parse::token::special_idents::clownshoes_extensions,

@@ -119,7 +119,7 @@ struct LintSpec {
     default: level
 }
 
-pub type LintDict = HashMap<~str, LintSpec>;
+pub type LintDict = HashMap<&'static str, LintSpec>;
 
 enum AttributedNode<'self> {
     Item(@ast::item),
@@ -290,7 +290,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
 pub fn get_lint_dict() -> LintDict {
     let mut map = HashMap::new();
     for lint_table.each|&(k, v)| {
-        map.insert(k.to_str(), v);
+        map.insert(k, v);
     }
     return map;
 }
@@ -352,10 +352,10 @@ impl Context {
         }
     }
 
-    fn lint_to_str(&self, lint: lint) -> ~str {
+    fn lint_to_str(&self, lint: lint) -> &'static str {
         for self.dict.each |k, v| {
             if v.lint == lint {
-                return copy *k;
+                return *k;
             }
         }
         fail!("unregistered lint %?", lint);
@@ -405,13 +405,13 @@ impl Context {
         // specified closure
         let mut pushed = 0u;
         for each_lint(self.tcx.sess, attrs) |meta, level, lintname| {
-            let lint = match self.dict.find(lintname) {
+            let lint = match self.dict.find_equiv(&lintname) {
               None => {
                 self.span_lint(
                     unrecognized_lint,
                     meta.span,
                     fmt!("unknown `%s` attribute: `%s`",
-                         level_to_str(level), *lintname));
+                         level_to_str(level), lintname));
                 loop
               }
               Some(lint) => { lint.lint }
@@ -422,7 +422,7 @@ impl Context {
                 self.tcx.sess.span_err(meta.span,
                     fmt!("%s(%s) overruled by outer forbid(%s)",
                          level_to_str(level),
-                         *lintname, *lintname));
+                         lintname, lintname));
                 loop;
             }
 
@@ -498,7 +498,7 @@ impl Context {
 
 pub fn each_lint(sess: session::Session,
                  attrs: &[ast::attribute],
-                 f: &fn(@ast::meta_item, level, &~str) -> bool) -> bool
+                 f: &fn(@ast::meta_item, level, @str) -> bool) -> bool
 {
     for [allow, warn, deny, forbid].each |&level| {
         let level_name = level_to_str(level);
