@@ -31,7 +31,9 @@ trait map<T> {
 impl<T> map<T> for ~[T] {
     fn map<U:Copy>(&self, f: &fn(&T) -> U) -> ~[U] {
         let mut r = ~[];
-        for self.each |x| { r += ~[f(x)]; }
+        for self.each |x| {
+            r.push(f(x))
+        }
         r
     }
 }

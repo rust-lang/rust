@@ -229,7 +229,7 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
         };
 
         // Decrease the deccumulator one digit at a time
-        deccum /= radix_gen;
+        deccum = deccum / radix_gen;
         deccum = deccum.round_to_zero();
 
         buf.push(char::from_digit(current_digit.to_int() as uint, radix)
@@ -282,7 +282,7 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
               )
         ) {
             // Shift first fractional digit into the integer part
-            deccum *= radix_gen;
+            deccum = deccum * radix_gen;
 
             // Calculate the absolute value of each digit.
             // See note in first loop.
@@ -511,13 +511,13 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
         match char::to_digit(c, radix) {
             Some(digit) => {
                 // shift accum one digit left
-                accum *= radix_gen;
+                accum = accum * radix_gen;
 
                 // add/subtract current digit depending on sign
                 if accum_positive {
-                    accum += cast(digit as int);
+                    accum = accum + cast(digit as int);
                 } else {
-                    accum -= cast(digit as int);
+                    accum = accum - cast(digit as int);
                 }
 
                 // Detect overflow by comparing to last value, except
@@ -556,15 +556,15 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
             match char::to_digit(c, radix) {
                 Some(digit) => {
                     // Decrease power one order of magnitude
-                    power /= radix_gen;
+                    power = power / radix_gen;
 
                     let digit_t: T = cast(digit);
 
                     // add/subtract current digit depending on sign
                     if accum_positive {
-                        accum += digit_t * power;
+                        accum = accum + digit_t * power;
                     } else {
-                        accum -= digit_t * power;
+                        accum = accum - digit_t * power;
                     }
 
                     // Detect overflow by comparing to last value

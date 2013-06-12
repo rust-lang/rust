@@ -24,6 +24,7 @@
 use container::Container;
 use old_iter::BaseIter;
 use rt::io::Writer;
+use str::OwnedStr;
 use to_bytes::IterBytes;
 use uint;
 
@@ -368,7 +369,7 @@ impl Streaming for SipState {
         let r = self.result_bytes();
         let mut s = ~"";
         for r.each |b| {
-            s += uint::to_str_radix(*b as uint, 16u);
+            s.push_str(uint::to_str_radix(*b as uint, 16u));
         }
         s
     }
@@ -470,7 +471,7 @@ mod tests {
         fn to_hex_str(r: &[u8, ..8]) -> ~str {
             let mut s = ~"";
             for (*r).each |b| {
-                s += uint::to_str_radix(*b as uint, 16u);
+                s.push_str(uint::to_str_radix(*b as uint, 16u));
             }
             s
         }
@@ -491,7 +492,7 @@ mod tests {
 
             assert!(f == i && f == v);
 
-            buf += [t as u8];
+            buf.push(t as u8);
             stream_inc.input([t as u8]);
 
             t += 1;
