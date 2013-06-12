@@ -26,6 +26,11 @@ use rt::local::Local;
 use rt::rtio::RemoteCallback;
 use rt::metrics::SchedMetrics;
 
+//use to_str::ToStr;
+
+/// To allow for using pointers as scheduler ids
+use ptr::{to_uint};
+
 /// The Scheduler is responsible for coordinating execution of Coroutines
 /// on a single thread. When the scheduler is running it is owned by
 /// thread local storage and the running task is owned by the
@@ -70,7 +75,8 @@ pub struct Scheduler {
 
 pub struct SchedHandle {
     priv remote: ~RemoteCallbackObject,
-    priv queue: MessageQueue<SchedMessage>
+    priv queue: MessageQueue<SchedMessage>,
+    sched_id: uint
 }
 
 pub struct Coroutine {
@@ -81,12 +87,37 @@ pub struct Coroutine {
     /// the task is dead
     priv saved_context: Context,
     /// The heap, GC, unwinding, local storage, logging
+    task: ~Task,
+    /// The scheduler that this task calls home
+    home_sched: SchedHome
+}
+
+// To send a Coroutine to another task we have to use contained home
+// information (the SchedHandle). So we need a form that doesn't
+// include one.
+
+// XXX perf: Evaluate this structure - there should be a clever way to
+// make it such that we don't need to deal with building/destructing
+// on Coroutines that aren't homed.
+
+pub struct HomelessCoroutine {
+    priv current_stack_segment: StackSegment,
+    priv saved_context: Context,
     task: ~Task
+}
+   
+// A scheduler home is either a handle to the home scheduler, or an
+// explicit "AnySched".
+        
+pub enum SchedHome {
+    AnySched,
+    Sched(SchedHandle)
 }
 
 pub enum SchedMessage {
     Wake,
-    Shutdown
+    Shutdown,
+    BiasedTask(~HomelessCoroutine)
 }
 
 enum CleanupJob {
@@ -95,6 +126,8 @@ enum CleanupJob {
 }
 
 pub impl Scheduler {
+
+    pub fn sched_id(&self) -> uint { to_uint(self) }
 
     fn in_task_context(&self) -> bool { self.current_task.is_some() }
 
@@ -151,7 +184,8 @@ pub impl Scheduler {
         // XXX: Reenable this once we're using a per-task queue. With a shared
         // queue this is not true
         //assert!(sched.work_queue.is_empty());
-        rtdebug!("scheduler metrics: %s\n", sched.metrics.to_str());
+//        let out = sched.metrics.to_str();
+//        rtdebug!("scheduler metrics: %s\n", out);
         return sched;
     }
 
@@ -209,34 +243,121 @@ pub impl Scheduler {
 
         return SchedHandle {
             remote: remote,
-            queue: self.message_queue.clone()
+            queue: self.message_queue.clone(),
+            sched_id: self.sched_id()
         };
     }
 
     /// Schedule a task to be executed later.
     ///
-    /// Pushes the task onto the work stealing queue and tells the event loop
-    /// to run it later. Always use this instead of pushing to the work queue
-    /// directly.
-    fn enqueue_task(&mut self, task: ~Coroutine) {
-        self.work_queue.push(task);
-        self.event_loop.callback(Scheduler::run_sched_once);
+    /// Pushes the task onto the work stealing queue and tells the
+    /// event loop to run it later. Always use this instead of pushing
+    /// to the work queue directly.
 
-        // We've made work available. Notify a sleeping scheduler.
-        // XXX: perf. Check for a sleeper without synchronizing memory.
-        // It's not critical that we always find it.
-        // XXX: perf. If there's a sleeper then we might as well just send
-        // it the task directly instead of pushing it to the
-        // queue. That is essentially the intent here and it is less
-        // work.
-        match self.sleeper_list.pop() {
-            Some(handle) => {
-                let mut handle = handle;
-                handle.send(Wake)
+    fn enqueue_task(&mut self, mut task: ~Coroutine) {
+
+        // We don't want to queue tasks that belong on other threads,
+        // so we send them home at enqueue time.
+        
+        // The borrow checker doesn't like our disassembly of the
+        // Coroutine struct and partial use and mutation of the
+        // fields. So completely disassemble here and stop using?
+
+        // XXX perf: I think we might be able to shuffle this code to
+        // only destruct when we need to.
+
+        rtdebug!("a task was queued on: %u", self.sched_id());
+
+        let this = self;
+
+        match task {
+            ~Coroutine { current_stack_segment: css,
+                         saved_context: sc,
+                         task: t,
+                         home_sched: home_sched } => {
+                
+                let mut home_sched = home_sched;
+
+                match home_sched {
+                    Sched(ref mut home_handle) 
+                      if home_handle.sched_id != this.sched_id() => {
+
+                          // In this branch we know the task is not
+                          // home, so we send it home.
+
+                        rtdebug!("home_handle_id: %u, loc: %u", 
+                                 home_handle.sched_id,
+                                 this.sched_id());
+                            let homeless = ~HomelessCoroutine {
+                                current_stack_segment: css,
+                                saved_context: sc,
+                                task: t
+                            };
+                            home_handle.send(BiasedTask(homeless));
+                            rtdebug!("sent task home");
+                        return ();
+                    }
+                    Sched( ref mut home_handle) => {
+
+                        // Here we know the task is home, so we need
+                        // to "keep" it home. Since we don't have a
+                        // scheduler-local queue for this purpose, we
+                        // just use our message queue.
+
+                        rtdebug!("homed task at home, sending to self");
+                        let homeless = ~HomelessCoroutine {
+                            current_stack_segment: css,
+                            saved_context: sc,
+                            task: t
+                        };
+                        home_handle.send(BiasedTask(homeless));
+                        rtdebug!("sent home to self");
+                        return ();
+                         
+                    }                    
+                    _ => {
+                        
+                        // We just destroyed our Coroutine ... but now
+                        // we want it back. Build a new one?  
+                        // XXX: perf: see above comment about not
+                        // destroying
+
+                        let task = ~Coroutine {
+                            current_stack_segment: css,
+                            saved_context: sc,
+                            task: t,
+                            home_sched: AnySched };
+
+                        
+                        // We push the task onto our local queue.
+                        this.work_queue.push(task);
+                        this.event_loop.callback(Scheduler::run_sched_once);
+
+                        // We've made work available. Notify a
+                        // sleeping scheduler.
+                        
+                        // XXX: perf. Check for a sleeper without
+                        // synchronizing memory.  It's not critical
+                        // that we always find it.
+                        
+                        // XXX: perf. If there's a sleeper then we
+                        // might as well just send it the task
+                        // directly instead of pushing it to the
+                        // queue. That is essentially the intent here
+                        // and it is less work.
+                        match this.sleeper_list.pop() {
+                            Some(handle) => {
+                                let mut handle = handle;
+                                handle.send(Wake)
+                            }
+                            None => { (/* pass */) }
+                        };
+                    }
+                }
             }
-            None => (/* pass */)
         }
     }
+
 
     // * Scheduler-context operations
 
@@ -247,6 +368,27 @@ pub impl Scheduler {
 
         let mut this = self;
         match this.message_queue.pop() {
+            Some(BiasedTask(~HomelessCoroutine { 
+                current_stack_segment: css,
+                saved_context: sc,
+                task: t})) => {
+                rtdebug!("recv BiasedTask message in sched: %u",
+                         this.sched_id());
+            
+                // Since this was the "send home" message for a task,
+                // we know that this is the home. So we rebuild the
+                // sched_handle.
+                
+                let task = ~Coroutine {
+                    current_stack_segment: css,
+                    saved_context: sc,
+                    task: t,
+                    home_sched: Sched(this.make_handle())
+                };
+                this.resume_task_immediately(task);
+                return true;
+            }
+
             Some(Wake) => {
                 rtdebug!("recv Wake message");
                 this.sleepy = false;
@@ -256,8 +398,9 @@ pub impl Scheduler {
             Some(Shutdown) => {
                 rtdebug!("recv Shutdown message");
                 if this.sleepy {
-                    // There may be an outstanding handle on the sleeper list.
-                    // Pop them all to make sure that's not the case.
+                    // There may be an outstanding handle on the
+                    // sleeper list.  Pop them all to make sure that's
+                    // not the case.
                     loop {
                         match this.sleeper_list.pop() {
                             Some(handle) => {
@@ -268,8 +411,8 @@ pub impl Scheduler {
                         }
                     }
                 }
-                // No more sleeping. After there are no outstanding event loop
-                // references we will shut down.
+                // No more sleeping. After there are no outstanding
+                // event loop references we will shut down.
                 this.no_sleep = true;
                 this.sleepy = false;
                 Local::put(this);
@@ -515,16 +658,39 @@ impl SchedHandle {
 }
 
 pub impl Coroutine {
+
+
+    /// This function checks that a coroutine is running "home". 
+    fn am_home(&self) -> bool {
+        do Local::borrow::<Scheduler,bool> |sched| {
+            match self.home_sched {
+                AnySched => { true }
+                Sched(SchedHandle { sched_id: ref id, _ }) => {
+                    *id == sched.sched_id()
+                }
+            }
+        }
+    }                                      
+    
+    // Created new variants of "new" that takes a home scheduler
+    // parameter. The original with_task now calls with_task_homed
+    // using the AnySched paramter.
+
+    fn new_homed(stack_pool: &mut StackPool, home: SchedHome, start: ~fn()) -> Coroutine {
+        Coroutine::with_task_homed(stack_pool, ~Task::new(), start, home)
+    }
+
     fn new(stack_pool: &mut StackPool, start: ~fn()) -> Coroutine {
         Coroutine::with_task(stack_pool, ~Task::new(), start)
     }
 
-    fn with_task(stack_pool: &mut StackPool,
-                  task: ~Task,
-                  start: ~fn()) -> Coroutine {
-
+    fn with_task_homed(stack_pool: &mut StackPool,
+                       task: ~Task,
+                       start: ~fn(),
+                       home: SchedHome) -> Coroutine {
+        
         static MIN_STACK_SIZE: uint = 10000000; // XXX: Too much stack
-
+        
         let start = Coroutine::build_start_wrapper(start);
         let mut stack = stack_pool.take_segment(MIN_STACK_SIZE);
         // NB: Context holds a pointer to that ~fn
@@ -532,8 +698,18 @@ pub impl Coroutine {
         return Coroutine {
             current_stack_segment: stack,
             saved_context: initial_context,
-            task: task
+            task: task,
+            home_sched: home
         };
+    }
+
+    fn with_task(stack_pool: &mut StackPool,
+                 task: ~Task,
+                 start: ~fn()) -> Coroutine {
+        Coroutine::with_task_homed(stack_pool,
+                                   task,
+                                   start,
+                                   AnySched)
     }
 
     priv fn build_start_wrapper(start: ~fn()) -> ~fn() {
@@ -549,17 +725,20 @@ pub impl Coroutine {
 
                 let sched = Local::unsafe_borrow::<Scheduler>();
                 let task = (*sched).current_task.get_mut_ref();
-                // FIXME #6141: shouldn't neet to put `start()` in another closure
+                // FIXME #6141: shouldn't neet to put `start()` in
+                // another closure
                 let start_cell = Cell(start_cell.take());
                 do task.task.run {
-                    // N.B. Removing `start` from the start wrapper closure
-                    // by emptying a cell is critical for correctness. The ~Task
-                    // pointer, and in turn the closure used to initialize the first
-                    // call frame, is destroyed in scheduler context, not task context.
-                    // So any captured closures must not contain user-definable dtors
-                    // that expect to be in task context. By moving `start` out of
-                    // the closure, all the user code goes out of scope while
-                    // the task is still running.
+                    // N.B. Removing `start` from the start wrapper
+                    // closure by emptying a cell is critical for
+                    // correctness. The ~Task pointer, and in turn the
+                    // closure used to initialize the first call
+                    // frame, is destroyed in scheduler context, not
+                    // task context.  So any captured closures must
+                    // not contain user-definable dtors that expect to
+                    // be in task context. By moving `start` out of
+                    // the closure, all the user code goes out of
+                    // scope while the task is still running.
                     let start = start_cell.take();
                     start();
                 };
@@ -603,6 +782,156 @@ mod test {
     use rt::test::*;
     use super::*;
     use rt::thread::Thread;
+    use ptr::to_uint;
+
+    // Confirm that a sched_id actually is the uint form of the
+    // pointer to the scheduler struct.
+
+    #[test]
+    fn simple_sched_id_test() {
+        do run_in_bare_thread {
+            let sched = ~new_test_uv_sched();
+            assert!(to_uint(sched) == sched.sched_id());
+        }
+    }
+
+    // Compare two scheduler ids that are different, this should never
+    // fail but may catch a mistake someday.
+
+    #[test]
+    fn compare_sched_id_test() {
+        do run_in_bare_thread {
+            let sched_one = ~new_test_uv_sched();
+            let sched_two = ~new_test_uv_sched();
+            assert!(sched_one.sched_id() != sched_two.sched_id());
+        }
+    }
+
+    // A simple test to check if a homed task run on a single
+    // scheduler ends up executing while home.
+
+    #[test]
+    fn test_home_sched() {
+        do run_in_bare_thread {
+            let mut task_ran = false;
+            let task_ran_ptr: *mut bool = &mut task_ran;
+            let mut sched = ~new_test_uv_sched();
+
+            let sched_handle = sched.make_handle();
+            let sched_id = sched.sched_id();
+            
+            let task = ~do Coroutine::new_homed(&mut sched.stack_pool,
+                                                Sched(sched_handle)) {
+                unsafe { *task_ran_ptr = true };
+                let sched = Local::take::<Scheduler>();
+                assert!(sched.sched_id() == sched_id);
+                Local::put::<Scheduler>(sched);
+            };
+            sched.enqueue_task(task);
+            sched.run();
+            assert!(task_ran);
+        }
+    }
+
+    // The following test is a bit of a mess, but it trys to do
+    // something tricky so I'm not sure how to get around this in the
+    // short term.
+
+    // A number of schedulers are created, and then a task is created
+    // and assigned a home scheduler. It is then "started" on a
+    // different scheduler. The scheduler it is started on should
+    // observe that the task is not home, and send it home.
+
+    // This test is light in that it does very little.
+                
+    #[test]
+    fn test_transfer_task_home() {        
+
+        use rt::uv::uvio::UvEventLoop;
+        use rt::sched::Shutdown;
+        use rt::sleeper_list::SleeperList;
+        use rt::work_queue::WorkQueue;
+        use uint;
+        use container::Container;
+        use old_iter::MutableIter;
+        use vec::OwnedVector;
+
+        do run_in_bare_thread {
+            
+            static N: uint = 8;
+            
+            let sleepers = SleeperList::new();
+            let work_queue = WorkQueue::new();
+            
+            let mut handles = ~[];
+            let mut scheds = ~[];
+            
+            for uint::range(0, N) |_| {
+                let loop_ = ~UvEventLoop::new();
+                let mut sched = ~Scheduler::new(loop_, 
+                                                work_queue.clone(),
+                                                sleepers.clone());
+                let handle = sched.make_handle();
+                rtdebug!("sched id: %u", handle.sched_id);
+                handles.push(handle);
+                scheds.push(sched);
+            };
+
+            let handles = Cell(handles);
+
+            let home_handle = scheds[6].make_handle();               
+            let home_id = home_handle.sched_id;
+            let home = Sched(home_handle);
+
+            let main_task = ~do Coroutine::new_homed(&mut scheds[1].stack_pool, home) {
+
+                // Here we check if the task is running on its home.
+                let sched = Local::take::<Scheduler>();
+                rtdebug!("run location scheduler id: %u, home: %u",
+                         sched.sched_id(),
+                         home_id);
+                assert!(sched.sched_id() == home_id);
+                Local::put::<Scheduler>(sched);                 
+
+                let mut handles = handles.take();
+                for handles.each_mut |handle| {
+                    handle.send(Shutdown);
+                }
+            };
+                
+            scheds[0].enqueue_task(main_task);
+            
+            let mut threads = ~[];
+            
+            while !scheds.is_empty() {
+                let sched = scheds.pop();
+                let sched_cell = Cell(sched);
+                let thread = do Thread::start {
+                    let sched = sched_cell.take();
+                    sched.run();
+                };
+                threads.push(thread);
+            }
+                
+            let _threads = threads;
+        }
+    }
+    
+    // The goal is that this is the high-stress test for making sure
+    // homing is working. It allocates 120*RUST_RT_STRESS tasks that
+    // do nothing but assert that they are home at execution
+    // time. These tasks are queued to random schedulers, so sometimes
+    // they are home and sometimes not. It also runs RUST_RT_STRESS
+    // times.
+
+    #[test]
+    fn test_stress_homed_tasks() {
+        let n = stress_factor();
+        for int::range(0,n as int) |_| {
+            run_in_mt_newsched_task_random_homed();
+        }
+    }
+            
 
     #[test]
     fn test_simple_scheduling() {
@@ -877,4 +1206,5 @@ mod test {
             }
         }        
     }
+
 }
