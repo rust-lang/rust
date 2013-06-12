@@ -192,7 +192,7 @@ impl<'self> LookupContext<'self> {
 
         // Prepare the list of candidates
         self.push_inherent_candidates(self_ty);
-        self.push_extension_candidates(self_ty);
+        self.push_extension_candidates();
 
         let mut enum_dids = ~[];
         let mut self_ty = self_ty;
@@ -326,7 +326,7 @@ impl<'self> LookupContext<'self> {
         }
     }
 
-    pub fn push_extension_candidates(&self, self_ty: ty::t) {
+    pub fn push_extension_candidates(&self) {
         // If the method being called is associated with a trait, then
         // find all the impls of that trait.  Each of those are
         // candidates.
@@ -343,17 +343,8 @@ impl<'self> LookupContext<'self> {
                     for impl_infos.each |impl_info| {
                         self.push_candidates_from_impl(
                             self.extension_candidates, *impl_info);
-                    }
-                }
 
-                // Look for default methods.
-                match self.tcx().provided_methods.find(trait_did) {
-                    Some(&methods) => {
-                        self.push_candidates_from_provided_methods(
-                            self.extension_candidates, self_ty, *trait_did,
-                            methods);
                     }
-                    None => {}
                 }
             }
         }
@@ -578,44 +569,6 @@ impl<'self> LookupContext<'self> {
             method_ty: method,
             origin: method_static(method.def_id)
         });
-    }
-
-    pub fn push_candidates_from_provided_methods(&self,
-                                                 candidates:
-                                                 &mut ~[Candidate],
-                                                 self_ty: ty::t,
-                                                 trait_def_id: def_id,
-                                                 methods:
-                                                 &mut ~[@ProvidedMethodInfo])
-                                                 {
-        debug!("(pushing candidates from provided methods) considering trait \
-                id %d:%d",
-               trait_def_id.crate,
-               trait_def_id.node);
-
-        for methods.each |provided_method_info| {
-            if provided_method_info.method_info.ident != self.m_name { loop; }
-
-            debug!("(pushing candidates from provided methods) adding \
-                    candidate");
-
-            let method = ty::method(self.tcx(),
-                                    provided_method_info.method_info.did);
-
-            // FIXME #4099 (?) Needs to support generics.
-            let dummy_substs = substs {
-                self_r: None,
-                self_ty: None,
-                tps: ~[]
-            };
-
-            candidates.push(Candidate {
-                rcvr_ty: self_ty,
-                rcvr_substs: dummy_substs,
-                method_ty: method,
-                origin: method_static(provided_method_info.method_info.did)
-            });
-        }
     }
 
     // ______________________________________________________________________

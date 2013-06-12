@@ -506,9 +506,11 @@ pub fn get_res_dtor(ccx: @CrateContext,
             did
         };
         assert_eq!(did.crate, ast::local_crate);
+        let tsubsts = ty::substs { self_r: None, self_ty: None,
+                                  tps: /*bad*/ substs.to_owned() };
         let (val, _) = monomorphize::monomorphic_fn(ccx,
                                                     did,
-                                                    substs,
+                                                    &tsubsts,
                                                     None,
                                                     None,
                                                     None);
