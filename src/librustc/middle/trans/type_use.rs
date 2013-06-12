@@ -33,7 +33,6 @@ use middle::trans::inline;
 use middle::ty;
 use middle::typeck;
 
-use core::iterator::IteratorUtil;
 use core::option::{Some, None};
 use core::uint;
 use core::vec;

@@ -17,7 +17,6 @@ use middle::trans::cabi::{ABIInfo, FnType, LLVMType};
 use middle::trans::common::{T_i8, T_i16, T_i32, T_i64};
 use middle::trans::common::{T_array, T_ptr, T_void};
 
-use core::iterator::IteratorUtil;
 use core::option::{Option, None, Some};
 use core::uint;
 

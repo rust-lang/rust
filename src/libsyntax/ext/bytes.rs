@@ -10,7 +10,6 @@
 
 /* The compiler code necessary to support the bytes! extension. */
 
-use core::iterator::IteratorUtil;
 use ast;
 use codemap::span;
 use ext::base::*;

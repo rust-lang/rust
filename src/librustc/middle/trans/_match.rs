@@ -172,7 +172,6 @@ use middle::trans::type_of;
 use middle::ty;
 use util::common::indenter;
 
-use core::iterator::IteratorUtil;
 use core::hashmap::HashMap;
 use core::vec;
 use syntax::ast;

@@ -13,7 +13,6 @@ use core::prelude::*;
 use common::config;
 use common;
 
-use core::iterator::IteratorUtil;
 use core::io;
 use core::os;
 

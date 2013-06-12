@@ -1,4 +1,3 @@
-use std::iterator::IteratorUtil;
 use std::f64;
 use std::from_str::FromStr;
 use std::os;

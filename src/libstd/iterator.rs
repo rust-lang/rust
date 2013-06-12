@@ -45,8 +45,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [0];
     /// let b = [1];
     /// let mut it = a.iter().chain_(b.iter());
@@ -64,8 +62,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [0];
     /// let b = [1];
     /// let mut it = a.iter().zip(b.iter());
@@ -82,8 +78,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2];
     /// let mut it = a.iter().transform(|&x| 2 * x);
     /// assert_eq!(it.next().get(), 2);
@@ -99,8 +93,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2];
     /// let mut it = a.iter().filter(|&x| *x > 1);
     /// assert_eq!(it.next().get(), &2);
@@ -115,8 +107,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2];
     /// let mut it = a.iter().filter_map(|&x| if x > 1 {Some(2 * x)} else {None});
     /// assert_eq!(it.next().get(), 4);
@@ -130,8 +120,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [100, 200];
     /// let mut it = a.iter().enumerate();
     /// assert_eq!(it.next().get(), (0, &100));
@@ -147,8 +135,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2, 3, 2, 1];
     /// let mut it = a.iter().skip_while(|&a| *a < 3);
     /// assert_eq!(it.next().get(), &3);
@@ -165,8 +151,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2, 3, 2, 1];
     /// let mut it = a.iter().take_while(|&a| *a < 3);
     /// assert_eq!(it.next().get(), &1);
@@ -181,8 +165,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().skip(3);
     /// assert_eq!(it.next().get(), &4);
@@ -198,8 +180,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().take_(3);
     /// assert_eq!(it.next().get(), &1);
@@ -217,8 +197,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().scan(1, |fac, &x| {
     ///   *fac = *fac * x;
@@ -239,6 +217,8 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
+    /// use std::iterator::Counter;
+    ///
     /// for Counter::new(0, 10).advance |i| {
     ///     io::println(fmt!("%d", i));
     /// }
@@ -251,8 +231,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2, 3, 4, 5];
     /// let b: ~[int] = a.iter().transform(|&x| x).collect();
     /// assert!(a == b);
@@ -265,8 +243,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
     /// assert!(it.nth(2).get() == &3);
@@ -280,8 +256,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().last().get() == &5);
     /// ~~~
@@ -294,8 +268,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().fold(0, |a, &b| a + b) == 15);
     /// ~~~
@@ -306,8 +278,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
     /// assert!(it.count() == 5);
@@ -320,8 +290,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().all(|&x| *x > 0));
     /// assert!(!a.iter().all(|&x| *x > 2));
@@ -334,8 +302,6 @@ pub trait IteratorUtil<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
     /// assert!(it.any_(|&x| *x == 3));
@@ -482,8 +448,6 @@ pub trait AdditiveIterator<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().transform(|&x| x);
     /// assert!(it.sum() == 15);
@@ -504,7 +468,7 @@ pub trait MultiplicativeIterator<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
+    /// use std::iterator::Counter;
     ///
     /// fn factorial(n: uint) -> uint {
     ///     Counter::new(1u, 1).take_while(|&i| i <= n).product()
@@ -529,8 +493,6 @@ pub trait OrdIterator<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().max().get() == &5);
     /// ~~~
@@ -541,8 +503,6 @@ pub trait OrdIterator<A> {
     /// # Example
     ///
     /// ~~~ {.rust}
-    /// use std::iterator::*;
-    ///
     /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().min().get() == &1);
     /// ~~~

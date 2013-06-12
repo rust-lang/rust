@@ -10,7 +10,6 @@
 
 extern mod extra;
 
-use std::iterator::IteratorUtil;
 use std::str;
 use std::vec;
 

@@ -14,7 +14,6 @@
 
 extern mod extra;
 
-use std::iterator::IteratorUtil;
 use std::io::ReaderUtil;
 use std::io;
 use std::str;

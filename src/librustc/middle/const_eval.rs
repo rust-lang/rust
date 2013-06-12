@@ -18,7 +18,6 @@ use middle;
 use syntax::{ast, ast_map, ast_util, visit};
 use syntax::ast::*;
 
-use core::iterator::IteratorUtil;
 use core::float;
 use core::hashmap::{HashMap, HashSet};
 use core::vec;

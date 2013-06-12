@@ -30,7 +30,6 @@ extern mod rusti;
 extern mod rustc;
 
 use core::prelude::*;
-use core::iterator::IteratorUtil;
 
 use core::io;
 use core::os;
