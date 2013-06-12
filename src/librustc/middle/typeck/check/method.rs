@@ -541,6 +541,10 @@ impl<'self> LookupContext<'self> {
         if !self.impl_dups.insert(impl_info.did) {
             return; // already visited
         }
+        debug!("push_candidates_from_impl: %s %s %s",
+               self.m_name.repr(self.tcx()),
+               impl_info.ident.repr(self.tcx()),
+               impl_info.methods.map(|m| m.ident).repr(self.tcx()));
 
         let idx = {
             match impl_info.methods.position(|m| m.ident == self.m_name) {
