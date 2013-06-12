@@ -372,7 +372,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
 pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
     let default_visitor = visit::default_visitor();
     @Visitor{
-        visit_pat : |p:@ast::pat,ident_accum:@mut ~[ast::ident],v:visit::vt<@mut ~[ast::ident]>| {
+        visit_pat : |p:@ast::pat,(ident_accum, v): (@mut ~[ast::ident], visit::vt<@mut ~[ast::ident]>)| {
             match *p {
                 // we found a pat_ident!
                 ast::pat{id:_, node: ast::pat_ident(_,path,ref inner), span:_} => {
@@ -385,11 +385,11 @@ pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
                     }
                     // visit optional subpattern of pat_ident:
                     for inner.iter().advance |subpat: &@ast::pat| {
-                        (v.visit_pat)(*subpat, ident_accum, v)
+                        (v.visit_pat)(*subpat, (ident_accum, v))
                     }
                 }
                 // use the default traversal for non-pat_idents
-                _ => visit::visit_pat(p,ident_accum,v)
+                _ => visit::visit_pat(p,(ident_accum,v))
             }
         },
         .. *default_visitor

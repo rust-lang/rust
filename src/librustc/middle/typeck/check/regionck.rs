@@ -140,7 +140,7 @@ pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::expr) {
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
         let v = regionck_visitor();
-        (v.visit_expr)(e, rcx, v);
+        (v.visit_expr)(e, (rcx, v));
     }
     fcx.infcx().resolve_regions();
 }
@@ -150,7 +150,7 @@ pub fn regionck_fn(fcx: @mut FnCtxt, blk: &ast::blk) {
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
         let v = regionck_visitor();
-        (v.visit_block)(blk, rcx, v);
+        (v.visit_block)(blk, (rcx, v));
     }
     fcx.infcx().resolve_regions();
 }
@@ -174,28 +174,28 @@ fn regionck_visitor() -> rvt {
                                   .. *visit::default_visitor()})
 }
 
-fn visit_item(_item: @ast::item, _rcx: @mut Rcx, _v: rvt) {
+fn visit_item(_item: @ast::item, (_rcx, _v): (@mut Rcx, rvt)) {
     // Ignore items
 }
 
-fn visit_block(b: &ast::blk, rcx: @mut Rcx, v: rvt) {
+fn visit_block(b: &ast::blk, (rcx, v): (@mut Rcx, rvt)) {
     rcx.fcx.tcx().region_maps.record_cleanup_scope(b.node.id);
-    visit::visit_block(b, rcx, v);
+    visit::visit_block(b, (rcx, v));
 }
 
-fn visit_arm(arm: &ast::arm, rcx: @mut Rcx, v: rvt) {
+fn visit_arm(arm: &ast::arm, (rcx, v): (@mut Rcx, rvt)) {
     // see above
     for arm.pats.each |&p| {
         constrain_bindings_in_pat(p, rcx);
     }
 
-    visit::visit_arm(arm, rcx, v);
+    visit::visit_arm(arm, (rcx, v));
 }
 
-fn visit_local(l: @ast::local, rcx: @mut Rcx, v: rvt) {
+fn visit_local(l: @ast::local, (rcx, v): (@mut Rcx, rvt)) {
     // see above
     constrain_bindings_in_pat(l.node.pat, rcx);
-    visit::visit_local(l, rcx, v);
+    visit::visit_local(l, (rcx, v));
 }
 
 fn constrain_bindings_in_pat(pat: @ast::pat, rcx: @mut Rcx) {
@@ -230,7 +230,7 @@ fn constrain_bindings_in_pat(pat: @ast::pat, rcx: @mut Rcx) {
     }
 }
 
-fn visit_expr(expr: @ast::expr, rcx: @mut Rcx, v: rvt) {
+fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
     debug!("regionck::visit_expr(e=%s)", rcx.fcx.expr_to_str(expr));
 
     let has_method_map = rcx.fcx.inh.method_map.contains_key(&expr.id);
@@ -404,7 +404,7 @@ fn visit_expr(expr: @ast::expr, rcx: @mut Rcx, v: rvt) {
         _ => ()
     }
 
-    visit::visit_expr(expr, rcx, v);
+    visit::visit_expr(expr, (rcx, v));
 }
 
 fn constrain_callee(rcx: @mut Rcx,
