@@ -1226,11 +1226,25 @@ impl Resolver {
                 // the same module that declared the type.
 
                 // Bail out early if there are no static methods.
+                let mut methods_seen = HashMap::new();
                 let mut has_static_methods = false;
                 for methods.each |method| {
                     match method.explicit_self.node {
                         sty_static => has_static_methods = true,
-                        _ => {}
+                        _ => {
+                            // Make sure you can't define duplicate methods
+                            let ident = method.ident;
+                            let span = method.span;
+                            let old_sp = methods_seen.find_or_insert(ident, span);
+                            if *old_sp != span {
+                                self.session.span_err(span,
+                                                      fmt!("duplicate definition of method `%s`",
+                                                           *self.session.str_of(ident)));
+                                self.session.span_note(*old_sp,
+                                                       fmt!("first definition of method `%s` here",
+                                                            *self.session.str_of(ident)));
+                            }
+                        }
                     }
                 }
 
@@ -1333,7 +1347,7 @@ impl Resolver {
                 }
 
                 // Add the names of all the methods to the trait info.
-                let mut method_names = HashSet::new();
+                let mut method_names = HashMap::new();
                 for methods.each |method| {
                     let ty_m = trait_method_to_ty_method(method);
 
@@ -1357,13 +1371,22 @@ impl Resolver {
                                                               ty_m.span);
                         }
                         _ => {
-                            method_names.insert(ident);
+                            // Make sure you can't define duplicate methods
+                            let old_sp = method_names.find_or_insert(ident, ty_m.span);
+                            if *old_sp != ty_m.span {
+                                self.session.span_err(ty_m.span,
+                                                      fmt!("duplicate definition of method `%s`",
+                                                           *self.session.str_of(ident)));
+                                self.session.span_note(*old_sp,
+                                                       fmt!("first definition of method `%s` here",
+                                                            *self.session.str_of(ident)));
+                            }
                         }
                     }
                 }
 
                 let def_id = local_def(item.id);
-                for method_names.each |name| {
+                for method_names.each |name, _| {
                     if !self.method_map.contains_key(name) {
                         self.method_map.insert(*name, HashSet::new());
                     }
