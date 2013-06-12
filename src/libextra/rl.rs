@@ -77,8 +77,7 @@ pub unsafe fn complete(cb: CompletionCb) {
 
     extern fn callback(line: *c_char, completions: *()) {
         unsafe {
-            let cb = *local_data::local_data_get(complete_key)
-                .get();
+            let cb = *local_data::local_data_get(complete_key).get();
 
             do cb(str::raw::from_c_str(line)) |suggestion| {
                 do str::as_c_str(suggestion) |buf| {

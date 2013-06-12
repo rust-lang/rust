@@ -89,7 +89,7 @@ fn scan<R>(st: &mut PState, is_last: &fn(char) -> bool,
     }
     let end_pos = st.pos;
     st.pos += 1;
-    return op(st.data.slice(start_pos, end_pos));
+    op(st.data.slice(start_pos, end_pos))
 }
 
 pub fn parse_ident(st: &mut PState, last: char) -> ast::ident {
@@ -409,7 +409,9 @@ fn parse_mt(st: &mut PState, conv: conv_did) -> ty::mt {
 
 fn parse_def(st: &mut PState, source: DefIdSource,
              conv: conv_did) -> ast::def_id {
-    return conv(source, scan(st, |c| { c == '|' }, parse_def_id));
+    do scan(st, |c| { c == '|' }) |v| {
+        conv(source, parse_def_id(v))
+    }
 }
 
 fn parse_uint(st: &mut PState) -> uint {

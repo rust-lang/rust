@@ -185,8 +185,8 @@ impl PkgSrc {
             && self.tests.is_empty() && self.benchs.is_empty() {
 
             note("Couldn't infer any crates to build.\n\
-                         Try naming a crate `main.rs`, `lib.rs`, \
-                         `test.rs`, or `bench.rs`.");
+                  Try naming a crate `main.rs`, `lib.rs`, \
+                  `test.rs`, or `bench.rs`.");
             cond.raise(copy self.id);
         }
 
