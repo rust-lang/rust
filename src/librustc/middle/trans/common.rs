@@ -223,7 +223,6 @@ pub struct CrateContext {
      tydesc_type: TypeRef,
      int_type: TypeRef,
      float_type: TypeRef,
-     task_type: TypeRef,
      opaque_vec_type: TypeRef,
      builder: BuilderRef_res,
      shape_cx: shape::Ctxt,
@@ -952,28 +951,6 @@ pub fn T_empty_struct() -> TypeRef { return T_struct([], false); }
 // they are described by this opaque type.
 pub fn T_vtable() -> TypeRef { T_array(T_ptr(T_i8()), 1u) }
 
-pub fn T_task(targ_cfg: @session::config) -> TypeRef {
-    let t = T_named_struct("task");
-
-    // Refcount
-    // Delegate pointer
-    // Stack segment pointer
-    // Runtime SP
-    // Rust SP
-    // GC chain
-
-
-    // Domain pointer
-    // Crate cache pointer
-
-    let t_int = T_int(targ_cfg);
-    let elems =
-        ~[t_int, t_int, t_int, t_int,
-         t_int, t_int, t_int, t_int];
-    set_struct_body(t, elems, false);
-    return t;
-}
-
 pub fn T_tydesc_field(cx: @CrateContext, field: uint) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
 
@@ -1102,8 +1079,6 @@ pub fn T_chan(cx: @CrateContext, _t: TypeRef) -> TypeRef {
     return T_struct([cx.int_type], false); // Refcount
 
 }
-
-pub fn T_taskptr(cx: @CrateContext) -> TypeRef { return T_ptr(cx.task_type); }
 
 
 pub fn T_opaque_cbox_ptr(cx: @CrateContext) -> TypeRef {
