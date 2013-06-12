@@ -157,23 +157,43 @@ pub fn run_in_mt_newsched_task_random_homed() {
         let mut handles = ~[];
         let mut scheds = ~[];
 
-        for uint::range(0, nthreads) |_| {
+        // create a few special schedulers, those with even indicies
+        // will be pinned-only
+        for uint::range(0, nthreads) |i| {
+            let special = (i % 2) == 0;
             let loop_ = ~UvEventLoop::new();
-            let mut sched = ~Scheduler::new(loop_, work_queue.clone(), sleepers.clone());
+            let mut sched = ~Scheduler::new_special(loop_, work_queue.clone(), sleepers.clone(), special);
             let handle = sched.make_handle();
             handles.push(handle);
             scheds.push(sched);
-        }
+        }           
 
         // Schedule a pile o tasks
-        let n = 120*stress_factor();        
+        let n = 5*stress_factor();        
         for uint::range(0,n) |_i| {
                 rtdebug!("creating task: %u", _i);
                 let hf: ~fn() = || { assert!(true) };
                 spawntask_homed(&mut scheds, hf);            
             }
 
-        let f: ~fn() = || { assert!(true); };
+        // Now we want another pile o tasks that do not ever run on a
+        // special scheduler, because they are normal tasks. Because
+        // we can we put these in the "main" task.
+
+        let n = 5*stress_factor();
+
+        let f: ~fn() = || {        
+            for uint::range(0,n) |_| {
+                let f: ~fn()  = || {                                 
+                    // Borrow the scheduler we run on and check if it is
+                    // privliged.
+                    do Local::borrow::<Scheduler,()> |sched| {
+                        assert!(sched.run_anything);
+                    };
+                };
+                spawntask_random(f);
+            };
+        };
         
         let f_cell = Cell(f);
         let handles = Cell(handles);
