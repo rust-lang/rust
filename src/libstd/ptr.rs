@@ -69,7 +69,7 @@ pub fn is_null<T>(ptr: *const T) -> bool { ptr == null() }
 pub fn is_not_null<T>(ptr: *const T) -> bool { !is_null(ptr) }
 
 /**
- * Copies data from one location to another
+ * Copies data from one location to another.
  *
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
  * and destination may overlap.
@@ -83,7 +83,7 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
 }
 
 /**
- * Copies data from one location to another
+ * Copies data from one location to another.
  *
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
  * and destination may overlap.
@@ -95,6 +95,12 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     memmove32(dst, src as *T, count as u32);
 }
 
+/**
+ * Copies data from one location to another.
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may overlap.
+ */
 #[inline(always)]
 #[cfg(target_word_size = "64", stage0)]
 pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
@@ -104,7 +110,7 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
 }
 
 /**
- * Copies data from one location to another
+ * Copies data from one location to another.
  *
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
  * and destination may overlap.
@@ -116,6 +122,12 @@ pub unsafe fn copy_memory<T>(dst: *mut T, src: *const T, count: uint) {
     memmove64(dst, src as *T, count as u64);
 }
 
+/**
+ * Copies data from one location to another.
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may *not* overlap.
+ */
 #[inline(always)]
 #[cfg(target_word_size = "32", stage0)]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
@@ -125,11 +137,10 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
 }
 
 /**
- * Copies data from one location to another. This uses memcpy instead of memmove
- * to take advantage of the knowledge that the memory does not overlap.
+ * Copies data from one location to another.
  *
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
- * and destination may overlap.
+ * and destination may *not* overlap.
  */
 #[inline(always)]
 #[cfg(target_word_size = "32", not(stage0))]
@@ -138,6 +149,12 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
     memcpy32(dst, src as *T, count as u32);
 }
 
+/**
+ * Copies data from one location to another.
+ *
+ * Copies `count` elements (not bytes) from `src` to `dst`. The source
+ * and destination may *not* overlap.
+ */
 #[inline(always)]
 #[cfg(target_word_size = "64", stage0)]
 pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint) {
@@ -147,11 +164,10 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
 }
 
 /**
- * Copies data from one location to another. This uses memcpy instead of memmove
- * to take advantage of the knowledge that the memory does not overlap.
+ * Copies data from one location to another.
  *
  * Copies `count` elements (not bytes) from `src` to `dst`. The source
- * and destination may overlap.
+ * and destination may *not* overlap.
  */
 #[inline(always)]
 #[cfg(target_word_size = "64", not(stage0))]
@@ -161,8 +177,8 @@ pub unsafe fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: u
 }
 
 /**
- * Invokes memset on the specified pointer, setting `count` bytes of memory
- * starting at `dst` to `c`.
+ * Invokes memset on the specified pointer, setting `count * size_of::<T>()`
+ * bytes of memory starting at `dst` to `c`.
  */
 #[inline(always)]
 #[cfg(target_word_size = "32", not(stage0))]
@@ -172,8 +188,8 @@ pub unsafe fn set_memory<T>(dst: *mut T, c: u8, count: uint) {
 }
 
 /**
- * Invokes memset on the specified pointer, setting `count` bytes of memory
- * starting at `dst` to `c`.
+ * Invokes memset on the specified pointer, setting `count * size_of::<T>()`
+ * bytes of memory starting at `dst` to `c`.
  */
 #[inline(always)]
 #[cfg(target_word_size = "64", not(stage0))]
