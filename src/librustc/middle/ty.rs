@@ -2120,7 +2120,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                     TC_NONE,
                     |tc, f| tc + tc_mt(cx, f.mt, cache));
                 if ty::has_dtor(cx, did) {
-                    res += TC_DTOR;
+                    res = res + TC_DTOR;
                 }
                 apply_tc_attr(cx, did, res)
             }
@@ -2205,10 +2205,10 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
 
     fn apply_tc_attr(cx: ctxt, did: def_id, mut tc: TypeContents) -> TypeContents {
         if has_attr(cx, did, "mutable") {
-            tc += TC_MUTABLE;
+            tc = tc + TC_MUTABLE;
         }
         if has_attr(cx, did, "non_sendable") {
-            tc += TC_NON_SENDABLE;
+            tc = tc + TC_NON_SENDABLE;
         }
         tc
     }

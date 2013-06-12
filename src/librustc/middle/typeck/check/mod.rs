@@ -213,6 +213,13 @@ impl PurityState {
     }
 }
 
+/// Whether `check_binop` allows overloaded operators to be invoked.
+#[deriving(Eq)]
+enum AllowOverloadedOperatorsFlag {
+    AllowOverloadedOperators,
+    DontAllowOverloadedOperators,
+}
+
 pub struct FnCtxt {
     // Number of errors that had been reported when we started
     // checking this function. On exit, if we find that *more* errors
@@ -1487,7 +1494,8 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                    lhs: @ast::expr,
                    rhs: @ast::expr,
                    // Used only in the error case
-                   expected_result: Option<ty::t>
+                   expected_result: Option<ty::t>,
+                   allow_overloaded_operators: AllowOverloadedOperatorsFlag
                   ) {
         let tcx = fcx.ccx.tcx;
 
@@ -1537,8 +1545,30 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
 
         }
 
-        let result_t = check_user_binop(fcx, callee_id, expr, lhs, lhs_t, op, rhs,
-                                       expected_result);
+        // Check for overloaded operators if allowed.
+        let result_t;
+        if allow_overloaded_operators == AllowOverloadedOperators {
+            result_t = check_user_binop(fcx,
+                                        callee_id,
+                                        expr,
+                                        lhs,
+                                        lhs_t,
+                                        op,
+                                        rhs,
+                                        expected_result);
+        } else {
+            fcx.type_error_message(expr.span,
+                                   |actual| {
+                                        fmt!("binary operation %s cannot be \
+                                              applied to type `%s`",
+                                             ast_util::binop_to_str(op),
+                                             actual)
+                                   },
+                                   lhs_t,
+                                   None);
+            result_t = ty::mk_err();
+        }
+
         fcx.write_ty(expr.id, result_t);
         if ty::type_is_error(result_t) {
             fcx.write_ty(rhs.id, result_t);
@@ -2229,7 +2259,15 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         fcx.write_ty(id, typ);
       }
       ast::expr_binary(callee_id, op, lhs, rhs) => {
-        check_binop(fcx, callee_id, expr, op, lhs, rhs, expected);
+        check_binop(fcx,
+                    callee_id,
+                    expr,
+                    op,
+                    lhs,
+                    rhs,
+                    expected,
+                    AllowOverloadedOperators);
+
         let lhs_ty = fcx.expr_ty(lhs);
         let rhs_ty = fcx.expr_ty(rhs);
         if ty::type_is_error(lhs_ty) ||
@@ -2242,7 +2280,15 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
         }
       }
       ast::expr_assign_op(callee_id, op, lhs, rhs) => {
-        check_binop(fcx, callee_id, expr, op, lhs, rhs, expected);
+        check_binop(fcx,
+                    callee_id,
+                    expr,
+                    op,
+                    lhs,
+                    rhs,
+                    expected,
+                    DontAllowOverloadedOperators);
+
         let lhs_t = fcx.expr_ty(lhs);
         let result_t = fcx.expr_ty(expr);
         demand::suptype(fcx, expr.span, result_t, lhs_t);

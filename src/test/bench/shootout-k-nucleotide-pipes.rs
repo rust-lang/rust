@@ -70,7 +70,7 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
            let b = str::raw::from_bytes(k);
            // FIXME: #4318 Instead of to_ascii and to_str_ascii, could use
            // to_ascii_consume and to_str_consume to not do a unnecessary copy.
-           buffer += (fmt!("%s %0.3f\n", b.to_ascii().to_upper().to_str_ascii(), v));
+           buffer.push_str(fmt!("%s %0.3f\n", b.to_ascii().to_upper().to_str_ascii(), v));
        }
    }
 

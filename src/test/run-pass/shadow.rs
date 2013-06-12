@@ -19,7 +19,7 @@ fn foo(c: ~[int]) {
             for c.iter().advance |i| {
                 debug!(a);
                 let a = 17;
-                b += ~[a];
+                b.push(a);
             }
         }
         _ => { }

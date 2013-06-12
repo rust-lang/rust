@@ -2091,8 +2091,12 @@ impl Resolver {
         let mut first = true;
         let mut result = ~"";
         for idents.iter().advance |ident| {
-            if first { first = false; } else { result += "::" };
-            result += self.session.str_of(*ident);
+            if first {
+                first = false
+            } else {
+                result.push_str("::")
+            }
+            result.push_str(*self.session.str_of(*ident));
         };
         return result;
     }

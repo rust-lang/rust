@@ -13,7 +13,9 @@ extern mod extra;
 
 use std::vec;
 
-fn grow(v: &mut ~[int]) { *v += ~[1]; }
+fn grow(v: &mut ~[int]) {
+    v.push(1);
+}
 
 pub fn main() {
     let mut v: ~[int] = ~[];
