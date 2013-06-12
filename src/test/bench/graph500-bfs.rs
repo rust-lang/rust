@@ -148,27 +148,27 @@ mod par {
         xs: &[A],
         fn_factory: &fn() -> ~fn(uint, &A) -> bool) -> bool
     {
-        do vec::all(map_slices(xs, || {
+        let mapped = map_slices(xs, || {
             let f = fn_factory();
             let result: ~fn(uint, &[A]) -> bool = |base, slice| {
-                vec::alli(slice, |i, x| {
-                    f(i + base, x)
-                })
+                slice.iter().enumerate().all(|(i, x)| f(i + base, x))
             };
             result
-        })) |x| { *x }
+        });
+        mapped.iter().all(|&x| x)
     }
 
     /// Returns true if the function holds for any elements in the vector.
     pub fn any<A:Copy + Owned>(
         xs: &[A],
         fn_factory: &fn() -> ~fn(&A) -> bool) -> bool {
-        do vec::any(map_slices(xs, || {
+        let mapped = map_slices(xs, || {
             let f = fn_factory();
             let result: ~fn(uint, &[A]) -> bool =
-                |_, slice| vec::any(slice, |x| f(x));
+                |_, slice| slice.iter().any(f);
             result
-        })) |x| { *x }
+        });
+        mapped.iter().any(|&x| x)
     }
 }
 
