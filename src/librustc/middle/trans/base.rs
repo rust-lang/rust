@@ -114,7 +114,7 @@ impl get_insn_ctxt for @CrateContext {
     fn insn_ctxt(&self, s: &str) -> icx_popper {
         debug!("new insn_ctxt: %s", s);
         if self.sess.count_llvm_insns() {
-            self.stats.llvm_insn_ctxt.push(str::to_owned(s));
+            self.stats.llvm_insn_ctxt.push(s.to_owned());
         }
         icx_popper(*self)
     }

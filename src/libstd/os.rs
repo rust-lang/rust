@@ -1448,9 +1448,9 @@ mod tests {
     use rand::RngUtil;
     use rand;
     use run;
-    use str;
     use str::StrSlice;
     use vec;
+    use vec::CopyableVector;
     use libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 
 
@@ -1684,7 +1684,7 @@ mod tests {
           };
           assert!((ostream as uint != 0u));
           let s = ~"hello";
-          let mut buf = str::to_bytes(s) + [0 as u8];
+          let mut buf = s.as_bytes_with_null().to_owned();
           do vec::as_mut_buf(buf) |b, _len| {
               assert!((libc::fwrite(b as *c_void, 1u as size_t,
                                    (s.len() + 1u) as size_t, ostream)

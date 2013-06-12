@@ -21,24 +21,24 @@ pub fn main() {
     let schs: ~[char] = s.iter().collect();
 
     assert!(s.len() == 10u);
-    assert!(str::char_len(s) == 4u);
+    assert!(s.char_len() == 4u);
     assert!(schs.len() == 4u);
     assert!(str::from_chars(schs) == s);
     assert!(s.char_at(0u) == 'e');
     assert!(s.char_at(1u) == 'é');
 
-    assert!((str::is_utf8(str::to_bytes(s))));
+    assert!((str::is_utf8(s.as_bytes())));
     assert!((!str::is_utf8(~[0x80_u8])));
     assert!((!str::is_utf8(~[0xc0_u8])));
     assert!((!str::is_utf8(~[0xc0_u8, 0x10_u8])));
 
     let mut stack = ~"a×c€";
-    assert_eq!(str::pop_char(&mut stack), '€');
-    assert_eq!(str::pop_char(&mut stack), 'c');
+    assert_eq!(stack.pop_char(), '€');
+    assert_eq!(stack.pop_char(), 'c');
     stack.push_char('u');
     assert!(stack == ~"a×u");
-    assert_eq!(str::shift_char(&mut stack), 'a');
-    assert_eq!(str::shift_char(&mut stack), '×');
-    str::unshift_char(&mut stack, 'ß');
+    assert_eq!(stack.shift_char(), 'a');
+    assert_eq!(stack.shift_char(), '×');
+    stack.unshift_char('ß');
     assert!(stack == ~"ßu");
 }

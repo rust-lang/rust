@@ -1704,5 +1704,5 @@ fn trans_assign_op(bcx: block,
 }
 
 fn shorten(x: ~str) -> ~str {
-    if x.len() > 60 { x.substr(0, 60).to_owned() } else { x }
+    if x.char_len() > 60 { x.slice_chars(0, 60).to_owned() } else { x }
 }
