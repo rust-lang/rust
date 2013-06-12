@@ -21,7 +21,7 @@ pub fn load_errors(testfile: &Path) -> ~[ExpectedError] {
     let mut line_num = 1u;
     while !rdr.eof() {
         let ln = rdr.read_line();
-        error_patterns += parse_expected(line_num, ln);
+        error_patterns.push_all_move(parse_expected(line_num, ln));
         line_num += 1u;
     }
     return error_patterns;

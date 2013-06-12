@@ -50,8 +50,8 @@ fn show_color(cc: color) -> ~str {
 fn show_color_list(set: ~[color]) -> ~str {
     let mut out = ~"";
     for set.iter().advance |col| {
-        out += " ";
-        out += show_color(*col);
+        out.push_char(' ');
+        out.push_str(show_color(*col));
     }
     return out;
 }

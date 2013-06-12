@@ -192,10 +192,10 @@ impl Parser {
             );
         } else {
             let mut s: ~str = ~"expected `";
-            s += self.token_to_str(&token::GT);
-            s += "`, found `";
-            s += self.this_token_to_str();
-            s += "`";
+            s.push_str(self.token_to_str(&token::GT));
+            s.push_str("`, found `");
+            s.push_str(self.this_token_to_str());
+            s.push_str("`");
             self.fatal(s);
         }
     }

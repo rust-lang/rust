@@ -180,7 +180,7 @@ pub fn bump(rdr: &mut StringReader) {
         let byte_offset_diff = next.next - current_byte_offset;
         rdr.pos = rdr.pos + BytePos(byte_offset_diff);
         rdr.curr = next.ch;
-        rdr.col += CharPos(1u);
+        rdr.col = rdr.col + CharPos(1u);
         if last_char == '\n' {
             rdr.filemap.next_line(rdr.last_pos);
             rdr.col = CharPos(0u);
@@ -448,8 +448,8 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
         is_float = true;
         bump(rdr);
         let dec_part = scan_digits(rdr, 10u);
-        num_str += ".";
-        num_str += dec_part;
+        num_str.push_char('.');
+        num_str.push_str(dec_part);
     }
     if is_float {
         match base {
@@ -461,7 +461,7 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
     match scan_exponent(rdr) {
       Some(ref s) => {
         is_float = true;
-        num_str += (*s);
+        num_str.push_str(*s);
       }
       None => ()
     }

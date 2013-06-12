@@ -186,20 +186,18 @@ impl Arena {
     #[inline]
     fn alloc_pod_inner(&mut self, n_bytes: uint, align: uint) -> *u8 {
         unsafe {
-            // XXX: Borrow check
-            let head = transmute_mut_region(&mut self.pod_head);
-
-            let start = round_up_to(head.fill, align);
+            let this = transmute_mut_region(self);
+            let start = round_up_to(this.pod_head.fill, align);
             let end = start + n_bytes;
-            if end > at_vec::capacity(head.data) {
-                return self.alloc_pod_grow(n_bytes, align);
+            if end > at_vec::capacity(this.pod_head.data) {
+                return this.alloc_pod_grow(n_bytes, align);
             }
-            head.fill = end;
+            this.pod_head.fill = end;
 
             //debug!("idx = %u, size = %u, align = %u, fill = %u",
             //       start, n_bytes, align, head.fill);
 
-            ptr::offset(vec::raw::to_ptr(head.data), start)
+            ptr::offset(vec::raw::to_ptr(this.pod_head.data), start)
         }
     }
 
@@ -237,7 +235,7 @@ impl Arena {
             let after_tydesc = head.fill + sys::size_of::<*TyDesc>();
             let start = round_up_to(after_tydesc, align);
             let end = start + n_bytes;
-            if end > at_vec::capacity(head.data) {
+            if end > at_vec::capacity(self.head.data) {
                 return self.alloc_nonpod_grow(n_bytes, align);
             }
             head.fill = round_up_to(end, sys::pref_align_of::<*TyDesc>());
@@ -245,7 +243,7 @@ impl Arena {
             //debug!("idx = %u, size = %u, align = %u, fill = %u",
             //       start, n_bytes, align, head.fill);
 
-            let buf = vec::raw::to_ptr(head.data);
+            let buf = vec::raw::to_ptr(self.head.data);
             return (ptr::offset(buf, tydesc_start), ptr::offset(buf, start));
         }
     }
