@@ -52,7 +52,7 @@ pub fn modify_for_testing(sess: session::Session,
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
     let should_test = attr::contains(crate.node.config,
-                                     attr::mk_word_item(@~"test"));
+                                     attr::mk_word_item(@"test"));
 
     if should_test {
         generate_test_harness(sess, crate)
@@ -76,7 +76,7 @@ fn generate_test_harness(sess: session::Session,
     ext_cx.bt_push(ExpandedFrom(CallInfo {
         call_site: dummy_sp(),
         callee: NameAndSpan {
-            name: ~"test",
+            name: @"test",
             span: None
         }
     }));
@@ -111,7 +111,7 @@ fn fold_mod(cx: @mut TestCtxt,
     fn nomain(cx: @mut TestCtxt, item: @ast::item) -> @ast::item {
         if !*cx.sess.building_library {
             @ast::item{attrs: item.attrs.filtered(|attr| {
-                               *attr::get_attr_name(attr) != ~"main"
+                               "main" != attr::get_attr_name(attr)
                            }),.. copy *item}
         } else { item }
     }
@@ -272,9 +272,9 @@ mod __test {
 */
 
 fn mk_std(cx: &TestCtxt) -> @ast::view_item {
-    let vers = ast::lit_str(@~"0.7-pre");
+    let vers = ast::lit_str(@"0.7-pre");
     let vers = nospan(vers);
-    let mi = ast::meta_name_value(@~"vers", vers);
+    let mi = ast::meta_name_value(@"vers", vers);
     let mi = nospan(mi);
     let id_std = cx.sess.ident_of("extra");
     let vi = if is_std(cx) {
@@ -321,7 +321,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
 
     // This attribute tells resolve to let us call unexported functions
     let resolve_unexported_attr =
-        attr::mk_attr(attr::mk_word_item(@~"!resolve_unexported"));
+        attr::mk_attr(attr::mk_word_item(@"!resolve_unexported"));
 
     let item = ast::item {
         ident: cx.sess.ident_of("__test"),
@@ -376,7 +376,7 @@ fn is_std(cx: &TestCtxt) -> bool {
     let is_std = {
         let items = attr::find_linkage_metas(cx.crate.node.attrs);
         match attr::last_meta_item_value_str_by_name(items, "name") {
-          Some(@~"extra") => true,
+          Some(s) if "extra" == s => true,
           _ => false
         }
     };
@@ -413,7 +413,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::expr {
     debug!("encoding %s", ast_util::path_name_i(path));
 
     let name_lit: ast::lit =
-        nospan(ast::lit_str(@ast_util::path_name_i(path)));
+        nospan(ast::lit_str(ast_util::path_name_i(path).to_managed()));
 
     let name_expr = @ast::expr {
           id: cx.sess.next_node_id(),

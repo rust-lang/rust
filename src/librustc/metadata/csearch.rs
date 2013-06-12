@@ -74,7 +74,7 @@ pub fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {
     // FIXME #1920: This path is not always correct if the crate is not linked
     // into the root namespace.
     vec::append(~[ast_map::path_mod(tcx.sess.ident_of(
-        *cdata.name))], path)
+        cdata.name))], path)
 }
 
 pub enum found_ast {

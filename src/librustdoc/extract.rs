@@ -25,7 +25,7 @@ use syntax::parse::token;
 // thread-local data
 // Hack-Becomes-Feature: using thread-local-state everywhere...
 pub fn to_str(id: ast::ident) -> ~str {
-    return copy *ident_to_str(&id);
+    /* bad */ ident_to_str(&id).to_owned()
 }
 
 // get rid of this pointless function:

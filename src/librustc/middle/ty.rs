@@ -281,7 +281,7 @@ struct ctxt_ {
     tcache: type_cache,
     rcache: creader_cache,
     ccache: constness_cache,
-    short_names_cache: @mut HashMap<t, @~str>,
+    short_names_cache: @mut HashMap<t, @str>,
     needs_unwind_cleanup_cache: @mut HashMap<t, bool>,
     tc_cache: @mut HashMap<uint, TypeContents>,
     ast_ty_to_ty_cache: @mut HashMap<node_id, ast_ty_to_ty_cache_entry>,
@@ -3366,7 +3366,7 @@ pub fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field])
     for fields.each |f| { if f.ident == id { return i; } i += 1u; }
     tcx.sess.bug(fmt!(
         "No field named `%s` found in the list of fields `%?`",
-        *tcx.sess.str_of(id),
+        tcx.sess.str_of(id),
         fields.map(|f| tcx.sess.str_of(f.ident))));
 }
 
@@ -3514,8 +3514,8 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         terr_record_fields(values) => {
             fmt!("expected a record with field `%s` but found one with field \
                   `%s`",
-                 *cx.sess.str_of(values.expected),
-                 *cx.sess.str_of(values.found))
+                 cx.sess.str_of(values.expected),
+                 cx.sess.str_of(values.found))
         }
         terr_arg_count => ~"incorrect number of function parameters",
         terr_regions_does_not_outlive(*) => {
@@ -3549,7 +3549,7 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
                  trait_store_to_str(cx, (*values).found))
         }
         terr_in_field(err, fname) => {
-            fmt!("in field `%s`, %s", *cx.sess.str_of(fname),
+            fmt!("in field `%s`, %s", cx.sess.str_of(fname),
                  type_err_to_str(cx, err))
         }
         terr_sorts(values) => {

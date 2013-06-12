@@ -117,8 +117,8 @@ fn root(datum: &Datum,
     if bcx.sess().trace() {
         trans_trace(
             bcx, None,
-            @fmt!("preserving until end of scope %d",
-                  root_info.scope));
+            (fmt!("preserving until end of scope %d",
+                  root_info.scope)).to_managed());
     }
 
     // First, root the datum. Note that we must zero this value,

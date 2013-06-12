@@ -100,7 +100,7 @@ impl<'self> PkgScript<'self> {
     /// a PkgScript that we can then execute
     fn parse<'a>(script: Path, workspace: &Path, id: &'a PkgId) -> PkgScript<'a> {
         // Get the executable name that was invoked
-        let binary = @copy os::args()[0];
+        let binary = os::args()[0].to_managed();
         // Build the rustc session data structures to pass
         // to the compiler
         let options = @session::options {
@@ -145,7 +145,7 @@ impl<'self> PkgScript<'self> {
                 let root = r.pop().pop().pop().pop(); // :-\
                 debug!("Root is %s, calling compile_rest", root.to_str());
                 let exe = self.build_dir.push(~"pkg" + util::exe_suffix());
-                let binary = @copy os::args()[0];
+                let binary = os::args()[0].to_managed();
                 util::compile_crate_from_input(&self.input,
                                                &self.build_dir,
                                                sess,

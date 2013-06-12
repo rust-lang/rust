@@ -28,7 +28,7 @@ use core::iterator::IteratorUtil;
 
 pub fn path_name_i(idents: &[ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
-    idents.map(|i| copy *token::interner_get(i.name)).connect("::")
+    idents.map(|i| token::interner_get(i.name)).connect("::")
 }
 
 pub fn path_to_ident(p: @Path) -> ident { copy *p.idents.last() }
@@ -815,7 +815,7 @@ mod test {
         assert_eq!(copy s,~[14]);
     }
 
-    // convert a list of uints to an @~[ident]
+    // convert a list of uints to an @[ident]
     // (ignores the interner completely)
     fn uints_to_idents (uints: &~[uint]) -> @~[ident] {
         @uints.map(|u|{ ident {name:*u, ctxt: empty_ctxt} })

@@ -202,7 +202,7 @@ pub fn metas_in_cfg(cfg: ast::crate_cfg,
     cfg_metas.any(|cfg_meta| {
         cfg_meta.all(|cfg_mi| {
             match cfg_mi.node {
-                ast::meta_list(s, ref it) if *s == ~"not"
+                ast::meta_list(s, ref it) if "not" == s
                     => it.all(|mi| !attr::contains(cfg, *mi)),
                 _ => attr::contains(cfg, *cfg_mi)
             }

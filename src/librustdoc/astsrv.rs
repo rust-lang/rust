@@ -41,7 +41,7 @@ pub struct Ctxt {
 
 type SrvOwner<'self,T> = &'self fn(srv: Srv) -> T;
 pub type CtxtHandler<T> = ~fn(ctxt: Ctxt) -> T;
-type Parser = ~fn(Session, s: ~str) -> @ast::crate;
+type Parser = ~fn(Session, s: @str) -> @ast::crate;
 
 enum Msg {
     HandleRequest(~fn(Ctxt)),
@@ -68,7 +68,7 @@ fn run<T>(owner: SrvOwner<T>, source: ~str, parse: Parser) -> T {
     let source = Cell::new(source);
     let parse = Cell::new(parse);
     do task::spawn {
-        act(&po, source.take(), parse.take());
+        act(&po, source.take().to_managed(), parse.take());
     }
 
     let srv_ = Srv {
@@ -80,12 +80,12 @@ fn run<T>(owner: SrvOwner<T>, source: ~str, parse: Parser) -> T {
     res
 }
 
-fn act(po: &Port<Msg>, source: ~str, parse: Parser) {
+fn act(po: &Port<Msg>, source: @str, parse: Parser) {
     let sess = build_session();
 
     let ctxt = build_ctxt(
         sess,
-        parse(sess, copy source)
+        parse(sess, source)
     );
 
     let mut keep_going = true;

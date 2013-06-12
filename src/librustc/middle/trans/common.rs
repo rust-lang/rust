@@ -165,7 +165,7 @@ pub struct CrateContext {
      td: TargetData,
      tn: @TypeNames,
      externs: ExternMap,
-     intrinsics: HashMap<~str, ValueRef>,
+     intrinsics: HashMap<&'static str, ValueRef>,
      item_vals: @mut HashMap<ast::node_id, ValueRef>,
      exp_map2: resolve::ExportMap2,
      reachable: reachable::map,
@@ -173,7 +173,7 @@ pub struct CrateContext {
      link_meta: LinkMeta,
      enum_sizes: @mut HashMap<ty::t, uint>,
      discrims: @mut HashMap<ast::def_id, ValueRef>,
-     discrim_symbols: @mut HashMap<ast::node_id, @~str>,
+     discrim_symbols: @mut HashMap<ast::node_id, @str>,
      tydescs: @mut HashMap<ty::t, @mut tydesc_info>,
      // Set when running emit_tydescs to enforce that no more tydescs are
      // created.
@@ -188,7 +188,7 @@ pub struct CrateContext {
      // Cache generated vtables
      vtables: @mut HashMap<mono_id, ValueRef>,
      // Cache of constant strings,
-     const_cstr_cache: @mut HashMap<@~str, ValueRef>,
+     const_cstr_cache: @mut HashMap<@str, ValueRef>,
 
      // Reverse-direction for const ptrs cast from globals.
      // Key is an int, cast from a ValueRef holding a *T,
@@ -215,7 +215,7 @@ pub struct CrateContext {
      symbol_hasher: @mut hash::State,
      type_hashcodes: @mut HashMap<ty::t, @str>,
      type_short_names: @mut HashMap<ty::t, ~str>,
-     all_llvm_symbols: @mut HashSet<@~str>,
+     all_llvm_symbols: @mut HashSet<@str>,
      tcx: ty::ctxt,
      maps: astencode::Maps,
      stats: @mut Stats,
@@ -1176,14 +1176,14 @@ pub fn C_u8(i: uint) -> ValueRef {
 
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
-pub fn C_cstr(cx: @CrateContext, s: @~str) -> ValueRef {
+pub fn C_cstr(cx: @CrateContext, s: @str) -> ValueRef {
     unsafe {
         match cx.const_cstr_cache.find(&s) {
             Some(&llval) => return llval,
             None => ()
         }
 
-        let sc = do str::as_c_str(*s) |buf| {
+        let sc = do str::as_c_str(s) |buf| {
             llvm::LLVMConstStringInContext(cx.llcx, buf, s.len() as c_uint,
                                            False)
         };
@@ -1202,7 +1202,7 @@ pub fn C_cstr(cx: @CrateContext, s: @~str) -> ValueRef {
 
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
-pub fn C_estr_slice(cx: @CrateContext, s: @~str) -> ValueRef {
+pub fn C_estr_slice(cx: @CrateContext, s: @str) -> ValueRef {
     unsafe {
         let len = s.len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), T_ptr(T_i8()));
@@ -1441,7 +1441,7 @@ pub fn path_str(sess: session::Session, p: &[path_elt]) -> ~str {
             ast_map::path_name(s) | ast_map::path_mod(s) => {
                 if first { first = false; }
                 else { r += "::"; }
-                r += *sess.str_of(s);
+                r += sess.str_of(s);
             }
         }
     }
@@ -1564,7 +1564,7 @@ pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
 pub fn filename_and_line_num_from_span(bcx: block,
                                        span: span) -> (ValueRef, ValueRef) {
     let loc = bcx.sess().parse_sess.cm.lookup_char_pos(span.lo);
-    let filename_cstr = C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name);
+    let filename_cstr = C_cstr(bcx.ccx(), loc.file.name);
     let filename = build::PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
     let line = C_int(bcx.ccx(), loc.line as int);
     (filename, line)

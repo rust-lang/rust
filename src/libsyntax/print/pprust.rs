@@ -111,14 +111,14 @@ pub fn print_crate(cm: @CodeMap,
                    intr: @ident_interner,
                    span_diagnostic: @diagnostic::span_handler,
                    crate: @ast::crate,
-                   filename: ~str,
+                   filename: @str,
                    in: @io::Reader,
                    out: @io::Writer,
                    ann: pp_ann,
                    is_expanded: bool) {
     let (cmnts, lits) = comments::gather_comments_and_literals(
         span_diagnostic,
-        copy filename,
+        filename,
         in
     );
     let s = @ps {
@@ -860,7 +860,7 @@ pub fn print_attribute(s: @ps, attr: ast::attribute) {
     if attr.node.is_sugared_doc {
         let meta = attr::attr_meta(attr);
         let comment = attr::get_meta_item_value_str(meta).get();
-        word(s.s, *comment);
+        word(s.s, comment);
     } else {
         word(s.s, "#[");
         print_meta_item(s, attr.node.value);
@@ -1400,10 +1400,10 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
             word(s.s, "asm!");
         }
         popen(s);
-        print_string(s, *a.asm);
+        print_string(s, a.asm);
         word_space(s, ":");
         for a.outputs.each |&(co, o)| {
-            print_string(s, *co);
+            print_string(s, co);
             popen(s);
             print_expr(s, o);
             pclose(s);
@@ -1411,14 +1411,14 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
         }
         word_space(s, ":");
         for a.inputs.each |&(co, o)| {
-            print_string(s, *co);
+            print_string(s, co);
             popen(s);
             print_expr(s, o);
             pclose(s);
             word_space(s, ",");
         }
         word_space(s, ":");
-        print_string(s, *a.clobbers);
+        print_string(s, a.clobbers);
         pclose(s);
       }
       ast::expr_mac(ref m) => print_mac(s, m),
@@ -1474,7 +1474,7 @@ pub fn print_decl(s: @ps, decl: @ast::decl) {
 }
 
 pub fn print_ident(s: @ps, ident: ast::ident) {
-    word(s.s, *ident_to_str(&ident));
+    word(s.s, ident_to_str(&ident));
 }
 
 pub fn print_for_decl(s: @ps, loc: @ast::local, coll: @ast::expr) {
@@ -1776,14 +1776,14 @@ pub fn print_generics(s: @ps, generics: &ast::Generics) {
 pub fn print_meta_item(s: @ps, item: @ast::meta_item) {
     ibox(s, indent_unit);
     match item.node {
-      ast::meta_word(name) => word(s.s, *name),
+      ast::meta_word(name) => word(s.s, name),
       ast::meta_name_value(name, value) => {
-        word_space(s, *name);
+        word_space(s, name);
         word_space(s, "=");
         print_literal(s, @value);
       }
       ast::meta_list(name, ref items) => {
-        word(s.s, *name);
+        word(s.s, name);
         popen(s);
         commasep(
             s,
@@ -1995,7 +1995,7 @@ pub fn print_literal(s: @ps, lit: @ast::lit) {
       _ => ()
     }
     match lit.node {
-      ast::lit_str(st) => print_string(s, *st),
+      ast::lit_str(st) => print_string(s, st),
       ast::lit_int(ch, ast::ty_char) => {
         word(s.s, ~"'" + char::escape_default(ch as char) + "'");
       }
@@ -2023,9 +2023,9 @@ pub fn print_literal(s: @ps, lit: @ast::lit) {
         }
       }
       ast::lit_float(f, t) => {
-        word(s.s, *f + ast_util::float_ty_to_str(t));
+        word(s.s, f.to_owned() + ast_util::float_ty_to_str(t));
       }
-      ast::lit_float_unsuffixed(f) => word(s.s, *f),
+      ast::lit_float_unsuffixed(f) => word(s.s, f),
       ast::lit_nil => word(s.s, "()"),
       ast::lit_bool(val) => {
         if val { word(s.s, "true"); } else { word(s.s, "false"); }
@@ -2101,7 +2101,7 @@ pub fn print_comment(s: @ps, cmnt: &comments::cmnt) {
         // We need to do at least one, possibly two hardbreaks.
         let is_semi =
             match s.s.last_token() {
-              pp::STRING(s, _) => *s == ~";",
+              pp::STRING(s, _) => ";" == s,
               _ => false
             };
         if is_semi || is_begin(s) || is_end(s) { hardbreak(s.s); }

@@ -1699,7 +1699,7 @@ pub fn trans_match_inner(scope_cx: block,
             // Special case for empty types
             let fail_cx = @mut None;
             let f: mk_fail = || mk_fail(scope_cx, discr_expr.span,
-                            @~"scrutinizing value that can't exist", fail_cx);
+                            @"scrutinizing value that can't exist", fail_cx);
             Some(f)
         } else {
             None
@@ -1731,7 +1731,7 @@ pub fn trans_match_inner(scope_cx: block,
     bcx = controlflow::join_blocks(scope_cx, arm_cxs);
     return bcx;
 
-    fn mk_fail(bcx: block, sp: span, msg: @~str,
+    fn mk_fail(bcx: block, sp: span, msg: @str,
                finished: @mut Option<BasicBlockRef>) -> BasicBlockRef {
         match *finished { Some(bb) => return bb, _ => () }
         let fail_cx = sub_block(bcx, "case_fallthrough");

@@ -72,7 +72,7 @@ fn decodable_substructure(cx: @ExtCtxt, span: span,
             };
             let read_struct_field = cx.ident_of("read_struct_field");
 
-            let getarg = |name: ~str, field: uint| {
+            let getarg = |name: @str, field: uint| {
                 cx.expr_method_call(span, blkdecoder, read_struct_field,
                                     ~[cx.expr_str(span, name),
                                       cx.expr_uint(span, field),
@@ -86,7 +86,7 @@ fn decodable_substructure(cx: @ExtCtxt, span: span,
                     } else {
                         let mut fields = vec::with_capacity(n);
                         for uint::range(0, n) |i| {
-                            fields.push(getarg(fmt!("_field%u", i), i));
+                            fields.push(getarg(fmt!("_field%u", i).to_managed(), i));
                         }
                         cx.expr_call_ident(span, substr.type_ident, fields)
                     }
