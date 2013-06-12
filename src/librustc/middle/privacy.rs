@@ -38,8 +38,8 @@ use syntax::codemap::span;
 use syntax::parse::token;
 use syntax::visit;
 
-pub fn check_crate(tcx: ty::ctxt,
-                   method_map: &method_map,
+pub fn check_crate<'mm>(tcx: ty::ctxt,
+                   method_map: &'mm method_map,
                    crate: @ast::crate) {
     let privileged_items = @mut ~[];
 
@@ -357,24 +357,24 @@ pub fn check_crate(tcx: ty::ctxt,
     };
 
     let visitor = visit::mk_vt(@visit::Visitor {
-        visit_mod: |the_module, span, node_id, method_map, visitor| {
+        visit_mod: |the_module, span, node_id, (method_map, visitor)| {
             let n_added = add_privileged_items(the_module.items);
 
-            visit::visit_mod(the_module, span, node_id, method_map, visitor);
+            visit::visit_mod(the_module, span, node_id, (method_map, visitor));
 
             for n_added.times {
                 ignore(privileged_items.pop());
             }
         },
-        visit_item: |item, method_map, visitor| {
+        visit_item: |item, (method_map, visitor)| {
             // Do not check privacy inside items with the resolve_unexported
             // attribute. This is used for the test runner.
             if !attr::contains_name(attr::attr_metas(/*bad*/copy item.attrs),
                                     "!resolve_unexported") {
-                visit::visit_item(item, method_map, visitor);
+                visit::visit_item(item, (method_map, visitor));
             }
         },
-        visit_block: |block, method_map, visitor| {
+        visit_block: |block, (method_map, visitor)| {
             // Gather up all the privileged items.
             let mut n_added = 0;
             for block.node.stmts.each |stmt| {
@@ -391,13 +391,13 @@ pub fn check_crate(tcx: ty::ctxt,
                 }
             }
 
-            visit::visit_block(block, method_map, visitor);
+            visit::visit_block(block, (method_map, visitor));
 
             for n_added.times {
                 ignore(privileged_items.pop());
             }
         },
-        visit_expr: |expr, method_map: &method_map, visitor| {
+        visit_expr: |expr, (method_map, visitor): (&'mm method_map, visit::vt<&'mm method_map>)| {
             match expr.node {
                 expr_field(base, ident, _) => {
                     // Method calls are now a special syntactic form,
@@ -506,9 +506,9 @@ pub fn check_crate(tcx: ty::ctxt,
                 _ => {}
             }
 
-            visit::visit_expr(expr, method_map, visitor);
+            visit::visit_expr(expr, (method_map, visitor));
         },
-        visit_pat: |pattern, method_map, visitor| {
+        visit_pat: |pattern, (method_map, visitor)| {
             match pattern.node {
                 pat_struct(_, ref fields, _) => {
                     match ty::get(ty::pat_ty(tcx, pattern)).sty {
@@ -558,9 +558,9 @@ pub fn check_crate(tcx: ty::ctxt,
                 _ => {}
             }
 
-            visit::visit_pat(pattern, method_map, visitor);
+            visit::visit_pat(pattern, (method_map, visitor));
         },
         .. *visit::default_visitor()
     });
-    visit::visit_crate(crate, method_map, visitor);
+    visit::visit_crate(crate, (method_map, visitor));
 }

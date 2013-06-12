@@ -143,9 +143,9 @@ fn traverse_public_item(cx: @mut ctx, item: @item) {
         }
       }
       item_ty(t, _) => {
-        traverse_ty(t, cx,
-                    visit::mk_vt(@visit::Visitor {visit_ty: traverse_ty,
-                                                  ..*visit::default_visitor()}))
+        traverse_ty(t, (cx,
+                        visit::mk_vt(@visit::Visitor {visit_ty: traverse_ty,
+                                                      ..*visit::default_visitor()})))
       }
       item_const(*) |
       item_enum(*) | item_trait(*) => (),
@@ -153,7 +153,7 @@ fn traverse_public_item(cx: @mut ctx, item: @item) {
     }
 }
 
-fn traverse_ty<'a>(ty: @Ty, cx: @mut ctx<'a>, v: visit::vt<@mut ctx<'a>>) {
+fn traverse_ty<'a>(ty: @Ty, (cx, v): (@mut ctx<'a>, visit::vt<@mut ctx<'a>>)) {
     {
         let cx = &mut *cx; // FIXME(#6269) reborrow @mut to &mut
         if cx.rmap.contains(&ty.id) { return; }
@@ -170,16 +170,16 @@ fn traverse_ty<'a>(ty: @Ty, cx: @mut ctx<'a>, v: visit::vt<@mut ctx<'a>>) {
           None    => { /* do nothing -- but should we fail here? */ }
         }
         for p.types.each |t| {
-            (v.visit_ty)(*t, cx, v);
+            (v.visit_ty)(*t, (cx, v));
         }
       }
-      _ => visit::visit_ty(ty, cx, v)
+      _ => visit::visit_ty(ty, (cx, v))
     }
 }
 
 fn traverse_inline_body(cx: @mut ctx, body: &blk) {
-    fn traverse_expr<'a>(e: @expr, cx: @mut ctx<'a>,
-                         v: visit::vt<@mut ctx<'a>>) {
+    fn traverse_expr<'a>(e: @expr, (cx, v): (@mut ctx<'a>,
+                                             visit::vt<@mut ctx<'a>>)) {
         match e.node {
           expr_path(_) => {
             match cx.tcx.def_map.find(&e.id) {
@@ -210,19 +210,19 @@ fn traverse_inline_body(cx: @mut ctx, body: &blk) {
           }
           _ => ()
         }
-        visit::visit_expr(e, cx, v);
+        visit::visit_expr(e, (cx, v));
     }
     // Don't ignore nested items: for example if a generic fn contains a
     // generic impl (as in deque::create), we need to monomorphize the
     // impl as well
-    fn traverse_item(i: @item, cx: @mut ctx, _v: visit::vt<@mut ctx>) {
+    fn traverse_item(i: @item, (cx, _v): (@mut ctx, visit::vt<@mut ctx>)) {
       traverse_public_item(cx, i);
     }
-    visit::visit_block(body, cx, visit::mk_vt(@visit::Visitor {
+    visit::visit_block(body, (cx, visit::mk_vt(@visit::Visitor {
         visit_expr: traverse_expr,
         visit_item: traverse_item,
          ..*visit::default_visitor()
-    }));
+    })));
 }
 
 fn traverse_all_resources_and_impls(cx: @mut ctx, crate_mod: &_mod) {
@@ -230,11 +230,11 @@ fn traverse_all_resources_and_impls(cx: @mut ctx, crate_mod: &_mod) {
         crate_mod,
         codemap::dummy_sp(),
         0,
-        cx,
+        (cx,
         visit::mk_vt(@visit::Visitor {
-            visit_expr: |_e, _cx, _v| { },
-            visit_item: |i, cx, v| {
-                visit::visit_item(i, cx, v);
+            visit_expr: |_e, (_cx, _v)| { },
+            visit_item: |i, (cx, v)| {
+                visit::visit_item(i, (cx, v));
                 match i.node {
                     item_impl(*) => {
                         traverse_public_item(cx, i);
@@ -243,5 +243,5 @@ fn traverse_all_resources_and_impls(cx: @mut ctx, crate_mod: &_mod) {
                 }
             },
             ..*visit::default_visitor()
-        }));
+        })));
 }

@@ -78,7 +78,7 @@ pub fn check_crate(tcx: ty::ctxt,
         visit_block: check_block,
         .. *visit::default_visitor()
     });
-    visit::visit_crate(crate, ctx, visit);
+    visit::visit_crate(crate, (ctx, visit));
     tcx.sess.abort_if_errors();
 }
 
@@ -114,11 +114,11 @@ fn check_struct_safe_for_destructor(cx: Context,
     }
 }
 
-fn check_block(block: &blk, cx: Context, visitor: visit::vt<Context>) {
-    visit::visit_block(block, cx, visitor);
+fn check_block(block: &blk, (cx, visitor): (Context, visit::vt<Context>)) {
+    visit::visit_block(block, (cx, visitor));
 }
 
-fn check_item(item: @item, cx: Context, visitor: visit::vt<Context>) {
+fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
     // If this is a destructor, check kinds.
     if !attrs_contains_name(item.attrs, "unsafe_destructor") {
         match item.node {
@@ -157,7 +157,7 @@ fn check_item(item: @item, cx: Context, visitor: visit::vt<Context>) {
     }
 
     let cx = Context { current_item: item.id, ..cx };
-    visit::visit_item(item, cx, visitor);
+    visit::visit_item(item, (cx, visitor));
 }
 
 // Yields the appropriate function to check the kind of closed over
@@ -224,8 +224,8 @@ fn check_fn(
     body: &blk,
     sp: span,
     fn_id: node_id,
-    cx: Context,
-    v: visit::vt<Context>) {
+    (cx, v): (Context,
+              visit::vt<Context>)) {
 
     // Check kinds on free variables:
     do with_appropriate_checker(cx, fn_id) |chk| {
@@ -234,10 +234,10 @@ fn check_fn(
         }
     }
 
-    visit::visit_fn(fk, decl, body, sp, fn_id, cx, v);
+    visit::visit_fn(fk, decl, body, sp, fn_id, (cx, v));
 }
 
-pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
+pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
     debug!("kind::check_expr(%s)", expr_to_str(e, cx.tcx.sess.intr()));
 
     // Handle any kind bounds on type parameters
@@ -303,10 +303,10 @@ pub fn check_expr(e: @expr, cx: Context, v: visit::vt<Context>) {
         }
         _ => {}
     }
-    visit::visit_expr(e, cx, v);
+    visit::visit_expr(e, (cx, v));
 }
 
-fn check_ty(aty: @Ty, cx: Context, v: visit::vt<Context>) {
+fn check_ty(aty: @Ty, (cx, v): (Context, visit::vt<Context>)) {
     match aty.node {
       ty_path(_, id) => {
           let r = cx.tcx.node_type_substs.find(&id);
@@ -321,7 +321,7 @@ fn check_ty(aty: @Ty, cx: Context, v: visit::vt<Context>) {
       }
       _ => {}
     }
-    visit::visit_ty(aty, cx, v);
+    visit::visit_ty(aty, (cx, v));
 }
 
 pub fn check_bounds(cx: Context,
