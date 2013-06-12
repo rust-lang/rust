@@ -21,6 +21,7 @@ use middle::trans::cabi::*;
 
 use core::iterator::IteratorUtil;
 use core::libc::c_uint;
+use core::num;
 use core::option;
 use core::option::Option;
 use core::uint;
@@ -82,7 +83,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                     1
                   } else {
                     let str_tys = struct_tys(ty);
-                    str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
+                    str_tys.iter().fold(1, |a, t| num::max(a, ty_align(*t)))
                   }
                 }
                 Array => {

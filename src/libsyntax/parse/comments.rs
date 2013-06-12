@@ -22,6 +22,7 @@ use parse::token::{get_ident_interner};
 
 use core::iterator::IteratorUtil;
 use core::io;
+use core::num;
 use core::str;
 use core::uint;
 
@@ -213,7 +214,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
     let len = s.len();
     // FIXME #3961: Doing bytewise comparison and slicing with CharPos
     let col = col.to_uint();
-    let s1 = if all_whitespace(s, 0, uint::min(len, col)) {
+    let s1 = if all_whitespace(s, 0, num::min(len, col)) {
         if col < len {
             s.slice(col, len).to_owned()
         } else {  ~"" }

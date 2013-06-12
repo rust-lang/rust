@@ -21,7 +21,6 @@ use vec;
 use vec::{CopyableVector, ImmutableVector};
 use vec::OwnedVector;
 use num::{NumCast, Zero, One, cast, pow_with_uint};
-use f64;
 
 pub enum ExponentFormat {
     ExpNone,
@@ -93,8 +92,8 @@ macro_rules! impl_NumStrConv_Floating (($t:ty) => (
 
         #[inline(always)]
         fn round_to_zero(&self) -> $t {
-            ( if *self < 0.0 { f64::ceil(*self as f64)  }
-              else           { f64::floor(*self as f64) }
+            ( if *self < 0.0 { (*self as f64).ceil()  }
+              else           { (*self as f64).floor() }
             ) as $t
         }
 

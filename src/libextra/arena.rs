@@ -49,6 +49,8 @@ use core::uint;
 use core::vec;
 use core::unstable::intrinsics;
 
+use core::num;
+
 pub mod rustrt {
     use core::libc::size_t;
     use core::sys::TypeDesc;
@@ -171,7 +173,7 @@ impl Arena {
     fn alloc_pod_grow(&mut self, n_bytes: uint, align: uint) -> *u8 {
         // Allocate a new chunk.
         let chunk_size = at_vec::capacity(self.pod_head.data);
-        let new_min_chunk_size = uint::max(n_bytes, chunk_size);
+        let new_min_chunk_size = num::max(n_bytes, chunk_size);
         self.chunks = @mut MutCons(copy self.pod_head, self.chunks);
         self.pod_head =
             chunk(uint::next_power_of_two(new_min_chunk_size + 1u), true);
@@ -215,7 +217,7 @@ impl Arena {
                          -> (*u8, *u8) {
         // Allocate a new chunk.
         let chunk_size = at_vec::capacity(self.head.data);
-        let new_min_chunk_size = uint::max(n_bytes, chunk_size);
+        let new_min_chunk_size = num::max(n_bytes, chunk_size);
         self.chunks = @mut MutCons(copy self.head, self.chunks);
         self.head =
             chunk(uint::next_power_of_two(new_min_chunk_size + 1u), false);

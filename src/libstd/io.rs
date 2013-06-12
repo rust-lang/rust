@@ -56,6 +56,7 @@ use libc::consts::os::posix88::*;
 use os;
 use cast;
 use path::Path;
+use num;
 use ops::Drop;
 use old_iter::{BaseIter, CopyableIter};
 use ptr;
@@ -1049,7 +1050,7 @@ pub struct BytesReader<'self> {
 
 impl<'self> Reader for BytesReader<'self> {
     fn read(&self, bytes: &mut [u8], len: uint) -> uint {
-        let count = uint::min(len, self.bytes.len() - *self.pos);
+        let count = num::min(len, self.bytes.len() - *self.pos);
 
         let view = vec::slice(self.bytes, *self.pos, self.bytes.len());
         vec::bytes::copy_memory(bytes, view, count);
@@ -1650,7 +1651,7 @@ impl Writer for BytesWriter {
         let v_len = v.len();
 
         let bytes = &mut *self.bytes;
-        let count = uint::max(bytes.len(), *self.pos + v_len);
+        let count = num::max(bytes.len(), *self.pos + v_len);
         vec::reserve(bytes, count);
 
         unsafe {

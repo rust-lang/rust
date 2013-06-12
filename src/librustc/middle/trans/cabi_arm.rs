@@ -19,7 +19,7 @@ use middle::trans::common::{T_array, T_ptr, T_void};
 
 use core::iterator::IteratorUtil;
 use core::option::{Option, None, Some};
-use core::uint;
+use core::num;
 
 fn align_up_to(off: uint, a: uint) -> uint {
     return (off + a - 1u) / a * a;
@@ -44,7 +44,7 @@ fn ty_align(ty: TypeRef) -> uint {
                     1
                 } else {
                     let str_tys = struct_tys(ty);
-                    str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
+                    str_tys.iter().fold(1, |a, t| num::max(a, ty_align(*t)))
                 }
             }
             Array => {

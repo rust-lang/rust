@@ -567,6 +567,7 @@ pub mod node {
     use core::str;
     use core::uint;
     use core::vec;
+    use core::num;
 
     /// Implementation of type `rope`
     pub enum Root {
@@ -1045,7 +1046,7 @@ pub mod node {
             right: right,
             char_len: char_len(left) + char_len(right),
             byte_len: byte_len(left) + byte_len(right),
-            height: uint::max(height(left), height(right)) + 1u,
+            height: num::max(height(left), height(right)) + 1u,
         })
     }
 

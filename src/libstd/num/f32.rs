@@ -20,9 +20,7 @@ use to_str;
 
 pub use cmath::c_float_targ_consts::*;
 
-// An inner module is required to get the #[inline(always)] attribute on the
-// functions.
-pub use self::delegated::*;
+use self::delegated::*;
 
 macro_rules! delegate(
     (
@@ -34,6 +32,8 @@ macro_rules! delegate(
             ) -> $rv:ty = $bound_name:path
         ),*
     ) => (
+        // An inner module is required to get the #[inline(always)] attribute
+        // on the functions.
         mod delegated {
             use cmath::c_float_utils;
             use libc::{c_float, c_int};
@@ -114,50 +114,6 @@ pub static NaN: f32 = 0.0_f32/0.0_f32;
 pub static infinity: f32 = 1.0_f32/0.0_f32;
 
 pub static neg_infinity: f32 = -1.0_f32/0.0_f32;
-
-#[inline(always)]
-pub fn add(x: f32, y: f32) -> f32 { return x + y; }
-
-#[inline(always)]
-pub fn sub(x: f32, y: f32) -> f32 { return x - y; }
-
-#[inline(always)]
-pub fn mul(x: f32, y: f32) -> f32 { return x * y; }
-
-#[inline(always)]
-pub fn div(x: f32, y: f32) -> f32 { return x / y; }
-
-#[inline(always)]
-pub fn rem(x: f32, y: f32) -> f32 { return x % y; }
-
-#[inline(always)]
-pub fn lt(x: f32, y: f32) -> bool { return x < y; }
-
-#[inline(always)]
-pub fn le(x: f32, y: f32) -> bool { return x <= y; }
-
-#[inline(always)]
-pub fn eq(x: f32, y: f32) -> bool { return x == y; }
-
-#[inline(always)]
-pub fn ne(x: f32, y: f32) -> bool { return x != y; }
-
-#[inline(always)]
-pub fn ge(x: f32, y: f32) -> bool { return x >= y; }
-
-#[inline(always)]
-pub fn gt(x: f32, y: f32) -> bool { return x > y; }
-
-#[inline(always)]
-pub fn fmax(x: f32, y: f32) -> f32 {
-    if x >= y || y.is_NaN() { x } else { y }
-}
-
-#[inline(always)]
-pub fn fmin(x: f32, y: f32) -> f32 {
-    if x <= y || y.is_NaN() { x } else { y }
-}
-
 
 // FIXME (#1999): replace the predicates below with llvm intrinsics or
 // calls to the libmath macros in the rust runtime for performance.
@@ -250,13 +206,23 @@ impl Orderable for f32 {
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
     fn min(&self, other: &f32) -> f32 {
-        if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmin(*self, *other) }
+        cond!(
+            (self.is_NaN())  { *self  }
+            (other.is_NaN()) { *other }
+            (*self < *other) { *self  }
+            _                { *other }
+        )
     }
 
     /// Returns `NaN` if either of the numbers are `NaN`.
     #[inline(always)]
     fn max(&self, other: &f32) -> f32 {
-        if self.is_NaN() || other.is_NaN() { Float::NaN() } else { fmax(*self, *other) }
+        cond!(
+            (self.is_NaN())  { *self  }
+            (other.is_NaN()) { *other }
+            (*self > *other) { *self  }
+            _                { *other }
+        )
     }
 
     /// Returns the number constrained within the range `mn <= self <= mx`.

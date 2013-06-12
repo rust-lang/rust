@@ -476,6 +476,7 @@ pub mod rt {
     use str;
     use sys;
     use int;
+    use num;
     use uint;
     use vec;
     use option::{Some, None, Option};
@@ -501,7 +502,7 @@ pub mod rt {
     pub fn conv_int(cv: Conv, i: int, buf: &mut ~str) {
         let radix = 10;
         let prec = get_int_precision(cv);
-        let s : ~str = uint_to_str_prec(int::abs(i) as uint, radix, prec);
+        let s : ~str = uint_to_str_prec(num::abs(i) as uint, radix, prec);
 
         let head = if i >= 0 {
             if have_flag(cv.flags, flag_sign_always) {

@@ -23,6 +23,7 @@ use iterator::{Iterator, IteratorUtil};
 use iter::FromIter;
 use kinds::Copy;
 use libc;
+use num;
 use old_iter::CopyableIter;
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
@@ -1665,7 +1666,7 @@ impl<'self,T:Eq> Equiv<~[T]> for &'self [T] {
 // Lexicographical comparison
 
 fn cmp<T: TotalOrd>(a: &[T], b: &[T]) -> Ordering {
-    let low = uint::min(a.len(), b.len());
+    let low = num::min(a.len(), b.len());
 
     for uint::range(0, low) |idx| {
         match a[idx].cmp(&b[idx]) {
@@ -1698,7 +1699,7 @@ impl<T: TotalOrd> TotalOrd for @[T] {
 
 fn lt<T:Ord>(a: &[T], b: &[T]) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
-    let end = uint::min(a_len, b_len);
+    let end = num::min(a_len, b_len);
 
     let mut i = 0;
     while i < end {
@@ -2399,7 +2400,7 @@ pub mod raw {
 /// Operations on `[u8]`
 pub mod bytes {
     use libc;
-    use uint;
+    use num;
     use vec::raw;
     use vec;
 
@@ -2407,7 +2408,7 @@ pub mod bytes {
     pub fn memcmp(a: &~[u8], b: &~[u8]) -> int {
         let a_len = a.len();
         let b_len = b.len();
-        let n = uint::min(a_len, b_len) as libc::size_t;
+        let n = num::min(a_len, b_len) as libc::size_t;
         let r = unsafe {
             libc::memcmp(raw::to_ptr(*a) as *libc::c_void,
                          raw::to_ptr(*b) as *libc::c_void, n) as int

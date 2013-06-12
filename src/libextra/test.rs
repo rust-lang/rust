@@ -699,8 +699,7 @@ pub mod bench {
                     n = 1_000_000_000 / self.ns_per_iter();
                 }
 
-                n = u64::max(u64::min(n+n/2, 100*last), last+1);
-                n = round_up(n);
+                n = round_up((n + n/2).clamp(&(last + 1), &(100 * last)));
                 self.bench_n(n, f);
             }
         }

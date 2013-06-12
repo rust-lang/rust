@@ -15,7 +15,7 @@
 use core::prelude::*;
 
 use core::iterator::*;
-use core::uint;
+use core::num;
 use core::util::{swap, replace};
 
 // This is implemented as an AA tree, which is a simplified variation of
@@ -65,7 +65,7 @@ fn lt<K: Ord + TotalOrd, V>(a: &TreeMap<K, V>,
     let mut y = b.iter();
 
     let (a_len, b_len) = (a.len(), b.len());
-    for uint::min(a_len, b_len).times {
+    for num::min(a_len, b_len).times {
         let (key_a,_) = x.next().unwrap();
         let (key_b,_) = y.next().unwrap();
         if *key_a < *key_b { return true; }

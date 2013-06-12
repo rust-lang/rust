@@ -26,11 +26,11 @@ use syntax::{ast, attr};
 
 use core::cast;
 use core::io;
+use core::num;
 use core::option;
 use core::os::consts::{macos, freebsd, linux, android, win32};
 use core::ptr;
 use core::str;
-use core::uint;
 use core::vec;
 use extra::flate;
 
@@ -215,7 +215,7 @@ fn get_metadata_section(os: os,
                     let vlen = encoder::metadata_encoding_version.len();
                     debug!("checking %u bytes of metadata-version stamp",
                            vlen);
-                    let minsz = uint::min(vlen, csz);
+                    let minsz = num::min(vlen, csz);
                     let mut version_ok = false;
                     do vec::raw::buf_as_slice(cvbuf, minsz) |buf0| {
                         version_ok = (buf0 ==

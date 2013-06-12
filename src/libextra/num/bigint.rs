@@ -22,7 +22,7 @@ use core::prelude::*;
 use core::iterator::IteratorUtil;
 use core::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use core::int;
-use core::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable};
+use core::num::{IntConvertible, Zero, One, ToStrRadix, FromStrRadix, Orderable, min, max};
 use core::str;
 use core::uint;
 use core::vec;
@@ -205,7 +205,7 @@ impl Unsigned for BigUint {}
 impl Add<BigUint, BigUint> for BigUint {
 
     fn add(&self, other: &BigUint) -> BigUint {
-        let new_len = uint::max(self.data.len(), other.data.len());
+        let new_len = max(self.data.len(), other.data.len());
 
         let mut carry = 0;
         let sum = do vec::from_fn(new_len) |i| {
@@ -225,7 +225,7 @@ impl Add<BigUint, BigUint> for BigUint {
 impl Sub<BigUint, BigUint> for BigUint {
 
     fn sub(&self, other: &BigUint) -> BigUint {
-        let new_len = uint::max(self.data.len(), other.data.len());
+        let new_len = max(self.data.len(), other.data.len());
 
         let mut borrow = 0;
         let diff = do vec::from_fn(new_len) |i| {
@@ -261,7 +261,7 @@ impl Mul<BigUint, BigUint> for BigUint {
         // = a1*b1 * base^2 +
         //   (a1*b1 + a0*b0 - (a1-b0)*(b1-a0)) * base +
         //   a0*b0
-        let half_len = uint::max(s_len, o_len) / 2;
+        let half_len = max(s_len, o_len) / 2;
         let (sHi, sLo) = cut_at(self,  half_len);
         let (oHi, oLo) = cut_at(other, half_len);
 
@@ -298,7 +298,7 @@ impl Mul<BigUint, BigUint> for BigUint {
 
 
         fn cut_at(a: &BigUint, n: uint) -> (BigUint, BigUint) {
-            let mid = uint::min(a.data.len(), n);
+            let mid = min(a.data.len(), n);
             return (BigUint::from_slice(vec::slice(a.data, mid,
                                                    a.data.len())),
                     BigUint::from_slice(vec::slice(a.data, 0, mid)));
@@ -482,7 +482,7 @@ impl Integer for BigUint {
 impl IntConvertible for BigUint {
 
     fn to_int(&self) -> int {
-        uint::min(self.to_uint(), int::max_value as uint) as int
+        min(self.to_uint(), int::max_value as uint) as int
     }
 
 
@@ -578,7 +578,7 @@ impl BigUint {
         let mut n: BigUint      = Zero::zero();
         let mut power: BigUint  = One::one();
         loop {
-            let start = uint::max(end, unit_len) - unit_len;
+            let start = max(end, unit_len) - unit_len;
             match uint::parse_bytes(vec::slice(buf, start, end), radix) {
                 // FIXME(#6102): Assignment operator for BigInt causes ICE
                 // Some(d) => n += BigUint::from_uint(d) * power,
@@ -1053,9 +1053,9 @@ impl IntConvertible for BigInt {
 
     fn to_int(&self) -> int {
         match self.sign {
-            Plus  => uint::min(self.to_uint(), int::max_value as uint) as int,
+            Plus  => min(self.to_uint(), int::max_value as uint) as int,
             Zero  => 0,
-            Minus => uint::min((-self).to_uint(),
+            Minus => min((-self).to_uint(),
                                (int::max_value as uint) + 1) as int
         }
     }

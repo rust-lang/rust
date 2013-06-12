@@ -14,7 +14,6 @@ use core::prelude::*;
 
 use core::iterator::*;
 use core::vec;
-use core::f64;
 use core::cmp;
 use core::num;
 use sort;
@@ -82,7 +81,7 @@ impl<'self> Stats for &'self [f64] {
     }
 
     fn std_dev(self) -> f64 {
-        f64::sqrt(self.var())
+        num::sqrt(self.var())
     }
 
     fn std_dev_pct(self) -> f64 {

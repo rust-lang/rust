@@ -12,7 +12,7 @@
 
 use std::cmp;
 use std::container::{Container, Mutable, Map};
-use std::int;
+use std::num;
 use std::old_iter::BaseIter;
 use std::uint;
 
@@ -63,7 +63,7 @@ impl<T> Mutable for cat<T> {
 
 impl<T> Map<int, T> for cat<T> {
     fn each<'a>(&'a self, f: &fn(&int, &'a T) -> bool) -> bool {
-        let mut n = int::abs(self.meows);
+        let mut n = num::abs(self.meows);
         while n > 0 {
             if !f(&n, &self.name) { return false; }
             n -= 1;
