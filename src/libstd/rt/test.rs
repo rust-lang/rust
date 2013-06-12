@@ -88,6 +88,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
             let loop_ = ~UvEventLoop::new();
             let mut sched = ~Scheduler::new(loop_, work_queue.clone(), sleepers.clone());
             let handle = sched.make_handle();
+
             handles.push(handle);
             scheds.push(sched);
         }
@@ -127,6 +128,96 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
         fn rust_get_num_cpus() -> libc::uintptr_t;
     }
 }
+
+// THIS IS AWFUL. Copy-pasted the above initialization function but
+// with a number of hacks to make it spawn tasks on a variety of
+// schedulers with a variety of homes using the new spawn.
+
+pub fn run_in_mt_newsched_task_random_homed() {
+    use libc;
+    use os;
+    use from_str::FromStr;
+    use rt::uv::uvio::UvEventLoop;
+    use rt::sched::Shutdown;
+
+    do run_in_bare_thread {
+        let nthreads = match os::getenv("RUST_TEST_THREADS") {
+            Some(nstr) => FromStr::from_str(nstr).get(),
+            None => unsafe {
+                // Using more threads than cores in test code to force
+                // the OS to preempt them frequently.  Assuming that
+                // this help stress test concurrent types.
+                rust_get_num_cpus() * 2
+            }
+        };
+
+        let sleepers = SleeperList::new();
+        let work_queue = WorkQueue::new();
+
+        let mut handles = ~[];
+        let mut scheds = ~[];
+
+        for uint::range(0, nthreads) |_| {
+            let loop_ = ~UvEventLoop::new();
+            let mut sched = ~Scheduler::new(loop_, work_queue.clone(), sleepers.clone());
+            let handle = sched.make_handle();
+            handles.push(handle);
+            scheds.push(sched);
+        }
+
+        // Schedule a pile o tasks
+        let n = 120*stress_factor();        
+        for uint::range(0,n) |_i| {
+                rtdebug!("creating task: %u", _i);
+                let hf: ~fn() = || { assert!(true) };
+                spawntask_homed(&mut scheds, hf);            
+            }
+
+        let f: ~fn() = || { assert!(true); };
+        
+        let f_cell = Cell(f);
+        let handles = Cell(handles);
+
+        rtdebug!("creating main task");
+        
+        let main_task = ~do Coroutine::new(&mut scheds[0].stack_pool) {
+            f_cell.take()();
+            let mut handles = handles.take();
+            // Tell schedulers to exit
+            for handles.each_mut |handle| {
+                handle.send(Shutdown);
+            }
+        };
+
+        rtdebug!("queuing main task")
+        
+        scheds[0].enqueue_task(main_task);
+
+        let mut threads = ~[];
+
+        while !scheds.is_empty() {
+            let sched = scheds.pop();
+            let sched_cell = Cell(sched);
+            let thread = do Thread::start {
+                let sched = sched_cell.take();
+                rtdebug!("running sched: %u", sched.sched_id());
+                sched.run();
+            };
+
+            threads.push(thread);
+        }
+
+        rtdebug!("waiting on scheduler threads");
+
+        // Wait for schedulers
+        let _threads = threads;
+    }
+
+    extern {
+        fn rust_get_num_cpus() -> libc::uintptr_t;
+    }
+}
+
 
 /// Test tasks will abort on failure instead of unwinding
 pub fn spawntask(f: ~fn()) {
@@ -188,6 +279,38 @@ pub fn spawntask_random(f: ~fn()) {
     }
 }
 
+/// Spawn a task, with the current scheduler as home, and queue it to
+/// run later.
+pub fn spawntask_homed(scheds: &mut ~[~Scheduler], f: ~fn()) {
+    use super::sched::*;
+    use rand::{rng, RngUtil};
+    let mut rng = rng();
+    
+    let task = {
+        let sched = &mut scheds[rng.gen_int_range(0,scheds.len() as int)];
+        let handle = sched.make_handle();
+        let home_id = handle.sched_id;
+
+        // now that we know where this is going, build a new function
+        // that can assert it is in the right place
+        let af: ~fn() = || {
+            do Local::borrow::<Scheduler,()>() |sched| {
+                rtdebug!("home_id: %u, runtime loc: %u",
+                         home_id,
+                         sched.sched_id());
+                assert!(home_id == sched.sched_id());
+            };
+            f()
+        };            
+    
+        ~Coroutine::with_task_homed(&mut sched.stack_pool,
+                                    ~Task::without_unwinding(),
+                                    af,
+                                    Sched(handle))
+    };
+    let dest_sched = &mut scheds[rng.gen_int_range(0,scheds.len() as int)];
+    dest_sched.enqueue_task(task);
+}
 
 /// Spawn a task and wait for it to finish, returning whether it completed successfully or failed
 pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
@@ -265,4 +388,5 @@ pub fn stress_factor() -> uint {
         None => 1
     }
 }
+
 
