@@ -133,7 +133,7 @@ pub fn map_crate(diag: @span_handler, c: @crate) -> map {
         path: ~[],
         diag: diag,
     };
-    visit::visit_crate(c, cx, mk_ast_map_visitor());
+    visit::visit_crate(c, (cx, mk_ast_map_visitor()));
     cx.map
 }
 
@@ -183,21 +183,21 @@ pub fn map_fn(
     body: &blk,
     sp: codemap::span,
     id: node_id,
-    cx: @mut Ctx,
-    v: visit::vt<@mut Ctx>
+    (cx,v): (@mut Ctx,
+             visit::vt<@mut Ctx>)
 ) {
     for decl.inputs.each |a| {
         cx.map.insert(a.id, node_arg);
     }
-    visit::visit_fn(fk, decl, body, sp, id, cx, v);
+    visit::visit_fn(fk, decl, body, sp, id, (cx, v));
 }
 
-pub fn map_block(b: &blk, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
+pub fn map_block(b: &blk, (cx,v): (@mut Ctx, visit::vt<@mut Ctx>)) {
     cx.map.insert(b.node.id, node_block(/* FIXME (#2543) */ copy *b));
-    visit::visit_block(b, cx, v);
+    visit::visit_block(b, (cx, v));
 }
 
-pub fn map_pat(pat: @pat, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
+pub fn map_pat(pat: @pat, (cx,v): (@mut Ctx, visit::vt<@mut Ctx>)) {
     match pat.node {
         pat_ident(_, path, _) => {
             // Note: this is at least *potentially* a pattern...
@@ -206,7 +206,7 @@ pub fn map_pat(pat: @pat, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
         _ => ()
     }
 
-    visit::visit_pat(pat, cx, v);
+    visit::visit_pat(pat, (cx, v));
 }
 
 pub fn map_method(impl_did: def_id, impl_path: @path,
@@ -215,7 +215,7 @@ pub fn map_method(impl_did: def_id, impl_path: @path,
     cx.map.insert(m.self_id, node_local(special_idents::self_));
 }
 
-pub fn map_item(i: @item, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
+pub fn map_item(i: @item, (cx, v): (@mut Ctx, visit::vt<@mut Ctx>)) {
     let item_path = @/* FIXME (#2543) */ copy cx.path;
     cx.map.insert(i.id, node_item(i, item_path));
     match i.node {
@@ -262,8 +262,8 @@ pub fn map_item(i: @item, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
                 struct_def,
                 node_item(i, item_path),
                 i.ident,
-                cx,
-                v
+                (cx,
+                 v)
             );
         }
         item_trait(_, ref traits, ref methods) => {
@@ -288,7 +288,7 @@ pub fn map_item(i: @item, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
         }
         _ => cx.path.push(path_name(i.ident))
     }
-    visit::visit_item(i, cx, v);
+    visit::visit_item(i, (cx, v));
     cx.path.pop();
 }
 
@@ -296,8 +296,8 @@ pub fn map_struct_def(
     struct_def: @ast::struct_def,
     parent_node: ast_node,
     ident: ast::ident,
-    cx: @mut Ctx,
-    _v: visit::vt<@mut Ctx>
+    (cx, _v): (@mut Ctx,
+               visit::vt<@mut Ctx>)
 ) {
     let p = extend(cx, ident);
     // If this is a tuple-like struct, register the constructor.
@@ -315,7 +315,7 @@ pub fn map_struct_def(
     }
 }
 
-pub fn map_expr(ex: @expr, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
+pub fn map_expr(ex: @expr, (cx,v): (@mut Ctx, visit::vt<@mut Ctx>)) {
     cx.map.insert(ex.id, node_expr(ex));
     // Expressions which are or might be calls:
     {
@@ -324,12 +324,12 @@ pub fn map_expr(ex: @expr, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
             cx.map.insert(*callee_id, node_callee_scope(ex));
         }
     }
-    visit::visit_expr(ex, cx, v);
+    visit::visit_expr(ex, (cx, v));
 }
 
-pub fn map_stmt(stmt: @stmt, cx: @mut Ctx, v: visit::vt<@mut Ctx>) {
+pub fn map_stmt(stmt: @stmt, (cx,v): (@mut Ctx, visit::vt<@mut Ctx>)) {
     cx.map.insert(stmt_id(stmt), node_stmt(stmt));
-    visit::visit_stmt(stmt, cx, v);
+    visit::visit_stmt(stmt, (cx, v));
 }
 
 pub fn node_id_to_str(map: map, id: node_id, itr: @ident_interner) -> ~str {

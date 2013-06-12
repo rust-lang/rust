@@ -27,13 +27,13 @@ pub fn check_crate(sess: Session,
                    def_map: resolve::DefMap,
                    method_map: typeck::method_map,
                    tcx: ty::ctxt) {
-    visit::visit_crate(crate, false, visit::mk_vt(@visit::Visitor {
-        visit_item: |a,b,c| check_item(sess, ast_map, def_map, a, b, c),
+    visit::visit_crate(crate, (false, visit::mk_vt(@visit::Visitor {
+        visit_item: |a,b| check_item(sess, ast_map, def_map, a, b),
         visit_pat: check_pat,
-        visit_expr: |a,b,c|
-            check_expr(sess, def_map, method_map, tcx, a, b, c),
+        visit_expr: |a,b|
+            check_expr(sess, def_map, method_map, tcx, a, b),
         .. *visit::default_visitor()
-    }));
+    })));
     sess.abort_if_errors();
 }
 
@@ -41,25 +41,25 @@ pub fn check_item(sess: Session,
                   ast_map: ast_map::map,
                   def_map: resolve::DefMap,
                   it: @item,
-                  _is_const: bool,
-                  v: visit::vt<bool>) {
+                  (_is_const, v): (bool,
+                                   visit::vt<bool>)) {
     match it.node {
       item_const(_, ex) => {
-        (v.visit_expr)(ex, true, v);
+        (v.visit_expr)(ex, (true, v));
         check_item_recursion(sess, ast_map, def_map, it);
       }
       item_enum(ref enum_definition, _) => {
         for (*enum_definition).variants.each |var| {
             for var.node.disr_expr.iter().advance |ex| {
-                (v.visit_expr)(*ex, true, v);
+                (v.visit_expr)(*ex, (true, v));
             }
         }
       }
-      _ => visit::visit_item(it, false, v)
+      _ => visit::visit_item(it, (false, v))
     }
 }
 
-pub fn check_pat(p: @pat, _is_const: bool, v: visit::vt<bool>) {
+pub fn check_pat(p: @pat, (_is_const, v): (bool, visit::vt<bool>)) {
     fn is_str(e: @expr) -> bool {
         match e.node {
             expr_vstore(
@@ -74,12 +74,12 @@ pub fn check_pat(p: @pat, _is_const: bool, v: visit::vt<bool>) {
     }
     match p.node {
       // Let through plain ~-string literals here
-      pat_lit(a) => if !is_str(a) { (v.visit_expr)(a, true, v); },
+      pat_lit(a) => if !is_str(a) { (v.visit_expr)(a, (true, v)); },
       pat_range(a, b) => {
-        if !is_str(a) { (v.visit_expr)(a, true, v); }
-        if !is_str(b) { (v.visit_expr)(b, true, v); }
+        if !is_str(a) { (v.visit_expr)(a, (true, v)); }
+        if !is_str(b) { (v.visit_expr)(b, (true, v)); }
       }
-      _ => visit::visit_pat(p, false, v)
+      _ => visit::visit_pat(p, (false, v))
     }
 }
 
@@ -88,8 +88,8 @@ pub fn check_expr(sess: Session,
                   method_map: typeck::method_map,
                   tcx: ty::ctxt,
                   e: @expr,
-                  is_const: bool,
-                  v: visit::vt<bool>) {
+                  (is_const, v): (bool,
+                                  visit::vt<bool>)) {
     if is_const {
         match e.node {
           expr_unary(_, deref, _) => { }
@@ -155,7 +155,7 @@ pub fn check_expr(sess: Session,
             }
           }
           expr_paren(e) => { check_expr(sess, def_map, method_map,
-                                         tcx, e, is_const, v); }
+                                         tcx, e, (is_const, v)); }
           expr_vstore(_, expr_vstore_slice) |
           expr_vec(_, m_imm) |
           expr_addr_of(m_imm, _) |
@@ -193,7 +193,7 @@ pub fn check_expr(sess: Session,
       }
       _ => ()
     }
-    visit::visit_expr(e, is_const, v);
+    visit::visit_expr(e, (is_const, v));
 }
 
 // Make sure a const item doesn't recursively refer to itself
@@ -223,18 +223,18 @@ pub fn check_item_recursion(sess: Session,
         visit_expr: visit_expr,
         .. *visit::default_visitor()
     });
-    (visitor.visit_item)(it, env, visitor);
+    (visitor.visit_item)(it, (env, visitor));
 
-    fn visit_item(it: @item, env: env, v: visit::vt<env>) {
+    fn visit_item(it: @item, (env, v): (env, visit::vt<env>)) {
         if env.idstack.contains(&(it.id)) {
             env.sess.span_fatal(env.root_it.span, "recursive constant");
         }
         env.idstack.push(it.id);
-        visit::visit_item(it, env, v);
+        visit::visit_item(it, (env, v));
         env.idstack.pop();
     }
 
-    fn visit_expr(e: @expr, env: env, v: visit::vt<env>) {
+    fn visit_expr(e: @expr, (env, v): (env, visit::vt<env>)) {
         match e.node {
           expr_path(*) => {
             match env.def_map.find(&e.id) {
@@ -242,7 +242,7 @@ pub fn check_item_recursion(sess: Session,
                 if ast_util::is_local(def_id) {
                   match env.ast_map.get_copy(&def_id.node) {
                     ast_map::node_item(it, _) => {
-                      (v.visit_item)(it, env, v);
+                      (v.visit_item)(it, (env, v));
                     }
                     _ => fail!("const not bound to an item")
                   }
@@ -253,6 +253,6 @@ pub fn check_item_recursion(sess: Session,
           }
           _ => ()
         }
-        visit::visit_expr(e, env, v);
+        visit::visit_expr(e, (env, v));
     }
 }

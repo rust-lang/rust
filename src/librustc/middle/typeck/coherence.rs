@@ -204,7 +204,7 @@ impl CoherenceChecker {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
         // builds up the trait inheritance table.
-        visit_crate(crate, (), mk_simple_visitor(@SimpleVisitor {
+        visit_crate(crate, ((), mk_simple_visitor(@SimpleVisitor {
             visit_item: |item| {
 //                debug!("(checking coherence) item '%s'",
 //                       self.crate_context.tcx.sess.str_of(item.ident));
@@ -220,7 +220,7 @@ impl CoherenceChecker {
                 };
             },
             .. *default_simple_visitor()
-        }));
+        })));
 
         // Check that there are no overlapping trait instances
         self.check_implementation_coherence();
@@ -659,12 +659,12 @@ impl CoherenceChecker {
 
     // Privileged scope checking
     pub fn check_privileged_scopes(self, crate: @crate) {
-        visit_crate(crate, (), mk_vt(@Visitor {
-            visit_item: |item, _context, visitor| {
+        visit_crate(crate, ((), mk_vt(@Visitor {
+            visit_item: |item, (_context, visitor)| {
                 match item.node {
                     item_mod(ref module_) => {
                         // Then visit the module items.
-                        visit_mod(module_, item.span, item.id, (), visitor);
+                        visit_mod(module_, item.span, item.id, ((), visitor));
                     }
                     item_impl(_, None, ast_ty, _) => {
                         if !self.ast_type_is_defined_in_local_crate(ast_ty) {
@@ -697,15 +697,15 @@ impl CoherenceChecker {
                             }
                         }
 
-                        visit_item(item, (), visitor);
+                        visit_item(item, ((), visitor));
                     }
                     _ => {
-                        visit_item(item, (), visitor);
+                        visit_item(item, ((), visitor));
                     }
                 }
             },
             .. *default_visitor()
-        }));
+        })));
     }
 
     pub fn trait_ref_to_trait_def_id(&self, trait_ref: @trait_ref) -> def_id {

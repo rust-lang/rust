@@ -40,12 +40,12 @@ fn collect_freevars(def_map: resolve::DefMap, blk: &ast::blk)
     let seen = @mut HashMap::new();
     let refs = @mut ~[];
 
-    fn ignore_item(_i: @ast::item, _depth: int, _v: visit::vt<int>) { }
+    fn ignore_item(_i: @ast::item, (_depth, _v): (int, visit::vt<int>)) { }
 
-    let walk_expr: @fn(expr: @ast::expr, depth: int, v: visit::vt<int>) =
-        |expr, depth, v| {
+    let walk_expr: @fn(expr: @ast::expr, (int, visit::vt<int>)) =
+        |expr, (depth, v)| {
             match expr.node {
-              ast::expr_fn_block(*) => visit::visit_expr(expr, depth + 1, v),
+              ast::expr_fn_block(*) => visit::visit_expr(expr, (depth + 1, v)),
               ast::expr_path(*) | ast::expr_self => {
                   let mut i = 0;
                   match def_map.find(&expr.id) {
@@ -72,14 +72,14 @@ fn collect_freevars(def_map: resolve::DefMap, blk: &ast::blk)
                     }
                   }
               }
-              _ => visit::visit_expr(expr, depth, v)
+              _ => visit::visit_expr(expr, (depth, v))
             }
         };
 
     let v = visit::mk_vt(@visit::Visitor {visit_item: ignore_item,
                                           visit_expr: walk_expr,
                                           .. *visit::default_visitor()});
-    (v.visit_block)(blk, 1, v);
+    (v.visit_block)(blk, (1, v));
     return @/*bad*/copy *refs;
 }
 
@@ -105,7 +105,7 @@ pub fn annotate_freevars(def_map: resolve::DefMap, crate: @ast::crate) ->
         visit::mk_simple_visitor(@visit::SimpleVisitor {
             visit_fn: walk_fn,
             .. *visit::default_simple_visitor()});
-    visit::visit_crate(crate, (), visitor);
+    visit::visit_crate(crate, ((), visitor));
 
     return freevars;
 }

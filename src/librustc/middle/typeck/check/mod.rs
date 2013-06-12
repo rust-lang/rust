@@ -290,7 +290,7 @@ pub fn check_item_types(ccx: @mut CrateCtxt, crate: @ast::crate) {
         visit_item: |a| check_item(ccx, a),
         .. *visit::default_simple_visitor()
     });
-    visit::visit_crate(crate, (), visit);
+    visit::visit_crate(crate, ((), visit));
 }
 
 pub fn check_bare_fn(ccx: @mut CrateCtxt,
@@ -469,8 +469,8 @@ pub fn check_fn(ccx: @mut CrateCtxt,
         }
 
         // Add explicitly-declared locals.
-        let visit_local: @fn(@ast::local, e: (), visit::vt<()>) =
-                |local, e, v| {
+        let visit_local: @fn(@ast::local, ((), visit::vt<()>)) =
+                |local, (e, v)| {
             let o_ty = match local.node.ty.node {
               ast::ty_infer => None,
               _ => Some(fcx.to_ty(local.node.ty))
@@ -480,11 +480,11 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                    fcx.pat_to_str(local.node.pat),
                    fcx.infcx().ty_to_str(
                        fcx.inh.locals.get_copy(&local.node.id)));
-            visit::visit_local(local, e, v);
+            visit::visit_local(local, (e, v));
         };
 
         // Add pattern bindings.
-        let visit_pat: @fn(@ast::pat, e: (), visit::vt<()>) = |p, e, v| {
+        let visit_pat: @fn(@ast::pat, ((), visit::vt<()>)) = |p, (e, v)| {
             match p.node {
               ast::pat_ident(_, path, _)
                   if pat_util::pat_is_binding(fcx.ccx.tcx.def_map, p) => {
@@ -496,24 +496,24 @@ pub fn check_fn(ccx: @mut CrateCtxt,
               }
               _ => {}
             }
-            visit::visit_pat(p, e, v);
+            visit::visit_pat(p, (e, v));
         };
 
-        let visit_block: @fn(&ast::blk, e: (), visit::vt<()>) = |b, e, v| {
+        let visit_block: @fn(&ast::blk, ((), visit::vt<()>)) = |b, (e, v)| {
             // non-obvious: the `blk` variable maps to region lb, so
             // we have to keep this up-to-date.  This
             // is... unfortunate.  It'd be nice to not need this.
             do fcx.with_region_lb(b.node.id) {
-                visit::visit_block(b, e, v);
+                visit::visit_block(b, (e, v));
             }
         };
 
         // Don't descend into fns and items
         fn visit_fn(_fk: &visit::fn_kind, _decl: &ast::fn_decl,
                     _body: &ast::blk, _sp: span,
-                    _id: ast::node_id, _t: (), _v: visit::vt<()>) {
+                    _id: ast::node_id, (_t,_v): ((), visit::vt<()>)) {
         }
-        fn visit_item(_i: @ast::item, _e: (), _v: visit::vt<()>) { }
+        fn visit_item(_i: @ast::item, (_e,_v): ((), visit::vt<()>)) { }
 
         let visit = visit::mk_vt(
             @visit::Visitor {visit_local: visit_local,
@@ -523,7 +523,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                              visit_block: visit_block,
                              ..*visit::default_visitor()});
 
-        (visit.visit_block)(body, (), visit);
+        (visit.visit_block)(body, ((), visit));
     }
 }
 

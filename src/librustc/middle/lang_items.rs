@@ -389,7 +389,7 @@ impl LanguageItemCollector {
 
     pub fn collect_local_language_items(&mut self) {
         let this: *mut LanguageItemCollector = &mut *self;
-        visit_crate(self.crate, (), mk_simple_visitor(@SimpleVisitor {
+        visit_crate(self.crate, ((), mk_simple_visitor(@SimpleVisitor {
             visit_item: |item| {
                 for item.attrs.each |attribute| {
                     unsafe {
@@ -401,7 +401,7 @@ impl LanguageItemCollector {
                 }
             },
             .. *default_simple_visitor()
-        }));
+        })));
     }
 
     pub fn collect_external_language_items(&mut self) {

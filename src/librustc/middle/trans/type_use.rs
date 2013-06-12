@@ -382,26 +382,26 @@ pub fn mark_for_expr(cx: Context, e: @expr) {
 
 pub fn handle_body(cx: Context, body: &blk) {
     let v = visit::mk_vt(@visit::Visitor {
-        visit_expr: |e, cx, v| {
-            visit::visit_expr(e, cx, v);
+        visit_expr: |e, (cx, v)| {
+            visit::visit_expr(e, (cx, v));
             mark_for_expr(cx, e);
         },
-        visit_local: |l, cx, v| {
-            visit::visit_local(l, cx, v);
+        visit_local: |l, (cx, v)| {
+            visit::visit_local(l, (cx, v));
             node_type_needs(cx, use_repr, l.node.id);
         },
-        visit_pat: |p, cx, v| {
-            visit::visit_pat(p, cx, v);
+        visit_pat: |p, (cx, v)| {
+            visit::visit_pat(p, (cx, v));
             node_type_needs(cx, use_repr, p.id);
         },
-        visit_block: |b, cx, v| {
-            visit::visit_block(b, cx, v);
+        visit_block: |b, (cx, v)| {
+            visit::visit_block(b, (cx, v));
             for b.node.expr.iter().advance |e| {
                 node_type_needs(cx, use_repr, e.id);
             }
         },
-        visit_item: |_i, _cx, _v| { },
+        visit_item: |_i, (_cx, _v)| { },
         ..*visit::default_visitor()
     });
-    (v.visit_block)(body, cx, v);
+    (v.visit_block)(body, (cx, v));
 }

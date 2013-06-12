@@ -206,7 +206,7 @@ pub fn compute_moves(tcx: ty::ctxt,
             moved_variables_set: @mut HashSet::new()
         }
     };
-    visit::visit_crate(crate, visit_cx, visitor);
+    visit::visit_crate(crate, (visit_cx, visitor));
     return visit_cx.move_maps;
 }
 
@@ -225,8 +225,8 @@ pub fn moved_variable_node_id_from_def(def: def) -> Option<node_id> {
 // Expressions
 
 fn compute_modes_for_expr(expr: @expr,
-                          cx: VisitContext,
-                          v: vt<VisitContext>)
+                          (cx, v): (VisitContext,
+                                    vt<VisitContext>))
 {
     cx.consume_expr(expr, v);
 }
@@ -265,7 +265,7 @@ impl VisitContext {
         debug!("consume_block(blk.id=%?)", blk.node.id);
 
         for blk.node.stmts.each |stmt| {
-            (visitor.visit_stmt)(*stmt, *self, visitor);
+            (visitor.visit_stmt)(*stmt, (*self, visitor));
         }
 
         for blk.node.expr.iter().advance |tail_expr| {

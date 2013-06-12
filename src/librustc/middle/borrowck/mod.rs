@@ -81,7 +81,7 @@ pub fn check_crate(
 
     let v = visit::mk_vt(@visit::Visitor {visit_fn: borrowck_fn,
                                           ..*visit::default_visitor()});
-    visit::visit_crate(crate, bccx, v);
+    visit::visit_crate(crate, (bccx, v));
 
     if tcx.sess.borrowck_stats() {
         io::println("--- borrowck stats ---");
@@ -111,8 +111,8 @@ fn borrowck_fn(fk: &visit::fn_kind,
                body: &ast::blk,
                sp: span,
                id: ast::node_id,
-               this: @BorrowckCtxt,
-               v: visit::vt<@BorrowckCtxt>) {
+               (this, v): (@BorrowckCtxt,
+                           visit::vt<@BorrowckCtxt>)) {
     match fk {
         &visit::fk_anon(*) |
         &visit::fk_fn_block(*) => {
@@ -149,7 +149,7 @@ fn borrowck_fn(fk: &visit::fn_kind,
         }
     }
 
-    visit::visit_fn(fk, decl, body, sp, id, this, v);
+    visit::visit_fn(fk, decl, body, sp, id, (this, v));
 }
 
 // ----------------------------------------------------------------------

@@ -2629,11 +2629,11 @@ pub fn trans_constant(ccx: @CrateContext, it: @ast::item) {
 
 pub fn trans_constants(ccx: @CrateContext, crate: &ast::crate) {
     visit::visit_crate(
-        crate, (),
+        crate, ((),
         visit::mk_simple_visitor(@visit::SimpleVisitor {
             visit_item: |a| trans_constant(ccx, a),
             ..*visit::default_simple_visitor()
-        }));
+        })));
 }
 
 pub fn vp2i(cx: block, v: ValueRef) -> ValueRef {
