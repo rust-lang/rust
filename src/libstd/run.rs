@@ -741,8 +741,7 @@ fn with_envp<T>(env: Option<&[(~str, ~str)]>, cb: &fn(*mut c_void) -> T) -> T {
         let mut blk = ~[];
         for es.each |&(k, v)| {
             let kv = fmt!("%s=%s", k, v);
-            blk.push_all(str::as_bytes_slice(kv));
-            blk.push(0);
+            blk.push_all(kv.as_bytes_with_null_consume());
         }
         blk.push(0);
         vec::as_imm_buf(blk, |p, _len|

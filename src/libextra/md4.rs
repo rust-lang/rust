@@ -10,7 +10,6 @@
 
 use core::prelude::*;
 
-use core::str;
 use core::uint;
 use core::vec;
 
@@ -30,7 +29,7 @@ pub fn md4(msg: &[u8]) -> Quad {
     let orig_len: u64 = (msg.len() * 8u) as u64;
 
     // pad message
-    let mut msg = vec::append(vec::to_owned(msg), [0x80u8]);
+    let mut msg = vec::append(msg.to_owned(), [0x80u8]);
     let mut bitlen = orig_len + 8u64;
     while (bitlen + 64u64) % 512u64 > 0u64 {
         msg.push(0u8);
@@ -129,7 +128,7 @@ pub fn md4_str(msg: &[u8]) -> ~str {
 
 /// Calculates the md4 hash of a string, returning the hex-encoded version of
 /// the hash
-pub fn md4_text(msg: &str) -> ~str { md4_str(str::to_bytes(msg)) }
+pub fn md4_text(msg: &str) -> ~str { md4_str(msg.as_bytes()) }
 
 #[test]
 fn test_md4() {

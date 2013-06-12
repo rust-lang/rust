@@ -50,8 +50,7 @@ pub enum output_type {
 }
 
 fn write_string<W:Writer>(writer: &mut W, string: &str) {
-    let buffer = str::as_bytes_slice(string);
-    writer.write(buffer);
+    writer.write(string.as_bytes());
 }
 
 pub fn llvm_err(sess: Session, msg: ~str) -> ! {
@@ -637,7 +636,7 @@ pub fn symbol_hash(tcx: ty::ctxt,
     write_string(symbol_hasher, encoder::encoded_ty(tcx, t));
     let mut hash = truncated_hash_result(symbol_hasher);
     // Prefix with _ so that it never blends into adjacent digits
-    str::unshift_char(&mut hash, '_');
+    hash.unshift_char('_');
     // tjc: allocation is unfortunate; need to change core::hash
     hash.to_managed()
 }

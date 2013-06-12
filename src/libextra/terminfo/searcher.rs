@@ -12,7 +12,7 @@
 /// Does not support hashed database, only filesystem!
 
 use core::prelude::*;
-use core::{os};
+use core::{os, str};
 use core::os::getenv;
 use core::io::{file_reader, Reader};
 use core::iterator::IteratorUtil;
@@ -27,7 +27,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~path> {
     let homedir = os::homedir();
 
     let mut dirs_to_search = ~[];
-    let first_char = term.substr(0, 1);
+    let first_char = term.char_at(0);
 
     // Find search directory
     match getenv("TERMINFO") {
@@ -57,12 +57,12 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~path> {
 
     // Look for the terminal in all of the search directories
     for dirs_to_search.each |p| {
-        let newp = ~p.push_many(&[first_char.to_owned(), term.to_owned()]);
+        let newp = ~p.push_many(&[str::from_char(first_char), term.to_owned()]);
         if os::path_exists(p) && os::path_exists(newp) {
             return Some(newp);
         }
         // on some installations the dir is named after the hex of the char (e.g. OS X)
-        let newp = ~p.push_many(&[fmt!("%x", first_char[0] as uint), term.to_owned()]);
+        let newp = ~p.push_many(&[fmt!("%x", first_char as uint), term.to_owned()]);
         if os::path_exists(p) && os::path_exists(newp) {
             return Some(newp);
         }

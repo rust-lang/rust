@@ -12,7 +12,7 @@
 
 use core::path::Path;
 use core::option::Some;
-use core::{hash, str};
+use core::hash;
 use core::rt::io::Writer;
 use core::hash::Streaming;
 
@@ -32,7 +32,7 @@ pub fn normalize(p_: RemotePath) -> LocalPath {
     match p.filestem() {
         None => LocalPath(p),
         Some(st) => {
-            let replaced = str::replace(st, "-", "_");
+            let replaced = st.replace("-", "_");
             if replaced != st {
                 LocalPath(p.with_filestem(replaced))
             }
@@ -44,8 +44,7 @@ pub fn normalize(p_: RemotePath) -> LocalPath {
 }
 
 pub fn write<W: Writer>(writer: &mut W, string: &str) {
-    let buffer = str::as_bytes_slice(string);
-    writer.write(buffer);
+    writer.write(string.as_bytes());
 }
 
 pub fn hash(data: ~str) -> ~str {

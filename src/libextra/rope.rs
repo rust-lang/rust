@@ -84,9 +84,9 @@ pub fn of_str(str: @~str) -> Rope {
  *
  * # Return value
  *
- * A rope representing the same string as `str.substr(byte_offset,
- * byte_len)`.  Depending on `byte_len`, this rope may be empty, flat
- * or complex.
+ * A rope representing the same string as `str.slice(byte_offset,
+ * byte_offset + byte_len)`.  Depending on `byte_len`, this rope may
+ * be empty, flat or complex.
  *
  * # Performance note
  *
@@ -564,7 +564,6 @@ pub mod node {
     use rope::node;
 
     use core::cast;
-    use core::str;
     use core::uint;
     use core::vec;
 
@@ -588,7 +587,7 @@ pub mod node {
      * * char_len - The number of chars in the leaf.
      * * content - Contents of the leaf.
      *
-     *     Note that we can have `char_len < str::char_len(content)`, if
+     *     Note that we can have `char_len < content.char_len()`, if
      *     this leaf is only a subset of the string. Also note that the
      *     string can be shared between several ropes, e.g. for indexing
      *     purposes.
@@ -680,7 +679,7 @@ pub mod node {
      */
     pub fn of_substr(str: @~str, byte_start: uint, byte_len: uint) -> @Node {
         return of_substr_unsafer(str, byte_start, byte_len,
-                              str::count_chars(*str, byte_start, byte_len));
+                                 str.slice(byte_start, byte_start + byte_len).char_len());
     }
 
     /**
@@ -734,7 +733,7 @@ pub mod node {
                     if i == 0u  { first_leaf_char_len }
                     else { hint_max_leaf_char_len };
                 let chunk_byte_len =
-                    str::count_bytes(*str, offset, chunk_char_len);
+                    str.slice_from(offset).slice_chars(0, chunk_char_len).len();
                 nodes[i] = @Leaf(Leaf {
                     byte_offset: offset,
                     byte_len: chunk_byte_len,
@@ -938,7 +937,7 @@ pub mod node {
             match (*node) {
               node::Leaf(x) => {
                 let char_len =
-                    str::count_chars(*x.content, byte_offset, byte_len);
+                    x.content.slice(byte_offset, byte_offset + byte_len).char_len();
                 return @Leaf(Leaf {
                     byte_offset: byte_offset,
                     byte_len: byte_len,
@@ -1002,9 +1001,9 @@ pub mod node {
                     return node;
                 }
                 let byte_offset =
-                    str::count_bytes(*x.content, 0u, char_offset);
+                    x.content.slice_chars(0, char_offset).len();
                 let byte_len    =
-                    str::count_bytes(*x.content, byte_offset, char_len);
+                    x.content.slice_from(byte_offset).slice_chars(0, char_len).len();
                 return @Leaf(Leaf {
                     byte_offset: byte_offset,
                     byte_len: byte_len,
@@ -1312,7 +1311,7 @@ mod tests {
         let sample = @~"0123456789ABCDE";
         let r      = of_str(sample);
 
-        assert_eq!(char_len(r), str::char_len(*sample));
+        assert_eq!(char_len(r), sample.char_len());
         assert!(rope_to_string(r) == *sample);
     }
 
@@ -1328,7 +1327,7 @@ mod tests {
         }
         let sample = @copy *buf;
         let r      = of_str(sample);
-        assert!(char_len(r) == str::char_len(*sample));
+        assert_eq!(char_len(r), sample.char_len());
         assert!(rope_to_string(r) == *sample);
 
         let mut string_iter = 0u;
@@ -1374,7 +1373,7 @@ mod tests {
             }
         }
 
-        assert_eq!(len, str::char_len(*sample));
+        assert_eq!(len, sample.char_len());
     }
 
     #[test]

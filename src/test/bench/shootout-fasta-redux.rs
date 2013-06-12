@@ -93,7 +93,7 @@ impl RepeatFasta {
             let stdout = self.stdout;
             let alu_len = self.alu.len();
             let mut buf = vec::from_elem(alu_len + LINE_LEN, 0u8);
-            let alu: &[u8] = str::byte_slice_no_callback(self.alu);
+            let alu: &[u8] = self.alu.as_bytes_with_null();
 
             copy_memory(buf, alu, alu_len);
             copy_memory(vec::mut_slice(buf, alu_len, buf.len()),

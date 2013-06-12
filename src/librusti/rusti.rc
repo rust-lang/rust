@@ -284,7 +284,7 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
             for args.each |arg| {
                 let (crate, filename) =
                     if arg.ends_with(".rs") || arg.ends_with(".rc") {
-                    (arg.substr(0, arg.len() - 3).to_owned(), copy *arg)
+                    (arg.slice_to(arg.len() - 3).to_owned(), copy *arg)
                 } else {
                     (copy *arg, arg + ".rs")
                 };
@@ -342,7 +342,8 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
         // FIXME #5898: conflicts with Cell.take(), so can't be at the top level
         use core::iterator::IteratorUtil;
 
-        let full = line.substr(1, line.len() - 1);
+        // drop the : and the \n (one byte each)
+        let full = line.slice(1, line.len() - 1);
         let split: ~[~str] = full.word_iter().transform(|s| s.to_owned()).collect();
         let len = split.len();
 

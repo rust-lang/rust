@@ -31,7 +31,6 @@ use print::pprust;
 
 use core::char;
 use core::io;
-use core::str;
 use core::u64;
 use core::uint;
 use core::iterator::IteratorUtil;
@@ -2113,7 +2112,7 @@ pub fn print_comment(s: @ps, cmnt: &comments::cmnt) {
 
 pub fn print_string(s: @ps, st: &str) {
     word(s.s, "\"");
-    word(s.s, str::escape_default(st));
+    word(s.s, st.escape_default());
     word(s.s, "\"");
 }
 

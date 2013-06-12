@@ -171,11 +171,6 @@ pub fn from_elem<T:Copy>(n_elts: uint, t: T) -> ~[T] {
     }
 }
 
-/// Creates a new unique vector with the same contents as the slice
-pub fn to_owned<T:Copy>(t: &[T]) -> ~[T] {
-    from_fn(t.len(), |i| t[i])
-}
-
 /// Creates a new vector with a capacity of `capacity`
 pub fn with_capacity<T>(capacity: uint) -> ~[T] {
     let mut vec = ~[];
@@ -1787,7 +1782,7 @@ pub trait CopyableVector<T> {
 
 /// Extension methods for vectors
 impl<'self,T:Copy> CopyableVector<T> for &'self [T] {
-    /// Returns a copy of `v`.
+    /// Creates a new unique vector with the same contents as the slice
     #[inline]
     fn to_owned(&self) -> ~[T] {
         let mut result = ~[];
@@ -1796,7 +1791,6 @@ impl<'self,T:Copy> CopyableVector<T> for &'self [T] {
             result.push(copy *e);
         }
         result
-
     }
 }
 
@@ -3361,19 +3355,19 @@ mod tests {
         let mut results: ~[~[int]];
 
         results = ~[];
-        for each_permutation([]) |v| { results.push(to_owned(v)); }
+        for each_permutation([]) |v| { results.push(v.to_owned()); }
         assert_eq!(results, ~[~[]]);
 
         results = ~[];
-        for each_permutation([7]) |v| { results.push(to_owned(v)); }
+        for each_permutation([7]) |v| { results.push(v.to_owned()); }
         assert_eq!(results, ~[~[7]]);
 
         results = ~[];
-        for each_permutation([1,1]) |v| { results.push(to_owned(v)); }
+        for each_permutation([1,1]) |v| { results.push(v.to_owned()); }
         assert_eq!(results, ~[~[1,1],~[1,1]]);
 
         results = ~[];
-        for each_permutation([5,2,0]) |v| { results.push(to_owned(v)); }
+        for each_permutation([5,2,0]) |v| { results.push(v.to_owned()); }
         assert!(results ==
             ~[~[5,2,0],~[5,0,2],~[2,5,0],~[2,0,5],~[0,5,2],~[0,2,5]]);
     }
