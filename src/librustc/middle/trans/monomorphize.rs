@@ -43,7 +43,7 @@ use syntax::abi::AbiSet;
 
 pub fn monomorphic_fn(ccx: @CrateContext,
                       fn_id: ast::def_id,
-                      real_substs: &[ty::t],
+                      real_substs: &ty::substs,
                       vtables: Option<typeck::vtable_res>,
                       impl_did_opt: Option<ast::def_id>,
                       ref_id: Option<ast::node_id>)
@@ -61,17 +61,17 @@ pub fn monomorphic_fn(ccx: @CrateContext,
            impl_did_opt.repr(ccx.tcx),
            ref_id);
 
-    assert!(real_substs.all(|t| !ty::type_needs_infer(*t)));
+    assert!(real_substs.tps.all(|t| !ty::type_needs_infer(*t)));
     let _icx = ccx.insn_ctxt("monomorphic_fn");
     let mut must_cast = false;
-    let substs = vec::map(real_substs, |t| {
+    let substs = vec::map(real_substs.tps, |t| {
         match normalize_for_monomorphization(ccx.tcx, *t) {
           Some(t) => { must_cast = true; t }
           None => *t
         }
     });
 
-    for real_substs.each() |s| { assert!(!ty::type_has_params(*s)); }
+    for real_substs.tps.each() |s| { assert!(!ty::type_has_params(*s)); }
     for substs.each() |s| { assert!(!ty::type_has_params(*s)); }
     let param_uses = type_use::type_uses_for(ccx, fn_id, substs.len());
     let hash_id = make_mono_id(ccx, fn_id, substs, vtables, impl_did_opt,
@@ -145,17 +145,8 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       ast_map::node_struct_ctor(_, i, pt) => (pt, i.ident, i.span)
     };
 
-    // Look up the impl type if we're translating a default method.
-    // XXX: Generics.
-    let impl_ty_opt;
-    match impl_did_opt {
-        None => impl_ty_opt = None,
-        Some(impl_did) => {
-            impl_ty_opt = Some(ty::lookup_item_type(ccx.tcx, impl_did).ty);
-        }
-    }
-
-    let mono_ty = ty::subst_tps(ccx.tcx, substs, impl_ty_opt, llitem_ty);
+    let mono_ty = ty::subst_tps(ccx.tcx, substs,
+                                real_substs.self_ty, llitem_ty);
     let llfty = type_of_fn_from_ty(ccx, mono_ty);
 
     ccx.stats.n_monos += 1;
@@ -186,7 +177,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         tys: substs,
         vtables: vtables,
         type_param_defs: tpt.generics.type_param_defs,
-        self_ty: impl_ty_opt
+        self_ty: real_substs.self_ty
     });
 
     let lldecl = match map_node {
