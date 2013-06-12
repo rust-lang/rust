@@ -57,7 +57,7 @@ impl cmp::Eq for Point {
 
 pub fn main() {
     let mut p = Point {x: 10, y: 20};
-    p += Point {x: 101, y: 102};
+    p = p + Point {x: 101, y: 102};
     p = p - Point {x: 100, y: 100};
     assert_eq!(p + Point {x: 5, y: 5}, Point {x: 16, y: 27});
     assert_eq!(-p, Point {x: -11, y: -22});

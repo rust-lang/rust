@@ -1964,8 +1964,12 @@ pub fn type_to_str_inner(names: @TypeNames, outer0: &[TypeRef], ty: TypeRef)
             let mut s = ~"";
             let mut first: bool = true;
             for tys.each |t| {
-                if first { first = false; } else { s += ", "; }
-                s += type_to_str_inner(names, outer, *t);
+                if first {
+                    first = false
+                } else {
+                    s.push_str(", ")
+                }
+                s.push_str(type_to_str_inner(names, outer, *t));
             }
             // [Note at-str] FIXME #2543: Could rewrite this without the copy,
             // but need better @str support.

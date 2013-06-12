@@ -42,7 +42,7 @@ impl parser_attr for Parser {
                 if self.look_ahead(1u) != token::LBRACKET {
                     break;
                 }
-                attrs += [self.parse_attribute(ast::attr_outer)];
+                attrs.push(self.parse_attribute(ast::attr_outer));
               }
               token::DOC_COMMENT(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
@@ -53,7 +53,7 @@ impl parser_attr for Parser {
                 if attr.node.style != ast::attr_outer {
                   self.fatal("expected outer comment");
                 }
-                attrs += [attr];
+                attrs.push(attr);
                 self.bump();
               }
               _ => break
@@ -77,9 +77,7 @@ impl parser_attr for Parser {
         self.expect(&token::RBRACKET);
         let hi = self.span.hi;
         return spanned(lo, hi, ast::attribute_ { style: style,
-                                                 value: meta_item,
-                                                 is_sugared_doc: false });
-    }
+                                                 value: meta_item, is_sugared_doc: false }); }
 
     // Parse attributes that appear after the opening of an item, each
     // terminated by a semicolon. In addition to a vector of inner attributes,
@@ -105,7 +103,7 @@ impl parser_attr for Parser {
                 let attr = self.parse_attribute(ast::attr_inner);
                 if *self.token == token::SEMI {
                     self.bump();
-                    inner_attrs += [attr];
+                    inner_attrs.push(attr);
                 } else {
                     // It's not really an inner attribute
                     let outer_attr =
@@ -113,7 +111,7 @@ impl parser_attr for Parser {
                             ast::attribute_ { style: ast::attr_outer,
                                               value: attr.node.value,
                                               is_sugared_doc: false });
-                    next_outer_attrs += [outer_attr];
+                    next_outer_attrs.push(outer_attr);
                     break;
                 }
               }
@@ -125,9 +123,9 @@ impl parser_attr for Parser {
                 );
                 self.bump();
                 if attr.node.style == ast::attr_inner {
-                  inner_attrs += [attr];
+                  inner_attrs.push(attr);
                 } else {
-                  next_outer_attrs += [attr];
+                  next_outer_attrs.push(attr);
                   break;
                 }
               }
