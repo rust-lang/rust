@@ -722,11 +722,6 @@ impl FnCtxt {
         }
     }
 
-    pub fn expr_to_str(&self, expr: @ast::expr) -> ~str {
-        fmt!("expr(%?:%s)", expr.id,
-             pprust::expr_to_str(expr, self.tcx().sess.intr()))
-    }
-
     pub fn block_region(&self) -> ty::Region {
         ty::re_scope(self.region_lb)
     }
