@@ -21,8 +21,8 @@ use cmp::Eq;
 use iterator::IteratorUtil;
 use libc;
 use option::{None, Option, Some};
-use str;
 use str::{Str, StrSlice, StrVector};
+use str;
 use to_str::ToStr;
 use ascii::{AsciiCast, AsciiStr};
 use vec::{OwnedVector, ImmutableVector};
@@ -476,7 +476,7 @@ impl ToStr for PosixPath {
     fn to_str(&self) -> ~str {
         let mut s = ~"";
         if self.is_absolute {
-            s += "/";
+            s.push_str("/");
         }
         s + self.components.connect("/")
     }
@@ -655,15 +655,21 @@ impl ToStr for WindowsPath {
     fn to_str(&self) -> ~str {
         let mut s = ~"";
         match self.host {
-          Some(ref h) => { s += "\\\\"; s += *h; }
+          Some(ref h) => {
+            s.push_str("\\\\");
+            s.push_str(*h);
+          }
           None => { }
         }
         match self.device {
-          Some(ref d) => { s += *d; s += ":"; }
+          Some(ref d) => {
+            s.push_str(*d);
+            s.push_str(":");
+          }
           None => { }
         }
         if self.is_absolute {
-            s += "\\";
+            s.push_str("\\");
         }
         s + self.components.connect("\\")
     }

@@ -192,11 +192,11 @@ pub fn header_name(doc: doc::ItemTag) -> ~str {
             let mut trait_part = ~"";
             for doc.trait_types.iter().enumerate().advance |(i, trait_type)| {
                 if i == 0 {
-                    trait_part += " of ";
+                    trait_part.push_str(" of ");
                 } else {
-                    trait_part += ", ";
+                    trait_part.push_str(", ");
                 }
-                trait_part += *trait_type;
+                trait_part.push_str(*trait_type);
             }
             fmt!("%s for %s%s", trait_part, *self_ty, bounds)
         }
