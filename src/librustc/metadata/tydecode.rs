@@ -261,7 +261,9 @@ fn parse_opt<T>(st: &mut PState, f: &fn(&mut PState) -> T) -> Option<T> {
 fn parse_str(st: &mut PState, term: char) -> ~str {
     let mut result = ~"";
     while peek(st) != term {
-        result += str::from_byte(next_byte(st));
+        unsafe {
+            str::raw::push_byte(&mut result, next_byte(st));
+        }
     }
     next(st);
     return result;

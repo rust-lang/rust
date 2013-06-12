@@ -23,7 +23,7 @@ fn foo<T>(y: Option<T>) {
           None::<T> => x = 17,
           _ => x = 42
         }
-        rs += ~[x];
+        rs.push(x);
     }
     return;
 }

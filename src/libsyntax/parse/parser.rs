@@ -4257,8 +4257,12 @@ impl Parser {
         // FAILURE TO PARSE ITEM
         if visibility != inherited {
             let mut s = ~"unmatched visibility `";
-            s += if visibility == public { "pub" } else { "priv" };
-            s += "`";
+            if visibility == public {
+                s.push_str("pub")
+            } else {
+                s.push_str("priv")
+            }
+            s.push_char('`');
             self.span_fatal(*self.last_span, s);
         }
         return iovi_none;

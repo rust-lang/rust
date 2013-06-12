@@ -510,11 +510,11 @@ impl ToStrRadix for BigUint {
             let mut m      = n;
             while m > divider {
                 let (d, m0) = m.div_mod_floor(&divider);
-                result += [m0.to_uint() as BigDigit];
+                result.push(m0.to_uint() as BigDigit);
                 m = d;
             }
             if !m.is_zero() {
-                result += [m.to_uint() as BigDigit];
+                result.push(m.to_uint() as BigDigit);
             }
             return result;
         }
