@@ -2,12 +2,12 @@
 .\"     Title: JEMALLOC
 .\"    Author: Jason Evans
 .\" Generator: DocBook XSL Stylesheets v1.76.1 <http://docbook.sf.net/>
-.\"      Date: 03/06/2013
+.\"      Date: 06/02/2013
 .\"    Manual: User Manual
-.\"    Source: jemalloc 3.3.1-0-g9ef9d9e8c271cdf14f664b871a8f98c827714784
+.\"    Source: jemalloc 3.4.0-0-g0ed518e5dab789ad2171bb38977a8927e2a26775
 .\"  Language: English
 .\"
-.TH "JEMALLOC" "3" "03/06/2013" "jemalloc 3.3.1-0-g9ef9d9e8c271" "User Manual"
+.TH "JEMALLOC" "3" "06/02/2013" "jemalloc 3.4.0-0-g0ed518e5dab7" "User Manual"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -31,7 +31,7 @@
 jemalloc \- general purpose memory allocation functions
 .SH "LIBRARY"
 .PP
-This manual describes jemalloc 3\&.3\&.1\-0\-g9ef9d9e8c271cdf14f664b871a8f98c827714784\&. More information can be found at the
+This manual describes jemalloc 3\&.4\&.0\-0\-g0ed518e5dab789ad2171bb38977a8927e2a26775\&. More information can be found at the
 \m[blue]\fBjemalloc website\fR\m[]\&\s-2\u[1]\d\s+2\&.
 .SH "SYNOPSIS"
 .sp
@@ -376,7 +376,19 @@ Once, when the first call is made to one of the memory allocation routines, the 
 The string pointed to by the global variable
 \fImalloc_conf\fR, the \(lqname\(rq of the file referenced by the symbolic link named
 /etc/malloc\&.conf, and the value of the environment variable
-\fBMALLOC_CONF\fR, will be interpreted, in that order, from left to right as options\&.
+\fBMALLOC_CONF\fR, will be interpreted, in that order, from left to right as options\&. Note that
+\fImalloc_conf\fR
+may be read before
+\fBmain\fR\fB\fR
+is entered, so the declaration of
+\fImalloc_conf\fR
+should specify an initializer that contains the final value to be read by jemalloc\&.
+\fImalloc_conf\fR
+is a compile\-time setting, whereas
+/etc/malloc\&.conf
+and
+\fBMALLOC_CONF\fR
+can be safely set any time prior to program invocation\&.
 .PP
 An options string is a comma\-separated list of option:value pairs\&. There is one key corresponding to each
 "opt\&.*"

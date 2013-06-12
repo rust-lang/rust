@@ -2,11 +2,11 @@
 
 # Copyright (c) 1998-2007, Google Inc.
 # All rights reserved.
-#
+# 
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
 # met:
-#
+# 
 #     * Redistributions of source code must retain the above copyright
 # notice, this list of conditions and the following disclaimer.
 #     * Redistributions in binary form must reproduce the above
@@ -16,7 +16,7 @@
 #     * Neither the name of Google Inc. nor the names of its
 # contributors may be used to endorse or promote products derived from
 # this software without specific prior written permission.
-#
+# 
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 # "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
 # LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
@@ -1683,23 +1683,23 @@ sub PrintSource {
                         HtmlPrintNumber($c2),
                         UnparseAddress($offset, $e->[0]),
                         CleanDisassembly($e->[3]));
-
+      
       # Append the most specific source line associated with this instruction
       if (length($dis) < 80) { $dis .= (' ' x (80 - length($dis))) };
       $dis = HtmlEscape($dis);
       my $f = $e->[5];
       my $l = $e->[6];
       if ($f ne $last_dis_filename) {
-        $dis .= sprintf("<span class=disasmloc>%s:%d</span>",
+        $dis .= sprintf("<span class=disasmloc>%s:%d</span>", 
                         HtmlEscape(CleanFileName($f)), $l);
       } elsif ($l ne $last_dis_linenum) {
         # De-emphasize the unchanged file name portion
         $dis .= sprintf("<span class=unimportant>%s</span>" .
-                        "<span class=disasmloc>:%d</span>",
+                        "<span class=disasmloc>:%d</span>", 
                         HtmlEscape(CleanFileName($f)), $l);
       } else {
         # De-emphasize the entire location
-        $dis .= sprintf("<span class=unimportant>%s:%d</span>",
+        $dis .= sprintf("<span class=unimportant>%s:%d</span>", 
                         HtmlEscape(CleanFileName($f)), $l);
       }
       $last_dis_filename = $f;
@@ -1788,8 +1788,8 @@ sub PrintSource {
         if (defined($dis) && $dis ne '') {
           $asm = "<span class=\"asm\">" . $dis . "</span>";
         }
-        my $source_class = (($n1 + $n2 > 0)
-                            ? "livesrc"
+        my $source_class = (($n1 + $n2 > 0) 
+                            ? "livesrc" 
                             : (($asm ne "") ? "deadsrc" : "nop"));
         printf $output (
           "<span class=\"line\">%5d</span> " .
@@ -4723,7 +4723,7 @@ sub MapToSymbols {
 	}
       }
     }
-
+    
     # Prepend to accumulated symbols for pcstr
     # (so that caller comes before callee)
     my $sym = $symbols->{$pcstr};
@@ -4917,7 +4917,7 @@ sub ConfigureTool {
     my $dirname = $`;    # this is everything up to and including the last slash
     if (-x "$dirname$tool") {
       $path = "$dirname$tool";
-    } else {
+    } else { 
       $path = $tool;
     }
   }

@@ -9,15 +9,15 @@
 
 /* Return the chunk address for allocation address a. */
 #define	CHUNK_ADDR2BASE(a)						\
-    ((void *)((uintptr_t)(a) & ~chunksize_mask))
+	((void *)((uintptr_t)(a) & ~chunksize_mask))
 
 /* Return the chunk offset of address a. */
 #define	CHUNK_ADDR2OFFSET(a)						\
-    ((size_t)((uintptr_t)(a) & chunksize_mask))
+	((size_t)((uintptr_t)(a) & chunksize_mask))
 
 /* Return the smallest chunk multiple that is >= s. */
 #define	CHUNK_CEILING(s)						\
-    (((s) + chunksize_mask) & ~chunksize_mask)
+	(((s) + chunksize_mask) & ~chunksize_mask)
 
 #endif /* JEMALLOC_H_TYPES */
 /******************************************************************************/

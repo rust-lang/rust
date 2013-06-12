@@ -25,10 +25,10 @@ typedef struct rtree_s rtree_t;
 #ifdef JEMALLOC_H_STRUCTS
 
 struct rtree_s {
-    malloc_mutex_t	mutex;
-    void		**root;
-    unsigned	height;
-    unsigned	level2bits[1]; /* Dynamically sized. */
+	malloc_mutex_t	mutex;
+	void		**root;
+	unsigned	height;
+	unsigned	level2bits[1]; /* Dynamically sized. */
 };
 
 #endif /* JEMALLOC_H_STRUCTS */
@@ -58,37 +58,37 @@ bool	rtree_set(rtree_t *rtree, uintptr_t key, void *val);
 JEMALLOC_INLINE void *							\
 f(rtree_t *rtree, uintptr_t key)					\
 {									\
-    void *ret;							\
-    uintptr_t subkey;						\
-    unsigned i, lshift, height, bits;				\
-    void **node, **child;						\
-                                    \
-    RTREE_LOCK(&rtree->mutex);					\
-    for (i = lshift = 0, height = rtree->height, node = rtree->root;\
-        i < height - 1;						\
-        i++, lshift += bits, node = child) {			\
-        bits = rtree->level2bits[i];				\
-        subkey = (key << lshift) >> ((ZU(1) << (LG_SIZEOF_PTR + \
-            3)) - bits);					\
-        child = (void**)node[subkey];				\
-        if (child == NULL) {					\
-            RTREE_UNLOCK(&rtree->mutex);			\
-            return (NULL);					\
-        }							\
-    }								\
-                                    \
-    /*								\
-     * node is a leaf, so it contains values rather than node	\
-     * pointers.							\
-     */								\
-    bits = rtree->level2bits[i];					\
-    subkey = (key << lshift) >> ((ZU(1) << (LG_SIZEOF_PTR+3)) -	\
-        bits);							\
-    ret = node[subkey];						\
-    RTREE_UNLOCK(&rtree->mutex);					\
-                                    \
-    RTREE_GET_VALIDATE						\
-    return (ret);							\
+	void *ret;							\
+	uintptr_t subkey;						\
+	unsigned i, lshift, height, bits;				\
+	void **node, **child;						\
+									\
+	RTREE_LOCK(&rtree->mutex);					\
+	for (i = lshift = 0, height = rtree->height, node = rtree->root;\
+	    i < height - 1;						\
+	    i++, lshift += bits, node = child) {			\
+		bits = rtree->level2bits[i];				\
+		subkey = (key << lshift) >> ((ZU(1) << (LG_SIZEOF_PTR + \
+		    3)) - bits);					\
+		child = (void**)node[subkey];				\
+		if (child == NULL) {					\
+			RTREE_UNLOCK(&rtree->mutex);			\
+			return (NULL);					\
+		}							\
+	}								\
+									\
+	/*								\
+	 * node is a leaf, so it contains values rather than node	\
+	 * pointers.							\
+	 */								\
+	bits = rtree->level2bits[i];					\
+	subkey = (key << lshift) >> ((ZU(1) << (LG_SIZEOF_PTR+3)) -	\
+	    bits);							\
+	ret = node[subkey];						\
+	RTREE_UNLOCK(&rtree->mutex);					\
+									\
+	RTREE_GET_VALIDATE						\
+	return (ret);							\
 }
 
 #ifdef JEMALLOC_DEBUG
@@ -113,7 +113,7 @@ RTREE_GET_GENERATE(rtree_get_locked)
     * seems impossible, but the following assertion is a prudent sanity check.
     */
 #  define RTREE_GET_VALIDATE						\
-    assert(rtree_get_locked(rtree, key) == ret);
+	assert(rtree_get_locked(rtree, key) == ret);
 #else
 #  define RTREE_GET_VALIDATE
 #endif
@@ -125,38 +125,38 @@ RTREE_GET_GENERATE(rtree_get)
 JEMALLOC_INLINE bool
 rtree_set(rtree_t *rtree, uintptr_t key, void *val)
 {
-    uintptr_t subkey;
-    unsigned i, lshift, height, bits;
-    void **node, **child;
+	uintptr_t subkey;
+	unsigned i, lshift, height, bits;
+	void **node, **child;
 
-    malloc_mutex_lock(&rtree->mutex);
-    for (i = lshift = 0, height = rtree->height, node = rtree->root;
-        i < height - 1;
-        i++, lshift += bits, node = child) {
-        bits = rtree->level2bits[i];
-        subkey = (key << lshift) >> ((ZU(1) << (LG_SIZEOF_PTR+3)) -
-            bits);
-        child = (void**)node[subkey];
-        if (child == NULL) {
-            child = (void**)base_alloc(sizeof(void *) <<
-                rtree->level2bits[i+1]);
-            if (child == NULL) {
-                malloc_mutex_unlock(&rtree->mutex);
-                return (true);
-            }
-            memset(child, 0, sizeof(void *) <<
-                rtree->level2bits[i+1]);
-            node[subkey] = child;
-        }
-    }
+	malloc_mutex_lock(&rtree->mutex);
+	for (i = lshift = 0, height = rtree->height, node = rtree->root;
+	    i < height - 1;
+	    i++, lshift += bits, node = child) {
+		bits = rtree->level2bits[i];
+		subkey = (key << lshift) >> ((ZU(1) << (LG_SIZEOF_PTR+3)) -
+		    bits);
+		child = (void**)node[subkey];
+		if (child == NULL) {
+			child = (void**)base_alloc(sizeof(void *) <<
+			    rtree->level2bits[i+1]);
+			if (child == NULL) {
+				malloc_mutex_unlock(&rtree->mutex);
+				return (true);
+			}
+			memset(child, 0, sizeof(void *) <<
+			    rtree->level2bits[i+1]);
+			node[subkey] = child;
+		}
+	}
 
-    /* node is a leaf, so it contains values rather than node pointers. */
-    bits = rtree->level2bits[i];
-    subkey = (key << lshift) >> ((ZU(1) << (LG_SIZEOF_PTR+3)) - bits);
-    node[subkey] = val;
-    malloc_mutex_unlock(&rtree->mutex);
+	/* node is a leaf, so it contains values rather than node pointers. */
+	bits = rtree->level2bits[i];
+	subkey = (key << lshift) >> ((ZU(1) << (LG_SIZEOF_PTR+3)) - bits);
+	node[subkey] = val;
+	malloc_mutex_unlock(&rtree->mutex);
 
-    return (false);
+	return (false);
 }
 #endif
 
