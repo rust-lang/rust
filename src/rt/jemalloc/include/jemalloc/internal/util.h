@@ -33,45 +33,45 @@
  */
 #ifndef assert
 #define	assert(e) do {							\
-    if (config_debug && !(e)) {					\
-        malloc_printf(						\
-            "<jemalloc>: %s:%d: Failed assertion: \"%s\"\n",	\
-            __FILE__, __LINE__, #e);				\
-        abort();						\
-    }								\
+	if (config_debug && !(e)) {					\
+		malloc_printf(						\
+		    "<jemalloc>: %s:%d: Failed assertion: \"%s\"\n",	\
+		    __FILE__, __LINE__, #e);				\
+		abort();						\
+	}								\
 } while (0)
 #endif
 
 /* Use to assert a particular configuration, e.g., cassert(config_debug). */
 #define	cassert(c) do {							\
-    if ((c) == false)						\
-        assert(false);						\
+	if ((c) == false)						\
+		assert(false);						\
 } while (0)
 
 #ifndef not_reached
 #define	not_reached() do {						\
-    if (config_debug) {						\
-        malloc_printf(						\
-            "<jemalloc>: %s:%d: Unreachable code reached\n",	\
-            __FILE__, __LINE__);				\
-        abort();						\
-    }								\
+	if (config_debug) {						\
+		malloc_printf(						\
+		    "<jemalloc>: %s:%d: Unreachable code reached\n",	\
+		    __FILE__, __LINE__);				\
+		abort();						\
+	}								\
 } while (0)
 #endif
 
 #ifndef not_implemented
 #define	not_implemented() do {						\
-    if (config_debug) {						\
-        malloc_printf("<jemalloc>: %s:%d: Not implemented\n",	\
-            __FILE__, __LINE__);				\
-        abort();						\
-    }								\
+	if (config_debug) {						\
+		malloc_printf("<jemalloc>: %s:%d: Not implemented\n",	\
+		    __FILE__, __LINE__);				\
+		abort();						\
+	}								\
 } while (0)
 #endif
 
 #define	assert_not_implemented(e) do {					\
-    if (config_debug && !(e))					\
-        not_implemented();					\
+	if (config_debug && !(e))					\
+		not_implemented();					\
 } while (0)
 
 #endif /* JEMALLOC_H_TYPES */
@@ -118,17 +118,17 @@ JEMALLOC_INLINE size_t
 pow2_ceil(size_t x)
 {
 
-    x--;
-    x |= x >> 1;
-    x |= x >> 2;
-    x |= x >> 4;
-    x |= x >> 8;
-    x |= x >> 16;
+	x--;
+	x |= x >> 1;
+	x |= x >> 2;
+	x |= x >> 4;
+	x |= x >> 8;
+	x |= x >> 16;
 #if (LG_SIZEOF_PTR == 3)
-    x |= x >> 32;
+	x |= x >> 32;
 #endif
-    x++;
-    return (x);
+	x++;
+	return (x);
 }
 
 /* Sets error code */
@@ -137,9 +137,9 @@ set_errno(int errnum)
 {
 
 #ifdef _WIN32
-    SetLastError(errnum);
+	SetLastError(errnum);
 #else
-    errno = errnum;
+	errno = errnum;
 #endif
 }
 
@@ -149,9 +149,9 @@ get_errno(void)
 {
 
 #ifdef _WIN32
-    return (GetLastError());
+	return (GetLastError());
 #else
-    return (errno);
+	return (errno);
 #endif
 }
 #endif
