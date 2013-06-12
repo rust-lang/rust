@@ -70,7 +70,9 @@ pub struct Scheduler {
     /// An action performed after a context switch on behalf of the
     /// code running before the context switch
     priv cleanup_job: Option<CleanupJob>,
-    metrics: SchedMetrics
+    metrics: SchedMetrics,
+    /// Should this scheduler run any task, or only pinned tasks?
+    run_anything: bool
 }
 
 pub struct SchedHandle {
@@ -136,6 +138,16 @@ pub impl Scheduler {
            sleeper_list: SleeperList)
         -> Scheduler {
 
+        Scheduler::new_special(event_loop, work_queue, sleeper_list, true)
+
+    }
+
+    fn new_special(event_loop: ~EventLoopObject,
+           work_queue: WorkQueue<~Coroutine>,
+           sleeper_list: SleeperList,
+           run_anything: bool)
+        -> Scheduler {
+
         // Lazily initialize the runtime TLS key
         local_ptr::init_tls_key();
 
@@ -150,7 +162,8 @@ pub impl Scheduler {
             saved_context: Context::empty(),
             current_task: None,
             cleanup_job: None,
-            metrics: SchedMetrics::new()
+            metrics: SchedMetrics::new(),
+            run_anything: run_anything
         }
     }
 
@@ -429,19 +442,28 @@ pub impl Scheduler {
         assert!(!self.in_task_context());
 
         rtdebug!("looking in work queue for task to schedule");
-
         let mut this = self;
-        match this.work_queue.pop() {
-            Some(task) => {
-                rtdebug!("resuming task from work queue");
-                this.resume_task_immediately(task);
-                return true;
+
+        if this.run_anything {
+            match this.work_queue.pop() {
+                Some(task) => {
+                    rtdebug!("resuming task from work queue");
+                    this.resume_task_immediately(task);
+                    return true;
+                }
+                None => {
+                    rtdebug!("no tasks in queue");
+                    Local::put(this);
+                    return false;
+                }
             }
-            None => {
-                rtdebug!("no tasks in queue");
-                Local::put(this);
-                return false;
-            }
+        } else {
+            // In this branch we have a scheduler that is not allowed
+            // to run unpinned tasks. As such it will only get tasks
+            // to run from the message queue.
+            rtdebug!("skipping resume_task_from_queue");
+            Local::put(this);
+            return false;
         }
     }
 
