@@ -372,7 +372,8 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
 pub fn new_name_finder() -> @Visitor<@mut ~[ast::ident]> {
     let default_visitor = visit::default_visitor();
     @Visitor{
-        visit_pat : |p:@ast::pat,(ident_accum, v): (@mut ~[ast::ident], visit::vt<@mut ~[ast::ident]>)| {
+        visit_pat : |p:@ast::pat,
+                     (ident_accum, v): (@mut ~[ast::ident], visit::vt<@mut ~[ast::ident]>)| {
             match *p {
                 // we found a pat_ident!
                 ast::pat{id:_, node: ast::pat_ident(_,path,ref inner), span:_} => {
