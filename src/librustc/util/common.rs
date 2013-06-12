@@ -66,21 +66,21 @@ pub fn field_exprs(fields: ~[ast::field]) -> ~[@ast::expr] {
 pub fn loop_query(b: &ast::blk, p: @fn(&ast::expr_) -> bool) -> bool {
     let rs = @mut false;
     let visit_expr: @fn(@ast::expr,
-                        flag: @mut bool,
-                        v: visit::vt<@mut bool>) = |e, flag, v| {
+                        (@mut bool,
+                         visit::vt<@mut bool>)) = |e, (flag, v)| {
         *flag |= p(&e.node);
         match e.node {
           // Skip inner loops, since a break in the inner loop isn't a
           // break inside the outer loop
           ast::expr_loop(*) | ast::expr_while(*)
           | ast::expr_loop_body(*) => {}
-          _ => visit::visit_expr(e, flag, v)
+          _ => visit::visit_expr(e, (flag, v))
         }
     };
     let v = visit::mk_vt(@visit::Visitor {
         visit_expr: visit_expr,
         .. *visit::default_visitor()});
-    visit::visit_block(b, rs, v);
+    visit::visit_block(b, (rs, v));
     return *rs;
 }
 
@@ -89,15 +89,15 @@ pub fn loop_query(b: &ast::blk, p: @fn(&ast::expr_) -> bool) -> bool {
 pub fn block_query(b: &ast::blk, p: @fn(@ast::expr) -> bool) -> bool {
     let rs = @mut false;
     let visit_expr: @fn(@ast::expr,
-                        flag: @mut bool,
-                        v: visit::vt<@mut bool>) = |e, flag, v| {
+                        (@mut bool,
+                         visit::vt<@mut bool>)) = |e, (flag, v)| {
         *flag |= p(e);
-        visit::visit_expr(e, flag, v)
+        visit::visit_expr(e, (flag, v))
     };
     let v = visit::mk_vt(@visit::Visitor{
         visit_expr: visit_expr,
         .. *visit::default_visitor()});
-    visit::visit_block(b, rs, v);
+    visit::visit_block(b, (rs, v));
     return *rs;
 }
 

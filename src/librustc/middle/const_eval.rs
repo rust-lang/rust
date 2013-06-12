@@ -224,7 +224,7 @@ pub fn process_crate(crate: @ast::crate,
         visit_expr_post: |e| { classify(e, tcx); },
         .. *visit::default_simple_visitor()
     });
-    visit::visit_crate(crate, (), v);
+    visit::visit_crate(crate, ((), v));
     tcx.sess.abort_if_errors();
 }
 

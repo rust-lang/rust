@@ -41,13 +41,13 @@ pub fn check_crate(tcx: ty::ctxt,
     let cx = @MatchCheckCtxt {tcx: tcx,
                               method_map: method_map,
                               moves_map: moves_map};
-    visit::visit_crate(crate, (), visit::mk_vt(@visit::Visitor {
-        visit_expr: |a,b,c| check_expr(cx, a, b, c),
-        visit_local: |a,b,c| check_local(cx, a, b, c),
-        visit_fn: |kind, decl, body, sp, id, e, v|
-            check_fn(cx, kind, decl, body, sp, id, e, v),
+    visit::visit_crate(crate, ((), visit::mk_vt(@visit::Visitor {
+        visit_expr: |a,b| check_expr(cx, a, b),
+        visit_local: |a,b| check_local(cx, a, b),
+        visit_fn: |kind, decl, body, sp, id, (e, v)|
+            check_fn(cx, kind, decl, body, sp, id, (e, v)),
         .. *visit::default_visitor::<()>()
-    }));
+    })));
     tcx.sess.abort_if_errors();
 }
 
@@ -59,8 +59,8 @@ pub fn expr_is_non_moving_lvalue(cx: @MatchCheckCtxt, expr: @expr) -> bool {
     !cx.moves_map.contains(&expr.id)
 }
 
-pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, s: (), v: visit::vt<()>) {
-    visit::visit_expr(ex, s, v);
+pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, (s, v): ((), visit::vt<()>)) {
+    visit::visit_expr(ex, (s, v));
     match ex.node {
       expr_match(scrut, ref arms) => {
         // First, check legality of move bindings.
@@ -751,9 +751,9 @@ pub fn default(cx: @MatchCheckCtxt, r: &[@pat]) -> Option<~[@pat]> {
 
 pub fn check_local(cx: @MatchCheckCtxt,
                    loc: @local,
-                   s: (),
-                   v: visit::vt<()>) {
-    visit::visit_local(loc, s, v);
+                   (s, v): ((),
+                            visit::vt<()>)) {
+    visit::visit_local(loc, (s, v));
     if is_refutable(cx, loc.node.pat) {
         cx.tcx.sess.span_err(loc.node.pat.span,
                              "refutable pattern in local binding");
@@ -773,9 +773,9 @@ pub fn check_fn(cx: @MatchCheckCtxt,
                 body: &blk,
                 sp: span,
                 id: node_id,
-                s: (),
-                v: visit::vt<()>) {
-    visit::visit_fn(kind, decl, body, sp, id, s, v);
+                (s, v): ((),
+                         visit::vt<()>)) {
+    visit::visit_fn(kind, decl, body, sp, id, (s, v));
     for decl.inputs.each |input| {
         if is_refutable(cx, input.pat) {
             cx.tcx.sess.span_err(input.pat.span,

@@ -651,18 +651,18 @@ pub fn early_resolve_expr(ex: @ast::expr,
 }
 
 fn resolve_expr(ex: @ast::expr,
-                fcx: @mut FnCtxt,
-                v: visit::vt<@mut FnCtxt>) {
+                (fcx, v): (@mut FnCtxt,
+                           visit::vt<@mut FnCtxt>)) {
     early_resolve_expr(ex, fcx, false);
-    visit::visit_expr(ex, fcx, v);
+    visit::visit_expr(ex, (fcx, v));
 }
 
 // Detect points where a trait-bounded type parameter is
 // instantiated, resolve the impls for the parameters.
 pub fn resolve_in_block(fcx: @mut FnCtxt, bl: &ast::blk) {
-    visit::visit_block(bl, fcx, visit::mk_vt(@visit::Visitor {
+    visit::visit_block(bl, (fcx, visit::mk_vt(@visit::Visitor {
         visit_expr: resolve_expr,
-        visit_item: |_,_,_| {},
+        visit_item: |_,_| {},
         .. *visit::default_visitor()
-    }));
+    })));
 }

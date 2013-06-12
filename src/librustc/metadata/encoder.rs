@@ -1120,12 +1120,12 @@ fn encode_info_for_items(ecx: @EncodeContext,
     encode_info_for_mod(ecx, ebml_w, &crate.node.module,
                         crate_node_id, [],
                         syntax::parse::token::special_idents::invalid);
-    visit::visit_crate(crate, (), visit::mk_vt(@visit::Visitor {
-        visit_expr: |_e, _cx, _v| { },
+    visit::visit_crate(crate, ((), visit::mk_vt(@visit::Visitor {
+        visit_expr: |_e, (_cx, _v)| { },
         visit_item: {
             let ebml_w = copy *ebml_w;
-            |i, cx, v| {
-                visit::visit_item(i, cx, v);
+            |i, (cx, v)| {
+                visit::visit_item(i, (cx, v));
                 match ecx.tcx.items.get_copy(&i.id) {
                     ast_map::node_item(_, pt) => {
                         let mut ebml_w = copy ebml_w;
@@ -1137,8 +1137,8 @@ fn encode_info_for_items(ecx: @EncodeContext,
         },
         visit_foreign_item: {
             let ebml_w = copy *ebml_w;
-            |ni, cx, v| {
-                visit::visit_foreign_item(ni, cx, v);
+            |ni, (cx, v)| {
+                visit::visit_foreign_item(ni, (cx, v));
                 match ecx.tcx.items.get_copy(&ni.id) {
                     ast_map::node_foreign_item(_, abi, _, pt) => {
                         let mut ebml_w = copy ebml_w;
@@ -1155,7 +1155,7 @@ fn encode_info_for_items(ecx: @EncodeContext,
             }
         },
         ..*visit::default_visitor()
-    }));
+    })));
     ebml_w.end_tag();
     return /*bad*/copy *index;
 }

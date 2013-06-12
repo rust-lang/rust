@@ -176,7 +176,7 @@ pub fn steal(crate: @ast::crate, tm: test_mode) -> StolenStuff {
         visit_ty: |a| stash_ty_if(safe_to_steal_ty, tys, a, tm),
         .. *visit::default_simple_visitor()
     });
-    visit::visit_crate(crate, (), v);
+    visit::visit_crate(crate, ((), v));
     StolenStuff {
         exprs: (*exprs).clone(),
         tys: (*tys).clone(),
@@ -539,7 +539,7 @@ pub fn has_raw_pointers(c: @ast::crate) -> bool {
         visit::mk_simple_visitor(@visit::SimpleVisitor {
             visit_ty: |a| visit_ty(has_rp, a),
             .. *visit::default_simple_visitor()});
-    visit::visit_crate(c, (), v);
+    visit::visit_crate(c, ((), v));
     return *has_rp;
 }
 
