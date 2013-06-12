@@ -38,7 +38,7 @@ pub trait Iterator<A> {
 ///
 /// In the future these will be default methods instead of a utility trait.
 pub trait IteratorUtil<A> {
-    /// Chan this iterator with another, returning a new iterator which will
+    /// Chain this iterator with another, returning a new iterator which will
     /// finish iterating over the current iterator, and then it will iterate
     /// over the other specified iterator.
     ///
@@ -108,7 +108,7 @@ pub trait IteratorUtil<A> {
     /// ~~~
     fn filter<'r>(self, predicate: &'r fn(&A) -> bool) -> FilterIterator<'r, A, Self>;
 
-    /// Creates an iterator which both filters and maps elements at the same
+    /// Creates an iterator which both filters and maps elements.
     /// If the specified function returns None, the element is skipped.
     /// Otherwise the option is unwrapped and the new value is yielded.
     ///
@@ -141,7 +141,7 @@ pub trait IteratorUtil<A> {
     fn enumerate(self) -> EnumerateIterator<A, Self>;
 
     /// Creates an iterator which invokes the predicate on elements until it
-    /// returns true. Once the predicate returns true, all further elements are
+    /// returns false. Once the predicate returns false, all further elements are
     /// yielded.
     ///
     /// # Example
