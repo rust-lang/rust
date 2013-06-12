@@ -3074,9 +3074,6 @@ pub fn trans_crate(sess: session::Session,
         }
         let int_type = T_int(targ_cfg);
         let float_type = T_float(targ_cfg);
-        let task_type = T_task(targ_cfg);
-        let taskptr_type = T_ptr(task_type);
-        lib::llvm::associate_type(tn, @"taskptr", taskptr_type);
         let tydesc_type = T_tydesc(targ_cfg);
         lib::llvm::associate_type(tn, @"tydesc", tydesc_type);
         let crate_map = decl_crate_map(sess, link_meta, llmod);
@@ -3142,7 +3139,6 @@ pub fn trans_crate(sess: session::Session,
               tydesc_type: tydesc_type,
               int_type: int_type,
               float_type: float_type,
-              task_type: task_type,
               opaque_vec_type: T_opaque_vec(targ_cfg),
               builder: BuilderRef_res(unsafe {
                   llvm::LLVMCreateBuilderInContext(llcx)
