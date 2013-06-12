@@ -22,7 +22,6 @@ use middle::trans::common::CrateContext;
 use middle::ty;
 use util::ppaux;
 
-use core::iterator::IteratorUtil;
 use core::char;
 use core::hash::Streaming;
 use core::hash;

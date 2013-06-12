@@ -22,7 +22,6 @@ use middle::ty;
 use middle;
 use util::ppaux::ty_to_str;
 
-use core::iterator::IteratorUtil;
 use core::hash::HashUtil;
 use core::hashmap::HashMap;
 use core::int;

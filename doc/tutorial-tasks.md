@@ -351,7 +351,6 @@ a single large vector of floats. Each task needs the full vector to perform its 
 # use std::vec;
 # use std::uint;
 # use std::rand;
-# use std::iterator::IteratorUtil;
 use extra::arc::ARC;
 
 fn pnorm(nums: &~[float], p: uint) -> float {

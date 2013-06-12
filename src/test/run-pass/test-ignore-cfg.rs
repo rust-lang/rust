@@ -13,8 +13,6 @@
 
 extern mod extra;
 
-use std::iterator::IteratorUtil;
-
 #[test]
 #[ignore(cfg(ignorecfg))]
 fn shouldignore() {

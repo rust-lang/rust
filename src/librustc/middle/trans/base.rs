@@ -64,7 +64,6 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
 
-use core::iterator::IteratorUtil;
 use core::hash;
 use core::hashmap::{HashMap, HashSet};
 use core::int;

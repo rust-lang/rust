@@ -10,7 +10,6 @@
 
 use core::prelude::*;
 
-use core::iterator::IteratorUtil;
 
 use astsrv;
 use doc;

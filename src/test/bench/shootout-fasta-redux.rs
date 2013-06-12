@@ -1,4 +1,3 @@
-use std::iterator::IteratorUtil;
 use std::cast::transmute;
 use std::from_str::FromStr;
 use std::libc::{FILE, STDOUT_FILENO, c_int, fdopen, fputc, fputs, fwrite, size_t};

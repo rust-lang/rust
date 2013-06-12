@@ -111,7 +111,6 @@ use util::ppaux::{bound_region_to_str};
 use util::ppaux;
 
 
-use core::iterator::IteratorUtil;
 use core::cast::transmute;
 use core::hashmap::HashMap;
 use core::result;

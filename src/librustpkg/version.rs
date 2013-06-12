@@ -15,7 +15,6 @@ extern mod std;
 
 use extra::semver;
 use core::prelude::*;
-use core::iterator::IteratorUtil;
 use core::{char, os, result, run, str};
 use package_path::RemotePath;
 use extra::tempfile::mkdtemp;

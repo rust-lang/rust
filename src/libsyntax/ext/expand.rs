@@ -27,7 +27,6 @@ use parse::token::{ident_to_str, intern};
 use visit;
 use visit::Visitor;
 
-use core::iterator::IteratorUtil;
 use core::vec;
 
 pub fn expand_expr(extsbox: @mut SyntaxEnv,

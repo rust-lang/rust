@@ -33,7 +33,6 @@ use core::char;
 use core::io;
 use core::u64;
 use core::uint;
-use core::iterator::IteratorUtil;
 
 // The @ps is stored here to prevent recursive type.
 pub enum ann_node<'self> {

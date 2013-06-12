@@ -24,7 +24,6 @@ use middle;
 use util::common::time;
 use util::ppaux;
 
-use core::iterator::IteratorUtil;
 use core::hashmap::HashMap;
 use core::int;
 use core::io;

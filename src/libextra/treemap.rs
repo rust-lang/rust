@@ -14,7 +14,6 @@
 
 use core::prelude::*;
 
-use core::iterator::*;
 use core::uint;
 use core::util::{swap, replace};
 
@@ -709,7 +708,6 @@ mod test_treemap {
 
     use super::*;
 
-    use core::iterator::*;
     use core::rand::RngUtil;
     use core::rand;
     use core::str;
@@ -1030,7 +1028,6 @@ mod test_treemap {
 #[cfg(test)]
 mod test_set {
     use core::prelude::*;
-    use core::iterator::*;
 
     use super::*;
 

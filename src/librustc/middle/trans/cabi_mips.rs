@@ -10,7 +10,6 @@
 
 use core::prelude::*;
 
-use core::iterator::IteratorUtil;
 use core::libc::c_uint;
 use core::ptr;
 use core::uint;

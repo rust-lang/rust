@@ -16,7 +16,6 @@ use core::i32;
 use core::int;
 use core::io;
 use core::str;
-use core::iterator::IteratorUtil;
 
 static NSEC_PER_SEC: i32 = 1_000_000_000_i32;
 

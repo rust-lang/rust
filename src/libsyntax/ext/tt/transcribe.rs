@@ -19,7 +19,6 @@ use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident};
 use parse::token::{ident_to_str};
 use parse::lexer::TokenAndSpan;
 
-use core::iterator::IteratorUtil;
 use core::hashmap::HashMap;
 use core::option;
 

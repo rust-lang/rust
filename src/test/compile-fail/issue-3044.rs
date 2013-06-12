@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::iterator::IteratorUtil;
-
 fn main() {
     let needlesArr: ~[char] = ~['a', 'f'];
     do needlesArr.iter().fold() |x, y| {

@@ -14,7 +14,6 @@
 
 use core::prelude::*;
 
-use core::iterator::IteratorUtil;
 use core::cmp::Eq;
 use core::io::{Reader, ReaderUtil};
 use core::io;
