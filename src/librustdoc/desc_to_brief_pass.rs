@@ -108,7 +108,7 @@ fn first_sentence(s: ~str) -> Option<~str> {
     let paras = paragraphs(s);
     if !paras.is_empty() {
         let first_para = paras.head();
-        Some(str::replace(first_sentence_(*first_para), "\n", " "))
+        Some(first_sentence_(*first_para).replace("\n", " "))
     } else {
         None
     }
@@ -131,13 +131,13 @@ fn first_sentence_(s: &str) -> ~str {
     });
     match idx {
         Some(idx) if idx > 2u => {
-            str::to_owned(s.slice(0, idx - 1))
+            s.slice_to(idx - 1).to_owned()
         }
         _ => {
             if s.ends_with(".") {
-                str::to_owned(s)
+                s.to_owned()
             } else {
-                str::to_owned(s)
+                s.to_owned()
             }
         }
     }

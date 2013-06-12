@@ -114,7 +114,7 @@ fn make_title(page: doc::Page) -> ~str {
         }
     };
     let title = markdown_pass::header_text(item);
-    let title = str::replace(title, "`", "");
+    let title = title.replace("`", "");
     return title;
 }
 

@@ -866,6 +866,23 @@ mod test_map {
         assert_eq!(m.len(), i);
         assert!(!m.is_empty());
     }
+
+    #[test]
+    fn test_find_equiv() {
+        let mut m = HashMap::new();
+
+        let (foo, bar, baz) = (1,2,3);
+        m.insert(~"foo", foo);
+        m.insert(~"bar", bar);
+        m.insert(~"baz", baz);
+
+
+        assert_eq!(m.find_equiv(&("foo")), Some(&foo));
+        assert_eq!(m.find_equiv(&("bar")), Some(&bar));
+        assert_eq!(m.find_equiv(&("baz")), Some(&baz));
+
+        assert_eq!(m.find_equiv(&("qux")), None);
+    }
 }
 
 #[cfg(test)]

@@ -13,14 +13,12 @@
 use pass::Pass;
 use text_pass;
 
-use core::str;
-
 pub fn mk_pass() -> Pass {
     text_pass::mk_pass(~"escape", escape)
 }
 
 fn escape(s: &str) -> ~str {
-    str::replace(s, "\\", "\\\\")
+    s.replace("\\", "\\\\")
 }
 
 #[test]

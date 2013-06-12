@@ -202,7 +202,8 @@ fn encode_type_param_bounds(ebml_w: &mut writer::Encoder,
 
 fn encode_variant_id(ebml_w: &mut writer::Encoder, vid: def_id) {
     ebml_w.start_tag(tag_items_data_item_variant);
-    ebml_w.writer.write(str::to_bytes(def_to_str(vid)));
+    let s = def_to_str(vid);
+    ebml_w.writer.write(s.as_bytes());
     ebml_w.end_tag();
 }
 
@@ -271,7 +272,7 @@ fn encode_symbol(ecx: @EncodeContext,
     match ecx.item_symbols.find(&id) {
         Some(x) => {
             debug!("encode_symbol(id=%?, str=%s)", id, *x);
-            ebml_w.writer.write(str::to_bytes(*x));
+            ebml_w.writer.write(x.as_bytes());
         }
         None => {
             ecx.diag.handler().bug(
@@ -285,7 +286,7 @@ fn encode_discriminant(ecx: @EncodeContext,
                        ebml_w: &mut writer::Encoder,
                        id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
-    ebml_w.writer.write(str::to_bytes(*ecx.discrim_symbols.get_copy(&id)));
+    ebml_w.writer.write(ecx.discrim_symbols.get_copy(&id).as_bytes());
     ebml_w.end_tag();
 }
 
@@ -293,13 +294,15 @@ fn encode_disr_val(_: @EncodeContext,
                    ebml_w: &mut writer::Encoder,
                    disr_val: int) {
     ebml_w.start_tag(tag_disr_val);
-    ebml_w.writer.write(str::to_bytes(int::to_str(disr_val)));
+    let s = int::to_str(disr_val);
+    ebml_w.writer.write(s.as_bytes());
     ebml_w.end_tag();
 }
 
 fn encode_parent_item(ebml_w: &mut writer::Encoder, id: def_id) {
     ebml_w.start_tag(tag_items_data_parent_item);
-    ebml_w.writer.write(str::to_bytes(def_to_str(id)));
+    let s = def_to_str(id);
+    ebml_w.writer.write(s.as_bytes());
     ebml_w.end_tag();
 }
 
@@ -954,7 +957,8 @@ fn encode_info_for_item(ecx: @EncodeContext,
         for methods.each |m| {
             ebml_w.start_tag(tag_item_impl_method);
             let method_def_id = local_def(m.id);
-            ebml_w.writer.write(str::to_bytes(def_to_str(method_def_id)));
+            let s = def_to_str(method_def_id);
+            ebml_w.writer.write(s.as_bytes());
             ebml_w.end_tag();
         }
         for opt_trait.iter().advance |ast_trait_ref| {
@@ -1218,7 +1222,7 @@ fn encode_meta_item(ebml_w: &mut writer::Encoder, mi: @meta_item) {
       meta_word(name) => {
         ebml_w.start_tag(tag_meta_item_word);
         ebml_w.start_tag(tag_meta_item_name);
-        ebml_w.writer.write(str::to_bytes(*name));
+        ebml_w.writer.write(name.as_bytes());
         ebml_w.end_tag();
         ebml_w.end_tag();
       }
@@ -1227,10 +1231,10 @@ fn encode_meta_item(ebml_w: &mut writer::Encoder, mi: @meta_item) {
           lit_str(value) => {
             ebml_w.start_tag(tag_meta_item_name_value);
             ebml_w.start_tag(tag_meta_item_name);
-            ebml_w.writer.write(str::to_bytes(*name));
+            ebml_w.writer.write(name.as_bytes());
             ebml_w.end_tag();
             ebml_w.start_tag(tag_meta_item_value);
-            ebml_w.writer.write(str::to_bytes(*value));
+            ebml_w.writer.write(value.as_bytes());
             ebml_w.end_tag();
             ebml_w.end_tag();
           }
@@ -1240,7 +1244,7 @@ fn encode_meta_item(ebml_w: &mut writer::Encoder, mi: @meta_item) {
       meta_list(name, ref items) => {
         ebml_w.start_tag(tag_meta_item_list);
         ebml_w.start_tag(tag_meta_item_name);
-        ebml_w.writer.write(str::to_bytes(*name));
+        ebml_w.writer.write(name.as_bytes());
         ebml_w.end_tag();
         for items.each |inner_item| {
             encode_meta_item(ebml_w, *inner_item);
@@ -1398,20 +1402,21 @@ fn encode_crate_dep(ecx: @EncodeContext,
                     dep: decoder::crate_dep) {
     ebml_w.start_tag(tag_crate_dep);
     ebml_w.start_tag(tag_crate_dep_name);
-    ebml_w.writer.write(str::to_bytes(*ecx.tcx.sess.str_of(dep.name)));
+    let s = ecx.tcx.sess.str_of(dep.name);
+    ebml_w.writer.write(s.as_bytes());
     ebml_w.end_tag();
     ebml_w.start_tag(tag_crate_dep_vers);
-    ebml_w.writer.write(str::to_bytes(*dep.vers));
+    ebml_w.writer.write(dep.vers.as_bytes());
     ebml_w.end_tag();
     ebml_w.start_tag(tag_crate_dep_hash);
-    ebml_w.writer.write(str::to_bytes(*dep.hash));
+    ebml_w.writer.write(dep.hash.as_bytes());
     ebml_w.end_tag();
     ebml_w.end_tag();
 }
 
 fn encode_hash(ebml_w: &mut writer::Encoder, hash: &str) {
     ebml_w.start_tag(tag_crate_hash);
-    ebml_w.writer.write(str::to_bytes(hash));
+    ebml_w.writer.write(hash.as_bytes());
     ebml_w.end_tag();
 }
 
@@ -1516,7 +1521,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
 
     let writer_bytes: &mut ~[u8] = wr.bytes;
 
-    vec::to_owned(metadata_encoding_version) +
+    metadata_encoding_version.to_owned() +
         flate::deflate_bytes(*writer_bytes)
 }
 

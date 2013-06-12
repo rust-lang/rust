@@ -16,6 +16,7 @@ use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use option::{None, Option, Some};
 use char;
 use str;
+use str::{StrSlice};
 use kinds::Copy;
 use vec;
 use vec::{CopyableVector, ImmutableVector};
@@ -189,18 +190,18 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
     let _1: T = One::one();
 
     if is_NaN(num) {
-        return (str::to_bytes("NaN"), true);
+        return ("NaN".as_bytes().to_owned(), true);
     }
     else if is_inf(num){
         return match sign {
-            SignAll => (str::to_bytes("+inf"), true),
-            _       => (str::to_bytes("inf"), true)
+            SignAll => ("+inf".as_bytes().to_owned(), true),
+            _       => ("inf".as_bytes().to_owned(), true)
         }
     }
     else if is_neg_inf(num) {
         return match sign {
-            SignNone => (str::to_bytes("inf"), true),
-            _        => (str::to_bytes("-inf"), true),
+            SignNone => ("inf".as_bytes().to_owned(), true),
+            _        => ("-inf".as_bytes().to_owned(), true),
         }
     }
 
@@ -638,7 +639,7 @@ pub fn from_str_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+Mul<T,T>+
         special: bool, exponent: ExponentFormat, empty_zero: bool,
         ignore_underscores: bool
         ) -> Option<T> {
-    from_str_bytes_common(str::to_bytes(buf), radix, negative,
+    from_str_bytes_common(buf.as_bytes(), radix, negative,
                           fractional, special, exponent, empty_zero,
                           ignore_underscores)
 }

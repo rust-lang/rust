@@ -209,7 +209,7 @@ Available lint options:
     io::println(fmt!("    %s  %7.7s  %s\n",
                      padded(max_key, "----"), "-------", "-------"));
     for lint_dict.each |k, v| {
-        let k = str::replace(*k, "_", "-");
+        let k = k.replace("_", "-");
         io::println(fmt!("    %s  %7.7s  %s",
                          padded(max_key, k),
                          match v.default {

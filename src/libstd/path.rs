@@ -515,7 +515,7 @@ impl GenericPath for PosixPath {
     fn with_filestem(&self, s: &str) -> PosixPath {
         match self.filetype() {
             None => self.with_filename(s),
-            Some(ref t) => self.with_filename(str::to_owned(s) + *t),
+            Some(ref t) => self.with_filename(s.to_owned() + *t),
         }
     }
 
@@ -657,7 +657,7 @@ impl GenericPath for WindowsPath {
             (None, None) => {
                 host = None;
                 device = None;
-                rest = str::to_owned(s);
+                rest = s.to_owned();
             }
         }
 
@@ -729,7 +729,7 @@ impl GenericPath for WindowsPath {
     fn with_filestem(&self, s: &str) -> WindowsPath {
         match self.filetype() {
             None => self.with_filename(s),
-            Some(ref t) => self.with_filename(str::to_owned(s) + *t),
+            Some(ref t) => self.with_filename(s.to_owned() + *t),
         }
     }
 
@@ -947,7 +947,6 @@ pub mod windows {
 mod tests {
     use option::{None, Some};
     use path::{PosixPath, WindowsPath, windows};
-    use str;
 
     #[test]
     fn test_double_slash_collapsing() {
@@ -984,7 +983,7 @@ mod tests {
     fn test_posix_paths() {
         fn t(wp: &PosixPath, s: &str) {
             let ss = wp.to_str();
-            let sss = str::to_owned(s);
+            let sss = s.to_owned();
             if (ss != sss) {
                 debug!("got %s", ss);
                 debug!("expected %s", sss);
@@ -1042,7 +1041,7 @@ mod tests {
     fn test_normalize() {
         fn t(wp: &PosixPath, s: &str) {
             let ss = wp.to_str();
-            let sss = str::to_owned(s);
+            let sss = s.to_owned();
             if (ss != sss) {
                 debug!("got %s", ss);
                 debug!("expected %s", sss);
@@ -1105,7 +1104,7 @@ mod tests {
     fn test_windows_paths() {
         fn t(wp: &WindowsPath, s: &str) {
             let ss = wp.to_str();
-            let sss = str::to_owned(s);
+            let sss = s.to_owned();
             if (ss != sss) {
                 debug!("got %s", ss);
                 debug!("expected %s", sss);

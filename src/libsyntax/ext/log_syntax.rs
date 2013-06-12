@@ -18,7 +18,6 @@ use print;
 use parse::token::{get_ident_interner};
 
 use core::io;
-use core::vec;
 
 pub fn expand_syntax_ext(cx: @ExtCtxt,
                          sp: codemap::span,
@@ -28,7 +27,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt,
     cx.print_backtrace();
     io::stdout().write_line(
         print::pprust::tt_to_str(
-            ast::tt_delim(vec::to_owned(tt)),
+            ast::tt_delim(tt.to_owned()),
             get_ident_interner()));
 
     //trivial expression

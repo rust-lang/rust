@@ -193,7 +193,7 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
         }
         body
       }
-      LIT_STR(ref s) => { ~"\"" + str::escape_default(*ident_to_str(s)) + "\"" }
+      LIT_STR(ref s) => { ~"\"" + ident_to_str(s).escape_default() + "\"" }
 
       /* Name components */
       IDENT(s, _) => copy *in.get(s.name),

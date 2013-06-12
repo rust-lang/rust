@@ -23,7 +23,6 @@ use core::i16;
 use core::i32;
 use core::i64;
 use core::i8;
-use core::str;
 use core::u16;
 use core::u32;
 use core::u64;
@@ -375,7 +374,7 @@ impl Context {
                 fmt!("%s [-%c %s%s]", msg, match level {
                         warn => 'W', deny => 'D', forbid => 'F',
                         allow => fail!()
-                    }, str::replace(self.lint_to_str(lint), "_", "-"),
+                    }, self.lint_to_str(lint).replace("_", "-"),
                     if src == Default { " (default)" } else { "" })
             },
             Node(src) => {
@@ -842,7 +841,7 @@ fn check_item_non_camel_case_types(cx: &Context, it: @ast::item) {
     fn is_camel_case(cx: ty::ctxt, ident: ast::ident) -> bool {
         let ident = cx.sess.str_of(ident);
         assert!(!ident.is_empty());
-        let ident = ident.trim_chars(&['_']);
+        let ident = ident.trim_chars(&'_');
         char::is_uppercase(ident.char_at(0)) &&
             !ident.contains_char('_')
     }

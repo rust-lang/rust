@@ -19,8 +19,6 @@ use parse::token::*;
 use parse::token;
 use parse;
 
-use core::vec;
-
 /**
 *
 * Quasiquoting works via token trees.
@@ -39,8 +37,6 @@ pub mod rt {
     use ext::base::ExtCtxt;
     use parse;
     use print::pprust;
-
-    use core::str;
 
     pub use ast::*;
     pub use parse::token::*;
@@ -128,7 +124,7 @@ pub mod rt {
 
     impl<'self> ToSource for &'self str {
         fn to_source(&self) -> ~str {
-            let lit = dummy_spanned(ast::lit_str(@str::to_owned(*self)));
+            let lit = dummy_spanned(ast::lit_str(@self.to_owned()));
             pprust::lit_to_str(@lit)
         }
     }
@@ -661,7 +657,7 @@ fn expand_tts(cx: @ExtCtxt,
     let p = parse::new_parser_from_tts(
         cx.parse_sess(),
         cx.cfg(),
-        vec::to_owned(tts)
+        tts.to_owned()
     );
     *p.quote_depth += 1u;
     let tts = p.parse_all_token_trees();
