@@ -30,12 +30,12 @@ extern mod rusti;
 extern mod rustc;
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use core::io;
 use core::os;
 use core::run;
 use core::libc::exit;
-use core::str;
 
 // For bootstrapping.
 mod std {
@@ -224,7 +224,7 @@ fn usage() {
     );
 
     for commands.each |command| {
-        let padding = str::repeat(" ", indent - command.cmd.len());
+        let padding = " ".repeat(indent - command.cmd.len());
         io::println(fmt!("    %s%s%s",
                          command.cmd, padding, command.usage_line));
     }
@@ -242,7 +242,8 @@ pub fn main() {
     let args = os_args.tail();
 
     if !args.is_empty() {
-        for find_cmd(*args.head()).each |command| {
+        let r = find_cmd(*args.head());
+        for r.iter().advance |command| {
             let result = do_command(command, args.tail());
             match result {
                 Valid(exit_code) => unsafe { exit(exit_code.to_i32()) },

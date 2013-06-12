@@ -52,7 +52,7 @@ pub fn read_crates(diag: @span_handler,
             visit_item: |a| visit_item(e, a),
             .. *visit::default_simple_visitor()});
     visit_crate(e, crate);
-    visit::visit_crate(crate, (), v);
+    visit::visit_crate(crate, ((), v));
     dump_crates(e.crate_cache);
     warn_if_multiple_versions(e, diag, e.crate_cache);
 }

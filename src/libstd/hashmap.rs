@@ -20,6 +20,7 @@ use cmp::{Eq, Equiv};
 use hash::Hash;
 use old_iter::BaseIter;
 use old_iter;
+use iterator::{Iterator, IteratorUtil};
 use option::{None, Option, Some};
 use rand::RngUtil;
 use rand;
@@ -316,7 +317,7 @@ impl<K:Hash + Eq,V> Map<K, V> for HashMap<K, V> {
     /// Visit all key-value pairs
     fn each<'a>(&'a self, blk: &fn(&K, &'a V) -> bool) -> bool {
         for self.buckets.each |bucket| {
-            for bucket.each |pair| {
+            for bucket.iter().advance |pair| {
                 if !blk(&pair.key, &pair.value) {
                     return false;
                 }
@@ -864,6 +865,23 @@ mod test_map {
 
         assert_eq!(m.len(), i);
         assert!(!m.is_empty());
+    }
+
+    #[test]
+    fn test_find_equiv() {
+        let mut m = HashMap::new();
+
+        let (foo, bar, baz) = (1,2,3);
+        m.insert(~"foo", foo);
+        m.insert(~"bar", bar);
+        m.insert(~"baz", baz);
+
+
+        assert_eq!(m.find_equiv(&("foo")), Some(&foo));
+        assert_eq!(m.find_equiv(&("bar")), Some(&bar));
+        assert_eq!(m.find_equiv(&("baz")), Some(&baz));
+
+        assert_eq!(m.find_equiv(&("qux")), None);
     }
 }
 

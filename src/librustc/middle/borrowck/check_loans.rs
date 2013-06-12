@@ -18,6 +18,7 @@
 // 4. moves do not affect things loaned out in any way
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use core::hashmap::HashSet;
 use core::uint;
@@ -61,7 +62,7 @@ pub fn check_loans(bccx: @BorrowckCtxt,
                                            visit_pat: check_loans_in_pat,
                                            visit_fn: check_loans_in_fn,
                                            .. *visit::default_visitor()});
-    (vt.visit_block)(body, clcx, vt);
+    (vt.visit_block)(body, (clcx, vt));
 }
 
 enum MoveError {
@@ -581,14 +582,15 @@ impl<'self> CheckLoanCtxt<'self> {
         // FIXME(#4384) inadequare if/when we permit `move a.b`
 
         // check for a conflicting loan:
-        for opt_loan_path(cmt).each |&lp| {
+        let r = opt_loan_path(cmt);
+        for r.iter().advance |&lp| {
             for self.each_in_scope_restriction(cmt.id, lp) |loan, _| {
                 // Any restriction prevents moves.
                 return MoveWhileBorrowed(lp, loan.loan_path, loan.span);
             }
         }
 
-        return MoveOk;
+        MoveOk
     }
 
     pub fn check_call(&mut self,
@@ -612,8 +614,8 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
                          body: &ast::blk,
                          sp: span,
                          id: ast::node_id,
-                         this: @mut CheckLoanCtxt<'a>,
-                         visitor: visit::vt<@mut CheckLoanCtxt<'a>>) {
+                         (this, visitor): (@mut CheckLoanCtxt<'a>,
+                                           visit::vt<@mut CheckLoanCtxt<'a>>)) {
     match *fk {
         visit::fk_item_fn(*) |
         visit::fk_method(*) => {
@@ -627,7 +629,7 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
         }
     }
 
-    visit::visit_fn(fk, decl, body, sp, id, this, visitor);
+    visit::visit_fn(fk, decl, body, sp, id, (this, visitor));
 
     fn check_captured_variables(this: @mut CheckLoanCtxt,
                                 closure_id: ast::node_id,
@@ -675,15 +677,15 @@ fn check_loans_in_fn<'a>(fk: &visit::fn_kind,
 }
 
 fn check_loans_in_local<'a>(local: @ast::local,
-                            this: @mut CheckLoanCtxt<'a>,
-                            vt: visit::vt<@mut CheckLoanCtxt<'a>>) {
-    visit::visit_local(local, this, vt);
+                            (this, vt): (@mut CheckLoanCtxt<'a>,
+                                         visit::vt<@mut CheckLoanCtxt<'a>>)) {
+    visit::visit_local(local, (this, vt));
 }
 
 fn check_loans_in_expr<'a>(expr: @ast::expr,
-                           this: @mut CheckLoanCtxt<'a>,
-                           vt: visit::vt<@mut CheckLoanCtxt<'a>>) {
-    visit::visit_expr(expr, this, vt);
+                           (this, vt): (@mut CheckLoanCtxt<'a>,
+                                        visit::vt<@mut CheckLoanCtxt<'a>>)) {
+    visit::visit_expr(expr, (this, vt));
 
     debug!("check_loans_in_expr(expr=%s)",
            expr.repr(this.tcx()));
@@ -700,9 +702,9 @@ fn check_loans_in_expr<'a>(expr: @ast::expr,
           if !this.move_data.is_assignee(expr.id) {
               let cmt = this.bccx.cat_expr_unadjusted(expr);
               debug!("path cmt=%s", cmt.repr(this.tcx()));
-              for opt_loan_path(cmt).each |&lp| {
-                  this.check_if_path_is_moved(expr.id, expr.span,
-                                              MovedInUse, lp);
+              let r = opt_loan_path(cmt);
+              for r.iter().advance |&lp| {
+                  this.check_if_path_is_moved(expr.id, expr.span, MovedInUse, lp);
               }
           }
       }
@@ -738,8 +740,8 @@ fn check_loans_in_expr<'a>(expr: @ast::expr,
 }
 
 fn check_loans_in_pat<'a>(pat: @ast::pat,
-                          this: @mut CheckLoanCtxt<'a>,
-                          vt: visit::vt<@mut CheckLoanCtxt<'a>>)
+                          (this, vt): (@mut CheckLoanCtxt<'a>,
+                                       visit::vt<@mut CheckLoanCtxt<'a>>))
 {
     this.check_for_conflicting_loans(pat.id);
 
@@ -754,13 +756,13 @@ fn check_loans_in_pat<'a>(pat: @ast::pat,
     // rewalk the patterns and rebuild the pattern
     // categorizations.
 
-    visit::visit_pat(pat, this, vt);
+    visit::visit_pat(pat, (this, vt));
 }
 
 fn check_loans_in_block<'a>(blk: &ast::blk,
-                            this: @mut CheckLoanCtxt<'a>,
-                            vt: visit::vt<@mut CheckLoanCtxt<'a>>)
+                            (this, vt): (@mut CheckLoanCtxt<'a>,
+                                         visit::vt<@mut CheckLoanCtxt<'a>>))
 {
-    visit::visit_block(blk, this, vt);
+    visit::visit_block(blk, (this, vt));
     this.check_for_conflicting_loans(blk.node.id);
 }

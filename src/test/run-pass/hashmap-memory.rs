@@ -48,7 +48,7 @@ mod map_reduce {
             }
             let (pp, cc) = stream();
             error!("sending find_reducer");
-            ctrl.send(find_reducer(str::to_bytes(key), cc));
+            ctrl.send(find_reducer(key.as_bytes().to_owned(), cc));
             error!("receiving");
             let c = pp.recv();
             error!(c);

@@ -26,7 +26,7 @@ use clone::Clone;
 use cmp::{TotalOrd, Ordering, Less, Equal, Greater};
 use container::Container;
 use iter::Times;
-use iterator::{Iterator, IteratorUtil, FilterIterator};
+use iterator::{Iterator, IteratorUtil, FilterIterator, AdditiveIterator};
 use libc;
 use option::{None, Option, Some};
 use old_iter::{BaseIter, EqIter};
@@ -107,23 +107,17 @@ pub fn from_bytes_slice<'a>(vector: &'a [u8]) -> &'a str {
     }
 }
 
-/// Copy a slice into a new unique str
-#[inline(always)]
-pub fn to_owned(s: &str) -> ~str {
-    unsafe { raw::slice_bytes_owned(s, 0, s.len()) }
-}
-
 impl ToStr for ~str {
     #[inline(always)]
-    fn to_str(&self) -> ~str { to_owned(*self) }
+    fn to_str(&self) -> ~str { self.to_owned() }
 }
 impl<'self> ToStr for &'self str {
     #[inline(always)]
-    fn to_str(&self) -> ~str { to_owned(*self) }
+    fn to_str(&self) -> ~str { self.to_owned() }
 }
 impl ToStr for @str {
     #[inline(always)]
-    fn to_str(&self) -> ~str { to_owned(*self) }
+    fn to_str(&self) -> ~str { self.to_owned() }
 }
 
 /**
@@ -160,29 +154,19 @@ pub fn push_str(lhs: &mut ~str, rhs: &str) {
     lhs.push_str(rhs)
 }
 
-/// Concatenate two strings together
-#[inline(always)]
-pub fn append(lhs: ~str, rhs: &str) -> ~str {
-    let mut v = lhs;
-    v.push_str_no_overallocate(rhs);
-    v
-}
-
 #[allow(missing_doc)]
 pub trait StrVector {
     pub fn concat(&self) -> ~str;
     pub fn connect(&self, sep: &str) -> ~str;
 }
 
-impl<'self> StrVector for &'self [~str] {
+impl<'self, S: Str> StrVector for &'self [S] {
     /// Concatenate a vector of strings.
     pub fn concat(&self) -> ~str {
         if self.is_empty() { return ~""; }
 
-        let mut len = 0;
-        for self.each |ss| {
-            len += ss.len();
-        }
+        let len = self.iter().transform(|s| s.as_slice().len()).sum();
+
         let mut s = ~"";
 
         s.reserve(len);
@@ -190,8 +174,8 @@ impl<'self> StrVector for &'self [~str] {
         unsafe {
             do as_buf(s) |buf, _| {
                 let mut buf = ::cast::transmute_mut_unsafe(buf);
-                for self.each |ss| {
-                    do as_buf(*ss) |ssbuf, sslen| {
+                for self.iter().advance |ss| {
+                    do as_buf(ss.as_slice()) |ssbuf, sslen| {
                         let sslen = sslen - 1;
                         ptr::copy_memory(buf, ssbuf, sslen);
                         buf = buf.offset(sslen);
@@ -211,10 +195,8 @@ impl<'self> StrVector for &'self [~str] {
         if sep.is_empty() { return self.concat(); }
 
         // this is wrong without the guarantee that `self` is non-empty
-        let mut len = sep.len() * (self.len() - 1);
-        for self.each |ss| {
-            len += ss.len();
-        }
+        let len = sep.len() * (self.len() - 1)
+            + self.iter().transform(|s| s.as_slice().len()).sum();
         let mut s = ~"";
         let mut first = true;
 
@@ -225,8 +207,8 @@ impl<'self> StrVector for &'self [~str] {
                 do as_buf(sep) |sepbuf, seplen| {
                     let seplen = seplen - 1;
                     let mut buf = ::cast::transmute_mut_unsafe(buf);
-                    for self.each |ss| {
-                        do as_buf(*ss) |ssbuf, sslen| {
+                    for self.iter().advance |ss| {
+                        do as_buf(ss.as_slice()) |ssbuf, sslen| {
                             let sslen = sslen - 1;
                             if first {
                                 first = false;
@@ -243,192 +225,6 @@ impl<'self> StrVector for &'self [~str] {
             raw::set_len(&mut s, len);
         }
         s
-    }
-}
-
-impl<'self> StrVector for &'self [&'self str] {
-    /// Concatenate a vector of strings.
-    pub fn concat(&self) -> ~str {
-        if self.is_empty() { return ~""; }
-
-        let mut len = 0;
-        for self.each |ss| {
-            len += ss.len();
-        }
-        let mut s = ~"";
-
-        s.reserve(len);
-
-        unsafe {
-            do as_buf(s) |buf, _| {
-                let mut buf = ::cast::transmute_mut_unsafe(buf);
-                for self.each |ss| {
-                    do as_buf(*ss) |ssbuf, sslen| {
-                        let sslen = sslen - 1;
-                        ptr::copy_memory(buf, ssbuf, sslen);
-                        buf = buf.offset(sslen);
-                    }
-                }
-            }
-            raw::set_len(&mut s, len);
-        }
-        s
-    }
-
-    /// Concatenate a vector of strings, placing a given separator between each.
-    pub fn connect(&self, sep: &str) -> ~str {
-        if self.is_empty() { return ~""; }
-
-        // concat is faster
-        if sep.is_empty() { return self.concat(); }
-
-        // this is wrong without the guarantee that `self` is non-empty
-        let mut len = sep.len() * (self.len() - 1);
-        for self.each |ss| {
-            len += ss.len();
-        }
-        let mut s = ~"";
-        let mut first = true;
-
-        s.reserve(len);
-
-        unsafe {
-            do as_buf(s) |buf, _| {
-                do as_buf(sep) |sepbuf, seplen| {
-                    let seplen = seplen - 1;
-                    let mut buf = ::cast::transmute_mut_unsafe(buf);
-                    for self.each |ss| {
-                        do as_buf(*ss) |ssbuf, sslen| {
-                            let sslen = sslen - 1;
-                            if first {
-                                first = false;
-                            } else {
-                                ptr::copy_memory(buf, sepbuf, seplen);
-                                buf = buf.offset(seplen);
-                            }
-                            ptr::copy_memory(buf, ssbuf, sslen);
-                            buf = buf.offset(sslen);
-                        }
-                    }
-                }
-            }
-            raw::set_len(&mut s, len);
-        }
-        s
-    }
-}
-
-/// Given a string, make a new string with repeated copies of it
-pub fn repeat(ss: &str, nn: uint) -> ~str {
-    do as_buf(ss) |buf, len| {
-        let mut ret = ~"";
-        // ignore the NULL terminator
-        let len = len - 1;
-        ret.reserve(nn * len);
-
-        unsafe {
-            do as_buf(ret) |rbuf, _len| {
-                let mut rbuf = ::cast::transmute_mut_unsafe(rbuf);
-
-                for nn.times {
-                    ptr::copy_memory(rbuf, buf, len);
-                    rbuf = rbuf.offset(len);
-                }
-            }
-            raw::set_len(&mut ret, nn * len);
-        }
-        ret
-    }
-}
-
-/*
-Section: Adding to and removing from a string
-*/
-
-/**
- * Remove the final character from a string and return it
- *
- * # Failure
- *
- * If the string does not contain any characters
- */
-pub fn pop_char(s: &mut ~str) -> char {
-    let end = s.len();
-    assert!(end > 0u);
-    let CharRange {ch, next} = s.char_range_at_reverse(end);
-    unsafe { raw::set_len(s, next); }
-    return ch;
-}
-
-/**
- * Remove the first character from a string and return it
- *
- * # Failure
- *
- * If the string does not contain any characters
- */
-pub fn shift_char(s: &mut ~str) -> char {
-    let CharRange {ch, next} = s.char_range_at(0u);
-    *s = unsafe { raw::slice_bytes_owned(*s, next, s.len()) };
-    return ch;
-}
-
-/**
- * Removes the first character from a string slice and returns it. This does
- * not allocate a new string; instead, it mutates a slice to point one
- * character beyond the character that was shifted.
- *
- * # Failure
- *
- * If the string does not contain any characters
- */
-#[inline]
-pub fn slice_shift_char<'a>(s: &'a str) -> (char, &'a str) {
-    let CharRange {ch, next} = s.char_range_at(0u);
-    let next_s = unsafe { raw::slice_bytes(s, next, s.len()) };
-    return (ch, next_s);
-}
-
-/// Prepend a char to a string
-pub fn unshift_char(s: &mut ~str, ch: char) {
-    // This could be more efficient.
-    let mut new_str = ~"";
-    new_str.push_char(ch);
-    new_str.push_str(*s);
-    *s = new_str;
-}
-
-/*
-Section: Transforming strings
-*/
-
-/**
- * Converts a string to a unique vector of bytes
- *
- * The result vector is not null-terminated.
- */
-pub fn to_bytes(s: &str) -> ~[u8] {
-    unsafe {
-        let mut v: ~[u8] = ::cast::transmute(to_owned(s));
-        vec::raw::set_len(&mut v, s.len());
-        v
-    }
-}
-
-/// Work with the string as a byte slice, not including trailing null.
-#[inline(always)]
-pub fn byte_slice<T>(s: &str, f: &fn(v: &[u8]) -> T) -> T {
-    do as_buf(s) |p,n| {
-        unsafe { vec::raw::buf_as_slice(p, n-1u, f) }
-    }
-}
-
-/// Work with the string as a byte slice, not including trailing null, without
-/// a callback.
-#[inline(always)]
-pub fn byte_slice_no_callback<'a>(s: &'a str) -> &'a [u8] {
-    unsafe {
-        cast::transmute(s)
     }
 }
 
@@ -457,6 +253,17 @@ impl CharEq for extern "Rust" fn(char) -> bool {
     fn matches(&self, c: char) -> bool { (*self)(c) }
 
     fn only_ascii(&self) -> bool { false }
+}
+
+impl<'self, C: CharEq> CharEq for &'self [C] {
+    #[inline(always)]
+    fn matches(&self, c: char) -> bool {
+        self.iter().any_(|m| m.matches(c))
+    }
+
+    fn only_ascii(&self) -> bool {
+        self.iter().all(|m| m.only_ascii())
+    }
 }
 
 
@@ -709,30 +516,6 @@ pub fn each_split_within<'a>(ss: &'a str,
     return cont;
 }
 
-/**
- * Replace all occurrences of one string with another
- *
- * # Arguments
- *
- * * s - The string containing substrings to replace
- * * from - The string to replace
- * * to - The replacement string
- *
- * # Return value
- *
- * The original string with all occurances of `from` replaced with `to`
- */
-pub fn replace(s: &str, from: &str, to: &str) -> ~str {
-    let mut (result, last_end) = (~"", 0);
-    for s.matches_index_iter(from).advance |(start, end)| {
-        result.push_str(unsafe{raw::slice_bytes(s, last_end, start)});
-        result.push_str(to);
-        last_end = end;
-    }
-    result.push_str(unsafe{raw::slice_bytes(s, last_end, s.len())});
-    result
-}
-
 /*
 Section: Comparing strings
 */
@@ -976,15 +759,6 @@ fn match_at<'a,'b>(haystack: &'a str, needle: &'b str, at: uint) -> bool {
     return true;
 }
 
-
-/*
-Section: String properties
-*/
-
-/// Returns the number of characters that a string holds
-#[inline(always)]
-pub fn char_len(s: &str) -> uint { count_chars(s, 0u, s.len()) }
-
 /*
 Section: Misc
 */
@@ -1102,46 +876,6 @@ pub fn with_capacity(capacity: uint) -> ~str {
     buf
 }
 
-/**
- * As char_len but for a slice of a string
- *
- * # Arguments
- *
- * * s - A valid string
- * * start - The position inside `s` where to start counting in bytes
- * * end - The position where to stop counting
- *
- * # Return value
- *
- * The number of Unicode characters in `s` between the given indices.
- */
-pub fn count_chars(s: &str, start: uint, end: uint) -> uint {
-    assert!(s.is_char_boundary(start));
-    assert!(s.is_char_boundary(end));
-    let mut (i, len) = (start, 0u);
-    while i < end {
-        let next = s.char_range_at(i).next;
-        len += 1u;
-        i = next;
-    }
-    return len;
-}
-
-/// Counts the number of bytes taken by the first `n` chars in `s`
-/// starting from `start`.
-pub fn count_bytes<'b>(s: &'b str, start: uint, n: uint) -> uint {
-    assert!(s.is_char_boundary(start));
-    let mut (end, cnt) = (start, n);
-    let l = s.len();
-    while cnt > 0u {
-        assert!(end < l);
-        let next = s.char_range_at(end).next;
-        cnt -= 1u;
-        end = next;
-    }
-    end - start
-}
-
 /// Given a first byte, determine how many bytes are in this UTF-8 character
 pub fn utf8_char_width(b: u8) -> uint {
     let byte: uint = b as uint;
@@ -1176,39 +910,6 @@ static max_five_b: uint = 67108864u;
 static tag_six_b: uint = 252u;
 
 /**
- * Work with the byte buffer of a string.
- *
- * Allows for unsafe manipulation of strings, which is useful for foreign
- * interop.
- *
- * # Example
- *
- * ~~~ {.rust}
- * let i = str::as_bytes("Hello World") { |bytes| bytes.len() };
- * ~~~
- */
-#[inline]
-pub fn as_bytes<T>(s: &const ~str, f: &fn(&~[u8]) -> T) -> T {
-    unsafe {
-        let v: *~[u8] = cast::transmute(copy s);
-        f(&*v)
-    }
-}
-
-/**
- * Work with the byte buffer of a string as a byte slice.
- *
- * The byte slice does not include the null terminator.
- */
-pub fn as_bytes_slice<'a>(s: &'a str) -> &'a [u8] {
-    unsafe {
-        let (ptr, len): (*u8, uint) = ::cast::transmute(s);
-        let outgoing_tuple: (*u8, uint) = (ptr, len - 1);
-        return ::cast::transmute(outgoing_tuple);
-    }
-}
-
-/**
  * A dummy trait to hold all the utility methods that we implement on strings.
  */
 pub trait StrUtil {
@@ -1237,7 +938,7 @@ impl<'self> StrUtil for &'self str {
             // NB: len includes the trailing null.
             assert!(len > 0);
             if unsafe { *(ptr::offset(buf,len-1)) != 0 } {
-                to_owned(self).as_c_str(f)
+                self.to_owned().as_c_str(f)
             } else {
                 f(buf as *libc::c_char)
             }
@@ -1302,39 +1003,6 @@ pub fn subslice_offset(outer: &str, inner: &str) -> uint {
             b_start - a_start
         }
     }
-}
-
-
-/**
- * Returns the number of single-byte characters the string can hold without
- * reallocating
- */
-pub fn capacity(s: &const ~str) -> uint {
-    do as_bytes(s) |buf| {
-        let vcap = vec::capacity(buf);
-        assert!(vcap > 0u);
-        vcap - 1u
-    }
-}
-
-/// Escape each char in `s` with char::escape_default.
-pub fn escape_default(s: &str) -> ~str {
-    let mut out: ~str = ~"";
-    out.reserve_at_least(s.len());
-    for s.iter().advance |c| {
-        out.push_str(char::escape_default(c));
-    }
-    out
-}
-
-/// Escape each char in `s` with char::escape_unicode.
-pub fn escape_unicode(s: &str) -> ~str {
-    let mut out: ~str = ~"";
-    out.reserve_at_least(s.len());
-    for s.iter().advance |c| {
-        out.push_str(char::escape_unicode(c));
-    }
-    out
 }
 
 /// Unsafe operations
@@ -1521,18 +1189,41 @@ pub mod raw {
 #[cfg(not(test))]
 pub mod traits {
     use ops::Add;
-    use str::append;
-
     impl<'self> Add<&'self str,~str> for ~str {
         #[inline(always)]
         fn add(&self, rhs: & &'self str) -> ~str {
-            append(copy *self, (*rhs))
+            let mut s = self.to_owned();
+            s.push_str(*rhs);
+            s
         }
     }
 }
 
 #[cfg(test)]
 pub mod traits {}
+
+/// Any string that can be represented as a slice
+pub trait Str {
+    /// Work with `self` as a slice.
+    fn as_slice<'a>(&'a self) -> &'a str;
+}
+
+impl<'self> Str for &'self str {
+    #[inline(always)]
+    fn as_slice<'a>(&'a self) -> &'a str { *self }
+}
+impl<'self> Str for ~str {
+    #[inline(always)]
+    fn as_slice<'a>(&'a self) -> &'a str {
+        let s: &'a str = *self; s
+    }
+}
+impl<'self> Str for @str {
+    #[inline(always)]
+    fn as_slice<'a>(&'a self) -> &'a str {
+        let s: &'a str = *self; s
+    }
+}
 
 #[allow(missing_doc)]
 pub trait StrSlice<'self> {
@@ -1556,19 +1247,23 @@ pub trait StrSlice<'self> {
     fn is_alphanumeric(&self) -> bool;
     fn len(&self) -> uint;
     fn char_len(&self) -> uint;
+
     fn slice(&self, begin: uint, end: uint) -> &'self str;
     fn slice_from(&self, begin: uint) -> &'self str;
     fn slice_to(&self, end: uint) -> &'self str;
+
+    fn slice_chars(&self, begin: uint, end: uint) -> &'self str;
+
     fn starts_with(&self, needle: &str) -> bool;
-    fn substr(&self, begin: uint, n: uint) -> &'self str;
     fn escape_default(&self) -> ~str;
     fn escape_unicode(&self) -> ~str;
     fn trim(&self) -> &'self str;
     fn trim_left(&self) -> &'self str;
     fn trim_right(&self) -> &'self str;
-    fn trim_chars(&self, chars_to_trim: &[char]) -> &'self str;
-    fn trim_left_chars(&self, chars_to_trim: &[char]) -> &'self str;
-    fn trim_right_chars(&self, chars_to_trim: &[char]) -> &'self str;
+    fn trim_chars<C: CharEq>(&self, to_trim: &C) -> &'self str;
+    fn trim_left_chars<C: CharEq>(&self, to_trim: &C) -> &'self str;
+    fn trim_right_chars<C: CharEq>(&self, to_trim: &C) -> &'self str;
+    fn replace(&self, from: &str, to: &str) -> ~str;
     fn to_owned(&self) -> ~str;
     fn to_managed(&self) -> @str;
     fn is_char_boundary(&self, index: uint) -> bool;
@@ -1576,11 +1271,15 @@ pub trait StrSlice<'self> {
     fn char_at(&self, i: uint) -> char;
     fn char_range_at_reverse(&self, start: uint) -> CharRange;
     fn char_at_reverse(&self, i: uint) -> char;
-    fn to_bytes(&self) -> ~[u8];
+    fn as_bytes(&self) -> &'self [u8];
 
     fn find<C: CharEq>(&self, search: C) -> Option<uint>;
     fn rfind<C: CharEq>(&self, search: C) -> Option<uint>;
     fn find_str(&self, &str) -> Option<uint>;
+
+    fn repeat(&self, nn: uint) -> ~str;
+
+    fn slice_shift_char(&self) -> (char, &'self str);
 }
 
 /// Extension methods for strings
@@ -1635,12 +1334,12 @@ impl<'self> StrSlice<'self> for &'self str {
     /// An iterator over the bytes of `self`
     #[inline]
     fn bytes_iter(&self) -> StrBytesIterator<'self> {
-        StrBytesIterator { it: as_bytes_slice(*self).iter() }
+        StrBytesIterator { it: self.as_bytes().iter() }
     }
     /// An iterator over the bytes of `self`, in reverse order
     #[inline]
     fn bytes_rev_iter(&self) -> StrBytesRevIterator<'self> {
-        StrBytesRevIterator { it: as_bytes_slice(*self).rev_iter() }
+        StrBytesRevIterator { it: self.as_bytes().rev_iter() }
     }
 
     /// An iterator over substrings of `self`, separated by characters
@@ -1753,7 +1452,8 @@ impl<'self> StrSlice<'self> for &'self str {
     }
     /// Returns the number of characters that a string holds
     #[inline]
-    fn char_len(&self) -> uint { char_len(*self) }
+    fn char_len(&self) -> uint { self.iter().count() }
+
     /**
      * Returns a slice of the given string from the byte range
      * [`begin`..`end`)
@@ -1784,6 +1484,32 @@ impl<'self> StrSlice<'self> for &'self str {
     fn slice_to(&self, end: uint) -> &'self str {
         self.slice(0, end)
     }
+
+    /// Returns a slice of the string from the char range
+    /// [`begin`..`end`).
+    ///
+    /// Fails if `begin` > `end` or the either `begin` or `end` are
+    /// beyond the last character of the string.
+    fn slice_chars(&self, begin: uint, end: uint) -> &'self str {
+        assert!(begin <= end);
+        // not sure how to use the iterators for this nicely.
+        let mut (position, count) = (0, 0);
+        let l = self.len();
+        while count < begin && position < l {
+            position = self.char_range_at(position).next;
+            count += 1;
+        }
+        if count < begin { fail!("Attempted to begin slice_chars beyond end of string") }
+        let start_byte = position;
+        while count < end && position < l {
+            position = self.char_range_at(position).next;
+            count += 1;
+        }
+        if count < end { fail!("Attempted to end slice_chars beyond end of string") }
+
+        self.slice(start_byte, position)
+    }
+
     /// Returns true if `needle` is a prefix of the string.
     fn starts_with<'a>(&self, needle: &'a str) -> bool {
         let (self_len, needle_len) = (self.len(), needle.len());
@@ -1792,29 +1518,32 @@ impl<'self> StrSlice<'self> for &'self str {
         else { match_at(*self, needle, 0u) }
     }
     /// Returns true if `needle` is a suffix of the string.
-    pub fn ends_with(&self, needle: &str) -> bool {
+    fn ends_with(&self, needle: &str) -> bool {
         let (self_len, needle_len) = (self.len(), needle.len());
         if needle_len == 0u { true }
         else if needle_len > self_len { false }
         else { match_at(*self, needle, self_len - needle_len) }
     }
 
-    /**
-     * Take a substring of another.
-     *
-     * Returns a string containing `n` characters starting at byte offset
-     * `begin`.
-     */
-    #[inline]
-    fn substr(&self, begin: uint, n: uint) -> &'self str {
-        self.slice(begin, begin + count_bytes(*self, begin, n))
-    }
     /// Escape each char in `s` with char::escape_default.
-    #[inline]
-    fn escape_default(&self) -> ~str { escape_default(*self) }
+    fn escape_default(&self) -> ~str {
+        let mut out: ~str = ~"";
+        out.reserve_at_least(self.len());
+        for self.iter().advance |c| {
+            out.push_str(char::escape_default(c));
+        }
+        out
+    }
+
     /// Escape each char in `s` with char::escape_unicode.
-    #[inline]
-    fn escape_unicode(&self) -> ~str { escape_unicode(*self) }
+    fn escape_unicode(&self) -> ~str {
+        let mut out: ~str = ~"";
+        out.reserve_at_least(self.len());
+        for self.iter().advance |c| {
+            out.push_str(char::escape_unicode(c));
+        }
+        out
+    }
 
     /// Returns a string with leading and trailing whitespace removed
     #[inline]
@@ -1824,49 +1553,51 @@ impl<'self> StrSlice<'self> for &'self str {
     /// Returns a string with leading whitespace removed
     #[inline]
     fn trim_left(&self) -> &'self str {
-        match self.find(|c| !char::is_whitespace(c)) {
-            None => "",
-            Some(first) => unsafe { raw::slice_bytes(*self, first, self.len()) }
-        }
+        self.trim_left_chars(&char::is_whitespace)
     }
     /// Returns a string with trailing whitespace removed
     #[inline]
     fn trim_right(&self) -> &'self str {
-        match self.rfind(|c| !char::is_whitespace(c)) {
-            None => "",
-            Some(last) => {
-                let next = self.char_range_at(last).next;
-                unsafe { raw::slice_bytes(*self, 0u, next) }
-            }
-        }
+        self.trim_right_chars(&char::is_whitespace)
     }
 
     /**
-     * Returns a string with leading and trailing `chars_to_trim` removed.
+     * Returns a string with characters that match `to_trim` removed.
      *
      * # Arguments
      *
-     * * chars_to_trim - A vector of chars
+     * * to_trim - a character matcher
      *
+     * # Example
+     *
+     * ~~~
+     * assert_eq!("11foo1bar11".trim_chars(&'1'), "foo1bar")
+     * assert_eq!("12foo1bar12".trim_chars(& &['1', '2']), "foo1bar")
+     * assert_eq!("123foo1bar123".trim_chars(&|c: char| c.is_digit()), "foo1bar")
+     * ~~~
      */
     #[inline]
-    fn trim_chars(&self, chars_to_trim: &[char]) -> &'self str {
-        self.trim_left_chars(chars_to_trim).trim_right_chars(chars_to_trim)
+    fn trim_chars<C: CharEq>(&self, to_trim: &C) -> &'self str {
+        self.trim_left_chars(to_trim).trim_right_chars(to_trim)
     }
     /**
      * Returns a string with leading `chars_to_trim` removed.
      *
      * # Arguments
      *
-     * * s - A string
-     * * chars_to_trim - A vector of chars
+     * * to_trim - a character matcher
      *
+     * # Example
+     *
+     * ~~~
+     * assert_eq!("11foo1bar11".trim_left_chars(&'1'), "foo1bar11")
+     * assert_eq!("12foo1bar12".trim_left_chars(& &['1', '2']), "foo1bar12")
+     * assert_eq!("123foo1bar123".trim_left_chars(&|c: char| c.is_digit()), "foo1bar123")
+     * ~~~
      */
     #[inline]
-    fn trim_left_chars(&self, chars_to_trim: &[char]) -> &'self str {
-        if chars_to_trim.is_empty() { return *self; }
-
-        match self.find(|c| !chars_to_trim.contains(&c)) {
+    fn trim_left_chars<C: CharEq>(&self, to_trim: &C) -> &'self str {
+        match self.find(|c: char| !to_trim.matches(c)) {
             None => "",
             Some(first) => unsafe { raw::slice_bytes(*self, first, self.len()) }
         }
@@ -1876,15 +1607,19 @@ impl<'self> StrSlice<'self> for &'self str {
      *
      * # Arguments
      *
-     * * s - A string
-     * * chars_to_trim - A vector of chars
+     * * to_trim - a character matcher
      *
+     * # Example
+     *
+     * ~~~
+     * assert_eq!("11foo1bar11".trim_right_chars(&'1'), "11foo1bar")
+     * assert_eq!("12foo1bar12".trim_right_chars(& &['1', '2']), "12foo1bar")
+     * assert_eq!("123foo1bar123".trim_right_chars(&|c: char| c.is_digit()), "123foo1bar")
+     * ~~~
      */
     #[inline]
-    fn trim_right_chars(&self, chars_to_trim: &[char]) -> &'self str {
-        if chars_to_trim.is_empty() { return *self; }
-
-        match self.rfind(|c| !chars_to_trim.contains(&c)) {
+    fn trim_right_chars<C: CharEq>(&self, to_trim: &C) -> &'self str {
+        match self.rfind(|c: char| !to_trim.matches(c)) {
             None => "",
             Some(last) => {
                 let next = self.char_range_at(last).next;
@@ -1893,10 +1628,36 @@ impl<'self> StrSlice<'self> for &'self str {
         }
     }
 
+    /**
+     * Replace all occurrences of one string with another
+     *
+     * # Arguments
+     *
+     * * from - The string to replace
+     * * to - The replacement string
+     *
+     * # Return value
+     *
+     * The original string with all occurances of `from` replaced with `to`
+     */
+    pub fn replace(&self, from: &str, to: &str) -> ~str {
+        let mut (result, last_end) = (~"", 0);
+        for self.matches_index_iter(from).advance |(start, end)| {
+            result.push_str(unsafe{raw::slice_bytes(*self, last_end, start)});
+            result.push_str(to);
+            last_end = end;
+        }
+        result.push_str(unsafe{raw::slice_bytes(*self, last_end, self.len())});
+        result
+    }
 
+    /// Copy a slice into a new unique str
     #[inline]
-    fn to_owned(&self) -> ~str { to_owned(*self) }
+    fn to_owned(&self) -> ~str {
+        unsafe { raw::slice_bytes_owned(*self, 0, self.len()) }
+    }
 
+    /// Copy a slice into a new @str
     #[inline]
     fn to_managed(&self) -> @str {
         let v = at_vec::from_fn(self.len() + 1, |i| {
@@ -2023,7 +1784,18 @@ impl<'self> StrSlice<'self> for &'self str {
         self.char_range_at_reverse(i).ch
     }
 
-    fn to_bytes(&self) -> ~[u8] { to_bytes(*self) }
+    /**
+     * Work with the byte buffer of a string as a byte slice.
+     *
+     * The byte slice does not include the null terminator.
+     */
+    fn as_bytes(&self) -> &'self [u8] {
+        unsafe {
+            let (ptr, len): (*u8, uint) = ::cast::transmute(*self);
+            let outgoing_tuple: (*u8, uint) = (ptr, len - 1);
+            ::cast::transmute(outgoing_tuple)
+        }
+    }
 
     /**
      * Returns the byte index of the first character of `self` that matches `search`
@@ -2094,6 +1866,92 @@ impl<'self> StrSlice<'self> for &'self str {
                 .map_consume(|(start, _end)| start)
         }
     }
+
+    /// Given a string, make a new string with repeated copies of it.
+    fn repeat(&self, nn: uint) -> ~str {
+        do as_buf(*self) |buf, len| {
+            let mut ret = ~"";
+            // ignore the NULL terminator
+            let len = len - 1;
+            ret.reserve(nn * len);
+
+            unsafe {
+                do as_buf(ret) |rbuf, _len| {
+                    let mut rbuf = ::cast::transmute_mut_unsafe(rbuf);
+
+                    for nn.times {
+                        ptr::copy_memory(rbuf, buf, len);
+                        rbuf = rbuf.offset(len);
+                    }
+                }
+                raw::set_len(&mut ret, nn * len);
+            }
+            ret
+        }
+    }
+
+    /**
+     * Retrieves the first character from a string slice and returns
+     * it. This does not allocate a new string; instead, it returns a
+     * slice that point one character beyond the character that was
+     * shifted.
+     *
+     * # Failure
+     *
+     * If the string does not contain any characters
+     */
+    #[inline]
+    fn slice_shift_char(&self) -> (char, &'self str) {
+        let CharRange {ch, next} = self.char_range_at(0u);
+        let next_s = unsafe { raw::slice_bytes(*self, next, self.len()) };
+        return (ch, next_s);
+    }
+
+
+}
+
+#[allow(missing_doc)]
+pub trait NullTerminatedStr {
+    fn as_bytes_with_null<'a>(&'a self) -> &'a [u8];
+}
+
+impl NullTerminatedStr for ~str {
+    /**
+     * Work with the byte buffer of a string as a byte slice.
+     *
+     * The byte slice does include the null terminator.
+     */
+    #[inline]
+    fn as_bytes_with_null<'a>(&'a self) -> &'a [u8] {
+        let ptr: &'a ~[u8] = unsafe { ::cast::transmute(self) };
+        let slice: &'a [u8] = *ptr;
+        slice
+    }
+}
+impl NullTerminatedStr for @str {
+    /**
+     * Work with the byte buffer of a string as a byte slice.
+     *
+     * The byte slice does include the null terminator.
+     */
+    #[inline]
+    fn as_bytes_with_null<'a>(&'a self) -> &'a [u8] {
+        let ptr: &'a ~[u8] = unsafe { ::cast::transmute(self) };
+        let slice: &'a [u8] = *ptr;
+        slice
+    }
+}
+// static strings are the only slices guaranteed to a nul-terminator
+impl NullTerminatedStr for &'static str {
+    /**
+     * Work with the byte buffer of a string as a byte slice.
+     *
+     * The byte slice does include the null terminator.
+     */
+    #[inline]
+    fn as_bytes_with_null(&self) -> &'static [u8] {
+        unsafe { ::cast::transmute(*self) }
+    }
 }
 
 #[allow(missing_doc)]
@@ -2101,8 +1959,15 @@ pub trait OwnedStr {
     fn push_str_no_overallocate(&mut self, rhs: &str);
     fn push_str(&mut self, rhs: &str);
     fn push_char(&mut self, c: char);
+    fn pop_char(&mut self) -> char;
+    fn shift_char(&mut self) -> char;
+    fn unshift_char(&mut self, ch: char);
+    fn append(&self, rhs: &str) -> ~str; // FIXME #4850: this should consume self.
     fn reserve(&mut self, n: uint);
     fn reserve_at_least(&mut self, n: uint);
+    fn capacity(&self) -> uint;
+
+    fn as_bytes_with_null_consume(self) -> ~[u8];
 }
 
 impl OwnedStr for ~str {
@@ -2198,6 +2063,51 @@ impl OwnedStr for ~str {
             raw::set_len(self, new_len);
         }
     }
+    /**
+     * Remove the final character from a string and return it
+     *
+     * # Failure
+     *
+     * If the string does not contain any characters
+     */
+    fn pop_char(&mut self) -> char {
+        let end = self.len();
+        assert!(end > 0u);
+        let CharRange {ch, next} = self.char_range_at_reverse(end);
+        unsafe { raw::set_len(self, next); }
+        return ch;
+    }
+
+    /**
+     * Remove the first character from a string and return it
+     *
+     * # Failure
+     *
+     * If the string does not contain any characters
+     */
+    fn shift_char(&mut self) -> char {
+        let CharRange {ch, next} = self.char_range_at(0u);
+        *self = unsafe { raw::slice_bytes_owned(*self, next, self.len()) };
+        return ch;
+    }
+
+    /// Prepend a char to a string
+    fn unshift_char(&mut self, ch: char) {
+        // This could be more efficient.
+        let mut new_str = ~"";
+        new_str.push_char(ch);
+        new_str.push_str(*self);
+        *self = new_str;
+    }
+
+    /// Concatenate two strings together.
+    #[inline]
+    fn append(&self, rhs: &str) -> ~str {
+        // FIXME #4850: this should consume self, but that causes segfaults
+        let mut v = self.clone();
+        v.push_str_no_overallocate(rhs);
+        v
+    }
 
     /**
      * Reserves capacity for exactly `n` bytes in the given string, not including
@@ -2247,12 +2157,30 @@ impl OwnedStr for ~str {
     fn reserve_at_least(&mut self, n: uint) {
         self.reserve(uint::next_power_of_two(n + 1u) - 1u)
     }
+
+    /**
+     * Returns the number of single-byte characters the string can hold without
+     * reallocating
+     */
+    fn capacity(&self) -> uint {
+        let buf: &const ~[u8] = unsafe { cast::transmute(self) };
+        let vcap = vec::capacity(buf);
+        assert!(vcap > 0u);
+        vcap - 1u
+    }
+
+    /// Convert to a vector of bytes. This does not allocate a new
+    /// string, and includes the null terminator.
+    #[inline]
+    fn as_bytes_with_null_consume(self) -> ~[u8] {
+        unsafe { ::cast::transmute(self) }
+    }
 }
 
 impl Clone for ~str {
     #[inline(always)]
     fn clone(&self) -> ~str {
-        to_owned(*self)
+        self.to_owned()
     }
 }
 
@@ -2332,7 +2260,7 @@ mod tests {
     use ptr;
     use str::*;
     use vec;
-    use vec::ImmutableVector;
+    use vec::{ImmutableVector, CopyableVector};
     use cmp::{TotalOrd, Less, Equal, Greater};
 
     #[test]
@@ -2367,14 +2295,14 @@ mod tests {
         assert_eq!("\u2620".len(), 3u);
         assert_eq!("\U0001d11e".len(), 4u);
 
-        assert_eq!(char_len(""), 0u);
-        assert_eq!(char_len("hello world"), 11u);
-        assert_eq!(char_len("\x63"), 1u);
-        assert_eq!(char_len("\xa2"), 1u);
-        assert_eq!(char_len("\u03c0"), 1u);
-        assert_eq!(char_len("\u2620"), 1u);
-        assert_eq!(char_len("\U0001d11e"), 1u);
-        assert_eq!(char_len("ประเทศไทย中华Việt Nam"), 19u);
+        assert_eq!("".char_len(), 0u);
+        assert_eq!("hello world".char_len(), 11u);
+        assert_eq!("\x63".char_len(), 1u);
+        assert_eq!("\xa2".char_len(), 1u);
+        assert_eq!("\u03c0".char_len(), 1u);
+        assert_eq!("\u2620".char_len(), 1u);
+        assert_eq!("\U0001d11e".char_len(), 1u);
+        assert_eq!("ประเทศไทย中华Việt Nam".char_len(), 19u);
     }
 
     #[test]
@@ -2398,9 +2326,30 @@ mod tests {
     }
 
     #[test]
+    fn test_push_str() {
+        let mut s = ~"";
+        s.push_str("");
+        assert_eq!(s.slice_from(0), "");
+        s.push_str("abc");
+        assert_eq!(s.slice_from(0), "abc");
+        s.push_str("ประเทศไทย中华Việt Nam");
+        assert_eq!(s.slice_from(0), "abcประเทศไทย中华Việt Nam");
+    }
+    #[test]
+    fn test_append() {
+        let mut s = ~"";
+        s = s.append("");
+        assert_eq!(s.slice_from(0), "");
+        s = s.append("abc");
+        assert_eq!(s.slice_from(0), "abc");
+        s = s.append("ประเทศไทย中华Việt Nam");
+        assert_eq!(s.slice_from(0), "abcประเทศไทย中华Việt Nam");
+    }
+
+    #[test]
     fn test_pop_char() {
         let mut data = ~"ประเทศไทย中华";
-        let cc = pop_char(&mut data);
+        let cc = data.pop_char();
         assert_eq!(~"ประเทศไทย中", data);
         assert_eq!('华', cc);
     }
@@ -2408,7 +2357,7 @@ mod tests {
     #[test]
     fn test_pop_char_2() {
         let mut data2 = ~"华";
-        let cc2 = pop_char(&mut data2);
+        let cc2 = data2.pop_char();
         assert_eq!(~"", data2);
         assert_eq!('华', cc2);
     }
@@ -2418,7 +2367,29 @@ mod tests {
     #[ignore(cfg(windows))]
     fn test_pop_char_fail() {
         let mut data = ~"";
-        let _cc3 = pop_char(&mut data);
+        let _cc3 = data.pop_char();
+    }
+
+    #[test]
+    fn test_push_char() {
+        let mut data = ~"ประเทศไทย中";
+        data.push_char('华');
+        assert_eq!(~"ประเทศไทย中华", data);
+    }
+
+    #[test]
+    fn test_shift_char() {
+        let mut data = ~"ประเทศไทย中";
+        let cc = data.shift_char();
+        assert_eq!(~"ระเทศไทย中", data);
+        assert_eq!('ป', cc);
+    }
+
+    #[test]
+    fn test_unshift_char() {
+        let mut data = ~"ประเทศไทย中";
+        data.unshift_char('华');
+        assert_eq!(~"华ประเทศไทย中", data);
     }
 
     #[test]
@@ -2466,13 +2437,13 @@ mod tests {
     }
 
     #[test]
-    fn test_substr() {
-        fn t(a: &str, b: &str, start: int) {
-            assert_eq!(a.substr(start as uint, b.len()), b);
+    fn test_slice_chars() {
+        fn t(a: &str, b: &str, start: uint) {
+            assert_eq!(a.slice_chars(start, start + b.char_len()), b);
         }
         t("hello", "llo", 2);
         t("hello", "el", 1);
-        assert_eq!("ะเทศไท", "ประเทศไทย中华Việt Nam".substr(6u, 6u));
+        assert_eq!("ะเทศไท", "ประเทศไทย中华Việt Nam".slice_chars(2, 8));
     }
 
     #[test]
@@ -2522,11 +2493,11 @@ mod tests {
 
     #[test]
     fn test_repeat() {
-        assert_eq!(repeat("x", 4), ~"xxxx");
-        assert_eq!(repeat("hi", 4), ~"hihihihi");
-        assert_eq!(repeat("ไท华", 3), ~"ไท华ไท华ไท华");
-        assert_eq!(repeat("", 4), ~"");
-        assert_eq!(repeat("hi", 0), ~"");
+        assert_eq!("x".repeat(4), ~"xxxx");
+        assert_eq!("hi".repeat(4), ~"hihihihi");
+        assert_eq!("ไท华".repeat(3), ~"ไท华ไท华ไท华");
+        assert_eq!("".repeat(4), ~"");
+        assert_eq!("hi".repeat(0), ~"");
     }
 
     #[test]
@@ -2578,13 +2549,13 @@ mod tests {
     #[test]
     fn test_replace() {
         let a = "a";
-        assert_eq!(replace("", a, "b"), ~"");
-        assert_eq!(replace("a", a, "b"), ~"b");
-        assert_eq!(replace("ab", a, "b"), ~"bb");
+        assert_eq!("".replace(a, "b"), ~"");
+        assert_eq!("a".replace(a, "b"), ~"b");
+        assert_eq!("ab".replace(a, "b"), ~"bb");
         let test = "test";
-        assert!(replace(" test test ", test, "toast") ==
+        assert!(" test test ".replace(test, "toast") ==
             ~" toast toast ");
-        assert_eq!(replace(" test test ", test, ""), ~"   ");
+        assert_eq!(" test test ".replace(test, ""), ~"   ");
     }
 
     #[test]
@@ -2594,7 +2565,7 @@ mod tests {
 
         let a = ~"ประเ";
         let A = ~"دولة الكويتทศไทย中华";
-        assert_eq!(replace(data, a, repl), A);
+        assert_eq!(data.replace(a, repl), A);
     }
 
     #[test]
@@ -2604,7 +2575,7 @@ mod tests {
 
         let b = ~"ะเ";
         let B = ~"ปรدولة الكويتทศไทย中华";
-        assert_eq!(replace(data, b,   repl), B);
+        assert_eq!(data.replace(b,   repl), B);
     }
 
     #[test]
@@ -2614,7 +2585,7 @@ mod tests {
 
         let c = ~"中华";
         let C = ~"ประเทศไทยدولة الكويت";
-        assert_eq!(replace(data, c, repl), C);
+        assert_eq!(data.replace(c, repl), C);
     }
 
     #[test]
@@ -2623,7 +2594,7 @@ mod tests {
         let repl = ~"دولة الكويت";
 
         let d = ~"ไท华";
-        assert_eq!(replace(data, d, repl), data);
+        assert_eq!(data.replace(d, repl), data);
     }
 
     #[test]
@@ -2707,26 +2678,41 @@ mod tests {
 
     #[test]
     fn test_trim_left_chars() {
-        assert_eq!(" *** foo *** ".trim_left_chars([]), " *** foo *** ");
-        assert_eq!(" *** foo *** ".trim_left_chars(['*', ' ']), "foo *** ");
-        assert_eq!(" ***  *** ".trim_left_chars(['*', ' ']), "");
-        assert_eq!("foo *** ".trim_left_chars(['*', ' ']), "foo *** ");
+        let v: &[char] = &[];
+        assert_eq!(" *** foo *** ".trim_left_chars(&v), " *** foo *** ");
+        assert_eq!(" *** foo *** ".trim_left_chars(& &['*', ' ']), "foo *** ");
+        assert_eq!(" ***  *** ".trim_left_chars(& &['*', ' ']), "");
+        assert_eq!("foo *** ".trim_left_chars(& &['*', ' ']), "foo *** ");
+
+        assert_eq!("11foo1bar11".trim_left_chars(&'1'), "foo1bar11");
+        assert_eq!("12foo1bar12".trim_left_chars(& &['1', '2']), "foo1bar12");
+        assert_eq!("123foo1bar123".trim_left_chars(&|c: char| c.is_digit()), "foo1bar123");
     }
 
     #[test]
     fn test_trim_right_chars() {
-        assert_eq!(" *** foo *** ".trim_right_chars([]), " *** foo *** ");
-        assert_eq!(" *** foo *** ".trim_right_chars(['*', ' ']), " *** foo");
-        assert_eq!(" ***  *** ".trim_right_chars(['*', ' ']), "");
-        assert_eq!(" *** foo".trim_right_chars(['*', ' ']), " *** foo");
+        let v: &[char] = &[];
+        assert_eq!(" *** foo *** ".trim_right_chars(&v), " *** foo *** ");
+        assert_eq!(" *** foo *** ".trim_right_chars(& &['*', ' ']), " *** foo");
+        assert_eq!(" ***  *** ".trim_right_chars(& &['*', ' ']), "");
+        assert_eq!(" *** foo".trim_right_chars(& &['*', ' ']), " *** foo");
+
+        assert_eq!("11foo1bar11".trim_right_chars(&'1'), "11foo1bar");
+        assert_eq!("12foo1bar12".trim_right_chars(& &['1', '2']), "12foo1bar");
+        assert_eq!("123foo1bar123".trim_right_chars(&|c: char| c.is_digit()), "123foo1bar");
     }
 
     #[test]
     fn test_trim_chars() {
-        assert_eq!(" *** foo *** ".trim_chars([]), " *** foo *** ");
-        assert_eq!(" *** foo *** ".trim_chars(['*', ' ']), "foo");
-        assert_eq!(" ***  *** ".trim_chars(['*', ' ']), "");
-        assert_eq!("foo".trim_chars(['*', ' ']), "foo");
+        let v: &[char] = &[];
+        assert_eq!(" *** foo *** ".trim_chars(&v), " *** foo *** ");
+        assert_eq!(" *** foo *** ".trim_chars(& &['*', ' ']), "foo");
+        assert_eq!(" ***  *** ".trim_chars(& &['*', ' ']), "");
+        assert_eq!("foo".trim_chars(& &['*', ' ']), "foo");
+
+        assert_eq!("11foo1bar11".trim_chars(&'1'), "foo1bar");
+        assert_eq!("12foo1bar12".trim_chars(& &['1', '2']), "foo1bar");
+        assert_eq!("123foo1bar123".trim_chars(&|c: char| c.is_digit()), "foo1bar");
     }
 
     #[test]
@@ -2906,11 +2892,69 @@ mod tests {
     }
 
     #[test]
+    fn test_as_bytes() {
+        // no null
+        let v = [
+            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
+            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
+            109
+        ];
+        assert_eq!("".as_bytes(), &[]);
+        assert_eq!("abc".as_bytes(), &['a' as u8, 'b' as u8, 'c' as u8]);
+        assert_eq!("ศไทย中华Việt Nam".as_bytes(), v);
+    }
+
+    #[test]
+    fn test_as_bytes_with_null() {
+        // has null
+        let v = [
+            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
+            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
+            109, 0
+        ];
+
+        assert_eq!("".as_bytes_with_null(), &[0]);
+        assert_eq!("abc".as_bytes_with_null(), &['a' as u8, 'b' as u8, 'c' as u8, 0]);
+        assert_eq!("ศไทย中华Việt Nam".as_bytes_with_null(), v);
+
+        let s1 = @"";
+        let s2 = @"abc";
+        let s3 = @"ศไทย中华Việt Nam";
+        assert_eq!(s1.as_bytes_with_null(), &[0]);
+        assert_eq!(s2.as_bytes_with_null(), &['a' as u8, 'b' as u8, 'c' as u8, 0]);
+        assert_eq!(s3.as_bytes_with_null(), v);
+
+        let s1 = ~"";
+        let s2 = ~"abc";
+        let s3 = ~"ศไทย中华Việt Nam";
+        assert_eq!(s1.as_bytes_with_null(), &[0]);
+        assert_eq!(s2.as_bytes_with_null(), &['a' as u8, 'b' as u8, 'c' as u8, 0]);
+        assert_eq!(s3.as_bytes_with_null(), v);
+    }
+
+    #[test]
+    fn test_as_bytes_with_null_consume() {
+        let s = ~"ศไทย中华Việt Nam";
+        let v = ~[
+            224, 184, 168, 224, 185, 132, 224, 184, 151, 224, 184, 162, 228,
+            184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
+            109, 0
+        ];
+        assert_eq!((~"").as_bytes_with_null_consume(), ~[0]);
+        assert_eq!((~"abc").as_bytes_with_null_consume(),
+                   ~['a' as u8, 'b' as u8, 'c' as u8, 0]);
+        assert_eq!(s.as_bytes_with_null_consume(), v);
+    }
+
+    #[test]
     #[ignore(cfg(windows))]
     #[should_fail]
     fn test_as_bytes_fail() {
-        // Don't double free
-        as_bytes::<()>(&~"", |_bytes| fail!() );
+        // Don't double free. (I'm not sure if this exercises the
+        // original problem code path anymore.)
+        let s = ~"";
+        let _bytes = s.as_bytes_with_null();
+        fail!();
     }
 
     #[test]
@@ -2985,7 +3029,7 @@ mod tests {
     fn vec_str_conversions() {
         let s1: ~str = ~"All mimsy were the borogoves";
 
-        let v: ~[u8] = to_bytes(s1);
+        let v: ~[u8] = s1.as_bytes().to_owned();
         let s2: ~str = from_bytes(v);
         let mut i: uint = 0u;
         let n1: uint = s1.len();
@@ -3104,36 +3148,38 @@ mod tests {
 
     #[test]
     fn test_escape_unicode() {
-        assert_eq!(escape_unicode("abc"), ~"\\x61\\x62\\x63");
-        assert_eq!(escape_unicode("a c"), ~"\\x61\\x20\\x63");
-        assert_eq!(escape_unicode("\r\n\t"), ~"\\x0d\\x0a\\x09");
-        assert_eq!(escape_unicode("'\"\\"), ~"\\x27\\x22\\x5c");
-        assert!(escape_unicode("\x00\x01\xfe\xff") ==
-                     ~"\\x00\\x01\\xfe\\xff");
-        assert_eq!(escape_unicode("\u0100\uffff"), ~"\\u0100\\uffff");
-        assert!(escape_unicode("\U00010000\U0010ffff") ==
-            ~"\\U00010000\\U0010ffff");
-        assert_eq!(escape_unicode("ab\ufb00"), ~"\\x61\\x62\\ufb00");
-        assert_eq!(escape_unicode("\U0001d4ea\r"), ~"\\U0001d4ea\\x0d");
+        assert_eq!("abc".escape_unicode(), ~"\\x61\\x62\\x63");
+        assert_eq!("a c".escape_unicode(), ~"\\x61\\x20\\x63");
+        assert_eq!("\r\n\t".escape_unicode(), ~"\\x0d\\x0a\\x09");
+        assert_eq!("'\"\\".escape_unicode(), ~"\\x27\\x22\\x5c");
+        assert_eq!("\x00\x01\xfe\xff".escape_unicode(), ~"\\x00\\x01\\xfe\\xff");
+        assert_eq!("\u0100\uffff".escape_unicode(), ~"\\u0100\\uffff");
+        assert_eq!("\U00010000\U0010ffff".escape_unicode(), ~"\\U00010000\\U0010ffff");
+        assert_eq!("ab\ufb00".escape_unicode(), ~"\\x61\\x62\\ufb00");
+        assert_eq!("\U0001d4ea\r".escape_unicode(), ~"\\U0001d4ea\\x0d");
     }
 
     #[test]
     fn test_escape_default() {
-        assert_eq!(escape_default("abc"), ~"abc");
-        assert_eq!(escape_default("a c"), ~"a c");
-        assert_eq!(escape_default("\r\n\t"), ~"\\r\\n\\t");
-        assert_eq!(escape_default("'\"\\"), ~"\\'\\\"\\\\");
-        assert_eq!(escape_default("\u0100\uffff"), ~"\\u0100\\uffff");
-        assert!(escape_default("\U00010000\U0010ffff") ==
-            ~"\\U00010000\\U0010ffff");
-        assert_eq!(escape_default("ab\ufb00"), ~"ab\\ufb00");
-        assert_eq!(escape_default("\U0001d4ea\r"), ~"\\U0001d4ea\\r");
+        assert_eq!("abc".escape_default(), ~"abc");
+        assert_eq!("a c".escape_default(), ~"a c");
+        assert_eq!("\r\n\t".escape_default(), ~"\\r\\n\\t");
+        assert_eq!("'\"\\".escape_default(), ~"\\'\\\"\\\\");
+        assert_eq!("\u0100\uffff".escape_default(), ~"\\u0100\\uffff");
+        assert_eq!("\U00010000\U0010ffff".escape_default(), ~"\\U00010000\\U0010ffff");
+        assert_eq!("ab\ufb00".escape_default(), ~"ab\\ufb00");
+        assert_eq!("\U0001d4ea\r".escape_default(), ~"\\U0001d4ea\\r");
     }
 
     #[test]
     fn test_to_managed() {
         assert_eq!("abc".to_managed(), @"abc");
         assert_eq!("abcdef".slice(1, 5).to_managed(), @"bcde");
+    }
+    #[test]
+    fn test_to_owned() {
+        assert_eq!("abc".to_owned(), ~"abc");
+        assert_eq!("abcdef".slice(1, 5).to_owned(), ~"bcde");
     }
 
     #[test]

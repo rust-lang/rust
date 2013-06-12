@@ -46,12 +46,12 @@ use ops::Add;
 use kinds::Copy;
 use util;
 use num::Zero;
-use old_iter::{BaseIter, MutableIter, ExtendedIter};
-use old_iter;
+use iterator::Iterator;
 use str::StrSlice;
 use clone::DeepClone;
 
 #[cfg(test)] use str;
+#[cfg(test)] use iterator::IteratorUtil;
 
 /// The option type
 #[deriving(Clone, DeepClone, Eq)]
@@ -100,53 +100,27 @@ impl<T: Copy + Add<T,T>> Add<Option<T>, Option<T>> for Option<T> {
     }
 }
 
-impl<T> BaseIter<T> for Option<T> {
-    /// Performs an operation on the contained value by reference
-    #[inline(always)]
-    fn each<'a>(&'a self, f: &fn(x: &'a T) -> bool) -> bool {
-        match *self { None => true, Some(ref t) => { f(t) } }
-    }
-
-    #[inline(always)]
-    fn size_hint(&self) -> Option<uint> {
-        if self.is_some() { Some(1) } else { Some(0) }
-    }
-}
-
-impl<T> MutableIter<T> for Option<T> {
-    #[inline(always)]
-    fn each_mut<'a>(&'a mut self, f: &fn(&'a mut T) -> bool) -> bool {
-        match *self { None => true, Some(ref mut t) => { f(t) } }
-    }
-}
-
-impl<A> ExtendedIter<A> for Option<A> {
-    pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) -> bool {
-        old_iter::eachi(self, blk)
-    }
-    pub fn all(&self, blk: &fn(&A) -> bool) -> bool {
-        old_iter::all(self, blk)
-    }
-    pub fn any(&self, blk: &fn(&A) -> bool) -> bool {
-        old_iter::any(self, blk)
-    }
-    pub fn foldl<B>(&self, b0: B, blk: &fn(&B, &A) -> B) -> B {
-        old_iter::foldl(self, b0, blk)
-    }
-    pub fn position(&self, f: &fn(&A) -> bool) -> Option<uint> {
-        old_iter::position(self, f)
-    }
-    fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B] {
-        old_iter::map_to_vec(self, op)
-    }
-    fn flat_map_to_vec<B,IB:BaseIter<B>>(&self, op: &fn(&A) -> IB)
-        -> ~[B] {
-        old_iter::flat_map_to_vec(self, op)
-    }
-}
-
 impl<T> Option<T> {
+    /// Return an iterator over the possibly contained value
+    #[inline]
+    pub fn iter<'r>(&'r self) -> OptionIterator<'r, T> {
+        match *self {
+            Some(ref x) => OptionIterator{opt: Some(x)},
+            None => OptionIterator{opt: None}
+        }
+    }
+
+    /// Return a mutable iterator over the possibly contained value
+    #[inline]
+    pub fn mut_iter<'r>(&'r mut self) -> OptionMutIterator<'r, T> {
+        match *self {
+            Some(ref mut x) => OptionMutIterator{opt: Some(x)},
+            None => OptionMutIterator{opt: None}
+        }
+    }
+
     /// Returns true if the option equals `none`
+    #[inline]
     pub fn is_none(&const self) -> bool {
         match *self { None => true, Some(_) => false }
     }
@@ -376,6 +350,28 @@ impl<T:Copy + Zero> Option<T> {
     }
 }
 
+/// Immutable iterator over an `Option<A>`
+pub struct OptionIterator<'self, A> {
+    priv opt: Option<&'self A>
+}
+
+impl<'self, A> Iterator<&'self A> for OptionIterator<'self, A> {
+    fn next(&mut self) -> Option<&'self A> {
+        util::replace(&mut self.opt, None)
+    }
+}
+
+/// Mutable iterator over an `Option<A>`
+pub struct OptionMutIterator<'self, A> {
+    priv opt: Option<&'self mut A>
+}
+
+impl<'self, A> Iterator<&'self mut A> for OptionMutIterator<'self, A> {
+    fn next(&mut self) -> Option<&'self mut A> {
+        util::replace(&mut self.opt, None)
+    }
+}
+
 #[test]
 fn test_unwrap_ptr() {
     unsafe {
@@ -429,7 +425,7 @@ fn test_option_dance() {
     let x = Some(());
     let mut y = Some(5);
     let mut y2 = 0;
-    for x.each |_x| {
+    for x.iter().advance |_x| {
         y2 = y.swap_unwrap();
     }
     assert_eq!(y2, 5);

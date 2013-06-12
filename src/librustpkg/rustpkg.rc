@@ -346,14 +346,14 @@ impl Ctx {
                target_exec.to_str(), target_lib,
                maybe_executable, maybe_library);
 
-        for maybe_executable.each |exec| {
+        for maybe_executable.iter().advance |exec| {
             debug!("Copying: %s -> %s", exec.to_str(), target_exec.to_str());
             if !(os::mkdir_recursive(&target_exec.dir_path(), u_rwx) &&
                  os::copy_file(exec, &target_exec)) {
                 cond.raise((copy *exec, copy target_exec));
             }
         }
-        for maybe_library.each |lib| {
+        for maybe_library.iter().advance |lib| {
             let target_lib = (copy target_lib).expect(fmt!("I built %s but apparently \
                                                 didn't install it!", lib.to_str()));
             debug!("Copying: %s -> %s", lib.to_str(), target_lib.to_str());

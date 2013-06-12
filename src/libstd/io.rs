@@ -761,7 +761,7 @@ impl<T:Reader> ReaderUtil for T {
     fn read_lines(&self) -> ~[~str] {
         do vec::build |push| {
             for self.each_line |line| {
-                push(str::to_owned(line));
+                push(line.to_owned());
             }
         }
     }
@@ -1091,7 +1091,7 @@ pub fn with_bytes_reader<T>(bytes: &[u8], f: &fn(@Reader) -> T) -> T {
 }
 
 pub fn with_str_reader<T>(s: &str, f: &fn(@Reader) -> T) -> T {
-    str::byte_slice(s, |bytes| with_bytes_reader(bytes, f))
+    with_bytes_reader(s.as_bytes(), f)
 }
 
 // Writing
@@ -1462,7 +1462,7 @@ impl<T:Writer> WriterUtil for T {
             self.write_str(str::from_char(ch));
         }
     }
-    fn write_str(&self, s: &str) { str::byte_slice(s, |v| self.write(v)) }
+    fn write_str(&self, s: &str) { self.write(s.as_bytes()) }
     fn write_line(&self, s: &str) {
         self.write_str(s);
         self.write_str(&"\n");

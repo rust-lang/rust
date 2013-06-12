@@ -1060,7 +1060,7 @@ mod tests {
         /*
         assert_eq!(decode_form_urlencoded([]).len(), 0);
 
-        let s = str::to_bytes("a=1&foo+bar=abc&foo+bar=12+%3D+34");
+        let s = "a=1&foo+bar=abc&foo+bar=12+%3D+34".as_bytes();
         let form = decode_form_urlencoded(s);
         assert_eq!(form.len(), 2);
         assert_eq!(form.get_ref(&~"a"), &~[~"1"]);

@@ -17,6 +17,7 @@
 // closure.
 
 use core::prelude::*;
+use core::iterator::IteratorUtil;
 
 use back::abi;
 use driver::session;
@@ -433,18 +434,18 @@ pub fn trans_lang_call_with_type_params(bcx: block,
 
 pub fn body_contains_ret(body: &ast::blk) -> bool {
     let cx = @mut false;
-    visit::visit_block(body, cx, visit::mk_vt(@visit::Visitor {
-        visit_item: |_i, _cx, _v| { },
-        visit_expr: |e: @ast::expr, cx: @mut bool, v| {
+    visit::visit_block(body, (cx, visit::mk_vt(@visit::Visitor {
+        visit_item: |_i, (_cx, _v)| { },
+        visit_expr: |e: @ast::expr, (cx, v): (@mut bool, visit::vt<@mut bool>)| {
             if !*cx {
                 match e.node {
                   ast::expr_ret(_) => *cx = true,
-                  _ => visit::visit_expr(e, cx, v),
+                  _ => visit::visit_expr(e, (cx, v)),
                 }
             }
         },
         ..*visit::default_visitor()
-    }));
+    })));
     *cx
 }
 
@@ -582,9 +583,12 @@ pub fn trans_call_inner(in_cx: block,
         } else if ret_in_loop {
             let ret_flag_result = bool_to_i1(bcx, Load(bcx, ret_flag.get()));
             bcx = do with_cond(bcx, ret_flag_result) |bcx| {
-                for (copy bcx.fcx.loop_ret).each |&(flagptr, _)| {
-                    Store(bcx, C_bool(true), flagptr);
-                    Store(bcx, C_bool(false), bcx.fcx.llretptr.get());
+                {
+                    let r = (copy bcx.fcx.loop_ret);
+                    for r.iter().advance |&(flagptr, _)| {
+                        Store(bcx, C_bool(true), flagptr);
+                        Store(bcx, C_bool(false), bcx.fcx.llretptr.get());
+                    }
                 }
                 base::cleanup_and_leave(bcx, None, Some(bcx.fcx.llreturn));
                 Unreachable(bcx);

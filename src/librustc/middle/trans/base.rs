@@ -114,7 +114,7 @@ impl get_insn_ctxt for @CrateContext {
     fn insn_ctxt(&self, s: &str) -> icx_popper {
         debug!("new insn_ctxt: %s", s);
         if self.sess.count_llvm_insns() {
-            self.stats.llvm_insn_ctxt.push(str::to_owned(s));
+            self.stats.llvm_insn_ctxt.push(s.to_owned());
         }
         icx_popper(*self)
     }
@@ -269,9 +269,8 @@ pub fn opaque_box_body(bcx: block,
                        boxptr: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("opaque_box_body");
     let ccx = bcx.ccx();
-    let boxptr = PointerCast(bcx, boxptr, T_ptr(T_box_header(ccx)));
-    let bodyptr = GEPi(bcx, boxptr, [1u]);
-    PointerCast(bcx, bodyptr, T_ptr(type_of(ccx, body_t)))
+    let boxptr = PointerCast(bcx, boxptr, T_ptr(T_box(ccx, type_of(ccx, body_t))));
+    GEPi(bcx, boxptr, [0u, abi::box_field_body])
 }
 
 // malloc_raw_dyn: allocates a box to contain a given type, but with a
@@ -1195,7 +1194,7 @@ pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
                            is_lpad,
                            opt_node_info,
                            cx);
-        for parent.each |cx| {
+        for parent.iter().advance |cx| {
             if cx.unreachable { Unreachable(bcx); }
         };
         bcx
@@ -1314,10 +1313,12 @@ pub fn cleanup_and_leave(bcx: block,
             block_scope(inf) if !inf.empty_cleanups() => {
                 let (sub_cx, inf_cleanups) = {
                     let inf = &mut *inf; // FIXME(#5074) workaround stage0
-                    for vec::find((*inf).cleanup_paths,
-                                  |cp| cp.target == leave).each |cp| {
-                        Br(bcx, cp.dest);
-                        return;
+                    {
+                        let r = vec::find((*inf).cleanup_paths, |cp| cp.target == leave);
+                        for r.iter().advance |cp| {
+                            Br(bcx, cp.dest);
+                            return;
+                        }
                     }
                     let sub_cx = sub_block(bcx, "cleanup");
                     Br(bcx, sub_cx.llbb);
@@ -1423,7 +1424,7 @@ pub fn alloc_local(cx: block, local: @ast::local) -> block {
     };
     let val = alloc_ty(cx, t);
     if cx.sess().opts.debuginfo {
-        for simple_name.each |name| {
+        for simple_name.iter().advance |name| {
             str::as_c_str(*cx.ccx().sess.str_of(*name), |buf| {
                 unsafe {
                     llvm::LLVMSetValueName(val, buf)
@@ -1599,7 +1600,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
                         param_substs: Option<@param_substs>,
                         sp: Option<span>)
                      -> fn_ctxt {
-    for param_substs.each |p| { p.validate(); }
+    for param_substs.iter().advance |p| { p.validate(); }
 
     debug!("new_fn_ctxt_w_id(path=%s, id=%?, impl_id=%?, \
             param_substs=%s)",
@@ -2628,11 +2629,11 @@ pub fn trans_constant(ccx: @CrateContext, it: @ast::item) {
 
 pub fn trans_constants(ccx: @CrateContext, crate: &ast::crate) {
     visit::visit_crate(
-        crate, (),
+        crate, ((),
         visit::mk_simple_visitor(@visit::SimpleVisitor {
             visit_item: |a| trans_constant(ccx, a),
             ..*visit::default_simple_visitor()
-        }));
+        })));
 }
 
 pub fn vp2i(cx: block, v: ValueRef) -> ValueRef {
@@ -3072,9 +3073,6 @@ pub fn trans_crate(sess: session::Session,
         }
         let int_type = T_int(targ_cfg);
         let float_type = T_float(targ_cfg);
-        let task_type = T_task(targ_cfg);
-        let taskptr_type = T_ptr(task_type);
-        lib::llvm::associate_type(tn, @"taskptr", taskptr_type);
         let tydesc_type = T_tydesc(targ_cfg);
         lib::llvm::associate_type(tn, @"tydesc", tydesc_type);
         let crate_map = decl_crate_map(sess, link_meta, llmod);
@@ -3140,7 +3138,6 @@ pub fn trans_crate(sess: session::Session,
               tydesc_type: tydesc_type,
               int_type: int_type,
               float_type: float_type,
-              task_type: task_type,
               opaque_vec_type: T_opaque_vec(targ_cfg),
               builder: BuilderRef_res(unsafe {
                   llvm::LLVMCreateBuilderInContext(llcx)

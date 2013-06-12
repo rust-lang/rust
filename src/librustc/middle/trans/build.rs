@@ -885,9 +885,9 @@ pub fn add_comment(bcx: block, text: &str) {
     unsafe {
         let ccx = bcx.ccx();
         if ccx.sess.asm_comments() {
-            let sanitized = str::replace(text, "$", "");
+            let sanitized = text.replace("$", "");
             let comment_text = ~"# " +
-                str::replace(sanitized, "\n", "\n\t# ");
+                sanitized.replace("\n", "\n\t# ");
             let asm = str::as_c_str(comment_text, |c| {
                 str::as_c_str("", |e| {
                     count_insn(bcx, "inlineasm");

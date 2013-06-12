@@ -56,7 +56,6 @@ use util::ppaux::ty_to_str;
 
 use core::iterator::IteratorUtil;
 use core::hashmap::{HashMap, HashSet};
-use core::old_iter;
 use core::result::Ok;
 use core::uint;
 use core::vec;
@@ -205,7 +204,7 @@ impl CoherenceChecker {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
         // builds up the trait inheritance table.
-        visit_crate(crate, (), mk_simple_visitor(@SimpleVisitor {
+        visit_crate(crate, ((), mk_simple_visitor(@SimpleVisitor {
             visit_item: |item| {
 //                debug!("(checking coherence) item '%s'",
 //                       self.crate_context.tcx.sess.str_of(item.ident));
@@ -213,7 +212,7 @@ impl CoherenceChecker {
                 match item.node {
                     item_impl(_, opt_trait, _, _) => {
                         self.check_implementation(item,
-                                                  old_iter::to_vec(&opt_trait));
+                                                  opt_trait.iter().transform(|&x| x).collect());
                     }
                     _ => {
                         // Nothing to do.
@@ -221,7 +220,7 @@ impl CoherenceChecker {
                 };
             },
             .. *default_simple_visitor()
-        }));
+        })));
 
         // Check that there are no overlapping trait instances
         self.check_implementation_coherence();
@@ -660,12 +659,12 @@ impl CoherenceChecker {
 
     // Privileged scope checking
     pub fn check_privileged_scopes(self, crate: @crate) {
-        visit_crate(crate, (), mk_vt(@Visitor {
-            visit_item: |item, _context, visitor| {
+        visit_crate(crate, ((), mk_vt(@Visitor {
+            visit_item: |item, (_context, visitor)| {
                 match item.node {
                     item_mod(ref module_) => {
                         // Then visit the module items.
-                        visit_mod(module_, item.span, item.id, (), visitor);
+                        visit_mod(module_, item.span, item.id, ((), visitor));
                     }
                     item_impl(_, None, ast_ty, _) => {
                         if !self.ast_type_is_defined_in_local_crate(ast_ty) {
@@ -698,15 +697,15 @@ impl CoherenceChecker {
                             }
                         }
 
-                        visit_item(item, (), visitor);
+                        visit_item(item, ((), visitor));
                     }
                     _ => {
-                        visit_item(item, (), visitor);
+                        visit_item(item, ((), visitor));
                     }
                 }
             },
             .. *default_visitor()
-        }));
+        })));
     }
 
     pub fn trait_ref_to_trait_def_id(&self, trait_ref: @trait_ref) -> def_id {
@@ -808,7 +807,7 @@ impl CoherenceChecker {
                 }
 
                 // Check that we have implementations of every trait method
-                for trait_refs.each |trait_ref| {
+                for trait_refs.iter().advance |trait_ref| {
                     let trait_did =
                         self.trait_ref_to_trait_def_id(*trait_ref);
                     self.please_check_that_trait_methods_are_implemented(
@@ -821,7 +820,7 @@ impl CoherenceChecker {
                 // methods are provided.  For each of those methods,
                 // if a method of that name is not inherent to the
                 // impl, use the provided definition in the trait.
-                for trait_refs.each |trait_ref| {
+                for trait_refs.iter().advance |trait_ref| {
                     let trait_did =
                         self.trait_ref_to_trait_def_id(*trait_ref);
 
@@ -920,7 +919,7 @@ impl CoherenceChecker {
             }
 
             // Record all the trait methods.
-            for associated_traits.each |trait_ref| {
+            for associated_traits.iter().advance |trait_ref| {
                 self.add_trait_method(trait_ref.def_id, *implementation);
             }
 

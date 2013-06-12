@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::old_iter;
-
-fn is_even(x: &uint) -> bool { (*x % 2) == 0 }
-
-pub fn main() {
-    assert!(![1u, 3u].any(is_even));
-    assert!([1u, 2u].any(is_even));
-    assert!(![].any(is_even));
-
-    assert!(!old_iter::any(&Some(1u), is_even));
-    assert!(old_iter::any(&Some(2u), is_even));
-    assert!(!old_iter::any(&None::<uint>, is_even));
+trait Foo {
+    fn orange(&self);
+    fn orange(&self);   //~ ERROR error: duplicate definition of method `orange`
 }
+
+fn main() {}

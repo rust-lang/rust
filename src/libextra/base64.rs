@@ -12,7 +12,6 @@
 
 use core::prelude::*;
 
-use core::str;
 use core::vec;
 
 /// A trait for converting a value to base64 encoding.
@@ -111,7 +110,7 @@ impl<'self> ToBase64 for &'self str {
      *
      */
     fn to_base64(&self) -> ~str {
-        str::to_bytes(*self).to_base64()
+        self.as_bytes().to_base64()
     }
 }
 
@@ -224,7 +223,7 @@ impl<'self> FromBase64 for &'self str {
      * ~~~
      */
     fn from_base64(&self) -> ~[u8] {
-        str::to_bytes(*self).from_base64()
+        self.as_bytes().from_base64()
     }
 }
 
@@ -245,12 +244,12 @@ mod tests {
 
     #[test]
     fn test_from_base64() {
-        assert_eq!("".from_base64(), str::to_bytes(""));
-        assert_eq!("Zg==".from_base64(), str::to_bytes("f"));
-        assert_eq!("Zm8=".from_base64(), str::to_bytes("fo"));
-        assert_eq!("Zm9v".from_base64(), str::to_bytes("foo"));
-        assert_eq!("Zm9vYg==".from_base64(), str::to_bytes("foob"));
-        assert_eq!("Zm9vYmE=".from_base64(), str::to_bytes("fooba"))
-        assert_eq!("Zm9vYmFy".from_base64(), str::to_bytes("foobar"));
+        assert_eq!("".from_base64(), "".as_bytes().to_owned());
+        assert_eq!("Zg==".from_base64(), "f".as_bytes().to_owned());
+        assert_eq!("Zm8=".from_base64(), "fo".as_bytes().to_owned());
+        assert_eq!("Zm9v".from_base64(), "foo".as_bytes().to_owned());
+        assert_eq!("Zm9vYg==".from_base64(), "foob".as_bytes().to_owned());
+        assert_eq!("Zm9vYmE=".from_base64(), "fooba".as_bytes().to_owned());
+        assert_eq!("Zm9vYmFy".from_base64(), "foobar".as_bytes().to_owned());
     }
 }

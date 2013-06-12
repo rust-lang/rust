@@ -570,7 +570,7 @@ pub fn maybe_get_item_ast(cdata: cmd, tcx: ty::ctxt,
     let item_doc = lookup_item(id, cdata.data);
     let path = {
         let item_path = item_path(item_doc);
-        vec::to_owned(item_path.init())
+        item_path.init().to_owned()
     };
     match decode_inlined_item(cdata, tcx, copy path, item_doc) {
       Some(ref ii) => csearch::found((/*bad*/copy *ii)),

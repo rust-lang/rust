@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::old_iter;
-
-pub fn main() {
-    assert_eq!([1u, 3u].to_vec(), ~[1u, 3u]);
-    let e: ~[uint] = ~[];
-    assert_eq!(e.to_vec(), ~[]);
-    assert_eq!(old_iter::to_vec(&None::<uint>), ~[]);
-    assert_eq!(old_iter::to_vec(&Some(1u)), ~[1u]);
-    assert_eq!(old_iter::to_vec(&Some(2u)), ~[2u]);
+struct Foo;
+impl Foo {
+    fn orange(&self){}
+    fn orange(&self){}   //~ ERROR error: duplicate definition of method `orange`
 }
+
+fn main() {}

@@ -25,6 +25,7 @@ use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;
 
+use core::iterator::IteratorUtil;
 use core::at_vec;
 use core::uint;
 use extra::ebml::reader;
@@ -826,86 +827,113 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
 
     debug!("Encoding side tables for id %d", id);
 
-    for tcx.def_map.find(&id).each |def| {
-        do ebml_w.tag(c::tag_table_def) |ebml_w| {
-            ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) |ebml_w| {
-                (*def).encode(ebml_w)
+    {
+        let r = tcx.def_map.find(&id);
+        for r.iter().advance |def| {
+            do ebml_w.tag(c::tag_table_def) |ebml_w| {
+                ebml_w.id(id);
+                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                    (*def).encode(ebml_w)
+                }
             }
         }
     }
 
-    for tcx.node_types.find(&(id as uint)).each |&ty| {
-        do ebml_w.tag(c::tag_table_node_type) |ebml_w| {
-            ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) |ebml_w| {
-                ebml_w.emit_ty(ecx, *ty);
+    {
+        let r = tcx.node_types.find(&(id as uint));
+        for r.iter().advance |&ty| {
+            do ebml_w.tag(c::tag_table_node_type) |ebml_w| {
+                ebml_w.id(id);
+                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                    ebml_w.emit_ty(ecx, *ty);
+                }
             }
         }
     }
 
-    for tcx.node_type_substs.find(&id).each |tys| {
-        do ebml_w.tag(c::tag_table_node_type_subst) |ebml_w| {
-            ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) |ebml_w| {
-                ebml_w.emit_tys(ecx, **tys)
+    {
+        let r = tcx.node_type_substs.find(&id);
+        for r.iter().advance |tys| {
+            do ebml_w.tag(c::tag_table_node_type_subst) |ebml_w| {
+                ebml_w.id(id);
+                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                    ebml_w.emit_tys(ecx, **tys)
+                }
             }
         }
     }
 
-    for tcx.freevars.find(&id).each |&fv| {
-        do ebml_w.tag(c::tag_table_freevars) |ebml_w| {
-            ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) |ebml_w| {
-                do ebml_w.emit_from_vec(**fv) |ebml_w, fv_entry| {
-                    encode_freevar_entry(ebml_w, *fv_entry)
+    {
+        let r = tcx.freevars.find(&id);
+        for r.iter().advance |&fv| {
+            do ebml_w.tag(c::tag_table_freevars) |ebml_w| {
+                ebml_w.id(id);
+                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                    do ebml_w.emit_from_vec(**fv) |ebml_w, fv_entry| {
+                        encode_freevar_entry(ebml_w, *fv_entry)
+                    }
                 }
             }
         }
     }
 
     let lid = ast::def_id { crate: ast::local_crate, node: id };
-    for tcx.tcache.find(&lid).each |&tpbt| {
-        do ebml_w.tag(c::tag_table_tcache) |ebml_w| {
-            ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) |ebml_w| {
-                ebml_w.emit_tpbt(ecx, *tpbt);
+    {
+        let r = tcx.tcache.find(&lid);
+        for r.iter().advance |&tpbt| {
+            do ebml_w.tag(c::tag_table_tcache) |ebml_w| {
+                ebml_w.id(id);
+                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                    ebml_w.emit_tpbt(ecx, *tpbt);
+                }
             }
         }
     }
 
-    for tcx.ty_param_defs.find(&id).each |&type_param_def| {
-        do ebml_w.tag(c::tag_table_param_defs) |ebml_w| {
-            ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) |ebml_w| {
-                ebml_w.emit_type_param_def(ecx, type_param_def)
+    {
+        let r = tcx.ty_param_defs.find(&id);
+        for r.iter().advance |&type_param_def| {
+            do ebml_w.tag(c::tag_table_param_defs) |ebml_w| {
+                ebml_w.id(id);
+                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                    ebml_w.emit_type_param_def(ecx, type_param_def)
+                }
             }
         }
     }
 
-    for maps.method_map.find(&id).each |&mme| {
-        do ebml_w.tag(c::tag_table_method_map) |ebml_w| {
-            ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) |ebml_w| {
-                encode_method_map_entry(ecx, ebml_w, *mme)
+    {
+        let r = maps.method_map.find(&id);
+        for r.iter().advance |&mme| {
+            do ebml_w.tag(c::tag_table_method_map) |ebml_w| {
+                ebml_w.id(id);
+                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                    encode_method_map_entry(ecx, ebml_w, *mme)
+                }
             }
         }
     }
 
-    for maps.vtable_map.find(&id).each |&dr| {
-        do ebml_w.tag(c::tag_table_vtable_map) |ebml_w| {
-            ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) |ebml_w| {
-                encode_vtable_res(ecx, ebml_w, *dr);
+    {
+        let r = maps.vtable_map.find(&id);
+        for r.iter().advance |&dr| {
+            do ebml_w.tag(c::tag_table_vtable_map) |ebml_w| {
+                ebml_w.id(id);
+                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                    encode_vtable_res(ecx, ebml_w, *dr);
+                }
             }
         }
     }
 
-    for tcx.adjustments.find(&id).each |adj| {
-        do ebml_w.tag(c::tag_table_adjustments) |ebml_w| {
-            ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) |ebml_w| {
-                (**adj).encode(ebml_w)
+    {
+        let r = tcx.adjustments.find(&id);
+        for r.iter().advance |adj| {
+            do ebml_w.tag(c::tag_table_adjustments) |ebml_w| {
+                ebml_w.id(id);
+                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                    (**adj).encode(ebml_w)
+                }
             }
         }
     }
@@ -916,12 +944,15 @@ fn encode_side_tables_for_id(ecx: @e::EncodeContext,
         }
     }
 
-    for maps.capture_map.find(&id).each |&cap_vars| {
-        do ebml_w.tag(c::tag_table_capture_map) |ebml_w| {
-            ebml_w.id(id);
-            do ebml_w.tag(c::tag_table_val) |ebml_w| {
-                do ebml_w.emit_from_vec(*cap_vars) |ebml_w, cap_var| {
-                    cap_var.encode(ebml_w);
+    {
+        let r = maps.capture_map.find(&id);
+        for r.iter().advance |&cap_vars| {
+            do ebml_w.tag(c::tag_table_capture_map) |ebml_w| {
+                ebml_w.id(id);
+                do ebml_w.tag(c::tag_table_val) |ebml_w| {
+                    do ebml_w.emit_from_vec(*cap_vars) |ebml_w, cap_var| {
+                        cap_var.encode(ebml_w);
+                    }
                 }
             }
         }

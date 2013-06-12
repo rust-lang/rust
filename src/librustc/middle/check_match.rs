@@ -41,13 +41,13 @@ pub fn check_crate(tcx: ty::ctxt,
     let cx = @MatchCheckCtxt {tcx: tcx,
                               method_map: method_map,
                               moves_map: moves_map};
-    visit::visit_crate(crate, (), visit::mk_vt(@visit::Visitor {
-        visit_expr: |a,b,c| check_expr(cx, a, b, c),
-        visit_local: |a,b,c| check_local(cx, a, b, c),
-        visit_fn: |kind, decl, body, sp, id, e, v|
-            check_fn(cx, kind, decl, body, sp, id, e, v),
+    visit::visit_crate(crate, ((), visit::mk_vt(@visit::Visitor {
+        visit_expr: |a,b| check_expr(cx, a, b),
+        visit_local: |a,b| check_local(cx, a, b),
+        visit_fn: |kind, decl, body, sp, id, (e, v)|
+            check_fn(cx, kind, decl, body, sp, id, (e, v)),
         .. *visit::default_visitor::<()>()
-    }));
+    })));
     tcx.sess.abort_if_errors();
 }
 
@@ -59,8 +59,8 @@ pub fn expr_is_non_moving_lvalue(cx: @MatchCheckCtxt, expr: @expr) -> bool {
     !cx.moves_map.contains(&expr.id)
 }
 
-pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, s: (), v: visit::vt<()>) {
-    visit::visit_expr(ex, s, v);
+pub fn check_expr(cx: @MatchCheckCtxt, ex: @expr, (s, v): ((), visit::vt<()>)) {
+    visit::visit_expr(ex, (s, v));
     match ex.node {
       expr_match(scrut, ref arms) => {
         // First, check legality of move bindings.
@@ -363,7 +363,8 @@ pub fn missing_ctor(cx: @MatchCheckCtxt,
       ty::ty_enum(eid, _) => {
         let mut found = ~[];
         for m.each |r| {
-            for pat_ctor_id(cx, r[0]).each |id| {
+            let r = pat_ctor_id(cx, r[0]);
+            for r.iter().advance |id| {
                 if !vec::contains(found, id) {
                     found.push(/*bad*/copy *id);
                 }
@@ -494,7 +495,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                 match cx.tcx.def_map.find(&pat_id) {
                     Some(&def_variant(_, id)) => {
                         if variant(id) == *ctor_id {
-                            Some(vec::to_owned(r.tail()))
+                            Some(r.tail().to_owned())
                         } else {
                             None
                         }
@@ -532,7 +533,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             _ => fail!("type error")
                         };
                         if match_ {
-                            Some(vec::to_owned(r.tail()))
+                            Some(r.tail().to_owned())
                         } else {
                             None
                         }
@@ -579,7 +580,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             _ => fail!("type error")
                         };
                         if match_ {
-                            Some(vec::to_owned(r.tail()))
+                            Some(r.tail().to_owned())
                         } else {
                             None
                         }
@@ -589,7 +590,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             Some(args) => args,
                             None => vec::from_elem(arity, wild())
                         };
-                        Some(vec::append(args, vec::to_owned(r.tail())))
+                        Some(vec::append(args, r.tail().to_owned()))
                     }
                     def_variant(_, _) => None,
 
@@ -601,7 +602,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                             Some(args) => new_args = args,
                             None => new_args = vec::from_elem(arity, wild())
                         }
-                        Some(vec::append(new_args, vec::to_owned(r.tail())))
+                        Some(vec::append(new_args, r.tail().to_owned()))
                     }
                     _ => None
                 }
@@ -619,7 +620,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                                     _ => wild()
                                 }
                             });
-                            Some(vec::append(args, vec::to_owned(r.tail())))
+                            Some(vec::append(args, r.tail().to_owned()))
                         } else {
                             None
                         }
@@ -650,7 +651,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                                 _ => wild()
                             }
                         });
-                        Some(vec::append(args, vec::to_owned(r.tail())))
+                        Some(vec::append(args, r.tail().to_owned()))
                     }
                 }
             }
@@ -686,14 +687,14 @@ pub fn specialize(cx: @MatchCheckCtxt,
                     single => true,
                     _ => fail!("type error")
                 };
-                if match_ { Some(vec::to_owned(r.tail())) } else { None }
+                if match_ { Some(r.tail().to_owned()) } else { None }
             }
             pat_range(lo, hi) => {
                 let (c_lo, c_hi) = match *ctor_id {
                     val(ref v) => ((/*bad*/copy *v), (/*bad*/copy *v)),
                     range(ref lo, ref hi) =>
                         ((/*bad*/copy *lo), (/*bad*/copy *hi)),
-                    single => return Some(vec::to_owned(r.tail())),
+                    single => return Some(r.tail().to_owned()),
                     _ => fail!("type error")
                 };
                 let v_lo = eval_const_expr(cx.tcx, lo);
@@ -703,7 +704,7 @@ pub fn specialize(cx: @MatchCheckCtxt,
                 let m2 = compare_const_vals(&c_hi, &v_hi);
                 match (m1, m2) {
                     (Some(val1), Some(val2)) if val1 >= 0 && val2 <= 0 => {
-                        Some(vec::to_owned(r.tail()))
+                        Some(r.tail().to_owned())
                     },
                     (Some(_), Some(_)) => None,
                     _ => {
@@ -744,15 +745,15 @@ pub fn specialize(cx: @MatchCheckCtxt,
 }
 
 pub fn default(cx: @MatchCheckCtxt, r: &[@pat]) -> Option<~[@pat]> {
-    if is_wild(cx, r[0]) { Some(vec::to_owned(r.tail())) }
+    if is_wild(cx, r[0]) { Some(r.tail().to_owned()) }
     else { None }
 }
 
 pub fn check_local(cx: @MatchCheckCtxt,
                    loc: @local,
-                   s: (),
-                   v: visit::vt<()>) {
-    visit::visit_local(loc, s, v);
+                   (s, v): ((),
+                            visit::vt<()>)) {
+    visit::visit_local(loc, (s, v));
     if is_refutable(cx, loc.node.pat) {
         cx.tcx.sess.span_err(loc.node.pat.span,
                              "refutable pattern in local binding");
@@ -772,9 +773,9 @@ pub fn check_fn(cx: @MatchCheckCtxt,
                 body: &blk,
                 sp: span,
                 id: node_id,
-                s: (),
-                v: visit::vt<()>) {
-    visit::visit_fn(kind, decl, body, sp, id, s, v);
+                (s, v): ((),
+                         visit::vt<()>)) {
+    visit::visit_fn(kind, decl, body, sp, id, (s, v));
     for decl.inputs.each |input| {
         if is_refutable(cx, input.pat) {
             cx.tcx.sess.span_err(input.pat.span,

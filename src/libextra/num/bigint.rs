@@ -524,7 +524,7 @@ impl ToStrRadix for BigUint {
                 let s = uint::to_str_radix(*n as uint, radix);
                 str::from_chars(vec::from_elem(l - s.len(), '0')) + s
             }).concat();
-            s.trim_left_chars(['0']).to_owned()
+            s.trim_left_chars(&'0').to_owned()
         }
     }
 }
@@ -534,7 +534,7 @@ impl FromStrRadix for BigUint {
 
     pub fn from_str_radix(s: &str, radix: uint)
         -> Option<BigUint> {
-        BigUint::parse_bytes(str::to_bytes(s), radix)
+        BigUint::parse_bytes(s.as_bytes(), radix)
     }
 }
 
@@ -564,7 +564,7 @@ impl BigUint {
     /// Creates and initializes an BigUint.
 
     pub fn from_slice(slice: &[BigDigit]) -> BigUint {
-        return BigUint::new(vec::to_owned(slice));
+        return BigUint::new(slice.to_owned());
     }
 
     /// Creates and initializes an BigUint.
@@ -1090,7 +1090,7 @@ impl FromStrRadix for BigInt {
 
     fn from_str_radix(s: &str, radix: uint)
         -> Option<BigInt> {
-        BigInt::parse_bytes(str::to_bytes(s), radix)
+        BigInt::parse_bytes(s.as_bytes(), radix)
     }
 }
 
