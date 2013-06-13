@@ -26,12 +26,11 @@
 use core::prelude::*;
 
 use back::link::{mangle_exported_name};
-use back::{link, abi, upcall};
+use back::{link, abi};
 use driver::session;
 use driver::session::Session;
 use lib::llvm::{ContextRef, ModuleRef, ValueRef, TypeRef, BasicBlockRef};
-use lib::llvm::{True, False};
-use lib::llvm::{llvm, mk_target_data, mk_type_names};
+use lib::llvm::{llvm, True, False};
 use lib;
 use metadata::common::LinkMeta;
 use metadata::{csearch, cstore, encoder};
@@ -65,7 +64,7 @@ use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
 
 use core::hash;
-use core::hashmap::{HashMap, HashSet};
+use core::hashmap::{HashMap};
 use core::int;
 use core::io;
 use core::libc::c_uint;
@@ -85,6 +84,8 @@ use syntax::print::pprust::stmt_to_str;
 use syntax::visit;
 use syntax::{ast, ast_util, codemap, ast_map};
 use syntax::abi::{X86, X86_64, Arm, Mips};
+
+pub use middle::trans::context::task_llcx;
 
 pub struct icx_popper {
     ccx: @CrateContext,
@@ -3037,152 +3038,52 @@ pub fn trans_crate(sess: session::Session,
     // such as a function name in the module.
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
     let llmod_id = link_meta.name.to_owned() + ".rc";
+    let ccx = @CrateContext::new(sess, llmod_id, tcx, emap2, maps,
+                                 symbol_hasher, link_meta, reachable);
+    // FIXME(#6511): get LLVM building with --enable-threads so this
+    //               function can be called
+    // if !llvm::LLVMRustStartMultithreading() {
+    //     sess.bug("couldn't enable multi-threaded LLVM");
+    // }
 
-    unsafe {
-        // FIXME(#6511): get LLVM building with --enable-threads so this
-        //               function can be called
-        // if !llvm::LLVMRustStartMultithreading() {
-        //     sess.bug("couldn't enable multi-threaded LLVM");
-        // }
-        let llcx = llvm::LLVMContextCreate();
-        set_task_llcx(llcx);
-        let llmod = str::as_c_str(llmod_id, |buf| {
-            llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
-        });
-        let data_layout: &str = sess.targ_cfg.target_strs.data_layout;
-        let targ_triple: &str = sess.targ_cfg.target_strs.target_triple;
-        let _: () =
-            str::as_c_str(data_layout,
-                        |buf| llvm::LLVMSetDataLayout(llmod, buf));
-        let _: () =
-            str::as_c_str(targ_triple,
-                        |buf| llvm::LLVMSetTarget(llmod, buf));
-        let targ_cfg = sess.targ_cfg;
-        let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);
-        let tn = mk_type_names();
-        let mut intrinsics = declare_intrinsics(llmod);
-        if sess.opts.extra_debuginfo {
-            declare_dbg_intrinsics(llmod, &mut intrinsics);
-        }
-        let int_type = T_int(targ_cfg);
-        let float_type = T_float(targ_cfg);
-        let tydesc_type = T_tydesc(targ_cfg);
-        lib::llvm::associate_type(tn, @"tydesc", tydesc_type);
-        let crate_map = decl_crate_map(sess, link_meta, llmod);
-        let dbg_cx = if sess.opts.debuginfo {
-            Some(debuginfo::mk_ctxt(copy llmod_id))
-        } else {
-            None
-        };
-
-        let ccx = @CrateContext {
-              sess: sess,
-              llmod: llmod,
-              llcx: llcx,
-              td: td,
-              tn: tn,
-              externs: @mut HashMap::new(),
-              intrinsics: intrinsics,
-              item_vals: @mut HashMap::new(),
-              exp_map2: emap2,
-              reachable: reachable,
-              item_symbols: @mut HashMap::new(),
-              link_meta: link_meta,
-              enum_sizes: @mut HashMap::new(),
-              discrims: @mut HashMap::new(),
-              discrim_symbols: @mut HashMap::new(),
-              tydescs: @mut HashMap::new(),
-              finished_tydescs: @mut false,
-              external: @mut HashMap::new(),
-              monomorphized: @mut HashMap::new(),
-              monomorphizing: @mut HashMap::new(),
-              type_use_cache: @mut HashMap::new(),
-              vtables: @mut HashMap::new(),
-              const_cstr_cache: @mut HashMap::new(),
-              const_globals: @mut HashMap::new(),
-              const_values: @mut HashMap::new(),
-              extern_const_values: @mut HashMap::new(),
-              impl_method_cache: @mut HashMap::new(),
-              module_data: @mut HashMap::new(),
-              lltypes: @mut HashMap::new(),
-              llsizingtypes: @mut HashMap::new(),
-              adt_reprs: @mut HashMap::new(),
-              names: new_namegen(),
-              next_addrspace: new_addrspace_gen(),
-              symbol_hasher: symbol_hasher,
-              type_hashcodes: @mut HashMap::new(),
-              type_short_names: @mut HashMap::new(),
-              all_llvm_symbols: @mut HashSet::new(),
-              tcx: tcx,
-              maps: maps,
-              stats: @mut Stats {
-                n_static_tydescs: 0u,
-                n_glues_created: 0u,
-                n_null_glues: 0u,
-                n_real_glues: 0u,
-                n_fns: 0u,
-                n_monos: 0u,
-                n_inlines: 0u,
-                n_closures: 0u,
-                llvm_insn_ctxt: @mut ~[],
-                llvm_insns: @mut HashMap::new(),
-                fn_times: @mut ~[]
-              },
-              upcalls: upcall::declare_upcalls(targ_cfg, llmod),
-              tydesc_type: tydesc_type,
-              int_type: int_type,
-              float_type: float_type,
-              opaque_vec_type: T_opaque_vec(targ_cfg),
-              builder: BuilderRef_res(unsafe {
-                  llvm::LLVMCreateBuilderInContext(llcx)
-              }),
-              shape_cx: mk_ctxt(llmod),
-              crate_map: crate_map,
-              uses_gc: @mut false,
-              dbg_cx: dbg_cx,
-              do_not_commit_warning_issued: @mut false
-        };
-
-        {
-            let _icx = ccx.insn_ctxt("data");
-            trans_constants(ccx, crate);
-        }
-
-        {
-            let _icx = ccx.insn_ctxt("text");
-            trans_mod(ccx, &crate.node.module);
-        }
-
-        decl_gc_metadata(ccx, llmod_id);
-        fill_crate_map(ccx, crate_map);
-        glue::emit_tydescs(ccx);
-        write_abi_version(ccx);
-
-        // Translate the metadata.
-        write_metadata(ccx, crate);
-        if ccx.sess.trans_stats() {
-            io::println("--- trans stats ---");
-            io::println(fmt!("n_static_tydescs: %u",
-                             ccx.stats.n_static_tydescs));
-            io::println(fmt!("n_glues_created: %u",
-                             ccx.stats.n_glues_created));
-            io::println(fmt!("n_null_glues: %u", ccx.stats.n_null_glues));
-            io::println(fmt!("n_real_glues: %u", ccx.stats.n_real_glues));
-
-            io::println(fmt!("n_fns: %u", ccx.stats.n_fns));
-            io::println(fmt!("n_monos: %u", ccx.stats.n_monos));
-            io::println(fmt!("n_inlines: %u", ccx.stats.n_inlines));
-            io::println(fmt!("n_closures: %u", ccx.stats.n_closures));
-        }
-
-        if ccx.sess.count_llvm_insns() {
-            for ccx.stats.llvm_insns.each |&k, &v| {
-                io::println(fmt!("%-7u %s", v, k));
-            }
-        }
-        unset_task_llcx();
-        return (llcx, llmod, link_meta);
+    {
+        let _icx = ccx.insn_ctxt("data");
+        trans_constants(ccx, crate);
     }
+
+    {
+        let _icx = ccx.insn_ctxt("text");
+        trans_mod(ccx, &crate.node.module);
+    }
+
+    decl_gc_metadata(ccx, llmod_id);
+    fill_crate_map(ccx, ccx.crate_map);
+    glue::emit_tydescs(ccx);
+    write_abi_version(ccx);
+
+    // Translate the metadata.
+    write_metadata(ccx, crate);
+    if ccx.sess.trans_stats() {
+        io::println("--- trans stats ---");
+        io::println(fmt!("n_static_tydescs: %u",
+                         ccx.stats.n_static_tydescs));
+        io::println(fmt!("n_glues_created: %u",
+                         ccx.stats.n_glues_created));
+        io::println(fmt!("n_null_glues: %u", ccx.stats.n_null_glues));
+        io::println(fmt!("n_real_glues: %u", ccx.stats.n_real_glues));
+
+        io::println(fmt!("n_fns: %u", ccx.stats.n_fns));
+        io::println(fmt!("n_monos: %u", ccx.stats.n_monos));
+        io::println(fmt!("n_inlines: %u", ccx.stats.n_inlines));
+        io::println(fmt!("n_closures: %u", ccx.stats.n_closures));
+    }
+
+    if ccx.sess.count_llvm_insns() {
+        for ccx.stats.llvm_insns.each |&k, &v| {
+            io::println(fmt!("%-7u %s", v, k));
+        }
+    }
+    return (llmod, link_meta);
 }
 
 fn task_local_llcx_key(_v: @ContextRef) {}
