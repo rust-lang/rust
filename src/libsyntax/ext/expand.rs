@@ -528,7 +528,7 @@ pub fn core_macros() -> @str {
     )
 
     macro_rules! assert_eq (
-        ($given:expr , $expected:expr) => (
+        ($expected:expr , $given:expr) => (
             {
                 let given_val = $given;
                 let expected_val = $expected;
@@ -541,7 +541,7 @@ pub fn core_macros() -> @str {
     )
 
     macro_rules! assert_approx_eq (
-        ($given:expr , $expected:expr) => (
+        ($expected:expr , $given:expr) => (
             {
                 use std::cmp::ApproxEq;
 
@@ -557,7 +557,7 @@ pub fn core_macros() -> @str {
                 }
             }
         );
-        ($given:expr , $expected:expr , $epsilon:expr) => (
+        ($expected:expr , $given:expr , $epsilon:expr) => (
             {
                 use std::cmp::ApproxEq;
 
