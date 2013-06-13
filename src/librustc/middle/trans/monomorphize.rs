@@ -32,7 +32,6 @@ use middle::ty::{FnSig};
 use middle::typeck;
 use util::ppaux::{Repr,ty_to_str};
 
-use core::iterator::IteratorUtil;
 use core::vec;
 use syntax::ast;
 use syntax::ast_map;

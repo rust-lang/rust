@@ -1,7 +1,5 @@
-use std::iterator::IteratorUtil;
 use std::f64;
 use std::from_str::FromStr;
-use std::iter::ExtendedMutableIter;
 use std::os;
 use std::vec;
 

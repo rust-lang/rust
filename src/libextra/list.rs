@@ -12,7 +12,6 @@
 
 use core::prelude::*;
 
-use core::iterator::IteratorUtil;
 
 #[deriving(Eq)]
 pub enum List<T> {

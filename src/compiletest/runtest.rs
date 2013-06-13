@@ -22,7 +22,6 @@ use procsrv;
 use util;
 use util::logv;
 
-use core::iterator::IteratorUtil;
 use core::io;
 use core::os;
 use core::str;

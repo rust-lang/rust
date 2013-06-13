@@ -1,4 +1,3 @@
-use std::iterator::*;
 use std::from_str::FromStr;
 use std::i32::range;
 use std::os;

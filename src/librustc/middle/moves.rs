@@ -127,7 +127,6 @@ and so on.
 */
 
 use core::prelude::*;
-use core::iterator::IteratorUtil;
 
 use middle::pat_util::{pat_bindings};
 use middle::freevars;

@@ -99,7 +99,7 @@ fn main() {
     thread_ring(0, msg_per_task, num_chan.take(), num_port);
 
     // synchronize
-    for futures.each_mut |f| {
+    for futures.mut_iter().advance |f| {
         let _ = f.get();
     }
 

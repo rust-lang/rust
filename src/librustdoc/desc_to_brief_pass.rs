@@ -24,7 +24,6 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use core::iterator::IteratorUtil;
 use core::str;
 use core::util;
 

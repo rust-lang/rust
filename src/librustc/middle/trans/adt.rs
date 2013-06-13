@@ -44,7 +44,6 @@
  *   taken to it, implementing them for Rust seems difficult.
  */
 
-use core::iterator::IteratorUtil;
 use core::container::Map;
 use core::libc::c_ulonglong;
 use core::option::{Option, Some, None};

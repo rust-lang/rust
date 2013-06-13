@@ -19,7 +19,6 @@ use codemap::BytePos;
 use diagnostic::span_handler;
 use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
 
-use core::iterator::IteratorUtil;
 use core::hashmap::HashSet;
 use core::vec;
 use extra;

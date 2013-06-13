@@ -14,7 +14,6 @@ use core::prelude::*;
 
 use doc;
 
-use core::iterator::IteratorUtil;
 use core::vec;
 
 pub type AstId = int;
