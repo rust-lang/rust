@@ -30,7 +30,7 @@ enum D {
     D2 { x: (), y: () }
 }
 
-fn main() {
+pub fn main() {
     macro_rules! t(
         ($ty:ty) => {{
             let x =rand::random::<$ty>();

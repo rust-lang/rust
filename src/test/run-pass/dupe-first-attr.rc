@@ -26,4 +26,4 @@ mod hello;
 #[cfg(target_os = "android")]
 mod hello;
 
-fn main() { }
+pub fn main() { }

@@ -51,7 +51,7 @@ struct S7_Option {
 }
 
 
-fn main() {
+pub fn main() {
     assert_eq!(sys::size_of::<S4>(), 4);
     assert_eq!(sys::size_of::<S5>(), 5);
     assert_eq!(sys::size_of::<S13_str>(), 13 + sys::size_of::<~str>());

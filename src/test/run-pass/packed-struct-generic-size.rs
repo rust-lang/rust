@@ -17,7 +17,7 @@ struct S<T, S> {
     c: S
 }
 
-fn main() {
+pub fn main() {
     assert_eq!(sys::size_of::<S<u8, u8>>(), 3);
 
     assert_eq!(sys::size_of::<S<u64, u16>>(), 11);

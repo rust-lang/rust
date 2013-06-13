@@ -16,7 +16,7 @@ static foo: &'static str = cci_const::foopy;
 static a: uint = cci_const::uint_val;
 static b: uint = cci_const::uint_expr + 5;
 
-fn main() {
+pub fn main() {
     assert_eq!(a, 12);
     let foo2 = a;
     assert_eq!(foo2, cci_const::uint_val);

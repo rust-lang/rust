@@ -22,4 +22,4 @@ impl<'self, T> Node<'self, T> {
   }
 }
 
-fn main() {}
+pub fn main() {}

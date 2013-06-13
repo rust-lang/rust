@@ -22,7 +22,7 @@ impl Foo for S {
     fn bar() { }
 }
 
-fn main() {
+pub fn main() {
     let s = S {
         name: 0
     };

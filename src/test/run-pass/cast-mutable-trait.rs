@@ -25,7 +25,7 @@ fn bar(t: @mut T) {
     t.foo();
 }
 
-fn main() {
+pub fn main() {
     let s = @mut S { unused: 0 };
     let s2 = s as @mut T;
     s2.foo();

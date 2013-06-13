@@ -11,6 +11,6 @@
 #[deriving(Clone, DeepClone)]
 struct S<T>(T, ());
 
-fn main() {
+pub fn main() {
     let _ = S(1i, ()).clone().deep_clone();
 }
