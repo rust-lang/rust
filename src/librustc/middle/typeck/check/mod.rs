@@ -490,7 +490,7 @@ pub fn check_fn(ccx: @mut CrateCtxt,
                   if pat_util::pat_is_binding(fcx.ccx.tcx.def_map, p) => {
                 assign(p.id, None);
                 debug!("Pattern binding %s is assigned to %s",
-                       *tcx.sess.str_of(path.idents[0]),
+                       tcx.sess.str_of(path.idents[0]),
                        fcx.infcx().ty_to_str(
                            fcx.inh.locals.get_copy(&p.id)));
               }
@@ -557,7 +557,7 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
         match orig_sp {
             Some(orig_sp) => {
                 tcx.sess.span_err(sp, fmt!("Duplicate field name %s in record type declaration",
-                                           *tcx.sess.str_of(id)));
+                                           tcx.sess.str_of(id)));
                 tcx.sess.span_note(orig_sp, "First declaration of this field occurred here");
                 break;
             }
@@ -599,7 +599,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
       ast::item_impl(_, _, _, ref ms) => {
         let rp = ccx.tcx.region_paramd_items.find(&it.id).map_consume(|x| *x);
         debug!("item_impl %s with id %d rp %?",
-               *ccx.tcx.sess.str_of(it.ident), it.id, rp);
+               ccx.tcx.sess.str_of(it.ident), it.id, rp);
         for ms.each |m| {
             check_method(ccx, *m);
         }
@@ -1396,7 +1396,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                       fmt!("type `%s` does not implement any method in scope \
                             named `%s`",
                            actual,
-                           *fcx.ccx.tcx.sess.str_of(method_name))
+                           fcx.ccx.tcx.sess.str_of(method_name))
                   },
                   expr_t,
                   None);
@@ -1772,7 +1772,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     |actual| {
                         fmt!("attempted to take value of method `%s` on type `%s` \
                               (try writing an anonymous function)",
-                             *tcx.sess.str_of(field), actual)
+                             tcx.sess.str_of(field), actual)
                     },
                     expr_t, None);
             }
@@ -1783,7 +1783,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     |actual| {
                         fmt!("attempted access of field `%s` on type `%s`, \
                               but no field with that name was found",
-                             *tcx.sess.str_of(field), actual)
+                             tcx.sess.str_of(field), actual)
                     },
                     expr_t, None);
             }
@@ -1821,14 +1821,14 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     tcx.sess.span_err(
                         field.span,
                         fmt!("structure has no field named `%s`",
-                             *tcx.sess.str_of(field.node.ident)));
+                             tcx.sess.str_of(field.node.ident)));
                     error_happened = true;
                 }
                 Some((_, true)) => {
                     tcx.sess.span_err(
                         field.span,
                         fmt!("field `%s` specified more than once",
-                             *tcx.sess.str_of(field.node.ident)));
+                             tcx.sess.str_of(field.node.ident)));
                     error_happened = true;
                 }
                 Some((field_id, false)) => {
@@ -1862,7 +1862,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                     let (_, seen) = *class_field_map.get(&name);
                     if !seen {
                         missing_fields.push(
-                            ~"`" + *tcx.sess.str_of(name) + "`");
+                            ~"`" + tcx.sess.str_of(name) + "`");
                     }
                 }
 
@@ -3424,7 +3424,7 @@ pub fn check_bounds_are_used(ccx: @mut CrateCtxt,
         if !*b {
             ccx.tcx.sess.span_err(
                 span, fmt!("type parameter `%s` is unused",
-                           *ccx.tcx.sess.str_of(tps.get(i).ident)));
+                           ccx.tcx.sess.str_of(tps.get(i).ident)));
         }
     }
 }
@@ -3435,14 +3435,15 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
     }
 
     let tcx = ccx.tcx;
-    let (n_tps, inputs, output) = match *ccx.tcx.sess.str_of(it.ident) {
-        ~"size_of" |
-        ~"pref_align_of" | ~"min_align_of" => (1u, ~[], ty::mk_uint()),
-        ~"init" => (1u, ~[], param(ccx, 0u)),
-        ~"uninit" => (1u, ~[], param(ccx, 0u)),
-        ~"forget" => (1u, ~[ param(ccx, 0) ], ty::mk_nil()),
-        ~"transmute" => (2, ~[ param(ccx, 0) ], param(ccx, 1)),
-        ~"move_val" | ~"move_val_init" => {
+    let str = ccx.tcx.sess.str_of(it.ident);
+    let (n_tps, inputs, output) = match str.as_slice() {
+        "size_of" |
+        "pref_align_of" | "min_align_of" => (1u, ~[], ty::mk_uint()),
+        "init" => (1u, ~[], param(ccx, 0u)),
+        "uninit" => (1u, ~[], param(ccx, 0u)),
+        "forget" => (1u, ~[ param(ccx, 0) ], ty::mk_nil()),
+        "transmute" => (2, ~[ param(ccx, 0) ], param(ccx, 1)),
+        "move_val" | "move_val_init" => {
             (1u,
              ~[
                 ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), param(ccx, 0)),
@@ -3450,9 +3451,9 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
               ],
            ty::mk_nil())
         }
-        ~"needs_drop" => (1u, ~[], ty::mk_bool()),
+        "needs_drop" => (1u, ~[], ty::mk_bool()),
 
-        ~"atomic_cxchg"    | ~"atomic_cxchg_acq"| ~"atomic_cxchg_rel" => {
+        "atomic_cxchg"    | "atomic_cxchg_acq"| "atomic_cxchg_rel" => {
           (0,
            ~[
               ty::mk_mut_rptr(tcx,
@@ -3463,14 +3464,14 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
            ],
            ty::mk_int())
         }
-        ~"atomic_load"     | ~"atomic_load_acq" => {
+        "atomic_load"     | "atomic_load_acq" => {
           (0,
            ~[
               ty::mk_imm_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int())
            ],
           ty::mk_int())
         }
-        ~"atomic_store"    | ~"atomic_store_rel" => {
+        "atomic_store"    | "atomic_store_rel" => {
           (0,
            ~[
               ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int()),
@@ -3478,9 +3479,9 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
            ],
            ty::mk_nil())
         }
-        ~"atomic_xchg"     | ~"atomic_xadd"     | ~"atomic_xsub"     |
-        ~"atomic_xchg_acq" | ~"atomic_xadd_acq" | ~"atomic_xsub_acq" |
-        ~"atomic_xchg_rel" | ~"atomic_xadd_rel" | ~"atomic_xsub_rel" => {
+        "atomic_xchg"     | "atomic_xadd"     | "atomic_xsub"     |
+        "atomic_xchg_acq" | "atomic_xadd_acq" | "atomic_xsub_acq" |
+        "atomic_xchg_rel" | "atomic_xadd_rel" | "atomic_xsub_rel" => {
           (0,
            ~[
               ty::mk_mut_rptr(tcx, ty::re_bound(ty::br_anon(0)), ty::mk_int()),
@@ -3489,11 +3490,11 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
            ty::mk_int())
         }
 
-        ~"get_tydesc" => {
+        "get_tydesc" => {
           // FIXME (#3730): return *intrinsic::tydesc, not *()
           (1u, ~[], ty::mk_nil_ptr(ccx.tcx))
         }
-        ~"visit_tydesc" => {
+        "visit_tydesc" => {
           let tydesc_name = special_idents::tydesc;
           assert!(tcx.intrinsic_defs.contains_key(&tydesc_name));
           let (_, tydesc_ty) = tcx.intrinsic_defs.get_copy(&tydesc_name);
@@ -3504,7 +3505,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
           });
           (0, ~[ td_ptr, visitor_object_ty ], ty::mk_nil())
         }
-        ~"frame_address" => {
+        "frame_address" => {
           let fty = ty::mk_closure(ccx.tcx, ty::ClosureTy {
               purity: ast::impure_fn,
               sigil: ast::BorrowedSigil,
@@ -3519,10 +3520,10 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
           });
           (0u, ~[fty], ty::mk_nil())
         }
-        ~"morestack_addr" => {
+        "morestack_addr" => {
           (0u, ~[], ty::mk_nil_ptr(ccx.tcx))
         }
-        ~"memcpy32" => {
+        "memcpy32" => {
           (1,
            ~[
               ty::mk_ptr(tcx, ty::mt {
@@ -3537,7 +3538,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
            ],
            ty::mk_nil())
         }
-        ~"memcpy64" => {
+        "memcpy64" => {
           (1,
            ~[
               ty::mk_ptr(tcx, ty::mt {
@@ -3552,7 +3553,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
            ],
            ty::mk_nil())
         }
-        ~"memmove32" => {
+        "memmove32" => {
           (1,
            ~[
               ty::mk_ptr(tcx, ty::mt {
@@ -3567,7 +3568,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
            ],
            ty::mk_nil())
         }
-        ~"memmove64" => {
+        "memmove64" => {
           (1,
            ~[
               ty::mk_ptr(tcx, ty::mt {
@@ -3582,7 +3583,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
            ],
            ty::mk_nil())
         }
-        ~"memset32" => {
+        "memset32" => {
           (1,
            ~[
               ty::mk_ptr(tcx, ty::mt {
@@ -3594,7 +3595,7 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
            ],
            ty::mk_nil())
         }
-        ~"memset64" => {
+        "memset64" => {
           (1,
            ~[
               ty::mk_ptr(tcx, ty::mt {
@@ -3606,75 +3607,75 @@ pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
            ],
            ty::mk_nil())
         }
-        ~"sqrtf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-        ~"sqrtf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-        ~"powif32" => {
+        "sqrtf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        "sqrtf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        "powif32" => {
            (0,
             ~[ ty::mk_f32(), ty::mk_i32() ],
             ty::mk_f32())
         }
-        ~"powif64" => {
+        "powif64" => {
            (0,
             ~[ ty::mk_f64(), ty::mk_i32() ],
             ty::mk_f64())
         }
-        ~"sinf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-        ~"sinf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-        ~"cosf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-        ~"cosf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-        ~"powf32" => {
+        "sinf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        "sinf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        "cosf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        "cosf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        "powf32" => {
            (0,
             ~[ ty::mk_f32(), ty::mk_f32() ],
             ty::mk_f32())
         }
-        ~"powf64" => {
+        "powf64" => {
            (0,
             ~[ ty::mk_f64(), ty::mk_f64() ],
             ty::mk_f64())
         }
-        ~"expf32"   => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-        ~"expf64"   => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-        ~"exp2f32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-        ~"exp2f64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-        ~"logf32"   => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-        ~"logf64"   => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-        ~"log10f32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-        ~"log10f64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-        ~"log2f32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-        ~"log2f64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-        ~"fmaf32" => {
+        "expf32"   => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        "expf64"   => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        "exp2f32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        "exp2f64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        "logf32"   => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        "logf64"   => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        "log10f32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        "log10f64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        "log2f32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        "log2f64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        "fmaf32" => {
             (0,
              ~[ ty::mk_f32(), ty::mk_f32(), ty::mk_f32() ],
              ty::mk_f32())
         }
-        ~"fmaf64" => {
+        "fmaf64" => {
             (0,
              ~[ ty::mk_f64(), ty::mk_f64(), ty::mk_f64() ],
              ty::mk_f64())
         }
-        ~"fabsf32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-        ~"fabsf64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-        ~"floorf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-        ~"floorf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-        ~"ceilf32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-        ~"ceilf64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-        ~"truncf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
-        ~"truncf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
-        ~"ctpop8"   => (0, ~[ ty::mk_i8()  ], ty::mk_i8()),
-        ~"ctpop16"  => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
-        ~"ctpop32"  => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
-        ~"ctpop64"  => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
-        ~"ctlz8"    => (0, ~[ ty::mk_i8()  ], ty::mk_i8()),
-        ~"ctlz16"   => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
-        ~"ctlz32"   => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
-        ~"ctlz64"   => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
-        ~"cttz8"    => (0, ~[ ty::mk_i8()  ], ty::mk_i8()),
-        ~"cttz16"   => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
-        ~"cttz32"   => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
-        ~"cttz64"   => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
-        ~"bswap16"  => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
-        ~"bswap32"  => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
-        ~"bswap64"  => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
+        "fabsf32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        "fabsf64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        "floorf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        "floorf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        "ceilf32"  => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        "ceilf64"  => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        "truncf32" => (0, ~[ ty::mk_f32() ], ty::mk_f32()),
+        "truncf64" => (0, ~[ ty::mk_f64() ], ty::mk_f64()),
+        "ctpop8"   => (0, ~[ ty::mk_i8()  ], ty::mk_i8()),
+        "ctpop16"  => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
+        "ctpop32"  => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
+        "ctpop64"  => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
+        "ctlz8"    => (0, ~[ ty::mk_i8()  ], ty::mk_i8()),
+        "ctlz16"   => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
+        "ctlz32"   => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
+        "ctlz64"   => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
+        "cttz8"    => (0, ~[ ty::mk_i8()  ], ty::mk_i8()),
+        "cttz16"   => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
+        "cttz32"   => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
+        "cttz64"   => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
+        "bswap16"  => (0, ~[ ty::mk_i16() ], ty::mk_i16()),
+        "bswap32"  => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
+        "bswap64"  => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
         ref other => {
             tcx.sess.span_err(it.span,
                               fmt!("unrecognized intrinsic function: `%s`",

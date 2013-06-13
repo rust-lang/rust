@@ -139,7 +139,7 @@ pub fn static_size_of_enum(cx: @CrateContext, t: ty::t) -> uint {
                 });
 
                 debug!("static_size_of_enum: variant %s type %s",
-                       *cx.tcx.sess.str_of(variant.name),
+                       cx.tcx.sess.str_of(variant.name),
                        ty_str(cx.tn, T_struct(lltypes, false)));
 
                 let this_size = llsize_of_real(cx, T_struct(lltypes, false));

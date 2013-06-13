@@ -259,7 +259,7 @@ impl Parser {
                                    -> bool {
         match *token {
             token::IDENT(sid, _) => {
-                str::eq_slice(*self.id_to_str(sid), ident)
+                str::eq_slice(self.id_to_str(sid), ident)
             }
             _ => false
         }

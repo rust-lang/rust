@@ -84,7 +84,7 @@ pub type TraitMap = HashMap<node_id,@mut ~[def_id]>;
 pub type ExportMap2 = @mut HashMap<node_id, ~[Export2]>;
 
 pub struct Export2 {
-    name: @~str,        // The name of the target.
+    name: @str,        // The name of the target.
     def_id: def_id,     // The definition of the target.
     reexport: bool,     // Whether this is a reexport.
 }
@@ -1035,14 +1035,14 @@ impl Resolver {
                     self.session.span_err(sp,
                         fmt!("duplicate definition of %s `%s`",
                              namespace_to_str(ns),
-                             *self.session.str_of(name)));
+                             self.session.str_of(name)));
                     {
                         let r = child.span_for_namespace(ns);
                         for r.iter().advance |sp| {
                             self.session.span_note(*sp,
                                  fmt!("first definition of %s %s here:",
                                       namespace_to_str(ns),
-                                      *self.session.str_of(name)));
+                                      self.session.str_of(name)));
                         }
                     }
                 }
@@ -1239,10 +1239,10 @@ impl Resolver {
                             if *old_sp != span {
                                 self.session.span_err(span,
                                                       fmt!("duplicate definition of method `%s`",
-                                                           *self.session.str_of(ident)));
+                                                           self.session.str_of(ident)));
                                 self.session.span_note(*old_sp,
                                                        fmt!("first definition of method `%s` here",
-                                                            *self.session.str_of(ident)));
+                                                            self.session.str_of(ident)));
                             }
                         }
                     }
@@ -1376,10 +1376,10 @@ impl Resolver {
                             if *old_sp != ty_m.span {
                                 self.session.span_err(ty_m.span,
                                                       fmt!("duplicate definition of method `%s`",
-                                                           *self.session.str_of(ident)));
+                                                           self.session.str_of(ident)));
                                 self.session.span_note(*old_sp,
                                                        fmt!("first definition of method `%s` here",
-                                                            *self.session.str_of(ident)));
+                                                            self.session.str_of(ident)));
                             }
                         }
                     }
@@ -1695,7 +1695,7 @@ impl Resolver {
                   debug!("(building reduced graph for \
                           external crate) ... adding \
                           trait method '%s'",
-                         *self.session.str_of(method_name));
+                         self.session.str_of(method_name));
 
                   // Add it to the trait info if not static.
                   if explicit_self != sty_static {
@@ -1824,7 +1824,7 @@ impl Resolver {
                                              visibility,
                                              &mut modules,
                                              child_name_bindings,
-                                             *self.session.str_of(
+                                             self.session.str_of(
                                                  final_ident),
                                              final_ident,
                                              new_parent);
@@ -1843,7 +1843,7 @@ impl Resolver {
                                     debug!("(building reduced graph for \
                                             external crate) processing \
                                             static methods for type name %s",
-                                            *self.session.str_of(
+                                            self.session.str_of(
                                                 final_ident));
 
                                     let (child_name_bindings, new_parent) =
@@ -1894,7 +1894,7 @@ impl Resolver {
                                         debug!("(building reduced graph for \
                                                  external crate) creating \
                                                  static method '%s'",
-                                               *self.session.str_of(ident));
+                                               self.session.str_of(ident));
 
                                         let (method_name_bindings, _) =
                                             self.add_child(
@@ -1945,7 +1945,7 @@ impl Resolver {
                         directive: privacy %? %s::%s",
                        privacy,
                        self.idents_to_str(directive.module_path),
-                       *self.session.str_of(target));
+                       self.session.str_of(target));
 
                 match module_.import_resolutions.find(&target) {
                     Some(&resolution) => {
@@ -2054,7 +2054,7 @@ impl Resolver {
                 Failed => {
                     // We presumably emitted an error. Continue.
                     let msg = fmt!("failed to resolve import `%s`",
-                                   *self.import_path_to_str(
+                                   self.import_path_to_str(
                                        import_directive.module_path,
                                        *import_directive.subclass));
                     self.session.span_err(import_directive.span, msg);
@@ -2077,30 +2077,30 @@ impl Resolver {
         let mut result = ~"";
         for idents.each |ident| {
             if first { first = false; } else { result += "::" };
-            result += *self.session.str_of(*ident);
+            result += self.session.str_of(*ident);
         };
         return result;
     }
 
     pub fn import_directive_subclass_to_str(@mut self,
                                             subclass: ImportDirectiveSubclass)
-                                            -> @~str {
+                                            -> @str {
         match subclass {
             SingleImport(_target, source) => self.session.str_of(source),
-            GlobImport => @~"*"
+            GlobImport => @"*"
         }
     }
 
     pub fn import_path_to_str(@mut self,
                               idents: &[ident],
                               subclass: ImportDirectiveSubclass)
-                              -> @~str {
+                              -> @str {
         if idents.is_empty() {
             self.import_directive_subclass_to_str(subclass)
         } else {
-            @fmt!("%s::%s",
-                 self.idents_to_str(idents),
-                 *self.import_directive_subclass_to_str(subclass))
+            (fmt!("%s::%s",
+                  self.idents_to_str(idents),
+                  self.import_directive_subclass_to_str(subclass))).to_managed()
         }
     }
 
@@ -2221,9 +2221,9 @@ impl Resolver {
                                  -> ResolveResult<()> {
         debug!("(resolving single import) resolving `%s` = `%s::%s` from \
                 `%s`",
-               *self.session.str_of(target),
+               self.session.str_of(target),
                self.module_to_str(containing_module),
-               *self.session.str_of(source),
+               self.session.str_of(source),
                self.module_to_str(module_));
 
         // We need to resolve both namespaces for this to succeed.
@@ -2427,12 +2427,12 @@ impl Resolver {
         let span = directive.span;
         if resolve_fail {
             self.session.span_err(span, fmt!("unresolved import: there is no `%s` in `%s`",
-                                             *self.session.str_of(source),
+                                             self.session.str_of(source),
                                              self.module_to_str(containing_module)));
             return Failed;
         } else if priv_fail {
             self.session.span_err(span, fmt!("unresolved import: found `%s` in `%s` but it is \
-                                             private", *self.session.str_of(source),
+                                             private", self.session.str_of(source),
                                              self.module_to_str(containing_module)));
             return Failed;
         }
@@ -2535,7 +2535,7 @@ impl Resolver {
 
             debug!("(resolving glob import) writing resolution `%s` in `%s` \
                     to `%s`, privacy=%?",
-                   *self.session.str_of(ident),
+                   self.session.str_of(ident),
                    self.module_to_str(containing_module),
                    self.module_to_str(module_),
                    copy dest_import_resolution.privacy);
@@ -2604,17 +2604,17 @@ impl Resolver {
                                               fmt!("unresolved import. maybe \
                                                     a missing `extern mod \
                                                     %s`?",
-                                                    *segment_name));
+                                                    segment_name));
                         return Failed;
                     }
                     self.session.span_err(span, fmt!("unresolved import: could not find `%s` in \
-                                                     `%s`.", *segment_name, module_name));
+                                                     `%s`.", segment_name, module_name));
                     return Failed;
                 }
                 Indeterminate => {
                     debug!("(resolving module path for import) module \
                             resolution is indeterminate: %s",
-                            *self.session.str_of(name));
+                            self.session.str_of(name));
                     return Indeterminate;
                 }
                 Success(target) => {
@@ -2628,7 +2628,7 @@ impl Resolver {
                                     self.session.span_err(span,
                                                           fmt!("not a \
                                                                 module `%s`",
-                                                               *self.session.
+                                                               self.session.
                                                                    str_of(
                                                                     name)));
                                     return Failed;
@@ -2656,7 +2656,7 @@ impl Resolver {
                             // There are no type bindings at all.
                             self.session.span_err(span,
                                                   fmt!("not a module `%s`",
-                                                       *self.session.str_of(
+                                                       self.session.str_of(
                                                             name)));
                             return Failed;
                         }
@@ -2783,7 +2783,7 @@ impl Resolver {
                                          -> ResolveResult<Target> {
         debug!("(resolving item in lexical scope) resolving `%s` in \
                 namespace %? in `%s`",
-               *self.session.str_of(name),
+               self.session.str_of(name),
                namespace,
                self.module_to_str(module_));
 
@@ -2997,11 +2997,11 @@ impl Resolver {
         // top of the crate otherwise.
         let mut containing_module;
         let mut i;
-        if *token::ident_to_str(&module_path[0]) == ~"self" {
+        if "self" == token::ident_to_str(&module_path[0]) {
             containing_module =
                 self.get_nearest_normal_module_parent_or_self(module_);
             i = 1;
-        } else if *token::ident_to_str(&module_path[0]) == ~"super" {
+        } else if "super" == token::ident_to_str(&module_path[0]) {
             containing_module =
                 self.get_nearest_normal_module_parent_or_self(module_);
             i = 0;  // We'll handle `super` below.
@@ -3011,7 +3011,7 @@ impl Resolver {
 
         // Now loop through all the `super`s we find.
         while i < module_path.len() &&
-                *token::ident_to_str(&module_path[i]) == ~"super" {
+                "super" == token::ident_to_str(&module_path[i]) {
             debug!("(resolving module prefix) resolving `super` at %s",
                    self.module_to_str(containing_module));
             match self.get_nearest_normal_module_parent(containing_module) {
@@ -3039,7 +3039,7 @@ impl Resolver {
                                   name_search_type: NameSearchType)
                                   -> ResolveResult<Target> {
         debug!("(resolving name in module) resolving `%s` in `%s`",
-               *self.session.str_of(name),
+               self.session.str_of(name),
                self.module_to_str(module_));
 
         // First, check the direct children of the module.
@@ -3112,7 +3112,7 @@ impl Resolver {
 
         // We're out of luck.
         debug!("(resolving name in module) failed to resolve `%s`",
-               *self.session.str_of(name));
+               self.session.str_of(name));
         return Failed;
     }
 
@@ -3230,7 +3230,7 @@ impl Resolver {
             (Some(d), Some(Public)) => {
                 debug!("(computing exports) YES: %s '%s' => %?",
                        if reexport { ~"reexport" } else { ~"export"},
-                       *self.session.str_of(ident),
+                       self.session.str_of(ident),
                        def_id_of_def(d));
                 exports2.push(Export2 {
                     reexport: reexport,
@@ -3252,7 +3252,7 @@ impl Resolver {
                                   module_: @mut Module) {
         for module_.children.each |ident, namebindings| {
             debug!("(computing exports) maybe export '%s'",
-                   *self.session.str_of(*ident));
+                   self.session.str_of(*ident));
             self.add_exports_of_namebindings(&mut *exports2,
                                              *ident,
                                              *namebindings,
@@ -3268,14 +3268,14 @@ impl Resolver {
         for module_.import_resolutions.each |ident, importresolution| {
             if importresolution.privacy != Public {
                 debug!("(computing exports) not reexporting private `%s`",
-                       *self.session.str_of(*ident));
+                       self.session.str_of(*ident));
                 loop;
             }
             for [ TypeNS, ValueNS ].each |ns| {
                 match importresolution.target_for_namespace(*ns) {
                     Some(target) => {
                         debug!("(computing exports) maybe reexport '%s'",
-                               *self.session.str_of(*ident));
+                               self.session.str_of(*ident));
                         self.add_exports_of_namebindings(&mut *exports2,
                                                          *ident,
                                                          target.bindings,
@@ -3318,7 +3318,7 @@ impl Resolver {
                 match orig_module.children.find(&name) {
                     None => {
                         debug!("!!! (with scope) didn't find `%s` in `%s`",
-                               *self.session.str_of(name),
+                               self.session.str_of(name),
                                self.module_to_str(orig_module));
                     }
                     Some(name_bindings) => {
@@ -3326,7 +3326,7 @@ impl Resolver {
                             None => {
                                 debug!("!!! (with scope) didn't find module \
                                         for `%s` in `%s`",
-                                       *self.session.str_of(name),
+                                       self.session.str_of(name),
                                        self.module_to_str(orig_module));
                             }
                             Some(module_) => {
@@ -3503,7 +3503,7 @@ impl Resolver {
 
     pub fn resolve_item(@mut self, item: @item, visitor: ResolveVisitor) {
         debug!("(resolving item) resolving %s",
-               *self.session.str_of(item.ident));
+               self.session.str_of(item.ident));
 
         // Items with the !resolve_unexported attribute are X-ray contexts.
         // This is used to allow the test runner to run unexported tests.
@@ -4044,7 +4044,7 @@ impl Resolver {
                         p.span,
                         fmt!("variable `%s` from pattern #1 is \
                                   not bound in pattern #%u",
-                             *self.session.str_of(key), i + 1));
+                             self.session.str_of(key), i + 1));
                   }
                   Some(binding_i) => {
                     if binding_0.binding_mode != binding_i.binding_mode {
@@ -4052,7 +4052,7 @@ impl Resolver {
                             binding_i.span,
                             fmt!("variable `%s` is bound with different \
                                       mode in pattern #%u than in pattern #1",
-                                 *self.session.str_of(key), i + 1));
+                                 self.session.str_of(key), i + 1));
                     }
                   }
                 }
@@ -4064,7 +4064,7 @@ impl Resolver {
                         binding.span,
                         fmt!("variable `%s` from pattern #%u is \
                                   not bound in pattern #1",
-                             *self.session.str_of(key), i + 1));
+                             self.session.str_of(key), i + 1));
                 }
             }
         }
@@ -4148,7 +4148,7 @@ impl Resolver {
                             Some(def) => {
                                 debug!("(resolving type) resolved `%s` to \
                                         type %?",
-                                       *self.session.str_of(
+                                       self.session.str_of(
                                             *path.idents.last()),
                                        def);
                                 result_def = Some(def);
@@ -4224,7 +4224,7 @@ impl Resolver {
                                 if mode == RefutableMode => {
                             debug!("(resolving pattern) resolving `%s` to \
                                     struct or enum variant",
-                                    *self.session.str_of(ident));
+                                    self.session.str_of(ident));
 
                             self.enforce_default_binding_mode(
                                 pattern,
@@ -4238,13 +4238,13 @@ impl Resolver {
                                                         shadows an enum \
                                                         variant or unit-like \
                                                         struct in scope",
-                                                        *self.session
+                                                        self.session
                                                             .str_of(ident)));
                         }
                         FoundConst(def) if mode == RefutableMode => {
                             debug!("(resolving pattern) resolving `%s` to \
                                     constant",
-                                    *self.session.str_of(ident));
+                                    self.session.str_of(ident));
 
                             self.enforce_default_binding_mode(
                                 pattern,
@@ -4259,7 +4259,7 @@ impl Resolver {
                         }
                         BareIdentifierPatternUnresolved => {
                             debug!("(resolving pattern) binding `%s`",
-                                   *self.session.str_of(ident));
+                                   self.session.str_of(ident));
 
                             let is_mutable = mutability == Mutable;
 
@@ -4350,7 +4350,7 @@ impl Resolver {
                             self.session.span_err(
                                 path.span,
                                 fmt!("`%s` is not an enum variant or constant",
-                                     *self.session.str_of(
+                                     self.session.str_of(
                                          *path.idents.last())));
                         }
                         None => {
@@ -4378,7 +4378,7 @@ impl Resolver {
                             self.session.span_err(
                                 path.span,
                                 fmt!("`%s` is not an enum variant, struct or const",
-                                     *self.session.str_of(
+                                     self.session.str_of(
                                          *path.idents.last())));
                         }
                         None => {
@@ -4753,7 +4753,7 @@ impl Resolver {
             Some(dl_def(def)) => {
                 debug!("(resolving path in local ribs) resolved `%s` to \
                         local: %?",
-                       *self.session.str_of(ident),
+                       self.session.str_of(ident),
                        def);
                 return Some(def);
             }
@@ -4811,7 +4811,7 @@ impl Resolver {
                     Some(def) => {
                         debug!("(resolving item path in lexical scope) \
                                 resolved `%s` to item",
-                               *self.session.str_of(ident));
+                               self.session.str_of(ident));
                         return Some(def);
                     }
                 }
@@ -4828,17 +4828,17 @@ impl Resolver {
     pub fn find_best_match_for_name(@mut self,
                                     name: &str,
                                     max_distance: uint)
-                                    -> Option<~str> {
+                                    -> Option<@str> {
         let this = &mut *self;
 
-        let mut maybes: ~[~str] = ~[];
+        let mut maybes: ~[@str] = ~[];
         let mut values: ~[uint] = ~[];
 
         let mut j = this.value_ribs.len();
         while j != 0 {
             j -= 1;
             for this.value_ribs[j].bindings.each_key |&k| {
-                vec::push(&mut maybes, copy *this.session.str_of(k));
+                vec::push(&mut maybes, this.session.str_of(k));
                 vec::push(&mut values, uint::max_value);
             }
         }
@@ -4857,7 +4857,7 @@ impl Resolver {
             values[smallest] != uint::max_value &&
             values[smallest] < name.len() + 2 &&
             values[smallest] <= max_distance &&
-            maybes[smallest] != name.to_owned() {
+            name != maybes[smallest] {
 
             Some(vec::swap_remove(&mut maybes, smallest))
 
@@ -4882,7 +4882,7 @@ impl Resolver {
                         match field.node.kind {
                           unnamed_field => {},
                           named_field(ident, _) => {
-                              if str::eq_slice(*this.session.str_of(ident),
+                              if str::eq_slice(this.session.str_of(ident),
                                                name) {
                                 return true
                               }
@@ -5007,7 +5007,7 @@ impl Resolver {
                         self.session.span_err(expr.span,
                                               fmt!("use of undeclared label \
                                                    `%s`",
-                                                   *self.session.str_of(
+                                                   self.session.str_of(
                                                        label))),
                     Some(dl_def(def @ def_label(_))) => {
                         self.record_def(expr.id, def)
@@ -5122,7 +5122,7 @@ impl Resolver {
     pub fn search_for_traits_containing_method(@mut self, name: ident)
                                                -> ~[def_id] {
         debug!("(searching for traits containing method) looking for '%s'",
-               *self.session.str_of(name));
+               self.session.str_of(name));
 
 
         let mut found_traits = ~[];
@@ -5227,7 +5227,7 @@ impl Resolver {
         debug!("(adding trait info) found trait %d:%d for method '%s'",
                trait_def_id.crate,
                trait_def_id.node,
-               *self.session.str_of(name));
+               self.session.str_of(name));
         found_traits.push(trait_def_id);
     }
 
@@ -5346,7 +5346,7 @@ impl Resolver {
 
         debug!("Children:");
         for module_.children.each_key |&name| {
-            debug!("* %s", *self.session.str_of(name));
+            debug!("* %s", self.session.str_of(name));
         }
 
         debug!("Import resolutions:");
@@ -5369,7 +5369,7 @@ impl Resolver {
                 }
             }
 
-            debug!("* %s:%s%s", *self.session.str_of(*name),
+            debug!("* %s:%s%s", self.session.str_of(*name),
                    value_repr, type_repr);
         }
     }

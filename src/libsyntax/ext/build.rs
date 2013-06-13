@@ -126,8 +126,8 @@ pub trait AstBuilder {
     fn expr_vec(&self, sp: span, exprs: ~[@ast::expr]) -> @ast::expr;
     fn expr_vec_uniq(&self, sp: span, exprs: ~[@ast::expr]) -> @ast::expr;
     fn expr_vec_slice(&self, sp: span, exprs: ~[@ast::expr]) -> @ast::expr;
-    fn expr_str(&self, sp: span, s: ~str) -> @ast::expr;
-    fn expr_str_uniq(&self, sp: span, s: ~str) -> @ast::expr;
+    fn expr_str(&self, sp: span, s: @str) -> @ast::expr;
+    fn expr_str_uniq(&self, sp: span, s: @str) -> @ast::expr;
 
     fn expr_unreachable(&self, span: span) -> @ast::expr;
 
@@ -215,9 +215,9 @@ pub trait AstBuilder {
 
     fn attribute(&self, sp: span, mi: @ast::meta_item) -> ast::attribute;
 
-    fn meta_word(&self, sp: span, w: ~str) -> @ast::meta_item;
-    fn meta_list(&self, sp: span, name: ~str, mis: ~[@ast::meta_item]) -> @ast::meta_item;
-    fn meta_name_value(&self, sp: span, name: ~str, value: ast::lit_) -> @ast::meta_item;
+    fn meta_word(&self, sp: span, w: @str) -> @ast::meta_item;
+    fn meta_list(&self, sp: span, name: @str, mis: ~[@ast::meta_item]) -> @ast::meta_item;
+    fn meta_name_value(&self, sp: span, name: @str, value: ast::lit_) -> @ast::meta_item;
 
     fn view_use(&self, sp: span,
                 vis: ast::visibility, vp: ~[@ast::view_path]) -> @ast::view_item;
@@ -521,10 +521,10 @@ impl AstBuilder for @ExtCtxt {
     fn expr_vec_slice(&self, sp: span, exprs: ~[@ast::expr]) -> @ast::expr {
         self.expr_vstore(sp, self.expr_vec(sp, exprs), ast::expr_vstore_slice)
     }
-    fn expr_str(&self, sp: span, s: ~str) -> @ast::expr {
-        self.expr_lit(sp, ast::lit_str(@s))
+    fn expr_str(&self, sp: span, s: @str) -> @ast::expr {
+        self.expr_lit(sp, ast::lit_str(s))
     }
-    fn expr_str_uniq(&self, sp: span, s: ~str) -> @ast::expr {
+    fn expr_str_uniq(&self, sp: span, s: @str) -> @ast::expr {
         self.expr_vstore(sp, self.expr_str(sp, s), ast::expr_vstore_uniq)
     }
 
@@ -540,8 +540,8 @@ impl AstBuilder for @ExtCtxt {
                 self.ident_of("fail_with"),
             ],
             ~[
-                self.expr_str(span, ~"internal error: entered unreachable code"),
-                self.expr_str(span, copy loc.file.name),
+                self.expr_str(span, @"internal error: entered unreachable code"),
+                self.expr_str(span, loc.file.name),
                 self.expr_uint(span, loc.line),
             ])
     }
@@ -791,14 +791,14 @@ impl AstBuilder for @ExtCtxt {
                })
     }
 
-    fn meta_word(&self, sp: span, w: ~str) -> @ast::meta_item {
-        @respan(sp, ast::meta_word(@w))
+    fn meta_word(&self, sp: span, w: @str) -> @ast::meta_item {
+        @respan(sp, ast::meta_word(w))
     }
-    fn meta_list(&self, sp: span, name: ~str, mis: ~[@ast::meta_item]) -> @ast::meta_item {
-        @respan(sp, ast::meta_list(@name, mis))
+    fn meta_list(&self, sp: span, name: @str, mis: ~[@ast::meta_item]) -> @ast::meta_item {
+        @respan(sp, ast::meta_list(name, mis))
     }
-    fn meta_name_value(&self, sp: span, name: ~str, value: ast::lit_) -> @ast::meta_item {
-        @respan(sp, ast::meta_name_value(@name, respan(sp, value)))
+    fn meta_name_value(&self, sp: span, name: @str, value: ast::lit_) -> @ast::meta_item {
+        @respan(sp, ast::meta_name_value(name, respan(sp, value)))
     }
 
     fn view_use(&self, sp: span,

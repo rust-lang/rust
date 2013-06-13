@@ -96,7 +96,6 @@ use core::iterator::IteratorUtil;
 use core::either::Either;
 use core::either;
 use core::hashmap::HashSet;
-use core::str;
 use core::vec;
 
 #[deriving(Eq)]
@@ -263,7 +262,7 @@ pub struct Parser {
     /// extra detail when the same error is seen twice
     obsolete_set: @mut HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
-    mod_path_stack: @mut ~[~str],
+    mod_path_stack: @mut ~[@str],
 
 }
 
@@ -333,7 +332,7 @@ impl Parser {
     }
     pub fn get_id(&self) -> node_id { next_node_id(self.sess) }
 
-    pub fn id_to_str(&self, id: ident) -> @~str {
+    pub fn id_to_str(&self, id: ident) -> @str {
         get_ident_interner().get(id.name)
     }
 
@@ -2886,7 +2885,7 @@ impl Parser {
         loop {
             match *self.token {
                 token::LIFETIME(lifetime) => {
-                    if str::eq_slice(*self.id_to_str(lifetime), "static") {
+                    if "static" == self.id_to_str(lifetime) {
                         result.push(RegionTyParamBound);
                     } else {
                         self.span_err(*self.span,
@@ -2898,11 +2897,11 @@ impl Parser {
                     let obsolete_bound = match *self.token {
                         token::MOD_SEP => false,
                         token::IDENT(sid, _) => {
-                            match *self.id_to_str(sid) {
-                                ~"send" |
-                                ~"copy" |
-                                ~"const" |
-                                ~"owned" => {
+                            match self.id_to_str(sid).as_slice() {
+                                "send" |
+                                "copy" |
+                                "const" |
+                                "owned" => {
                                     self.obsolete(
                                         *self.span,
                                         ObsoleteLowerCaseKindBounds);
@@ -3364,7 +3363,7 @@ impl Parser {
             }
             if fields.len() == 0 {
                 self.fatal(fmt!("Unit-like struct should be written as `struct %s;`",
-                                *get_ident_interner().get(class_name.name)));
+                                get_ident_interner().get(class_name.name)));
             }
             self.bump();
         } else if *self.token == token::LPAREN {
@@ -3580,8 +3579,8 @@ impl Parser {
         let file_path = match ::attr::first_attr_value_str_by_name(
             attrs, "path") {
 
-            Some(d) => copy *d,
-            None => copy *default_path
+            Some(d) => d,
+            None => default_path
         };
         self.mod_path_stack.push(file_path)
     }
@@ -3599,13 +3598,13 @@ impl Parser {
         let prefix = prefix.dir_path();
         let mod_path_stack = &*self.mod_path_stack;
         let mod_path = Path(".").push_many(*mod_path_stack);
-        let default_path = *token::interner_get(id.name) + ".rs";
+        let default_path = token::interner_get(id.name).to_owned() + ".rs";
         let file_path = match ::attr::first_attr_value_str_by_name(
             outer_attrs, "path") {
             Some(d) => {
-                let path = Path(copy *d);
+                let path = Path(d);
                 if !path.is_absolute {
-                    mod_path.push(copy *d)
+                    mod_path.push(d)
                 } else {
                     path
                 }
@@ -3637,9 +3636,9 @@ impl Parser {
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
         return (ast::item_mod(m0), mod_attrs);
 
-        fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {
+        fn cdir_path_opt(default: @str, attrs: ~[ast::attribute]) -> @str {
             match ::attr::first_attr_value_str_by_name(attrs, "path") {
-                Some(d) => copy *d,
+                Some(d) => d,
                 None => default
             }
         }
@@ -4263,7 +4262,7 @@ impl Parser {
 
         let first_ident = self.parse_ident();
         let mut path = ~[first_ident];
-        debug!("parsed view_path: %s", *self.id_to_str(first_ident));
+        debug!("parsed view_path: %s", self.id_to_str(first_ident));
         match *self.token {
           token::EQ => {
             // x = foo::bar
@@ -4528,7 +4527,7 @@ impl Parser {
                                config: copy self.cfg })
     }
 
-    pub fn parse_str(&self) -> @~str {
+    pub fn parse_str(&self) -> @str {
         match *self.token {
             token::LIT_STR(s) => {
                 self.bump();

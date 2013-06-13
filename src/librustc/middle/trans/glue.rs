@@ -686,10 +686,10 @@ pub fn declare_tydesc(ccx: @CrateContext, t: ty::t) -> @mut tydesc_info {
     let llsize = llsize_of(ccx, llty);
     let llalign = llalign_of(ccx, llty);
     let addrspace = declare_tydesc_addrspace(ccx, t);
-    let name = @mangle_internal_name_by_type_and_seq(ccx, t, "tydesc");
+    let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc").to_managed();
     note_unique_llvm_symbol(ccx, name);
-    debug!("+++ declare_tydesc %s %s", ppaux::ty_to_str(ccx.tcx, t), *name);
-    let gvar = str::as_c_str(*name, |buf| {
+    debug!("+++ declare_tydesc %s %s", ppaux::ty_to_str(ccx.tcx, t), name);
+    let gvar = str::as_c_str(name, |buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type, buf)
         }
@@ -715,10 +715,10 @@ pub fn declare_generic_glue(ccx: @CrateContext, t: ty::t, llfnty: TypeRef,
                             name: ~str) -> ValueRef {
     let _icx = ccx.insn_ctxt("declare_generic_glue");
     let name = name;
-    let fn_nm = @mangle_internal_name_by_type_and_seq(ccx, t, (~"glue_" + name));
-    debug!("%s is for type %s", *fn_nm, ppaux::ty_to_str(ccx.tcx, t));
+    let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, (~"glue_" + name)).to_managed();
+    debug!("%s is for type %s", fn_nm, ppaux::ty_to_str(ccx.tcx, t));
     note_unique_llvm_symbol(ccx, fn_nm);
-    let llfn = decl_cdecl_fn(ccx.llmod, *fn_nm, llfnty);
+    let llfn = decl_cdecl_fn(ccx.llmod, fn_nm, llfnty);
     set_glue_inlining(llfn, t);
     return llfn;
 }

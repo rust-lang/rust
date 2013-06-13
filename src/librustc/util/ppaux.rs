@@ -159,7 +159,7 @@ pub fn bound_region_to_str_space(cx: ctxt,
     if cx.sess.verbose() { return fmt!("%s%? ", prefix, br); }
 
     match br {
-      br_named(id)         => fmt!("%s'%s ", prefix, *cx.sess.str_of(id)),
+      br_named(id)         => fmt!("%s'%s ", prefix, cx.sess.str_of(id)),
       br_self              => fmt!("%s'self ", prefix),
       br_anon(_)           => prefix.to_str(),
       br_fresh(_)          => prefix.to_str(),
@@ -323,7 +323,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         match ident {
           Some(i) => {
               s.push_char(' ');
-              s.push_str(*cx.sess.str_of(i));
+              s.push_str(cx.sess.str_of(i));
           }
           _ => { }
         }
@@ -389,7 +389,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
                        &m.fty.sig) + ";"
     }
     fn field_to_str(cx: ctxt, f: field) -> ~str {
-        return *cx.sess.str_of(f.ident) + ": " + mt_to_str(cx, &f.mt);
+        return fmt!("%s: %s", cx.sess.str_of(f.ident), mt_to_str(cx, &f.mt));
     }
 
     // if there is an id, print that instead of the structural type:
@@ -656,7 +656,7 @@ impl Repr for ty::Method {
 
 impl Repr for ast::ident {
     fn repr(&self, _tcx: ctxt) -> ~str {
-        copy *token::ident_to_str(self)
+        token::ident_to_str(self).to_owned()
     }
 }
 

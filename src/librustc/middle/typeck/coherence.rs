@@ -251,7 +251,7 @@ impl CoherenceChecker {
         if associated_traits.len() == 0 {
             debug!("(checking implementation) no associated traits for item \
                     '%s'",
-                   *self.crate_context.tcx.sess.str_of(item.ident));
+                   self.crate_context.tcx.sess.str_of(item.ident));
 
             match get_base_type_def_id(self.inference_context,
                                        item.span,
@@ -278,7 +278,7 @@ impl CoherenceChecker {
                     associated_trait.ref_id);
             debug!("(checking implementation) adding impl for trait '%s', item '%s'",
                    trait_ref.repr(self.crate_context.tcx),
-                   *self.crate_context.tcx.sess.str_of(item.ident));
+                   self.crate_context.tcx.sess.str_of(item.ident));
 
             self.instantiate_default_methods(item.id, trait_ref);
 
@@ -401,7 +401,7 @@ impl CoherenceChecker {
                     // method to that entry.
                     debug!("(checking implementation) adding method `%s` \
                             to entry for existing trait",
-                            *self.crate_context.tcx.sess.str_of(
+                            self.crate_context.tcx.sess.str_of(
                                 provided_method_info.method_info.ident));
                     mis.push(provided_method_info);
                 }
@@ -409,7 +409,7 @@ impl CoherenceChecker {
                     // If the trait doesn't have an entry yet, create one.
                     debug!("(checking implementation) creating new entry \
                             for method `%s`",
-                            *self.crate_context.tcx.sess.str_of(
+                            self.crate_context.tcx.sess.str_of(
                                 provided_method_info.method_info.ident));
                     pmm.insert(local_def(impl_id),
                                @mut ~[provided_method_info]);
@@ -742,7 +742,7 @@ impl CoherenceChecker {
 
             tcx.sess.span_err(trait_ref_span,
                               fmt!("missing method `%s`",
-                                   *tcx.sess.str_of(method.ident)));
+                                   tcx.sess.str_of(method.ident)));
         }
     }
 
@@ -794,7 +794,7 @@ impl CoherenceChecker {
             for all_provided_methods.each |provided_method| {
                 debug!(
                     "(creating impl) adding provided method `%s` to impl",
-                    *sess.str_of(provided_method.method_info.ident));
+                    sess.str_of(provided_method.method_info.ident));
                 vec::push(all_methods, provided_method.method_info);
             }
         }
@@ -909,7 +909,7 @@ impl CoherenceChecker {
                         session.bug(fmt!(
                             "no base type for external impl \
                              with no trait: %s (type %s)!",
-                             *session.str_of(implementation.ident),
+                             session.str_of(implementation.ident),
                              ty_to_str(self.crate_context.tcx,self_type.ty)));
                     }
                     Some(_) => {

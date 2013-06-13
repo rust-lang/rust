@@ -493,16 +493,16 @@ pub fn build_link_meta(sess: Session,
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.each |meta| {
-            if *attr::get_meta_item_name(*meta) == ~"name" {
+            if "name" == attr::get_meta_item_name(*meta) {
                 match attr::get_meta_item_value_str(*meta) {
                   // Changing attr would avoid the need for the copy
                   // here
-                  Some(v) => { name = Some(v.to_managed()); }
+                  Some(v) => { name = Some(v); }
                   None => cmh_items.push(*meta)
                 }
-            } else if *attr::get_meta_item_name(*meta) == ~"vers" {
+            } else if "vers" == attr::get_meta_item_name(*meta) {
                 match attr::get_meta_item_value_str(*meta) {
-                  Some(v) => { vers = Some(v.to_managed()); }
+                  Some(v) => { vers = Some(v); }
                   None => cmh_items.push(*meta)
                 }
             } else { cmh_items.push(*meta); }
@@ -518,7 +518,7 @@ pub fn build_link_meta(sess: Session,
     // This calculates CMH as defined above
     fn crate_meta_extras_hash(symbol_hasher: &mut hash::State,
                               cmh_items: ~[@ast::meta_item],
-                              dep_hashes: ~[~str]) -> @str {
+                              dep_hashes: ~[@str]) -> @str {
         fn len_and_str(s: &str) -> ~str {
             fmt!("%u_%s", s.len(), s)
         }
@@ -532,14 +532,14 @@ pub fn build_link_meta(sess: Session,
         fn hash(symbol_hasher: &mut hash::State, m: &@ast::meta_item) {
             match m.node {
               ast::meta_name_value(key, value) => {
-                write_string(symbol_hasher, len_and_str(*key));
+                write_string(symbol_hasher, len_and_str(key));
                 write_string(symbol_hasher, len_and_str_lit(value));
               }
               ast::meta_word(name) => {
-                write_string(symbol_hasher, len_and_str(*name));
+                write_string(symbol_hasher, len_and_str(name));
               }
               ast::meta_list(name, ref mis) => {
-                write_string(symbol_hasher, len_and_str(*name));
+                write_string(symbol_hasher, len_and_str(name));
                 for mis.each |m_| {
                     hash(symbol_hasher, m_);
                 }
@@ -706,7 +706,7 @@ pub fn mangle(sess: Session, ss: path) -> ~str {
 
     for ss.each |s| {
         match *s { path_name(s) | path_mod(s) => {
-          let sani = sanitize(*sess.str_of(s));
+          let sani = sanitize(sess.str_of(s));
           n += fmt!("%u%s", sani.len(), sani);
         } }
     }
@@ -912,7 +912,7 @@ pub fn link_args(sess: Session,
     }
 
     let ula = cstore::get_used_link_args(cstore);
-    for ula.each |arg| { args.push(/*bad*/copy *arg); }
+    for ula.each |arg| { args.push(arg.to_owned()); }
 
     // Add all the link args for external crates.
     do cstore::iter_crate_data(cstore) |crate_num, _| {

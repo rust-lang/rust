@@ -452,7 +452,7 @@ fn trans_to_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
 fn trans_rvalue_datum_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     let _icx = bcx.insn_ctxt("trans_rvalue_datum_unadjusted");
 
-    trace_span!(bcx, expr.span, @shorten(bcx.expr_to_str(expr)));
+    trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
 
     match expr.node {
         ast::expr_path(_) | ast::expr_self => {
@@ -507,7 +507,7 @@ fn trans_rvalue_stmt_unadjusted(bcx: block, expr: @ast::expr) -> block {
         return bcx;
     }
 
-    trace_span!(bcx, expr.span, @shorten(bcx.expr_to_str(expr)));
+    trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
 
     match expr.node {
         ast::expr_break(label_opt) => {
@@ -560,7 +560,7 @@ fn trans_rvalue_dps_unadjusted(bcx: block, expr: @ast::expr,
     let _icx = bcx.insn_ctxt("trans_rvalue_dps_unadjusted");
     let tcx = bcx.tcx();
 
-    trace_span!(bcx, expr.span, @shorten(bcx.expr_to_str(expr)));
+    trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
 
     match expr.node {
         ast::expr_paren(e) => {
@@ -821,7 +821,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     debug!("trans_lvalue(expr=%s)", bcx.expr_to_str(expr));
     let _indenter = indenter();
 
-    trace_span!(bcx, expr.span, @shorten(bcx.expr_to_str(expr)));
+    trace_span!(bcx, expr.span, shorten(bcx.expr_to_str(expr)));
 
     return match expr.node {
         ast::expr_paren(e) => {
@@ -1703,6 +1703,6 @@ fn trans_assign_op(bcx: block,
     return result_datum.copy_to_datum(bcx, DROP_EXISTING, dst_datum);
 }
 
-fn shorten(x: ~str) -> ~str {
-    if x.char_len() > 60 { x.slice_chars(0, 60).to_owned() } else { x }
+fn shorten(x: &str) -> @str {
+    (if x.char_len() > 60 {x.slice_chars(0, 60)} else {x}).to_managed()
 }

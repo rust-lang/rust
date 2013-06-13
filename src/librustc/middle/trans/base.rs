@@ -485,9 +485,9 @@ pub fn set_glue_inlining(f: ValueRef, t: ty::t) {
 
 // Double-check that we never ask LLVM to declare the same symbol twice. It
 // silently mangles such symbols, breaking our linkage model.
-pub fn note_unique_llvm_symbol(ccx: @CrateContext, sym: @~str) {
+pub fn note_unique_llvm_symbol(ccx: @CrateContext, sym: @str) {
     if ccx.all_llvm_symbols.contains(&sym) {
-        ccx.sess.bug(~"duplicate LLVM symbol: " + *sym);
+        ccx.sess.bug(~"duplicate LLVM symbol: " + sym);
     }
     ccx.all_llvm_symbols.insert(sym);
 }
@@ -569,7 +569,7 @@ pub fn compare_scalar_types(cx: block,
             rslt(
                 controlflow::trans_fail(
                     cx, None,
-                    @~"attempt to compare values of type type"),
+                    @"attempt to compare values of type type"),
                 C_nil())
         }
         _ => {
@@ -791,9 +791,9 @@ pub fn cast_shift_rhs(op: ast::binop,
 pub fn fail_if_zero(cx: block, span: span, divrem: ast::binop,
                     rhs: ValueRef, rhs_t: ty::t) -> block {
     let text = if divrem == ast::div {
-        @~"attempted to divide by zero"
+        @"attempted to divide by zero"
     } else {
-        @~"attempted remainder with a divisor of zero"
+        @"attempted remainder with a divisor of zero"
     };
     let is_zero = match ty::get(rhs_t).sty {
       ty::ty_int(t) => {
@@ -1056,19 +1056,19 @@ pub fn load_if_immediate(cx: block, v: ValueRef, t: ty::t) -> ValueRef {
     return v;
 }
 
-pub fn trans_trace(bcx: block, sp_opt: Option<span>, trace_str: @~str) {
+pub fn trans_trace(bcx: block, sp_opt: Option<span>, trace_str: @str) {
     if !bcx.sess().trace() { return; }
     let _icx = bcx.insn_ctxt("trans_trace");
-    add_comment(bcx, *trace_str);
+    add_comment(bcx, trace_str);
     let V_trace_str = C_cstr(bcx.ccx(), trace_str);
     let (V_filename, V_line) = match sp_opt {
       Some(sp) => {
         let sess = bcx.sess();
         let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
-        (C_cstr(bcx.ccx(), @/*bad*/copy loc.file.name), loc.line as int)
+        (C_cstr(bcx.ccx(), loc.file.name), loc.line as int)
       }
       None => {
-        (C_cstr(bcx.ccx(), @~"<runtime>"), 0)
+        (C_cstr(bcx.ccx(), @"<runtime>"), 0)
       }
     };
     let ccx = bcx.ccx();
@@ -1187,7 +1187,7 @@ pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
         special_idents::invalid
     };
     unsafe {
-        let llbb = str::as_c_str(*cx.ccx.sess.str_of(s), |buf| {
+        let llbb = str::as_c_str(cx.ccx.sess.str_of(s), |buf| {
             llvm::LLVMAppendBasicBlockInContext(cx.ccx.llcx, cx.llfn, buf)
         });
         let bcx = mk_block(llbb,
@@ -1308,7 +1308,7 @@ pub fn cleanup_and_leave(bcx: block,
         if bcx.sess().trace() {
             trans_trace(
                 bcx, None,
-                @fmt!("cleanup_and_leave(%s)", cur.to_str()));
+                (fmt!("cleanup_and_leave(%s)", cur.to_str())).to_managed());
         }
 
         match cur.kind {
@@ -1427,7 +1427,7 @@ pub fn alloc_local(cx: block, local: @ast::local) -> block {
     let val = alloc_ty(cx, t);
     if cx.sess().opts.debuginfo {
         for simple_name.iter().advance |name| {
-            str::as_c_str(*cx.ccx().sess.str_of(*name), |buf| {
+            str::as_c_str(cx.ccx().sess.str_of(*name), |buf| {
                 unsafe {
                     llvm::LLVMSetValueName(val, buf)
                 }
@@ -1453,12 +1453,8 @@ pub fn call_memcpy(cx: block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, a
     let _icx = cx.insn_ctxt("call_memcpy");
     let ccx = cx.ccx();
     let key = match ccx.sess.targ_cfg.arch {
-        X86 | Arm | Mips => {
-            ~"llvm.memcpy.p0i8.p0i8.i32"
-        }
-        X86_64 => {
-            ~"llvm.memcpy.p0i8.p0i8.i64"
-        }
+        X86 | Arm | Mips => "llvm.memcpy.p0i8.p0i8.i32",
+        X86_64 => "llvm.memcpy.p0i8.p0i8.i64"
     };
     let memcpy = *ccx.intrinsics.get(&key);
     let src_ptr = PointerCast(cx, src, T_ptr(T_i8()));
@@ -1499,15 +1495,10 @@ pub fn memzero(cx: block, llptr: ValueRef, llty: TypeRef) {
     let _icx = cx.insn_ctxt("memzero");
     let ccx = cx.ccx();
 
-    let intrinsic_key;
-    match ccx.sess.targ_cfg.arch {
-        X86 | Arm | Mips => {
-            intrinsic_key = ~"llvm.memset.p0i8.i32";
-        }
-        X86_64 => {
-            intrinsic_key = ~"llvm.memset.p0i8.i64";
-        }
-    }
+    let intrinsic_key = match ccx.sess.targ_cfg.arch {
+        X86 | Arm | Mips => "llvm.memset.p0i8.i32",
+        X86_64 => "llvm.memset.p0i8.i64"
+    };
 
     let llintrinsicfn = *ccx.intrinsics.get(&intrinsic_key);
     let llptr = PointerCast(cx, llptr, T_ptr(T_i8()));
@@ -2512,7 +2503,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                 ast::foreign_item_const(*) => {
                     let typ = ty::node_id_to_type(tcx, ni.id);
                     let ident = token::ident_to_str(&ni.ident);
-                    let g = do str::as_c_str(*ident) |buf| {
+                    let g = do str::as_c_str(ident) |buf| {
                         unsafe {
                             llvm::LLVMAddGlobal(ccx.llmod,
                                                 type_of(ccx, typ),
@@ -2607,10 +2598,10 @@ pub fn trans_constant(ccx: @CrateContext, it: @ast::item) {
                 path_name(variant.node.name),
                 path_name(special_idents::descrim)
             ]);
-            let s = @mangle_exported_name(ccx, p, ty::mk_int());
+            let s = mangle_exported_name(ccx, p, ty::mk_int()).to_managed();
             let disr_val = vi[i].disr_val;
             note_unique_llvm_symbol(ccx, s);
-            let discrim_gvar = str::as_c_str(*s, |buf| {
+            let discrim_gvar = str::as_c_str(s, |buf| {
                 unsafe {
                     llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
                 }
@@ -2649,7 +2640,7 @@ pub fn p2i(ccx: @CrateContext, v: ValueRef) -> ValueRef {
     }
 }
 
-pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
+pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
     let T_memcpy32_args: ~[TypeRef] =
         ~[T_ptr(T_i8()), T_ptr(T_i8()), T_i32(), T_i32(), T_i1()];
     let T_memcpy64_args: ~[TypeRef] =
@@ -2783,80 +2774,80 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
                                 T_fn([T_i64()], T_i64()));
 
     let mut intrinsics = HashMap::new();
-    intrinsics.insert(~"llvm.gcroot", gcroot);
-    intrinsics.insert(~"llvm.gcread", gcread);
-    intrinsics.insert(~"llvm.memcpy.p0i8.p0i8.i32", memcpy32);
-    intrinsics.insert(~"llvm.memcpy.p0i8.p0i8.i64", memcpy64);
-    intrinsics.insert(~"llvm.memmove.p0i8.p0i8.i32", memmove32);
-    intrinsics.insert(~"llvm.memmove.p0i8.p0i8.i64", memmove64);
-    intrinsics.insert(~"llvm.memset.p0i8.i32", memset32);
-    intrinsics.insert(~"llvm.memset.p0i8.i64", memset64);
-    intrinsics.insert(~"llvm.trap", trap);
-    intrinsics.insert(~"llvm.frameaddress", frameaddress);
-    intrinsics.insert(~"llvm.sqrt.f32", sqrtf32);
-    intrinsics.insert(~"llvm.sqrt.f64", sqrtf64);
-    intrinsics.insert(~"llvm.powi.f32", powif32);
-    intrinsics.insert(~"llvm.powi.f64", powif64);
-    intrinsics.insert(~"llvm.sin.f32", sinf32);
-    intrinsics.insert(~"llvm.sin.f64", sinf64);
-    intrinsics.insert(~"llvm.cos.f32", cosf32);
-    intrinsics.insert(~"llvm.cos.f64", cosf64);
-    intrinsics.insert(~"llvm.pow.f32", powf32);
-    intrinsics.insert(~"llvm.pow.f64", powf64);
-    intrinsics.insert(~"llvm.exp.f32", expf32);
-    intrinsics.insert(~"llvm.exp.f64", expf64);
-    intrinsics.insert(~"llvm.exp2.f32", exp2f32);
-    intrinsics.insert(~"llvm.exp2.f64", exp2f64);
-    intrinsics.insert(~"llvm.log.f32", logf32);
-    intrinsics.insert(~"llvm.log.f64", logf64);
-    intrinsics.insert(~"llvm.log10.f32", log10f32);
-    intrinsics.insert(~"llvm.log10.f64", log10f64);
-    intrinsics.insert(~"llvm.log2.f32", log2f32);
-    intrinsics.insert(~"llvm.log2.f64", log2f64);
-    intrinsics.insert(~"llvm.fma.f32", fmaf32);
-    intrinsics.insert(~"llvm.fma.f64", fmaf64);
-    intrinsics.insert(~"llvm.fabs.f32", fabsf32);
-    intrinsics.insert(~"llvm.fabs.f64", fabsf64);
-    intrinsics.insert(~"llvm.floor.f32", floorf32);
-    intrinsics.insert(~"llvm.floor.f64", floorf64);
-    intrinsics.insert(~"llvm.ceil.f32", ceilf32);
-    intrinsics.insert(~"llvm.ceil.f64", ceilf64);
-    intrinsics.insert(~"llvm.trunc.f32", truncf32);
-    intrinsics.insert(~"llvm.trunc.f64", truncf64);
-    intrinsics.insert(~"llvm.ctpop.i8", ctpop8);
-    intrinsics.insert(~"llvm.ctpop.i16", ctpop16);
-    intrinsics.insert(~"llvm.ctpop.i32", ctpop32);
-    intrinsics.insert(~"llvm.ctpop.i64", ctpop64);
-    intrinsics.insert(~"llvm.ctlz.i8", ctlz8);
-    intrinsics.insert(~"llvm.ctlz.i16", ctlz16);
-    intrinsics.insert(~"llvm.ctlz.i32", ctlz32);
-    intrinsics.insert(~"llvm.ctlz.i64", ctlz64);
-    intrinsics.insert(~"llvm.cttz.i8", cttz8);
-    intrinsics.insert(~"llvm.cttz.i16", cttz16);
-    intrinsics.insert(~"llvm.cttz.i32", cttz32);
-    intrinsics.insert(~"llvm.cttz.i64", cttz64);
-    intrinsics.insert(~"llvm.bswap.i16", bswap16);
-    intrinsics.insert(~"llvm.bswap.i32", bswap32);
-    intrinsics.insert(~"llvm.bswap.i64", bswap64);
+    intrinsics.insert("llvm.gcroot", gcroot);
+    intrinsics.insert("llvm.gcread", gcread);
+    intrinsics.insert("llvm.memcpy.p0i8.p0i8.i32", memcpy32);
+    intrinsics.insert("llvm.memcpy.p0i8.p0i8.i64", memcpy64);
+    intrinsics.insert("llvm.memmove.p0i8.p0i8.i32", memmove32);
+    intrinsics.insert("llvm.memmove.p0i8.p0i8.i64", memmove64);
+    intrinsics.insert("llvm.memset.p0i8.i32", memset32);
+    intrinsics.insert("llvm.memset.p0i8.i64", memset64);
+    intrinsics.insert("llvm.trap", trap);
+    intrinsics.insert("llvm.frameaddress", frameaddress);
+    intrinsics.insert("llvm.sqrt.f32", sqrtf32);
+    intrinsics.insert("llvm.sqrt.f64", sqrtf64);
+    intrinsics.insert("llvm.powi.f32", powif32);
+    intrinsics.insert("llvm.powi.f64", powif64);
+    intrinsics.insert("llvm.sin.f32", sinf32);
+    intrinsics.insert("llvm.sin.f64", sinf64);
+    intrinsics.insert("llvm.cos.f32", cosf32);
+    intrinsics.insert("llvm.cos.f64", cosf64);
+    intrinsics.insert("llvm.pow.f32", powf32);
+    intrinsics.insert("llvm.pow.f64", powf64);
+    intrinsics.insert("llvm.exp.f32", expf32);
+    intrinsics.insert("llvm.exp.f64", expf64);
+    intrinsics.insert("llvm.exp2.f32", exp2f32);
+    intrinsics.insert("llvm.exp2.f64", exp2f64);
+    intrinsics.insert("llvm.log.f32", logf32);
+    intrinsics.insert("llvm.log.f64", logf64);
+    intrinsics.insert("llvm.log10.f32", log10f32);
+    intrinsics.insert("llvm.log10.f64", log10f64);
+    intrinsics.insert("llvm.log2.f32", log2f32);
+    intrinsics.insert("llvm.log2.f64", log2f64);
+    intrinsics.insert("llvm.fma.f32", fmaf32);
+    intrinsics.insert("llvm.fma.f64", fmaf64);
+    intrinsics.insert("llvm.fabs.f32", fabsf32);
+    intrinsics.insert("llvm.fabs.f64", fabsf64);
+    intrinsics.insert("llvm.floor.f32", floorf32);
+    intrinsics.insert("llvm.floor.f64", floorf64);
+    intrinsics.insert("llvm.ceil.f32", ceilf32);
+    intrinsics.insert("llvm.ceil.f64", ceilf64);
+    intrinsics.insert("llvm.trunc.f32", truncf32);
+    intrinsics.insert("llvm.trunc.f64", truncf64);
+    intrinsics.insert("llvm.ctpop.i8", ctpop8);
+    intrinsics.insert("llvm.ctpop.i16", ctpop16);
+    intrinsics.insert("llvm.ctpop.i32", ctpop32);
+    intrinsics.insert("llvm.ctpop.i64", ctpop64);
+    intrinsics.insert("llvm.ctlz.i8", ctlz8);
+    intrinsics.insert("llvm.ctlz.i16", ctlz16);
+    intrinsics.insert("llvm.ctlz.i32", ctlz32);
+    intrinsics.insert("llvm.ctlz.i64", ctlz64);
+    intrinsics.insert("llvm.cttz.i8", cttz8);
+    intrinsics.insert("llvm.cttz.i16", cttz16);
+    intrinsics.insert("llvm.cttz.i32", cttz32);
+    intrinsics.insert("llvm.cttz.i64", cttz64);
+    intrinsics.insert("llvm.bswap.i16", bswap16);
+    intrinsics.insert("llvm.bswap.i32", bswap32);
+    intrinsics.insert("llvm.bswap.i64", bswap64);
 
     return intrinsics;
 }
 
 pub fn declare_dbg_intrinsics(llmod: ModuleRef,
-                              intrinsics: &mut HashMap<~str, ValueRef>) {
+                              intrinsics: &mut HashMap<&'static str, ValueRef>) {
     let declare =
         decl_cdecl_fn(llmod, "llvm.dbg.declare",
                       T_fn([T_metadata(), T_metadata()], T_void()));
     let value =
         decl_cdecl_fn(llmod, "llvm.dbg.value",
                       T_fn([T_metadata(), T_i64(), T_metadata()], T_void()));
-    intrinsics.insert(~"llvm.dbg.declare", declare);
-    intrinsics.insert(~"llvm.dbg.value", value);
+    intrinsics.insert("llvm.dbg.declare", declare);
+    intrinsics.insert("llvm.dbg.value", value);
 }
 
 pub fn trap(bcx: block) {
     let v: ~[ValueRef] = ~[];
-    match bcx.ccx().intrinsics.find(&~"llvm.trap") {
+    match bcx.ccx().intrinsics.find(& &"llvm.trap") {
       Some(&x) => { Call(bcx, x, v); },
       _ => bcx.sess().bug("unbound llvm.trap in trap")
     }
@@ -2891,7 +2882,7 @@ pub fn create_module_map(ccx: @CrateContext) -> ValueRef {
     lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
     let mut elts: ~[ValueRef] = ~[];
     for ccx.module_data.each |key, &val| {
-        let elt = C_struct([p2i(ccx, C_cstr(ccx, @/*bad*/ copy *key)),
+        let elt = C_struct([p2i(ccx, C_cstr(ccx, /* bad */key.to_managed())),
                             p2i(ccx, val)]);
         elts.push(elt);
     }
@@ -2934,9 +2925,10 @@ pub fn fill_crate_map(ccx: @CrateContext, map: ValueRef) {
     let cstore = ccx.sess.cstore;
     while cstore::have_crate_data(cstore, i) {
         let cdata = cstore::get_crate_data(cstore, i);
-        let nm = ~"_rust_crate_map_" + *cdata.name +
-            "_" + *cstore::get_crate_vers(cstore, i) +
-            "_" + *cstore::get_crate_hash(cstore, i);
+        let nm = fmt!("_rust_crate_map_%s_%s_%s",
+                      cdata.name,
+                      cstore::get_crate_vers(cstore, i),
+                      cstore::get_crate_hash(cstore, i));
         let cr = str::as_c_str(nm, |buf| {
             unsafe {
                 llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)

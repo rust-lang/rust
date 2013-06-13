@@ -49,8 +49,8 @@ fn inject_libstd_ref(sess: Session, crate: @ast::crate) -> @ast::crate {
                     spanned(ast::attribute_ {
                         style: ast::attr_inner,
                         value: @spanned(ast::meta_name_value(
-                            @~"vers",
-                            spanned(ast::lit_str(@STD_VERSION.to_str()))
+                            @"vers",
+                            spanned(ast::lit_str(STD_VERSION.to_managed()))
                         )),
                         is_sugared_doc: false
                     })

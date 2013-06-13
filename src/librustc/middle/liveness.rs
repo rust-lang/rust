@@ -310,12 +310,12 @@ impl IrMaps {
         }
     }
 
-    pub fn variable_name(&mut self, var: Variable) -> @~str {
+    pub fn variable_name(&mut self, var: Variable) -> @str {
         match self.var_kinds[*var] {
             Local(LocalInfo { ident: nm, _ }) | Arg(_, nm) => {
                 self.tcx.sess.str_of(nm)
             },
-            ImplicitRet => @~"<implicit-ret>"
+            ImplicitRet => @"<implicit-ret>"
         }
     }
 
@@ -1578,12 +1578,12 @@ impl Liveness {
           FreeVarNode(span) => {
             self.tcx.sess.span_err(
                 span,
-                fmt!("capture of %s: `%s`", msg, *name));
+                fmt!("capture of %s: `%s`", msg, name));
           }
           ExprNode(span) => {
             self.tcx.sess.span_err(
                 span,
-                fmt!("use of %s: `%s`", msg, *name));
+                fmt!("use of %s: `%s`", msg, name));
           }
           ExitNode | VarDefNode(_) => {
             self.tcx.sess.span_bug(
@@ -1593,7 +1593,7 @@ impl Liveness {
         }
     }
 
-    pub fn should_warn(&self, var: Variable) -> Option<@~str> {
+    pub fn should_warn(&self, var: Variable) -> Option<@str> {
         let name = self.ir.variable_name(var);
         if name[0] == ('_' as u8) { None } else { Some(name) }
     }
@@ -1638,10 +1638,10 @@ impl Liveness {
                 if is_assigned {
                     self.tcx.sess.add_lint(unused_variable, id, sp,
                         fmt!("variable `%s` is assigned to, \
-                                  but never used", **name));
+                                  but never used", *name));
                 } else {
                     self.tcx.sess.add_lint(unused_variable, id, sp,
-                        fmt!("unused variable: `%s`", **name));
+                        fmt!("unused variable: `%s`", *name));
                 }
             }
             true
@@ -1659,7 +1659,7 @@ impl Liveness {
             let r = self.should_warn(var);
             for r.iter().advance |name| {
                 self.tcx.sess.add_lint(dead_assignment, id, sp,
-                    fmt!("value assigned to `%s` is never read", **name));
+                    fmt!("value assigned to `%s` is never read", *name));
             }
         }
     }

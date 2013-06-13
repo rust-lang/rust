@@ -205,7 +205,7 @@ pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
           } => {
             if ret_val.contains_key(bind_name) {
                 p_s.span_diagnostic.span_fatal(sp, ~"Duplicated bind name: "+
-                                               *ident_to_str(bind_name))
+                                               ident_to_str(bind_name))
             }
             ret_val.insert(*bind_name, res[idx]);
           }
@@ -373,8 +373,8 @@ pub fn parse(
                 let nts = bb_eis.map(|ei| {
                     match ei.elts[ei.idx].node {
                       match_nonterminal(ref bind,ref name,_) => {
-                        fmt!("%s ('%s')", *ident_to_str(name),
-                             *ident_to_str(bind))
+                        fmt!("%s ('%s')", ident_to_str(name),
+                             ident_to_str(bind))
                       }
                       _ => fail!()
                     } }).connect(" or ");
@@ -398,7 +398,7 @@ pub fn parse(
                 match ei.elts[ei.idx].node {
                   match_nonterminal(_, ref name, idx) => {
                     ei.matches[idx].push(@matched_nonterminal(
-                        parse_nt(&rust_parser, *ident_to_str(name))));
+                        parse_nt(&rust_parser, ident_to_str(name))));
                     ei.idx += 1u;
                   }
                   _ => fail!()

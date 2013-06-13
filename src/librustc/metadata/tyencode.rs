@@ -41,7 +41,7 @@ pub struct ctxt {
 pub struct ty_abbrev {
     pos: uint,
     len: uint,
-    s: @~str
+    s: @str
 }
 
 pub enum abbrev_ctxt {
@@ -60,12 +60,12 @@ pub fn enc_ty(w: @io::Writer, cx: @ctxt, t: ty::t) {
     match cx.abbrevs {
       ac_no_abbrevs => {
         let result_str = match cx.tcx.short_names_cache.find(&t) {
-            Some(&s) => /*bad*/copy *s,
+            Some(&s) => s,
             None => {
                 let s = do io::with_str_writer |wr| {
                     enc_sty(wr, cx, /*bad*/copy ty::get(t).sty);
-                };
-                cx.tcx.short_names_cache.insert(t, @copy s);
+                }.to_managed();
+                cx.tcx.short_names_cache.insert(t, s);
                 s
           }
         };
@@ -73,7 +73,7 @@ pub fn enc_ty(w: @io::Writer, cx: @ctxt, t: ty::t) {
       }
       ac_use_abbrevs(abbrevs) => {
           match abbrevs.find(&t) {
-              Some(a) => { w.write_str(*a.s); return; }
+              Some(a) => { w.write_str(a.s); return; }
               None => {}
           }
           let pos = w.tell();
@@ -89,8 +89,8 @@ pub fn enc_ty(w: @io::Writer, cx: @ctxt, t: ty::t) {
           let abbrev_len = 3u + estimate_sz(pos) + estimate_sz(len);
           if abbrev_len < len {
               // I.e. it's actually an abbreviation.
-              let s = fmt!("#%x:%x#", pos, len);
-              let a = ty_abbrev { pos: pos, len: len, s: @s };
+              let s = fmt!("#%x:%x#", pos, len).to_managed();
+              let a = ty_abbrev { pos: pos, len: len, s: s };
               abbrevs.insert(t, a);
           }
           return;
@@ -171,7 +171,7 @@ fn enc_bound_region(w: @io::Writer, cx: @ctxt, br: ty::bound_region) {
       }
       ty::br_named(s) => {
         w.write_char('[');
-        w.write_str(*cx.tcx.sess.str_of(s));
+        w.write_str(cx.tcx.sess.str_of(s));
         w.write_char(']')
       }
       ty::br_cap_avoid(id, br) => {
