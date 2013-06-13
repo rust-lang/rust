@@ -12,26 +12,18 @@
 
 use core::prelude::*;
 
-use back::{abi, upcall};
+use back::{abi};
 use driver::session;
 use driver::session::Session;
-use lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
-use lib::llvm::{ContextRef, True, False, Bool};
-use lib::llvm::{llvm, TargetData, TypeNames, associate_type, name_has_type};
+use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef};
+use lib::llvm::{True, False, Bool};
+use lib::llvm::{llvm, TypeNames, associate_type, name_has_type};
 use lib;
-use metadata::common::LinkMeta;
-use middle::astencode;
-use middle::resolve;
-use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::build;
 use middle::trans::datum;
-use middle::trans::debuginfo;
 use middle::trans::glue;
-use middle::trans::reachable;
-use middle::trans::shape;
 use middle::trans::type_of;
-use middle::trans::type_use;
 use middle::trans::write_guard;
 use middle::ty::substs;
 use middle::ty;
@@ -41,8 +33,7 @@ use util::ppaux::{Repr};
 
 use core::cast::transmute;
 use core::cast;
-use core::hash;
-use core::hashmap::{HashMap, HashSet};
+use core::hashmap::{HashMap};
 use core::libc::{c_uint, c_longlong, c_ulonglong};
 use core::str;
 use core::to_bytes;
