@@ -104,6 +104,13 @@ rust_uv_tcp_connect
 rust_uv_tcp_bind
 rust_uv_tcp_connect6
 rust_uv_tcp_bind6
+rust_uv_udp_init
+rust_uv_udp_bind
+rust_uv_udp_bind6
+rust_uv_udp_send
+rust_uv_udp_send6
+rust_uv_udp_recv_start
+rust_uv_udp_recv_stop
 rust_uv_listen
 rust_uv_accept
 rust_uv_write

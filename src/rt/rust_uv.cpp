@@ -294,6 +294,43 @@ rust_uv_tcp_getpeername6
 }
 
 extern "C" int
+rust_uv_udp_init(uv_loop_t* loop, uv_udp_t* handle) {
+    return uv_udp_init(loop, handle);
+}
+
+extern "C" int
+rust_uv_udp_bind(uv_udp_t* server, sockaddr_in* addr_ptr, unsigned flags) {
+    return uv_udp_bind(server, *addr_ptr, flags);
+}
+
+extern "C" int
+rust_uv_udp_bind6(uv_udp_t* server, sockaddr_in6* addr_ptr, unsigned flags) {
+    return uv_udp_bind6(server, *addr_ptr, flags);
+}
+
+extern "C" int
+rust_uv_udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t* buf_in, 
+                 int buf_cnt, sockaddr_in* addr_ptr, uv_udp_send_cb cb) {
+    return uv_udp_send(req, handle, buf_in, buf_cnt, *addr_ptr, cb);
+}
+
+extern "C" int
+rust_uv_udp_send6(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t* buf_in, 
+                  int buf_cnt, sockaddr_in6* addr_ptr, uv_udp_send_cb cb) {
+    return uv_udp_send6(req, handle, buf_in, buf_cnt, *addr_ptr, cb);
+}
+
+extern "C" int
+rust_uv_udp_recv_start(uv_udp_t* server, uv_alloc_cb on_alloc, uv_udp_recv_cb on_read) {
+    return uv_udp_recv_start(server, on_alloc, on_read);
+}
+
+extern "C" int
+rust_uv_udp_recv_stop(uv_udp_t* server) {
+    return uv_udp_recv_stop(server);
+}
+
+extern "C" int
 rust_uv_listen(uv_stream_t* stream, int backlog,
         uv_connection_cb cb) {
     return uv_listen(stream, backlog, cb);
