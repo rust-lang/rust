@@ -94,9 +94,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
 
     #[inline(always)]
     fn next_bucket(&self, idx: uint, len_buckets: uint) -> uint {
-        let n = (idx + 1) % len_buckets;
-        debug!("next_bucket(%?, %?) = %?", idx, len_buckets, n);
-        n
+        (idx + 1) % len_buckets
     }
 
     #[inline(always)]
@@ -215,16 +213,12 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         match self.bucket_for_key_with_hash(hash, &k) {
             TableFull => { fail!("Internal logic error"); }
             FoundHole(idx) => {
-                debug!("insert fresh (%?->%?) at idx %?, hash %?",
-                       k, v, idx, hash);
                 self.buckets[idx] = Some(Bucket{hash: hash, key: k,
                                                 value: v});
                 self.size += 1;
                 None
             }
             FoundEntry(idx) => {
-                debug!("insert overwrite (%?->%?) at idx %?, hash %?",
-                       k, v, idx, hash);
                 match self.buckets[idx] {
                     None => { fail!("insert_internal: Internal logic error") }
                     Some(ref mut b) => {
