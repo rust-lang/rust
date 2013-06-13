@@ -189,8 +189,27 @@ fn SemAndSignalRelease<'r>(sem: &'r Sem<~[Waitqueue]>)
     }
 }
 
+// FIXME(#3598): Want to use an Option down below, but we need a custom enum
+// that's not polymorphic to get around the fact that lifetimes are invariant
+// inside of type parameters.
+enum ReacquireOrderLock<'self> {
+    Nothing, // c.c
+    Just(&'self Semaphore),
+}
+
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
-pub struct Condvar<'self> { priv sem: &'self Sem<~[Waitqueue]> }
+pub struct Condvar<'self> {
+    // The 'Sem' object associated with this condvar. This is the one that's
+    // atomically-unlocked-and-descheduled upon and reacquired during wakeup.
+    priv sem: &'self Sem<~[Waitqueue]>,
+    // This is (can be) an extra semaphore which is held around the reacquire
+    // operation on the first one. This is only used in cvars associated with
+    // rwlocks, and is needed to ensure that, when a downgrader is trying to
+    // hand off the access lock (which would be the first field, here), a 2nd
+    // writer waking up from a cvar wait can't race with a reader to steal it,
+    // See the comment in write_cond for more detail.
+    priv order: ReacquireOrderLock<'self>,
+}
 
 #[unsafe_destructor]
 impl<'self> Drop for Condvar<'self> { fn finalize(&self) {} }
@@ -247,7 +266,8 @@ impl<'self> Condvar<'self> {
                 // unkillably reacquire the lock needs to happen atomically
                 // wrt enqueuing.
                 if out_of_bounds.is_none() {
-                    reacquire = Some(SemAndSignalReacquire(self.sem));
+                    reacquire = Some(CondvarReacquire { sem:   self.sem,
+                                                        order: self.order });
                 }
             }
         }
@@ -261,26 +281,27 @@ impl<'self> Condvar<'self> {
         // This is needed for a failing condition variable to reacquire the
         // mutex during unwinding. As long as the wrapper (mutex, etc) is
         // bounded in when it gets released, this shouldn't hang forever.
-        struct SemAndSignalReacquire<'self> {
+        struct CondvarReacquire<'self> {
             sem: &'self Sem<~[Waitqueue]>,
+            order: ReacquireOrderLock<'self>,
         }
 
         #[unsafe_destructor]
-        impl<'self> Drop for SemAndSignalReacquire<'self> {
+        impl<'self> Drop for CondvarReacquire<'self> {
             fn finalize(&self) {
                 unsafe {
                     // Needs to succeed, instead of itself dying.
                     do task::unkillable {
-                        self.sem.acquire();
+                        match self.order {
+                            Just(lock) => do lock.access {
+                                self.sem.acquire();
+                            },
+                            Nothing => {
+                                self.sem.acquire();
+                            },
+                        }
                     }
                 }
-            }
-        }
-
-        fn SemAndSignalReacquire<'r>(sem: &'r Sem<~[Waitqueue]>)
-                                  -> SemAndSignalReacquire<'r> {
-            SemAndSignalReacquire {
-                sem: sem
             }
         }
     }
@@ -350,9 +371,12 @@ fn check_cvar_bounds<U>(out_of_bounds: Option<uint>, id: uint, act: &str,
 
 #[doc(hidden)]
 impl Sem<~[Waitqueue]> {
-    // The only other place that condvars get built is rwlock_write_mode.
+    // The only other places that condvars get built are rwlock.write_cond()
+    // and rwlock_write_mode.
     pub fn access_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
-        do self.access { blk(&Condvar { sem: self }) }
+        do self.access {
+            blk(&Condvar { sem: self, order: Nothing })
+        }
     }
 }
 
@@ -534,17 +558,39 @@ impl RWlock {
      * was signalled might reacquire the lock before other waiting writers.)
      */
     pub fn write_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
-        // NB: You might think I should thread the order_lock into the cond
-        // wait call, so that it gets waited on before access_lock gets
-        // reacquired upon being woken up. However, (a) this would be not
-        // pleasant to implement (and would mandate a new 'rw_cond' type) and
-        // (b) I think violating no-starvation in that case is appropriate.
+        // It's important to thread our order lock into the condvar, so that
+        // when a cond.wait() wakes up, it uses it while reacquiring the
+        // access lock. If we permitted a waking-up writer to "cut in line",
+        // there could arise a subtle race when a downgrader attempts to hand
+        // off the reader cloud lock to a waiting reader. This race is tested
+        // in arc.rs (test_rw_write_cond_downgrade_read_race) and looks like:
+        // T1 (writer)              T2 (downgrader)             T3 (reader)
+        // [in cond.wait()]
+        //                          [locks for writing]
+        //                          [holds access_lock]
+        // [is signalled, perhaps by
+        //  downgrader or a 4th thread]
+        // tries to lock access(!)
+        //                                                      lock order_lock
+        //                                                      xadd read_count[0->1]
+        //                                                      tries to lock access
+        //                          [downgrade]
+        //                          xadd read_count[1->2]
+        //                          unlock access
+        // Since T1 contended on the access lock before T3 did, it will steal
+        // the lock handoff. Adding order_lock in the condvar reacquire path
+        // solves this because T1 will hold order_lock while waiting on access,
+        // which will cause T3 to have to wait until T1 finishes its write,
+        // which can't happen until T2 finishes the downgrade-read entirely.
         unsafe {
             do task::unkillable {
                 (&self.order_lock).acquire();
                 do (&self.access_lock).access_cond |cond| {
                     (&self.order_lock).release();
-                    do task::rekillable { blk(cond) }
+                    do task::rekillable {
+                        let opt_lock = Just(&self.order_lock);
+                        blk(&Condvar { order: opt_lock, ..*cond })
+                    }
                 }
             }
         }
@@ -605,7 +651,8 @@ impl RWlock {
                     // Guaranteed not to let another writer in, because
                     // another reader was holding the order_lock. Hence they
                     // must be the one to get the access_lock (because all
-                    // access_locks are acquired with order_lock held).
+                    // access_locks are acquired with order_lock held). See
+                    // the comment in write_cond for more justification.
                     (&self.access_lock).release();
                 }
             }
@@ -709,7 +756,10 @@ impl<'self> RWlockWriteMode<'self> {
     pub fn write<U>(&self, blk: &fn() -> U) -> U { blk() }
     /// Access the pre-downgrade rwlock in write mode with a condvar.
     pub fn write_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
-        blk(&Condvar { sem: &self.lock.access_lock })
+        // Need to make the condvar use the order lock when reacquiring the
+        // access lock. See comment in RWlock::write_cond for why.
+        blk(&Condvar { sem:        &self.lock.access_lock,
+                       order: Just(&self.lock.order_lock), })
     }
 }
 
