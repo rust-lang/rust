@@ -759,30 +759,6 @@ pub fn is_utf16(v: &[u16]) -> bool {
     return true;
 }
 
-/// Converts to a vector of `u16` encoded as UTF-16
-pub fn to_utf16(s: &str) -> ~[u16] {
-    let mut u = ~[];
-    for s.iter().advance |ch| {
-        // Arithmetic with u32 literals is easier on the eyes than chars.
-        let mut ch = ch as u32;
-
-        if (ch & 0xFFFF_u32) == ch {
-            // The BMP falls through (assuming non-surrogate, as it
-            // should)
-            assert!(ch <= 0xD7FF_u32 || ch >= 0xE000_u32);
-            u.push(ch as u16)
-        } else {
-            // Supplementary planes break into surrogates.
-            assert!(ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32);
-            ch -= 0x1_0000_u32;
-            let w1 = 0xD800_u16 | ((ch >> 10) as u16);
-            let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
-            u.push_all([w1, w2])
-        }
-    }
-    u
-}
-
 /// Iterates over the utf-16 characters in the specified slice, yielding each
 /// decoded unicode character to the function provided.
 ///
@@ -1188,6 +1164,7 @@ pub trait StrSlice<'self> {
     fn replace(&self, from: &str, to: &str) -> ~str;
     fn to_owned(&self) -> ~str;
     fn to_managed(&self) -> @str;
+    fn to_utf16(&self) -> ~[u16];
     fn is_char_boundary(&self, index: uint) -> bool;
     fn char_range_at(&self, start: uint) -> CharRange;
     fn char_at(&self, i: uint) -> char;
@@ -1600,6 +1577,30 @@ impl<'self> StrSlice<'self> for &'self str {
             if i == self.len() { 0 } else { self[i] }
         });
         unsafe { ::cast::transmute(v) }
+    }
+
+    /// Converts to a vector of `u16` encoded as UTF-16.
+    fn to_utf16(&self) -> ~[u16] {
+        let mut u = ~[];
+        for self.iter().advance |ch| {
+            // Arithmetic with u32 literals is easier on the eyes than chars.
+            let mut ch = ch as u32;
+
+            if (ch & 0xFFFF_u32) == ch {
+                // The BMP falls through (assuming non-surrogate, as it
+                // should)
+                assert!(ch <= 0xD7FF_u32 || ch >= 0xE000_u32);
+                u.push(ch as u16)
+            } else {
+                // Supplementary planes break into surrogates.
+                assert!(ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32);
+                ch -= 0x1_0000_u32;
+                let w1 = 0xD800_u16 | ((ch >> 10) as u16);
+                let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
+                u.push_all([w1, w2])
+            }
+        }
+        u
     }
 
     /**
@@ -3116,10 +3117,10 @@ mod tests {
 
         for pairs.each |p| {
             let (s, u) = copy *p;
-            assert!(to_utf16(s) == u);
+            assert!(s.to_utf16() == u);
             assert!(from_utf16(u) == s);
-            assert!(from_utf16(to_utf16(s)) == s);
-            assert!(to_utf16(from_utf16(u)) == u);
+            assert!(from_utf16(s.to_utf16()) == s);
+            assert!(from_utf16(u).to_utf16() == u);
         }
     }
 
