@@ -143,11 +143,9 @@ fn first_sentence_(s: &str) -> ~str {
 }
 
 pub fn paragraphs(s: &str) -> ~[~str] {
-    let mut lines = ~[];
-    for str::each_line_any(s) |line| { lines.push(line.to_owned()); }
     let mut whitespace_lines = 0;
     let mut accum = ~"";
-    let paras = do lines.iter().fold(~[]) |paras, line| {
+    let paras = do s.any_line_iter().fold(~[]) |paras, line| {
         let mut res = paras;
 
         if line.is_whitespace() {
@@ -163,9 +161,9 @@ pub fn paragraphs(s: &str) -> ~[~str] {
             whitespace_lines = 0;
 
             accum = if accum.is_empty() {
-                copy *line
+                line.to_owned()
             } else {
-                accum + "\n" + *line
+                fmt!("%s\n%s", accum, line)
             }
         }
 

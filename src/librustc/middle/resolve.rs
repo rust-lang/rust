@@ -4845,7 +4845,7 @@ impl Resolver {
         let mut smallest = 0;
         for maybes.eachi |i, &other| {
 
-            values[i] = str::levdistance(name, other);
+            values[i] = name.lev_distance(other);
 
             if values[i] <= values[smallest] {
                 smallest = i;

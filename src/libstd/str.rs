@@ -26,7 +26,7 @@ use clone::Clone;
 use cmp::{TotalOrd, Ordering, Less, Equal, Greater};
 use container::Container;
 use iter::Times;
-use iterator::{Iterator, IteratorUtil, FilterIterator, AdditiveIterator};
+use iterator::{Iterator, IteratorUtil, FilterIterator, AdditiveIterator, MapIterator};
 use libc;
 use option::{None, Option, Some};
 use old_iter::{BaseIter, EqIter};
@@ -291,6 +291,10 @@ pub type WordIterator<'self> =
     FilterIterator<'self, &'self str,
              StrCharSplitIterator<'self, extern "Rust" fn(char) -> bool>>;
 
+/// An iterator over the lines of a string, separated by either `\n` or (`\r\n`).
+pub type AnyLineIterator<'self> =
+    MapIterator<'self, &'self str, &'self str, StrCharSplitIterator<'self, char>>;
+
 impl<'self, Sep: CharEq> Iterator<&'self str> for StrCharSplitIterator<'self, Sep> {
     #[inline]
     fn next(&mut self) -> Option<&'self str> {
@@ -398,56 +402,6 @@ impl<'self> Iterator<&'self str> for StrStrSplitIterator<'self> {
             }
         }
     }
-}
-
-/// Levenshtein Distance between two strings
-pub fn levdistance(s: &str, t: &str) -> uint {
-
-    let slen = s.len();
-    let tlen = t.len();
-
-    if slen == 0 { return tlen; }
-    if tlen == 0 { return slen; }
-
-    let mut dcol = vec::from_fn(tlen + 1, |x| x);
-
-    for s.iter().enumerate().advance |(i, sc)| {
-
-        let mut current = i;
-        dcol[0] = current + 1;
-
-        for t.iter().enumerate().advance |(j, tc)| {
-
-            let next = dcol[j + 1];
-
-            if sc == tc {
-                dcol[j + 1] = current;
-            } else {
-                dcol[j + 1] = ::cmp::min(current, next);
-                dcol[j + 1] = ::cmp::min(dcol[j + 1], dcol[j]) + 1;
-            }
-
-            current = next;
-        }
-    }
-
-    return dcol[tlen];
-}
-
-/**
- * Splits a string into substrings separated by LF ('\n')
- * and/or CR LF ("\r\n")
- */
-pub fn each_line_any<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
-    for s.line_iter().advance |s| {
-        let l = s.len();
-        if l > 0u && s[l - 1u] == '\r' as u8 {
-            if !it( unsafe { raw::slice_bytes(s, 0, l - 1) } ) { return false; }
-        } else {
-            if !it( s ) { return false; }
-        }
-    }
-    return true;
 }
 
 /** Splits a string into substrings with possibly internal whitespace,
@@ -751,21 +705,6 @@ impl<'self, S: Str> Equiv<S> for ~str {
     fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
 }
 
-
-/*
-Section: Iterating through strings
-*/
-
-/// Apply a function to each character
-pub fn map(ss: &str, ff: &fn(char) -> char) -> ~str {
-    let mut result = ~"";
-    result.reserve(ss.len());
-    for ss.iter().advance |cc| {
-        result.push_char(ff(cc));
-    }
-    result
-}
-
 /*
 Section: Searching
 */
@@ -986,40 +925,6 @@ pub fn as_buf<T>(s: &str, f: &fn(*u8, uint) -> T) -> T {
         let v : *(*u8,uint) = transmute(&s);
         let (buf,len) = *v;
         f(buf, len)
-    }
-}
-
-/**
- * Returns the byte offset of an inner slice relative to an enclosing outer slice
- *
- * # Example
- *
- * ~~~ {.rust}
- * let string = "a\nb\nc";
- * let mut lines = ~[];
- * for string.line_iter().advance |line| { lines.push(line) }
- *
- * assert!(subslice_offset(string, lines[0]) == 0); // &"a"
- * assert!(subslice_offset(string, lines[1]) == 2); // &"b"
- * assert!(subslice_offset(string, lines[2]) == 4); // &"c"
- * ~~~
- */
-#[inline(always)]
-pub fn subslice_offset(outer: &str, inner: &str) -> uint {
-    do as_buf(outer) |a, a_len| {
-        do as_buf(inner) |b, b_len| {
-            let a_start: uint;
-            let a_end: uint;
-            let b_start: uint;
-            let b_end: uint;
-            unsafe {
-                a_start = cast::transmute(a); a_end = a_len + cast::transmute(a);
-                b_start = cast::transmute(b); b_end = b_len + cast::transmute(b);
-            }
-            assert!(a_start <= b_start);
-            assert!(b_end <= a_end);
-            b_start - a_start
-        }
     }
 }
 
@@ -1256,6 +1161,7 @@ pub trait StrSlice<'self> {
     fn matches_index_iter(&self, sep: &'self str) -> StrMatchesIndexIterator<'self>;
     fn split_str_iter(&self, &'self str) -> StrStrSplitIterator<'self>;
     fn line_iter(&self) -> StrCharSplitIterator<'self, char>;
+    fn any_line_iter(&self) -> AnyLineIterator<'self>;
     fn word_iter(&self) -> WordIterator<'self>;
     fn ends_with(&self, needle: &str) -> bool;
     fn is_empty(&self) -> bool;
@@ -1296,6 +1202,12 @@ pub trait StrSlice<'self> {
     fn repeat(&self, nn: uint) -> ~str;
 
     fn slice_shift_char(&self) -> (char, &'self str);
+
+    fn map_chars(&self, ff: &fn(char) -> char) -> ~str;
+
+    fn lev_distance(&self, t: &str) -> uint;
+
+    fn subslice_offset(&self, inner: &str) -> uint;
 }
 
 /// Extension methods for strings
@@ -1437,6 +1349,17 @@ impl<'self> StrSlice<'self> for &'self str {
     fn line_iter(&self) -> StrCharSplitIterator<'self, char> {
         self.split_options_iter('\n', self.len(), false)
     }
+
+    /// An iterator over the lines of a string, separated by either
+    /// `\n` or (`\r\n`).
+    fn any_line_iter(&self) -> AnyLineIterator<'self> {
+        do self.line_iter().transform |line| {
+            let l = line.len();
+            if l > 0 && line[l - 1] == '\r' as u8 { line.slice(0, l - 1) }
+            else { line }
+        }
+    }
+
     /// An iterator over the words of a string (subsequences separated
     /// by any sequence of whitespace).
     #[inline]
@@ -1920,6 +1843,85 @@ impl<'self> StrSlice<'self> for &'self str {
         return (ch, next_s);
     }
 
+
+    /// Apply a function to each character.
+    fn map_chars(&self, ff: &fn(char) -> char) -> ~str {
+        let mut result = with_capacity(self.len());
+        for self.iter().advance |cc| {
+            result.push_char(ff(cc));
+        }
+        result
+    }
+
+    /// Levenshtein Distance between two strings.
+    fn lev_distance(&self, t: &str) -> uint {
+        let slen = self.len();
+        let tlen = t.len();
+
+        if slen == 0 { return tlen; }
+        if tlen == 0 { return slen; }
+
+        let mut dcol = vec::from_fn(tlen + 1, |x| x);
+
+        for self.iter().enumerate().advance |(i, sc)| {
+
+            let mut current = i;
+            dcol[0] = current + 1;
+
+            for t.iter().enumerate().advance |(j, tc)| {
+
+                let next = dcol[j + 1];
+
+                if sc == tc {
+                    dcol[j + 1] = current;
+                } else {
+                    dcol[j + 1] = ::cmp::min(current, next);
+                    dcol[j + 1] = ::cmp::min(dcol[j + 1], dcol[j]) + 1;
+                }
+
+                current = next;
+            }
+        }
+
+        return dcol[tlen];
+    }
+
+
+    /**
+     * Returns the byte offset of an inner slice relative to an enclosing outer slice.
+     *
+     * Fails if `inner` is not a direct slice contained within self.
+     *
+     * # Example
+     *
+     * ~~~ {.rust}
+     * let string = "a\nb\nc";
+     * let mut lines = ~[];
+     * for string.line_iter().advance |line| { lines.push(line) }
+     *
+     * assert!(string.subslice_offset(lines[0]) == 0); // &"a"
+     * assert!(string.subslice_offset(lines[1]) == 2); // &"b"
+     * assert!(string.subslice_offset(lines[2]) == 4); // &"c"
+     * ~~~
+     */
+    #[inline(always)]
+    fn subslice_offset(&self, inner: &str) -> uint {
+        do as_buf(*self) |a, a_len| {
+            do as_buf(inner) |b, b_len| {
+                let a_start: uint;
+                let a_end: uint;
+                let b_start: uint;
+                let b_end: uint;
+                unsafe {
+                    a_start = cast::transmute(a); a_end = a_len + cast::transmute(a);
+                    b_start = cast::transmute(b); b_end = b_len + cast::transmute(b);
+                }
+                assert!(a_start <= b_start);
+                assert!(b_end <= a_end);
+                b_start - a_start
+            }
+        }
+    }
 
 }
 
@@ -3003,15 +3005,15 @@ mod tests {
         let a = "kernelsprite";
         let b = a.slice(7, a.len());
         let c = a.slice(0, a.len() - 6);
-        assert_eq!(subslice_offset(a, b), 7);
-        assert_eq!(subslice_offset(a, c), 0);
+        assert_eq!(a.subslice_offset(b), 7);
+        assert_eq!(a.subslice_offset(c), 0);
 
         let string = "a\nb\nc";
         let mut lines = ~[];
         for string.line_iter().advance |line| { lines.push(line) }
-        assert_eq!(subslice_offset(string, lines[0]), 0);
-        assert_eq!(subslice_offset(string, lines[1]), 2);
-        assert_eq!(subslice_offset(string, lines[2]), 4);
+        assert_eq!(string.subslice_offset(lines[0]), 0);
+        assert_eq!(string.subslice_offset(lines[1]), 2);
+        assert_eq!(string.subslice_offset(lines[2]), 4);
     }
 
     #[test]
@@ -3019,7 +3021,7 @@ mod tests {
     fn test_subslice_offset_2() {
         let a = "alchemiter";
         let b = "cruxtruder";
-        subslice_offset(a, b);
+        a.subslice_offset(b);
     }
 
     #[test]
@@ -3069,8 +3071,8 @@ mod tests {
 
     #[test]
     fn test_map() {
-        assert_eq!(~"", map("", |c| unsafe {libc::toupper(c as c_char)} as char));
-        assert_eq!(~"YMCA", map("ymca", |c| unsafe {libc::toupper(c as c_char)} as char));
+        assert_eq!(~"", "".map_chars(|c| unsafe {libc::toupper(c as c_char)} as char));
+        assert_eq!(~"YMCA", "ymca".map_chars(|c| unsafe {libc::toupper(c as c_char)} as char));
     }
 
     #[test]
