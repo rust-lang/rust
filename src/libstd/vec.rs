@@ -2535,13 +2535,6 @@ impl<'self,A> old_iter::ExtendedIter<A> for &'self [A] {
     }
 }
 
-impl<'self,A> old_iter::ExtendedMutableIter<A> for &'self mut [A] {
-    #[inline(always)]
-    pub fn eachi_mut(&mut self, blk: &fn(uint, v: &mut A) -> bool) -> bool {
-        self.mut_iter().enumerate().advance(|(i, v)| blk(i, v))
-    }
-}
-
 // FIXME(#4148): This should be redundant
 impl<A> old_iter::ExtendedIter<A> for ~[A] {
     pub fn eachi(&self, blk: &fn(uint, v: &A) -> bool) -> bool {
