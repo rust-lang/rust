@@ -18,7 +18,7 @@ use lib::llvm::ModuleRef;
 use lib;
 use metadata::common::LinkMeta;
 use metadata::{encoder, csearch, cstore};
-use middle::trans::common::CrateContext;
+use middle::trans::context::CrateContext;
 use middle::ty;
 use util::ppaux;
 

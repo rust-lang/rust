@@ -18,6 +18,7 @@ pub mod write_guard;
 pub mod callee;
 pub mod expr;
 pub mod common;
+pub mod context;
 pub mod consts;
 pub mod type_of;
 pub mod build;
