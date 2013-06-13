@@ -33,25 +33,25 @@ mb_write(void)
 {
 
 #  if 0
-    /* This is a true memory barrier. */
-    asm volatile ("pusha;"
-        "xor  %%eax,%%eax;"
-        "cpuid;"
-        "popa;"
-        : /* Outputs. */
-        : /* Inputs. */
-        : "memory" /* Clobbers. */
-        );
+	/* This is a true memory barrier. */
+	asm volatile ("pusha;"
+	    "xor  %%eax,%%eax;"
+	    "cpuid;"
+	    "popa;"
+	    : /* Outputs. */
+	    : /* Inputs. */
+	    : "memory" /* Clobbers. */
+	    );
 #else
-    /*
-     * This is hopefully enough to keep the compiler from reordering
-     * instructions around this one.
-     */
-    asm volatile ("nop;"
-        : /* Outputs. */
-        : /* Inputs. */
-        : "memory" /* Clobbers. */
-        );
+	/*
+	 * This is hopefully enough to keep the compiler from reordering
+	 * instructions around this one.
+	 */
+	asm volatile ("nop;"
+	    : /* Outputs. */
+	    : /* Inputs. */
+	    : "memory" /* Clobbers. */
+	    );
 #endif
 }
 #elif (defined(__amd64__) || defined(__x86_64__))
@@ -59,40 +59,40 @@ JEMALLOC_INLINE void
 mb_write(void)
 {
 
-    asm volatile ("sfence"
-        : /* Outputs. */
-        : /* Inputs. */
-        : "memory" /* Clobbers. */
-        );
+	asm volatile ("sfence"
+	    : /* Outputs. */
+	    : /* Inputs. */
+	    : "memory" /* Clobbers. */
+	    );
 }
 #elif defined(__powerpc__)
 JEMALLOC_INLINE void
 mb_write(void)
 {
 
-    asm volatile ("eieio"
-        : /* Outputs. */
-        : /* Inputs. */
-        : "memory" /* Clobbers. */
-        );
+	asm volatile ("eieio"
+	    : /* Outputs. */
+	    : /* Inputs. */
+	    : "memory" /* Clobbers. */
+	    );
 }
 #elif defined(__sparc64__)
 JEMALLOC_INLINE void
 mb_write(void)
 {
 
-    asm volatile ("membar #StoreStore"
-        : /* Outputs. */
-        : /* Inputs. */
-        : "memory" /* Clobbers. */
-        );
+	asm volatile ("membar #StoreStore"
+	    : /* Outputs. */
+	    : /* Inputs. */
+	    : "memory" /* Clobbers. */
+	    );
 }
 #elif defined(__tile__)
 JEMALLOC_INLINE void
 mb_write(void)
 {
 
-    __sync_synchronize();
+	__sync_synchronize();
 }
 #else
 /*
@@ -102,11 +102,11 @@ mb_write(void)
 JEMALLOC_INLINE void
 mb_write(void)
 {
-    malloc_mutex_t mtx;
+	malloc_mutex_t mtx;
 
-    malloc_mutex_init(&mtx);
-    malloc_mutex_lock(&mtx);
-    malloc_mutex_unlock(&mtx);
+	malloc_mutex_init(&mtx);
+	malloc_mutex_lock(&mtx);
+	malloc_mutex_unlock(&mtx);
 }
 #endif
 #endif

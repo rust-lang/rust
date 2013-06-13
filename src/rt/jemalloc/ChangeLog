@@ -6,6 +6,19 @@ found in the git revision history:
     http://www.canonware.com/cgi-bin/gitweb.cgi?p=jemalloc.git
     git://canonware.com/jemalloc.git
 
+* 3.4.0 (June 2, 2013)
+
+  This version is essentially a small bugfix release, but the addition of
+  aarch64 support requires that the minor version be incremented.
+
+  Bug fixes:
+  - Fix race-triggered deadlocks in chunk_record().  These deadlocks were
+    typically triggered by multiple threads concurrently deallocating huge
+    objects.
+
+  New features:
+  - Add support for the aarch64 architecture.
+
 * 3.3.1 (March 6, 2013)
 
   This version fixes bugs that are typically encountered only when utilizing
@@ -15,7 +28,7 @@ found in the git revision history:
   - Fix a locking order bug that could cause deadlock during fork if heap
     profiling were enabled.
   - Fix a chunk recycling bug that could cause the allocator to lose track of
-    whether a chunk was zeroed.   On FreeBSD, NetBSD, and OS X, it could cause
+    whether a chunk was zeroed.  On FreeBSD, NetBSD, and OS X, it could cause
     corruption if allocating via sbrk(2) (unlikely unless running with the
     "dss:primary" option specified).  This was completely harmless on Linux
     unless using mlockall(2) (and unlikely even then, unless the
