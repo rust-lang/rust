@@ -33,10 +33,6 @@ pub trait ReverseIter<A>: BaseIter<A> {
     fn each_reverse(&self, blk: &fn(&A) -> bool) -> bool;
 }
 
-pub trait MutableIter<A>: BaseIter<A> {
-    fn each_mut(&mut self, blk: &fn(&mut A) -> bool) -> bool;
-}
-
 pub trait ExtendedIter<A> {
     fn eachi(&self, blk: &fn(uint, v: &A) -> bool) -> bool;
     fn all(&self, blk: &fn(&A) -> bool) -> bool;
