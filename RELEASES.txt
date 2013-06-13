@@ -3,12 +3,37 @@ Version 0.7 (July 2013)
 
    * ??? changes, numerous bugfixes
 
+   * Syntax changes
+      * `#[deriving(Encodable)]`, `#[deriving(Decodable)]`      
+
    * Semantic changes
-      * The `self` parameter no longer implicitly means `&'self self`, and can be explicitly marked
-        with a lifetime.
+      * The `self` parameter no longer implicitly means `&'self self`,
+        and can be explicitly marked with a lifetime.
+      * Structs with the `#[packed]` attribute have byte alignment and
+        no padding between fields.
 
    * Libraries
-      * New `core::iterator` module for external iterator objects
+
+      **Note: in 0.7 `core` was renamed `std` and `std` to `extra.
+        These notes use the new crate names.**
+
+      * The `core` crate was renamed to `std`.
+      * The `std` crate was renamed to `extra`.
+      * `std::mut` removed.
+      * std: `iterator` module for external iterator objects.
+      * std: many types implement `Clone` - tuples, @, @mut. TODO
+      * std: `path` type renamed to `Path`.
+      * std: Many standalone functions removed in favor of methods in
+        `vec`, `str`, TODO. In the future methods will also work as functions.
+      * extra: `FileInput` implements `std::io::Reader`.
+      * extra: `Complex` number type and `complex` module.
+      * extra: `Rational` number type and `rational` module.
+      * extra: `BigInt`, `BigUint` implement numeric and comparison traits.
+
+   * Other
+      * `unused_unsafe` lint mode for detecting unnecessary `unsafe` blocks.
+      * More and improved library documentation.
+      * The `rusti` command has been rewritten and a number of bugs addressed.
 
 Version 0.6 (April 2013)
 ------------------------
