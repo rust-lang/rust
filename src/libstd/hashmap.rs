@@ -20,7 +20,7 @@ use cmp::{Eq, Equiv};
 use hash::Hash;
 use old_iter::BaseIter;
 use old_iter;
-use iterator::{Iterator, IteratorUtil};
+use iterator::{IteratorUtil};
 use option::{None, Option, Some};
 use rand::RngUtil;
 use rand;
