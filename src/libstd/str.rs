@@ -530,54 +530,38 @@ pub fn eq(a: &~str, b: &~str) -> bool {
     eq_slice(*a, *b)
 }
 
-#[inline]
-fn cmp(a: &str, b: &str) -> Ordering {
-    let low = uint::min(a.len(), b.len());
-
-    for uint::range(0, low) |idx| {
-        match a[idx].cmp(&b[idx]) {
-          Greater => return Greater,
-          Less => return Less,
-          Equal => ()
-        }
-    }
-
-    a.len().cmp(&b.len())
-}
-
 #[cfg(not(test))]
 impl<'self> TotalOrd for &'self str {
     #[inline]
-    fn cmp(&self, other: & &'self str) -> Ordering { cmp(*self, *other) }
+    fn cmp(&self, other: & &'self str) -> Ordering {
+        for self.bytes_iter().zip(other.bytes_iter()).advance |(s_b, o_b)| {
+            match s_b.cmp(&o_b) {
+                Greater => return Greater,
+                Less => return Less,
+                Equal => ()
+            }
+        }
+
+        self.len().cmp(&other.len())
+    }
 }
 
 #[cfg(not(test))]
 impl TotalOrd for ~str {
     #[inline]
-    fn cmp(&self, other: &~str) -> Ordering { cmp(*self, *other) }
+    fn cmp(&self, other: &~str) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
 }
 
 #[cfg(not(test))]
 impl TotalOrd for @str {
     #[inline]
-    fn cmp(&self, other: &@str) -> Ordering { cmp(*self, *other) }
+    fn cmp(&self, other: &@str) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
 }
 
 /// Bytewise slice less than
 #[inline]
 fn lt(a: &str, b: &str) -> bool {
-    let (a_len, b_len) = (a.len(), b.len());
-    let end = uint::min(a_len, b_len);
-
-    let mut i = 0;
-    while i < end {
-        let (c_a, c_b) = (a[i], b[i]);
-        if c_a < c_b { return true; }
-        if c_a > c_b { return false; }
-        i += 1;
-    }
-
-    return a_len < b_len;
+    a.cmp(& b) == Less
 }
 
 /// Bytewise less than or equal
