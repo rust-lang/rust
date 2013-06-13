@@ -835,8 +835,7 @@ do
 
         # Disable unused LLVM features
         LLVM_OPTS="$LLVM_DBG_OPTS --disable-docs \
-                   --enable-bindings=none --disable-threads \
-                   --disable-pthreads"
+                   --enable-bindings=none"
 
         case "$CFG_C_COMPILER" in
             ("ccache clang")

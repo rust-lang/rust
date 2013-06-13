@@ -1119,6 +1119,6 @@ pub fn AtomicRMW(cx: block, op: AtomicBinOp,
                  dst: ValueRef, src: ValueRef,
                  order: AtomicOrdering) -> ValueRef {
     unsafe {
-        llvm::LLVMBuildAtomicRMW(B(cx), op, dst, src, order)
+        llvm::LLVMBuildAtomicRMW(B(cx), op, dst, src, order, lib::llvm::False)
     }
 }
