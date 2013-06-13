@@ -294,11 +294,6 @@ mod tests {
 
     use super::SmallIntMap;
 
-    use core::local_data;
-    use core::rand;
-    use core::uint;
-    use core::vec;
-
     #[test]
     fn test_find_mut() {
         let mut m = SmallIntMap::new();

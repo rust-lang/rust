@@ -934,17 +934,15 @@ fn test_spawn_sched_blocking() {
             let lock = testrt::rust_dbg_lock_create();
 
             do spawn_sched(SingleThreaded) {
-                unsafe {
-                    testrt::rust_dbg_lock_lock(lock);
+                testrt::rust_dbg_lock_lock(lock);
 
-                    start_ch.send(());
+                start_ch.send(());
 
-                    // Block the scheduler thread
-                    testrt::rust_dbg_lock_wait(lock);
-                    testrt::rust_dbg_lock_unlock(lock);
+                // Block the scheduler thread
+                testrt::rust_dbg_lock_wait(lock);
+                testrt::rust_dbg_lock_unlock(lock);
 
-                    fin_ch.send(());
-                }
+                fin_ch.send(());
             };
 
             // Wait until the other task has its lock

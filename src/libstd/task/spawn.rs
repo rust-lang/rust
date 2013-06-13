@@ -92,7 +92,7 @@ use uint;
 use util;
 use unstable::sync::{Exclusive, exclusive};
 use rt::local::Local;
-use iterator::{Iterator, IteratorUtil};
+use iterator::IteratorUtil;
 
 #[cfg(test)] use task::default_task_opts;
 #[cfg(test)] use comm;
@@ -162,6 +162,13 @@ struct AncestorList(Option<Exclusive<AncestorNode>>);
 
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
 #[inline(always)]
+#[cfg(stage0)]
+fn access_group<U>(x: &TaskGroupArc, blk: &fn(TaskGroupInner) -> U) -> U {
+    x.with(blk)
+}
+// Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
+#[inline(always)]
+#[cfg(not(stage0))]
 fn access_group<U>(x: &TaskGroupArc, blk: &fn(TaskGroupInner) -> U) -> U {
     unsafe {
         x.with(blk)
@@ -169,6 +176,13 @@ fn access_group<U>(x: &TaskGroupArc, blk: &fn(TaskGroupInner) -> U) -> U {
 }
 
 #[inline(always)]
+#[cfg(stage0)]
+fn access_ancestors<U>(x: &Exclusive<AncestorNode>,
+                       blk: &fn(x: &mut AncestorNode) -> U) -> U {
+    x.with(blk)
+}
+#[inline(always)]
+#[cfg(not(stage0))]
 fn access_ancestors<U>(x: &Exclusive<AncestorNode>,
                        blk: &fn(x: &mut AncestorNode) -> U) -> U {
     unsafe {

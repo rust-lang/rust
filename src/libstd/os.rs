@@ -33,9 +33,8 @@ use io;
 use iterator::IteratorUtil;
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
-use libc::{mode_t, FILE};
+use libc::FILE;
 use local_data;
-use option;
 use option::{Some, None};
 use os;
 use prelude::*;
@@ -181,7 +180,6 @@ pub fn env() -> ~[(~str,~str)] {
     unsafe {
         #[cfg(windows)]
         unsafe fn get_env_pairs() -> ~[~str] {
-            use libc::types::os::arch::extra::LPTCH;
             use libc::funcs::extra::kernel32::{
                 GetEnvironmentStringsA,
                 FreeEnvironmentStringsA
@@ -248,10 +246,10 @@ pub fn getenv(n: &str) -> Option<~str> {
         do with_env_lock {
             let s = str::as_c_str(n, |s| libc::getenv(s));
             if ptr::null::<u8>() == cast::transmute(s) {
-                option::None::<~str>
+                None::<~str>
             } else {
                 let s = cast::transmute(s);
-                option::Some::<~str>(str::raw::from_buf(s))
+                Some::<~str>(str::raw::from_buf(s))
             }
         }
     }
@@ -646,9 +644,7 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
             use os::win32::as_utf16_p;
             // FIXME: turn mode into something useful? #2623
             do as_utf16_p(p.to_str()) |buf| {
-                libc::CreateDirectoryW(buf, unsafe {
-                    cast::transmute(0)
-                })
+                libc::CreateDirectoryW(buf, cast::transmute(0))
                     != (0 as libc::BOOL)
             }
         }
@@ -658,7 +654,7 @@ pub fn make_dir(p: &Path, mode: c_int) -> bool {
     fn mkdir(p: &Path, mode: c_int) -> bool {
         unsafe {
             do as_c_charp(p.to_str()) |c| {
-                libc::mkdir(c, mode as mode_t) == (0 as c_int)
+                libc::mkdir(c, mode as libc::mode_t) == (0 as c_int)
             }
         }
     }
@@ -731,7 +727,6 @@ pub fn list_dir(p: &Path) -> ~[~str] {
         }
         #[cfg(windows)]
         unsafe fn get_list(p: &Path) -> ~[~str] {
-            use libc::types::os::arch::extra::{LPCTSTR, HANDLE, BOOL};
             use libc::consts::os::extra::INVALID_HANDLE_VALUE;
             use libc::wcslen;
             use libc::funcs::extra::kernel32::{
@@ -896,78 +891,72 @@ pub fn change_dir_locked(p: &Path, action: &fn()) -> bool {
 
 /// Copies a file from one location to another
 pub fn copy_file(from: &Path, to: &Path) -> bool {
-    return do_copy_file(from, to);
+    return unsafe { do_copy_file(from, to) };
 
     #[cfg(windows)]
-    fn do_copy_file(from: &Path, to: &Path) -> bool {
-        unsafe {
-            use os::win32::as_utf16_p;
-            return do as_utf16_p(from.to_str()) |fromp| {
-                do as_utf16_p(to.to_str()) |top| {
-                    libc::CopyFileW(fromp, top, (0 as libc::BOOL)) !=
-                        (0 as libc::BOOL)
-                }
+    unsafe fn do_copy_file(from: &Path, to: &Path) -> bool {
+        use os::win32::as_utf16_p;
+        return do as_utf16_p(from.to_str()) |fromp| {
+            do as_utf16_p(to.to_str()) |top| {
+                libc::CopyFileW(fromp, top, (0 as libc::BOOL)) !=
+                    (0 as libc::BOOL)
             }
         }
     }
 
     #[cfg(unix)]
-    fn do_copy_file(from: &Path, to: &Path) -> bool {
-        unsafe {
-            let istream = do as_c_charp(from.to_str()) |fromp| {
-                do as_c_charp("rb") |modebuf| {
-                    libc::fopen(fromp, modebuf)
-                }
-            };
-            if istream as uint == 0u {
-                return false;
+    unsafe fn do_copy_file(from: &Path, to: &Path) -> bool {
+        let istream = do as_c_charp(from.to_str()) |fromp| {
+            do as_c_charp("rb") |modebuf| {
+                libc::fopen(fromp, modebuf)
             }
-            // Preserve permissions
-            let from_mode = from.get_mode().expect("copy_file: couldn't get permissions \
-                                                    for source file");
+        };
+        if istream as uint == 0u {
+            return false;
+        }
+        // Preserve permissions
+        let from_mode = from.get_mode().expect("copy_file: couldn't get permissions \
+                                                for source file");
 
-            let ostream = do as_c_charp(to.to_str()) |top| {
-                do as_c_charp("w+b") |modebuf| {
-                    libc::fopen(top, modebuf)
-                }
-            };
-            if ostream as uint == 0u {
-                fclose(istream);
-                return false;
+        let ostream = do as_c_charp(to.to_str()) |top| {
+            do as_c_charp("w+b") |modebuf| {
+                libc::fopen(top, modebuf)
             }
-            let bufsize = 8192u;
-            let mut buf = vec::with_capacity::<u8>(bufsize);
-            let mut done = false;
-            let mut ok = true;
-            while !done {
-                do vec::as_mut_buf(buf) |b, _sz| {
-                  let nread = libc::fread(b as *mut c_void, 1u as size_t,
-                                          bufsize as size_t,
-                                          istream);
-                  if nread > 0 as size_t {
-                      if libc::fwrite(b as *c_void, 1u as size_t, nread,
-                                      ostream) != nread {
-                          ok = false;
-                          done = true;
-                      }
-                  } else {
+        };
+        if ostream as uint == 0u {
+            fclose(istream);
+            return false;
+        }
+        let bufsize = 8192u;
+        let mut buf = vec::with_capacity::<u8>(bufsize);
+        let mut done = false;
+        let mut ok = true;
+        while !done {
+            do vec::as_mut_buf(buf) |b, _sz| {
+              let nread = libc::fread(b as *mut c_void, 1u as size_t,
+                                      bufsize as size_t,
+                                      istream);
+              if nread > 0 as size_t {
+                  if libc::fwrite(b as *c_void, 1u as size_t, nread,
+                                  ostream) != nread {
+                      ok = false;
                       done = true;
                   }
+              } else {
+                  done = true;
               }
-            }
-            fclose(istream);
-            fclose(ostream);
-
-            // Give the new file the old file's permissions
-            unsafe {
-                if do str::as_c_str(to.to_str()) |to_buf| {
-                    libc::chmod(to_buf, from_mode as mode_t)
-                } != 0 {
-                    return false; // should be a condition...
-                }
-            }
-            return ok;
+          }
         }
+        fclose(istream);
+        fclose(ostream);
+
+        // Give the new file the old file's permissions
+        if do str::as_c_str(to.to_str()) |to_buf| {
+            libc::chmod(to_buf, from_mode as libc::mode_t)
+        } != 0 {
+            return false; // should be a condition...
+        }
+        return ok;
     }
 }
 
@@ -1330,7 +1319,7 @@ pub fn glob(pattern: &str) -> ~[Path] {
 
 /// Returns a vector of Path objects that match the given glob pattern
 #[cfg(target_os = "win32")]
-pub fn glob(pattern: &str) -> ~[Path] {
+pub fn glob(_pattern: &str) -> ~[Path] {
     fail!("glob() is unimplemented on Windows")
 }
 

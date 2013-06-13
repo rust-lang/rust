@@ -150,9 +150,7 @@ mod test {
             let hl_loop = &get_gl();
             do iotask::interact(hl_loop) |_loop_ptr| {
                 debug!(~"closing timer");
-                unsafe {
-                    ll::close(timer_ptr, simple_timer_close_cb);
-                }
+                ll::close(timer_ptr, simple_timer_close_cb);
                 debug!(~"about to deref exit_ch_ptr");
                 debug!(~"after msg sent on deref'd exit_ch");
             };
@@ -169,23 +167,21 @@ mod test {
             let timer_handle = ll::timer_t();
             let timer_ptr: *ll::uv_timer_t = &timer_handle;
             do iotask::interact(iotask) |loop_ptr| {
-                unsafe {
-                    debug!(~"user code inside interact loop!!!");
-                    let init_status = ll::timer_init(loop_ptr, timer_ptr);
-                    if(init_status == 0i32) {
-                        ll::set_data_for_uv_handle(
-                            timer_ptr as *libc::c_void,
-                            exit_ch_ptr);
-                        let start_status = ll::timer_start(timer_ptr,
-                                                           simple_timer_cb,
-                                                           1u, 0u);
-                        if(start_status != 0i32) {
-                            fail!("failure on ll::timer_start()");
-                        }
+                debug!(~"user code inside interact loop!!!");
+                let init_status = ll::timer_init(loop_ptr, timer_ptr);
+                if(init_status == 0i32) {
+                    ll::set_data_for_uv_handle(
+                        timer_ptr as *libc::c_void,
+                        exit_ch_ptr);
+                    let start_status = ll::timer_start(timer_ptr,
+                                                       simple_timer_cb,
+                                                       1u, 0u);
+                    if(start_status != 0i32) {
+                        fail!("failure on ll::timer_start()");
                     }
-                    else {
-                        fail!("failure on ll::timer_init()");
-                    }
+                }
+                else {
+                    fail!("failure on ll::timer_init()");
                 }
             };
             exit_po.recv();

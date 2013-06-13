@@ -236,6 +236,17 @@ impl<T: Owned> SharedChan<T> {
     }
 }
 
+#[cfg(stage0)]
+impl<T: Owned> GenericChan<T> for SharedChan<T> {
+    fn send(&self, x: T) {
+        let mut xx = Some(x);
+        do self.ch.with_imm |chan| {
+            let x = replace(&mut xx, None);
+            chan.send(x.unwrap())
+        }
+    }
+}
+#[cfg(not(stage0))]
 impl<T: Owned> GenericChan<T> for SharedChan<T> {
     fn send(&self, x: T) {
         unsafe {
@@ -248,6 +259,17 @@ impl<T: Owned> GenericChan<T> for SharedChan<T> {
     }
 }
 
+#[cfg(stage0)]
+impl<T: Owned> GenericSmartChan<T> for SharedChan<T> {
+    fn try_send(&self, x: T) -> bool {
+        let mut xx = Some(x);
+        do self.ch.with_imm |chan| {
+            let x = replace(&mut xx, None);
+            chan.try_send(x.unwrap())
+        }
+    }
+}
+#[cfg(not(stage0))]
 impl<T: Owned> GenericSmartChan<T> for SharedChan<T> {
     fn try_send(&self, x: T) -> bool {
         unsafe {
