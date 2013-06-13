@@ -23,7 +23,6 @@ use middle::trans::common::*;
 use middle::trans::expr::{SaveIn, Ignore};
 use middle::trans::expr;
 use middle::trans::glue;
-use middle::trans::inline;
 use middle::trans::monomorphize;
 use middle::trans::type_of::*;
 use middle::ty;

@@ -92,7 +92,7 @@ use uint;
 use util;
 use unstable::sync::{Exclusive, exclusive};
 use rt::local::Local;
-use iterator::{Iterator, IteratorUtil};
+use iterator::{IteratorUtil};
 
 #[cfg(test)] use task::default_task_opts;
 #[cfg(test)] use comm;
