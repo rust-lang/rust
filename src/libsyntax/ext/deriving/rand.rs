@@ -78,13 +78,13 @@ fn rand_substructure(cx: @ExtCtxt, span: span, substr: &Substructure) -> @expr {
 
             let variant_count = cx.expr_uint(span, variants.len());
 
-            // need to specify the u32-ness of the random number
-            let u32_ty = cx.ty_ident(span, cx.ident_of("u32"));
+            // need to specify the uint-ness of the random number
+            let uint_ty = cx.ty_ident(span, cx.ident_of("uint"));
             let r_ty = cx.ty_ident(span, cx.ident_of("R"));
-            let rand_name = cx.path_all(span, true, copy rand_ident, None, ~[ u32_ty, r_ty ]);
+            let rand_name = cx.path_all(span, true, copy rand_ident, None, ~[ uint_ty, r_ty ]);
             let rand_name = cx.expr_path(rand_name);
 
-            // ::std::rand::Rand::rand::<u32>(rng)
+            // ::std::rand::Rand::rand::<uint>(rng)
             let rv_call = cx.expr_call(span,
                                        rand_name,
                                        ~[ rng[0].duplicate(cx) ]);
