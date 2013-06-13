@@ -1953,18 +1953,6 @@ impl NullTerminatedStr for @str {
         slice
     }
 }
-// static strings are the only slices guaranteed to a nul-terminator
-impl NullTerminatedStr for &'static str {
-    /**
-     * Work with the byte buffer of a string as a byte slice.
-     *
-     * The byte slice does include the null terminator.
-     */
-    #[inline]
-    fn as_bytes_with_null(&self) -> &'static [u8] {
-        unsafe { ::cast::transmute(*self) }
-    }
-}
 
 #[allow(missing_doc)]
 pub trait OwnedStr {
@@ -2924,10 +2912,6 @@ mod tests {
             184, 173, 229, 141, 142, 86, 105, 225, 187, 135, 116, 32, 78, 97,
             109, 0
         ];
-
-        assert_eq!("".as_bytes_with_null(), &[0]);
-        assert_eq!("abc".as_bytes_with_null(), &['a' as u8, 'b' as u8, 'c' as u8, 0]);
-        assert_eq!("ศไทย中华Việt Nam".as_bytes_with_null(), v);
 
         let s1 = @"";
         let s2 = @"abc";
