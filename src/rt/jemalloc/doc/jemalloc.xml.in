@@ -432,7 +432,14 @@ for (i = 0; i < nbins; i++) {
     referenced by the symbolic link named <filename
     class="symlink">/etc/malloc.conf</filename>, and the value of the
     environment variable <envar>MALLOC_CONF</envar>, will be interpreted, in
-    that order, from left to right as options.</para>
+    that order, from left to right as options.  Note that
+    <varname>malloc_conf</varname> may be read before
+    <function>main<parameter/></function> is entered, so the declaration of
+    <varname>malloc_conf</varname> should specify an initializer that contains
+    the final value to be read by jemalloc.  <varname>malloc_conf</varname> is
+    a compile-time setting, whereas <filename
+    class="symlink">/etc/malloc.conf</filename> and <envar>MALLOC_CONF</envar>
+    can be safely set any time prior to program invocation.</para>
 
     <para>An options string is a comma-separated list of option:value pairs.
     There is one key corresponding to each <link
