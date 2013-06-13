@@ -201,14 +201,14 @@ pub unsafe fn udp_send<T>(req: *uv_udp_send_t, handle: *T, buf_in: &[uv_buf_t],
                           addr: *sockaddr_in, cb: *u8) -> c_int {
     let buf_ptr = vec::raw::to_ptr(buf_in);
     let buf_cnt = buf_in.len() as i32;
-    return rust_uv_udp_send(req, handle, buf_ptr, buf_cnt, addr, cb);
+    return rust_uv_udp_send(req, handle as *c_void, buf_ptr, buf_cnt, addr, cb);
 }
 
 pub unsafe fn udp_send6<T>(req: *uv_udp_send_t, handle: *T, buf_in: &[uv_buf_t],
                           addr: *sockaddr_in6, cb: *u8) -> c_int {
     let buf_ptr = vec::raw::to_ptr(buf_in);
     let buf_cnt = buf_in.len() as i32;
-    return rust_uv_udp_send(req, handle, buf_ptr, buf_cnt, addr, cb);
+    return rust_uv_udp_send(req, handle as *c_void, buf_ptr, buf_cnt, addr, cb);
 }
 
 pub unsafe fn udp_recv_start(server: *uv_udp_t, on_alloc: *u8, on_recv: *u8) -> c_int {
