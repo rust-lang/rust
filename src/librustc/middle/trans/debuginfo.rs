@@ -13,7 +13,6 @@ use core::prelude::*;
 use driver::session;
 use lib::llvm::ValueRef;
 use lib::llvm::llvm;
-use middle::trans::base::task_llcx;
 use middle::trans::common::*;
 use middle::trans::machine;
 use middle::trans::type_of;
@@ -62,9 +61,7 @@ static DW_ATE_unsigned_char: int = 0x08;
 fn llstr(s: &str) -> ValueRef {
     do str::as_c_str(s) |sbuf| {
         unsafe {
-            llvm::LLVMMDStringInContext(task_llcx(),
-                                        sbuf,
-                                        s.len() as libc::c_uint)
+            llvm::LLVMMDString(sbuf, s.len() as libc::c_uint)
         }
     }
 }
@@ -82,9 +79,7 @@ fn lli1(bval: bool) -> ValueRef {
 }
 fn llmdnode(elems: &[ValueRef]) -> ValueRef {
     unsafe {
-        llvm::LLVMMDNodeInContext(task_llcx(),
-                                  vec::raw::to_ptr(elems),
-                                  elems.len() as libc::c_uint)
+        llvm::LLVMMDNode(vec::raw::to_ptr(elems), elems.len() as libc::c_uint)
     }
 }
 fn llunused() -> ValueRef {

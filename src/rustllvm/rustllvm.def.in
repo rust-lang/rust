@@ -10,7 +10,6 @@ LLVMRustExecuteJIT
 LLVMRustParseBitcode
 LLVMRustParseAssemblyFile
 LLVMRustPrintPassTimings
-LLVMRustStartMultithreading
 LLVMCreateObjectFile
 LLVMDisposeObjectFile
 LLVMGetSections
@@ -320,6 +319,7 @@ LLVMGetFunctionAttr
 LLVMGetFunctionCallConv
 LLVMGetGC
 LLVMGetGlobalContext
+LLVMGetGlobalContext
 LLVMGetGlobalParent
 LLVMGetGlobalPassRegistry
 LLVMGetIncomingBlock
@@ -500,6 +500,7 @@ LLVMMDNode
 LLVMMDNodeInContext
 LLVMMDString
 LLVMMDStringInContext
+LLVMMetadataType
 LLVMMetadataTypeInContext
 LLVMModuleCreateWithName
 LLVMModuleCreateWithNameInContext
