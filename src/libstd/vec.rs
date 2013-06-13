@@ -2630,41 +2630,6 @@ impl<A:Copy + Ord> old_iter::CopyableOrderedIter<A> for @[A] {
     fn max(&self) -> A { old_iter::max(self) }
 }
 
-impl<'self,A:Copy> old_iter::CopyableNonstrictIter<A> for &'self [A] {
-    fn each_val(&const self, f: &fn(A) -> bool) -> bool {
-        let mut i = 0;
-        while i < self.len() {
-            if !f(copy self[i]) { return false; }
-            i += 1;
-        }
-        return true;
-    }
-}
-
-// FIXME(#4148): This should be redundant
-impl<A:Copy> old_iter::CopyableNonstrictIter<A> for ~[A] {
-    fn each_val(&const self, f: &fn(A) -> bool) -> bool {
-        let mut i = 0;
-        while i < uniq_len(self) {
-            if !f(copy self[i]) { return false; }
-            i += 1;
-        }
-        return true;
-    }
-}
-
-// FIXME(#4148): This should be redundant
-impl<A:Copy> old_iter::CopyableNonstrictIter<A> for @[A] {
-    fn each_val(&const self, f: &fn(A) -> bool) -> bool {
-        let mut i = 0;
-        while i < self.len() {
-            if !f(copy self[i]) { return false; }
-            i += 1;
-        }
-        return true;
-    }
-}
-
 impl<A:Clone> Clone for ~[A] {
     #[inline]
     fn clone(&self) -> ~[A] {
@@ -4325,15 +4290,5 @@ mod tests {
             v.push(p.to_owned());
         }
         assert_eq!(v, ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]]);
-    }
-
-    #[test]
-    fn test_each_val() {
-        use old_iter::CopyableNonstrictIter;
-        let mut i = 0;
-        for [1, 2, 3].each_val |v| {
-            i += v;
-        }
-        assert_eq!(i, 6);
     }
 }
