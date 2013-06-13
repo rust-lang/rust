@@ -123,6 +123,9 @@ pub extern "rust-intrinsic" {
     // and TyVisitor which are in librustc
     //fn visit_tydesc(++td: *TyDesc, &&tv: TyVisitor) -> ();
 
+    #[cfg(not(stage0))]
+    pub fn get_tydesc_for_visiting<T>() -> *();
+
     pub fn frame_address(f: &once fn(*u8));
 
     /// Get the address of the `__morestack` stack growth function.
