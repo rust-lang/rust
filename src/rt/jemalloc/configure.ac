@@ -26,7 +26,7 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
 ])
 
 dnl JE_COMPILABLE(label, hcode, mcode, rvar)
-dnl
+dnl 
 dnl Use AC_LINK_IFELSE() rather than AC_COMPILE_IFELSE() so that linker errors
 dnl cause failure.
 AC_DEFUN([JE_COMPILABLE],
@@ -232,7 +232,7 @@ CC_MM=1
 dnl Platform-specific settings.  abi and RPATH can probably be determined
 dnl programmatically, but doing so is error-prone, which makes it generally
 dnl not worth the trouble.
-dnl
+dnl 
 dnl Define cpp macros in CPPFLAGS, rather than doing AC_DEFINE(macro), since the
 dnl definitions need to be seen before any headers are included, which is a pain
 dnl to make happen otherwise.
@@ -965,7 +965,7 @@ fi
 
 dnl ============================================================================
 dnl jemalloc configuration.
-dnl
+dnl 
 
 dnl Set VERSION if source directory has an embedded git repository.
 if test -d "${srcroot}.git" ; then

@@ -278,6 +278,9 @@ static const bool config_ivsalloc =
 #  ifdef __arm__
 #    define LG_QUANTUM		3
 #  endif
+#  ifdef __aarch64__
+#    define LG_QUANTUM		4
+#  endif
 #  ifdef __hppa__
 #    define LG_QUANTUM		4
 #  endif
