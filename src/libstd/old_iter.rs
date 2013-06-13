@@ -59,13 +59,6 @@ pub trait CopyableOrderedIter<A:Copy + Ord> {
     fn max(&self) -> A;
 }
 
-pub trait CopyableNonstrictIter<A:Copy> {
-    // Like "each", but copies out the value. If the receiver is mutated while
-    // iterating over it, the semantics must not be memory-unsafe but are
-    // otherwise undefined.
-    fn each_val(&const self, f: &fn(A) -> bool) -> bool;
-}
-
 // A trait for sequences that can be built by imperatively pushing elements
 // onto them.
 pub trait Buildable<A> {
