@@ -11,4 +11,3 @@ struct Bar {
 static bar: Bar = Bar { i: 0, v: IntVal(0) };
 
 fn main() {}
-
