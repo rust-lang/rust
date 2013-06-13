@@ -844,7 +844,7 @@ impl DatumBlock {
         rslt(self.bcx, self.datum.to_appropriate_llval(self.bcx))
     }
 
-    pub fn ccx(&self) -> @CrateContext {
+    pub fn ccx(&self) -> @mut CrateContext {
         self.bcx.ccx()
     }
 
