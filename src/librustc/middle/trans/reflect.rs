@@ -151,8 +151,7 @@ impl Reflector {
     // Entrypoint
     pub fn visit_ty(&mut self, t: ty::t) {
         let bcx = self.bcx;
-        debug!("reflect::visit_ty %s",
-               ty_to_str(bcx.ccx().tcx, t));
+        debug!("reflect::visit_ty %s", ty_to_str(bcx.ccx().tcx, t));
 
         match ty::get(t).sty {
           ty::ty_bot => self.leaf(~"bot"),
@@ -312,16 +311,17 @@ impl Reflector {
                 + self.c_size_and_align(t);
             do self.bracketed(~"enum", enum_args) |this| {
                 for variants.eachi |i, v| {
+                    let name = ccx.sess.str_of(v.name);
                     let variant_args = ~[this.c_uint(i),
                                          this.c_int(v.disr_val),
                                          this.c_uint(v.args.len()),
-                                         this.c_slice(ccx.sess.str_of(v.name))];
+                                         this.c_slice(name)];
                     do this.bracketed(~"enum_variant", variant_args) |this| {
                         for v.args.eachi |j, a| {
                             let bcx = this.bcx;
                             let null = C_null(llptrty);
-                            let offset = p2i(ccx, adt::trans_field_ptr(bcx, repr, null,
-                                                                       v.disr_val, j));
+                            let ptr = adt::trans_field_ptr(bcx, repr, null, v.disr_val, j);
+                            let offset = p2i(ccx, ptr);
                             let field_args = ~[this.c_uint(j),
                                                offset,
                                                this.c_tydesc(*a)];

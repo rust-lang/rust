@@ -21,21 +21,21 @@ use util::ppaux;
 
 use syntax::ast;
 
-pub fn arg_is_indirect(_: @CrateContext, arg_ty: &ty::t) -> bool {
+pub fn arg_is_indirect(_: &CrateContext, arg_ty: &ty::t) -> bool {
     !ty::type_is_immediate(*arg_ty)
 }
 
-pub fn type_of_explicit_arg(ccx: @CrateContext, arg_ty: &ty::t) -> TypeRef {
+pub fn type_of_explicit_arg(ccx: &mut CrateContext, arg_ty: &ty::t) -> TypeRef {
     let llty = type_of(ccx, *arg_ty);
     if arg_is_indirect(ccx, arg_ty) {T_ptr(llty)} else {llty}
 }
 
-pub fn type_of_explicit_args(ccx: @CrateContext,
+pub fn type_of_explicit_args(ccx: &mut CrateContext,
                              inputs: &[ty::t]) -> ~[TypeRef] {
     inputs.map(|arg_ty| type_of_explicit_arg(ccx, arg_ty))
 }
 
-pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::t], output: ty::t)
+pub fn type_of_fn(cx: &mut CrateContext, inputs: &[ty::t], output: ty::t)
                -> TypeRef {
     unsafe {
         let mut atys: ~[TypeRef] = ~[];
@@ -64,7 +64,7 @@ pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::t], output: ty::t)
 }
 
 // Given a function type and a count of ty params, construct an llvm type
-pub fn type_of_fn_from_ty(cx: @CrateContext, fty: ty::t) -> TypeRef {
+pub fn type_of_fn_from_ty(cx: &mut CrateContext, fty: ty::t) -> TypeRef {
     match ty::get(fty).sty {
         ty::ty_closure(ref f) => type_of_fn(cx, f.sig.inputs, f.sig.output),
         ty::ty_bare_fn(ref f) => type_of_fn(cx, f.sig.inputs, f.sig.output),
@@ -74,7 +74,7 @@ pub fn type_of_fn_from_ty(cx: @CrateContext, fty: ty::t) -> TypeRef {
     }
 }
 
-pub fn type_of_non_gc_box(cx: @CrateContext, t: ty::t) -> TypeRef {
+pub fn type_of_non_gc_box(cx: &mut CrateContext, t: ty::t) -> TypeRef {
     assert!(!ty::type_needs_infer(t));
 
     let t_norm = ty::normalize_ty(cx.tcx, t);
@@ -83,10 +83,12 @@ pub fn type_of_non_gc_box(cx: @CrateContext, t: ty::t) -> TypeRef {
     } else {
         match ty::get(t).sty {
           ty::ty_box(mt) => {
-            T_ptr(T_box(cx, type_of(cx, mt.ty)))
+              let ty = type_of(cx, mt.ty);
+              T_ptr(T_box(cx, ty))
           }
           ty::ty_uniq(mt) => {
-            T_ptr(T_unique(cx, type_of(cx, mt.ty)))
+              let ty = type_of(cx, mt.ty);
+              T_ptr(T_unique(cx, ty))
           }
           _ => {
             cx.sess.bug("non-box in type_of_non_gc_box");
@@ -107,7 +109,7 @@ pub fn type_of_non_gc_box(cx: @CrateContext, t: ty::t) -> TypeRef {
 //     recursive types. For example, `static_size_of_enum()` relies on this
 //     behavior.
 
-pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
+pub fn sizing_type_of(cx: &mut CrateContext, t: ty::t) -> TypeRef {
     match cx.llsizingtypes.find(&t) {
         Some(t) => return *t,
         None => ()
@@ -146,7 +148,10 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
             T_array(sizing_type_of(cx, mt.ty), size)
         }
 
-        ty::ty_unboxed_vec(mt) => T_vec(cx, sizing_type_of(cx, mt.ty)),
+        ty::ty_unboxed_vec(mt) => {
+            let sz_ty = sizing_type_of(cx, mt.ty);
+            T_vec(cx, sz_ty)
+        }
 
         ty::ty_tup(*) | ty::ty_enum(*) => {
             let repr = adt::represent_type(cx, t);
@@ -177,7 +182,7 @@ pub fn sizing_type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 }
 
 // NB: If you update this, be sure to update `sizing_type_of()` as well.
-pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
+pub fn type_of(cx: &mut CrateContext, t: ty::t) -> TypeRef {
     debug!("type_of %?: %?", t, ty::get(t));
 
     // Check the cache.
@@ -223,22 +228,35 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
         T_box_ptr(T_box(cx, T_vec(cx, T_i8())))
       }
       ty::ty_evec(ref mt, ty::vstore_box) => {
-        T_box_ptr(T_box(cx, T_vec(cx, type_of(cx, mt.ty))))
+          let e_ty = type_of(cx, mt.ty);
+          let v_ty = T_vec(cx, e_ty);
+          T_box_ptr(T_box(cx, v_ty))
       }
-      ty::ty_box(ref mt) => T_box_ptr(T_box(cx, type_of(cx, mt.ty))),
+      ty::ty_box(ref mt) => {
+          let ty = type_of(cx, mt.ty);
+          T_box_ptr(T_box(cx, ty))
+      }
       ty::ty_opaque_box => T_box_ptr(T_box(cx, T_i8())),
-      ty::ty_uniq(ref mt) => T_unique_ptr(T_unique(cx, type_of(cx, mt.ty))),
+      ty::ty_uniq(ref mt) => {
+          let ty = type_of(cx, mt.ty);
+          T_unique_ptr(T_unique(cx, ty))
+      }
       ty::ty_evec(ref mt, ty::vstore_uniq) => {
-        T_unique_ptr(T_unique(cx, T_vec(cx, type_of(cx, mt.ty))))
+          let ty = type_of(cx, mt.ty);
+          let ty = T_vec(cx, ty);
+          T_unique_ptr(T_unique(cx, ty))
       }
       ty::ty_unboxed_vec(ref mt) => {
-        T_vec(cx, type_of(cx, mt.ty))
+          let ty = type_of(cx, mt.ty);
+          T_vec(cx, ty)
       }
       ty::ty_ptr(ref mt) => T_ptr(type_of(cx, mt.ty)),
       ty::ty_rptr(_, ref mt) => T_ptr(type_of(cx, mt.ty)),
 
       ty::ty_evec(ref mt, ty::vstore_slice(_)) => {
-        T_struct([T_ptr(type_of(cx, mt.ty)), T_uint_ty(cx, ast::ty_u)], false)
+          let p_ty = T_ptr(type_of(cx, mt.ty));
+          let u_ty = T_uint_ty(cx, ast::ty_u);
+          T_struct([p_ty, u_ty], false)
       }
 
       ty::ty_estr(ty::vstore_slice(_)) => {
@@ -254,7 +272,10 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
       }
 
       ty::ty_bare_fn(_) => T_ptr(type_of_fn_from_ty(cx, t)),
-      ty::ty_closure(_) => T_fn_pair(cx, type_of_fn_from_ty(cx, t)),
+      ty::ty_closure(_) => {
+          let ty = type_of_fn_from_ty(cx, t);
+          T_fn_pair(cx, ty)
+      }
       ty::ty_trait(_, _, store, _) => T_opaque_trait(cx, store),
       ty::ty_type => T_ptr(cx.tydesc_type),
       ty::ty_tup(*) => {
@@ -310,7 +331,7 @@ pub fn type_of(cx: @CrateContext, t: ty::t) -> TypeRef {
 // Want refinements! (Or case classes, I guess
 pub enum named_ty { a_struct, an_enum }
 
-pub fn llvm_type_name(cx: @CrateContext,
+pub fn llvm_type_name(cx: &CrateContext,
                       what: named_ty,
                       did: ast::def_id,
                       tps: &[ty::t]) -> ~str {
@@ -330,18 +351,18 @@ pub fn llvm_type_name(cx: @CrateContext,
     );
 }
 
-pub fn type_of_dtor(ccx: @CrateContext, self_ty: ty::t) -> TypeRef {
+pub fn type_of_dtor(ccx: &mut CrateContext, self_ty: ty::t) -> TypeRef {
     T_fn([T_ptr(type_of(ccx, self_ty))] /* self */, T_nil())
 }
 
-pub fn type_of_rooted(ccx: @CrateContext, t: ty::t) -> TypeRef {
+pub fn type_of_rooted(ccx: &mut CrateContext, t: ty::t) -> TypeRef {
     let addrspace = base::get_tydesc(ccx, t).addrspace;
     debug!("type_of_rooted %s in addrspace %u",
            ppaux::ty_to_str(ccx.tcx, t), addrspace as uint);
     return T_root(type_of(ccx, t), addrspace);
 }
 
-pub fn type_of_glue_fn(ccx: @CrateContext) -> TypeRef {
+pub fn type_of_glue_fn(ccx: &CrateContext) -> TypeRef {
     let tydescpp = T_ptr(T_ptr(ccx.tydesc_type));
     return T_fn([T_ptr(T_nil()), tydescpp, T_ptr(T_i8())], T_nil());
 }

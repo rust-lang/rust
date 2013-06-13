@@ -47,24 +47,26 @@ use syntax::parse::token;
 use syntax;
 use writer = extra::ebml::writer;
 
+use core::cast;
+
 // used by astencode:
 type abbrev_map = @mut HashMap<ty::t, tyencode::ty_abbrev>;
 
-pub type encode_inlined_item = @fn(ecx: @EncodeContext,
+pub type encode_inlined_item<'self> = &'self fn(ecx: &EncodeContext,
                                    ebml_w: &mut writer::Encoder,
                                    path: &[ast_map::path_elt],
                                    ii: ast::inlined_item);
 
-pub struct EncodeParams {
+pub struct EncodeParams<'self> {
     diag: @span_handler,
     tcx: ty::ctxt,
     reachable: reachable::map,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: @mut HashMap<ast::node_id, ~str>,
-    discrim_symbols: @mut HashMap<ast::node_id, @str>,
-    link_meta: LinkMeta,
+    item_symbols: &'self HashMap<ast::node_id, ~str>,
+    discrim_symbols: &'self HashMap<ast::node_id, @str>,
+    link_meta: &'self LinkMeta,
     cstore: @mut cstore::CStore,
-    encode_inlined_item: encode_inlined_item
+    encode_inlined_item: encode_inlined_item<'self>
 }
 
 struct Stats {
@@ -81,31 +83,31 @@ struct Stats {
     n_inlines: uint
 }
 
-pub struct EncodeContext {
+pub struct EncodeContext<'self> {
     diag: @span_handler,
     tcx: ty::ctxt,
     stats: @mut Stats,
     reachable: reachable::map,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: @mut HashMap<ast::node_id, ~str>,
-    discrim_symbols: @mut HashMap<ast::node_id, @str>,
-    link_meta: LinkMeta,
-    cstore: @mut cstore::CStore,
-    encode_inlined_item: encode_inlined_item,
+    item_symbols: &'self HashMap<ast::node_id, ~str>,
+    discrim_symbols: &'self HashMap<ast::node_id, @str>,
+    link_meta: &'self LinkMeta,
+    cstore: &'self cstore::CStore,
+    encode_inlined_item: encode_inlined_item<'self>,
     type_abbrevs: abbrev_map
 }
 
-pub fn reachable(ecx: @EncodeContext, id: node_id) -> bool {
+pub fn reachable(ecx: &EncodeContext, id: node_id) -> bool {
     ecx.reachable.contains(&id)
 }
 
-fn encode_name(ecx: @EncodeContext,
+fn encode_name(ecx: &EncodeContext,
                ebml_w: &mut writer::Encoder,
                name: ident) {
     ebml_w.wr_tagged_str(tag_paths_data_name, ecx.tcx.sess.str_of(name));
 }
 
-fn encode_impl_type_basename(ecx: @EncodeContext,
+fn encode_impl_type_basename(ecx: &EncodeContext,
                              ebml_w: &mut writer::Encoder,
                              name: ident) {
     ebml_w.wr_tagged_str(tag_item_impl_type_basename,
@@ -116,7 +118,7 @@ pub fn encode_def_id(ebml_w: &mut writer::Encoder, id: def_id) {
     ebml_w.wr_tagged_str(tag_def_id, def_to_str(id));
 }
 
-fn encode_region_param(ecx: @EncodeContext,
+fn encode_region_param(ecx: &EncodeContext,
                        ebml_w: &mut writer::Encoder,
                        it: @ast::item) {
     let opt_rp = ecx.tcx.region_paramd_items.find(&it.id);
@@ -147,14 +149,15 @@ fn add_to_index(ebml_w: &mut writer::Encoder,
 }
 
 fn encode_trait_ref(ebml_w: &mut writer::Encoder,
-                    ecx: @EncodeContext,
+                    ecx: &EncodeContext,
                     trait_ref: &ty::TraitRef,
                     tag: uint) {
+    let r = ecx.reachable;
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
         tcx: ecx.tcx,
-        reachable: |a| reachable(ecx, a),
+        reachable: |a| r.contains(&a),
         abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
 
     ebml_w.start_tag(tag);
@@ -174,14 +177,15 @@ pub fn def_to_str(did: def_id) -> ~str {
 }
 
 fn encode_ty_type_param_defs(ebml_w: &mut writer::Encoder,
-                             ecx: @EncodeContext,
+                             ecx: &EncodeContext,
                              params: @~[ty::TypeParameterDef],
                              tag: uint) {
+    let r = ecx.reachable;
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
         tcx: ecx.tcx,
-        reachable: |a| reachable(ecx, a),
+        reachable: |a| r.contains(&a),
         abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     for params.each |param| {
         ebml_w.start_tag(tag);
@@ -191,7 +195,7 @@ fn encode_ty_type_param_defs(ebml_w: &mut writer::Encoder,
 }
 
 fn encode_type_param_bounds(ebml_w: &mut writer::Encoder,
-                            ecx: @EncodeContext,
+                            ecx: &EncodeContext,
                             params: &OptVec<TyParam>) {
     let ty_param_defs =
         @params.map_to_vec(|param| ecx.tcx.ty_param_defs.get_copy(&param.id));
@@ -206,31 +210,33 @@ fn encode_variant_id(ebml_w: &mut writer::Encoder, vid: def_id) {
     ebml_w.end_tag();
 }
 
-pub fn write_type(ecx: @EncodeContext,
+pub fn write_type(ecx: &EncodeContext,
                   ebml_w: &mut writer::Encoder,
                   typ: ty::t) {
+    let r = ecx.reachable;
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
         tcx: ecx.tcx,
-        reachable: |a| reachable(ecx, a),
+        reachable: |a| r.contains(&a),
         abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     tyencode::enc_ty(ebml_w.writer, ty_str_ctxt, typ);
 }
 
-pub fn write_vstore(ecx: @EncodeContext,
+pub fn write_vstore(ecx: &EncodeContext,
                     ebml_w: &mut writer::Encoder,
                     vstore: ty::vstore) {
+    let r = ecx.reachable;
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
         tcx: ecx.tcx,
-        reachable: |a| reachable(ecx, a),
+        reachable: |a| r.contains(&a),
         abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     tyencode::enc_vstore(ebml_w.writer, ty_str_ctxt, vstore);
 }
 
-fn encode_type(ecx: @EncodeContext,
+fn encode_type(ecx: &EncodeContext,
                ebml_w: &mut writer::Encoder,
                typ: ty::t) {
     ebml_w.start_tag(tag_items_data_item_type);
@@ -238,7 +244,7 @@ fn encode_type(ecx: @EncodeContext,
     ebml_w.end_tag();
 }
 
-fn encode_transformed_self_ty(ecx: @EncodeContext,
+fn encode_transformed_self_ty(ecx: &EncodeContext,
                               ebml_w: &mut writer::Encoder,
                               opt_typ: Option<ty::t>) {
     for opt_typ.iter().advance |&typ| {
@@ -248,23 +254,24 @@ fn encode_transformed_self_ty(ecx: @EncodeContext,
     }
 }
 
-fn encode_method_fty(ecx: @EncodeContext,
+fn encode_method_fty(ecx: &EncodeContext,
                      ebml_w: &mut writer::Encoder,
                      typ: &ty::BareFnTy) {
     ebml_w.start_tag(tag_item_method_fty);
 
+    let r = ecx.reachable;
     let ty_str_ctxt = @tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_str,
         tcx: ecx.tcx,
-        reachable: |a| reachable(ecx, a),
+        reachable: |a| r.contains(&a),
         abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     tyencode::enc_bare_fn_ty(ebml_w.writer, ty_str_ctxt, typ);
 
     ebml_w.end_tag();
 }
 
-fn encode_symbol(ecx: @EncodeContext,
+fn encode_symbol(ecx: &EncodeContext,
                  ebml_w: &mut writer::Encoder,
                  id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
@@ -281,7 +288,7 @@ fn encode_symbol(ecx: @EncodeContext,
     ebml_w.end_tag();
 }
 
-fn encode_discriminant(ecx: @EncodeContext,
+fn encode_discriminant(ecx: &EncodeContext,
                        ebml_w: &mut writer::Encoder,
                        id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
@@ -289,7 +296,7 @@ fn encode_discriminant(ecx: @EncodeContext,
     ebml_w.end_tag();
 }
 
-fn encode_disr_val(_: @EncodeContext,
+fn encode_disr_val(_: &EncodeContext,
                    ebml_w: &mut writer::Encoder,
                    disr_val: int) {
     ebml_w.start_tag(tag_disr_val);
@@ -305,7 +312,7 @@ fn encode_parent_item(ebml_w: &mut writer::Encoder, id: def_id) {
     ebml_w.end_tag();
 }
 
-fn encode_enum_variant_info(ecx: @EncodeContext,
+fn encode_enum_variant_info(ecx: &EncodeContext,
                             ebml_w: &mut writer::Encoder,
                             id: node_id,
                             variants: &[variant],
@@ -349,11 +356,11 @@ fn encode_enum_variant_info(ecx: @EncodeContext,
     }
 }
 
-fn encode_path(ecx: @EncodeContext,
+fn encode_path(ecx: &EncodeContext,
                ebml_w: &mut writer::Encoder,
                path: &[ast_map::path_elt],
                name: ast_map::path_elt) {
-    fn encode_path_elt(ecx: @EncodeContext,
+    fn encode_path_elt(ecx: &EncodeContext,
                        ebml_w: &mut writer::Encoder,
                        elt: ast_map::path_elt) {
         let (tag, name) = match elt {
@@ -373,7 +380,7 @@ fn encode_path(ecx: @EncodeContext,
     ebml_w.end_tag();
 }
 
-fn encode_reexported_static_method(ecx: @EncodeContext,
+fn encode_reexported_static_method(ecx: &EncodeContext,
                                    ebml_w: &mut writer::Encoder,
                                    exp: &middle::resolve::Export2,
                                    method_def_id: def_id,
@@ -390,7 +397,7 @@ fn encode_reexported_static_method(ecx: @EncodeContext,
     ebml_w.end_tag();
 }
 
-fn encode_reexported_static_base_methods(ecx: @EncodeContext,
+fn encode_reexported_static_base_methods(ecx: &EncodeContext,
                                          ebml_w: &mut writer::Encoder,
                                          exp: &middle::resolve::Export2)
                                          -> bool {
@@ -411,7 +418,7 @@ fn encode_reexported_static_base_methods(ecx: @EncodeContext,
     }
 }
 
-fn encode_reexported_static_trait_methods(ecx: @EncodeContext,
+fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
                                           ebml_w: &mut writer::Encoder,
                                           exp: &middle::resolve::Export2)
                                           -> bool {
@@ -430,7 +437,7 @@ fn encode_reexported_static_trait_methods(ecx: @EncodeContext,
     }
 }
 
-fn encode_reexported_static_methods(ecx: @EncodeContext,
+fn encode_reexported_static_methods(ecx: &EncodeContext,
                                     ebml_w: &mut writer::Encoder,
                                     mod_path: &[ast_map::path_elt],
                                     exp: &middle::resolve::Export2) {
@@ -466,7 +473,7 @@ fn encode_reexported_static_methods(ecx: @EncodeContext,
     }
 }
 
-fn encode_info_for_mod(ecx: @EncodeContext,
+fn encode_info_for_mod(ecx: &EncodeContext,
                        ebml_w: &mut writer::Encoder,
                        md: &_mod,
                        id: node_id,
@@ -598,7 +605,7 @@ fn encode_method_sort(ebml_w: &mut writer::Encoder, sort: char) {
 }
 
 /* Returns an index of items in this class */
-fn encode_info_for_struct(ecx: @EncodeContext,
+fn encode_info_for_struct(ecx: &EncodeContext,
                           ebml_w: &mut writer::Encoder,
                           path: &[ast_map::path_elt],
                           fields: &[@struct_field],
@@ -633,7 +640,7 @@ fn encode_info_for_struct(ecx: @EncodeContext,
 }
 
 // This is for encoding info for ctors and dtors
-fn encode_info_for_ctor(ecx: @EncodeContext,
+fn encode_info_for_ctor(ecx: &EncodeContext,
                         ebml_w: &mut writer::Encoder,
                         id: node_id,
                         ident: ident,
@@ -662,7 +669,7 @@ fn encode_info_for_ctor(ecx: @EncodeContext,
         ebml_w.end_tag();
 }
 
-fn encode_info_for_struct_ctor(ecx: @EncodeContext,
+fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                                ebml_w: &mut writer::Encoder,
                                path: &[ast_map::path_elt],
                                name: ast::ident,
@@ -684,7 +691,7 @@ fn encode_info_for_struct_ctor(ecx: @EncodeContext,
     ebml_w.end_tag();
 }
 
-fn encode_method_ty_fields(ecx: @EncodeContext,
+fn encode_method_ty_fields(ecx: &EncodeContext,
                            ebml_w: &mut writer::Encoder,
                            method_ty: &ty::Method) {
     encode_def_id(ebml_w, method_ty.def_id);
@@ -698,7 +705,7 @@ fn encode_method_ty_fields(ecx: @EncodeContext,
     encode_explicit_self(ebml_w, method_ty.explicit_self);
 }
 
-fn encode_info_for_method(ecx: @EncodeContext,
+fn encode_info_for_method(ecx: &EncodeContext,
                           ebml_w: &mut writer::Encoder,
                           impl_path: &[ast_map::path_elt],
                           should_inline: bool,
@@ -769,7 +776,7 @@ fn should_inline(attrs: &[attribute]) -> bool {
     }
 }
 
-fn encode_info_for_item(ecx: @EncodeContext,
+fn encode_info_for_item(ecx: &EncodeContext,
                         ebml_w: &mut writer::Encoder,
                         item: @item,
                         index: @mut ~[entry<int>],
@@ -1075,7 +1082,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
     }
 }
 
-fn encode_info_for_foreign_item(ecx: @EncodeContext,
+fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                 ebml_w: &mut writer::Encoder,
                                 nitem: @foreign_item,
                                 index: @mut ~[entry<int>],
@@ -1109,7 +1116,7 @@ fn encode_info_for_foreign_item(ecx: @EncodeContext,
     ebml_w.end_tag();
 }
 
-fn encode_info_for_items(ecx: @EncodeContext,
+fn encode_info_for_items(ecx: &EncodeContext,
                          ebml_w: &mut writer::Encoder,
                          crate: &crate)
                          -> ~[entry<int>] {
@@ -1119,15 +1126,22 @@ fn encode_info_for_items(ecx: @EncodeContext,
     encode_info_for_mod(ecx, ebml_w, &crate.node.module,
                         crate_node_id, [],
                         syntax::parse::token::special_idents::invalid);
+    let items = ecx.tcx.items;
+
+    // See comment in `encode_side_tables_for_ii` in astencode
+    let ecx_ptr : *() = unsafe { cast::transmute(ecx) };
+
     visit::visit_crate(crate, ((), visit::mk_vt(@visit::Visitor {
         visit_expr: |_e, (_cx, _v)| { },
         visit_item: {
             let ebml_w = copy *ebml_w;
             |i, (cx, v)| {
                 visit::visit_item(i, (cx, v));
-                match ecx.tcx.items.get_copy(&i.id) {
+                match items.get_copy(&i.id) {
                     ast_map::node_item(_, pt) => {
                         let mut ebml_w = copy ebml_w;
+                        // See above
+                        let ecx : &EncodeContext = unsafe { cast::transmute(ecx_ptr) };
                         encode_info_for_item(ecx, &mut ebml_w, i, index, *pt);
                     }
                     _ => fail!("bad item")
@@ -1138,9 +1152,11 @@ fn encode_info_for_items(ecx: @EncodeContext,
             let ebml_w = copy *ebml_w;
             |ni, (cx, v)| {
                 visit::visit_foreign_item(ni, (cx, v));
-                match ecx.tcx.items.get_copy(&ni.id) {
+                match items.get_copy(&ni.id) {
                     ast_map::node_foreign_item(_, abi, _, pt) => {
                         let mut ebml_w = copy ebml_w;
+                        // See above
+                        let ecx : &EncodeContext = unsafe { cast::transmute(ecx_ptr) };
                         encode_info_for_foreign_item(ecx,
                                                      &mut ebml_w,
                                                      ni,
@@ -1267,10 +1283,10 @@ fn encode_attributes(ebml_w: &mut writer::Encoder, attrs: &[attribute]) {
 // metadata that Rust cares about for linking crates. This attribute requires
 // 'name' and 'vers' items, so if the user didn't provide them we will throw
 // them in anyway with default values.
-fn synthesize_crate_attrs(ecx: @EncodeContext,
+fn synthesize_crate_attrs(ecx: &EncodeContext,
                           crate: &crate) -> ~[attribute] {
 
-    fn synthesize_link_attr(ecx: @EncodeContext, items: ~[@meta_item]) ->
+    fn synthesize_link_attr(ecx: &EncodeContext, items: ~[@meta_item]) ->
        attribute {
 
         assert!(!ecx.link_meta.name.is_empty());
@@ -1317,10 +1333,10 @@ fn synthesize_crate_attrs(ecx: @EncodeContext,
     return attrs;
 }
 
-fn encode_crate_deps(ecx: @EncodeContext,
+fn encode_crate_deps(ecx: &EncodeContext,
                      ebml_w: &mut writer::Encoder,
-                     cstore: @mut cstore::CStore) {
-    fn get_ordered_deps(ecx: @EncodeContext, cstore: @mut cstore::CStore)
+                     cstore: &cstore::CStore) {
+    fn get_ordered_deps(ecx: &EncodeContext, cstore: &cstore::CStore)
                      -> ~[decoder::crate_dep] {
         type numdep = decoder::crate_dep;
 
@@ -1359,7 +1375,7 @@ fn encode_crate_deps(ecx: @EncodeContext,
     ebml_w.end_tag();
 }
 
-fn encode_lang_items(ecx: @EncodeContext, ebml_w: &mut writer::Encoder) {
+fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_lang_items);
 
     for ecx.tcx.lang_items.each_item |def_id, i| {
@@ -1383,7 +1399,7 @@ fn encode_lang_items(ecx: @EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.end_tag();   // tag_lang_items
 }
 
-fn encode_link_args(ecx: @EncodeContext, ebml_w: &mut writer::Encoder) {
+fn encode_link_args(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_link_args);
 
     let link_args = cstore::get_used_link_args(ecx.cstore);
@@ -1396,7 +1412,7 @@ fn encode_link_args(ecx: @EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.end_tag();
 }
 
-fn encode_crate_dep(ecx: @EncodeContext,
+fn encode_crate_dep(ecx: &EncodeContext,
                     ebml_w: &mut writer::Encoder,
                     dep: decoder::crate_dep) {
     ebml_w.start_tag(tag_crate_dep);
@@ -1444,10 +1460,12 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
     let EncodeParams{item_symbols, diag, tcx, reachable, reexports2,
                      discrim_symbols, cstore, encode_inlined_item,
                      link_meta, _} = parms;
-    let ecx = @EncodeContext {
+    let type_abbrevs = @mut HashMap::new();
+    let stats = @mut stats;
+    let ecx = EncodeContext {
         diag: diag,
         tcx: tcx,
-        stats: @mut stats,
+        stats: stats,
         reachable: reachable,
         reexports2: reexports2,
         item_symbols: item_symbols,
@@ -1455,7 +1473,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
         link_meta: link_meta,
         cstore: cstore,
         encode_inlined_item: encode_inlined_item,
-        type_abbrevs: @mut HashMap::new()
+        type_abbrevs: type_abbrevs
      };
 
     let mut ebml_w = writer::Encoder(wr as @io::Writer);
@@ -1463,28 +1481,28 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
     encode_hash(&mut ebml_w, ecx.link_meta.extras_hash);
 
     let mut i = *wr.pos;
-    let crate_attrs = synthesize_crate_attrs(ecx, crate);
+    let crate_attrs = synthesize_crate_attrs(&ecx, crate);
     encode_attributes(&mut ebml_w, crate_attrs);
     ecx.stats.attr_bytes = *wr.pos - i;
 
     i = *wr.pos;
-    encode_crate_deps(ecx, &mut ebml_w, ecx.cstore);
+    encode_crate_deps(&ecx, &mut ebml_w, ecx.cstore);
     ecx.stats.dep_bytes = *wr.pos - i;
 
     // Encode the language items.
     i = *wr.pos;
-    encode_lang_items(ecx, &mut ebml_w);
+    encode_lang_items(&ecx, &mut ebml_w);
     ecx.stats.lang_item_bytes = *wr.pos - i;
 
     // Encode the link args.
     i = *wr.pos;
-    encode_link_args(ecx, &mut ebml_w);
+    encode_link_args(&ecx, &mut ebml_w);
     ecx.stats.link_args_bytes = *wr.pos - i;
 
     // Encode and index the items.
     ebml_w.start_tag(tag_items);
     i = *wr.pos;
-    let items_index = encode_info_for_items(ecx, &mut ebml_w, crate);
+    let items_index = encode_info_for_items(&ecx, &mut ebml_w, crate);
     ecx.stats.item_bytes = *wr.pos - i;
 
     i = *wr.pos;

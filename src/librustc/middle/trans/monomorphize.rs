@@ -40,7 +40,7 @@ use syntax::ast_util::local_def;
 use syntax::opt_vec;
 use syntax::abi::AbiSet;
 
-pub fn monomorphic_fn(ccx: @CrateContext,
+pub fn monomorphic_fn(ccx: @mut CrateContext,
                       fn_id: ast::def_id,
                       real_substs: &ty::substs,
                       vtables: Option<typeck::vtable_res>,
@@ -329,7 +329,7 @@ pub fn normalize_for_monomorphization(tcx: ty::ctxt,
     }
 }
 
-pub fn make_mono_id(ccx: @CrateContext,
+pub fn make_mono_id(ccx: @mut CrateContext,
                     item: ast::def_id,
                     substs: &[ty::t],
                     vtables: Option<typeck::vtable_res>,

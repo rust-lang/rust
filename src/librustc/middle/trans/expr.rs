@@ -171,7 +171,7 @@ pub enum Dest {
 }
 
 impl Dest {
-    pub fn to_str(&self, ccx: @CrateContext) -> ~str {
+    pub fn to_str(&self, ccx: &CrateContext) -> ~str {
         match *self {
             SaveIn(v) => fmt!("SaveIn(%s)", val_str(ccx.tn, v)),
             Ignore => ~"Ignore"
@@ -946,7 +946,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
             ast::def_const(did) => {
                 let const_ty = expr_ty(bcx, ref_expr);
 
-                fn get_did(ccx: @CrateContext, did: ast::def_id)
+                fn get_did(ccx: @mut CrateContext, did: ast::def_id)
                     -> ast::def_id {
                     if did.crate != ast::local_crate {
                         inline::maybe_instantiate_inline(ccx, did, true)
@@ -958,20 +958,21 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                 fn get_val(bcx: block, did: ast::def_id, const_ty: ty::t)
                            -> ValueRef {
                     // For external constants, we don't inline.
-                    let extern_const_values =
-                        &mut *bcx.ccx().extern_const_values;
                     if did.crate == ast::local_crate {
                         // The LLVM global has the type of its initializer,
                         // which may not be equal to the enum's type for
                         // non-C-like enums.
-                        PointerCast(bcx,
-                                    base::get_item_val(bcx.ccx(), did.node),
-                                    T_ptr(type_of(bcx.ccx(), const_ty)))
+                        let val = base::get_item_val(bcx.ccx(), did.node);
+                        let pty = T_ptr(type_of(bcx.ccx(), const_ty));
+                        PointerCast(bcx, val, pty)
                     } else {
-                        match extern_const_values.find(&did) {
-                            None => {}  // Continue.
-                            Some(llval) => {
-                                return *llval;
+                        {
+                            let extern_const_values = &bcx.ccx().extern_const_values;
+                            match extern_const_values.find(&did) {
+                                None => {}  // Continue.
+                                Some(llval) => {
+                                    return *llval;
+                                }
                             }
                         }
 
@@ -984,6 +985,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                                 bcx.ccx().llmod,
                                 llty,
                                 transmute::<&u8,*i8>(&symbol[0]));
+                            let extern_const_values = &mut bcx.ccx().extern_const_values;
                             extern_const_values.insert(did, llval);
                             llval
                         }

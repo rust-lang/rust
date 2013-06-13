@@ -42,7 +42,7 @@ for non-monomorphized methods only.  Other methods will
 be generated once they are invoked with specific type parameters,
 see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
-pub fn trans_impl(ccx: @CrateContext,
+pub fn trans_impl(ccx: @mut CrateContext,
                   path: path,
                   name: ast::ident,
                   methods: &[@ast::method],
@@ -102,7 +102,7 @@ Translates a (possibly monomorphized) method body.
 - `llfn`: the LLVM ValueRef for the method
 - `impl_id`: the node ID of the impl this method is inside
 */
-pub fn trans_method(ccx: @CrateContext,
+pub fn trans_method(ccx: @mut CrateContext,
                     path: path,
                     method: &ast::method,
                     param_substs: Option<@param_substs>,
@@ -378,7 +378,7 @@ pub fn method_from_methods(ms: &[@ast::method], name: ast::ident)
     ms.find(|m| m.ident == name).map(|m| ast_util::local_def(m.id))
 }
 
-pub fn method_with_name_or_default(ccx: @CrateContext,
+pub fn method_with_name_or_default(ccx: @mut CrateContext,
                                    impl_id: ast::def_id,
                                    name: ast::ident) -> ast::def_id {
     *do ccx.impl_method_cache.find_or_insert_with((impl_id, name)) |_| {
@@ -415,7 +415,7 @@ pub fn method_with_name_or_default(ccx: @CrateContext,
     }
 }
 
-pub fn method_ty_param_count(ccx: @CrateContext, m_id: ast::def_id,
+pub fn method_ty_param_count(ccx: &CrateContext, m_id: ast::def_id,
                              i_id: ast::def_id) -> uint {
     debug!("method_ty_param_count: m_id: %?, i_id: %?", m_id, i_id);
     if m_id.crate == ast::local_crate {
@@ -734,7 +734,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
     };
 }
 
-pub fn vtable_id(ccx: @CrateContext,
+pub fn vtable_id(ccx: @mut CrateContext,
                  origin: &typeck::vtable_origin)
               -> mono_id {
     match origin {
@@ -778,7 +778,7 @@ pub fn get_vtable(bcx: block,
 }
 
 /// Helper function to declare and initialize the vtable.
-pub fn make_vtable(ccx: @CrateContext,
+pub fn make_vtable(ccx: @mut CrateContext,
                    tydesc: @mut tydesc_info,
                    ptrs: &[ValueRef])
                    -> ValueRef {

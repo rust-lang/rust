@@ -1,3 +1,13 @@
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 use core::prelude::*;
 
 use back::{upcall};
@@ -39,29 +49,29 @@ pub struct CrateContext {
      tn: @TypeNames,
      externs: ExternMap,
      intrinsics: HashMap<&'static str, ValueRef>,
-     item_vals: @mut HashMap<ast::node_id, ValueRef>,
+     item_vals: HashMap<ast::node_id, ValueRef>,
      exp_map2: resolve::ExportMap2,
      reachable: reachable::map,
-     item_symbols: @mut HashMap<ast::node_id, ~str>,
+     item_symbols: HashMap<ast::node_id, ~str>,
      link_meta: LinkMeta,
-     enum_sizes: @mut HashMap<ty::t, uint>,
-     discrims: @mut HashMap<ast::def_id, ValueRef>,
-     discrim_symbols: @mut HashMap<ast::node_id, @str>,
-     tydescs: @mut HashMap<ty::t, @mut tydesc_info>,
+     enum_sizes: HashMap<ty::t, uint>,
+     discrims: HashMap<ast::def_id, ValueRef>,
+     discrim_symbols: HashMap<ast::node_id, @str>,
+     tydescs: HashMap<ty::t, @mut tydesc_info>,
      // Set when running emit_tydescs to enforce that no more tydescs are
      // created.
-     finished_tydescs: @mut bool,
+     finished_tydescs: bool,
      // Track mapping of external ids to local items imported for inlining
-     external: @mut HashMap<ast::def_id, Option<ast::node_id>>,
+     external: HashMap<ast::def_id, Option<ast::node_id>>,
      // Cache instances of monomorphized functions
-     monomorphized: @mut HashMap<mono_id, ValueRef>,
-     monomorphizing: @mut HashMap<ast::def_id, uint>,
+     monomorphized: HashMap<mono_id, ValueRef>,
+     monomorphizing: HashMap<ast::def_id, uint>,
      // Cache computed type parameter uses (see type_use.rs)
-     type_use_cache: @mut HashMap<ast::def_id, @~[type_use::type_uses]>,
+     type_use_cache: HashMap<ast::def_id, @~[type_use::type_uses]>,
      // Cache generated vtables
-     vtables: @mut HashMap<mono_id, ValueRef>,
+     vtables: HashMap<mono_id, ValueRef>,
      // Cache of constant strings,
-     const_cstr_cache: @mut HashMap<@str, ValueRef>,
+     const_cstr_cache: HashMap<@str, ValueRef>,
 
      // Reverse-direction for const ptrs cast from globals.
      // Key is an int, cast from a ValueRef holding a *T,
@@ -71,27 +81,27 @@ pub struct CrateContext {
      // when we ptrcast, and we have to ptrcast during translation
      // of a [T] const because we form a slice, a [*T,int] pair, not
      // a pointer to an LLVM array type.
-     const_globals: @mut HashMap<int, ValueRef>,
+     const_globals: HashMap<int, ValueRef>,
 
      // Cache of emitted const values
-     const_values: @mut HashMap<ast::node_id, ValueRef>,
+     const_values: HashMap<ast::node_id, ValueRef>,
 
      // Cache of external const values
-     extern_const_values: @mut HashMap<ast::def_id, ValueRef>,
+     extern_const_values: HashMap<ast::def_id, ValueRef>,
 
-     module_data: @mut HashMap<~str, ValueRef>,
-     lltypes: @mut HashMap<ty::t, TypeRef>,
-     llsizingtypes: @mut HashMap<ty::t, TypeRef>,
-     adt_reprs: @mut HashMap<ty::t, @adt::Repr>,
+     module_data: HashMap<~str, ValueRef>,
+     lltypes: HashMap<ty::t, TypeRef>,
+     llsizingtypes: HashMap<ty::t, TypeRef>,
+     adt_reprs: HashMap<ty::t, @adt::Repr>,
      names: namegen,
      next_addrspace: addrspace_gen,
-     symbol_hasher: @mut hash::State,
-     type_hashcodes: @mut HashMap<ty::t, @str>,
-     type_short_names: @mut HashMap<ty::t, ~str>,
-     all_llvm_symbols: @mut HashSet<@str>,
+     symbol_hasher: hash::State,
+     type_hashcodes: HashMap<ty::t, @str>,
+     type_short_names: HashMap<ty::t, ~str>,
+     all_llvm_symbols: HashSet<@str>,
      tcx: ty::ctxt,
      maps: astencode::Maps,
-     stats: @mut Stats,
+     stats: Stats,
      upcalls: @upcall::Upcalls,
      tydesc_type: TypeRef,
      int_type: TypeRef,
@@ -103,15 +113,15 @@ pub struct CrateContext {
      // Set when at least one function uses GC. Needed so that
      // decl_gc_metadata knows whether to link to the module metadata, which
      // is not emitted by LLVM's GC pass when no functions use GC.
-     uses_gc: @mut bool,
+     uses_gc: bool,
      dbg_cx: Option<debuginfo::DebugContext>,
-     do_not_commit_warning_issued: @mut bool
+     do_not_commit_warning_issued: bool
 }
 
 impl CrateContext {
     pub fn new(sess: session::Session, name: &str, tcx: ty::ctxt,
                emap2: resolve::ExportMap2, maps: astencode::Maps,
-               symbol_hasher: @mut hash::State, link_meta: LinkMeta,
+               symbol_hasher: hash::State, link_meta: LinkMeta,
                reachable: reachable::map) -> CrateContext {
         unsafe {
             let llcx = llvm::LLVMContextCreate();
@@ -147,40 +157,40 @@ impl CrateContext {
                   llcx: llcx,
                   td: td,
                   tn: tn,
-                  externs: @mut HashMap::new(),
+                  externs: HashMap::new(),
                   intrinsics: intrinsics,
-                  item_vals: @mut HashMap::new(),
+                  item_vals: HashMap::new(),
                   exp_map2: emap2,
                   reachable: reachable,
-                  item_symbols: @mut HashMap::new(),
+                  item_symbols: HashMap::new(),
                   link_meta: link_meta,
-                  enum_sizes: @mut HashMap::new(),
-                  discrims: @mut HashMap::new(),
-                  discrim_symbols: @mut HashMap::new(),
-                  tydescs: @mut HashMap::new(),
-                  finished_tydescs: @mut false,
-                  external: @mut HashMap::new(),
-                  monomorphized: @mut HashMap::new(),
-                  monomorphizing: @mut HashMap::new(),
-                  type_use_cache: @mut HashMap::new(),
-                  vtables: @mut HashMap::new(),
-                  const_cstr_cache: @mut HashMap::new(),
-                  const_globals: @mut HashMap::new(),
-                  const_values: @mut HashMap::new(),
-                  extern_const_values: @mut HashMap::new(),
-                  module_data: @mut HashMap::new(),
-                  lltypes: @mut HashMap::new(),
-                  llsizingtypes: @mut HashMap::new(),
-                  adt_reprs: @mut HashMap::new(),
+                  enum_sizes: HashMap::new(),
+                  discrims: HashMap::new(),
+                  discrim_symbols: HashMap::new(),
+                  tydescs: HashMap::new(),
+                  finished_tydescs: false,
+                  external: HashMap::new(),
+                  monomorphized: HashMap::new(),
+                  monomorphizing: HashMap::new(),
+                  type_use_cache: HashMap::new(),
+                  vtables: HashMap::new(),
+                  const_cstr_cache: HashMap::new(),
+                  const_globals: HashMap::new(),
+                  const_values: HashMap::new(),
+                  extern_const_values: HashMap::new(),
+                  module_data: HashMap::new(),
+                  lltypes: HashMap::new(),
+                  llsizingtypes: HashMap::new(),
+                  adt_reprs: HashMap::new(),
                   names: new_namegen(),
                   next_addrspace: new_addrspace_gen(),
                   symbol_hasher: symbol_hasher,
-                  type_hashcodes: @mut HashMap::new(),
-                  type_short_names: @mut HashMap::new(),
-                  all_llvm_symbols: @mut HashSet::new(),
+                  type_hashcodes: HashMap::new(),
+                  type_short_names: HashMap::new(),
+                  all_llvm_symbols: HashSet::new(),
                   tcx: tcx,
                   maps: maps,
-                  stats: @mut Stats {
+                  stats: Stats {
                     n_static_tydescs: 0u,
                     n_glues_created: 0u,
                     n_null_glues: 0u,
@@ -189,9 +199,9 @@ impl CrateContext {
                     n_monos: 0u,
                     n_inlines: 0u,
                     n_closures: 0u,
-                    llvm_insn_ctxt: @mut ~[],
-                    llvm_insns: @mut HashMap::new(),
-                    fn_times: @mut ~[]
+                    llvm_insn_ctxt: ~[],
+                    llvm_insns: HashMap::new(),
+                    fn_times: ~[]
                   },
                   upcalls: upcall::declare_upcalls(targ_cfg, llmod),
                   tydesc_type: tydesc_type,
@@ -203,9 +213,9 @@ impl CrateContext {
                   }),
                   shape_cx: mk_ctxt(llmod),
                   crate_map: crate_map,
-                  uses_gc: @mut false,
+                  uses_gc: false,
                   dbg_cx: dbg_cx,
-                  do_not_commit_warning_issued: @mut false
+                  do_not_commit_warning_issued: false
             }
         }
     }
