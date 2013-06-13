@@ -274,12 +274,13 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                    then there's no need for it to be mutable */
                 if i == 0 {
                     stms.push(cx.stmt_let(fmt_sp, npieces > 1,
-                                          ident, cx.expr_str_uniq(fmt_sp, s)));
+                                          ident, cx.expr_str_uniq(fmt_sp, s.to_managed())));
                 } else {
                     // we call the push_str function because the
                     // bootstrap doesnt't seem to work if we call the
                     // method.
-                    let args = ~[cx.expr_mut_addr_of(fmt_sp, buf()), cx.expr_str(fmt_sp, s)];
+                    let args = ~[cx.expr_mut_addr_of(fmt_sp, buf()),
+                                 cx.expr_str(fmt_sp, s.to_managed())];
                     let call = cx.expr_call_global(fmt_sp,
                                                    ~[core_ident,
                                                      str_ident,
@@ -303,7 +304,7 @@ fn pieces_to_expr(cx: @ExtCtxt, sp: span,
                    must be initialized as an empty string */
                 if i == 0 {
                     stms.push(cx.stmt_let(fmt_sp, true, ident,
-                                          cx.expr_str_uniq(fmt_sp, ~"")));
+                                          cx.expr_str_uniq(fmt_sp, @"")));
                 }
                 stms.push(cx.stmt_expr(make_new_conv(cx, fmt_sp, conv,
                                                      args[n], buf())));

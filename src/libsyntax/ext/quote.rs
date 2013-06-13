@@ -43,8 +43,6 @@ pub mod rt {
     pub use parse::new_parser_from_tts;
     pub use codemap::{BytePos, span, dummy_spanned};
 
-    use print::pprust::{item_to_str, ty_to_str};
-
     pub trait ToTokens {
         pub fn to_tokens(&self, _cx: @ExtCtxt) -> ~[token_tree];
     }
@@ -71,132 +69,132 @@ pub mod rt {
 
     pub trait ToSource {
         // Takes a thing and generates a string containing rust code for it.
-        pub fn to_source(&self) -> ~str;
+        pub fn to_source(&self) -> @str;
     }
 
     impl ToSource for ast::ident {
-        fn to_source(&self) -> ~str {
-            copy *ident_to_str(self)
+        fn to_source(&self) -> @str {
+            ident_to_str(self)
         }
     }
 
     impl ToSource for @ast::item {
-        fn to_source(&self) -> ~str {
-            item_to_str(*self, get_ident_interner())
+        fn to_source(&self) -> @str {
+            pprust::item_to_str(*self, get_ident_interner()).to_managed()
         }
     }
 
     impl<'self> ToSource for &'self [@ast::item] {
-        fn to_source(&self) -> ~str {
-            self.map(|i| i.to_source()).connect("\n\n")
+        fn to_source(&self) -> @str {
+            self.map(|i| i.to_source()).connect("\n\n").to_managed()
         }
     }
 
     impl ToSource for @ast::Ty {
-        fn to_source(&self) -> ~str {
-            ty_to_str(*self, get_ident_interner())
+        fn to_source(&self) -> @str {
+            pprust::ty_to_str(*self, get_ident_interner()).to_managed()
         }
     }
 
     impl<'self> ToSource for &'self [@ast::Ty] {
-        fn to_source(&self) -> ~str {
-            self.map(|i| i.to_source()).connect(", ")
+        fn to_source(&self) -> @str {
+            self.map(|i| i.to_source()).connect(", ").to_managed()
         }
     }
 
     impl ToSource for Generics {
-        fn to_source(&self) -> ~str {
-            pprust::generics_to_str(self, get_ident_interner())
+        fn to_source(&self) -> @str {
+            pprust::generics_to_str(self, get_ident_interner()).to_managed()
         }
     }
 
     impl ToSource for @ast::expr {
-        fn to_source(&self) -> ~str {
-            pprust::expr_to_str(*self, get_ident_interner())
+        fn to_source(&self) -> @str {
+            pprust::expr_to_str(*self, get_ident_interner()).to_managed()
         }
     }
 
     impl ToSource for ast::blk {
-        fn to_source(&self) -> ~str {
-            pprust::block_to_str(self, get_ident_interner())
+        fn to_source(&self) -> @str {
+            pprust::block_to_str(self, get_ident_interner()).to_managed()
         }
     }
 
     impl<'self> ToSource for &'self str {
-        fn to_source(&self) -> ~str {
-            let lit = dummy_spanned(ast::lit_str(@self.to_owned()));
-            pprust::lit_to_str(@lit)
+        fn to_source(&self) -> @str {
+            let lit = dummy_spanned(ast::lit_str(self.to_managed()));
+            pprust::lit_to_str(@lit).to_managed()
         }
     }
 
     impl ToSource for int {
-        fn to_source(&self) -> ~str {
+        fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_int(*self as i64, ast::ty_i));
-            pprust::lit_to_str(@lit)
+            pprust::lit_to_str(@lit).to_managed()
         }
     }
 
     impl ToSource for i8 {
-        fn to_source(&self) -> ~str {
+        fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_int(*self as i64, ast::ty_i8));
-            pprust::lit_to_str(@lit)
+            pprust::lit_to_str(@lit).to_managed()
         }
     }
 
     impl ToSource for i16 {
-        fn to_source(&self) -> ~str {
+        fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_int(*self as i64, ast::ty_i16));
-            pprust::lit_to_str(@lit)
+            pprust::lit_to_str(@lit).to_managed()
         }
     }
 
 
     impl ToSource for i32 {
-        fn to_source(&self) -> ~str {
+        fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_int(*self as i64, ast::ty_i32));
-            pprust::lit_to_str(@lit)
+            pprust::lit_to_str(@lit).to_managed()
         }
     }
 
     impl ToSource for i64 {
-        fn to_source(&self) -> ~str {
+        fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_int(*self as i64, ast::ty_i64));
-            pprust::lit_to_str(@lit)
+            pprust::lit_to_str(@lit).to_managed()
         }
     }
 
     impl ToSource for uint {
-        fn to_source(&self) -> ~str {
+        fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_uint(*self as u64, ast::ty_u));
-            pprust::lit_to_str(@lit)
+            pprust::lit_to_str(@lit).to_managed()
         }
     }
 
     impl ToSource for u8 {
-        fn to_source(&self) -> ~str {
+        fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_uint(*self as u64, ast::ty_u8));
-            pprust::lit_to_str(@lit)
+            pprust::lit_to_str(@lit).to_managed()
         }
     }
 
     impl ToSource for u16 {
-        fn to_source(&self) -> ~str {
+        fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_uint(*self as u64, ast::ty_u16));
-            pprust::lit_to_str(@lit)
+            pprust::lit_to_str(@lit).to_managed()
         }
     }
 
     impl ToSource for u32 {
-        fn to_source(&self) -> ~str {
+        fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_uint(*self as u64, ast::ty_u32));
-            pprust::lit_to_str(@lit)
+            pprust::lit_to_str(@lit).to_managed()
         }
     }
 
     impl ToSource for u64 {
-        fn to_source(&self) -> ~str {
+        fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_uint(*self as u64, ast::ty_u64));
-            pprust::lit_to_str(@lit)
+            pprust::lit_to_str(@lit).to_managed()
         }
     }
 
@@ -317,18 +315,18 @@ pub mod rt {
     }
 
     pub trait ExtParseUtils {
-        fn parse_item(&self, s: ~str) -> @ast::item;
-        fn parse_expr(&self, s: ~str) -> @ast::expr;
-        fn parse_stmt(&self, s: ~str) -> @ast::stmt;
-        fn parse_tts(&self, s: ~str) -> ~[ast::token_tree];
+        fn parse_item(&self, s: @str) -> @ast::item;
+        fn parse_expr(&self, s: @str) -> @ast::expr;
+        fn parse_stmt(&self, s: @str) -> @ast::stmt;
+        fn parse_tts(&self, s: @str) -> ~[ast::token_tree];
     }
 
     impl ExtParseUtils for ExtCtxt {
 
-        fn parse_item(&self, s: ~str) -> @ast::item {
+        fn parse_item(&self, s: @str) -> @ast::item {
             let res = parse::parse_item_from_source_str(
-                ~"<quote expansion>",
-                @(copy s),
+                @"<quote expansion>",
+                s,
                 self.cfg(),
                 ~[],
                 self.parse_sess());
@@ -341,27 +339,27 @@ pub mod rt {
             }
         }
 
-        fn parse_stmt(&self, s: ~str) -> @ast::stmt {
+        fn parse_stmt(&self, s: @str) -> @ast::stmt {
             parse::parse_stmt_from_source_str(
-                ~"<quote expansion>",
-                @(copy s),
+                @"<quote expansion>",
+                s,
                 self.cfg(),
                 ~[],
                 self.parse_sess())
         }
 
-        fn parse_expr(&self, s: ~str) -> @ast::expr {
+        fn parse_expr(&self, s: @str) -> @ast::expr {
             parse::parse_expr_from_source_str(
-                ~"<quote expansion>",
-                @(copy s),
+                @"<quote expansion>",
+                s,
                 self.cfg(),
                 self.parse_sess())
         }
 
-        fn parse_tts(&self, s: ~str) -> ~[ast::token_tree] {
+        fn parse_tts(&self, s: @str) -> ~[ast::token_tree] {
             parse::parse_tts_from_source_str(
-                ~"<quote expansion>",
-                @(copy s),
+                @"<quote expansion>",
+                s,
                 self.cfg(),
                 self.parse_sess())
         }

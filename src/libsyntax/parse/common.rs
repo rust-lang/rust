@@ -158,7 +158,7 @@ impl Parser {
             self.fatal(
                 fmt!(
                     "expected `%s`, found `%s`",
-                    *self.id_to_str(kw.to_ident()),
+                    self.id_to_str(kw.to_ident()),
                     self.this_token_to_str()
                 )
             );

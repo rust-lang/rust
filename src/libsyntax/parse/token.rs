@@ -21,10 +21,8 @@ use core::cast;
 use core::char;
 use core::cmp::Equiv;
 use core::local_data;
-use core::str;
 use core::rand;
 use core::rand::RngUtil;
-use core::to_bytes;
 
 #[deriving(Encodable, Decodable, Eq)]
 pub enum binop {
@@ -180,28 +178,28 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
       }
       LIT_INT_UNSUFFIXED(i) => { i.to_str() }
       LIT_FLOAT(ref s, t) => {
-        let mut body = copy *ident_to_str(s);
+        let mut body = ident_to_str(s).to_owned();
         if body.ends_with(".") {
             body += "0";  // `10.f` is not a float literal
         }
         body + ast_util::float_ty_to_str(t)
       }
       LIT_FLOAT_UNSUFFIXED(ref s) => {
-        let mut body = copy *ident_to_str(s);
+        let mut body = ident_to_str(s).to_owned();
         if body.ends_with(".") {
             body += "0";  // `10.f` is not a float literal
         }
         body
       }
-      LIT_STR(ref s) => { ~"\"" + ident_to_str(s).escape_default() + "\"" }
+      LIT_STR(ref s) => { fmt!("\"%s\"", ident_to_str(s).escape_default()) }
 
       /* Name components */
-      IDENT(s, _) => copy *in.get(s.name),
-      LIFETIME(s) => fmt!("'%s", *in.get(s.name)),
+      IDENT(s, _) => in.get(s.name).to_owned(),
+      LIFETIME(s) => fmt!("'%s", in.get(s.name)),
       UNDERSCORE => ~"_",
 
       /* Other */
-      DOC_COMMENT(ref s) => copy *ident_to_str(s),
+      DOC_COMMENT(ref s) => ident_to_str(s).to_owned(),
       EOF => ~"<eof>",
       INTERPOLATED(ref nt) => {
         match nt {
@@ -350,20 +348,6 @@ pub mod special_idents {
     pub static type_self: ident = ident { name: 34, ctxt: 0};    // `Self`
 }
 
-pub struct StringRef<'self>(&'self str);
-
-impl<'self> Equiv<@~str> for StringRef<'self> {
-    #[inline(always)]
-    fn equiv(&self, other: &@~str) -> bool { str::eq_slice(**self, **other) }
-}
-
-impl<'self> to_bytes::IterBytes for StringRef<'self> {
-    #[inline(always)]
-    fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
-        (**self).iter_bytes(lsb0, f)
-    }
-}
-
 /**
  * Maps a token to a record specifying the corresponding binary
  * operator
@@ -403,14 +387,14 @@ impl ident_interner {
     pub fn gensym(&self, val: &str) -> Name {
         self.interner.gensym(val)
     }
-    pub fn get(&self, idx: Name) -> @~str {
+    pub fn get(&self, idx: Name) -> @str {
         self.interner.get(idx)
     }
     // is this really something that should be exposed?
     pub fn len(&self) -> uint {
         self.interner.len()
     }
-    pub fn find_equiv<Q:Hash + IterBytes + Equiv<@~str>>(&self, val: &Q)
+    pub fn find_equiv<Q:Hash + IterBytes + Equiv<@str>>(&self, val: &Q)
                                                      -> Option<Name> {
         self.interner.find_equiv(val)
     }
@@ -542,12 +526,12 @@ pub fn gensym(str : &str) -> Name {
 }
 
 // map an interned representation back to a string
-pub fn interner_get(name : Name) -> @~str {
+pub fn interner_get(name : Name) -> @str {
     get_ident_interner().get(name)
 }
 
 // maps an identifier to the string that it corresponds to
-pub fn ident_to_str(id : &ast::ident) -> @~str {
+pub fn ident_to_str(id : &ast::ident) -> @str {
     interner_get(id.name)
 }
 
@@ -715,6 +699,6 @@ mod test {
     #[test] fn t1() {
         let a = fresh_name("ghi");
         io::println(fmt!("interned name: %u,\ntextual name: %s\n",
-                         a,*interner_get(a)));
+                         a,interner_get(a)));
     }
 }

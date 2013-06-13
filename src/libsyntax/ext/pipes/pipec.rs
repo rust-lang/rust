@@ -101,7 +101,7 @@ impl gen_send for message {
                          name,
                          vec::append_one(
                              arg_names.map(|x| cx.str_of(*x)),
-                             ~"s").connect(", "));
+                             @"s").connect(", "));
 
             if !try {
                 body += fmt!("::std::pipes::send(pipe, message);\n");
@@ -114,7 +114,7 @@ impl gen_send for message {
                               } else { ::std::pipes::rt::make_none() } }");
             }
 
-            let body = cx.parse_expr(body);
+            let body = cx.parse_expr(body.to_managed());
 
             let mut rty = cx.ty_path(path(~[next.data_name()],
                                           span)
@@ -123,7 +123,7 @@ impl gen_send for message {
                 rty = cx.ty_option(rty);
             }
 
-            let name = cx.ident_of(if try { ~"try_" + name } else { name } );
+            let name = if try {cx.ident_of(~"try_" + name)} else {cx.ident_of(name)};
 
             cx.item_fn_poly(dummy_sp(),
                             name,
@@ -173,12 +173,12 @@ impl gen_send for message {
                                   } }");
                 }
 
-                let body = cx.parse_expr(body);
+                let body = cx.parse_expr(body.to_managed());
 
-                let name = if try { ~"try_" + name } else { name };
+                let name = if try {cx.ident_of(~"try_" + name)} else {cx.ident_of(name)};
 
                 cx.item_fn_poly(dummy_sp(),
-                                cx.ident_of(name),
+                                name,
                                 args_ast,
                                 if try {
                                     cx.ty_option(cx.ty_nil())
@@ -326,7 +326,7 @@ impl gen_init for protocol {
                            start_state.generics.to_source(),
                            start_state.to_ty(cx).to_source(),
                            start_state.to_ty(cx).to_source(),
-                           body.to_source()))
+                           body.to_source()).to_managed())
     }
 
     fn gen_buffer_init(&self, ext_cx: @ExtCtxt) -> @ast::expr {
@@ -358,10 +358,10 @@ impl gen_init for protocol {
                 self.states.map_to_vec(
                     |s| ext_cx.parse_stmt(
                         fmt!("data.%s.set_buffer(buffer)",
-                             s.name))),
+                             s.name).to_managed())),
                 Some(ext_cx.parse_expr(fmt!(
                     "::std::ptr::to_mut_unsafe_ptr(&mut (data.%s))",
-                    self.states[0].name)))));
+                    self.states[0].name).to_managed()))));
 
         quote_expr!({
             let buffer = $buffer;
@@ -459,9 +459,9 @@ impl gen_init for protocol {
         let allows = cx.attribute(
             copy self.span,
             cx.meta_list(copy self.span,
-                         ~"allow",
-                         ~[cx.meta_word(copy self.span, ~"non_camel_case_types"),
-                           cx.meta_word(copy self.span, ~"unused_mut")]));
+                         @"allow",
+                         ~[cx.meta_word(copy self.span, @"non_camel_case_types"),
+                           cx.meta_word(copy self.span, @"unused_mut")]));
         cx.item_mod(copy self.span, cx.ident_of(copy self.name),
                     ~[allows], ~[], items)
     }

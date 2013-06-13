@@ -184,7 +184,7 @@ pub struct Loc {
 // Actually, *none* of the clients use the filename *or* file field;
 // perhaps they should just be removed.
 pub struct LocWithOpt {
-    filename: ~str,
+    filename: FileName,
     line: uint,
     col: CharPos,
     file: Option<@FileMap>,
@@ -193,7 +193,7 @@ pub struct LocWithOpt {
 // used to be structural records. Better names, anyone?
 pub struct FileMapAndLine {fm: @FileMap, line: uint}
 pub struct FileMapAndBytePos {fm: @FileMap, pos: BytePos}
-pub struct NameAndSpan {name: ~str, span: Option<span>}
+pub struct NameAndSpan {name: @str, span: Option<span>}
 
 impl to_bytes::IterBytes for NameAndSpan {
     fn iter_bytes(&self, lsb0: bool, f: to_bytes::Cb) -> bool {
@@ -227,7 +227,7 @@ impl to_bytes::IterBytes for ExpnInfo {
     }
 }
 
-pub type FileName = ~str;
+pub type FileName = @str;
 
 pub struct FileLines
 {
@@ -261,7 +261,7 @@ pub struct FileMap {
     /// Extra information used by qquote
     substr: FileSubstr,
     /// The complete source code
-    src: @~str,
+    src: @str,
     /// The start position of this source in the CodeMap
     start_pos: BytePos,
     /// Locations of lines beginnings in the source code
@@ -316,14 +316,14 @@ impl CodeMap {
     }
 
     /// Add a new FileMap to the CodeMap and return it
-    pub fn new_filemap(&self, filename: FileName, src: @~str) -> @FileMap {
+    pub fn new_filemap(&self, filename: FileName, src: @str) -> @FileMap {
         return self.new_filemap_w_substr(filename, FssNone, src);
     }
 
     pub fn new_filemap_w_substr(&self,
                                 filename: FileName,
                                 substr: FileSubstr,
-                                src: @~str)
+                                src: @str)
                                 -> @FileMap {
         let files = &mut *self.files;
         let start_pos = if files.len() == 0 {
@@ -362,7 +362,7 @@ impl CodeMap {
         match (loc.file.substr) {
             FssNone =>
             LocWithOpt {
-                filename: /* FIXME (#2543) */ copy loc.file.name,
+                filename: loc.file.name,
                 line: loc.line,
                 col: loc.col,
                 file: Some(loc.file)},
@@ -421,8 +421,8 @@ impl CodeMap {
                           begin.pos.to_uint(), end.pos.to_uint()).to_owned();
     }
 
-    pub fn get_filemap(&self, filename: ~str) -> @FileMap {
-        for self.files.each |fm| { if fm.name == filename { return *fm; } }
+    pub fn get_filemap(&self, filename: &str) -> @FileMap {
+        for self.files.each |fm| { if filename == fm.name { return *fm; } }
         //XXjdm the following triggers a mismatched type bug
         //      (or expected function, found _|_)
         fail!(); // ("asking for " + filename + " which we don't know about");
@@ -532,7 +532,7 @@ mod test {
     #[test]
     fn t1 () {
         let cm = CodeMap::new();
-        let fm = cm.new_filemap(~"blork.rs",@~"first line.\nsecond line");
+        let fm = cm.new_filemap(@"blork.rs",@"first line.\nsecond line");
         fm.next_line(BytePos(0));
         assert_eq!(&fm.get_line(0),&~"first line.");
         // TESTING BROKEN BEHAVIOR:
@@ -544,7 +544,7 @@ mod test {
     #[should_fail]
     fn t2 () {
         let cm = CodeMap::new();
-        let fm = cm.new_filemap(~"blork.rs",@~"first line.\nsecond line");
+        let fm = cm.new_filemap(@"blork.rs",@"first line.\nsecond line");
         // TESTING *REALLY* BROKEN BEHAVIOR:
         fm.next_line(BytePos(0));
         fm.next_line(BytePos(10));

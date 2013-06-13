@@ -80,7 +80,7 @@ fn fold_mod(_ctx: @mut ReadyCtx,
     fn strip_main(item: @ast::item) -> @ast::item {
         @ast::item {
             attrs: do item.attrs.filtered |attr| {
-                *attr::get_attr_name(attr) != ~"main"
+                "main" != attr::get_attr_name(attr)
             },
             .. copy *item
         }
@@ -109,7 +109,7 @@ fn fold_item(ctx: @mut ReadyCtx,
                 ast::meta_list(_, ref mis) => {
                     for mis.each |mi| {
                         match mi.node {
-                            ast::meta_word(cmd) => cmds.push(copy *cmd),
+                            ast::meta_word(cmd) => cmds.push(cmd.to_owned()),
                             _ => {}
                         };
                     }
@@ -205,7 +205,7 @@ pub fn compile_input(ctxt: &Ctx,
     // tjc: by default, use the package ID name as the link name
     // not sure if we should support anything else
 
-    let binary = @(copy os::args()[0]);
+    let binary = os::args()[0].to_managed();
 
     debug!("flags: %s", flags.connect(" "));
     debug!("cfgs: %s", cfgs.connect(" "));
@@ -270,11 +270,11 @@ pub fn compile_input(ctxt: &Ctx,
         debug!("Injecting link name: %s", short_name_to_use);
         crate = @codemap::respan(crate.span, ast::crate_ {
             attrs: ~[mk_attr(@dummy_spanned(
-                meta_list(@~"link",
-                 ~[@dummy_spanned(meta_name_value(@~"name",
-                                      mk_string_lit(@short_name_to_use))),
-                   @dummy_spanned(meta_name_value(@~"vers",
-                         mk_string_lit(@pkg_id.version.to_str_nonempty())))])))],
+                meta_list(@"link",
+                 ~[@dummy_spanned(meta_name_value(@"name",
+                                      mk_string_lit(short_name_to_use.to_managed()))),
+                   @dummy_spanned(meta_name_value(@"vers",
+                         mk_string_lit(pkg_id.version.to_str_nonempty().to_managed())))])))],
             ..copy crate.node});
     }
 
@@ -363,24 +363,24 @@ fn find_and_install_dependencies(ctxt: &Ctx,
                     None => ()
                 };
                 let lib_name = sess.str_of(lib_ident);
-                match find_library_in_search_path(my_ctxt.sysroot_opt, *lib_name) {
+                match find_library_in_search_path(my_ctxt.sysroot_opt, lib_name) {
                     Some(installed_path) => {
                         debug!("It exists: %s", installed_path.to_str());
                     }
                     None => {
                         // Try to install it
-                        let pkg_id = PkgId::new(*lib_name);
+                        let pkg_id = PkgId::new(lib_name);
                         my_ctxt.install(&my_workspace, &pkg_id);
                         let built_lib =
                             built_library_in_workspace(&pkg_id,
                                 &my_workspace).expect(fmt!("find_and_install_dependencies: \
                                 I thought I already built %s, but the library doesn't seem \
-                                to exist", *lib_name));
+                                to exist", lib_name));
                         // Also, add an additional search path
                         let installed_path = target_library_in_workspace(&my_workspace,
                                                                          &built_lib).pop();
                         debug!("Great, I installed %s, and it's in %s",
-                               *lib_name, installed_path.to_str());
+                               lib_name, installed_path.to_str());
                         save(installed_path);
                     }
                 }
@@ -415,7 +415,7 @@ pub fn link_exe(src: &Path, dest: &Path) -> bool {
     }
 }
 
-pub fn mk_string_lit(s: @~str) -> ast::lit {
+pub fn mk_string_lit(s: @str) -> ast::lit {
     spanned {
         node: ast::lit_str(s),
         span: dummy_sp()

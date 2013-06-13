@@ -33,7 +33,7 @@ use core::hashmap::HashMap;
 // ast::mac_invoc_tt.
 
 pub struct MacroDef {
-    name: ~str,
+    name: @str,
     ext: SyntaxExtension
 }
 
@@ -308,18 +308,18 @@ impl ExtCtxt {
     pub fn set_trace_macros(&self, x: bool) {
         *self.trace_mac = x
     }
-    pub fn str_of(&self, id: ast::ident) -> ~str {
-        copy *ident_to_str(&id)
+    pub fn str_of(&self, id: ast::ident) -> @str {
+        ident_to_str(&id)
     }
     pub fn ident_of(&self, st: &str) -> ast::ident {
         str_to_ident(st)
     }
 }
 
-pub fn expr_to_str(cx: @ExtCtxt, expr: @ast::expr, err_msg: ~str) -> ~str {
+pub fn expr_to_str(cx: @ExtCtxt, expr: @ast::expr, err_msg: ~str) -> @str {
     match expr.node {
       ast::expr_lit(l) => match l.node {
-        ast::lit_str(s) => copy *s,
+        ast::lit_str(s) => s,
         _ => cx.span_fatal(l.span, err_msg)
       },
       _ => cx.span_fatal(expr.span, err_msg)
@@ -350,7 +350,7 @@ pub fn check_zero_tts(cx: @ExtCtxt, sp: span, tts: &[ast::token_tree],
 pub fn get_single_str_from_tts(cx: @ExtCtxt,
                                sp: span,
                                tts: &[ast::token_tree],
-                               name: &str) -> ~str {
+                               name: &str) -> @str {
     if tts.len() != 1 {
         cx.span_fatal(sp, fmt!("%s takes 1 argument.", name));
     }
@@ -538,25 +538,25 @@ mod test {
 
     #[test] fn testenv () {
         let mut a = HashMap::new();
-        a.insert (@~"abc",@15);
+        a.insert (@"abc",@15);
         let m = MapChain::new(~a);
-        m.insert (@~"def",@16);
-        // FIXME: #4492 (ICE)  assert_eq!(m.find(&@~"abc"),Some(@15));
-        //  ....               assert_eq!(m.find(&@~"def"),Some(@16));
-        assert_eq!(*(m.find(&@~"abc").get()),15);
-        assert_eq!(*(m.find(&@~"def").get()),16);
+        m.insert (@"def",@16);
+        // FIXME: #4492 (ICE)  assert_eq!(m.find(&@"abc"),Some(@15));
+        //  ....               assert_eq!(m.find(&@"def"),Some(@16));
+        assert_eq!(*(m.find(&@"abc").get()),15);
+        assert_eq!(*(m.find(&@"def").get()),16);
         let n = m.push_frame();
         // old bindings are still present:
-        assert_eq!(*(n.find(&@~"abc").get()),15);
-        assert_eq!(*(n.find(&@~"def").get()),16);
-        n.insert (@~"def",@17);
+        assert_eq!(*(n.find(&@"abc").get()),15);
+        assert_eq!(*(n.find(&@"def").get()),16);
+        n.insert (@"def",@17);
         // n shows the new binding
-        assert_eq!(*(n.find(&@~"abc").get()),15);
-        assert_eq!(*(n.find(&@~"def").get()),17);
+        assert_eq!(*(n.find(&@"abc").get()),15);
+        assert_eq!(*(n.find(&@"def").get()),17);
         // ... but m still has the old ones
-        // FIXME: #4492: assert_eq!(m.find(&@~"abc"),Some(@15));
-        // FIXME: #4492: assert_eq!(m.find(&@~"def"),Some(@16));
-        assert_eq!(*(m.find(&@~"abc").get()),15);
-        assert_eq!(*(m.find(&@~"def").get()),16);
+        // FIXME: #4492: assert_eq!(m.find(&@"abc"),Some(@15));
+        // FIXME: #4492: assert_eq!(m.find(&@"def"),Some(@16));
+        assert_eq!(*(m.find(&@"abc").get()),15);
+        assert_eq!(*(m.find(&@"def").get()),16);
     }
 }

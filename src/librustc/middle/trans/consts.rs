@@ -54,12 +54,12 @@ pub fn const_lit(cx: @CrateContext, e: @ast::expr, lit: ast::lit)
                         ty_to_str(cx.tcx, lit_int_ty)))
         }
       }
-      ast::lit_float(fs, t) => C_floating(/*bad*/copy *fs, T_float_ty(cx, t)),
+      ast::lit_float(fs, t) => C_floating(fs, T_float_ty(cx, t)),
       ast::lit_float_unsuffixed(fs) => {
         let lit_float_ty = ty::node_id_to_type(cx.tcx, e.id);
         match ty::get(lit_float_ty).sty {
           ty::ty_float(t) => {
-            C_floating(/*bad*/copy *fs, T_float_ty(cx, t))
+            C_floating(fs, T_float_ty(cx, t))
           }
           _ => {
             cx.sess.span_bug(lit.span,

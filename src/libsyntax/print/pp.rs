@@ -80,7 +80,7 @@ pub struct begin_t {
 }
 
 pub enum token {
-    STRING(@~str, int),
+    STRING(@str, int),
     BREAK(break_t),
     BEGIN(begin_t),
     END,
@@ -107,7 +107,7 @@ impl token {
 
 pub fn tok_str(t: token) -> ~str {
     match t {
-        STRING(s, len) => return fmt!("STR(%s,%d)", *s, len),
+        STRING(s, len) => return fmt!("STR(%s,%d)", s, len),
         BREAK(_) => return ~"BREAK",
         BEGIN(_) => return ~"BEGIN",
         END => return ~"END",
@@ -335,11 +335,11 @@ impl Printer {
           STRING(s, len) => {
             if self.scan_stack_empty {
                 debug!("pp STRING('%s')/print ~[%u,%u]",
-                       *s, self.left, self.right);
+                       s, self.left, self.right);
                 self.print(t, len);
             } else {
                 debug!("pp STRING('%s')/buffer ~[%u,%u]",
-                       *s, self.left, self.right);
+                       s, self.left, self.right);
                 self.advance_right();
                 self.token[self.right] = t;
                 self.size[self.right] = len;
@@ -534,11 +534,11 @@ impl Printer {
             }
           }
           STRING(s, len) => {
-            debug!("print STRING(%s)", *s);
+            debug!("print STRING(%s)", s);
             assert_eq!(L, len);
             // assert!(L <= space);
             self.space -= len;
-            self.print_str(*s);
+            self.print_str(s);
           }
           EOF => {
             // EOF should never get here.
@@ -572,15 +572,15 @@ pub fn end(p: @mut Printer) { p.pretty_print(END); }
 pub fn eof(p: @mut Printer) { p.pretty_print(EOF); }
 
 pub fn word(p: @mut Printer, wrd: &str) {
-    p.pretty_print(STRING(@/*bad*/ wrd.to_owned(), wrd.len() as int));
+    p.pretty_print(STRING(/* bad */ wrd.to_managed(), wrd.len() as int));
 }
 
 pub fn huge_word(p: @mut Printer, wrd: &str) {
-    p.pretty_print(STRING(@/*bad*/ wrd.to_owned(), size_infinity));
+    p.pretty_print(STRING(/* bad */ wrd.to_managed(), size_infinity));
 }
 
 pub fn zero_word(p: @mut Printer, wrd: &str) {
-    p.pretty_print(STRING(@/*bad*/ wrd.to_owned(), 0));
+    p.pretty_print(STRING(/* bad */ wrd.to_managed(), 0));
 }
 
 pub fn spaces(p: @mut Printer, n: uint) { break_offset(p, n, 0); }
