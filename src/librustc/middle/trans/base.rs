@@ -3018,7 +3018,7 @@ pub fn trans_crate(sess: session::Session,
                    tcx: ty::ctxt,
                    output: &Path,
                    emap2: resolve::ExportMap2,
-                   maps: astencode::Maps) -> (ContextRef, ModuleRef, LinkMeta) {
+                   maps: astencode::Maps) -> (ModuleRef, LinkMeta) {
 
     let symbol_hasher = @mut hash::default_state();
     let link_meta = link::build_link_meta(sess, crate, output, symbol_hasher);
@@ -3040,11 +3040,9 @@ pub fn trans_crate(sess: session::Session,
     let llmod_id = link_meta.name.to_owned() + ".rc";
 
     unsafe {
-        // FIXME(#6511): get LLVM building with --enable-threads so this
-        //               function can be called
-        // if !llvm::LLVMRustStartMultithreading() {
-        //     sess.bug("couldn't enable multi-threaded LLVM");
-        // }
+        if !llvm::LLVMRustStartMultithreading() {
+            sess.bug("couldn't enable multi-threaded LLVM");
+        }
         let llcx = llvm::LLVMContextCreate();
         set_task_llcx(llcx);
         let llmod = str::as_c_str(llmod_id, |buf| {
@@ -3180,8 +3178,7 @@ pub fn trans_crate(sess: session::Session,
                 io::println(fmt!("%-7u %s", v, k));
             }
         }
-        unset_task_llcx();
-        return (llcx, llmod, link_meta);
+        return (llmod, link_meta);
     }
 }
 
@@ -3192,10 +3189,8 @@ pub fn task_llcx() -> ContextRef {
     *opt.expect("task-local LLVMContextRef wasn't ever set!")
 }
 
-unsafe fn set_task_llcx(c: ContextRef) {
-    local_data::local_data_set(task_local_llcx_key, @c);
-}
-
-unsafe fn unset_task_llcx() {
-    local_data::local_data_pop(task_local_llcx_key);
+fn set_task_llcx(c: ContextRef) {
+    unsafe {
+        local_data::local_data_set(task_local_llcx_key, @c);
+    }
 }

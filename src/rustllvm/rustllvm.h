@@ -45,7 +45,6 @@
 #include "llvm/Transforms/Vectorize.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/BitReader.h"
-#include "llvm-c/ExecutionEngine.h"
 #include "llvm-c/Object.h"
 
 // Used by RustMCJITMemoryManager::getPointerToNamedFunction()
