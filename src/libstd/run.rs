@@ -1153,8 +1153,11 @@ mod tests {
         let output = str::from_bytes(prog.finish_with_output().output);
 
         for os::env().each |&(k, v)| {
+            // LD_PRELOAD doesn't get passed to children it seems
+            if k == ~"LD_PRELOAD" { loop }
             // don't check windows magical empty-named variables
-            assert!(k.is_empty() || output.contains(fmt!("%s=%s", k, v)));
+            assert!(k.is_empty() || output.contains(fmt!("%s=%s", k, v)),
+                    "Output (%s) doesn't contain \"%s=%s\"", output, k, v);
         }
     }
 
