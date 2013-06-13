@@ -40,7 +40,7 @@ pub struct TokenAndSpan {tok: token::Token, sp: span}
 
 pub struct StringReader {
     span_diagnostic: @span_handler,
-    src: @~str,
+    src: @str,
     // The absolute offset within the codemap of the next character to read
     pos: BytePos,
     // The absolute offset within the codemap of the last character read(curr)
@@ -176,7 +176,7 @@ pub fn with_str_from<T>(rdr: @mut StringReader, start: BytePos, f: &fn(s: &str) 
 pub fn bump(rdr: &mut StringReader) {
     rdr.last_pos = rdr.pos;
     let current_byte_offset = byte_offset(rdr, rdr.pos).to_uint();
-    if current_byte_offset < (*rdr.src).len() {
+    if current_byte_offset < (rdr.src).len() {
         assert!(rdr.curr != -1 as char);
         let last_char = rdr.curr;
         let next = rdr.src.char_range_at(current_byte_offset);
@@ -202,7 +202,7 @@ pub fn is_eof(rdr: @mut StringReader) -> bool {
 }
 pub fn nextch(rdr: @mut StringReader) -> char {
     let offset = byte_offset(rdr, rdr.pos).to_uint();
-    if offset < (*rdr.src).len() {
+    if offset < (rdr.src).len() {
         return rdr.src.char_at(offset);
     } else { return -1 as char; }
 }
@@ -801,9 +801,9 @@ mod test {
     }
 
     // open a string reader for the given string
-    fn setup(teststr: ~str) -> Env {
+    fn setup(teststr: @str) -> Env {
         let cm = CodeMap::new();
-        let fm = cm.new_filemap(~"zebra.rs", @teststr);
+        let fm = cm.new_filemap(@"zebra.rs", teststr);
         let span_handler =
             diagnostic::mk_span_handler(diagnostic::mk_handler(None),@cm);
         Env {
@@ -813,7 +813,7 @@ mod test {
 
     #[test] fn t1 () {
         let Env {string_reader} =
-            setup(~"/* my source file */ \
+            setup(@"/* my source file */ \
                     fn main() { io::println(~\"zebra\"); }\n");
         let id = str_to_ident("fn");
         let tok1 = string_reader.next_token();
@@ -849,14 +849,14 @@ mod test {
     }
 
     #[test] fn doublecolonparsing () {
-        let env = setup (~"a b");
+        let env = setup (@"a b");
         check_tokenization (env,
                            ~[mk_ident("a",false),
                              mk_ident("b",false)]);
     }
 
     #[test] fn dcparsing_2 () {
-        let env = setup (~"a::b");
+        let env = setup (@"a::b");
         check_tokenization (env,
                            ~[mk_ident("a",true),
                              token::MOD_SEP,
@@ -864,7 +864,7 @@ mod test {
     }
 
     #[test] fn dcparsing_3 () {
-        let env = setup (~"a ::b");
+        let env = setup (@"a ::b");
         check_tokenization (env,
                            ~[mk_ident("a",false),
                              token::MOD_SEP,
@@ -872,7 +872,7 @@ mod test {
     }
 
     #[test] fn dcparsing_4 () {
-        let env = setup (~"a:: b");
+        let env = setup (@"a:: b");
         check_tokenization (env,
                            ~[mk_ident("a",true),
                              token::MOD_SEP,
@@ -880,28 +880,28 @@ mod test {
     }
 
     #[test] fn character_a() {
-        let env = setup(~"'a'");
+        let env = setup(@"'a'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         assert_eq!(tok,token::LIT_INT('a' as i64, ast::ty_char));
     }
 
     #[test] fn character_space() {
-        let env = setup(~"' '");
+        let env = setup(@"' '");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         assert_eq!(tok, token::LIT_INT(' ' as i64, ast::ty_char));
     }
 
     #[test] fn character_escaped() {
-        let env = setup(~"'\n'");
+        let env = setup(@"'\n'");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         assert_eq!(tok, token::LIT_INT('\n' as i64, ast::ty_char));
     }
 
     #[test] fn lifetime_name() {
-        let env = setup(~"'abc");
+        let env = setup(@"'abc");
         let TokenAndSpan {tok, sp: _} =
             env.string_reader.next_token();
         let id = token::str_to_ident("abc");

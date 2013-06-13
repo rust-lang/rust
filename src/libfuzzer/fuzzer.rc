@@ -345,13 +345,13 @@ pub fn check_variants_T<T:Copy>(crate: @ast::crate,
                                             intr,
                                             span_handler,
                                             crate2,
-                                            fname.to_str(),
+                                            fname.to_managed(),
                                             rdr,
                                             a,
                                             pprust::no_ann(),
                                             false)
                     };
-                    @string
+                    string.to_managed()
                 };
                 match cx.mode {
                     tm_converge => check_roundtrip_convergence(str3, 1),
@@ -361,9 +361,9 @@ pub fn check_variants_T<T:Copy>(crate: @ast::crate,
                                               thing_label,
                                               i,
                                               j);
-                        let safe_to_run = !(content_is_dangerous_to_run(*str3)
+                        let safe_to_run = !(content_is_dangerous_to_run(str3)
                                             || has_raw_pointers(crate2));
-                        check_whole_compiler(*str3,
+                        check_whole_compiler(str3,
                                              &Path(file_label),
                                              safe_to_run);
                     }
@@ -502,15 +502,15 @@ pub fn check_compiling(filename: &Path) -> happiness {
 }
 
 
-pub fn parse_and_print(code: @~str) -> ~str {
+pub fn parse_and_print(code: @str) -> @str {
     let filename = Path("tmp.rs");
     let sess = parse::new_parse_sess(option::None);
-    write_file(&filename, *code);
-    let crate = parse::parse_crate_from_source_str(filename.to_str(),
+    write_file(&filename, code);
+    let crate = parse::parse_crate_from_source_str(filename.to_str().to_managed(),
                                                    code,
                                                    ~[],
                                                    sess);
-    do io::with_str_reader(*code) |rdr| {
+    do io::with_str_reader(code) |rdr| {
         let filename = filename.to_str();
         do as_str |a| {
             pprust::print_crate(sess.cm,
@@ -518,12 +518,12 @@ pub fn parse_and_print(code: @~str) -> ~str {
                                 token::mk_fake_ident_interner(),
                                 copy sess.span_diagnostic,
                                 crate,
-                                filename.to_str(),
+                                filename.to_managed(),
                                 rdr,
                                 a,
                                 pprust::no_ann(),
                                 false)
-        }
+        }.to_managed()
     }
 }
 
@@ -598,15 +598,15 @@ pub fn file_might_not_converge(filename: &Path) -> bool {
     return false;
 }
 
-pub fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
+pub fn check_roundtrip_convergence(code: @str, maxIters: uint) {
     let mut i = 0u;
     let mut newv = code;
     let mut oldv = code;
 
     while i < maxIters {
         oldv = newv;
-        if content_might_not_converge(*oldv) { return; }
-        newv = @parse_and_print(oldv);
+        if content_might_not_converge(oldv) { return; }
+        newv = parse_and_print(oldv);
         if oldv == newv { break; }
         i += 1u;
     }
@@ -615,8 +615,8 @@ pub fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
         error!("Converged after %u iterations", i);
     } else {
         error!("Did not converge after %u iterations!", i);
-        write_file(&Path("round-trip-a.rs"), *oldv);
-        write_file(&Path("round-trip-b.rs"), *newv);
+        write_file(&Path("round-trip-a.rs"), oldv);
+        write_file(&Path("round-trip-b.rs"), newv);
         run::process_status("diff", [~"-w", ~"-u", ~"round-trip-a.rs", ~"round-trip-b.rs"]);
         fail!("Mismatch");
     }
@@ -626,8 +626,8 @@ pub fn check_convergence(files: &[Path]) {
     error!("pp convergence tests: %u files", files.len());
     for files.each |file| {
         if !file_might_not_converge(file) {
-            let s = @result::get(&io::read_whole_file_str(file));
-            if !content_might_not_converge(*s) {
+            let s = result::get(&io::read_whole_file_str(file)).to_managed();
+            if !content_might_not_converge(s) {
                 error!("pp converge: %s", file.to_str());
                 // Change from 7u to 2u once
                 // https://github.com/mozilla/rust/issues/850 is fixed
@@ -646,14 +646,14 @@ pub fn check_variants(files: &[Path], cx: Context) {
             loop;
         }
 
-        let s = @result::get(&io::read_whole_file_str(file));
-        if contains(*s, "#") {
+        let s = result::get(&io::read_whole_file_str(file)).to_managed();
+        if s.contains_char('#') {
             loop; // Macros are confusing
         }
-        if cx.mode == tm_converge && content_might_not_converge(*s) {
+        if cx.mode == tm_converge && content_might_not_converge(s) {
             loop;
         }
-        if cx.mode == tm_run && content_is_dangerous_to_compile(*s) {
+        if cx.mode == tm_run && content_is_dangerous_to_compile(s) {
             loop;
         }
 
@@ -661,11 +661,11 @@ pub fn check_variants(files: &[Path], cx: Context) {
 
         error!("check_variants: %?", file_str);
         let sess = parse::new_parse_sess(None);
-        let crate = parse::parse_crate_from_source_str(file_str.to_str(),
+        let crate = parse::parse_crate_from_source_str(file_str.to_managed(),
                                                        s,
                                                        ~[],
                                                        sess);
-        io::with_str_reader(*s, |rdr| {
+        io::with_str_reader(s, |rdr| {
             let file_str = file_str.to_str();
             error!("%s",
                    as_str(|a| {
@@ -675,7 +675,7 @@ pub fn check_variants(files: &[Path], cx: Context) {
                         token::mk_fake_ident_interner(),
                         copy sess.span_diagnostic,
                         crate,
-                        file_str.to_str(),
+                        file_str.to_managed(),
                         rdr,
                         a,
                         pprust::no_ann(),

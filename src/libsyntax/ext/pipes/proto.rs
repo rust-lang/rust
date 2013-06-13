@@ -38,17 +38,17 @@ impl direction {
 }
 
 pub struct next_state {
-    state: ~str,
+    state: @str,
     tys: ~[@ast::Ty],
 }
 
 // name, span, data, current state, next state
-pub struct message(~str, span, ~[@ast::Ty], state, Option<next_state>);
+pub struct message(@str, span, ~[@ast::Ty], state, Option<next_state>);
 
 impl message {
-    pub fn name(&mut self) -> ~str {
+    pub fn name(&mut self) -> @str {
         match *self {
-          message(ref id, _, _, _, _) => copy *id
+          message(id, _, _, _, _) => id
         }
     }
 
@@ -70,7 +70,7 @@ pub type state = @state_;
 
 pub struct state_ {
     id: uint,
-    name: ~str,
+    name: @str,
     ident: ast::ident,
     span: span,
     dir: direction,
@@ -81,7 +81,7 @@ pub struct state_ {
 
 impl state_ {
     pub fn add_message(@self,
-                       name: ~str,
+                       name: @str,
                        span: span,
                        data: ~[@ast::Ty],
                        next: Option<next_state>) {
@@ -122,11 +122,11 @@ impl state_ {
 
 pub type protocol = @mut protocol_;
 
-pub fn protocol(name: ~str, span: span) -> protocol {
+pub fn protocol(name: @str, span: span) -> protocol {
     @mut protocol_(name, span)
 }
 
-pub fn protocol_(name: ~str, span: span) -> protocol_ {
+pub fn protocol_(name: @str, span: span) -> protocol_ {
     protocol_ {
         name: name,
         span: span,
@@ -136,7 +136,7 @@ pub fn protocol_(name: ~str, span: span) -> protocol_ {
 }
 
 pub struct protocol_ {
-    name: ~str,
+    name: @str,
     span: span,
     states: @mut ~[state],
 
@@ -181,7 +181,7 @@ impl protocol_ {
 
 impl protocol_ {
     pub fn add_state_poly(@mut self,
-                          name: ~str,
+                          name: @str,
                           ident: ast::ident,
                           dir: direction,
                           generics: ast::Generics)
@@ -208,7 +208,7 @@ impl protocol_ {
 pub trait visitor<Tproto, Tstate, Tmessage> {
     fn visit_proto(&self, proto: protocol, st: &[Tstate]) -> Tproto;
     fn visit_state(&self, state: state, m: &[Tmessage]) -> Tstate;
-    fn visit_message(&self, name: ~str, spane: span, tys: &[@ast::Ty],
+    fn visit_message(&self, name: @str, spane: span, tys: &[@ast::Ty],
                      this: state, next: Option<next_state>) -> Tmessage;
 }
 

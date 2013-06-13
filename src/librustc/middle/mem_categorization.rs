@@ -1201,7 +1201,7 @@ pub fn ptr_sigil(ptr: ptr_kind) -> ~str {
 impl Repr for InteriorKind {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         match *self {
-            InteriorField(NamedField(fld)) => copy *tcx.sess.str_of(fld),
+            InteriorField(NamedField(fld)) => tcx.sess.str_of(fld).to_owned(),
             InteriorField(PositionalField(i)) => fmt!("#%?", i),
             InteriorElement(_) => ~"[]",
         }

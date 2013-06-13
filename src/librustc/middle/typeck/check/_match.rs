@@ -297,7 +297,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
                 tcx.sess.span_err(span,
                                   fmt!("struct `%s` does not have a field
                                         named `%s`", name,
-                                       *tcx.sess.str_of(field.ident)));
+                                       tcx.sess.str_of(field.ident)));
             }
         }
     }
@@ -310,7 +310,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
             }
             tcx.sess.span_err(span,
                               fmt!("pattern does not mention field `%s`",
-                                   *tcx.sess.str_of(field.ident)));
+                                   tcx.sess.str_of(field.ident)));
         }
     }
 }

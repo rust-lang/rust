@@ -62,7 +62,7 @@ pub struct EncodeParams {
     reachable: reachable::map,
     reexports2: middle::resolve::ExportMap2,
     item_symbols: @mut HashMap<ast::node_id, ~str>,
-    discrim_symbols: @mut HashMap<ast::node_id, @~str>,
+    discrim_symbols: @mut HashMap<ast::node_id, @str>,
     link_meta: LinkMeta,
     cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item
@@ -89,7 +89,7 @@ pub struct EncodeContext {
     reachable: reachable::map,
     reexports2: middle::resolve::ExportMap2,
     item_symbols: @mut HashMap<ast::node_id, ~str>,
-    discrim_symbols: @mut HashMap<ast::node_id, @~str>,
+    discrim_symbols: @mut HashMap<ast::node_id, @str>,
     link_meta: LinkMeta,
     cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item,
@@ -103,14 +103,14 @@ pub fn reachable(ecx: @EncodeContext, id: node_id) -> bool {
 fn encode_name(ecx: @EncodeContext,
                ebml_w: &mut writer::Encoder,
                name: ident) {
-    ebml_w.wr_tagged_str(tag_paths_data_name, *ecx.tcx.sess.str_of(name));
+    ebml_w.wr_tagged_str(tag_paths_data_name, ecx.tcx.sess.str_of(name));
 }
 
 fn encode_impl_type_basename(ecx: @EncodeContext,
                              ebml_w: &mut writer::Encoder,
                              name: ident) {
     ebml_w.wr_tagged_str(tag_item_impl_type_basename,
-                         *ecx.tcx.sess.str_of(name));
+                         ecx.tcx.sess.str_of(name));
 }
 
 pub fn encode_def_id(ebml_w: &mut writer::Encoder, id: def_id) {
@@ -362,7 +362,7 @@ fn encode_path(ecx: @EncodeContext,
           ast_map::path_name(name) => (tag_path_elt_name, name)
         };
 
-        ebml_w.wr_tagged_str(tag, *ecx.tcx.sess.str_of(name));
+        ebml_w.wr_tagged_str(tag, ecx.tcx.sess.str_of(name));
     }
 
     ebml_w.start_tag(tag_path);
@@ -380,13 +380,13 @@ fn encode_reexported_static_method(ecx: @EncodeContext,
                                    method_def_id: def_id,
                                    method_ident: ident) {
     debug!("(encode reexported static method) %s::%s",
-            *exp.name, *ecx.tcx.sess.str_of(method_ident));
+            exp.name, ecx.tcx.sess.str_of(method_ident));
     ebml_w.start_tag(tag_items_data_item_reexport);
     ebml_w.start_tag(tag_items_data_item_reexport_def_id);
     ebml_w.wr_str(def_to_str(method_def_id));
     ebml_w.end_tag();
     ebml_w.start_tag(tag_items_data_item_reexport_name);
-    ebml_w.wr_str(*exp.name + "::" + *ecx.tcx.sess.str_of(method_ident));
+    ebml_w.wr_str(fmt!("%s::%s", exp.name, ecx.tcx.sess.str_of(method_ident)));
     ebml_w.end_tag();
     ebml_w.end_tag();
 }
@@ -449,17 +449,17 @@ fn encode_reexported_static_methods(ecx: @EncodeContext,
             // encoded metadata for static methods relative to Bar,
             // but not yet for Foo.
             //
-            if mod_path != *path || *exp.name != *original_name {
+            if mod_path != *path || exp.name != original_name {
                 if !encode_reexported_static_base_methods(ecx, ebml_w, exp) {
                     if encode_reexported_static_trait_methods(ecx, ebml_w, exp) {
                         debug!(fmt!("(encode reexported static methods) %s \
                                     [trait]",
-                                    *original_name));
+                                    original_name));
                     }
                 }
                 else {
                     debug!(fmt!("(encode reexported static methods) %s [base]",
-                                *original_name));
+                                original_name));
                 }
             }
         }
@@ -486,7 +486,7 @@ fn encode_info_for_mod(ecx: @EncodeContext,
                 let (ident, did) = (item.ident, item.id);
                 debug!("(encoding info for module) ... encoding impl %s \
                         (%?/%?)",
-                        *ecx.tcx.sess.str_of(ident),
+                        ecx.tcx.sess.str_of(ident),
                         did,
                         ast_map::node_id_to_str(ecx.tcx.items, did, token::get_ident_interner()));
 
@@ -507,13 +507,13 @@ fn encode_info_for_mod(ecx: @EncodeContext,
             debug!("(encoding info for module) found reexports for %d", id);
             for exports.each |exp| {
                 debug!("(encoding info for module) reexport '%s' for %d",
-                       *exp.name, id);
+                       exp.name, id);
                 ebml_w.start_tag(tag_items_data_item_reexport);
                 ebml_w.start_tag(tag_items_data_item_reexport_def_id);
                 ebml_w.wr_str(def_to_str(exp.def_id));
                 ebml_w.end_tag();
                 ebml_w.start_tag(tag_items_data_item_reexport_name);
-                ebml_w.wr_str(*exp.name);
+                ebml_w.wr_str(exp.name);
                 ebml_w.end_tag();
                 ebml_w.end_tag();
                 encode_reexported_static_methods(ecx, ebml_w, path, exp);
@@ -622,7 +622,7 @@ fn encode_info_for_struct(ecx: @EncodeContext,
         global_index.push(entry {val: id, pos: ebml_w.writer.tell()});
         ebml_w.start_tag(tag_items_data_item);
         debug!("encode_info_for_struct: doing %s %d",
-               *tcx.sess.str_of(nm), id);
+               tcx.sess.str_of(nm), id);
         encode_struct_field_family(ebml_w, vis);
         encode_name(ecx, ebml_w, nm);
         encode_path(ecx, ebml_w, path, ast_map::path_name(nm));
@@ -648,7 +648,7 @@ fn encode_info_for_ctor(ecx: @EncodeContext,
         encode_type_param_bounds(ebml_w, ecx, &generics.ty_params);
         let its_ty = node_id_to_type(ecx.tcx, id);
         debug!("fn name = %s ty = %s its node id = %d",
-               *ecx.tcx.sess.str_of(ident),
+               ecx.tcx.sess.str_of(ident),
                ty_to_str(ecx.tcx, its_ty), id);
         encode_type(ecx, ebml_w, its_ty);
         encode_path(ecx, ebml_w, path, ast_map::path_name(ident));
@@ -708,7 +708,7 @@ fn encode_info_for_method(ecx: @EncodeContext,
                           owner_generics: &ast::Generics,
                           method_generics: &ast::Generics) {
     debug!("encode_info_for_method: %d %s %u %u", m.id,
-           *ecx.tcx.sess.str_of(m.ident),
+           ecx.tcx.sess.str_of(m.ident),
            owner_generics.ty_params.len(),
            method_generics.ty_params.len());
     ebml_w.start_tag(tag_items_data_item);
@@ -1058,7 +1058,7 @@ fn encode_info_for_item(ecx: @EncodeContext,
                         tcx.sess.span_unimpl(
                             item.span,
                             fmt!("Method %s is both provided and static",
-                                 *token::ident_to_str(&method_ty.ident)));
+                                 token::ident_to_str(&method_ty.ident)));
                     }
                     encode_type_param_bounds(ebml_w, ecx,
                                              &m.generics.ty_params);
@@ -1278,11 +1278,11 @@ fn synthesize_crate_attrs(ecx: @EncodeContext,
         assert!(!ecx.link_meta.vers.is_empty());
 
         let name_item =
-            attr::mk_name_value_item_str(@~"name",
-                                         @ecx.link_meta.name.to_owned());
+            attr::mk_name_value_item_str(@"name",
+                                         ecx.link_meta.name);
         let vers_item =
-            attr::mk_name_value_item_str(@~"vers",
-                                         @ecx.link_meta.vers.to_owned());
+            attr::mk_name_value_item_str(@"vers",
+                                         ecx.link_meta.vers);
 
         let other_items =
             {
@@ -1291,7 +1291,7 @@ fn synthesize_crate_attrs(ecx: @EncodeContext,
             };
 
         let meta_items = vec::append(~[name_item, vers_item], other_items);
-        let link_item = attr::mk_list_item(@~"link", meta_items);
+        let link_item = attr::mk_list_item(@"link", meta_items);
 
         return attr::mk_attr(link_item);
     }
@@ -1300,15 +1300,15 @@ fn synthesize_crate_attrs(ecx: @EncodeContext,
     let mut found_link_attr = false;
     for crate.node.attrs.each |attr| {
         attrs.push(
-            if *attr::get_attr_name(attr) != ~"link" {
-                /*bad*/copy *attr
+            if "link" != attr::get_attr_name(attr)  {
+                copy *attr
             } else {
                 match attr.node.value.node {
                   meta_list(_, ref l) => {
                     found_link_attr = true;;
                     synthesize_link_attr(ecx, /*bad*/copy *l)
                   }
-                  _ => /*bad*/copy *attr
+                  _ => copy *attr
                 }
             });
     }
@@ -1329,7 +1329,7 @@ fn encode_crate_deps(ecx: @EncodeContext,
         let mut deps = ~[];
         do cstore::iter_crate_data(cstore) |key, val| {
             let dep = decoder::crate_dep {cnum: key,
-                       name: ecx.tcx.sess.ident_of(/*bad*/ copy *val.name),
+                       name: ecx.tcx.sess.ident_of(val.name),
                        vers: decoder::get_crate_vers(val.data),
                        hash: decoder::get_crate_hash(val.data)};
             deps.push(dep);

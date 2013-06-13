@@ -150,7 +150,7 @@ pub struct options {
     // will be added to the crate AST node.  This should not be used for
     // anything except building the full crate config prior to parsing.
     cfg: ast::crate_cfg,
-    binary: @~str,
+    binary: @str,
     test: bool,
     parse_only: bool,
     no_trans: bool,
@@ -295,7 +295,7 @@ impl Session_ {
     }
 
     // pointless function, now...
-    pub fn str_of(@self, id: ast::ident) -> @~str {
+    pub fn str_of(@self, id: ast::ident) -> @str {
         token::ident_to_str(&id)
     }
 
@@ -331,7 +331,7 @@ pub fn basic_options() -> @options {
         target_triple: host_triple(),
         target_feature: ~"",
         cfg: ~[],
-        binary: @~"rustc",
+        binary: @"rustc",
         test: false,
         parse_only: false,
         no_trans: false,
@@ -361,7 +361,7 @@ pub fn building_library(req_crate_type: crate_type,
             match syntax::attr::first_attr_value_str_by_name(
                 crate.node.attrs,
                 "crate_type") {
-              Some(@~"lib") => true,
+              Some(s) if "lib" == s => true,
               _ => false
             }
         }
@@ -389,22 +389,22 @@ mod test {
     use syntax::ast;
     use syntax::codemap;
 
-    fn make_crate_type_attr(t: ~str) -> ast::attribute {
+    fn make_crate_type_attr(t: @str) -> ast::attribute {
         codemap::respan(codemap::dummy_sp(), ast::attribute_ {
             style: ast::attr_outer,
             value: @codemap::respan(codemap::dummy_sp(),
                 ast::meta_name_value(
-                    @~"crate_type",
+                    @"crate_type",
                     codemap::respan(codemap::dummy_sp(),
-                                     ast::lit_str(@t)))),
+                                     ast::lit_str(t)))),
             is_sugared_doc: false
         })
     }
 
     fn make_crate(with_bin: bool, with_lib: bool) -> @ast::crate {
         let mut attrs = ~[];
-        if with_bin { attrs += [make_crate_type_attr(~"bin")]; }
-        if with_lib { attrs += [make_crate_type_attr(~"lib")]; }
+        if with_bin { attrs += [make_crate_type_attr(@"bin")]; }
+        if with_lib { attrs += [make_crate_type_attr(@"lib")]; }
         @codemap::respan(codemap::dummy_sp(), ast::crate_ {
             module: ast::_mod { view_items: ~[], items: ~[] },
             attrs: attrs,

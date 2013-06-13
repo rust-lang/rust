@@ -57,7 +57,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                         None => {
                             cx.span_fatal(
                                 pth.span,
-                                fmt!("macro undefined: '%s'", *extnamestr))
+                                fmt!("macro undefined: '%s'", extnamestr))
                         }
                         Some(@SE(NormalTT(SyntaxExpanderTT{
                             expander: exp,
@@ -66,7 +66,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                             cx.bt_push(ExpandedFrom(CallInfo {
                                 call_site: s,
                                 callee: NameAndSpan {
-                                    name: copy *extnamestr,
+                                    name: extnamestr,
                                     span: exp_sp,
                                 },
                             }));
@@ -79,7 +79,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                                         pth.span,
                                         fmt!(
                                             "non-expr macro in expr pos: %s",
-                                            *extnamestr
+                                            extnamestr
                                         )
                                     )
                                 }
@@ -95,7 +95,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                         _ => {
                             cx.span_fatal(
                                 pth.span,
-                                fmt!("'%s' is not a tt-style macro", *extnamestr)
+                                fmt!("'%s' is not a tt-style macro", extnamestr)
                             )
                         }
                     }
@@ -132,12 +132,12 @@ pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
         do item.attrs.rev_iter().fold(~[*item]) |items, attr| {
             let mname = attr::get_attr_name(attr);
 
-            match (*extsbox).find(&intern(*mname)) {
+            match (*extsbox).find(&intern(mname)) {
               Some(@SE(ItemDecorator(dec_fn))) => {
                   cx.bt_push(ExpandedFrom(CallInfo {
                       call_site: attr.span,
                       callee: NameAndSpan {
-                          name: /*bad*/ copy *mname,
+                          name: mname,
                           span: None
                       }
                   }));
@@ -201,7 +201,7 @@ pub fn expand_item(extsbox: @mut SyntaxEnv,
 
 // does this attribute list contain "macro_escape" ?
 pub fn contains_macro_escape (attrs: &[ast::attribute]) -> bool {
-    attrs.any(|attr| "macro_escape" == *attr::get_attr_name(attr))
+    attrs.any(|attr| "macro_escape" == attr::get_attr_name(attr))
 }
 
 // Support for item-position macro invocations, exactly the same
@@ -221,19 +221,19 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
     let extnamestr = ident_to_str(extname);
     let expanded = match (*extsbox).find(&extname.name) {
         None => cx.span_fatal(pth.span,
-                              fmt!("macro undefined: '%s!'", *extnamestr)),
+                              fmt!("macro undefined: '%s!'", extnamestr)),
 
         Some(@SE(NormalTT(ref expand))) => {
             if it.ident != parse::token::special_idents::invalid {
                 cx.span_fatal(pth.span,
                               fmt!("macro %s! expects no ident argument, \
-                                    given '%s'", *extnamestr,
-                                   *ident_to_str(&it.ident)));
+                                    given '%s'", extnamestr,
+                                   ident_to_str(&it.ident)));
             }
             cx.bt_push(ExpandedFrom(CallInfo {
                 call_site: it.span,
                 callee: NameAndSpan {
-                    name: copy *extnamestr,
+                    name: extnamestr,
                     span: expand.span
                 }
             }));
@@ -243,26 +243,25 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
             if it.ident == parse::token::special_idents::invalid {
                 cx.span_fatal(pth.span,
                               fmt!("macro %s! expects an ident argument",
-                                   *extnamestr));
+                                   extnamestr));
             }
             cx.bt_push(ExpandedFrom(CallInfo {
                 call_site: it.span,
                 callee: NameAndSpan {
-                    name: copy *extnamestr,
+                    name: extnamestr,
                     span: expand.span
                 }
             }));
             ((*expand).expander)(cx, it.span, it.ident, tts)
         }
         _ => cx.span_fatal(
-            it.span, fmt!("%s! is not legal in item position", *extnamestr))
+            it.span, fmt!("%s! is not legal in item position", extnamestr))
     };
 
     let maybe_it = match expanded {
         MRItem(it) => fld.fold_item(it),
         MRExpr(_) => cx.span_fatal(pth.span,
-                                    ~"expr macro in item position: "
-                                    + *extnamestr),
+                                   fmt!("expr macro in item position: %s", extnamestr)),
         MRAny(_, item_maker, _) => item_maker().chain(|i| {fld.fold_item(i)}),
         MRDef(ref mdef) => {
             insert_macro(*extsbox,intern(mdef.name), @SE((*mdef).ext));
@@ -319,13 +318,13 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
     let extnamestr = ident_to_str(extname);
     let (fully_expanded, sp) = match (*extsbox).find(&extname.name) {
         None =>
-            cx.span_fatal(pth.span, fmt!("macro undefined: '%s'", *extnamestr)),
+            cx.span_fatal(pth.span, fmt!("macro undefined: '%s'", extnamestr)),
 
         Some(@SE(NormalTT(
             SyntaxExpanderTT{expander: exp, span: exp_sp}))) => {
             cx.bt_push(ExpandedFrom(CallInfo {
                 call_site: sp,
-                callee: NameAndSpan { name: copy *extnamestr, span: exp_sp }
+                callee: NameAndSpan { name: extnamestr, span: exp_sp }
             }));
             let expanded = match exp(cx, mac.span, tts) {
                 MRExpr(e) =>
@@ -334,7 +333,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                 MRAny(_,_,stmt_mkr) => stmt_mkr(),
                 _ => cx.span_fatal(
                     pth.span,
-                    fmt!("non-stmt macro in stmt pos: %s", *extnamestr))
+                    fmt!("non-stmt macro in stmt pos: %s", extnamestr))
             };
 
             //keep going, outside-in
@@ -355,7 +354,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
 
         _ => {
             cx.span_fatal(pth.span,
-                          fmt!("'%s' is not a tt-style macro", *extnamestr))
+                          fmt!("'%s' is not a tt-style macro", extnamestr))
         }
     };
 
@@ -414,7 +413,7 @@ fn get_block_info(exts : SyntaxEnv) -> BlockInfo {
     match exts.find_in_topmost_frame(&intern(special_block_name)) {
         Some(@BlockInfo(bi)) => bi,
         _ => fail!(fmt!("special identifier %? was bound to a non-BlockInfo",
-                       @~" block"))
+                       @" block"))
     }
 }
 
@@ -456,9 +455,9 @@ pub fn new_span(cx: @ExtCtxt, sp: span) -> span {
 // the default compilation environment. It would be much nicer to use
 // a mechanism like syntax_quote to ensure hygiene.
 
-pub fn core_macros() -> ~str {
+pub fn core_macros() -> @str {
     return
-~"pub mod macros {
+@"pub mod macros {
     macro_rules! ignore (($($x:tt)*) => (()))
 
     macro_rules! error (
@@ -679,7 +678,7 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
             node: attribute_ {
                 style: attr_outer,
                 value: @spanned {
-                    node: meta_word(@~"macro_escape"),
+                    node: meta_word(@"macro_escape"),
                     span: codemap::dummy_sp(),
                 },
                 is_sugared_doc: false,
@@ -687,8 +686,8 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
         }
     ];
 
-    let cm = match parse_item_from_source_str(~"<core-macros>",
-                                              @core_macros(),
+    let cm = match parse_item_from_source_str(@"<core-macros>",
+                                              core_macros(),
                                               copy cfg,
                                               attrs,
                                               parse_sess) {
@@ -764,11 +763,11 @@ mod test {
 
     // make sure that fail! is present
     #[test] fn fail_exists_test () {
-        let src = ~"fn main() { fail!(\"something appropriately gloomy\");}";
+        let src = @"fn main() { fail!(\"something appropriately gloomy\");}";
         let sess = parse::new_parse_sess(None);
         let crate_ast = parse::parse_crate_from_source_str(
-            ~"<test>",
-            @src,
+            @"<test>",
+            src,
             ~[],sess);
         expand_crate(sess,~[],crate_ast);
     }
@@ -779,12 +778,12 @@ mod test {
     // make sure that macros can leave scope
     #[should_fail]
     #[test] fn macros_cant_escape_fns_test () {
-        let src = ~"fn bogus() {macro_rules! z (() => (3+4))}\
+        let src = @"fn bogus() {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
         let sess = parse::new_parse_sess(None);
         let crate_ast = parse::parse_crate_from_source_str(
-            ~"<test>",
-            @src,
+            @"<test>",
+            src,
             ~[],sess);
         // should fail:
         expand_crate(sess,~[],crate_ast);
@@ -793,12 +792,12 @@ mod test {
     // make sure that macros can leave scope for modules
     #[should_fail]
     #[test] fn macros_cant_escape_mods_test () {
-        let src = ~"mod foo {macro_rules! z (() => (3+4))}\
+        let src = @"mod foo {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
         let sess = parse::new_parse_sess(None);
         let crate_ast = parse::parse_crate_from_source_str(
-            ~"<test>",
-            @src,
+            @"<test>",
+            src,
             ~[],sess);
         // should fail:
         expand_crate(sess,~[],crate_ast);
@@ -806,19 +805,19 @@ mod test {
 
     // macro_escape modules shouldn't cause macros to leave scope
     #[test] fn macros_can_escape_flattened_mods_test () {
-        let src = ~"#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
+        let src = @"#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
         let sess = parse::new_parse_sess(None);
         let crate_ast = parse::parse_crate_from_source_str(
-            ~"<test>",
-            @src,
+            @"<test>",
+            src,
             ~[], sess);
         // should fail:
         expand_crate(sess,~[],crate_ast);
     }
 
     #[test] fn core_macros_must_parse () {
-        let src = ~"
+        let src = @"
   pub mod macros {
     macro_rules! ignore (($($x:tt)*) => (()))
 
@@ -828,9 +827,9 @@ mod test {
         let sess = parse::new_parse_sess(None);
         let cfg = ~[];
         let item_ast = parse::parse_item_from_source_str(
-            ~"<test>",
-            @src,
-            cfg,~[make_dummy_attr (@~"macro_escape")],sess);
+            @"<test>",
+            src,
+            cfg,~[make_dummy_attr (@"macro_escape")],sess);
         match item_ast {
             Some(_) => (), // success
             None => fail!("expected this to parse")
@@ -838,9 +837,9 @@ mod test {
     }
 
     #[test] fn test_contains_flatten (){
-        let attr1 = make_dummy_attr (@~"foo");
-        let attr2 = make_dummy_attr (@~"bar");
-        let escape_attr = make_dummy_attr (@~"macro_escape");
+        let attr1 = make_dummy_attr (@"foo");
+        let attr2 = make_dummy_attr (@"bar");
+        let escape_attr = make_dummy_attr (@"macro_escape");
         let attrs1 = ~[attr1, escape_attr, attr2];
         assert_eq!(contains_macro_escape (attrs1),true);
         let attrs2 = ~[attr1,attr2];
@@ -848,7 +847,7 @@ mod test {
     }
 
     // make a "meta_word" outer attribute with the given name
-    fn make_dummy_attr(s: @~str) -> ast::attribute {
+    fn make_dummy_attr(s: @str) -> ast::attribute {
         spanned {
             span:codemap::dummy_sp(),
             node: attribute_ {
@@ -864,7 +863,7 @@ mod test {
 
     #[test]
     fn renaming () {
-        let maybe_item_ast = string_to_item(@~"fn a() -> int { let b = 13; b }");
+        let maybe_item_ast = string_to_item(@"fn a() -> int { let b = 13; b }");
         let item_ast = match maybe_item_ast {
             Some(x) => x,
             None => fail!("test case fail")
@@ -887,7 +886,7 @@ mod test {
 
     #[test]
     fn pat_idents(){
-        let pat = string_to_pat(@~"(a,Foo{x:c @ (b,9),y:Bar(4,d)})");
+        let pat = string_to_pat(@"(a,Foo{x:c @ (b,9),y:Bar(4,d)})");
         let pat_idents = new_name_finder();
         let idents = @mut ~[];
         ((*pat_idents).visit_pat)(pat, (idents, mk_vt(pat_idents)));

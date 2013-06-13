@@ -236,14 +236,14 @@ pub enum const_val {
     const_float(f64),
     const_int(i64),
     const_uint(u64),
-    const_str(~str),
+    const_str(@str),
     const_bool(bool)
 }
 
 pub fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
     match eval_const_expr_partial(tcx, e) {
-        Ok(ref r) => (/*bad*/copy *r),
-        Err(ref s) => tcx.sess.span_fatal(e.span, *s)
+        Ok(r) => r,
+        Err(s) => tcx.sess.span_fatal(e.span, s)
     }
 }
 
@@ -409,13 +409,13 @@ pub fn eval_const_expr_partial(tcx: middle::ty::ctxt, e: @expr)
 
 pub fn lit_to_const(lit: @lit) -> const_val {
     match lit.node {
-      lit_str(s) => const_str(/*bad*/copy *s),
+      lit_str(s) => const_str(s),
       lit_int(n, _) => const_int(n),
       lit_uint(n, _) => const_uint(n),
       lit_int_unsuffixed(n) => const_int(n),
-      lit_float(n, _) => const_float(float::from_str(*n).get() as f64),
+      lit_float(n, _) => const_float(float::from_str(n).get() as f64),
       lit_float_unsuffixed(n) =>
-        const_float(float::from_str(*n).get() as f64),
+        const_float(float::from_str(n).get() as f64),
       lit_nil => const_int(0i64),
       lit_bool(b) => const_bool(b)
     }

@@ -235,7 +235,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
             if field.ident != ident { loop; }
             if field.vis == private {
                 tcx.sess.span_err(span, fmt!("field `%s` is private",
-                                             *token::ident_to_str(&ident)));
+                                             token::ident_to_str(&ident)));
             }
             break;
         }
@@ -255,7 +255,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                      !privileged_items.contains(&(container_id.node))) {
                 tcx.sess.span_err(span,
                                   fmt!("method `%s` is private",
-                                       *token::ident_to_str(name)));
+                                       token::ident_to_str(name)));
             }
         } else {
             let visibility =
@@ -263,7 +263,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
             if visibility != public {
                 tcx.sess.span_err(span,
                                   fmt!("method `%s` is private",
-                                       *token::ident_to_str(name)));
+                                       token::ident_to_str(name)));
             }
         }
     };
@@ -283,13 +283,13 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                             !privileged_items.contains(&def_id.node) {
                         tcx.sess.span_err(span,
                                           fmt!("function `%s` is private",
-                                               *token::ident_to_str(path.idents.last())));
+                                               token::ident_to_str(path.idents.last())));
                     }
                 } else if csearch::get_item_visibility(tcx.sess.cstore,
                                                        def_id) != public {
                     tcx.sess.span_err(span,
                                       fmt!("function `%s` is private",
-                                           *token::ident_to_str(path.idents.last())));
+                                           token::ident_to_str(path.idents.last())));
                 }
             }
             _ => {}
@@ -328,7 +328,7 @@ pub fn check_crate<'mm>(tcx: ty::ctxt,
                                              .contains(&(trait_id.node)) => {
                                             tcx.sess.span_err(span,
                                                               fmt!("method `%s` is private",
-                                                                   *token::ident_to_str(&method
+                                                                   token::ident_to_str(&method
                                                                                         .ident)));
                                         }
                                         provided(_) | required(_) => {

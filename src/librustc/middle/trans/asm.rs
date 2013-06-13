@@ -33,7 +33,7 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     // Prepare the output operands
     let outputs = do ia.outputs.map |&(c, out)| {
-        constraints.push(copy *c);
+        constraints.push(c);
 
         aoutputs.push(unpack_result!(bcx, {
             callee::trans_arg_expr(bcx,
@@ -69,7 +69,7 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
 
     // Now the input operands
     let inputs = do ia.inputs.map |&(c, in)| {
-        constraints.push(copy *c);
+        constraints.push(c);
 
         unpack_result!(bcx, {
             callee::trans_arg_expr(bcx,
@@ -90,14 +90,14 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
     let mut constraints = constraints.connect(",");
 
     let mut clobbers = getClobbers();
-    if *ia.clobbers != ~"" && clobbers != ~"" {
-        clobbers = *ia.clobbers + "," + clobbers;
+    if !ia.clobbers.is_empty() && !clobbers.is_empty() {
+        clobbers = fmt!("%s,%s", ia.clobbers, clobbers);
     } else {
-        clobbers += *ia.clobbers;
+        clobbers += ia.clobbers;
     };
 
     // Add the clobbers to our constraints list
-    if clobbers != ~"" && constraints != ~"" {
+    if !clobbers.is_empty() && !constraints.is_empty() {
         constraints += ",";
         constraints += clobbers;
     } else {
@@ -122,7 +122,7 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
         ast::asm_intel => lib::llvm::AD_Intel
     };
 
-    let r = do str::as_c_str(*ia.asm) |a| {
+    let r = do str::as_c_str(ia.asm) |a| {
         do str::as_c_str(constraints) |c| {
             InlineAsmCall(bcx, a, c, inputs, output, ia.volatile, ia.alignstack, dialect)
         }

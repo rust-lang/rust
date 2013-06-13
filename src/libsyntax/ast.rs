@@ -84,7 +84,7 @@ pub type Mrk = uint;
 
 impl<S:Encoder> Encodable<S> for ident {
     fn encode(&self, s: &mut S) {
-        s.emit_str(*interner_get(self.name));
+        s.emit_str(interner_get(self.name));
     }
 }
 
@@ -228,9 +228,9 @@ pub type meta_item = spanned<meta_item_>;
 
 #[deriving(Eq, Encodable, Decodable)]
 pub enum meta_item_ {
-    meta_word(@~str),
-    meta_list(@~str, ~[@meta_item]),
-    meta_name_value(@~str, lit),
+    meta_word(@str),
+    meta_list(@str, ~[@meta_item]),
+    meta_name_value(@str, lit),
 }
 
 pub type blk = spanned<blk_>;
@@ -634,12 +634,12 @@ pub type lit = spanned<lit_>;
 
 #[deriving(Eq, Encodable, Decodable)]
 pub enum lit_ {
-    lit_str(@~str),
+    lit_str(@str),
     lit_int(i64, int_ty),
     lit_uint(u64, uint_ty),
     lit_int_unsuffixed(i64),
-    lit_float(@~str, float_ty),
-    lit_float_unsuffixed(@~str),
+    lit_float(@str, float_ty),
+    lit_float_unsuffixed(@str),
     lit_nil,
     lit_bool(bool),
 }
@@ -819,10 +819,10 @@ pub enum asm_dialect {
 
 #[deriving(Eq, Encodable, Decodable)]
 pub struct inline_asm {
-    asm: @~str,
-    clobbers: @~str,
-    inputs: ~[(@~str, @expr)],
-    outputs: ~[(@~str, @expr)],
+    asm: @str,
+    clobbers: @str,
+    inputs: ~[(@str, @expr)],
+    outputs: ~[(@str, @expr)],
     volatile: bool,
     alignstack: bool,
     dialect: asm_dialect

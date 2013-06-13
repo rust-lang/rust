@@ -711,7 +711,7 @@ impl BorrowckCtxt {
             LpVar(id) => {
                 match self.tcx.items.find(&id) {
                     Some(&ast_map::node_local(ref ident)) => {
-                        out.push_str(*token::ident_to_str(ident));
+                        out.push_str(token::ident_to_str(ident));
                     }
                     r => {
                         self.tcx.sess.bug(
@@ -726,7 +726,7 @@ impl BorrowckCtxt {
                 match fname {
                     mc::NamedField(ref fname) => {
                         out.push_char('.');
-                        out.push_str(*token::ident_to_str(fname));
+                        out.push_str(token::ident_to_str(fname));
                     }
                     mc::PositionalField(idx) => {
                         out.push_char('#'); // invent a notation here

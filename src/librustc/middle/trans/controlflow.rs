@@ -348,13 +348,13 @@ pub fn trans_fail_expr(bcx: block,
                     ppaux::ty_to_str(tcx, arg_datum.ty));
             }
         }
-        _ => trans_fail(bcx, sp_opt, @~"explicit failure")
+        _ => trans_fail(bcx, sp_opt, @"explicit failure")
     }
 }
 
 pub fn trans_fail(bcx: block,
                   sp_opt: Option<span>,
-                  fail_str: @~str)
+                  fail_str: @str)
                -> block {
     let _icx = bcx.insn_ctxt("trans_fail");
     let V_fail_str = C_cstr(bcx.ccx(), fail_str);
@@ -371,11 +371,11 @@ fn trans_fail_value(bcx: block,
       Some(sp) => {
         let sess = bcx.sess();
         let loc = sess.parse_sess.cm.lookup_char_pos(sp.lo);
-        (C_cstr(bcx.ccx(), @/*bad*/ copy loc.file.name),
+        (C_cstr(bcx.ccx(), loc.file.name),
          loc.line as int)
       }
       None => {
-        (C_cstr(bcx.ccx(), @~"<runtime>"), 0)
+        (C_cstr(bcx.ccx(), @"<runtime>"), 0)
       }
     };
     let V_str = PointerCast(bcx, V_fail_str, T_ptr(T_i8()));

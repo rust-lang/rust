@@ -121,7 +121,7 @@ fn lookup_cur_matched(r: &mut TtReader, name: ident) -> @named_match {
         Some(s) => lookup_cur_matched_by_matched(r, s),
         None => {
             r.sp_diag.span_fatal(r.cur_span, fmt!("unknown macro variable `%s`",
-                                                  *ident_to_str(&name)));
+                                                  ident_to_str(&name)));
         }
     }
 }
@@ -139,8 +139,8 @@ fn lockstep_iter_size(t: &token_tree, r: &mut TtReader) -> lis {
             lis_contradiction(_) => copy rhs,
             lis_constraint(r_len, _) if l_len == r_len => copy lhs,
             lis_constraint(r_len, ref r_id) => {
-                let l_n = copy *ident_to_str(l_id);
-                let r_n = copy *ident_to_str(r_id);
+                let l_n = ident_to_str(l_id);
+                let r_n = ident_to_str(r_id);
                 lis_contradiction(fmt!("Inconsistent lockstep iteration: \
                                        '%s' has %u items, but '%s' has %u",
                                         l_n, l_len, r_n, r_len))
@@ -290,7 +290,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 r.sp_diag.span_fatal(
                     copy r.cur_span, /* blame the macro writer */
                     fmt!("variable '%s' is still repeating at this depth",
-                         *ident_to_str(&ident)));
+                         ident_to_str(&ident)));
               }
             }
           }
