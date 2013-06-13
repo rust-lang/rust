@@ -1,15 +1,11 @@
 ## Pull request procedure
 
-Pull requests should be targeted at Rust's `incoming` branch (note
-that by default Github will aim them at the `master` branch) -- see
-"Changing The Commit Range and Destination Repository" in Github's
-documentation on [pull
-requests](https://help.github.com/articles/using-pull-requests).
+Pull requests should be targeted at Rust's `master` branch.
 Before pushing to your Github repo and issuing the pull request,
 please do two things:
 
 1. [Rebase](http://git-scm.com/book/en/Git-Branching-Rebasing) your
-   local changes against the `incoming` branch. Resolve any conflicts
+   local changes against the `master` branch. Resolve any conflicts
    that arise.
 
 2. Run the full Rust test suite with the `make check` command.  You're
