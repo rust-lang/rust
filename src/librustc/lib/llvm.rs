@@ -205,8 +205,6 @@ pub enum BasicBlock_opaque {}
 pub type BasicBlockRef = *BasicBlock_opaque;
 pub enum Builder_opaque {}
 pub type BuilderRef = *Builder_opaque;
-pub enum ExecutionEngine_opaque {}
-pub type ExecutionEngineRef = *ExecutionEngine_opaque;
 pub enum MemoryBuffer_opaque {}
 pub type MemoryBufferRef = *MemoryBuffer_opaque;
 pub enum PassManager_opaque {}
@@ -225,7 +223,7 @@ pub enum Pass_opaque {}
 pub type PassRef = *Pass_opaque;
 
 pub mod llvm {
-    use super::{AtomicBinOp, AtomicOrdering, BasicBlockRef, ExecutionEngineRef};
+    use super::{AtomicBinOp, AtomicOrdering, BasicBlockRef};
     use super::{Bool, BuilderRef, ContextRef, MemoryBufferRef, ModuleRef};
     use super::{ObjectFileRef, Opcode, PassManagerRef, PassManagerBuilderRef};
     use super::{SectionIteratorRef, TargetDataRef, TypeKind, TypeRef, UseRef};
@@ -364,10 +362,6 @@ pub mod llvm {
         #[fast_ffi]
         pub unsafe fn LLVMGetPointerAddressSpace(PointerTy: TypeRef)
                                               -> c_uint;
-        #[fast_ffi]
-        pub unsafe fn LLVMGetPointerToGlobal(EE: ExecutionEngineRef,
-                                             V: ValueRef)
-                                              -> *();
         #[fast_ffi]
         pub unsafe fn LLVMGetVectorSize(VectorTy: TypeRef) -> c_uint;
 
@@ -1009,8 +1003,6 @@ pub mod llvm {
                                                 Name: *c_char);
         #[fast_ffi]
         pub unsafe fn LLVMDisposeBuilder(Builder: BuilderRef);
-        #[fast_ffi]
-        pub unsafe fn LLVMDisposeExecutionEngine(EE: ExecutionEngineRef);
 
         /* Metadata */
         #[fast_ffi]
@@ -1827,11 +1819,11 @@ pub mod llvm {
 
         /** Execute the JIT engine. */
         #[fast_ffi]
-        pub unsafe fn LLVMRustBuildJIT(MM: *(),
+        pub unsafe fn LLVMRustExecuteJIT(MM: *(),
                               PM: PassManagerRef,
                               M: ModuleRef,
                               OptLevel: c_int,
-                              EnableSegmentedStacks: bool) -> ExecutionEngineRef;
+                              EnableSegmentedStacks: bool) -> *();
 
         /** Parses the bitcode in the given memory buffer. */
         #[fast_ffi]

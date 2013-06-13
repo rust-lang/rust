@@ -6,14 +6,13 @@ LLVMRustConstSmallInt
 LLVMRustConstInt
 LLVMRustLoadCrate
 LLVMRustPrepareJIT
-LLVMRustBuildJIT
+LLVMRustExecuteJIT
 LLVMRustParseBitcode
 LLVMRustParseAssemblyFile
 LLVMRustPrintPassTimings
 LLVMRustStartMultithreading
 LLVMCreateObjectFile
 LLVMDisposeObjectFile
-LLVMDisposeExecutionEngine
 LLVMGetSections
 LLVMDisposeSectionIterator
 LLVMIsSectionIteratorAtEnd
@@ -357,7 +356,6 @@ LLVMGetParamParent
 LLVMGetParamTypes
 LLVMGetParams
 LLVMGetPointerAddressSpace
-LLVMGetPointerToGlobal
 LLVMGetPreviousBasicBlock
 LLVMGetPreviousFunction
 LLVMGetPreviousGlobal
