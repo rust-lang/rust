@@ -29,7 +29,7 @@ use back::link::{mangle_exported_name};
 use back::{link, abi, upcall};
 use driver::session;
 use driver::session::Session;
-use lib::llvm::{ContextRef, ModuleRef, ValueRef, TypeRef, BasicBlockRef};
+use lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef};
 use lib::llvm::{True, False};
 use lib::llvm::{llvm, mk_target_data, mk_type_names};
 use lib;
@@ -73,7 +73,6 @@ use core::libc::c_uint;
 use core::str;
 use core::uint;
 use core::vec;
-use core::local_data;
 use extra::time;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt_to_str, path_name};
@@ -1188,7 +1187,7 @@ pub fn new_block(cx: fn_ctxt, parent: Option<block>, kind: block_kind,
     };
     unsafe {
         let llbb = str::as_c_str(cx.ccx.sess.str_of(s), |buf| {
-            llvm::LLVMAppendBasicBlockInContext(cx.ccx.llcx, cx.llfn, buf)
+            llvm::LLVMAppendBasicBlock(cx.llfn, buf)
         });
         let bcx = mk_block(llbb,
                            parent,
@@ -1555,12 +1554,11 @@ pub struct BasicBlocks {
 // Creates the standard set of basic blocks for a function
 pub fn mk_standard_basic_blocks(llfn: ValueRef) -> BasicBlocks {
     unsafe {
-        let cx = task_llcx();
         BasicBlocks {
             sa: str::as_c_str("static_allocas",
-                           |buf| llvm::LLVMAppendBasicBlockInContext(cx, llfn, buf)),
+                           |buf| llvm::LLVMAppendBasicBlock(llfn, buf)),
             rt: str::as_c_str("return",
-                           |buf| llvm::LLVMAppendBasicBlockInContext(cx, llfn, buf))
+                           |buf| llvm::LLVMAppendBasicBlock(llfn, buf))
         }
     }
 }
@@ -2343,7 +2341,7 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
         };
         let llbb = str::as_c_str("top", |buf| {
             unsafe {
-                llvm::LLVMAppendBasicBlockInContext(ccx.llcx, llfn, buf)
+                llvm::LLVMAppendBasicBlock(llfn, buf)
             }
         });
         let bld = ccx.builder.B;
@@ -2661,10 +2659,10 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
                            T_void()));
     let memcpy32 =
         decl_cdecl_fn(llmod, "llvm.memcpy.p0i8.p0i8.i32",
-                      T_fn(T_memcpy32_args, T_void()));
+                      T_fn(copy T_memcpy32_args, T_void()));
     let memcpy64 =
         decl_cdecl_fn(llmod, "llvm.memcpy.p0i8.p0i8.i64",
-                      T_fn(T_memcpy64_args, T_void()));
+                      T_fn(copy T_memcpy64_args, T_void()));
     let memmove32 =
         decl_cdecl_fn(llmod, "llvm.memmove.p0i8.p0i8.i32",
                       T_fn(T_memcpy32_args, T_void()));
@@ -3040,13 +3038,9 @@ pub fn trans_crate(sess: session::Session,
     let llmod_id = link_meta.name.to_owned() + ".rc";
 
     unsafe {
-        if !llvm::LLVMRustStartMultithreading() {
-            sess.bug("couldn't enable multi-threaded LLVM");
-        }
-        let llcx = llvm::LLVMContextCreate();
-        set_task_llcx(llcx);
         let llmod = str::as_c_str(llmod_id, |buf| {
-            llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
+            llvm::LLVMModuleCreateWithNameInContext
+                (buf, llvm::LLVMGetGlobalContext())
         });
         let data_layout: &str = sess.targ_cfg.target_strs.data_layout;
         let targ_triple: &str = sess.targ_cfg.target_strs.target_triple;
@@ -3077,7 +3071,6 @@ pub fn trans_crate(sess: session::Session,
         let ccx = @CrateContext {
               sess: sess,
               llmod: llmod,
-              llcx: llcx,
               td: td,
               tn: tn,
               externs: @mut HashMap::new(),
@@ -3131,9 +3124,7 @@ pub fn trans_crate(sess: session::Session,
               int_type: int_type,
               float_type: float_type,
               opaque_vec_type: T_opaque_vec(targ_cfg),
-              builder: BuilderRef_res(unsafe {
-                  llvm::LLVMCreateBuilderInContext(llcx)
-              }),
+              builder: BuilderRef_res(unsafe { llvm::LLVMCreateBuilder() }),
               shape_cx: mk_ctxt(llmod),
               crate_map: crate_map,
               uses_gc: @mut false,
@@ -3179,18 +3170,5 @@ pub fn trans_crate(sess: session::Session,
             }
         }
         return (llmod, link_meta);
-    }
-}
-
-fn task_local_llcx_key(_v: @ContextRef) {}
-
-pub fn task_llcx() -> ContextRef {
-    let opt = unsafe { local_data::local_data_get(task_local_llcx_key) };
-    *opt.expect("task-local LLVMContextRef wasn't ever set!")
-}
-
-fn set_task_llcx(c: ContextRef) {
-    unsafe {
-        local_data::local_data_set(task_local_llcx_key, @c);
     }
 }
