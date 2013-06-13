@@ -598,6 +598,8 @@ impl RWlock {
         // solves this because T1 will hold order_lock while waiting on access,
         // which will cause T3 to have to wait until T1 finishes its write,
         // which can't happen until T2 finishes the downgrade-read entirely.
+        // The astute reader will also note that making waking writers use the
+        // order_lock is better for not starving readers.
         unsafe {
             do task::unkillable {
                 (&self.order_lock).acquire();
@@ -622,12 +624,12 @@ impl RWlock {
      * # Example
      *
      * ~~~ {.rust}
-     * do lock.write_downgrade |write_token| {
-     *     do (&write_token).write_cond |condvar| {
+     * do lock.write_downgrade |mut write_token| {
+     *     do write_token.write_cond |condvar| {
      *         ... exclusive access ...
      *     }
      *     let read_token = lock.downgrade(write_token);
-     *     do (&read_token).read {
+     *     do read_token.read {
      *         ... shared access ...
      *     }
      * }

@@ -380,12 +380,12 @@ impl<T:Const + Owned> RWARC<T> {
      * # Example
      *
      * ~~~ {.rust}
-     * do arc.write_downgrade |write_mode| {
-     *     do (&write_mode).write_cond |state, condvar| {
+     * do arc.write_downgrade |mut write_token| {
+     *     do write_token.write_cond |state, condvar| {
      *         ... exclusive access with mutable state ...
      *     }
-     *     let read_mode = arc.downgrade(write_mode);
-     *     do (&read_mode).read |state| {
+     *     let read_token = arc.downgrade(write_token);
+     *     do read_token.read |state| {
      *         ... shared access with immutable state ...
      *     }
      * }
