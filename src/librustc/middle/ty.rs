@@ -2273,7 +2273,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         for type_param_def.bounds.builtin_bounds.each |bound| {
             debug!("tc = %s, bound = %?", tc.to_str(), bound);
             tc = tc - match bound {
-                BoundCopy => TypeContents::nonimplicitly_copyable(cx),
+                BoundCopy => TypeContents::noncopyable(cx),
                 BoundStatic => TypeContents::nonstatic(cx),
                 BoundOwned => TypeContents::nonowned(cx),
                 BoundConst => TypeContents::nonconst(cx),
