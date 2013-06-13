@@ -207,7 +207,7 @@ pub mod write {
     use driver::session;
     use lib::llvm::llvm;
     use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data};
-    use lib::llvm::{False, ContextRef};
+    use lib::llvm::{ContextRef};
     use lib;
 
     use back::passes;
