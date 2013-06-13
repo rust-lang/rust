@@ -22,6 +22,7 @@ use core::cast;
 use core::io;
 use core::uint;
 use core::vec;
+use core::hashmap::HashMap;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_util::id_range;
@@ -37,15 +38,15 @@ pub struct DataFlowContext<O> {
     /// the data flow operator
     priv oper: O,
 
-    /// range of ids that appear within the item in question
-    priv id_range: id_range,
-
     /// number of bits to propagate per id
     priv bits_per_id: uint,
 
     /// number of words we will use to store bits_per_id.
     /// equal to bits_per_id/uint::bits rounded up.
     priv words_per_id: uint,
+
+    // mapping from node to bitset index.
+    priv nodeid_to_bitset: HashMap<ast::node_id,uint>,
 
     // Bit sets per id.  The following three fields (`gens`, `kills`,
     // and `on_entry`) all have the same structure. For each id in
@@ -108,19 +109,17 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         debug!("DataFlowContext::new(id_range=%?, bits_per_id=%?, words_per_id=%?)",
                id_range, bits_per_id, words_per_id);
 
-        let len = (id_range.max - id_range.min) as uint * words_per_id;
-        let gens = vec::from_elem(len, 0);
-        let kills = vec::from_elem(len, 0);
-        let elem = if oper.initial_value() {uint::max_value} else {0};
-        let on_entry = vec::from_elem(len, elem);
+        let gens = ~[];
+        let kills = ~[];
+        let on_entry = ~[];
 
         DataFlowContext {
             tcx: tcx,
             method_map: method_map,
             words_per_id: words_per_id,
+            nodeid_to_bitset: HashMap::new(),
             bits_per_id: bits_per_id,
             oper: oper,
-            id_range: id_range,
             gens: gens,
             kills: kills,
             on_entry: on_entry
@@ -149,7 +148,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         }
     }
 
-    fn apply_gen_kill(&self, id: ast::node_id, bits: &mut [uint]) {
+    fn apply_gen_kill(&mut self, id: ast::node_id, bits: &mut [uint]) {
         //! Applies the gen and kill sets for `id` to `bits`
 
         debug!("apply_gen_kill(id=%?, bits=%s) [before]",
@@ -164,7 +163,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
                id, mut_bits_to_str(bits));
     }
 
-    fn apply_kill(&self, id: ast::node_id, bits: &mut [uint]) {
+    fn apply_kill(&mut self, id: ast::node_id, bits: &mut [uint]) {
         debug!("apply_kill(id=%?, bits=%s) [before]",
                id, mut_bits_to_str(bits));
         let (start, end) = self.compute_id_range(id);
@@ -174,18 +173,56 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
                id, mut_bits_to_str(bits));
     }
 
-    fn compute_id_range(&self, absolute_id: ast::node_id) -> (uint, uint) {
-        assert!(absolute_id >= self.id_range.min);
-        assert!(absolute_id < self.id_range.max);
-
-        let relative_id = absolute_id - self.id_range.min;
-        let start = (relative_id as uint) * self.words_per_id;
+    fn compute_id_range_frozen(&self, id: ast::node_id) -> (uint, uint) {
+        let n = *self.nodeid_to_bitset.get(&id);
+        let start = n * self.words_per_id;
         let end = start + self.words_per_id;
         (start, end)
     }
 
+    fn compute_id_range(&mut self, id: ast::node_id) -> (uint, uint) {
+        let mut expanded = false;
+        let len = self.nodeid_to_bitset.len();
+        let n = do self.nodeid_to_bitset.find_or_insert_with(id) |_| {
+            expanded = true;
+            len
+        };
+        if expanded {
+            let entry = if self.oper.initial_value() { uint::max_value } else {0};
+            for self.words_per_id.times {
+                self.gens.push(0);
+                self.kills.push(0);
+                self.on_entry.push(entry);
+            }
+        }
+        let start = *n * self.words_per_id;
+        let end = start + self.words_per_id;
 
-    pub fn each_bit_on_entry(&self,
+        assert!(start < self.gens.len());
+        assert!(end <= self.gens.len());
+        assert!(self.gens.len() == self.kills.len());
+        assert!(self.gens.len() == self.on_entry.len());
+
+        (start, end)
+    }
+
+
+    pub fn each_bit_on_entry_frozen(&self,
+                                    id: ast::node_id,
+                                    f: &fn(uint) -> bool) -> bool {
+        //! Iterates through each bit that is set on entry to `id`.
+        //! Only useful after `propagate()` has been called.
+        if !self.nodeid_to_bitset.contains_key(&id) {
+            return true;
+        }
+        let (start, end) = self.compute_id_range_frozen(id);
+        let on_entry = vec::slice(self.on_entry, start, end);
+        debug!("each_bit_on_entry_frozen(id=%?, on_entry=%s)",
+               id, bits_to_str(on_entry));
+        self.each_bit(on_entry, f)
+    }
+
+    pub fn each_bit_on_entry(&mut self,
                              id: ast::node_id,
                              f: &fn(uint) -> bool) -> bool {
         //! Iterates through each bit that is set on entry to `id`.
@@ -198,12 +235,26 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
         self.each_bit(on_entry, f)
     }
 
-    pub fn each_gen_bit(&self,
+    pub fn each_gen_bit(&mut self,
                         id: ast::node_id,
                         f: &fn(uint) -> bool) -> bool {
         //! Iterates through each bit in the gen set for `id`.
 
         let (start, end) = self.compute_id_range(id);
+        let gens = vec::slice(self.gens, start, end);
+        debug!("each_gen_bit(id=%?, gens=%s)",
+               id, bits_to_str(gens));
+        self.each_bit(gens, f)
+    }
+
+    pub fn each_gen_bit_frozen(&self,
+                               id: ast::node_id,
+                               f: &fn(uint) -> bool) -> bool {
+        //! Iterates through each bit in the gen set for `id`.
+        if !self.nodeid_to_bitset.contains_key(&id) {
+            return true;
+        }
+        let (start, end) = self.compute_id_range_frozen(id);
         let gens = vec::slice(self.gens, start, end);
         debug!("each_gen_bit(id=%?, gens=%s)",
                id, bits_to_str(gens));
@@ -285,8 +336,8 @@ impl<O:DataFlowOperator+Copy+'static> DataFlowContext<O> {
                 pprust::node_pat(ps, pat) => (ps, pat.id)
             };
 
-            if id >= self.id_range.min || id < self.id_range.max {
-                let (start, end) = self.compute_id_range(id);
+            if self.nodeid_to_bitset.contains_key(&id) {
+                let (start, end) = self.compute_id_range_frozen(id);
                 let on_entry = vec::slice(self.on_entry, start, end);
                 let entry_str = bits_to_str(on_entry);
 
