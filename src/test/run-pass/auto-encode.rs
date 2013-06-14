@@ -10,6 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test #6122
+
 #[forbid(deprecated_pattern)];
 
 extern mod extra;
