@@ -23,7 +23,6 @@ use cast;
 use char;
 use char::Char;
 use clone::Clone;
-use cmp::{TotalOrd, Ordering, Less, Equal, Greater};
 use container::Container;
 use iter::Times;
 use iterator::{Iterator, IteratorUtil, FilterIterator, AdditiveIterator, MapIterator};
@@ -36,8 +35,6 @@ use to_str::ToStr;
 use uint;
 use vec;
 use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector};
-
-#[cfg(not(test))] use cmp::{Eq, Ord, Equiv, TotalEq};
 
 /*
 Section: Conditions
@@ -530,165 +527,6 @@ pub fn eq(a: &~str, b: &~str) -> bool {
     eq_slice(*a, *b)
 }
 
-#[cfg(not(test))]
-impl<'self> TotalOrd for &'self str {
-    #[inline]
-    fn cmp(&self, other: & &'self str) -> Ordering {
-        for self.bytes_iter().zip(other.bytes_iter()).advance |(s_b, o_b)| {
-            match s_b.cmp(&o_b) {
-                Greater => return Greater,
-                Less => return Less,
-                Equal => ()
-            }
-        }
-
-        self.len().cmp(&other.len())
-    }
-}
-
-#[cfg(not(test))]
-impl TotalOrd for ~str {
-    #[inline]
-    fn cmp(&self, other: &~str) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
-}
-
-#[cfg(not(test))]
-impl TotalOrd for @str {
-    #[inline]
-    fn cmp(&self, other: &@str) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
-}
-
-/// Bytewise slice less than
-#[inline]
-fn lt(a: &str, b: &str) -> bool {
-    a.cmp(& b) == Less
-}
-
-/// Bytewise less than or equal
-#[inline]
-pub fn le(a: &str, b: &str) -> bool {
-    !lt(b, a)
-}
-
-/// Bytewise greater than or equal
-#[inline]
-fn ge(a: &str, b: &str) -> bool {
-    !lt(a, b)
-}
-
-/// Bytewise greater than
-#[inline]
-fn gt(a: &str, b: &str) -> bool {
-    !le(a, b)
-}
-
-#[cfg(not(test))]
-impl<'self> Eq for &'self str {
-    #[inline(always)]
-    fn eq(&self, other: & &'self str) -> bool {
-        eq_slice((*self), (*other))
-    }
-    #[inline(always)]
-    fn ne(&self, other: & &'self str) -> bool { !(*self).eq(other) }
-}
-
-#[cfg(not(test))]
-impl Eq for ~str {
-    #[inline(always)]
-    fn eq(&self, other: &~str) -> bool {
-        eq_slice((*self), (*other))
-    }
-    #[inline(always)]
-    fn ne(&self, other: &~str) -> bool { !(*self).eq(other) }
-}
-
-#[cfg(not(test))]
-impl Eq for @str {
-    #[inline(always)]
-    fn eq(&self, other: &@str) -> bool {
-        eq_slice((*self), (*other))
-    }
-    #[inline(always)]
-    fn ne(&self, other: &@str) -> bool { !(*self).eq(other) }
-}
-
-#[cfg(not(test))]
-impl<'self> TotalEq for &'self str {
-    #[inline(always)]
-    fn equals(&self, other: & &'self str) -> bool {
-        eq_slice((*self), (*other))
-    }
-}
-
-#[cfg(not(test))]
-impl TotalEq for ~str {
-    #[inline(always)]
-    fn equals(&self, other: &~str) -> bool {
-        eq_slice((*self), (*other))
-    }
-}
-
-#[cfg(not(test))]
-impl TotalEq for @str {
-    #[inline(always)]
-    fn equals(&self, other: &@str) -> bool {
-        eq_slice((*self), (*other))
-    }
-}
-
-#[cfg(not(test))]
-impl Ord for ~str {
-    #[inline(always)]
-    fn lt(&self, other: &~str) -> bool { lt((*self), (*other)) }
-    #[inline(always)]
-    fn le(&self, other: &~str) -> bool { le((*self), (*other)) }
-    #[inline(always)]
-    fn ge(&self, other: &~str) -> bool { ge((*self), (*other)) }
-    #[inline(always)]
-    fn gt(&self, other: &~str) -> bool { gt((*self), (*other)) }
-}
-
-#[cfg(not(test))]
-impl<'self> Ord for &'self str {
-    #[inline(always)]
-    fn lt(&self, other: & &'self str) -> bool { lt((*self), (*other)) }
-    #[inline(always)]
-    fn le(&self, other: & &'self str) -> bool { le((*self), (*other)) }
-    #[inline(always)]
-    fn ge(&self, other: & &'self str) -> bool { ge((*self), (*other)) }
-    #[inline(always)]
-    fn gt(&self, other: & &'self str) -> bool { gt((*self), (*other)) }
-}
-
-#[cfg(not(test))]
-impl Ord for @str {
-    #[inline(always)]
-    fn lt(&self, other: &@str) -> bool { lt((*self), (*other)) }
-    #[inline(always)]
-    fn le(&self, other: &@str) -> bool { le((*self), (*other)) }
-    #[inline(always)]
-    fn ge(&self, other: &@str) -> bool { ge((*self), (*other)) }
-    #[inline(always)]
-    fn gt(&self, other: &@str) -> bool { gt((*self), (*other)) }
-}
-
-#[cfg(not(test))]
-impl<'self, S: Str> Equiv<S> for &'self str {
-    #[inline(always)]
-    fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
-}
-#[cfg(not(test))]
-impl<'self, S: Str> Equiv<S> for @str {
-    #[inline(always)]
-    fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
-}
-
-#[cfg(not(test))]
-impl<'self, S: Str> Equiv<S> for ~str {
-    #[inline(always)]
-    fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
-}
-
 /*
 Section: Searching
 */
@@ -1072,11 +910,135 @@ pub mod raw {
 #[cfg(not(test))]
 pub mod traits {
     use ops::Add;
+    use cmp::{TotalOrd, Ordering, Less, Equal, Greater, Eq, Ord, Equiv, TotalEq};
+    use super::{Str, eq_slice};
+
     impl<'self> Add<&'self str,~str> for ~str {
         #[inline(always)]
         fn add(&self, rhs: & &'self str) -> ~str {
             self.append((*rhs))
         }
+    }
+
+    impl<'self> TotalOrd for &'self str {
+        #[inline]
+        fn cmp(&self, other: & &'self str) -> Ordering {
+            for self.bytes_iter().zip(other.bytes_iter()).advance |(s_b, o_b)| {
+                match s_b.cmp(&o_b) {
+                    Greater => return Greater,
+                    Less => return Less,
+                    Equal => ()
+                }
+            }
+
+            self.len().cmp(&other.len())
+        }
+    }
+
+    impl TotalOrd for ~str {
+        #[inline]
+        fn cmp(&self, other: &~str) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
+    }
+
+    impl TotalOrd for @str {
+        #[inline]
+        fn cmp(&self, other: &@str) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
+    }
+
+    impl<'self> Eq for &'self str {
+        #[inline(always)]
+        fn eq(&self, other: & &'self str) -> bool {
+            eq_slice((*self), (*other))
+        }
+        #[inline(always)]
+        fn ne(&self, other: & &'self str) -> bool { !(*self).eq(other) }
+    }
+
+    impl Eq for ~str {
+        #[inline(always)]
+        fn eq(&self, other: &~str) -> bool {
+            eq_slice((*self), (*other))
+        }
+        #[inline(always)]
+        fn ne(&self, other: &~str) -> bool { !(*self).eq(other) }
+    }
+
+    impl Eq for @str {
+        #[inline(always)]
+        fn eq(&self, other: &@str) -> bool {
+            eq_slice((*self), (*other))
+        }
+        #[inline(always)]
+        fn ne(&self, other: &@str) -> bool { !(*self).eq(other) }
+    }
+
+    impl<'self> TotalEq for &'self str {
+        #[inline(always)]
+        fn equals(&self, other: & &'self str) -> bool {
+            eq_slice((*self), (*other))
+        }
+    }
+
+    impl TotalEq for ~str {
+        #[inline(always)]
+        fn equals(&self, other: &~str) -> bool {
+            eq_slice((*self), (*other))
+        }
+    }
+
+    impl TotalEq for @str {
+        #[inline(always)]
+        fn equals(&self, other: &@str) -> bool {
+            eq_slice((*self), (*other))
+        }
+    }
+
+    impl<'self> Ord for &'self str {
+        #[inline(always)]
+        fn lt(&self, other: & &'self str) -> bool { self.cmp(other) == Less }
+        #[inline(always)]
+        fn le(&self, other: & &'self str) -> bool { self.cmp(other) != Greater }
+        #[inline(always)]
+        fn ge(&self, other: & &'self str) -> bool { self.cmp(other) != Less }
+        #[inline(always)]
+        fn gt(&self, other: & &'self str) -> bool { self.cmp(other) == Greater }
+    }
+
+    impl Ord for ~str {
+        #[inline(always)]
+        fn lt(&self, other: &~str) -> bool { self.cmp(other) == Less }
+        #[inline(always)]
+        fn le(&self, other: &~str) -> bool { self.cmp(other) != Greater }
+        #[inline(always)]
+        fn ge(&self, other: &~str) -> bool { self.cmp(other) != Less }
+        #[inline(always)]
+        fn gt(&self, other: &~str) -> bool { self.cmp(other) == Greater }
+    }
+
+    impl Ord for @str {
+        #[inline(always)]
+        fn lt(&self, other: &@str) -> bool { self.cmp(other) == Less }
+        #[inline(always)]
+        fn le(&self, other: &@str) -> bool { self.cmp(other) != Greater }
+        #[inline(always)]
+        fn ge(&self, other: &@str) -> bool { self.cmp(other) != Less }
+        #[inline(always)]
+        fn gt(&self, other: &@str) -> bool { self.cmp(other) == Greater }
+    }
+
+    impl<'self, S: Str> Equiv<S> for &'self str {
+        #[inline(always)]
+        fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
+    }
+
+    impl<'self, S: Str> Equiv<S> for @str {
+        #[inline(always)]
+        fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
+    }
+
+    impl<'self, S: Str> Equiv<S> for ~str {
+        #[inline(always)]
+        fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
     }
 }
 
@@ -2267,10 +2229,10 @@ mod tests {
 
     #[test]
     fn test_le() {
-        assert!((le(&"", &"")));
-        assert!((le(&"", &"foo")));
-        assert!((le(&"foo", &"foo")));
-        assert!((!eq(&~"foo", &~"bar")));
+        assert!("" <= "");
+        assert!("" <= "foo");
+        assert!("foo" <= "foo");
+        assert!("foo" != ~"bar");
     }
 
     #[test]
