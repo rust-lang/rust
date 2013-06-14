@@ -176,19 +176,22 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     } else { return Err(~"stack is empty") },
                     '=' => if stack.len() > 1 {
                         match (stack.pop(), stack.pop()) {
-                            (Number(y), Number(x)) => stack.push(Number(if x == y { 1 } else { 0 })),
+                            (Number(y), Number(x)) => stack.push(Number(if x == y { 1 }
+                                                                        else { 0 })),
                             _ => return Err(~"non-numbers on stack with =")
                         }
                     } else { return Err(~"stack is empty") },
                     '>' => if stack.len() > 1 {
                         match (stack.pop(), stack.pop()) {
-                            (Number(y), Number(x)) => stack.push(Number(if x > y { 1 } else { 0 })),
+                            (Number(y), Number(x)) => stack.push(Number(if x > y { 1 }
+                                                                        else { 0 })),
                             _ => return Err(~"non-numbers on stack with >")
                         }
                     } else { return Err(~"stack is empty") },
                     '<' => if stack.len() > 1 {
                         match (stack.pop(), stack.pop()) {
-                            (Number(y), Number(x)) => stack.push(Number(if x < y { 1 } else { 0 })),
+                            (Number(y), Number(x)) => stack.push(Number(if x < y { 1 }
+                                                                        else { 0 })),
                             _ => return Err(~"non-numbers on stack with <")
                         }
                     } else { return Err(~"stack is empty") },
@@ -353,12 +356,14 @@ mod test {
     #[test]
     fn test_basic_setabf() {
         let s = bytes!("\\E[48;5;%p1%dm");
-        assert_eq!(expand(s, [Number(1)], &mut Variables::new()).unwrap(), bytes!("\\E[48;5;1m").to_owned());
+        assert_eq!(expand(s, [Number(1)], &mut Variables::new()).unwrap(),
+                   bytes!("\\E[48;5;1m").to_owned());
     }
 
     #[test]
     fn test_multiple_int_constants() {
-        assert_eq!(expand(bytes!("%{1}%{2}%d%d"), [], &mut Variables::new()).unwrap(), bytes!("21").to_owned());
+        assert_eq!(expand(bytes!("%{1}%{2}%d%d"), [], &mut Variables::new()).unwrap(),
+                   bytes!("21").to_owned());
     }
 
     #[test]
