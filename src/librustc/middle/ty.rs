@@ -1856,7 +1856,7 @@ impl TypeContents {
     }
 
     pub fn noncopyable(_cx: ctxt) -> TypeContents {
-        TC_DTOR + TC_BORROWED_MUT + TC_ONCE_CLOSURE + TC_OWNED_CLOSURE +
+        TC_DTOR + TC_BORROWED_MUT + TC_ONCE_CLOSURE + TC_NONCOPY_TRAIT +
             TC_EMPTY_ENUM
     }
 
@@ -1905,13 +1905,19 @@ impl TypeContents {
     }
 
     pub fn needs_drop(&self, cx: ctxt) -> bool {
+        if self.intersects(TC_NONCOPY_TRAIT) {
+            // Currently all noncopyable existentials are 2nd-class types
+            // behind owned pointers. With dynamically-sized types, remove
+            // this assertion.
+            assert!(self.intersects(TC_OWNED_POINTER));
+        }
         let tc = TC_MANAGED + TC_DTOR + TypeContents::owned(cx);
         self.intersects(tc)
     }
 
     pub fn owned(_cx: ctxt) -> TypeContents {
         //! Any kind of owned contents.
-        TC_OWNED_CLOSURE + TC_OWNED_POINTER + TC_OWNED_VEC
+        TC_OWNED_POINTER + TC_OWNED_VEC
     }
 }
 
@@ -1945,8 +1951,8 @@ static TC_OWNED_POINTER: TypeContents =    TypeContents{bits: 0b0000_0000_0010};
 /// Contains an owned vector ~[] or owned string ~str
 static TC_OWNED_VEC: TypeContents =        TypeContents{bits: 0b0000_0000_0100};
 
-/// Contains a ~fn() or a ~Trait, which is non-copyable.
-static TC_OWNED_CLOSURE: TypeContents =    TypeContents{bits: 0b0000_0000_1000};
+/// Contains a non-copyable ~fn() or a ~Trait (NOT a ~fn:Copy() or ~Trait:Copy).
+static TC_NONCOPY_TRAIT: TypeContents =    TypeContents{bits: 0b0000_0000_1000};
 
 /// Type with a destructor
 static TC_DTOR: TypeContents =             TypeContents{bits: 0b0000_0001_0000};
@@ -2061,7 +2067,8 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_trait(_, _, UniqTraitStore, _, _bounds) => {
-                TC_OWNED_CLOSURE
+                // FIXME(#3569): Make this conditional on the trait's bounds.
+                TC_NONCOPY_TRAIT + TC_OWNED_POINTER
             }
 
             ty_trait(_, _, BoxTraitStore, mutbl, _bounds) => {
@@ -2185,7 +2192,9 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 match sigil {
                     ast::BorrowedSigil => TC_BORROWED_POINTER,
                     ast::ManagedSigil => TC_MANAGED,
-                    ast::OwnedSigil => TC_OWNED_CLOSURE
+                    // FIXME(#3569): Looks like noncopyability should depend
+                    // on the bounds, but I don't think this case ever comes up.
+                    ast::OwnedSigil => TC_NONCOPY_TRAIT + TC_OWNED_POINTER,
                 }
             }
 
@@ -2259,7 +2268,11 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         let st = match cty.sigil {
             ast::BorrowedSigil => TC_BORROWED_POINTER,
             ast::ManagedSigil => TC_MANAGED,
-            ast::OwnedSigil => TC_OWNED_CLOSURE
+            ast::OwnedSigil => if cty.bounds.contains_elem(BoundCopy) {
+                TC_OWNED_POINTER
+            } else {
+                TC_OWNED_POINTER + TC_NONCOPY_TRAIT
+            }
         };
         let rt = borrowed_contents(cty.region, m_imm);
         let ot = match cty.onceness {
