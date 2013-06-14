@@ -30,7 +30,7 @@ impl Local for Scheduler {
     fn borrow<T>(f: &fn(&mut Scheduler) -> T) -> T {
         let mut res: Option<T> = None;
         let res_ptr: *mut Option<T> = &mut res;
-        unsafe { 
+        unsafe {
             do local_ptr::borrow |sched| {
                 let result = f(sched);
                 *res_ptr = Some(result);
@@ -39,7 +39,7 @@ impl Local for Scheduler {
         match res {
             Some(r) => { r }
             None => abort!("function failed!")
-        }               
+        }
     }
     unsafe fn unsafe_borrow() -> *mut Scheduler { local_ptr::unsafe_borrow() }
     unsafe fn try_unsafe_borrow() -> Option<*mut Scheduler> { abort!("unimpl") }
@@ -139,5 +139,5 @@ mod test {
         assert!(res)
         let _scheduler: ~Scheduler = Local::take();
     }
-            
+
 }

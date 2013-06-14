@@ -162,18 +162,19 @@ pub fn run_in_mt_newsched_task_random_homed() {
         for uint::range(0, nthreads) |i| {
             let special = (i % 2) == 0;
             let loop_ = ~UvEventLoop::new();
-            let mut sched = ~Scheduler::new_special(loop_, work_queue.clone(), sleepers.clone(), special);
+            let mut sched = ~Scheduler::new_special(
+                loop_, work_queue.clone(), sleepers.clone(), special);
             let handle = sched.make_handle();
             handles.push(handle);
             scheds.push(sched);
-        }           
+        }
 
         // Schedule a pile o tasks
-        let n = 5*stress_factor();        
+        let n = 5*stress_factor();
         for uint::range(0,n) |_i| {
                 rtdebug!("creating task: %u", _i);
                 let hf: ~fn() = || { assert!(true) };
-                spawntask_homed(&mut scheds, hf);            
+                spawntask_homed(&mut scheds, hf);
             }
 
         // Now we want another pile o tasks that do not ever run on a
@@ -182,11 +183,11 @@ pub fn run_in_mt_newsched_task_random_homed() {
 
         let n = 5*stress_factor();
 
-        let f: ~fn() = || {        
+        let f: ~fn() = || {
             for uint::range(0,n) |_| {
-                let f: ~fn()  = || {                                 
+                let f: ~fn()  = || {
                     // Borrow the scheduler we run on and check if it is
-                    // privliged.
+                    // privileged.
                     do Local::borrow::<Scheduler,()> |sched| {
                         assert!(sched.run_anything);
                     };
@@ -194,12 +195,12 @@ pub fn run_in_mt_newsched_task_random_homed() {
                 spawntask_random(f);
             };
         };
-        
+
         let f_cell = Cell(f);
         let handles = Cell(handles);
 
         rtdebug!("creating main task");
-        
+
         let main_task = ~do Coroutine::new(&mut scheds[0].stack_pool) {
             f_cell.take()();
             let mut handles = handles.take();
@@ -210,7 +211,7 @@ pub fn run_in_mt_newsched_task_random_homed() {
         };
 
         rtdebug!("queuing main task")
-        
+
         scheds[0].enqueue_task(main_task);
 
         let mut threads = ~[];
@@ -243,11 +244,13 @@ pub fn run_in_mt_newsched_task_random_homed() {
 pub fn spawntask(f: ~fn()) {
     use super::sched::*;
 
+    rtdebug!("spawntask taking the scheduler from TLS")
     let mut sched = Local::take::<Scheduler>();
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
                                      ~Task::without_unwinding(),
                                      f);
-    sched.schedule_new_task(task);
+    rtdebug!("spawntask scheduling the new task");
+    sched.schedule_task(task);
 }
 
 /// Create a new task and run it right now. Aborts on failure
@@ -305,7 +308,7 @@ pub fn spawntask_homed(scheds: &mut ~[~Scheduler], f: ~fn()) {
     use super::sched::*;
     use rand::{rng, RngUtil};
     let mut rng = rng();
-    
+
     let task = {
         let sched = &mut scheds[rng.gen_int_range(0,scheds.len() as int)];
         let handle = sched.make_handle();
@@ -321,14 +324,15 @@ pub fn spawntask_homed(scheds: &mut ~[~Scheduler], f: ~fn()) {
                 assert!(home_id == sched.sched_id());
             };
             f()
-        };            
-    
+        };
+
         ~Coroutine::with_task_homed(&mut sched.stack_pool,
                                     ~Task::without_unwinding(),
                                     af,
                                     Sched(handle))
     };
     let dest_sched = &mut scheds[rng.gen_int_range(0,scheds.len() as int)];
+    // enqueue it for future execution
     dest_sched.enqueue_task(task);
 }
 

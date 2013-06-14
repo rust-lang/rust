@@ -19,6 +19,7 @@ use cast::transmute;
 use rt::local::Local;
 use super::local_heap::LocalHeap;
 use rt::logging::StdErrLogger;
+use rt::sched::{SchedHome, AnySched};
 
 pub struct Task {
     heap: LocalHeap,
@@ -26,7 +27,8 @@ pub struct Task {
     storage: LocalStorage,
     logger: StdErrLogger,
     unwinder: Option<Unwinder>,
-    destroyed: bool
+    destroyed: bool,
+    home: Option<SchedHome>
 }
 
 pub struct GarbageCollector;
@@ -44,7 +46,8 @@ impl Task {
             storage: LocalStorage(ptr::null(), None),
             logger: StdErrLogger,
             unwinder: Some(Unwinder { unwinding: false }),
-            destroyed: false
+            destroyed: false,
+            home: Some(AnySched)
         }
     }
 
@@ -55,8 +58,13 @@ impl Task {
             storage: LocalStorage(ptr::null(), None),
             logger: StdErrLogger,
             unwinder: None,
-            destroyed: false
+            destroyed: false,
+            home: Some(AnySched)
         }
+    }
+
+    pub fn give_home(&mut self, new_home: SchedHome) {
+        self.home = Some(new_home);
     }
 
     pub fn run(&mut self, f: &fn()) {
