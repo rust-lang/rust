@@ -152,6 +152,6 @@ mod test {
     fn should_concatenate_multiple_doc_comments() {
         let source = @"/// foo\n/// bar";
         let desc = parse_desc(parse_attributes(source));
-        assert!(desc == Some(~"foo\nbar"));
+        assert!(desc == Some(~" foo\n bar"));
     }
 }
