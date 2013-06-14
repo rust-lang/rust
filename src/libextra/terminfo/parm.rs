@@ -34,25 +34,36 @@ pub enum Param {
     Number(int)
 }
 
+/// Container for static and dynamic variable arrays
+pub struct Variables {
+    /// Static variables A-Z
+    sta: [Param, ..26],
+    /// Dynamic variables a-z
+    dyn: [Param, ..26]
+}
+
+impl Variables {
+    /// Return a new zero-initialized Variables
+    pub fn new() -> Variables {
+        Variables{ sta: [Number(0), ..26], dyn: [Number(0), ..26] }
+    }
+}
+
 /**
   Expand a parameterized capability
 
   # Arguments
   * `cap`    - string to expand
   * `params` - vector of params for %p1 etc
-  * `sta`    - vector of params corresponding to static variables
-  * `dyn`    - vector of params corresponding to stativ variables
+  * `vars`   - Variables struct for %Pa etc
 
-  To be compatible with ncurses, `sta` and `dyn` should be the same between calls to `expand` for
+  To be compatible with ncurses, `vars` should be the same between calls to `expand` for
   multiple capabilities for the same terminal.
   */
-pub fn expand(cap: &[u8], params: &mut [Param], sta: &mut [Param], dyn: &mut [Param])
+pub fn expand(cap: &[u8], params: &mut [Param], vars: &mut Variables)
     -> Result<~[u8], ~str> {
     assert!(cap.len() != 0, "expanding an empty capability makes no sense");
     assert!(params.len() <= 9, "only 9 parameters are supported by capability strings");
-
-    assert!(sta.len() <= 26, "only 26 static vars are able to be used by capability strings");
-    assert!(dyn.len() <= 26, "only 26 dynamic vars are able to be used by capability strings");
 
     let mut state = Nothing;
     let mut i = 0;
@@ -170,10 +181,10 @@ pub fn expand(cap: &[u8], params: &mut [Param], sta: &mut [Param], dyn: &mut [Pa
             SetVar => {
                 if cur >= 'A' && cur <= 'Z' {
                     let idx = (cur as u8) - ('A' as u8);
-                    sta[idx] = stack.pop();
+                    vars.sta[idx] = stack.pop();
                 } else if cur >= 'a' && cur <= 'z' {
                     let idx = (cur as u8) - ('a' as u8);
-                    dyn[idx] = stack.pop();
+                    vars.dyn[idx] = stack.pop();
                 } else {
                     return Err(~"bad variable name in %P");
                 }
@@ -181,10 +192,10 @@ pub fn expand(cap: &[u8], params: &mut [Param], sta: &mut [Param], dyn: &mut [Pa
             GetVar => {
                 if cur >= 'A' && cur <= 'Z' {
                     let idx = (cur as u8) - ('A' as u8);
-                    stack.push(copy sta[idx]);
+                    stack.push(copy vars.sta[idx]);
                 } else if cur >= 'a' && cur <= 'z' {
                     let idx = (cur as u8) - ('a' as u8);
-                    stack.push(copy dyn[idx]);
+                    stack.push(copy vars.dyn[idx]);
                 } else {
                     return Err(~"bad variable name in %g");
                 }
@@ -222,6 +233,6 @@ mod test {
     #[test]
     fn test_basic_setabf() {
         let s = bytes!("\\E[48;5;%p1%dm");
-        assert_eq!(expand(s, [Number(1)], [], []).unwrap(), bytes!("\\E[48;5;1m").to_owned());
+        assert_eq!(expand(s, [Number(1)], &mut Variables::new()).unwrap(), bytes!("\\E[48;5;1m").to_owned());
     }
 }
