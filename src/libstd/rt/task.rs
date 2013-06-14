@@ -16,9 +16,11 @@
 use prelude::*;
 use libc::{c_void, uintptr_t};
 use cast::transmute;
+use option::{Option, Some, None};
 use rt::local::Local;
 use super::local_heap::LocalHeap;
 use rt::logging::StdErrLogger;
+use rt::join_latch::JoinLatch;
 
 pub struct Task {
     heap: LocalHeap,
@@ -26,6 +28,8 @@ pub struct Task {
     storage: LocalStorage,
     logger: StdErrLogger,
     unwinder: Unwinder,
+    join_latch: Option<~JoinLatch>,
+    on_exit: Option<~fn(bool)>,
     destroyed: bool
 }
 
@@ -44,6 +48,8 @@ impl Task {
             storage: LocalStorage(ptr::null(), None),
             logger: StdErrLogger,
             unwinder: Unwinder { unwinding: false },
+            join_latch: Some(JoinLatch::new_root()),
+            on_exit: None,
             destroyed: false
         }
     }
@@ -55,6 +61,8 @@ impl Task {
             storage: LocalStorage(ptr::null(), None),
             logger: StdErrLogger,
             unwinder: Unwinder { unwinding: false },
+            join_latch: Some(self.join_latch.get_mut_ref().new_child()),
+            on_exit: None,
             destroyed: false
         }
     }
@@ -68,9 +76,22 @@ impl Task {
 
         self.unwinder.try(f);
         self.destroy();
+
+        // Wait for children. Possibly report the exit status.
+        let local_success = !self.unwinder.unwinding;
+        let join_latch = self.join_latch.swap_unwrap();
+        match self.on_exit {
+            Some(ref on_exit) => {
+                let success = join_latch.wait(local_success);
+                (*on_exit)(success);
+            }
+            None => {
+                join_latch.release(local_success);
+            }
+        }
     }
 
-    /// Must be called manually before finalization to clean up
+    /// must be called manually before finalization to clean up
     /// thread-local resources. Some of the routines here expect
     /// Task to be available recursively so this must be
     /// called unsafely, without removing Task from
@@ -214,6 +235,16 @@ mod test {
             let (port, chan) = stream();
             chan.send(10);
             assert!(port.recv() == 10);
+        }
+    }
+
+    #[test]
+    fn linked_failure() {
+        do run_in_newsched_task() {
+            let res = do spawntask_try {
+                spawntask_random(|| fail!());
+            };
+            assert!(res.is_err());
         }
     }
 }
