@@ -12,6 +12,7 @@
 
 use core::prelude::*;
 use core::{char, int, vec};
+use core::iterator::IteratorUtil;
 
 #[deriving(Eq)]
 enum States {
@@ -60,15 +61,12 @@ impl Variables {
   To be compatible with ncurses, `vars` should be the same between calls to `expand` for
   multiple capabilities for the same terminal.
   */
-pub fn expand(cap: &[u8], params: &mut [Param], vars: &mut Variables)
+pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
     -> Result<~[u8], ~str> {
-    assert!(cap.len() != 0, "expanding an empty capability makes no sense");
-    assert!(params.len() <= 9, "only 9 parameters are supported by capability strings");
-
     let mut state = Nothing;
     let mut i = 0;
 
-    // expanded cap will only rarely be smaller than the cap itself
+    // expanded cap will only rarely be larger than the cap itself
     let mut output = vec::with_capacity(cap.len());
 
     let mut cur;
@@ -76,6 +74,12 @@ pub fn expand(cap: &[u8], params: &mut [Param], vars: &mut Variables)
     let mut stack: ~[Param] = ~[];
 
     let mut intstate = ~[];
+
+    // Copy parameters into a local vector for mutability
+    let mut mparams = [Number(0), ..9];
+    for mparams.mut_iter().zip(params.iter()).advance |(dst, &src)| {
+        *dst = src;
+    }
 
     while i < cap.len() {
         cur = cap[i] as char;
@@ -163,7 +167,7 @@ pub fn expand(cap: &[u8], params: &mut [Param], vars: &mut Variables)
                         Number(x) => stack.push(Number(!x)),
                         _         => return Err(~"non-number on stack with %~")
                     },
-                    'i' => match (copy params[0], copy params[1]) {
+                    'i' => match (copy mparams[0], copy mparams[1]) {
                         (Number(ref mut x), Number(ref mut y)) => {
                             *x += 1;
                             *y += 1;
@@ -176,7 +180,7 @@ pub fn expand(cap: &[u8], params: &mut [Param], vars: &mut Variables)
             },
             PushParam => {
                 // params are 1-indexed
-                stack.push(copy params[char::to_digit(cur, 10).expect("bad param number") - 1]);
+                stack.push(copy mparams[char::to_digit(cur, 10).expect("bad param number") - 1]);
             },
             SetVar => {
                 if cur >= 'A' && cur <= 'Z' {
