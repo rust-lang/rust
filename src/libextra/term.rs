@@ -105,7 +105,8 @@ impl Terminal {
     }
     pub fn reset(&self) {
         if self.color_supported {
-            let s = expand(*self.ti.strings.find_equiv(&("op")).unwrap(), [], &mut Variables::new());
+            let mut vars = Variables::new();
+            let s = expand(*self.ti.strings.find_equiv(&("op")).unwrap(), [], &mut vars);
             if s.is_ok() {
                 self.out.write(s.get());
             } else {
