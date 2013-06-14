@@ -1908,7 +1908,11 @@ pub fn trans_closure(ccx: @mut CrateContext,
     finish(bcx);
     cleanup_and_Br(bcx, bcx_top, fcx.llreturn);
 
-    unsafe { llvm::LLVMMoveBasicBlockAfter(fcx.llreturn, bcx.llbb); }
+    // Put return block after all other blocks.
+    // This somewhat improves single-stepping experience in debugger.
+    unsafe {
+        llvm::LLVMMoveBasicBlockAfter(fcx.llreturn, bcx.llbb);
+    }
 
     // Insert the mandatory first few basic blocks before lltop.
     finish_fn(fcx, lltop);
@@ -3108,7 +3112,7 @@ pub fn trans_crate(sess: session::Session,
         if ccx.sess.opts.debuginfo {
             debuginfo::finalize(ccx);
         }
-        
+
     // Translate the metadata.
     write_metadata(ccx, crate);
     if ccx.sess.trans_stats() {

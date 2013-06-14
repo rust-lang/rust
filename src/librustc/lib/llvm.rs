@@ -225,12 +225,11 @@ pub enum Pass_opaque {}
 pub type PassRef = *Pass_opaque;
 
 pub mod debuginfo {
-    use core::prelude::*;
     use super::{ValueRef};
-    
+
     pub enum DIBuilder_opaque {}
     pub type DIBuilderRef = *DIBuilder_opaque;
-    
+
     pub type DIDescriptor = ValueRef;
     pub type DIScope = DIDescriptor;
     pub type DILocation = DIDescriptor;
@@ -295,6 +294,8 @@ pub mod llvm {
         pub unsafe fn LLVMGetModuleContext(M: ModuleRef) -> ContextRef;
         #[fast_ffi]
         pub unsafe fn LLVMDisposeModule(M: ModuleRef);
+        #[fast_ffi]
+        pub unsafe fn LLVMGetModuleContext(M: ModuleRef) -> ContextRef;
 
         /** Data layout. See Module::getDataLayout. */
         #[fast_ffi]
@@ -2045,14 +2046,14 @@ pub mod llvm {
             AlwaysPreserve: bool,
             Flags: c_uint,
             ArgNo: c_uint) -> DIVariable;
-            
+
         #[fast_ffi]
         pub unsafe fn LLVMDIBuilderCreateArrayType(
             Builder: DIBuilderRef,
             Size: c_ulonglong,
             AlignInBits: c_ulonglong,
             Ty: DIType,
-            Subscripts: DIArray) -> DIType;            
+            Subscripts: DIArray) -> DIType;
 
         #[fast_ffi]
         pub unsafe fn LLVMDIBuilderCreateVectorType(

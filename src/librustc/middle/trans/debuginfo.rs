@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -32,9 +32,7 @@ use core::vec;
 use syntax::codemap::span;
 use syntax::{ast, codemap, ast_util, ast_map};
 
-static LLVMDebugVersion: int = (12 << 16);
-
-static DW_LANG_RUST: int = 12; //0x9000;
+static DW_LANG_RUST: int = 0x9000;
 
 static CompileUnitTag: int = 17;
 static FileDescriptorTag: int = 41;
@@ -65,6 +63,7 @@ pub type DebugContext = @mut _DebugContext;
 struct _DebugContext {
     names: namegen,
     crate_file: ~str,
+    llcontext: ContextRef,
     builder: DIBuilderRef,
     curr_loc: (uint, uint),
     created_files: HashMap<~str, DIFile>,
@@ -73,13 +72,16 @@ struct _DebugContext {
     created_types: HashMap<uint, DIType>
 }
 
-/** Create new DebugContext */
+/// Create new DebugContext
 pub fn mk_ctxt(llmod: ModuleRef, crate: ~str) -> DebugContext {
     debug!("mk_ctxt");
     let builder = unsafe { llvm::LLVMDIBuilderCreate(llmod) };
+    // DIBuilder inherits context from the module, so we'd better use the same one
+    let llcontext = unsafe { llvm::LLVMGetModuleContext(llmod) };
     let dcx = @mut _DebugContext {
         names: new_namegen(),
         crate_file: crate,
+        llcontext: llcontext,
         builder: builder,
         curr_loc: (0, 0),
         created_files: HashMap::new(),
@@ -91,18 +93,11 @@ pub fn mk_ctxt(llmod: ModuleRef, crate: ~str) -> DebugContext {
 }
 
 #[inline(always)]
-fn dbg_cx(cx: &CrateContext) -> DebugContext
-{
+fn dbg_cx(cx: &CrateContext) -> DebugContext {
     return cx.dbg_cx.get();
 }
 
-fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
-    return unsafe {
-        llvm::LLVMDIBuilderGetOrCreateArray(builder, vec::raw::to_ptr(arr), arr.len() as u32)
-    };
-}
-
-/** Create any deferred debug metadata nodes */
+/// Create any deferred debug metadata nodes
 pub fn finalize(cx: @CrateContext) {
     debug!("finalize");
     create_compile_unit(cx);
@@ -110,6 +105,12 @@ pub fn finalize(cx: @CrateContext) {
     unsafe {
         llvm::LLVMDIBuilderFinalize(dcx.builder);
         llvm::LLVMDIBuilderDispose(dcx.builder);
+    };
+}
+
+fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
+    return unsafe {
+        llvm::LLVMDIBuilderGetOrCreateArray(builder, vec::raw::to_ptr(arr), arr.len() as u32)
     };
 }
 
@@ -158,6 +159,7 @@ fn create_file(cx: @CrateContext, full_path: &str) -> DIFile {
     return file_md;
 }
 
+/// Return codemap::Loc corresponding to the beginning of the span
 fn span_start(cx: @CrateContext, span: span) -> codemap::Loc {
     return cx.sess.codemap.lookup_char_pos(span.lo);
 }
@@ -208,7 +210,7 @@ fn size_and_align_of(cx: @CrateContext, t: ty::t) -> (uint, uint) {
     (machine::llsize_of_real(cx, llty), machine::llalign_of_min(cx, llty))
 }
 
-fn create_basic_type(cx: @CrateContext, t: ty::t, span: span) -> DIType{
+fn create_basic_type(cx: @CrateContext, t: ty::t, _span: span) -> DIType{
     let dcx = dbg_cx(cx);
     let ty_id = ty::type_id(t);
     match dcx.created_types.find(&ty_id) {
@@ -255,7 +257,7 @@ fn create_basic_type(cx: @CrateContext, t: ty::t, span: span) -> DIType{
     return ty_md;
 }
 
-fn create_pointer_type(cx: @CrateContext, t: ty::t, span: span, pointee: DIType) -> DIType {
+fn create_pointer_type(cx: @CrateContext, t: ty::t, _span: span, pointee: DIType) -> DIType {
     let (size, align) = size_and_align_of(cx, t);
     let name = ty_to_str(cx.tcx, t);
     let ptr_md = do as_c_str(name) |name| { unsafe {
@@ -291,7 +293,8 @@ impl StructContext {
     }
 
     fn add_member(&mut self, name: &str, line: uint, size: uint, align: uint, ty: DIType) {
-        debug!("StructContext(%s)::add_member: %s, size=%u, align=%u", self.name, name, size, align);
+        debug!("StructContext(%s)::add_member: %s, size=%u, align=%u",
+                self.name, name, size, align);
         let offset = roundup(self.total_size, align);
         let mem_t = do as_c_str(name) |name| { unsafe {
             llvm::LLVMDIBuilderCreateMemberType(dbg_cx(self.cx).builder,
@@ -306,7 +309,8 @@ impl StructContext {
     }
 
     fn finalize(&self) -> DICompositeType {
-        debug!("StructContext(%s)::finalize: total_size=%u, align=%u", self.name, self.total_size, self.align);
+        debug!("StructContext(%s)::finalize: total_size=%u, align=%u",
+                self.name, self.total_size, self.align);
         let dcx = dbg_cx(self.cx);
         let members_md = create_DIArray(dcx.builder, self.members);
 
@@ -323,8 +327,8 @@ impl StructContext {
 }
 
 #[inline(always)]
-fn roundup(x: uint, a: uint) -> uint { 
-    ((x + (a - 1)) / a) * a 
+fn roundup(x: uint, a: uint) -> uint {
+    ((x + (a - 1)) / a) * a
 }
 
 fn create_struct(cx: @CrateContext, t: ty::t, fields: ~[ty::field], span: span) -> DICompositeType {
@@ -353,7 +357,7 @@ fn voidptr(cx: @CrateContext) -> (DIDerivedType, uint, uint) {
     return (vp, size, align);
 }
 
-fn create_tuple(cx: @CrateContext, t: ty::t, elements: &[ty::t], span: span) -> DICompositeType {
+fn create_tuple(cx: @CrateContext, _t: ty::t, elements: &[ty::t], span: span) -> DICompositeType {
     let dcx = dbg_cx(cx);
     let loc = span_start(cx, span);
     let file_md = create_file(cx, loc.file.name);
@@ -391,12 +395,10 @@ fn create_boxed_type(cx: @CrateContext, contents: ty::t,
     return scx.finalize();
 }
 
-fn create_fixed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
+fn create_fixed_vec(cx: @CrateContext, _vec_t: ty::t, elem_t: ty::t,
                     len: uint, span: span) -> DIType {
     let dcx = dbg_cx(cx);
     let elem_ty_md = create_ty(cx, elem_t, span);
-    let loc = span_start(cx, span);
-    let file_md = create_file(cx, loc.file.name);
     let (size, align) = size_and_align_of(cx, elem_t);
 
     let subrange = unsafe {
@@ -465,7 +467,7 @@ fn create_vec_slice(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t, span: span) 
     return scx.finalize();
 }
 
-fn create_fn_ty(cx: @CrateContext, fn_ty: ty::t, inputs: ~[ty::t], output: ty::t,
+fn create_fn_ty(cx: @CrateContext, _fn_ty: ty::t, inputs: ~[ty::t], output: ty::t,
                 span: span) -> DICompositeType {
     let dcx = dbg_cx(cx);
     let loc = span_start(cx, span);
@@ -487,7 +489,7 @@ fn create_unimpl_ty(cx: @CrateContext, t: ty::t) -> DIType {
     let name = ty_to_str(cx.tcx, t);
     let md = do as_c_str(fmt!("NYI<%s>", name)) |name| { unsafe {
         llvm::LLVMDIBuilderCreateBasicType(
-            dcx.builder, name, 
+            dcx.builder, name,
             0_u64, 8_u64, DW_ATE_unsigned as c_uint)
         }};
     return md;
@@ -621,7 +623,7 @@ pub fn create_local_var(bcx: block, local: @ast::local) -> DIVariable {
         }
     };
 
-    set_debug_location(bcx, loc.line, loc.col.to_uint());
+    set_debug_location(cx, create_block(bcx), loc.line, loc.col.to_uint());
     unsafe {
         let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(dcx.builder, llptr, var_md, bcx.llbb);
         llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
@@ -633,7 +635,7 @@ pub fn create_local_var(bcx: block, local: @ast::local) -> DIVariable {
 pub fn create_arg(bcx: block, arg: ast::arg, span: span) -> Option<DIVariable> {
     debug!("create_arg");
     if true {
-        // FIXME(5848) create_arg disabled for now because "node_id_type(bcx, arg.id)" below blows
+        // XXX create_arg disabled for now because "node_id_type(bcx, arg.id)" below blows
         // up: "error: internal compiler error: node_id_to_type: no type for node `arg (id=10)`"
         return None;
     }
@@ -661,12 +663,15 @@ pub fn create_arg(bcx: block, arg: ast::arg, span: span) -> Option<DIVariable> {
                 llvm::LLVMDIBuilderCreateLocalVariable(dcx.builder,
                     ArgVariableTag as u32, context, name,
                     filemd, loc.line as c_uint, tymd, false, 0, 0)
-                    // FIXME need to pass a real argument number
+                    // XXX need to pass in a real argument number
             }};
 
             let llptr = fcx.llargs.get_copy(&arg.id);
+            set_debug_location(cx, create_block(bcx), loc.line, loc.col.to_uint());
             unsafe {
-                llvm::LLVMDIBuilderInsertDeclareAtEnd(dcx.builder, llptr, mdnode, bcx.llbb);
+                let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
+                        dcx.builder, llptr, mdnode, bcx.llbb);
+                llvm::LLVMSetInstDebugLocation(trans::build::B(bcx), instr);
             }
             return Some(mdnode);
         }
@@ -676,33 +681,31 @@ pub fn create_arg(bcx: block, arg: ast::arg, span: span) -> Option<DIVariable> {
     }
 }
 
-fn set_debug_location(bcx: block, line: uint, col: uint) {
-    let blockmd = create_block(bcx);
-    let elems = ~[C_i32(line as i32), C_i32(col as i32), blockmd, ptr::null()];
+fn set_debug_location(cx: @CrateContext, scope: DIScope, line: uint, col: uint) {
+    let dcx = dbg_cx(cx);
+    if dcx.curr_loc == (line, col) {
+        return;
+    }
+    debug!("setting debug location to %u %u", line, col);
+    dcx.curr_loc = (line, col);
+
+    let elems = ~[C_i32(line as i32), C_i32(col as i32), scope, ptr::null()];
     unsafe {
-        let dbg_loc = llvm::LLVMMDNode(vec::raw::to_ptr(elems), elems.len() as libc::c_uint);
-        llvm::LLVMSetCurrentDebugLocation(trans::build::B(bcx), dbg_loc);
+        let dbg_loc = llvm::LLVMMDNodeInContext(
+                dcx.llcontext, vec::raw::to_ptr(elems),
+                elems.len() as libc::c_uint);
+        llvm::LLVMSetCurrentDebugLocation(cx.builder.B, dbg_loc);
     }
 }
 
+/// Set current debug location at the beginning of the span
 pub fn update_source_pos(bcx: block, span: span) {
     if !bcx.sess().opts.debuginfo || (*span.lo == 0 && *span.hi == 0) {
         return;
     }
-
     debug!("update_source_pos: %s", bcx.sess().codemap.span_to_str(span));
-
-    let cx = bcx.ccx();
-    let loc = span_start(cx, span);
-    let dcx = dbg_cx(cx);
-
-    let loc = (loc.line, loc.col.to_uint());
-    if  loc == dcx.curr_loc {
-        return;
-    }
-    debug!("setting_location to %u %u", loc.first(), loc.second());
-    dcx.curr_loc = loc;
-    set_debug_location(bcx, loc.first(), loc.second());
+    let loc = span_start(bcx.ccx(), span);
+    set_debug_location(bcx.ccx(), create_block(bcx), loc.line, loc.col.to_uint())
 }
 
 pub fn create_function(fcx: fn_ctxt) -> DISubprogram {
