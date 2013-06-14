@@ -259,7 +259,7 @@ pub fn last_meta_item_list_by_name(items: ~[@ast::meta_item], name: &str)
 
 pub fn sort_meta_items(items: &[@ast::meta_item]) -> ~[@ast::meta_item] {
     // This is sort of stupid here, converting to a vec of mutables and back
-    let mut v = items.to_owned();
+    let mut v = vec::to_owned(items);
     do extra::sort::quick_sort(v) |ma, mb| {
         get_meta_item_name(*ma) <= get_meta_item_name(*mb)
     }

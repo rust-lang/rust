@@ -131,13 +131,13 @@ fn first_sentence_(s: &str) -> ~str {
     });
     match idx {
         Some(idx) if idx > 2u => {
-            s.slice_to(idx - 1).to_owned()
+            str::to_owned(s.slice(0, idx - 1))
         }
         _ => {
             if s.ends_with(".") {
-                s.to_owned()
+                str::to_owned(s)
             } else {
-                s.to_owned()
+                str::to_owned(s)
             }
         }
     }

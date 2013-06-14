@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use core::vec;
 use ast;
 use codemap;
 use ext::base::*;
@@ -27,7 +28,7 @@ pub fn expand_syntax_ext(cx: @ExtCtxt,
     cx.print_backtrace();
     io::stdout().write_line(
         print::pprust::tt_to_str(
-            ast::tt_delim(tt.to_owned()),
+            ast::tt_delim(vec::to_owned(tt)),
             get_ident_interner()));
 
     //trivial expression

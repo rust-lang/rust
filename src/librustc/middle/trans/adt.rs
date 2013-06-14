@@ -48,6 +48,8 @@ use core::iterator::IteratorUtil;
 use core::container::Map;
 use core::libc::c_ulonglong;
 use core::option::{Option, Some, None};
+use core::str;
+use core::vec;
 
 use lib::llvm::{ValueRef, TypeRef, True, IntEQ, IntNE};
 use middle::trans::_match;
@@ -217,7 +219,7 @@ fn mk_struct(cx: @CrateContext, tys: &[ty::t], packed: bool) -> Struct {
         size: machine::llsize_of_alloc(cx, llty_rec) /*bad*/as u64,
         align: machine::llalign_of_min(cx, llty_rec) /*bad*/as u64,
         packed: packed,
-        fields: tys.to_owned()
+        fields: vec::to_owned(tys)
     }
 }
 

@@ -16,6 +16,7 @@ use core::iterator::*;
 use core::f64;
 use core::cmp;
 use core::num;
+use core::vec;
 use sort;
 
 // NB: this can probably be rewritten in terms of num::Num
@@ -56,7 +57,7 @@ impl<'self> Stats for &'self [f64] {
 
     fn median(self) -> f64 {
         assert!(self.len() != 0);
-        let mut tmp = self.to_owned();
+        let mut tmp = vec::to_owned(self);
         sort::tim_sort(tmp);
         if tmp.len() & 1 == 0 {
             let m = tmp.len() / 2;

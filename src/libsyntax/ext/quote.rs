@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use core::vec;
 use ast;
 use codemap::{BytePos, Pos, span};
 use ext::base::ExtCtxt;
@@ -37,6 +38,8 @@ pub mod rt {
     use ext::base::ExtCtxt;
     use parse;
     use print::pprust;
+
+    use core::str;
 
     pub use ast::*;
     pub use parse::token::*;
@@ -655,7 +658,7 @@ fn expand_tts(cx: @ExtCtxt,
     let p = parse::new_parser_from_tts(
         cx.parse_sess(),
         cx.cfg(),
-        tts.to_owned()
+        vec::to_owned(tts)
     );
     *p.quote_depth += 1u;
     let tts = p.parse_all_token_trees();
