@@ -206,7 +206,7 @@ fn all_whitespace(s: &str, col: CharPos) -> Option<uint> {
     let mut col = col.to_uint();
     let mut cursor: uint = 0;
     while col > 0 && cursor < len {
-        let r: str::CharRange = str::char_range_at(s, cursor);
+        let r: str::CharRange = s.char_range_at(cursor);
         if !r.ch.is_whitespace() {
             return None;
         }
