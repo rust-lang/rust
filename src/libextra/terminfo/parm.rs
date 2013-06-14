@@ -68,6 +68,7 @@ pub fn expand(cap: &[u8], params: &mut [Param], sta: &mut [Param], dyn: &mut [Pa
 
     while i < cap.len() {
         cur = cap[i] as char;
+        debug!("current char: %c", cur);
         let mut old_state = state;
         match state {
             Nothing => {
@@ -132,9 +133,36 @@ pub fn expand(cap: &[u8], params: &mut [Param], sta: &mut [Param], dyn: &mut [Pa
                         (Number(x), Number(y)) => stack.push(Number(x | y)),
                         (_, _) => return Err(~"non-numbers on stack with |")
                     },
-                    'A' => return Err(~"logical operations unimplemented"),
-                    'O' => return Err(~"logical operations unimplemented"),
-                    '!' => return Err(~"logical operations unimplemented"),
+                    'A' => match (stack.pop(), stack.pop()) {
+                        (Number(x), Number(y)) => {
+                            if x == 1 && y == 1 {
+                                stack.push(Number(1));
+                            } else {
+                                stack.push(Number(0));
+                            }
+                        },
+                        (_, _) => return Err(~"non-numbers on stack with logical and")
+                    },
+                    'O' => match (stack.pop(), stack.pop()) {
+                        (Number(x), Number(y)) => {
+                            if x == 1 && y == 1 {
+                                stack.push(Number(1));
+                            } else {
+                                stack.push(Number(0));
+                            }
+                        },
+                        (_, _) => return Err(~"non-numbers on stack with logical or")
+                    },
+                    '!' => match stack.pop() {
+                        Number(x) => {
+                            if x == 1 {
+                                stack.push(Number(0))
+                            } else {
+                                stack.push(Number(1))
+                            }
+                        },
+                        _ => return Err(~"non-number on stack with logical not")
+                    },
                     '~' => match stack.pop() {
                         Number(x) => stack.push(Number(!x)),
                         _         => return Err(~"non-number on stack with %~")
@@ -181,7 +209,9 @@ pub fn expand(cap: &[u8], params: &mut [Param], sta: &mut [Param], dyn: &mut [Pa
                 state = CharClose;
             },
             CharClose => {
-                assert!(cur == '\'', "malformed character constant");
+                if cur != '\'' {
+                    return Err(~"malformed character constant");
+                }
             },
             IntConstant => {
                 if cur == '}' {
