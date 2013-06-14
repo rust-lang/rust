@@ -725,6 +725,17 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateLocalVariable(
         unwrapDI<DIType>(Ty), AlwaysPreserve, Flags, ArgNo));
 }
 
+extern "C" LLVMValueRef LLVMDIBuilderCreateArrayType(
+    DIBuilderRef Builder,
+    uint64_t Size,  
+    uint64_t AlignInBits,  
+    LLVMValueRef Ty, 
+    LLVMValueRef Subscripts) {
+    return wrap(Builder->createArrayType(Size, AlignInBits,
+        unwrapDI<DIType>(Ty), 
+        unwrapDI<DIArray>(Subscripts)));
+}
+
 extern "C" LLVMValueRef LLVMDIBuilderCreateVectorType(
     DIBuilderRef Builder,
     uint64_t Size,  

@@ -24,6 +24,7 @@ use util::ppaux::ty_to_str;
 use core::hashmap::HashMap;
 use core::libc;
 use core::libc::c_uint;
+use core::cmp;
 use core::ptr;
 use core::str::as_c_str;
 use core::sys;
@@ -204,8 +205,7 @@ fn create_block(bcx: block) -> DILexicalBlock {
 
 fn size_and_align_of(cx: @CrateContext, t: ty::t) -> (uint, uint) {
     let llty = type_of::type_of(cx, t);
-    (machine::llsize_of_real(cx, llty),
-     machine::llalign_of_pref(cx, llty))
+    (machine::llsize_of_real(cx, llty), machine::llalign_of_min(cx, llty))
 }
 
 fn create_basic_type(cx: @CrateContext, t: ty::t, span: span) -> DIType{
@@ -277,6 +277,7 @@ struct StructContext {
 
 impl StructContext {
     fn create(cx: @CrateContext, file: DIFile, name: ~str, line: uint) -> ~StructContext {
+        debug!("StructContext::create: %s", name);
         let scx = ~StructContext {
             cx: cx,
             file: file,
@@ -284,37 +285,46 @@ impl StructContext {
             line: line,
             members: ~[],
             total_size: 0,
-            align: 64 //XXX different alignment per arch?
+            align: 1
         };
         return scx;
     }
 
     fn add_member(&mut self, name: &str, line: uint, size: uint, align: uint, ty: DIType) {
+        debug!("StructContext(%s)::add_member: %s, size=%u, align=%u", self.name, name, size, align);
+        let offset = roundup(self.total_size, align);
         let mem_t = do as_c_str(name) |name| { unsafe {
             llvm::LLVMDIBuilderCreateMemberType(dbg_cx(self.cx).builder,
                 ptr::null(), name, self.file, line as c_uint,
-                size * 8 as u64, align * 8 as u64, self.total_size as u64,
+                size * 8 as u64, align * 8 as u64, offset * 8 as u64,
                 0, ty)
             }};
-        // XXX What about member alignment???
         self.members.push(mem_t);
-        self.total_size += size * 8;
+        self.total_size = offset + size;
+        // struct alignment is the max alignment of its' members
+        self.align = cmp::max(self.align, align);
     }
 
     fn finalize(&self) -> DICompositeType {
+        debug!("StructContext(%s)::finalize: total_size=%u, align=%u", self.name, self.total_size, self.align);
         let dcx = dbg_cx(self.cx);
         let members_md = create_DIArray(dcx.builder, self.members);
 
         let struct_md =
             do as_c_str(self.name) |name| { unsafe {
                 llvm::LLVMDIBuilderCreateStructType(
-                    dcx.builder, ptr::null(), name,
+                    dcx.builder, self.file, name,
                     self.file, self.line as c_uint,
-                    self.total_size as u64, self.align as u64, 0, ptr::null(),
+                    self.total_size * 8 as u64, self.align * 8 as u64, 0, ptr::null(),
                     members_md, 0, ptr::null())
             }};
         return struct_md;
     }
+}
+
+#[inline(always)]
+fn roundup(x: uint, a: uint) -> uint { 
+    ((x + (a - 1)) / a) * a 
 }
 
 fn create_struct(cx: @CrateContext, t: ty::t, fields: ~[ty::field], span: span) -> DICompositeType {
@@ -390,12 +400,12 @@ fn create_fixed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
     let (size, align) = size_and_align_of(cx, elem_t);
 
     let subrange = unsafe {
-        llvm::LLVMDIBuilderGetOrCreateSubrange(dcx.builder, 0_i64, (len-1) as i64) };
+        llvm::LLVMDIBuilderGetOrCreateSubrange(dcx.builder, 0_i64, len as i64) };
 
     let subscripts = create_DIArray(dcx.builder, [subrange]);
     return unsafe {
-        llvm::LLVMDIBuilderCreateVectorType(dcx.builder,
-            size * len as u64, align as u64, elem_ty_md, subscripts)
+        llvm::LLVMDIBuilderCreateArrayType(dcx.builder,
+            size * len * 8 as u64, align * 8 as u64, elem_ty_md, subscripts)
     };
 }
 
@@ -418,8 +428,8 @@ fn create_boxed_vec(cx: @CrateContext, vec_t: ty::t, elem_t: ty::t,
     let name = fmt!("[%s]", ty_to_str(cx.tcx, elem_t));
 
     let subscripts = create_DIArray(dcx.builder, [subrange]);
-    let data_ptr = unsafe { llvm::LLVMDIBuilderCreateVectorType(dcx.builder,
-                arr_size as u64, arr_align as u64, elem_ty_md, subscripts) };
+    let data_ptr = unsafe { llvm::LLVMDIBuilderCreateArrayType(dcx.builder,
+                arr_size * 8 as u64, arr_align * 8 as u64, elem_ty_md, subscripts) };
     vec_scx.add_member("data", 0, 0, // clang says the size should be 0
                sys::min_align_of::<u8>(), data_ptr);
     let vec_md = vec_scx.finalize();

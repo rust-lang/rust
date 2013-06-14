@@ -2045,6 +2045,14 @@ pub mod llvm {
             AlwaysPreserve: bool,
             Flags: c_uint,
             ArgNo: c_uint) -> DIVariable;
+            
+        #[fast_ffi]
+        pub unsafe fn LLVMDIBuilderCreateArrayType(
+            Builder: DIBuilderRef,
+            Size: c_ulonglong,
+            AlignInBits: c_ulonglong,
+            Ty: DIType,
+            Subscripts: DIArray) -> DIType;            
 
         #[fast_ffi]
         pub unsafe fn LLVMDIBuilderCreateVectorType(
