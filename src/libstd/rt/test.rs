@@ -48,7 +48,7 @@ pub fn run_in_newsched_task(f: ~fn()) {
     do run_in_bare_thread {
         let mut sched = ~new_test_uv_sched();
         let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                         ~Task::without_unwinding(),
+                                         ~Task::new_root_without_unwinding(),
                                          f.take());
         sched.enqueue_task(task);
         sched.run();
@@ -94,7 +94,7 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
 
         let f_cell = Cell(f_cell.take());
         let handles = Cell(handles);
-        let main_task = ~do Coroutine::new(&mut scheds[0].stack_pool) {
+        let main_task = ~do Coroutine::new_root(&mut scheds[0].stack_pool) {
             f_cell.take()();
 
             let mut handles = handles.take();
@@ -132,9 +132,14 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
 pub fn spawntask(f: ~fn()) {
     use super::sched::*;
 
+    let mut task = None;
+    do Local::borrow::<Task>() |running_task| {
+        task = Some(~running_task.new_child_without_unwinding());
+    }
+
     let mut sched = Local::take::<Scheduler>();
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                     ~Task::without_unwinding(),
+                                     task.swap_unwrap(),
                                      f);
     sched.schedule_new_task(task);
 }
@@ -143,9 +148,14 @@ pub fn spawntask(f: ~fn()) {
 pub fn spawntask_immediately(f: ~fn()) {
     use super::sched::*;
 
+    let mut task = None;
+    do Local::borrow::<Task>() |running_task| {
+        task = Some(~running_task.new_child_without_unwinding());
+    }
+
     let mut sched = Local::take::<Scheduler>();
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                     ~Task::without_unwinding(),
+                                     task.swap_unwrap(),
                                      f);
     do sched.switch_running_tasks_and_then(task) |sched, task| {
         sched.enqueue_task(task);
@@ -156,9 +166,14 @@ pub fn spawntask_immediately(f: ~fn()) {
 pub fn spawntask_later(f: ~fn()) {
     use super::sched::*;
 
+    let mut task = None;
+    do Local::borrow::<Task>() |running_task| {
+        task = Some(~running_task.new_child_without_unwinding());
+    }
+
     let mut sched = Local::take::<Scheduler>();
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                     ~Task::without_unwinding(),
+                                     task.swap_unwrap(),
                                      f);
 
     sched.enqueue_task(task);
@@ -170,13 +185,18 @@ pub fn spawntask_random(f: ~fn()) {
     use super::sched::*;
     use rand::{Rand, rng};
 
-    let mut rng = rng();
-    let run_now: bool = Rand::rand(&mut rng);
+    let mut task = None;
+    do Local::borrow::<Task>() |running_task| {
+        task = Some(~running_task.new_child_without_unwinding());
+    }
 
     let mut sched = Local::take::<Scheduler>();
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                     ~Task::without_unwinding(),
+                                     task.swap_unwrap(),
                                      f);
+
+    let mut rng = rng();
+    let run_now: bool = Rand::rand(&mut rng);
 
     if run_now {
         do sched.switch_running_tasks_and_then(task) |sched, task| {
@@ -206,7 +226,7 @@ pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
     do sched.deschedule_running_task_and_then() |sched, old_task| {
         let old_task = Cell(old_task);
         let f = f.take();
-        let new_task = ~do Coroutine::new(&mut sched.stack_pool) {
+        let new_task = ~do Coroutine::new_root(&mut sched.stack_pool) {
             do (|| {
                 (f.take())()
             }).finally {
@@ -229,11 +249,17 @@ pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
 pub fn spawntask_thread(f: ~fn()) -> Thread {
     use rt::sched::*;
 
+    let mut task = None;
+    do Local::borrow::<Task>() |running_task| {
+        task = Some(~running_task.new_child_without_unwinding());
+    }
+
+    let task = Cell(task.swap_unwrap());
     let f = Cell(f);
     let thread = do Thread::start {
         let mut sched = ~new_test_uv_sched();
         let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                         ~Task::without_unwinding(),
+                                         task.take(),
                                          f.take());
         sched.enqueue_task(task);
         sched.run();

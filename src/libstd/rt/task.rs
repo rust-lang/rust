@@ -37,7 +37,7 @@ pub struct Unwinder {
 }
 
 impl Task {
-    pub fn new() -> Task {
+    pub fn new_root() -> Task {
         Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
@@ -48,7 +48,29 @@ impl Task {
         }
     }
 
-    pub fn without_unwinding() -> Task {
+    pub fn new_root_without_unwinding() -> Task {
+        Task {
+            heap: LocalHeap::new(),
+            gc: GarbageCollector,
+            storage: LocalStorage(ptr::null(), None),
+            logger: StdErrLogger,
+            unwinder: None,
+            destroyed: false
+        }
+    }
+
+    pub fn new_child(&mut self) -> Task {
+        Task {
+            heap: LocalHeap::new(),
+            gc: GarbageCollector,
+            storage: LocalStorage(ptr::null(), None),
+            logger: StdErrLogger,
+            unwinder: Some(Unwinder { unwinding: false }),
+            destroyed: false
+        }
+    }
+
+    pub fn new_child_without_unwinding(&mut self) -> Task {
         Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
