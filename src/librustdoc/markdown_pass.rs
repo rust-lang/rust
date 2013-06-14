@@ -537,8 +537,6 @@ mod test {
     use tystr_pass;
     use unindent_pass;
 
-    use core::str;
-
     fn render(source: ~str) -> ~str {
         let (srv, doc) = create_doc_srv(source);
         let markdown = write_markdown_str_srv(srv, doc);

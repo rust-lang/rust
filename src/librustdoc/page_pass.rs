@@ -157,7 +157,6 @@ mod test {
     use doc;
     use extract;
     use page_pass::run;
-    use core::vec;
 
     fn mk_doc_(
         output_style: config::OutputStyle,

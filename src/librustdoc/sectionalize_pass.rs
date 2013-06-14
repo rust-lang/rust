@@ -170,9 +170,6 @@ mod test {
     use extract;
     use sectionalize_pass::run;
 
-    use core::str;
-    use core::vec;
-
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {
             let doc = extract::from_srv(srv.clone(), ~"");
