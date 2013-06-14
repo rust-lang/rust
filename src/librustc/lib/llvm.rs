@@ -224,13 +224,51 @@ pub type SectionIteratorRef = *SectionIterator_opaque;
 pub enum Pass_opaque {}
 pub type PassRef = *Pass_opaque;
 
+pub mod debuginfo {
+    use core::prelude::*;
+    use super::{ValueRef};
+    
+    pub enum DIBuilder_opaque {}
+    pub type DIBuilderRef = *DIBuilder_opaque;
+    
+    pub type DIDescriptor = ValueRef;
+    pub type DIScope = DIDescriptor;
+    pub type DILocation = DIDescriptor;
+    pub type DIFile = DIScope;
+    pub type DILexicalBlock = DIScope;
+    pub type DISubprogram = DIScope;
+    pub type DIType = DIDescriptor;
+    pub type DIBasicType = DIType;
+    pub type DIDerivedType = DIType;
+    pub type DICompositeType = DIDerivedType;
+    pub type DIVariable = DIDescriptor;
+    pub type DIArray = DIDescriptor;
+    pub type DISubrange = DIDescriptor;
+
+    pub enum DIDescriptorFlags {
+      FlagPrivate            = 1 << 0,
+      FlagProtected          = 1 << 1,
+      FlagFwdDecl            = 1 << 2,
+      FlagAppleBlock         = 1 << 3,
+      FlagBlockByrefStruct   = 1 << 4,
+      FlagVirtual            = 1 << 5,
+      FlagArtificial         = 1 << 6,
+      FlagExplicit           = 1 << 7,
+      FlagPrototyped         = 1 << 8,
+      FlagObjcClassComplete  = 1 << 9,
+      FlagObjectPointer      = 1 << 10,
+      FlagVector             = 1 << 11,
+      FlagStaticMember       = 1 << 12
+    }
+}
+
 pub mod llvm {
     use super::{AtomicBinOp, AtomicOrdering, BasicBlockRef, ExecutionEngineRef};
     use super::{Bool, BuilderRef, ContextRef, MemoryBufferRef, ModuleRef};
     use super::{ObjectFileRef, Opcode, PassManagerRef, PassManagerBuilderRef};
     use super::{SectionIteratorRef, TargetDataRef, TypeKind, TypeRef, UseRef};
-    use super::{ValueRef,PassRef};
-
+    use super::{ValueRef, PassRef};
+    use super::debuginfo::*;
     use core::libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong};
 
     #[link_args = "-Lrustllvm -lrustllvm"]
@@ -1885,6 +1923,149 @@ pub mod llvm {
                                     AlignStack: Bool, Dialect: c_uint)
                                  -> ValueRef;
 
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_new(M: ModuleRef) -> DIBuilderRef;
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_delete(Builder: DIBuilderRef);
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_finalize(Builder: DIBuilderRef);
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_createCompileUnit(
+            Builder: DIBuilderRef,
+            Lang: c_uint,
+            File: *c_char,
+            Dir: *c_char,
+            Producer: *c_char,
+            isOptimized: bool,
+            Flags: *c_char,
+            RuntimeVer: c_uint,
+            SplitName: *c_char);
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_createFile(
+            Builder: DIBuilderRef,
+            Filename: *c_char,
+            Directory: *c_char) -> DIFile;
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_createSubroutineType(
+            Builder: DIBuilderRef,
+            File: DIFile,
+            ParameterTypes: DIArray) -> DICompositeType;
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_createFunction(
+            Builder: DIBuilderRef,
+            Scope: DIDescriptor,
+            Name: *c_char,
+            LinkageName: *c_char,
+            File: DIFile,
+            LineNo: c_uint,
+            Ty: DIType,
+            isLocalToUnit: bool,
+            isDefinition: bool,
+            ScopeLine: c_uint,
+            Flags: c_uint,
+            isOptimized: bool,
+            Fn: ValueRef,
+            TParam: ValueRef,
+            Decl: ValueRef) -> DISubprogram;
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_createBasicType(
+            Builder: DIBuilderRef,
+            Name: *c_char,
+            SizeInBits: c_ulonglong,
+            AlignInBits: c_ulonglong,
+            Encoding: c_uint) -> DIBasicType;
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_createPointerType(
+            Builder: DIBuilderRef,
+            PointeeTy: DIType,
+            SizeInBits: c_ulonglong,
+            AlignInBits: c_ulonglong,
+            Name: *c_char) -> DIDerivedType;
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_createStructType(
+            Builder: DIBuilderRef,
+            Scope: DIDescriptor,
+            Name: *c_char,
+            File: DIFile,
+            LineNumber: c_uint,
+            SizeInBits: c_ulonglong,
+            AlignInBits: c_ulonglong,
+            Flags: c_uint,
+            DerivedFrom: DIType,
+            Elements: DIArray,
+            RunTimeLang: c_uint,
+            VTableHolder: ValueRef) -> DICompositeType;
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_createMemberType(
+            Builder: DIBuilderRef,
+            Scope: DIDescriptor,
+            Name: *c_char,
+            File: DIFile,
+            LineNo: c_uint,
+            SizeInBits: c_ulonglong,
+            AlignInBits: c_ulonglong,
+            OffsetInBits: c_ulonglong,
+            Flags: c_uint,
+            Ty: DIType) -> DIDerivedType;
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_createLexicalBlock(
+            Builder: DIBuilderRef,
+            Scope: DIDescriptor,
+            File: DIFile,
+            Line: c_uint,
+            Col: c_uint) -> DILexicalBlock;
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_createLocalVariable(
+            Builder: DIBuilderRef,
+            Tag: c_uint,
+            Scope: DIDescriptor,
+            Name: *c_char,
+            File: DIFile,
+            LineNo: c_uint,
+            Ty: DIType,
+            AlwaysPreserve: bool,
+            Flags: c_uint,
+            ArgNo: c_uint) -> DIVariable;
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_createVectorType(
+            Builder: DIBuilderRef,
+            Size: c_ulonglong,
+            AlignInBits: c_ulonglong,
+            Ty: DIType,
+            Subscripts: DIArray) -> DIType;
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_getOrCreateSubrange(
+            Builder: DIBuilderRef,
+            Lo: c_longlong,
+            Count: c_longlong) -> DISubrange;
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_getOrCreateArray(
+            Builder: DIBuilderRef,
+            Ptr: *DIDescriptor,
+            Count: c_uint) -> DIArray;
+
+        #[fast_ffi]
+        pub unsafe fn DIBuilder_insertDeclare(
+            Builder: DIBuilderRef,
+            Val: ValueRef,
+            VarInfo: DIVariable,
+            InsertBefore: *c_void) -> *c_void;
     }
 }
 
