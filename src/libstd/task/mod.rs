@@ -515,16 +515,7 @@ pub fn failing() -> bool {
         _ => {
             let mut unwinding = false;
             do Local::borrow::<Task> |local| {
-                unwinding = match local.unwinder {
-                    Some(unwinder) => {
-                        unwinder.unwinding
-                    }
-                    None => {
-                        // Because there is no unwinder we can't be unwinding.
-                        // (The process will abort on failure)
-                        false
-                    }
-                }
+                unwinding = local.unwinder.unwinding
             }
             return unwinding;
         }

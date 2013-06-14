@@ -579,7 +579,7 @@ fn spawn_raw_newsched(_opts: TaskOpts, f: ~fn()) {
 
     let mut task = None;
     do Local::borrow::<Task>() |running_task| {
-        task = Some(~running_task.new_child_without_unwinding());
+        task = Some(~running_task.new_child());
     }
 
     let mut sched = Local::take::<Scheduler>();

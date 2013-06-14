@@ -226,11 +226,7 @@ pub fn begin_unwind_(msg: *c_char, file: *c_char, line: size_t) -> ! {
                 gc::cleanup_stack_for_failure();
 
                 let task = Local::unsafe_borrow::<Task>();
-                let unwinder: &mut Option<Unwinder> = &mut (*task).unwinder;
-                match *unwinder {
-                    Some(ref mut unwinder) => unwinder.begin_unwind(),
-                    None => abort!("failure without unwinder. aborting process")
-                }
+                (*task).unwinder.begin_unwind();
             }
         }
     }
