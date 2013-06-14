@@ -48,7 +48,7 @@ pub fn run_in_newsched_task(f: ~fn()) {
     do run_in_bare_thread {
         let mut sched = ~new_test_uv_sched();
         let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                         ~Task::new_root_without_unwinding(),
+                                         ~Task::new_root(),
                                          f.take());
         sched.enqueue_task(task);
         sched.run();
@@ -134,7 +134,7 @@ pub fn spawntask(f: ~fn()) {
 
     let mut task = None;
     do Local::borrow::<Task>() |running_task| {
-        task = Some(~running_task.new_child_without_unwinding());
+        task = Some(~running_task.new_child());
     }
 
     let mut sched = Local::take::<Scheduler>();
@@ -150,7 +150,7 @@ pub fn spawntask_immediately(f: ~fn()) {
 
     let mut task = None;
     do Local::borrow::<Task>() |running_task| {
-        task = Some(~running_task.new_child_without_unwinding());
+        task = Some(~running_task.new_child());
     }
 
     let mut sched = Local::take::<Scheduler>();
@@ -168,7 +168,7 @@ pub fn spawntask_later(f: ~fn()) {
 
     let mut task = None;
     do Local::borrow::<Task>() |running_task| {
-        task = Some(~running_task.new_child_without_unwinding());
+        task = Some(~running_task.new_child());
     }
 
     let mut sched = Local::take::<Scheduler>();
@@ -187,7 +187,7 @@ pub fn spawntask_random(f: ~fn()) {
 
     let mut task = None;
     do Local::borrow::<Task>() |running_task| {
-        task = Some(~running_task.new_child_without_unwinding());
+        task = Some(~running_task.new_child());
     }
 
     let mut sched = Local::take::<Scheduler>();
@@ -251,7 +251,7 @@ pub fn spawntask_thread(f: ~fn()) -> Thread {
 
     let mut task = None;
     do Local::borrow::<Task>() |running_task| {
-        task = Some(~running_task.new_child_without_unwinding());
+        task = Some(~running_task.new_child());
     }
 
     let task = Cell(task.swap_unwrap());

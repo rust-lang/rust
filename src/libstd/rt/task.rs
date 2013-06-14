@@ -25,7 +25,7 @@ pub struct Task {
     gc: GarbageCollector,
     storage: LocalStorage,
     logger: StdErrLogger,
-    unwinder: Option<Unwinder>,
+    unwinder: Unwinder,
     destroyed: bool
 }
 
@@ -43,18 +43,7 @@ impl Task {
             gc: GarbageCollector,
             storage: LocalStorage(ptr::null(), None),
             logger: StdErrLogger,
-            unwinder: Some(Unwinder { unwinding: false }),
-            destroyed: false
-        }
-    }
-
-    pub fn new_root_without_unwinding() -> Task {
-        Task {
-            heap: LocalHeap::new(),
-            gc: GarbageCollector,
-            storage: LocalStorage(ptr::null(), None),
-            logger: StdErrLogger,
-            unwinder: None,
+            unwinder: Unwinder { unwinding: false },
             destroyed: false
         }
     }
@@ -65,18 +54,7 @@ impl Task {
             gc: GarbageCollector,
             storage: LocalStorage(ptr::null(), None),
             logger: StdErrLogger,
-            unwinder: Some(Unwinder { unwinding: false }),
-            destroyed: false
-        }
-    }
-
-    pub fn new_child_without_unwinding(&mut self) -> Task {
-        Task {
-            heap: LocalHeap::new(),
-            gc: GarbageCollector,
-            storage: LocalStorage(ptr::null(), None),
-            logger: StdErrLogger,
-            unwinder: None,
+            unwinder: Unwinder { unwinding: false },
             destroyed: false
         }
     }
@@ -88,16 +66,7 @@ impl Task {
             assert!(ptr::ref_eq(task, self));
         }
 
-        match self.unwinder {
-            Some(ref mut unwinder) => {
-                // If there's an unwinder then set up the catch block
-                unwinder.try(f);
-            }
-            None => {
-                // Otherwise, just run the body
-                f()
-            }
-        }
+        self.unwinder.try(f);
         self.destroy();
     }
 
