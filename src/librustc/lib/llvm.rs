@@ -1828,9 +1828,7 @@ pub mod llvm {
         /** Execute the JIT engine. */
         #[fast_ffi]
         pub unsafe fn LLVMRustBuildJIT(MM: *(),
-                              PM: PassManagerRef,
                               M: ModuleRef,
-                              OptLevel: c_int,
                               EnableSegmentedStacks: bool) -> ExecutionEngineRef;
 
         /** Parses the bitcode in the given memory buffer. */

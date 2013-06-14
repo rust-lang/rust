@@ -331,9 +331,7 @@ LLVMRustLoadCrate(void* mem, const char* crate) {
 
 extern "C" LLVMExecutionEngineRef
 LLVMRustBuildJIT(void* mem,
-                 LLVMPassManagerRef PMR,
                  LLVMModuleRef M,
-                 CodeGenOpt::Level OptLevel,
                  bool EnableSegmentedStacks) {
 
   InitializeNativeTarget();
@@ -346,25 +344,13 @@ LLVMRustBuildJIT(void* mem,
   Options.JITEmitDebugInfo = true;
   Options.NoFramePointerElim = true;
   Options.EnableSegmentedStacks = EnableSegmentedStacks;
-  PassManager *PM = unwrap<PassManager>(PMR);
   RustMCJITMemoryManager* MM = (RustMCJITMemoryManager*) mem;
-
   assert(MM);
-
-  PM->add(createBasicAliasAnalysisPass());
-  PM->add(createInstructionCombiningPass());
-  PM->add(createReassociatePass());
-  PM->add(createGVNPass());
-  PM->add(createCFGSimplificationPass());
-  PM->add(createFunctionInliningPass());
-  PM->add(createPromoteMemoryToRegisterPass());
-  PM->run(*unwrap(M));
 
   ExecutionEngine* EE = EngineBuilder(unwrap(M))
     .setErrorStr(&Err)
     .setTargetOptions(Options)
     .setJITMemoryManager(MM)
-    .setOptLevel(OptLevel)
     .setUseMCJIT(true)
     .setAllocateGVsWithCode(false)
     .create();

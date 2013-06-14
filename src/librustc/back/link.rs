@@ -102,35 +102,21 @@ pub mod jit {
     use back::link::llvm_err;
     use driver::session::Session;
     use lib::llvm::llvm;
-    use lib::llvm::{ModuleRef, PassManagerRef, ContextRef};
+    use lib::llvm::{ModuleRef, ContextRef};
     use metadata::cstore;
 
     use core::cast;
-    use core::libc::c_int;
     use core::ptr;
     use core::str;
-
-    pub mod rusti {
-        #[nolink]
-        #[abi = "rust-intrinsic"]
-        pub extern "rust-intrinsic" {
-            pub fn morestack_addr() -> *();
-        }
-    }
-
-    pub struct Closure {
-        code: *(),
-        env: *(),
-    }
+    use core::sys;
+    use core::unstable::intrinsics;
 
     pub fn exec(sess: Session,
-                pm: PassManagerRef,
                 c: ContextRef,
                 m: ModuleRef,
-                opt: c_int,
                 stacks: bool) {
         unsafe {
-            let manager = llvm::LLVMRustPrepareJIT(rusti::morestack_addr());
+            let manager = llvm::LLVMRustPrepareJIT(intrinsics::morestack_addr());
 
             // We need to tell JIT where to resolve all linked
             // symbols from. The equivalent of -lstd, -lcore, etc.
@@ -156,7 +142,7 @@ pub mod jit {
 
             // We custom-build a JIT execution engine via some rust wrappers
             // first. This wrappers takes ownership of the module passed in.
-            let ee = llvm::LLVMRustBuildJIT(manager, pm, m, opt, stacks);
+            let ee = llvm::LLVMRustBuildJIT(manager, m, stacks);
             if ee.is_null() {
                 llvm::LLVMContextDispose(c);
                 llvm_err(sess, ~"Could not create the JIT");
@@ -179,7 +165,7 @@ pub mod jit {
             // closure
             let code = llvm::LLVMGetPointerToGlobal(ee, fun);
             assert!(!code.is_null());
-            let closure = Closure {
+            let closure = sys::Closure {
                 code: code,
                 env: ptr::null()
             };
@@ -282,7 +268,17 @@ pub mod write {
             debug!("Running Module Optimization Pass");
             mpm.run(llmod);
 
-            if is_object_or_assembly_or_exe(output_type) || opts.jit {
+            if opts.jit {
+                // If we are using JIT, go ahead and create and execute the
+                // engine now.  JIT execution takes ownership of the module and
+                // context, so don't dispose and return.
+                jit::exec(sess, llcx, llmod, true);
+
+                if sess.time_llvm_passes() {
+                    llvm::LLVMRustPrintPassTimings();
+                }
+                return;
+            } else if is_object_or_assembly_or_exe(output_type) {
                 let LLVMOptNone       = 0 as c_int; // -O0
                 let LLVMOptLess       = 1 as c_int; // -O1
                 let LLVMOptDefault    = 2 as c_int; // -O2, -Os
@@ -294,20 +290,6 @@ pub mod write {
                   session::Default => LLVMOptDefault,
                   session::Aggressive => LLVMOptAggressive
                 };
-
-                if opts.jit {
-                    // If we are using JIT, go ahead and create and
-                    // execute the engine now.
-                    // JIT execution takes ownership of the module,
-                    // so don't dispose and return.
-
-                    jit::exec(sess, pm.llpm, llcx, llmod, CodeGenOptLevel, true);
-
-                    if sess.time_llvm_passes() {
-                        llvm::LLVMRustPrintPassTimings();
-                    }
-                    return;
-                }
 
                 let FileType;
                 if output_type == output_type_object ||
