@@ -54,7 +54,7 @@ use rt::io::IoError;
 #[cfg(test)] use unstable::run_in_bare_thread;
 
 pub use self::file::FsRequest;
-pub use self::net::{StreamWatcher, TcpWatcher};
+pub use self::net::{StreamWatcher, TcpWatcher, UdpWatcher};
 pub use self::idle::IdleWatcher;
 pub use self::timer::TimerWatcher;
 pub use self::async::AsyncWatcher;
@@ -128,6 +128,8 @@ pub type ConnectionCallback = ~fn(StreamWatcher, Option<UvError>);
 pub type FsCallback = ~fn(FsRequest, Option<UvError>);
 pub type TimerCallback = ~fn(TimerWatcher, Option<UvError>);
 pub type AsyncCallback = ~fn(AsyncWatcher, Option<UvError>);
+pub type UdpReceiveCallback = ~fn(UdpWatcher, int, Buf, Ipv4, uint, Option<UvError>);
+pub type UdpSendCallback = ~fn(UdpWatcher, Option<UvError>);
 
 
 /// Callbacks used by StreamWatchers, set as custom data on the foreign handle
@@ -139,7 +141,9 @@ struct WatcherData {
     alloc_cb: Option<AllocCallback>,
     idle_cb: Option<IdleCallback>,
     timer_cb: Option<TimerCallback>,
-    async_cb: Option<AsyncCallback>
+    async_cb: Option<AsyncCallback>,
+    udp_recv_cb: Option<UdpReceiveCallback>,
+    udp_send_cb: Option<UdpSendCallback>
 }
 
 pub trait WatcherInterop {
@@ -169,7 +173,9 @@ impl<H, W: Watcher + NativeHandle<*H>> WatcherInterop for W {
                 alloc_cb: None,
                 idle_cb: None,
                 timer_cb: None,
-                async_cb: None
+                async_cb: None,
+                udp_recv_cb: None,
+                udp_send_cb: None
             };
             let data = transmute::<~WatcherData, *c_void>(data);
             uvll::set_data_for_uv_handle(self.native_handle(), data);
@@ -308,6 +314,9 @@ pub fn status_to_maybe_uv_error<T>(handle: *T, status: c_int) -> Option<UvError>
 
 /// The uv buffer type
 pub type Buf = uvll::uv_buf_t;
+
+/// The uv IPv4 type
+pub type Ipv4 = uvll::sockaddr_in;
 
 /// Borrow a slice to a Buf
 pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
