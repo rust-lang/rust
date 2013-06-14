@@ -111,6 +111,7 @@ rust_uv_udp_send
 rust_uv_udp_send6
 rust_uv_udp_recv_start
 rust_uv_udp_recv_stop
+rust_uv_get_udp_handle_from_send_req
 rust_uv_listen
 rust_uv_accept
 rust_uv_write
