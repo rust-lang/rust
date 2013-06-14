@@ -564,7 +564,7 @@ impl BigUint {
     /// Creates and initializes an BigUint.
 
     pub fn from_slice(slice: &[BigDigit]) -> BigUint {
-        return BigUint::new(slice.to_owned());
+        return BigUint::new(vec::to_owned(slice));
     }
 
     /// Creates and initializes an BigUint.

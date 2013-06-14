@@ -1521,7 +1521,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &crate) -> ~[u8] {
 
     let writer_bytes: &mut ~[u8] = wr.bytes;
 
-    metadata_encoding_version.to_owned() +
+    vec::to_owned(metadata_encoding_version) +
         flate::deflate_bytes(*writer_bytes)
 }
 

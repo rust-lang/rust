@@ -1029,7 +1029,7 @@ mod tests {
 
         fn test(s: &str, format: &str) -> bool {
             match strptime(s, format) {
-              Ok(ref tm) => tm.strftime(format) == s.to_owned(),
+              Ok(ref tm) => tm.strftime(format) == str::to_owned(s),
               Err(e) => fail!(e)
             }
         }

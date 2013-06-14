@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use core::vec;
 use ast;
 use ast::Name;
 use codemap;
@@ -366,7 +367,7 @@ pub fn get_exprs_from_tts(cx: @ExtCtxt, tts: &[ast::token_tree])
                        -> ~[@ast::expr] {
     let p = parse::new_parser_from_tts(cx.parse_sess(),
                                        cx.cfg(),
-                                       tts.to_owned());
+                                       vec::to_owned(tts));
     let mut es = ~[];
     while *p.token != token::EOF {
         if es.len() != 0 {

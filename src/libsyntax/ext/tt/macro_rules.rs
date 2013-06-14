@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use core::vec;
 use ast::{ident, matcher_, matcher, match_tok, match_nonterminal, match_seq};
 use ast::{tt_delim};
 use ast;
@@ -83,7 +84,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
             io::println(fmt!("%s! { %s }",
                              cx.str_of(name),
                              print::pprust::tt_to_str(
-                                 ast::tt_delim(arg.to_owned()),
+                                 ast::tt_delim(vec::to_owned(arg)),
                                  get_ident_interner())));
         }
 
@@ -100,7 +101,7 @@ pub fn add_new_extension(cx: @ExtCtxt,
                 let arg_rdr = new_tt_reader(
                     s_d,
                     None,
-                    arg.to_owned()
+                    vec::to_owned(arg)
                 ) as @reader;
                 match parse(cx.parse_sess(), cx.cfg(), arg_rdr, *mtcs) {
                   success(named_matches) => {
