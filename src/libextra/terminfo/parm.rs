@@ -24,8 +24,10 @@ enum States {
     CharConstant,
     CharClose,
     IntConstant,
-    IfCond,
-    IfBody
+    SeekIfElse(int),
+    SeekIfElsePercent(int),
+    SeekIfEnd(int),
+    SeekIfEndPercent(int)
 }
 
 /// Types of parameters a capability can use
@@ -126,44 +128,68 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     } else { return Err(~"stack is empty") },
                     '+' => if stack.len() > 1 {
                         match (stack.pop(), stack.pop()) {
-                            (Number(x), Number(y)) => stack.push(Number(x + y)),
-                            (_, _) => return Err(~"non-numbers on stack with +")
+                            (Number(y), Number(x)) => stack.push(Number(x + y)),
+                            _ => return Err(~"non-numbers on stack with +")
                         }
                     } else { return Err(~"stack is empty") },
                     '-' => if stack.len() > 1 {
                         match (stack.pop(), stack.pop()) {
-                            (Number(x), Number(y)) => stack.push(Number(x - y)),
-                            (_, _) => return Err(~"non-numbers on stack with -")
+                            (Number(y), Number(x)) => stack.push(Number(x - y)),
+                            _ => return Err(~"non-numbers on stack with -")
                         }
                     } else { return Err(~"stack is empty") },
                     '*' => if stack.len() > 1 {
                         match (stack.pop(), stack.pop()) {
-                            (Number(x), Number(y)) => stack.push(Number(x * y)),
-                            (_, _) => return Err(~"non-numbers on stack with *")
+                            (Number(y), Number(x)) => stack.push(Number(x * y)),
+                            _ => return Err(~"non-numbers on stack with *")
                         }
                     } else { return Err(~"stack is empty") },
                     '/' => if stack.len() > 1 {
                         match (stack.pop(), stack.pop()) {
-                            (Number(x), Number(y)) => stack.push(Number(x / y)),
-                            (_, _) => return Err(~"non-numbers on stack with /")
+                            (Number(y), Number(x)) => stack.push(Number(x / y)),
+                            _ => return Err(~"non-numbers on stack with /")
                         }
                     } else { return Err(~"stack is empty") },
                     'm' => if stack.len() > 1 {
                         match (stack.pop(), stack.pop()) {
-                            (Number(x), Number(y)) => stack.push(Number(x % y)),
-                            (_, _) => return Err(~"non-numbers on stack with %")
+                            (Number(y), Number(x)) => stack.push(Number(x % y)),
+                            _ => return Err(~"non-numbers on stack with %")
                         }
                     } else { return Err(~"stack is empty") },
                     '&' => if stack.len() > 1 {
                         match (stack.pop(), stack.pop()) {
-                            (Number(x), Number(y)) => stack.push(Number(x & y)),
-                            (_, _) => return Err(~"non-numbers on stack with &")
+                            (Number(y), Number(x)) => stack.push(Number(x & y)),
+                            _ => return Err(~"non-numbers on stack with &")
                         }
                     } else { return Err(~"stack is empty") },
                     '|' => if stack.len() > 1 {
                         match (stack.pop(), stack.pop()) {
-                            (Number(x), Number(y)) => stack.push(Number(x | y)),
-                            (_, _) => return Err(~"non-numbers on stack with |")
+                            (Number(y), Number(x)) => stack.push(Number(x | y)),
+                            _ => return Err(~"non-numbers on stack with |")
+                        }
+                    } else { return Err(~"stack is empty") },
+                    '^' => if stack.len() > 1 {
+                        match (stack.pop(), stack.pop()) {
+                            (Number(y), Number(x)) => stack.push(Number(x ^ y)),
+                            _ => return Err(~"non-numbers on stack with ^")
+                        }
+                    } else { return Err(~"stack is empty") },
+                    '=' => if stack.len() > 1 {
+                        match (stack.pop(), stack.pop()) {
+                            (Number(y), Number(x)) => stack.push(Number(if x == y { 1 } else { 0 })),
+                            _ => return Err(~"non-numbers on stack with =")
+                        }
+                    } else { return Err(~"stack is empty") },
+                    '>' => if stack.len() > 1 {
+                        match (stack.pop(), stack.pop()) {
+                            (Number(y), Number(x)) => stack.push(Number(if x > y { 1 } else { 0 })),
+                            _ => return Err(~"non-numbers on stack with >")
+                        }
+                    } else { return Err(~"stack is empty") },
+                    '<' => if stack.len() > 1 {
+                        match (stack.pop(), stack.pop()) {
+                            (Number(y), Number(x)) => stack.push(Number(if x < y { 1 } else { 0 })),
+                            _ => return Err(~"non-numbers on stack with <")
                         }
                     } else { return Err(~"stack is empty") },
                     'A' => if stack.len() > 1 {
@@ -201,7 +227,19 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                         },
                         (_, _) => return Err(~"first two params not numbers with %i")
                     },
-                    '?' => state = return Err(fmt!("if expressions unimplemented (%?)", cap)),
+
+                    // conditionals
+                    '?' => (),
+                    't' => if stack.len() > 0 {
+                        match stack.pop() {
+                            Number(0) => state = SeekIfElse(0),
+                            Number(_) => (),
+                            _         => return Err(~"non-number on stack with conditional")
+                        }
+                    } else { return Err(~"stack is empty") },
+                    'e' => state = SeekIfEnd(0),
+                    ';' => (),
+
                     _ => return Err(fmt!("unrecognized format option %c", cur))
                 }
             },
@@ -260,7 +298,46 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     old_state = Nothing;
                 }
             }
-            _ => return Err(~"unimplemented state")
+            SeekIfElse(level) => {
+                if cur == '%' {
+                    state = SeekIfElsePercent(level);
+                }
+                old_state = Nothing;
+            }
+            SeekIfElsePercent(level) => {
+                if cur == ';' {
+                    if level == 0 {
+                        state = Nothing;
+                    } else {
+                        state = SeekIfElse(level-1);
+                    }
+                } else if cur == 'e' && level == 0 {
+                    state = Nothing;
+                } else if cur == '?' {
+                    state = SeekIfElse(level+1);
+                } else {
+                    state = SeekIfElse(level);
+                }
+            }
+            SeekIfEnd(level) => {
+                if cur == '%' {
+                    state = SeekIfEndPercent(level);
+                }
+                old_state = Nothing;
+            }
+            SeekIfEndPercent(level) => {
+                if cur == ';' {
+                    if level == 0 {
+                        state = Nothing;
+                    } else {
+                        state = SeekIfEnd(level-1);
+                    }
+                } else if cur == '?' {
+                    state = SeekIfEnd(level+1);
+                } else {
+                    state = SeekIfEnd(level);
+                }
+            }
         }
         if state == old_state {
             state = Nothing;
@@ -315,5 +392,39 @@ mod test {
     #[test]
     fn test_push_bad_param() {
         assert!(expand(bytes!("%pa"), [], &mut Variables::new()).is_err());
+    }
+
+    #[test]
+    fn test_comparison_ops() {
+        let v = [('<', [1u8, 0u8, 0u8]), ('=', [0u8, 1u8, 0u8]), ('>', [0u8, 0u8, 1u8])];
+        for v.iter().advance |&(op, bs)| {
+            let s = fmt!("%%{1}%%{2}%%%c%%d", op);
+            let res = expand(s.as_bytes(), [], &mut Variables::new());
+            assert!(res.is_ok(), res.unwrap_err());
+            assert_eq!(res.unwrap(), ~['0' as u8 + bs[0]]);
+            let s = fmt!("%%{1}%%{1}%%%c%%d", op);
+            let res = expand(s.as_bytes(), [], &mut Variables::new());
+            assert!(res.is_ok(), res.unwrap_err());
+            assert_eq!(res.unwrap(), ~['0' as u8 + bs[1]]);
+            let s = fmt!("%%{2}%%{1}%%%c%%d", op);
+            let res = expand(s.as_bytes(), [], &mut Variables::new());
+            assert!(res.is_ok(), res.unwrap_err());
+            assert_eq!(res.unwrap(), ~['0' as u8 + bs[2]]);
+        }
+    }
+
+    #[test]
+    fn test_conditionals() {
+        let mut vars = Variables::new();
+        let s = bytes!("\\E[%?%p1%{8}%<%t3%p1%d%e%p1%{16}%<%t9%p1%{8}%-%d%e38;5;%p1%d%;m");
+        let res = expand(s, [Number(1)], &mut vars);
+        assert!(res.is_ok(), res.unwrap_err());
+        assert_eq!(res.unwrap(), bytes!("\\E[31m").to_owned());
+        let res = expand(s, [Number(8)], &mut vars);
+        assert!(res.is_ok(), res.unwrap_err());
+        assert_eq!(res.unwrap(), bytes!("\\E[90m").to_owned());
+        let res = expand(s, [Number(42)], &mut vars);
+        assert!(res.is_ok(), res.unwrap_err());
+        assert_eq!(res.unwrap(), bytes!("\\E[38;5;42m").to_owned());
     }
 }
