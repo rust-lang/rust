@@ -330,6 +330,11 @@ rust_uv_udp_recv_stop(uv_udp_t* server) {
     return uv_udp_recv_stop(server);
 }
 
+extern "C" uv_udp_t*
+rust_uv_get_udp_handle_from_send_req(uv_udp_send_t* send_req) {
+    return send_req->handle;
+}
+
 extern "C" int
 rust_uv_listen(uv_stream_t* stream, int backlog,
         uv_connection_cb cb) {
