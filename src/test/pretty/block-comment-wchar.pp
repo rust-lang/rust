@@ -109,8 +109,8 @@ fn main() {
          '\u2004', '\u2005', '\u2006', '\u2007', '\u2008', '\u2009', '\u200A',
          '\u2028', '\u2029', '\u202F', '\u205F', '\u3000'];
      // <= bugs in pretty-printer?
-    for vec::each(chars) |c| {
+    for chars.each |c| {
         let ws = c.is_whitespace();
-        io::println(fmt!("%? %?" , c , ws));
+        println(fmt!("%? %?" , c , ws));
     }
 }
