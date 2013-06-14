@@ -947,6 +947,7 @@ pub mod windows {
 mod tests {
     use option::{None, Some};
     use path::{PosixPath, WindowsPath, windows};
+    use str;
 
     #[test]
     fn test_double_slash_collapsing() {
