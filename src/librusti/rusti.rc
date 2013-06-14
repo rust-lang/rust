@@ -648,9 +648,5 @@ mod tests {
             fn f() {}
             f()
         ");
-
-        debug!("regression test for #5803");
-        run_cmds(["spawn( || println(\"Please don't segfault\") );",
-                  "do spawn { println(\"Please?\"); }"]);
     }
 }
