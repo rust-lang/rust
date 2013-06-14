@@ -3074,6 +3074,7 @@ pub fn trans_crate(sess: session::Session,
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
     let llmod_id = link_meta.name.to_owned() + ".rc";
 
+            Some(debuginfo::mk_ctxt(llmod, copy llmod_id))
     // FIXME(#6511): get LLVM building with --enable-threads so this
     //               function can be called
     // if !llvm::LLVMRustStartMultithreading() {
@@ -3102,7 +3103,10 @@ pub fn trans_crate(sess: session::Session,
     fill_crate_map(ccx, ccx.crate_map);
     glue::emit_tydescs(ccx);
     write_abi_version(ccx);
-
+        if ccx.sess.opts.debuginfo {
+            debuginfo::finalize(ccx);
+        }
+        
     // Translate the metadata.
     write_metadata(ccx, crate);
     if ccx.sess.trans_stats() {

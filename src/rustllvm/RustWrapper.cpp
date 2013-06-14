@@ -560,3 +560,204 @@ extern "C" bool LLVMRustStartMultithreading() {
     assert(lock.release());
     return ret;
 }
+
+
+typedef DIBuilder* DIBuilderRef;
+
+template<typename DIT>
+DIT unwrapDI(LLVMValueRef ref) { return DIT(ref ? unwrap<MDNode>(ref) : NULL); }
+
+extern "C" DIBuilderRef DIBuilder_new(LLVMModuleRef M) {
+    return new DIBuilder(*unwrap(M));
+}
+
+extern "C" void DIBuilder_delete(DIBuilderRef Builder) {
+    delete Builder;
+}
+
+extern "C" void DIBuilder_finalize(DIBuilderRef Builder) {
+    Builder->finalize();
+}
+
+extern "C" void DIBuilder_createCompileUnit(
+    DIBuilderRef Builder,
+    unsigned Lang,
+    const char* File,
+    const char* Dir,
+    const char* Producer,
+    bool isOptimized,
+    const char* Flags,
+    unsigned RuntimeVer,
+    const char* SplitName) {
+    Builder->createCompileUnit(Lang, File, Dir, Producer, isOptimized,
+        Flags, RuntimeVer, SplitName);
+}
+
+extern "C" LLVMValueRef DIBuilder_createFile(
+    DIBuilderRef Builder,
+    const char* Filename,
+    const char* Directory) {
+    return wrap(Builder->createFile(Filename, Directory));
+}
+
+extern "C" LLVMValueRef DIBuilder_createSubroutineType(
+    DIBuilderRef Builder,
+    LLVMValueRef File, 
+    LLVMValueRef ParameterTypes) {
+    return wrap(Builder->createSubroutineType(
+        unwrapDI<DIFile>(File), 
+        unwrapDI<DIArray>(ParameterTypes)));
+}
+
+extern "C" LLVMValueRef DIBuilder_createFunction(
+    DIBuilderRef Builder,
+    LLVMValueRef Scope, 
+    const char* Name,
+    const char* LinkageName,
+    LLVMValueRef File,  
+    unsigned LineNo,
+    LLVMValueRef Ty, 
+    bool isLocalToUnit,
+    bool isDefinition,
+    unsigned ScopeLine,
+    unsigned Flags,
+    bool isOptimized,
+    LLVMValueRef Fn,
+    LLVMValueRef TParam,
+    LLVMValueRef Decl) {
+    return wrap(Builder->createFunction(
+        unwrapDI<DIScope>(Scope), Name, LinkageName, 
+        unwrapDI<DIFile>(File), LineNo, 
+        unwrapDI<DIType>(Ty), isLocalToUnit, isDefinition, ScopeLine, 
+        Flags, isOptimized,
+        unwrap<Function>(Fn), 
+        unwrapDI<MDNode*>(TParam),
+        unwrapDI<MDNode*>(Decl)));
+}
+
+extern "C" LLVMValueRef DIBuilder_createBasicType(
+    DIBuilderRef Builder,
+    const char* Name,
+    uint64_t SizeInBits,
+    uint64_t AlignInBits,
+    unsigned Encoding) {
+    return wrap(Builder->createBasicType(
+        Name, SizeInBits, 
+        AlignInBits, Encoding));
+}
+    
+extern "C" LLVMValueRef DIBuilder_createPointerType(
+    DIBuilderRef Builder,
+    LLVMValueRef PointeeTy,
+    uint64_t SizeInBits,
+    uint64_t AlignInBits,
+    const char* Name) {
+    return wrap(Builder->createPointerType(
+        unwrapDI<DIType>(PointeeTy), SizeInBits, AlignInBits, Name));
+}
+
+extern "C" LLVMValueRef DIBuilder_createStructType(
+    DIBuilderRef Builder,
+    LLVMValueRef Scope,
+    const char* Name,
+    LLVMValueRef File,
+    unsigned LineNumber,
+    uint64_t SizeInBits,
+    uint64_t AlignInBits,
+    unsigned Flags,
+    LLVMValueRef DerivedFrom,
+    LLVMValueRef Elements,
+    unsigned RunTimeLang,
+    LLVMValueRef VTableHolder) {
+    return wrap(Builder->createStructType(
+        unwrapDI<DIDescriptor>(Scope), Name, 
+        unwrapDI<DIFile>(File), LineNumber, 
+        SizeInBits, AlignInBits, Flags, 
+        unwrapDI<DIType>(DerivedFrom), 
+        unwrapDI<DIArray>(Elements), RunTimeLang, 
+        unwrapDI<MDNode*>(VTableHolder)));
+}
+
+extern "C" LLVMValueRef DIBuilder_createMemberType(
+    DIBuilderRef Builder,
+    LLVMValueRef Scope,
+    const char* Name,
+    LLVMValueRef File,
+    unsigned LineNo,
+    uint64_t SizeInBits,
+    uint64_t AlignInBits,
+    uint64_t OffsetInBits,
+    unsigned Flags,
+    LLVMValueRef Ty) {
+    return wrap(Builder->createMemberType(
+        unwrapDI<DIDescriptor>(Scope), Name, 
+        unwrapDI<DIFile>(File), LineNo,
+        SizeInBits, AlignInBits, OffsetInBits, Flags, 
+        unwrapDI<DIType>(Ty)));
+}
+    
+extern "C" LLVMValueRef DIBuilder_createLexicalBlock(
+    DIBuilderRef Builder,
+    LLVMValueRef Scope,
+    LLVMValueRef File,
+    unsigned Line,
+    unsigned Col) {
+    return wrap(Builder->createLexicalBlock(
+        unwrapDI<DIDescriptor>(Scope), 
+        unwrapDI<DIFile>(File), Line, Col));
+}
+    
+extern "C" LLVMValueRef DIBuilder_createLocalVariable(
+    DIBuilderRef Builder,
+    unsigned Tag,
+    LLVMValueRef Scope,
+    const char* Name,
+    LLVMValueRef File,
+    unsigned LineNo,
+    LLVMValueRef Ty,
+    bool AlwaysPreserve,
+    unsigned Flags,
+    unsigned ArgNo) {
+    return wrap(Builder->createLocalVariable(Tag, 
+        unwrapDI<DIDescriptor>(Scope), Name, 
+        unwrapDI<DIFile>(File), 
+        LineNo, 
+        unwrapDI<DIType>(Ty), AlwaysPreserve, Flags, ArgNo));
+}
+
+extern "C" LLVMValueRef DIBuilder_createVectorType(
+    DIBuilderRef Builder,
+    uint64_t Size,  
+    uint64_t AlignInBits,  
+    LLVMValueRef Ty, 
+    LLVMValueRef Subscripts) {
+    return wrap(Builder->createVectorType(Size, AlignInBits,
+        unwrapDI<DIType>(Ty), 
+        unwrapDI<DIArray>(Subscripts)));
+}
+
+extern "C" LLVMValueRef DIBuilder_getOrCreateSubrange(
+    DIBuilderRef Builder, 
+    int64_t Lo, 
+    int64_t Count) {
+    return wrap(Builder->getOrCreateSubrange(Lo, Count));
+}
+
+extern "C" LLVMValueRef DIBuilder_getOrCreateArray(
+    DIBuilderRef Builder,
+    LLVMValueRef* Ptr, 
+    unsigned Count) {
+    return wrap(Builder->getOrCreateArray(
+        ArrayRef<Value*>(reinterpret_cast<Value**>(Ptr), Count)));
+}
+
+extern "C" LLVMValueRef DIBuilder_insertDeclare(
+    DIBuilderRef Builder,
+    LLVMValueRef Val,
+    LLVMValueRef VarInfo,
+    LLVMValueRef InsertBefore) {
+    return wrap(Builder->insertDeclare(
+        unwrap(Val), 
+        unwrapDI<DIVariable>(VarInfo), 
+        unwrap<Instruction>(InsertBefore)));
+}
