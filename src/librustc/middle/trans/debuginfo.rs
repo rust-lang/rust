@@ -482,6 +482,17 @@ fn create_fn_ty(cx: @CrateContext, fn_ty: ty::t, inputs: ~[ty::t], output: ty::t
     };
 }
 
+fn create_unimpl_ty(cx: @CrateContext, t: ty::t) -> DIType {
+    let dcx = dbg_cx(cx);
+    let name = ty_to_str(cx.tcx, t);
+    let md = do as_c_str(fmt!("NYI<%s>", name)) |name| { unsafe {
+        llvm::LLVMDIBuilderCreateBasicType(
+            dcx.builder, name, 
+            0_u64, 8_u64, DW_ATE_unsigned as c_uint)
+        }};
+    return md;
+}
+
 fn create_ty(cx: @CrateContext, t: ty::t, span: span) -> DIType {
     let dcx = dbg_cx(cx);
     let ty_id = ty::type_id(t);
@@ -512,7 +523,8 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span) -> DIType {
             }
         },
         ty::ty_enum(_did, ref _substs) => {
-            cx.sess.span_bug(span, "debuginfo for enum NYI")
+            cx.sess.span_note(span, "debuginfo for enum NYI");
+            create_unimpl_ty(cx, t)
         }
         ty::ty_box(ref mt) | ty::ty_uniq(ref mt) => {
             let boxed = create_ty(cx, mt.ty, span);
@@ -538,7 +550,8 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span) -> DIType {
             create_pointer_type(cx, t, span, pointee)
         },
         ty::ty_rptr(ref _region, ref _mt) => {
-            cx.sess.span_bug(span, "debuginfo for rptr NYI")
+            cx.sess.span_note(span, "debuginfo for rptr NYI");
+            create_unimpl_ty(cx, t)
         },
         ty::ty_bare_fn(ref barefnty) => {
             let inputs = barefnty.sig.inputs.map(|a| *a);
@@ -546,10 +559,12 @@ fn create_ty(cx: @CrateContext, t: ty::t, span: span) -> DIType {
             create_fn_ty(cx, t, inputs, output, span)
         },
         ty::ty_closure(ref _closurety) => {
-            cx.sess.span_bug(span, "debuginfo for closure NYI")
+            cx.sess.span_note(span, "debuginfo for closure NYI");
+            create_unimpl_ty(cx, t)
         },
         ty::ty_trait(_did, ref _substs, ref _vstore, _) => {
-            cx.sess.span_bug(span, "debuginfo for trait NYI")
+            cx.sess.span_note(span, "debuginfo for trait NYI");
+            create_unimpl_ty(cx, t)
         },
         ty::ty_struct(did, ref substs) => {
             let fields = ty::struct_fields(cx.tcx, did, substs);
@@ -572,7 +587,10 @@ pub fn create_local_var(bcx: block, local: @ast::local) -> DIVariable {
     let ident = match local.node.pat.node {
       ast::pat_ident(_, pth, _) => ast_util::path_to_ident(pth),
       // FIXME this should be handled (#2533)
-      _ => fail!("no single variable name for local")
+      _ => {
+        bcx.sess().span_note(local.span, "debuginfo for pattern bindings NYI");
+        return ptr::null();
+      }
     };
     let name: &str = cx.sess.str_of(ident);
     debug!("create_local_var: %s", name);
