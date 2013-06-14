@@ -66,6 +66,9 @@ pub type uv_fs_t = c_void;
 pub type uv_udp_send_t = c_void;
 
 pub type uv_idle_cb = *u8;
+pub type uv_alloc_cb = *u8;
+pub type uv_udp_send_cb = *u8;
+pub type uv_udp_recv_cb = *u8;
 
 pub type sockaddr_in = c_void;
 pub type sockaddr_in6 = c_void;
@@ -198,25 +201,29 @@ pub unsafe fn udp_bind6(server: *uv_udp_t, addr: *sockaddr_in6, flags: c_uint) -
 }
 
 pub unsafe fn udp_send<T>(req: *uv_udp_send_t, handle: *T, buf_in: &[uv_buf_t],
-                          addr: *sockaddr_in, cb: *u8) -> c_int {
+                          addr: *sockaddr_in, cb: uv_udp_send_cb) -> c_int {
     let buf_ptr = vec::raw::to_ptr(buf_in);
     let buf_cnt = buf_in.len() as i32;
     return rust_uv_udp_send(req, handle as *c_void, buf_ptr, buf_cnt, addr, cb);
 }
 
 pub unsafe fn udp_send6<T>(req: *uv_udp_send_t, handle: *T, buf_in: &[uv_buf_t],
-                          addr: *sockaddr_in6, cb: *u8) -> c_int {
+                          addr: *sockaddr_in6, cb: uv_udp_send_cb) -> c_int {
     let buf_ptr = vec::raw::to_ptr(buf_in);
     let buf_cnt = buf_in.len() as i32;
     return rust_uv_udp_send(req, handle as *c_void, buf_ptr, buf_cnt, addr, cb);
 }
 
-pub unsafe fn udp_recv_start(server: *uv_udp_t, on_alloc: *u8, on_recv: *u8) -> c_int {
+pub unsafe fn udp_recv_start(server: *uv_udp_t, on_alloc: uv_alloc_cb, on_recv: uv_udp_recv_cb) -> c_int {
     return rust_uv_udp_recv_start(server, on_alloc, on_recv);
 }
 
 pub unsafe fn udp_recv_stop(server: *uv_udp_t) -> c_int {
     return rust_uv_udp_recv_stop(server);
+}
+
+pub unsafe fn get_udp_handle_from_send_req(send_req: *uv_udp_send_t) -> *uv_udp_t {
+    return rust_uv_get_udp_handle_from_send_req(send_req);
 }
 
 pub unsafe fn tcp_init(loop_handle: *c_void, handle: *uv_tcp_t) -> c_int {
@@ -269,7 +276,7 @@ pub unsafe fn write<T>(req: *uv_write_t, stream: *T, buf_in: &[uv_buf_t], cb: *u
     let buf_cnt = buf_in.len() as i32;
     return rust_uv_write(req as *c_void, stream as *c_void, buf_ptr, buf_cnt, cb);
 }
-pub unsafe fn read_start(stream: *uv_stream_t, on_alloc: *u8, on_read: *u8) -> c_int {
+pub unsafe fn read_start(stream: *uv_stream_t, on_alloc: uv_alloc_cb, on_read: *u8) -> c_int {
     return rust_uv_read_start(stream as *c_void, on_alloc, on_read);
 }
 
@@ -463,6 +470,7 @@ extern {
                          buf_cnt: c_int, addr: *sockaddr_in6, cb: *u8) -> c_int;
     fn rust_uv_udp_recv_start(server: *uv_udp_t, on_alloc: *u8, on_recv: *u8) -> c_int;
     fn rust_uv_udp_recv_stop(server: *uv_udp_t) -> c_int;
+    fn rust_uv_get_udp_handle_from_send_req(req: *uv_udp_send_t) -> *uv_udp_t;
 
     fn rust_uv_listen(stream: *c_void, backlog: c_int, cb: *u8) -> c_int;
     fn rust_uv_accept(server: *c_void, client: *c_void) -> c_int;
