@@ -10,39 +10,39 @@
 
 /*!
 
-# The Rust core library
+# The Rust standard library
 
-The Rust core library provides runtime features required by the language,
+The Rust standard library provides runtime features required by the language,
 including the task scheduler and memory allocators, as well as library
 support for Rust built-in types, platform abstractions, and other commonly
 used features.
 
-`core` includes modules corresponding to each of the integer types, each of
+`std` includes modules corresponding to each of the integer types, each of
 the floating point types, the `bool` type, tuples, characters, strings
 (`str`), vectors (`vec`), managed boxes (`managed`), owned boxes (`owned`),
-and unsafe and borrowed pointers (`ptr`).  Additionally, `core` provides
+and unsafe and borrowed pointers (`ptr`).  Additionally, `std` provides
 pervasive types (`option` and `result`), task creation and communication
 primitives (`task`, `comm`), platform abstractions (`os` and `path`), basic
 I/O abstractions (`io`), common traits (`kinds`, `ops`, `cmp`, `num`,
 `to_str`), and complete bindings to the C standard library (`libc`).
 
-# Core injection and the Rust prelude
+# Standard library injection and the Rust prelude
 
-`core` is imported at the topmost level of every crate by default, as
+`std` is imported at the topmost level of every crate by default, as
 if the first line of each crate was
 
-    extern mod core;
+    extern mod std;
 
-This means that the contents of core can be accessed from any context
-with the `core::` path prefix, as in `use core::vec`, `use core::task::spawn`,
+This means that the contents of std can be accessed from any context
+with the `std::` path prefix, as in `use std::vec`, `use std::task::spawn`,
 etc.
 
-Additionally, `core` contains a `prelude` module that reexports many of the
-most common core modules, types and traits. The contents of the prelude are
+Additionally, `std` contains a `prelude` module that reexports many of the
+most common std modules, types and traits. The contents of the prelude are
 imported into every *module* by default.  Implicitly, all modules behave as if
 they contained the following prologue:
 
-    use core::prelude::*;
+    use std::prelude::*;
 
 */
 
@@ -50,9 +50,9 @@ they contained the following prologue:
 #[link(name = "std",
        vers = "0.7-pre",
        uuid = "c70c24a7-5551-4f73-8e37-380b11d80be8",
-       url = "https://github.com/mozilla/rust/tree/master/src/libcore")];
+       url = "https://github.com/mozilla/rust/tree/master/src/libstd")];
 
-#[comment = "The Rust core library"];
+#[comment = "The Rust standard library"];
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
