@@ -381,36 +381,44 @@ pub fn method_from_methods(ms: &[@ast::method], name: ast::ident)
 pub fn method_with_name_or_default(ccx: @mut CrateContext,
                                    impl_id: ast::def_id,
                                    name: ast::ident) -> ast::def_id {
-    *do ccx.impl_method_cache.find_or_insert_with((impl_id, name)) |_| {
-        if impl_id.crate == ast::local_crate {
-            match ccx.tcx.items.get_copy(&impl_id.node) {
-                ast_map::node_item(@ast::item {
-                                   node: ast::item_impl(_, _, _, ref ms), _
-                                   }, _) => {
-                    let did = method_from_methods(*ms, name);
-                    if did.is_some() {
-                        did.get()
-                    } else {
-                        // Look for a default method
-                        let pmm = ccx.tcx.provided_methods;
-                        match pmm.find(&impl_id) {
-                            Some(pmis) => {
-                                for pmis.each |pmi| {
-                                    if pmi.method_info.ident == name {
-                                        debug!("pmi.method_info.did = %?", pmi.method_info.did);
-                                        return pmi.method_info.did;
+    let imp = ccx.impl_method_cache.find_copy(&(impl_id, name));
+    match imp {
+        Some(m) => m,
+        None => {
+            let imp = if impl_id.crate == ast::local_crate {
+                match ccx.tcx.items.get_copy(&impl_id.node) {
+                    ast_map::node_item(@ast::item {
+                                       node: ast::item_impl(_, _, _, ref ms), _
+                                       }, _) => {
+                        let did = method_from_methods(*ms, name);
+                        if did.is_some() {
+                            did.get()
+                        } else {
+                            // Look for a default method
+                            let pmm = ccx.tcx.provided_methods;
+                            match pmm.find(&impl_id) {
+                                Some(pmis) => {
+                                    for pmis.each |pmi| {
+                                        if pmi.method_info.ident == name {
+                                            debug!("pmi.method_info.did = %?", pmi.method_info.did);
+                                            return pmi.method_info.did;
+                                        }
                                     }
+                                    fail!()
                                 }
-                                fail!()
+                                None => fail!()
                             }
-                            None => fail!()
                         }
                     }
+                    _ => fail!("method_with_name")
                 }
-                _ => fail!("method_with_name")
-            }
-        } else {
-            csearch::get_impl_method(ccx.sess.cstore, impl_id, name)
+            } else {
+                csearch::get_impl_method(ccx.sess.cstore, impl_id, name)
+            };
+
+            ccx.impl_method_cache.insert((impl_id, name), imp);
+
+            imp
         }
     }
 }

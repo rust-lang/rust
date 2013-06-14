@@ -3114,20 +3114,10 @@ pub fn trans_crate(sess: session::Session,
             io::println(fmt!("%-7u %s", v, k));
         }
     }
-    return (llmod, link_meta);
+    let llcx = ccx.llcx;
+    let link_meta = ccx.link_meta;
+    let llmod = ccx.llmod;
+
+    return (llcx, llmod, link_meta);
 }
 
-fn task_local_llcx_key(_v: @ContextRef) {}
-
-pub fn task_llcx() -> ContextRef {
-    let opt = unsafe { local_data::local_data_get(task_local_llcx_key) };
-    *opt.expect("task-local LLVMContextRef wasn't ever set!")
-}
-
-unsafe fn set_task_llcx(c: ContextRef) {
-    local_data::local_data_set(task_local_llcx_key, @c);
-}
-
-unsafe fn unset_task_llcx() {
-    local_data::local_data_pop(task_local_llcx_key);
-}
