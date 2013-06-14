@@ -13,7 +13,7 @@ use core::prelude::*;
 use driver::session;
 use lib::llvm::ValueRef;
 use lib::llvm::llvm;
-use middle::trans::base::task_llcx;
+use middle::trans::context::task_llcx;
 use middle::trans::common::*;
 use middle::trans::machine;
 use middle::trans::type_of;

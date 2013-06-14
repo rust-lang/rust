@@ -89,6 +89,8 @@ pub struct CrateContext {
      // Cache of external const values
      extern_const_values: HashMap<ast::def_id, ValueRef>,
 
+     impl_method_cache: HashMap<(ast::def_id, ast::ident), ast::def_id>,
+
      module_data: HashMap<~str, ValueRef>,
      lltypes: HashMap<ty::t, TypeRef>,
      llsizingtypes: HashMap<ty::t, TypeRef>,
@@ -178,6 +180,7 @@ impl CrateContext {
                   const_globals: HashMap::new(),
                   const_values: HashMap::new(),
                   extern_const_values: HashMap::new(),
+                  impl_method_cache: HashMap::new(),
                   module_data: HashMap::new(),
                   lltypes: HashMap::new(),
                   llsizingtypes: HashMap::new(),
@@ -244,4 +247,3 @@ unsafe fn set_task_llcx(c: ContextRef) {
 unsafe fn unset_task_llcx() {
     local_data::local_data_pop(task_local_llcx_key);
 }
-
