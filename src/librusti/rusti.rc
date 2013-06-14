@@ -424,7 +424,7 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
         use std::iterator::IteratorUtil;
 
         // drop the : and the \n (one byte each)
-        let full = line.slice(1, line.len() - 1);
+        let full = line.slice(1, line.len());
         let split: ~[~str] = full.word_iter().transform(|s| s.to_owned()).collect();
         let len = split.len();
 
@@ -648,5 +648,15 @@ mod tests {
             fn f() {}
             f()
         ");
+    }
+
+    #[test]
+    fn exit_quits() {
+        let mut r = repl();
+        assert!(r.running);
+        let result = run_line(&mut r, io::stdin(), io::stdout(),
+                              ~":exit", false);
+        assert!(result.is_none());
+        assert!(!r.running);
     }
 }
