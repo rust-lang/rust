@@ -129,14 +129,12 @@ pub mod jit {
 
                 debug!("linking: %s", path);
 
-                let _: () = str::as_c_str(
-                    path,
-                    |buf_t| {
-                        if !llvm::LLVMRustLoadCrate(manager, buf_t) {
-                            llvm_err(sess, ~"Could not link");
-                        }
-                        debug!("linked: %s", path);
-                    });
+                do str::as_c_str(path) |buf_t| {
+                    if !llvm::LLVMRustLoadCrate(manager, buf_t) {
+                        llvm_err(sess, ~"Could not link");
+                    }
+                    debug!("linked: %s", path);
+                }
             }
 
             // We custom-build a JIT execution engine via some rust wrappers
@@ -203,11 +201,10 @@ pub mod write {
     use core::str;
 
     pub fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
-        if ot == output_type_assembly || ot == output_type_object ||
-               ot == output_type_exe {
-            return true;
+        match ot {
+            output_type_assembly | output_type_object | output_type_exe => true,
+            _ => false
         }
-        return false;
     }
 
     pub fn run_passes(sess: Session,
@@ -290,11 +287,11 @@ pub mod write {
                   session::Aggressive => LLVMOptAggressive
                 };
 
-                let FileType;
-                if output_type == output_type_object ||
-                       output_type == output_type_exe {
-                   FileType = lib::llvm::ObjectFile;
-                } else { FileType = lib::llvm::AssemblyFile; }
+                let FileType = match output_type {
+                    output_type_object | output_type_exe => lib::llvm::ObjectFile,
+                    _ => lib::llvm::AssemblyFile
+                };
+
                 // Write optimized bitcode if --save-temps was on.
 
                 if opts.save_temps {
@@ -384,11 +381,11 @@ pub mod write {
                             (--android-cross-path)")
             }
         };
-        let mut cc_args = ~[];
-        cc_args.push(~"-c");
-        cc_args.push(~"-o");
-        cc_args.push(object.to_str());
-        cc_args.push(assembly.to_str());
+
+        let cc_args = ~[
+            ~"-c",
+            ~"-o", object.to_str(),
+            assembly.to_str()];
 
         let prog = run::process_output(cc_prog, cc_args);
 
@@ -474,19 +471,19 @@ pub fn build_link_meta(sess: Session,
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.each |meta| {
-            if "name" == attr::get_meta_item_name(*meta) {
-                match attr::get_meta_item_value_str(*meta) {
-                  // Changing attr would avoid the need for the copy
-                  // here
-                  Some(v) => { name = Some(v); }
-                  None => cmh_items.push(*meta)
-                }
-            } else if "vers" == attr::get_meta_item_name(*meta) {
-                match attr::get_meta_item_value_str(*meta) {
-                  Some(v) => { vers = Some(v); }
-                  None => cmh_items.push(*meta)
-                }
-            } else { cmh_items.push(*meta); }
+            match attr::get_meta_item_value_str(*meta) {
+                Some(value) => {
+                    let item_name : &str = attr::get_meta_item_name(*meta);
+                    match item_name {
+                        // Changing attr would avoid the need for the copy
+                        // here
+                        "name" => name = Some(value),
+                        "vers" => vers = Some(value),
+                        _ => cmh_items.push(*meta)
+                    }
+                },
+                None => cmh_items.push(*meta)
+            }
         }
 
         ProvidedMetas {
@@ -548,32 +545,32 @@ pub fn build_link_meta(sess: Session,
     }
 
     fn crate_meta_name(sess: Session, output: &Path, opt_name: Option<@str>)
-                    -> @str {
-        return match opt_name {
-              Some(v) => v,
-              None => {
+        -> @str {
+        match opt_name {
+            Some(v) => v,
+            None => {
                 // to_managed could go away if there was a version of
                 // filestem that returned an @str
                 let name = session::expect(sess,
-                                  output.filestem(),
-                                  || fmt!("output file name `%s` doesn't\
-                                           appear to have a stem",
-                                          output.to_str())).to_managed();
+                                           output.filestem(),
+                                           || fmt!("output file name `%s` doesn't\
+                                                    appear to have a stem",
+                                                   output.to_str())).to_managed();
                 warn_missing(sess, "name", name);
                 name
-              }
-            };
+            }
+        }
     }
 
     fn crate_meta_vers(sess: Session, opt_vers: Option<@str>) -> @str {
-        return match opt_vers {
-              Some(v) => v,
-              None => {
+        match opt_vers {
+            Some(v) => v,
+            None => {
                 let vers = @"0.0";
                 warn_missing(sess, "vers", vers);
                 vers
-              }
-            };
+            }
+        }
     }
 
     let ProvidedMetas {
@@ -699,10 +696,10 @@ pub fn exported_name(sess: Session,
                      path: path,
                      hash: &str,
                      vers: &str) -> ~str {
-    return mangle(sess,
-            vec::append_one(
-            vec::append_one(path, path_name(sess.ident_of(hash))),
-            path_name(sess.ident_of(vers))));
+    mangle(sess,
+           vec::append_one(
+               vec::append_one(path, path_name(sess.ident_of(hash))),
+               path_name(sess.ident_of(vers))))
 }
 
 pub fn mangle_exported_name(ccx: &mut CrateContext,
@@ -739,16 +736,16 @@ pub fn mangle_internal_name_by_type_and_seq(ccx: &mut CrateContext,
 pub fn mangle_internal_name_by_path_and_seq(ccx: &mut CrateContext,
                                             path: path,
                                             flav: &str) -> ~str {
-    return mangle(ccx.sess,
-                  vec::append_one(path, path_name((ccx.names)(flav))));
+    mangle(ccx.sess,
+           vec::append_one(path, path_name((ccx.names)(flav))))
 }
 
 pub fn mangle_internal_name_by_path(ccx: &mut CrateContext, path: path) -> ~str {
-    return mangle(ccx.sess, path);
+    mangle(ccx.sess, path)
 }
 
 pub fn mangle_internal_name_by_seq(ccx: &mut CrateContext, flav: &str) -> ~str {
-    return fmt!("%s_%u", flav, (ccx.names)(flav).name);
+    fmt!("%s_%u", flav, (ccx.names)(flav).name)
 }
 
 
@@ -776,8 +773,8 @@ pub fn link_binary(sess: Session,
     // so we add a condition to make it use gcc.
     let cc_prog: ~str = match sess.opts.linker {
         Some(ref linker) => copy *linker,
-        None => {
-            if sess.targ_cfg.os == session::os_android {
+        None => match sess.targ_cfg.os {
+            session::os_android =>
                 match &sess.opts.android_cross_path {
                     &Some(ref path) => {
                         fmt!("%s/bin/arm-linux-androideabi-gcc", *path)
@@ -786,12 +783,9 @@ pub fn link_binary(sess: Session,
                         sess.fatal("need Android NDK path for linking \
                                     (--android-cross-path)")
                     }
-                }
-            } else if sess.targ_cfg.os == session::os_win32 {
-                ~"gcc"
-            } else {
-                ~"cc"
-            }
+                },
+            session::os_win32 => ~"gcc",
+            _ => ~"cc"
         }
     };
     // The invocations of cc share some flags across platforms
@@ -866,17 +860,14 @@ pub fn link_args(sess: Session,
 
     let mut args = vec::append(~[stage], sess.targ_cfg.target_strs.cc_args);
 
-    args.push(~"-o");
-    args.push(output.to_str());
-    args.push(obj_filename.to_str());
+    args.push_all([
+        ~"-o", output.to_str(),
+        obj_filename.to_str()]);
 
-    let lib_cmd;
-    let os = sess.targ_cfg.os;
-    if os == session::os_macos {
-        lib_cmd = ~"-dynamiclib";
-    } else {
-        lib_cmd = ~"-shared";
-    }
+    let lib_cmd = match sess.targ_cfg.os {
+        session::os_macos => ~"-dynamiclib",
+        _ => ~"-shared"
+    };
 
     // # Crate linking
 

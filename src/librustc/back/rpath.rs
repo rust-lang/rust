@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -21,10 +21,7 @@ use core::util;
 use core::vec;
 
 fn not_win32(os: session::os) -> bool {
-  match os {
-      session::os_win32 => false,
-      _ => true
-  }
+  os != session::os_win32
 }
 
 pub fn get_rpath_flags(sess: session::Session, out_filename: &Path)
@@ -122,7 +119,7 @@ pub fn get_rpath_relative_to_output(os: session::os,
 
     // Mac doesn't appear to support $ORIGIN
     let prefix = match os {
-        session::os_android |session::os_linux | session::os_freebsd
+        session::os_android | session::os_linux | session::os_freebsd
                           => "$ORIGIN",
         session::os_macos => "@executable_path",
         session::os_win32 => util::unreachable()
@@ -159,10 +156,10 @@ pub fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
 
     path.push_all(vec::slice(split2, start_idx, len2 - 1));
 
-    if !path.is_empty() {
-        return Path("").push_many(path);
+    return if !path.is_empty() {
+        Path("").push_many(path)
     } else {
-        return Path(".");
+        Path(".")
     }
 }
 
