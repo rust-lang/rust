@@ -63,13 +63,11 @@ define CLEAN_HOST_STAGE_N
 
 clean$(1)_H_$(2):
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustc$(X_$(2))
-	$(Q)rm -f $$(HBIN$(1)_H_$(2))/fuzzer$(X_$(2))
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustpkg$(X_$(2))
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/serializer$(X_$(2))
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rustdoc$(X_$(2))
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rusti$(X_$(2))
 	$(Q)rm -f $$(HBIN$(1)_H_$(2))/rust$(X_$(2))
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBFUZZER_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTPKG_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_LIBRUSTDOC_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(CFG_RUNTIME_$(2))
@@ -83,7 +81,6 @@ clean$(1)_H_$(2):
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(EXTRALIB_GLOB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTC_GLOB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBSYNTAX_GLOB_$(2))
-	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBFUZZER_GLOB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTPKG_GLOB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTDOC_GLOB_$(2))
 	$(Q)rm -f $$(HLIB$(1)_H_$(2))/$(LIBRUSTI_GLOB_$(2))
@@ -101,13 +98,11 @@ define CLEAN_TARGET_STAGE_N
 
 clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rustc$(X_$(2))
-	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/fuzzer$(X_$(2))
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rustpkg$(X_$(2))
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/serializer$(X_$(2))
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rustdoc$(X_$(2))
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rusti$(X_$(2))
 	$(Q)rm -f $$(TBIN$(1)_T_$(2)_H_$(3))/rust$(X_$(2))
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBFUZZER_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTPKG_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTDOC_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUNTIME_$(2))
@@ -121,7 +116,6 @@ clean$(1)_T_$(2)_H_$(3):
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(EXTRALIB_GLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTC_GLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBSYNTAX_GLOB_$(2))
-	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBFUZZER_GLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTPKG_GLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTDOC_GLOB_$(2))
 	$(Q)rm -f $$(TLIB$(1)_T_$(2)_H_$(3))/$(LIBRUSTI_GLOB_$(2))
