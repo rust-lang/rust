@@ -420,9 +420,6 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
                 use_rl: bool)
     -> Option<Repl> {
     if line.starts_with(":") {
-        // FIXME #5898: conflicts with Cell.take(), so can't be at the top level
-        use std::iterator::IteratorUtil;
-
         // drop the : and the \n (one byte each)
         let full = line.slice(1, line.len() - 1);
         let split: ~[~str] = full.word_iter().transform(|s| s.to_owned()).collect();

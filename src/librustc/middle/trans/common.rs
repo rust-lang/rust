@@ -11,7 +11,6 @@
 //! Code that is useful in various trans modules.
 
 use core::prelude::*;
-use core::iterator::IteratorUtil;
 
 use back::{abi, upcall};
 use driver::session;

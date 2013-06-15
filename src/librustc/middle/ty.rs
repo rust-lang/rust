@@ -27,7 +27,6 @@ use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
 use util::enum_set::{EnumSet, CLike};
 
-use core::iterator::IteratorUtil;
 use core::cast;
 use core::cmp;
 use core::hashmap::{HashMap, HashSet};

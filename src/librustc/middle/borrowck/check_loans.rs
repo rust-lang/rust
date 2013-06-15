@@ -18,7 +18,6 @@
 // 4. moves do not affect things loaned out in any way
 
 use core::prelude::*;
-use core::iterator::IteratorUtil;
 
 use core::hashmap::HashSet;
 use core::uint;

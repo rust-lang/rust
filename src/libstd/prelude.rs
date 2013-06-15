@@ -46,12 +46,10 @@ pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Great
 pub use char::Char;
 pub use container::{Container, Mutable, Map, Set};
 pub use hash::Hash;
-pub use old_iter::{BaseIter, ReverseIter, MutableIter, ExtendedIter, EqIter};
-pub use old_iter::{CopyableIter, CopyableOrderedIter, CopyableNonstrictIter};
-pub use old_iter::{ExtendedMutableIter};
+pub use old_iter::{BaseIter, ReverseIter, ExtendedIter, EqIter};
+pub use old_iter::{CopyableIter, CopyableOrderedIter};
 pub use iter::{Times, FromIter};
-// FIXME: #5898 pub use iterator::{Iterator, IteratorUtil};
-pub use iterator::Iterator;
+pub use iterator::{Iterator, IteratorUtil};
 pub use num::{Num, NumCast};
 pub use num::{Orderable, Signed, Unsigned, Round};
 pub use num::{Algebraic, Trigonometric, Exponential, Hyperbolic};

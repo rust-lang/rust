@@ -16,7 +16,6 @@
 // reachable as well.
 
 use core::prelude::*;
-use core::iterator::IteratorUtil;
 
 use middle::resolve;
 use middle::ty;

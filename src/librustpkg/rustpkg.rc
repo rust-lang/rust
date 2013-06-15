@@ -29,7 +29,6 @@ extern mod syntax;
 
 use core::prelude::*;
 use core::*;
-use core::iterator::IteratorUtil;
 pub use core::path::Path;
 use core::hashmap::HashMap;
 use rustc::driver::{driver, session};

@@ -25,7 +25,6 @@ use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;
 
-use core::iterator::IteratorUtil;
 use core::at_vec;
 use core::uint;
 use extra::ebml::reader;

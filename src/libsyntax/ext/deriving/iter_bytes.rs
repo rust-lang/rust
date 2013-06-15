@@ -16,7 +16,6 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
-use core::iterator::IteratorUtil;
 
 pub fn expand_deriving_iter_bytes(cx: @ExtCtxt,
                                   span: span,

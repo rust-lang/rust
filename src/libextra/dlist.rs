@@ -20,7 +20,6 @@ Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
 
 use core::prelude::*;
 
-use core::iterator::IteratorUtil;
 use core::managed;
 use core::old_iter;
 use core::vec;

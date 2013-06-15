@@ -32,7 +32,6 @@ use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 
-use core::iterator::IteratorUtil;
 use core::str;
 use core::vec;
 

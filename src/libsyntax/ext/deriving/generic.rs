@@ -174,7 +174,6 @@ use opt_vec;
 
 use core::uint;
 use core::vec;
-use core::iterator::IteratorUtil;
 
 pub use self::ty::*;
 mod ty;

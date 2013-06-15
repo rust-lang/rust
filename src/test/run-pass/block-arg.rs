@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::iterator::IteratorUtil;
 use std::vec;
 
 // Check usage and precedence of block arguments in expressions:

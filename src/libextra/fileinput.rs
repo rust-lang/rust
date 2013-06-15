@@ -414,7 +414,6 @@ mod test {
 
     use super::{FileInput, pathify, input_vec, input_vec_state};
 
-    use core::iterator::IteratorUtil;
     use core::io;
     use core::uint;
     use core::vec;

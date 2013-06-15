@@ -31,7 +31,6 @@ are represented as `ty_param()` instances.
 */
 
 use core::prelude::*;
-use core::iterator::IteratorUtil;
 
 use metadata::csearch;
 use middle::ty::{substs, ty_param_bounds_and_ty};

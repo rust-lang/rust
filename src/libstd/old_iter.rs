@@ -33,10 +33,6 @@ pub trait ReverseIter<A>: BaseIter<A> {
     fn each_reverse(&self, blk: &fn(&A) -> bool) -> bool;
 }
 
-pub trait MutableIter<A>: BaseIter<A> {
-    fn each_mut(&mut self, blk: &fn(&mut A) -> bool) -> bool;
-}
-
 pub trait ExtendedIter<A> {
     fn eachi(&self, blk: &fn(uint, v: &A) -> bool) -> bool;
     fn all(&self, blk: &fn(&A) -> bool) -> bool;
@@ -45,10 +41,6 @@ pub trait ExtendedIter<A> {
     fn position(&self, f: &fn(&A) -> bool) -> Option<uint>;
     fn map_to_vec<B>(&self, op: &fn(&A) -> B) -> ~[B];
     fn flat_map_to_vec<B,IB: BaseIter<B>>(&self, op: &fn(&A) -> IB) -> ~[B];
-}
-
-pub trait ExtendedMutableIter<A> {
-    fn eachi_mut(&mut self, blk: &fn(uint, &mut A) -> bool) -> bool;
 }
 
 pub trait EqIter<A:Eq> {
@@ -65,13 +57,6 @@ pub trait CopyableIter<A:Copy> {
 pub trait CopyableOrderedIter<A:Copy + Ord> {
     fn min(&self) -> A;
     fn max(&self) -> A;
-}
-
-pub trait CopyableNonstrictIter<A:Copy> {
-    // Like "each", but copies out the value. If the receiver is mutated while
-    // iterating over it, the semantics must not be memory-unsafe but are
-    // otherwise undefined.
-    fn each_val(&const self, f: &fn(A) -> bool) -> bool;
 }
 
 // A trait for sequences that can be built by imperatively pushing elements

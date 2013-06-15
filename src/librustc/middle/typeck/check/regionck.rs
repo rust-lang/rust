@@ -28,7 +28,6 @@ this point a bit better.
 */
 
 use core::prelude::*;
-use core::iterator::IteratorUtil;
 
 use middle::freevars::get_freevars;
 use middle::ty::{re_scope};

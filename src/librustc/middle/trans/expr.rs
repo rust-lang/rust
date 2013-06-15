@@ -152,7 +152,6 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::Repr;
 
-use core::iterator::IteratorUtil;
 use core::cast::transmute;
 use core::hashmap::HashMap;
 use core::vec;
