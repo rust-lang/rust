@@ -1002,31 +1002,33 @@ pub fn retain<T>(v: &mut ~[T], f: &fn(t: &T) -> bool) {
 }
 
 /// Flattens a vector of vectors of T into a single vector of T.
-pub fn concat<T:Copy>(v: &[~[T]]) -> ~[T] { v.concat() }
+pub fn concat<T:Copy>(v: &[~[T]]) -> ~[T] { v.concat_vec() }
 
 /// Concatenate a vector of vectors, placing a given separator between each
-pub fn connect<T:Copy>(v: &[~[T]], sep: &T) -> ~[T] { v.connect(sep) }
+pub fn connect<T:Copy>(v: &[~[T]], sep: &T) -> ~[T] { v.connect_vec(sep) }
 
 /// Flattens a vector of vectors of T into a single vector of T.
-pub fn concat_slices<T:Copy>(v: &[&[T]]) -> ~[T] { v.concat() }
+pub fn concat_slices<T:Copy>(v: &[&[T]]) -> ~[T] { v.concat_vec() }
 
 /// Concatenate a vector of vectors, placing a given separator between each
-pub fn connect_slices<T:Copy>(v: &[&[T]], sep: &T) -> ~[T] { v.connect(sep) }
+pub fn connect_slices<T:Copy>(v: &[&[T]], sep: &T) -> ~[T] { v.connect_vec(sep) }
 
 #[allow(missing_doc)]
 pub trait VectorVector<T> {
-    pub fn concat(&self) -> ~[T];
-    pub fn connect(&self, sep: &T) -> ~[T];
+    // FIXME #5898: calling these .concat and .connect conflicts with
+    // StrVector::con{cat,nect}, since they have generic contents.
+    pub fn concat_vec(&self) -> ~[T];
+    pub fn connect_vec(&self, sep: &T) -> ~[T];
 }
 
 impl<'self, T:Copy> VectorVector<T> for &'self [~[T]] {
     /// Flattens a vector of slices of T into a single vector of T.
-    pub fn concat(&self) -> ~[T] {
+    pub fn concat_vec(&self) -> ~[T] {
         self.flat_map(|&inner| inner)
     }
 
     /// Concatenate a vector of vectors, placing a given separator between each.
-    pub fn connect(&self, sep: &T) -> ~[T] {
+    pub fn connect_vec(&self, sep: &T) -> ~[T] {
         let mut r = ~[];
         let mut first = true;
         for self.each |&inner| {
@@ -1039,12 +1041,12 @@ impl<'self, T:Copy> VectorVector<T> for &'self [~[T]] {
 
 impl<'self, T:Copy> VectorVector<T> for &'self [&'self [T]] {
     /// Flattens a vector of slices of T into a single vector of T.
-    pub fn concat(&self) -> ~[T] {
+    pub fn concat_vec(&self) -> ~[T] {
         self.flat_map(|&inner| inner.to_owned())
     }
 
     /// Concatenate a vector of slices, placing a given separator between each.
-    pub fn connect(&self, sep: &T) -> ~[T] {
+    pub fn connect_vec(&self, sep: &T) -> ~[T] {
         let mut r = ~[];
         let mut first = true;
         for self.each |&inner| {
@@ -3639,10 +3641,10 @@ mod tests {
     #[test]
     fn test_concat() {
         assert_eq!(concat([~[1], ~[2,3]]), ~[1, 2, 3]);
-        assert_eq!([~[1], ~[2,3]].concat(), ~[1, 2, 3]);
+        assert_eq!([~[1], ~[2,3]].concat_vec(), ~[1, 2, 3]);
 
         assert_eq!(concat_slices([&[1], &[2,3]]), ~[1, 2, 3]);
-        assert_eq!([&[1], &[2,3]].concat(), ~[1, 2, 3]);
+        assert_eq!([&[1], &[2,3]].concat_vec(), ~[1, 2, 3]);
     }
 
     #[test]
@@ -3650,14 +3652,14 @@ mod tests {
         assert_eq!(connect([], &0), ~[]);
         assert_eq!(connect([~[1], ~[2, 3]], &0), ~[1, 0, 2, 3]);
         assert_eq!(connect([~[1], ~[2], ~[3]], &0), ~[1, 0, 2, 0, 3]);
-        assert_eq!([~[1], ~[2, 3]].connect(&0), ~[1, 0, 2, 3]);
-        assert_eq!([~[1], ~[2], ~[3]].connect(&0), ~[1, 0, 2, 0, 3]);
+        assert_eq!([~[1], ~[2, 3]].connect_vec(&0), ~[1, 0, 2, 3]);
+        assert_eq!([~[1], ~[2], ~[3]].connect_vec(&0), ~[1, 0, 2, 0, 3]);
 
         assert_eq!(connect_slices([], &0), ~[]);
         assert_eq!(connect_slices([&[1], &[2, 3]], &0), ~[1, 0, 2, 3]);
         assert_eq!(connect_slices([&[1], &[2], &[3]], &0), ~[1, 0, 2, 0, 3]);
-        assert_eq!([&[1], &[2, 3]].connect(&0), ~[1, 0, 2, 3]);
-        assert_eq!([&[1], &[2], &[3]].connect(&0), ~[1, 0, 2, 0, 3]);
+        assert_eq!([&[1], &[2, 3]].connect_vec(&0), ~[1, 0, 2, 3]);
+        assert_eq!([&[1], &[2], &[3]].connect_vec(&0), ~[1, 0, 2, 0, 3]);
     }
 
     #[test]
