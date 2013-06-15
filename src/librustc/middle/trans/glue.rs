@@ -218,14 +218,6 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
     return t;
 }
 
-pub fn cast_glue(ccx: @CrateContext, ti: @mut tydesc_info, v: ValueRef)
-              -> ValueRef {
-    unsafe {
-        let llfnty = type_of_glue_fn(ccx, ti.ty);
-        llvm::LLVMConstPointerCast(v, T_ptr(llfnty))
-    }
-}
-
 pub fn lazily_emit_simplified_tydesc_glue(ccx: @CrateContext,
                                           field: uint,
                                           ti: @mut tydesc_info) -> bool {
@@ -235,19 +227,14 @@ pub fn lazily_emit_simplified_tydesc_glue(ccx: @CrateContext,
         let simpl_ti = get_tydesc(ccx, simpl);
         lazily_emit_tydesc_glue(ccx, field, simpl_ti);
         {
-            let simpl_ti = &mut *simpl_ti;
             if field == abi::tydesc_field_take_glue {
-                ti.take_glue =
-                    simpl_ti.take_glue.map(|v| cast_glue(ccx, ti, *v));
+                ti.take_glue = simpl_ti.take_glue;
             } else if field == abi::tydesc_field_drop_glue {
-                ti.drop_glue =
-                    simpl_ti.drop_glue.map(|v| cast_glue(ccx, ti, *v));
+                ti.drop_glue = simpl_ti.drop_glue;
             } else if field == abi::tydesc_field_free_glue {
-                ti.free_glue =
-                    simpl_ti.free_glue.map(|v| cast_glue(ccx, ti, *v));
+                ti.free_glue = simpl_ti.free_glue;
             } else if field == abi::tydesc_field_visit_glue {
-                ti.visit_glue =
-                    simpl_ti.visit_glue.map(|v| cast_glue(ccx, ti, *v));
+                ti.visit_glue = simpl_ti.visit_glue;
             }
         }
         return true;
@@ -260,7 +247,7 @@ pub fn lazily_emit_tydesc_glue(ccx: @CrateContext,
                                field: uint,
                                ti: @mut tydesc_info) {
     let _icx = ccx.insn_ctxt("lazily_emit_tydesc_glue");
-    let llfnty = type_of_glue_fn(ccx, ti.ty);
+    let llfnty = type_of_glue_fn(ccx);
 
     if lazily_emit_simplified_tydesc_glue(ccx, field, ti) {
         return;
@@ -353,25 +340,7 @@ pub fn call_tydesc_glue_full(bcx: block,
       }
     };
 
-    // When available, use static type info to give glue the right type.
-    let static_glue_fn = match static_ti {
-      None => None,
-      Some(sti) => {
-        match static_glue_fn {
-          None => None,
-          Some(sgf) => Some(
-              PointerCast(bcx, sgf, T_ptr(type_of_glue_fn(ccx, sti.ty))))
-        }
-      }
-    };
-
-    // When static type info is available, avoid casting parameter because the
-    // function already has the right type. Otherwise cast to generic pointer.
-    let llrawptr = if static_ti.is_none() || static_glue_fn.is_none() {
-        PointerCast(bcx, v, T_ptr(T_i8()))
-    } else {
-        v
-    };
+    let llrawptr = PointerCast(bcx, v, T_ptr(T_i8()));
 
     let llfn = {
         match static_glue_fn {
@@ -736,14 +705,13 @@ pub fn make_generic_glue_inner(ccx: @CrateContext,
     // requirement since in many contexts glue is invoked indirectly and
     // the caller has no idea if it's dealing with something that can be
     // passed by value.
-    //
-    // llfn is expected be declared to take a parameter of the appropriate
-    // type, so we don't need to explicitly cast the function parameter.
 
     let bcx = top_scope_block(fcx, None);
     let lltop = bcx.llbb;
     let rawptr0_arg = fcx.arg_pos(1u);
     let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, rawptr0_arg as c_uint) };
+    let llty = type_of(ccx, t);
+    let llrawptr0 = PointerCast(bcx, llrawptr0, T_ptr(llty));
     helper(bcx, llrawptr0, t);
     finish_fn(fcx, lltop);
     return llfn;
