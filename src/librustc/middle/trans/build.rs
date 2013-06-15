@@ -46,8 +46,8 @@ pub fn B(cx: block) -> BuilderRef {
 pub fn count_insn(cx: block, category: &str) {
     if cx.ccx().sess.count_llvm_insns() {
 
-        let h = cx.ccx().stats.llvm_insns;
-        let v = &*cx.ccx().stats.llvm_insn_ctxt;
+        let h = &mut cx.ccx().stats.llvm_insns;
+        let v : &[~str] = cx.ccx().stats.llvm_insn_ctxt;
 
         // Build version of path with cycles removed.
 
@@ -547,7 +547,7 @@ pub fn AtomicLoad(cx: block, PointerVal: ValueRef, order: AtomicOrdering) -> Val
             return llvm::LLVMGetUndef(ccx.int_type);
         }
         count_insn(cx, "load.atomic");
-        let align = llalign_of_min(*ccx, ccx.int_type);
+        let align = llalign_of_min(ccx, ccx.int_type);
         return llvm::LLVMBuildAtomicLoad(B(cx), PointerVal, noname(), order, align as c_uint);
     }
 }

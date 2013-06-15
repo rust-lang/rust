@@ -61,41 +61,8 @@ use syntax::codemap;
 use syntax::diagnostic;
 
 pub mod middle {
-    pub mod trans {
-        pub mod macros;
-        pub mod inline;
-        pub mod monomorphize;
-        pub mod controlflow;
-        pub mod glue;
-        pub mod datum;
-        pub mod write_guard;
-        pub mod callee;
-        pub mod expr;
-        pub mod common;
-        pub mod consts;
-        pub mod type_of;
-        pub mod build;
-        pub mod base;
-        pub mod _match;
-        pub mod uniq;
-        pub mod closure;
-        pub mod tvec;
-        pub mod meth;
-        pub mod cabi;
-        pub mod cabi_x86;
-        pub mod cabi_x86_64;
-        pub mod cabi_arm;
-        pub mod cabi_mips;
-        pub mod foreign;
-        pub mod reflect;
-        pub mod shape;
-        pub mod debuginfo;
-        pub mod type_use;
-        pub mod reachable;
-        pub mod machine;
-        pub mod adt;
-        pub mod asm;
-    }
+    #[path = "trans/mod.rs"]
+    pub mod trans;
     pub mod ty;
     pub mod subst;
     pub mod resolve;

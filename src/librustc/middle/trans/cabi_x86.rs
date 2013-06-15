@@ -18,7 +18,7 @@ use super::common::*;
 use super::machine::*;
 
 struct X86_ABIInfo {
-    ccx: @CrateContext
+    ccx: @mut CrateContext
 }
 
 impl ABIInfo for X86_ABIInfo {
@@ -71,7 +71,7 @@ impl ABIInfo for X86_ABIInfo {
     }
 }
 
-pub fn abi_info(ccx: @CrateContext) -> @ABIInfo {
+pub fn abi_info(ccx: @mut CrateContext) -> @ABIInfo {
     return @X86_ABIInfo {
         ccx: ccx
     } as @ABIInfo;
