@@ -310,10 +310,10 @@ pub trait IteratorUtil<A> {
     fn any_(&mut self, f: &fn(A) -> bool) -> bool;
 
     /// Return the first element satisfying the specified predicate
-    fn find(&mut self, predicate: &fn(&A) -> bool) -> Option<A>;
+    fn find_(&mut self, predicate: &fn(&A) -> bool) -> Option<A>;
 
     /// Return the index of the first element satisfying the specified predicate
-    fn position(&mut self, predicate: &fn(A) -> bool) -> Option<uint>;
+    fn position_(&mut self, predicate: &fn(A) -> bool) -> Option<uint>;
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -448,7 +448,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
 
     /// Return the first element satisfying the specified predicate
     #[inline(always)]
-    fn find(&mut self, predicate: &fn(&A) -> bool) -> Option<A> {
+    fn find_(&mut self, predicate: &fn(&A) -> bool) -> Option<A> {
         for self.advance |x| {
             if predicate(&x) { return Some(x) }
         }
@@ -457,7 +457,7 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
 
     /// Return the index of the first element satisfying the specified predicate
     #[inline]
-    fn position(&mut self, predicate: &fn(A) -> bool) -> Option<uint> {
+    fn position_(&mut self, predicate: &fn(A) -> bool) -> Option<uint> {
         let mut i = 0;
         for self.advance |x| {
             if predicate(x) {
@@ -1087,16 +1087,16 @@ mod tests {
     #[test]
     fn test_find() {
         let v = &[1, 3, 9, 27, 103, 14, 11];
-        assert_eq!(*v.iter().find(|x| *x & 1 == 0).unwrap(), 14);
-        assert_eq!(*v.iter().find(|x| *x % 3 == 0).unwrap(), 3);
-        assert!(v.iter().find(|x| *x % 12 == 0).is_none());
+        assert_eq!(*v.iter().find_(|x| *x & 1 == 0).unwrap(), 14);
+        assert_eq!(*v.iter().find_(|x| *x % 3 == 0).unwrap(), 3);
+        assert!(v.iter().find_(|x| *x % 12 == 0).is_none());
     }
 
     #[test]
     fn test_position() {
         let v = &[1, 3, 9, 27, 103, 14, 11];
-        assert_eq!(v.iter().position(|x| *x & 1 == 0).unwrap(), 5);
-        assert_eq!(v.iter().position(|x| *x % 3 == 0).unwrap(), 1);
-        assert!(v.iter().position(|x| *x % 12 == 0).is_none());
+        assert_eq!(v.iter().position_(|x| *x & 1 == 0).unwrap(), 5);
+        assert_eq!(v.iter().position_(|x| *x % 3 == 0).unwrap(), 1);
+        assert!(v.iter().position_(|x| *x % 12 == 0).is_none());
     }
 }
