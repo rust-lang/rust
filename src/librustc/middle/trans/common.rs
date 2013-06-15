@@ -690,8 +690,8 @@ impl block_ {
         self.ccx().tn.val_to_str(val)
     }
 
-    pub fn llty_str(&self, llty: TypeRef) -> ~str {
-        self.ccx().tn.type_to_str(llty)
+    pub fn llty_str(&self, ty: Type) -> ~str {
+        self.ccx().tn.type_to_str(ty)
     }
 
     pub fn ty_to_str(&self, t: ty::t) -> ~str {
@@ -708,6 +708,7 @@ impl block_ {
     }
 }
 
+/*
 // LLVM type constructors.
 pub fn T_void() -> TypeRef {
     unsafe { return llvm::LLVMVoidTypeInContext(base::task_llcx()); }
@@ -931,19 +932,6 @@ pub fn T_opaque_vec(targ_cfg: @session::config) -> TypeRef {
     return T_vec2(targ_cfg, T_i8());
 }
 
-// Let T be the content of a box @T.  tuplify_box_ty(t) returns the
-// representation of @T as a tuple (i.e., the ty::t version of what T_box()
-// returns).
-pub fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
-    let ptr = ty::mk_ptr(
-        tcx,
-        ty::mt {ty: ty::mk_nil(), mutbl: ast::m_imm}
-    );
-    return ty::mk_tup(tcx, ~[ty::mk_uint(), ty::mk_type(tcx),
-                         ptr, ptr,
-                         t]);
-}
-
 pub fn T_box_header_fields(cx: &CrateContext) -> ~[TypeRef] {
     let ptr = T_ptr(T_i8());
     return ~[cx.int_type, T_ptr(cx.tydesc_type), ptr, ptr];
@@ -1025,6 +1013,20 @@ pub fn T_opaque_trait(cx: &CrateContext, store: ty::TraitStore) -> TypeRef {
 pub fn T_opaque_port_ptr() -> TypeRef { return T_ptr(T_i8()); }
 
 pub fn T_opaque_chan_ptr() -> TypeRef { return T_ptr(T_i8()); }
+*/
+
+// Let T be the content of a box @T.  tuplify_box_ty(t) returns the
+// representation of @T as a tuple (i.e., the ty::t version of what T_box()
+// returns).
+pub fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
+    let ptr = ty::mk_ptr(
+        tcx,
+        ty::mt {ty: ty::mk_nil(), mutbl: ast::m_imm}
+    );
+    return ty::mk_tup(tcx, ~[ty::mk_uint(), ty::mk_type(tcx),
+                         ptr, ptr,
+                         t]);
+}
 
 
 // LLVM constant constructors.

@@ -26,7 +26,7 @@ pub trait ABIInfo {
 
 pub struct LLVMType {
     cast: bool,
-    ty: TypeRef
+    ty: Type
 }
 
 pub struct FnType {
@@ -37,10 +37,10 @@ pub struct FnType {
 }
 
 impl FnType {
-    pub fn decl_fn(&self, decl: &fn(fnty: TypeRef) -> ValueRef) -> ValueRef {
+    pub fn decl_fn(&self, decl: &fn(fnty: Type) -> ValueRef) -> ValueRef {
         let atys = vec::map(self.arg_tys, |t| t.ty);
         let rty = self.ret_ty.ty;
-        let fnty = T_fn(atys, rty);
+        let fnty = Type::func(atys, rty);
         let llfn = decl(fnty);
 
         for self.attrs.iter().enumerate().advance |(i, a)| {
@@ -59,7 +59,7 @@ impl FnType {
 
     pub fn build_shim_args(&self,
                            bcx: block,
-                           arg_tys: &[TypeRef],
+                           arg_tys: &[Type],
                            llargbundle: ValueRef)
                            -> ~[ValueRef] {
         let mut atys: &[LLVMType] = self.arg_tys;
@@ -96,7 +96,7 @@ impl FnType {
 
     pub fn build_shim_ret(&self,
                           bcx: block,
-                          arg_tys: &[TypeRef],
+                          arg_tys: &[Type],
                           ret_def: bool,
                           llargbundle: ValueRef,
                           llretval: ValueRef) {
@@ -132,7 +132,7 @@ impl FnType {
 
     pub fn build_wrap_args(&self,
                            bcx: block,
-                           ret_ty: TypeRef,
+                           ret_ty: Type,
                            llwrapfn: ValueRef,
                            llargbundle: ValueRef) {
         let mut atys: &[LLVMType] = self.arg_tys;
@@ -145,7 +145,7 @@ impl FnType {
             get_param(llwrapfn, 0u)
         } else if self.ret_ty.cast {
             let retptr = alloca(bcx, self.ret_ty.ty);
-            BitCast(bcx, retptr, T_ptr(ret_ty))
+            BitCast(bcx, retptr, ret_ty.ptr_to())
         } else {
             alloca(bcx, ret_ty)
         };
@@ -182,14 +182,14 @@ impl FnType {
         if bcx.fcx.llretptr.is_some() {
             let llretval = load_inbounds(bcx, llargbundle, [ 0, arg_tys.len() ]);
             let llretval = if self.ret_ty.cast {
-                let retptr = BitCast(bcx, llretval, T_ptr(self.ret_ty.ty));
+                let retptr = BitCast(bcx, llretval, self.ret_ty.ty.ptr_to());
                 Load(bcx, retptr)
             } else {
                 Load(bcx, llretval)
             };
             let llretptr = BitCast(bcx,
                                    bcx.fcx.llretptr.get(),
-                                   T_ptr(self.ret_ty.ty));
+                                   self.ret_ty.ty.ptr_to());
             Store(bcx, llretval, llretptr);
         }
     }

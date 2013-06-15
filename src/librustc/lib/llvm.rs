@@ -2233,18 +2233,6 @@ pub fn fn_ty_param_tys(fn_ty: TypeRef) -> ~[TypeRef] {
     }
 }
 
-pub fn struct_tys(struct_ty: TypeRef) -> ~[TypeRef] {
-    unsafe {
-        let n_elts = llvm::LLVMCountStructElementTypes(struct_ty) as uint;
-        if n_elts == 0 {
-            return ~[];
-        }
-        let mut elts = vec::from_elem(n_elts, ptr::null());
-        llvm::LLVMGetStructElementTypes(struct_ty, &mut elts[0]);
-        return elts;
-    }
-}
-
 
 /* Memory-managed interface to target data. */
 

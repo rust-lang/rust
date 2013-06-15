@@ -14,9 +14,9 @@ use core::libc::c_uint;
 use core::ptr;
 use core::uint;
 use core::vec;
-use lib::llvm::{llvm, TypeRef, Integer, Pointer, Float, Double};
-use lib::llvm::{Struct, Array, Attribute};
-use lib::llvm::{StructRetAttribute};
+use lib::llvm::{llvm, Integer, Pointer, Float, Double, Struct, Array};
+use lib::llvm::struct_tys;
+use lib::llvm::{Attribute, StructRetAttribute};
 use lib::llvm::True;
 use middle::trans::context::task_llcx;
 use middle::trans::common::*;
@@ -26,21 +26,9 @@ fn align_up_to(off: uint, a: uint) -> uint {
     return (off + a - 1u) / a * a;
 }
 
-fn align(off: uint, ty: TypeRef) -> uint {
+fn align(off: uint, ty: Type) -> uint {
     let a = ty_align(ty);
     return align_up_to(off, a);
-}
-
-fn struct_tys(ty: TypeRef) -> ~[TypeRef] {
-    unsafe {
-        let n = llvm::LLVMCountStructElementTypes(ty);
-    if (n == 0) {
-        return ~[];
-    }
-        let mut elts = vec::from_elem(n as uint, ptr::null());
-        llvm::LLVMGetStructElementTypes(ty, &mut elts[0]);
-        return elts;
-    }
 }
 
 fn ty_align(ty: TypeRef) -> uint {

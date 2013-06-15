@@ -29,7 +29,7 @@ use back::link::{mangle_exported_name};
 use back::{link, abi};
 use driver::session;
 use driver::session::Session;
-use lib::llvm::{ContextRef, ModuleRef, ValueRef, TypeRef, BasicBlockRef};
+use lib::llvm::{ContextRef, ModuleRef, ValueRef, BasicBlockRef};
 use lib::llvm::{llvm, True, False};
 use lib;
 use metadata::common::LinkMeta;
@@ -138,42 +138,33 @@ fn fcx_has_nonzero_span(fcx: fn_ctxt) -> bool {
     }
 }
 
-pub fn decl_fn(llmod: ModuleRef,
-               name: &str,
-               cc: lib::llvm::CallConv,
-               llty: TypeRef)
-               -> ValueRef {
-    let llfn: ValueRef = str::as_c_str(name, |buf| {
+pub fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv, ty: Type) -> ValueRef {
+    let llfn: ValueRef = do name.as_c_str |buf| {
         unsafe {
-            llvm::LLVMGetOrInsertFunction(llmod, buf, llty)
+            llvm::LLVMGetOrInsertFunction(llmod, buf, ty.to_ref())
         }
-    });
+    };
 
     lib::llvm::SetFunctionCallConv(llfn, cc);
     return llfn;
 }
 
-pub fn decl_cdecl_fn(llmod: ModuleRef, name: &str, llty: TypeRef)
-                  -> ValueRef {
+pub fn decl_cdecl_fn(llmod: ModuleRef, name: &str, ty: Type) -> ValueRef {
     return decl_fn(llmod, name, lib::llvm::CCallConv, llty);
 }
 
 // Only use this if you are going to actually define the function. It's
 // not valid to simply declare a function as internal.
-pub fn decl_internal_cdecl_fn(llmod: ModuleRef, name: ~str, llty: TypeRef) ->
-   ValueRef {
-    let llfn = decl_cdecl_fn(llmod, name, llty);
+pub fn decl_internal_cdecl_fn(llmod: ModuleRef, name: ~str, ty: Type) -> ValueRef {
+    let llfn = decl_cdecl_fn(llmod, name, ty);
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     return llfn;
 }
 
-pub fn get_extern_fn(externs: &mut ExternMap,
-                     llmod: ModuleRef,
-                     name: @str,
-                     cc: lib::llvm::CallConv,
-                     ty: TypeRef) -> ValueRef {
-    match externs.find(&name) {
-        Some(n) => return copy *n,
+pub fn get_extern_fn(externs: &mut ExternMap, llmod: ModuleRef, name: @str,
+                     cc: lib::llvm::CallConv, ty: Type) -> ValueRef {
+    match externs.find_copy(&name) {
+        Some(n) => return n,
         None => ()
     }
     let f = decl_fn(llmod, name, cc, ty);
@@ -182,43 +173,19 @@ pub fn get_extern_fn(externs: &mut ExternMap,
 }
 
 pub fn get_extern_const(externs: &mut ExternMap, llmod: ModuleRef,
-                        name: @str, ty: TypeRef) -> ValueRef {
-    match externs.find(&name) {
-        Some(n) => return copy *n,
+                        name: @str, ty: Type) -> ValueRef {
+    match externs.find_copy(&name) {
+        Some(n) => return n,
         None => ()
     }
     unsafe {
-        let c = str::as_c_str(name, |buf| {
-            llvm::LLVMAddGlobal(llmod, ty, buf)
-        });
+        let c = do name.as_c_str |buf| {
+            llvm::LLVMAddGlobal(llmod, ty.to_ref(), buf)
+        };
         externs.insert(name, c);
         return c;
     }
 }
-
-fn get_simple_extern_fn(cx: block,
-                        externs: &mut ExternMap,
-                        llmod: ModuleRef,
-                        name: @str,
-                        n_args: int) -> ValueRef {
-    let _icx = cx.insn_ctxt("get_simple_extern_fn");
-    let ccx = cx.fcx.ccx;
-    let inputs = vec::from_elem(n_args as uint, ccx.int_type);
-    let output = ccx.int_type;
-    let t = T_fn(inputs, output);
-    return get_extern_fn(externs, llmod, name, lib::llvm::CCallConv, t);
-}
-
-pub fn trans_foreign_call(cx: block, externs: &mut ExternMap,
-                          llmod: ModuleRef, name: @str, args: &[ValueRef]) ->
-   ValueRef {
-    let _icx = cx.insn_ctxt("trans_foreign_call");
-    let n = args.len() as int;
-    let llforeign: ValueRef =
-        get_simple_extern_fn(cx, externs, llmod, name, n);
-    return Call(cx, llforeign, args);
-}
-
 pub fn umax(cx: block, a: ValueRef, b: ValueRef) -> ValueRef {
     let _icx = cx.insn_ctxt("umax");
     let cond = ICmp(cx, lib::llvm::IntULT, a, b);
@@ -236,7 +203,7 @@ pub fn umin(cx: block, a: ValueRef, b: ValueRef) -> ValueRef {
 // return type, use bump_ptr().
 pub fn ptr_offs(bcx: block, base: ValueRef, sz: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("ptr_offs");
-    let raw = PointerCast(bcx, base, T_ptr(T_i8()));
+    let raw = PointerCast(bcx, base, Type::i8p());
     InBoundsGEP(bcx, raw, [sz])
 }
 
@@ -247,7 +214,7 @@ pub fn bump_ptr(bcx: block, t: ty::t, base: ValueRef, sz: ValueRef) ->
     let _icx = bcx.insn_ctxt("bump_ptr");
     let ccx = bcx.ccx();
     let bumped = ptr_offs(bcx, base, sz);
-    let typ = T_ptr(type_of(ccx, t));
+    let typ = type_of(ccx, t).ptr_to();
     PointerCast(bcx, bumped, typ)
 }
 
@@ -262,8 +229,8 @@ pub fn opaque_box_body(bcx: block,
     let _icx = bcx.insn_ctxt("opaque_box_body");
     let ccx = bcx.ccx();
     let ty = type_of(ccx, body_t);
-    let ty = T_box(ccx, ty);
-    let boxptr = PointerCast(bcx, boxptr, T_ptr(ty));
+    let ty = Type::box(ccx, ty);
+    let boxptr = PointerCast(bcx, boxptr, ty.ptr_to());
     GEPi(bcx, boxptr, [0u, abi::box_field_body])
 }
 
@@ -294,8 +261,8 @@ pub fn malloc_raw_dyn(bcx: block,
     glue::lazily_emit_all_tydesc_glue(ccx, static_ti);
 
     // Allocate space:
-    let tydesc = PointerCast(bcx, static_ti.tydesc, T_ptr(T_i8()));
-    let rval = alloca(bcx, T_ptr(T_i8()));
+    let tydesc = PointerCast(bcx, static_ti.tydesc, Type::i8p());
+    let rval = alloca(bcx, Type::i8p());
     let bcx = callee::trans_lang_call(
         bcx,
         langcall,
@@ -320,7 +287,7 @@ pub fn non_gc_box_cast(bcx: block, val: ValueRef) -> ValueRef {
         add_comment(bcx, "non_gc_box_cast");
         assert!(llvm::LLVMGetPointerAddressSpace(val_ty(val)) ==
                      gc_box_addrspace || bcx.unreachable);
-        let non_gc_t = T_ptr(llvm::LLVMGetElementType(val_ty(val)));
+        let non_gc_t = llvm::LLVMGetElementType(val_ty(val)).ptr_to();
         PointerCast(bcx, val, non_gc_t)
     }
 }
@@ -760,8 +727,8 @@ pub fn cast_shift_const_rhs(op: ast::binop,
 
 pub fn cast_shift_rhs(op: ast::binop,
                       lhs: ValueRef, rhs: ValueRef,
-                      trunc: &fn(ValueRef, TypeRef) -> ValueRef,
-                      zext: &fn(ValueRef, TypeRef) -> ValueRef)
+                      trunc: &fn(ValueRef, Type) -> ValueRef,
+                      zext: &fn(ValueRef, Type) -> ValueRef)
                    -> ValueRef {
     // Shifts may have any size int on the rhs
     unsafe {
@@ -794,11 +761,11 @@ pub fn fail_if_zero(cx: block, span: span, divrem: ast::binop,
     };
     let is_zero = match ty::get(rhs_t).sty {
       ty::ty_int(t) => {
-        let zero = C_integral(T_int_ty(cx.ccx(), t), 0u64, False);
+        let zero = C_integral(Type::int_from_ty(cx.ccx(), t), 0u64, False);
         ICmp(cx, lib::llvm::IntEQ, rhs, zero)
       }
       ty::ty_uint(t) => {
-        let zero = C_integral(T_uint_ty(cx.ccx(), t), 0u64, False);
+        let zero = C_integral(Type::uint_from_ty(cx.ccx(), t), 0u64, False);
         ICmp(cx, lib::llvm::IntEQ, rhs, zero)
       }
       _ => {
@@ -812,7 +779,7 @@ pub fn fail_if_zero(cx: block, span: span, divrem: ast::binop,
 }
 
 pub fn null_env_ptr(bcx: block) -> ValueRef {
-    C_null(T_opaque_box_ptr(bcx.ccx()))
+    C_null(Type::opaque_box(bcx.ccx()).to_ptr())
 }
 
 pub fn trans_external_path(ccx: &mut CrateContext, did: ast::def_id, t: ty::t)
@@ -835,7 +802,7 @@ pub fn invoke(bcx: block, llfn: ValueRef, llargs: ~[ValueRef])
            -> (ValueRef, block) {
     let _icx = bcx.insn_ctxt("invoke_");
     if bcx.unreachable {
-        return (C_null(T_i8()), bcx);
+        return (C_null(Type::i8()), bcx);
     }
 
     match bcx.node_info {
@@ -968,7 +935,7 @@ pub fn get_landing_pad(bcx: block) -> BasicBlockRef {
     // The landing pad return type (the type being propagated). Not sure what
     // this represents but it's determined by the personality function and
     // this is what the EH proposal example uses.
-    let llretty = T_struct([T_ptr(T_i8()), T_i32()], false);
+    let llretty = Type::struct_([Type::i8p(), Type::i32()], false);
     // The exception handling personality function. This is the C++
     // personality function __gxx_personality_v0, wrapped in our naming
     // convention.
@@ -1026,7 +993,7 @@ pub fn find_bcx_for_scope(bcx: block, scope_id: ast::node_id) -> block {
 
 pub fn do_spill(bcx: block, v: ValueRef, t: ty::t) -> ValueRef {
     if ty::type_is_bot(t) {
-        return C_null(T_ptr(T_i8()));
+        return C_null(Type::i8p());
     }
     let llptr = alloc_ty(bcx, t);
     Store(bcx, v, llptr);
@@ -1069,8 +1036,8 @@ pub fn trans_trace(bcx: block, sp_opt: Option<span>, trace_str: @str) {
       }
     };
     let ccx = bcx.ccx();
-    let V_trace_str = PointerCast(bcx, V_trace_str, T_ptr(T_i8()));
-    let V_filename = PointerCast(bcx, V_filename, T_ptr(T_i8()));
+    let V_trace_str = PointerCast(bcx, V_trace_str, Type::i8p());
+    let V_filename = PointerCast(bcx, V_filename, Type::i8p());
     let args = ~[V_trace_str, V_filename, C_int(ccx, V_line)];
     Call(bcx, ccx.upcalls.trace, args);
 }
@@ -1466,8 +1433,8 @@ pub fn call_memcpy(cx: block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, a
         X86_64 => "llvm.memcpy.p0i8.p0i8.i64"
     };
     let memcpy = ccx.intrinsics.get_copy(&key);
-    let src_ptr = PointerCast(cx, src, T_ptr(T_i8()));
-    let dst_ptr = PointerCast(cx, dst, T_ptr(T_i8()));
+    let src_ptr = PointerCast(cx, src, Type::i8p());
+    let dst_ptr = PointerCast(cx, dst, Type::i8p());
     let size = IntCast(cx, n_bytes, ccx.int_type);
     let align = C_i32(align as i32);
     let volatile = C_i1(false);
@@ -1510,10 +1477,10 @@ pub fn memzero(cx: block, llptr: ValueRef, llty: TypeRef) {
     };
 
     let llintrinsicfn = ccx.intrinsics.get_copy(&intrinsic_key);
-    let llptr = PointerCast(cx, llptr, T_ptr(T_i8()));
+    let llptr = PointerCast(cx, llptr, Type::i8().ptr_to());
     let llzeroval = C_u8(0);
-    let size = IntCast(cx, machine::llsize_of(ccx, llty), ccx.int_type);
-    let align = C_i32(llalign_of_min(ccx, llty) as i32);
+    let size = IntCast(cx, machine::llsize_of(ccx, ty), ccx.int_type.to_ref());
+    let align = C_i32(llalign_of_min(ccx, ty) as i32);
     let volatile = C_i1(false);
     Call(cx, llintrinsicfn, [llptr, llzeroval, size, align, volatile]);
 }
@@ -1521,39 +1488,37 @@ pub fn memzero(cx: block, llptr: ValueRef, llty: TypeRef) {
 pub fn alloc_ty(bcx: block, t: ty::t) -> ValueRef {
     let _icx = bcx.insn_ctxt("alloc_ty");
     let ccx = bcx.ccx();
-    let llty = type_of::type_of(ccx, t);
-    if ty::type_has_params(t) { debug!("%s", ty_to_str(ccx.tcx, t)); }
-    assert!(!ty::type_has_params(t));
-    let val = alloca(bcx, llty);
+    let ty = type_of::type_of(ccx, t);
+    assert!(!ty::type_has_params(t), "Type has params: %s", ty_to_str(ccx.tcx, t));
+    let val = alloca(bcx, ty);
     return val;
 }
 
-pub fn alloca(cx: block, t: TypeRef) -> ValueRef {
-    alloca_maybe_zeroed(cx, t, false)
+pub fn alloca(cx: block, ty: Type) -> ValueRef {
+    alloca_maybe_zeroed(cx, ty, false)
 }
 
 pub fn alloca_maybe_zeroed(cx: block, t: TypeRef, zero: bool) -> ValueRef {
     let _icx = cx.insn_ctxt("alloca");
     if cx.unreachable {
         unsafe {
-            return llvm::LLVMGetUndef(t);
+            return llvm::LLVMGetUndef(ty.to_ref());
         }
     }
     let initcx = base::raw_block(cx.fcx, false, cx.fcx.llstaticallocas);
-    let p = Alloca(initcx, t);
-    if zero { memzero(initcx, p, t); }
-    return p;
+    let p = Alloca(initcx, ty.to_ref());
+    if zero { memzero(initcx, p, ty); }
+    p
 }
 
 pub fn arrayalloca(cx: block, t: TypeRef, v: ValueRef) -> ValueRef {
     let _icx = cx.insn_ctxt("arrayalloca");
     if cx.unreachable {
         unsafe {
-            return llvm::LLVMGetUndef(t);
+            return llvm::LLVMGetUndef(ty);
         }
     }
-    return ArrayAlloca(
-        base::raw_block(cx.fcx, false, cx.fcx.llstaticallocas), t, v);
+    return ArrayAlloca(base::raw_block(cx.fcx, false, cx.fcx.llstaticallocas), ty.to_ref(), v);
 }
 
 pub struct BasicBlocks {
@@ -1623,7 +1588,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
     let fcx = @mut fn_ctxt_ {
           llfn: llfndecl,
           llenv: unsafe {
-              llvm::LLVMGetUndef(T_ptr(T_i8()))
+              llvm::LLVMGetUndef(Type::i8p())
           },
           llretptr: None,
           llstaticallocas: llbbs.sa,
@@ -1741,7 +1706,7 @@ pub fn copy_args_to_allocas(fcx: fn_ctxt,
                 Store(bcx, tmp, alloc);
                 alloc
             } else {
-                PointerCast(bcx, slf.v, T_ptr(type_of(bcx.ccx(), slf.t)))
+                PointerCast(bcx, slf.v, type_of(bcx.ccx(), slf.t).ptr_to())
             };
 
             fcx.llself = Some(ValSelfData {v: self_val, ..slf});
@@ -2268,7 +2233,7 @@ pub fn register_fn_fuller(ccx: @mut CrateContext,
                           attrs: &[ast::attribute],
                           node_type: ty::t,
                           cc: lib::llvm::CallConv,
-                          llfty: TypeRef)
+                          fn_ty: Type)
                           -> ValueRef {
     debug!("register_fn_fuller creating fn for item %d with path %s",
            node_id,
@@ -2280,12 +2245,11 @@ pub fn register_fn_fuller(ccx: @mut CrateContext,
         mangle_exported_name(ccx, /*bad*/copy path, node_type)
     };
 
-    let llfn: ValueRef = decl_fn(ccx.llmod, ps, cc, llfty);
+    let llfn = decl_fn(ccx.llmod, ps, cc, fn_ty);
     ccx.item_symbols.insert(node_id, ps);
 
     // FIXME #4404 android JNI hacks
-    let is_entry = is_entry_fn(&ccx.sess, node_id) &&
-                     (!*ccx.sess.building_library ||
+    let is_entry = is_entry_fn(&ccx.sess, node_id) && (!*ccx.sess.building_library ||
                       (*ccx.sess.building_library &&
                        ccx.sess.targ_cfg.os == session::os_android));
     if is_entry {
@@ -2345,7 +2309,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
     fn create_entry_fn(ccx: @mut CrateContext,
                        rust_main: ValueRef,
                        use_start_lang_item: bool) {
-        let llfty = T_fn([ccx.int_type, T_ptr(T_ptr(T_i8()))], ccx.int_type);
+        let llfty = Type::func([ccx.int_type, Type::i8().ptr_to().ptr_to()], ccx.int_type);
 
         // FIXME #4404 android JNI hacks
         let llfn = if *ccx.sess.building_library {
@@ -2376,7 +2340,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
             let crate_map = ccx.crate_map;
             let opaque_crate_map = llvm::LLVMBuildPointerCast(bld,
                                                               crate_map,
-                                                              T_ptr(T_i8()),
+                                                              Type::i8p(),
                                                               noname());
 
             let (start_fn, args) = if use_start_lang_item {
@@ -2391,10 +2355,10 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
 
                 let args = {
                     let opaque_rust_main = llvm::LLVMBuildPointerCast(
-                            bld, rust_main, T_ptr(T_i8()), noname());
+                            bld, rust_main, Type::i8p(), noname());
 
                     ~[
-                        C_null(T_opaque_box_ptr(ccx)),
+                        C_null(Type::opaque_box(ccx).ptr_to()),
                         opaque_rust_main,
                         llvm::LLVMGetParam(llfn, 0),
                         llvm::LLVMGetParam(llfn, 1),
@@ -2406,7 +2370,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
                 debug!("using user-defined start fn");
                 let args = {
                     ~[
-                        C_null(T_opaque_box_ptr(ccx)),
+                        C_null(Type::opaque_box(ccx).ptr_to()),
                         llvm::LLVMGetParam(llfn, 0 as c_uint),
                         llvm::LLVMGetParam(llfn, 1 as c_uint),
                         opaque_crate_map
@@ -2432,7 +2396,7 @@ pub fn fill_fn_pair(bcx: block, pair: ValueRef, llfn: ValueRef,
     let code_cell = GEPi(bcx, pair, [0u, abi::fn_field_code]);
     Store(bcx, llfn, code_cell);
     let env_cell = GEPi(bcx, pair, [0u, abi::fn_field_box]);
-    let llenvblobptr = PointerCast(bcx, llenvptr, T_opaque_box_ptr(ccx));
+    let llenvblobptr = PointerCast(bcx, llenvptr, Type::opaque_box(ccx).ptr_to());
     Store(bcx, llenvblobptr, env_cell);
 }
 
@@ -2656,215 +2620,98 @@ pub fn p2i(ccx: &CrateContext, v: ValueRef) -> ValueRef {
     }
 }
 
-pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
-    let T_memcpy32_args: ~[TypeRef] =
-        ~[T_ptr(T_i8()), T_ptr(T_i8()), T_i32(), T_i32(), T_i1()];
-    let T_memcpy64_args: ~[TypeRef] =
-        ~[T_ptr(T_i8()), T_ptr(T_i8()), T_i64(), T_i32(), T_i1()];
-    let T_memset32_args: ~[TypeRef] =
-        ~[T_ptr(T_i8()), T_i8(), T_i32(), T_i32(), T_i1()];
-    let T_memset64_args: ~[TypeRef] =
-        ~[T_ptr(T_i8()), T_i8(), T_i64(), T_i32(), T_i1()];
-    let T_trap_args: ~[TypeRef] = ~[];
-    let T_frameaddress_args: ~[TypeRef] = ~[T_i32()];
-    let gcroot =
-        decl_cdecl_fn(llmod, "llvm.gcroot",
-                      T_fn([T_ptr(T_ptr(T_i8())), T_ptr(T_i8())],
-                           T_void()));
-    let gcread =
-        decl_cdecl_fn(llmod, "llvm.gcread",
-                      T_fn([T_ptr(T_i8()), T_ptr(T_ptr(T_i8()))],
-                           T_void()));
-    let memcpy32 =
-        decl_cdecl_fn(llmod, "llvm.memcpy.p0i8.p0i8.i32",
-                      T_fn(T_memcpy32_args, T_void()));
-    let memcpy64 =
-        decl_cdecl_fn(llmod, "llvm.memcpy.p0i8.p0i8.i64",
-                      T_fn(T_memcpy64_args, T_void()));
-    let memmove32 =
-        decl_cdecl_fn(llmod, "llvm.memmove.p0i8.p0i8.i32",
-                      T_fn(T_memcpy32_args, T_void()));
-    let memmove64 =
-        decl_cdecl_fn(llmod, "llvm.memmove.p0i8.p0i8.i64",
-                      T_fn(T_memcpy64_args, T_void()));
-    let memset32 =
-        decl_cdecl_fn(llmod, "llvm.memset.p0i8.i32",
-                      T_fn(T_memset32_args, T_void()));
-    let memset64 =
-        decl_cdecl_fn(llmod, "llvm.memset.p0i8.i64",
-                      T_fn(T_memset64_args, T_void()));
-    let trap = decl_cdecl_fn(llmod, "llvm.trap", T_fn(T_trap_args,
-                                                      T_void()));
-    let frameaddress = decl_cdecl_fn(llmod, "llvm.frameaddress",
-                                     T_fn(T_frameaddress_args,
-                                          T_ptr(T_i8())));
-    let sqrtf32 = decl_cdecl_fn(llmod, "llvm.sqrt.f32",
-                                T_fn([T_f32()], T_f32()));
-    let sqrtf64 = decl_cdecl_fn(llmod, "llvm.sqrt.f64",
-                                T_fn([T_f64()], T_f64()));
-    let powif32 = decl_cdecl_fn(llmod, "llvm.powi.f32",
-                                T_fn([T_f32(), T_i32()], T_f32()));
-    let powif64 = decl_cdecl_fn(llmod, "llvm.powi.f64",
-                                T_fn([T_f64(), T_i32()], T_f64()));
-    let sinf32 = decl_cdecl_fn(llmod, "llvm.sin.f32",
-                                T_fn([T_f32()], T_f32()));
-    let sinf64 = decl_cdecl_fn(llmod, "llvm.sin.f64",
-                                T_fn([T_f64()], T_f64()));
-    let cosf32 = decl_cdecl_fn(llmod, "llvm.cos.f32",
-                                T_fn([T_f32()], T_f32()));
-    let cosf64 = decl_cdecl_fn(llmod, "llvm.cos.f64",
-                                T_fn([T_f64()], T_f64()));
-    let powf32 = decl_cdecl_fn(llmod, "llvm.pow.f32",
-                                T_fn([T_f32(), T_f32()], T_f32()));
-    let powf64 = decl_cdecl_fn(llmod, "llvm.pow.f64",
-                                T_fn([T_f64(), T_f64()], T_f64()));
-    let expf32 = decl_cdecl_fn(llmod, "llvm.exp.f32",
-                                T_fn([T_f32()], T_f32()));
-    let expf64 = decl_cdecl_fn(llmod, "llvm.exp.f64",
-                                T_fn([T_f64()], T_f64()));
-    let exp2f32 = decl_cdecl_fn(llmod, "llvm.exp2.f32",
-                                T_fn([T_f32()], T_f32()));
-    let exp2f64 = decl_cdecl_fn(llmod, "llvm.exp2.f64",
-                                T_fn([T_f64()], T_f64()));
-    let logf32 = decl_cdecl_fn(llmod, "llvm.log.f32",
-                                T_fn([T_f32()], T_f32()));
-    let logf64 = decl_cdecl_fn(llmod, "llvm.log.f64",
-                                T_fn([T_f64()], T_f64()));
-    let log10f32 = decl_cdecl_fn(llmod, "llvm.log10.f32",
-                                T_fn([T_f32()], T_f32()));
-    let log10f64 = decl_cdecl_fn(llmod, "llvm.log10.f64",
-                                T_fn([T_f64()], T_f64()));
-    let log2f32 = decl_cdecl_fn(llmod, "llvm.log2.f32",
-                                T_fn([T_f32()], T_f32()));
-    let log2f64 = decl_cdecl_fn(llmod, "llvm.log2.f64",
-                                T_fn([T_f64()], T_f64()));
-    let fmaf32 = decl_cdecl_fn(llmod, "llvm.fma.f32",
-                                T_fn([T_f32(), T_f32(), T_f32()], T_f32()));
-    let fmaf64 = decl_cdecl_fn(llmod, "llvm.fma.f64",
-                                T_fn([T_f64(), T_f64(), T_f64()], T_f64()));
-    let fabsf32 = decl_cdecl_fn(llmod, "llvm.fabs.f32",
-                                T_fn([T_f32()], T_f32()));
-    let fabsf64 = decl_cdecl_fn(llmod, "llvm.fabs.f64",
-                                T_fn([T_f64()], T_f64()));
-    let floorf32 = decl_cdecl_fn(llmod, "llvm.floor.f32",
-                                T_fn([T_f32()], T_f32()));
-    let floorf64 = decl_cdecl_fn(llmod, "llvm.floor.f64",
-                                T_fn([T_f64()], T_f64()));
-    let ceilf32 = decl_cdecl_fn(llmod, "llvm.ceil.f32",
-                                T_fn([T_f32()], T_f32()));
-    let ceilf64 = decl_cdecl_fn(llmod, "llvm.ceil.f64",
-                                T_fn([T_f64()], T_f64()));
-    let truncf32 = decl_cdecl_fn(llmod, "llvm.trunc.f32",
-                                T_fn([T_f32()], T_f32()));
-    let truncf64 = decl_cdecl_fn(llmod, "llvm.trunc.f64",
-                                T_fn([T_f64()], T_f64()));
-    let ctpop8 = decl_cdecl_fn(llmod, "llvm.ctpop.i8",
-                                T_fn([T_i8()], T_i8()));
-    let ctpop16 = decl_cdecl_fn(llmod, "llvm.ctpop.i16",
-                                T_fn([T_i16()], T_i16()));
-    let ctpop32 = decl_cdecl_fn(llmod, "llvm.ctpop.i32",
-                                T_fn([T_i32()], T_i32()));
-    let ctpop64 = decl_cdecl_fn(llmod, "llvm.ctpop.i64",
-                                T_fn([T_i64()], T_i64()));
-    let ctlz8 = decl_cdecl_fn(llmod, "llvm.ctlz.i8",
-                                T_fn([T_i8(), T_i1()], T_i8()));
-    let ctlz16 = decl_cdecl_fn(llmod, "llvm.ctlz.i16",
-                                T_fn([T_i16(), T_i1()], T_i16()));
-    let ctlz32 = decl_cdecl_fn(llmod, "llvm.ctlz.i32",
-                                T_fn([T_i32(), T_i1()], T_i32()));
-    let ctlz64 = decl_cdecl_fn(llmod, "llvm.ctlz.i64",
-                                T_fn([T_i64(), T_i1()], T_i64()));
-    let cttz8 = decl_cdecl_fn(llmod, "llvm.cttz.i8",
-                                T_fn([T_i8(), T_i1()], T_i8()));
-    let cttz16 = decl_cdecl_fn(llmod, "llvm.cttz.i16",
-                                T_fn([T_i16(), T_i1()], T_i16()));
-    let cttz32 = decl_cdecl_fn(llmod, "llvm.cttz.i32",
-                                T_fn([T_i32(), T_i1()], T_i32()));
-    let cttz64 = decl_cdecl_fn(llmod, "llvm.cttz.i64",
-                                T_fn([T_i64(), T_i1()], T_i64()));
-    let bswap16 = decl_cdecl_fn(llmod, "llvm.bswap.i16",
-                                T_fn([T_i16()], T_i16()));
-    let bswap32 = decl_cdecl_fn(llmod, "llvm.bswap.i32",
-                                T_fn([T_i32()], T_i32()));
-    let bswap64 = decl_cdecl_fn(llmod, "llvm.bswap.i64",
-                                T_fn([T_i64()], T_i64()));
+macro_rules! ifn (
+    ($name:expr, $args:expr, $ret:expr) => ({
+        let name = $name;
+        let f = decl_cdecl_fn(llmod, name, Type::func($args, $ret));
+        intrinsics.insert(name, f);
+    })
+)
 
+pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
+    let i8p = Type::i8p();
     let mut intrinsics = HashMap::new();
-    intrinsics.insert("llvm.gcroot", gcroot);
-    intrinsics.insert("llvm.gcread", gcread);
-    intrinsics.insert("llvm.memcpy.p0i8.p0i8.i32", memcpy32);
-    intrinsics.insert("llvm.memcpy.p0i8.p0i8.i64", memcpy64);
-    intrinsics.insert("llvm.memmove.p0i8.p0i8.i32", memmove32);
-    intrinsics.insert("llvm.memmove.p0i8.p0i8.i64", memmove64);
-    intrinsics.insert("llvm.memset.p0i8.i32", memset32);
-    intrinsics.insert("llvm.memset.p0i8.i64", memset64);
-    intrinsics.insert("llvm.trap", trap);
-    intrinsics.insert("llvm.frameaddress", frameaddress);
-    intrinsics.insert("llvm.sqrt.f32", sqrtf32);
-    intrinsics.insert("llvm.sqrt.f64", sqrtf64);
-    intrinsics.insert("llvm.powi.f32", powif32);
-    intrinsics.insert("llvm.powi.f64", powif64);
-    intrinsics.insert("llvm.sin.f32", sinf32);
-    intrinsics.insert("llvm.sin.f64", sinf64);
-    intrinsics.insert("llvm.cos.f32", cosf32);
-    intrinsics.insert("llvm.cos.f64", cosf64);
-    intrinsics.insert("llvm.pow.f32", powf32);
-    intrinsics.insert("llvm.pow.f64", powf64);
-    intrinsics.insert("llvm.exp.f32", expf32);
-    intrinsics.insert("llvm.exp.f64", expf64);
-    intrinsics.insert("llvm.exp2.f32", exp2f32);
-    intrinsics.insert("llvm.exp2.f64", exp2f64);
-    intrinsics.insert("llvm.log.f32", logf32);
-    intrinsics.insert("llvm.log.f64", logf64);
-    intrinsics.insert("llvm.log10.f32", log10f32);
-    intrinsics.insert("llvm.log10.f64", log10f64);
-    intrinsics.insert("llvm.log2.f32", log2f32);
-    intrinsics.insert("llvm.log2.f64", log2f64);
-    intrinsics.insert("llvm.fma.f32", fmaf32);
-    intrinsics.insert("llvm.fma.f64", fmaf64);
-    intrinsics.insert("llvm.fabs.f32", fabsf32);
-    intrinsics.insert("llvm.fabs.f64", fabsf64);
-    intrinsics.insert("llvm.floor.f32", floorf32);
-    intrinsics.insert("llvm.floor.f64", floorf64);
-    intrinsics.insert("llvm.ceil.f32", ceilf32);
-    intrinsics.insert("llvm.ceil.f64", ceilf64);
-    intrinsics.insert("llvm.trunc.f32", truncf32);
-    intrinsics.insert("llvm.trunc.f64", truncf64);
-    intrinsics.insert("llvm.ctpop.i8", ctpop8);
-    intrinsics.insert("llvm.ctpop.i16", ctpop16);
-    intrinsics.insert("llvm.ctpop.i32", ctpop32);
-    intrinsics.insert("llvm.ctpop.i64", ctpop64);
-    intrinsics.insert("llvm.ctlz.i8", ctlz8);
-    intrinsics.insert("llvm.ctlz.i16", ctlz16);
-    intrinsics.insert("llvm.ctlz.i32", ctlz32);
-    intrinsics.insert("llvm.ctlz.i64", ctlz64);
-    intrinsics.insert("llvm.cttz.i8", cttz8);
-    intrinsics.insert("llvm.cttz.i16", cttz16);
-    intrinsics.insert("llvm.cttz.i32", cttz32);
-    intrinsics.insert("llvm.cttz.i64", cttz64);
-    intrinsics.insert("llvm.bswap.i16", bswap16);
-    intrinsics.insert("llvm.bswap.i32", bswap32);
-    intrinsics.insert("llvm.bswap.i64", bswap64);
+
+    ifn!("llvm.memcpy.p0i8.p0i8.i32",
+         [i8p, i8p, Type::i32(), Type::i32(), Type::i1()], Type::void());
+    ifn!("llvm.memcpy.p0i8.p0i8.i64",
+         [i8p, i8p, Type::i64(), Type::i32(), Type::i1()], Type::void());
+    ifn!("llvm.memmove.p0i8.p0i8.i32",
+         [i8p, i8p, Type::i32(), Type::i32(), Type::i1()], Type::void());
+    ifn!("llvm.memmove.p0i8.p0i8.i64",
+         [i8p, i8p, Type::i64(), Type::i32(), Type::i1()], Type::void());
+    ifn!("llvm.memset.p0i8.i32",
+         [i8p, Type::i8(), Type::i32(), Type::i32(), Type::i1()], Type::void());
+    ifn!("llvm.memcpy.p0i8.i64",
+         [i8p, Type::i8(), Type::i64(), Type::i32(), Type::i1()], Type::void());
+
+    ifn!("llvm.trap", [], Type::void());
+    ifn!("llvm.frameaddress", [Type::i32()], i8p);
+
+    ifn!("llvm.powi.f32", [Type::f32(), Type::i32()], Type::f32());
+    ifn!("llvm.powi.f64", [Type::f64(), Type::i32()], Type::f64());
+    ifn!("llvm.pow.f32",  [Type::f32(), Type::f32()], Type::f32());
+    ifn!("llvm.pow.f64",  [Type::f64(), Type::f64()], Type::f64());
+
+    ifn!("llvm.sqrt.f32", [Type::f32()], Type::f32());
+    ifn!("llvm.sqrt.f64", [Type::f64()], Type::f64());
+    ifn!("llvm.sin.f32",  [Type::f32()], Type::f32());
+    ifn!("llvm.sin.f64",  [Type::f64()], Type::f64());
+    ifn!("llvm.cos.f32",  [Type::f32()], Type::f32());
+    ifn!("llvm.cos.f64",  [Type::f64()], Type::f64());
+    ifn!("llvm.exp.f32",  [Type::f32()], Type::f32());
+    ifn!("llvm.exp.f64",  [Type::f64()], Type::f64());
+    ifn!("llvm.exp2.f32", [Type::f32()], Type::f32());
+    ifn!("llvm.exp2.f64", [Type::f64()], Type::f64());
+    ifn!("llvm.log.f32",  [Type::f32()], Type::f32());
+    ifn!("llvm.log.f64",  [Type::f64()], Type::f64());
+    ifn!("llvm.log10.f32",[Type::f32()], Type::f32());
+    ifn!("llvm.log10.f64",[Type::f64()], Type::f64());
+    ifn!("llvm.log2.f32", [Type::f32()], Type::f32());
+    ifn!("llvm.log2.f64", [Type::f64()], Type::f64());
+
+    ifn!("llvm.fma.f32",  [Type::f32(), Type::f32(), Type::f32()], Type::f32());
+    ifn!("llvm.fma.f64",  [Type::f64(), Type::f64(), Type::f64()], Type::f64());
+
+    ifn!("llvm.fabs.f32", [Type::f32()], Type::f32());
+    ifn!("llvm.fabs.f64", [Type::f64()], Type::f64());
+    ifn!("llvm.floor.f32",[Type::f32()], Type::f32());
+    ifn!("llvm.floor.f64",[Type::f64()], Type::f64());
+    ifn!("llvm.ceil.f32", [Type::f32()], Type::f32());
+    ifn!("llvm.ceil.f64", [Type::f64()], Type::f64());
+    ifn!("llvm.trunc.f32",[Type::f32()], Type::f32());
+    ifn!("llvm.trunc.f64",[Type::f64()], Type::f64());
+
+    ifn!("llvm.ctpop.i8", [Type::i8()], Type::i8());
+    ifn!("llvm.ctpop.i16",[Type::i16()], Type::i16());
+    ifn!("llvm.ctpop.i32",[Type::i32()], Type::i32());
+    ifn!("llvm.ctpop.i64",[Type::i64()], Type::i64());
+
+    ifn!("llvm.ctlz.i8",  [Type::i8() , Type::i1()], Type::i8());
+    ifn!("llvm.ctlz.i16", [Type::i16(), Type::i1()], Type::i16());
+    ifn!("llvm.ctlz.i32", [Type::i32(), Type::i1()], Type::i32());
+    ifn!("llvm.ctlz.i64", [Type::i64(), Type::i1()], Type::i64());
+
+    ifn!("llvm.cttz.i8",  [Type::i8() , Type::i1()], Type::i8());
+    ifn!("llvm.cttz.i16", [Type::i16(), Type::i1()], Type::i16());
+    ifn!("llvm.cttz.i32", [Type::i32(), Type::i1()], Type::i32());
+    ifn!("llvm.cttz.i64", [Type::i64(), Type::i1()], Type::i64());
+
+    ifn!("llvm.bswap.i16",[Type::i16()], Type::i16());
+    ifn!("llvm.bswap.i32",[Type::i32()], Type::i32());
+    ifn!("llvm.bswap.i64",[Type::i64()], Type::i64());
 
     return intrinsics;
 }
 
-pub fn declare_dbg_intrinsics(llmod: ModuleRef,
-                              intrinsics: &mut HashMap<&'static str, ValueRef>) {
-    let declare =
-        decl_cdecl_fn(llmod, "llvm.dbg.declare",
-                      T_fn([T_metadata(), T_metadata()], T_void()));
-    let value =
-        decl_cdecl_fn(llmod, "llvm.dbg.value",
-                      T_fn([T_metadata(), T_i64(), T_metadata()], T_void()));
-    intrinsics.insert("llvm.dbg.declare", declare);
-    intrinsics.insert("llvm.dbg.value", value);
+pub fn declare_dbg_intrinsics(llmod: ModuleRef, intrinsics: &mut HashMap<&'static str, ValueRef>) {
+    ifn!("llvm.dbg.declare", [Type::metadata(), Type::metadata()], Type::void());
+    ifn!("llvm.dbg.value",   [Type::metadata(), Type::i64(), Type::metadata()], Type::void());
 }
 
 pub fn trap(bcx: block) {
-    let v: ~[ValueRef] = ~[];
-    match bcx.ccx().intrinsics.find(& &"llvm.trap") {
-      Some(&x) => { Call(bcx, x, v); },
+    match bcx.ccx().intrinsics.find_equiv("llvm.trap") {
+      Some(&x) => { Call(bcx, x, []); },
       _ => bcx.sess().bug("unbound llvm.trap in trap")
     }
 }
@@ -2877,7 +2724,7 @@ pub fn decl_gc_metadata(ccx: &mut CrateContext, llmod_id: &str) {
     let gc_metadata_name = ~"_gc_module_metadata_" + llmod_id;
     let gc_metadata = do str::as_c_str(gc_metadata_name) |buf| {
         unsafe {
-            llvm::LLVMAddGlobal(ccx.llmod, T_i32(), buf)
+            llvm::LLVMAddGlobal(ccx.llmod, Type::i32(), buf)
         }
     };
     unsafe {
@@ -2888,8 +2735,8 @@ pub fn decl_gc_metadata(ccx: &mut CrateContext, llmod_id: &str) {
 }
 
 pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
-    let elttype = T_struct([ccx.int_type, ccx.int_type], false);
-    let maptype = T_array(elttype, ccx.module_data.len() + 1);
+    let elttype = Type::struct_([ccx.int_type, ccx.int_type], false);
+    let maptype = Type::array(elttype, ccx.module_data.len() + 1);
     let map = str::as_c_str("_rust_mod_map", |buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, maptype, buf)
@@ -2926,7 +2773,7 @@ pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
 pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
                       llmod: ModuleRef) -> ValueRef {
     let targ_cfg = sess.targ_cfg;
-    let int_type = T_int(targ_cfg);
+    let int_type = Type::int(targ_cfg.arch);
     let mut n_subcrates = 1;
     let cstore = sess.cstore;
     while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
@@ -2936,8 +2783,8 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
         ~"toplevel"
     };
     let sym_name = ~"_rust_crate_map_" + mapname;
-    let arrtype = T_array(int_type, n_subcrates as uint);
-    let maptype = T_struct([T_i32(), T_ptr(T_i8()), int_type, arrtype], false);
+    let arrtype = Type::array(int_type, n_subcrates as u64);
+    let maptype = Type::struct_([Type::i32(), Type::i8p(), int_type, arrtype], false);
     let map = str::as_c_str(sym_name, |buf| {
         unsafe {
             llvm::LLVMAddGlobal(llmod, maptype, buf)
@@ -2984,7 +2831,7 @@ pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
         llvm::LLVMSetInitializer(map, C_struct(
             [C_i32(1),
              lib::llvm::llvm::LLVMConstPointerCast(llannihilatefn,
-                                                   T_ptr(T_i8())),
+                                                   Type::i8p()),
              p2i(ccx, mod_map),
              C_array(ccx.int_type, subcrates)]));
     }
@@ -3032,11 +2879,11 @@ pub fn write_metadata(cx: &mut CrateContext, crate: &ast::crate) {
         });
         lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
 
-        let t_ptr_i8 = T_ptr(T_i8());
+        let t_ptr_i8 = Type::i8p();
         llglobal = llvm::LLVMConstBitCast(llglobal, t_ptr_i8);
-        let llvm_used = str::as_c_str("llvm.used", |buf| {
-            llvm::LLVMAddGlobal(cx.llmod, T_array(t_ptr_i8, 1u), buf)
-        });
+        let llvm_used = do "llvm.used".as_c_str |buf| {
+            llvm::LLVMAddGlobal(cx.llmod, Type::array(t_ptr_i8, 1u), buf)
+        };
         lib::llvm::SetLinkage(llvm_used, lib::llvm::AppendingLinkage);
         llvm::LLVMSetInitializer(llvm_used, C_array(t_ptr_i8, [llglobal]));
     }
