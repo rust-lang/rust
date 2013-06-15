@@ -81,10 +81,20 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: &ast::crate) {
         })));
 }
 
-impl CrateCtxt {
+pub trait ToTy {
     fn to_ty<RS:region_scope + Copy + 'static>(
-        &self, rs: &RS, ast_ty: &ast::Ty) -> ty::t
-    {
+             &self,
+             rs: &RS,
+             ast_ty: &ast::Ty)
+             -> ty::t;
+}
+
+impl ToTy for CrateCtxt {
+    fn to_ty<RS:region_scope + Copy + 'static>(
+             &self,
+             rs: &RS,
+             ast_ty: &ast::Ty)
+             -> ty::t {
         ast_ty_to_ty(self, rs, ast_ty)
     }
 }

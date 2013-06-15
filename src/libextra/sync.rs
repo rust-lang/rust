@@ -153,7 +153,7 @@ impl Sem<()> {
 
 #[doc(hidden)]
 impl Sem<~[Waitqueue]> {
-    pub fn access<U>(&self, blk: &fn() -> U) -> U {
+    pub fn access_waitqueue<U>(&self, blk: &fn() -> U) -> U {
         let mut release = None;
         unsafe {
             do task::unkillable {
@@ -456,7 +456,9 @@ impl Clone for Mutex {
 
 impl Mutex {
     /// Run a function with ownership of the mutex.
-    pub fn lock<U>(&self, blk: &fn() -> U) -> U { (&self.sem).access(blk) }
+    pub fn lock<U>(&self, blk: &fn() -> U) -> U {
+        (&self.sem).access_waitqueue(blk)
+    }
 
     /// Run a function with ownership of the mutex and a handle to a condvar.
     pub fn lock_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
@@ -559,7 +561,7 @@ impl RWlock {
         unsafe {
             do task::unkillable {
                 (&self.order_lock).acquire();
-                do (&self.access_lock).access {
+                do (&self.access_lock).access_waitqueue {
                     (&self.order_lock).release();
                     task::rekillable(blk)
                 }

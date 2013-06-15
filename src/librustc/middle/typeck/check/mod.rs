@@ -791,10 +791,6 @@ impl FnCtxt {
         ast_ty_to_ty(self, self, ast_t)
     }
 
-    pub fn expr_to_str(&self, expr: @ast::expr) -> ~str {
-        expr.repr(self.tcx())
-    }
-
     pub fn pat_to_str(&self, pat: @ast::pat) -> ~str {
         pat.repr(self.tcx())
     }
@@ -3292,6 +3288,9 @@ pub fn ty_param_bounds_and_ty_for_def(fcx: @mut FnCtxt,
       }
       ast::def_self_ty(*) => {
         fcx.ccx.tcx.sess.span_bug(sp, "expected value but found self ty");
+      }
+      ast::def_method(*) => {
+        fcx.ccx.tcx.sess.span_bug(sp, "expected value but found method");
       }
     }
 }
