@@ -189,4 +189,3 @@ pub fn stress_factor() -> uint {
         None => 1
     }
 }
-

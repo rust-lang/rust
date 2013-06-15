@@ -13,4 +13,3 @@ pub fn main() {
     let y = x;
     assert!((y == 10));
 }
-

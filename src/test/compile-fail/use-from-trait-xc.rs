@@ -9,4 +9,3 @@ use use_from_trait_xc::Foo::new;    //~ ERROR cannot import from a trait or type
 
 fn main() {
 }
-

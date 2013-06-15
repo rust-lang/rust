@@ -44,4 +44,3 @@ mod issue6935 {
 }
 
 fn main(){}
-

@@ -50,4 +50,3 @@ impl Writer for StdWriter {
 
     fn flush(&mut self) { fail!() }
 }
-

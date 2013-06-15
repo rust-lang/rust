@@ -11,4 +11,3 @@ fn main() {
         a::free(transmute(0));
     }
 }
-

@@ -4,7 +4,7 @@ Version 0.7 (July 2013)
    * ??? changes, numerous bugfixes
 
    * Syntax changes
-      * `#[deriving(Encodable)]`, `#[deriving(Decodable)]`      
+      * `#[deriving(Encodable)]`, `#[deriving(Decodable)]`
 
    * Semantic changes
       * The `self` parameter no longer implicitly means `&'self self`,
