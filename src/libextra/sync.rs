@@ -20,7 +20,8 @@ use core::prelude::*;
 use core::borrow;
 use core::comm;
 use core::task;
-use core::unstable::sync::{Exclusive, exclusive};
+use core::unstable::sync::{Exclusive, exclusive, UnsafeAtomicRcBox};
+use core::unstable::atomics;
 use core::util;
 
 /****************************************************************************
@@ -37,6 +38,7 @@ type SignalEnd = comm::ChanOne<()>;
 struct Waitqueue { head: comm::Port<SignalEnd>,
                    tail: comm::Chan<SignalEnd> }
 
+#[doc(hidden)]
 fn new_waitqueue() -> Waitqueue {
     let (block_head, block_tail) = comm::stream();
     Waitqueue { head: block_head, tail: block_tail }
@@ -166,9 +168,12 @@ impl Sem<~[Waitqueue]> {
 // FIXME(#3588) should go inside of access()
 #[doc(hidden)]
 type SemRelease<'self> = SemReleaseGeneric<'self, ()>;
+#[doc(hidden)]
 type SemAndSignalRelease<'self> = SemReleaseGeneric<'self, ~[Waitqueue]>;
+#[doc(hidden)]
 struct SemReleaseGeneric<'self, Q> { sem: &'self Sem<Q> }
 
+#[doc(hidden)]
 #[unsafe_destructor]
 impl<'self, Q:Owned> Drop for SemReleaseGeneric<'self, Q> {
     fn finalize(&self) {
@@ -176,12 +181,14 @@ impl<'self, Q:Owned> Drop for SemReleaseGeneric<'self, Q> {
     }
 }
 
+#[doc(hidden)]
 fn SemRelease<'r>(sem: &'r Sem<()>) -> SemRelease<'r> {
     SemReleaseGeneric {
         sem: sem
     }
 }
 
+#[doc(hidden)]
 fn SemAndSignalRelease<'r>(sem: &'r Sem<~[Waitqueue]>)
                         -> SemAndSignalRelease<'r> {
     SemReleaseGeneric {
@@ -189,8 +196,27 @@ fn SemAndSignalRelease<'r>(sem: &'r Sem<~[Waitqueue]>)
     }
 }
 
+// FIXME(#3598): Want to use an Option down below, but we need a custom enum
+// that's not polymorphic to get around the fact that lifetimes are invariant
+// inside of type parameters.
+enum ReacquireOrderLock<'self> {
+    Nothing, // c.c
+    Just(&'self Semaphore),
+}
+
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
-pub struct Condvar<'self> { priv sem: &'self Sem<~[Waitqueue]> }
+pub struct Condvar<'self> {
+    // The 'Sem' object associated with this condvar. This is the one that's
+    // atomically-unlocked-and-descheduled upon and reacquired during wakeup.
+    priv sem: &'self Sem<~[Waitqueue]>,
+    // This is (can be) an extra semaphore which is held around the reacquire
+    // operation on the first one. This is only used in cvars associated with
+    // rwlocks, and is needed to ensure that, when a downgrader is trying to
+    // hand off the access lock (which would be the first field, here), a 2nd
+    // writer waking up from a cvar wait can't race with a reader to steal it,
+    // See the comment in write_cond for more detail.
+    priv order: ReacquireOrderLock<'self>,
+}
 
 #[unsafe_destructor]
 impl<'self> Drop for Condvar<'self> { fn finalize(&self) {} }
@@ -247,7 +273,8 @@ impl<'self> Condvar<'self> {
                 // unkillably reacquire the lock needs to happen atomically
                 // wrt enqueuing.
                 if out_of_bounds.is_none() {
-                    reacquire = Some(SemAndSignalReacquire(self.sem));
+                    reacquire = Some(CondvarReacquire { sem:   self.sem,
+                                                        order: self.order });
                 }
             }
         }
@@ -261,26 +288,27 @@ impl<'self> Condvar<'self> {
         // This is needed for a failing condition variable to reacquire the
         // mutex during unwinding. As long as the wrapper (mutex, etc) is
         // bounded in when it gets released, this shouldn't hang forever.
-        struct SemAndSignalReacquire<'self> {
+        struct CondvarReacquire<'self> {
             sem: &'self Sem<~[Waitqueue]>,
+            order: ReacquireOrderLock<'self>,
         }
 
         #[unsafe_destructor]
-        impl<'self> Drop for SemAndSignalReacquire<'self> {
+        impl<'self> Drop for CondvarReacquire<'self> {
             fn finalize(&self) {
                 unsafe {
                     // Needs to succeed, instead of itself dying.
                     do task::unkillable {
-                        self.sem.acquire();
+                        match self.order {
+                            Just(lock) => do lock.access {
+                                self.sem.acquire();
+                            },
+                            Nothing => {
+                                self.sem.acquire();
+                            },
+                        }
                     }
                 }
-            }
-        }
-
-        fn SemAndSignalReacquire<'r>(sem: &'r Sem<~[Waitqueue]>)
-                                  -> SemAndSignalReacquire<'r> {
-            SemAndSignalReacquire {
-                sem: sem
             }
         }
     }
@@ -350,9 +378,12 @@ fn check_cvar_bounds<U>(out_of_bounds: Option<uint>, id: uint, act: &str,
 
 #[doc(hidden)]
 impl Sem<~[Waitqueue]> {
-    // The only other place that condvars get built is rwlock_write_mode.
+    // The only other places that condvars get built are rwlock.write_cond()
+    // and rwlock_write_mode.
     pub fn access_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
-        do self.access { blk(&Condvar { sem: self }) }
+        do self.access {
+            blk(&Condvar { sem: self, order: Nothing })
+        }
     }
 }
 
@@ -441,8 +472,23 @@ impl Mutex {
 
 #[doc(hidden)]
 struct RWlockInner {
+    // You might ask, "Why don't you need to use an atomic for the mode flag?"
+    // This flag affects the behaviour of readers (for plain readers, they
+    // assert on it; for downgraders, they use it to decide which mode to
+    // unlock for). Consider that the flag is only unset when the very last
+    // reader exits; therefore, it can never be unset during a reader/reader
+    // (or reader/downgrader) race.
+    // By the way, if we didn't care about the assert in the read unlock path,
+    // we could instead store the mode flag in write_downgrade's stack frame,
+    // and have the downgrade tokens store a borrowed pointer to it.
     read_mode:  bool,
-    read_count: uint
+    // The only way the count flag is ever accessed is with xadd. Since it is
+    // a read-modify-write operation, multiple xadds on different cores will
+    // always be consistent with respect to each other, so a monotonic/relaxed
+    // consistency ordering suffices (i.e., no extra barriers are needed).
+    // FIXME(#6598): The atomics module has no relaxed ordering flag, so I use
+    // acquire/release orderings superfluously. Change these someday.
+    read_count: atomics::AtomicUint,
 }
 
 /**
@@ -455,7 +501,7 @@ struct RWlockInner {
 pub struct RWlock {
     priv order_lock:  Semaphore,
     priv access_lock: Sem<~[Waitqueue]>,
-    priv state:       Exclusive<RWlockInner>
+    priv state:       UnsafeAtomicRcBox<RWlockInner>,
 }
 
 /// Create a new rwlock, with one associated condvar.
@@ -466,10 +512,13 @@ pub fn RWlock() -> RWlock { rwlock_with_condvars(1) }
  * Similar to mutex_with_condvars.
  */
 pub fn rwlock_with_condvars(num_condvars: uint) -> RWlock {
-    RWlock { order_lock: semaphore(1),
+    let state = UnsafeAtomicRcBox::new(RWlockInner {
+        read_mode:  false,
+        read_count: atomics::AtomicUint::new(0),
+    });
+    RWlock { order_lock:  semaphore(1),
              access_lock: new_sem_and_signal(1, num_condvars),
-             state: exclusive(RWlockInner { read_mode:  false,
-                                             read_count: 0 }) }
+             state:       state, }
 }
 
 impl RWlock {
@@ -489,20 +538,11 @@ impl RWlock {
         unsafe {
             do task::unkillable {
                 do (&self.order_lock).access {
-                    let mut first_reader = false;
-                    do self.state.with |state| {
-                        first_reader = (state.read_count == 0);
-                        state.read_count += 1;
-                    }
-                    if first_reader {
+                    let state = &mut *self.state.get();
+                    let old_count = state.read_count.fetch_add(1, atomics::Acquire);
+                    if old_count == 0 {
                         (&self.access_lock).acquire();
-                        do self.state.with |state| {
-                            // Must happen *after* getting access_lock. If
-                            // this is set while readers are waiting, but
-                            // while a writer holds the lock, the writer will
-                            // be confused if they downgrade-then-unlock.
-                            state.read_mode = true;
-                        }
+                        state.read_mode = true;
                     }
                 }
                 release = Some(RWlockReleaseRead(self));
@@ -534,17 +574,41 @@ impl RWlock {
      * was signalled might reacquire the lock before other waiting writers.)
      */
     pub fn write_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
-        // NB: You might think I should thread the order_lock into the cond
-        // wait call, so that it gets waited on before access_lock gets
-        // reacquired upon being woken up. However, (a) this would be not
-        // pleasant to implement (and would mandate a new 'rw_cond' type) and
-        // (b) I think violating no-starvation in that case is appropriate.
+        // It's important to thread our order lock into the condvar, so that
+        // when a cond.wait() wakes up, it uses it while reacquiring the
+        // access lock. If we permitted a waking-up writer to "cut in line",
+        // there could arise a subtle race when a downgrader attempts to hand
+        // off the reader cloud lock to a waiting reader. This race is tested
+        // in arc.rs (test_rw_write_cond_downgrade_read_race) and looks like:
+        // T1 (writer)              T2 (downgrader)             T3 (reader)
+        // [in cond.wait()]
+        //                          [locks for writing]
+        //                          [holds access_lock]
+        // [is signalled, perhaps by
+        //  downgrader or a 4th thread]
+        // tries to lock access(!)
+        //                                                      lock order_lock
+        //                                                      xadd read_count[0->1]
+        //                                                      tries to lock access
+        //                          [downgrade]
+        //                          xadd read_count[1->2]
+        //                          unlock access
+        // Since T1 contended on the access lock before T3 did, it will steal
+        // the lock handoff. Adding order_lock in the condvar reacquire path
+        // solves this because T1 will hold order_lock while waiting on access,
+        // which will cause T3 to have to wait until T1 finishes its write,
+        // which can't happen until T2 finishes the downgrade-read entirely.
+        // The astute reader will also note that making waking writers use the
+        // order_lock is better for not starving readers.
         unsafe {
             do task::unkillable {
                 (&self.order_lock).acquire();
                 do (&self.access_lock).access_cond |cond| {
                     (&self.order_lock).release();
-                    do task::rekillable { blk(cond) }
+                    do task::rekillable {
+                        let opt_lock = Just(&self.order_lock);
+                        blk(&Condvar { order: opt_lock, ..*cond })
+                    }
                 }
             }
         }
@@ -560,12 +624,12 @@ impl RWlock {
      * # Example
      *
      * ~~~ {.rust}
-     * do lock.write_downgrade |write_mode| {
-     *     do (&write_mode).write_cond |condvar| {
+     * do lock.write_downgrade |mut write_token| {
+     *     do write_token.write_cond |condvar| {
      *         ... exclusive access ...
      *     }
-     *     let read_mode = lock.downgrade(write_mode);
-     *     do (&read_mode).read {
+     *     let read_token = lock.downgrade(write_token);
+     *     do read_token.read {
      *         ... shared access ...
      *     }
      * }
@@ -594,18 +658,20 @@ impl RWlock {
         }
         unsafe {
             do task::unkillable {
-                let mut first_reader = false;
-                do self.state.with |state| {
-                    assert!(!state.read_mode);
-                    state.read_mode = true;
-                    first_reader = (state.read_count == 0);
-                    state.read_count += 1;
-                }
-                if !first_reader {
+                let state = &mut *self.state.get();
+                assert!(!state.read_mode);
+                state.read_mode = true;
+                // If a reader attempts to enter at this point, both the
+                // downgrader and reader will set the mode flag. This is fine.
+                let old_count = state.read_count.fetch_add(1, atomics::Release);
+                // If another reader was already blocking, we need to hand-off
+                // the "reader cloud" access lock to them.
+                if old_count != 0 {
                     // Guaranteed not to let another writer in, because
                     // another reader was holding the order_lock. Hence they
                     // must be the one to get the access_lock (because all
-                    // access_locks are acquired with order_lock held).
+                    // access_locks are acquired with order_lock held). See
+                    // the comment in write_cond for more justification.
                     (&self.access_lock).release();
                 }
             }
@@ -620,22 +686,22 @@ struct RWlockReleaseRead<'self> {
     lock: &'self RWlock,
 }
 
+#[doc(hidden)]
 #[unsafe_destructor]
 impl<'self> Drop for RWlockReleaseRead<'self> {
     fn finalize(&self) {
         unsafe {
             do task::unkillable {
-                let mut last_reader = false;
-                do self.lock.state.with |state| {
-                    assert!(state.read_mode);
-                    assert!(state.read_count > 0);
-                    state.read_count -= 1;
-                    if state.read_count == 0 {
-                        last_reader = true;
-                        state.read_mode = false;
-                    }
-                }
-                if last_reader {
+                let state = &mut *self.lock.state.get();
+                assert!(state.read_mode);
+                let old_count = state.read_count.fetch_sub(1, atomics::Release);
+                assert!(old_count > 0);
+                if old_count == 1 {
+                    state.read_mode = false;
+                    // Note: this release used to be outside of a locked access
+                    // to exclusive-protected state. If this code is ever
+                    // converted back to such (instead of using atomic ops),
+                    // this access MUST NOT go inside the exclusive access.
                     (&self.lock.access_lock).release();
                 }
             }
@@ -643,6 +709,7 @@ impl<'self> Drop for RWlockReleaseRead<'self> {
     }
 }
 
+#[doc(hidden)]
 fn RWlockReleaseRead<'r>(lock: &'r RWlock) -> RWlockReleaseRead<'r> {
     RWlockReleaseRead {
         lock: lock
@@ -656,30 +723,34 @@ struct RWlockReleaseDowngrade<'self> {
     lock: &'self RWlock,
 }
 
+#[doc(hidden)]
 #[unsafe_destructor]
 impl<'self> Drop for RWlockReleaseDowngrade<'self> {
     fn finalize(&self) {
         unsafe {
             do task::unkillable {
-                let mut writer_or_last_reader = false;
-                do self.lock.state.with |state| {
-                    if state.read_mode {
-                        assert!(state.read_count > 0);
-                        state.read_count -= 1;
-                        if state.read_count == 0 {
-                            // Case 1: Writer downgraded & was the last reader
-                            writer_or_last_reader = true;
-                            state.read_mode = false;
-                        } else {
-                            // Case 2: Writer downgraded & was not the last
-                            // reader
-                        }
-                    } else {
-                        // Case 3: Writer did not downgrade
+                let writer_or_last_reader;
+                // Check if we're releasing from read mode or from write mode.
+                let state = &mut *self.lock.state.get();
+                if state.read_mode {
+                    // Releasing from read mode.
+                    let old_count = state.read_count.fetch_sub(1, atomics::Release);
+                    assert!(old_count > 0);
+                    // Check if other readers remain.
+                    if old_count == 1 {
+                        // Case 1: Writer downgraded & was the last reader
                         writer_or_last_reader = true;
+                        state.read_mode = false;
+                    } else {
+                        // Case 2: Writer downgraded & was not the last reader
+                        writer_or_last_reader = false;
                     }
+                } else {
+                    // Case 3: Writer did not downgrade
+                    writer_or_last_reader = true;
                 }
                 if writer_or_last_reader {
+                    // Nobody left inside; release the "reader cloud" lock.
                     (&self.lock.access_lock).release();
                 }
             }
@@ -687,6 +758,7 @@ impl<'self> Drop for RWlockReleaseDowngrade<'self> {
     }
 }
 
+#[doc(hidden)]
 fn RWlockReleaseDowngrade<'r>(lock: &'r RWlock)
                            -> RWlockReleaseDowngrade<'r> {
     RWlockReleaseDowngrade {
@@ -709,7 +781,10 @@ impl<'self> RWlockWriteMode<'self> {
     pub fn write<U>(&self, blk: &fn() -> U) -> U { blk() }
     /// Access the pre-downgrade rwlock in write mode with a condvar.
     pub fn write_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
-        blk(&Condvar { sem: &self.lock.access_lock })
+        // Need to make the condvar use the order lock when reacquiring the
+        // access lock. See comment in RWlock::write_cond for why.
+        blk(&Condvar { sem:        &self.lock.access_lock,
+                       order: Just(&self.lock.order_lock), })
     }
 }
 

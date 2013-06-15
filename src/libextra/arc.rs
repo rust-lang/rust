@@ -281,7 +281,6 @@ struct RWARCInner<T> { lock: RWlock, failed: bool, data: T }
 #[mutable]
 struct RWARC<T> {
     x: UnsafeAtomicRcBox<RWARCInner<T>>,
-    cant_nest: ()
 }
 
 /// Create a reader/writer ARC with the supplied data.
@@ -299,7 +298,7 @@ pub fn rw_arc_with_condvars<T:Const + Owned>(
     let data =
         RWARCInner { lock: rwlock_with_condvars(num_condvars),
                      failed: false, data: user_data };
-    RWARC { x: UnsafeAtomicRcBox::new(data), cant_nest: () }
+    RWARC { x: UnsafeAtomicRcBox::new(data), }
 }
 
 impl<T:Const + Owned> RWARC<T> {
@@ -307,7 +306,6 @@ impl<T:Const + Owned> RWARC<T> {
     pub fn clone(&self) -> RWARC<T> {
         RWARC {
             x: self.x.clone(),
-            cant_nest: (),
         }
     }
 
@@ -382,12 +380,12 @@ impl<T:Const + Owned> RWARC<T> {
      * # Example
      *
      * ~~~ {.rust}
-     * do arc.write_downgrade |write_mode| {
-     *     do (&write_mode).write_cond |state, condvar| {
+     * do arc.write_downgrade |mut write_token| {
+     *     do write_token.write_cond |state, condvar| {
      *         ... exclusive access with mutable state ...
      *     }
-     *     let read_mode = arc.downgrade(write_mode);
-     *     do (&read_mode).read |state| {
+     *     let read_token = arc.downgrade(write_token);
+     *     do read_token.read |state| {
      *         ... shared access with immutable state ...
      *     }
      * }
@@ -814,5 +812,67 @@ mod tests {
         }
 
         wp2.recv(); // complete handshake with writer
+    }
+    #[cfg(test)]
+    fn test_rw_write_cond_downgrade_read_race_helper() {
+        // Tests that when a downgrader hands off the "reader cloud" lock
+        // because of a contending reader, a writer can't race to get it
+        // instead, which would result in readers_and_writers. This tests
+        // the sync module rather than this one, but it's here because an
+        // rwarc gives us extra shared state to help check for the race.
+        // If you want to see this test fail, go to sync.rs and replace the
+        // line in RWlock::write_cond() that looks like:
+        //     "blk(&Condvar { order: opt_lock, ..*cond })"
+        // with just "blk(cond)".
+        let x = ~RWARC(true);
+        let (wp, wc) = comm::stream();
+
+        // writer task
+        let xw = (*x).clone();
+        do task::spawn {
+            do xw.write_cond |state, c| {
+                wc.send(()); // tell downgrader it's ok to go
+                c.wait();
+                // The core of the test is here: the condvar reacquire path
+                // must involve order_lock, so that it cannot race with a reader
+                // trying to receive the "reader cloud lock hand-off".
+                *state = false;
+            }
+        }
+
+        wp.recv(); // wait for writer to get in
+
+        do x.write_downgrade |mut write_mode| {
+            do write_mode.write_cond |state, c| {
+                assert!(*state);
+                // make writer contend in the cond-reacquire path
+                c.signal();
+            }
+            // make a reader task to trigger the "reader cloud lock" handoff
+            let xr = (*x).clone();
+            let (rp, rc) = comm::stream();
+            do task::spawn {
+                rc.send(());
+                do xr.read |_state| { }
+            }
+            rp.recv(); // wait for reader task to exist
+
+            let read_mode = x.downgrade(write_mode);
+            do read_mode.read |state| {
+                // if writer mistakenly got in, make sure it mutates state
+                // before we assert on it
+                for 5.times { task::yield(); }
+                // make sure writer didn't get in.
+                assert!(*state);
+            }
+        }
+    }
+    #[test]
+    fn test_rw_write_cond_downgrade_read_race() {
+        // Ideally the above test case would have yield statements in it that
+        // helped to expose the race nearly 100% of the time... but adding
+        // yields in the intuitively-right locations made it even less likely,
+        // and I wasn't sure why :( . This is a mediocre "next best" option.
+        for 8.times { test_rw_write_cond_downgrade_read_race_helper() }
     }
 }
