@@ -69,6 +69,7 @@ impl PkgId {
             }
         };
 
+        debug!("local_path = %s, remote_path = %s", local_path.to_str(), remote_path.to_str());
         PkgId {
             local_path: local_path,
             remote_path: remote_path,
@@ -90,11 +91,7 @@ impl PkgId {
 
 impl ToStr for PkgId {
     fn to_str(&self) -> ~str {
-        let maybe_dash = match self.version {
-            NoVersion => "",
-            _         => "-"
-        };
         // should probably use the filestem and not the whole path
-        fmt!("%s%s%s", self.local_path.to_str(), maybe_dash, self.version.to_str())
+        fmt!("%s-%s", self.local_path.to_str(), self.version.to_str())
     }
 }

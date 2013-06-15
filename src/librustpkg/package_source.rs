@@ -15,8 +15,9 @@ use core::option::*;
 use core::{os, run, str, vec};
 use context::*;
 use crate::Crate;
+use messages::*;
 use path_util::pkgid_src_in_workspace;
-use util::{compile_crate, note};
+use util::compile_crate;
 use version::{ExactRevision, SemanticVersion, NoVersion};
 
 // An enumeration of the unpacked source of a package workspace.
@@ -95,7 +96,7 @@ impl PkgSrc {
         };
 
 
-        note(fmt!("git clone %s %s %?", url, local.to_str(), branch_args));
+        note(fmt!("Fetching package: git clone %s %s %?", url, local.to_str(), branch_args));
 
         if run::process_output("git",
                                ~[~"clone", copy url, local.to_str()] + branch_args).status != 0 {

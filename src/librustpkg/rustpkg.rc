@@ -36,11 +36,12 @@ use rustc::metadata::filesearch;
 use extra::{getopts};
 use syntax::{ast, diagnostic};
 use util::*;
+use messages::*;
 use path_util::{build_pkg_id_in_workspace, first_pkgid_src_in_workspace};
-use path_util::u_rwx;
+use path_util::{u_rwx, rust_path};
 use path_util::{built_executable_in_workspace, built_library_in_workspace};
 use path_util::{target_executable_in_workspace, target_library_in_workspace};
-use workspace::pkg_parent_workspaces;
+use workspace::{each_pkg_parent_workspace, pkg_parent_workspaces};
 use context::Ctx;
 use package_id::PkgId;
 use package_source::PkgSrc;
@@ -48,6 +49,7 @@ use package_source::PkgSrc;
 mod conditions;
 mod context;
 mod crate;
+mod messages;
 mod package_id;
 mod package_path;
 mod package_source;
@@ -189,7 +191,7 @@ impl Ctx {
                 // The package id is presumed to be the first command-line
                 // argument
                 let pkgid = PkgId::new(copy args[0]);
-                for pkg_parent_workspaces(&pkgid) |workspace| {
+                for each_pkg_parent_workspace(&pkgid) |workspace| {
                     self.build(workspace, &pkgid);
                 }
             }
@@ -221,8 +223,19 @@ impl Ctx {
                 // The package id is presumed to be the first command-line
                 // argument
                 let pkgid = PkgId::new(args[0]);
-                for pkg_parent_workspaces(&pkgid) |workspace| {
-                    self.install(workspace, &pkgid);
+                let workspaces = pkg_parent_workspaces(&pkgid);
+                if workspaces.is_empty() {
+                    let rp = rust_path();
+                    assert!(!rp.is_empty());
+                    let src = PkgSrc::new(&rp[0], &build_pkg_id_in_workspace(&pkgid, &rp[0]),
+                                          &pkgid);
+                    src.fetch_git();
+                    self.install(&rp[0], &pkgid);
+                }
+                else {
+                    for each_pkg_parent_workspace(&pkgid) |workspace| {
+                        self.install(workspace, &pkgid);
+                    }
                 }
             }
             "prefer" => {
@@ -259,6 +272,8 @@ impl Ctx {
     }
 
     fn build(&self, workspace: &Path, pkgid: &PkgId) {
+        debug!("build: workspace = %s pkgid = %s", workspace.to_str(),
+               pkgid.to_str());
         let src_dir   = first_pkgid_src_in_workspace(pkgid, workspace);
         let build_dir = build_pkg_id_in_workspace(pkgid, workspace);
         debug!("Destination dir = %s", build_dir.to_str());
@@ -310,14 +325,14 @@ impl Ctx {
         // Do something reasonable for now
 
         let dir = build_pkg_id_in_workspace(id, workspace);
-        util::note(fmt!("Cleaning package %s (removing directory %s)",
+        note(fmt!("Cleaning package %s (removing directory %s)",
                         id.to_str(), dir.to_str()));
         if os::path_exists(&dir) {
             os::remove_dir_recursive(&dir);
-            util::note(fmt!("Removed directory %s", dir.to_str()));
+            note(fmt!("Removed directory %s", dir.to_str()));
         }
 
-        util::note(fmt!("Cleaned package %s", id.to_str()));
+        note(fmt!("Cleaned package %s", id.to_str()));
     }
 
     fn info(&self) {
@@ -338,7 +353,7 @@ impl Ctx {
         let maybe_executable = built_executable_in_workspace(id, workspace);
         let maybe_library = built_library_in_workspace(id, workspace);
         let target_exec = target_executable_in_workspace(id, workspace);
-        let target_lib = maybe_library.map(|p| target_library_in_workspace(workspace, p));
+        let target_lib = maybe_library.map(|_p| target_library_in_workspace(id, workspace));
 
         debug!("target_exec = %s target_lib = %? \
                 maybe_executable = %? maybe_library = %?",
@@ -392,7 +407,7 @@ pub fn main() {
     let matches = &match getopts::getopts(args, opts) {
         result::Ok(m) => m,
         result::Err(f) => {
-            util::error(fmt!("%s", getopts::fail_str(f)));
+            error(fmt!("%s", getopts::fail_str(f)));
 
             return;
         }
@@ -428,8 +443,12 @@ pub fn main() {
         };
     }
 
+    let sroot = match filesearch::get_rustpkg_sysroot() {
+        Ok(r) => Some(@r.pop().pop()), Err(_) => None
+    };
+    debug!("Using sysroot: %?", sroot);
     Ctx {
-        sysroot_opt: None, // Currently, only tests override this
+        sysroot_opt: sroot, // Currently, only tests override this
         json: json,
         dep_cache: @mut HashMap::new()
     }.run(cmd, args);
