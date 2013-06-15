@@ -46,7 +46,7 @@ pub struct CrateContext {
      llmod: ModuleRef,
      llcx: ContextRef,
      td: TargetData,
-     tn: @TypeNames,
+     tn: TypeNames,
      externs: ExternMap,
      intrinsics: HashMap<&'static str, ValueRef>,
      item_vals: HashMap<ast::node_id, ValueRef>,
@@ -136,8 +136,10 @@ impl CrateContext {
             str::as_c_str(data_layout, |buf| llvm::LLVMSetDataLayout(llmod, buf));
             str::as_c_str(targ_triple, |buf| llvm::LLVMSetTarget(llmod, buf));
             let targ_cfg = sess.targ_cfg;
+
             let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);
-            let tn = mk_type_names();
+            let tn = TypeNames::new();
+
             let mut intrinsics = base::declare_intrinsics(llmod);
             if sess.opts.extra_debuginfo {
                 base::declare_dbg_intrinsics(llmod, &mut intrinsics);
@@ -145,7 +147,7 @@ impl CrateContext {
             let int_type = T_int(targ_cfg);
             let float_type = T_float(targ_cfg);
             let tydesc_type = T_tydesc(targ_cfg);
-            lib::llvm::associate_type(tn, @"tydesc", tydesc_type);
+            tn.associate_type(@"tydesc", tydesc_type);
             let crate_map = decl_crate_map(sess, link_meta, llmod);
             let dbg_cx = if sess.opts.debuginfo {
                 Some(debuginfo::DebugContext::new(llmod, name.to_owned()))
