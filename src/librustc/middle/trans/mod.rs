@@ -42,3 +42,4 @@ pub mod reachable;
 pub mod machine;
 pub mod adt;
 pub mod asm;
+pub mod type_;

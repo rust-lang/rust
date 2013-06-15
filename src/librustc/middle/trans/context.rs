@@ -27,6 +27,8 @@ use middle::trans::shape;
 use middle::trans::type_use;
 use middle::ty;
 
+use middle::trans::type_::Type;
+
 use core::hash;
 use core::hashmap::{HashMap, HashSet};
 use core::str;
@@ -106,10 +108,10 @@ pub struct CrateContext {
      maps: astencode::Maps,
      stats: Stats,
      upcalls: @upcall::Upcalls,
-     tydesc_type: TypeRef,
-     int_type: TypeRef,
-     float_type: TypeRef,
-     opaque_vec_type: TypeRef,
+     tydesc_type: Type,
+     int_type: Type,
+     float_type: Type,
+     opaque_vec_type: Type,
      builder: BuilderRef_res,
      shape_cx: shape::Ctxt,
      crate_map: ValueRef,
@@ -145,10 +147,13 @@ impl CrateContext {
             if sess.opts.extra_debuginfo {
                 base::declare_dbg_intrinsics(llmod, &mut intrinsics);
             }
-            let int_type = T_int(targ_cfg);
-            let float_type = T_float(targ_cfg);
-            let tydesc_type = T_tydesc(targ_cfg);
-            tn.associate_type(@"tydesc", tydesc_type);
+            let int_type = Type::int(targ_cfg.arch);
+            let float_type = Type::float(targ_cfg.arch);
+            let tydesc_type = Type::tydesc(targ_cfg.arch);
+            let opaque_vec_type = Type::opaque_vec(targ_cfg.arch);
+
+            tn.associate_type("tydesc", &tydesc_type);
+
             let crate_map = decl_crate_map(sess, link_meta, llmod);
             let dbg_cx = if sess.opts.debuginfo {
                 Some(debuginfo::DebugContext::new(llmod, name.to_owned()))
@@ -213,7 +218,7 @@ impl CrateContext {
                   tydesc_type: tydesc_type,
                   int_type: int_type,
                   float_type: float_type,
-                  opaque_vec_type: T_opaque_vec(targ_cfg),
+                  opaque_vec_type: opaque_vec_type,
                   builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
                   shape_cx: mk_ctxt(llmod),
                   crate_map: crate_map,
