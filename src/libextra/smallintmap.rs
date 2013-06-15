@@ -32,9 +32,9 @@ pub struct SmallIntMap<T> {
 
 impl<V> Container for SmallIntMap<V> {
     /// Return the number of elements in the map
-    fn len(&const self) -> uint {
+    fn len(&self) -> uint {
         let mut sz = 0;
-        for uint::range(0, vec::uniq_len(&const self.v)) |i| {
+        for uint::range(0, self.v.len()) |i| {
             match self.v[i] {
                 Some(_) => sz += 1,
                 None => {}
@@ -44,7 +44,7 @@ impl<V> Container for SmallIntMap<V> {
     }
 
     /// Return true if the map contains no elements
-    fn is_empty(&const self) -> bool { self.len() == 0 }
+    fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl<V> Mutable for SmallIntMap<V> {
@@ -199,12 +199,12 @@ pub struct SmallIntSet {
 
 impl Container for SmallIntSet {
     /// Return the number of elements in the map
-    fn len(&const self) -> uint {
+    fn len(&self) -> uint {
         self.map.len()
     }
 
     /// Return true if the map contains no elements
-    fn is_empty(&const self) -> bool { self.len() == 0 }
+    fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
 impl Mutable for SmallIntSet {
