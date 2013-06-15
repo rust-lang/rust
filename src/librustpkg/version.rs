@@ -23,13 +23,14 @@ use extra::tempfile::mkdtemp;
 pub enum Version {
     ExactRevision(~str), // Should look like a m.n.(...).x
     SemanticVersion(semver::Version),
-    NoVersion // user didn't specify a version
+    NoVersion // user didn't specify a version -- prints as 0.1
 }
 
 
 impl Ord for Version {
     fn lt(&self, other: &Version) -> bool {
         match (self, other) {
+            (&NoVersion, _) => true,
             (&ExactRevision(ref f1), &ExactRevision(ref f2)) => f1 < f2,
             (&SemanticVersion(ref v1), &SemanticVersion(ref v2)) => v1 < v2,
             _ => false // incomparable, really
@@ -37,6 +38,7 @@ impl Ord for Version {
     }
     fn le(&self, other: &Version) -> bool {
         match (self, other) {
+            (&NoVersion, _) => true,
             (&ExactRevision(ref f1), &ExactRevision(ref f2)) => f1 <= f2,
             (&SemanticVersion(ref v1), &SemanticVersion(ref v2)) => v1 <= v2,
             _ => false // incomparable, really
@@ -64,22 +66,10 @@ impl ToStr for Version {
         match *self {
             ExactRevision(ref n) => fmt!("%s", n.to_str()),
             SemanticVersion(ref v) => fmt!("%s", v.to_str()),
-            NoVersion => ~""
+            NoVersion => ~"0.1"
         }
     }
 }
-
-impl Version {
-    /// Fills in a bogus default version for NoVersion -- for use when
-    /// injecting link_meta attributes
-    fn to_str_nonempty(&self) -> ~str {
-        match *self {
-            NoVersion => ~"0.1",
-            _ => self.to_str()
-        }
-    }
-}
-
 
 pub fn parse_vers(vers: ~str) -> result::Result<semver::Version, ~str> {
     match semver::parse(vers) {
@@ -98,7 +88,9 @@ pub fn try_getting_version(remote_path: &RemotePath) -> Option<Version> {
         debug!("Trying to fetch its sources..");
         let tmp_dir = mkdtemp(&os::tmpdir(),
                               "test").expect("try_getting_version: couldn't create temp dir");
-        debug!("executing {git clone https://%s %s}", remote_path.to_str(), tmp_dir.to_str());
+        debug!("(to get version) executing {git clone https://%s %s}",
+               remote_path.to_str(),
+               tmp_dir.to_str());
         let outp  = run::process_output("git", [~"clone", fmt!("https://%s", remote_path.to_str()),
                                                 tmp_dir.to_str()]);
         if outp.status == 0 {
@@ -106,7 +98,8 @@ pub fn try_getting_version(remote_path: &RemotePath) -> Option<Version> {
                    str::from_bytes(outp.output),
                    str::from_bytes(outp.error));
             let mut output = None;
-            debug!("executing {git --git-dir=%s tag -l}", tmp_dir.push(".git").to_str());
+            debug!("(getting version, now getting tags) executing {git --git-dir=%s tag -l}",
+                   tmp_dir.push(".git").to_str());
             let outp = run::process_output("git",
                                            [fmt!("--git-dir=%s", tmp_dir.push(".git").to_str()),
                                             ~"tag", ~"-l"]);
@@ -169,11 +162,18 @@ fn is_url_like(p: &RemotePath) -> bool {
 /// number, return the prefix before the # and the version.
 /// Otherwise, return None.
 pub fn split_version<'a>(s: &'a str) -> Option<(&'a str, Version)> {
+    split_version_general(s, '#')
+}
+
+pub fn split_version_general<'a>(s: &'a str, sep: char) -> Option<(&'a str, Version)> {
     // reject strings with multiple '#'s
-    if s.splitn_iter('#', 2).count() > 2 {
+    for s.split_iter(sep).advance |st| {
+        debug!("whole = %s part = %s", s, st);
+    }
+    if s.split_iter(sep).count() > 2 {
         return None;
     }
-    match s.rfind('#') {
+    match s.rfind(sep) {
         Some(i) => {
             debug!("in %s, i = %?", s, i);
             let path = s.slice(0, i);

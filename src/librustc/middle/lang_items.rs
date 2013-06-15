@@ -441,5 +441,6 @@ pub fn collect_language_items(crate: @crate,
     let mut collector = LanguageItemCollector(crate, session);
     collector.collect();
     let LanguageItemCollector { items, _ } = collector;
+    session.abort_if_errors();
     items
 }
