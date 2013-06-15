@@ -913,10 +913,12 @@ pub mod traits {
     use cmp::{TotalOrd, Ordering, Less, Equal, Greater, Eq, Ord, Equiv, TotalEq};
     use super::{Str, eq_slice};
 
-    impl<'self> Add<&'self str,~str> for ~str {
+    impl<'self> Add<&'self str,~str> for &'self str {
         #[inline(always)]
         fn add(&self, rhs: & &'self str) -> ~str {
-            self.append((*rhs))
+            let mut ret = self.to_owned();
+            ret.push_str(*rhs);
+            ret
         }
     }
 
@@ -3135,6 +3137,24 @@ mod tests {
     #[test]
     fn test_char_range_at_reverse_underflow() {
         assert_eq!("abc".char_range_at_reverse(0).next, 0);
+    }
+
+    #[test]
+    fn test_add() {
+        macro_rules! t (
+            ($s1:expr, $s2:expr, $e:expr) => {
+                assert_eq!($s1 + $s2, $e);
+                assert_eq!($s1.to_owned() + $s2, $e);
+                assert_eq!($s1.to_managed() + $s2, $e);
+            }
+        );
+
+        t!("foo",  "bar", ~"foobar");
+        t!("foo", @"bar", ~"foobar");
+        t!("foo", ~"bar", ~"foobar");
+        t!("ศไทย中",  "华Việt Nam", ~"ศไทย中华Việt Nam");
+        t!("ศไทย中", @"华Việt Nam", ~"ศไทย中华Việt Nam");
+        t!("ศไทย中", ~"华Việt Nam", ~"ศไทย中华Việt Nam");
     }
 
     #[test]
