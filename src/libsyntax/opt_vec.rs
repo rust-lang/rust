@@ -196,10 +196,3 @@ impl<A: Copy> old_iter::CopyableIter<A> for OptVec<A> {
         old_iter::find(self, f)
     }
 }
-
-impl<A: Copy+Ord> old_iter::CopyableOrderedIter<A> for OptVec<A> {
-    #[inline(always)]
-    fn min(&self) -> A { old_iter::min(self) }
-    #[inline(always)]
-    fn max(&self) -> A { old_iter::max(self) }
-}
