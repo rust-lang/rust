@@ -17,6 +17,8 @@ use core::ptr;
 use core::str;
 use core::vec;
 
+use middle::trans::type_::Type;
+
 pub type Opcode = u32;
 pub type Bool = c_uint;
 
@@ -2121,8 +2123,8 @@ pub fn ConstFCmp(Pred: RealPredicate, V1: ValueRef, V2: ValueRef) -> ValueRef {
 /* Memory-managed object interface to type handles. */
 
 pub struct TypeNames {
-    type_names: HashMap<TypeRef, @str>,
-    named_types: HashMap<@str, TypeRef>
+    type_names: HashMap<TypeRef, ~str>,
+    named_types: HashMap<~str, TypeRef>
 }
 
 impl TypeNames {
@@ -2133,17 +2135,20 @@ impl TypeNames {
         }
     }
 
-    pub fn associate_type(&mut self, s: @str, t: TypeRef) {
-        assert!(self.type_names.insert(t, s));
-        assert!(self.named_types.insert(s, t));
+    pub fn associate_type(&mut self, s: &str, t: &Type) {
+        assert!(self.type_names.insert(t.to_ref(), s.to_owned()));
+        assert!(self.named_types.insert(s.to_owned(), t.to_ref()));
     }
 
-    pub fn find_name(&self, ty: &TypeRef) -> Option<@str> {
-        self.type_names.find_copy(ty)
+    pub fn find_name<'r>(&'r self, ty: &Type) -> Option<&'r str> {
+        match self.type_names.find(ty.to_ref()) {
+            Some(a) => Some(a.slice(0, a.len())),
+            None => None
+        }
     }
 
-    pub fn find_type(&self, s: &str) -> Option<TypeRef> {
-        self.named_types.find_equiv(&s).map_consume(|x| *x)
+    pub fn find_type(&self, s: &str) -> Option<Type> {
+        self.named_types.find_equiv(&s).map_consume(|x| Type::from_ref(*x))
     }
 
     pub fn type_to_str(&self, ty: TypeRef) -> ~str {
