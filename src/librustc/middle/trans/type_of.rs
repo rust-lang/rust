@@ -58,7 +58,7 @@ pub fn type_of_fn(cx: @CrateContext, inputs: &[ty::t], output: ty::t)
         if output_is_immediate {
             T_fn(atys, lloutputtype)
         } else {
-            T_fn(atys, llvm::LLVMVoidType())
+            T_fn(atys, llvm::LLVMVoidTypeInContext(cx.llcx))
         }
     }
 }

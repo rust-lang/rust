@@ -101,34 +101,21 @@ pub mod jit {
     use back::link::llvm_err;
     use driver::session::Session;
     use lib::llvm::llvm;
-    use lib::llvm::{ModuleRef, PassManagerRef};
+    use lib::llvm::{ModuleRef, ContextRef};
     use metadata::cstore;
 
     use core::cast;
-    use core::libc::c_int;
     use core::ptr;
     use core::str;
-
-    pub mod rusti {
-        #[nolink]
-        #[abi = "rust-intrinsic"]
-        pub extern "rust-intrinsic" {
-            pub fn morestack_addr() -> *();
-        }
-    }
-
-    pub struct Closure {
-        code: *(),
-        env: *(),
-    }
+    use core::sys;
+    use core::unstable::intrinsics;
 
     pub fn exec(sess: Session,
-                pm: PassManagerRef,
+                c: ContextRef,
                 m: ModuleRef,
-                opt: c_int,
                 stacks: bool) {
         unsafe {
-            let manager = llvm::LLVMRustPrepareJIT(rusti::morestack_addr());
+            let manager = llvm::LLVMRustPrepareJIT(intrinsics::morestack_addr());
 
             // We need to tell JIT where to resolve all linked
             // symbols from. The equivalent of -lstd, -lcore, etc.
@@ -152,26 +139,43 @@ pub mod jit {
                     });
             }
 
-            // The execute function will return a void pointer
-            // to the _rust_main function. We can do closure
-            // magic here to turn it straight into a callable rust
-            // closure. It will also cleanup the memory manager
-            // for us.
-
-            let entry = llvm::LLVMRustExecuteJIT(manager,
-                                                 pm, m, opt, stacks);
-
-            if ptr::is_null(entry) {
-                llvm_err(sess, ~"Could not JIT");
-            } else {
-                let closure = Closure {
-                    code: entry,
-                    env: ptr::null()
-                };
-                let func: &fn() = cast::transmute(closure);
-
-                func();
+            // We custom-build a JIT execution engine via some rust wrappers
+            // first. This wrappers takes ownership of the module passed in.
+            let ee = llvm::LLVMRustBuildJIT(manager, m, stacks);
+            if ee.is_null() {
+                llvm::LLVMContextDispose(c);
+                llvm_err(sess, ~"Could not create the JIT");
             }
+
+            // Next, we need to get a handle on the _rust_main function by
+            // looking up it's corresponding ValueRef and then requesting that
+            // the execution engine compiles the function.
+            let fun = do str::as_c_str("_rust_main") |entry| {
+                llvm::LLVMGetNamedFunction(m, entry)
+            };
+            if fun.is_null() {
+                llvm::LLVMDisposeExecutionEngine(ee);
+                llvm::LLVMContextDispose(c);
+                llvm_err(sess, ~"Could not find _rust_main in the JIT");
+            }
+
+            // Finally, once we have the pointer to the code, we can do some
+            // closure magic here to turn it straight into a callable rust
+            // closure
+            let code = llvm::LLVMGetPointerToGlobal(ee, fun);
+            assert!(!code.is_null());
+            let closure = sys::Closure {
+                code: code,
+                env: ptr::null()
+            };
+            let func: &fn() = cast::transmute(closure);
+            func();
+
+            // Sadly, there currently is no interface to re-use this execution
+            // engine, so it's disposed of here along with the context to
+            // prevent leaks.
+            llvm::LLVMDisposeExecutionEngine(ee);
+            llvm::LLVMContextDispose(c);
         }
     }
 }
@@ -188,6 +192,7 @@ pub mod write {
     use driver::session;
     use lib::llvm::llvm;
     use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data};
+    use lib::llvm::{ContextRef};
     use lib;
 
     use back::passes;
@@ -206,6 +211,7 @@ pub mod write {
     }
 
     pub fn run_passes(sess: Session,
+                      llcx: ContextRef,
                       llmod: ModuleRef,
                       output_type: output_type,
                       output: &Path) {
@@ -261,7 +267,17 @@ pub mod write {
             debug!("Running Module Optimization Pass");
             mpm.run(llmod);
 
-            if is_object_or_assembly_or_exe(output_type) || opts.jit {
+            if opts.jit {
+                // If we are using JIT, go ahead and create and execute the
+                // engine now.  JIT execution takes ownership of the module and
+                // context, so don't dispose and return.
+                jit::exec(sess, llcx, llmod, true);
+
+                if sess.time_llvm_passes() {
+                    llvm::LLVMRustPrintPassTimings();
+                }
+                return;
+            } else if is_object_or_assembly_or_exe(output_type) {
                 let LLVMOptNone       = 0 as c_int; // -O0
                 let LLVMOptLess       = 1 as c_int; // -O1
                 let LLVMOptDefault    = 2 as c_int; // -O2, -Os
@@ -273,20 +289,6 @@ pub mod write {
                   session::Default => LLVMOptDefault,
                   session::Aggressive => LLVMOptAggressive
                 };
-
-                if opts.jit {
-                    // If we are using JIT, go ahead and create and
-                    // execute the engine now.
-                    // JIT execution takes ownership of the module,
-                    // so don't dispose and return.
-
-                    jit::exec(sess, pm.llpm, llmod, CodeGenOptLevel, true);
-
-                    if sess.time_llvm_passes() {
-                        llvm::LLVMRustPrintPassTimings();
-                    }
-                    return;
-                }
 
                 let FileType;
                 if output_type == output_type_object ||
@@ -348,6 +350,7 @@ pub mod write {
                 // Clean up and return
 
                 llvm::LLVMDisposeModule(llmod);
+                llvm::LLVMContextDispose(llcx);
                 if sess.time_llvm_passes() {
                     llvm::LLVMRustPrintPassTimings();
                 }
@@ -366,6 +369,7 @@ pub mod write {
             }
 
             llvm::LLVMDisposeModule(llmod);
+            llvm::LLVMContextDispose(llcx);
             if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
         }
     }
