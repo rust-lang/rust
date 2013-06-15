@@ -187,40 +187,6 @@ pub fn position<A,IA:BaseIter<A>>(this: &IA, f: &fn(&A) -> bool)
     return None;
 }
 
-// note: 'rposition' would only make sense to provide with a bidirectional
-// iter interface, such as would provide "reach" in addition to "each". As is,
-// it would have to be implemented with foldr, which is too inefficient.
-
-#[inline(always)]
-pub fn min<A:Copy + Ord,IA:BaseIter<A>>(this: &IA) -> A {
-    match do foldl::<A,Option<A>,IA>(this, None) |a, b| {
-        match a {
-          &Some(ref a_) if *a_ < *b => {
-             *(a)
-          }
-          _ => Some(*b)
-        }
-    } {
-        Some(val) => val,
-        None => fail!("min called on empty iterator")
-    }
-}
-
-#[inline(always)]
-pub fn max<A:Copy + Ord,IA:BaseIter<A>>(this: &IA) -> A {
-    match do foldl::<A,Option<A>,IA>(this, None) |a, b| {
-        match a {
-          &Some(ref a_) if *a_ > *b => {
-              *(a)
-          }
-          _ => Some(*b)
-        }
-    } {
-        Some(val) => val,
-        None => fail!("max called on empty iterator")
-    }
-}
-
 #[inline(always)]
 pub fn find<A:Copy,IA:BaseIter<A>>(this: &IA, f: &fn(&A) -> bool)
                                 -> Option<A> {
