@@ -327,7 +327,7 @@ fn main() {
     let mut futures = vec::from_fn(1000, |ind| do extra::future::spawn { partial_sum(ind) });
 
     let mut final_res = 0f64;
-    for futures.each_mut |ft|  {
+    for futures.mut_iter().advance |ft|  {
         final_res += ft.get();
     }
     println(fmt!("π^2/6 is not far from : %?", final_res));
@@ -351,7 +351,6 @@ a single large vector of floats. Each task needs the full vector to perform its 
 # use std::vec;
 # use std::uint;
 # use std::rand;
-# use std::iterator::IteratorUtil;
 use extra::arc::ARC;
 
 fn pnorm(nums: &~[float], p: uint) -> float {

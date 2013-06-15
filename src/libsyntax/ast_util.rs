@@ -24,7 +24,6 @@ use core::hashmap::HashMap;
 use core::int;
 use core::option;
 use core::to_bytes;
-use core::iterator::IteratorUtil;
 
 pub fn path_name_i(idents: &[ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
@@ -795,7 +794,6 @@ mod test {
     use ast::*;
     use super::*;
     use core::io;
-    use core::iterator::IteratorUtil;
 
     #[test] fn xorpush_test () {
         let mut s = ~[];

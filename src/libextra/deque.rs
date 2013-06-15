@@ -37,7 +37,7 @@ impl<T> Container for Deque<T> {
 impl<T> Mutable for Deque<T> {
     /// Clear the deque, removing all values.
     fn clear(&mut self) {
-        for self.elts.each_mut |x| { *x = None }
+        for self.elts.mut_iter().advance |x| { *x = None }
         self.nelts = 0;
         self.lo = 0;
         self.hi = 0;

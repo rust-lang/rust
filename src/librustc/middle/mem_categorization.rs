@@ -47,7 +47,6 @@
  */
 
 use core::prelude::*;
-use core::iterator::IteratorUtil;
 
 use middle::ty;
 use middle::typeck;

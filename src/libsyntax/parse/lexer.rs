@@ -19,7 +19,6 @@ use ext::tt::transcribe::{dup_tt_reader};
 use parse::token;
 use parse::token::{str_to_ident};
 
-use core::iterator::IteratorUtil;
 use core::char;
 use core::either;
 use core::u64;

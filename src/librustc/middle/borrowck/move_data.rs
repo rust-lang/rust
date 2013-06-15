@@ -16,7 +16,6 @@ comments in the section "Moves and initialization" and in `doc.rs`.
 */
 
 use core::prelude::*;
-use core::iterator::IteratorUtil;
 
 use core::hashmap::{HashMap, HashSet};
 use core::uint;

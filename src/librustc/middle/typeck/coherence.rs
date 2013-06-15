@@ -54,7 +54,6 @@ use syntax::visit::{Visitor, SimpleVisitor};
 use syntax::visit::{visit_mod};
 use util::ppaux::ty_to_str;
 
-use core::iterator::IteratorUtil;
 use core::hashmap::{HashMap, HashSet};
 use core::result::Ok;
 use core::uint;

@@ -18,7 +18,6 @@ use middle::typeck::check::{instantiate_path, lookup_def};
 use middle::typeck::check::{structure_of, valid_range_bounds};
 use middle::typeck::require_same_types;
 
-use core::iterator::IteratorUtil;
 use core::hashmap::{HashMap, HashSet};
 use syntax::ast;
 use syntax::ast_util;

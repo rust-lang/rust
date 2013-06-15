@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::iterator::IteratorUtil;
 use core::prelude::*;
 
 use driver::session::Session;

@@ -23,7 +23,6 @@ use ext::quote::rt::*;
 use opt_vec;
 use opt_vec::OptVec;
 
-use core::iterator::IteratorUtil;
 use core::vec;
 
 pub trait gen_send {

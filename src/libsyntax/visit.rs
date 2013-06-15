@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use core::prelude::*;
-use core::iterator::IteratorUtil;
 
 use abi::AbiSet;
 use ast::*;

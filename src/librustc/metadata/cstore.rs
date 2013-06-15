@@ -17,7 +17,6 @@ use core::prelude::*;
 use metadata::cstore;
 use metadata::decoder;
 
-use core::iterator::IteratorUtil;
 use core::hashmap::HashMap;
 use core::vec;
 use extra;
