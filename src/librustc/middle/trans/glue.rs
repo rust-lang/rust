@@ -731,10 +731,7 @@ pub fn make_generic_glue(ccx: @mut CrateContext,
     let start = time::get_time();
     let llval = make_generic_glue_inner(ccx, t, llfn, helper);
     let end = time::get_time();
-    log_fn_time(ccx,
-                fmt!("glue %s %s", name, ty_to_short_str(ccx.tcx, t)),
-                start,
-                end);
+    ccx.log_fn_time(fmt!("glue %s %s", name, ty_to_short_str(ccx.tcx, t)), start, end);
     return llval;
 }
 

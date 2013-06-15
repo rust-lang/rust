@@ -31,6 +31,7 @@ use core::hash;
 use core::hashmap::{HashMap, HashSet};
 use core::str;
 use core::local_data;
+use extra::time;
 use syntax::ast;
 
 use middle::trans::common::{ExternMap,tydesc_info,BuilderRef_res,Stats,namegen,addrspace_gen};
@@ -221,6 +222,12 @@ impl CrateContext {
                   do_not_commit_warning_issued: false
             }
         }
+    }
+
+    pub fn log_fn_time(&mut self, name: ~str, start: time::Timespec, end: time::Timespec) {
+        let elapsed = 1000 * ((end.sec - start.sec) as int) +
+            ((end.nsec as int) - (start.nsec as int)) / 1000000;
+        self.stats.fn_times.push((name, elapsed));
     }
 }
 

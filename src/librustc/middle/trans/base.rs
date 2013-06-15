@@ -138,13 +138,6 @@ fn fcx_has_nonzero_span(fcx: fn_ctxt) -> bool {
     }
 }
 
-pub fn log_fn_time(ccx: @mut CrateContext, name: ~str, start: time::Timespec,
-                   end: time::Timespec) {
-    let elapsed = 1000 * ((end.sec - start.sec) as int) +
-        ((end.nsec as int) - (start.nsec as int)) / 1000000;
-    ccx.stats.fn_times.push((name, elapsed));
-}
-
 pub fn decl_fn(llmod: ModuleRef,
                name: &str,
                cc: lib::llvm::CallConv,
@@ -1962,7 +1955,7 @@ pub fn trans_fn(ccx: @mut CrateContext,
                   |_bcx| { });
     if do_time {
         let end = time::get_time();
-        log_fn_time(ccx, the_path_str, start, end);
+        ccx.log_fn_time(the_path_str, start, end);
     }
 }
 
@@ -3130,11 +3123,6 @@ pub fn trans_crate(sess: session::Session,
         io::println(fmt!("n_closures: %u", ccx.stats.n_closures));
     }
 
-    if ccx.sess.count_llvm_insns() {
-        for ccx.stats.llvm_insns.each |&k, &v| {
-            io::println(fmt!("%-7u %s", v, k));
-        }
-    }
     let llcx = ccx.llcx;
     let link_meta = ccx.link_meta;
     let llmod = ccx.llmod;
