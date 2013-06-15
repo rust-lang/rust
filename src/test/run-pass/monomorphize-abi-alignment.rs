@@ -24,8 +24,8 @@ struct A((u32, u32));
 struct B(u64);
 
 pub fn main() {
-	static Ca: S<A> = S { i: 0, t: A((13, 104)) };
-	static Cb: S<B> = S { i: 0, t: B(31337) };
-	assert_eq!(*(Ca.unwrap()), (13, 104));
-	assert_eq!(*(Cb.unwrap()), 31337);
+    static Ca: S<A> = S { i: 0, t: A((13, 104)) };
+    static Cb: S<B> = S { i: 0, t: B(31337) };
+    assert_eq!(*(Ca.unwrap()), (13, 104));
+    assert_eq!(*(Cb.unwrap()), 31337);
 }

@@ -26,5 +26,3 @@ fn main() {
     let p = unsafe { transmute::<~int, *c_void>(t) };
     let z = NonCopyable(p);
 }
-
-

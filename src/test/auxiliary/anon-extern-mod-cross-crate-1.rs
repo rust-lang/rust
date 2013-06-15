@@ -20,4 +20,3 @@ use std::libc;
 extern {
     pub fn rust_get_argc() -> libc::c_int;
 }
-
