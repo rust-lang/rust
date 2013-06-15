@@ -109,7 +109,7 @@ impl ReachableContext {
         let reachable_symbols = self.reachable_symbols;
         let worklist = self.worklist;
         let visitor = visit::mk_vt(@Visitor {
-            visit_item: |item, _, visitor| {
+            visit_item: |item, (_, visitor)| {
                 match item.node {
                     item_fn(*) => {
                         reachable_symbols.insert(item.id);
@@ -184,13 +184,13 @@ impl ReachableContext {
                 }
 
                 if item.vis == public {
-                    visit::visit_item(item, (), visitor)
+                    visit::visit_item(item, ((), visitor))
                 }
             },
             .. *visit::default_visitor()
         });
 
-        visit::visit_crate(crate, (), visitor)
+        visit::visit_crate(crate, ((), visitor))
     }
 
     // Returns true if the given def ID represents a local item that is
@@ -256,7 +256,7 @@ impl ReachableContext {
         let (worklist, method_map) = (self.worklist, self.method_map);
         let (tcx, reachable_symbols) = (self.tcx, self.reachable_symbols);
         visit::mk_vt(@visit::Visitor {
-            visit_expr: |expr, _, visitor| {
+            visit_expr: |expr, (_, visitor)| {
                 match expr.node {
                     expr_path(_) => {
                         let def = match tcx.def_map.find(&expr.id) {
@@ -300,7 +300,7 @@ impl ReachableContext {
                     _ => {}
                 }
 
-                visit::visit_expr(expr, (), visitor)
+                visit::visit_expr(expr, ((), visitor))
             },
             ..*visit::default_visitor()
         })
@@ -325,7 +325,7 @@ impl ReachableContext {
                 Some(&ast_map::node_item(item, _)) => {
                     match item.node {
                         item_fn(_, _, _, _, ref search_block) => {
-                            visit::visit_block(search_block, (), visitor)
+                            visit::visit_block(search_block, ((), visitor))
                         }
                         _ => {
                             self.tcx.sess.span_bug(item.span,
@@ -342,12 +342,12 @@ impl ReachableContext {
                                                     worklist?!")
                         }
                         provided(ref method) => {
-                            visit::visit_block(&method.body, (), visitor)
+                            visit::visit_block(&method.body, ((), visitor))
                         }
                     }
                 }
                 Some(&ast_map::node_method(ref method, _, _)) => {
-                    visit::visit_block(&method.body, (), visitor)
+                    visit::visit_block(&method.body, ((), visitor))
                 }
                 Some(_) => {
                     let ident_interner = token::get_ident_interner();

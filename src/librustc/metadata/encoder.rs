@@ -1155,7 +1155,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
                                ast_map::path_to_str(
                                 *pt,
                                 token::get_ident_interner()),
-                               *token::ident_to_str(&ni.ident));
+                                token::ident_to_str(&ni.ident));
 
                         let mut ebml_w = copy ebml_w;
                         // See above

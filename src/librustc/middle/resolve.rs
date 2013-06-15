@@ -1299,7 +1299,7 @@ impl Resolver {
             }
 
             item_impl(_, Some(_), ty, ref methods) => {
-                visit_item(item, parent, visitor);
+                visit_item(item, (parent, visitor));
             }
 
             item_trait(_, _, ref methods) => {
@@ -1349,7 +1349,7 @@ impl Resolver {
                     match ty_m.explicit_self.node {
                         sty_static => {}
                         _ => {
-                            method_names.insert(ident);
+                            method_names.insert(ident, ());
                         }
                     }
                 }
@@ -2054,7 +2054,7 @@ impl Resolver {
             } else {
                 result.push_str("::")
             }
-            result.push_str(*self.session.str_of(*ident));
+            result.push_str(self.session.str_of(*ident));
         };
         return result;
     }
