@@ -421,7 +421,7 @@ pub fn run_line(repl: &mut Repl, in: @io::Reader, out: @io::Writer, line: ~str,
     -> Option<Repl> {
     if line.starts_with(":") {
         // drop the : and the \n (one byte each)
-        let full = line.slice(1, line.len() - 1);
+        let full = line.slice(1, line.len());
         let split: ~[~str] = full.word_iter().transform(|s| s.to_owned()).collect();
         let len = split.len();
 
@@ -538,7 +538,7 @@ mod tests {
 
     #[test]
     fn run_all() {
-        // FIXME(#6511):
+        // FIXME(#7071):
         // By default, unit tests are run in parallel. Rusti, on the other hand,
         // does not enjoy doing this. I suspect that it is because the LLVM
         // bindings are not thread-safe (when running parallel tests, some tests
@@ -645,5 +645,15 @@ mod tests {
             fn f() {}
             f()
         ");
+    }
+
+    #[test]
+    fn exit_quits() {
+        let mut r = repl();
+        assert!(r.running);
+        let result = run_line(&mut r, io::stdin(), io::stdout(),
+                              ~":exit", false);
+        assert!(result.is_none());
+        assert!(!r.running);
     }
 }
