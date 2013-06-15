@@ -44,6 +44,8 @@ use syntax::parse::token;
 use syntax;
 use writer = extra::ebml::writer;
 
+use core::cast;
+
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::print::pprust;
 
@@ -80,7 +82,7 @@ trait tr_intern {
 // ______________________________________________________________________
 // Top-level methods.
 
-pub fn encode_inlined_item(ecx: @e::EncodeContext,
+pub fn encode_inlined_item(ecx: &e::EncodeContext,
                            ebml_w: &mut writer::Encoder,
                            path: &[ast_map::path_elt],
                            ii: ast::inlined_item,
@@ -527,7 +529,7 @@ trait read_method_map_entry_helper {
                              -> method_map_entry;
 }
 
-fn encode_method_map_entry(ecx: @e::EncodeContext,
+fn encode_method_map_entry(ecx: &e::EncodeContext,
                            ebml_w: &mut writer::Encoder,
                            mme: method_map_entry) {
     do ebml_w.emit_struct("method_map_entry", 3) |ebml_w| {
@@ -604,7 +606,7 @@ impl tr for method_origin {
 // ______________________________________________________________________
 // Encoding and decoding vtable_res
 
-fn encode_vtable_res(ecx: @e::EncodeContext,
+fn encode_vtable_res(ecx: &e::EncodeContext,
                      ebml_w: &mut writer::Encoder,
                      dr: typeck::vtable_res) {
     // can't autogenerate this code because automatic code of
@@ -616,7 +618,7 @@ fn encode_vtable_res(ecx: @e::EncodeContext,
     }
 }
 
-fn encode_vtable_origin(ecx: @e::EncodeContext,
+fn encode_vtable_origin(ecx: &e::EncodeContext,
                         ebml_w: &mut writer::Encoder,
                         vtable_origin: &typeck::vtable_origin) {
     do ebml_w.emit_enum("vtable_origin") |ebml_w| {
@@ -702,53 +704,53 @@ impl vtable_decoder_helpers for reader::Decoder {
 // Encoding and decoding the side tables
 
 trait get_ty_str_ctxt {
-    fn ty_str_ctxt(@self) -> @tyencode::ctxt;
+    fn ty_str_ctxt(&self) -> @tyencode::ctxt;
 }
 
-impl get_ty_str_ctxt for e::EncodeContext {
-    // IMPLICIT SELF WARNING: fix this!
-    fn ty_str_ctxt(@self) -> @tyencode::ctxt {
+impl<'self> get_ty_str_ctxt for e::EncodeContext<'self> {
+    fn ty_str_ctxt(&self) -> @tyencode::ctxt {
+        let r = self.reachable;
         @tyencode::ctxt {diag: self.tcx.sess.diagnostic(),
                         ds: e::def_to_str,
                         tcx: self.tcx,
-                        reachable: |a| encoder::reachable(self, a),
+                        reachable: |a| r.contains(&a),
                         abbrevs: tyencode::ac_use_abbrevs(self.type_abbrevs)}
     }
 }
 
 trait ebml_writer_helpers {
-    fn emit_ty(&mut self, ecx: @e::EncodeContext, ty: ty::t);
-    fn emit_vstore(&mut self, ecx: @e::EncodeContext, vstore: ty::vstore);
-    fn emit_tys(&mut self, ecx: @e::EncodeContext, tys: &[ty::t]);
+    fn emit_ty(&mut self, ecx: &e::EncodeContext, ty: ty::t);
+    fn emit_vstore(&mut self, ecx: &e::EncodeContext, vstore: ty::vstore);
+    fn emit_tys(&mut self, ecx: &e::EncodeContext, tys: &[ty::t]);
     fn emit_type_param_def(&mut self,
-                           ecx: @e::EncodeContext,
+                           ecx: &e::EncodeContext,
                            type_param_def: &ty::TypeParameterDef);
     fn emit_tpbt(&mut self,
-                 ecx: @e::EncodeContext,
+                 ecx: &e::EncodeContext,
                  tpbt: ty::ty_param_bounds_and_ty);
 }
 
 impl ebml_writer_helpers for writer::Encoder {
-    fn emit_ty(&mut self, ecx: @e::EncodeContext, ty: ty::t) {
+    fn emit_ty(&mut self, ecx: &e::EncodeContext, ty: ty::t) {
         do self.emit_opaque |this| {
             e::write_type(ecx, this, ty)
         }
     }
 
-    fn emit_vstore(&mut self, ecx: @e::EncodeContext, vstore: ty::vstore) {
+    fn emit_vstore(&mut self, ecx: &e::EncodeContext, vstore: ty::vstore) {
         do self.emit_opaque |this| {
             e::write_vstore(ecx, this, vstore)
         }
     }
 
-    fn emit_tys(&mut self, ecx: @e::EncodeContext, tys: &[ty::t]) {
+    fn emit_tys(&mut self, ecx: &e::EncodeContext, tys: &[ty::t]) {
         do self.emit_from_vec(tys) |this, ty| {
             this.emit_ty(ecx, *ty)
         }
     }
 
     fn emit_type_param_def(&mut self,
-                           ecx: @e::EncodeContext,
+                           ecx: &e::EncodeContext,
                            type_param_def: &ty::TypeParameterDef) {
         do self.emit_opaque |this| {
             tyencode::enc_type_param_def(this.writer,
@@ -758,7 +760,7 @@ impl ebml_writer_helpers for writer::Encoder {
     }
 
     fn emit_tpbt(&mut self,
-                 ecx: @e::EncodeContext,
+                 ecx: &e::EncodeContext,
                  tpbt: ty::ty_param_bounds_and_ty) {
         do self.emit_struct("ty_param_bounds_and_ty", 2) |this| {
             do this.emit_struct_field("generics", 0) |this| {
@@ -800,12 +802,18 @@ impl write_tag_and_id for writer::Encoder {
     }
 }
 
-fn encode_side_tables_for_ii(ecx: @e::EncodeContext,
+fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
                              maps: Maps,
                              ebml_w: &mut writer::Encoder,
                              ii: &ast::inlined_item) {
     ebml_w.start_tag(c::tag_table as uint);
     let new_ebml_w = copy *ebml_w;
+
+    // Because the ast visitor uses @fn, I can't pass in
+    // ecx directly, but /I/ know that it'll be fine since
+    // the lifetime is tied to the CrateContext that
+    // lives this entire section.
+    let ecx_ptr : *() = unsafe { cast::transmute(ecx) };
     ast_util::visit_ids_for_inlined_item(
         ii,
         |id: ast::node_id| {
@@ -813,12 +821,14 @@ fn encode_side_tables_for_ii(ecx: @e::EncodeContext,
             // it is mutable. But I believe it's harmless since we generate
             // balanced EBML.
             let mut new_ebml_w = copy new_ebml_w;
+            // See above
+            let ecx : &e::EncodeContext = unsafe { cast::transmute(ecx_ptr) };
             encode_side_tables_for_id(ecx, maps, &mut new_ebml_w, id)
         });
     ebml_w.end_tag();
 }
 
-fn encode_side_tables_for_id(ecx: @e::EncodeContext,
+fn encode_side_tables_for_id(ecx: &e::EncodeContext,
                              maps: Maps,
                              ebml_w: &mut writer::Encoder,
                              id: ast::node_id) {

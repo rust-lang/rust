@@ -219,109 +219,109 @@ pub fn compile_rest(sess: Session,
     crate = time(time_passes, ~"intrinsic injection", ||
                  front::intrinsic_inject::inject_intrinsic(sess, crate));
 
-    crate = time(time_passes, ~"extra injection", ||
-                 front::std_inject::maybe_inject_libstd_ref(sess, crate));
+        crate = time(time_passes, ~"extra injection", ||
+                     front::std_inject::maybe_inject_libstd_ref(sess, crate));
 
-    let ast_map = time(time_passes, ~"ast indexing", ||
-                       syntax::ast_map::map_crate(sess.diagnostic(), crate));
+        let ast_map = time(time_passes, ~"ast indexing", ||
+                           syntax::ast_map::map_crate(sess.diagnostic(), crate));
 
-    time(time_passes, ~"external crate/lib resolution", ||
-         creader::read_crates(sess.diagnostic(), crate, sess.cstore,
-                              sess.filesearch,
-                              session::sess_os_to_meta_os(sess.targ_cfg.os),
-                              sess.opts.is_static,
-                              token::get_ident_interner()));
+        time(time_passes, ~"external crate/lib resolution", ||
+             creader::read_crates(sess.diagnostic(), crate, sess.cstore,
+                                  sess.filesearch,
+                                  session::sess_os_to_meta_os(sess.targ_cfg.os),
+                                  sess.opts.is_static,
+                                  token::get_ident_interner()));
 
-    let lang_items = time(time_passes, ~"language item collection", ||
-                          middle::lang_items::collect_language_items(crate, sess));
+        let lang_items = time(time_passes, ~"language item collection", ||
+                              middle::lang_items::collect_language_items(crate, sess));
 
-    let middle::resolve::CrateMap {
-        def_map: def_map,
-        exp_map2: exp_map2,
-        trait_map: trait_map
-    } =
-        time(time_passes, ~"resolution", ||
-             middle::resolve::resolve_crate(sess, lang_items, crate));
+        let middle::resolve::CrateMap {
+            def_map: def_map,
+            exp_map2: exp_map2,
+            trait_map: trait_map
+        } =
+            time(time_passes, ~"resolution", ||
+                 middle::resolve::resolve_crate(sess, lang_items, crate));
 
-    time(time_passes, ~"looking for entry point",
-         || middle::entry::find_entry_point(sess, crate, ast_map));
+        time(time_passes, ~"looking for entry point",
+             || middle::entry::find_entry_point(sess, crate, ast_map));
 
-    let freevars = time(time_passes, ~"freevar finding", ||
-                        freevars::annotate_freevars(def_map, crate));
+        let freevars = time(time_passes, ~"freevar finding", ||
+                            freevars::annotate_freevars(def_map, crate));
 
-    let region_map = time(time_passes, ~"region resolution", ||
-                          middle::region::resolve_crate(sess, def_map, crate));
+        let region_map = time(time_passes, ~"region resolution", ||
+                              middle::region::resolve_crate(sess, def_map, crate));
 
-    let rp_set = time(time_passes, ~"region parameterization inference", ||
-                      middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
+        let rp_set = time(time_passes, ~"region parameterization inference", ||
+                          middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
 
-    let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
-                            region_map, rp_set, lang_items);
+        let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
+                                region_map, rp_set, lang_items);
 
-    // passes are timed inside typeck
-    let (method_map, vtable_map) = typeck::check_crate(
-        ty_cx, trait_map, crate);
+        // passes are timed inside typeck
+        let (method_map, vtable_map) = typeck::check_crate(
+            ty_cx, trait_map, crate);
 
-    // These next two const passes can probably be merged
-    time(time_passes, ~"const marking", ||
-         middle::const_eval::process_crate(crate, ty_cx));
+        // These next two const passes can probably be merged
+        time(time_passes, ~"const marking", ||
+             middle::const_eval::process_crate(crate, ty_cx));
 
-    time(time_passes, ~"const checking", ||
-         middle::check_const::check_crate(sess, crate, ast_map, def_map,
-                                          method_map, ty_cx));
+        time(time_passes, ~"const checking", ||
+             middle::check_const::check_crate(sess, crate, ast_map, def_map,
+                                              method_map, ty_cx));
 
-    if phases.to == cu_typeck { return (Some(crate), Some(ty_cx)); }
+        if phases.to == cu_typeck { return (Some(crate), Some(ty_cx)); }
 
-    time(time_passes, ~"privacy checking", ||
-         middle::privacy::check_crate(ty_cx, &method_map, crate));
+        time(time_passes, ~"privacy checking", ||
+             middle::privacy::check_crate(ty_cx, &method_map, crate));
 
-    time(time_passes, ~"effect checking", ||
-         middle::effect::check_crate(ty_cx, method_map, crate));
+        time(time_passes, ~"effect checking", ||
+             middle::effect::check_crate(ty_cx, method_map, crate));
 
-    time(time_passes, ~"loop checking", ||
-         middle::check_loop::check_crate(ty_cx, crate));
+        time(time_passes, ~"loop checking", ||
+             middle::check_loop::check_crate(ty_cx, crate));
 
-    let middle::moves::MoveMaps {moves_map, moved_variables_set,
-                                 capture_map} =
-        time(time_passes, ~"compute moves", ||
-             middle::moves::compute_moves(ty_cx, method_map, crate));
+        let middle::moves::MoveMaps {moves_map, moved_variables_set,
+                                     capture_map} =
+            time(time_passes, ~"compute moves", ||
+                 middle::moves::compute_moves(ty_cx, method_map, crate));
 
-    time(time_passes, ~"match checking", ||
-         middle::check_match::check_crate(ty_cx, method_map,
-                                          moves_map, crate));
+        time(time_passes, ~"match checking", ||
+             middle::check_match::check_crate(ty_cx, method_map,
+                                              moves_map, crate));
 
-    time(time_passes, ~"liveness checking", ||
-         middle::liveness::check_crate(ty_cx, method_map,
-                                       capture_map, crate));
-
-    let (root_map, write_guard_map) =
-        time(time_passes, ~"borrow checking", ||
-             middle::borrowck::check_crate(ty_cx, method_map,
-                                           moves_map, moved_variables_set,
+        time(time_passes, ~"liveness checking", ||
+             middle::liveness::check_crate(ty_cx, method_map,
                                            capture_map, crate));
 
-    time(time_passes, ~"kind checking", ||
-         kind::check_crate(ty_cx, method_map, crate));
+        let (root_map, write_guard_map) =
+            time(time_passes, ~"borrow checking", ||
+                 middle::borrowck::check_crate(ty_cx, method_map,
+                                               moves_map, moved_variables_set,
+                                               capture_map, crate));
 
-    time(time_passes, ~"lint checking", ||
-         lint::check_crate(ty_cx, crate));
+        time(time_passes, ~"kind checking", ||
+             kind::check_crate(ty_cx, method_map, crate));
 
-    if phases.to == cu_no_trans { return (Some(crate), Some(ty_cx)); }
+        time(time_passes, ~"lint checking", ||
+             lint::check_crate(ty_cx, crate));
 
-    let maps = astencode::Maps {
-        root_map: root_map,
-        method_map: method_map,
-        vtable_map: vtable_map,
-        write_guard_map: write_guard_map,
-        moves_map: moves_map,
-        capture_map: capture_map
-    };
+        if phases.to == cu_no_trans { return (Some(crate), Some(ty_cx)); }
 
-    let outputs = outputs.get_ref();
-    time(time_passes, ~"translation", ||
-         trans::base::trans_crate(sess, crate, ty_cx,
-                                  &outputs.obj_filename,
-                                  exp_map2, maps))
+        let maps = astencode::Maps {
+            root_map: root_map,
+            method_map: method_map,
+            vtable_map: vtable_map,
+            write_guard_map: write_guard_map,
+            moves_map: moves_map,
+            capture_map: capture_map
+        };
+
+        let outputs = outputs.get_ref();
+        time(time_passes, ~"translation", ||
+             trans::base::trans_crate(sess, crate, ty_cx,
+                                      &outputs.obj_filename,
+                                      exp_map2, maps))
     };
 
     let outputs = outputs.get_ref();
