@@ -459,6 +459,7 @@ pub fn get_os(triple: &str) -> Option<session::os> {
     None
 }
 static os_names : &'static [(&'static str, session::os)] = &'static [
+    ("mingw32", session::os_win32),
     ("win32",   session::os_win32),
     ("darwin",  session::os_macos),
     ("android", session::os_android),
