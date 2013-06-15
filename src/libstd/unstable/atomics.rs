@@ -155,11 +155,13 @@ impl AtomicInt {
         unsafe { atomic_compare_and_swap(&mut self.v, old, new, order) }
     }
 
+    /// Returns the old value (like __sync_fetch_and_add).
     #[inline(always)]
     pub fn fetch_add(&mut self, val: int, order: Ordering) -> int {
         unsafe { atomic_add(&mut self.v, val, order) }
     }
 
+    /// Returns the old value (like __sync_fetch_and_sub).
     #[inline(always)]
     pub fn fetch_sub(&mut self, val: int, order: Ordering) -> int {
         unsafe { atomic_sub(&mut self.v, val, order) }
@@ -191,11 +193,13 @@ impl AtomicUint {
         unsafe { atomic_compare_and_swap(&mut self.v, old, new, order) }
     }
 
+    /// Returns the old value (like __sync_fetch_and_add).
     #[inline(always)]
     pub fn fetch_add(&mut self, val: uint, order: Ordering) -> uint {
         unsafe { atomic_add(&mut self.v, val, order) }
     }
 
+    /// Returns the old value (like __sync_fetch_and_sub)..
     #[inline(always)]
     pub fn fetch_sub(&mut self, val: uint, order: Ordering) -> uint {
         unsafe { atomic_sub(&mut self.v, val, order) }
@@ -315,6 +319,7 @@ pub unsafe fn atomic_swap<T>(dst: &mut T, val: T, order: Ordering) -> T {
     })
 }
 
+/// Returns the old value (like __sync_fetch_and_add).
 #[inline(always)]
 pub unsafe fn atomic_add<T>(dst: &mut T, val: T, order: Ordering) -> T {
     let dst = cast::transmute(dst);
@@ -327,6 +332,7 @@ pub unsafe fn atomic_add<T>(dst: &mut T, val: T, order: Ordering) -> T {
     })
 }
 
+/// Returns the old value (like __sync_fetch_and_sub).
 #[inline(always)]
 pub unsafe fn atomic_sub<T>(dst: &mut T, val: T, order: Ordering) -> T {
     let dst = cast::transmute(dst);
