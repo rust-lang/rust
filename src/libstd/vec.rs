@@ -2619,23 +2619,6 @@ impl<A:Copy> old_iter::CopyableIter<A> for @[A] {
     }
 }
 
-impl<'self,A:Copy + Ord> old_iter::CopyableOrderedIter<A> for &'self [A] {
-    fn min(&self) -> A { old_iter::min(self) }
-    fn max(&self) -> A { old_iter::max(self) }
-}
-
-// FIXME(#4148): This should be redundant
-impl<A:Copy + Ord> old_iter::CopyableOrderedIter<A> for ~[A] {
-    fn min(&self) -> A { old_iter::min(self) }
-    fn max(&self) -> A { old_iter::max(self) }
-}
-
-// FIXME(#4148): This should be redundant
-impl<A:Copy + Ord> old_iter::CopyableOrderedIter<A> for @[A] {
-    fn min(&self) -> A { old_iter::min(self) }
-    fn max(&self) -> A { old_iter::max(self) }
-}
-
 impl<A:Clone> Clone for ~[A] {
     #[inline]
     fn clone(&self) -> ~[A] {

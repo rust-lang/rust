@@ -54,11 +54,6 @@ pub trait CopyableIter<A:Copy> {
     fn find(&self, p: &fn(&A) -> bool) -> Option<A>;
 }
 
-pub trait CopyableOrderedIter<A:Copy + Ord> {
-    fn min(&self) -> A;
-    fn max(&self) -> A;
-}
-
 // A trait for sequences that can be built by imperatively pushing elements
 // onto them.
 pub trait Buildable<A> {
