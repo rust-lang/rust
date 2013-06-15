@@ -341,8 +341,7 @@ pub fn type_of_rooted(ccx: @CrateContext, t: ty::t) -> TypeRef {
     return T_root(type_of(ccx, t), addrspace);
 }
 
-pub fn type_of_glue_fn(ccx: @CrateContext, t: ty::t) -> TypeRef {
+pub fn type_of_glue_fn(ccx: @CrateContext) -> TypeRef {
     let tydescpp = T_ptr(T_ptr(ccx.tydesc_type));
-    let llty = T_ptr(type_of(ccx, t));
-    return T_fn([T_ptr(T_nil()), tydescpp, llty], T_nil());
+    return T_fn([T_ptr(T_nil()), tydescpp, T_ptr(T_i8())], T_nil());
 }
