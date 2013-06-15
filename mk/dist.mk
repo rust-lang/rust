@@ -32,7 +32,6 @@ PKG_FILES := \
       librustc                                 \
       compiletest                              \
       etc                                      \
-      libfuzzer                                \
       libextra                                 \
       libstd                                   \
       libsyntax                                \
