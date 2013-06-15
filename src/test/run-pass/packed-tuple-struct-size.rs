@@ -30,7 +30,7 @@ struct S3_Foo(u8, u16, Foo);
 #[packed]
 struct S7_Option(f32, u8, u16, Option<@mut f64>);
 
-fn main() {
+pub fn main() {
     assert_eq!(sys::size_of::<S4>(), 4);
 
     assert_eq!(sys::size_of::<S5>(), 5);

@@ -17,6 +17,6 @@ fn both<'r>(v: &'r fn()) -> &'r fn() {
     subslice(subslice(v))
 }
 
-fn main() {
+pub fn main() {
     both(main);
 }

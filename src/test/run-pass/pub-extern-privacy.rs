@@ -6,7 +6,7 @@ mod a {
     }
 }
 
-fn main() {
+pub fn main() {
     unsafe {
         a::free(transmute(0));
     }

@@ -17,7 +17,7 @@ struct A<'self> {
     x: &'self int
 }
 
-fn main() {
+pub fn main() {
     let a = A { x: &1 }, b = A { x: &2 };
 
     assert!(a.equals(&a));

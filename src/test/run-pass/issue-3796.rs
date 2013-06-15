@@ -10,7 +10,7 @@
 
 // xfail-test
 #[deny(dead_assignment)];
-fn main() {
+pub fn main() {
     let mut x = 1;
     let f: &fn() -> int = || { x + 20 };
     assert_eq!(f(), 21);

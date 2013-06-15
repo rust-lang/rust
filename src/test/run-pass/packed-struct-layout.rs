@@ -22,7 +22,7 @@ struct S5 {
     b: u32
 }
 
-fn main() {
+pub fn main() {
     unsafe {
         let s4 = S4 { a: 1, b: [2,3,4] };
         let transd : [u8, .. 4] = cast::transmute(s4);

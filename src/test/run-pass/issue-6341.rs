@@ -15,4 +15,4 @@ impl Drop for A {
     fn finalize(&self) {}
 }
 
-fn main() {}
+pub fn main() {}
