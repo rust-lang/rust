@@ -14,7 +14,6 @@
 
 use core::prelude::*;
 
-use core::iterator::IteratorUtil;
 use core::libc;
 use core::comm::{stream, SharedChan};
 use core::ptr;

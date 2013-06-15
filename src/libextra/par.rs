@@ -10,7 +10,6 @@
 
 use core::prelude::*;
 
-use core::iterator::IteratorUtil;
 use core::cast;
 use core::ptr;
 use core::sys;

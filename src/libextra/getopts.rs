@@ -83,7 +83,6 @@
 
 use core::prelude::*;
 
-use core::iterator::IteratorUtil;
 use core::cmp::Eq;
 use core::result::{Err, Ok};
 use core::result;

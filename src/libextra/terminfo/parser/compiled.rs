@@ -14,7 +14,6 @@ use core::prelude::*;
 
 use core::{vec, int, str};
 use core::io::Reader;
-use core::iterator::IteratorUtil;
 use core::hashmap::HashMap;
 use super::super::TermInfo;
 

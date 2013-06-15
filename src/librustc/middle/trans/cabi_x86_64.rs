@@ -19,7 +19,6 @@ use lib::llvm::True;
 use middle::trans::common::*;
 use middle::trans::cabi::*;
 
-use core::iterator::IteratorUtil;
 use core::libc::c_uint;
 use core::option;
 use core::option::Option;

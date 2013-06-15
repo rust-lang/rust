@@ -22,7 +22,6 @@ use print::pprust;
 use visit;
 use syntax::parse::token::special_idents;
 
-use core::iterator::IteratorUtil;
 use core::cmp;
 use core::hashmap::HashMap;
 use core::vec;

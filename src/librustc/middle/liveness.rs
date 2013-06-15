@@ -110,7 +110,6 @@ use middle::ty;
 use middle::typeck;
 use middle::moves;
 
-use core::iterator::IteratorUtil;
 use core::cast::transmute;
 use core::hashmap::HashMap;
 use core::io;

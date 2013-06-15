@@ -18,7 +18,6 @@
 
 use core::prelude::*;
 
-use core::iterator::IteratorUtil;
 use core::cast;
 use core::io;
 use core::uint;

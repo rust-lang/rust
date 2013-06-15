@@ -14,7 +14,6 @@ extern mod extra;
 
 use std::io::{ReaderUtil, WriterUtil};
 use std::io;
-use std::iterator::IteratorUtil;
 use std::os;
 use std::str;
 use std::u8;

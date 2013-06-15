@@ -22,7 +22,6 @@ use parse::parser::Parser;
 use parse::token::{Token, EOF, to_str, nonterminal, get_ident_interner, ident_to_str};
 use parse::token;
 
-use core::iterator::IteratorUtil;
 use core::hashmap::HashMap;
 use core::uint;
 use core::vec;

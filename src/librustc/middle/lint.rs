@@ -15,7 +15,6 @@ use middle::ty;
 use middle::pat_util;
 use util::ppaux::{ty_to_str};
 
-use core::iterator::IteratorUtil;
 use core::char;
 use core::cmp;
 use core::hashmap::HashMap;
