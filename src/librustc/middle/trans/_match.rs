@@ -1644,7 +1644,7 @@ fn create_bindings_map(bcx: block, pat: @ast::pat) -> BindingsMap {
                 // but during matching we need to store a *T as explained
                 // above
                 let is_move = ccx.maps.moves_map.contains(&p_id);
-                llmatch = alloca(bcx, T_ptr(llvariable_ty));
+                llmatch = alloca(bcx, llvariable_ty.ptr_to());
                 trmode = TrByValue(is_move, alloca(bcx, llvariable_ty));
             }
             ast::bind_by_ref(_) => {

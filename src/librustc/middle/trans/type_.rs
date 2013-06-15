@@ -10,15 +10,19 @@
 
 use core::prelude::*;
 
-use lib::llvm::{llvm, TypeRef, Bool, False, True};
+use lib::llvm::{llvm, TypeRef, Bool, False, True, TypeKind};
+
+use middle::ty;
 
 use middle::trans::context::CrateContext;
 use middle::trans::base;
 
-use syntax::{ast,abi};
-use syntax::abi::{X86, X86_64, Arm, Mips};
+use syntax::ast;
+use syntax::abi::{Architecture, X86, X86_64, Arm, Mips};
+use back::abi;
 
 use core::vec;
+use core::cast;
 
 use core::libc::{c_uint};
 
@@ -27,9 +31,7 @@ pub struct Type {
 }
 
 macro_rules! ty (
-    ($e:expr) => ( Type::from_ref(unsafe {
-
-    }))
+    ($e:expr) => ( Type::from_ref(unsafe { $e }))
 )
 
 /**
@@ -94,14 +96,18 @@ impl Type {
         Type::i32()
     }
 
-    pub fn int(arch: abi::Architecture) -> Type {
+    pub fn i8p() -> Type {
+        Type::i8().ptr_to()
+    }
+
+    pub fn int(arch: Architecture) -> Type {
         match arch {
             X86 | Arm | Mips => Type::i32(),
             X86_64 => Type::i64()
         }
     }
 
-    pub fn float(_: abi::Architecture) -> Type {
+    pub fn float(_: Architecture) -> Type {
         // All architectures currently just use doubles as the default
         // float size
         Type::f64()
@@ -136,7 +142,7 @@ impl Type {
         }
     }
 
-    pub fn size_t(arch: abi::Architecture) -> Type {
+    pub fn size_t(arch: Architecture) -> Type {
         Type::int(arch)
     }
 
@@ -147,8 +153,6 @@ impl Type {
     }
 
     pub fn func_pair(cx: &CrateContext, fn_ty: &Type) -> Type {
-        assert!(fn_ty.is_func(), "`fn_ty` must be a function type");
-
         Type::struct_([fn_ty.ptr_to(), Type::opaque_cbox_ptr(cx)], false)
     }
 
@@ -186,7 +190,7 @@ impl Type {
         return ty;
     }
 
-    pub fn tydesc(arch: abi::Architecture) -> Type {
+    pub fn tydesc(arch: Architecture) -> Type {
         let mut tydesc = Type::named_struct("tydesc");
         let tydescpp = tydesc.ptr_to().ptr_to();
         let pvoid = Type::i8().ptr_to();
@@ -197,7 +201,7 @@ impl Type {
         let int_ty = Type::int(arch);
 
         let elems = [
-            int_type, int_type,
+            int_ty, int_ty,
             glue_fn_ty, glue_fn_ty, glue_fn_ty, glue_fn_ty,
             pvoid, pvoid
         ];
@@ -207,21 +211,21 @@ impl Type {
         return tydesc;
     }
 
-    pub fn array(ty: &Type, len: uint) -> Type {
+    pub fn array(ty: &Type, len: u64) -> Type {
         ty!(llvm::LLVMArrayType(ty.to_ref(), len as c_uint))
     }
 
-    pub fn vector(ty: &Type, len: uint) -> Type {
+    pub fn vector(ty: &Type, len: u64) -> Type {
         ty!(llvm::LLVMVectorType(ty.to_ref(), len as c_uint))
     }
 
-    pub fn vec(arch: abi::Architecture, ty: &Type) -> Type {
+    pub fn vec(arch: Architecture, ty: &Type) -> Type {
         Type::struct_(
             [ Type::int(arch), Type::int(arch), Type::array(ty, 0) ],
         false)
     }
 
-    pub fn opaque_vec(arch: abi::Architecture) -> Type {
+    pub fn opaque_vec(arch: Architecture) -> Type {
         Type::vec(arch, Type::i8())
     }
 
@@ -238,7 +242,7 @@ impl Type {
     }
 
     pub fn box(ctx: &CrateContext, ty: &Type) -> Type {
-        Type::struct_(Type::box_header_fields(ctx) + [t], false)
+        Type::struct_(Type::box_header_fields(ctx) + [ty], false)
     }
 
     pub fn opaque_box(ctx: &CrateContext) -> Type {
@@ -257,13 +261,88 @@ impl Type {
         cx.int_type
     }
 
-    pub fn set_struct_body(&mut self, els: &[Type], packed: bool) {
-        assert!(self.is_struct(), "Type must be a struct");
+    pub fn captured_tydescs(ctx: &CrateContext, num: uint) -> Type {
+        Type::struct_(vec::from_elem(num, ctx.tydesc_type.ptr_to()), false)
+    }
 
+    pub fn opaque_trait(ctx: &CrateContext, store: ty::TraitStore) -> Type {
+        let tydesc_ptr = ctx.tydesc_type.ptr_to();
+        match store {
+            ty::BoxTraitStore => {
+                Type::struct_(
+                    [ tydesc_ptr, Type::opaque_box(ctx).ptr_to() ],
+                false)
+            }
+            ty::UniqTraitStore => {
+                Type::struct_(
+                    [ tydesc_ptr, Type::unique(ctx, Type::i8()).ptr_to()],
+                false)
+            }
+            ty::RegionTraitStore(*) => {
+                Type::struct_(
+                    [ tydesc_ptr, Type::i8().ptr_to() ],
+                false)
+            }
+        }
+    }
+
+    pub fn kind(&self) -> TypeKind {
+        unsafe {
+            llvm::LLVMGetTypeKind(self.to_ref())
+        }
+    }
+
+    pub fn set_struct_body(&mut self, els: &[Type], packed: bool) {
         unsafe {
             let vec : &[TypeRef] = cast::transmute(els);
-            llvm::LLVMStructSetBody(self.to_ref(), to_ptr(vec),
+            llvm::LLVMStructSetBody(self.to_ref(), vec::raw::to_ptr(vec),
                                     els.len() as c_uint, packed as Bool)
         }
     }
+
+    pub fn ptr_to(&self) -> Type {
+        ty!(llvm::LLVMPointerType(self.to_ref()))
+    }
+
+    pub fn get_field(&self, idx: uint) -> Type {
+        unsafe {
+            let num_fields = llvm::LLVMCountStructElementTypes(self.to_ref()) as uint;
+            let mut elems = vec::from_elem(num_fields, 0 as TypeRef);
+
+            llvm::LLVMGetStructElementTypes(self.to_ref(), vec::raw::to_mut_ptr(elems));
+
+            Type::from_ref(elems[idx])
+        }
+    }
+
+    pub fn is_packed(&self) -> bool {
+        unsafe {
+            llvm::LLVMIsPackedStruct(self.to_ref()) == True
+        }
+    }
+
+    pub fn element_type(&self) -> Type {
+        unsafe {
+            Type::from_ref(llvm::LLVMGetElementType(self.to_ref()))
+        }
+    }
+
+    pub fn array_length(&self) -> uint {
+        unsafe {
+            llvm::LLVMGetArrayLength(self.to_ref()) as uint
+        }
+    }
+
+    pub fn field_types(&self) -> ~[Type] {
+        unsafe {
+            let n_elts = llvm::LLVMCountStructElementTypes(struct_ty) as uint;
+            if n_elts == 0 {
+                return ~[];
+            }
+            let mut elts = vec::from_elem(n_elts, 0 as TypeRef);
+            llvm::LLVMGetStructElementTypes(struct_ty, &mut elts[0]);
+            cast::transmute(elts)
+        }
+    }
+
 }

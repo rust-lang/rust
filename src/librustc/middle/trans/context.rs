@@ -37,8 +37,7 @@ use extra::time;
 use syntax::ast;
 
 use middle::trans::common::{ExternMap,tydesc_info,BuilderRef_res,Stats,namegen,addrspace_gen};
-use middle::trans::common::{mono_id,T_int,T_float,T_tydesc,T_opaque_vec};
-use middle::trans::common::{new_namegen,new_addrspace_gen};
+use middle::trans::common::{mono_id,new_namegen,new_addrspace_gen};
 
 use middle::trans::base::{decl_crate_map};
 
