@@ -98,7 +98,7 @@ pub fn trans_inline_asm(bcx: block, ia: &ast::inline_asm) -> block {
     if !ia.clobbers.is_empty() && !clobbers.is_empty() {
         clobbers = fmt!("%s,%s", ia.clobbers, clobbers);
     } else {
-        clobbers.push_str(*ia.clobbers);
+        clobbers.push_str(ia.clobbers);
     };
 
     // Add the clobbers to our constraints list

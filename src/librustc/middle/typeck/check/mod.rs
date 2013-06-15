@@ -799,9 +799,8 @@ impl FnCtxt {
         match self.inh.node_types.find(&ex.id) {
             Some(&t) => t,
             None => {
-                self.tcx().sess.bug(
-                    fmt!("no type for %s in fcx %s",
-                         self.expr_to_str(ex), self.tag()));
+                self.tcx().sess.bug(fmt!("no type for expr in fcx %s",
+                                         self.tag()));
             }
         }
     }
@@ -1141,7 +1140,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
                                expr: @ast::expr,
                                expected: Option<ty::t>,
                                unifier: &fn()) {
-    debug!(">> typechecking %s", fcx.expr_to_str(expr));
+    debug!(">> typechecking");
 
     fn check_method_argument_types(
         fcx: @mut FnCtxt,
@@ -1730,8 +1729,7 @@ pub fn check_expr_with_unifier(fcx: @mut FnCtxt,
             ty::mk_closure(tcx, fn_ty_copy)
         };
 
-        debug!("check_expr_fn_with_unifier %s fty=%s",
-               fcx.expr_to_str(expr),
+        debug!("check_expr_fn_with_unifier fty=%s",
                fcx.infcx().ty_to_str(fty));
 
         fcx.write_ty(expr.id, fty);

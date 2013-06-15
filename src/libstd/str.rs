@@ -1427,7 +1427,8 @@ impl<'self> StrSlice<'self> for &'self str {
     fn slice_chars(&self, begin: uint, end: uint) -> &'self str {
         assert!(begin <= end);
         // not sure how to use the iterators for this nicely.
-        let mut (position, count) = (0, 0);
+        let mut position = 0;
+        let mut count = 0;
         let l = self.len();
         while count < begin && position < l {
             position = self.char_range_at(position).next;
@@ -1575,7 +1576,8 @@ impl<'self> StrSlice<'self> for &'self str {
      * The original string with all occurances of `from` replaced with `to`
      */
     pub fn replace(&self, from: &str, to: &str) -> ~str {
-        let mut (result, last_end) = (~"", 0);
+        let mut result = ~"";
+        let mut last_end = 0;
         for self.matches_index_iter(from).advance |(start, end)| {
             result.push_str(unsafe{raw::slice_bytes(*self, last_end, start)});
             result.push_str(to);
