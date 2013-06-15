@@ -11,7 +11,6 @@
 use core::prelude::*;
 
 use back::{link, abi};
-use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
 use lib::llvm::{TypeRef, ValueRef};
 use lib;
 use middle::trans::base::*;
@@ -574,118 +573,73 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
     let mut bcx = top_scope_block(fcx, None);
     let lltop = bcx.llbb;
     let first_real_arg = fcx.arg_pos(0u);
-    match ccx.sess.str_of(item.ident).as_slice() {
-        "atomic_cxchg" => {
-            let old = AtomicCmpXchg(bcx,
-                                    get_param(decl, first_real_arg),
+
+    let nm = ccx.sess.str_of(item.ident);
+    let name = nm.as_slice();
+
+    // This requires that atomic intrinsics follow a specific naming pattern:
+    // "atomic_<operation>[_<ordering>], and no ordering means SeqCst
+    if name.starts_with("atomic_") {
+        let split : ~[&str] = name.split_iter('_').collect();
+        assert!(split.len() >= 2, "Atomic intrinsic not correct format");
+        let order = if split.len() == 2 {
+            lib::llvm::SequentiallyConsistent
+        } else {
+            match split[2] {
+                "relaxed" => lib::llvm::Monotonic,
+                "acq"     => lib::llvm::Acquire,
+                "rel"     => lib::llvm::Release,
+                "acqrel"  => lib::llvm::AcquireRelease,
+                _ => ccx.sess.fatal("Unknown ordering in atomic intrinsic")
+            }
+        };
+
+        match split[1] {
+            "cxchg" => {
+                let old = AtomicCmpXchg(bcx, get_param(decl, first_real_arg),
+                                        get_param(decl, first_real_arg + 1u),
+                                        get_param(decl, first_real_arg + 2u),
+                                        order);
+                Store(bcx, old, fcx.llretptr.get());
+            }
+            "load" => {
+                let old = AtomicLoad(bcx, get_param(decl, first_real_arg),
+                                     order);
+                Store(bcx, old, fcx.llretptr.get());
+            }
+            "store" => {
+                AtomicStore(bcx, get_param(decl, first_real_arg + 1u),
+                            get_param(decl, first_real_arg),
+                            order);
+            }
+            op => {
+                // These are all AtomicRMW ops
+                let atom_op = match op {
+                    "xchg"  => lib::llvm::Xchg,
+                    "xadd"  => lib::llvm::Add,
+                    "xsub"  => lib::llvm::Sub,
+                    "and"   => lib::llvm::And,
+                    "nand"  => lib::llvm::Nand,
+                    "or"    => lib::llvm::Or,
+                    "xor"   => lib::llvm::Xor,
+                    "max"   => lib::llvm::Max,
+                    "min"   => lib::llvm::Min,
+                    "umax"  => lib::llvm::UMax,
+                    "umin"  => lib::llvm::UMin,
+                    _ => ccx.sess.fatal("Unknown atomic operation")
+                };
+
+                let old = AtomicRMW(bcx, atom_op, get_param(decl, first_real_arg),
                                     get_param(decl, first_real_arg + 1u),
-                                    get_param(decl, first_real_arg + 2u),
-                                    SequentiallyConsistent);
-            Store(bcx, old, fcx.llretptr.get());
+                                    order);
+                Store(bcx, old, fcx.llretptr.get());
+            }
         }
-        "atomic_cxchg_acq" => {
-            let old = AtomicCmpXchg(bcx,
-                                    get_param(decl, first_real_arg),
-                                    get_param(decl, first_real_arg + 1u),
-                                    get_param(decl, first_real_arg + 2u),
-                                    Acquire);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        "atomic_cxchg_rel" => {
-            let old = AtomicCmpXchg(bcx,
-                                    get_param(decl, first_real_arg),
-                                    get_param(decl, first_real_arg + 1u),
-                                    get_param(decl, first_real_arg + 2u),
-                                    Release);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        "atomic_load" => {
-            let old = AtomicLoad(bcx,
-                                 get_param(decl, first_real_arg),
-                                 SequentiallyConsistent);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        "atomic_load_acq" => {
-            let old = AtomicLoad(bcx,
-                                 get_param(decl, first_real_arg),
-                                 Acquire);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        "atomic_store" => {
-            AtomicStore(bcx,
-                        get_param(decl, first_real_arg + 1u),
-                        get_param(decl, first_real_arg),
-                        SequentiallyConsistent);
-        }
-        "atomic_store_rel" => {
-            AtomicStore(bcx,
-                        get_param(decl, first_real_arg + 1u),
-                        get_param(decl, first_real_arg),
-                        Release);
-        }
-        "atomic_xchg" => {
-            let old = AtomicRMW(bcx, Xchg,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                SequentiallyConsistent);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        "atomic_xchg_acq" => {
-            let old = AtomicRMW(bcx, Xchg,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                Acquire);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        "atomic_xchg_rel" => {
-            let old = AtomicRMW(bcx, Xchg,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                Release);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        "atomic_xadd" => {
-            let old = AtomicRMW(bcx, lib::llvm::Add,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                SequentiallyConsistent);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        "atomic_xadd_acq" => {
-            let old = AtomicRMW(bcx, lib::llvm::Add,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                Acquire);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        "atomic_xadd_rel" => {
-            let old = AtomicRMW(bcx, lib::llvm::Add,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                Release);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        "atomic_xsub" => {
-            let old = AtomicRMW(bcx, lib::llvm::Sub,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                SequentiallyConsistent);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        "atomic_xsub_acq" => {
-            let old = AtomicRMW(bcx, lib::llvm::Sub,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                Acquire);
-            Store(bcx, old, fcx.llretptr.get());
-        }
-        "atomic_xsub_rel" => {
-            let old = AtomicRMW(bcx, lib::llvm::Sub,
-                                get_param(decl, first_real_arg),
-                                get_param(decl, first_real_arg + 1u),
-                                Release);
-            Store(bcx, old, fcx.llretptr.get());
-        }
+
+        return;
+    }
+
+    match name {
         "size_of" => {
             let tp_ty = substs.tys[0];
             let lltp_ty = type_of::type_of(ccx, tp_ty);
