@@ -271,6 +271,8 @@ struct ctxt_ {
     // A cache for the trait_methods() routine
     trait_methods_cache: @mut HashMap<def_id, @~[@Method]>,
 
+    impl_trait_cache: @mut HashMap<ast::def_id, Option<@ty::TraitRef>>,
+
     trait_refs: @mut HashMap<node_id, @TraitRef>,
     trait_defs: @mut HashMap<def_id, @TraitDef>,
 
@@ -967,6 +969,7 @@ pub fn mk_ctxt(s: session::Session,
         methods: @mut HashMap::new(),
         trait_method_def_ids: @mut HashMap::new(),
         trait_methods_cache: @mut HashMap::new(),
+        impl_trait_cache: @mut HashMap::new(),
         ty_param_defs: @mut HashMap::new(),
         adjustments: @mut HashMap::new(),
         normalized_cache: new_ty_hash(),
@@ -3749,22 +3752,24 @@ pub fn trait_method_def_ids(cx: ctxt, id: ast::def_id) -> @~[def_id] {
 }
 
 pub fn impl_trait_ref(cx: ctxt, id: ast::def_id) -> Option<@TraitRef> {
-    if id.crate == ast::local_crate {
-        debug!("(impl_trait_ref) searching for trait impl %?", id);
-        match cx.items.find(&id.node) {
-           Some(&ast_map::node_item(@ast::item {
-                        node: ast::item_impl(_, opt_trait, _, _),
-                        _},
-                    _)) => {
-               match opt_trait {
-                   Some(t) => Some(ty::node_id_to_trait_ref(cx, t.ref_id)),
-                   None => None
-               }
-           }
-           _ => None
+    *do cx.impl_trait_cache.find_or_insert_with(id) |_| {
+        if id.crate == ast::local_crate {
+            debug!("(impl_trait_ref) searching for trait impl %?", id);
+            match cx.items.find(&id.node) {
+                Some(&ast_map::node_item(@ast::item {
+                                         node: ast::item_impl(_, opt_trait, _, _),
+                                         _},
+                                         _)) => {
+                    match opt_trait {
+                        Some(t) => Some(ty::node_id_to_trait_ref(cx, t.ref_id)),
+                        None => None
+                    }
+                }
+                _ => None
+            }
+        } else {
+            csearch::get_impl_trait(cx, id)
         }
-    } else {
-        csearch::get_impl_trait(cx, id)
     }
 }
 

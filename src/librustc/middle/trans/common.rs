@@ -205,6 +205,8 @@ pub struct CrateContext {
      // Cache of external const values
      extern_const_values: @mut HashMap<ast::def_id, ValueRef>,
 
+     impl_method_cache: @mut HashMap<(ast::def_id, ast::ident), ast::def_id>,
+
      module_data: @mut HashMap<~str, ValueRef>,
      lltypes: @mut HashMap<ty::t, TypeRef>,
      llsizingtypes: @mut HashMap<ty::t, TypeRef>,
