@@ -308,8 +308,8 @@ mod stat {
     }
 }
 
-
-impl Path {
+#[cfg(target_os = "win32")]
+impl WindowsPath {
     pub fn stat(&self) -> Option<libc::stat> {
         unsafe {
              do str::as_c_str(self.to_str()) |buf| {
@@ -322,12 +322,35 @@ impl Path {
         }
     }
 
-    #[cfg(unix)]
-    pub fn lstat(&self) -> Option<libc::stat> {
+    pub fn exists(&self) -> bool {
+        match self.stat() {
+            None => false,
+            Some(_) => true,
+        }
+    }
+
+    pub fn get_size(&self) -> Option<i64> {
+        match self.stat() {
+            None => None,
+            Some(ref st) => Some(st.st_size as i64),
+        }
+    }
+
+    pub fn get_mode(&self) -> Option<uint> {
+        match self.stat() {
+            None => None,
+            Some(ref st) => Some(st.st_mode as uint),
+        }
+    }
+}
+
+#[cfg(not(target_os = "win32"))]
+impl PosixPath {
+    pub fn stat(&self) -> Option<libc::stat> {
         unsafe {
-            do str::as_c_str(self.to_str()) |buf| {
+             do str::as_c_str(self.to_str()) |buf| {
                 let mut st = stat::arch::default_stat();
-                match libc::lstat(buf, &mut st) {
+                match libc::stat(buf, &mut st) {
                     0 => Some(st),
                     _ => None,
                 }
@@ -360,7 +383,7 @@ impl Path {
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "linux")]
 #[cfg(target_os = "macos")]
-impl Path {
+impl PosixPath {
     pub fn get_atime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
@@ -392,9 +415,24 @@ impl Path {
     }
 }
 
+#[cfg(unix)]
+impl PosixPath {
+    pub fn lstat(&self) -> Option<libc::stat> {
+        unsafe {
+            do str::as_c_str(self.to_str()) |buf| {
+                let mut st = stat::arch::default_stat();
+                match libc::lstat(buf, &mut st) {
+                    0 => Some(st),
+                    _ => None,
+                }
+            }
+        }
+    }
+}
+
 #[cfg(target_os = "freebsd")]
 #[cfg(target_os = "macos")]
-impl Path {
+impl PosixPath {
     pub fn get_birthtime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,
@@ -407,7 +445,7 @@ impl Path {
 }
 
 #[cfg(target_os = "win32")]
-impl Path {
+impl WindowsPath {
     pub fn get_atime(&self) -> Option<(i64, int)> {
         match self.stat() {
             None => None,

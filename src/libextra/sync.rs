@@ -151,7 +151,7 @@ impl Sem<()> {
 
 #[doc(hidden)]
 impl Sem<~[Waitqueue]> {
-    pub fn access<U>(&self, blk: &fn() -> U) -> U {
+    pub fn access_waitqueue<U>(&self, blk: &fn() -> U) -> U {
         let mut release = None;
         unsafe {
             do task::unkillable {
@@ -352,7 +352,9 @@ fn check_cvar_bounds<U>(out_of_bounds: Option<uint>, id: uint, act: &str,
 impl Sem<~[Waitqueue]> {
     // The only other place that condvars get built is rwlock_write_mode.
     pub fn access_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
-        do self.access { blk(&Condvar { sem: self }) }
+        do self.access_waitqueue {
+            blk(&Condvar { sem: self })
+        }
     }
 }
 
@@ -425,7 +427,9 @@ impl Clone for Mutex {
 
 impl Mutex {
     /// Run a function with ownership of the mutex.
-    pub fn lock<U>(&self, blk: &fn() -> U) -> U { (&self.sem).access(blk) }
+    pub fn lock<U>(&self, blk: &fn() -> U) -> U {
+        (&self.sem).access_waitqueue(blk)
+    }
 
     /// Run a function with ownership of the mutex and a handle to a condvar.
     pub fn lock_cond<U>(&self, blk: &fn(c: &Condvar) -> U) -> U {
@@ -519,7 +523,7 @@ impl RWlock {
         unsafe {
             do task::unkillable {
                 (&self.order_lock).acquire();
-                do (&self.access_lock).access {
+                do (&self.access_lock).access_waitqueue {
                     (&self.order_lock).release();
                     task::rekillable(blk)
                 }

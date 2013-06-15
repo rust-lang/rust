@@ -31,7 +31,6 @@ pub struct ctxt {
     ds: @fn(def_id) -> ~str,
     // The type context.
     tcx: ty::ctxt,
-    reachable: @fn(node_id) -> bool,
     abbrevs: abbrev_ctxt
 }
 

@@ -29,7 +29,6 @@ use middle::trans::build;
 use middle::trans::datum;
 use middle::trans::debuginfo;
 use middle::trans::glue;
-use middle::trans::reachable;
 use middle::trans::shape;
 use middle::trans::type_of;
 use middle::trans::type_use;
@@ -167,7 +166,6 @@ pub struct CrateContext {
      intrinsics: HashMap<&'static str, ValueRef>,
      item_vals: @mut HashMap<ast::node_id, ValueRef>,
      exp_map2: resolve::ExportMap2,
-     reachable: reachable::map,
      item_symbols: @mut HashMap<ast::node_id, ~str>,
      link_meta: LinkMeta,
      enum_sizes: @mut HashMap<ty::t, uint>,
@@ -231,7 +229,8 @@ pub struct CrateContext {
      // is not emitted by LLVM's GC pass when no functions use GC.
      uses_gc: @mut bool,
      dbg_cx: Option<debuginfo::DebugContext>,
-     do_not_commit_warning_issued: @mut bool
+     do_not_commit_warning_issued: @mut bool,
+     reachable_map: @mut HashSet<ast::node_id>,
 }
 
 // Types used for llself.

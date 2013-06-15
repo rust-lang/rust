@@ -91,7 +91,6 @@ pub mod middle {
         pub mod shape;
         pub mod debuginfo;
         pub mod type_use;
-        pub mod reachable;
         pub mod machine;
         pub mod adt;
         pub mod asm;
@@ -121,6 +120,7 @@ pub mod middle {
     pub mod moves;
     pub mod entry;
     pub mod effect;
+    pub mod reachable;
 }
 
 pub mod front {

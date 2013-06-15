@@ -18,6 +18,7 @@ use middle::typeck::infer::combine::*;
 use middle::typeck::infer::cres;
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::InferCtxt;
+use middle::typeck::infer::lattice::CombineFieldsLatticeMethods;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::to_str::InferStr;
 use util::common::{indent, indenter};
