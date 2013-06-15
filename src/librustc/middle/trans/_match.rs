@@ -1314,7 +1314,7 @@ pub fn compile_submatch(bcx: block,
 
     let vals_left = vec::append(vec::slice(vals, 0u, col).to_vec(),
                                 vec::slice(vals, col + 1u, vals.len()));
-    let ccx = *bcx.fcx.ccx;
+    let ccx = bcx.fcx.ccx;
     let mut pat_id = 0;
     let mut pat_span = dummy_sp();
     for m.each |br| {
@@ -1755,7 +1755,7 @@ pub fn bind_irrefutable_pat(bcx: block,
                             binding_mode: IrrefutablePatternBindingMode)
                          -> block {
     let _icx = bcx.insn_ctxt("match::bind_irrefutable_pat");
-    let ccx = *bcx.fcx.ccx;
+    let ccx = bcx.fcx.ccx;
     let mut bcx = bcx;
 
     // Necessary since bind_irrefutable_pat is called outside trans_match

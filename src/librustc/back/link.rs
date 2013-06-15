@@ -18,7 +18,7 @@ use lib::llvm::ModuleRef;
 use lib;
 use metadata::common::LinkMeta;
 use metadata::{encoder, csearch, cstore};
-use middle::trans::common::CrateContext;
+use middle::trans::context::CrateContext;
 use middle::ty;
 use util::ppaux;
 
@@ -622,11 +622,11 @@ pub fn symbol_hash(tcx: ty::ctxt,
     hash.to_managed()
 }
 
-pub fn get_symbol_hash(ccx: @CrateContext, t: ty::t) -> @str {
+pub fn get_symbol_hash(ccx: &mut CrateContext, t: ty::t) -> @str {
     match ccx.type_hashcodes.find(&t) {
       Some(&h) => h,
       None => {
-        let hash = symbol_hash(ccx.tcx, ccx.symbol_hasher, t, ccx.link_meta);
+        let hash = symbol_hash(ccx.tcx, &mut ccx.symbol_hasher, t, ccx.link_meta);
         ccx.type_hashcodes.insert(t, hash);
         hash
       }
@@ -705,7 +705,7 @@ pub fn exported_name(sess: Session,
             path_name(sess.ident_of(vers))));
 }
 
-pub fn mangle_exported_name(ccx: @CrateContext,
+pub fn mangle_exported_name(ccx: &mut CrateContext,
                             path: path,
                             t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
@@ -714,7 +714,7 @@ pub fn mangle_exported_name(ccx: @CrateContext,
                          ccx.link_meta.vers);
 }
 
-pub fn mangle_internal_name_by_type_only(ccx: @CrateContext,
+pub fn mangle_internal_name_by_type_only(ccx: &mut CrateContext,
                                          t: ty::t,
                                          name: &str) -> ~str {
     let s = ppaux::ty_to_short_str(ccx.tcx, t);
@@ -725,7 +725,7 @@ pub fn mangle_internal_name_by_type_only(ccx: @CrateContext,
           path_name(ccx.sess.ident_of(hash))]);
 }
 
-pub fn mangle_internal_name_by_type_and_seq(ccx: @CrateContext,
+pub fn mangle_internal_name_by_type_and_seq(ccx: &mut CrateContext,
                                          t: ty::t,
                                          name: &str) -> ~str {
     let s = ppaux::ty_to_str(ccx.tcx, t);
@@ -736,18 +736,18 @@ pub fn mangle_internal_name_by_type_and_seq(ccx: @CrateContext,
           path_name((ccx.names)(name))]);
 }
 
-pub fn mangle_internal_name_by_path_and_seq(ccx: @CrateContext,
+pub fn mangle_internal_name_by_path_and_seq(ccx: &mut CrateContext,
                                             path: path,
                                             flav: &str) -> ~str {
     return mangle(ccx.sess,
                   vec::append_one(path, path_name((ccx.names)(flav))));
 }
 
-pub fn mangle_internal_name_by_path(ccx: @CrateContext, path: path) -> ~str {
+pub fn mangle_internal_name_by_path(ccx: &mut CrateContext, path: path) -> ~str {
     return mangle(ccx.sess, path);
 }
 
-pub fn mangle_internal_name_by_seq(ccx: @CrateContext, flav: &str) -> ~str {
+pub fn mangle_internal_name_by_seq(ccx: &mut CrateContext, flav: &str) -> ~str {
     return fmt!("%s_%u", flav, (ccx.names)(flav).name);
 }
 

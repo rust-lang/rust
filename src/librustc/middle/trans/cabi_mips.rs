@@ -18,7 +18,7 @@ use lib::llvm::{llvm, TypeRef, Integer, Pointer, Float, Double};
 use lib::llvm::{Struct, Array, Attribute};
 use lib::llvm::{StructRetAttribute};
 use lib::llvm::True;
-use middle::trans::base::task_llcx;
+use middle::trans::context::task_llcx;
 use middle::trans::common::*;
 use middle::trans::cabi::*;
 

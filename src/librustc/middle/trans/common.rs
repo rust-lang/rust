@@ -12,26 +12,18 @@
 
 use core::prelude::*;
 
-use back::{abi, upcall};
+use back::{abi};
 use driver::session;
 use driver::session::Session;
-use lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
-use lib::llvm::{ContextRef, True, False, Bool};
-use lib::llvm::{llvm, TargetData, TypeNames, associate_type, name_has_type};
+use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef};
+use lib::llvm::{True, False, Bool};
+use lib::llvm::{llvm, TypeNames, associate_type, name_has_type};
 use lib;
-use metadata::common::LinkMeta;
-use middle::astencode;
-use middle::resolve;
-use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::build;
 use middle::trans::datum;
-use middle::trans::debuginfo;
 use middle::trans::glue;
-use middle::trans::reachable;
-use middle::trans::shape;
 use middle::trans::type_of;
-use middle::trans::type_use;
 use middle::trans::write_guard;
 use middle::ty::substs;
 use middle::ty;
@@ -41,8 +33,7 @@ use util::ppaux::{Repr};
 
 use core::cast::transmute;
 use core::cast;
-use core::hash;
-use core::hashmap::{HashMap, HashSet};
+use core::hashmap::{HashMap};
 use core::libc::{c_uint, c_longlong, c_ulonglong};
 use core::str;
 use core::to_bytes;
@@ -54,6 +45,8 @@ use syntax::codemap::span;
 use syntax::parse::token;
 use syntax::{ast, ast_map};
 use syntax::abi::{X86, X86_64, Arm, Mips};
+
+pub use middle::trans::context::CrateContext;
 
 // NOTE: this thunk is totally pointless now that we're not passing
 // interners around...
@@ -131,9 +124,9 @@ pub struct Stats {
     n_monos: uint,
     n_inlines: uint,
     n_closures: uint,
-    llvm_insn_ctxt: @mut ~[~str],
-    llvm_insns: @mut HashMap<~str, uint>,
-    fn_times: @mut ~[(~str, int)] // (ident, time)
+    llvm_insn_ctxt: ~[~str],
+    llvm_insns: HashMap<~str, uint>,
+    fn_times: ~[(~str, int)] // (ident, time)
 }
 
 pub struct BuilderRef_res {
@@ -154,87 +147,7 @@ pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
     }
 }
 
-pub type ExternMap = @mut HashMap<@str, ValueRef>;
-
-// Crate context.  Every crate we compile has one of these.
-pub struct CrateContext {
-     sess: session::Session,
-     llmod: ModuleRef,
-     llcx: ContextRef,
-     td: TargetData,
-     tn: @TypeNames,
-     externs: ExternMap,
-     intrinsics: HashMap<&'static str, ValueRef>,
-     item_vals: @mut HashMap<ast::node_id, ValueRef>,
-     exp_map2: resolve::ExportMap2,
-     reachable: reachable::map,
-     item_symbols: @mut HashMap<ast::node_id, ~str>,
-     link_meta: LinkMeta,
-     enum_sizes: @mut HashMap<ty::t, uint>,
-     discrims: @mut HashMap<ast::def_id, ValueRef>,
-     discrim_symbols: @mut HashMap<ast::node_id, @str>,
-     tydescs: @mut HashMap<ty::t, @mut tydesc_info>,
-     // Set when running emit_tydescs to enforce that no more tydescs are
-     // created.
-     finished_tydescs: @mut bool,
-     // Track mapping of external ids to local items imported for inlining
-     external: @mut HashMap<ast::def_id, Option<ast::node_id>>,
-     // Cache instances of monomorphized functions
-     monomorphized: @mut HashMap<mono_id, ValueRef>,
-     monomorphizing: @mut HashMap<ast::def_id, uint>,
-     // Cache computed type parameter uses (see type_use.rs)
-     type_use_cache: @mut HashMap<ast::def_id, @~[type_use::type_uses]>,
-     // Cache generated vtables
-     vtables: @mut HashMap<mono_id, ValueRef>,
-     // Cache of constant strings,
-     const_cstr_cache: @mut HashMap<@str, ValueRef>,
-
-     // Reverse-direction for const ptrs cast from globals.
-     // Key is an int, cast from a ValueRef holding a *T,
-     // Val is a ValueRef holding a *[T].
-     //
-     // Needed because LLVM loses pointer->pointee association
-     // when we ptrcast, and we have to ptrcast during translation
-     // of a [T] const because we form a slice, a [*T,int] pair, not
-     // a pointer to an LLVM array type.
-     const_globals: @mut HashMap<int, ValueRef>,
-
-     // Cache of emitted const values
-     const_values: @mut HashMap<ast::node_id, ValueRef>,
-
-     // Cache of external const values
-     extern_const_values: @mut HashMap<ast::def_id, ValueRef>,
-
-     impl_method_cache: @mut HashMap<(ast::def_id, ast::ident), ast::def_id>,
-
-     module_data: @mut HashMap<~str, ValueRef>,
-     lltypes: @mut HashMap<ty::t, TypeRef>,
-     llsizingtypes: @mut HashMap<ty::t, TypeRef>,
-     adt_reprs: @mut HashMap<ty::t, @adt::Repr>,
-     names: namegen,
-     next_addrspace: addrspace_gen,
-     symbol_hasher: @mut hash::State,
-     type_hashcodes: @mut HashMap<ty::t, @str>,
-     type_short_names: @mut HashMap<ty::t, ~str>,
-     all_llvm_symbols: @mut HashSet<@str>,
-     tcx: ty::ctxt,
-     maps: astencode::Maps,
-     stats: @mut Stats,
-     upcalls: @upcall::Upcalls,
-     tydesc_type: TypeRef,
-     int_type: TypeRef,
-     float_type: TypeRef,
-     opaque_vec_type: TypeRef,
-     builder: BuilderRef_res,
-     shape_cx: shape::Ctxt,
-     crate_map: ValueRef,
-     // Set when at least one function uses GC. Needed so that
-     // decl_gc_metadata knows whether to link to the module metadata, which
-     // is not emitted by LLVM's GC pass when no functions use GC.
-     uses_gc: @mut bool,
-     dbg_cx: Option<debuginfo::DebugContext>,
-     do_not_commit_warning_issued: @mut bool
-}
+pub type ExternMap = HashMap<@str, ValueRef>;
 
 // Types used for llself.
 pub struct ValSelfData {
@@ -353,7 +266,7 @@ pub struct fn_ctxt_ {
     path: path,
 
     // This function's enclosing crate context.
-    ccx: @@CrateContext
+    ccx: @mut CrateContext
 }
 
 impl fn_ctxt_ {
@@ -382,9 +295,9 @@ impl fn_ctxt_ {
 
 pub type fn_ctxt = @mut fn_ctxt_;
 
-pub fn warn_not_to_commit(ccx: @CrateContext, msg: &str) {
-    if !*ccx.do_not_commit_warning_issued {
-        *ccx.do_not_commit_warning_issued = true;
+pub fn warn_not_to_commit(ccx: &mut CrateContext, msg: &str) {
+    if !ccx.do_not_commit_warning_issued {
+        ccx.do_not_commit_warning_issued = true;
         ccx.sess.warn(msg.to_str() + " -- do not commit like this!");
     }
 }
@@ -746,7 +659,7 @@ pub fn block_parent(cx: block) -> block {
 // Accessors
 
 impl block_ {
-    pub fn ccx(@mut self) -> @CrateContext { *self.fcx.ccx }
+    pub fn ccx(@mut self) -> @mut CrateContext { self.fcx.ccx }
     pub fn tcx(@mut self) -> ty::ctxt { self.fcx.ccx.tcx }
     pub fn sess(@mut self) -> Session { self.fcx.ccx.sess }
 
@@ -841,7 +754,7 @@ pub fn T_f64() -> TypeRef {
 
 pub fn T_bool() -> TypeRef { return T_i8(); }
 
-pub fn T_int(targ_cfg: @session::config) -> TypeRef {
+pub fn T_int(targ_cfg: &session::config) -> TypeRef {
     return match targ_cfg.arch {
         X86 => T_i32(),
         X86_64 => T_i64(),
@@ -850,7 +763,7 @@ pub fn T_int(targ_cfg: @session::config) -> TypeRef {
     };
 }
 
-pub fn T_int_ty(cx: @CrateContext, t: ast::int_ty) -> TypeRef {
+pub fn T_int_ty(cx: &CrateContext, t: ast::int_ty) -> TypeRef {
     match t {
       ast::ty_i => cx.int_type,
       ast::ty_char => T_char(),
@@ -861,7 +774,7 @@ pub fn T_int_ty(cx: @CrateContext, t: ast::int_ty) -> TypeRef {
     }
 }
 
-pub fn T_uint_ty(cx: @CrateContext, t: ast::uint_ty) -> TypeRef {
+pub fn T_uint_ty(cx: &CrateContext, t: ast::uint_ty) -> TypeRef {
     match t {
       ast::ty_u => cx.int_type,
       ast::ty_u8 => T_i8(),
@@ -871,7 +784,7 @@ pub fn T_uint_ty(cx: @CrateContext, t: ast::uint_ty) -> TypeRef {
     }
 }
 
-pub fn T_float_ty(cx: @CrateContext, t: ast::float_ty) -> TypeRef {
+pub fn T_float_ty(cx: &CrateContext, t: ast::float_ty) -> TypeRef {
     match t {
       ast::ty_f => cx.float_type,
       ast::ty_f32 => T_f32(),
@@ -879,7 +792,7 @@ pub fn T_float_ty(cx: @CrateContext, t: ast::float_ty) -> TypeRef {
     }
 }
 
-pub fn T_float(targ_cfg: @session::config) -> TypeRef {
+pub fn T_float(targ_cfg: &session::config) -> TypeRef {
     return match targ_cfg.arch {
         X86 => T_f64(),
         X86_64 => T_f64(),
@@ -890,7 +803,7 @@ pub fn T_float(targ_cfg: @session::config) -> TypeRef {
 
 pub fn T_char() -> TypeRef { return T_i32(); }
 
-pub fn T_size_t(targ_cfg: @session::config) -> TypeRef {
+pub fn T_size_t(targ_cfg: &session::config) -> TypeRef {
     return T_int(targ_cfg);
 }
 
@@ -902,7 +815,7 @@ pub fn T_fn(inputs: &[TypeRef], output: TypeRef) -> TypeRef {
     }
 }
 
-pub fn T_fn_pair(cx: @CrateContext, tfn: TypeRef) -> TypeRef {
+pub fn T_fn_pair(cx: &CrateContext, tfn: TypeRef) -> TypeRef {
     return T_struct([T_ptr(tfn), T_opaque_cbox_ptr(cx)], false);
 }
 
@@ -952,7 +865,7 @@ pub fn T_empty_struct() -> TypeRef { return T_struct([], false); }
 // they are described by this opaque type.
 pub fn T_vtable() -> TypeRef { T_array(T_ptr(T_i8()), 1u) }
 
-pub fn T_tydesc_field(cx: @CrateContext, field: uint) -> TypeRef {
+pub fn T_tydesc_field(cx: &CrateContext, field: uint) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
 
     unsafe {
@@ -965,7 +878,7 @@ pub fn T_tydesc_field(cx: @CrateContext, field: uint) -> TypeRef {
     }
 }
 
-pub fn T_generic_glue_fn(cx: @CrateContext) -> TypeRef {
+pub fn T_generic_glue_fn(cx: &mut CrateContext) -> TypeRef {
     let s = @"glue_fn";
     match name_has_type(cx.tn, s) {
       Some(t) => return t,
@@ -1005,14 +918,14 @@ pub fn T_vector(t: TypeRef, n: uint) -> TypeRef {
 }
 
 // Interior vector.
-pub fn T_vec2(targ_cfg: @session::config, t: TypeRef) -> TypeRef {
+pub fn T_vec2(targ_cfg: &session::config, t: TypeRef) -> TypeRef {
     return T_struct([T_int(targ_cfg), // fill
                      T_int(targ_cfg), // alloc
                      T_array(t, 0u)], // elements
                     false);
 }
 
-pub fn T_vec(ccx: @CrateContext, t: TypeRef) -> TypeRef {
+pub fn T_vec(ccx: &CrateContext, t: TypeRef) -> TypeRef {
     return T_vec2(ccx.sess.targ_cfg, t);
 }
 
@@ -1034,16 +947,16 @@ pub fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
                          t]);
 }
 
-pub fn T_box_header_fields(cx: @CrateContext) -> ~[TypeRef] {
+pub fn T_box_header_fields(cx: &CrateContext) -> ~[TypeRef] {
     let ptr = T_ptr(T_i8());
     return ~[cx.int_type, T_ptr(cx.tydesc_type), ptr, ptr];
 }
 
-pub fn T_box_header(cx: @CrateContext) -> TypeRef {
+pub fn T_box_header(cx: &CrateContext) -> TypeRef {
     return T_struct(T_box_header_fields(cx), false);
 }
 
-pub fn T_box(cx: @CrateContext, t: TypeRef) -> TypeRef {
+pub fn T_box(cx: &CrateContext, t: TypeRef) -> TypeRef {
     return T_struct(vec::append(T_box_header_fields(cx), [t]), false);
 }
 
@@ -1053,15 +966,15 @@ pub fn T_box_ptr(t: TypeRef) -> TypeRef {
     }
 }
 
-pub fn T_opaque_box(cx: @CrateContext) -> TypeRef {
+pub fn T_opaque_box(cx: &CrateContext) -> TypeRef {
     return T_box(cx, T_i8());
 }
 
-pub fn T_opaque_box_ptr(cx: @CrateContext) -> TypeRef {
+pub fn T_opaque_box_ptr(cx: &CrateContext) -> TypeRef {
     return T_box_ptr(T_opaque_box(cx));
 }
 
-pub fn T_unique(cx: @CrateContext, t: TypeRef) -> TypeRef {
+pub fn T_unique(cx: &CrateContext, t: TypeRef) -> TypeRef {
     return T_struct(vec::append(T_box_header_fields(cx), [t]), false);
 }
 
@@ -1071,32 +984,32 @@ pub fn T_unique_ptr(t: TypeRef) -> TypeRef {
     }
 }
 
-pub fn T_port(cx: @CrateContext, _t: TypeRef) -> TypeRef {
+pub fn T_port(cx: &CrateContext, _t: TypeRef) -> TypeRef {
     return T_struct([cx.int_type], false); // Refcount
 
 }
 
-pub fn T_chan(cx: @CrateContext, _t: TypeRef) -> TypeRef {
+pub fn T_chan(cx: &CrateContext, _t: TypeRef) -> TypeRef {
     return T_struct([cx.int_type], false); // Refcount
 
 }
 
 
-pub fn T_opaque_cbox_ptr(cx: @CrateContext) -> TypeRef {
+pub fn T_opaque_cbox_ptr(cx: &CrateContext) -> TypeRef {
     // closures look like boxes (even when they are ~fn or &fn)
     // see trans_closure.rs
     return T_opaque_box_ptr(cx);
 }
 
-pub fn T_enum_discrim(cx: @CrateContext) -> TypeRef {
+pub fn T_enum_discrim(cx: &CrateContext) -> TypeRef {
     return cx.int_type;
 }
 
-pub fn T_captured_tydescs(cx: @CrateContext, n: uint) -> TypeRef {
+pub fn T_captured_tydescs(cx: &CrateContext, n: uint) -> TypeRef {
     return T_struct(vec::from_elem::<TypeRef>(n, T_ptr(cx.tydesc_type)), false);
 }
 
-pub fn T_opaque_trait(cx: @CrateContext, store: ty::TraitStore) -> TypeRef {
+pub fn T_opaque_trait(cx: &CrateContext, store: ty::TraitStore) -> TypeRef {
     match store {
         ty::BoxTraitStore => {
             T_struct([T_ptr(cx.tydesc_type), T_opaque_box_ptr(cx)], false)
@@ -1162,11 +1075,11 @@ pub fn C_i64(i: i64) -> ValueRef {
     return C_integral(T_i64(), i as u64, True);
 }
 
-pub fn C_int(cx: @CrateContext, i: int) -> ValueRef {
+pub fn C_int(cx: &CrateContext, i: int) -> ValueRef {
     return C_integral(cx.int_type, i as u64, True);
 }
 
-pub fn C_uint(cx: @CrateContext, i: uint) -> ValueRef {
+pub fn C_uint(cx: &CrateContext, i: uint) -> ValueRef {
     return C_integral(cx.int_type, i as u64, False);
 }
 
@@ -1177,7 +1090,7 @@ pub fn C_u8(i: uint) -> ValueRef {
 
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
-pub fn C_cstr(cx: @CrateContext, s: @str) -> ValueRef {
+pub fn C_cstr(cx: &mut CrateContext, s: @str) -> ValueRef {
     unsafe {
         match cx.const_cstr_cache.find(&s) {
             Some(&llval) => return llval,
@@ -1203,7 +1116,7 @@ pub fn C_cstr(cx: @CrateContext, s: @str) -> ValueRef {
 
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
-pub fn C_estr_slice(cx: @CrateContext, s: @str) -> ValueRef {
+pub fn C_estr_slice(cx: &mut CrateContext, s: @str) -> ValueRef {
     unsafe {
         let len = s.len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), T_ptr(T_i8()));
@@ -1281,7 +1194,7 @@ pub fn C_bytes_plus_null(bytes: &[u8]) -> ValueRef {
     }
 }
 
-pub fn C_shape(ccx: @CrateContext, bytes: ~[u8]) -> ValueRef {
+pub fn C_shape(ccx: &CrateContext, bytes: ~[u8]) -> ValueRef {
     unsafe {
         let llshape = C_bytes_plus_null(bytes);
         let name = fmt!("shape%u", (ccx.names)("shape").name);
@@ -1301,7 +1214,7 @@ pub fn get_param(fndecl: ValueRef, param: uint) -> ValueRef {
     }
 }
 
-pub fn const_get_elt(cx: @CrateContext, v: ValueRef, us: &[c_uint])
+pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
                   -> ValueRef {
     unsafe {
         let r = do vec::as_imm_buf(us) |p, len| {
