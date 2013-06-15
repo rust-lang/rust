@@ -298,7 +298,7 @@ fn LanguageItemCollector(crate: @crate,
     item_refs.insert(@"annihilate", AnnihilateFnLangItem as uint);
     item_refs.insert(@"log_type", LogTypeFnLangItem as uint);
     item_refs.insert(@"fail_", FailFnLangItem as uint);
-    item_refs.insert(@"fail_bounds_check",
+    item_refs.insert(@"fail_bounds_check", FailBoundsCheckFnLangItem as uint);
     item_refs.insert(@"exchange_malloc", ExchangeMallocFnLangItem as uint);
     item_refs.insert(@"exchange_free", ExchangeFreeFnLangItem as uint);
     item_refs.insert(@"malloc", MallocFnLangItem as uint);

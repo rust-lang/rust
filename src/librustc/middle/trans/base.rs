@@ -3015,7 +3015,7 @@ pub fn trans_crate(sess: session::Session,
                    emap2: resolve::ExportMap2,
                    reachable_map: @mut HashSet<ast::node_id>,
                    maps: astencode::Maps)
-                   -> (ContextRef, ModuleRef, LinkMeta) {
+                   -> (ModuleRef, LinkMeta) {
 
     let symbol_hasher = @mut hash::default_state();
     let link_meta = link::build_link_meta(sess, crate, output, symbol_hasher);

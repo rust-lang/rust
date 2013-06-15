@@ -231,7 +231,7 @@ fn constrain_bindings_in_pat(pat: @ast::pat, rcx: @mut Rcx) {
 }
 
 fn visit_expr(expr: @ast::expr, (rcx, v): (@mut Rcx, rvt)) {
-    debug!("regionck::visit_expr(e=%s)", rcx.fcx.expr_to_str(expr));
+    debug!("regionck::visit_expr(e=?)");
 
     let has_method_map = rcx.fcx.inh.method_map.contains_key(&expr.id);
 
@@ -521,8 +521,7 @@ fn constrain_derefs(rcx: @mut Rcx,
     let tcx = rcx.fcx.tcx();
     let r_deref_expr = ty::re_scope(deref_expr.id);
     for uint::range(0, derefs) |i| {
-        debug!("constrain_derefs(deref_expr=%s, derefd_ty=%s, derefs=%?/%?",
-               rcx.fcx.expr_to_str(deref_expr),
+        debug!("constrain_derefs(deref_expr=?, derefd_ty=%s, derefs=%?/%?",
                rcx.fcx.infcx().ty_to_str(derefd_ty),
                i, derefs);
 
@@ -577,8 +576,7 @@ fn constrain_index(rcx: @mut Rcx,
 
     let tcx = rcx.fcx.tcx();
 
-    debug!("constrain_index(index_expr=%s, indexed_ty=%s",
-           rcx.fcx.expr_to_str(index_expr),
+    debug!("constrain_index(index_expr=?, indexed_ty=%s",
            rcx.fcx.infcx().ty_to_str(indexed_ty));
 
     let r_index_expr = ty::re_scope(index_expr.id);
@@ -809,7 +807,7 @@ pub mod guarantor {
          * to the lifetime of its guarantor (if any).
          */
 
-        debug!("guarantor::for_addr_of(base=%s)", rcx.fcx.expr_to_str(base));
+        debug!("guarantor::for_addr_of(base=?)");
 
         let guarantor = guarantor(rcx, base);
         link(rcx, expr.span, expr.id, guarantor);
@@ -843,8 +841,7 @@ pub mod guarantor {
          * region pointers.
          */
 
-        debug!("guarantor::for_autoref(expr=%s, autoref=%?)",
-               rcx.fcx.expr_to_str(expr), autoref);
+        debug!("guarantor::for_autoref(autoref=%?)", autoref);
 
         let mut expr_ct = categorize_unadjusted(rcx, expr);
         debug!("    unadjusted cat=%?", expr_ct.cat);
@@ -971,7 +968,7 @@ pub mod guarantor {
          * `&expr`).
          */
 
-        debug!("guarantor(expr=%s)", rcx.fcx.expr_to_str(expr));
+        debug!("guarantor()");
         match expr.node {
             ast::expr_unary(_, ast::deref, b) => {
                 let cat = categorize(rcx, b);
@@ -1035,7 +1032,7 @@ pub mod guarantor {
     }
 
     fn categorize(rcx: @mut Rcx, expr: @ast::expr) -> ExprCategorization {
-        debug!("categorize(expr=%s)", rcx.fcx.expr_to_str(expr));
+        debug!("categorize()");
 
         let mut expr_ct = categorize_unadjusted(rcx, expr);
         debug!("before adjustments, cat=%?", expr_ct.cat);
@@ -1087,7 +1084,7 @@ pub mod guarantor {
     fn categorize_unadjusted(rcx: @mut Rcx,
                              expr: @ast::expr)
                           -> ExprCategorizationType {
-        debug!("categorize_unadjusted(expr=%s)", rcx.fcx.expr_to_str(expr));
+        debug!("categorize_unadjusted()");
 
         let guarantor = {
             if rcx.fcx.inh.method_map.contains_key(&expr.id) {
