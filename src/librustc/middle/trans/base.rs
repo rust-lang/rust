@@ -54,7 +54,6 @@ use middle::trans::machine;
 use middle::trans::machine::{llalign_of_min, llsize_of};
 use middle::trans::meth;
 use middle::trans::monomorphize;
-use middle::trans::reachable;
 use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::trans::type_of::*;
@@ -2437,7 +2436,6 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
             }
           }
           ast_map::node_method(m, _, pth) => {
-            exprt = true;
             register_method(ccx, id, pth, m)
           }
           ast_map::node_foreign_item(ni, _, _, pth) => {
@@ -2511,7 +2509,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
                               variant))
           }
         };
-        if !(exprt || ccx.reachable.contains(&id)) {
+        if !exprt {
             lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
         }
         ccx.item_vals.insert(id, val);
@@ -2890,16 +2888,12 @@ pub fn trans_crate(sess: session::Session,
                    tcx: ty::ctxt,
                    output: &Path,
                    emap2: resolve::ExportMap2,
-                   maps: astencode::Maps) -> (ContextRef, ModuleRef, LinkMeta) {
+                   reachable_map: @mut HashSet<ast::node_id>,
+                   maps: astencode::Maps)
+                   -> (ContextRef, ModuleRef, LinkMeta) {
 
     let mut symbol_hasher = hash::default_state();
     let link_meta = link::build_link_meta(sess, crate, output, &mut symbol_hasher);
-    let reachable = reachable::find_reachable(
-        &crate.node.module,
-        emap2,
-        tcx,
-        maps.method_map
-    );
 
     // Append ".rc" to crate name as LLVM module identifier.
     //

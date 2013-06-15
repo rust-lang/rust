@@ -12,6 +12,8 @@
 
 use core::prelude::*;
 
+use core::str;
+
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
 // cursor model. See the specification here:
 //     http://www.matroska.org/technical/specs/rfc/index.html
@@ -32,6 +34,20 @@ pub struct Doc {
     data: @~[u8],
     start: uint,
     end: uint,
+}
+
+impl Doc {
+    pub fn get(&self, tag: uint) -> Doc {
+        reader::get_doc(*self, tag)
+    }
+
+    pub fn as_str_slice<'a>(&'a self) -> &'a str {
+        str::from_bytes_slice(self.data.slice(self.start, self.end))
+    }
+
+    pub fn as_str(&self) -> ~str {
+        self.as_str_slice().to_owned()
+    }
 }
 
 pub struct TaggedDoc {
@@ -93,20 +109,6 @@ pub mod reader {
     use core::unstable::intrinsics::bswap32;
 
     // ebml reading
-
-    impl Doc {
-        pub fn get(&self, tag: uint) -> Doc {
-            get_doc(*self, tag)
-        }
-
-        pub fn as_str_slice<'a>(&'a self) -> &'a str {
-            str::from_bytes_slice(self.data.slice(self.start, self.end))
-        }
-
-        pub fn as_str(&self) -> ~str {
-            self.as_str_slice().to_owned()
-        }
-    }
 
     struct Res {
         val: uint,
