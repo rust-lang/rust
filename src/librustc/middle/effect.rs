@@ -154,4 +154,3 @@ pub fn check_crate(tcx: ty::ctxt,
 
     visit::visit_crate(crate, ((), visitor))
 }
-

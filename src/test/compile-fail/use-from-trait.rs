@@ -14,4 +14,3 @@ impl Foo {
 }
 
 fn main() {}
-
