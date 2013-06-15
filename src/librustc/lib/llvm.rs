@@ -2143,7 +2143,7 @@ impl TypeNames {
     }
 
     pub fn find_type(&self, s: &str) -> Option<TypeRef> {
-        self.named_types.find_equiv(s).map_consume(|x| *x)
+        self.named_types.find_equiv(&s).map_consume(|x| *x)
     }
 
     pub fn type_to_str(&self, ty: TypeRef) -> ~str {
@@ -2181,7 +2181,7 @@ impl TypeNames {
                 }
                 Struct => {
                     let tys = struct_tys(ty);
-                    let tys = tys.map(|ty| self.type_to_str(ty)).connect(", ");
+                    let tys = tys.map(|&ty| self.type_to_str(ty)).connect(", ");
                     fmt!("{%s}", tys)
                 }
                 Array => {
@@ -2195,7 +2195,14 @@ impl TypeNames {
                     let el_ty = self.type_to_str(el_ty);
                     fmt!("*%s", el_ty)
                 }
+                _ => fail!("Unknown Type Kind (%u)", kind as uint)
             }
+        }
+    }
+
+    pub fn val_to_str(&self, val: ValueRef) -> ~str {
+        unsafe {
+            self.type_to_str(llvm::LLVMTypeOf(val))
         }
     }
 }

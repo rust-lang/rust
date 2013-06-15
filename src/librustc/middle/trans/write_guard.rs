@@ -64,8 +64,8 @@ pub fn return_to_mut(mut bcx: block,
     debug!("write_guard::return_to_mut(root_key=%?, %s, %s, %s)",
            root_key,
            bcx.to_str(),
-           val_str(bcx.ccx().tn, frozen_val_ref),
-           val_str(bcx.ccx().tn, bits_val_ref));
+           bcx.val_to_str(frozen_val_ref),
+           bcx.val_to_str(bits_val_ref));
 
     let box_ptr =
         Load(bcx, PointerCast(bcx,

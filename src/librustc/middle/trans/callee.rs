@@ -572,9 +572,9 @@ pub fn trans_call_inner(in_cx: block,
 
         // Uncomment this to debug calls.
         /*
-        io::println(fmt!("calling: %s", bcx.val_str(llfn)));
+        io::println(fmt!("calling: %s", bcx.val_to_str(llfn)));
         for llargs.each |llarg| {
-            io::println(fmt!("arg: %s", bcx.val_str(*llarg)));
+            io::println(fmt!("arg: %s", bcx.val_to_str(*llarg)));
         }
         io::println("---");
         */
@@ -731,7 +731,7 @@ pub fn trans_arg_expr(bcx: block,
            formal_arg_ty.repr(bcx.tcx()),
            self_mode,
            arg_expr.repr(bcx.tcx()),
-           ret_flag.map(|v| bcx.val_str(*v)));
+           ret_flag.map(|v| bcx.val_to_str(*v)));
 
     // translate the arg expr to a datum
     let arg_datumblock = match ret_flag {
@@ -842,11 +842,11 @@ pub fn trans_arg_expr(bcx: block,
                 ty::ByCopy => llformal_arg_ty,
             };
             debug!("casting actual type (%s) to match formal (%s)",
-                   bcx.val_str(val), bcx.llty_str(llformal_arg_ty));
+                   bcx.val_to_str(val), bcx.llty_str(llformal_arg_ty));
             val = PointerCast(bcx, val, llformal_arg_ty);
         }
     }
 
-    debug!("--- trans_arg_expr passing %s", val_str(bcx.ccx().tn, val));
+    debug!("--- trans_arg_expr passing %s", bcx.val_to_str(val));
     return rslt(bcx, val);
 }

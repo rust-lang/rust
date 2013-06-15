@@ -140,7 +140,7 @@ pub fn static_size_of_enum(cx: &mut CrateContext, t: ty::t) -> uint {
 
                 debug!("static_size_of_enum: variant %s type %s",
                        cx.tcx.sess.str_of(variant.name),
-                       ty_str(cx.tn, T_struct(lltypes, false)));
+                       cx.tn.type_to_str(T_struct(lltypes, false)));
 
                 let this_size = llsize_of_real(cx, T_struct(lltypes, false));
                 if max_size < this_size {

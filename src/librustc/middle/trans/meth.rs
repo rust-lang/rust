@@ -623,7 +623,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
 
     // Load the vtable from the @Trait pair
     debug!("(translating trait callee) loading vtable from pair %s",
-           val_str(bcx.ccx().tn, llpair));
+           bcx.val_to_str(llpair));
     let llvtable = Load(bcx,
                       PointerCast(bcx,
                                   GEPi(bcx, llpair,

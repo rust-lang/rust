@@ -17,7 +17,7 @@ use driver::session;
 use driver::session::Session;
 use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef};
 use lib::llvm::{True, False, Bool};
-use lib::llvm::{llvm, TypeNames, associate_type, name_has_type};
+use lib::llvm::{llvm, TypeNames};
 use lib;
 use middle::trans::base;
 use middle::trans::build;
@@ -372,7 +372,7 @@ pub fn add_clean(bcx: block, val: ValueRef, t: ty::t) {
     if !ty::type_needs_drop(bcx.tcx(), t) { return; }
     debug!("add_clean(%s, %s, %s)",
            bcx.to_str(),
-           val_str(bcx.ccx().tn, val),
+           bcx.val_to_str(val),
            t.repr(bcx.tcx()));
     let (root, rooted) = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
@@ -387,7 +387,7 @@ pub fn add_clean(bcx: block, val: ValueRef, t: ty::t) {
 pub fn add_clean_temp_immediate(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { return; }
     debug!("add_clean_temp_immediate(%s, %s, %s)",
-           cx.to_str(), val_str(cx.ccx().tn, val),
+           cx.to_str(), cx.val_to_str(val),
            ty.repr(cx.tcx()));
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     do in_scope_cx(cx) |scope_info| {
@@ -400,7 +400,7 @@ pub fn add_clean_temp_immediate(cx: block, val: ValueRef, ty: ty::t) {
 pub fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
     if !ty::type_needs_drop(bcx.tcx(), t) { return; }
     debug!("add_clean_temp_mem(%s, %s, %s)",
-           bcx.to_str(), val_str(bcx.ccx().tn, val),
+           bcx.to_str(), bcx.val_to_str(val),
            t.repr(bcx.tcx()));
     let (root, rooted) = root_for_cleanup(bcx, val, t);
     let cleanup_type = cleanup_type(bcx.tcx(), t);
@@ -427,8 +427,8 @@ pub fn add_clean_return_to_mut(bcx: block,
 
     debug!("add_clean_return_to_mut(%s, %s, %s)",
            bcx.to_str(),
-           val_str(bcx.ccx().tn, frozen_val_ref),
-           val_str(bcx.ccx().tn, bits_val_ref));
+           bcx.val_to_str(frozen_val_ref),
+           bcx.val_to_str(bits_val_ref));
     do in_scope_cx(bcx) |scope_info| {
         scope_info.cleanups.push(
             clean_temp(
@@ -623,18 +623,10 @@ impl Result {
     }
 }
 
-pub fn ty_str(tn: @TypeNames, t: TypeRef) -> @str {
-    return lib::llvm::type_to_str(tn, t);
-}
-
 pub fn val_ty(v: ValueRef) -> TypeRef {
     unsafe {
         return llvm::LLVMTypeOf(v);
     }
-}
-
-pub fn val_str(tn: @TypeNames, v: ValueRef) -> @str {
-    return ty_str(tn, val_ty(v));
 }
 
 pub fn in_scope_cx(cx: block, f: &fn(si: @mut scope_info)) {
@@ -664,27 +656,27 @@ pub fn block_parent(cx: block) -> block {
 // Accessors
 
 impl block_ {
-    pub fn ccx(@mut self) -> @mut CrateContext { self.fcx.ccx }
-    pub fn tcx(@mut self) -> ty::ctxt { self.fcx.ccx.tcx }
-    pub fn sess(@mut self) -> Session { self.fcx.ccx.sess }
+    pub fn ccx(&self) -> @mut CrateContext { self.fcx.ccx }
+    pub fn tcx(&self) -> ty::ctxt { self.fcx.ccx.tcx }
+    pub fn sess(&self) -> Session { self.fcx.ccx.sess }
 
-    pub fn node_id_to_str(@mut self, id: ast::node_id) -> ~str {
+    pub fn node_id_to_str(&self, id: ast::node_id) -> ~str {
         ast_map::node_id_to_str(self.tcx().items, id, self.sess().intr())
     }
 
-    pub fn expr_to_str(@mut self, e: @ast::expr) -> ~str {
+    pub fn expr_to_str(&self, e: @ast::expr) -> ~str {
         e.repr(self.tcx())
     }
 
-    pub fn expr_is_lval(@mut self, e: @ast::expr) -> bool {
+    pub fn expr_is_lval(&self, e: @ast::expr) -> bool {
         ty::expr_is_lval(self.tcx(), self.ccx().maps.method_map, e)
     }
 
-    pub fn expr_kind(@mut self, e: @ast::expr) -> ty::ExprKind {
+    pub fn expr_kind(&self, e: @ast::expr) -> ty::ExprKind {
         ty::expr_kind(self.tcx(), self.ccx().maps.method_map, e)
     }
 
-    pub fn def(@mut self, nid: ast::node_id) -> ast::def {
+    pub fn def(&self, nid: ast::node_id) -> ast::def {
         match self.tcx().def_map.find(&nid) {
             Some(&v) => v,
             None => {
@@ -694,19 +686,19 @@ impl block_ {
         }
     }
 
-    pub fn val_str(@mut self, val: ValueRef) -> @str {
-        val_str(self.ccx().tn, val)
+    pub fn val_to_str(&self, val: ValueRef) -> ~str {
+        self.ccx().tn.val_to_str(val)
     }
 
-    pub fn llty_str(@mut self, llty: TypeRef) -> @str {
-        ty_str(self.ccx().tn, llty)
+    pub fn llty_str(&self, llty: TypeRef) -> ~str {
+        self.ccx().tn.type_to_str(llty)
     }
 
-    pub fn ty_to_str(@mut self, t: ty::t) -> ~str {
+    pub fn ty_to_str(&self, t: ty::t) -> ~str {
         t.repr(self.tcx())
     }
 
-    pub fn to_str(@mut self) -> ~str {
+    pub fn to_str(&self) -> ~str {
         unsafe {
             match self.node_info {
                 Some(node_info) => fmt!("[block %d]", node_info.id),
@@ -885,12 +877,12 @@ pub fn T_tydesc_field(cx: &CrateContext, field: uint) -> TypeRef {
 
 pub fn T_generic_glue_fn(cx: &mut CrateContext) -> TypeRef {
     let s = @"glue_fn";
-    match name_has_type(cx.tn, s) {
+    match cx.tn.find_type(s) {
       Some(t) => return t,
       _ => ()
     }
     let t = T_tydesc_field(cx, abi::tydesc_field_drop_glue);
-    associate_type(cx.tn, s, t);
+    cx.tn.associate_type(s, t);
     return t;
 }
 
@@ -1227,7 +1219,7 @@ pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
         };
 
         debug!("const_get_elt(v=%s, us=%?, r=%s)",
-               val_str(cx.tn, v), us, val_str(cx.tn, r));
+               cx.tn.val_to_str(v), us, cx.tn.val_to_str(r));
 
         return r;
     }

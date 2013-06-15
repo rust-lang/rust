@@ -14,7 +14,7 @@ use back::{upcall};
 use driver::session;
 use lib::llvm::{ContextRef, ModuleRef, ValueRef, TypeRef};
 use lib::llvm::{llvm, TargetData, TypeNames};
-use lib::llvm::{mk_target_data, mk_type_names};
+use lib::llvm::{mk_target_data};
 use lib;
 use metadata::common::LinkMeta;
 use middle::astencode;
@@ -138,7 +138,7 @@ impl CrateContext {
             let targ_cfg = sess.targ_cfg;
 
             let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);
-            let tn = TypeNames::new();
+            let mut tn = TypeNames::new();
 
             let mut intrinsics = base::declare_intrinsics(llmod);
             if sess.opts.extra_debuginfo {
