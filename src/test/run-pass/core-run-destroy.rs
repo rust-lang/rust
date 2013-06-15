@@ -45,7 +45,7 @@ fn test_destroy_actually_kills(force: bool) {
     #[cfg(unix)]
     fn process_exists(pid: libc::pid_t) -> bool {
         let run::ProcessOutput {output, _} = run::process_output("ps", [~"-p", pid.to_str()]);
-        str::from_bytes(output).contains(pid.to_str())
+        str::from_utf8(output).contains(pid.to_str())
     }
 
     #[cfg(windows)]

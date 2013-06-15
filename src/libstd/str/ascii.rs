@@ -65,7 +65,7 @@ impl Ascii {
 
 impl ToStr for Ascii {
     #[inline]
-    fn to_str(&self) -> ~str { str::from_bytes(['\'' as u8, self.chr, '\'' as u8]) }
+    fn to_str(&self) -> ~str { str::from_utf8(['\'' as u8, self.chr, '\'' as u8]) }
 }
 
 /// Trait for converting into an ascii type.

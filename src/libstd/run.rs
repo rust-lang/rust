@@ -954,7 +954,7 @@ mod tests {
 
         let run::ProcessOutput {status, output, error}
              = run::process_output("echo", [~"hello"]);
-        let output_str = str::from_bytes(output);
+        let output_str = str::from_utf8(output);
 
         assert_eq!(status, 0);
         assert_eq!(output_str.trim().to_owned(), ~"hello");
@@ -1016,7 +1016,7 @@ mod tests {
             let reader = io::FILE_reader(file, false);
             let buf = reader.read_whole_stream();
             os::fclose(file);
-            str::from_bytes(buf)
+            str::from_utf8(buf)
         }
     }
 
@@ -1039,7 +1039,7 @@ mod tests {
         let mut prog = run::Process::new("echo", [~"hello"], run::ProcessOptions::new());
         let run::ProcessOutput {status, output, error}
             = prog.finish_with_output();
-        let output_str = str::from_bytes(output);
+        let output_str = str::from_utf8(output);
 
         assert_eq!(status, 0);
         assert_eq!(output_str.trim().to_owned(), ~"hello");
@@ -1053,7 +1053,7 @@ mod tests {
         let run::ProcessOutput {status, output, error}
             = prog.finish_with_output();
 
-        let output_str = str::from_bytes(output);
+        let output_str = str::from_utf8(output);
 
         assert_eq!(status, 0);
         assert_eq!(output_str.trim().to_owned(), ~"hello");
@@ -1102,7 +1102,7 @@ mod tests {
     fn test_keep_current_working_dir() {
         let mut prog = run_pwd(None);
 
-        let output = str::from_bytes(prog.finish_with_output().output);
+        let output = str::from_utf8(prog.finish_with_output().output);
         let parent_dir = os::getcwd().normalize();
         let child_dir = Path(output.trim()).normalize();
 
@@ -1120,7 +1120,7 @@ mod tests {
         let parent_dir = os::getcwd().dir_path().normalize();
         let mut prog = run_pwd(Some(&parent_dir));
 
-        let output = str::from_bytes(prog.finish_with_output().output);
+        let output = str::from_utf8(prog.finish_with_output().output);
         let child_dir = Path(output.trim()).normalize();
 
         let parent_stat = parent_dir.stat().unwrap();
@@ -1150,7 +1150,7 @@ mod tests {
     fn test_inherit_env() {
 
         let mut prog = run_env(None);
-        let output = str::from_bytes(prog.finish_with_output().output);
+        let output = str::from_utf8(prog.finish_with_output().output);
 
         for os::env().each |&(k, v)| {
             // don't check windows magical empty-named variables
@@ -1165,7 +1165,7 @@ mod tests {
         new_env.push((~"RUN_TEST_NEW_ENV", ~"123"));
 
         let mut prog = run_env(Some(new_env.slice(0, new_env.len())));
-        let output = str::from_bytes(prog.finish_with_output().output);
+        let output = str::from_utf8(prog.finish_with_output().output);
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"));
     }
