@@ -1046,7 +1046,7 @@ pub fn path_str(sess: session::Session, p: &[path_elt]) -> ~str {
                 } else {
                     r.push_str("::")
                 }
-                r.push_str(*sess.str_of(s));
+                r.push_str(sess.str_of(s));
             }
         }
     }

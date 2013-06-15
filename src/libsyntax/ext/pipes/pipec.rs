@@ -98,7 +98,7 @@ impl gen_send for message {
             }
             body.push_str(fmt!("let message = %s(%s);\n",
                                 name,
-                                vec::append_one(arg_names.map(|x| cx.str_of(*x)), ~"s")
+                                vec::append_one(arg_names.map(|x| cx.str_of(*x)), @"s")
                                                          .connect(", ")));
 
             if !try {

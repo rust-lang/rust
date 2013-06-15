@@ -21,7 +21,7 @@ use cmp::Eq;
 use iterator::IteratorUtil;
 use libc;
 use option::{None, Option, Some};
-use str::{Str, StrSlice, StrVector};
+use str::{OwnedStr, Str, StrSlice, StrVector};
 use str;
 use to_str::ToStr;
 use ascii::{AsciiCast, AsciiStr};
