@@ -280,7 +280,7 @@ impl Datum {
         }
 
         debug!("copy_to(self=%s, action=%?, dst=%s)",
-               self.to_str(bcx.ccx()), action, bcx.val_str(dst));
+               self.to_str(bcx.ccx()), action, bcx.val_to_str(dst));
 
         // Watch out for the case where we are writing the copying the
         // value into the same location we read it out from.  We want
@@ -345,7 +345,7 @@ impl Datum {
         let mut bcx = bcx;
 
         debug!("move_to(self=%s, action=%?, dst=%s)",
-               self.to_str(bcx.ccx()), action, bcx.val_str(dst));
+               self.to_str(bcx.ccx()), action, bcx.val_to_str(dst));
 
         if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
             return bcx;
@@ -409,7 +409,7 @@ impl Datum {
 
     pub fn to_str(&self, ccx: &CrateContext) -> ~str {
         fmt!("Datum { val=%s, ty=%s, mode=%? }",
-             val_str(ccx.tn, self.val),
+             ccx.tn.val_to_str(self.val),
              ty_to_str(ccx.tcx, self.ty),
              self.mode)
     }

@@ -155,8 +155,8 @@ impl VecTypes {
         fmt!("VecTypes {vec_ty=%s, unit_ty=%s, llunit_ty=%s, llunit_size=%s}",
              ty_to_str(ccx.tcx, self.vec_ty),
              ty_to_str(ccx.tcx, self.unit_ty),
-             ty_str(ccx.tn, self.llunit_ty),
-             val_str(ccx.tn, self.llunit_size))
+             ccx.tn.type_to_str(self.llunit_ty),
+             ccx.tn.val_to_str(self.llunit_size))
     }
 }
 
@@ -336,7 +336,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block,
     let dataptr = get_dataptr(bcx, get_bodyptr(bcx, val));
 
     debug!("alloc_vec() returned val=%s, dataptr=%s",
-           bcx.val_str(val), bcx.val_str(dataptr));
+           bcx.val_to_str(val), bcx.val_to_str(dataptr));
 
     let bcx = write_content(bcx, &vt, vstore_expr,
                             content_expr, SaveIn(dataptr));
@@ -389,7 +389,7 @@ pub fn write_content(bcx: block,
                     for elements.iter().enumerate().advance |(i, element)| {
                         let lleltptr = GEPi(bcx, lldest, [i]);
                         debug!("writing index %? with lleltptr=%?",
-                               i, bcx.val_str(lleltptr));
+                               i, bcx.val_to_str(lleltptr));
                         bcx = expr::trans_into(bcx, *element,
                                                SaveIn(lleltptr));
                         add_clean_temp_mem(bcx, lleltptr, vt.unit_ty);

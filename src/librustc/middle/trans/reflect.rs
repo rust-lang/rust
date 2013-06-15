@@ -96,7 +96,7 @@ impl Reflector {
         debug!("passing %u args:", args.len());
         let bcx = self.bcx;
         for args.iter().enumerate().advance |(i, a)| {
-            debug!("arg %u: %s", i, val_str(bcx.ccx().tn, *a));
+            debug!("arg %u: %s", i, bcx.val_to_str(*a));
         }
         let bool_ty = ty::mk_bool();
         let scratch = scratch_datum(bcx, bool_ty, false);

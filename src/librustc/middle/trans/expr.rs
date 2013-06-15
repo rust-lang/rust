@@ -173,7 +173,7 @@ pub enum Dest {
 impl Dest {
     pub fn to_str(&self, ccx: &CrateContext) -> ~str {
         match *self {
-            SaveIn(v) => fmt!("SaveIn(%s)", val_str(ccx.tn, v)),
+            SaveIn(v) => fmt!("SaveIn(%s)", ccx.tn.val_to_str(v)),
             Ignore => ~"Ignore"
         }
     }
@@ -914,8 +914,8 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
             len = Sub(bcx, len, C_uint(bcx.ccx(), 1u));
         }
 
-        debug!("trans_index: base %s", val_str(bcx.ccx().tn, base));
-        debug!("trans_index: len %s", val_str(bcx.ccx().tn, len));
+        debug!("trans_index: base %s", bcx.val_to_str(base));
+        debug!("trans_index: len %s", bcx.val_to_str(len));
 
         let bounds_check = ICmp(bcx, lib::llvm::IntUGE, scaled_ix, len);
         let bcx = do with_cond(bcx, bounds_check) |bcx| {
@@ -1081,7 +1081,7 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
         };
         let ty = node_id_type(bcx, nid);
         debug!("take_local(nid=%?, v=%s, ty=%s)",
-               nid, bcx.val_str(v), bcx.ty_to_str(ty));
+               nid, bcx.val_to_str(v), bcx.ty_to_str(ty));
         Datum {
             val: v,
             ty: ty,

@@ -191,8 +191,8 @@ pub fn Invoke(cx: block,
     check_not_terminated(cx);
     terminate(cx, "Invoke");
     debug!("Invoke(%s with arguments (%s))",
-           val_str(cx.ccx().tn, Fn),
-           Args.map(|a| val_str(cx.ccx().tn, *a).to_owned()).connect(", "));
+           cx.val_to_str(Fn),
+           Args.map(|a| cx.val_to_str(*a)).connect(", "));
     unsafe {
         count_insn(cx, "invoke");
         llvm::LLVMBuildInvoke(B(cx),
@@ -576,8 +576,8 @@ pub fn Store(cx: block, Val: ValueRef, Ptr: ValueRef) {
     unsafe {
         if cx.unreachable { return; }
         debug!("Store %s -> %s",
-               val_str(cx.ccx().tn, Val),
-               val_str(cx.ccx().tn, Ptr));
+               cx.val_to_str(Val),
+               cx.val_to_str(Ptr));
         count_insn(cx, "store");
         llvm::LLVMBuildStore(B(cx), Val, Ptr);
     }
@@ -587,8 +587,8 @@ pub fn AtomicStore(cx: block, Val: ValueRef, Ptr: ValueRef, order: AtomicOrderin
     unsafe {
         if cx.unreachable { return; }
         debug!("Store %s -> %s",
-               val_str(cx.ccx().tn, Val),
-               val_str(cx.ccx().tn, Ptr));
+               cx.val_to_str(Val),
+               cx.val_to_str(Ptr));
         count_insn(cx, "store.atomic");
         let align = llalign_of_min(cx.ccx(), cx.ccx().int_type);
         llvm::LLVMBuildAtomicStore(B(cx), Val, Ptr, order, align as c_uint);
@@ -911,11 +911,11 @@ pub fn InlineAsmCall(cx: block, asm: *c_char, cons: *c_char,
                          else          { lib::llvm::False };
 
         let argtys = do inputs.map |v| {
-            debug!("Asm Input Type: %?", val_str(cx.ccx().tn, *v));
+            debug!("Asm Input Type: %?", cx.val_to_str(*v));
             val_ty(*v)
         };
 
-        debug!("Asm Output Type: %?", ty_str(cx.ccx().tn, output));
+        debug!("Asm Output Type: %?", cx.ccx().tn.type_to_str(output));
         let llfty = T_fn(argtys, output);
         let v = llvm::LLVMInlineAsm(llfty, asm, cons, volatile,
                                     alignstack, dia as c_uint);
@@ -930,8 +930,8 @@ pub fn Call(cx: block, Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
         count_insn(cx, "call");
 
         debug!("Call(Fn=%s, Args=%?)",
-               val_str(cx.ccx().tn, Fn),
-               Args.map(|arg| val_str(cx.ccx().tn, *arg)));
+               cx.val_to_str(Fn),
+               Args.map(|arg| cx.val_to_str(*arg)));
 
         do vec::as_imm_buf(Args) |ptr, len| {
             llvm::LLVMBuildCall(B(cx), Fn, ptr, len as c_uint, noname())
