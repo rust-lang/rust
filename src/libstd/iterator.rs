@@ -311,6 +311,9 @@ pub trait IteratorUtil<A> {
 
     /// Return the first element satisfying the specified predicate
     fn find(&mut self, predicate: &fn(&A) -> bool) -> Option<A>;
+
+    /// Return the index of the first element satisfying the specified predicate
+    fn position(&mut self, predicate: &fn(A) -> bool) -> Option<uint>;
 }
 
 /// Iterator adaptors provided for every `Iterator` implementation. The adaptor objects are also
@@ -448,6 +451,19 @@ impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     fn find(&mut self, predicate: &fn(&A) -> bool) -> Option<A> {
         for self.advance |x| {
             if predicate(&x) { return Some(x) }
+        }
+        None
+    }
+
+    /// Return the index of the first element satisfying the specified predicate
+    #[inline]
+    fn position(&mut self, predicate: &fn(A) -> bool) -> Option<uint> {
+        let mut i = 0;
+        for self.advance |x| {
+            if predicate(x) {
+                return Some(i);
+            }
+            i += 1;
         }
         None
     }
@@ -1074,5 +1090,13 @@ mod tests {
         assert_eq!(*v.iter().find(|x| *x & 1 == 0).unwrap(), 14);
         assert_eq!(*v.iter().find(|x| *x % 3 == 0).unwrap(), 3);
         assert!(v.iter().find(|x| *x % 12 == 0).is_none());
+    }
+
+    #[test]
+    fn test_position() {
+        let v = &[1, 3, 9, 27, 103, 14, 11];
+        assert_eq!(v.iter().position(|x| *x & 1 == 0).unwrap(), 5);
+        assert_eq!(v.iter().position(|x| *x % 3 == 0).unwrap(), 1);
+        assert!(v.iter().position(|x| *x % 12 == 0).is_none());
     }
 }
