@@ -114,6 +114,17 @@ fn test_sysroot() -> Path {
 }
 
 #[test]
+fn test_all() {
+    // FIXME(#7071): these tests use rustc, so they can't be run in parallel
+    //               until this issue is resolved
+    test_make_dir_rwx();
+    test_install_valid();
+    test_install_invalid();
+    test_install_url();
+    test_package_ids_must_be_relative_path_like();
+    test_package_version();
+}
+
 fn test_make_dir_rwx() {
     let temp = &os::tmpdir();
     let dir = temp.push("quux");
@@ -126,7 +137,6 @@ fn test_make_dir_rwx() {
     assert!(os::remove_dir_recursive(&dir));
 }
 
-#[test]
 fn test_install_valid() {
     use path_util::installed_library_in_workspace;
 
@@ -155,7 +165,6 @@ fn test_install_valid() {
     assert!(!os::path_exists(&bench));
 }
 
-#[test]
 fn test_install_invalid() {
     use conditions::nonexistent_package::cond;
     use cond1 = conditions::missing_pkg_files::cond;
@@ -178,7 +187,6 @@ fn test_install_invalid() {
     assert!(error_occurred && error1_occurred);
 }
 
-#[test]
 fn test_install_url() {
     let workspace = mkdtemp(&os::tmpdir(), "test").expect("couldn't create temp dir");
     let sysroot = test_sysroot();
@@ -214,7 +222,6 @@ fn test_install_url() {
     assert!(!os::path_exists(&bench));
 }
 
-#[test]
 fn test_package_ids_must_be_relative_path_like() {
     use conditions::bad_pkg_id::cond;
 
@@ -255,7 +262,6 @@ fn test_package_ids_must_be_relative_path_like() {
 
 }
 
-#[test]
 fn test_package_version() {
     let temp_pkg_id = PkgId::new("github.com/catamorphism/test_pkg_version");
     match temp_pkg_id.version {
