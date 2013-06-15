@@ -101,7 +101,7 @@ fn fold_item(
     }
 }
 
-fn parse_item_attrs<T:Owned>(
+fn parse_item_attrs<T:Send>(
     srv: astsrv::Srv,
     id: doc::AstId,
     parse_attrs: ~fn(a: ~[ast::attribute]) -> T) -> T {

@@ -49,7 +49,7 @@ macro_rules! move_it (
     { $x:expr } => { unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } }
 )
 
-fn switch<T:Owned,U>(endp: pipes::RecvPacket<T>,
+fn switch<T:Send,U>(endp: pipes::RecvPacket<T>,
                      f: &fn(v: Option<T>) -> U) -> U {
     f(pipes::try_recv(endp))
 }

@@ -380,6 +380,9 @@ impl tr for ast::def {
                                    did2_opt.map(|did2| did2.tr(xcx)),
                                    p)
           }
+          ast::def_method(did0, did1) => {
+            ast::def_method(did0.tr(xcx), did1.map(|did1| did1.tr(xcx)))
+          }
           ast::def_self_ty(nid) => { ast::def_self_ty(xcx.tr_id(nid)) }
           ast::def_self(nid, i) => { ast::def_self(xcx.tr_id(nid), i) }
           ast::def_mod(did) => { ast::def_mod(did.tr(xcx)) }
@@ -709,11 +712,12 @@ trait get_ty_str_ctxt {
 impl get_ty_str_ctxt for e::EncodeContext {
     // IMPLICIT SELF WARNING: fix this!
     fn ty_str_ctxt(@self) -> @tyencode::ctxt {
-        @tyencode::ctxt {diag: self.tcx.sess.diagnostic(),
-                        ds: e::def_to_str,
-                        tcx: self.tcx,
-                        reachable: |a| encoder::reachable(self, a),
-                        abbrevs: tyencode::ac_use_abbrevs(self.type_abbrevs)}
+        @tyencode::ctxt {
+            diag: self.tcx.sess.diagnostic(),
+            ds: e::def_to_str,
+            tcx: self.tcx,
+            abbrevs: tyencode::ac_use_abbrevs(self.type_abbrevs)
+        }
     }
 }
 

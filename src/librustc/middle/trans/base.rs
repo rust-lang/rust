@@ -55,7 +55,6 @@ use middle::trans::machine;
 use middle::trans::machine::{llalign_of_min, llsize_of};
 use middle::trans::meth;
 use middle::trans::monomorphize;
-use middle::trans::reachable;
 use middle::trans::shape::*;
 use middle::trans::tvec;
 use middle::trans::type_of;
@@ -203,11 +202,11 @@ pub fn get_extern_const(externs: ExternMap, llmod: ModuleRef,
     }
 }
 
-    fn get_simple_extern_fn(cx: block,
-                            externs: ExternMap,
-                            llmod: ModuleRef,
-                            name: @str,
-                            n_args: int) -> ValueRef {
+fn get_simple_extern_fn(cx: block,
+                        externs: ExternMap,
+                        llmod: ModuleRef,
+                        name: @str,
+                        n_args: int) -> ValueRef {
     let _icx = cx.insn_ctxt("get_simple_extern_fn");
     let ccx = cx.fcx.ccx;
     let inputs = vec::from_elem(n_args as uint, ccx.int_type);
@@ -2433,7 +2432,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
     match ccx.item_vals.find(&id) {
       Some(&v) => v,
       None => {
-        let mut exprt = false;
+        let mut exprt = ccx.reachable_map.contains(&id);
         let val = match tcx.items.get_copy(&id) {
           ast_map::node_item(i, pth) => {
             let my_path = vec::append(/*bad*/copy *pth,
@@ -2485,7 +2484,6 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
             }
           }
           ast_map::node_method(m, _, pth) => {
-            exprt = true;
             register_method(ccx, id, pth, m)
           }
           ast_map::node_foreign_item(ni, _, _, pth) => {
@@ -2560,7 +2558,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::node_id) -> ValueRef {
                               variant))
           }
         };
-        if !(exprt || ccx.reachable.contains(&id)) {
+        if !exprt {
             lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
         }
         ccx.item_vals.insert(id, val);
@@ -2968,7 +2966,6 @@ pub fn crate_ctxt_to_encode_parms(cx: @CrateContext)
     encoder::EncodeParams {
         diag: cx.sess.diagnostic(),
         tcx: cx.tcx,
-        reachable: cx.reachable,
         reexports2: cx.exp_map2,
         item_symbols: cx.item_symbols,
         discrim_symbols: cx.discrim_symbols,
@@ -3016,16 +3013,12 @@ pub fn trans_crate(sess: session::Session,
                    tcx: ty::ctxt,
                    output: &Path,
                    emap2: resolve::ExportMap2,
-                   maps: astencode::Maps) -> (ModuleRef, LinkMeta) {
+                   reachable_map: @mut HashSet<ast::node_id>,
+                   maps: astencode::Maps)
+                   -> (ModuleRef, LinkMeta) {
 
     let symbol_hasher = @mut hash::default_state();
     let link_meta = link::build_link_meta(sess, crate, output, symbol_hasher);
-    let reachable = reachable::find_reachable(
-        &crate.node.module,
-        emap2,
-        tcx,
-        maps.method_map
-    );
 
     // Append ".rc" to crate name as LLVM module identifier.
     //
@@ -3077,7 +3070,6 @@ pub fn trans_crate(sess: session::Session,
               intrinsics: intrinsics,
               item_vals: @mut HashMap::new(),
               exp_map2: emap2,
-              reachable: reachable,
               item_symbols: @mut HashMap::new(),
               link_meta: link_meta,
               enum_sizes: @mut HashMap::new(),
@@ -3130,7 +3122,8 @@ pub fn trans_crate(sess: session::Session,
               crate_map: crate_map,
               uses_gc: @mut false,
               dbg_cx: dbg_cx,
-              do_not_commit_warning_issued: @mut false
+              do_not_commit_warning_issued: @mut false,
+              reachable_map: reachable_map,
         };
 
         {

@@ -402,7 +402,8 @@ fn run_cmd(repl: &mut Repl, _in: @io::Reader, _out: @io::Writer,
                         if line.trim() == ":}" {
                             end_multiline = true;
                         } else {
-                            multiline_cmd += line + "\n";
+                            multiline_cmd.push_str(line);
+                            multiline_cmd.push_char('\n');
                         }
                     }
                 }

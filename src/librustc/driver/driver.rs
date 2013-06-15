@@ -19,7 +19,7 @@ use front;
 use lib::llvm::llvm;
 use metadata::{creader, cstore, filesearch};
 use metadata;
-use middle::{trans, freevars, kind, ty, typeck, lint, astencode};
+use middle::{trans, freevars, kind, ty, typeck, lint, astencode, reachable};
 use middle;
 use util::common::time;
 use util::ppaux;
@@ -304,6 +304,10 @@ pub fn compile_rest(sess: Session,
     time(time_passes, ~"kind checking", ||
          kind::check_crate(ty_cx, method_map, crate));
 
+    let reachable_map =
+        time(time_passes, ~"reachability checking", ||
+            reachable::find_reachable(ty_cx, method_map, crate));
+
     time(time_passes, ~"lint checking", ||
          lint::check_crate(ty_cx, crate));
 
@@ -315,14 +319,18 @@ pub fn compile_rest(sess: Session,
         vtable_map: vtable_map,
         write_guard_map: write_guard_map,
         moves_map: moves_map,
-        capture_map: capture_map
+        capture_map: capture_map,
     };
 
     let outputs = outputs.get_ref();
     time(time_passes, ~"translation", ||
-         trans::base::trans_crate(sess, crate, ty_cx,
+         trans::base::trans_crate(sess,
+                                  crate,
+                                  ty_cx,
                                   &outputs.obj_filename,
-                                  exp_map2, maps))
+                                  exp_map2,
+                                  reachable_map,
+                                  maps))
     };
 
     let outputs = outputs.get_ref();

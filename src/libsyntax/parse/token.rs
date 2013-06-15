@@ -180,14 +180,14 @@ pub fn to_str(in: @ident_interner, t: &Token) -> ~str {
       LIT_FLOAT(ref s, t) => {
         let mut body = ident_to_str(s).to_owned();
         if body.ends_with(".") {
-            body += "0";  // `10.f` is not a float literal
+            body.push_char('0');  // `10.f` is not a float literal
         }
         body + ast_util::float_ty_to_str(t)
       }
       LIT_FLOAT_UNSUFFIXED(ref s) => {
         let mut body = ident_to_str(s).to_owned();
         if body.ends_with(".") {
-            body += "0";  // `10.f` is not a float literal
+            body.push_char('0');  // `10.f` is not a float literal
         }
         body
       }
@@ -573,7 +573,7 @@ pub mod keywords {
         // Strict keywords
         As,
         Break,
-        Const,
+        Freeze,
         Copy,
         Do,
         Else,
@@ -616,7 +616,7 @@ pub mod keywords {
             match *self {
                 As => ident { name: 35, ctxt: 0 },
                    Break => ident { name: 36, ctxt: 0 },
-                   Const => ident { name: 37, ctxt: 0 },
+                   Freeze => ident { name: 37, ctxt: 0 },
                    Copy => ident { name: 38, ctxt: 0 },
                    Do => ident { name: 39, ctxt: 0 },
                    Else => ident { name: 41, ctxt: 0 },

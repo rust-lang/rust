@@ -54,7 +54,7 @@ use middle::ty;
 use middle::typeck::infer::{Bounds, cyclic_ty, fixup_err, fres, InferCtxt};
 use middle::typeck::infer::{region_var_bound_by_region_var, unresolved_ty};
 use middle::typeck::infer::to_str::InferStr;
-use middle::typeck::infer::unify::Root;
+use middle::typeck::infer::unify::{Root, UnifyInferCtxtMethods};
 use util::common::{indent, indenter};
 use util::ppaux::ty_to_str;
 

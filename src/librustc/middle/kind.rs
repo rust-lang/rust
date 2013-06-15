@@ -33,21 +33,21 @@ use syntax::{visit, ast_util};
 //
 //  send: Things that can be sent on channels or included in spawned closures.
 //  copy: Things that can be copied.
-//  const: Things thare are deeply immutable. They are guaranteed never to
+//  freeze: Things thare are deeply immutable. They are guaranteed never to
 //    change, and can be safely shared without copying between tasks.
-//  owned: Things that do not contain borrowed pointers.
+//  'static: Things that do not contain borrowed pointers.
 //
 // Send includes scalar types as well as classes and unique types containing
 // only sendable types.
 //
 // Copy includes boxes, closure and unique types containing copyable types.
 //
-// Const include scalar types, things without non-const fields, and pointers
-// to const things.
+// Freeze include scalar types, things without non-const fields, and pointers
+// to freezable things.
 //
 // This pass ensures that type parameters are only instantiated with types
 // whose kinds are equal or less general than the way the type parameter was
-// annotated (with the `send`, `copy` or `const` keyword).
+// annotated (with the `Send`, `Copy` or `Freeze` bound).
 //
 // It also verifies that noncopyable kinds are not copied. Sendability is not
 // applied, since none of our language primitives send. Instead, the sending
@@ -94,10 +94,10 @@ fn check_struct_safe_for_destructor(cx: Context,
             self_ty: None,
             tps: ~[]
         });
-        if !ty::type_is_owned(cx.tcx, struct_ty) {
+        if !ty::type_is_sendable(cx.tcx, struct_ty) {
             cx.tcx.sess.span_err(span,
-                                 "cannot implement a destructor on a struct \
-                                  that is not Owned");
+                                 "cannot implement a destructor on a \
+                                  structure that does not satisfy Send");
             cx.tcx.sess.span_note(span,
                                   "use \"#[unsafe_destructor]\" on the \
                                    implementation to force the compiler to \
@@ -105,7 +105,7 @@ fn check_struct_safe_for_destructor(cx: Context,
         }
     } else {
         cx.tcx.sess.span_err(span,
-                             "cannot implement a destructor on a struct \
+                             "cannot implement a destructor on a structure \
                               with type parameters");
         cx.tcx.sess.span_note(span,
                               "use \"#[unsafe_destructor]\" on the \
@@ -165,18 +165,18 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
 // closure.
 fn with_appropriate_checker(cx: Context, id: node_id, b: &fn(check_fn)) {
     fn check_for_uniq(cx: Context, fv: @freevar_entry) {
-        // all captured data must be owned, regardless of whether it is
+        // all captured data must be sendable, regardless of whether it is
         // moved in or copied in.
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
-        if !check_owned(cx, var_t, fv.span) { return; }
+        if !check_send(cx, var_t, fv.span) { return; }
 
         // check that only immutable variables are implicitly copied in
         check_imm_free_var(cx, fv.def, fv.span);
     }
 
     fn check_for_box(cx: Context, fv: @freevar_entry) {
-        // all captured data must be owned
+        // all captured data must be durable
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
         if !check_durable(cx.tcx, var_t, fv.span) { return; }
@@ -393,10 +393,10 @@ fn check_copy(cx: Context, ty: ty::t, sp: span, reason: &str) {
     }
 }
 
-pub fn check_owned(cx: Context, ty: ty::t, sp: span) -> bool {
-    if !ty::type_is_owned(cx.tcx, ty) {
+pub fn check_send(cx: Context, ty: ty::t, sp: span) -> bool {
+    if !ty::type_is_sendable(cx.tcx, ty) {
         cx.tcx.sess.span_err(
-            sp, fmt!("value has non-owned type `%s`",
+            sp, fmt!("value has non-sendable type `%s`",
                      ty_to_str(cx.tcx, ty)));
         false
     } else {
@@ -444,7 +444,7 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
 /// `deque<T>`, then whatever borrowed ptrs may appear in `T` also
 /// appear in `deque<T>`.
 ///
-/// (3) The type parameter is owned (and therefore does not contain
+/// (3) The type parameter is sendable (and therefore does not contain
 /// borrowed ptrs).
 ///
 /// FIXME(#5723)---This code should probably move into regionck.
@@ -483,7 +483,7 @@ pub fn check_cast_for_escaping_regions(
     }
 
     // Assuming the trait instance can escape, then ensure that each parameter
-    // either appears in the trait type or is owned.
+    // either appears in the trait type or is sendable.
     let target_params = ty::param_tys_in_type(target_ty);
     let source_ty = ty::expr_ty(cx.tcx, source);
     ty::walk_regions_and_ty(
@@ -536,7 +536,7 @@ pub fn check_kind_bounds_of_cast(cx: Context, source: @expr, target: @expr) {
     match ty::get(target_ty).sty {
         ty::ty_trait(_, _, ty::UniqTraitStore, _) => {
             let source_ty = ty::expr_ty(cx.tcx, source);
-            if !ty::type_is_owned(cx.tcx, source_ty) {
+            if !ty::type_is_sendable(cx.tcx, source_ty) {
                 cx.tcx.sess.span_err(
                     target.span,
                     "uniquely-owned trait objects must be sendable");

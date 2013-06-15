@@ -606,33 +606,47 @@ pub mod groups {
             let mut row = " ".repeat(4);
 
             // short option
-            row += match short_name.len() {
-                0 => ~"",
-                1 => ~"-" + short_name + " ",
+            match short_name.len() {
+                0 => {}
+                1 => {
+                    row.push_char('-');
+                    row.push_str(short_name);
+                    row.push_char(' ');
+                }
                 _ => fail!("the short name should only be 1 ascii char long"),
-            };
+            }
 
             // long option
-            row += match long_name.len() {
-                0 => ~"",
-                _ => ~"--" + long_name + " ",
-            };
+            match long_name.len() {
+                0 => {}
+                _ => {
+                    row.push_str("--");
+                    row.push_str(long_name);
+                    row.push_char(' ');
+                }
+            }
 
             // arg
-            row += match hasarg {
-                No    => ~"",
-                Yes   => hint,
-                Maybe => ~"[" + hint + "]",
-            };
+            match hasarg {
+                No => {}
+                Yes => row.push_str(hint),
+                Maybe => {
+                    row.push_char('[');
+                    row.push_str(hint);
+                    row.push_char(']');
+                }
+            }
 
             // FIXME: #5516
             // here we just need to indent the start of the description
             let rowlen = row.len();
-            row += if rowlen < 24 {
-                " ".repeat(24 - rowlen)
+            if rowlen < 24 {
+                for (24 - rowlen).times {
+                    row.push_char(' ')
+                }
             } else {
-                copy desc_sep
-            };
+                row.push_str(desc_sep)
+            }
 
             // Normalize desc to contain words separated by one space character
             let mut desc_normalized_whitespace = ~"";
@@ -649,7 +663,7 @@ pub mod groups {
 
             // FIXME: #5516
             // wrapped description
-            row += desc_rows.connect(desc_sep);
+            row.push_str(desc_rows.connect(desc_sep));
 
             row
         });

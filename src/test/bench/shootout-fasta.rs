@@ -49,7 +49,7 @@ fn make_cumulative(aa: ~[AminoAcids]) -> ~[AminoAcids] {
     let mut ans: ~[AminoAcids] = ~[];
     for aa.each |a| {
         cp += a.prob;
-        ans += [AminoAcids {ch: a.ch, prob: cp}];
+        ans.push(AminoAcids {ch: a.ch, prob: cp});
     }
     return ans;
 }
