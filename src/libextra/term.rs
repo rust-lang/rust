@@ -20,7 +20,7 @@ use core::os;
 use terminfo::*;
 use terminfo::searcher::open;
 use terminfo::parser::compiled::parse;
-use terminfo::parm::{expand, Number};
+use terminfo::parm::{expand, Number, Variables};
 
 // FIXME (#2807): Windows support.
 
@@ -84,7 +84,7 @@ impl Terminal {
     pub fn fg(&self, color: u8) {
         if self.color_supported {
             let s = expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(),
-                           [Number(color as int)], [], []);
+                           [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
                 self.out.write(s.get());
             } else {
@@ -95,7 +95,7 @@ impl Terminal {
     pub fn bg(&self, color: u8) {
         if self.color_supported {
             let s = expand(*self.ti.strings.find_equiv(&("setab")).unwrap(),
-                           [Number(color as int)], [], []);
+                           [Number(color as int)], &mut Variables::new());
             if s.is_ok() {
                 self.out.write(s.get());
             } else {
@@ -105,7 +105,8 @@ impl Terminal {
     }
     pub fn reset(&self) {
         if self.color_supported {
-            let s = expand(*self.ti.strings.find_equiv(&("op")).unwrap(), [], [], []);
+            let mut vars = Variables::new();
+            let s = expand(*self.ti.strings.find_equiv(&("op")).unwrap(), [], &mut vars);
             if s.is_ok() {
                 self.out.write(s.get());
             } else {
