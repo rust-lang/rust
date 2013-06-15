@@ -9,11 +9,10 @@
 // except according to those terms.
 
 use core::prelude::*;
-use core::{io, libc, os, result, str};
+use core::{libc, os, result, str};
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use extra::getopts::groups::getopts;
-use extra::term;
 use syntax::ast_util::*;
 use syntax::codemap::{dummy_sp, spanned};
 use syntax::codemap::dummy_spanned;
@@ -26,8 +25,8 @@ use rustc::driver::driver::compile_upto;
 use rustc::driver::session::{lib_crate, bin_crate};
 use context::Ctx;
 use package_id::PkgId;
-use path_util::{target_library_in_workspace, built_library_in_workspace};
 use search::find_library_in_search_path;
+use path_util::target_library_in_workspace;
 pub use target::{OutputType, Main, Lib, Bench, Test};
 
 static Commands: &'static [&'static str] =
@@ -160,33 +159,6 @@ pub fn need_dir(s: &Path) {
     }
 }
 
-fn pretty_message<'a>(msg: &'a str, prefix: &'a str, color: u8, out: @io::Writer) {
-    let term = term::Terminal::new(out);
-    match term {
-        Ok(ref t) => {
-            t.fg(color);
-            out.write_str(prefix);
-            t.reset();
-        },
-        _ => {
-            out.write_str(prefix);
-        }
-    }
-    out.write_line(msg);
-}
-
-pub fn note(msg: &str) {
-    pretty_message(msg, "note: ", term::color_green, io::stdout())
-}
-
-pub fn warn(msg: &str) {
-    pretty_message(msg, "warning: ", term::color_yellow, io::stdout())
-}
-
-pub fn error(msg: &str) {
-    pretty_message(msg, "error: ", term::color_red, io::stdout())
-}
-
 // FIXME (#4432): Use workcache to only compile when needed
 pub fn compile_input(ctxt: &Ctx,
                      pkg_id: &PkgId,
@@ -230,13 +202,18 @@ pub fn compile_input(ctxt: &Ctx,
         optimize: if opt { session::Aggressive } else { session::No },
         test: what == Test || what == Bench,
         maybe_sysroot: ctxt.sysroot_opt,
-        addl_lib_search_paths: @mut ~[copy *out_dir],
+        addl_lib_search_paths: @mut (~[copy *out_dir]),
         // output_type should be conditional
         output_type: output_type_exe, // Use this to get a library? That's weird
         .. copy *driver::build_session_options(binary, &matches, diagnostic::emit)
     };
 
     let addl_lib_search_paths = @mut options.addl_lib_search_paths;
+    // Make sure all the library directories actually exist, since the linker will complain
+    // otherwise
+    for addl_lib_search_paths.each() |p| {
+        assert!(os::path_is_dir(p));
+    }
 
     let sess = driver::build_session(options, diagnostic::emit);
 
@@ -274,7 +251,7 @@ pub fn compile_input(ctxt: &Ctx,
                  ~[@dummy_spanned(meta_name_value(@"name",
                                       mk_string_lit(short_name_to_use.to_managed()))),
                    @dummy_spanned(meta_name_value(@"vers",
-                         mk_string_lit(pkg_id.version.to_str_nonempty().to_managed())))])))],
+                         mk_string_lit(pkg_id.version.to_str().to_managed())))])))],
             ..copy crate.node});
     }
 
@@ -340,10 +317,11 @@ pub fn compile_crate(ctxt: &Ctx, pkg_id: &PkgId,
     compile_input(ctxt, pkg_id, crate, dir, flags, cfgs, opt, what)
 }
 
+
 /// Collect all `extern mod` directives in `c`, then
 /// try to install their targets, failing if any target
 /// can't be found.
-fn find_and_install_dependencies(ctxt: &Ctx,
+pub fn find_and_install_dependencies(ctxt: &Ctx,
                                  sess: session::Session,
                                  workspace: &Path,
                                  c: &ast::crate,
@@ -360,7 +338,7 @@ fn find_and_install_dependencies(ctxt: &Ctx,
             ast::view_item_extern_mod(lib_ident, _, _) => {
                 match my_ctxt.sysroot_opt {
                     Some(ref x) => debug!("sysroot: %s", x.to_str()),
-                    None => ()
+                    None => debug!("No sysroot given")
                 };
                 let lib_name = sess.str_of(lib_ident);
                 match find_library_in_search_path(my_ctxt.sysroot_opt, lib_name) {
@@ -371,14 +349,10 @@ fn find_and_install_dependencies(ctxt: &Ctx,
                         // Try to install it
                         let pkg_id = PkgId::new(lib_name);
                         my_ctxt.install(&my_workspace, &pkg_id);
-                        let built_lib =
-                            built_library_in_workspace(&pkg_id,
-                                &my_workspace).expect(fmt!("find_and_install_dependencies: \
-                                I thought I already built %s, but the library doesn't seem \
-                                to exist", lib_name));
                         // Also, add an additional search path
-                        let installed_path = target_library_in_workspace(&my_workspace,
-                                                                         &built_lib).pop();
+                        debug!("let installed_path...")
+                        let installed_path = target_library_in_workspace(&pkg_id,
+                                                                         &my_workspace).pop();
                         debug!("Great, I installed %s, and it's in %s",
                                lib_name, installed_path.to_str());
                         save(installed_path);
