@@ -205,7 +205,8 @@ pub enum def {
     def_struct(def_id),
     def_typaram_binder(node_id), /* struct, impl or trait with ty params */
     def_region(node_id),
-    def_label(node_id)
+    def_label(node_id),
+    def_method(def_id /* method */, Option<def_id> /* trait */),
 }
 
 
@@ -1047,7 +1048,7 @@ pub struct trait_ref {
 pub enum visibility { public, private, inherited }
 
 impl visibility {
-    fn inherit_from(&self, parent_visibility: visibility) -> visibility {
+    pub fn inherit_from(&self, parent_visibility: visibility) -> visibility {
         match self {
             &inherited => parent_visibility,
             &public | &private => *self

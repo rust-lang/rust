@@ -859,7 +859,8 @@ pub mod raw {
     /// invalidated later.
     pub unsafe fn c_str_to_static_slice(s: *libc::c_char) -> &'static str {
         let s = s as *u8;
-        let mut (curr, len) = (s, 0u);
+        let mut curr = s;
+        let mut len = 0u;
         while *curr != 0u8 {
             len += 1u;
             curr = ptr::offset(s, len);
