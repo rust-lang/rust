@@ -145,8 +145,8 @@ fn command_line_test(args: &[~str], cwd: &Path) -> ProcessOutput {
                                                           });
     let output = prog.finish_with_output();
     io::println(fmt!("Output from command %s with args %? was %s {%s}[%?]",
-                    cmd, args, str::from_bytes(output.output),
-                   str::from_bytes(output.error),
+                    cmd, args, str::from_utf8_slice(output.output),
+                   str::from_utf8_slice(output.error),
                    output.status));
 /*
 By the way, rustpkg *won't* return a nonzero exit code if it fails --
@@ -246,7 +246,7 @@ fn assert_executable_exists(repo: &Path, short_name: &str) {
 fn command_line_test_output(args: &[~str]) -> ~[~str] {
     let mut result = ~[];
     let p_output = command_line_test(args, &os::getcwd());
-    let test_output = str::from_bytes(p_output.output);
+    let test_output = str::from_utf8_slice(p_output.output);
     for test_output.split_iter('\n').advance |s| {
         result += [s.to_owned()];
     }

@@ -96,13 +96,26 @@ pub fn from_utf8_with_null<'a>(vv: &'a [u8]) -> &'a str {
  *
  * Fails if invalid UTF-8
  */
-pub fn from_utf8_slice<'a>(vector: &'a [u8]) -> &'a str {
-    unsafe {
-        assert!(is_utf8(vector));
-        let (ptr, len): (*u8, uint) = ::cast::transmute(vector);
-        let string: &'a str = ::cast::transmute((ptr, len + 1));
-        string
-    }
+pub fn from_utf8_slice<'a>(v: &'a [u8]) -> &'a str {
+    assert!(is_utf8(v));
+    unsafe { raw::from_utf8_slice(v) }
+}
+
+/**
+ * Convert a vector of bytes to a UTF-8 string.
+ * The vector needs to be one byte longer than the string, and end with a 0 byte.
+ *
+ * Compared to `from_utf8()`, this fn doesn't need to allocate a new owned str.
+ *
+ * # Failure
+ *
+ * Fails if not NULL terminated
+ * Fails if invalid UTF-8
+ */
+pub fn from_utf8_slice_with_null<'a>(v: &'a [u8]) -> &'a str {
+    assert_eq!(v[v.len() - 1], 0);
+    assert!(is_utf8(v));
+    unsafe { raw::from_utf8_slice_with_null(v) }
 }
 
 /// Copy a slice into a new unique str
@@ -780,6 +793,20 @@ pub mod raw {
     /// The byte slice needs to contain valid utf8 and needs to be one byte longer than
     /// the string, if possible ending in a 0 byte.
     pub unsafe fn from_utf8_with_null<'a>(v: &'a [u8]) -> &'a str {
+        cast::transmute(v)
+    }
+
+    /// Converts a vector of bytes to a string slice.
+    /// The byte slice needs to contain valid utf8.
+    pub unsafe fn from_utf8_slice<'a>(v: &'a [u8]) -> &'a str {
+        let (ptr, len): (*u8, uint) = ::cast::transmute(v);
+        cast::transmute((ptr, len + 1))
+    }
+
+    /// Converts a vector of bytes to a string.
+    /// The byte slice needs to contain valid utf8 and needs to be one byte longer than
+    /// the string, if possible ending in a 0 byte.
+    pub unsafe fn from_utf8_slice_with_null<'a>(v: &'a [u8]) -> &'a str {
         cast::transmute(v)
     }
 
@@ -2848,6 +2875,108 @@ mod tests {
                   0x6d_u8, 0x60_u8];
 
          let _x = from_utf8_with_null(bb);
+    }
+
+    #[test]
+    fn test_unsafe_from_utf8_slice() {
+        let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8];
+        let b = unsafe { raw::from_utf8_slice(a) };
+        assert_eq!(b, "AAAAAAA");
+    }
+
+    #[test]
+    fn test_from_utf8_slice() {
+        let ss = "ศไทย中华Việt Nam";
+        let bb = [0xe0_u8, 0xb8_u8, 0xa8_u8,
+                  0xe0_u8, 0xb9_u8, 0x84_u8,
+                  0xe0_u8, 0xb8_u8, 0x97_u8,
+                  0xe0_u8, 0xb8_u8, 0xa2_u8,
+                  0xe4_u8, 0xb8_u8, 0xad_u8,
+                  0xe5_u8, 0x8d_u8, 0x8e_u8,
+                  0x56_u8, 0x69_u8, 0xe1_u8,
+                  0xbb_u8, 0x87_u8, 0x74_u8,
+                  0x20_u8, 0x4e_u8, 0x61_u8,
+                  0x6d_u8];
+
+        assert_eq!(ss, from_utf8_slice(bb));
+    }
+
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_from_utf8_slice_fail() {
+        let bb = [0xff_u8, 0xb8_u8, 0xa8_u8,
+                  0xe0_u8, 0xb9_u8, 0x84_u8,
+                  0xe0_u8, 0xb8_u8, 0x97_u8,
+                  0xe0_u8, 0xb8_u8, 0xa2_u8,
+                  0xe4_u8, 0xb8_u8, 0xad_u8,
+                  0xe5_u8, 0x8d_u8, 0x8e_u8,
+                  0x56_u8, 0x69_u8, 0xe1_u8,
+                  0xbb_u8, 0x87_u8, 0x74_u8,
+                  0x20_u8, 0x4e_u8, 0x61_u8,
+                  0x6d_u8];
+
+        let _x = from_utf8_slice(bb);
+    }
+
+    #[test]
+    fn test_unsafe_from_utf8_slice_with_null() {
+        let a = [65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
+        let b = unsafe { raw::from_utf8_slice_with_null(a) };
+        assert_eq!(b, "AAAAAAA");
+    }
+
+    #[test]
+    fn test_from_utf8_slice_with_null() {
+        let ss = "ศไทย中华Việt Nam";
+        let bb = [0xe0_u8, 0xb8_u8, 0xa8_u8,
+                  0xe0_u8, 0xb9_u8, 0x84_u8,
+                  0xe0_u8, 0xb8_u8, 0x97_u8,
+                  0xe0_u8, 0xb8_u8, 0xa2_u8,
+                  0xe4_u8, 0xb8_u8, 0xad_u8,
+                  0xe5_u8, 0x8d_u8, 0x8e_u8,
+                  0x56_u8, 0x69_u8, 0xe1_u8,
+                  0xbb_u8, 0x87_u8, 0x74_u8,
+                  0x20_u8, 0x4e_u8, 0x61_u8,
+                  0x6d_u8, 0x0_u8];
+
+        assert_eq!(ss, from_utf8_slice_with_null(bb));
+    }
+
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_from_utf8_slice_with_null_fail() {
+        let bb = [0xff_u8, 0xb8_u8, 0xa8_u8,
+                  0xe0_u8, 0xb9_u8, 0x84_u8,
+                  0xe0_u8, 0xb8_u8, 0x97_u8,
+                  0xe0_u8, 0xb8_u8, 0xa2_u8,
+                  0xe4_u8, 0xb8_u8, 0xad_u8,
+                  0xe5_u8, 0x8d_u8, 0x8e_u8,
+                  0x56_u8, 0x69_u8, 0xe1_u8,
+                  0xbb_u8, 0x87_u8, 0x74_u8,
+                  0x20_u8, 0x4e_u8, 0x61_u8,
+                  0x6d_u8, 0x0_u8];
+
+         let _x = from_utf8_slice_with_null(bb);
+    }
+
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(windows))]
+    fn test_from_utf8_slice_with_null_fail_2() {
+        let bb = [0xff_u8, 0xb8_u8, 0xa8_u8,
+                  0xe0_u8, 0xb9_u8, 0x84_u8,
+                  0xe0_u8, 0xb8_u8, 0x97_u8,
+                  0xe0_u8, 0xb8_u8, 0xa2_u8,
+                  0xe4_u8, 0xb8_u8, 0xad_u8,
+                  0xe5_u8, 0x8d_u8, 0x8e_u8,
+                  0x56_u8, 0x69_u8, 0xe1_u8,
+                  0xbb_u8, 0x87_u8, 0x74_u8,
+                  0x20_u8, 0x4e_u8, 0x61_u8,
+                  0x6d_u8, 0x60_u8];
+
+         let _x = from_utf8_slice_with_null(bb);
     }
 
     #[test]
