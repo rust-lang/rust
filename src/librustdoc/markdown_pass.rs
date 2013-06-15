@@ -402,19 +402,17 @@ fn write_fnlike(
 fn write_sig(ctxt: &Ctxt, sig: Option<~str>) {
     match sig {
         Some(sig) => {
-            ctxt.w.put_line(code_block_indent(sig));
+            ctxt.w.put_line(code_block(sig));
             ctxt.w.put_line(~"");
         }
         None => fail!("unimplemented")
     }
 }
 
-fn code_block_indent(s: ~str) -> ~str {
-    let mut indented = ~[];
-    for str::each_line_any(s) |line| {
-        indented.push(fmt!("    %s", line));
-    }
-    indented.connect("\n")
+fn code_block(s: ~str) -> ~str {
+    fmt!("~~~ {.rust}
+%s
+~~~", s)
 }
 
 fn write_const(
@@ -754,17 +752,17 @@ mod test {
     #[test]
     fn should_write_the_function_signature() {
         let markdown = render(~"#[doc = \"f\"] fn a() { }");
-        assert!(markdown.contains("\n    fn a()\n"));
+        assert!(markdown.contains("\n~~~ {.rust}\nfn a()\n"));
     }
 
     #[test]
     fn should_insert_blank_line_after_fn_signature() {
         let markdown = render(~"#[doc = \"f\"] fn a() { }");
-        assert!(markdown.contains("fn a()\n\n"));
+        assert!(markdown.contains("fn a()\n~~~\n\n"));
     }
 
     #[test]
-    fn should_correctly_indent_fn_signature() {
+    fn should_correctly_bracket_fn_signature() {
         let doc = create_doc(~"fn a() { }");
         let doc = doc::Doc{
             pages: ~[
@@ -781,13 +779,13 @@ mod test {
             ]
         };
         let markdown = write_markdown_str(doc);
-        assert!(markdown.contains("    line 1\n    line 2"));
+        assert!(markdown.contains("~~~ {.rust}\nline 1\nline 2\n~~~"));
     }
 
     #[test]
     fn should_leave_blank_line_between_fn_header_and_sig() {
         let markdown = render(~"fn a() { }");
-        assert!(markdown.contains("Function `a`\n\n    fn a()"));
+        assert!(markdown.contains("Function `a`\n\n~~~ {.rust}\nfn a()"));
     }
 
     #[test]
@@ -887,7 +885,7 @@ mod test {
     #[test]
     fn should_write_trait_method_signature() {
         let markdown = render(~"trait i { fn a(&self); }");
-        assert!(markdown.contains("\n    fn a(&self)"));
+        assert!(markdown.contains("\n~~~ {.rust}\nfn a(&self)"));
     }
 
     #[test]
@@ -927,7 +925,7 @@ mod test {
     fn should_write_impl_method_signature() {
         let markdown = render(
             ~"impl int { fn a(&mut self) { } }");
-        assert!(markdown.contains("\n    fn a(&mut self)"));
+        assert!(markdown.contains("~~~ {.rust}\nfn a(&mut self)"));
     }
 
     #[test]
@@ -946,7 +944,7 @@ mod test {
     #[test]
     fn should_write_type_signature() {
         let markdown = render(~"type t = int;");
-        assert!(markdown.contains("\n\n    type t = int\n\n"));
+        assert!(markdown.contains("\n\n~~~ {.rust}\ntype t = int\n~~~\n"));
     }
 
     #[test]
