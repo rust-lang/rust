@@ -1317,26 +1317,38 @@ pub fn cleanup_and_leave(bcx: block,
 
         match cur.kind {
             block_scope(inf) if !inf.empty_cleanups() => {
-                let (sub_cx, inf_cleanups) = {
+                let (sub_cx, dest, inf_cleanups) = {
                     let inf = &mut *inf; // FIXME(#5074) workaround stage0
+                    let mut skip = 0;
+                    let mut dest = None;
                     {
-                        let r = vec::find((*inf).cleanup_paths, |cp| cp.target == leave);
+                        let r = vec::rfind((*inf).cleanup_paths, |cp| cp.target == leave);
                         for r.iter().advance |cp| {
-                            Br(bcx, cp.dest);
-                            return;
+                            if cp.size == inf.cleanups.len() {
+                                Br(bcx, cp.dest);
+                                return;
+                            }
+
+                            skip = cp.size;
+                            dest = Some(cp.dest);
                         }
                     }
                     let sub_cx = sub_block(bcx, "cleanup");
                     Br(bcx, sub_cx.llbb);
                     inf.cleanup_paths.push(cleanup_path {
                         target: leave,
+                        size: inf.cleanups.len(),
                         dest: sub_cx.llbb
                     });
-                    (sub_cx, copy inf.cleanups)
+                    (sub_cx, dest, inf.cleanups.tailn(skip).to_owned())
                 };
                 bcx = trans_block_cleanups_(sub_cx,
                                             inf_cleanups,
                                             is_lpad);
+                for dest.iter().advance |&dest| {
+                    Br(bcx, dest);
+                    return;
+                }
             }
             _ => ()
         }
