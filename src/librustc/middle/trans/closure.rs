@@ -72,7 +72,7 @@ use syntax::parse::token::special_idents;
 // closure".
 //
 // Typically an opaque closure suffices because we only manipulate it
-// by ptr.  The routine common::T_opaque_box_ptr() returns an
+// by ptr.  The routine Type::opaque_box().ptr_to() returns an
 // appropriate type for such an opaque closure; it allows access to
 // the box fields, but not the closure_data itself.
 //
@@ -168,7 +168,7 @@ pub fn allocate_cbox(bcx: block, sigil: ast::Sigil, cdata_ty: ty::t)
         let _icx = bcx.insn_ctxt("closure::nuke_ref_count");
         // Initialize ref count to arbitrary value for debugging:
         let ccx = bcx.ccx();
-        let llbox = PointerCast(bcx, llbox, T_opaque_box_ptr(ccx));
+        let llbox = PointerCast(bcx, llbox, Type::opaque_box(ccx).ptr_to());
         let ref_cnt = GEPi(bcx, llbox, [0u, abi::box_field_refcnt]);
         let rc = C_int(ccx, 0x12345678);
         Store(bcx, rc, ref_cnt);
@@ -302,7 +302,7 @@ pub fn build_closure(bcx0: block,
                 Some(retptr) => retptr,
             }
         };
-        let ret_casted = PointerCast(bcx, ret_true, T_ptr(T_nil()));
+        let ret_casted = PointerCast(bcx, ret_true, Type::nil().ptr_to());
         let ret_datum = Datum {val: ret_casted, ty: ty::mk_nil(),
                                mode: ByRef(ZeroMem)};
         env_vals.push(EnvValue {action: EnvRef,
@@ -509,22 +509,22 @@ pub fn make_opaque_cbox_take_glue(
     // ~fn requires a deep copy.
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
-    let llopaquecboxty = T_opaque_box_ptr(ccx);
+    let llopaquecboxty = Type::opaque_box(ccx).ptr_to();
     let cbox_in = Load(bcx, cboxptr);
     do with_cond(bcx, IsNotNull(bcx, cbox_in)) |bcx| {
         // Load the size from the type descr found in the cbox
         let cbox_in = PointerCast(bcx, cbox_in, llopaquecboxty);
         let tydescptr = GEPi(bcx, cbox_in, [0u, abi::box_field_tydesc]);
         let tydesc = Load(bcx, tydescptr);
-        let tydesc = PointerCast(bcx, tydesc, T_ptr(ccx.tydesc_type));
+        let tydesc = PointerCast(bcx, tydesc, ccx.tydesc_type.ptr_to());
         let sz = Load(bcx, GEPi(bcx, tydesc, [0u, abi::tydesc_field_size]));
 
         // Adjust sz to account for the rust_opaque_box header fields
-        let sz = Add(bcx, sz, machine::llsize_of(ccx, T_box_header(ccx)));
+        let sz = Add(bcx, sz, machine::llsize_of(ccx, Type::box_header(ccx)));
 
         // Allocate memory, update original ptr, and copy existing data
-        let opaque_tydesc = PointerCast(bcx, tydesc, T_ptr(T_i8()));
-        let rval = alloca(bcx, T_ptr(T_i8()));
+        let opaque_tydesc = PointerCast(bcx, tydesc, Type::i8p());
+        let rval = alloca(bcx, Type::i8p());
         let bcx = callee::trans_lang_call(
             bcx,
             bcx.tcx().lang_items.exchange_malloc_fn(),
@@ -585,7 +585,7 @@ pub fn make_opaque_cbox_free_glue(
     let ccx = bcx.ccx();
     do with_cond(bcx, IsNotNull(bcx, cbox)) |bcx| {
         // Load the type descr found in the cbox
-        let lltydescty = T_ptr(ccx.tydesc_type);
+        let lltydescty = ccx.tydesc_type.ptr_to();
         let cbox = Load(bcx, cbox);
         let tydescptr = GEPi(bcx, cbox, [0u, abi::box_field_tydesc]);
         let tydesc = Load(bcx, tydescptr);

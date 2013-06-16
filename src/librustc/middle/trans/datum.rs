@@ -474,7 +474,7 @@ impl Datum {
             ByRef(_) => self.val,
             ByValue => {
                 if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
-                    C_null(T_ptr(type_of::type_of(bcx.ccx(), self.ty)))
+                    C_null(type_of::type_of(bcx.ccx(), self.ty).ptr_to())
                 } else {
                     let slot = alloc_ty(bcx, self.ty);
                     Store(bcx, self.val, slot);

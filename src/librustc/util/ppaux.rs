@@ -457,9 +457,9 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       }
       ty_estr(vs) => fmt!("%s%s", vstore_to_str(cx, vs), "str"),
       ty_opaque_box => ~"@?",
-      ty_opaque_closure_ptr(ast::BorrowedSigil) => ~"closure&",
-      ty_opaque_closure_ptr(ast::ManagedSigil) => ~"closure@",
-      ty_opaque_closure_ptr(ast::OwnedSigil) => ~"closure~",
+      ty_opaque_closure_ptr(ast::BorrowedSigil) => ~"&closure",
+      ty_opaque_closure_ptr(ast::ManagedSigil) => ~"@closure",
+      ty_opaque_closure_ptr(ast::OwnedSigil) => ~"~closure",
     }
 }
 
@@ -469,17 +469,17 @@ pub fn parameterized(cx: ctxt,
                      tps: &[ty::t]) -> ~str {
 
     let r_str = match self_r {
-      None => ~"",
-      Some(r) => {
-        fmt!("/%s", region_to_str(cx, r))
-      }
+        None => ~"",
+        Some(r) => {
+            region_to_str(cx, r)
+        }
     };
 
     if tps.len() > 0u {
         let strs = vec::map(tps, |t| ty_to_str(cx, *t));
-        fmt!("%s%s<%s>", base, r_str, strs.connect(","))
+        fmt!("%s%s<%s>", r_str, base, strs.connect(","))
     } else {
-        fmt!("%s%s", base, r_str)
+        fmt!("%s%s", r_str, base)
     }
 }
 

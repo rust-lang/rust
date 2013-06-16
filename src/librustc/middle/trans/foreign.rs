@@ -11,7 +11,7 @@
 use core::prelude::*;
 
 use back::{link, abi};
-use lib::llvm::{TypeRef, ValueRef};
+use lib::llvm::{ValueRef};
 use lib;
 use middle::trans::base::*;
 use middle::trans::cabi;
@@ -72,10 +72,10 @@ struct ShimTypes {
 
     /// Type of the struct we will use to shuttle values back and forth.
     /// This is always derived from the llsig.
-    bundle_ty: TypeRef,
+    bundle_ty: Type,
 
     /// Type of the shim function itself.
-    shim_fn_ty: TypeRef,
+    shim_fn_ty: Type,
 
     /// Adapter object for handling native ABI rules (trust me, you
     /// don't want to know).
@@ -83,8 +83,8 @@ struct ShimTypes {
 }
 
 struct LlvmSignature {
-    llarg_tys: ~[TypeRef],
-    llret_ty: TypeRef,
+    llarg_tys: ~[Type],
+    llret_ty: Type,
     sret: bool,
 }
 
@@ -113,20 +113,16 @@ fn shim_types(ccx: @mut CrateContext, id: ast::node_id) -> ShimTypes {
         _ => ccx.sess.bug("c_arg_and_ret_lltys called on non-function type")
     };
     let llsig = foreign_signature(ccx, &fn_sig);
-    let bundle_ty = T_struct(vec::append_one(copy llsig.llarg_tys,
-                                             T_ptr(llsig.llret_ty)),
-                             false);
+    let bundle_ty = Type::struct_(llsig.llarg_tys + [llsig.llret_ty.ptr_to()], false);
     let ret_def = !ty::type_is_bot(fn_sig.output) &&
                   !ty::type_is_nil(fn_sig.output);
-    let fn_ty = abi_info(ccx).compute_info(llsig.llarg_tys,
-                                           llsig.llret_ty,
-                                           ret_def);
+    let fn_ty = abi_info(ccx).compute_info(llsig.llarg_tys, llsig.llret_ty, ret_def);
     ShimTypes {
         fn_sig: fn_sig,
         llsig: llsig,
         ret_def: ret_def,
         bundle_ty: bundle_ty,
-        shim_fn_ty: T_fn([T_ptr(bundle_ty)], T_void()),
+        shim_fn_ty: Type::func([bundle_ty.ptr_to()], Type::void()),
         fn_ty: fn_ty
     }
 }
@@ -210,8 +206,8 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
     arg_builder(bcx, tys, llwrapfn, llargbundle);
 
     // Create call itself.
-    let llshimfnptr = PointerCast(bcx, llshimfn, T_ptr(T_i8()));
-    let llrawargbundle = PointerCast(bcx, llargbundle, T_ptr(T_i8()));
+    let llshimfnptr = PointerCast(bcx, llshimfn, Type::i8p());
+    let llrawargbundle = PointerCast(bcx, llargbundle, Type::i8p());
     Call(bcx, shim_upcall, [llrawargbundle, llshimfnptr]);
     ret_builder(bcx, tys, llargbundle);
 
@@ -239,7 +235,7 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
             // XXX: This is ugly.
             let llretptr = BitCast(return_context,
                                    fcx.llretptr.get(),
-                                   T_ptr(llfunctionreturntype));
+                                   llfunctionreturntype.ptr_to());
             Ret(return_context, Load(return_context, llretptr));
         }
     }
@@ -688,9 +684,9 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let static_ti = get_tydesc(ccx, tp_ty);
             glue::lazily_emit_all_tydesc_glue(ccx, static_ti);
 
-            // FIXME (#3727): change this to T_ptr(ccx.tydesc_ty) when the
+            // FIXME (#3727): change this to ccx.tydesc_ty.ptr_to() when the
             // core::sys copy of the get_tydesc interface dies off.
-            let td = PointerCast(bcx, static_ti.tydesc, T_ptr(T_nil()));
+            let td = PointerCast(bcx, static_ti.tydesc, Type::nil().ptr_to());
             Store(bcx, td, fcx.llretptr.get());
         }
         "init" => {
@@ -734,7 +730,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                 // code bloat when `transmute` is used on large structural
                 // types.
                 let lldestptr = fcx.llretptr.get();
-                let lldestptr = PointerCast(bcx, lldestptr, T_ptr(T_i8()));
+                let lldestptr = PointerCast(bcx, lldestptr, Type::i8p());
 
                 let llsrcval = get_param(decl, first_real_arg);
                 let llsrcptr = if ty::type_is_immediate(in_type) {
@@ -744,7 +740,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                 } else {
                     llsrcval
                 };
-                let llsrcptr = PointerCast(bcx, llsrcptr, T_ptr(T_i8()));
+                let llsrcptr = PointerCast(bcx, llsrcptr, Type::i8p());
 
                 let llsize = llsize_of(ccx, llintype);
                 call_memcpy(bcx, lldestptr, llsrcptr, llsize, 1);
@@ -761,12 +757,9 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let visitor = get_param(decl, first_real_arg + 1u);
             //let llvisitorptr = alloca(bcx, val_ty(visitor));
             //Store(bcx, visitor, llvisitorptr);
-            let td = PointerCast(bcx, td, T_ptr(ccx.tydesc_type));
-            glue::call_tydesc_glue_full(bcx,
-                                        visitor,
-                                        td,
-                                        abi::tydesc_field_visit_glue,
-                                        None);
+            let td = PointerCast(bcx, td, ccx.tydesc_type.ptr_to());
+            glue::call_tydesc_glue_full(bcx, visitor, td,
+                                        abi::tydesc_field_visit_glue, None);
         }
         "frame_address" => {
             let frameaddress = ccx.intrinsics.get_copy(& &"llvm.frameaddress");
@@ -801,8 +794,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let llfty = type_of_fn(bcx.ccx(), [], ty::mk_nil());
             let morestack_addr = decl_cdecl_fn(
                 bcx.ccx().llmod, "__morestack", llfty);
-            let morestack_addr = PointerCast(bcx, morestack_addr,
-                                             T_ptr(T_nil()));
+            let morestack_addr = PointerCast(bcx, morestack_addr, Type::nil().ptr_to());
             Store(bcx, morestack_addr, fcx.llretptr.get());
         }
         "memcpy32" => {
@@ -811,8 +803,8 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
             let size = C_i32(machine::llsize_of_real(ccx, lltp_ty) as i32);
 
-            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), T_ptr(T_i8()));
-            let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), T_ptr(T_i8()));
+            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), Type::i8p());
+            let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), Type::i8p());
             let count = get_param(decl, first_real_arg + 2);
             let volatile = C_i1(false);
             let llfn = bcx.ccx().intrinsics.get_copy(& &"llvm.memcpy.p0i8.p0i8.i32");
@@ -824,8 +816,8 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
             let size = C_i64(machine::llsize_of_real(ccx, lltp_ty) as i64);
 
-            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), T_ptr(T_i8()));
-            let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), T_ptr(T_i8()));
+            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), Type::i8p());
+            let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), Type::i8p());
             let count = get_param(decl, first_real_arg + 2);
             let volatile = C_i1(false);
             let llfn = bcx.ccx().intrinsics.get_copy(& &"llvm.memcpy.p0i8.p0i8.i64");
@@ -837,8 +829,8 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
             let size = C_i32(machine::llsize_of_real(ccx, lltp_ty) as i32);
 
-            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), T_ptr(T_i8()));
-            let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), T_ptr(T_i8()));
+            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), Type::i8p());
+            let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), Type::i8p());
             let count = get_param(decl, first_real_arg + 2);
             let volatile = C_i1(false);
             let llfn = bcx.ccx().intrinsics.get_copy(& &"llvm.memmove.p0i8.p0i8.i32");
@@ -850,8 +842,8 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
             let size = C_i64(machine::llsize_of_real(ccx, lltp_ty) as i64);
 
-            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), T_ptr(T_i8()));
-            let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), T_ptr(T_i8()));
+            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), Type::i8p());
+            let src_ptr = PointerCast(bcx, get_param(decl, first_real_arg + 1), Type::i8p());
             let count = get_param(decl, first_real_arg + 2);
             let volatile = C_i1(false);
             let llfn = bcx.ccx().intrinsics.get_copy(& &"llvm.memmove.p0i8.p0i8.i64");
@@ -863,7 +855,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
             let size = C_i32(machine::llsize_of_real(ccx, lltp_ty) as i32);
 
-            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), T_ptr(T_i8()));
+            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), Type::i8p());
             let val = get_param(decl, first_real_arg + 1);
             let count = get_param(decl, first_real_arg + 2);
             let volatile = C_i1(false);
@@ -876,7 +868,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
             let size = C_i64(machine::llsize_of_real(ccx, lltp_ty) as i64);
 
-            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), T_ptr(T_i8()));
+            let dst_ptr = PointerCast(bcx, get_param(decl, first_real_arg), Type::i8p());
             let val = get_param(decl, first_real_arg + 1);
             let count = get_param(decl, first_real_arg + 2);
             let volatile = C_i1(false);
@@ -1231,7 +1223,7 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
                 llargvals.push(llretptr);
             }
 
-            let llenvptr = C_null(T_opaque_box_ptr(bcx.ccx()));
+            let llenvptr = C_null(Type::opaque_box(bcx.ccx()).ptr_to());
             llargvals.push(llenvptr);
             while i < n {
                 // Get a pointer to the argument:

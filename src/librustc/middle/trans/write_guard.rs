@@ -67,17 +67,12 @@ pub fn return_to_mut(mut bcx: block,
            bcx.val_to_str(frozen_val_ref),
            bcx.val_to_str(bits_val_ref));
 
-    let box_ptr =
-        Load(bcx, PointerCast(bcx,
-                              frozen_val_ref,
-                              T_ptr(T_ptr(T_i8()))));
+    let box_ptr = Load(bcx, PointerCast(bcx, frozen_val_ref, Type::i8p().ptr_to()));
 
-    let bits_val =
-        Load(bcx, bits_val_ref);
+    let bits_val = Load(bcx, bits_val_ref);
 
     if bcx.tcx().sess.debug_borrows() {
-        bcx = callee::trans_lang_call(
-            bcx,
+        bcx = callee::trans_lang_call( bcx,
             bcx.tcx().lang_items.unrecord_borrow_fn(),
             [
                 box_ptr,
@@ -146,10 +141,7 @@ fn root(datum: &Datum,
                 DynaMut => bcx.tcx().lang_items.borrow_as_mut_fn(),
             };
 
-            let box_ptr = Load(bcx,
-                               PointerCast(bcx,
-                                           scratch.val,
-                                           T_ptr(T_ptr(T_i8()))));
+            let box_ptr = Load(bcx, PointerCast(bcx, scratch.val, Type::i8p().ptr_to()));
 
             bcx = callee::trans_lang_call(
                 bcx,
@@ -194,6 +186,6 @@ fn perform_write_guard(datum: &Datum,
     callee::trans_lang_call(
         bcx,
         bcx.tcx().lang_items.check_not_borrowed_fn(),
-        [PointerCast(bcx, llval, T_ptr(T_i8())), filename, line],
+        [PointerCast(bcx, llval, Type::i8p()), filename, line],
         expr::Ignore)
 }

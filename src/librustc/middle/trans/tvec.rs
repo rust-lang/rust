@@ -11,7 +11,7 @@
 
 use back::abi;
 use lib;
-use lib::llvm::{llvm, ValueRef, TypeRef};
+use lib::llvm::{llvm, ValueRef};
 use middle::trans::base;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -73,7 +73,7 @@ pub fn get_dataptr(bcx: block, vptr: ValueRef) -> ValueRef {
 pub fn pointer_add(bcx: block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::pointer_add");
     let old_ty = val_ty(ptr);
-    let bptr = PointerCast(bcx, ptr, T_ptr(T_i8()));
+    let bptr = PointerCast(bcx, ptr, Type::i8p());
     return PointerCast(bcx, InBoundsGEP(bcx, bptr, [bytes]), old_ty);
 }
 
@@ -146,7 +146,7 @@ pub fn make_drop_glue_unboxed(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
 pub struct VecTypes {
     vec_ty: ty::t,
     unit_ty: ty::t,
-    llunit_ty: TypeRef,
+    llunit_ty: Type,
     llunit_size: ValueRef
 }
 
@@ -227,7 +227,7 @@ pub fn trans_slice_vstore(bcx: block,
     let fixed_ty = ty::mk_evec(bcx.tcx(),
                                ty::mt {ty: vt.unit_ty, mutbl: ast::m_mutbl},
                                ty::vstore_fixed(count));
-    let llfixed_ty = T_ptr(type_of::type_of(bcx.ccx(), fixed_ty));
+    let llfixed_ty = type_of::type_of(bcx.ccx(), fixed_ty).ptr_to();
     let llfixed_casted = BitCast(bcx, llfixed, llfixed_ty);
     add_clean(bcx, llfixed_casted, fixed_ty);
 
@@ -271,13 +271,10 @@ pub fn trans_lit_str(bcx: block,
                 let bytes = str_lit.len() + 1; // count null-terminator too
                 let llbytes = C_uint(bcx.ccx(), bytes);
                 let llcstr = C_cstr(bcx.ccx(), str_lit);
-                let llcstr = llvm::LLVMConstPointerCast(llcstr,
-                                                        T_ptr(T_i8()));
-                Store(bcx,
-                      llcstr,
+                let llcstr = llvm::LLVMConstPointerCast(llcstr, Type::i8p().to_ref());
+                Store(bcx, llcstr,
                       GEPi(bcx, lldest, [0u, abi::slice_elt_base]));
-                Store(bcx,
-                      llbytes,
+                Store(bcx, llbytes,
                       GEPi(bcx, lldest, [0u, abi::slice_elt_len]));
                 bcx
             }
@@ -286,9 +283,7 @@ pub fn trans_lit_str(bcx: block,
 }
 
 
-pub fn trans_uniq_or_managed_vstore(bcx: block,
-                                    heap: heap,
-                                    vstore_expr: @ast::expr,
+pub fn trans_uniq_or_managed_vstore(bcx: block, heap: heap, vstore_expr: @ast::expr,
                                     content_expr: @ast::expr) -> DatumBlock {
     //!
     //
@@ -307,7 +302,7 @@ pub fn trans_uniq_or_managed_vstore(bcx: block,
                     node: ast::lit_str(s), _
                 }) => {
                     let llptrval = C_cstr(bcx.ccx(), s);
-                    let llptrval = PointerCast(bcx, llptrval, T_ptr(T_i8()));
+                    let llptrval = PointerCast(bcx, llptrval, Type::i8p());
                     let llsizeval = C_uint(bcx.ccx(), s.len());
                     let typ = ty::mk_estr(bcx.tcx(), ty::vstore_uniq);
                     let lldestval = scratch_datum(bcx, typ, false);
