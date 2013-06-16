@@ -103,7 +103,7 @@ pub fn drop_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
       ty::ty_box(_) | ty::ty_opaque_box |
       ty::ty_evec(_, ty::vstore_box) |
       ty::ty_estr(ty::vstore_box) => {
-        decr_refcnt_maybe_free(bcx, v, t)
+        decr_refcnt_maybe_free(bcx, v, None, t)
       }
       _ => bcx.tcx().sess.bug("drop_ty_immediate: non-box ty")
     }
@@ -489,7 +489,7 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
     let bcx = match ty::get(t).sty {
       ty::ty_box(_) | ty::ty_opaque_box |
       ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) => {
-        decr_refcnt_maybe_free(bcx, Load(bcx, v0), t)
+        decr_refcnt_maybe_free(bcx, Load(bcx, v0), Some(v0), t)
       }
       ty::ty_uniq(_) |
       ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) => {
@@ -514,8 +514,10 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
         closure::make_closure_glue(bcx, v0, t, drop_ty)
       }
       ty::ty_trait(_, _, ty::BoxTraitStore, _) => {
-        let llbox = Load(bcx, GEPi(bcx, v0, [0u, abi::trt_field_box]));
-        decr_refcnt_maybe_free(bcx, llbox, ty::mk_opaque_box(ccx.tcx))
+          let llbox_ptr = GEPi(bcx, v0, [0u, abi::trt_field_box]);
+          let llbox = Load(bcx, llbox_ptr);
+          decr_refcnt_maybe_free(bcx, llbox, Some(llbox_ptr),
+                                 ty::mk_opaque_box(ccx.tcx))
       }
       ty::ty_trait(_, _, ty::UniqTraitStore, _) => {
           let lluniquevalue = GEPi(bcx, v0, [0, abi::trt_field_box]);
@@ -549,7 +551,10 @@ pub fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
     build_return(bcx);
 }
 
-pub fn decr_refcnt_maybe_free(bcx: block, box_ptr: ValueRef, t: ty::t)
+// box_ptr_ptr is optional, it is constructed if not supplied.
+pub fn decr_refcnt_maybe_free(bcx: block, box_ptr: ValueRef,
+                              box_ptr_ptr: Option<ValueRef>,
+                              t: ty::t)
                            -> block {
     let _icx = bcx.insn_ctxt("decr_refcnt_maybe_free");
     let ccx = bcx.ccx();
@@ -559,7 +564,12 @@ pub fn decr_refcnt_maybe_free(bcx: block, box_ptr: ValueRef, t: ty::t)
         let rc = Sub(bcx, Load(bcx, rc_ptr), C_int(ccx, 1));
         Store(bcx, rc, rc_ptr);
         let zero_test = ICmp(bcx, lib::llvm::IntEQ, C_int(ccx, 0), rc);
-        with_cond(bcx, zero_test, |bcx| free_ty_immediate(bcx, box_ptr, t))
+        do with_cond(bcx, zero_test) |bcx| {
+            match box_ptr_ptr {
+                Some(p) => free_ty(bcx, p, t),
+                None => free_ty_immediate(bcx, box_ptr, t)
+            }
+        }
     }
 }
 
