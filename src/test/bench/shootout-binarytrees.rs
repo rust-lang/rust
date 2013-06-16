@@ -41,7 +41,9 @@ fn bottom_up_tree<'r>(arena: &'r mut arena::Arena, item: int, depth: int)
 }
 
 fn main() {
-    let args = os::args();
+    use std::os;
+    use std::int;
+    let args = std::os::args();
     let args = if os::getenv(~"RUST_BENCH").is_some() {
         ~[~"", ~"17"]
     } else if args.len() <= 1u {
@@ -63,7 +65,7 @@ fn main() {
     let stretch_depth = max_depth + 1;
     let stretch_tree = bottom_up_tree(&mut stretch_arena, 0, stretch_depth);
 
-    io::println(fmt!("stretch tree of depth %d\t check: %d",
+    println(fmt!("stretch tree of depth %d\t check: %d",
                           stretch_depth,
                           item_check(stretch_tree)));
 
@@ -81,12 +83,12 @@ fn main() {
             chk += item_check(temp_tree);
             i += 1;
         }
-        io::println(fmt!("%d\t trees of depth %d\t check: %d",
+        println(fmt!("%d\t trees of depth %d\t check: %d",
                          iterations * 2, depth,
                          chk));
         depth += 2;
     }
-    io::println(fmt!("long lived trees of depth %d\t check: %d",
+    println(fmt!("long lived tree of depth %d\t check: %d",
                      max_depth,
                      item_check(long_lived_tree)));
 }
