@@ -13,11 +13,13 @@ use core::prelude::*;
 use lib::llvm::llvm;
 use lib::llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect};
 use lib::llvm::{Opcode, IntPredicate, RealPredicate, False};
-use lib::llvm::{ValueRef, Type, BasicBlockRef, BuilderRef, ModuleRef};
+use lib::llvm::{ValueRef, BasicBlockRef, BuilderRef, ModuleRef};
 use lib;
 use middle::trans::common::*;
 use middle::trans::machine::llalign_of_min;
 use syntax::codemap::span;
+
+use middle::trans::type_::Type;
 
 use core::cast;
 use core::hashmap::HashMap;
@@ -232,7 +234,7 @@ pub fn Unreachable(cx: block) {
 
 pub fn _Undef(val: ValueRef) -> ValueRef {
     unsafe {
-        return llvm::LLVMGetUndef(val_ty(val));
+        return llvm::LLVMGetUndef(val_ty(val).to_ref());
     }
 }
 
@@ -504,7 +506,7 @@ pub fn ArrayMalloc(cx: block, Ty: Type, Val: ValueRef) -> ValueRef {
 
 pub fn Alloca(cx: block, Ty: Type) -> ValueRef {
     unsafe {
-        if cx.unreachable { return llvm::LLVMGetUndef(Ty.to_ptr().to_ref()); }
+        if cx.unreachable { return llvm::LLVMGetUndef(Ty.ptr_to().to_ref()); }
         count_insn(cx, "alloca");
         return llvm::LLVMBuildAlloca(B(cx), Ty.to_ref(), noname());
     }
@@ -512,7 +514,7 @@ pub fn Alloca(cx: block, Ty: Type) -> ValueRef {
 
 pub fn ArrayAlloca(cx: block, Ty: Type, Val: ValueRef) -> ValueRef {
     unsafe {
-        if cx.unreachable { return llvm::LLVMGetUndef(Ty.to_ptr().to_ref()); }
+        if cx.unreachable { return llvm::LLVMGetUndef(Ty.ptr_to().to_ref()); }
         count_insn(cx, "arrayalloca");
         return llvm::LLVMBuildArrayAlloca(B(cx), Ty.to_ref(), Val, noname());
     }
@@ -531,9 +533,12 @@ pub fn Load(cx: block, PointerVal: ValueRef) -> ValueRef {
         let ccx = cx.fcx.ccx;
         if cx.unreachable {
             let ty = val_ty(PointerVal);
-            let eltty = if llvm::LLVMGetTypeKind(ty) == lib::llvm::Array {
-                llvm::LLVMGetElementType(ty) } else { ccx.int_type };
-            return llvm::LLVMGetUndef(eltty);
+            let eltty = if ty.kind() == lib::llvm::Array {
+                ty.element_type()
+            } else {
+                ccx.int_type
+            };
+            return llvm::LLVMGetUndef(eltty.to_ref());
         }
         count_insn(cx, "load");
         return llvm::LLVMBuildLoad(B(cx), PointerVal, noname());
@@ -544,7 +549,7 @@ pub fn AtomicLoad(cx: block, PointerVal: ValueRef, order: AtomicOrdering) -> Val
     unsafe {
         let ccx = cx.fcx.ccx;
         if cx.unreachable {
-            return llvm::LLVMGetUndef(ccx.int_type);
+            return llvm::LLVMGetUndef(ccx.int_type.to_ref());
         }
         count_insn(cx, "load.atomic");
         let align = llalign_of_min(ccx, ccx.int_type);
@@ -639,7 +644,7 @@ pub fn StructGEP(cx: block, Pointer: ValueRef, Idx: uint) -> ValueRef {
 
 pub fn GlobalString(cx: block, _Str: *c_char) -> ValueRef {
     unsafe {
-        if cx.unreachable { return llvm::LLVMGetUndef(Type::i8p()); }
+        if cx.unreachable { return llvm::LLVMGetUndef(Type::i8p().to_ref()); }
         count_insn(cx, "globalstring");
         return llvm::LLVMBuildGlobalString(B(cx), _Str, noname());
     }
@@ -647,7 +652,7 @@ pub fn GlobalString(cx: block, _Str: *c_char) -> ValueRef {
 
 pub fn GlobalStringPtr(cx: block, _Str: *c_char) -> ValueRef {
     unsafe {
-        if cx.unreachable { return llvm::LLVMGetUndef(Type::i8p()); }
+        if cx.unreachable { return llvm::LLVMGetUndef(Type::i8p().to_ref()); }
         count_insn(cx, "globalstringptr");
         return llvm::LLVMBuildGlobalStringPtr(B(cx), _Str, noname());
     }
@@ -841,7 +846,7 @@ pub fn Phi(cx: block, Ty: Type, vals: &[ValueRef], bbs: &[BasicBlockRef])
     unsafe {
         if cx.unreachable { return llvm::LLVMGetUndef(Ty.to_ref()); }
         assert_eq!(vals.len(), bbs.len());
-        let phi = EmptyPhi(cx, Ty.to_ref());
+        let phi = EmptyPhi(cx, Ty);
         count_insn(cx, "addincoming");
         llvm::LLVMAddIncoming(phi, vec::raw::to_ptr(vals),
                               vec::raw::to_ptr(bbs),
@@ -863,10 +868,13 @@ pub fn _UndefReturn(cx: block, Fn: ValueRef) -> ValueRef {
     unsafe {
         let ccx = cx.fcx.ccx;
         let ty = val_ty(Fn);
-        let retty = if llvm::LLVMGetTypeKind(ty) == lib::llvm::Integer {
-            llvm::LLVMGetReturnType(ty) } else { ccx.int_type };
-            count_insn(cx, "");
-        return llvm::LLVMGetUndef(retty);
+        let retty = if ty.kind() == lib::llvm::Integer {
+            ty.return_type()
+        } else {
+            ccx.int_type
+        };
+        count_insn(cx, "ret_undef");
+        return llvm::LLVMGetUndef(retty.to_ref());
     }
 }
 
@@ -887,9 +895,10 @@ pub fn add_comment(bcx: block, text: &str) {
             let comment_text = ~"# " +
                 sanitized.replace("\n", "\n\t# ");
             count_insn(bcx, "inlineasm");
-            let asm = str::as_c_str(comment_text, |c| {
-                llvm::LLVMConstInlineAsm(Type::func([], Type::void()), c, noname(), False, False)
-            });
+            let asm = do comment_text.as_c_str |c| {
+                llvm::LLVMConstInlineAsm(Type::func([], &Type::void()).to_ref(),
+                                         c, noname(), False, False)
+            };
             Call(bcx, asm, []);
         }
     }
@@ -913,8 +922,8 @@ pub fn InlineAsmCall(cx: block, asm: *c_char, cons: *c_char,
         };
 
         debug!("Asm Output Type: %?", cx.ccx().tn.type_to_str(output));
-        let fty = Type::func(argtys, output);
-        let v = llvm::LLVMInlineAsm(llfty.to_ref(), asm, cons, volatile, alignstack, dia as c_uint);
+        let fty = Type::func(argtys, &output);
+        let v = llvm::LLVMInlineAsm(fty.to_ref(), asm, cons, volatile, alignstack, dia as c_uint);
 
         Call(cx, v, inputs)
     }
@@ -1005,9 +1014,9 @@ pub fn ShuffleVector(cx: block, V1: ValueRef, V2: ValueRef,
 pub fn VectorSplat(cx: block, NumElts: uint, EltVal: ValueRef) -> ValueRef {
     unsafe {
         let elt_ty = val_ty(EltVal);
-        let Undef = llvm::LLVMGetUndef(Type::vector(elt_ty, NumElts).to_ref());
+        let Undef = llvm::LLVMGetUndef(Type::vector(&elt_ty, NumElts as u64).to_ref());
         let VecVal = InsertElement(cx, Undef, EltVal, C_i32(0));
-        ShuffleVector(cx, VecVal, Undef, C_null(Type::vector(Type::i32().to_ref(), NumElts)))
+        ShuffleVector(cx, VecVal, Undef, C_null(Type::vector(&Type::i32(), NumElts as u64)))
     }
 }
 
@@ -1049,7 +1058,7 @@ pub fn IsNotNull(cx: block, Val: ValueRef) -> ValueRef {
 pub fn PtrDiff(cx: block, LHS: ValueRef, RHS: ValueRef) -> ValueRef {
     unsafe {
         let ccx = cx.fcx.ccx;
-        if cx.unreachable { return llvm::LLVMGetUndef(ccx.int_type); }
+        if cx.unreachable { return llvm::LLVMGetUndef(ccx.int_type.to_ref()); }
         count_insn(cx, "ptrdiff");
         return llvm::LLVMBuildPtrDiff(B(cx), LHS, RHS, noname());
     }

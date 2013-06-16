@@ -44,6 +44,7 @@ use syntax::parse::token;
 use syntax::abi::{X86, X86_64, Arm, Mips};
 use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall,
                   Cdecl, Aapcs, C};
+use middle::trans::type_::Type;
 
 fn abi_info(ccx: @mut CrateContext) -> @cabi::ABIInfo {
     return match ccx.sess.targ_cfg.arch {
@@ -122,7 +123,7 @@ fn shim_types(ccx: @mut CrateContext, id: ast::node_id) -> ShimTypes {
         llsig: llsig,
         ret_def: ret_def,
         bundle_ty: bundle_ty,
-        shim_fn_ty: Type::func([bundle_ty.ptr_to()], Type::void()),
+        shim_fn_ty: Type::func([bundle_ty.ptr_to()], &Type::void()),
         fn_ty: fn_ty
     }
 }
@@ -220,12 +221,9 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
         let return_context = raw_block(fcx, false, fcx.llreturn);
 
         let llfunctiontype = val_ty(llwrapfn);
-        let llfunctiontype =
-            ::lib::llvm::llvm::LLVMGetElementType(llfunctiontype);
-        let llfunctionreturntype =
-            ::lib::llvm::llvm::LLVMGetReturnType(llfunctiontype);
-        if ::lib::llvm::llvm::LLVMGetTypeKind(llfunctionreturntype) ==
-                ::lib::llvm::Void {
+        let llfunctiontype = llfunctiontype.element_type();
+        let return_type = llfunctiontype.return_type();
+        if return_type.kind() == ::lib::llvm::Void {
             // XXX: This might be wrong if there are any functions for which
             // the C ABI specifies a void output pointer and the Rust ABI
             // does not.
@@ -233,9 +231,7 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
         } else {
             // Cast if we have to...
             // XXX: This is ugly.
-            let llretptr = BitCast(return_context,
-                                   fcx.llretptr.get(),
-                                   llfunctionreturntype.ptr_to());
+            let llretptr = BitCast(return_context, fcx.llretptr.get(), return_type.ptr_to());
             Ret(return_context, Load(return_context, llretptr));
         }
     }
@@ -635,6 +631,9 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                 Store(bcx, old, fcx.llretptr.get());
             }
         }
+
+        build_return(bcx);
+        finish_fn(fcx, lltop);
 
         return;
     }

@@ -30,6 +30,8 @@ use middle::typeck;
 use util::common::indenter;
 use util::ppaux::Repr;
 
+use middle::trans::type_::Type;
+
 use core::str;
 use core::vec;
 use syntax::ast_map::{path, path_mod, path_name};
@@ -463,7 +465,7 @@ pub fn trans_monomorphized_callee(bcx: block,
 
           // create a llvalue that represents the fn ptr
           let fn_ty = node_id_type(bcx, callee_id);
-          let llfn_ty = type_of_fn_from_ty(ccx, fn_ty).to_ptr();
+          let llfn_ty = type_of_fn_from_ty(ccx, fn_ty).ptr_to();
           let llfn_val = PointerCast(bcx, callee.llfn, llfn_ty);
 
           // combine the self environment with the rest
@@ -778,7 +780,7 @@ pub fn make_vtable(ccx: @mut CrateContext,
         let tbl = C_struct(components);
         let vtable = ccx.sess.str_of((ccx.names)("vtable"));
         let vt_gvar = do str::as_c_str(vtable) |buf| {
-            llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
+            llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl).to_ref(), buf)
         };
         llvm::LLVMSetInitializer(vt_gvar, tbl);
         llvm::LLVMSetGlobalConstant(vt_gvar, lib::llvm::True);

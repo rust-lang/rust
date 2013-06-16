@@ -24,17 +24,17 @@ pub struct Upcalls {
 
 macro_rules! upcall (
     (fn $name:ident($($arg:expr),+) -> $ret:expr) => ({
-        let fn_ty = Type::func([ $($arg),* ], $ret);
+        let fn_ty = Type::func([ $($arg),* ], &$ret);
         base::decl_cdecl_fn(llmod, ~"upcall_" + stringify!($name), fn_ty)
     });
     (nothrow fn $name:ident($($arg:expr),+) -> $ret:expr) => ({
-        let fn_ty = Type::func([ $($arg),* ], $ret);
+        let fn_ty = Type::func([ $($arg),* ], &$ret);
         let decl = base::decl_cdecl_fn(llmod, ~"upcall_" + stringify!($name), fn_ty);
         base::set_no_unwind(decl);
         decl
     });
     (nothrow fn $name:ident -> $ret:expr) => ({
-        let fn_ty = Type::func([], $ret);
+        let fn_ty = Type::func([], &$ret);
         let decl = base::decl_cdecl_fn(llmod, ~"upcall_" + stringify!($name), fn_ty);
         base::set_no_unwind(decl);
         decl
@@ -42,7 +42,7 @@ macro_rules! upcall (
 )
 
 pub fn declare_upcalls(targ_cfg: @session::config, llmod: ModuleRef) -> @Upcalls {
-    let opaque_ptr = Type::i8().to_ptr();
+    let opaque_ptr = Type::i8().ptr_to();
     let int_ty = Type::int(targ_cfg.arch);
 
     @Upcalls {

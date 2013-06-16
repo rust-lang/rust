@@ -175,15 +175,15 @@ pub extern "rust-intrinsic" {
     pub fn atomic_umin_relaxed(dst: &mut int, src: int) -> int;
 
     #[cfg(not(stage0))]
-    pub fn atomic_umin(dst: &mut int, src: int) -> int;
+    pub fn atomic_umax(dst: &mut int, src: int) -> int;
     #[cfg(not(stage0))]
-    pub fn atomic_umin_acq(dst: &mut int, src: int) -> int;
+    pub fn atomic_umax_acq(dst: &mut int, src: int) -> int;
     #[cfg(not(stage0))]
-    pub fn atomic_umin_rel(dst: &mut int, src: int) -> int;
+    pub fn atomic_umax_rel(dst: &mut int, src: int) -> int;
     #[cfg(not(stage0))]
-    pub fn atomic_umin_acqrel(dst: &mut int, src: int) -> int;
+    pub fn atomic_umax_acqrel(dst: &mut int, src: int) -> int;
     #[cfg(not(stage0))]
-    pub fn atomic_umin_relaxed(dst: &mut int, src: int) -> int;
+    pub fn atomic_umax_relaxed(dst: &mut int, src: int) -> int;
 
     /// The size of a type in bytes.
     ///

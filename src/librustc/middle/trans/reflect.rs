@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use back::link::mangle_internal_name_by_path_and_seq;
-use lib::llvm::{Type, ValueRef, llvm};
+use lib::llvm::{ValueRef, llvm};
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::build::*;
@@ -32,6 +32,8 @@ use syntax::ast::def_id;
 use syntax::ast;
 use syntax::ast_map::path_name;
 use syntax::parse::token::special_idents;
+
+use middle::trans::type_::Type;
 
 pub struct Reflector {
     visitor_val: ValueRef,

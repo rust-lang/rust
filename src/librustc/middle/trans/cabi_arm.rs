@@ -9,10 +9,11 @@
 // except according to those terms.
 
 use lib::llvm::{llvm, Integer, Pointer, Float, Double, Struct, Array};
-use lib::llvm::struct_tys;
 use lib::llvm::{Attribute, StructRetAttribute};
 use lib::llvm::True;
 use middle::trans::cabi::{ABIInfo, FnType, LLVMType};
+
+use middle::trans::type_::Type;
 
 use core::option::{Option, None, Some};
 use core::uint;
@@ -27,58 +28,58 @@ fn align(off: uint, ty: Type) -> uint {
 }
 
 fn ty_align(ty: Type) -> uint {
-    unsafe {
-        match ty.kind() {
-            Integer => {
+    match ty.kind() {
+        Integer => {
+            unsafe {
                 ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
             }
-            Pointer => 4,
-            Float => 4,
-            Double => 8,
-            Struct => {
-                if ty.is_packed() {
-                    1
-                } else {
-                    let str_tys = ty.field_types();
-                    str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
-                }
-            }
-            Array => {
-                let elt = ty.element_type();
-                ty_align(elt)
-            }
-            _ => fail!("ty_align: unhandled type")
         }
+        Pointer => 4,
+        Float => 4,
+        Double => 8,
+        Struct => {
+            if ty.is_packed() {
+                1
+            } else {
+                let str_tys = ty.field_types();
+                str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
+            }
+        }
+        Array => {
+            let elt = ty.element_type();
+            ty_align(elt)
+        }
+        _ => fail!("ty_align: unhandled type")
     }
 }
 
 fn ty_size(ty: Type) -> uint {
-    unsafe {
-        match ty.kind() {
-            Integer => {
+    match ty.kind() {
+        Integer => {
+            unsafe {
                 ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
             }
-            Pointer => 4,
-            Float => 4,
-            Double => 8,
-            Struct => {
-                if ty.is_packed() {
-                    let str_tys = ty.field_types();
-                    str_tys.iter().fold(0, |s, t| s + ty_size(*t))
-                } else {
-                    let str_tys = ty.field_types();
-                    let size = str_tys.iter().fold(0, |s, t| align(s, *t) + ty_size(*t));
-                    align(size, ty)
-                }
-            }
-            Array => {
-                let len = ty.array_length();
-                let elt = ty.element_type();
-                let eltsz = ty_size(elt);
-                len * eltsz
-            }
-            _ => fail!("ty_size: unhandled type")
         }
+        Pointer => 4,
+        Float => 4,
+        Double => 8,
+        Struct => {
+            if ty.is_packed() {
+                let str_tys = ty.field_types();
+                str_tys.iter().fold(0, |s, t| s + ty_size(*t))
+            } else {
+                let str_tys = ty.field_types();
+                let size = str_tys.iter().fold(0, |s, t| align(s, *t) + ty_size(*t));
+                align(size, ty)
+            }
+        }
+        Array => {
+            let len = ty.array_length();
+            let elt = ty.element_type();
+            let eltsz = ty_size(elt);
+            len * eltsz
+        }
+        _ => fail!("ty_size: unhandled type")
     }
 }
 
@@ -107,9 +108,9 @@ fn classify_arg_ty(ty: Type) -> (LLVMType, Option<Attribute>) {
     let align = ty_align(ty);
     let size = ty_size(ty);
     let llty = if align <= 4 {
-        Type::array(Type::i32(), (size + 3) / 4)
+        Type::array(&Type::i32(), (size + 3) / 4 as u64)
     } else {
-        Type::array(Type::i64(), (size + 7) / 8)
+        Type::array(&Type::i64(), (size + 7) / 8 as u64)
     };
     (LLVMType { cast: true, ty: llty }, None)
 }
@@ -122,7 +123,7 @@ fn is_reg_ty(ty: Type) -> bool {
             | Float
             | Double => true,
             _ => false
-        };
+        }
     }
 }
 

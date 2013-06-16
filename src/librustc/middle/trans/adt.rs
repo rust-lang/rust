@@ -59,6 +59,8 @@ use middle::ty;
 use syntax::ast;
 use util::ppaux::ty_to_str;
 
+use middle::trans::type_::Type;
+
 
 /// Representations.
 pub enum Repr {
@@ -260,10 +262,8 @@ fn generic_fields_of(cx: &mut CrateContext, r: &Repr, sizing: bool) -> ~[Type] {
             let most_aligned = most_aligned.get();
             let padding = largest_size - most_aligned.size;
 
-            assert!(padding >= 0);
-
             struct_llfields(cx, most_aligned, sizing)
-                + [Type::array(Type::i8(), padding /*bad*/as uint)]
+                + [Type::array(&Type::i8(), padding)]
         }
     }
 }
@@ -439,7 +439,7 @@ pub fn trans_field_ptr(bcx: block, r: &Repr, val: ValueRef, discr: int,
                 // The unit-like case might have a nonzero number of unit-like fields.
                 // (e.g., Result or Either with () as one side.)
                 let ty = type_of::type_of(bcx.ccx(), nullfields[ix]);
-                assert_eq!(machine::llsize_of_alloc(bcx.ccx(), llty), 0);
+                assert_eq!(machine::llsize_of_alloc(bcx.ccx(), ty), 0);
                 // The contents of memory at this pointer can't matter, but use
                 // the value that's "reasonable" in case of pointer comparison.
                 PointerCast(bcx, val, ty.ptr_to())
@@ -457,7 +457,7 @@ fn struct_field_ptr(bcx: block, st: &Struct, val: ValueRef, ix: uint,
             type_of::type_of(ccx, ty)
         };
         let real_ty = Type::struct_(fields, st.packed);
-        PointerCast(bcx, val, real_llty.to_ptr().to_ref())
+        PointerCast(bcx, val, real_ty.ptr_to())
     } else {
         val
     };
@@ -572,7 +572,7 @@ fn build_const_struct(ccx: &mut CrateContext, st: &Struct, vals: &[ValueRef])
 }
 
 fn padding(size: u64) -> ValueRef {
-    C_undef(Type::array(Type::i8(), size).to_ref())
+    C_undef(Type::array(&Type::i8(), size))
 }
 
 // XXX this utility routine should be somewhere more general

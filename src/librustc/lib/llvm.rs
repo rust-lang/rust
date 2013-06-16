@@ -2141,7 +2141,7 @@ impl TypeNames {
     }
 
     pub fn find_name<'r>(&'r self, ty: &Type) -> Option<&'r str> {
-        match self.type_names.find(ty.to_ref()) {
+        match self.type_names.find(&ty.to_ref()) {
             Some(a) => Some(a.slice(0, a.len())),
             None => None
         }
@@ -2151,14 +2151,14 @@ impl TypeNames {
         self.named_types.find_equiv(&s).map_consume(|x| Type::from_ref(*x))
     }
 
-    pub fn type_to_str(&self, ty: TypeRef) -> ~str {
+    pub fn type_to_str(&self, ty: Type) -> ~str {
         match self.find_name(&ty) {
             option::Some(name) => return name.to_owned(),
             None => ()
         }
 
         unsafe {
-            let kind = llvm::LLVMGetTypeKind(ty);
+            let kind = ty.kind();
 
             match kind {
                 Void => ~"Void",
@@ -2172,31 +2172,28 @@ impl TypeNames {
                 Metadata => ~"Metadata",
                 X86_MMX => ~"X86_MMAX",
                 Integer => {
-                    fmt!("i%d", llvm::LLVMGetIntTypeWidth(ty) as int)
+                    fmt!("i%d", llvm::LLVMGetIntTypeWidth(ty.to_ref()) as int)
                 }
                 Function => {
-                    let out_ty = llvm::LLVMGetReturnType(ty);
-                    let n_args = llvm::LLVMCountParamTypes(ty) as uint;
-                    let args = vec::from_elem(n_args, 0 as TypeRef);
-                    llvm::LLVMGetParamTypes(ty, vec::raw::to_ptr(args));
-
+                    let out_ty = ty.return_type();
+                    let args = ty.func_params();
                     let args = args.map(|&ty| self.type_to_str(ty)).connect(", ");
                     let out_ty = self.type_to_str(out_ty);
                     fmt!("fn(%s) -> %s", args, out_ty)
                 }
                 Struct => {
-                    let tys = struct_tys(ty);
+                    let tys = ty.field_types();
                     let tys = tys.map(|&ty| self.type_to_str(ty)).connect(", ");
                     fmt!("{%s}", tys)
                 }
                 Array => {
-                    let el_ty = llvm::LLVMGetElementType(ty);
+                    let el_ty = ty.element_type();
                     let el_ty = self.type_to_str(el_ty);
-                    let len = llvm::LLVMGetArrayLength(ty) as uint;
+                    let len = ty.array_length();
                     fmt!("[%s x %u]", el_ty, len)
                 }
                 Pointer => {
-                    let el_ty = llvm::LLVMGetElementType(ty);
+                    let el_ty = ty.element_type();
                     let el_ty = self.type_to_str(el_ty);
                     fmt!("*%s", el_ty)
                 }
@@ -2207,29 +2204,9 @@ impl TypeNames {
 
     pub fn val_to_str(&self, val: ValueRef) -> ~str {
         unsafe {
-            self.type_to_str(llvm::LLVMTypeOf(val))
+            let ty = Type::from_ref(llvm::LLVMTypeOf(val));
+            self.type_to_str(ty)
         }
-    }
-}
-
-pub fn float_width(llt: TypeRef) -> uint {
-    unsafe {
-        return match llvm::LLVMGetTypeKind(llt) as int {
-              1 => 32u,
-              2 => 64u,
-              3 => 80u,
-              4 | 5 => 128u,
-              _ => fail!("llvm_float_width called on a non-float type")
-            };
-    }
-}
-
-pub fn fn_ty_param_tys(fn_ty: TypeRef) -> ~[TypeRef] {
-    unsafe {
-        let args = vec::from_elem(llvm::LLVMCountParamTypes(fn_ty) as uint,
-                                 0 as TypeRef);
-        llvm::LLVMGetParamTypes(fn_ty, vec::raw::to_ptr(args));
-        return args;
     }
 }
 

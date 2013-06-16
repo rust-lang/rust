@@ -18,6 +18,8 @@ use middle::trans::type_of;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
+use middle::trans::type_::Type;
+
 // ______________________________________________________________________
 // compute sizeof / alignof
 
@@ -140,7 +142,7 @@ pub fn static_size_of_enum(cx: &mut CrateContext, t: ty::t) -> uint {
 
                 debug!("static_size_of_enum: variant %s type %s",
                        cx.tcx.sess.str_of(variant.name),
-                       cx.tn.type_to_str(T_struct(lltypes, false)));
+                       cx.tn.type_to_str(Type::struct_(lltypes, false)));
 
                 let this_size = llsize_of_real(cx, Type::struct_(lltypes, false));
                 if max_size < this_size {

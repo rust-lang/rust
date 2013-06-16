@@ -12,7 +12,7 @@ use core::prelude::*;
 
 use back::{upcall};
 use driver::session;
-use lib::llvm::{ContextRef, ModuleRef, ValueRef, TypeRef};
+use lib::llvm::{ContextRef, ModuleRef, ValueRef};
 use lib::llvm::{llvm, TargetData, TypeNames};
 use lib::llvm::{mk_target_data};
 use lib;
@@ -36,8 +36,8 @@ use core::local_data;
 use extra::time;
 use syntax::ast;
 
-use middle::trans::common::{ExternMap,tydesc_info,BuilderRef_res,Stats,namegen,addrspace_gen};
-use middle::trans::common::{mono_id,new_namegen,new_addrspace_gen};
+use middle::trans::common::{ExternMap,tydesc_info,BuilderRef_res,Stats,namegen};
+use middle::trans::common::{mono_id,new_namegen};
 
 use middle::trans::base::{decl_crate_map};
 
@@ -94,11 +94,10 @@ pub struct CrateContext {
      impl_method_cache: HashMap<(ast::def_id, ast::ident), ast::def_id>,
 
      module_data: HashMap<~str, ValueRef>,
-     lltypes: HashMap<ty::t, TypeRef>,
-     llsizingtypes: HashMap<ty::t, TypeRef>,
+     lltypes: HashMap<ty::t, Type>,
+     llsizingtypes: HashMap<ty::t, Type>,
      adt_reprs: HashMap<ty::t, @adt::Repr>,
      names: namegen,
-     next_addrspace: addrspace_gen,
      symbol_hasher: hash::State,
      type_hashcodes: HashMap<ty::t, @str>,
      type_short_names: HashMap<ty::t, ~str>,
@@ -151,8 +150,8 @@ impl CrateContext {
             let tydesc_type = Type::tydesc(targ_cfg.arch);
             let opaque_vec_type = Type::opaque_vec(targ_cfg.arch);
 
-            let str_slice_ty = Type::named_struct("str_slice");
-            str_slice_ty.set_struct_body([Type::i8p(), int_type]);
+            let mut str_slice_ty = Type::named_struct("str_slice");
+            str_slice_ty.set_struct_body([Type::i8p(), int_type], false);
 
             tn.associate_type("tydesc", &tydesc_type);
             tn.associate_type("str_slice", &str_slice_ty);
@@ -197,7 +196,6 @@ impl CrateContext {
                   llsizingtypes: HashMap::new(),
                   adt_reprs: HashMap::new(),
                   names: new_namegen(),
-                  next_addrspace: new_addrspace_gen(),
                   symbol_hasher: symbol_hasher,
                   type_hashcodes: HashMap::new(),
                   type_short_names: HashMap::new(),

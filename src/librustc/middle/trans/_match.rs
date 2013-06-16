@@ -911,7 +911,7 @@ pub fn extract_vec_elems(bcx: block,
                     Sub(bcx, count,
                         C_int(bcx.ccx(), (elem_count - i) as int))])
             }
-            _ => unsafe { llvm::LLVMGetUndef(vt.llunit_ty) }
+            _ => unsafe { llvm::LLVMGetUndef(vt.llunit_ty.to_ref()) }
         }
     };
     if slice.is_some() {

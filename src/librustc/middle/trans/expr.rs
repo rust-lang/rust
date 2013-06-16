@@ -152,6 +152,8 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::Repr;
 
+use middle::trans::type_::Type;
+
 use core::cast::transmute;
 use core::hashmap::HashMap;
 use core::vec;
@@ -981,9 +983,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                             let symbol = csearch::get_symbol(
                                 bcx.ccx().sess.cstore,
                                 did);
-                            let llval = llvm::LLVMAddGlobal(
-                                bcx.ccx().llmod,
-                                llty,
+                            let llval = llvm::LLVMAddGlobal( bcx.ccx().llmod, llty.to_ref(),
                                 transmute::<&u8,*i8>(&symbol[0]));
                             let extern_const_values = &mut bcx.ccx().extern_const_values;
                             extern_const_values.insert(did, llval);
@@ -1552,8 +1552,8 @@ fn int_cast(bcx: block, lldsttype: Type, llsrctype: Type,
             llsrc: ValueRef, signed: bool) -> ValueRef {
     let _icx = bcx.insn_ctxt("int_cast");
     unsafe {
-        let srcsz = llvm::LLVMGetIntTypeWidth(llsrctype);
-        let dstsz = llvm::LLVMGetIntTypeWidth(lldsttype);
+        let srcsz = llvm::LLVMGetIntTypeWidth(llsrctype.to_ref());
+        let dstsz = llvm::LLVMGetIntTypeWidth(lldsttype.to_ref());
         return if dstsz == srcsz {
             BitCast(bcx, llsrc, lldsttype)
         } else if srcsz > dstsz {
@@ -1569,8 +1569,8 @@ fn int_cast(bcx: block, lldsttype: Type, llsrctype: Type,
 fn float_cast(bcx: block, lldsttype: Type, llsrctype: Type,
               llsrc: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("float_cast");
-    let srcsz = lib::llvm::float_width(llsrctype);
-    let dstsz = lib::llvm::float_width(lldsttype);
+    let srcsz = llsrctype.float_width();
+    let dstsz = lldsttype.float_width();
     return if dstsz > srcsz {
         FPExt(bcx, llsrc, lldsttype)
     } else if srcsz > dstsz {
