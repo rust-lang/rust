@@ -146,8 +146,10 @@ pub fn from_fn<T>(n_elts: uint, op: old_iter::InitOp<T>) -> ~[T] {
  * to the value `t`.
  */
 pub fn from_elem<T:Copy>(n_elts: uint, t: T) -> ~[T] {
-    // hack: manually inline from_fn for 2x plus speedup (sadly very important, from_elem is a
-    // bottleneck in borrowck!)
+    // FIXME (#7136): manually inline from_fn for 2x plus speedup (sadly very
+    // important, from_elem is a bottleneck in borrowck!). Unfortunately it
+    // still is substantially slower than using the unsafe
+    // vec::with_capacity/ptr::set_memory for primitive types.
     unsafe {
         let mut v = with_capacity(n_elts);
         do as_mut_buf(v) |p, _len| {
