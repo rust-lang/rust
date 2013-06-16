@@ -23,6 +23,7 @@ use iterator::{Iterator, IteratorUtil};
 use iter::FromIter;
 use kinds::Copy;
 use libc;
+use num::Zero;
 use old_iter::CopyableIter;
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
@@ -2626,6 +2627,16 @@ impl<A:Clone> Clone for ~[A] {
     fn clone(&self) -> ~[A] {
         self.map(|item| item.clone())
     }
+}
+
+impl<A> Zero for ~[A] {
+    fn zero() -> ~[A] { ~[] }
+    fn is_zero(&self) -> bool { self.len() == 0 }
+}
+
+impl<A> Zero for @[A] {
+    fn zero() -> @[A] { @[] }
+    fn is_zero(&self) -> bool { self.len() == 0 }
 }
 
 macro_rules! iterator {

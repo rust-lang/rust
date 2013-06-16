@@ -27,6 +27,7 @@ use container::Container;
 use iter::Times;
 use iterator::{Iterator, IteratorUtil, FilterIterator, AdditiveIterator, MapIterator};
 use libc;
+use num::Zero;
 use option::{None, Option, Some};
 use old_iter::{BaseIter, EqIter};
 use ptr;
@@ -2199,6 +2200,16 @@ impl<'self> Iterator<u8> for StrBytesRevIterator<'self> {
     fn next(&mut self) -> Option<u8> {
         self.it.next().map_consume(|&x| x)
     }
+}
+
+impl Zero for ~str {
+    fn zero() -> ~str { ~"" }
+    fn is_zero(&self) -> bool { self.len() == 0 }
+}
+
+impl Zero for @str {
+    fn zero() -> @str { @"" }
+    fn is_zero(&self) -> bool { self.len() == 0 }
 }
 
 #[cfg(test)]

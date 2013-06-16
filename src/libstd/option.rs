@@ -350,6 +350,11 @@ impl<T:Copy + Zero> Option<T> {
     }
 }
 
+impl<T> Zero for Option<T> {
+    fn zero() -> Option<T> { None }
+    fn is_zero(&self) -> bool { self.is_none() }
+}
+
 /// Immutable iterator over an `Option<A>`
 pub struct OptionIterator<'self, A> {
     priv opt: Option<&'self A>
