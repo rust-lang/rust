@@ -12,7 +12,6 @@
 
 use core::prelude::*;
 
-use core::vec;
 use core::f64;
 use core::cmp;
 use core::num;

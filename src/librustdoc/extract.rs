@@ -285,8 +285,6 @@ mod test {
     use extract::{extract, from_srv};
     use parse;
 
-    use core::vec;
-
     fn mk_doc(source: @str) -> doc::Doc {
         let ast = parse::from_str(source);
         extract(ast, ~"")

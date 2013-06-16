@@ -19,7 +19,7 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use core::str;
+use core::iterator::IteratorUtil;
 
 pub fn mk_pass() -> Pass {
     Pass {
@@ -104,21 +104,19 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
     if desc.is_none() {
         return (None, ~[]);
     }
-    let mut lines = ~[];
-    for str::each_line_any(*desc.get_ref()) |line| { lines.push(line.to_owned()); }
 
     let mut new_desc = None::<~str>;
     let mut current_section = None;
     let mut sections = ~[];
 
-    for lines.each |line| {
-        match parse_header(copy *line) {
+    for desc.get_ref().any_line_iter().advance |line| {
+        match parse_header(line) {
           Some(header) => {
             if current_section.is_some() {
-                sections += [copy *current_section.get_ref()];
+                sections.push(copy *current_section.get_ref());
             }
             current_section = Some(doc::Section {
-                header: header,
+                header: header.to_owned(),
                 body: ~""
             });
           }
@@ -126,17 +124,17 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
             match copy current_section {
               Some(section) => {
                 current_section = Some(doc::Section {
-                    body: section.body + "\n" + *line,
+                    body: fmt!("%s\n%s", section.body, line),
                     .. section
                 });
               }
               None => {
                 new_desc = match copy new_desc {
                   Some(desc) => {
-                    Some(desc + "\n" + *line)
+                    Some(fmt!("%s\n%s", desc, line))
                   }
                   None => {
-                    Some(copy *line)
+                    Some(line.to_owned())
                   }
                 };
               }
@@ -146,15 +144,15 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
     }
 
     if current_section.is_some() {
-        sections += [current_section.get()];
+        sections.push(current_section.unwrap());
     }
 
     (new_desc, sections)
 }
 
-fn parse_header(line: ~str) -> Option<~str> {
+fn parse_header<'a>(line: &'a str) -> Option<&'a str> {
     if line.starts_with("# ") {
-        Some(line.slice(2u, line.len()).to_owned())
+        Some(line.slice_from(2))
     } else {
         None
     }
@@ -171,9 +169,6 @@ mod test {
     use doc;
     use extract;
     use sectionalize_pass::run;
-
-    use core::str;
-    use core::vec;
 
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {

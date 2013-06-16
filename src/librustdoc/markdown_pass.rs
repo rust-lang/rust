@@ -466,10 +466,7 @@ fn write_variant(ctxt: &Ctxt, doc: doc::VariantDoc) {
 }
 
 fn list_item_indent(item: &str) -> ~str {
-    let mut indented = ~[];
-    for str::each_line_any(item) |line| {
-        indented.push(line);
-    }
+    let indented = item.any_line_iter().collect::<~[&str]>();
 
     // separate markdown elements within `*` lists must be indented by four
     // spaces, or they will escape the list context. indenting everything
@@ -538,8 +535,6 @@ mod test {
     use trim_pass;
     use tystr_pass;
     use unindent_pass;
-
-    use core::str;
 
     fn render(source: ~str) -> ~str {
         let (srv, doc) = create_doc_srv(source);

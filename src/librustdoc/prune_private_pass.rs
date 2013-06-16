@@ -162,7 +162,6 @@ mod test {
     use extract;
     use tystr_pass;
     use prune_private_pass::run;
-    use core::vec;
 
     fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(copy source) |srv| {

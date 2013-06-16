@@ -23,10 +23,9 @@ use cast;
 use char;
 use char::Char;
 use clone::Clone;
-use cmp::{TotalOrd, Ordering, Less, Equal, Greater};
 use container::Container;
 use iter::Times;
-use iterator::{Iterator, IteratorUtil, FilterIterator, AdditiveIterator};
+use iterator::{Iterator, IteratorUtil, FilterIterator, AdditiveIterator, MapIterator};
 use libc;
 use option::{None, Option, Some};
 use old_iter::{BaseIter, EqIter};
@@ -36,8 +35,6 @@ use to_str::ToStr;
 use uint;
 use vec;
 use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector};
-
-#[cfg(not(test))] use cmp::{Eq, Ord, Equiv, TotalEq};
 
 /*
 Section: Conditions
@@ -291,6 +288,10 @@ pub type WordIterator<'self> =
     FilterIterator<'self, &'self str,
              StrCharSplitIterator<'self, extern "Rust" fn(char) -> bool>>;
 
+/// An iterator over the lines of a string, separated by either `\n` or (`\r\n`).
+pub type AnyLineIterator<'self> =
+    MapIterator<'self, &'self str, &'self str, StrCharSplitIterator<'self, char>>;
+
 impl<'self, Sep: CharEq> Iterator<&'self str> for StrCharSplitIterator<'self, Sep> {
     #[inline]
     fn next(&mut self) -> Option<&'self str> {
@@ -398,56 +399,6 @@ impl<'self> Iterator<&'self str> for StrStrSplitIterator<'self> {
             }
         }
     }
-}
-
-/// Levenshtein Distance between two strings
-pub fn levdistance(s: &str, t: &str) -> uint {
-
-    let slen = s.len();
-    let tlen = t.len();
-
-    if slen == 0 { return tlen; }
-    if tlen == 0 { return slen; }
-
-    let mut dcol = vec::from_fn(tlen + 1, |x| x);
-
-    for s.iter().enumerate().advance |(i, sc)| {
-
-        let mut current = i;
-        dcol[0] = current + 1;
-
-        for t.iter().enumerate().advance |(j, tc)| {
-
-            let next = dcol[j + 1];
-
-            if sc == tc {
-                dcol[j + 1] = current;
-            } else {
-                dcol[j + 1] = ::cmp::min(current, next);
-                dcol[j + 1] = ::cmp::min(dcol[j + 1], dcol[j]) + 1;
-            }
-
-            current = next;
-        }
-    }
-
-    return dcol[tlen];
-}
-
-/**
- * Splits a string into substrings separated by LF ('\n')
- * and/or CR LF ("\r\n")
- */
-pub fn each_line_any<'a>(s: &'a str, it: &fn(&'a str) -> bool) -> bool {
-    for s.line_iter().advance |s| {
-        let l = s.len();
-        if l > 0u && s[l - 1u] == '\r' as u8 {
-            if !it( unsafe { raw::slice_bytes(s, 0, l - 1) } ) { return false; }
-        } else {
-            if !it( s ) { return false; }
-        }
-    }
-    return true;
 }
 
 /** Splits a string into substrings with possibly internal whitespace,
@@ -576,196 +527,6 @@ pub fn eq(a: &~str, b: &~str) -> bool {
     eq_slice(*a, *b)
 }
 
-#[inline]
-fn cmp(a: &str, b: &str) -> Ordering {
-    let low = uint::min(a.len(), b.len());
-
-    for uint::range(0, low) |idx| {
-        match a[idx].cmp(&b[idx]) {
-          Greater => return Greater,
-          Less => return Less,
-          Equal => ()
-        }
-    }
-
-    a.len().cmp(&b.len())
-}
-
-#[cfg(not(test))]
-impl<'self> TotalOrd for &'self str {
-    #[inline]
-    fn cmp(&self, other: & &'self str) -> Ordering { cmp(*self, *other) }
-}
-
-#[cfg(not(test))]
-impl TotalOrd for ~str {
-    #[inline]
-    fn cmp(&self, other: &~str) -> Ordering { cmp(*self, *other) }
-}
-
-#[cfg(not(test))]
-impl TotalOrd for @str {
-    #[inline]
-    fn cmp(&self, other: &@str) -> Ordering { cmp(*self, *other) }
-}
-
-/// Bytewise slice less than
-#[inline]
-fn lt(a: &str, b: &str) -> bool {
-    let (a_len, b_len) = (a.len(), b.len());
-    let end = uint::min(a_len, b_len);
-
-    let mut i = 0;
-    while i < end {
-        let (c_a, c_b) = (a[i], b[i]);
-        if c_a < c_b { return true; }
-        if c_a > c_b { return false; }
-        i += 1;
-    }
-
-    return a_len < b_len;
-}
-
-/// Bytewise less than or equal
-#[inline]
-pub fn le(a: &str, b: &str) -> bool {
-    !lt(b, a)
-}
-
-/// Bytewise greater than or equal
-#[inline]
-fn ge(a: &str, b: &str) -> bool {
-    !lt(a, b)
-}
-
-/// Bytewise greater than
-#[inline]
-fn gt(a: &str, b: &str) -> bool {
-    !le(a, b)
-}
-
-#[cfg(not(test))]
-impl<'self> Eq for &'self str {
-    #[inline(always)]
-    fn eq(&self, other: & &'self str) -> bool {
-        eq_slice((*self), (*other))
-    }
-    #[inline(always)]
-    fn ne(&self, other: & &'self str) -> bool { !(*self).eq(other) }
-}
-
-#[cfg(not(test))]
-impl Eq for ~str {
-    #[inline(always)]
-    fn eq(&self, other: &~str) -> bool {
-        eq_slice((*self), (*other))
-    }
-    #[inline(always)]
-    fn ne(&self, other: &~str) -> bool { !(*self).eq(other) }
-}
-
-#[cfg(not(test))]
-impl Eq for @str {
-    #[inline(always)]
-    fn eq(&self, other: &@str) -> bool {
-        eq_slice((*self), (*other))
-    }
-    #[inline(always)]
-    fn ne(&self, other: &@str) -> bool { !(*self).eq(other) }
-}
-
-#[cfg(not(test))]
-impl<'self> TotalEq for &'self str {
-    #[inline(always)]
-    fn equals(&self, other: & &'self str) -> bool {
-        eq_slice((*self), (*other))
-    }
-}
-
-#[cfg(not(test))]
-impl TotalEq for ~str {
-    #[inline(always)]
-    fn equals(&self, other: &~str) -> bool {
-        eq_slice((*self), (*other))
-    }
-}
-
-#[cfg(not(test))]
-impl TotalEq for @str {
-    #[inline(always)]
-    fn equals(&self, other: &@str) -> bool {
-        eq_slice((*self), (*other))
-    }
-}
-
-#[cfg(not(test))]
-impl Ord for ~str {
-    #[inline(always)]
-    fn lt(&self, other: &~str) -> bool { lt((*self), (*other)) }
-    #[inline(always)]
-    fn le(&self, other: &~str) -> bool { le((*self), (*other)) }
-    #[inline(always)]
-    fn ge(&self, other: &~str) -> bool { ge((*self), (*other)) }
-    #[inline(always)]
-    fn gt(&self, other: &~str) -> bool { gt((*self), (*other)) }
-}
-
-#[cfg(not(test))]
-impl<'self> Ord for &'self str {
-    #[inline(always)]
-    fn lt(&self, other: & &'self str) -> bool { lt((*self), (*other)) }
-    #[inline(always)]
-    fn le(&self, other: & &'self str) -> bool { le((*self), (*other)) }
-    #[inline(always)]
-    fn ge(&self, other: & &'self str) -> bool { ge((*self), (*other)) }
-    #[inline(always)]
-    fn gt(&self, other: & &'self str) -> bool { gt((*self), (*other)) }
-}
-
-#[cfg(not(test))]
-impl Ord for @str {
-    #[inline(always)]
-    fn lt(&self, other: &@str) -> bool { lt((*self), (*other)) }
-    #[inline(always)]
-    fn le(&self, other: &@str) -> bool { le((*self), (*other)) }
-    #[inline(always)]
-    fn ge(&self, other: &@str) -> bool { ge((*self), (*other)) }
-    #[inline(always)]
-    fn gt(&self, other: &@str) -> bool { gt((*self), (*other)) }
-}
-
-#[cfg(not(test))]
-impl<'self, S: Str> Equiv<S> for &'self str {
-    #[inline(always)]
-    fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
-}
-#[cfg(not(test))]
-impl<'self, S: Str> Equiv<S> for @str {
-    #[inline(always)]
-    fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
-}
-
-#[cfg(not(test))]
-impl<'self, S: Str> Equiv<S> for ~str {
-    #[inline(always)]
-    fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
-}
-
-
-/*
-Section: Iterating through strings
-*/
-
-/// Apply a function to each character
-pub fn map(ss: &str, ff: &fn(char) -> char) -> ~str {
-    let mut result = ~"";
-    result.reserve(ss.len());
-    for ss.iter().advance |cc| {
-        result.push_char(ff(cc));
-    }
-    result
-}
-
 /*
 Section: Searching
 */
@@ -818,30 +579,6 @@ pub fn is_utf16(v: &[u16]) -> bool {
         }
     }
     return true;
-}
-
-/// Converts to a vector of `u16` encoded as UTF-16
-pub fn to_utf16(s: &str) -> ~[u16] {
-    let mut u = ~[];
-    for s.iter().advance |ch| {
-        // Arithmetic with u32 literals is easier on the eyes than chars.
-        let mut ch = ch as u32;
-
-        if (ch & 0xFFFF_u32) == ch {
-            // The BMP falls through (assuming non-surrogate, as it
-            // should)
-            assert!(ch <= 0xD7FF_u32 || ch >= 0xE000_u32);
-            u.push(ch as u16)
-        } else {
-            // Supplementary planes break into surrogates.
-            assert!(ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32);
-            ch -= 0x1_0000_u32;
-            let w1 = 0xD800_u16 | ((ch >> 10) as u16);
-            let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
-            u.push_all([w1, w2])
-        }
-    }
-    u
 }
 
 /// Iterates over the utf-16 characters in the specified slice, yielding each
@@ -986,40 +723,6 @@ pub fn as_buf<T>(s: &str, f: &fn(*u8, uint) -> T) -> T {
         let v : *(*u8,uint) = transmute(&s);
         let (buf,len) = *v;
         f(buf, len)
-    }
-}
-
-/**
- * Returns the byte offset of an inner slice relative to an enclosing outer slice
- *
- * # Example
- *
- * ~~~ {.rust}
- * let string = "a\nb\nc";
- * let mut lines = ~[];
- * for string.line_iter().advance |line| { lines.push(line) }
- *
- * assert!(subslice_offset(string, lines[0]) == 0); // &"a"
- * assert!(subslice_offset(string, lines[1]) == 2); // &"b"
- * assert!(subslice_offset(string, lines[2]) == 4); // &"c"
- * ~~~
- */
-#[inline(always)]
-pub fn subslice_offset(outer: &str, inner: &str) -> uint {
-    do as_buf(outer) |a, a_len| {
-        do as_buf(inner) |b, b_len| {
-            let a_start: uint;
-            let a_end: uint;
-            let b_start: uint;
-            let b_end: uint;
-            unsafe {
-                a_start = cast::transmute(a); a_end = a_len + cast::transmute(a);
-                b_start = cast::transmute(b); b_end = b_len + cast::transmute(b);
-            }
-            assert!(a_start <= b_start);
-            assert!(b_end <= a_end);
-            b_start - a_start
-        }
     }
 }
 
@@ -1207,11 +910,137 @@ pub mod raw {
 #[cfg(not(test))]
 pub mod traits {
     use ops::Add;
-    impl<'self> Add<&'self str,~str> for ~str {
+    use cmp::{TotalOrd, Ordering, Less, Equal, Greater, Eq, Ord, Equiv, TotalEq};
+    use super::{Str, eq_slice};
+
+    impl<'self> Add<&'self str,~str> for &'self str {
         #[inline(always)]
         fn add(&self, rhs: & &'self str) -> ~str {
-            self.append((*rhs))
+            let mut ret = self.to_owned();
+            ret.push_str(*rhs);
+            ret
         }
+    }
+
+    impl<'self> TotalOrd for &'self str {
+        #[inline]
+        fn cmp(&self, other: & &'self str) -> Ordering {
+            for self.bytes_iter().zip(other.bytes_iter()).advance |(s_b, o_b)| {
+                match s_b.cmp(&o_b) {
+                    Greater => return Greater,
+                    Less => return Less,
+                    Equal => ()
+                }
+            }
+
+            self.len().cmp(&other.len())
+        }
+    }
+
+    impl TotalOrd for ~str {
+        #[inline]
+        fn cmp(&self, other: &~str) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
+    }
+
+    impl TotalOrd for @str {
+        #[inline]
+        fn cmp(&self, other: &@str) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
+    }
+
+    impl<'self> Eq for &'self str {
+        #[inline(always)]
+        fn eq(&self, other: & &'self str) -> bool {
+            eq_slice((*self), (*other))
+        }
+        #[inline(always)]
+        fn ne(&self, other: & &'self str) -> bool { !(*self).eq(other) }
+    }
+
+    impl Eq for ~str {
+        #[inline(always)]
+        fn eq(&self, other: &~str) -> bool {
+            eq_slice((*self), (*other))
+        }
+        #[inline(always)]
+        fn ne(&self, other: &~str) -> bool { !(*self).eq(other) }
+    }
+
+    impl Eq for @str {
+        #[inline(always)]
+        fn eq(&self, other: &@str) -> bool {
+            eq_slice((*self), (*other))
+        }
+        #[inline(always)]
+        fn ne(&self, other: &@str) -> bool { !(*self).eq(other) }
+    }
+
+    impl<'self> TotalEq for &'self str {
+        #[inline(always)]
+        fn equals(&self, other: & &'self str) -> bool {
+            eq_slice((*self), (*other))
+        }
+    }
+
+    impl TotalEq for ~str {
+        #[inline(always)]
+        fn equals(&self, other: &~str) -> bool {
+            eq_slice((*self), (*other))
+        }
+    }
+
+    impl TotalEq for @str {
+        #[inline(always)]
+        fn equals(&self, other: &@str) -> bool {
+            eq_slice((*self), (*other))
+        }
+    }
+
+    impl<'self> Ord for &'self str {
+        #[inline(always)]
+        fn lt(&self, other: & &'self str) -> bool { self.cmp(other) == Less }
+        #[inline(always)]
+        fn le(&self, other: & &'self str) -> bool { self.cmp(other) != Greater }
+        #[inline(always)]
+        fn ge(&self, other: & &'self str) -> bool { self.cmp(other) != Less }
+        #[inline(always)]
+        fn gt(&self, other: & &'self str) -> bool { self.cmp(other) == Greater }
+    }
+
+    impl Ord for ~str {
+        #[inline(always)]
+        fn lt(&self, other: &~str) -> bool { self.cmp(other) == Less }
+        #[inline(always)]
+        fn le(&self, other: &~str) -> bool { self.cmp(other) != Greater }
+        #[inline(always)]
+        fn ge(&self, other: &~str) -> bool { self.cmp(other) != Less }
+        #[inline(always)]
+        fn gt(&self, other: &~str) -> bool { self.cmp(other) == Greater }
+    }
+
+    impl Ord for @str {
+        #[inline(always)]
+        fn lt(&self, other: &@str) -> bool { self.cmp(other) == Less }
+        #[inline(always)]
+        fn le(&self, other: &@str) -> bool { self.cmp(other) != Greater }
+        #[inline(always)]
+        fn ge(&self, other: &@str) -> bool { self.cmp(other) != Less }
+        #[inline(always)]
+        fn gt(&self, other: &@str) -> bool { self.cmp(other) == Greater }
+    }
+
+    impl<'self, S: Str> Equiv<S> for &'self str {
+        #[inline(always)]
+        fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
+    }
+
+    impl<'self, S: Str> Equiv<S> for @str {
+        #[inline(always)]
+        fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
+    }
+
+    impl<'self, S: Str> Equiv<S> for ~str {
+        #[inline(always)]
+        fn equiv(&self, other: &S) -> bool { eq_slice(*self, other.as_slice()) }
     }
 }
 
@@ -1256,6 +1085,7 @@ pub trait StrSlice<'self> {
     fn matches_index_iter(&self, sep: &'self str) -> StrMatchesIndexIterator<'self>;
     fn split_str_iter(&self, &'self str) -> StrStrSplitIterator<'self>;
     fn line_iter(&self) -> StrCharSplitIterator<'self, char>;
+    fn any_line_iter(&self) -> AnyLineIterator<'self>;
     fn word_iter(&self) -> WordIterator<'self>;
     fn ends_with(&self, needle: &str) -> bool;
     fn is_empty(&self) -> bool;
@@ -1282,6 +1112,7 @@ pub trait StrSlice<'self> {
     fn replace(&self, from: &str, to: &str) -> ~str;
     fn to_owned(&self) -> ~str;
     fn to_managed(&self) -> @str;
+    fn to_utf16(&self) -> ~[u16];
     fn is_char_boundary(&self, index: uint) -> bool;
     fn char_range_at(&self, start: uint) -> CharRange;
     fn char_at(&self, i: uint) -> char;
@@ -1296,6 +1127,12 @@ pub trait StrSlice<'self> {
     fn repeat(&self, nn: uint) -> ~str;
 
     fn slice_shift_char(&self) -> (char, &'self str);
+
+    fn map_chars(&self, ff: &fn(char) -> char) -> ~str;
+
+    fn lev_distance(&self, t: &str) -> uint;
+
+    fn subslice_offset(&self, inner: &str) -> uint;
 }
 
 /// Extension methods for strings
@@ -1437,6 +1274,17 @@ impl<'self> StrSlice<'self> for &'self str {
     fn line_iter(&self) -> StrCharSplitIterator<'self, char> {
         self.split_options_iter('\n', self.len(), false)
     }
+
+    /// An iterator over the lines of a string, separated by either
+    /// `\n` or (`\r\n`).
+    fn any_line_iter(&self) -> AnyLineIterator<'self> {
+        do self.line_iter().transform |line| {
+            let l = line.len();
+            if l > 0 && line[l - 1] == '\r' as u8 { line.slice(0, l - 1) }
+            else { line }
+        }
+    }
+
     /// An iterator over the words of a string (subsequences separated
     /// by any sequence of whitespace).
     #[inline]
@@ -1586,7 +1434,7 @@ impl<'self> StrSlice<'self> for &'self str {
      *
      * # Example
      *
-     * ~~~
+     * ~~~ {.rust}
      * assert_eq!("11foo1bar11".trim_chars(&'1'), "foo1bar")
      * assert_eq!("12foo1bar12".trim_chars(& &['1', '2']), "foo1bar")
      * assert_eq!("123foo1bar123".trim_chars(&|c: char| c.is_digit()), "foo1bar")
@@ -1605,7 +1453,7 @@ impl<'self> StrSlice<'self> for &'self str {
      *
      * # Example
      *
-     * ~~~
+     * ~~~ {.rust}
      * assert_eq!("11foo1bar11".trim_left_chars(&'1'), "foo1bar11")
      * assert_eq!("12foo1bar12".trim_left_chars(& &['1', '2']), "foo1bar12")
      * assert_eq!("123foo1bar123".trim_left_chars(&|c: char| c.is_digit()), "foo1bar123")
@@ -1627,7 +1475,7 @@ impl<'self> StrSlice<'self> for &'self str {
      *
      * # Example
      *
-     * ~~~
+     * ~~~ {.rust}
      * assert_eq!("11foo1bar11".trim_right_chars(&'1'), "11foo1bar")
      * assert_eq!("12foo1bar12".trim_right_chars(& &['1', '2']), "12foo1bar")
      * assert_eq!("123foo1bar123".trim_right_chars(&|c: char| c.is_digit()), "123foo1bar")
@@ -1677,6 +1525,30 @@ impl<'self> StrSlice<'self> for &'self str {
             if i == self.len() { 0 } else { self[i] }
         });
         unsafe { ::cast::transmute(v) }
+    }
+
+    /// Converts to a vector of `u16` encoded as UTF-16.
+    fn to_utf16(&self) -> ~[u16] {
+        let mut u = ~[];
+        for self.iter().advance |ch| {
+            // Arithmetic with u32 literals is easier on the eyes than chars.
+            let mut ch = ch as u32;
+
+            if (ch & 0xFFFF_u32) == ch {
+                // The BMP falls through (assuming non-surrogate, as it
+                // should)
+                assert!(ch <= 0xD7FF_u32 || ch >= 0xE000_u32);
+                u.push(ch as u16)
+            } else {
+                // Supplementary planes break into surrogates.
+                assert!(ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32);
+                ch -= 0x1_0000_u32;
+                let w1 = 0xD800_u16 | ((ch >> 10) as u16);
+                let w2 = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
+                u.push_all([w1, w2])
+            }
+        }
+        u
     }
 
     /**
@@ -1920,6 +1792,85 @@ impl<'self> StrSlice<'self> for &'self str {
         return (ch, next_s);
     }
 
+
+    /// Apply a function to each character.
+    fn map_chars(&self, ff: &fn(char) -> char) -> ~str {
+        let mut result = with_capacity(self.len());
+        for self.iter().advance |cc| {
+            result.push_char(ff(cc));
+        }
+        result
+    }
+
+    /// Levenshtein Distance between two strings.
+    fn lev_distance(&self, t: &str) -> uint {
+        let slen = self.len();
+        let tlen = t.len();
+
+        if slen == 0 { return tlen; }
+        if tlen == 0 { return slen; }
+
+        let mut dcol = vec::from_fn(tlen + 1, |x| x);
+
+        for self.iter().enumerate().advance |(i, sc)| {
+
+            let mut current = i;
+            dcol[0] = current + 1;
+
+            for t.iter().enumerate().advance |(j, tc)| {
+
+                let next = dcol[j + 1];
+
+                if sc == tc {
+                    dcol[j + 1] = current;
+                } else {
+                    dcol[j + 1] = ::cmp::min(current, next);
+                    dcol[j + 1] = ::cmp::min(dcol[j + 1], dcol[j]) + 1;
+                }
+
+                current = next;
+            }
+        }
+
+        return dcol[tlen];
+    }
+
+
+    /**
+     * Returns the byte offset of an inner slice relative to an enclosing outer slice.
+     *
+     * Fails if `inner` is not a direct slice contained within self.
+     *
+     * # Example
+     *
+     * ~~~ {.rust}
+     * let string = "a\nb\nc";
+     * let mut lines = ~[];
+     * for string.line_iter().advance |line| { lines.push(line) }
+     *
+     * assert!(string.subslice_offset(lines[0]) == 0); // &"a"
+     * assert!(string.subslice_offset(lines[1]) == 2); // &"b"
+     * assert!(string.subslice_offset(lines[2]) == 4); // &"c"
+     * ~~~
+     */
+    #[inline(always)]
+    fn subslice_offset(&self, inner: &str) -> uint {
+        do as_buf(*self) |a, a_len| {
+            do as_buf(inner) |b, b_len| {
+                let a_start: uint;
+                let a_end: uint;
+                let b_start: uint;
+                let b_end: uint;
+                unsafe {
+                    a_start = cast::transmute(a); a_end = a_len + cast::transmute(a);
+                    b_start = cast::transmute(b); b_end = b_len + cast::transmute(b);
+                }
+                assert!(a_start <= b_start);
+                assert!(b_end <= a_end);
+                b_start - a_start
+            }
+        }
+    }
 
 }
 
@@ -2280,10 +2231,10 @@ mod tests {
 
     #[test]
     fn test_le() {
-        assert!((le(&"", &"")));
-        assert!((le(&"", &"foo")));
-        assert!((le(&"foo", &"foo")));
-        assert!((!eq(&~"foo", &~"bar")));
+        assert!("" <= "");
+        assert!("" <= "foo");
+        assert!("foo" <= "foo");
+        assert!("foo" != ~"bar");
     }
 
     #[test]
@@ -3003,15 +2954,15 @@ mod tests {
         let a = "kernelsprite";
         let b = a.slice(7, a.len());
         let c = a.slice(0, a.len() - 6);
-        assert_eq!(subslice_offset(a, b), 7);
-        assert_eq!(subslice_offset(a, c), 0);
+        assert_eq!(a.subslice_offset(b), 7);
+        assert_eq!(a.subslice_offset(c), 0);
 
         let string = "a\nb\nc";
         let mut lines = ~[];
         for string.line_iter().advance |line| { lines.push(line) }
-        assert_eq!(subslice_offset(string, lines[0]), 0);
-        assert_eq!(subslice_offset(string, lines[1]), 2);
-        assert_eq!(subslice_offset(string, lines[2]), 4);
+        assert_eq!(string.subslice_offset(lines[0]), 0);
+        assert_eq!(string.subslice_offset(lines[1]), 2);
+        assert_eq!(string.subslice_offset(lines[2]), 4);
     }
 
     #[test]
@@ -3019,7 +2970,7 @@ mod tests {
     fn test_subslice_offset_2() {
         let a = "alchemiter";
         let b = "cruxtruder";
-        subslice_offset(a, b);
+        a.subslice_offset(b);
     }
 
     #[test]
@@ -3069,8 +3020,8 @@ mod tests {
 
     #[test]
     fn test_map() {
-        assert_eq!(~"", map("", |c| unsafe {libc::toupper(c as c_char)} as char));
-        assert_eq!(~"YMCA", map("ymca", |c| unsafe {libc::toupper(c as c_char)} as char));
+        assert_eq!(~"", "".map_chars(|c| unsafe {libc::toupper(c as c_char)} as char));
+        assert_eq!(~"YMCA", "ymca".map_chars(|c| unsafe {libc::toupper(c as c_char)} as char));
     }
 
     #[test]
@@ -3114,10 +3065,10 @@ mod tests {
 
         for pairs.each |p| {
             let (s, u) = copy *p;
-            assert!(to_utf16(s) == u);
+            assert!(s.to_utf16() == u);
             assert!(from_utf16(u) == s);
-            assert!(from_utf16(to_utf16(s)) == s);
-            assert!(to_utf16(from_utf16(u)) == u);
+            assert!(from_utf16(s.to_utf16()) == s);
+            assert!(from_utf16(u).to_utf16() == u);
         }
     }
 
@@ -3186,6 +3137,24 @@ mod tests {
     #[test]
     fn test_char_range_at_reverse_underflow() {
         assert_eq!("abc".char_range_at_reverse(0).next, 0);
+    }
+
+    #[test]
+    fn test_add() {
+        macro_rules! t (
+            ($s1:expr, $s2:expr, $e:expr) => {
+                assert_eq!($s1 + $s2, $e);
+                assert_eq!($s1.to_owned() + $s2, $e);
+                assert_eq!($s1.to_managed() + $s2, $e);
+            }
+        );
+
+        t!("foo",  "bar", ~"foobar");
+        t!("foo", @"bar", ~"foobar");
+        t!("foo", ~"bar", ~"foobar");
+        t!("ศไทย中",  "华Việt Nam", ~"ศไทย中华Việt Nam");
+        t!("ศไทย中", @"华Việt Nam", ~"ศไทย中华Việt Nam");
+        t!("ศไทย中", ~"华Việt Nam", ~"ศไทย中华Việt Nam");
     }
 
     #[test]

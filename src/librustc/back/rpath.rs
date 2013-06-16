@@ -199,9 +199,6 @@ pub fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
 mod test {
     use core::prelude::*;
 
-    use core::os;
-    use core::str;
-
     // FIXME(#2119): the outer attribute should be #[cfg(unix, test)], then
     // these redundant #[cfg(test)] blocks can be removed
     #[cfg(test)]

@@ -1271,7 +1271,6 @@ mod tests {
 
     use rope::*;
 
-    use core::str;
     use core::uint;
     use core::vec;
 
