@@ -4,36 +4,90 @@ Version 0.7 (July 2013)
    * ??? changes, numerous bugfixes
 
    * Syntax changes
-      * `#[deriving(Encodable)]`, `#[deriving(Decodable)]`
+      * `use mod` is no longer valid.
+      * `fail!` and `assert!` accept `~str`, `&'static str` or `fmt!`-style
+        argument list.
+      * `Encodable`, `Decodable`, `TotalOrd`, `TotalEq`, `DeepClone` can all
+        be automatically derived with `#[deriving(...)]`.
+      * The `Durable` trait is replaced with the `'static` bounds.
+      * At long last, 'argument modes' no longer exist.
+      * The `bytes!` macro returns a vector of bytes for string, u8, char,
+        and unsuffixed integer literals.
 
    * Semantic changes
+      * The borrow checker has been rewritten with flow-sensitivity, fixing
+        many bugs and inconveniences.
       * The `self` parameter no longer implicitly means `&'self self`,
         and can be explicitly marked with a lifetime.
       * Structs with the `#[packed]` attribute have byte alignment and
         no padding between fields.
+      * The `for` loop protocol now requires `for`-iterators to return `bool`
+        so they compose better.
+      * `Option<~T>` is now represented as a nullable pointer.
+      * `@mut` does dynamic borrow checks correctly.
+      * Macros TODO
+      * The `main` function is only detected at the topmost level of the crate.
+        The `#[main]` attribute is still valid anywhere.
+      * Struct fields may no longer be mutable. Use inherited mutability.
+      * The `#[non_owned]` attribute makes a type that would otherwise be
+        `Owned`, not. TODO this may change to non_send before 0.7
+      * The `#[mutable]` attribute makes a type that would otherwise be
+        `Const`, note. TODO this may change to non_freeze before 0.7
+      * Unbounded recursion will abort the process after reaching the limit
+        specified by the `RUST_MAX_STACK` environment variable.
+      * The `vecs_implicitly_copyable` lint mode has been removed. Vectors
+        are never implicitly copyable.
 
    * Libraries
-
-      **Note: in 0.7 `core` was renamed `std` and `std` to `extra.
-        These notes use the new crate names.**
-
       * The `core` crate was renamed to `std`.
       * The `std` crate was renamed to `extra`.
       * `std::mut` removed.
+      * std: The prelude no longer reexports any modules, only types and traits.
+      * std: Prelude additions: `print`, `println`, `FromStr`, `ApproxEq`, `Equiv`,
+        `Iterator`, `IteratorUtil`, many numeric traits, many tuple traits.
       * std: `iterator` module for external iterator objects.
+      * std: new numeric traits: `Fractional`, `Real`, `RealExt`, `Integer`, `Ratio`,
+        `Algebraic`, `Trigonometric`, `Exponential`, `Primitive`.
+      * std: Tuple traits and accessors defined for up to 12-tuples, e.g.
+        `(0, 1, 2).n2()` or `(0, 1, 2).n2_ref()`.
       * std: many types implement `Clone` - tuples, @, @mut. TODO
       * std: `path` type renamed to `Path`.
       * std: Many standalone functions removed in favor of methods in
-        `vec`, `str`, TODO. In the future methods will also work as functions.
+        `vec`, `str`. In the future methods will also work as functions.
+      * std: `reinterpret_cast` removed. Used `transmute`.
+      * std: ascii string handling in `std::ascii`.
+      * std: `Rand` is implemented for ~/@.
+      * std: `run` module for spawning processes overhauled.
+      * std: Various atomic types added to `unstable::atomic`.
+      * std: `LinearMap` and `LinearSet` renamed to `HashMap` and `HashSet`.
+      * std: Added `os::mkdir_recursive`.
+      * std: Added `os::glob` function performs filesystems globs.
+      * std: `FuzzyEq` renamed to `ApproxEq`.
+      * std: `Map` now defines `pop` and `swap` methods.
+      * extra: `flate` module moved from `std` to `extra`.
       * extra: `FileInput` implements `std::io::Reader`.
       * extra: `Complex` number type and `complex` module.
       * extra: `Rational` number type and `rational` module.
       * extra: `BigInt`, `BigUint` implement numeric and comparison traits.
+      * extra: `term` uses terminfo now, is more correct.
+
+   * Tooling
+      * `unused_unsafe` lint mode for detecting unnecessary `unsafe` blocks.
+      * `unused_mut` lint mode for identifying unused `mut` qualifiers.
+      * The `rusti` command has been rewritten and a number of bugs addressed.
+      * rustc outputs in color on more terminals.
+      * rustc accepts a `--link-args` flag to pass arguments to the linker.
+      * rustc accepts a `-Z print-link-args` flag for debugging linkage.
+      * Compiling with `-g` will make the binary record information about
+        dynamic borrowcheck failures for debugging.
+      * rustdoc has a nicer stylesheet.
+      * Various improvements to rustdoc.
 
    * Other
-      * `unused_unsafe` lint mode for detecting unnecessary `unsafe` blocks.
       * More and improved library documentation.
-      * The `rusti` command has been rewritten and a number of bugs addressed.
+      * Various improvements on ARM and Android.
+      * Various improvements to MIPS backend.
+      * jemalloc is the Rust allocator.
 
 Version 0.6 (April 2013)
 ------------------------
