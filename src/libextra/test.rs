@@ -26,7 +26,6 @@ use core::either;
 use core::io;
 use core::option;
 use core::result;
-use core::str;
 use core::task;
 use core::to_str::ToStr;
 use core::uint;
@@ -542,7 +541,7 @@ pub fn filter_tests(
 
     // Sort the tests alphabetically
     fn lteq(t1: &TestDescAndFn, t2: &TestDescAndFn) -> bool {
-        str::le(t1.desc.name.to_str(), t2.desc.name.to_str())
+        t1.desc.name.to_str() < t2.desc.name.to_str()
     }
     sort::quick_sort(filtered, lteq);
 

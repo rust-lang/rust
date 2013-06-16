@@ -89,12 +89,11 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         }
 
         return do lines.map |line| {
-            let mut chars = ~[];
-            for line.iter().advance |c| { chars.push(c) }
+            let chars = line.iter().collect::<~[char]>();
             if i > chars.len() {
                 ~""
             } else {
-                str::from_chars(chars.slice(i, chars.len()).to_owned())
+                str::from_chars(chars.slice(i, chars.len()))
             }
         };
     }
@@ -103,14 +102,13 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         // FIXME #5475:
         // return comment.slice(3u, comment.len()).trim().to_owned();
         let r = comment.slice(3u, comment.len()); return r.trim().to_owned();
-
     }
 
     if comment.starts_with("/*") {
-        let mut lines = ~[];
-        for str::each_line_any(comment.slice(3u, comment.len() - 2u)) |line| {
-            lines.push(line.to_owned())
-        }
+        let lines = comment.slice(3u, comment.len() - 2u)
+            .any_line_iter()
+            .transform(|s| s.to_owned())
+            .collect::<~[~str]>();
         let lines = vertical_trim(lines);
         let lines = block_trim(lines, ~"\t ", None);
         let lines = block_trim(lines, ~"*", Some(1u));

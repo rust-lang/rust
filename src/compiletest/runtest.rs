@@ -24,7 +24,6 @@ use util::logv;
 
 use core::io;
 use core::os;
-use core::str;
 use core::uint;
 use core::vec;
 

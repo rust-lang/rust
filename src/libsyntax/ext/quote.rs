@@ -39,8 +39,6 @@ pub mod rt {
     use parse;
     use print::pprust;
 
-    use core::str;
-
     pub use ast::*;
     pub use parse::token::*;
     pub use parse::new_parser_from_tts;

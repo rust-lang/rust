@@ -24,7 +24,6 @@
 
 use core::prelude::*;
 
-use core::str;
 use core::uint;
 use core::vec;
 
@@ -278,8 +277,6 @@ pub fn sha1() -> @Sha1 {
 #[cfg(test)]
 mod tests {
     use sha1;
-
-    use core::vec;
 
     #[test]
     fn test() {

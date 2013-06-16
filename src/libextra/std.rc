@@ -37,6 +37,7 @@ not required in or otherwise suitable for the core library.
 
 extern mod core(name = "std", vers = "0.7-pre");
 
+#[cfg(stage0)]
 use core::{str, unstable};
 use core::str::{StrSlice, OwnedStr};
 

@@ -71,7 +71,6 @@ use core::libc::c_uint;
 use core::str;
 use core::uint;
 use core::vec;
-use core::local_data;
 use extra::time;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt_to_str, path_name};
@@ -3120,4 +3119,3 @@ pub fn trans_crate(sess: session::Session,
 
     return (llcx, llmod, link_meta);
 }
-

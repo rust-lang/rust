@@ -32,8 +32,6 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax;
 
-#[cfg(test)] use core::vec;
-
 pub struct Ctxt {
     ast: @ast::crate,
     ast_map: ast_map::map
