@@ -181,8 +181,10 @@ pub impl Scheduler {
         // XXX: Reenable this once we're using a per-task queue. With a shared
         // queue this is not true
         //assert!(sched.work_queue.is_empty());
-//        let out = sched.metrics.to_str();
-//        rtdebug!("scheduler metrics: %s\n", out);
+        rtdebug!("scheduler metrics: %s\n", {
+            use to_str::ToStr;
+            sched.metrics.to_str()
+        });
         return sched;
     }
 
@@ -728,11 +730,11 @@ pub impl Coroutine {
     // using the AnySched paramter.
 
     fn new_homed(stack_pool: &mut StackPool, home: SchedHome, start: ~fn()) -> Coroutine {
-        Coroutine::with_task_homed(stack_pool, ~Task::new(), start, home)
+        Coroutine::with_task_homed(stack_pool, ~Task::new_root(), start, home)
     }
 
-    fn new(stack_pool: &mut StackPool, start: ~fn()) -> Coroutine {
-        Coroutine::with_task(stack_pool, ~Task::new(), start)
+    fn new_root(stack_pool: &mut StackPool, start: ~fn()) -> Coroutine {
+        Coroutine::with_task(stack_pool, ~Task::new_root(), start)
     }
 
     fn with_task_homed(stack_pool: &mut StackPool,
@@ -740,7 +742,7 @@ pub impl Coroutine {
                        start: ~fn(),
                        home: SchedHome) -> Coroutine {
 
-        static MIN_STACK_SIZE: uint = 10000000; // XXX: Too much stack
+        static MIN_STACK_SIZE: uint = 1000000; // XXX: Too much stack
 
         let start = Coroutine::build_start_wrapper(start);
         let mut stack = stack_pool.take_segment(MIN_STACK_SIZE);
@@ -930,14 +932,14 @@ mod test {
             };
             let t1f = Cell(t1f);
 
-            let t2f = ~do Coroutine::new(&mut normal_sched.stack_pool) {
+            let t2f = ~do Coroutine::new_root(&mut normal_sched.stack_pool) {
                 let on_special = Coroutine::on_special();
                 rtdebug!("t2 should not be on special: %b", on_special);
                 assert!(!on_special);
             };
             let t2f = Cell(t2f);
 
-            let t3f = ~do Coroutine::new(&mut normal_sched.stack_pool) {
+            let t3f = ~do Coroutine::new_root(&mut normal_sched.stack_pool) {
                 // not on special
                 let on_special = Coroutine::on_special();
                 rtdebug!("t3 should not be on special: %b", on_special);
@@ -986,7 +988,7 @@ mod test {
             let t4 = Cell(t4);
 
             // build a main task that runs our four tests
-            let main_task = ~do Coroutine::new(&mut normal_sched.stack_pool) {
+            let main_task = ~do Coroutine::new_root(&mut normal_sched.stack_pool) {
                 // the two tasks that require a normal start location
                 t2.take()();
                 t4.take()();
@@ -1141,7 +1143,7 @@ mod test {
             let task_ran_ptr: *mut bool = &mut task_ran;
 
             let mut sched = ~new_test_uv_sched();
-            let task = ~do Coroutine::new(&mut sched.stack_pool) {
+            let task = ~do Coroutine::new_root(&mut sched.stack_pool) {
                 unsafe { *task_ran_ptr = true; }
             };
             sched.enqueue_task(task);
@@ -1159,7 +1161,7 @@ mod test {
 
             let mut sched = ~new_test_uv_sched();
             for int::range(0, total) |_| {
-                let task = ~do Coroutine::new(&mut sched.stack_pool) {
+                let task = ~do Coroutine::new_root(&mut sched.stack_pool) {
                     unsafe { *task_count_ptr = *task_count_ptr + 1; }
                 };
                 sched.enqueue_task(task);
@@ -1176,10 +1178,10 @@ mod test {
             let count_ptr: *mut int = &mut count;
 
             let mut sched = ~new_test_uv_sched();
-            let task1 = ~do Coroutine::new(&mut sched.stack_pool) {
+            let task1 = ~do Coroutine::new_root(&mut sched.stack_pool) {
                 unsafe { *count_ptr = *count_ptr + 1; }
                 let mut sched = Local::take::<Scheduler>();
-                let task2 = ~do Coroutine::new(&mut sched.stack_pool) {
+                let task2 = ~do Coroutine::new_root(&mut sched.stack_pool) {
                     unsafe { *count_ptr = *count_ptr + 1; }
                 };
                 // Context switch directly to the new task
@@ -1204,7 +1206,7 @@ mod test {
 
             let mut sched = ~new_test_uv_sched();
 
-            let start_task = ~do Coroutine::new(&mut sched.stack_pool) {
+            let start_task = ~do Coroutine::new_root(&mut sched.stack_pool) {
                 run_task(count_ptr);
             };
             sched.enqueue_task(start_task);
@@ -1214,7 +1216,7 @@ mod test {
 
             fn run_task(count_ptr: *mut int) {
                 do Local::borrow::<Scheduler, ()> |sched| {
-                    let task = ~do Coroutine::new(&mut sched.stack_pool) {
+                    let task = ~do Coroutine::new_root(&mut sched.stack_pool) {
                         unsafe {
                             *count_ptr = *count_ptr + 1;
                             if *count_ptr != MAX {
@@ -1232,7 +1234,7 @@ mod test {
     fn test_block_task() {
         do run_in_bare_thread {
             let mut sched = ~new_test_uv_sched();
-            let task = ~do Coroutine::new(&mut sched.stack_pool) {
+            let task = ~do Coroutine::new_root(&mut sched.stack_pool) {
                 let sched = Local::take::<Scheduler>();
                 assert!(sched.in_task_context());
                 do sched.deschedule_running_task_and_then() |sched, task| {
@@ -1279,13 +1281,13 @@ mod test {
             let mut sched1 = ~new_test_uv_sched();
             let handle1 = sched1.make_handle();
             let handle1_cell = Cell(handle1);
-            let task1 = ~do Coroutine::new(&mut sched1.stack_pool) {
+            let task1 = ~do Coroutine::new_root(&mut sched1.stack_pool) {
                 chan_cell.take().send(());
             };
             sched1.enqueue_task(task1);
 
             let mut sched2 = ~new_test_uv_sched();
-            let task2 = ~do Coroutine::new(&mut sched2.stack_pool) {
+            let task2 = ~do Coroutine::new_root(&mut sched2.stack_pool) {
                 port_cell.take().recv();
                 // Release the other scheduler's handle so it can exit
                 handle1_cell.take();

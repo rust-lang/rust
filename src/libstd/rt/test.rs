@@ -18,6 +18,7 @@ use vec::OwnedVector;
 use result::{Result, Ok, Err};
 use unstable::run_in_bare_thread;
 use super::io::net::ip::{IpAddr, Ipv4};
+use rt::comm::oneshot;
 use rt::task::Task;
 use rt::thread::Thread;
 use rt::local::Local;
@@ -47,8 +48,11 @@ pub fn run_in_newsched_task(f: ~fn()) {
 
     do run_in_bare_thread {
         let mut sched = ~new_test_uv_sched();
+        let mut new_task = ~Task::new_root();
+        let on_exit: ~fn(bool) = |exit_status| rtassert!(exit_status);
+        new_task.on_exit = Some(on_exit);
         let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                         ~Task::without_unwinding(),
+                                         new_task,
                                          f.take());
         sched.enqueue_task(task);
         sched.run();
@@ -95,16 +99,20 @@ pub fn run_in_mt_newsched_task(f: ~fn()) {
 
         let f_cell = Cell(f_cell.take());
         let handles = Cell(handles);
-        let main_task = ~do Coroutine::new(&mut scheds[0].stack_pool) {
-            f_cell.take()();
+        let mut new_task = ~Task::new_root();
+        let on_exit: ~fn(bool) = |exit_status| {
 
             let mut handles = handles.take();
             // Tell schedulers to exit
             for handles.each_mut |handle| {
                 handle.send(Shutdown);
             }
-        };
 
+            rtassert!(exit_status);
+        };
+        new_task.on_exit = Some(on_exit);
+        let main_task = ~Coroutine::with_task(&mut scheds[0].stack_pool,
+                                              new_task, f_cell.take());
         scheds[0].enqueue_task(main_task);
 
         let mut threads = ~[];
@@ -201,7 +209,7 @@ pub fn run_in_mt_newsched_task_random_homed() {
 
         rtdebug!("creating main task");
 
-        let main_task = ~do Coroutine::new(&mut scheds[0].stack_pool) {
+        let main_task = ~do Coroutine::new_root(&mut scheds[0].stack_pool) {
             f_cell.take()();
             let mut handles = handles.take();
             // Tell schedulers to exit
@@ -245,10 +253,13 @@ pub fn spawntask(f: ~fn()) {
     use super::sched::*;
 
     rtdebug!("spawntask taking the scheduler from TLS")
+    let task = do Local::borrow::<Task, ~Task>() |running_task| {
+        ~running_task.new_child()
+    };
+
     let mut sched = Local::take::<Scheduler>();
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                     ~Task::without_unwinding(),
-                                     f);
+                                     task, f);
     rtdebug!("spawntask scheduling the new task");
     sched.schedule_task(task);
 }
@@ -257,10 +268,13 @@ pub fn spawntask(f: ~fn()) {
 pub fn spawntask_immediately(f: ~fn()) {
     use super::sched::*;
 
+    let task = do Local::borrow::<Task, ~Task>() |running_task| {
+        ~running_task.new_child()
+    };
+
     let mut sched = Local::take::<Scheduler>();
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                     ~Task::without_unwinding(),
-                                     f);
+                                     task, f);
     do sched.switch_running_tasks_and_then(task) |sched, task| {
         sched.enqueue_task(task);
     }
@@ -270,10 +284,13 @@ pub fn spawntask_immediately(f: ~fn()) {
 pub fn spawntask_later(f: ~fn()) {
     use super::sched::*;
 
+    let task = do Local::borrow::<Task, ~Task>() |running_task| {
+        ~running_task.new_child()
+    };
+
     let mut sched = Local::take::<Scheduler>();
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                     ~Task::without_unwinding(),
-                                     f);
+                                     task, f);
 
     sched.enqueue_task(task);
     Local::put(sched);
@@ -284,13 +301,16 @@ pub fn spawntask_random(f: ~fn()) {
     use super::sched::*;
     use rand::{Rand, rng};
 
-    let mut rng = rng();
-    let run_now: bool = Rand::rand(&mut rng);
+    let task = do Local::borrow::<Task, ~Task>() |running_task| {
+        ~running_task.new_child()
+    };
 
     let mut sched = Local::take::<Scheduler>();
     let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                     ~Task::without_unwinding(),
-                                     f);
+                                     task, f);
+
+    let mut rng = rng();
+    let run_now: bool = Rand::rand(&mut rng);
 
     if run_now {
         do sched.switch_running_tasks_and_then(task) |sched, task| {
@@ -327,7 +347,7 @@ pub fn spawntask_homed(scheds: &mut ~[~Scheduler], f: ~fn()) {
         };
 
         ~Coroutine::with_task_homed(&mut sched.stack_pool,
-                                    ~Task::without_unwinding(),
+                                    ~Task::new_root(),
                                     af,
                                     Sched(handle))
     };
@@ -340,47 +360,37 @@ pub fn spawntask_homed(scheds: &mut ~[~Scheduler], f: ~fn()) {
 pub fn spawntask_try(f: ~fn()) -> Result<(), ()> {
     use cell::Cell;
     use super::sched::*;
-    use task;
-    use unstable::finally::Finally;
 
-    // Our status variables will be filled in from the scheduler context
-    let mut failed = false;
-    let failed_ptr: *mut bool = &mut failed;
-
-    // Switch to the scheduler
-    let f = Cell(Cell(f));
-    let sched = Local::take::<Scheduler>();
-    do sched.deschedule_running_task_and_then() |sched, old_task| {
-        let old_task = Cell(old_task);
-        let f = f.take();
-        let new_task = ~do Coroutine::new(&mut sched.stack_pool) {
-            do (|| {
-                (f.take())()
-            }).finally {
-                // Check for failure then resume the parent task
-                unsafe { *failed_ptr = task::failing(); }
-                let sched = Local::take::<Scheduler>();
-                do sched.switch_running_tasks_and_then(old_task.take()) |sched, new_task| {
-                    sched.enqueue_task(new_task);
-                }
-            }
-        };
-
-        sched.enqueue_task(new_task);
+    let (port, chan) = oneshot();
+    let chan = Cell(chan);
+    let mut new_task = ~Task::new_root();
+    let on_exit: ~fn(bool) = |exit_status| chan.take().send(exit_status);
+    new_task.on_exit = Some(on_exit);
+    let mut sched = Local::take::<Scheduler>();
+    let new_task = ~Coroutine::with_task(&mut sched.stack_pool,
+                                         new_task, f);
+    do sched.switch_running_tasks_and_then(new_task) |sched, old_task| {
+        sched.enqueue_task(old_task);
     }
 
-    if !failed { Ok(()) } else { Err(()) }
+    let exit_status = port.recv();
+    if exit_status { Ok(()) } else { Err(()) }
 }
 
 // Spawn a new task in a new scheduler and return a thread handle.
 pub fn spawntask_thread(f: ~fn()) -> Thread {
     use rt::sched::*;
 
+    let task = do Local::borrow::<Task, ~Task>() |running_task| {
+        ~running_task.new_child()
+    };
+
+    let task = Cell(task);
     let f = Cell(f);
     let thread = do Thread::start {
         let mut sched = ~new_test_uv_sched();
         let task = ~Coroutine::with_task(&mut sched.stack_pool,
-                                         ~Task::without_unwinding(),
+                                         task.take(),
                                          f.take());
         sched.enqueue_task(task);
         sched.run();

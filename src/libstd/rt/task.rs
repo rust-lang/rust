@@ -16,19 +16,23 @@
 use prelude::*;
 use libc::{c_void, uintptr_t};
 use cast::transmute;
+use option::{Option, Some, None};
 use rt::local::Local;
 use super::local_heap::LocalHeap;
 use rt::logging::StdErrLogger;
 use rt::sched::{SchedHome, AnySched};
+use rt::join_latch::JoinLatch;
 
 pub struct Task {
     heap: LocalHeap,
     gc: GarbageCollector,
     storage: LocalStorage,
     logger: StdErrLogger,
-    unwinder: Option<Unwinder>,
-    destroyed: bool,
-    home: Option<SchedHome>
+    unwinder: Unwinder,
+    home: Option<SchedHome>,
+    join_latch: Option<~JoinLatch>,
+    on_exit: Option<~fn(bool)>,
+    destroyed: bool
 }
 
 pub struct GarbageCollector;
@@ -39,27 +43,31 @@ pub struct Unwinder {
 }
 
 impl Task {
-    pub fn new() -> Task {
+    pub fn new_root() -> Task {
         Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
             storage: LocalStorage(ptr::null(), None),
             logger: StdErrLogger,
-            unwinder: Some(Unwinder { unwinding: false }),
-            destroyed: false,
-            home: Some(AnySched)
+            unwinder: Unwinder { unwinding: false },
+            home: Some(AnySched),
+            join_latch: Some(JoinLatch::new_root()),
+            on_exit: None,
+            destroyed: false
         }
     }
 
-    pub fn without_unwinding() -> Task {
+    pub fn new_child(&mut self) -> Task {
         Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
             storage: LocalStorage(ptr::null(), None),
             logger: StdErrLogger,
-            unwinder: None,
-            destroyed: false,
-            home: Some(AnySched)
+            home: Some(AnySched),
+            unwinder: Unwinder { unwinding: false },
+            join_latch: Some(self.join_latch.get_mut_ref().new_child()),
+            on_exit: None,
+            destroyed: false
         }
     }
 
@@ -74,20 +82,24 @@ impl Task {
             assert!(ptr::ref_eq(task, self));
         }
 
-        match self.unwinder {
-            Some(ref mut unwinder) => {
-                // If there's an unwinder then set up the catch block
-                unwinder.try(f);
+        self.unwinder.try(f);
+        self.destroy();
+
+        // Wait for children. Possibly report the exit status.
+        let local_success = !self.unwinder.unwinding;
+        let join_latch = self.join_latch.swap_unwrap();
+        match self.on_exit {
+            Some(ref on_exit) => {
+                let success = join_latch.wait(local_success);
+                (*on_exit)(success);
             }
             None => {
-                // Otherwise, just run the body
-                f()
+                join_latch.release(local_success);
             }
         }
-        self.destroy();
     }
 
-    /// Must be called manually before finalization to clean up
+    /// must be called manually before finalization to clean up
     /// thread-local resources. Some of the routines here expect
     /// Task to be available recursively so this must be
     /// called unsafely, without removing Task from
@@ -231,6 +243,16 @@ mod test {
             let (port, chan) = stream();
             chan.send(10);
             assert!(port.recv() == 10);
+        }
+    }
+
+    #[test]
+    fn linked_failure() {
+        do run_in_newsched_task() {
+            let res = do spawntask_try {
+                spawntask_random(|| fail!());
+            };
+            assert!(res.is_err());
         }
     }
 }
