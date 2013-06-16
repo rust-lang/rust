@@ -27,7 +27,7 @@ pub enum MutList<T> {
 
 /// Create a list from a vector
 pub fn from_vec<T:Copy>(v: &[T]) -> @List<T> {
-    v.rev_iter().fold(@Nil::<T>, |t, h| @Cons(*h, t))
+    v.rev_iter().fold(@Nil::<T>, |t, h| @Cons(copy *h, t))
 }
 
 /**
@@ -61,7 +61,7 @@ pub fn find<T:Copy>(ls: @List<T>, f: &fn(&T) -> bool) -> Option<T> {
     loop {
         ls = match *ls {
           Cons(ref hd, tl) => {
-            if f(hd) { return Some(*hd); }
+            if f(hd) { return Some(copy *hd); }
             tl
           }
           Nil => return None

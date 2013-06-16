@@ -37,7 +37,7 @@ pub fn merge_sort<T:Copy>(v: &[T], le: Le<T>) -> ~[T] {
 
         let v_len = end - begin;
         if v_len == 0 { return ~[]; }
-        if v_len == 1 { return ~[v[begin]]; }
+        if v_len == 1 { return ~[copy v[begin]]; }
 
         let mid = v_len / 2 + begin;
         let a = (begin, mid);
@@ -53,9 +53,9 @@ pub fn merge_sort<T:Copy>(v: &[T], le: Le<T>) -> ~[T] {
         let mut b_ix = 0;
         while a_ix < a_len && b_ix < b_len {
             if le(&a[a_ix], &b[b_ix]) {
-                rs.push(a[a_ix]);
+                rs.push(copy a[a_ix]);
                 a_ix += 1;
-            } else { rs.push(b[b_ix]); b_ix += 1; }
+            } else { rs.push(copy b[b_ix]); b_ix += 1; }
         }
         rs.push_all(vec::slice(a, a_ix, a_len));
         rs.push_all(vec::slice(b, b_ix, b_len));
@@ -106,7 +106,7 @@ pub fn quick_sort<T>(arr: &mut [T], compare_func: Le<T>) {
 
 fn qsort3<T:Copy + Ord + Eq>(arr: &mut [T], left: int, right: int) {
     if right <= left { return; }
-    let v: T = arr[right];
+    let v: T = copy arr[right];
     let mut i: int = left - 1;
     let mut j: int = right;
     let mut p: int = i;
@@ -233,7 +233,7 @@ fn binarysort<T:Copy + Ord>(array: &mut [T], start: uint) {
     if start == 0 { start += 1; }
 
     while start < size {
-        let pivot = array[start];
+        let pivot = copy array[start];
         let mut left = 0;
         let mut right = start;
         assert!(left <= right);
@@ -470,7 +470,7 @@ impl<T:Copy + Ord> MergeState<T> {
 
         let mut tmp = ~[];
         for uint::range(base1, base1+len1) |i| {
-            tmp.push(array[i]);
+            tmp.push(copy array[i]);
         }
 
         let mut c1 = 0;
@@ -580,7 +580,7 @@ impl<T:Copy + Ord> MergeState<T> {
 
         let mut tmp = ~[];
         for uint::range(base2, base2+len2) |i| {
-            tmp.push(array[i]);
+            tmp.push(copy array[i]);
         }
 
         let mut c1 = base1 + len1 - 1;
@@ -732,7 +732,7 @@ fn copy_vec<T:Copy>(dest: &mut [T],
     assert!(s1+from.len() <= dest.len());
 
     for from.eachi |i, v| {
-        dest[s1+i] = *v;
+        dest[s1+i] = copy *v;
     }
 }
 
@@ -1045,7 +1045,7 @@ mod big_tests {
     fn multiplyVec<T:Copy>(arr: &[T], num: uint) -> ~[T] {
         let size = arr.len();
         let res = do vec::from_fn(num) |i| {
-            arr[i % size]
+            copy arr[i % size]
         };
         res
     }

@@ -25,9 +25,7 @@ use std::task;
 use std::uint;
 use std::vec;
 
-macro_rules! move_out (
-    { $x:expr } => { unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } }
-)
+fn move_out<T>(x: T) {}
 
 enum request {
     get_count,
@@ -87,7 +85,7 @@ fn run(args: &[~str]) {
 
     //error!("sending stop message");
     to_child.send(stop);
-    move_out!(to_child);
+    move_out(to_child);
     let result = from_child.recv();
     let end = extra::time::precise_time_s();
     let elapsed = end - start;

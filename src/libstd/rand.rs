@@ -526,7 +526,7 @@ impl<R: Rng> RngUtil for R {
         if values.is_empty() {
             None
         } else {
-            Some(values[self.gen_uint_range(0u, values.len())])
+            Some(copy values[self.gen_uint_range(0u, values.len())])
         }
     }
     /**
@@ -555,7 +555,7 @@ impl<R: Rng> RngUtil for R {
         for v.each |item| {
             so_far += item.weight;
             if so_far > chosen {
-                return Some(item.item);
+                return Some(copy item.item);
             }
         }
         util::unreachable();
@@ -569,7 +569,7 @@ impl<R: Rng> RngUtil for R {
         let mut r = ~[];
         for v.each |item| {
             for uint::range(0u, item.weight) |_i| {
-                r.push(item.item);
+                r.push(copy item.item);
             }
         }
         r

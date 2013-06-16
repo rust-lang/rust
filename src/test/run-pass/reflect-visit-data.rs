@@ -486,9 +486,9 @@ struct Stuff {
 }
 
 impl my_visitor {
-    pub fn get<T>(&self, f: &fn(T)) {
+    pub fn get<T:Copy>(&self, f: &fn(T)) {
         unsafe {
-            f(*(self.ptr1 as *T));
+            f(copy *(self.ptr1 as *T));
         }
     }
 

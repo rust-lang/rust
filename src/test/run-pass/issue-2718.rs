@@ -233,9 +233,7 @@ pub mod pingpong {
             let addr : *::pipes::send_packet<pong> = match &p {
               &ping(ref x) => { cast::transmute(x) }
             };
-            let liberated_value = *addr;
-            cast::forget(p);
-            liberated_value
+            fail!()
         }
     }
 
@@ -244,9 +242,7 @@ pub mod pingpong {
             let addr : *::pipes::send_packet<ping> = match &p {
               &pong(ref x) => { cast::transmute(x) }
             };
-            let liberated_value = *addr;
-            cast::forget(p);
-            liberated_value
+            fail!()
         }
     }
 
