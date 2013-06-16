@@ -197,26 +197,35 @@ fn read_line_comments(rdr: @mut StringReader, code_to_the_left: bool,
     }
 }
 
-// FIXME #3961: This is not the right way to convert string byte
-// offsets to characters.
-fn all_whitespace(s: &str, begin: uint, end: uint) -> bool {
-    let mut i: uint = begin;
-    while i != end {
-        if !is_whitespace(s[i] as char) { return false; } i += 1u;
+// Returns None if the first col chars of s contain a non-whitespace char.
+// Otherwise returns Some(k) where k is first char offset after that leading
+// whitespace.  Note k may be outside bounds of s.
+fn all_whitespace(s: &str, col: CharPos) -> Option<uint> {
+    let len = s.len();
+    let mut col = col.to_uint();
+    let mut cursor: uint = 0;
+    while col > 0 && cursor < len {
+        let r: str::CharRange = s.char_range_at(cursor);
+        if !r.ch.is_whitespace() {
+            return None;
+        }
+        cursor = r.next;
+        col -= 1;
     }
-    return true;
+    return Some(cursor);
 }
 
 fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
                                         s: ~str, col: CharPos) {
     let len = s.len();
-    // FIXME #3961: Doing bytewise comparison and slicing with CharPos
-    let col = col.to_uint();
-    let s1 = if all_whitespace(s, 0, uint::min(len, col)) {
-        if col < len {
-            s.slice(col, len).to_owned()
-        } else {  ~"" }
-    } else { s };
+    let s1 = match all_whitespace(s, col) {
+        Some(col) => {
+            if col < len {
+                s.slice(col, len).to_owned()
+            } else {  ~"" }
+        }
+        None => s,
+    };
     debug!("pushing line: %s", s1);
     lines.push(s1);
 }
