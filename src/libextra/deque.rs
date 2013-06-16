@@ -264,31 +264,31 @@ mod tests {
     fn test_parameterized<T:Copy + Eq>(a: T, b: T, c: T, d: T) {
         let mut deq = Deque::new();
         assert_eq!(deq.len(), 0);
-        deq.add_front(a);
-        deq.add_front(b);
-        deq.add_back(c);
+        deq.add_front(copy a);
+        deq.add_front(copy b);
+        deq.add_back(copy c);
         assert_eq!(deq.len(), 3);
-        deq.add_back(d);
+        deq.add_back(copy d);
         assert_eq!(deq.len(), 4);
-        assert_eq!(*deq.peek_front(), b);
-        assert_eq!(*deq.peek_back(), d);
-        assert_eq!(deq.pop_front(), b);
-        assert_eq!(deq.pop_back(), d);
-        assert_eq!(deq.pop_back(), c);
-        assert_eq!(deq.pop_back(), a);
+        assert_eq!(copy *deq.peek_front(), copy b);
+        assert_eq!(copy *deq.peek_back(), copy d);
+        assert_eq!(deq.pop_front(), copy b);
+        assert_eq!(deq.pop_back(), copy d);
+        assert_eq!(deq.pop_back(), copy c);
+        assert_eq!(deq.pop_back(), copy a);
         assert_eq!(deq.len(), 0);
-        deq.add_back(c);
+        deq.add_back(copy c);
         assert_eq!(deq.len(), 1);
-        deq.add_front(b);
+        deq.add_front(copy b);
         assert_eq!(deq.len(), 2);
-        deq.add_back(d);
+        deq.add_back(copy d);
         assert_eq!(deq.len(), 3);
-        deq.add_front(a);
+        deq.add_front(copy a);
         assert_eq!(deq.len(), 4);
-        assert_eq!(*deq.get(0), a);
-        assert_eq!(*deq.get(1), b);
-        assert_eq!(*deq.get(2), c);
-        assert_eq!(*deq.get(3), d);
+        assert_eq!(copy *deq.get(0), copy a);
+        assert_eq!(copy *deq.get(1), copy b);
+        assert_eq!(copy *deq.get(2), copy c);
+        assert_eq!(copy *deq.get(3), copy d);
     }
 
     #[deriving(Eq)]

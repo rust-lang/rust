@@ -57,7 +57,7 @@ priv enum FutureState<A> {
 impl<A:Copy> Future<A> {
     pub fn get(&mut self) -> A {
         //! Get the value of the future.
-        *(self.get_ref())
+        copy *(self.get_ref())
     }
 }
 

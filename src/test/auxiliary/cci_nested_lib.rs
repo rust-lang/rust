@@ -25,7 +25,7 @@ pub fn alist_add<A:Copy,B:Copy>(lst: &alist<A,B>, k: A, v: B) {
 pub fn alist_get<A:Copy,B:Copy>(lst: &alist<A,B>, k: A) -> B {
     let eq_fn = lst.eq_fn;
     for lst.data.each |entry| {
-        if eq_fn(entry.key, k) { return entry.value; }
+        if eq_fn(copy entry.key, copy k) { return copy entry.value; }
     }
     fail!();
 }

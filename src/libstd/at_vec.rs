@@ -107,8 +107,8 @@ pub fn build_sized_opt<A>(size: Option<uint>,
 #[inline(always)]
 pub fn append<T:Copy>(lhs: @[T], rhs: &const [T]) -> @[T] {
     do build_sized(lhs.len() + rhs.len()) |push| {
-        for lhs.each |x| { push(*x); }
-        for uint::range(0, rhs.len()) |i| { push(rhs[i]); }
+        for lhs.each |x| { push(copy *x); }
+        for uint::range(0, rhs.len()) |i| { push(copy rhs[i]); }
     }
 }
 
@@ -168,7 +168,7 @@ pub fn to_managed_consume<T>(v: ~[T]) -> @[T] {
  * elements of a slice.
  */
 pub fn to_managed<T:Copy>(v: &[T]) -> @[T] {
-    from_fn(v.len(), |i| v[i])
+    from_fn(v.len(), |i| copy v[i])
 }
 
 #[cfg(not(test))]
