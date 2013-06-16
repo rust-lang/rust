@@ -2826,7 +2826,7 @@ Within the body of an item that has type parameter declarations, the names of it
 ~~~~~~~
 fn map<A: Copy, B: Copy>(f: &fn(A) -> B, xs: &[A]) -> ~[B] {
    if xs.len() == 0 { return ~[]; }
-   let first: B = f(xs[0]);
+   let first: B = f(copy xs[0]);
    let rest: ~[B] = map(f, xs.slice(1, xs.len()));
    return ~[first] + rest;
 }
