@@ -85,7 +85,8 @@ bounded and unbounded protocols allows for less code duplication.
 #[allow(missing_doc)];
 
 use container::Container;
-use cast::{forget, transmute, transmute_copy};
+use cast::{forget, transmute, transmute_copy, transmute_mut};
+use cast;
 use either::{Either, Left, Right};
 use iterator::IteratorUtil;
 use kinds::Owned;
@@ -101,10 +102,6 @@ use vec::{OwnedVector, MutableVector};
 use util::replace;
 
 static SPIN_COUNT: uint = 0;
-
-macro_rules! move_it (
-    { $x:expr } => ( unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } )
-)
 
 #[deriving(Eq)]
 enum State {
@@ -316,9 +313,11 @@ impl<T> Drop for BufferResource<T> {
     fn finalize(&self) {
         unsafe {
             // FIXME(#4330) Need self by value to get mutability.
-            let this: &mut BufferResource<T> = transmute(self);
+            let this: &mut BufferResource<T> = transmute_mut(self);
 
-            let mut b = move_it!(this.buffer);
+            let null_buffer: ~Buffer<T> = transmute(ptr::null::<Buffer<T>>());
+            let mut b = replace(&mut this.buffer, null_buffer);
+
             //let p = ptr::to_unsafe_ptr(*b);
             //error!("drop %?", p);
             let old_count = intrinsics::atomic_xsub_rel(
