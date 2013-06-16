@@ -208,7 +208,6 @@ CFG_STDLIB_$(1) :=$(call CFG_LIB_NAME_$(1),std)
 CFG_EXTRALIB_$(1) :=$(call CFG_LIB_NAME_$(1),extra)
 CFG_LIBRUSTC_$(1) :=$(call CFG_LIB_NAME_$(1),rustc)
 CFG_LIBSYNTAX_$(1) :=$(call CFG_LIB_NAME_$(1),syntax)
-CFG_LIBFUZZER_$(1) :=$(call CFG_LIB_NAME_$(1),fuzzer)
 CFG_LIBRUSTPKG_$(1) :=$(call CFG_LIB_NAME_$(1),rustpkg)
 CFG_LIBRUSTDOC_$(1) :=$(call CFG_LIB_NAME_$(1),rustdoc)
 CFG_LIBRUSTI_$(1) :=$(call CFG_LIB_NAME_$(1),rusti)
@@ -218,7 +217,6 @@ EXTRALIB_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),extra)
 STDLIB_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),std)
 LIBRUSTC_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustc)
 LIBSYNTAX_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),syntax)
-LIBFUZZER_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),fuzzer)
 LIBRUSTPKG_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustpkg)
 LIBRUSTDOC_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustdoc)
 LIBRUSTI_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rusti)
@@ -227,7 +225,6 @@ EXTRALIB_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),extra)
 STDLIB_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),std)
 LIBRUSTC_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustc)
 LIBSYNTAX_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),syntax)
-LIBFUZZER_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),fuzzer)
 LIBRUSTPKG_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustpkg)
 LIBRUSTDOC_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustdoc)
 LIBRUSTI_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rusti)
@@ -402,12 +399,10 @@ SREQ$(1)_T_$(2)_H_$(3) = \
 # Prerequisites for a working stageN compiler and libraries, for a specific target
 CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
-	$$(HBIN$(1)_H_$(3))/fuzzer$$(X_$(3)) \
 	$$(HBIN$(1)_H_$(3))/rustpkg$$(X_$(3)) \
 	$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
 	$$(HBIN$(1)_H_$(3))/rusti$$(X_$(3)) \
 	$$(HBIN$(1)_H_$(3))/rust$$(X_$(3)) \
-	$$(HLIB$(1)_H_$(3))/$(CFG_LIBFUZZER_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTPKG_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTDOC_$(3)) \
 	$$(HLIB$(1)_H_$(3))/$(CFG_LIBRUSTI_$(3)) \
@@ -416,7 +411,6 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_EXTRALIB_$(2))  \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(2))  \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(2)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBFUZZER_$(2)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTPKG_$(2)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTDOC_$(2)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTI_$(2)) \
