@@ -54,11 +54,6 @@ pub trait CopyableIter<A:Copy> {
     fn find(&self, p: &fn(&A) -> bool) -> Option<A>;
 }
 
-pub trait CopyableOrderedIter<A:Copy + Ord> {
-    fn min(&self) -> A;
-    fn max(&self) -> A;
-}
-
 // A trait for sequences that can be built by imperatively pushing elements
 // onto them.
 pub trait Buildable<A> {
@@ -190,40 +185,6 @@ pub fn position<A,IA:BaseIter<A>>(this: &IA, f: &fn(&A) -> bool)
         i += 1;
     }
     return None;
-}
-
-// note: 'rposition' would only make sense to provide with a bidirectional
-// iter interface, such as would provide "reach" in addition to "each". As is,
-// it would have to be implemented with foldr, which is too inefficient.
-
-#[inline(always)]
-pub fn min<A:Copy + Ord,IA:BaseIter<A>>(this: &IA) -> A {
-    match do foldl::<A,Option<A>,IA>(this, None) |a, b| {
-        match a {
-          &Some(ref a_) if *a_ < *b => {
-             *(a)
-          }
-          _ => Some(*b)
-        }
-    } {
-        Some(val) => val,
-        None => fail!("min called on empty iterator")
-    }
-}
-
-#[inline(always)]
-pub fn max<A:Copy + Ord,IA:BaseIter<A>>(this: &IA) -> A {
-    match do foldl::<A,Option<A>,IA>(this, None) |a, b| {
-        match a {
-          &Some(ref a_) if *a_ > *b => {
-              *(a)
-          }
-          _ => Some(*b)
-        }
-    } {
-        Some(val) => val,
-        None => fail!("max called on empty iterator")
-    }
 }
 
 #[inline(always)]
