@@ -14,6 +14,7 @@ The `ToBytes` and `IterBytes` traits
 
 */
 
+use cast;
 use io;
 use io::Writer;
 use option::{None, Option, Some};
@@ -187,6 +188,35 @@ impl IterBytes for int {
     #[inline(always)]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         (*self as uint).iter_bytes(lsb0, f)
+    }
+}
+
+impl IterBytes for float {
+    #[inline(always)]
+    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        (*self as f64).iter_bytes(lsb0, f)
+    }
+}
+
+impl IterBytes for f32 {
+    #[inline(always)]
+    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        let i: u32 = unsafe {
+            // 0.0 == -0.0 so they should also have the same hashcode
+            cast::transmute(if *self == -0.0 { 0.0 } else { *self })
+        };
+        i.iter_bytes(lsb0, f)
+    }
+}
+
+impl IterBytes for f64 {
+    #[inline(always)]
+    fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
+        let i: u64 = unsafe {
+            // 0.0 == -0.0 so they should also have the same hashcode
+            cast::transmute(if *self == -0.0 { 0.0 } else { *self })
+        };
+        i.iter_bytes(lsb0, f)
     }
 }
 
