@@ -1779,7 +1779,7 @@ pub mod fsync {
                 None => (),
                 Some(level) => {
                   // fail hard if not succesful
-                  assert!(((self.arg.fsync_fn)(self.arg.val, level)
+                  assert!(((self.arg.fsync_fn)(copy self.arg.val, level)
                     != -1));
                 }
             }

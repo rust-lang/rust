@@ -20,7 +20,7 @@ struct finish<T> {
 impl<T:Copy> Drop for finish<T> {
     fn finalize(&self) {
         unsafe {
-            (self.arg.fin)(self.arg.val);
+            (self.arg.fin)(copy self.arg.val);
         }
     }
 }

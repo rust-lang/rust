@@ -318,7 +318,7 @@ pub fn expect<T:Copy>(diag: @span_handler,
                        opt: Option<T>,
                        msg: &fn() -> ~str) -> T {
     match opt {
-       Some(ref t) => (*t),
+       Some(ref t) => copy *t,
        None => diag.handler().bug(msg())
     }
 }

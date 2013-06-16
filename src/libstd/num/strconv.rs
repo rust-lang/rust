@@ -229,7 +229,7 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
         };
 
         // Decrease the deccumulator one digit at a time
-        deccum /= radix_gen;
+        deccum = deccum / radix_gen;
         deccum = deccum.round_to_zero();
 
         buf.push(char::from_digit(current_digit.to_int() as uint, radix)
@@ -282,7 +282,7 @@ pub fn to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Copy+
               )
         ) {
             // Shift first fractional digit into the integer part
-            deccum *= radix_gen;
+            deccum = deccum * radix_gen;
 
             // Calculate the absolute value of each digit.
             // See note in first loop.
@@ -499,8 +499,8 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
 
     // Initialize accumulator with signed zero for floating point parsing to
     // work
-    let mut accum      = if accum_positive { _0 } else { -_1 * _0};
-    let mut last_accum = accum; // Necessary to detect overflow
+    let mut accum      = if accum_positive { copy _0 } else { -_1 * _0};
+    let mut last_accum = copy accum; // Necessary to detect overflow
     let mut i          = start;
     let mut exp_found  = false;
 
@@ -511,13 +511,13 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
         match char::to_digit(c, radix) {
             Some(digit) => {
                 // shift accum one digit left
-                accum *= radix_gen;
+                accum = accum * copy radix_gen;
 
                 // add/subtract current digit depending on sign
                 if accum_positive {
-                    accum += cast(digit as int);
+                    accum = accum + cast(digit as int);
                 } else {
-                    accum -= cast(digit as int);
+                    accum = accum - cast(digit as int);
                 }
 
                 // Detect overflow by comparing to last value, except
@@ -526,7 +526,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
                     if accum_positive && accum <= last_accum { return None; }
                     if !accum_positive && accum >= last_accum { return None; }
                 }
-                last_accum = accum;
+                last_accum = copy accum;
             }
             None => match c {
                 '_' if ignore_underscores => {}
@@ -548,7 +548,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
     // Parse fractional part of number
     // Skip if already reached start of exponent
     if !exp_found {
-        let mut power = _1;
+        let mut power = copy _1;
 
         while i < len {
             let c = buf[i] as char;
@@ -556,21 +556,21 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
             match char::to_digit(c, radix) {
                 Some(digit) => {
                     // Decrease power one order of magnitude
-                    power /= radix_gen;
+                    power = power / radix_gen;
 
                     let digit_t: T = cast(digit);
 
                     // add/subtract current digit depending on sign
                     if accum_positive {
-                        accum += digit_t * power;
+                        accum = accum + digit_t * power;
                     } else {
-                        accum -= digit_t * power;
+                        accum = accum - digit_t * power;
                     }
 
                     // Detect overflow by comparing to last value
                     if accum_positive && accum < last_accum { return None; }
                     if !accum_positive && accum > last_accum { return None; }
-                    last_accum = accum;
+                    last_accum = copy accum;
                 }
                 None => match c {
                     '_' if ignore_underscores => {}
@@ -596,7 +596,7 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Copy+Div<T,T>+
         }
     }
 
-    let mut multiplier = _1;
+    let mut multiplier = copy _1;
 
     if exp_found {
         let c = buf[i] as char;

@@ -98,10 +98,6 @@ use iterator::{IteratorUtil};
 #[cfg(test)] use comm;
 #[cfg(test)] use task;
 
-macro_rules! move_it (
-    { $x:expr } => ( unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } )
-)
-
 type TaskSet = HashSet<*rust_task>;
 
 fn new_taskset() -> TaskSet {
@@ -638,23 +634,16 @@ fn spawn_raw_oldsched(mut opts: TaskOpts, f: ~fn()) {
                           notify_chan: Option<Chan<TaskResult>>,
                           f: ~fn())
                        -> ~fn() {
-        let child_data = Cell::new((child_arc, ancestors));
+        let child_data = Cell::new((notify_chan, child_arc, ancestors));
         let result: ~fn() = || {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
-            let mut (child_arc, ancestors) = child_data.take();
+            let mut (notify_chan, child_arc, ancestors) = child_data.take();
             // Child task runs this code.
 
             // Even if the below code fails to kick the child off, we must
             // send Something on the notify channel.
 
-            //let mut notifier = None;//notify_chan.map(|c| AutoNotify(c));
-            let notifier = match notify_chan {
-                Some(ref notify_chan_value) => {
-                    let moved_ncv = move_it!(*notify_chan_value);
-                    Some(AutoNotify(moved_ncv))
-                }
-                _ => None
-            };
+            let notifier = notify_chan.map_consume(|c| AutoNotify(c));
 
             if enlist_many(child, &child_arc, &mut ancestors) {
                 let group = @@mut TCB(child,

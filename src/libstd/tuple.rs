@@ -32,7 +32,7 @@ impl<T:Copy,U:Copy> CopyableTuple<T, U> for (T, U) {
     #[inline(always)]
     fn first(&self) -> T {
         match *self {
-            (t, _) => t,
+            (ref t, _) => copy *t,
         }
     }
 
@@ -40,14 +40,14 @@ impl<T:Copy,U:Copy> CopyableTuple<T, U> for (T, U) {
     #[inline(always)]
     fn second(&self) -> U {
         match *self {
-            (_, u) => u,
+            (_, ref u) => copy *u,
         }
     }
 
     /// Return the results of swapping the two elements of self
     #[inline(always)]
     fn swap(&self) -> (U, T) {
-        match *self {
+        match copy *self {
             (t, u) => (u, t),
         }
     }

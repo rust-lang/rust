@@ -10,7 +10,7 @@
 
 fn foo<T:Copy>(x: &T) -> T{
     match x {
-        &a => a
+        &ref a => copy *a
     }
 }
 

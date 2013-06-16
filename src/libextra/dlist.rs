@@ -111,7 +111,8 @@ pub fn from_elem<T>(data: T) -> @mut DList<T> {
 /// Creates a new dlist from a vector of elements, maintaining the same order
 pub fn from_vec<T:Copy>(vec: &[T]) -> @mut DList<T> {
     do vec.iter().fold(DList()) |list,data| {
-        list.push(*data); // Iterating left-to-right -- add newly to the tail.
+        // Iterating left-to-right -- add newly to the tail.
+        list.push(copy *data);
         list
     }
 }
@@ -460,35 +461,35 @@ impl<T> DList<T> {
 impl<T:Copy> DList<T> {
     /// Remove data from the head of the list. O(1).
     pub fn pop(@mut self) -> Option<T> {
-        self.pop_n().map(|nobe| nobe.data)
+        self.pop_n().map(|nobe| copy nobe.data)
     }
 
     /// Remove data from the tail of the list. O(1).
     pub fn pop_tail(@mut self) -> Option<T> {
-        self.pop_tail_n().map(|nobe| nobe.data)
+        self.pop_tail_n().map(|nobe| copy nobe.data)
     }
 
     /// Get data at the list's head. O(1).
     pub fn peek(@mut self) -> Option<T> {
-        self.peek_n().map(|nobe| nobe.data)
+        self.peek_n().map(|nobe| copy nobe.data)
     }
 
     /// Get data at the list's tail. O(1).
     pub fn peek_tail(@mut self) -> Option<T> {
-        self.peek_tail_n().map (|nobe| nobe.data)
+        self.peek_tail_n().map (|nobe| copy nobe.data)
     }
 
     /// Get data at the list's head, failing if empty. O(1).
-    pub fn head(@mut self) -> T { self.head_n().data }
+    pub fn head(@mut self) -> T { copy self.head_n().data }
 
     /// Get data at the list's tail, failing if empty. O(1).
-    pub fn tail(@mut self) -> T { self.tail_n().data }
+    pub fn tail(@mut self) -> T { copy self.tail_n().data }
 
     /// Get the elements of the list as a vector. O(n).
     pub fn to_vec(@mut self) -> ~[T] {
         let mut v = vec::with_capacity(self.size);
         for old_iter::eachi(&self) |index,data| {
-            v[index] = *data;
+            v[index] = copy *data;
         }
         v
     }

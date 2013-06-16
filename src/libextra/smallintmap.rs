@@ -179,7 +179,7 @@ impl<V:Copy> SmallIntMap<V> {
                            ff: &fn(uint, V, V) -> V) -> bool {
         let new_val = match self.find(&key) {
             None => val,
-            Some(orig) => ff(key, *orig, val)
+            Some(orig) => ff(key, copy *orig, val)
         };
         self.insert(key, new_val)
     }

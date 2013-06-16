@@ -115,7 +115,7 @@ pub fn filter_to_vec<A:Copy,IA:BaseIter<A>>(this: &IA,
                                          -> ~[A] {
     do vec::build_sized_opt(this.size_hint()) |push| {
         for this.each |a| {
-            if prd(a) { push(*a); }
+            if prd(a) { push(copy *a); }
         }
     }
 }
@@ -191,7 +191,7 @@ pub fn position<A,IA:BaseIter<A>>(this: &IA, f: &fn(&A) -> bool)
 pub fn find<A:Copy,IA:BaseIter<A>>(this: &IA, f: &fn(&A) -> bool)
                                 -> Option<A> {
     for this.each |i| {
-        if f(i) { return Some(*i) }
+        if f(i) { return Some(copy *i) }
     }
     return None;
 }
@@ -270,7 +270,7 @@ pub fn from_fn<T,BT: Buildable<T>>(n_elts: uint, op: InitOp<T>) -> BT {
 pub fn from_elem<T:Copy,BT:Buildable<T>>(n_elts: uint, t: T) -> BT {
     do Buildable::build_sized(n_elts) |push| {
         let mut i: uint = 0;
-        while i < n_elts { push(t); i += 1; }
+        while i < n_elts { push(copy t); i += 1; }
     }
 }
 
@@ -281,8 +281,8 @@ pub fn append<T:Copy,IT:BaseIter<T>,BT:Buildable<T>>(lhs: &IT, rhs: &IT)
     let size_opt = lhs.size_hint().chain_ref(
         |sz1| rhs.size_hint().map(|sz2| *sz1+*sz2));
     do build_sized_opt(size_opt) |push| {
-        for lhs.each |x| { push(*x); }
-        for rhs.each |x| { push(*x); }
+        for lhs.each |x| { push(copy *x); }
+        for rhs.each |x| { push(copy *x); }
     }
 }
 
@@ -291,6 +291,6 @@ pub fn append<T:Copy,IT:BaseIter<T>,BT:Buildable<T>>(lhs: &IT, rhs: &IT)
 #[inline(always)]
 pub fn copy_seq<T:Copy,IT:BaseIter<T>,BT:Buildable<T>>(v: &IT) -> BT {
     do build_sized_opt(v.size_hint()) |push| {
-        for v.each |x| { push(*x); }
+        for v.each |x| { push(copy *x); }
     }
 }

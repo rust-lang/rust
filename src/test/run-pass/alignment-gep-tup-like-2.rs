@@ -24,7 +24,7 @@ fn make_cycle<A:Copy>(a: A) {
 }
 
 fn f<A:Owned + Copy,B:Owned + Copy>(a: A, b: B) -> @fn() -> (A, B) {
-    let result: @fn() -> (A, B) = || (a, b);
+    let result: @fn() -> (A, B) = || (copy a, copy b);
     result
 }
 

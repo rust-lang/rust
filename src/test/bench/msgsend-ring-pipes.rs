@@ -34,10 +34,6 @@ proto! ring (
     }
 )
 
-macro_rules! move_out (
-    ($x:expr) => { unsafe { let y = *ptr::to_unsafe_ptr(&$x); y } }
-)
-
 fn thread_ring(i: uint,
                count: uint,
                num_chan: ring::client::num,
@@ -54,7 +50,7 @@ fn thread_ring(i: uint,
         match recv(port) {
           ring::num(_n, p) => {
             //log(error, _n);
-            num_port = Some(move_out!(p));
+            num_port = Some(p);
           }
         }
     };

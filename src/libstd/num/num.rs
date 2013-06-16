@@ -410,10 +410,10 @@ pub fn pow_with_uint<T:NumCast+One+Zero+Copy+Div<T,T>+Mul<T,T>>(radix: uint, pow
     let mut multiplier = cast(radix);
     while (my_pow > 0u) {
         if my_pow % 2u == 1u {
-            total *= multiplier;
+            total = total * multiplier;
         }
-        my_pow     /= 2u;
-        multiplier *= multiplier;
+        my_pow     = my_pow / 2u;
+        multiplier = multiplier * multiplier;
     }
     total
 }

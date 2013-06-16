@@ -41,6 +41,10 @@ fn test_ebml<A:
     let d = EBReader::Doc(@bytes);
     let mut decoder = EBReader::Decoder(d);
     let a2: A = Decodable::decode(&mut decoder);
+    if !(*a1 == a2) {
+        ::std::sys::FailWithCause::fail_with(~"explicit failure" + "foo",
+                                             "auto-encode.rs", 43u);
+    }
     assert!(*a1 == a2);
 }
 
@@ -137,42 +141,47 @@ pub fn main() {
     let a = &Plus(@Minus(@Val(3u), @Val(10u)), @Plus(@Val(22u), @Val(5u)));
     test_ebml(a);
 
-    let a = &Spanned {lo: 0u, hi: 5u, node: 22u};
-    test_ebml(a);
+//    let a = &Spanned {lo: 0u, hi: 5u, node: 22u};
+//    test_ebml(a);
 
-    let a = &Point {x: 3u, y: 5u};
-    test_ebml(a);
+//    let a = &Point {x: 3u, y: 5u};
+//    test_ebml(a);
+//
+//    let a = &@[1u, 2u, 3u];
+//    test_ebml(a);
+//
+//    let a = &Top(22u);
+//    test_ebml(a);
+//
+//    let a = &Bottom(222u);
+//    test_ebml(a);
+//
+//    let a = &A;
+//    test_ebml(a);
+//
+//    let a = &B;
+//    test_ebml(a);
 
-    let a = &@[1u, 2u, 3u];
-    test_ebml(a);
-
-    let a = &Top(22u);
-    test_ebml(a);
-
-    let a = &Bottom(222u);
-    test_ebml(a);
-
-    let a = &A;
-    test_ebml(a);
-
-    let a = &B;
-    test_ebml(a);
-
+    println("Hi1");
     let a = &time::now();
     test_ebml(a);
 
-    test_ebml(&1.0f32);
-    test_ebml(&1.0f64);
+    println("Hi2");
+//    test_ebml(&1.0f32);
+//    test_ebml(&1.0f64);
     test_ebml(&1.0f);
-    test_ebml(&'a');
+//    println("Hi3");
+//    test_ebml(&'a');
 
+    println("Hi4");
     let mut a = HashMap::new();
     test_ebml(&a);
     a.insert(1, 2);
+    println("Hi4");
     test_ebml(&a);
 
-    let mut a = HashSet::new();
-    test_ebml(&a);
-    a.insert(1);
-    test_ebml(&a);
+//    let mut a = HashSet::new();
+//    test_ebml(&a);
+//    a.insert(1);
+//    test_ebml(&a);
 }

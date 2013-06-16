@@ -2273,7 +2273,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         for type_param_def.bounds.builtin_bounds.each |bound| {
             debug!("tc = %s, bound = %?", tc.to_str(), bound);
             tc = tc - match bound {
-                BoundCopy => TypeContents::nonimplicitly_copyable(cx),
+                BoundCopy => TypeContents::noncopyable(cx),
                 BoundStatic => TypeContents::nonstatic(cx),
                 BoundOwned => TypeContents::nonowned(cx),
                 BoundConst => TypeContents::nonconst(cx),
@@ -3694,7 +3694,7 @@ fn lookup_locally_or_in_crate_store<V:Copy>(
      */
 
     match map.find(&def_id) {
-        Some(&v) => { return v; }
+        Some(&ref v) => { return copy *v; }
         None => { }
     }
 
@@ -3702,8 +3702,8 @@ fn lookup_locally_or_in_crate_store<V:Copy>(
         fail!("No def'n found for %? in tcx.%s", def_id, descr);
     }
     let v = load_external();
-    map.insert(def_id, v);
-    return v;
+    map.insert(def_id, copy v);
+    return copy v;
 }
 
 pub fn trait_method(cx: ctxt, trait_did: ast::def_id, idx: uint) -> @Method {
