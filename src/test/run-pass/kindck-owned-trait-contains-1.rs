@@ -11,7 +11,7 @@
 trait repeat<A> { fn get(&self) -> A; }
 
 impl<A:Copy> repeat<A> for @A {
-    fn get(&self) -> A { **self }
+    fn get(&self) -> A { copy **self }
 }
 
 fn repeater<A:Copy>(v: @A) -> @repeat<A> {

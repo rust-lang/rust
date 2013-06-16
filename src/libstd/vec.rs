@@ -167,7 +167,7 @@ pub fn from_elem<T:Copy>(n_elts: uint, t: T) -> ~[T] {
 
 /// Creates a new unique vector with the same contents as the slice
 pub fn to_owned<T:Copy>(t: &[T]) -> ~[T] {
-    from_fn(t.len(), |i| t[i])
+    from_fn(t.len(), |i| copy t[i])
 }
 
 /// Creates a new vector with a capacity of `capacity`
@@ -441,9 +441,9 @@ pub fn partitioned<T:Copy>(v: &[T], f: &fn(&T) -> bool) -> (~[T], ~[T]) {
 
     for each(v) |elt| {
         if f(elt) {
-            lefts.push(*elt);
+            lefts.push(copy *elt);
         } else {
-            rights.push(*elt);
+            rights.push(copy *elt);
         }
     }
 
@@ -798,7 +798,7 @@ pub fn grow<T:Copy>(v: &mut ~[T], n: uint, initval: &T) {
     let mut i: uint = 0u;
 
     while i < n {
-        v.push(*initval);
+        v.push(copy *initval);
         i += 1u;
     }
 }
@@ -970,7 +970,7 @@ pub fn filter<T>(v: ~[T], f: &fn(t: &T) -> bool) -> ~[T] {
 pub fn filtered<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> ~[T] {
     let mut result = ~[];
     for each(v) |elem| {
-        if f(elem) { result.push(*elem); }
+        if f(elem) { result.push(copy *elem); }
     }
     result
 }
@@ -1026,7 +1026,7 @@ impl<'self, T:Copy> VectorVector<T> for &'self [~[T]] {
         let mut r = ~[];
         let mut first = true;
         for self.each |&inner| {
-            if first { first = false; } else { r.push(*sep); }
+            if first { first = false; } else { r.push(copy *sep); }
             r.push_all(inner);
         }
         r
@@ -1044,7 +1044,7 @@ impl<'self, T:Copy> VectorVector<T> for &'self [&'self [T]] {
         let mut r = ~[];
         let mut first = true;
         for self.each |&inner| {
-            if first { first = false; } else { r.push(*sep); }
+            if first { first = false; } else { r.push(copy *sep); }
             r.push_all(inner);
         }
         r
@@ -1077,7 +1077,7 @@ pub fn find<T:Copy>(v: &[T], f: &fn(t: &T) -> bool) -> Option<T> {
  */
 pub fn find_between<T:Copy>(v: &[T], start: uint, end: uint,
                       f: &fn(t: &T) -> bool) -> Option<T> {
-    position_between(v, start, end, f).map(|i| v[*i])
+    position_between(v, start, end, f).map(|i| copy v[*i])
 }
 
 /**
@@ -1103,7 +1103,7 @@ pub fn rfind_between<T:Copy>(v: &[T],
                              end: uint,
                              f: &fn(t: &T) -> bool)
                           -> Option<T> {
-    rposition_between(v, start, end, f).map(|i| v[*i])
+    rposition_between(v, start, end, f).map(|i| copy v[*i])
 }
 
 /// Find the first index containing a matching value
@@ -1227,7 +1227,7 @@ pub fn bsearch_elem<T:TotalOrd>(v: &[T], x: &T) -> Option<uint> {
 pub fn unzip_slice<T:Copy,U:Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
     let mut (ts, us) = (~[], ~[]);
     for each(v) |p| {
-        let (t, u) = *p;
+        let (t, u) = copy *p;
         ts.push(t);
         us.push(u);
     }
@@ -1262,7 +1262,7 @@ pub fn zip_slice<T:Copy,U:Copy>(v: &const [T], u: &const [U])
     let mut i = 0u;
     assert_eq!(sz, u.len());
     while i < sz {
-        zipped.push((v[i], u[i]));
+        zipped.push((copy v[i], copy u[i]));
         i += 1u;
     }
     zipped
@@ -1359,8 +1359,8 @@ pub fn reversed<T:Copy>(v: &const [T]) -> ~[T] {
     let mut rs: ~[T] = ~[];
     let mut i = v.len();
     if i == 0 { return (rs); } else { i -= 1; }
-    while i != 0 { rs.push(v[i]); i -= 1; }
-    rs.push(v[0]);
+    while i != 0 { rs.push(copy v[i]); i -= 1; }
+    rs.push(copy v[0]);
     rs
 }
 
@@ -1479,7 +1479,7 @@ pub fn eachi<'r,T>(v: &'r [T], f: &fn(uint, v: &'r T) -> bool) -> bool {
  */
 pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) -> bool {
     let length = values.len();
-    let mut permutation = vec::from_fn(length, |i| values[i]);
+    let mut permutation = vec::from_fn(length, |i| copy values[i]);
     if length <= 1 {
         fun(permutation);
         return true;
@@ -1506,7 +1506,7 @@ pub fn each_permutation<T:Copy>(values: &[T], fun: &fn(perm : &[T]) -> bool) -> 
         reverse_part(indices, k+1, length);
         // fixup permutation based on indices
         for uint::range(k, length) |i| {
-            permutation[i] = values[indices[i]];
+            permutation[i] = copy values[indices[i]];
         }
     }
 }
@@ -2031,7 +2031,7 @@ impl<'self,T:Copy> ImmutableCopyableVector<T> for &'self [T] {
     /// Returns the element at the given index, without doing bounds checking.
     #[inline(always)]
     unsafe fn unsafe_get(&self, index: uint) -> T {
-        *self.unsafe_ref(index)
+        copy *self.unsafe_ref(index)
     }
 }
 
@@ -2350,7 +2350,7 @@ pub mod raw {
      */
     #[inline(always)]
     pub unsafe fn get<T:Copy>(v: &const [T], i: uint) -> T {
-        as_const_buf(v, |p, _len| *ptr::const_offset(p, i))
+        as_const_buf(v, |p, _len| copy *ptr::const_offset(p, i))
     }
 
     /**

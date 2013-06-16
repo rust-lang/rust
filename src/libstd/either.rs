@@ -47,7 +47,7 @@ pub fn lefts<T:Copy,U>(eithers: &[Either<T, U>]) -> ~[T] {
     do vec::build_sized(eithers.len()) |push| {
         for eithers.each |elt| {
             match *elt {
-                Left(ref l) => { push(*l); }
+                Left(ref l) => { push(copy *l); }
                 _ => { /* fallthrough */ }
             }
         }
@@ -59,7 +59,7 @@ pub fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
     do vec::build_sized(eithers.len()) |push| {
         for eithers.each |elt| {
             match *elt {
-                Right(ref r) => { push(*r); }
+                Right(ref r) => { push(copy *r); }
                 _ => { /* fallthrough */ }
             }
         }
