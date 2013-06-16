@@ -751,7 +751,6 @@ fn shift_vec<T:Copy>(dest: &mut [T],
 mod test_qsort3 {
     use sort::*;
 
-    use core::vec;
 
     fn check_sort(v1: &mut [int], v2: &mut [int]) {
         let len = v1.len();
@@ -860,8 +859,6 @@ mod tests {
     use core::prelude::*;
 
     use sort::*;
-
-    use core::vec;
 
     fn check_sort(v1: &[int], v2: &[int]) {
         let len = v1.len();

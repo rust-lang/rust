@@ -22,7 +22,6 @@ use markdown_writer::WriterFactory;
 use pass::Pass;
 use sort_pass;
 
-use core::iterator::IteratorUtil;
 use core::cell::Cell;
 use core::str;
 use core::vec;
