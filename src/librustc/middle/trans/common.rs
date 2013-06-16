@@ -12,18 +12,16 @@
 
 use core::prelude::*;
 
-use back::{abi};
 use driver::session;
 use driver::session::Session;
-use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef};
+use lib::llvm::{ValueRef, BasicBlockRef, BuilderRef};
 use lib::llvm::{True, False, Bool};
-use lib::llvm::{llvm, TypeNames};
+use lib::llvm::{llvm};
 use lib;
 use middle::trans::base;
 use middle::trans::build;
 use middle::trans::datum;
 use middle::trans::glue;
-use middle::trans::type_of;
 use middle::trans::write_guard;
 use middle::ty::substs;
 use middle::ty;
@@ -37,16 +35,13 @@ use core::cast::transmute;
 use core::cast;
 use core::hashmap::{HashMap};
 use core::libc::{c_uint, c_longlong, c_ulonglong};
-use core::str;
 use core::to_bytes;
-use core::vec::raw::to_ptr;
 use core::vec;
 use syntax::ast::ident;
 use syntax::ast_map::{path, path_elt};
 use syntax::codemap::span;
 use syntax::parse::token;
 use syntax::{ast, ast_map};
-use syntax::abi::{X86, X86_64, Arm, Mips};
 
 pub use middle::trans::context::CrateContext;
 

@@ -10,7 +10,7 @@
 
 // Information concerning the machine representation of various types.
 
-use lib::llvm::{ValueRef, TypeRef};
+use lib::llvm::{ValueRef};
 use lib::llvm::False;
 use lib::llvm::llvm;
 use middle::trans::common::*;

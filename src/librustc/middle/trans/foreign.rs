@@ -217,23 +217,21 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
     tie_up_header_blocks(fcx, lltop);
 
     // Then return according to the C ABI.
-    unsafe {
-        let return_context = raw_block(fcx, false, fcx.llreturn);
+    let return_context = raw_block(fcx, false, fcx.llreturn);
 
-        let llfunctiontype = val_ty(llwrapfn);
-        let llfunctiontype = llfunctiontype.element_type();
-        let return_type = llfunctiontype.return_type();
-        if return_type.kind() == ::lib::llvm::Void {
-            // XXX: This might be wrong if there are any functions for which
-            // the C ABI specifies a void output pointer and the Rust ABI
-            // does not.
-            RetVoid(return_context);
-        } else {
-            // Cast if we have to...
-            // XXX: This is ugly.
-            let llretptr = BitCast(return_context, fcx.llretptr.get(), return_type.ptr_to());
-            Ret(return_context, Load(return_context, llretptr));
-        }
+    let llfunctiontype = val_ty(llwrapfn);
+    let llfunctiontype = llfunctiontype.element_type();
+    let return_type = llfunctiontype.return_type();
+    if return_type.kind() == ::lib::llvm::Void {
+        // XXX: This might be wrong if there are any functions for which
+        // the C ABI specifies a void output pointer and the Rust ABI
+        // does not.
+        RetVoid(return_context);
+    } else {
+        // Cast if we have to...
+        // XXX: This is ugly.
+        let llretptr = BitCast(return_context, fcx.llretptr.get(), return_type.ptr_to());
+        Ret(return_context, Load(return_context, llretptr));
     }
 }
 

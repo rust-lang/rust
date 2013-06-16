@@ -15,7 +15,6 @@ use driver::session;
 use lib::llvm::{ContextRef, ModuleRef, ValueRef};
 use lib::llvm::{llvm, TargetData, TypeNames};
 use lib::llvm::{mk_target_data};
-use lib;
 use metadata::common::LinkMeta;
 use middle::astencode;
 use middle::resolve;

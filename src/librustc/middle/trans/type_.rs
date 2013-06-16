@@ -350,9 +350,7 @@ impl Type {
     }
 
     pub fn return_type(&self) -> Type {
-        unsafe {
-            ty!(llvm::LLVMGetReturnType(self.to_ref()))
-        }
+        ty!(llvm::LLVMGetReturnType(self.to_ref()))
     }
 
     pub fn func_params(&self) -> ~[Type] {

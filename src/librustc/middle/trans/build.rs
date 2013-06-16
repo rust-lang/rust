@@ -22,8 +22,8 @@ use syntax::codemap::span;
 use middle::trans::type_::Type;
 
 use core::cast;
-use core::hashmap::HashMap;
 use core::libc::{c_uint, c_ulonglong, c_char};
+use core::hashmap::HashMap;
 use core::str;
 use core::vec;
 
@@ -619,15 +619,12 @@ pub fn GEPi(cx: block, base: ValueRef, ixs: &[uint]) -> ValueRef {
     return InBoundsGEP(cx, base, v);
 }
 
-pub fn InBoundsGEP(cx: block, Pointer: ValueRef, Indices: &[ValueRef]) ->
-   ValueRef {
+pub fn InBoundsGEP(cx: block, Pointer: ValueRef, Indices: &[ValueRef]) -> ValueRef {
     unsafe {
         if cx.unreachable { return llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref()); }
         count_insn(cx, "inboundsgep");
-        return llvm::LLVMBuildInBoundsGEP(B(cx), Pointer,
-                                           vec::raw::to_ptr(Indices),
-                                           Indices.len() as c_uint,
-                                           noname());
+        return llvm::LLVMBuildInBoundsGEP(
+            B(cx), Pointer, vec::raw::to_ptr(Indices), Indices.len() as c_uint, noname());
     }
 }
 
@@ -1077,8 +1074,7 @@ pub fn Trap(cx: block) {
         assert!((T as int != 0));
         let Args: ~[ValueRef] = ~[];
         count_insn(cx, "trap");
-        llvm::LLVMBuildCall(b, T, vec::raw::to_ptr(Args),
-                            Args.len() as c_uint, noname());
+        llvm::LLVMBuildCall(b, T, vec::raw::to_ptr(Args), Args.len() as c_uint, noname());
     }
 }
 
@@ -1088,8 +1084,8 @@ pub fn LandingPad(cx: block, Ty: Type, PersFn: ValueRef,
         check_not_terminated(cx);
         assert!(!cx.unreachable);
         count_insn(cx, "landingpad");
-        return llvm::LLVMBuildLandingPad(B(cx), Ty.to_ref(), PersFn,
-                                      NumClauses as c_uint, noname());
+        return llvm::LLVMBuildLandingPad(
+            B(cx), Ty.to_ref(), PersFn, NumClauses as c_uint, noname());
     }
 }
 

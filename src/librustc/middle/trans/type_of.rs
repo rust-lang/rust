@@ -10,11 +10,8 @@
 
 use core::prelude::*;
 
-use lib::llvm::llvm;
 use middle::trans::adt;
-use middle::trans::base;
 use middle::trans::common::*;
-use middle::trans::common;
 use middle::ty;
 use util::ppaux;
 
@@ -40,36 +37,28 @@ pub fn type_of_explicit_args(ccx: &mut CrateContext,
     inputs.map(|arg_ty| type_of_explicit_arg(ccx, arg_ty))
 }
 
-pub fn type_of_fn(cx: &mut CrateContext, inputs: &[ty::t], output: ty::t)
-               -> Type {
-    unsafe {
-        let mut atys: ~[Type] = ~[];
+pub fn type_of_fn(cx: &mut CrateContext, inputs: &[ty::t], output: ty::t) -> Type {
+    let mut atys: ~[Type] = ~[];
 
-        // Arg 0: Output pointer.
-        // (if the output type is non-immediate)
-        let output_is_immediate = ty::type_is_immediate(output);
-        let lloutputtype = type_of(cx, output);
-        if !output_is_immediate {
-            atys.push(lloutputtype.ptr_to());
-        }
+    // Arg 0: Output pointer.
+    // (if the output type is non-immediate)
+    let output_is_immediate = ty::type_is_immediate(output);
+    let lloutputtype = type_of(cx, output);
+    if !output_is_immediate {
+        atys.push(lloutputtype.ptr_to());
+    }
 
-        // Arg 1: Environment
-        atys.push(Type::opaque_box(cx).ptr_to());
+    // Arg 1: Environment
+    atys.push(Type::opaque_box(cx).ptr_to());
 
-        // ... then explicit args.
-        atys.push_all(type_of_explicit_args(cx, inputs));
+    // ... then explicit args.
+    atys.push_all(type_of_explicit_args(cx, inputs));
 
-        // Use the output as the actual return value if it's immediate.
-<<<<<<< HEAD
-        if output_is_immediate && !ty::type_is_nil(output) {
-            Type::func(atys, lloutputtype)
-=======
-        if output_is_immediate {
-            Type::func(atys, &lloutputtype)
->>>>>>> Finish up Type refactoring
-        } else {
-            Type::func(atys, &Type::void())
-        }
+    // Use the output as the actual return value if it's immediate.
+    if output_is_immediate && !ty::type_is_nil(output) {
+        Type::func(atys, &lloutputtype)
+    } else {
+        Type::func(atys, &Type::void())
     }
 }
 

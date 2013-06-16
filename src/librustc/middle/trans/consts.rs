@@ -11,8 +11,7 @@
 use core::prelude::*;
 
 use back::abi;
-use lib::llvm::{llvm, ConstFCmp, ConstICmp, SetLinkage, PrivateLinkage, ValueRef, Bool,
-    True, False};
+use lib::llvm::{llvm, ConstFCmp, ConstICmp, SetLinkage, PrivateLinkage, ValueRef, Bool, True};
 use lib::llvm::{IntEQ, IntNE, IntUGT, IntUGE, IntULT, IntULE, IntSGT, IntSGE, IntSLT, IntSLE,
     RealOEQ, RealOGT, RealOGE, RealOLT, RealOLE, RealONE};
 

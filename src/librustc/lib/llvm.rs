@@ -13,9 +13,7 @@ use core::prelude::*;
 use core::hashmap::HashMap;
 use core::libc::{c_uint, c_ushort};
 use core::option;
-use core::ptr;
 use core::str;
-use core::vec;
 
 use middle::trans::type_::Type;
 
