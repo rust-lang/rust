@@ -69,53 +69,30 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
         return lines.slice(i, j).to_owned();
     }
 
-    // drop leftmost columns that contain only values in chars
-    fn block_trim(lines: ~[~str], chars: ~str, max: Option<uint>) -> ~[~str] {
-
-        let mut i = max.get_or_default(uint::max_value);
-        for lines.each |line| {
-            if line.trim().is_empty() {
-                loop;
-            }
-            for line.iter().enumerate().advance |(j, c)| {
-                if j >= i {
-                    break;
-                }
-                if !chars.contains_char(c) {
-                    i = j;
-                    break;
-                }
-            }
-        }
-
-        return do lines.map |line| {
-            let mut chars = ~[];
-            for line.iter().advance |c| { chars.push(c) }
-            if i > chars.len() {
-                ~""
-            } else {
-                str::from_chars(chars.slice(i, chars.len()).to_owned())
-            }
-        };
-    }
-
     if comment.starts_with("//") {
         // FIXME #5475:
-        // return comment.slice(3u, comment.len()).trim().to_owned();
-        let r = comment.slice(3u, comment.len()); return r.trim().to_owned();
-
+        // return comment.slice(3u, comment.len()).to_owned();
+        let r = comment.slice(3u, comment.len()); return r.to_owned();
     }
 
     if comment.starts_with("/*") {
         let mut lines = ~[];
         for str::each_line_any(comment.slice(3u, comment.len() - 2u)) |line| {
-            lines.push(line.to_owned())
+            let mut i = 0u;
+            for line.iter().enumerate().advance |(j, c)| {
+                if !"* \t".contains_char(c) {
+                    i = j;
+                    break;
+                }
+                if c == '*' {
+                    i = j + 1;
+                    break;
+                }
+            }
+            let r = line.slice(i, line.len());
+            lines.push(r.to_owned())
         }
-        let lines = vertical_trim(lines);
-        let lines = block_trim(lines, ~"\t ", None);
-        let lines = block_trim(lines, ~"*", Some(1u));
-        let lines = block_trim(lines, ~"\t ", None);
-        return lines.connect("\n");
+        return vertical_trim(lines).connect("\n");
     }
 
     fail!("not a doc-comment: %s", comment);
@@ -362,4 +339,23 @@ pub fn gather_comments_and_literals(span_diagnostic:
     }
 
     (comments, literals)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test] fn test_block_doc_comment() {
+        let comment = "/**\n * Test \n**  Test\n *   Test\n*/";
+        let correct_stripped = " Test \n*  Test\n   Test";
+        let stripped = strip_doc_comment_decoration(comment);
+        assert_eq!(stripped.slice(0, stripped.len()), correct_stripped);
+    }
+
+    #[test] fn test_line_doc_comment() {
+        let comment = "/// Test";
+        let correct_stripped = " Test";
+        let stripped = strip_doc_comment_decoration(comment);
+        assert_eq!(stripped.slice(0, stripped.len()), correct_stripped);
+    }
 }

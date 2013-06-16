@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -152,6 +152,6 @@ mod test {
     fn should_concatenate_multiple_doc_comments() {
         let source = @"/// foo\n/// bar";
         let desc = parse_desc(parse_attributes(source));
-        assert!(desc == Some(~"foo\nbar"));
+        assert!(desc == Some(~" foo\n bar"));
     }
 }
