@@ -365,7 +365,7 @@ pub fn run_tests_console(opts: &TestOpts,
 fn print_failures(st: &ConsoleTestState) {
     st.out.write_line("\nfailures:");
     let mut failures = ~[];
-    for uint::range(0, vec::uniq_len(&const st.failures)) |i| {
+    for uint::range(0, st.failures.len()) |i| {
         let name = copy st.failures[i].name;
         failures.push(name.to_str());
     }

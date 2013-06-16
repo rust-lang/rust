@@ -583,12 +583,12 @@ pub mod bytepipes {
 
     impl BytePort for PipeBytePort {
         fn try_recv(&self, count: uint) -> Option<~[u8]> {
-            if vec::uniq_len(&const *self.buf) >= count {
+            if self.buf.len() >= count {
                 let mut bytes = ::core::util::replace(&mut *self.buf, ~[]);
                 *self.buf = bytes.slice(count, bytes.len()).to_owned();
                 bytes.truncate(count);
                 return Some(bytes);
-            } else if vec::uniq_len(&const *self.buf) > 0 {
+            } else if !self.buf.is_empty() {
                 let mut bytes = ::core::util::replace(&mut *self.buf, ~[]);
                 assert!(count > bytes.len());
                 match self.try_recv(count - bytes.len()) {
@@ -598,7 +598,7 @@ pub mod bytepipes {
                     }
                     None => return None
                 }
-            } else if vec::uniq_len(&const *self.buf) == 0 {
+            } else /* empty */ {
                 match self.port.try_recv() {
                     Some(buf) => {
                         assert!(!buf.is_empty());
@@ -607,8 +607,6 @@ pub mod bytepipes {
                     }
                     None => return None
                 }
-            } else {
-                ::core::util::unreachable()
             }
         }
     }

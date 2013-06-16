@@ -1667,7 +1667,7 @@ impl Writer for BytesWriter {
 
     fn seek(&self, offset: int, whence: SeekStyle) {
         let pos = *self.pos;
-        let len = vec::uniq_len(&const *self.bytes);
+        let len = self.bytes.len();
         *self.pos = seek_in_buf(offset, pos, len, whence);
     }
 
