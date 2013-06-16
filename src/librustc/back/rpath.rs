@@ -77,6 +77,10 @@ fn get_rpaths(os: session::os,
     // crates they depend on.
     let rel_rpaths = get_rpaths_relative_to_output(os, output, libs);
 
+    // Make backup absolute paths to the libraries. Binaries can
+    // be moved as long as the crates they link against don't move.
+    let abs_rpaths = get_absolute_rpaths(libs);
+
     // And a final backup rpath to the global library location.
     let fallback_rpaths = ~[get_install_prefix_rpath(target_triple)];
 
@@ -88,9 +92,11 @@ fn get_rpaths(os: session::os,
     }
 
     log_rpaths("relative", rel_rpaths);
+    log_rpaths("absolute", abs_rpaths);
     log_rpaths("fallback", fallback_rpaths);
 
     let mut rpaths = rel_rpaths;
+    rpaths.push_all(abs_rpaths);
     rpaths.push_all(fallback_rpaths);
 
     // Remove duplicates
@@ -160,6 +166,14 @@ pub fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
     }
 }
 
+fn get_absolute_rpaths(libs: &[Path]) -> ~[Path] {
+    vec::map(libs, |a| get_absolute_rpath(a) )
+}
+
+pub fn get_absolute_rpath(lib: &Path) -> Path {
+    os::make_absolute(lib).dir_path()
+}
+
 #[cfg(stage0)]
 pub fn get_install_prefix_rpath(target_triple: &str) -> Path {
     let install_prefix = env!("CFG_PREFIX");
@@ -198,12 +212,13 @@ pub fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
 #[cfg(unix, test)]
 mod test {
     use core::prelude::*;
+    use core::os;
 
     // FIXME(#2119): the outer attribute should be #[cfg(unix, test)], then
     // these redundant #[cfg(test)] blocks can be removed
     #[cfg(test)]
     #[cfg(test)]
-    use back::rpath::{get_install_prefix_rpath};
+    use back::rpath::{get_absolute_rpath, get_install_prefix_rpath};
     use back::rpath::{get_relative_to, get_rpath_relative_to_output};
     use back::rpath::{minimize_rpaths, rpaths_to_flags};
     use driver::session;
@@ -346,5 +361,15 @@ mod test {
                                                &Path("bin/rustc"),
                                                &Path("lib/libstd.so"));
         assert_eq!(res.to_str(), ~"@executable_path/../lib");
+    }
+
+    #[test]
+    fn test_get_absolute_rpath() {
+        let res = get_absolute_rpath(&Path("lib/libstd.so"));
+        debug!("test_get_absolute_rpath: %s vs. %s",
+               res.to_str(),
+               os::make_absolute(&Path("lib")).to_str());
+
+        assert_eq!(res, os::make_absolute(&Path("lib")));
     }
 }
