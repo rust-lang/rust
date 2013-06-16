@@ -14,13 +14,10 @@
 use lib::llvm::{llvm, Integer, Pointer, Float, Double};
 use lib::llvm::{Struct, Array, Attribute};
 use lib::llvm::{StructRetAttribute, ByValAttribute};
-use lib::llvm::True;
-use middle::trans::common::*;
 use middle::trans::cabi::*;
 
 use middle::trans::type_::Type;
 
-use core::libc::c_uint;
 use core::option;
 use core::option::Option;
 use core::uint;
@@ -189,98 +186,94 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
     fn classify(ty: Type,
                 cls: &mut [RegClass], ix: uint,
                 off: uint) {
-        unsafe {
-            let t_align = ty_align(ty);
-            let t_size = ty_size(ty);
+        let t_align = ty_align(ty);
+        let t_size = ty_size(ty);
 
-            let misalign = off % t_align;
-            if misalign != 0u {
-                let mut i = off / 8u;
-                let e = (off + t_size + 7u) / 8u;
-                while i < e {
-                    unify(cls, ix + i, Memory);
+        let misalign = off % t_align;
+        if misalign != 0u {
+            let mut i = off / 8u;
+            let e = (off + t_size + 7u) / 8u;
+            while i < e {
+                unify(cls, ix + i, Memory);
+                i += 1u;
+            }
+            return;
+        }
+
+        match ty.kind() {
+            Integer |
+            Pointer => {
+                unify(cls, ix + off / 8u, Int);
+            }
+            Float => {
+                if off % 8u == 4u {
+                    unify(cls, ix + off / 8u, SSEFv);
+                } else {
+                    unify(cls, ix + off / 8u, SSEFs);
+                }
+            }
+            Double => {
+                unify(cls, ix + off / 8u, SSEDs);
+            }
+            Struct => {
+                classify_struct(ty.field_types(), cls, ix, off);
+            }
+            Array => {
+                let len = ty.array_length();
+                let elt = ty.element_type();
+                let eltsz = ty_size(elt);
+                let mut i = 0u;
+                while i < len {
+                    classify(elt, cls, ix, off + i * eltsz);
                     i += 1u;
                 }
-                return;
             }
-
-            match ty.kind() {
-                Integer |
-                Pointer => {
-                    unify(cls, ix + off / 8u, Int);
-                }
-                Float => {
-                    if off % 8u == 4u {
-                        unify(cls, ix + off / 8u, SSEFv);
-                    } else {
-                        unify(cls, ix + off / 8u, SSEFs);
-                    }
-                }
-                Double => {
-                    unify(cls, ix + off / 8u, SSEDs);
-                }
-                Struct => {
-                    classify_struct(ty.field_types(), cls, ix, off);
-                }
-                Array => {
-                    let len = ty.array_length();
-                    let elt = ty.element_type();
-                    let eltsz = ty_size(elt);
-                    let mut i = 0u;
-                    while i < len {
-                        classify(elt, cls, ix, off + i * eltsz);
-                        i += 1u;
-                    }
-                }
-                _ => fail!("classify: unhandled type")
-            }
+            _ => fail!("classify: unhandled type")
         }
     }
 
     fn fixup(ty: Type, cls: &mut [RegClass]) {
-        unsafe {
-            let mut i = 0u;
-            let ty_kind = ty.kind();
-            let e = cls.len();
-            if cls.len() > 2u &&
-               (ty_kind == Struct ||
-                ty_kind == Array) {
-                if cls[i].is_sse() {
-                    i += 1u;
-                    while i < e {
-                        if cls[i] != SSEUp {
-                            all_mem(cls);
-                            return;
-                        }
-                        i += 1u;
+        let mut i = 0u;
+        let ty_kind = ty.kind();
+        let e = cls.len();
+        if cls.len() > 2u &&
+           (ty_kind == Struct ||
+            ty_kind == Array) {
+            if cls[i].is_sse() {
+                i += 1u;
+                while i < e {
+                    if cls[i] != SSEUp {
+                        all_mem(cls);
+                        return;
                     }
-                } else {
-                    all_mem(cls);
-                    return
+                    i += 1u;
                 }
             } else {
-                while i < e {
-                    if cls[i] == Memory {
-                        all_mem(cls);
-                        return;
-                    }
-                    if cls[i] == X87Up {
-                        // for darwin
-                        // cls[i] = SSEDs;
-                        all_mem(cls);
-                        return;
-                    }
-                    if cls[i] == SSEUp {
-                        cls[i] = SSEInt;
-                    } else if cls[i].is_sse() {
-                        i += 1;
-                        while i != e && cls[i] == SSEUp { i += 1u; }
-                    } else if cls[i] == X87 {
-                        i += 1;
-                        while i != e && cls[i] == X87Up { i += 1u; }
-                    } else {
-                        i += 1;
-                    }
+                all_mem(cls);
+                return
+            }
+        } else {
+            while i < e {
+                if cls[i] == Memory {
+                    all_mem(cls);
+                    return;
+                }
+                if cls[i] == X87Up {
+                    // for darwin
+                    // cls[i] = SSEDs;
+                    all_mem(cls);
+                    return;
+                }
+                if cls[i] == SSEUp {
+                    cls[i] = SSEInt;
+                } else if cls[i].is_sse() {
+                    i += 1;
+                    while i != e && cls[i] == SSEUp { i += 1u; }
+                } else if cls[i] == X87 {
+                    i += 1;
+                    while i != e && cls[i] == X87Up { i += 1u; }
+                } else {
+                    i += 1;
                 }
             }
         }
@@ -310,34 +303,32 @@ fn llreg_ty(cls: &[RegClass]) -> Type {
         return len;
     }
 
-    unsafe {
-        let mut tys = ~[];
-        let mut i = 0u;
-        let e = cls.len();
-        while i < e {
-            match cls[i] {
-                Int => {
-                    tys.push(Type::i64());
-                }
-                SSEFv => {
-                    let vec_len = llvec_len(vec::tailn(cls, i + 1u)) * 2u;
-                    let vec_ty = Type::vector(&Type::f32(), vec_len as u64);
-                    tys.push(vec_ty);
-                    i += vec_len;
-                    loop;
-                }
-                SSEFs => {
-                    tys.push(Type::f32());
-                }
-                SSEDs => {
-                    tys.push(Type::f64());
-                }
-                _ => fail!("llregtype: unhandled class")
+    let mut tys = ~[];
+    let mut i = 0u;
+    let e = cls.len();
+    while i < e {
+        match cls[i] {
+            Int => {
+                tys.push(Type::i64());
             }
-            i += 1u;
+            SSEFv => {
+                let vec_len = llvec_len(vec::tailn(cls, i + 1u)) * 2u;
+                let vec_ty = Type::vector(&Type::f32(), vec_len as u64);
+                tys.push(vec_ty);
+                i += vec_len;
+                loop;
+            }
+            SSEFs => {
+                tys.push(Type::f32());
+            }
+            SSEDs => {
+                tys.push(Type::f64());
+            }
+            _ => fail!("llregtype: unhandled class")
         }
-        return Type::struct_(tys, false);
+        i += 1u;
     }
+    return Type::struct_(tys, false);
 }
 
 fn x86_64_tys(atys: &[Type],

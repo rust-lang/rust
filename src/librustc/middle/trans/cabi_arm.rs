@@ -10,7 +10,6 @@
 
 use lib::llvm::{llvm, Integer, Pointer, Float, Double, Struct, Array};
 use lib::llvm::{Attribute, StructRetAttribute};
-use lib::llvm::True;
 use middle::trans::cabi::{ABIInfo, FnType, LLVMType};
 
 use middle::trans::type_::Type;
@@ -116,14 +115,12 @@ fn classify_arg_ty(ty: Type) -> (LLVMType, Option<Attribute>) {
 }
 
 fn is_reg_ty(ty: Type) -> bool {
-    unsafe {
-        match ty.kind() {
-            Integer
-            | Pointer
-            | Float
-            | Double => true,
-            _ => false
-        }
+    match ty.kind() {
+        Integer
+        | Pointer
+        | Float
+        | Double => true,
+        _ => false
     }
 }
 

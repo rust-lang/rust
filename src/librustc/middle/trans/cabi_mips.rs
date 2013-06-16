@@ -11,14 +11,11 @@
 use core::prelude::*;
 
 use core::libc::c_uint;
-use core::ptr;
 use core::uint;
 use core::vec;
 use lib::llvm::{llvm, Integer, Pointer, Float, Double, Struct, Array};
 use lib::llvm::{Attribute, StructRetAttribute};
-use lib::llvm::True;
 use middle::trans::context::task_llcx;
-use middle::trans::common::*;
 use middle::trans::cabi::*;
 
 use middle::trans::type_::Type;
@@ -122,15 +119,13 @@ fn classify_arg_ty(ty: Type, offset: &mut uint) -> (LLVMType, Option<Attribute>)
 }
 
 fn is_reg_ty(ty: Type) -> bool {
-    unsafe {
-        return match ty.kind() {
-            Integer
-            | Pointer
-            | Float
-            | Double => true,
-            _ => false
-        };
-    }
+    return match ty.kind() {
+        Integer
+        | Pointer
+        | Float
+        | Double => true,
+        _ => false
+    };
 }
 
 fn padding_ty(align: uint, offset: uint) -> Option<Type> {

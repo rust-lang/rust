@@ -12,7 +12,6 @@ use core::prelude::*;
 
 use driver::session::{os_win32, os_macos};
 use lib::llvm::*;
-use lib::llvm::llvm::*;
 use super::cabi::*;
 use super::common::*;
 use super::machine::*;
@@ -43,7 +42,7 @@ impl ABIInfo for X86_ABIInfo {
         // http://www.angelcode.com/dev/callconv/callconv.html
         // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
         let sret = {
-            let returning_a_struct = unsafe { rty.kind() == Struct && ret_def };
+            let returning_a_struct = rty.kind() == Struct && ret_def;
             let big_struct = match self.ccx.sess.targ_cfg.os {
                 os_win32 | os_macos => llsize_of_alloc(self.ccx, rty) > 8,
                 _ => true

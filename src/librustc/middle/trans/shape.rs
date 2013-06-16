@@ -15,7 +15,6 @@
 use lib::llvm::llvm;
 use lib::llvm::{True, ModuleRef, ValueRef};
 use middle::trans::common::*;
-use middle::trans;
 
 use middle::trans::type_::Type;
 
@@ -62,16 +61,3 @@ pub fn mk_ctxt(llmod: ModuleRef) -> Ctxt {
         }
     }
 }
-
-/*
-Although these two functions are never called, they are here
-for a VERY GOOD REASON. See #3670
-pub fn add_u16(dest: &mut ~[u8], val: u16) {
-    *dest += [(val & 0xffu16) as u8, (val >> 8u16) as u8];
-}
-
-pub fn add_substr(dest: &mut ~[u8], src: ~[u8]) {
-    add_u16(&mut *dest, src.len() as u16);
-    *dest += src;
-}
-*/

@@ -30,7 +30,7 @@ use back::{link, abi};
 use driver::session;
 use driver::session::Session;
 use lib::llvm::{ContextRef, ModuleRef, ValueRef, BasicBlockRef};
-use lib::llvm::{llvm, True, False};
+use lib::llvm::{llvm, True};
 use lib;
 use metadata::common::LinkMeta;
 use metadata::{csearch, cstore, encoder};
@@ -1462,7 +1462,7 @@ pub fn zero_mem(cx: block, llptr: ValueRef, t: ty::t) {
 // allocation for large data structures, and the generated code will be
 // awful. (A telltale sign of this is large quantities of
 // `mov [byte ptr foo],0` in the generated code.)
-pub fn memzero(cx: block, llptr: ValueRef, llty: TypeRef) {
+pub fn memzero(cx: block, llptr: ValueRef, ty: Type) {
     let _icx = cx.insn_ctxt("memzero");
     let ccx = cx.ccx();
 
@@ -1493,7 +1493,7 @@ pub fn alloca(cx: block, ty: Type) -> ValueRef {
     alloca_maybe_zeroed(cx, ty, false)
 }
 
-pub fn alloca_maybe_zeroed(cx: block, t: TypeRef, zero: bool) -> ValueRef {
+pub fn alloca_maybe_zeroed(cx: block, ty: Type, zero: bool) -> ValueRef {
     let _icx = cx.insn_ctxt("alloca");
     if cx.unreachable {
         unsafe {
@@ -1506,7 +1506,7 @@ pub fn alloca_maybe_zeroed(cx: block, t: TypeRef, zero: bool) -> ValueRef {
     p
 }
 
-pub fn arrayalloca(cx: block, t: TypeRef, v: ValueRef) -> ValueRef {
+pub fn arrayalloca(cx: block, ty: Type, v: ValueRef) -> ValueRef {
     let _icx = cx.insn_ctxt("arrayalloca");
     if cx.unreachable {
         unsafe {
@@ -2885,8 +2885,7 @@ pub fn write_metadata(cx: &mut CrateContext, crate: &ast::crate) {
 
 // Writes the current ABI version into the crate.
 pub fn write_abi_version(ccx: &mut CrateContext) {
-    mk_global(ccx, "rust_abi_version", C_uint(ccx, abi::abi_version),
-                     false);
+    mk_global(ccx, "rust_abi_version", C_uint(ccx, abi::abi_version), false);
 }
 
 pub fn trans_crate(sess: session::Session,
