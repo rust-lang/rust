@@ -363,7 +363,7 @@ pub fn trans_static_method_callee(bcx: block,
                                           Some(callee_origins));
 
             let callee_ty = node_id_type(bcx, callee_id);
-            let llty = T_ptr(type_of_fn_from_ty(ccx, callee_ty));
+            let llty = type_of_fn_from_ty(ccx, callee_ty).ptr_to();
             FnData {llfn: PointerCast(bcx, lval, llty)}
         }
         _ => {
@@ -463,7 +463,7 @@ pub fn trans_monomorphized_callee(bcx: block,
 
           // create a llvalue that represents the fn ptr
           let fn_ty = node_id_type(bcx, callee_id);
-          let llfn_ty = T_ptr(type_of_fn_from_ty(ccx, fn_ty));
+          let llfn_ty = type_of_fn_from_ty(ccx, fn_ty).to_ptr();
           let llfn_val = PointerCast(bcx, callee.llfn, llfn_ty);
 
           // combine the self environment with the rest
@@ -628,7 +628,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
                       PointerCast(bcx,
                                   GEPi(bcx, llpair,
                                        [0u, abi::trt_field_vtable]),
-                                  T_ptr(T_ptr(T_vtable()))));
+                                  Type::vtable().ptr_to().ptr_to()));
 
     // Load the box from the @Trait pair and GEP over the box header if
     // necessary:
@@ -705,7 +705,7 @@ pub fn trans_trait_callee_from_llval(bcx: block,
     // Plus one in order to skip past the type descriptor.
     let mptr = Load(bcx, GEPi(bcx, llvtable, [0u, n_method + 1]));
 
-    let mptr = PointerCast(bcx, mptr, T_ptr(llcallee_ty));
+    let mptr = PointerCast(bcx, mptr, llcallee_ty.ptr_to());
 
     return Callee {
         bcx: bcx,
@@ -814,7 +814,7 @@ pub fn make_impl_vtable(bcx: block,
         if im.generics.has_type_params() || ty::type_has_self(fty) {
             debug!("(making impl vtable) method has self or type params: %s",
                    tcx.sess.str_of(im.ident));
-            C_null(T_ptr(T_nil()))
+            C_null(Type::nil().ptr_to())
         } else {
             debug!("(making impl vtable) adding method to vtable: %s",
                    tcx.sess.str_of(im.ident));
@@ -857,7 +857,7 @@ pub fn trans_trait_cast(bcx: block,
     // have no type descriptor field.)
     llboxdest = PointerCast(bcx,
                             llboxdest,
-                            T_ptr(type_of(bcx.ccx(), v_ty)));
+                            type_of(bcx.ccx(), v_ty).ptr_to());
     bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
 
     // Store the vtable into the pair or triple.
@@ -866,7 +866,7 @@ pub fn trans_trait_cast(bcx: block,
     let vtable = get_vtable(bcx, v_ty, orig);
     Store(bcx, vtable, PointerCast(bcx,
                                    GEPi(bcx, lldest, [0u, abi::trt_field_vtable]),
-                                   T_ptr(val_ty(vtable))));
+                                   val_ty(vtable).ptr_to()));
 
     bcx
 }

@@ -31,7 +31,7 @@ fn align(off: uint, ty: Type) -> uint {
     return align_up_to(off, a);
 }
 
-fn ty_align(ty: TypeRef) -> uint {
+fn ty_align(ty: Type) -> uint {
     unsafe {
         return match llvm::LLVMGetTypeKind(ty) {
             Integer => {
@@ -41,7 +41,7 @@ fn ty_align(ty: TypeRef) -> uint {
             Float => 4,
             Double => 8,
             Struct => {
-              if llvm::LLVMIsPackedStruct(ty) == True {
+              if ty.is_packed() {
                 1
               } else {
                 let str_tys = struct_tys(ty);
@@ -71,32 +71,31 @@ fn ty_size(ty: TypeRef) -> uint {
                     let str_tys = struct_tys(ty);
                     str_tys.iter().fold(0, |s, t| s + ty_size(*t))
                 } else {
-                    let str_tys = struct_tys(ty);
+                    let str_tys = ty.field_types();
                     let size = str_tys.iter().fold(0, |s, t| align(s, *t) + ty_size(*t));
                     align(size, ty)
                 }
             }
             Array => {
-              let len = llvm::LLVMGetArrayLength(ty) as uint;
-              let elt = llvm::LLVMGetElementType(ty);
-              let eltsz = ty_size(elt);
-              len * eltsz
+                let len = ty.array_length();
+                let elt = ty.element_type();
+                let eltsz = ty_size(elt);
+                len * eltsz
             }
             _ => fail!("ty_size: unhandled type")
         };
     }
 }
 
-fn classify_ret_ty(ty: TypeRef) -> (LLVMType, Option<Attribute>) {
+fn classify_ret_ty(ty: Type) -> (LLVMType, Option<Attribute>) {
     return if is_reg_ty(ty) {
         (LLVMType { cast: false, ty: ty }, None)
     } else {
-        (LLVMType { cast: false, ty: T_ptr(ty) }, Some(StructRetAttribute))
+        (LLVMType { cast: false, ty: ty.ptr_to() }, Some(StructRetAttribute))
     };
 }
 
-fn classify_arg_ty(ty: TypeRef,
-                   offset: &mut uint) -> (LLVMType, Option<Attribute>) {
+fn classify_arg_ty(ty: Type, offset: &mut uint) -> (LLVMType, Option<Attribute>) {
     let orig_offset = *offset;
     let size = ty_size(ty) * 8;
     let mut align = ty_align(ty);
@@ -123,7 +122,7 @@ fn classify_arg_ty(ty: TypeRef,
 
 fn is_reg_ty(ty: TypeRef) -> bool {
     unsafe {
-        return match llvm::LLVMGetTypeKind(ty) {
+        return match ty.kind() {
             Integer
             | Pointer
             | Float
@@ -133,16 +132,16 @@ fn is_reg_ty(ty: TypeRef) -> bool {
     }
 }
 
-fn padding_ty(align: uint, offset: uint) -> Option<TypeRef> {
+fn padding_ty(align: uint, offset: uint) -> Option<Type> {
     if ((align - 1 ) & offset) > 0 {
-        return Some(T_i32());
+        return Some(Type::i32());
     }
 
     return None;
 }
 
-fn coerce_to_int(size: uint) -> ~[TypeRef] {
-    let int_ty = T_i32();
+fn coerce_to_int(size: uint) -> ~[Type] {
+    let int_ty = Type::i32();
     let mut args = ~[];
 
     let mut n = size / 32;
@@ -154,16 +153,16 @@ fn coerce_to_int(size: uint) -> ~[TypeRef] {
     let r = size % 32;
     if r > 0 {
         unsafe {
-            args.push(llvm::LLVMIntTypeInContext(task_llcx(), r as c_uint))
+            Type::from_ref(args.push(llvm::LLVMIntTypeInContext(task_llcx(), r as c_uint)))
         }
     }
 
     return args;
 }
 
-fn struct_ty(ty: TypeRef,
-             padding: Option<TypeRef>,
-             coerce: bool) -> TypeRef {
+fn struct_ty(ty: Type,
+             padding: Option<Type>,
+             coerce: bool) -> Type {
     let size = ty_size(ty) * 8;
     let mut fields = padding.map_default(~[], |p| ~[*p]);
 
@@ -173,20 +172,20 @@ fn struct_ty(ty: TypeRef,
         fields.push(ty);
     }
 
-    return T_struct(fields, false);
+    return Type::struct_(fields, false);
 }
 
 enum MIPS_ABIInfo { MIPS_ABIInfo }
 
 impl ABIInfo for MIPS_ABIInfo {
     fn compute_info(&self,
-                    atys: &[TypeRef],
-                    rty: TypeRef,
+                    atys: &[Type],
+                    rty: Type,
                     ret_def: bool) -> FnType {
         let mut (ret_ty, ret_attr) = if ret_def {
             classify_ret_ty(rty)
         } else {
-            (LLVMType { cast: false, ty: T_void() }, None)
+            (LLVMType { cast: false, ty: Type::void() }, None)
         };
 
         let sret = ret_attr.is_some();
@@ -203,7 +202,7 @@ impl ABIInfo for MIPS_ABIInfo {
         if sret {
             arg_tys = vec::append(~[ret_ty], arg_tys);
             attrs = vec::append(~[ret_attr], attrs);
-            ret_ty = LLVMType { cast: false, ty: T_void() };
+            ret_ty = LLVMType { cast: false, ty: Type::void() };
         }
 
         return FnType {

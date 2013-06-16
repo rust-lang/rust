@@ -151,7 +151,11 @@ impl CrateContext {
             let tydesc_type = Type::tydesc(targ_cfg.arch);
             let opaque_vec_type = Type::opaque_vec(targ_cfg.arch);
 
+            let str_slice_ty = Type::named_struct("str_slice");
+            str_slice_ty.set_struct_body([Type::i8p(), int_type]);
+
             tn.associate_type("tydesc", &tydesc_type);
+            tn.associate_type("str_slice", &str_slice_ty);
 
             let crate_map = decl_crate_map(sess, link_meta, llmod);
             let dbg_cx = if sess.opts.debuginfo {
@@ -233,6 +237,7 @@ impl CrateContext {
             ((end.nsec as int) - (start.nsec as int)) / 1000000;
         self.stats.fn_times.push((name, elapsed));
     }
+
 }
 
 #[unsafe_destructor]

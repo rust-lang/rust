@@ -122,7 +122,7 @@ lvalues are *never* stored by value.
 use core::prelude::*;
 
 use back::abi;
-use lib::llvm::{ValueRef, TypeRef, llvm};
+use lib::llvm::{ValueRef, llvm};
 use lib;
 use metadata::csearch;
 use middle::trans::_match;
@@ -794,7 +794,7 @@ fn trans_def_datum_unadjusted(bcx: block,
                     ty: ty::mk_mach_uint(ast::ty_u8),
                     mutbl: ast::m_imm
                 }); // *u8
-            (rust_ty, PointerCast(bcx, fn_data.llfn, T_ptr(T_i8())))
+            (rust_ty, PointerCast(bcx, fn_data.llfn, Type::i8p()))
         } else {
             let fn_ty = expr_ty(bcx, ref_expr);
             (fn_ty, fn_data.llfn)
@@ -924,7 +924,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                                                  ix_val, unscaled_len)
         };
         let elt = InBoundsGEP(bcx, base, [ix_val]);
-        let elt = PointerCast(bcx, elt, T_ptr(vt.llunit_ty));
+        let elt = PointerCast(bcx, elt, vt.llunit_ty.ptr_to());
         return DatumBlock {
             bcx: bcx,
             datum: Datum {val: elt,
@@ -963,7 +963,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
                         // which may not be equal to the enum's type for
                         // non-C-like enums.
                         let val = base::get_item_val(bcx.ccx(), did.node);
-                        let pty = T_ptr(type_of(bcx.ccx(), const_ty));
+                        let pty = type_of(bcx.ccx(), const_ty).ptr_to();
                         PointerCast(bcx, val, pty)
                     } else {
                         {
@@ -1054,7 +1054,7 @@ pub fn trans_local_var(bcx: block, def: ast::def) -> Datum {
             // This cast should not be necessary. We should cast self *once*,
             // but right now this conflicts with default methods.
             let real_self_ty = monomorphize_type(bcx, self_info.t);
-            let llselfty = T_ptr(type_of::type_of(bcx.ccx(), real_self_ty));
+            let llselfty = type_of::type_of(bcx.ccx(), real_self_ty).ptr_to();
 
             let casted_val = PointerCast(bcx, self_info.v, llselfty);
             Datum {
@@ -1438,7 +1438,7 @@ fn trans_eager_binop(bcx: block,
             }
             let cmpr = base::compare_scalar_types(bcx, lhs, rhs, rhs_t, op);
             bcx = cmpr.bcx;
-            ZExt(bcx, cmpr.val, T_i8())
+            ZExt(bcx, cmpr.val, Type::i8())
         }
       }
       _ => {
@@ -1491,7 +1491,7 @@ fn trans_lazy_binop(bcx: block,
     }
 
     Br(past_rhs, join.llbb);
-    let phi = Phi(join, T_bool(), [lhs, rhs], [past_lhs.llbb,
+    let phi = Phi(join, Type::bool(), [lhs, rhs], [past_lhs.llbb,
                                                past_rhs.llbb]);
 
     return immediate_rvalue_bcx(join, phi, binop_ty);
@@ -1548,7 +1548,7 @@ fn trans_overloaded_op(bcx: block,
                              DoAutorefArg)
 }
 
-fn int_cast(bcx: block, lldsttype: TypeRef, llsrctype: TypeRef,
+fn int_cast(bcx: block, lldsttype: Type, llsrctype: Type,
             llsrc: ValueRef, signed: bool) -> ValueRef {
     let _icx = bcx.insn_ctxt("int_cast");
     unsafe {
@@ -1566,7 +1566,7 @@ fn int_cast(bcx: block, lldsttype: TypeRef, llsrctype: TypeRef,
     }
 }
 
-fn float_cast(bcx: block, lldsttype: TypeRef, llsrctype: TypeRef,
+fn float_cast(bcx: block, lldsttype: Type, llsrctype: Type,
               llsrc: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("float_cast");
     let srcsz = lib::llvm::float_width(llsrctype);

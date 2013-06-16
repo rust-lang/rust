@@ -53,9 +53,7 @@ pub use middle::trans::context::CrateContext;
 pub type namegen = @fn(s: &str) -> ident;
 pub fn new_namegen() -> namegen {
     let f: @fn(s: &str) -> ident = |prefix| {
-        token::str_to_ident(fmt!("%s_%u",
-                                 prefix,
-                                 token::gensym(prefix)))
+        token::str_to_ident(fmt!("%s_%u", prefix, token::gensym(prefix)))
     };
     f
 }
@@ -1030,27 +1028,29 @@ pub fn tuplify_box_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
 
 
 // LLVM constant constructors.
-pub fn C_null(t: TypeRef) -> ValueRef {
+pub fn C_null(t: Type) -> ValueRef {
     unsafe {
-        return llvm::LLVMConstNull(t);
+        llvm::LLVMConstNull(t.to_ref())
     }
 }
 
-pub fn C_undef(t: TypeRef) -> ValueRef {
+pub fn C_undef(t: Type) -> ValueRef {
     unsafe {
-        return llvm::LLVMGetUndef(t);
+        llvm::LLVMGetUndef(t.to_ref())
     }
 }
 
-pub fn C_integral(t: TypeRef, u: u64, sign_extend: Bool) -> ValueRef {
+pub fn C_integral(t: Type, u: u64, sign_extend: bool) -> ValueRef {
     unsafe {
-        return llvm::LLVMConstInt(t, u, sign_extend);
+        llvm::LLVMConstInt(t.to_ref(), u, sign_extend as Bool)
     }
 }
 
-pub fn C_floating(s: &str, t: TypeRef) -> ValueRef {
+pub fn C_floating(s: &str, t: Type) -> ValueRef {
     unsafe {
-        return str::as_c_str(s, |buf| llvm::LLVMConstRealOfString(t, buf));
+        do s.as_c_str |buf| {
+            llvm::LLVMConstRealOfString(t.to_ref(), buf)
+        }
     }
 }
 
@@ -1058,32 +1058,32 @@ pub fn C_nil() -> ValueRef {
     return C_struct([]);
 }
 
-pub fn C_bool(b: bool) -> ValueRef {
-    C_integral(T_bool(), if b { 1u64 } else { 0u64 }, False)
+pub fn C_bool(val: bool) -> ValueRef {
+    C_integral(Type::bool(), val as u64, false)
 }
 
-pub fn C_i1(b: bool) -> ValueRef {
-    return C_integral(T_i1(), if b { 1 } else { 0 }, False);
+pub fn C_i1(val: bool) -> ValueRef {
+    C_integral(Type::i1(), val as u64, false)
 }
 
 pub fn C_i32(i: i32) -> ValueRef {
-    return C_integral(T_i32(), i as u64, True);
+    return C_integral(Type::i32(), i as u64, true);
 }
 
 pub fn C_i64(i: i64) -> ValueRef {
-    return C_integral(T_i64(), i as u64, True);
+    return C_integral(Type::i64(), i as u64, true);
 }
 
 pub fn C_int(cx: &CrateContext, i: int) -> ValueRef {
-    return C_integral(cx.int_type, i as u64, True);
+    return C_integral(cx.int_type, i as u64, true);
 }
 
 pub fn C_uint(cx: &CrateContext, i: uint) -> ValueRef {
-    return C_integral(cx.int_type, i as u64, False);
+    return C_integral(cx.int_type, i as u64, false);
 }
 
 pub fn C_u8(i: uint) -> ValueRef {
-    return C_integral(T_i8(), i as u64, False);
+    return C_integral(Type::i8(), i as u64, false);
 }
 
 
@@ -1091,18 +1091,19 @@ pub fn C_u8(i: uint) -> ValueRef {
 // our boxed-and-length-annotated strings.
 pub fn C_cstr(cx: &mut CrateContext, s: @str) -> ValueRef {
     unsafe {
-        match cx.const_cstr_cache.find(&s) {
+        match cx.const_cstr_cache.find_equiv(&s) {
             Some(&llval) => return llval,
             None => ()
         }
 
-        let sc = do str::as_c_str(s) |buf| {
-            llvm::LLVMConstStringInContext(cx.llcx, buf, s.len() as c_uint,
-                                           False)
+        let sc = do s.as_c_str |buf| {
+            llvm::LLVMConstStringInContext(cx.llcx, buf, s.len() as c_uint, False)
         };
-        let g =
-            str::as_c_str(fmt!("str%u", (cx.names)("str").name),
-                        |buf| llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf));
+
+        let gsym = token::gensym("str");
+        let g = fmt!("str%u", gsym).as_c_str |buf| {
+            llvm::LLVMAddGlobal(cx.llmod, val_ty(sc).to_ref(), buf)
+        };
         llvm::LLVMSetInitializer(g, sc);
         llvm::LLVMSetGlobalConstant(g, True);
         lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
@@ -1118,7 +1119,7 @@ pub fn C_cstr(cx: &mut CrateContext, s: @str) -> ValueRef {
 pub fn C_estr_slice(cx: &mut CrateContext, s: @str) -> ValueRef {
     unsafe {
         let len = s.len();
-        let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), T_ptr(T_i8()));
+        let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), Type::i8p().to_ref());
         C_struct([cs, C_uint(cx, len + 1u /* +1 for null */)])
     }
 }
@@ -1126,10 +1127,9 @@ pub fn C_estr_slice(cx: &mut CrateContext, s: @str) -> ValueRef {
 // Returns a Plain Old LLVM String:
 pub fn C_postr(s: &str) -> ValueRef {
     unsafe {
-        return do str::as_c_str(s) |buf| {
-            llvm::LLVMConstStringInContext(base::task_llcx(),
-                                           buf, s.len() as c_uint, False)
-        };
+        do s.as_c_str |buf| {
+            llvm::LLVMConstStringInContext(base::task_llcx(), buf, s.len() as c_uint, False)
+        }
     }
 }
 
@@ -1138,17 +1138,14 @@ pub fn C_zero_byte_arr(size: uint) -> ValueRef {
         let mut i = 0u;
         let mut elts: ~[ValueRef] = ~[];
         while i < size { elts.push(C_u8(0u)); i += 1u; }
-        return llvm::LLVMConstArray(T_i8(),
-                                    vec::raw::to_ptr(elts),
-                                    elts.len() as c_uint);
+        return llvm::LLVMConstArray(Type::i8(), vec::raw::to_ptr(elts), elts.len() as c_uint);
     }
 }
 
 pub fn C_struct(elts: &[ValueRef]) -> ValueRef {
     unsafe {
         do vec::as_imm_buf(elts) |ptr, len| {
-            llvm::LLVMConstStructInContext(base::task_llcx(),
-                                           ptr, len as c_uint, False)
+            llvm::LLVMConstStructInContext(base::task_llcx(), ptr, len as c_uint, False)
         }
     }
 }
@@ -1156,8 +1153,7 @@ pub fn C_struct(elts: &[ValueRef]) -> ValueRef {
 pub fn C_packed_struct(elts: &[ValueRef]) -> ValueRef {
     unsafe {
         do vec::as_imm_buf(elts) |ptr, len| {
-            llvm::LLVMConstStructInContext(base::task_llcx(),
-                                           ptr, len as c_uint, True)
+            llvm::LLVMConstStructInContext(base::task_llcx(), ptr, len as c_uint, True)
         }
     }
 }
@@ -1172,38 +1168,35 @@ pub fn C_named_struct(T: TypeRef, elts: &[ValueRef]) -> ValueRef {
 
 pub fn C_array(ty: TypeRef, elts: &[ValueRef]) -> ValueRef {
     unsafe {
-        return llvm::LLVMConstArray(ty, vec::raw::to_ptr(elts),
-                                    elts.len() as c_uint);
+        return llvm::LLVMConstArray(ty, vec::raw::to_ptr(elts), elts.len() as c_uint);
     }
 }
 
 pub fn C_bytes(bytes: &[u8]) -> ValueRef {
     unsafe {
-        return llvm::LLVMConstStringInContext(base::task_llcx(),
-            cast::transmute(vec::raw::to_ptr(bytes)),
-            bytes.len() as c_uint, True);
+        let ptr = cast::transmute(vec::raw::to_ptr(bytes));
+        return llvm::LLVMConstStringInContext(base::task_llcx(), ptr, bytes.len() as c_uint, True);
     }
 }
 
 pub fn C_bytes_plus_null(bytes: &[u8]) -> ValueRef {
     unsafe {
-        return llvm::LLVMConstStringInContext(base::task_llcx(),
-            cast::transmute(vec::raw::to_ptr(bytes)),
-            bytes.len() as c_uint, False);
+        let ptr = cast::transmute(vec::raw::to_ptr(bytes));
+        return llvm::LLVMConstStringInContext(base::task_llcx(), ptr, bytes.len() as c_uint,False);
     }
 }
 
 pub fn C_shape(ccx: &CrateContext, bytes: ~[u8]) -> ValueRef {
     unsafe {
         let llshape = C_bytes_plus_null(bytes);
-        let name = fmt!("shape%u", (ccx.names)("shape").name);
-        let llglobal = str::as_c_str(name, |buf| {
-            llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
-        });
-        llvm::LLVMSetInitializer(llglobal, llshape);
+        let name = fmt!("shape%u", token::gensym("shape"));
+        let llglobal = do name.as_c_str |buf| {
+            llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape).to_ref(), buf)
+        };
+        llvm::LLVMSetInitializer(llglobal, llshape.to_ref());
         llvm::LLVMSetGlobalConstant(llglobal, True);
         lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
-        return llvm::LLVMConstPointerCast(llglobal, T_ptr(T_i8()));
+        return llvm::LLVMConstPointerCast(llglobal, Type::i8p().to_ref());
     }
 }
 
@@ -1478,7 +1471,7 @@ pub fn filename_and_line_num_from_span(bcx: block,
                                        span: span) -> (ValueRef, ValueRef) {
     let loc = bcx.sess().parse_sess.cm.lookup_char_pos(span.lo);
     let filename_cstr = C_cstr(bcx.ccx(), loc.file.name);
-    let filename = build::PointerCast(bcx, filename_cstr, T_ptr(T_i8()));
+    let filename = build::PointerCast(bcx, filename_cstr, Type::i8p());
     let line = C_int(bcx.ccx(), loc.line as int);
     (filename, line)
 }

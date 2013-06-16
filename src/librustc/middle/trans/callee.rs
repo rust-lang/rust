@@ -326,7 +326,7 @@ pub fn trans_fn_ref_with_vtables(
             let ref_ty = common::node_id_type(bcx, ref_id);
 
             val = PointerCast(
-                bcx, val, T_ptr(type_of::type_of_fn_from_ty(ccx, ref_ty)));
+                bcx, val, type_of::type_of_fn_from_ty(ccx, ref_ty).ptr_to());
         }
         return FnData {llfn: val};
     }
@@ -516,7 +516,7 @@ pub fn trans_call_inner(in_cx: block,
         let mut bcx = callee.bcx;
         let ccx = cx.ccx();
         let ret_flag = if ret_in_loop {
-            let flag = alloca(bcx, T_bool());
+            let flag = alloca(bcx, Type::bool());
             Store(bcx, C_bool(false), flag);
             Some(flag)
         } else {
@@ -526,13 +526,13 @@ pub fn trans_call_inner(in_cx: block,
         let (llfn, llenv) = unsafe {
             match callee.data {
                 Fn(d) => {
-                    (d.llfn, llvm::LLVMGetUndef(T_opaque_box_ptr(ccx)))
+                    (d.llfn, llvm::LLVMGetUndef(Type::opaque_box(ccx).ptr_to()))
                 }
                 Method(d) => {
                     // Weird but true: we pass self in the *environment* slot!
                     let llself = PointerCast(bcx,
                                              d.llself,
-                                             T_opaque_box_ptr(ccx));
+                                             Type::opaque_box(ccx).ptr_to());
                     (d.llfn, llself)
                 }
                 Closure(d) => {
@@ -653,7 +653,7 @@ pub fn trans_ret_slot(bcx: block, fn_ty: ty::t, dest: expr::Dest)
         expr::Ignore => {
             if ty::type_is_nil(retty) {
                 unsafe {
-                    llvm::LLVMGetUndef(T_ptr(T_nil()))
+                    llvm::LLVMGetUndef(Type::nil().ptr_to())
                 }
             } else {
                 alloc_ty(bcx, retty)
@@ -838,7 +838,7 @@ pub fn trans_arg_expr(bcx: block,
             // this could happen due to e.g. subtyping
             let llformal_arg_ty = type_of::type_of_explicit_arg(ccx, &formal_arg_ty);
             let llformal_arg_ty = match self_mode {
-                ty::ByRef => T_ptr(llformal_arg_ty),
+                ty::ByRef => llformal_arg_ty.ptr_to(),
                 ty::ByCopy => llformal_arg_ty,
             };
             debug!("casting actual type (%s) to match formal (%s)",

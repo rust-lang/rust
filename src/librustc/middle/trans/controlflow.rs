@@ -204,10 +204,10 @@ pub fn trans_log(log_ex: @ast::expr,
         let global;
         unsafe {
             global = str::as_c_str(s, |buf| {
-                llvm::LLVMAddGlobal(ccx.llmod, T_i32(), buf)
+                llvm::LLVMAddGlobal(ccx.llmod, Type::i32(), buf)
             });
             llvm::LLVMSetGlobalConstant(global, False);
-            llvm::LLVMSetInitializer(global, C_null(T_i32()));
+            llvm::LLVMSetInitializer(global, C_null(Type::i32()));
             lib::llvm::SetLinkage(global, lib::llvm::InternalLinkage);
         }
         ccx.module_data.insert(modname, global);
@@ -307,7 +307,7 @@ pub fn trans_ret(bcx: block, e: Option<@ast::expr>) -> block {
         Store(bcx, C_bool(false), bcx.fcx.llretptr.get());
         expr::SaveIn(match e {
           Some(x) => PointerCast(bcx, retptr,
-                                 T_ptr(type_of(bcx.ccx(), expr_ty(bcx, x)))),
+                                 type_of(bcx.ccx(), expr_ty(bcx, x)).ptr_to()),
           None => retptr
         })
       }
@@ -381,8 +381,8 @@ fn trans_fail_value(bcx: block,
         (C_cstr(bcx.ccx(), @"<runtime>"), 0)
       }
     };
-    let V_str = PointerCast(bcx, V_fail_str, T_ptr(T_i8()));
-    let V_filename = PointerCast(bcx, V_filename, T_ptr(T_i8()));
+    let V_str = PointerCast(bcx, V_fail_str, Type::i8p());
+    let V_filename = PointerCast(bcx, V_filename, Type::i8p());
     let args = ~[V_str, V_filename, C_int(ccx, V_line)];
     let bcx = callee::trans_lang_call(
         bcx, bcx.tcx().lang_items.fail_fn(), args, expr::Ignore);
