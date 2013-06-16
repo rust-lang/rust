@@ -816,8 +816,8 @@ impl<'self, A, St> UnfoldrIterator<'self, A, St> {
     /// Creates a new iterator with the specified closure as the "iterator
     /// function" and an initial state to eventually pass to the iterator
     #[inline]
-    pub fn new(f: &'self fn(&mut St) -> Option<A>, initial_state: St)
-        -> UnfoldrIterator<'self, A, St> {
+    pub fn new<'a>(f: &'a fn(&mut St) -> Option<A>, initial_state: St)
+        -> UnfoldrIterator<'a, A, St> {
         UnfoldrIterator {
             f: f,
             state: initial_state
