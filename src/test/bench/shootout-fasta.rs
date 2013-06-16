@@ -28,7 +28,9 @@ use std::str;
 use std::uint;
 use std::vec;
 
-fn LINE_LENGTH() -> uint { return 60u; }
+static LINE_LENGTH: uint = 60u;
+
+//fn LINE_LENGTH() -> uint { return 60u; }
 
 struct MyRandom {
     last: u32
@@ -81,7 +83,7 @@ fn make_random_fasta(wr: @io::Writer,
     for uint::range(0u, n as uint) |_i| {
         op.push_char(select_random(myrandom_next(rng, 100u32),
                                               copy genelist));
-        if op.len() >= LINE_LENGTH() {
+        if op.len() >= LINE_LENGTH {
             wr.write_line(op);
             op = ~"";
         }
@@ -90,18 +92,20 @@ fn make_random_fasta(wr: @io::Writer,
 }
 
 fn make_repeat_fasta(wr: @io::Writer, id: ~str, desc: ~str, s: ~str, n: int) {
+    wr.write_line(~">" + id + " " + desc);
+    let mut op = str::with_capacity( LINE_LENGTH );
+    let sl = s.len();
     unsafe {
-        wr.write_line(~">" + id + " " + desc);
-        let mut op: ~str = ~"";
-        let sl: uint = s.len();
         for uint::range(0u, n as uint) |i| {
-            str::raw::push_byte(&mut op, s[i % sl]);
-            if op.len() >= LINE_LENGTH() {
-                wr.write_line(op);
-                op = ~"";
+            if (op.len() >= LINE_LENGTH) {
+                wr.write_line( op );
+                op = str::with_capacity( LINE_LENGTH );
             }
+            op.push_char( s[i % sl] as char );
         }
-        if op.len() > 0u { wr.write_line(op); }
+        if op.len() > 0 {
+            wr.write_line(op)
+        }
     }
 }
 
