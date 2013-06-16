@@ -135,6 +135,7 @@ macro_rules! tuple_impls {
         pub mod inner {
             use clone::Clone;
             #[cfg(not(test))] use cmp::*;
+            #[cfg(not(test))] use num::Zero;
 
             $(
                 pub trait $cloneable_trait<$($T),+> {
@@ -208,6 +209,18 @@ macro_rules! tuple_impls {
                     #[inline]
                     fn cmp(&self, other: &($($T),+)) -> Ordering {
                         lexical_cmp!($(self.$get_ref_fn(), other.$get_ref_fn()),+)
+                    }
+                }
+
+                #[cfg(not(test))]
+                impl<$($T:Zero),+> Zero for ($($T),+) {
+                    #[inline]
+                    fn zero() -> ($($T),+) {
+                        ($(Zero::zero::<$T>()),+)
+                    }
+                    #[inline]
+                    fn is_zero(&self) -> bool {
+                        $(self.$get_ref_fn().is_zero())&&+
                     }
                 }
             )+

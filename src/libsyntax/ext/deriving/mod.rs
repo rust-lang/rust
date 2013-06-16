@@ -31,6 +31,7 @@ pub mod encodable;
 pub mod decodable;
 pub mod rand;
 pub mod to_str;
+pub mod zero;
 
 #[path="cmp/eq.rs"]
 pub mod eq;
@@ -98,6 +99,7 @@ pub fn expand_meta_deriving(cx: @ExtCtxt,
                             "Rand" => expand!(rand::expand_deriving_rand),
 
                             "ToStr" => expand!(to_str::expand_deriving_to_str),
+                            "Zero" => expand!(zero::expand_deriving_zero),
 
                             ref tname => {
                                 cx.span_err(titem.span, fmt!("unknown \
