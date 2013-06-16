@@ -95,7 +95,8 @@ impl RepeatFasta {
             let alu: &[u8] = self.alu.as_bytes();
 
             copy_memory(buf, alu, alu_len);
-            copy_memory(vec::mut_slice(buf, alu_len, buf.len()),
+            let buf_len = buf.len();
+            copy_memory(vec::mut_slice(buf, alu_len, buf_len),
                         alu,
                         LINE_LEN);
 
