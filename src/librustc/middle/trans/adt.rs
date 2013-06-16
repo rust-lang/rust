@@ -47,7 +47,6 @@
 use core::container::Map;
 use core::libc::c_ulonglong;
 use core::option::{Option, Some, None};
-use core::str;
 use core::vec;
 
 use lib::llvm::{ValueRef, TypeRef, True, IntEQ, IntNE};

@@ -24,7 +24,6 @@ use fold::Fold;
 use fold;
 use pass::Pass;
 
-use core::str;
 use core::util;
 
 pub fn mk_pass() -> Pass {
