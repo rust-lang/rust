@@ -395,30 +395,30 @@ impl id_range {
 pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
     let visit_generics: @fn(&Generics, T) = |generics, t| {
         for generics.ty_params.each |p| {
-            vfn(p.id, t);
+            vfn(p.id, copy t);
         }
         for generics.lifetimes.each |p| {
-            vfn(p.id, t);
+            vfn(p.id, copy t);
         }
     };
     visit::mk_vt(@visit::Visitor {
         visit_mod: |m, sp, id, (t, vt)| {
-            vfn(id, t);
+            vfn(id, copy t);
             visit::visit_mod(m, sp, id, (t, vt));
         },
 
         visit_view_item: |vi, (t, vt)| {
             match vi.node {
-              view_item_extern_mod(_, _, id) => vfn(id, t),
+              view_item_extern_mod(_, _, id) => vfn(id, copy t),
               view_item_use(ref vps) => {
                   for vps.each |vp| {
                       match vp.node {
-                          view_path_simple(_, _, id) => vfn(id, t),
-                          view_path_glob(_, id) => vfn(id, t),
+                          view_path_simple(_, _, id) => vfn(id, copy t),
+                          view_path_glob(_, id) => vfn(id, copy t),
                           view_path_list(_, ref paths, id) => {
-                              vfn(id, t);
+                              vfn(id, copy t);
                               for paths.each |p| {
-                                  vfn(p.node.id, t);
+                                  vfn(p.node.id, copy t);
                               }
                           }
                       }
@@ -429,34 +429,34 @@ pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
         },
 
         visit_foreign_item: |ni, (t, vt)| {
-            vfn(ni.id, t);
+            vfn(ni.id, copy t);
             visit::visit_foreign_item(ni, (t, vt));
         },
 
         visit_item: |i, (t, vt)| {
-            vfn(i.id, t);
+            vfn(i.id, copy t);
             match i.node {
               item_enum(ref enum_definition, _) =>
-                for (*enum_definition).variants.each |v| { vfn(v.node.id, t); },
+                for (*enum_definition).variants.each |v| { vfn(v.node.id, copy t); },
               _ => ()
             }
             visit::visit_item(i, (t, vt));
         },
 
         visit_local: |l, (t, vt)| {
-            vfn(l.node.id, t);
+            vfn(l.node.id, copy t);
             visit::visit_local(l, (t, vt));
         },
         visit_block: |b, (t, vt)| {
-            vfn(b.node.id, t);
+            vfn(b.node.id, copy t);
             visit::visit_block(b, (t, vt));
         },
         visit_stmt: |s, (t, vt)| {
-            vfn(ast_util::stmt_id(s), t);
+            vfn(ast_util::stmt_id(s), copy t);
             visit::visit_stmt(s, (t, vt));
         },
         visit_pat: |p, (t, vt)| {
-            vfn(p.id, t);
+            vfn(p.id, copy t);
             visit::visit_pat(p, (t, vt));
         },
 
@@ -464,36 +464,36 @@ pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
             {
                 let r = e.get_callee_id();
                 for r.iter().advance |callee_id| {
-                    vfn(*callee_id, t);
+                    vfn(*callee_id, copy t);
                 }
             }
-            vfn(e.id, t);
+            vfn(e.id, copy t);
             visit::visit_expr(e, (t, vt));
         },
 
         visit_ty: |ty, (t, vt)| {
             match ty.node {
-              ty_path(_, id) => vfn(id, t),
+              ty_path(_, id) => vfn(id, copy t),
               _ => { /* fall through */ }
             }
             visit::visit_ty(ty, (t, vt));
         },
 
         visit_generics: |generics, (t, vt)| {
-            visit_generics(generics, t);
+            visit_generics(generics, copy t);
             visit::visit_generics(generics, (t, vt));
         },
 
         visit_fn: |fk, d, a, b, id, (t, vt)| {
-            vfn(id, t);
+            vfn(id, copy t);
 
             match *fk {
                 visit::fk_item_fn(_, generics, _, _) => {
-                    visit_generics(generics, t);
+                    visit_generics(generics, copy t);
                 }
                 visit::fk_method(_, generics, m) => {
-                    vfn(m.self_id, t);
-                    visit_generics(generics, t);
+                    vfn(m.self_id, copy t);
+                    visit_generics(generics, copy t);
                 }
                 visit::fk_anon(_) |
                 visit::fk_fn_block => {
@@ -501,13 +501,13 @@ pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
             }
 
             for d.inputs.each |arg| {
-                vfn(arg.id, t)
+                vfn(arg.id, copy t)
             }
-            visit::visit_fn(fk, d, a, b, id, (t, vt));
+            visit::visit_fn(fk, d, a, b, id, (copy t, vt));
         },
 
         visit_struct_field: |f, (t, vt)| {
-            vfn(f.node.id, t);
+            vfn(f.node.id, copy t);
             visit::visit_struct_field(f, (t, vt));
         },
 

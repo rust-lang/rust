@@ -504,9 +504,9 @@ trait CresCompare<T> {
 
 impl<T:Copy + Eq> CresCompare<T> for cres<T> {
     fn compare(&self, t: T, f: &fn() -> ty::type_err) -> cres<T> {
-        do self.chain |s| {
+        do (copy *self).chain |s| {
             if s == t {
-                *self
+                copy *self
             } else {
                 Err(f())
             }

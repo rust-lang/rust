@@ -14,7 +14,7 @@ use std::task;
 pub fn foo<T:Owned + Copy>(x: T) -> Port<T> {
     let (p, c) = stream();
     do task::spawn() {
-        c.send(x);
+        c.send(copy x);
     }
     p
 }

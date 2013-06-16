@@ -1184,7 +1184,7 @@ fn create_index<T:Copy + Hash + IterBytes>(index: ~[entry<T>]) ->
     for uint::range(0u, 256u) |_i| { buckets.push(@mut ~[]); };
     for index.each |elt| {
         let h = elt.val.hash() as uint;
-        buckets[h % 256].push(*elt);
+        buckets[h % 256].push(copy *elt);
     }
 
     let mut buckets_frozen = ~[];

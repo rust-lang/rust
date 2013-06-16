@@ -200,8 +200,8 @@ fn cached_metadata<T:Copy>(cache: metadata_cache,
         let items = cache.get(&mdtag);
         for items.each |item| {
             let md: T = md_from_metadata::<T>(*item);
-            if eq_fn(md) {
-                return option::Some(md);
+            if eq_fn(copy md) {
+                return option::Some(copy md);
             }
         }
     }

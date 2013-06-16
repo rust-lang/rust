@@ -207,12 +207,14 @@ MORESTACK:
 	subl $12, %esp
 
 	// Save the return value of the function we allocated space for
+	movl %edx, 4(%esp)
 	movl %eax, (%esp)
 
 	call UPCALL_DEL_STACK
 
 	// And restore it
 	movl (%esp), %eax
+	movl 4(%esp), %edx
 
 	addl $12,%esp
 

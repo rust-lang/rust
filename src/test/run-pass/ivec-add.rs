@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn double<T:Copy>(a: T) -> ~[T] { return ~[a] + ~[a]; }
+fn double<T:Copy>(a: T) -> ~[T] { return ~[copy a] + ~[a]; }
 
-fn double_int(a: int) -> ~[int] { return ~[a] + ~[a]; }
+fn double_int(a: int) -> ~[int] { return ~[copy a] + ~[a]; }
 
 pub fn main() {
     let mut d = double(1);
