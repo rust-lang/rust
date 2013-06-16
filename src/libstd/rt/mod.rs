@@ -133,6 +133,9 @@ pub mod local_ptr;
 /// Bindings to pthread/windows thread-local storage.
 pub mod thread_local_storage;
 
+/// A concurrent data structure with which parent tasks wait on child tasks.
+pub mod join_latch;
+
 pub mod metrics;
 
 
@@ -164,7 +167,7 @@ pub fn start(_argc: int, _argv: **u8, crate_map: *u8, main: ~fn()) -> int {
     let sleepers = SleeperList::new();
     let mut sched = ~Scheduler::new(loop_, work_queue, sleepers);
     sched.no_sleep = true;
-    let main_task = ~Coroutine::new(&mut sched.stack_pool, main);
+    let main_task = ~Coroutine::new_root(&mut sched.stack_pool, main);
 
     sched.enqueue_task(main_task);
     sched.run();
@@ -238,7 +241,7 @@ fn test_context() {
     do run_in_bare_thread {
         assert_eq!(context(), GlobalContext);
         let mut sched = ~new_test_uv_sched();
-        let task = ~do Coroutine::new(&mut sched.stack_pool) {
+        let task = ~do Coroutine::new_root(&mut sched.stack_pool) {
             assert_eq!(context(), TaskContext);
             let sched = Local::take::<Scheduler>();
             do sched.deschedule_running_task_and_then() |sched, task| {

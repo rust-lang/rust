@@ -91,6 +91,7 @@ use uint;
 use util;
 use unstable::sync::{Exclusive, exclusive};
 use rt::local::Local;
+use rt::task::Task;
 
 #[cfg(test)] use task::default_task_opts;
 
@@ -576,8 +577,13 @@ pub fn spawn_raw(opts: TaskOpts, f: ~fn()) {
 fn spawn_raw_newsched(_opts: TaskOpts, f: ~fn()) {
     use rt::sched::*;
 
+    let task = do Local::borrow::<Task, ~Task>() |running_task| {
+        ~running_task.new_child()
+    };
+
     let mut sched = Local::take::<Scheduler>();
-    let task = ~Coroutine::new(&mut sched.stack_pool, f);
+    let task = ~Coroutine::with_task(&mut sched.stack_pool,
+                                     task, f);
     sched.schedule_task(task);
 }
 
