@@ -96,6 +96,7 @@ pub enum lint {
 
     missing_doc,
     unreachable_code,
+    noop,
 }
 
 pub fn level_to_str(lv: level) -> &'static str {
@@ -280,6 +281,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         desc: "detects unreachable code",
         default: warn
     }),
+
+    ("all",
+     LintSpec {
+        lint: noop,
+        desc: "set all lints to a given level",
+        default: allow
+    }),
 ];
 
 /*
@@ -326,6 +334,8 @@ struct Context {
     // call can used the original visitor's method, although the recursing
     // visitor supplied to the method is the item stopping visitor.
     visitors: ~[(visit::vt<@mut Context>, visit::vt<@mut Context>)],
+    // Whether and which level to set all lints to (eg -W all)
+    all: Option<level>,
 }
 
 impl Context {
@@ -1092,6 +1102,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
         visitors: ~[],
         in_trait_impl: false,
         doc_hidden: false,
+        all: None,
     };
 
     // Install defaults.
@@ -1101,7 +1112,19 @@ pub fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
 
     // Install command-line options, overriding defaults.
     for tcx.sess.opts.lint_opts.each |&(lint, level)| {
+        // Allow -W all/-A all etc. The last one is the one used
+        if lint == noop {
+            cx.all = Some(level);
+            loop;
+        }
         cx.set_level(lint, level, CommandLine);
+    }
+
+    match cx.all {
+        None => (),
+        Some(lev) => for cx.dict.each_value |spec| {
+            cx.set_level(spec.lint, lev, CommandLine)
+        }
     }
 
     // Register each of the lint passes with the context
