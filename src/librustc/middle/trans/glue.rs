@@ -419,15 +419,6 @@ pub fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_opaque_closure_ptr(ck) => {
         closure::make_opaque_cbox_free_glue(bcx, ck, v)
       }
-      ty::ty_struct(did, ref substs) => {
-        // Call the dtor if there is one
-        match ty::ty_dtor(bcx.tcx(), did) {
-            ty::NoDtor => bcx,
-            ty::TraitDtor(ref dt_id) => {
-                trans_struct_drop(bcx, t, v, *dt_id, did, substs)
-            }
-        }
-      }
       _ => bcx
     };
     build_return(bcx);
