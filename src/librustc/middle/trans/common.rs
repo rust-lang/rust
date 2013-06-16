@@ -325,11 +325,17 @@ pub enum cleanup {
 // target: none means the path ends in an resume instruction
 pub struct cleanup_path {
     target: Option<BasicBlockRef>,
+    size: uint,
     dest: BasicBlockRef
 }
 
-pub fn scope_clean_changed(scope_info: &mut scope_info) {
-    if scope_info.cleanup_paths.len() > 0u { scope_info.cleanup_paths = ~[]; }
+pub fn shrink_scope_clean(scope_info: &mut scope_info, size: uint) {
+    scope_info.landing_pad = None;
+    scope_info.cleanup_paths = scope_info.cleanup_paths.iter()
+            .take_while(|&cu| cu.size <= size).transform(|&x|x).collect();
+}
+
+pub fn grow_scope_clean(scope_info: &mut scope_info) {
     scope_info.landing_pad = None;
 }
 
@@ -374,7 +380,7 @@ pub fn add_clean(bcx: block, val: ValueRef, t: ty::t) {
         scope_info.cleanups.push(
             clean(|a| glue::drop_ty_root(a, root, rooted, t),
                   cleanup_type));
-        scope_clean_changed(scope_info);
+        grow_scope_clean(scope_info);
     }
 }
 
@@ -388,7 +394,7 @@ pub fn add_clean_temp_immediate(cx: block, val: ValueRef, ty: ty::t) {
         scope_info.cleanups.push(
             clean_temp(val, |a| glue::drop_ty_immediate(a, val, ty),
                        cleanup_type));
-        scope_clean_changed(scope_info);
+        grow_scope_clean(scope_info);
     }
 }
 pub fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
@@ -402,7 +408,7 @@ pub fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
         scope_info.cleanups.push(
             clean_temp(val, |a| glue::drop_ty_root(a, root, rooted, t),
                        cleanup_type));
-        scope_clean_changed(scope_info);
+        grow_scope_clean(scope_info);
     }
 }
 pub fn add_clean_return_to_mut(bcx: block,
@@ -434,7 +440,7 @@ pub fn add_clean_return_to_mut(bcx: block,
                                                  filename_val,
                                                  line_val),
                 normal_exit_only));
-        scope_clean_changed(scope_info);
+        grow_scope_clean(scope_info);
     }
 }
 pub fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
@@ -451,7 +457,7 @@ pub fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
     do in_scope_cx(cx) |scope_info| {
         scope_info.cleanups.push(clean_temp(ptr, free_fn,
                                       normal_exit_and_unwind));
-        scope_clean_changed(scope_info);
+        grow_scope_clean(scope_info);
     }
 }
 
@@ -474,7 +480,7 @@ pub fn revoke_clean(cx: block, val: ValueRef) {
                             vec::slice(scope_info.cleanups,
                                       *i + 1u,
                                       scope_info.cleanups.len()));
-            scope_clean_changed(scope_info);
+            shrink_scope_clean(scope_info, *i);
         }
     }
 }
