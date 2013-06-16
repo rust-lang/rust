@@ -17,8 +17,8 @@ use u32;
 use uint;
 use unicode::{derived_property, general_category};
 
-#[cfg(not(test))]
-use cmp::{Eq, Ord};
+#[cfg(not(test))] use cmp::{Eq, Ord};
+#[cfg(not(test))] use num::Zero;
 
 /*
     Lu  Uppercase_Letter        an uppercase letter
@@ -326,6 +326,12 @@ impl Ord for char {
     fn gt(&self, other: &char) -> bool { *self > *other }
     #[inline(always)]
     fn ge(&self, other: &char) -> bool { *self >= *other }
+}
+
+#[cfg(not(test))]
+impl Zero for char {
+    fn zero() -> char { 0 as char }
+    fn is_zero(&self) -> bool { *self == 0 as char }
 }
 
 #[test]
