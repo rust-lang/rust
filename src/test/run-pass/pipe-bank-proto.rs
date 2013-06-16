@@ -45,16 +45,10 @@ proto! bank (
     }
 )
 
-macro_rules! move_it (
-    { $x:expr } => { unsafe { let y = *ptr::to_unsafe_ptr(&($x)); y } }
-)
-
 fn switch<T:Owned,U>(endp: pipes::RecvPacket<T>,
                      f: &fn(v: Option<T>) -> U) -> U {
     f(pipes::try_recv(endp))
 }
-
-fn move_it<T>(x: T) -> T { x }
 
 macro_rules! follow (
     {
@@ -62,7 +56,7 @@ macro_rules! follow (
     } => (
         |m| match m {
           $(Some($message($($($x,)+)* next)) => {
-            let $next = move_it!(next);
+            let $next = next;
             $e })+
           _ => { fail!() }
         }
@@ -96,7 +90,7 @@ fn bank_client(bank: bank::client::login) {
     let bank = client::login(bank, ~"theincredibleholk", ~"1234");
     let bank = match try_recv(bank) {
       Some(ok(connected)) => {
-        move_it!(connected)
+        connected
       }
       Some(invalid(_)) => { fail!("login unsuccessful") }
       None => { fail!("bank closed the connection") }
