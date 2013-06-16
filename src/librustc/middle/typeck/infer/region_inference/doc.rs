@@ -12,6 +12,11 @@
 
 Region inference module.
 
+# Terminology
+
+Note that we use the terms region and lifetime interchangeably,
+though the term `lifetime` is preferred.
+
 # Introduction
 
 Region inference uses a somewhat more involved algorithm than type
@@ -50,10 +55,7 @@ Variables and constraints are created using the following methods:
   the greatest region that is smaller than both R_i and R_j
 
 The actual region resolution algorithm is not entirely
-obvious, though it is also not overly complex.  I'll explain
-the algorithm as it currently works, then explain a somewhat
-more complex variant that would probably scale better for
-large graphs (and possibly all graphs).
+obvious, though it is also not overly complex.
 
 ## Snapshotting
 
@@ -68,10 +70,9 @@ is in progress, but only the root snapshot can "commit".
 
 The constraint resolution algorithm is not super complex but also not
 entirely obvious.  Here I describe the problem somewhat abstractly,
-then describe how the current code works, and finally describe a
-better solution that is as of yet unimplemented.  There may be other,
-smarter ways of doing this with which I am unfamiliar and can't be
-bothered to research at the moment. - NDM
+then describe how the current code works.  There may be other, smarter
+ways of doing this with which I am unfamiliar and can't be bothered to
+research at the moment. - NDM
 
 ## The problem
 
@@ -120,19 +121,254 @@ its value as the GLB of all its successors.  Basically contracting
 nodes ensure that there is overlap between their successors; we will
 ultimately infer the largest overlap possible.
 
-### A better algorithm
+# The Region Hierarchy
 
-Fixed-point iteration is not necessary.  What we ought to do is first
+## Without closures
+
+Let's first consider the region hierarchy without thinking about
+closures, because they add a lot of complications. The region
+hierarchy *basically* mirrors the lexical structure of the code.
+There is a region for every piece of 'evaluation' that occurs, meaning
+every expression, block, and pattern (patterns are considered to
+"execute" by testing the value they are applied to and creating any
+relevant bindings).  So, for example:
+
+    fn foo(x: int, y: int) { // -+
+    //  +------------+       //  |
+    //  |      +-----+       //  |
+    //  |  +-+ +-+ +-+       //  |
+    //  |  | | | | | |       //  |
+    //  v  v v v v v v       //  |
+        let z = x + y;       //  |
+        ...                  //  |
+    }                        // -+
+
+    fn bar() { ... }
+
+In this example, there is a region for the fn body block as a whole,
+and then a subregion for the declaration of the local variable.
+Within that, there are sublifetimes for the assignment pattern and
+also the expression `x + y`. The expression itself has sublifetimes
+for evaluating `x` and and `y`.
+
+## Function calls
+
+Function calls are a bit tricky. I will describe how we handle them
+*now* and then a bit about how we can improve them (Issue #6268).
+
+Consider a function call like `func(expr1, expr2)`, where `func`,
+`arg1`, and `arg2` are all arbitrary expressions. Currently,
+we construct a region hierarchy like:
+
+    +----------------+
+    |                |
+    +--+ +---+  +---+|
+    v  v v   v  v   vv
+    func(expr1, expr2)
+
+Here you can see that the call as a whole has a region and the
+function plus arguments are subregions of that. As a side-effect of
+this, we get a lot of spurious errors around nested calls, in
+particular when combined with `&mut` functions. For example, a call
+like this one
+
+    self.foo(self.bar())
+
+where both `foo` and `bar` are `&mut self` functions will always yield
+an error.
+
+Here is a more involved example (which is safe) so we can see what's
+going on:
+
+    struct Foo { f: uint, g: uint }
+    ...
+    fn add(p: &mut uint, v: uint) {
+        *p += v;
+    }
+    ...
+    fn inc(p: &mut uint) -> uint {
+        *p += 1; *p
+    }
+    fn weird() {
+        let mut x: ~Foo = ~Foo { ... };
+        'a: add(&mut (*x).f,
+                'b: inc(&mut (*x).f)) // (*)
+    }
+
+The important part is the line marked `(*)` which contains a call to
+`add()`. The first argument is a mutable borrow of the field `f`.  The
+second argument also borrows the field `f`. Now, in the current borrow
+checker, the first borrow is given the lifetime of the call to
+`add()`, `'a`.  The second borrow is given the lifetime of `'b` of the
+call to `inc()`. Because `'b` is considered to be a sublifetime of
+`'a`, an error is reported since there are two co-existing mutable
+borrows of the same data.
+
+However, if we were to examine the lifetimes a bit more carefully, we
+can see that this error is unnecessary. Let's examine the lifetimes
+involved with `'a` in detail. We'll break apart all the steps involved
+in a call expression:
+
+    'a: {
+        'a_arg1: let a_temp1: ... = add;
+        'a_arg2: let a_temp2: &'a mut uint = &'a mut (*x).f;
+        'a_arg3: let a_temp3: uint = {
+            let b_temp1: ... = inc;
+            let b_temp2: &'b = &'b mut (*x).f;
+            'b_call: b_temp1(b_temp2)
+        };
+        'a_call: a_temp1(a_temp2, a_temp3) // (**)
+    }
+
+Here we see that the lifetime `'a` includes a number of substatements.
+In particular, there is this lifetime I've called `'a_call` that
+corresponds to the *actual execution of the function `add()`*, after
+all arguments have been evaluated. There is a corresponding lifetime
+`'b_call` for the execution of `inc()`. If we wanted to be precise
+about it, the lifetime of the two borrows should be `'a_call` and
+`'b_call` respectively, since the borrowed pointers that were created
+will not be dereferenced except during the execution itself.
+
+However, this model by itself is not sound. The reason is that
+while the two borrowed pointers that are created will never be used
+simultaneously, it is still true that the first borrowed pointer is
+*created* before the second argument is evaluated, and so even though
+it will not be *dereferenced* during the evaluation of the second
+argument, it can still be *invalidated* by that evaluation. Consider
+this similar but unsound example:
+
+    struct Foo { f: uint, g: uint }
+    ...
+    fn add(p: &mut uint, v: uint) {
+        *p += v;
+    }
+    ...
+    fn consume(x: ~Foo) -> uint {
+        x.f + x.g
+    }
+    fn weird() {
+        let mut x: ~Foo = ~Foo { ... };
+        'a: add(&mut (*x).f, consume(x)) // (*)
+    }
+
+In this case, the second argument to `add` actually consumes `x`, thus
+invalidating the first argument.
+
+So, for now, we exclude the `call` lifetimes from our model.
+Eventually I would like to include them, but we will have to make the
+borrow checker handle this situation correctly. In particular, if
+there is a borrowed pointer created whose lifetime does not enclose
+the borrow expression, we must issue sufficient restrictions to ensure
+that the pointee remains valid.
+
+## Adding closures
+
+The other significant complication to the region hierarchy is
+closures. I will describe here how closures should work, though some
+of the work to implement this model is ongoing at the time of this
+writing.
+
+The body of closures are type-checked along with the function that
+creates them. However, unlike other expressions that appear within the
+function body, it is not entirely obvious when a closure body executes
+with respect to the other expressions. This is because the closure
+body will execute whenever the closure is called; however, we can
+never know precisely when the closure will be called, especially
+without some sort of alias analysis.
+
+However, we can place some sort of limits on when the closure
+executes.  In particular, the type of every closure `fn:'r K` includes
+a region bound `'r`. This bound indicates the maximum lifetime of that
+closure; once we exit that region, the closure cannot be called
+anymore. Therefore, we say that the lifetime of the closure body is a
+sublifetime of the closure bound, but the closure body itself is unordered
+with respect to other parts of the code.
+
+For example, consider the following fragment of code:
+
+    'a: {
+         let closure: fn:'a() = || 'b: {
+             'c: ...
+         };
+         'd: ...
+    }
+
+Here we have four lifetimes, `'a`, `'b`, `'c`, and `'d`. The closure
+`closure` is bounded by the lifetime `'a`. The lifetime `'b` is the
+lifetime of the closure body, and `'c` is some statement within the
+closure body. Finally, `'d` is a statement within the outer block that
+created the closure.
+
+We can say that the closure body `'b` is a sublifetime of `'a` due to
+the closure bound. By the usual lexical scoping conventions, the
+statement `'c` is clearly a sublifetime of `'b`, and `'d` is a
+sublifetime of `'d`. However, there is no ordering between `'c` and
+`'d` per se (this kind of ordering between statements is actually only
+an issue for dataflow; passes like the borrow checker must assume that
+closures could execute at any time from the moment they are created
+until they go out of scope).
+
+### Complications due to closure bound inference
+
+There is only one problem with the above model: in general, we do not
+actually *know* the closure bounds during region inference! In fact,
+closure bounds are almost always region variables! This is very tricky
+because the inference system implicitly assumes that we can do things
+like compute the LUB of two scoped lifetimes without needing to know
+the values of any variables.
+
+Here is an example to illustrate the problem:
+
+    fn identify<T>(x: T) -> T { x }
+
+    fn foo() { // 'foo is the function body
+      'a: {
+           let closure = identity(|| 'b: {
+               'c: ...
+           });
+           'd: closure();
+      }
+      'e: ...;
+    }
+
+In this example, the closure bound is not explicit. At compile time,
+we will create a region variable (let's call it `V0`) to represent the
+closure bound.
+
+The primary difficulty arises during the constraint propagation phase.
+Imagine there is some variable with incoming edges from `'c` and `'d`.
+This means that the value of the variable must be `LUB('c,
+'d)`. However, without knowing what the closure bound `V0` is, we
+can't compute the LUB of `'c` and `'d`! Any we don't know the closure
+bound until inference is done.
+
+The solution is to rely on the fixed point nature of inference.
+Basically, when we must compute `LUB('c, 'd)`, we just use the current
+value for `V0` as the closure's bound. If `V0`'s binding should
+change, then we will do another round of inference, and the result of
+`LUB('c, 'd)` will change.
+
+One minor implication of this is that the graph does not in fact track
+the full set of dependencies between edges. We cannot easily know
+whether the result of a LUB computation will change, since there may
+be indirect dependencies on other variables that are not reflected on
+the graph. Therefore, we must *always* iterate over all edges when
+doing the fixed point calculation, not just those adjacent to nodes
+whose values have changed.
+
+Were it not for this requirement, we could in fact avoid fixed-point
+iteration altogether. In that universe, we could instead first
 identify and remove strongly connected components (SCC) in the graph.
 Note that such components must consist solely of region variables; all
 of these variables can effectively be unified into a single variable.
-
-Once SCCs are removed, we are left with a DAG.  At this point, we can
-walk the DAG in toplogical order once to compute the expanding nodes,
-and again in reverse topological order to compute the contracting
-nodes. The main reason I did not write it this way is that I did not
-feel like implementing the SCC and toplogical sort algorithms at the
-moment.
+Once SCCs are removed, we are left with a DAG.  At this point, we
+could walk the DAG in toplogical order once to compute the expanding
+nodes, and again in reverse topological order to compute the
+contracting nodes. However, as I said, this does not work given the
+current treatment of closure bounds, but perhaps in the future we can
+address this problem somehow and make region inference somewhat more
+efficient. Note that this is solely a matter of performance, not
+expressiveness.
 
 # Skolemization and functions
 
