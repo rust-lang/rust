@@ -558,4 +558,15 @@ mod tests {
             val & !(0xff << (byte * 8))
         }
     }
+
+    #[test]
+    fn test_float_hashes_differ() {
+        assert!(0.0.hash() != 1.0.hash());
+        assert!(1.0.hash() != (-1.0).hash());
+    }
+
+    #[test]
+    fn test_float_hashes_of_zero() {
+        assert_eq!(0.0.hash(), (-0.0).hash());
+    }
 }
