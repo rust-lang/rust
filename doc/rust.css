@@ -12,41 +12,38 @@ body {
 }
 
 h1 {
-    font-size: 20pt;
-    margin-top: 2em;
+    font-size: 24pt;
+    margin-top: 1.6em;
     padding-left: 0.4em;
     line-height: 1.6em;
     background-color:#FFF2CE;
     border-radius: 0.2em;
-    border: 1px solid rgba(0, 0, 0, 0.15);
 }
 
 h2 {
-    font-size: 15pt;
-    margin-top: 2em;
-    padding-left: 0.4em;
+    font-size: 16pt;
+    margin-top: 1.6em;
+    padding: 0.2em 0.5em;
     background-color:#FFF2CE;
     border-radius: 0.4em;
-    border: 1px solid rgba(0, 0, 0, 0.15);
 }
 
 h2 code {
     color: #097334;
-    font-size: 15pt;
+    font-size: 16pt;
 }
 
 h3 {
-    font-size: 13pt;
+    font-size: 14pt;
     color: black;
     background-color:#D9E7FF;
     border-radius: 0.4em;
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    padding: 0 0.4em 0 0.4em;
+    padding: 0.2em 0.5em;
 }
 
 h3 code {
     color: #541800;
-    font-size: 13pt;
+    font-size: 14pt;
     font-style: italic;
 }
 
