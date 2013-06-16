@@ -155,7 +155,7 @@ mod test {
                     if i == 100 { return; }
 
                     let tube = Cell(Cell(tube));
-                    do Local::borrow::<Scheduler> |sched| {
+                    do Local::borrow::<Scheduler, ()> |sched| {
                         let tube = tube.take();
                         do sched.event_loop.callback {
                             let mut tube = tube.take();

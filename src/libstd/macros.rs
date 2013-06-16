@@ -38,16 +38,18 @@ macro_rules! rtassert (
     } )
 )
 
+
+// The do_abort function was originally inside the abort macro, but
+// this was ICEing the compiler so it has been moved outside. Now this
+// seems to work?
+pub fn do_abort() -> ! {
+    unsafe { ::libc::abort(); }
+}
+
 macro_rules! abort(
     ($( $msg:expr),+) => ( {
         rtdebug!($($msg),+);
-
-        do_abort();
-
-        // NB: This is in a fn to avoid putting the `unsafe` block in a macro,
-        // which causes spurious 'unnecessary unsafe block' warnings.
-        fn do_abort() -> ! {
-            unsafe { ::libc::abort(); }
-        }
+        ::macros::do_abort();
     } )
 )
+
