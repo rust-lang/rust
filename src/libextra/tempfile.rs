@@ -36,7 +36,6 @@ mod tests {
     use tempfile::mkdtemp;
 
     use core::os;
-    use core::str;
 
     #[test]
     fn test_mkdtemp() {

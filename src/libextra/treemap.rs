@@ -710,7 +710,6 @@ mod test_treemap {
 
     use core::rand::RngUtil;
     use core::rand;
-    use core::str;
     use core::vec;
 
     #[test]

@@ -229,8 +229,6 @@ impl<'self> FromBase64 for &'self str {
 
 #[cfg(test)]
 mod tests {
-    use core::str;
-
     #[test]
     fn test_to_base64() {
         assert_eq!("".to_base64(), ~"");

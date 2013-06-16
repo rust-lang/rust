@@ -15,7 +15,6 @@ use cstore = metadata::cstore;
 use driver::session::Session;
 use e = metadata::encoder;
 use metadata::decoder;
-use metadata::encoder;
 use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter};
 use metadata::tyencode;
