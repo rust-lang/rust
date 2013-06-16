@@ -209,7 +209,7 @@ impl<T: Owned> Peekable<T> for PortSet<T> {
     fn peek(&self) -> bool {
         // It'd be nice to use self.port.each, but that version isn't
         // pure.
-        for uint::range(0, vec::uniq_len(&const self.ports)) |i| {
+        for uint::range(0, self.ports.len()) |i| {
             let port: &pipesy::Port<T> = &self.ports[i];
             if port.peek() {
                 return true;

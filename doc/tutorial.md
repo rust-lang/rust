@@ -2039,17 +2039,12 @@ themselves contain type parameters. A trait for generalized sequence
 types might look like the following:
 
 ~~~~
-# use std::vec;
 trait Seq<T> {
-    fn len(&self) -> uint;
-    fn iter(&self, b: &fn(v: &T));
+    fn length(&self) -> uint;
 }
 
 impl<T> Seq<T> for ~[T] {
-    fn len(&self) -> uint { self.len() }
-    fn iter(&self, b: &fn(v: &T)) {
-        for vec::each(*self) |elt| { b(elt); }
-    }
+    fn length(&self) -> uint { self.len() }
 }
 ~~~~
 

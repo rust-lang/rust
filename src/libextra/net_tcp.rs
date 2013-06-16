@@ -879,8 +879,7 @@ impl io::Reader for TcpSocketBuf {
 
           // If possible, copy up to `len` bytes from the internal
           // `data.buf` into `buf`
-          let nbuffered = vec::uniq_len(&const self.data.buf) -
-                self.data.buf_off;
+          let nbuffered = self.data.buf.len() - self.data.buf_off;
           let needed = len - count;
             if nbuffered > 0 {
                 unsafe {
@@ -934,7 +933,7 @@ impl io::Reader for TcpSocketBuf {
     }
     fn read_byte(&self) -> int {
         loop {
-          if vec::uniq_len(&const self.data.buf) > self.data.buf_off {
+          if self.data.buf.len() > self.data.buf_off {
             let c = self.data.buf[self.data.buf_off];
             self.data.buf_off += 1;
             return c as int

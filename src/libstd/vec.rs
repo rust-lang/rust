@@ -118,15 +118,6 @@ pub fn capacity<T>(v: &const ~[T]) -> uint {
     }
 }
 
-// A botch to tide us over until core and std are fully demuted.
-#[allow(missing_doc)]
-pub fn uniq_len<T>(v: &const ~[T]) -> uint {
-    unsafe {
-        let v: &~[T] = transmute(v);
-        as_const_buf(*v, |_p, len| len)
-    }
-}
-
 /**
  * Creates and initializes an owned vector.
  *
@@ -1767,19 +1758,32 @@ pub mod traits {
     }
 }
 
-impl<'self,T> Container for &'self const [T] {
+impl<'self, T> Container for &'self const [T] {
     /// Returns true if a vector contains no elements
     #[inline]
-    fn is_empty(&const self) -> bool {
+    fn is_empty(&self) -> bool {
         as_const_buf(*self, |_p, len| len == 0u)
     }
 
     /// Returns the length of a vector
     #[inline]
-    fn len(&const self) -> uint {
+    fn len(&self) -> uint {
         as_const_buf(*self, |_p, len| len)
     }
+}
 
+impl<T> Container for ~[T] {
+    /// Returns true if a vector contains no elements
+    #[inline]
+    fn is_empty(&self) -> bool {
+        as_const_buf(*self, |_p, len| len == 0u)
+    }
+
+    /// Returns the length of a vector
+    #[inline]
+    fn len(&self) -> uint {
+        as_const_buf(*self, |_p, len| len)
+    }
 }
 
 #[allow(missing_doc)]
@@ -2613,23 +2617,6 @@ impl<A:Copy> old_iter::CopyableIter<A> for @[A] {
     pub fn find(&self, f: &fn(&A) -> bool) -> Option<A> {
         old_iter::find(self, f)
     }
-}
-
-impl<'self,A:Copy + Ord> old_iter::CopyableOrderedIter<A> for &'self [A] {
-    fn min(&self) -> A { old_iter::min(self) }
-    fn max(&self) -> A { old_iter::max(self) }
-}
-
-// FIXME(#4148): This should be redundant
-impl<A:Copy + Ord> old_iter::CopyableOrderedIter<A> for ~[A] {
-    fn min(&self) -> A { old_iter::min(self) }
-    fn max(&self) -> A { old_iter::max(self) }
-}
-
-// FIXME(#4148): This should be redundant
-impl<A:Copy + Ord> old_iter::CopyableOrderedIter<A> for @[A] {
-    fn min(&self) -> A { old_iter::min(self) }
-    fn max(&self) -> A { old_iter::max(self) }
 }
 
 impl<A:Clone> Clone for ~[A] {

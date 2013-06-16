@@ -1685,10 +1685,11 @@ mod tests {
           assert!((ostream as uint != 0u));
           let s = ~"hello";
           let mut buf = s.as_bytes_with_null().to_owned();
+          let len = buf.len();
           do vec::as_mut_buf(buf) |b, _len| {
-              assert!((libc::fwrite(b as *c_void, 1u as size_t,
-                                   (s.len() + 1u) as size_t, ostream)
-                      == buf.len() as size_t))
+              assert_eq!(libc::fwrite(b as *c_void, 1u as size_t,
+                                      (s.len() + 1u) as size_t, ostream),
+                         len as size_t)
           }
           assert_eq!(libc::fclose(ostream), (0u as c_int));
           let in_mode = in.get_mode();
