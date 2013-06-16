@@ -17,6 +17,8 @@ use lib::llvm::{True, ModuleRef, ValueRef};
 use middle::trans::common::*;
 use middle::trans;
 
+use middle::trans::type_::Type;
+
 use core::str;
 
 pub struct Ctxt {
@@ -32,7 +34,7 @@ pub fn mk_global(ccx: &CrateContext,
               -> ValueRef {
     unsafe {
         let llglobal = do str::as_c_str(name) |buf| {
-            llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval), buf)
+            llvm::LLVMAddGlobal(ccx.llmod, val_ty(llval).to_ref(), buf)
         };
         llvm::LLVMSetInitializer(llglobal, llval);
         llvm::LLVMSetGlobalConstant(llglobal, True);
@@ -50,7 +52,7 @@ pub fn mk_ctxt(llmod: ModuleRef) -> Ctxt {
     unsafe {
         let llshapetablesty = Type::named_struct("shapes");
         do "shapes".as_c_str |buf| {
-            llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
+            llvm::LLVMAddGlobal(llmod, llshapetablesty.to_ref(), buf)
         };
 
         Ctxt {

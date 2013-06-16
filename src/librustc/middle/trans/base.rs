@@ -63,6 +63,8 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
 
+use middle::trans::type_::Type;
+
 use core::hash;
 use core::hashmap::{HashMap};
 use core::int;
@@ -150,7 +152,7 @@ pub fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv, ty: Type) 
 }
 
 pub fn decl_cdecl_fn(llmod: ModuleRef, name: &str, ty: Type) -> ValueRef {
-    return decl_fn(llmod, name, lib::llvm::CCallConv, llty);
+    return decl_fn(llmod, name, lib::llvm::CCallConv, ty);
 }
 
 // Only use this if you are going to actually define the function. It's
@@ -229,7 +231,7 @@ pub fn opaque_box_body(bcx: block,
     let _icx = bcx.insn_ctxt("opaque_box_body");
     let ccx = bcx.ccx();
     let ty = type_of(ccx, body_t);
-    let ty = Type::box(ccx, ty);
+    let ty = Type::box(ccx, &ty);
     let boxptr = PointerCast(bcx, boxptr, ty.ptr_to());
     GEPi(bcx, boxptr, [0u, abi::box_field_body])
 }
@@ -281,15 +283,8 @@ pub fn malloc_raw_dyn(bcx: block,
 * address space 0. Otherwise the resulting (non-box) pointer will be in the
 * wrong address space and thus be the wrong type.
 */
-pub fn non_gc_box_cast(bcx: block, val: ValueRef) -> ValueRef {
-    unsafe {
-        debug!("non_gc_box_cast");
-        add_comment(bcx, "non_gc_box_cast");
-        assert!(llvm::LLVMGetPointerAddressSpace(val_ty(val)) ==
-                     gc_box_addrspace || bcx.unreachable);
-        let non_gc_t = llvm::LLVMGetElementType(val_ty(val)).ptr_to();
-        PointerCast(bcx, val, non_gc_t)
-    }
+pub fn non_gc_box_cast(_: block, val: ValueRef) -> ValueRef {
+    val
 }
 
 // malloc_raw: expects an unboxed type and returns a pointer to
@@ -721,8 +716,8 @@ pub fn cast_shift_expr_rhs(cx: block, op: ast::binop,
 pub fn cast_shift_const_rhs(op: ast::binop,
                             lhs: ValueRef, rhs: ValueRef) -> ValueRef {
     cast_shift_rhs(op, lhs, rhs,
-                   |a, b| unsafe { llvm::LLVMConstTrunc(a, b) },
-                   |a, b| unsafe { llvm::LLVMConstZExt(a, b) })
+                   |a, b| unsafe { llvm::LLVMConstTrunc(a, b.to_ref()) },
+                   |a, b| unsafe { llvm::LLVMConstZExt(a, b.to_ref()) })
 }
 
 pub fn cast_shift_rhs(op: ast::binop,
@@ -735,8 +730,8 @@ pub fn cast_shift_rhs(op: ast::binop,
         if ast_util::is_shift_binop(op) {
             let rhs_llty = val_ty(rhs);
             let lhs_llty = val_ty(lhs);
-            let rhs_sz = llvm::LLVMGetIntTypeWidth(rhs_llty);
-            let lhs_sz = llvm::LLVMGetIntTypeWidth(lhs_llty);
+            let rhs_sz = llvm::LLVMGetIntTypeWidth(rhs_llty.to_ref());
+            let lhs_sz = llvm::LLVMGetIntTypeWidth(lhs_llty.to_ref());
             if lhs_sz < rhs_sz {
                 trunc(rhs, lhs_llty)
             } else if lhs_sz > rhs_sz {
@@ -761,11 +756,11 @@ pub fn fail_if_zero(cx: block, span: span, divrem: ast::binop,
     };
     let is_zero = match ty::get(rhs_t).sty {
       ty::ty_int(t) => {
-        let zero = C_integral(Type::int_from_ty(cx.ccx(), t), 0u64, False);
+        let zero = C_integral(Type::int_from_ty(cx.ccx(), t), 0u64, false);
         ICmp(cx, lib::llvm::IntEQ, rhs, zero)
       }
       ty::ty_uint(t) => {
-        let zero = C_integral(Type::uint_from_ty(cx.ccx(), t), 0u64, False);
+        let zero = C_integral(Type::uint_from_ty(cx.ccx(), t), 0u64, false);
         ICmp(cx, lib::llvm::IntEQ, rhs, zero)
       }
       _ => {
@@ -779,7 +774,7 @@ pub fn fail_if_zero(cx: block, span: span, divrem: ast::binop,
 }
 
 pub fn null_env_ptr(bcx: block) -> ValueRef {
-    C_null(Type::opaque_box(bcx.ccx()).to_ptr())
+    C_null(Type::opaque_box(bcx.ccx()).ptr_to())
 }
 
 pub fn trans_external_path(ccx: &mut CrateContext, did: ast::def_id, t: ty::t)
@@ -1479,7 +1474,7 @@ pub fn memzero(cx: block, llptr: ValueRef, llty: TypeRef) {
     let llintrinsicfn = ccx.intrinsics.get_copy(&intrinsic_key);
     let llptr = PointerCast(cx, llptr, Type::i8().ptr_to());
     let llzeroval = C_u8(0);
-    let size = IntCast(cx, machine::llsize_of(ccx, ty), ccx.int_type.to_ref());
+    let size = IntCast(cx, machine::llsize_of(ccx, ty), ccx.int_type);
     let align = C_i32(llalign_of_min(ccx, ty) as i32);
     let volatile = C_i1(false);
     Call(cx, llintrinsicfn, [llptr, llzeroval, size, align, volatile]);
@@ -1506,7 +1501,7 @@ pub fn alloca_maybe_zeroed(cx: block, t: TypeRef, zero: bool) -> ValueRef {
         }
     }
     let initcx = base::raw_block(cx.fcx, false, cx.fcx.llstaticallocas);
-    let p = Alloca(initcx, ty.to_ref());
+    let p = Alloca(initcx, ty);
     if zero { memzero(initcx, p, ty); }
     p
 }
@@ -1515,10 +1510,10 @@ pub fn arrayalloca(cx: block, t: TypeRef, v: ValueRef) -> ValueRef {
     let _icx = cx.insn_ctxt("arrayalloca");
     if cx.unreachable {
         unsafe {
-            return llvm::LLVMGetUndef(ty);
+            return llvm::LLVMGetUndef(ty.to_ref());
         }
     }
-    return ArrayAlloca(base::raw_block(cx.fcx, false, cx.fcx.llstaticallocas), ty.to_ref(), v);
+    return ArrayAlloca(base::raw_block(cx.fcx, false, cx.fcx.llstaticallocas), ty, v);
 }
 
 pub struct BasicBlocks {
@@ -1588,7 +1583,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
     let fcx = @mut fn_ctxt_ {
           llfn: llfndecl,
           llenv: unsafe {
-              llvm::LLVMGetUndef(Type::i8p())
+              llvm::LLVMGetUndef(Type::i8p().to_ref())
           },
           llretptr: None,
           llstaticallocas: llbbs.sa,
@@ -2309,7 +2304,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
     fn create_entry_fn(ccx: @mut CrateContext,
                        rust_main: ValueRef,
                        use_start_lang_item: bool) {
-        let llfty = Type::func([ccx.int_type, Type::i8().ptr_to().ptr_to()], ccx.int_type);
+        let llfty = Type::func([ccx.int_type, Type::i8().ptr_to().ptr_to()], &ccx.int_type);
 
         // FIXME #4404 android JNI hacks
         let llfn = if *ccx.sess.building_library {
@@ -2338,10 +2333,9 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
             }
 
             let crate_map = ccx.crate_map;
-            let opaque_crate_map = llvm::LLVMBuildPointerCast(bld,
-                                                              crate_map,
-                                                              Type::i8p(),
-                                                              noname());
+            let opaque_crate_map = do "crate_map".as_c_str |buf| {
+                llvm::LLVMBuildPointerCast(bld, crate_map, Type::i8p().to_ref(), buf)
+            };
 
             let (start_fn, args) = if use_start_lang_item {
                 let start_def_id = ccx.tcx.lang_items.start_fn();
@@ -2354,8 +2348,9 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
                 };
 
                 let args = {
-                    let opaque_rust_main = llvm::LLVMBuildPointerCast(
-                            bld, rust_main, Type::i8p(), noname());
+                    let opaque_rust_main = do "rust_main".as_c_str |buf| {
+                        llvm::LLVMBuildPointerCast(bld, rust_main, Type::i8p().to_ref(), buf)
+                    };
 
                     ~[
                         C_null(Type::opaque_box(ccx).ptr_to()),
@@ -2487,7 +2482,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::node_id) -> ValueRef {
                     let g = do str::as_c_str(ident) |buf| {
                         unsafe {
                             let ty = type_of(ccx, typ);
-                            llvm::LLVMAddGlobal(ccx.llmod, ty, buf)
+                            llvm::LLVMAddGlobal(ccx.llmod, ty.to_ref(), buf)
                         }
                     };
                     g
@@ -2583,7 +2578,7 @@ pub fn trans_constant(ccx: @mut CrateContext, it: @ast::item) {
             note_unique_llvm_symbol(ccx, s);
             let discrim_gvar = str::as_c_str(s, |buf| {
                 unsafe {
-                    llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
+                    llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type.to_ref(), buf)
                 }
             });
             unsafe {
@@ -2616,14 +2611,14 @@ pub fn vp2i(cx: block, v: ValueRef) -> ValueRef {
 
 pub fn p2i(ccx: &CrateContext, v: ValueRef) -> ValueRef {
     unsafe {
-        return llvm::LLVMConstPtrToInt(v, ccx.int_type);
+        return llvm::LLVMConstPtrToInt(v, ccx.int_type.to_ref());
     }
 }
 
 macro_rules! ifn (
     ($name:expr, $args:expr, $ret:expr) => ({
         let name = $name;
-        let f = decl_cdecl_fn(llmod, name, Type::func($args, $ret));
+        let f = decl_cdecl_fn(llmod, name, Type::func($args, &$ret));
         intrinsics.insert(name, f);
     })
 )
@@ -2642,7 +2637,7 @@ pub fn declare_intrinsics(llmod: ModuleRef) -> HashMap<&'static str, ValueRef> {
          [i8p, i8p, Type::i64(), Type::i32(), Type::i1()], Type::void());
     ifn!("llvm.memset.p0i8.i32",
          [i8p, Type::i8(), Type::i32(), Type::i32(), Type::i1()], Type::void());
-    ifn!("llvm.memcpy.p0i8.i64",
+    ifn!("llvm.memset.p0i8.i64",
          [i8p, Type::i8(), Type::i64(), Type::i32(), Type::i1()], Type::void());
 
     ifn!("llvm.trap", [], Type::void());
@@ -2710,7 +2705,7 @@ pub fn declare_dbg_intrinsics(llmod: ModuleRef, intrinsics: &mut HashMap<&'stati
 }
 
 pub fn trap(bcx: block) {
-    match bcx.ccx().intrinsics.find_equiv("llvm.trap") {
+    match bcx.ccx().intrinsics.find_equiv(& &"llvm.trap") {
       Some(&x) => { Call(bcx, x, []); },
       _ => bcx.sess().bug("unbound llvm.trap in trap")
     }
@@ -2724,7 +2719,7 @@ pub fn decl_gc_metadata(ccx: &mut CrateContext, llmod_id: &str) {
     let gc_metadata_name = ~"_gc_module_metadata_" + llmod_id;
     let gc_metadata = do str::as_c_str(gc_metadata_name) |buf| {
         unsafe {
-            llvm::LLVMAddGlobal(ccx.llmod, Type::i32(), buf)
+            llvm::LLVMAddGlobal(ccx.llmod, Type::i32().to_ref(), buf)
         }
     };
     unsafe {
@@ -2736,12 +2731,12 @@ pub fn decl_gc_metadata(ccx: &mut CrateContext, llmod_id: &str) {
 
 pub fn create_module_map(ccx: &mut CrateContext) -> ValueRef {
     let elttype = Type::struct_([ccx.int_type, ccx.int_type], false);
-    let maptype = Type::array(elttype, ccx.module_data.len() + 1);
-    let map = str::as_c_str("_rust_mod_map", |buf| {
+    let maptype = Type::array(&elttype, (ccx.module_data.len() + 1) as u64);
+    let map = do "_rust_mod_map".as_c_str |buf| {
         unsafe {
-            llvm::LLVMAddGlobal(ccx.llmod, maptype, buf)
+            llvm::LLVMAddGlobal(ccx.llmod, maptype.to_ref(), buf)
         }
-    });
+    };
     lib::llvm::SetLinkage(map, lib::llvm::InternalLinkage);
     let mut elts: ~[ValueRef] = ~[];
 
@@ -2783,11 +2778,11 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
         ~"toplevel"
     };
     let sym_name = ~"_rust_crate_map_" + mapname;
-    let arrtype = Type::array(int_type, n_subcrates as u64);
+    let arrtype = Type::array(&int_type, n_subcrates as u64);
     let maptype = Type::struct_([Type::i32(), Type::i8p(), int_type, arrtype], false);
     let map = str::as_c_str(sym_name, |buf| {
         unsafe {
-            llvm::LLVMAddGlobal(llmod, maptype, buf)
+            llvm::LLVMAddGlobal(llmod, maptype.to_ref(), buf)
         }
     });
     lib::llvm::SetLinkage(map, lib::llvm::ExternalLinkage);
@@ -2806,7 +2801,7 @@ pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
                       cstore::get_crate_hash(cstore, i));
         let cr = str::as_c_str(nm, |buf| {
             unsafe {
-                llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type, buf)
+                llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type.to_ref(), buf)
             }
         });
         subcrates.push(p2i(ccx, cr));
@@ -2830,8 +2825,7 @@ pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
         let mod_map = create_module_map(ccx);
         llvm::LLVMSetInitializer(map, C_struct(
             [C_i32(1),
-             lib::llvm::llvm::LLVMConstPointerCast(llannihilatefn,
-                                                   Type::i8p()),
+             lib::llvm::llvm::LLVMConstPointerCast(llannihilatefn, Type::i8p().to_ref()),
              p2i(ccx, mod_map),
              C_array(ccx.int_type, subcrates)]));
     }
@@ -2869,7 +2863,7 @@ pub fn write_metadata(cx: &mut CrateContext, crate: &ast::crate) {
     let llconst = C_struct([llmeta]);
     let mut llglobal = str::as_c_str("rust_metadata", |buf| {
         unsafe {
-            llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst), buf)
+            llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst).to_ref(), buf)
         }
     });
     unsafe {
@@ -2880,9 +2874,9 @@ pub fn write_metadata(cx: &mut CrateContext, crate: &ast::crate) {
         lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
 
         let t_ptr_i8 = Type::i8p();
-        llglobal = llvm::LLVMConstBitCast(llglobal, t_ptr_i8);
+        llglobal = llvm::LLVMConstBitCast(llglobal, t_ptr_i8.to_ref());
         let llvm_used = do "llvm.used".as_c_str |buf| {
-            llvm::LLVMAddGlobal(cx.llmod, Type::array(t_ptr_i8, 1u), buf)
+            llvm::LLVMAddGlobal(cx.llmod, Type::array(&t_ptr_i8, 1).to_ref(), buf)
         };
         lib::llvm::SetLinkage(llvm_used, lib::llvm::AppendingLinkage);
         llvm::LLVMSetInitializer(llvm_used, C_array(t_ptr_i8, [llglobal]));

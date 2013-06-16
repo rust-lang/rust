@@ -26,6 +26,8 @@ use middle::trans::type_of::*;
 use middle::ty;
 use util::ppaux::ty_to_str;
 
+use middle::trans::type_::Type;
+
 use core::str;
 use core::vec;
 use syntax::ast;

@@ -11,6 +11,7 @@
 use core::prelude::*;
 
 use lib::llvm::{llvm, TypeRef, Bool, False, True, TypeKind};
+use lib::llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 
 use middle::ty;
 
@@ -26,6 +27,7 @@ use core::cast;
 
 use core::libc::{c_uint};
 
+#[deriving(Eq)]
 pub struct Type {
     priv rf: TypeRef
 }
@@ -38,12 +40,14 @@ macro_rules! ty (
  * Wrapper for LLVM TypeRef
  */
 impl Type {
+    #[inline(always)]
     pub fn from_ref(r: TypeRef) -> Type {
         Type {
             rf: r
         }
     }
 
+    #[inline(always)] // So it doesn't kill --opt-level=0 builds of the compiler
     pub fn to_ref(&self) -> TypeRef {
         self.rf
     }
@@ -136,7 +140,7 @@ impl Type {
 
     pub fn float_from_ty(ctx: &CrateContext, t: ast::float_ty) -> Type {
         match t {
-            ast::ty_f => ctx.float_ty,
+            ast::ty_f => ctx.float_type,
             ast::ty_f32 => Type::f32(),
             ast::ty_f64 => Type::f64()
         }
@@ -147,7 +151,7 @@ impl Type {
     }
 
     pub fn func(args: &[Type], ret: &Type) -> Type {
-        let vec : &[TypeRef] = unsafe { cast::transmute() };
+        let vec : &[TypeRef] = unsafe { cast::transmute(args) };
         ty!(llvm::LLVMFunctionType(ret.to_ref(), vec::raw::to_ptr(vec),
                                    args.len() as c_uint, False))
     }
@@ -157,12 +161,13 @@ impl Type {
     }
 
     pub fn ptr(ty: Type) -> Type {
-        ty!(llvm::LLVMPointerType(ty, 0 as c_uint))
+        ty!(llvm::LLVMPointerType(ty.to_ref(), 0 as c_uint))
     }
 
     pub fn struct_(els: &[Type], packed: bool) -> Type {
         let els : &[TypeRef] = unsafe { cast::transmute(els) };
-        ty!(llvm::LLVMStructType(vec::raw::to_ptr(els), els.len() as c_uint, packed as Bool))
+        ty!(llvm::LLVMStructTypeInContext(base::task_llcx(), vec::raw::to_ptr(els),
+                                          els.len() as c_uint, packed as Bool))
     }
 
     pub fn named_struct(name: &str) -> Type {
@@ -175,7 +180,7 @@ impl Type {
     }
 
     pub fn vtable() -> Type {
-        Type::array(Type::i8().ptr_to(), 1)
+        Type::array(&Type::i8().ptr_to(), 1)
     }
 
     pub fn generic_glue_fn(cx: &mut CrateContext) -> Type {
@@ -185,7 +190,7 @@ impl Type {
         }
 
         let ty = cx.tydesc_type.get_field(abi::tydesc_field_drop_glue);
-        cx.tn.associate_type("glue_fn", ty);
+        cx.tn.associate_type("glue_fn", &ty);
 
         return ty;
     }
@@ -193,10 +198,9 @@ impl Type {
     pub fn tydesc(arch: Architecture) -> Type {
         let mut tydesc = Type::named_struct("tydesc");
         let tydescpp = tydesc.ptr_to().ptr_to();
-        let pvoid = Type::i8().ptr_to();
-        let glue_fn_ty = Type::func(
-            [ Type::nil.ptr_to(), tydescpp, pvoid ],
-            Type::void()).ptr_to();
+        let pvoid = Type::i8p();
+        let glue_fn_ty = Type::func([ Type::nil().ptr_to(), tydescpp, pvoid ],
+            &Type::void()).ptr_to();
 
         let int_ty = Type::int(arch);
 
@@ -226,7 +230,7 @@ impl Type {
     }
 
     pub fn opaque_vec(arch: Architecture) -> Type {
-        Type::vec(arch, Type::i8())
+        Type::vec(arch, &Type::i8())
     }
 
     #[inline]
@@ -242,11 +246,11 @@ impl Type {
     }
 
     pub fn box(ctx: &CrateContext, ty: &Type) -> Type {
-        Type::struct_(Type::box_header_fields(ctx) + [ty], false)
+        Type::struct_(Type::box_header_fields(ctx) + [*ty], false)
     }
 
     pub fn opaque_box(ctx: &CrateContext) -> Type {
-        Type::box(ctx, Type::i8())
+        Type::box(ctx, &Type::i8())
     }
 
     pub fn unique(ctx: &CrateContext, ty: &Type) -> Type {
@@ -254,7 +258,7 @@ impl Type {
     }
 
     pub fn opaque_cbox_ptr(cx: &CrateContext) -> Type {
-        Type::opaque_box().ptr_to()
+        Type::opaque_box(cx).ptr_to()
     }
 
     pub fn enum_discrim(cx: &CrateContext) -> Type {
@@ -275,7 +279,7 @@ impl Type {
             }
             ty::UniqTraitStore => {
                 Type::struct_(
-                    [ tydesc_ptr, Type::unique(ctx, Type::i8()).ptr_to()],
+                    [ tydesc_ptr, Type::unique(ctx, &Type::i8()).ptr_to()],
                 false)
             }
             ty::RegionTraitStore(*) => {
@@ -301,7 +305,7 @@ impl Type {
     }
 
     pub fn ptr_to(&self) -> Type {
-        ty!(llvm::LLVMPointerType(self.to_ref()))
+        ty!(llvm::LLVMPointerType(self.to_ref(), 0))
     }
 
     pub fn get_field(&self, idx: uint) -> Type {
@@ -335,14 +339,38 @@ impl Type {
 
     pub fn field_types(&self) -> ~[Type] {
         unsafe {
-            let n_elts = llvm::LLVMCountStructElementTypes(struct_ty) as uint;
+            let n_elts = llvm::LLVMCountStructElementTypes(self.to_ref()) as uint;
             if n_elts == 0 {
                 return ~[];
             }
             let mut elts = vec::from_elem(n_elts, 0 as TypeRef);
-            llvm::LLVMGetStructElementTypes(struct_ty, &mut elts[0]);
+            llvm::LLVMGetStructElementTypes(self.to_ref(), &mut elts[0]);
             cast::transmute(elts)
         }
     }
 
+    pub fn return_type(&self) -> Type {
+        unsafe {
+            ty!(llvm::LLVMGetReturnType(self.to_ref()))
+        }
+    }
+
+    pub fn func_params(&self) -> ~[Type] {
+        unsafe {
+            let n_args = llvm::LLVMCountParamTypes(self.to_ref()) as uint;
+            let args = vec::from_elem(n_args, 0 as TypeRef);
+            llvm::LLVMGetParamTypes(self.to_ref(), vec::raw::to_ptr(args));
+            cast::transmute(args)
+        }
+    }
+
+    pub fn float_width(&self) -> uint {
+        match self.kind() {
+            Float => 32,
+            Double => 64,
+            X86_FP80 => 80,
+            FP128 | PPC_FP128 => 128,
+            _ => fail!("llvm_float_width called on a non-float type")
+        }
+    }
 }

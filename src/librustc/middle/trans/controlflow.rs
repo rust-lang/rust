@@ -24,6 +24,8 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux;
 
+use middle::trans::type_::Type;
+
 use core::str;
 use core::vec;
 use syntax::ast;
@@ -204,7 +206,7 @@ pub fn trans_log(log_ex: @ast::expr,
         let global;
         unsafe {
             global = str::as_c_str(s, |buf| {
-                llvm::LLVMAddGlobal(ccx.llmod, Type::i32(), buf)
+                llvm::LLVMAddGlobal(ccx.llmod, Type::i32().to_ref(), buf)
             });
             llvm::LLVMSetGlobalConstant(global, False);
             llvm::LLVMSetInitializer(global, C_null(Type::i32()));

@@ -20,6 +20,8 @@ use middle::trans::callee;
 use middle::trans::common::*;
 use middle::ty;
 
+use middle::trans::type_::Type;
+
 use core::str;
 use syntax::ast;
 

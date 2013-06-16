@@ -18,7 +18,7 @@ use back::abi;
 use back::link::*;
 use driver::session;
 use lib;
-use lib::llvm::{llvm, ValueRef, Type, True};
+use lib::llvm::{llvm, ValueRef, True};
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::callee;
@@ -29,11 +29,13 @@ use middle::trans::expr;
 use middle::trans::machine::*;
 use middle::trans::reflect;
 use middle::trans::tvec;
-use middle::trans::type_of::{type_of, type_of_glue_fn};
+use middle::trans::type_of::type_of;
 use middle::trans::uniq;
 use middle::ty;
 use util::ppaux;
 use util::ppaux::ty_to_short_str;
+
+use middle::trans::type_::Type;
 
 use core::io;
 use core::libc::c_uint;
@@ -74,16 +76,6 @@ pub fn drop_ty(cx: block, v: ValueRef, t: ty::t) -> block {
         return call_tydesc_glue(cx, v, t, abi::tydesc_field_drop_glue);
     }
     return cx;
-}
-
-pub fn drop_ty_root(bcx: block, v: ValueRef, rooted: bool, t: ty::t) -> block {
-    if rooted {
-        // NB: v is a raw ptr to an addrspace'd ptr to the value.
-        let v = PointerCast(bcx, Load(bcx, v), type_of(bcx.ccx(), t).ptr_to());
-        drop_ty(bcx, v, t)
-    } else {
-        drop_ty(bcx, v, t)
-    }
 }
 
 pub fn drop_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
@@ -436,8 +428,8 @@ pub fn trans_struct_drop(bcx: block,
 
         // The second argument is the "self" argument for drop
         let params = unsafe {
-            lib::llvm::fn_ty_param_tys(
-                llvm::LLVMGetElementType(llvm::LLVMTypeOf(dtor_addr)))
+            let ty = Type::from_ref(llvm::LLVMTypeOf(dtor_addr));
+            ty.element_type().func_params()
         };
 
         // Class dtors have no explicit args, so the params should
@@ -617,20 +609,6 @@ pub fn incr_refcnt_of_boxed(cx: block, box_ptr: ValueRef) {
 }
 
 
-// Chooses the addrspace for newly declared types.
-pub fn declare_tydesc_addrspace(ccx: &CrateContext, t: ty::t) -> addrspace {
-    if !ty::type_needs_drop(ccx.tcx, t) {
-        return default_addrspace;
-    } else if ty::type_is_immediate(t) {
-        // For immediate types, we don't actually need an addrspace, because
-        // e.g. boxed types include pointers to their contents which are
-        // already correctly tagged with addrspaces.
-        return default_addrspace;
-    } else {
-        return (ccx.next_addrspace)();
-    }
-}
-
 // Generates the declaration for (but doesn't emit) a type descriptor.
 pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
     // If emit_tydescs already ran, then we shouldn't be creating any new
@@ -640,20 +618,18 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
     let llty = type_of(ccx, t);
 
     if ccx.sess.count_type_sizes() {
-        io::println(fmt!("%u\t%s",
-                         llsize_of_real(ccx, llty),
+        io::println(fmt!("%u\t%s", llsize_of_real(ccx, llty),
                          ppaux::ty_to_str(ccx.tcx, t)));
     }
 
     let llsize = llsize_of(ccx, llty);
     let llalign = llalign_of(ccx, llty);
-    let addrspace = declare_tydesc_addrspace(ccx, t);
     let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc").to_managed();
     note_unique_llvm_symbol(ccx, name);
     debug!("+++ declare_tydesc %s %s", ppaux::ty_to_str(ccx.tcx, t), name);
     let gvar = str::as_c_str(name, |buf| {
         unsafe {
-            llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type, buf)
+            llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type.to_ref(), buf)
         }
     });
     let inf = @mut tydesc_info {
@@ -661,7 +637,6 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
         tydesc: gvar,
         size: llsize,
         align: llalign,
-        addrspace: addrspace,
         take_glue: None,
         drop_glue: None,
         free_glue: None,
@@ -706,7 +681,11 @@ pub fn make_generic_glue_inner(ccx: @mut CrateContext,
     let llty = type_of(ccx, t);
     let llrawptr0 = PointerCast(bcx, llrawptr0, llty.ptr_to());
     helper(bcx, llrawptr0, t);
-    finish_fn(fcx, lltop);
+
+    // This is from the general finish fn, but that emits a ret {} that we don't want
+    Br(raw_block(fcx, false, fcx.llstaticallocas), lltop);
+    RetVoid(raw_block(fcx, false, fcx.llreturn));
+
     return llfn;
 }
 
@@ -732,7 +711,7 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
     //let _icx = ccx.insn_ctxt("emit_tydescs");
     // As of this point, allow no more tydescs to be created.
     ccx.finished_tydescs = true;
-    let glue_fn_ty = T_generic_glue_fn(ccx).ptr_to();
+    let glue_fn_ty = Type::generic_glue_fn(ccx);
     let tyds = &mut ccx.tydescs;
     for tyds.each_value |&val| {
         let ti = val;
@@ -747,7 +726,7 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
               Some(v) => {
                 unsafe {
                     ccx.stats.n_real_glues += 1u;
-                    llvm::LLVMConstPointerCast(v, glue_fn_ty)
+                    llvm::LLVMConstPointerCast(v, glue_fn_ty.to_ref())
                 }
               }
             };
@@ -757,7 +736,7 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
               Some(v) => {
                 unsafe {
                     ccx.stats.n_real_glues += 1u;
-                    llvm::LLVMConstPointerCast(v, glue_fn_ty)
+                    llvm::LLVMConstPointerCast(v, glue_fn_ty.to_ref())
                 }
               }
             };
@@ -767,7 +746,7 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
               Some(v) => {
                 unsafe {
                     ccx.stats.n_real_glues += 1u;
-                    llvm::LLVMConstPointerCast(v, glue_fn_ty)
+                    llvm::LLVMConstPointerCast(v, glue_fn_ty.to_ref())
                 }
               }
             };
@@ -777,16 +756,16 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
               Some(v) => {
                 unsafe {
                     ccx.stats.n_real_glues += 1u;
-                    llvm::LLVMConstPointerCast(v, glue_fn_ty)
+                    llvm::LLVMConstPointerCast(v, glue_fn_ty.to_ref())
                 }
               }
             };
 
+
         let shape = C_null(Type::i8p());
         let shape_tables = C_null(Type::i8p());
 
-        let tydesc =
-            C_named_struct(ccx.tydesc_type,
+        let tydesc = C_named_struct(ccx.tydesc_type,
                            [ti.size, // size
                             ti.align, // align
                             take_glue, // take_glue
@@ -802,18 +781,11 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
             llvm::LLVMSetGlobalConstant(gvar, True);
             lib::llvm::SetLinkage(gvar, lib::llvm::InternalLinkage);
 
-            // Index tydesc by addrspace.
-            if ti.addrspace > gc_box_addrspace {
-                let llty = ccx.tydesc_type.ptr_to();
-                let addrspace_name = fmt!("_gc_addrspace_metadata_%u",
-                                          ti.addrspace as uint);
-                let addrspace_gvar = str::as_c_str(addrspace_name, |buf| {
-                    llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
-                });
-                lib::llvm::SetLinkage(addrspace_gvar,
-                                      lib::llvm::InternalLinkage);
-                llvm::LLVMSetInitializer(addrspace_gvar, gvar);
-            }
         }
     };
+}
+
+fn type_of_glue_fn(ccx: &CrateContext) -> Type {
+    let tydescpp = ccx.tydesc_type.ptr_to().ptr_to();
+    Type::func([ Type::nil().ptr_to(), tydescpp, Type::i8p() ], &Type::void())
 }

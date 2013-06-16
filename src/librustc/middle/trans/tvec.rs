@@ -27,6 +27,8 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
+use middle::trans::type_::Type;
+
 use core::option::None;
 use syntax::ast;
 use syntax::codemap;

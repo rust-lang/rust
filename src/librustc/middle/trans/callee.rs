@@ -45,6 +45,8 @@ use middle::typeck;
 use middle::typeck::coherence::make_substs_for_receiver_types;
 use util::ppaux::Repr;
 
+use middle::trans::type_::Type;
+
 use core::vec;
 use syntax::ast;
 use syntax::ast_map;
@@ -526,7 +528,7 @@ pub fn trans_call_inner(in_cx: block,
         let (llfn, llenv) = unsafe {
             match callee.data {
                 Fn(d) => {
-                    (d.llfn, llvm::LLVMGetUndef(Type::opaque_box(ccx).ptr_to()))
+                    (d.llfn, llvm::LLVMGetUndef(Type::opaque_box(ccx).ptr_to().to_ref()))
                 }
                 Method(d) => {
                     // Weird but true: we pass self in the *environment* slot!
@@ -653,7 +655,7 @@ pub fn trans_ret_slot(bcx: block, fn_ty: ty::t, dest: expr::Dest)
         expr::Ignore => {
             if ty::type_is_nil(retty) {
                 unsafe {
-                    llvm::LLVMGetUndef(Type::nil().ptr_to())
+                    llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref())
                 }
             } else {
                 alloc_ty(bcx, retty)
@@ -777,7 +779,7 @@ pub fn trans_arg_expr(bcx: block,
         // to have type lldestty (the callee's expected type).
         let llformal_arg_ty = type_of::type_of(ccx, formal_arg_ty);
         unsafe {
-            val = llvm::LLVMGetUndef(llformal_arg_ty);
+            val = llvm::LLVMGetUndef(llformal_arg_ty.to_ref());
         }
     } else {
         // FIXME(#3548) use the adjustments table

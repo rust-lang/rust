@@ -11,13 +11,14 @@
 // The classification code for the x86_64 ABI is taken from the clay language
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
-use lib::llvm::{llvm, TypeRef, Integer, Pointer, Float, Double};
+use lib::llvm::{llvm, Integer, Pointer, Float, Double};
 use lib::llvm::{Struct, Array, Attribute};
 use lib::llvm::{StructRetAttribute, ByValAttribute};
-use lib::llvm::struct_tys;
 use lib::llvm::True;
 use middle::trans::common::*;
 use middle::trans::cabi::*;
+
+use middle::trans::type_::Type;
 
 use core::libc::c_uint;
 use core::option;
@@ -28,7 +29,7 @@ use core::vec;
 #[deriving(Eq)]
 enum RegClass {
     NoClass,
-    Integer,
+    Int,
     SSEFs,
     SSEFv,
     SSEDs,
@@ -43,7 +44,7 @@ enum RegClass {
 
 impl Type {
     fn is_reg_ty(&self) -> bool {
-        match ty.kind() {
+        match self.kind() {
             Integer | Pointer | Float | Double => true,
             _ => false
         }
@@ -57,6 +58,11 @@ impl RegClass {
             _ => false
         }
     }
+}
+
+trait ClassList {
+    fn is_pass_byval(&self) -> bool;
+    fn is_ret_bysret(&self) -> bool;
 }
 
 impl<'self> ClassList for &'self [RegClass] {
@@ -83,64 +89,64 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
     }
 
     fn ty_align(ty: Type) -> uint {
-        unsafe {
-            match ty.kind() {
-                Integer => {
+        match ty.kind() {
+            Integer => {
+                unsafe {
                     ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
                 }
-                Pointer => 8,
-                Float => 4,
-                Double => 8,
-                Struct => {
-                  if ty.is_packed() {
-                    1
-                  } else {
-                    let str_tys = ty.field_types();
-                    str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
-                  }
-                }
-                Array => {
-                    let elt = ty.element_type();
-                    ty_align(elt)
-                }
-                _ => fail!("ty_size: unhandled type")
-            };
+            }
+            Pointer => 8,
+            Float => 4,
+            Double => 8,
+            Struct => {
+              if ty.is_packed() {
+                1
+              } else {
+                let str_tys = ty.field_types();
+                str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
+              }
+            }
+            Array => {
+                let elt = ty.element_type();
+                ty_align(elt)
+            }
+            _ => fail!("ty_size: unhandled type")
         }
     }
 
-    fn ty_size(ty: TypeRef) -> uint {
-        unsafe {
-            match ty.kind() {
-                Integer => {
-                    ((llvm::LLVMGetIntTypeWidth(ty) as uint) + 7) / 8
+    fn ty_size(ty: Type) -> uint {
+        match ty.kind() {
+            Integer => {
+                unsafe {
+                    ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
                 }
-                Pointer => 8,
-                Float => 4,
-                Double => 8,
-                Struct => {
-                    if ty.is_packed() {
-                        let str_tys = ty.field_types();
-                        str_tys.iter().fold(0, |s, t| s + ty_size(*t))
-                    } else {
-                        let str_tys = ty.field_types();
-                        let size = str_tys.iter().fold(0, |s, t| align(s, *t) + ty_size(*t));
-                        align(size, ty)
-                    }
-                }
-                Array => {
-                    let len = ty.array_length();
-                    let elt = ty.element_type();
-                    let eltsz = ty_size(elt);
-                    len * eltsz
-                }
-                _ => fail!("ty_size: unhandled type")
             }
+            Pointer => 8,
+            Float => 4,
+            Double => 8,
+            Struct => {
+                if ty.is_packed() {
+                    let str_tys = ty.field_types();
+                    str_tys.iter().fold(0, |s, t| s + ty_size(*t))
+                } else {
+                    let str_tys = ty.field_types();
+                    let size = str_tys.iter().fold(0, |s, t| align(s, *t) + ty_size(*t));
+                    align(size, ty)
+                }
+            }
+            Array => {
+                let len = ty.array_length();
+                let elt = ty.element_type();
+                let eltsz = ty_size(elt);
+                len * eltsz
+            }
+            _ => fail!("ty_size: unhandled type")
         }
     }
 
     fn all_mem(cls: &mut [RegClass]) {
         for uint::range(0, cls.len()) |i| {
-            cls[i] = memory_class;
+            cls[i] = Memory;
         }
     }
 
@@ -149,21 +155,21 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
              newv: RegClass) {
         if cls[i] == newv {
             return;
-        } else if cls[i] == no_class {
+        } else if cls[i] == NoClass {
             cls[i] = newv;
-        } else if newv == no_class {
+        } else if newv == NoClass {
             return;
-        } else if cls[i] == memory_class || newv == memory_class {
-            cls[i] = memory_class;
-        } else if cls[i] == integer_class || newv == integer_class {
-            cls[i] = integer_class;
-        } else if cls[i] == x87_class ||
-                  cls[i] == x87up_class ||
-                  cls[i] == complex_x87_class ||
-                  newv == x87_class ||
-                  newv == x87up_class ||
-                  newv == complex_x87_class {
-            cls[i] = memory_class;
+        } else if cls[i] == Memory || newv == Memory {
+            cls[i] = Memory;
+        } else if cls[i] == Int || newv == Int {
+            cls[i] = Int;
+        } else if cls[i] == X87 ||
+                  cls[i] == X87Up ||
+                  cls[i] == ComplexX87 ||
+                  newv == X87 ||
+                  newv == X87Up ||
+                  newv == ComplexX87 {
+            cls[i] = Memory;
         } else {
             cls[i] = newv;
         }
@@ -192,7 +198,7 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
                 let mut i = off / 8u;
                 let e = (off + t_size + 7u) / 8u;
                 while i < e {
-                    unify(cls, ix + i, memory_class);
+                    unify(cls, ix + i, Memory);
                     i += 1u;
                 }
                 return;
@@ -201,17 +207,17 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
             match ty.kind() {
                 Integer |
                 Pointer => {
-                    unify(cls, ix + off / 8u, integer_class);
+                    unify(cls, ix + off / 8u, Int);
                 }
                 Float => {
                     if off % 8u == 4u {
-                        unify(cls, ix + off / 8u, sse_fv_class);
+                        unify(cls, ix + off / 8u, SSEFv);
                     } else {
-                        unify(cls, ix + off / 8u, sse_fs_class);
+                        unify(cls, ix + off / 8u, SSEFs);
                     }
                 }
                 Double => {
-                    unify(cls, ix + off / 8u, sse_ds_class);
+                    unify(cls, ix + off / 8u, SSEDs);
                 }
                 Struct => {
                     classify_struct(ty.field_types(), cls, ix, off);
@@ -242,7 +248,7 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
                 if cls[i].is_sse() {
                     i += 1u;
                     while i < e {
-                        if cls[i] != sseup_class {
+                        if cls[i] != SSEUp {
                             all_mem(cls);
                             return;
                         }
@@ -254,24 +260,24 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
                 }
             } else {
                 while i < e {
-                    if cls[i] == memory_class {
+                    if cls[i] == Memory {
                         all_mem(cls);
                         return;
                     }
-                    if cls[i] == x87up_class {
+                    if cls[i] == X87Up {
                         // for darwin
-                        // cls[i] = sse_ds_class;
+                        // cls[i] = SSEDs;
                         all_mem(cls);
                         return;
                     }
-                    if cls[i] == sseup_class {
-                        cls[i] = sse_int_class;
+                    if cls[i] == SSEUp {
+                        cls[i] = SSEInt;
                     } else if cls[i].is_sse() {
                         i += 1;
-                        while i != e && cls[i] == sseup_class { i += 1u; }
-                    } else if cls[i] == x87_class {
+                        while i != e && cls[i] == SSEUp { i += 1u; }
+                    } else if cls[i] == X87 {
                         i += 1;
-                        while i != e && cls[i] == x87up_class { i += 1u; }
+                        while i != e && cls[i] == X87Up { i += 1u; }
                     } else {
                         i += 1;
                     }
@@ -281,7 +287,7 @@ fn classify_ty(ty: Type) -> ~[RegClass] {
     }
 
     let words = (ty_size(ty) + 7) / 8;
-    let mut cls = vec::from_elem(words, no_class);
+    let mut cls = vec::from_elem(words, NoClass);
     if words > 4 {
         all_mem(cls);
         let cls = cls;
@@ -296,7 +302,7 @@ fn llreg_ty(cls: &[RegClass]) -> Type {
     fn llvec_len(cls: &[RegClass]) -> uint {
         let mut len = 1u;
         for cls.each |c| {
-            if *c != sseup_class {
+            if *c != SSEUp {
                 break;
             }
             len += 1u;
@@ -310,20 +316,20 @@ fn llreg_ty(cls: &[RegClass]) -> Type {
         let e = cls.len();
         while i < e {
             match cls[i] {
-                integer_class => {
+                Int => {
                     tys.push(Type::i64());
                 }
-                sse_fv_class => {
+                SSEFv => {
                     let vec_len = llvec_len(vec::tailn(cls, i + 1u)) * 2u;
-                    let vec_ty = Type::vector(Type::f32(), vec_len);
+                    let vec_ty = Type::vector(&Type::f32(), vec_len as u64);
                     tys.push(vec_ty);
                     i += vec_len;
                     loop;
                 }
-                sse_fs_class => {
+                SSEFs => {
                     tys.push(Type::f32());
                 }
-                sse_ds_class => {
+                SSEDs => {
                     tys.push(Type::f64());
                 }
                 _ => fail!("llregtype: unhandled class")
@@ -341,6 +347,7 @@ fn x86_64_tys(atys: &[Type],
     fn x86_64_ty(ty: Type,
                  is_mem_cls: &fn(cls: &[RegClass]) -> bool,
                  attr: Attribute) -> (LLVMType, Option<Attribute>) {
+
         let (cast, attr, ty) = if !ty.is_reg_ty() {
             let cls = classify_ty(ty);
             if is_mem_cls(cls) {
@@ -348,8 +355,11 @@ fn x86_64_tys(atys: &[Type],
             } else {
                 (true, option::None, llreg_ty(cls))
             }
+        } else {
+            (false, option::None, ty)
         };
-        return (LLVMType { cast: cast, ty: ty }, attr);
+
+        (LLVMType { cast: cast, ty: ty }, attr)
     }
 
     let mut arg_tys = ~[];

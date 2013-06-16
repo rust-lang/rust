@@ -15,12 +15,13 @@ use core::ptr;
 use core::uint;
 use core::vec;
 use lib::llvm::{llvm, Integer, Pointer, Float, Double, Struct, Array};
-use lib::llvm::struct_tys;
 use lib::llvm::{Attribute, StructRetAttribute};
 use lib::llvm::True;
 use middle::trans::context::task_llcx;
 use middle::trans::common::*;
 use middle::trans::cabi::*;
+
+use middle::trans::type_::Type;
 
 fn align_up_to(off: uint, a: uint) -> uint {
     return (off + a - 1u) / a * a;
@@ -32,58 +33,58 @@ fn align(off: uint, ty: Type) -> uint {
 }
 
 fn ty_align(ty: Type) -> uint {
-    unsafe {
-        return match llvm::LLVMGetTypeKind(ty) {
-            Integer => {
-                ((llvm::LLVMGetIntTypeWidth(ty) as uint) + 7) / 8
+    match ty.kind() {
+        Integer => {
+            unsafe {
+                ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
             }
-            Pointer => 4,
-            Float => 4,
-            Double => 8,
-            Struct => {
-              if ty.is_packed() {
-                1
-              } else {
-                let str_tys = struct_tys(ty);
-                str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
-              }
-            }
-            Array => {
-                let elt = llvm::LLVMGetElementType(ty);
-                ty_align(elt)
-            }
-            _ => fail!("ty_size: unhandled type")
-        };
+        }
+        Pointer => 4,
+        Float => 4,
+        Double => 8,
+        Struct => {
+          if ty.is_packed() {
+            1
+          } else {
+            let str_tys = ty.field_types();
+            str_tys.iter().fold(1, |a, t| uint::max(a, ty_align(*t)))
+          }
+        }
+        Array => {
+            let elt = ty.element_type();
+            ty_align(elt)
+        }
+        _ => fail!("ty_size: unhandled type")
     }
 }
 
-fn ty_size(ty: TypeRef) -> uint {
-    unsafe {
-        return match llvm::LLVMGetTypeKind(ty) {
-            Integer => {
-                ((llvm::LLVMGetIntTypeWidth(ty) as uint) + 7) / 8
+fn ty_size(ty: Type) -> uint {
+    match ty.kind() {
+        Integer => {
+            unsafe {
+                ((llvm::LLVMGetIntTypeWidth(ty.to_ref()) as uint) + 7) / 8
             }
-            Pointer => 4,
-            Float => 4,
-            Double => 8,
-            Struct => {
-                if llvm::LLVMIsPackedStruct(ty) == True {
-                    let str_tys = struct_tys(ty);
-                    str_tys.iter().fold(0, |s, t| s + ty_size(*t))
-                } else {
-                    let str_tys = ty.field_types();
-                    let size = str_tys.iter().fold(0, |s, t| align(s, *t) + ty_size(*t));
-                    align(size, ty)
-                }
+        }
+        Pointer => 4,
+        Float => 4,
+        Double => 8,
+        Struct => {
+            if ty.is_packed() {
+                let str_tys = ty.field_types();
+                str_tys.iter().fold(0, |s, t| s + ty_size(*t))
+            } else {
+                let str_tys = ty.field_types();
+                let size = str_tys.iter().fold(0, |s, t| align(s, *t) + ty_size(*t));
+                align(size, ty)
             }
-            Array => {
-                let len = ty.array_length();
-                let elt = ty.element_type();
-                let eltsz = ty_size(elt);
-                len * eltsz
-            }
-            _ => fail!("ty_size: unhandled type")
-        };
+        }
+        Array => {
+            let len = ty.array_length();
+            let elt = ty.element_type();
+            let eltsz = ty_size(elt);
+            len * eltsz
+        }
+        _ => fail!("ty_size: unhandled type")
     }
 }
 
@@ -120,7 +121,7 @@ fn classify_arg_ty(ty: Type, offset: &mut uint) -> (LLVMType, Option<Attribute>)
     };
 }
 
-fn is_reg_ty(ty: TypeRef) -> bool {
+fn is_reg_ty(ty: Type) -> bool {
     unsafe {
         return match ty.kind() {
             Integer
@@ -153,11 +154,11 @@ fn coerce_to_int(size: uint) -> ~[Type] {
     let r = size % 32;
     if r > 0 {
         unsafe {
-            Type::from_ref(args.push(llvm::LLVMIntTypeInContext(task_llcx(), r as c_uint)))
+            args.push(Type::from_ref(llvm::LLVMIntTypeInContext(task_llcx(), r as c_uint)));
         }
     }
 
-    return args;
+    args
 }
 
 fn struct_ty(ty: Type,
