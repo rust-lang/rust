@@ -17,8 +17,9 @@ use cast;
 use old_iter::BaseIter;
 use iterator::IteratorUtil;
 use vec::{CopyableVector, ImmutableVector, OwnedVector};
+use to_bytes::IterBytes;
 
-/// Datatype to hold one ascii character. It is 8 bit long.
+/// Datatype to hold one ascii character. It wraps a `u8`, with the highest bit always zero.
 #[deriving(Clone, Eq)]
 pub struct Ascii { priv chr: u8 }
 
@@ -72,6 +73,9 @@ pub trait AsciiCast<T> {
     /// Convert to an ascii type
     fn to_ascii(&self) -> T;
 
+    /// Convert to an ascii type, not doing any range asserts
+    unsafe fn to_ascii_nocheck(&self) -> T;
+
     /// Check if convertible to ascii
     fn is_ascii(&self) -> bool;
 }
@@ -80,7 +84,12 @@ impl<'self> AsciiCast<&'self[Ascii]> for &'self [u8] {
     #[inline(always)]
     fn to_ascii(&self) -> &'self[Ascii] {
         assert!(self.is_ascii());
-        unsafe{ cast::transmute(*self) }
+        unsafe {self.to_ascii_nocheck()}
+    }
+
+    #[inline(always)]
+    unsafe fn to_ascii_nocheck(&self) -> &'self[Ascii] {
+        cast::transmute(*self)
     }
 
     #[inline(always)]
@@ -96,8 +105,13 @@ impl<'self> AsciiCast<&'self[Ascii]> for &'self str {
     #[inline(always)]
     fn to_ascii(&self) -> &'self[Ascii] {
         assert!(self.is_ascii());
-        let (p,len): (*u8, uint) = unsafe{ cast::transmute(*self) };
-        unsafe{ cast::transmute((p, len - 1))}
+        unsafe {self.to_ascii_nocheck()}
+    }
+
+    #[inline(always)]
+    unsafe fn to_ascii_nocheck(&self) -> &'self[Ascii] {
+        let (p,len): (*u8, uint) = cast::transmute(*self);
+        cast::transmute((p, len - 1))
     }
 
     #[inline(always)]
@@ -110,6 +124,11 @@ impl AsciiCast<Ascii> for u8 {
     #[inline(always)]
     fn to_ascii(&self) -> Ascii {
         assert!(self.is_ascii());
+        unsafe {self.to_ascii_nocheck()}
+    }
+
+    #[inline(always)]
+    unsafe fn to_ascii_nocheck(&self) -> Ascii {
         Ascii{ chr: *self }
     }
 
@@ -123,6 +142,11 @@ impl AsciiCast<Ascii> for char {
     #[inline(always)]
     fn to_ascii(&self) -> Ascii {
         assert!(self.is_ascii());
+        unsafe {self.to_ascii_nocheck()}
+    }
+
+    #[inline(always)]
+    unsafe fn to_ascii_nocheck(&self) -> Ascii {
         Ascii{ chr: *self as u8 }
     }
 
@@ -135,26 +159,38 @@ impl AsciiCast<Ascii> for char {
 /// Trait for copyless casting to an ascii vector.
 pub trait OwnedAsciiCast {
     /// Take ownership and cast to an ascii vector without trailing zero element.
-    fn to_ascii_consume(self) -> ~[Ascii];
+    fn into_ascii(self) -> ~[Ascii];
+
+    /// Take ownership and cast to an ascii vector without trailing zero element.
+    /// Does not perform validation checks.
+    unsafe fn into_ascii_nocheck(self) -> ~[Ascii];
 }
 
 impl OwnedAsciiCast for ~[u8] {
     #[inline(always)]
-    fn to_ascii_consume(self) -> ~[Ascii] {
+    fn into_ascii(self) -> ~[Ascii] {
         assert!(self.is_ascii());
-        unsafe {cast::transmute(self)}
+        unsafe {self.into_ascii_nocheck()}
+    }
+
+    #[inline(always)]
+    unsafe fn into_ascii_nocheck(self) -> ~[Ascii] {
+        cast::transmute(self)
     }
 }
 
 impl OwnedAsciiCast for ~str {
     #[inline(always)]
-    fn to_ascii_consume(self) -> ~[Ascii] {
+    fn into_ascii(self) -> ~[Ascii] {
         assert!(self.is_ascii());
-        let mut s = self;
-        unsafe {
-            str::raw::pop_byte(&mut s);
-            cast::transmute(s)
-        }
+        unsafe {self.into_ascii_nocheck()}
+    }
+
+    #[inline(always)]
+    unsafe fn into_ascii_nocheck(self) -> ~[Ascii] {
+        let mut r: ~[Ascii] = cast::transmute(self);
+        r.pop();
+        r
     }
 }
 
@@ -169,6 +205,8 @@ pub trait AsciiStr {
     /// Convert to vector representing a upper cased ascii string.
     fn to_upper(&self) -> ~[Ascii];
 
+    /// Compares two Ascii strings ignoring case
+    fn eq_ignore_case(self, other: &[Ascii]) -> bool;
 }
 
 impl<'self> AsciiStr for &'self [Ascii] {
@@ -188,20 +226,45 @@ impl<'self> AsciiStr for &'self [Ascii] {
     fn to_upper(&self) -> ~[Ascii] {
         self.map(|a| a.to_upper())
     }
+
+    #[inline(always)]
+    fn eq_ignore_case(self, other: &[Ascii]) -> bool {
+        do self.iter().zip(other.iter()).all |(&a, &b)| { a.eq_ignore_case(b) }
+    }
 }
 
 impl ToStrConsume for ~[Ascii] {
     #[inline(always)]
-    fn to_str_consume(self) -> ~str {
+    fn into_str(self) -> ~str {
         let mut cpy = self;
         cpy.push(0u8.to_ascii());
         unsafe {cast::transmute(cpy)}
     }
 }
 
+impl IterBytes for Ascii {
+    #[inline(always)]
+    fn iter_bytes(&self, _lsb0: bool, f: &fn(buf: &[u8]) -> bool) -> bool {
+        f([self.to_byte()])
+    }
+}
+
+/// Trait to convert to a owned byte array by consuming self
+pub trait ToBytesConsume {
+    /// Converts to a owned byte array by consuming self
+    fn into_bytes(self) -> ~[u8];
+}
+
+impl ToBytesConsume for ~[Ascii] {
+    fn into_bytes(self) -> ~[u8] {
+        unsafe {cast::transmute(self)}
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use to_bytes::ToBytes;
 
     macro_rules! v2ascii (
         ( [$($e:expr),*]) => ( [$(Ascii{chr:$e}),*]);
@@ -245,6 +308,8 @@ mod tests {
         assert_eq!("YMCA".to_ascii().to_lower().to_str_ascii(), ~"ymca");
         assert_eq!("abcDEFxyz:.;".to_ascii().to_upper().to_str_ascii(), ~"ABCDEFXYZ:.;");
 
+        assert!("aBcDeF&?#".to_ascii().eq_ignore_case("AbCdEf&?#".to_ascii()));
+
         assert!("".is_ascii());
         assert!("a".is_ascii());
         assert!(!"\u2009".is_ascii());
@@ -253,21 +318,22 @@ mod tests {
 
     #[test]
     fn test_owned_ascii_vec() {
-        // FIXME: #4318 Compiler crashes on moving self
-        //assert_eq!(~"( ;".to_ascii_consume(), v2ascii!(~[40, 32, 59]));
-        //assert_eq!(~[40u8, 32u8, 59u8].to_ascii_consume(), v2ascii!(~[40, 32, 59]));
-        //assert_eq!(~"( ;".to_ascii_consume_with_null(), v2ascii!(~[40, 32, 59, 0]));
-        //assert_eq!(~[40u8, 32u8, 59u8].to_ascii_consume_with_null(),
-        //           v2ascii!(~[40, 32, 59, 0]));
+        assert_eq!((~"( ;").into_ascii(), v2ascii!(~[40, 32, 59]));
+        assert_eq!((~[40u8, 32u8, 59u8]).into_ascii(), v2ascii!(~[40, 32, 59]));
     }
 
     #[test]
     fn test_ascii_to_str() { assert_eq!(v2ascii!([40, 32, 59]).to_str_ascii(), ~"( ;"); }
 
     #[test]
-    fn test_ascii_to_str_consume() {
-        // FIXME: #4318 Compiler crashes on moving self
-        //assert_eq!(v2ascii!(~[40, 32, 59]).to_str_consume(), ~"( ;");
+    fn test_ascii_into_str() {
+        assert_eq!(v2ascii!(~[40, 32, 59]).into_str(), ~"( ;");
+    }
+
+    #[test]
+    fn test_ascii_to_bytes() {
+        assert_eq!(v2ascii!(~[40, 32, 59]).to_bytes(false), ~[40u8, 32u8, 59u8]);
+        assert_eq!(v2ascii!(~[40, 32, 59]).into_bytes(), ~[40u8, 32u8, 59u8]);
     }
 
     #[test] #[should_fail]
