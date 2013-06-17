@@ -504,7 +504,7 @@ impl FlowedMoveData {
 
         let opt_loan_path_index = self.move_data.existing_move_path(loan_path);
 
-        for self.dfcx_moves.each_bit_on_entry(id) |index| {
+        for self.dfcx_moves.each_bit_on_entry_frozen(id) |index| {
             let move = &self.move_data.moves[index];
             let moved_path = move.path;
             if base_indices.contains(&moved_path) {
@@ -560,7 +560,7 @@ impl FlowedMoveData {
             }
         };
 
-        for self.dfcx_assign.each_bit_on_entry(id) |index| {
+        for self.dfcx_assign.each_bit_on_entry_frozen(id) |index| {
             let assignment = &self.move_data.var_assignments[index];
             if assignment.path == loan_path_index && !f(assignment) {
                 return false;
