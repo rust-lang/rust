@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
 
 // compile-flags:-Z extra-debug-info
 // debugger:set print pretty off
-// debugger:break 29
+// debugger:break _zzz
 // debugger:run
+// debugger:finish
 // debugger:print a
 // check:$1 = {1, 2, 3}
 // debugger:print b.vec[0]
@@ -28,5 +29,7 @@ fn main() {
     let b = &[4, 5, 6];
     let c = @[7, 8, 9];
     let d = ~[10, 11, 12];
-    let _z = 0;
+    _zzz();
 }
+
+fn _zzz() {()}

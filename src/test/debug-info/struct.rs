@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
+// xfail-win32 Broken because of LLVM bug: http://llvm.org/bugs/show_bug.cgi?id=16249
 
 // compile-flags:-Z extra-debug-info
 // debugger:set print pretty off
-// debugger:break 29
+// debugger:break _zzz
 // debugger:run
+// debugger:finish
 // debugger:print pair
 // check:$1 = {x = 1, y = 2}
 // debugger:print pair.x
@@ -28,5 +29,7 @@ struct Pair {
 
 fn main() {
     let pair = Pair { x: 1, y: 2 };
-    let _z = ();
+    _zzz();
 }
+
+fn _zzz() {()}

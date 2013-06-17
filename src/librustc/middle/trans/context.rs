@@ -148,7 +148,7 @@ impl CrateContext {
             lib::llvm::associate_type(tn, @"tydesc", tydesc_type);
             let crate_map = decl_crate_map(sess, link_meta, llmod);
             let dbg_cx = if sess.opts.debuginfo {
-                Some(debuginfo::mk_ctxt(name.to_owned()))
+                Some(debuginfo::DebugContext::new(llmod, name.to_owned()))
             } else {
                 None
             };
