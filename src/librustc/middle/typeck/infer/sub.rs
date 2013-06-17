@@ -179,7 +179,7 @@ impl Combine for Sub {
                                               None, b) |br| {
                 let skol = self.infcx.region_vars.new_skolemized(br);
                 debug!("Bound region %s skolemized to %?",
-                       bound_region_to_str(self.infcx.tcx, br),
+                       bound_region_to_str(self.infcx.tcx, "", false, br),
                        skol);
                 skol
             }
