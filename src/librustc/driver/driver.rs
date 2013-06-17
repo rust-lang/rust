@@ -65,34 +65,24 @@ pub fn source_name(input: &input) -> @str {
 
 pub fn default_configuration(sess: Session, argv0: @str, input: &input) ->
    ast::crate_cfg {
-    let libc = match sess.targ_cfg.os {
-      session::os_win32 => @"msvcrt.dll",
-      session::os_macos => @"libc.dylib",
-      session::os_linux => @"libc.so.6",
-      session::os_android => @"libc.so",
-      session::os_freebsd => @"libc.so.7"
-      // _ { "libc.so" }
+    let (libc, tos) = match sess.targ_cfg.os {
+        session::os_win32 =>   (@"msvcrt.dll", @"win32"),
+        session::os_macos =>   (@"libc.dylib", @"macos"),
+        session::os_linux =>   (@"libc.so.6",  @"linux"),
+        session::os_android => (@"libc.so",    @"android"),
+        session::os_freebsd => (@"libc.so.7",  @"freebsd")
     };
-    let tos = match sess.targ_cfg.os {
-      session::os_win32 => @"win32",
-      session::os_macos => @"macos",
-      session::os_linux => @"linux",
-      session::os_android => @"android",
-      session::os_freebsd => @"freebsd"
-      // _ { "libc.so" }
-    };
-
-    let mk = attr::mk_name_value_item_str;
 
     // ARM is bi-endian, however using NDK seems to default
     // to little-endian unless a flag is provided.
     let (end,arch,wordsz) = match sess.targ_cfg.arch {
-        abi::X86 => (@"little",@"x86",@"32"),
-        abi::X86_64 => (@"little",@"x86_64",@"64"),
-        abi::Arm => (@"little",@"arm",@"32"),
-        abi::Mips => (@"big",@"mips",@"32")
+        abi::X86 =>    (@"little", @"x86",    @"32"),
+        abi::X86_64 => (@"little", @"x86_64", @"64"),
+        abi::Arm =>    (@"little", @"arm",    @"32"),
+        abi::Mips =>   (@"big",    @"mips",   @"32")
     };
 
+    let mk = attr::mk_name_value_item_str;
     return ~[ // Target bindings.
          attr::mk_word_item(os::FAMILY.to_managed()),
          mk(@"target_os", tos),
@@ -463,36 +453,38 @@ pub fn pretty_print_input(sess: Session, cfg: ast::crate_cfg, input: &input,
 }
 
 pub fn get_os(triple: &str) -> Option<session::os> {
-    if triple.contains("win32") ||
-               triple.contains("mingw32") {
-            Some(session::os_win32)
-        } else if triple.contains("darwin") {
-            Some(session::os_macos)
-        } else if triple.contains("android") {
-            Some(session::os_android)
-        } else if triple.contains("linux") {
-            Some(session::os_linux)
-        } else if triple.contains("freebsd") {
-            Some(session::os_freebsd)
-        } else { None }
+    for os_names.each |&(name, os)| {
+        if triple.contains(name) { return Some(os) }
+    }
+    None
 }
+static os_names : &'static [(&'static str, session::os)] = &'static [
+    ("mingw32", session::os_win32),
+    ("win32",   session::os_win32),
+    ("darwin",  session::os_macos),
+    ("android", session::os_android),
+    ("linux",   session::os_linux),
+    ("freebsd", session::os_freebsd)];
 
 pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
-    if triple.contains("i386") ||
-        triple.contains("i486") ||
-               triple.contains("i586") ||
-               triple.contains("i686") ||
-               triple.contains("i786") {
-            Some(abi::X86)
-        } else if triple.contains("x86_64") {
-            Some(abi::X86_64)
-        } else if triple.contains("arm") ||
-                      triple.contains("xscale") {
-            Some(abi::Arm)
-        } else if triple.contains("mips") {
-            Some(abi::Mips)
-        } else { None }
+    for architecture_abis.each |&(arch, abi)| {
+        if triple.contains(arch) { return Some(abi) }
+    }
+    None
 }
+static architecture_abis : &'static [(&'static str, abi::Architecture)] = &'static [
+    ("i386",   abi::X86),
+    ("i486",   abi::X86),
+    ("i586",   abi::X86),
+    ("i686",   abi::X86),
+    ("i786",   abi::X86),
+
+    ("x86_64", abi::X86_64),
+
+    ("arm",    abi::Arm),
+    ("xscale", abi::Arm),
+
+    ("mips",   abi::Mips)];
 
 pub fn build_target_config(sopts: @session::options,
                            demitter: diagnostic::Emitter)
