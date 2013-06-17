@@ -22,6 +22,7 @@ pub type RemoteCallbackObject = uvio::UvRemoteCallback;
 pub type IoFactoryObject = uvio::UvIoFactory;
 pub type RtioTcpStreamObject = uvio::UvTcpStream;
 pub type RtioTcpListenerObject = uvio::UvTcpListener;
+pub type RtioUdpStreamObject = uvio::UvUdpStream;
 
 pub trait EventLoop {
     fn run(&mut self);
@@ -44,6 +45,7 @@ pub trait RemoteCallback {
 pub trait IoFactory {
     fn tcp_connect(&mut self, addr: IpAddr) -> Result<~RtioTcpStreamObject, IoError>;
     fn tcp_bind(&mut self, addr: IpAddr) -> Result<~RtioTcpListenerObject, IoError>;
+    // TODO fn udp_connect(&mut self, addr: IpAddr) -> Result<~RtioUdpStreamObject, IoError>;
 }
 
 pub trait RtioTcpListener {
@@ -51,6 +53,11 @@ pub trait RtioTcpListener {
 }
 
 pub trait RtioTcpStream {
+    fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
+    fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
+}
+
+pub trait RtioUdpStream {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError>;
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
 }
