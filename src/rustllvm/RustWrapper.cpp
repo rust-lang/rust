@@ -565,7 +565,9 @@ extern "C" bool LLVMRustStartMultithreading() {
 typedef DIBuilder* DIBuilderRef;
 
 template<typename DIT>
-DIT unwrapDI(LLVMValueRef ref) { return DIT(ref ? unwrap<MDNode>(ref) : NULL); }
+DIT unwrapDI(LLVMValueRef ref) { 
+    return DIT(ref ? unwrap<MDNode>(ref) : NULL); 
+}
 
 extern "C" DIBuilderRef LLVMDIBuilderCreate(LLVMModuleRef M) {
     return new DIBuilder(*unwrap(M));
