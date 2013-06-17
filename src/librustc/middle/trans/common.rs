@@ -101,7 +101,6 @@ pub struct Stats {
     n_monos: uint,
     n_inlines: uint,
     n_closures: uint,
-    llvm_insn_ctxt: ~[~str],
     llvm_insns: HashMap<~str, uint>,
     fn_times: ~[(~str, int)] // (ident, time)
 }

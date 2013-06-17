@@ -188,7 +188,7 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
                   needs_c_return: bool,
                   arg_builder: wrap_arg_builder,
                   ret_builder: wrap_ret_builder) {
-    let _icx = ccx.insn_ctxt("foreign::build_wrap_fn_");
+    let _icx = push_ctxt("foreign::build_wrap_fn_");
     let fcx = new_fn_ctxt(ccx, ~[], llwrapfn, tys.fn_sig.output, None);
 
     // Patch up the return type if it's not immediate and we're returning via
@@ -274,7 +274,7 @@ fn build_wrap_fn_(ccx: @mut CrateContext,
 pub fn trans_foreign_mod(ccx: @mut CrateContext,
                          path: &ast_map::path,
                          foreign_mod: &ast::foreign_mod) {
-    let _icx = ccx.insn_ctxt("foreign::trans_foreign_mod");
+    let _icx = push_ctxt("foreign::trans_foreign_mod");
 
     let arch = ccx.sess.targ_cfg.arch;
     let abi = match foreign_mod.abis.for_arch(arch) {
@@ -370,11 +370,11 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
          *     }
          */
 
-        let _icx = ccx.insn_ctxt("foreign::build_shim_fn");
+        let _icx = push_ctxt("foreign::build_shim_fn");
 
         fn build_args(bcx: block, tys: &ShimTypes, llargbundle: ValueRef)
                    -> ~[ValueRef] {
-            let _icx = bcx.insn_ctxt("foreign::shim::build_args");
+            let _icx = push_ctxt("foreign::shim::build_args");
             tys.fn_ty.build_shim_args(bcx, tys.llsig.llarg_tys, llargbundle)
         }
 
@@ -382,7 +382,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
                      tys: &ShimTypes,
                      llargbundle: ValueRef,
                      llretval: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::shim::build_ret");
+            let _icx = push_ctxt("foreign::shim::build_ret");
             tys.fn_ty.build_shim_ret(bcx,
                                      tys.llsig.llarg_tys,
                                      tys.ret_def,
@@ -488,7 +488,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
          * account for the Rust modes.
          */
 
-        let _icx = ccx.insn_ctxt("foreign::build_wrap_fn");
+        let _icx = push_ctxt("foreign::build_wrap_fn");
 
         build_wrap_fn_(ccx,
                        tys,
@@ -503,7 +503,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
                       tys: &ShimTypes,
                       llwrapfn: ValueRef,
                       llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::wrap::build_args");
+            let _icx = push_ctxt("foreign::wrap::build_args");
             let ccx = bcx.ccx();
             let n = tys.llsig.llarg_tys.len();
             for uint::range(0, n) |i| {
@@ -528,7 +528,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
         fn build_ret(bcx: block,
                      shim_types: &ShimTypes,
                      llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::wrap::build_ret");
+            let _icx = push_ctxt("foreign::wrap::build_ret");
             let arg_count = shim_types.fn_sig.inputs.len();
             for bcx.fcx.llretptr.iter().advance |&retptr| {
                 let llretptr = load_inbounds(bcx, llargbundle, [0, arg_count]);
@@ -1155,7 +1155,7 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
                         body: &ast::blk,
                         llwrapfn: ValueRef,
                         id: ast::node_id) {
-    let _icx = ccx.insn_ctxt("foreign::build_foreign_fn");
+    let _icx = push_ctxt("foreign::build_foreign_fn");
 
     fn build_rust_fn(ccx: @mut CrateContext,
                      path: ast_map::path,
@@ -1163,7 +1163,7 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
                      body: &ast::blk,
                      id: ast::node_id)
                   -> ValueRef {
-        let _icx = ccx.insn_ctxt("foreign::foreign::build_rust_fn");
+        let _icx = push_ctxt("foreign::foreign::build_rust_fn");
         let t = ty::node_id_to_type(ccx.tcx, id);
         // XXX: Bad copy.
         let ps = link::mangle_internal_name_by_path(
@@ -1205,11 +1205,11 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
          * one of those types that is passed by pointer in Rust.
          */
 
-        let _icx = ccx.insn_ctxt("foreign::foreign::build_shim_fn");
+        let _icx = push_ctxt("foreign::foreign::build_shim_fn");
 
         fn build_args(bcx: block, tys: &ShimTypes, llargbundle: ValueRef)
                       -> ~[ValueRef] {
-            let _icx = bcx.insn_ctxt("foreign::extern::shim::build_args");
+            let _icx = push_ctxt("foreign::extern::shim::build_args");
             let ccx = bcx.ccx();
             let mut llargvals = ~[];
             let mut i = 0u;
@@ -1284,7 +1284,7 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
          *    }
          */
 
-        let _icx = ccx.insn_ctxt("foreign::foreign::build_wrap_fn");
+        let _icx = push_ctxt("foreign::foreign::build_wrap_fn");
 
         build_wrap_fn_(ccx,
                        tys,
@@ -1299,7 +1299,7 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
                       tys: &ShimTypes,
                       llwrapfn: ValueRef,
                       llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_args");
+            let _icx = push_ctxt("foreign::foreign::wrap::build_args");
             tys.fn_ty.build_wrap_args(bcx,
                                       tys.llsig.llret_ty,
                                       llwrapfn,
@@ -1307,7 +1307,7 @@ pub fn trans_foreign_fn(ccx: @mut CrateContext,
         }
 
         fn build_ret(bcx: block, tys: &ShimTypes, llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_ret");
+            let _icx = push_ctxt("foreign::foreign::wrap::build_ret");
             tys.fn_ty.build_wrap_ret(bcx, tys.llsig.llarg_tys, llargbundle);
             build_return(bcx);
         }
@@ -1329,7 +1329,7 @@ pub fn register_foreign_fn(ccx: @mut CrateContext,
                            node_id: ast::node_id,
                            attrs: &[ast::attribute])
                            -> ValueRef {
-    let _icx = ccx.insn_ctxt("foreign::register_foreign_fn");
+    let _icx = push_ctxt("foreign::register_foreign_fn");
 
     let t = ty::node_id_to_type(ccx.tcx, node_id);
 

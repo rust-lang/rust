@@ -53,7 +53,7 @@ pub fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
 }
 
 pub fn get_fill(bcx: block, vptr: ValueRef) -> ValueRef {
-    let _icx = bcx.insn_ctxt("tvec::get_fill");
+    let _icx = push_ctxt("tvec::get_fill");
     Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]))
 }
 pub fn set_fill(bcx: block, vptr: ValueRef, fill: ValueRef) {
@@ -68,12 +68,12 @@ pub fn get_bodyptr(bcx: block, vptr: ValueRef) -> ValueRef {
 }
 
 pub fn get_dataptr(bcx: block, vptr: ValueRef) -> ValueRef {
-    let _icx = bcx.insn_ctxt("tvec::get_dataptr");
+    let _icx = push_ctxt("tvec::get_dataptr");
     GEPi(bcx, vptr, [0u, abi::vec_elt_elems, 0u])
 }
 
 pub fn pointer_add(bcx: block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
-    let _icx = bcx.insn_ctxt("tvec::pointer_add");
+    let _icx = push_ctxt("tvec::pointer_add");
     let old_ty = val_ty(ptr);
     let bptr = PointerCast(bcx, ptr, Type::i8p());
     return PointerCast(bcx, InBoundsGEP(bcx, bptr, [bytes]), old_ty);
@@ -81,7 +81,7 @@ pub fn pointer_add(bcx: block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
 
 pub fn alloc_raw(bcx: block, unit_ty: ty::t,
                  fill: ValueRef, alloc: ValueRef, heap: heap) -> Result {
-    let _icx = bcx.insn_ctxt("tvec::alloc_uniq");
+    let _icx = push_ctxt("tvec::alloc_uniq");
     let ccx = bcx.ccx();
 
     let vecbodyty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
@@ -105,7 +105,7 @@ pub fn alloc_vec(bcx: block,
                  elts: uint,
                  heap: heap)
               -> Result {
-    let _icx = bcx.insn_ctxt("tvec::alloc_uniq");
+    let _icx = push_ctxt("tvec::alloc_uniq");
     let ccx = bcx.ccx();
     let llunitty = type_of::type_of(ccx, unit_ty);
     let unit_sz = nonzero_llsize_of(ccx, llunitty);
@@ -119,7 +119,7 @@ pub fn alloc_vec(bcx: block,
 }
 
 pub fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> Result {
-    let _icx = bcx.insn_ctxt("tvec::duplicate_uniq");
+    let _icx = push_ctxt("tvec::duplicate_uniq");
 
     let fill = get_fill(bcx, get_bodyptr(bcx, vptr));
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
@@ -137,7 +137,7 @@ pub fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> Result {
 
 pub fn make_drop_glue_unboxed(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
    block {
-    let _icx = bcx.insn_ctxt("tvec::make_drop_glue_unboxed");
+    let _icx = push_ctxt("tvec::make_drop_glue_unboxed");
     let tcx = bcx.tcx();
     let unit_ty = ty::sequence_element_type(tcx, vec_ty);
     if ty::type_needs_drop(tcx, unit_ty) {
@@ -349,7 +349,7 @@ pub fn write_content(bcx: block,
                      content_expr: @ast::expr,
                      dest: Dest)
                   -> block {
-    let _icx = bcx.insn_ctxt("tvec::write_content");
+    let _icx = push_ctxt("tvec::write_content");
     let mut bcx = bcx;
 
     debug!("write_content(vt=%s, dest=%s, vstore_expr=%?)",
@@ -548,7 +548,7 @@ pub type iter_vec_block<'self> = &'self fn(block, ValueRef, ty::t) -> block;
 
 pub fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
                     fill: ValueRef, f: iter_vec_block) -> block {
-    let _icx = bcx.insn_ctxt("tvec::iter_vec_raw");
+    let _icx = push_ctxt("tvec::iter_vec_raw");
 
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
 
@@ -579,14 +579,14 @@ pub fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
 
 pub fn iter_vec_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t,
                      fill: ValueRef, f: iter_vec_block) -> block {
-    let _icx = bcx.insn_ctxt("tvec::iter_vec_uniq");
+    let _icx = push_ctxt("tvec::iter_vec_uniq");
     let data_ptr = get_dataptr(bcx, get_bodyptr(bcx, vptr));
     iter_vec_raw(bcx, data_ptr, vec_ty, fill, f)
 }
 
 pub fn iter_vec_unboxed(bcx: block, body_ptr: ValueRef, vec_ty: ty::t,
                         f: iter_vec_block) -> block {
-    let _icx = bcx.insn_ctxt("tvec::iter_vec_unboxed");
+    let _icx = push_ctxt("tvec::iter_vec_unboxed");
     let fill = get_fill(bcx, body_ptr);
     let dataptr = get_dataptr(bcx, body_ptr);
     return iter_vec_raw(bcx, dataptr, vec_ty, fill, f);

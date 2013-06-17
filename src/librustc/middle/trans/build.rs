@@ -19,6 +19,7 @@ use middle::trans::common::*;
 use middle::trans::machine::llalign_of_min;
 use syntax::codemap::span;
 
+use middle::trans::base;
 use middle::trans::type_::Type;
 
 use core::cast;
@@ -46,10 +47,8 @@ pub fn B(cx: block) -> BuilderRef {
 }
 
 pub fn count_insn(cx: block, category: &str) {
-    if cx.ccx().sess.count_llvm_insns() {
-
+    do base::with_insn_ctxt |v| {
         let h = &mut cx.ccx().stats.llvm_insns;
-        let v : &[~str] = cx.ccx().stats.llvm_insn_ctxt;
 
         // Build version of path with cycles removed.
 

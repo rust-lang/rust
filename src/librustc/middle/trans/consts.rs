@@ -19,7 +19,7 @@ use metadata::csearch;
 use middle::const_eval;
 use middle::trans::adt;
 use middle::trans::base;
-use middle::trans::base::get_insn_ctxt;
+use middle::trans::base::push_ctxt;
 use middle::trans::common::*;
 use middle::trans::consts;
 use middle::trans::expr;
@@ -37,7 +37,7 @@ use syntax::{ast, ast_util, ast_map};
 
 pub fn const_lit(cx: @mut CrateContext, e: @ast::expr, lit: ast::lit)
     -> ValueRef {
-    let _icx = cx.insn_ctxt("trans_lit");
+    let _icx = push_ctxt("trans_lit");
     match lit.node {
       ast::lit_int(i, t) => C_integral(Type::int_from_ty(cx, t), i as u64, true),
       ast::lit_uint(u, t) => C_integral(Type::uint_from_ty(cx, t), u, false),
@@ -249,7 +249,7 @@ pub fn const_expr(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
 
 fn const_expr_unadjusted(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
     unsafe {
-        let _icx = cx.insn_ctxt("const_expr");
+        let _icx = push_ctxt("const_expr");
         return match e.node {
           ast::expr_lit(lit) => consts::const_lit(cx, e, *lit),
           ast::expr_binary(_, b, e1, e2) => {
@@ -589,7 +589,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext, e: @ast::expr) -> ValueRef {
 
 pub fn trans_const(ccx: @mut CrateContext, _e: @ast::expr, id: ast::node_id) {
     unsafe {
-        let _icx = ccx.insn_ctxt("trans_const");
+        let _icx = push_ctxt("trans_const");
         let g = base::get_item_val(ccx, id);
         // At this point, get_item_val has already translated the
         // constant's initializer to determine its LLVM type.

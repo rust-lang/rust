@@ -259,7 +259,7 @@ pub enum opt_result {
     range_result(Result, Result),
 }
 pub fn trans_opt(bcx: block, o: &Opt) -> opt_result {
-    let _icx = bcx.insn_ctxt("match::trans_opt");
+    let _icx = push_ctxt("match::trans_opt");
     let ccx = bcx.ccx();
     let bcx = bcx;
     match *o {
@@ -870,7 +870,7 @@ pub fn extract_variant_args(bcx: block,
                             disr_val: int,
                             val: ValueRef)
     -> ExtractedBlock {
-    let _icx = bcx.insn_ctxt("match::extract_variant_args");
+    let _icx = push_ctxt("match::extract_variant_args");
     let args = do vec::from_fn(adt::num_args(repr, disr_val)) |i| {
         adt::trans_field_ptr(bcx, repr, val, disr_val, i)
     };
@@ -896,7 +896,7 @@ pub fn extract_vec_elems(bcx: block,
                          val: ValueRef,
                          count: ValueRef)
                       -> ExtractedBlock {
-    let _icx = bcx.insn_ctxt("match::extract_vec_elems");
+    let _icx = push_ctxt("match::extract_vec_elems");
     let vec_datum = match_datum(bcx, val, pat_id);
     let (bcx, base, len) = vec_datum.get_vec_base_and_len(bcx, pat_span,
                                                           pat_id, 0);
@@ -1088,7 +1088,7 @@ pub fn compare_values(cx: block,
                       rhs: ValueRef,
                       rhs_t: ty::t)
                    -> Result {
-    let _icx = cx.insn_ctxt("compare_values");
+    let _icx = push_ctxt("compare_values");
     if ty::type_is_scalar(rhs_t) {
       let rs = compare_scalar_types(cx, lhs, rhs, rhs_t, ast::eq);
       return rslt(rs.bcx, rs.val);
@@ -1277,7 +1277,7 @@ pub fn compile_submatch(bcx: block,
       For an empty match, a fall-through case must exist
      */
     assert!((m.len() > 0u || chk.is_some()));
-    let _icx = bcx.insn_ctxt("match::compile_submatch");
+    let _icx = push_ctxt("match::compile_submatch");
     let mut bcx = bcx;
     let tcx = bcx.tcx();
     let dm = tcx.def_map;
@@ -1617,7 +1617,7 @@ pub fn trans_match(bcx: block,
                    discr_expr: @ast::expr,
                    arms: ~[ast::arm],
                    dest: Dest) -> block {
-    let _icx = bcx.insn_ctxt("match::trans_match");
+    let _icx = push_ctxt("match::trans_match");
     do with_scope(bcx, match_expr.info(), "match") |bcx| {
         trans_match_inner(bcx, discr_expr, arms, dest)
     }
@@ -1664,7 +1664,7 @@ pub fn trans_match_inner(scope_cx: block,
                          discr_expr: @ast::expr,
                          arms: &[ast::arm],
                          dest: Dest) -> block {
-    let _icx = scope_cx.insn_ctxt("match::trans_match_inner");
+    let _icx = push_ctxt("match::trans_match_inner");
     let mut bcx = scope_cx;
     let tcx = bcx.tcx();
 
@@ -1751,7 +1751,7 @@ pub fn bind_irrefutable_pat(bcx: block,
                             make_copy: bool,
                             binding_mode: IrrefutablePatternBindingMode)
                          -> block {
-    let _icx = bcx.insn_ctxt("match::bind_irrefutable_pat");
+    let _icx = push_ctxt("match::bind_irrefutable_pat");
     let ccx = bcx.fcx.ccx;
     let mut bcx = bcx;
 

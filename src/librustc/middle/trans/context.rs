@@ -162,6 +162,10 @@ impl CrateContext {
                 None
             };
 
+            if sess.count_llvm_insns() {
+                base::init_insn_ctxt()
+            }
+
             CrateContext {
                   sess: sess,
                   llmod: llmod,
@@ -210,7 +214,6 @@ impl CrateContext {
                     n_monos: 0u,
                     n_inlines: 0u,
                     n_closures: 0u,
-                    llvm_insn_ctxt: ~[],
                     llvm_insns: HashMap::new(),
                     fn_times: ~[]
                   },
@@ -234,7 +237,6 @@ impl CrateContext {
             ((end.nsec as int) - (start.nsec as int)) / 1000000;
         self.stats.fn_times.push((name, elapsed));
     }
-
 }
 
 #[unsafe_destructor]
@@ -247,7 +249,6 @@ impl Drop for CrateContext {
 }
 
 fn task_local_llcx_key(_v: @ContextRef) {}
-
 pub fn task_llcx() -> ContextRef {
     let opt = unsafe { local_data::local_data_get(task_local_llcx_key) };
     *opt.expect("task-local LLVMContextRef wasn't ever set!")

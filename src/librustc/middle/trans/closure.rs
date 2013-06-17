@@ -162,12 +162,12 @@ pub fn mk_closure_tys(tcx: ty::ctxt,
 
 pub fn allocate_cbox(bcx: block, sigil: ast::Sigil, cdata_ty: ty::t)
                   -> Result {
-    let _icx = bcx.insn_ctxt("closure::allocate_cbox");
+    let _icx = push_ctxt("closure::allocate_cbox");
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
 
     fn nuke_ref_count(bcx: block, llbox: ValueRef) {
-        let _icx = bcx.insn_ctxt("closure::nuke_ref_count");
+        let _icx = push_ctxt("closure::nuke_ref_count");
         // Initialize ref count to arbitrary value for debugging:
         let ccx = bcx.ccx();
         let llbox = PointerCast(bcx, llbox, Type::opaque_box(ccx).ptr_to());
@@ -206,7 +206,7 @@ pub struct ClosureResult {
 pub fn store_environment(bcx: block,
                          bound_values: ~[EnvValue],
                          sigil: ast::Sigil) -> ClosureResult {
-    let _icx = bcx.insn_ctxt("closure::store_environment");
+    let _icx = push_ctxt("closure::store_environment");
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
 
@@ -260,7 +260,7 @@ pub fn build_closure(bcx0: block,
                      cap_vars: &[moves::CaptureVar],
                      sigil: ast::Sigil,
                      include_ret_handle: Option<ValueRef>) -> ClosureResult {
-    let _icx = bcx0.insn_ctxt("closure::build_closure");
+    let _icx = push_ctxt("closure::build_closure");
     // If we need to, package up the iterator body to call
     let bcx = bcx0;
 
@@ -322,7 +322,7 @@ pub fn load_environment(fcx: fn_ctxt,
                         cap_vars: &[moves::CaptureVar],
                         load_ret_handle: bool,
                         sigil: ast::Sigil) {
-    let _icx = fcx.insn_ctxt("closure::load_environment");
+    let _icx = push_ctxt("closure::load_environment");
 
     let llloadenv = match fcx.llloadenv {
         Some(ll) => ll,
@@ -393,7 +393,7 @@ pub fn trans_expr_fn(bcx: block,
          (fn ptr, env) pair
      */
 
-    let _icx = bcx.insn_ctxt("closure::trans_expr_fn");
+    let _icx = push_ctxt("closure::trans_expr_fn");
 
     let dest_addr = match dest {
         expr::SaveIn(p) => p,
@@ -470,7 +470,7 @@ pub fn make_closure_glue(
         v: ValueRef,
         t: ty::t,
         glue_fn: @fn(block, v: ValueRef, t: ty::t) -> block) -> block {
-    let _icx = cx.insn_ctxt("closure::make_closure_glue");
+    let _icx = push_ctxt("closure::make_closure_glue");
     let bcx = cx;
     let tcx = cx.tcx();
 
@@ -494,7 +494,7 @@ pub fn make_opaque_cbox_take_glue(
     cboxptr: ValueRef)     // ptr to ptr to the opaque closure
     -> block {
     // Easy cases:
-    let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_take_glue");
+    let _icx = push_ctxt("closure::make_opaque_cbox_take_glue");
     match sigil {
         ast::BorrowedSigil => {
             return bcx;
@@ -553,7 +553,7 @@ pub fn make_opaque_cbox_drop_glue(
     sigil: ast::Sigil,
     cboxptr: ValueRef)     // ptr to the opaque closure
     -> block {
-    let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_drop_glue");
+    let _icx = push_ctxt("closure::make_opaque_cbox_drop_glue");
     match sigil {
         ast::BorrowedSigil => bcx,
         ast::ManagedSigil => {
@@ -574,7 +574,7 @@ pub fn make_opaque_cbox_free_glue(
     sigil: ast::Sigil,
     cbox: ValueRef)     // ptr to ptr to the opaque closure
     -> block {
-    let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_free_glue");
+    let _icx = push_ctxt("closure::make_opaque_cbox_free_glue");
     match sigil {
         ast::BorrowedSigil => {
             return bcx;
