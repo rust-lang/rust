@@ -8,13 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::*;
-use super::super::*;
-use super::ip::IpAddr;
+use option::{Option};
+use rt::io::net::ip::IpAddr;
+use rt::io::{Reader, Writer, Listener};
+use rt::rtio::{RtioUdpStreamObject};
 
-pub struct UdpStream;
+pub struct UdpStream {
+    rtstream: ~RtioUdpStreamObject
+}
 
 impl UdpStream {
+    fn new(s: ~RtioUdpStreamObject) -> UdpStream {
+        UdpStream {
+            rtstream: s
+        }
+    }
+
     pub fn connect(_addr: IpAddr) -> Option<UdpStream> {
         fail!()
     }
