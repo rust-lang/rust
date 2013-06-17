@@ -18,11 +18,6 @@ use task;
 
 pub mod at_exit;
 
-// Currently only works for *NIXes
-#[cfg(target_os = "linux")]
-#[cfg(target_os = "android")]
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
 pub mod dynamic_lib;
 
 pub mod global;
