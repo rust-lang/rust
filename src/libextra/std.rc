@@ -10,19 +10,19 @@
 
 /*!
 
-The Rust standard library.
+The Rust "extras" library.
 
-The Rust standand library provides a number of useful features that are
-not required in or otherwise suitable for the core library.
+The Rust extras library (`extra`) provides a number of useful features that
+are not required in or otherwise suitable for the standard library (`std`).
 
 */
 
 #[link(name = "extra",
        vers = "0.7-pre",
        uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
-       url = "https://github.com/mozilla/rust/tree/master/src/libstd")];
+       url = "https://github.com/mozilla/rust/tree/master/src/libextra")];
 
-#[comment = "The Rust standard library"];
+#[comment = "The Rust extras library"];
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
@@ -128,7 +128,7 @@ pub mod test;
 pub mod serialize;
 
 // A curious inner-module that's not exported that contains the binding
-// 'extra' so that macro-expanded references to std::serialize and such
+// 'extra' so that macro-expanded references to extra::serialize and such
 // can be resolved within libextra.
 #[doc(hidden)]
 pub mod std {

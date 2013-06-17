@@ -14,8 +14,8 @@
 * This module contains bindings to the C standard library,
 * organized into modules by their defining standard.
 * Additionally, it contains some assorted platform-specific definitions.
-* For convenience, most functions and types are reexported from `core::libc`,
-* so `pub use core::libc::*` will import the available
+* For convenience, most functions and types are reexported from `std::libc`,
+* so `pub use std::libc::*` will import the available
 * C bindings as appropriate for the target platform. The exact
 * set of functions available are platform specific.
 *
