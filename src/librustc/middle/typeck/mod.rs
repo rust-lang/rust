@@ -198,7 +198,7 @@ pub fn write_substs_to_tcx(tcx: ty::ctxt,
     if substs.len() > 0u {
         debug!("write_substs_to_tcx(%d, %?)", node_id,
                substs.map(|t| ppaux::ty_to_str(tcx, *t)));
-        assert!(substs.all(|t| !ty::type_needs_infer(*t)));
+        assert!(substs.iter().all(|t| !ty::type_needs_infer(*t)));
         tcx.node_type_substs.insert(node_id, substs);
     }
 }

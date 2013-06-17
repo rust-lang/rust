@@ -266,7 +266,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
                 f: &fn(uint) -> bool) -> bool {
         //! Helper for iterating over the bits in a bit set.
 
-        for words.eachi |word_index, &word| {
+        for words.iter().enumerate().advance |(word_index, &word)| {
             if word != 0 {
                 let base_index = word_index * uint::bits;
                 for uint::range(0, uint::bits) |offset| {
@@ -342,14 +342,14 @@ impl<O:DataFlowOperator+Copy+'static> DataFlowContext<O> {
                 let entry_str = bits_to_str(on_entry);
 
                 let gens = vec::slice(self.gens, start, end);
-                let gens_str = if gens.any(|&u| u != 0) {
+                let gens_str = if gens.iter().any_(|&u| u != 0) {
                     fmt!(" gen: %s", bits_to_str(gens))
                 } else {
                     ~""
                 };
 
                 let kills = vec::slice(self.kills, start, end);
-                let kills_str = if kills.any(|&u| u != 0) {
+                let kills_str = if kills.iter().any_(|&u| u != 0) {
                     fmt!(" kill: %s", bits_to_str(kills))
                 } else {
                     ~""
@@ -503,12 +503,12 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
                     // func_bits represents the state when the function
                     // returns
-                    let mut func_bits = reslice(in_out).to_vec();
+                    let mut func_bits = reslice(in_out).to_owned();
 
                     loop_scopes.push(LoopScope {
                         loop_id: expr.id,
                         loop_kind: ForLoop,
-                        break_bits: reslice(in_out).to_vec()
+                        break_bits: reslice(in_out).to_owned()
                     });
                     for decl.inputs.each |input| {
                         self.walk_pat(input.pat, func_bits, loop_scopes);
@@ -547,7 +547,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 //
                 self.walk_expr(cond, in_out, loop_scopes);
 
-                let mut then_bits = reslice(in_out).to_vec();
+                let mut then_bits = reslice(in_out).to_owned();
                 self.walk_block(then, then_bits, loop_scopes);
 
                 self.walk_opt_expr(els, in_out, loop_scopes);
@@ -569,11 +569,11 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
                 self.walk_expr(cond, in_out, loop_scopes);
 
-                let mut body_bits = reslice(in_out).to_vec();
+                let mut body_bits = reslice(in_out).to_owned();
                 loop_scopes.push(LoopScope {
                     loop_id: expr.id,
                     loop_kind: TrueLoop,
-                    break_bits: reslice(in_out).to_vec()
+                    break_bits: reslice(in_out).to_owned()
                 });
                 self.walk_block(blk, body_bits, loop_scopes);
                 self.add_to_entry_set(expr.id, body_bits);
@@ -591,12 +591,12 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 //    <--+ (break)
                 //
 
-                let mut body_bits = reslice(in_out).to_vec();
+                let mut body_bits = reslice(in_out).to_owned();
                 self.reset(in_out);
                 loop_scopes.push(LoopScope {
                     loop_id: expr.id,
                     loop_kind: TrueLoop,
-                    break_bits: reslice(in_out).to_vec()
+                    break_bits: reslice(in_out).to_owned()
                 });
                 self.walk_block(blk, body_bits, loop_scopes);
                 self.add_to_entry_set(expr.id, body_bits);
@@ -620,7 +620,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 //
                 self.walk_expr(discr, in_out, loop_scopes);
 
-                let mut guards = reslice(in_out).to_vec();
+                let mut guards = reslice(in_out).to_owned();
 
                 // We know that exactly one arm will be taken, so we
                 // can start out with a blank slate and just union
@@ -633,7 +633,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
                     // determine the bits for the body and then union
                     // them into `in_out`, which reflects all bodies to date
-                    let mut body = reslice(guards).to_vec();
+                    let mut body = reslice(guards).to_owned();
                     self.walk_pat_alternatives(arm.pats, body, loop_scopes);
                     self.walk_block(&arm.body, body, loop_scopes);
                     join_bits(&self.dfcx.oper, body, in_out);
@@ -644,7 +644,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
                 self.walk_opt_expr(o_e, in_out, loop_scopes);
 
                 // is this a return from a `for`-loop closure?
-                match loop_scopes.position(|s| s.loop_kind == ForLoop) {
+                match loop_scopes.iter().position_(|s| s.loop_kind == ForLoop) {
                     Some(i) => {
                         // if so, add the in_out bits to the state
                         // upon exit. Remember that we cannot count
@@ -735,7 +735,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
 
             ast::expr_binary(_, op, l, r) if ast_util::lazy_binop(op) => {
                 self.walk_expr(l, in_out, loop_scopes);
-                let temp = reslice(in_out).to_vec();
+                let temp = reslice(in_out).to_owned();
                 self.walk_expr(r, in_out, loop_scopes);
                 join_bits(&self.dfcx.oper, temp, in_out);
             }
@@ -896,7 +896,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
         // In the general case, the patterns in `pats` are
         // alternatives, so we must treat this like an N-way select
         // statement.
-        let initial_state = reslice(in_out).to_vec();
+        let initial_state = reslice(in_out).to_owned();
         for pats.each |&pat| {
             let mut temp = copy initial_state;
             self.walk_pat(pat, temp, loop_scopes);
@@ -917,7 +917,7 @@ impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
             Some(_) => {
                 match self.tcx().def_map.find(&expr.id) {
                     Some(&ast::def_label(loop_id)) => {
-                        match loop_scopes.position(|l| l.loop_id == loop_id) {
+                        match loop_scopes.iter().position_(|l| l.loop_id == loop_id) {
                             Some(i) => i,
                             None => {
                                 self.tcx().sess.span_bug(

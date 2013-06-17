@@ -1463,7 +1463,7 @@ impl Resolver {
                             let path_len = full_path.idents.len();
                             assert!(path_len != 0);
 
-                            for full_path.idents.eachi |i, ident| {
+                            for full_path.idents.iter().enumerate().advance |(i, ident)| {
                                 if i != path_len - 1 {
                                     module_path.push(*ident);
                                 }
@@ -4033,7 +4033,7 @@ impl Resolver {
     pub fn check_consistent_bindings(@mut self, arm: &arm) {
         if arm.pats.len() == 0 { return; }
         let map_0 = self.binding_mode_map(arm.pats[0]);
-        for arm.pats.eachi() |i, p| {
+        for arm.pats.iter().enumerate().advance |(i, p)| {
             let map_i = self.binding_mode_map(*p);
 
             for map_0.each |&key, &binding_0| {
@@ -4605,7 +4605,7 @@ impl Resolver {
 
     pub fn intern_module_part_of_path(@mut self, path: @Path) -> ~[ident] {
         let mut module_path_idents = ~[];
-        for path.idents.eachi |index, ident| {
+        for path.idents.iter().enumerate().advance |(index, ident)| {
             if index == path.idents.len() - 1 {
                 break;
             }
@@ -4843,8 +4843,7 @@ impl Resolver {
         }
 
         let mut smallest = 0;
-        for maybes.eachi |i, &other| {
-
+        for maybes.iter().enumerate().advance |(i, &other)| {
             values[i] = name.lev_distance(other);
 
             if values[i] <= values[smallest] {

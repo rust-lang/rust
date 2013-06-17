@@ -10,7 +10,7 @@ fn A(i: i32, j: i32) -> i32 {
 
 fn dot(v: &[f64], u: &[f64]) -> f64 {
     let mut sum = 0.0;
-    for v.eachi |i, &v_i| {
+    for v.iter().enumerate().advance |(i, &v_i)| {
         sum += v_i * u[i];
     }
     sum

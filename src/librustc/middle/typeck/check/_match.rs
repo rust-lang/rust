@@ -274,7 +274,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
 
     // Index the class fields.
     let mut field_map = HashMap::new();
-    for class_fields.eachi |i, class_field| {
+    for class_fields.iter().enumerate().advance |(i, class_field)| {
         field_map.insert(class_field.ident, i);
     }
 
@@ -303,7 +303,7 @@ pub fn check_struct_pat_fields(pcx: &pat_ctxt,
 
     // Report an error if not all the fields were specified.
     if !etc {
-        for class_fields.eachi |i, field| {
+        for class_fields.iter().enumerate().advance |(i, field)| {
             if found_fields.contains(&i) {
                 loop;
             }
@@ -510,7 +510,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::pat, expected: ty::t) {
         let e_count = elts.len();
         match s {
             ty::ty_tup(ref ex_elts) if e_count == ex_elts.len() => {
-                for elts.eachi |i, elt| {
+                for elts.iter().enumerate().advance |(i, elt)| {
                     check_pat(pcx, *elt, ex_elts[i]);
                 }
                 fcx.write_ty(pat.id, expected);

@@ -592,7 +592,7 @@ pub fn print_item(s: @ps, item: @ast::item) {
         print_generics(s, generics);
         if traits.len() != 0u {
             word(s.s, ":");
-            for traits.eachi |i, trait_| {
+            for traits.iter().enumerate().advance |(i, trait_)| {
                 nbsp(s);
                 if i != 0 {
                     word_space(s, "+");
@@ -758,7 +758,7 @@ pub fn print_tt(s: @ps, tt: &ast::token_tree) {
 
 pub fn print_tts(s: @ps, tts: &[ast::token_tree]) {
     ibox(s, 0);
-    for tts.eachi |i, tt| {
+    for tts.iter().enumerate().advance |(i, tt)| {
         if i != 0 {
             space(s.s);
         }
@@ -1229,7 +1229,7 @@ pub fn print_expr(s: @ps, expr: @ast::expr) {
         space(s.s);
         bopen(s);
         let len = arms.len();
-        for arms.eachi |i, arm| {
+        for arms.iter().enumerate().advance |(i, arm)| {
             space(s.s);
             cbox(s, indent_unit);
             ibox(s, 0u);

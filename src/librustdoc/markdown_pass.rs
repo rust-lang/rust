@@ -190,7 +190,7 @@ pub fn header_name(doc: doc::ItemTag) -> ~str {
             };
             let self_ty = doc.self_ty.get_ref();
             let mut trait_part = ~"";
-            for doc.trait_types.eachi |i, trait_type| {
+            for doc.trait_types.iter().enumerate().advance |(i, trait_type)| {
                 if i == 0 {
                     trait_part += " of ";
                 } else {

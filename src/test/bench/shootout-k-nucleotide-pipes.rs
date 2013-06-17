@@ -90,7 +90,7 @@ fn find(mm: &HashMap<~[u8], uint>, key: ~str) -> uint {
 
 // given a map, increment the counter for a key
 fn update_freq(mm: &mut HashMap<~[u8], uint>, key: &[u8]) {
-    let key = vec::slice(key, 0, key.len()).to_vec();
+    let key = vec::slice(key, 0, key.len()).to_owned();
     let newval = match mm.pop(&key) {
         Some(v) => v + 1,
         None => 1
@@ -111,7 +111,7 @@ fn windows_with_carry(bb: &[u8], nn: uint,
       ii += 1u;
    }
 
-   return vec::slice(bb, len - (nn - 1u), len).to_vec();
+   return vec::slice(bb, len - (nn - 1u), len).to_owned();
 }
 
 fn make_sequence_processor(sz: uint,
@@ -211,7 +211,7 @@ fn main() {
          (_, true) => {
             let line_bytes = line.as_bytes();
 
-           for sizes.eachi |ii, _sz| {
+           for sizes.iter().enumerate().advance |(ii, _sz)| {
                let mut lb = line_bytes.to_owned();
                to_child[ii].send(lb);
             }
@@ -223,12 +223,12 @@ fn main() {
    }
 
    // finish...
-    for sizes.eachi |ii, _sz| {
+    for sizes.iter().enumerate().advance |(ii, _sz)| {
       to_child[ii].send(~[]);
    }
 
    // now fetch and print result messages
-    for sizes.eachi |ii, _sz| {
+    for sizes.iter().enumerate().advance |(ii, _sz)| {
       io::println(from_child[ii].recv());
    }
 }

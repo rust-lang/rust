@@ -211,7 +211,7 @@ impl AbiSet {
         let mut abis = ~[];
         for self.each |abi| { abis.push(abi); }
 
-        for abis.eachi |i, abi| {
+        for abis.iter().enumerate().advance |(i, abi)| {
             let data = abi.data();
             for abis.slice(0, i).each |other_abi| {
                 let other_data = other_abi.data();
@@ -374,7 +374,7 @@ fn abi_to_str_rust() {
 
 #[test]
 fn indices_are_correct() {
-    for AbiDatas.eachi |i, abi_data| {
+    for AbiDatas.iter().enumerate().advance |(i, abi_data)| {
         assert!(i == abi_data.abi.index());
     }
 

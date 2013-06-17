@@ -307,11 +307,11 @@ impl<T,U:Unflattener<T>,P:BytePort> GenericPort<T> for FlatPort<T, U, P> {
 
 impl<T,F:Flattener<T>,C:ByteChan> GenericChan<T> for FlatChan<T, F, C> {
     fn send(&self, val: T) {
-        self.byte_chan.send(CONTINUE.to_vec());
+        self.byte_chan.send(CONTINUE.to_owned());
         let bytes = self.flattener.flatten(val);
         let len = bytes.len() as u64;
         do io::u64_to_be_bytes(len, size_of::<u64>()) |len_bytes| {
-            self.byte_chan.send(len_bytes.to_vec());
+            self.byte_chan.send(len_bytes.to_owned());
         }
         self.byte_chan.send(bytes);
     }
@@ -937,7 +937,7 @@ mod test {
         fn test_try_recv_none3<P:BytePort>(loader: PortLoader<P>) {
             static CONTINUE: [u8, ..4] = [0xAA, 0xBB, 0xCC, 0xDD];
             // The control word is followed by garbage
-            let bytes = CONTINUE.to_vec() + [0];
+            let bytes = CONTINUE.to_owned() + [0];
             let port = loader(bytes);
             let res: Option<int> = port.try_recv();
             assert!(res.is_none());
@@ -959,9 +959,9 @@ mod test {
                 // then undeserializable garbage
                 let len_bytes = do io::u64_to_be_bytes(
                     1, sys::size_of::<u64>()) |len_bytes| {
-                    len_bytes.to_vec()
+                    len_bytes.to_owned()
                 };
-                let bytes = CONTINUE.to_vec() + len_bytes + [0, 0, 0, 0];
+                let bytes = CONTINUE.to_owned() + len_bytes + [0, 0, 0, 0];
 
                 let port = loader(bytes);
 
