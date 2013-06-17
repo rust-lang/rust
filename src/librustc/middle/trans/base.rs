@@ -670,7 +670,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
         let tcx = cx.tcx();
         let mut cx = cx;
 
-        for variant.args.eachi |i, &arg| {
+        for variant.args.iter().enumerate().advance |(i, &arg)| {
             cx = f(cx,
                    adt::trans_field_ptr(cx, repr, av, variant.disr_val, i),
                    ty::subst_tps(tcx, tps, None, arg));
@@ -683,7 +683,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
       ty::ty_struct(*) => {
           let repr = adt::represent_type(cx.ccx(), t);
           do expr::with_field_tys(cx.tcx(), t, None) |discr, field_tys| {
-              for field_tys.eachi |i, field_ty| {
+              for field_tys.iter().enumerate().advance |(i, field_ty)| {
                   let llfld_a = adt::trans_field_ptr(cx, repr, av, discr, i);
                   cx = f(cx, llfld_a, field_ty.mt.ty);
               }
@@ -696,7 +696,7 @@ pub fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
       }
       ty::ty_tup(ref args) => {
           let repr = adt::represent_type(cx.ccx(), t);
-          for args.eachi |i, arg| {
+          for args.iter().enumerate().advance |(i, arg)| {
               let llfld_a = adt::trans_field_ptr(cx, repr, av, 0, i);
               cx = f(cx, llfld_a, *arg);
           }
@@ -2017,7 +2017,7 @@ pub fn trans_enum_variant(ccx: @mut CrateContext,
            repr, ty_to_str(ccx.tcx, enum_ty));
 
     adt::trans_start_init(bcx, repr, fcx.llretptr.get(), disr);
-    for args.eachi |i, va| {
+    for args.iter().enumerate().advance |(i, va)| {
         let lldestptr = adt::trans_field_ptr(bcx,
                                              repr,
                                              fcx.llretptr.get(),
@@ -2092,7 +2092,7 @@ pub fn trans_tuple_struct(ccx: @mut CrateContext,
     let repr = adt::represent_type(ccx, tup_ty);
     adt::trans_start_init(bcx, repr, fcx.llretptr.get(), 0);
 
-    for fields.eachi |i, field| {
+    for fields.iter().enumerate().advance |(i, field)| {
         let lldestptr = adt::trans_field_ptr(bcx,
                                              repr,
                                              fcx.llretptr.get(),

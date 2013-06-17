@@ -477,7 +477,7 @@ pub fn check_cast_for_escaping_regions(
     // Check, based on the region associated with the trait, whether it can
     // possibly escape the enclosing fn item (note that all type parameters
     // must have been declared on the enclosing fn item).
-    if target_regions.any(|r| is_re_scope(*r)) {
+    if target_regions.iter().any_(|r| is_re_scope(*r)) {
         return; /* case (1) */
     }
 
@@ -492,7 +492,7 @@ pub fn check_cast_for_escaping_regions(
         |_r| {
             // FIXME(#5723) --- turn this check on once &Objects are usable
             //
-            // if !target_regions.any(|t_r| is_subregion_of(cx, *t_r, r)) {
+            // if !target_regions.iter().any_(|t_r| is_subregion_of(cx, *t_r, r)) {
             //     cx.tcx.sess.span_err(
             //         source.span,
             //         fmt!("source contains borrowed pointer with lifetime \
@@ -506,7 +506,7 @@ pub fn check_cast_for_escaping_regions(
         |ty| {
             match ty::get(ty).sty {
                 ty::ty_param(source_param) => {
-                    if target_params.contains(&source_param) {
+                    if target_params.iter().any_(|x| x == &source_param) {
                         /* case (2) */
                     } else {
                         check_durable(cx.tcx, ty, source.span); /* case (3) */

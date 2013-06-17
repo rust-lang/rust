@@ -200,7 +200,7 @@ pub fn expand_item(extsbox: @mut SyntaxEnv,
 
 // does this attribute list contain "macro_escape" ?
 pub fn contains_macro_escape (attrs: &[ast::attribute]) -> bool {
-    attrs.any(|attr| "macro_escape" == attr::get_attr_name(attr))
+    attrs.iter().any_(|attr| "macro_escape" == attr::get_attr_name(attr))
 }
 
 // Support for item-position macro invocations, exactly the same
@@ -425,8 +425,8 @@ fn renames_to_fold(renames : @mut ~[(ast::ident,ast::Name)]) -> @ast_fold {
         fold_ident: |id,_| {
             // the individual elements are memoized... it would
             // also be possible to memoize on the whole list at once.
-            let new_ctxt = renames.foldl(id.ctxt,|ctxt,&(from,to)| {
-                new_rename(from,to,*ctxt)
+            let new_ctxt = renames.iter().fold(id.ctxt,|ctxt,&(from,to)| {
+                new_rename(from,to,ctxt)
             });
             ast::ident{name:id.name,ctxt:new_ctxt}
         },

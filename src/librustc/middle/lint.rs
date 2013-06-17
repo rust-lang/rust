@@ -1003,7 +1003,7 @@ fn lint_missing_doc() -> visit::vt<@mut Context> {
         // If we have doc(hidden), nothing to do
         if cx.doc_hidden { return }
         // If we're documented, nothing to do
-        if attrs.any(|a| a.node.is_sugared_doc) { return }
+        if attrs.iter().any_(|a| a.node.is_sugared_doc) { return }
 
         // otherwise, warn!
         cx.span_lint(missing_doc, sp, msg);

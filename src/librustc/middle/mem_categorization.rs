@@ -872,7 +872,7 @@ impl mem_categorization_ctxt {
                         }
                     };
 
-                    for subpats.eachi |i, &subpat| {
+                    for subpats.iter().enumerate().advance |(i, &subpat)| {
                         let subpat_ty = self.pat_ty(subpat); // see (*)
 
                         let subcmt =
@@ -885,7 +885,7 @@ impl mem_categorization_ctxt {
                 }
                 Some(&ast::def_fn(*)) |
                 Some(&ast::def_struct(*)) => {
-                    for subpats.eachi |i, &subpat| {
+                    for subpats.iter().enumerate().advance |(i, &subpat)| {
                         let subpat_ty = self.pat_ty(subpat); // see (*)
                         let cmt_field =
                             self.cat_imm_interior(
@@ -926,7 +926,7 @@ impl mem_categorization_ctxt {
 
           ast::pat_tup(ref subpats) => {
             // (p1, ..., pN)
-            for subpats.eachi |i, &subpat| {
+            for subpats.iter().enumerate().advance |(i, &subpat)| {
                 let subpat_ty = self.pat_ty(subpat); // see (*)
                 let subcmt =
                     self.cat_imm_interior(

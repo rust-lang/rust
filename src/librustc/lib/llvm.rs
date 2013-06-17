@@ -2157,7 +2157,7 @@ pub fn type_to_str_inner(names: @TypeNames, outer0: &[TypeRef], ty: TypeRef)
           _ => {}
         }
 
-        let outer = vec::append_one(outer0.to_vec(), ty);
+        let outer = vec::append_one(outer0.to_owned(), ty);
 
         let kind = llvm::LLVMGetTypeKind(ty);
 

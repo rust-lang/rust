@@ -348,11 +348,11 @@ impl MoveData {
          * killed by scoping. See `doc.rs` for more details.
          */
 
-        for self.moves.eachi |i, move| {
+        for self.moves.iter().enumerate().advance |(i, move)| {
             dfcx_moves.add_gen(move.id, i);
         }
 
-        for self.var_assignments.eachi |i, assignment| {
+        for self.var_assignments.iter().enumerate().advance |(i, assignment)| {
             dfcx_assign.add_gen(assignment.id, i);
             self.kill_moves(assignment.path, assignment.id, dfcx_moves);
         }
@@ -375,7 +375,7 @@ impl MoveData {
         }
 
         // Kill all assignments when the variable goes out of scope:
-        for self.var_assignments.eachi |assignment_index, assignment| {
+        for self.var_assignments.iter().enumerate().advance |(assignment_index, assignment)| {
             match *self.path(assignment.path).loan_path {
                 LpVar(id) => {
                     let kill_id = tcx.region_maps.encl_scope(id);

@@ -1175,8 +1175,8 @@ mod biguint_tests {
     fn test_cmp() {
         let data = [ &[], &[1], &[2], &[-1], &[0, 1], &[2, 1], &[1, 1, 1]  ]
             .map(|v| BigUint::from_slice(*v));
-        for data.eachi |i, ni| {
-            for vec::slice(data, i, data.len()).eachi |j0, nj| {
+        for data.iter().enumerate().advance |(i, ni)| {
+            for vec::slice(data, i, data.len()).iter().enumerate().advance |(j0, nj)| {
                 let j = j0 + i;
                 if i == j {
                     assert_eq!(ni.cmp(nj), Equal);
@@ -1651,8 +1651,8 @@ mod bigint_tests {
         nums.push(Zero::zero());
         nums.push_all_move(vs.map(|s| BigInt::from_slice(Plus, *s)));
 
-        for nums.eachi |i, ni| {
-            for vec::slice(nums, i, nums.len()).eachi |j0, nj| {
+        for nums.iter().enumerate().advance |(i, ni)| {
+            for vec::slice(nums, i, nums.len()).iter().enumerate().advance |(j0, nj)| {
                 let j = i + j0;
                 if i == j {
                     assert_eq!(ni.cmp(nj), Equal);

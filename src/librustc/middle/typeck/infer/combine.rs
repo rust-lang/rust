@@ -265,7 +265,7 @@ pub fn super_tps<C:Combine>(
     if vec::same_length(as_, bs) {
         iter_vec2(as_, bs, |a, b| {
             eq_tys(this, *a, *b)
-        }).then(|| Ok(as_.to_vec()) )
+        }).then(|| Ok(as_.to_owned()) )
     } else {
         Err(ty::terr_ty_param_size(
             expected_found(this, as_.len(), bs.len())))

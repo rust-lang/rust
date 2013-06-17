@@ -853,7 +853,7 @@ mod test_treemap {
             for 90.times {
                 let k = rng.gen();
                 let v = rng.gen();
-                if !ctrl.contains(&(k, v)) {
+                if !ctrl.iter().any_(|x| x == &(k, v)) {
                     assert!(map.insert(k, v));
                     ctrl.push((k, v));
                     check_structure(&map);
