@@ -2629,6 +2629,12 @@ impl<A:Clone> Clone for ~[A] {
     }
 }
 
+// This works because every lifetime is a sub-lifetime of 'static
+impl<'self, A> Zero for &'self [A] {
+    fn zero() -> &'self [A] { &'self [] }
+    fn is_zero(&self) -> bool { self.is_empty() }
+}
+
 impl<A> Zero for ~[A] {
     fn zero() -> ~[A] { ~[] }
     fn is_zero(&self) -> bool { self.len() == 0 }
@@ -4292,5 +4298,21 @@ mod tests {
             v.push(p.to_owned());
         }
         assert_eq!(v, ~[~[1,2,3],~[1,3,2],~[2,1,3],~[2,3,1],~[3,1,2],~[3,2,1]]);
+    }
+
+    #[test]
+    fn test_vec_zero() {
+        use num::Zero;
+        macro_rules! t (
+            ($ty:ty) => {
+                let v: $ty = Zero::zero();
+                assert!(v.is_empty());
+                assert!(v.is_zero());
+            }
+        );
+
+        t!(&[int]);
+        t!(@[int]);
+        t!(~[int]);
     }
 }
