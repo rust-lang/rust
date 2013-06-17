@@ -1427,21 +1427,6 @@ pub fn each<'r,T>(v: &'r [T], f: &fn(&'r T) -> bool) -> bool {
     return !broke;
 }
 
-/// Like `each()`, but for the case where you have a vector that *may or may
-/// not* have mutable contents.
-#[inline]
-pub fn each_const<T>(v: &const [T], f: &fn(elem: &const T) -> bool) -> bool {
-    let mut i = 0;
-    let n = v.len();
-    while i < n {
-        if !f(&const v[i]) {
-            return false;
-        }
-        i += 1;
-    }
-    return true;
-}
-
 /**
  * Iterates over a vector's elements and indices
  *
