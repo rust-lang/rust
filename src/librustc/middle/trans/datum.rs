@@ -273,7 +273,7 @@ impl Datum {
          * `store_to()` instead, which will move if possible but copy if
          * neccessary. */
 
-        let _icx = bcx.insn_ctxt("copy_to");
+        let _icx = push_ctxt("copy_to");
 
         if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
             return bcx;
@@ -317,7 +317,7 @@ impl Datum {
          * A helper for `copy_to()` which does not check to see if we
          * are copying to/from the same value. */
 
-        let _icx = bcx.insn_ctxt("copy_to_no_check");
+        let _icx = push_ctxt("copy_to_no_check");
         let mut bcx = bcx;
 
         if action == DROP_EXISTING {
@@ -341,7 +341,7 @@ impl Datum {
     //
     pub fn move_to(&self, bcx: block, action: CopyAction, dst: ValueRef)
                    -> block {
-        let _icx = bcx.insn_ctxt("move_to");
+        let _icx = push_ctxt("move_to");
         let mut bcx = bcx;
 
         debug!("move_to(self=%s, action=%?, dst=%s)",
@@ -740,7 +740,7 @@ impl Datum {
                      expr_id: ast::node_id,
                      max: uint)
                      -> DatumBlock {
-        let _icx = bcx.insn_ctxt("autoderef");
+        let _icx = push_ctxt("autoderef");
 
         debug!("autoderef(expr_id=%d, max=%?, self=%?)",
                expr_id, max, self.to_str(bcx.ccx()));

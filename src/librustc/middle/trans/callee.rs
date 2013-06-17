@@ -78,7 +78,7 @@ pub struct Callee {
 }
 
 pub fn trans(bcx: block, expr: @ast::expr) -> Callee {
-    let _icx = bcx.insn_ctxt("trans_callee");
+    let _icx = push_ctxt("trans_callee");
     debug!("callee::trans(expr=%s)", expr.repr(bcx.tcx()));
 
     // pick out special kinds of expressions that can be called:
@@ -172,7 +172,7 @@ pub fn trans_fn_ref(bcx: block,
      * with id `def_id` into a function pointer.  This may require
      * monomorphization or inlining. */
 
-    let _icx = bcx.insn_ctxt("trans_fn_ref");
+    let _icx = push_ctxt("trans_fn_ref");
 
     let type_params = node_id_type_params(bcx, ref_id);
     let vtables = node_vtables(bcx, ref_id);
@@ -216,7 +216,7 @@ pub fn trans_fn_ref_with_vtables(
     // - `type_params`: values for each of the fn/method's type parameters
     // - `vtables`: values for each bound on each of the type parameters
 
-    let _icx = bcx.insn_ctxt("trans_fn_ref_with_vtables");
+    let _icx = push_ctxt("trans_fn_ref_with_vtables");
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
 
@@ -357,7 +357,7 @@ pub fn trans_call(in_cx: block,
                   id: ast::node_id,
                   dest: expr::Dest)
                   -> block {
-    let _icx = in_cx.insn_ctxt("trans_call");
+    let _icx = push_ctxt("trans_call");
     trans_call_inner(in_cx,
                      call_ex.info(),
                      expr_ty(in_cx, f),
@@ -375,7 +375,7 @@ pub fn trans_method_call(in_cx: block,
                          args: CallArgs,
                          dest: expr::Dest)
                          -> block {
-    let _icx = in_cx.insn_ctxt("trans_method_call");
+    let _icx = push_ctxt("trans_method_call");
     debug!("trans_method_call(call_ex=%s, rcvr=%s)",
            call_ex.repr(in_cx.tcx()),
            rcvr.repr(in_cx.tcx()));
@@ -671,7 +671,7 @@ pub fn trans_args(cx: block,
                   autoref_arg: AutorefArg,
                   llargs: &mut ~[ValueRef]) -> block
 {
-    let _icx = cx.insn_ctxt("trans_args");
+    let _icx = push_ctxt("trans_args");
     let mut temp_cleanups = ~[];
     let arg_tys = ty::ty_fn_args(fn_ty);
 
@@ -725,7 +725,7 @@ pub fn trans_arg_expr(bcx: block,
                       temp_cleanups: &mut ~[ValueRef],
                       ret_flag: Option<ValueRef>,
                       autoref_arg: AutorefArg) -> Result {
-    let _icx = bcx.insn_ctxt("trans_arg_expr");
+    let _icx = push_ctxt("trans_arg_expr");
     let ccx = bcx.ccx();
 
     debug!("trans_arg_expr(formal_arg_ty=(%s), self_mode=%?, arg_expr=%s, \
