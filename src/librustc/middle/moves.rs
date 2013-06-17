@@ -183,6 +183,7 @@ struct VisitContext {
     move_maps: MoveMaps
 }
 
+#[deriving(Eq)]
 enum UseMode {
     Move,        // This value or something owned by it is moved.
     Read         // Read no matter what the type.
@@ -335,7 +336,27 @@ impl VisitContext {
             }
 
             expr_call(callee, ref args, _) => {    // callee(args)
-                self.use_expr(callee, Read, visitor);
+                // Figure out whether the called function is consumed.
+                let mode = match ty::get(ty::expr_ty(self.tcx, callee)).sty {
+                    ty::ty_closure(ref cty) => {
+                        match cty.onceness {
+                        Once => Move,
+                        Many => Read,
+                        }
+                    },
+                    ty::ty_bare_fn(*) => Read,
+                    ref x =>
+                        self.tcx.sess.span_bug(callee.span,
+                            fmt!("non-function type in moves for expr_call: %?", x)),
+                };
+                // Note we're not using consume_expr, which uses type_moves_by_default
+                // to determine the mode, for this. The reason is that while stack
+                // closures should be noncopyable, they shouldn't move by default;
+                // calling a closure should only consume it if it's once.
+                if mode == Move {
+                    self.move_maps.moves_map.insert(callee.id);
+                }
+                self.use_expr(callee, mode, visitor);
                 self.use_fn_args(callee.id, *args, visitor);
             }
 
