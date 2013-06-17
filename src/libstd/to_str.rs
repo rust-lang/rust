@@ -31,7 +31,7 @@ pub trait ToStr {
 /// Trait for converting a type to a string, consuming it in the process.
 pub trait ToStrConsume {
     /// Cosume and convert to a string.
-    fn to_str_consume(self) -> ~str;
+    fn into_str(self) -> ~str;
 }
 
 impl ToStr for () {
