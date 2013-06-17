@@ -78,7 +78,7 @@ pub enum categorization {
 }
 
 #[deriving(Eq)]
-struct CopiedUpvar {
+pub struct CopiedUpvar {
     upvar_id: ast::node_id,
     onceness: ast::Onceness,
 }
@@ -497,9 +497,8 @@ impl mem_categorization_ctxt {
               let ty = ty::node_id_to_type(self.tcx, fn_node_id);
               match ty::get(ty).sty {
                   ty::ty_closure(ref closure_ty) => {
-                      let sigil = closure_ty.sigil;
-                      match sigil {
-                          ast::BorrowedSigil => {
+                      match (closure_ty.sigil, closure_ty.onceness) {
+                          (ast::BorrowedSigil, ast::Many) => {
                               let upvar_cmt =
                                   self.cat_def(id, span, expr_ty, *inner);
                               @cmt_ {
@@ -510,7 +509,8 @@ impl mem_categorization_ctxt {
                                   ty:upvar_cmt.ty
                               }
                           }
-                          ast::OwnedSigil | ast::ManagedSigil => {
+                          (ast::BorrowedSigil, ast::Once) |
+                          (ast::OwnedSigil, _) | (ast::ManagedSigil, _) => {
                               // FIXME #2152 allow mutation of moved upvars
                               @cmt_ {
                                   id:id,
