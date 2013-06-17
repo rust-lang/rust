@@ -38,6 +38,14 @@ fn ip4_as_uv_ip4<T>(addr: IpAddr, f: &fn(*sockaddr_in) -> T) -> T {
     }
 }
 
+pub fn uv_ip4_to_ip4(addr: *sockaddr_in) -> IpAddr {
+    let ip4_size = 16;
+    let buf = vec::from_elem(ip4_size, 0u8);
+    unsafe { ip4_name(addr, &buf[0], ip4_size as u64) };
+    let port = unsafe { ip4_port(addr) };
+    Ipv4(buf[0], buf[1], buf[2], buf[3], port as u16)
+}
+
 // uv_stream t is the parent class of uv_tcp_t, uv_pipe_t, uv_tty_t
 // and uv_file_t
 pub struct StreamWatcher(*uvll::uv_stream_t);
