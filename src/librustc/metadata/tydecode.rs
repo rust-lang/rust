@@ -311,8 +311,9 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         let substs = parse_substs(st, conv);
         let store = parse_trait_store(st);
         let mt = parse_mutability(st);
+        let bounds = parse_bounds(st, conv);
         assert_eq!(next(st), ']');
-        return ty::mk_trait(st.tcx, def, substs, store, mt);
+        return ty::mk_trait(st.tcx, def, substs, store, mt, bounds.builtin_bounds);
       }
       'p' => {
         let did = parse_def(st, TypeParameter, conv);
