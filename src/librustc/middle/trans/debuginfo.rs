@@ -693,7 +693,7 @@ fn set_debug_location(cx: @mut CrateContext, scope: DIScope, line: uint, col: ui
 }
 
 /// Set current debug location at the beginning of the span
-pub fn update_source_pos(bcx: @mut Block, span: span) {
+pub fn update_source_pos(bcx: block, span: span) {
     if !bcx.sess().opts.debuginfo || (*span.lo == 0 && *span.hi == 0) {
         return;
     }

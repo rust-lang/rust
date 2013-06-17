@@ -149,7 +149,7 @@ pub fn replace_bound_regions_in_fn_sig(
                     tcx.sess.bug(
                         fmt!("Bound region not found in \
                               in_scope_regions list: %s",
-                             region_to_str(tcx, r)));
+                             region_to_str(tcx, "", false, r)));
                   }
                 }
               }

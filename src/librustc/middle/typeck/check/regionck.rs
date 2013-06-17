@@ -690,13 +690,13 @@ fn constrain_regions_in_type(
     let tcx = rcx.fcx.ccx.tcx;
 
     debug!("constrain_regions_in_type(minimum_lifetime=%s, ty=%s)",
-           region_to_str(tcx, minimum_lifetime),
+           region_to_str(tcx, "", false, minimum_lifetime),
            ty_to_str(tcx, ty));
 
     do relate_nested_regions(tcx, Some(minimum_lifetime), ty) |r_sub, r_sup| {
         debug!("relate(r_sub=%s, r_sup=%s)",
-               region_to_str(tcx, r_sub),
-               region_to_str(tcx, r_sup));
+               region_to_str(tcx, "", false, r_sub),
+               region_to_str(tcx, "", false, r_sup));
 
         if r_sup.is_bound() || r_sub.is_bound() {
             // a bound region is one which appears inside an fn type.
