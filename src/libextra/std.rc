@@ -10,10 +10,13 @@
 
 /*!
 
-The Rust "extras" library.
+Rust extras.
 
-The Rust extras library (`extra`) provides a number of useful features that
-are not required in or otherwise suitable for the standard library (`std`).
+The `extra` crate is a set of useful modules for a variety of
+purposes, including collections, numerics, I/O, serialization,
+and concurrency.
+
+Rust extras are part of the standard Rust distribution.
 
 */
 
@@ -22,7 +25,7 @@ are not required in or otherwise suitable for the standard library (`std`).
        uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
        url = "https://github.com/mozilla/rust/tree/master/src/libextra")];
 
-#[comment = "The Rust extras library"];
+#[comment = "Rust extras"];
 #[license = "MIT/ASL2"];
 #[crate_type = "lib"];
 
