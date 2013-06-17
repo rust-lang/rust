@@ -804,7 +804,7 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
     // then check whether it is region-parameterized and consider
     // that as a direct dependency.
     match ty.node {
-      ast::ty_path(path, id) => {
+      ast::ty_path(path, _bounds, id) => {
         match cx.def_map.find(&id) {
           Some(&ast::def_ty(did)) |
           Some(&ast::def_trait(did)) |
@@ -840,7 +840,7 @@ pub fn determine_rp_in_ty(ty: @ast::Ty,
         visit_mt(mt, (cx, visitor));
       }
 
-      ast::ty_path(path, _) => {
+      ast::ty_path(path, _bounds, _) => {
         // type parameters are---for now, anyway---always invariant
         do cx.with_ambient_variance(rv_invariant) {
             for path.types.iter().advance |tp| {

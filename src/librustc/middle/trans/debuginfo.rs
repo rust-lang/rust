@@ -561,7 +561,7 @@ fn create_ty(cx: @mut CrateContext, t: ty::t, span: span) -> DIType {
             cx.sess.span_note(span, "debuginfo for closure NYI");
             create_unimpl_ty(cx, t)
         },
-        ty::ty_trait(_did, ref _substs, ref _vstore, _) => {
+        ty::ty_trait(_did, ref _substs, ref _vstore, _, _bounds) => {
             cx.sess.span_note(span, "debuginfo for trait NYI");
             create_unimpl_ty(cx, t)
         },

@@ -129,7 +129,8 @@ fn check_item(item: @item, (cx, visitor): (Context, visit::vt<Context>)) {
                         if cx.tcx.lang_items.drop_trait() == trait_def_id {
                             // Yes, it's a destructor.
                             match self_type.node {
-                                ty_path(_, path_node_id) => {
+                                ty_path(_, bounds, path_node_id) => {
+                                    assert!(bounds.is_empty());
                                     let struct_def = cx.tcx.def_map.get_copy(
                                         &path_node_id);
                                     let struct_did =
@@ -307,7 +308,7 @@ pub fn check_expr(e: @expr, (cx, v): (Context, visit::vt<Context>)) {
 
 fn check_ty(aty: @Ty, (cx, v): (Context, visit::vt<Context>)) {
     match aty.node {
-      ty_path(_, id) => {
+      ty_path(_, _, id) => {
           let r = cx.tcx.node_type_substs.find(&id);
           for r.iter().advance |ts| {
               let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&id));
@@ -533,7 +534,8 @@ pub fn check_cast_for_escaping_regions(
 pub fn check_kind_bounds_of_cast(cx: Context, source: @expr, target: @expr) {
     let target_ty = ty::expr_ty(cx.tcx, target);
     match ty::get(target_ty).sty {
-        ty::ty_trait(_, _, ty::UniqTraitStore, _) => {
+        // FIXME(#3569) kind check bounds here
+        ty::ty_trait(_, _, ty::UniqTraitStore, _, _bounds) => {
             let source_ty = ty::expr_ty(cx.tcx, source);
             if !ty::type_is_owned(cx.tcx, source_ty) {
                 cx.tcx.sess.span_err(
