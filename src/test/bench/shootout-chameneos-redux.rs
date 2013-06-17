@@ -23,11 +23,11 @@ use std::uint;
 use std::vec;
 
 fn print_complements() {
-    let all = ~[Blue, Red, Yellow];
-    for vec::each(all) |aa| {
-        for vec::each(all) |bb| {
-            io::println(show_color(*aa) + " + " + show_color(*bb) +
-                " -> " + show_color(transform(*aa, *bb)));
+    let all = [Blue, Red, Yellow];
+    for all.iter().advance |aa| {
+        for all.iter().advance |bb| {
+            println(show_color(*aa) + " + " + show_color(*bb) +
+                    " -> " + show_color(transform(*aa, *bb)));
         }
     }
 }
@@ -49,7 +49,7 @@ fn show_color(cc: color) -> ~str {
 
 fn show_color_list(set: ~[color]) -> ~str {
     let mut out = ~"";
-    for vec::eachi(set) |_ii, col| {
+    for set.iter().advance |col| {
         out += " ";
         out += show_color(*col);
     }
@@ -182,7 +182,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
     }
 
     // tell each creature to stop
-    for vec::eachi(to_creature) |_ii, to_one| {
+    for to_creature.iter().advance |to_one| {
         to_one.send(None);
     }
 
