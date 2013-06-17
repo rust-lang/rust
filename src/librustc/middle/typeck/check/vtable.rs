@@ -139,10 +139,11 @@ fn fixup_substs(vcx: &VtableContext, location_info: &LocationInfo,
     let t = ty::mk_trait(tcx,
                          id, substs,
                          ty::RegionTraitStore(ty::re_static),
-                         ast::m_imm);
+                         ast::m_imm,
+                         ty::EmptyBuiltinBounds());
     do fixup_ty(vcx, location_info, t, is_early).map |t_f| {
         match ty::get(*t_f).sty {
-          ty::ty_trait(_, ref substs_f, _, _) => (/*bad*/copy *substs_f),
+          ty::ty_trait(_, ref substs_f, _, _, _) => (/*bad*/copy *substs_f),
           _ => fail!("t_f should be a trait")
         }
     }
@@ -530,7 +531,9 @@ pub fn early_resolve_expr(ex: @ast::expr,
           debug!("vtable resolution on expr %s", ex.repr(fcx.tcx()));
           let target_ty = fcx.expr_ty(ex);
           match ty::get(target_ty).sty {
-              ty::ty_trait(target_def_id, ref target_substs, store, target_mutbl) => {
+              // Bounds of type's contents are not checked here, but in kind.rs.
+              ty::ty_trait(target_def_id, ref target_substs, store,
+                           target_mutbl, _bounds) => {
                   fn mutability_allowed(a_mutbl: ast::mutability,
                                         b_mutbl: ast::mutability) -> bool {
                       a_mutbl == b_mutbl ||

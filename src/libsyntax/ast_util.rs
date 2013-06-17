@@ -473,7 +473,7 @@ pub fn id_visitor<T: Copy>(vfn: @fn(node_id, T)) -> visit::vt<T> {
 
         visit_ty: |ty, (t, vt)| {
             match ty.node {
-              ty_path(_, id) => vfn(id, copy t),
+              ty_path(_, _, id) => vfn(id, copy t),
               _ => { /* fall through */ }
             }
             visit::visit_ty(ty, (t, vt));

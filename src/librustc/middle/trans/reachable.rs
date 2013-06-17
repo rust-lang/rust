@@ -160,7 +160,7 @@ fn traverse_ty<'a>(ty: @Ty, (cx, v): (@mut ctx<'a>, visit::vt<@mut ctx<'a>>)) {
     }
 
     match ty.node {
-      ty_path(p, p_id) => {
+      ty_path(p, _bounds, p_id) => {
         match cx.tcx.def_map.find(&p_id) {
           // Kind of a hack to check this here, but I'm not sure what else
           // to do

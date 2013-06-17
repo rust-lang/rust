@@ -508,13 +508,15 @@ pub fn super_tys<C:Combine>(
           }
       }
 
-      (&ty::ty_trait(a_id, ref a_substs, a_store, a_mutbl),
-       &ty::ty_trait(b_id, ref b_substs, b_store, b_mutbl))
+      (&ty::ty_trait(a_id, ref a_substs, a_store, a_mutbl, a_bounds),
+       &ty::ty_trait(b_id, ref b_substs, b_store, b_mutbl, b_bounds))
       if a_id == b_id && a_mutbl == b_mutbl => {
           let trait_def = ty::lookup_trait_def(tcx, a_id);
           do this.substs(&trait_def.generics, a_substs, b_substs).chain |substs| {
               do this.trait_stores(ty::terr_trait, a_store, b_store).chain |s| {
-                  Ok(ty::mk_trait(tcx, a_id, /*bad*/copy substs, s, a_mutbl))
+                  do this.bounds(a_bounds, b_bounds).chain |bounds| {
+                    Ok(ty::mk_trait(tcx, a_id, /*bad*/copy substs, s, a_mutbl, bounds))
+                  }
               }
           }
       }
