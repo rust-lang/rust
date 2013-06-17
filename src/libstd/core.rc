@@ -38,7 +38,7 @@ with the `std::` path prefix, as in `use std::vec`, `use std::task::spawn`,
 etc.
 
 Additionally, `std` contains a `prelude` module that reexports many of the
-most common std modules, types and traits. The contents of the prelude are
+most common `std` modules, types and traits. The contents of the prelude are
 imported into every *module* by default.  Implicitly, all modules behave as if
 they contained the following prologue:
 
@@ -66,7 +66,7 @@ they contained the following prologue:
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
 
-// Make core testable by not duplicating lang items. See #2912
+// Make std testable by not duplicating lang items. See #2912
 #[cfg(test)] extern mod realstd(name = "std");
 #[cfg(test)] pub use kinds = realstd::kinds;
 #[cfg(test)] pub use ops = realstd::ops;
